@@ -2,10 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.Game.Exception
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Runtime exceptions for the Swarm language interpreter.
@@ -26,12 +22,13 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Swarm.Constant
+import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Entity (EntityMap, deviceForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Requirement (Requirements (..))
 import Swarm.Language.Syntax (Const, Term)
-import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.Util
 import Witch (from)
 
@@ -86,7 +83,7 @@ formatExn em = \case
     T.unlines
       [ "Fatal error: " <> t
       , "Please report this as a bug at"
-      , "<https://github.com/swarm-game/swarm/issues/new>."
+      , "<" <> swarmRepoUrl <> "issues/new>."
       ]
   InfiniteLoop -> "Infinite loop detected!"
   (CmdFailed c t _) -> T.concat [prettyText c, ": ", t]
@@ -105,9 +102,10 @@ formatIncapableFix = \case
 -- | Pretty print the incapable exception with an actionable suggestion
 --   on how to fix it.
 --
+-- >>> import Data.Either (fromRight)
 -- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" [] [] [CAppear]
 -- >>> r = mkEntity (defaultEntityDisplay 'o') "the one ring" [] [] [CAppear]
--- >>> m = buildEntityMap [w,r]
+-- >>> m = fromRight mempty $ buildEntityMap [w,r]
 -- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByEquip cs t
 --
 -- >>> incapableError (R.singletonCap CGod) (TConst As)
@@ -145,7 +143,7 @@ formatIncapable em f (Requirements caps _ inv) tm
         [ "Missing the " <> capMsg <> " for:"
         , squote $ prettyText tm
         , "but no device yet provides it. See"
-        , "https://github.com/swarm-game/swarm/issues/26"
+        , swarmRepoUrl <> "issues/26"
         ]
   | not (S.null caps) =
       unlinesExText

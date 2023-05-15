@@ -1,10 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.Language.LSP
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Language Server Protocol (LSP) server for the Swarm language.
@@ -50,7 +46,7 @@ lspMain =
                         (Just syncKind)
                         (Just False)
                         (Just False)
-                        (Just $ J.InR $ J.SaveOptions $ Just True)
+                        (Just . J.InR . J.SaveOptions $ Just True)
                     )
               }
         }

@@ -1,0 +1,693 @@
+version: 1
+name: A Frivolous Excursion
+author: Karl Ostmo
+description: |
+  Use the resources at hand to open paths between the geographic regions.
+creative: false
+attrs:
+  - name: magenta
+    fg: "#ff00ff"
+  - name: lavender
+    fg: "#eebbff"
+  - name: tan
+    fg: "#D2B48C"
+  - name: beach
+    fg: "#8b4513"
+    bg: "#c2b280"
+  - name: blueBG
+    bg: "#86C5D8"
+  - name: lavaBG
+    bg: "#ff8800"
+  - name: cyan
+    fg: "#00ffff"
+  - name: lava
+    bg: "#bb0000"
+    fg: "#ff8800"
+  - name: glacier
+    bg: "#8888dd"
+    fg: "#ddddff"
+  - name: obsidian
+    bg: "#000000"
+    fg: "#FFFFFF"
+  - name: quarry
+    bg: "#888888"
+    fg: "#555533"
+  - name: jungle
+    bg: "#004400"
+    fg: "#00CC00"
+  - name: bog
+    bg: "#002200"
+    fg: "#885522"
+  - name: niceBog
+    bg: "#224422"
+    fg: "#964B00"
+objectives:
+  - id: get_peat
+    teaser: Collect peat
+    goal:
+      - The old grind.
+    optional: true
+    hidden: true
+    condition: |
+      as base {
+        has "peat";
+      };
+  - id: hammer_time
+    teaser: Hammer time
+    goal:
+      - Produce an obsidian shard.
+    optional: true
+    hidden: true
+    condition: |
+      as base {
+        has "obsidian shard";
+      };
+  - id: trespass_neighbor
+    teaser: Tresspassing
+    goal:
+      - Snoop inside the neighbor's house.
+    optional: true
+    hidden: true
+    condition: |
+      as base {
+        c <- whereami;
+        let x = fst c in
+        return $ x >= 1 && x <= 2 && snd c == -30;
+      };
+  - id: get_pebble
+    teaser: Off-piste
+    goal:
+      - Collect a souvenir from outside the borders of the map.
+    optional: true
+    hidden: true
+    condition: |
+      as base {
+        has "pebble";
+      };
+  - id: get_map
+    teaser: Get the map
+    goal:
+      - As a humble peat farmer, you subsist in a simple cabin by the bog.
+        Though long content with this ascetic lifestyle, recently the barren walls have
+        left you restless. Something is missing...
+      - "The majestic landscape that is your back yard is insufficient to distract you---not
+        even the ferocious, lava-spewing volcano little more than a stone's throw from
+        your porch.
+        You are preoccupied by one task: to find the perfect household decoration."
+      - First, grab a map to orient yourself.
+    condition: |
+      as base {
+        has "map";
+      };
+  - id: find_temple
+    teaser: Find the temple
+    prerequisite: get_map
+    goal:
+      - You study the map.
+      - Glacier-bound mountains tower in the east,
+        a volcano oozes a river of lava to the north, and beyond that lies a mountain lake, punctuated with islands
+        in the northwest.
+        Iron mines penetrate the base of the volcano. They could be useful, but how will you get there?
+      - A jungle abuts the volcano, ensconcing an ancient ruin.
+        The map notes that bygone travelers have stashed tools among the northeasterly mountains to
+        blaze a path through the jungle.
+      - Your only neighbor, a hemp farmer to the northwest, has evacuated since the sudden volcanic eruption.
+      - A disused quarry and clay pit flanks your cabin to the west, as does the familiar, swampy bog to the east.
+        A highly-prized flower is said to grow in the caves beyond the bog.
+      - Your mind is made up. You will pillage the ruins for treasure! Head to the ruins and "scan" them.
+        Ingenuity and endurance are your allies as you forge paths through varied obstacles.
+        Study your "recipes" for clues!
+    condition: |
+      as base {
+        knows "temple";
+      };
+  - id: flower_ring
+    teaser: Encircle the temple
+    prerequisite: find_temple
+    goal:
+      - "A note on the door says:"
+      - '"Greetings, intrepid traveler. Encircle this temple with the rare "flower" of the southeastern
+        caves, and the treasure of this temple shall be revealed."'
+      - Plant a ring of flowers around the jungle temple.
+    condition: |
+      as base {
+        has "painted plate";
+      };
+  - id: decorate_cabin
+    teaser: Decorate cabin
+    prerequisite: flower_ring
+    goal:
+      - Brighten up your hovel with some kitsch.
+    condition: |
+      r <- robotnamed "platecheck";
+      as base {
+        ishere "painted plate";
+      };
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - ADT calculator
+      - branch predictor
+      - treads
+      - lodestone
+      - clock
+      - compass
+      - comparator
+      - counter
+      - dictionary
+      - grabber
+      - keyboard
+      - lambda
+      - logger
+      - mirror
+      - drill
+      - net
+      - scanner
+      - strange loop
+      - workbench
+      - harvester
+      - oven mitts
+      - big furnace
+      - peat furnace
+    inventory:
+      - [0, rubble skip]
+      - [0, crucible]
+      - [0, cliff]
+      - [0, obsidian path]
+      - [0, causeway]
+      - [0, glacier]
+      - [0, swampy bog]
+      - [0, jungle]
+  - name: flowercheck
+    system: true
+    dir: [0, 1]
+    display:
+      invisible: true
+    devices:
+      - logger
+    inventory:
+      - [1, painted plate]
+    program: |
+      run "scenarios/Challenges/_bridge-building/flower-ring-check.sw"
+  - name: platecheck
+    system: true
+    dir: [0, 1]
+    display:
+      invisible: true
+solution: |
+  run "scenarios/Challenges/_bridge-building/solution.sw"
+entities:
+  - name: map
+    display:
+      char: 'M'
+      attr: 'magenta'
+    description:
+      - The map describes local points of interest, relative to your cabin.
+    properties: [portable, known]
+  - name: peat furnace
+    display:
+      char: 'F'
+      attr: tan
+    description:
+      - Fueled by peat.
+    properties: [portable, known]
+  - name: clay
+    display:
+      char: 'c'
+      attr: tan
+    description:
+      - Can be fired in a peat furnace into a vessel.
+    properties: [portable, known]
+  - name: lava
+    display:
+      char: 'w'
+      attr: lava
+    description:
+      - Hot liquid rock.
+    properties: [known, unwalkable]
+  - name: pebble
+    display:
+      char: '.'
+      attr: tan
+    description:
+      - A tiny, inconsequential rock.
+    properties: [known, portable]
+  - name: machete
+    display:
+      char: '/'
+      attr: cyan
+    description:
+      - Easily cuts through jungle overgrowth.
+    properties: [known, portable]
+  - name: painted plate
+    display:
+      char: 'o'
+      attr: obsidian
+    description:
+      - Limited edition 1978 collectible Helix the Cat ornamental hand-painted dinner plate.
+    properties: [known, portable]
+  - name: oven mitts
+    display:
+      char: 'm'
+    description:
+      - Required for handling hot material.
+  - name: temple
+    display:
+      char: 'T'
+      attr: gold
+    description:
+      - Ancient ruins
+    properties: []
+  - name: jungle
+    display:
+      char: 'J'
+      attr: jungle
+    description:
+      - Thick, impassible vegetation.
+    properties: [known, unwalkable]
+  - name: path
+    display:
+      char: '▒'
+      attr: wood
+    description:
+      - A path through the jungle.
+    properties: [known]
+  - name: cliff
+    display:
+      char: '}'
+      attr: lavender
+    description:
+      - Steep, impassible cliff.
+    properties: [known, unwalkable]
+  - name: warhammer
+    display:
+      char: 'H'
+      attr: silver
+    description:
+      - Can break hard objects
+    properties: [known, portable]
+  - name: granite mountain
+    display:
+      char: 'A'
+      attr: snow
+    description:
+      - Impassible rock, resistant to drilling
+    properties: [known, unwalkable]
+  - name: granite boulder
+    display:
+      char: '@'
+      attr: rock
+    description:
+      - Impassible rock, resistant to drilling
+    properties: [known, unwalkable]
+  - name: mountain pass
+    display:
+      char: '░'
+    description:
+      - Open pass through the mountain
+    properties: [known]
+  - name: rope
+    display:
+      char: 'L'
+    description:
+      - Can be used to traverse down a cliff.
+    properties: [known, portable]
+  - name: hemp
+    display:
+      char: 'h'
+      attr: plant
+    description:
+      - Can be used to make rope
+    properties: [known, portable, growable]
+  - name: flimsy board
+    display:
+      char: 'b'
+      attr: wood
+    description:
+      - Board made from a soft log. Has poor rigidity.
+    properties: [known, portable]
+  - name: soft log
+    display:
+      char: 'l'
+      attr: wood
+    description:
+      - Log made from a palm tree. A bit flexible.
+    properties: [known, portable]
+  - name: coconut
+    display:
+      char: 'c'
+      attr: wood
+    description:
+      - Spherical, buoyant husk
+    properties: [known, portable]
+  - name: floating boardwalk
+    display:
+      char: '▒'
+      attr: wood
+    description:
+      - Allows for crossing a swampy bog
+    properties: [known]
+  - name: peat
+    display:
+      char: 'p'
+      attr: wood
+    description:
+      - Burnable plant material
+    properties: [known, portable]
+  - name: peat bog
+    display:
+      char: 'b'
+      attr: niceBog
+    description:
+      - Can harvest peat from this.
+    properties: [known]
+  - name: secret bog
+    display:
+      char: '8'
+      attr: bog
+    description:
+      - Conceals treasure from millennia past
+    properties: [known, unwalkable]
+  - name: swampy bog
+    display:
+      char: 'B'
+      attr: bog
+    description:
+      - Impassible swamp
+    properties: [known, unwalkable]
+  - name: glacier
+    display:
+      char: 'Z'
+      attr: glacier
+    description:
+      - Thick ice.
+    properties: [known, unwalkable]
+  - name: crucible
+    display:
+      char: 'c'
+    description:
+      - An empty crucible. Can carry lava.
+    properties: [known, portable]
+  - name: lava-filled crucible
+    display:
+      char: 'C'
+      attr: lavaBG
+    description:
+      - Crucible filled with lava
+    properties: [known, portable]
+  - name: quarry
+    display:
+      char: 'Q'
+      attr: quarry
+    description:
+      - Drill to collect pieces of rock to fill a rubble skip.
+    properties: [known]
+  - name: left roof
+    display:
+      char: '/'
+      attr: wood
+    description:
+      - Part of a roof
+    properties: [known, unwalkable]
+  - name: right roof
+    display:
+      char: '\'
+      attr: wood
+    description:
+      - Part of a roof
+    properties: [known, unwalkable]
+  - name: chair
+    display:
+      char: 'h'
+      attr: wood
+    description:
+      - Standard bachelor furnishing
+    properties: [known]
+  - name: wall
+    display:
+      char: '|'
+      attr: wood
+    description:
+      - Part of a house
+    properties: [known, unwalkable]
+  - name: floor
+    display:
+      char: '-'
+      attr: wood
+    description:
+      - Part of a house
+    properties: [known, unwalkable]
+  - name: door
+    display:
+      char: '|'
+      attr: snow
+    description:
+      - Entry to a house
+    properties: [known]
+  - name: rubble skip
+    display:
+      char: 'r'
+    description:
+      - An empty container for rubble.
+    properties: [known, portable]
+  - name: rubble-filled skip
+    display:
+      char: 'R'
+    description:
+      - An full container of rubble. Can be dumped in the water as fill to form a causeway.
+    properties: [known, portable]
+  - name: causeway
+    display:
+      char: '▒'
+    description:
+      - Reclaimed land formed by filling shallow water with rubble.
+    properties: [known]
+  - name: empty water tank
+    display:
+      char: 'k'
+    description:
+      - Tank with nothing in it
+    properties: [known, portable]
+  - name: water-filled tank
+    display:
+      char: 'K'
+      attr: blueBG
+    description:
+      - Tank filled with water
+    properties: [known, portable]
+  - name: obsidian path
+    display:
+      char: '`'
+      attr: obsidian
+    description:
+      - Smooth, glassy volcanic rock
+    properties: [known]
+  - name: obsidian shard
+    display:
+      char: 'V'
+      attr: obsidian
+    description:
+      - Dislodged fragment of obsidian
+    properties: [known, portable]
+  - name: palm tree
+    display:
+      char: 'P'
+      attr: beach
+    description:
+      - Palm tree.
+    properties: [known, portable, growable]
+recipes:
+  - in:
+      - [8, clay]
+      - [10, peat]
+    out:
+      - [1, crucible]
+    required:
+      - [1, peat furnace]
+  - in:
+      - [1, lava]
+      - [1, crucible]
+    out:
+      - [1, lava-filled crucible]
+      - [1, lava]
+    required:
+      - [1, oven mitts]
+      - [1, drill]
+  - in:
+      - [1, jungle]
+    out:
+      - [1, path]
+    required:
+      - [1, machete]
+      - [1, drill]
+  - in:
+      - [30, hemp]
+    out:
+      - [1, rope]
+  - in:
+      - [1, cliff]
+      - [1, rope]
+    out:
+      - [1, mountain pass]
+    required:
+      - [1, drill]
+  - in:
+      - [1, palm tree]
+    out:
+      - [2, coconut]
+      - [1, soft log]
+  - in:
+      - [1, soft log]
+    out:
+      - [2, flimsy board]
+  - in:
+      - [1, peat bog]
+    out:
+      - [1, peat]
+    required:
+      - [1, drill]
+  - in:
+      - [1, secret bog]
+    out:
+      - [1, warhammer]
+      - [1, swampy bog]
+    required:
+      - [1, drill]
+  - in:
+      - [1, obsidian path]
+    out:
+      - [1, obsidian shard]
+    required:
+      - [1, warhammer]
+      - [1, drill]
+  - in:
+      - [1, swampy bog]
+      - [2, coconut]
+      - [2, flimsy board]
+    out:
+      - [1, floating boardwalk]
+    required:
+      - [1, drill]
+  - in:
+      - [1, water-filled tank]
+    out:
+      - [1, empty water tank]
+  - in:
+      - [1, glacier]
+      - [1, lava-filled crucible]
+      - [1, empty water tank]
+    out:
+      - [1, crucible]
+      - [1, water-filled tank]
+    required:
+      - [1, oven mitts]
+      - [1, drill]
+  - in:
+      - [1, lava]
+      - [1, water-filled tank]
+    out:
+      - [1, obsidian path]
+      - [1, empty water tank]
+    required:
+      - [1, drill]
+  - in:
+      - [5, iron plate]
+      - [2, rope]
+    out:
+      - [1, rubble skip]
+  - in:
+      - [1, rubble skip]
+      - [1, quarry]
+    out:
+      - [1, rubble-filled skip]
+      - [1, quarry]
+    required:
+      - [1, drill]
+  - in:
+      - [1, rubble-filled skip]
+      - [1, water]
+    out:
+      - [1, causeway]
+      - [1, rubble skip]
+    required:
+      - [1, drill]
+known: [water, sand, flower, iron mine]
+seed: 0
+world:
+  default: [blank]
+  palette:
+    '.': [blank]
+    '/': [blank, left roof]
+    '\': [blank, right roof]
+    '|': [blank, wall]
+    '-': [blank, floor]
+    'e': [blank, pebble]
+    'd': [blank, door]
+    "Ω": [blank, chair, base]
+    '@': [stone, granite boulder]
+    'I': [ice]
+    'B': [dirt, swampy bog]
+    'q': [dirt, secret bog]
+    'b': [dirt, peat bog]
+    'C': [dirt, cliff]
+    'c': [blank, clay]
+    'h': [grass, hemp]
+    'J': [dirt, jungle]
+    'T': [blank, temple, flowercheck]
+    't': [blank, empty water tank]
+    'A': [stone, granite mountain]
+    'i': [stone, iron mine]
+    'M': [blank, map, platecheck]
+    'm': [blank, machete]
+    'L': [stone, lava]
+    'G': [dirt, glacier]
+    'Q': [stone, quarry]
+    's': [dirt, sand]
+    'w': [dirt, water]
+    'P': [dirt, palm tree]
+    'f': [blank, flower]
+  upperleft: [0, 0]
+  map: |-
+    .............................................................
+    .............................................................
+    ................................................A............
+    .........AA........A.....A.......A.............AAA......A....
+    ....A...AAAA....A.AAA.@.AA......AA...A........AAAAA....AAA...
+    ...AAA.AAAAAA@.AAAwww@wAAAA....AAAA.AAAeA....AAAAAAA..AAAAA..
+    ..AAAAAwwwwwwwAAAAAwwwAAAAA...AAAAAA...AAA..AAAAAAAAA........
+    .AAAAAAAwwwwwwwwwwwwwAAAAAA@@AA.......AAAA@.........@.A...@..
+    ....Awwwwwsssswwwwwwwwwwwwww@.....A..AAAAAAA.........AAA....@
+    ...AAAwwwsssPsswwwwwssswwwwww....AAACAAAA....A......AAAAA....
+    ..AAAAAwwsssssswwwwsssswwwwwwww@AAAA........AAA....AAAAAAA.@.
+    ......@wwwsssswwwwwssswwwwww@@@AAAAAA......AALAAACAAAAAAAAA.@
+    .....Awwwwwwwwwwwwwwwwwwww@@@.AAAAAAAA...AAALLAAA..........@.
+    ....AAwwwwwwwwwwwwwwwwwwww@..AAAAAAAAAA.AAAALAAAAA...m..A.@.@
+    ...AAAAwwwwwwwwwwwwwwwww@@@JJJJJJJJ....AAAALLAAAAAA....AAA...
+    ...AAAAAwwwwwwwww@@@@@@@@..JJJJJJJJ.T.AAAAALLAAAiiAA..AAAAA..
+    ..AAAAAAAsssssssss.........JJJJJJJJ...JJJJJLLJJJ....AAAAAAA..
+    .AAAAAAAAsssss..............JJJJJJJJJJJJJJLLJJJ.....AAAAAAAA.
+    AAAAAAAAAA....................JJJJJJJJJ.LLL.JJ.....AAAAAAAAA.
+    ......@@@.......................JJJJJJ.LLL@JJ.....AAAAAAAAAAA
+    .....@@@@..@@@@@...................LLLLLL@@.............@@A.@
+    ...@..@@LLLLLLL@@@@..............LLLLLLLL@................@A.
+    .@LLLLLLLLLLLLLLLLLL.....LLLLLLLLLLLLL@@@@..................A
+    LLL@LLLLLLLLLLLLLLLLLLLLLLLLLLL@@@@@@@@@@............AA@...A@
+    .@LLLLLLLLLLLLLLLLLLLLLLLLL@@@@....@@@@@@@.........@@A@A@IIAA
+    .LL@LL@@.........@@@LLLLLL@@..........@@@@@@@@@@AA@@A@@AIIA.@
+    LL.................@@@@@@@@............GGGGGGGGGG@@@@IIIIIIA.
+    ......hhhhhhhhh..........................GGGGGGGGGGGIIIIIIII@
+    ./\...hhhhhhhhh..........................GGGGGGGG@@@IIIIIAIIA
+    /--\..hhhhhhhhh..........................GGGGG@@@@@@A@IIA.@A.
+    d..|..hhhhhhhhh..............BBBBBBBBB...GG@@@@@@@@@@@@A@.A.A
+    ----..hhhhhhhhh............BBBBBBBBBBBBBB@@@@@@@@@@@@@@@@@@@@
+    ........................BBBBBBBBBBBBBBBBBBBBB..@@@@@@@@@@@@@@
+    ......................BBBBBBBBBBBBBBBBBBBBBBB.....@...@@@@@@@
+    .......AA....AA......bBBBBBBBBBBBBBBBBBBBBBBB.....@.@.@..@@@@
+    .......AA.QQ.AA......bbbbBBBBBBBBBBBBBBBBBBBBBBBB...@....@f@.
+    .......AAAAAAAA.......bbbbBBBBBBBBBBBBBBBBBBBBBBBBBB@..@....@
+    ........AAAAAA.........bbbbbBBBBBBBBBBBBBBBBBBBBBBBBB@@.@.@@.
+    ................../\.....bbbbbbBBBBBBBBBBBBBBBBBBBBBBB.@..@.@
+    ........ccc....../--\......bbbbbbbbBBBBBBBBBBBBBBBq@BB.@.@@.@
+    ......cccccccc..t|ΩMd........bbbbbbbbbbBBBBBBBBBBB@.@.@.@@...
+    ........cccc.....----........................................

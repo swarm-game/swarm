@@ -1,11 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
--- Module      :  Swarm.Language.Parse
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Parser for the Swarm language.  Note, you probably don't want to
@@ -41,8 +38,9 @@ import Control.Monad.Combinators.Expr
 import Control.Monad.Reader
 import Data.Bifunctor
 import Data.Foldable (asum)
-import Data.List (nub)
+import Data.List (foldl', nub)
 import Data.List.NonEmpty qualified (head)
+import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as S
@@ -52,6 +50,7 @@ import Data.Text qualified as T
 import Data.Void
 import Swarm.Language.Syntax
 import Swarm.Language.Types
+import Swarm.Util (failT, findDup, squote)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
@@ -82,7 +81,7 @@ type ParserError = ParseErrorBundle Text Void
 reservedWords :: [Text]
 reservedWords =
   map (syntax . constInfo) (filter isUserFunc allConst)
-    ++ map (dirSyntax . dirInfo) allDirs
+    ++ map directionSyntax allDirs
     ++ [ "void"
        , "unit"
        , "int"
@@ -90,6 +89,7 @@ reservedWords =
        , "dir"
        , "bool"
        , "actor"
+       , "key"
        , "cmd"
        , "delay"
        , "let"
@@ -100,6 +100,7 @@ reservedWords =
        , "false"
        , "forall"
        , "require"
+       , "requirements"
        ]
 
 -- | Skip spaces and comments.
@@ -138,12 +139,10 @@ locIdentifier :: Parser LocVar
 locIdentifier = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
  where
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
-  check s
+  check (into @Text -> t)
     | toLower t `elem` reservedWords =
-        fail $ "reserved word '" ++ s ++ "' cannot be used as variable name"
+        failT ["reserved word", squote t, "cannot be used as variable name"]
     | otherwise = return t
-   where
-    t = into @Text s
 
 -- | Parse a text literal (including escape sequences) in double quotes.
 textLiteral :: Parser Text
@@ -169,6 +168,9 @@ braces = between (symbol "{") (symbol "}")
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
+
+brackets :: Parser a -> Parser a
+brackets = between (symbol "[") (symbol "]")
 
 --------------------------------------------------
 -- Parser
@@ -219,14 +221,24 @@ parseTypeAtom =
     <|> TyDir <$ reserved "dir"
     <|> TyBool <$ reserved "bool"
     <|> TyActor <$ reserved "actor"
+    <|> TyKey <$ reserved "key"
     <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
     <|> TyDelay <$> braces parseType
+    <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))
     <|> parens parseType
+
+parseRecord :: Parser a -> Parser (Map Var a)
+parseRecord p = (parseBinding `sepBy` symbol ",") >>= fromListUnique
+ where
+  parseBinding = (,) <$> identifier <*> p
+  fromListUnique kvs = case findDup (map fst kvs) of
+    Nothing -> return $ Map.fromList kvs
+    Just x -> failT ["duplicate field name", squote x, "in record literal"]
 
 parseDirection :: Parser Direction
 parseDirection = asum (map alternative allDirs) <?> "direction constant"
  where
-  alternative d = d <$ (reserved . dirSyntax . dirInfo) d
+  alternative d = d <$ (reserved . directionSyntax) d
 
 -- | Parse Const as reserved words (e.g. @Fail <$ reserved "fail"@)
 parseConst :: Parser Const
@@ -247,8 +259,17 @@ parseLocG pa = do
 parseLoc :: Parser Term -> Parser Syntax
 parseLoc pterm = uncurry Syntax <$> parseLocG pterm
 
+-- | Parse an atomic term, optionally trailed by record projections like @t.x.y.z@.
+--   Record projection binds more tightly than function application.
 parseTermAtom :: Parser Syntax
-parseTermAtom =
+parseTermAtom = do
+  s1 <- parseTermAtom2
+  ps <- many (symbol "." *> parseLocG identifier)
+  return $ foldl' (\(Syntax l1 t) (l2, x) -> Syntax (l1 <> l2) (TProj t x)) s1 ps
+
+-- | Parse an atomic term.
+parseTermAtom2 :: Parser Syntax
+parseTermAtom2 =
   parseLoc
     ( TUnit <$ symbol "()"
         <|> TConst <$> parseConst
@@ -266,6 +287,7 @@ parseTermAtom =
                         <*> (textLiteral <?> "entity name in double quotes")
                     )
              )
+        <|> uncurry SRequirements <$> (reserved "requirements" *> match parseTerm)
         <|> SLam
           <$> (symbol "\\" *> locIdentifier)
           <*> optional (symbol ":" *> parseType)
@@ -279,6 +301,7 @@ parseTermAtom =
           <$> (reserved "def" *> locIdentifier)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
+        <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
         <|> parens (view sTerm . mkTuple <$> (parseTerm `sepBy` symbol ","))
     )
     -- Potential syntax for explicitly requesting memoized delay.
@@ -364,7 +387,15 @@ fixDefMissingSemis term =
     _ -> []
 
 parseExpr :: Parser Syntax
-parseExpr = fixDefMissingSemis <$> makeExprParser parseTermAtom table
+parseExpr =
+  parseLoc $ ascribe <$> parseExpr' <*> optional (symbol ":" *> parsePolytype)
+ where
+  ascribe :: Syntax -> Maybe Polytype -> Term
+  ascribe s Nothing = s ^. sTerm
+  ascribe s (Just ty) = SAnnotate s ty
+
+parseExpr' :: Parser Syntax
+parseExpr' = fixDefMissingSemis <$> makeExprParser parseTermAtom table
  where
   table = snd <$> Map.toDescList tableMap
   tableMap =

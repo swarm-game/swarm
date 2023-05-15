@@ -1,7 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 
--- | Swarm unit tests
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Swarm unit tests
 module Main where
 
 import Control.Monad.Except (runExceptT)
@@ -9,7 +13,7 @@ import Data.List (subsequences)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Swarm.Game.State (GameState, classicGame0)
-import Swarm.Util (smallHittingSet)
+import Swarm.Util (removeSupersets, smallHittingSet)
 import Test.QuickCheck qualified as QC
 import Test.QuickCheck.Poly qualified as QC
 import Test.Tasty (TestTree, defaultMain, testGroup)
@@ -21,13 +25,16 @@ import Test.Tasty.QuickCheck (
   (==>),
  )
 import TestBoolExpr (testBoolExpr)
+import TestCommand (testCommands)
 import TestEval (testEval)
 import TestInventory (testInventory)
 import TestLSP (testLSP)
 import TestLanguagePipeline (testLanguagePipeline)
 import TestModel (testModel)
 import TestNotification (testNotification)
+import TestPedagogy (testPedagogy)
 import TestPretty (testPrettyConst)
+import TestScoring (testHighScores)
 import Witch (from)
 
 main :: IO ()
@@ -44,8 +51,11 @@ tests g =
     [ testLanguagePipeline
     , testPrettyConst
     , testBoolExpr
+    , testCommands
+    , testHighScores
     , testEval g
     , testModel
+    , testPedagogy g
     , testInventory
     , testNotification g
     , testMisc
@@ -59,6 +69,15 @@ testMisc =
     [ testProperty
         "smallHittingSet produces hitting sets"
         (prop_hittingSet @QC.OrdA)
+    , testGroup
+        "removeSupersets"
+        [ testProperty
+            "no two output sets are in a subset relation"
+            (prop_removeSupersets_unrelated @QC.OrdA)
+        , testProperty
+            "all input sets are a superset of some output set"
+            (prop_removeSupersets_all_inputs @QC.OrdA)
+        ]
     ]
 
 prop_hittingSet :: Ord a => [Set a] -> Property
@@ -86,3 +105,14 @@ data El = AA | BB | CC | DD | EE | FF
 
 instance QC.Arbitrary El where
   arbitrary = QC.arbitraryBoundedEnum
+
+prop_removeSupersets_unrelated :: Ord a => Set (Set a) -> Bool
+prop_removeSupersets_unrelated (removeSupersets -> ss) =
+  (`all` ss) $ \s1 ->
+    (`all` ss) $ \s2 ->
+      (s1 == s2) || (not (s1 `S.isSubsetOf` s2) && not (s2 `S.isSubsetOf` s1))
+
+prop_removeSupersets_all_inputs :: Ord a => Set (Set a) -> Bool
+prop_removeSupersets_all_inputs (removeSupersets -> ss) =
+  (`all` ss) $ \s1 ->
+    (`any` ss) $ \s2 -> s2 `S.isSubsetOf` s1

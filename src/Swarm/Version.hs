@@ -1,10 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.Version
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Query current and upstream Swarm version.

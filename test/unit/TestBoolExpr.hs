@@ -1,6 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Boolean expression unit tests
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Boolean expression unit tests
 module TestBoolExpr where
 
 import Data.BoolExpr qualified as BE
@@ -82,12 +85,12 @@ testBoolExpr =
         "Prerequisite expressions"
         [ testCase
             "A negated goal is completed"
-            $ assertBool "Should have returned true"
+            . assertBool "Should have returned true"
             $ WC.isUnwinnablePrereq (Set.singleton "b") demoPrereqs
         , testCase
             "A non-negated goal is completed"
-            $ assertBool "Should have returned false"
-            $ not
+            . assertBool "Should have returned false"
+            . not
             $ WC.isUnwinnablePrereq (Set.singleton "c") demoPrereqs
         ]
     ]

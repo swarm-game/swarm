@@ -1,7 +1,10 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
--- | Utility functions
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Utility functions
 module TestUtil where
 
 import Control.Lens (Ixed (ix), to, use, (&), (.~), (^.), (^?))
@@ -64,7 +67,7 @@ playUntilDone rid = do
   w <- use robotMap
   case w ^? ix rid . to isActive of
     Just True -> do
-      gameTick
+      void gameTick
       playUntilDone rid
     Just False -> return $ Right ()
     Nothing -> return $ Left . T.pack $ "The robot with ID " <> show rid <> " is nowhere to be found!"

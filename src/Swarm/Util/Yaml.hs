@@ -1,12 +1,9 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
--- Module      :  Swarm.Util.Yaml
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Various utilities related to parsing YAML files.
@@ -35,6 +32,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Vector qualified as V
 import Data.Yaml as Y
+import Swarm.Util (failT, showT)
 
 ------------------------------------------------------------
 -- WithEntities wrapper
@@ -100,7 +98,7 @@ instance (FromJSONE e a, FromJSONE e b) => FromJSONE e (a, b) where
             (,)
               <$> parseJSONE (V.unsafeIndex t 0)
               <*> parseJSONE (V.unsafeIndex t 1)
-          else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 2"
+          else failT ["cannot unpack array of length", showT n, "into a tuple of length 2"]
 
 ------------------------------------------------------------
 -- Decoding

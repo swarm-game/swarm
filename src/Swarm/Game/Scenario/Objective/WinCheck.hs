@@ -1,4 +1,9 @@
--- | Utilities to check whether conditions are met for a game win/loss.
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Utilities to check whether conditions are met for a game win/loss.
 module Swarm.Game.Scenario.Objective.WinCheck where
 
 import Data.Aeson
@@ -9,6 +14,8 @@ import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as Set
 import GHC.Generics (Generic)
+import Servant.Docs (ToSample)
+import Servant.Docs qualified as SD
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Logic as L
 
@@ -58,6 +65,9 @@ getActiveObjectives :: ObjectiveCompletion -> [Objective]
 getActiveObjectives =
   fst . partitionActiveObjectives
 
+deriving instance Generic (BE.Signed ObjectiveLabel)
+deriving instance ToJSON (BE.Signed ObjectiveLabel)
+
 -- | For debugging only (via Web API)
 data PrereqSatisfaction = PrereqSatisfaction
   { objective :: Objective
@@ -65,6 +75,9 @@ data PrereqSatisfaction = PrereqSatisfaction
   , prereqsSatisfied :: Bool
   }
   deriving (Generic, ToJSON)
+
+instance ToSample PrereqSatisfaction where
+  toSamples _ = SD.noSamples
 
 -- | Used only by the web interface for debugging
 getSatisfaction :: ObjectiveCompletion -> [PrereqSatisfaction]

@@ -1,8 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Swarm.TUI.Model.Achievement.Description where
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Flavor text about all defined achievements.
+module Swarm.Game.Achievement.Description where
 
-import Swarm.TUI.Model.Achievement.Definitions
+import Swarm.Game.Achievement.Definitions
 
 describe :: CategorizedAchievement -> AchievementInfo
 describe (GlobalAchievement CompletedSingleTutorial) =
@@ -66,5 +70,17 @@ describe (GameplayAchievement LoseScenario) =
     "Silver Lining"
     (Just $ Freeform "Here's your consolation prize.")
     "Lose at a scenario."
+    Easy
+    True
+describe (GameplayAchievement GetDisoriented) =
+  AchievementInfo
+    "Playing Ostrich"
+    ( Just $
+        FTQuotation $
+          Quotation
+            "Lil Jon"
+            "Fire up that loud / Another round of shots / Turn down for what?"
+    )
+    "'turn down' without a compass. Congratulations, you are 'disoriented'. How are you supposed to move now?"
     Easy
     True

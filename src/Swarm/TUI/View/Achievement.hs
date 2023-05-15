@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.View.Achievement where
 
 import Brick
@@ -10,11 +12,11 @@ import Control.Lens ((^.))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Time.Format (defaultTimeLocale, formatTime)
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Definitions
+import Swarm.Game.Achievement.Description
 import Swarm.TUI.Attr
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Achievement.Attainment
-import Swarm.TUI.Model.Achievement.Definitions
-import Swarm.TUI.Model.Achievement.Description
 import Swarm.TUI.Model.UI
 import Text.Wrap
 
@@ -68,10 +70,10 @@ singleAchievementDetails attainedMap x =
   renderFlavorTextWidget (FTQuotation (Quotation author quoteContent)) =
     vBox
       [ txtWrap quoteContent
-      , padLeft Max $
-          padRight (Pad 2) $
-            txtWrapWith (defaultWrapSettings {fillStrategy = FillIndent 2}) $
-              "--" <> author
+      , padLeft Max
+          . padRight (Pad 2)
+          . txtWrapWith (defaultWrapSettings {fillStrategy = FillIndent 2})
+          $ "--" <> author
       ]
 
   innerContent =
@@ -85,17 +87,25 @@ singleAchievementDetails attainedMap x =
           Nothing -> emptyWidget
           Just attainment ->
             padTop (Pad 1) $
-              hBox
-                [ txt "Obtained: "
-                , withAttr cyanAttr $
-                    str $
-                      formatTime defaultTimeLocale "%l:%M%P on %b %e, %Y" $
-                        attainment ^. obtainedAt
+              vBox
+                [ hBox
+                    [ txt "Obtained: "
+                    , withAttr cyanAttr
+                        . str
+                        . formatTime defaultTimeLocale "%l:%M%P on %b %e, %Y"
+                        $ attainment ^. obtainedAt
+                    ]
+                , flip (maybe emptyWidget) (attainment ^. maybeScenarioPath) $ \s ->
+                    hBox
+                      [ txt "Scenario: "
+                      , withAttr cyanAttr $
+                          str s
+                      ]
                 ]
       , padTop (Pad 1) $
           hBox
             [ txt "Effort: "
-            , withAttr boldAttr $ str $ show $ effort details
+            , withAttr boldAttr . str . show $ effort details
             ]
       ]
 

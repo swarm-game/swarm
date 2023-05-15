@@ -3,10 +3,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
--- Module      :  Swarm.Util
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A random collection of small, useful functions that are (or could
@@ -14,36 +10,33 @@
 module Swarm.Util (
   -- * Miscellaneous utilities
   (?),
+  sortPair,
   maxOn,
   maximum0,
   cycleEnum,
   listEnums,
   uniq,
-  getElemsInArea,
-  manhattan,
   binTuples,
+  findDup,
+  both,
 
   -- * Directory utilities
   readFileMay,
   readFileMayT,
-  getSwarmXdgDataSubdir,
-  getSwarmXdgDataFile,
-  getSwarmSavePath,
-  getSwarmHistoryPath,
-  readAppData,
-  getDataDirSafe,
-  getDataFileNameSafe,
-  dataNotFound,
 
   -- * Text utilities
   isIdentChar,
   replaceLast,
+  failT,
+  showT,
 
   -- * English language utilities
   reflow,
   quote,
   squote,
   bquote,
+  parens,
+  brackets,
   commaList,
   indefinite,
   indefiniteQ,
@@ -56,6 +49,8 @@ module Swarm.Util (
   isJustOr,
   isRightOr,
   isSuccessOr,
+  guardRight,
+  simpleErrorHandle,
 
   -- * Template Haskell utilities
   liftText,
@@ -68,28 +63,26 @@ module Swarm.Util (
   (<>=),
   _NonEmpty,
 
-  -- * Utilities for NP-hard approximation
+  -- * Set utilities
+  removeSupersets,
   smallHittingSet,
 ) where
 
 import Control.Algebra (Has)
 import Control.Effect.State (State, modify, state)
 import Control.Effect.Throw (Throw, throwError)
-import Control.Exception (catch)
-import Control.Exception.Base (IOException)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
-import Control.Lens.Lens ((&))
-import Control.Monad (forM, unless, when)
-import Data.Bifunctor (first)
+import Control.Monad (unless, (<=<))
+import Control.Monad.Except (ExceptT (..), runExceptT)
+import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum)
 import Data.Either.Validation
-import Data.Int (Int32)
 import Data.List (maximumBy, partition)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe)
 import Data.Ord (comparing)
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -102,25 +95,9 @@ import Language.Haskell.TH
 import Language.Haskell.TH.Syntax (lift)
 import NLP.Minimorph.English qualified as MM
 import NLP.Minimorph.Util ((<+>))
-import Paths_swarm (getDataDir)
-import Swarm.Util.Location
 import System.Clock (TimeSpec)
-import System.Directory (
-  XdgDirectory (XdgData),
-  createDirectoryIfMissing,
-  doesDirectoryExist,
-  doesFileExist,
-  getXdgDirectory,
-  listDirectory,
- )
-import System.FilePath
-import System.IO
 import System.IO.Error (catchIOError)
-import Witch
-
--- $setup
--- >>> import qualified Data.Map as M
--- >>> import Swarm.Util.Location
+import Witch (from)
 
 infixr 1 ?
 infix 4 %%=, <+=, <%=, <<.=, <>=
@@ -131,6 +108,10 @@ infix 4 %%=, <+=, <%=, <<.=, <>=
 --   defaulting to @def@ as a last resort.
 (?) :: Maybe a -> a -> a
 (?) = flip fromMaybe
+
+-- | Ensure the smaller value in a pair is the first element.
+sortPair :: Ord b => (b, b) -> (b, b)
+sortPair (x, y) = if x <= y then (x, y) else (y, x)
 
 -- | Find the maximum of two values, comparing them according to a
 --   custom projection function.
@@ -170,43 +151,6 @@ uniq = \case
   [] -> []
   (x : xs) -> x : uniq (dropWhile (== x) xs)
 
--- | Manhattan distance between world locations.
-manhattan :: Location -> Location -> Int32
-manhattan (Location x1 y1) (Location x2 y2) = abs (x1 - x2) + abs (y1 - y2)
-
--- | Get elements that are in manhattan distance from location.
---
--- >>> v2s i = [(p, manhattan origin p) | x <- [-i..i], y <- [-i..i], let p = Location x y]
--- >>> v2s 0
--- [(P (V2 0 0),0)]
--- >>> map (\i -> length (getElemsInArea origin i (M.fromList $ v2s i))) [0..8]
--- [1,5,13,25,41,61,85,113,145]
---
--- The last test is the sequence "Centered square numbers":
--- https://oeis.org/A001844
-getElemsInArea :: Location -> Int32 -> Map Location e -> [e]
-getElemsInArea o@(Location x y) d m = M.elems sm'
- where
-  -- to be more efficient we basically split on first coordinate
-  -- (which is logarithmic) and then we have to linearly filter
-  -- the second coordinate to get a square - this is how it looks:
-  --         ▲▲▲▲
-  --         ││││    the arrows mark points that are greater then A
-  --         ││s│                                 and lesser then B
-  --         │sssB (2,1)
-  --         ssoss   <-- o=(x=0,y=0) with d=2
-  -- (-2,-1) Asss│
-  --          │s││   the point o and all s are in manhattan
-  --          ││││                  distance 2 from point o
-  --          ▼▼▼▼
-  sm =
-    m
-      & M.split (Location (x - d) (y - 1)) -- A
-      & snd -- A<
-      & M.split (Location (x + d) (y + 1)) -- B
-      & fst -- B>
-  sm' = M.filterWithKey (const . (<= d) . manhattan o) sm
-
 -- | Place the second element of the tuples into bins by
 -- the value of the first element.
 binTuples ::
@@ -216,6 +160,18 @@ binTuples ::
 binTuples = foldr f mempty
  where
   f = uncurry (M.insertWith (<>)) . fmap pure
+
+-- | Find a duplicate element within the list, if any exists.
+findDup :: Ord a => [a] -> Maybe a
+findDup = go S.empty
+ where
+  go _ [] = Nothing
+  go seen (a : as)
+    | a `S.member` seen = Just a
+    | otherwise = go (S.insert a seen) as
+
+both :: Bifunctor p => (a -> d) -> p a a -> p d d
+both f = bimap f f
 
 ------------------------------------------------------------
 -- Directory stuff
@@ -231,94 +187,6 @@ readFileMayT = catchIO . T.readFile
 -- | Turns any IO error into Nothing.
 catchIO :: IO a -> IO (Maybe a)
 catchIO act = (Just <$> act) `catchIOError` (\_ -> return Nothing)
-
--- | Get subdirectory from swarm data directory.
---
--- This will first look in Cabal generated path and then
--- try a `data` directory in 'XdgData' path.
---
--- The idea is that when installing with Cabal/Stack the first
--- is preferred, but when the players install a binary they
--- need to extract the `data` archive to the XDG directory.
-getDataDirSafe :: FilePath -> IO (Maybe FilePath)
-getDataDirSafe p = do
-  d <- (`appDir` p) <$> getDataDir
-  de <- doesDirectoryExist d
-  if de
-    then return $ Just d
-    else do
-      xd <- (`appDir` p) <$> getSwarmXdgDataSubdir False "data"
-      xde <- doesDirectoryExist xd
-      return $ if xde then Just xd else Nothing
- where
-  appDir r = \case
-    "" -> r
-    "." -> r
-    d -> r </> d
-
--- | Get file from swarm data directory.
---
--- See the note in 'getDataDirSafe'.
-getDataFileNameSafe :: FilePath -> IO (Maybe FilePath)
-getDataFileNameSafe name = do
-  dir <- getDataDirSafe "."
-  case dir of
-    Nothing -> return Nothing
-    Just d -> do
-      let fp = d </> name
-      fe <- doesFileExist fp
-      return $ if fe then Just fp else Nothing
-
--- | Get a nice message suggesting to download `data` directory to 'XdgData'.
-dataNotFound :: FilePath -> IO Text
-dataNotFound f = do
-  d <- getSwarmXdgDataSubdir False ""
-  let squotes = squote . T.pack
-  return $
-    T.unlines
-      [ "Could not find the data: " <> squotes f
-      , "Try downloading the Swarm 'data' directory to: " <> squotes (d </> "data")
-      ]
-
--- | Get path to swarm data, optionally creating necessary
---   directories. This could fail if user has bad permissions
---   on his own $HOME or $XDG_DATA_HOME which is unlikely.
-getSwarmXdgDataSubdir :: Bool -> FilePath -> IO FilePath
-getSwarmXdgDataSubdir createDirs subDir = do
-  swarmData <- (</> subDir) <$> getXdgDirectory XdgData "swarm"
-  when createDirs (createDirectoryIfMissing True swarmData)
-  pure swarmData
-
-getSwarmXdgDataFile :: Bool -> FilePath -> IO FilePath
-getSwarmXdgDataFile createDirs filepath = do
-  let (subDir, file) = splitFileName filepath
-  d <- getSwarmXdgDataSubdir createDirs subDir
-  return $ d </> file
-
--- | Get path to swarm saves, optionally creating necessary
---   directories.
-getSwarmSavePath :: Bool -> IO FilePath
-getSwarmSavePath createDirs = getSwarmXdgDataSubdir createDirs "saves"
-
--- | Get path to swarm history, optionally creating necessary
---   directories.
-getSwarmHistoryPath :: Bool -> IO FilePath
-getSwarmHistoryPath createDirs = getSwarmXdgDataFile createDirs "history"
-
--- | Read all the .txt files in the data/ directory.
-readAppData :: IO (Map Text Text)
-readAppData = do
-  md <- getDataDirSafe "."
-  case md of
-    Nothing -> fail . T.unpack =<< dataNotFound "<the data directory itself>"
-    Just d -> do
-      fs <-
-        filter ((== ".txt") . takeExtension)
-          <$> ( listDirectory d `catch` \e ->
-                  hPutStr stderr (show (e :: IOException)) >> return []
-              )
-      M.fromList . mapMaybe sequenceA
-        <$> forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT (d </> f))
 
 ------------------------------------------------------------
 -- Some Text-y stuff
@@ -344,6 +212,15 @@ isIdentChar c = isAlphaNum c || c == '_' || c == '\''
 -- "(move"
 replaceLast :: Text -> Text -> Text
 replaceLast r t = T.append (T.dropWhileEnd isIdentChar t) r
+
+-- | Fail with a Text-based message, made out of phrases to be joined
+--   by spaces.
+failT :: MonadFail m => [Text] -> m a
+failT = fail . from @Text . T.unwords
+
+-- | Show a value, but as Text.
+showT :: Show a => a -> Text
+showT = from @String . show
 
 ------------------------------------------------------------
 -- Some language-y stuff
@@ -413,6 +290,14 @@ quote t = T.concat ["\"", t, "\""]
 bquote :: Text -> Text
 bquote t = T.concat ["`", t, "`"]
 
+-- | Surround some text in parentheses.
+parens :: Text -> Text
+parens t = T.concat ["(", t, ")"]
+
+-- | Surround some text in square brackets.
+brackets :: Text -> Text
+brackets t = T.concat ["[", t, "]"]
+
 -- | Make a list of things with commas and the word "and".
 commaList :: [Text] -> Text
 commaList [] = ""
@@ -449,6 +334,12 @@ Left b `isRightOr` f = throwError (f b)
 isSuccessOr :: Has (Throw e) sig m => Validation b a -> (b -> e) -> m a
 Success a `isSuccessOr` _ = return a
 Failure b `isSuccessOr` f = throwError (f b)
+
+guardRight :: Text -> Either Text a -> ExceptT Text IO a
+guardRight what i = i `isRightOr` (\e -> "Failed to " <> what <> ": " <> e)
+
+simpleErrorHandle :: ExceptT Text IO a -> IO a
+simpleErrorHandle = either (fail . T.unpack) pure <=< runExceptT
 
 ------------------------------------------------------------
 -- Template Haskell utilities
@@ -487,7 +378,30 @@ _NonEmpty :: Lens' (NonEmpty a) (a, [a])
 _NonEmpty = lens (\(x :| xs) -> (x, xs)) (const (uncurry (:|)))
 
 ------------------------------------------------------------
--- Some utilities for NP-hard approximation
+-- Some set utilities
+
+-- | Remove any sets which are supersets of other sets.  In other words,
+--   (1) no two sets in the output are in a subset relationship
+--   (2) every element in the input is a superset of some element in the output.
+--
+-- >>> import qualified Data.Set as S
+-- >>> rss = map S.toList . S.toList . removeSupersets . S.fromList . map S.fromList
+--
+-- >>> rss [[1,2,3], [1]]
+-- [[1]]
+--
+-- >>> rss [[1,2,3], [2,4], [2,3]]
+-- [[2,3],[2,4]]
+--
+-- >>> rss [[], [1], [2,3]]
+-- [[]]
+--
+-- >>> rss [[1,2], [1,3], [2,3]]
+-- [[1,2],[1,3],[2,3]]
+removeSupersets :: Ord a => Set (Set a) -> Set (Set a)
+removeSupersets ss = S.filter (not . isSuperset) ss
+ where
+  isSuperset s = any (`S.isSubsetOf` s) (S.delete s ss)
 
 -- | Given a list of /nonempty/ sets, find a hitting set, that is, a
 --   set which has at least one element in common with each set in the

@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Model.StateUpdate (
   initAppState,
   startGame,
@@ -20,28 +22,28 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
 import Data.Time (ZonedTime, getZonedTime)
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Definitions
+import Swarm.Game.Achievement.Persistence
+import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
 import Swarm.Game.Scenario (loadScenario, scenarioAttrs)
-import Swarm.Game.Scenario.Objective.Presentation.Model (emptyGoalDisplay)
+import Swarm.Game.Scenario.Scoring.Best
+import Swarm.Game.Scenario.Scoring.ConcreteMetrics
+import Swarm.Game.Scenario.Scoring.GenericMetrics
+import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (
-  ScenarioInfo (..),
-  ScenarioInfoPair,
-  ScenarioStatus (..),
+  loadScenarioInfo,
   normalizeScenarioPath,
   scenarioItemByPath,
-  scenarioPath,
   scenarioSolution,
-  scenarioStatus,
   _SISingle,
  )
 import Swarm.Game.State
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Achievement.Attainment
-import Swarm.TUI.Model.Achievement.Definitions
-import Swarm.TUI.Model.Achievement.Persistence
-import Swarm.TUI.Model.Failure (prettyFailure)
+import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.CustomStyling (toAttrPair)
@@ -52,24 +54,30 @@ initAppState :: AppOpts -> ExceptT Text IO AppState
 initAppState AppOpts {..} = do
   let isRunningInitialProgram = isJust scriptToRun || autoPlay
       skipMenu = isJust userScenario || isRunningInitialProgram || isJust userSeed
-  gs <- initGameState
-  (warnings, ui) <- initUIState (not skipMenu) cheatMode
-  let logWarning rs w = rs & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
-  let rs = List.foldl' logWarning initRuntimeState warnings
+  (gsWarnings, gs) <- initGameState
+  (uiWarnings, ui) <- initUIState speed (not skipMenu) (cheatMode || autoPlay)
+  let logWarning rs' w = rs' & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
+      addWarnings = List.foldl' logWarning
+      rs = addWarnings initRuntimeState $ gsWarnings <> uiWarnings
   case skipMenu of
-    False -> return $ AppState gs ui rs
+    False -> return $ AppState gs (ui & lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
     True -> do
       (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. entityMap)
+      maybeRunScript <- getParsedInitialCode scriptToRun
 
       let maybeAutoplay = do
             guard autoPlay
             soln <- scenario ^. scenarioSolution
-            return $ SuggestedSolution soln
-      let realToRun = maybeAutoplay <|> (ScriptPath <$> scriptToRun)
+            return $ CodeToRun ScenarioSuggested soln
+          codeToRun = maybeAutoplay <|> maybeRunScript
 
+      eitherSi <- runExceptT $ loadScenarioInfo path
+      let (si, newRs) = case eitherSi of
+            Right x -> (x, rs)
+            Left e -> (ScenarioInfo path NotStarted, addWarnings rs e)
       execStateT
-        (startGameWithSeed userSeed (scenario, ScenarioInfo path NotStarted NotStarted NotStarted) realToRun)
-        (AppState gs ui rs)
+        (startGameWithSeed userSeed (scenario, si) codeToRun)
+        (AppState gs ui newRs)
 
 -- | Load a 'Scenario' and start playing the game.
 startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()
@@ -89,14 +97,27 @@ restartGame currentSeed siPair = startGameWithSeed (Just currentSeed) siPair Not
 
 -- | Load a 'Scenario' and start playing the game, with the
 --   possibility for the user to override the seed.
-startGameWithSeed :: (MonadIO m, MonadState AppState m) => Maybe Seed -> ScenarioInfoPair -> Maybe CodeToRun -> m ()
+--
+-- Note: Some of the code in this function is duplicated
+-- with "initGameStateForScenario".
+startGameWithSeed ::
+  (MonadIO m, MonadState AppState m) =>
+  Maybe Seed ->
+  ScenarioInfoPair ->
+  Maybe CodeToRun ->
+  m ()
 startGameWithSeed userSeed siPair@(_scene, si) toRun = do
   t <- liftIO getZonedTime
   ss <- use $ gameState . scenarios
   p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
   gameState . currentScenarioPath .= Just p
-  gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus .= InProgress t 0 0
+  gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus
+    .= Played (Metric Attempted $ ProgressStats t emptyAttemptMetric) (prevBest t)
   scenarioToAppState siPair userSeed toRun
+ where
+  prevBest t = case si ^. scenarioStatus of
+    NotStarted -> emptyBest t
+    Played _ b -> b
 
 -- TODO: #516 do we need to keep an old entity map around???
 
@@ -150,7 +171,6 @@ scenarioToUIState siPair u = do
       & uiInventorySort .~ defaultSortOptions
       & uiShowFPS .~ False
       & uiShowZero .~ True
-      & lgTicksPerSecond .~ initLgTicksPerSecond
       & uiREPL .~ initREPLState (u ^. uiREPL . replHistory)
       & uiREPL . replHistory %~ restartREPLHistory
       & uiAttrMap .~ applyAttrMappings (map toAttrPair $ fst siPair ^. scenarioAttrs) swarmAttrMap

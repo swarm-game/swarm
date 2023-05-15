@@ -1,8 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoGeneralizedNewtypeDeriving #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- A UI-centric model for Objective presentation.
-module Swarm.Game.Scenario.Objective.Presentation.Model where
+module Swarm.TUI.Model.Goal where
 
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
@@ -14,6 +17,8 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
 import GHC.Generics (Generic)
+import Servant.Docs (ToSample)
+import Servant.Docs qualified as SD
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.WinCheck
 import Swarm.TUI.Model.Name
@@ -43,21 +48,17 @@ data GoalStatus
     Failed
   deriving (Show, Eq, Ord, Bounded, Enum, Generic, ToJSON, ToJSONKey)
 
--- | TODO: #1044 Could also add an "ObjectiveFailed" constructor...
-newtype Announcement
-  = ObjectiveCompleted Objective
-  deriving (Show, Generic, ToJSON)
-
 type CategorizedGoals = Map GoalStatus (NonEmpty Objective)
 
 data GoalEntry
   = Header GoalStatus
   | Goal GoalStatus Objective
+  | Spacer
 
-isHeader :: GoalEntry -> Bool
-isHeader = \case
-  Header _ -> True
-  _ -> False
+shouldSkipSelection :: GoalEntry -> Bool
+shouldSkipSelection = \case
+  Goal _ _ -> False
+  _ -> True
 
 data GoalTracking = GoalTracking
   { announcements :: [Announcement]
@@ -66,6 +67,9 @@ data GoalTracking = GoalTracking
   , goals :: CategorizedGoals
   }
   deriving (Generic, ToJSON)
+
+instance ToSample GoalTracking where
+  toSamples _ = SD.noSamples
 
 data GoalDisplay = GoalDisplay
   { _goalsContent :: GoalTracking

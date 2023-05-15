@@ -2,10 +2,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
--- Module      :  Swarm.Game.Log
--- Copyright   :  Ondřej Šebek
--- Maintainer  :  ondras98@icloud.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A data type to represent in-game logs by robots.
@@ -36,7 +32,8 @@ import Control.Lens hiding (contains)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Swarm.Util.Location (Location)
+import Swarm.Game.CESK (TickNumber)
+import Swarm.Game.Location (Location)
 
 -- | Severity of the error - critical errors are bugs
 --   and should be reported as Issues.
@@ -55,7 +52,7 @@ data LogSource
 
 -- | An entry in a robot's log.
 data LogEntry = LogEntry
-  { _leTime :: Integer
+  { _leTime :: TickNumber
   -- ^ The time at which the entry was created.
   --   Note that this is the first field we sort on.
   , _leSource :: LogSource

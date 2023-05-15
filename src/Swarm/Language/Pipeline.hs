@@ -1,10 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.Language.Pipeline
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Some convenient functions for putting together the whole Swarm
@@ -19,6 +15,7 @@ module Swarm.Language.Pipeline (
   processTerm',
   processParsedTerm',
   showTypeErrorPos,
+  processTermEither,
 ) where
 
 import Control.Lens ((^.))
@@ -50,14 +47,14 @@ data ProcessedTerm
       -- ^ Capability context for any definitions embedded in the term
   deriving (Data, Show, Eq, Generic)
 
+processTermEither :: Text -> Either String ProcessedTerm
+processTermEither t = case processTerm t of
+  Left err -> Left $ "Could not parse term: " ++ from err
+  Right Nothing -> Left "Term was only whitespace"
+  Right (Just pt) -> Right pt
+
 instance FromJSON ProcessedTerm where
-  parseJSON = withText "Term" tryProcess
-   where
-    tryProcess :: Text -> Y.Parser ProcessedTerm
-    tryProcess t = case processTerm t of
-      Left err -> fail $ "Could not parse term: " ++ from err
-      Right Nothing -> fail "Term was only whitespace"
-      Right (Just pt) -> return pt
+  parseJSON = withText "Term" $ either fail return . processTermEither
 
 instance ToJSON ProcessedTerm where
   toJSON (ProcessedTerm t _ _) = String $ prettyText (moduleAST t)

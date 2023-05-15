@@ -2,7 +2,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
--- | Swarm integration tests
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Swarm integration tests
 module Main where
 
 import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (<>~), (^.), (^..), (^?!))
@@ -21,8 +24,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
-import Swarm.DocGen (EditorType (..))
-import Swarm.DocGen qualified as DocGen
+import Swarm.Doc.Gen (EditorType (..))
+import Swarm.Doc.Gen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities, lookupByName)
 import Swarm.Game.Robot (LogEntry, defReqs, equippedDevices, leText, machine, robotContext, robotLog, waitingUntil)
@@ -171,6 +174,7 @@ testScenarioSolution _ci _em =
             let win = isJust $ find hints rs
             assertBool "Could not find a robot with winning instructions!" win
         , testTutorialSolution Default "Tutorials/scan"
+        , testTutorialSolution Default "Tutorials/give"
         , testTutorialSolution Default "Tutorials/def"
         , testTutorialSolution Default "Tutorials/lambda"
         , testTutorialSolution Default "Tutorials/require"
@@ -182,9 +186,13 @@ testScenarioSolution _ci _em =
         "Challenges"
         [ testSolution Default "Challenges/chess_horse"
         , testSolution Default "Challenges/teleport"
+        , testSolution Default "Challenges/maypole"
         , testSolution (Sec 5) "Challenges/2048"
         , testSolution (Sec 3) "Challenges/word-search"
+        , testSolution (Sec 5) "Challenges/bridge-building"
         , testSolution (Sec 3) "Challenges/ice-cream"
+        , testSolution (Sec 5) "Challenges/gopher"
+        , testSolution (Sec 5) "Challenges/hackman"
         , testSolution (Sec 10) "Challenges/hanoi"
         , testSolution Default "Challenges/friend"
         , testGroup
@@ -257,6 +265,15 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/961-custom-capabilities"
         , testSolution Default "Testing/956-GPS"
         , testSolution Default "Testing/958-isempty"
+        , testSolution Default "Testing/1024-sand"
+        , testSolution Default "Testing/1140-detect-command"
+        , testSolution Default "Testing/1157-drill-return-value"
+        , testSolution Default "Testing/1171-sniff-command"
+        , testSolution Default "Testing/1171-chirp-command"
+        , testSolution Default "Testing/1171-resonate-command"
+        , testSolution Default "Testing/1207-scout-command"
+        , testSolution Default "Testing/1218-stride-command"
+        , testSolution Default "Testing/1234-push-command"
         ]
     ]
  where

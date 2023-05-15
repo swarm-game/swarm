@@ -7,14 +7,18 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
--- Module      :  Swarm.Game.Step
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Facilities for stepping the robot CESK machines, /i.e./ the actual
 -- interpreter for the Swarm language.
+--
+-- ** Note on the IO:
+--
+-- The only reason we need @IO@ is so that robots can run programs
+-- loaded from files, via the 'Run' command.
+-- This could be avoided by using 'Import' command instead and parsing
+-- the required files at the time of declaration.
+-- See <https://github.com/swarm-game/swarm/issues/495>.
 module Swarm.Game.Step where
 
 import Control.Applicative (liftA2)
@@ -26,20 +30,25 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (foldM, forM, forM_, guard, msum, unless, when)
+import Control.Monad (foldM, forM, forM_, guard, msum, unless, when, zipWithM)
+import Control.Monad.Except (runExceptT)
 import Data.Array (bounds, (!))
 import Data.Bifunctor (second)
 import Data.Bool (bool)
 import Data.Char (chr, ord)
 import Data.Either (partitionEithers, rights)
-import Data.Foldable (asum, traverse_)
+import Data.Either.Extra (eitherToMaybe)
+import Data.Foldable (asum, for_, traverse_)
+import Data.Foldable.Extra (findM, firstJustM)
+import Data.Function (on)
 import Data.Functor (void)
+import Data.Int (Int32)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
 import Data.List (find, sortOn)
 import Data.List qualified as L
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe, mapMaybe)
 import Data.Ord (Down (Down))
 import Data.Sequence ((><))
 import Data.Sequence qualified as Seq
@@ -49,65 +58,60 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (getZonedTime)
 import Data.Tuple (swap)
-import Linear (zero)
+import Linear (V2 (..), perp, zero)
+import Prettyprinter (pretty)
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
+import Swarm.Game.Failure
+import Swarm.Game.Location
 import Swarm.Game.Recipe
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
 import Swarm.Game.State
+import Swarm.Game.Value
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
+import Swarm.Language.Key (parseKeyComboFull)
+import Swarm.Language.Parse (runParser)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
-import Swarm.TUI.Model.Achievement.Attainment
-import Swarm.TUI.Model.Achievement.Definitions
-import Swarm.Util
-import Swarm.Util.Location
+import Swarm.Util hiding (both)
 import System.Clock (TimeSpec)
 import System.Clock qualified
 import System.Random (UniformRange, uniformR)
 import Witch (From (from), into)
 import Prelude hiding (lookup)
 
--- | The main function to do one game tick.  The only reason we need
---   @IO@ is so that robots can run programs loaded from files, via
---   the 'Run' command; but eventually I want to get rid of that
---   command and have a library of modules that you can create, edit,
---   and run all from within the UI (the library could also be loaded
---   from a file when the whole program starts up).
-gameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m) => m ()
+-- | The main function to do one game tick.
+--
+--   Note that the game may be in 'RobotStep' mode and not finish
+--   the tick. Use the return value to check whether a full tick happened.
+gameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m) => m Bool
 gameTick = do
   wakeUpRobotsDoneSleeping
-  robotNames <- use activeRobots
-  forM_ (IS.toList robotNames) $ \rn -> do
-    mr <- uses robotMap (IM.lookup rn)
-    case mr of
-      Nothing -> return ()
-      Just curRobot -> do
-        curRobot' <- tickRobot curRobot
-        if curRobot' ^. selfDestruct
-          then deleteRobot rn
-          else do
-            robotMap %= IM.insert rn curRobot'
-            time <- use ticks
-            case waitingUntil curRobot' of
-              Just wakeUpTime
-                -- if w=2 t=1 then we do not needlessly put robot to waiting queue
-                | wakeUpTime - 2 <= time -> return ()
-                | otherwise -> sleepUntil rn wakeUpTime
-              Nothing ->
-                unless (isActive curRobot') (sleepForever rn)
+  active <- use activeRobots
+  focusedRob <- use focusedRobotID
+
+  ticked <-
+    use gameStep >>= \case
+      WorldTick -> do
+        runRobotIDs active
+        ticks += 1
+        pure True
+      RobotStep ss -> singleStep ss focusedRob active
 
   -- See if the base is finished with a computation, and if so, record
   -- the result in the game state so it can be displayed by the REPL;
@@ -122,24 +126,124 @@ gameTick = do
           Just (v, s) -> do
             replStatus .= REPLWorking (Typed (Just v) ty req)
             baseRobot . robotContext . defStore .= s
-          Nothing -> return ()
-        _otherREPLStatus -> return ()
-    Nothing -> return ()
+          Nothing -> pure ()
+        _otherREPLStatus -> pure ()
+    Nothing -> pure ()
 
   -- Possibly update the view center.
   modify recalcViewCenter
 
-  -- Possibly see if the winning condition for the current objective is met.
-  wc <- use winCondition
-  case wc of
-    WinConditions winState oc -> do
-      g <- get @GameState
-      em <- use entityMap
-      hypotheticalWinCheck em g winState oc
-    _ -> return ()
+  when ticked $ do
+    -- On new tick see if the winning condition for the current objective is met.
+    wc <- use winCondition
+    case wc of
+      WinConditions winState oc -> do
+        g <- get @GameState
+        em <- use entityMap
+        hypotheticalWinCheck em g winState oc
+      _ -> pure ()
+  return ticked
 
-  -- Advance the game time by one.
-  ticks += 1
+-- | Finish a game tick in progress and set the game to 'WorldTick' mode afterwards.
+--
+-- Use this function if you need to unpause the game.
+finishGameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m) => m ()
+finishGameTick =
+  use gameStep >>= \case
+    WorldTick -> pure ()
+    RobotStep SBefore -> gameStep .= WorldTick
+    RobotStep _ -> void gameTick >> finishGameTick
+
+-- Insert the robot back to robot map.
+-- Will selfdestruct or put the robot to sleep if it has that set.
+insertBackRobot :: Has (State GameState) sig m => RID -> Robot -> m ()
+insertBackRobot rn rob = do
+  time <- use ticks
+  if rob ^. selfDestruct
+    then deleteRobot rn
+    else do
+      robotMap %= IM.insert rn rob
+      case waitingUntil rob of
+        Just wakeUpTime
+          -- if w=2 t=1 then we do not needlessly put robot to waiting queue
+          | wakeUpTime - 2 <= time -> return ()
+          | otherwise -> sleepUntil rn wakeUpTime
+        Nothing ->
+          unless (isActive rob) (sleepForever rn)
+
+-- Run a set of robots - this is used to run robots before/after the focused one.
+runRobotIDs :: (Has (State GameState) sig m, Has (Lift IO) sig m) => IS.IntSet -> m ()
+runRobotIDs robotNames = forM_ (IS.toList robotNames) $ \rn -> do
+  mr <- uses robotMap (IM.lookup rn)
+  forM_ mr (stepOneRobot rn)
+ where
+  stepOneRobot rn rob = tickRobot rob >>= insertBackRobot rn
+
+-- This is a helper function to do one robot step or run robots before/after.
+singleStep :: (Has (State GameState) sig m, Has (Lift IO) sig m) => SingleStep -> RID -> IS.IntSet -> m Bool
+singleStep ss focRID robotSet = do
+  let (preFoc, focusedActive, postFoc) = IS.splitMember focRID robotSet
+  case ss of
+    ----------------------------------------------------------------------------
+    -- run robots from the beginning until focused robot
+    SBefore -> do
+      runRobotIDs preFoc
+      gameStep .= RobotStep (SSingle focRID)
+      -- also set ticks of focused robot
+      steps <- use robotStepsPerTick
+      robotMap . ix focRID . tickSteps .= steps
+      -- continue to focused robot if there were no previous robots
+      -- DO NOT SKIP THE ROBOT SETUP above
+      if IS.null preFoc
+        then singleStep (SSingle focRID) focRID robotSet
+        else return False
+    ----------------------------------------------------------------------------
+    -- run single step of the focused robot (may skip if inactive)
+    SSingle rid | not focusedActive -> do
+      singleStep (SAfter rid) rid postFoc -- skip inactive focused robot
+    SSingle rid -> do
+      mOldR <- uses robotMap (IM.lookup focRID)
+      case mOldR of
+        Nothing | rid == focRID -> do
+          debugLog "The debugged robot does not exist! Exiting single step mode."
+          runRobotIDs postFoc
+          gameStep .= WorldTick
+          ticks += 1
+          return True
+        Nothing | otherwise -> do
+          debugLog "The previously debugged robot does not exist!"
+          singleStep SBefore focRID postFoc
+        Just oldR -> do
+          -- if focus changed we need to finish the previous robot
+          newR <- (if rid == focRID then stepRobot else tickRobotRec) oldR
+          insertBackRobot focRID newR
+          if rid == focRID
+            then do
+              when (newR ^. tickSteps == 0) $ gameStep .= RobotStep (SAfter focRID)
+              return False
+            else do
+              -- continue to newly focused
+              singleStep SBefore focRID postFoc
+    ----------------------------------------------------------------------------
+    -- run robots after the focused robot
+    SAfter rid | focRID <= rid -> do
+      -- This state takes care of two possibilities:
+      -- 1. normal - rid == focRID and we finish the tick
+      -- 2. changed focus and the newly focused robot has previously run
+      --    so we just finish the tick the same way
+      runRobotIDs postFoc
+      gameStep .= RobotStep SBefore
+      ticks += 1
+      return True
+    SAfter rid | otherwise -> do
+      -- go to single step if new robot is focused
+      let (_pre, postRID) = IS.split rid robotSet
+      singleStep SBefore focRID postRID
+ where
+  h = hypotheticalRobot (Out VUnit emptyStore []) 0
+  debugLog txt = do
+    m <- evalState @Robot h $ createLogEntry (ErrorTrace Debug) txt
+    emitMessage m
 
 -- | An accumulator for folding over the incomplete
 -- objectives to evaluate for their completion
@@ -193,12 +297,7 @@ hypotheticalWinCheck em g ws oc = do
 
   case newWinState of
     Unwinnable _ -> do
-      currentTime <- sendIO getZonedTime
-      gameAchievements
-        %= M.insertWith
-          (<>)
-          LoseScenario
-          (Attainment (GameplayAchievement LoseScenario) Nothing currentTime)
+      grantAchievement LoseScenario
     _ -> return ()
 
   announcementQueue %= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
@@ -228,11 +327,14 @@ hypotheticalWinCheck em g ws oc = do
       Left exnText ->
         CompletionsWithExceptions
           (exnText : exnTexts)
-          currentCompletions
+          -- Push back the incomplete goal that had been popped for inspection
+          (OB.addIncomplete obj currentCompletions)
           announcements
       Right boolResult ->
         CompletionsWithExceptions
           exnTexts
+          -- Either restore the goal to the incomplete list from which it was popped
+          -- or move it to the complete (or unwinnable) bucket.
           (modifyCompletions obj currentCompletions)
           (modifyAnnouncements announcements)
        where
@@ -322,7 +424,10 @@ entityAt loc = zoomWorld (W.lookupEntityM @Int (W.locToCoords loc))
 -- | Modify the entity (if any) at a given location.
 updateEntityAt ::
   (Has (State GameState) sig m) => Location -> (Maybe Entity -> Maybe Entity) -> m ()
-updateEntityAt loc upd = zoomWorld (W.updateM @Int (W.locToCoords loc) upd)
+updateEntityAt loc upd = do
+  didChange <- zoomWorld $ W.updateM @Int (W.locToCoords loc) upd
+  when didChange $
+    wakeWatchingRobots loc
 
 -- | Get the robot with a given ID.
 robotWithID :: (Has (State GameState) sig m) => RID -> m (Maybe Robot)
@@ -505,9 +610,7 @@ updateWorld c (ReplaceEntity loc eThen down) = do
   let eNow = W.lookupEntity (W.locToCoords loc) w
   if Just eThen /= eNow
     then throwError $ cmdExn c ["The", eThen ^. entityName, "is not there."]
-    else do
-      world %= W.update (W.locToCoords loc) (const down)
-      pure ()
+    else updateEntityAt loc $ const down
 
 -- | The main CESK machine workhorse.  Given a robot, look at its CESK
 --   machine state and figure out a single next step.
@@ -549,6 +652,9 @@ stepCESK cesk = case cesk of
   -- Require and requireDevice just turn into no-ops.
   In (TRequireDevice {}) e s k -> return $ In (TConst Noop) e s k
   In (TRequire {}) e s k -> return $ In (TConst Noop) e s k
+  In (TRequirements x t) e s k -> return $ Out (VRequirements x t e) s k
+  -- Type ascriptions are ignored
+  In (TAnnotate v _) e s k -> return $ In v e s k
   -- Normally it's not possible to have a TRobot value in surface
   -- syntax, but the salvage command generates a program that needs to
   -- refer directly to the salvaging robot.
@@ -590,6 +696,26 @@ stepCESK cesk = case cesk of
         evalConst c (reverse (v2 : args)) s k
     | otherwise -> return $ Out (VCApp c (v2 : args)) s k
   Out _ s (FApp _ : _) -> badMachineState s "FApp of non-function"
+  -- Start evaluating a record.  If it's empty, we're done.  Otherwise, focus
+  -- on the first field and record the rest in a FRcd frame.
+  In (TRcd m) e s k -> return $ case M.assocs m of
+    [] -> Out (VRcd M.empty) s k
+    ((x, t) : fs) -> In (fromMaybe (TVar x) t) e s (FRcd e [] x fs : k)
+  -- When we finish evaluating the last field, return a record value.
+  Out v s (FRcd _ done x [] : k) -> return $ Out (VRcd (M.fromList ((x, v) : done))) s k
+  -- Otherwise, save the value of the field just evaluated and move on
+  -- to focus on evaluating the next one.
+  Out v s (FRcd e done x ((y, t) : rest) : k) ->
+    return $ In (fromMaybe (TVar y) t) e s (FRcd e ((x, v) : done) y rest : k)
+  -- Evaluate a record projection: evaluate the record and remember we
+  -- need to do the projection later.
+  In (TProj t x) e s k -> return $ In t e s (FProj x : k)
+  -- Do a record projection
+  Out v s (FProj x : k) -> case v of
+    VRcd m -> case M.lookup x m of
+      Nothing -> badMachineState s $ T.unwords ["Record projection for variable", x, "that does not exist"]
+      Just xv -> return $ Out xv s k
+    _ -> badMachineState s "FProj frame with non-record value"
   -- To evaluate non-recursive let expressions, we start by focusing on the
   -- let-bound expression.
   In (TLet False x _ t1 t2) e s k -> return $ In t1 e s (FLet x t2 e : k)
@@ -630,6 +756,48 @@ stepCESK cesk = case cesk of
   Out v s (FUpdate loc : k) -> return $ Out v (setCell loc (V v) s) k
   ------------------------------------------------------------
   -- Execution
+
+  -- Executing a 'requirements' command generates an appropriate log message
+  -- listing the requirements of the given expression.
+  Out (VRequirements src t _) s (FExec : k) -> do
+    currentContext <- use $ robotContext . defReqs
+    em <- use entityMap
+    let (R.Requirements caps devs inv, _) = R.requirements currentContext t
+
+        devicesForCaps, requiredDevices :: Set (Set Text)
+        -- possible devices to provide each required capability
+        devicesForCaps = S.map (S.fromList . map (^. entityName) . (`deviceForCap` em)) caps
+        -- outright required devices
+        requiredDevices = S.map S.singleton devs
+
+        deviceSets :: Set (Set Text)
+        deviceSets =
+          -- Union together all required device sets, and remove any
+          -- device sets which are a superset of another set.  For
+          -- example, if (grabber OR fast grabber OR harvester) is
+          -- required but (grabber OR fast grabber) is also required
+          -- then we might as well remove the first set, since
+          -- satisfying the second device set will automatically
+          -- satisfy the first.
+          removeSupersets $ devicesForCaps `S.union` requiredDevices
+
+        reqLog =
+          prettyText $
+            BulletList
+              (pretty $ T.unwords ["Requirements for", bquote src <> ":"])
+              ( filter
+                  (not . null . bulletListItems)
+                  [ BulletList
+                      "Equipment:"
+                      (T.intercalate " OR " . S.toList <$> S.toList deviceSets)
+                  , BulletList
+                      "Inventory:"
+                      ((\(e, n) -> e <> " " <> parens (showT n)) <$> M.assocs inv)
+                  ]
+              )
+
+    _ <- traceLog Logged reqLog
+    return $ Out VUnit s k
 
   -- To execute a definition, we immediately turn the body into a
   -- delayed value, so it will not even be evaluated until it is
@@ -740,13 +908,7 @@ stepCESK cesk = case cesk of
     -- handled.
     case exn of
       CmdFailed _ _ (Just a) -> do
-        currentTime <- sendIO getZonedTime
-        scenarioPath <- use currentScenarioPath
-        gameAchievements
-          %= M.insertWith
-            (<>)
-            a
-            (Attainment (GameplayAchievement a) scenarioPath currentTime)
+        grantAchievement a
       _ -> return ()
 
     -- If an exception rises all the way to the top level without being
@@ -885,6 +1047,7 @@ execConst c vs s k = do
     Wait -> case vs of
       [VInt d] -> do
         time <- use ticks
+        purgeFarAwayWatches
         return $ Waiting (time + d) (Out VUnit s k)
       _ -> badConst
     Selfdestruct -> do
@@ -903,6 +1066,79 @@ execConst c vs s k = do
           }
       updateRobotLocation loc nextLoc
       return $ Out VUnit s k
+    Push -> do
+      -- Figure out where we're going
+      loc <- use robotLocation
+      orient <- use robotOrientation
+      let heading = orient ? zero
+          nextLoc = loc .+^ heading
+          placementLoc = nextLoc .+^ heading
+
+      -- If unobstructed, the robot will move even if
+      -- there is nothing to push.
+      maybeCurrentE <- entityAt nextLoc
+      case maybeCurrentE of
+        Just e -> do
+          -- Make sure there's nothing already occupying the destination
+          nothingHere <- isNothing <$> entityAt placementLoc
+          nothingHere `holdsOrFail` ["Something is in the way!"]
+
+          let verbed = verbedGrabbingCmd Push'
+          -- Ensure it can be pushed.
+          omni <- isPrivilegedBot
+          (omni || e `hasProperty` Portable && not (e `hasProperty` Liquid))
+            `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
+
+          -- Place the entity and remove it from previous loc
+          updateEntityAt nextLoc (const Nothing)
+          updateEntityAt placementLoc (const (Just e))
+        Nothing -> return ()
+
+      updateRobotLocation loc nextLoc
+      return $ Out VUnit s k
+    Stride -> case vs of
+      [VInt d] -> do
+        when (d > fromIntegral maxStrideRange) $
+          throwError $
+            CmdFailed
+              Stride
+              ( T.unwords
+                  [ "Can only stride up to"
+                  , T.pack $ show maxStrideRange
+                  , "units."
+                  ]
+              )
+              Nothing
+
+        -- Figure out where we're going
+        loc <- use robotLocation
+        orient <- use robotOrientation
+        let heading = orient ? zero
+
+        -- Excludes the base location.
+        let locsInDirection :: [Location]
+            locsInDirection =
+              take (min (fromIntegral d) maxStrideRange) $
+                drop 1 $
+                  iterate (.+^ heading) loc
+
+        failureMaybes <- mapM checkMoveFailure locsInDirection
+        let maybeFirstFailure = asum failureMaybes
+
+        applyMoveFailureEffect maybeFirstFailure $
+          MoveFailure
+            { failIfBlocked = ThrowExn
+            , failIfDrown = Destroy
+            }
+
+        let maybeLastLoc = do
+              guard $ null maybeFirstFailure
+              listToMaybe $ reverse locsInDirection
+
+        forM_ maybeLastLoc $ updateRobotLocation loc
+
+        return $ Out VUnit s k
+      _ -> badConst
     Teleport -> case vs of
       [VRobot rid, VPair (VInt x) (VInt y)] -> do
         -- Make sure the other robot exists and is close
@@ -943,6 +1179,11 @@ execConst c vs s k = do
         when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
         robotOrientation . _Just %= applyTurn d
         flagRedraw
+
+        inst <- use equippedDevices
+        when (d == DRelative DDown && countByName "compass" inst == 0) $ do
+          grantAchievement GetDisoriented
+
         return $ Out VUnit s k
       _ -> badConst
     Place -> case vs of
@@ -1060,7 +1301,7 @@ execConst c vs s k = do
         -- take recipe inputs from inventory and add outputs after recipeTime
         robotInventory .= invTaken
         traverse_ (updateDiscoveredEntities . snd) (recipe ^. recipeOutputs)
-        finishCookingRecipe recipe [] (map (uncurry AddEntity) changeInv)
+        finishCookingRecipe recipe VUnit [] (map (uncurry AddEntity) changeInv)
       _ -> badConst
     Has -> case vs of
       [VText name] -> do
@@ -1077,10 +1318,102 @@ execConst c vs s k = do
         inv <- use robotInventory
         return $ Out (VInt (fromIntegral $ countByName name inv)) s k
       _ -> badConst
+    Scout -> case vs of
+      [VDir d] -> do
+        rMap <- use robotMap
+        myLoc <- use robotLocation
+        heading <- deriveHeading d
+        botsByLocs <- use robotsByLocation
+        selfRid <- use robotID
+
+        -- Includes the base location, so we exclude the base robot later.
+        let locsInDirection :: [Location]
+            locsInDirection = take maxScoutRange $ iterate (.+^ heading) myLoc
+
+        let hasOpaqueEntity =
+              fmap (maybe False (`hasProperty` E.Opaque)) . entityAt
+
+        let hasVisibleBot :: Location -> Bool
+            hasVisibleBot = any botIsVisible . IS.toList . excludeSelf . botsHere
+             where
+              excludeSelf = (`IS.difference` IS.singleton selfRid)
+              botsHere loc = M.findWithDefault mempty loc botsByLocs
+              botIsVisible = maybe False canSee . (`IM.lookup` rMap)
+              canSee = not . (^. robotDisplay . invisible)
+
+        -- A robot on the same cell as an opaque entity is considered hidden.
+        -- Returns (Just Bool) if the result is conclusively visible or opaque,
+        -- or Nothing if we don't have a conclusive answer yet.
+        let isConclusivelyVisible :: Bool -> Location -> Maybe Bool
+            isConclusivelyVisible isOpaque loc
+              | isOpaque = Just False
+              | hasVisibleBot loc = Just True
+              | otherwise = Nothing
+
+        let isConclusivelyVisibleM loc = do
+              opaque <- hasOpaqueEntity loc
+              return $ isConclusivelyVisible opaque loc
+
+        -- This ensures that we only evaluate locations until
+        -- a conclusive result is obtained, so we don't always
+        -- have to inspect the maximum range of the command.
+        result <- firstJustM isConclusivelyVisibleM locsInDirection
+        let foundBot = fromMaybe False result
+        return $ Out (VBool foundBot) s k
+      _ -> badConst
     Whereami -> do
       loc <- use robotLocation
-      let Location x y = loc
-      return $ Out (VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))) s k
+      return $ Out (asValue loc) s k
+    Detect -> case vs of
+      [VText name, VRect x1 y1 x2 y2] -> do
+        loc <- use robotLocation
+        let locs = rectCells x1 y1 x2 y2
+        -- sort offsets by (Manhattan) distance so that we return the closest occurrence
+        let sortedLocs = sortOn (\(V2 x y) -> abs x + abs y) locs
+        firstOne <- findM (fmap (maybe False $ isEntityNamed name) . entityAt . (loc .+^)) sortedLocs
+        return $ Out (asValue firstOne) s k
+      _ -> badConst
+    Resonate -> case vs of
+      [VText name, VRect x1 y1 x2 y2] -> do
+        loc <- use robotLocation
+        let locs = rectCells x1 y1 x2 y2
+        hits <- mapM (fmap (fromEnum . maybe False (isEntityNamed name)) . entityAt . (loc .+^)) locs
+        return $ Out (VInt $ fromIntegral $ sum hits) s k
+      _ -> badConst
+    Sniff -> case vs of
+      [VText name] -> do
+        firstFound <- findNearest name
+        return $ Out (asValue $ maybe (-1) fst firstFound) s k
+      _ -> badConst
+    Watch -> case vs of
+      [VDir d] -> do
+        (loc, _me) <- lookInDirection d
+        addWatchedLocation loc
+        return $ Out VUnit s k
+      _ -> badConst
+    Surveil -> case vs of
+      [VPair (VInt x) (VInt y)] -> do
+        let loc = Location (fromIntegral x) (fromIntegral y)
+        addWatchedLocation loc
+        return $ Out VUnit s k
+      _ -> badConst
+    Chirp -> case vs of
+      [VText name] -> do
+        firstFound <- findNearest name
+        mh <- use robotOrientation
+        inst <- use equippedDevices
+        let processDirection entityDir =
+              if countByName "compass" inst >= 1
+                then Just $ DAbsolute entityDir
+                else case mh >>= toDirection of
+                  Just (DAbsolute robotDir) -> Just $ DRelative $ entityDir `relativeTo` robotDir
+                  _ -> Nothing -- This may happen if the robot is facing "down"
+            val = VDir $ fromMaybe (DRelative DDown) $ do
+              entLoc <- firstFound
+              guard $ snd entLoc /= zero
+              processDirection . nearestDirection . snd $ entLoc
+        return $ Out val s k
+      _ -> badConst
     Heading -> do
       mh <- use robotOrientation
       -- In general, (1) entities might not have an orientation, and
@@ -1112,7 +1445,7 @@ execConst c vs s k = do
               DRelative DDown -> "under"
               DRelative DForward -> "ahead of"
               DRelative DBack -> "behind"
-              _ -> dirSyntax (dirInfo d) <> " of"
+              _ -> directionSyntax d <> " of"
 
         (nextLoc, nextME) <- lookInDirection d
         nextE <-
@@ -1150,7 +1483,9 @@ execConst c vs s k = do
 
         -- take recipe inputs from inventory and add outputs after recipeTime
         robotInventory .= invTaken
-        finishCookingRecipe recipe [changeWorld] (learn <> gain)
+
+        let cmdOutput = asValue $ snd <$> listToMaybe out
+        finishCookingRecipe recipe cmdOutput [changeWorld] (learn <> gain)
       _ -> badConst
     Blocked -> do
       loc <- use robotLocation
@@ -1161,14 +1496,14 @@ execConst c vs s k = do
     Scan -> case vs of
       [VDir d] -> do
         (_loc, me) <- lookInDirection d
-        res <- case me of
-          Nothing -> return $ VInj False VUnit
-          Just e -> do
-            robotInventory %= insertCount 0 e
-            updateDiscoveredEntities e
-            return $ VInj True (VText (e ^. entityName))
-
-        return $ Out res s k
+        for_ me $ \e -> do
+          robotInventory %= insertCount 0 e
+          updateDiscoveredEntities e
+          -- Flag the world for a redraw since scanning something may
+          -- change the way it is drawn (if the base is doing the
+          -- scanning)
+          flagRedraw
+        return $ Out (asValue me) s k
       _ -> badConst
     Knows -> case vs of
       [VText name] -> do
@@ -1194,6 +1529,11 @@ execConst c vs s k = do
         rlog <- use robotLog
         robotMap . at otherID . _Just . robotLog <>= rlog
 
+        -- Flag the world for redraw since uploading may change the
+        -- base's knowledge and hence how entities are drawn (if they
+        -- go from unknown to known).
+        flagRedraw
+
         return $ Out VUnit s k
       _ -> badConst
     Random -> case vs of
@@ -1201,14 +1541,8 @@ execConst c vs s k = do
         n <- uniform (0, hi - 1)
         return $ Out (VInt n) s k
       _ -> badConst
-    Atomic -> case vs of
-      -- To execute an atomic block, set the runningAtomic flag,
-      -- push an FFinishAtomic frame so that we unset the flag when done, and
-      -- proceed to execute the argument.
-      [cmd] -> do
-        runningAtomic .= True
-        return $ Out cmd s (FExec : FFinishAtomic : k)
-      _ -> badConst
+    Atomic -> goAtomic
+    Instant -> goAtomic
     As -> case vs of
       [VRobot rid, prog] -> do
         -- Get the named robot and current game state
@@ -1232,16 +1566,14 @@ execConst c vs s k = do
     RobotNamed -> case vs of
       [VText rname] -> do
         r <- robotWithName rname >>= (`isJustOrFail` ["There is no robot named", rname])
-        let robotValue = VRobot (r ^. robotID)
-        return $ Out robotValue s k
+        return $ Out (asValue r) s k
       _ -> badConst
     RobotNumbered -> case vs of
       [VInt rid] -> do
         r <-
           robotWithID (fromIntegral rid)
             >>= (`isJustOrFail` ["There is no robot with number", from (show rid)])
-        let robotValue = VRobot (r ^. robotID)
-        return $ Out robotValue s k
+        return $ Out (asValue r) s k
       _ -> badConst
     Say -> case vs of
       [VText msg] -> do
@@ -1296,15 +1628,28 @@ execConst c vs s k = do
       _ -> badConst
     View -> case vs of
       [VRobot rid] -> do
-        _ <-
-          robotWithID rid
-            >>= (`isJustOrFail` ["There is no actor with ID", from (show rid), "to view."])
-
         -- Only the base can actually change the view in the UI.  Other robots can
         -- execute this command but it does nothing (at least for now).
         rn <- use robotID
         when (rn == 0) $
-          viewCenterRule .= VCRobot rid
+          robotWithID rid >>= \case
+            -- If the robot does not exist...
+            Nothing -> do
+              cr <- use creativeMode
+              ws <- use worldScrollable
+              case cr || ws of
+                -- If we are in creative mode or allowed to scroll, then we are allowed
+                -- to learn that the robot doesn't exist.
+                True -> throwError $ cmdExn c ["There is no actor with ID", from (show rid), "to view."]
+                -- Otherwise, "unfocus" from any robot, which
+                -- means the world view will turn to static.  The
+                -- point is that there's no way to tell the difference
+                -- between this situation and the situation where the
+                -- robot exists but is too far away.
+                False -> modify unfocus
+
+            -- If it does exist, set it as the view center.
+            Just _ -> viewCenterRule .= VCRobot rid
 
         return $ Out VUnit s k
       _ -> badConst
@@ -1341,9 +1686,8 @@ execConst c vs s k = do
       [VText name] -> do
         loc <- use robotLocation
         me <- entityAt loc
-        case me of
-          Nothing -> return $ Out (VBool False) s k
-          Just e -> return $ Out (VBool (T.toLower (e ^. entityName) == T.toLower name)) s k
+        let here = maybe False (isEntityNamed name) me
+        return $ Out (VBool here) s k
       _ -> badConst
     Isempty -> do
       loc <- use robotLocation
@@ -1365,7 +1709,7 @@ execConst c vs s k = do
             find ((/= rid) . (^. robotID)) -- pick one other than ourself
               . sortOn (manhattan loc . (^. robotLocation)) -- prefer closer
               $ robotsInArea loc 1 g -- all robots within Manhattan distance 1
-      return $ Out (VInj (isJust neighbor) (maybe VUnit (VRobot . (^. robotID)) neighbor)) s k
+      return $ Out (asValue neighbor) s k
     MeetAll -> case vs of
       [f, b] -> do
         loc <- use robotLocation
@@ -1439,6 +1783,16 @@ execConst c vs s k = do
     Undefined -> return $ Up (User "undefined") s k
     Fail -> case vs of
       [VText msg] -> return $ Up (User msg) s k
+      _ -> badConst
+    Key -> case vs of
+      [VText ktxt] -> case runParser parseKeyComboFull ktxt of
+        Right kc -> return $ Out (VKey kc) s k
+        Left _ -> return $ Up (CmdFailed Key (T.unwords ["Unknown key", quote ktxt]) Nothing) s k
+      _ -> badConst
+    InstallKeyHandler -> case vs of
+      [VText hint, handler] -> do
+        inputHandler .= Just (hint, handler)
+        return $ Out VUnit s k
       _ -> badConst
     Reprogram -> case vs of
       [VRobot childRobotID, VDelay cmd e] -> do
@@ -1554,7 +1908,7 @@ execConst c vs s k = do
 
         -- Flag the world for a redraw and return the name of the newly constructed robot.
         flagRedraw
-        return $ Out (VRobot (newRobot ^. robotID)) s k
+        return $ Out (asValue newRobot) s k
       _ -> badConst
     Salvage -> case vs of
       [] -> do
@@ -1617,8 +1971,9 @@ execConst c vs s k = do
     Run -> case vs of
       [VText fileName] -> do
         let filePath = into @String fileName
-        sData <- sendIO $ getDataFileNameSafe filePath
-        sDataSW <- sendIO $ getDataFileNameSafe (filePath <> ".sw")
+        let e2m = fmap eitherToMaybe . runExceptT
+        sData <- sendIO $ e2m $ getDataFileNameSafe Script filePath
+        sDataSW <- sendIO $ e2m $ getDataFileNameSafe Script (filePath <> ".sw")
         mf <- sendIO $ mapM readFileMay $ [filePath, filePath <> ".sw"] <> catMaybes [sData, sDataSW]
 
         f <- msum mf `isJustOrFail` ["File not found:", fileName]
@@ -1692,6 +2047,20 @@ execConst c vs s k = do
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
        in throwError . Fatal $ msg <> badConstMsg
  where
+  goAtomic :: HasRobotStepState sig m => m CESK
+  goAtomic = case vs of
+    -- To execute an atomic block, set the runningAtomic flag,
+    -- push an FFinishAtomic frame so that we unset the flag when done, and
+    -- proceed to execute the argument.
+    [cmd] -> do
+      runningAtomic .= True
+      return $ Out cmd s (FExec : FFinishAtomic : k)
+    _ -> badConst
+
+  -- Case-insensitive matching on entity names
+  isEntityNamed :: T.Text -> Entity -> Bool
+  isEntityNamed n e = ((==) `on` T.toLower) (e ^. entityName) n
+
   badConst :: HasRobotStepState sig m => m a
   badConst = throwError $ Fatal badConstMsg
 
@@ -1704,19 +2073,63 @@ execConst c vs s k = do
       , prettyText (Out (VCApp c (reverse vs)) s k)
       ]
 
-  finishCookingRecipe :: HasRobotStepState sig m => Recipe e -> [WorldUpdate Entity] -> [RobotUpdate] -> m CESK
-  finishCookingRecipe r wf rf = do
+  rectCells :: Integer -> Integer -> Integer -> Integer -> [V2 Int32]
+  rectCells x1 y1 x2 y2 =
+    rectCellsInt32
+      (fromIntegral x1)
+      (fromIntegral y1)
+      (fromIntegral x2)
+      (fromIntegral y2)
+
+  rectCellsInt32 :: Int32 -> Int32 -> Int32 -> Int32 -> [V2 Int32]
+  rectCellsInt32 x1 y1 x2 y2 = [V2 x y | x <- [xMin .. xMax], y <- [yMin .. yMax]]
+   where
+    (xMin, xMax) = sortPair (x1, x2)
+    (yMin, yMax) = sortPair (y1, y2)
+
+  findNearest ::
+    HasRobotStepState sig m =>
+    Text ->
+    m (Maybe (Int32, V2 Int32))
+  findNearest name = do
+    loc <- use robotLocation
+    findM (fmap (maybe False $ isEntityNamed name) . entityAt . (loc .+^) . snd) sortedLocs
+   where
+    sortedLocs :: [(Int32, V2 Int32)]
+    sortedLocs = (0, zero) : concatMap genDiamondSides [1 .. maxSniffRange]
+
+    -- Grow a list of locations in a diamond shape outward, such that the nearest cells
+    -- are searched first by construction, rather than having to sort.
+    genDiamondSides :: Int32 -> [(Int32, V2 Int32)]
+    genDiamondSides diameter = concat [f diameter x | x <- [0 .. diameter]]
+     where
+      -- Adds a single cell to each of the four sides of the diamond
+      f d x = map (d,) . take 4 . iterate perp $ V2 x (d - x)
+
+  finishCookingRecipe ::
+    HasRobotStepState sig m =>
+    Recipe e ->
+    Value ->
+    [WorldUpdate Entity] ->
+    [RobotUpdate] ->
+    m CESK
+  finishCookingRecipe r v wf rf = do
     time <- use ticks
     let remTime = r ^. recipeTime
     return . (if remTime <= 1 then id else Waiting (remTime + time)) $
-      Out VUnit s (FImmediate c wf rf : k)
+      Out v s (FImmediate c wf rf : k)
+
+  deriveHeading :: HasRobotStepState sig m => Direction -> m Heading
+  deriveHeading d = do
+    orient <- use robotOrientation
+    when (isCardinal d) $ hasCapabilityFor COrient $ TDir d
+    return $ applyTurn d $ orient ? zero
 
   lookInDirection :: HasRobotStepState sig m => Direction -> m (Location, Maybe Entity)
   lookInDirection d = do
+    newHeading <- deriveHeading d
     loc <- use robotLocation
-    orient <- use robotOrientation
-    when (isCardinal d) $ hasCapabilityFor COrient (TDir d)
-    let nextLoc = loc .+^ applyTurn d (orient ? zero)
+    let nextLoc = loc .+^ newHeading
     (nextLoc,) <$> entityAt nextLoc
 
   ensureEquipped :: HasRobotStepState sig m => Text -> m Entity
@@ -1892,30 +2305,54 @@ execConst c vs s k = do
       mAch
     selfDestruct .= True
 
-  -- Make sure nothing is in the way. Note that system robots implicitly ignore and base throws on failure.
-  checkMoveAhead :: HasRobotStepState sig m => Location -> MoveFailure -> m ()
-  checkMoveAhead nextLoc MoveFailure {..} = do
+  -- Make sure nothing is in the way. Note that system robots implicitly ignore
+  -- and base throws on failure.
+  checkMoveFailure :: HasRobotStepState sig m => Location -> m (Maybe MoveFailureDetails)
+  checkMoveFailure nextLoc = do
     me <- entityAt nextLoc
     systemRob <- use systemRobot
-    case me of
-      Nothing -> return ()
-      Just e
-        | systemRob -> return ()
-        | otherwise -> do
-            -- robots can not walk through walls
-            when (e `hasProperty` Unwalkable) $
-              case failIfBlocked of
-                Destroy -> destroyIfNotBase Nothing
-                ThrowExn -> throwError $ cmdExn c ["There is a", e ^. entityName, "in the way!"]
-                IgnoreFail -> return ()
+    caps <- use robotCapabilities
+    return $ do
+      e <- me
+      guard $ not systemRob
+      go caps e
+   where
+    go caps e
+      -- robots can not walk through walls
+      | e `hasProperty` Unwalkable = Just $ MoveFailureDetails e PathBlocked
+      -- robots drown if they walk over liquid without boat
+      | e `hasProperty` Liquid && CFloat `S.notMember` caps =
+          Just $ MoveFailureDetails e PathLiquid
+      | otherwise = Nothing
 
-            -- robots drown if they walk over liquid without boat
-            caps <- use robotCapabilities
-            when (e `hasProperty` Liquid && CFloat `S.notMember` caps) $
-              case failIfDrown of
-                Destroy -> destroyIfNotBase Nothing
-                ThrowExn -> throwError $ cmdExn c ["There is a dangerous liquid", e ^. entityName, "in the way!"]
-                IgnoreFail -> return ()
+  applyMoveFailureEffect ::
+    HasRobotStepState sig m =>
+    Maybe MoveFailureDetails ->
+    MoveFailure ->
+    m ()
+  applyMoveFailureEffect maybeFailure MoveFailure {..} =
+    case maybeFailure of
+      Nothing -> return ()
+      Just (MoveFailureDetails e failureMode) -> case failureMode of
+        PathBlocked ->
+          handleFailure
+            failIfBlocked
+            ["There is a", e ^. entityName, "in the way!"]
+        PathLiquid ->
+          handleFailure
+            failIfDrown
+            ["There is a dangerous liquid", e ^. entityName, "in the way!"]
+   where
+    handleFailure behavior message = case behavior of
+      Destroy -> destroyIfNotBase Nothing
+      ThrowExn -> throwError $ cmdExn c message
+      IgnoreFail -> return ()
+
+  -- Determine the move failure mode and apply the corresponding effect.
+  checkMoveAhead :: HasRobotStepState sig m => Location -> MoveFailure -> m ()
+  checkMoveAhead nextLoc failureHandlers = do
+    maybeFailure <- checkMoveFailure nextLoc
+    applyMoveFailureEffect maybeFailure failureHandlers
 
   getRobotWithinTouch :: HasRobotStepState sig m => RID -> m Robot
   getRobotWithinTouch rid = do
@@ -1925,10 +2362,13 @@ execConst c vs s k = do
       else do
         mother <- robotWithID rid
         other <- mother `isJustOrFail` ["There is no robot with ID", from (show rid) <> "."]
+
+        let otherLoc = other ^. robotLocation
+        privileged <- isPrivilegedBot
+        myLoc <- use robotLocation
+
         -- Make sure it is either in the same location or we do not care
-        omni <- (||) <$> use systemRobot <*> use creativeMode
-        loc <- use robotLocation
-        (omni || (other ^. robotLocation) `manhattan` loc <= 1)
+        isNearbyOrExempt privileged myLoc otherLoc
           `holdsOrFail` ["The robot with ID", from (show rid), "is not close enough."]
         return other
 
@@ -1976,7 +2416,7 @@ execConst c vs s k = do
         >>= (`isJustOrFail` ["There is nothing here to", verb <> "."])
 
     -- Ensure it can be picked up.
-    omni <- (||) <$> use systemRobot <*> use creativeMode
+    omni <- isPrivilegedBot
     (omni || e `hasProperty` Portable)
       `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
 
@@ -2012,8 +2452,63 @@ execConst c vs s k = do
     return $ Out (VText (e' ^. entityName)) s k
 
 ------------------------------------------------------------
+-- The "watch" command
+------------------------------------------------------------
+
+addWatchedLocation ::
+  HasRobotStepState sig m =>
+  Location ->
+  m ()
+addWatchedLocation loc = do
+  rid <- use robotID
+  robotsWatching %= M.insertWith (<>) loc (S.singleton rid)
+
+-- | Clear watches that are out of range
+purgeFarAwayWatches ::
+  HasRobotStepState sig m => m ()
+purgeFarAwayWatches = do
+  privileged <- isPrivilegedBot
+  myLoc <- use robotLocation
+  rid <- use robotID
+
+  let isNearby = isNearbyOrExempt privileged myLoc
+      f loc =
+        if not $ isNearby loc
+          then S.delete rid
+          else id
+
+  robotsWatching %= M.filter (not . null) . M.mapWithKey f
+
+------------------------------------------------------------
 -- Some utility functions
 ------------------------------------------------------------
+
+-- | Exempts the robot from various command constraints
+-- when it is either a system robot or playing in creative mode
+isPrivilegedBot :: HasRobotStepState sig m => m Bool
+isPrivilegedBot = (||) <$> use systemRobot <*> use creativeMode
+
+-- | Requires that the target location is within one cell.
+-- Requirement is waived if the bot is privileged.
+isNearbyOrExempt :: Bool -> Location -> Location -> Bool
+isNearbyOrExempt privileged myLoc otherLoc =
+  privileged || otherLoc `manhattan` myLoc <= 1
+
+grantAchievement ::
+  (Has (State GameState) sig m, Has (Lift IO) sig m) =>
+  GameplayAchievement ->
+  m ()
+grantAchievement a = do
+  currentTime <- sendIO getZonedTime
+  scenarioPath <- use currentScenarioPath
+  gameAchievements
+    %= M.insertWith
+      (<>)
+      a
+      (Attainment (GameplayAchievement a) scenarioPath currentTime)
+
+data MoveFailureMode = PathBlocked | PathLiquid
+data MoveFailureDetails = MoveFailureDetails Entity MoveFailureMode
 
 -- | How to handle failure, for example when moving to blocked location
 data RobotFailure = ThrowExn | Destroy | IgnoreFail
@@ -2024,19 +2519,21 @@ data MoveFailure = MoveFailure
   , failIfDrown :: RobotFailure
   }
 
-data GrabbingCmd = Grab' | Harvest' | Swap' deriving (Eq, Show)
+data GrabbingCmd = Grab' | Harvest' | Swap' | Push' deriving (Eq, Show)
 
 verbGrabbingCmd :: GrabbingCmd -> Text
 verbGrabbingCmd = \case
   Harvest' -> "harvest"
   Grab' -> "grab"
   Swap' -> "swap"
+  Push' -> "push"
 
 verbedGrabbingCmd :: GrabbingCmd -> Text
 verbedGrabbingCmd = \case
   Harvest' -> "harvested"
   Grab' -> "grabbed"
   Swap' -> "swapped"
+  Push' -> "pushed"
 
 -- | Format a set of suggested devices for use in an error message,
 --   in the format @device1 or device2 or ... or deviceN@.
@@ -2135,7 +2632,7 @@ evalCmp c v1 v2 = decideCmp c $ compareValues v1 v2
     Gt -> fmap (== GT)
     Leq -> fmap (/= GT)
     Geq -> fmap (/= LT)
-    _ -> const $ throwError $ Fatal $ T.append "evalCmp called on bad constant " (from (show c))
+    _ -> const . throwError . Fatal . T.append "evalCmp called on bad constant " . from $ show c
 
 -- | Compare two values, returning an 'Ordering' if they can be
 --   compared, or @Nothing@ if they cannot.
@@ -2157,6 +2654,12 @@ compareValues v1 = case v1 of
     VPair v21 v22 ->
       (<>) <$> compareValues v11 v21 <*> compareValues v12 v22
     v2 -> incompatCmp v1 v2
+  VRcd m1 -> \case
+    VRcd m2 -> mconcat <$> (zipWithM compareValues `on` M.elems) m1 m2
+    v2 -> incompatCmp v1 v2
+  VKey kc1 -> \case
+    VKey kc2 -> return (compare kc1 kc2)
+    v2 -> incompatCmp v1 v2
   VClo {} -> incomparable v1
   VCApp {} -> incomparable v1
   VDef {} -> incomparable v1
@@ -2164,6 +2667,7 @@ compareValues v1 = case v1 of
   VBind {} -> incomparable v1
   VDelay {} -> incomparable v1
   VRef {} -> incomparable v1
+  VRequirements {} -> incomparable v1
 
 -- | Values with different types were compared; this should not be
 --   possible since the type system should catch it.

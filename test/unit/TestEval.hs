@@ -1,11 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
--- | Swarm unit tests
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Swarm unit tests
 module TestEval where
 
 import Control.Lens ((^.), _3)
 import Data.Char (ord)
+import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.State
@@ -259,6 +263,46 @@ testEval g =
             ( \(NonNegative i) ->
                 T.concat ["charAt 0 (toChar ", from @String (show i), ")"]
                   `evaluatesToP` VInt i
+            )
+        ]
+    , testGroup
+        "records - #1093"
+        [ testCase
+            "empty record"
+            ("[]" `evaluatesTo` VRcd M.empty)
+        , testCase
+            "singleton record"
+            ("[y = 3 + 4]" `evaluatesTo` VRcd (M.singleton "y" (VInt 7)))
+        , testCase
+            "record equality up to reordering"
+            ("[x = 2, y = 3] == [y = 3, x = 2]" `evaluatesTo` VBool True)
+        , testCase
+            "record projection"
+            ("[x = 2, y = 3].x" `evaluatesTo` VInt 2)
+        , testCase
+            "nested record projection"
+            ("let r = [x=2, y=3] in let z = [q = r, n=\"hi\"] in z.q.y" `evaluatesTo` VInt 3)
+        , testCase
+            "record punning"
+            ( "let x = 2 in let y = 3 in [x,y,z=\"hi\"]"
+                `evaluatesTo` VRcd (M.fromList [("x", VInt 2), ("y", VInt 3), ("z", VText "hi")])
+            )
+        , testCase
+            "record comparison"
+            ("[y=1, x=2] < [x=3,y=0]" `evaluatesTo` VBool True)
+        , testCase
+            "record comparison"
+            ("[y=1, x=3] < [x=3,y=0]" `evaluatesTo` VBool False)
+        , testCase
+            "record function"
+            ("let f : [x:int, y:text] -> int = \\r.r.x + 1 in f [x=3,y=\"hi\"]" `evaluatesTo` VInt 4)
+        , testCase
+            "format record"
+            ("format [y = 2, x = 1+2]" `evaluatesTo` VText "[x = 3, y = 2]")
+        , testCase
+            "record fields don't scope over other fields"
+            ( "let x = 1 in [x = x + 1, y = x]"
+                `evaluatesTo` VRcd (M.fromList [("x", VInt 2), ("y", VInt 1)])
             )
         ]
     ]

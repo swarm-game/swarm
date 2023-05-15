@@ -1,7 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Display logic for Objectives.
-module Swarm.Game.Scenario.Objective.Presentation.Render where
+module Swarm.TUI.View.Objective where
 
 import Brick hiding (Direction, Location)
 import Brick.Focus
@@ -9,13 +12,14 @@ import Brick.Widgets.Center
 import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
 import Control.Lens hiding (Const, from)
+import Data.List (intercalate)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Maybe (listToMaybe)
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Objective
-import Swarm.Game.Scenario.Objective.Presentation.Model
 import Swarm.TUI.Attr
+import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Util
 
@@ -23,7 +27,7 @@ makeListWidget :: GoalTracking -> BL.List Name GoalEntry
 makeListWidget (GoalTracking _announcements categorizedObjs) =
   BL.listMoveTo 1 $ BL.list (GoalWidgets ObjectivesList) (V.fromList objList) 1
  where
-  objList = concatMap f $ M.toList categorizedObjs
+  objList = intercalate [Spacer] $ map f $ M.toList categorizedObjs
   f (h, xs) = Header h : map (Goal h) (NE.toList xs)
 
 renderGoalsDisplay :: GoalDisplay -> Widget Name
@@ -57,10 +61,10 @@ renderGoalsDisplay gd =
   -- Note: An extra "padRight" is inserted to account for the vertical scrollbar,
   -- whether or not it appears.
   goalElaboration =
-    clickable (GoalWidgets GoalSummary) $
-      maybeScroll ModalViewport $
-        maybe emptyWidget (padAll 1 . padRight (Pad 1) . highlightIfFocused . singleGoalDetails . snd) $
-          BL.listSelectedElement lw
+    clickable (GoalWidgets GoalSummary)
+      . maybeScroll ModalViewport
+      . maybe emptyWidget (padAll 1 . padRight (Pad 1) . highlightIfFocused . singleGoalDetails . snd)
+      $ BL.listSelectedElement lw
 
 getCompletionIcon :: Objective -> GoalStatus -> Widget Name
 getCompletionIcon obj = \case
@@ -79,6 +83,7 @@ drawGoalListItem ::
   GoalEntry ->
   Widget Name
 drawGoalListItem _isSelected e = case e of
+  Spacer -> str " "
   Header gs -> withAttr boldAttr $ str $ show gs
   Goal gs obj -> getCompletionIcon obj gs <+> titleWidget
    where
@@ -87,5 +92,6 @@ drawGoalListItem _isSelected e = case e of
 
 singleGoalDetails :: GoalEntry -> Widget Name
 singleGoalDetails = \case
-  Header _gs -> displayParagraphs [" "]
   Goal _gs obj -> displayParagraphs $ obj ^. objectiveGoal
+  -- Only Goal entries are selectable, so we should never see this:
+  _ -> emptyWidget

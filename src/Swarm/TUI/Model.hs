@@ -5,10 +5,6 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
--- Module      :  Swarm.TUI.Model
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Application state for the @brick@-based Swarm TUI.
@@ -16,11 +12,13 @@ module Swarm.TUI.Model (
   -- * Custom UI label types
   -- $uilabel
   AppEvent (..),
+  WebCommand (..),
   FocusablePanel (..),
   Name (..),
 
   -- * Menus and dialogs
   ModalType (..),
+  ScenarioOutcome (..),
   Button (..),
   ButtonAction (..),
   Modal (..),
@@ -136,6 +134,7 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
+import Text.Fuzzy qualified as Fuzzy
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -144,12 +143,15 @@ import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
 -- $uilabel These types are used as parameters to various @brick@
 -- types.
 
+newtype WebCommand = RunWebCode Text
+  deriving (Show)
+
 -- | 'Swarm.TUI.Model.AppEvent' represents a type for custom event types our app can
---   receive.  At the moment, we only have one custom event, but it's
---   very important: a separate thread sends 'Frame' events as fast as
+--   receive. The primary custom event 'Frame' is sent by a separate thread as fast as
 --   it can, telling the TUI to render a new frame.
 data AppEvent
   = Frame
+  | Web WebCommand
   | UpstreamVersion (Either NewReleaseFailure String)
   deriving (Show)
 
@@ -263,13 +265,14 @@ populateInventoryList (Just r) = do
   mList <- preuse (uiInventory . _Just . _2)
   showZero <- use uiShowZero
   sortOptions <- use uiInventorySort
+  search <- use uiInventorySearch
   let mkInvEntry (n, e) = InventoryEntry n e
       mkInstEntry (_, e) = EquippedEntry e
       itemList isInventoryDisplay mk label =
         (\case [] -> []; xs -> Separator label : xs)
           . map mk
           . sortInventory sortOptions
-          . filter shouldDisplay
+          . filter ((&&) <$> matchesSearch <*> shouldDisplay)
           . elems
        where
         -- Display items if we have a positive number of them, or they
@@ -281,6 +284,9 @@ populateInventoryList (Just r) = do
             || isInventoryDisplay
               && showZero
               && not ((r ^. equippedDevices) `E.contains` e)
+
+      matchesSearch :: (Count, Entity) -> Bool
+      matchesSearch (_, e) = maybe (const True) Fuzzy.test search (e ^. E.entityName)
 
       items =
         (r ^. robotInventory . to (itemList True mkInvEntry "Inventory"))
@@ -321,6 +327,8 @@ data AppOpts = AppOpts
   -- ^ Code to be run on base.
   , autoPlay :: Bool
   -- ^ Automatically run the solution defined in the scenario file
+  , speed :: Int
+  -- ^ Initial game speed (logarithm)
   , cheatMode :: Bool
   -- ^ Should cheat mode be enabled?
   , colorMode :: Maybe ColorMode

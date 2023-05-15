@@ -7,7 +7,7 @@
     A tall, living entity made of a tough cellular material called "wood".
     They regrow after being harvested and are an important raw ingredient used
     in making many different devices.
-  properties: [portable, growable]
+  properties: [portable, growable, opaque]
   growth: [500, 600]
 
 - name: branch
@@ -71,7 +71,7 @@
     char: 'o'
   description:
   - A medium-sized rock, picked up from the ground or created by drilling.
-    Can be used to build a simple furnace, among other things.
+    Can be ground into sand or used to build a simple furnace, among other things.
   properties: [portable]
 
 - name: handle
@@ -117,7 +117,7 @@
     char: 'A'
   description:
   - A mountain. Can be tunneled through with a drill, but it takes time.
-  properties: [unwalkable]
+  properties: [unwalkable, opaque]
 
 - name: mountain tunnel
   display:
@@ -440,9 +440,10 @@
     attr: sand
     char: '█'
   description:
-  - A substance composed mostly of tiny rocks and mineral particles.  It
-    tends to be found near water, and can be used in a furnace to make glass.
-  properties: [portable, infinite]
+  - A substance composed mostly of tiny rocks and mineral particles that can be
+    used in a furnace to make glass.  You can often find it near water, or
+    make it yourself by grinding up rocks.
+  properties: [portable]
 
 - name: glass
   display:
@@ -1035,7 +1036,8 @@
     explains, a type is just a collection of values, and a finite collection
     of values is just a fancy number.  For example, the type `bool` is
     just a fancy version of the number 2, where the two things happen to be
-    labelled `false` and `true`.
+    labelled `false` and `true`.  There are also types `unit` and
+    `void` that correspond to 1 and 0, respectively.
   - |
     The product of two types is a type of pairs, since, for example,
     if `t` is a type with three elements, then there are 2 * 3 = 6
@@ -1148,9 +1150,10 @@
     char: 'Y'
   description:
   - A device for transforming electric current into radio waves, and
-    vice versa.
+    vice versa.  Antennas can be used to increase the viable range
+    over which you can communicate with your robots.
   - |
-    It can be used to locate nearby actors, by bouncing radio
+    Antennas can also be used to locate nearby actors, by bouncing radio
     waves off them and listening for the echo.  This capability can be
     accessed via two commands:
   - |
@@ -1178,3 +1181,71 @@
     enabling the command `whereami : cmd (int * int)`.
   properties: [portable]
   capabilities: [senseloc]
+
+- name: tweezers
+  display:
+    attr: device
+    char: 'V'
+  description:
+  - |
+    Sometimes small, self-reproducing creatures get stuck inside a robot's
+    relays, preventing it from executing properly.  Tweezers are
+    useful for removing such pests, and for inspecting robots' detailed
+    inner workings.
+  properties: [portable]
+  capabilities: [debug]
+
+- name: victrola
+  display:
+    attr: device
+    char: 'Q'
+  description:
+  - |
+    A device for reading and writing data on circular platters made of
+    a soft plastic material.  The stylus must be made of a
+    hard and durable material, with a special tip that relies on
+    quantum effects to extract high-density information.
+  - |
+    Also allows manipulating composite values consisting of a
+    collection of named fields.  For example, `[x = 2, y = "hi"]`
+    is a value of type `[x : int, y : text]`.  Individual fields
+    can be projected using dot notation.  For example,
+    `let r = [y="hi", x=2] in r.x` has the value 2.  The order
+    of the fields does not matter.
+  properties: [portable]
+  capabilities: [record]
+
+- name: quantum dot
+  display:
+    attr: gold
+    char: '.'
+  description:
+  - |
+    A nanoscale semiconductor particle with a wide range of
+    applications.
+  properties: [portable]
+
+- name: 'key'
+  display:
+    attr: gold
+    char: 'k'
+  description:
+  - A versatile item, with uses such as opening
+    locked doors, entering input, and retrieving stored values.
+  properties: [portable]
+
+- name: keyboard
+  display:
+    attr: device
+    char: 'K'
+  description:
+  - A small device with multiple keys, adapted for your unique anatomy.
+  - |
+    `installKeyHandler : text -> (key -> cmd unit) -> cmd unit`
+    installs a custom handler function that can be activated to
+    respond to keyboard inputs typed at the REPL.
+  - |
+    `key : text -> key` constructs values of type `key`, for
+    example `key "Down"` or `key "C-S-x"`.
+  properties: [portable]
+  capabilities: [handleinput]

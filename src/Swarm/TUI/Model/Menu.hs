@@ -4,6 +4,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Model.Menu where
 
 import Brick.Widgets.Dialog (Dialog)
@@ -14,6 +16,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Vector qualified as V
+import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Entity as E
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
@@ -24,7 +27,6 @@ import Swarm.Game.ScenarioInfo (
   scenarioCollectionToList,
  )
 import Swarm.Game.State
-import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.TUI.Model.Name
 import Swarm.Util
 import System.FilePath (dropTrailingPathSeparator, splitPath, takeFileName)
@@ -34,14 +36,16 @@ import Witch (into)
 -- Menus and dialogs
 ------------------------------------------------------------
 
+data ScenarioOutcome = WinModal | LoseModal
+  deriving (Show)
+
 data ModalType
   = HelpModal
   | RecipesModal
   | CommandsModal
   | MessagesModal
   | RobotsModal
-  | WinModal
-  | LoseModal
+  | ScenarioEndModal ScenarioOutcome
   | QuitModal
   | KeepPlayingModal
   | DescriptionModal Entity
@@ -106,7 +110,7 @@ mkNewGameMenu cheat sc path = NewGameMenu . NE.fromList <$> go (Just sc) (splitP
   go (Just curSC) (thing : rest) stk = go nextSC rest (lst : stk)
    where
     hasName :: ScenarioItem -> Bool
-    hasName (SISingle (_, ScenarioInfo pth _ _ _)) = takeFileName pth == thing
+    hasName (SISingle (_, ScenarioInfo pth _)) = takeFileName pth == thing
     hasName (SICollection nm _) = nm == into @Text (dropTrailingPathSeparator thing)
 
     lst = BL.listFindBy hasName (mkScenarioList cheat curSC)

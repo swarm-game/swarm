@@ -1,4 +1,7 @@
--- | Simplification logic for boolean expressions that is not
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Simplification logic for boolean expressions that is not
 -- provided in the 'boolexpr' package.
 module Data.BoolExpr.Simplify (
   cannotBeTrue,
@@ -24,11 +27,11 @@ extractConstFromSigned v = case v of
 
 hasContradiction :: Ord a => Conj (Signed a) -> Bool
 hasContradiction (Conj items) =
-  not $
-    M.null $
-      M.filter ((> 1) . S.size) $
-        M.fromListWith (<>) $
-          fmap (fmap S.singleton . extractConstFromSigned) items
+  not
+    . M.null
+    . M.filter ((> 1) . S.size)
+    . M.fromListWith (<>)
+    $ fmap (fmap S.singleton . extractConstFromSigned) items
 
 simplifyDNF :: Ord a => DNF a -> DNF a
 simplifyDNF (DNF (Disj disjunctions)) =

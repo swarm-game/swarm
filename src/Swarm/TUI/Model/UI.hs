@@ -4,6 +4,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Model.UI (
   UIState (..),
   GoalDisplay (..),
@@ -15,6 +17,7 @@ module Swarm.TUI.Model.UI (
   uiREPL,
   uiInventory,
   uiInventorySort,
+  uiInventorySearch,
   uiMoreInfoTop,
   uiMoreInfoBot,
   uiScrollToEnd,
@@ -32,6 +35,7 @@ module Swarm.TUI.Model.UI (
   uiShowFPS,
   uiShowREPL,
   uiShowZero,
+  uiShowDebug,
   uiShowRobots,
   uiHideRobotsUntil,
   uiInventoryShouldUpdate,
@@ -43,7 +47,7 @@ module Swarm.TUI.Model.UI (
 
   -- ** Initialization
   initFocusRing,
-  initLgTicksPerSecond,
+  defaultInitLgTicksPerSecond,
   initUIState,
 ) where
 
@@ -58,17 +62,19 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
-import Swarm.Game.Scenario.Objective.Presentation.Model
+import Swarm.Game.Achievement.Attainment
+import Swarm.Game.Achievement.Definitions
+import Swarm.Game.Achievement.Persistence
+import Swarm.Game.Failure (SystemFailure)
+import Swarm.Game.Failure.Render (prettyFailure)
+import Swarm.Game.ResourceLoading (getSwarmHistoryPath, readAppData)
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
-import Swarm.TUI.Model.Achievement.Attainment
-import Swarm.TUI.Model.Achievement.Definitions
-import Swarm.TUI.Model.Achievement.Persistence
-import Swarm.TUI.Model.Failure (SystemFailure)
+import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
@@ -90,6 +96,7 @@ data UIState = UIState
   , _uiREPL :: REPLState
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
   , _uiInventorySort :: InventorySortOptions
+  , _uiInventorySearch :: Maybe Text
   , _uiMoreInfoTop :: Bool
   , _uiMoreInfoBot :: Bool
   , _uiScrollToEnd :: Bool
@@ -100,6 +107,7 @@ data UIState = UIState
   , _uiShowFPS :: Bool
   , _uiShowREPL :: Bool
   , _uiShowZero :: Bool
+  , _uiShowDebug :: Bool
   , _uiHideRobotsUntil :: TimeSpec
   , _uiInventoryShouldUpdate :: Bool
   , _uiTPF :: Double
@@ -152,6 +160,9 @@ uiREPL :: Lens' UIState REPLState
 -- | The order and direction of sorting inventory list.
 uiInventorySort :: Lens' UIState InventorySortOptions
 
+-- | The current search string used to narrow the inventory view.
+uiInventorySearch :: Lens' UIState (Maybe Text)
+
 -- | The hash value of the focused robot entity (so we can tell if its
 --   inventory changed) along with a list of the items in the
 --   focused robot's inventory.
@@ -190,6 +201,11 @@ uiShowREPL :: Lens' UIState Bool
 
 -- | A toggle to show or hide inventory items with count 0 by pressing `0`
 uiShowZero :: Lens' UIState Bool
+
+-- | A toggle to show debug.
+--
+-- TODO: #1112 use record for selection of debug features?
+uiShowDebug :: Lens' UIState Bool
 
 -- | Hide robots on the world map.
 uiHideRobotsUntil :: Lens' UIState TimeSpec
@@ -265,18 +281,18 @@ initFocusRing :: FocusRing Name
 initFocusRing = focusRing $ map FocusablePanel listEnums
 
 -- | The initial tick speed.
-initLgTicksPerSecond :: Int
-initLgTicksPerSecond = 4 -- 2^4 = 16 ticks / second
+defaultInitLgTicksPerSecond :: Int
+defaultInitLgTicksPerSecond = 4 -- 2^4 = 16 ticks / second
 
 -- | Initialize the UI state.  This needs to be in the IO monad since
 --   it involves reading a REPL history file, getting the current
 --   time, and loading text files from the data directory.  The @Bool@
 --   parameter indicates whether we should start off by showing the
 --   main menu.
-initUIState :: Bool -> Bool -> ExceptT Text IO ([SystemFailure], UIState)
-initUIState showMainMenu cheatMode = do
+initUIState :: Int -> Bool -> Bool -> ExceptT Text IO ([SystemFailure], UIState)
+initUIState speedFactor showMainMenu cheatMode = do
   historyT <- liftIO $ readFileMayT =<< getSwarmHistoryPath False
-  appDataMap <- liftIO readAppData
+  appDataMap <- withExceptT prettyFailure readAppData
   let history = maybe [] (map REPLEntry . T.lines) historyT
   startTime <- liftIO $ getTime Monotonic
   (warnings, achievements) <- liftIO loadAchievementsInfo
@@ -290,6 +306,7 @@ initUIState showMainMenu cheatMode = do
           , _uiREPL = initREPLState $ newREPLHistory history
           , _uiInventory = Nothing
           , _uiInventorySort = defaultSortOptions
+          , _uiInventorySearch = Nothing
           , _uiMoreInfoTop = False
           , _uiMoreInfoBot = False
           , _uiScrollToEnd = False
@@ -300,11 +317,12 @@ initUIState showMainMenu cheatMode = do
           , _uiShowFPS = False
           , _uiShowREPL = True
           , _uiShowZero = True
+          , _uiShowDebug = False
           , _uiHideRobotsUntil = startTime - 1
           , _uiInventoryShouldUpdate = False
           , _uiTPF = 0
           , _uiFPS = 0
-          , _lgTicksPerSecond = initLgTicksPerSecond
+          , _lgTicksPerSecond = speedFactor
           , _lastFrameTime = startTime
           , _accumulatedTime = 0
           , _lastInfoTime = 0

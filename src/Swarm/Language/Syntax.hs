@@ -8,10 +8,6 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
--- Module      :  Swarm.Language.Syntax
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Abstract syntax for terms of the Swarm programming language.
@@ -20,17 +16,9 @@ module Swarm.Language.Syntax (
   Direction (..),
   AbsoluteDir (..),
   RelativeDir (..),
-  DirInfo (..),
-  applyTurn,
-  toDirection,
-  fromDirection,
-  allDirs,
+  directionSyntax,
   isCardinal,
-  dirInfo,
-  north,
-  south,
-  east,
-  west,
+  allDirs,
 
   -- * Constants
   Const (..),
@@ -48,6 +36,9 @@ module Swarm.Language.Syntax (
   isBuiltinFunction,
   isTangible,
   isLong,
+  maxSniffRange,
+  maxScoutRange,
+  maxStrideRange,
 
   -- * Syntax
   Syntax' (..),
@@ -60,6 +51,7 @@ module Swarm.Language.Syntax (
   SrcLoc (..),
   noLoc,
   pattern STerm,
+  pattern TRequirements,
   pattern TPair,
   pattern TLam,
   pattern TApp,
@@ -68,6 +60,9 @@ module Swarm.Language.Syntax (
   pattern TDef,
   pattern TBind,
   pattern TDelay,
+  pattern TRcd,
+  pattern TProj,
+  pattern TAnnotate,
 
   -- * Terms
   Var,
@@ -88,29 +83,41 @@ module Swarm.Language.Syntax (
   freeVarsV,
   mapFreeS,
   locVarToSyntax',
+  asTree,
+  measureAstSize,
 ) where
 
-import Control.Arrow (Arrow ((&&&)))
-import Control.Lens (Plated (..), Traversal', makeLenses, (%~), (^.))
-import Data.Aeson.Types
+import Control.Lens (Plated (..), Traversal', makeLenses, para, universe, (%~), (^.))
+import Data.Aeson.Types hiding (Key)
 import Data.Char qualified as C (toLower)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
 import Data.Hashable (Hashable)
+import Data.Int (Int32)
 import Data.List qualified as L (tail)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Map qualified as M
+import Data.Map.Strict (Map)
 import Data.Set qualified as S
 import Data.String (IsString (fromString))
-import Data.Text hiding (filter, map)
+import Data.Text hiding (filter, length, map)
 import Data.Text qualified as T
+import Data.Tree
 import GHC.Generics (Generic)
-import Linear
 import Swarm.Language.Types
 import Swarm.Util qualified as Util
-import Swarm.Util.Location (Heading)
 import Witch.From (from)
+
+-- | Maximum perception distance for
+-- 'chirp' and 'sniff' commands
+maxSniffRange :: Int32
+maxSniffRange = 256
+
+maxScoutRange :: Int
+maxScoutRange = 64
+
+maxStrideRange :: Int
+maxStrideRange = 64
 
 ------------------------------------------------------------
 -- Directions
@@ -119,7 +126,16 @@ import Witch.From (from)
 -- | An absolute direction is one which is defined with respect to an
 --   external frame of reference; robots need a compass in order to
 --   use them.
-data AbsoluteDir = DNorth | DSouth | DEast | DWest
+--
+-- NOTE: These values are ordered by increasing angle according to
+-- the standard mathematical convention.
+-- That is, the right-pointing direction, East, is considered
+-- the "reference angle" and the order proceeds counter-clockwise.
+-- See https://en.wikipedia.org/wiki/Polar_coordinate_system#Conventions
+--
+-- Do not alter this ordering, as there exist functions that depend on it
+-- (e.g. "nearestDirection" and "relativeTo").
+data AbsoluteDir = DEast | DNorth | DWest | DSouth
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
 
 cardinalDirectionKeyOptions :: JSONKeyOptions
@@ -145,41 +161,12 @@ data RelativeDir = DLeft | DRight | DBack | DForward | DDown
 data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
 
-data DirInfo = DirInfo
-  { dirSyntax :: Text
-  , dirApplyTurn :: Heading -> Heading
-  -- ^ the turning for the direction
-  }
-
-allDirs :: [Direction]
-allDirs = map DAbsolute Util.listEnums <> map DRelative Util.listEnums
-
-toHeading :: AbsoluteDir -> Heading
-toHeading = \case
-  DNorth -> north
-  DSouth -> south
-  DEast -> east
-  DWest -> west
-
--- | Information about all directions
-dirInfo :: Direction -> DirInfo
-dirInfo d = case d of
-  DRelative e -> case e of
-    DLeft -> relative perp
-    DRight -> relative (fmap negate . perp)
-    DBack -> relative (fmap negate)
-    DDown -> relative (const down)
-    DForward -> relative id
-  DAbsolute e -> cardinal $ toHeading e
- where
-  -- name is generate from Direction data constuctor
-  -- e.g. DLeft becomes "left"
-  directionSyntax = toLower . T.tail . from $ case d of
-    DAbsolute x -> show x
-    DRelative x -> show x
-
-  cardinal = DirInfo directionSyntax . const
-  relative = DirInfo directionSyntax
+-- | Direction name is generated from Direction data constuctor
+-- e.g. DLeft becomes "left"
+directionSyntax :: Direction -> Text
+directionSyntax d = toLower . T.tail . from $ case d of
+  DAbsolute x -> show x
+  DRelative x -> show x
 
 -- | Check if the direction is absolute (e.g. 'north' or 'south').
 isCardinal :: Direction -> Bool
@@ -187,51 +174,8 @@ isCardinal = \case
   DAbsolute _ -> True
   _ -> False
 
--- | The cardinal direction north = @V2 0 1@.
-north :: Heading
-north = V2 0 1
-
--- | The cardinal direction south = @V2 0 (-1)@.
-south :: Heading
-south = V2 0 (-1)
-
--- | The cardinal direction east = @V2 1 0@.
-east :: Heading
-east = V2 1 0
-
--- | The cardinal direction west = @V2 (-1) 0@.
-west :: Heading
-west = V2 (-1) 0
-
--- | The direction for viewing the current cell = @V2 0 0@.
-down :: Heading
-down = zero
-
--- | The 'applyTurn' function gives the meaning of each 'Direction' by
---   turning relative to the given heading or by turning to an absolute
---   heading
-applyTurn :: Direction -> Heading -> Heading
-applyTurn = dirApplyTurn . dirInfo
-
--- | Mapping from heading to their corresponding cardinal directions.
---   Only absolute directions are mapped.
-cardinalDirs :: M.Map Heading Direction
-cardinalDirs =
-  M.fromList $ map (toHeading &&& DAbsolute) Util.listEnums
-
--- | Possibly convert a heading into a 'Direction'---that is, if the
---   vector happens to be a unit vector in one of the cardinal
---   directions.
-toDirection :: Heading -> Maybe Direction
-toDirection v = M.lookup v cardinalDirs
-
--- | Convert a 'Direction' into a corresponding heading.  Note that
---   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',
---   and 'DWest'---other 'Direction's return the zero vector.
-fromDirection :: Direction -> Heading
-fromDirection = \case
-  DAbsolute x -> toHeading x
-  _ -> zero
+allDirs :: [Direction]
+allDirs = map DAbsolute Util.listEnums <> map DRelative Util.listEnums
 
 ------------------------------------------------------------
 -- Constants
@@ -265,6 +209,10 @@ data Const
 
     -- | Move forward one step.
     Move
+  | -- | Push an entity forward one step.
+    Push
+  | -- | Move forward multiple steps.
+    Stride
   | -- | Turn in some direction.
     Turn
   | -- | Grab an item from the current location.
@@ -313,8 +261,24 @@ data Const
 
     -- | Get current time
     Time
+  | -- Detect whether a robot is within line-of-sight in a direction
+    Scout
   | -- | Get the current x, y coordinates
     Whereami
+  | -- | Locate the closest instance of a given entity within the rectangle
+    -- specified by opposite corners, relative to the current location.
+    Detect
+  | -- | Count the number of a given entity within the rectangle
+    -- specified by opposite corners, relative to the current location.
+    Resonate
+  | -- | Get the distance to the closest instance of the specified entity.
+    Sniff
+  | -- | Get the direction to the closest instance of the specified entity.
+    Chirp
+  | -- | Register a location to interrupt a `wait` upon changes
+    Watch
+  | -- | Register a (remote) location to interrupt a `wait` upon changes
+    Surveil
   | -- | Get the current heading.
     Heading
   | -- | See if we can move forward or not.
@@ -434,6 +398,14 @@ data Const
     --   that is, no other robots will execute any commands while
     --   the robot is executing @c@.
     Atomic
+  | -- | Like @atomic@, but with no restriction on program size.
+    Instant
+  | -- Keyboard input
+
+    -- | Create `key` values.
+    Key
+  | -- | Install a new keyboard input handler.
+    InstallKeyHandler
   | -- God-like commands that are omnipresent or omniscient.
 
     -- | Teleport a robot to the given position.
@@ -598,6 +570,15 @@ constInfo c = case c of
       , "This destroys the robot's inventory, so consider `salvage` as an alternative."
       ]
   Move -> command 0 short "Move forward one step."
+  Push ->
+    command 1 short . doc "Push an entity forward one step." $
+      [ "Both entity and robot moves forward one step."
+      , "Destination must not contain an entity."
+      ]
+  Stride ->
+    command 1 short . doc "Move forward multiple steps." $
+      [ T.unwords ["Has a max range of", T.pack $ show maxStrideRange, "units."]
+      ]
   Turn -> command 1 short "Turn in some direction."
   Grab -> command 0 short "Grab an item from the current location."
   Harvest ->
@@ -623,6 +604,7 @@ constInfo c = case c of
       [ "Usually you want to `drill forward` when exploring to clear out obstacles."
       , "When you have found a source to drill, you can stand on it and `drill down`."
       , "See what recipes with drill you have available."
+      , "The `drill` command may return the name of an entity added to your inventory."
       ]
   Build ->
     command 1 long . doc "Construct a new robot." $
@@ -650,7 +632,10 @@ constInfo c = case c of
       , "Note that you can see the messages either in your logger device or the message panel."
       ]
   Log -> command 1 short "Log the string in the robot's logger."
-  View -> command 1 short "View the given actor."
+  View ->
+    command 1 short . doc "View the given actor." $
+      [ "This will recenter the map on the target robot and allow its inventory and logs to be inspected."
+      ]
   Appear ->
     command 1 short . doc "Set how the robot is displayed." $
       [ "You can either specify one character or five (for each direction)."
@@ -660,7 +645,44 @@ constInfo c = case c of
     command 1 short . doc "Create an item out of thin air." $
       ["Only available in creative mode."]
   Time -> command 0 Intangible "Get the current time."
+  Scout ->
+    command 1 short . doc "Detect whether a robot is within line-of-sight in a direction." $
+      [ "Perception is blocked by 'Opaque' entities."
+      , T.unwords ["Has a max range of", T.pack $ show maxScoutRange, "units."]
+      ]
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
+  Detect ->
+    command 2 Intangible . doc "Detect an entity within a rectangle." $
+      ["Locate the closest instance of a given entity within the rectangle specified by opposite corners, relative to the current location."]
+  Resonate ->
+    command 2 Intangible . doc "Count entities within a rectangle." $
+      [ "Applies a strong magnetic field over a given area and stimulates the matter within, generating a non-directional radio signal. A receiver tuned to the resonant frequency of the target entity is able to measure its quantity."
+      , "Counts the entities within the rectangle specified by opposite corners, relative to the current location."
+      ]
+  Sniff ->
+    command 1 short . doc "Determine distance to entity." $
+      [ "Measures concentration of airborne particles to infer distance to a certain kind of entity."
+      , "If none is detected, returns (-1)."
+      , T.unwords ["Has a max range of", T.pack $ show maxSniffRange, "units."]
+      ]
+  Chirp ->
+    command 1 short . doc "Determine direction to entity." $
+      [ "Uses a directional sonic emitter and microphone tuned to the acoustic signature of a specific entity to determine its direction."
+      , "Returns 'down' if out of range or the direction is indeterminate."
+      , "Provides absolute directions if \"compass\" equipped, relative directions otherwise."
+      , T.unwords ["Has a max range of", T.pack $ show maxSniffRange, "units."]
+      ]
+  Watch ->
+    command 1 short . doc "Interrupt `wait` upon location changes." $
+      [ "Place seismic detectors to alert upon entity changes to the specified location."
+      , "Supply a direction, as with the `scan` command, to specify a nearby location."
+      , "Can be invoked more than once until the next `wait` command, at which time the only the registered locations that are currently nearby are preserved."
+      , "Any change to entities at the monitored locations will cause the robot to wake up before the `wait` timeout."
+      ]
+  Surveil ->
+    command 1 short . doc "Interrupt `wait` upon (remote) location changes." $
+      [ "Like `watch`, but with no restriction on distance."
+      ]
   Heading -> command 0 Intangible "Get the current heading."
   Blocked -> command 0 Intangible "See if the robot can move forward."
   Scan ->
@@ -746,6 +768,21 @@ constInfo c = case c of
   Atomic ->
     command 1 Intangible . doc "Execute a block of commands atomically." $
       [ "When executing `atomic c`, a robot will not be interrupted, that is, no other robots will execute any commands while the robot is executing @c@."
+      ]
+  Instant ->
+    command 1 Intangible . doc "Execute a block of commands instantly." $
+      [ "Like `atomic`, but with no restriction on program size."
+      ]
+  Key ->
+    function 1 . doc "Create a key value from a text description." $
+      [ "The key description can optionally start with modifiers like 'C-', 'M-', 'A-', or 'S-', followed by either a regular key, or a special key name like 'Down' or 'End'"
+      , "For example, 'M-C-x', 'Down', or 'S-4'."
+      , "Which key combinations are actually possible to type may vary by keyboard and terminal program."
+      ]
+  InstallKeyHandler ->
+    command 2 Intangible . doc "Install a keyboard input handler." $
+      [ "The first argument is a hint line that will be displayed when the input handler is active."
+      , "The second argument is a function to handle keyboard inputs."
       ]
   Teleport -> command 2 short "Teleport a robot to the given location."
   As -> command 2 Intangible "Hypothetically run a command as if you were another robot."
@@ -849,6 +886,12 @@ data Term' ty
     TRequireDevice Text
   | -- | Require a certain number of an entity.
     TRequire Int Text
+  | -- | Primitive command to log requirements of a term.  The Text
+    --   field is to store the unaltered original text of the term, for use
+    --   in displaying the log message (since once we get to execution time the
+    --   original term may have been elaborated, e.g. `force` may have been added
+    --   around some variables, etc.)
+    SRequirements Text (Syntax' ty)
   | -- | A variable.
     TVar Var
   | -- | A pair.
@@ -876,6 +919,14 @@ data Term' ty
     --   be a special syntactic form so its argument can get special
     --   treatment during evaluation.
     SDelay DelayType (Syntax' ty)
+  | -- | Record literals @[x1 = e1, x2 = e2, x3, ...]@ Names @x@
+    --   without an accompanying definition are sugar for writing
+    --   @x=x@.
+    SRcd (Map Var (Maybe (Syntax' ty)))
+  | -- | Record projection @e.x@
+    SProj (Syntax' ty) Var
+  | -- | Annotate a term with a type
+    SAnnotate (Syntax' ty) Polytype
   deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
 -- The Traversable instance for Term (and for Syntax') is used during
@@ -944,6 +995,9 @@ pattern STerm t <-
   where
     STerm t = Syntax mempty t
 
+pattern TRequirements :: Text -> Term -> Term
+pattern TRequirements x t = SRequirements x (STerm t)
+
 -- | Match a TPair without syntax
 pattern TPair :: Term -> Term -> Term
 pattern TPair t1 t2 = SPair (STerm t1) (STerm t2)
@@ -986,8 +1040,21 @@ pattern TBind mv t1 t2 <- SBind (fmap lvVar -> mv) (STerm t1) (STerm t2)
 pattern TDelay :: DelayType -> Term -> Term
 pattern TDelay m t = SDelay m (STerm t)
 
+-- | Match a TRcd without syntax
+pattern TRcd :: Map Var (Maybe Term) -> Term
+pattern TRcd m <- SRcd ((fmap . fmap) _sTerm -> m)
+  where
+    TRcd m = SRcd ((fmap . fmap) STerm m)
+
+pattern TProj :: Term -> Var -> Term
+pattern TProj t x = SProj (STerm t) x
+
+-- | Match a TAnnotate without syntax
+pattern TAnnotate :: Term -> Polytype -> Term
+pattern TAnnotate t pt = SAnnotate (STerm t) pt
+
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TRequirements, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TRcd, TProj, TAnnotate #-}
 
 -- | Make infix operation (e.g. @2 + 3@) a curried function
 --   application (@((+) 2) 3@).
@@ -1040,6 +1107,7 @@ erase (TRobot r) = TRobot r
 erase (TRef r) = TRef r
 erase (TRequireDevice d) = TRequireDevice d
 erase (TRequire n e) = TRequire n e
+erase (SRequirements x s) = TRequirements x (eraseS s)
 erase (TVar s) = TVar s
 erase (SDelay x s) = TDelay x (eraseS s)
 erase (SPair s1 s2) = TPair (eraseS s1) (eraseS s2)
@@ -1048,6 +1116,9 @@ erase (SApp s1 s2) = TApp (eraseS s1) (eraseS s2)
 erase (SLet r x mty s1 s2) = TLet r (lvVar x) mty (eraseS s1) (eraseS s2)
 erase (SDef r x mty s) = TDef r (lvVar x) mty (eraseS s)
 erase (SBind mx s1 s2) = TBind (lvVar <$> mx) (eraseS s1) (eraseS s2)
+erase (SRcd m) = TRcd ((fmap . fmap) eraseS m)
+erase (SProj s x) = TProj (eraseS s) x
+erase (SAnnotate s pty) = TAnnotate (eraseS s) pty
 
 ------------------------------------------------------------
 -- Free variable traversals
@@ -1077,6 +1148,7 @@ freeVarsS f = go S.empty
     TRef {} -> pure s
     TRequireDevice {} -> pure s
     TRequire {} -> pure s
+    SRequirements x s1 -> rewrap $ SRequirements x <$> go bound s1
     TVar x
       | x `S.member` bound -> pure s
       | otherwise -> f s
@@ -1089,6 +1161,9 @@ freeVarsS f = go S.empty
     SDef r x xty s1 -> rewrap $ SDef r x xty <$> go (S.insert (lvVar x) bound) s1
     SBind mx s1 s2 -> rewrap $ SBind mx <$> go bound s1 <*> go (maybe id (S.insert . lvVar) mx bound) s2
     SDelay m s1 -> rewrap $ SDelay m <$> go bound s1
+    SRcd m -> rewrap $ SRcd <$> (traverse . traverse) (go bound) m
+    SProj s1 x -> rewrap $ SProj <$> go bound s1 <*> pure x
+    SAnnotate s1 pty -> rewrap $ SAnnotate <$> go bound s1 <*> pure pty
    where
     rewrap s' = Syntax' l <$> s' <*> pure ty
 
@@ -1111,3 +1186,13 @@ freeVarsV = freeVarsT . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
 -- | Apply a function to all free occurrences of a particular variable.
 mapFreeS :: Var -> (Syntax' ty -> Syntax' ty) -> Syntax' ty -> Syntax' ty
 mapFreeS x f = freeVarsS %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ -> t)
+
+-- | Transform the AST into a Tree datatype.
+-- Useful for pretty-printing (e.g. via "Data.Tree.drawTree").
+asTree :: Data a => Syntax' a -> Tree (Syntax' a)
+asTree = para Node
+
+-- | Each constructor is a assigned a value of 1, plus
+-- any recursive syntax it entails.
+measureAstSize :: Data a => Syntax' a -> Int
+measureAstSize = length . universe

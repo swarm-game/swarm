@@ -1,8 +1,4 @@
 -- |
--- Module      :  Swarm.Language.Requirement
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A requirement is something that is needed in order to successfully
@@ -190,6 +186,9 @@ requirements' = go
     TText _ -> mempty
     TAntiText _ -> mempty
     TBool _ -> mempty
+    -- It doesn't require any special capability to *inquire* about
+    -- the requirements of a term.
+    TRequirements _ _ -> mempty
     -- Look up the capabilities required by a function/command
     -- constants using 'constCaps'.
     TConst c -> maybe mempty singletonCap (constCaps c)
@@ -242,3 +241,10 @@ requirements' = go
     -- typechecked; Def commands are only allowed at the top level,
     -- so simply returning mempty is safe.
     TDef {} -> mempty
+    TRcd m -> insert (ReqCap CRecord) $ foldMap (go ctx . expandEq) (M.assocs m)
+     where
+      expandEq (x, Nothing) = TVar x
+      expandEq (_, Just t) = t
+    TProj t _ -> insert (ReqCap CRecord) $ go ctx t
+    -- A type ascription doesn't change requirements
+    TAnnotate t _ -> go ctx t

@@ -1,8 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TemplateHaskell #-}
 
--- | Swarm unit tests
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Swarm unit tests
 module TestLanguagePipeline where
 
 import Control.Arrow ((&&&))
@@ -190,7 +192,7 @@ testLanguagePipeline =
             "atomic non-simple"
             ( process
                 "def dup = \\c. c; c end; atomic (dup (dup move))"
-                "1: Invalid atomic block: reference to variable with non-simple type ∀ a3. cmd a3 -> cmd a3: dup"
+                "1: Invalid atomic block: reference to variable with non-simple type ∀ a. cmd a -> cmd a: dup"
             )
         , testCase
             "atomic nested"
@@ -275,10 +277,30 @@ testLanguagePipeline =
                in assertEqual
                     "variable types"
                     (getVars s)
-                    ( [ (TVar "g", [tyQ| int -> int |])
-                      , (TVar "x", [tyQ| int |])
-                      ]
-                    )
+                    [ (TVar "g", [tyQ| int -> int |])
+                    , (TVar "x", [tyQ| int |])
+                    ]
+            )
+        , testCase
+            "simple type ascription"
+            (valid "(3 : int) + 5")
+        , testCase
+            "invalid type ascription"
+            (process "1 : text" "1: Can't unify text and int")
+        , testCase
+            "type ascription with a polytype"
+            (valid "((\\x . x) : a -> a) 3")
+        , testCase
+            "type ascription too general"
+            (process "1 : a" "1: Can't unify")
+        , testCase
+            "type specialization through type ascription"
+            (valid "fst:(int + b) * a -> int + b")
+        , testCase
+            "type ascription doesn't allow rank 2 types"
+            ( process
+                "\\f. (f:forall a. a->a) 3"
+                "1: Skolem variable s1 would escape its scope"
             )
         ]
     ]

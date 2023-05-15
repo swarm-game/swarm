@@ -1,5 +1,13 @@
 # Revision history for swarm
 
+## **0.3.0.1** - 2023-02-01
+
+A few critical bug fixes and improvements:
+
+* Make sure the base always has a `logger` installed in every tutorial level, by @byorgey in [#1067](https://github.com/swarm-game/swarm/pull/1067) and @xsebek in [#1073](https://github.com/swarm-game/swarm/pull/1073)
+* Allow dialog boxes to scroll by @byorgey in [#1071](https://github.com/swarm-game/swarm/pull/1071)
+* Fix bug that sometimes caused scenarios to be skipped or repeated by @byorgey in [#1065](https://github.com/swarm-game/swarm/pull/1065)
+
 ## **0.3.0.0** - 2023-01-30
 
 This is the first release of 2023! It contains:

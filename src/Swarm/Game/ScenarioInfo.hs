@@ -1,14 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
-{-# OPTIONS_GHC -Wno-partial-fields #-}
 
 -- -Wno-orphans is for the Eq/Ord Time instances
 
 -- |
--- Module      :  Swarm.Game.ScenarioStatus
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Saving and loading info about scenarios (status, path, etc.) as
@@ -17,19 +11,17 @@ module Swarm.Game.ScenarioInfo (
   -- * Scenario info
   ScenarioStatus (..),
   _NotStarted,
-  _InProgress,
-  _Complete,
   ScenarioInfo (..),
   scenarioPath,
   scenarioStatus,
-  scenarioBestTime,
-  scenarioBestTicks,
-  updateScenarioInfoOnQuit,
+  CodeSizeDeterminators (CodeSizeDeterminators),
+  updateScenarioInfoOnFinish,
   ScenarioInfoPair,
 
   -- * Scenario collection
   ScenarioCollection (..),
   scenarioCollectionToList,
+  flatten,
   scenarioItemByPath,
   normalizeScenarioPath,
   ScenarioItem (..),
@@ -38,6 +30,7 @@ module Swarm.Game.ScenarioInfo (
 
   -- * Loading and saving scenarios
   loadScenarios,
+  loadScenariosWithWarnings,
   loadScenarioInfo,
   saveScenarioInfo,
 
@@ -45,130 +38,26 @@ module Swarm.Game.ScenarioInfo (
   module Swarm.Game.Scenario,
 ) where
 
-import Control.Algebra (Has)
-import Control.Carrier.Lift (Lift, sendIO)
-import Control.Carrier.Throw.Either (Throw, runThrow, throwError)
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM, unless, when)
-import Data.Aeson (
-  Options (..),
-  defaultOptions,
-  genericParseJSON,
-  genericToEncoding,
-  genericToJSON,
- )
-import Data.Char (isSpace, toLower)
-import Data.Function (on)
+import Control.Monad.Except (ExceptT (..), MonadIO, liftIO, runExceptT, withExceptT)
+import Data.Char (isSpace)
+import Data.Either.Extra (fromRight')
 import Data.List (intercalate, isPrefixOf, stripPrefix, (\\))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (isJust)
-import Data.Text (Text, pack)
-import Data.Time (NominalDiffTime, ZonedTime, diffUTCTime, zonedTimeToUTC)
+import Data.Text (Text)
 import Data.Yaml as Y
-import GHC.Generics (Generic)
 import Swarm.Game.Entity
+import Swarm.Game.Failure
+import Swarm.Game.ResourceLoading (getDataDirSafe, getSwarmSavePath)
 import Swarm.Game.Scenario
-import Swarm.Util (dataNotFound, getDataDirSafe, getSwarmSavePath)
+import Swarm.Game.Scenario.Scoring.CodeSize
+import Swarm.Game.Scenario.Status
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
 import Witch (into)
-
--- Some orphan ZonedTime instances
-
-instance Eq ZonedTime where
-  (==) = (==) `on` zonedTimeToUTC
-
-instance Ord ZonedTime where
-  (<=) = (<=) `on` zonedTimeToUTC
-
--- | A @ScenarioStatus@ stores the status of a scenario along with
---   appropriate metadata: not started, in progress, or complete.
---   Note that "in progress" is currently a bit of a misnomer since
---   games cannot be saved; at the moment it really means more like
---   "you played this scenario before but didn't win".
-data ScenarioStatus
-  = NotStarted
-  | InProgress
-      { _scenarioStarted :: ZonedTime
-      -- ^ Time when the scenario was started including time zone.
-      , _scenarioElapsed :: NominalDiffTime
-      -- ^ Time elapsed until quitting the scenario.
-      , _scenarioElapsedTicks :: Integer
-      -- ^ Ticks elapsed until quitting the scenario.
-      }
-  | Complete
-      { _scenarioStarted :: ZonedTime
-      -- ^ Time when the scenario was started including time zone.
-      , _scenarioElapsed :: NominalDiffTime
-      -- ^ Time elapsed until quitting the scenario.
-      , _scenarioElapsedTicks :: Integer
-      -- ^ Ticks elapsed until quitting the scenario.
-      }
-  deriving (Eq, Ord, Show, Read, Generic)
-
-instance FromJSON ScenarioStatus where
-  parseJSON = genericParseJSON scenarioOptions
-
-instance ToJSON ScenarioStatus where
-  toEncoding = genericToEncoding scenarioOptions
-  toJSON = genericToJSON scenarioOptions
-
--- | A @ScenarioInfo@ record stores metadata about a scenario: its
---   canonical path, most recent status, and best-ever status.
-data ScenarioInfo = ScenarioInfo
-  { _scenarioPath :: FilePath
-  , _scenarioStatus :: ScenarioStatus
-  , _scenarioBestTime :: ScenarioStatus
-  , _scenarioBestTicks :: ScenarioStatus
-  }
-  deriving (Eq, Ord, Show, Read, Generic)
-
-instance FromJSON ScenarioInfo where
-  parseJSON = genericParseJSON scenarioOptions
-
-instance ToJSON ScenarioInfo where
-  toEncoding = genericToEncoding scenarioOptions
-  toJSON = genericToJSON scenarioOptions
-
-type ScenarioInfoPair = (Scenario, ScenarioInfo)
-
-scenarioOptions :: Options
-scenarioOptions =
-  defaultOptions
-    { fieldLabelModifier = map toLower . drop (length "_scenario")
-    }
-
-makeLensesWith (lensRules & generateSignatures .~ False) ''ScenarioInfo
-
--- | The path of the scenario, relative to @data/scenarios@.
-scenarioPath :: Lens' ScenarioInfo FilePath
-
--- | The status of the scenario.
-scenarioStatus :: Lens' ScenarioInfo ScenarioStatus
-
--- | The best status of the scenario, measured in real world time.
-scenarioBestTime :: Lens' ScenarioInfo ScenarioStatus
-
--- | The best status of the scenario, measured in game ticks.
-scenarioBestTicks :: Lens' ScenarioInfo ScenarioStatus
-
--- | Update the current @ScenarioInfo@ record when quitting a game.
---
--- Note that when comparing "best" times, shorter is not always better!
--- As long as the scenario is not completed (e.g. some do not have win condition)
--- we consider having fun _longer_ to be better.
-updateScenarioInfoOnQuit :: ZonedTime -> Integer -> Bool -> ScenarioInfo -> ScenarioInfo
-updateScenarioInfoOnQuit z ticks completed (ScenarioInfo p s bTime bTicks) = case s of
-  InProgress start _ _ ->
-    let el = (diffUTCTime `on` zonedTimeToUTC) z start
-        cur = (if completed then Complete else InProgress) start el ticks
-        best f b = case b of
-          Complete {} | not completed || f b <= f cur -> b -- keep faster completed
-          InProgress {} | not completed && f b > f cur -> b -- keep longer progress (fun!)
-          _ -> cur -- otherwise update with current
-     in ScenarioInfo p cur (best _scenarioElapsed bTime) (best _scenarioElapsedTicks bTicks)
-  _ -> error "Logical error: trying to quit scenario which is not in progress!"
 
 -- ----------------------------------------------------------------------------
 -- Scenario Item
@@ -208,15 +97,19 @@ scenarioItemByPath path = ixp ps
       SICollection n' col -> SICollection n' <$> ixp xs f col
 
 -- | Canonicalize a scenario path, making it usable as a unique key.
-normalizeScenarioPath :: ScenarioCollection -> FilePath -> IO FilePath
+normalizeScenarioPath ::
+  MonadIO m =>
+  ScenarioCollection ->
+  FilePath ->
+  m FilePath
 normalizeScenarioPath col p =
   let path = p -<.> "yaml"
    in if isJust $ col ^? scenarioItemByPath path
         then return path
-        else do
+        else liftIO $ do
           canonPath <- canonicalizePath path
-          Just ddir <- getDataDirSafe "." -- no way we got this far without data directory
-          d <- canonicalizePath ddir
+          eitherDdir <- getDataDirSafe Scenarios "." -- no way we got this far without data directory
+          d <- canonicalizePath $ fromRight' eitherDdir
           let n =
                 stripPrefix (d </> "scenarios") canonPath
                   & maybe canonPath (dropWhile (== pathSeparator))
@@ -227,43 +120,62 @@ scenarioCollectionToList :: ScenarioCollection -> [ScenarioItem]
 scenarioCollectionToList (SC Nothing m) = M.elems m
 scenarioCollectionToList (SC (Just order) m) = (m M.!) <$> order
 
+flatten :: ScenarioItem -> [ScenarioInfoPair]
+flatten (SISingle p) = [p]
+flatten (SICollection _ c) = concatMap flatten $ scenarioCollectionToList c
+
 -- | Load all the scenarios from the scenarios data directory.
-loadScenarios :: (Has (Lift IO) sig m) => EntityMap -> m (Either Text ScenarioCollection)
-loadScenarios em = runThrow $ do
-  let p = "scenarios"
-  mdataDir <- sendIO $ getDataDirSafe p
-  case mdataDir of
-    Nothing -> sendIO (dataNotFound p) >>= throwError
-    Just dataDir -> loadScenarioDir em dataDir
+loadScenarios ::
+  EntityMap ->
+  ExceptT [SystemFailure] IO ([SystemFailure], ScenarioCollection)
+loadScenarios em = do
+  dataDir <- withExceptT pure $ ExceptT $ getDataDirSafe Scenarios p
+  loadScenarioDir em dataDir
+ where
+  p = "scenarios"
+
+loadScenariosWithWarnings :: EntityMap -> IO ([SystemFailure], ScenarioCollection)
+loadScenariosWithWarnings entities = do
+  eitherLoadedScenarios <- runExceptT $ loadScenarios entities
+  return $ case eitherLoadedScenarios of
+    Left xs -> (xs, SC mempty mempty)
+    Right (warnings, x) -> (warnings, x)
 
 -- | The name of the special file which indicates the order of
 --   scenarios in a folder.
 orderFileName :: FilePath
 orderFileName = "00-ORDER.txt"
 
+readOrderFile ::
+  MonadIO m =>
+  FilePath ->
+  ExceptT [SystemFailure] m [String]
+readOrderFile orderFile =
+  filter (not . null) . lines <$> liftIO (readFile orderFile)
+
 -- | Recursively load all scenarios from a particular directory, and also load
 --   the 00-ORDER file (if any) giving the order for the scenarios.
 loadScenarioDir ::
-  (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
+  MonadIO m =>
   EntityMap ->
   FilePath ->
-  m ScenarioCollection
+  ExceptT [SystemFailure] m ([SystemFailure], ScenarioCollection)
 loadScenarioDir em dir = do
   let orderFile = dir </> orderFileName
       dirName = takeBaseName dir
-  orderExists <- sendIO $ doesFileExist orderFile
+  orderExists <- liftIO $ doesFileExist orderFile
   morder <- case orderExists of
     False -> do
       when (dirName /= "Testing") $
-        sendIO . putStrLn $
+        liftIO . putStrLn $
           "Warning: no "
             <> orderFileName
             <> " file found in "
             <> dirName
             <> ", using alphabetical order"
       return Nothing
-    True -> Just . filter (not . null) . lines <$> sendIO (readFile orderFile)
-  fs <- sendIO $ keepYamlOrPublicDirectory dir =<< listDirectory dir
+    True -> Just <$> readOrderFile orderFile
+  fs <- liftIO $ keepYamlOrPublicDirectory dir =<< listDirectory dir
 
   case morder of
     Just order -> do
@@ -271,7 +183,7 @@ loadScenarioDir em dir = do
           dangling = order \\ fs
 
       unless (null missing) $
-        sendIO . putStr . unlines $
+        liftIO . putStr . unlines $
           ( "Warning: while processing "
               <> (dirName </> orderFileName)
               <> ": files not listed in "
@@ -281,7 +193,7 @@ loadScenarioDir em dir = do
             : map ("  - " <>) missing
 
       unless (null dangling) $
-        sendIO . putStr . unlines $
+        liftIO . putStr . unlines $
           ( "Warning: while processing "
               <> (dirName </> orderFileName)
               <> ": nonexistent files will be ignored"
@@ -291,7 +203,13 @@ loadScenarioDir em dir = do
 
   -- Only keep the files from 00-ORDER.txt that actually exist.
   let morder' = filter (`elem` fs) <$> morder
-  SC morder' . M.fromList <$> mapM (\item -> (item,) <$> loadScenarioItem em (dir </> item)) fs
+  let f filepath = do
+        (warnings, item) <- loadScenarioItem em (dir </> filepath)
+        return (warnings, (filepath, item))
+  warningsAndScenarios <- mapM f fs
+  let (allWarnings, allPairs) = unzip warningsAndScenarios
+      collection = SC morder' . M.fromList $ allPairs
+  return (concat allWarnings, collection)
  where
   -- Keep only files which are .yaml files or directories that start
   -- with something other than an underscore.
@@ -311,19 +229,22 @@ scenarioPathToSavePath path swarmData = swarmData </> Data.List.intercalate "_" 
 
 -- | Load saved info about played scenario from XDG data directory.
 loadScenarioInfo ::
-  (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
+  MonadIO m =>
   FilePath ->
-  m ScenarioInfo
+  ExceptT [SystemFailure] m ScenarioInfo
 loadScenarioInfo p = do
-  path <- sendIO $ normalizeScenarioPath (SC Nothing mempty) p
-  infoPath <- sendIO $ scenarioPathToSavePath path <$> getSwarmSavePath False
-  hasInfo <- sendIO $ doesFileExist infoPath
+  path <- liftIO $ normalizeScenarioPath (SC Nothing mempty) p
+  infoPath <- liftIO $ scenarioPathToSavePath path <$> getSwarmSavePath False
+  hasInfo <- liftIO $ doesFileExist infoPath
   if not hasInfo
     then do
-      return $ ScenarioInfo path NotStarted NotStarted NotStarted
+      return $
+        ScenarioInfo path NotStarted
     else
-      sendIO (decodeFileEither infoPath)
-        >>= either (throwError . pack . prettyPrintParseException) return
+      withExceptT (pure . AssetNotLoaded (Data Scenarios) infoPath . CanNotParse)
+        . ExceptT
+        . liftIO
+        $ decodeFileEither infoPath
 
 -- | Save info about played scenario to XDG data directory.
 saveScenarioInfo ::
@@ -337,19 +258,23 @@ saveScenarioInfo path si = do
 -- | Load a scenario item (either a scenario, or a subdirectory
 --   containing a collection of scenarios) from a particular path.
 loadScenarioItem ::
-  (Has (Lift IO) sig m, Has (Throw Text) sig m) =>
+  MonadIO m =>
   EntityMap ->
   FilePath ->
-  m ScenarioItem
+  ExceptT [SystemFailure] m ([SystemFailure], ScenarioItem)
 loadScenarioItem em path = do
-  isDir <- sendIO $ doesDirectoryExist path
+  isDir <- liftIO $ doesDirectoryExist path
   let collectionName = into @Text . dropWhile isSpace . takeBaseName $ path
   case isDir of
-    True -> SICollection collectionName <$> loadScenarioDir em path
+    True -> do
+      (warnings, d) <- loadScenarioDir em path
+      return (warnings, SICollection collectionName d)
     False -> do
-      s <- loadScenarioFile em path
-      si <- loadScenarioInfo path
-      return $ SISingle (s, si)
+      s <- withExceptT pure $ loadScenarioFile em path
+      eitherSi <- runExceptT $ loadScenarioInfo path
+      return $ case eitherSi of
+        Right si -> ([], SISingle (s, si))
+        Left warnings -> (warnings, SISingle (s, ScenarioInfo path NotStarted))
 
 ------------------------------------------------------------
 -- Some lenses + prisms

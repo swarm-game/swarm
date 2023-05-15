@@ -1,6 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Swarm.TUI.Model.Achievement.Attainment where
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Metadata about achievements that the player has obtained
+module Swarm.Game.Achievement.Attainment where
 
 import Control.Lens hiding (from, (<.>))
 import Data.Aeson (
@@ -13,7 +17,7 @@ import Data.Function (on)
 import Data.Time (ZonedTime, zonedTimeToUTC)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
-import Swarm.TUI.Model.Achievement.Definitions
+import Swarm.Game.Achievement.Definitions
 
 data Attainment = Attainment
   { _achievement :: CategorizedAchievement

@@ -1,10 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Module      :  Swarm.App
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Main entry point for the Swarm application.
@@ -20,10 +16,11 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Game.Robot (ErrorLevel (..), LogSource (ErrorTrace, Said))
+import Swarm.ReadableIORef (mkReadonly)
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
 import Swarm.TUI.Model.StateUpdate
-import Swarm.TUI.Model.UI (uiAttrMap)
+import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond, uiAttrMap)
 import Swarm.TUI.View
 import Swarm.Version (getNewerReleaseVersion)
 import Swarm.Web
@@ -74,9 +71,15 @@ appMain opts = do
         upRel <- getNewerReleaseVersion (repoGitInfo opts)
         writeBChan chan (UpstreamVersion upRel)
 
-      -- Start the web service with a reference to the game state
+      -- Start the web service with a reference to the game state.
+      -- NOTE: This reference should be considered read-only by
+      -- the web service; the game alone shall host the canonical state.
       appStateRef <- newIORef s
-      eport <- Swarm.Web.startWebThread (userWebPort opts) appStateRef
+      eport <-
+        Swarm.Web.startWebThread
+          (userWebPort opts)
+          (mkReadonly appStateRef)
+          chan
 
       let logP p = logEvent Said ("Web API", -2) ("started on :" <> T.pack (show p))
       let logE e = logEvent (ErrorTrace Error) ("Web API", -2) (T.pack e)
@@ -114,6 +117,7 @@ demoWeb = do
           , userScenario = demoScenario
           , scriptToRun = Nothing
           , autoPlay = False
+          , speed = defaultInitLgTicksPerSecond
           , cheatMode = False
           , colorMode = Nothing
           , userWebPort = Nothing
@@ -123,7 +127,12 @@ demoWeb = do
     Left errMsg -> T.putStrLn errMsg
     Right s -> do
       appStateRef <- newIORef s
-      webMain Nothing demoPort appStateRef
+      chan <- newBChan 5
+      webMain
+        Nothing
+        demoPort
+        (mkReadonly appStateRef)
+        chan
  where
   demoScenario = Just "./data/scenarios/Testing/475-wait-one.yaml"
 

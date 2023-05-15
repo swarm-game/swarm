@@ -1,6 +1,8 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.RobotLookup where
 
 import Control.Lens hiding (from, (<.>))
@@ -9,6 +11,7 @@ import Data.Map qualified as M
 import Data.Text (Text)
 import Swarm.Game.Entity
 import Swarm.Game.Robot (TRobot, trobotName)
+import Swarm.Util (failT, quote)
 import Swarm.Util.Yaml
 
 ------------------------------------------------------------
@@ -33,11 +36,11 @@ buildRobotMap rs = M.fromList $ zipWith (\x y -> (view trobotName y, (x, y))) [0
 
 -- | Look up a thing by name, throwing a parse error if it is not
 --   found.
-getThing :: String -> (Text -> m -> Maybe a) -> Text -> ParserE m a
+getThing :: Text -> (Text -> m -> Maybe a) -> Text -> ParserE m a
 getThing thing lkup name = do
   m <- getE
   case lkup name m of
-    Nothing -> fail $ "Unknown " <> thing <> " name: " ++ show name
+    Nothing -> failT ["Unknown", thing, "name:", quote name]
     Just a -> return a
 
 -- | Look up an entity by name in an 'EntityMap', throwing a parse

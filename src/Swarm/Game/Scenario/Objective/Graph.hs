@@ -1,6 +1,9 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
--- | Utilities for performing graph analysis on Objective prerequisites
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Utilities for performing graph analysis on Objective prerequisites
 module Swarm.Game.Scenario.Objective.Graph where
 
 import Control.Arrow ((&&&))
@@ -15,6 +18,8 @@ import Data.Set qualified as Set
 import Data.Text qualified as T
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
+import Servant.Docs (ToSample)
+import Servant.Docs qualified as SD
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Game.Scenario.Objective.WinCheck
@@ -40,6 +45,9 @@ instance ToJSON (SCC Objective) where
 
 instance ToJSON Graph where
   toJSON = String . T.pack . show
+
+instance ToSample GraphInfo where
+  toSamples _ = SD.noSamples
 
 getConstFromSigned :: BE.Signed a -> a
 getConstFromSigned = \case

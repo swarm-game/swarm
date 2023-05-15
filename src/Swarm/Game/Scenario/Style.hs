@@ -1,3 +1,5 @@
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Style where
 
 import Data.Aeson
@@ -25,8 +27,11 @@ styleFlagJsonOptions =
 instance FromJSON StyleFlag where
   parseJSON = genericParseJSON styleFlagJsonOptions
 
+instance ToJSON StyleFlag where
+  toJSON = genericToJSON styleFlagJsonOptions
+
 newtype HexColor = HexColor Text
-  deriving (Eq, Show, Generic, FromJSON)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data CustomAttr = CustomAttr
   { name :: String
@@ -35,3 +40,10 @@ data CustomAttr = CustomAttr
   , style :: Maybe (Set StyleFlag)
   }
   deriving (Eq, Show, Generic, FromJSON)
+
+instance ToJSON CustomAttr where
+  toJSON =
+    genericToJSON
+      defaultOptions
+        { omitNothingFields = True
+        }

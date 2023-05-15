@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.View.Util where
 
 import Brick hiding (Direction)
@@ -41,7 +43,7 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
       RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
       CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
       MessagesModal -> ("Messages", Nothing, descriptionWidth)
-      WinModal ->
+      ScenarioEndModal WinModal ->
         let nextMsg = "Next challenge!"
             stopMsg = fromMaybe "Return to the menu" haltingMessage
             continueMsg = "Keep playing"
@@ -57,7 +59,7 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
                 )
             , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
             )
-      LoseModal ->
+      ScenarioEndModal LoseModal ->
         let stopMsg = fromMaybe "Return to the menu" haltingMessage
             continueMsg = "Keep playing"
             maybeStartOver = do
@@ -152,8 +154,8 @@ maybeScroll vpName contents =
     if V.imageHeight (result ^. imageL) <= ctx ^. availHeightL
       then return result
       else
-        render $
-          withVScrollBars OnRight $
-            viewport vpName Vertical $
-              Widget Fixed Fixed $
-                return result
+        render
+          . withVScrollBars OnRight
+          . viewport vpName Vertical
+          . Widget Fixed Fixed
+          $ return result

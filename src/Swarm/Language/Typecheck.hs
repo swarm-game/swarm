@@ -7,10 +7,6 @@
 -- For 'Ord IntVar' instance
 
 -- |
--- Module      :  Swarm.Language.Typecheck
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Type inference for the Swarm language.  For the approach used here,
@@ -47,8 +43,10 @@ module Swarm.Language.Typecheck (
   isSimpleUType,
 ) where
 
+import Control.Arrow ((***))
 import Control.Category ((>>>))
 import Control.Lens ((^.))
+import Control.Lens.Indexed (itraverse)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Unification hiding (applyBindings, (=:=))
@@ -63,6 +61,7 @@ import Data.Map qualified as M
 import Data.Maybe
 import Data.Set (Set, (\\))
 import Data.Set qualified as S
+import Data.Text qualified as T
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Module
@@ -209,6 +208,9 @@ skolemize (Forall xs uty) = do
 
 -- | 'generalize' is the opposite of 'instantiate': add a 'Forall'
 --   which closes over all free type and unification variables.
+--
+--   Pick nice type variable names instead of reusing whatever fresh
+--   names happened to be used for the free variables.
 generalize :: UType -> Infer UPolytype
 generalize uty = do
   uty' <- applyBindings uty
@@ -216,8 +218,15 @@ generalize uty = do
   tmfvs <- freeVars uty'
   ctxfvs <- freeVars ctx
   let fvs = S.toList $ tmfvs \\ ctxfvs
-      xs = map (mkVarName "a") fvs
-  return $ Forall xs (substU (M.fromList (zip (map Right fvs) (map UTyVar xs))) uty')
+      alphabet = ['a' .. 'z']
+      -- Infinite supply of pretty names a, b, ..., z, a0, ... z0, a1, ... z1, ...
+      prettyNames = map T.pack (map (: []) alphabet ++ [x : show n | n <- [0 :: Int ..], x <- alphabet])
+      -- Associate each free variable with a new pretty name
+      renaming = zip fvs prettyNames
+  return $
+    Forall
+      (map snd renaming)
+      (substU (M.fromList . map (Right *** UTyVar) $ renaming) uty')
 
 ------------------------------------------------------------
 -- Type errors
@@ -241,6 +250,11 @@ data TypeErr
   | -- | A term was encountered which we cannot infer the type of.
     --   This should never happen.
     CantInfer SrcLoc Term
+  | -- | We can't infer the type of a record projection @r.x@ if we
+    --   don't concretely know the type of the record @r@.
+    CantInferProj SrcLoc Term
+  | -- | An attempt to project out a nonexistent field
+    UnknownProj SrcLoc Var Term
   | -- | An invalid argument was provided to @atomic@.
     InvalidAtomic SrcLoc InvalidAtomicReason Term
   deriving (Show)
@@ -271,6 +285,8 @@ getTypeErrSrcLoc te = case te of
   Mismatch l _ _ -> Just l
   DefNotTopLevel l _ -> Just l
   CantInfer l _ -> Just l
+  CantInferProj l _ -> Just l
+  UnknownProj l _ _ -> Just l
   InvalidAtomic l _ _ -> Just l
 
 ------------------------------------------------------------
@@ -364,6 +380,9 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   TRef _ -> throwError $ CantInfer l t
   TRequireDevice d -> return $ Syntax' l (TRequireDevice d) (UTyCmd UTyUnit)
   TRequire n d -> return $ Syntax' l (TRequire n d) (UTyCmd UTyUnit)
+  SRequirements x t1 -> do
+    t1' <- infer t1
+    return $ Syntax' l (SRequirements x t1') (UTyCmd UTyUnit)
   -- To infer the type of a pair, just infer both components.
   SPair t1 t2 -> do
     t1' <- infer t1
@@ -388,17 +407,8 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- the form 'cmd a'.  't' must also be syntactically free of
   -- variables.
 
-  TConst Atomic :$: at -> do
-    argTy <- fresh
-    at' <- check at (UTyCmd argTy)
-    atomic' <- infer (Syntax l (TConst Atomic))
-    -- It's important that we typecheck the subterm @at@ *before* we
-    -- check that it is a valid argument to @atomic@: this way we can
-    -- ensure that we have already inferred the types of any variables
-    -- referenced.
-    validAtomic at
-    return $ Syntax' l (SApp atomic' at') (at' ^. sType)
-
+  TConst Atomic :$: at -> inferAtomic True Atomic at
+  TConst Instant :$: at -> inferAtomic False Instant at
   -- Just look up variables in the context.
   TVar x -> Syntax' l (TVar x) <$> lookup l x
   -- To infer the type of a lambda if the type of the argument is
@@ -456,6 +466,30 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     c2' <- maybe id ((`withBinding` Forall [] a) . lvVar) mx $ infer c2
     _ <- decomposeCmdTy (c2' ^. sType)
     return $ Syntax' l (SBind mx c1' c2') (c2' ^. sType)
+  SRcd m -> do
+    m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
+    return $ Syntax' l (SRcd (Just <$> m')) (UTyRcd (fmap (^. sType) m'))
+  SProj t1 x -> do
+    t1' <- infer t1
+    case t1' ^. sType of
+      UTyRcd m -> case M.lookup x m of
+        Just xTy -> return $ Syntax' l (SProj t1' x) xTy
+        Nothing -> throwError $ UnknownProj l x (SProj t1 x)
+      _ -> throwError $ CantInferProj l (SProj t1 x)
+  SAnnotate c pty -> do
+    let upty = toU pty
+    -- Typecheck against skolemized polytype.
+    uty <- skolemize upty
+    _ <- check c uty `catchError` addLocToTypeErr c
+    -- Make sure no skolem variables have escaped.
+    ask >>= mapM_ noSkolems
+    -- If check against skolemized polytype is successful,
+    -- instantiate polytype with unification variables.
+    -- Free variables should be able to unify with anything in
+    -- following inference steps.
+    iuty <- instantiate upty
+    c'' <- check c iuty `catchError` addLocToTypeErr c
+    return $ Syntax' l (SAnnotate c'' pty) (c'' ^. sType)
  where
   noSkolems :: UPolytype -> Infer ()
   noSkolems (Forall xs upty) = do
@@ -469,6 +503,19 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     unless (S.null ftyvs) $
       throwError $
         EscapedSkolem l (head (S.toList ftyvs))
+
+  inferAtomic :: Bool -> Const -> Syntax -> Infer (Syntax' UType)
+  inferAtomic validateTickBudget constName at = do
+    argTy <- fresh
+    at' <- check at (UTyCmd argTy)
+    atomic' <- infer (Syntax l (TConst constName))
+    -- It's important that we typecheck the subterm @at@ *before* we
+    -- check that it is a valid argument to @atomic@: this way we can
+    -- ensure that we have already inferred the types of any variables
+    -- referenced.
+    when validateTickBudget $
+      validAtomic at
+    return $ Syntax' l (SApp atomic' at') (at' ^. sType)
 
 addLocToTypeErr :: Syntax' ty -> TypeErr -> Infer a
 addLocToTypeErr s te = case te of
@@ -492,6 +539,15 @@ decomposeFunTy ty = do
   _ <- ty =:= UTyFun ty1 ty2
   return (ty1, ty2)
 
+-- | Decompose a type that is supposed to be a product type.
+decomposeProdTy :: UType -> Infer (UType, UType)
+decomposeProdTy (UTyProd ty1 ty2) = return (ty1, ty2)
+decomposeProdTy ty = do
+  ty1 <- fresh
+  ty2 <- fresh
+  _ <- ty =:= UTyProd ty1 ty2
+  return (ty1, ty2)
+
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
 inferConst c = case c of
@@ -499,6 +555,8 @@ inferConst c = case c of
   Noop -> [tyQ| cmd unit |]
   Selfdestruct -> [tyQ| cmd unit |]
   Move -> [tyQ| cmd unit |]
+  Push -> [tyQ| cmd unit |]
+  Stride -> [tyQ| int -> cmd unit |]
   Turn -> [tyQ| dir -> cmd unit |]
   Grab -> [tyQ| cmd text |]
   Harvest -> [tyQ| cmd text |]
@@ -512,7 +570,7 @@ inferConst c = case c of
   Count -> [tyQ| text -> cmd int |]
   Reprogram -> [tyQ| actor -> {cmd a} -> cmd unit |]
   Build -> [tyQ| {cmd a} -> cmd actor |]
-  Drill -> [tyQ| dir -> cmd unit |]
+  Drill -> [tyQ| dir -> cmd (unit + text) |]
   Salvage -> [tyQ| cmd unit |]
   Say -> [tyQ| text -> cmd unit |]
   Listen -> [tyQ| cmd text |]
@@ -521,7 +579,14 @@ inferConst c = case c of
   Appear -> [tyQ| text -> cmd unit |]
   Create -> [tyQ| text -> cmd unit |]
   Time -> [tyQ| cmd int |]
+  Scout -> [tyQ| dir -> cmd bool |]
   Whereami -> [tyQ| cmd (int * int) |]
+  Detect -> [tyQ| text -> ((int * int) * (int * int)) -> cmd (unit + (int * int)) |]
+  Resonate -> [tyQ| text -> ((int * int) * (int * int)) -> cmd int |]
+  Sniff -> [tyQ| text -> cmd int |]
+  Chirp -> [tyQ| text -> cmd dir |]
+  Watch -> [tyQ| dir -> cmd unit |]
+  Surveil -> [tyQ| (int * int) -> cmd unit |]
   Heading -> [tyQ| cmd dir |]
   Blocked -> [tyQ| cmd bool |]
   Scan -> [tyQ| dir -> cmd (unit + text) |]
@@ -572,6 +637,9 @@ inferConst c = case c of
   AppF -> [tyQ| (a -> b) -> a -> b |]
   Swap -> [tyQ| text -> cmd text |]
   Atomic -> [tyQ| cmd a -> cmd a |]
+  Instant -> [tyQ| cmd a -> cmd a |]
+  Key -> [tyQ| text -> key |]
+  InstallKeyHandler -> [tyQ| text -> (key -> cmd unit) -> cmd unit |]
   Teleport -> [tyQ| actor -> (int * int) -> cmd unit |]
   As -> [tyQ| actor -> {cmd a} -> cmd a |]
   RobotNamed -> [tyQ| text -> cmd actor |]
@@ -584,10 +652,21 @@ inferConst c = case c of
 -- | @check t ty@ checks that @t@ has type @ty@, returning a
 --   type-annotated AST if so.
 check :: Syntax -> UType -> Infer (Syntax' UType)
-check t ty = do
-  Syntax' l t' ty' <- infer t
-  theTy <- ty =:= ty'
-  return $ Syntax' l t' theTy
+check s@(Syntax l t) ty = (`catchError` addLocToTypeErr s) $ case t of
+  SPair s1 s2 -> do
+    (ty1, ty2) <- decomposeProdTy ty
+    s1' <- check s1 ty1
+    s2' <- check s2 ty2
+    return $ Syntax' l (SPair s1' s2') (UTyProd ty1 ty2)
+  SLam x xTy body -> do
+    (argTy, resTy) <- decomposeFunTy ty
+    _ <- maybe (return argTy) (=:= argTy) (toU xTy)
+    body' <- withBinding (lvVar x) (Forall [] argTy) $ check body resTy
+    return $ Syntax' l (SLam x xTy body') (UTyFun argTy resTy)
+  _ -> do
+    Syntax' l' t' ty' <- infer s
+    theTy <- ty =:= ty'
+    return $ Syntax' l' t' theTy
 
 -- | Ensure a term is a valid argument to @atomic@.  Valid arguments
 --   may not contain @def@, @let@, or lambda. Any variables which are
@@ -636,6 +715,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   TRobot {} -> return 0
   TRequireDevice {} -> return 0
   TRequire {} -> return 0
+  SRequirements {} -> return 0
   -- Constants.
   TConst c
     -- Nested 'atomic' is not allowed.
@@ -658,6 +738,12 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- Bind is similarly simple except that we have to keep track of a local variable
   -- bound in the RHS.
   SBind mx s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2
+  SRcd m -> sum <$> mapM analyzeField (M.assocs m)
+   where
+    analyzeField :: (Var, Maybe Syntax) -> Infer Int
+    analyzeField (x, Nothing) = analyzeAtomic locals (STerm (TVar x))
+    analyzeField (_, Just s) = analyzeAtomic locals s
+  SProj {} -> return 0
   -- Variables are allowed if bound locally, or if they have a simple type.
   TVar x
     | x `S.member` locals -> return 0
@@ -696,6 +782,8 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).
   TRef {} -> throwError (CantInfer l t)
+  -- An explicit type annotation doesn't change atomicity
+  SAnnotate s _ -> analyzeAtomic locals s
 
 -- | A simple polytype is a simple type with no quantifiers.
 isSimpleUPolytype :: UPolytype -> Bool

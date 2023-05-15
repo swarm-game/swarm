@@ -1,8 +1,6 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
--- Module      :  Swarm.Game.Terrain
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Terrain types and properties.
@@ -17,7 +15,7 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Swarm.Game.Display
-import Swarm.TUI.Attr
+import Swarm.Util (failT)
 import Text.Read (readMaybe)
 import Witch (into)
 
@@ -35,15 +33,15 @@ instance FromJSON TerrainType where
   parseJSON = withText "text" $ \t ->
     case readMaybe (into @String (T.toTitle t) ++ "T") of
       Just ter -> return ter
-      Nothing -> fail $ "Unknown terrain type: " ++ into @String t
+      Nothing -> failT ["Unknown terrain type:", t]
 
 -- | A map containing a 'Display' record for each different 'TerrainType'.
 terrainMap :: Map TerrainType Display
 terrainMap =
   M.fromList
-    [ (StoneT, defaultTerrainDisplay '▒' rockAttr)
-    , (DirtT, defaultTerrainDisplay '▒' dirtAttr)
-    , (GrassT, defaultTerrainDisplay '▒' grassAttr)
-    , (IceT, defaultTerrainDisplay ' ' iceAttr)
-    , (BlankT, defaultTerrainDisplay ' ' defAttr)
+    [ (StoneT, defaultTerrainDisplay '▒' (ATerrain "stone"))
+    , (DirtT, defaultTerrainDisplay '▒' (ATerrain "dirt"))
+    , (GrassT, defaultTerrainDisplay '▒' (ATerrain "grass"))
+    , (IceT, defaultTerrainDisplay ' ' (ATerrain "ice"))
+    , (BlankT, defaultTerrainDisplay ' ' ADefault)
     ]

@@ -2,6 +2,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Objective where
 
 import Control.Applicative ((<|>))
@@ -10,9 +12,11 @@ import Data.Aeson
 import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Servant.Docs (ToSample)
+import Servant.Docs qualified as SD
+import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.TUI.Model.Achievement.Definitions
 import Swarm.Util (reflow)
 
 ------------------------------------------------------------
@@ -73,6 +77,9 @@ data Objective = Objective
 
 makeLensesWith (lensRules & generateSignatures .~ False) ''Objective
 
+instance ToSample Objective where
+  toSamples _ = SD.noSamples
+
 -- | An explanation of the goal of the objective, shown to the player
 --   during play.  It is represented as a list of paragraphs.
 objectiveGoal :: Lens' Objective [Text]
@@ -128,6 +135,11 @@ data CompletionBuckets = CompletionBuckets
   , unwinnable :: [Objective]
   }
   deriving (Show, Generic, FromJSON, ToJSON)
+
+-- | TODO: #1044 Could also add an "ObjectiveFailed" constructor...
+newtype Announcement
+  = ObjectiveCompleted Objective
+  deriving (Show, Generic, ToJSON)
 
 data ObjectiveCompletion = ObjectiveCompletion
   { completionBuckets :: CompletionBuckets

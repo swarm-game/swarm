@@ -28,8 +28,8 @@ objectives:
         the menu at any time to jump around between tutorials or pick
         up again where you left off.
       - |
-        When you're ready for your first challenge, close this dialog with Esc or Ctrl-G,
-        and type at the prompt:
+        When you're ready for your first challenge, we will try the `say` command.
+        Close this dialog with Esc or Ctrl-G, and type at the prompt:
       - |
         say "Ready!"
     condition: |
@@ -90,3 +90,4 @@ robots:
 seed: 0
 world:
   offset: true
+  scrollable: false

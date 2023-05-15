@@ -7,10 +7,6 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
--- Module      :  Swarm.Game.Robot
--- Copyright   :  Brent Yorgey
--- Maintainer  :  byorgey@gmail.com
---
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A data type to represent robots.
@@ -90,18 +86,19 @@ import Data.Text (Text)
 import Data.Yaml ((.!=), (.:), (.:?))
 import GHC.Generics (Generic)
 import Linear
+import Servant.Docs (ToSample)
+import Servant.Docs qualified as SD
 import Swarm.Game.CESK
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Location (Heading, Location, toDirection)
 import Swarm.Game.Log
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirement (ReqCtx)
-import Swarm.Language.Syntax (toDirection)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types (TCtx)
 import Swarm.Language.Value as V
-import Swarm.Util.Location
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
 
@@ -223,6 +220,9 @@ type TRobot = RobotR 'TemplateRobot
 
 -- | A concrete robot, with a unique ID number and a specific location.
 type Robot = RobotR 'ConcreteRobot
+
+instance ToSample Robot where
+  toSamples _ = SD.noSamples
 
 -- In theory we could make all these lenses over (RobotR phase), but
 -- that leads to lots of type ambiguity problems later.  In practice
@@ -524,7 +524,7 @@ isActive :: Robot -> Bool
 isActive = isNothing . getResult
 
 -- | The time until which the robot is waiting, if any.
-waitingUntil :: Robot -> Maybe Integer
+waitingUntil :: Robot -> Maybe TickNumber
 waitingUntil robot =
   case _machine robot of
     Waiting time _ -> Just time

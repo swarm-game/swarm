@@ -60,7 +60,17 @@ objectives:
       } { return false }
     prerequisite: grab_artifact
 solution: |
-  run "data/scenarios/Tutorials/bind2-solution.sw"
+  build {
+    move; move;
+    turn right;
+    move; move; move; move; move; move;
+    x <- grab;
+    turn left;
+    move;
+    turn left;
+    move; move;
+    place x;
+  }
 entities:
   - name: Hastur
     display:
