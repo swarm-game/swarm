@@ -191,7 +191,6 @@ testScenarioSolution _ci _em =
         , testSolution (Sec 3) "Challenges/word-search"
         , testSolution (Sec 5) "Challenges/bridge-building"
         , testSolution (Sec 3) "Challenges/ice-cream"
-        , testSolution Default "Challenges/capture"
         , testSolution (Sec 5) "Challenges/gopher"
         , testSolution (Sec 5) "Challenges/hackman"
         , testSolution (Sec 10) "Challenges/hanoi"
@@ -205,7 +204,8 @@ testScenarioSolution _ci _em =
             ]
         , testGroup
             "Ranching"
-            [ testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
+            [ testSolution Default "Challenges/Ranching/capture"
+            , testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
             ]
         ]
     , testGroup

@@ -120,9 +120,9 @@ robots:
       attr: pig
       invisible: false
     program: |
-      run "scenarios/Challenges/_capture/opponent.sw"
+      run "scenarios/Challenges/Ranching/_capture/opponent.sw"
 solution: |
-   run "scenarios/Challenges/_capture/solution.sw"
+   run "scenarios/Challenges/Ranching/_capture/solution.sw"
 entities:
   - name: monolith
     display:
