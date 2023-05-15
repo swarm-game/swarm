@@ -1087,7 +1087,18 @@
   - |
     `wait : int -> cmd unit` causes a robot to sleep for a specified amount of time (measured in game ticks).
   properties: [portable]
-  capabilities: [time]
+  capabilities: [timeabs, timerel]
+
+- name: hourglass
+  display:
+    attr: device
+    char: '8'
+  description:
+  - An hourglass can measure the relative passage of time.  It enables the `wait` command.
+  - |
+    `wait : int -> cmd unit` causes a robot to sleep for a specified amount of time (measured in game ticks).
+  properties: [portable]
+  capabilities: [timerel]
 
 - name: comparator
   display:
