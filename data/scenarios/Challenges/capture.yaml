@@ -83,9 +83,9 @@ robots:
       - dozer blade
       - grabber
       - hearing aid
+      - keyboard
       - lambda
       - logger
-      - olfactometer
       - scanner
       - strange loop
       - treads
@@ -124,29 +124,6 @@ robots:
 solution: |
    run "scenarios/Challenges/_capture/solution.sw"
 entities:
-  - name: dozer blade
-    display:
-      attr: silver
-      char: '/'
-    description:
-    - Facilitates pushing
-    properties: [known, portable]
-    capabilities: [push]
-  - name: rolex
-    display:
-      char: 'R'
-      attr: silver
-    description:
-      - Enables robots to use the 'watch' command.
-    properties: [known, portable]
-    capabilities: [wakeself]
-  - name: olfactometer 
-    display:
-      char: 'N'
-    description:
-    - Smells the distance to an entity
-    properties: [known]
-    capabilities: [detectdistance]
   - name: monolith
     display:
       char: '@'

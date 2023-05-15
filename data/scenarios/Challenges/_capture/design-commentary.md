@@ -14,6 +14,12 @@ If a barrier comes in contact with the pig without surrounding on all sides, the
 
 This escape strategy is simplified by finite availability of `unwalkable`, `portable` entities in this scenario.
 
+## Solution
+
+There at least two ways to solve this challenge, both of which require building child robots.
+1. Use the `watch` command to synchronize two pairs of robots. Use symmetry and placed them equidistantly with respect to the watched location and their monolith.
+2. Launch each child robot from the same location. Write custom code for each built robot to account for the delay incurred by building each. Adjust the timing by trial and error.
+
 ## Alternative game mechanic applications
 
 Other physical phenomena could rationalize this "squeezing" game mechanic.
