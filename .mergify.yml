@@ -11,7 +11,9 @@ queue_rules:
           - -files~=^[^/]*\.yaml$
           - -files~=^data/.*\.yaml$
         - and:
-          - check-success=Enforce issue references
+          - or:
+            - check-success=Enforce issue references
+            - -files~=\.hs$
           - check-success=Haskell-CI - Linux - ghc-9.4.2
           - check-success=Haskell-CI - Linux - ghc-9.2.4
           - check-success=Haskell-CI - Linux - ghc-9.0.2
@@ -39,7 +41,9 @@ pull_request_rules:
       - -files~=^[^/]*\.yaml$
       - -files~=^data/.*\.yaml$
     - and:
-      - check-success=Enforce issue references
+      - or:
+        - check-success=Enforce issue references
+        - -files~=\.hs$
       - check-success=Haskell-CI - Linux - ghc-9.4.2
       - check-success=Haskell-CI - Linux - ghc-9.2.4
       - check-success=Haskell-CI - Linux - ghc-9.0.2
