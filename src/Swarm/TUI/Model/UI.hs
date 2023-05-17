@@ -79,6 +79,7 @@ import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.Util
+import Swarm.Util.Lens (makeLensesExcluding)
 import System.Clock
 
 ------------------------------------------------------------
@@ -127,14 +128,7 @@ data UIState = UIState
 --------------------------------------------------
 -- Lenses for UIState
 
-let exclude = ['_lgTicksPerSecond]
- in makeLensesWith
-      ( lensRules
-          & generateSignatures .~ False
-          & lensField . mapped . mapped %~ \fn n ->
-            if n `elem` exclude then [] else fn n
-      )
-      ''UIState
+makeLensesExcluding ['_lgTicksPerSecond] ''UIState
 
 -- | The current menu state.
 uiMenu :: Lens' UIState Menu

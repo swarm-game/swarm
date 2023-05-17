@@ -189,6 +189,7 @@ import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
 import Swarm.Util (uniq, (<+=), (<<.=), (?))
+import Swarm.Util.Lens (makeLensesExcluding)
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 
@@ -427,14 +428,7 @@ makeLensesFor
   ]
   ''GameState
 
-let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots, '_adjList, '_nameList]
- in makeLensesWith
-      ( lensRules
-          & generateSignatures .~ False
-          & lensField . mapped . mapped %~ \fn n ->
-            if n `elem` exclude then [] else fn n
-      )
-      ''GameState
+makeLensesExcluding ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots, '_adjList, '_nameList] ''GameState
 
 -- | Is the user in creative mode (i.e. able to do anything without restriction)?
 creativeMode :: Lens' GameState Bool
