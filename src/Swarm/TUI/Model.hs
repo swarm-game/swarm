@@ -133,6 +133,7 @@ import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
+import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
 import Text.Fuzzy qualified as Fuzzy
 
@@ -179,7 +180,7 @@ initRuntimeState =
     , _eventLog = mempty
     }
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''RuntimeState
+makeLensesNoSigs ''RuntimeState
 
 -- | The port on which the HTTP debug service is running.
 webPort :: Lens' RuntimeState (Maybe Port)
@@ -221,7 +222,7 @@ data AppState = AppState
 --------------------------------------------------
 -- Lenses for AppState
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''AppState
+makeLensesNoSigs ''AppState
 
 -- | The 'GameState' record.
 gameState :: Lens' AppState GameState

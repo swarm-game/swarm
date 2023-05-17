@@ -48,6 +48,7 @@ import GHC.Generics (Generic)
 import Swarm.Game.Entity as E
 import Swarm.Game.Failure
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
+import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import Witch
 
@@ -73,7 +74,7 @@ data Recipe e = Recipe
 deriving instance ToJSON (Recipe Entity)
 deriving instance FromJSON (Recipe Entity)
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''Recipe
+makeLensesNoSigs ''Recipe
 
 -- | The inputs to a recipe.
 recipeInputs :: Lens' (Recipe e) (IngredientList e)

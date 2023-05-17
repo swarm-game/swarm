@@ -164,6 +164,7 @@ library
                       Swarm.TUI.View.Objective
                       Swarm.TUI.View.Util
                       Swarm.Util
+                      Swarm.Util.Lens
                       Swarm.Util.Yaml
                       Swarm.Version
                       Swarm.Web
