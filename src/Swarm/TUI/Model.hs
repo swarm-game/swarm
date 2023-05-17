@@ -84,6 +84,13 @@ module Swarm.TUI.Model (
   webPort,
   upstreamRelease,
   eventLog,
+  scenarios,
+  stdEntityMap,
+  stdRecipes,
+  adjList,
+  nameList,
+
+  -- ** Updating
   logEvent,
 
   -- * App state
@@ -122,6 +129,7 @@ import Graphics.Vty (ColorMode (..))
 import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity as E
+import Swarm.Game.Failure
 import Swarm.Game.Robot
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
@@ -170,15 +178,23 @@ data RuntimeState = RuntimeState
   { _webPort :: Maybe Port
   , _upstreamRelease :: Either NewReleaseFailure String
   , _eventLog :: Notifications LogEntry
+  , _scenarios :: ScenarioCollection
+  , _stdEntityMap :: EntityMap
+  , _stdRecipes :: [Recipe Entity]
+  , _adjList :: Array Int Text
+  , _nameList :: Array Int Text
   }
 
-initRuntimeState :: RuntimeState
+initRuntimeState :: ExceptT Text IO ([SystemFailure], RuntimeState)
 initRuntimeState =
-  RuntimeState
-    { _webPort = Nothing
-    , _upstreamRelease = Left (NoMainUpstreamRelease [])
-    , _eventLog = mempty
-    }
+  return
+    ( []
+    , RuntimeState
+        { _webPort = Nothing
+        , _upstreamRelease = Left (NoMainUpstreamRelease [])
+        , _eventLog = mempty
+        }
+    )
 
 makeLensesNoSigs ''RuntimeState
 
@@ -194,6 +210,30 @@ upstreamRelease :: Lens' RuntimeState (Either NewReleaseFailure String)
 -- If some error happens before a game is even selected, this is the
 -- place to log it.
 eventLog :: Lens' RuntimeState (Notifications LogEntry)
+
+-- | The collection of scenarios that comes with the game.
+scenarios :: Lens' GameState ScenarioCollection
+
+-- | The standard entity map loaded from disk.  Individual scenarios
+--   may define additional entities which will get added to this map
+--   when loading the scenario.
+stdEntityMap :: Lens' RuntimeState EntityMap
+
+-- | The standard list of recipes loaded from disk.  Individual scenarios
+--   may define additional recipes which will get added to this list
+--   when loading the scenario.
+stdRecipes :: Lens' RuntimeState [Recipe Entity]
+
+-- | Read-only list of words, for use in building random robot names.
+adjList :: Getter GameState (Array Int Text)
+adjList = to _adjList
+
+-- | Read-only list of words, for use in building random robot names.
+nameList :: Getter GameState (Array Int Text)
+nameList = to _nameList
+
+--------------------------------------------------
+-- Utility
 
 -- | Simply log to the runtime event log.
 logEvent :: LogSource -> (Text, RID) -> Text -> Notifications LogEntry -> Notifications LogEntry

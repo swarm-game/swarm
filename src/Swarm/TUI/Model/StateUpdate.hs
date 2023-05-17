@@ -54,11 +54,12 @@ initAppState :: AppOpts -> ExceptT Text IO AppState
 initAppState AppOpts {..} = do
   let isRunningInitialProgram = isJust scriptToRun || autoPlay
       skipMenu = isJust userScenario || isRunningInitialProgram || isJust userSeed
+  (rsWarnings, initRS) <- initRuntimeState
   (gsWarnings, gs) <- initGameState
   (uiWarnings, ui) <- initUIState speed (not skipMenu) (cheatMode || autoPlay)
   let logWarning rs' w = rs' & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
       addWarnings = List.foldl' logWarning
-      rs = addWarnings initRuntimeState $ gsWarnings <> uiWarnings
+      rs = addWarnings initRS $ rsWarnings <> gsWarnings <> uiWarnings
   case skipMenu of
     False -> return $ AppState gs (ui & lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
     True -> do

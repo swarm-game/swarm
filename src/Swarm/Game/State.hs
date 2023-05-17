@@ -392,13 +392,10 @@ data GameState = GameState
   , _seed :: Seed
   , _randGen :: StdGen
   , _initiallyRunCode :: Maybe ProcessedTerm
-  , _adjList :: Array Int Text
-  , _nameList :: Array Int Text
   , _entityMap :: EntityMap
   , _recipesOut :: IntMap [Recipe Entity]
   , _recipesIn :: IntMap [Recipe Entity]
   , _recipesReq :: IntMap [Recipe Entity]
-  , _scenarios :: ScenarioCollection
   , _currentScenarioPath :: Maybe FilePath
   , _knownEntities :: [Text]
   , _world :: W.World Int Entity
@@ -428,7 +425,7 @@ makeLensesFor
   ]
   ''GameState
 
-makeLensesExcluding ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots, '_adjList, '_nameList] ''GameState
+makeLensesExcluding ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots] ''GameState
 
 -- | Is the user in creative mode (i.e. able to do anything without restriction)?
 creativeMode :: Lens' GameState Bool
@@ -532,14 +529,6 @@ randGen :: Lens' GameState StdGen
 -- REPL interaction.
 initiallyRunCode :: Lens' GameState (Maybe ProcessedTerm)
 
--- | Read-only list of words, for use in building random robot names.
-adjList :: Getter GameState (Array Int Text)
-adjList = to _adjList
-
--- | Read-only list of words, for use in building random robot names.
-nameList :: Getter GameState (Array Int Text)
-nameList = to _nameList
-
 -- | The catalog of all entities that the game knows about.
 entityMap :: Lens' GameState EntityMap
 
@@ -551,9 +540,6 @@ recipesIn :: Lens' GameState (IntMap [Recipe Entity])
 
 -- | All recipes the game knows about, indexed by requirement/catalyst.
 recipesReq :: Lens' GameState (IntMap [Recipe Entity])
-
--- | The collection of scenarios that comes with the game.
-scenarios :: Lens' GameState ScenarioCollection
 
 -- | The filepath of the currently running scenario.
 --
