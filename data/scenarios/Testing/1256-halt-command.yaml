@@ -29,9 +29,12 @@ robots:
       - halting oracle
   - name: infinitebot
     dir: [0,1]
-    system: true
     display:
       invisible: false
+    devices:
+      - strange loop
+      - dictionary
+      - treads
     inventory:
       - [1, flower]
     program: |
