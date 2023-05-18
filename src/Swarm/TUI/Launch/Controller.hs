@@ -40,6 +40,7 @@ handleFBEvent = \case
           b' <- get
           return $ case FB.fileBrowserSelection b' of
             [] -> False
+            -- TODO: cull all but the most-recently-selected item
             _ -> True
         _ -> return False
     when shouldClose closeModal

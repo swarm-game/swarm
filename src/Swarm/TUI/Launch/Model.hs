@@ -12,11 +12,21 @@ import Swarm.Game.ScenarioInfo
 import Swarm.Game.State (CodeToRun)
 import Swarm.Game.WorldGen (Seed)
 import Swarm.TUI.Model.Name
+import Data.Functor.Identity (Identity)
 
-data ValidatedLaunchParms = ValidatedLaunchParms
-  { seedVal :: Maybe Seed
-  , initialCode :: Maybe CodeToRun
+data LaunchParms a = LaunchParms
+  { seedVal :: a (Maybe Seed)
+  , initialCode :: a (Maybe CodeToRun)
   }
+
+-- TODO Use this to store error messages
+-- on individual fields
+type EditingLaunchParms = LaunchParms (Either Text)
+
+-- | In this stage in the UI pipeline, both fields
+-- have already been validated, and "Nothing" means
+-- that the field is simply absent.
+type ValidatedLaunchParms = LaunchParms Identity
 
 data FileBrowserControl = FileBrowserControl
   { _fbWidget :: FB.FileBrowser Name

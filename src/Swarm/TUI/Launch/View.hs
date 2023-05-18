@@ -83,7 +83,9 @@ drawLaunchConfigPanel (LaunchOptions lc validatedOptions) =
 
   mkButton name label = highlightIfFocused name $ withAttr boldAttr $ txt label
 
+  -- TODO: Use the EditingLaunchParms object; don't read from the form control.
   seedEntryContent = mconcat $ getEditContents seedEditor
+  
   scenarioSeedText = maybe "random" show $ view scenarioSeed . fst =<< displayedFor
   seedEntryWidget =
     if T.null seedEntryContent && not (isFocused SeedSelector)
@@ -104,6 +106,7 @@ drawLaunchConfigPanel (LaunchOptions lc validatedOptions) =
       else str "<none>"
   fileEntryWidget =
     -- NOTE: We only allow one file to be selected.
+    -- TODO: Use the EditingLaunchParms object; don't read from the form control.
     maybe unspecifiedFileMessage (str . FB.fileInfoSanitizedFilename) $
       listToMaybe $
         FB.fileBrowserSelection fb

@@ -17,6 +17,8 @@ import Swarm.TUI.Model.Name
 import Swarm.Util (listEnums)
 import Text.Read (readEither)
 
+import Data.Functor.Identity (Identity (..))
+
 swarmLangFileExtension :: String
 swarmLangFileExtension = "sw"
 
@@ -37,7 +39,7 @@ toValidatedParms (LaunchControls (FileBrowserControl fb _) seedEditor _ _) = run
       )
       $ pureIf (not $ T.null seedFieldText) seedFieldText
 
-  return $ ValidatedLaunchParms maybeSeed maybeParsedCode
+  return $ LaunchParms (Identity maybeSeed) (Identity maybeParsedCode)
  where
   seedFieldText = mconcat $ getEditContents seedEditor
   maybeSelectedFile =
@@ -57,7 +59,7 @@ initConfigPanel = do
   return $
     LaunchOptions
       (LaunchControls (FileBrowserControl configuredFB False) myForm ring Nothing)
-      (Right $ ValidatedLaunchParms Nothing Nothing)
+      (Right $ LaunchParms (Identity Nothing) (Identity Nothing))
  where
   myForm =
     editorText

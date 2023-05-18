@@ -45,7 +45,7 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.State
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
-import Swarm.TUI.Launch.Model (ValidatedLaunchParms (..))
+import Swarm.TUI.Launch.Model (ValidatedLaunchParms, LaunchParms (..))
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.TUI.Model.Repl
@@ -81,12 +81,12 @@ initAppState AppOpts {..} = do
             Right x -> (x, rs)
             Left e -> (ScenarioInfo path NotStarted, addWarnings rs e)
       execStateT
-        (startGameWithSeed (scenario, si) $ ValidatedLaunchParms userSeed codeToRun)
+        (startGameWithSeed (scenario, si) $ LaunchParms (Identity userSeed) (Identity codeToRun))
         (AppState gs ui newRs)
 
 -- | Load a 'Scenario' and start playing the game.
 startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()
-startGame siPair = startGameWithSeed siPair . ValidatedLaunchParms Nothing
+startGame siPair = startGameWithSeed siPair . LaunchParms (Identity Nothing) . Identity
 
 -- | Re-initialize the game from the stored reference to the current scenario.
 --
@@ -98,7 +98,7 @@ startGame siPair = startGameWithSeed siPair . ValidatedLaunchParms Nothing
 -- Since scenarios are stored as a Maybe in the UI state, we handle the Nothing
 -- case upstream so that the Scenario passed to this function definitely exists.
 restartGame :: (MonadIO m, MonadState AppState m) => Seed -> ScenarioInfoPair -> m ()
-restartGame currentSeed siPair = startGameWithSeed siPair $ ValidatedLaunchParms (Just currentSeed) Nothing
+restartGame currentSeed siPair = startGameWithSeed siPair $ LaunchParms (Identity (Just currentSeed)) (Identity Nothing)
 
 -- | Load a 'Scenario' and start playing the game, with the
 --   possibility for the user to override the seed.
@@ -107,7 +107,7 @@ startGameWithSeed ::
   ScenarioInfoPair ->
   ValidatedLaunchParms ->
   m ()
-startGameWithSeed siPair@(_scene, si) (ValidatedLaunchParms userSeed toRun) = do
+startGameWithSeed siPair@(_scene, si) (LaunchParms (Identity userSeed) (Identity toRun)) = do
   t <- liftIO getZonedTime
   ss <- use $ runtimeState . scenarios
   p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
