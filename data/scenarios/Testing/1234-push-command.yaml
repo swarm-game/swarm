@@ -49,7 +49,6 @@ entities:
   description:
   - Pushable crate
   properties: [known, portable, unwalkable]
-  capabilities: [push]
 known: [tree, flower, boulder, water]
 world:
   default: [blank]

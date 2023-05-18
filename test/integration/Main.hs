@@ -207,6 +207,13 @@ testScenarioSolution _ci _em =
             [ testSolution Default "Challenges/Ranching/capture"
             , testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
             ]
+        , testGroup
+            "Sokoban"
+            [ testSolution Default "Challenges/Sokoban/foresight.yaml"
+            , testSolution Default "Challenges/Sokoban/Gadgets/no-reverse.yaml"
+            , testSolution Default "Challenges/Sokoban/Gadgets/one-way.yaml"
+            , testSolution Default "Challenges/Sokoban/Simple/trapdoor.yaml"
+            ]
         ]
     , testGroup
         "Regression tests"

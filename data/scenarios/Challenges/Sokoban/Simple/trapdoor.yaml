@@ -1,0 +1,116 @@
+version: 1
+name: Trapdoor 1
+author: Karl Ostmo
+# NOTES: There is a way to push the blocks
+# so that you cannot get back the way you
+# came. This is the "trap door".
+# But there is one other route that will allow
+# you to go back.
+description: |
+  Bring the flower back.
+creative: false
+seed: 0
+objectives:
+  - goal:
+      - Place the flower on the target.
+      - You may have to start over if you get stuck.
+    condition: |
+      as base {
+        teleport self (0,0);
+        ishere "flower";
+      };
+robots:
+  - name: base
+    dir: [1, 0]
+    display:
+      attr: gold
+    devices:
+      - branch predictor
+      - calculator
+      - comparator
+      - dictionary
+      - dozer blade
+      - grabber
+      - keyboard
+      - lambda
+      - logger
+      - scanner
+      - strange loop
+      - treads
+      - workbench
+solution: |
+  def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+  move;
+  turn right;
+  move;
+  turn left;
+
+  doN 2 move;
+  turn left;
+  move;
+  turn right;
+  move;
+  turn left;
+  move;
+  turn right;
+  doN 2 move;
+  turn right;
+  push;
+  turn back;
+  move;
+  turn left;
+  doN 2 move;
+  turn left;
+  move;
+  turn left;
+  push;
+  turn right;
+  move;
+  turn left;
+  doN 3 push;
+  turn left;
+  doN 2 move;
+  turn right;
+  doN 2 move;
+  f <- grab;
+  turn back;
+
+  doN 2 move;
+  turn left;
+  doN 2 move;
+  turn right;
+  doN 3 move;
+  turn right;
+  move;
+  turn left;
+  doN 2 move;
+  turn left;
+  move;
+  turn right;
+  doN 3 move;
+  turn right;
+  move;
+  place f;
+entities:
+  - name: monolith
+    display:
+      char: '@'
+    description:
+    - Pushable rock
+    properties: [known, unwalkable, portable]
+known: [mountain, water, flower]
+world:
+  default: [grass, water]
+  upperleft: [-1, 1]
+  offset: false
+  palette:
+    'B': [ice, null, base]
+    '.': [grass]
+    'x': [dirt]
+    '@': [grass, monolith]
+    'A': [grass, mountain]
+    '*': [grass, flower]
+  map: |
+    xxxAA...A..*
+    xBxA..@@A...
+    xxx..A.....A

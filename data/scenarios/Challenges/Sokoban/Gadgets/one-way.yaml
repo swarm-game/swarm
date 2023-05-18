@@ -1,0 +1,64 @@
+version: 1
+name: No-reverse gadget
+author: Karl Ostmo
+description: |
+  Initially permits passage only from left to right.
+creative: false
+seed: 0
+objectives:
+  - goal:
+      - Grab the flower.
+    condition: |
+      as base {
+        has "flower";
+      };
+robots:
+  - name: base
+    dir: [1, 0]
+    display:
+      attr: gold
+    devices:
+      - branch predictor
+      - calculator
+      - comparator
+      - dictionary
+      - dozer blade
+      - grabber
+      - keyboard
+      - lambda
+      - logger
+      - scanner
+      - strange loop
+      - treads
+      - workbench
+solution: |
+  move;
+  move;
+  push;
+  turn right;
+  move;
+  move;
+  grab;
+entities:
+  - name: monolith
+    display:
+      char: '@'
+    description:
+    - Pushable rock
+    properties: [known, unwalkable, portable]
+known: [mountain, water, flower]
+world:
+  default: [grass, water]
+  upperleft: [-1, 1]
+  offset: false
+  palette:
+    'B': [grass, null, base]
+    '.': [grass]
+    '@': [grass, monolith]
+    'A': [grass, mountain]
+    '*': [grass, flower]
+  map: |
+    AAAAAA
+    B..@.A
+    AAA.AA
+    AAA*AA
