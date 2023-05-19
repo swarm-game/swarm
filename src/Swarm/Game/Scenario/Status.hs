@@ -22,6 +22,7 @@ import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
+import Swarm.Util.Lens (makeLensesNoSigs)
 
 -- | A "ScenarioStatus" stores the status of a scenario along with
 --   appropriate metadata: "NotStarted", or "Played".
@@ -57,7 +58,7 @@ instance ToJSON ScenarioInfo where
 
 type ScenarioInfoPair = (Scenario, ScenarioInfo)
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''ScenarioInfo
+makeLensesNoSigs ''ScenarioInfo
 
 -- | The path of the scenario, relative to @data/scenarios@.
 scenarioPath :: Lens' ScenarioInfo FilePath

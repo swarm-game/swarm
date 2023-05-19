@@ -336,6 +336,10 @@ handleMainEvent ev = do
     -- toggle creative mode if in "cheat mode"
     ControlChar 'v'
       | s ^. uiState . uiCheatMode -> gameState . creativeMode %= not
+    -- toggle collapse/expand REPL
+    ControlChar 's' -> do
+      invalidateCacheEntry WorldCache
+      uiState . uiShowREPL %= not
     MouseDown n _ _ mouseLoc ->
       case n of
         FocusablePanel WorldPanel -> do
@@ -1016,6 +1020,7 @@ handleREPLEventPiloting x = case x of
   CharKey 's' -> inputCmd "scan forward"
   CharKey 'b' -> inputCmd "blocked"
   CharKey 'u' -> inputCmd "upload base"
+  CharKey 'p' -> inputCmd "push"
   _ -> inputCmd "noop"
  where
   inputCmd cmdText = do

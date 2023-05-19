@@ -99,6 +99,7 @@ import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types (TCtx)
 import Swarm.Language.Value as V
+import Swarm.Util.Lens (makeLensesExcluding)
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
 
@@ -205,14 +206,7 @@ deriving instance (ToJSON (RobotLocation phase), ToJSON (RobotID phase)) => ToJS
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-let exclude = ['_robotCapabilities, '_equippedDevices, '_robotLog]
- in makeLensesWith
-      ( lensRules
-          & generateSignatures .~ False
-          & lensField . mapped . mapped %~ \fn n ->
-            if n `elem` exclude then [] else fn n
-      )
-      ''RobotR
+makeLensesExcluding ['_robotCapabilities, '_equippedDevices, '_robotLog] ''RobotR
 
 -- | A template robot, i.e. a template robot record without a unique ID number,
 --   and possibly without a location.

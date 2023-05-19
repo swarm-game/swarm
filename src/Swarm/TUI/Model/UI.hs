@@ -33,6 +33,7 @@ module Swarm.TUI.Model.UI (
   frameTickCount,
   lastInfoTime,
   uiShowFPS,
+  uiShowREPL,
   uiShowZero,
   uiShowDebug,
   uiShowRobots,
@@ -46,7 +47,7 @@ module Swarm.TUI.Model.UI (
 
   -- ** Initialization
   initFocusRing,
-  initLgTicksPerSecond,
+  defaultInitLgTicksPerSecond,
   initUIState,
 ) where
 
@@ -78,6 +79,7 @@ import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.Util
+import Swarm.Util.Lens (makeLensesExcluding)
 import System.Clock
 
 ------------------------------------------------------------
@@ -104,6 +106,7 @@ data UIState = UIState
   , _uiGoal :: GoalDisplay
   , _uiAchievements :: Map CategorizedAchievement Attainment
   , _uiShowFPS :: Bool
+  , _uiShowREPL :: Bool
   , _uiShowZero :: Bool
   , _uiShowDebug :: Bool
   , _uiHideRobotsUntil :: TimeSpec
@@ -125,14 +128,7 @@ data UIState = UIState
 --------------------------------------------------
 -- Lenses for UIState
 
-let exclude = ['_lgTicksPerSecond]
- in makeLensesWith
-      ( lensRules
-          & generateSignatures .~ False
-          & lensField . mapped . mapped %~ \fn n ->
-            if n `elem` exclude then [] else fn n
-      )
-      ''UIState
+makeLensesExcluding ['_lgTicksPerSecond] ''UIState
 
 -- | The current menu state.
 uiMenu :: Lens' UIState Menu
@@ -193,6 +189,9 @@ uiAchievements :: Lens' UIState (Map CategorizedAchievement Attainment)
 
 -- | A toggle to show the FPS by pressing `f`
 uiShowFPS :: Lens' UIState Bool
+
+-- | A toggle to expand or collapse the REPL by pressing `Ctrl-k`
+uiShowREPL :: Lens' UIState Bool
 
 -- | A toggle to show or hide inventory items with count 0 by pressing `0`
 uiShowZero :: Lens' UIState Bool
@@ -276,16 +275,16 @@ initFocusRing :: FocusRing Name
 initFocusRing = focusRing $ map FocusablePanel listEnums
 
 -- | The initial tick speed.
-initLgTicksPerSecond :: Int
-initLgTicksPerSecond = 4 -- 2^4 = 16 ticks / second
+defaultInitLgTicksPerSecond :: Int
+defaultInitLgTicksPerSecond = 4 -- 2^4 = 16 ticks / second
 
 -- | Initialize the UI state.  This needs to be in the IO monad since
 --   it involves reading a REPL history file, getting the current
 --   time, and loading text files from the data directory.  The @Bool@
 --   parameter indicates whether we should start off by showing the
 --   main menu.
-initUIState :: Bool -> Bool -> ExceptT Text IO ([SystemFailure], UIState)
-initUIState showMainMenu cheatMode = do
+initUIState :: Int -> Bool -> Bool -> ExceptT Text IO ([SystemFailure], UIState)
+initUIState speedFactor showMainMenu cheatMode = do
   historyT <- liftIO $ readFileMayT =<< getSwarmHistoryPath False
   appDataMap <- withExceptT prettyFailure readAppData
   let history = maybe [] (map REPLEntry . T.lines) historyT
@@ -310,13 +309,14 @@ initUIState showMainMenu cheatMode = do
           , _uiGoal = emptyGoalDisplay
           , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
           , _uiShowFPS = False
+          , _uiShowREPL = True
           , _uiShowZero = True
           , _uiShowDebug = False
           , _uiHideRobotsUntil = startTime - 1
           , _uiInventoryShouldUpdate = False
           , _uiTPF = 0
           , _uiFPS = 0
-          , _lgTicksPerSecond = initLgTicksPerSecond
+          , _lgTicksPerSecond = speedFactor
           , _lastFrameTime = startTime
           , _accumulatedTime = 0
           , _lastInfoTime = 0

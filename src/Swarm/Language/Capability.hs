@@ -134,9 +134,11 @@ data Capability
     CAtomic
   | -- | Capability to execute swap (grab and place atomically at the same time).
     CSwap
-  | -- | Capabiltiy to do time-related things, like `wait` and get the
-    --   current time.
-    CTime
+  | -- | Capability to obtain absolute time, namely via the `time` command.
+    CTimeabs
+  | -- | Capability to utilize relative passage of time, namely via the `wait` command.
+    --   This is strictly weaker than "CTimeAbs".
+    CTimerel
   | -- | Capability to execute `try`.
     CTry
   | -- | Capability for working with sum types.
@@ -233,8 +235,8 @@ constCaps = \case
   Swap -> Just CSwap
   Atomic -> Just CAtomic
   Instant -> Just CGod
-  Time -> Just CTime
-  Wait -> Just CTime
+  Time -> Just CTimeabs
+  Wait -> Just CTimerel
   Scout -> Just CRecondir
   Whereami -> Just CSenseloc
   Detect -> Just CDetectloc
