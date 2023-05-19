@@ -1,5 +1,5 @@
 version: 1
-name: No-reverse gadget
+name: One-way gadget
 author: Karl Ostmo
 description: |
   Initially permits passage only from left to right.
@@ -19,8 +19,9 @@ robots:
       attr: gold
     devices:
       - branch predictor
-      - calculator
+      - ADT calculator
       - comparator
+      - compass
       - dictionary
       - dozer blade
       - grabber

@@ -19,6 +19,15 @@ objectives:
         teleport self (0,0);
         ishere "monolith";
       };
+  - teaser: Pick flower
+    hidden: true
+    optional: true
+    goal:
+      - Grab the flower
+    condition: |
+      as base {
+        has "flower";
+      };
 robots:
   - name: base
     display:
@@ -26,8 +35,9 @@ robots:
     dir: [0, 1]
     devices:
       - branch predictor
-      - calculator
+      - ADT calculator
       - comparator
+      - compass
       - dictionary
       - dozer blade
       - grabber
@@ -83,31 +93,34 @@ entities:
     description:
     - Unmovable barrier
     properties: [known, unwalkable]
-known: [mountain, water, 3D printer]
+known: [mountain, water, 3D printer, flower]
 world:
   default: [grass, water]
   upperleft: [-21, 10]
   offset: false
   palette:
-    'B': [grass, null, base]
+    'B': [ice, null, base]
     '.': [grass]
+    '*': [grass, flower]
+    'b': [grass, boat]
     '3': [grass, 3D printer]
     '@': [grass, monolith]
     'c': [grass, crate]
     'A': [grass, wall]
+    'w': [dirt, water]
     'x': [stone]
-    'y': [dirt]
+    'z': [dirt]
   map: |
     ..................3...A.
-    .................AAAA.AA
+    .................AAAA.A*
     .AAAAAAAAAAAAAAAAA.A..AA
     .A.................Acc..
     .AA.AAAAAAAAAAAAAA.A..c.
     ..A.AA.AAAAAAAAAAA.AAA..
     .@A.AA...........A.....A
     ..A.AA.AAAAAAAA.AA....AA
-    ..A.AA.A...A.AA.A.......
-    ..A.AA.A.....AA.A...xxx.
+    ..A.AA.AzzzA.AA.A.......
+    ..A.AA.Azzz..AA.A...xxx.
     ..A.AA.AA..A.AA.A...xBx.
     ..A.A.....AA.AA.AAA.xxx.
     ..A.AAAAA.AA.AA.A.......
@@ -117,4 +130,4 @@ world:
     ..AAAAAAAAAAAAA.A.......
     ................A.......
     .AAAAAAAAAAAAAA.A.......
-    ..............AAA.......
+    .............bAAA.......
