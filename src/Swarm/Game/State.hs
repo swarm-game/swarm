@@ -1102,19 +1102,16 @@ scenarioToGameState scenario userSeed toRun g = do
       -- Note that this *replaces* any program the base robot otherwise
       -- would have run (i.e. any program specified in the program: field
       -- of the scenario description).
-      & ix baseID
-        . machine
+      & ix baseID . machine
         %~ case initialCodeToRun of
           Nothing -> id
           Just pt -> const $ initMachine pt Ctx.empty emptyStore
       -- If we are in creative mode, give base all the things
-      & ix baseID
-        . robotInventory
+      & ix baseID . robotInventory
         %~ case scenario ^. scenarioCreative of
           False -> id
           True -> union (fromElems (map (0,) things))
-      & ix baseID
-        . equippedDevices
+      & ix baseID . equippedDevices
         %~ case scenario ^. scenarioCreative of
           False -> id
           True -> const (fromList devices)
