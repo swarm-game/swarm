@@ -1,0 +1,57 @@
+version: 1
+name: Halting test
+creative: false
+description: Stop a robot using halt
+objectives:
+  - goal:
+      - The robot next to you is holding a flower, but is stuck in an
+        infinite loop.  Get the flower!
+    condition: |
+      as base {has "flower"}
+solution: |
+  mr <- meet;
+  case mr (\_. return ()) (\r. halt r; turn west; move; salvage )
+robots:
+  - name: base
+    dir: [0,-1]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - compass
+      - dictionary
+      - grabber
+      - toolkit
+      - logger
+      - tank treads
+      - antenna
+      - ADT calculator
+      - halting oracle
+  - name: infinitebot
+    dir: [0,1]
+    display:
+      invisible: false
+    devices:
+      - strange loop
+      - dictionary
+      - treads
+    inventory:
+      - [1, flower]
+    program: |
+      def forever = \c. c ; forever c end;
+      forever ( turn right )
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    '^': [grass, null, infinitebot]
+    '.': [grass]
+  upperleft: [0, 0]
+  map: |
+   .........
+   .........
+   .........
+   ...^Ω....
+   .........
+   .........
+   .........

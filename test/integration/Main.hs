@@ -282,6 +282,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/1207-scout-command"
         , testSolution Default "Testing/1218-stride-command"
         , testSolution Default "Testing/1234-push-command"
+        , testSolution Default "Testing/1256-halt-command"
         ]
     ]
  where

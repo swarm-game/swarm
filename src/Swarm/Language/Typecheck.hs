@@ -578,6 +578,7 @@ inferConst c = case c of
   View -> [tyQ| actor -> cmd unit |]
   Appear -> [tyQ| text -> cmd unit |]
   Create -> [tyQ| text -> cmd unit |]
+  Halt -> [tyQ| actor -> cmd unit |]
   Time -> [tyQ| cmd int |]
   Scout -> [tyQ| dir -> cmd bool |]
   Whereami -> [tyQ| cmd (int * int) |]

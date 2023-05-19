@@ -257,6 +257,8 @@ data Const
   | -- | Create an entity out of thin air. Only
     --   available in creative mode.
     Create
+  | -- | Tell a robot to halt.
+    Halt
   | -- Sensing / generation
 
     -- | Get current time
@@ -644,6 +646,7 @@ constInfo c = case c of
   Create ->
     command 1 short . doc "Create an item out of thin air." $
       ["Only available in creative mode."]
+  Halt -> command 1 short "Tell a robot to halt."
   Time -> command 0 Intangible "Get the current time."
   Scout ->
     command 1 short . doc "Detect whether a robot is within line-of-sight in a direction." $
