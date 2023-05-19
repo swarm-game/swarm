@@ -77,6 +77,7 @@
                "view"
                "appear"
                "create"
+               "halt"
                "time"
                "scout"
                "whereami"

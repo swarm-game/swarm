@@ -1293,3 +1293,19 @@
     example `key "Down"` or `key "C-S-x"`.
   properties: [portable]
   capabilities: [handleinput]
+
+- name: halting oracle
+  display:
+    attr: device
+    char: '?'
+  description:
+  - A device to solve the halting problem. When asked if a
+    particular robot program will halt, it always answers YES.
+    And it is always correct... or else!
+  - |
+    Enables the command `halt : actor -> cmd unit` which takes
+    a robot as an argument and, if it is up to one cell away,
+    cancels its currently running program (if any).  In creative mode,
+    there is no distance limitation.
+  properties: [portable]
+  capabilities: [halt]
