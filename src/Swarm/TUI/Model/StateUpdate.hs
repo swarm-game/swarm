@@ -55,11 +55,11 @@ initAppState AppOpts {..} = do
   let isRunningInitialProgram = isJust scriptToRun || autoPlay
       skipMenu = isJust userScenario || isRunningInitialProgram || isJust userSeed
   (rsWarnings, initRS) <- initRuntimeState
-  (gsWarnings, gs) <- initGameState
+  let gs = initGameState (initRS ^. stdAdjList) (initRS ^. stdNameList) (initRS ^. stdEntityMap) (initRS ^. stdRecipes)
   (uiWarnings, ui) <- initUIState speed (not skipMenu) (cheatMode || autoPlay)
   let logWarning rs' w = rs' & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
       addWarnings = List.foldl' logWarning
-      rs = addWarnings initRS $ rsWarnings <> gsWarnings <> uiWarnings
+      rs = addWarnings initRS $ rsWarnings <> uiWarnings
   case skipMenu of
     False -> return $ AppState gs (ui & lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
     True -> do
@@ -109,18 +109,21 @@ startGameWithSeed ::
   m ()
 startGameWithSeed userSeed siPair@(_scene, si) toRun = do
   t <- liftIO getZonedTime
-  ss <- use $ gameState . scenarios
+  ss <- use $ runtimeState . scenarios
   p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
   gameState . currentScenarioPath .= Just p
-  gameState . scenarios . scenarioItemByPath p . _SISingle . _2 . scenarioStatus
+  runtimeState
+    . scenarios
+    . scenarioItemByPath p
+    . _SISingle
+    . _2
+    . scenarioStatus
     .= Played (Metric Attempted $ ProgressStats t emptyAttemptMetric) (prevBest t)
   scenarioToAppState siPair userSeed toRun
  where
   prevBest t = case si ^. scenarioStatus of
     NotStarted -> emptyBest t
     Played _ b -> b
-
--- TODO: #516 do we need to keep an old entity map around???
 
 -- | Modify the 'AppState' appropriately when starting a new scenario.
 scenarioToAppState ::

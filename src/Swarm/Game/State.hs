@@ -51,6 +51,8 @@ module Swarm.Game.State (
   gensym,
   seed,
   randGen,
+  adjList,
+  nameList,
   initiallyRunCode,
   entityMap,
   recipesOut,
@@ -120,7 +122,6 @@ import Control.Effect.Lens
 import Control.Effect.State (State)
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad.Except
-import Control.Monad.Trans.Except (except)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
@@ -141,8 +142,7 @@ import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
 import Data.Set qualified as S
 import Data.Text (Text)
-import Data.Text qualified as T (drop, lines, pack, take, unlines)
-import Data.Text.IO qualified as T (readFile)
+import Data.Text qualified as T (drop, pack, take)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
@@ -155,23 +155,18 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (CESK (Waiting), TickNumber, emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
-import Swarm.Game.Failure
-import Swarm.Game.Failure.Render
 import Swarm.Game.Location
 import Swarm.Game.Recipe (
   Recipe,
   inRecipeMap,
-  loadRecipes,
   outRecipeMap,
   reqRecipeMap,
  )
-import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
-import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
@@ -388,6 +383,8 @@ data GameState = GameState
   , _gensym :: Int
   , _seed :: Seed
   , _randGen :: StdGen
+  , _adjList :: Array Int Text
+  , _nameList :: Array Int Text
   , _initiallyRunCode :: Maybe ProcessedTerm
   , _entityMap :: EntityMap
   , _recipesOut :: IntMap [Recipe Entity]
@@ -422,7 +419,7 @@ makeLensesFor
   ]
   ''GameState
 
-makeLensesExcluding ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots] ''GameState
+makeLensesExcluding ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots, '_adjList, '_nameList] ''GameState
 
 -- | Is the user in creative mode (i.e. able to do anything without restriction)?
 creativeMode :: Lens' GameState Bool
@@ -521,6 +518,14 @@ seed :: Lens' GameState Seed
 
 -- | Pseudorandom generator initialized at start.
 randGen :: Lens' GameState StdGen
+
+-- | Read-only list of words, for use in building random robot names.
+adjList :: Getter GameState (Array Int Text)
+adjList = to _adjList
+
+-- | Read-only list of words, for use in building random robot names.
+nameList :: Getter GameState (Array Int Text)
+nameList = to _nameList
 
 -- | Code that is run upon scenario start, before any
 -- REPL interaction.
@@ -935,79 +940,65 @@ deleteRobot rn = do
 -- Initialization
 ------------------------------------------------------------
 
--- | Create an initial game state record, first loading entities and
---   recipes from disk.
-initGameState :: ExceptT Text IO ([SystemFailure], GameState)
-initGameState = do
-  entities <- ExceptT loadEntities
-  recipes <- withExceptT prettyFailure $ loadRecipes entities
-  (scenarioWarnings, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
+-- | Create an initial, fresh game state record when starting a new scenario.
+initGameState :: Array Int Text -> Array Int Text -> EntityMap -> [Recipe Entity] -> GameState
+initGameState initAdjList initNameList entities recipes =
+  GameState
+    { _creativeMode = False
+    , _gameStep = WorldTick
+    , _winCondition = NoWinCondition
+    , _winSolution = Nothing
+    , -- This does not need to be initialized with anything,
+      -- since the master list of achievements is stored in UIState
+      _gameAchievements = mempty
+    , _announcementQueue = mempty
+    , _runStatus = Running
+    , _robotMap = IM.empty
+    , _robotsByLocation = M.empty
+    , _robotsWatching = mempty
+    , _availableRecipes = mempty
+    , _availableCommands = mempty
+    , _allDiscoveredEntities = empty
+    , _activeRobots = IS.empty
+    , _waitingRobots = M.empty
+    , _gensym = 0
+    , _seed = 0
+    , _randGen = mkStdGen 0
+    , _adjList = initAdjList
+    , _nameList = initNameList
+    , _initiallyRunCode = Nothing
+    , _entityMap = entities
+    , _recipesOut = outRecipeMap recipes
+    , _recipesIn = inRecipeMap recipes
+    , _recipesReq = reqRecipeMap recipes
+    , _currentScenarioPath = Nothing
+    , _knownEntities = []
+    , _world = W.emptyWorld (fromEnum StoneT)
+    , _worldScrollable = True
+    , _viewCenterRule = VCRobot 0
+    , _viewCenter = origin
+    , _needsRedraw = False
+    , _replStatus = REPLDone Nothing
+    , _replNextValueIndex = 0
+    , _inputHandler = Nothing
+    , _messageQueue = Empty
+    , _lastSeenMessageTime = -1
+    , _focusedRobotID = 0
+    , _ticks = 0
+    , _robotStepsPerTick = defaultRobotStepsPerTick
+    }
 
-  (adjsFile, namesFile) <- withExceptT prettyFailure $ do
-    adjsFile <- getDataFileNameSafe NameGeneration "adjectives.txt"
-    namesFile <- getDataFileNameSafe NameGeneration "names.txt"
-    return (adjsFile, namesFile)
-
-  let markEx what a = catchError a (\e -> fail $ "Failed to " <> what <> ": " <> show e)
-  (adjs, names) <- liftIO . markEx "load name generation data" $ do
-    as <- tail . T.lines <$> T.readFile adjsFile
-    ns <- tail . T.lines <$> T.readFile namesFile
-    return (as, ns)
-
-  return
-    ( scenarioWarnings
-    , GameState
-        { _creativeMode = False
-        , _gameStep = WorldTick
-        , _winCondition = NoWinCondition
-        , _winSolution = Nothing
-        , -- This does not need to be initialized with anything,
-          -- since the master list of achievements is stored in UIState
-          _gameAchievements = mempty
-        , _announcementQueue = mempty
-        , _runStatus = Running
-        , _robotMap = IM.empty
-        , _robotsByLocation = M.empty
-        , _robotsWatching = mempty
-        , _availableRecipes = mempty
-        , _availableCommands = mempty
-        , _allDiscoveredEntities = empty
-        , _activeRobots = IS.empty
-        , _waitingRobots = M.empty
-        , _gensym = 0
-        , _seed = 0
-        , _randGen = mkStdGen 0
-        , _initiallyRunCode = Nothing
-        , _entityMap = entities
-        , _recipesOut = outRecipeMap recipes
-        , _recipesIn = inRecipeMap recipes
-        , _recipesReq = reqRecipeMap recipes
-        , _currentScenarioPath = Nothing
-        , _knownEntities = []
-        , _world = W.emptyWorld (fromEnum StoneT)
-        , _worldScrollable = True
-        , _viewCenterRule = VCRobot 0
-        , _viewCenter = origin
-        , _needsRedraw = False
-        , _replStatus = REPLDone Nothing
-        , _replNextValueIndex = 0
-        , _inputHandler = Nothing
-        , _messageQueue = Empty
-        , _lastSeenMessageTime = -1
-        , _focusedRobotID = 0
-        , _ticks = 0
-        , _robotStepsPerTick = defaultRobotStepsPerTick
-        }
-    )
-
--- | Set a given scenario as the currently loaded scenario in the game state.
+-- | Create an initial game state corresponding to the given scenario.
 scenarioToGameState ::
   Scenario ->
   Maybe Seed ->
   Maybe CodeToRun ->
-  GameState ->
+  Array Int Text ->
+  Array Int Text ->
+  EntityMap ->
+  [Recipe Entity] ->
   IO GameState
-scenarioToGameState scenario userSeed toRun g = do
+scenarioToGameState scenario userSeed toRun initAdjList initNameList initEntities initRecipes = do
   -- Decide on a seed.  In order of preference, we will use:
   --   1. seed value provided by the user
   --   2. seed value specified in the scenario description
@@ -1020,47 +1011,38 @@ scenarioToGameState scenario userSeed toRun g = do
   let robotList' = (robotCreatedAt .~ now) <$> robotList
 
   return $
-    g
-      { _creativeMode = scenario ^. scenarioCreative
-      , _winCondition = theWinCondition
-      , _winSolution = scenario ^. scenarioSolution
-      , _runStatus = Running
-      , _robotMap = IM.fromList $ map (view robotID &&& id) robotList'
-      , _robotsByLocation =
-          M.fromListWith IS.union $
-            map (view robotLocation &&& (IS.singleton . view robotID)) robotList'
-      , _activeRobots = setOf (traverse . robotID) robotList'
-      , _availableCommands = Notifications 0 initialCommands
-      , _waitingRobots = M.empty
-      , _gensym = initGensym
-      , _seed = theSeed
-      , _randGen = mkStdGen theSeed
-      , _initiallyRunCode = initialCodeToRun
-      , _entityMap = em
-      , _recipesOut = addRecipesWith outRecipeMap recipesOut
-      , _recipesIn = addRecipesWith inRecipeMap recipesIn
-      , _recipesReq = addRecipesWith reqRecipeMap recipesReq
-      , _knownEntities = scenario ^. scenarioKnown
-      , _world = theWorld theSeed
-      , _worldScrollable = scenario ^. scenarioWorld . to scrollable
-      , _viewCenterRule = VCRobot baseID
-      , _viewCenter = origin
-      , _needsRedraw = False
-      , -- When the base starts out running a program, the REPL status must be set to working,
-        -- otherwise the store of definition cells is not saved (see #333, #838)
-        _replStatus = case running of
-          False -> REPLDone Nothing
-          True -> REPLWorking (Typed Nothing PolyUnit mempty)
-      , _replNextValueIndex = 0
-      , _inputHandler = Nothing
-      , _messageQueue = Empty
-      , _focusedRobotID = baseID
-      , _ticks = 0
-      , _robotStepsPerTick = (scenario ^. scenarioStepsPerTick) ? defaultRobotStepsPerTick
+    (initGameState initAdjList initNameList initEntities initRecipes)
+      { _focusedRobotID = baseID
       }
+      & creativeMode .~ scenario ^. scenarioCreative
+      & winCondition .~ theWinCondition
+      & winSolution .~ scenario ^. scenarioSolution
+      & robotMap .~ IM.fromList (map (view robotID &&& id) robotList')
+      & robotsByLocation
+        .~ M.fromListWith
+          IS.union
+          (map (view robotLocation &&& (IS.singleton . view robotID)) robotList')
+      & internalActiveRobots .~ setOf (traverse . robotID) robotList'
+      & availableCommands .~ Notifications 0 initialCommands
+      & gensym .~ initGensym
+      & seed .~ theSeed
+      & randGen .~ mkStdGen theSeed
+      & initiallyRunCode .~ initialCodeToRun
+      & entityMap .~ em
+      & recipesOut %~ addRecipesWith outRecipeMap
+      & recipesIn %~ addRecipesWith inRecipeMap
+      & recipesReq %~ addRecipesWith reqRecipeMap
+      & knownEntities .~ scenario ^. scenarioKnown
+      & world .~ theWorld theSeed
+      & worldScrollable .~ scenario ^. scenarioWorld . to scrollable
+      & viewCenterRule .~ VCRobot baseID
+      & replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
+      -- otherwise the store of definition cells is not saved (see #333, #838)
+        False -> REPLDone Nothing
+        True -> REPLWorking (Typed Nothing PolyUnit mempty)
+      & robotStepsPerTick .~ ((scenario ^. scenarioStepsPerTick) ? defaultRobotStepsPerTick)
  where
-  em = g ^. entityMap <> scenario ^. scenarioEntities
-
+  em = initEntities <> scenario ^. scenarioEntities
   baseID = 0
   (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
   -- Keep only robots from the robot list with a concrete location;
@@ -1141,7 +1123,7 @@ scenarioToGameState scenario userSeed toRun g = do
       (NE.nonEmpty (scenario ^. scenarioObjectives))
 
   initGensym = length robotList - 1
-  addRecipesWith f gRs = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes) (g ^. gRs)
+  addRecipesWith f = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes)
 
 -- | Take a world description, parsed from a scenario file, and turn
 --   it into a list of located robots and a world function.
@@ -1187,7 +1169,7 @@ initGameStateForScenario ::
   Maybe Seed ->
   Maybe FilePath ->
   ExceptT Text IO GameState
-initGameStateForScenario sceneName userSeed toRun = undefined -- XXX
+initGameStateForScenario _sceneName _userSeed _toRun = undefined -- XXX
 
 -- (warnings, g) <- initGameState
 -- unless (null warnings)

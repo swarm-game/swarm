@@ -87,8 +87,8 @@ module Swarm.TUI.Model (
   scenarios,
   stdEntityMap,
   stdRecipes,
-  adjList,
-  nameList,
+  stdAdjList,
+  stdNameList,
 
   -- ** Updating
   logEvent,
@@ -119,10 +119,13 @@ import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
 import Control.Monad.State
+import Data.Array (Array, listArray)
 import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
+import Data.Text qualified as T (lines)
+import Data.Text.IO qualified as T (readFile)
 import Data.Vector qualified as V
 import GitHash (GitInfo)
 import Graphics.Vty (ColorMode (..))
@@ -130,9 +133,14 @@ import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity as E
 import Swarm.Game.Failure
+import Swarm.Game.Failure.Render
+import Swarm.Game.Recipe (Recipe, loadRecipes)
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (
-  ScenarioInfoPair,
+  ScenarioCollection,
+  loadScenariosWithWarnings,
   _SISingle,
  )
 import Swarm.Game.State
@@ -181,18 +189,38 @@ data RuntimeState = RuntimeState
   , _scenarios :: ScenarioCollection
   , _stdEntityMap :: EntityMap
   , _stdRecipes :: [Recipe Entity]
-  , _adjList :: Array Int Text
-  , _nameList :: Array Int Text
+  , _stdAdjList :: Array Int Text
+  , _stdNameList :: Array Int Text
   }
 
 initRuntimeState :: ExceptT Text IO ([SystemFailure], RuntimeState)
-initRuntimeState =
+initRuntimeState = do
+  entities <- ExceptT loadEntities
+  recipes <- withExceptT prettyFailure $ loadRecipes entities
+  (scenarioWarnings, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
+
+  (adjsFile, namesFile) <- withExceptT prettyFailure $ do
+    adjsFile <- getDataFileNameSafe NameGeneration "adjectives.txt"
+    namesFile <- getDataFileNameSafe NameGeneration "names.txt"
+    return (adjsFile, namesFile)
+
+  let markEx what a = catchError a (\e -> fail $ "Failed to " <> what <> ": " <> show e)
+  (adjs, names) <- liftIO . markEx "load name generation data" $ do
+    as <- tail . T.lines <$> T.readFile adjsFile
+    ns <- tail . T.lines <$> T.readFile namesFile
+    return (as, ns)
+
   return
-    ( []
+    ( scenarioWarnings
     , RuntimeState
         { _webPort = Nothing
         , _upstreamRelease = Left (NoMainUpstreamRelease [])
         , _eventLog = mempty
+        , _scenarios = loadedScenarios
+        , _stdEntityMap = entities
+        , _stdRecipes = recipes
+        , _stdAdjList = listArray (0, length adjs - 1) adjs
+        , _stdNameList = listArray (0, length names - 1) names
         }
     )
 
@@ -212,7 +240,7 @@ upstreamRelease :: Lens' RuntimeState (Either NewReleaseFailure String)
 eventLog :: Lens' RuntimeState (Notifications LogEntry)
 
 -- | The collection of scenarios that comes with the game.
-scenarios :: Lens' GameState ScenarioCollection
+scenarios :: Lens' RuntimeState ScenarioCollection
 
 -- | The standard entity map loaded from disk.  Individual scenarios
 --   may define additional entities which will get added to this map
@@ -224,13 +252,11 @@ stdEntityMap :: Lens' RuntimeState EntityMap
 --   when loading the scenario.
 stdRecipes :: Lens' RuntimeState [Recipe Entity]
 
--- | Read-only list of words, for use in building random robot names.
-adjList :: Getter GameState (Array Int Text)
-adjList = to _adjList
+-- | List of words for use in building random robot names.
+stdAdjList :: Lens' RuntimeState (Array Int Text)
 
--- | Read-only list of words, for use in building random robot names.
-nameList :: Getter GameState (Array Int Text)
-nameList = to _nameList
+-- | List of words for use in building random robot names.
+stdNameList :: Lens' RuntimeState (Array Int Text)
 
 --------------------------------------------------
 -- Utility

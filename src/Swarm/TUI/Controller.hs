@@ -148,12 +148,12 @@ handleMainMenuEvent menu = \case
       Just x0 -> case x0 of
         NewGame -> do
           cheat <- use $ uiState . uiCheatMode
-          ss <- use $ gameState . scenarios
+          ss <- use $ runtimeState . scenarios
           uiState . uiMenu .= NewGameMenu (NE.fromList [mkScenarioList cheat ss])
         Tutorial -> do
           -- Set up the menu stack as if the user had chosen "New Game > Tutorials"
           cheat <- use $ uiState . uiCheatMode
-          ss <- use $ gameState . scenarios
+          ss <- use $ runtimeState . scenarios
           let tutorialCollection = getTutorials ss
               topMenu =
                 BL.listFindBy
@@ -455,7 +455,7 @@ getNormalizedCurrentScenarioPath =
   use (gameState . currentScenarioPath) >>= \case
     Nothing -> return Nothing
     Just p' -> do
-      gs <- use $ gameState . scenarios
+      gs <- use $ runtimeState . scenarios
       Just <$> liftIO (normalizeScenarioPath gs p')
 
 saveScenarioInfoOnFinish :: (MonadIO m, MonadState AppState m) => FilePath -> m (Maybe ScenarioInfo)
@@ -472,7 +472,7 @@ saveScenarioInfoOnFinish p = do
   -- the scenario selection menu, so the menu needs to be updated separately.
   -- See Note [scenario menu update]
   let currentScenarioInfo :: Traversal' AppState ScenarioInfo
-      currentScenarioInfo = gameState . scenarios . scenarioItemByPath p . _SISingle . _2
+      currentScenarioInfo = runtimeState . scenarios . scenarioItemByPath p . _SISingle . _2
 
   replHist <- use $ uiState . uiREPL . replHistory
   let determinator = CodeSizeDeterminators initialCode $ replHist ^. replHasExecutedManualInput
@@ -534,7 +534,7 @@ saveScenarioInfoOnQuit = do
         curPath <- preuse $ uiState . uiMenu . _NewGameMenu . ix 0 . BL.listSelectedElementL . _SISingle . _2 . scenarioPath
         -- Now rebuild the NewGameMenu so it gets the updated ScenarioInfo,
         -- being sure to preserve the same focused scenario.
-        sc <- use $ gameState . scenarios
+        sc <- use $ runtimeState . scenarios
         forM_ (mkNewGameMenu cheat sc (fromMaybe p curPath)) (uiState . uiMenu .=)
 
 -- | Quit a game.
