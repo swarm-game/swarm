@@ -52,13 +52,10 @@ module Swarm.Game.State (
   seed,
   randGen,
   initiallyRunCode,
-  adjList,
-  nameList,
   entityMap,
   recipesOut,
   recipesIn,
   recipesReq,
-  scenarios,
   currentScenarioPath,
   knownEntities,
   world,
@@ -981,13 +978,10 @@ initGameState = do
         , _seed = 0
         , _randGen = mkStdGen 0
         , _initiallyRunCode = Nothing
-        , _adjList = listArray (0, length adjs - 1) adjs
-        , _nameList = listArray (0, length names - 1) names
         , _entityMap = entities
         , _recipesOut = outRecipeMap recipes
         , _recipesIn = inRecipeMap recipes
         , _recipesReq = reqRecipeMap recipes
-        , _scenarios = loadedScenarios
         , _currentScenarioPath = Nothing
         , _knownEntities = []
         , _world = W.emptyWorld (fromEnum StoneT)
@@ -1193,24 +1187,25 @@ initGameStateForScenario ::
   Maybe Seed ->
   Maybe FilePath ->
   ExceptT Text IO GameState
-initGameStateForScenario sceneName userSeed toRun = do
-  (warnings, g) <- initGameState
-  unless (null warnings)
-    . except
-    . Left
-    . T.unlines
-    . map prettyFailure
-    $ warnings
-  (scene, path) <- loadScenario sceneName (g ^. entityMap)
-  maybeRunScript <- getParsedInitialCode toRun
-  gs <- liftIO $ scenarioToGameState scene userSeed maybeRunScript g
-  normalPath <- liftIO $ normalizeScenarioPath (gs ^. scenarios) path
-  t <- liftIO getZonedTime
-  return $
-    gs
-      & currentScenarioPath ?~ normalPath
-      & scenarios . scenarioItemByPath normalPath . _SISingle . _2 . scenarioStatus
-        .~ Played (Metric Attempted $ ProgressStats t emptyAttemptMetric) (emptyBest t)
+initGameStateForScenario sceneName userSeed toRun = undefined -- XXX
+
+-- (warnings, g) <- initGameState
+-- unless (null warnings)
+--   . except
+--   . Left
+--   . T.unlines
+--   . map prettyFailure
+--   $ warnings
+-- (scene, path) <- loadScenario sceneName (g ^. entityMap)
+-- maybeRunScript <- getParsedInitialCode toRun
+-- gs <- liftIO $ scenarioToGameState scene userSeed maybeRunScript g
+-- normalPath <- liftIO $ normalizeScenarioPath (gs ^. scenarios) path
+-- t <- liftIO getZonedTime
+-- return $
+--   gs
+--     & currentScenarioPath ?~ normalPath
+--     & scenarios . scenarioItemByPath normalPath . _SISingle . _2 . scenarioStatus
+--       .~ Played (Metric Attempted $ ProgressStats t emptyAttemptMetric) (emptyBest t)
 
 -- | For convenience, the 'GameState' corresponding to the classic
 --   game with seed 0.
