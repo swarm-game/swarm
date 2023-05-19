@@ -1699,7 +1699,7 @@ execConst c vs s k = do
             -- is NOT.  In other words unprivileged bots should not be
             -- able to halt privileged ones.
             omni <- isPrivilegedBot
-            case (omni || not (target ^. systemRobot)) of
+            case omni || not (target ^. systemRobot) of
               True -> do
                 -- Cancel its CESK machine, and put it to sleep.
                 robotMap . at targetID . _Just . machine %= cancel
