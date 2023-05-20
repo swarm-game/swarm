@@ -42,6 +42,7 @@ robots:
       - dozer blade
       - drill
       - hearing aid
+      - keyboard
       - lambda
       - logger
       - mirror
@@ -316,90 +317,105 @@ recipes:
       - [1, sliding-tile]
     required:
       - [1, drill]
+    time: 0
   - in:
       - [1, b-tile]
     out:
       - [1, sliding-tile]
     required:
       - [1, drill]
+    time: 0
   - in:
       - [1, c-tile]
     out:
       - [1, sliding-tile]
     required:
       - [1, drill]
+    time: 0
   - in:
       - [1, d-tile]
     out:
       - [1, sliding-tile]
     required:
       - [1, drill]
+    time: 0
   - in:
       - [1, e-tile]
     out:
       - [1, sliding-tile]
     required:
       - [1, drill]
+    time: 0
   - in:
       - [1, f-tile]
     out:
       - [1, sliding-tile]
     required:
       - [1, drill]
+    time: 0
   - in:
       - [1, g-tile]
     out:
       - [1, sliding-tile]
     required:
       - [1, drill]
+    time: 0
   - in:
       - [1, h-tile]
     out:
       - [1, sliding-tile]
     required:
       - [1, drill]
+    time: 0
   - in:
       - [1, i-tile]
     out:
       - [1, sliding-tile]
     required:
       - [1, drill]
+    time: 0
   - in:
       - [1, j-tile]
     out:
       - [1, sliding-tile]
     required:
       - [1, drill]
+    time: 0
   - in:
       - [1, k-tile]
     out:
       - [1, sliding-tile]
     required:
       - [1, drill]
+    time: 0
   - in:
       - [1, l-tile]
     out:
       - [1, sliding-tile]
     required:
       - [1, drill]
+    time: 0
   - in:
       - [1, m-tile]
     out:
       - [1, sliding-tile]
     required:
       - [1, drill]
+    time: 0
   - in:
       - [1, n-tile]
     out:
       - [1, sliding-tile]
     required:
       - [1, drill]
+    time: 0
   - in:
       - [1, o-tile]
     out:
       - [1, sliding-tile]
     required:
       - [1, drill]
+    time: 0
 known: []
 world:
   default: [grass]
