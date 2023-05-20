@@ -23,7 +23,7 @@ module Swarm.Game.Step where
 
 import Control.Applicative (liftA2)
 import Control.Arrow ((&&&))
-import Control.Carrier.Error.Either (runError)
+import Control.Carrier.Error.Either (ErrorC, runError)
 import Control.Carrier.State.Lazy
 import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Effect.Error
@@ -599,7 +599,7 @@ stepRobot r = do
   -- sendIO $ appendFile "out.txt" (prettyString cesk' ++ "\n")
   return $ r' & machine .~ cesk'
 
--- replace some entity in the world with another entity
+-- | replace some entity in the world with another entity
 updateWorld ::
   (Has (State GameState) sig m, Has (Throw Exn) sig m) =>
   Const ->
@@ -608,9 +608,52 @@ updateWorld ::
 updateWorld c (ReplaceEntity loc eThen down) = do
   w <- use world
   let eNow = W.lookupEntity (W.locToCoords loc) w
+  -- Can fail if a robot started a multi-tick "drill" operation on some entity
+  -- and meanwhile another entity swaps it out from under them.
   if Just eThen /= eNow
     then throwError $ cmdExn c ["The", eThen ^. entityName, "is not there."]
     else updateEntityAt loc $ const down
+
+applyRobotUpdates ::
+  (Has (State GameState) sig m, Has (State Robot) sig m) =>
+  [RobotUpdate] ->
+  m ()
+applyRobotUpdates =
+  mapM_ \case
+    AddEntity c e -> robotInventory %= E.insertCount c e
+    LearnEntity e -> robotInventory %= E.insertCount 0 e
+
+data SKpair = SKpair Store Cont
+
+-- | Performs some side-effectful computation
+-- for an "FImmediate" Frame.
+-- Aborts processing the continuation stack
+-- if an error is encountered.
+--
+-- Compare to "withExceptions".
+processImmediateFrame ::
+  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m) =>
+  Value ->
+  SKpair ->
+  -- | the unreliable computation
+  ErrorC Exn m () ->
+  m CESK
+processImmediateFrame v (SKpair s k) unreliableComputation = do
+  wc <- runError unreliableComputation
+  case wc of
+    Left exn -> return $ Up exn s k
+    Right () -> stepCESK $ Out v s k
+
+updateWorldAndRobots ::
+  (HasRobotStepState sig m) =>
+  Const ->
+  [WorldUpdate Entity] ->
+  [RobotUpdate] ->
+  m ()
+updateWorldAndRobots cmd wf rf = do
+  mapM_ (updateWorld cmd) wf
+  applyRobotUpdates rf
+  flagRedraw
 
 -- | The main CESK machine workhorse.  Given a robot, look at its CESK
 --   machine state and figure out a single next step.
@@ -626,17 +669,9 @@ stepCESK cesk = case cesk of
     if wakeupTime <= time
       then stepCESK cesk'
       else return cesk
-  Out v s (FImmediate cmd wf rf : k) -> do
-    wc <- runError $ mapM_ (updateWorld cmd) wf
-    case wc of
-      Left exn -> return $ Up exn s k
-      Right () -> do
-        forM_ rf $ \case
-          AddEntity c e -> robotInventory %= E.insertCount c e
-          LearnEntity e -> robotInventory %= E.insertCount 0 e
-        needsRedraw .= True
-        stepCESK (Out v s k)
-
+  Out v s (FImmediate cmd wf rf : k) ->
+    processImmediateFrame v (SKpair s k) $
+      updateWorldAndRobots cmd wf rf
   -- Now some straightforward cases.  These all immediately turn
   -- into values.
   In TUnit _ s k -> return $ Out VUnit s k
@@ -2138,11 +2173,17 @@ execConst c vs s k = do
     [WorldUpdate Entity] ->
     [RobotUpdate] ->
     m CESK
-  finishCookingRecipe r v wf rf = do
-    time <- use ticks
-    let remTime = r ^. recipeTime
-    return . (if remTime <= 1 then id else Waiting (remTime + time)) $
-      Out v s (FImmediate c wf rf : k)
+  finishCookingRecipe r v wf rf =
+    if remTime <= 0
+      then do
+        updateWorldAndRobots c wf rf
+        return $ Out v s k
+      else do
+        time <- use ticks
+        return . (if remTime <= 1 then id else Waiting (remTime + time)) $
+          Out v s (FImmediate c wf rf : k)
+   where
+    remTime = r ^. recipeTime
 
   deriveHeading :: HasRobotStepState sig m => Direction -> m Heading
   deriveHeading d = do
