@@ -522,11 +522,10 @@ ensureCanExecute c =
   gets @Robot (constCapsFor c) >>= \case
     Nothing -> pure ()
     Just cap -> do
-      creative <- use creativeMode
-      sys <- use systemRobot
+      isPrivileged <- isPrivilegedBot
       robotCaps <- use robotCapabilities
       let hasCaps = cap `S.member` robotCaps
-      (sys || creative || hasCaps)
+      (isPrivileged || hasCaps)
         `holdsOr` Incapable FixByEquip (R.singletonCap cap) (TConst c)
 
 -- | Test whether the current robot has a given capability (either
@@ -534,10 +533,9 @@ ensureCanExecute c =
 --   system robot, or we are in creative mode).
 hasCapability :: (Has (State Robot) sig m, Has (State GameState) sig m) => Capability -> m Bool
 hasCapability cap = do
-  creative <- use creativeMode
-  sys <- use systemRobot
+  isPrivileged <- isPrivilegedBot
   caps <- use robotCapabilities
-  return (sys || creative || cap `S.member` caps)
+  return (isPrivileged || cap `S.member` caps)
 
 -- | Ensure that either a robot has a given capability, OR we are in creative
 --   mode.
@@ -1612,8 +1610,7 @@ execConst c vs s k = do
       _ -> badConst
     Say -> case vs of
       [VText msg] -> do
-        creative <- use creativeMode
-        system <- use systemRobot
+        isPrivileged <- isPrivilegedBot
         loc <- use robotLocation
         m <- traceLog Said msg -- current robot will inserted to robot set, so it needs the log
         emitMessage m
@@ -1632,7 +1629,7 @@ execConst c vs s k = do
                 when (hasLog && hasListen) (robotLog %= addLatestClosest loc')
               addRobot r'
         robotsAround <-
-          if creative || system
+          if isPrivileged
             then use $ robotMap . to IM.elems
             else gets $ robotsInArea loc hearingDistance
         mapM_ addToRobotLog robotsAround
@@ -1642,10 +1639,9 @@ execConst c vs s k = do
       gs <- get @GameState
       loc <- use robotLocation
       rid <- use robotID
-      creative <- use creativeMode
-      system <- use systemRobot
+      isPrivileged <- isPrivilegedBot
       mq <- use messageQueue
-      let isClose e = system || creative || messageIsFromNearby loc e
+      let isClose e = isPrivileged || messageIsFromNearby loc e
       let notMine e = rid /= e ^. leRobotID
       let limitLast = \case
             _s Seq.:|> l -> Just $ l ^. leText
@@ -1857,7 +1853,7 @@ execConst c vs s k = do
     Reprogram -> case vs of
       [VRobot childRobotID, VDelay cmd e] -> do
         r <- get
-        creative <- use creativeMode
+        isPrivileged <- isPrivilegedBot
 
         -- check if robot exists
         childRobot <-
@@ -1876,9 +1872,9 @@ execConst c vs s k = do
 
         -- check if childRobot is at the correct distance
         -- a robot can program adjacent robots
-        -- creative mode ignores distance checks
+        -- privileged bots ignore distance checks
         loc <- use robotLocation
-        (creative || (childRobot ^. robotLocation) `manhattan` loc <= 1)
+        (isPrivileged || (childRobot ^. robotLocation) `manhattan` loc <= 1)
           `holdsOrFail` ["You can only reprogram an adjacent robot."]
 
         -- Figure out if we can supply what the target robot requires,
@@ -1989,11 +1985,11 @@ execConst c vs s k = do
             -- Copy over the salvaged robot's log, if we have one
             inst <- use equippedDevices
             em <- use entityMap
-            creative <- use creativeMode
+            isPrivileged <- isPrivilegedBot
             logger <-
               lookupEntityName "logger" em
                 `isJustOr` Fatal "While executing 'salvage': there's no such thing as a logger!?"
-            when (creative || inst `E.contains` logger) $ robotLog <>= target ^. robotLog
+            when (isPrivileged || inst `E.contains` logger) $ robotLog <>= target ^. robotLog
 
             -- Immediately copy over any items the robot knows about
             -- but has 0 of
@@ -2551,7 +2547,7 @@ purgeFarAwayWatches = do
 
 -- | Exempts the robot from various command constraints
 -- when it is either a system robot or playing in creative mode
-isPrivilegedBot :: HasRobotStepState sig m => m Bool
+isPrivilegedBot :: (Has (State GameState) sig m, Has (State Robot) sig m) => m Bool
 isPrivilegedBot = (||) <$> use systemRobot <*> use creativeMode
 
 -- | Requires that the target location is within one cell.
