@@ -599,7 +599,7 @@ stepRobot r = do
   -- sendIO $ appendFile "out.txt" (prettyString cesk' ++ "\n")
   return $ r' & machine .~ cesk'
 
--- replace some entity in the world with another entity
+-- | replace some entity in the world with another entity
 updateWorld ::
   (Has (State GameState) sig m, Has (Throw Exn) sig m) =>
   Const ->
@@ -608,9 +608,17 @@ updateWorld ::
 updateWorld c (ReplaceEntity loc eThen down) = do
   w <- use world
   let eNow = W.lookupEntity (W.locToCoords loc) w
+  -- Can fail if a robot started a multi-tick "drill" operation on some entity
+  -- and meanwhile another entity swaps it out from under them.
   if Just eThen /= eNow
     then throwError $ cmdExn c ["The", eThen ^. entityName, "is not there."]
     else updateEntityAt loc $ const down
+
+applyRobotUpdates :: (Has (State GameState) sig m, Has (State Robot) sig m) => [RobotUpdate] -> m ()
+applyRobotUpdates =
+  mapM_ \case
+    AddEntity c e -> robotInventory %= E.insertCount c e
+    LearnEntity e -> robotInventory %= E.insertCount 0 e
 
 -- | The main CESK machine workhorse.  Given a robot, look at its CESK
 --   machine state and figure out a single next step.
@@ -631,10 +639,8 @@ stepCESK cesk = case cesk of
     case wc of
       Left exn -> return $ Up exn s k
       Right () -> do
-        forM_ rf $ \case
-          AddEntity c e -> robotInventory %= E.insertCount c e
-          LearnEntity e -> robotInventory %= E.insertCount 0 e
-        needsRedraw .= True
+        applyRobotUpdates rf
+        flagRedraw
         stepCESK (Out v s k)
 
   -- Now some straightforward cases.  These all immediately turn
@@ -2138,11 +2144,19 @@ execConst c vs s k = do
     [WorldUpdate Entity] ->
     [RobotUpdate] ->
     m CESK
-  finishCookingRecipe r v wf rf = do
-    time <- use ticks
-    let remTime = r ^. recipeTime
-    return . (if remTime <= 1 then id else Waiting (remTime + time)) $
-      Out v s (FImmediate c wf rf : k)
+  finishCookingRecipe r v wf rf =
+    if remTime <= 0
+      then do
+        mapM_ (\(ReplaceEntity loc _ newEntity) -> updateEntityAt loc $ const newEntity) wf
+        applyRobotUpdates rf
+        flagRedraw
+        return $ Out VUnit s k
+      else do
+        time <- use ticks
+        return . (if remTime <= 1 then id else Waiting (remTime + time)) $
+          Out v s (FImmediate c wf rf : k)
+   where
+    remTime = r ^. recipeTime
 
   deriveHeading :: HasRobotStepState sig m => Direction -> m Heading
   deriveHeading d = do
