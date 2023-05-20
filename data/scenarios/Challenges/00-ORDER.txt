@@ -8,6 +8,7 @@ gopher.yaml
 ice-cream.yaml
 hanoi.yaml
 hackman.yaml
+lights-out.yaml
 bucket-brigade.yaml
 wolf-goat-cabbage.yaml
 friend.yaml
