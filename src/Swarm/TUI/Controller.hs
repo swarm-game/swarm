@@ -69,7 +69,7 @@ import Graphics.Vty qualified as V
 import Linear
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
-import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec), cancel, emptyStore, initMachine)
+import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec), SKPair (SK), cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
@@ -998,7 +998,7 @@ runInputHandler kc = do
       unless working $ do
         s <- get
         let topCtx = topContext s
-            handlerCESK = Out (VKey kc) (topCtx ^. defStore) [FApp handler, FExec]
+            handlerCESK = Out (VKey kc) $ SK (topCtx ^. defStore) [FApp handler, FExec]
         gameState . baseRobot . machine .= handlerCESK
         gameState %= execState (activateRobot 0)
 

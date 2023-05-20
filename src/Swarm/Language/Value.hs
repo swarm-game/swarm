@@ -100,6 +100,7 @@ prettyValue :: Value -> Text
 prettyValue = prettyText . valueToTerm
 
 -- | Inject a value back into a term.
+-- Compare to "Swarm.Game.Value.asValue"
 valueToTerm :: Value -> Term
 valueToTerm VUnit = TUnit
 valueToTerm (VInt n) = TInt n

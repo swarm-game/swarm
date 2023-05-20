@@ -29,6 +29,8 @@ pattern VRect x1 y1 x2 y2 = VPair (VPair (VInt x1) (VInt y1)) (VPair (VInt x2) (
 -- implementing swarm
 -- <https://github.com/swarm-game/swarm/wiki/Commands-Cheat-Sheet commands>
 -- in Haskell.
+--
+-- Compare to "Swarm.Language.Value.valueToTerm"
 class Valuable a where
   asValue :: a -> Value
 

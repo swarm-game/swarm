@@ -509,7 +509,7 @@ instance FromJSONE EntityMap TRobot where
       <*> liftE (v .:? "heavy" .!= False)
       <*> pure 0
    where
-    mkMachine Nothing = Out VUnit emptyStore []
+    mkMachine Nothing = Out VUnit $ SK emptyStore []
     mkMachine (Just pt) = initMachine pt mempty emptyStore
 
 -- | Is the robot actively in the middle of a computation?

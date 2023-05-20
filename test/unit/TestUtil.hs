@@ -43,7 +43,7 @@ evalCESK g cesk =
   orderResult ((res, rr), rg) = (rg, rr, res)
 
 runCESK :: Int -> CESK -> StateT Robot (StateT GameState IO) (Either Text (Value, Int))
-runCESK _ (Up exn _ []) = Left . flip formatExn exn <$> lift (use entityMap)
+runCESK _ (Up exn (SK _ [])) = Left . flip formatExn exn <$> lift (use entityMap)
 runCESK !steps cesk = case finalValue cesk of
   Just (v, _) -> return (Right (v, steps))
   Nothing -> stepCESK cesk >>= runCESK (steps + 1)
