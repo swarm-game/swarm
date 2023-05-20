@@ -609,9 +609,9 @@ updateWorld c (ReplaceEntity loc eThen down) = do
   w <- use world
   let eNow = W.lookupEntity (W.locToCoords loc) w
   if Just eThen /= eNow
-    -- Can fail if a robot started a multi-tick "drill" operation on some entity
+    then -- Can fail if a robot started a multi-tick "drill" operation on some entity
     -- and meanwhile another entity swaps it out from under them.
-    then throwError $ cmdExn c ["The", eThen ^. entityName, "is not there."]
+      throwError $ cmdExn c ["The", eThen ^. entityName, "is not there."]
     else updateEntityAt loc $ const down
 
 applyRobotUpdates :: (Has (State GameState) sig m, Has (State Robot) sig m) => [RobotUpdate] -> m ()
@@ -2146,16 +2146,16 @@ execConst c vs s k = do
     m CESK
   finishCookingRecipe r v wf rf =
     if remTime <= 0
-    then do
-      mapM_ (\(ReplaceEntity loc _ newEntity) -> updateEntityAt loc $ const newEntity) wf
-      applyRobotUpdates rf
-      return $ Out VUnit s k
-    else do
-      time <- use ticks
-      return . (if remTime <= 1 then id else Waiting (remTime + time)) $
-        Out v s (FImmediate c wf rf : k)
-    where
-      remTime = r ^. recipeTime
+      then do
+        mapM_ (\(ReplaceEntity loc _ newEntity) -> updateEntityAt loc $ const newEntity) wf
+        applyRobotUpdates rf
+        return $ Out VUnit s k
+      else do
+        time <- use ticks
+        return . (if remTime <= 1 then id else Waiting (remTime + time)) $
+          Out v s (FImmediate c wf rf : k)
+   where
+    remTime = r ^. recipeTime
 
   deriveHeading :: HasRobotStepState sig m => Direction -> m Heading
   deriveHeading d = do
