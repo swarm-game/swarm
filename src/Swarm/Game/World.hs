@@ -276,7 +276,7 @@ loadCell :: IArray U.UArray t => Coords -> World t e -> World t e
 loadCell c = loadRegion (c, c)
 
 -- | Load all the tiles which overlap the given rectangular region
---   (specified as an upper-left and lower-right corner).
+--   (specified as an upper-left and lower-right corner, inclusive).
 loadRegion :: forall t e. IArray U.UArray t => (Coords, Coords) -> World t e -> World t e
 loadRegion reg (World f t m) = World f t' m
  where
