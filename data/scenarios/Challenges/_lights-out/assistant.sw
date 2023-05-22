@@ -82,12 +82,18 @@ def togglePending = \state.
     case maybePending return $ flipSelfAndNeighbors state;
     end;
 
-def observe = \boardWidth. \boardHeight.
+def observe =
     instant (
         togglePending "on";
         togglePending "off";
     );
-    observe boardWidth boardHeight;
+
+    // Without this 'wait' call, we may end up doing the instant call
+    // multiple times in one tick, until it uses up its step allotment.
+    // We really only want the 'observe' function to execute once per tick.
+    wait 1;
+
+    observe;
     end;
 
 def makeOnIf = \b.
@@ -263,7 +269,7 @@ def go =
     let boardWidth = 5 in
     let boardHeight = 5 in
     instant $ generateGame boardWidth boardHeight;
-    observe boardWidth boardHeight;
+    observe;
     end;
 
 go;
