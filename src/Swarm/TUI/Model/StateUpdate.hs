@@ -55,7 +55,7 @@ initAppState AppOpts {..} = do
   let isRunningInitialProgram = isJust scriptToRun || autoPlay
       skipMenu = isJust userScenario || isRunningInitialProgram || isJust userSeed
   (rsWarnings, initRS) <- initRuntimeState
-  let gs = initGameState (initRS ^. stdAdjList) (initRS ^. stdNameList) (initRS ^. stdEntityMap) (initRS ^. stdRecipes)
+  let gs = initGameState (mkGameStateConfig initRS)
   (uiWarnings, ui) <- initUIState speed (not skipMenu) (cheatMode || autoPlay)
   let logWarning rs' w = rs' & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
       addWarnings = List.foldl' logWarning
@@ -133,7 +133,9 @@ scenarioToAppState ::
   Maybe CodeToRun ->
   m ()
 scenarioToAppState siPair@(scene, _) userSeed toRun = do
-  withLensIO gameState $ scenarioToGameState scene userSeed toRun
+  rs <- use runtimeState
+  gs <- liftIO $ scenarioToGameState scene userSeed toRun (mkGameStateConfig rs)
+  gameState .= gs
   withLensIO uiState $ scenarioToUIState siPair
  where
   withLensIO :: (MonadIO m, MonadState AppState m) => Lens' AppState x -> (x -> IO x) -> m ()

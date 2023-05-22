@@ -82,6 +82,7 @@ module Swarm.Game.State (
   notificationsContent,
 
   -- ** GameState initialization
+  GameStateConfig (..),
   initGameState,
   scenarioToGameState,
   initGameStateForScenario,
@@ -940,9 +941,20 @@ deleteRobot rn = do
 -- Initialization
 ------------------------------------------------------------
 
+-- | XXX
+data GameStateConfig = GameStateConfig
+  { initAdjList :: Array Int Text
+  , initNameList :: Array Int Text
+  , initEntities :: EntityMap
+  , initRecipes :: [Recipe Entity]
+  }
+
+-- XXX make a record that has the needed runtime state to initialize a game state
+-- Then in TUI.Model make a function to build such a record from the RuntimeState.
+
 -- | Create an initial, fresh game state record when starting a new scenario.
-initGameState :: Array Int Text -> Array Int Text -> EntityMap -> [Recipe Entity] -> GameState
-initGameState initAdjList initNameList entities recipes =
+initGameState :: GameStateConfig -> GameState
+initGameState gsc =
   GameState
     { _creativeMode = False
     , _gameStep = WorldTick
@@ -964,13 +976,13 @@ initGameState initAdjList initNameList entities recipes =
     , _gensym = 0
     , _seed = 0
     , _randGen = mkStdGen 0
-    , _adjList = initAdjList
-    , _nameList = initNameList
+    , _adjList = initAdjList gsc
+    , _nameList = initNameList gsc
     , _initiallyRunCode = Nothing
-    , _entityMap = entities
-    , _recipesOut = outRecipeMap recipes
-    , _recipesIn = inRecipeMap recipes
-    , _recipesReq = reqRecipeMap recipes
+    , _entityMap = initEntities gsc
+    , _recipesOut = outRecipeMap (initRecipes gsc)
+    , _recipesIn = inRecipeMap (initRecipes gsc)
+    , _recipesReq = reqRecipeMap (initRecipes gsc)
     , _currentScenarioPath = Nothing
     , _knownEntities = []
     , _world = W.emptyWorld (fromEnum StoneT)
@@ -993,12 +1005,9 @@ scenarioToGameState ::
   Scenario ->
   Maybe Seed ->
   Maybe CodeToRun ->
-  Array Int Text ->
-  Array Int Text ->
-  EntityMap ->
-  [Recipe Entity] ->
+  GameStateConfig ->
   IO GameState
-scenarioToGameState scenario userSeed toRun initAdjList initNameList initEntities initRecipes = do
+scenarioToGameState scenario userSeed toRun gsc = do
   -- Decide on a seed.  In order of preference, we will use:
   --   1. seed value provided by the user
   --   2. seed value specified in the scenario description
@@ -1011,7 +1020,7 @@ scenarioToGameState scenario userSeed toRun initAdjList initNameList initEntitie
   let robotList' = (robotCreatedAt .~ now) <$> robotList
 
   return $
-    (initGameState initAdjList initNameList initEntities initRecipes)
+    (initGameState gsc)
       { _focusedRobotID = baseID
       }
       & creativeMode .~ scenario ^. scenarioCreative
@@ -1042,7 +1051,7 @@ scenarioToGameState scenario userSeed toRun initAdjList initNameList initEntitie
         True -> REPLWorking (Typed Nothing PolyUnit mempty)
       & robotStepsPerTick .~ ((scenario ^. scenarioStepsPerTick) ? defaultRobotStepsPerTick)
  where
-  em = initEntities <> scenario ^. scenarioEntities
+  em = initEntities gsc <> scenario ^. scenarioEntities
   baseID = 0
   (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
   -- Keep only robots from the robot list with a concrete location;

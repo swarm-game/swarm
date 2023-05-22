@@ -90,8 +90,9 @@ module Swarm.TUI.Model (
   stdAdjList,
   stdNameList,
 
-  -- ** Updating
+  -- ** Utility
   logEvent,
+  mkGameStateConfig,
 
   -- * App state
   AppState (AppState),
@@ -144,6 +145,7 @@ import Swarm.Game.ScenarioInfo (
   _SISingle,
  )
 import Swarm.Game.State
+import Swarm.Game.State (GameStateConfig (..))
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
@@ -269,6 +271,16 @@ logEvent src (who, rid) msg el =
     & notificationsContent %~ (l :)
  where
   l = LogEntry 0 src who rid zero msg
+
+-- | Create a 'GameStateConfig' record from the 'RuntimeState'.
+mkGameStateConfig :: RuntimeState -> GameStateConfig
+mkGameStateConfig rs =
+  GameStateConfig
+    { initAdjList = rs ^. stdAdjList
+    , initNameList = rs ^. stdNameList
+    , initEntities = rs ^. stdEntityMap
+    , initRecipes = rs ^. stdRecipes
+    }
 
 -- ----------------------------------------------------------------------------
 --                                   APPSTATE                                --
