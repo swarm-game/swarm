@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -36,7 +37,6 @@ import Swarm.Game.State (
   WinStatus (Won),
   activeRobots,
   baseRobot,
-  initGameStateForScenario,
   messageQueue,
   robotMap,
   ticks,
@@ -44,6 +44,8 @@ import Swarm.Game.State (
   winCondition,
   winSolution,
  )
+import Swarm.TUI.Model (gameState)
+import Swarm.TUI.Model.StateUpdate (initAppStateForScenario)
 import Swarm.Game.Step (gameTick)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
@@ -287,10 +289,10 @@ testScenarioSolution _ci _em =
 
   testSolution' :: Time -> FilePath -> ShouldCheckBadErrors -> (GameState -> Assertion) -> TestTree
   testSolution' s p shouldCheckBadErrors verify = testCase p $ do
-    out <- runExceptT $ initGameStateForScenario p Nothing Nothing
+    out <- runExceptT $ initAppStateForScenario p Nothing Nothing
     case out of
-      Left x -> assertFailure $ unwords ["Failure in initGameStateForScenario:", T.unpack x]
-      Right gs -> case gs ^. winSolution of
+      Left x -> assertFailure $ unwords ["Failure in initAppStateForScenario:", T.unpack x]
+      Right (view gameState -> gs) -> case gs ^. winSolution of
         Nothing -> assertFailure "No solution to test!"
         Just sol@(ProcessedTerm _ _ reqCtx) -> do
           let gs' =

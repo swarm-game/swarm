@@ -102,6 +102,7 @@ module Swarm.TUI.Model (
 
   -- ** Initialization
   AppOpts (..),
+  defaultAppOpts,
   Seed,
 
   -- *** Re-exported types used in options
@@ -145,7 +146,6 @@ import Swarm.Game.ScenarioInfo (
   _SISingle,
  )
 import Swarm.Game.State
-import Swarm.Game.State (GameStateConfig (..))
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
@@ -417,6 +417,21 @@ data AppOpts = AppOpts
   , repoGitInfo :: Maybe GitInfo
   -- ^ Information about the Git repository (not present in release).
   }
+
+-- | A default/empty 'AppOpts' record.
+defaultAppOpts :: AppOpts
+defaultAppOpts =
+  AppOpts
+    { userSeed = Nothing
+    , userScenario = Nothing
+    , scriptToRun = Nothing
+    , autoPlay = False
+    , speed = defaultInitLgTicksPerSecond
+    , cheatMode = False
+    , colorMode = Nothing
+    , userWebPort = Nothing
+    , repoGitInfo = Nothing
+    }
 
 -- | Extract the scenario which would come next in the menu from the
 --   currently selected scenario (if any).  Can return @Nothing@ if

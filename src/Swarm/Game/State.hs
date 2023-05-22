@@ -85,8 +85,6 @@ module Swarm.Game.State (
   GameStateConfig (..),
   initGameState,
   scenarioToGameState,
-  initGameStateForScenario,
-  classicGame0,
   CodeToRun (..),
   Sha1 (..),
   SolutionSource (..),
@@ -941,16 +939,14 @@ deleteRobot rn = do
 -- Initialization
 ------------------------------------------------------------
 
--- | XXX
+-- | Record to pass information needed to create an initial
+--   'GameState' record when starting a scenario.
 data GameStateConfig = GameStateConfig
   { initAdjList :: Array Int Text
   , initNameList :: Array Int Text
   , initEntities :: EntityMap
   , initRecipes :: [Recipe Entity]
   }
-
--- XXX make a record that has the needed runtime state to initialize a game state
--- Then in TUI.Model make a function to build such a record from the RuntimeState.
 
 -- | Create an initial, fresh game state record when starting a new scenario.
 initGameState :: GameStateConfig -> GameState
@@ -1165,41 +1161,3 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
             let robotWithLoc = trobotLocation ?~ W.coordsToLoc (Coords (ulr + r, ulc + c))
              in map (fmap robotWithLoc) robotList
         )
-
--- | Create an initial game state for a specific scenario.
--- Note that this function is used only for unit tests, integration tests, and benchmarks.
---
--- In normal play, the code path that gets executed is scenarioToAppState.
---
--- Note: Some of the code in this function is duplicated
--- with "startGameWithSeed".
-initGameStateForScenario ::
-  String ->
-  Maybe Seed ->
-  Maybe FilePath ->
-  ExceptT Text IO GameState
-initGameStateForScenario _sceneName _userSeed _toRun = undefined -- XXX
-
--- (warnings, g) <- initGameState
--- unless (null warnings)
---   . except
---   . Left
---   . T.unlines
---   . map prettyFailure
---   $ warnings
--- (scene, path) <- loadScenario sceneName (g ^. entityMap)
--- maybeRunScript <- getParsedInitialCode toRun
--- gs <- liftIO $ scenarioToGameState scene userSeed maybeRunScript g
--- normalPath <- liftIO $ normalizeScenarioPath (gs ^. scenarios) path
--- t <- liftIO getZonedTime
--- return $
---   gs
---     & currentScenarioPath ?~ normalPath
---     & scenarios . scenarioItemByPath normalPath . _SISingle . _2 . scenarioStatus
---       .~ Played (Metric Attempted $ ProgressStats t emptyAttemptMetric) (emptyBest t)
-
--- | For convenience, the 'GameState' corresponding to the classic
---   game with seed 0.
---   This is used only for benchmarks and unit tests.
-classicGame0 :: ExceptT Text IO GameState
-classicGame0 = initGameStateForScenario "classic" (Just 0) Nothing
