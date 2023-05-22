@@ -240,7 +240,7 @@ singleStep ss focRID robotSet = do
       let (_pre, postRID) = IS.split rid robotSet
       singleStep SBefore focRID postRID
  where
-  h = hypotheticalRobot (Out VUnit $ SK emptyStore []) 0
+  h = hypotheticalRobot (Go (Out VUnit) $ SK emptyStore []) 0
   debugLog txt = do
     m <- evalState @Robot h $ createLogEntry (ErrorTrace Debug) txt
     emitMessage m
@@ -360,7 +360,7 @@ hypotheticalWinCheck em g ws oc = do
     m <- evalState @Robot h $ createLogEntry (ErrorTrace Critical) exnText
     emitMessage m
    where
-    h = hypotheticalRobot (Out VUnit $ SK emptyStore []) 0
+    h = hypotheticalRobot (Go (Out VUnit) $ SK emptyStore []) 0
 
 evalPT ::
   (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>
@@ -395,7 +395,7 @@ runCESK ::
   ) =>
   CESK ->
   m Value
-runCESK (Up exn (SK _ [])) = throwError exn
+runCESK (Go (Up exn) (SK _ [])) = throwError exn
 runCESK cesk = case finalValue cesk of
   Just (v, _) -> return v
   Nothing -> stepCESK cesk >>= runCESK
@@ -564,7 +564,7 @@ withExceptions :: Monad m => SKPair -> ThrowC Exn m CESK -> m CESK
 withExceptions sk m = do
   res <- runThrow m
   case res of
-    Left exn -> return $ Up exn sk
+    Left exn -> return $ Go (Up exn) sk
     Right a -> return a
 
 ------------------------------------------------------------
@@ -637,8 +637,8 @@ processImmediateFrame ::
 processImmediateFrame v sk unreliableComputation = do
   wc <- runError unreliableComputation
   case wc of
-    Left exn -> return $ Up exn sk
-    Right () -> stepCESK $ Out v sk
+    Left exn -> return $ Go (Up exn) sk
+    Right () -> stepCESK $ Go (Out v) sk
 
 updateWorldAndRobots ::
   (HasRobotStepState sig m) =>
@@ -665,114 +665,114 @@ stepCESK cesk = case cesk of
     if wakeupTime <= time
       then stepCESK cesk'
       else return cesk
-  Out v (SK s (FImmediate cmd wf rf : k)) ->
+  Go (Out v) (SK s (FImmediate cmd wf rf : k)) ->
     processImmediateFrame v (SK s k) $
       updateWorldAndRobots cmd wf rf
   -- Now some straightforward cases.  These all immediately turn
   -- into values.
-  In TUnit _ sk -> return $ Out VUnit sk
-  In (TDir d) _ sk -> return $ Out (VDir d) sk
-  In (TInt n) _ sk -> return $ Out (VInt n) sk
-  In (TText str) _ sk -> return $ Out (VText str) sk
-  In (TBool b) _ sk -> return $ Out (VBool b) sk
+  Go (In TUnit _) sk -> return $ Go (Out VUnit) sk
+  Go (In (TDir d) _) sk -> return $ Go (Out (VDir d)) sk
+  Go (In (TInt n) _) sk -> return $ Go (Out (VInt n)) sk
+  Go (In (TText str) _) sk -> return $ Go (Out (VText str)) sk
+  Go (In (TBool b) _) sk -> return $ Go (Out (VBool b)) sk
   -- There should not be any antiquoted variables left at this point.
-  In (TAntiText v) _ sk ->
-    return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $str:" v)) sk
-  In (TAntiInt v) _ sk ->
-    return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $int:" v)) sk
+  Go (In (TAntiText v) _) sk ->
+    return $ Go (Up (Fatal (T.append "Antiquoted variable found at runtime: $str:" v))) sk
+  Go (In (TAntiInt v) _) sk ->
+    return $ Go (Up (Fatal (T.append "Antiquoted variable found at runtime: $int:" v))) sk
   -- Require and requireDevice just turn into no-ops.
-  In (TRequireDevice {}) e sk -> return $ In (TConst Noop) e sk
-  In (TRequire {}) e sk -> return $ In (TConst Noop) e sk
-  In (TRequirements x t) e sk -> return $ Out (VRequirements x t e) sk
+  Go (In (TRequireDevice {}) e) sk -> return $ Go (In (TConst Noop) e) sk
+  Go (In (TRequire {}) e) sk -> return $ Go (In (TConst Noop) e) sk
+  Go (In (TRequirements x t) e) sk -> return $ Go (Out (VRequirements x t e)) sk
   -- Type ascriptions are ignored
-  In (TAnnotate v _) e sk -> return $ In v e sk
+  Go (In (TAnnotate v _) e) sk -> return $ Go (In v e) sk
   -- Normally it's not possible to have a TRobot value in surface
   -- syntax, but the salvage command generates a program that needs to
   -- refer directly to the salvaging robot.
-  In (TRobot rid) _ sk -> return $ Out (VRobot rid) sk
+  Go (In (TRobot rid) _) sk -> return $ Go (Out (VRobot rid)) sk
   -- Function constants of arity 0 are evaluated immediately
   -- (e.g. parent, self).  Any other constant is turned into a VCApp,
   -- which is waiting for arguments and/or an FExec frame.
-  In (TConst c) _ sk
+  Go (In (TConst c) _) sk
     | arity c == 0 && not (isCmd c) -> evalConst c [] sk
-    | otherwise -> return $ Out (VCApp c []) sk
+    | otherwise -> return $ Go (Out (VCApp c [])) sk
   -- To evaluate a variable, just look it up in the context.
-  In (TVar x) e sk -> withExceptions sk $ do
+  Go (In (TVar x) e) sk -> withExceptions sk $ do
     v <-
       lookup x e
         `isJustOr` Fatal (T.unwords ["Undefined variable", x, "encountered while running the interpreter."])
-    return $ Out v sk
+    return $ Go (Out v) sk
 
   -- To evaluate a pair, start evaluating the first component.
-  In (TPair t1 t2) e (SK s k) -> return $ In t1 e $ SK s (FSnd t2 e : k)
+  Go (In (TPair t1 t2) e) (SK s k) -> return $ Go (In t1 e) $ SK s (FSnd t2 e : k)
   -- Once that's done, evaluate the second component.
-  Out v1 (SK s (FSnd t2 e : k)) -> return $ In t2 e $ SK s (FFst v1 : k)
+  Go (Out v1) (SK s (FSnd t2 e : k)) -> return $ Go (In t2 e) $ SK s (FFst v1 : k)
   -- Finally, put the results together into a pair value.
-  Out v2 (SK s (FFst v1 : k)) -> return $ Out (VPair v1 v2) $ SK s k
+  Go (Out v2) (SK s (FFst v1 : k)) -> return $ Go (Out (VPair v1 v2)) $ SK s k
   -- Lambdas immediately turn into closures.
-  In (TLam x _ t) e sk -> return $ Out (VClo x t e) sk
+  Go (In (TLam x _ t) e) sk -> return $ Go (Out (VClo x t e)) sk
   -- To evaluate an application, start by focusing on the left-hand
   -- side and saving the argument for later.
-  In (TApp t1 t2) e (SK s k) -> return $ In t1 e $ SK s (FArg t2 e : k)
+  Go (In (TApp t1 t2) e) (SK s k) -> return $ Go (In t1 e) $ SK s (FArg t2 e : k)
   -- Once that's done, switch to evaluating the argument.
-  Out v1 (SK s (FArg t2 e : k)) -> return $ In t2 e $ SK s (FApp v1 : k)
+  Go (Out v1) (SK s (FArg t2 e : k)) -> return $ Go (In t2 e) $ SK s (FApp v1 : k)
   -- We can evaluate an application of a closure in the usual way.
-  Out v2 (SK s (FApp (VClo x t e) : k)) -> return $ In t (addBinding x v2 e) $ SK s k
+  Go (Out v2) (SK s (FApp (VClo x t e) : k)) -> return $ Go (In t (addBinding x v2 e)) $ SK s k
   -- We can also evaluate an application of a constant by collecting
   -- arguments, eventually dispatching to evalConst for function
   -- constants.
-  Out v2 (SK s (FApp (VCApp c args) : k))
+  Go (Out v2) (SK s (FApp (VCApp c args) : k))
     | not (isCmd c)
         && arity c == length args + 1 ->
         evalConst c (reverse (v2 : args)) $ SK s k
-    | otherwise -> return $ Out (VCApp c (v2 : args)) $ SK s k
-  Out _ (SK s (FApp _ : _)) -> badMachineState s "FApp of non-function"
+    | otherwise -> return $ Go (Out (VCApp c (v2 : args))) $ SK s k
+  Go (Out _) (SK s (FApp _ : _)) -> badMachineState s "FApp of non-function"
   -- Start evaluating a record.  If it's empty, we're done.  Otherwise, focus
   -- on the first field and record the rest in a FRcd frame.
-  In (TRcd m) e sk@(SK s k) -> return $ case M.assocs m of
-    [] -> Out (VRcd M.empty) sk
-    ((x, t) : fs) -> In (fromMaybe (TVar x) t) e $ SK s (FRcd e [] x fs : k)
+  Go (In (TRcd m) e) sk@(SK s k) -> return $ case M.assocs m of
+    [] -> Go (Out (VRcd M.empty)) sk
+    ((x, t) : fs) -> Go (In (fromMaybe (TVar x) t) e) $ SK s (FRcd e [] x fs : k)
   -- When we finish evaluating the last field, return a record value.
-  Out v (SK s (FRcd _ done x [] : k)) -> return $ Out (VRcd (M.fromList ((x, v) : done))) $ SK s k
+  Go (Out v) (SK s (FRcd _ done x [] : k)) -> return $ Go (Out (VRcd (M.fromList ((x, v) : done)))) $ SK s k
   -- Otherwise, save the value of the field just evaluated and move on
   -- to focus on evaluating the next one.
-  Out v (SK s (FRcd e done x ((y, t) : rest) : k)) ->
-    return $ In (fromMaybe (TVar y) t) e $ SK s (FRcd e ((x, v) : done) y rest : k)
+  Go (Out v) (SK s (FRcd e done x ((y, t) : rest) : k)) ->
+    return $ Go (In (fromMaybe (TVar y) t) e) $ SK s (FRcd e ((x, v) : done) y rest : k)
   -- Evaluate a record projection: evaluate the record and remember we
   -- need to do the projection later.
-  In (TProj t x) e (SK s k) -> return $ In t e $ SK s (FProj x : k)
+  Go (In (TProj t x) e) (SK s k) -> return $ Go (In t e) $ SK s (FProj x : k)
   -- Do a record projection
-  Out v (SK s (FProj x : k)) -> case v of
+  Go (Out v) (SK s (FProj x : k)) -> case v of
     VRcd m -> case M.lookup x m of
       Nothing -> badMachineState s $ T.unwords ["Record projection for variable", x, "that does not exist"]
-      Just xv -> return $ Out xv $ SK s k
+      Just xv -> return $ Go (Out xv) $ SK s k
     _ -> badMachineState s "FProj frame with non-record value"
   -- To evaluate non-recursive let expressions, we start by focusing on the
   -- let-bound expression.
-  In (TLet False x _ t1 t2) e (SK s k) -> return $ In t1 e $ SK s (FLet x t2 e : k)
+  Go (In (TLet False x _ t1 t2) e) (SK s k) -> return $ Go (In t1 e) $ SK s (FLet x t2 e : k)
   -- To evaluate recursive let expressions, we evaluate the memoized
   -- delay of the let-bound expression.  Every free occurrence of x
   -- in the let-bound expression and the body has already been
   -- rewritten by elaboration to 'force x'.
-  In (TLet True x _ t1 t2) e (SK s k) ->
-    return $ In (TDelay (MemoizedDelay $ Just x) t1) e $ SK s (FLet x t2 e : k)
+  Go (In (TLet True x _ t1 t2) e) (SK s k) ->
+    return $ Go (In (TDelay (MemoizedDelay $ Just x) t1) e) $ SK s (FLet x t2 e : k)
   -- Once we've finished with the let-binding, we switch to evaluating
   -- the body in a suitably extended environment.
-  Out v1 (SK s (FLet x t2 e : k)) -> return $ In t2 (addBinding x v1 e) $ SK s k
+  Go (Out v1) (SK s (FLet x t2 e : k)) -> return $ Go (In t2 (addBinding x v1 e)) $ SK s k
   -- Definitions immediately turn into VDef values, awaiting execution.
-  In tm@(TDef r x _ t) e sk -> withExceptions sk $ do
+  Go (In tm@(TDef r x _ t) e) sk -> withExceptions sk $ do
     hasCapabilityFor CEnv tm
-    return $ Out (VDef r x t e) sk
+    return $ Go (Out (VDef r x t e)) sk
 
   -- Bind expressions don't evaluate: just package it up as a value
   -- until such time as it is to be executed.
-  In (TBind mx t1 t2) e sk -> return $ Out (VBind mx t1 t2 e) sk
+  Go (In (TBind mx t1 t2) e) sk -> return $ Go (Out (VBind mx t1 t2 e)) sk
   -- Simple (non-memoized) delay expressions immediately turn into
   -- VDelay values, awaiting application of 'Force'.
-  In (TDelay SimpleDelay t) e sk -> return $ Out (VDelay t e) sk
+  Go (In (TDelay SimpleDelay t) e) sk -> return $ Go (Out (VDelay t e)) sk
   -- For memoized delay expressions, we allocate a new cell in the store and
   -- return a reference to it.
-  In (TDelay (MemoizedDelay x) t) e (SK s k) -> do
+  Go (In (TDelay (MemoizedDelay x) t) e) (SK s k) -> do
     -- Note that if the delay expression is recursive, we add a
     -- binding to the environment that wil be used to evaluate the
     -- body, binding the variable to a reference to the memory cell we
@@ -781,16 +781,16 @@ stepCESK cesk = case cesk of
     -- role: @loc@ is both an output from @allocate@ and used as part
     -- of an input! =D
     let (loc, s') = allocate (maybe id (`addBinding` VRef loc) x e) t s
-    return $ Out (VRef loc) $ SK s' k
+    return $ Go (Out (VRef loc)) $ SK s' k
   -- If we see an update frame, it means we're supposed to set the value
   -- of a particular cell to the value we just finished computing.
-  Out v (SK s (FUpdate loc : k)) -> return $ Out v $ SK (setCell loc (V v) s) k
+  Go (Out v) (SK s (FUpdate loc : k)) -> return $ Go (Out v) $ SK (setCell loc (V v) s) k
   ------------------------------------------------------------
   -- Execution
 
   -- Executing a 'requirements' command generates an appropriate log message
   -- listing the requirements of the given expression.
-  Out (VRequirements src t _) (SK s (FExec : k)) -> do
+  Go (Out (VRequirements src t _)) (SK s (FExec : k)) -> do
     currentContext <- use $ robotContext . defReqs
     em <- use entityMap
     let (R.Requirements caps devs inv, _) = R.requirements currentContext t
@@ -828,45 +828,45 @@ stepCESK cesk = case cesk of
               )
 
     _ <- traceLog Logged reqLog
-    return $ Out VUnit $ SK s k
+    return $ Go (Out VUnit) $ SK s k
 
   -- To execute a definition, we immediately turn the body into a
   -- delayed value, so it will not even be evaluated until it is
   -- called.  We memoize both recursive and non-recursive definitions,
   -- since the point of a definition is that it may be used many times.
-  Out (VDef r x t e) (SK s (FExec : k)) ->
-    return $ In (TDelay (MemoizedDelay $ bool Nothing (Just x) r) t) e $ SK s (FDef x : k)
+  Go (Out (VDef r x t e)) (SK s (FExec : k)) ->
+    return $ Go (In (TDelay (MemoizedDelay $ bool Nothing (Just x) r) t) e) $ SK s (FDef x : k)
   -- Once we have finished evaluating the (memoized, delayed) body of
   -- a definition, we return a special VResult value, which packages
   -- up the return value from the @def@ command itself (@unit@)
   -- together with the resulting environment (the variable bound to
   -- the delayed value).
-  Out v (SK s (FDef x : k)) ->
-    return $ Out (VResult VUnit (singleton x v)) $ SK s k
+  Go (Out v) (SK s (FDef x : k)) ->
+    return $ Go (Out (VResult VUnit (singleton x v))) $ SK s k
   -- To execute a constant application, delegate to the 'evalConst'
   -- function.  Set tickSteps to 0 if the command is supposed to take
   -- a tick, so the robot won't take any more steps this tick.
-  Out (VCApp c args) (SK s (FExec : k)) -> do
+  Go (Out (VCApp c args)) (SK s (FExec : k)) -> do
     when (isTangible c) $ tickSteps .= 0
     evalConst c (reverse args) $ SK s k
 
   -- Reset the runningAtomic flag when we encounter an FFinishAtomic frame.
-  Out v (SK s (FFinishAtomic : k)) -> do
+  Go (Out v) (SK s (FFinishAtomic : k)) -> do
     runningAtomic .= False
-    return $ Out v $ SK s k
+    return $ Go (Out v) $ SK s k
 
   -- Machinery for implementing the 'meetAll' command.
   -- First case: done meeting everyone.
-  Out b (SK s (FMeetAll _ [] : k)) -> return $ Out b $ SK s k
+  Go (Out b) (SK s (FMeetAll _ [] : k)) -> return $ Go (Out b) $ SK s k
   -- More still to meet: apply the function to the current value b and
   -- then the next robot id.  This will result in a command which we
   -- execute, discard any generated environment, and then pass the
   -- result to continue meeting the rest of the robots.
-  Out b (SK s (FMeetAll f (rid : rids) : k)) ->
-    return $ Out b $ SK s (FApp f : FArg (TRobot rid) empty : FExec : FDiscardEnv : FMeetAll f rids : k)
+  Go (Out b) (SK s (FMeetAll f (rid : rids) : k)) ->
+    return $ Go (Out b) $ SK s (FApp f : FArg (TRobot rid) empty : FExec : FDiscardEnv : FMeetAll f rids : k)
   -- To execute a bind expression, evaluate and execute the first
   -- command, and remember the second for execution later.
-  Out (VBind mx c1 c2 e) (SK s (FExec : k)) -> return $ In c1 e $ SK s (FExec : FBind mx c2 e : k)
+  Go (Out (VBind mx c1 c2 e)) (SK s (FExec : k)) -> return $ Go (In c1 e) $ SK s (FExec : FBind mx c2 e : k)
   -- If first command completes with a value along with an environment
   -- resulting from definition commands and/or binds, switch to
   -- evaluating the second command of the bind.  Extend the
@@ -876,42 +876,42 @@ stepCESK cesk = case cesk of
   -- second command once it has been evaluated, then union any
   -- resulting definition environment with the definition environment
   -- from the first command.
-  Out (VResult v ve) (SK s (FBind mx t2 e : k)) -> do
+  Go (Out (VResult v ve)) (SK s (FBind mx t2 e : k)) -> do
     let ve' = maybe id (`addBinding` v) mx ve
-    return $ In t2 (e `union` ve') $ SK s (FExec : fUnionEnv ve' k)
+    return $ Go (In t2 (e `union` ve')) $ SK s (FExec : fUnionEnv ve' k)
   -- If the first command completes with a simple value and there is no binder,
   -- then we just continue without worrying about the environment.
-  Out _ (SK s (FBind Nothing t2 e : k)) -> return $ In t2 e $ SK s (FExec : k)
+  Go (Out _) (SK s (FBind Nothing t2 e : k)) -> return $ Go (In t2 e) $ SK s (FExec : k)
   -- If the first command completes with a simple value and there is a binder,
   -- we promote it to the returned environment as well.
-  Out v (SK s (FBind (Just x) t2 e : k)) -> do
-    return $ In t2 (addBinding x v e) $ SK s (FExec : fUnionEnv (singleton x v) k)
+  Go (Out v) (SK s (FBind (Just x) t2 e : k)) -> do
+    return $ Go (In t2 (addBinding x v e)) $ SK s (FExec : fUnionEnv (singleton x v) k)
   -- If a command completes with a value and definition environment,
   -- and the next continuation frame contains a previous environment
   -- to union with, then pass the unioned environments along in
   -- another VResult.
 
-  Out (VResult v e2) (SK s (FUnionEnv e1 : k)) -> return $ Out (VResult v (e1 `union` e2)) $ SK s k
+  Go (Out (VResult v e2)) (SK s (FUnionEnv e1 : k)) -> return $ Go (Out (VResult v (e1 `union` e2))) $ SK s k
   -- Or, if a command completes with no environment, but there is a
   -- previous environment to union with, just use that environment.
-  Out v (SK s (FUnionEnv e : k)) -> return $ Out (VResult v e) $ SK s k
+  Go (Out v) (SK s (FUnionEnv e : k)) -> return $ Go (Out (VResult v e)) $ SK s k
   -- If there's an explicit DiscardEnv frame, throw away any returned environment.
-  Out (VResult v _) (SK s (FDiscardEnv : k)) -> return $ Out v $ SK s k
-  Out v (SK s (FDiscardEnv : k)) -> return $ Out v $ SK s k
+  Go (Out (VResult v _)) (SK s (FDiscardEnv : k)) -> return $ Go (Out v) $ SK s k
+  Go (Out v) (SK s (FDiscardEnv : k)) -> return $ Go (Out v) $ SK s k
   -- If the top of the continuation stack contains a 'FLoadEnv' frame,
   -- it means we are supposed to load up the resulting definition
   -- environment, store, and type and capability contexts into the robot's
   -- top-level environment and contexts, so they will be available to
   -- future programs.
-  Out (VResult v e) (SK s (FLoadEnv ctx rctx : k)) -> do
+  Go (Out (VResult v e)) (SK s (FLoadEnv ctx rctx : k)) -> do
     robotContext . defVals %= (`union` e)
     robotContext . defTypes %= (`union` ctx)
     robotContext . defReqs %= (`union` rctx)
-    return $ Out v $ SK s k
-  Out v (SK s (FLoadEnv {} : k)) -> return $ Out v $ SK s k
+    return $ Go (Out v) $ SK s k
+  Go (Out v) (SK s (FLoadEnv {} : k)) -> return $ Go (Out v) $ SK s k
   -- Any other type of value wiwth an FExec frame is an error (should
   -- never happen).
-  Out _ (SK s (FExec : _)) -> badMachineState s "FExec frame with non-executable value"
+  Go (Out _) (SK s (FExec : _)) -> badMachineState s "FExec frame with non-executable value"
   -- If we see a VResult in any other context, simply discard it.  For
   -- example, this is what happens when there are binders (i.e. a "do
   -- block") nested inside another block instead of at the top level.
@@ -926,15 +926,15 @@ stepCESK cesk = case cesk of
   -- https://github.com/swarm-game/swarm/issues/327 , which was fixed
   -- by changing this case from an error to simply ignoring the
   -- VResult wrapper.
-  Out (VResult v _) sk -> return $ Out v sk
+  Go (Out (VResult v _)) sk -> return $ Go (Out v) sk
   ------------------------------------------------------------
   -- Exception handling
   ------------------------------------------------------------
 
   -- First, if we were running a try block but evaluation completed normally,
   -- just ignore the try block and continue.
-  Out v (SK s (FTry {} : k)) -> return $ Out v $ SK s k
-  Up exn (SK s []) -> do
+  Go (Out v) (SK s (FTry {} : k)) -> return $ Go (Out v) $ SK s k
+  Go (Up exn) (SK s []) -> do
     -- Here, an exception has risen all the way to the top level without being
     -- handled.
     case exn of
@@ -956,22 +956,22 @@ stepCESK cesk = case cesk of
     if h
       then do
         void $ traceLog (ErrorTrace Error) (formatExn em exn)
-        return $ Out VUnit $ SK s []
-      else return $ Out VUnit $ SK s' []
+        return $ Go (Out VUnit) $ SK s []
+      else return $ Go (Out VUnit) $ SK s' []
   -- Fatal errors, capability errors, and infinite loop errors can't
   -- be caught; just throw away the continuation stack.
-  Up exn@Fatal {} (SK s _) -> return $ Up exn $ SK s []
-  Up exn@Incapable {} (SK s _) -> return $ Up exn $ SK s []
-  Up exn@InfiniteLoop {} (SK s _) -> return $ Up exn $ SK s []
+  Go (Up exn@Fatal {}) (SK s _) -> return $ Go (Up exn) $ SK s []
+  Go (Up exn@Incapable {}) (SK s _) -> return $ Go (Up exn) $ SK s []
+  Go (Up exn@InfiniteLoop {}) (SK s _) -> return $ Go (Up exn) $ SK s []
   -- Otherwise, if we are raising an exception up the continuation
   -- stack and come to a Try frame, force and then execute the associated catch
   -- block.
-  Up _ (SK s (FTry c : k)) -> return $ Out c $ SK s (FApp (VCApp Force []) : FExec : k)
+  Go (Up _) (SK s (FTry c : k)) -> return $ Go (Out c) $ SK s (FApp (VCApp Force []) : FExec : k)
   -- Otherwise, keep popping from the continuation stack.
-  Up exn (SK s (_ : k)) -> return $ Up exn $ SK s k
+  Go (Up exn) (SK s (_ : k)) -> return $ Go (Up exn) $ SK s k
   -- Finally, if we're done evaluating and the continuation stack is
   -- empty, return the machine unchanged.
-  done@(Out _ (SK _ [])) -> return done
+  done@(Go (Out _) (SK _ [])) -> return done
  where
   badMachineState s msg =
     let msg' =
@@ -979,7 +979,7 @@ stepCESK cesk = case cesk of
             [ T.append "Bad machine state in stepRobot: " msg
             , prettyText cesk
             ]
-     in return $ Up (Fatal msg') $ SK s []
+     in return $ Go (Up (Fatal msg')) $ SK s []
 
   -- Note, the order of arguments to `union` is important in the below
   -- definition of fUnionEnv.  I wish I knew how to add an automated
@@ -1006,7 +1006,7 @@ evalConst ::
 evalConst c vs sk = do
   res <- runError $ execConst c vs sk
   case res of
-    Left exn -> return $ Up exn sk
+    Left exn -> return $ Go (Up exn) sk
     Right cek' -> return cek'
 
 -- | A system program for a "seed robot", to regrow a growable entity
@@ -1070,20 +1070,20 @@ execConst c vs sk@(SK s k) = do
 
   -- Now proceed to actually carry out the operation.
   case c of
-    Noop -> return $ Out VUnit sk
+    Noop -> return $ Go (Out VUnit) sk
     Return -> case vs of
-      [v] -> return $ Out v sk
+      [v] -> return $ Go (Out v) sk
       _ -> badConst
     Wait -> case vs of
       [VInt d] -> do
         time <- use ticks
         purgeFarAwayWatches
-        return $ Waiting (time + d) (Out VUnit sk)
+        return $ Waiting (time + d) (Go (Out VUnit) sk)
       _ -> badConst
     Selfdestruct -> do
       destroyIfNotBase $ Just AttemptSelfDestructBase
       flagRedraw
-      return $ Out VUnit sk
+      return $ Go (Out VUnit) sk
     Move -> do
       -- Figure out where we're going
       loc <- use robotLocation
@@ -1095,7 +1095,7 @@ execConst c vs sk@(SK s k) = do
           , failIfDrown = Destroy
           }
       updateRobotLocation loc nextLoc
-      return $ Out VUnit sk
+      return $ Go (Out VUnit) sk
     Push -> do
       -- Figure out where we're going
       loc <- use robotLocation
@@ -1125,7 +1125,7 @@ execConst c vs sk@(SK s k) = do
         Nothing -> return ()
 
       updateRobotLocation loc nextLoc
-      return $ Out VUnit sk
+      return $ Go (Out VUnit) sk
     Stride -> case vs of
       [VInt d] -> do
         when (d > fromIntegral maxStrideRange) $
@@ -1167,7 +1167,7 @@ execConst c vs sk@(SK s k) = do
 
         forM_ maybeLastLoc $ updateRobotLocation loc
 
-        return $ Out VUnit sk
+        return $ Go (Out VUnit) sk
       _ -> badConst
     Teleport -> case vs of
       [VRobot rid, VPair (VInt x) (VInt y)] -> do
@@ -1185,7 +1185,7 @@ execConst c vs sk@(SK s k) = do
               }
           updateRobotLocation oldLoc nextLoc
 
-        return $ Out VUnit sk
+        return $ Go (Out VUnit) sk
       _ -> badConst
     Grab -> doGrab Grab'
     Harvest -> doGrab Harvest'
@@ -1197,7 +1197,7 @@ execConst c vs sk@(SK s k) = do
         -- Grab
         r <- doGrab Swap'
         case r of
-          Out {} -> do
+          Go (Out {}) _ -> do
             -- Place the entity and remove it from the inventory
             updateEntityAt loc (const (Just e))
             robotInventory %= delete e
@@ -1214,7 +1214,7 @@ execConst c vs sk@(SK s k) = do
         when (d == DRelative DDown && countByName "compass" inst == 0) $ do
           grantAchievement GetDisoriented
 
-        return $ Out VUnit sk
+        return $ Go (Out VUnit) sk
       _ -> badConst
     Place -> case vs of
       [VText name] -> do
@@ -1232,7 +1232,7 @@ execConst c vs sk@(SK s k) = do
         robotInventory %= delete e
 
         flagRedraw
-        return $ Out VUnit sk
+        return $ Go (Out VUnit) sk
       _ -> badConst
     Give -> case vs of
       [VRobot otherID, VText itemName] -> do
@@ -1257,7 +1257,7 @@ execConst c vs sk@(SK s k) = do
           -- Flag the UI for a redraw if we are currently showing either robot's inventory
           when (focusedID == myID || focusedID == otherID) flagRedraw
 
-        return $ Out VUnit sk
+        return $ Go (Out VUnit) sk
       _ -> badConst
     Equip -> case vs of
       [VText itemName] -> do
@@ -1273,7 +1273,7 @@ execConst c vs sk@(SK s k) = do
           -- Flag the UI for a redraw if we are currently showing our inventory
           when (focusedID == myID) flagRedraw
 
-        return $ Out VUnit sk
+        return $ Go (Out VUnit) sk
       _ -> badConst
     Unequip -> case vs of
       [VText itemName] -> do
@@ -1284,7 +1284,7 @@ execConst c vs sk@(SK s k) = do
         robotInventory %= insert item
         -- Flag the UI for a redraw if we are currently showing our inventory
         when (focusedID == myID) flagRedraw
-        return $ Out VUnit sk
+        return $ Go (Out VUnit) sk
       _ -> badConst
     Make -> case vs of
       [VText name] -> do
@@ -1336,17 +1336,17 @@ execConst c vs sk@(SK s k) = do
     Has -> case vs of
       [VText name] -> do
         inv <- use robotInventory
-        return $ Out (VBool ((> 0) $ countByName name inv)) sk
+        return $ Go (Out $ VBool ((> 0) $ countByName name inv)) sk
       _ -> badConst
     Equipped -> case vs of
       [VText name] -> do
         inv <- use equippedDevices
-        return $ Out (VBool ((> 0) $ countByName name inv)) sk
+        return $ Go (Out $ VBool ((> 0) $ countByName name inv)) sk
       _ -> badConst
     Count -> case vs of
       [VText name] -> do
         inv <- use robotInventory
-        return $ Out (VInt (fromIntegral $ countByName name inv)) sk
+        return $ Go (Out $ VInt (fromIntegral $ countByName name inv)) sk
       _ -> badConst
     Scout -> case vs of
       [VDir d] -> do
@@ -1389,11 +1389,11 @@ execConst c vs sk@(SK s k) = do
         -- have to inspect the maximum range of the command.
         result <- firstJustM isConclusivelyVisibleM locsInDirection
         let foundBot = fromMaybe False result
-        return $ Out (VBool foundBot) sk
+        return $ Go (Out (VBool foundBot)) sk
       _ -> badConst
     Whereami -> do
       loc <- use robotLocation
-      return $ Out (asValue loc) sk
+      return $ Go (Out (asValue loc)) sk
     Detect -> case vs of
       [VText name, VRect x1 y1 x2 y2] -> do
         loc <- use robotLocation
@@ -1401,7 +1401,7 @@ execConst c vs sk@(SK s k) = do
         -- sort offsets by (Manhattan) distance so that we return the closest occurrence
         let sortedLocs = sortOn (\(V2 x y) -> abs x + abs y) locs
         firstOne <- findM (fmap (maybe False $ isEntityNamed name) . entityAt . (loc .+^)) sortedLocs
-        return $ Out (asValue firstOne) sk
+        return $ Go (Out (asValue firstOne)) sk
       _ -> badConst
     Resonate -> case vs of
       [VText name, VRect x1 y1 x2 y2] -> doResonate (maybe False $ isEntityNamed name) x1 y1 x2 y2
@@ -1412,19 +1412,19 @@ execConst c vs sk@(SK s k) = do
     Sniff -> case vs of
       [VText name] -> do
         firstFound <- findNearest name
-        return $ Out (asValue $ maybe (-1) fst firstFound) sk
+        return $ Go (Out (asValue $ maybe (-1) fst firstFound)) sk
       _ -> badConst
     Watch -> case vs of
       [VDir d] -> do
         (loc, _me) <- lookInDirection d
         addWatchedLocation loc
-        return $ Out VUnit sk
+        return $ Go (Out VUnit) sk
       _ -> badConst
     Surveil -> case vs of
       [VPair (VInt x) (VInt y)] -> do
         let loc = Location (fromIntegral x) (fromIntegral y)
         addWatchedLocation loc
-        return $ Out VUnit sk
+        return $ Go (Out VUnit) sk
       _ -> badConst
     Chirp -> case vs of
       [VText name] -> do
@@ -1441,7 +1441,7 @@ execConst c vs sk@(SK s k) = do
               entLoc <- firstFound
               guard $ snd entLoc /= zero
               processDirection . nearestDirection . snd $ entLoc
-        return $ Out val sk
+        return $ Go (Out val) sk
       _ -> badConst
     Heading -> do
       mh <- use robotOrientation
@@ -1453,10 +1453,10 @@ execConst c vs sk@(SK s k) = do
       -- for players in the vast majority of cases.  We rather choose
       -- to just return the direction 'down' in any case where we don't
       -- otherwise have anything reasonable to return.
-      return $ Out (VDir (fromMaybe (DRelative DDown) $ mh >>= toDirection)) sk
+      return $ Go (Out (VDir (fromMaybe (DRelative DDown) $ mh >>= toDirection))) sk
     Time -> do
       t <- use ticks
-      return $ Out (VInt t) sk
+      return $ Go (Out (VInt t)) sk
     Drill -> case vs of
       [VDir d] -> doDrill d
       _ -> badConst
@@ -1472,7 +1472,7 @@ execConst c vs sk@(SK s k) = do
       orient <- use robotOrientation
       let nextLoc = loc .+^ (orient ? zero)
       me <- entityAt nextLoc
-      return $ Out (VBool (maybe False (`hasProperty` Unwalkable) me)) sk
+      return $ Go (Out (VBool (maybe False (`hasProperty` Unwalkable) me))) sk
     Scan -> case vs of
       [VDir d] -> do
         (_loc, me) <- lookInDirection d
@@ -1483,7 +1483,7 @@ execConst c vs sk@(SK s k) = do
           -- change the way it is drawn (if the base is doing the
           -- scanning)
           flagRedraw
-        return $ Out (asValue me) sk
+        return $ Go (Out (asValue me)) sk
       _ -> badConst
     Knows -> case vs of
       [VText name] -> do
@@ -1493,7 +1493,7 @@ execConst c vs sk@(SK s k) = do
         let knows = case E.lookupByName name allKnown of
               [] -> False
               _ -> True
-        return $ Out (VBool knows) sk
+        return $ Go (Out (VBool knows)) sk
       _ -> badConst
     Upload -> case vs of
       [VRobot otherID] -> do
@@ -1514,12 +1514,12 @@ execConst c vs sk@(SK s k) = do
         -- go from unknown to known).
         flagRedraw
 
-        return $ Out VUnit sk
+        return $ Go (Out VUnit) sk
       _ -> badConst
     Random -> case vs of
       [VInt hi] -> do
         n <- uniform (0, hi - 1)
-        return $ Out (VInt n) sk
+        return $ Go (Out (VInt n)) sk
       _ -> badConst
     Atomic -> goAtomic
     Instant -> goAtomic
@@ -1538,22 +1538,22 @@ execConst c vs sk@(SK s k) = do
         -- already requires "God" capability.
         v <-
           evalState @Robot (r & systemRobot .~ True) . evalState @GameState g $
-            runCESK (Out prog $ SK s [FApp (VCApp Force []), FExec])
+            runCESK (Go (Out prog) $ SK s [FApp (VCApp Force []), FExec])
 
         -- Return the value returned by the hypothetical command.
-        return $ Out v sk
+        return $ Go (Out v) sk
       _ -> badConst
     RobotNamed -> case vs of
       [VText rname] -> do
         r <- robotWithName rname >>= (`isJustOrFail` ["There is no robot named", rname])
-        return $ Out (asValue r) sk
+        return $ Go (Out (asValue r)) sk
       _ -> badConst
     RobotNumbered -> case vs of
       [VInt rid] -> do
         r <-
           robotWithID (fromIntegral rid)
             >>= (`isJustOrFail` ["There is no robot with number", from (show rid)])
-        return $ Out (asValue r) sk
+        return $ Go (Out (asValue r)) sk
       _ -> badConst
     Say -> case vs of
       [VText msg] -> do
@@ -1580,7 +1580,7 @@ execConst c vs sk@(SK s k) = do
             then use $ robotMap . to IM.elems
             else gets $ robotsInArea loc hearingDistance
         mapM_ addToRobotLog robotsAround
-        return $ Out VUnit sk
+        return $ Go (Out VUnit) sk
       _ -> badConst
     Listen -> do
       gs <- get @GameState
@@ -1596,13 +1596,13 @@ execConst c vs sk@(SK s k) = do
       let mm = limitLast . Seq.filter (liftA2 (&&) notMine isClose) $ Seq.takeWhileR (messageIsRecent gs) mq
       return $
         maybe
-          (In (TConst Listen) mempty $ SK s (FExec : k)) -- continue listening
-          (\m -> Out (VText m) sk) -- return found message
+          (Go (In (TConst Listen) mempty) $ SK s (FExec : k)) -- continue listening
+          (\m -> Go (Out (VText m)) sk) -- return found message
           mm
     Log -> case vs of
       [VText msg] -> do
         void $ traceLog Logged msg
-        return $ Out VUnit sk
+        return $ Go (Out VUnit) sk
       _ -> badConst
     View -> case vs of
       [VRobot rid] -> do
@@ -1629,7 +1629,7 @@ execConst c vs sk@(SK s k) = do
             -- If it does exist, set it as the view center.
             Just _ -> viewCenterRule .= VCRobot rid
 
-        return $ Out VUnit sk
+        return $ Go (Out VUnit) sk
       _ -> badConst
     Appear -> case vs of
       [VText app] -> do
@@ -1638,14 +1638,14 @@ execConst c vs sk@(SK s k) = do
           [dc] -> do
             robotDisplay . defaultChar .= dc
             robotDisplay . orientationMap .= M.empty
-            return $ Out VUnit sk
+            return $ Go (Out VUnit) sk
           [dc, nc, ec, sc, wc] -> do
             robotDisplay . defaultChar .= dc
             robotDisplay . orientationMap . ix DNorth .= nc
             robotDisplay . orientationMap . ix DEast .= ec
             robotDisplay . orientationMap . ix DSouth .= sc
             robotDisplay . orientationMap . ix DWest .= wc
-            return $ Out VUnit sk
+            return $ Go (Out VUnit) sk
           _other -> raise Appear [quote app, "is not a valid appearance string. 'appear' must be given a string with exactly 1 or 5 characters."]
       _ -> badConst
     Create -> case vs of
@@ -1658,7 +1658,7 @@ execConst c vs sk@(SK s k) = do
         robotInventory %= insert e
         updateDiscoveredEntities e
 
-        return $ Out VUnit sk
+        return $ Go (Out VUnit) sk
       _ -> badConst
     Halt -> case vs of
       [VRobot targetID] -> do
@@ -1669,7 +1669,7 @@ execConst c vs sk@(SK s k) = do
           -- based on the fact that our CESK machine is done we will
           -- be put to sleep and the REPL will be reset if we are the
           -- base robot.
-          True -> return $ cancel $ Out VUnit sk
+          True -> return $ cancel $ Go (Out VUnit) sk
           False -> do
             -- Make sure the other robot exists and is close enough.
             target <- getRobotWithinTouch targetID
@@ -1682,7 +1682,7 @@ execConst c vs sk@(SK s k) = do
                 -- Cancel its CESK machine, and put it to sleep.
                 robotMap . at targetID . _Just . machine %= cancel
                 sleepForever targetID
-                return $ Out VUnit sk
+                return $ Go (Out VUnit) sk
               False -> throwError $ cmdExn c ["You are not authorized to halt that robot."]
       _ -> badConst
     Ishere -> case vs of
@@ -1690,20 +1690,20 @@ execConst c vs sk@(SK s k) = do
         loc <- use robotLocation
         me <- entityAt loc
         let here = maybe False (isEntityNamed name) me
-        return $ Out (VBool here) sk
+        return $ Go (Out (VBool here)) sk
       _ -> badConst
     Isempty -> do
       loc <- use robotLocation
       me <- entityAt loc
-      return $ Out (VBool (isNothing me)) sk
+      return $ Go (Out (VBool (isNothing me))) sk
     Self -> do
       rid <- use robotID
-      return $ Out (VRobot rid) sk
+      return $ Go (Out (VRobot rid)) sk
     Parent -> do
       mp <- use robotParentID
       rid <- use robotID
-      return $ Out (VRobot (fromMaybe rid mp)) sk
-    Base -> return $ Out (VRobot 0) sk
+      return $ Go (Out (VRobot (fromMaybe rid mp))) sk
+    Base -> return $ Go (Out (VRobot 0)) sk
     Meet -> do
       loc <- use robotLocation
       rid <- use robotID
@@ -1712,27 +1712,27 @@ execConst c vs sk@(SK s k) = do
             find ((/= rid) . (^. robotID)) -- pick one other than ourself
               . sortOn (manhattan loc . (^. robotLocation)) -- prefer closer
               $ robotsInArea loc 1 g -- all robots within Manhattan distance 1
-      return $ Out (asValue neighbor) sk
+      return $ Go (Out (asValue neighbor)) sk
     MeetAll -> case vs of
       [f, b] -> do
         loc <- use robotLocation
         rid <- use robotID
         g <- get @GameState
         let neighborIDs = filter (/= rid) . map (^. robotID) $ robotsInArea loc 1 g
-        return $ Out b $ SK s (FMeetAll f neighborIDs : k)
+        return $ Go (Out b) $ SK s (FMeetAll f neighborIDs : k)
       _ -> badConst
     Whoami -> case vs of
       [] -> do
         name <- use robotName
-        return $ Out (VText name) sk
+        return $ Go (Out (VText name)) sk
       _ -> badConst
     Setname -> case vs of
       [VText name] -> do
         robotName .= name
-        return $ Out VUnit sk
+        return $ Go (Out VUnit) sk
       _ -> badConst
     Force -> case vs of
-      [VDelay t e] -> return $ In t e sk
+      [VDelay t e] -> return $ Go (In t e) sk
       [VRef loc] ->
         -- To force a VRef, we look up the location in the store.
         case lookupCell loc s of
@@ -1742,60 +1742,60 @@ execConst c vs sk@(SK s k) = do
           -- time we allocate a new cell.
           Nothing ->
             return $
-              Up (Fatal $ T.append "Reference to unknown memory cell " (from (show loc))) sk
+              Go (Up (Fatal $ T.append "Reference to unknown memory cell " (from (show loc)))) sk
           -- If the location contains an unevaluated expression, it's
           -- time to evaluate it.  Set the cell to a 'Blackhole', push
           -- an 'FUpdate' frame so we remember to update the location
           -- to its value once we finish evaluating it, and focus on
           -- the expression.
-          Just (E t e') -> return $ In t e' $ SK (setCell loc (Blackhole t e') s) (FUpdate loc : k)
+          Just (E t e') -> return $ Go (In t e') $ SK (setCell loc (Blackhole t e') s) (FUpdate loc : k)
           -- If the location contains a Blackhole, that means we are
           -- already currently in the middle of evaluating it, i.e. it
           -- depends on itself, so throw an 'InfiniteLoop' error.
-          Just Blackhole {} -> return $ Up InfiniteLoop sk
+          Just Blackhole {} -> return $ Go (Up InfiniteLoop) sk
           -- If the location already contains a value, just return it.
-          Just (V v) -> return $ Out v sk
+          Just (V v) -> return $ Go (Out v) sk
       -- If a force is applied to any other kind of value, just ignore it.
       -- This is needed because of the way we wrap all free variables in @force@
       -- in case they come from a @def@ which are always wrapped in @delay@.
       -- But binders (i.e. @x <- ...@) are also exported to the global context.
-      [v] -> return $ Out v sk
+      [v] -> return $ Go (Out v) sk
       _ -> badConst
     If -> case vs of
       -- Use the boolean to pick the correct branch, and apply @force@ to it.
-      [VBool b, thn, els] -> return $ Out (bool els thn b) $ SK s (FApp (VCApp Force []) : k)
+      [VBool b, thn, els] -> return $ Go (Out (bool els thn b)) $ SK s (FApp (VCApp Force []) : k)
       _ -> badConst
     Inl -> case vs of
-      [v] -> return $ Out (VInj False v) sk
+      [v] -> return $ Go (Out (VInj False v)) sk
       _ -> badConst
     Inr -> case vs of
-      [v] -> return $ Out (VInj True v) sk
+      [v] -> return $ Go (Out (VInj True v)) sk
       _ -> badConst
     Case -> case vs of
-      [VInj side v, kl, kr] -> return $ Out v $ SK s (FApp (bool kl kr side) : k)
+      [VInj side v, kl, kr] -> return $ Go (Out v) $ SK s (FApp (bool kl kr side) : k)
       _ -> badConst
     Fst -> case vs of
-      [VPair v _] -> return $ Out v sk
+      [VPair v _] -> return $ Go (Out v) sk
       _ -> badConst
     Snd -> case vs of
-      [VPair _ v] -> return $ Out v sk
+      [VPair _ v] -> return $ Go (Out v) sk
       _ -> badConst
     Try -> case vs of
-      [c1, c2] -> return $ Out c1 $ SK s (FApp (VCApp Force []) : FExec : FTry c2 : k)
+      [c1, c2] -> return $ Go (Out c1) $ SK s (FApp (VCApp Force []) : FExec : FTry c2 : k)
       _ -> badConst
-    Undefined -> return $ Up (User "undefined") sk
+    Undefined -> return $ Go (Up (User "undefined")) sk
     Fail -> case vs of
-      [VText msg] -> return $ Up (User msg) sk
+      [VText msg] -> return $ Go (Up (User msg)) sk
       _ -> badConst
     Key -> case vs of
       [VText ktxt] -> case runParser parseKeyComboFull ktxt of
-        Right kc -> return $ Out (VKey kc) sk
-        Left _ -> return $ Up (CmdFailed Key (T.unwords ["Unknown key", quote ktxt]) Nothing) sk
+        Right kc -> return $ Go (Out (VKey kc)) sk
+        Left _ -> return $ Go (Up (CmdFailed Key (T.unwords ["Unknown key", quote ktxt]) Nothing)) sk
       _ -> badConst
     InstallKeyHandler -> case vs of
       [VText hint, handler] -> do
         inputHandler .= Just (hint, handler)
-        return $ Out VUnit sk
+        return $ Go (Out VUnit) sk
       _ -> badConst
     Reprogram -> case vs of
       [VRobot childRobotID, VDelay cmd e] -> do
@@ -1839,7 +1839,7 @@ execConst c vs sk@(SK s k) = do
         -- the childRobot inherits the parent robot's environment
         -- and context which collectively mean all the variables
         -- declared in the parent robot
-        robotMap . at childRobotID . _Just . machine .= In cmd e (SK s [FExec])
+        robotMap . at childRobotID . _Just . machine .= Go (In cmd e) (SK s [FExec])
         robotMap . at childRobotID . _Just . robotContext .= r ^. robotContext
 
         -- Provision the target robot with any required devices and
@@ -1849,7 +1849,7 @@ execConst c vs sk@(SK s k) = do
         -- Finally, re-activate the reprogrammed target robot.
         activateRobot childRobotID
 
-        return $ Out VUnit sk
+        return $ Go (Out VUnit) sk
       _ -> badConst
     Build -> case vs of
       -- NOTE, pattern-matching on a VDelay here means we are
@@ -1899,7 +1899,7 @@ execConst c vs sk@(SK s k) = do
                   ? north
               )
               defaultRobotDisplay
-              (In cmd e $ SK s [FExec])
+              (Go (In cmd e) $ SK s [FExec])
               []
               []
               False
@@ -1911,7 +1911,7 @@ execConst c vs sk@(SK s k) = do
 
         -- Flag the world for a redraw and return the name of the newly constructed robot.
         flagRedraw
-        return $ Out (asValue newRobot) sk
+        return $ Go (Out (asValue newRobot)) sk
       _ -> badConst
     Salvage -> case vs of
       [] -> do
@@ -1919,7 +1919,7 @@ execConst c vs sk@(SK s k) = do
         let okToSalvage r = (r ^. robotID /= 0) && (not . isActive $ r)
         mtarget <- gets (find okToSalvage . robotsAtLocation loc)
         case mtarget of
-          Nothing -> return $ Out VUnit sk -- Nothing to salvage
+          Nothing -> return $ Go (Out VUnit) sk -- Nothing to salvage
           Just target -> do
             -- Copy the salvaged robot's equipped devices into its inventory, in preparation
             -- for transferring it.
@@ -1961,12 +1961,12 @@ execConst c vs sk@(SK s k) = do
               . at (target ^. robotID)
               . traverse
               . machine
-              .= In giveInventory empty (SK emptyStore [FExec])
+              .= Go (In giveInventory empty) (SK emptyStore [FExec])
             activateRobot (target ^. robotID)
 
             -- Now wait the right amount of time for it to finish.
             time <- use ticks
-            return $ Waiting (time + fromIntegral numItems + 1) (Out VUnit sk)
+            return $ Waiting (time + fromIntegral numItems + 1) (Go (Out VUnit) sk)
       _ -> badConst
     -- run can take both types of text inputs
     -- with and without file extension as in
@@ -1986,7 +1986,7 @@ execConst c vs sk@(SK s k) = do
             cmdExn Run ["Error in", fileName, "\n", err]
 
         case mt of
-          Nothing -> return $ Out VUnit sk
+          Nothing -> return $ Go (Out VUnit) sk
           Just t@(ProcessedTerm _ _ reqCtx) -> do
             -- Add the reqCtx from the ProcessedTerm to the current robot's defReqs.
             -- See #827 for an explanation of (1) why this is needed, (2) why
@@ -1996,10 +1996,10 @@ execConst c vs sk@(SK s k) = do
             return $ initMachine' t empty s k
       _ -> badConst
     Not -> case vs of
-      [VBool b] -> return $ Out (VBool (not b)) sk
+      [VBool b] -> return $ Go (Out (VBool (not b))) sk
       _ -> badConst
     Neg -> case vs of
-      [VInt n] -> return $ Out (VInt (-n)) sk
+      [VInt n] -> return $ Go (Out (VInt (-n))) sk
       _ -> badConst
     Eq -> returnEvalCmp
     Neq -> returnEvalCmp
@@ -2008,10 +2008,10 @@ execConst c vs sk@(SK s k) = do
     Leq -> returnEvalCmp
     Geq -> returnEvalCmp
     And -> case vs of
-      [VBool a, VBool b] -> return $ Out (VBool (a && b)) sk
+      [VBool a, VBool b] -> return $ Go (Out (VBool (a && b))) sk
       _ -> badConst
     Or -> case vs of
-      [VBool a, VBool b] -> return $ Out (VBool (a || b)) sk
+      [VBool a, VBool b] -> return $ Go (Out (VBool (a || b))) sk
       _ -> badConst
     Add -> returnEvalArith
     Sub -> returnEvalArith
@@ -2019,32 +2019,32 @@ execConst c vs sk@(SK s k) = do
     Div -> returnEvalArith
     Exp -> returnEvalArith
     Format -> case vs of
-      [v] -> return $ Out (VText (prettyValue v)) sk
+      [v] -> return $ Go (Out (VText (prettyValue v))) sk
       _ -> badConst
     Chars -> case vs of
-      [VText t] -> return $ Out (VInt (fromIntegral $ T.length t)) sk
+      [VText t] -> return $ Go (Out (VInt (fromIntegral $ T.length t))) sk
       _ -> badConst
     Split -> case vs of
       [VInt i, VText t] ->
         let p = T.splitAt (fromInteger i) t
             t2 = over both VText p
-         in return $ Out (uncurry VPair t2) sk
+         in return $ Go (Out (uncurry VPair t2)) sk
       _ -> badConst
     Concat -> case vs of
-      [VText v1, VText v2] -> return $ Out (VText (v1 <> v2)) sk
+      [VText v1, VText v2] -> return $ Go (Out $ VText $ v1 <> v2) sk
       _ -> badConst
     CharAt -> case vs of
       [VInt i, VText t]
         | i < 0 || i >= fromIntegral (T.length t) ->
             raise CharAt ["Index", prettyValue (VInt i), "out of bounds for length", from @String $ show (T.length t)]
-        | otherwise -> return $ Out (VInt . fromIntegral . ord . T.index t . fromIntegral $ i) sk
+        | otherwise -> return $ Go (Out . VInt . fromIntegral . ord . T.index t . fromIntegral $ i) sk
       _ -> badConst
     ToChar -> case vs of
       [VInt i]
         | i < 0 || i > fromIntegral (ord (maxBound :: Char)) ->
             raise ToChar ["Value", prettyValue (VInt i), "is an invalid character code"]
         | otherwise ->
-            return $ Out (VText . T.singleton . chr . fromIntegral $ i) sk
+            return $ Go (Out . VText . T.singleton . chr . fromIntegral $ i) sk
       _ -> badConst
     AppF ->
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
@@ -2122,7 +2122,7 @@ execConst c vs sk@(SK s k) = do
     -- proceed to execute the argument.
     [cmd] -> do
       runningAtomic .= True
-      return $ Out cmd $ SK s (FExec : FFinishAtomic : k)
+      return $ Go (Out cmd) $ SK s (FExec : FFinishAtomic : k)
     _ -> badConst
 
   -- Case-insensitive matching on entity names
@@ -2138,7 +2138,7 @@ execConst c vs sk@(SK s k) = do
       [ "Bad application of execConst:"
       , T.pack (show c)
       , T.pack (show (reverse vs))
-      , prettyText (Out (VCApp c (reverse vs)) sk)
+      , prettyText $ Go (Out $ VCApp c $ reverse vs) sk
       ]
 
   doResonate ::
@@ -2153,7 +2153,7 @@ execConst c vs sk@(SK s k) = do
     loc <- use robotLocation
     let locs = rectCells x1 y1 x2 y2
     hits <- mapM (fmap (fromEnum . p) . entityAt . (loc .+^)) locs
-    return $ Out (VInt $ fromIntegral $ sum hits) sk
+    return $ Go (Out . VInt . fromIntegral $ sum hits) sk
 
   rectCells :: Integer -> Integer -> Integer -> Integer -> [V2 Int32]
   rectCells x1 y1 x2 y2 =
@@ -2199,11 +2199,11 @@ execConst c vs sk@(SK s k) = do
     if remTime <= 0
       then do
         updateWorldAndRobots c wf rf
-        return $ Out v sk
+        return $ Go (Out v) sk
       else do
         time <- use ticks
         return . (if remTime <= 1 then id else Waiting (remTime + time)) $
-          Out v $
+          Go (Out v) $
             SK s (FImmediate c wf rf : k)
    where
     remTime = r ^. recipeTime
@@ -2473,10 +2473,10 @@ execConst c vs sk@(SK s k) = do
   isJustOrFail a ts = a `isJustOr` cmdExn c ts
 
   returnEvalCmp = case vs of
-    [v1, v2] -> (\b -> Out (VBool b) sk) <$> evalCmp c v1 v2
+    [v1, v2] -> (\b -> Go (Out (VBool b)) sk) <$> evalCmp c v1 v2
     _ -> badConst
   returnEvalArith = case vs of
-    [VInt n1, VInt n2] -> (\r -> Out (VInt r) sk) <$> evalArith c n1 n2
+    [VInt n1, VInt n2] -> (\r -> Go (Out (VInt r)) sk) <$> evalArith c n1 n2
     _ -> badConst
 
   -- Make sure the robot has the thing in its inventory
@@ -2538,7 +2538,7 @@ execConst c vs sk@(SK s k) = do
     updateDiscoveredEntities e'
 
     -- Return the name of the item obtained.
-    return $ Out (VText (e' ^. entityName)) sk
+    return $ Go (Out $ VText (e' ^. entityName)) sk
 
 ------------------------------------------------------------
 -- The "watch" command

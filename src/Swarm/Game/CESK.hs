@@ -60,6 +60,7 @@ module Swarm.Game.CESK (
 
   -- * Store
   SKPair (..),
+  Go (..),
   Store,
   Addr,
   emptyStore,
@@ -242,6 +243,30 @@ setCell n c (Store nxt m) = Store nxt (IM.insert n c m)
 data SKPair = SK Store Cont
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
+data Go
+  = -- | When we are on our way "in/down" into a term, we have a
+    --   currently focused term to evaluate in the environment, a store,
+    --   and a continuation.  In this mode we generally pattern-match on the
+    --   'Term' to decide what to do next.
+    In Term Env
+  | -- | Once we finish evaluating a term, we end up with a 'Value'
+    --   and we switch into "out" mode, bringing the value back up
+    --   out of the depths to the context that was expecting it.  In
+    --   this mode we generally pattern-match on the 'Cont' to decide
+    --   what to do next.
+    --
+    --   Note that there is no 'Env', because we don't have anything
+    --   with variables to evaluate at the moment, and we maintain the
+    --   invariant that any unevaluated terms buried inside a 'Value'
+    --   or 'Cont' must carry along their environment with them.
+    Out Value
+  | -- | An exception has been raised.  Keep unwinding the
+    --   continuation stack (until finding an enclosing 'Try' in the
+    --   case of a command failure or a user-generated exception, or
+    --   until the stack is empty in the case of a fatal exception).
+    Up Exn
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+
 -- | The overall state of a CESK machine, which can actually be one of
 --   four kinds of states. The CESK machine is named after the first
 --   kind of state, and it would probably be possible to inline a
@@ -254,27 +279,7 @@ data SKPair = SK Store Cont
 --   approach from Harper's Practical Foundations of Programming
 --   Languages.
 data CESK
-  = -- | When we are on our way "in/down" into a term, we have a
-    --   currently focused term to evaluate in the environment, a store,
-    --   and a continuation.  In this mode we generally pattern-match on the
-    --   'Term' to decide what to do next.
-    In Term Env SKPair
-  | -- | Once we finish evaluating a term, we end up with a 'Value'
-    --   and we switch into "out" mode, bringing the value back up
-    --   out of the depths to the context that was expecting it.  In
-    --   this mode we generally pattern-match on the 'Cont' to decide
-    --   what to do next.
-    --
-    --   Note that there is no 'Env', because we don't have anything
-    --   with variables to evaluate at the moment, and we maintain the
-    --   invariant that any unevaluated terms buried inside a 'Value'
-    --   or 'Cont' must carry along their environment with them.
-    Out Value SKPair
-  | -- | An exception has been raised.  Keep unwinding the
-    --   continuation stack (until finding an enclosing 'Try' in the
-    --   case of a command failure or a user-generated exception, or
-    --   until the stack is empty in the case of a fatal exception).
-    Up Exn SKPair
+  = Go Go SKPair
   | -- | The machine is waiting for the game to reach a certain time
     --   to resume its execution.
     Waiting TickNumber CESK
@@ -284,7 +289,7 @@ data CESK
 --   the final value and store.
 finalValue :: CESK -> Maybe (Value, Store)
 {-# INLINE finalValue #-}
-finalValue (Out v (SK s [])) = Just (v, s)
+finalValue (Go (Out v) (SK s [])) = Just (v, s)
 finalValue _ = Nothing
 
 -- | Initialize a machine state with a starting term along with its
@@ -302,13 +307,13 @@ initMachine' (ProcessedTerm (Module t' ctx) _ reqCtx) e s k =
       case ctx of
         -- ...but doesn't contain any definitions, just create a machine
         -- that will evaluate it and then execute it.
-        Empty -> In t e $ SK s (FExec : k)
+        Empty -> Go (In t e) (SK s (FExec : k))
         -- Or, if it does contain definitions, then load the resulting
         -- context after executing it.
-        _ -> In t e $ SK s (FExec : FLoadEnv ctx reqCtx : k)
+        _ -> Go (In t e) (SK s (FExec : FLoadEnv ctx reqCtx : k))
     -- Otherwise, for a term with a non-command type, just
     -- create a machine to evaluate it.
-    _ -> In t e $ SK s k
+    _ -> Go (In t e) (SK s k)
  where
   -- Erase all type and SrcLoc annotations from the term before
   -- putting it in the machine state, since those are irrelevant at
@@ -317,12 +322,12 @@ initMachine' (ProcessedTerm (Module t' ctx) _ reqCtx) e s k =
 
 -- | Cancel the currently running computation.
 cancel :: CESK -> CESK
-cancel cesk = Out VUnit $ SK s' []
+cancel cesk = Go (Out VUnit) $ SK s' []
  where
   s' = resetBlackholes $ getStore cesk
-  getStore (In _ _ (SK s _)) = s
-  getStore (Out _ (SK s _)) = s
-  getStore (Up _ (SK s _)) = s
+  getStore (Go (In _ _) (SK s _)) = s
+  getStore (Go (Out _) (SK s _)) = s
+  getStore (Go (Up _) (SK s _)) = s
   getStore (Waiting _ c) = getStore c
 
 -- | Reset any 'Blackhole's in the 'Store'.  We need to use this any
@@ -339,9 +344,9 @@ resetBlackholes (Store n m) = Store n (IM.map resetBlackhole m)
 ------------------------------------------------------------
 
 instance PrettyPrec CESK where
-  prettyPrec _ (In c _ (SK _ k)) = prettyCont k (11, "▶" <> ppr c <> "◀")
-  prettyPrec _ (Out v (SK _ k)) = prettyCont k (11, "◀" <> ppr (valueToTerm v) <> "▶")
-  prettyPrec _ (Up e (SK _ k)) = prettyCont k (11, "!" <> (pretty (formatExn mempty e) <> "!"))
+  prettyPrec _ (Go (In c _) (SK _ k)) = prettyCont k (11, "▶" <> ppr c <> "◀")
+  prettyPrec _ (Go (Out v) (SK _ k)) = prettyCont k (11, "◀" <> ppr (valueToTerm v) <> "▶")
+  prettyPrec _ (Go (Up e) (SK _ k)) = prettyCont k (11, "!" <> (pretty (formatExn mempty e) <> "!"))
   prettyPrec _ (Waiting t cesk) = "🕑" <> pretty t <> "(" <> ppr cesk <> ")"
 
 -- | Take a continuation, and the pretty-printed expression which is
