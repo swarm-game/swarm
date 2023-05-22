@@ -44,11 +44,11 @@ import Swarm.Game.State (
   winCondition,
   winSolution,
  )
-import Swarm.TUI.Model (gameState)
-import Swarm.TUI.Model.StateUpdate (initAppStateForScenario)
 import Swarm.Game.Step (gameTick)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
+import Swarm.TUI.Model (gameState)
+import Swarm.TUI.Model.StateUpdate (initAppStateForScenario)
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.Environment (getEnvironment)

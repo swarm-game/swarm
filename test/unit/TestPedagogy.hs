@@ -10,7 +10,7 @@ import Control.Lens (view)
 import Data.Map qualified as M
 import Swarm.Doc.Pedagogy
 import Swarm.Game.ScenarioInfo (scenarioPath)
-import Swarm.TUI.Model (scenarios, RuntimeState)
+import Swarm.TUI.Model (RuntimeState, scenarios)
 import Test.Tasty
 import Test.Tasty.HUnit
 
