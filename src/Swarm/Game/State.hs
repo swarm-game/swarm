@@ -145,7 +145,6 @@ import Data.Text qualified as T (drop, pack, take)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
-import Data.Time (getZonedTime)
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
@@ -163,9 +162,6 @@ import Swarm.Game.Recipe (
  )
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
-import Swarm.Game.Scenario.Scoring.Best
-import Swarm.Game.Scenario.Scoring.ConcreteMetrics
-import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
