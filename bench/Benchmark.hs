@@ -16,14 +16,14 @@ import Swarm.Game.Display (defaultRobotDisplay)
 import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, mkRobot)
 import Swarm.Game.State (GameState, addTRobot, creativeMode, world)
-import Swarm.TUI.Model (gameState)
-import Swarm.TUI.Model.StateUpdate (classicGame0)
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Terrain (TerrainType (DirtT))
 import Swarm.Game.World (WorldFun (..), newWorld)
 import Swarm.Language.Context qualified as Context
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.TUI.Model (gameState)
+import Swarm.TUI.Model.StateUpdate (classicGame0)
 
 -- | The program of a robot that does nothing.
 idleProgram :: ProcessedTerm
