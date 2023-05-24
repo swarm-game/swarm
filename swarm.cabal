@@ -139,6 +139,7 @@ library
                       Swarm.Language.Requirement
                       Swarm.Language.Syntax
                       Swarm.Language.Typecheck
+                      Swarm.Language.Typecheck.Unify
                       Swarm.Language.Typed
                       Swarm.Language.Types
                       Swarm.Language.Value

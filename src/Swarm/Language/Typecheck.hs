@@ -67,6 +67,7 @@ import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Module
 import Swarm.Language.Parse.QQ (tyQ)
 import Swarm.Language.Syntax
+import Swarm.Language.Typecheck.Unify
 import Swarm.Language.Types
 import Prelude hiding (lookup)
 
@@ -151,9 +152,15 @@ substU m =
 
 infix 4 =:=
 
--- | Constrain two types to be equal.
+-- | Constrain two types to be equal, first with a quick-and-dirty
+--   check to see whether we know for sure they either are or cannot
+--   be equal, generating an equality constraint for the unified as a
+--   last resort.
 (=:=) :: UType -> UType -> Infer UType
-s =:= t = lift $ s U.=:= t
+s =:= t = case unifyCheck s t of
+  Apart -> throwError $ Mismatch undefined undefined undefined
+  Equal -> return s
+  MightUnify -> lift $ s U.=:= t
 
 -- | @unification-fd@ provides a function 'U.applyBindings' which
 --   fully substitutes for any bound unification variables (for
