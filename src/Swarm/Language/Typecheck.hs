@@ -158,7 +158,7 @@ infix 4 =:=
 --   last resort.
 (=:=) :: UType -> UType -> Infer UType
 s =:= t = case unifyCheck s t of
-  Apart -> throwError $ Mismatch undefined undefined undefined
+  Apart -> throwError $ Mismatch NoLoc s t
   Equal -> return s
   MightUnify -> lift $ s U.=:= t
 
@@ -248,10 +248,13 @@ data TypeErr
     UnboundVar SrcLoc Var
   | -- | A Skolem variable escaped its local context.
     EscapedSkolem SrcLoc Var
-  | Infinite IntVar UType
+  | -- | Occurs check failure, i.e. infinite type.
+    Infinite IntVar UType
   | -- | The given term was expected to have a certain type, but has a
     -- different type instead.
-    Mismatch SrcLoc (TypeF UType) (TypeF UType)
+    UnifyErr SrcLoc (TypeF UType) (TypeF UType)
+  | -- | Type mismatch caught by 'unifyCheck'.
+    Mismatch SrcLoc UType UType
   | -- | A definition was encountered not at the top level.
     DefNotTopLevel SrcLoc Term
   | -- | A term was encountered which we cannot infer the type of.
@@ -282,13 +285,14 @@ data InvalidAtomicReason
 
 instance Fallible TypeF IntVar TypeErr where
   occursFailure = Infinite
-  mismatchFailure = Mismatch NoLoc
+  mismatchFailure = UnifyErr NoLoc
 
 getTypeErrSrcLoc :: TypeErr -> Maybe SrcLoc
 getTypeErrSrcLoc te = case te of
   UnboundVar l _ -> Just l
   EscapedSkolem l _ -> Just l
   Infinite _ _ -> Nothing
+  UnifyErr l _ _ -> Just l
   Mismatch l _ _ -> Just l
   DefNotTopLevel l _ -> Just l
   CantInfer l _ -> Just l
@@ -526,6 +530,7 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
 
 addLocToTypeErr :: Syntax' ty -> TypeErr -> Infer a
 addLocToTypeErr s te = case te of
+  UnifyErr NoLoc a b -> throwError $ UnifyErr (s ^. sLoc) a b
   Mismatch NoLoc a b -> throwError $ Mismatch (s ^. sLoc) a b
   _ -> throwError te
 
