@@ -84,7 +84,15 @@ module Swarm.TUI.Model (
   webPort,
   upstreamRelease,
   eventLog,
+  scenarios,
+  stdEntityMap,
+  stdRecipes,
+  stdAdjList,
+  stdNameList,
+
+  -- ** Utility
   logEvent,
+  mkGameStateConfig,
 
   -- * App state
   AppState (AppState),
@@ -94,6 +102,7 @@ module Swarm.TUI.Model (
 
   -- ** Initialization
   AppOpts (..),
+  defaultAppOpts,
   Seed,
 
   -- *** Re-exported types used in options
@@ -112,19 +121,28 @@ import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
 import Control.Monad.State
+import Data.Array (Array, listArray)
 import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
+import Data.Text qualified as T (lines)
+import Data.Text.IO qualified as T (readFile)
 import Data.Vector qualified as V
 import GitHash (GitInfo)
 import Graphics.Vty (ColorMode (..))
 import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity as E
+import Swarm.Game.Failure
+import Swarm.Game.Failure.Render
+import Swarm.Game.Recipe (Recipe, loadRecipes)
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (
-  ScenarioInfoPair,
+  ScenarioCollection,
+  loadScenariosWithWarnings,
   _SISingle,
  )
 import Swarm.Game.State
@@ -170,15 +188,43 @@ data RuntimeState = RuntimeState
   { _webPort :: Maybe Port
   , _upstreamRelease :: Either NewReleaseFailure String
   , _eventLog :: Notifications LogEntry
+  , _scenarios :: ScenarioCollection
+  , _stdEntityMap :: EntityMap
+  , _stdRecipes :: [Recipe Entity]
+  , _stdAdjList :: Array Int Text
+  , _stdNameList :: Array Int Text
   }
 
-initRuntimeState :: RuntimeState
-initRuntimeState =
-  RuntimeState
-    { _webPort = Nothing
-    , _upstreamRelease = Left (NoMainUpstreamRelease [])
-    , _eventLog = mempty
-    }
+initRuntimeState :: ExceptT Text IO ([SystemFailure], RuntimeState)
+initRuntimeState = do
+  entities <- ExceptT loadEntities
+  recipes <- withExceptT prettyFailure $ loadRecipes entities
+  (scenarioWarnings, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
+
+  (adjsFile, namesFile) <- withExceptT prettyFailure $ do
+    adjsFile <- getDataFileNameSafe NameGeneration "adjectives.txt"
+    namesFile <- getDataFileNameSafe NameGeneration "names.txt"
+    return (adjsFile, namesFile)
+
+  let markEx what a = catchError a (\e -> fail $ "Failed to " <> what <> ": " <> show e)
+  (adjs, names) <- liftIO . markEx "load name generation data" $ do
+    as <- tail . T.lines <$> T.readFile adjsFile
+    ns <- tail . T.lines <$> T.readFile namesFile
+    return (as, ns)
+
+  return
+    ( scenarioWarnings
+    , RuntimeState
+        { _webPort = Nothing
+        , _upstreamRelease = Left (NoMainUpstreamRelease [])
+        , _eventLog = mempty
+        , _scenarios = loadedScenarios
+        , _stdEntityMap = entities
+        , _stdRecipes = recipes
+        , _stdAdjList = listArray (0, length adjs - 1) adjs
+        , _stdNameList = listArray (0, length names - 1) names
+        }
+    )
 
 makeLensesNoSigs ''RuntimeState
 
@@ -195,6 +241,28 @@ upstreamRelease :: Lens' RuntimeState (Either NewReleaseFailure String)
 -- place to log it.
 eventLog :: Lens' RuntimeState (Notifications LogEntry)
 
+-- | The collection of scenarios that comes with the game.
+scenarios :: Lens' RuntimeState ScenarioCollection
+
+-- | The standard entity map loaded from disk.  Individual scenarios
+--   may define additional entities which will get added to this map
+--   when loading the scenario.
+stdEntityMap :: Lens' RuntimeState EntityMap
+
+-- | The standard list of recipes loaded from disk.  Individual scenarios
+--   may define additional recipes which will get added to this list
+--   when loading the scenario.
+stdRecipes :: Lens' RuntimeState [Recipe Entity]
+
+-- | List of words for use in building random robot names.
+stdAdjList :: Lens' RuntimeState (Array Int Text)
+
+-- | List of words for use in building random robot names.
+stdNameList :: Lens' RuntimeState (Array Int Text)
+
+--------------------------------------------------
+-- Utility
+
 -- | Simply log to the runtime event log.
 logEvent :: LogSource -> (Text, RID) -> Text -> Notifications LogEntry -> Notifications LogEntry
 logEvent src (who, rid) msg el =
@@ -203,6 +271,16 @@ logEvent src (who, rid) msg el =
     & notificationsContent %~ (l :)
  where
   l = LogEntry 0 src who rid zero msg
+
+-- | Create a 'GameStateConfig' record from the 'RuntimeState'.
+mkGameStateConfig :: RuntimeState -> GameStateConfig
+mkGameStateConfig rs =
+  GameStateConfig
+    { initAdjList = rs ^. stdAdjList
+    , initNameList = rs ^. stdNameList
+    , initEntities = rs ^. stdEntityMap
+    , initRecipes = rs ^. stdRecipes
+    }
 
 -- ----------------------------------------------------------------------------
 --                                   APPSTATE                                --
@@ -339,6 +417,21 @@ data AppOpts = AppOpts
   , repoGitInfo :: Maybe GitInfo
   -- ^ Information about the Git repository (not present in release).
   }
+
+-- | A default/empty 'AppOpts' record.
+defaultAppOpts :: AppOpts
+defaultAppOpts =
+  AppOpts
+    { userSeed = Nothing
+    , userScenario = Nothing
+    , scriptToRun = Nothing
+    , autoPlay = False
+    , speed = defaultInitLgTicksPerSecond
+    , cheatMode = False
+    , colorMode = Nothing
+    , userWebPort = Nothing
+    , repoGitInfo = Nothing
+    }
 
 -- | Extract the scenario which would come next in the menu from the
 --   currently selected scenario (if any).  Can return @Nothing@ if

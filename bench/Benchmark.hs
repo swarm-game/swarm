@@ -5,7 +5,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Main where
 
-import Control.Lens ((&), (.~))
+import Control.Lens ((&), (.~), (^.))
 import Control.Monad (replicateM_)
 import Control.Monad.Except (runExceptT)
 import Control.Monad.State (evalStateT, execStateT)
@@ -15,13 +15,15 @@ import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display (defaultRobotDisplay)
 import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, mkRobot)
-import Swarm.Game.State (GameState, addTRobot, classicGame0, creativeMode, world)
+import Swarm.Game.State (GameState, addTRobot, creativeMode, world)
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Terrain (TerrainType (DirtT))
 import Swarm.Game.World (WorldFun (..), newWorld)
 import Swarm.Language.Context qualified as Context
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.TUI.Model (gameState)
+import Swarm.TUI.Model.StateUpdate (classicGame0)
 
 -- | The program of a robot that does nothing.
 idleProgram :: ProcessedTerm
@@ -78,10 +80,10 @@ initRobot prog loc = mkRobot () Nothing "" [] (Just loc) north defaultRobotDispl
 mkGameState :: (Location -> TRobot) -> Int -> IO GameState
 mkGameState robotMaker numRobots = do
   let robots = [robotMaker (Location (fromIntegral x) 0) | x <- [0 .. numRobots - 1]]
-  Right initState <- runExceptT classicGame0
+  Right initAppState <- runExceptT classicGame0
   execStateT
     (mapM addTRobot robots)
-    ( initState
+    ( (initAppState ^. gameState)
         & creativeMode .~ True
         & world .~ newWorld (WF $ const (fromEnum DirtT, Nothing))
     )
@@ -115,6 +117,6 @@ main = do
 
   toBenchmarks :: [(Int, GameState)] -> [Benchmark]
   toBenchmarks gameStates =
-    [ bench (show n) $ whnfAppIO (runGame 1000) gameState
-    | (n, gameState) <- gameStates
+    [ bench (show n) $ whnfAppIO (runGame 1000) gs
+    | (n, gs) <- gameStates
     ]

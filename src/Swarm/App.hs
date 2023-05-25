@@ -20,7 +20,7 @@ import Swarm.ReadableIORef (mkReadonly)
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
 import Swarm.TUI.Model.StateUpdate
-import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond, uiAttrMap)
+import Swarm.TUI.Model.UI (uiAttrMap)
 import Swarm.TUI.View
 import Swarm.Version (getNewerReleaseVersion)
 import Swarm.Web
@@ -110,19 +110,7 @@ demoWeb :: IO ()
 demoWeb = do
   let demoPort = 8080
   res <-
-    runExceptT $
-      initAppState $
-        AppOpts
-          { userSeed = Nothing
-          , userScenario = demoScenario
-          , scriptToRun = Nothing
-          , autoPlay = False
-          , speed = defaultInitLgTicksPerSecond
-          , cheatMode = False
-          , colorMode = Nothing
-          , userWebPort = Nothing
-          , repoGitInfo = Nothing
-          }
+    runExceptT $ initAppState (defaultAppOpts {userScenario = demoScenario})
   case res of
     Left errMsg -> T.putStrLn errMsg
     Right s -> do
