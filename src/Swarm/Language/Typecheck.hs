@@ -156,9 +156,9 @@ infix 4 =:=
 -- | @expect t expTy actTy@ expects that term @t@ has type @expTy@,
 --   where it actually has type @actTy@.  Ensure those types are the
 --   same.
-expect :: Maybe Term -> UType -> UType -> TC UType
-expect mt expected actual = case unifyCheck expected actual of
-  Apart -> throwError $ Mismatch NoLoc mt expected actual
+expect :: Maybe Syntax -> UType -> UType -> TC UType
+expect ms expected actual = case unifyCheck expected actual of
+  Apart -> throwError $ Mismatch NoLoc ms expected actual
   Equal -> return expected
   MightUnify -> lift $ expected U.=:= actual
 
@@ -262,7 +262,7 @@ data TypeErr
   | -- | Type mismatch caught by 'unifyCheck'.  The given term was
     --   expected to have a certain type, but has a different type
     --   instead.
-    Mismatch SrcLoc (Maybe Term) UType UType -- expected, actual
+    Mismatch SrcLoc (Maybe Syntax) UType UType -- expected, actual
   | -- | A definition was encountered not at the top level.
     DefNotTopLevel SrcLoc Term
   | -- | A term was encountered which we cannot infer the type of.
@@ -402,24 +402,6 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   SRequirements x t1 -> do
     t1' <- infer t1
     return $ Syntax' l (SRequirements x t1') (UTyCmd UTyUnit)
-  -- To infer the type of a pair, just infer both components.
-  SPair t1 t2 -> do
-    t1' <- infer t1
-    t2' <- infer t2
-    return $ Syntax' l (SPair t1' t2') (UTyProd (t1' ^. sType) (t2' ^. sType))
-
-  -- if t : ty, then  {t} : {ty}.
-  -- Note that in theory, if the @Maybe Var@ component of the @SDelay@
-  -- is @Just@, we should typecheck the body under a context extended
-  -- with a type binding for the variable, and ensure that the type of
-  -- the variable is the same as the type inferred for the overall
-  -- @SDelay@.  However, we rely on the invariant that such recursive
-  -- @SDelay@ nodes are never generated from the surface syntax, only
-  -- dynamically at runtime when evaluating recursive let or def expressions,
-  -- so we don't have to worry about typechecking them here.
-  SDelay d t1 -> do
-    t1' <- infer t1
-    return $ Syntax' l (SDelay d t1') (UTyDelay (t1' ^. sType))
 
   -- We need a special case for checking the argument to 'atomic'.
   -- 'atomic t' has the same type as 't', which must have a type of
@@ -430,21 +412,6 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   TConst Instant :$: at -> inferAtomic False Instant at
   -- Just look up variables in the context.
   TVar x -> Syntax' l (TVar x) <$> lookup l x
-  -- To infer the type of a lambda if the type of the argument is
-  -- provided, just infer the body under an extended context and return
-  -- the appropriate function type.
-  SLam x (Just argTy) lt -> do
-    let uargTy = toU argTy
-    lt' <- withBinding (lvVar x) (Forall [] uargTy) $ infer lt
-    return $ Syntax' l (SLam x (Just argTy) lt') (UTyFun uargTy (lt' ^. sType))
-
-  -- If the type of the argument is not provided, create a fresh
-  -- unification variable for it and proceed.
-  SLam x Nothing lt -> do
-    argTy <- fresh
-    lt' <- withBinding (lvVar x) (Forall [] argTy) $ infer lt
-    return $ Syntax' l (SLam x Nothing lt') (UTyFun argTy (lt' ^. sType))
-
   -- To infer the type of an application:
   SApp f x -> do
     -- Infer the type of the left-hand side and make sure it has a function type.
@@ -454,6 +421,10 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     -- Then check that the argument has the right type.
     x' <- check x ty1 `catchError` addLocToTypeErr x
     return $ Syntax' l (SApp f' x') ty2
+
+  -- XXX move SLet to check.  If variable type annotation has been
+  -- provided we can call check on t1, otherwise infer; then call
+  -- check on t2.
 
   -- We can infer the type of a let whether a type has been provided for
   -- the variable or not.
@@ -480,14 +451,12 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     return $ Syntax' l (SLet r x (Just pty) t1' t2') (t2' ^. sType)
   SDef {} -> throwError $ DefNotTopLevel l t
   SBind mx c1 c2 -> do
+    -- XXX move SBind to check
     c1' <- infer c1
     a <- decomposeCmdTy (c1' ^. sType)
     c2' <- maybe id ((`withBinding` Forall [] a) . lvVar) mx $ infer c2
     _ <- decomposeCmdTy (c2' ^. sType)
     return $ Syntax' l (SBind mx c1' c2') (c2' ^. sType)
-  SRcd m -> do
-    m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
-    return $ Syntax' l (SRcd (Just <$> m')) (UTyRcd (fmap (^. sType) m'))
   SProj t1 x -> do
     t1' <- infer t1
     case t1' ^. sType of
@@ -495,6 +464,9 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
         Just xTy -> return $ Syntax' l (SProj t1' x) xTy
         Nothing -> throwError $ UnknownProj l x (SProj t1 x)
       _ -> throwError $ CantInferProj l (SProj t1 x)
+  SRcd m -> do
+    m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
+    return $ Syntax' l (SRcd (Just <$> m')) (UTyRcd (fmap (^. sType) m'))
   SAnnotate c pty -> do
     let upty = toU pty
     -- Typecheck against skolemized polytype.
@@ -509,6 +481,12 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     iuty <- instantiate upty
     c'' <- check c iuty `catchError` addLocToTypeErr c
     return $ Syntax' l (SAnnotate c'' pty) (c'' ^. sType)
+
+  -- Fallback: to infer the type of anything else, make up a fresh unification
+  -- variable for its type and check against it.
+  _ -> do
+    sTy <- fresh
+    check s sTy
  where
   noSkolems :: UPolytype -> TC ()
   noSkolems (Forall xs upty) = do
@@ -542,6 +520,14 @@ addLocToTypeErr s te = case te of
   Mismatch NoLoc mt a b -> throwError $ Mismatch (s ^. sLoc) mt a b
   _ -> throwError te
 
+-- | Decompose a type that is supposed to be a delay type.
+decomposeDelayTy :: UType -> TC UType
+decomposeDelayTy (UTyDelay a) = return a
+decomposeDelayTy ty = do
+  a <- fresh
+  _ <- ty =:= UTyDelay a
+  return a
+
 -- | Decompose a type that is supposed to be a command type.
 decomposeCmdTy :: UType -> TC UType
 decomposeCmdTy (UTyCmd a) = return a
@@ -567,6 +553,11 @@ decomposeProdTy ty = do
   ty2 <- fresh
   _ <- ty =:= UTyProd ty1 ty2
   return (ty1, ty2)
+
+-- | XXX
+decomposeRcdTy :: UType -> TC (Map Var UType)
+decomposeRcdTy (UTyRcd m) = return m
+decomposeRcdTy _ = throwError undefined -- XXX
 
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
@@ -672,22 +663,48 @@ inferConst c = case c of
 
 -- | @check t ty@ checks that @t@ has type @ty@, returning a
 --   type-annotated AST if so.
+--
+--   We try to stay in checking mode as far as possible, decomposing
+--   the expected type as we go and pushing it through the recursion.
 check :: Syntax -> UType -> TC (Syntax' UType)
-check s@(Syntax l t) ty = (`catchError` addLocToTypeErr s) $ case t of
+check s@(Syntax l t) expected = (`catchError` addLocToTypeErr s) $ case t of
+  -- if t : ty, then  {t} : {ty}.
+  -- Note that in theory, if the @Maybe Var@ component of the @SDelay@
+  -- is @Just@, we should typecheck the body under a context extended
+  -- with a type binding for the variable, and ensure that the type of
+  -- the variable is the same as the type inferred for the overall
+  -- @SDelay@.  However, we rely on the invariant that such recursive
+  -- @SDelay@ nodes are never generated from the surface syntax, only
+  -- dynamically at runtime when evaluating recursive let or def expressions,
+  -- so we don't have to worry about typechecking them here.
+  SDelay d s1 -> do
+    ty1 <- decomposeDelayTy expected
+    s1' <- check s1 ty1
+    return $ Syntax' l (SDelay d s1') (UTyDelay ty1)
   SPair s1 s2 -> do
-    (ty1, ty2) <- decomposeProdTy ty
+    (ty1, ty2) <- decomposeProdTy expected
     s1' <- check s1 ty1
     s2' <- check s2 ty2
     return $ Syntax' l (SPair s1' s2') (UTyProd ty1 ty2)
   SLam x xTy body -> do
-    (argTy, resTy) <- decomposeFunTy ty
+    (argTy, resTy) <- decomposeFunTy expected
     _ <- maybe (return argTy) (=:= argTy) (toU xTy)
     body' <- withBinding (lvVar x) (Forall [] argTy) $ check body resTy
     return $ Syntax' l (SLam x xTy body') (UTyFun argTy resTy)
+  SRcd m -> do
+    fieldTys <- decomposeRcdTy expected
+    -- XXX
+    -- ensure keys in m, fieldTys match.
+    -- If so, check each field vs its expected type.
+    -- m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
+    -- return $ Syntax' l (SRcd (Just <$> m')) (UTyRcd (fmap (^. sType) m'))
+    undefined
+
+  -- Fallback: switch into inference mode, and check that the type we
+  -- get is what we expected.
   _ -> do
-    Syntax' l' t' ty' <- infer s
-    theTy <- ty =:= ty'
-    return $ Syntax' l' t' theTy
+    Syntax' l' t' actual <- infer s
+    Syntax' l' t' <$> expect (Just s) expected actual
 
 -- | Ensure a term is a valid argument to @atomic@.  Valid arguments
 --   may not contain @def@, @let@, or lambda. Any variables which are
