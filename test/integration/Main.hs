@@ -196,6 +196,7 @@ testScenarioSolution _ci _em =
         , testSolution (Sec 5) "Challenges/gopher"
         , testSolution (Sec 5) "Challenges/hackman"
         , testSolution (Sec 10) "Challenges/hanoi"
+        , testSolution (Sec 3) "Challenges/lights-out"
         , testSolution Default "Challenges/friend"
         , testGroup
             "Mazes"
@@ -208,6 +209,13 @@ testScenarioSolution _ci _em =
             "Ranching"
             [ testSolution Default "Challenges/Ranching/capture"
             , testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
+            ]
+        , testGroup
+            "Sokoban"
+            [ testSolution Default "Challenges/Sokoban/foresight.yaml"
+            , testSolution Default "Challenges/Sokoban/Gadgets/no-reverse.yaml"
+            , testSolution Default "Challenges/Sokoban/Gadgets/one-way.yaml"
+            , testSolution Default "Challenges/Sokoban/Simple/trapdoor.yaml"
             ]
         ]
     , testGroup
