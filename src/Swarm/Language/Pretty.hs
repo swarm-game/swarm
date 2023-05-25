@@ -204,7 +204,8 @@ appliedTermPrec _ = 10
 instance PrettyPrec TypeErr where
   prettyPrec _ (UnifyErr _ ty1 ty2) =
     "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
-  prettyPrec _ (Mismatch _ ty1 ty2) =
+  -- XXX prettyPrec Mismatch needs to be much more complex!
+  prettyPrec _ (Mismatch _ _mt ty1 ty2) =
     "Type mismatch: expected" <+> ppr ty1 <> ", but got" <+> ppr ty2
   prettyPrec _ (EscapedSkolem _ x) =
     "Skolem variable" <+> pretty x <+> "would escape its scope"
