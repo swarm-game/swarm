@@ -464,16 +464,12 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).
   TRef _ -> throwError $ CantInfer l t
-  -- XXX move atomic to check.
-  -- We need a special case for checking the argument to 'atomic'.
-  -- 'atomic t' has the same type as 't', which must have a type of
-  -- the form 'cmd a'.  't' must also be syntactically free of
-  -- variables.
-
-  TConst Atomic :$: at -> inferAtomic True Atomic at
-  TConst Instant :$: at -> inferAtomic False Instant at
   -- Just look up variables in the context.
   TVar x -> Syntax' l (TVar x) <$> lookup l x
+  -- Need special case here for applying 'atomic' or 'instant' so we
+  -- don't handle it with the case for generic type application.
+  TConst c :$: _
+    | c `elem` [Atomic, Instant] -> fresh >>= check s
   -- To infer the type of an application:
   SApp f x -> do
     -- Infer the type of the left-hand side and make sure it has a function type.
@@ -562,19 +558,6 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     unless (S.null ftyvs) $
       throwError $
         EscapedSkolem l (head (S.toList ftyvs))
-
-  inferAtomic :: Bool -> Const -> Syntax -> TC (Syntax' UType)
-  inferAtomic validateTickBudget constName at = do
-    argTy <- fresh
-    at' <- check at (UTyCmd argTy)
-    atomic' <- infer (Syntax l (TConst constName))
-    -- It's important that we typecheck the subterm @at@ *before* we
-    -- check that it is a valid argument to @atomic@: this way we can
-    -- ensure that we have already inferred the types of any variables
-    -- referenced.
-    when validateTickBudget $
-      validAtomic at
-    return $ Syntax' l (SApp atomic' at') (at' ^. sType)
 
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
@@ -728,6 +711,26 @@ check s@(Syntax l t) expected = (`catchError` addLocToTypeErr s) $ case t of
   --   -- m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
   --   -- return $ Syntax' l (SRcd (Just <$> m')) (UTyRcd (fmap (^. sType) m'))
   --   undefined
+
+  -- Special case for checking the argument to 'atomic' (or
+  -- 'instant').  'atomic t' has the same type as 't', which must have
+  -- a type of the form 'cmd a' for some 'a'.
+
+  TConst c :$: at
+    | c `elem` [Atomic, Instant] -> do
+        argTy <- decomposeCmdTy expected
+        at' <- check at (UTyCmd argTy)
+        atomic' <- infer (Syntax l (TConst c))
+        -- It's important that we typecheck the subterm @at@ *before* we
+        -- check that it is a valid argument to @atomic@: this way we can
+        -- ensure that we have already inferred the types of any variables
+        -- referenced.
+        --
+        -- When c is Atomic we validate that the argument to atomic is
+        -- guaranteed to operate within a single tick.  When c is Instant
+        -- we skip this check.
+        when (c == Atomic) $ validAtomic at
+        return $ Syntax' l (SApp atomic' at') (UTyCmd argTy)
 
   -- Fallback: switch into inference mode, and check that the type we
   -- get is what we expected.
