@@ -94,19 +94,19 @@ testLanguagePipeline =
             "located type error"
             ( process
                 "def a =\n 42 + \"oops\"\nend"
-                "2: Can't unify int and text"
+                "2: Type mismatch: expected int, but got text"
             )
         , testCase
             "failure inside bind chain"
             ( process
                 "move;\n1;\nmove"
-                "2: Can't unify int and cmd"
+                "2: Type mismatch: expected int, but got cmd u0"
             )
         , testCase
             "failure inside function call"
             ( process
                 "if true \n{} \n(move)"
-                "3: Can't unify {u0} and cmd unit"
+                "3: Type mismatch: expected {u0}, but got cmd unit"
             )
         , testCase
             "parsing operators #236 - report failure on invalid operator start"
@@ -286,13 +286,13 @@ testLanguagePipeline =
             (valid "(3 : int) + 5")
         , testCase
             "invalid type ascription"
-            (process "1 : text" "1: Can't unify text and int")
+            (process "1 : text" "1: Type mismatch: expected text, but got int")
         , testCase
             "type ascription with a polytype"
             (valid "((\\x . x) : a -> a) 3")
         , testCase
             "type ascription too general"
-            (process "1 : a" "1: Can't unify")
+            (process "1 : a" "1: Type mismatch: expected s0, but got int")
         , testCase
             "type specialization through type ascription"
             (valid "fst:(int + b) * a -> int + b")
@@ -300,7 +300,7 @@ testLanguagePipeline =
             "type ascription doesn't allow rank 2 types"
             ( process
                 "\\f. (f:forall a. a->a) 3"
-                "1: Skolem variable s1 would escape its scope"
+                "1: Skolem variable s3 would escape its scope"
             )
         ]
     ]
