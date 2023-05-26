@@ -384,8 +384,6 @@ decomposeProdTy ty = do
 inferTop :: TCtx -> Syntax -> Either TypeErr TModule
 inferTop ctx = runTC ctx . inferModule
 
--- XXX should this be checkModule?  How does it get used?
-
 -- | Infer the signature of a top-level expression which might
 --   contain definitions.
 inferModule :: Syntax -> TC UModule
@@ -698,6 +696,8 @@ check s@(Syntax l t) expected = (`catchError` addLocToTypeErr s) $ case t of
     -- generate a better error message when the expected type *is* a
     -- function type, and the explicitly specified argTy does not
     -- match the expected input type.
+    --
+    -- e.g. (\x:int. x + 2) : text -> int
     (argTy, resTy) <- decomposeFunTy expected
     _ <- maybe (return argTy) (=:= argTy) (toU xTy)
     body' <- withBinding (lvVar x) (Forall [] argTy) $ check body resTy

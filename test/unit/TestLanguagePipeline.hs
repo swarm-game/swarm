@@ -100,7 +100,7 @@ testLanguagePipeline =
             "failure inside bind chain"
             ( process
                 "move;\n1;\nmove"
-                "2: Type mismatch: expected int, but got cmd u0"
+                "2: Type mismatch: expected cmd u0, but got int"
             )
         , testCase
             "failure inside function call"
