@@ -185,8 +185,12 @@ expect ms expected actual = case unifyCheck expected actual of
 
 -- | Constrain two types to be equal, first with a quick-and-dirty
 --   check to see whether we know for sure they either are or cannot
---   be equal, generating an equality constraint for the unified as a
+--   be equal, generating an equality constraint for the unifier as a
 --   last resort.
+--
+--   Important: the first given type should be the "expected" type
+--   from context, and the second should be the "actual" type (in any
+--   situation when this distinction makes sense).
 (=:=) :: UType -> UType -> TC UType
 (=:=) = expect Nothing
 
@@ -342,7 +346,7 @@ decomposeDelayTy :: UType -> TC UType
 decomposeDelayTy (UTyDelay a) = return a
 decomposeDelayTy ty = do
   a <- fresh
-  _ <- ty =:= UTyDelay a
+  _ <- UTyDelay a =:= ty
   return a
 
 -- | Decompose a type that is supposed to be a command type.
@@ -350,20 +354,16 @@ decomposeCmdTy :: UType -> TC UType
 decomposeCmdTy (UTyCmd a) = return a
 decomposeCmdTy ty = do
   a <- fresh
-  _ <- ty =:= UTyCmd a
+  _ <- UTyCmd a =:= ty
   return a
 
 -- | Decompose a type that is supposed to be a function type.
---
--- XXX use apartness check here, and in other decomposeXTy functions?
--- e.g. Should be able to fail immediately if the given type is apart from
--- a function type.
 decomposeFunTy :: UType -> TC (UType, UType)
 decomposeFunTy (UTyFun ty1 ty2) = return (ty1, ty2)
 decomposeFunTy ty = do
   ty1 <- fresh
   ty2 <- fresh
-  _ <- ty =:= UTyFun ty1 ty2
+  _ <- UTyFun ty1 ty2 =:= ty
   return (ty1, ty2)
 
 -- | Decompose a type that is supposed to be a product type.
@@ -372,7 +372,7 @@ decomposeProdTy (UTyProd ty1 ty2) = return (ty1, ty2)
 decomposeProdTy ty = do
   ty1 <- fresh
   ty2 <- fresh
-  _ <- ty =:= UTyProd ty1 ty2
+  _ <- UTyProd ty1 ty2 =:= ty
   return (ty1, ty2)
 
 ------------------------------------------------------------
@@ -454,10 +454,10 @@ inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
 --
 --   The only cases explicitly handled in 'infer' are those where
 --   pushing an expected type down into the term can't possibly help,
---   e.g. most primitives, XXX
+--   e.g. most primitives, function application, and binds.
 --
---   For everything else we prefer 'check' because it can often result
---   in better and more localized type error messages.
+--   For most everything else we prefer 'check' because it can often
+--   result in better and more localized type error messages.
 infer :: Syntax -> TC (Syntax' UType)
 infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   -- Primitives, i.e. things for which we immediately know the only
