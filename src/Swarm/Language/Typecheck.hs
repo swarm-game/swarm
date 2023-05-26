@@ -698,12 +698,24 @@ check s@(Syntax l t) expected = (`catchError` addLocToTypeErr s) $ case t of
     ty1 <- decomposeDelayTy expected
     s1' <- check s1 ty1
     return $ Syntax' l (SDelay d s1') (UTyDelay ty1)
+
+  -- To check the type of a pair, make sure the expected type is a
+  -- product type, and push the two types down into the left and right.
   SPair s1 s2 -> do
     (ty1, ty2) <- decomposeProdTy expected
     s1' <- check s1 ty1
     s2' <- check s2 ty2
     return $ Syntax' l (SPair s1' s2') (UTyProd ty1 ty2)
+
+  -- To check a lambda, make sure the expected type is a function type
   SLam x xTy body -> do
+    -- XXX special case for when the argTy is given and we can't see
+    -- that the expected type is manifestly a function type: don't
+    -- bother generating a fresh type variable for the input type only
+    -- to unify it with the given argTy.  In particular we can
+    -- generate a better error message when the expected type *is* a
+    -- function type, and the explicitly specified argTy does not
+    -- match the expected input type.
     (argTy, resTy) <- decomposeFunTy expected
     _ <- maybe (return argTy) (=:= argTy) (toU xTy)
     body' <- withBinding (lvVar x) (Forall [] argTy) $ check body resTy
