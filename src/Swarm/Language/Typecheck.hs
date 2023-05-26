@@ -57,7 +57,7 @@ import Data.Data (Data, gmapM)
 import Data.Foldable (fold)
 import Data.Functor.Identity
 import Data.Generics (mkM)
-import Data.Map (Map)
+import Data.Map (Map, (!))
 import Data.Map qualified as M
 import Data.Maybe
 import Data.Set (Set, (\\))
@@ -284,6 +284,10 @@ data TypeErr
     --   expected to have a certain type, but has a different type
     --   instead.
     Mismatch SrcLoc (Maybe Syntax) UType UType -- expected, actual
+  | -- | Record field mismatch, i.e. based on the expected type we
+    --   were expecting a record with certain fields, but found one with
+    --   a different field set.
+    FieldsMismatch SrcLoc (Set Var) (Set Var) -- expected fields, actual
   | -- | A definition was encountered not at the top level.
     DefNotTopLevel SrcLoc Term
   | -- | A term was encountered which we cannot infer the type of.
@@ -323,6 +327,7 @@ getTypeErrSrcLoc te = case te of
   Infinite _ _ -> Nothing
   UnifyErr l _ _ -> Just l
   Mismatch l _ _ _ -> Just l
+  FieldsMismatch l _ _ -> Just l
   DefNotTopLevel l _ -> Just l
   CantInfer l _ -> Just l
   CantInferProj l _ -> Just l
@@ -349,6 +354,10 @@ decomposeCmdTy ty = do
   return a
 
 -- | Decompose a type that is supposed to be a function type.
+--
+-- XXX use apartness check here, and in other decomposeXTy functions?
+-- e.g. Should be able to fail immediately if the given type is apart from
+-- a function type.
 decomposeFunTy :: UType -> TC (UType, UType)
 decomposeFunTy (UTyFun ty1 ty2) = return (ty1, ty2)
 decomposeFunTy ty = do
@@ -365,11 +374,6 @@ decomposeProdTy ty = do
   ty2 <- fresh
   _ <- ty =:= UTyProd ty1 ty2
   return (ty1, ty2)
-
--- | XXX
-decomposeRcdTy :: UType -> TC (Map Var UType)
-decomposeRcdTy (UTyRcd m) = return m
-decomposeRcdTy _ = throwError undefined -- XXX
 
 ------------------------------------------------------------
 -- Type inference / checking
@@ -504,14 +508,19 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     -- Then check that the argument has the right type.
     x' <- check x argTy `catchError` addLocToTypeErr x
     return $ Syntax' l (SApp f' x') resTy
-  SDef {} -> throwError $ DefNotTopLevel l t
+
+  -- We handle binds in inference mode for a similar reason to
+  -- application.
   SBind mx c1 c2 -> do
-    -- XXX move SBind to check
     c1' <- infer c1
     a <- decomposeCmdTy (c1' ^. sType)
     c2' <- maybe id ((`withBinding` Forall [] a) . lvVar) mx $ infer c2
     _ <- decomposeCmdTy (c2' ^. sType)
     return $ Syntax' l (SBind mx c1' c2') (c2' ^. sType)
+
+  -- Handle record projection in inference mode.  Knowing the expected
+  -- type of r.x doesn't really help since we must infer the type of r
+  -- first anyway.
   SProj t1 x -> do
     t1' <- infer t1
     case t1' ^. sType of
@@ -519,9 +528,15 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
         Just xTy -> return $ Syntax' l (SProj t1' x) xTy
         Nothing -> throwError $ UnknownProj l x (SProj t1 x)
       _ -> throwError $ CantInferProj l (SProj t1 x)
+
+  -- See Note [Checking and inference for record literals]
   SRcd m -> do
     m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
     return $ Syntax' l (SRcd (Just <$> m')) (UTyRcd (fmap (^. sType) m'))
+
+  -- To infer a type-annotated term, switch into checking mode.
+  -- However, we must be careful to deal properly with polymorphic
+  -- type annotations.
   SAnnotate c pty -> do
     let upty = toU pty
     -- Typecheck against skolemized polytype.
@@ -532,10 +547,10 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     -- If check against skolemized polytype is successful,
     -- instantiate polytype with unification variables.
     -- Free variables should be able to unify with anything in
-    -- following inference steps.
+    -- following typechecking steps.
     iuty <- instantiate upty
-    c'' <- check c iuty `catchError` addLocToTypeErr c
-    return $ Syntax' l (SAnnotate c'' pty) (c'' ^. sType)
+    c' <- check c iuty `catchError` addLocToTypeErr c
+    return $ Syntax' l (SAnnotate c' pty) (c' ^. sType)
 
   -- Fallback: to infer the type of anything else, make up a fresh unification
   -- variable for its type and check against it.
@@ -687,14 +702,6 @@ check s@(Syntax l t) expected = (`catchError` addLocToTypeErr s) $ case t of
     _ <- maybe (return argTy) (=:= argTy) (toU xTy)
     body' <- withBinding (lvVar x) (Forall [] argTy) $ check body resTy
     return $ Syntax' l (SLam x xTy body') (UTyFun argTy resTy)
-  -- SRcd m -> do
-  --   fieldTys <- decomposeRcdTy expected
-  --   -- XXX
-  --   -- ensure keys in m, fieldTys match.
-  --   -- If so, check each field vs its expected type.
-  --   -- m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
-  --   -- return $ Syntax' l (SRcd (Just <$> m')) (UTyRcd (fmap (^. sType) m'))
-  --   undefined
 
   -- Special case for checking the argument to 'atomic' (or
   -- 'instant').  'atomic t' has the same type as 't', which must have
@@ -746,11 +753,48 @@ check s@(Syntax l t) expected = (`catchError` addLocToTypeErr s) $ case t of
     -- Return the annotated let.
     return $ Syntax' l (SLet r x mxTy t1' t2') expected
 
+  -- Definitions can only occur at the top level.
+  SDef {} -> throwError $ DefNotTopLevel l t
+  -- To check a record, ensure the expected type is a record type,
+  -- ensure all the right fields are present, and push the expected
+  -- types of all the fields down into recursive checks.
+  --
+  -- We have to be careful here --- if the expected type is not
+  -- manifestly a record type but might unify with one (i.e. if the
+  -- expected type is a variable) then we can't generate type
+  -- variables for its subparts and push them, we have to switch
+  -- completely into inference mode.  See Note [Checking and inference
+  -- for record literals].
+  SRcd fields
+    | UTyRcd tyMap <- expected -> do
+        let expectedFields = M.keysSet tyMap
+            actualFields = M.keysSet fields
+        when (actualFields /= expectedFields) $
+          throwError $
+            FieldsMismatch NoLoc expectedFields actualFields
+        m' <- itraverse (\x ms -> check (fromMaybe (STerm (TVar x)) ms) (tyMap ! x)) fields
+        return $ Syntax' l (SRcd (Just <$> m')) expected
+
   -- Fallback: switch into inference mode, and check that the type we
   -- get is what we expected.
   _ -> do
     Syntax' l' t' actual <- infer s
     Syntax' l' t' <$> expect (Just s) expected actual
+
+-- ~~~~ Note [Checking and inference for record literals]
+--
+-- We need to handle record literals in both inference and checking
+-- mode.  By way of contrast, with a pair, if we are in checking
+-- mode and the expected type is not manifestly a product type, we
+-- can just generate fresh unification variables for the types of
+-- the two components, generate a constraint that the expected type
+-- is equal to a product type of these two fresh types, and continue
+-- in checking mode on both sides.  With records, however, we cannot
+-- do that; if we are checking a record and the expected type is not
+-- manifestly a record type, we must simply switch into inference
+-- mode.  However, it is still helpful to be able to handle records
+-- in checking mode too, since if we know a record type it is
+-- helpful to be able to push the field types down into the fields.
 
 ------------------------------------------------------------
 -- Special atomic checking

@@ -207,6 +207,8 @@ instance PrettyPrec TypeErr where
   -- XXX prettyPrec Mismatch needs to be much more complex!
   prettyPrec _ (Mismatch _ _mt ty1 ty2) =
     "Type mismatch: expected" <+> ppr ty1 <> ", but got" <+> ppr ty2
+  -- XXX prettyPrec FieldsMismatch needs to be more complex!
+  prettyPrec _ (FieldsMismatch _ _fs1 _fs2) = "Fields mismatch!!"
   prettyPrec _ (EscapedSkolem _ x) =
     "Skolem variable" <+> pretty x <+> "would escape its scope"
   prettyPrec _ (UnboundVar _ x) =
