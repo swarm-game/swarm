@@ -73,7 +73,7 @@ import Swarm.Language.Types
 import Prelude hiding (lookup)
 
 ------------------------------------------------------------
--- Inference monad
+-- Type checking monad
 
 -- | The concrete monad used for type checking.  'IntBindingT' is a
 --   monad transformer provided by the @unification-fd@ library which
@@ -105,6 +105,13 @@ lookup :: SrcLoc -> Var -> TC UType
 lookup loc x = do
   ctx <- ask
   maybe (throwError $ UnboundVar loc x) instantiate (Ctx.lookup x ctx)
+
+-- | Add a source location to a type error and re-throw it.
+addLocToTypeErr :: Syntax' ty -> TypeErr -> TC a
+addLocToTypeErr s te = case te of
+  UnifyErr NoLoc a b -> throwError $ UnifyErr (s ^. sLoc) a b
+  Mismatch NoLoc mt a b -> throwError $ Mismatch (s ^. sLoc) mt a b
+  _ -> throwError te
 
 ------------------------------------------------------------
 -- Dealing with variables: free variables, fresh variables,
@@ -309,6 +316,48 @@ getTypeErrSrcLoc te = case te of
   InvalidAtomic l _ _ -> Just l
 
 ------------------------------------------------------------
+-- Type decomposition
+
+-- | Decompose a type that is supposed to be a delay type.
+decomposeDelayTy :: UType -> TC UType
+decomposeDelayTy (UTyDelay a) = return a
+decomposeDelayTy ty = do
+  a <- fresh
+  _ <- ty =:= UTyDelay a
+  return a
+
+-- | Decompose a type that is supposed to be a command type.
+decomposeCmdTy :: UType -> TC UType
+decomposeCmdTy (UTyCmd a) = return a
+decomposeCmdTy ty = do
+  a <- fresh
+  _ <- ty =:= UTyCmd a
+  return a
+
+-- | Decompose a type that is supposed to be a function type.
+decomposeFunTy :: UType -> TC (UType, UType)
+decomposeFunTy (UTyFun ty1 ty2) = return (ty1, ty2)
+decomposeFunTy ty = do
+  ty1 <- fresh
+  ty2 <- fresh
+  _ <- ty =:= UTyFun ty1 ty2
+  return (ty1, ty2)
+
+-- | Decompose a type that is supposed to be a product type.
+decomposeProdTy :: UType -> TC (UType, UType)
+decomposeProdTy (UTyProd ty1 ty2) = return (ty1, ty2)
+decomposeProdTy ty = do
+  ty1 <- fresh
+  ty2 <- fresh
+  _ <- ty =:= UTyProd ty1 ty2
+  return (ty1, ty2)
+
+-- | XXX
+decomposeRcdTy :: UType -> TC (Map Var UType)
+decomposeRcdTy (UTyRcd m) = return m
+decomposeRcdTy _ = throwError undefined -- XXX
+
+------------------------------------------------------------
 -- Type inference / checking
 
 -- | Top-level type inference function: given a context of definition
@@ -316,6 +365,8 @@ getTypeErrSrcLoc te = case te of
 --   type as a 'TModule'.
 inferTop :: TCtx -> Syntax -> Either TypeErr TModule
 inferTop ctx = runTC ctx . inferModule
+
+-- XXX should this be checkModule?  How does it get used?
 
 -- | Infer the signature of a top-level expression which might
 --   contain definitions.
@@ -525,51 +576,6 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
       validAtomic at
     return $ Syntax' l (SApp atomic' at') (at' ^. sType)
 
-addLocToTypeErr :: Syntax' ty -> TypeErr -> TC a
-addLocToTypeErr s te = case te of
-  UnifyErr NoLoc a b -> throwError $ UnifyErr (s ^. sLoc) a b
-  Mismatch NoLoc mt a b -> throwError $ Mismatch (s ^. sLoc) mt a b
-  _ -> throwError te
-
--- | Decompose a type that is supposed to be a delay type.
-decomposeDelayTy :: UType -> TC UType
-decomposeDelayTy (UTyDelay a) = return a
-decomposeDelayTy ty = do
-  a <- fresh
-  _ <- ty =:= UTyDelay a
-  return a
-
--- | Decompose a type that is supposed to be a command type.
-decomposeCmdTy :: UType -> TC UType
-decomposeCmdTy (UTyCmd a) = return a
-decomposeCmdTy ty = do
-  a <- fresh
-  _ <- ty =:= UTyCmd a
-  return a
-
--- | Decompose a type that is supposed to be a function type.
-decomposeFunTy :: UType -> TC (UType, UType)
-decomposeFunTy (UTyFun ty1 ty2) = return (ty1, ty2)
-decomposeFunTy ty = do
-  ty1 <- fresh
-  ty2 <- fresh
-  _ <- ty =:= UTyFun ty1 ty2
-  return (ty1, ty2)
-
--- | Decompose a type that is supposed to be a product type.
-decomposeProdTy :: UType -> TC (UType, UType)
-decomposeProdTy (UTyProd ty1 ty2) = return (ty1, ty2)
-decomposeProdTy ty = do
-  ty1 <- fresh
-  ty2 <- fresh
-  _ <- ty =:= UTyProd ty1 ty2
-  return (ty1, ty2)
-
--- | XXX
-decomposeRcdTy :: UType -> TC (Map Var UType)
-decomposeRcdTy (UTyRcd m) = return m
-decomposeRcdTy _ = throwError undefined -- XXX
-
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
 inferConst c = case c of
@@ -716,6 +722,9 @@ check s@(Syntax l t) expected = (`catchError` addLocToTypeErr s) $ case t of
   _ -> do
     Syntax' l' t' actual <- infer s
     Syntax' l' t' <$> expect (Just s) expected actual
+
+------------------------------------------------------------
+-- Special atomic checking
 
 -- | Ensure a term is a valid argument to @atomic@.  Valid arguments
 --   may not contain @def@, @let@, or lambda. Any variables which are
