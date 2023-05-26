@@ -382,8 +382,18 @@ inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
 
 -- | Infer the type of a term which does not contain definitions,
 --   returning a type-annotated term.
+--
+--   The only cases explicitly handled in 'infer' are those where
+--   pushing an expected type down into the term can't possibly help,
+--   e.g. most primitives, XXX
+--
+--   For everything else we prefer 'check' because it can often result
+--   in better and more localized type error messages.
 infer :: Syntax -> TC (Syntax' UType)
 infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
+  -- Primitives, i.e. things for which we immediately know the only
+  -- possible correct type, and knowing an expected type would provide
+  -- no extra information.
   TUnit -> return $ Syntax' l TUnit UTyUnit
   TConst c -> Syntax' l (TConst c) <$> (instantiate . toU $ inferConst c)
   TDir d -> return $ Syntax' l (TDir d) UTyDir
@@ -393,16 +403,17 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   TAntiText x -> return $ Syntax' l (TAntiText x) UTyText
   TBool b -> return $ Syntax' l (TBool b) UTyBool
   TRobot r -> return $ Syntax' l (TRobot r) UTyActor
-  -- We should never encounter a TRef since they do not show up in
-  -- surface syntax, only as values while evaluating (*after*
-  -- typechecking).
-  TRef _ -> throwError $ CantInfer l t
   TRequireDevice d -> return $ Syntax' l (TRequireDevice d) (UTyCmd UTyUnit)
   TRequire n d -> return $ Syntax' l (TRequire n d) (UTyCmd UTyUnit)
   SRequirements x t1 -> do
     t1' <- infer t1
     return $ Syntax' l (SRequirements x t1') (UTyCmd UTyUnit)
 
+  -- We should never encounter a TRef since they do not show up in
+  -- surface syntax, only as values while evaluating (*after*
+  -- typechecking).
+  TRef _ -> throwError $ CantInfer l t
+  -- XXX move atomic to check.
   -- We need a special case for checking the argument to 'atomic'.
   -- 'atomic t' has the same type as 't', which must have a type of
   -- the form 'cmd a'.  't' must also be syntactically free of
@@ -691,14 +702,14 @@ check s@(Syntax l t) expected = (`catchError` addLocToTypeErr s) $ case t of
     _ <- maybe (return argTy) (=:= argTy) (toU xTy)
     body' <- withBinding (lvVar x) (Forall [] argTy) $ check body resTy
     return $ Syntax' l (SLam x xTy body') (UTyFun argTy resTy)
-  SRcd m -> do
-    fieldTys <- decomposeRcdTy expected
-    -- XXX
-    -- ensure keys in m, fieldTys match.
-    -- If so, check each field vs its expected type.
-    -- m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
-    -- return $ Syntax' l (SRcd (Just <$> m')) (UTyRcd (fmap (^. sType) m'))
-    undefined
+  -- SRcd m -> do
+  --   fieldTys <- decomposeRcdTy expected
+  --   -- XXX
+  --   -- ensure keys in m, fieldTys match.
+  --   -- If so, check each field vs its expected type.
+  --   -- m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
+  --   -- return $ Syntax' l (SRcd (Just <$> m')) (UTyRcd (fmap (^. sType) m'))
+  --   undefined
 
   -- Fallback: switch into inference mode, and check that the type we
   -- get is what we expected.
