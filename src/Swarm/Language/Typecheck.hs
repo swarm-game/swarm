@@ -468,17 +468,28 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   TVar x -> Syntax' l (TVar x) <$> lookup l x
   -- Need special case here for applying 'atomic' or 'instant' so we
   -- don't handle it with the case for generic type application.
+  -- This must come BEFORE the SApp case.
   TConst c :$: _
     | c `elem` [Atomic, Instant] -> fresh >>= check s
-  -- To infer the type of an application:
+  -- It works better to handle applications in *inference* mode.
+  -- Knowing the expected result type of an application does not
+  -- really help much.  In the typical case, the function being
+  -- applied is either (1) a primitive or variable whose type we can
+  -- easily infer, or (2) a nested application; in the second case in
+  -- particular, handling applications in inference mode means we can
+  -- stay in inference mode the whole way down the left-hand side of
+  -- the chain of applications.  If we handled applications in
+  -- checking mode, we would constantly flip back and forth between
+  -- inference & checking and generate a fresh unification variable
+  -- each time.
   SApp f x -> do
     -- Infer the type of the left-hand side and make sure it has a function type.
     f' <- infer f
-    (ty1, ty2) <- decomposeFunTy (f' ^. sType)
+    (argTy, resTy) <- decomposeFunTy (f' ^. sType)
 
     -- Then check that the argument has the right type.
-    x' <- check x ty1 `catchError` addLocToTypeErr x
-    return $ Syntax' l (SApp f' x') ty2
+    x' <- check x argTy `catchError` addLocToTypeErr x
+    return $ Syntax' l (SApp f' x') resTy
 
   -- XXX move SLet to check.  If variable type annotation has been
   -- provided we can call check on t1, otherwise infer; then call
