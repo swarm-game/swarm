@@ -155,6 +155,20 @@ substU m =
         f -> UTerm f
     )
 
+-- | Make sure no skolem variables escape.
+noSkolems :: SrcLoc -> UPolytype -> TC ()
+noSkolems l (Forall xs upty) = do
+  upty' <- applyBindings upty
+  let tyvs =
+        ucata
+          (const S.empty)
+          (\case TyVarF v -> S.singleton v; f -> fold f)
+          upty'
+      ftyvs = tyvs `S.difference` S.fromList xs
+  unless (S.null ftyvs) $
+    throwError $
+      EscapedSkolem l (head (S.toList ftyvs))
+
 ------------------------------------------------------------
 -- Lifted stuff from unification-fd
 
@@ -490,34 +504,6 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     -- Then check that the argument has the right type.
     x' <- check x argTy `catchError` addLocToTypeErr x
     return $ Syntax' l (SApp f' x') resTy
-
-  -- XXX move SLet to check.  If variable type annotation has been
-  -- provided we can call check on t1, otherwise infer; then call
-  -- check on t2.
-
-  -- We can infer the type of a let whether a type has been provided for
-  -- the variable or not.
-  SLet r x Nothing t1 t2 -> do
-    xTy <- fresh
-    t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
-    let uty = t1' ^. sType
-    _ <- xTy =:= uty
-    upty <- generalize uty
-    t2' <- withBinding (lvVar x) upty $ infer t2
-    return $ Syntax' l (SLet r x Nothing t1' t2') (t2' ^. sType)
-  SLet r x (Just pty) t1 t2 -> do
-    let upty = toU pty
-    -- If an explicit polytype has been provided, skolemize it and check
-    -- definition and body under an extended context.
-    uty <- skolemize upty
-    (t1', t2') <- withBinding (lvVar x) upty $ do
-      (,)
-        <$> check t1 uty
-        `catchError` addLocToTypeErr t1
-        <*> infer t2
-    -- Make sure no skolem variables have escaped.
-    ask >>= mapM_ noSkolems
-    return $ Syntax' l (SLet r x (Just pty) t1' t2') (t2' ^. sType)
   SDef {} -> throwError $ DefNotTopLevel l t
   SBind mx c1 c2 -> do
     -- XXX move SBind to check
@@ -542,7 +528,7 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     uty <- skolemize upty
     _ <- check c uty `catchError` addLocToTypeErr c
     -- Make sure no skolem variables have escaped.
-    ask >>= mapM_ noSkolems
+    ask >>= mapM_ (noSkolems l)
     -- If check against skolemized polytype is successful,
     -- instantiate polytype with unification variables.
     -- Free variables should be able to unify with anything in
@@ -556,19 +542,6 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   _ -> do
     sTy <- fresh
     check s sTy
- where
-  noSkolems :: UPolytype -> TC ()
-  noSkolems (Forall xs upty) = do
-    upty' <- applyBindings upty
-    let tyvs =
-          ucata
-            (const S.empty)
-            (\case TyVarF v -> S.singleton v; f -> fold f)
-            upty'
-        ftyvs = tyvs `S.difference` S.fromList xs
-    unless (S.null ftyvs) $
-      throwError $
-        EscapedSkolem l (head (S.toList ftyvs))
 
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
@@ -742,6 +715,36 @@ check s@(Syntax l t) expected = (`catchError` addLocToTypeErr s) $ case t of
         -- we skip this check.
         when (c == Atomic) $ validAtomic at
         return $ Syntax' l (SApp atomic' at') (UTyCmd argTy)
+  -- Checking the type of a let-expression.
+  SLet r x mxTy t1 t2 -> do
+    (upty, t1') <- case mxTy of
+      -- No type annotation was provided for the let binding, so infer its type.
+      Nothing -> do
+        -- The let could be recursive, so we must generate a fresh
+        -- unification variable for the type of x and infer the type
+        -- of t1 with x in the context.
+        xTy <- fresh
+        t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
+        let uty = t1' ^. sType
+        _ <- xTy =:= uty
+        upty <- generalize uty
+        return (upty, t1')
+      -- An explicit polytype annotation has been provided. Skolemize it and check
+      -- definition and body under an extended context.
+      Just pty -> do
+        let upty = toU pty
+        uty <- skolemize upty
+        t1' <- withBinding (lvVar x) upty $ check t1 uty `catchError` addLocToTypeErr t1
+        return (upty, t1')
+
+    -- Now check the type of the body.
+    t2' <- withBinding (lvVar x) upty $ check t2 expected
+
+    -- Make sure no skolem variables have escaped.
+    ask >>= mapM_ (noSkolems l)
+
+    -- Return the annotated let.
+    return $ Syntax' l (SLet r x mxTy t1' t2') expected
 
   -- Fallback: switch into inference mode, and check that the type we
   -- get is what we expected.
