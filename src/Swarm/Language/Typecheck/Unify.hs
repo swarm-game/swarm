@@ -14,7 +14,21 @@ import Data.Map qualified as M
 import Data.Map.Merge.Lazy qualified as M
 import Swarm.Language.Types
 
-data UnifyStatus = Apart | MightUnify | Equal
+-- | The result of doing a unification check on two types.
+data UnifyStatus
+  = -- | The two types are definitely not equal; they will never unify
+    --   no matter how any unification variables get filled in.  For
+    --   example, (int * u0) and (u1 -> u2) are apart: the first is a
+    --   product type and the second is a function type.
+    Apart
+  | -- | The two types might unify, depending on how unification
+    --   variables get filled in, but we're not sure.  For example,
+    --   (int * u0) and (u1 * bool).
+    MightUnify
+  | -- | The two types are most definitely equal, and we don't need to
+    --   bother generating a constraint to make them so.  For example,
+    --   (int * text) and (int * text).
+    Equal
   deriving (Eq, Ord, Read, Show)
 
 -- | The @Semigroup@ instance for @UnifyStatus@ is used to combine
