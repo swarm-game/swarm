@@ -689,21 +689,18 @@ check s@(Syntax l t) expected = (`catchError` addLocToTypeErr s) $ case t of
     s2' <- check s2 ty2
     return $ Syntax' l (SPair s1' s2') (UTyProd ty1 ty2)
 
-  -- To check a lambda, make sure the expected type is a function type
+  -- To check a lambda, make sure the expected type is a function type.
   SLam x mxTy body -> do
-    -- XXX special case for when the argTy is given and we can't see
-    -- that the expected type is manifestly a function type: don't
-    -- bother generating a fresh type variable for the input type only
-    -- to unify it with the given argTy.  We can also generate a
-    -- better error message when the expected type *is* a function
-    -- type, and the explicitly specified argTy does not match the
-    -- expected input type.
-    --
-    -- e.g. (\x:int. x + 2) : text -> int
     (argTy, resTy) <- decomposeFunTy expected
     case toU mxTy of
       Just xTy -> case unifyCheck argTy xTy of
+        -- Generate a special error when the explicit type annotation
+        -- on a lambda doesn't match the expected type,
+        -- e.g. (\x:int. x + 2) : text -> int, since the usual
+        -- "expected/but got" language would probably be confusing.
         Apart -> throwError $ LambdaArgMismatch l argTy xTy
+        -- Otherwise, make sure to unify the annotation with the
+        -- expected argument type.
         _ -> void $ argTy =:= xTy
       Nothing -> return ()
     body' <- withBinding (lvVar x) (Forall [] argTy) $ check body resTy
