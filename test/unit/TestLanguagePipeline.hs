@@ -94,19 +94,19 @@ testLanguagePipeline =
             "located type error"
             ( process
                 "def a =\n 42 + \"oops\"\nend"
-                "2: Type mismatch: expected int, but got text"
+                "2:7: Type mismatch: expected int, but got text"
             )
         , testCase
             "failure inside bind chain"
             ( process
                 "move;\n1;\nmove"
-                "2: Type mismatch: expected cmd u0, but got int"
+                "2:1: Type mismatch: expected cmd u0, but got int"
             )
         , testCase
             "failure inside function call"
             ( process
                 "if true \n{} \n(move)"
-                "3: Type mismatch: expected {u0}, but got cmd unit"
+                "3:1: Type mismatch: expected {u0}, but got cmd unit"
             )
         , testCase
             "parsing operators #236 - report failure on invalid operator start"
@@ -180,49 +180,49 @@ testLanguagePipeline =
             "atomic move+move"
             ( process
                 "atomic (move; move)"
-                "1: Invalid atomic block: block could take too many ticks (2): move; move"
+                "1:8: Invalid atomic block: block could take too many ticks (2): move; move"
             )
         , testCase
             "atomic lambda"
             ( process
                 "atomic ((\\c. c;c) move)"
-                "1: Invalid atomic block: def, let, and lambda are not allowed: \\c. c; c"
+                "1:9: Invalid atomic block: def, let, and lambda are not allowed: \\c. c; c"
             )
         , testCase
             "atomic non-simple"
             ( process
                 "def dup = \\c. c; c end; atomic (dup (dup move))"
-                "1: Invalid atomic block: reference to variable with non-simple type ∀ a. cmd a -> cmd a: dup"
+                "1:33: Invalid atomic block: reference to variable with non-simple type ∀ a. cmd a -> cmd a: dup"
             )
         , testCase
             "atomic nested"
             ( process
                 "atomic (move; atomic (if true {} {}))"
-                "1: Invalid atomic block: nested atomic block"
+                "1:15: Invalid atomic block: nested atomic block"
             )
         , testCase
             "atomic wait"
             ( process
                 "atomic (wait 1)"
-                "1: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: wait"
+                "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: wait"
             )
         , testCase
             "atomic make"
             ( process
                 "atomic (make \"PhD thesis\")"
-                "1: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: make"
+                "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: make"
             )
         , testCase
             "atomic drill"
             ( process
                 "atomic (drill forward)"
-                "1: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: drill"
+                "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: drill"
             )
         , testCase
             "atomic salvage"
             ( process
                 "atomic (salvage)"
-                "1: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: salvage"
+                "1:8: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: salvage"
             )
         ]
     , testGroup
@@ -286,13 +286,13 @@ testLanguagePipeline =
             (valid "(3 : int) + 5")
         , testCase
             "invalid type ascription"
-            (process "1 : text" "1: Type mismatch: expected text, but got int")
+            (process "1 : text" "1:1: Type mismatch: expected text, but got int")
         , testCase
             "type ascription with a polytype"
             (valid "((\\x . x) : a -> a) 3")
         , testCase
             "type ascription too general"
-            (process "1 : a" "1: Type mismatch: expected s0, but got int")
+            (process "1 : a" "1:1: Type mismatch: expected s0, but got int")
         , testCase
             "type specialization through type ascription"
             (valid "fst:(int + b) * a -> int + b")
@@ -300,7 +300,7 @@ testLanguagePipeline =
             "type ascription doesn't allow rank 2 types"
             ( process
                 "\\f. (f:forall a. a->a) 3"
-                "1: Skolem variable s3 would escape its scope"
+                "1:5: Skolem variable s3 would escape its scope"
             )
         ]
     ]

@@ -85,8 +85,9 @@ prettyTypeErr :: Text -> TypeErr -> Text
 prettyTypeErr code te = teLoc <> prettyText te
  where
   teLoc = case getTypeErrSrcLoc te of
-    Just (SrcLoc s e) -> (from . show . fst . fst $ getLocRange code (s, e)) <> ": "
+    Just (SrcLoc s e) -> (into @Text . showLoc . fst $ getLocRange code (s, e)) <> ": "
     _anyOtherLoc -> ""
+  showLoc (r, c) = show r ++ ":" ++ show c
 
 showTypeErrorPos :: Text -> TypeErr -> ((Int, Int), (Int, Int), Text)
 showTypeErrorPos code te = (minusOne start, minusOne end, msg)
