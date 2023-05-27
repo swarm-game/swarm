@@ -3,16 +3,16 @@
 --
 -- Utilities related to type unification.
 module Swarm.Language.Typecheck.Unify (
-  UnifyStatus(..),
-  unifyCheck
-  ) where
+  UnifyStatus (..),
+  unifyCheck,
+) where
 
+import Control.Unification
 import Data.Foldable qualified as F
 import Data.Function (on)
-import Control.Unification
-import Swarm.Language.Types
 import Data.Map qualified as M
 import Data.Map.Merge.Lazy qualified as M
+import Swarm.Language.Types
 
 data UnifyStatus = Apart | MightUnify | Equal
   deriving (Eq, Ord, Read, Show)
@@ -47,7 +47,6 @@ unifyCheck ty1 ty2 = case (ty1, ty2) of
     | otherwise -> MightUnify
   (UVar _, _) -> MightUnify
   (_, UVar _) -> MightUnify
-
   (UTerm t1, UTerm t2) -> unifyCheckF t1 t2
 
 unifyCheckF :: TypeF UType -> TypeF UType -> UnifyStatus
@@ -56,29 +55,22 @@ unifyCheckF t1 t2 = case (t1, t2) of
     True -> Equal
     False -> Apart
   (TyBaseF {}, _) -> Apart
-
   (TyVarF v1, TyVarF v2) -> case v1 == v2 of
     True -> Equal
     False -> Apart
   (TyVarF {}, _) -> Apart
-
   (TySumF t11 t12, TySumF t21 t22) -> unifyCheck t11 t21 <> unifyCheck t12 t22
   (TySumF {}, _) -> Apart
-
   (TyProdF t11 t12, TyProdF t21 t22) -> unifyCheck t11 t21 <> unifyCheck t12 t22
   (TyProdF {}, _) -> Apart
-
   (TyRcdF m1, TyRcdF m2) ->
     case ((==) `on` M.keysSet) m1 m2 of
       False -> Apart
       _ -> F.fold (M.merge M.dropMissing M.dropMissing (M.zipWithMatched (const unifyCheck)) m1 m2)
   (TyRcdF {}, _) -> Apart
-
   (TyCmdF c1, TyCmdF c2) -> unifyCheck c1 c2
   (TyCmdF {}, _) -> Apart
-
   (TyDelayF c1, TyDelayF c2) -> unifyCheck c1 c2
   (TyDelayF {}, _) -> Apart
-
   (TyFunF t11 t12, TyFunF t21 t22) -> unifyCheck t11 t21 <> unifyCheck t12 t22
   (TyFunF {}, _) -> Apart
