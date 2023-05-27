@@ -302,6 +302,12 @@ testLanguagePipeline =
                 "\\f. (f:forall a. a->a) 3"
                 "1:5: Skolem variable s3 would escape its scope"
             )
+        , testCase
+            "checking a lambda with the wrong argument type"
+            ( process
+                "(\\x:int. x + 2) : text -> int"
+                "1:1: Lambda argument has type annotation int, but expected argument type text"
+            )
         ]
     ]
  where

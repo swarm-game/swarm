@@ -1,7 +1,6 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- For 'Ord IntVar' instance
@@ -288,6 +287,8 @@ data TypeErr
     --   expected to have a certain type, but has a different type
     --   instead.
     Mismatch SrcLoc (Maybe Syntax) UType UType -- expected, actual
+  | -- | Lambda argument type mismatch.
+    LambdaArgMismatch SrcLoc UType UType -- expected, actual
   | -- | Record field mismatch, i.e. based on the expected type we
     --   were expecting a record with certain fields, but found one with
     --   a different field set.
@@ -331,6 +332,7 @@ getTypeErrSrcLoc te = case te of
   Infinite _ _ -> Nothing
   UnifyErr l _ _ -> Just l
   Mismatch l _ _ _ -> Just l
+  LambdaArgMismatch l _ _ -> Just l
   FieldsMismatch l _ _ -> Just l
   DefNotTopLevel l _ -> Just l
   CantInfer l _ -> Just l
@@ -688,20 +690,24 @@ check s@(Syntax l t) expected = (`catchError` addLocToTypeErr s) $ case t of
     return $ Syntax' l (SPair s1' s2') (UTyProd ty1 ty2)
 
   -- To check a lambda, make sure the expected type is a function type
-  SLam x xTy body -> do
+  SLam x mxTy body -> do
     -- XXX special case for when the argTy is given and we can't see
     -- that the expected type is manifestly a function type: don't
     -- bother generating a fresh type variable for the input type only
-    -- to unify it with the given argTy.  In particular we can
-    -- generate a better error message when the expected type *is* a
-    -- function type, and the explicitly specified argTy does not
-    -- match the expected input type.
+    -- to unify it with the given argTy.  We can also generate a
+    -- better error message when the expected type *is* a function
+    -- type, and the explicitly specified argTy does not match the
+    -- expected input type.
     --
     -- e.g. (\x:int. x + 2) : text -> int
     (argTy, resTy) <- decomposeFunTy expected
-    _ <- maybe (return argTy) (=:= argTy) (toU xTy)
+    case toU mxTy of
+      Just xTy -> case unifyCheck argTy xTy of
+        Apart -> throwError $ LambdaArgMismatch l argTy xTy
+        _ -> void $ argTy =:= xTy
+      Nothing -> return ()
     body' <- withBinding (lvVar x) (Forall [] argTy) $ check body resTy
-    return $ Syntax' l (SLam x xTy body') (UTyFun argTy resTy)
+    return $ Syntax' l (SLam x mxTy body') (UTyFun argTy resTy)
 
   -- Special case for checking the argument to 'atomic' (or
   -- 'instant').  'atomic t' has the same type as 't', which must have
