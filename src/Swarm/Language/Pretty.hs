@@ -202,8 +202,13 @@ appliedTermPrec (TApp f _) = case f of
 appliedTermPrec _ = 10
 
 instance PrettyPrec TypeErr where
-  prettyPrec _ (Mismatch _ ty1 ty2) =
+  prettyPrec _ (UnifyErr _ ty1 ty2) =
     "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
+  prettyPrec _ (Mismatch _ _mt ty1 ty2) =
+    "Type mismatch: expected" <+> ppr ty1 <> ", but got" <+> ppr ty2
+  prettyPrec _ (LambdaArgMismatch _ ty1 ty2) =
+    "Lambda argument has type annotation" <+> ppr ty2 <> ", but expected argument type" <+> ppr ty1
+  prettyPrec _ (FieldsMismatch _ _fs1 _fs2) = "Fields mismatch!!"
   prettyPrec _ (EscapedSkolem _ x) =
     "Skolem variable" <+> pretty x <+> "would escape its scope"
   prettyPrec _ (UnboundVar _ x) =
