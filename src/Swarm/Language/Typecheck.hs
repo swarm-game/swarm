@@ -164,9 +164,7 @@ noSkolems l (Forall xs upty) = do
           (\case TyVarF v -> S.singleton v; f -> fold f)
           upty'
       ftyvs = tyvs `S.difference` S.fromList xs
-  unless (S.null ftyvs) $
-    throwError $
-      EscapedSkolem l (head (S.toList ftyvs))
+  forM_ (S.lookupMin ftyvs) $ throwError . EscapedSkolem l
 
 ------------------------------------------------------------
 -- Lifted stuff from unification-fd
