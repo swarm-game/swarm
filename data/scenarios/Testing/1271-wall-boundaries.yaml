@@ -1,0 +1,96 @@
+version: 1
+name: Wall boundary display
+creative: false
+description: |
+  Demonstrate rendering of contiguous boundaries.
+
+  Only adjacent with the 'boundary' property
+  will be rendered with box border glyphs.
+attrs:
+  - name: purpleWall
+    fg: '#ff00ff'
+  - name: cyanWall
+    fg: '#00ffff'
+objectives:
+  - goal:
+      - Place all fences
+    condition: |
+      as base {
+        hasFence <- has "fence";
+        return $ not hasFence;
+      }
+solution: |
+  def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+
+  doN 4 (
+    doN 6 (place "fence"; move);
+    turn left;
+  );
+
+  doN 2 move;
+  turn left;
+
+  doN 2 (
+    doN 2 move;
+    place "fence";
+  );
+  turn right;
+  move;
+  turn right;
+  move;
+  place "fence";
+  move;
+  place "fence";
+  move;
+robots:
+  - name: base
+    dir: east
+    display:
+      attr: robot
+    devices:
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - grabber
+      - logger
+      - treads
+      - antenna
+      - ADT calculator
+    inventory:
+      - [28, fence]
+entities:
+  - name: wall
+    display:
+      char: 'x'
+      attr: purpleWall
+    description:
+      - A wall
+    properties: [known, boundary]
+  - name: fence
+    display:
+      char: 'F'
+      attr: cyanWall
+    description:
+      - A fence
+    properties: [known, boundary]
+known: [boulder]
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass]
+    '#': [grass, wall]
+    '@': [grass, boulder]
+  upperleft: [0, 0]
+  map: |
+    Ω.........
+    ....#.....
+    ..####..##
+    ..#.##....
+    ..#..#..#.
+    ..####..#.
+    ..........
+    ...@@@....
+    ...@.@....
+    ...@@@....
