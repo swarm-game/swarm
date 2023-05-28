@@ -1,0 +1,48 @@
+version: 1
+name: Wall boundaries
+creative: false
+description: Stop a robot using halt
+objectives:
+  - goal:
+      - Just be.
+    condition: |
+      return false;
+solution: |
+  noop;
+robots:
+  - name: base
+    dir: [0,-1]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - compass
+      - dictionary
+      - grabber
+      - toolkit
+      - logger
+      - tank treads
+      - antenna
+      - ADT calculator
+entities:
+  - name: wall
+    display:
+      char: 'x'
+    description:
+      - A wall
+    properties: [known, boundary]
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass]
+    '#': [grass, wall]
+  upperleft: [0, 0]
+  map: |
+    Ω.......
+    ....#...
+    ..####..
+    ..#.##..
+    ..#..#..
+    ..####..
+    ........

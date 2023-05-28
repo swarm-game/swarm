@@ -126,6 +126,8 @@ data EntityProperty
     Portable
   | -- | Obstructs the view of robots that attempt to "scout"
     Opaque
+  | -- | Is automatically rendered as a contiguous border
+    Boundary
   | -- | Regrows from a seed after it is harvested.
     Growable
   | -- | Regenerates infinitely when grabbed or harvested.
