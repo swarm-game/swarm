@@ -51,4 +51,9 @@ def loopMonotonicityCheck : int -> int -> int -> int -> cmd bool = \boardWidth. 
     }
     end;
 
-loopMonotonicityCheck 4 4 0 1;
+hasFlower <- has "flower";
+if hasFlower {
+    loopMonotonicityCheck 4 4 0 1;
+} {
+    return false;
+};
