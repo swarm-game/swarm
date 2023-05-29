@@ -2048,7 +2048,6 @@ execConst c vs s k = do
        in throwError . Fatal $ msg <> badConstMsg
  where
   doDrill d = do
-    rname <- use robotName
     inv <- use robotInventory
     ins <- use equippedDevices
 
@@ -2059,17 +2058,7 @@ execConst c vs s k = do
 
     drill <- preferredDrill `isJustOr` Fatal "Drill is required but not equipped?!"
 
-    let directionText = case d of
-          DRelative DDown -> "under"
-          DRelative DForward -> "ahead of"
-          DRelative DBack -> "behind"
-          _ -> directionSyntax d <> " of"
-
-    (nextLoc, nextME) <- lookInDirection d
-    nextE <-
-      nextME
-        `isJustOrFail` ["There is nothing to drill", directionText, "robot", rname <> "."]
-
+    (nextLoc, nextE) <- getDrillTarget "drill" d
     inRs <- use recipesIn
 
     let recipes = filter drilling (recipesFor inRs nextE)
@@ -2104,6 +2093,21 @@ execConst c vs s k = do
 
     let cmdOutput = asValue $ snd <$> listToMaybe out
     finishCookingRecipe recipe cmdOutput [changeWorld] (learn <> gain)
+
+  getDrillTarget verb d = do
+    rname <- use robotName
+
+    (nextLoc, nextME) <- lookInDirection d
+    nextE <-
+      nextME
+        `isJustOrFail` ["There is nothing to", verb, directionText, "robot", rname <> "."]
+    return (nextLoc, nextE)
+   where
+    directionText = case d of
+      DRelative DDown -> "under"
+      DRelative DForward -> "ahead of"
+      DRelative DBack -> "behind"
+      _ -> directionSyntax d <> " of"
 
   goAtomic :: HasRobotStepState sig m => m CESK
   goAtomic = case vs of
