@@ -224,6 +224,7 @@ constCaps = \case
   Meet -> Just CMeet
   MeetAll -> Just CMeet
   Drill -> Just CDrill
+  Use -> Nothing -- Recipes alone shall dictate whether things can be "used"
   Neg -> Just CArith
   Add -> Just CArith
   Sub -> Just CArith
