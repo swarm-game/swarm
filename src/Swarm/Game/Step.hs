@@ -2095,7 +2095,6 @@ execConst c vs s k = do
     finishCookingRecipe recipe cmdOutput [changeWorld] (learn <> gain)
 
   getDrillTarget verb d = do
-
     rname <- use robotName
 
     (nextLoc, nextME) <- lookInDirection d
@@ -2103,12 +2102,12 @@ execConst c vs s k = do
       nextME
         `isJustOrFail` ["There is nothing to", verb, directionText, "robot", rname <> "."]
     return (nextLoc, nextE)
-    where
-      directionText = case d of
-          DRelative DDown -> "under"
-          DRelative DForward -> "ahead of"
-          DRelative DBack -> "behind"
-          _ -> directionSyntax d <> " of"
+   where
+    directionText = case d of
+      DRelative DDown -> "under"
+      DRelative DForward -> "ahead of"
+      DRelative DBack -> "behind"
+      _ -> directionSyntax d <> " of"
 
   goAtomic :: HasRobotStepState sig m => m CESK
   goAtomic = case vs of
