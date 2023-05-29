@@ -1462,63 +1462,7 @@ execConst c vs s k = do
       t <- use ticks
       return $ Out (VInt t) s k
     Drill -> case vs of
-      [VDir d] -> do
-        rname <- use robotName
-        inv <- use robotInventory
-        ins <- use equippedDevices
-
-        let equippedDrills = extantElemsWithCapability CDrill ins
-            -- Heuristic: choose the drill with the more elaborate name.
-            -- E.g. "metal drill" vs. "drill"
-            preferredDrill = listToMaybe $ sortOn (Down . T.length . (^. entityName)) equippedDrills
-
-        drill <- preferredDrill `isJustOr` Fatal "Drill is required but not equipped?!"
-
-        let directionText = case d of
-              DRelative DDown -> "under"
-              DRelative DForward -> "ahead of"
-              DRelative DBack -> "behind"
-              _ -> directionSyntax d <> " of"
-
-        (nextLoc, nextME) <- lookInDirection d
-        nextE <-
-          nextME
-            `isJustOrFail` ["There is nothing to drill", directionText, "robot", rname <> "."]
-
-        inRs <- use recipesIn
-
-        let recipes = filter drilling (recipesFor inRs nextE)
-            drilling = any ((== drill) . snd) . view recipeRequirements
-
-        not (null recipes) `holdsOrFail` ["There is no way to drill", indefinite (nextE ^. entityName) <> "."]
-
-        -- add the drilled entity so it can be consumed by the recipe
-        let makeRecipe r = (,r) <$> make' (insert nextE inv, ins) r
-        chosenRecipe <- weightedChoice (\((_, _), r) -> r ^. recipeWeight) (rights (map makeRecipe recipes))
-        ((invTaken, outs), recipe) <-
-          chosenRecipe
-            `isJustOrFail` ["You don't have the ingredients to drill", indefinite (nextE ^. entityName) <> "."]
-
-        let (out, down) = L.partition ((`hasProperty` Portable) . snd) outs
-        let learn = map (LearnEntity . snd) down
-        let gain = map (uncurry AddEntity) out
-
-        newEntity <- case down of
-          [] -> pure Nothing
-          [(1, de)] -> pure $ Just de
-          _ -> throwError $ Fatal "Bad recipe:\n more than one unmovable entity produced."
-        let changeWorld =
-              ReplaceEntity
-                { updatedLoc = nextLoc
-                , originalEntity = nextE
-                , newEntity = newEntity
-                }
-
-        -- take recipe inputs from inventory and add outputs after recipeTime
-        robotInventory .= invTaken
-
-        let cmdOutput = asValue $ snd <$> listToMaybe out
-        finishCookingRecipe recipe cmdOutput [changeWorld] (learn <> gain)
+      [VDir d] -> doDrill d
       _ -> badConst
     Blocked -> do
       loc <- use robotLocation
@@ -2103,6 +2047,64 @@ execConst c vs s k = do
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
        in throwError . Fatal $ msg <> badConstMsg
  where
+  doDrill d = do
+    rname <- use robotName
+    inv <- use robotInventory
+    ins <- use equippedDevices
+
+    let equippedDrills = extantElemsWithCapability CDrill ins
+        -- Heuristic: choose the drill with the more elaborate name.
+        -- E.g. "metal drill" vs. "drill"
+        preferredDrill = listToMaybe $ sortOn (Down . T.length . (^. entityName)) equippedDrills
+
+    drill <- preferredDrill `isJustOr` Fatal "Drill is required but not equipped?!"
+
+    let directionText = case d of
+          DRelative DDown -> "under"
+          DRelative DForward -> "ahead of"
+          DRelative DBack -> "behind"
+          _ -> directionSyntax d <> " of"
+
+    (nextLoc, nextME) <- lookInDirection d
+    nextE <-
+      nextME
+        `isJustOrFail` ["There is nothing to drill", directionText, "robot", rname <> "."]
+
+    inRs <- use recipesIn
+
+    let recipes = filter drilling (recipesFor inRs nextE)
+        drilling = any ((== drill) . snd) . view recipeRequirements
+
+    not (null recipes) `holdsOrFail` ["There is no way to drill", indefinite (nextE ^. entityName) <> "."]
+
+    -- add the drilled entity so it can be consumed by the recipe
+    let makeRecipe r = (,r) <$> make' (insert nextE inv, ins) r
+    chosenRecipe <- weightedChoice (\((_, _), r) -> r ^. recipeWeight) (rights (map makeRecipe recipes))
+    ((invTaken, outs), recipe) <-
+      chosenRecipe
+        `isJustOrFail` ["You don't have the ingredients to drill", indefinite (nextE ^. entityName) <> "."]
+
+    let (out, down) = L.partition ((`hasProperty` Portable) . snd) outs
+    let learn = map (LearnEntity . snd) down
+    let gain = map (uncurry AddEntity) out
+
+    newEntity <- case down of
+      [] -> pure Nothing
+      [(1, de)] -> pure $ Just de
+      _ -> throwError $ Fatal "Bad recipe:\n more than one unmovable entity produced."
+    let changeWorld =
+          ReplaceEntity
+            { updatedLoc = nextLoc
+            , originalEntity = nextE
+            , newEntity = newEntity
+            }
+
+    -- take recipe inputs from inventory and add outputs after recipeTime
+    robotInventory .= invTaken
+
+    let cmdOutput = asValue $ snd <$> listToMaybe out
+    finishCookingRecipe recipe cmdOutput [changeWorld] (learn <> gain)
+
   goAtomic :: HasRobotStepState sig m => m CESK
   goAtomic = case vs of
     -- To execute an atomic block, set the runningAtomic flag,
