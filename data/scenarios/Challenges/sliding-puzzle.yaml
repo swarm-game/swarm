@@ -95,7 +95,7 @@ robots:
       - [15, o-tile-ordinal]
     program: |
       run "scenarios/Challenges/_sliding-puzzle/maintainer.sw";
-  - name: referee
+  - name: setup
     system: true
     dir: [1, 0]
     display:
@@ -118,7 +118,7 @@ robots:
       - [14, n-tile-ordinal]
       - [15, o-tile-ordinal]
     program: |
-      run "scenarios/Challenges/_sliding-puzzle/referee.sw";
+      run "scenarios/Challenges/_sliding-puzzle/setup.sw";
 solution: |
    run "scenarios/Challenges/_sliding-puzzle/solution.sw"
 entities:
@@ -471,7 +471,7 @@ world:
   offset: false
   palette:
     B: [grass, null, base]
-    y: [grass, null, referee]
+    y: [grass, null, setup]
     z: [grass, null, maintainer]
     '.': [grass]
     'x': [grass, border]

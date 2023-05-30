@@ -1041,6 +1041,7 @@ handleREPLEventPiloting x = case x of
   CharKey 'g' -> inputCmd "grab"
   CharKey 'h' -> inputCmd "harvest"
   CharKey 'd' -> inputCmd "drill forward"
+  CharKey 'x' -> inputCmd "drill down"
   CharKey 's' -> inputCmd "scan forward"
   CharKey 'b' -> inputCmd "blocked"
   CharKey 'u' -> inputCmd "upload base"
