@@ -68,6 +68,7 @@
                "equipped"
                "count"
                "drill"
+               "use"
                "build"
                "salvage"
                "reprogram"

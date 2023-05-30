@@ -237,6 +237,8 @@ data Const
     Count
   | -- | Drill through an entity.
     Drill
+  | -- | Use an entity with another.
+    Use
   | -- | Construct a new robot.
     Build
   | -- | Deconstruct an old robot.
@@ -607,6 +609,11 @@ constInfo c = case c of
       , "When you have found a source to drill, you can stand on it and `drill down`."
       , "See what recipes with drill you have available."
       , "The `drill` command may return the name of an entity added to your inventory."
+      ]
+  Use ->
+    command 2 long . doc "Use one entity upon another." $
+      [ "Which entities you can `use` with others depends on the available recipes."
+      , "The object being used must be a 'required' entity in a recipe."
       ]
   Build ->
     command 1 long . doc "Construct a new robot." $

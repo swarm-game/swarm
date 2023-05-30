@@ -1464,6 +1464,13 @@ execConst c vs s k = do
     Drill -> case vs of
       [VDir d] -> doDrill d
       _ -> badConst
+    Use -> case vs of
+      [VText deviceName, VDir d] -> do
+        ins <- use equippedDevices
+        equippedEntity <- ensureEquipped deviceName
+        let verbPhrase = T.unwords ["use", deviceName, "on"]
+        applyDevice ins verbPhrase d equippedEntity
+      _ -> badConst
     Blocked -> do
       loc <- use robotLocation
       orient <- use robotOrientation
@@ -2048,7 +2055,6 @@ execConst c vs s k = do
        in throwError . Fatal $ msg <> badConstMsg
  where
   doDrill d = do
-    inv <- use robotInventory
     ins <- use equippedDevices
 
     let equippedDrills = extantElemsWithCapability CDrill ins
@@ -2056,22 +2062,26 @@ execConst c vs s k = do
         -- E.g. "metal drill" vs. "drill"
         preferredDrill = listToMaybe $ sortOn (Down . T.length . (^. entityName)) equippedDrills
 
-    drill <- preferredDrill `isJustOr` Fatal "Drill is required but not equipped?!"
+    tool <- preferredDrill `isJustOr` Fatal "Drill is required but not equipped?!"
+    applyDevice ins "drill" d tool
 
-    (nextLoc, nextE) <- getDrillTarget "drill" d
+  applyDevice ins verbPhrase d tool = do
+    (nextLoc, nextE) <- getDrillTarget verbPhrase d
     inRs <- use recipesIn
 
     let recipes = filter drilling (recipesFor inRs nextE)
-        drilling = any ((== drill) . snd) . view recipeRequirements
+        drilling = any ((== tool) . snd) . view recipeRequirements
 
-    not (null recipes) `holdsOrFail` ["There is no way to drill", indefinite (nextE ^. entityName) <> "."]
+    not (null recipes) `holdsOrFail` ["There is no way to", verbPhrase, indefinite (nextE ^. entityName) <> "."]
 
-    -- add the drilled entity so it can be consumed by the recipe
+    inv <- use robotInventory
+
+    -- add the targeted entity so it can be consumed by the recipe
     let makeRecipe r = (,r) <$> make' (insert nextE inv, ins) r
     chosenRecipe <- weightedChoice (\((_, _), r) -> r ^. recipeWeight) (rights (map makeRecipe recipes))
     ((invTaken, outs), recipe) <-
       chosenRecipe
-        `isJustOrFail` ["You don't have the ingredients to drill", indefinite (nextE ^. entityName) <> "."]
+        `isJustOrFail` ["You don't have the ingredients to", verbPhrase, indefinite (nextE ^. entityName) <> "."]
 
     let (out, down) = L.partition ((`hasProperty` Portable) . snd) outs
     let learn = map (LearnEntity . snd) down
