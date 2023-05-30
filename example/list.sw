@@ -179,22 +179,22 @@ def index = \i.\xs.
     {index (i-1) (tail xs)}
 end
 
-def for : int -> int -> (int -> cmd a) -> cmd unit = \s.\e.\act.
+def for : int -> int -> (int -> cmd a) -> cmd unit = \s.\e.\f.
   if (s == e) {}
-  {act s; for (s+1) e act}
+  {f s; for (s+1) e f}
 end
 
 // for_each_i : int -> listI int -> (int * int -> cmd a) -> cmd unit
-def for_each_i = \i.\xs.\act.
+def for_each_i = \i.\xs.\f.
   if (xs == nil) {}
   { let ht = headTail xs
-    in act i (force $ fst ht); for_each_i (i+1) (force $ snd ht) act
+    in f i (force $ fst ht); for_each_i (i+1) (force $ snd ht) f
   }
 end
 
 // for_each : listI int -> (int -> cmd a) -> cmd unit
-def for_each = \xs.\act.
-  for_each_i 0 xs (\i. act)
+def for_each = \xs.\f.
+  for_each_i 0 xs (\i. f)
 end
 
 /*******************************************************************/

@@ -823,6 +823,18 @@
   capabilities: [power]
   properties: [portable]
 
+- name: agency card
+  display:
+    attr: device
+    char: 'A'
+  description:
+  - Become a card-carrying member of the Nice Roboticists Agency.
+  - Philosophically speaking, this "agency" grants a robot the capacity to `act`.
+  - |
+    `act : dir -> cmd unit` modifies an entity in said direction.
+  capabilities: [act]
+  properties: [portable]
+
 - name: drill
   display:
     attr: device

@@ -1461,6 +1461,13 @@ execConst c vs s k = do
     Time -> do
       t <- use ticks
       return $ Out (VInt t) s k
+    Act -> case vs of
+      [VDir d] -> do
+        drillOut <- doDrill d
+        return $ case drillOut of
+          Out _ s' k' -> Out VUnit s' k'
+          _ -> Out VUnit s k
+      _ -> badConst
     Drill -> case vs of
       [VDir d] -> doDrill d
       _ -> badConst

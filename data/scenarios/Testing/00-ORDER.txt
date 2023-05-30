@@ -34,4 +34,5 @@
 1207-scout-command.yaml
 1218-stride-command.yaml
 1234-push-command.yaml
+1238-act-command.yaml
 1256-halt-command.yaml

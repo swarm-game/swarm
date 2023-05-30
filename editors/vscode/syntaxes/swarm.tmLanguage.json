@@ -58,7 +58,7 @@
 				},
 				{
 				"name": "keyword.other",
-				"match": "\\b(?i)(self|parent|base|if|inl|inr|case|fst|snd|force|undefined|fail|not|format|chars|split|charat|tochar|key|noop|wait|selfdestruct|move|push|stride|turn|grab|harvest|place|give|equip|unequip|make|has|equipped|count|drill|use|build|salvage|reprogram|say|listen|log|view|appear|create|halt|time|scout|whereami|detect|resonate|sniff|chirp|watch|surveil|heading|blocked|scan|upload|ishere|isempty|meet|meetall|whoami|setname|random|run|return|try|swap|atomic|instant|installkeyhandler|teleport|as|robotnamed|robotnumbered|knows)\\b"
+				"match": "\\b(?i)(self|parent|base|if|inl|inr|case|fst|snd|force|undefined|fail|not|format|chars|split|charat|tochar|key|noop|wait|selfdestruct|move|push|stride|turn|grab|harvest|place|give|equip|unequip|make|has|equipped|count|act|drill|use|build|salvage|reprogram|say|listen|log|view|appear|create|halt|time|scout|whereami|detect|resonate|sniff|chirp|watch|surveil|heading|blocked|scan|upload|ishere|isempty|meet|meetall|whoami|setname|random|run|return|try|swap|atomic|instant|installkeyhandler|teleport|as|robotnamed|robotnumbered|knows)\\b"
 				}
 			]
 			},

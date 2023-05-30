@@ -68,6 +68,8 @@ data Capability
     CBuild
   | -- | Execute the 'Salvage' command
     CSalvage
+  | -- | Execute the 'Act' command
+    CAct
   | -- | Execute the 'Drill' command
     CDrill
   | -- | Execute the 'Whereami' command
@@ -223,6 +225,7 @@ constCaps = \case
   Reprogram -> Just CReprogram
   Meet -> Just CMeet
   MeetAll -> Just CMeet
+  Act -> Just CAct
   Drill -> Just CDrill
   Use -> Nothing -- Recipes alone shall dictate whether things can be "used"
   Neg -> Just CArith
