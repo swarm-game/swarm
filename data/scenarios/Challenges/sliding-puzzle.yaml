@@ -23,9 +23,11 @@ objectives:
       - |
         Or, if you prefer, `drill` a tile to cause it to slide
         into the adjacent empty space. However, you must not drill a tile that
-        has nowhere to slide or drill again too quickly in succession.
+        has nowhere to slide. Also, drilling consumes "ink", which will be replenished
+        after the sliding operation is complete, so avoid drilling too fast in
+        succession.
     condition: |
-      j <- robotnamed "judge";
+      j <- robotnamed "maintainer";
       as j {run "scenarios/Challenges/_sliding-puzzle/validate-board.sw"};
 robots:
   - name: base
@@ -53,6 +55,7 @@ robots:
       - welder
       - workbench
     inventory:
+      - [1, ink]
       - [1, a-tile-ordinal]
       - [2, b-tile-ordinal]
       - [3, c-tile-ordinal]
@@ -68,7 +71,31 @@ robots:
       - [13, m-tile-ordinal]
       - [14, n-tile-ordinal]
       - [15, o-tile-ordinal]
-  - name: judge
+  - name: maintainer
+    system: true
+    dir: [1, 0]
+    display:
+      invisible: true
+      attr: 'gold'
+    inventory:
+      - [1, a-tile-ordinal]
+      - [2, b-tile-ordinal]
+      - [3, c-tile-ordinal]
+      - [4, d-tile-ordinal]
+      - [5, e-tile-ordinal]
+      - [6, f-tile-ordinal]
+      - [7, g-tile-ordinal]
+      - [8, h-tile-ordinal]
+      - [9, i-tile-ordinal]
+      - [10, j-tile-ordinal]
+      - [11, k-tile-ordinal]
+      - [12, l-tile-ordinal]
+      - [13, m-tile-ordinal]
+      - [14, n-tile-ordinal]
+      - [15, o-tile-ordinal]
+    program: |
+      run "scenarios/Challenges/_sliding-puzzle/maintainer.sw";
+  - name: referee
     system: true
     dir: [1, 0]
     display:
@@ -91,7 +118,7 @@ robots:
       - [14, n-tile-ordinal]
       - [15, o-tile-ordinal]
     program: |
-      run "scenarios/Challenges/_sliding-puzzle/judge.sw";
+      run "scenarios/Challenges/_sliding-puzzle/referee.sw";
 solution: |
    run "scenarios/Challenges/_sliding-puzzle/solution.sw"
 entities:
@@ -100,6 +127,12 @@ entities:
       char: '▒'
     description:
       - Immovable playfield border
+    properties: [known]
+  - name: ink
+    display:
+      char: 'i'
+    description:
+      - Marking fluid to designate the tile to slide
     properties: [known]
   - name: dozer blade
     display:
@@ -312,6 +345,7 @@ entities:
     properties: [known]
 recipes:
   - in:
+      - [1, ink]
       - [1, a-tile]
     out:
       - [1, sliding-tile]
@@ -319,6 +353,7 @@ recipes:
       - [1, drill]
     time: 0
   - in:
+      - [1, ink]
       - [1, b-tile]
     out:
       - [1, sliding-tile]
@@ -326,6 +361,7 @@ recipes:
       - [1, drill]
     time: 0
   - in:
+      - [1, ink]
       - [1, c-tile]
     out:
       - [1, sliding-tile]
@@ -333,6 +369,7 @@ recipes:
       - [1, drill]
     time: 0
   - in:
+      - [1, ink]
       - [1, d-tile]
     out:
       - [1, sliding-tile]
@@ -340,6 +377,7 @@ recipes:
       - [1, drill]
     time: 0
   - in:
+      - [1, ink]
       - [1, e-tile]
     out:
       - [1, sliding-tile]
@@ -347,6 +385,7 @@ recipes:
       - [1, drill]
     time: 0
   - in:
+      - [1, ink]
       - [1, f-tile]
     out:
       - [1, sliding-tile]
@@ -354,6 +393,7 @@ recipes:
       - [1, drill]
     time: 0
   - in:
+      - [1, ink]
       - [1, g-tile]
     out:
       - [1, sliding-tile]
@@ -361,6 +401,7 @@ recipes:
       - [1, drill]
     time: 0
   - in:
+      - [1, ink]
       - [1, h-tile]
     out:
       - [1, sliding-tile]
@@ -368,6 +409,7 @@ recipes:
       - [1, drill]
     time: 0
   - in:
+      - [1, ink]
       - [1, i-tile]
     out:
       - [1, sliding-tile]
@@ -375,6 +417,7 @@ recipes:
       - [1, drill]
     time: 0
   - in:
+      - [1, ink]
       - [1, j-tile]
     out:
       - [1, sliding-tile]
@@ -382,6 +425,7 @@ recipes:
       - [1, drill]
     time: 0
   - in:
+      - [1, ink]
       - [1, k-tile]
     out:
       - [1, sliding-tile]
@@ -389,6 +433,7 @@ recipes:
       - [1, drill]
     time: 0
   - in:
+      - [1, ink]
       - [1, l-tile]
     out:
       - [1, sliding-tile]
@@ -396,6 +441,7 @@ recipes:
       - [1, drill]
     time: 0
   - in:
+      - [1, ink]
       - [1, m-tile]
     out:
       - [1, sliding-tile]
@@ -403,6 +449,7 @@ recipes:
       - [1, drill]
     time: 0
   - in:
+      - [1, ink]
       - [1, n-tile]
     out:
       - [1, sliding-tile]
@@ -410,6 +457,7 @@ recipes:
       - [1, drill]
     time: 0
   - in:
+      - [1, ink]
       - [1, o-tile]
     out:
       - [1, sliding-tile]
@@ -423,7 +471,8 @@ world:
   offset: false
   palette:
     B: [grass, null, base]
-    z: [grass, null, judge]
+    y: [grass, null, referee]
+    z: [grass, null, maintainer]
     '.': [grass]
     'x': [grass, border]
     'a': [grass, a-tile]
@@ -450,4 +499,4 @@ world:
     ..x....x..........
     ..xxxxxx..........
     ..................
-    .z.abcdefghijklmno
+    zy.abcdefghijklmno
