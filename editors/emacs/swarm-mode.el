@@ -84,6 +84,7 @@
                "whereami"
                "detect"
                "resonate"
+               "density"
                "sniff"
                "chirp"
                "watch"

@@ -1,0 +1,49 @@
+version: 1
+name: Density test
+creative: true
+description: Count entities in an area
+objectives:
+  - goal:
+      - Pick up 3 entities.
+    condition: |
+      j <- robotnamed "judge";
+      as j {
+        c <- density ((0, 0), (3, 3));
+        return $ c <= 13;
+      };
+solution: |
+  def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+  doN 3 (move; grab);
+robots:
+  - name: base
+    dir: [1, 0]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - string
+      - grabber
+      - compass
+      - treads
+      - ADT calculator
+  - name: judge
+    dir: [1, 0]
+    system: true
+    display:
+      invisible: false
+      char: J
+known: []
+world:
+  default: [blank, boulder]
+  palette:
+    'Ω': [grass, tree, base]
+    'J': [grass, tree, judge]
+    '.': [grass, tree]
+    '*': [grass, flower]
+  upperleft: [76, -89]
+  map: |
+   *.*.
+   Ω*.*
+   *.*.
+   J*.*
