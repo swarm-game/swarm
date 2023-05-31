@@ -105,12 +105,14 @@ lookup loc x = do
   ctx <- ask
   maybe (throwError $ UnboundVar loc x) instantiate (Ctx.lookup x ctx)
 
--- | Add a source location to a type error and re-throw it.
-addLocToTypeErr :: Syntax' ty -> TypeErr -> TC a
-addLocToTypeErr s te = case te of
-  UnifyErr NoLoc a b -> throwError $ UnifyErr (s ^. sLoc) a b
-  Mismatch NoLoc mt a b -> throwError $ Mismatch (s ^. sLoc) mt a b
-  _ -> throwError te
+-- | Catch any thrown type errors and re-throw them with an added source
+--   location.
+addLocToTypeErr :: SrcLoc -> TC a -> TC a
+addLocToTypeErr l m =
+  m `catchError` \case
+    UnifyErr NoLoc a b -> throwError $ UnifyErr l a b
+    Mismatch NoLoc mt a b -> throwError $ Mismatch l mt a b
+    te -> throwError te
 
 ------------------------------------------------------------
 -- Dealing with variables: free variables, fresh variables,
@@ -387,7 +389,7 @@ inferTop ctx = runTC ctx . inferModule
 -- | Infer the signature of a top-level expression which might
 --   contain definitions.
 inferModule :: Syntax -> TC UModule
-inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
+inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
   -- For definitions with no type signature, make up a fresh type
   -- variable for the body, infer the body under an extended context,
   -- and unify the two.  Then generalize the type and return an
@@ -457,7 +459,7 @@ inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
 --   For most everything else we prefer 'check' because it can often
 --   result in better and more localized type error messages.
 infer :: Syntax -> TC (Syntax' UType)
-infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
+infer s@(Syntax l t) = addLocToTypeErr l $ case t of
   -- Primitives, i.e. things for which we immediately know the only
   -- possible correct type, and knowing an expected type would provide
   -- no extra information.
@@ -504,7 +506,7 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     (argTy, resTy) <- decomposeFunTy (f' ^. sType)
 
     -- Then check that the argument has the right type.
-    x' <- check x argTy `catchError` addLocToTypeErr x
+    x' <- check x argTy
     return $ Syntax' l (SApp f' x') resTy
 
   -- We handle binds in inference mode for a similar reason to
@@ -539,7 +541,7 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     let upty = toU pty
     -- Typecheck against skolemized polytype.
     uty <- skolemize upty
-    _ <- check c uty `catchError` addLocToTypeErr c
+    _ <- check c uty
     -- Make sure no skolem variables have escaped.
     ask >>= mapM_ (noSkolems l)
     -- If check against skolemized polytype is successful,
@@ -547,7 +549,7 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
     -- Free variables should be able to unify with anything in
     -- following typechecking steps.
     iuty <- instantiate upty
-    c' <- check c iuty `catchError` addLocToTypeErr c
+    c' <- check c iuty
     return $ Syntax' l (SAnnotate c' pty) (c' ^. sType)
 
   -- Fallback: to infer the type of anything else, make up a fresh unification
@@ -665,7 +667,7 @@ inferConst c = case c of
 --   We try to stay in checking mode as far as possible, decomposing
 --   the expected type as we go and pushing it through the recursion.
 check :: Syntax -> UType -> TC (Syntax' UType)
-check s@(Syntax l t) expected = (`catchError` addLocToTypeErr s) $ case t of
+check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
   -- if t : ty, then  {t} : {ty}.
   -- Note that in theory, if the @Maybe Var@ component of the @SDelay@
   -- is @Just@, we should typecheck the body under a context extended
@@ -743,7 +745,7 @@ check s@(Syntax l t) expected = (`catchError` addLocToTypeErr s) $ case t of
       Just pty -> do
         let upty = toU pty
         uty <- skolemize upty
-        t1' <- withBinding (lvVar x) upty $ check t1 uty `catchError` addLocToTypeErr t1
+        t1' <- withBinding (lvVar x) upty $ check t1 uty
         return (upty, t1')
 
     -- Now check the type of the body.
