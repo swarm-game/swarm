@@ -34,26 +34,27 @@ robots:
     dir: [1, 0]
     devices:
       - ADT calculator
-      - antenna
       - branch predictor
-      - clock
       - comparator
       - compass
       - counter
+      - decoder ring
       - dictionary
       - dozer blade
       - drill
+      - gradiator
+      - GPS receiver
       - hearing aid
+      - hourglass
       - keyboard
       - lambda
+      - locator
       - logger
       - mirror
       - scanner
-      - strange loop
       - string
+      - strange loop
       - treads
-      - welder
-      - workbench
     inventory:
       - [1, ink]
       - [1, a-tile-ordinal]
@@ -122,6 +123,20 @@ robots:
 solution: |
    run "scenarios/Challenges/_sliding-puzzle/solution.sw"
 entities:
+  - name: gradiator
+    display:
+      char: 'G'
+    description:
+      - Generates a magnetic field gradient that allows the use of `resonate`
+    properties: [known]
+    capabilities: [detectcount]
+  - name: locator
+    display:
+      char: '{'
+    description:
+      - Enables the `detect` command
+    properties: [known]
+    capabilities: [detectloc]
   - name: border
     display:
       char: '▒'
