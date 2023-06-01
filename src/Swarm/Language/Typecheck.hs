@@ -593,6 +593,7 @@ inferConst c = case c of
   Whereami -> [tyQ| cmd (int * int) |]
   Detect -> [tyQ| text -> ((int * int) * (int * int)) -> cmd (unit + (int * int)) |]
   Resonate -> [tyQ| text -> ((int * int) * (int * int)) -> cmd int |]
+  Density -> [tyQ| ((int * int) * (int * int)) -> cmd int |]
   Sniff -> [tyQ| text -> cmd int |]
   Chirp -> [tyQ| text -> cmd dir |]
   Watch -> [tyQ| dir -> cmd unit |]
