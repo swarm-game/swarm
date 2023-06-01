@@ -167,6 +167,16 @@ noSkolems l (Forall xs upty) = do
       ftyvs = tyvs `S.difference` S.fromList xs
   forM_ (S.lookupMin ftyvs) $ throwTypeErr l . EscapedSkolem
 
+-- ~~~~ Note [lookupMin to get an arbitrary element]
+--
+-- `S.lookupMin :: Set a -> Maybe a` returns the smallest
+-- element of a set, or Nothing if the set is empty. We don't
+-- actually care about getting the *smallest* type variable, but
+-- lookupMin is a convenient way to say "just get one element if
+-- any exist". The forM_ is actually over the Maybe so it represents
+-- doing the throwTypeErr either zero or one time, depending on
+-- whether lookupMin returns Nothing or Just.
+
 ------------------------------------------------------------
 -- Lifted stuff from unification-fd
 
