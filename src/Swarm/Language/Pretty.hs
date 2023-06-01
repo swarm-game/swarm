@@ -202,28 +202,28 @@ appliedTermPrec (TApp f _) = case f of
 appliedTermPrec _ = 10
 
 instance PrettyPrec TypeErr where
-  prettyPrec _ (UnifyErr _ ty1 ty2) =
+  prettyPrec _ (UnifyErr ty1 ty2) =
     "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
-  prettyPrec _ (Mismatch _ _mt ty1 ty2) =
+  prettyPrec _ (Mismatch _mt ty1 ty2) =
     "Type mismatch: expected" <+> ppr ty1 <> ", but got" <+> ppr ty2
-  prettyPrec _ (LambdaArgMismatch _ ty1 ty2) =
+  prettyPrec _ (LambdaArgMismatch ty1 ty2) =
     "Lambda argument has type annotation" <+> ppr ty2 <> ", but expected argument type" <+> ppr ty1
-  prettyPrec _ (FieldsMismatch _ _fs1 _fs2) = "Fields mismatch!!"
-  prettyPrec _ (EscapedSkolem _ x) =
+  prettyPrec _ (FieldsMismatch _fs1 _fs2) = "Fields mismatch!!"
+  prettyPrec _ (EscapedSkolem x) =
     "Skolem variable" <+> pretty x <+> "would escape its scope"
-  prettyPrec _ (UnboundVar _ x) =
+  prettyPrec _ (UnboundVar x) =
     "Unbound variable" <+> pretty x
   prettyPrec _ (Infinite x uty) =
     "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
-  prettyPrec _ (DefNotTopLevel _ t) =
+  prettyPrec _ (DefNotTopLevel t) =
     "Definitions may only be at the top level:" <+> ppr t
-  prettyPrec _ (CantInfer _ t) =
+  prettyPrec _ (CantInfer t) =
     "Couldn't infer the type of term (this shouldn't happen; please report this as a bug!):" <+> ppr t
-  prettyPrec _ (CantInferProj _ t) =
+  prettyPrec _ (CantInferProj t) =
     "Can't infer the type of a record projection:" <+> ppr t
-  prettyPrec _ (UnknownProj _ x t) =
+  prettyPrec _ (UnknownProj x t) =
     "Record does not have a field with name" <+> pretty x <> ":" <+> ppr t
-  prettyPrec _ (InvalidAtomic _ reason t) =
+  prettyPrec _ (InvalidAtomic reason t) =
     "Invalid atomic block:" <+> ppr reason <> ":" <+> ppr t
 
 instance PrettyPrec InvalidAtomicReason where
