@@ -280,7 +280,9 @@ generalize uty = do
 
 -- | A type error along with various contextual information to help us
 --   generate better error messages.  For now there is only a SrcLoc
---   but there will be additional context in the future.
+--   but there will be additional context in the future, such as a
+--   stack of stuff we were in the middle of doing, relevant names in
+--   scope, etc. (#1297).
 data ContextualTypeErr = CTE {cteSrcLoc :: SrcLoc, cteTypeErr :: TypeErr}
   deriving (Show)
 
