@@ -48,7 +48,7 @@ import Data.IntSet qualified as IS
 import Data.List (find, sortOn)
 import Data.List qualified as L
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe, mapMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
 import Data.Ord (Down (Down))
 import Data.Sequence ((><))
 import Data.Sequence qualified as Seq
@@ -1407,11 +1407,10 @@ execConst c vs s k = do
         return $ Out (asValue firstOne) s k
       _ -> badConst
     Resonate -> case vs of
-      [VText name, VRect x1 y1 x2 y2] -> do
-        loc <- use robotLocation
-        let locs = rectCells x1 y1 x2 y2
-        hits <- mapM (fmap (fromEnum . maybe False (isEntityNamed name)) . entityAt . (loc .+^)) locs
-        return $ Out (VInt $ fromIntegral $ sum hits) s k
+      [VText name, VRect x1 y1 x2 y2] -> doResonate (maybe False $ isEntityNamed name) x1 y1 x2 y2
+      _ -> badConst
+    Density -> case vs of
+      [VRect x1 y1 x2 y2] -> doResonate isJust x1 y1 x2 y2
       _ -> badConst
     Sniff -> case vs of
       [VText name] -> do
@@ -2144,6 +2143,20 @@ execConst c vs s k = do
       , T.pack (show (reverse vs))
       , prettyText (Out (VCApp c (reverse vs)) s k)
       ]
+
+  doResonate ::
+    (HasRobotStepState sig m, Has (Lift IO) sig m) =>
+    (Maybe Entity -> Bool) ->
+    Integer ->
+    Integer ->
+    Integer ->
+    Integer ->
+    m CESK
+  doResonate p x1 y1 x2 y2 = do
+    loc <- use robotLocation
+    let locs = rectCells x1 y1 x2 y2
+    hits <- mapM (fmap (fromEnum . p) . entityAt . (loc .+^)) locs
+    return $ Out (VInt $ fromIntegral $ sum hits) s k
 
   rectCells :: Integer -> Integer -> Integer -> Integer -> [V2 Int32]
   rectCells x1 y1 x2 y2 =
