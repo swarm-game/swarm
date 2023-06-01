@@ -339,8 +339,8 @@ data InvalidAtomicReason
   deriving (Show)
 
 instance Fallible TypeF IntVar ContextualTypeErr where
-  occursFailure = \v t -> mkRawTypeErr (Infinite v t)
-  mismatchFailure = \t1 t2 -> mkRawTypeErr (UnifyErr t1 t2)
+  occursFailure v t = mkRawTypeErr (Infinite v t)
+  mismatchFailure t1 t2 = mkRawTypeErr (UnifyErr t1 t2)
 
 ------------------------------------------------------------
 -- Type decomposition
