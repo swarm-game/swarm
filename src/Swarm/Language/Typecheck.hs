@@ -498,6 +498,16 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
   TRef _ -> throwTypeErr l $ CantInfer t
   -- Just look up variables in the context.
   TVar x -> Syntax' l (TVar x) <$> lookup l x
+  -- It is helpful to handle lambdas in inference mode as well as
+  -- checking mode; in particular, we can handle lambdas with an
+  -- explicit type annotation on the argument.  Just infer the body
+  -- under an extended context and return the appropriate function
+  -- type.
+  SLam x (Just argTy) body -> do
+    let uargTy = toU argTy
+    body' <- withBinding (lvVar x) (Forall [] uargTy) $ infer body
+    return $ Syntax' l (SLam x (Just argTy) body') (UTyFun uargTy (body' ^. sType))
+
   -- Need special case here for applying 'atomic' or 'instant' so we
   -- don't handle it with the case for generic type application.
   -- This must come BEFORE the SApp case.
