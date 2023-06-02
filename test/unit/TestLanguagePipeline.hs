@@ -94,7 +94,7 @@ testLanguagePipeline =
             "located type error"
             ( process
                 "def a =\n 42 + \"oops\"\nend"
-                "2:7: Type mismatch: expected int, but got text"
+                "2:7: Type mismatch:\n  From context, expected `\"oops\"` to have type `int`,\n  but it actually has type `text`"
             )
         , testCase
             "failure inside bind chain"
@@ -106,7 +106,7 @@ testLanguagePipeline =
             "failure inside function call"
             ( process
                 "if true \n{} \n(move)"
-                "3:1: Type mismatch: expected {u0}, but got cmd unit"
+                "3:1: Type mismatch:\n  From context, expected `move` to have type `{u0}`,\n  but it actually has type `cmd unit`"
             )
         , testCase
             "parsing operators #236 - report failure on invalid operator start"
@@ -286,13 +286,13 @@ testLanguagePipeline =
             (valid "(3 : int) + 5")
         , testCase
             "invalid type ascription"
-            (process "1 : text" "1:1: Type mismatch: expected text, but got int")
+            (process "1 : text" "1:1: Type mismatch:\n  From context, expected `1` to have type `text`,\n  but it actually has type `int`")
         , testCase
             "type ascription with a polytype"
             (valid "((\\x . x) : a -> a) 3")
         , testCase
             "type ascription too general"
-            (process "1 : a" "1:1: Type mismatch: expected s0, but got int")
+            (process "1 : a" "1:1: Type mismatch:\n  From context, expected `1` to have type `s0`,\n  but it actually has type `int`")
         , testCase
             "type specialization through type ascription"
             (valid "fst:(int + b) * a -> int + b")
