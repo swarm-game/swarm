@@ -249,12 +249,39 @@ testLanguagePipeline =
     , testGroup
         "void type"
         [ testCase
-            "void - isSimpleUType"
+            "isSimpleUType"
             ( assertBool "" $ isSimpleUType UTyVoid
             )
         , testCase
-            "void - valid type signature"
+            "valid type signature"
             (valid "def f : void -> a = \\x. undefined end")
+        ]
+    , testGroup
+        "record type"
+        [ testCase
+            "valid record"
+            (valid "\\x:int. ([y = \"hi\", x, z = \\x.x] : [x:int, y:text, z:bool -> bool])")
+        , testCase
+            "infer record type"
+            (valid "[x = 3, y = \"hi\"]")
+        , testCase
+            "field mismatch - missing"
+            ( process
+                "(\\r:[x:int, y:int]. r.x) [x = 3]"
+                "1:26: Field mismatch; record literal has:\n  - Missing field(s) `y`"
+            )
+        , testCase
+            "field mismatch - extra"
+            ( process
+                "(\\r:[x:int, y:int]. r.x) [x = 3, y = 4, z = 5]"
+                "1:26: Field mismatch; record literal has:\n  - Extra field(s) `z`"
+            )
+        , testCase
+            "field mismatch - both"
+            ( process
+                "(\\r:[x:int, y:int]. r.x) [x = 3, z = 5]"
+                "1:26: Field mismatch; record literal has:\n  - Extra field(s) `z`\n  - Missing field(s) `y`"
+            )
         ]
     , testGroup
         "type annotations"
