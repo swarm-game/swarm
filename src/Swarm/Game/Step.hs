@@ -912,7 +912,7 @@ stepCESK cesk = case cesk of
     robotContext . defReqs %= (`union` rctx)
     returnVal (SK s k) v
   Go (Out v) (SK s (FLoadEnv {} : k)) -> returnVal (SK s k) v
-  -- Any other type of value wiwth an FExec frame is an error (should
+  -- Any other type of value with an FExec frame is an error (should
   -- never happen).
   Go (Out _) (SK s (FExec : _)) -> badMachineState s "FExec frame with non-executable value"
   -- If we see a VResult in any other context, simply discard it.  For
@@ -1006,7 +1006,7 @@ stepCESK cesk = case cesk of
     FUnionEnv e2 : k -> FUnionEnv (e2 `union` e1) : k
     k -> FUnionEnv e1 : k
 
--- | Eexecute a constant, catching any exception thrown and returning
+-- | Execute a constant, catching any exception thrown and returning
 --   it via a CESK machine state.
 evalConst ::
   (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m) => Const -> [Value] -> SKPair -> m CESK
@@ -1845,7 +1845,7 @@ execConst c vs sk@(SK s k) = do
         -- the childRobot inherits the parent robot's environment
         -- and context which collectively mean all the variables
         -- declared in the parent robot
-        robotMap . at childRobotID . _Just . machine .= Go (In cmd e) (SK s [FExec])
+        robotMap . at childRobotID . _Just . machine .= initializeForExecution cmd e
         robotMap . at childRobotID . _Just . robotContext .= r ^. robotContext
 
         -- Provision the target robot with any required devices and
@@ -1905,7 +1905,7 @@ execConst c vs sk@(SK s k) = do
                   ? north
               )
               defaultRobotDisplay
-              (Go (In cmd e) $ SK s [FExec])
+              (initializeForExecution cmd e)
               []
               []
               False
@@ -2120,6 +2120,8 @@ execConst c vs sk@(SK s k) = do
       DRelative DForward -> "ahead of"
       DRelative DBack -> "behind"
       _ -> directionSyntax d <> " of"
+
+  initializeForExecution cmd e = Go (In cmd e) $ SK s [FExec]
 
   goAtomic :: HasRobotStepState sig m => m CESK
   goAtomic = case vs of
