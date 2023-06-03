@@ -651,6 +651,9 @@ updateWorldAndRobots cmd wf rf = do
   applyRobotUpdates rf
   flagRedraw
 
+pushFrame :: SKPair -> Frame -> SKPair
+pushFrame (SK s k) newFrame = SK s $ newFrame : k
+
 -- | The main CESK machine workhorse.  Given a robot, look at its CESK
 --   machine state and figure out a single next step.
 stepCESK :: (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m) => CESK -> m CESK
@@ -704,7 +707,7 @@ stepCESK cesk = case cesk of
     returnVal sk v
 
   -- To evaluate a pair, start evaluating the first component.
-  Go (In (TPair t1 t2) e) (SK s k) -> return $ Go (In t1 e) $ SK s (FSnd t2 e : k)
+  Go (In (TPair t1 t2) e) sk -> return . Go (In t1 e) . pushFrame sk $ FSnd t2 e
   -- Once that's done, evaluate the second component.
   Go (Out v1) (SK s (FSnd t2 e : k)) -> return $ Go (In t2 e) $ SK s (FFst v1 : k)
   -- Finally, put the results together into a pair value.
@@ -713,7 +716,7 @@ stepCESK cesk = case cesk of
   Go (In (TLam x _ t) e) sk -> returnVal sk $ VClo x t e
   -- To evaluate an application, start by focusing on the left-hand
   -- side and saving the argument for later.
-  Go (In (TApp t1 t2) e) (SK s k) -> return $ Go (In t1 e) $ SK s (FArg t2 e : k)
+  Go (In (TApp t1 t2) e) sk -> return . Go (In t1 e) . pushFrame sk $ FArg t2 e
   -- Once that's done, switch to evaluating the argument.
   Go (Out v1) (SK s (FArg t2 e : k)) -> return $ Go (In t2 e) $ SK s (FApp v1 : k)
   -- We can evaluate an application of a closure in the usual way.
@@ -729,9 +732,9 @@ stepCESK cesk = case cesk of
   Go (Out _) (SK s (FApp _ : _)) -> badMachineState s "FApp of non-function"
   -- Start evaluating a record.  If it's empty, we're done.  Otherwise, focus
   -- on the first field and record the rest in a FRcd frame.
-  Go (In (TRcd m) e) sk@(SK s k) -> return $ case M.assocs m of
+  Go (In (TRcd m) e) sk -> return $ case M.assocs m of
     [] -> Go (Out (VRcd M.empty)) sk
-    ((x, t) : fs) -> Go (In (fromMaybe (TVar x) t) e) $ SK s (FRcd e [] x fs : k)
+    ((x, t) : fs) -> Go (In (fromMaybe (TVar x) t) e) $ pushFrame sk $ FRcd e [] x fs
   -- When we finish evaluating the last field, return a record value.
   Go (Out v) (SK s (FRcd _ done x [] : k)) -> returnVal (SK s k) . VRcd . M.fromList $ (x, v) : done
   -- Otherwise, save the value of the field just evaluated and move on
@@ -740,7 +743,7 @@ stepCESK cesk = case cesk of
     return $ Go (In (fromMaybe (TVar y) t) e) $ SK s (FRcd e ((x, v) : done) y rest : k)
   -- Evaluate a record projection: evaluate the record and remember we
   -- need to do the projection later.
-  Go (In (TProj t x) e) (SK s k) -> return $ Go (In t e) $ SK s (FProj x : k)
+  Go (In (TProj t x) e) sk -> return . Go (In t e) . pushFrame sk $ FProj x
   -- Do a record projection
   Go (Out v) (SK s (FProj x : k)) -> case v of
     VRcd m -> case M.lookup x m of
@@ -749,13 +752,13 @@ stepCESK cesk = case cesk of
     _ -> badMachineState s "FProj frame with non-record value"
   -- To evaluate non-recursive let expressions, we start by focusing on the
   -- let-bound expression.
-  Go (In (TLet False x _ t1 t2) e) (SK s k) -> return $ Go (In t1 e) $ SK s (FLet x t2 e : k)
+  Go (In (TLet False x _ t1 t2) e) sk -> return . Go (In t1 e) . pushFrame sk $ FLet x t2 e
   -- To evaluate recursive let expressions, we evaluate the memoized
   -- delay of the let-bound expression.  Every free occurrence of x
   -- in the let-bound expression and the body has already been
   -- rewritten by elaboration to 'force x'.
-  Go (In (TLet True x _ t1 t2) e) (SK s k) ->
-    return $ Go (In (TDelay (MemoizedDelay $ Just x) t1) e) $ SK s (FLet x t2 e : k)
+  Go (In (TLet True x _ t1 t2) e) sk ->
+    return . Go (In (TDelay (MemoizedDelay $ Just x) t1) e) . pushFrame sk $ FLet x t2 e
   -- Once we've finished with the let-binding, we switch to evaluating
   -- the body in a suitably extended environment.
   Go (Out v1) (SK s (FLet x t2 e : k)) -> return $ Go (In t2 (addBinding x v1 e)) $ SK s k
@@ -983,7 +986,7 @@ stepCESK cesk = case cesk of
             [ T.append "Bad machine state in stepRobot: " msg
             , prettyText cesk
             ]
-     in return $ Go (Up (Fatal msg')) $ SK s []
+     in discardContinuationStack (Fatal msg') s
 
   -- Note, the order of arguments to `union` is important in the below
   -- definition of fUnionEnv.  I wish I knew how to add an automated
@@ -1600,7 +1603,7 @@ execConst c vs sk@(SK s k) = do
       let mm = limitLast . Seq.filter (liftA2 (&&) notMine isClose) $ Seq.takeWhileR (messageIsRecent gs) mq
       return $
         maybe
-          (Go (In (TConst Listen) mempty) $ SK s (FExec : k)) -- continue listening
+          (Go (In (TConst Listen) mempty) $ pushFrame sk FExec) -- continue listening
           (\m -> Go (Out (VText m)) sk) -- return found message
           mm
     Log -> case vs of
@@ -1723,7 +1726,7 @@ execConst c vs sk@(SK s k) = do
         rid <- use robotID
         g <- get @GameState
         let neighborIDs = filter (/= rid) . map (^. robotID) $ robotsInArea loc 1 g
-        return $ Go (Out b) $ SK s (FMeetAll f neighborIDs : k)
+        return . Go (Out b) . pushFrame sk $ FMeetAll f neighborIDs
       _ -> badConst
     Whoami -> case vs of
       [] -> do
@@ -1767,7 +1770,7 @@ execConst c vs sk@(SK s k) = do
       _ -> badConst
     If -> case vs of
       -- Use the boolean to pick the correct branch, and apply @force@ to it.
-      [VBool b, thn, els] -> return $ Go (Out (bool els thn b)) $ SK s (FApp (VCApp Force []) : k)
+      [VBool b, thn, els] -> return . Go (Out (bool els thn b)) . pushFrame sk . FApp $ VCApp Force []
       _ -> badConst
     Inl -> case vs of
       [v] -> returnResult $ VInj False v
@@ -1776,7 +1779,7 @@ execConst c vs sk@(SK s k) = do
       [v] -> returnResult $ VInj True v
       _ -> badConst
     Case -> case vs of
-      [VInj side v, kl, kr] -> return $ Go (Out v) $ SK s (FApp (bool kl kr side) : k)
+      [VInj side v, kl, kr] -> return . Go (Out v) . pushFrame sk . FApp $ bool kl kr side
       _ -> badConst
     Fst -> case vs of
       [VPair v _] -> returnResult v
