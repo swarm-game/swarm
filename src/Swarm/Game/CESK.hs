@@ -307,27 +307,26 @@ initMachine' (ProcessedTerm (Module t' ctx) _ reqCtx) e s k =
       case ctx of
         -- ...but doesn't contain any definitions, just create a machine
         -- that will evaluate it and then execute it.
-        Empty -> Go (In t e) (SK s (FExec : k))
+        Empty -> Go inState (SK s (FExec : k))
         -- Or, if it does contain definitions, then load the resulting
         -- context after executing it.
-        _ -> Go (In t e) (SK s (FExec : FLoadEnv ctx reqCtx : k))
+        _ -> Go inState (SK s (FExec : FLoadEnv ctx reqCtx : k))
     -- Otherwise, for a term with a non-command type, just
     -- create a machine to evaluate it.
-    _ -> Go (In t e) (SK s k)
+    _ -> Go inState (SK s k)
  where
   -- Erase all type and SrcLoc annotations from the term before
   -- putting it in the machine state, since those are irrelevant at
   -- runtime.
   t = eraseS t'
+  inState = In t e
 
 -- | Cancel the currently running computation.
 cancel :: CESK -> CESK
 cancel cesk = Go (Out VUnit) $ SK s' []
  where
   s' = resetBlackholes $ getStore cesk
-  getStore (Go (In _ _) (SK s _)) = s
-  getStore (Go (Out _) (SK s _)) = s
-  getStore (Go (Up _) (SK s _)) = s
+  getStore (Go _ (SK s _)) = s
   getStore (Waiting _ c) = getStore c
 
 -- | Reset any 'Blackhole's in the 'Store'.  We need to use this any
@@ -344,9 +343,12 @@ resetBlackholes (Store n m) = Store n (IM.map resetBlackhole m)
 ------------------------------------------------------------
 
 instance PrettyPrec CESK where
-  prettyPrec _ (Go (In c _) (SK _ k)) = prettyCont k (11, "▶" <> ppr c <> "◀")
-  prettyPrec _ (Go (Out v) (SK _ k)) = prettyCont k (11, "◀" <> ppr (valueToTerm v) <> "▶")
-  prettyPrec _ (Go (Up e) (SK _ k)) = prettyCont k (11, "!" <> (pretty (formatExn mempty e) <> "!"))
+  prettyPrec _ (Go goState (SK _ k)) = prettyCont k (11, doc)
+   where
+    doc = case goState of
+      In c _ -> "▶" <> ppr c <> "◀"
+      Out v -> "◀" <> ppr (valueToTerm v) <> "▶"
+      Up e -> "!" <> (pretty (formatExn mempty e) <> "!")
   prettyPrec _ (Waiting t cesk) = "🕑" <> pretty t <> "(" <> ppr cesk <> ")"
 
 -- | Take a continuation, and the pretty-printed expression which is
