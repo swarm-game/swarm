@@ -2071,18 +2071,20 @@ execConst c vs s k = do
     let recipes = filter isApplicableRecipe (recipesFor inRs nextE)
         isApplicableRecipe = any ((== tool) . snd) . view recipeRequirements
 
-    not (null recipes) `holdsOrFail` [
-        "There is no way to"
-      , verbPhrase
-      , indefinite (nextE ^. entityName) <> "."
-      ]
+    not (null recipes)
+      `holdsOrFail` [ "There is no way to"
+                    , verbPhrase
+                    , indefinite (nextE ^. entityName) <> "."
+                    ]
 
     inv <- use robotInventory
 
     -- add the targeted entity so it can be consumed by the recipe
     let makeRecipe r = (,r) <$> make' (insert nextE inv, ins) r
-    chosenRecipe <- weightedChoice (\((_, _), r) -> r ^. recipeWeight) $
-      rights $ map makeRecipe recipes
+    chosenRecipe <-
+      weightedChoice (\((_, _), r) -> r ^. recipeWeight) $
+        rights $
+          map makeRecipe recipes
     ((invTaken, outs), recipe) <-
       chosenRecipe
         `isJustOrFail` ["You don't have the ingredients to", verbPhrase, indefinite (nextE ^. entityName) <> "."]
