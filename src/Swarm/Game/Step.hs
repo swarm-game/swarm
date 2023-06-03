@@ -709,7 +709,6 @@ stepCESK cesk = case cesk of
   Go (Out v1) (SK s (FSnd t2 e : k)) -> return $ Go (In t2 e) $ SK s (FFst v1 : k)
   -- Finally, put the results together into a pair value.
   Go (Out v2) (SK s (FFst v1 : k)) -> returnVal (SK s k) $ VPair v1 v2
-
   -- Lambdas immediately turn into closures.
   Go (In (TLam x _ t) e) sk -> returnVal sk $ VClo x t e
   -- To evaluate an application, start by focusing on the left-hand
@@ -728,7 +727,6 @@ stepCESK cesk = case cesk of
         evalConst c (reverse (v2 : args)) $ SK s k
     | otherwise -> returnVal (SK s k) $ VCApp c $ v2 : args
   Go (Out _) (SK s (FApp _ : _)) -> badMachineState s "FApp of non-function"
-
   -- Start evaluating a record.  If it's empty, we're done.  Otherwise, focus
   -- on the first field and record the rest in a FRcd frame.
   Go (In (TRcd m) e) sk@(SK s k) -> return $ case M.assocs m of
@@ -749,7 +747,6 @@ stepCESK cesk = case cesk of
       Nothing -> badMachineState s $ T.unwords ["Record projection for variable", x, "that does not exist"]
       Just xv -> returnVal (SK s k) xv
     _ -> badMachineState s "FProj frame with non-record value"
-
   -- To evaluate non-recursive let expressions, we start by focusing on the
   -- let-bound expression.
   Go (In (TLet False x _ t1 t2) e) (SK s k) -> return $ Go (In t1 e) $ SK s (FLet x t2 e : k)
@@ -1077,9 +1074,9 @@ execConst c vs sk@(SK s k) = do
 
   -- Now proceed to actually carry out the operation.
   case c of
-    Noop -> returnUnit
+    Noop -> returnResult VUnit
     Return -> case vs of
-      [v] -> return $ Go (Out v) sk
+      [v] -> returnResult v
       _ -> badConst
     Wait -> case vs of
       [VInt d] -> do
@@ -1090,7 +1087,7 @@ execConst c vs sk@(SK s k) = do
     Selfdestruct -> do
       destroyIfNotBase $ Just AttemptSelfDestructBase
       flagRedraw
-      returnUnit
+      returnResult VUnit
     Move -> do
       -- Figure out where we're going
       loc <- use robotLocation
@@ -1102,7 +1099,7 @@ execConst c vs sk@(SK s k) = do
           , failIfDrown = Destroy
           }
       updateRobotLocation loc nextLoc
-      returnUnit
+      returnResult VUnit
     Push -> do
       -- Figure out where we're going
       loc <- use robotLocation
@@ -1132,7 +1129,7 @@ execConst c vs sk@(SK s k) = do
         Nothing -> return ()
 
       updateRobotLocation loc nextLoc
-      returnUnit
+      returnResult VUnit
     Stride -> case vs of
       [VInt d] -> do
         when (d > fromIntegral maxStrideRange) $
@@ -1174,7 +1171,7 @@ execConst c vs sk@(SK s k) = do
 
         forM_ maybeLastLoc $ updateRobotLocation loc
 
-        returnUnit
+        returnResult VUnit
       _ -> badConst
     Teleport -> case vs of
       [VRobot rid, VPair (VInt x) (VInt y)] -> do
@@ -1192,7 +1189,7 @@ execConst c vs sk@(SK s k) = do
               }
           updateRobotLocation oldLoc nextLoc
 
-        returnUnit
+        returnResult VUnit
       _ -> badConst
     Grab -> doGrab Grab'
     Harvest -> doGrab Harvest'
@@ -1221,7 +1218,7 @@ execConst c vs sk@(SK s k) = do
         when (d == DRelative DDown && countByName "compass" inst == 0) $ do
           grantAchievement GetDisoriented
 
-        returnUnit
+        returnResult VUnit
       _ -> badConst
     Place -> case vs of
       [VText name] -> do
@@ -1239,7 +1236,7 @@ execConst c vs sk@(SK s k) = do
         robotInventory %= delete e
 
         flagRedraw
-        returnUnit
+        returnResult VUnit
       _ -> badConst
     Give -> case vs of
       [VRobot otherID, VText itemName] -> do
@@ -1264,7 +1261,7 @@ execConst c vs sk@(SK s k) = do
           -- Flag the UI for a redraw if we are currently showing either robot's inventory
           when (focusedID == myID || focusedID == otherID) flagRedraw
 
-        returnUnit
+        returnResult VUnit
       _ -> badConst
     Equip -> case vs of
       [VText itemName] -> do
@@ -1280,7 +1277,7 @@ execConst c vs sk@(SK s k) = do
           -- Flag the UI for a redraw if we are currently showing our inventory
           when (focusedID == myID) flagRedraw
 
-        returnUnit
+        returnResult VUnit
       _ -> badConst
     Unequip -> case vs of
       [VText itemName] -> do
@@ -1291,7 +1288,7 @@ execConst c vs sk@(SK s k) = do
         robotInventory %= insert item
         -- Flag the UI for a redraw if we are currently showing our inventory
         when (focusedID == myID) flagRedraw
-        returnUnit
+        returnResult VUnit
       _ -> badConst
     Make -> case vs of
       [VText name] -> do
@@ -1343,17 +1340,17 @@ execConst c vs sk@(SK s k) = do
     Has -> case vs of
       [VText name] -> do
         inv <- use robotInventory
-        return $ Go (Out $ VBool ((> 0) $ countByName name inv)) sk
+        returnResult . VBool . (> 0) $ countByName name inv
       _ -> badConst
     Equipped -> case vs of
       [VText name] -> do
         inv <- use equippedDevices
-        return $ Go (Out $ VBool ((> 0) $ countByName name inv)) sk
+        returnResult . VBool . (> 0) $ countByName name inv
       _ -> badConst
     Count -> case vs of
       [VText name] -> do
         inv <- use robotInventory
-        return $ Go (Out $ VInt (fromIntegral $ countByName name inv)) sk
+        returnResult . VInt . fromIntegral $ countByName name inv
       _ -> badConst
     Scout -> case vs of
       [VDir d] -> do
@@ -1396,11 +1393,11 @@ execConst c vs sk@(SK s k) = do
         -- have to inspect the maximum range of the command.
         result <- firstJustM isConclusivelyVisibleM locsInDirection
         let foundBot = fromMaybe False result
-        return $ Go (Out (VBool foundBot)) sk
+        returnResult $ VBool foundBot
       _ -> badConst
     Whereami -> do
       loc <- use robotLocation
-      return $ Go (Out (asValue loc)) sk
+      returnResult $ asValue loc
     Detect -> case vs of
       [VText name, VRect x1 y1 x2 y2] -> do
         loc <- use robotLocation
@@ -1408,7 +1405,7 @@ execConst c vs sk@(SK s k) = do
         -- sort offsets by (Manhattan) distance so that we return the closest occurrence
         let sortedLocs = sortOn (\(V2 x y) -> abs x + abs y) locs
         firstOne <- findM (fmap (maybe False $ isEntityNamed name) . entityAt . (loc .+^)) sortedLocs
-        return $ Go (Out (asValue firstOne)) sk
+        returnResult $ asValue firstOne
       _ -> badConst
     Resonate -> case vs of
       [VText name, VRect x1 y1 x2 y2] -> doResonate (maybe False $ isEntityNamed name) x1 y1 x2 y2
@@ -1419,19 +1416,19 @@ execConst c vs sk@(SK s k) = do
     Sniff -> case vs of
       [VText name] -> do
         firstFound <- findNearest name
-        return $ Go (Out (asValue $ maybe (-1) fst firstFound)) sk
+        returnResult $ asValue $ maybe (-1) fst firstFound
       _ -> badConst
     Watch -> case vs of
       [VDir d] -> do
         (loc, _me) <- lookInDirection d
         addWatchedLocation loc
-        returnUnit
+        returnResult VUnit
       _ -> badConst
     Surveil -> case vs of
       [VPair (VInt x) (VInt y)] -> do
         let loc = Location (fromIntegral x) (fromIntegral y)
         addWatchedLocation loc
-        returnUnit
+        returnResult VUnit
       _ -> badConst
     Chirp -> case vs of
       [VText name] -> do
@@ -1448,7 +1445,7 @@ execConst c vs sk@(SK s k) = do
               entLoc <- firstFound
               guard $ snd entLoc /= zero
               processDirection . nearestDirection . snd $ entLoc
-        return $ Go (Out val) sk
+        returnResult val
       _ -> badConst
     Heading -> do
       mh <- use robotOrientation
@@ -1463,7 +1460,7 @@ execConst c vs sk@(SK s k) = do
       return $ Go (Out (VDir (fromMaybe (DRelative DDown) $ mh >>= toDirection))) sk
     Time -> do
       t <- use ticks
-      return $ Go (Out (VInt t)) sk
+      returnResult $ VInt t
     Drill -> case vs of
       [VDir d] -> doDrill d
       _ -> badConst
@@ -1479,7 +1476,7 @@ execConst c vs sk@(SK s k) = do
       orient <- use robotOrientation
       let nextLoc = loc .+^ (orient ? zero)
       me <- entityAt nextLoc
-      return $ Go (Out (VBool (maybe False (`hasProperty` Unwalkable) me))) sk
+      returnResult $ VBool $ maybe False (`hasProperty` Unwalkable) me
     Scan -> case vs of
       [VDir d] -> do
         (_loc, me) <- lookInDirection d
@@ -1490,7 +1487,7 @@ execConst c vs sk@(SK s k) = do
           -- change the way it is drawn (if the base is doing the
           -- scanning)
           flagRedraw
-        return $ Go (Out (asValue me)) sk
+        returnResult $ asValue me
       _ -> badConst
     Knows -> case vs of
       [VText name] -> do
@@ -1500,7 +1497,7 @@ execConst c vs sk@(SK s k) = do
         let knows = case E.lookupByName name allKnown of
               [] -> False
               _ -> True
-        return $ Go (Out (VBool knows)) sk
+        returnResult $ VBool knows
       _ -> badConst
     Upload -> case vs of
       [VRobot otherID] -> do
@@ -1521,7 +1518,7 @@ execConst c vs sk@(SK s k) = do
         -- go from unknown to known).
         flagRedraw
 
-        returnUnit
+        returnResult VUnit
       _ -> badConst
     Random -> case vs of
       [VInt hi] -> do
@@ -1548,19 +1545,19 @@ execConst c vs sk@(SK s k) = do
             runCESK (Go (Out prog) $ SK s [FApp (VCApp Force []), FExec])
 
         -- Return the value returned by the hypothetical command.
-        return $ Go (Out v) sk
+        returnResult v
       _ -> badConst
     RobotNamed -> case vs of
       [VText rname] -> do
         r <- robotWithName rname >>= (`isJustOrFail` ["There is no robot named", rname])
-        return $ Go (Out (asValue r)) sk
+        returnResult $ asValue r
       _ -> badConst
     RobotNumbered -> case vs of
       [VInt rid] -> do
         r <-
           robotWithID (fromIntegral rid)
             >>= (`isJustOrFail` ["There is no robot with number", from (show rid)])
-        return $ Go (Out (asValue r)) sk
+        returnResult $ asValue r
       _ -> badConst
     Say -> case vs of
       [VText msg] -> do
@@ -1587,7 +1584,7 @@ execConst c vs sk@(SK s k) = do
             then use $ robotMap . to IM.elems
             else gets $ robotsInArea loc hearingDistance
         mapM_ addToRobotLog robotsAround
-        returnUnit
+        returnResult VUnit
       _ -> badConst
     Listen -> do
       gs <- get @GameState
@@ -1609,7 +1606,7 @@ execConst c vs sk@(SK s k) = do
     Log -> case vs of
       [VText msg] -> do
         void $ traceLog Logged msg
-        returnUnit
+        returnResult VUnit
       _ -> badConst
     View -> case vs of
       [VRobot rid] -> do
@@ -1636,7 +1633,7 @@ execConst c vs sk@(SK s k) = do
             -- If it does exist, set it as the view center.
             Just _ -> viewCenterRule .= VCRobot rid
 
-        returnUnit
+        returnResult VUnit
       _ -> badConst
     Appear -> case vs of
       [VText app] -> do
@@ -1645,14 +1642,14 @@ execConst c vs sk@(SK s k) = do
           [dc] -> do
             robotDisplay . defaultChar .= dc
             robotDisplay . orientationMap .= M.empty
-            returnUnit
+            returnResult VUnit
           [dc, nc, ec, sc, wc] -> do
             robotDisplay . defaultChar .= dc
             robotDisplay . orientationMap . ix DNorth .= nc
             robotDisplay . orientationMap . ix DEast .= ec
             robotDisplay . orientationMap . ix DSouth .= sc
             robotDisplay . orientationMap . ix DWest .= wc
-            returnUnit
+            returnResult VUnit
           _other -> raise Appear [quote app, "is not a valid appearance string. 'appear' must be given a string with exactly 1 or 5 characters."]
       _ -> badConst
     Create -> case vs of
@@ -1665,7 +1662,7 @@ execConst c vs sk@(SK s k) = do
         robotInventory %= insert e
         updateDiscoveredEntities e
 
-        returnUnit
+        returnResult VUnit
       _ -> badConst
     Halt -> case vs of
       [VRobot targetID] -> do
@@ -1689,7 +1686,7 @@ execConst c vs sk@(SK s k) = do
                 -- Cancel its CESK machine, and put it to sleep.
                 robotMap . at targetID . _Just . machine %= cancel
                 sleepForever targetID
-                returnUnit
+                returnResult VUnit
               False -> throwError $ cmdExn c ["You are not authorized to halt that robot."]
       _ -> badConst
     Ishere -> case vs of
@@ -1697,19 +1694,19 @@ execConst c vs sk@(SK s k) = do
         loc <- use robotLocation
         me <- entityAt loc
         let here = maybe False (isEntityNamed name) me
-        return $ Go (Out (VBool here)) sk
+        returnResult $ VBool here
       _ -> badConst
     Isempty -> do
       loc <- use robotLocation
       me <- entityAt loc
-      return $ Go (Out (VBool (isNothing me))) sk
+      returnResult $ VBool $ isNothing me
     Self -> do
       rid <- use robotID
-      return $ Go (Out (VRobot rid)) sk
+      returnResult $ VRobot rid
     Parent -> do
       mp <- use robotParentID
       rid <- use robotID
-      return $ Go (Out (VRobot (fromMaybe rid mp))) sk
+      returnResult $ VRobot $ fromMaybe rid mp
     Base -> return $ Go (Out (VRobot 0)) sk
     Meet -> do
       loc <- use robotLocation
@@ -1719,7 +1716,7 @@ execConst c vs sk@(SK s k) = do
             find ((/= rid) . (^. robotID)) -- pick one other than ourself
               . sortOn (manhattan loc . (^. robotLocation)) -- prefer closer
               $ robotsInArea loc 1 g -- all robots within Manhattan distance 1
-      return $ Go (Out (asValue neighbor)) sk
+      returnResult $ asValue neighbor
     MeetAll -> case vs of
       [f, b] -> do
         loc <- use robotLocation
@@ -1731,12 +1728,12 @@ execConst c vs sk@(SK s k) = do
     Whoami -> case vs of
       [] -> do
         name <- use robotName
-        return $ Go (Out (VText name)) sk
+        returnResult $ VText name
       _ -> badConst
     Setname -> case vs of
       [VText name] -> do
         robotName .= name
-        returnUnit
+        returnResult VUnit
       _ -> badConst
     Force -> case vs of
       [VDelay t e] -> return $ Go (In t e) sk
@@ -1761,31 +1758,31 @@ execConst c vs sk@(SK s k) = do
           -- depends on itself, so throw an 'InfiniteLoop' error.
           Just Blackhole {} -> return $ Go (Up InfiniteLoop) sk
           -- If the location already contains a value, just return it.
-          Just (V v) -> return $ Go (Out v) sk
+          Just (V v) -> returnResult v
       -- If a force is applied to any other kind of value, just ignore it.
       -- This is needed because of the way we wrap all free variables in @force@
       -- in case they come from a @def@ which are always wrapped in @delay@.
       -- But binders (i.e. @x <- ...@) are also exported to the global context.
-      [v] -> return $ Go (Out v) sk
+      [v] -> returnResult v
       _ -> badConst
     If -> case vs of
       -- Use the boolean to pick the correct branch, and apply @force@ to it.
       [VBool b, thn, els] -> return $ Go (Out (bool els thn b)) $ SK s (FApp (VCApp Force []) : k)
       _ -> badConst
     Inl -> case vs of
-      [v] -> return $ Go (Out (VInj False v)) sk
+      [v] -> returnResult $ VInj False v
       _ -> badConst
     Inr -> case vs of
-      [v] -> return $ Go (Out (VInj True v)) sk
+      [v] -> returnResult $ VInj True v
       _ -> badConst
     Case -> case vs of
       [VInj side v, kl, kr] -> return $ Go (Out v) $ SK s (FApp (bool kl kr side) : k)
       _ -> badConst
     Fst -> case vs of
-      [VPair v _] -> return $ Go (Out v) sk
+      [VPair v _] -> returnResult v
       _ -> badConst
     Snd -> case vs of
-      [VPair _ v] -> return $ Go (Out v) sk
+      [VPair _ v] -> returnResult v
       _ -> badConst
     Try -> case vs of
       [c1, c2] -> return $ Go (Out c1) $ SK s (FApp (VCApp Force []) : FExec : FTry c2 : k)
@@ -1796,13 +1793,13 @@ execConst c vs sk@(SK s k) = do
       _ -> badConst
     Key -> case vs of
       [VText ktxt] -> case runParser parseKeyComboFull ktxt of
-        Right kc -> return $ Go (Out (VKey kc)) sk
+        Right kc -> returnResult $ VKey kc
         Left _ -> return $ Go (Up (CmdFailed Key (T.unwords ["Unknown key", quote ktxt]) Nothing)) sk
       _ -> badConst
     InstallKeyHandler -> case vs of
       [VText hint, handler] -> do
         inputHandler .= Just (hint, handler)
-        returnUnit
+        returnResult VUnit
       _ -> badConst
     Reprogram -> case vs of
       [VRobot childRobotID, VDelay cmd e] -> do
@@ -1856,7 +1853,7 @@ execConst c vs sk@(SK s k) = do
         -- Finally, re-activate the reprogrammed target robot.
         activateRobot childRobotID
 
-        returnUnit
+        returnResult VUnit
       _ -> badConst
     Build -> case vs of
       -- NOTE, pattern-matching on a VDelay here means we are
@@ -1918,7 +1915,7 @@ execConst c vs sk@(SK s k) = do
 
         -- Flag the world for a redraw and return the name of the newly constructed robot.
         flagRedraw
-        return $ Go (Out (asValue newRobot)) sk
+        returnResult $ asValue newRobot
       _ -> badConst
     Salvage -> case vs of
       [] -> do
@@ -1926,7 +1923,7 @@ execConst c vs sk@(SK s k) = do
         let okToSalvage r = (r ^. robotID /= 0) && (not . isActive $ r)
         mtarget <- gets (find okToSalvage . robotsAtLocation loc)
         case mtarget of
-          Nothing -> returnUnit -- Nothing to salvage
+          Nothing -> returnResult VUnit -- Nothing to salvage
           Just target -> do
             -- Copy the salvaged robot's equipped devices into its inventory, in preparation
             -- for transferring it.
@@ -1993,7 +1990,7 @@ execConst c vs sk@(SK s k) = do
             cmdExn Run ["Error in", fileName, "\n", err]
 
         case mt of
-          Nothing -> returnUnit
+          Nothing -> returnResult VUnit
           Just t@(ProcessedTerm _ _ reqCtx) -> do
             -- Add the reqCtx from the ProcessedTerm to the current robot's defReqs.
             -- See #827 for an explanation of (1) why this is needed, (2) why
@@ -2003,10 +2000,10 @@ execConst c vs sk@(SK s k) = do
             return $ initMachine' t empty s k
       _ -> badConst
     Not -> case vs of
-      [VBool b] -> return $ Go (Out (VBool (not b))) sk
+      [VBool b] -> returnResult $ VBool $ not b
       _ -> badConst
     Neg -> case vs of
-      [VInt n] -> return $ Go (Out (VInt (-n))) sk
+      [VInt n] -> returnResult $ VInt (-n)
       _ -> badConst
     Eq -> returnEvalCmp
     Neq -> returnEvalCmp
@@ -2015,10 +2012,10 @@ execConst c vs sk@(SK s k) = do
     Leq -> returnEvalCmp
     Geq -> returnEvalCmp
     And -> case vs of
-      [VBool a, VBool b] -> return $ Go (Out (VBool (a && b))) sk
+      [VBool a, VBool b] -> returnResult $ VBool $ a && b
       _ -> badConst
     Or -> case vs of
-      [VBool a, VBool b] -> return $ Go (Out (VBool (a || b))) sk
+      [VBool a, VBool b] -> returnResult $ VBool $ a || b
       _ -> badConst
     Add -> returnEvalArith
     Sub -> returnEvalArith
@@ -2026,32 +2023,32 @@ execConst c vs sk@(SK s k) = do
     Div -> returnEvalArith
     Exp -> returnEvalArith
     Format -> case vs of
-      [v] -> return $ Go (Out (VText (prettyValue v))) sk
+      [v] -> returnResult $ VText $ prettyValue v
       _ -> badConst
     Chars -> case vs of
-      [VText t] -> return $ Go (Out (VInt (fromIntegral $ T.length t))) sk
+      [VText t] -> returnResult . VInt . fromIntegral $ T.length t
       _ -> badConst
     Split -> case vs of
       [VInt i, VText t] ->
         let p = T.splitAt (fromInteger i) t
             t2 = over both VText p
-         in return $ Go (Out (uncurry VPair t2)) sk
+         in returnResult $ uncurry VPair t2
       _ -> badConst
     Concat -> case vs of
-      [VText v1, VText v2] -> return $ Go (Out $ VText $ v1 <> v2) sk
+      [VText v1, VText v2] -> returnResult $ VText $ v1 <> v2
       _ -> badConst
     CharAt -> case vs of
       [VInt i, VText t]
         | i < 0 || i >= fromIntegral (T.length t) ->
             raise CharAt ["Index", prettyValue (VInt i), "out of bounds for length", from @String $ show (T.length t)]
-        | otherwise -> return $ Go (Out . VInt . fromIntegral . ord . T.index t . fromIntegral $ i) sk
+        | otherwise -> returnResult . VInt . fromIntegral . ord . T.index t . fromIntegral $ i
       _ -> badConst
     ToChar -> case vs of
       [VInt i]
         | i < 0 || i > fromIntegral (ord (maxBound :: Char)) ->
             raise ToChar ["Value", prettyValue (VInt i), "is an invalid character code"]
         | otherwise ->
-            return $ Go (Out . VText . T.singleton . chr . fromIntegral $ i) sk
+            returnResult . VText . T.singleton . chr . fromIntegral $ i
       _ -> badConst
     AppF ->
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
@@ -2136,7 +2133,8 @@ execConst c vs sk@(SK s k) = do
   isEntityNamed :: T.Text -> Entity -> Bool
   isEntityNamed n e = ((==) `on` T.toLower) (e ^. entityName) n
 
-  returnUnit = return $ Go (Out VUnit) sk
+  returnResult :: HasRobotStepState sig m => Value -> m CESK
+  returnResult v = return $ Go (Out v) sk
 
   badConst :: HasRobotStepState sig m => m a
   badConst = throwError $ Fatal badConstMsg
