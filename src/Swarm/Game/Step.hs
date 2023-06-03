@@ -670,11 +670,11 @@ stepCESK cesk = case cesk of
       updateWorldAndRobots cmd wf rf
   -- Now some straightforward cases.  These all immediately turn
   -- into values.
-  Go (In TUnit _) sk -> return $ Go (Out VUnit) sk
-  Go (In (TDir d) _) sk -> return $ Go (Out (VDir d)) sk
-  Go (In (TInt n) _) sk -> return $ Go (Out (VInt n)) sk
-  Go (In (TText str) _) sk -> return $ Go (Out (VText str)) sk
-  Go (In (TBool b) _) sk -> return $ Go (Out (VBool b)) sk
+  Go (In TUnit _) sk -> returnVal sk VUnit
+  Go (In (TDir d) _) sk -> returnVal sk $ VDir d
+  Go (In (TInt n) _) sk -> returnVal sk $ VInt n
+  Go (In (TText str) _) sk -> returnVal sk $ VText str
+  Go (In (TBool b) _) sk -> returnVal sk $ VBool b
   -- There should not be any antiquoted variables left at this point.
   Go (In (TAntiText v) _) sk ->
     return $ Go (Up (Fatal (T.append "Antiquoted variable found at runtime: $str:" v))) sk
@@ -683,34 +683,35 @@ stepCESK cesk = case cesk of
   -- Require and requireDevice just turn into no-ops.
   Go (In (TRequireDevice {}) e) sk -> return $ Go (In (TConst Noop) e) sk
   Go (In (TRequire {}) e) sk -> return $ Go (In (TConst Noop) e) sk
-  Go (In (TRequirements x t) e) sk -> return $ Go (Out (VRequirements x t e)) sk
+  Go (In (TRequirements x t) e) sk -> returnVal sk $ VRequirements x t e
   -- Type ascriptions are ignored
   Go (In (TAnnotate v _) e) sk -> return $ Go (In v e) sk
   -- Normally it's not possible to have a TRobot value in surface
   -- syntax, but the salvage command generates a program that needs to
   -- refer directly to the salvaging robot.
-  Go (In (TRobot rid) _) sk -> return $ Go (Out (VRobot rid)) sk
+  Go (In (TRobot rid) _) sk -> returnVal sk $ VRobot rid
   -- Function constants of arity 0 are evaluated immediately
   -- (e.g. parent, self).  Any other constant is turned into a VCApp,
   -- which is waiting for arguments and/or an FExec frame.
   Go (In (TConst c) _) sk
     | arity c == 0 && not (isCmd c) -> evalConst c [] sk
-    | otherwise -> return $ Go (Out (VCApp c [])) sk
+    | otherwise -> returnVal sk $ VCApp c []
   -- To evaluate a variable, just look it up in the context.
   Go (In (TVar x) e) sk -> withExceptions sk $ do
     v <-
       lookup x e
         `isJustOr` Fatal (T.unwords ["Undefined variable", x, "encountered while running the interpreter."])
-    return $ Go (Out v) sk
+    returnVal sk v
 
   -- To evaluate a pair, start evaluating the first component.
   Go (In (TPair t1 t2) e) (SK s k) -> return $ Go (In t1 e) $ SK s (FSnd t2 e : k)
   -- Once that's done, evaluate the second component.
   Go (Out v1) (SK s (FSnd t2 e : k)) -> return $ Go (In t2 e) $ SK s (FFst v1 : k)
   -- Finally, put the results together into a pair value.
-  Go (Out v2) (SK s (FFst v1 : k)) -> return $ Go (Out (VPair v1 v2)) $ SK s k
+  Go (Out v2) (SK s (FFst v1 : k)) -> returnVal (SK s k) $ VPair v1 v2
+
   -- Lambdas immediately turn into closures.
-  Go (In (TLam x _ t) e) sk -> return $ Go (Out (VClo x t e)) sk
+  Go (In (TLam x _ t) e) sk -> returnVal sk $ VClo x t e
   -- To evaluate an application, start by focusing on the left-hand
   -- side and saving the argument for later.
   Go (In (TApp t1 t2) e) (SK s k) -> return $ Go (In t1 e) $ SK s (FArg t2 e : k)
@@ -725,7 +726,7 @@ stepCESK cesk = case cesk of
     | not (isCmd c)
         && arity c == length args + 1 ->
         evalConst c (reverse (v2 : args)) $ SK s k
-    | otherwise -> return $ Go (Out (VCApp c (v2 : args))) $ SK s k
+    | otherwise -> returnVal (SK s k) $ VCApp c $ v2 : args
   Go (Out _) (SK s (FApp _ : _)) -> badMachineState s "FApp of non-function"
   -- Start evaluating a record.  If it's empty, we're done.  Otherwise, focus
   -- on the first field and record the rest in a FRcd frame.
@@ -733,7 +734,7 @@ stepCESK cesk = case cesk of
     [] -> Go (Out (VRcd M.empty)) sk
     ((x, t) : fs) -> Go (In (fromMaybe (TVar x) t) e) $ SK s (FRcd e [] x fs : k)
   -- When we finish evaluating the last field, return a record value.
-  Go (Out v) (SK s (FRcd _ done x [] : k)) -> return $ Go (Out (VRcd (M.fromList ((x, v) : done)))) $ SK s k
+  Go (Out v) (SK s (FRcd _ done x [] : k)) -> returnVal (SK s k) . VRcd . M.fromList $ (x, v) : done
   -- Otherwise, save the value of the field just evaluated and move on
   -- to focus on evaluating the next one.
   Go (Out v) (SK s (FRcd e done x ((y, t) : rest) : k)) ->
@@ -745,7 +746,7 @@ stepCESK cesk = case cesk of
   Go (Out v) (SK s (FProj x : k)) -> case v of
     VRcd m -> case M.lookup x m of
       Nothing -> badMachineState s $ T.unwords ["Record projection for variable", x, "that does not exist"]
-      Just xv -> return $ Go (Out xv) $ SK s k
+      Just xv -> returnVal (SK s k) xv
     _ -> badMachineState s "FProj frame with non-record value"
   -- To evaluate non-recursive let expressions, we start by focusing on the
   -- let-bound expression.
@@ -762,14 +763,14 @@ stepCESK cesk = case cesk of
   -- Definitions immediately turn into VDef values, awaiting execution.
   Go (In tm@(TDef r x _ t) e) sk -> withExceptions sk $ do
     hasCapabilityFor CEnv tm
-    return $ Go (Out (VDef r x t e)) sk
+    returnVal sk $ VDef r x t e
 
   -- Bind expressions don't evaluate: just package it up as a value
   -- until such time as it is to be executed.
-  Go (In (TBind mx t1 t2) e) sk -> return $ Go (Out (VBind mx t1 t2 e)) sk
+  Go (In (TBind mx t1 t2) e) sk -> returnVal sk $ VBind mx t1 t2 e
   -- Simple (non-memoized) delay expressions immediately turn into
   -- VDelay values, awaiting application of 'Force'.
-  Go (In (TDelay SimpleDelay t) e) sk -> return $ Go (Out (VDelay t e)) sk
+  Go (In (TDelay SimpleDelay t) e) sk -> returnVal sk $ VDelay t e
   -- For memoized delay expressions, we allocate a new cell in the store and
   -- return a reference to it.
   Go (In (TDelay (MemoizedDelay x) t) e) (SK s k) -> do
@@ -781,10 +782,10 @@ stepCESK cesk = case cesk of
     -- role: @loc@ is both an output from @allocate@ and used as part
     -- of an input! =D
     let (loc, s') = allocate (maybe id (`addBinding` VRef loc) x e) t s
-    return $ Go (Out (VRef loc)) $ SK s' k
+    returnVal (SK s' k) $ VRef loc
   -- If we see an update frame, it means we're supposed to set the value
   -- of a particular cell to the value we just finished computing.
-  Go (Out v) (SK s (FUpdate loc : k)) -> return $ Go (Out v) $ SK (setCell loc (V v) s) k
+  Go (Out v) (SK s (FUpdate loc : k)) -> returnVal (SK (setCell loc (V v) s) k) v
   ------------------------------------------------------------
   -- Execution
 
@@ -828,7 +829,7 @@ stepCESK cesk = case cesk of
               )
 
     _ <- traceLog Logged reqLog
-    return $ Go (Out VUnit) $ SK s k
+    returnVal (SK s k) VUnit
 
   -- To execute a definition, we immediately turn the body into a
   -- delayed value, so it will not even be evaluated until it is
@@ -842,7 +843,7 @@ stepCESK cesk = case cesk of
   -- together with the resulting environment (the variable bound to
   -- the delayed value).
   Go (Out v) (SK s (FDef x : k)) ->
-    return $ Go (Out (VResult VUnit (singleton x v))) $ SK s k
+    returnVal (SK s k) $ VResult VUnit $ singleton x v
   -- To execute a constant application, delegate to the 'evalConst'
   -- function.  Set tickSteps to 0 if the command is supposed to take
   -- a tick, so the robot won't take any more steps this tick.
@@ -853,11 +854,11 @@ stepCESK cesk = case cesk of
   -- Reset the runningAtomic flag when we encounter an FFinishAtomic frame.
   Go (Out v) (SK s (FFinishAtomic : k)) -> do
     runningAtomic .= False
-    return $ Go (Out v) $ SK s k
+    returnVal (SK s k) v
 
   -- Machinery for implementing the 'meetAll' command.
   -- First case: done meeting everyone.
-  Go (Out b) (SK s (FMeetAll _ [] : k)) -> return $ Go (Out b) $ SK s k
+  Go (Out b) (SK s (FMeetAll _ [] : k)) -> returnVal (SK s k) b
   -- More still to meet: apply the function to the current value b and
   -- then the next robot id.  This will result in a command which we
   -- execute, discard any generated environment, and then pass the
@@ -891,13 +892,13 @@ stepCESK cesk = case cesk of
   -- to union with, then pass the unioned environments along in
   -- another VResult.
 
-  Go (Out (VResult v e2)) (SK s (FUnionEnv e1 : k)) -> return $ Go (Out (VResult v (e1 `union` e2))) $ SK s k
+  Go (Out (VResult v e2)) (SK s (FUnionEnv e1 : k)) -> returnVal (SK s k) $ VResult v $ e1 `union` e2
   -- Or, if a command completes with no environment, but there is a
   -- previous environment to union with, just use that environment.
-  Go (Out v) (SK s (FUnionEnv e : k)) -> return $ Go (Out (VResult v e)) $ SK s k
+  Go (Out v) (SK s (FUnionEnv e : k)) -> returnVal (SK s k) $ VResult v e
   -- If there's an explicit DiscardEnv frame, throw away any returned environment.
-  Go (Out (VResult v _)) (SK s (FDiscardEnv : k)) -> return $ Go (Out v) $ SK s k
-  Go (Out v) (SK s (FDiscardEnv : k)) -> return $ Go (Out v) $ SK s k
+  Go (Out (VResult v _)) (SK s (FDiscardEnv : k)) -> returnVal (SK s k) v
+  Go (Out v) (SK s (FDiscardEnv : k)) -> returnVal (SK s k) v
   -- If the top of the continuation stack contains a 'FLoadEnv' frame,
   -- it means we are supposed to load up the resulting definition
   -- environment, store, and type and capability contexts into the robot's
@@ -907,8 +908,8 @@ stepCESK cesk = case cesk of
     robotContext . defVals %= (`union` e)
     robotContext . defTypes %= (`union` ctx)
     robotContext . defReqs %= (`union` rctx)
-    return $ Go (Out v) $ SK s k
-  Go (Out v) (SK s (FLoadEnv {} : k)) -> return $ Go (Out v) $ SK s k
+    returnVal (SK s k) v
+  Go (Out v) (SK s (FLoadEnv {} : k)) -> returnVal (SK s k) v
   -- Any other type of value wiwth an FExec frame is an error (should
   -- never happen).
   Go (Out _) (SK s (FExec : _)) -> badMachineState s "FExec frame with non-executable value"
@@ -926,14 +927,14 @@ stepCESK cesk = case cesk of
   -- https://github.com/swarm-game/swarm/issues/327 , which was fixed
   -- by changing this case from an error to simply ignoring the
   -- VResult wrapper.
-  Go (Out (VResult v _)) sk -> return $ Go (Out v) sk
+  Go (Out (VResult v _)) sk -> returnVal sk v
   ------------------------------------------------------------
   -- Exception handling
   ------------------------------------------------------------
 
   -- First, if we were running a try block but evaluation completed normally,
   -- just ignore the try block and continue.
-  Go (Out v) (SK s (FTry {} : k)) -> return $ Go (Out v) $ SK s k
+  Go (Out v) (SK s (FTry {} : k)) -> returnVal (SK s k) v
   Go (Up exn) (SK s []) -> do
     -- Here, an exception has risen all the way to the top level without being
     -- handled.
@@ -956,13 +957,13 @@ stepCESK cesk = case cesk of
     if h
       then do
         void $ traceLog (ErrorTrace Error) (formatExn em exn)
-        return $ Go (Out VUnit) $ SK s []
-      else return $ Go (Out VUnit) $ SK s' []
+        returnVal (SK s []) VUnit
+      else returnVal (SK s' []) VUnit
   -- Fatal errors, capability errors, and infinite loop errors can't
   -- be caught; just throw away the continuation stack.
-  Go (Up exn@Fatal {}) (SK s _) -> return $ Go (Up exn) $ SK s []
-  Go (Up exn@Incapable {}) (SK s _) -> return $ Go (Up exn) $ SK s []
-  Go (Up exn@InfiniteLoop {}) (SK s _) -> return $ Go (Up exn) $ SK s []
+  Go (Up exn@Fatal {}) (SK s _) -> discardContinuationStack exn s
+  Go (Up exn@Incapable {}) (SK s _) -> discardContinuationStack exn s
+  Go (Up exn@InfiniteLoop {}) (SK s _) -> discardContinuationStack exn s
   -- Otherwise, if we are raising an exception up the continuation
   -- stack and come to a Try frame, force and then execute the associated catch
   -- block.
@@ -973,6 +974,10 @@ stepCESK cesk = case cesk of
   -- empty, return the machine unchanged.
   done@(Go (Out _) (SK _ [])) -> return done
  where
+  returnVal sk v = return $ Go (Out v) sk
+
+  discardContinuationStack exn s = return $ Go (Up exn) $ SK s []
+
   badMachineState s msg =
     let msg' =
           T.unlines
