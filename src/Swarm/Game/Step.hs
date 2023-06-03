@@ -728,6 +728,7 @@ stepCESK cesk = case cesk of
         evalConst c (reverse (v2 : args)) $ SK s k
     | otherwise -> returnVal (SK s k) $ VCApp c $ v2 : args
   Go (Out _) (SK s (FApp _ : _)) -> badMachineState s "FApp of non-function"
+
   -- Start evaluating a record.  If it's empty, we're done.  Otherwise, focus
   -- on the first field and record the rest in a FRcd frame.
   Go (In (TRcd m) e) sk@(SK s k) -> return $ case M.assocs m of
@@ -748,6 +749,7 @@ stepCESK cesk = case cesk of
       Nothing -> badMachineState s $ T.unwords ["Record projection for variable", x, "that does not exist"]
       Just xv -> returnVal (SK s k) xv
     _ -> badMachineState s "FProj frame with non-record value"
+
   -- To evaluate non-recursive let expressions, we start by focusing on the
   -- let-bound expression.
   Go (In (TLet False x _ t1 t2) e) (SK s k) -> return $ Go (In t1 e) $ SK s (FLet x t2 e : k)
@@ -1075,7 +1077,7 @@ execConst c vs sk@(SK s k) = do
 
   -- Now proceed to actually carry out the operation.
   case c of
-    Noop -> return $ Go (Out VUnit) sk
+    Noop -> returnUnit
     Return -> case vs of
       [v] -> return $ Go (Out v) sk
       _ -> badConst
@@ -1088,7 +1090,7 @@ execConst c vs sk@(SK s k) = do
     Selfdestruct -> do
       destroyIfNotBase $ Just AttemptSelfDestructBase
       flagRedraw
-      return $ Go (Out VUnit) sk
+      returnUnit
     Move -> do
       -- Figure out where we're going
       loc <- use robotLocation
@@ -1100,7 +1102,7 @@ execConst c vs sk@(SK s k) = do
           , failIfDrown = Destroy
           }
       updateRobotLocation loc nextLoc
-      return $ Go (Out VUnit) sk
+      returnUnit
     Push -> do
       -- Figure out where we're going
       loc <- use robotLocation
@@ -1130,7 +1132,7 @@ execConst c vs sk@(SK s k) = do
         Nothing -> return ()
 
       updateRobotLocation loc nextLoc
-      return $ Go (Out VUnit) sk
+      returnUnit
     Stride -> case vs of
       [VInt d] -> do
         when (d > fromIntegral maxStrideRange) $
@@ -1172,7 +1174,7 @@ execConst c vs sk@(SK s k) = do
 
         forM_ maybeLastLoc $ updateRobotLocation loc
 
-        return $ Go (Out VUnit) sk
+        returnUnit
       _ -> badConst
     Teleport -> case vs of
       [VRobot rid, VPair (VInt x) (VInt y)] -> do
@@ -1190,7 +1192,7 @@ execConst c vs sk@(SK s k) = do
               }
           updateRobotLocation oldLoc nextLoc
 
-        return $ Go (Out VUnit) sk
+        returnUnit
       _ -> badConst
     Grab -> doGrab Grab'
     Harvest -> doGrab Harvest'
@@ -1219,7 +1221,7 @@ execConst c vs sk@(SK s k) = do
         when (d == DRelative DDown && countByName "compass" inst == 0) $ do
           grantAchievement GetDisoriented
 
-        return $ Go (Out VUnit) sk
+        returnUnit
       _ -> badConst
     Place -> case vs of
       [VText name] -> do
@@ -1237,7 +1239,7 @@ execConst c vs sk@(SK s k) = do
         robotInventory %= delete e
 
         flagRedraw
-        return $ Go (Out VUnit) sk
+        returnUnit
       _ -> badConst
     Give -> case vs of
       [VRobot otherID, VText itemName] -> do
@@ -1262,7 +1264,7 @@ execConst c vs sk@(SK s k) = do
           -- Flag the UI for a redraw if we are currently showing either robot's inventory
           when (focusedID == myID || focusedID == otherID) flagRedraw
 
-        return $ Go (Out VUnit) sk
+        returnUnit
       _ -> badConst
     Equip -> case vs of
       [VText itemName] -> do
@@ -1278,7 +1280,7 @@ execConst c vs sk@(SK s k) = do
           -- Flag the UI for a redraw if we are currently showing our inventory
           when (focusedID == myID) flagRedraw
 
-        return $ Go (Out VUnit) sk
+        returnUnit
       _ -> badConst
     Unequip -> case vs of
       [VText itemName] -> do
@@ -1289,7 +1291,7 @@ execConst c vs sk@(SK s k) = do
         robotInventory %= insert item
         -- Flag the UI for a redraw if we are currently showing our inventory
         when (focusedID == myID) flagRedraw
-        return $ Go (Out VUnit) sk
+        returnUnit
       _ -> badConst
     Make -> case vs of
       [VText name] -> do
@@ -1423,13 +1425,13 @@ execConst c vs sk@(SK s k) = do
       [VDir d] -> do
         (loc, _me) <- lookInDirection d
         addWatchedLocation loc
-        return $ Go (Out VUnit) sk
+        returnUnit
       _ -> badConst
     Surveil -> case vs of
       [VPair (VInt x) (VInt y)] -> do
         let loc = Location (fromIntegral x) (fromIntegral y)
         addWatchedLocation loc
-        return $ Go (Out VUnit) sk
+        returnUnit
       _ -> badConst
     Chirp -> case vs of
       [VText name] -> do
@@ -1519,7 +1521,7 @@ execConst c vs sk@(SK s k) = do
         -- go from unknown to known).
         flagRedraw
 
-        return $ Go (Out VUnit) sk
+        returnUnit
       _ -> badConst
     Random -> case vs of
       [VInt hi] -> do
@@ -1585,7 +1587,7 @@ execConst c vs sk@(SK s k) = do
             then use $ robotMap . to IM.elems
             else gets $ robotsInArea loc hearingDistance
         mapM_ addToRobotLog robotsAround
-        return $ Go (Out VUnit) sk
+        returnUnit
       _ -> badConst
     Listen -> do
       gs <- get @GameState
@@ -1607,7 +1609,7 @@ execConst c vs sk@(SK s k) = do
     Log -> case vs of
       [VText msg] -> do
         void $ traceLog Logged msg
-        return $ Go (Out VUnit) sk
+        returnUnit
       _ -> badConst
     View -> case vs of
       [VRobot rid] -> do
@@ -1634,7 +1636,7 @@ execConst c vs sk@(SK s k) = do
             -- If it does exist, set it as the view center.
             Just _ -> viewCenterRule .= VCRobot rid
 
-        return $ Go (Out VUnit) sk
+        returnUnit
       _ -> badConst
     Appear -> case vs of
       [VText app] -> do
@@ -1643,14 +1645,14 @@ execConst c vs sk@(SK s k) = do
           [dc] -> do
             robotDisplay . defaultChar .= dc
             robotDisplay . orientationMap .= M.empty
-            return $ Go (Out VUnit) sk
+            returnUnit
           [dc, nc, ec, sc, wc] -> do
             robotDisplay . defaultChar .= dc
             robotDisplay . orientationMap . ix DNorth .= nc
             robotDisplay . orientationMap . ix DEast .= ec
             robotDisplay . orientationMap . ix DSouth .= sc
             robotDisplay . orientationMap . ix DWest .= wc
-            return $ Go (Out VUnit) sk
+            returnUnit
           _other -> raise Appear [quote app, "is not a valid appearance string. 'appear' must be given a string with exactly 1 or 5 characters."]
       _ -> badConst
     Create -> case vs of
@@ -1663,7 +1665,7 @@ execConst c vs sk@(SK s k) = do
         robotInventory %= insert e
         updateDiscoveredEntities e
 
-        return $ Go (Out VUnit) sk
+        returnUnit
       _ -> badConst
     Halt -> case vs of
       [VRobot targetID] -> do
@@ -1687,7 +1689,7 @@ execConst c vs sk@(SK s k) = do
                 -- Cancel its CESK machine, and put it to sleep.
                 robotMap . at targetID . _Just . machine %= cancel
                 sleepForever targetID
-                return $ Go (Out VUnit) sk
+                returnUnit
               False -> throwError $ cmdExn c ["You are not authorized to halt that robot."]
       _ -> badConst
     Ishere -> case vs of
@@ -1734,7 +1736,7 @@ execConst c vs sk@(SK s k) = do
     Setname -> case vs of
       [VText name] -> do
         robotName .= name
-        return $ Go (Out VUnit) sk
+        returnUnit
       _ -> badConst
     Force -> case vs of
       [VDelay t e] -> return $ Go (In t e) sk
@@ -1800,7 +1802,7 @@ execConst c vs sk@(SK s k) = do
     InstallKeyHandler -> case vs of
       [VText hint, handler] -> do
         inputHandler .= Just (hint, handler)
-        return $ Go (Out VUnit) sk
+        returnUnit
       _ -> badConst
     Reprogram -> case vs of
       [VRobot childRobotID, VDelay cmd e] -> do
@@ -1854,7 +1856,7 @@ execConst c vs sk@(SK s k) = do
         -- Finally, re-activate the reprogrammed target robot.
         activateRobot childRobotID
 
-        return $ Go (Out VUnit) sk
+        returnUnit
       _ -> badConst
     Build -> case vs of
       -- NOTE, pattern-matching on a VDelay here means we are
@@ -1924,7 +1926,7 @@ execConst c vs sk@(SK s k) = do
         let okToSalvage r = (r ^. robotID /= 0) && (not . isActive $ r)
         mtarget <- gets (find okToSalvage . robotsAtLocation loc)
         case mtarget of
-          Nothing -> return $ Go (Out VUnit) sk -- Nothing to salvage
+          Nothing -> returnUnit -- Nothing to salvage
           Just target -> do
             -- Copy the salvaged robot's equipped devices into its inventory, in preparation
             -- for transferring it.
@@ -1991,7 +1993,7 @@ execConst c vs sk@(SK s k) = do
             cmdExn Run ["Error in", fileName, "\n", err]
 
         case mt of
-          Nothing -> return $ Go (Out VUnit) sk
+          Nothing -> returnUnit
           Just t@(ProcessedTerm _ _ reqCtx) -> do
             -- Add the reqCtx from the ProcessedTerm to the current robot's defReqs.
             -- See #827 for an explanation of (1) why this is needed, (2) why
@@ -2133,6 +2135,8 @@ execConst c vs sk@(SK s k) = do
   -- Case-insensitive matching on entity names
   isEntityNamed :: T.Text -> Entity -> Bool
   isEntityNamed n e = ((==) `on` T.toLower) (e ^. entityName) n
+
+  returnUnit = return $ Go (Out VUnit) sk
 
   badConst :: HasRobotStepState sig m => m a
   badConst = throwError $ Fatal badConstMsg
