@@ -1748,8 +1748,7 @@ execConst c vs sk@(SK s k) = do
           -- location, since the only way VRefs get created is at the
           -- time we allocate a new cell.
           Nothing ->
-            return $
-              Go (Up (Fatal $ T.append "Reference to unknown memory cell " (from (show loc)))) sk
+            returnException $ Fatal $ T.append "Reference to unknown memory cell " (from (show loc))
           -- If the location contains an unevaluated expression, it's
           -- time to evaluate it.  Set the cell to a 'Blackhole', push
           -- an 'FUpdate' frame so we remember to update the location
@@ -1759,7 +1758,7 @@ execConst c vs sk@(SK s k) = do
           -- If the location contains a Blackhole, that means we are
           -- already currently in the middle of evaluating it, i.e. it
           -- depends on itself, so throw an 'InfiniteLoop' error.
-          Just Blackhole {} -> return $ Go (Up InfiniteLoop) sk
+          Just Blackhole {} -> returnException InfiniteLoop
           -- If the location already contains a value, just return it.
           Just (V v) -> returnResult v
       -- If a force is applied to any other kind of value, just ignore it.
@@ -1790,14 +1789,14 @@ execConst c vs sk@(SK s k) = do
     Try -> case vs of
       [c1, c2] -> return $ Go (Out c1) $ SK s (FApp (VCApp Force []) : FExec : FTry c2 : k)
       _ -> badConst
-    Undefined -> return $ Go (Up (User "undefined")) sk
+    Undefined -> returnException $ User "undefined"
     Fail -> case vs of
-      [VText msg] -> return $ Go (Up (User msg)) sk
+      [VText msg] -> returnException $ User msg
       _ -> badConst
     Key -> case vs of
       [VText ktxt] -> case runParser parseKeyComboFull ktxt of
         Right kc -> returnResult $ VKey kc
-        Left _ -> return $ Go (Up (CmdFailed Key (T.unwords ["Unknown key", quote ktxt]) Nothing)) sk
+        Left _ -> returnException $ CmdFailed Key (T.unwords ["Unknown key", quote ktxt]) Nothing
       _ -> badConst
     InstallKeyHandler -> case vs of
       [VText hint, handler] -> do
@@ -2135,6 +2134,9 @@ execConst c vs sk@(SK s k) = do
   -- Case-insensitive matching on entity names
   isEntityNamed :: T.Text -> Entity -> Bool
   isEntityNamed n e = ((==) `on` T.toLower) (e ^. entityName) n
+
+  returnException :: HasRobotStepState sig m => Exn -> m CESK
+  returnException exn = return $ Go (Up exn) sk
 
   returnResult :: HasRobotStepState sig m => Value -> m CESK
   returnResult v = return $ Go (Out v) sk
