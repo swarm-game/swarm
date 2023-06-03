@@ -2065,26 +2065,31 @@ execConst c vs s k = do
     applyDevice ins "drill" d tool
 
   applyDevice ins verbPhrase d tool = do
-    (nextLoc, nextE) <- getDrillTarget verbPhrase d
+    (nextLoc, nextE) <- getDeviceTarget verbPhrase d
     inRs <- use recipesIn
 
-    let recipes = filter drilling (recipesFor inRs nextE)
-        drilling = any ((== tool) . snd) . view recipeRequirements
+    let recipes = filter isApplicableRecipe (recipesFor inRs nextE)
+        isApplicableRecipe = any ((== tool) . snd) . view recipeRequirements
 
-    not (null recipes) `holdsOrFail` ["There is no way to", verbPhrase, indefinite (nextE ^. entityName) <> "."]
+    not (null recipes) `holdsOrFail` [
+        "There is no way to"
+      , verbPhrase
+      , indefinite (nextE ^. entityName) <> "."
+      ]
 
     inv <- use robotInventory
 
     -- add the targeted entity so it can be consumed by the recipe
     let makeRecipe r = (,r) <$> make' (insert nextE inv, ins) r
-    chosenRecipe <- weightedChoice (\((_, _), r) -> r ^. recipeWeight) (rights (map makeRecipe recipes))
+    chosenRecipe <- weightedChoice (\((_, _), r) -> r ^. recipeWeight) $
+      rights $ map makeRecipe recipes
     ((invTaken, outs), recipe) <-
       chosenRecipe
         `isJustOrFail` ["You don't have the ingredients to", verbPhrase, indefinite (nextE ^. entityName) <> "."]
 
     let (out, down) = L.partition ((`hasProperty` Portable) . snd) outs
-    let learn = map (LearnEntity . snd) down
-    let gain = map (uncurry AddEntity) out
+        learn = map (LearnEntity . snd) down
+        gain = map (uncurry AddEntity) out
 
     newEntity <- case down of
       [] -> pure Nothing
@@ -2103,7 +2108,7 @@ execConst c vs s k = do
     let cmdOutput = asValue $ snd <$> listToMaybe out
     finishCookingRecipe recipe cmdOutput [changeWorld] (learn <> gain)
 
-  getDrillTarget verb d = do
+  getDeviceTarget verb d = do
     rname <- use robotName
 
     (nextLoc, nextME) <- lookInDirection d
