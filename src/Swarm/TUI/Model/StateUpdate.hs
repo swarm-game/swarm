@@ -110,7 +110,6 @@ startGameWithSeed userSeed siPair@(_scene, si) toRun = do
   t <- liftIO getZonedTime
   ss <- use $ runtimeState . scenarios
   p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
-  gameState . currentScenarioPath .= Just p
   runtimeState
     . scenarios
     . scenarioItemByPath p
@@ -119,6 +118,9 @@ startGameWithSeed userSeed siPair@(_scene, si) toRun = do
     . scenarioStatus
     .= Played (Metric Attempted $ ProgressStats t emptyAttemptMetric) (prevBest t)
   scenarioToAppState siPair userSeed toRun
+  -- Beware: currentScenarioPath must be set so that progress/achievements can be saved.
+  -- It has just been cleared in scenarioToAppState.
+  gameState . currentScenarioPath .= Just p
  where
   prevBest t = case si ^. scenarioStatus of
     NotStarted -> emptyBest t
