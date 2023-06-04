@@ -41,7 +41,6 @@ entities:
     char: 'k'
   description:
   - Can open a closed gate
-  capabilities: [drill]
   properties: [known, portable]
 - name: closed gate
   display:
