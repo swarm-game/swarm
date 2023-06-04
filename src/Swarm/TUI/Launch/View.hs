@@ -85,7 +85,7 @@ drawLaunchConfigPanel (LaunchOptions lc validatedOptions) =
 
   -- TODO: Use the EditingLaunchParms object; don't read from the form control.
   seedEntryContent = mconcat $ getEditContents seedEditor
-  
+
   scenarioSeedText = maybe "random" show $ view scenarioSeed . fst =<< displayedFor
   seedEntryWidget =
     if T.null seedEntryContent && not (isFocused SeedSelector)

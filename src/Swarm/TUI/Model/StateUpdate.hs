@@ -45,7 +45,7 @@ import Swarm.Game.ScenarioInfo (
 import Swarm.Game.State
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Inventory.Sorting
-import Swarm.TUI.Launch.Model (ValidatedLaunchParms, LaunchParms (..))
+import Swarm.TUI.Launch.Model (LaunchParms (..), ValidatedLaunchParms)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.TUI.Model.Repl

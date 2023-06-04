@@ -7,12 +7,12 @@ import Brick.Focus qualified as Focus
 import Brick.Widgets.Edit
 import Brick.Widgets.FileBrowser qualified as FB
 import Control.Lens (makeLenses)
+import Data.Functor.Identity (Identity)
 import Data.Text (Text)
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State (CodeToRun)
 import Swarm.Game.WorldGen (Seed)
 import Swarm.TUI.Model.Name
-import Data.Functor.Identity (Identity)
 
 data LaunchParms a = LaunchParms
   { seedVal :: a (Maybe Seed)
