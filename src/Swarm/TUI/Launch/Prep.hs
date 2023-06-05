@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 {- HLINT ignore "Use <$>" -}
 
 -- | Prepares and validates scenario launch parameters
@@ -37,8 +38,9 @@ parseWidgetParms (LaunchControls (FileBrowserControl fb _) seedEditor _ _) = do
   eitherMaybeSeed =
     if T.null seedFieldText
       then Right Nothing
-      else fmap Just .
-        left T.pack
+      else
+        fmap Just
+          . left T.pack
           . readEither
           . T.unpack
           $ seedFieldText

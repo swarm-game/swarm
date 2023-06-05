@@ -6,7 +6,6 @@ import Brick
 import Brick.Focus
 import Brick.Forms qualified as BF
 import Brick.Widgets.Border
-import Swarm.Game.State (getRunCodePath)
 import Brick.Widgets.Center (centerLayer, hCenter)
 import Brick.Widgets.Edit
 import Brick.Widgets.Edit qualified as E
@@ -17,6 +16,7 @@ import Data.Either (isRight)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Scenario (scenarioSeed)
+import Swarm.Game.State (getRunCodePath)
 import Swarm.TUI.Attr
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep
@@ -86,9 +86,10 @@ drawLaunchConfigPanel (LaunchOptions lc launchParams) =
 
   mkButton name label = clickable (ScenarioConfigControl $ ScenarioConfigPanelControl name) . highlightIfFocused name . withAttr boldAttr $ txt label
 
-  mkSeedEditorWidget = hLimit 10 $
-          overrideAttr E.editFocusedAttr customEditFocusedAttr $
-            renderEditor (txt . mconcat) (isFocused SeedSelector) seedEditor
+  mkSeedEditorWidget =
+    hLimit 10 $
+      overrideAttr E.editFocusedAttr customEditFocusedAttr $
+        renderEditor (txt . mconcat) (isFocused SeedSelector) seedEditor
   seedEntryWidget = case seedVal launchParams of
     Left _ -> mkSeedEditorWidget
     Right x -> mkSeedEntryWidget x
@@ -99,11 +100,13 @@ drawLaunchConfigPanel (LaunchOptions lc launchParams) =
       then mkSeedEditorWidget
       else case seedEntryContent of
         Just x -> str $ show x
-        Nothing -> withDefAttr dimAttr $ txt $
-          T.unwords
-            [ "scenario default"
-            , parens $ T.pack scenarioSeedText
-            ]
+        Nothing ->
+          withDefAttr dimAttr $
+            txt $
+              T.unwords
+                [ "scenario default"
+                , parens $ T.pack scenarioSeedText
+                ]
 
   unspecifiedFileMessage =
     if isFocused ScriptSelector
