@@ -82,16 +82,18 @@ processTerm' ctx capCtx txt = do
   mt <- readTerm txt
   first (prettyTypeErr txt) $ traverse (processParsedTerm' ctx capCtx) mt
 
+-- | XXX
 prettyTypeErr :: Text -> ContextualTypeErr -> Text
-prettyTypeErr code (CTE l te) = teLoc <> prettyText te
+prettyTypeErr code (CTE l _stk te) = teLoc <> prettyText te  -- TODO show stk info
  where
   teLoc = case l of
     SrcLoc s e -> (into @Text . showLoc . fst $ getLocRange code (s, e)) <> ": "
     NoLoc -> ""
   showLoc (r, c) = show r ++ ":" ++ show c
 
+-- | XXX
 showTypeErrorPos :: Text -> ContextualTypeErr -> ((Int, Int), (Int, Int), Text)
-showTypeErrorPos code (CTE l te) = (minusOne start, minusOne end, msg)
+showTypeErrorPos code (CTE l _ te) = (minusOne start, minusOne end, msg)
  where
   minusOne (x, y) = (x - 1, y - 1)
 

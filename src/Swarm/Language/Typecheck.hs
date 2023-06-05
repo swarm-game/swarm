@@ -17,10 +17,13 @@ module Swarm.Language.Typecheck (
   TypeErr (..),
   InvalidAtomicReason (..),
 
-  -- * Inference monad
+  -- * Typechecking stack
+
+  TCFrame(..), TCStack, withFrame, getTCStack,
+
+  -- * Typechecking monad
   TC,
   runTC,
-  lookup,
   fresh,
 
   -- * Unification
@@ -72,13 +75,32 @@ import Swarm.Language.Types
 import Prelude hiding (lookup)
 
 ------------------------------------------------------------
+-- Typechecking stack
+
+data TCFrame where
+  TCDef :: Var -> TCFrame
+  deriving (Show)
+
+type TCStack = [(SrcLoc, TCFrame)]
+
+------------------------------------------------------------
 -- Type checking monad
 
 -- | The concrete monad used for type checking.  'IntBindingT' is a
 --   monad transformer provided by the @unification-fd@ library which
 --   supports various operations such as generating fresh variables
 --   and unifying things.
-type TC = ReaderT UCtx (ExceptT ContextualTypeErr (IntBindingT TypeF Identity))
+type TC = ReaderT UCtx (ReaderT TCStack (ExceptT ContextualTypeErr (IntBindingT TypeF Identity)))
+
+-- | XXX
+withFrame :: SrcLoc -> TCFrame -> TC a -> TC a
+withFrame l f = mapReaderT (local ((l,f):))
+
+-- | XXX
+getTCStack :: TC TCStack
+getTCStack = lift ask
+
+------------------------------------------------------------
 
 -- | Run a top-level inference computation, returning either a
 --   'TypeErr' or a fully resolved 'TModule'.
@@ -92,6 +114,7 @@ runTC ctx =
                 <*> pure (fromU uctx)
         )
     >>> flip runReaderT (toU ctx)
+    >>> flip runReaderT []
     >>> runExceptT
     >>> evalIntBindingT
     >>> runIdentity
@@ -102,15 +125,19 @@ runTC ctx =
 --   'instantiate'.
 lookup :: SrcLoc -> Var -> TC UType
 lookup loc x = do
-  ctx <- ask
+  ctx <- getCtx
   maybe (throwTypeErr loc $ UnboundVar x) instantiate (Ctx.lookup x ctx)
+
+-- | XXX
+getCtx :: TC UCtx
+getCtx = ask
 
 -- | Catch any thrown type errors and re-throw them with an added source
 --   location.
 addLocToTypeErr :: SrcLoc -> TC a -> TC a
 addLocToTypeErr l m =
   m `catchError` \case
-    CTE NoLoc te -> throwTypeErr l te
+    CTE NoLoc _ te -> throwTypeErr l te
     te -> throwError te
 
 ------------------------------------------------------------
@@ -128,7 +155,7 @@ class FreeVars a where
 
 -- | We can get the free unification variables of a 'UType'.
 instance FreeVars UType where
-  freeVars ut = fmap S.fromList . lift . lift $ getFreeVars ut
+  freeVars ut = fmap S.fromList . lift . lift . lift $ getFreeVars ut
 
 -- | We can also get the free variables of a polytype.
 instance FreeVars t => FreeVars (Poly t) where
@@ -140,7 +167,7 @@ instance FreeVars UCtx where
 
 -- | Generate a fresh unification variable.
 fresh :: TC UType
-fresh = UVar <$> lift (lift freeVar)
+fresh = UVar <$> (lift . lift . lift $ freeVar)
 
 -- | Perform a substitution over a 'UType', substituting for both type
 --   and unification variables.  Note that since 'UType's do not have
@@ -189,7 +216,7 @@ expect :: Maybe Syntax -> UType -> UType -> TC UType
 expect ms expected actual = case unifyCheck expected actual of
   Apart -> throwTypeErr NoLoc $ Mismatch ms expected actual
   Equal -> return expected
-  MightUnify -> lift $ expected U.=:= actual
+  MightUnify -> lift . lift $ expected U.=:= actual
 
 -- | Constrain two types to be equal, first with a quick-and-dirty
 --   check to see whether we know for sure they either are or cannot
@@ -212,7 +239,7 @@ class HasBindings u where
   applyBindings :: u -> TC u
 
 instance HasBindings UType where
-  applyBindings = lift . U.applyBindings
+  applyBindings = lift . lift . U.applyBindings
 
 instance HasBindings UPolytype where
   applyBindings (Forall xs u) = Forall xs <$> applyBindings u
@@ -261,7 +288,7 @@ skolemize (Forall xs uty) = do
 generalize :: UType -> TC UPolytype
 generalize uty = do
   uty' <- applyBindings uty
-  ctx <- ask
+  ctx <- getCtx
   tmfvs <- freeVars uty'
   ctxfvs <- freeVars ctx
   let fvs = S.toList $ tmfvs \\ ctxfvs
@@ -283,20 +310,22 @@ generalize uty = do
 --   but there will be additional context in the future, such as a
 --   stack of stuff we were in the middle of doing, relevant names in
 --   scope, etc. (#1297).
-data ContextualTypeErr = CTE {cteSrcLoc :: SrcLoc, cteTypeErr :: TypeErr}
+data ContextualTypeErr = CTE {cteSrcLoc :: SrcLoc, cteStack :: TCStack, cteTypeErr :: TypeErr}
   deriving (Show)
 
 -- | Create a raw 'ContextualTypeErr' with no context information.
 mkRawTypeErr :: TypeErr -> ContextualTypeErr
-mkRawTypeErr = CTE NoLoc
+mkRawTypeErr = CTE NoLoc []
 
 -- | Create a 'ContextualTypeErr' value from a 'TypeErr' and context.
-mkTypeErr :: SrcLoc -> TypeErr -> ContextualTypeErr
+mkTypeErr :: SrcLoc -> TCStack -> TypeErr -> ContextualTypeErr
 mkTypeErr = CTE
 
 -- | Throw a 'ContextualTypeErr'.
 throwTypeErr :: SrcLoc -> TypeErr -> TC a
-throwTypeErr l te = throwError (mkTypeErr l te)
+throwTypeErr l te = do
+  stk <- getTCStack
+  throwError $ mkTypeErr l stk te
 
 -- | Errors that can occur during type checking.  The idea is that
 --   each error carries information that can be used to help explain
@@ -567,7 +596,7 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
     uty <- skolemize upty
     _ <- check c uty
     -- Make sure no skolem variables have escaped.
-    ask >>= mapM_ (noSkolems l)
+    getCtx >>= mapM_ (noSkolems l)
     -- If check against skolemized polytype is successful,
     -- instantiate polytype with unification variables.
     -- Free variables should be able to unify with anything in
@@ -777,7 +806,7 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
     t2' <- withBinding (lvVar x) upty $ check t2 expected
 
     -- Make sure no skolem variables have escaped.
-    ask >>= mapM_ (noSkolems l)
+    getCtx >>= mapM_ (noSkolems l)
 
     -- Return the annotated let.
     return $ Syntax' l (SLet r x mxTy t1' t2') expected
@@ -908,7 +937,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   TVar x
     | x `S.member` locals -> return 0
     | otherwise -> do
-        mxTy <- asks $ Ctx.lookup x
+        mxTy <- Ctx.lookup x <$> getCtx
         case mxTy of
           -- If the variable is undefined, return 0 to indicate the
           -- atomic block is valid, because we'd rather have the error
