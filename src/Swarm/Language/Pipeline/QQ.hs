@@ -9,6 +9,7 @@ import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
 import Swarm.Language.Parse
 import Swarm.Language.Pipeline
+import Swarm.Language.Pretty
 import Swarm.Language.Syntax
 import Swarm.Language.Types (Polytype)
 import Swarm.Util (failT, liftText)

@@ -25,10 +25,14 @@ import Prettyprinter.Render.String qualified as RS
 import Prettyprinter.Render.Text qualified as RT
 import Swarm.Language.Capability
 import Swarm.Language.Context
+import Swarm.Language.Parse (getLocRange)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
 import Witch
+
+------------------------------------------------------------
+-- PrettyPrec class + utilities
 
 -- | Type class for things that can be pretty-printed, given a
 --   precedence level of their context.
@@ -53,8 +57,24 @@ pparens :: Bool -> Doc ann -> Doc ann
 pparens True = parens
 pparens False = id
 
+-- | Surround a document with backticks.
 bquote :: Doc ann -> Doc ann
 bquote d = "`" <> d <> "`"
+
+--------------------------------------------------
+-- Bullet lists
+
+data BulletList i = BulletList
+  { bulletListHeader :: forall a. Doc a
+  , bulletListItems :: [i]
+  }
+
+instance PrettyPrec i => PrettyPrec (BulletList i) where
+  prettyPrec _ (BulletList hdr items) =
+    nest 2 . vcat $ hdr : map (("-" <+>) . ppr) items
+
+------------------------------------------------------------
+-- PrettyPrec instances for terms, types, etc.
 
 instance PrettyPrec Text where
   prettyPrec _ = pretty
@@ -206,6 +226,18 @@ appliedTermPrec (TApp f _) = case f of
   _ -> appliedTermPrec f
 appliedTermPrec _ = 10
 
+------------------------------------------------------------
+-- Error messages
+
+-- | Format a 'ContextualTypeError' for the user.
+prettyTypeErr :: Text -> ContextualTypeErr -> Text
+prettyTypeErr code (CTE l _stk te) = teLoc <> prettyText te  -- TODO show stk info
+ where
+  teLoc = case l of
+    SrcLoc s e -> (into @Text . showLoc . fst $ getLocRange code (s, e)) <> ": "
+    NoLoc -> ""
+  showLoc (r, c) = show r ++ ":" ++ show c
+
 instance PrettyPrec TypeErr where
   prettyPrec _ (UnifyErr ty1 ty2) =
     "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
@@ -254,12 +286,3 @@ instance PrettyPrec InvalidAtomicReason where
   prettyPrec _ (NonSimpleVarType _ ty) = "reference to variable with non-simple type" <+> ppr ty
   prettyPrec _ NestedAtomic = "nested atomic block"
   prettyPrec _ LongConst = "commands that can take multiple ticks to execute are not allowed"
-
-data BulletList i = BulletList
-  { bulletListHeader :: forall a. Doc a
-  , bulletListItems :: [i]
-  }
-
-instance PrettyPrec i => PrettyPrec (BulletList i) where
-  prettyPrec _ (BulletList hdr items) =
-    nest 2 . vcat $ hdr : map (("-" <+>) . ppr) items

@@ -14,8 +14,6 @@ module Swarm.Language.Pipeline (
   processParsedTerm,
   processTerm',
   processParsedTerm',
-  prettyTypeErr,
-  showTypeErrorPos,
   processTermEither,
 ) where
 
@@ -81,26 +79,6 @@ processTerm' :: TCtx -> ReqCtx -> Text -> Either Text (Maybe ProcessedTerm)
 processTerm' ctx capCtx txt = do
   mt <- readTerm txt
   first (prettyTypeErr txt) $ traverse (processParsedTerm' ctx capCtx) mt
-
--- | XXX
-prettyTypeErr :: Text -> ContextualTypeErr -> Text
-prettyTypeErr code (CTE l _stk te) = teLoc <> prettyText te  -- TODO show stk info
- where
-  teLoc = case l of
-    SrcLoc s e -> (into @Text . showLoc . fst $ getLocRange code (s, e)) <> ": "
-    NoLoc -> ""
-  showLoc (r, c) = show r ++ ":" ++ show c
-
--- | XXX
-showTypeErrorPos :: Text -> ContextualTypeErr -> ((Int, Int), (Int, Int), Text)
-showTypeErrorPos code (CTE l _ te) = (minusOne start, minusOne end, msg)
- where
-  minusOne (x, y) = (x - 1, y - 1)
-
-  (start, end) = case l of
-    SrcLoc s e -> getLocRange code (s, e)
-    NoLoc -> ((1, 1), (65535, 65535)) -- unknown loc spans the whole document
-  msg = prettyText te
 
 -- | Like 'processTerm'', but use a term that has already been parsed.
 processParsedTerm' :: TCtx -> ReqCtx -> Syntax -> Either ContextualTypeErr ProcessedTerm
