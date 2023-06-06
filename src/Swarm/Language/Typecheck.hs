@@ -600,7 +600,23 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
 
     -- Then check that the argument has the right type.
     x' <- check x argTy
-    return $ Syntax' l (SApp f' x') resTy
+
+    -- Call applyBindings explicitly, so that anything we learned
+    -- about unification variables while checking the type of the
+    -- argument can flow to later steps.  This is especially helpful
+    -- while checking applications of polymorphic multi-argument
+    -- functions such as 'if'.  Without this call to 'applyBindings',
+    -- type mismatches between the branches of an 'if' tend to get
+    -- caught in the unifier, resulting in vague "can't unify"
+    -- messages (for example, "if true then {3} {move}" yields "can't
+    -- unify int and cmd unit").  With this 'applyBindings' call, we
+    -- get more specific errors about how the second branch was
+    -- expected to have the same type as the first (e.g. "expected
+    -- `move` to have type `int`, but it actually has type `cmd
+    -- unit`).
+    resTy' <- applyBindings resTy
+
+    return $ Syntax' l (SApp f' x') resTy'
 
   -- We handle binds in inference mode for a similar reason to
   -- application.

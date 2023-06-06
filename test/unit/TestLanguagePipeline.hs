@@ -106,7 +106,7 @@ testLanguagePipeline =
             "failure inside function call"
             ( process
                 "if true \n{} \n(move)"
-                "3:1: Type mismatch:\n  From context, expected `move` to have type `{u0}`,\n  but it actually has type `cmd unit`"
+                "3:1: Type mismatch:\n  From context, expected `move` to have type `{cmd unit}`,\n  but it actually has type `cmd unit`"
             )
         , testCase
             "parsing operators #236 - report failure on invalid operator start"
@@ -354,7 +354,7 @@ testLanguagePipeline =
             "mismatched if branches"
             ( process
                 "if true {grab} {}"
-                "1:16: Type mismatch:\n  From context, expected `{}` to have type `cmd text`,\n  but it actually has type `cmd unit`"
+                "1:16: Type mismatch:\n  From context, expected `noop` to have type `cmd text`,\n  but it actually has type `cmd unit`"
             )
         , testCase
             "definition with wrong result"
