@@ -78,10 +78,14 @@ import Prelude hiding (lookup)
 ------------------------------------------------------------
 -- Typechecking stack
 
+-- | A frame to keep track of something we were in the middle of doing
+--   during typechecking.
 data TCFrame where
   TCDef :: Var -> TCFrame
   deriving (Show)
 
+-- | A typechecking stack keeps track of what we are currently in the
+--   middle of doing during typechecking.
 type TCStack = [(SrcLoc, TCFrame)]
 
 ------------------------------------------------------------
@@ -162,7 +166,7 @@ lookup loc x = do
   ctx <- getCtx
   maybe (throwTypeErr loc $ UnboundVar x) instantiate (Ctx.lookup x ctx)
 
--- | XXX
+-- | Get the current type context.
 getCtx :: TC UCtx
 getCtx = ask
 
