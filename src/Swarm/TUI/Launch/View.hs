@@ -90,9 +90,11 @@ drawLaunchConfigPanel (LaunchOptions lc launchParams) =
       then withDefAttr highlightAttr
       else id
 
-  mkButton name label = clickable (ScenarioConfigControl $ ScenarioConfigPanelControl name)
-    . highlightIfFocused name
-    . withAttr boldAttr $ txt label
+  mkButton name label =
+    clickable (ScenarioConfigControl $ ScenarioConfigPanelControl name)
+      . highlightIfFocused name
+      . withAttr boldAttr
+      $ txt label
 
   mkSeedEditorWidget =
     hLimit 10 $
