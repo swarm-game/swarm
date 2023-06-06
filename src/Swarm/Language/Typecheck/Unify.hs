@@ -52,8 +52,8 @@ instance Monoid UnifyStatus where
 --   'Equal'.  In case (1), we can generate a much better error
 --   message at the instant the two types come together than we could
 --   if we threw a constraint into the unifier.  In case (2), we don't
---   have to bother with generating a constraint. If we don't know for
---   sure whether they will unify, return 'MightUnify'.
+--   have to bother with generating a trivial constraint. If we don't
+--   know for sure whether they will unify, return 'MightUnify'.
 unifyCheck :: UType -> UType -> UnifyStatus
 unifyCheck ty1 ty2 = case (ty1, ty2) of
   (UVar x, UVar y)

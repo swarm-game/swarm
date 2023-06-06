@@ -209,17 +209,17 @@ appliedTermPrec _ = 10
 instance PrettyPrec TypeErr where
   prettyPrec _ (UnifyErr ty1 ty2) =
     "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
-  prettyPrec _ (Mismatch Nothing ty1 ty2) =
+  prettyPrec _ (Mismatch Nothing (getJoin -> (ty1,ty2))) =
     "Type mismatch: expected" <+> ppr ty1 <> ", but got" <+> ppr ty2
-  prettyPrec _ (Mismatch (Just t) ty1 ty2) =
+  prettyPrec _ (Mismatch (Just t) (getJoin -> (ty1,ty2))) =
     nest 2 . vcat $
       [ "Type mismatch:"
       , "From context, expected" <+> bquote (ppr t) <+> "to have type" <+> bquote (ppr ty1) <> ","
       , "but it actually has type" <+> bquote (ppr ty2)
       ]
-  prettyPrec _ (LambdaArgMismatch ty1 ty2) =
+  prettyPrec _ (LambdaArgMismatch (getJoin -> (ty1,ty2))) =
     "Lambda argument has type annotation" <+> ppr ty2 <> ", but expected argument type" <+> ppr ty1
-  prettyPrec _ (FieldsMismatch expFs actFs) = fieldMismatchMsg expFs actFs
+  prettyPrec _ (FieldsMismatch (getJoin -> (expFs,actFs))) = fieldMismatchMsg expFs actFs
   prettyPrec _ (EscapedSkolem x) =
     "Skolem variable" <+> pretty x <+> "would escape its scope"
   prettyPrec _ (UnboundVar x) =
