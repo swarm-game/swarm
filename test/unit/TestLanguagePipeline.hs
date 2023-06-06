@@ -336,7 +336,35 @@ testLanguagePipeline =
                 "1:1: Lambda argument has type annotation int, but expected argument type text"
             )
         ]
+    , testGroup
+        "typechecking errors"
+        [ testCase
+            "applying a pair"
+            ( process
+                "(1,2) \"hi\""
+                "1:1: Type mismatch:\n  From context, expected `(1, 2)` to have type `u3 -> u4`,\n  but it actually has type `u1 * u2`"
+            )
+        , testCase
+            "providing a pair as an argument"
+            ( process
+                "(\\x:int. x + 1) (1,2)"
+                "1:17: Type mismatch:\n  From context, expected `(1, 2)` to have type `int`,\n  but it actually has type `u0 * u1`"
+            )
+        , testCase
+            "mismatched if branches"
+            ( process
+                "if true {grab} {}"
+                "1:16: Type mismatch:\n  From context, expected `{}` to have type `cmd text`,\n  but it actually has type `cmd unit`"
+            )
+        , testCase
+            "definition with wrong result"
+            ( process
+                "def m : int -> int -> int = \\x. \\y. {3} end"
+                "1:37: Type mismatch:\n  From context, expected `{3}` to have type `int`,\n  but it actually has type `{u0}`"
+            )
+        ]
     ]
+
  where
   valid = flip process ""
 
