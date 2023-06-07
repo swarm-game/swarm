@@ -78,7 +78,7 @@ processParsedTerm = processParsedTerm' empty empty
 processTerm' :: TCtx -> ReqCtx -> Text -> Either Text (Maybe ProcessedTerm)
 processTerm' ctx capCtx txt = do
   mt <- readTerm txt
-  first (prettyTypeErr txt) $ traverse (processParsedTerm' ctx capCtx) mt
+  first (prettyTypeErrText txt) $ traverse (processParsedTerm' ctx capCtx) mt
 
 -- | Like 'processTerm'', but use a term that has already been parsed.
 processParsedTerm' :: TCtx -> ReqCtx -> Syntax -> Either ContextualTypeErr ProcessedTerm

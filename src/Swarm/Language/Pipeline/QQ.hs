@@ -42,7 +42,7 @@ quoteTermExp s = do
         )
   parsed <- runParserTH pos parseTerm s
   case processParsedTerm parsed of
-    Left err -> failT [prettyTypeErr (from s) err]
+    Left err -> failT [prettyTypeErrText (from s) err]
     Right ptm -> dataToExpQ ((fmap liftText . cast) `extQ` antiTermExp) ptm
 
 antiTermExp :: Term' Polytype -> Maybe TH.ExpQ

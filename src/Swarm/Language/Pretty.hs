@@ -43,13 +43,21 @@ class PrettyPrec a where
 ppr :: PrettyPrec a => a -> Doc ann
 ppr = prettyPrec 0
 
+-- | Render a pretty-printed document as @Text@.
+docToText :: Doc a -> Text
+docToText = RT.renderStrict . layoutPretty defaultLayoutOptions
+
 -- | Pretty-print something and render it as @Text@.
 prettyText :: PrettyPrec a => a -> Text
-prettyText = RT.renderStrict . layoutPretty defaultLayoutOptions . ppr
+prettyText = docToText . ppr
+
+-- | Render a pretty-printed document as a @String@.
+docToString :: Doc a -> String
+docToString = RS.renderString . layoutPretty defaultLayoutOptions
 
 -- | Pretty-print something and render it as a @String@.
 prettyString :: PrettyPrec a => a -> String
-prettyString = RS.renderString . layoutPretty defaultLayoutOptions . ppr
+prettyString = docToString . ppr
 
 -- | Optionally surround a document with parentheses depending on the
 --   @Bool@ argument.
@@ -229,14 +237,23 @@ appliedTermPrec _ = 10
 ------------------------------------------------------------
 -- Error messages
 
+-- | Format a 'ContextualTypeError' for the user and render it as
+--   @Text@.
+prettyTypeErrText :: Text -> ContextualTypeErr -> Text
+prettyTypeErrText code = docToText . prettyTypeErr code
+
 -- | Format a 'ContextualTypeError' for the user.
-prettyTypeErr :: Text -> ContextualTypeErr -> Text
-prettyTypeErr code (CTE l _stk te) = teLoc <> prettyText te  -- TODO show stk info
+prettyTypeErr :: Text -> ContextualTypeErr -> Doc ann
+prettyTypeErr code (CTE l tcStack te) =
+   vcat
+   [ teLoc <> ppr te
+   , ppr (BulletList "" tcStack)
+   ]
  where
   teLoc = case l of
-    SrcLoc s e -> (into @Text . showLoc . fst $ getLocRange code (s, e)) <> ": "
-    NoLoc -> ""
-  showLoc (r, c) = show r ++ ":" ++ show c
+    SrcLoc s e -> (showLoc . fst $ getLocRange code (s, e)) <> ": "
+    NoLoc -> emptyDoc
+  showLoc (r, c) = pretty r <> ":" <> pretty c
 
 instance PrettyPrec TypeErr where
   prettyPrec _ (UnifyErr ty1 ty2) =
@@ -286,3 +303,11 @@ instance PrettyPrec InvalidAtomicReason where
   prettyPrec _ (NonSimpleVarType _ ty) = "reference to variable with non-simple type" <+> ppr ty
   prettyPrec _ NestedAtomic = "nested atomic block"
   prettyPrec _ LongConst = "commands that can take multiple ticks to execute are not allowed"
+
+instance PrettyPrec LocatedTCFrame where
+  prettyPrec p (LocatedTCFrame _ f) = prettyPrec p f
+
+instance PrettyPrec TCFrame where
+  prettyPrec _ (TCDef x) = "While checking the definition of" <+> pretty x
+  prettyPrec _ TCBindL   = "While checking the left-hand side of a semicolon"
+  prettyPrec _ TCBindR   = "While checking the right-hand side of a semicolon"

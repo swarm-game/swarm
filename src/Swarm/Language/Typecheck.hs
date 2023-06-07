@@ -19,11 +19,16 @@ module Swarm.Language.Typecheck (
   InvalidAtomicReason (..),
 
   -- * Type provenance
-  Source(..), Join, getJoin,
+  Source (..),
+  Join,
+  getJoin,
 
   -- * Typechecking stack
-
-  TCFrame(..), TCStack, withFrame, getTCStack,
+  TCFrame (..),
+  LocatedTCFrame (..),
+  TCStack,
+  withFrame,
+  getTCStack,
 
   -- * Typechecking monad
   TC,
@@ -53,7 +58,7 @@ import Control.Lens ((^.))
 import Control.Lens.Indexed (itraverse)
 import Control.Monad.Except
 import Control.Monad.Reader
-import Control.Unification hiding (applyBindings, (=:=), unify)
+import Control.Unification hiding (applyBindings, unify, (=:=))
 import Control.Unification qualified as U
 import Control.Unification.IntVar
 import Data.Data (Data, gmapM)
@@ -81,20 +86,31 @@ import Prelude hiding (lookup)
 -- | A frame to keep track of something we were in the middle of doing
 --   during typechecking.
 data TCFrame where
+  -- | Checking a definition.
   TCDef :: Var -> TCFrame
+  -- | Inferring the LHS of a bind.
+  TCBindL :: TCFrame
+  -- | Inferring the RHS of a bind.
+  TCBindR :: TCFrame
+  deriving (Show)
+
+-- | A typechecking stack frame together with the relevant @SrcLoc@.
+data LocatedTCFrame = LocatedTCFrame SrcLoc TCFrame
   deriving (Show)
 
 -- | A typechecking stack keeps track of what we are currently in the
 --   middle of doing during typechecking.
-type TCStack = [(SrcLoc, TCFrame)]
+type TCStack = [LocatedTCFrame]
 
 ------------------------------------------------------------
 -- Type source
 
 -- | The source of a type during typechecking.
 data Source
-  = Expected  -- ^ An expected type that was "pushed down" from the context.
-  | Actual    -- ^ An actual/inferred type that was "pulled up" from a term.
+  = -- | An expected type that was "pushed down" from the context.
+    Expected
+  | -- | An actual/inferred type that was "pulled up" from a term.
+    Actual
   deriving (Show, Eq, Ord, Bounded, Enum)
 
 -- | A value along with its source (expected vs actual).
@@ -104,13 +120,13 @@ type Sourced a = (Source, a)
 data Join a = Join (Source -> a)
 
 instance Show a => Show (Join a) where
-  show (getJoin -> (e,a)) = "(expected: " <> show e <> ", actual: " <> show a <> ")"
+  show (getJoin -> (e, a)) = "(expected: " <> show e <> ", actual: " <> show a <> ")"
 
 type TypeJoin = Join UType
 
 -- | Create a 'Join' from an expected thing and an actual thing (in that order).
 joined :: a -> a -> Join a
-joined expect actual = Join (\case {Expected -> expect; Actual -> actual})
+joined expect actual = Join (\case Expected -> expect; Actual -> actual)
 
 -- | Create a 'Join' from a 'Sourced' thing together with another
 --   thing (which is assumed to have the opposite 'Source').
@@ -118,7 +134,7 @@ mkJoin :: Sourced a -> a -> Join a
 mkJoin (src, a1) a2 = Join $ \s -> if s == src then a1 else a2
 
 -- | Convert a 'Join' into a pair of (expected, actual).
-getJoin :: Join a -> (a,a)
+getJoin :: Join a -> (a, a)
 getJoin (Join j) = (j Expected, j Actual)
 
 ------------------------------------------------------------
@@ -130,11 +146,12 @@ getJoin (Join j) = (j Expected, j Actual)
 --   and unifying things.
 type TC = ReaderT UCtx (ReaderT TCStack (ExceptT ContextualTypeErr (IntBindingT TypeF Identity)))
 
--- | XXX
+-- | Push a frame on the typechecking stack within a local 'TC'
+--   computation.
 withFrame :: SrcLoc -> TCFrame -> TC a -> TC a
-withFrame l f = mapReaderT (local ((l,f):))
+withFrame l f = mapReaderT (local (LocatedTCFrame l f :))
 
--- | XXX
+-- | Get the current typechecking stack.
 getTCStack :: TC TCStack
 getTCStack = lift ask
 
@@ -262,8 +279,8 @@ unify ms j = case unifyCheck expected actual of
   Apart -> throwTypeErr NoLoc $ Mismatch ms j
   Equal -> return expected
   MightUnify -> lift . lift $ expected U.=:= actual
-  where
-    (expected, actual) = getJoin j
+ where
+  (expected, actual) = getJoin j
 
 -- | Ensure two types are the same.
 (=:=) :: UType -> UType -> TC UType
@@ -477,7 +494,7 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
   -- variable for the body, infer the body under an extended context,
   -- and unify the two.  Then generalize the type and return an
   -- appropriate context.
-  SDef r x Nothing t1 -> do
+  SDef r x Nothing t1 -> withFrame l (TCDef (lvVar x)) $ do
     xTy <- fresh
     t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
     _ <- unify (Just t1) (joined xTy (t1' ^. sType))
@@ -486,7 +503,7 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
 
   -- If a (poly)type signature has been provided, skolemize it and
   -- check the definition.
-  SDef r x (Just pty) t1 -> do
+  SDef r x (Just pty) t1 -> withFrame l (TCDef (lvVar x)) $ do
     let upty = toU pty
     uty <- skolemize upty
     t1' <- withBinding (lvVar x) upty $ check t1 uty
@@ -497,7 +514,7 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
   -- correct context when checking the right-hand side in particular.
   SBind mx c1 c2 -> do
     -- First, infer the left side.
-    Module c1' ctx1 <- inferModule c1
+    Module c1' ctx1 <- withFrame l TCBindL $ inferModule c1
     a <- decomposeCmdTy c1 (Actual, c1' ^. sType)
 
     -- Now infer the right side under an extended context: things in
@@ -509,7 +526,7 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
     -- that binding /after/ (i.e. /within/) the application of @ctx1@.
     withBindings ctx1 $
       maybe id ((`withBinding` Forall [] a) . lvVar) mx $ do
-        Module c2' ctx2 <- inferModule c2
+        Module c2' ctx2 <- withFrame l TCBindR $ inferModule c2
 
         -- We don't actually need the result type since we're just
         -- going to return the entire type, but it's important to
@@ -621,9 +638,12 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
   -- We handle binds in inference mode for a similar reason to
   -- application.
   SBind mx c1 c2 -> do
-    c1' <- infer c1
+    c1' <- withFrame l TCBindL $ infer c1
     a <- decomposeCmdTy c1 (Actual, c1' ^. sType)
-    c2' <- maybe id ((`withBinding` Forall [] a) . lvVar) mx $ infer c2
+    c2' <-
+      maybe id ((`withBinding` Forall [] a) . lvVar) mx
+        . withFrame l TCBindR
+        $ infer c2
     _ <- decomposeCmdTy c2 (Actual, c2' ^. sType)
     return $ Syntax' l (SBind mx c1' c2') (c2' ^. sType)
 
