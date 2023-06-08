@@ -114,7 +114,7 @@ updateScenarioInfoOnFinish
   ticks
   completed
   si@(ScenarioInfo p prevPlayState) = case prevPlayState of
-    Played initialScript (Metric _ (ProgressStats start _currentPlayMetrics)) prevBestRecords ->
+    Played launchParams (Metric _ (ProgressStats start _currentPlayMetrics)) prevBestRecords ->
       ScenarioInfo p $
         Played initialScript newPlayMetric $
           updateBest newPlayMetric prevBestRecords
