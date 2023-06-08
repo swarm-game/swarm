@@ -16,7 +16,7 @@ import Graphics.Vty qualified as V
 import Swarm.Game.ScenarioInfo
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Launch.Model
-import Swarm.TUI.Launch.Prep (initFileBrowserWidget, makeFocusRingWith, parseWidgetParms, toValidatedParms)
+import Swarm.TUI.Launch.Prep (initFileBrowserWidget, makeFocusRingWith, parseWidgetParams, toValidatedParams)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.StateUpdate
@@ -26,12 +26,12 @@ import Swarm.Util (listEnums)
 cacheValidatedInputs :: EventM Name AppState ()
 cacheValidatedInputs = do
   launchControls <- use $ uiState . uiLaunchConfig . controls
-  parsedParams <- liftIO $ parseWidgetParms launchControls
+  parsedParams <- liftIO $ parseWidgetParams launchControls
   uiState . uiLaunchConfig . editingParams .= parsedParams
 
   currentRing <- use $ uiState . uiLaunchConfig . controls . scenarioConfigFocusRing
 
-  let eitherLaunchParams = toValidatedParms parsedParams
+  let eitherLaunchParams = toValidatedParams parsedParams
       modifyRingMembers = case eitherLaunchParams of
         Left _ -> filter (/= StartGameButton)
         Right _ -> id
@@ -147,7 +147,7 @@ handleLaunchOptionsEvent siPair = \case
       uiState . uiLaunchConfig . controls . fileBrowser . fbIsDisplayed .= True
     StartGameButton -> do
       params <- use $ uiState . uiLaunchConfig . editingParams
-      let eitherLaunchParams = toValidatedParms params
+      let eitherLaunchParams = toValidatedParams params
       forM_ eitherLaunchParams $ \launchParams -> do
         closeModal
         startGameWithSeed siPair launchParams

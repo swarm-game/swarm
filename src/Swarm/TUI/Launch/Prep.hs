@@ -28,16 +28,16 @@ import Text.Read (readEither)
 swarmLangFileExtension :: String
 swarmLangFileExtension = "sw"
 
-toValidatedParms :: EditingLaunchParms -> Either T.Text ValidatedLaunchParms
-toValidatedParms (LaunchParms eitherSeedVal eitherInitialCode) = do
+toValidatedParams :: EditingLaunchParams -> Either T.Text ValidatedLaunchParams
+toValidatedParams (LaunchParams eitherSeedVal eitherInitialCode) = do
   maybeSeed <- eitherSeedVal
   maybeParsedCode <- eitherInitialCode
-  return $ LaunchParms (pure maybeSeed) (pure maybeParsedCode)
+  return $ LaunchParams (pure maybeSeed) (pure maybeParsedCode)
 
-parseWidgetParms :: LaunchControls -> IO EditingLaunchParms
-parseWidgetParms (LaunchControls (FileBrowserControl _fb maybeSelectedScript _) seedEditor _ _) = do
+parseWidgetParams :: LaunchControls -> IO EditingLaunchParams
+parseWidgetParams (LaunchControls (FileBrowserControl _fb maybeSelectedScript _) seedEditor _ _) = do
   eitherParsedCode <- parseCode maybeSelectedScript
-  return $ LaunchParms eitherMaybeSeed eitherParsedCode
+  return $ LaunchParams eitherMaybeSeed eitherParsedCode
  where
   eitherMaybeSeed =
     if T.null seedFieldText
@@ -61,7 +61,7 @@ initEditorWidget =
     (Just 1) -- only allow a single line
 
 -- | Called before any particular scenario is selected, so we
--- supply some "Nothing"s as defaults to the "ValidatedLaunchParms".
+-- supply some "Nothing"s as defaults to the "ValidatedLaunchParams".
 initConfigPanel :: IO LaunchOptions
 initConfigPanel = do
   -- NOTE: This is kind of pointless, because we must re-instantiate the FileBrowser
@@ -74,7 +74,7 @@ initConfigPanel = do
   return $
     LaunchOptions
       (LaunchControls (FileBrowserControl fb Nothing False) myForm ring Nothing)
-      (LaunchParms (Right Nothing) (Right Nothing))
+      (LaunchParams (Right Nothing) (Right Nothing))
  where
   myForm = initEditorWidget ""
   ring = makeFocusRingWith listEnums
