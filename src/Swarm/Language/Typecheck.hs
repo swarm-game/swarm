@@ -117,7 +117,7 @@ data Source
 type Sourced a = (Source, a)
 
 -- | A "join" where an expected thing meets an actual thing.
-data Join a = Join (Source -> a)
+newtype Join a = Join (Source -> a)
 
 instance (Show a) => Show (Join a) where
   show (getJoin -> (e, a)) = "(expected: " <> show e <> ", actual: " <> show a <> ")"
