@@ -1050,14 +1050,14 @@ handleREPLEventPiloting x = case x of
       & replPromptText .~ nt
       & replPromptType .~ CmdPrompt []
 
-runBaseWebCode :: MonadState AppState m => T.Text -> m ()
+runBaseWebCode :: (MonadState AppState m) => T.Text -> m ()
 runBaseWebCode uinput = do
   s <- get
   let topCtx = topContext s
   unless (s ^. gameState . replWorking) $
     runBaseCode topCtx uinput
 
-runBaseCode :: MonadState AppState m => RobotContext -> T.Text -> m ()
+runBaseCode :: (MonadState AppState m) => RobotContext -> T.Text -> m ()
 runBaseCode topCtx uinput =
   case processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput of
     Right mt -> do
@@ -1068,7 +1068,7 @@ runBaseCode topCtx uinput =
     Left err -> do
       uiState . uiError ?= err
 
-runBaseTerm :: MonadState AppState m => RobotContext -> Maybe ProcessedTerm -> m ()
+runBaseTerm :: (MonadState AppState m) => RobotContext -> Maybe ProcessedTerm -> m ()
 runBaseTerm topCtx =
   modify . maybe id startBaseProgram
  where
@@ -1270,7 +1270,7 @@ adjReplHistIndex d s =
 worldScrollDist :: Int32
 worldScrollDist = 8
 
-onlyCreative :: MonadState AppState m => m () -> m ()
+onlyCreative :: (MonadState AppState m) => m () -> m ()
 onlyCreative a = do
   c <- use $ gameState . creativeMode
   when c a

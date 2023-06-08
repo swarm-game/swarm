@@ -80,7 +80,7 @@ initConfigPanel = do
   ring = makeFocusRingWith listEnums
 
 initFileBrowserWidget ::
-  MonadIO m =>
+  (MonadIO m) =>
   Maybe FilePath ->
   m (FB.FileBrowser Name)
 initFileBrowserWidget maybePlayedScript = do
