@@ -23,13 +23,13 @@ import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
 import Swarm.Util (listEnums)
 
-cacheValidatedInputs :: EventM Name AppState ()
+cacheValidatedInputs :: EventM Name LaunchOptions ()
 cacheValidatedInputs = do
-  launchControls <- use $ uiState . uiLaunchConfig . controls
+  launchControls <- use controls
   parsedParams <- liftIO $ parseWidgetParams launchControls
-  uiState . uiLaunchConfig . editingParams .= parsedParams
+  editingParams .= parsedParams
 
-  currentRing <- use $ uiState . uiLaunchConfig . controls . scenarioConfigFocusRing
+  currentRing <- use $ controls . scenarioConfigFocusRing
 
   let eitherLaunchParams = toValidatedParams parsedParams
       modifyRingMembers = case eitherLaunchParams of
@@ -38,7 +38,7 @@ cacheValidatedInputs = do
       maybeCurrentFocus = focusGetCurrent currentRing
       refocusRing = maybe id focusSetCurrent maybeCurrentFocus
 
-  uiState . uiLaunchConfig . controls . scenarioConfigFocusRing .= refocusRing (makeFocusRingWith $ modifyRingMembers listEnums)
+  controls . scenarioConfigFocusRing .= refocusRing (makeFocusRingWith $ modifyRingMembers listEnums)
 
 -- | If the FileBrowser is in "search mode", then we allow
 -- more of the key events to pass through. Otherwise,
@@ -95,8 +95,8 @@ handleFBEvent ev = do
         closeModal
     _ -> return ()
  where
-  closeModal = do
-    uiState . uiLaunchConfig . controls . fileBrowser . fbIsDisplayed .= False
+  closeModal = Brick.zoom (uiState . uiLaunchConfig) $ do
+    controls . fileBrowser . fbIsDisplayed .= False
     cacheValidatedInputs
 
 handleLaunchOptionsEvent ::
@@ -126,8 +126,8 @@ handleLaunchOptionsEvent siPair = \case
   ev -> do
     fr <- use $ uiState . uiLaunchConfig . controls . scenarioConfigFocusRing
     case focusGetCurrent fr of
-      Just (ScenarioConfigControl (ScenarioConfigPanelControl SeedSelector)) -> do
-        Brick.zoom (uiState . uiLaunchConfig . controls . seedValueEditor) (handleEditorEvent ev)
+      Just (ScenarioConfigControl (ScenarioConfigPanelControl SeedSelector)) -> Brick.zoom (uiState . uiLaunchConfig) $ do
+        Brick.zoom (controls . seedValueEditor) (handleEditorEvent ev)
         cacheValidatedInputs
       _ -> return ()
  where
@@ -140,11 +140,11 @@ handleLaunchOptionsEvent siPair = \case
 
   activateFocusedControl item = case item of
     SeedSelector -> return ()
-    ScriptSelector -> do
-      maybeSingleFile <- use $ uiState . uiLaunchConfig . controls . fileBrowser . maybeSelectedFile
+    ScriptSelector -> Brick.zoom (uiState . uiLaunchConfig . controls . fileBrowser) $ do
+      maybeSingleFile <- use maybeSelectedFile
       configuredFB <- initFileBrowserWidget maybeSingleFile
-      uiState . uiLaunchConfig . controls . fileBrowser . fbWidget .= configuredFB
-      uiState . uiLaunchConfig . controls . fileBrowser . fbIsDisplayed .= True
+      fbWidget .= configuredFB
+      fbIsDisplayed .= True
     StartGameButton -> do
       params <- use $ uiState . uiLaunchConfig . editingParams
       let eitherLaunchParams = toValidatedParams params
