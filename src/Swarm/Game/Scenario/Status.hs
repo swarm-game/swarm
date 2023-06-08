@@ -31,7 +31,7 @@ import Swarm.Util.Lens (makeLensesNoSigs)
 -- * Carrying fully-validated launch parameters.
 --
 -- Type parameters are utilized to support all of these use cases.
-data ParameterizableLaunchParams b a = LaunchParms
+data ParameterizableLaunchParams code f = LaunchParms
   { seedVal :: a (Maybe Seed)
   , initialCode :: a (Maybe b)
   }
