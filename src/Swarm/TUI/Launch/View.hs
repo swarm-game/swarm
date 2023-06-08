@@ -71,7 +71,7 @@ drawLaunchConfigPanel :: LaunchOptions -> [Widget Name]
 drawLaunchConfigPanel (LaunchOptions lc launchParams) =
   addFileBrowser [panelWidget]
  where
-  validatedOptions = toValidatedParms launchParams
+  validatedOptions = toValidatedParams launchParams
   LaunchControls (FileBrowserControl fb _ isFbDisplayed) seedEditor ring displayedFor = lc
   addFileBrowser =
     if isFbDisplayed

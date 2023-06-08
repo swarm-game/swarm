@@ -31,19 +31,19 @@ import Swarm.Util.Lens (makeLensesNoSigs)
 -- * Carrying fully-validated launch parameters.
 --
 -- Type parameters are utilized to support all of these use cases.
-data ParameterizableLaunchParams code f = LaunchParms
+data ParameterizableLaunchParams code f = LaunchParams
   { seedVal :: a (Maybe Seed)
   , initialCode :: a (Maybe b)
   }
 
-type SerializableLaunchParms = ParameterizableLaunchParams FilePath Identity
-deriving instance Eq SerializableLaunchParms
-deriving instance Ord SerializableLaunchParms
-deriving instance Show SerializableLaunchParms
-deriving instance Read SerializableLaunchParms
-deriving instance Generic SerializableLaunchParms
-deriving instance FromJSON SerializableLaunchParms
-deriving instance ToJSON SerializableLaunchParms
+type SerializableLaunchParams = ParameterizableLaunchParams FilePath Identity
+deriving instance Eq SerializableLaunchParams
+deriving instance Ord SerializableLaunchParams
+deriving instance Show SerializableLaunchParams
+deriving instance Read SerializableLaunchParams
+deriving instance Generic SerializableLaunchParams
+deriving instance FromJSON SerializableLaunchParams
+deriving instance ToJSON SerializableLaunchParams
 
 -- | A "ScenarioStatus" stores the status of a scenario along with
 --   appropriate metadata: "NotStarted", or "Played".
@@ -51,7 +51,7 @@ deriving instance ToJSON SerializableLaunchParms
 data ScenarioStatus
   = NotStarted
   | Played
-      SerializableLaunchParms
+      SerializableLaunchParams
       -- ^ initial seed and script to run
       ProgressMetric
       BestRecords
@@ -64,9 +64,9 @@ instance ToJSON ScenarioStatus where
   toEncoding = genericToEncoding scenarioOptions
   toJSON = genericToJSON scenarioOptions
 
-getLaunchParams :: ScenarioStatus -> SerializableLaunchParms
+getLaunchParams :: ScenarioStatus -> SerializableLaunchParams
 getLaunchParams = \case
-  NotStarted -> LaunchParms (pure Nothing) (pure Nothing)
+  NotStarted -> LaunchParams (pure Nothing) (pure Nothing)
   Played x _ _ -> x
 
 -- | A "ScenarioInfo" record stores metadata about a scenario: its

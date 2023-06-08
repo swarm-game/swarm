@@ -14,24 +14,24 @@ import Brick.Widgets.FileBrowser qualified as FB
 import Control.Lens (makeLenses)
 import Data.Functor.Identity (Identity (Identity))
 import Data.Text (Text)
-import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (LaunchParms), ScenarioInfoPair, SerializableLaunchParms)
+import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (LaunchParams), ScenarioInfoPair, SerializableLaunchParams)
 import Swarm.Game.State (CodeToRun, getRunCodePath, parseCodeFile)
 import Swarm.TUI.Model.Name
 
-type LaunchParms a = ParameterizableLaunchParams CodeToRun a
+type LaunchParams a = ParameterizableLaunchParams CodeToRun a
 
 -- | Use this to store error messages
 -- on individual fields
-type EditingLaunchParms = LaunchParms (Either Text)
+type EditingLaunchParams = LaunchParams (Either Text)
 
 -- | In this stage in the UI pipeline, both fields
 -- have already been validated, and "Nothing" means
 -- that the field is simply absent.
-type ValidatedLaunchParms = LaunchParms Identity
+type ValidatedLaunchParams = LaunchParams Identity
 
-toSerializableParams :: ValidatedLaunchParms -> SerializableLaunchParms
-toSerializableParams (LaunchParms seedValue (Identity codeToRun)) =
-  LaunchParms seedValue $ pure $ getRunCodePath =<< codeToRun
+toSerializableParams :: ValidatedLaunchParams -> SerializableLaunchParams
+toSerializableParams (LaunchParams seedValue (Identity codeToRun)) =
+  LaunchParams seedValue $ pure $ getRunCodePath =<< codeToRun
 
 parseCode :: Maybe FilePath -> IO (Either Text (Maybe CodeToRun))
 parseCode maybeSelectedFile = case maybeSelectedFile of
@@ -40,10 +40,10 @@ parseCode maybeSelectedFile = case maybeSelectedFile of
     return $ Just <$> eitherParsedCode
   Nothing -> return $ Right Nothing
 
-fromSerializableParams :: SerializableLaunchParms -> IO EditingLaunchParms
-fromSerializableParams (LaunchParms (Identity maybeSeedValue) (Identity maybeCodePath)) = do
+fromSerializableParams :: SerializableLaunchParams -> IO EditingLaunchParams
+fromSerializableParams (LaunchParams (Identity maybeSeedValue) (Identity maybeCodePath)) = do
   eitherCode <- parseCode maybeCodePath
-  return $ LaunchParms (Right maybeSeedValue) eitherCode
+  return $ LaunchParams (Right maybeSeedValue) eitherCode
 
 data FileBrowserControl = FileBrowserControl
   { _fbWidget :: FB.FileBrowser Name
@@ -66,7 +66,7 @@ makeLenses ''LaunchControls
 -- | UI elements to configure scenario launch options
 data LaunchOptions = LaunchOptions
   { _controls :: LaunchControls
-  , _editingParams :: EditingLaunchParms
+  , _editingParams :: EditingLaunchParams
   }
 
 makeLenses ''LaunchOptions
