@@ -119,7 +119,7 @@ type Sourced a = (Source, a)
 -- | A "join" where an expected thing meets an actual thing.
 data Join a = Join (Source -> a)
 
-instance Show a => Show (Join a) where
+instance (Show a) => Show (Join a) where
   show (getJoin -> (e, a)) = "(expected: " <> show e <> ", actual: " <> show a <> ")"
 
 type TypeJoin = Join UType
@@ -213,7 +213,7 @@ instance FreeVars UType where
   freeVars ut = fmap S.fromList . lift . lift . lift $ getFreeVars ut
 
 -- | We can also get the free variables of a polytype.
-instance FreeVars t => FreeVars (Poly t) where
+instance (FreeVars t) => FreeVars (Poly t) where
   freeVars (Forall _ t) = freeVars t
 
 -- | We can get the free variables in any polytype in a context.

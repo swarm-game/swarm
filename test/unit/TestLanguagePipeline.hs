@@ -364,7 +364,6 @@ testLanguagePipeline =
             )
         ]
     ]
-
  where
   valid = flip process ""
 
