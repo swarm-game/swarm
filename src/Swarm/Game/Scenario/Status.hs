@@ -32,8 +32,8 @@ import Swarm.Util.Lens (makeLensesNoSigs)
 --
 -- Type parameters are utilized to support all of these use cases.
 data ParameterizableLaunchParams code f = LaunchParams
-  { seedVal :: a (Maybe Seed)
-  , initialCode :: a (Maybe b)
+  { seedVal :: f (Maybe Seed)
+  , initialCode :: f (Maybe code)
   }
 
 type SerializableLaunchParams = ParameterizableLaunchParams FilePath Identity
@@ -116,7 +116,7 @@ updateScenarioInfoOnFinish
   si@(ScenarioInfo p prevPlayState) = case prevPlayState of
     Played launchParams (Metric _ (ProgressStats start _currentPlayMetrics)) prevBestRecords ->
       ScenarioInfo p $
-        Played initialScript newPlayMetric $
+        Played launchParams newPlayMetric $
           updateBest newPlayMetric prevBestRecords
      where
       el = (diffUTCTime `on` zonedTimeToUTC) z start
