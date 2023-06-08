@@ -51,7 +51,6 @@ deriving instance ToJSON SerializableLaunchParams
 data ScenarioStatus
   = NotStarted
   | Played
-      -- | initial seed and script to run
       SerializableLaunchParams
       ProgressMetric
       BestRecords
