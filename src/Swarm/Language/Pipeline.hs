@@ -35,15 +35,18 @@ import Swarm.Language.Types
 import Witch
 
 -- | A record containing the results of the language processing
---   pipeline.  Put a 'Term' in, and get one of these out.
-data ProcessedTerm
-  = ProcessedTerm
-      -- | The elaborated + type-annotated term, plus types of any embedded definitions
-      TModule
-      -- | Requirements of the term
-      Requirements
-      -- | Capability context for any definitions embedded in the term
-      ReqCtx
+--   pipeline.  Put a 'Term' in, and get one of these out.  A
+--   'ProcessedTerm' contains:
+--
+--   * The elaborated + type-annotated term, plus the types of any
+--     embedded definitions ('TModule')
+--
+--   * The 'Requirements' of the term
+--
+--   * The requirements context for any definitions embedded in the
+--     term ('ReqCtx')
+
+data ProcessedTerm = ProcessedTerm TModule Requirements ReqCtx
   deriving (Data, Show, Eq, Generic)
 
 processTermEither :: Text -> Either String ProcessedTerm
