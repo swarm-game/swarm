@@ -265,11 +265,8 @@ noSkolems l (Forall xs upty) = do
 infix 4 =:=
 
 -- | @unify t expTy actTy@ ensures that the given two types are equal.
---   The first type is the expected type (passed down from the
---   context) whereas the second is the actual type (extracted from a
---   term). If we know the actual term @t@ which is supposed to have
---   these types, we can use it to generate better error
---   messages.
+--   If we know the actual term @t@ which is supposed to have these
+--   types, we can use it to generate better error messages.
 --
 --   We first do a quick-and-dirty check to see whether we know for
 --   sure the types either are or cannot be equal, generating an
@@ -363,10 +360,7 @@ generalize uty = do
 -- Type errors
 
 -- | A type error along with various contextual information to help us
---   generate better error messages.  For now there is only a SrcLoc
---   but there will be additional context in the future, such as a
---   stack of stuff we were in the middle of doing, relevant names in
---   scope, etc. (#1297).
+--   generate better error messages.
 data ContextualTypeErr = CTE {cteSrcLoc :: SrcLoc, cteStack :: TCStack, cteTypeErr :: TypeErr}
   deriving (Show)
 
@@ -443,7 +437,9 @@ instance Fallible TypeF IntVar ContextualTypeErr where
 ------------------------------------------------------------
 -- Type decomposition
 
--- | Decompose a type that is supposed to be a delay type.
+-- | Decompose a type that is supposed to be a delay type.  Also take
+--   the term which is supposed to have that type, for use in error
+--   messages.
 decomposeDelayTy :: Syntax -> Sourced UType -> TC UType
 decomposeDelayTy _ (_, UTyDelay a) = return a
 decomposeDelayTy t ty = do
@@ -451,7 +447,9 @@ decomposeDelayTy t ty = do
   _ <- unify (Just t) (mkJoin ty (UTyDelay a))
   return a
 
--- | Decompose a type that is supposed to be a command type.
+-- | Decompose a type that is supposed to be a command type. Also take
+--   the term which is supposed to have that type, for use in error
+--   messages.
 decomposeCmdTy :: Syntax -> Sourced UType -> TC UType
 decomposeCmdTy _ (_, UTyCmd a) = return a
 decomposeCmdTy t ty = do
@@ -459,7 +457,9 @@ decomposeCmdTy t ty = do
   _ <- unify (Just t) (mkJoin ty (UTyCmd a))
   return a
 
--- | Decompose a type that is supposed to be a function type.
+-- | Decompose a type that is supposed to be a function type. Also take
+--   the term which is supposed to have that type, for use in error
+--   messages.
 decomposeFunTy :: Syntax -> Sourced UType -> TC (UType, UType)
 decomposeFunTy _ (_, UTyFun ty1 ty2) = return (ty1, ty2)
 decomposeFunTy t ty = do
@@ -468,7 +468,9 @@ decomposeFunTy t ty = do
   _ <- unify (Just t) (mkJoin ty (UTyFun ty1 ty2))
   return (ty1, ty2)
 
--- | Decompose a type that is supposed to be a product type.
+-- | Decompose a type that is supposed to be a product type. Also take
+--   the term which is supposed to have that type, for use in error
+--   messages.
 decomposeProdTy :: Syntax -> Sourced UType -> TC (UType, UType)
 decomposeProdTy _ (_, UTyProd ty1 ty2) = return (ty1, ty2)
 decomposeProdTy t ty = do
