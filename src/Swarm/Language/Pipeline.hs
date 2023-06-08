@@ -45,7 +45,6 @@ import Witch
 --
 --   * The requirements context for any definitions embedded in the
 --     term ('ReqCtx')
-
 data ProcessedTerm = ProcessedTerm TModule Requirements ReqCtx
   deriving (Data, Show, Eq, Generic)
 
