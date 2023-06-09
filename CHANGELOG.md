@@ -2,32 +2,29 @@
 
 ## **0.4.0.0** - ???
 
-07fc47e6 * feature/scroll-repl main origin/main Inventory search/filter mode (#1250)
-305867a5 * add new `give` tutorial (#1249)
-271b4852 * Do not show static when no robots exist in creative mode (#1248)
-f4776e25 * reduce lag in monitor bot for Maypole scenario (#1244)
-6555a412 * Fix scenario menu update after quitting to menu (#1243)
-f2ae7dd6 * finer texture for static (#1241)
-0e63c7af * Record best code size (#974)
-8d2b5236 * place hanoi files in subdirectory (#1236)
-da7190a0 * Implement push command (#1235)
-2dddea13 * unrestricted variant of atomic (#1231)
-5fd85246 * Immersive multimedia experience (#1233)
-e2b4eaa1 * mention `unit` and `void` types in `ADT calculator` description (#1226)
-eb90bfbe * web api to parse, render, and run code (#1142)
-ffafb8bf * implement stride command (#1219)
-599225f4 * Key input handler (#1214)
-11165df7 * More efficient gopher solution using 'watch' (#1216)
-7df69168 * Immediately flag world for redraw when scanning/uploading (#1225)
-593ac937 * enforce no duplicate entity names (#1223)
-b793bd07 * add integration test for 'resonate' command (#1217)
-1795e12f * scout command (#1209)
-9477c100 * Fix objective management upon goal condition exception (#1215)
-2e6207e4 * Implement 'watch' and 'surveil' (#1201)
-079ca057 * Fix `brick-list-skip` versions (#1213)
-ffbb303b * use brick-list-skip package (#1211)
-dc90996d * resonate command (#1204)
-
+Scenario launch options selection [#1010](https://github.com/swarm-game/swarm/pull/1010)
+Better type error messages (#1298), Rework type checker using
+  "propagate types inward" trick (#1283), Better type variable names (#1252)
+Density command [#1296](https://github.com/swarm-game/swarm/pull/1296)
+'use' command [#1287](https://github.com/swarm-game/swarm/pull/1287)
+Recreate `GameState` from scratch when starting a scenario [#1277](https://github.com/swarm-game/swarm/pull/1277)
+lights out [#1273](https://github.com/swarm-game/swarm/pull/1273)
+Allow zero-tick recipes to apply immediately [#1272](https://github.com/swarm-game/swarm/pull/1272)
+sokoban levels [#1269](https://github.com/swarm-game/swarm/pull/1269)
+`halt` command [#1256](https://github.com/swarm-game/swarm/pull/1256)
+Pig capturing scenario [#1258](https://github.com/swarm-game/swarm/pull/1258)
+decouple relative and absolute time capabilities [#1261](https://github.com/swarm-game/swarm/pull/1261)
+Make panes collapsible [#1076](https://github.com/swarm-game/swarm/pull/1076)
+CLI option to set initial speed [#1255](https://github.com/swarm-game/swarm/pull/1255)
+Display higher clock resolution at lower speeds [#1253](https://github.com/swarm-game/swarm/pull/1253)
+Inventory search/filter mode by @byorgey [#1250](https://github.com/swarm-game/swarm/pull/1250)
+Additional tutorial level on `give` [#1249](https://github.com/swarm-game/swarm/pull/1249)
+Record best code size [#974](https://github.com/swarm-game/swarm/pull/974)
+Implement push command [#1235](https://github.com/swarm-game/swarm/pull/1235)
+unrestricted variant of atomic [#1231](https://github.com/swarm-game/swarm/pull/1231)
+Immersive multimedia experience [#1233](https://github.com/swarm-game/swarm/pull/1233)
+`ADT calculator` description now mentions `unit` and `void` types [#1226](https://github.com/swarm-game/swarm/pull/1226)
+web api to parse, render, and run code [#1142](https://github.com/swarm-game/swarm/pull/1142)
 
 ### Bugfixes
 
@@ -41,10 +38,18 @@ dc90996d * resonate command (#1204)
 
 * The `drill` command now returns the first inventory addition by @kostmo in [#1165](https://github.com/swarm-game/swarm/pull/1165)
 * Type ascription syntax by @Alexander-Block in [#1164](https://github.com/swarm-game/swarm/pull/1164)
-* New `detect` command by @kostmo in [#1170](https://github.com/swarm-game/swarm/pull/1170)
 * Records and record types by @byorgey in [#1148](https://github.com/swarm-game/swarm/pull/1148)
-* New `sniff` and `chirp` commands by @kostmo in [#1181](https://github.com/swarm-game/swarm/pull/1181)
-* `requirements` command for viewing requirements of any expression by @byorgey in [#1183](https://github.com/swarm-game/swarm/pull/1183)
+* `requirements` command for viewing requirements of any expression by
+  @byorgey in [#1183](https://github.com/swarm-game/swarm/pull/1183)
+* New `stride` command by @kostmo [#1219](https://github.com/swarm-game/swarm/pull/1219)
+* Many new robot sensing commands by @kostmo:
+  * `detect` [#1170](https://github.com/swarm-game/swarm/pull/1170)
+  * `sniff` and `chirp` [#1181](https://github.com/swarm-game/swarm/pull/1181)
+  * `resonate` [#1204](https://github.com/swarm-game/swarm/pull/1204)
+  * `watch` and `surveil` [#1201](https://github.com/swarm-game/swarm/pull/1201)
+  * `scout` [#1209](https://github.com/swarm-game/swarm/pull/1209)
+* New key input handler framework by @byorgey, so you can program robots to
+  respond to keypresses [#1214](https://github.com/swarm-game/swarm/pull/1214)
 
 #### Entities
 
@@ -71,7 +76,8 @@ dc90996d * resonate command (#1204)
 #### UI enhancements
 
 * Allow scrolling the world map unless explicitly disallowed by @byorgey in [#1109](https://github.com/swarm-game/swarm/pull/1109)
-* Add random "static" to `view` outside a certain range by @byorgey in [#1110](https://github.com/swarm-game/swarm/pull/1110)
+* Add random "static" to `view` outside a certain range by @byorgey in
+  [#1110](https://github.com/swarm-game/swarm/pull/1110) and [#1241](https://github.com/swarm-game/swarm/pull/1241)
 * Display the scenario in which an achievement was obtained by @kostmo in [#1175](https://github.com/swarm-game/swarm/pull/1175)
 
 #### Achievements
