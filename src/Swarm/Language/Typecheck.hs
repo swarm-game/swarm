@@ -118,7 +118,7 @@ data Source
 --   the 'Source' is 'Expected', and the second argument if 'Actual'.
 withSource :: Source -> a -> a -> a
 withSource Expected e _ = e
-withSource Actual   _ a = a
+withSource Actual _ a = a
 
 -- | A value along with its source (expected vs actual).
 type Sourced a = (Source, a)
