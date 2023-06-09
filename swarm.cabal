@@ -107,6 +107,7 @@ library
                       Swarm.TUI.Launch.Model
                       Swarm.TUI.Launch.Prep
                       Swarm.TUI.Launch.View
+                      Swarm.Game.Scenario.EntityFacade
                       Swarm.Game.Scenario.Objective
                       Swarm.Game.Scenario.Objective.Graph
                       Swarm.Game.Scenario.Objective.Logic
@@ -150,6 +151,13 @@ library
                       Swarm.ReadableIORef
                       Swarm.TUI.Attr
                       Swarm.TUI.Border
+                      Swarm.TUI.Editor.Area
+                      Swarm.TUI.Editor.Controller
+                      Swarm.TUI.Editor.Json
+                      Swarm.TUI.Editor.Masking
+                      Swarm.TUI.Editor.Model
+                      Swarm.TUI.Editor.View
+                      Swarm.TUI.Editor.Util
                       Swarm.TUI.Controller
                       Swarm.TUI.Controller.Util
                       Swarm.TUI.Inventory.Sorting
@@ -207,6 +215,7 @@ library
                       lsp                           >= 1.6 && < 1.7,
                       megaparsec                    >= 9.0 && < 9.4,
                       minimorph                     >= 0.3 && < 0.4,
+                      transformers                  >= 0.5 && < 0.7,
                       mtl                           >= 2.2.2 && < 2.3,
                       murmur3                       >= 1.0.4 && < 1.1,
                       natural-sort                  >= 0.1.2 && < 0.2,

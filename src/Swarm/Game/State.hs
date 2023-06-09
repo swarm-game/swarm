@@ -177,6 +177,7 @@ import Swarm.Language.Syntax (Const, SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
+import Swarm.TUI.Editor.Model (BoundsRectangle)
 import Swarm.Util (uniq, (<+=), (<<.=), (?))
 import Swarm.Util.Lens (makeLensesExcluding)
 import System.Clock qualified as Clock
@@ -719,7 +720,7 @@ unfocus = (\g -> g {_focusedRobotID = -1000}) . modifyViewCenter id
 
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.
-viewingRegion :: GameState -> (Int32, Int32) -> (W.Coords, W.Coords)
+viewingRegion :: GameState -> (Int32, Int32) -> BoundsRectangle
 viewingRegion g (w, h) = (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
  where
   Location cx cy = g ^. viewCenter
