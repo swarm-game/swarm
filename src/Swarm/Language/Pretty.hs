@@ -15,6 +15,8 @@ import Control.Unification.IntVar
 import Data.Bool (bool)
 import Data.Functor.Fixedpoint (Fix, unFix)
 import Data.Map.Strict qualified as M
+import Data.Set (Set)
+import Data.Set qualified as S
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -50,6 +52,9 @@ prettyString = RS.renderString . layoutPretty defaultLayoutOptions . ppr
 pparens :: Bool -> Doc ann -> Doc ann
 pparens True = parens
 pparens False = id
+
+bquote :: Doc ann -> Doc ann
+bquote d = "`" <> d <> "`"
 
 instance PrettyPrec Text where
   prettyPrec _ = pretty
@@ -202,24 +207,46 @@ appliedTermPrec (TApp f _) = case f of
 appliedTermPrec _ = 10
 
 instance PrettyPrec TypeErr where
-  prettyPrec _ (Mismatch _ ty1 ty2) =
+  prettyPrec _ (UnifyErr ty1 ty2) =
     "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
-  prettyPrec _ (EscapedSkolem _ x) =
+  prettyPrec _ (Mismatch Nothing ty1 ty2) =
+    "Type mismatch: expected" <+> ppr ty1 <> ", but got" <+> ppr ty2
+  prettyPrec _ (Mismatch (Just t) ty1 ty2) =
+    nest 2 . vcat $
+      [ "Type mismatch:"
+      , "From context, expected" <+> bquote (ppr t) <+> "to have type" <+> bquote (ppr ty1) <> ","
+      , "but it actually has type" <+> bquote (ppr ty2)
+      ]
+  prettyPrec _ (LambdaArgMismatch ty1 ty2) =
+    "Lambda argument has type annotation" <+> ppr ty2 <> ", but expected argument type" <+> ppr ty1
+  prettyPrec _ (FieldsMismatch expFs actFs) = fieldMismatchMsg expFs actFs
+  prettyPrec _ (EscapedSkolem x) =
     "Skolem variable" <+> pretty x <+> "would escape its scope"
-  prettyPrec _ (UnboundVar _ x) =
+  prettyPrec _ (UnboundVar x) =
     "Unbound variable" <+> pretty x
   prettyPrec _ (Infinite x uty) =
     "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
-  prettyPrec _ (DefNotTopLevel _ t) =
+  prettyPrec _ (DefNotTopLevel t) =
     "Definitions may only be at the top level:" <+> ppr t
-  prettyPrec _ (CantInfer _ t) =
+  prettyPrec _ (CantInfer t) =
     "Couldn't infer the type of term (this shouldn't happen; please report this as a bug!):" <+> ppr t
-  prettyPrec _ (CantInferProj _ t) =
+  prettyPrec _ (CantInferProj t) =
     "Can't infer the type of a record projection:" <+> ppr t
-  prettyPrec _ (UnknownProj _ x t) =
+  prettyPrec _ (UnknownProj x t) =
     "Record does not have a field with name" <+> pretty x <> ":" <+> ppr t
-  prettyPrec _ (InvalidAtomic _ reason t) =
+  prettyPrec _ (InvalidAtomic reason t) =
     "Invalid atomic block:" <+> ppr reason <> ":" <+> ppr t
+
+fieldMismatchMsg :: Set Var -> Set Var -> Doc a
+fieldMismatchMsg expFs actFs =
+  nest 2 . vcat $
+    ["Field mismatch; record literal has:"]
+      ++ ["- Extra field(s)" <+> prettyFieldSet extraFs | not (S.null extraFs)]
+      ++ ["- Missing field(s)" <+> prettyFieldSet missingFs | not (S.null missingFs)]
+ where
+  extraFs = actFs `S.difference` expFs
+  missingFs = expFs `S.difference` actFs
+  prettyFieldSet = hsep . punctuate "," . map (bquote . pretty) . S.toList
 
 instance PrettyPrec InvalidAtomicReason where
   prettyPrec _ (TooManyTicks n) = "block could take too many ticks (" <> pretty n <> ")"

@@ -110,18 +110,7 @@ demoWeb :: IO ()
 demoWeb = do
   let demoPort = 8080
   res <-
-    runExceptT $
-      initAppState $
-        AppOpts
-          { userSeed = Nothing
-          , userScenario = demoScenario
-          , scriptToRun = Nothing
-          , autoPlay = False
-          , cheatMode = False
-          , colorMode = Nothing
-          , userWebPort = Nothing
-          , repoGitInfo = Nothing
-          }
+    runExceptT $ initAppState (defaultAppOpts {userScenario = demoScenario})
   case res of
     Left errMsg -> T.putStrLn errMsg
     Right s -> do

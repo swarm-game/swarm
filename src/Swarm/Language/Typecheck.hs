@@ -1,7 +1,6 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- For 'Ord IntVar' instance
@@ -14,18 +13,19 @@
 -- https://byorgey.wordpress.com/2021/09/08/implementing-hindley-milner-with-the-unification-fd-library/ .
 module Swarm.Language.Typecheck (
   -- * Type errors
+  ContextualTypeErr (..),
   TypeErr (..),
   InvalidAtomicReason (..),
-  getTypeErrSrcLoc,
 
   -- * Inference monad
-  Infer,
-  runInfer,
+  TC,
+  runTC,
   lookup,
   fresh,
 
   -- * Unification
   substU,
+  expect,
   (=:=),
   HasBindings (..),
   instantiate,
@@ -43,6 +43,7 @@ module Swarm.Language.Typecheck (
   isSimpleUType,
 ) where
 
+import Control.Arrow ((***))
 import Control.Category ((>>>))
 import Control.Lens ((^.))
 import Control.Lens.Indexed (itraverse)
@@ -55,32 +56,34 @@ import Data.Data (Data, gmapM)
 import Data.Foldable (fold)
 import Data.Functor.Identity
 import Data.Generics (mkM)
-import Data.Map (Map)
+import Data.Map (Map, (!))
 import Data.Map qualified as M
 import Data.Maybe
 import Data.Set (Set, (\\))
 import Data.Set qualified as S
+import Data.Text qualified as T
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Module
 import Swarm.Language.Parse.QQ (tyQ)
 import Swarm.Language.Syntax
+import Swarm.Language.Typecheck.Unify
 import Swarm.Language.Types
 import Prelude hiding (lookup)
 
 ------------------------------------------------------------
--- Inference monad
+-- Type checking monad
 
--- | The concrete monad used for type inference.  'IntBindingT' is a
+-- | The concrete monad used for type checking.  'IntBindingT' is a
 --   monad transformer provided by the @unification-fd@ library which
 --   supports various operations such as generating fresh variables
 --   and unifying things.
-type Infer = ReaderT UCtx (ExceptT TypeErr (IntBindingT TypeF Identity))
+type TC = ReaderT UCtx (ExceptT ContextualTypeErr (IntBindingT TypeF Identity))
 
 -- | Run a top-level inference computation, returning either a
 --   'TypeErr' or a fully resolved 'TModule'.
-runInfer :: TCtx -> Infer UModule -> Either TypeErr TModule
-runInfer ctx =
+runTC :: TCtx -> TC UModule -> Either ContextualTypeErr TModule
+runTC ctx =
   (>>= applyBindings)
     >>> ( >>=
             \(Module u uctx) ->
@@ -97,10 +100,18 @@ runInfer ctx =
 --   an 'UnboundVar' error if it is not found, or opening its
 --   associated 'UPolytype' with fresh unification variables via
 --   'instantiate'.
-lookup :: SrcLoc -> Var -> Infer UType
+lookup :: SrcLoc -> Var -> TC UType
 lookup loc x = do
   ctx <- ask
-  maybe (throwError $ UnboundVar loc x) instantiate (Ctx.lookup x ctx)
+  maybe (throwTypeErr loc $ UnboundVar x) instantiate (Ctx.lookup x ctx)
+
+-- | Catch any thrown type errors and re-throw them with an added source
+--   location.
+addLocToTypeErr :: SrcLoc -> TC a -> TC a
+addLocToTypeErr l m =
+  m `catchError` \case
+    CTE NoLoc te -> throwTypeErr l te
+    te -> throwError te
 
 ------------------------------------------------------------
 -- Dealing with variables: free variables, fresh variables,
@@ -113,7 +124,7 @@ deriving instance Ord IntVar
 
 -- | A class for getting the free unification variables of a thing.
 class FreeVars a where
-  freeVars :: a -> Infer (Set IntVar)
+  freeVars :: a -> TC (Set IntVar)
 
 -- | We can get the free unification variables of a 'UType'.
 instance FreeVars UType where
@@ -128,7 +139,7 @@ instance FreeVars UCtx where
   freeVars = fmap S.unions . mapM freeVars . M.elems . unCtx
 
 -- | Generate a fresh unification variable.
-fresh :: Infer UType
+fresh :: TC UType
 fresh = UVar <$> lift (lift freeVar)
 
 -- | Perform a substitution over a 'UType', substituting for both type
@@ -144,14 +155,52 @@ substU m =
         f -> UTerm f
     )
 
+-- | Make sure no skolem variables escape.
+noSkolems :: SrcLoc -> UPolytype -> TC ()
+noSkolems l (Forall xs upty) = do
+  upty' <- applyBindings upty
+  let tyvs =
+        ucata
+          (const S.empty)
+          (\case TyVarF v -> S.singleton v; f -> fold f)
+          upty'
+      ftyvs = tyvs `S.difference` S.fromList xs
+  forM_ (S.lookupMin ftyvs) $ throwTypeErr l . EscapedSkolem
+
+-- ~~~~ Note [lookupMin to get an arbitrary element]
+--
+-- `S.lookupMin :: Set a -> Maybe a` returns the smallest
+-- element of a set, or Nothing if the set is empty. We don't
+-- actually care about getting the *smallest* type variable, but
+-- lookupMin is a convenient way to say "just get one element if
+-- any exist". The forM_ is actually over the Maybe so it represents
+-- doing the throwTypeErr either zero or one time, depending on
+-- whether lookupMin returns Nothing or Just.
+
 ------------------------------------------------------------
 -- Lifted stuff from unification-fd
 
 infix 4 =:=
 
--- | Constrain two types to be equal.
-(=:=) :: UType -> UType -> Infer UType
-s =:= t = lift $ s U.=:= t
+-- | @expect t expTy actTy@ expects that term @t@ has type @expTy@,
+--   where it actually has type @actTy@.  Ensure those types are the
+--   same.
+expect :: Maybe Syntax -> UType -> UType -> TC UType
+expect ms expected actual = case unifyCheck expected actual of
+  Apart -> throwTypeErr NoLoc $ Mismatch ms expected actual
+  Equal -> return expected
+  MightUnify -> lift $ expected U.=:= actual
+
+-- | Constrain two types to be equal, first with a quick-and-dirty
+--   check to see whether we know for sure they either are or cannot
+--   be equal, generating an equality constraint for the unifier as a
+--   last resort.
+--
+--   Important: the first given type should be the "expected" type
+--   from context, and the second should be the "actual" type (in any
+--   situation when this distinction makes sense).
+(=:=) :: UType -> UType -> TC UType
+(=:=) = expect Nothing
 
 -- | @unification-fd@ provides a function 'U.applyBindings' which
 --   fully substitutes for any bound unification variables (for
@@ -160,7 +209,7 @@ s =:= t = lift $ s U.=:= t
 --   unification variables in it and to which we can usefully apply
 --   'U.applyBindings'.
 class HasBindings u where
-  applyBindings :: u -> Infer u
+  applyBindings :: u -> TC u
 
 instance HasBindings UType where
   applyBindings = lift . U.applyBindings
@@ -186,7 +235,7 @@ instance HasBindings UModule where
 -- | To 'instantiate' a 'UPolytype', we generate a fresh unification
 --   variable for each variable bound by the `Forall`, and then
 --   substitute them throughout the type.
-instantiate :: UPolytype -> Infer UType
+instantiate :: UPolytype -> TC UType
 instantiate (Forall xs uty) = do
   xs' <- mapM (const fresh) xs
   return $ substU (M.fromList (zip (map Left xs) xs')) uty
@@ -196,7 +245,7 @@ instantiate (Forall xs uty) = do
 --   variables cannot unify with anything other than themselves.  This
 --   is used when checking something with a polytype explicitly
 --   specified by the user.
-skolemize :: UPolytype -> Infer UType
+skolemize :: UPolytype -> TC UType
 skolemize (Forall xs uty) = do
   xs' <- mapM (const fresh) xs
   return $ substU (M.fromList (zip (map Left xs) (map toSkolem xs'))) uty
@@ -206,18 +255,48 @@ skolemize (Forall xs uty) = do
 
 -- | 'generalize' is the opposite of 'instantiate': add a 'Forall'
 --   which closes over all free type and unification variables.
-generalize :: UType -> Infer UPolytype
+--
+--   Pick nice type variable names instead of reusing whatever fresh
+--   names happened to be used for the free variables.
+generalize :: UType -> TC UPolytype
 generalize uty = do
   uty' <- applyBindings uty
   ctx <- ask
   tmfvs <- freeVars uty'
   ctxfvs <- freeVars ctx
   let fvs = S.toList $ tmfvs \\ ctxfvs
-      xs = map (mkVarName "a") fvs
-  return $ Forall xs (substU (M.fromList (zip (map Right fvs) (map UTyVar xs))) uty')
+      alphabet = ['a' .. 'z']
+      -- Infinite supply of pretty names a, b, ..., z, a0, ... z0, a1, ... z1, ...
+      prettyNames = map T.pack (map (: []) alphabet ++ [x : show n | n <- [0 :: Int ..], x <- alphabet])
+      -- Associate each free variable with a new pretty name
+      renaming = zip fvs prettyNames
+  return $
+    Forall
+      (map snd renaming)
+      (substU (M.fromList . map (Right *** UTyVar) $ renaming) uty')
 
 ------------------------------------------------------------
 -- Type errors
+
+-- | A type error along with various contextual information to help us
+--   generate better error messages.  For now there is only a SrcLoc
+--   but there will be additional context in the future, such as a
+--   stack of stuff we were in the middle of doing, relevant names in
+--   scope, etc. (#1297).
+data ContextualTypeErr = CTE {cteSrcLoc :: SrcLoc, cteTypeErr :: TypeErr}
+  deriving (Show)
+
+-- | Create a raw 'ContextualTypeErr' with no context information.
+mkRawTypeErr :: TypeErr -> ContextualTypeErr
+mkRawTypeErr = CTE NoLoc
+
+-- | Create a 'ContextualTypeErr' value from a 'TypeErr' and context.
+mkTypeErr :: SrcLoc -> TypeErr -> ContextualTypeErr
+mkTypeErr = CTE
+
+-- | Throw a 'ContextualTypeErr'.
+throwTypeErr :: SrcLoc -> TypeErr -> TC a
+throwTypeErr l te = throwError (mkTypeErr l te)
 
 -- | Errors that can occur during type checking.  The idea is that
 --   each error carries information that can be used to help explain
@@ -226,25 +305,35 @@ generalize uty = do
 --   separately be pretty-printed to display them to the user.
 data TypeErr
   = -- | An undefined variable was encountered.
-    UnboundVar SrcLoc Var
+    UnboundVar Var
   | -- | A Skolem variable escaped its local context.
-    EscapedSkolem SrcLoc Var
-  | Infinite IntVar UType
-  | -- | The given term was expected to have a certain type, but has a
-    -- different type instead.
-    Mismatch SrcLoc (TypeF UType) (TypeF UType)
+    EscapedSkolem Var
+  | -- | Occurs check failure, i.e. infinite type.
+    Infinite IntVar UType
+  | -- | Error generated by the unifier.
+    UnifyErr (TypeF UType) (TypeF UType)
+  | -- | Type mismatch caught by 'unifyCheck'.  The given term was
+    --   expected to have a certain type, but has a different type
+    --   instead.
+    Mismatch (Maybe Syntax) UType UType -- expected, actual
+  | -- | Lambda argument type mismatch.
+    LambdaArgMismatch UType UType -- expected, actual
+  | -- | Record field mismatch, i.e. based on the expected type we
+    --   were expecting a record with certain fields, but found one with
+    --   a different field set.
+    FieldsMismatch (Set Var) (Set Var) -- expected fields, actual
   | -- | A definition was encountered not at the top level.
-    DefNotTopLevel SrcLoc Term
+    DefNotTopLevel Term
   | -- | A term was encountered which we cannot infer the type of.
     --   This should never happen.
-    CantInfer SrcLoc Term
+    CantInfer Term
   | -- | We can't infer the type of a record projection @r.x@ if we
     --   don't concretely know the type of the record @r@.
-    CantInferProj SrcLoc Term
+    CantInferProj Term
   | -- | An attempt to project out a nonexistent field
-    UnknownProj SrcLoc Var Term
+    UnknownProj Var Term
   | -- | An invalid argument was provided to @atomic@.
-    InvalidAtomic SrcLoc InvalidAtomicReason Term
+    InvalidAtomic InvalidAtomicReason Term
   deriving (Show)
 
 -- | Various reasons the body of an @atomic@ might be invalid.
@@ -261,21 +350,46 @@ data InvalidAtomicReason
     LongConst
   deriving (Show)
 
-instance Fallible TypeF IntVar TypeErr where
-  occursFailure = Infinite
-  mismatchFailure = Mismatch NoLoc
+instance Fallible TypeF IntVar ContextualTypeErr where
+  occursFailure v t = mkRawTypeErr (Infinite v t)
+  mismatchFailure t1 t2 = mkRawTypeErr (UnifyErr t1 t2)
 
-getTypeErrSrcLoc :: TypeErr -> Maybe SrcLoc
-getTypeErrSrcLoc te = case te of
-  UnboundVar l _ -> Just l
-  EscapedSkolem l _ -> Just l
-  Infinite _ _ -> Nothing
-  Mismatch l _ _ -> Just l
-  DefNotTopLevel l _ -> Just l
-  CantInfer l _ -> Just l
-  CantInferProj l _ -> Just l
-  UnknownProj l _ _ -> Just l
-  InvalidAtomic l _ _ -> Just l
+------------------------------------------------------------
+-- Type decomposition
+
+-- | Decompose a type that is supposed to be a delay type.
+decomposeDelayTy :: UType -> TC UType
+decomposeDelayTy (UTyDelay a) = return a
+decomposeDelayTy ty = do
+  a <- fresh
+  _ <- UTyDelay a =:= ty
+  return a
+
+-- | Decompose a type that is supposed to be a command type.
+decomposeCmdTy :: UType -> TC UType
+decomposeCmdTy (UTyCmd a) = return a
+decomposeCmdTy ty = do
+  a <- fresh
+  _ <- UTyCmd a =:= ty
+  return a
+
+-- | Decompose a type that is supposed to be a function type.
+decomposeFunTy :: UType -> TC (UType, UType)
+decomposeFunTy (UTyFun ty1 ty2) = return (ty1, ty2)
+decomposeFunTy ty = do
+  ty1 <- fresh
+  ty2 <- fresh
+  _ <- UTyFun ty1 ty2 =:= ty
+  return (ty1, ty2)
+
+-- | Decompose a type that is supposed to be a product type.
+decomposeProdTy :: UType -> TC (UType, UType)
+decomposeProdTy (UTyProd ty1 ty2) = return (ty1, ty2)
+decomposeProdTy ty = do
+  ty1 <- fresh
+  ty2 <- fresh
+  _ <- UTyProd ty1 ty2 =:= ty
+  return (ty1, ty2)
 
 ------------------------------------------------------------
 -- Type inference / checking
@@ -283,13 +397,13 @@ getTypeErrSrcLoc te = case te of
 -- | Top-level type inference function: given a context of definition
 --   types and a top-level term, either return a type error or its
 --   type as a 'TModule'.
-inferTop :: TCtx -> Syntax -> Either TypeErr TModule
-inferTop ctx = runInfer ctx . inferModule
+inferTop :: TCtx -> Syntax -> Either ContextualTypeErr TModule
+inferTop ctx = runTC ctx . inferModule
 
 -- | Infer the signature of a top-level expression which might
 --   contain definitions.
-inferModule :: Syntax -> Infer UModule
-inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
+inferModule :: Syntax -> TC UModule
+inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
   -- For definitions with no type signature, make up a fresh type
   -- variable for the body, infer the body under an extended context,
   -- and unify the two.  Then generalize the type and return an
@@ -351,8 +465,18 @@ inferModule s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
 
 -- | Infer the type of a term which does not contain definitions,
 --   returning a type-annotated term.
-infer :: Syntax -> Infer (Syntax' UType)
-infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
+--
+--   The only cases explicitly handled in 'infer' are those where
+--   pushing an expected type down into the term can't possibly help,
+--   e.g. most primitives, function application, and binds.
+--
+--   For most everything else we prefer 'check' because it can often
+--   result in better and more localized type error messages.
+infer :: Syntax -> TC (Syntax' UType)
+infer s@(Syntax l t) = addLocToTypeErr l $ case t of
+  -- Primitives, i.e. things for which we immediately know the only
+  -- possible correct type, and knowing an expected type would provide
+  -- no extra information.
   TUnit -> return $ Syntax' l TUnit UTyUnit
   TConst c -> Syntax' l (TConst c) <$> (instantiate . toU $ inferConst c)
   TDir d -> return $ Syntax' l (TDir d) UTyDir
@@ -362,179 +486,101 @@ infer s@(Syntax l t) = (`catchError` addLocToTypeErr s) $ case t of
   TAntiText x -> return $ Syntax' l (TAntiText x) UTyText
   TBool b -> return $ Syntax' l (TBool b) UTyBool
   TRobot r -> return $ Syntax' l (TRobot r) UTyActor
-  -- We should never encounter a TRef since they do not show up in
-  -- surface syntax, only as values while evaluating (*after*
-  -- typechecking).
-  TRef _ -> throwError $ CantInfer l t
   TRequireDevice d -> return $ Syntax' l (TRequireDevice d) (UTyCmd UTyUnit)
   TRequire n d -> return $ Syntax' l (TRequire n d) (UTyCmd UTyUnit)
   SRequirements x t1 -> do
     t1' <- infer t1
     return $ Syntax' l (SRequirements x t1') (UTyCmd UTyUnit)
-  -- To infer the type of a pair, just infer both components.
-  SPair t1 t2 -> do
-    t1' <- infer t1
-    t2' <- infer t2
-    return $ Syntax' l (SPair t1' t2') (UTyProd (t1' ^. sType) (t2' ^. sType))
 
-  -- if t : ty, then  {t} : {ty}.
-  -- Note that in theory, if the @Maybe Var@ component of the @SDelay@
-  -- is @Just@, we should typecheck the body under a context extended
-  -- with a type binding for the variable, and ensure that the type of
-  -- the variable is the same as the type inferred for the overall
-  -- @SDelay@.  However, we rely on the invariant that such recursive
-  -- @SDelay@ nodes are never generated from the surface syntax, only
-  -- dynamically at runtime when evaluating recursive let or def expressions,
-  -- so we don't have to worry about typechecking them here.
-  SDelay d t1 -> do
-    t1' <- infer t1
-    return $ Syntax' l (SDelay d t1') (UTyDelay (t1' ^. sType))
-
-  -- We need a special case for checking the argument to 'atomic'.
-  -- 'atomic t' has the same type as 't', which must have a type of
-  -- the form 'cmd a'.  't' must also be syntactically free of
-  -- variables.
-
-  TConst Atomic :$: at -> inferAtomic True Atomic at
-  TConst Instant :$: at -> inferAtomic False Instant at
+  -- We should never encounter a TRef since they do not show up in
+  -- surface syntax, only as values while evaluating (*after*
+  -- typechecking).
+  TRef _ -> throwTypeErr l $ CantInfer t
   -- Just look up variables in the context.
   TVar x -> Syntax' l (TVar x) <$> lookup l x
-  -- To infer the type of a lambda if the type of the argument is
-  -- provided, just infer the body under an extended context and return
-  -- the appropriate function type.
-  SLam x (Just argTy) lt -> do
+  -- It is helpful to handle lambdas in inference mode as well as
+  -- checking mode; in particular, we can handle lambdas with an
+  -- explicit type annotation on the argument.  Just infer the body
+  -- under an extended context and return the appropriate function
+  -- type.
+  SLam x (Just argTy) body -> do
     let uargTy = toU argTy
-    lt' <- withBinding (lvVar x) (Forall [] uargTy) $ infer lt
-    return $ Syntax' l (SLam x (Just argTy) lt') (UTyFun uargTy (lt' ^. sType))
+    body' <- withBinding (lvVar x) (Forall [] uargTy) $ infer body
+    return $ Syntax' l (SLam x (Just argTy) body') (UTyFun uargTy (body' ^. sType))
 
-  -- If the type of the argument is not provided, create a fresh
-  -- unification variable for it and proceed.
-  SLam x Nothing lt -> do
-    argTy <- fresh
-    lt' <- withBinding (lvVar x) (Forall [] argTy) $ infer lt
-    return $ Syntax' l (SLam x Nothing lt') (UTyFun argTy (lt' ^. sType))
-
-  -- To infer the type of an application:
+  -- Need special case here for applying 'atomic' or 'instant' so we
+  -- don't handle it with the case for generic type application.
+  -- This must come BEFORE the SApp case.
+  TConst c :$: _
+    | c `elem` [Atomic, Instant] -> fresh >>= check s
+  -- It works better to handle applications in *inference* mode.
+  -- Knowing the expected result type of an application does not
+  -- really help much.  In the typical case, the function being
+  -- applied is either (1) a primitive or variable whose type we can
+  -- easily infer, or (2) a nested application; in the second case in
+  -- particular, handling applications in inference mode means we can
+  -- stay in inference mode the whole way down the left-hand side of
+  -- the chain of applications.  If we handled applications in
+  -- checking mode, we would constantly flip back and forth between
+  -- inference & checking and generate a fresh unification variable
+  -- each time.
   SApp f x -> do
     -- Infer the type of the left-hand side and make sure it has a function type.
     f' <- infer f
-    (ty1, ty2) <- decomposeFunTy (f' ^. sType)
+    (argTy, resTy) <- decomposeFunTy (f' ^. sType)
 
     -- Then check that the argument has the right type.
-    x' <- check x ty1 `catchError` addLocToTypeErr x
-    return $ Syntax' l (SApp f' x') ty2
+    x' <- check x argTy
+    return $ Syntax' l (SApp f' x') resTy
 
-  -- We can infer the type of a let whether a type has been provided for
-  -- the variable or not.
-  SLet r x Nothing t1 t2 -> do
-    xTy <- fresh
-    t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
-    let uty = t1' ^. sType
-    _ <- xTy =:= uty
-    upty <- generalize uty
-    t2' <- withBinding (lvVar x) upty $ infer t2
-    return $ Syntax' l (SLet r x Nothing t1' t2') (t2' ^. sType)
-  SLet r x (Just pty) t1 t2 -> do
-    let upty = toU pty
-    -- If an explicit polytype has been provided, skolemize it and check
-    -- definition and body under an extended context.
-    uty <- skolemize upty
-    (t1', t2') <- withBinding (lvVar x) upty $ do
-      (,)
-        <$> check t1 uty
-        `catchError` addLocToTypeErr t1
-        <*> infer t2
-    -- Make sure no skolem variables have escaped.
-    ask >>= mapM_ noSkolems
-    return $ Syntax' l (SLet r x (Just pty) t1' t2') (t2' ^. sType)
-  SDef {} -> throwError $ DefNotTopLevel l t
+  -- We handle binds in inference mode for a similar reason to
+  -- application.
   SBind mx c1 c2 -> do
     c1' <- infer c1
     a <- decomposeCmdTy (c1' ^. sType)
     c2' <- maybe id ((`withBinding` Forall [] a) . lvVar) mx $ infer c2
     _ <- decomposeCmdTy (c2' ^. sType)
     return $ Syntax' l (SBind mx c1' c2') (c2' ^. sType)
-  SRcd m -> do
-    m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
-    return $ Syntax' l (SRcd (Just <$> m')) (UTyRcd (fmap (^. sType) m'))
+
+  -- Handle record projection in inference mode.  Knowing the expected
+  -- type of r.x doesn't really help since we must infer the type of r
+  -- first anyway.
   SProj t1 x -> do
     t1' <- infer t1
     case t1' ^. sType of
       UTyRcd m -> case M.lookup x m of
         Just xTy -> return $ Syntax' l (SProj t1' x) xTy
-        Nothing -> throwError $ UnknownProj l x (SProj t1 x)
-      _ -> throwError $ CantInferProj l (SProj t1 x)
+        Nothing -> throwTypeErr l $ UnknownProj x (SProj t1 x)
+      _ -> throwTypeErr l $ CantInferProj (SProj t1 x)
+
+  -- See Note [Checking and inference for record literals]
+  SRcd m -> do
+    m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
+    return $ Syntax' l (SRcd (Just <$> m')) (UTyRcd (fmap (^. sType) m'))
+
+  -- To infer a type-annotated term, switch into checking mode.
+  -- However, we must be careful to deal properly with polymorphic
+  -- type annotations.
   SAnnotate c pty -> do
     let upty = toU pty
     -- Typecheck against skolemized polytype.
     uty <- skolemize upty
-    _ <- check c uty `catchError` addLocToTypeErr c
+    _ <- check c uty
     -- Make sure no skolem variables have escaped.
-    ask >>= mapM_ noSkolems
+    ask >>= mapM_ (noSkolems l)
     -- If check against skolemized polytype is successful,
     -- instantiate polytype with unification variables.
     -- Free variables should be able to unify with anything in
-    -- following inference steps.
+    -- following typechecking steps.
     iuty <- instantiate upty
-    c'' <- check c iuty `catchError` addLocToTypeErr c
-    return $ Syntax' l (SAnnotate c'' pty) (c'' ^. sType)
- where
-  noSkolems :: UPolytype -> Infer ()
-  noSkolems (Forall xs upty) = do
-    upty' <- applyBindings upty
-    let tyvs =
-          ucata
-            (const S.empty)
-            (\case TyVarF v -> S.singleton v; f -> fold f)
-            upty'
-        ftyvs = tyvs `S.difference` S.fromList xs
-    unless (S.null ftyvs) $
-      throwError $
-        EscapedSkolem l (head (S.toList ftyvs))
+    c' <- check c iuty
+    return $ Syntax' l (SAnnotate c' pty) (c' ^. sType)
 
-  inferAtomic :: Bool -> Const -> Syntax -> Infer (Syntax' UType)
-  inferAtomic validateTickBudget constName at = do
-    argTy <- fresh
-    at' <- check at (UTyCmd argTy)
-    atomic' <- infer (Syntax l (TConst constName))
-    -- It's important that we typecheck the subterm @at@ *before* we
-    -- check that it is a valid argument to @atomic@: this way we can
-    -- ensure that we have already inferred the types of any variables
-    -- referenced.
-    when validateTickBudget $
-      validAtomic at
-    return $ Syntax' l (SApp atomic' at') (at' ^. sType)
-
-addLocToTypeErr :: Syntax' ty -> TypeErr -> Infer a
-addLocToTypeErr s te = case te of
-  Mismatch NoLoc a b -> throwError $ Mismatch (s ^. sLoc) a b
-  _ -> throwError te
-
--- | Decompose a type that is supposed to be a command type.
-decomposeCmdTy :: UType -> Infer UType
-decomposeCmdTy (UTyCmd a) = return a
-decomposeCmdTy ty = do
-  a <- fresh
-  _ <- ty =:= UTyCmd a
-  return a
-
--- | Decompose a type that is supposed to be a function type.
-decomposeFunTy :: UType -> Infer (UType, UType)
-decomposeFunTy (UTyFun ty1 ty2) = return (ty1, ty2)
-decomposeFunTy ty = do
-  ty1 <- fresh
-  ty2 <- fresh
-  _ <- ty =:= UTyFun ty1 ty2
-  return (ty1, ty2)
-
--- | Decompose a type that is supposed to be a product type.
-decomposeProdTy :: UType -> Infer (UType, UType)
-decomposeProdTy (UTyProd ty1 ty2) = return (ty1, ty2)
-decomposeProdTy ty = do
-  ty1 <- fresh
-  ty2 <- fresh
-  _ <- ty =:= UTyProd ty1 ty2
-  return (ty1, ty2)
+  -- Fallback: to infer the type of anything else, make up a fresh unification
+  -- variable for its type and check against it.
+  _ -> do
+    sTy <- fresh
+    check s sTy
 
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
@@ -559,6 +605,7 @@ inferConst c = case c of
   Reprogram -> [tyQ| actor -> {cmd a} -> cmd unit |]
   Build -> [tyQ| {cmd a} -> cmd actor |]
   Drill -> [tyQ| dir -> cmd (unit + text) |]
+  Use -> [tyQ| text -> dir -> cmd (unit + text) |]
   Salvage -> [tyQ| cmd unit |]
   Say -> [tyQ| text -> cmd unit |]
   Listen -> [tyQ| cmd text |]
@@ -566,11 +613,13 @@ inferConst c = case c of
   View -> [tyQ| actor -> cmd unit |]
   Appear -> [tyQ| text -> cmd unit |]
   Create -> [tyQ| text -> cmd unit |]
+  Halt -> [tyQ| actor -> cmd unit |]
   Time -> [tyQ| cmd int |]
   Scout -> [tyQ| dir -> cmd bool |]
   Whereami -> [tyQ| cmd (int * int) |]
   Detect -> [tyQ| text -> ((int * int) * (int * int)) -> cmd (unit + (int * int)) |]
   Resonate -> [tyQ| text -> ((int * int) * (int * int)) -> cmd int |]
+  Density -> [tyQ| ((int * int) * (int * int)) -> cmd int |]
   Sniff -> [tyQ| text -> cmd int |]
   Chirp -> [tyQ| text -> cmd dir |]
   Watch -> [tyQ| dir -> cmd unit |]
@@ -639,22 +688,145 @@ inferConst c = case c of
 
 -- | @check t ty@ checks that @t@ has type @ty@, returning a
 --   type-annotated AST if so.
-check :: Syntax -> UType -> Infer (Syntax' UType)
-check s@(Syntax l t) ty = (`catchError` addLocToTypeErr s) $ case t of
+--
+--   We try to stay in checking mode as far as possible, decomposing
+--   the expected type as we go and pushing it through the recursion.
+check :: Syntax -> UType -> TC (Syntax' UType)
+check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
+  -- if t : ty, then  {t} : {ty}.
+  -- Note that in theory, if the @Maybe Var@ component of the @SDelay@
+  -- is @Just@, we should typecheck the body under a context extended
+  -- with a type binding for the variable, and ensure that the type of
+  -- the variable is the same as the type inferred for the overall
+  -- @SDelay@.  However, we rely on the invariant that such recursive
+  -- @SDelay@ nodes are never generated from the surface syntax, only
+  -- dynamically at runtime when evaluating recursive let or def expressions,
+  -- so we don't have to worry about typechecking them here.
+  SDelay d s1 -> do
+    ty1 <- decomposeDelayTy expected
+    s1' <- check s1 ty1
+    return $ Syntax' l (SDelay d s1') (UTyDelay ty1)
+
+  -- To check the type of a pair, make sure the expected type is a
+  -- product type, and push the two types down into the left and right.
   SPair s1 s2 -> do
-    (ty1, ty2) <- decomposeProdTy ty
+    (ty1, ty2) <- decomposeProdTy expected
     s1' <- check s1 ty1
     s2' <- check s2 ty2
     return $ Syntax' l (SPair s1' s2') (UTyProd ty1 ty2)
-  SLam x xTy body -> do
-    (argTy, resTy) <- decomposeFunTy ty
-    _ <- maybe (return argTy) (=:= argTy) (toU xTy)
+
+  -- To check a lambda, make sure the expected type is a function type.
+  SLam x mxTy body -> do
+    (argTy, resTy) <- decomposeFunTy expected
+    case toU mxTy of
+      Just xTy -> case unifyCheck argTy xTy of
+        -- Generate a special error when the explicit type annotation
+        -- on a lambda doesn't match the expected type,
+        -- e.g. (\x:int. x + 2) : text -> int, since the usual
+        -- "expected/but got" language would probably be confusing.
+        Apart -> throwTypeErr l $ LambdaArgMismatch argTy xTy
+        -- Otherwise, make sure to unify the annotation with the
+        -- expected argument type.
+        _ -> void $ argTy =:= xTy
+      Nothing -> return ()
     body' <- withBinding (lvVar x) (Forall [] argTy) $ check body resTy
-    return $ Syntax' l (SLam x xTy body') (UTyFun argTy resTy)
+    return $ Syntax' l (SLam x mxTy body') (UTyFun argTy resTy)
+
+  -- Special case for checking the argument to 'atomic' (or
+  -- 'instant').  'atomic t' has the same type as 't', which must have
+  -- a type of the form 'cmd a' for some 'a'.
+
+  TConst c :$: at
+    | c `elem` [Atomic, Instant] -> do
+        argTy <- decomposeCmdTy expected
+        at' <- check at (UTyCmd argTy)
+        atomic' <- infer (Syntax l (TConst c))
+        -- It's important that we typecheck the subterm @at@ *before* we
+        -- check that it is a valid argument to @atomic@: this way we can
+        -- ensure that we have already inferred the types of any variables
+        -- referenced.
+        --
+        -- When c is Atomic we validate that the argument to atomic is
+        -- guaranteed to operate within a single tick.  When c is Instant
+        -- we skip this check.
+        when (c == Atomic) $ validAtomic at
+        return $ Syntax' l (SApp atomic' at') (UTyCmd argTy)
+  -- Checking the type of a let-expression.
+  SLet r x mxTy t1 t2 -> do
+    (upty, t1') <- case mxTy of
+      -- No type annotation was provided for the let binding, so infer its type.
+      Nothing -> do
+        -- The let could be recursive, so we must generate a fresh
+        -- unification variable for the type of x and infer the type
+        -- of t1 with x in the context.
+        xTy <- fresh
+        t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
+        let uty = t1' ^. sType
+        _ <- xTy =:= uty
+        upty <- generalize uty
+        return (upty, t1')
+      -- An explicit polytype annotation has been provided. Skolemize it and check
+      -- definition and body under an extended context.
+      Just pty -> do
+        let upty = toU pty
+        uty <- skolemize upty
+        t1' <- withBinding (lvVar x) upty $ check t1 uty
+        return (upty, t1')
+
+    -- Now check the type of the body.
+    t2' <- withBinding (lvVar x) upty $ check t2 expected
+
+    -- Make sure no skolem variables have escaped.
+    ask >>= mapM_ (noSkolems l)
+
+    -- Return the annotated let.
+    return $ Syntax' l (SLet r x mxTy t1' t2') expected
+
+  -- Definitions can only occur at the top level.
+  SDef {} -> throwTypeErr l $ DefNotTopLevel t
+  -- To check a record, ensure the expected type is a record type,
+  -- ensure all the right fields are present, and push the expected
+  -- types of all the fields down into recursive checks.
+  --
+  -- We have to be careful here --- if the expected type is not
+  -- manifestly a record type but might unify with one (i.e. if the
+  -- expected type is a variable) then we can't generate type
+  -- variables for its subparts and push them, we have to switch
+  -- completely into inference mode.  See Note [Checking and inference
+  -- for record literals].
+  SRcd fields
+    | UTyRcd tyMap <- expected -> do
+        let expectedFields = M.keysSet tyMap
+            actualFields = M.keysSet fields
+        when (actualFields /= expectedFields) $
+          throwTypeErr l $
+            FieldsMismatch expectedFields actualFields
+        m' <- itraverse (\x ms -> check (fromMaybe (STerm (TVar x)) ms) (tyMap ! x)) fields
+        return $ Syntax' l (SRcd (Just <$> m')) expected
+
+  -- Fallback: switch into inference mode, and check that the type we
+  -- get is what we expected.
   _ -> do
-    Syntax' l' t' ty' <- infer s
-    theTy <- ty =:= ty'
-    return $ Syntax' l' t' theTy
+    Syntax' l' t' actual <- infer s
+    Syntax' l' t' <$> expect (Just s) expected actual
+
+-- ~~~~ Note [Checking and inference for record literals]
+--
+-- We need to handle record literals in both inference and checking
+-- mode.  By way of contrast, with a pair, if we are in checking
+-- mode and the expected type is not manifestly a product type, we
+-- can just generate fresh unification variables for the types of
+-- the two components, generate a constraint that the expected type
+-- is equal to a product type of these two fresh types, and continue
+-- in checking mode on both sides.  With records, however, we cannot
+-- do that; if we are checking a record and the expected type is not
+-- manifestly a record type, we must simply switch into inference
+-- mode.  However, it is still helpful to be able to handle records
+-- in checking mode too, since if we know a record type it is
+-- helpful to be able to push the field types down into the fields.
+
+------------------------------------------------------------
+-- Special atomic checking
 
 -- | Ensure a term is a valid argument to @atomic@.  Valid arguments
 --   may not contain @def@, @let@, or lambda. Any variables which are
@@ -681,15 +853,15 @@ check s@(Syntax l t) ty = (`catchError` addLocToTypeErr s) $ case t of
 --   i.e. contains at most one tangible command. For example, @atomic
 --   (move; move)@ is invalid, since that would allow robots to move
 --   twice as fast as usual by doing both actions in one tick.
-validAtomic :: Syntax -> Infer ()
+validAtomic :: Syntax -> TC ()
 validAtomic s@(Syntax l t) = do
   n <- analyzeAtomic S.empty s
-  when (n > 1) $ throwError (InvalidAtomic l (TooManyTicks n) t)
+  when (n > 1) $ throwTypeErr l $ InvalidAtomic (TooManyTicks n) t
 
 -- | Analyze an argument to @atomic@: ensure it contains no nested
 --   atomic blocks and no references to external variables, and count
 --   how many tangible commands it will execute.
-analyzeAtomic :: Set Var -> Syntax -> Infer Int
+analyzeAtomic :: Set Var -> Syntax -> TC Int
 analyzeAtomic locals (Syntax l t) = case t of
   -- Literals, primitives, etc. that are fine and don't require a tick
   -- to evaluate
@@ -707,10 +879,10 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- Constants.
   TConst c
     -- Nested 'atomic' is not allowed.
-    | c == Atomic -> throwError $ InvalidAtomic l NestedAtomic t
+    | c == Atomic -> throwTypeErr l $ InvalidAtomic NestedAtomic t
     -- We cannot allow long commands (commands that may require more
     -- than one tick to execute) since that could freeze the game.
-    | isLong c -> throwError $ InvalidAtomic l LongConst t
+    | isLong c -> throwTypeErr l $ InvalidAtomic LongConst t
     -- Otherwise, return 1 or 0 depending on whether the command is
     -- tangible.
     | otherwise -> return $ if isTangible c then 1 else 0
@@ -728,7 +900,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   SBind mx s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2
   SRcd m -> sum <$> mapM analyzeField (M.assocs m)
    where
-    analyzeField :: (Var, Maybe Syntax) -> Infer Int
+    analyzeField :: (Var, Maybe Syntax) -> TC Int
     analyzeField (x, Nothing) = analyzeAtomic locals (STerm (TVar x))
     analyzeField (_, Just s) = analyzeAtomic locals s
   SProj {} -> return 0
@@ -761,15 +933,15 @@ analyzeAtomic locals (Syntax l t) = case t of
             xTy' <- applyBindings xTy
             if isSimpleUPolytype xTy'
               then return 0
-              else throwError (InvalidAtomic l (NonSimpleVarType x xTy') t)
+              else throwTypeErr l $ InvalidAtomic (NonSimpleVarType x xTy') t
   -- No lambda, `let` or `def` allowed!
-  SLam {} -> throwError (InvalidAtomic l AtomicDupingThing t)
-  SLet {} -> throwError (InvalidAtomic l AtomicDupingThing t)
-  SDef {} -> throwError (InvalidAtomic l AtomicDupingThing t)
+  SLam {} -> throwTypeErr l $ InvalidAtomic AtomicDupingThing t
+  SLet {} -> throwTypeErr l $ InvalidAtomic AtomicDupingThing t
+  SDef {} -> throwTypeErr l $ InvalidAtomic AtomicDupingThing t
   -- We should never encounter a TRef since they do not show up in
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).
-  TRef {} -> throwError (CantInfer l t)
+  TRef {} -> throwTypeErr l $ CantInfer t
   -- An explicit type annotation doesn't change atomicity
   SAnnotate s _ -> analyzeAtomic locals s
 

@@ -18,6 +18,7 @@ import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util (reflow)
+import Swarm.Util.Lens (makeLensesNoSigs)
 
 ------------------------------------------------------------
 -- Scenario objectives
@@ -75,7 +76,7 @@ data Objective = Objective
   }
   deriving (Eq, Show, Generic, ToJSON)
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''Objective
+makeLensesNoSigs ''Objective
 
 instance ToSample Objective where
   toSamples _ = SD.noSamples

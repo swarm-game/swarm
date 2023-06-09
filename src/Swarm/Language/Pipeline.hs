@@ -14,6 +14,7 @@ module Swarm.Language.Pipeline (
   processParsedTerm,
   processTerm',
   processParsedTerm',
+  prettyTypeErr,
   showTypeErrorPos,
   processTermEither,
 ) where
@@ -72,7 +73,7 @@ processTerm :: Text -> Either Text (Maybe ProcessedTerm)
 processTerm = processTerm' empty empty
 
 -- | Like 'processTerm', but use a term that has already been parsed.
-processParsedTerm :: Syntax -> Either TypeErr ProcessedTerm
+processParsedTerm :: Syntax -> Either ContextualTypeErr ProcessedTerm
 processParsedTerm = processParsedTerm' empty empty
 
 -- | Like 'processTerm', but use explicit starting contexts.
@@ -81,25 +82,26 @@ processTerm' ctx capCtx txt = do
   mt <- readTerm txt
   first (prettyTypeErr txt) $ traverse (processParsedTerm' ctx capCtx) mt
 
-prettyTypeErr :: Text -> TypeErr -> Text
-prettyTypeErr code te = teLoc <> prettyText te
+prettyTypeErr :: Text -> ContextualTypeErr -> Text
+prettyTypeErr code (CTE l te) = teLoc <> prettyText te
  where
-  teLoc = case getTypeErrSrcLoc te of
-    Just (SrcLoc s e) -> (from . show . fst . fst $ getLocRange code (s, e)) <> ": "
-    _anyOtherLoc -> ""
+  teLoc = case l of
+    SrcLoc s e -> (into @Text . showLoc . fst $ getLocRange code (s, e)) <> ": "
+    NoLoc -> ""
+  showLoc (r, c) = show r ++ ":" ++ show c
 
-showTypeErrorPos :: Text -> TypeErr -> ((Int, Int), (Int, Int), Text)
-showTypeErrorPos code te = (minusOne start, minusOne end, msg)
+showTypeErrorPos :: Text -> ContextualTypeErr -> ((Int, Int), (Int, Int), Text)
+showTypeErrorPos code (CTE l te) = (minusOne start, minusOne end, msg)
  where
   minusOne (x, y) = (x - 1, y - 1)
 
-  (start, end) = case getTypeErrSrcLoc te of
-    Just (SrcLoc s e) -> getLocRange code (s, e)
-    _anyOtherLoc -> ((1, 1), (65535, 65535)) -- unknown loc spans the whole document
+  (start, end) = case l of
+    SrcLoc s e -> getLocRange code (s, e)
+    NoLoc -> ((1, 1), (65535, 65535)) -- unknown loc spans the whole document
   msg = prettyText te
 
 -- | Like 'processTerm'', but use a term that has already been parsed.
-processParsedTerm' :: TCtx -> ReqCtx -> Syntax -> Either TypeErr ProcessedTerm
+processParsedTerm' :: TCtx -> ReqCtx -> Syntax -> Either ContextualTypeErr ProcessedTerm
 processParsedTerm' ctx capCtx t = do
   m <- inferTop ctx t
   let (caps, capCtx') = requirements capCtx (t ^. sTerm)

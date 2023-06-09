@@ -64,6 +64,7 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Language.Types
 import Swarm.TUI.Model.Name
+import Swarm.Util.Lens (makeLensesNoSigs)
 
 ------------------------------------------------------------
 -- REPL History
@@ -113,7 +114,7 @@ data REPLHistory = REPLHistory
   }
   deriving (Show)
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''REPLHistory
+makeLensesNoSigs ''REPLHistory
 
 -- | Sequence of REPL inputs and outputs, oldest entry is leftmost.
 replSeq :: Lens' REPLHistory (Seq REPLHistItem)
@@ -281,7 +282,7 @@ initREPLState hist =
     , _replHistory = hist
     }
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''REPLState
+makeLensesNoSigs ''REPLState
 
 -- | The way we interpret text typed by the player in the REPL prompt.
 replPromptType :: Lens' REPLState REPLPrompt

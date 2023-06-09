@@ -37,7 +37,12 @@ module Swarm.TUI.View (
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Forms
-import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
+import Brick.Widgets.Border (
+  hBorder,
+  hBorderWithLabel,
+  joinableBorder,
+  vBorder,
+ )
 import Brick.Widgets.Center (center, centerLayer, hCenter)
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (getEditContents, renderEditor)
@@ -91,6 +96,8 @@ import Swarm.Language.Typecheck (inferConst)
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
+import Swarm.TUI.Launch.Model
+import Swarm.TUI.Launch.View
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Repl (lastEntry)
@@ -117,7 +124,7 @@ drawUI s
       -- quit the app instead.  But just in case, we display the main menu anyway.
       NoMenu -> [drawMainMenuUI s (mainMenu NewGame)]
       MainMenu l -> [drawMainMenuUI s l]
-      NewGameMenu stk -> [drawNewGameMenuUI stk]
+      NewGameMenu stk -> drawNewGameMenuUI stk $ s ^. uiState . uiLaunchConfig
       AchievementsMenu l -> [drawAchievementsMenuUI s l]
       MessagesMenu -> [drawMainMessages s]
       AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
@@ -165,35 +172,52 @@ drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) 
   attrFor '▒' = dirtAttr
   attrFor _ = defAttr
 
-drawNewGameMenuUI :: NonEmpty (BL.List Name ScenarioItem) -> Widget Name
-drawNewGameMenuUI (l :| ls) =
-  padLeftRight 20
-    . centerLayer
-    $ hBox
-      [ vBox
-          [ withAttr boldAttr . txt $ breadcrumbs ls
-          , txt " "
-          , vLimit 20
-              . hLimit 35
-              . BL.renderList (const $ padRight Max . drawScenarioItem) True
-              $ l
-          ]
-      , padLeft (Pad 5) (maybe (txt "") (drawDescription . snd) (BL.listSelectedElement l))
-      ]
+-- | When launching a game, a modal prompt may appear on another layer
+-- to input seed and/or a script to run.
+drawNewGameMenuUI ::
+  NonEmpty (BL.List Name ScenarioItem) ->
+  LaunchOptions ->
+  [Widget Name]
+drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
+  Nothing -> pure mainWidget
+  Just _ -> drawLaunchConfigPanel launchOptions <> pure mainWidget
  where
+  displayedFor = launchOptions ^. controls . isDisplayedFor
+  mainWidget =
+    vBox
+      [ padLeftRight 20
+          . centerLayer
+          $ hBox
+            [ vBox
+                [ withAttr boldAttr . txt $ breadcrumbs ls
+                , txt " "
+                , vLimit 20
+                    . hLimit 35
+                    . BL.renderList (const $ padRight Max . drawScenarioItem) True
+                    $ l
+                ]
+            , padLeft (Pad 5) (maybe (txt "") (drawDescription . snd) (BL.listSelectedElement l))
+            ]
+      , launchOptionsMessage
+      ]
+
+  launchOptionsMessage = case (displayedFor, snd <$> BL.listSelectedElement l) of
+    (Nothing, Just (SISingle _)) -> hCenter $ txt "Press 'o' for launch options, or 'Enter' to launch with defaults"
+    _ -> txt " "
+
   drawScenarioItem (SISingle (s, si)) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioName)
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
   drawStatusInfo s si = case si ^. scenarioStatus of
     NotStarted -> txt " ○ "
-    Played (Metric Attempted _) _ -> case s ^. scenarioObjectives of
+    Played _initialScript (Metric Attempted _) _ -> case s ^. scenarioObjectives of
       [] -> withAttr cyanAttr $ txt " ◉ "
       _ -> withAttr yellowAttr $ txt " ◎ "
-    Played (Metric Completed _) _ -> withAttr greenAttr $ txt " ● "
+    Played _initialScript (Metric Completed _) _ -> withAttr greenAttr $ txt " ● "
 
   describeStatus :: ScenarioStatus -> Widget n
   describeStatus = \case
     NotStarted -> withAttr cyanAttr $ txt "not started"
-    Played pm _best -> describeProgress pm
+    Played _initialScript pm _best -> describeProgress pm
 
   breadcrumbs :: [BL.List Name ScenarioItem] -> Text
   breadcrumbs =
@@ -291,7 +315,7 @@ makeBestScoreRows scenarioStat =
  where
   getBests = case scenarioStat of
     NotStarted -> Nothing
-    Played _ best -> Just best
+    Played _initialScript _ best -> Just best
 
   makeBestRows b = map (makeBestRow hasMultiple) groups
    where
@@ -382,33 +406,7 @@ drawGameUI s =
                   )
                   $ drawInfoPanel s
               ]
-        , vBox
-            [ panel
-                highlightAttr
-                fr
-                (FocusablePanel WorldPanel)
-                ( plainBorder
-                    & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s)
-                    & topLabels . leftLabel ?~ drawModalMenu s
-                    & addCursorPos
-                    & addClock
-                )
-                (drawWorld (s ^. uiState . uiShowRobots) (s ^. gameState))
-            , drawKeyMenu s
-            , clickable (FocusablePanel REPLPanel) $
-                panel
-                  highlightAttr
-                  fr
-                  (FocusablePanel REPLPanel)
-                  ( plainBorder
-                      & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiREPL . replType))
-                  )
-                  ( vLimit replHeight
-                      . padBottom Max
-                      . padLeftRight 1
-                      $ drawREPL s
-                  )
-            ]
+        , vBox rightPanel
         ]
   ]
  where
@@ -419,10 +417,44 @@ drawGameUI s =
        in bottomLabels . leftLabel ?~ padLeftRight 1 worldCursorInfo
   -- Add clock display in top right of the world view if focused robot
   -- has a clock equipped
-  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay $ s ^. gameState)
+  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (s ^. uiState . lgTicksPerSecond) $ s ^. gameState)
   fr = s ^. uiState . uiFocusRing
   moreTop = s ^. uiState . uiMoreInfoTop
   moreBot = s ^. uiState . uiMoreInfoBot
+  showREPL = s ^. uiState . uiShowREPL
+  rightPanel = if showREPL then worldPanel ++ replPanel else worldPanel ++ minimizedREPL
+  minimizedREPL = case focusGetCurrent fr of
+    (Just (FocusablePanel REPLPanel)) -> [separateBorders $ clickable (FocusablePanel REPLPanel) (forceAttr highlightAttr hBorder)]
+    _ -> [separateBorders $ clickable (FocusablePanel REPLPanel) hBorder]
+  worldPanel =
+    [ panel
+        highlightAttr
+        fr
+        (FocusablePanel WorldPanel)
+        ( plainBorder
+            & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s)
+            & topLabels . leftLabel ?~ drawModalMenu s
+            & addCursorPos
+            & addClock
+        )
+        (drawWorld (s ^. uiState . uiShowRobots) (s ^. gameState))
+    , drawKeyMenu s
+    ]
+  replPanel =
+    [ clickable (FocusablePanel REPLPanel) $
+        panel
+          highlightAttr
+          fr
+          (FocusablePanel REPLPanel)
+          ( plainBorder
+              & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiREPL . replType))
+          )
+          ( vLimit replHeight
+              . padBottom Max
+              . padLeftRight 1
+              $ drawREPL s
+          )
+    ]
 
 drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
 drawWorldCursorInfo g coords@(W.Coords (y, x)) =
@@ -455,10 +487,10 @@ drawWorldCursorInfo g coords@(W.Coords (y, x)) =
 
 -- | Format the clock display to be shown in the upper right of the
 --   world panel.
-drawClockDisplay :: GameState -> Widget n
-drawClockDisplay gs = hBox . intersperse (txt " ") $ catMaybes [clockWidget, pauseWidget]
+drawClockDisplay :: Int -> GameState -> Widget n
+drawClockDisplay lgTPS gs = hBox . intersperse (txt " ") $ catMaybes [clockWidget, pauseWidget]
  where
-  clockWidget = maybeDrawTime (gs ^. ticks) (gs ^. paused) gs
+  clockWidget = maybeDrawTime (gs ^. ticks) (gs ^. paused || lgTPS < 3) gs
   pauseWidget = guard (gs ^. paused) $> txt "(PAUSED)"
 
 -- | Check whether the currently focused robot (if any) has a clock
@@ -474,12 +506,12 @@ clockEquipped gs = case focusedRobot gs of
 drawTime :: TickNumber -> Bool -> String
 drawTime t showTicks =
   mconcat $
-    [ printf "%x" (t `shiftR` 20)
-    , ":"
-    , printf "%02x" ((t `shiftR` 12) .&. ((1 `shiftL` 8) - 1))
-    , ":"
-    , printf "%02x" ((t `shiftR` 4) .&. ((1 `shiftL` 8) - 1))
-    ]
+    intersperse
+      ":"
+      [ printf "%x" (t `shiftR` 20)
+      , printf "%02x" ((t `shiftR` 12) .&. ((1 `shiftL` 8) - 1))
+      , printf "%02x" ((t `shiftR` 4) .&. ((1 `shiftL` 8) - 1))
+      ]
       ++ if showTicks then [".", printf "%x" (t .&. ((1 `shiftL` 4) - 1))] else []
 
 -- | Return a possible time display, if the currently focused robot
@@ -684,6 +716,7 @@ helpWidget theSeed mport =
     , ("Ctrl-z", "decrease speed")
     , ("Ctrl-w", "increase speed")
     , ("Ctrl-q", "quit the current scenario")
+    , ("Ctrl-s", "collapse/expand REPL")
     , ("Meta-h", "hide robots for 2s")
     , ("Meta-w", "focus on the world map")
     , ("Meta-e", "focus on the robot inventory")
@@ -778,7 +811,7 @@ messagesWidget gs = widgetList
     withAttr (colorLogs e) $
       hBox
         [ fromMaybe (txt "") $ maybeDrawTime (e ^. leTime) True gs
-        , padLeft (Pad 2) . txt $ "[" <> e ^. leRobotName <> "]"
+        , padLeft (Pad 2) . txt $ brackets $ e ^. leRobotName
         , padLeft (Pad 1) . txt2 $ e ^. leText
         ]
   txt2 = txtWrapWith indent2
@@ -888,6 +921,7 @@ drawKeyMenu s =
       , may isPaused (NoHighlight, "^o", "step")
       , may (isPaused && hasDebug) (if s ^. uiState . uiShowDebug then Alert else NoHighlight, "M-d", "debug")
       , Just (NoHighlight, "^zx", "speed")
+      , Just (NoHighlight, "^s", if s ^. uiState . uiShowREPL then "hide REPL" else "show REPL")
       , Just (if s ^. uiState . uiShowRobots then NoHighlight else Alert, "M-h", "hide robots")
       ]
   may b = if b then Just else const Nothing

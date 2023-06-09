@@ -1,0 +1,162 @@
+version: 1
+name: Pig wrestling
+author: Karl Ostmo
+description: |
+  Capture a slippery pig
+creative: false
+seed: 0
+attrs:
+  - name: bacon
+    fg: "#ba6b57"
+  - name: pig
+    fg: "#eba28f"
+objectives:
+  - teaser: Block in pig
+    goal:
+      - |
+        This porcine pest has been running amok.
+        Block the pig by a "monolith" on all four sides to capture it.
+      - Blocking on fewer than four sides will spook the pig, and he will escape!
+    condition: |
+      def isSurrounded = \n.
+          if (n > 0) {
+              blockedFwd <- blocked;
+              if blockedFwd {
+                  turn left;
+                  isSurrounded $ n - 1;
+              } {
+                  return false;
+              }
+          } {
+              return true;
+          }
+          end;
+
+      opponent <- robotnamed "opponent";
+      as opponent {
+        isSurrounded 4;
+      };
+  - teaser: Spooked
+    id: spooked
+    optional: true
+    hidden: true
+    goal:
+      - |
+        The pig was spooked by the capture attempt.
+    condition: |
+      def boolToInt = \b.
+          if b {1} {0}
+          end;
+
+      /**
+      Iterate 4 times (once for each direction)
+      */
+      def countBlocked = \n.
+          if (n > 0) {
+              isBlocked <- blocked;
+              // This assignment has to happen before the recursive
+              // "countBlocked" call due to #1032
+              let localBlockCount = boolToInt isBlocked in
+              turn left;
+              lastCount <- countBlocked $ n - 1;
+              return $ lastCount + localBlockCount;
+          } {
+              return 0;
+          }
+          end;
+
+      opponent <- robotnamed "opponent";
+      as opponent {
+          blockCount <- countBlocked 4;
+          return $ blockCount > 0 && blockCount < 4;
+      };
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - 3D printer
+      - branch predictor
+      - calculator
+      - clock
+      - comparator
+      - dictionary
+      - dozer blade
+      - grabber
+      - hearing aid
+      - keyboard
+      - lambda
+      - logger
+      - scanner
+      - strange loop
+      - treads
+      - welder
+      - workbench
+    inventory:
+      - [6, dozer blade]
+      - [6, ADT calculator]
+      - [6, branch predictor]
+      - [6, clock]
+      - [6, comparator]
+      - [6, counter]
+      - [6, dictionary]
+      - [6, grabber]
+      - [6, lambda]
+      - [6, lodestone]
+      - [6, logger]
+      - [6, mirror]
+      - [6, net]
+      - [6, rolex]
+      - [6, scanner]
+      - [6, solar panel]
+      - [6, string]
+      - [6, strange loop]
+      - [6, treads]
+      - [6, welder]
+  - name: opponent
+    system: true
+    dir: [0, 1]
+    display:
+      char: P
+      attr: pig
+      invisible: false
+    program: |
+      run "scenarios/Challenges/Ranching/_capture/opponent.sw"
+solution: |
+   run "scenarios/Challenges/Ranching/_capture/solution.sw"
+entities:
+  - name: monolith
+    display:
+      char: '@'
+    description:
+    - Pushable rock
+    properties: [known, unwalkable, portable]
+    capabilities: [push]
+  - name: bacon
+    display:
+      attr: bacon
+      char: 'Z'
+    description:
+    - Odiferous constitution of pig
+    properties: [known]
+known: [flower, tree]
+world:
+  default: [grass]
+  upperleft: [0, 0]
+  offset: false
+  palette:
+    'B': [grass, null, base]
+    '.': [grass]
+    '@': [grass, monolith]
+    '*': [grass, flower]
+    'x': [grass, bacon, opponent]
+  map: |
+    ................
+    ....@...........
+    ....@...........
+    ................
+    .......x......@.
+    ................
+    ................
+    .B..*......@....
+    ................
+    

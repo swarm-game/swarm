@@ -22,13 +22,38 @@ import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
+import Swarm.Game.WorldGen (Seed)
+import Swarm.Util.Lens (makeLensesNoSigs)
+
+-- | These launch parameters are used in a number of ways:
+-- * Serializing the seed/script path for saves
+-- * Holding parse status from form fields, including Error info
+-- * Carrying fully-validated launch parameters.
+--
+-- Type parameters are utilized to support all of these use cases.
+data ParameterizableLaunchParams code f = LaunchParams
+  { seedVal :: f (Maybe Seed)
+  , initialCode :: f (Maybe code)
+  }
+
+type SerializableLaunchParams = ParameterizableLaunchParams FilePath Identity
+deriving instance Eq SerializableLaunchParams
+deriving instance Ord SerializableLaunchParams
+deriving instance Show SerializableLaunchParams
+deriving instance Read SerializableLaunchParams
+deriving instance Generic SerializableLaunchParams
+deriving instance FromJSON SerializableLaunchParams
+deriving instance ToJSON SerializableLaunchParams
 
 -- | A "ScenarioStatus" stores the status of a scenario along with
 --   appropriate metadata: "NotStarted", or "Played".
 --   The "Played" status has two sub-states: "Attempted" or "Completed".
 data ScenarioStatus
   = NotStarted
-  | Played ProgressMetric BestRecords
+  | Played
+      SerializableLaunchParams
+      ProgressMetric
+      BestRecords
   deriving (Eq, Ord, Show, Read, Generic)
 
 instance FromJSON ScenarioStatus where
@@ -37,6 +62,11 @@ instance FromJSON ScenarioStatus where
 instance ToJSON ScenarioStatus where
   toEncoding = genericToEncoding scenarioOptions
   toJSON = genericToJSON scenarioOptions
+
+getLaunchParams :: ScenarioStatus -> SerializableLaunchParams
+getLaunchParams = \case
+  NotStarted -> LaunchParams (pure Nothing) (pure Nothing)
+  Played x _ _ -> x
 
 -- | A "ScenarioInfo" record stores metadata about a scenario: its
 -- canonical path and status.
@@ -57,7 +87,7 @@ instance ToJSON ScenarioInfo where
 
 type ScenarioInfoPair = (Scenario, ScenarioInfo)
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''ScenarioInfo
+makeLensesNoSigs ''ScenarioInfo
 
 -- | The path of the scenario, relative to @data/scenarios@.
 scenarioPath :: Lens' ScenarioInfo FilePath
@@ -83,9 +113,9 @@ updateScenarioInfoOnFinish
   ticks
   completed
   si@(ScenarioInfo p prevPlayState) = case prevPlayState of
-    Played (Metric _ (ProgressStats start _currentPlayMetrics)) prevBestRecords ->
+    Played launchParams (Metric _ (ProgressStats start _currentPlayMetrics)) prevBestRecords ->
       ScenarioInfo p $
-        Played newPlayMetric $
+        Played launchParams newPlayMetric $
           updateBest newPlayMetric prevBestRecords
      where
       el = (diffUTCTime `on` zonedTimeToUTC) z start

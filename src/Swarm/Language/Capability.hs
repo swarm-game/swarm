@@ -78,7 +78,7 @@ data Capability
     CSensehere
   | -- | Execute the 'Detect' command
     CDetectloc
-  | -- | Execute the 'Resonate' command
+  | -- | Execute the 'Resonate' and 'Density' commands
     CDetectcount
   | -- | Execute the 'Sniff' command
     CDetectdistance
@@ -134,9 +134,11 @@ data Capability
     CAtomic
   | -- | Capability to execute swap (grab and place atomically at the same time).
     CSwap
-  | -- | Capabiltiy to do time-related things, like `wait` and get the
-    --   current time.
-    CTime
+  | -- | Capability to obtain absolute time, namely via the `time` command.
+    CTimeabs
+  | -- | Capability to utilize relative passage of time, namely via the `wait` command.
+    --   This is strictly weaker than "CTimeAbs".
+    CTimerel
   | -- | Capability to execute `try`.
     CTry
   | -- | Capability for working with sum types.
@@ -149,6 +151,8 @@ data Capability
     CDebug
   | -- | Capability to handle keyboard input.
     CHandleinput
+  | -- | Capability to make other robots halt.
+    CHalt
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
@@ -220,6 +224,7 @@ constCaps = \case
   Meet -> Just CMeet
   MeetAll -> Just CMeet
   Drill -> Just CDrill
+  Use -> Nothing -- Recipes alone shall dictate whether things can be "used"
   Neg -> Just CArith
   Add -> Just CArith
   Sub -> Just CArith
@@ -231,18 +236,20 @@ constCaps = \case
   Swap -> Just CSwap
   Atomic -> Just CAtomic
   Instant -> Just CGod
-  Time -> Just CTime
-  Wait -> Just CTime
+  Time -> Just CTimeabs
+  Wait -> Just CTimerel
   Scout -> Just CRecondir
   Whereami -> Just CSenseloc
   Detect -> Just CDetectloc
   Resonate -> Just CDetectcount
+  Density -> Just CDetectcount
   Sniff -> Just CDetectdistance
   Chirp -> Just CDetectdirection
   Watch -> Just CWakeself
   Heading -> Just COrient
   Key -> Just CHandleinput
   InstallKeyHandler -> Just CHandleinput
+  Halt -> Just CHalt
   -- ----------------------------------------------------------------
   -- Text operations
   Format -> Just CText

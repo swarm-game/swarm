@@ -68,6 +68,7 @@ import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.WorldDescription
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util (failT)
+import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
@@ -98,7 +99,7 @@ data Scenario = Scenario
   }
   deriving (Eq, Show)
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario
+makeLensesNoSigs ''Scenario
 
 instance FromJSONE EntityMap Scenario where
   parseJSONE = withObjectE "scenario" $ \v -> do

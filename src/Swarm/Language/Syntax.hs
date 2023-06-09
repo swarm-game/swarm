@@ -237,6 +237,8 @@ data Const
     Count
   | -- | Drill through an entity.
     Drill
+  | -- | Use an entity with another.
+    Use
   | -- | Construct a new robot.
     Build
   | -- | Deconstruct an old robot.
@@ -257,6 +259,8 @@ data Const
   | -- | Create an entity out of thin air. Only
     --   available in creative mode.
     Create
+  | -- | Tell a robot to halt.
+    Halt
   | -- Sensing / generation
 
     -- | Get current time
@@ -271,6 +275,9 @@ data Const
   | -- | Count the number of a given entity within the rectangle
     -- specified by opposite corners, relative to the current location.
     Resonate
+  | -- | Count the number entities within the rectangle
+    -- specified by opposite corners, relative to the current location.
+    Density
   | -- | Get the distance to the closest instance of the specified entity.
     Sniff
   | -- | Get the direction to the closest instance of the specified entity.
@@ -606,6 +613,11 @@ constInfo c = case c of
       , "See what recipes with drill you have available."
       , "The `drill` command may return the name of an entity added to your inventory."
       ]
+  Use ->
+    command 2 long . doc "Use one entity upon another." $
+      [ "Which entities you can `use` with others depends on the available recipes."
+      , "The object being used must be a 'required' entity in a recipe."
+      ]
   Build ->
     command 1 long . doc "Construct a new robot." $
       [ "You can specify a command for the robot to execute."
@@ -644,6 +656,7 @@ constInfo c = case c of
   Create ->
     command 1 short . doc "Create an item out of thin air." $
       ["Only available in creative mode."]
+  Halt -> command 1 short "Tell a robot to halt."
   Time -> command 0 Intangible "Get the current time."
   Scout ->
     command 1 short . doc "Detect whether a robot is within line-of-sight in a direction." $
@@ -655,8 +668,13 @@ constInfo c = case c of
     command 2 Intangible . doc "Detect an entity within a rectangle." $
       ["Locate the closest instance of a given entity within the rectangle specified by opposite corners, relative to the current location."]
   Resonate ->
-    command 2 Intangible . doc "Count entities within a rectangle." $
+    command 2 Intangible . doc "Count specific entities within a rectangle." $
       [ "Applies a strong magnetic field over a given area and stimulates the matter within, generating a non-directional radio signal. A receiver tuned to the resonant frequency of the target entity is able to measure its quantity."
+      , "Counts the entities within the rectangle specified by opposite corners, relative to the current location."
+      ]
+  Density ->
+    command 1 Intangible . doc "Count all entities within a rectangle." $
+      [ "Applies a strong magnetic field over a given area and stimulates the matter within, generating a non-directional radio signal. A receiver measured the signal intensity to measure the quantity."
       , "Counts the entities within the rectangle specified by opposite corners, relative to the current location."
       ]
   Sniff ->

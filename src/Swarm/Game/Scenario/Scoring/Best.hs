@@ -26,6 +26,7 @@ import GHC.Generics (Generic)
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
+import Swarm.Util.Lens (makeLensesNoSigs)
 
 -- * Some orphan ZonedTime instances
 
@@ -110,7 +111,7 @@ updateBest newPlayMetric (BestRecords oldA oldB oldC oldD) =
   bestTime x y = f x (Just . view (scenarioAttemptMetrics . scenarioDurationMetrics . y))
   bestSize x y = f x (fmap y . view (scenarioAttemptMetrics . scenarioCodeMetrics))
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''BestRecords
+makeLensesNoSigs ''BestRecords
 
 -- | The best status of the scenario, measured in real world time.
 scenarioBestByTime :: Lens' BestRecords ProgressMetric

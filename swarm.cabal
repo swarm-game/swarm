@@ -103,6 +103,10 @@ library
                       Swarm.Game.Robot
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Cell
+                      Swarm.TUI.Launch.Controller
+                      Swarm.TUI.Launch.Model
+                      Swarm.TUI.Launch.Prep
+                      Swarm.TUI.Launch.View
                       Swarm.Game.Scenario.Objective
                       Swarm.Game.Scenario.Objective.Graph
                       Swarm.Game.Scenario.Objective.Logic
@@ -139,6 +143,7 @@ library
                       Swarm.Language.Requirement
                       Swarm.Language.Syntax
                       Swarm.Language.Typecheck
+                      Swarm.Language.Typecheck.Unify
                       Swarm.Language.Typed
                       Swarm.Language.Types
                       Swarm.Language.Value
@@ -164,6 +169,7 @@ library
                       Swarm.TUI.View.Objective
                       Swarm.TUI.View.Util
                       Swarm.Util
+                      Swarm.Util.Lens
                       Swarm.Util.Yaml
                       Swarm.Version
                       Swarm.Web

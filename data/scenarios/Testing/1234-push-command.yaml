@@ -42,14 +42,6 @@ robots:
       attr: robot
       invisible: true
 entities:
-- name: dozer blade
-  display:
-    attr: silver
-    char: '/'
-  description:
-  - Facilitates pushing
-  properties: [known, portable]
-  capabilities: [push]
 - name: crate
   display:
     attr: wood
@@ -57,7 +49,6 @@ entities:
   description:
   - Pushable crate
   properties: [known, portable, unwalkable]
-  capabilities: [push]
 known: [tree, flower, boulder, water]
 world:
   default: [blank]

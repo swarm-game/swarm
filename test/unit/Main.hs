@@ -8,11 +8,13 @@
 -- Swarm unit tests
 module Main where
 
+import Control.Lens ((^.))
 import Control.Monad.Except (runExceptT)
 import Data.List (subsequences)
 import Data.Set (Set)
 import Data.Set qualified as S
-import Swarm.Game.State (GameState, classicGame0)
+import Swarm.TUI.Model (AppState, gameState, runtimeState)
+import Swarm.TUI.Model.StateUpdate (classicGame0)
 import Swarm.Util (removeSupersets, smallHittingSet)
 import Test.QuickCheck qualified as QC
 import Test.QuickCheck.Poly qualified as QC
@@ -39,13 +41,13 @@ import Witch (from)
 
 main :: IO ()
 main = do
-  mg <- runExceptT classicGame0
-  case mg of
+  ms <- runExceptT classicGame0
+  case ms of
     Left err -> assertFailure (from err)
-    Right g -> defaultMain (tests g)
+    Right s -> defaultMain (tests s)
 
-tests :: GameState -> TestTree
-tests g =
+tests :: AppState -> TestTree
+tests s =
   testGroup
     "Tests"
     [ testLanguagePipeline
@@ -53,11 +55,11 @@ tests g =
     , testBoolExpr
     , testCommands
     , testHighScores
-    , testEval g
+    , testEval (s ^. gameState)
     , testModel
-    , testPedagogy g
+    , testPedagogy (s ^. runtimeState)
     , testInventory
-    , testNotification g
+    , testNotification (s ^. gameState)
     , testMisc
     , testLSP
     ]

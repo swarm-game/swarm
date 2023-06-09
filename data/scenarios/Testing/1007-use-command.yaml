@@ -1,0 +1,82 @@
+version: 1
+name: The Use command
+creative: false
+description: Open a gate
+objectives:
+  - goal:
+      - Grab the flower on the other side of the gate.
+    condition: |
+      as base {has "flower"}
+solution: |
+  move;
+  k <- grab;
+  equip k;
+  use k forward;
+  move;
+  move;
+  grab;
+robots:
+  - name: base
+    dir: [1,0]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - ADT calculator
+      - grabber
+      - logger
+      - treads
+      - welder
+entities:
+- name: fence
+  display:
+    attr: wood
+    char: '#'
+  description:
+  - Impassable barrier
+  properties: [known, unwalkable]
+- name: gate key
+  display:
+    attr: iron
+    char: 'k'
+  description:
+  - Can open a closed gate
+  properties: [known, portable]
+- name: closed gate
+  display:
+    attr: wood
+    char: '|'
+  description:
+  - Cannot pass through this
+  properties: [known, unwalkable]
+- name: open gate
+  display:
+    attr: wood
+    char: '/'
+  description:
+  - Can pass through this
+  properties: [known]
+recipes:
+  - in:
+      - [1, closed gate]
+    out:
+      - [1, open gate]
+    required:
+      - [1, gate key]
+known: [flower]
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass]
+    '#': [grass, fence]
+    '|': [grass, closed gate]
+    '*': [grass, flower]
+    'k': [grass, gate key]
+  upperleft: [0, 0]
+  map: |
+   ......
+   ..###.
+   Ωk|*#.
+   ..###.
+   ......

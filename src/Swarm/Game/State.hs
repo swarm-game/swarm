@@ -51,14 +51,13 @@ module Swarm.Game.State (
   gensym,
   seed,
   randGen,
-  initiallyRunCode,
   adjList,
   nameList,
+  initiallyRunCode,
   entityMap,
   recipesOut,
   recipesIn,
   recipesReq,
-  scenarios,
   currentScenarioPath,
   knownEntities,
   world,
@@ -83,13 +82,13 @@ module Swarm.Game.State (
   notificationsContent,
 
   -- ** GameState initialization
+  GameStateConfig (..),
   initGameState,
   scenarioToGameState,
-  initGameStateForScenario,
-  classicGame0,
   CodeToRun (..),
   Sha1 (..),
   SolutionSource (..),
+  parseCodeFile,
   getParsedInitialCode,
 
   -- * Utilities
@@ -114,6 +113,7 @@ module Swarm.Game.State (
   toggleRunStatus,
   messageIsRecent,
   messageIsFromNearby,
+  getRunCodePath,
 ) where
 
 import Control.Algebra (Has)
@@ -123,7 +123,6 @@ import Control.Effect.Lens
 import Control.Effect.State (State)
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad.Except
-import Control.Monad.Trans.Except (except)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
@@ -144,12 +143,10 @@ import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
 import Data.Set qualified as S
 import Data.Text (Text)
-import Data.Text qualified as T (drop, lines, pack, take, unlines)
-import Data.Text.IO qualified as T (readFile)
+import Data.Text qualified as T (drop, pack, take)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
-import Data.Time (getZonedTime)
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
@@ -158,23 +155,15 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (CESK (Waiting), TickNumber, emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
-import Swarm.Game.Failure
-import Swarm.Game.Failure.Render
 import Swarm.Game.Location
 import Swarm.Game.Recipe (
   Recipe,
   inRecipeMap,
-  loadRecipes,
   outRecipeMap,
   reqRecipeMap,
  )
-import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
-import Swarm.Game.Scenario.Scoring.Best
-import Swarm.Game.Scenario.Scoring.ConcreteMetrics
-import Swarm.Game.Scenario.Scoring.GenericMetrics
-import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
@@ -189,6 +178,7 @@ import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
 import Swarm.Util (uniq, (<+=), (<<.=), (?))
+import Swarm.Util.Lens (makeLensesExcluding)
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 
@@ -289,28 +279,32 @@ data SolutionSource
   | -- | Includes the SHA1 of the program text
     -- for the purpose of corroborating solutions
     -- on a leaderboard.
-    PlayerAuthored Sha1
+    PlayerAuthored FilePath Sha1
 
 data CodeToRun = CodeToRun SolutionSource ProcessedTerm
 
-getParsedInitialCode :: Maybe FilePath -> ExceptT Text IO (Maybe CodeToRun)
-getParsedInitialCode toRun = case toRun of
-  Nothing -> return Nothing
-  Just filepath -> do
-    contents <- liftIO $ TIO.readFile filepath
+getRunCodePath :: CodeToRun -> Maybe FilePath
+getRunCodePath (CodeToRun solutionSource _) = case solutionSource of
+  ScenarioSuggested -> Nothing
+  PlayerAuthored fp _ -> Just fp
+
+parseCodeFile :: FilePath -> IO (Either Text CodeToRun)
+parseCodeFile filepath = do
+  contents <- TIO.readFile filepath
+  return $ do
     pt@(ProcessedTerm (Module (Syntax' srcLoc _ _) _) _ _) <-
-      ExceptT
-        . return
-        . left T.pack
-        $ processTermEither contents
+      left T.pack $ processTermEither contents
     let strippedText = stripSrc srcLoc contents
         programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
         sha1Hash = showDigest $ sha1 programBytestring
-    return $ Just $ CodeToRun (PlayerAuthored $ Sha1 sha1Hash) pt
+    return $ CodeToRun (PlayerAuthored filepath $ Sha1 sha1Hash) pt
  where
   stripSrc :: SrcLoc -> Text -> Text
   stripSrc (SrcLoc start end) txt = T.drop start $ T.take end txt
   stripSrc NoLoc txt = txt
+
+getParsedInitialCode :: Maybe FilePath -> ExceptT Text IO (Maybe CodeToRun)
+getParsedInitialCode = traverse $ ExceptT . parseCodeFile
 
 ------------------------------------------------------------
 -- The main GameState record type
@@ -390,14 +384,13 @@ data GameState = GameState
   , _gensym :: Int
   , _seed :: Seed
   , _randGen :: StdGen
-  , _initiallyRunCode :: Maybe ProcessedTerm
   , _adjList :: Array Int Text
   , _nameList :: Array Int Text
+  , _initiallyRunCode :: Maybe ProcessedTerm
   , _entityMap :: EntityMap
   , _recipesOut :: IntMap [Recipe Entity]
   , _recipesIn :: IntMap [Recipe Entity]
   , _recipesReq :: IntMap [Recipe Entity]
-  , _scenarios :: ScenarioCollection
   , _currentScenarioPath :: Maybe FilePath
   , _knownEntities :: [Text]
   , _world :: W.World Int Entity
@@ -427,14 +420,7 @@ makeLensesFor
   ]
   ''GameState
 
-let exclude = ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots, '_adjList, '_nameList]
- in makeLensesWith
-      ( lensRules
-          & generateSignatures .~ False
-          & lensField . mapped . mapped %~ \fn n ->
-            if n `elem` exclude then [] else fn n
-      )
-      ''GameState
+makeLensesExcluding ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots, '_adjList, '_nameList] ''GameState
 
 -- | Is the user in creative mode (i.e. able to do anything without restriction)?
 creativeMode :: Lens' GameState Bool
@@ -534,10 +520,6 @@ seed :: Lens' GameState Seed
 -- | Pseudorandom generator initialized at start.
 randGen :: Lens' GameState StdGen
 
--- | Code that is run upon scenario start, before any
--- REPL interaction.
-initiallyRunCode :: Lens' GameState (Maybe ProcessedTerm)
-
 -- | Read-only list of words, for use in building random robot names.
 adjList :: Getter GameState (Array Int Text)
 adjList = to _adjList
@@ -545,6 +527,10 @@ adjList = to _adjList
 -- | Read-only list of words, for use in building random robot names.
 nameList :: Getter GameState (Array Int Text)
 nameList = to _nameList
+
+-- | Code that is run upon scenario start, before any
+-- REPL interaction.
+initiallyRunCode :: Lens' GameState (Maybe ProcessedTerm)
 
 -- | The catalog of all entities that the game knows about.
 entityMap :: Lens' GameState EntityMap
@@ -557,9 +543,6 @@ recipesIn :: Lens' GameState (IntMap [Recipe Entity])
 
 -- | All recipes the game knows about, indexed by requirement/catalyst.
 recipesReq :: Lens' GameState (IntMap [Recipe Entity])
-
--- | The collection of scenarios that comes with the game.
-scenarios :: Lens' GameState ScenarioCollection
 
 -- | The filepath of the currently running scenario.
 --
@@ -807,7 +790,7 @@ focusedRange g = computedRange <$ focusedRobot g
   (minRadius, maxRadius) = over both (gain baseInv . gain focInv) (16, 64)
 
 -- | Clear the 'robotLogUpdated' flag of the focused robot.
-clearFocusedRobotLogUpdated :: Has (State GameState) sig m => m ()
+clearFocusedRobotLogUpdated :: (Has (State GameState) sig m) => m ()
 clearFocusedRobotLogUpdated = do
   n <- use focusedRobotID
   robotMap . ix n . robotLogUpdated .= False
@@ -816,7 +799,7 @@ clearFocusedRobotLogUpdated = do
 --   first, generate a unique ID number for it.  Then, add it to the
 --   main robot map, the active robot set, and to to the index of
 --   robots by location. Return the updated robot.
-addTRobot :: Has (State GameState) sig m => TRobot -> m Robot
+addTRobot :: (Has (State GameState) sig m) => TRobot -> m Robot
 addTRobot r = do
   rid <- gensym <+= 1
   let r' = instantiateRobot rid r
@@ -826,7 +809,7 @@ addTRobot r = do
 -- | Add a robot to the game state, adding it to the main robot map,
 --   the active robot set, and to to the index of robots by
 --   location.
-addRobot :: Has (State GameState) sig m => Robot -> m ()
+addRobot :: (Has (State GameState) sig m) => Robot -> m ()
 addRobot r = do
   let rid = r ^. robotID
 
@@ -839,7 +822,7 @@ maxMessageQueueSize :: Int
 maxMessageQueueSize = 1000
 
 -- | Add a message to the message queue.
-emitMessage :: Has (State GameState) sig m => LogEntry -> m ()
+emitMessage :: (Has (State GameState) sig m) => LogEntry -> m ()
 emitMessage msg = messageQueue %= (|> msg) . dropLastIfLong
  where
   tooLong s = Seq.length s >= maxMessageQueueSize
@@ -848,23 +831,23 @@ emitMessage msg = messageQueue %= (|> msg) . dropLastIfLong
 
 -- | Takes a robot out of the activeRobots set and puts it in the waitingRobots
 --   queue.
-sleepUntil :: Has (State GameState) sig m => RID -> TickNumber -> m ()
+sleepUntil :: (Has (State GameState) sig m) => RID -> TickNumber -> m ()
 sleepUntil rid time = do
   internalActiveRobots %= IS.delete rid
   internalWaitingRobots . at time . non [] %= (rid :)
 
 -- | Takes a robot out of the activeRobots set.
-sleepForever :: Has (State GameState) sig m => RID -> m ()
+sleepForever :: (Has (State GameState) sig m) => RID -> m ()
 sleepForever rid = internalActiveRobots %= IS.delete rid
 
 -- | Adds a robot to the activeRobots set.
-activateRobot :: Has (State GameState) sig m => RID -> m ()
+activateRobot :: (Has (State GameState) sig m) => RID -> m ()
 activateRobot rid = internalActiveRobots %= IS.insert rid
 
 -- | Removes robots whose wake up time matches the current game ticks count
 --   from the waitingRobots queue and put them back in the activeRobots set
 --   if they still exist in the keys of robotMap.
-wakeUpRobotsDoneSleeping :: Has (State GameState) sig m => m ()
+wakeUpRobotsDoneSleeping :: (Has (State GameState) sig m) => m ()
 wakeUpRobotsDoneSleeping = do
   time <- use ticks
   mrids <- internalWaitingRobots . at time <<.= Nothing
@@ -882,7 +865,7 @@ wakeUpRobotsDoneSleeping = do
 -- | Clear the "watch" state of all of the
 -- awakened robots
 clearWatchingRobots ::
-  Has (State GameState) sig m =>
+  (Has (State GameState) sig m) =>
   [RID] ->
   m ()
 clearWatchingRobots rids = do
@@ -893,7 +876,7 @@ clearWatchingRobots rids = do
 --
 -- NOTE: Clearing "TickNumber" map entries from "internalWaitingRobots"
 -- upon wakeup is handled by "wakeUpRobotsDoneSleeping" in State.hs
-wakeWatchingRobots :: Has (State GameState) sig m => Location -> m ()
+wakeWatchingRobots :: (Has (State GameState) sig m) => Location -> m ()
 wakeWatchingRobots loc = do
   currentTick <- use ticks
   waitingMap <- use waitingRobots
@@ -946,7 +929,7 @@ wakeWatchingRobots loc = do
       Waiting _ c -> Waiting newWakeTime c
       x -> x
 
-deleteRobot :: Has (State GameState) sig m => RID -> m ()
+deleteRobot :: (Has (State GameState) sig m) => RID -> m ()
 deleteRobot rn = do
   internalActiveRobots %= IS.delete rn
   mrobot <- robotMap . at rn <<.= Nothing
@@ -958,82 +941,71 @@ deleteRobot rn = do
 -- Initialization
 ------------------------------------------------------------
 
--- | Create an initial game state record, first loading entities and
---   recipes from disk.
-initGameState :: ExceptT Text IO ([SystemFailure], GameState)
-initGameState = do
-  entities <- ExceptT loadEntities
-  recipes <- withExceptT prettyFailure $ loadRecipes entities
-  (scenarioWarnings, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
+-- | Record to pass information needed to create an initial
+--   'GameState' record when starting a scenario.
+data GameStateConfig = GameStateConfig
+  { initAdjList :: Array Int Text
+  , initNameList :: Array Int Text
+  , initEntities :: EntityMap
+  , initRecipes :: [Recipe Entity]
+  }
 
-  (adjsFile, namesFile) <- withExceptT prettyFailure $ do
-    adjsFile <- getDataFileNameSafe NameGeneration "adjectives.txt"
-    namesFile <- getDataFileNameSafe NameGeneration "names.txt"
-    return (adjsFile, namesFile)
+-- | Create an initial, fresh game state record when starting a new scenario.
+initGameState :: GameStateConfig -> GameState
+initGameState gsc =
+  GameState
+    { _creativeMode = False
+    , _gameStep = WorldTick
+    , _winCondition = NoWinCondition
+    , _winSolution = Nothing
+    , -- This does not need to be initialized with anything,
+      -- since the master list of achievements is stored in UIState
+      _gameAchievements = mempty
+    , _announcementQueue = mempty
+    , _runStatus = Running
+    , _robotMap = IM.empty
+    , _robotsByLocation = M.empty
+    , _robotsWatching = mempty
+    , _availableRecipes = mempty
+    , _availableCommands = mempty
+    , _allDiscoveredEntities = empty
+    , _activeRobots = IS.empty
+    , _waitingRobots = M.empty
+    , _gensym = 0
+    , _seed = 0
+    , _randGen = mkStdGen 0
+    , _adjList = initAdjList gsc
+    , _nameList = initNameList gsc
+    , _initiallyRunCode = Nothing
+    , _entityMap = initEntities gsc
+    , _recipesOut = outRecipeMap (initRecipes gsc)
+    , _recipesIn = inRecipeMap (initRecipes gsc)
+    , _recipesReq = reqRecipeMap (initRecipes gsc)
+    , _currentScenarioPath = Nothing
+    , _knownEntities = []
+    , _world = W.emptyWorld (fromEnum StoneT)
+    , _worldScrollable = True
+    , _viewCenterRule = VCRobot 0
+    , _viewCenter = origin
+    , _needsRedraw = False
+    , _replStatus = REPLDone Nothing
+    , _replNextValueIndex = 0
+    , _inputHandler = Nothing
+    , _messageQueue = Empty
+    , _lastSeenMessageTime = -1
+    , _focusedRobotID = 0
+    , _ticks = 0
+    , _robotStepsPerTick = defaultRobotStepsPerTick
+    }
 
-  let markEx what a = catchError a (\e -> fail $ "Failed to " <> what <> ": " <> show e)
-  (adjs, names) <- liftIO . markEx "load name generation data" $ do
-    as <- tail . T.lines <$> T.readFile adjsFile
-    ns <- tail . T.lines <$> T.readFile namesFile
-    return (as, ns)
-
-  return
-    ( scenarioWarnings
-    , GameState
-        { _creativeMode = False
-        , _gameStep = WorldTick
-        , _winCondition = NoWinCondition
-        , _winSolution = Nothing
-        , -- This does not need to be initialized with anything,
-          -- since the master list of achievements is stored in UIState
-          _gameAchievements = mempty
-        , _announcementQueue = mempty
-        , _runStatus = Running
-        , _robotMap = IM.empty
-        , _robotsByLocation = M.empty
-        , _robotsWatching = mempty
-        , _availableRecipes = mempty
-        , _availableCommands = mempty
-        , _allDiscoveredEntities = empty
-        , _activeRobots = IS.empty
-        , _waitingRobots = M.empty
-        , _gensym = 0
-        , _seed = 0
-        , _randGen = mkStdGen 0
-        , _initiallyRunCode = Nothing
-        , _adjList = listArray (0, length adjs - 1) adjs
-        , _nameList = listArray (0, length names - 1) names
-        , _entityMap = entities
-        , _recipesOut = outRecipeMap recipes
-        , _recipesIn = inRecipeMap recipes
-        , _recipesReq = reqRecipeMap recipes
-        , _scenarios = loadedScenarios
-        , _currentScenarioPath = Nothing
-        , _knownEntities = []
-        , _world = W.emptyWorld (fromEnum StoneT)
-        , _worldScrollable = True
-        , _viewCenterRule = VCRobot 0
-        , _viewCenter = origin
-        , _needsRedraw = False
-        , _replStatus = REPLDone Nothing
-        , _replNextValueIndex = 0
-        , _inputHandler = Nothing
-        , _messageQueue = Empty
-        , _lastSeenMessageTime = -1
-        , _focusedRobotID = 0
-        , _ticks = 0
-        , _robotStepsPerTick = defaultRobotStepsPerTick
-        }
-    )
-
--- | Set a given scenario as the currently loaded scenario in the game state.
+-- | Create an initial game state corresponding to the given scenario.
 scenarioToGameState ::
   Scenario ->
   Maybe Seed ->
   Maybe CodeToRun ->
-  GameState ->
+  GameStateConfig ->
   IO GameState
-scenarioToGameState scenario userSeed toRun g = do
+scenarioToGameState scenario userSeed toRun gsc = do
   -- Decide on a seed.  In order of preference, we will use:
   --   1. seed value provided by the user
   --   2. seed value specified in the scenario description
@@ -1046,47 +1018,38 @@ scenarioToGameState scenario userSeed toRun g = do
   let robotList' = (robotCreatedAt .~ now) <$> robotList
 
   return $
-    g
-      { _creativeMode = scenario ^. scenarioCreative
-      , _winCondition = theWinCondition
-      , _winSolution = scenario ^. scenarioSolution
-      , _runStatus = Running
-      , _robotMap = IM.fromList $ map (view robotID &&& id) robotList'
-      , _robotsByLocation =
-          M.fromListWith IS.union $
-            map (view robotLocation &&& (IS.singleton . view robotID)) robotList'
-      , _activeRobots = setOf (traverse . robotID) robotList'
-      , _availableCommands = Notifications 0 initialCommands
-      , _waitingRobots = M.empty
-      , _gensym = initGensym
-      , _seed = theSeed
-      , _randGen = mkStdGen theSeed
-      , _initiallyRunCode = initialCodeToRun
-      , _entityMap = em
-      , _recipesOut = addRecipesWith outRecipeMap recipesOut
-      , _recipesIn = addRecipesWith inRecipeMap recipesIn
-      , _recipesReq = addRecipesWith reqRecipeMap recipesReq
-      , _knownEntities = scenario ^. scenarioKnown
-      , _world = theWorld theSeed
-      , _worldScrollable = scenario ^. scenarioWorld . to scrollable
-      , _viewCenterRule = VCRobot baseID
-      , _viewCenter = origin
-      , _needsRedraw = False
-      , -- When the base starts out running a program, the REPL status must be set to working,
-        -- otherwise the store of definition cells is not saved (see #333, #838)
-        _replStatus = case running of
-          False -> REPLDone Nothing
-          True -> REPLWorking (Typed Nothing PolyUnit mempty)
-      , _replNextValueIndex = 0
-      , _inputHandler = Nothing
-      , _messageQueue = Empty
-      , _focusedRobotID = baseID
-      , _ticks = 0
-      , _robotStepsPerTick = (scenario ^. scenarioStepsPerTick) ? defaultRobotStepsPerTick
+    (initGameState gsc)
+      { _focusedRobotID = baseID
       }
+      & creativeMode .~ scenario ^. scenarioCreative
+      & winCondition .~ theWinCondition
+      & winSolution .~ scenario ^. scenarioSolution
+      & robotMap .~ IM.fromList (map (view robotID &&& id) robotList')
+      & robotsByLocation
+        .~ M.fromListWith
+          IS.union
+          (map (view robotLocation &&& (IS.singleton . view robotID)) robotList')
+      & internalActiveRobots .~ setOf (traverse . robotID) robotList'
+      & availableCommands .~ Notifications 0 initialCommands
+      & gensym .~ initGensym
+      & seed .~ theSeed
+      & randGen .~ mkStdGen theSeed
+      & initiallyRunCode .~ initialCodeToRun
+      & entityMap .~ em
+      & recipesOut %~ addRecipesWith outRecipeMap
+      & recipesIn %~ addRecipesWith inRecipeMap
+      & recipesReq %~ addRecipesWith reqRecipeMap
+      & knownEntities .~ scenario ^. scenarioKnown
+      & world .~ theWorld theSeed
+      & worldScrollable .~ scenario ^. scenarioWorld . to scrollable
+      & viewCenterRule .~ VCRobot baseID
+      & replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
+      -- otherwise the store of definition cells is not saved (see #333, #838)
+        False -> REPLDone Nothing
+        True -> REPLWorking (Typed Nothing PolyUnit mempty)
+      & robotStepsPerTick .~ ((scenario ^. scenarioStepsPerTick) ? defaultRobotStepsPerTick)
  where
-  em = g ^. entityMap <> scenario ^. scenarioEntities
-
+  em = initEntities gsc <> scenario ^. scenarioEntities
   baseID = 0
   (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
   -- Keep only robots from the robot list with a concrete location;
@@ -1167,7 +1130,7 @@ scenarioToGameState scenario userSeed toRun g = do
       (NE.nonEmpty (scenario ^. scenarioObjectives))
 
   initGensym = length robotList - 1
-  addRecipesWith f gRs = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes) (g ^. gRs)
+  addRecipesWith f = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes)
 
 -- | Take a world description, parsed from a scenario file, and turn
 --   it into a list of located robots and a world function.
@@ -1200,40 +1163,3 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
             let robotWithLoc = trobotLocation ?~ W.coordsToLoc (Coords (ulr + r, ulc + c))
              in map (fmap robotWithLoc) robotList
         )
-
--- | Create an initial game state for a specific scenario.
--- Note that this function is used only for unit tests, integration tests, and benchmarks.
---
--- In normal play, the code path that gets executed is scenarioToAppState.
---
--- Note: Some of the code in this function is duplicated
--- with "startGameWithSeed".
-initGameStateForScenario ::
-  String ->
-  Maybe Seed ->
-  Maybe FilePath ->
-  ExceptT Text IO GameState
-initGameStateForScenario sceneName userSeed toRun = do
-  (warnings, g) <- initGameState
-  unless (null warnings)
-    . except
-    . Left
-    . T.unlines
-    . map prettyFailure
-    $ warnings
-  (scene, path) <- loadScenario sceneName (g ^. entityMap)
-  maybeRunScript <- getParsedInitialCode toRun
-  gs <- liftIO $ scenarioToGameState scene userSeed maybeRunScript g
-  normalPath <- liftIO $ normalizeScenarioPath (gs ^. scenarios) path
-  t <- liftIO getZonedTime
-  return $
-    gs
-      & currentScenarioPath ?~ normalPath
-      & scenarios . scenarioItemByPath normalPath . _SISingle . _2 . scenarioStatus
-        .~ Played (Metric Attempted $ ProgressStats t emptyAttemptMetric) (emptyBest t)
-
--- | For convenience, the 'GameState' corresponding to the classic
---   game with seed 0.
---   This is used only for benchmarks and unit tests.
-classicGame0 :: ExceptT Text IO GameState
-classicGame0 = initGameStateForScenario "classic" (Just 0) Nothing
