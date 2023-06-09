@@ -241,7 +241,7 @@ ghcup set ghc 9.4.5
 You can run the formatter from the shell:
 ```bash
 cd path/to/the/root/of/swarm/repo
-find src/ app/ test/ -name "*.hs" | xargs fourmolu --mode=inplace
+fourmolu --mode=inplace src app test
 ```
 
 For convenience, one may alternatively execute this script:
