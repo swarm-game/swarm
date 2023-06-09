@@ -44,11 +44,13 @@ module Swarm.TUI.Attr (
   greenAttr,
   redAttr,
   defAttr,
+  customEditFocusedAttr,
 ) where
 
 import Brick
 import Brick.Forms
 import Brick.Widgets.Dialog
+import Brick.Widgets.Edit qualified as E
 import Brick.Widgets.List
 import Data.Bifunctor (bimap)
 import Data.Text (unpack)
@@ -77,6 +79,7 @@ swarmAttrMap =
            (highlightAttr, fg V.cyan)
          , (invalidFormInputAttr, fg V.red)
          , (focusedFormInputAttr, V.defAttr)
+         , (customEditFocusedAttr, V.black `on` V.yellow)
          , (listSelectedFocusedAttr, bg V.blue)
          , (infoAttr, fg (V.rgbColor @Int 50 50 50))
          , (buttonSelectedAttr, bg V.blue)
@@ -167,6 +170,9 @@ infoAttr = attrName "info"
 boldAttr = attrName "bold"
 dimAttr = attrName "dim"
 defAttr = attrName "def"
+
+customEditFocusedAttr :: AttrName
+customEditFocusedAttr = attrName "custom" <> E.editFocusedAttr
 
 -- | Some basic colors used in TUI.
 redAttr, greenAttr, blueAttr, yellowAttr, cyanAttr, lightCyanAttr, magentaAttr :: AttrName

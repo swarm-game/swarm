@@ -93,6 +93,9 @@ import Swarm.Language.Types
 import Swarm.Language.Value (Value (VKey, VUnit), prettyValue, stripVResult)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
+import Swarm.TUI.Launch.Controller
+import Swarm.TUI.Launch.Model
+import Swarm.TUI.Launch.Prep (prepareLaunchDialog)
 import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal
@@ -133,7 +136,12 @@ handleEvent = \case
           -- quitGame function would have already halted the app).
           NoMenu -> const halt
           MainMenu l -> handleMainMenuEvent l
-          NewGameMenu l -> handleNewGameMenuEvent l
+          NewGameMenu l ->
+            if s ^. uiState . uiLaunchConfig . controls . fileBrowser . fbIsDisplayed
+              then handleFBEvent
+              else case s ^. uiState . uiLaunchConfig . controls . isDisplayedFor of
+                Nothing -> handleNewGameMenuEvent l
+                Just siPair -> handleLaunchOptionsEvent siPair
           MessagesMenu -> handleMainMessagesEvent
           AchievementsMenu l -> handleMainAchievementsEvent l
           AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
@@ -222,7 +230,10 @@ handleMainMessagesEvent = \case
  where
   returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
 
-handleNewGameMenuEvent :: NonEmpty (BL.List Name ScenarioItem) -> BrickEvent Name AppEvent -> EventM Name AppState ()
+handleNewGameMenuEvent ::
+  NonEmpty (BL.List Name ScenarioItem) ->
+  BrickEvent Name AppEvent ->
+  EventM Name AppState ()
 handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement curMenu of
@@ -231,6 +242,8 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
       Just (SICollection _ c) -> do
         cheat <- use $ uiState . uiCheatMode
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack)
+  CharKey 'o' -> showLaunchDialog
+  CharKey 'O' -> showLaunchDialog
   Key V.KEsc -> exitNewGameMenu scenarioStack
   CharKey 'q' -> exitNewGameMenu scenarioStack
   ControlChar 'q' -> halt
@@ -238,6 +251,10 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
     menu' <- nestEventM' curMenu (handleListEvent ev)
     uiState . uiMenu .= NewGameMenu (menu' :| rest)
   _ -> continueWithoutRedraw
+ where
+  showLaunchDialog = case snd <$> BL.listSelectedElement curMenu of
+    Just (SISingle siPair) -> Brick.zoom (uiState . uiLaunchConfig) $ prepareLaunchDialog siPair
+    _ -> continueWithoutRedraw
 
 exitNewGameMenu :: NonEmpty (BL.List Name ScenarioItem) -> EventM Name AppState ()
 exitNewGameMenu stk = do
@@ -460,7 +477,7 @@ getNormalizedCurrentScenarioPath =
 
 saveScenarioInfoOnFinish :: (MonadIO m, MonadState AppState m) => FilePath -> m (Maybe ScenarioInfo)
 saveScenarioInfoOnFinish p = do
-  initialCode <- use $ gameState . initiallyRunCode
+  initialRunCode <- use $ gameState . initiallyRunCode
   t <- liftIO getZonedTime
   wc <- use $ gameState . winCondition
   let won = case wc of
@@ -475,7 +492,7 @@ saveScenarioInfoOnFinish p = do
       currentScenarioInfo = runtimeState . scenarios . scenarioItemByPath p . _SISingle . _2
 
   replHist <- use $ uiState . uiREPL . replHistory
-  let determinator = CodeSizeDeterminators initialCode $ replHist ^. replHasExecutedManualInput
+  let determinator = CodeSizeDeterminators initialRunCode $ replHist ^. replHasExecutedManualInput
   currentScenarioInfo
     %= updateScenarioInfoOnFinish determinator t ts won
   status <- preuse currentScenarioInfo
@@ -1033,14 +1050,14 @@ handleREPLEventPiloting x = case x of
       & replPromptText .~ nt
       & replPromptType .~ CmdPrompt []
 
-runBaseWebCode :: MonadState AppState m => T.Text -> m ()
+runBaseWebCode :: (MonadState AppState m) => T.Text -> m ()
 runBaseWebCode uinput = do
   s <- get
   let topCtx = topContext s
   unless (s ^. gameState . replWorking) $
     runBaseCode topCtx uinput
 
-runBaseCode :: MonadState AppState m => RobotContext -> T.Text -> m ()
+runBaseCode :: (MonadState AppState m) => RobotContext -> T.Text -> m ()
 runBaseCode topCtx uinput =
   case processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput of
     Right mt -> do
@@ -1051,7 +1068,7 @@ runBaseCode topCtx uinput =
     Left err -> do
       uiState . uiError ?= err
 
-runBaseTerm :: MonadState AppState m => RobotContext -> Maybe ProcessedTerm -> m ()
+runBaseTerm :: (MonadState AppState m) => RobotContext -> Maybe ProcessedTerm -> m ()
 runBaseTerm topCtx =
   modify . maybe id startBaseProgram
  where
@@ -1253,7 +1270,7 @@ adjReplHistIndex d s =
 worldScrollDist :: Int32
 worldScrollDist = 8
 
-onlyCreative :: MonadState AppState m => m () -> m ()
+onlyCreative :: (MonadState AppState m) => m () -> m ()
 onlyCreative a = do
   c <- use $ gameState . creativeMode
   when c a

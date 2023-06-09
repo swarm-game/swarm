@@ -37,7 +37,12 @@ module Swarm.TUI.View (
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Forms
-import Brick.Widgets.Border (hBorder, hBorderWithLabel, joinableBorder, vBorder)
+import Brick.Widgets.Border (
+  hBorder,
+  hBorderWithLabel,
+  joinableBorder,
+  vBorder,
+ )
 import Brick.Widgets.Center (center, centerLayer, hCenter)
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (getEditContents, renderEditor)
@@ -91,6 +96,8 @@ import Swarm.Language.Typecheck (inferConst)
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
+import Swarm.TUI.Launch.Model
+import Swarm.TUI.Launch.View
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Repl (lastEntry)
@@ -117,7 +124,7 @@ drawUI s
       -- quit the app instead.  But just in case, we display the main menu anyway.
       NoMenu -> [drawMainMenuUI s (mainMenu NewGame)]
       MainMenu l -> [drawMainMenuUI s l]
-      NewGameMenu stk -> [drawNewGameMenuUI stk]
+      NewGameMenu stk -> drawNewGameMenuUI stk $ s ^. uiState . uiLaunchConfig
       AchievementsMenu l -> [drawAchievementsMenuUI s l]
       MessagesMenu -> [drawMainMessages s]
       AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
@@ -165,35 +172,52 @@ drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) 
   attrFor '▒' = dirtAttr
   attrFor _ = defAttr
 
-drawNewGameMenuUI :: NonEmpty (BL.List Name ScenarioItem) -> Widget Name
-drawNewGameMenuUI (l :| ls) =
-  padLeftRight 20
-    . centerLayer
-    $ hBox
-      [ vBox
-          [ withAttr boldAttr . txt $ breadcrumbs ls
-          , txt " "
-          , vLimit 20
-              . hLimit 35
-              . BL.renderList (const $ padRight Max . drawScenarioItem) True
-              $ l
-          ]
-      , padLeft (Pad 5) (maybe (txt "") (drawDescription . snd) (BL.listSelectedElement l))
-      ]
+-- | When launching a game, a modal prompt may appear on another layer
+-- to input seed and/or a script to run.
+drawNewGameMenuUI ::
+  NonEmpty (BL.List Name ScenarioItem) ->
+  LaunchOptions ->
+  [Widget Name]
+drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
+  Nothing -> pure mainWidget
+  Just _ -> drawLaunchConfigPanel launchOptions <> pure mainWidget
  where
+  displayedFor = launchOptions ^. controls . isDisplayedFor
+  mainWidget =
+    vBox
+      [ padLeftRight 20
+          . centerLayer
+          $ hBox
+            [ vBox
+                [ withAttr boldAttr . txt $ breadcrumbs ls
+                , txt " "
+                , vLimit 20
+                    . hLimit 35
+                    . BL.renderList (const $ padRight Max . drawScenarioItem) True
+                    $ l
+                ]
+            , padLeft (Pad 5) (maybe (txt "") (drawDescription . snd) (BL.listSelectedElement l))
+            ]
+      , launchOptionsMessage
+      ]
+
+  launchOptionsMessage = case (displayedFor, snd <$> BL.listSelectedElement l) of
+    (Nothing, Just (SISingle _)) -> hCenter $ txt "Press 'o' for launch options, or 'Enter' to launch with defaults"
+    _ -> emptyWidget
+
   drawScenarioItem (SISingle (s, si)) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioName)
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
   drawStatusInfo s si = case si ^. scenarioStatus of
     NotStarted -> txt " ○ "
-    Played (Metric Attempted _) _ -> case s ^. scenarioObjectives of
+    Played _initialScript (Metric Attempted _) _ -> case s ^. scenarioObjectives of
       [] -> withAttr cyanAttr $ txt " ◉ "
       _ -> withAttr yellowAttr $ txt " ◎ "
-    Played (Metric Completed _) _ -> withAttr greenAttr $ txt " ● "
+    Played _initialScript (Metric Completed _) _ -> withAttr greenAttr $ txt " ● "
 
   describeStatus :: ScenarioStatus -> Widget n
   describeStatus = \case
     NotStarted -> withAttr cyanAttr $ txt "not started"
-    Played pm _best -> describeProgress pm
+    Played _initialScript pm _best -> describeProgress pm
 
   breadcrumbs :: [BL.List Name ScenarioItem] -> Text
   breadcrumbs =
@@ -291,7 +315,7 @@ makeBestScoreRows scenarioStat =
  where
   getBests = case scenarioStat of
     NotStarted -> Nothing
-    Played _ best -> Just best
+    Played _initialScript _ best -> Just best
 
   makeBestRows b = map (makeBestRow hasMultiple) groups
    where
