@@ -203,7 +203,7 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
 
   launchOptionsMessage = case (displayedFor, snd <$> BL.listSelectedElement l) of
     (Nothing, Just (SISingle _)) -> hCenter $ txt "Press 'o' for launch options, or 'Enter' to launch with defaults"
-    _ -> emptyWidget
+    _ -> txt " "
 
   drawScenarioItem (SISingle (s, si)) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioName)
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
