@@ -7,10 +7,11 @@ module Swarm.TUI.Controller.Util where
 import Brick hiding (Direction)
 import Brick.Focus
 import Control.Lens
-import Control.Monad (unless)
+import Control.Monad (forM_, unless)
 import Control.Monad.IO.Class (liftIO)
 import Graphics.Vty qualified as V
 import Swarm.Game.State
+import Swarm.Game.World qualified as W
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Util (generateModal)
@@ -63,3 +64,30 @@ isRunningModal = \case
 
 setFocus :: FocusablePanel -> EventM Name AppState ()
 setFocus name = uiState . uiFocusRing %= focusSetCurrent (FocusablePanel name)
+
+immediatelyRedrawWorld :: EventM Name AppState ()
+immediatelyRedrawWorld = do
+  invalidateCacheEntry WorldCache
+  loadVisibleRegion
+
+-- | Make sure all tiles covering the visible part of the world are
+--   loaded.
+loadVisibleRegion :: EventM Name AppState ()
+loadVisibleRegion = do
+  mext <- lookupExtent WorldExtent
+  forM_ mext $ \(Extent _ _ size) -> do
+    gs <- use gameState
+    gameState . world %= W.loadRegion (viewingRegion gs (over both fromIntegral size))
+
+mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe W.Coords)
+mouseLocToWorldCoords (Brick.Location mouseLoc) = do
+  mext <- lookupExtent WorldExtent
+  case mext of
+    Nothing -> pure Nothing
+    Just ext -> do
+      region <- gets $ flip viewingRegion (bimap fromIntegral fromIntegral (extentSize ext))
+      let regionStart = W.unCoords (fst region)
+          mouseLoc' = bimap fromIntegral fromIntegral mouseLoc
+          mx = snd mouseLoc' + fst regionStart
+          my = fst mouseLoc' + snd regionStart
+       in pure . Just $ W.Coords (mx, my)

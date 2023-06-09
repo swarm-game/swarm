@@ -39,7 +39,6 @@ module Swarm.TUI.Controller (
 ) where
 
 import Brick hiding (Direction, Location)
-import Brick qualified
 import Brick.Focus
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (handleEditorEvent)
@@ -77,7 +76,6 @@ import Swarm.Game.Robot
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (finishGameTick, gameTick)
-import Swarm.Game.World qualified as W
 import Swarm.Language.Capability (Capability (CDebug, CMake))
 import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
@@ -92,6 +90,8 @@ import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value (VKey, VUnit), prettyValue, stripVResult)
 import Swarm.TUI.Controller.Util
+import Swarm.TUI.Editor.Controller qualified as EC
+import Swarm.TUI.Editor.Model
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.Launch.Controller
 import Swarm.TUI.Launch.Model
@@ -103,8 +103,8 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
-import Swarm.TUI.View (generateModal)
 import Swarm.TUI.View.Objective qualified as GR
+import Swarm.TUI.View.Util (generateModal)
 import Swarm.Util hiding (both, (<<.=))
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
@@ -351,8 +351,27 @@ handleMainEvent ev = do
     VtyEvent vev
       | isJust (s ^. uiState . uiModal) -> handleModalEvent vev
     -- toggle creative mode if in "cheat mode"
+
+    MouseDown (TerrainListItem pos) V.BLeft _ _ ->
+      uiState . uiWorldEditor . terrainList %= BL.listMoveTo pos
+    MouseDown (EntityPaintListItem pos) V.BLeft _ _ ->
+      uiState . uiWorldEditor . entityPaintList %= BL.listMoveTo pos
     ControlChar 'v'
       | s ^. uiState . uiCheatMode -> gameState . creativeMode %= not
+    -- toggle world editor mode if in "cheat mode"
+    ControlChar 'e'
+      | s ^. uiState . uiCheatMode -> do
+          uiState . uiWorldEditor . isWorldEditorEnabled %= not
+          setFocus WorldEditorPanel
+    MouseDown (FocusablePanel WorldPanel) V.BMiddle _ mouseLoc ->
+      -- Eye Dropper tool
+      EC.handleMiddleClick mouseLoc
+    MouseDown (FocusablePanel WorldPanel) V.BRight _ mouseLoc ->
+      -- Eraser tool
+      EC.handleRightClick mouseLoc
+    MouseDown (FocusablePanel WorldPanel) V.BLeft [V.MCtrl] mouseLoc ->
+      -- Paint with the World Editor
+      EC.handleCtrlLeftClick mouseLoc
     -- toggle collapse/expand REPL
     ControlChar 's' -> do
       invalidateCacheEntry WorldCache
@@ -360,13 +379,18 @@ handleMainEvent ev = do
     MouseDown n _ _ mouseLoc ->
       case n of
         FocusablePanel WorldPanel -> do
-          mouseCoordsM <- Brick.zoom gameState (mouseLocToWorldCoords mouseLoc)
-          uiState . uiWorldCursor .= mouseCoordsM
+          mouseCoordsM <- Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
+          shouldUpdateCursor <- EC.updateAreaBounds mouseCoordsM
+          when shouldUpdateCursor $
+            uiState . uiWorldCursor .= mouseCoordsM
         REPLInput -> handleREPLEvent ev
         _ -> continueWithoutRedraw
     MouseUp n _ _mouseLoc -> do
       case n of
         InventoryListItem pos -> uiState . uiInventory . traverse . _2 %= BL.listMoveTo pos
+        x@(WorldEditorPanelControl y) -> do
+          uiState . uiWorldEditor . editorFocusRing %= focusSetCurrent x
+          EC.activateWorldEditorFunction y
         _ -> return ()
       flip whenJust setFocus $ case n of
         -- Adapt click event origin to their right panel.
@@ -377,6 +401,7 @@ handleMainEvent ev = do
         InventoryListItem _ -> Just RobotPanel
         InfoViewport -> Just InfoPanel
         REPLInput -> Just REPLPanel
+        WorldEditorPanelControl _ -> Just WorldEditorPanel
         _ -> Nothing
       case n of
         FocusablePanel x -> setFocus x
@@ -388,22 +413,10 @@ handleMainEvent ev = do
         Just (FocusablePanel x) -> ($ ev) $ case x of
           REPLPanel -> handleREPLEvent
           WorldPanel -> handleWorldEvent
+          WorldEditorPanel -> EC.handleWorldEditorPanelEvent
           RobotPanel -> handleRobotPanelEvent
           InfoPanel -> handleInfoPanelEvent infoScroll
         _ -> continueWithoutRedraw
-
-mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe W.Coords)
-mouseLocToWorldCoords (Brick.Location mouseLoc) = do
-  mext <- lookupExtent WorldExtent
-  case mext of
-    Nothing -> pure Nothing
-    Just ext -> do
-      region <- gets $ flip viewingRegion (bimap fromIntegral fromIntegral (extentSize ext))
-      let regionStart = W.unCoords (fst region)
-          mouseLoc' = bimap fromIntegral fromIntegral mouseLoc
-          mx = snd mouseLoc' + fst regionStart
-          my = fst mouseLoc' + snd regionStart
-       in pure . Just $ W.Coords (mx, my)
 
 -- | Set the game to Running if it was (auto) paused otherwise to paused.
 --
@@ -450,6 +463,10 @@ handleModalEvent = \case
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
     modal <- preuse $ uiState . uiModal . _Just . modalType
     case modal of
+      Just TerrainPaletteModal ->
+        refreshList $ uiState . uiWorldEditor . terrainList
+      Just EntityPaletteModal -> do
+        refreshList $ uiState . uiWorldEditor . entityPaintList
       Just GoalModal -> case ev of
         V.EvKey (V.KChar '\t') [] -> uiState . uiGoal . focus %= focusNext
         _ -> do
@@ -458,13 +475,14 @@ handleModalEvent = \case
             Just (GoalWidgets w) -> case w of
               ObjectivesList -> do
                 lw <- use $ uiState . uiGoal . listWidget
-                newList <- refreshList lw
+                newList <- refreshGoalList lw
                 uiState . uiGoal . listWidget .= newList
               GoalSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
             _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
    where
-    refreshList lw = nestEventM' lw $ handleListEventWithSeparators ev shouldSkipSelection
+    refreshGoalList lw = nestEventM' lw $ handleListEventWithSeparators ev shouldSkipSelection
+    refreshList z = Brick.zoom z $ BL.handleListEvent ev
 
 getNormalizedCurrentScenarioPath :: (MonadIO m, MonadState AppState m) => m (Maybe FilePath)
 getNormalizedCurrentScenarioPath =
@@ -927,17 +945,6 @@ doGoalUpdates = do
         openModal GoalModal
 
       return goalWasUpdated
-
--- | Make sure all tiles covering the visible part of the world are
---   loaded.
-loadVisibleRegion :: EventM Name AppState ()
-loadVisibleRegion = do
-  mext <- lookupExtent WorldExtent
-  case mext of
-    Nothing -> return ()
-    Just (Extent _ _ size) -> do
-      gs <- use gameState
-      gameState . world %= W.loadRegion (viewingRegion gs (over both fromIntegral size))
 
 -- | Strips top-level `cmd` from type (in case of REPL evaluation),
 --   and returns a boolean to indicate if it happened
