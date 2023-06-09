@@ -40,12 +40,12 @@ import Witch
 --   pipeline.  Put a 'Term' in, and get one of these out.
 data ProcessedTerm
   = ProcessedTerm
+      -- | The elaborated + type-annotated term, plus types of any embedded definitions
       TModule
-      -- ^ The elaborated + type-annotated term, plus types of any embedded definitions
+      -- | Requirements of the term
       Requirements
-      -- ^ Requirements of the term
+      -- | Capability context for any definitions embedded in the term
       ReqCtx
-      -- ^ Capability context for any definitions embedded in the term
   deriving (Data, Show, Eq, Generic)
 
 processTermEither :: Text -> Either String ProcessedTerm
