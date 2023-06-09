@@ -13,24 +13,20 @@ import Control.Lens
 import Control.Monad.Except (forM_, liftIO, when)
 import Data.Maybe (listToMaybe)
 import Graphics.Vty qualified as V
+import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (LaunchParams))
 import Swarm.Game.ScenarioInfo
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Launch.Model
-import Swarm.TUI.Launch.Prep (initFileBrowserWidget, makeFocusRingWith, parseWidgetParams, toValidatedParams)
+import Swarm.TUI.Launch.Prep (initFileBrowserWidget, makeFocusRingWith, parseSeedInput, parseWidgetParams, toValidatedParams)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
 import Swarm.Util (listEnums)
 
-cacheValidatedInputs :: EventM Name LaunchOptions ()
-cacheValidatedInputs = do
-  launchControls <- use controls
-  parsedParams <- liftIO $ parseWidgetParams launchControls
-  editingParams .= parsedParams
-
+updateFocusRing :: EditingLaunchParams -> EventM Name LaunchOptions ()
+updateFocusRing parsedParams = do
   currentRing <- use $ controls . scenarioConfigFocusRing
-
   let eitherLaunchParams = toValidatedParams parsedParams
       modifyRingMembers = case eitherLaunchParams of
         Left _ -> filter (/= StartGameButton)
@@ -39,6 +35,26 @@ cacheValidatedInputs = do
       refocusRing = maybe id focusSetCurrent maybeCurrentFocus
 
   controls . scenarioConfigFocusRing .= refocusRing (makeFocusRingWith $ modifyRingMembers listEnums)
+
+cacheValidatedInputs :: EventM Name LaunchOptions ()
+cacheValidatedInputs = do
+  launchControls <- use controls
+  parsedParams <- liftIO $ parseWidgetParams launchControls
+  editingParams .= parsedParams
+  updateFocusRing parsedParams
+
+-- | Split this out from the combined parameter-validation function
+-- because validating the seed is cheap, and shouldn't have to pay
+-- the cost of re-parsing script code as the user types in the seed
+-- selection field.
+cacheValidatedSeedInput :: EventM Name LaunchOptions ()
+cacheValidatedSeedInput = do
+  seedEditor <- use $ controls . seedValueEditor
+  let eitherMaybeSeed = parseSeedInput seedEditor
+  LaunchParams _ eitherParsedCode <- use editingParams
+  let newParams = LaunchParams eitherMaybeSeed eitherParsedCode
+  editingParams .= newParams
+  updateFocusRing newParams
 
 -- | If the FileBrowser is in "search mode", then we allow
 -- more of the key events to pass through. Otherwise,
@@ -128,7 +144,7 @@ handleLaunchOptionsEvent siPair = \case
     case focusGetCurrent fr of
       Just (ScenarioConfigControl (ScenarioConfigPanelControl SeedSelector)) -> Brick.zoom (uiState . uiLaunchConfig) $ do
         Brick.zoom (controls . seedValueEditor) (handleEditorEvent ev)
-        cacheValidatedInputs
+        cacheValidatedSeedInput
       _ -> return ()
  where
   activateControl = do

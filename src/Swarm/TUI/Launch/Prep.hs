@@ -18,7 +18,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Functor.Identity (runIdentity)
 import Data.Text qualified as T
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (..), ScenarioInfoPair, getLaunchParams, scenarioStatus)
-import Swarm.Game.State (getRunCodePath)
+import Swarm.Game.State (Seed, getRunCodePath)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Model.Name
 import Swarm.Util (listEnums)
@@ -34,22 +34,25 @@ toValidatedParams (LaunchParams eitherSeedVal eitherInitialCode) = do
   maybeParsedCode <- eitherInitialCode
   return $ LaunchParams (pure maybeSeed) (pure maybeParsedCode)
 
+parseSeedInput :: Editor T.Text Name -> Either T.Text (Maybe Seed)
+parseSeedInput seedEditor =
+  if T.null seedFieldText
+    then Right Nothing
+    else
+      fmap Just
+        . left T.pack
+        . readEither
+        . T.unpack
+        $ seedFieldText
+ where
+  seedFieldText = mconcat $ getEditContents seedEditor
+
 parseWidgetParams :: LaunchControls -> IO EditingLaunchParams
 parseWidgetParams (LaunchControls (FileBrowserControl _fb maybeSelectedScript _) seedEditor _ _) = do
   eitherParsedCode <- parseCode maybeSelectedScript
   return $ LaunchParams eitherMaybeSeed eitherParsedCode
  where
-  eitherMaybeSeed =
-    if T.null seedFieldText
-      then Right Nothing
-      else
-        fmap Just
-          . left T.pack
-          . readEither
-          . T.unpack
-          $ seedFieldText
-
-  seedFieldText = mconcat $ getEditContents seedEditor
+  eitherMaybeSeed = parseSeedInput seedEditor
 
 makeFocusRingWith :: [ScenarioConfigPanelFocusable] -> Focus.FocusRing Name
 makeFocusRingWith = Focus.focusRing . map (ScenarioConfigControl . ScenarioConfigPanelControl)
