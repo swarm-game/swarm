@@ -1,7 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -587,10 +586,9 @@ tickRobot r = do
 tickRobotRec :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
 tickRobotRec r = do
   time <- use ticks
-  if
-    | wantsToStep time r && (r ^. runningAtomic || r ^. tickSteps > 0) ->
-        stepRobot r >>= tickRobotRec
-    | otherwise -> return r
+  case wantsToStep time r && (r ^. runningAtomic || r ^. tickSteps > 0) of
+    True -> stepRobot r >>= tickRobotRec
+    False -> return r
 
 -- | Single-step a robot by decrementing its 'tickSteps' counter and
 --   running its CESK machine for one step.
