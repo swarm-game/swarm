@@ -627,7 +627,7 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
     -- functions such as 'if'.  Without this call to 'applyBindings',
     -- type mismatches between the branches of an 'if' tend to get
     -- caught in the unifier, resulting in vague "can't unify"
-    -- messages (for example, "if true then {3} {move}" yields "can't
+    -- messages (for example, "if true {3} {move}" yields "can't
     -- unify int and cmd unit").  With this 'applyBindings' call, we
     -- get more specific errors about how the second branch was
     -- expected to have the same type as the first (e.g. "expected
