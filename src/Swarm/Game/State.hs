@@ -88,6 +88,7 @@ module Swarm.Game.State (
   CodeToRun (..),
   Sha1 (..),
   SolutionSource (..),
+  parseCodeFile,
   getParsedInitialCode,
 
   -- * Utilities
@@ -112,6 +113,7 @@ module Swarm.Game.State (
   toggleRunStatus,
   messageIsRecent,
   messageIsFromNearby,
+  getRunCodePath,
 ) where
 
 import Control.Algebra (Has)
@@ -277,28 +279,32 @@ data SolutionSource
   | -- | Includes the SHA1 of the program text
     -- for the purpose of corroborating solutions
     -- on a leaderboard.
-    PlayerAuthored Sha1
+    PlayerAuthored FilePath Sha1
 
 data CodeToRun = CodeToRun SolutionSource ProcessedTerm
 
-getParsedInitialCode :: Maybe FilePath -> ExceptT Text IO (Maybe CodeToRun)
-getParsedInitialCode toRun = case toRun of
-  Nothing -> return Nothing
-  Just filepath -> do
-    contents <- liftIO $ TIO.readFile filepath
+getRunCodePath :: CodeToRun -> Maybe FilePath
+getRunCodePath (CodeToRun solutionSource _) = case solutionSource of
+  ScenarioSuggested -> Nothing
+  PlayerAuthored fp _ -> Just fp
+
+parseCodeFile :: FilePath -> IO (Either Text CodeToRun)
+parseCodeFile filepath = do
+  contents <- TIO.readFile filepath
+  return $ do
     pt@(ProcessedTerm (Module (Syntax' srcLoc _ _) _) _ _) <-
-      ExceptT
-        . return
-        . left T.pack
-        $ processTermEither contents
+      left T.pack $ processTermEither contents
     let strippedText = stripSrc srcLoc contents
         programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
         sha1Hash = showDigest $ sha1 programBytestring
-    return $ Just $ CodeToRun (PlayerAuthored $ Sha1 sha1Hash) pt
+    return $ CodeToRun (PlayerAuthored filepath $ Sha1 sha1Hash) pt
  where
   stripSrc :: SrcLoc -> Text -> Text
   stripSrc (SrcLoc start end) txt = T.drop start $ T.take end txt
   stripSrc NoLoc txt = txt
+
+getParsedInitialCode :: Maybe FilePath -> ExceptT Text IO (Maybe CodeToRun)
+getParsedInitialCode = traverse $ ExceptT . parseCodeFile
 
 ------------------------------------------------------------
 -- The main GameState record type
@@ -784,7 +790,7 @@ focusedRange g = computedRange <$ focusedRobot g
   (minRadius, maxRadius) = over both (gain baseInv . gain focInv) (16, 64)
 
 -- | Clear the 'robotLogUpdated' flag of the focused robot.
-clearFocusedRobotLogUpdated :: Has (State GameState) sig m => m ()
+clearFocusedRobotLogUpdated :: (Has (State GameState) sig m) => m ()
 clearFocusedRobotLogUpdated = do
   n <- use focusedRobotID
   robotMap . ix n . robotLogUpdated .= False
@@ -793,7 +799,7 @@ clearFocusedRobotLogUpdated = do
 --   first, generate a unique ID number for it.  Then, add it to the
 --   main robot map, the active robot set, and to to the index of
 --   robots by location. Return the updated robot.
-addTRobot :: Has (State GameState) sig m => TRobot -> m Robot
+addTRobot :: (Has (State GameState) sig m) => TRobot -> m Robot
 addTRobot r = do
   rid <- gensym <+= 1
   let r' = instantiateRobot rid r
@@ -803,7 +809,7 @@ addTRobot r = do
 -- | Add a robot to the game state, adding it to the main robot map,
 --   the active robot set, and to to the index of robots by
 --   location.
-addRobot :: Has (State GameState) sig m => Robot -> m ()
+addRobot :: (Has (State GameState) sig m) => Robot -> m ()
 addRobot r = do
   let rid = r ^. robotID
 
@@ -816,7 +822,7 @@ maxMessageQueueSize :: Int
 maxMessageQueueSize = 1000
 
 -- | Add a message to the message queue.
-emitMessage :: Has (State GameState) sig m => LogEntry -> m ()
+emitMessage :: (Has (State GameState) sig m) => LogEntry -> m ()
 emitMessage msg = messageQueue %= (|> msg) . dropLastIfLong
  where
   tooLong s = Seq.length s >= maxMessageQueueSize
@@ -825,23 +831,23 @@ emitMessage msg = messageQueue %= (|> msg) . dropLastIfLong
 
 -- | Takes a robot out of the activeRobots set and puts it in the waitingRobots
 --   queue.
-sleepUntil :: Has (State GameState) sig m => RID -> TickNumber -> m ()
+sleepUntil :: (Has (State GameState) sig m) => RID -> TickNumber -> m ()
 sleepUntil rid time = do
   internalActiveRobots %= IS.delete rid
   internalWaitingRobots . at time . non [] %= (rid :)
 
 -- | Takes a robot out of the activeRobots set.
-sleepForever :: Has (State GameState) sig m => RID -> m ()
+sleepForever :: (Has (State GameState) sig m) => RID -> m ()
 sleepForever rid = internalActiveRobots %= IS.delete rid
 
 -- | Adds a robot to the activeRobots set.
-activateRobot :: Has (State GameState) sig m => RID -> m ()
+activateRobot :: (Has (State GameState) sig m) => RID -> m ()
 activateRobot rid = internalActiveRobots %= IS.insert rid
 
 -- | Removes robots whose wake up time matches the current game ticks count
 --   from the waitingRobots queue and put them back in the activeRobots set
 --   if they still exist in the keys of robotMap.
-wakeUpRobotsDoneSleeping :: Has (State GameState) sig m => m ()
+wakeUpRobotsDoneSleeping :: (Has (State GameState) sig m) => m ()
 wakeUpRobotsDoneSleeping = do
   time <- use ticks
   mrids <- internalWaitingRobots . at time <<.= Nothing
@@ -859,7 +865,7 @@ wakeUpRobotsDoneSleeping = do
 -- | Clear the "watch" state of all of the
 -- awakened robots
 clearWatchingRobots ::
-  Has (State GameState) sig m =>
+  (Has (State GameState) sig m) =>
   [RID] ->
   m ()
 clearWatchingRobots rids = do
@@ -870,7 +876,7 @@ clearWatchingRobots rids = do
 --
 -- NOTE: Clearing "TickNumber" map entries from "internalWaitingRobots"
 -- upon wakeup is handled by "wakeUpRobotsDoneSleeping" in State.hs
-wakeWatchingRobots :: Has (State GameState) sig m => Location -> m ()
+wakeWatchingRobots :: (Has (State GameState) sig m) => Location -> m ()
 wakeWatchingRobots loc = do
   currentTick <- use ticks
   waitingMap <- use waitingRobots
@@ -923,7 +929,7 @@ wakeWatchingRobots loc = do
       Waiting _ c -> Waiting newWakeTime c
       x -> x
 
-deleteRobot :: Has (State GameState) sig m => RID -> m ()
+deleteRobot :: (Has (State GameState) sig m) => RID -> m ()
 deleteRobot rn = do
   internalActiveRobots %= IS.delete rn
   mrobot <- robotMap . at rn <<.= Nothing

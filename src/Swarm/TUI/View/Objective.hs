@@ -88,7 +88,7 @@ drawGoalListItem _isSelected e = case e of
   Goal gs obj -> getCompletionIcon obj gs <+> titleWidget
    where
     textSource = obj ^. objectiveTeaser <|> obj ^. objectiveId <|> listToMaybe (obj ^. objectiveGoal)
-    titleWidget = maybe (txt "?") withEllipsis textSource
+    titleWidget = maybe (txt "?") (withEllipsis End) textSource
 
 singleGoalDetails :: GoalEntry -> Widget Name
 singleGoalDetails = \case
