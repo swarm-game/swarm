@@ -588,9 +588,9 @@ tickRobotRec :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m
 tickRobotRec r = do
   time <- use ticks
   if
-    | wantsToStep time r && (r ^. runningAtomic || r ^. tickSteps > 0) ->
-        stepRobot r >>= tickRobotRec
-    | otherwise -> return r
+      | wantsToStep time r && (r ^. runningAtomic || r ^. tickSteps > 0) ->
+          stepRobot r >>= tickRobotRec
+      | otherwise -> return r
 
 -- | Single-step a robot by decrementing its 'tickSteps' counter and
 --   running its CESK machine for one step.
