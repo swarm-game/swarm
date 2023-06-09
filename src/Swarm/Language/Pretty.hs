@@ -300,11 +300,11 @@ instance PrettyPrec TypeErr where
 typeDescription :: Source -> UType -> Doc a
 typeDescription src ty
   | not (hasAnyUVars ty) =
-    withSource src "have" "actually has" <+> "type" <+> bquote (ppr ty)
+      withSource src "have" "actually has" <+> "type" <+> bquote (ppr ty)
   | Just f <- isTopLevelConstructor ty =
-    withSource src "be" "is actually" <+> tyNounPhrase f
+      withSource src "be" "is actually" <+> tyNounPhrase f
   | otherwise =
-    withSource src "have" "actually has" <+> "a type like" <+> bquote (ppr (fmap (const Wildcard) ty))
+      withSource src "have" "actually has" <+> "a type like" <+> bquote (ppr (fmap (const Wildcard) ty))
 
 -- | Check whether a type contains any unification variables at all.
 hasAnyUVars :: UType -> Bool
