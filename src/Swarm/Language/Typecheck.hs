@@ -20,6 +20,7 @@ module Swarm.Language.Typecheck (
 
   -- * Type provenance
   Source (..),
+  withSource,
   Join,
   getJoin,
 
@@ -112,6 +113,12 @@ data Source
   | -- | An actual/inferred type that was "pulled up" from a term.
     Actual
   deriving (Show, Eq, Ord, Bounded, Enum)
+
+-- | Generic eliminator for 'Source'.  Choose the first argument if
+--   the 'Source' is 'Expected', and the second argument if 'Actual'.
+withSource :: Source -> a -> a -> a
+withSource Expected e _ = e
+withSource Actual   _ a = a
 
 -- | A value along with its source (expected vs actual).
 type Sourced a = (Source, a)

@@ -100,6 +100,15 @@ instance PrettyPrec BaseTy where
 instance PrettyPrec IntVar where
   prettyPrec _ = pretty . mkVarName "u"
 
+data Wildcard = Wildcard
+  deriving (Eq, Ord, Show)
+
+-- | We can use the 'Wildcard' value to replace unification variables
+--   when we don't care about them, e.g. to print out the shape of a
+--   type like @(_ -> _) * _@
+instance PrettyPrec Wildcard where
+  prettyPrec _ _ = "_"
+
 instance (PrettyPrec (t (Fix t))) => PrettyPrec (Fix t) where
   prettyPrec p = prettyPrec p . unFix
 
@@ -263,11 +272,11 @@ instance PrettyPrec TypeErr where
   prettyPrec _ (Mismatch (Just t) (getJoin -> (ty1, ty2))) =
     nest 2 . vcat $
       [ "Type mismatch:"
-      , "From context, expected" <+> bquote (ppr t) <+> "to have type" <+> bquote (ppr ty1) <> ","
-      , "but it actually has type" <+> bquote (ppr ty2)
+      , "From context, expected" <+> bquote (ppr t) <+> "to" <+> typeDescription Expected ty1 <> ","
+      , "but it" <+> typeDescription Actual ty2
       ]
   prettyPrec _ (LambdaArgMismatch (getJoin -> (ty1, ty2))) =
-    "Lambda argument has type annotation" <+> ppr ty2 <> ", but expected argument type" <+> ppr ty1
+    "Lambda argument has type annotation" <+> bquote (ppr ty2) <> ", but expected argument type" <+> bquote (ppr ty1)
   prettyPrec _ (FieldsMismatch (getJoin -> (expFs, actFs))) = fieldMismatchMsg expFs actFs
   prettyPrec _ (EscapedSkolem x) =
     "Skolem variable" <+> pretty x <+> "would escape its scope"
@@ -286,6 +295,60 @@ instance PrettyPrec TypeErr where
   prettyPrec _ (InvalidAtomic reason t) =
     "Invalid atomic block:" <+> ppr reason <> ":" <+> ppr t
 
+-- | Given a type and its source, construct an appropriate description
+--   of it to go in a type mismatch error message.
+typeDescription :: Source -> UType -> Doc a
+typeDescription src ty
+  | not (hasAnyUVars ty) =
+    withSource src "have" "actually has" <+> "type" <+> bquote (ppr ty)
+  | Just f <- isTopLevelConstructor ty =
+    withSource src "be" "is actually" <+> tyNounPhrase f
+  | otherwise =
+    withSource src "have" "actually has" <+> "a type like" <+> bquote (ppr (fmap (const Wildcard) ty))
+
+-- | Check whether a type contains any unification variables at all.
+hasAnyUVars :: UType -> Bool
+hasAnyUVars = ucata (const True) or
+
+-- | Check whether a type consists of a top-level type constructor
+--   immediately applied to unification variables.
+isTopLevelConstructor :: UType -> Maybe (TypeF ())
+isTopLevelConstructor (UTyCmd (UVar {})) = Just $ TyCmdF ()
+isTopLevelConstructor (UTyDelay (UVar {})) = Just $ TyDelayF ()
+isTopLevelConstructor (UTySum (UVar {}) (UVar {})) = Just $ TySumF () ()
+isTopLevelConstructor (UTyProd (UVar {}) (UVar {})) = Just $ TyProdF () ()
+isTopLevelConstructor (UTyFun (UVar {}) (UVar {})) = Just $ TyFunF () ()
+isTopLevelConstructor _ = Nothing
+
+-- | Return an English noun phrase describing things with the given
+--   top-level type constructor.
+tyNounPhrase :: TypeF () -> Doc a
+tyNounPhrase = \case
+  TyBaseF b -> baseTyNounPhrase b
+  TyVarF {} -> "a type variable"
+  TyCmdF {} -> "a command"
+  TyDelayF {} -> "a delayed expression"
+  TySumF {} -> "a sum"
+  TyProdF {} -> "a pair"
+  TyFunF {} -> "a function"
+  TyRcdF {} -> "a record"
+
+-- | Return an English noun phrase describing things with the given
+--   base type.
+baseTyNounPhrase :: BaseTy -> Doc a
+baseTyNounPhrase = \case
+  BVoid -> "void"
+  BUnit -> "the unit value"
+  BInt -> "an integer"
+  BText -> "text"
+  BDir -> "a direction"
+  BBool -> "a boolean"
+  BActor -> "an actor"
+  BKey -> "a key"
+
+-- | Generate an appropriate message when the sets of fields in two
+--   record types do not match, explaining which fields are extra and
+--   which are missing.
 fieldMismatchMsg :: Set Var -> Set Var -> Doc a
 fieldMismatchMsg expFs actFs =
   nest 2 . vcat $
