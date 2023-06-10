@@ -109,7 +109,7 @@ gameTick = do
     use gameStep >>= \case
       WorldTick -> do
         runRobotIDs active
-        ticks += 1
+        ticks %= addTicks 1
         pure True
       RobotStep ss -> singleStep ss focusedRob active
 
@@ -166,7 +166,7 @@ insertBackRobot rn rob = do
       case waitingUntil rob of
         Just wakeUpTime
           -- if w=2 t=1 then we do not needlessly put robot to waiting queue
-          | wakeUpTime - 2 <= time -> return ()
+          | wakeUpTime <= addTicks 2 time -> return ()
           | otherwise -> sleepUntil rn wakeUpTime
         Nothing ->
           unless (isActive rob) (sleepForever rn)
@@ -208,7 +208,7 @@ singleStep ss focRID robotSet = do
           debugLog "The debugged robot does not exist! Exiting single step mode."
           runRobotIDs postFoc
           gameStep .= WorldTick
-          ticks += 1
+          ticks %= addTicks 1
           return True
         Nothing | otherwise -> do
           debugLog "The previously debugged robot does not exist!"
@@ -233,7 +233,7 @@ singleStep ss focRID robotSet = do
       --    so we just finish the tick the same way
       runRobotIDs postFoc
       gameStep .= RobotStep SBefore
-      ticks += 1
+      ticks %= addTicks 1
       return True
     SAfter rid | otherwise -> do
       -- go to single step if new robot is focused
@@ -1082,7 +1082,7 @@ execConst c vs s k = do
       [VInt d] -> do
         time <- use ticks
         purgeFarAwayWatches
-        return $ Waiting (time + d) (Out VUnit s k)
+        return $ Waiting (addTicks d time) (Out VUnit s k)
       _ -> badConst
     Selfdestruct -> do
       destroyIfNotBase $ Just AttemptSelfDestructBase
@@ -1459,7 +1459,7 @@ execConst c vs s k = do
       -- otherwise have anything reasonable to return.
       return $ Out (VDir (fromMaybe (DRelative DDown) $ mh >>= toDirection)) s k
     Time -> do
-      t <- use ticks
+      TickNumber t <- use ticks
       return $ Out (VInt t) s k
     Drill -> case vs of
       [VDir d] -> doDrill d
@@ -1970,7 +1970,7 @@ execConst c vs s k = do
 
             -- Now wait the right amount of time for it to finish.
             time <- use ticks
-            return $ Waiting (time + fromIntegral numItems + 1) (Out VUnit s k)
+            return $ Waiting (addTicks (fromIntegral numItems + 1) time) (Out VUnit s k)
       _ -> badConst
     -- run can take both types of text inputs
     -- with and without file extension as in
@@ -2213,7 +2213,7 @@ execConst c vs s k = do
         return $ Out v s k
       else do
         time <- use ticks
-        return . (if remTime <= 1 then id else Waiting (remTime + time)) $
+        return . (if remTime <= 1 then id else Waiting (addTicks remTime time)) $
           Out v s (FImmediate c wf rf : k)
    where
     remTime = r ^. recipeTime

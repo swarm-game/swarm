@@ -153,7 +153,7 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
-import Swarm.Game.CESK (CESK (Waiting), TickNumber, emptyStore, finalValue, initMachine)
+import Swarm.Game.CESK (CESK (Waiting), TickNumber (..), addTicks, emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Recipe (
@@ -671,7 +671,7 @@ messageNotifications = to getNotif
         <> Seq.filter ((== gs ^. focusedRobotID) . view leRobotID) mq
 
 messageIsRecent :: GameState -> LogEntry -> Bool
-messageIsRecent gs e = e ^. leTime >= gs ^. ticks - 1
+messageIsRecent gs e = addTicks 1 (e ^. leTime) >= gs ^. ticks
 
 messageIsFromNearby :: Location -> LogEntry -> Bool
 messageIsFromNearby l e = manhattan l (e ^. leLocation) <= hearingDistance
@@ -913,7 +913,7 @@ wakeWatchingRobots loc = do
 
       -- Step 4: Re-add the watching bots to be awakened at the next tick:
       wakeableBotIds = map fst wakeTimes
-      newWakeTime = currentTick + 1
+      newWakeTime = addTicks 1 currentTick
       newInsertions = M.singleton newWakeTime wakeableBotIds
 
   -- NOTE: There are two "sources of truth" for the waiting state of robots:
@@ -992,9 +992,9 @@ initGameState gsc =
     , _replNextValueIndex = 0
     , _inputHandler = Nothing
     , _messageQueue = Empty
-    , _lastSeenMessageTime = -1
+    , _lastSeenMessageTime = TickNumber (-1)
     , _focusedRobotID = 0
-    , _ticks = 0
+    , _ticks = TickNumber 0
     , _robotStepsPerTick = defaultRobotStepsPerTick
     }
 
