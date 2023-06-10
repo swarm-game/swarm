@@ -1,0 +1,84 @@
+version: 1
+name: Basic structure
+description: |
+  Define a structure and place it in the map.
+robots:
+  - name: base
+    loc: [11, 0]
+    dir: [1, 0]
+known: [tree, flower, bit (0), bit (1)]
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+    'T': [stone, tree]
+    '*': [stone, flower]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+    '~': [stone, water]
+  upperleft: [-1, 1]
+  structures:
+    - name: bitpair
+      structure:
+        palette:
+          '0': [stone, bit (0)]
+          '1': [stone, bit (1)]
+        map: |
+          1
+          0
+    - name: bigbox
+      structure:
+        palette:
+          '.': [stone]
+          'T': [stone, tree]
+        structures:
+          - name: minibox
+            structure:
+              palette:
+                '.': [stone]
+                '┌': [stone, upper left corner]
+                '┐': [stone, upper right corner]
+                '└': [stone, lower left corner]
+                '┘': [stone, lower right corner]
+              placements:
+                - src: bitpair
+                  upperleft: [-1, 0]
+              map: |
+                ┌.┐
+                └.┘
+        placements:
+          - src: minibox
+            upperleft: [0, 1]
+          - src: minibox
+            upperleft: [-3, 1]
+        map: |
+          TTTTTT
+          T.T.T.
+          .T.T.T
+          TTTTTT
+  placements:
+    - src: bigbox
+      upperleft: [-1, 1]
+    - src: bigbox
+      upperleft: [-7, 5]
+    - src: bitpair
+      upperleft: [-1, 7]
+    - src: bitpair
+      upperleft: [-2, 7]
+    - src: bitpair
+      upperleft: [-3, 7]
+  map: |
+    ┌────────────┐
+    │*..*..*..*..│
+    │.*..*..*..*.│
+    │..*..*..*..*│
+    │*..*..*..*..│
+    │.*..*..*..*.│
+    │..*..*..*..*│
+    │*..*..*..*..│
+    │.*..*..*..*.│
+    └────────────┘

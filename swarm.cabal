@@ -119,6 +119,7 @@ library
                       Swarm.Game.Scenario.Scoring.ConcreteMetrics
                       Swarm.Game.Scenario.Scoring.GenericMetrics
                       Swarm.Game.Scenario.Status
+                      Swarm.Game.Scenario.Structure
                       Swarm.Game.Scenario.Style
                       Swarm.Game.Scenario.WorldDescription
                       Swarm.Game.Scenario.WorldPalette
