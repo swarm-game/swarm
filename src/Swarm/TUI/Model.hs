@@ -116,6 +116,7 @@ module Swarm.TUI.Model (
   initRuntimeState,
 ) where
 
+import Swarm.Game.CESK (TickNumber (..))
 import Brick
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
@@ -270,7 +271,7 @@ logEvent src (who, rid) msg el =
     & notificationsCount %~ succ
     & notificationsContent %~ (l :)
  where
-  l = LogEntry 0 src who rid zero msg
+  l = LogEntry (TickNumber 0) src who rid zero msg
 
 -- | Create a 'GameStateConfig' record from the 'RuntimeState'.
 mkGameStateConfig :: RuntimeState -> GameStateConfig

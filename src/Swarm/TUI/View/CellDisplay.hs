@@ -7,6 +7,7 @@
 module Swarm.TUI.View.CellDisplay where
 
 import Brick
+import Swarm.Game.CESK (TickNumber (..))
 import Control.Lens (to, view, (&), (.~), (^.))
 import Data.ByteString (ByteString)
 import Data.Hash.Murmur
@@ -158,7 +159,7 @@ getStatic g coords
     murmur3 1 . unTagged . from @String @(Encoding.UTF_8 ByteString) . show $
       -- include the current tick count / 16 in the hash, so the pattern of static
       -- changes once every 16 ticks
-      (offset, (g ^. ticks) `div` 16)
+      (offset, asInteger (g ^. ticks) `div` 16)
 
   -- Hashed probability, i.e. convert the hash into a floating-point number between 0 and 1
   hp :: Double
