@@ -14,7 +14,6 @@ module Swarm.Language.Pipeline (
   processParsedTerm,
   processTerm',
   processParsedTerm',
-  showTypeErrorPos,
   processTermEither,
 ) where
 
@@ -36,15 +35,17 @@ import Swarm.Language.Types
 import Witch
 
 -- | A record containing the results of the language processing
---   pipeline.  Put a 'Term' in, and get one of these out.
-data ProcessedTerm
-  = ProcessedTerm
-      TModule
-      -- ^ The elaborated + type-annotated term, plus types of any embedded definitions
-      Requirements
-      -- ^ Requirements of the term
-      ReqCtx
-      -- ^ Capability context for any definitions embedded in the term
+--   pipeline.  Put a 'Term' in, and get one of these out.  A
+--   'ProcessedTerm' contains:
+--
+--   * The elaborated + type-annotated term, plus the types of any
+--     embedded definitions ('TModule')
+--
+--   * The 'Requirements' of the term
+--
+--   * The requirements context for any definitions embedded in the
+--     term ('ReqCtx')
+data ProcessedTerm = ProcessedTerm TModule Requirements ReqCtx
   deriving (Data, Show, Eq, Generic)
 
 processTermEither :: Text -> Either String ProcessedTerm
@@ -72,34 +73,17 @@ processTerm :: Text -> Either Text (Maybe ProcessedTerm)
 processTerm = processTerm' empty empty
 
 -- | Like 'processTerm', but use a term that has already been parsed.
-processParsedTerm :: Syntax -> Either TypeErr ProcessedTerm
+processParsedTerm :: Syntax -> Either ContextualTypeErr ProcessedTerm
 processParsedTerm = processParsedTerm' empty empty
 
 -- | Like 'processTerm', but use explicit starting contexts.
 processTerm' :: TCtx -> ReqCtx -> Text -> Either Text (Maybe ProcessedTerm)
 processTerm' ctx capCtx txt = do
   mt <- readTerm txt
-  first (prettyTypeErr txt) $ traverse (processParsedTerm' ctx capCtx) mt
-
-prettyTypeErr :: Text -> TypeErr -> Text
-prettyTypeErr code te = teLoc <> prettyText te
- where
-  teLoc = case getTypeErrSrcLoc te of
-    Just (SrcLoc s e) -> (from . show . fst . fst $ getLocRange code (s, e)) <> ": "
-    _anyOtherLoc -> ""
-
-showTypeErrorPos :: Text -> TypeErr -> ((Int, Int), (Int, Int), Text)
-showTypeErrorPos code te = (minusOne start, minusOne end, msg)
- where
-  minusOne (x, y) = (x - 1, y - 1)
-
-  (start, end) = case getTypeErrSrcLoc te of
-    Just (SrcLoc s e) -> getLocRange code (s, e)
-    _anyOtherLoc -> ((1, 1), (65535, 65535)) -- unknown loc spans the whole document
-  msg = prettyText te
+  first (prettyTypeErrText txt) $ traverse (processParsedTerm' ctx capCtx) mt
 
 -- | Like 'processTerm'', but use a term that has already been parsed.
-processParsedTerm' :: TCtx -> ReqCtx -> Syntax -> Either TypeErr ProcessedTerm
+processParsedTerm' :: TCtx -> ReqCtx -> Syntax -> Either ContextualTypeErr ProcessedTerm
 processParsedTerm' ctx capCtx t = do
   m <- inferTop ctx t
   let (caps, capCtx') = requirements capCtx (t ^. sTerm)

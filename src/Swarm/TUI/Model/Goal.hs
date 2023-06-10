@@ -17,6 +17,8 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
 import GHC.Generics (Generic)
+import Servant.Docs (ToSample)
+import Servant.Docs qualified as SD
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.WinCheck
 import Swarm.TUI.Model.Name
@@ -65,6 +67,9 @@ data GoalTracking = GoalTracking
   , goals :: CategorizedGoals
   }
   deriving (Generic, ToJSON)
+
+instance ToSample GoalTracking where
+  toSamples _ = SD.noSamples
 
 data GoalDisplay = GoalDisplay
   { _goalsContent :: GoalTracking

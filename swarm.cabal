@@ -81,10 +81,11 @@ common ghc2021-extensions
 
 library
     import:           stan-config, common, ghc2021-extensions
-    exposed-modules:  Data.BoolExpr
-                      Data.BoolExpr.Simplify
+    exposed-modules:  Data.BoolExpr.Simplify
                       Swarm.App
-                      Swarm.DocGen
+                      Swarm.Constant
+                      Swarm.Doc.Gen
+                      Swarm.Doc.Pedagogy
                       Swarm.Game.Failure
                       Swarm.Game.Failure.Render
                       Swarm.Game.Achievement.Attainment
@@ -102,23 +103,36 @@ library
                       Swarm.Game.Robot
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Cell
+                      Swarm.TUI.Launch.Controller
+                      Swarm.TUI.Launch.Model
+                      Swarm.TUI.Launch.Prep
+                      Swarm.TUI.Launch.View
+                      Swarm.Game.Scenario.EntityFacade
                       Swarm.Game.Scenario.Objective
                       Swarm.Game.Scenario.Objective.Graph
                       Swarm.Game.Scenario.Objective.Logic
                       Swarm.Game.Scenario.Objective.Validation
                       Swarm.Game.Scenario.Objective.WinCheck
                       Swarm.Game.Scenario.RobotLookup
+                      Swarm.Game.Scenario.Scoring.Best
+                      Swarm.Game.Scenario.Scoring.CodeSize
+                      Swarm.Game.Scenario.Scoring.ConcreteMetrics
+                      Swarm.Game.Scenario.Scoring.GenericMetrics
+                      Swarm.Game.Scenario.Status
                       Swarm.Game.Scenario.Style
                       Swarm.Game.Scenario.WorldDescription
+                      Swarm.Game.Scenario.WorldPalette
                       Swarm.Game.ScenarioInfo
                       Swarm.Game.State
                       Swarm.Game.Step
                       Swarm.Game.Terrain
+                      Swarm.Game.Value
                       Swarm.Game.World
                       Swarm.Game.WorldGen
                       Swarm.Language.Capability
                       Swarm.Language.Context
                       Swarm.Language.Elaborate
+                      Swarm.Language.Key
                       Swarm.Language.LSP
                       Swarm.Language.LSP.Hover
                       Swarm.Language.LSP.VarUsage
@@ -131,11 +145,21 @@ library
                       Swarm.Language.Requirement
                       Swarm.Language.Syntax
                       Swarm.Language.Typecheck
+                      Swarm.Language.Typecheck.Unify
                       Swarm.Language.Typed
                       Swarm.Language.Types
                       Swarm.Language.Value
+                      Swarm.ReadableIORef
                       Swarm.TUI.Attr
                       Swarm.TUI.Border
+                      Swarm.TUI.Editor.Area
+                      Swarm.TUI.Editor.Controller
+                      Swarm.TUI.Editor.Json
+                      Swarm.TUI.Editor.Masking
+                      Swarm.TUI.Editor.Model
+                      Swarm.TUI.Editor.Palette
+                      Swarm.TUI.Editor.Util
+                      Swarm.TUI.Editor.View
                       Swarm.TUI.Controller
                       Swarm.TUI.Controller.Util
                       Swarm.TUI.Inventory.Sorting
@@ -155,6 +179,7 @@ library
                       Swarm.TUI.View.Objective
                       Swarm.TUI.View.Util
                       Swarm.Util
+                      Swarm.Util.Lens
                       Swarm.Util.Yaml
                       Swarm.Version
                       Swarm.Web
@@ -162,11 +187,16 @@ library
     autogen-modules:  Paths_swarm
 
     build-depends:    base                          >= 4.14 && < 4.18,
+                      brick-list-skip               >= 0.1.1.2 && < 0.2,
                       aeson                         >= 2 && < 2.2,
                       array                         >= 0.5.4 && < 0.6,
+                      blaze-html                    >= 0.9.1 && < 0.9.2,
+                      boolexpr                      >= 0.2 && < 0.3,
                       brick                         >= 1.5 && < 1.7,
                       bytestring                    >= 0.10 && < 0.12,
                       clock                         >= 0.8.2 && < 0.9,
+                      cmark-gfm                     >= 0.2 && < 0.3,
+                      colour                        >= 2.3.6 && < 2.4,
                       containers                    >= 0.6.2 && < 0.7,
                       directory                     >= 1.3 && < 1.4,
                       dotgen                        >= 0.4 && < 0.5,
@@ -175,6 +205,7 @@ library
                       filepath                      >= 1.4 && < 1.5,
                       fused-effects                 >= 1.1.1.1 && < 1.2,
                       fused-effects-lens            >= 1.2.0.1 && < 1.3,
+                      fuzzy                         >= 0.1 && < 0.2,
                       githash                       >= 0.1.6 && < 0.2,
                       hashable                      >= 1.3.4 && < 1.5,
                       hsnoise                       >= 0.0.3 && < 0.1,
@@ -186,6 +217,7 @@ library
                       lsp                           >= 1.6 && < 1.7,
                       megaparsec                    >= 9.0 && < 9.4,
                       minimorph                     >= 0.3 && < 0.4,
+                      transformers                  >= 0.5 && < 0.7,
                       mtl                           >= 2.2.2 && < 2.3,
                       murmur3                       >= 1.0.4 && < 1.1,
                       natural-sort                  >= 0.1.2 && < 0.2,
@@ -193,6 +225,7 @@ library
                       prettyprinter                 >= 1.7.0 && < 1.8,
                       random                        >= 1.2.0 && < 1.3,
                       servant                       >= 0.19 && < 0.20,
+                      servant-docs                  >= 0.12 && < 0.13,
                       servant-server                >= 0.19 && < 0.20,
                       SHA                           >= 1.6.4 && < 1.6.5,
                       simple-enumeration            >= 0.2 && < 0.3,
@@ -243,11 +276,14 @@ test-suite swarm-unit
     other-modules:    TestEval
                       TestInventory
                       TestModel
+                      TestPedagogy
                       TestNotification
                       TestLanguagePipeline
                       TestPretty
                       TestBoolExpr
+                      TestCommand
                       TestLSP
+                      TestScoring
                       TestUtil
 
     build-depends:    tasty                         >= 0.10 && < 1.5,
@@ -257,6 +293,7 @@ test-suite swarm-unit
                       -- Imports shared with the library don't need bounds
                       aeson,
                       base,
+                      boolexpr,
                       containers,
                       filepath,
                       hashable,
@@ -265,7 +302,9 @@ test-suite swarm-unit
                       mtl,
                       swarm,
                       text,
-                      witch
+                      time,
+                      witch,
+                      vty
     hs-source-dirs:   test/unit
     default-language: Haskell2010
     ghc-options:      -threaded

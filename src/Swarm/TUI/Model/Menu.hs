@@ -36,14 +36,18 @@ import Witch (into)
 -- Menus and dialogs
 ------------------------------------------------------------
 
+data ScenarioOutcome = WinModal | LoseModal
+  deriving (Show)
+
 data ModalType
   = HelpModal
   | RecipesModal
   | CommandsModal
   | MessagesModal
+  | EntityPaletteModal
+  | TerrainPaletteModal
   | RobotsModal
-  | WinModal
-  | LoseModal
+  | ScenarioEndModal ScenarioOutcome
   | QuitModal
   | KeepPlayingModal
   | DescriptionModal Entity
@@ -74,9 +78,10 @@ data MainMenuEntry
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 data Menu
-  = NoMenu -- We started playing directly from command line, no menu to show
+  = -- | We started playing directly from command line, no menu to show
+    NoMenu
   | MainMenu (BL.List Name MainMenuEntry)
-  | -- Stack of scenario item lists. INVARIANT: the currently selected
+  | -- | Stack of scenario item lists. INVARIANT: the currently selected
     -- menu item is ALWAYS the same as the scenario currently being played.
     -- See https://github.com/swarm-game/swarm/issues/1064 and
     -- https://github.com/swarm-game/swarm/pull/1065.
@@ -102,13 +107,17 @@ mkScenarioList cheat = flip (BL.list ScenarioList) 1 . V.fromList . filterTest .
 mkNewGameMenu :: Bool -> ScenarioCollection -> FilePath -> Maybe Menu
 mkNewGameMenu cheat sc path = NewGameMenu . NE.fromList <$> go (Just sc) (splitPath path) []
  where
-  go :: Maybe ScenarioCollection -> [FilePath] -> [BL.List Name ScenarioItem] -> Maybe [BL.List Name ScenarioItem]
+  go ::
+    Maybe ScenarioCollection ->
+    [FilePath] ->
+    [BL.List Name ScenarioItem] ->
+    Maybe [BL.List Name ScenarioItem]
   go _ [] stk = Just stk
   go Nothing _ _ = Nothing
   go (Just curSC) (thing : rest) stk = go nextSC rest (lst : stk)
    where
     hasName :: ScenarioItem -> Bool
-    hasName (SISingle (_, ScenarioInfo pth _ _ _)) = takeFileName pth == thing
+    hasName (SISingle (_, ScenarioInfo pth _)) = takeFileName pth == thing
     hasName (SICollection nm _) = nm == into @Text (dropTrailingPathSeparator thing)
 
     lst = BL.listFindBy hasName (mkScenarioList cheat curSC)

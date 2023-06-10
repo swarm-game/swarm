@@ -3,7 +3,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
-module Swarm.DocGen (
+module Swarm.Doc.Gen (
   generateDocs,
   GenerateDocs (..),
   EditorType (..),
@@ -26,9 +26,8 @@ module Swarm.DocGen (
 import Control.Arrow (left)
 import Control.Lens (view, (^.))
 import Control.Lens.Combinators (to)
-import Control.Monad (zipWithM, zipWithM_, (<=<))
+import Control.Monad (zipWithM, zipWithM_)
 import Control.Monad.Except (ExceptT (..), liftIO, runExceptT, withExceptT)
-import Data.Bifunctor (Bifunctor (bimap))
 import Data.Containers.ListUtils (nubOrd)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (find, toList)
@@ -44,6 +43,7 @@ import Data.Text.IO qualified as T
 import Data.Tuple (swap)
 import Data.Yaml (decodeFileEither)
 import Data.Yaml.Aeson (prettyPrintParseException)
+import Swarm.Doc.Pedagogy
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
@@ -56,11 +56,12 @@ import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.WorldGen (testWorld2Entites)
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Capability qualified as Capability
+import Swarm.Language.Key (specialKeyNames)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Util (isRightOr, listEnums, quote)
+import Swarm.Util (both, guardRight, listEnums, quote, simpleErrorHandle)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 import Witch (from)
@@ -78,7 +79,11 @@ data GenerateDocs where
   RecipeGraph :: GenerateDocs
   -- | Keyword lists for editors.
   EditorKeywords :: Maybe EditorType -> GenerateDocs
+  -- | List of special key names recognized by 'key' command
+  SpecialKeyNames :: GenerateDocs
   CheatSheet :: PageAddress -> Maybe SheetType -> GenerateDocs
+  -- | List command introductions by tutorial
+  TutorialCoverage :: GenerateDocs
   deriving (Eq, Show)
 
 data EditorType = Emacs | VSCode
@@ -112,6 +117,7 @@ generateDocs = \case
               putStrLn $ replicate 40 '-'
               generateEditorKeywords et
         mapM_ editorGen listEnums
+  SpecialKeyNames -> generateSpecialKeyNames
   CheatSheet address s -> case s of
     Nothing -> error "Not implemented for all Wikis"
     Just st -> case st of
@@ -130,6 +136,7 @@ generateDocs = \case
         entities <- ExceptT loadEntities
         recipes <- withExceptT F.prettyFailure $ loadRecipes entities
         liftIO $ T.putStrLn $ recipePage address recipes
+  TutorialCoverage -> renderTutorialProgression >>= putStrLn . T.unpack
 
 -- ----------------------------------------------------------------------------
 -- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED
@@ -189,6 +196,14 @@ operatorNames = T.intercalate "|" $ map (escape . constSyntax) operators
     '/' -> "/(?![/|*])"
     c -> T.singleton c
   escape = T.concatMap (\c -> if c `elem` special then T.snoc "\\\\" c else slashNotComment c)
+
+-- ----------------------------------------------------------------------------
+-- GENERATE SPECIAL KEY NAMES
+-- ----------------------------------------------------------------------------
+
+generateSpecialKeyNames :: IO ()
+generateSpecialKeyNames =
+  T.putStr . T.unlines . Set.toList $ specialKeyNames
 
 -- ----------------------------------------------------------------------------
 -- GENERATE TABLES: COMMANDS, ENTITIES AND CAPABILITIES TO MARKDOWN TABLE
@@ -577,16 +592,3 @@ i .~>. j = Dot.edge i j [("style", "invis")]
 e1 ---<> e2 = Dot.edge e1 e2 attrs
  where
   attrs = [("arrowhead", "diamond"), ("color", "blue")]
-
--- ----------------------------------------------------------------------------
--- UTILITY
--- ----------------------------------------------------------------------------
-
-both :: Bifunctor p => (a -> d) -> p a a -> p d d
-both f = bimap f f
-
-guardRight :: Text -> Either Text a -> ExceptT Text IO a
-guardRight what i = i `isRightOr` (\e -> "Failed to " <> what <> ": " <> e)
-
-simpleErrorHandle :: ExceptT Text IO a -> IO a
-simpleErrorHandle = either (fail . unpack) pure <=< runExceptT

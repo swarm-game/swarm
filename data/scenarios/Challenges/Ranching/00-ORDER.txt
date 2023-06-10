@@ -1,1 +1,2 @@
+capture.yaml
 gated-paddock.yaml

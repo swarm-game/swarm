@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -24,8 +25,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
-import Swarm.DocGen (EditorType (..))
-import Swarm.DocGen qualified as DocGen
+import Swarm.Doc.Gen (EditorType (..))
+import Swarm.Doc.Gen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities, lookupByName)
 import Swarm.Game.Robot (LogEntry, defReqs, equippedDevices, leText, machine, robotContext, robotLog, waitingUntil)
@@ -36,7 +37,6 @@ import Swarm.Game.State (
   WinStatus (Won),
   activeRobots,
   baseRobot,
-  initGameStateForScenario,
   messageQueue,
   robotMap,
   ticks,
@@ -47,6 +47,8 @@ import Swarm.Game.State (
 import Swarm.Game.Step (gameTick)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
+import Swarm.TUI.Model (gameState)
+import Swarm.TUI.Model.StateUpdate (initAppStateForScenario)
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.Environment (getEnvironment)
@@ -174,6 +176,7 @@ testScenarioSolution _ci _em =
             let win = isJust $ find hints rs
             assertBool "Could not find a robot with winning instructions!" win
         , testTutorialSolution Default "Tutorials/scan"
+        , testTutorialSolution Default "Tutorials/give"
         , testTutorialSolution Default "Tutorials/def"
         , testTutorialSolution Default "Tutorials/lambda"
         , testTutorialSolution Default "Tutorials/require"
@@ -185,10 +188,15 @@ testScenarioSolution _ci _em =
         "Challenges"
         [ testSolution Default "Challenges/chess_horse"
         , testSolution Default "Challenges/teleport"
+        , testSolution Default "Challenges/maypole"
         , testSolution (Sec 5) "Challenges/2048"
         , testSolution (Sec 3) "Challenges/word-search"
+        , testSolution (Sec 5) "Challenges/bridge-building"
         , testSolution (Sec 3) "Challenges/ice-cream"
+        , testSolution (Sec 5) "Challenges/gopher"
+        , testSolution (Sec 5) "Challenges/hackman"
         , testSolution (Sec 10) "Challenges/hanoi"
+        , testSolution (Sec 3) "Challenges/lights-out"
         , testSolution Default "Challenges/friend"
         , testGroup
             "Mazes"
@@ -199,7 +207,15 @@ testScenarioSolution _ci _em =
             ]
         , testGroup
             "Ranching"
-            [ testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
+            [ testSolution Default "Challenges/Ranching/capture"
+            , testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
+            ]
+        , testGroup
+            "Sokoban"
+            [ testSolution Default "Challenges/Sokoban/foresight.yaml"
+            , testSolution Default "Challenges/Sokoban/Gadgets/no-reverse.yaml"
+            , testSolution Default "Challenges/Sokoban/Gadgets/one-way.yaml"
+            , testSolution Default "Challenges/Sokoban/Simple/trapdoor.yaml"
             ]
         ]
     , testGroup
@@ -260,7 +276,18 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/961-custom-capabilities"
         , testSolution Default "Testing/956-GPS"
         , testSolution Default "Testing/958-isempty"
+        , testSolution Default "Testing/1007-use-command"
         , testSolution Default "Testing/1024-sand"
+        , testSolution Default "Testing/1140-detect-command"
+        , testSolution Default "Testing/1157-drill-return-value"
+        , testSolution Default "Testing/1171-sniff-command"
+        , testSolution Default "Testing/1171-chirp-command"
+        , testSolution Default "Testing/1171-resonate-command"
+        , testSolution Default "Testing/1207-scout-command"
+        , testSolution Default "Testing/1218-stride-command"
+        , testSolution Default "Testing/1234-push-command"
+        , testSolution Default "Testing/1256-halt-command"
+        , testSolution Default "Testing/1295-density-command"
         ]
     ]
  where
@@ -272,10 +299,10 @@ testScenarioSolution _ci _em =
 
   testSolution' :: Time -> FilePath -> ShouldCheckBadErrors -> (GameState -> Assertion) -> TestTree
   testSolution' s p shouldCheckBadErrors verify = testCase p $ do
-    out <- runExceptT $ initGameStateForScenario p Nothing Nothing
+    out <- runExceptT $ initAppStateForScenario p Nothing Nothing
     case out of
-      Left x -> assertFailure $ unwords ["Failure in initGameStateForScenario:", T.unpack x]
-      Right gs -> case gs ^. winSolution of
+      Left x -> assertFailure $ unwords ["Failure in initAppStateForScenario:", T.unpack x]
+      Right (view gameState -> gs) -> case gs ^. winSolution of
         Nothing -> assertFailure "No solution to test!"
         Just sol@(ProcessedTerm _ _ reqCtx) -> do
           let gs' =

@@ -14,7 +14,9 @@ module Swarm.Game.Location (
   -- ** Heading and Direction functions
   Heading,
   applyTurn,
+  relativeTo,
   toDirection,
+  nearestDirection,
   fromDirection,
   isCardinal,
   north,
@@ -24,6 +26,7 @@ module Swarm.Game.Location (
 
   -- ** utility functions
   manhattan,
+  euclidean,
   getElemsInArea,
 
   -- ** reexports for convenience
@@ -34,12 +37,12 @@ module Swarm.Game.Location (
 
 import Control.Arrow ((&&&))
 import Data.Aeson (FromJSONKey, ToJSONKey)
-import Data.Function ((&))
+import Data.Function (on, (&))
 import Data.Int (Int32)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Yaml (FromJSON (parseJSON), ToJSON (toJSON))
-import Linear (Additive (..), V2 (..), negated, perp)
+import Linear (Additive (..), V2 (..), negated, norm, perp, unangle)
 import Linear.Affine (Affine (..), Point (..), origin)
 import Swarm.Language.Syntax (AbsoluteDir (..), Direction (..), RelativeDir (..), isCardinal)
 import Swarm.Util qualified as Util
@@ -138,6 +141,28 @@ cardinalDirs =
 toDirection :: Heading -> Maybe Direction
 toDirection v = M.lookup v cardinalDirs
 
+-- | Example:
+--      DWest `relativeTo` DSouth == DRight
+relativeTo :: AbsoluteDir -> AbsoluteDir -> RelativeDir
+relativeTo targetDir referenceDir =
+  [DForward, DLeft, DBack, DRight] !! indexDiff
+ where
+  enumCount = length (Util.listEnums :: [AbsoluteDir])
+  indexDiff = ((-) `on` fromEnum) targetDir referenceDir `mod` enumCount
+
+-- | Logic adapted from:
+-- https://gamedev.stackexchange.com/questions/49290/#comment213403_49300
+nearestDirection :: Heading -> AbsoluteDir
+nearestDirection coord =
+  orderedDirs !! index
+ where
+  angle :: Double
+  angle = unangle (fmap fromIntegral coord) / (2 * pi)
+
+  index = round (fromIntegral enumCount * angle) `mod` enumCount
+  orderedDirs = Util.listEnums
+  enumCount = length orderedDirs
+
 -- | Convert a 'Direction' into a corresponding heading.  Note that
 --   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',
 --   and 'DWest'---other 'Direction's return the zero vector.
@@ -149,6 +174,10 @@ fromDirection = \case
 -- | Manhattan distance between world locations.
 manhattan :: Location -> Location -> Int32
 manhattan (Location x1 y1) (Location x2 y2) = abs (x1 - x2) + abs (y1 - y2)
+
+-- | Euclidean distance between world locations.
+euclidean :: Location -> Location -> Double
+euclidean p1 p2 = norm (fromIntegral <$> (p2 .-. p1))
 
 -- | Get elements that are in manhattan distance from location.
 --

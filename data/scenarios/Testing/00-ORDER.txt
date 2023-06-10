@@ -12,6 +12,7 @@
 562-lodestone.yaml
 378-objectives.yaml
 684-swap.yaml
+687-watch-command.yaml
 699-movement-fail
 858-inventory
 795-prerequisite
@@ -22,5 +23,16 @@
 961-custom-capabilities.yaml
 956-GPS.yaml
 958-isempty.yaml
+1007-use-command.yaml
 1024-sand.yaml
 1034-custom-attributes.yaml
+1140-detect-command.yaml
+1157-drill-return-value.yaml
+1171-sniff-command.yaml
+1171-chirp-command.yaml
+1171-resonate-command.yaml
+1207-scout-command.yaml
+1218-stride-command.yaml
+1234-push-command.yaml
+1256-halt-command.yaml
+1295-density-command.yaml

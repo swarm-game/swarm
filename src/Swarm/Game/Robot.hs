@@ -68,6 +68,7 @@ module Swarm.Game.Robot (
   -- ** Query
   robotKnows,
   isActive,
+  wantsToStep,
   waitingUntil,
   getResult,
 
@@ -86,6 +87,8 @@ import Data.Text (Text)
 import Data.Yaml ((.!=), (.:), (.:?))
 import GHC.Generics (Generic)
 import Linear
+import Servant.Docs (ToSample)
+import Servant.Docs qualified as SD
 import Swarm.Game.CESK
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
@@ -97,6 +100,7 @@ import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types (TCtx)
 import Swarm.Language.Value as V
+import Swarm.Util.Lens (makeLensesExcluding)
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
 
@@ -203,14 +207,7 @@ deriving instance (ToJSON (RobotLocation phase), ToJSON (RobotID phase)) => ToJS
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-let exclude = ['_robotCapabilities, '_equippedDevices, '_robotLog]
- in makeLensesWith
-      ( lensRules
-          & generateSignatures .~ False
-          & lensField . mapped . mapped %~ \fn n ->
-            if n `elem` exclude then [] else fn n
-      )
-      ''RobotR
+makeLensesExcluding ['_robotCapabilities, '_equippedDevices, '_robotLog] ''RobotR
 
 -- | A template robot, i.e. a template robot record without a unique ID number,
 --   and possibly without a location.
@@ -218,6 +215,9 @@ type TRobot = RobotR 'TemplateRobot
 
 -- | A concrete robot, with a unique ID number and a specific location.
 type Robot = RobotR 'ConcreteRobot
+
+instance ToSample Robot where
+  toSamples _ = SD.noSamples
 
 -- In theory we could make all these lenses over (RobotR phase), but
 -- that leads to lots of type ambiguity problems later.  In practice
@@ -518,8 +518,16 @@ isActive :: Robot -> Bool
 {-# INLINE isActive #-}
 isActive = isNothing . getResult
 
+-- | "Active" robots include robots that are waiting; 'wantsToStep' is
+--   true if the robot actually wants to take another step right now
+--   (this is a *subset* of active robots).
+wantsToStep :: TickNumber -> Robot -> Bool
+wantsToStep now robot
+  | not (isActive robot) = False
+  | otherwise = maybe True (now >=) (waitingUntil robot)
+
 -- | The time until which the robot is waiting, if any.
-waitingUntil :: Robot -> Maybe Integer
+waitingUntil :: Robot -> Maybe TickNumber
 waitingUntil robot =
   case _machine robot of
     Waiting time _ -> Just time

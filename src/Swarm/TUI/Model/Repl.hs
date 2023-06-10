@@ -15,6 +15,7 @@ module Swarm.TUI.Model.Repl (
   REPLHistory,
   replIndex,
   replLength,
+  replHasExecutedManualInput,
   replSeq,
   newREPLHistory,
   addREPLItem,
@@ -50,7 +51,8 @@ module Swarm.TUI.Model.Repl (
 
 import Brick.Widgets.Edit (Editor, applyEdit, editorText, getEditContents)
 import Control.Applicative (Applicative (liftA2))
-import Control.Lens hiding (from, (<.>))
+import Control.Lens hiding (from, (.=), (<.>))
+import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.Foldable (toList)
 import Data.Maybe (fromMaybe, isJust)
 import Data.Sequence (Seq)
@@ -58,8 +60,11 @@ import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Zipper qualified as TZ
+import Servant.Docs (ToSample)
+import Servant.Docs qualified as SD
 import Swarm.Language.Types
 import Swarm.TUI.Model.Name
+import Swarm.Util.Lens (makeLensesNoSigs)
 
 ------------------------------------------------------------
 -- REPL History
@@ -72,6 +77,14 @@ data REPLHistItem
   | -- | A response printed by the system.
     REPLOutput Text
   deriving (Eq, Ord, Show, Read)
+
+instance ToSample REPLHistItem where
+  toSamples _ = SD.noSamples
+
+instance ToJSON REPLHistItem where
+  toJSON e = case e of
+    REPLEntry x -> object ["in" .= x]
+    REPLOutput x -> object ["out" .= x]
 
 -- | Useful helper function to only get user input text.
 getREPLEntry :: REPLHistItem -> Maybe Text
@@ -97,9 +110,11 @@ data REPLHistory = REPLHistory
   { _replSeq :: Seq REPLHistItem
   , _replIndex :: Int
   , _replStart :: Int
+  , _replHasExecutedManualInput :: Bool
   }
+  deriving (Show)
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''REPLHistory
+makeLensesNoSigs ''REPLHistory
 
 -- | Sequence of REPL inputs and outputs, oldest entry is leftmost.
 replSeq :: Lens' REPLHistory (Seq REPLHistItem)
@@ -113,6 +128,25 @@ replIndex :: Lens' REPLHistory Int
 -- It will be set on load and reset on save (happens during exit).
 replStart :: Lens' REPLHistory Int
 
+-- | Note: Instead of adding a dedicated field to the REPLHistory record,
+-- an early attempt entailed checking for:
+--
+--    _replIndex > _replStart
+--
+-- However, executing an initial script causes
+-- a "REPLOutput" to be appended to the REPL history,
+-- which increments the replIndex, and thus makes
+-- the Index greater than the Start even though
+-- the player has input not commands into the REPL.
+--
+-- Therefore, a dedicated boolean is introduced into
+-- REPLHistory which simply latches True when the user
+-- has input a command.
+--
+-- An alternative is described here:
+-- https://github.com/swarm-game/swarm/pull/974#discussion_r1112380380
+replHasExecutedManualInput :: Lens' REPLHistory Bool
+
 -- | Create new REPL history (i.e. from loaded history file lines).
 newREPLHistory :: [REPLHistItem] -> REPLHistory
 newREPLHistory xs =
@@ -121,6 +155,7 @@ newREPLHistory xs =
         { _replSeq = s
         , _replStart = length s
         , _replIndex = length s
+        , _replHasExecutedManualInput = False
         }
 
 -- | Point the start of REPL history after current last line. See 'replStart'.
@@ -208,10 +243,15 @@ data REPLPrompt
 defaultPrompt :: REPLPrompt
 defaultPrompt = CmdPrompt []
 
+-- | What is being done with user input to the REPL panel?
 data ReplControlMode
-  = Piloting
-  | Typing
-  deriving (Enum, Bounded, Eq)
+  = -- | The user is typing at the REPL.
+    Typing
+  | -- | The user is driving the base using piloting mode.
+    Piloting
+  | -- | A custom user key handler is processing user input.
+    Handling
+  deriving (Eq, Bounded, Enum)
 
 data REPLState = REPLState
   { _replPromptType :: REPLPrompt
@@ -231,9 +271,18 @@ newREPLEditor t = applyEdit gotoEnd $ editorText REPLInput (Just 1) t
   gotoEnd = if null ls then id else TZ.moveCursor pos
 
 initREPLState :: REPLHistory -> REPLState
-initREPLState = REPLState defaultPrompt (newREPLEditor "") True "" Nothing Typing
+initREPLState hist =
+  REPLState
+    { _replPromptType = defaultPrompt
+    , _replPromptEditor = newREPLEditor ""
+    , _replValid = True
+    , _replLast = ""
+    , _replType = Nothing
+    , _replControlMode = Typing
+    , _replHistory = hist
+    }
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''REPLState
+makeLensesNoSigs ''REPLState
 
 -- | The way we interpret text typed by the player in the REPL prompt.
 replPromptType :: Lens' REPLState REPLPrompt
@@ -260,7 +309,8 @@ replType :: Lens' REPLState (Maybe Polytype)
 --   This is used to restore the repl form after the user visited the history.
 replLast :: Lens' REPLState Text
 
--- | Piloting or Typing mode
+-- | The current REPL control mode, i.e. how user input to the REPL
+--   panel is being handled.
 replControlMode :: Lens' REPLState ReplControlMode
 
 -- | History of things the user has typed at the REPL, interleaved

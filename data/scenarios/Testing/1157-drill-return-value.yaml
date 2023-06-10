@@ -1,0 +1,59 @@
+version: 1
+name: Drill return value test
+description: Drill a custom recipe, use the return value.
+objectives:
+  - goal:
+      - Drill the adjacent entity, place the result where you are.
+    condition: |
+      as base {ishere "gumball"};
+solution: |
+  out <- drill forward;
+  case out return place;
+robots:
+  - name: base
+    dir: [0,1]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - grabber
+      - drill
+      - ADT calculator
+known: []
+world:
+  default: [blank]
+  palette:
+    'Ω': [grass, null, base]
+    '.': [grass]
+    'x': [grass, gumball machine]
+  upperleft: [-1, 2]
+  map: |
+   ...
+   .x.
+   .Ω.
+   ...
+entities:
+  - name: gumball machine
+    display:
+      attr: red
+      char: 'G'
+    description:
+    - Yields a gumball when drilled
+    properties: [unwalkable, known]
+  - name: gumball
+    display:
+      attr: blue
+      char: 'o'
+    description:
+    - Dispensed from a gumball machine
+    properties: [portable]
+recipes:
+  - in:
+    - [1, gumball machine]
+    out:
+    - [1, gumball machine]
+    - [1, gumball]
+    required:
+    - [1, drill]
+    time: 1

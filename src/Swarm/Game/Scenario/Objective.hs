@@ -12,10 +12,13 @@ import Data.Aeson
 import Data.Set qualified as Set
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Servant.Docs (ToSample)
+import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util (reflow)
+import Swarm.Util.Lens (makeLensesNoSigs)
 
 ------------------------------------------------------------
 -- Scenario objectives
@@ -73,7 +76,10 @@ data Objective = Objective
   }
   deriving (Eq, Show, Generic, ToJSON)
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''Objective
+makeLensesNoSigs ''Objective
+
+instance ToSample Objective where
+  toSamples _ = SD.noSamples
 
 -- | An explanation of the goal of the objective, shown to the player
 --   during play.  It is represented as a list of paragraphs.

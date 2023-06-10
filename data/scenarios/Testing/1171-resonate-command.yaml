@@ -1,0 +1,49 @@
+version: 1
+name: Resonate test
+creative: true
+description: Count trees in an area
+objectives:
+  - goal:
+      - Place 7 trees.
+    condition: |
+      j <- robotnamed "judge";
+      as j {
+        c <- resonate "tree" ((0, 0), (8, -2));
+        return $ c >= 7;
+      };
+solution: |
+  def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+  doN 7 (place "tree"; move)
+robots:
+  - name: base
+    dir: [1, 0]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+      - string
+      - grabber
+      - compass
+      - treads
+      - ADT calculator
+    inventory:
+      - [7, "tree"]
+  - name: judge
+    dir: [1, 0]
+    system: true
+    display:
+      invisible: false
+      char: J
+known: []
+world:
+  default: [blank, boulder]
+  palette:
+    'Ω': [grass, null, base]
+    'J': [grass, null, judge]
+    '.': [grass]
+  upperleft: [4, -1]
+  map: |
+   J........
+   .Ω.......
+   .........

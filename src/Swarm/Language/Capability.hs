@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -21,6 +23,7 @@ import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax
+import Swarm.Util (failT)
 import Text.Read (readMaybe)
 import Witch (from)
 import Prelude hiding (lookup)
@@ -31,6 +34,10 @@ data Capability
     CPower
   | -- | Execute the 'Move' command
     CMove
+  | -- | Execute the 'Push' command
+    CPush
+  | -- | Execute the 'Stride' command
+    CMovemultiple
   | -- | Execute the 'Move' command for a heavy robot
     CMoveheavy
   | -- | Execute the 'Turn' command
@@ -55,6 +62,8 @@ data Capability
     CMake
   | -- | Execute the 'Count' command
     CCount
+  | -- | Execute the 'Scout' command. Reconnaissance along a line in a direction.
+    CRecondir
   | -- | Execute the 'Build' command
     CBuild
   | -- | Execute the 'Salvage' command
@@ -67,6 +76,16 @@ data Capability
     CSensefront
   | -- | Execute the 'Ishere' and 'Isempty' commands
     CSensehere
+  | -- | Execute the 'Detect' command
+    CDetectloc
+  | -- | Execute the 'Resonate' and 'Density' commands
+    CDetectcount
+  | -- | Execute the 'Sniff' command
+    CDetectdistance
+  | -- | Execute the 'Chirp' command
+    CDetectdirection
+  | -- | Execute the 'Watch' command
+    CWakeself
   | -- | Execute the 'Scan' command
     CScan
   | -- | Execute the 'Random' command
@@ -115,17 +134,25 @@ data Capability
     CAtomic
   | -- | Capability to execute swap (grab and place atomically at the same time).
     CSwap
-  | -- | Capabiltiy to do time-related things, like `wait` and get the
-    --   current time.
-    CTime
+  | -- | Capability to obtain absolute time, namely via the `time` command.
+    CTimeabs
+  | -- | Capability to utilize relative passage of time, namely via the `wait` command.
+    --   This is strictly weaker than "CTimeAbs".
+    CTimerel
   | -- | Capability to execute `try`.
     CTry
   | -- | Capability for working with sum types.
     CSum
   | -- | Capability for working with product types.
     CProd
+  | -- | Capability for working with record types.
+    CRecord
   | -- | Debug capability.
     CDebug
+  | -- | Capability to handle keyboard input.
+    CHandleinput
+  | -- | Capability to make other robots halt.
+    CHalt
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
@@ -144,7 +171,7 @@ instance FromJSON Capability where
     tryRead :: Text -> Parser Capability
     tryRead t = case readMaybe . from . T.cons 'C' . T.toTitle $ t of
       Just c -> return c
-      Nothing -> fail $ "Unknown capability " ++ from t
+      Nothing -> failT ["Unknown capability", t]
 
 -- | Capabilities needed to evaluate or execute a constant.
 constCaps :: Const -> Maybe Capability
@@ -174,6 +201,8 @@ constCaps = \case
   Log -> Just CLog
   Selfdestruct -> Just CSelfdestruct
   Move -> Just CMove
+  Push -> Just CPush
+  Stride -> Just CMovemultiple
   Turn -> Just CTurn
   Grab -> Just CGrab
   Harvest -> Just CHarvest
@@ -195,6 +224,7 @@ constCaps = \case
   Meet -> Just CMeet
   MeetAll -> Just CMeet
   Drill -> Just CDrill
+  Use -> Nothing -- Recipes alone shall dictate whether things can be "used"
   Neg -> Just CArith
   Add -> Just CArith
   Sub -> Just CArith
@@ -205,10 +235,21 @@ constCaps = \case
   Self -> Just CWhoami
   Swap -> Just CSwap
   Atomic -> Just CAtomic
-  Time -> Just CTime
-  Wait -> Just CTime
+  Instant -> Just CGod
+  Time -> Just CTimeabs
+  Wait -> Just CTimerel
+  Scout -> Just CRecondir
   Whereami -> Just CSenseloc
+  Detect -> Just CDetectloc
+  Resonate -> Just CDetectcount
+  Density -> Just CDetectcount
+  Sniff -> Just CDetectdistance
+  Chirp -> Just CDetectdirection
+  Watch -> Just CWakeself
   Heading -> Just COrient
+  Key -> Just CHandleinput
+  InstallKeyHandler -> Just CHandleinput
+  Halt -> Just CHalt
   -- ----------------------------------------------------------------
   -- Text operations
   Format -> Just CText
@@ -223,6 +264,7 @@ constCaps = \case
   RobotNamed -> Just CGod
   RobotNumbered -> Just CGod
   Create -> Just CGod
+  Surveil -> Just CGod
   -- ----------------------------------------------------------------
   -- arithmetic
   Eq -> Just CCompare

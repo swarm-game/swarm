@@ -70,10 +70,10 @@ singleAchievementDetails attainedMap x =
   renderFlavorTextWidget (FTQuotation (Quotation author quoteContent)) =
     vBox
       [ txtWrap quoteContent
-      , padLeft Max $
-          padRight (Pad 2) $
-            txtWrapWith (defaultWrapSettings {fillStrategy = FillIndent 2}) $
-              "--" <> author
+      , padLeft Max
+          . padRight (Pad 2)
+          . txtWrapWith (defaultWrapSettings {fillStrategy = FillIndent 2})
+          $ "--" <> author
       ]
 
   innerContent =
@@ -87,17 +87,25 @@ singleAchievementDetails attainedMap x =
           Nothing -> emptyWidget
           Just attainment ->
             padTop (Pad 1) $
-              hBox
-                [ txt "Obtained: "
-                , withAttr cyanAttr $
-                    str $
-                      formatTime defaultTimeLocale "%l:%M%P on %b %e, %Y" $
-                        attainment ^. obtainedAt
+              vBox
+                [ hBox
+                    [ txt "Obtained: "
+                    , withAttr cyanAttr
+                        . str
+                        . formatTime defaultTimeLocale "%l:%M%P on %b %e, %Y"
+                        $ attainment ^. obtainedAt
+                    ]
+                , flip (maybe emptyWidget) (attainment ^. maybeScenarioPath) $ \s ->
+                    hBox
+                      [ txt "Scenario: "
+                      , withAttr cyanAttr $
+                          str s
+                      ]
                 ]
       , padTop (Pad 1) $
           hBox
             [ txt "Effort: "
-            , withAttr boldAttr $ str $ show $ effort details
+            , withAttr boldAttr . str . show $ effort details
             ]
       ]
 

@@ -20,7 +20,7 @@ module Swarm.Game.Scenario (
   IndexedTRobot,
 
   -- * Scenario
-  Scenario,
+  Scenario (..),
 
   -- ** Fields
   scenarioVersion,
@@ -45,7 +45,7 @@ module Swarm.Game.Scenario (
   getScenarioPath,
 ) where
 
-import Control.Lens hiding (from, (<.>))
+import Control.Lens hiding (from, (.=), (<.>))
 import Control.Monad (filterM)
 import Control.Monad.Except (ExceptT (..), MonadIO, liftIO, runExceptT, withExceptT)
 import Control.Monad.Trans.Except (except)
@@ -67,10 +67,12 @@ import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.WorldDescription
 import Swarm.Language.Pipeline (ProcessedTerm)
+import Swarm.Util (failT)
+import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
-import Witch (from, into)
+import Witch (from)
 
 ------------------------------------------------------------
 -- Scenario
@@ -97,12 +99,15 @@ data Scenario = Scenario
   }
   deriving (Eq, Show)
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''Scenario
+makeLensesNoSigs ''Scenario
 
 instance FromJSONE EntityMap Scenario where
   parseJSONE = withObjectE "scenario" $ \v -> do
     -- parse custom entities
-    em <- liftE (buildEntityMap <$> (v .:? "entities" .!= []))
+    emRaw <- liftE (v .:? "entities" .!= [])
+    em <- case buildEntityMap emRaw of
+      Right x -> return x
+      Left x -> failT [x]
     -- extend ambient EntityMap with custom entities
 
     withE em $ do
@@ -111,9 +116,7 @@ instance FromJSONE EntityMap Scenario where
       em' <- getE
       case filter (isNothing . (`lookupEntityName` em')) known of
         [] -> return ()
-        unk ->
-          fail . into @String $
-            "Unknown entities in 'known' list: " <> T.intercalate ", " unk
+        unk -> failT ["Unknown entities in 'known' list:", T.intercalate ", " unk]
 
       -- parse robots and build RobotMap
       rs <- v ..: "robots"
@@ -229,8 +232,8 @@ loadScenarioFile ::
   EntityMap ->
   FilePath ->
   ExceptT SystemFailure m Scenario
-loadScenarioFile em fileName = do
-  withExceptT (AssetNotLoaded (Data Scenarios) fileName . CanNotParse) $
-    ExceptT $
-      liftIO $
-        decodeFileEitherE em fileName
+loadScenarioFile em fileName =
+  withExceptT (AssetNotLoaded (Data Scenarios) fileName . CanNotParse)
+    . ExceptT
+    . liftIO
+    $ decodeFileEitherE em fileName

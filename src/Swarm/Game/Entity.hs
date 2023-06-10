@@ -81,7 +81,7 @@ module Swarm.Game.Entity (
 import Control.Arrow ((&&&))
 import Control.Lens (Getter, Lens', lens, to, view, (^.))
 import Control.Monad.IO.Class
-import Control.Monad.Trans.Except (ExceptT (..), runExceptT, withExceptT)
+import Control.Monad.Trans.Except (ExceptT (..), except, runExceptT, withExceptT)
 import Data.Bifunctor (first)
 import Data.Char (toLower)
 import Data.Function (on)
@@ -107,7 +107,7 @@ import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Language.Capability
-import Swarm.Util (binTuples, plural, reflow, (?))
+import Swarm.Util (binTuples, failT, findDup, plural, quote, reflow, (?))
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
@@ -124,6 +124,8 @@ data EntityProperty
     Unwalkable
   | -- | Robots can pick this up (via 'Swarm.Language.Syntax.Grab' or 'Swarm.Language.Syntax.Harvest').
     Portable
+  | -- | Obstructs the view of robots that attempt to "scout"
+    Opaque
   | -- | Regrows from a seed after it is harvested.
     Growable
   | -- | Regenerates infinitely when grabbed or harvested.
@@ -143,7 +145,7 @@ instance FromJSON EntityProperty where
     tryRead :: Text -> Parser EntityProperty
     tryRead t = case readMaybe . from . T.toTitle $ t of
       Just c -> return c
-      Nothing -> fail $ "Unknown entity property " ++ from t
+      Nothing -> failT ["Unknown entity property", t]
 
 -- | How long an entity takes to regrow.  This represents the minimum
 --   and maximum amount of time taken by one growth stage (there are
@@ -311,12 +313,18 @@ deviceForCap cap = fromMaybe [] . M.lookup cap . entitiesByCap
 -- | Build an 'EntityMap' from a list of entities.  The idea is that
 --   this will be called once at startup, when loading the entities
 --   from a file; see 'loadEntities'.
-buildEntityMap :: [Entity] -> EntityMap
-buildEntityMap es =
-  EntityMap
-    { entitiesByName = M.fromList . map (view entityName &&& id) $ es
-    , entitiesByCap = M.fromListWith (<>) . concatMap (\e -> map (,[e]) (Set.toList $ e ^. entityCapabilities)) $ es
-    }
+buildEntityMap :: [Entity] -> Either Text EntityMap
+buildEntityMap es = do
+  case findDup (map fst namedEntities) of
+    Nothing -> Right ()
+    Just duped -> Left $ T.unwords ["Duplicate entity named", quote duped]
+  return $
+    EntityMap
+      { entitiesByName = M.fromList namedEntities
+      , entitiesByCap = M.fromListWith (<>) . concatMap (\e -> map (,[e]) (Set.toList $ e ^. entityCapabilities)) $ es
+      }
+ where
+  namedEntities = map (view entityName &&& id) es
 
 ------------------------------------------------------------
 -- Serialization
@@ -343,7 +351,7 @@ instance FromJSON Entity where
 instance FromJSONE EntityMap Entity where
   parseJSONE = withTextE "entity name" $ \name ->
     E $ \em -> case lookupEntityName name em of
-      Nothing -> fail $ "Unknown entity: " ++ from @Text name
+      Nothing -> failT ["Unknown entity:", name]
       Just e -> return e
 
 instance ToJSON Entity where
@@ -366,8 +374,8 @@ loadEntities :: MonadIO m => m (Either Text EntityMap)
 loadEntities = runExceptT $ do
   let f = "entities.yaml"
   fileName <- withExceptT prettyFailure $ getDataFileNameSafe Entities f
-  decoded <- withExceptT (from . prettyPrintParseException) $ ExceptT $ liftIO $ decodeFileEither fileName
-  return $ buildEntityMap decoded
+  decoded <- withExceptT (from . prettyPrintParseException) . ExceptT . liftIO $ decodeFileEither fileName
+  except $ buildEntityMap decoded
 
 ------------------------------------------------------------
 -- Entity lenses

@@ -4,25 +4,30 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.View.Util where
 
-import Brick hiding (Direction)
+import Brick hiding (Direction, Location)
 import Brick.Widgets.Dialog
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
 import Control.Monad.Reader (withReaderT)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Map.Strict qualified as M
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Game.Entity as E
+import Swarm.Game.Location
 import Swarm.Game.Scenario (scenarioName)
 import Swarm.Game.ScenarioInfo (scenarioItemName)
 import Swarm.Game.State
+import Swarm.Game.Terrain
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Attr
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
+import Swarm.TUI.View.CellDisplay
+import Swarm.Util (listEnums)
 import Witch (from, into)
 
 -- | Generate a fresh modal window of the requested type.
@@ -43,7 +48,7 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
       RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
       CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
       MessagesModal -> ("Messages", Nothing, descriptionWidth)
-      WinModal ->
+      ScenarioEndModal WinModal ->
         let nextMsg = "Next challenge!"
             stopMsg = fromMaybe "Return to the menu" haltingMessage
             continueMsg = "Keep playing"
@@ -59,7 +64,7 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
                 )
             , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
             )
-      LoseModal ->
+      ScenarioEndModal LoseModal ->
         let stopMsg = fromMaybe "Return to the menu" haltingMessage
             continueMsg = "Keep playing"
             maybeStartOver = do
@@ -99,10 +104,22 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
               Just (scenario, _) -> scenario ^. scenarioName
          in (" " <> T.unpack goalModalTitle <> " ", Nothing, descriptionWidth)
       KeepPlayingModal -> ("", Just (Button CancelButton, [("OK", Button CancelButton, Cancel)]), 80)
+      TerrainPaletteModal -> ("Terrain", Nothing, w)
+       where
+        wordLength = maximum $ map (length . show) (listEnums :: [TerrainType])
+        w = wordLength + 6
+      EntityPaletteModal -> ("Entity", Nothing, 30)
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
 drawType = withAttr infoAttr . padLeftRight 1 . txt . prettyText
+
+drawLabeledTerrainSwatch :: TerrainType -> Widget Name
+drawLabeledTerrainSwatch a =
+  tile <+> str materialName
+ where
+  tile = padRight (Pad 1) $ renderDisplay $ terrainMap M.! a
+  materialName = init $ show a
 
 descriptionTitle :: Entity -> String
 descriptionTitle e = " " ++ from @Text (e ^. entityName) ++ " "
@@ -126,13 +143,19 @@ quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this
     NoMenu -> "quit"
     _ -> "return to the menu"
 
+locationToString :: Location -> String
+locationToString (Location x y) =
+  unwords $ map show [x, y]
+
 -- | Display a list of text-wrapped paragraphs with one blank line after
 --   each.
 displayParagraphs :: [Text] -> Widget Name
 displayParagraphs = vBox . map (padBottom (Pad 1) . txtWrap)
 
-withEllipsis :: Text -> Widget Name
-withEllipsis t =
+data EllipsisSide = Beginning | End
+
+withEllipsis :: EllipsisSide -> Text -> Widget Name
+withEllipsis side t =
   Widget Greedy Fixed $ do
     ctx <- getContext
     let w = ctx ^. availWidthL
@@ -140,7 +163,9 @@ withEllipsis t =
         tLength = T.length t
         newText =
           if tLength > w
-            then T.take (w - T.length ellipsis) t <> ellipsis
+            then case side of
+              Beginning -> ellipsis <> T.drop (w - T.length ellipsis) t
+              End -> T.take (w - T.length ellipsis) t <> ellipsis
             else t
     render $ txt newText
 
@@ -154,8 +179,8 @@ maybeScroll vpName contents =
     if V.imageHeight (result ^. imageL) <= ctx ^. availHeightL
       then return result
       else
-        render $
-          withVScrollBars OnRight $
-            viewport vpName Vertical $
-              Widget Fixed Fixed $
-                return result
+        render
+          . withVScrollBars OnRight
+          . viewport vpName Vertical
+          . Widget Fixed Fixed
+          $ return result

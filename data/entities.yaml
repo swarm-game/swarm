@@ -7,7 +7,7 @@
     A tall, living entity made of a tough cellular material called "wood".
     They regrow after being harvested and are an important raw ingredient used
     in making many different devices.
-  properties: [portable, growable]
+  properties: [portable, growable, opaque]
   growth: [500, 600]
 
 - name: branch
@@ -117,7 +117,7 @@
     char: 'A'
   description:
   - A mountain. Can be tunneled through with a drill, but it takes time.
-  properties: [unwalkable]
+  properties: [unwalkable, opaque]
 
 - name: mountain tunnel
   display:
@@ -715,6 +715,17 @@
   capabilities: [move, turn, moveheavy]
   properties: [portable]
 
+- name: dozer blade
+  display:
+    attr: silver
+    char: '/'
+  description:
+  - A broad, sturdy surface that can be attached to a robot and used to `push` objects.
+  - |
+    `push : cmd unit` will advance the robot and the entity in front of it forward by one step.
+  properties: [portable]
+  capabilities: [push]
+
 - name: grabber
   display:
     attr: device
@@ -943,6 +954,16 @@
   properties: [portable]
   capabilities: [scan, sensefront, sensehere]
 
+- name: olfactometer
+  display:
+    char: 'N'
+  description:
+  - An electronic "nose" that can tell how far away something is.
+  - |
+    `sniff : text -> cmd int` returns the distance to the nearest specified entity.
+  properties: [portable]
+  capabilities: [detectdistance]
+
 - name: flash memory
   display:
     attr: device
@@ -1036,7 +1057,8 @@
     explains, a type is just a collection of values, and a finite collection
     of values is just a fancy number.  For example, the type `bool` is
     just a fancy version of the number 2, where the two things happen to be
-    labelled `false` and `true`.
+    labelled `false` and `true`.  There are also types `unit` and
+    `void` that correspond to 1 and 0, respectively.
   - |
     The product of two types is a type of pairs, since, for example,
     if `t` is a type with three elements, then there are 2 * 3 = 6
@@ -1086,7 +1108,30 @@
   - |
     `wait : int -> cmd unit` causes a robot to sleep for a specified amount of time (measured in game ticks).
   properties: [portable]
-  capabilities: [time]
+  capabilities: [timeabs, timerel]
+
+- name: hourglass
+  display:
+    attr: device
+    char: '8'
+  description:
+  - An hourglass can measure the relative passage of time.  It enables the `wait` command.
+  - |
+    `wait : int -> cmd unit` causes a robot to sleep for a specified amount of time (measured in game ticks).
+  properties: [portable]
+  capabilities: [timerel]
+
+- name: rolex
+  display:
+    char: R
+    attr: silver
+  description:
+  - Enables robots to use the 'watch' command.
+  - |
+    `watch : dir -> cmd unit` will mark an adjacent (in the specified direction) location of interest to monitor for placement or removal of items.
+    A subsequent call to `wait` will be interrupted upon a change to the location.
+  properties: [portable]
+  capabilities: [wakeself]
 
 - name: comparator
   display:
@@ -1149,9 +1194,10 @@
     char: 'Y'
   description:
   - A device for transforming electric current into radio waves, and
-    vice versa.
+    vice versa.  Antennas can be used to increase the viable range
+    over which you can communicate with your robots.
   - |
-    It can be used to locate nearby actors, by bouncing radio
+    Antennas can also be used to locate nearby actors, by bouncing radio
     waves off them and listening for the echo.  This capability can be
     accessed via two commands:
   - |
@@ -1192,3 +1238,74 @@
     inner workings.
   properties: [portable]
   capabilities: [debug]
+
+- name: victrola
+  display:
+    attr: device
+    char: 'Q'
+  description:
+  - |
+    A device for reading and writing data on circular platters made of
+    a soft plastic material.  The stylus must be made of a
+    hard and durable material, with a special tip that relies on
+    quantum effects to extract high-density information.
+  - |
+    Also allows manipulating composite values consisting of a
+    collection of named fields.  For example, `[x = 2, y = "hi"]`
+    is a value of type `[x : int, y : text]`.  Individual fields
+    can be projected using dot notation.  For example,
+    `let r = [y="hi", x=2] in r.x` has the value 2.  The order
+    of the fields does not matter.
+  properties: [portable]
+  capabilities: [record]
+
+- name: quantum dot
+  display:
+    attr: gold
+    char: '.'
+  description:
+  - |
+    A nanoscale semiconductor particle with a wide range of
+    applications.
+  properties: [portable]
+
+- name: 'key'
+  display:
+    attr: gold
+    char: 'k'
+  description:
+  - A versatile item, with uses such as opening
+    locked doors, entering input, and retrieving stored values.
+  properties: [portable]
+
+- name: keyboard
+  display:
+    attr: device
+    char: 'K'
+  description:
+  - A small device with multiple keys, adapted for your unique anatomy.
+  - |
+    `installKeyHandler : text -> (key -> cmd unit) -> cmd unit`
+    installs a custom handler function that can be activated to
+    respond to keyboard inputs typed at the REPL.
+  - |
+    `key : text -> key` constructs values of type `key`, for
+    example `key "Down"` or `key "C-S-x"`.
+  properties: [portable]
+  capabilities: [handleinput]
+
+- name: halting oracle
+  display:
+    attr: device
+    char: '?'
+  description:
+  - A device to solve the halting problem. When asked if a
+    particular robot program will halt, it always answers YES.
+    And it is always correct... or else!
+  - |
+    Enables the command `halt : actor -> cmd unit` which takes
+    a robot as an argument and, if it is up to one cell away,
+    cancels its currently running program (if any).  In creative mode,
+    there is no distance limitation.
+  properties: [portable]
+  capabilities: [halt]

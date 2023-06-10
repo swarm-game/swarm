@@ -10,12 +10,16 @@
 module Swarm.Util (
   -- * Miscellaneous utilities
   (?),
+  sortPair,
   maxOn,
   maximum0,
   cycleEnum,
   listEnums,
   uniq,
   binTuples,
+  histogram,
+  findDup,
+  both,
 
   -- * Directory utilities
   readFileMay,
@@ -24,12 +28,16 @@ module Swarm.Util (
   -- * Text utilities
   isIdentChar,
   replaceLast,
+  failT,
+  showT,
 
   -- * English language utilities
   reflow,
   quote,
   squote,
   bquote,
+  parens,
+  brackets,
   commaList,
   indefinite,
   indefiniteQ,
@@ -42,6 +50,8 @@ module Swarm.Util (
   isJustOr,
   isRightOr,
   isSuccessOr,
+  guardRight,
+  simpleErrorHandle,
 
   -- * Template Haskell utilities
   liftText,
@@ -54,7 +64,8 @@ module Swarm.Util (
   (<>=),
   _NonEmpty,
 
-  -- * Utilities for NP-hard approximation
+  -- * Set utilities
+  removeSupersets,
   smallHittingSet,
 ) where
 
@@ -62,12 +73,13 @@ import Control.Algebra (Has)
 import Control.Effect.State (State, modify, state)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
-import Control.Monad (unless)
-import Data.Bifunctor (first)
+import Control.Monad (unless, (<=<))
+import Control.Monad.Except (ExceptT (..), runExceptT)
+import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum)
 import Data.Either.Validation
-import Data.List (maximumBy, partition)
-import Data.List.NonEmpty (NonEmpty (..))
+import Data.List (foldl', maximumBy, partition)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -86,6 +98,7 @@ import NLP.Minimorph.English qualified as MM
 import NLP.Minimorph.Util ((<+>))
 import System.Clock (TimeSpec)
 import System.IO.Error (catchIOError)
+import Witch (from)
 
 infixr 1 ?
 infix 4 %%=, <+=, <%=, <<.=, <>=
@@ -96,6 +109,10 @@ infix 4 %%=, <+=, <%=, <<.=, <>=
 --   defaulting to @def@ as a last resort.
 (?) :: Maybe a -> a -> a
 (?) = flip fromMaybe
+
+-- | Ensure the smaller value in a pair is the first element.
+sortPair :: Ord b => (b, b) -> (b, b)
+sortPair (x, y) = if x <= y then (x, y) else (y, x)
 
 -- | Find the maximum of two values, comparing them according to a
 --   custom projection function.
@@ -145,6 +162,25 @@ binTuples = foldr f mempty
  where
   f = uncurry (M.insertWith (<>)) . fmap pure
 
+-- | Count occurrences of a value
+histogram ::
+  (Foldable t, Ord a) =>
+  t a ->
+  Map a Int
+histogram = foldl' (\m k -> M.insertWith (+) k 1 m) M.empty
+
+-- | Find a duplicate element within the list, if any exists.
+findDup :: Ord a => [a] -> Maybe a
+findDup = go S.empty
+ where
+  go _ [] = Nothing
+  go seen (a : as)
+    | a `S.member` seen = Just a
+    | otherwise = go (S.insert a seen) as
+
+both :: Bifunctor p => (a -> d) -> p a a -> p d d
+both f = bimap f f
+
 ------------------------------------------------------------
 -- Directory stuff
 
@@ -184,6 +220,15 @@ isIdentChar c = isAlphaNum c || c == '_' || c == '\''
 -- "(move"
 replaceLast :: Text -> Text -> Text
 replaceLast r t = T.append (T.dropWhileEnd isIdentChar t) r
+
+-- | Fail with a Text-based message, made out of phrases to be joined
+--   by spaces.
+failT :: MonadFail m => [Text] -> m a
+failT = fail . from @Text . T.unwords
+
+-- | Show a value, but as Text.
+showT :: Show a => a -> Text
+showT = from @String . show
 
 ------------------------------------------------------------
 -- Some language-y stuff
@@ -253,6 +298,14 @@ quote t = T.concat ["\"", t, "\""]
 bquote :: Text -> Text
 bquote t = T.concat ["`", t, "`"]
 
+-- | Surround some text in parentheses.
+parens :: Text -> Text
+parens t = T.concat ["(", t, ")"]
+
+-- | Surround some text in square brackets.
+brackets :: Text -> Text
+brackets t = T.concat ["[", t, "]"]
+
 -- | Make a list of things with commas and the word "and".
 commaList :: [Text] -> Text
 commaList [] = ""
@@ -289,6 +342,12 @@ Left b `isRightOr` f = throwError (f b)
 isSuccessOr :: Has (Throw e) sig m => Validation b a -> (b -> e) -> m a
 Success a `isSuccessOr` _ = return a
 Failure b `isSuccessOr` f = throwError (f b)
+
+guardRight :: Text -> Either Text a -> ExceptT Text IO a
+guardRight what i = i `isRightOr` (\e -> "Failed to " <> what <> ": " <> e)
+
+simpleErrorHandle :: ExceptT Text IO a -> IO a
+simpleErrorHandle = either (fail . T.unpack) pure <=< runExceptT
 
 ------------------------------------------------------------
 -- Template Haskell utilities
@@ -327,7 +386,30 @@ _NonEmpty :: Lens' (NonEmpty a) (a, [a])
 _NonEmpty = lens (\(x :| xs) -> (x, xs)) (const (uncurry (:|)))
 
 ------------------------------------------------------------
--- Some utilities for NP-hard approximation
+-- Some set utilities
+
+-- | Remove any sets which are supersets of other sets.  In other words,
+--   (1) no two sets in the output are in a subset relationship
+--   (2) every element in the input is a superset of some element in the output.
+--
+-- >>> import qualified Data.Set as S
+-- >>> rss = map S.toList . S.toList . removeSupersets . S.fromList . map S.fromList
+--
+-- >>> rss [[1,2,3], [1]]
+-- [[1]]
+--
+-- >>> rss [[1,2,3], [2,4], [2,3]]
+-- [[2,3],[2,4]]
+--
+-- >>> rss [[], [1], [2,3]]
+-- [[]]
+--
+-- >>> rss [[1,2], [1,3], [2,3]]
+-- [[1,2],[1,3],[2,3]]
+removeSupersets :: Ord a => Set (Set a) -> Set (Set a)
+removeSupersets ss = S.filter (not . isSuperset) ss
+ where
+  isSuperset s = any (`S.isSubsetOf` s) (S.delete s ss)
 
 -- | Given a list of /nonempty/ sets, find a hitting set, that is, a
 --   set which has at least one element in common with each set in the

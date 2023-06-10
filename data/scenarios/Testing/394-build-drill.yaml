@@ -12,8 +12,8 @@ objectives:
 # When testing, add `s <- build {...}; n <- as s {whoami}; log n`
 solution: |
   def forever = \c. c ; forever c end;
-  def unblock = try {drill forward} {} end;
-  def push = unblock; move end;
+  def unblock = try {drill forward; return ()} {} end;
+  def doPush = unblock; move end;
   log "Hi, I am base";
   r <- build {
     wait 2;
@@ -21,7 +21,7 @@ solution: |
     forever (
       build {
         log "Hi, I am pusher";
-        forever push
+        forever doPush
       };
       log "- robot built"
     )

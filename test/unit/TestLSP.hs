@@ -28,26 +28,26 @@ testLSP :: TestTree
 testLSP =
   testGroup
     "Unused variable warnings"
-    [ testCase "outer lambda" $
-        checkFile "multiple-lambda-first-unused.sw" $
-          pure $
-            UnusedVar "x" VU.Lambda
-    , testCase "inner lambda" $
-        checkFile "multiple-lambda-second-unused.sw" $
-          pure $
-            UnusedVar "y" VU.Lambda
-    , testCase "shadowed variable name" $
-        checkFile "shadowed-variable-lambda-unused.sw" $
-          pure $
-            UnusedVar "x" VU.Lambda
-    , testCase "outer let" $
-        checkFile "multiple-let-first-unused.sw" $
-          pure $
-            UnusedVar "x" VU.Let
-    , testCase "outer let" $
-        checkFile "multiple-let-second-unused.sw" $
-          pure $
-            UnusedVar "y" VU.Let
+    [ testCase "outer lambda"
+        . checkFile "multiple-lambda-first-unused.sw"
+        . pure
+        $ UnusedVar "x" VU.Lambda
+    , testCase "inner lambda"
+        . checkFile "multiple-lambda-second-unused.sw"
+        . pure
+        $ UnusedVar "y" VU.Lambda
+    , testCase "shadowed variable name"
+        . checkFile "shadowed-variable-lambda-unused.sw"
+        . pure
+        $ UnusedVar "x" VU.Lambda
+    , testCase "outer let"
+        . checkFile "multiple-let-first-unused.sw"
+        . pure
+        $ UnusedVar "x" VU.Let
+    , testCase "outer let"
+        . checkFile "multiple-let-second-unused.sw"
+        . pure
+        $ UnusedVar "y" VU.Let
     , testCase "multiple unused let" $
         checkFile
           "multiple-let-all-unused.sw"

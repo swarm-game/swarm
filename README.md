@@ -52,6 +52,14 @@ Features include:
 Installing
 ==========
 
+**NOTE**: Compiling Swarm with GHC 9.2.5 and optimizations enabled
+seems to result in very long freezes/delays (tens of seconds) when
+starting Swarm (see
+[#1000](https://github.com/swarm-game/swarm/issues/1000)).  We
+recommend either building Swarm with a different version of GHC
+(*e.g.* 9.4.x), or building with optimizations turned off (which does
+not seem to affect the game performance very much).
+
 **NOTE**: Swarm requires a POSIX-style terminal environment that
 supports `terminfo`.  Linux and MacOS should work out of the box.  On
 Windows, you will need to use [Windows Subsystem for

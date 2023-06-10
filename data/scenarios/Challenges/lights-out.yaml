@@ -1,0 +1,163 @@
+version: 1
+name: Lights Out
+author: Karl Ostmo
+description: |
+  Turn off all of the lights
+creative: false
+attrs:
+  - name: light-on
+    fg: "#cccc22"
+  - name: light-off
+    fg: "#333355"
+objectives:
+  - teaser: Extinguish lights
+    goal:
+      - |
+        `drill` a light to toggle it and its four direct neighbors
+        between "off" and "on".
+      - |
+        The puzzle is won when all lights have been extinguished.
+    condition: |
+      def advanceRow =
+          curLoc <- whereami;
+          teleport self (0, snd curLoc - 1);
+          end;
+
+      def isRowDark = \n.
+          if (n > 0) {
+              onHere <- ishere "on";
+              if onHere {
+                  return false;
+              } {
+                  move;
+                  isRowDark $ n - 1;
+              }
+          } {
+              return true;
+          }
+          end;
+
+      def areAllOff = \rowWidth. \n.
+          if (n > 0) {
+              rowDark <- isRowDark rowWidth;
+              if rowDark {
+                  advanceRow;
+                  areAllOff rowWidth $ n - 1;
+              } {
+                  return false;
+              }
+          } {
+              return true;
+          }
+          end;
+
+      def check =
+          setupComplete <- has "flower";
+          if setupComplete {
+              teleport self (0, 0);
+              turn east;
+              areAllOff 5 5;
+          } {return false};
+          end;
+
+      j <- robotnamed "judge";
+      as j {
+        check;
+      };
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - ADT calculator
+      - antenna
+      - branch predictor
+      - clock
+      - comparator
+      - compass
+      - counter
+      - dictionary
+      - dozer blade
+      - drill
+      - hearing aid
+      - lambda
+      - logger
+      - mirror
+      - scanner
+      - strange loop
+      - string
+      - treads
+      - welder
+      - workbench
+  - name: judge
+    system: true
+    dir: [1, 0]
+    display:
+      invisible: true
+    program: |
+      run "scenarios/Challenges/_lights-out/assistant.sw";
+solution: |
+   run "scenarios/Challenges/_lights-out/solution.sw"
+entities:
+  - name: pending-off
+    display:
+      char: '*'
+      attr: light-off
+    description:
+      - Light that is being turned off
+    properties: [known]
+  - name: pending-on
+    display:
+      char: '*'
+      attr: light-on
+    description:
+      - Light that is being turned on
+    properties: [known]
+  - name: "off"
+    display:
+      char: 'x'
+      attr: light-off
+    description:
+      - A light that is off
+    properties: [known]
+  - name: "on"
+    display:
+      char: 'o'
+      attr: light-on
+    description:
+      - A light that is on
+    properties: [known]
+recipes:
+  - in:
+      - [1, "off"]
+    out:
+      - [1, "pending-on"]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, "on"]
+    out:
+      - [1, pending-off]
+    required:
+      - [1, drill]
+    time: 0
+known: []
+world:
+  default: [blank]
+  upperleft: [-1, 1]
+  offset: false
+  palette:
+    B: [blank, null, base]
+    z: [blank, null, judge]
+    '.': [blank]
+    'x': [blank, "off"]
+    'o': [blank, "on"]
+  map: |
+    B......
+    .xxxxx.
+    .xxxxx.
+    .xxxxx.
+    .xxxxx.
+    .xxxxx.
+    z......
+    

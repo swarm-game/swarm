@@ -18,11 +18,14 @@ import Language.LSP.Server
 import Language.LSP.Types (Hover (Hover))
 import Language.LSP.Types qualified as J
 import Language.LSP.Types.Lens qualified as J
-import Language.LSP.VFS
+import Language.LSP.VFS (VirtualFile (..), virtualFileText)
 import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.LSP.VarUsage qualified as VU
 import Swarm.Language.Parse
 import Swarm.Language.Pipeline
+import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Syntax (SrcLoc (..))
+import Swarm.Language.Typecheck (ContextualTypeErr (..))
 import System.IO (stderr)
 import Witch
 
@@ -46,7 +49,7 @@ lspMain =
                         (Just syncKind)
                         (Just False)
                         (Just False)
-                        (Just $ J.InR $ J.SaveOptions $ Just True)
+                        (Just . J.InR . J.SaveOptions $ Just True)
                     )
               }
         }
@@ -59,7 +62,7 @@ lspMain =
 diagnosticSourcePrefix :: Text
 diagnosticSourcePrefix = "swarm-lsp"
 
-debug :: MonadIO m => Text -> m ()
+debug :: (MonadIO m) => Text -> m ()
 debug msg = liftIO $ Text.hPutStrLn stderr $ "[swarm-lsp] " <> msg
 
 validateSwarmCode :: J.NormalizedUri -> J.TextDocumentVersion -> Text -> LspM () ()
@@ -124,6 +127,16 @@ validateSwarmCode doc version content = do
       msg
       Nothing -- tags
       (Just (J.List []))
+
+showTypeErrorPos :: Text -> ContextualTypeErr -> ((Int, Int), (Int, Int), Text)
+showTypeErrorPos code (CTE l _ te) = (minusOne start, minusOne end, msg)
+ where
+  minusOne (x, y) = (x - 1, y - 1)
+
+  (start, end) = case l of
+    SrcLoc s e -> getLocRange code (s, e)
+    NoLoc -> ((1, 1), (65535, 65535)) -- unknown loc spans the whole document
+  msg = prettyText te
 
 handlers :: Handlers (LspM ())
 handlers =

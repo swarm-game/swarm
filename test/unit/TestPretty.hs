@@ -44,17 +44,17 @@ testPrettyConst =
         )
     , testCase
         "operators #8 - unary negation with strongly fixing binary operator"
-        ( equalPretty "-1 ^ (-2)" $
-            TApp (TConst Neg) $
-              mkOp' Exp (TInt 1) $
-                TApp (TConst Neg) (TInt 2)
+        ( equalPretty "-1 ^ (-2)"
+            . TApp (TConst Neg)
+            . mkOp' Exp (TInt 1)
+            $ TApp (TConst Neg) (TInt 2)
         )
     , testCase
         "operators #8 - unary negation with weakly fixing binary operator"
-        ( equalPretty "-(1 + -2)" $
-            TApp (TConst Neg) $
-              mkOp' Add (TInt 1) $
-                TApp (TConst Neg) (TInt 2)
+        ( equalPretty "-(1 + -2)"
+            . TApp (TConst Neg)
+            . mkOp' Add (TInt 1)
+            $ TApp (TConst Neg) (TInt 2)
         )
     , testCase
         "operators #8 - simple infix operator"
@@ -89,6 +89,11 @@ testPrettyConst =
     , testCase
         "void type"
         ( assertEqual "" "void" . show $ ppr TyVoid
+        )
+    , testCase
+        "type ascription"
+        ( equalPretty "1 : int" $
+            TAnnotate (TInt 1) (Forall [] TyInt)
         )
     ]
  where

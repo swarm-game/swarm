@@ -26,9 +26,11 @@ module Swarm.Language.Types (
   pattern TyDir,
   pattern TyBool,
   pattern TyActor,
+  pattern TyKey,
   pattern (:+:),
   pattern (:*:),
   pattern (:->:),
+  pattern TyRcd,
   pattern TyCmd,
   pattern TyDelay,
 
@@ -43,9 +45,11 @@ module Swarm.Language.Types (
   pattern UTyDir,
   pattern UTyBool,
   pattern UTyActor,
+  pattern UTyKey,
   pattern UTySum,
   pattern UTyProd,
   pattern UTyFun,
+  pattern UTyRcd,
   pattern UTyCmd,
   pattern UTyDelay,
 
@@ -67,12 +71,17 @@ module Swarm.Language.Types (
   WithU (..),
 ) where
 
+import Control.Monad (guard)
 import Control.Unification
 import Control.Unification.IntVar
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Data (Data)
 import Data.Foldable (fold)
+import Data.Function (on)
 import Data.Functor.Fixedpoint
+import Data.Map.Merge.Strict qualified as M
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as M
 import Data.Maybe (fromJust)
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -106,6 +115,8 @@ data BaseTy
     --   in-game name because they could represent other things like
     --   aliens, animals, seeds, ...
     BActor
+  | -- | Keys, i.e. things that can be pressed on the keyboard
+    BKey
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
 -- | A "structure functor" encoding the shape of type expressions.
@@ -129,7 +140,20 @@ data TypeF t
     TyProdF t t
   | -- | Function type.
     TyFunF t t
+  | -- | Record type.
+    TyRcdF (Map Var t)
   deriving (Show, Eq, Functor, Foldable, Traversable, Generic, Generic1, Unifiable, Data, FromJSON, ToJSON)
+
+-- | Unify two Maps by insisting they must have exactly the same keys,
+--   and if so, simply matching up corresponding values to be
+--   recursively unified.  There could be other reasonable
+--   implementations, but in our case we will use this for unifying
+--   record types, and we do not have any subtyping, so record types
+--   will only unify if they have exactly the same keys.
+instance Ord k => Unifiable (Map k) where
+  zipMatch m1 m2 = do
+    guard $ ((==) `on` M.keysSet) m1 m2
+    pure $ M.merge M.dropMissing M.dropMissing (M.zipWithMatched (\_ a1 a2 -> Right (a1, a2))) m1 m2
 
 -- | @Type@ is now defined as the fixed point of 'TypeF'.  It would be
 --   annoying to manually apply and match against 'Fix' constructors
@@ -280,6 +304,9 @@ pattern TyBool = Fix (TyBaseF BBool)
 pattern TyActor :: Type
 pattern TyActor = Fix (TyBaseF BActor)
 
+pattern TyKey :: Type
+pattern TyKey = Fix (TyBaseF BKey)
+
 infixr 5 :+:
 
 pattern (:+:) :: Type -> Type -> Type
@@ -294,6 +321,9 @@ infixr 1 :->:
 
 pattern (:->:) :: Type -> Type -> Type
 pattern ty1 :->: ty2 = Fix (TyFunF ty1 ty2)
+
+pattern TyRcd :: Map Var Type -> Type
+pattern TyRcd m = Fix (TyRcdF m)
 
 pattern TyCmd :: Type -> Type
 pattern TyCmd ty1 = Fix (TyCmdF ty1)
@@ -328,6 +358,9 @@ pattern UTyBool = UTerm (TyBaseF BBool)
 pattern UTyActor :: UType
 pattern UTyActor = UTerm (TyBaseF BActor)
 
+pattern UTyKey :: UType
+pattern UTyKey = UTerm (TyBaseF BKey)
+
 pattern UTySum :: UType -> UType -> UType
 pattern UTySum ty1 ty2 = UTerm (TySumF ty1 ty2)
 
@@ -336,6 +369,9 @@ pattern UTyProd ty1 ty2 = UTerm (TyProdF ty1 ty2)
 
 pattern UTyFun :: UType -> UType -> UType
 pattern UTyFun ty1 ty2 = UTerm (TyFunF ty1 ty2)
+
+pattern UTyRcd :: Map Var UType -> UType
+pattern UTyRcd m = UTerm (TyRcdF m)
 
 pattern UTyCmd :: UType -> UType
 pattern UTyCmd ty1 = UTerm (TyCmdF ty1)

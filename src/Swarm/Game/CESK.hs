@@ -78,6 +78,7 @@ module Swarm.Game.CESK (
 
   -- ** Extracting information
   finalValue,
+  TickNumber,
 ) where
 
 import Control.Lens ((^.))
@@ -86,7 +87,7 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import GHC.Generics (Generic)
-import Prettyprinter (Doc, Pretty (..), hsep, (<+>))
+import Prettyprinter (Doc, Pretty (..), encloseSep, hsep, (<+>))
 import Swarm.Game.Entity (Count, Entity)
 import Swarm.Game.Exception
 import Swarm.Game.World (WorldUpdate (..))
@@ -98,6 +99,8 @@ import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.Language.Value as V
+
+type TickNumber = Integer
 
 ------------------------------------------------------------
 -- Frames and continuations
@@ -169,6 +172,12 @@ data Frame
     --   nearby robots.  We have the function to run, and the list of
     --   robot IDs to run it on.
     FMeetAll Value [Int]
+  | -- | We are in the middle of evaluating a record: some fields have
+    --   already been evaluated; we are focusing on evaluating one
+    --   field; and some fields have yet to be evaluated.
+    FRcd Env [(Var, Value)] Var [(Var, Maybe Term)]
+  | -- | We are in the middle of evaluating a record field projection.(:*:)
+    FProj Var
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | A continuation is just a stack of frames.
@@ -263,7 +272,7 @@ data CESK
     Up Exn Store Cont
   | -- | The machine is waiting for the game to reach a certain time
     --   to resume its execution.
-    Waiting Integer CESK
+    Waiting TickNumber CESK
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | Is the CESK machine in a final (finished) state?  If so, extract
@@ -368,6 +377,14 @@ prettyFrame (FImmediate c _worldUpds _robotUpds) inner = prettyPrefix ("I[" <> p
 prettyFrame (FUpdate addr) inner = prettyPrefix ("S@" <> pretty addr) inner
 prettyFrame FFinishAtomic inner = prettyPrefix "A·" inner
 prettyFrame (FMeetAll _ _) inner = prettyPrefix "M·" inner
+prettyFrame (FRcd _ done foc rest) (_, inner) = (11, encloseSep "[" "]" ", " (pDone ++ [pFoc] ++ pRest))
+ where
+  pDone = map (\(x, v) -> pretty x <+> "=" <+> ppr (valueToTerm v)) (reverse done)
+  pFoc = pretty foc <+> "=" <+> inner
+  pRest = map pprEq rest
+  pprEq (x, Nothing) = pretty x
+  pprEq (x, Just t) = pretty x <+> "=" <+> ppr t
+prettyFrame (FProj x) (p, inner) = (11, pparens (p < 11) inner <> "." <> pretty x)
 
 -- | Pretty-print a special "prefix application" frame, i.e. a frame
 --   formatted like @X· inner@.  Unlike typical applications, these

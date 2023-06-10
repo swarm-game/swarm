@@ -12,11 +12,13 @@ module Swarm.TUI.Model (
   -- * Custom UI label types
   -- $uilabel
   AppEvent (..),
+  WebCommand (..),
   FocusablePanel (..),
   Name (..),
 
   -- * Menus and dialogs
   ModalType (..),
+  ScenarioOutcome (..),
   Button (..),
   ButtonAction (..),
   Modal (..),
@@ -82,7 +84,15 @@ module Swarm.TUI.Model (
   webPort,
   upstreamRelease,
   eventLog,
+  scenarios,
+  stdEntityMap,
+  stdRecipes,
+  stdAdjList,
+  stdNameList,
+
+  -- ** Utility
   logEvent,
+  mkGameStateConfig,
 
   -- * App state
   AppState (AppState),
@@ -92,6 +102,7 @@ module Swarm.TUI.Model (
 
   -- ** Initialization
   AppOpts (..),
+  defaultAppOpts,
   Seed,
 
   -- *** Re-exported types used in options
@@ -110,19 +121,28 @@ import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
 import Control.Monad.Except
 import Control.Monad.State
+import Data.Array (Array, listArray)
 import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
+import Data.Text qualified as T (lines)
+import Data.Text.IO qualified as T (readFile)
 import Data.Vector qualified as V
 import GitHash (GitInfo)
 import Graphics.Vty (ColorMode (..))
 import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity as E
+import Swarm.Game.Failure
+import Swarm.Game.Failure.Render
+import Swarm.Game.Recipe (Recipe, loadRecipes)
+import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (
-  ScenarioInfoPair,
+  ScenarioCollection,
+  loadScenariosWithWarnings,
   _SISingle,
  )
 import Swarm.Game.State
@@ -131,7 +151,9 @@ import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
+import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
+import Text.Fuzzy qualified as Fuzzy
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -140,12 +162,15 @@ import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
 -- $uilabel These types are used as parameters to various @brick@
 -- types.
 
+newtype WebCommand = RunWebCode Text
+  deriving (Show)
+
 -- | 'Swarm.TUI.Model.AppEvent' represents a type for custom event types our app can
---   receive.  At the moment, we only have one custom event, but it's
---   very important: a separate thread sends 'Frame' events as fast as
+--   receive. The primary custom event 'Frame' is sent by a separate thread as fast as
 --   it can, telling the TUI to render a new frame.
 data AppEvent
   = Frame
+  | Web WebCommand
   | UpstreamVersion (Either NewReleaseFailure String)
   deriving (Show)
 
@@ -163,17 +188,45 @@ data RuntimeState = RuntimeState
   { _webPort :: Maybe Port
   , _upstreamRelease :: Either NewReleaseFailure String
   , _eventLog :: Notifications LogEntry
+  , _scenarios :: ScenarioCollection
+  , _stdEntityMap :: EntityMap
+  , _stdRecipes :: [Recipe Entity]
+  , _stdAdjList :: Array Int Text
+  , _stdNameList :: Array Int Text
   }
 
-initRuntimeState :: RuntimeState
-initRuntimeState =
-  RuntimeState
-    { _webPort = Nothing
-    , _upstreamRelease = Left (NoMainUpstreamRelease [])
-    , _eventLog = mempty
-    }
+initRuntimeState :: ExceptT Text IO ([SystemFailure], RuntimeState)
+initRuntimeState = do
+  entities <- ExceptT loadEntities
+  recipes <- withExceptT prettyFailure $ loadRecipes entities
+  (scenarioWarnings, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''RuntimeState
+  (adjsFile, namesFile) <- withExceptT prettyFailure $ do
+    adjsFile <- getDataFileNameSafe NameGeneration "adjectives.txt"
+    namesFile <- getDataFileNameSafe NameGeneration "names.txt"
+    return (adjsFile, namesFile)
+
+  let markEx what a = catchError a (\e -> fail $ "Failed to " <> what <> ": " <> show e)
+  (adjs, names) <- liftIO . markEx "load name generation data" $ do
+    as <- tail . T.lines <$> T.readFile adjsFile
+    ns <- tail . T.lines <$> T.readFile namesFile
+    return (as, ns)
+
+  return
+    ( scenarioWarnings
+    , RuntimeState
+        { _webPort = Nothing
+        , _upstreamRelease = Left (NoMainUpstreamRelease [])
+        , _eventLog = mempty
+        , _scenarios = loadedScenarios
+        , _stdEntityMap = entities
+        , _stdRecipes = recipes
+        , _stdAdjList = listArray (0, length adjs - 1) adjs
+        , _stdNameList = listArray (0, length names - 1) names
+        }
+    )
+
+makeLensesNoSigs ''RuntimeState
 
 -- | The port on which the HTTP debug service is running.
 webPort :: Lens' RuntimeState (Maybe Port)
@@ -188,6 +241,28 @@ upstreamRelease :: Lens' RuntimeState (Either NewReleaseFailure String)
 -- place to log it.
 eventLog :: Lens' RuntimeState (Notifications LogEntry)
 
+-- | The collection of scenarios that comes with the game.
+scenarios :: Lens' RuntimeState ScenarioCollection
+
+-- | The standard entity map loaded from disk.  Individual scenarios
+--   may define additional entities which will get added to this map
+--   when loading the scenario.
+stdEntityMap :: Lens' RuntimeState EntityMap
+
+-- | The standard list of recipes loaded from disk.  Individual scenarios
+--   may define additional recipes which will get added to this list
+--   when loading the scenario.
+stdRecipes :: Lens' RuntimeState [Recipe Entity]
+
+-- | List of words for use in building random robot names.
+stdAdjList :: Lens' RuntimeState (Array Int Text)
+
+-- | List of words for use in building random robot names.
+stdNameList :: Lens' RuntimeState (Array Int Text)
+
+--------------------------------------------------
+-- Utility
+
 -- | Simply log to the runtime event log.
 logEvent :: LogSource -> (Text, RID) -> Text -> Notifications LogEntry -> Notifications LogEntry
 logEvent src (who, rid) msg el =
@@ -196,6 +271,16 @@ logEvent src (who, rid) msg el =
     & notificationsContent %~ (l :)
  where
   l = LogEntry 0 src who rid zero msg
+
+-- | Create a 'GameStateConfig' record from the 'RuntimeState'.
+mkGameStateConfig :: RuntimeState -> GameStateConfig
+mkGameStateConfig rs =
+  GameStateConfig
+    { initAdjList = rs ^. stdAdjList
+    , initNameList = rs ^. stdNameList
+    , initEntities = rs ^. stdEntityMap
+    , initRecipes = rs ^. stdRecipes
+    }
 
 -- ----------------------------------------------------------------------------
 --                                   APPSTATE                                --
@@ -215,7 +300,7 @@ data AppState = AppState
 --------------------------------------------------
 -- Lenses for AppState
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''AppState
+makeLensesNoSigs ''AppState
 
 -- | The 'GameState' record.
 gameState :: Lens' AppState GameState
@@ -259,13 +344,14 @@ populateInventoryList (Just r) = do
   mList <- preuse (uiInventory . _Just . _2)
   showZero <- use uiShowZero
   sortOptions <- use uiInventorySort
+  search <- use uiInventorySearch
   let mkInvEntry (n, e) = InventoryEntry n e
       mkInstEntry (_, e) = EquippedEntry e
       itemList isInventoryDisplay mk label =
         (\case [] -> []; xs -> Separator label : xs)
           . map mk
           . sortInventory sortOptions
-          . filter shouldDisplay
+          . filter ((&&) <$> matchesSearch <*> shouldDisplay)
           . elems
        where
         -- Display items if we have a positive number of them, or they
@@ -277,6 +363,9 @@ populateInventoryList (Just r) = do
             || isInventoryDisplay
               && showZero
               && not ((r ^. equippedDevices) `E.contains` e)
+
+      matchesSearch :: (Count, Entity) -> Bool
+      matchesSearch (_, e) = maybe (const True) Fuzzy.test search (e ^. E.entityName)
 
       items =
         (r ^. robotInventory . to (itemList True mkInvEntry "Inventory"))
@@ -317,6 +406,8 @@ data AppOpts = AppOpts
   -- ^ Code to be run on base.
   , autoPlay :: Bool
   -- ^ Automatically run the solution defined in the scenario file
+  , speed :: Int
+  -- ^ Initial game speed (logarithm)
   , cheatMode :: Bool
   -- ^ Should cheat mode be enabled?
   , colorMode :: Maybe ColorMode
@@ -326,6 +417,21 @@ data AppOpts = AppOpts
   , repoGitInfo :: Maybe GitInfo
   -- ^ Information about the Git repository (not present in release).
   }
+
+-- | A default/empty 'AppOpts' record.
+defaultAppOpts :: AppOpts
+defaultAppOpts =
+  AppOpts
+    { userSeed = Nothing
+    , userScenario = Nothing
+    , scriptToRun = Nothing
+    , autoPlay = False
+    , speed = defaultInitLgTicksPerSecond
+    , cheatMode = False
+    , colorMode = Nothing
+    , userWebPort = Nothing
+    , repoGitInfo = Nothing
+    }
 
 -- | Extract the scenario which would come next in the menu from the
 --   currently selected scenario (if any).  Can return @Nothing@ if

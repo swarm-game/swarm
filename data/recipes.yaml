@@ -808,3 +808,42 @@
   - [256, string]
   out:
   - [1, net]
+
+#########################################
+##                 MISC                ##
+#########################################
+
+- in:
+  - [1, water]
+  - [1, silicon]
+  required:
+  - [50, solar panel]
+  out:
+  - [1, quantum dot]
+
+- in:
+  - [1, small motor]
+  - [1, copper pipe]
+  - [1, mithril]
+  - [1, quantum dot]
+  - [1, iron plate]
+  out:
+  - [1, victrola]
+
+- in:
+  - [1, iron plate]
+  out:
+  - [4, key]
+
+- in:
+  - [1, board]
+  - [16, key]
+  out:
+  - [1, keyboard]
+
+- in:
+  - [1, branch predictor]
+  - [1, grabber]
+  - [1, toolkit]
+  out:
+  - [1, halting oracle]
