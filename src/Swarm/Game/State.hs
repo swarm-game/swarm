@@ -153,7 +153,7 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
-import Swarm.Game.CESK (CESK (Waiting), TickNumber (..), emptyStore, finalValue, initMachine, addTo)
+import Swarm.Game.CESK (CESK (Waiting), TickNumber (..), addTo, emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Recipe (

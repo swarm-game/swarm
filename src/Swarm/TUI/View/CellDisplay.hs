@@ -7,7 +7,6 @@
 module Swarm.TUI.View.CellDisplay where
 
 import Brick
-import Swarm.Game.CESK (TickNumber (..))
 import Control.Lens (to, view, (&), (.~), (^.))
 import Data.ByteString (ByteString)
 import Data.Hash.Murmur
@@ -18,6 +17,7 @@ import Data.Semigroup (sconcat)
 import Data.Tagged (unTagged)
 import Data.Word (Word32)
 import Linear.Affine ((.-.))
+import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Display
 import Swarm.Game.Entity
 import Swarm.Game.Robot

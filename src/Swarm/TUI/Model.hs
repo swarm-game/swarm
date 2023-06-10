@@ -116,7 +116,6 @@ module Swarm.TUI.Model (
   initRuntimeState,
 ) where
 
-import Swarm.Game.CESK (TickNumber (..))
 import Brick
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
@@ -134,6 +133,7 @@ import GitHash (GitInfo)
 import Graphics.Vty (ColorMode (..))
 import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
+import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Entity as E
 import Swarm.Game.Failure
 import Swarm.Game.Failure.Render
