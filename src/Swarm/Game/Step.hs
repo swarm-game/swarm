@@ -584,10 +584,11 @@ tickRobot r = do
 --   runs it for one step, then calls itself recursively to continue
 --   stepping the robot.
 tickRobotRec :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
-tickRobotRec r
-  | isActive r && (r ^. runningAtomic || r ^. tickSteps > 0) =
-      stepRobot r >>= tickRobotRec
-  | otherwise = return r
+tickRobotRec r = do
+  time <- use ticks
+  case wantsToStep time r && (r ^. runningAtomic || r ^. tickSteps > 0) of
+    True -> stepRobot r >>= tickRobotRec
+    False -> return r
 
 -- | Single-step a robot by decrementing its 'tickSteps' counter and
 --   running its CESK machine for one step.
