@@ -78,7 +78,8 @@ module Swarm.Game.CESK (
 
   -- ** Extracting information
   finalValue,
-  TickNumber,
+  TickNumber (..),
+  addTo,
 ) where
 
 import Control.Lens ((^.))
@@ -100,7 +101,14 @@ import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.Language.Value as V
 
-type TickNumber = Integer
+newtype TickNumber = TickNumber {asInteger :: Integer}
+  deriving (Eq, Ord, Show, Read, Generic, FromJSON, ToJSON)
+
+addTo :: Integer -> TickNumber -> TickNumber
+addTo i (TickNumber n) = TickNumber $ n + i
+
+instance Pretty TickNumber where
+  pretty (TickNumber i) = pretty i
 
 ------------------------------------------------------------
 -- Frames and continuations
