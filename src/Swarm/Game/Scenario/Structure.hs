@@ -43,8 +43,7 @@ instance FromJSONE (EntityMap, RobotMap) (NamedStructure (Maybe (PCell Entity)))
 type MaskedArea c = [[Maybe c]]
 
 data PStructure c = Structure
-  { 
-    -- area :: MaskedArea c
+  { -- area :: MaskedArea c
     area :: [[c]]
   , structures :: [NamedStructure c]
   -- ^ structure definitions from parents shall be accessible by children
@@ -159,11 +158,12 @@ instance FromJSON Placement where
 paintMap :: MonadFail m => Maybe Char -> WorldPalette e -> Text -> m [[Maybe (PCell e)]]
 paintMap maskChar pal = readMap toCell
  where
-  toCell c = if Just c == maskChar
-    then return Nothing
-    else case KeyMap.lookup (Key.fromString [c]) (unPalette pal) of
-      Nothing -> fail $ "Char not in world palette: " ++ show c
-      Just cell -> return $ Just cell
+  toCell c =
+    if Just c == maskChar
+      then return Nothing
+      else case KeyMap.lookup (Key.fromString [c]) (unPalette pal) of
+        Nothing -> fail $ "Char not in world palette: " ++ show c
+        Just cell -> return $ Just cell
 
 readMap :: Applicative f => (Char -> f b) -> Text -> f [[b]]
 readMap func = traverse (traverse func . into @String) . T.lines
