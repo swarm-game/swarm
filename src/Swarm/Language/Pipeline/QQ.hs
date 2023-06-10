@@ -9,6 +9,7 @@ import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
 import Swarm.Language.Parse
 import Swarm.Language.Pipeline
+import Swarm.Language.Pretty
 import Swarm.Language.Syntax
 import Swarm.Language.Types (Polytype)
 import Swarm.Util (failT, liftText)
@@ -41,7 +42,7 @@ quoteTermExp s = do
         )
   parsed <- runParserTH pos parseTerm s
   case processParsedTerm parsed of
-    Left err -> failT [prettyTypeErr (from s) err]
+    Left err -> failT [prettyTypeErrText (from s) err]
     Right ptm -> dataToExpQ ((fmap liftText . cast) `extQ` antiTermExp) ptm
 
 antiTermExp :: Term' Polytype -> Maybe TH.ExpQ

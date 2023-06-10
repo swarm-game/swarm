@@ -1,6 +1,7 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- For 'Ord IntVar' instance
@@ -17,16 +18,26 @@ module Swarm.Language.Typecheck (
   TypeErr (..),
   InvalidAtomicReason (..),
 
-  -- * Inference monad
+  -- * Type provenance
+  Source (..),
+  Join,
+  getJoin,
+
+  -- * Typechecking stack
+  TCFrame (..),
+  LocatedTCFrame (..),
+  TCStack,
+  withFrame,
+  getTCStack,
+
+  -- * Typechecking monad
   TC,
   runTC,
-  lookup,
   fresh,
 
   -- * Unification
   substU,
-  expect,
-  (=:=),
+  unify,
   HasBindings (..),
   instantiate,
   skolemize,
@@ -38,8 +49,6 @@ module Swarm.Language.Typecheck (
   infer,
   inferConst,
   check,
-  decomposeCmdTy,
-  decomposeFunTy,
   isSimpleUType,
 ) where
 
@@ -49,7 +58,7 @@ import Control.Lens ((^.))
 import Control.Lens.Indexed (itraverse)
 import Control.Monad.Except
 import Control.Monad.Reader
-import Control.Unification hiding (applyBindings, (=:=))
+import Control.Unification hiding (applyBindings, unify, (=:=))
 import Control.Unification qualified as U
 import Control.Unification.IntVar
 import Data.Data (Data, gmapM)
@@ -72,13 +81,81 @@ import Swarm.Language.Types
 import Prelude hiding (lookup)
 
 ------------------------------------------------------------
+-- Typechecking stack
+
+-- | A frame to keep track of something we were in the middle of doing
+--   during typechecking.
+data TCFrame where
+  -- | Checking a definition.
+  TCDef :: Var -> TCFrame
+  -- | Inferring the LHS of a bind.
+  TCBindL :: TCFrame
+  -- | Inferring the RHS of a bind.
+  TCBindR :: TCFrame
+  deriving (Show)
+
+-- | A typechecking stack frame together with the relevant @SrcLoc@.
+data LocatedTCFrame = LocatedTCFrame SrcLoc TCFrame
+  deriving (Show)
+
+-- | A typechecking stack keeps track of what we are currently in the
+--   middle of doing during typechecking.
+type TCStack = [LocatedTCFrame]
+
+------------------------------------------------------------
+-- Type source
+
+-- | The source of a type during typechecking.
+data Source
+  = -- | An expected type that was "pushed down" from the context.
+    Expected
+  | -- | An actual/inferred type that was "pulled up" from a term.
+    Actual
+  deriving (Show, Eq, Ord, Bounded, Enum)
+
+-- | A value along with its source (expected vs actual).
+type Sourced a = (Source, a)
+
+-- | A "join" where an expected thing meets an actual thing.
+newtype Join a = Join (Source -> a)
+
+instance (Show a) => Show (Join a) where
+  show (getJoin -> (e, a)) = "(expected: " <> show e <> ", actual: " <> show a <> ")"
+
+type TypeJoin = Join UType
+
+-- | Create a 'Join' from an expected thing and an actual thing (in that order).
+joined :: a -> a -> Join a
+joined expect actual = Join (\case Expected -> expect; Actual -> actual)
+
+-- | Create a 'Join' from a 'Sourced' thing together with another
+--   thing (which is assumed to have the opposite 'Source').
+mkJoin :: Sourced a -> a -> Join a
+mkJoin (src, a1) a2 = Join $ \s -> if s == src then a1 else a2
+
+-- | Convert a 'Join' into a pair of (expected, actual).
+getJoin :: Join a -> (a, a)
+getJoin (Join j) = (j Expected, j Actual)
+
+------------------------------------------------------------
 -- Type checking monad
 
 -- | The concrete monad used for type checking.  'IntBindingT' is a
 --   monad transformer provided by the @unification-fd@ library which
 --   supports various operations such as generating fresh variables
 --   and unifying things.
-type TC = ReaderT UCtx (ExceptT ContextualTypeErr (IntBindingT TypeF Identity))
+type TC = ReaderT UCtx (ReaderT TCStack (ExceptT ContextualTypeErr (IntBindingT TypeF Identity)))
+
+-- | Push a frame on the typechecking stack within a local 'TC'
+--   computation.
+withFrame :: SrcLoc -> TCFrame -> TC a -> TC a
+withFrame l f = mapReaderT (local (LocatedTCFrame l f :))
+
+-- | Get the current typechecking stack.
+getTCStack :: TC TCStack
+getTCStack = lift ask
+
+------------------------------------------------------------
 
 -- | Run a top-level inference computation, returning either a
 --   'TypeErr' or a fully resolved 'TModule'.
@@ -92,6 +169,7 @@ runTC ctx =
                 <*> pure (fromU uctx)
         )
     >>> flip runReaderT (toU ctx)
+    >>> flip runReaderT []
     >>> runExceptT
     >>> evalIntBindingT
     >>> runIdentity
@@ -102,15 +180,19 @@ runTC ctx =
 --   'instantiate'.
 lookup :: SrcLoc -> Var -> TC UType
 lookup loc x = do
-  ctx <- ask
+  ctx <- getCtx
   maybe (throwTypeErr loc $ UnboundVar x) instantiate (Ctx.lookup x ctx)
+
+-- | Get the current type context.
+getCtx :: TC UCtx
+getCtx = ask
 
 -- | Catch any thrown type errors and re-throw them with an added source
 --   location.
 addLocToTypeErr :: SrcLoc -> TC a -> TC a
 addLocToTypeErr l m =
   m `catchError` \case
-    CTE NoLoc te -> throwTypeErr l te
+    CTE NoLoc _ te -> throwTypeErr l te
     te -> throwError te
 
 ------------------------------------------------------------
@@ -128,10 +210,10 @@ class FreeVars a where
 
 -- | We can get the free unification variables of a 'UType'.
 instance FreeVars UType where
-  freeVars ut = fmap S.fromList . lift . lift $ getFreeVars ut
+  freeVars ut = fmap S.fromList . lift . lift . lift $ getFreeVars ut
 
 -- | We can also get the free variables of a polytype.
-instance FreeVars t => FreeVars (Poly t) where
+instance (FreeVars t) => FreeVars (Poly t) where
   freeVars (Forall _ t) = freeVars t
 
 -- | We can get the free variables in any polytype in a context.
@@ -140,7 +222,7 @@ instance FreeVars UCtx where
 
 -- | Generate a fresh unification variable.
 fresh :: TC UType
-fresh = UVar <$> lift (lift freeVar)
+fresh = UVar <$> (lift . lift . lift $ freeVar)
 
 -- | Perform a substitution over a 'UType', substituting for both type
 --   and unification variables.  Note that since 'UType's do not have
@@ -182,25 +264,24 @@ noSkolems l (Forall xs upty) = do
 
 infix 4 =:=
 
--- | @expect t expTy actTy@ expects that term @t@ has type @expTy@,
---   where it actually has type @actTy@.  Ensure those types are the
---   same.
-expect :: Maybe Syntax -> UType -> UType -> TC UType
-expect ms expected actual = case unifyCheck expected actual of
-  Apart -> throwTypeErr NoLoc $ Mismatch ms expected actual
-  Equal -> return expected
-  MightUnify -> lift $ expected U.=:= actual
-
--- | Constrain two types to be equal, first with a quick-and-dirty
---   check to see whether we know for sure they either are or cannot
---   be equal, generating an equality constraint for the unifier as a
---   last resort.
+-- | @unify t expTy actTy@ ensures that the given two types are equal.
+--   If we know the actual term @t@ which is supposed to have these
+--   types, we can use it to generate better error messages.
 --
---   Important: the first given type should be the "expected" type
---   from context, and the second should be the "actual" type (in any
---   situation when this distinction makes sense).
+--   We first do a quick-and-dirty check to see whether we know for
+--   sure the types either are or cannot be equal, generating an
+--   equality constraint for the unifier as a last resort.
+unify :: Maybe Syntax -> TypeJoin -> TC UType
+unify ms j = case unifyCheck expected actual of
+  Apart -> throwTypeErr NoLoc $ Mismatch ms j
+  Equal -> return expected
+  MightUnify -> lift . lift $ expected U.=:= actual
+ where
+  (expected, actual) = getJoin j
+
+-- | Ensure two types are the same.
 (=:=) :: UType -> UType -> TC UType
-(=:=) = expect Nothing
+ty1 =:= ty2 = unify Nothing (joined ty1 ty2)
 
 -- | @unification-fd@ provides a function 'U.applyBindings' which
 --   fully substitutes for any bound unification variables (for
@@ -212,7 +293,7 @@ class HasBindings u where
   applyBindings :: u -> TC u
 
 instance HasBindings UType where
-  applyBindings = lift . U.applyBindings
+  applyBindings = lift . lift . U.applyBindings
 
 instance HasBindings UPolytype where
   applyBindings (Forall xs u) = Forall xs <$> applyBindings u
@@ -261,7 +342,7 @@ skolemize (Forall xs uty) = do
 generalize :: UType -> TC UPolytype
 generalize uty = do
   uty' <- applyBindings uty
-  ctx <- ask
+  ctx <- getCtx
   tmfvs <- freeVars uty'
   ctxfvs <- freeVars ctx
   let fvs = S.toList $ tmfvs \\ ctxfvs
@@ -279,24 +360,23 @@ generalize uty = do
 -- Type errors
 
 -- | A type error along with various contextual information to help us
---   generate better error messages.  For now there is only a SrcLoc
---   but there will be additional context in the future, such as a
---   stack of stuff we were in the middle of doing, relevant names in
---   scope, etc. (#1297).
-data ContextualTypeErr = CTE {cteSrcLoc :: SrcLoc, cteTypeErr :: TypeErr}
+--   generate better error messages.
+data ContextualTypeErr = CTE {cteSrcLoc :: SrcLoc, cteStack :: TCStack, cteTypeErr :: TypeErr}
   deriving (Show)
 
 -- | Create a raw 'ContextualTypeErr' with no context information.
 mkRawTypeErr :: TypeErr -> ContextualTypeErr
-mkRawTypeErr = CTE NoLoc
+mkRawTypeErr = CTE NoLoc []
 
 -- | Create a 'ContextualTypeErr' value from a 'TypeErr' and context.
-mkTypeErr :: SrcLoc -> TypeErr -> ContextualTypeErr
+mkTypeErr :: SrcLoc -> TCStack -> TypeErr -> ContextualTypeErr
 mkTypeErr = CTE
 
 -- | Throw a 'ContextualTypeErr'.
 throwTypeErr :: SrcLoc -> TypeErr -> TC a
-throwTypeErr l te = throwError (mkTypeErr l te)
+throwTypeErr l te = do
+  stk <- getTCStack
+  throwError $ mkTypeErr l stk te
 
 -- | Errors that can occur during type checking.  The idea is that
 --   each error carries information that can be used to help explain
@@ -315,13 +395,13 @@ data TypeErr
   | -- | Type mismatch caught by 'unifyCheck'.  The given term was
     --   expected to have a certain type, but has a different type
     --   instead.
-    Mismatch (Maybe Syntax) UType UType -- expected, actual
+    Mismatch (Maybe Syntax) TypeJoin
   | -- | Lambda argument type mismatch.
-    LambdaArgMismatch UType UType -- expected, actual
+    LambdaArgMismatch TypeJoin
   | -- | Record field mismatch, i.e. based on the expected type we
     --   were expecting a record with certain fields, but found one with
     --   a different field set.
-    FieldsMismatch (Set Var) (Set Var) -- expected fields, actual
+    FieldsMismatch (Join (Set Var))
   | -- | A definition was encountered not at the top level.
     DefNotTopLevel Term
   | -- | A term was encountered which we cannot infer the type of.
@@ -357,38 +437,46 @@ instance Fallible TypeF IntVar ContextualTypeErr where
 ------------------------------------------------------------
 -- Type decomposition
 
--- | Decompose a type that is supposed to be a delay type.
-decomposeDelayTy :: UType -> TC UType
-decomposeDelayTy (UTyDelay a) = return a
-decomposeDelayTy ty = do
+-- | Decompose a type that is supposed to be a delay type.  Also take
+--   the term which is supposed to have that type, for use in error
+--   messages.
+decomposeDelayTy :: Syntax -> Sourced UType -> TC UType
+decomposeDelayTy _ (_, UTyDelay a) = return a
+decomposeDelayTy t ty = do
   a <- fresh
-  _ <- UTyDelay a =:= ty
+  _ <- unify (Just t) (mkJoin ty (UTyDelay a))
   return a
 
--- | Decompose a type that is supposed to be a command type.
-decomposeCmdTy :: UType -> TC UType
-decomposeCmdTy (UTyCmd a) = return a
-decomposeCmdTy ty = do
+-- | Decompose a type that is supposed to be a command type. Also take
+--   the term which is supposed to have that type, for use in error
+--   messages.
+decomposeCmdTy :: Syntax -> Sourced UType -> TC UType
+decomposeCmdTy _ (_, UTyCmd a) = return a
+decomposeCmdTy t ty = do
   a <- fresh
-  _ <- UTyCmd a =:= ty
+  _ <- unify (Just t) (mkJoin ty (UTyCmd a))
   return a
 
--- | Decompose a type that is supposed to be a function type.
-decomposeFunTy :: UType -> TC (UType, UType)
-decomposeFunTy (UTyFun ty1 ty2) = return (ty1, ty2)
-decomposeFunTy ty = do
+-- | Decompose a type that is supposed to be a function type. Also take
+--   the term which is supposed to have that type, for use in error
+--   messages.
+decomposeFunTy :: Syntax -> Sourced UType -> TC (UType, UType)
+decomposeFunTy _ (_, UTyFun ty1 ty2) = return (ty1, ty2)
+decomposeFunTy t ty = do
   ty1 <- fresh
   ty2 <- fresh
-  _ <- UTyFun ty1 ty2 =:= ty
+  _ <- unify (Just t) (mkJoin ty (UTyFun ty1 ty2))
   return (ty1, ty2)
 
--- | Decompose a type that is supposed to be a product type.
-decomposeProdTy :: UType -> TC (UType, UType)
-decomposeProdTy (UTyProd ty1 ty2) = return (ty1, ty2)
-decomposeProdTy ty = do
+-- | Decompose a type that is supposed to be a product type. Also take
+--   the term which is supposed to have that type, for use in error
+--   messages.
+decomposeProdTy :: Syntax -> Sourced UType -> TC (UType, UType)
+decomposeProdTy _ (_, UTyProd ty1 ty2) = return (ty1, ty2)
+decomposeProdTy t ty = do
   ty1 <- fresh
   ty2 <- fresh
-  _ <- UTyProd ty1 ty2 =:= ty
+  _ <- unify (Just t) (mkJoin ty (UTyProd ty1 ty2))
   return (ty1, ty2)
 
 ------------------------------------------------------------
@@ -408,16 +496,16 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
   -- variable for the body, infer the body under an extended context,
   -- and unify the two.  Then generalize the type and return an
   -- appropriate context.
-  SDef r x Nothing t1 -> do
+  SDef r x Nothing t1 -> withFrame l (TCDef (lvVar x)) $ do
     xTy <- fresh
     t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
-    _ <- xTy =:= t1' ^. sType
+    _ <- unify (Just t1) (joined xTy (t1' ^. sType))
     pty <- generalize (t1' ^. sType)
     return $ Module (Syntax' l (SDef r x Nothing t1') (UTyCmd UTyUnit)) (singleton (lvVar x) pty)
 
   -- If a (poly)type signature has been provided, skolemize it and
   -- check the definition.
-  SDef r x (Just pty) t1 -> do
+  SDef r x (Just pty) t1 -> withFrame l (TCDef (lvVar x)) $ do
     let upty = toU pty
     uty <- skolemize upty
     t1' <- withBinding (lvVar x) upty $ check t1 uty
@@ -428,8 +516,8 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
   -- correct context when checking the right-hand side in particular.
   SBind mx c1 c2 -> do
     -- First, infer the left side.
-    Module c1' ctx1 <- inferModule c1
-    a <- decomposeCmdTy (c1' ^. sType)
+    Module c1' ctx1 <- withFrame l TCBindL $ inferModule c1
+    a <- decomposeCmdTy c1 (Actual, c1' ^. sType)
 
     -- Now infer the right side under an extended context: things in
     -- scope on the right-hand side include both any definitions
@@ -440,13 +528,13 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
     -- that binding /after/ (i.e. /within/) the application of @ctx1@.
     withBindings ctx1 $
       maybe id ((`withBinding` Forall [] a) . lvVar) mx $ do
-        Module c2' ctx2 <- inferModule c2
+        Module c2' ctx2 <- withFrame l TCBindR $ inferModule c2
 
         -- We don't actually need the result type since we're just
         -- going to return the entire type, but it's important to
         -- ensure it's a command type anyway.  Otherwise something
         -- like 'move; 3' would be accepted with type int.
-        _ <- decomposeCmdTy (c2' ^. sType)
+        _ <- decomposeCmdTy c2 (Actual, c2' ^. sType)
 
         -- Ctx.union is right-biased, so ctx1 `union` ctx2 means later
         -- definitions will shadow previous ones.  Include the binder
@@ -527,19 +615,38 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
   SApp f x -> do
     -- Infer the type of the left-hand side and make sure it has a function type.
     f' <- infer f
-    (argTy, resTy) <- decomposeFunTy (f' ^. sType)
+    (argTy, resTy) <- decomposeFunTy f (Actual, f' ^. sType)
 
     -- Then check that the argument has the right type.
     x' <- check x argTy
-    return $ Syntax' l (SApp f' x') resTy
+
+    -- Call applyBindings explicitly, so that anything we learned
+    -- about unification variables while checking the type of the
+    -- argument can flow to later steps.  This is especially helpful
+    -- while checking applications of polymorphic multi-argument
+    -- functions such as 'if'.  Without this call to 'applyBindings',
+    -- type mismatches between the branches of an 'if' tend to get
+    -- caught in the unifier, resulting in vague "can't unify"
+    -- messages (for example, "if true {3} {move}" yields "can't
+    -- unify int and cmd unit").  With this 'applyBindings' call, we
+    -- get more specific errors about how the second branch was
+    -- expected to have the same type as the first (e.g. "expected
+    -- `move` to have type `int`, but it actually has type `cmd
+    -- unit`).
+    resTy' <- applyBindings resTy
+
+    return $ Syntax' l (SApp f' x') resTy'
 
   -- We handle binds in inference mode for a similar reason to
   -- application.
   SBind mx c1 c2 -> do
-    c1' <- infer c1
-    a <- decomposeCmdTy (c1' ^. sType)
-    c2' <- maybe id ((`withBinding` Forall [] a) . lvVar) mx $ infer c2
-    _ <- decomposeCmdTy (c2' ^. sType)
+    c1' <- withFrame l TCBindL $ infer c1
+    a <- decomposeCmdTy c1 (Actual, c1' ^. sType)
+    c2' <-
+      maybe id ((`withBinding` Forall [] a) . lvVar) mx
+        . withFrame l TCBindR
+        $ infer c2
+    _ <- decomposeCmdTy c2 (Actual, c2' ^. sType)
     return $ Syntax' l (SBind mx c1' c2') (c2' ^. sType)
 
   -- Handle record projection in inference mode.  Knowing the expected
@@ -567,7 +674,7 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
     uty <- skolemize upty
     _ <- check c uty
     -- Make sure no skolem variables have escaped.
-    ask >>= mapM_ (noSkolems l)
+    getCtx >>= mapM_ (noSkolems l)
     -- If check against skolemized polytype is successful,
     -- instantiate polytype with unification variables.
     -- Free variables should be able to unify with anything in
@@ -703,28 +810,28 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
   -- dynamically at runtime when evaluating recursive let or def expressions,
   -- so we don't have to worry about typechecking them here.
   SDelay d s1 -> do
-    ty1 <- decomposeDelayTy expected
+    ty1 <- decomposeDelayTy s (Expected, expected)
     s1' <- check s1 ty1
     return $ Syntax' l (SDelay d s1') (UTyDelay ty1)
 
   -- To check the type of a pair, make sure the expected type is a
   -- product type, and push the two types down into the left and right.
   SPair s1 s2 -> do
-    (ty1, ty2) <- decomposeProdTy expected
+    (ty1, ty2) <- decomposeProdTy s (Expected, expected)
     s1' <- check s1 ty1
     s2' <- check s2 ty2
     return $ Syntax' l (SPair s1' s2') (UTyProd ty1 ty2)
 
   -- To check a lambda, make sure the expected type is a function type.
   SLam x mxTy body -> do
-    (argTy, resTy) <- decomposeFunTy expected
+    (argTy, resTy) <- decomposeFunTy s (Expected, expected)
     case toU mxTy of
       Just xTy -> case unifyCheck argTy xTy of
         -- Generate a special error when the explicit type annotation
         -- on a lambda doesn't match the expected type,
         -- e.g. (\x:int. x + 2) : text -> int, since the usual
         -- "expected/but got" language would probably be confusing.
-        Apart -> throwTypeErr l $ LambdaArgMismatch argTy xTy
+        Apart -> throwTypeErr l $ LambdaArgMismatch (joined argTy xTy)
         -- Otherwise, make sure to unify the annotation with the
         -- expected argument type.
         _ -> void $ argTy =:= xTy
@@ -738,7 +845,7 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
 
   TConst c :$: at
     | c `elem` [Atomic, Instant] -> do
-        argTy <- decomposeCmdTy expected
+        argTy <- decomposeCmdTy s (Expected, expected)
         at' <- check at (UTyCmd argTy)
         atomic' <- infer (Syntax l (TConst c))
         -- It's important that we typecheck the subterm @at@ *before* we
@@ -777,7 +884,7 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
     t2' <- withBinding (lvVar x) upty $ check t2 expected
 
     -- Make sure no skolem variables have escaped.
-    ask >>= mapM_ (noSkolems l)
+    getCtx >>= mapM_ (noSkolems l)
 
     -- Return the annotated let.
     return $ Syntax' l (SLet r x mxTy t1' t2') expected
@@ -800,7 +907,7 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
             actualFields = M.keysSet fields
         when (actualFields /= expectedFields) $
           throwTypeErr l $
-            FieldsMismatch expectedFields actualFields
+            FieldsMismatch (joined expectedFields actualFields)
         m' <- itraverse (\x ms -> check (fromMaybe (STerm (TVar x)) ms) (tyMap ! x)) fields
         return $ Syntax' l (SRcd (Just <$> m')) expected
 
@@ -808,7 +915,7 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
   -- get is what we expected.
   _ -> do
     Syntax' l' t' actual <- infer s
-    Syntax' l' t' <$> expect (Just s) expected actual
+    Syntax' l' t' <$> unify (Just s) (joined expected actual)
 
 -- ~~~~ Note [Checking and inference for record literals]
 --
@@ -908,7 +1015,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   TVar x
     | x `S.member` locals -> return 0
     | otherwise -> do
-        mxTy <- asks $ Ctx.lookup x
+        mxTy <- Ctx.lookup x <$> getCtx
         case mxTy of
           -- If the variable is undefined, return 0 to indicate the
           -- atomic block is valid, because we'd rather have the error
