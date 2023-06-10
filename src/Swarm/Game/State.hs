@@ -719,7 +719,7 @@ unfocus = (\g -> g {_focusedRobotID = -1000}) . modifyViewCenter id
 
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.
-viewingRegion :: GameState -> (Int32, Int32) -> (W.Coords, W.Coords)
+viewingRegion :: GameState -> (Int32, Int32) -> W.BoundsRectangle
 viewingRegion g (w, h) = (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
  where
   Location cx cy = g ^. viewCenter
