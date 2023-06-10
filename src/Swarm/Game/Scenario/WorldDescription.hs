@@ -5,6 +5,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.WorldDescription where
 
+import Data.Maybe (catMaybes)
 import Data.Yaml as Y
 import Swarm.Game.Entity
 import Swarm.Game.Location
@@ -39,7 +40,7 @@ instance FromJSONE (EntityMap, RobotMap) WorldDescription where
     pal <- v ..:? "palette" ..!= WorldPalette mempty
     structureDefs <- v ..:? "structures" ..!= []
     placementDefs <- liftE $ v .:? "placements" .!= []
-    initialArea <- liftE ((v .:? "map" .!= "") >>= Structure.paintMap pal)
+    initialArea <- liftE ((v .:? "map" .!= "") >>= Structure.paintMap Nothing pal)
 
     let struc = Structure.Structure initialArea structureDefs placementDefs
         Structure.MergedStructure mergedArea = Structure.mergeStructures mempty struc
@@ -50,7 +51,7 @@ instance FromJSONE (EntityMap, RobotMap) WorldDescription where
       <*> liftE (v .:? "scrollable" .!= True)
       <*> pure pal
       <*> liftE (v .:? "upperleft" .!= origin)
-      <*> pure mergedArea
+      <*> pure (map catMaybes mergedArea) -- Root-level map has no transparent cells.
 
 ------------------------------------------------------------
 -- World editor
