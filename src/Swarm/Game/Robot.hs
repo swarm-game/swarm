@@ -68,6 +68,7 @@ module Swarm.Game.Robot (
   -- ** Query
   robotKnows,
   isActive,
+  wantsToStep,
   waitingUntil,
   getResult,
 
@@ -516,6 +517,14 @@ instance FromJSONE EntityMap TRobot where
 isActive :: Robot -> Bool
 {-# INLINE isActive #-}
 isActive = isNothing . getResult
+
+-- | "Active" robots include robots that are waiting; 'wantsToStep' is
+--   true if the robot actually wants to take another step right now
+--   (this is a *subset* of active robots).
+wantsToStep :: TickNumber -> Robot -> Bool
+wantsToStep now robot
+  | not (isActive robot) = False
+  | otherwise = maybe True (now >=) (waitingUntil robot)
 
 -- | The time until which the robot is waiting, if any.
 waitingUntil :: Robot -> Maybe TickNumber
