@@ -87,16 +87,16 @@ overlaySingleStructure
     mergeSingleRow inputRow maybeOverlayRow =
       zipWithPad (flip (<|>)) inputRow paddedSingleOverlayRow
      where
-      paddedSingleOverlayRow = maybe [] (applyOffset id colOffset) maybeOverlayRow
+      paddedSingleOverlayRow = maybe [] (applyOffset colOffset) maybeOverlayRow
 
-    paddedOverlayRows = applyOffset (map Just) (negate rowOffset) affineTransformedOverlay
-    applyOffset txform offsetNum = modifyFront . txform
+    paddedOverlayRows = applyOffset (negate rowOffset) . map Just $ affineTransformedOverlay
+    applyOffset offsetNum = modifyFront
      where
-      negatedOffset = fromIntegral offsetNum
+      integralOffset = fromIntegral offsetNum
       modifyFront =
-        if negatedOffset >= 0
-          then (replicate negatedOffset Nothing <>)
-          else drop $ abs negatedOffset
+        if integralOffset >= 0
+          then (replicate integralOffset Nothing <>)
+          else drop $ abs integralOffset
 
 -- | Overlays all of the "child placements" from beginning to end, such that the
 -- latter children supersede the earlier ones.
