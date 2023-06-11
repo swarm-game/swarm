@@ -100,12 +100,12 @@ instance PrettyPrec BaseTy where
 instance PrettyPrec IntVar where
   prettyPrec _ = pretty . mkVarName "u"
 
-data Wildcard = Wildcard
-  deriving (Eq, Ord, Show)
-
 -- | We can use the 'Wildcard' value to replace unification variables
 --   when we don't care about them, e.g. to print out the shape of a
 --   type like @(_ -> _) * _@
+data Wildcard = Wildcard
+  deriving (Eq, Ord, Show)
+
 instance PrettyPrec Wildcard where
   prettyPrec _ _ = "_"
 

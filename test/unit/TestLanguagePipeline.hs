@@ -360,7 +360,7 @@ testLanguagePipeline =
             "definition with wrong result"
             ( process
                 "def m : int -> int -> int = \\x. \\y. {3} end"
-                "1:37: Type mismatch:\n  From context, expected `{3}` to have type `int`,\n  but it is actually a delayed expression"
+                "1:37: Type mismatch:\n  From context, expected `{3}` to have type `int`,\n  but it is actually a delayed expression\n\n  - While checking the definition of m"
             )
         ]
     ]
