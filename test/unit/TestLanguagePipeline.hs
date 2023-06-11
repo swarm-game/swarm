@@ -362,6 +362,18 @@ testLanguagePipeline =
                 "def m : int -> int -> int = \\x. \\y. {3} end"
                 "1:37: Type mismatch:\n  From context, expected `{3}` to have type `int`,\n  but it is actually a delayed expression\n\n  - While checking the definition of m"
             )
+        , testCase
+            "comparing two incompatible functions"
+            ( process
+                "(\\f:int -> text. f 3) (\\x:int. 3)"
+                "1:32: Type mismatch:\n  From context, expected `3` to have type `text`,\n  but it actually has type `int`\n"
+            )
+        , testCase
+            "comparing two incompatible functions 2"
+            ( process
+                "(\\f:int -> text. f 3) (\\x:int. \\y:int. \"hi\")"
+                "1:32: Type mismatch:\n  From context, expected `\\y:int. \"hi\"` to have type `text`,\n  but it is actually a function\n"
+            )
         ]
     ]
  where
