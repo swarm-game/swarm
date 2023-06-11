@@ -374,6 +374,12 @@ testLanguagePipeline =
                 "(\\f:int -> text. f 3) (\\x:int. \\y:int. \"hi\")"
                 "1:32: Type mismatch:\n  From context, expected `\\y:int. \"hi\"` to have type `text`,\n  but it is actually a function\n"
             )
+        , testCase
+            "unify two-argument function and int"
+            ( process
+                "1 + (\\x. \\y. 3)"
+                "1:5: Type mismatch:\n  From context, expected `\\x. \\y. 3` to have type `int`,\n  but it is actually a function\n"
+            )
         ]
     ]
  where
