@@ -45,6 +45,7 @@ data PStructure c = Structure
   , structures :: [NamedStructure c]
   -- ^ structure definitions from parents shall be accessible by children
   , placements :: [Placement]
+  -- ^ earlier placements will be overlaid on top of later placements in the YAML file
   }
   deriving (Eq, Show)
 
@@ -98,8 +99,8 @@ overlaySingleStructure
           then (replicate integralOffset Nothing <>)
           else drop $ abs integralOffset
 
--- | Overlays all of the "child placements" from beginning to end, such that the
--- latter children supersede the earlier ones.
+-- | Overlays all of the "child placements", such that the
+-- earlier children supersede the later ones (due to use of "foldr" instead of "foldl").
 mergeStructures :: M.Map StructureName (PStructure (Maybe a)) -> PStructure (Maybe a) -> MergedStructure (Maybe a)
 mergeStructures inheritedStrucDefs (Structure origArea subStructures subPlacements) =
   foldr (overlaySingleStructure structureMap) (MergedStructure origArea) overlays
