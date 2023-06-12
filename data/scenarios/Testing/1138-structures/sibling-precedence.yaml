@@ -1,0 +1,89 @@
+version: 1
+name: Structure placement (sibling precedence)
+description: |
+  Define a structure and place it in the map.
+robots:
+  - name: base
+    loc: [11, 0]
+    dir: [1, 0]
+known: [water, sand]
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+  upperleft: [-1, 1]
+  structures:
+    - name: huge rectangle
+      structure:
+        palette:
+          'x': [blank, water]
+        map: |
+          xxxxxxxxxx
+          xxxxxxxxxx
+          xxxxxxxxxx
+          xxxxxxxxxx
+          xxxxxxxxxx
+          xxxxxxxxxx
+          xxxxxxxxxx
+          xxxxxxxxxx
+          xxxxxxxxxx
+          xxxxxxxxxx
+    - name: big rectangle
+      structure:
+        palette:
+          'x': [blank, sand]
+        map: |
+          xxxxxxxx
+          xxxxxxxx
+          xxxxxxxx
+          xxxxxxxx
+          xxxxxxxx
+          xxxxxxxx
+          xxxxxxxx
+          xxxxxxxx
+    - name: medium rectangle
+      structure:
+        palette:
+          'x': [dirt]
+        map: |
+          xxxxxx
+          xxxxxx
+          xxxxxx
+          xxxxxx
+          xxxxxx
+          xxxxxx
+    - name: small rectangle
+      structure:
+        palette:
+          'x': [ice]
+        map: |
+          xxxx
+          xxxx
+          xxxx
+          xxxx
+    - name: tiny rectangle
+      structure:
+        palette:
+          'x': [stone]
+        map: |
+          xx
+          xx
+  placements:
+    - src: tiny rectangle
+    - src: small rectangle
+    - src: medium rectangle
+    - src: big rectangle
+    - src: huge rectangle
+  map: |
+    ............
+    ............
+    ............
+    ............
+    ............
+    ............
+    ............
+    ............
+    ............
+    ............
+    ............
+    ............
