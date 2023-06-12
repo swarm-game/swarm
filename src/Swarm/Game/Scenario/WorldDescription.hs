@@ -5,19 +5,16 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.WorldDescription where
 
-import Data.Aeson.Key qualified as Key
-import Data.Aeson.KeyMap qualified as KeyMap
-import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Maybe (catMaybes)
 import Data.Yaml as Y
 import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Cell
 import Swarm.Game.Scenario.EntityFacade
 import Swarm.Game.Scenario.RobotLookup
+import Swarm.Game.Scenario.Structure qualified as Structure
 import Swarm.Game.Scenario.WorldPalette
 import Swarm.Util.Yaml
-import Witch (into)
 
 ------------------------------------------------------------
 -- World description
@@ -41,24 +38,20 @@ type WorldDescription = PWorldDescription Entity
 instance FromJSONE (EntityMap, RobotMap) WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
     pal <- v ..:? "palette" ..!= WorldPalette mempty
+    structureDefs <- v ..:? "structures" ..!= []
+    placementDefs <- liftE $ v .:? "placements" .!= []
+    initialArea <- liftE ((v .:? "map" .!= "") >>= Structure.paintMap Nothing pal)
+
+    let struc = Structure.Structure initialArea structureDefs placementDefs
+        Structure.MergedStructure mergedArea = Structure.mergeStructures mempty struc
+
     WorldDescription
       <$> v ..:? "default"
       <*> liftE (v .:? "offset" .!= False)
       <*> liftE (v .:? "scrollable" .!= True)
       <*> pure pal
       <*> liftE (v .:? "upperleft" .!= origin)
-      <*> liftE ((v .:? "map" .!= "") >>= paintMap pal)
-
--- | "Paint" a world map using a 'WorldPalette', turning it from a raw
---   string into a nested list of 'Cell' values by looking up each
---   character in the palette, failing if any character in the raw map
---   is not contained in the palette.
-paintMap :: MonadFail m => WorldPalette e -> Text -> m [[PCell e]]
-paintMap pal = traverse (traverse toCell . into @String) . T.lines
- where
-  toCell c = case KeyMap.lookup (Key.fromString [c]) (unPalette pal) of
-    Nothing -> fail $ "Char not in world palette: " ++ show c
-    Just cell -> return cell
+      <*> pure (map catMaybes mergedArea) -- Root-level map has no transparent cells.
 
 ------------------------------------------------------------
 -- World editor
