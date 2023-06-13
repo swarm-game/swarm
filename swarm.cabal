@@ -129,6 +129,7 @@ library
                       Swarm.Game.Terrain
                       Swarm.Game.Value
                       Swarm.Game.World
+                      Swarm.Game.World.DSL
                       Swarm.Game.WorldGen
                       Swarm.Language.Capability
                       Swarm.Language.Context
