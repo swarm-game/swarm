@@ -6,3 +6,4 @@ Challenges
 Fun
 Speedruns
 Testing
+Vignettes
