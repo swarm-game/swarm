@@ -10,8 +10,8 @@
 -- mutable /entity/ layer, with at most one entity per cell.
 --
 -- A world is technically finite but practically infinite (worlds are
--- indexed by 64-bit signed integers, so they correspond to a
--- \( 2^{64} \times 2^{64} \) torus).
+-- indexed by 32-bit signed integers, so they correspond to a
+-- \( 2^{32} \times 2^{32} \) torus).
 module Swarm.Game.World (
   -- * World coordinates
   Coords (..),
