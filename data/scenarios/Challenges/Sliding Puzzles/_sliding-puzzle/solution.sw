@@ -2,6 +2,12 @@
 Approach:
 Place correct tiles in top row and left column,
 then recurse into sub-rectangle.
+
+NOTE: Much of this code is experimental and unused.
+It may be revisited.
+
+In particular, the Quad-tree search code should probably
+be extracted into its own demo scenario.
 */
 
 def elif = \t. \then. \else. {if t then else} end
@@ -33,6 +39,8 @@ def getOrdinal : text -> cmd int = \item.
     count $ item ++ "-ordinal";
     end;
 
+/** One-based index
+*/
 def getLetterEntityByIndex = \idx.
     let letter = toChar $ idx - 1 + charAt 0 "a" in
     letter ++ "-tile";
@@ -90,9 +98,9 @@ Coordinates are relative to the upper-left
 corner of the board (which happens to be at (0,0) world coords),
 with down being the negative Y direction.
 */
-def getAbsoluteTargetLocationForIndex = \n.
+def getAbsoluteTargetLocationForIndex = \boardWidth. \n.
     let idx = n - 1 in
-    (idx/4, -(mod idx 4));
+    (idx/boardWidth, -(mod idx boardWidth));
     end;
 
 /**
@@ -117,6 +125,13 @@ def getAbsDelta = \rect.
 def distance = \loc1. \loc2.
     let d = getAbsDelta (loc1, loc2) in
     fst d + snd d;
+    end;
+
+// NOT USED
+def selectCloser = \refloc. \loc1. \loc2.
+    let d1 = distance refloc loc1 in
+    let d2 = distance refloc loc2 in
+    if (d1 < d2) {loc1} {loc2}
     end;
 
 /**
@@ -176,8 +191,6 @@ def blankCellLocatorCriteria = \rect.
     entCount <- density rect;
     let dims = getDimensions rect in
     let tileCount = getRectArea dims in
-    // log $ "Ent count: " ++ format entCount;
-    // log $ "Tile count: " ++ format tileCount;
     return $ entCount < tileCount;
     end;
 
@@ -206,32 +219,14 @@ def findEmptyCell = \foundCriteria. \rect.
         };
     } $ else {
         let isBiggerVertically = isVerticalLarger dims in
-        // if isBiggerVertically {
-        //     log "Splitting vertically";
-        // } {
-        //     log "Splitting horizontally";
-        // };
         let splitted = splitRectangle isBiggerVertically rect in
-        // log $ "Splitted: " ++ format splitted;
         let firstPartition = fst splitted in
         let secondPartition = snd splitted in
 
         foundInFirst <- foundCriteria firstPartition;
-        // if foundInFirst {
-        //     log "Checking in first partition."
-        // } {
-        //     log "Checking in second partition."
-        // };
         let selectedPartition = if foundInFirst {firstPartition} {secondPartition} in
         findEmptyCell foundCriteria selectedPartition;
     };
-    end;
-
-// NOT USED
-def selectCloser = \refloc. \loc1. \loc2.
-    let d1 = distance refloc loc1 in
-    let d2 = distance refloc loc2 in
-    if (d1 < d2) {loc1} {loc2}
     end;
 
 /**
@@ -250,7 +245,6 @@ def avoidCollinear = \blankloc. \tileloc. \loc1. \loc2.
         } $ else {true} in
     if firstOk {loc1} {loc2};
     end;
-
 
 /**
 Move the blank to the cell that allows
@@ -282,8 +276,6 @@ def moveSpaceToTile = \blankLoc. \targetRelativeLoc. \letterloc.
     log $ "Incremental destination 1: " ++ format incrementalBlankDest1;
 
     moveTuple incrementalBlankDest1;
-    drill down;
-    return ();
     end;
 
 /**
@@ -291,7 +283,7 @@ Algorithm:
 1. Bring the empty space into the rotational path of the letter.
 2. Rotate the tile along the perimeter of the bounding rectangle.
 */
-def placeTile = \idx. \blankLoc.
+def placeTile = \boardWidth. \idx. \blankLoc.
 
     // TODO: Bring the empty space into the smallest
     // rectangle bounding both the letter and its
@@ -301,20 +293,129 @@ def placeTile = \idx. \blankLoc.
 
     eitherLetterloc <- getLetterLocation idx;
 
-    let targetLocAbsolute = getAbsoluteTargetLocationForIndex idx in
+    let targetLocAbsolute = getAbsoluteTargetLocationForIndex boardWidth idx in
     log $ "absolute target loc: " ++ format targetLocAbsolute;
     targetRelativeLoc <- getRelativeLocation targetLocAbsolute;
 
-    case eitherLetterloc return $ moveSpaceToTile blankLoc targetRelativeLoc;
+//    case eitherLetterloc return $ moveSpaceToTile blankLoc targetRelativeLoc;
+    moveTuple blankLoc;
     end;
 
-def go =
+def moveManually =
+    turn right;
+    drill forward;
+    move;
+    turn right;
+    drill forward;
+    move;
+    turn right;
+    drill forward;
+    move;
+    turn left;
+    drill forward;
+    move;
+    turn left;
+    drill forward;
+    move;
+    drill forward;
+    move;
+    turn left;
+    drill forward;
+    move;
+    drill forward;
+    move;
+    turn left;
+    drill forward;
+    move;
+    drill forward;
+    move;
+    turn left;
+    drill forward;
+    move;
+    drill forward;
+    move;
+    turn left;
+    drill forward;
+    move;
+    turn left;
+    drill forward;
+    move;
+    turn left;
+    drill forward;
+    move;
+    turn left;
+    drill forward;
+    move;
+    turn left;
+    drill forward;
+    move;
+    drill forward;
+    move;
+    turn left;
+    drill forward;
+
+    move;
+    turn left;
+    drill forward;
+    move;
+    drill forward;
+    move;
+    turn right;
+    drill forward;
+    move;
+    turn right;
+    drill forward;
+    move;
+    drill forward;
+    move;
+    turn right;
+    drill forward;
+    move;
+    turn right;
+    drill forward;
+    move;
+    drill forward;
+    move;
+    turn right;
+    drill forward;
+    move;
+    turn right;
+    drill forward;
+    move;
+    turn right;
+    drill forward;
+    move;
+    turn right;
+    drill forward;
+    move;
+    turn right;
+    drill forward;
+    move;
+    turn right;
+    drill forward;
+    move;
+    drill forward;
+    move;
+    turn right;
+    drill forward;
+    move;
+    turn right;
+    drill forward;
+    move;
+    drill forward;
+    move;
+    turn right;
+    drill forward;
+    end;
+
+def go = \boardWidth.
     corners <- getBoardRectangle;
     eitherBlankLoc <- findEmptyCell blankCellLocatorCriteria corners;
 
-    case eitherBlankLoc return $ placeTile 1;
+    case eitherBlankLoc return $ placeTile boardWidth 1;
 
+    moveManually;
     end;
 
 wait 10;
-go;
+go 3;

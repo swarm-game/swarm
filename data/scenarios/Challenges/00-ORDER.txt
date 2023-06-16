@@ -9,10 +9,10 @@ ice-cream.yaml
 hanoi.yaml
 hackman.yaml
 lights-out.yaml
-sliding-puzzle.yaml
 bucket-brigade.yaml
 wolf-goat-cabbage.yaml
 friend.yaml
 Mazes
 Ranching
 Sokoban
+Sliding Puzzles

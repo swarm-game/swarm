@@ -6,6 +6,8 @@ def id = \t. t end
 def elif = \t. \then. \else. {if t then else} end
 def else = id end
 
+def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+
 def mod : int -> int -> int = \i.\m.
   i - m * (i / m)
 end
@@ -13,6 +15,13 @@ end
 def isEven = \n.
     mod n 2 == 0;
     end
+
+/** One-based index
+*/
+def getLetterEntityByIndex = \idx.
+    let letter = toChar $ idx - 1 + charAt 0 "a" in
+    letter ++ "-tile";
+    end;
 
 def getOrdinal : text -> cmd int = \item.
     count $ item ++ "-ordinal";
@@ -195,8 +204,23 @@ def fixInversions = \arrayLoc. \arrayLength.
     };
     end;
 
+def layOrderedTiles = \n.
+    if (n > 0) {
+        let tileName = getLetterEntityByIndex n in
+        create tileName;
+        place tileName;
+        move;
+        layOrderedTiles $ n - 1;
+    } {};
+    end;
+
 def prepareArray = \arrayLoc. \boardWidth. \boardHeight.
     
+    turn east;
+    teleport self arrayLoc;
+
+    layOrderedTiles $ (boardWidth * boardHeight) - 1;
+
     teleport self arrayLoc;
 
     let cellCount = boardWidth * boardHeight in
@@ -230,7 +254,28 @@ def placeRandomizedPuzzle = \arrayLoc. \boardWidth. \rowIndex.
     } {};
     end;
 
+def drawBorderLine = \boardSideLength.
+    let b = "border" in
+    doN (boardSideLength + 1) $ (
+        create b;
+        place b;
+        move;
+    );
+    turn right;
+    end;
+
+def createBorder = \boardWidth. \boardHeight.
+    teleport self (-1, 1);
+
+    turn east;
+    doN 2 (
+        drawBorderLine boardWidth;
+        drawBorderLine boardHeight;
+    );
+    end;
+
 def setupGame = \boardWidth. \boardHeight.
+    createBorder boardWidth boardHeight;
     let arrayLoc = (0, -6) in
     prepareArray arrayLoc boardWidth boardHeight;
     placeRandomizedPuzzle arrayLoc boardWidth $ boardHeight - 1;
@@ -238,13 +283,12 @@ def setupGame = \boardWidth. \boardHeight.
     teleport self (6, -6);
 
     // Sentinel to indicate we are ready to start checking goal condition
-    create "flower";
+    r <- robotnamed "maintainer";
+    give r "flower";
     end;
 
-def go =
-    let boardWidth = 4 in
-    let boardHeight = 4 in
+def go = \boardWidth. \boardHeight.
     instant $ setupGame boardWidth boardHeight;
     end;
 
-go;
+go 3 3;

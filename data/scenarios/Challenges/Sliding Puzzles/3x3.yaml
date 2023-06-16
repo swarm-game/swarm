@@ -1,8 +1,8 @@
 version: 1
-name: Sliding puzzle
+name: 3x3 Sliding Puzzle
 author: Karl Ostmo
 description: |
-  Place the 15 tiles in order
+  Place the 8 tiles in order
 creative: false
 seed: 0
 attrs:
@@ -28,7 +28,7 @@ objectives:
         succession.
     condition: |
       j <- robotnamed "maintainer";
-      as j {run "scenarios/Challenges/_sliding-puzzle/validate-board.sw"};
+      as j {run "scenarios/Challenges/Sliding Puzzles/_sliding-puzzle/validate-board.sw"};
 robots:
   - name: base
     dir: [1, 0]
@@ -94,8 +94,18 @@ robots:
       - [13, m-tile-ordinal]
       - [14, n-tile-ordinal]
       - [15, o-tile-ordinal]
+      - [16, p-tile-ordinal]
+      - [17, q-tile-ordinal]
+      - [18, r-tile-ordinal]
+      - [19, s-tile-ordinal]
+      - [20, t-tile-ordinal]
+      - [21, u-tile-ordinal]
+      - [22, v-tile-ordinal]
+      - [23, w-tile-ordinal]
+      - [24, x-tile-ordinal]
+      - [25, y-tile-ordinal]
     program: |
-      run "scenarios/Challenges/_sliding-puzzle/maintainer.sw";
+      run "scenarios/Challenges/Sliding Puzzles/_sliding-puzzle/maintainer.sw";
   - name: setup
     system: true
     dir: [1, 0]
@@ -103,6 +113,7 @@ robots:
       invisible: true
       attr: 'iron'
     inventory:
+      - [1, flower]
       - [1, a-tile-ordinal]
       - [2, b-tile-ordinal]
       - [3, c-tile-ordinal]
@@ -118,10 +129,20 @@ robots:
       - [13, m-tile-ordinal]
       - [14, n-tile-ordinal]
       - [15, o-tile-ordinal]
+      - [16, p-tile-ordinal]
+      - [17, q-tile-ordinal]
+      - [18, r-tile-ordinal]
+      - [19, s-tile-ordinal]
+      - [20, t-tile-ordinal]
+      - [21, u-tile-ordinal]
+      - [22, v-tile-ordinal]
+      - [23, w-tile-ordinal]
+      - [24, x-tile-ordinal]
+      - [25, y-tile-ordinal]
     program: |
-      run "scenarios/Challenges/_sliding-puzzle/setup.sw";
+      run "scenarios/Challenges/Sliding Puzzles/_sliding-puzzle/setup.sw";
 solution: |
-   run "scenarios/Challenges/_sliding-puzzle/solution.sw"
+   run "scenarios/Challenges/Sliding Puzzles/_sliding-puzzle/solution.sw"
 entities:
   - name: gradiator
     display:
@@ -268,6 +289,76 @@ entities:
     description:
       - Fifteen
     properties: [known, portable]
+  - name: p-tile
+    display:
+      char: 'p'
+      attr: oddtile
+    description:
+      - Sixteen
+    properties: [known, portable]
+  - name: q-tile
+    display:
+      char: 'q'
+      attr: eventile
+    description:
+      - Seventeen
+    properties: [known, portable]
+  - name: r-tile
+    display:
+      char: 'r'
+      attr: oddtile
+    description:
+      - Eighteen
+    properties: [known, portable]
+  - name: s-tile
+    display:
+      char: 's'
+      attr: oddtile
+    description:
+      - Nineteen
+    properties: [known, portable]
+  - name: t-tile
+    display:
+      char: 't'
+      attr: oddtile
+    description:
+      - Twenty
+    properties: [known, portable]
+  - name: u-tile
+    display:
+      char: 'u'
+      attr: eventile
+    description:
+      - Twenty-one
+    properties: [known, portable]
+  - name: v-tile
+    display:
+      char: 'v'
+      attr: oddtile
+    description:
+      - Twenty-two
+    properties: [known, portable]
+  - name: w-tile
+    display:
+      char: 'w'
+      attr: eventile
+    description:
+      - Twenty-three
+    properties: [known, portable]
+  - name: x-tile
+    display:
+      char: 'x'
+      attr: eventile
+    description:
+      - Twenty-four
+    properties: [known, portable]
+  - name: y-tile
+    display:
+      char: 'y'
+      attr: eventile
+    description:
+      - Twenty-five
+    properties: [known, portable]
   - name: a-tile-ordinal
     display:
       char: 'a'
@@ -357,6 +448,66 @@ entities:
       char: 'o'
     description:
       - Fifteen
+    properties: [known]
+  - name: p-tile-ordinal
+    display:
+      char: 'p'
+    description:
+      - Sixteen
+    properties: [known]
+  - name: q-tile-ordinal
+    display:
+      char: 'q'
+    description:
+      - Seventeen
+    properties: [known]
+  - name: r-tile-ordinal
+    display:
+      char: 'r'
+    description:
+      - Eighteen
+    properties: [known]
+  - name: s-tile-ordinal
+    display:
+      char: 's'
+    description:
+      - Nineteen
+    properties: [known]
+  - name: t-tile-ordinal
+    display:
+      char: 't'
+    description:
+      - Twenty
+    properties: [known]
+  - name: u-tile-ordinal
+    display:
+      char: 'u'
+    description:
+      - Twenty-one
+    properties: [known]
+  - name: v-tile-ordinal
+    display:
+      char: 'v'
+    description:
+      - Twenty-two
+    properties: [known]
+  - name: w-tile-ordinal
+    display:
+      char: 'w'
+    description:
+      - Twenty-three
+    properties: [known]
+  - name: x-tile-ordinal
+    display:
+      char: 'x'
+    description:
+      - Twenty-four
+    properties: [known]
+  - name: y-tile-ordinal
+    display:
+      char: 'y'
+    description:
+      - Twenty-five
     properties: [known]
 recipes:
   - in:
@@ -479,6 +630,86 @@ recipes:
     required:
       - [1, drill]
     time: 0
+  - in:
+      - [1, ink]
+      - [1, p-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, q-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, r-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, s-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, t-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, u-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, v-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, w-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, x-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, y-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
 known: []
 world:
   default: [grass]
@@ -489,22 +720,7 @@ world:
     y: [grass, null, setup]
     z: [grass, null, maintainer]
     '.': [grass]
-    'x': [grass, border]
-    'a': [grass, a-tile]
-    'b': [grass, b-tile]
-    'c': [grass, c-tile]
-    'd': [grass, d-tile]
-    'e': [grass, e-tile]
-    'f': [grass, f-tile]
-    'g': [grass, g-tile]
-    'h': [grass, h-tile]
-    'i': [grass, i-tile]
-    'j': [grass, j-tile]
-    'k': [grass, k-tile]
-    'l': [grass, l-tile]
-    'm': [grass, m-tile]
-    'n': [grass, n-tile]
-    'o': [grass, o-tile]
+    'x': [grass]
   map: |
     ..................
     ..xxxxxx..........
@@ -514,4 +730,4 @@ world:
     ..x....x..........
     ..xxxxxx..........
     ..................
-    zy.abcdefghijklmno
+    zy................

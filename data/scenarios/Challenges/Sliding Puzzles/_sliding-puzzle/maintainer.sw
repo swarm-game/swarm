@@ -2,6 +2,13 @@
 The "maintainer" bot handles legal and illegal moves.
 */
 
+/**
+Sums of consecutive integers
+*/
+def computeTriangularNumber = \n.
+    (n * (n + 1)) / 2
+    end;
+
 def mod : int -> int -> int = \i.\m.
     i - m * (i / m);
     end
@@ -41,16 +48,16 @@ def getValueHere =
     ordNum <- case maybeItem (\_. return 0) getOrdinal;
     end;
 
-def getIndexesTotal = \n.
+def getIndexesTotal = \boardWidth. \boardHeight. \n.
     if (n > 0) {
         let idx = n - 1 in
-        teleport self (idx/4, -(mod idx 4));
+        teleport self (idx/boardHeight, -(mod idx boardWidth));
         valueHere <- getValueHere;
 
         // This reassignment has to happen before the
         // recursive call due to #1032
         let valueHereBlah = valueHere in
-        runningTotal <- getIndexesTotal $ n - 1;
+        runningTotal <- getIndexesTotal boardWidth boardHeight $ n - 1;
         return $ valueHereBlah + runningTotal;
     } {
         return 0;
@@ -62,8 +69,11 @@ If we iterate over all of the tiles, assigning each a contiguous index
 starting with one, we can determine whether a single tile is missing
 by subtrating the observed sum of indices from the expected sum.
 */
-def findMissingIndex = \indicesSum.
-    mySum <- getIndexesTotal 16;
+def findMissingIndex = \boardWidth. \boardHeight.
+    let squareCount = boardWidth * boardHeight in
+    let tileCount = squareCount - 1 in
+    let indicesSum = computeTriangularNumber tileCount in
+    mySum <- getIndexesTotal boardWidth boardHeight squareCount;
     return $ indicesSum - mySum;
     end;
 
@@ -95,7 +105,10 @@ def handleLegalMove = \tileIdx.
     replenishInk;
     end;
 
-def hasAdjacentBlank = \tileIdx.\n.
+/**
+Checks in the four directions.
+*/
+def hasAdjacentBlank = \tileIdx. \n.
     if (n > 0) {
         result <- scan forward;
         case result (\_. handleLegalMove tileIdx; return true;) (\_.
@@ -122,12 +135,12 @@ Preconditions:
 * We have already attempted to move a "sensibly"-marked tile.
 * We are located at the bottom-left corner of the board.
 */
-def handleMarker = \indicesSum.
+def handleMarker = \boardWidth. \boardHeight.
     detectReferenceLoc <- whereami;
-    result <- detect "sliding-tile" ((0, 0), (3, 3));
+    result <- detect "sliding-tile" ((0, 0), (boardWidth - 1, boardHeight - 1));
     case result return (\badLoc.
         teleportToDetectResult detectReferenceLoc badLoc;
-        missingIdx <- atLocation (0, 0) $ findMissingIndex indicesSum;
+        missingIdx <- atLocation (0, 0) $ findMissingIndex boardWidth boardHeight;
         markIsLegal <- isLegalMark missingIdx;
         if markIsLegal {} {
             if (missingIdx > 0) {
@@ -138,15 +151,16 @@ def handleMarker = \indicesSum.
     );
     end;
 
-def go =
-    let indicesSum = 120 in
-    instant $ atLocation (0, -3) $
-        handleMarker indicesSum;
+def go = \boardWidth. \boardHeight.
+
+    // Re-position at the bottom-left corner
+    instant $ atLocation (0, -(boardHeight - 1)) $
+        handleMarker boardWidth boardHeight;
 
     // Throttle the recursion, otherwise it will max out the allowed operations per tick.
     wait 1;
 
-    go;
+    go boardWidth boardHeight;
     end;
 
-go;
+go 3 3;
