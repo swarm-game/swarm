@@ -197,6 +197,7 @@ testScenarioSolution _ci _em =
         , testSolution (Sec 5) "Challenges/hackman"
         , testSolution (Sec 10) "Challenges/hanoi"
         , testSolution (Sec 3) "Challenges/lights-out"
+        , testSolution (Sec 10) "Challenges/Sliding Puzzles/3x3"
         , testSolution Default "Challenges/friend"
         , testGroup
             "Mazes"

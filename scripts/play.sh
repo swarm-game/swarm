@@ -7,4 +7,4 @@ cd $SCRIPT_DIR/..
 # It's been observed in certain versions of GHC that compiling with optimizations
 # results in the swarm UI freezing for a potentially long time upon starting a scenario.
 # See https://github.com/swarm-game/swarm/issues/1000#issuecomment-1378632269
-stack build --fast && stack exec swarm -- $@
+stack build --fast && stack exec swarm -- "$@"

@@ -15,3 +15,4 @@ friend.yaml
 Mazes
 Ranching
 Sokoban
+Sliding Puzzles
