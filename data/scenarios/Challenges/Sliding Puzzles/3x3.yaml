@@ -224,28 +224,28 @@ entities:
   - name: e-tile
     display:
       char: 'e'
-      attr: eventile
+      attr: oddtile
     description:
       - Five
     properties: [known, portable]
   - name: f-tile
     display:
       char: 'f'
-      attr: oddtile
+      attr: eventile
     description:
       - Six
     properties: [known, portable]
   - name: g-tile
     display:
       char: 'g'
-      attr: eventile
+      attr: oddtile
     description:
       - Seven
     properties: [known, portable]
   - name: h-tile
     display:
       char: 'h'
-      attr: oddtile
+      attr: eventile
     description:
       - Eight
     properties: [known, portable]
@@ -280,42 +280,42 @@ entities:
   - name: m-tile
     display:
       char: 'm'
-      attr: eventile
+      attr: oddtile
     description:
       - Thirteen
     properties: [known, portable]
   - name: n-tile
     display:
       char: 'n'
-      attr: oddtile
+      attr: eventile
     description:
       - Fourteen
     properties: [known, portable]
   - name: o-tile
     display:
       char: 'o'
-      attr: eventile
+      attr: oddtile
     description:
       - Fifteen
     properties: [known, portable]
   - name: p-tile
     display:
       char: 'p'
-      attr: oddtile
+      attr: eventile
     description:
       - Sixteen
     properties: [known, portable]
   - name: q-tile
     display:
       char: 'q'
-      attr: eventile
+      attr: oddtile
     description:
       - Seventeen
     properties: [known, portable]
   - name: r-tile
     display:
       char: 'r'
-      attr: oddtile
+      attr: eventile
     description:
       - Eighteen
     properties: [known, portable]
@@ -329,28 +329,28 @@ entities:
   - name: t-tile
     display:
       char: 't'
-      attr: oddtile
+      attr: eventile
     description:
       - Twenty
     properties: [known, portable]
   - name: u-tile
     display:
       char: 'u'
-      attr: eventile
+      attr: oddtile
     description:
       - Twenty-one
     properties: [known, portable]
   - name: v-tile
     display:
       char: 'v'
-      attr: oddtile
+      attr: eventile
     description:
       - Twenty-two
     properties: [known, portable]
   - name: w-tile
     display:
       char: 'w'
-      attr: eventile
+      attr: oddtile
     description:
       - Twenty-three
     properties: [known, portable]
@@ -364,7 +364,7 @@ entities:
   - name: y-tile
     display:
       char: 'y'
-      attr: eventile
+      attr: oddtile
     description:
       - Twenty-five
     properties: [known, portable]
