@@ -2,6 +2,8 @@
 The "maintainer" bot handles legal and illegal moves.
 */
 
+def until = \p. \c. q <- p; if q {} {c; until p c} end;
+
 /**
 Sums of consecutive integers
 */
@@ -27,6 +29,11 @@ def atLocation = \newLoc. \f.
     retval <- f;
     teleport self prevLoc;
     return retval;
+    end;
+
+def itemIsHere = \item.
+    x <- scan down;
+    case x (\_. return false) (\found. return $ found == item);
     end;
 
 def getLetterEntityByIndex = \idx.
@@ -151,16 +158,58 @@ def handleMarker = \boardWidth. \boardHeight.
     );
     end;
 
+/**
+  Recurses over all cells in all rows.
+  Traverses within rows via physical `move`-ment.
+  Wraps to the next row via teleport if a border is encountered.
+  Terminates if still on a border immediately after wrapping.
+
+  Precondition: Facing east at location (0, 0).
+*/
+def iterateAllTiles : cmd unit -> cmd unit = \func.
+    let b = "border" in
+    isOnBottomBorder <- itemIsHere b;
+    if isOnBottomBorder {} {
+
+        func;
+        move;
+
+        isOnRightBorder <- itemIsHere b;
+        if isOnRightBorder {
+            loc <- whereami;
+            teleport self (0, snd loc - 1);
+        } {};
+        iterateAllTiles func;
+    }
+    end;
+
+def watchBoard =
+    turn east;
+    atLocation (0, 0) $ iterateAllTiles $ (
+        // Note: W actually don't need to watch the "empty" space
+        watch down;
+    );
+    wait 1000;
+    end;
+
 def go = \boardWidth. \boardHeight.
 
     // Re-position at the bottom-left corner
-    instant $ atLocation (0, -(boardHeight - 1)) $
+    instant $ atLocation (0, -(boardHeight - 1)) (
         handleMarker boardWidth boardHeight;
 
-    // Throttle the recursion, otherwise it will max out the allowed operations per tick.
+        // NOTE: I originally intended to use 'watch' as a performance optimization.
+        // Hoewver, Using 'watch' seems to incur some lag in the 'maintainer' bot's reaction
+        // such that the player is not replentished with 'ink' by the time they might
+        // want to perform their next 'drill' operation.
+        // watchBoard;
+    );
+
+    // Throttle the recursion, otherwise it will max out the allowed operations per tick
     wait 1;
 
     go boardWidth boardHeight;
     end;
 
+until (has "flower") $ wait 1;
 go 3 3;

@@ -417,5 +417,4 @@ def go = \boardWidth.
     moveManually;
     end;
 
-wait 10;
 go 3;

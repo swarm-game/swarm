@@ -283,6 +283,10 @@ def setupGame = \boardWidth. \boardHeight.
     teleport self (6, -6);
 
     // Sentinel to indicate we are ready to start checking goal condition
+    create "flower";
+
+    // Sentinel that the maintainer can start checking
+    create "flower";
     r <- robotnamed "maintainer";
     give r "flower";
     end;

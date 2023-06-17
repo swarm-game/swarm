@@ -27,7 +27,7 @@ objectives:
         after the sliding operation is complete, so avoid drilling too fast in
         succession.
     condition: |
-      j <- robotnamed "maintainer";
+      j <- robotnamed "setup";
       as j {run "scenarios/Challenges/Sliding Puzzles/_sliding-puzzle/validate-board.sw"};
 robots:
   - name: base
@@ -72,6 +72,16 @@ robots:
       - [13, m-tile-ordinal]
       - [14, n-tile-ordinal]
       - [15, o-tile-ordinal]
+      - [16, p-tile-ordinal]
+      - [17, q-tile-ordinal]
+      - [18, r-tile-ordinal]
+      - [19, s-tile-ordinal]
+      - [20, t-tile-ordinal]
+      - [21, u-tile-ordinal]
+      - [22, v-tile-ordinal]
+      - [23, w-tile-ordinal]
+      - [24, x-tile-ordinal]
+      - [25, y-tile-ordinal]
   - name: maintainer
     system: true
     dir: [1, 0]
@@ -113,7 +123,6 @@ robots:
       invisible: true
       attr: 'iron'
     inventory:
-      - [1, flower]
       - [1, a-tile-ordinal]
       - [2, b-tile-ordinal]
       - [3, c-tile-ordinal]

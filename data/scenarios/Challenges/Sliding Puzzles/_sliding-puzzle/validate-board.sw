@@ -22,10 +22,10 @@ def isMonotonic : int -> cmd (unit + int) = \expectedVal.
         (\_. return $ inR expectedVal) // Cell was blank
         (\entity.
             intVal <- getOrdinal entity;
-            if (intVal == expectedVal) {
-                return $ inR $ expectedVal + 1;
+            return $ if (intVal == expectedVal) {
+                inR $ expectedVal + 1;
             } {
-                return $ inL ();
+                inL ();
             };
         );
     end;
