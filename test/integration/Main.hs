@@ -218,6 +218,10 @@ testScenarioSolution _ci _em =
             , testSolution Default "Challenges/Sokoban/Gadgets/one-way.yaml"
             , testSolution Default "Challenges/Sokoban/Simple/trapdoor.yaml"
             ]
+        , testGroup
+            "Mechanics"
+            [ testSolution Default "Mechanics/active-trapdoor.yaml"
+            ]
         ]
     , testGroup
         "Regression tests"
