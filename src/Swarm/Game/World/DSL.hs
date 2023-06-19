@@ -3,12 +3,17 @@
 --
 -- XXX
 
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Swarm.Game.World.DSL where
 
+import Data.Int
+import Data.Kind (Type)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text (Text)
@@ -85,69 +90,121 @@ testWorld1 =
     ]
 
 ------------------------------------------------------------
--- Type checking
+-- Type checking/elaboration
 
-data BaseTy = BInt | BFloat | BBool | BCell
-  deriving (Eq, Ord, Show, Bounded, Enum)
+-- data BaseTy = BInt | BFloat | BBool | BCell
+--   deriving (Eq, Ord, Show, Bounded, Enum)
 
-data Type = TyBase BaseTy | TyWorld BaseTy | TyPalette BaseTy
-  deriving (Eq, Show)
+-- data WType = TyBase BaseTy | TyWorld BaseTy | TyPalette BaseTy
+--   deriving (Eq, Show)
 
-pattern TyInt = TyBase BInt
-pattern TyFloat = TyBase BFloat
-pattern TyBool = TyBase BBool
-pattern TyCell = TyBase BCell
+-- pattern TyInt = TyBase BInt
+-- pattern TyFloat = TyBase BFloat
+-- pattern TyBool = TyBase BBool
+-- pattern TyCell = TyBase BCell
 
-type Env = Map Var Type
+-- type Env = Map Var Type
 
 data TypeErr
   = UnboundVar Var
   | NotWorld
   | Mismatch
 
-infer :: Env -> WExp -> Either TypeErr Type
-infer _ (WInt _) = return TyInt
-infer _ (WFloat _) = return TyFloat
-infer _ (WBool _) = return TyBool
-infer _ (WCell _) = return TyCell
-infer env (WVar x) = maybe (Left $ UnboundVar x) Right $ M.lookup x env
-infer env (WUn uop e) = inferUOp env uop e
-infer env (WBin bop e1 e2) = inferBOp env bop e1 e2
-infer env (WMask e1 e2) = do
-  check env e1 (TyWorld BBool)
-  t <- inferWorld env e2
-  return t
+data TWIdx :: [Type] -> Type -> Type where
+  Z :: TWIdx (ty ': env) ty
+  S :: TWIdx env ty -> TWIdx (x ': env) ty
 
-inferUOp :: Env -> UOp -> WExp -> Either TypeErr Type
-inferUOp = undefined
+data TWExp :: [Type] -> Type -> Type where
+  TWLit :: TWBase b -> b -> TWExp env b
+  TWVar :: TWIdx env a -> TWExp env a
+  TWOp :: TOp t -> TWExp env t
 
-inferBOp :: Env -> BOp -> WExp -> WExp -> Either TypeErr Type
-inferBOp = undefined
+  TWPromote :: TWExp env t -> TWExp env (World t)
 
-inferWorld :: Env -> WExp -> Either TypeErr Type
-inferWorld env e = do
-  t <- infer env e
-  case t of
-    TyBase b -> return $ TyWorld b
-    TyWorld b -> return $ TyWorld b
-    TyPalette b -> Left NotWorld
+  TWApp :: TWExp env (a -> b) -> TWExp env a -> TWExp env b
+  TWLift1 :: TWExp env (a -> b) -> TWExp env (World a -> World b)
+  TWLift2 :: TWExp env (a -> b -> c) -> TWExp env (World a -> World b -> World c)
 
-check :: Env -> WExp -> Type -> Either TypeErr ()
-check env e ty = do
-  ty' <- infer env e
-  case isSubtype ty' ty of
-    True -> return ()
-    False -> Left Mismatch
+data TOp :: Type -> Type where
+  TWNot :: TOp (Bool -> Bool)
+  TWNeg :: Num a => TOp (a -> a)
+  TWAnd :: TOp (Bool -> Bool -> Bool)
+  TWOr :: TOp (Bool -> Bool -> Bool)
+  TWAdd :: Num a => TOp (a -> a -> a)
 
-isSubtype :: Type -> Type -> Bool
-isSubtype ty1 ty2 = case (ty1, ty2) of
-  _ | ty1 == ty2 -> True
-  (TyBase b1, TyBase b2) -> isBaseSubtype b1 b2
-  (TyBase b1, TyWorld b2) -> isBaseSubtype b1 b2
-  _ -> False
+  --Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | Geq
 
-isBaseSubtype :: BaseTy -> BaseTy -> Bool
-isBaseSubtype b1 b2 = case (b1,b2) of
-  _ | b1 == b2 -> True
-  (BInt, BFloat) -> True
-  _ -> False
+newtype Coords = Cords {unCoords :: (Int32, Int32)} -- XXX
+newtype World b = World { runWorld :: Coords -> b }
+
+data TWBase :: Type -> Type where
+  TWBInt :: TWBase Integer
+  TWBFloat :: TWBase Double
+  TWBBool :: TWBase Bool
+
+data TWType :: Type -> Type where
+  TWTyBase :: TWBase t -> TWType t
+  TWTyWorld :: TWBase t -> TWType (World t)
+
+data TWEnv :: [Type] -> Type where
+  Nil :: TWEnv '[]
+  Cons :: t -> TWEnv g -> TWEnv (t : g)
+
+-- inferUOp :: UOp -> TOp 
+
+check :: TWEnv g -> WExp -> TWType t -> Either TypeErr (TWExp g t)
+check _ (WInt i) (TWTyBase TWBInt) = Right (TWLit TWBInt i)
+check _ (WInt i) (TWTyWorld TWBInt) = Right (TWPromote (TWLit TWBInt i))
+check _ (WFloat i) (TWTyBase TWBFloat) = Right (TWLit TWBFloat i)
+check _ (WFloat i) (TWTyWorld TWBFloat) = Right (TWPromote (TWLit TWBFloat i))
+check _ (WBool i) (TWTyBase TWBBool) = Right (TWLit TWBBool i)
+check _ (WBool i) (TWTyWorld TWBBool) = Right (TWPromote (TWLit TWBBool i))
+
+-- check _ (WUn u)
+
+-- infer :: Env -> WExp -> Either TypeErr Type
+-- infer _ (WInt _) = return TyInt
+-- infer _ (WFloat _) = return TyFloat
+-- infer _ (WBool _) = return TyBool
+-- infer _ (WCell _) = return TyCell
+-- infer env (WVar x) = maybe (Left $ UnboundVar x) Right $ M.lookup x env
+-- infer env (WUn uop e) = inferUOp env uop e
+-- infer env (WBin bop e1 e2) = inferBOp env bop e1 e2
+-- infer env (WMask e1 e2) = do
+--   check env e1 (TyWorld BBool)
+--   t <- inferWorld env e2
+--   return t
+
+-- inferUOp :: Env -> UOp -> WExp -> Either TypeErr Type
+-- inferUOp = undefined
+
+-- inferBOp :: Env -> BOp -> WExp -> WExp -> Either TypeErr Type
+-- inferBOp = undefined
+
+-- inferWorld :: Env -> WExp -> Either TypeErr Type
+-- inferWorld env e = do
+--   t <- infer env e
+--   case t of
+--     TyBase b -> return $ TyWorld b
+--     TyWorld b -> return $ TyWorld b
+--     TyPalette b -> Left NotWorld
+
+-- check :: Env -> WExp -> Type -> Either TypeErr ()
+-- check env e ty = do
+--   ty' <- infer env e
+--   case isSubtype ty' ty of
+--     True -> return ()
+--     False -> Left Mismatch
+
+-- isSubtype :: Type -> Type -> Bool
+-- isSubtype ty1 ty2 = case (ty1, ty2) of
+--   _ | ty1 == ty2 -> True
+--   (TyBase b1, TyBase b2) -> isBaseSubtype b1 b2
+--   (TyBase b1, TyWorld b2) -> isBaseSubtype b1 b2
+--   _ -> False
+
+-- isBaseSubtype :: BaseTy -> BaseTy -> Bool
+-- isBaseSubtype b1 b2 = case (b1,b2) of
+--   _ | b1 == b2 -> True
+--   (BInt, BFloat) -> True
+--   _ -> False
