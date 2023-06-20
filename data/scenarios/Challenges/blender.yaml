@@ -69,6 +69,7 @@ robots:
       - branch predictor
       - clock
       - comparator
+      - compass
       - counter
       - dictionary
       - grabber
