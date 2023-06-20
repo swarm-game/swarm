@@ -14,9 +14,11 @@ module Swarm.Game.World.DSL where
 
 import Data.Int
 import Data.Kind (Type)
-import Data.Map (Map)
-import Data.Map qualified as M
+-- import Data.Map (Map)
+-- import Data.Map qualified as M
 import Data.Text (Text)
+import Data.Typeable
+import Data.Type.Equality
 import Swarm.Game.Terrain
 import Swarm.Game.Scenario.WorldPalette
 import Data.Monoid (Last(..))
@@ -111,19 +113,26 @@ data TypeErr
   | Mismatch
 
 data TWIdx :: [Type] -> Type -> Type where
-  Z :: TWIdx (ty ': env) ty
-  S :: TWIdx env ty -> TWIdx (x ': env) ty
+  Z :: TWIdx (ty ': g) ty
+  S :: TWIdx g ty -> TWIdx (x ': g) ty
 
 data TWExp :: [Type] -> Type -> Type where
-  TWLit :: TWBase b -> b -> TWExp env b
-  TWVar :: TWIdx env a -> TWExp env a
-  TWOp :: TOp t -> TWExp env t
+  TWLit :: b -> TWExp g b
+  TWVar :: TWIdx g a -> TWExp g a
+  TWOp :: TOp t -> TWExp g t
 
-  TWPromote :: TWExp env t -> TWExp env (World t)
+  TWApp :: TWExp g (a -> b) -> TWExp g a -> TWExp g b
 
-  TWApp :: TWExp env (a -> b) -> TWExp env a -> TWExp env b
-  TWLift1 :: TWExp env (a -> b) -> TWExp env (World a -> World b)
-  TWLift2 :: TWExp env (a -> b -> c) -> TWExp env (World a -> World b -> World c)
+  TWFromInt :: TWExp g (Integer -> Double)
+
+  TWId :: TWExp g (t -> t)
+  TWPure :: TWExp g (t -> World t)
+  TWMap :: TWExp g ((a -> b) -> (World a -> World b))
+  TWAp :: TWExp g (World (a -> b) -> World a -> World b)
+
+infixl 1 $$
+($$) :: TWExp g (a -> b) -> TWExp g a -> TWExp g b
+($$) = TWApp
 
 data TOp :: Type -> Type where
   TWNot :: TOp (Bool -> Bool)
@@ -135,30 +144,87 @@ data TOp :: Type -> Type where
   --Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | Geq
 
 newtype Coords = Cords {unCoords :: (Int32, Int32)} -- XXX
-newtype World b = World { runWorld :: Coords -> b }
+type World b = Coords -> b
 
 data TWBase :: Type -> Type where
   TWBInt :: TWBase Integer
   TWBFloat :: TWBase Double
   TWBBool :: TWBase Bool
 
+instance TestEquality TWBase where
+  testEquality TWBInt TWBInt = Just Refl
+  testEquality TWBFloat TWBFloat = Just Refl
+  testEquality TWBBool TWBBool = Just Refl
+  testEquality _ _ = Nothing
+
 data TWType :: Type -> Type where
   TWTyBase :: TWBase t -> TWType t
   TWTyWorld :: TWBase t -> TWType (World t)
+  (:->:) :: TWType a -> TWType b -> TWType (a -> b)
 
 data TWEnv :: [Type] -> Type where
   Nil :: TWEnv '[]
   Cons :: t -> TWEnv g -> TWEnv (t : g)
 
--- inferUOp :: UOp -> TOp 
+(!) :: TWEnv g -> TWIdx g t -> t
+(Cons v _) ! Z = v
+(Cons _ e) ! (S x) = e ! x
+Nil ! _ = error "This can't happen, but Haskell's type checker can't see that"
 
 check :: TWEnv g -> WExp -> TWType t -> Either TypeErr (TWExp g t)
-check _ (WInt i) (TWTyBase TWBInt) = Right (TWLit TWBInt i)
-check _ (WInt i) (TWTyWorld TWBInt) = Right (TWPromote (TWLit TWBInt i))
-check _ (WFloat i) (TWTyBase TWBFloat) = Right (TWLit TWBFloat i)
-check _ (WFloat i) (TWTyWorld TWBFloat) = Right (TWPromote (TWLit TWBFloat i))
-check _ (WBool i) (TWTyBase TWBBool) = Right (TWLit TWBBool i)
-check _ (WBool i) (TWTyWorld TWBBool) = Right (TWPromote (TWLit TWBBool i))
+check e t ty = infer e t >>= checkSubtype ty
+
+data SomeTWExp :: [Type] -> Type where
+  SomeTWExp :: TWType t -> TWExp g t -> SomeTWExp g
+
+data SomeTOp :: Type where
+  SomeTOp :: TWType t -> TOp t -> SomeTOp
+
+checkSubtype :: TWType t -> SomeTWExp g -> Either TypeErr (TWExp g t)
+checkSubtype (TWTyBase b1) (SomeTWExp (TWTyBase b2) t) = do
+  conv <- checkBaseSubtype b2 b1
+  return $ conv $$ t
+checkSubtype (TWTyWorld b1) (SomeTWExp (TWTyBase b2) t) = do
+  conv <- checkBaseSubtype b2 b1
+  return $ TWPure $$ (conv $$ t)
+checkSubtype (TWTyWorld b1) (SomeTWExp (TWTyWorld b2) t) = do
+  conv <- checkBaseSubtype b2 b1
+  return $ TWMap $$ conv $$ t
+checkSubtype _ _ = Left undefined
+
+checkBaseSubtype :: TWBase b1 -> TWBase b2 -> Either TypeErr (TWExp g (b1 -> b2))
+checkBaseSubtype b1 b2
+  | Just Refl <- testEquality b1 b2 = return TWId
+checkBaseSubtype TWBInt TWBFloat = return TWFromInt
+checkBaseSubtype _ _ = Left undefined -- XXX
+
+infer :: TWEnv g -> WExp -> Either TypeErr (SomeTWExp g)
+infer _ (WInt i) = return $ SomeTWExp (TWTyBase TWBInt) (TWLit i)
+infer _ (WFloat i) = return $ SomeTWExp (TWTyBase TWBFloat) (TWLit i)
+infer _ (WBool i) = return $ SomeTWExp (TWTyBase TWBBool) (TWLit i)
+
+inferUOp :: UOp -> SomeTOp
+inferUOp Not = SomeTOp (TWTyBase TWBBool :->: TWTyBase TWBBool) TWNot
+-- inferUOp Neg = SomeTOp _ TWNeg
+
+------------------------------------------------------------
+
+interp :: TWEnv g -> TWExp g ty -> ty
+interp _ (TWLit b) = b
+interp e (TWVar x) = e ! x
+interp _ (TWOp op) = interpTOp op
+interp e (TWApp t1 t2) = interp e t1 (interp e t2)
+interp _ TWFromInt = fromIntegral
+interp _ TWPure = pure
+interp _ TWMap  = fmap
+interp _ TWAp   = (<*>)
+
+interpTOp :: TOp t -> t
+interpTOp TWNot = not
+interpTOp TWNeg = negate
+interpTOp TWAnd = (&&)
+interpTOp TWOr = (||)
+interpTOp TWAdd = (+)
 
 -- check _ (WUn u)
 
