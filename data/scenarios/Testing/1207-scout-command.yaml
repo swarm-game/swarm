@@ -67,15 +67,6 @@ robots:
       invisible: true
       char: i
       attr: robot
-entities:
-- name: binoculars
-  display:
-    attr: silver
-    char: 'B'
-  description:
-  - Allows one to "scout" for other robots
-  properties: [known, portable]
-  capabilities: [recondir]
 known: [tree, flower, boulder]
 world:
   default: [blank]
