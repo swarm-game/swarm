@@ -765,6 +765,15 @@
   capabilities: [grab, swap, give, place, atomic]
   properties: [portable]
 
+- name: binoculars
+  display:
+    attr: device
+    char: 'B'
+  description:
+  - Allows one to `scout` for other robots
+  capabilities: [recondir]
+  properties: [portable]
+
 - name: welder
   display:
     attr: device
