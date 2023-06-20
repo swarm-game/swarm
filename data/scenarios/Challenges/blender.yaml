@@ -9,7 +9,7 @@ objectives:
     goal:
       - |
         `grab` the Amulet of Yoneda from the northwest sanctum while
-        timing your passage carefully to avoid the patrolling enemies.
+        timing your passage carefully to avoid Side Effects (X) on patrol.
       - |
         To unlock a red door, `drill` it with the "door key" equipped.
     condition: |
