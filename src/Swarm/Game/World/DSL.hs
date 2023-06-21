@@ -159,7 +159,7 @@ interpConst = \case
   CGeq -> (>=)
   CMask -> undefined -- (\b x c -> if b c then x c else empty)
   CSeed -> 0  -- XXX need seed provided as env to be able to interpret this
-  CCoord ax -> -- \(Coords (x,y)) -> case ax of X -> x; Y -> y  -- XXX Integer vs Int32
+  CCoord ax -> undefined -- \(Coords (x,y)) -> case ax of X -> x; Y -> y  -- XXX Integer vs Int32
 
   K -> const
   S -> (<*>)
