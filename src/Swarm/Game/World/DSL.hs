@@ -14,14 +14,13 @@ module Swarm.Game.World.DSL where
 
 import Data.Int
 import Data.Kind (Type)
--- import Data.Map (Map)
--- import Data.Map qualified as M
+import Data.Monoid (Last(..))
 import Data.Text (Text)
 import Data.Typeable
 import Data.Type.Equality
+import Prelude hiding (lookup)
 import Swarm.Game.Terrain
 import Swarm.Game.Scenario.WorldPalette
-import Data.Monoid (Last(..))
 
 ------------------------------------------------------------
 -- Syntax
@@ -92,185 +91,325 @@ testWorld1 =
     ]
 
 ------------------------------------------------------------
--- Type checking/elaboration
-
--- data BaseTy = BInt | BFloat | BBool | BCell
---   deriving (Eq, Ord, Show, Bounded, Enum)
-
--- data WType = TyBase BaseTy | TyWorld BaseTy | TyPalette BaseTy
---   deriving (Eq, Show)
-
--- pattern TyInt = TyBase BInt
--- pattern TyFloat = TyBase BFloat
--- pattern TyBool = TyBase BBool
--- pattern TyCell = TyBase BCell
-
--- type Env = Map Var Type
-
-data TypeErr
-  = UnboundVar Var
-  | NotWorld
-  | Mismatch
-
-data TWIdx :: [Type] -> Type -> Type where
-  Z :: TWIdx (ty ': g) ty
-  S :: TWIdx g ty -> TWIdx (x ': g) ty
-
-data TWExp :: [Type] -> Type -> Type where
-  TWLit :: b -> TWExp g b
-  TWVar :: TWIdx g a -> TWExp g a
-  TWOp :: TOp t -> TWExp g t
-
-  TWApp :: TWExp g (a -> b) -> TWExp g a -> TWExp g b
-
-  TWFromInt :: TWExp g (Integer -> Double)
-
-  TWId :: TWExp g (t -> t)
-  TWPure :: TWExp g (t -> World t)
-  TWMap :: TWExp g ((a -> b) -> (World a -> World b))
-  TWAp :: TWExp g (World (a -> b) -> World a -> World b)
+-- Type class for type-indexed application
 
 infixl 1 $$
-($$) :: TWExp g (a -> b) -> TWExp g a -> TWExp g b
-($$) = TWApp
+class Applicable t where
+  ($$) :: t (a -> b) -> t a -> t b
 
-data TOp :: Type -> Type where
-  TWNot :: TOp (Bool -> Bool)
-  TWNeg :: Num a => TOp (a -> a)
-  TWAnd :: TOp (Bool -> Bool -> Bool)
-  TWOr :: TOp (Bool -> Bool -> Bool)
-  TWAdd :: Num a => TOp (a -> a -> a)
+------------------------------------------------------------
+-- Type-indexed constants
 
-  --Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | Geq
+-- Includes language built-ins as well as combinators we will use
+-- later as a compilation target.
+data Const :: Type -> Type where
+  CLit :: Show a => a -> Const a
+  CFI  :: Const (Integer -> Double)
+  CIf :: Const (Bool -> a -> a -> a)
+  CNot :: Const (Bool -> Bool)
+  CNeg :: Num a => Const (a -> a)
+  CAnd :: Const (Bool -> Bool -> Bool)
+  COr :: Const (Bool -> Bool -> Bool)
+  CAdd :: Num a => Const (a -> a -> a)
+  CSub :: Num a => Const (a -> a -> a)
+  CMul :: Num a => Const (a -> a -> a)
+  CDiv :: Fractional a => Const (a -> a -> a)
+  CIDiv :: Integral a => Const (a -> a -> a)
+  CMod :: Integral a => Const (a -> a -> a)
+  CEq :: Eq a => Const (a -> a -> Bool)
+  CNeq :: Eq a => Const (a -> a -> Bool)
+  CLt :: Ord a => Const (a -> a -> Bool)
+  CLeq :: Ord a => Const (a -> a -> Bool)
+  CGt :: Ord a => Const (a -> a -> Bool)
+  CGeq :: Ord a => Const (a -> a -> Bool)
+  CMask :: Const (World Bool -> World a -> World a)
+  CSeed :: Const Integer
+  CCoord :: Axis -> Const (World Integer)
+
+  K :: Const (a -> b -> a)
+  S :: Const ((a -> b -> c) -> (a -> b) -> a -> c)
+  I :: Const (a -> a)
+  B :: Const ((b -> c) -> (a -> b) -> a -> c)
+  C :: Const ((a -> b -> c) -> b -> a -> c)
+
+deriving instance Show (Const ty)
+
+-- Interpret constants directly into the host language.  We don't use
+-- this in our ultimate compilation but it's nice to have for
+-- debugging/comparison.
+interpConst :: Const ty -> ty
+interpConst = \case
+  CLit a -> a
+  CIf -> \b t e -> if b then t else e
+  CNot -> not
+  CNeg -> negate
+  CAnd -> (&&)
+  COr -> (||)
+  CAdd -> (+)
+  CSub -> (-)
+  CMul -> (*)
+  CDiv -> (/)
+  CIDiv -> div
+  CMod -> mod
+  CEq -> (==)
+  CNeq -> (/=)
+  CLt -> (<)
+  CLeq -> (<=)
+  CGt -> (>)
+  CGeq -> (>=)
+  K -> const
+  S -> (<*>)
+  I -> id
+  B -> (.)
+  C -> flip
+
+class HasConst t where
+  injConst :: Const a -> t a
+
+infixl 1 .$
+(.$) :: (HasConst t, Applicable t) => Const (a -> b) -> t a -> t b
+c .$ t = injConst c $$ t
+
+infixl 1 $.
+($.) :: (HasConst t, Applicable t) => t (a -> b) -> Const a -> t b
+t $. c = t $$ injConst c
+
+infixl 1 .$.
+(.$.) :: (HasConst t, Applicable t) => Const (a -> b) -> Const a -> t b
+c1 .$. c2 = injConst c1 $$ injConst c2
+
+------------------------------------------------------------
+-- Intrinsically typed core language
+
+-- Typed de Bruijn indices.
+data Idx :: [Type] -> Type -> Type where
+  VZ :: Idx (ty ': g) ty
+  VS :: Idx g ty -> Idx (x ': g) ty
+
+deriving instance Show (Idx g ty)
+
+-- Type-indexed terms.  Note this is a stripped-down core language,
+-- with only variables, lambdas, application, and constants.
+data TWTerm :: [Type] -> Type -> Type where
+  TWVar :: Idx g a -> TWTerm g a
+  TWLam :: TWTerm (ty1 ': g) ty2 -> TWTerm g (ty1 -> ty2)
+  TWApp :: TWTerm g (a -> b) -> TWTerm g a -> TWTerm g b
+  TWConst :: Const a -> TWTerm g a
+
+deriving instance Show (TWTerm g ty)
+
+instance Applicable (TWTerm g) where
+  TWConst I $$ x = x
+  f $$ x = TWApp f x
+
+instance HasConst (TWTerm g) where
+  injConst = TWConst
+
+------------------------------------------------------------
+-- Type representations
 
 newtype Coords = Cords {unCoords :: (Int32, Int32)} -- XXX
 type World b = Coords -> b
 
-data TWBase :: Type -> Type where
-  TWBInt :: TWBase Integer
-  TWBFloat :: TWBase Double
-  TWBBool :: TWBase Bool
+data Base :: Type -> Type where
+  BInt :: Base Integer
+  BFloat :: Base Double
+  BBool :: Base Bool
 
-instance TestEquality TWBase where
-  testEquality TWBInt TWBInt = Just Refl
-  testEquality TWBFloat TWBFloat = Just Refl
-  testEquality TWBBool TWBBool = Just Refl
+deriving instance Show (Base ty)
+
+instance TestEquality Base where
+  testEquality BInt BInt = Just Refl
+  testEquality BFloat BFloat = Just Refl
+  testEquality BBool BBool = Just Refl
   testEquality _ _ = Nothing
 
 data TWType :: Type -> Type where
-  TWTyBase :: TWBase t -> TWType t
-  TWTyWorld :: TWBase t -> TWType (World t)
-  (:->:) :: TWType a -> TWType b -> TWType (a -> b)
+  TWTyBase :: Base t -> TWType t
+  TWTyWorld :: Base t -> TWType (World t)
+  -- (:->:) :: TWType a -> TWType b -> TWType (a -> b)
 
-data TWEnv :: [Type] -> Type where
-  Nil :: TWEnv '[]
-  Cons :: t -> TWEnv g -> TWEnv (t : g)
+pattern TWTyBool = TWTyBase BBool
+pattern TWTyInt = TWTyBase BInt
+pattern TWTyFloat = TWTyBase BFloat
 
-(!) :: TWEnv g -> TWIdx g t -> t
-(Cons v _) ! Z = v
-(Cons _ e) ! (S x) = e ! x
-Nil ! _ = error "This can't happen, but Haskell's type checker can't see that"
+deriving instance Show (TWType ty)
 
-check :: TWEnv g -> WExp -> TWType t -> Either TypeErr (TWExp g t)
-check e t ty = infer e t >>= checkSubtype ty
+instance TestEquality TWType where
+  testEquality (TWTyBase b1) (TWTyBase b2) = testEquality b1 b2
+  testEquality (TWTyWorld b1) (TWTyWorld b2) =
+    case testEquality b1 b2 of
+      Just Refl -> Just Refl
+      Nothing -> Nothing
+  testEquality _ _ = Nothing
 
-data SomeTWExp :: [Type] -> Type where
-  SomeTWExp :: TWType t -> TWExp g t -> SomeTWExp g
+checkEq :: TWType ty -> (Eq ty => a) -> Maybe a
+checkEq _ _ = undefined
 
-data SomeTOp :: Type where
-  SomeTOp :: TWType t -> TOp t -> SomeTOp
-
-checkSubtype :: TWType t -> SomeTWExp g -> Either TypeErr (TWExp g t)
-checkSubtype (TWTyBase b1) (SomeTWExp (TWTyBase b2) t) = do
-  conv <- checkBaseSubtype b2 b1
-  return $ conv $$ t
-checkSubtype (TWTyWorld b1) (SomeTWExp (TWTyBase b2) t) = do
-  conv <- checkBaseSubtype b2 b1
-  return $ TWPure $$ (conv $$ t)
-checkSubtype (TWTyWorld b1) (SomeTWExp (TWTyWorld b2) t) = do
-  conv <- checkBaseSubtype b2 b1
-  return $ TWMap $$ conv $$ t
-checkSubtype _ _ = Left undefined
-
-checkBaseSubtype :: TWBase b1 -> TWBase b2 -> Either TypeErr (TWExp g (b1 -> b2))
-checkBaseSubtype b1 b2
-  | Just Refl <- testEquality b1 b2 = return TWId
-checkBaseSubtype TWBInt TWBFloat = return TWFromInt
-checkBaseSubtype _ _ = Left undefined -- XXX
-
-infer :: TWEnv g -> WExp -> Either TypeErr (SomeTWExp g)
-infer _ (WInt i) = return $ SomeTWExp (TWTyBase TWBInt) (TWLit i)
-infer _ (WFloat i) = return $ SomeTWExp (TWTyBase TWBFloat) (TWLit i)
-infer _ (WBool i) = return $ SomeTWExp (TWTyBase TWBBool) (TWLit i)
-
-inferUOp :: UOp -> SomeTOp
-inferUOp Not = SomeTOp (TWTyBase TWBBool :->: TWTyBase TWBBool) TWNot
--- inferUOp Neg = SomeTOp _ TWNeg
+checkOrd :: TWType ty -> (Ord ty => a) -> Maybe a
+checkOrd _ _ = undefined
 
 ------------------------------------------------------------
+-- Contexts + existential wrappers
 
-interp :: TWEnv g -> TWExp g ty -> ty
-interp _ (TWLit b) = b
-interp e (TWVar x) = e ! x
-interp _ (TWOp op) = interpTOp op
-interp e (TWApp t1 t2) = interp e t1 (interp e t2)
-interp _ TWFromInt = fromIntegral
-interp _ TWPure = pure
-interp _ TWMap  = fmap
-interp _ TWAp   = (<*>)
+data Ctx :: [Type] -> Type where
+  CNil :: Ctx '[]
+  CCons :: Text -> TWType ty -> Ctx g -> Ctx (ty ': g)
 
-interpTOp :: TOp t -> t
-interpTOp TWNot = not
-interpTOp TWNeg = negate
-interpTOp TWAnd = (&&)
-interpTOp TWOr = (||)
-interpTOp TWAdd = (+)
+data SomeIdx :: [Type] -> Type where
+  SomeIdx :: Idx g ty -> TWType ty -> SomeIdx g
 
--- check _ (WUn u)
+mapSomeIdx :: (forall ty. Idx g1 ty -> Idx g2 ty) -> SomeIdx g1 -> SomeIdx g2
+mapSomeIdx f (SomeIdx i ty) = SomeIdx (f i) ty
 
--- infer :: Env -> WExp -> Either TypeErr Type
--- infer _ (WInt _) = return TyInt
--- infer _ (WFloat _) = return TyFloat
--- infer _ (WBool _) = return TyBool
--- infer _ (WCell _) = return TyCell
--- infer env (WVar x) = maybe (Left $ UnboundVar x) Right $ M.lookup x env
--- infer env (WUn uop e) = inferUOp env uop e
--- infer env (WBin bop e1 e2) = inferBOp env bop e1 e2
--- infer env (WMask e1 e2) = do
---   check env e1 (TyWorld BBool)
---   t <- inferWorld env e2
---   return t
+lookup :: Text -> Ctx g -> Maybe (SomeIdx g)
+lookup _ CNil = Nothing
+lookup x (CCons y ty ctx)
+  | x == y = Just (SomeIdx VZ ty)
+  | otherwise = mapSomeIdx VS <$> lookup x ctx
 
--- inferUOp :: Env -> UOp -> WExp -> Either TypeErr Type
--- inferUOp = undefined
+data SomeTerm :: [Type] -> Type where
+  SomeTerm :: TWType ty -> TWTerm g ty -> SomeTerm g
 
--- inferBOp :: Env -> BOp -> WExp -> WExp -> Either TypeErr Type
--- inferBOp = undefined
+deriving instance Show (SomeTerm g)
 
--- inferWorld :: Env -> WExp -> Either TypeErr Type
--- inferWorld env e = do
---   t <- infer env e
---   case t of
---     TyBase b -> return $ TyWorld b
---     TyWorld b -> return $ TyWorld b
---     TyPalette b -> Left NotWorld
+------------------------------------------------------------
+-- Type inference/checking + elaboration
 
--- check :: Env -> WExp -> Type -> Either TypeErr ()
--- check env e ty = do
---   ty' <- infer env e
---   case isSubtype ty' ty of
---     True -> return ()
---     False -> Left Mismatch
+check :: Ctx g -> WExp -> TWType t -> Maybe (TWTerm g t)
+check e t ty = infer e t >>= checkSubtype ty
 
--- isSubtype :: Type -> Type -> Bool
--- isSubtype ty1 ty2 = case (ty1, ty2) of
---   _ | ty1 == ty2 -> True
---   (TyBase b1, TyBase b2) -> isBaseSubtype b1 b2
---   (TyBase b1, TyWorld b2) -> isBaseSubtype b1 b2
---   _ -> False
+-- XXX comment me!  K = pure, B = (<*>) for Applicative (Coords ->)
+checkSubtype :: TWType t -> SomeTerm g -> Maybe (TWTerm g t)
+checkSubtype (TWTyBase b1) (SomeTerm (TWTyBase b2) t) = do
+  conv <- checkBaseSubtype b2 b1
+  return $ conv $$ t
+checkSubtype (TWTyWorld b1) (SomeTerm (TWTyBase b2) t) = do
+  conv <- checkBaseSubtype b2 b1
+  return $ K .$ (conv $$ t)
+checkSubtype (TWTyWorld b1) (SomeTerm (TWTyWorld b2) t) = do
+  conv <- checkBaseSubtype b2 b1
+  return $ B .$ conv $$ t
+checkSubtype _ _ = Nothing
 
--- isBaseSubtype :: BaseTy -> BaseTy -> Bool
--- isBaseSubtype b1 b2 = case (b1,b2) of
---   _ | b1 == b2 -> True
---   (BInt, BFloat) -> True
---   _ -> False
+checkBaseSubtype :: Base b1 -> Base b2 -> Maybe (TWTerm g (b1 -> b2))
+checkBaseSubtype b1 b2
+  | Just Refl <- testEquality b1 b2 = return $ injConst I
+checkBaseSubtype BInt BFloat = return $ injConst CFI
+checkBaseSubtype _ _ = Nothing
+
+infer :: Ctx g -> WExp -> Maybe (SomeTerm g)
+infer _ (WInt i) = return $ SomeTerm (TWTyBase BInt) (TWConst (CLit i))
+infer _ (WFloat f) = return $ SomeTerm (TWTyBase BFloat) (TWConst (CLit f))
+infer _ (WBool b) = return $ SomeTerm (TWTyBase BBool) (TWConst (CLit b))
+infer ctx (WVar x) = (\(SomeIdx i ty) -> SomeTerm ty (TWVar i)) <$> lookup x ctx
+infer ctx (WUn uop t) = infer ctx t >>= inferUOp uop
+infer ctx (WBin bop t1 t2) = do
+  t1' <- infer ctx t1
+  t2' <- infer ctx t2
+  inferBOp bop t1' t2'
+infer ctx (WMask t1 t2) = do
+  t1' <- check ctx t1 (TWTyWorld BBool)
+  SomeWorld b t2' <- inferWorld ctx t2
+  return $ SomeTerm (TWTyWorld b) (CMask .$ t1' $$ t2')
+infer _ WSeed = return $ SomeTerm TWTyInt (injConst CSeed)
+infer _ (WCoord ax) = return $ SomeTerm (TWTyWorld BInt) (injConst (CCoord ax))
+
+
+inferUOp :: UOp -> SomeTerm g -> Maybe (SomeTerm g)
+inferUOp Not t = do
+  t' <- checkSubtype TWTyBool t
+  return $ SomeTerm TWTyBool (CNot .$ t')
+inferUOp Neg (SomeTerm ty t) = undefined -- Just $ SomeTerm ty (CNeg .$ t)
+  -- XXX how to deal with possibility that t could have a World type,
+  -- i.e. Neg should be lifted?
+  -- Maybe make our own new type classes to encode operations that need to be supported
+  -- and make instances for base types + World types?  Then we could co-opt the type checker
+  -- into checking things properly, and also interpret it directly.  However, compilation
+  -- would not end up using these instances??
+  -- No, we need to do type-directed elaboration right here.
+
+inferBOp :: BOp -> SomeTerm g -> SomeTerm g -> Maybe (SomeTerm g)
+inferBOp = undefined
+
+-- Infer the type of a term which must be of the form (World b).
+inferWorld :: Ctx g -> WExp -> Maybe (SomeWorld g)
+inferWorld ctx t = do
+  SomeTerm ty t' <- infer ctx t
+  case ty of
+    TWTyWorld b -> return $ SomeWorld b t'
+    TWTyBase b -> return $ SomeWorld b (K .$ t')
+
+data SomeWorld :: [Type] -> Type where
+  SomeWorld :: Base b -> TWTerm g (World b) -> SomeWorld g
+
+deriving instance Show (SomeWorld g)
+
+
+-- ------------------------------------------------------------
+
+-- interp :: TWEnv g -> TWTerm g ty -> ty
+-- interp _ (TWLit b) = b
+-- interp e (TWVar x) = e ! x
+-- interp _ (TWOp op) = interpTOp op
+-- interp e (TWApp t1 t2) = interp e t1 (interp e t2)
+-- interp _ TWFromInt = fromIntegral
+-- interp _ TWPure = pure
+-- interp _ TWMap  = fmap
+-- interp _ TWAp   = (<*>)
+
+-- interpTOp :: TOp t -> t
+-- interpTOp TWNot = not
+-- interpTOp TWNeg = negate
+-- interpTOp TWAnd = (&&)
+-- interpTOp TWOr = (||)
+-- interpTOp TWAdd = (+)
+
+-- -- check _ (WUn u)
+
+-- -- infer :: Env -> WExp -> Either TypeErr Type
+-- -- infer _ (WInt _) = return TyInt
+-- -- infer _ (WFloat _) = return TyFloat
+-- -- infer _ (WBool _) = return TyBool
+-- -- infer _ (WCell _) = return TyCell
+-- -- infer env (WVar x) = maybe (Left $ UnboundVar x) Right $ M.lookup x env
+-- -- infer env (WUn uop e) = inferUOp env uop e
+-- -- infer env (WBin bop e1 e2) = inferBOp env bop e1 e2
+-- -- infer env (WMask e1 e2) = do
+-- --   check env e1 (TyWorld BBool)
+-- --   t <- inferWorld env e2
+-- --   return t
+
+-- -- inferUOp :: Env -> UOp -> WExp -> Either TypeErr Type
+-- -- inferUOp = undefined
+
+-- -- inferBOp :: Env -> BOp -> WExp -> WExp -> Either TypeErr Type
+-- -- inferBOp = undefined
+
+-- -- inferWorld :: Env -> WExp -> Either TypeErr Type
+-- -- inferWorld env e = do
+-- --   t <- infer env e
+-- --   case t of
+-- --     TyBase b -> return $ TyWorld b
+-- --     TyWorld b -> return $ TyWorld b
+-- --     TyPalette b -> Left NotWorld
+
+-- -- check :: Env -> WExp -> Type -> Either TypeErr ()
+-- -- check env e ty = do
+-- --   ty' <- infer env e
+-- --   case isSubtype ty' ty of
+-- --     True -> return ()
+-- --     False -> Left Mismatch
+
+-- -- isSubtype :: Type -> Type -> Bool
+-- -- isSubtype ty1 ty2 = case (ty1, ty2) of
+-- --   _ | ty1 == ty2 -> True
+-- --   (TyBase b1, TyBase b2) -> isBaseSubtype b1 b2
+-- --   (TyBase b1, TyWorld b2) -> isBaseSubtype b1 b2
+-- --   _ -> False
+
+-- -- isBaseSubtype :: BaseTy -> BaseTy -> Bool
+-- -- isBaseSubtype b1 b2 = case (b1,b2) of
+-- --   _ | b1 == b2 -> True
+-- --   (BInt, BFloat) -> True
+-- --   _ -> False
