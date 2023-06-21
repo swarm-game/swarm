@@ -122,7 +122,7 @@ data Const :: Type -> Type where
   CLeq :: Ord a => Const (a -> a -> Bool)
   CGt :: Ord a => Const (a -> a -> Bool)
   CGeq :: Ord a => Const (a -> a -> Bool)
-  CMask :: Const (World Bool -> World a -> World a)
+  CMask :: Const (World Bool -> World a -> World a)  -- XXX make our own Empty + Combining classes
   CSeed :: Const Integer
   CCoord :: Axis -> Const (World Integer)
 
@@ -157,6 +157,10 @@ interpConst = \case
   CLeq -> (<=)
   CGt -> (>)
   CGeq -> (>=)
+  CMask -> undefined -- (\b x c -> if b c then x c else empty)
+  CSeed -> 0  -- XXX need seed provided as env to be able to interpret this
+  CCoord ax -> -- \(Coords (x,y)) -> case ax of X -> x; Y -> y  -- XXX Integer vs Int32
+
   K -> const
   S -> (<*>)
   I -> id
@@ -208,7 +212,7 @@ instance HasConst (TWTerm g) where
 ------------------------------------------------------------
 -- Type representations
 
-newtype Coords = Cords {unCoords :: (Int32, Int32)} -- XXX
+newtype Coords = Coords {unCoords :: (Int32, Int32)} -- XXX
 type World b = Coords -> b
 
 data Base :: Type -> Type where
