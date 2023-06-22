@@ -147,7 +147,8 @@ entities:
     display:
       char: 'B'
     description:
-      - For when you cant be bothered to manually open a can
+      - |
+        For when you can't be bothered to manually open a can
     properties: [portable]
   - name: wok
     display:
