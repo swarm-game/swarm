@@ -1,13 +1,3 @@
-/**
-Don't cross unlocked doors
-*/
-def isBlocked =
-    b <- blocked;
-    x <- scan forward;
-    let isUnlockedDoor = case x (\_. false) (\z. z == "unlocked door") in
-    return $ b || isUnlockedDoor;
-    end;
-
 def forever = \c.
     c;
     forever c;
@@ -15,16 +5,16 @@ def forever = \c.
 
 def encircle = \lDir. \rDir.
     turn lDir;
-    b <- isBlocked;
+    b <- blocked;
     if b {
         turn rDir;
     } {
         wait 1;
     };
-    
-    move;
+    fwBlocked <- blocked;
+    if fwBlocked {turn rDir} {move};
     end;
 
-def patrolCCW = forever (encircle right left); end;
+def patrolCCW = forever (encircle left right); end;
 
 patrolCCW;
