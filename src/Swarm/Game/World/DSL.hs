@@ -23,15 +23,33 @@ import Swarm.Game.Terrain
 import Swarm.Game.Scenario.WorldPalette
 
 ------------------------------------------------------------
+-- Merging
+
+class Empty e where
+  empty :: e
+
+class Mergeable m where
+  (<+>) :: m -> m -> m
+
+------------------------------------------------------------
 -- Syntax
 
 data CellVal e r = CellVal (Last TerrainType) (Last e) [r]
 
-instance Semigroup (CellVal e r) where
-  CellVal t1 e1 r1 <> CellVal t2 e2 r2 = CellVal (t1 <> t2) (e1 <> e2) (r1 <> r2)
+instance Mergeable (CellVal e r) where
+  CellVal t1 e1 r1 <+> CellVal t2 e2 r2 = CellVal (t1 <> t2) (e1 <> e2) (r1 <> r2)
 
-instance Monoid (CellVal e r) where
-  mempty = CellVal mempty mempty mempty
+instance Empty (CellVal e r) where
+  empty = CellVal mempty mempty mempty
+
+instance Mergeable Bool where
+  _ <+> x = x
+
+instance Mergeable Integer where
+  _ <+> x = x
+
+instance Mergeable Double where
+  _ <+> x = x
 
 type RawCellVal = CellVal Text Text
 
@@ -283,35 +301,30 @@ deriving instance Show (SomeTerm g)
 check :: Ctx g -> WExp -> TWType t -> Maybe (TWTerm g t)
 check e t ty = infer e t >>= checkSubtype ty
 
--- XXX comment me!  K = pure, B = (<*>) for Applicative (Coords ->)
-checkSubtype :: TWType t -> SomeTerm g -> Maybe (TWTerm g t)
-checkSubtype (TWTyBase b1) (SomeTerm (TWTyBase b2) t) = do
-  conv <- checkBaseSubtype b2 b1
-  return $ conv $$ t
-checkSubtype (TWTyWorld b1) (SomeTerm (TWTyBase b2) t) = do
-  conv <- checkBaseSubtype b2 b1
-  return $ K .$ (conv $$ t)
-checkSubtype (TWTyWorld b1) (SomeTerm (TWTyWorld b2) t) = do
-  conv <- checkBaseSubtype b2 b1
-  return $ B .$ conv $$ t
-checkSubtype _ _ = Nothing
+-- -- For my own sanity I think we might get rid of the rule Int <: Float
+-- -- and only allow promoting/lifting to World.  Then 3 will always be
+-- -- Int and 3.0 will be Float.
 
-checkBaseSubtype :: Base b1 -> Base b2 -> Maybe (TWTerm g (b1 -> b2))
-checkBaseSubtype b1 b2
-  | Just Refl <- testEquality b1 b2 = return $ injConst I
-checkBaseSubtype BInt BFloat = return $ injConst CFI
-checkBaseSubtype _ _ = Nothing
+checkSubtype :: TWType t -> SomeTerm g -> Maybe (TWTerm g t)
+checkSubtype (TWTyWorld b1) (SomeTerm (TWTyBase b2) t) = do
+  case testEquality b1 b2 of
+    Just Refl -> return (K .$ t)
+    Nothing -> Nothing
+checkSubtype ty1 (SomeTerm ty2 t) = do
+  case testEquality ty1 ty2 of
+    Just Refl -> return t
+    Nothing -> Nothing
 
 infer :: Ctx g -> WExp -> Maybe (SomeTerm g)
 infer _ (WInt i) = return $ SomeTerm (TWTyBase BInt) (TWConst (CLit i))
 infer _ (WFloat f) = return $ SomeTerm (TWTyBase BFloat) (TWConst (CLit f))
 infer _ (WBool b) = return $ SomeTerm (TWTyBase BBool) (TWConst (CLit b))
 infer ctx (WVar x) = (\(SomeIdx i ty) -> SomeTerm ty (TWVar i)) <$> lookup x ctx
-infer ctx (WUn uop t) = infer ctx t >>= inferUOp uop
+infer ctx (WUn uop t) = infer ctx t >>= applyUOp uop
 infer ctx (WBin bop t1 t2) = do
   t1' <- infer ctx t1
   t2' <- infer ctx t2
-  inferBOp bop t1' t2'
+  applyBOp bop t1' t2'
 infer ctx (WMask t1 t2) = do
   t1' <- check ctx t1 (TWTyWorld BBool)
   SomeWorld b t2' <- inferWorld ctx t2
@@ -319,22 +332,15 @@ infer ctx (WMask t1 t2) = do
 infer _ WSeed = return $ SomeTerm TWTyInt (injConst CSeed)
 infer _ (WCoord ax) = return $ SomeTerm (TWTyWorld BInt) (injConst (CCoord ax))
 
+applyUOp :: UOp -> SomeTerm g -> Maybe (SomeTerm g)
+applyUOp = undefined
+-- applyUOp Not t = apply (TWTyBool :->: TWTyBool) Not t
+-- applyUOp Neg t = apply (TWTyInt :->: TWTyInt)
 
-inferUOp :: UOp -> SomeTerm g -> Maybe (SomeTerm g)
-inferUOp Not t = do
-  t' <- checkSubtype TWTyBool t
-  return $ SomeTerm TWTyBool (CNot .$ t')
-inferUOp Neg (SomeTerm ty t) = undefined -- Just $ SomeTerm ty (CNeg .$ t)
-  -- XXX how to deal with possibility that t could have a World type,
-  -- i.e. Neg should be lifted?
-  -- Maybe make our own new type classes to encode operations that need to be supported
-  -- and make instances for base types + World types?  Then we could co-opt the type checker
-  -- into checking things properly, and also interpret it directly.  However, compilation
-  -- would not end up using these instances??
-  -- No, we need to do type-directed elaboration right here.
 
-inferBOp :: BOp -> SomeTerm g -> SomeTerm g -> Maybe (SomeTerm g)
-inferBOp = undefined
+
+applyBOp :: BOp -> SomeTerm g -> SomeTerm g -> Maybe (SomeTerm g)
+applyBOp = undefined
 
 -- Infer the type of a term which must be of the form (World b).
 inferWorld :: Ctx g -> WExp -> Maybe (SomeWorld g)
