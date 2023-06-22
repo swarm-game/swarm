@@ -63,6 +63,7 @@ robots:
       - antenna
       - branch predictor
       - comparator
+      - compass
       - dictionary
       - drill
       - grabber
@@ -70,6 +71,7 @@ robots:
       - lambda
       - lodestone
       - logger
+      - net
       - scanner
       - strange loop
       - treads
