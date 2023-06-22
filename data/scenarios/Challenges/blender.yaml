@@ -66,6 +66,7 @@ robots:
     dir: [1, 0]
     devices:
       - ADT calculator
+      - binoculars
       - branch predictor
       - clock
       - comparator
