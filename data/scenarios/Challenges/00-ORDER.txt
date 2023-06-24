@@ -1,3 +1,4 @@
+arbitrage.yaml
 chess_horse.yaml
 bridge-building.yaml
 maypole.yaml
