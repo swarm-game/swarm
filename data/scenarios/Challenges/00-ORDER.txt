@@ -12,6 +12,7 @@ hackman.yaml
 lights-out.yaml
 bucket-brigade.yaml
 wolf-goat-cabbage.yaml
+blender.yaml
 friend.yaml
 Mazes
 Ranching
