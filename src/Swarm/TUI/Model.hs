@@ -369,7 +369,7 @@ populateInventoryList (Just r) = do
       matchesSearch (_, e) = maybe (const True) Fuzzy.test search (e ^. E.entityName)
 
       items =
-        (r ^. robotInventory . to (itemList True mkInvEntry "Inventory"))
+        (r ^. robotInventory . to (itemList True mkInvEntry "Compendium"))
           ++ (r ^. equippedDevices . to (itemList False mkInstEntry "Equipped devices"))
 
       -- Attempt to keep the selected element steady.
