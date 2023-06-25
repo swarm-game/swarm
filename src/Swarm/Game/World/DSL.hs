@@ -186,19 +186,19 @@ interpConst = \case
   C -> flip
 
 class HasConst t where
-  injConst :: Const a -> t a
+  embed :: Const a -> t a
 
 infixl 1 .$
 (.$) :: (HasConst t, Applicable t) => Const (a -> b) -> t a -> t b
-c .$ t = injConst c $$ t
+c .$ t = embed c $$ t
 
 infixl 1 $.
 ($.) :: (HasConst t, Applicable t) => t (a -> b) -> Const a -> t b
-t $. c = t $$ injConst c
+t $. c = t $$ embed c
 
 infixl 1 .$.
 (.$.) :: (HasConst t, Applicable t) => Const (a -> b) -> Const a -> t b
-c1 .$. c2 = injConst c1 $$ injConst c2
+c1 .$. c2 = embed c1 $$ embed c2
 
 ------------------------------------------------------------
 -- Intrinsically typed core language
@@ -225,7 +225,7 @@ instance Applicable (TWTerm g) where
   f $$ x = TWApp f x
 
 instance HasConst (TWTerm g) where
-  injConst = TWConst
+  embed = TWConst
 
 ------------------------------------------------------------
 -- Type representations
@@ -329,11 +329,17 @@ infer ctx (WMask t1 t2) = do
   t1' <- check ctx t1 (TWTyWorld BBool)
   SomeWorld b t2' <- inferWorld ctx t2
   return $ SomeTerm (TWTyWorld b) (CMask .$ t1' $$ t2')
-infer _ WSeed = return $ SomeTerm TWTyInt (injConst CSeed)
-infer _ (WCoord ax) = return $ SomeTerm (TWTyWorld BInt) (injConst (CCoord ax))
+infer _ WSeed = return $ SomeTerm TWTyInt (embed CSeed)
+infer _ (WCoord ax) = return $ SomeTerm (TWTyWorld BInt) (embed (CCoord ax))
+infer ctx (WPerlin a b c d) = do
+  a' <- check ctx a TWTyInt
+  b' <- check ctx b TWTyInt
+  c' <- check ctx c TWTyFloat
+  d' <- check ctx d TWTyFloat
+  return $ SomeTerm (TWTyWorld TWTyFloat) (CPerlin .$ a' $$ b' $$ c' $$ d')
 
 applyUOp :: UOp -> SomeTerm g -> Maybe (SomeTerm g)
-applyUOp = undefined
+applyUOp = apply (const TWTyBool)
 -- applyUOp Not t = apply (TWTyBool :->: TWTyBool) Not t
 -- applyUOp Neg t = apply (TWTyInt :->: TWTyInt)
 
@@ -354,72 +360,3 @@ data SomeWorld :: [Type] -> Type where
   SomeWorld :: Base b -> TWTerm g (World b) -> SomeWorld g
 
 deriving instance Show (SomeWorld g)
-
-
--- ------------------------------------------------------------
-
--- interp :: TWEnv g -> TWTerm g ty -> ty
--- interp _ (TWLit b) = b
--- interp e (TWVar x) = e ! x
--- interp _ (TWOp op) = interpTOp op
--- interp e (TWApp t1 t2) = interp e t1 (interp e t2)
--- interp _ TWFromInt = fromIntegral
--- interp _ TWPure = pure
--- interp _ TWMap  = fmap
--- interp _ TWAp   = (<*>)
-
--- interpTOp :: TOp t -> t
--- interpTOp TWNot = not
--- interpTOp TWNeg = negate
--- interpTOp TWAnd = (&&)
--- interpTOp TWOr = (||)
--- interpTOp TWAdd = (+)
-
--- -- check _ (WUn u)
-
--- -- infer :: Env -> WExp -> Either TypeErr Type
--- -- infer _ (WInt _) = return TyInt
--- -- infer _ (WFloat _) = return TyFloat
--- -- infer _ (WBool _) = return TyBool
--- -- infer _ (WCell _) = return TyCell
--- -- infer env (WVar x) = maybe (Left $ UnboundVar x) Right $ M.lookup x env
--- -- infer env (WUn uop e) = inferUOp env uop e
--- -- infer env (WBin bop e1 e2) = inferBOp env bop e1 e2
--- -- infer env (WMask e1 e2) = do
--- --   check env e1 (TyWorld BBool)
--- --   t <- inferWorld env e2
--- --   return t
-
--- -- inferUOp :: Env -> UOp -> WExp -> Either TypeErr Type
--- -- inferUOp = undefined
-
--- -- inferBOp :: Env -> BOp -> WExp -> WExp -> Either TypeErr Type
--- -- inferBOp = undefined
-
--- -- inferWorld :: Env -> WExp -> Either TypeErr Type
--- -- inferWorld env e = do
--- --   t <- infer env e
--- --   case t of
--- --     TyBase b -> return $ TyWorld b
--- --     TyWorld b -> return $ TyWorld b
--- --     TyPalette b -> Left NotWorld
-
--- -- check :: Env -> WExp -> Type -> Either TypeErr ()
--- -- check env e ty = do
--- --   ty' <- infer env e
--- --   case isSubtype ty' ty of
--- --     True -> return ()
--- --     False -> Left Mismatch
-
--- -- isSubtype :: Type -> Type -> Bool
--- -- isSubtype ty1 ty2 = case (ty1, ty2) of
--- --   _ | ty1 == ty2 -> True
--- --   (TyBase b1, TyBase b2) -> isBaseSubtype b1 b2
--- --   (TyBase b1, TyWorld b2) -> isBaseSubtype b1 b2
--- --   _ -> False
-
--- -- isBaseSubtype :: BaseTy -> BaseTy -> Bool
--- -- isBaseSubtype b1 b2 = case (b1,b2) of
--- --   _ | b1 == b2 -> True
--- --   (BInt, BFloat) -> True
--- --   _ -> False
