@@ -143,8 +143,12 @@ scenarioToAppState siPair@(scene, _) lp = do
   rs <- use runtimeState
   gs <- liftIO $ scenarioToGameState scene lp $ mkGameStateConfig rs
   gameState .= gs
-  void $ withLensIO uiState $ scenarioToUIState siPair gs
+  void $ withLensIO uiState $ scenarioToUIState isAutoplaying siPair gs
  where
+  isAutoplaying = case runIdentity (initialCode lp) of
+    Just (CodeToRun ScenarioSuggested _) -> True
+    _ -> False
+
   withLensIO :: (MonadIO m, MonadState AppState m) => Lens' AppState x -> (x -> IO x) -> m x
   withLensIO l a = do
     x <- use l
@@ -173,13 +177,19 @@ attainAchievement' t p a = do
   liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
 -- | Modify the UI state appropriately when starting a new scenario.
-scenarioToUIState :: ScenarioInfoPair -> GameState -> UIState -> IO UIState
-scenarioToUIState siPair@(scenario, _) gs u = do
+scenarioToUIState ::
+  Bool ->
+  ScenarioInfoPair ->
+  GameState ->
+  UIState ->
+  IO UIState
+scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
   curTime <- getTime Monotonic
   return $
     u
       & uiPlaying .~ True
       & uiGoal .~ emptyGoalDisplay
+      & uiIsAutoplay .~ isAutoplaying
       & uiFocusRing .~ initFocusRing
       & uiInventory .~ Nothing
       & uiInventorySort .~ defaultSortOptions
