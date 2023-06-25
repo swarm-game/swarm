@@ -859,7 +859,13 @@ updateUI = do
 
   goalOrWinUpdated <- doGoalUpdates
 
-  let redraw = g ^. needsRedraw || inventoryUpdated || replUpdated || logUpdated || infoPanelUpdated || goalOrWinUpdated
+  let redraw =
+           g ^. needsRedraw
+        || inventoryUpdated
+        || replUpdated
+        || logUpdated
+        || infoPanelUpdated
+        || goalOrWinUpdated
   pure redraw
 
 -- | Either pops up the updated Goals modal
@@ -942,7 +948,9 @@ doGoalUpdates = do
         -- automatically popped up.
         gameState . announcementQueue .= mempty
 
-        openModal GoalModal
+        isAutoplaying <- use $ uiState . uiIsAutoplay
+        unless isAutoplaying $
+          openModal GoalModal
 
       return goalWasUpdated
 
