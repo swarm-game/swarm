@@ -15,19 +15,12 @@ import Control.Lens (makeLenses)
 import Data.Functor.Identity (Identity (Identity))
 import Data.Text (Text)
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (LaunchParams), ScenarioInfoPair, SerializableLaunchParams)
-import Swarm.Game.State (CodeToRun, getRunCodePath, parseCodeFile)
+import Swarm.Game.State (CodeToRun, LaunchParams, ValidatedLaunchParams, getRunCodePath, parseCodeFile)
 import Swarm.TUI.Model.Name
-
-type LaunchParams a = ParameterizableLaunchParams CodeToRun a
 
 -- | Use this to store error messages
 -- on individual fields
 type EditingLaunchParams = LaunchParams (Either Text)
-
--- | In this stage in the UI pipeline, both fields
--- have already been validated, and "Nothing" means
--- that the field is simply absent.
-type ValidatedLaunchParams = LaunchParams Identity
 
 toSerializableParams :: ValidatedLaunchParams -> SerializableLaunchParams
 toSerializableParams (LaunchParams seedValue (Identity codeToRun)) =
