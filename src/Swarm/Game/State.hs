@@ -81,6 +81,10 @@ module Swarm.Game.State (
   notificationsCount,
   notificationsContent,
 
+  -- ** Launch parameters
+  LaunchParams,
+  ValidatedLaunchParams,
+
   -- ** GameState initialization
   GameStateConfig (..),
   initGameState,
@@ -164,6 +168,7 @@ import Swarm.Game.Recipe (
  )
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
+import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
@@ -941,6 +946,13 @@ deleteRobot rn = do
 -- Initialization
 ------------------------------------------------------------
 
+type LaunchParams a = ParameterizableLaunchParams CodeToRun a
+
+-- | In this stage in the UI pipeline, both fields
+-- have already been validated, and "Nothing" means
+-- that the field is simply absent.
+type ValidatedLaunchParams = LaunchParams Identity
+
 -- | Record to pass information needed to create an initial
 --   'GameState' record when starting a scenario.
 data GameStateConfig = GameStateConfig
@@ -1001,11 +1013,10 @@ initGameState gsc =
 -- | Create an initial game state corresponding to the given scenario.
 scenarioToGameState ::
   Scenario ->
-  Maybe Seed ->
-  Maybe CodeToRun ->
+  ValidatedLaunchParams ->
   GameStateConfig ->
   IO GameState
-scenarioToGameState scenario userSeed toRun gsc = do
+scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun)) gsc = do
   -- Decide on a seed.  In order of preference, we will use:
   --   1. seed value provided by the user
   --   2. seed value specified in the scenario description

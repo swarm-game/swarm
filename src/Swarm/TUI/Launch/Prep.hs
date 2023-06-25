@@ -18,7 +18,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Functor.Identity (runIdentity)
 import Data.Text qualified as T
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (..), ScenarioInfoPair, getLaunchParams, scenarioStatus)
-import Swarm.Game.State (Seed, getRunCodePath)
+import Swarm.Game.State (Seed, ValidatedLaunchParams, getRunCodePath)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Model.Name
 import Swarm.Util (listEnums)

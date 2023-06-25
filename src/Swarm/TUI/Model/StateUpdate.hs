@@ -48,7 +48,7 @@ import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting
-import Swarm.TUI.Launch.Model (ValidatedLaunchParams, toSerializableParams)
+import Swarm.TUI.Launch.Model (toSerializableParams)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.TUI.Model.Repl
@@ -110,7 +110,7 @@ startGameWithSeed ::
   ScenarioInfoPair ->
   ValidatedLaunchParams ->
   m ()
-startGameWithSeed siPair@(_scene, si) lp@(LaunchParams (Identity userSeed) (Identity toRun)) = do
+startGameWithSeed siPair@(_scene, si) lp = do
   t <- liftIO getZonedTime
   ss <- use $ runtimeState . scenarios
   p <- liftIO $ normalizeScenarioPath ss (si ^. scenarioPath)
@@ -124,7 +124,7 @@ startGameWithSeed siPair@(_scene, si) lp@(LaunchParams (Identity userSeed) (Iden
       (toSerializableParams lp)
       (Metric Attempted $ ProgressStats t emptyAttemptMetric)
       (prevBest t)
-  scenarioToAppState siPair userSeed toRun
+  scenarioToAppState siPair lp
   -- Beware: currentScenarioPath must be set so that progress/achievements can be saved.
   -- It has just been cleared in scenarioToAppState.
   gameState . currentScenarioPath .= Just p
@@ -137,15 +137,18 @@ startGameWithSeed siPair@(_scene, si) lp@(LaunchParams (Identity userSeed) (Iden
 scenarioToAppState ::
   (MonadIO m, MonadState AppState m) =>
   ScenarioInfoPair ->
-  Maybe Seed ->
-  Maybe CodeToRun ->
+  ValidatedLaunchParams ->
   m ()
-scenarioToAppState siPair@(scene, _) userSeed toRun = do
+scenarioToAppState siPair@(scene, _) lp = do
   rs <- use runtimeState
-  gs <- liftIO $ scenarioToGameState scene userSeed toRun (mkGameStateConfig rs)
+  gs <- liftIO $ scenarioToGameState scene lp $ mkGameStateConfig rs
   gameState .= gs
-  void $ withLensIO uiState $ scenarioToUIState siPair gs
+  void $ withLensIO uiState $ scenarioToUIState isAutoplaying siPair gs
  where
+  isAutoplaying = case runIdentity (initialCode lp) of
+    Just (CodeToRun ScenarioSuggested _) -> True
+    _ -> False
+
   withLensIO :: (MonadIO m, MonadState AppState m) => Lens' AppState x -> (x -> IO x) -> m x
   withLensIO l a = do
     x <- use l
@@ -174,13 +177,19 @@ attainAchievement' t p a = do
   liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
 -- | Modify the UI state appropriately when starting a new scenario.
-scenarioToUIState :: ScenarioInfoPair -> GameState -> UIState -> IO UIState
-scenarioToUIState siPair@(scenario, _) gs u = do
+scenarioToUIState ::
+  Bool ->
+  ScenarioInfoPair ->
+  GameState ->
+  UIState ->
+  IO UIState
+scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
   curTime <- getTime Monotonic
   return $
     u
       & uiPlaying .~ True
       & uiGoal .~ emptyGoalDisplay
+      & uiIsAutoplay .~ isAutoplaying
       & uiFocusRing .~ initFocusRing
       & uiInventory .~ Nothing
       & uiInventorySort .~ defaultSortOptions
