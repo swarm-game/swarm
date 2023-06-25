@@ -143,7 +143,7 @@ scenarioToAppState siPair@(scene, _) lp = do
   rs <- use runtimeState
   gs <- liftIO $ scenarioToGameState scene lp $ mkGameStateConfig rs
   gameState .= gs
-  void $ withLensIO uiState $ scenarioToUIState isAutoplaying siPair gs 
+  void $ withLensIO uiState $ scenarioToUIState isAutoplaying siPair gs
  where
   isAutoplaying = case runIdentity (initialCode lp) of
     Just (CodeToRun ScenarioSuggested _) -> True
@@ -177,12 +177,12 @@ attainAchievement' t p a = do
   liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
 -- | Modify the UI state appropriately when starting a new scenario.
-scenarioToUIState
-  :: Bool
-  -> ScenarioInfoPair
-  -> GameState
-  -> UIState
-  -> IO UIState
+scenarioToUIState ::
+  Bool ->
+  ScenarioInfoPair ->
+  GameState ->
+  UIState ->
+  IO UIState
 scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
   curTime <- getTime Monotonic
   return $

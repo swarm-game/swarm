@@ -860,12 +860,12 @@ updateUI = do
   goalOrWinUpdated <- doGoalUpdates
 
   let redraw =
-           g ^. needsRedraw
-        || inventoryUpdated
-        || replUpdated
-        || logUpdated
-        || infoPanelUpdated
-        || goalOrWinUpdated
+        g ^. needsRedraw
+          || inventoryUpdated
+          || replUpdated
+          || logUpdated
+          || infoPanelUpdated
+          || goalOrWinUpdated
   pure redraw
 
 -- | Either pops up the updated Goals modal
