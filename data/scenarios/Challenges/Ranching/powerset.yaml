@@ -1,0 +1,190 @@
+version: 1
+name: Fruit hybrids
+author: Karl Ostmo
+description: |
+  Find the missing fruit combination
+creative: false
+attrs:
+  - name: fruit0
+    fg: "#ff0080"
+  - name: fruit1
+    fg: "#b000ff"
+  - name: fruit2
+    fg: "#ffff00"
+  - name: fruit3
+    fg: "#ff0000"
+  - name: fruit4
+    fg: "#0000ff"
+  - name: fruit5
+    fg: "#00ff00"
+  - name: fruit6
+    fg: "#ff8000"
+objectives:
+  - teaser: Find missing hybrid
+    id: complete_powerset
+    goal:
+      - |
+        Farmer Bill is breeding hybrid fruits.
+        Each fruit can be paired with one or more other fruit variety, and Bill
+        wants to evaluate every such combination.
+        He has arranged each hybrid in a column in his orchard.
+      - |
+        However, his experiment is incomplete! He has forgotten one combination.
+      - |
+        Place the missing hybrid combination in the empty eastern-most column.
+        After you have done this, `place` the "bell" anywhere, and then Bill will inspect
+        your work.
+    prerequisite:
+        not: wrong_anwser
+    condition: |
+      r <- robotnamed "setup";
+      as r {has "bit (1)"};
+  - teaser: Wrong answer
+    id: wrong_anwser
+    optional: true
+    goal:
+      - |
+        Farmer Bill is disappointed.
+    condition: |
+      r <- robotnamed "setup";
+      as r {has "bit (0)"};
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - ADT calculator
+      - branch predictor
+      - hourglass
+      - comparator
+      - compass
+      - counter
+      - dictionary
+      - Elmer's glue
+      - fruit picker
+      - fruit planter
+      - GPS receiver
+      - lambda
+      - linotype
+      - lodestone
+      - logger
+      - keyboard
+      - net
+      - rocket skates
+      - scanner
+      - strange loop
+      - treads
+  - name: setup
+    system: true
+    dir: [1, 0]
+    display:
+      invisible: true
+    inventory:
+      - [1, bell]
+      - [1, dragonfruit]
+      - [2, grape]
+      - [3, lemon]
+      - [4, apple]
+      - [5, blueberry]
+      - [6, watermelon]
+      - [7, orange]
+    program: |
+      run "scenarios/Challenges/Ranching/_powerset/setup.sw"
+solution: |
+   run "scenarios/Challenges/Ranching/_powerset/solution.sw"
+entities:
+  - name: rocket skates
+    display:
+      attr: silver
+      char: 's'
+    description:
+    - Allows one to `stride` across multiple cells
+    properties: [known, portable]
+    capabilities: [movemultiple]
+  - name: bell
+    display:
+      char: 'B'
+      attr: gold
+    description:
+      - A bell for Bill
+    properties: [known, portable]
+  - name: fruit picker
+    display:
+      char: 'P'
+    description:
+      - Enables the `harvest` command.
+    properties: [known]
+    capabilities: [harvest]
+  - name: fruit planter
+    display:
+      char: 'p'
+    description:
+      - Enables the `place` command.
+    properties: [known]
+    capabilities: [place]
+  - name: dragonfruit
+    display:
+      char: 'Y'
+      attr: fruit0
+    description:
+      - Dragonfruits
+    properties: [known, growable, portable]
+    growth: [10, 10]
+  - name: grape
+    display:
+      char: 'Y'
+      attr: fruit1
+    description:
+      - Grapes
+    growth: [10, 10]
+    properties: [known, growable, portable]
+  - name: lemon
+    display:
+      char: 'Y'
+      attr: fruit2
+    description:
+      - Lemons
+    growth: [10, 10]
+    properties: [known, growable, portable]
+  - name: apple
+    display:
+      char: 'Y'
+      attr: fruit3
+    description:
+      - Apple
+    growth: [10, 10]
+    properties: [known, growable, portable]
+  - name: blueberry
+    display:
+      char: 'Y'
+      attr: fruit4
+    description:
+      - Blueberries
+    growth: [10, 10]
+    properties: [known, growable, portable]
+  - name: watermelon
+    display:
+      char: 'Y'
+      attr: fruit5
+    description:
+      - Watermelons
+    growth: [10, 10]
+    properties: [known, growable, portable]
+  - name: orange
+    display:
+      char: 'Y'
+      attr: fruit6
+    description:
+      - Oranges
+    growth: [10, 10]
+    properties: [known, growable, portable]
+known: [sand]
+world:
+  default: [grass]
+  upperleft: [-1, -1]
+  offset: false
+  palette:
+    '.': [grass]
+    'B': [grass, null, base]
+    'S': [grass, null, setup]
+  map: |
+    BS
