@@ -5,7 +5,7 @@ extra-deps:
 - boolexpr-0.2@sha256:07f38a0206ad63c2c893e3c6271a2e45ea25ab4ef3a9e973edc746876f0ab9e8,853
 - brick-list-skip-0.1.1.4
 # We should update to lsp-2.0 and lsp-types-2.0 but it involves some
-# breaking changes
+# breaking changes; see https://github.com/swarm-game/swarm/issues/1350
 - lsp-1.6.0.0
 - lsp-types-1.6.0.0
 resolver: lts-21.0
