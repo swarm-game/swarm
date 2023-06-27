@@ -113,6 +113,7 @@ library
                       Swarm.Game.Scenario.Objective.Logic
                       Swarm.Game.Scenario.Objective.Validation
                       Swarm.Game.Scenario.Objective.WinCheck
+                      Swarm.Game.Scenario.Portal
                       Swarm.Game.Scenario.RobotLookup
                       Swarm.Game.Scenario.Scoring.Best
                       Swarm.Game.Scenario.Scoring.CodeSize
@@ -120,6 +121,7 @@ library
                       Swarm.Game.Scenario.Scoring.GenericMetrics
                       Swarm.Game.Scenario.Status
                       Swarm.Game.Scenario.Structure
+                      Swarm.Game.Scenario.Subworld
                       Swarm.Game.Scenario.Style
                       Swarm.Game.Scenario.WorldDescription
                       Swarm.Game.Scenario.WorldPalette

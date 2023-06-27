@@ -5,6 +5,11 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.WorldDescription where
 
+import Data.Coerce
+import Data.Text qualified as T
+import Swarm.Util (quote)
+import Control.Monad (forM)
+import Data.Map qualified as M
 import Data.Maybe (catMaybes)
 import Data.Yaml as Y
 import Swarm.Game.Entity
@@ -15,6 +20,7 @@ import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Structure qualified as Structure
 import Swarm.Game.Scenario.WorldPalette
 import Swarm.Util.Yaml
+import Swarm.Game.Scenario.Portal
 
 ------------------------------------------------------------
 -- World description
@@ -30,6 +36,11 @@ data PWorldDescription e = WorldDescription
   , palette :: WorldPalette e
   , ul :: Location
   , area :: [[PCell e]]
+    -- | Note that waypoints defined at the "root" level are still relative to
+    -- the top-left corner of the map rectangle; they are not in absolute world
+    -- coordinates (as with applying the "ul" offset).
+  , waypoints :: M.Map Structure.WaypointName Location
+  , portals :: M.Map Location Location
   }
   deriving (Eq, Show)
 
@@ -39,19 +50,39 @@ instance FromJSONE (EntityMap, RobotMap) WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
     pal <- v ..:? "palette" ..!= WorldPalette mempty
     structureDefs <- v ..:? "structures" ..!= []
+    waypointDefs <- liftE $ v .:? "waypoints" .!= []
+    portalDefs <- liftE $ v .:? "portals" .!= []
     placementDefs <- liftE $ v .:? "placements" .!= []
     initialArea <- liftE ((v .:? "map" .!= "") >>= Structure.paintMap Nothing pal)
 
-    let struc = Structure.Structure initialArea structureDefs placementDefs
-        Structure.MergedStructure mergedArea = Structure.mergeStructures mempty struc
+    upperLeft <- liftE (v .:? "upperleft" .!= origin)
+
+    let struc = Structure.Structure initialArea structureDefs placementDefs waypointDefs
+        Structure.MergedStructure mergedArea unmergedWaypoints = Structure.mergeStructures mempty Nothing struc
+
+    -- TODO: Throw error upon overwrites
+    -- TODO: Add unit test for parse validation
+    let mergedWaypoints = M.fromList $ map (\(Structure.Originated _ (Structure.Waypoint n _ loc)) -> (n, loc)) unmergedWaypoints
+        correctedWaypoints = M.map (.+^ coerce upperLeft) mergedWaypoints
+
+    -- TODO Currently ignores subworld references
+    reconciledPortalPairs <- forM portalDefs $ \(Portal entranceName (PortalExit exitName _)) -> do
+        let getLoc wpName@(Structure.WaypointName rawName) = case M.lookup wpName correctedWaypoints of
+              Nothing -> fail $ T.unpack $ T.unwords ["No waypoint named", quote rawName]
+              Just x -> return x
+        entranceLoc <- getLoc entranceName
+        exitLoc <- getLoc exitName
+        return (entranceLoc, exitLoc)
 
     WorldDescription
       <$> v ..:? "default"
       <*> liftE (v .:? "offset" .!= False)
       <*> liftE (v .:? "scrollable" .!= True)
       <*> pure pal
-      <*> liftE (v .:? "upperleft" .!= origin)
+      <*> pure upperLeft
       <*> pure (map catMaybes mergedArea) -- Root-level map has no transparent cells.
+      <*> pure correctedWaypoints
+      <*> pure (M.fromList reconciledPortalPairs)
 
 ------------------------------------------------------------
 -- World editor

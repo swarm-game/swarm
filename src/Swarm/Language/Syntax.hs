@@ -269,6 +269,8 @@ data Const
     Scout
   | -- | Get the current x, y coordinates
     Whereami
+  | -- | Get the x, y coordinates of a named waypoint
+    Waypoint
   | -- | Locate the closest instance of a given entity within the rectangle
     -- specified by opposite corners, relative to the current location.
     Detect
@@ -664,6 +666,7 @@ constInfo c = case c of
       , T.unwords ["Has a max range of", T.pack $ show maxScoutRange, "units."]
       ]
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
+  Waypoint -> command 1 Intangible "Get the x, y coordinates of a named waypoint."
   Detect ->
     command 2 Intangible . doc "Detect an entity within a rectangle." $
       ["Locate the closest instance of a given entity within the rectangle specified by opposite corners, relative to the current location."]

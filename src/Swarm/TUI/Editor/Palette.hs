@@ -125,6 +125,8 @@ constructScenario maybeOriginalScenario cellGrid =
       , palette = WorldPalette suggestedPalette
       , ul = upperLeftCoord
       , area = cellGrid
+      , waypoints = mempty
+      , portals = mempty
       }
 
   suggestedPalette = makeSuggestedPalette maybeOriginalScenario cellGrid

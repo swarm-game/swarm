@@ -1,0 +1,88 @@
+version: 1
+name: Waypoints for nested structures
+description: |
+  Demonstrate behavior of waypoints across structure overlays
+robots:
+  - name: base
+    loc: [0, 4]
+    dir: [1, 0]
+known: [tree, flower, sand, bit (0), bit (1)]
+world:
+  upperleft: [-4, 7]
+  default: [blank]
+  palette:
+    '.': [grass]
+    '*': [stone, flower]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  structures:
+    - name: bitpair
+      structure:
+        palette:
+          '0': [stone, bit (0)]
+          '1': [stone, bit (1)]
+        map: |
+          1
+          0
+        waypoints:
+          - name: bitpair_bottom
+            loc: [0, -1]
+    - name: minibox
+      structure:
+        palette:
+          '.': [stone]
+          's': [stone, sand]
+        placements:
+          - src: bitpair
+            offset: [1, 0]
+        waypoints:
+          - name: minibox_corner
+            loc: [0, 0]
+        map: |
+          s.s
+          s.s
+    - name: bigbox
+      structure:
+        palette:
+          '.': [stone]
+          'T': [stone, tree]
+        waypoints:
+          - name: bigbox_middle
+            loc: [2, -3]
+        map: |
+          TTTTTT
+          T.T.T.
+          .T.T.T
+          TTTTTT
+  placements:
+    - src: bigbox
+      offset: [1, -1]
+    - src: bigbox
+      offset: [7, -5]
+    - src: minibox
+      offset: [1, -7]
+  waypoints:
+    - name: meadow
+      loc: [12, -1]
+  portals:
+    - entrance: bitpair_bottom
+      exitInfo:
+        exit: bigbox_middle
+    - entrance: minibox_corner
+      exitInfo:
+        exit: meadow
+  map: |
+    ┌────────────┐
+    │*..*..*..*..│
+    │.*..*..*..*.│
+    │..*..*..*..*│
+    │*..*..*..*..│
+    │.*..*..*..*.│
+    │..*..*..*..*│
+    │*..*..*..*..│
+    │.*..*..*..*.│
+    └────────────┘
