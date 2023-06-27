@@ -1,0 +1,143 @@
+version: 1
+name: Portals with substructure flip and rotation
+description: |
+  Validate proper flip/rotate of portal waypoints
+objectives:
+  - goal:
+    - |
+      `grab` the "bitcoin"
+    condition: |
+      as base {has "bitcoin"}
+solution: |
+  run "scenarios/Testing/1356-portals/_portals-flip-and-rotate/solution.sw"
+attrs:
+  - name: portal_in
+    fg: "#ff9a00"
+    bg: "#ff5d00"
+  - name: portal_out
+    fg: "#00a2ff"
+    bg: "#0065ff"
+entities:
+  - name: telepad entrance
+    display:
+      attr: portal_in
+      char: "o"
+    description:
+    - Portal entrance
+    properties: [known]
+  - name: telepad exit
+    display:
+      attr: portal_out
+      char: "o"
+    description:
+    - Portal exit
+    properties: [known]
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - ADT calculator
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - GPS receiver
+      - grabber
+      - lambda
+      - lodestone
+      - logger
+      - strange loop
+      - treads
+known: [flower, bit (0), bit (1), bitcoin]
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+    '*': [stone, flower]
+    'b': [stone, bitcoin]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+    'p':
+      cell: [dirt, telepad exit, base]
+      waypoint:
+        name: portal_out
+  upperleft: [-1, 1]
+  structures:
+    - name: tetromino
+      structure:
+        mask: '.'
+        palette:
+          '0': [stone, bit (0)]
+          '1': [stone, bit (1)]
+          'P':
+            cell: [dirt, telepad entrance]
+            waypoint:
+              name: portal_in
+        map: |
+          10..
+          1P..
+          10..
+          10..
+          1000
+          1111
+  placements:
+    - src: tetromino
+      offset: [3, -2]
+    - src: tetromino
+      offset: [9, -2]
+      orient:
+        up: "DEast"
+    - src: tetromino
+      offset: [17, -2]
+      orient:
+        up: "DSouth"
+    - src: tetromino
+      offset: [23, -2]
+      orient:
+        up: "DWest"
+    - src: tetromino
+      offset: [3, -9]
+      orient:
+        up: "DNorth"
+        flip: true
+    - src: tetromino
+      offset: [9, -9]
+      orient:
+        up: "DEast"
+        flip: true
+    - src: tetromino
+      offset: [17, -9]
+      orient:
+        up: "DSouth"
+        flip: true
+    - src: tetromino
+      offset: [23, -9]
+      orient:
+        up: "DWest"
+        flip: true
+  portals:
+    - entrance: portal_in
+      exitInfo:
+        exit: portal_out
+  map: |
+    ┌──────────────────────────────┐
+    │p..*..*..*..*..*..*..*..*..*..│
+    │.*..*..*..*..*..*..*..*..*..*.│
+    │..*..*..*..*..*..*..*..*..*..*│
+    │*..*..*..*..*..*..*..*..*..*..│
+    │.*..*..*..*..*..*..*..*..*..*.│
+    │..*..*..*..*..*..*..*..*..*..*│
+    │*..*..*..*..*..*..*..*..*..*..│
+    │.*..*..*..*..*..*..*..*..*..*.│
+    │..*..*..*..*..*..*..*..*..*..*│
+    │*..*..*..*..*..*..*..*..*..*..│
+    │.*..*..*..*..*..*..*..*..*..*.│
+    │..*..*..*..*..*..*..*..*..*..*│
+    │*..*..*..*..*..*..*..*..*..*..│
+    │.*..*..*..*..*..*..*..*..*..*.│
+    │..*..*..*..*..*..*..*..*..*..b│
+    └──────────────────────────────┘

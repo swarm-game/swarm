@@ -21,7 +21,7 @@ import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Display
 import Swarm.Game.Entity
 import Swarm.Game.Robot
-import Swarm.Game.Scenario.EntityFacade
+import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.State
 import Swarm.Game.Terrain
 import Swarm.Game.World qualified as W

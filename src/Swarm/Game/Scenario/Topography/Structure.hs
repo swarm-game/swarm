@@ -2,30 +2,28 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
-module Swarm.Game.Scenario.Structure where
+module Swarm.Game.Scenario.Topography.Structure where
 
 import Control.Applicative ((<|>))
 import Control.Arrow ((&&&))
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KeyMap
-import Data.List (transpose)
+import Data.Coerce
 import Data.Map qualified as M
-import Data.Maybe (mapMaybe)
+import Data.Maybe (catMaybes, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml as Y
-import GHC.Generics (Generic)
 import Swarm.Game.Entity
 import Swarm.Game.Location
-import Swarm.Game.Scenario.Cell
 import Swarm.Game.Scenario.RobotLookup
-import Swarm.Game.Scenario.WorldPalette
-import Swarm.Language.Syntax (AbsoluteDir (..))
+import Swarm.Game.Scenario.Topography.Area
+import Swarm.Game.Scenario.Topography.Cell
+import Swarm.Game.Scenario.Topography.Navigation.Waypoint
+import Swarm.Game.Scenario.Topography.Placement
+import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Util.Yaml
 import Witch (into)
-
-newtype StructureName = StructureName Text
-  deriving (Eq, Ord, Show, Generic, FromJSON)
 
 data NamedStructure c = NamedStructure
   { name :: StructureName
@@ -46,26 +44,11 @@ data PStructure c = Structure
   -- ^ structure definitions from parents shall be accessible by children
   , placements :: [Placement]
   -- ^ earlier placements will be overlaid on top of later placements in the YAML file
+  , waypoints :: [Waypoint]
   }
   deriving (Eq, Show)
 
-newtype MergedStructure c = MergedStructure [[c]]
-
-data Orientation = Orientation
-  { up :: AbsoluteDir
-  , flipped :: Bool
-  -- ^ vertical flip, applied before rotation
-  }
-  deriving (Eq, Show)
-
-instance FromJSON Orientation where
-  parseJSON = withObject "structure orientation" $ \v -> do
-    Orientation
-      <$> (v .:? "up" .!= DNorth)
-      <*> (v .:? "flip" .!= False)
-
-defaultOrientation :: Orientation
-defaultOrientation = Orientation DNorth False
+data MergedStructure c = MergedStructure [[c]] [Originated Waypoint]
 
 -- | Destructively overlays one direct child structure
 -- upon the input structure.
@@ -77,13 +60,21 @@ overlaySingleStructure ::
   MergedStructure (Maybe a)
 overlaySingleStructure
   inheritedStrucDefs
-  (Placement _ (Location colOffset rowOffset) orientation, struc)
-  (MergedStructure inputArea) =
-    MergedStructure $ zipWithPad mergeSingleRow inputArea paddedOverlayRows
+  (p@(Placement _ loc@(Location colOffset rowOffset) orientation), struc)
+  (MergedStructure inputArea inputWaypoints) =
+    MergedStructure mergedArea mergedWaypoints
    where
+    mergedArea = zipWithPad mergeSingleRow inputArea paddedOverlayRows
+
+    placeWaypoint =
+      offsetWaypoint (coerce loc)
+        . modifyLocation (reorientWaypoint orientation $ getAreaDimensions overlayArea)
+    mergedWaypoints = inputWaypoints <> map (fmap placeWaypoint) overlayWaypoints
+
     zipWithPad f a b = zipWith f a $ b <> repeat Nothing
-    MergedStructure overlayArea = mergeStructures inheritedStrucDefs struc
-    affineTransformedOverlay = getTransform orientation overlayArea
+
+    MergedStructure overlayArea overlayWaypoints = mergeStructures inheritedStrucDefs (Just p) struc
+    affineTransformedOverlay = applyOrientationTransform orientation overlayArea
 
     mergeSingleRow inputRow maybeOverlayRow =
       zipWithPad (flip (<|>)) inputRow paddedSingleOverlayRow
@@ -99,12 +90,18 @@ overlaySingleStructure
           then (replicate integralOffset Nothing <>)
           else drop $ abs integralOffset
 
--- | Overlays all of the "child placements", such that the
--- earlier children supersede the later ones (due to use of "foldr" instead of "foldl").
-mergeStructures :: M.Map StructureName (PStructure (Maybe a)) -> PStructure (Maybe a) -> MergedStructure (Maybe a)
-mergeStructures inheritedStrucDefs (Structure origArea subStructures subPlacements) =
-  foldr (overlaySingleStructure structureMap) (MergedStructure origArea) overlays
+-- | Overlays all of the "child placements", such that the children encountered earlier
+-- in the YAML file supersede the later ones (due to use of "foldr" instead of "foldl").
+mergeStructures ::
+  M.Map StructureName (PStructure (Maybe a)) ->
+  Maybe Placement ->
+  PStructure (Maybe a) ->
+  MergedStructure (Maybe a)
+mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStructures subPlacements subWaypoints) =
+  foldr (overlaySingleStructure structureMap) (MergedStructure origArea originatedWaypoints) overlays
  where
+  originatedWaypoints = map (Originated parentPlacement) subWaypoints
+
   -- deeper definitions override the outer (toplevel) ones
   structureMap = M.union (M.fromList $ map (name &&& structure) subStructures) inheritedStrucDefs
   overlays = mapMaybe g subPlacements
@@ -116,43 +113,30 @@ instance FromJSONE (EntityMap, RobotMap) (PStructure (Maybe (PCell Entity))) whe
     pal <- v ..:? "palette" ..!= WorldPalette mempty
     structureDefs <- v ..:? "structures" ..!= []
     placementDefs <- liftE $ v .:? "placements" .!= []
+    waypointDefs <- liftE $ v .:? "waypoints" .!= []
     maybeMaskChar <- liftE $ v .:? "mask"
-    maskedArea <- liftE $ (v .:? "map" .!= "") >>= paintMap maybeMaskChar pal
-    return $ Structure maskedArea structureDefs placementDefs
-
--- | affine transformation
-getTransform :: Orientation -> ([[a]] -> [[a]])
-getTransform (Orientation upDir shouldFlip) =
-  rotational . flipping
- where
-  flipV = reverse
-  flipping = if shouldFlip then flipV else id
-  rotational = case upDir of
-    DNorth -> id
-    DSouth -> transpose . flipV . transpose . flipV
-    DEast -> transpose . flipV
-    DWest -> flipV . transpose
-
-data Placement = Placement
-  { src :: StructureName
-  , offset :: Location
-  , orient :: Orientation
-  }
-  deriving (Eq, Show)
-
-instance FromJSON Placement where
-  parseJSON = withObject "structure placement" $ \v -> do
-    sName <- v .: "src"
-    Placement sName
-      <$> (v .:? "offset" .!= origin)
-      <*> (v .:? "orient" .!= defaultOrientation)
+    (maskedArea, mapWaypoints) <- liftE $ (v .:? "map" .!= "") >>= paintMap maybeMaskChar pal
+    return $ Structure maskedArea structureDefs placementDefs $ waypointDefs <> mapWaypoints
 
 -- | "Paint" a world map using a 'WorldPalette', turning it from a raw
 --   string into a nested list of 'Cell' values by looking up each
 --   character in the palette, failing if any character in the raw map
 --   is not contained in the palette.
-paintMap :: MonadFail m => Maybe Char -> WorldPalette e -> Text -> m [[Maybe (PCell e)]]
-paintMap maskChar pal = readMap toCell
+paintMap ::
+  MonadFail m =>
+  Maybe Char ->
+  WorldPalette e ->
+  Text ->
+  m ([[Maybe (PCell e)]], [Waypoint])
+paintMap maskChar pal a = do
+  nestedLists <- readMap toCell a
+  let cells = map (map $ fmap standardCell) nestedLists
+      f i j maybeAugmentedCell = do
+        wpCfg <- waypointCfg =<< maybeAugmentedCell
+        return . Waypoint wpCfg . Location j $ negate i
+      wps = concat $ zipWith (\i -> catMaybes . zipWith (f i) [0 ..]) [0 ..] nestedLists
+
+  return (cells, wps)
  where
   toCell c =
     if Just c == maskChar

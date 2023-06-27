@@ -24,6 +24,7 @@ module Swarm.Util.Yaml (
   withArrayE,
 ) where
 
+import Control.Applicative (Alternative)
 import Control.Monad.Reader
 import Data.Aeson.Key (fromText)
 import Data.Aeson.Types (explicitParseField, explicitParseFieldMaybe)
@@ -42,7 +43,7 @@ import Swarm.Util (failT, showT)
 --   value of type @e@.
 newtype With e f a = E {runE :: e -> f a}
   deriving (Functor)
-  deriving (Applicative, Monad, MonadFail) via (ReaderT e f)
+  deriving (Applicative, Monad, MonadFail, Alternative) via (ReaderT e f)
 
 -- | A 'ParserE' is a YAML 'Parser' that can also depend on knowing an
 --   value of type @e@.  The @E@ used to stand for @EntityMap@, but now

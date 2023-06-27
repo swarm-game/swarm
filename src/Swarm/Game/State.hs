@@ -60,6 +60,7 @@ module Swarm.Game.State (
   recipesReq,
   currentScenarioPath,
   knownEntities,
+  worldNavigation,
   world,
   worldScrollable,
   viewCenterRule,
@@ -169,6 +170,7 @@ import Swarm.Game.Recipe (
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Status
+import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
@@ -398,6 +400,7 @@ data GameState = GameState
   , _recipesReq :: IntMap [Recipe Entity]
   , _currentScenarioPath :: Maybe FilePath
   , _knownEntities :: [Text]
+  , _worldNavigation :: Navigation
   , _world :: W.World Int Entity
   , _worldScrollable :: Bool
   , _viewCenterRule :: ViewCenterRule
@@ -558,6 +561,10 @@ currentScenarioPath :: Lens' GameState (Maybe FilePath)
 -- | The names of entities that should be considered "known", that is,
 --   robots know what they are without having to scan them.
 knownEntities :: Lens' GameState [Text]
+
+-- | Includes a Map of named locations and an
+-- "Edge list" (graph) that maps portal entrances to exits
+worldNavigation :: Lens' GameState Navigation
 
 -- | The current state of the world (terrain and entities only; robots
 --   are stored in the 'robotMap').  Int is used instead of
@@ -995,6 +1002,7 @@ initGameState gsc =
     , _recipesReq = reqRecipeMap (initRecipes gsc)
     , _currentScenarioPath = Nothing
     , _knownEntities = []
+    , _worldNavigation = Navigation mempty mempty
     , _world = W.emptyWorld (fromEnum StoneT)
     , _worldScrollable = True
     , _viewCenterRule = VCRobot 0
@@ -1051,6 +1059,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       & recipesIn %~ addRecipesWith inRecipeMap
       & recipesReq %~ addRecipesWith reqRecipeMap
       & knownEntities .~ scenario ^. scenarioKnown
+      & worldNavigation .~ navigation (scenario ^. scenarioWorld)
       & world .~ theWorld theSeed
       & worldScrollable .~ scenario ^. scenarioWorld . to scrollable
       & viewCenterRule .~ VCRobot baseID

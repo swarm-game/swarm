@@ -35,17 +35,23 @@ class Valuable a where
 instance Valuable Int32 where
   asValue = VInt . fromIntegral
 
+instance Valuable Int where
+  asValue = VInt . fromIntegral
+
 instance (Valuable a) => Valuable (V2 a) where
-  asValue (V2 x y) = VPair (asValue x) (asValue y)
+  asValue (V2 x y) = asValue (x, y)
+
+instance (Valuable a, Valuable b) => Valuable (a, b) where
+  asValue (x, y) = VPair (asValue x) (asValue y)
+
+instance Valuable Location where
+  asValue (Location x y) = VPair (asValue x) (asValue y)
 
 instance Valuable Entity where
   asValue = VText . view entityName
 
 instance Valuable Robot where
   asValue = VRobot . view robotID
-
-instance Valuable Location where
-  asValue (Location x y) = VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))
 
 instance (Valuable a) => Valuable (Maybe a) where
   asValue Nothing = VInj False VUnit

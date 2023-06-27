@@ -102,12 +102,11 @@ library
                       Swarm.Game.ResourceLoading
                       Swarm.Game.Robot
                       Swarm.Game.Scenario
-                      Swarm.Game.Scenario.Cell
+                      Swarm.Game.Scenario.Topography.Cell
                       Swarm.TUI.Launch.Controller
                       Swarm.TUI.Launch.Model
                       Swarm.TUI.Launch.Prep
                       Swarm.TUI.Launch.View
-                      Swarm.Game.Scenario.EntityFacade
                       Swarm.Game.Scenario.Objective
                       Swarm.Game.Scenario.Objective.Graph
                       Swarm.Game.Scenario.Objective.Logic
@@ -119,10 +118,14 @@ library
                       Swarm.Game.Scenario.Scoring.ConcreteMetrics
                       Swarm.Game.Scenario.Scoring.GenericMetrics
                       Swarm.Game.Scenario.Status
-                      Swarm.Game.Scenario.Structure
                       Swarm.Game.Scenario.Style
-                      Swarm.Game.Scenario.WorldDescription
-                      Swarm.Game.Scenario.WorldPalette
+                      Swarm.Game.Scenario.Topography.EntityFacade
+                      Swarm.Game.Scenario.Topography.Navigation.Portal
+                      Swarm.Game.Scenario.Topography.Navigation.Waypoint
+                      Swarm.Game.Scenario.Topography.Placement
+                      Swarm.Game.Scenario.Topography.Structure
+                      Swarm.Game.Scenario.Topography.WorldDescription
+                      Swarm.Game.Scenario.Topography.WorldPalette
                       Swarm.Game.ScenarioInfo
                       Swarm.Game.State
                       Swarm.Game.Step
@@ -153,7 +156,7 @@ library
                       Swarm.ReadableIORef
                       Swarm.TUI.Attr
                       Swarm.TUI.Border
-                      Swarm.TUI.Editor.Area
+                      Swarm.Game.Scenario.Topography.Area
                       Swarm.TUI.Editor.Controller
                       Swarm.TUI.Editor.Json
                       Swarm.TUI.Editor.Masking

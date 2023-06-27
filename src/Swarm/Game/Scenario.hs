@@ -60,12 +60,12 @@ import Swarm.Game.Failure.Render
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot (TRobot)
-import Swarm.Game.Scenario.Cell
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Style
-import Swarm.Game.Scenario.WorldDescription
+import Swarm.Game.Scenario.Topography.Cell
+import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util (failT)
 import Swarm.Util.Lens (makeLensesNoSigs)
