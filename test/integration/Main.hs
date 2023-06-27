@@ -193,10 +193,13 @@ testScenarioSolution _ci _em =
         , testSolution (Sec 3) "Challenges/word-search"
         , testSolution (Sec 5) "Challenges/bridge-building"
         , testSolution (Sec 3) "Challenges/ice-cream"
+        , testSolution (Sec 3) "Challenges/arbitrage"
         , testSolution (Sec 5) "Challenges/gopher"
         , testSolution (Sec 5) "Challenges/hackman"
+        , testSolution (Sec 5) "Challenges/blender"
         , testSolution (Sec 10) "Challenges/hanoi"
         , testSolution (Sec 3) "Challenges/lights-out"
+        , testSolution (Sec 10) "Challenges/Sliding Puzzles/3x3"
         , testSolution Default "Challenges/friend"
         , testGroup
             "Mazes"
@@ -208,6 +211,7 @@ testScenarioSolution _ci _em =
         , testGroup
             "Ranching"
             [ testSolution Default "Challenges/Ranching/capture"
+            , testSolution (Sec 5) "Challenges/Ranching/powerset"
             , testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
             ]
         , testGroup
@@ -216,6 +220,10 @@ testScenarioSolution _ci _em =
             , testSolution Default "Challenges/Sokoban/Gadgets/no-reverse.yaml"
             , testSolution Default "Challenges/Sokoban/Gadgets/one-way.yaml"
             , testSolution Default "Challenges/Sokoban/Simple/trapdoor.yaml"
+            ]
+        , testGroup
+            "Mechanics"
+            [ testSolution Default "Mechanics/active-trapdoor.yaml"
             ]
         ]
     , testGroup
