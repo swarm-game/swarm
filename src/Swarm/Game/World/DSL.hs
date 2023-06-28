@@ -1,26 +1,23 @@
--- |
--- SPDX-License-Identifier: BSD-3-Clause
---
--- XXX
-
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- XXX
 module Swarm.Game.World.DSL where
 
 import Data.Int
 import Data.Kind (Type)
-import Data.Monoid (Last(..))
+import Data.Monoid (Last (..))
 import Data.Text (Text)
-import Data.Typeable
-import Data.Type.Equality
-import Prelude hiding (lookup)
-import Swarm.Game.Terrain
+import Data.Type.Equality (TestEquality (..), type (:~:) (Refl))
 import Swarm.Game.Scenario.WorldPalette
+import Swarm.Game.Terrain
+import Prelude hiding (lookup)
 
 ------------------------------------------------------------
 -- Merging
@@ -70,23 +67,17 @@ data WExp where
   WBool :: Bool -> WExp
   WCell :: RawCellVal -> WExp
   WVar :: Text -> WExp
-  WUn :: UOp -> WExp -> WExp
-  WBin :: BOp -> WExp -> WExp -> WExp
-  WMask :: WExp -> WExp -> WExp
+  WOp :: Op -> [WExp] -> WExp
   WSeed :: WExp
   WCoord :: Axis -> WExp
-  WPerlin :: WExp -> WExp -> WExp -> WExp -> WExp
   WHash :: WExp
-  WIf :: WExp -> WExp -> WExp
   WLet :: [(Var, WExp)] -> WExp -> WExp
-  WRot :: Rot -> WExp -> WExp
-  WReflect :: Reflection -> WExp -> WExp
   WOverlay :: [WExp] -> WExp
   WCat :: Axis -> [WExp] -> WExp
   WStruct :: WorldPalette Text -> [Text] -> WExp
 
-data UOp = Not | Neg
-data BOp = And | Or | Add | Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | Geq
+data Op = Not | Neg | And | Or | Add | Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | Geq | If | Perlin | Reflect Reflection | Rot Rot | Mask
+  deriving (Eq, Ord, Show)
 
 ------------------------------------------------------------
 -- Example
@@ -94,19 +85,24 @@ data BOp = And | Or | Add | Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | G
 testWorld1 :: WExp
 testWorld1 =
   WLet
-    [ ("pn1", WPerlin (WInt 0) (WInt 5) (WFloat 0.05) (WFloat 0.5))
-    , ("pn2", WPerlin (WInt 0) (WInt 5) (WFloat 0.05) (WFloat 0.75))
+    [ ("pn1", WOp Perlin [WInt 0, WInt 5, WFloat 0.05, WFloat 0.5])
+    , ("pn2", WOp Perlin [WInt 0, WInt 5, WFloat 0.05, WFloat 0.75])
     ]
-  $
-  WOverlay
-    [ WCell (CellVal (Last (Just GrassT)) (Last Nothing) [])
-    , WMask (WBin Gt (WVar "pn2") (WFloat 0)) (WCell (CellVal (Last (Just StoneT)) (Last (Just "rock")) []))
-    , WMask (WBin Gt (WVar "pn1") (WFloat 0)) (WCell (CellVal (Last (Just DirtT)) (Last (Just "tree")) []))
-    , WMask (WBin And (WBin Eq (WCoord X) (WInt 2)) (WBin Eq (WCoord Y) (WInt (-1))))
-        (WCell (CellVal (Last (Just GrassT)) (Last (Just "elephant")) []))
-    , WMask (WBin And (WBin Eq (WCoord X) (WInt (-5))) (WBin Eq (WCoord Y) (WInt 3)))
-        (WCell (CellVal (Last (Just StoneT)) (Last (Just "flerb")) []))
-    ]
+    $ WOverlay
+      [ WCell (CellVal (Last (Just GrassT)) (Last Nothing) [])
+      , WOp Mask [WOp Gt [WVar "pn2", WFloat 0], WCell (CellVal (Last (Just StoneT)) (Last (Just "rock")) [])]
+      , WOp Mask [WOp Gt [WVar "pn1", WFloat 0], WCell (CellVal (Last (Just DirtT)) (Last (Just "tree")) [])]
+      , WOp
+          Mask
+          [ WOp And [WOp Eq [WCoord X, WInt 2], WOp Eq [WCoord Y, WInt (-1)]]
+          , WCell (CellVal (Last (Just GrassT)) (Last (Just "elephant")) [])
+          ]
+      , WOp
+          Mask
+          [ WOp And [WOp Eq [WCoord X, WInt (-5)], WOp Eq [WCoord Y, WInt 3]]
+          , WCell (CellVal (Last (Just StoneT)) (Last (Just "flerb")) [])
+          ]
+      ]
 
 ------------------------------------------------------------
 -- Type class for type-indexed application
@@ -121,29 +117,32 @@ class Applicable t where
 -- Includes language built-ins as well as combinators we will use
 -- later as a compilation target.
 data Const :: Type -> Type where
-  CLit :: Show a => a -> Const a
-  CFI  :: Const (Integer -> Double)
+  CLit :: (Show a) => a -> Const a
+  CFI :: Const (Integer -> Double)
   CIf :: Const (Bool -> a -> a -> a)
   CNot :: Const (Bool -> Bool)
-  CNeg :: Num a => Const (a -> a)
+  CNeg :: (Num a) => Const (a -> a)
   CAnd :: Const (Bool -> Bool -> Bool)
   COr :: Const (Bool -> Bool -> Bool)
-  CAdd :: Num a => Const (a -> a -> a)
-  CSub :: Num a => Const (a -> a -> a)
-  CMul :: Num a => Const (a -> a -> a)
-  CDiv :: Fractional a => Const (a -> a -> a)
-  CIDiv :: Integral a => Const (a -> a -> a)
-  CMod :: Integral a => Const (a -> a -> a)
-  CEq :: Eq a => Const (a -> a -> Bool)
-  CNeq :: Eq a => Const (a -> a -> Bool)
-  CLt :: Ord a => Const (a -> a -> Bool)
-  CLeq :: Ord a => Const (a -> a -> Bool)
-  CGt :: Ord a => Const (a -> a -> Bool)
-  CGeq :: Ord a => Const (a -> a -> Bool)
-  CMask :: Const (World Bool -> World a -> World a)  -- XXX make our own Empty + Combining classes
+  CAdd :: (Num a) => Const (a -> a -> a)
+  CSub :: (Num a) => Const (a -> a -> a)
+  CMul :: (Num a) => Const (a -> a -> a)
+  CDiv :: (Fractional a) => Const (a -> a -> a)
+  CIDiv :: (Integral a) => Const (a -> a -> a)
+  CMod :: (Integral a) => Const (a -> a -> a)
+  CEq :: (Eq a) => Const (a -> a -> Bool)
+  CNeq :: (Eq a) => Const (a -> a -> Bool)
+  CLt :: (Ord a) => Const (a -> a -> Bool)
+  CLeq :: (Ord a) => Const (a -> a -> Bool)
+  CGt :: (Ord a) => Const (a -> a -> Bool)
+  CGeq :: (Ord a) => Const (a -> a -> Bool)
+  CMask :: Const (World Bool -> World a -> World a) -- XXX make our own Empty + Combining classes, add constraint
   CSeed :: Const Integer
   CCoord :: Axis -> Const (World Integer)
-
+  CHash :: Const (World Integer)
+  CPerlin :: Const (Integer -> Integer -> Double -> Double -> World Double)
+  CReflect :: Reflection -> Const (World a -> World a)
+  CRot :: Rot -> Const (World a -> World a)
   K :: Const (a -> b -> a)
   S :: Const ((a -> b -> c) -> (a -> b) -> a -> c)
   I :: Const (a -> a)
@@ -176,9 +175,13 @@ interpConst = \case
   CGt -> (>)
   CGeq -> (>=)
   CMask -> undefined -- (\b x c -> if b c then x c else empty)
-  CSeed -> 0  -- XXX need seed provided as env to be able to interpret this
+  CSeed -> 0 -- XXX need seed provided as env to be able to interpret this
   CCoord ax -> undefined -- \(Coords (x,y)) -> case ax of X -> x; Y -> y  -- XXX Integer vs Int32
-
+  CHash -> undefined
+  CPerlin -> undefined
+  CReflect _ -> undefined
+  CRot _ -> undefined
+  CFI -> fromInteger
   K -> const
   S -> (<*>)
   I -> id
@@ -212,20 +215,20 @@ deriving instance Show (Idx g ty)
 
 -- Type-indexed terms.  Note this is a stripped-down core language,
 -- with only variables, lambdas, application, and constants.
-data TWTerm :: [Type] -> Type -> Type where
-  TWVar :: Idx g a -> TWTerm g a
-  TWLam :: TWTerm (ty1 ': g) ty2 -> TWTerm g (ty1 -> ty2)
-  TWApp :: TWTerm g (a -> b) -> TWTerm g a -> TWTerm g b
-  TWConst :: Const a -> TWTerm g a
+data TTerm :: [Type] -> Type -> Type where
+  TVar :: Idx g a -> TTerm g a
+  TLam :: TTerm (ty1 ': g) ty2 -> TTerm g (ty1 -> ty2)
+  TApp :: TTerm g (a -> b) -> TTerm g a -> TTerm g b
+  TConst :: Const a -> TTerm g a
 
-deriving instance Show (TWTerm g ty)
+deriving instance Show (TTerm g ty)
 
-instance Applicable (TWTerm g) where
-  TWConst I $$ x = x
-  f $$ x = TWApp f x
+instance Applicable (TTerm g) where
+  TConst I $$ x = x
+  f $$ x = TApp f x
 
-instance HasConst (TWTerm g) where
-  embed = TWConst
+instance HasConst (TTerm g) where
+  embed = TConst
 
 ------------------------------------------------------------
 -- Type representations
@@ -246,40 +249,65 @@ instance TestEquality Base where
   testEquality BBool BBool = Just Refl
   testEquality _ _ = Nothing
 
-data TWType :: Type -> Type where
-  TWTyBase :: Base t -> TWType t
-  TWTyWorld :: Base t -> TWType (World t)
-  -- (:->:) :: TWType a -> TWType b -> TWType (a -> b)
+data TType :: Type -> Type where
+  TTyBase :: Base t -> TType t
+  (:->:) :: TType a -> TType b -> TType (a -> b)
+  TTyWorld :: TType t -> TType (World t)
 
-pattern TWTyBool = TWTyBase BBool
-pattern TWTyInt = TWTyBase BInt
-pattern TWTyFloat = TWTyBase BFloat
+infixr 0 :->:
 
-deriving instance Show (TWType ty)
+pattern TTyBool :: TType Bool
+pattern TTyBool = TTyBase BBool
 
-instance TestEquality TWType where
-  testEquality (TWTyBase b1) (TWTyBase b2) = testEquality b1 b2
-  testEquality (TWTyWorld b1) (TWTyWorld b2) =
+pattern TTyInt :: TType Integer
+pattern TTyInt = TTyBase BInt
+
+pattern TTyFloat :: TType Double
+pattern TTyFloat = TTyBase BFloat
+
+deriving instance Show (TType ty)
+
+instance TestEquality TType where
+  testEquality (TTyBase b1) (TTyBase b2) = testEquality b1 b2
+  testEquality (TTyWorld b1) (TTyWorld b2) =
     case testEquality b1 b2 of
       Just Refl -> Just Refl
       Nothing -> Nothing
   testEquality _ _ = Nothing
 
-checkEq :: TWType ty -> (Eq ty => a) -> Maybe a
-checkEq _ _ = undefined
+checkEq :: TType ty -> ((Eq ty) => a) -> Maybe a
+checkEq (TTyBase BBool) a = Just a
+checkEq (TTyBase BInt) a = Just a
+checkEq (TTyBase BFloat) a = Just a
+checkEq _ _ = Nothing
 
-checkOrd :: TWType ty -> (Ord ty => a) -> Maybe a
-checkOrd _ _ = undefined
+checkOrd :: TType ty -> ((Ord ty) => a) -> Maybe a
+checkOrd (TTyBase BBool) a = Just a
+checkOrd (TTyBase BInt) a = Just a
+checkOrd (TTyBase BFloat) a = Just a
+checkOrd _ _ = Nothing
+
+checkNum :: TType ty -> ((Num ty) => a) -> Maybe a
+checkNum (TTyBase BInt) a = Just a
+checkNum (TTyBase BFloat) a = Just a
+checkNum _ _ = Nothing
+
+checkIntegral :: TType ty -> ((Integral ty) => a) -> Maybe a
+checkIntegral (TTyBase BInt) a = Just a
+checkIntegral _ _ = Nothing
+
+data SomeType :: Type where
+  SomeType :: TType ty -> SomeType
 
 ------------------------------------------------------------
 -- Contexts + existential wrappers
 
 data Ctx :: [Type] -> Type where
   CNil :: Ctx '[]
-  CCons :: Text -> TWType ty -> Ctx g -> Ctx (ty ': g)
+  CCons :: Text -> TType ty -> Ctx g -> Ctx (ty ': g)
 
 data SomeIdx :: [Type] -> Type where
-  SomeIdx :: Idx g ty -> TWType ty -> SomeIdx g
+  SomeIdx :: Idx g ty -> TType ty -> SomeIdx g
 
 mapSomeIdx :: (forall ty. Idx g1 ty -> Idx g2 ty) -> SomeIdx g1 -> SomeIdx g2
 mapSomeIdx f (SomeIdx i ty) = SomeIdx (f i) ty
@@ -291,72 +319,97 @@ lookup x (CCons y ty ctx)
   | otherwise = mapSomeIdx VS <$> lookup x ctx
 
 data SomeTerm :: [Type] -> Type where
-  SomeTerm :: TWType ty -> TWTerm g ty -> SomeTerm g
+  SomeTerm :: TType ty -> TTerm g ty -> SomeTerm g
 
 deriving instance Show (SomeTerm g)
 
 ------------------------------------------------------------
 -- Type inference/checking + elaboration
 
-check :: Ctx g -> WExp -> TWType t -> Maybe (TWTerm g t)
-check e t ty = infer e t >>= checkSubtype ty
+check :: Ctx g -> WExp -> TType t -> Maybe (TTerm g t)
+check e t ty = do
+  t1 <- infer e t
+  SomeTerm ty' t' <- apply (SomeTerm (ty :->: ty) (embed I)) t1
+  case testEquality ty ty' of
+    Nothing -> Nothing
+    Just Refl -> Just t'
 
 -- -- For my own sanity I think we might get rid of the rule Int <: Float
 -- -- and only allow promoting/lifting to World.  Then 3 will always be
 -- -- Int and 3.0 will be Float.
 
-checkSubtype :: TWType t -> SomeTerm g -> Maybe (TWTerm g t)
-checkSubtype (TWTyWorld b1) (SomeTerm (TWTyBase b2) t) = do
-  case testEquality b1 b2 of
-    Just Refl -> return (K .$ t)
-    Nothing -> Nothing
-checkSubtype ty1 (SomeTerm ty2 t) = do
-  case testEquality ty1 ty2 of
-    Just Refl -> return t
-    Nothing -> Nothing
+getBaseType :: SomeTerm g -> SomeType
+getBaseType (SomeTerm (TTyWorld ty) _) = SomeType ty
+getBaseType (SomeTerm ty _) = SomeType ty
+
+-- Application is where we deal with lifting + promotion.
+apply :: SomeTerm g -> SomeTerm g -> Maybe (SomeTerm g)
+apply (SomeTerm (ty11 :->: ty12) t1) (SomeTerm ty2 t2)
+  | Just Refl <- testEquality ty11 ty2 = return $ SomeTerm ty12 (t1 $$ t2)
+apply (SomeTerm (TTyWorld ty11 :->: ty12) t1) (SomeTerm ty2 t2)
+  | Just Refl <- testEquality ty11 ty2 = return $ SomeTerm ty12 (t1 $$ (K .$ t2))
+apply (SomeTerm (ty11 :->: ty12) t1) (SomeTerm (TTyWorld ty2) t2)
+  | Just Refl <- testEquality ty11 ty2 = return $ SomeTerm (TTyWorld ty12) (B .$ t1 $$ t2)
+apply (SomeTerm (TTyWorld (ty11 :->: ty12)) t1) (SomeTerm ty2 t2)
+  | Just Refl <- testEquality ty11 ty2 = return $ SomeTerm (TTyWorld ty12) (S .$ t1 $$ (K .$ t2))
+apply (SomeTerm (TTyWorld (ty11 :->: ty12)) t1) (SomeTerm (TTyWorld ty2) t2)
+  | Just Refl <- testEquality ty11 ty2 = return $ SomeTerm (TTyWorld ty12) (S .$ t1 $$ t2)
+apply _ _ = Nothing
+
+applyTo :: SomeTerm g -> SomeTerm g -> Maybe (SomeTerm g)
+applyTo = flip apply
+
+inferOp :: [SomeType] -> Op -> Maybe (SomeTerm g)
+inferOp _ Not = return $ SomeTerm (TTyBool :->: TTyBool) (embed CNot)
+inferOp [SomeType tyA] Neg = SomeTerm (tyA :->: tyA) <$> checkNum tyA (embed CNeg)
+inferOp _ And = return $ SomeTerm (TTyBool :->: TTyBool :->: TTyBool) (embed CAnd)
+inferOp _ Or = return $ SomeTerm (TTyBool :->: TTyBool :->: TTyBool) (embed COr)
+inferOp [SomeType tyA] Add = SomeTerm (tyA :->: tyA :->: tyA) <$> checkNum tyA (embed CAdd)
+inferOp [SomeType tyA] Sub = SomeTerm (tyA :->: tyA :->: tyA) <$> checkNum tyA (embed CSub)
+inferOp [SomeType tyA] Mul = SomeTerm (tyA :->: tyA :->: tyA) <$> checkNum tyA (embed CMul)
+inferOp [SomeType tyA] Div = case tyA of
+  TTyBase BInt -> return $ SomeTerm (tyA :->: tyA :->: tyA) (embed CIDiv)
+  TTyBase BFloat -> return $ SomeTerm (tyA :->: tyA :->: tyA) (embed CDiv)
+  _ -> Nothing
+inferOp [SomeType tyA] Mod = SomeTerm (tyA :->: tyA :->: tyA) <$> checkIntegral tyA (embed CMod)
+inferOp [SomeType tyA] Eq = SomeTerm (tyA :->: tyA :->: TTyBool) <$> checkEq tyA (embed CEq)
+inferOp [SomeType tyA] Neq = SomeTerm (tyA :->: tyA :->: TTyBool) <$> checkEq tyA (embed CNeq)
+inferOp [SomeType tyA] Lt = SomeTerm (tyA :->: tyA :->: TTyBool) <$> checkOrd tyA (embed CLt)
+inferOp [SomeType tyA] Leq = SomeTerm (tyA :->: tyA :->: TTyBool) <$> checkOrd tyA (embed CLeq)
+inferOp [SomeType tyA] Gt = SomeTerm (tyA :->: tyA :->: TTyBool) <$> checkOrd tyA (embed CGt)
+inferOp [SomeType tyA] Geq = SomeTerm (tyA :->: tyA :->: TTyBool) <$> checkOrd tyA (embed CGeq)
+inferOp [SomeType tyA] If = return $ SomeTerm (TTyBool :->: tyA :->: tyA :->: tyA) (embed CIf)
+inferOp _ Perlin = return $ SomeTerm (TTyInt :->: TTyInt :->: TTyFloat :->: TTyFloat :->: TTyWorld TTyFloat) (embed CPerlin)
+inferOp [SomeType tyA] (Reflect r) = return $ SomeTerm (TTyWorld tyA :->: TTyWorld tyA) (embed (CReflect r))
+inferOp [SomeType tyA] (Rot r) = return $ SomeTerm (TTyWorld tyA :->: TTyWorld tyA) (embed (CRot r))
+inferOp [SomeType tyA] Mask = return $ SomeTerm (TTyWorld TTyBool :->: TTyWorld tyA :->: TTyWorld tyA) (embed CMask)
+inferOp _ _ = error "bad call to inferOp!!"
+
+typeArgsFor :: Op -> [SomeTerm g] -> [SomeType]
+typeArgsFor op (t : _)
+  | op `elem` [Neg, Add, Sub, Mul, Div, Mod, Eq, Neq, Lt, Leq, Gt, Geq] = [getBaseType t]
+typeArgsFor (Reflect _) (t : _) = [getBaseType t]
+typeArgsFor (Rot _) (t : _) = [getBaseType t]
+typeArgsFor op (_ : t : _)
+  | op `elem` [If, Mask] = [getBaseType t]
+typeArgsFor _ _ = []
+
+applyOp :: Ctx g -> ([SomeTerm g] -> [SomeType]) -> Op -> [WExp] -> Maybe (SomeTerm g)
+applyOp ctx typeArgs op ts = do
+  tts <- mapM (infer ctx) ts
+  foldl (\r -> (r >>=) . applyTo) (inferOp (typeArgs tts) op) tts
 
 infer :: Ctx g -> WExp -> Maybe (SomeTerm g)
-infer _ (WInt i) = return $ SomeTerm (TWTyBase BInt) (TWConst (CLit i))
-infer _ (WFloat f) = return $ SomeTerm (TWTyBase BFloat) (TWConst (CLit f))
-infer _ (WBool b) = return $ SomeTerm (TWTyBase BBool) (TWConst (CLit b))
-infer ctx (WVar x) = (\(SomeIdx i ty) -> SomeTerm ty (TWVar i)) <$> lookup x ctx
-infer ctx (WUn uop t) = infer ctx t >>= applyUOp uop
-infer ctx (WBin bop t1 t2) = do
-  t1' <- infer ctx t1
-  t2' <- infer ctx t2
-  applyBOp bop t1' t2'
-infer ctx (WMask t1 t2) = do
-  t1' <- check ctx t1 (TWTyWorld BBool)
-  SomeWorld b t2' <- inferWorld ctx t2
-  return $ SomeTerm (TWTyWorld b) (CMask .$ t1' $$ t2')
-infer _ WSeed = return $ SomeTerm TWTyInt (embed CSeed)
-infer _ (WCoord ax) = return $ SomeTerm (TWTyWorld BInt) (embed (CCoord ax))
-infer ctx (WPerlin a b c d) = do
-  a' <- check ctx a TWTyInt
-  b' <- check ctx b TWTyInt
-  c' <- check ctx c TWTyFloat
-  d' <- check ctx d TWTyFloat
-  return $ SomeTerm (TWTyWorld TWTyFloat) (CPerlin .$ a' $$ b' $$ c' $$ d')
-
-applyUOp :: UOp -> SomeTerm g -> Maybe (SomeTerm g)
-applyUOp = apply (const TWTyBool)
--- applyUOp Not t = apply (TWTyBool :->: TWTyBool) Not t
--- applyUOp Neg t = apply (TWTyInt :->: TWTyInt)
-
-
-
-applyBOp :: BOp -> SomeTerm g -> SomeTerm g -> Maybe (SomeTerm g)
-applyBOp = undefined
-
--- Infer the type of a term which must be of the form (World b).
-inferWorld :: Ctx g -> WExp -> Maybe (SomeWorld g)
-inferWorld ctx t = do
-  SomeTerm ty t' <- infer ctx t
-  case ty of
-    TWTyWorld b -> return $ SomeWorld b t'
-    TWTyBase b -> return $ SomeWorld b (K .$ t')
-
-data SomeWorld :: [Type] -> Type where
-  SomeWorld :: Base b -> TWTerm g (World b) -> SomeWorld g
-
-deriving instance Show (SomeWorld g)
+infer _ (WInt i) = return $ SomeTerm (TTyBase BInt) (embed (CLit i))
+infer _ (WFloat f) = return $ SomeTerm (TTyBase BFloat) (embed (CLit f))
+infer _ (WBool b) = return $ SomeTerm (TTyBase BBool) (embed (CLit b))
+infer _ (WCell c) = undefined
+infer ctx (WVar x) = (\(SomeIdx i ty) -> SomeTerm ty (TVar i)) <$> lookup x ctx
+infer ctx (WOp op ts) = applyOp ctx (typeArgsFor op) op ts
+infer _ WSeed = return $ SomeTerm TTyInt (embed CSeed)
+infer _ (WCoord ax) = return $ SomeTerm (TTyWorld TTyInt) (embed (CCoord ax))
+infer _ WHash = return $ SomeTerm (TTyWorld TTyInt) (embed CHash)
+infer ctx (WLet defs body) = undefined
+infer ctx (WOverlay ts) = undefined
+infer ctx (WCat ax ts) = undefined
+infer ctx (WStruct pal rect) = undefined
