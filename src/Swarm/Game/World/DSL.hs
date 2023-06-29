@@ -5,6 +5,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 
 -- XXX to do:
+--   - write basic parser
 --   - finish inference/compiling code
 --   - convert from Maybe to generic monad with effects
 --   - add error message reporting
@@ -611,6 +612,8 @@ compileConst = \case
   CPerlin -> undefined
   CReflect r -> undefined
   CRot r -> undefined
+  COver -> binary (<+>)
+  CEmpty -> CConst empty
   K -> CFun $ \x -> CFun $ const x
   S -> CFun $ \f -> CFun $ \g -> CFun $ \x -> f $$ x $$ (g $$ x)
   I -> CFun id
