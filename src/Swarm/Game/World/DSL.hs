@@ -4,6 +4,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 
+-- XXX to do:
+--   - finish inference/compiling code
+--   - convert from Maybe to generic monad with effects
+--   - add error message reporting
+--   - pass in EntityMap, RobotMap etc. + resolve cell values
+--   - to evaluate, pass in things like seed
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -12,10 +19,13 @@ module Swarm.Game.World.DSL where
 
 import Data.Int
 import Data.Kind (Type)
+import Data.List.NonEmpty qualified as NE
 import Data.Monoid (Last (..))
 import Data.Text (Text)
 import Data.Type.Equality (TestEquality (..), type (:~:) (Refl))
-import Swarm.Game.Scenario.WorldPalette
+import Swarm.Game.Entity (Entity, EntityMap)
+import Swarm.Game.Robot (Robot)
+import Swarm.Game.Scenario.WorldPalette (WorldPalette)
 import Swarm.Game.Terrain
 import Prelude hiding (lookup)
 
@@ -25,30 +35,38 @@ import Prelude hiding (lookup)
 class Empty e where
   empty :: e
 
-class Mergeable m where
+class Over m where
   (<+>) :: m -> m -> m
 
 ------------------------------------------------------------
 -- Syntax
 
 data CellVal e r = CellVal (Last TerrainType) (Last e) [r]
+  deriving (Show)
 
-instance Mergeable (CellVal e r) where
+instance Over (CellVal e r) where
   CellVal t1 e1 r1 <+> CellVal t2 e2 r2 = CellVal (t1 <> t2) (e1 <> e2) (r1 <> r2)
 
 instance Empty (CellVal e r) where
   empty = CellVal mempty mempty mempty
 
-instance Mergeable Bool where
+instance Over Bool where
   _ <+> x = x
 
-instance Mergeable Integer where
+instance Over Integer where
   _ <+> x = x
 
-instance Mergeable Double where
+instance Over Double where
   _ <+> x = x
+
+instance (Over a) => Over (World a) where
+  w1 <+> w2 = \c -> w1 c <+> w2 c
+
+instance (Empty a) => Empty (World a) where
+  empty = const empty
 
 type RawCellVal = CellVal Text Text
+type FilledCellVal = CellVal Entity Robot
 
 data Rot = Rot0 | Rot90 | Rot180 | Rot270
   deriving (Eq, Ord, Show, Bounded, Enum)
@@ -72,7 +90,7 @@ data WExp where
   WCoord :: Axis -> WExp
   WHash :: WExp
   WLet :: [(Var, WExp)] -> WExp -> WExp
-  WOverlay :: [WExp] -> WExp
+  WOverlay :: NE.NonEmpty WExp -> WExp
   WCat :: Axis -> [WExp] -> WExp
   WStruct :: WorldPalette Text -> [Text] -> WExp
 
@@ -88,8 +106,8 @@ testWorld1 =
     [ ("pn1", WOp Perlin [WInt 0, WInt 5, WFloat 0.05, WFloat 0.5])
     , ("pn2", WOp Perlin [WInt 0, WInt 5, WFloat 0.05, WFloat 0.75])
     ]
-    $ WOverlay
-      [ WCell (CellVal (Last (Just GrassT)) (Last Nothing) [])
+    $ WOverlay . NE.fromList
+    $ [ WCell (CellVal (Last (Just GrassT)) (Last Nothing) [])
       , WOp Mask [WOp Gt [WVar "pn2", WFloat 0], WCell (CellVal (Last (Just StoneT)) (Last (Just "rock")) [])]
       , WOp Mask [WOp Gt [WVar "pn1", WFloat 0], WCell (CellVal (Last (Just DirtT)) (Last (Just "tree")) [])]
       , WOp
@@ -143,6 +161,8 @@ data Const :: Type -> Type where
   CPerlin :: Const (Integer -> Integer -> Double -> Double -> World Double)
   CReflect :: Reflection -> Const (World a -> World a)
   CRot :: Rot -> Const (World a -> World a)
+  COver :: (Over a) => Const (World a -> World a -> World a)
+  CEmpty :: (Empty a) => Const (World a)
   K :: Const (a -> b -> a)
   S :: Const ((a -> b -> c) -> (a -> b) -> a -> c)
   I :: Const (a -> a)
@@ -182,6 +202,8 @@ interpConst = \case
   CReflect _ -> undefined
   CRot _ -> undefined
   CFI -> fromInteger
+  COver -> (<+>)
+  CEmpty -> empty
   K -> const
   S -> (<*>)
   I -> id
@@ -240,6 +262,7 @@ data Base :: Type -> Type where
   BInt :: Base Integer
   BFloat :: Base Double
   BBool :: Base Bool
+  BCell :: Base FilledCellVal
 
 deriving instance Show (Base ty)
 
@@ -247,6 +270,7 @@ instance TestEquality Base where
   testEquality BInt BInt = Just Refl
   testEquality BFloat BFloat = Just Refl
   testEquality BBool BBool = Just Refl
+  testEquality BCell BCell = Just Refl
   testEquality _ _ = Nothing
 
 data TType :: Type -> Type where
@@ -264,6 +288,9 @@ pattern TTyInt = TTyBase BInt
 
 pattern TTyFloat :: TType Double
 pattern TTyFloat = TTyBase BFloat
+
+pattern TTyCell :: TType FilledCellVal
+pattern TTyCell = TTyBase BCell
 
 deriving instance Show (TType ty)
 
@@ -295,6 +322,14 @@ checkNum _ _ = Nothing
 checkIntegral :: TType ty -> ((Integral ty) => a) -> Maybe a
 checkIntegral (TTyBase BInt) a = Just a
 checkIntegral _ _ = Nothing
+
+checkOver :: TType ty -> ((Over ty) => a) -> Maybe a
+checkOver (TTyBase BBool) a = Just a
+checkOver (TTyBase BInt) a = Just a
+checkOver (TTyBase BFloat) a = Just a
+checkOver (TTyBase BCell) a = Just a
+checkOver (TTyWorld ty) a = checkOver ty a
+checkOver _ _ = Nothing
 
 ------------------------------------------------------------
 -- Contexts + existential wrappers
@@ -405,16 +440,35 @@ infer :: Ctx g -> WExp -> Maybe (SomeTerm g)
 infer _ (WInt i) = return $ SomeTerm (TTyBase BInt) (embed (CLit i))
 infer _ (WFloat f) = return $ SomeTerm (TTyBase BFloat) (embed (CLit f))
 infer _ (WBool b) = return $ SomeTerm (TTyBase BBool) (embed (CLit b))
-infer _ (WCell c) = undefined
+infer _ (WCell c) = return $ SomeTerm TTyCell (embed (CLit undefined)) -- XXX resolve cell
 infer ctx (WVar x) = (\(SomeIdx i ty) -> SomeTerm ty (TVar i)) <$> lookup x ctx
 infer ctx (WOp op ts) = applyOp ctx (typeArgsFor op) op ts
 infer _ WSeed = return $ SomeTerm TTyInt (embed CSeed)
 infer _ (WCoord ax) = return $ SomeTerm (TTyWorld TTyInt) (embed (CCoord ax))
 infer _ WHash = return $ SomeTerm (TTyWorld TTyInt) (embed CHash)
-infer ctx (WLet defs body) = undefined
-infer ctx (WOverlay ts) = undefined
+infer ctx (WLet defs body) = inferLet ctx defs body
+infer ctx (WOverlay ts) = inferOverlay ctx ts
 infer ctx (WCat ax ts) = undefined
 infer ctx (WStruct pal rect) = undefined
+
+inferLet :: Ctx g -> [(Var, WExp)] -> WExp -> Maybe (SomeTerm g)
+inferLet ctx [] body = infer ctx body
+inferLet ctx ((x, e) : xs) body = do
+  e'@(SomeTerm ty1 _) <- infer ctx e
+  SomeTerm ty2 let' <- inferLet (CCons x ty1 ctx) xs body
+  apply (SomeTerm (ty1 :->: ty2) (TLam let')) e'
+
+inferOverlay :: Ctx g -> NE.NonEmpty WExp -> Maybe (SomeTerm g)
+inferOverlay ctx es = case NE.uncons es of
+  (e, Nothing) -> infer ctx e
+  (e, Just es') -> do
+    e' <- infer ctx e
+    o' <- inferOverlay ctx es'
+    case getBaseType e' of
+      SomeType ty -> do
+        let wty = TTyWorld ty
+        c <- checkOver ty (embed COver)
+        apply (SomeTerm (wty :->: wty :->: wty) c) e' >>= applyTo o'
 
 ------------------------------------------------------------
 -- Compiling to combinators
