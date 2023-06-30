@@ -4,13 +4,12 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Structure where
 
-import Linear (V2 (..))
-import Data.Int (Int32)
 import Control.Applicative ((<|>))
 import Control.Arrow ((&&&))
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Coerce
+import Data.Int (Int32)
 import Data.List (transpose)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
@@ -18,6 +17,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml as Y
 import GHC.Generics (Generic)
+import Linear (V2 (..))
 import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Cell
@@ -45,8 +45,8 @@ data Originated a = Originated
 -- must reference them by name, rather than by coordinate.
 data Waypoint = Waypoint
   { wpName :: WaypointName
-    -- | Enforce global uniqueness of this waypoint
   , wpUnique :: Bool
+  -- ^ Enforce global uniqueness of this waypoint
   , wpLoc :: Location
   }
   deriving (Show, Eq)
@@ -58,8 +58,10 @@ instance FromJSON Waypoint where
       <*> v .:? "unique" .!= False
       <*> v .: "loc"
 
-offsetWaypoint :: V2 Int32
-  -> Waypoint -> Waypoint
+offsetWaypoint ::
+  V2 Int32 ->
+  Waypoint ->
+  Waypoint
 offsetWaypoint locOffset (Waypoint n u originalLoc) = Waypoint n u $ originalLoc .+^ locOffset
 
 newtype StructureName = StructureName Text

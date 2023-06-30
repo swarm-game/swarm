@@ -5,22 +5,22 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.WorldDescription where
 
-import Data.Coerce
-import Data.Text qualified as T
-import Swarm.Util (quote)
 import Control.Monad (forM)
+import Data.Coerce
 import Data.Map qualified as M
 import Data.Maybe (catMaybes)
+import Data.Text qualified as T
 import Data.Yaml as Y
 import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Cell
 import Swarm.Game.Scenario.EntityFacade
+import Swarm.Game.Scenario.Portal
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Structure qualified as Structure
 import Swarm.Game.Scenario.WorldPalette
+import Swarm.Util (quote)
 import Swarm.Util.Yaml
-import Swarm.Game.Scenario.Portal
 
 ------------------------------------------------------------
 -- World description
@@ -36,10 +36,10 @@ data PWorldDescription e = WorldDescription
   , palette :: WorldPalette e
   , ul :: Location
   , area :: [[PCell e]]
-    -- | Note that waypoints defined at the "root" level are still relative to
-    -- the top-left corner of the map rectangle; they are not in absolute world
-    -- coordinates (as with applying the "ul" offset).
   , waypoints :: M.Map Structure.WaypointName Location
+  -- ^ Note that waypoints defined at the "root" level are still relative to
+  -- the top-left corner of the map rectangle; they are not in absolute world
+  -- coordinates (as with applying the "ul" offset).
   , portals :: M.Map Location Location
   }
   deriving (Eq, Show)
@@ -67,12 +67,12 @@ instance FromJSONE (EntityMap, RobotMap) WorldDescription where
 
     -- TODO Currently ignores subworld references
     reconciledPortalPairs <- forM portalDefs $ \(Portal entranceName (PortalExit exitName _)) -> do
-        let getLoc wpName@(Structure.WaypointName rawName) = case M.lookup wpName correctedWaypoints of
-              Nothing -> fail $ T.unpack $ T.unwords ["No waypoint named", quote rawName]
-              Just x -> return x
-        entranceLoc <- getLoc entranceName
-        exitLoc <- getLoc exitName
-        return (entranceLoc, exitLoc)
+      let getLoc wpName@(Structure.WaypointName rawName) = case M.lookup wpName correctedWaypoints of
+            Nothing -> fail $ T.unpack $ T.unwords ["No waypoint named", quote rawName]
+            Just x -> return x
+      entranceLoc <- getLoc entranceName
+      exitLoc <- getLoc exitName
+      return (entranceLoc, exitLoc)
 
     WorldDescription
       <$> v ..:? "default"
