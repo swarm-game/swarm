@@ -16,6 +16,7 @@ import Data.Yaml qualified as Y
 import Graphics.Vty qualified as V
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.State
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Model
@@ -56,7 +57,7 @@ handleCtrlLeftClick mouseLoc = do
     -- TODO (#1151): Use hoistMaybe when available
     terrain <- MaybeT . pure $ maybeTerrainType
     mouseCoords <- MaybeT $ Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
-    uiState . uiWorldEditor . paintedTerrain %= M.insert mouseCoords (terrain, maybeEntityPaint)
+    uiState . uiWorldEditor . paintedTerrain %= M.insert (mouseCoords ^. planar) (terrain, maybeEntityPaint)
     uiState . uiWorldEditor . lastWorldEditorMessage .= Nothing
   immediatelyRedrawWorld
   return ()
@@ -67,7 +68,7 @@ handleRightClick mouseLoc = do
   _ <- runMaybeT $ do
     guard $ worldEditor ^. isWorldEditorEnabled
     mouseCoords <- MaybeT $ Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
-    uiState . uiWorldEditor . paintedTerrain %= M.delete mouseCoords
+    uiState . uiWorldEditor . paintedTerrain %= M.delete (mouseCoords ^. planar)
   immediatelyRedrawWorld
   return ()
 
@@ -76,7 +77,7 @@ handleMiddleClick :: B.Location -> EventM Name AppState ()
 handleMiddleClick mouseLoc = do
   worldEditor <- use $ uiState . uiWorldEditor
   when (worldEditor ^. isWorldEditorEnabled) $ do
-    w <- use $ gameState . world
+    w <- use $ gameState . multiWorld
     let setTerrainPaint coords = do
           let (terrain, maybeElementPaint) =
                 EU.getContentAt
@@ -120,7 +121,7 @@ updateAreaBounds = \case
       -- TODO (#1152): Validate that the lower-right click is below and to the right of the top-left coord
       LowerRightPending upperLeftMouseCoords -> do
         uiState . uiWorldEditor . editingBounds . boundsRect
-          .= Just (upperLeftMouseCoords, mouseCoords)
+          .= Just (Cosmo defaultRootSubworldName (upperLeftMouseCoords, mouseCoords))
         uiState . uiWorldEditor . lastWorldEditorMessage .= Nothing
         uiState . uiWorldEditor . editingBounds . boundsSelectionStep .= SelectionComplete
         t <- liftIO $ getTime Monotonic
@@ -133,7 +134,7 @@ saveMapFile :: EventM Name AppState ()
 saveMapFile = do
   worldEditor <- use $ uiState . uiWorldEditor
   maybeBounds <- use $ uiState . uiWorldEditor . editingBounds . boundsRect
-  w <- use $ gameState . world
+  w <- use $ gameState . multiWorld
   let mapCellGrid = EU.getEditedMapRectangle worldEditor maybeBounds w
 
   let fp = worldEditor ^. outputFilePath

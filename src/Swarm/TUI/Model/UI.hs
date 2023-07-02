@@ -75,6 +75,7 @@ import Swarm.Game.ResourceLoading (getSwarmHistoryPath, readAppData)
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Editor.Model
@@ -101,7 +102,7 @@ data UIState = UIState
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
   , _uiLaunchConfig :: LaunchOptions
-  , _uiWorldCursor :: Maybe W.Coords
+  , _uiWorldCursor :: Maybe (Cosmo W.Coords)
   , _uiWorldEditor :: WorldEditor Name
   , _uiREPL :: REPLState
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
@@ -159,7 +160,7 @@ uiLaunchConfig :: Lens' UIState LaunchOptions
 uiFocusRing :: Lens' UIState (FocusRing Name)
 
 -- | The last clicked position on the world view.
-uiWorldCursor :: Lens' UIState (Maybe W.Coords)
+uiWorldCursor :: Lens' UIState (Maybe (Cosmo W.Coords))
 
 -- | State of all World Editor widgets
 uiWorldEditor :: Lens' UIState (WorldEditor Name)

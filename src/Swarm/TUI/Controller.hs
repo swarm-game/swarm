@@ -79,6 +79,7 @@ import Swarm.Game.Robot
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (finishGameTick, gameTick)
+import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability (CDebug, CMake))
 import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
@@ -378,6 +379,7 @@ handleMainEvent ev = do
       | s ^. uiState . uiCheatMode -> do
           uiState . uiWorldEditor . isWorldEditorEnabled %= not
           setFocus WorldEditorPanel
+    MouseDown WorldPositionIndicator _ _ _ -> uiState . uiWorldCursor .= Nothing
     MouseDown (FocusablePanel WorldPanel) V.BMiddle _ mouseLoc ->
       -- Eye Dropper tool
       EC.handleMiddleClick mouseLoc
@@ -395,7 +397,7 @@ handleMainEvent ev = do
       case n of
         FocusablePanel WorldPanel -> do
           mouseCoordsM <- Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
-          shouldUpdateCursor <- EC.updateAreaBounds mouseCoordsM
+          shouldUpdateCursor <- EC.updateAreaBounds $ fmap (^. planar) mouseCoordsM
           when shouldUpdateCursor $
             uiState . uiWorldCursor .= mouseCoordsM
         REPLInput -> handleREPLEvent ev
@@ -1341,7 +1343,7 @@ scrollView update = do
   -- always work, but there seems to be some sort of race condition
   -- where 'needsRedraw' gets reset before the UI drawing code runs.
   invalidateCacheEntry WorldCache
-  gameState %= modifyViewCenter update
+  gameState %= modifyViewCenter (fmap update)
 
 -- | Convert a directional key into a direction.
 keyToDir :: V.Key -> Heading

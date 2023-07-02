@@ -31,11 +31,13 @@ data NamedStructure c = NamedStructure
   }
   deriving (Eq, Show)
 
+type InheritedStructureDefs = [NamedStructure (Maybe (PCell Entity))]
+
 instance FromJSONE (EntityMap, RobotMap) (NamedStructure (Maybe (PCell Entity))) where
   parseJSONE = withObjectE "named structure" $ \v -> do
-    sName <- liftE $ v .: "name"
-    NamedStructure sName
-      <$> v
+    NamedStructure
+      <$> liftE (v .: "name")
+      <*> v
         ..: "structure"
 
 data PStructure c = Structure
@@ -111,12 +113,12 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
 instance FromJSONE (EntityMap, RobotMap) (PStructure (Maybe (PCell Entity))) where
   parseJSONE = withObjectE "structure definition" $ \v -> do
     pal <- v ..:? "palette" ..!= WorldPalette mempty
-    structureDefs <- v ..:? "structures" ..!= []
+    localStructureDefs <- v ..:? "structures" ..!= []
     placementDefs <- liftE $ v .:? "placements" .!= []
     waypointDefs <- liftE $ v .:? "waypoints" .!= []
     maybeMaskChar <- liftE $ v .:? "mask"
     (maskedArea, mapWaypoints) <- liftE $ (v .:? "map" .!= "") >>= paintMap maybeMaskChar pal
-    return $ Structure maskedArea structureDefs placementDefs $ waypointDefs <> mapWaypoints
+    return $ Structure maskedArea localStructureDefs placementDefs $ waypointDefs <> mapWaypoints
 
 -- | "Paint" a world map using a 'WorldPalette', turning it from a raw
 --   string into a nested list of 'Cell' values by looking up each

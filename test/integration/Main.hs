@@ -303,6 +303,7 @@ testScenarioSolution rs ui _ci _em =
         , testSolution Default "Testing/1256-halt-command"
         , testSolution Default "Testing/1295-density-command"
         , testSolution Default "Testing/1356-portals/portals-flip-and-rotate.yaml"
+        , testSolution Default "Testing/144-subworlds/basic-subworld.yaml"
         ]
     ]
  where
