@@ -62,6 +62,8 @@ data Name
     WorldCache
   | -- | The cached extent for the world view.
     WorldExtent
+  | -- | The cursor/viewCenter display in the bottom left of the World view
+    WorldPositionIndicator
   | -- | The list of possible entities to paint a map with.
     EntityPaintList
   | -- | The entity paint item position in the EntityPaintList.

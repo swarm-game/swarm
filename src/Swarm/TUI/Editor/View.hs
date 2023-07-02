@@ -9,6 +9,7 @@ import Data.List qualified as L
 import Swarm.Game.Scenario.Topography.Area qualified as EA
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Terrain (TerrainType)
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
@@ -92,7 +93,7 @@ drawWorldEditor toplevelFocusRing uis =
   areaContent = case worldEditor ^. editingBounds . boundsSelectionStep of
     UpperLeftPending -> str "Click top-left"
     LowerRightPending _wcoords -> str "Click bottom-right"
-    SelectionComplete -> maybe emptyWidget renderBounds maybeAreaBounds
+    SelectionComplete -> maybe emptyWidget (renderBounds . view planar) maybeAreaBounds
 
   areaWidget =
     mkFormControl (WorldEditorPanelControl AreaSelector) $

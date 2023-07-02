@@ -103,6 +103,7 @@ library
                       Swarm.Game.Robot
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Topography.Cell
+                      Swarm.Game.Universe
                       Swarm.TUI.Launch.Controller
                       Swarm.TUI.Launch.Model
                       Swarm.TUI.Launch.Prep

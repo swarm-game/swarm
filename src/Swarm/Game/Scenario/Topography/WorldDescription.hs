@@ -6,6 +6,7 @@
 module Swarm.Game.Scenario.Topography.WorldDescription where
 
 import Data.Coerce
+import Data.Functor.Identity
 import Data.Maybe (catMaybes)
 import Data.Yaml as Y
 import Swarm.Game.Entity
@@ -14,8 +15,13 @@ import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Navigation.Portal
+import Swarm.Game.Scenario.Topography.Navigation.Waypoint (
+  WaypointName,
+ )
+import Swarm.Game.Scenario.Topography.Structure (InheritedStructureDefs, MergedStructure (MergedStructure), PStructure (Structure))
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.WorldPalette
+import Swarm.Game.Universe
 import Swarm.Util.Yaml
 
 ------------------------------------------------------------
@@ -32,36 +38,49 @@ data PWorldDescription e = WorldDescription
   , palette :: WorldPalette e
   , ul :: Location
   , area :: [[PCell e]]
-  , navigation :: Navigation
+  , navigation :: Navigation Identity WaypointName
+  , worldName :: SubworldName
   }
   deriving (Eq, Show)
 
 type WorldDescription = PWorldDescription Entity
 
-instance FromJSONE (EntityMap, RobotMap) WorldDescription where
+instance FromJSONE (InheritedStructureDefs, (EntityMap, RobotMap)) WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
-    pal <- v ..:? "palette" ..!= WorldPalette mempty
-    structureDefs <- v ..:? "structures" ..!= []
+    (scnenarioLevelStructureDefs, (em, rm)) <- getE
+    (pal, terr, rootWorldStructureDefs) <- localE (const (em, rm)) $ do
+      pal <- v ..:? "palette" ..!= WorldPalette mempty
+      terr <- v ..:? "default"
+      rootWorldStructs <- v ..:? "structures" ..!= []
+      return (pal, terr, rootWorldStructs)
+
     waypointDefs <- liftE $ v .:? "waypoints" .!= []
     portalDefs <- liftE $ v .:? "portals" .!= []
     placementDefs <- liftE $ v .:? "placements" .!= []
     (initialArea, mapWaypoints) <- liftE ((v .:? "map" .!= "") >>= Structure.paintMap Nothing pal)
 
     upperLeft <- liftE (v .:? "upperleft" .!= origin)
+    subWorldName <- liftE (v .:? "name" .!= defaultRootSubworldName)
 
-    let struc = Structure.Structure initialArea structureDefs placementDefs $ waypointDefs <> mapWaypoints
-        Structure.MergedStructure mergedArea unmergedWaypoints = Structure.mergeStructures mempty Nothing struc
+    let initialStructureDefs = scnenarioLevelStructureDefs <> rootWorldStructureDefs
+        struc = Structure initialArea initialStructureDefs placementDefs $ waypointDefs <> mapWaypoints
+        MergedStructure mergedArea unmergedWaypoints = Structure.mergeStructures mempty Nothing struc
 
-    validatedLandmarks <- validateNavigation (coerce upperLeft) unmergedWaypoints portalDefs
+    validatedNavigation <-
+      validatePartialNavigation
+        subWorldName
+        (coerce upperLeft)
+        unmergedWaypoints
+        portalDefs
 
-    WorldDescription
-      <$> v ..:? "default"
-      <*> liftE (v .:? "offset" .!= False)
+    WorldDescription terr
+      <$> liftE (v .:? "offset" .!= False)
       <*> liftE (v .:? "scrollable" .!= True)
       <*> pure pal
       <*> pure upperLeft
       <*> pure (map catMaybes mergedArea) -- Root-level map has no transparent cells.
-      <*> pure validatedLandmarks
+      <*> pure validatedNavigation
+      <*> pure subWorldName
 
 ------------------------------------------------------------
 -- World editor
