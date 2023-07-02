@@ -33,6 +33,7 @@ module Swarm.Game.Scenario (
   scenarioEntities,
   scenarioRecipes,
   scenarioKnown,
+  secenarioSubworlds,
   scenarioWorld,
   scenarioRobots,
   scenarioObjectives,
@@ -65,6 +66,7 @@ import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.Topography.Cell
+import Swarm.Game.Scenario.Topography.Subworld
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util (failT)
@@ -91,6 +93,7 @@ data Scenario = Scenario
   , _scenarioEntities :: EntityMap
   , _scenarioRecipes :: [Recipe Entity]
   , _scenarioKnown :: [Text]
+  , _secenarioSubworlds :: [Subworld]
   , _scenarioWorld :: WorldDescription
   , _scenarioRobots :: [TRobot]
   , _scenarioObjectives :: [Objective]
@@ -109,6 +112,8 @@ instance FromJSONE EntityMap Scenario where
       Right x -> return x
       Left x -> failT [x]
     -- extend ambient EntityMap with custom entities
+
+    subworlds <- v ..:? "subworlds" ..!= []
 
     withE em $ do
       -- parse 'known' entity names and make sure they exist
@@ -133,6 +138,7 @@ instance FromJSONE EntityMap Scenario where
         <*> pure em
         <*> v ..:? "recipes" ..!= []
         <*> pure known
+        <*> pure subworlds
         <*> localE (,rsMap) (v ..: "world")
         <*> pure rs
         <*> (liftE (v .:? "objectives" .!= []) >>= validateObjectives)
@@ -177,6 +183,9 @@ scenarioRecipes :: Lens' Scenario [Recipe Entity]
 -- | List of entities that should be considered "known", so robots do
 --   not have to scan them.
 scenarioKnown :: Lens' Scenario [Text]
+
+-- | The subworlds of the scenario.
+secenarioSubworlds :: Lens' Scenario [Subworld]
 
 -- | The starting world for the scenario.
 scenarioWorld :: Lens' Scenario WorldDescription
