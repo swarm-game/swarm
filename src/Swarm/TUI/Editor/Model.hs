@@ -13,6 +13,7 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainType)
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Model.Name
 import Swarm.Util
@@ -42,7 +43,7 @@ getEntityName :: EntityFacade -> EntityName
 getEntityName (EntityFacade name _) = name
 
 data MapEditingBounds = MapEditingBounds
-  { _boundsRect :: Maybe W.BoundsRectangle
+  { _boundsRect :: Maybe (Cosmo W.BoundsRectangle)
   -- ^ Upper-left and lower-right coordinates
   -- of the map to be saved.
   , _boundsPersistDisplayUntil :: TimeSpec
@@ -82,6 +83,6 @@ initialWorldEditor ts =
     MapEditingBounds
       -- Note that these are in "world coordinates",
       -- not in player-facing "Location" coordinates
-      (Just (W.Coords (-10, -20), W.Coords (10, 20)))
+      (Just $ Cosmo defaultRootSubworldName (W.Coords (-10, -20), W.Coords (10, 20)))
       (ts - 1)
       SelectionComplete

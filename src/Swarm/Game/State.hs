@@ -61,7 +61,7 @@ module Swarm.Game.State (
   currentScenarioPath,
   knownEntities,
   worldNavigation,
-  world,
+  multiWorld,
   worldScrollable,
   viewCenterRule,
   viewCenter,
@@ -107,6 +107,7 @@ module Swarm.Game.State (
   focusedRange,
   clearFocusedRobotLogUpdated,
   addRobot,
+  addRobotToLocation,
   addTRobot,
   emitMessage,
   wakeWatchingRobots,
@@ -114,6 +115,7 @@ module Swarm.Game.State (
   sleepForever,
   wakeUpRobotsDoneSleeping,
   deleteRobot,
+  removeRobotFromLocationMap,
   activateRobot,
   toggleRunStatus,
   messageIsRecent,
@@ -174,6 +176,7 @@ import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
+import Swarm.Game.Universe as U
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
 import Swarm.Game.World qualified as W
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
@@ -185,7 +188,7 @@ import Swarm.Language.Syntax (Const, SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
-import Swarm.Util (uniq, (<+=), (<<.=), (?))
+import Swarm.Util (binTuples, uniq, (<+=), (<<.=), (?))
 import Swarm.Util.Lens (makeLensesExcluding)
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
@@ -198,7 +201,7 @@ import System.Random (StdGen, mkStdGen, randomRIO)
 --   world viewport.
 data ViewCenterRule
   = -- | The view should be centered on an absolute position.
-    VCLocation Location
+    VCLocation (Cosmo Location)
   | -- | The view should be centered on a certain robot.
     VCRobot RID
   deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
@@ -381,11 +384,11 @@ data GameState = GameState
     -- Waiting robots for a given time are a list because it is cheaper to
     -- prepend to a list than insert into a Set.
     _waitingRobots :: Map TickNumber [RID]
-  , _robotsByLocation :: Map Location IntSet
+  , _robotsByLocation :: Map SubworldName (Map Location IntSet)
   , -- This member exists as an optimization so
     -- that we do not have to iterate over all "waiting" robots,
     -- since there may be many.
-    _robotsWatching :: Map Location (S.Set RID)
+    _robotsWatching :: Map (Cosmo Location) (S.Set RID)
   , _allDiscoveredEntities :: Inventory
   , _availableRecipes :: Notifications (Recipe Entity)
   , _availableCommands :: Notifications Const
@@ -401,11 +404,11 @@ data GameState = GameState
   , _recipesReq :: IntMap [Recipe Entity]
   , _currentScenarioPath :: Maybe FilePath
   , _knownEntities :: [Text]
-  , _worldNavigation :: Navigation
-  , _world :: W.World Int Entity
+  , _worldNavigation :: Navigation (M.Map SubworldName) Location
+  , _multiWorld :: W.MultiWorld Int Entity
   , _worldScrollable :: Bool
   , _viewCenterRule :: ViewCenterRule
-  , _viewCenter :: Location
+  , _viewCenter :: Cosmo Location
   , _needsRedraw :: Bool
   , _replStatus :: REPLStatus
   , _replNextValueIndex :: Integer
@@ -473,28 +476,32 @@ robotMap :: Lens' GameState (IntMap Robot)
 --   location of a robot changes, or a robot is created or destroyed.
 --   Fortunately, there are relatively few ways for these things to
 --   happen.
-robotsByLocation :: Lens' GameState (Map Location IntSet)
+robotsByLocation :: Lens' GameState (Map SubworldName (Map Location IntSet))
 
 -- | Get a list of all the robots at a particular location.
-robotsAtLocation :: Location -> GameState -> [Robot]
+robotsAtLocation :: Cosmo Location -> GameState -> [Robot]
 robotsAtLocation loc gs =
   mapMaybe (`IM.lookup` (gs ^. robotMap))
     . maybe [] IS.toList
-    . M.lookup loc
+    . M.lookup (loc ^. planar)
+    . M.findWithDefault mempty (loc ^. subworld)
     . view robotsByLocation
     $ gs
 
 -- | Get a list of all the robots that are "watching" by location.
-robotsWatching :: Lens' GameState (Map Location (S.Set RID))
+robotsWatching :: Lens' GameState (Map (Cosmo Location) (S.Set RID))
 
 -- | Get all the robots within a given Manhattan distance from a
 --   location.
-robotsInArea :: Location -> Int32 -> GameState -> [Robot]
-robotsInArea o d gs = map (rm IM.!) rids
+robotsInArea :: Cosmo Location -> Int32 -> GameState -> [Robot]
+robotsInArea (Cosmo subworldName o) d gs = map (rm IM.!) rids
  where
   rm = gs ^. robotMap
   rl = gs ^. robotsByLocation
-  rids = concatMap IS.elems $ getElemsInArea o d rl
+  rids =
+    concatMap IS.elems $
+      getElemsInArea o d $
+        M.findWithDefault mempty subworldName rl
 
 -- | The base robot, if it exists.
 baseRobot :: Traversal' GameState Robot
@@ -559,28 +566,28 @@ recipesReq :: Lens' GameState (IntMap [Recipe Entity])
 -- see 'Swarm.Game.ScenarioInfo.scenarioItemByPath'.
 currentScenarioPath :: Lens' GameState (Maybe FilePath)
 
--- | The names of entities that should be considered "known", that is,
+-- | The names of entities that should be considered \"known\", that is,
 --   robots know what they are without having to scan them.
 knownEntities :: Lens' GameState [Text]
 
--- | Includes a Map of named locations and an
+-- | Includes a "Map" of named locations and an
 -- "Edge list" (graph) that maps portal entrances to exits
-worldNavigation :: Lens' GameState Navigation
+worldNavigation :: Lens' GameState (Navigation (M.Map SubworldName) Location)
 
 -- | The current state of the world (terrain and entities only; robots
---   are stored in the 'robotMap').  Int is used instead of
---   TerrainType because we need to be able to store terrain values in
+--   are stored in the "robotMap").  "Int" is used instead of
+--   "TerrainType" because we need to be able to store terrain values in
 --   unboxed tile arrays.
-world :: Lens' GameState (W.World Int Entity)
+multiWorld :: Lens' GameState (W.MultiWorld Int Entity)
 
 -- | Whether the world map is supposed to be scrollable or not.
 worldScrollable :: Lens' GameState Bool
 
 -- | The current center of the world view. Note that this cannot be
 --   modified directly, since it is calculated automatically from the
---   'viewCenterRule'.  To modify the view center, either set the
---   'viewCenterRule', or use 'modifyViewCenter'.
-viewCenter :: Getter GameState Location
+--   "viewCenterRule".  To modify the view center, either set the
+--   "viewCenterRule", or use "modifyViewCenter".
+viewCenter :: Getter GameState (Cosmo Location)
 viewCenter = to _viewCenter
 
 -- | Whether the world view needs to be redrawn.
@@ -638,14 +645,14 @@ viewCenterRule = lens getter setter
   setter :: GameState -> ViewCenterRule -> GameState
   setter g rule =
     case rule of
-      VCLocation v2 -> g {_viewCenterRule = rule, _viewCenter = v2}
+      VCLocation loc -> g {_viewCenterRule = rule, _viewCenter = loc}
       VCRobot rid ->
         let robotcenter = g ^? robotMap . ix rid . robotLocation
          in -- retrieve the loc of the robot if it exists, Nothing otherwise.
             -- sometimes, lenses are amazing...
             case robotcenter of
               Nothing -> g
-              Just v2 -> g {_viewCenterRule = rule, _viewCenter = v2, _focusedRobotID = rid}
+              Just loc -> g {_viewCenterRule = rule, _viewCenter = loc, _focusedRobotID = rid}
 
 -- | Whether the repl is currently working.
 replWorking :: Getter GameState Bool
@@ -686,14 +693,17 @@ messageNotifications = to getNotif
 messageIsRecent :: GameState -> LogEntry -> Bool
 messageIsRecent gs e = addTicks 1 (e ^. leTime) >= gs ^. ticks
 
-messageIsFromNearby :: Location -> LogEntry -> Bool
-messageIsFromNearby l e = manhattan l (e ^. leLocation) <= hearingDistance
+-- | If the log location is "Nothing", consider it omnipresent.
+messageIsFromNearby :: Cosmo Location -> LogEntry -> Bool
+messageIsFromNearby l e = maybe True f (e ^. leLocation)
+ where
+  f logLoc = maybe False (<= hearingDistance) $ cosmoMeasure manhattan l logLoc
 
 -- | Given a current mapping from robot names to robots, apply a
 --   'ViewCenterRule' to derive the location it refers to.  The result
 --   is @Maybe@ because the rule may refer to a robot which does not
 --   exist.
-applyViewCenterRule :: ViewCenterRule -> IntMap Robot -> Maybe Location
+applyViewCenterRule :: ViewCenterRule -> IntMap Robot -> Maybe (Cosmo Location)
 applyViewCenterRule (VCLocation l) _ = Just l
 applyViewCenterRule (VCRobot name) m = m ^? at name . _Just . robotLocation
 
@@ -710,13 +720,15 @@ recalcViewCenter g =
     & (if newViewCenter /= oldViewCenter then needsRedraw .~ True else id)
  where
   oldViewCenter = g ^. viewCenter
-  newViewCenter = fromMaybe oldViewCenter (applyViewCenterRule (g ^. viewCenterRule) (g ^. robotMap))
+  newViewCenter =
+    fromMaybe oldViewCenter $
+      applyViewCenterRule (g ^. viewCenterRule) (g ^. robotMap)
 
 -- | Modify the 'viewCenter' by applying an arbitrary function to the
 --   current value.  Note that this also modifies the 'viewCenterRule'
 --   to match.  After calling this function the 'viewCenterRule' will
 --   specify a particular location, not a robot.
-modifyViewCenter :: (Location -> Location) -> GameState -> GameState
+modifyViewCenter :: (Cosmo Location -> Cosmo Location) -> GameState -> GameState
 modifyViewCenter update g =
   g
     & case g ^. viewCenterRule of
@@ -732,10 +744,10 @@ unfocus = (\g -> g {_focusedRobotID = -1000}) . modifyViewCenter id
 
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.
-viewingRegion :: GameState -> (Int32, Int32) -> W.BoundsRectangle
-viewingRegion g (w, h) = (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
+viewingRegion :: GameState -> (Int32, Int32) -> Cosmo W.BoundsRectangle
+viewingRegion g (w, h) = Cosmo sw (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
  where
-  Location cx cy = g ^. viewCenter
+  Cosmo sw (Location cx cy) = g ^. viewCenter
   (rmin, rmax) = over both (+ (-cy - h `div` 2)) (0, h - 1)
   (cmin, cmax) = over both (+ (cx - w `div` 2)) (0, w - 1)
 
@@ -783,9 +795,10 @@ focusedRange g = computedRange <$ focusedRobot g
     | otherwise = MidRange $ (r - minRadius) / (maxRadius - minRadius)
 
   -- Euclidean distance from the base to the view center.
-  r = case g ^. robotMap . at 0 of
-    Just br -> euclidean (g ^. viewCenter) (br ^. robotLocation)
-    _ -> 1000000000 -- if the base doesn't exist, we have bigger problems
+  r = fromMaybe 1000000000 $ do
+    -- if the base doesn't exist, we have bigger problems
+    br <- g ^. robotMap . at 0
+    cosmoMeasure euclidean (g ^. viewCenter) (br ^. robotLocation)
 
   -- See whether the base or focused robot have antennas installed.
   baseInv, focInv :: Maybe Inventory
@@ -827,9 +840,17 @@ addRobot r = do
   let rid = r ^. robotID
 
   robotMap %= IM.insert rid r
-  robotsByLocation
-    %= M.insertWith IS.union (r ^. robotLocation) (IS.singleton rid)
+  addRobotToLocation rid $ r ^. robotLocation
   internalActiveRobots %= IS.insert rid
+
+-- | Helper function for updating the "robotsByLocation" bookkeeping
+addRobotToLocation :: (Has (State GameState) sig m) => RID -> Cosmo Location -> m ()
+addRobotToLocation rid rLoc =
+  robotsByLocation
+    %= M.insertWith
+      (M.unionWith IS.union)
+      (rLoc ^. subworld)
+      (M.singleton (rLoc ^. planar) (IS.singleton rid))
 
 maxMessageQueueSize :: Int
 maxMessageQueueSize = 1000
@@ -889,7 +910,7 @@ clearWatchingRobots rids = do
 --
 -- NOTE: Clearing "TickNumber" map entries from "internalWaitingRobots"
 -- upon wakeup is handled by "wakeUpRobotsDoneSleeping" in State.hs
-wakeWatchingRobots :: (Has (State GameState) sig m) => Location -> m ()
+wakeWatchingRobots :: (Has (State GameState) sig m) => Cosmo Location -> m ()
 wakeWatchingRobots loc = do
   currentTick <- use ticks
   waitingMap <- use waitingRobots
@@ -948,7 +969,29 @@ deleteRobot rn = do
   mrobot <- robotMap . at rn <<.= Nothing
   mrobot `forM_` \robot -> do
     -- Delete the robot from the index of robots by location.
-    robotsByLocation . ix (robot ^. robotLocation) %= IS.delete rn
+    removeRobotFromLocationMap (robot ^. robotLocation) rn
+
+-- | Makes sure empty sets don't hang around in the
+-- robotsByLocation map.  We don't want a key with an
+-- empty set at every location any robot has ever
+-- visited!
+removeRobotFromLocationMap ::
+  (Has (State GameState) sig m) =>
+  Cosmo Location ->
+  RID ->
+  m ()
+removeRobotFromLocationMap (Cosmo oldSubworld oldPlanar) rid =
+  robotsByLocation %= M.update (tidyDelete rid) oldSubworld
+ where
+  nullToNothing :: (a -> Bool) -> a -> Maybe a
+  nullToNothing isEmptyFunc t
+    | isEmptyFunc t = Nothing
+    | otherwise = Just t
+
+  deleteOne x = nullToNothing IS.null . IS.delete x
+
+  tidyDelete robID =
+    nullToNothing M.null . M.update (deleteOne robID) oldPlanar
 
 ------------------------------------------------------------
 -- Initialization
@@ -1004,10 +1047,10 @@ initGameState gsc =
     , _currentScenarioPath = Nothing
     , _knownEntities = []
     , _worldNavigation = Navigation mempty mempty
-    , _world = W.emptyWorld (fromEnum StoneT)
+    , _multiWorld = mempty
     , _worldScrollable = True
     , _viewCenterRule = VCRobot 0
-    , _viewCenter = origin
+    , _viewCenter = defaultCosmoLocation
     , _needsRedraw = False
     , _replStatus = REPLDone Nothing
     , _replNextValueIndex = 0
@@ -1045,10 +1088,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       & winCondition .~ theWinCondition
       & winSolution .~ scenario ^. scenarioSolution
       & robotMap .~ IM.fromList (map (view robotID &&& id) robotList')
-      & robotsByLocation
-        .~ M.fromListWith
-          IS.union
-          (map (view robotLocation &&& (IS.singleton . view robotID)) robotList')
+      & robotsByLocation .~ M.map (groupRobotsByPlanarLocation . NE.toList) (groupRobotsBySubworld robotList')
       & internalActiveRobots .~ setOf (traverse . robotID) robotList'
       & availableCommands .~ Notifications 0 initialCommands
       & gensym .~ initGensym
@@ -1060,9 +1100,12 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       & recipesIn %~ addRecipesWith inRecipeMap
       & recipesReq %~ addRecipesWith reqRecipeMap
       & knownEntities .~ scenario ^. scenarioKnown
-      & worldNavigation .~ navigation (scenario ^. scenarioWorld)
-      & world .~ theWorld theSeed
-      & worldScrollable .~ scenario ^. scenarioWorld . to scrollable
+      & worldNavigation .~ scenario ^. scenarioNavigation
+      & multiWorld .~ allSubworldsMap theSeed
+      -- TODO: Should we allow subworlds to have their own scrollability?
+      -- Leaning toward yes, but for now just adopt the root world scrollability
+      -- as being universal.
+      & worldScrollable .~ NE.head (scenario ^. scenarioWorlds) ^. to scrollable
       & viewCenterRule .~ VCRobot baseID
       & replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
       -- otherwise the store of definition cells is not saved (see #333, #838)
@@ -1070,6 +1113,14 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
         True -> REPLWorking (Typed Nothing PolyUnit mempty)
       & robotStepsPerTick .~ ((scenario ^. scenarioStepsPerTick) ? defaultRobotStepsPerTick)
  where
+  groupRobotsBySubworld =
+    binTuples . map (view (robotLocation . subworld) &&& id)
+
+  groupRobotsByPlanarLocation rs =
+    M.fromListWith
+      IS.union
+      (map (view (robotLocation . planar) &&& (IS.singleton . view robotID)) rs)
+
   em = initEntities gsc <> scenario ^. scenarioEntities
   baseID = 0
   (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
@@ -1145,8 +1196,17 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       (maybe True (`S.member` initialCaps) . constCaps)
       allConst
 
-  (genRobots, wf) = buildWorld em (scenario ^. scenarioWorld)
-  theWorld = W.newWorld . wf
+  -- TODO: We currently only utilize genRobots on the root world.
+  (genRobots, _wf) = buildWorld em $ NE.head $ scenario ^. scenarioWorlds
+
+  allSubworldsMap s =
+    M.fromList
+      . map (worldName &&& genWorld)
+      . NE.toList
+      $ scenario ^. scenarioWorlds
+   where
+    genWorld x = W.newWorld $ snd (buildWorld em x) s
+
   theWinCondition =
     maybe
       NoWinCondition
@@ -1159,7 +1219,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
 -- | Take a world description, parsed from a scenario file, and turn
 --   it into a list of located robots and a world function.
 buildWorld :: EntityMap -> WorldDescription -> ([IndexedTRobot], Seed -> WorldFun Int Entity)
-buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
+buildWorld em WorldDescription {..} = (robots worldName, first fromEnum . wf)
  where
   rs = fromIntegral $ length area
   cs = fromIntegral $ length (head area)
@@ -1177,13 +1237,13 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
     Just (Cell t e _) -> const (worldFunFromArray worldArray (t, e))
 
   -- Get all the robots described in cells and set their locations appropriately
-  robots :: [IndexedTRobot]
-  robots =
+  robots :: SubworldName -> [IndexedTRobot]
+  robots swName =
     area
       & traversed Control.Lens.<.> traversed %@~ (,) -- add (r,c) indices
       & concat
       & concatMap
         ( \((fromIntegral -> r, fromIntegral -> c), Cell _ _ robotList) ->
-            let robotWithLoc = trobotLocation ?~ W.coordsToLoc (Coords (ulr + r, ulc + c))
+            let robotWithLoc = trobotLocation ?~ Cosmo swName (W.coordsToLoc (Coords (ulr + r, ulc + c)))
              in map (fmap robotWithLoc) robotList
         )
