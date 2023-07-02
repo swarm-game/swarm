@@ -27,6 +27,7 @@ import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainType (BlankT), getTerrainDefaultPaletteChar)
+import Swarm.Game.Universe
 import Swarm.TUI.Editor.Json (SkeletonScenario (SkeletonScenario))
 import Swarm.Util (binTuples, histogram)
 import Swarm.Util qualified as U
@@ -86,7 +87,7 @@ makeSuggestedPalette maybeOriginalScenario cellGrid =
   originalPalette :: KM.KeyMap CellPaintDisplay
   originalPalette =
     KM.map (toCellPaintDisplay . standardCell) $
-      maybe mempty (unPalette . palette . (^. scenarioWorld)) maybeOriginalScenario
+      maybe mempty (unPalette . palette . NE.head . (^. scenarioWorlds)) maybeOriginalScenario
 
   pairsWithDisplays :: Map (TerrainWith EntityName) (T.Text, CellPaintDisplay)
   pairsWithDisplays = M.fromList $ mapMaybe g entitiesWithModalTerrain
@@ -128,6 +129,7 @@ constructScenario maybeOriginalScenario cellGrid =
       , ul = upperLeftCoord
       , area = cellGrid
       , navigation = Navigation mempty mempty
+      , worldName = defaultRootSubworldName
       }
 
   suggestedPalette = makeSuggestedPalette maybeOriginalScenario cellGrid

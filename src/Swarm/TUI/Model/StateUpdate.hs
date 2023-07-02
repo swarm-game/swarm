@@ -24,6 +24,7 @@ import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execStateT)
 import Data.List qualified as List
+import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
@@ -33,7 +34,7 @@ import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
-import Swarm.Game.Scenario (loadScenario, scenarioAttrs, scenarioWorld)
+import Swarm.Game.Scenario (loadScenario, scenarioAttrs, scenarioWorlds)
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
@@ -207,8 +208,7 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
  where
   entityList = EU.getEntitiesForList $ gs ^. entityMap
 
-  myWorld = scenario ^. scenarioWorld
-  (isEmptyArea, newBounds) = EU.getEditingBounds myWorld
+  (isEmptyArea, newBounds) = EU.getEditingBounds $ NE.head $ scenario ^. scenarioWorlds
   setNewBounds maybeOldBounds =
     if isEmptyArea
       then maybeOldBounds
