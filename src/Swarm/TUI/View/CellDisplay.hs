@@ -33,36 +33,44 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 import Witch (from)
 import Witch.Encoding qualified as Encoding
+import Swarm.Game.Universe
 
 -- | Render a display as a UI widget.
 renderDisplay :: Display -> Widget n
 renderDisplay disp = withAttr (disp ^. displayAttr . to toAttrName) $ str [displayChar disp]
 
 -- | Render the 'Display' for a specific location.
-drawLoc :: UIState -> GameState -> W.Coords -> Widget Name
-drawLoc ui g coords =
+drawLoc :: UIState -> GameState -> Cosmo W.Coords -> Widget Name
+drawLoc ui g cCoords@(Cosmo _ coords) =
   if shouldHideWorldCell ui coords
     then str " "
     else drawCell
  where
   showRobots = ui ^. uiShowRobots
   we = ui ^. uiWorldEditor
-  drawCell = renderDisplay $ displayLoc showRobots we g coords
+  drawCell = renderDisplay $ displayLoc showRobots we g cCoords
 
-displayTerrainCell :: WorldEditor Name -> GameState -> W.Coords -> Display
+displayTerrainCell ::
+  WorldEditor Name ->
+  GameState ->
+  Cosmo W.Coords ->
+  Display
 displayTerrainCell worldEditor g coords =
-  terrainMap M.! EU.getTerrainAt worldEditor (g ^. world) coords
+  terrainMap M.! EU.getTerrainAt worldEditor (g ^. multiWorld) coords
 
-displayRobotCell :: GameState -> W.Coords -> [Display]
+displayRobotCell ::
+  GameState ->
+  Cosmo W.Coords ->
+  [Display]
 displayRobotCell g coords =
   map (view robotDisplay) $
-    robotsAtLocation (W.coordsToLoc coords) g
+    robotsAtLocation (fmap W.coordsToLoc coords) g
 
-displayEntityCell :: WorldEditor Name -> GameState -> W.Coords -> [Display]
+displayEntityCell :: WorldEditor Name -> GameState -> Cosmo W.Coords -> [Display]
 displayEntityCell worldEditor g coords =
   maybeToList $ displayForEntity <$> maybeEntity
  where
-  (_, maybeEntity) = EU.getContentAt worldEditor (g ^. world) coords
+  (_, maybeEntity) = EU.getContentAt worldEditor (g ^. multiWorld) coords
 
   displayForEntity :: EntityPaint -> Display
   displayForEntity e = (if known e then id else hidden) $ getDisplay e
@@ -89,14 +97,19 @@ hidingMode g
 --   'Display's for the terrain, entity, and robots at the location, and
 --   taking into account "static" based on the distance to the robot
 --   being @view@ed.
-displayLoc :: Bool -> WorldEditor Name -> GameState -> W.Coords -> Display
-displayLoc showRobots we g coords =
+displayLoc :: Bool -> WorldEditor Name -> GameState -> Cosmo W.Coords -> Display
+displayLoc showRobots we g cCoords@(Cosmo _ coords) =
   staticDisplay g coords
-    <> displayLocRaw showRobots we g coords
+    <> displayLocRaw showRobots we g cCoords
 
 -- | Get the 'Display' for a specific location, by combining the
 --   'Display's for the terrain, entity, and robots at the location.
-displayLocRaw :: Bool -> WorldEditor Name -> GameState -> W.Coords -> Display
+displayLocRaw ::
+  Bool ->
+  WorldEditor Name ->
+  GameState ->
+  Cosmo W.Coords ->
+  Display
 displayLocRaw showRobots worldEditor g coords = sconcat $ terrain NE.:| entity <> robots
  where
   terrain = displayTerrainCell worldEditor g coords
@@ -152,7 +165,7 @@ getStatic g coords
  where
   -- Offset from the location of the view center to the location under
   -- consideration for display.
-  offset = W.coordsToLoc coords .-. (g ^. viewCenter)
+  offset = W.coordsToLoc coords .-. (g ^. viewCenter . planar)
 
   -- Hash.
   h =

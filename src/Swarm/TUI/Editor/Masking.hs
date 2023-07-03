@@ -6,6 +6,7 @@ import Swarm.Game.World qualified as W
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model.UI
+import Swarm.Game.Universe
 
 shouldHideWorldCell :: UIState -> W.Coords -> Bool
 shouldHideWorldCell ui coords =
@@ -20,7 +21,7 @@ shouldHideWorldCell ui coords =
         False
         ( do
             bounds <- we ^. editingBounds . boundsRect
-            pure $ EU.isOutsideRegion bounds coords
+            pure $ EU.isOutsideRegion (bounds ^. planar) coords
         )
 
   isOutsideSingleSelectedCorner = fromMaybe False $ do

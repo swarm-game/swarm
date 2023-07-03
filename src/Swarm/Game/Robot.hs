@@ -93,6 +93,7 @@ import Swarm.Game.CESK
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location (Heading, Location, toDirection)
+import Swarm.Game.Universe
 import Swarm.Game.Log
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
@@ -167,7 +168,7 @@ data RobotPhase
 --   concrete robot we must have a location.
 type family RobotLocation (phase :: RobotPhase) :: * where
   RobotLocation 'TemplateRobot = Maybe Location
-  RobotLocation 'ConcreteRobot = Location
+  RobotLocation 'ConcreteRobot = Cosmo Location
 
 -- | Robot templates have no ID; concrete robots definitely do.
 type family RobotID (phase :: RobotPhase) :: * where
@@ -269,13 +270,13 @@ robotDisplay = lens getDisplay setDisplay
 --   a getter, since when changing a robot's location we must remember
 --   to update the 'robotsByLocation' map as well.  You can use the
 --   'updateRobotLocation' function for this purpose.
-robotLocation :: Getter Robot Location
+robotLocation :: Getter Robot (Cosmo Location)
 
 -- | Set a robot's location.  This is unsafe and should never be
 --   called directly except by the 'updateRobotLocation' function.
 --   The reason is that we need to make sure the 'robotsByLocation'
 --   map stays in sync.
-unsafeSetRobotLocation :: Location -> Robot -> Robot
+unsafeSetRobotLocation :: Cosmo Location -> Robot -> Robot
 unsafeSetRobotLocation loc r = r {_robotLocation = loc}
 
 -- | A template robot's location.  Unlike 'robotLocation', this is a
@@ -312,7 +313,7 @@ instantiateRobot :: RID -> TRobot -> Robot
 instantiateRobot i r =
   r
     { _robotID = i
-    , _robotLocation = fromMaybe zero (_robotLocation r)
+    , _robotLocation = Cosmo rootSubworldName $ fromMaybe zero (_robotLocation r)
     }
 
 -- | The ID number of the robot's parent, that is, the robot that

@@ -30,7 +30,7 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (foldM, forM, forM_, guard, msum, unless, when, zipWithM)
+import Control.Monad (foldM, forM, forM_, guard, msum, unless, when, zipWithM, join)
 import Control.Monad.Except (runExceptT)
 import Data.Array (bounds, (!))
 import Data.Bifunctor (second)
@@ -82,6 +82,7 @@ import Swarm.Game.Value
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
+import Swarm.Game.Universe
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Parse (runParser)
 import Swarm.Language.Pipeline
@@ -378,7 +379,19 @@ getNow = sendIO $ System.Clock.getTime System.Clock.Monotonic
 --
 -- Use ID (-1) so it won't conflict with any robots currently in the robot map.
 hypotheticalRobot :: CESK -> TimeSpec -> Robot
-hypotheticalRobot c = mkRobot (-1) Nothing "hypothesis" [] zero zero defaultRobotDisplay c [] [] True False
+hypotheticalRobot c = mkRobot
+  (-1)
+  Nothing
+  "hypothesis"
+  []
+  (Cosmo rootSubworldName zero)
+  zero
+  defaultRobotDisplay
+  c
+  []
+  []
+  True
+  False
 
 evaluateCESK ::
   (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>
@@ -413,22 +426,33 @@ flagRedraw = needsRedraw .= True
 
 -- | Perform an action requiring a 'W.World' state component in a
 --   larger context with a 'GameState'.
-zoomWorld :: (Has (State GameState) sig m) => StateC (W.World Int Entity) Identity b -> m b
-zoomWorld n = do
-  w <- use world
-  let (w', a) = run (runState w n)
-  world .= w'
-  return a
+zoomWorld ::
+  (Has (State GameState) sig m) =>
+  SubworldName ->
+  StateC (W.World Int Entity) Identity b ->
+  m (Maybe b)
+zoomWorld swName n = do
+  mw <- use multiWorld
+  forM (M.lookup swName mw) $ \w -> do
+    let (w', a) = run (runState w n)
+    multiWorld %= M.insert swName w'
+    return a
 
 -- | Get the entity (if any) at a given location.
-entityAt :: (Has (State GameState) sig m) => Location -> m (Maybe Entity)
-entityAt loc = zoomWorld (W.lookupEntityM @Int (W.locToCoords loc))
+entityAt :: (Has (State GameState) sig m) => Cosmo Location -> m (Maybe Entity)
+entityAt (Cosmo subworldName loc) =
+  join <$> zoomWorld subworldName (W.lookupEntityM @Int (W.locToCoords loc))
 
 -- | Modify the entity (if any) at a given location.
 updateEntityAt ::
-  (Has (State GameState) sig m) => Location -> (Maybe Entity -> Maybe Entity) -> m ()
-updateEntityAt loc upd = do
-  didChange <- zoomWorld $ W.updateM @Int (W.locToCoords loc) upd
+  (Has (State GameState) sig m) =>
+  Cosmo Location ->
+  (Maybe Entity -> Maybe Entity) ->
+  m ()
+updateEntityAt (Cosmo subworldName loc) upd = do
+  didChange <- fmap (fromMaybe False) $
+    zoomWorld subworldName $
+      W.updateM @Int (W.locToCoords loc) upd
   when didChange $
     wakeWatchingRobots loc
 
@@ -1181,8 +1205,8 @@ execConst c vs s k = do
         -- Make sure the other robot exists and is close
         target <- getRobotWithinTouch rid
         -- either change current robot or one in robot map
-        let oldLoc = target ^. robotLocation
-            nextLoc = Location (fromIntegral x) (fromIntegral y)
+        let (Cosmo subworldName oldLoc) = target ^. robotLocation
+            nextLoc = Cosmo subworldName $ Location (fromIntegral x) (fromIntegral y)
 
         onTarget rid $ do
           checkMoveAhead nextLoc $
@@ -1724,7 +1748,7 @@ execConst c vs s k = do
       g <- get @GameState
       let neighbor =
             find ((/= rid) . (^. robotID)) -- pick one other than ourself
-              . sortOn (manhattan loc . (^. robotLocation)) -- prefer closer
+              . sortOn (manhattan loc . (^. robotLocation . planar)) -- prefer closer
               $ robotsInArea loc 1 g -- all robots within Manhattan distance 1
       return $ Out (asValue neighbor) s k
     MeetAll -> case vs of
@@ -1835,7 +1859,7 @@ execConst c vs s k = do
         -- a robot can program adjacent robots
         -- privileged bots ignore distance checks
         loc <- use robotLocation
-        (isPrivileged || (childRobot ^. robotLocation) `manhattan` loc <= 1)
+        (isPrivileged || (childRobot ^. robotLocation . planar) `manhattan` loc <= 1)
           `holdsOrFail` ["You can only reprogram an adjacent robot."]
 
         -- Figure out if we can supply what the target robot requires,
@@ -2472,7 +2496,7 @@ execConst c vs s k = do
         mother <- robotWithID rid
         other <- mother `isJustOrFail` ["There is no robot with ID", from (show rid) <> "."]
 
-        let otherLoc = other ^. robotLocation
+        let otherLoc = other ^. robotLocation . planar
         privileged <- isPrivilegedBot
         myLoc <- use robotLocation
 

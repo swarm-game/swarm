@@ -23,6 +23,7 @@ module Swarm.Game.World (
   WorldFun (..),
   worldFunFromArray,
   World,
+  MultiWorld,
 
   -- ** Tile management
   loadCell,
@@ -31,7 +32,9 @@ module Swarm.Game.World (
   -- ** World functions
   newWorld,
   emptyWorld,
+  lookupCosmosTerrain,
   lookupTerrain,
+  lookupCosmoEntity,
   lookupEntity,
   update,
 
@@ -44,6 +47,7 @@ module Swarm.Game.World (
   WorldUpdate (..),
 ) where
 
+import Swarm.Game.Terrain (TerrainType (BlankT))
 import Control.Algebra (Has)
 import Control.Arrow ((&&&))
 import Control.Effect.State (State, get, modify, state)
@@ -62,6 +66,8 @@ import Swarm.Game.Entity (Entity, entityHash)
 import Swarm.Game.Location
 import Swarm.Util ((?))
 import Prelude hiding (lookup)
+import Data.Map (Map)
+import Swarm.Game.Universe
 
 ------------------------------------------------------------
 -- World coordinates
@@ -186,6 +192,8 @@ type TerrainTile t = U.UArray TileOffset t
 --   which have to be boxed.
 type EntityTile e = A.Array TileOffset (Maybe e)
 
+type MultiWorld t e = Map SubworldName (World t e)
+
 -- | A 'World' consists of a 'WorldFun' that specifies the initial
 --   world, a cache of loaded square tiles to make lookups faster, and
 --   a map storing locations whose entities have changed from their
@@ -213,6 +221,18 @@ newWorld f = World f M.empty M.empty
 emptyWorld :: t -> World t e
 emptyWorld t = newWorld (WF $ const (t, Nothing))
 
+
+
+
+lookupCosmosTerrain ::
+  IArray U.UArray Int =>
+  Cosmo Coords ->
+  MultiWorld Int e ->
+  TerrainType
+lookupCosmosTerrain (Cosmo subworldName i) multiWorld =
+  maybe BlankT (toEnum . lookupTerrain i) $ M.lookup subworldName multiWorld
+
+
 -- | Look up the terrain value at certain coordinates: try looking it
 --   up in the tile cache first, and fall back to running the 'WorldFun'
 --   otherwise.
@@ -224,31 +244,43 @@ lookupTerrain i (World f t _) =
   ((U.! tileOffset i) . fst <$> M.lookup (tileCoords i) t)
     ? fst (runWF f i)
 
--- | A stateful variant of 'lookupTerrain', which first loads the tile
+-- | A stateful variant of "lookupTerrain", which first loads the tile
 --   containing the given coordinates if it is not already loaded,
 --   then looks up the terrain value.
-lookupTerrainM :: forall t e sig m. (Has (State (World t e)) sig m, IArray U.UArray t) => Coords -> m t
+lookupTerrainM ::
+  forall t e sig m.
+  (Has (State (World t e)) sig m, IArray U.UArray t) =>
+  Coords ->
+  m t
 lookupTerrainM c = do
   modify @(World t e) $ loadCell c
   lookupTerrain c <$> get @(World t e)
 
+lookupCosmoEntity :: Cosmo Coords -> MultiWorld t e -> Maybe e
+lookupCosmoEntity (Cosmo subworldName i) multiWorld =
+  lookupEntity i =<< M.lookup subworldName multiWorld
+
 -- | Look up the entity at certain coordinates: first, see if it is in
 --   the map of locations with changed entities; then try looking it
 --   up in the tile cache first; and finally fall back to running the
---   'WorldFun'.
+--   "WorldFun".
 --
 --   This function does /not/ ensure that the tile containing the
---   given coordinates is loaded.  For that, see 'lookupEntityM'.
+--   given coordinates is loaded.  For that, see "lookupEntityM".
 lookupEntity :: Coords -> World t e -> Maybe e
 lookupEntity i (World f t m) =
   M.lookup i m
     ? ((A.! tileOffset i) . snd <$> M.lookup (tileCoords i) t)
     ? snd (runWF f i)
 
--- | A stateful variant of 'lookupTerrain', which first loads the tile
+-- | A stateful variant of "lookupEntity", which first loads the tile
 --   containing the given coordinates if it is not already loaded,
 --   then looks up the terrain value.
-lookupEntityM :: forall t e sig m. (Has (State (World t e)) sig m, IArray U.UArray t) => Coords -> m (Maybe e)
+lookupEntityM ::
+  forall t e sig m.
+  (Has (State (World t e)) sig m, IArray U.UArray t) =>
+  Coords ->
+  m (Maybe e)
 lookupEntityM c = do
   modify @(World t e) $ loadCell c
   lookupEntity c <$> get @(World t e)
@@ -257,7 +289,11 @@ lookupEntityM c = do
 --   returning an updated 'World' and a Boolean indicating whether
 --   the update changed the entity here.
 --   See also 'updateM'.
-update :: Coords -> (Maybe Entity -> Maybe Entity) -> World t Entity -> (World t Entity, Bool)
+update ::
+  Coords ->
+  (Maybe Entity -> Maybe Entity) ->
+  World t Entity ->
+  (World t Entity, Bool)
 update i g w@(World f t m) =
   (wNew, ((/=) `on` fmap (view entityHash)) entityAfter entityBefore)
  where
@@ -265,7 +301,7 @@ update i g w@(World f t m) =
   entityBefore = lookupEntity i w
   entityAfter = g entityBefore
 
--- | A stateful variant of 'update', which also ensures the tile
+-- | A stateful variant of "update", which also ensures the tile
 --   containing the given coordinates is loaded.
 updateM ::
   forall t sig m.
@@ -282,7 +318,12 @@ loadCell c = loadRegion (c, c)
 
 -- | Load all the tiles which overlap the given rectangular region
 --   (specified as an upper-left and lower-right corner, inclusive).
-loadRegion :: forall t e. IArray U.UArray t => (Coords, Coords) -> World t e -> World t e
+loadRegion ::
+  forall t e.
+  IArray U.UArray t =>
+  (Coords, Coords) ->
+  World t e ->
+  World t e
 loadRegion reg (World f t m) = World f t' m
  where
   tiles = range (over both tileCoords reg)

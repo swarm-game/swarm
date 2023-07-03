@@ -12,18 +12,13 @@ import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (listToMaybe)
-import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Linear (V2)
 import Swarm.Game.Location
+import Swarm.Game.Universe
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Util (binTuples, quote)
-
--- | Note: The primary overworld shall use
--- the reserved name \"root\".
-newtype SubworldName = SubworldName Text
-  deriving (Show, Eq, Ord, Generic, FromJSON)
 
 data Navigation = Navigation
   { waypoints :: M.Map WaypointName (NonEmpty Location)

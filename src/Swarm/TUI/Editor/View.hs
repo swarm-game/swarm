@@ -20,6 +20,7 @@ import Swarm.TUI.Panel
 import Swarm.TUI.View.CellDisplay (renderDisplay)
 import Swarm.TUI.View.Util qualified as VU
 import Swarm.Util (listEnums)
+import Swarm.Game.Universe
 
 drawWorldEditor :: FocusRing Name -> UIState -> Widget Name
 drawWorldEditor toplevelFocusRing uis =
@@ -92,7 +93,7 @@ drawWorldEditor toplevelFocusRing uis =
   areaContent = case worldEditor ^. editingBounds . boundsSelectionStep of
     UpperLeftPending -> str "Click top-left"
     LowerRightPending _wcoords -> str "Click bottom-right"
-    SelectionComplete -> maybe emptyWidget renderBounds maybeAreaBounds
+    SelectionComplete -> maybe emptyWidget (renderBounds . view planar) maybeAreaBounds
 
   areaWidget =
     mkFormControl (WorldEditorPanelControl AreaSelector) $

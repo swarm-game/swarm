@@ -4,6 +4,7 @@ import Control.Applicative ((<|>))
 import Control.Lens hiding (Const, from)
 import Control.Monad (guard)
 import Data.Int (Int32)
+import Swarm.Game.Universe
 import Data.Map qualified as M
 import Data.Map qualified as Map
 import Data.Maybe qualified as Maybe
@@ -24,19 +25,19 @@ getEntitiesForList em =
  where
   entities = M.elems $ entitiesByName em
 
-getEditingBounds :: WorldDescription -> (Bool, W.BoundsRectangle)
+getEditingBounds :: WorldDescription -> (Bool, Cosmo W.BoundsRectangle)
 getEditingBounds myWorld =
   (EA.isEmpty a, newBounds)
  where
-  newBounds = (W.locToCoords upperLeftLoc, W.locToCoords lowerRightLoc)
+  newBounds = Cosmo rootSubworldName (W.locToCoords upperLeftLoc, W.locToCoords lowerRightLoc)
   upperLeftLoc = ul myWorld
   a = EA.getAreaDimensions $ area myWorld
   lowerRightLoc = EA.upperLeftToBottomRight a upperLeftLoc
 
 getContentAt ::
   WorldEditor Name ->
-  W.World Int Entity ->
-  W.Coords ->
+  W.MultiWorld Int Entity ->
+  Cosmo W.Coords ->
   (TerrainType, Maybe EntityPaint)
 getContentAt editor w coords =
   (terrainWithOverride, entityWithOverride)
@@ -51,20 +52,21 @@ getContentAt editor w coords =
 
   maybePaintedCell = do
     guard $ editor ^. isWorldEditorEnabled
-    Map.lookup coords pm
+    Map.lookup (coords ^. planar) pm
 
   pm = editor ^. paintedTerrain
 
   entityWithOverride = (Ref <$> underlyingCellEntity) <|> maybeEntityOverride
-  underlyingCellEntity = W.lookupEntity coords w
-  underlyingCellTerrain = toEnum $ W.lookupTerrain coords w
+  underlyingCellEntity = W.lookupCosmoEntity coords w
+  underlyingCellTerrain = W.lookupCosmosTerrain coords w
 
 getTerrainAt ::
   WorldEditor Name ->
-  W.World Int Entity ->
-  W.Coords ->
+  W.MultiWorld Int Entity ->
+  Cosmo W.Coords ->
   TerrainType
-getTerrainAt editor w coords = fst $ getContentAt editor w coords
+getTerrainAt editor w coords =
+  fst $ getContentAt editor w coords
 
 isOutsideTopLeftCorner ::
   -- | top left corner coords
@@ -95,16 +97,16 @@ isOutsideRegion (tl, br) coord =
 
 getEditedMapRectangle ::
   WorldEditor Name ->
-  Maybe W.BoundsRectangle ->
-  W.World Int Entity ->
+  Maybe (Cosmo W.BoundsRectangle) ->
+  W.MultiWorld Int Entity ->
   [[CellPaintDisplay]]
 getEditedMapRectangle _ Nothing _ = []
-getEditedMapRectangle worldEditor (Just coords) w =
+getEditedMapRectangle worldEditor (Just (Cosmo subworldName coords)) w =
   map renderRow [yTop .. yBottom]
  where
   (W.Coords (yTop, xLeft), W.Coords (yBottom, xRight)) = coords
 
-  getContent = getContentAt worldEditor w
+  getContent = getContentAt worldEditor w . Cosmo subworldName
 
   drawCell :: Int32 -> Int32 -> CellPaintDisplay
   drawCell rowIndex colIndex =

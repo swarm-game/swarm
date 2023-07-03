@@ -131,7 +131,6 @@ import Data.Text.IO qualified as T (readFile)
 import Data.Vector qualified as V
 import GitHash (GitInfo)
 import Graphics.Vty (ColorMode (..))
-import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Entity as E
@@ -271,7 +270,7 @@ logEvent src (who, rid) msg el =
     & notificationsCount %~ succ
     & notificationsContent %~ (l :)
  where
-  l = LogEntry (TickNumber 0) src who rid zero msg
+  l = LogEntry (TickNumber 0) src who rid Nothing msg
 
 -- | Create a 'GameStateConfig' record from the 'RuntimeState'.
 mkGameStateConfig :: RuntimeState -> GameStateConfig
