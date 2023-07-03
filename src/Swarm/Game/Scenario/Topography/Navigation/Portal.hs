@@ -68,13 +68,13 @@ failUponDuplication message binnedMap =
 -- * portals can have multiple entrances but only a single exit
 -- * no two portals share the same entrance location
 -- * global waypoint uniqueness when the "unique" flag is specified
-validateLandmarks ::
+validateNavigation ::
   (MonadFail m, Traversable t) =>
   V2 Int32 ->
   [Originated Waypoint] ->
   t Portal ->
   m Navigation
-validateLandmarks upperLeft unmergedWaypoints portalDefs = do
+validateNavigation upperLeft unmergedWaypoints portalDefs = do
   failUponDuplication "is required to be unique, but is duplicated in:" waypointsWithUniqueFlag
 
   -- TODO(#144) Currently ignores subworld references

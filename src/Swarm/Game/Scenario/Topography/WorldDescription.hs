@@ -52,7 +52,7 @@ instance FromJSONE (EntityMap, RobotMap) WorldDescription where
     let struc = Structure.Structure initialArea structureDefs placementDefs $ waypointDefs <> mapWaypoints
         Structure.MergedStructure mergedArea unmergedWaypoints = Structure.mergeStructures mempty Nothing struc
 
-    validatedLandmarks <- validateLandmarks (coerce upperLeft) unmergedWaypoints portalDefs
+    validatedLandmarks <- validateNavigation (coerce upperLeft) unmergedWaypoints portalDefs
 
     WorldDescription
       <$> v ..:? "default"

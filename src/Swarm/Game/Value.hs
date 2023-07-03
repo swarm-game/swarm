@@ -45,7 +45,7 @@ instance (Valuable a, Valuable b) => Valuable (a, b) where
   asValue (x, y) = VPair (asValue x) (asValue y)
 
 instance Valuable Location where
-  asValue (Location x y) = VPair (asValue x) (asValue y)
+  asValue (Location x y) = asValue (x, y)
 
 instance Valuable Entity where
   asValue = VText . view entityName
