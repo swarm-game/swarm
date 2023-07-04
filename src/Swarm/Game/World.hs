@@ -47,7 +47,6 @@ module Swarm.Game.World (
   WorldUpdate (..),
 ) where
 
-import Swarm.Game.Terrain (TerrainType (BlankT))
 import Control.Algebra (Has)
 import Control.Arrow ((&&&))
 import Control.Effect.State (State, get, modify, state)
@@ -59,15 +58,16 @@ import Data.Bits
 import Data.Foldable (foldl')
 import Data.Function (on)
 import Data.Int (Int32)
+import Data.Map (Map)
 import Data.Map.Strict qualified as M
 import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Swarm.Game.Entity (Entity, entityHash)
 import Swarm.Game.Location
+import Swarm.Game.Terrain (TerrainType (BlankT))
+import Swarm.Game.Universe
 import Swarm.Util ((?))
 import Prelude hiding (lookup)
-import Data.Map (Map)
-import Swarm.Game.Universe
 
 ------------------------------------------------------------
 -- World coordinates
@@ -221,9 +221,6 @@ newWorld f = World f M.empty M.empty
 emptyWorld :: t -> World t e
 emptyWorld t = newWorld (WF $ const (t, Nothing))
 
-
-
-
 lookupCosmosTerrain ::
   IArray U.UArray Int =>
   Cosmo Coords ->
@@ -231,7 +228,6 @@ lookupCosmosTerrain ::
   TerrainType
 lookupCosmosTerrain (Cosmo subworldName i) multiWorld =
   maybe BlankT (toEnum . lookupTerrain i) $ M.lookup subworldName multiWorld
-
 
 -- | Look up the terrain value at certain coordinates: try looking it
 --   up in the tile cache first, and fall back to running the 'WorldFun'

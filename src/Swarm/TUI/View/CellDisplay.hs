@@ -24,6 +24,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.State
 import Swarm.Game.Terrain
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Attr
 import Swarm.TUI.Editor.Masking
@@ -33,7 +34,6 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 import Witch (from)
 import Witch.Encoding qualified as Encoding
-import Swarm.Game.Universe
 
 -- | Render a display as a UI widget.
 renderDisplay :: Display -> Widget n

@@ -34,7 +34,7 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import Swarm.Game.CESK (TickNumber)
 import Swarm.Game.Location (Location)
-import Swarm.Game.Universe ( Cosmo )
+import Swarm.Game.Universe (Cosmo)
 
 -- | Severity of the error - critical errors are bugs
 --   and should be reported as Issues.

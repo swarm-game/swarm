@@ -137,7 +137,6 @@ import Data.Int (Int32)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
-import Swarm.Game.Universe as U
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
 import Data.List (partition, sortOn)
@@ -174,6 +173,7 @@ import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
+import Swarm.Game.Universe as U
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
 import Swarm.Game.World qualified as W
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
@@ -185,7 +185,7 @@ import Swarm.Language.Syntax (Const, SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
-import Swarm.Util (uniq, (<+=), (<<.=), (?), binTuples)
+import Swarm.Util (binTuples, uniq, (<+=), (<<.=), (?))
 import Swarm.Util.Lens (makeLensesExcluding)
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
@@ -495,8 +495,10 @@ robotsInArea (Cosmo subworldName o) d gs = map (rm IM.!) rids
  where
   rm = gs ^. robotMap
   rl = gs ^. robotsByLocation
-  rids = concatMap IS.elems $ getElemsInArea o d $
-    M.findWithDefault mempty subworldName rl
+  rids =
+    concatMap IS.elems $
+      getElemsInArea o d $
+        M.findWithDefault mempty subworldName rl
 
 -- | The base robot, if it exists.
 baseRobot :: Traversal' GameState Robot
@@ -691,8 +693,8 @@ messageIsRecent gs e = addTicks 1 (e ^. leTime) >= gs ^. ticks
 -- | If the log location is "Nothing", consider it omnipresent.
 messageIsFromNearby :: Cosmo Location -> LogEntry -> Bool
 messageIsFromNearby l e = maybe True f (e ^. leLocation)
-  where
-    f logLoc = maybe False (<= hearingDistance) $ cosmoMeasure manhattan l logLoc
+ where
+  f logLoc = maybe False (<= hearingDistance) $ cosmoMeasure manhattan l logLoc
 
 -- | Given a current mapping from robot names to robots, apply a
 --   'ViewCenterRule' to derive the location it refers to.  The result
@@ -715,8 +717,9 @@ recalcViewCenter g =
     & (if newViewCenter /= oldViewCenter then needsRedraw .~ True else id)
  where
   oldViewCenter = g ^. viewCenter
-  newViewCenter = fromMaybe oldViewCenter $
-    applyViewCenterRule (g ^. viewCenterRule) (g ^. robotMap)
+  newViewCenter =
+    fromMaybe oldViewCenter $
+      applyViewCenterRule (g ^. viewCenterRule) (g ^. robotMap)
 
 -- | Modify the 'viewCenter' by applying an arbitrary function to the
 --   current value.  Note that this also modifies the 'viewCenterRule'
@@ -958,8 +961,10 @@ deleteRobot rn = do
   mrobot <- robotMap . at rn <<.= Nothing
   mrobot `forM_` \robot -> do
     -- Delete the robot from the index of robots by location.
-    robotsByLocation . ix (robot ^. robotLocation . subworld)
-      . ix (robot ^. robotLocation . planar) %= IS.delete rn
+    robotsByLocation
+      . ix (robot ^. robotLocation . subworld)
+      . ix (robot ^. robotLocation . planar)
+      %= IS.delete rn
 
 ------------------------------------------------------------
 -- Initialization
@@ -1081,9 +1086,10 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
   groupRobotsBySubworld =
     binTuples . map (view (robotLocation . subworld) &&& id)
 
-  groupRobotsByPlanarLocation rs = M.fromListWith
-    IS.union
-    (map (view (robotLocation . planar) &&& (IS.singleton . view robotID)) rs)
+  groupRobotsByPlanarLocation rs =
+    M.fromListWith
+      IS.union
+      (map (view (robotLocation . planar) &&& (IS.singleton . view robotID)) rs)
 
   em = initEntities gsc <> scenario ^. scenarioEntities
   baseID = 0

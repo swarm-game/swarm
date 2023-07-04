@@ -74,6 +74,7 @@ import Swarm.Game.ResourceLoading (getSwarmHistoryPath, readAppData)
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Editor.Model
@@ -87,7 +88,6 @@ import Swarm.TUI.Model.Repl
 import Swarm.Util
 import Swarm.Util.Lens (makeLensesExcluding)
 import System.Clock
-import Swarm.Game.Universe
 
 ------------------------------------------------------------
 -- UI state

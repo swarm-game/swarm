@@ -9,6 +9,7 @@ import Data.List qualified as L
 import Swarm.Game.Scenario.Topography.Area qualified as EA
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Terrain (TerrainType)
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
@@ -20,7 +21,6 @@ import Swarm.TUI.Panel
 import Swarm.TUI.View.CellDisplay (renderDisplay)
 import Swarm.TUI.View.Util qualified as VU
 import Swarm.Util (listEnums)
-import Swarm.Game.Universe
 
 drawWorldEditor :: FocusRing Name -> UIState -> Widget Name
 drawWorldEditor toplevelFocusRing uis =

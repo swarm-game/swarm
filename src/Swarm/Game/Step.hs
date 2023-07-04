@@ -30,7 +30,7 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (foldM, forM, forM_, guard, msum, unless, when, zipWithM, join)
+import Control.Monad (foldM, forM, forM_, guard, join, msum, unless, when, zipWithM)
 import Control.Monad.Except (runExceptT)
 import Data.Array (bounds, (!))
 import Data.Bifunctor (second)
@@ -78,11 +78,11 @@ import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
 import Swarm.Game.State
+import Swarm.Game.Universe
 import Swarm.Game.Value
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
-import Swarm.Game.Universe
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Parse (runParser)
 import Swarm.Language.Pipeline
@@ -379,19 +379,20 @@ getNow = sendIO $ System.Clock.getTime System.Clock.Monotonic
 --
 -- Use ID (-1) so it won't conflict with any robots currently in the robot map.
 hypotheticalRobot :: CESK -> TimeSpec -> Robot
-hypotheticalRobot c = mkRobot
-  (-1)
-  Nothing
-  "hypothesis"
-  []
-  (Cosmo rootSubworldName zero)
-  zero
-  defaultRobotDisplay
-  c
-  []
-  []
-  True
-  False
+hypotheticalRobot c =
+  mkRobot
+    (-1)
+    Nothing
+    "hypothesis"
+    []
+    (Cosmo rootSubworldName zero)
+    zero
+    defaultRobotDisplay
+    c
+    []
+    []
+    True
+    False
 
 evaluateCESK ::
   (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>
@@ -450,9 +451,10 @@ updateEntityAt ::
   (Maybe Entity -> Maybe Entity) ->
   m ()
 updateEntityAt (Cosmo subworldName loc) upd = do
-  didChange <- fmap (fromMaybe False) $
-    zoomWorld subworldName $
-      W.updateM @Int (W.locToCoords loc) upd
+  didChange <-
+    fmap (fromMaybe False) $
+      zoomWorld subworldName $
+        W.updateM @Int (W.locToCoords loc) upd
   when didChange $
     wakeWatchingRobots loc
 
@@ -1209,7 +1211,7 @@ execConst c vs s k = do
         -- Make sure the other robot exists and is close
         target <- getRobotWithinTouch rid
         -- either change current robot or one in robot map
-        let oldLoc= target ^. robotLocation
+        let oldLoc = target ^. robotLocation
             nextLoc = fmap (const $ Location (fromIntegral x) (fromIntegral y)) oldLoc
 
         onTarget rid $ do
@@ -1864,8 +1866,10 @@ execConst c vs s k = do
         -- a robot can program adjacent robots
         -- privileged bots ignore distance checks
         loc <- use robotLocation
-        let isAdjacent = maybe False (<= 1) $
-              cosmoMeasure manhattan loc $ childRobot ^. robotLocation
+        let isAdjacent =
+              maybe False (<= 1) $
+                cosmoMeasure manhattan loc $
+                  childRobot ^. robotLocation
         (isPrivileged || isAdjacent)
           `holdsOrFail` ["You can only reprogram an adjacent robot."]
 

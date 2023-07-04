@@ -16,8 +16,8 @@ import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.WorldPalette
-import Swarm.Util.Yaml
 import Swarm.Game.Universe
+import Swarm.Util.Yaml
 
 ------------------------------------------------------------
 -- World description
@@ -53,11 +53,12 @@ instance FromJSONE (EntityMap, RobotMap) WorldDescription where
     let struc = Structure.Structure initialArea structureDefs placementDefs $ waypointDefs <> mapWaypoints
         Structure.MergedStructure mergedArea unmergedWaypoints = Structure.mergeStructures mempty Nothing struc
 
-    validatedLandmarks <- validateNavigation
-      rootSubworldName -- TODO: Replace with actual subworld name
-      (coerce upperLeft)
-      unmergedWaypoints
-      portalDefs
+    validatedLandmarks <-
+      validateNavigation
+        rootSubworldName -- TODO: Replace with actual subworld name
+        (coerce upperLeft)
+        unmergedWaypoints
+        portalDefs
 
     WorldDescription
       <$> v ..:? "default"

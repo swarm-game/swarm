@@ -13,11 +13,11 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainType)
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Model.Name
 import Swarm.Util
 import System.Clock
-import Swarm.Game.Universe
 
 data BoundsSelectionStep
   = UpperLeftPending

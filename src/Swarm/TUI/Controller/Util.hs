@@ -12,11 +12,11 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Map qualified as M
 import Graphics.Vty qualified as V
 import Swarm.Game.State
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Util (generateModal)
-import Swarm.Game.Universe
 
 -- | Pattern synonyms to simplify brick event handler
 pattern Key :: V.Key -> BrickEvent n e

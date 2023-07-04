@@ -93,8 +93,8 @@ import Swarm.Game.CESK
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location (Heading, Location, toDirection)
-import Swarm.Game.Universe
 import Swarm.Game.Log
+import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirement (ReqCtx)

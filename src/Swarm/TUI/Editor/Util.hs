@@ -4,7 +4,6 @@ import Control.Applicative ((<|>))
 import Control.Lens hiding (Const, from)
 import Control.Monad (guard)
 import Data.Int (Int32)
-import Swarm.Game.Universe
 import Data.Map qualified as M
 import Data.Map qualified as Map
 import Data.Maybe qualified as Maybe
@@ -15,6 +14,7 @@ import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Terrain (TerrainType)
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Model

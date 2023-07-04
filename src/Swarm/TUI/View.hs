@@ -73,7 +73,6 @@ import Swarm.Constant
 import Swarm.Game.CESK (CESK (..), TickNumber (..))
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
-import Swarm.Game.Universe
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
@@ -88,6 +87,7 @@ import Swarm.Game.ScenarioInfo (
   scenarioItemName,
  )
 import Swarm.Game.State
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Pretty (prettyText)
@@ -470,11 +470,12 @@ drawWorldCursorInfo worldEditor g cCoords =
  where
   Cosmo (SubworldName swName) coords = cCoords
   coordsWidget =
-    str $ unwords [
-      VU.locationToString $ W.coordsToLoc coords
-      , "in"
-      , T.unpack swName
-      ]
+    str $
+      unwords
+        [ VU.locationToString $ W.coordsToLoc coords
+        , "in"
+        , T.unpack swName
+        ]
 
   tileMembers = terrain : mapMaybe merge [entity, robot]
   tileMemberWidgets =

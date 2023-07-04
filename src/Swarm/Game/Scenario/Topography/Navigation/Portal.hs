@@ -6,20 +6,20 @@ module Swarm.Game.Scenario.Topography.Navigation.Portal where
 
 import Control.Monad (forM, forM_, unless)
 import Data.Aeson (FromJSON)
+import Data.Bifunctor (first)
 import Data.Int (Int32)
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (listToMaybe, fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Linear (V2)
 import Swarm.Game.Location
-import Swarm.Game.Universe
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
+import Swarm.Game.Universe
 import Swarm.Util (binTuples, quote)
-import Data.Bifunctor (first)
 
 data Navigation = Navigation
   { waypoints :: M.Map WaypointName (NonEmpty (Cosmo Location))
@@ -83,8 +83,8 @@ validateNavigation currentSubworldName upperLeft unmergedWaypoints portalDefs = 
     unless (null otherExits)
       . fail
       . T.unpack
-      $ T.unwords [
-          "Ambiguous exit waypoints named"
+      $ T.unwords
+        [ "Ambiguous exit waypoints named"
         , quote rawExitName
         , "for portal"
         ]

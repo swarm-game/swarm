@@ -16,6 +16,7 @@ import Data.Yaml qualified as Y
 import Graphics.Vty qualified as V
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.State
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Model
@@ -25,7 +26,6 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 import System.Clock
-import Swarm.Game.Universe
 
 ------------------------------------------------------------
 -- World Editor panel events

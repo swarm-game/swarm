@@ -8,8 +8,8 @@ import Data.Aeson
 import Swarm.Game.Entity
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Topography.WorldDescription
-import Swarm.Util.Yaml
 import Swarm.Game.Universe
+import Swarm.Util.Yaml
 
 data Subworld = Subworld
   { name :: SubworldName
