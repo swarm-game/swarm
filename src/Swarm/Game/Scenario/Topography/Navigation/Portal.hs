@@ -11,7 +11,7 @@ import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (listToMaybe)
+import Data.Maybe (listToMaybe, fromMaybe)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Linear (V2)
@@ -19,13 +19,14 @@ import Swarm.Game.Location
 import Swarm.Game.Universe
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Util (binTuples, quote)
+import Data.Bifunctor (first)
 
 data Navigation = Navigation
-  { waypoints :: M.Map WaypointName (NonEmpty Location)
+  { waypoints :: M.Map WaypointName (NonEmpty (Cosmo Location))
   -- ^ Note that waypoints defined at the "root" level are still relative to
   -- the top-left corner of the map rectangle; they are not in absolute world
   -- coordinates (as with applying the "ul" offset).
-  , portals :: M.Map Location Location
+  , portals :: M.Map (Cosmo Location) (Cosmo Location)
   }
   deriving (Eq, Show)
 
@@ -65,15 +66,15 @@ failUponDuplication message binnedMap =
 -- * global waypoint uniqueness when the "unique" flag is specified
 validateNavigation ::
   (MonadFail m, Traversable t) =>
+  SubworldName ->
   V2 Int32 ->
   [Originated Waypoint] ->
   t Portal ->
   m Navigation
-validateNavigation upperLeft unmergedWaypoints portalDefs = do
+validateNavigation currentSubworldName upperLeft unmergedWaypoints portalDefs = do
   failUponDuplication "is required to be unique, but is duplicated in:" waypointsWithUniqueFlag
 
-  -- TODO(#144) Currently ignores subworld references
-  nestedPortalPairs <- forM portalDefs $ \(Portal entranceName (PortalExit exitName@(WaypointName rawExitName) _)) -> do
+  nestedPortalPairs <- forM portalDefs $ \(Portal entranceName (PortalExit exitName@(WaypointName rawExitName) maybeExitSubworldName)) -> do
     -- Portals can have multiple entrances but only a single exit.
     -- That is, the pairings of entries to exits must form a proper mathematical "function".
     -- Multiple occurrences of entrance waypoints of a given name will replicate portal entrances.
@@ -82,8 +83,14 @@ validateNavigation upperLeft unmergedWaypoints portalDefs = do
     unless (null otherExits)
       . fail
       . T.unpack
-      $ T.unwords ["Ambiguous exit waypoints named", quote rawExitName, "for portal"]
-    return $ map ((,extractLoc firstExitLoc) . extractLoc) $ NE.toList entranceLocs
+      $ T.unwords [
+          "Ambiguous exit waypoints named"
+        , quote rawExitName
+        , "for portal"
+        ]
+    let sw = fromMaybe currentSubworldName maybeExitSubworldName
+        f = (,Cosmo sw $ extractLoc firstExitLoc) . extractLoc
+    return $ map f $ NE.toList entranceLocs
 
   let reconciledPortalPairs = concat nestedPortalPairs
 
@@ -92,7 +99,8 @@ validateNavigation upperLeft unmergedWaypoints portalDefs = do
   failUponDuplication "has overlapping portal entrances exiting to" $
     binTuples reconciledPortalPairs
 
-  return $ Navigation bareWaypoints $ M.fromList reconciledPortalPairs
+  return . Navigation bareWaypoints . M.fromList $
+    map (first $ Cosmo currentSubworldName) reconciledPortalPairs
  where
   getLocs wpWrapper@(WaypointName rawName) = case M.lookup wpWrapper correctedWaypoints of
     Nothing ->
@@ -110,6 +118,6 @@ validateNavigation upperLeft unmergedWaypoints portalDefs = do
       map
         (\x -> (wpName $ wpConfig $ value x, fmap (offsetWaypoint upperLeft) x))
         unmergedWaypoints
-  bareWaypoints = M.map (NE.map extractLoc) correctedWaypoints
+  bareWaypoints = M.map (NE.map $ Cosmo currentSubworldName . extractLoc) correctedWaypoints
 
   waypointsWithUniqueFlag = M.filter (any $ wpUnique . wpConfig . value) correctedWaypoints

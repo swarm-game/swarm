@@ -507,13 +507,17 @@ randomName = do
 -- | Create a log entry given current robot and game time in ticks noting whether it has been said.
 --
 --   This is the more generic version used both for (recorded) said messages and normal logs.
-createLogEntry :: (Has (State GameState) sig m, Has (State Robot) sig m) => LogSource -> Text -> m LogEntry
+createLogEntry ::
+  (Has (State GameState) sig m, Has (State Robot) sig m) =>
+  LogSource ->
+  Text ->
+  m LogEntry
 createLogEntry source msg = do
   rid <- use robotID
   rn <- use robotName
   time <- use ticks
   loc <- use robotLocation
-  pure $ LogEntry time source rn rid loc msg
+  pure $ LogEntry time source rn rid (Just loc) msg
 
 -- | Print some text via the robot's log.
 traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => LogSource -> Text -> m LogEntry
@@ -632,8 +636,8 @@ updateWorld ::
   WorldUpdate Entity ->
   m ()
 updateWorld c (ReplaceEntity loc eThen down) = do
-  w <- use world
-  let eNow = W.lookupEntity (W.locToCoords loc) w
+  w <- use multiWorld
+  let eNow = W.lookupCosmoEntity (fmap W.locToCoords loc) w
   -- Can fail if a robot started a multi-tick "drill" operation on some entity
   -- and meanwhile another entity swaps it out from under them.
   if Just eThen /= eNow
@@ -1119,7 +1123,7 @@ execConst c vs s k = do
       -- Figure out where we're going
       loc <- use robotLocation
       orient <- use robotOrientation
-      let nextLoc = loc .+^ (orient ? zero)
+      let nextLoc = fmap (.+^ (orient ? zero)) loc
       checkMoveAhead nextLoc $
         MoveFailure
           { failIfBlocked = ThrowExn
@@ -1131,9 +1135,9 @@ execConst c vs s k = do
       -- Figure out where we're going
       loc <- use robotLocation
       orient <- use robotOrientation
-      let heading = orient ? zero
-          nextLoc = loc .+^ heading
-          placementLoc = nextLoc .+^ heading
+      let applyHeading = fmap (.+^ (orient ? zero))
+          nextLoc = applyHeading loc
+          placementLoc = applyHeading nextLoc
 
       -- If unobstructed, the robot will move even if
       -- there is nothing to push.
@@ -1177,11 +1181,11 @@ execConst c vs s k = do
         let heading = orient ? zero
 
         -- Excludes the base location.
-        let locsInDirection :: [Location]
+        let locsInDirection :: [Cosmo Location]
             locsInDirection =
               take (min (fromIntegral d) maxStrideRange) $
                 drop 1 $
-                  iterate (.+^ heading) loc
+                  iterate (fmap (.+^ heading)) loc
 
         failureMaybes <- mapM checkMoveFailure locsInDirection
         let maybeFirstFailure = asum failureMaybes
@@ -1205,8 +1209,8 @@ execConst c vs s k = do
         -- Make sure the other robot exists and is close
         target <- getRobotWithinTouch rid
         -- either change current robot or one in robot map
-        let (Cosmo subworldName oldLoc) = target ^. robotLocation
-            nextLoc = Cosmo subworldName $ Location (fromIntegral x) (fromIntegral y)
+        let oldLoc= target ^. robotLocation
+            nextLoc = fmap (const $ Location (fromIntegral x) (fromIntegral y)) oldLoc
 
         onTarget rid $ do
           checkMoveAhead nextLoc $
@@ -1388,8 +1392,8 @@ execConst c vs s k = do
         selfRid <- use robotID
 
         -- Includes the base location, so we exclude the base robot later.
-        let locsInDirection :: [Location]
-            locsInDirection = take maxScoutRange $ iterate (.+^ heading) myLoc
+        let locsInDirection :: [Cosmo Location]
+            locsInDirection = take maxScoutRange $ iterate (fmap (.+^ heading)) myLoc
 
         let hasOpaqueEntity =
               fmap (maybe False (`hasProperty` E.Opaque)) . entityAt
@@ -1437,8 +1441,9 @@ execConst c vs s k = do
         loc <- use robotLocation
         let locs = rectCells x1 y1 x2 y2
         -- sort offsets by (Manhattan) distance so that we return the closest occurrence
-        let sortedLocs = sortOn (\(V2 x y) -> abs x + abs y) locs
-        firstOne <- findM (fmap (maybe False $ isEntityNamed name) . entityAt . (loc .+^)) sortedLocs
+        let sortedOffsets = sortOn (\(V2 x y) -> abs x + abs y) locs
+        let f = fmap (maybe False $ isEntityNamed name) . entityAt . (\x -> fmap (.+^ x) loc)
+        firstOne <- findM f sortedOffsets
         return $ Out (asValue firstOne) s k
       _ -> badConst
     Resonate -> case vs of
@@ -1508,7 +1513,7 @@ execConst c vs s k = do
     Blocked -> do
       loc <- use robotLocation
       orient <- use robotOrientation
-      let nextLoc = loc .+^ (orient ? zero)
+      let nextLoc = fmap (.+^ (orient ? zero)) loc
       me <- entityAt nextLoc
       return $ Out (VBool (maybe False (`hasProperty` Unwalkable) me)) s k
     Scan -> case vs of
@@ -1748,7 +1753,7 @@ execConst c vs s k = do
       g <- get @GameState
       let neighbor =
             find ((/= rid) . (^. robotID)) -- pick one other than ourself
-              . sortOn (manhattan loc . (^. robotLocation . planar)) -- prefer closer
+              . sortOn ((manhattan `on` view planar) loc . (^. robotLocation)) -- prefer closer
               $ robotsInArea loc 1 g -- all robots within Manhattan distance 1
       return $ Out (asValue neighbor) s k
     MeetAll -> case vs of
@@ -1859,7 +1864,9 @@ execConst c vs s k = do
         -- a robot can program adjacent robots
         -- privileged bots ignore distance checks
         loc <- use robotLocation
-        (isPrivileged || (childRobot ^. robotLocation . planar) `manhattan` loc <= 1)
+        let isAdjacent = maybe False (<= 1) $
+              cosmoMeasure manhattan loc $ childRobot ^. robotLocation
+        (isPrivileged || isAdjacent)
           `holdsOrFail` ["You can only reprogram an adjacent robot."]
 
         -- Figure out if we can supply what the target robot requires,
@@ -2196,8 +2203,8 @@ execConst c vs s k = do
     m CESK
   doResonate p x1 y1 x2 y2 = do
     loc <- use robotLocation
-    let locs = rectCells x1 y1 x2 y2
-    hits <- mapM (fmap (fromEnum . p) . entityAt . (loc .+^)) locs
+    let offsets = rectCells x1 y1 x2 y2
+    hits <- mapM (fmap (fromEnum . p) . entityAt . (\x -> fmap (.+^ x) loc)) offsets
     return $ Out (VInt $ fromIntegral $ sum hits) s k
 
   rectCells :: Integer -> Integer -> Integer -> Integer -> [V2 Int32]
@@ -2220,10 +2227,11 @@ execConst c vs s k = do
     m (Maybe (Int32, V2 Int32))
   findNearest name = do
     loc <- use robotLocation
-    findM (fmap (maybe False $ isEntityNamed name) . entityAt . (loc .+^) . snd) sortedLocs
+    let f = fmap (maybe False $ isEntityNamed name) . entityAt . (\x -> fmap (.+^ x) loc) . snd
+    findM f sortedOffsets
    where
-    sortedLocs :: [(Int32, V2 Int32)]
-    sortedLocs = (0, zero) : concatMap genDiamondSides [1 .. maxSniffRange]
+    sortedOffsets :: [(Int32, V2 Int32)]
+    sortedOffsets = (0, zero) : concatMap genDiamondSides [1 .. maxSniffRange]
 
     -- Grow a list of locations in a diamond shape outward, such that the nearest cells
     -- are searched first by construction, rather than having to sort.
@@ -2258,11 +2266,11 @@ execConst c vs s k = do
     when (isCardinal d) $ hasCapabilityFor COrient $ TDir d
     return $ applyTurn d $ orient ? zero
 
-  lookInDirection :: HasRobotStepState sig m => Direction -> m (Location, Maybe Entity)
+  lookInDirection :: HasRobotStepState sig m => Direction -> m (Cosmo Location, Maybe Entity)
   lookInDirection d = do
     newHeading <- deriveHeading d
     loc <- use robotLocation
-    let nextLoc = loc .+^ newHeading
+    let nextLoc = fmap (.+^ newHeading) loc
     (nextLoc,) <$> entityAt nextLoc
 
   ensureEquipped :: HasRobotStepState sig m => Text -> m Entity
@@ -2440,7 +2448,7 @@ execConst c vs s k = do
 
   -- Make sure nothing is in the way. Note that system robots implicitly ignore
   -- and base throws on failure.
-  checkMoveFailure :: HasRobotStepState sig m => Location -> m (Maybe MoveFailureDetails)
+  checkMoveFailure :: HasRobotStepState sig m => Cosmo Location -> m (Maybe MoveFailureDetails)
   checkMoveFailure nextLoc = do
     me <- entityAt nextLoc
     systemRob <- use systemRobot
@@ -2482,7 +2490,7 @@ execConst c vs s k = do
       IgnoreFail -> return ()
 
   -- Determine the move failure mode and apply the corresponding effect.
-  checkMoveAhead :: HasRobotStepState sig m => Location -> MoveFailure -> m ()
+  checkMoveAhead :: HasRobotStepState sig m => Cosmo Location -> MoveFailure -> m ()
   checkMoveAhead nextLoc failureHandlers = do
     maybeFailure <- checkMoveFailure nextLoc
     applyMoveFailureEffect maybeFailure failureHandlers
@@ -2706,8 +2714,8 @@ provisionChild childID toEquip toGive = do
 -- Also implements teleportation by portals.
 updateRobotLocation ::
   (HasRobotStepState sig m) =>
-  Location ->
-  Location ->
+  Cosmo Location ->
+  Cosmo Location ->
   m ()
 updateRobotLocation oldLoc newLoc
   | oldLoc == newLoc = return ()

@@ -136,7 +136,6 @@ import Data.Foldable (toList)
 import Data.Int (Int32)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
-import Data.Function (on)
 import Data.IntSet (IntSet)
 import Swarm.Game.Universe as U
 import Data.IntSet qualified as IS
@@ -762,11 +761,6 @@ data RobotRange
     Far
   deriving (Eq, Ord)
 
-cosmoMeasure :: (a -> a -> b) -> Cosmo a -> Cosmo a -> Maybe b
-cosmoMeasure f a b = do
-  guard $ ((==) `on` (^. U.subworld)) a b
-  pure $ (f `on` view planar) a b
-
 -- | Check how far away the focused robot is from the base.  @Nothing@
 --   is returned if there is no focused robot; otherwise, return a
 --   'RobotRange' value as follows.
@@ -1090,7 +1084,6 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
   groupRobotsByPlanarLocation rs = M.fromListWith
     IS.union
     (map (view (robotLocation . planar) &&& (IS.singleton . view robotID)) rs)
-
 
   em = initEntities gsc <> scenario ^. scenarioEntities
   baseID = 0

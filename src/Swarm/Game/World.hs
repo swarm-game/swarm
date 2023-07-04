@@ -348,7 +348,7 @@ loadRegion reg (World f t m) = World f t' m
 -- This type is used for changes by e.g. the drill command at later
 -- tick. Using ADT allows us to serialize and inspect the updates.
 data WorldUpdate e = ReplaceEntity
-  { updatedLoc :: Location
+  { updatedLoc :: Cosmo Location
   , originalEntity :: e
   , newEntity :: Maybe e
   }
