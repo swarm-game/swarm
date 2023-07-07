@@ -14,7 +14,6 @@ module Swarm.Game.World.Syntax (
   RawCellVal,
   FilledCellVal,
   Rot (..),
-  Reflection (..),
   Var,
   Axis (..),
   Op (..),
@@ -26,12 +25,14 @@ module Swarm.Game.World.Syntax (
 where
 
 -- XXX to do:
---   - write basic parser
+--   - finish parser --- parse operators
 --   - finish inference/compiling code
+--   - add lambdas?
 --   - convert from Maybe to generic monad with effects
 --   - add error message reporting
 --   - pass in EntityMap, RobotMap etc. + resolve cell values
 --   - to evaluate, pass in things like seed
+--   - finish parser for structures
 
 import Data.List.NonEmpty qualified as NE
 import Data.Monoid (Last (..))
@@ -86,15 +87,12 @@ type FilledCellVal = CellVal Entity Robot
 data Rot = Rot0 | Rot90 | Rot180 | Rot270
   deriving (Eq, Ord, Show, Bounded, Enum)
 
-data Reflection = ReflectH | ReflectV
-  deriving (Eq, Ord, Show, Bounded, Enum)
-
 type Var = Text
 
 data Axis = X | Y
   deriving (Eq, Ord, Show, Bounded, Enum)
 
-data Op = Not | Neg | And | Or | Add | Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | Geq | If | Perlin | Reflect Reflection | Rot Rot | Mask
+data Op = Not | Neg | And | Or | Add | Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | Geq | If | Perlin | Reflect Axis | Rot Rot | Mask
   deriving (Eq, Ord, Show)
 
 ------------------------------------------------------------
@@ -106,6 +104,10 @@ data WExp where
   WBool :: Bool -> WExp
   WCell :: RawCellVal -> WExp
   WVar :: Text -> WExp
+  -- Require all operators to be fully saturated.  Just embedding
+  -- operators as constants and including function application would
+  -- be a more elegant encoding, but it requires being more clever
+  -- with type inference.
   WOp :: Op -> [WExp] -> WExp
   WSeed :: WExp
   WCoord :: Axis -> WExp

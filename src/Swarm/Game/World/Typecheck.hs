@@ -13,6 +13,7 @@ import Data.Kind (Type)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Data.Type.Equality (TestEquality (..), type (:~:) (Refl))
+import Swarm.Game.World.Coords (Coords (..))
 import Swarm.Game.World.Syntax
 import Prelude hiding (lookup)
 
@@ -48,12 +49,12 @@ data Const :: Type -> Type where
   CLeq :: (Ord a) => Const (a -> a -> Bool)
   CGt :: (Ord a) => Const (a -> a -> Bool)
   CGeq :: (Ord a) => Const (a -> a -> Bool)
-  CMask :: Const (World Bool -> World a -> World a) -- XXX add Empty/Over constraint(s)
+  CMask :: (Empty a) => Const (World Bool -> World a -> World a) -- XXX add Empty/Over constraint(s)
   CSeed :: Const Integer
   CCoord :: Axis -> Const (World Integer)
   CHash :: Const (World Integer)
   CPerlin :: Const (Integer -> Integer -> Double -> Double -> World Double)
-  CReflect :: Reflection -> Const (World a -> World a)
+  CReflect :: Axis -> Const (World a -> World a)
   CRot :: Rot -> Const (World a -> World a)
   COver :: (Over a) => Const (World a -> World a -> World a)
   CEmpty :: (Empty a) => Const (World a)
@@ -88,12 +89,12 @@ interpConst = \case
   CLeq -> (<=)
   CGt -> (>)
   CGeq -> (>=)
-  CMask -> undefined -- (\b x c -> if b c then x c else empty)
+  CMask -> \b x c -> if b c then x c else empty
   CSeed -> 0 -- XXX need seed provided as env to be able to interpret this
   CCoord ax -> undefined -- \(Coords (x,y)) -> case ax of X -> x; Y -> y  -- XXX Integer vs Int32
   CHash -> undefined
   CPerlin -> undefined
-  CReflect _ -> undefined
+  CReflect ax -> undefined -- \w (Coords (r,c)) -> w (Coords (case ax of X ->
   CRot _ -> undefined
   CFI -> fromInteger
   COver -> (<+>)
