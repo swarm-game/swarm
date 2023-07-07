@@ -7,6 +7,7 @@
 module Swarm.Game.Terrain (
   -- * Terrain
   TerrainType (..),
+  readTerrain,
   terrainMap,
   getTerrainDefaultPaletteChar,
   getTerrainWord,
@@ -31,9 +32,12 @@ data TerrainType
   | BlankT
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
+readTerrain :: T.Text -> Maybe TerrainType
+readTerrain t = readMaybe (into @String (T.toTitle t) ++ "T")
+
 instance FromJSON TerrainType where
   parseJSON = withText "text" $ \t ->
-    case readMaybe (into @String (T.toTitle t) ++ "T") of
+    case readTerrain t of
       Just ter -> return ter
       Nothing -> failT ["Unknown terrain type:", t]
 

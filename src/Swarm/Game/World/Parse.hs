@@ -16,7 +16,7 @@ import Data.Monoid (Last (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Void
-import Swarm.Game.Terrain (TerrainType)
+import Swarm.Game.Terrain (TerrainType, readTerrain)
 import Swarm.Game.World.Syntax
 import Swarm.Util (failT, squote)
 import Text.Megaparsec hiding (runParser)
@@ -128,10 +128,14 @@ parseCell =
           )
 
 parseName :: Parser Text
-parseName = into @Text <$> manyTill anySingle (char ',' <|> char '}')
+parseName = into @Text <$> manyTill anySingle (lookAhead (char ',' <|> char '}' <|> char ']'))
 
 parseTerrain :: Parser TerrainType
-parseTerrain = undefined
+parseTerrain = do
+  mt <- readTerrain <$> parseName
+  case mt of
+    Just t -> return t
+    Nothing -> fail "XXX"
 
 parseLet :: Parser WExp
 parseLet =
