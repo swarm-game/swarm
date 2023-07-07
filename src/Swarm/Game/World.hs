@@ -60,37 +60,9 @@ import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Swarm.Game.Entity (Entity, entityHash)
 import Swarm.Game.Location
+import Swarm.Game.World.Coords
 import Swarm.Util ((?))
 import Prelude hiding (lookup)
-
-------------------------------------------------------------
--- World coordinates
-------------------------------------------------------------
-
--- | World coordinates use (row,column) format, with the row
---   increasing as we move down the screen.  We use this format for
---   indexing worlds internally, since it plays nicely with things
---   like drawing the screen, and reading maps from configuration
---   files. The 'locToCoords' and 'coordsToLoc' functions convert back
---   and forth between this type and 'Location', which is used when
---   presenting coordinates externally to the player.
-newtype Coords = Coords {unCoords :: (Int32, Int32)}
-  deriving (Eq, Ord, Show, Ix, Generic)
-
-instance Rewrapped Coords t
-instance Wrapped Coords
-
--- | Convert an external (x,y) location to an internal 'Coords' value.
-locToCoords :: Location -> Coords
-locToCoords (Location x y) = Coords (-y, x)
-
--- | Convert an internal 'Coords' value to an external (x,y) location.
-coordsToLoc :: Coords -> Location
-coordsToLoc (Coords (r, c)) = Location c (-r)
-
--- | Represents the top-left and bottom-right coordinates
--- of a bounding rectangle of cells in the world map
-type BoundsRectangle = (Coords, Coords)
 
 ------------------------------------------------------------
 -- World function
@@ -219,7 +191,7 @@ emptyWorld t = newWorld (WF $ const (t, Nothing))
 --
 --   This function does /not/ ensure that the tile containing the
 --   given coordinates is loaded.  For that, see 'lookupTerrainM'.
-lookupTerrain :: IArray U.UArray t => Coords -> World t e -> t
+lookupTerrain :: (IArray U.UArray t) => Coords -> World t e -> t
 lookupTerrain i (World f t _) =
   ((U.! tileOffset i) . fst <$> M.lookup (tileCoords i) t)
     ? fst (runWF f i)
@@ -277,12 +249,12 @@ updateM c g = do
   state @(World t Entity) $ update c g . loadCell c
 
 -- | Load the tile containing a specific cell.
-loadCell :: IArray U.UArray t => Coords -> World t e -> World t e
+loadCell :: (IArray U.UArray t) => Coords -> World t e -> World t e
 loadCell c = loadRegion (c, c)
 
 -- | Load all the tiles which overlap the given rectangular region
 --   (specified as an upper-left and lower-right corner, inclusive).
-loadRegion :: forall t e. IArray U.UArray t => (Coords, Coords) -> World t e -> World t e
+loadRegion :: forall t e. (IArray U.UArray t) => (Coords, Coords) -> World t e -> World t e
 loadRegion reg (World f t m) = World f t' m
  where
   tiles = range (over both tileCoords reg)

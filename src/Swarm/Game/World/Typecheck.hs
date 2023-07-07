@@ -1,127 +1,20 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
-
--- XXX to do:
---   - write basic parser
---   - finish inference/compiling code
---   - convert from Maybe to generic monad with effects
---   - add error message reporting
---   - pass in EntityMap, RobotMap etc. + resolve cell values
---   - to evaluate, pass in things like seed
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- XXX
-module Swarm.Game.World.DSL where
+-- Typechecking and elaboration for the Swarm world DSL.
+module Swarm.Game.World.Typecheck where
 
-import Data.Int
 import Data.Kind (Type)
 import Data.List.NonEmpty qualified as NE
-import Data.Monoid (Last (..))
 import Data.Text (Text)
 import Data.Type.Equality (TestEquality (..), type (:~:) (Refl))
-import Swarm.Game.Entity (Entity, EntityMap)
-import Swarm.Game.Robot (Robot)
-import Swarm.Game.Scenario.WorldPalette (WorldPalette)
-import Swarm.Game.Terrain
+import Swarm.Game.World.Syntax
 import Prelude hiding (lookup)
-
-------------------------------------------------------------
--- Merging
-
-class Empty e where
-  empty :: e
-
-class Over m where
-  (<+>) :: m -> m -> m
-
-------------------------------------------------------------
--- Syntax
-
-data CellVal e r = CellVal (Last TerrainType) (Last e) [r]
-  deriving (Show)
-
-instance Over (CellVal e r) where
-  CellVal t1 e1 r1 <+> CellVal t2 e2 r2 = CellVal (t1 <> t2) (e1 <> e2) (r1 <> r2)
-
-instance Empty (CellVal e r) where
-  empty = CellVal mempty mempty mempty
-
-instance Over Bool where
-  _ <+> x = x
-
-instance Over Integer where
-  _ <+> x = x
-
-instance Over Double where
-  _ <+> x = x
-
-instance (Over a) => Over (World a) where
-  w1 <+> w2 = \c -> w1 c <+> w2 c
-
-instance (Empty a) => Empty (World a) where
-  empty = const empty
-
-type RawCellVal = CellVal Text Text
-type FilledCellVal = CellVal Entity Robot
-
-data Rot = Rot0 | Rot90 | Rot180 | Rot270
-  deriving (Eq, Ord, Show, Bounded, Enum)
-
-data Reflection = ReflectH | ReflectV
-  deriving (Eq, Ord, Show, Bounded, Enum)
-
-type Var = Text
-
-data Axis = X | Y
-  deriving (Eq, Ord, Show, Bounded, Enum)
-
-data WExp where
-  WInt :: Integer -> WExp
-  WFloat :: Double -> WExp
-  WBool :: Bool -> WExp
-  WCell :: RawCellVal -> WExp
-  WVar :: Text -> WExp
-  WOp :: Op -> [WExp] -> WExp
-  WSeed :: WExp
-  WCoord :: Axis -> WExp
-  WHash :: WExp
-  WLet :: [(Var, WExp)] -> WExp -> WExp
-  WOverlay :: NE.NonEmpty WExp -> WExp
-  WCat :: Axis -> [WExp] -> WExp
-  WStruct :: WorldPalette Text -> [Text] -> WExp
-
-data Op = Not | Neg | And | Or | Add | Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | Geq | If | Perlin | Reflect Reflection | Rot Rot | Mask
-  deriving (Eq, Ord, Show)
-
-------------------------------------------------------------
--- Example
-
-testWorld1 :: WExp
-testWorld1 =
-  WLet
-    [ ("pn1", WOp Perlin [WInt 0, WInt 5, WFloat 0.05, WFloat 0.5])
-    , ("pn2", WOp Perlin [WInt 0, WInt 5, WFloat 0.05, WFloat 0.75])
-    ]
-    $ WOverlay . NE.fromList
-    $ [ WCell (CellVal (Last (Just GrassT)) (Last Nothing) [])
-      , WOp Mask [WOp Gt [WVar "pn2", WFloat 0], WCell (CellVal (Last (Just StoneT)) (Last (Just "rock")) [])]
-      , WOp Mask [WOp Gt [WVar "pn1", WFloat 0], WCell (CellVal (Last (Just DirtT)) (Last (Just "tree")) [])]
-      , WOp
-          Mask
-          [ WOp And [WOp Eq [WCoord X, WInt 2], WOp Eq [WCoord Y, WInt (-1)]]
-          , WCell (CellVal (Last (Just GrassT)) (Last (Just "elephant")) [])
-          ]
-      , WOp
-          Mask
-          [ WOp And [WOp Eq [WCoord X, WInt (-5)], WOp Eq [WCoord Y, WInt 3]]
-          , WCell (CellVal (Last (Just StoneT)) (Last (Just "flerb")) [])
-          ]
-      ]
 
 ------------------------------------------------------------
 -- Type class for type-indexed application
@@ -155,7 +48,7 @@ data Const :: Type -> Type where
   CLeq :: (Ord a) => Const (a -> a -> Bool)
   CGt :: (Ord a) => Const (a -> a -> Bool)
   CGeq :: (Ord a) => Const (a -> a -> Bool)
-  CMask :: Const (World Bool -> World a -> World a) -- XXX make our own Empty + Combining classes, add constraint
+  CMask :: Const (World Bool -> World a -> World a) -- XXX add Empty/Over constraint(s)
   CSeed :: Const Integer
   CCoord :: Axis -> Const (World Integer)
   CHash :: Const (World Integer)
@@ -255,9 +148,6 @@ instance HasConst (TTerm g) where
 
 ------------------------------------------------------------
 -- Type representations
-
-newtype Coords = Coords {unCoords :: (Int32, Int32)} -- XXX
-type World b = Coords -> b
 
 data Base :: Type -> Type where
   BInt :: Base Integer
@@ -470,162 +360,3 @@ inferOverlay ctx es = case NE.uncons es of
         let wty = TTyWorld ty
         c <- checkOver ty (embed COver)
         apply (SomeTerm (wty :->: wty :->: wty) c) e' >>= applyTo o'
-
-------------------------------------------------------------
--- Compiling to combinators
-
--- Explicitly type-preserving bracket abstraction, a la Oleg Kiselyov.
--- See:
---
---   http://okmij.org/ftp/tagless-final/ski.pdf
---   http://okmij.org/ftp/tagless-final/skconv.ml
-
---------------------------------------------------
--- Closed terms
-
--- Closed, fully abstracted terms.  All computation is represented by
--- combinators.  This is the target for the bracket abstraction
--- operation.
-data BTerm :: Type -> Type where
-  BApp :: BTerm (a -> b) -> BTerm a -> BTerm b
-  BConst :: Const a -> BTerm a
-
--- Direct interpreter for BTerm, for debugging/comparison.
-interpBTerm :: BTerm ty -> ty
-interpBTerm (BApp f x) = interpBTerm f (interpBTerm x)
-interpBTerm (BConst c) = interpConst c
-
-deriving instance Show (BTerm t)
-
-instance Applicable BTerm where
-  ($$) = BApp
-
-instance HasConst BTerm where
-  embed = BConst
-
---------------------------------------------------
--- Open terms
-
--- These explicitly open terms are an intermediate stage in the
--- bracket abstraction algorithm.
-data OTerm :: [Type] -> Type -> Type where
-  -- Embedded closed term.
-  OC :: BTerm a -> OTerm g a
-  -- Reference to the innermost/top environment variable, i.e. Z
-  OV :: OTerm (a ': g) a
-  -- Internalize the topmost env variable as a function argument
-  ON :: OTerm g (a -> b) -> OTerm (a ': g) b
-  -- Ignore the topmost env variable
-  OW :: OTerm g b -> OTerm (a ': g) b
-
-instance HasConst (OTerm g) where
-  embed = OC . embed
-
--- Bracket abstraction: convert the TTerm to an OTerm, then project
--- out the embedded BTerm.  GHC can see this is total since OC is the
--- only constructor that can produce an OTerm with an empty
--- environment.
-bracket :: TTerm '[] a -> BTerm a
-bracket t = case conv t of
-  OC t' -> t'
-
--- Type-preserving conversion from TTerm to OTerm (conv + the
--- Applicable instance).  Taken directly from Kiselyov.
-conv :: TTerm g a -> OTerm g a
-conv (TVar VZ) = OV
-conv (TVar (VS x)) = OW (conv (TVar x))
-conv (TLam t) = case conv t of
-  OV -> OC (BConst I)
-  OC d -> OC (K .$ d)
-  ON e -> e
-  OW e -> K .$ e
-conv (TApp t1 t2) = conv t1 $$ conv t2
-conv (TConst c) = embed c
-
-instance Applicable (OTerm g) where
-  OW e1 $$ OW e2 = OW (e1 $$ e2)
-  OW e $$ OC d = OW (e $$ OC d)
-  OC d $$ OW e = OW (OC d $$ e)
-  OW e $$ OV = ON e
-  OV $$ OW e = ON (OC (C .$. I) $$ e)
-  OW e1 $$ ON e2 = ON (B .$ e1 $$ e2)
-  ON e1 $$ OW e2 = ON (C .$ e1 $$ e2)
-  ON e1 $$ ON e2 = ON (S .$ e1 $$ e2)
-  ON e $$ OV = ON (S .$ e $. I)
-  OV $$ ON e = ON (OC (S .$. I) $$ e)
-  OC d $$ ON e = ON (OC (B .$ d) $$ e)
-  OC d $$ OV = ON (OC d)
-  OV $$ OC d = ON (OC (C .$. I $$ d))
-  ON e $$ OC d = ON (OC (C .$. C $$ d) $$ e)
-  OC d1 $$ OC d2 = OC (d1 $$ d2)
-
--- GHC can tell that OV $$ OV is impossible (it would be ill-typed)
-
-------------------------------------------------------------
--- Compiling
-
--- Compiling to the host language. i.e. we co-opt the host language
--- into doing evaluation for us.
-
--- XXX more efficient than directly interpreting BTerms?  Should try
--- benchmarking.
-
-data CTerm a where
-  CFun :: (CTerm a -> CTerm b) -> CTerm (a -> b)
-  CConst :: a -> CTerm a -- only for non-functions!
-
-instance Applicable CTerm where
-  CFun f $$ x = f x
-  -- above only gives a non-exhaustive warning since we can't express the constraint
-  -- that CConst isn't allowed contain a function
-  _ $$ _ = error "impossible! bad call to CTerm.$$"
-
-compile :: BTerm a -> CTerm a
-compile (BApp b1 b2) = compile b1 $$ compile b2
-compile (BConst c) = compileConst c
-
-compileConst :: Const a -> CTerm a
-compileConst = \case
-  (CLit i) -> CConst i
-  CFI -> unary fromIntegral
-  CIf -> CFun $ \(CConst b) -> CFun $ \t -> CFun $ \e -> if b then t else e
-  CNot -> unary not
-  CNeg -> unary negate
-  CAnd -> binary (&&)
-  COr -> binary (||)
-  CAdd -> binary (+)
-  CSub -> binary (-)
-  CMul -> binary (*)
-  CDiv -> binary (/)
-  CIDiv -> binary div
-  CMod -> binary mod
-  CEq -> binary (==)
-  CNeq -> binary (/=)
-  CLt -> binary (<)
-  CLeq -> binary (<=)
-  CGt -> binary (>)
-  CGeq -> binary (>=)
-  CMask -> undefined
-  CSeed -> undefined
-  CCoord ax -> undefined
-  CHash -> undefined
-  CPerlin -> undefined
-  CReflect r -> undefined
-  CRot r -> undefined
-  COver -> binary (<+>)
-  CEmpty -> CConst empty
-  K -> CFun $ \x -> CFun $ const x
-  S -> CFun $ \f -> CFun $ \g -> CFun $ \x -> f $$ x $$ (g $$ x)
-  I -> CFun id
-  B -> CFun $ \f -> CFun $ \g -> CFun $ \x -> f $$ (g $$ x)
-  C -> CFun $ \f -> CFun $ \x -> CFun $ \y -> f $$ y $$ x
-
-unary :: (a -> b) -> CTerm (a -> b)
-unary op = CFun $ \(CConst x) -> CConst (op x)
-
-binary :: (a -> b -> c) -> CTerm (a -> b -> c)
-binary op = CFun $ \(CConst x) -> CFun $ \(CConst y) -> CConst (op x y)
-
-runCTerm :: CTerm a -> a
-runCTerm (CConst a) = a
-runCTerm (CFun f) = runCTerm . f . CConst
