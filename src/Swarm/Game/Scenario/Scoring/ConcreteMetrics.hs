@@ -14,7 +14,7 @@ import Swarm.Game.Scenario.Scoring.CodeSize
 scenarioOptions :: Options
 scenarioOptions =
   defaultOptions
-    { fieldLabelModifier = map toLower . drop (length "_scenario")
+    { fieldLabelModifier = map toLower . drop (length ("_scenario" :: String))
     }
 
 data DurationMetrics = DurationMetrics
