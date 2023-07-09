@@ -1439,7 +1439,8 @@ execConst c vs s k = do
               if countByName "compass" inst >= 1
                 then Just $ DAbsolute entityDir
                 else case mh >>= toDirection of
-                  Just (DAbsolute robotDir) -> Just $ DRelative $ entityDir `relativeTo` robotDir
+                  Just (DAbsolute robotDir) ->
+                    Just . DRelative . DPlanar $ entityDir `relativeTo` robotDir
                   _ -> Nothing -- This may happen if the robot is facing "down"
             val = VDir $ fromMaybe (DRelative DDown) $ do
               entLoc <- firstFound

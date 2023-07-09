@@ -157,6 +157,8 @@ instance FromJSONKey AbsoluteDir where
 data RelativeDir = DPlanar PlanarRelativeDir | DDown
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
 
+-- | Caution: Do not alter this ordering, as there exist functions that depend on it
+-- (e.g. "nearestDirection" and "relativeTo").
 data PlanarRelativeDir = DForward | DLeft | DBack | DRight
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
 
@@ -165,12 +167,14 @@ data PlanarRelativeDir = DForward | DLeft | DBack | DRight
 data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
 
--- | Direction name is generated from Direction data constuctor
+-- | Direction name is generated from Direction data constructor
 -- e.g. DLeft becomes "left"
 directionSyntax :: Direction -> Text
 directionSyntax d = toLower . T.tail . from $ case d of
   DAbsolute x -> show x
-  DRelative x -> show x
+  DRelative x -> case x of
+    DPlanar y -> show y
+    _ -> show x
 
 -- | Check if the direction is absolute (e.g. 'north' or 'south').
 isCardinal :: Direction -> Bool
