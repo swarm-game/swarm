@@ -16,6 +16,7 @@ module Swarm.Language.Syntax (
   Direction (..),
   AbsoluteDir (..),
   RelativeDir (..),
+  PlanarRelativeDir (..),
   directionSyntax,
   isCardinal,
   allDirs,
@@ -153,7 +154,10 @@ instance FromJSONKey AbsoluteDir where
 -- | A relative direction is one which is defined with respect to the
 --   robot's frame of reference; no special capability is needed to
 --   use them.
-data RelativeDir = DLeft | DRight | DBack | DForward | DDown
+data RelativeDir = DPlanar PlanarRelativeDir | DDown
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
+
+data PlanarRelativeDir = DForward | DLeft | DBack | DRight
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
 
 -- | The type of directions. Used /e.g./ to indicate which way a robot
@@ -175,7 +179,7 @@ isCardinal = \case
   _ -> False
 
 allDirs :: [Direction]
-allDirs = map DAbsolute Util.listEnums <> map DRelative Util.listEnums
+allDirs = map DAbsolute Util.listEnums <> map DRelative (DDown : map DPlanar Util.listEnums)
 
 ------------------------------------------------------------
 -- Constants

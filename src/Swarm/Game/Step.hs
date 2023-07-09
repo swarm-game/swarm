@@ -2122,8 +2122,8 @@ execConst c vs s k = do
    where
     directionText = case d of
       DRelative DDown -> "under"
-      DRelative DForward -> "ahead of"
-      DRelative DBack -> "behind"
+      DRelative (DPlanar DForward) -> "ahead of"
+      DRelative (DPlanar DBack) -> "behind"
       _ -> directionSyntax d <> " of"
 
   goAtomic :: HasRobotStepState sig m => m CESK
