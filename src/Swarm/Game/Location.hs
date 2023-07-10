@@ -44,7 +44,7 @@ import Data.Map qualified as M
 import Data.Yaml (FromJSON (parseJSON), ToJSON (toJSON))
 import Linear (Additive (..), V2 (..), negated, norm, perp, unangle)
 import Linear.Affine (Affine (..), Point (..), origin)
-import Swarm.Language.Syntax (AbsoluteDir (..), Direction (..), RelativeDir (..), isCardinal)
+import Swarm.Language.Syntax (AbsoluteDir (..), Direction (..), PlanarRelativeDir (..), RelativeDir (..), isCardinal)
 import Swarm.Util qualified as Util
 
 -- $setup
@@ -122,11 +122,11 @@ down = zero
 applyTurn :: Direction -> Heading -> Heading
 applyTurn d = case d of
   DRelative e -> case e of
-    DLeft -> perp
-    DRight -> negated . perp
-    DBack -> negated
+    DPlanar DLeft -> perp
+    DPlanar DRight -> negated . perp
+    DPlanar DBack -> negated
+    DPlanar DForward -> id
     DDown -> const down
-    DForward -> id
   DAbsolute e -> const $ toHeading e
 
 -- | Mapping from heading to their corresponding cardinal directions.
@@ -143,9 +143,9 @@ toDirection v = M.lookup v cardinalDirs
 
 -- | Example:
 --      DWest `relativeTo` DSouth == DRight
-relativeTo :: AbsoluteDir -> AbsoluteDir -> RelativeDir
+relativeTo :: AbsoluteDir -> AbsoluteDir -> PlanarRelativeDir
 relativeTo targetDir referenceDir =
-  [DForward, DLeft, DBack, DRight] !! indexDiff
+  toEnum indexDiff
  where
   enumCount = length (Util.listEnums :: [AbsoluteDir])
   indexDiff = ((-) `on` fromEnum) targetDir referenceDir `mod` enumCount
