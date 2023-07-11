@@ -93,35 +93,35 @@ world:
     - src: tunnel
       offset: [3, -21]
       orient:
-        up: "DWest"
+        up: west
     - src: tunnel
       offset: [71, -21]
       orient:
-        up: "DEast"
+        up: east
     - src: road segment
       offset: [6, -22]
       orient:
-        up: "DSouth"
+        up: south
         flip: true
     - src: road segment
       offset: [12, -22]
       orient:
-        up: "DSouth"
+        up: south
         flip: true
     - src: road segment
       offset: [18, -22]
       orient:
-        up: "DSouth"
+        up: south
         flip: true
     - src: road segment
       offset: [24, -22]
       orient:
-        up: "DSouth"
+        up: south
         flip: true
     - src: road segment
       offset: [30, -22]
       orient:
-        up: "DSouth"
+        up: south
         flip: true
     - src: intersection
       offset: [36, -22]
@@ -138,29 +138,29 @@ world:
     - src: road segment
       offset: [36, -28]
       orient:
-        up: "DEast"
+        up: east
     - src: road segment
       offset: [36, -34]
       orient:
-        up: "DEast"
+        up: east
     - src: road segment
       offset: [36, -40]
       orient:
-        up: "DEast"
+        up: east
     - src: road segment
       offset: [36, -16]
       orient:
-        up: "DWest"
+        up: west
         flip: true
     - src: road segment
       offset: [36, -10]
       orient:
-        up: "DWest"
+        up: west
         flip: true
     - src: road segment
       offset: [36, -4]
       orient:
-        up: "DWest"
+        up: west
         flip: true
   upperleft:
   - -18
