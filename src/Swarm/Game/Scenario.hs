@@ -47,7 +47,8 @@ module Swarm.Game.Scenario (
 
 import Control.Lens hiding (from, (.=), (<.>))
 import Control.Monad (filterM)
-import Control.Monad.Except (ExceptT (..), MonadIO, liftIO, runExceptT, withExceptT)
+import Control.Monad.Except (ExceptT (..), runExceptT, withExceptT)
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Trans.Except (except)
 import Data.Aeson
 import Data.Either.Extra (eitherToMaybe, maybeToEither)
@@ -201,7 +202,7 @@ scenarioStepsPerTick :: Lens' Scenario (Maybe Int)
 ------------------------------------------------------------
 
 getScenarioPath ::
-  MonadIO m =>
+  (MonadIO m) =>
   FilePath ->
   m (Maybe FilePath)
 getScenarioPath scenario = do
@@ -216,7 +217,7 @@ getScenarioPath scenario = do
 --   to use.  This function is used if a specific scenario is
 --   requested on the command line.
 loadScenario ::
-  MonadIO m =>
+  (MonadIO m) =>
   String ->
   EntityMap ->
   ExceptT Text m (Scenario, FilePath)
@@ -228,7 +229,7 @@ loadScenario scenario em = do
 
 -- | Load a scenario from a file.
 loadScenarioFile ::
-  MonadIO m =>
+  (MonadIO m) =>
   EntityMap ->
   FilePath ->
   ExceptT SystemFailure m Scenario

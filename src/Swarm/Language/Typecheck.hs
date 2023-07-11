@@ -57,8 +57,18 @@ import Control.Arrow ((***))
 import Control.Category ((>>>))
 import Control.Lens ((^.))
 import Control.Lens.Indexed (itraverse)
-import Control.Monad.Except
-import Control.Monad.Reader
+import Control.Monad (forM_, void, when)
+import Control.Monad.Except (
+  ExceptT,
+  MonadError (catchError, throwError),
+  runExceptT,
+ )
+import Control.Monad.Reader (
+  MonadReader (ask, local),
+  ReaderT (runReaderT),
+  mapReaderT,
+ )
+import Control.Monad.Trans.Class (MonadTrans (lift))
 import Control.Unification hiding (applyBindings, unify, (=:=))
 import Control.Unification qualified as U
 import Control.Unification.IntVar

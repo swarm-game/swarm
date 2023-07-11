@@ -48,9 +48,10 @@ import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens as Lens
 import Control.Lens.Extras as Lens (is)
-import Control.Monad.Except
+import Control.Monad (forM_, unless, void, when)
 import Control.Monad.Extra (whenJust)
-import Control.Monad.State
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.State (MonadState, execState)
 import Data.Bits
 import Data.Either (isRight)
 import Data.Foldable (toList)
@@ -767,7 +768,7 @@ updateUI = do
   -- Whether the focused robot is too far away to sense, & whether
   -- that has recently changed
   dist <- use (gameState . to focusedRange)
-  farOK <- liftM2 (||) (use (gameState . creativeMode)) (use (gameState . worldScrollable))
+  farOK <- liftA2 (||) (use (gameState . creativeMode)) (use (gameState . worldScrollable))
   let tooFar = not farOK && dist == Just Far
       farChanged = tooFar /= isNothing listRobotHash
 
