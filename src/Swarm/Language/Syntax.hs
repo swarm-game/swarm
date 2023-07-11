@@ -183,7 +183,6 @@ instance FromJSON PlanarRelativeDir where
 instance ToJSON PlanarRelativeDir where
   toJSON = genericToJSON directionJsonOptions
 
-
 -- | The type of directions. Used /e.g./ to indicate which way a robot
 --   will turn.
 data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
