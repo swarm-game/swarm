@@ -44,6 +44,7 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
 import Brick.Widgets.List qualified as BL
+import Control.Applicative (liftA2)
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens as Lens
