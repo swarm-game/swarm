@@ -39,34 +39,34 @@ world:
     - src: tetromino
       offset: [9, -2]
       orient:
-        up: "DEast"
+        up: east
     - src: tetromino
       offset: [17, -2]
       orient:
-        up: "DSouth"
+        up: south
     - src: tetromino
       offset: [23, -2]
       orient:
-        up: "DWest"
+        up: west
     - src: tetromino
       offset: [3, -9]
       orient:
-        up: "DNorth"
+        up: north
         flip: true
     - src: tetromino
       offset: [9, -9]
       orient:
-        up: "DEast"
+        up: east
         flip: true
     - src: tetromino
       offset: [17, -9]
       orient:
-        up: "DSouth"
+        up: south
         flip: true
     - src: tetromino
       offset: [23, -9]
       orient:
-        up: "DWest"
+        up: west
         flip: true
   map: |
     ┌──────────────────────────────┐

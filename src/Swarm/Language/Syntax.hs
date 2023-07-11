@@ -137,12 +137,27 @@ maxStrideRange = 64
 -- Do not alter this ordering, as there exist functions that depend on it
 -- (e.g. "nearestDirection" and "relativeTo").
 data AbsoluteDir = DEast | DNorth | DWest | DSouth
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, Enum, Bounded)
+
+directionJsonModifier :: String -> String
+directionJsonModifier = map C.toLower . L.tail
+
+directionJsonOptions :: Options
+directionJsonOptions =
+  defaultOptions
+    { constructorTagModifier = directionJsonModifier
+    }
+
+instance FromJSON AbsoluteDir where
+  parseJSON = genericParseJSON directionJsonOptions
+
+instance ToJSON AbsoluteDir where
+  toJSON = genericToJSON directionJsonOptions
 
 cardinalDirectionKeyOptions :: JSONKeyOptions
 cardinalDirectionKeyOptions =
   defaultJSONKeyOptions
-    { keyModifier = map C.toLower . L.tail
+    { keyModifier = directionJsonModifier
     }
 
 instance ToJSONKey AbsoluteDir where
@@ -160,7 +175,13 @@ data RelativeDir = DPlanar PlanarRelativeDir | DDown
 -- | Caution: Do not alter this ordering, as there exist functions that depend on it
 -- (e.g. "nearestDirection" and "relativeTo").
 data PlanarRelativeDir = DForward | DLeft | DBack | DRight
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, Enum, Bounded)
+
+instance FromJSON PlanarRelativeDir where
+  parseJSON = genericParseJSON directionJsonOptions
+
+instance ToJSON PlanarRelativeDir where
+  toJSON = genericToJSON directionJsonOptions
 
 -- | The type of directions. Used /e.g./ to indicate which way a robot
 --   will turn.
