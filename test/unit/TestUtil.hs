@@ -9,7 +9,7 @@ module TestUtil where
 
 import Control.Lens (Ixed (ix), to, use, (&), (.~), (^.), (^?))
 import Control.Monad (void)
-import Control.Monad.State (StateT(..), execState)
+import Control.Monad.State (StateT (..), execState)
 import Control.Monad.Trans (lift)
 import Data.Text (Text)
 import Data.Text qualified as T
