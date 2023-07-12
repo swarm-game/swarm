@@ -97,7 +97,7 @@ instance FromJSONE (EntityMap, RobotMap) (AugmentedCell Entity) where
       AugmentedCell
         <$> liftE (v .:? "waypoint")
         <*> v
-        ..: "cell"
+          ..: "cell"
 
 ------------------------------------------------------------
 -- World editor
