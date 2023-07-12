@@ -36,7 +36,7 @@ instance FromJSONE (EntityMap, RobotMap) (NamedStructure (Maybe (PCell Entity)))
     sName <- liftE $ v .: "name"
     NamedStructure sName
       <$> v
-        ..: "structure"
+      ..: "structure"
 
 data PStructure c = Structure
   { area :: [[c]]
