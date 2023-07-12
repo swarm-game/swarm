@@ -10,7 +10,8 @@ import Brick.Widgets.Edit (handleEditorEvent)
 import Brick.Widgets.FileBrowser
 import Brick.Widgets.FileBrowser qualified as FB
 import Control.Lens
-import Control.Monad.Except (forM_, liftIO, when)
+import Control.Monad (forM_, when)
+import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (listToMaybe)
 import Graphics.Vty qualified as V
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (LaunchParams))

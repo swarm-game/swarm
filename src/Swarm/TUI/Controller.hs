@@ -44,13 +44,15 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
 import Brick.Widgets.List qualified as BL
+import Control.Applicative (liftA2, pure)
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens as Lens
 import Control.Lens.Extras as Lens (is)
-import Control.Monad.Except
+import Control.Monad (forM_, unless, void, when)
 import Control.Monad.Extra (whenJust)
-import Control.Monad.State
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.State (MonadState, execState)
 import Data.Bits
 import Data.Either (isRight)
 import Data.Foldable (toList)
@@ -110,6 +112,18 @@ import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import System.FilePath (splitDirectories)
 import Witch (into)
+import Prelude hiding (Applicative (..)) -- See Note [liftA2 re-export from Prelude]
+
+-- ~~~~ Note [liftA2 re-export from Prelude]
+--
+-- As of base-4.18 (GHC 9.6), liftA2 is re-exported from Prelude.  See
+-- https://github.com/haskell/core-libraries-committee/issues/50 .  In
+-- order to compile warning-free on both GHC 9.6 and older versions,
+-- we hide the import of Applicative functions from Prelude and import
+-- explicitly from Control.Applicative.  In theory, if at some point
+-- in the distant future we end up dropping support for GHC < 9.6 then
+-- we could get rid of both explicit imports and just get liftA2 and
+-- pure implicitly from Prelude.
 
 tutorialsDirname :: FilePath
 tutorialsDirname = "Tutorials"
@@ -767,7 +781,7 @@ updateUI = do
   -- Whether the focused robot is too far away to sense, & whether
   -- that has recently changed
   dist <- use (gameState . to focusedRange)
-  farOK <- liftM2 (||) (use (gameState . creativeMode)) (use (gameState . worldScrollable))
+  farOK <- liftA2 (||) (use (gameState . creativeMode)) (use (gameState . worldScrollable))
   let tooFar = not farOK && dist == Just Far
       farChanged = tooFar /= isNothing listRobotHash
 

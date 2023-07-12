@@ -40,7 +40,8 @@ module Swarm.Game.ScenarioInfo (
 
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (filterM, unless, when)
-import Control.Monad.Except (ExceptT (..), MonadIO, liftIO, runExceptT, withExceptT)
+import Control.Monad.Except (ExceptT (..), runExceptT, withExceptT)
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Char (isSpace)
 import Data.Either.Extra (fromRight')
 import Data.List (intercalate, isPrefixOf, stripPrefix, (\\))
@@ -87,7 +88,7 @@ scenarioItemByPath :: FilePath -> Traversal' ScenarioCollection ScenarioItem
 scenarioItemByPath path = ixp ps
  where
   ps = splitDirectories path
-  ixp :: Applicative f => [String] -> (ScenarioItem -> f ScenarioItem) -> ScenarioCollection -> f ScenarioCollection
+  ixp :: (Applicative f) => [String] -> (ScenarioItem -> f ScenarioItem) -> ScenarioCollection -> f ScenarioCollection
   ixp [] _ col = pure col
   ixp [s] f (SC n m) = SC n <$> ix s f m
   ixp (d : xs) f (SC n m) = SC n <$> ix d inner m
@@ -98,7 +99,7 @@ scenarioItemByPath path = ixp ps
 
 -- | Canonicalize a scenario path, making it usable as a unique key.
 normalizeScenarioPath ::
-  MonadIO m =>
+  (MonadIO m) =>
   ScenarioCollection ->
   FilePath ->
   m FilePath
@@ -147,7 +148,7 @@ orderFileName :: FilePath
 orderFileName = "00-ORDER.txt"
 
 readOrderFile ::
-  MonadIO m =>
+  (MonadIO m) =>
   FilePath ->
   ExceptT [SystemFailure] m [String]
 readOrderFile orderFile =
@@ -156,7 +157,7 @@ readOrderFile orderFile =
 -- | Recursively load all scenarios from a particular directory, and also load
 --   the 00-ORDER file (if any) giving the order for the scenarios.
 loadScenarioDir ::
-  MonadIO m =>
+  (MonadIO m) =>
   EntityMap ->
   FilePath ->
   ExceptT [SystemFailure] m ([SystemFailure], ScenarioCollection)
@@ -229,7 +230,7 @@ scenarioPathToSavePath path swarmData = swarmData </> Data.List.intercalate "_" 
 
 -- | Load saved info about played scenario from XDG data directory.
 loadScenarioInfo ::
-  MonadIO m =>
+  (MonadIO m) =>
   FilePath ->
   ExceptT [SystemFailure] m ScenarioInfo
 loadScenarioInfo p = do
@@ -258,7 +259,7 @@ saveScenarioInfo path si = do
 -- | Load a scenario item (either a scenario, or a subdirectory
 --   containing a collection of scenarios) from a particular path.
 loadScenarioItem ::
-  MonadIO m =>
+  (MonadIO m) =>
   EntityMap ->
   FilePath ->
   ExceptT [SystemFailure] m ([SystemFailure], ScenarioItem)

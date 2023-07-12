@@ -21,7 +21,7 @@
 -- See <https://github.com/swarm-game/swarm/issues/495>.
 module Swarm.Game.Step where
 
-import Control.Applicative (liftA2)
+import Control.Applicative (Applicative (..))
 import Control.Arrow ((&&&))
 import Control.Carrier.Error.Either (ErrorC, runError)
 import Control.Carrier.State.Lazy
@@ -93,7 +93,7 @@ import System.Clock (TimeSpec)
 import System.Clock qualified
 import System.Random (UniformRange, uniformR)
 import Witch (From (from), into)
-import Prelude hiding (lookup)
+import Prelude hiding (Applicative (..), lookup)
 
 -- | The main function to do one game tick.
 --

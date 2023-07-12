@@ -9,7 +9,8 @@ module Swarm.Game.ResourceLoading where
 import Control.Exception (catch)
 import Control.Exception.Base (IOException)
 import Control.Monad (forM, when)
-import Control.Monad.Except (ExceptT (..), MonadIO, liftIO)
+import Control.Monad.Except (ExceptT (..))
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
@@ -37,7 +38,7 @@ import Witch
 -- The idea is that when installing with Cabal/Stack the first
 -- is preferred, but when the players install a binary they
 -- need to extract the `data` archive to the XDG directory.
-getDataDirSafe :: MonadIO m => AssetData -> FilePath -> m (Either SystemFailure FilePath)
+getDataDirSafe :: (MonadIO m) => AssetData -> FilePath -> m (Either SystemFailure FilePath)
 getDataDirSafe asset p = do
   d <- (`appDir` p) <$> liftIO getDataDir
   de <- liftIO $ doesDirectoryExist d
@@ -57,7 +58,7 @@ getDataDirSafe asset p = do
 --
 -- See the note in 'getDataDirSafe'.
 getDataFileNameSafe ::
-  MonadIO m =>
+  (MonadIO m) =>
   AssetData ->
   FilePath ->
   ExceptT SystemFailure m FilePath

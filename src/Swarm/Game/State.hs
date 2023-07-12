@@ -126,7 +126,8 @@ import Control.Arrow (Arrow ((&&&)), left)
 import Control.Effect.Lens
 import Control.Effect.State (State)
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
-import Control.Monad.Except
+import Control.Monad (forM_)
+import Control.Monad.Except (ExceptT (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
@@ -1102,16 +1103,19 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       -- Note that this *replaces* any program the base robot otherwise
       -- would have run (i.e. any program specified in the program: field
       -- of the scenario description).
-      & ix baseID . machine
+      & ix baseID
+        . machine
         %~ case initialCodeToRun of
           Nothing -> id
           Just pt -> const $ initMachine pt Ctx.empty emptyStore
       -- If we are in creative mode, give base all the things
-      & ix baseID . robotInventory
+      & ix baseID
+        . robotInventory
         %~ case scenario ^. scenarioCreative of
           False -> id
           True -> union (fromElems (map (0,) things))
-      & ix baseID . equippedDevices
+      & ix baseID
+        . equippedDevices
         %~ case scenario ^. scenarioCreative of
           False -> id
           True -> const (fromList devices)

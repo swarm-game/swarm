@@ -79,6 +79,7 @@ import Data.Data (Data)
 import Data.Foldable (fold)
 import Data.Function (on)
 import Data.Functor.Fixedpoint
+import Data.Kind qualified
 import Data.Map.Merge.Strict qualified as M
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
@@ -247,7 +248,7 @@ type UPolytype = Poly UType
 --   used only on inputs that are safe.
 class WithU t where
   -- | The associated "@U@-version" of the type @t@.
-  type U t :: *
+  type U t :: Data.Kind.Type
 
   -- | Convert from @t@ to its associated "@U@-version".  This
   --   direction is always safe (we simply have no unification

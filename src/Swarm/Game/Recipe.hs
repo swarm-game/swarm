@@ -33,7 +33,8 @@ module Swarm.Game.Recipe (
 
 import Control.Arrow (left)
 import Control.Lens hiding (from, (.=))
-import Control.Monad.Except (ExceptT (..), MonadIO, liftIO, withExceptT)
+import Control.Monad.Except (ExceptT (..), withExceptT)
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Trans.Except (except)
 import Data.Bifunctor (second)
 import Data.Either.Validation
@@ -112,11 +113,19 @@ instance ToJSON (Recipe Text) where
 instance FromJSON (Recipe Text) where
   parseJSON = withObject "Recipe" $ \v ->
     Recipe
-      <$> v .: "in"
-      <*> v .: "out"
-      <*> v .:? "required" .!= []
-      <*> v .:? "time" .!= 1
-      <*> v .:? "weight" .!= 1
+      <$> v
+        .: "in"
+      <*> v
+        .: "out"
+      <*> v
+        .:? "required"
+        .!= []
+      <*> v
+        .:? "time"
+        .!= 1
+      <*> v
+        .:? "weight"
+        .!= 1
 
 -- | Given an 'EntityMap', turn a list of recipes containing /names/
 --   of entities into a list of recipes containing actual 'Entity'
@@ -137,7 +146,7 @@ instance FromJSONE EntityMap (Recipe Entity) where
 -- | Given an already loaded 'EntityMap', try to load a list of
 --   recipes from the data file @recipes.yaml@.
 loadRecipes ::
-  MonadIO m =>
+  (MonadIO m) =>
   EntityMap ->
   ExceptT SystemFailure m [Recipe Entity]
 loadRecipes em = do
