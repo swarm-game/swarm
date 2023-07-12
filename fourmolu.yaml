@@ -8,3 +8,6 @@ respectful: true
 single-constraint-parens: auto
 haddock-style: single-line
 newlines-between-decls: 1
+reexports:
+  - module Text.Megaparsec exports Control.Applicative
+  - module Options.Applicative exports Control.Applicative
