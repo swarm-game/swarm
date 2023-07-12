@@ -82,6 +82,7 @@
                "time"
                "scout"
                "whereami"
+               "waypoint"
                "detect"
                "resonate"
                "density"

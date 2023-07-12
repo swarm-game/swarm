@@ -246,6 +246,7 @@ constCaps = \case
   Wait -> Just CTimerel
   Scout -> Just CRecondir
   Whereami -> Just CSenseloc
+  Waypoint -> Just CGod
   Detect -> Just CDetectloc
   Resonate -> Just CDetectcount
   Density -> Just CDetectcount

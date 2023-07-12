@@ -47,6 +47,7 @@ import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
 import Data.List (find, sortOn)
 import Data.List qualified as L
+import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
 import Data.Ord (Down (Down))
@@ -74,6 +75,8 @@ import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
+import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
+import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
 import Swarm.Game.State
 import Swarm.Game.Value
 import Swarm.Game.World qualified as W
@@ -1398,6 +1401,13 @@ execConst c vs s k = do
     Whereami -> do
       loc <- use robotLocation
       return $ Out (asValue loc) s k
+    Waypoint -> case vs of
+      [VText name, VInt idx] -> do
+        lm <- use worldNavigation
+        case M.lookup (WaypointName name) (waypoints lm) of
+          Nothing -> throwError $ CmdFailed Waypoint (T.unwords ["No waypoint named", name]) Nothing
+          Just wps -> return $ Out (asValue (NE.length wps, indexWrapNonEmpty wps idx)) s k
+      _ -> badConst
     Detect -> case vs of
       [VText name, VRect x1 y1 x2 y2] -> do
         loc <- use robotLocation
@@ -2670,6 +2680,7 @@ provisionChild childID toEquip toGive = do
 --   'robotsByLocation' map, so we can always look up robots by
 --   location.  This should be the /only/ way to update the location
 --   of a robot.
+-- Also implements teleportation by portals.
 updateRobotLocation ::
   (HasRobotStepState sig m) =>
   Location ->
@@ -2678,12 +2689,17 @@ updateRobotLocation ::
 updateRobotLocation oldLoc newLoc
   | oldLoc == newLoc = return ()
   | otherwise = do
+      newlocWithPortal <- applyPortal newLoc
       rid <- use robotID
       robotsByLocation . at oldLoc %= deleteOne rid
-      robotsByLocation . at newLoc . non Empty %= IS.insert rid
-      modify (unsafeSetRobotLocation newLoc)
+      robotsByLocation . at newlocWithPortal . non Empty %= IS.insert rid
+      modify (unsafeSetRobotLocation newlocWithPortal)
       flagRedraw
  where
+  applyPortal loc = do
+    lms <- use worldNavigation
+    return $ M.findWithDefault loc loc $ portals lms
+
   -- Make sure empty sets don't hang around in the
   -- robotsByLocation map.  We don't want a key with an
   -- empty set at every location any robot has ever

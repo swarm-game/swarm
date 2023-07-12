@@ -1,0 +1,73 @@
+version: 1
+name: Querying waypoints
+description: |
+  Demonstrate patrolling between waypoints
+creative: true
+robots:
+  - name: base
+    loc: [0, 0]
+    dir: [1, 0]
+  - name: patroller
+    loc: [5, -4]
+    dir: [1, 0]
+    display:
+      invisible: false
+      attr: robot    
+    program: |
+      run "scenarios/Testing/1356-portals/_automatic-waypoint-patrol/program.sw"
+known: [flower, boulder]
+world:
+  upperleft: [-1, 1]
+  default: [blank]
+  palette:
+    '.': [grass]
+    '*': [stone, flower]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  structures:
+    - name: bigbox
+      structure:
+        palette:
+          '.': [dirt]
+          '@': [dirt, boulder]
+          'w':
+            cell: [dirt]
+            waypoint:
+              name: wp
+        map: |
+          @@@
+          @w.
+          @.@
+  placements:
+    - src: bigbox
+      offset: [2, -2]
+      orient:
+        up: "DNorth"
+    - src: bigbox
+      offset: [8, -2]
+      orient:
+        up: "DEast"
+    - src: bigbox
+      offset: [8, -6]
+      orient:
+        up: "DSouth"
+    - src: bigbox
+      offset: [2, -6]
+      orient:
+        up: "DWest"
+  map: |
+    ┌───────────┐
+    │*..*..*..*.│
+    │.*..*..*..*│
+    │..*..*..*..│
+    │*..*..*..*.│
+    │.*..*..*..*│
+    │..*..*..*..│
+    │*..*..*..*.│
+    │.*..*..*..*│
+    │..*..*..*..│
+    └───────────┘

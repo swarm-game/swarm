@@ -296,6 +296,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/1234-push-command"
         , testSolution Default "Testing/1256-halt-command"
         , testSolution Default "Testing/1295-density-command"
+        , testSolution Default "Testing/1356-portals/portals-flip-and-rotate.yaml"
         ]
     ]
  where

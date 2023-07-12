@@ -9,12 +9,12 @@ import Data.Map qualified as Map
 import Data.Maybe qualified as Maybe
 import Data.Vector qualified as V
 import Swarm.Game.Entity
-import Swarm.Game.Scenario.Cell
-import Swarm.Game.Scenario.EntityFacade
-import Swarm.Game.Scenario.WorldDescription
+import Swarm.Game.Scenario.Topography.Area qualified as EA
+import Swarm.Game.Scenario.Topography.Cell
+import Swarm.Game.Scenario.Topography.EntityFacade
+import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Game.World qualified as W
-import Swarm.TUI.Editor.Area qualified as EA
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Model
 

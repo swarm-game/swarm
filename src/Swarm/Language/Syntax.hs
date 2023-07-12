@@ -298,6 +298,8 @@ data Const
     Scout
   | -- | Get the current x, y coordinates
     Whereami
+  | -- | Get the x, y coordinates of a named waypoint, by index
+    Waypoint
   | -- | Locate the closest instance of a given entity within the rectangle
     -- specified by opposite corners, relative to the current location.
     Detect
@@ -693,6 +695,12 @@ constInfo c = case c of
       , T.unwords ["Has a max range of", T.pack $ show maxScoutRange, "units."]
       ]
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
+  Waypoint ->
+    command 2 Intangible . doc "Get the x, y coordinates of a named waypoint, by index" $
+      [ "Since waypoint names can have plural multiplicity, returns a tuple of (count, (x, y))."
+      , "The supplied index will be wrapped automatically, modulo the waypoint count."
+      , "A robot can use the count to know whether they have iterated over the full waypoint circuit."
+      ]
   Detect ->
     command 2 Intangible . doc "Detect an entity within a rectangle." $
       ["Locate the closest instance of a given entity within the rectangle specified by opposite corners, relative to the current location."]

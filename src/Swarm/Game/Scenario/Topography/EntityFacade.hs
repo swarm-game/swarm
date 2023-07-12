@@ -6,11 +6,11 @@
 --
 -- Useful for simplified serialization, debugging,
 -- and equality checking, particularly for the World Editor.
-module Swarm.Game.Scenario.EntityFacade where
+module Swarm.Game.Scenario.Topography.EntityFacade where
 
-import Control.Lens hiding (from, (.=), (<.>))
+import Control.Lens ((^.))
 import Data.Text (Text)
-import Data.Yaml as Y
+import Data.Yaml as Y (ToJSON (toJSON))
 import Swarm.Game.Display (Display)
 import Swarm.Game.Entity qualified as E
 

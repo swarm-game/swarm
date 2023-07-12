@@ -4,7 +4,7 @@ import Data.Text (Text)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Game.Entity (Entity)
-import Swarm.Game.Scenario.WorldDescription
+import Swarm.Game.Scenario.Topography.WorldDescription
 
 data SkeletonScenario = SkeletonScenario
   { version :: Int
