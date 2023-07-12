@@ -46,19 +46,19 @@ world:
     - src: bigbox
       offset: [2, -2]
       orient:
-        up: "DNorth"
+        up: north
     - src: bigbox
       offset: [8, -2]
       orient:
-        up: "DEast"
+        up: east
     - src: bigbox
       offset: [8, -6]
       orient:
-        up: "DSouth"
+        up: south
     - src: bigbox
       offset: [2, -6]
       orient:
-        up: "DWest"
+        up: west
   map: |
     ┌───────────┐
     │*..*..*..*.│
