@@ -70,7 +70,7 @@ import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
 import Linear
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Constant
-import Swarm.Game.CESK (CESK (..), TickNumber)
+import Swarm.Game.CESK (CESK (..), TickNumber (..))
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Location
@@ -505,7 +505,7 @@ clockEquipped gs = case focusedRobot gs of
 
 -- | Format a ticks count as a hexadecimal clock.
 drawTime :: TickNumber -> Bool -> String
-drawTime t showTicks =
+drawTime (TickNumber t) showTicks =
   mconcat $
     intersperse
       ":"

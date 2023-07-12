@@ -68,6 +68,7 @@ module Swarm.Game.Robot (
   -- ** Query
   robotKnows,
   isActive,
+  wantsToStep,
   waitingUntil,
   getResult,
 
@@ -78,6 +79,7 @@ module Swarm.Game.Robot (
 import Control.Lens hiding (contains)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (hashWithSalt)
+import Data.Kind qualified
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
@@ -164,12 +166,12 @@ data RobotPhase
 
 -- | With a robot template, we may or may not have a location.  With a
 --   concrete robot we must have a location.
-type family RobotLocation (phase :: RobotPhase) :: * where
+type family RobotLocation (phase :: RobotPhase) :: Data.Kind.Type where
   RobotLocation 'TemplateRobot = Maybe Location
   RobotLocation 'ConcreteRobot = Location
 
 -- | Robot templates have no ID; concrete robots definitely do.
-type family RobotID (phase :: RobotPhase) :: * where
+type family RobotID (phase :: RobotPhase) :: Data.Kind.Type where
   RobotID 'TemplateRobot = ()
   RobotID 'ConcreteRobot = RID
 
@@ -517,6 +519,14 @@ isActive :: Robot -> Bool
 {-# INLINE isActive #-}
 isActive = isNothing . getResult
 
+-- | "Active" robots include robots that are waiting; 'wantsToStep' is
+--   true if the robot actually wants to take another step right now
+--   (this is a /subset/ of active robots).
+wantsToStep :: TickNumber -> Robot -> Bool
+wantsToStep now robot
+  | not (isActive robot) = False
+  | otherwise = maybe True (now >=) (waitingUntil robot)
+
 -- | The time until which the robot is waiting, if any.
 waitingUntil :: Robot -> Maybe TickNumber
 waitingUntil robot =
@@ -529,5 +539,5 @@ getResult :: Robot -> Maybe (Value, Store)
 {-# INLINE getResult #-}
 getResult = finalValue . view machine
 
-hearingDistance :: Num i => i
+hearingDistance :: (Num i) => i
 hearingDistance = 32

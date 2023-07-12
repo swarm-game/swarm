@@ -2,7 +2,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
-module Swarm.Game.Scenario.WorldPalette where
+module Swarm.Game.Scenario.Topography.WorldPalette where
 
 import Control.Arrow (first)
 import Control.Lens hiding (from, (.=), (<.>))
@@ -14,15 +14,15 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Tuple (swap)
 import Swarm.Game.Entity
-import Swarm.Game.Scenario.Cell
-import Swarm.Game.Scenario.EntityFacade
 import Swarm.Game.Scenario.RobotLookup
+import Swarm.Game.Scenario.Topography.Cell
+import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Util.Yaml
 
 -- | A world palette maps characters to 'Cell' values.
 newtype WorldPalette e = WorldPalette
-  {unPalette :: KeyMap (PCell e)}
+  {unPalette :: KeyMap (AugmentedCell e)}
   deriving (Eq, Show)
 
 instance FromJSONE (EntityMap, RobotMap) (WorldPalette Entity) where
@@ -100,7 +100,7 @@ prepForJson (WorldPalette suggestedPalette) cellGrid =
  where
   preassignments :: [(Char, TerrainWith EntityFacade)]
   preassignments =
-    map (first T.head . fmap cellToTerrainPair) $
+    map (first T.head . fmap (cellToTerrainPair . standardCell)) $
       M.toList $
         KM.toMapText suggestedPalette
 

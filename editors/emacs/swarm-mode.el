@@ -82,6 +82,7 @@
                "time"
                "scout"
                "whereami"
+               "waypoint"
                "detect"
                "resonate"
                "density"
@@ -116,11 +117,11 @@
                "north"
                "west"
                "south"
-               "left"
-               "right"
-               "back"
-               "forward"
                "down"
+               "forward"
+               "left"
+               "back"
+               "right"
              ))
              (x-types '("int" "text" "dir" "bool" "cmd" "void" "unit" "actor"))
 

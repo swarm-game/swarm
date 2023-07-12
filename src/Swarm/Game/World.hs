@@ -100,6 +100,7 @@ type BoundsRectangle = (Coords, Coords)
 -- (exactly one per cell) and entities of type @e@ (at most one per
 -- cell).
 newtype WorldFun t e = WF {runWF :: Coords -> (t, Maybe e)}
+  deriving (Functor)
 
 instance Bifunctor WorldFun where
   bimap g h (WF z) = WF (bimap g (fmap h) . z)
@@ -219,7 +220,7 @@ emptyWorld t = newWorld (WF $ const (t, Nothing))
 --
 --   This function does /not/ ensure that the tile containing the
 --   given coordinates is loaded.  For that, see 'lookupTerrainM'.
-lookupTerrain :: IArray U.UArray t => Coords -> World t e -> t
+lookupTerrain :: (IArray U.UArray t) => Coords -> World t e -> t
 lookupTerrain i (World f t _) =
   ((U.! tileOffset i) . fst <$> M.lookup (tileCoords i) t)
     ? fst (runWF f i)
@@ -277,12 +278,12 @@ updateM c g = do
   state @(World t Entity) $ update c g . loadCell c
 
 -- | Load the tile containing a specific cell.
-loadCell :: IArray U.UArray t => Coords -> World t e -> World t e
+loadCell :: (IArray U.UArray t) => Coords -> World t e -> World t e
 loadCell c = loadRegion (c, c)
 
 -- | Load all the tiles which overlap the given rectangular region
 --   (specified as an upper-left and lower-right corner, inclusive).
-loadRegion :: forall t e. IArray U.UArray t => (Coords, Coords) -> World t e -> World t e
+loadRegion :: forall t e. (IArray U.UArray t) => (Coords, Coords) -> World t e -> World t e
 loadRegion reg (World f t m) = World f t' m
  where
   tiles = range (over both tileCoords reg)

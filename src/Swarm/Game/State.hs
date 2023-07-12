@@ -60,6 +60,7 @@ module Swarm.Game.State (
   recipesReq,
   currentScenarioPath,
   knownEntities,
+  worldNavigation,
   world,
   worldScrollable,
   viewCenterRule,
@@ -80,6 +81,10 @@ module Swarm.Game.State (
   Notifications (..),
   notificationsCount,
   notificationsContent,
+
+  -- ** Launch parameters
+  LaunchParams,
+  ValidatedLaunchParams,
 
   -- ** GameState initialization
   GameStateConfig (..),
@@ -122,7 +127,8 @@ import Control.Arrow (Arrow ((&&&)), left)
 import Control.Effect.Lens
 import Control.Effect.State (State)
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
-import Control.Monad.Except
+import Control.Monad (forM_)
+import Control.Monad.Except (ExceptT (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
@@ -153,7 +159,7 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
-import Swarm.Game.CESK (CESK (Waiting), TickNumber, emptyStore, finalValue, initMachine)
+import Swarm.Game.CESK (CESK (Waiting), TickNumber (..), addTicks, emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Recipe (
@@ -164,6 +170,8 @@ import Swarm.Game.Recipe (
  )
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
+import Swarm.Game.Scenario.Status
+import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
@@ -393,6 +401,7 @@ data GameState = GameState
   , _recipesReq :: IntMap [Recipe Entity]
   , _currentScenarioPath :: Maybe FilePath
   , _knownEntities :: [Text]
+  , _worldNavigation :: Navigation
   , _world :: W.World Int Entity
   , _worldScrollable :: Bool
   , _viewCenterRule :: ViewCenterRule
@@ -554,6 +563,10 @@ currentScenarioPath :: Lens' GameState (Maybe FilePath)
 --   robots know what they are without having to scan them.
 knownEntities :: Lens' GameState [Text]
 
+-- | Includes a Map of named locations and an
+-- "Edge list" (graph) that maps portal entrances to exits
+worldNavigation :: Lens' GameState Navigation
+
 -- | The current state of the world (terrain and entities only; robots
 --   are stored in the 'robotMap').  Int is used instead of
 --   TerrainType because we need to be able to store terrain values in
@@ -671,7 +684,7 @@ messageNotifications = to getNotif
         <> Seq.filter ((== gs ^. focusedRobotID) . view leRobotID) mq
 
 messageIsRecent :: GameState -> LogEntry -> Bool
-messageIsRecent gs e = e ^. leTime >= gs ^. ticks - 1
+messageIsRecent gs e = addTicks 1 (e ^. leTime) >= gs ^. ticks
 
 messageIsFromNearby :: Location -> LogEntry -> Bool
 messageIsFromNearby l e = manhattan l (e ^. leLocation) <= hearingDistance
@@ -913,7 +926,7 @@ wakeWatchingRobots loc = do
 
       -- Step 4: Re-add the watching bots to be awakened at the next tick:
       wakeableBotIds = map fst wakeTimes
-      newWakeTime = currentTick + 1
+      newWakeTime = addTicks 1 currentTick
       newInsertions = M.singleton newWakeTime wakeableBotIds
 
   -- NOTE: There are two "sources of truth" for the waiting state of robots:
@@ -940,6 +953,13 @@ deleteRobot rn = do
 ------------------------------------------------------------
 -- Initialization
 ------------------------------------------------------------
+
+type LaunchParams a = ParameterizableLaunchParams CodeToRun a
+
+-- | In this stage in the UI pipeline, both fields
+-- have already been validated, and "Nothing" means
+-- that the field is simply absent.
+type ValidatedLaunchParams = LaunchParams Identity
 
 -- | Record to pass information needed to create an initial
 --   'GameState' record when starting a scenario.
@@ -983,6 +1003,7 @@ initGameState gsc =
     , _recipesReq = reqRecipeMap (initRecipes gsc)
     , _currentScenarioPath = Nothing
     , _knownEntities = []
+    , _worldNavigation = Navigation mempty mempty
     , _world = W.emptyWorld (fromEnum StoneT)
     , _worldScrollable = True
     , _viewCenterRule = VCRobot 0
@@ -992,20 +1013,19 @@ initGameState gsc =
     , _replNextValueIndex = 0
     , _inputHandler = Nothing
     , _messageQueue = Empty
-    , _lastSeenMessageTime = -1
+    , _lastSeenMessageTime = TickNumber (-1)
     , _focusedRobotID = 0
-    , _ticks = 0
+    , _ticks = TickNumber 0
     , _robotStepsPerTick = defaultRobotStepsPerTick
     }
 
 -- | Create an initial game state corresponding to the given scenario.
 scenarioToGameState ::
   Scenario ->
-  Maybe Seed ->
-  Maybe CodeToRun ->
+  ValidatedLaunchParams ->
   GameStateConfig ->
   IO GameState
-scenarioToGameState scenario userSeed toRun gsc = do
+scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun)) gsc = do
   -- Decide on a seed.  In order of preference, we will use:
   --   1. seed value provided by the user
   --   2. seed value specified in the scenario description
@@ -1040,6 +1060,7 @@ scenarioToGameState scenario userSeed toRun gsc = do
       & recipesIn %~ addRecipesWith inRecipeMap
       & recipesReq %~ addRecipesWith reqRecipeMap
       & knownEntities .~ scenario ^. scenarioKnown
+      & worldNavigation .~ navigation (scenario ^. scenarioWorld)
       & world .~ theWorld theSeed
       & worldScrollable .~ scenario ^. scenarioWorld . to scrollable
       & viewCenterRule .~ VCRobot baseID
@@ -1091,16 +1112,19 @@ scenarioToGameState scenario userSeed toRun gsc = do
       -- Note that this *replaces* any program the base robot otherwise
       -- would have run (i.e. any program specified in the program: field
       -- of the scenario description).
-      & ix baseID . machine
+      & ix baseID
+        . machine
         %~ case initialCodeToRun of
           Nothing -> id
           Just pt -> const $ initMachine pt Ctx.empty emptyStore
       -- If we are in creative mode, give base all the things
-      & ix baseID . robotInventory
+      & ix baseID
+        . robotInventory
         %~ case scenario ^. scenarioCreative of
           False -> id
           True -> union (fromElems (map (0,) things))
-      & ix baseID . equippedDevices
+      & ix baseID
+        . equippedDevices
         %~ case scenario ^. scenarioCreative of
           False -> id
           True -> const (fromList devices)

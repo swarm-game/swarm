@@ -119,8 +119,10 @@ module Swarm.TUI.Model (
 import Brick
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
-import Control.Monad.Except
-import Control.Monad.State
+import Control.Monad ((>=>))
+import Control.Monad.Except (ExceptT (..), MonadError (catchError), withExceptT)
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.State (MonadState)
 import Data.Array (Array, listArray)
 import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -133,6 +135,7 @@ import GitHash (GitInfo)
 import Graphics.Vty (ColorMode (..))
 import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
+import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Entity as E
 import Swarm.Game.Failure
 import Swarm.Game.Failure.Render
@@ -270,7 +273,7 @@ logEvent src (who, rid) msg el =
     & notificationsCount %~ succ
     & notificationsContent %~ (l :)
  where
-  l = LogEntry 0 src who rid zero msg
+  l = LogEntry (TickNumber 0) src who rid zero msg
 
 -- | Create a 'GameStateConfig' record from the 'RuntimeState'.
 mkGameStateConfig :: RuntimeState -> GameStateConfig
@@ -338,7 +341,7 @@ focusedEntity =
 
 -- | Given the focused robot, populate the UI inventory list in the info
 --   panel with information about its inventory.
-populateInventoryList :: MonadState UIState m => Maybe Robot -> m ()
+populateInventoryList :: (MonadState UIState m) => Maybe Robot -> m ()
 populateInventoryList Nothing = uiInventory .= Nothing
 populateInventoryList (Just r) = do
   mList <- preuse (uiInventory . _Just . _2)
@@ -368,7 +371,7 @@ populateInventoryList (Just r) = do
       matchesSearch (_, e) = maybe (const True) Fuzzy.test search (e ^. E.entityName)
 
       items =
-        (r ^. robotInventory . to (itemList True mkInvEntry "Inventory"))
+        (r ^. robotInventory . to (itemList True mkInvEntry "Compendium"))
           ++ (r ^. equippedDevices . to (itemList False mkInstEntry "Equipped devices"))
 
       -- Attempt to keep the selected element steady.

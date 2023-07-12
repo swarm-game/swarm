@@ -1,0 +1,81 @@
+version: 1
+name: Active trapdoor
+author: Karl Ostmo
+description: |
+  This gate closes once you have passed.
+
+  This is an "active" trapdoor in the sense that a system robot
+  continuously monitors its status and operates it.
+  It is in contrast with a sokoban-style trapdoor
+  that is "passive" in its operation.
+creative: false
+objectives:
+  - goal:
+      - Grab the flower.
+    condition: |
+      as base {has "flower"}
+robots:
+  - name: base
+    display:
+      char: 'ω'
+      attr: robot
+    dir: [0, 1]
+    devices:
+      - treads
+      - 3D printer
+      - ADT calculator
+      - branch predictor
+      - clock
+      - comparator
+      - counter
+      - dictionary
+      - grabber
+      - hearing aid
+      - lambda
+      - logger
+      - mirror
+      - net
+      - scanner
+      - strange loop
+      - string
+      - workbench
+    inventory:
+      - [1, treads]
+  - name: gate
+    system: true
+    dir: [0, 1]
+    display:
+      invisible: true
+    inventory:
+      - [1, boulder]
+    program: |
+      run "scenarios/Mechanics/_active-trapdoor/gate.sw"
+solution: |
+  run "scenarios/Mechanics/_active-trapdoor/solution.sw"
+known: [water, boulder, flower]
+seed: 0
+world:
+  default: [stone, water]
+  upperleft: [0, 0]
+  offset: false
+  palette:
+    '@': [stone, boulder]
+    '.': [grass]
+    G: [stone, null, gate]
+    Ω: [grass, null, base]
+    f: [grass, flower]
+  map: |
+    .....
+    ..f..
+    .....
+    @@.@@
+    .@.@.
+    .@.@.
+    .@G@.
+    .@.@.
+    .@.@.
+    @@.@@
+    .....
+    ..Ω..
+    .....
+  

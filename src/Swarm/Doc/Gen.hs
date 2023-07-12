@@ -27,7 +27,8 @@ import Control.Arrow (left)
 import Control.Lens (view, (^.))
 import Control.Lens.Combinators (to)
 import Control.Monad (zipWithM, zipWithM_)
-import Control.Monad.Except (ExceptT (..), liftIO, runExceptT, withExceptT)
+import Control.Monad.Except (ExceptT (..), runExceptT, withExceptT)
+import Control.Monad.IO.Class (liftIO)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (find, toList)
@@ -232,7 +233,7 @@ maxWidths = map (maximum . map T.length) . transpose
 addLink :: Text -> Text -> Text
 addLink l t = T.concat ["[", t, "](", l, ")"]
 
-tshow :: Show a => a -> Text
+tshow :: (Show a) => a -> Text
 tshow = T.pack . show
 
 -- ---------

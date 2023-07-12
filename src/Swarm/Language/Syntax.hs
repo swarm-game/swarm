@@ -16,6 +16,7 @@ module Swarm.Language.Syntax (
   Direction (..),
   AbsoluteDir (..),
   RelativeDir (..),
+  PlanarRelativeDir (..),
   directionSyntax,
   isCardinal,
   allDirs,
@@ -136,12 +137,27 @@ maxStrideRange = 64
 -- Do not alter this ordering, as there exist functions that depend on it
 -- (e.g. "nearestDirection" and "relativeTo").
 data AbsoluteDir = DEast | DNorth | DWest | DSouth
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, Enum, Bounded)
+
+directionJsonModifier :: String -> String
+directionJsonModifier = map C.toLower . L.tail
+
+directionJsonOptions :: Options
+directionJsonOptions =
+  defaultOptions
+    { constructorTagModifier = directionJsonModifier
+    }
+
+instance FromJSON AbsoluteDir where
+  parseJSON = genericParseJSON directionJsonOptions
+
+instance ToJSON AbsoluteDir where
+  toJSON = genericToJSON directionJsonOptions
 
 cardinalDirectionKeyOptions :: JSONKeyOptions
 cardinalDirectionKeyOptions =
   defaultJSONKeyOptions
-    { keyModifier = map C.toLower . L.tail
+    { keyModifier = directionJsonModifier
     }
 
 instance ToJSONKey AbsoluteDir where
@@ -153,20 +169,33 @@ instance FromJSONKey AbsoluteDir where
 -- | A relative direction is one which is defined with respect to the
 --   robot's frame of reference; no special capability is needed to
 --   use them.
-data RelativeDir = DLeft | DRight | DBack | DForward | DDown
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
+data RelativeDir = DPlanar PlanarRelativeDir | DDown
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
+
+-- | Caution: Do not alter this ordering, as there exist functions that depend on it
+-- (e.g. "nearestDirection" and "relativeTo").
+data PlanarRelativeDir = DForward | DLeft | DBack | DRight
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, Enum, Bounded)
+
+instance FromJSON PlanarRelativeDir where
+  parseJSON = genericParseJSON directionJsonOptions
+
+instance ToJSON PlanarRelativeDir where
+  toJSON = genericToJSON directionJsonOptions
 
 -- | The type of directions. Used /e.g./ to indicate which way a robot
 --   will turn.
 data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
 
--- | Direction name is generated from Direction data constuctor
+-- | Direction name is generated from Direction data constructor
 -- e.g. DLeft becomes "left"
 directionSyntax :: Direction -> Text
 directionSyntax d = toLower . T.tail . from $ case d of
   DAbsolute x -> show x
-  DRelative x -> show x
+  DRelative x -> case x of
+    DPlanar y -> show y
+    _ -> show x
 
 -- | Check if the direction is absolute (e.g. 'north' or 'south').
 isCardinal :: Direction -> Bool
@@ -175,7 +204,7 @@ isCardinal = \case
   _ -> False
 
 allDirs :: [Direction]
-allDirs = map DAbsolute Util.listEnums <> map DRelative Util.listEnums
+allDirs = map DAbsolute Util.listEnums <> map DRelative (DDown : map DPlanar Util.listEnums)
 
 ------------------------------------------------------------
 -- Constants
@@ -269,6 +298,8 @@ data Const
     Scout
   | -- | Get the current x, y coordinates
     Whereami
+  | -- | Get the x, y coordinates of a named waypoint, by index
+    Waypoint
   | -- | Locate the closest instance of a given entity within the rectangle
     -- specified by opposite corners, relative to the current location.
     Detect
@@ -664,6 +695,12 @@ constInfo c = case c of
       , T.unwords ["Has a max range of", T.pack $ show maxScoutRange, "units."]
       ]
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
+  Waypoint ->
+    command 2 Intangible . doc "Get the x, y coordinates of a named waypoint, by index" $
+      [ "Since waypoint names can have plural multiplicity, returns a tuple of (count, (x, y))."
+      , "The supplied index will be wrapped automatically, modulo the waypoint count."
+      , "A robot can use the count to know whether they have iterated over the full waypoint circuit."
+      ]
   Detect ->
     command 2 Intangible . doc "Detect an entity within a rectangle." $
       ["Locate the closest instance of a given entity within the rectangle specified by opposite corners, relative to the current location."]

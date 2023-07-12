@@ -3,21 +3,20 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
-module Swarm.Game.Scenario.WorldDescription where
+module Swarm.Game.Scenario.Topography.WorldDescription where
 
-import Data.Aeson.Key qualified as Key
-import Data.Aeson.KeyMap qualified as KeyMap
-import Data.Text (Text)
-import Data.Text qualified as T
+import Data.Coerce
+import Data.Maybe (catMaybes)
 import Data.Yaml as Y
 import Swarm.Game.Entity
 import Swarm.Game.Location
-import Swarm.Game.Scenario.Cell
-import Swarm.Game.Scenario.EntityFacade
 import Swarm.Game.Scenario.RobotLookup
-import Swarm.Game.Scenario.WorldPalette
+import Swarm.Game.Scenario.Topography.Cell
+import Swarm.Game.Scenario.Topography.EntityFacade
+import Swarm.Game.Scenario.Topography.Navigation.Portal
+import Swarm.Game.Scenario.Topography.Structure qualified as Structure
+import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Util.Yaml
-import Witch (into)
 
 ------------------------------------------------------------
 -- World description
@@ -33,6 +32,7 @@ data PWorldDescription e = WorldDescription
   , palette :: WorldPalette e
   , ul :: Location
   , area :: [[PCell e]]
+  , navigation :: Navigation
   }
   deriving (Eq, Show)
 
@@ -41,24 +41,27 @@ type WorldDescription = PWorldDescription Entity
 instance FromJSONE (EntityMap, RobotMap) WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
     pal <- v ..:? "palette" ..!= WorldPalette mempty
+    structureDefs <- v ..:? "structures" ..!= []
+    waypointDefs <- liftE $ v .:? "waypoints" .!= []
+    portalDefs <- liftE $ v .:? "portals" .!= []
+    placementDefs <- liftE $ v .:? "placements" .!= []
+    (initialArea, mapWaypoints) <- liftE ((v .:? "map" .!= "") >>= Structure.paintMap Nothing pal)
+
+    upperLeft <- liftE (v .:? "upperleft" .!= origin)
+
+    let struc = Structure.Structure initialArea structureDefs placementDefs $ waypointDefs <> mapWaypoints
+        Structure.MergedStructure mergedArea unmergedWaypoints = Structure.mergeStructures mempty Nothing struc
+
+    validatedLandmarks <- validateNavigation (coerce upperLeft) unmergedWaypoints portalDefs
+
     WorldDescription
       <$> v ..:? "default"
       <*> liftE (v .:? "offset" .!= False)
       <*> liftE (v .:? "scrollable" .!= True)
       <*> pure pal
-      <*> liftE (v .:? "upperleft" .!= origin)
-      <*> liftE ((v .:? "map" .!= "") >>= paintMap pal)
-
--- | "Paint" a world map using a 'WorldPalette', turning it from a raw
---   string into a nested list of 'Cell' values by looking up each
---   character in the palette, failing if any character in the raw map
---   is not contained in the palette.
-paintMap :: MonadFail m => WorldPalette e -> Text -> m [[PCell e]]
-paintMap pal = traverse (traverse toCell . into @String) . T.lines
- where
-  toCell c = case KeyMap.lookup (Key.fromString [c]) (unPalette pal) of
-    Nothing -> fail $ "Char not in world palette: " ++ show c
-    Just cell -> return cell
+      <*> pure upperLeft
+      <*> pure (map catMaybes mergedArea) -- Root-level map has no transparent cells.
+      <*> pure validatedLandmarks
 
 ------------------------------------------------------------
 -- World editor

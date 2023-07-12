@@ -1,0 +1,43 @@
+version: 1
+name: Waypoint uniqueness enforcement
+description: |
+  Waypoints can optionally be required to be unique
+attrs:
+  - name: portal_out
+    fg: "#00a2ff"
+    bg: "#0065ff"
+entities:
+  - name: telepad exit
+    display:
+      attr: portal_out
+      char: "o"
+    description:
+    - Portal exit
+    properties: [known]
+robots:
+  - name: base
+    dir: [1, 0]
+known: [tree]
+world:
+  upperleft: [1, -1]
+  default: [blank]
+  palette:
+    '.': [grass]
+    'B': [grass, null, base]
+    'p':
+      cell: [grass, telepad exit]
+      waypoint:
+        name: outportal
+        unique: True
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  map: |
+    ┌────────┐
+    │....B..p│
+    │.p......│
+    │........│
+    └────────┘

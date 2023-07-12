@@ -336,6 +336,62 @@
   properties: [portable, growable]
   growth: [100, 800]
 
+- name: linotype
+  display:
+    attr: silver
+    char: 't'
+  description:
+  - Employs hot lead typesetting to arrange glyphs into a mold for printing.
+  - |
+    An equipped `linotype` device enables the `format` command:
+  - |
+    `format : a -> text` can turn any value into a suitable text
+    representation.
+  properties: [portable]
+  capabilities: [format]
+
+- name: Elmer's glue
+  display:
+    attr: snow
+    char: 'g'
+  description:
+  - Polyvinyl acetate. Popular adhesive for crafting. Of dubious nutritional value.
+  - |
+    Facilitates the concatenation of text values.
+  - |
+    The infix operator `++ : text -> text -> text`
+    can be used to concatenate two text values.  For example,
+  - |
+    "Number of widgets: " ++ format numWidgets
+  properties: [portable]
+  capabilities: [concat]
+
+- name: caliper
+  display:
+    attr: silver
+    char: 'C'
+  description:
+  - Simple, yet accurate measuring device. Can determine the length of a text value.
+  - |
+    `chars : text -> int` computes the number of characters in a
+    `text` value.
+  properties: [portable]
+  capabilities: [charcount]
+
+- name: wedge
+  display:
+    attr: silver
+    char: 'v'
+  description:
+  - A simple machine for the textually-inclined; plain but effective.
+  - |
+    An equipped `wedge` enables the `split` command:
+  - |
+    `split : int -> text -> text * text` splits a `text` value into
+    two pieces, one before the given index and one after.
+  properties: [portable]
+  capabilities: [split]
+
 - name: string
   display:
     attr: silver
@@ -362,7 +418,7 @@
     `split : int -> text -> text * text` splits a `text` value into
     two pieces, one before the given index and one after.
   properties: [portable]
-  capabilities: [text]
+  capabilities: [format, concat, charcount, split]
 
 - name: decoder ring
   display:
@@ -763,6 +819,15 @@
     with which you can implement other commands that are safe when
     run in parallel.
   capabilities: [grab, swap, give, place, atomic]
+  properties: [portable]
+
+- name: binoculars
+  display:
+    attr: device
+    char: 'B'
+  description:
+  - Allows one to `scout` for other robots
+  capabilities: [recondir]
   properties: [portable]
 
 - name: welder

@@ -36,3 +36,5 @@
 1234-push-command.yaml
 1256-halt-command.yaml
 1295-density-command.yaml
+1138-structures
+1356-portals

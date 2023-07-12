@@ -27,7 +27,7 @@ import Data.Text.IO qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Doc.Gen (EditorType (..))
 import Swarm.Doc.Gen qualified as DocGen
-import Swarm.Game.CESK (emptyStore, initMachine)
+import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities, lookupByName)
 import Swarm.Game.Robot (LogEntry, defReqs, equippedDevices, leText, machine, robotContext, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
@@ -193,10 +193,13 @@ testScenarioSolution _ci _em =
         , testSolution (Sec 3) "Challenges/word-search"
         , testSolution (Sec 5) "Challenges/bridge-building"
         , testSolution (Sec 3) "Challenges/ice-cream"
+        , testSolution (Sec 3) "Challenges/arbitrage"
         , testSolution (Sec 5) "Challenges/gopher"
         , testSolution (Sec 5) "Challenges/hackman"
+        , testSolution (Sec 5) "Challenges/blender"
         , testSolution (Sec 10) "Challenges/hanoi"
         , testSolution (Sec 3) "Challenges/lights-out"
+        , testSolution (Sec 10) "Challenges/Sliding Puzzles/3x3"
         , testSolution Default "Challenges/friend"
         , testGroup
             "Mazes"
@@ -208,6 +211,7 @@ testScenarioSolution _ci _em =
         , testGroup
             "Ranching"
             [ testSolution Default "Challenges/Ranching/capture"
+            , testSolution (Sec 5) "Challenges/Ranching/powerset"
             , testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
             ]
         , testGroup
@@ -216,6 +220,10 @@ testScenarioSolution _ci _em =
             , testSolution Default "Challenges/Sokoban/Gadgets/no-reverse.yaml"
             , testSolution Default "Challenges/Sokoban/Gadgets/one-way.yaml"
             , testSolution Default "Challenges/Sokoban/Simple/trapdoor.yaml"
+            ]
+        , testGroup
+            "Mechanics"
+            [ testSolution Default "Mechanics/active-trapdoor.yaml"
             ]
         ]
     , testGroup
@@ -228,7 +236,7 @@ testScenarioSolution _ci _em =
                 r1Waits = g ^?! robotMap . ix 1 . to waitingUntil
                 active = IS.member 1 $ g ^. activeRobots
                 waiting = elem 1 . concat . M.elems $ g ^. waitingRobots
-            assertBool "The game should only take two ticks" $ t == 2
+            assertBool "The game should only take two ticks" $ getTickNumber t == 2
             assertBool "Robot 1 should have waiting machine" $ isJust r1Waits
             assertBool "Robot 1 should be still active" active
             assertBool "Robot 1 should not be in waiting set" $ not waiting
@@ -288,6 +296,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/1234-push-command"
         , testSolution Default "Testing/1256-halt-command"
         , testSolution Default "Testing/1295-density-command"
+        , testSolution Default "Testing/1356-portals/portals-flip-and-rotate.yaml"
         ]
     ]
  where

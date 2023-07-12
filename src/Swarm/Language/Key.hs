@@ -20,6 +20,7 @@ where
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Foldable (asum)
+import Data.Kind qualified
 import Data.List (sort, (\\))
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -102,7 +103,7 @@ specialKeyParser t = read . ('K' :) . from @Text <$> string t
 specialKeyNames :: Set Text
 specialKeyNames = S.fromList . map T.tail $ (names' @(Rep V.Key) \\ ["KChar", "KFun"])
 
-class Names' (f :: * -> *) where
+class Names' (f :: Data.Kind.Type -> Data.Kind.Type) where
   names' :: [Text]
 instance (Names' f) => Names' (M1 D t f) where
   names' = names' @f

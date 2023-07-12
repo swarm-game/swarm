@@ -14,8 +14,6 @@ module Swarm.Language.Pipeline (
   processParsedTerm,
   processTerm',
   processParsedTerm',
-  prettyTypeErr,
-  showTypeErrorPos,
   processTermEither,
 ) where
 
@@ -37,15 +35,17 @@ import Swarm.Language.Types
 import Witch
 
 -- | A record containing the results of the language processing
---   pipeline.  Put a 'Term' in, and get one of these out.
-data ProcessedTerm
-  = ProcessedTerm
-      -- | The elaborated + type-annotated term, plus types of any embedded definitions
-      TModule
-      -- | Requirements of the term
-      Requirements
-      -- | Capability context for any definitions embedded in the term
-      ReqCtx
+--   pipeline.  Put a 'Term' in, and get one of these out.  A
+--   'ProcessedTerm' contains:
+--
+--   * The elaborated + type-annotated term, plus the types of any
+--     embedded definitions ('TModule')
+--
+--   * The 'Requirements' of the term
+--
+--   * The requirements context for any definitions embedded in the
+--     term ('ReqCtx')
+data ProcessedTerm = ProcessedTerm TModule Requirements ReqCtx
   deriving (Data, Show, Eq, Generic)
 
 processTermEither :: Text -> Either String ProcessedTerm
@@ -80,25 +80,7 @@ processParsedTerm = processParsedTerm' empty empty
 processTerm' :: TCtx -> ReqCtx -> Text -> Either Text (Maybe ProcessedTerm)
 processTerm' ctx capCtx txt = do
   mt <- readTerm txt
-  first (prettyTypeErr txt) $ traverse (processParsedTerm' ctx capCtx) mt
-
-prettyTypeErr :: Text -> ContextualTypeErr -> Text
-prettyTypeErr code (CTE l te) = teLoc <> prettyText te
- where
-  teLoc = case l of
-    SrcLoc s e -> (into @Text . showLoc . fst $ getLocRange code (s, e)) <> ": "
-    NoLoc -> ""
-  showLoc (r, c) = show r ++ ":" ++ show c
-
-showTypeErrorPos :: Text -> ContextualTypeErr -> ((Int, Int), (Int, Int), Text)
-showTypeErrorPos code (CTE l te) = (minusOne start, minusOne end, msg)
- where
-  minusOne (x, y) = (x - 1, y - 1)
-
-  (start, end) = case l of
-    SrcLoc s e -> getLocRange code (s, e)
-    NoLoc -> ((1, 1), (65535, 65535)) -- unknown loc spans the whole document
-  msg = prettyText te
+  first (prettyTypeErrText txt) $ traverse (processParsedTerm' ctx capCtx) mt
 
 -- | Like 'processTerm'', but use a term that has already been parsed.
 processParsedTerm' :: TCtx -> ReqCtx -> Syntax -> Either ContextualTypeErr ProcessedTerm

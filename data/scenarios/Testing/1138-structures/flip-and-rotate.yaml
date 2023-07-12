@@ -1,0 +1,88 @@
+version: 1
+name: Structure placement (flip, rotation, masking)
+description: |
+  Define a structure and place it in the map.
+robots:
+  - name: base
+    loc: [11, 0]
+    dir: [1, 0]
+known: [flower, bit (0), bit (1)]
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+    '*': [stone, flower]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  upperleft: [-1, 1]
+  structures:
+    - name: tetromino
+      structure:
+        mask: '.'
+        palette:
+          '0': [stone, bit (0)]
+          '1': [stone, bit (1)]
+        map: |
+          10..
+          10..
+          10..
+          10..
+          1000
+          1111
+  placements:
+    - src: tetromino
+      offset: [3, -2]
+    - src: tetromino
+      offset: [9, -2]
+      orient:
+        up: east
+    - src: tetromino
+      offset: [17, -2]
+      orient:
+        up: south
+    - src: tetromino
+      offset: [23, -2]
+      orient:
+        up: west
+    - src: tetromino
+      offset: [3, -9]
+      orient:
+        up: north
+        flip: true
+    - src: tetromino
+      offset: [9, -9]
+      orient:
+        up: east
+        flip: true
+    - src: tetromino
+      offset: [17, -9]
+      orient:
+        up: south
+        flip: true
+    - src: tetromino
+      offset: [23, -9]
+      orient:
+        up: west
+        flip: true
+  map: |
+    ┌──────────────────────────────┐
+    │*..*..*..*..*..*..*..*..*..*..│
+    │.*..*..*..*..*..*..*..*..*..*.│
+    │..*..*..*..*..*..*..*..*..*..*│
+    │*..*..*..*..*..*..*..*..*..*..│
+    │.*..*..*..*..*..*..*..*..*..*.│
+    │..*..*..*..*..*..*..*..*..*..*│
+    │*..*..*..*..*..*..*..*..*..*..│
+    │.*..*..*..*..*..*..*..*..*..*.│
+    │..*..*..*..*..*..*..*..*..*..*│
+    │*..*..*..*..*..*..*..*..*..*..│
+    │.*..*..*..*..*..*..*..*..*..*.│
+    │..*..*..*..*..*..*..*..*..*..*│
+    │*..*..*..*..*..*..*..*..*..*..│
+    │.*..*..*..*..*..*..*..*..*..*.│
+    │..*..*..*..*..*..*..*..*..*..*│
+    └──────────────────────────────┘

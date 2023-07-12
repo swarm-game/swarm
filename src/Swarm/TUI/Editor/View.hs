@@ -6,12 +6,12 @@ import Brick.Widgets.Center (hCenter)
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
 import Data.List qualified as L
-import Swarm.Game.Scenario.EntityFacade
+import Swarm.Game.Scenario.Topography.Area qualified as EA
+import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
-import Swarm.TUI.Editor.Area qualified as EA
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Name

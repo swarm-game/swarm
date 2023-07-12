@@ -19,7 +19,8 @@ module Swarm.Doc.Pedagogy (
 import Control.Arrow ((&&&))
 import Control.Lens (universe, view)
 import Control.Monad (guard, (<=<))
-import Control.Monad.Except (ExceptT (..), liftIO)
+import Control.Monad.Except (ExceptT (..))
+import Control.Monad.IO.Class (liftIO)
 import Data.List (foldl', intercalate, sort, sortOn)
 import Data.List.Extra (zipFrom)
 import Data.Map (Map)
@@ -183,7 +184,7 @@ renderUsagesMarkdown (CoverageInfo (TutorialInfo (s, si) idx _sCmds dCmds) novel
       , renderTutorialTitle idx s
       ]
 
-renderTutorialTitle :: Show a => a -> Scenario -> Text
+renderTutorialTitle :: (Show a) => a -> Scenario -> Text
 renderTutorialTitle idx s =
   T.unwords
     [ T.pack $ show idx <> ":"

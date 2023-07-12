@@ -1,3 +1,4 @@
+arbitrage.yaml
 chess_horse.yaml
 bridge-building.yaml
 maypole.yaml
@@ -11,7 +12,9 @@ hackman.yaml
 lights-out.yaml
 bucket-brigade.yaml
 wolf-goat-cabbage.yaml
+blender.yaml
 friend.yaml
 Mazes
 Ranching
 Sokoban
+Sliding Puzzles

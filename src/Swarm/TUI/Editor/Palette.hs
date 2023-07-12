@@ -21,18 +21,20 @@ import Swarm.Game.Display (Display, defaultChar)
 import Swarm.Game.Entity (entitiesByName)
 import Swarm.Game.Location
 import Swarm.Game.Scenario
-import Swarm.Game.Scenario.Cell
-import Swarm.Game.Scenario.EntityFacade
-import Swarm.Game.Scenario.WorldPalette
+import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..), getAreaDimensions)
+import Swarm.Game.Scenario.Topography.Cell
+import Swarm.Game.Scenario.Topography.EntityFacade
+import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
+import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainType (BlankT), getTerrainDefaultPaletteChar)
-import Swarm.TUI.Editor.Area (AreaDimensions (..), getAreaDimensions)
 import Swarm.TUI.Editor.Json (SkeletonScenario (SkeletonScenario))
 import Swarm.Util (binTuples, histogram)
 import Swarm.Util qualified as U
 
-makeSuggestedPalette :: Maybe Scenario -> [[CellPaintDisplay]] -> KM.KeyMap CellPaintDisplay
+makeSuggestedPalette :: Maybe Scenario -> [[CellPaintDisplay]] -> KM.KeyMap (AugmentedCell EntityFacade)
 makeSuggestedPalette maybeOriginalScenario cellGrid =
   KM.fromMapText
+    . M.map (AugmentedCell Nothing)
     . M.fromList
     . M.elems
     -- NOTE: the left-most maps take precedence!
@@ -83,7 +85,7 @@ makeSuggestedPalette maybeOriginalScenario cellGrid =
 
   originalPalette :: KM.KeyMap CellPaintDisplay
   originalPalette =
-    KM.map toCellPaintDisplay $
+    KM.map (toCellPaintDisplay . standardCell) $
       maybe mempty (unPalette . palette . (^. scenarioWorld)) maybeOriginalScenario
 
   pairsWithDisplays :: Map (TerrainWith EntityName) (T.Text, CellPaintDisplay)
@@ -125,6 +127,7 @@ constructScenario maybeOriginalScenario cellGrid =
       , palette = WorldPalette suggestedPalette
       , ul = upperLeftCoord
       , area = cellGrid
+      , navigation = Navigation mempty mempty
       }
 
   suggestedPalette = makeSuggestedPalette maybeOriginalScenario cellGrid
