@@ -519,7 +519,7 @@ createLogEntry source msg = do
   rn <- use robotName
   time <- use ticks
   loc <- use robotLocation
-  pure $ LogEntry time source rn rid (Just loc) msg
+  pure $ LogEntry time source rn rid (Located loc) msg
 
 -- | Print some text via the robot's log.
 traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => LogSource -> Text -> m LogEntry
@@ -1617,17 +1617,14 @@ execConst c vs s k = do
         loc <- use robotLocation
         m <- traceLog Said msg -- current robot will inserted to robot set, so it needs the log
         emitMessage m
-        let manhattanToLog :: Cosmo Location -> Maybe (Cosmo Location) -> Maybe Int32
-            -- Measures the Manhattan distance between a robot and a (Maybe) log location.
-            -- If log location is Nothing, it is \"omnipresent\" and therefore distance is zero.
-            manhattanToLog robLoc maybeLogLoc = case maybeLogLoc of
-              Just logLoc -> cosmoMeasure manhattan robLoc logLoc
-              Nothing -> Just 0
+        let measureToLog robLoc rawLogLoc = case rawLogLoc of
+              Located logLoc -> cosmoMeasure manhattan robLoc logLoc
+              Omnipresent -> Measurable 0
             addLatestClosest rl = \case
               Seq.Empty -> Seq.singleton m
               es Seq.:|> e
-                | e ^. leTime < m ^. leTime -> es |> e |> m
-                | (cmpManhattan `on` (manhattanToLog rl . view leLocation)) e m -> es |> m
+                | e `isEarlierThan` m -> es |> e |> m
+                | e `isFartherThan` m -> es |> m
                 | otherwise -> es |> e
              where
               isEarlierThan = (<) `on` (^. leTime)
@@ -2658,7 +2655,9 @@ isPrivilegedBot = (||) <$> use systemRobot <*> use creativeMode
 -- Requirement is waived if the bot is privileged.
 isNearbyOrExempt :: Bool -> Cosmo Location -> Cosmo Location -> Bool
 isNearbyOrExempt privileged myLoc otherLoc =
-  privileged || maybe False (<= 1) (cosmoMeasure manhattan myLoc otherLoc)
+  privileged || case cosmoMeasure manhattan myLoc otherLoc of
+    InfinitelyFar -> False
+    Measurable x -> x <= 1
 
 grantAchievement ::
   (Has (State GameState) sig m, Has (Lift IO) sig m) =>

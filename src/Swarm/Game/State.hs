@@ -693,11 +693,16 @@ messageNotifications = to getNotif
 messageIsRecent :: GameState -> LogEntry -> Bool
 messageIsRecent gs e = addTicks 1 (e ^. leTime) >= gs ^. ticks
 
--- | If the log location is 'Nothing', consider it omnipresent.
+-- | Reconciles the possibilities of log messages being
+-- omnipresent and robots being in different worlds
 messageIsFromNearby :: Cosmo Location -> LogEntry -> Bool
-messageIsFromNearby l e = maybe True f (e ^. leLocation)
+messageIsFromNearby l e = case e ^. leLocation of
+  Omnipresent -> True
+  Located x -> f x
  where
-  f logLoc = maybe False (<= hearingDistance) $ cosmoMeasure manhattan l logLoc
+  f logLoc = case cosmoMeasure manhattan l logLoc of
+    InfinitelyFar -> False
+    Measurable x -> x <= hearingDistance
 
 -- | Given a current mapping from robot names to robots, apply a
 --   'ViewCenterRule' to derive the location it refers to.  The result
@@ -787,18 +792,22 @@ data RobotRange
 --     both radii.
 --   * If the base has an @antenna@ installed, it also doubles both radii.
 focusedRange :: GameState -> Maybe RobotRange
-focusedRange g = computedRange <$ focusedRobot g
+focusedRange g = checkRange <$ focusedRobot g
  where
-  computedRange
-    | g ^. creativeMode || g ^. worldScrollable || r <= minRadius = Close
-    | r > maxRadius = Far
-    | otherwise = MidRange $ (r - minRadius) / (maxRadius - minRadius)
+  checkRange = case r of
+    InfinitelyFar -> Far
+    Measurable r' -> computedRange r'
+
+  computedRange r'
+    | g ^. creativeMode || g ^. worldScrollable || r' <= minRadius = Close
+    | r' > maxRadius = Far
+    | otherwise = MidRange $ (r' - minRadius) / (maxRadius - minRadius)
 
   -- Euclidean distance from the base to the view center.
-  r = fromMaybe 1000000000 $ do
+  r = case g ^. robotMap . at 0 of
     -- if the base doesn't exist, we have bigger problems
-    br <- g ^. robotMap . at 0
-    cosmoMeasure euclidean (g ^. viewCenter) (br ^. robotLocation)
+    Nothing -> InfinitelyFar
+    Just br -> cosmoMeasure euclidean (g ^. viewCenter) (br ^. robotLocation)
 
   -- See whether the base or focused robot have antennas installed.
   baseInv, focInv :: Maybe Inventory
@@ -1102,8 +1111,8 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       & knownEntities .~ scenario ^. scenarioKnown
       & worldNavigation .~ scenario ^. scenarioNavigation
       & multiWorld .~ allSubworldsMap theSeed
-      -- TODO: Should we allow subworlds to have their own scrollability?
-      -- Leaning toward yes, but for now just adopt the root world scrollability
+      -- TODO (#1370): Should we allow subworlds to have their own scrollability?
+      -- Leaning toward no , but for now just adopt the root world scrollability
       -- as being universal.
       & worldScrollable .~ NE.head (scenario ^. scenarioWorlds) ^. to scrollable
       & viewCenterRule .~ VCRobot baseID
