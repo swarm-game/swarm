@@ -58,7 +58,7 @@ instance (FromJSON a) => FromJSON (Cosmo a) where
 defaultCosmoLocation :: Cosmo Location
 defaultCosmoLocation = Cosmo defaultRootSubworldName origin
 
--- | Returns "Nothing" if not within the same subworld.
+-- | Returns 'Nothing' if not within the same subworld.
 -- TODO: Define a new datatype isomorphic to Maybe for this.
 cosmoMeasure :: (a -> a -> b) -> Cosmo a -> Cosmo a -> Maybe b
 cosmoMeasure f a b = do
