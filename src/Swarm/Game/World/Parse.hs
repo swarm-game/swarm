@@ -8,7 +8,7 @@
 module Swarm.Game.World.Parse where
 
 import Control.Monad (MonadPlus, void)
-import Control.Monad.Combinators.Expr (makeExprParser)
+import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
@@ -37,7 +37,7 @@ sepByNE p sep = NE.fromList <$> p `sepBy1` sep
 -- Lexing
 
 reservedWords :: [Text]
-reservedWords = ["true", "false", "seed", "x", "y", "hash", "let", "in", "overlay", "hcat", "vcat"]
+reservedWords = ["not", "true", "false", "seed", "x", "y", "hash", "let", "in", "overlay", "hcat", "vcat", "if", "then", "else", "perlin"]
 
 -- | Skip spaces and comments.
 sc :: Parser ()
@@ -106,6 +106,8 @@ parseWExpAtom =
     <|> WSeed <$ reserved "seed"
     <|> WCoord <$> (X <$ reserved "x" <|> Y <$ reserved "y")
     <|> WHash <$ reserved "hash"
+    <|> parseIf
+    <|> parsePerlin
     <|> parseLet
     <|> parseOverlay
     <|> parseCat
@@ -113,10 +115,38 @@ parseWExpAtom =
     <|> parens parseWExp
 
 parseWExp :: Parser WExp
-parseWExp = makeExprParser parseWExpAtom table
+parseWExp =
+  makeExprParser
+    parseWExpAtom
+    [
+      [ Prefix (unary Not <$ reserved "not")
+      , Prefix (unary Neg <$ symbol "-")
+      ]
+    ,
+      [ InfixL (binary Mul <$ symbol "*")
+      , InfixL (binary Div <$ symbol "/")
+      , InfixL (binary Mod <$ symbol "%")
+      ]
+    ,
+      [ InfixL (binary Add <$ symbol "+")
+      , InfixL (binary Sub <$ symbol "-")
+      ]
+    ,
+      [ InfixN (binary Eq <$ symbol "==")
+      , InfixN (binary Neq <$ symbol "/=")
+      , InfixN (binary Lt <$ symbol "<")
+      , InfixN (binary Leq <$ symbol "<=")
+      , InfixN (binary Gt <$ symbol ">")
+      , InfixN (binary Geq <$ symbol ">=")
+      ]
+    , [InfixR (binary And <$ symbol "&&")]
+    , [InfixR (binary Or <$ symbol "||")]
+    ]
  where
-  table = []
+  unary op x = WOp op [x]
+  binary op x1 x2 = WOp op [x1, x2]
 
+-- XXX syntax for cells??  they will eventually have waypoints, portals, etc...
 parseCell :: Parser WExp
 parseCell =
   braces $
@@ -136,6 +166,21 @@ parseTerrain = do
   case mt of
     Just t -> return t
     Nothing -> fail "XXX"
+
+parseIf :: Parser WExp
+parseIf =
+  (\i t e -> WOp If [i, t, e])
+    <$> (reserved "if" *> parseWExp)
+    <*> (reserved "then" *> parseWExp)
+    <*> (reserved "else" *> parseWExp)
+
+parsePerlin :: Parser WExp
+parsePerlin =
+  (\s o k p -> WOp Perlin [s, o, k, p])
+    <$> (reserved "perlin" *> parseWExpAtom)
+    <*> parseWExpAtom
+    <*> parseWExpAtom
+    <*> parseWExpAtom
 
 parseLet :: Parser WExp
 parseLet =

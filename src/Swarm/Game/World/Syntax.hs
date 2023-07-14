@@ -25,7 +25,6 @@ module Swarm.Game.World.Syntax (
 where
 
 -- XXX to do:
---   - finish parser --- parse operators
 --   - finish inference/compiling code
 --   - add lambdas?
 --   - convert from Maybe to generic monad with effects
@@ -33,6 +32,7 @@ where
 --   - pass in EntityMap, RobotMap etc. + resolve cell values
 --   - to evaluate, pass in things like seed
 --   - finish parser for structures
+--   - incorporate into parser for scenario descriptions
 
 import Data.List.NonEmpty qualified as NE
 import Data.Monoid (Last (..))
@@ -49,6 +49,9 @@ import Swarm.Game.World.Coords
 class Empty e where
   empty :: e
 
+instance (Empty a) => Empty (World a) where
+  empty = const empty
+
 class Over m where
   (<+>) :: m -> m -> m
 
@@ -63,9 +66,6 @@ instance Over Double where
 
 instance (Over a) => Over (World a) where
   w1 <+> w2 = \c -> w1 c <+> w2 c
-
-instance (Empty a) => Empty (World a) where
-  empty = const empty
 
 ------------------------------------------------------------
 -- Bits and bobs

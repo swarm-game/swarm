@@ -215,6 +215,9 @@ checkIntegral :: TType ty -> ((Integral ty) => a) -> Maybe a
 checkIntegral (TTyBase BInt) a = Just a
 checkIntegral _ _ = Nothing
 
+checkEmpty :: TType ty -> ((Empty ty) => a) -> Maybe a
+checkEmpty _ _ = Nothing -- XXX fix me
+
 checkOver :: TType ty -> ((Over ty) => a) -> Maybe a
 checkOver (TTyBase BBool) a = Just a
 checkOver (TTyBase BInt) a = Just a
@@ -311,7 +314,7 @@ inferOp [SomeType tyA] If = return $ SomeTerm (TTyBool :->: tyA :->: tyA :->: ty
 inferOp _ Perlin = return $ SomeTerm (TTyInt :->: TTyInt :->: TTyFloat :->: TTyFloat :->: TTyWorld TTyFloat) (embed CPerlin)
 inferOp [SomeType tyA] (Reflect r) = return $ SomeTerm (TTyWorld tyA :->: TTyWorld tyA) (embed (CReflect r))
 inferOp [SomeType tyA] (Rot r) = return $ SomeTerm (TTyWorld tyA :->: TTyWorld tyA) (embed (CRot r))
-inferOp [SomeType tyA] Mask = return $ SomeTerm (TTyWorld TTyBool :->: TTyWorld tyA :->: TTyWorld tyA) (embed CMask)
+inferOp [SomeType tyA] Mask = SomeTerm (TTyWorld TTyBool :->: TTyWorld tyA :->: TTyWorld tyA) <$> checkEmpty tyA (embed CMask)
 inferOp _ _ = error "bad call to inferOp!!"
 
 typeArgsFor :: Op -> [SomeTerm g] -> [SomeType]
