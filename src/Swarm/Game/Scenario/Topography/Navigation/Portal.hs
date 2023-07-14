@@ -86,7 +86,7 @@ failWaypointLookup (WaypointName rawName) lookupResult = case lookupResult of
 -- The following constraints must be enforced:
 -- * portals based on plural waypoint multiplicity can have multiple entrances but only a single exit
 -- * no two portals share the same entrance location
--- * waypoint uniqueness within a subworld when the "unique" flag is specified
+-- * waypoint uniqueness within a subworld when the 'unique' flag is specified
 --
 -- == Data flow:
 --
@@ -183,7 +183,7 @@ validatePortals (Navigation wpUniverse partialPortals) = do
       M.lookup wpWrapper subworldWaypoints
 
 -- | A portal can be marked as \"consistent\", meaning that it represents
--- a conventional physical passage rather than a "magical" teleportation.
+-- a conventional physical passage rather than a \"magical\" teleportation.
 --
 -- If there exists more than one \"consistent\" portal between the same
 -- two subworlds, then the portal locations must be spatially consistent
@@ -195,7 +195,7 @@ validatePortals (Navigation wpUniverse partialPortals) = do
 -- * The coordinates of all \"consistent\" portal locations in Subworld A
 --   are subtracted from the corresponding coordinates in Subworld B. It
 --   does not matter which are exits vs. entrances.
--- * The resulting "vector" from every pair must be equal.
+-- * The resulting \"vector\" from every pair must be equal.
 ensureSpatialConsistency ::
   MonadFail m =>
   -- Navigation (M.Map SubworldName) WaypointName ->

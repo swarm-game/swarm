@@ -488,7 +488,7 @@ robotsAtLocation loc gs =
     . view robotsByLocation
     $ gs
 
--- | Get a list of all the robots that are "watching" by location.
+-- | Get a list of all the robots that are \"watching\" by location.
 robotsWatching :: Lens' GameState (Map (Cosmo Location) (S.Set RID))
 
 -- | Get all the robots within a given Manhattan distance from a
@@ -570,13 +570,13 @@ currentScenarioPath :: Lens' GameState (Maybe FilePath)
 --   robots know what they are without having to scan them.
 knownEntities :: Lens' GameState [Text]
 
--- | Includes a "Map" of named locations and an
+-- | Includes a 'Map' of named locations and an
 -- "Edge list" (graph) that maps portal entrances to exits
 worldNavigation :: Lens' GameState (Navigation (M.Map SubworldName) Location)
 
 -- | The current state of the world (terrain and entities only; robots
---   are stored in the "robotMap").  "Int" is used instead of
---   "TerrainType" because we need to be able to store terrain values in
+--   are stored in the 'robotMap').  'Int' is used instead of
+--   'TerrainType' because we need to be able to store terrain values in
 --   unboxed tile arrays.
 multiWorld :: Lens' GameState (W.MultiWorld Int Entity)
 
@@ -585,8 +585,8 @@ worldScrollable :: Lens' GameState Bool
 
 -- | The current center of the world view. Note that this cannot be
 --   modified directly, since it is calculated automatically from the
---   "viewCenterRule".  To modify the view center, either set the
---   "viewCenterRule", or use "modifyViewCenter".
+--   'viewCenterRule'.  To modify the view center, either set the
+--   'viewCenterRule', or use 'modifyViewCenter'.
 viewCenter :: Getter GameState (Cosmo Location)
 viewCenter = to _viewCenter
 
@@ -693,7 +693,7 @@ messageNotifications = to getNotif
 messageIsRecent :: GameState -> LogEntry -> Bool
 messageIsRecent gs e = addTicks 1 (e ^. leTime) >= gs ^. ticks
 
--- | If the log location is "Nothing", consider it omnipresent.
+-- | If the log location is 'Nothing', consider it omnipresent.
 messageIsFromNearby :: Cosmo Location -> LogEntry -> Bool
 messageIsFromNearby l e = maybe True f (e ^. leLocation)
  where
@@ -701,7 +701,7 @@ messageIsFromNearby l e = maybe True f (e ^. leLocation)
 
 -- | Given a current mapping from robot names to robots, apply a
 --   'ViewCenterRule' to derive the location it refers to.  The result
---   is @Maybe@ because the rule may refer to a robot which does not
+--   is 'Maybe' because the rule may refer to a robot which does not
 --   exist.
 applyViewCenterRule :: ViewCenterRule -> IntMap Robot -> Maybe (Cosmo Location)
 applyViewCenterRule (VCLocation l) _ = Just l
@@ -972,7 +972,7 @@ deleteRobot rn = do
     removeRobotFromLocationMap (robot ^. robotLocation) rn
 
 -- | Makes sure empty sets don't hang around in the
--- robotsByLocation map.  We don't want a key with an
+-- 'robotsByLocation' map.  We don't want a key with an
 -- empty set at every location any robot has ever
 -- visited!
 removeRobotFromLocationMap ::

@@ -1619,7 +1619,7 @@ execConst c vs s k = do
         emitMessage m
         let manhattanToLog :: Cosmo Location -> Maybe (Cosmo Location) -> Maybe Int32
             -- Measures the Manhattan distance between a robot and a (Maybe) log location.
-            -- If log location is Nothing, it is "omnipresent" and therefore distance is zero.
+            -- If log location is Nothing, it is \"omnipresent\" and therefore distance is zero.
             manhattanToLog robLoc maybeLogLoc = case maybeLogLoc of
               Just logLoc -> cosmoMeasure manhattan robLoc logLoc
               Nothing -> Just 0
