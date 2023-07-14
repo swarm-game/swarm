@@ -1619,7 +1619,7 @@ execConst c vs s k = do
         emitMessage m
         let manhattanToLog :: Cosmo Location -> Maybe (Cosmo Location) -> Maybe Int32
             -- Measures the Manhattan distance between a robot and a (Maybe) log location.
-            -- If log location is Nothing, it is "omnipresent" and therefore distance is zero.
+            -- If log location is Nothing, it is \"omnipresent\" and therefore distance is zero.
             manhattanToLog robLoc maybeLogLoc = case maybeLogLoc of
               Just logLoc -> cosmoMeasure manhattan robLoc logLoc
               Nothing -> Just 0
@@ -1630,7 +1630,7 @@ execConst c vs s k = do
                 | (cmpManhattan `on` (manhattanToLog rl . view leLocation)) e m -> es |> m
                 | otherwise -> es |> e
              where
-              -- Returns True if M1 is not smaller than M2. "Nothing" is treated as infinite.
+              -- Returns True if M1 is not smaller than M2. 'Nothing' is treated as infinite.
               -- TODO: Should probably define a new, parameterized datatype isomorphic to
               -- Maybe that makes this convention explicit.
               cmpManhattan maybeM1 maybeM2 = case maybeM1 of

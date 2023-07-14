@@ -80,7 +80,7 @@ displayEntityCell worldEditor g coords =
     e
       `hasProperty` Known
       || (e ^. entityName)
-        `elem` (g ^. knownEntities)
+      `elem` (g ^. knownEntities)
       || case hidingMode g of
         HideAllEntities -> False
         HideNoEntity -> True

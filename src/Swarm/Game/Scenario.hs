@@ -134,7 +134,6 @@ instance FromJSONE EntityMap Scenario where
       let rsMap = buildRobotMap rs
 
       rootLevelSharedStructures <- localE (,rsMap) $ v ..:? "structures" ..!= []
-      -- fail $ show rootLevelSharedStructures
 
       allWorlds <- localE (\x -> (rootLevelSharedStructures :: Structure.InheritedStructureDefs, (x, rsMap))) $ do
         rootWorld <- v ..: "world"
