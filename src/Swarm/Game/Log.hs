@@ -20,6 +20,7 @@ module Swarm.Game.Log (
 
   -- * Robot log entries
   LogEntry (..),
+  LogLocation (..),
   leText,
   leSource,
   leRobotName,
@@ -51,6 +52,9 @@ data LogSource
     ErrorTrace ErrorLevel
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
+data LogLocation a = Omnipresent | Located a
+  deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
+
 -- | An entry in a robot's log.
 data LogEntry = LogEntry
   { _leTime :: TickNumber
@@ -62,11 +66,8 @@ data LogEntry = LogEntry
   -- ^ The name of the robot that generated the entry.
   , _leRobotID :: Int
   -- ^ The ID of the robot that generated the entry.
-  , _leLocation :: Maybe (Cosmo Location)
+  , _leLocation :: LogLocation (Cosmo Location)
   -- ^ Location of the robot at log entry creation.
-  -- "Nothing" represents omnipresence for the purpose of proximity.
-  -- TODO: Define a type isomorphic to Maybe that makes this explict.
-  -- C.f. "cosmoMeasure" which will have its own type that means the opposite.
   , _leText :: Text
   -- ^ The text of the log entry.
   }
