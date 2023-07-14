@@ -6,7 +6,6 @@
 module Swarm.Game.Universe where
 
 import Control.Lens (makeLenses, view)
-import Control.Monad (guard)
 import Data.Function (on)
 import Data.Int (Int32)
 import Data.Text (Text)
@@ -58,12 +57,14 @@ instance (FromJSON a) => FromJSON (Cosmo a) where
 defaultCosmoLocation :: Cosmo Location
 defaultCosmoLocation = Cosmo defaultRootSubworldName origin
 
--- | Returns 'Nothing' if not within the same subworld.
--- TODO: Define a new datatype isomorphic to Maybe for this.
-cosmoMeasure :: (a -> a -> b) -> Cosmo a -> Cosmo a -> Maybe b
-cosmoMeasure f a b = do
-  guard $ ((==) `on` view subworld) a b
-  pure $ (f `on` view planar) a b
+data DistanceMeasure b = Measurable b | InfinitelyFar
+  deriving (Eq, Ord)
+
+-- | Returns 'InfinitelyFar' if not within the same subworld.
+cosmoMeasure :: (a -> a -> b) -> Cosmo a -> Cosmo a -> DistanceMeasure b
+cosmoMeasure f a b
+  | ((/=) `on` view subworld) a b = InfinitelyFar
+  | otherwise = Measurable $ (f `on` view planar) a b
 
 offsetBy :: Cosmo Location -> V2 Int32 -> Cosmo Location
 offsetBy loc v = fmap (.+^ v) loc

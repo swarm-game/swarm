@@ -272,7 +272,7 @@ logEvent src (who, rid) msg el =
     & notificationsCount %~ succ
     & notificationsContent %~ (l :)
  where
-  l = LogEntry (TickNumber 0) src who rid Nothing msg
+  l = LogEntry (TickNumber 0) src who rid Omnipresent msg
 
 -- | Create a 'GameStateConfig' record from the 'RuntimeState'.
 mkGameStateConfig :: RuntimeState -> GameStateConfig
