@@ -58,7 +58,7 @@ getContentAt editor w coords =
 
   entityWithOverride = (Ref <$> underlyingCellEntity) <|> maybeEntityOverride
   underlyingCellEntity = W.lookupCosmoEntity coords w
-  underlyingCellTerrain = W.lookupCosmosTerrain coords w
+  underlyingCellTerrain = W.lookupCosmoTerrain coords w
 
 getTerrainAt ::
   WorldEditor Name ->
