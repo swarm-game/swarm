@@ -1,6 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -12,8 +14,13 @@
 module Swarm.Game.World.Compile where
 
 import Data.Kind (Type)
+import Swarm.Game.Location (pattern Location)
+import Swarm.Game.World.Coords (coordsToLoc)
 import Swarm.Game.World.Syntax
 import Swarm.Game.World.Typecheck
+
+-- XXX note this doesn't depend at all on WExp etc., only imports
+-- Syntax because of Over, Empty.  Should move those somewhere else?
 
 ------------------------------------------------------------
 -- Bracket abstraction
@@ -35,10 +42,10 @@ data BTerm :: Type -> Type where
   BApp :: BTerm (a -> b) -> BTerm a -> BTerm b
   BConst :: Const a -> BTerm a
 
--- Direct interpreter for BTerm, for debugging/comparison.
-interpBTerm :: BTerm ty -> ty
-interpBTerm (BApp f x) = interpBTerm f (interpBTerm x)
-interpBTerm (BConst c) = interpConst c
+-- -- Direct interpreter for BTerm, for debugging/comparison.
+-- interpBTerm :: BTerm ty -> ty
+-- interpBTerm (BApp f x) = interpBTerm f (interpBTerm x)
+-- interpBTerm (BConst c) = interpConst c
 
 deriving instance Show (BTerm t)
 
@@ -55,56 +62,56 @@ instance HasConst BTerm where
 -- bracket abstraction algorithm.
 data OTerm :: [Type] -> Type -> Type where
   -- Embedded closed term.
-  OC :: BTerm a -> OTerm g a
+  E :: BTerm a -> OTerm g a
   -- Reference to the innermost/top environment variable, i.e. Z
-  OV :: OTerm (a ': g) a
+  V :: OTerm (a ': g) a
   -- Internalize the topmost env variable as a function argument
-  ON :: OTerm g (a -> b) -> OTerm (a ': g) b
+  N :: OTerm g (a -> b) -> OTerm (a ': g) b
   -- Ignore the topmost env variable
-  OW :: OTerm g b -> OTerm (a ': g) b
+  W :: OTerm g b -> OTerm (a ': g) b
 
 instance HasConst (OTerm g) where
-  embed = OC . embed
+  embed = E . embed
 
 -- Bracket abstraction: convert the TTerm to an OTerm, then project
--- out the embedded BTerm.  GHC can see this is total since OC is the
+-- out the embedded BTerm.  GHC can see this is total since E is the
 -- only constructor that can produce an OTerm with an empty
 -- environment.
 bracket :: TTerm '[] a -> BTerm a
 bracket t = case conv t of
-  OC t' -> t'
+  E t' -> t'
 
 -- Type-preserving conversion from TTerm to OTerm (conv + the
 -- Applicable instance).  Taken directly from Kiselyov.
 conv :: TTerm g a -> OTerm g a
-conv (TVar VZ) = OV
-conv (TVar (VS x)) = OW (conv (TVar x))
+conv (TVar VZ) = V
+conv (TVar (VS x)) = W (conv (TVar x))
 conv (TLam t) = case conv t of
-  OV -> OC (BConst I)
-  OC d -> OC (K .$ d)
-  ON e -> e
-  OW e -> K .$ e
+  V -> E (BConst I)
+  E d -> E (K .$$ d)
+  N e -> e
+  W e -> K .$$ e
 conv (TApp t1 t2) = conv t1 $$ conv t2
 conv (TConst c) = embed c
 
 instance Applicable (OTerm g) where
-  OW e1 $$ OW e2 = OW (e1 $$ e2)
-  OW e $$ OC d = OW (e $$ OC d)
-  OC d $$ OW e = OW (OC d $$ e)
-  OW e $$ OV = ON e
-  OV $$ OW e = ON (OC (C .$. I) $$ e)
-  OW e1 $$ ON e2 = ON (B .$ e1 $$ e2)
-  ON e1 $$ OW e2 = ON (C .$ e1 $$ e2)
-  ON e1 $$ ON e2 = ON (S .$ e1 $$ e2)
-  ON e $$ OV = ON (S .$ e $. I)
-  OV $$ ON e = ON (OC (S .$. I) $$ e)
-  OC d $$ ON e = ON (OC (B .$ d) $$ e)
-  OC d $$ OV = ON (OC d)
-  OV $$ OC d = ON (OC (C .$. I $$ d))
-  ON e $$ OC d = ON (OC (C .$. C $$ d) $$ e)
-  OC d1 $$ OC d2 = OC (d1 $$ d2)
+  W e1 $$ W e2 = W (e1 $$ e2)
+  W e $$ E d = W (e $$ E d)
+  E d $$ W e = W (E d $$ e)
+  W e $$ V = N e
+  V $$ W e = N (E (C .$$. I) $$ e)
+  W e1 $$ N e2 = N (B .$$ e1 $$ e2)
+  N e1 $$ W e2 = N (C .$$ e1 $$ e2)
+  N e1 $$ N e2 = N (S .$$ e1 $$ e2)
+  N e $$ V = N (S .$$ e $$. I)
+  V $$ N e = N (E (S .$$. I) $$ e)
+  E d $$ N e = N (E (B .$$ d) $$ e)
+  E d $$ V = N (E d)
+  V $$ E d = N (E (C .$$. I $$ d))
+  N e $$ E d = N (E (C .$$. C $$ d) $$ e)
+  E d1 $$ E d2 = E (d1 $$ d2)
 
--- GHC can tell that OV $$ OV is impossible (it would be ill-typed)
+-- GHC can tell that V $$ V is impossible (it would be ill-typed)
 
 ------------------------------------------------------------
 -- Compiling
@@ -121,9 +128,7 @@ data CTerm a where
 
 instance Applicable CTerm where
   CFun f $$ x = f x
-  -- above only gives a non-exhaustive warning since we can't express the constraint
-  -- that CConst isn't allowed contain a function
-  _ $$ _ = error "impossible! bad call to CTerm.$$"
+  _ $$ _ = error "impossible! bad call to CTerm.$$, CConst should never contain functions"
 
 compile :: BTerm a -> CTerm a
 compile (BApp b1 b2) = compile b1 $$ compile b2
@@ -152,7 +157,7 @@ compileConst = \case
   CGeq -> binary (>=)
   CMask -> undefined
   CSeed -> undefined
-  CCoord ax -> undefined
+  CCoord ax -> CFun $ \(CConst (coordsToLoc -> Location x y)) -> CConst (fromIntegral (case ax of X -> x; Y -> y))
   CHash -> undefined
   CPerlin -> undefined
   CReflect r -> undefined

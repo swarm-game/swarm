@@ -125,6 +125,7 @@ constructScenario maybeOriginalScenario cellGrid =
       , palette = WorldPalette suggestedPalette
       , ul = upperLeftCoord
       , area = cellGrid
+      , worldProg = Nothing
       }
 
   suggestedPalette = makeSuggestedPalette maybeOriginalScenario cellGrid

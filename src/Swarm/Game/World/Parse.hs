@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
+-- FromJSON WExp
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -16,6 +18,7 @@ import Data.Monoid (Last (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Void
+import Data.Yaml (FromJSON (parseJSON), withText)
 import Swarm.Game.Terrain (TerrainType, readTerrain)
 import Swarm.Game.World.Syntax
 import Swarm.Util (failT, squote)
@@ -209,3 +212,12 @@ parseStruct = reserved "struct" *> fail "struct not implemented"
 
 runParser :: Parser a -> Text -> Either ParserError a
 runParser p = parse p ""
+
+------------------------------------------------------------
+-- JSON instance
+
+instance FromJSON WExp where
+  parseJSON = withText "World DSL program" $ \t ->
+    case runParser parseWExp t of
+      Left err -> undefined
+      Right wexp -> return wexp

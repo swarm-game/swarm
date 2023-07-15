@@ -1,0 +1,18 @@
+version: 1
+name: Test world DSL
+description: foo
+objectives:
+  - condition: |
+      return false
+solution: |
+  move
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - 3D printer
+      - logger
+world:
+  dsl: |
+    if (x + y < 2) then {dirt} else {stone}

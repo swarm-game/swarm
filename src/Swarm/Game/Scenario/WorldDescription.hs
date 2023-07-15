@@ -14,6 +14,8 @@ import Swarm.Game.Scenario.EntityFacade
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Structure qualified as Structure
 import Swarm.Game.Scenario.WorldPalette
+import Swarm.Game.World.Parse ()
+import Swarm.Game.World.Syntax
 import Swarm.Util.Yaml
 
 ------------------------------------------------------------
@@ -30,6 +32,7 @@ data PWorldDescription e = WorldDescription
   , palette :: WorldPalette e
   , ul :: Location
   , area :: [[PCell e]]
+  , worldProg :: Maybe WExp
   }
   deriving (Eq, Show)
 
@@ -52,6 +55,7 @@ instance FromJSONE (EntityMap, RobotMap) WorldDescription where
       <*> pure pal
       <*> liftE (v .:? "upperleft" .!= origin)
       <*> pure (map catMaybes mergedArea) -- Root-level map has no transparent cells.
+      <*> liftE (v .:? "dsl")
 
 ------------------------------------------------------------
 -- World editor

@@ -173,6 +173,7 @@ import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
 import Swarm.Game.World qualified as W
+import Swarm.Game.World.Eval (runWExp)
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
@@ -1158,10 +1159,11 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
   worldArray :: Array (Int32, Int32) (TerrainType, Maybe Entity)
   worldArray = listArray ((ulr, ulc), (ulr + rs - 1, ulc + cs - 1)) (concat worldGrid)
 
-  wf = case defaultTerrain of
-    Nothing ->
+  wf = case (defaultTerrain, worldProg) of
+    (_, Just wexp) -> fromMaybe (error "world fun error") . runWExp wexp
+    (Nothing, _) ->
       (if offsetOrigin then findGoodOrigin else id) . testWorld2FromArray em worldArray
-    Just (Cell t e _) -> const (worldFunFromArray worldArray (t, e))
+    (Just (Cell t e _), _) -> const (worldFunFromArray worldArray (t, e))
 
   -- Get all the robots described in cells and set their locations appropriately
   robots :: [IndexedTRobot]

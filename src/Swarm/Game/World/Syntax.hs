@@ -25,6 +25,7 @@ module Swarm.Game.World.Syntax (
 where
 
 -- XXX to do:
+--   - get something working ASAP!
 --   - finish inference/compiling code
 --   - add lambdas?
 --   - convert from Maybe to generic monad with effects
@@ -73,7 +74,7 @@ instance (Over a) => Over (World a) where
 type World b = Coords -> b
 
 data CellVal e r = CellVal (Last TerrainType) (Last e) [r]
-  deriving (Show)
+  deriving (Eq, Show)
 
 instance Over (CellVal e r) where
   CellVal t1 e1 r1 <+> CellVal t2 e2 r2 = CellVal (t1 <> t2) (e1 <> e2) (r1 <> r2)
@@ -116,7 +117,7 @@ data WExp where
   WOverlay :: NE.NonEmpty WExp -> WExp
   WCat :: Axis -> [WExp] -> WExp
   WStruct :: WorldPalette Text -> [Text] -> WExp
-  deriving (Show)
+  deriving (Eq, Show)
 
 ------------------------------------------------------------
 -- Example
