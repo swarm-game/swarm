@@ -1,0 +1,115 @@
+version: 1
+name: Subworld robots (explicit location)
+description: |
+  Demonstrate that system robots can be placed in any subworld.
+objectives:
+  - goal:
+    - |
+      `give` the "flower" to the robot underground.
+    condition: |
+      j <- robotnamed "judge";
+      as j {has "flower"}
+solution: |
+  run "scenarios/Testing/144-subworlds/_subworld-located-robots/solution.sw"
+attrs:
+  - name: portal_in
+    fg: "#ff9a00"
+    bg: "#ff5d00"
+  - name: portal_out
+    fg: "#00a2ff"
+    bg: "#0065ff"
+entities:
+  - name: telepad entrance
+    display:
+      attr: portal_in
+      char: "o"
+    description:
+    - Portal entrance
+    properties: [known]
+  - name: telepad exit
+    display:
+      attr: portal_out
+      char: "o"
+    description:
+    - Portal exit
+    properties: [known]
+robots:
+  - name: base
+    dir: [1, 0]
+    loc:
+      subworld: root
+      loc: [2, 0]
+    devices:
+      - ADT calculator
+      - antenna
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - GPS receiver
+      - grabber
+      - lambda
+      - lodestone
+      - logger
+      - strange loop
+      - treads
+  - name: judge
+    dir: [1, 0]
+    loc:
+      subworld: underground
+      loc: [4, 0]
+    system: true
+    display:
+      char: 'J'
+      invisible: false
+known: [flower, boulder]
+subworlds:
+  - name: underground
+    default: [blank]
+    palette:
+      '.': [dirt]
+      'b': [dirt, boulder]
+      't': [grass, null, judge]
+      'p':
+        cell: [dirt, telepad exit]
+        waypoint:
+          name: portal_out2
+      'P':
+        cell: [dirt, telepad entrance]
+        waypoint:
+          name: portal_in2
+    portals:
+      - entrance: portal_in2
+        exitInfo:
+          exit: portal_out1
+          subworldName: root
+    upperleft: [-1, 1]
+    map: |
+      b..b..b..b
+      .p......P.
+      b..b..b..b
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+    'f': [grass, flower]
+    'B': [grass, null, base]
+    't': [grass, null, judge]
+    'p':
+      cell: [grass, telepad exit]
+      waypoint:
+        name: portal_out1
+    'P':
+      cell: [grass, telepad entrance]
+      waypoint:
+        name: portal_in1
+  upperleft: [-1, 1]
+  portals:
+    - entrance: portal_in1
+      exitInfo:
+        exit: portal_out2
+        subworldName: underground
+  map: |
+    ..........
+    .p....f.P.
+    ..........

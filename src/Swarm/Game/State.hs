@@ -1160,6 +1160,10 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
   --   2.a. If multiple robots are specified in the map, prefer the one that
   --        is defined first within the Scenario file.
   --   2.b. If multiple robots are instantiated from the same template, then
+  --        prefer the one with a lower-indexed subworld. Note that the root
+  --        subworld is always first.
+  --   2.c. If multiple robots instantiated from the same template are in the
+  --        same subworld, then
   --        prefer the one closest to the upper-left of the screen, with higher
   --        rows given precedence over columns (i.e. first in row-major order).
   robotsByBasePrecedence = locatedRobots ++ map snd (sortOn fst genRobots)
@@ -1206,16 +1210,21 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       (maybe True (`S.member` initialCaps) . constCaps)
       allConst
 
-  -- TODO: We currently only utilize genRobots on the root world.
-  (genRobots, _wf) = buildWorld em $ NE.head $ scenario ^. scenarioWorlds
+  -- Subworld order as encountered in the scenario YAML file is preserved for
+  -- the purpose of numbering robots, other than the "root" subworld
+  -- guaranteed to be first.
+  genRobots = concat $ NE.toList $ NE.map (fst . snd) builtWorldTuples
+
+  builtWorldTuples = NE.map (worldName &&& buildWorld em)
+    $ scenario ^. scenarioWorlds
 
   allSubworldsMap s =
-    M.fromList
-      . map (worldName &&& genWorld)
+    M.map genWorld
+      . M.fromList
       . NE.toList
-      $ scenario ^. scenarioWorlds
+      $ builtWorldTuples
    where
-    genWorld x = W.newWorld $ snd (buildWorld em x) s
+    genWorld x = W.newWorld $ snd x s
 
   theWinCondition =
     maybe
