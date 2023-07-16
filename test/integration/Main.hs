@@ -298,6 +298,7 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/1295-density-command"
         , testSolution Default "Testing/1356-portals/portals-flip-and-rotate.yaml"
         , testSolution Default "Testing/144-subworlds/basic-subworld.yaml"
+        , testSolution Default "Testing/144-subworlds/subworld-robots.yaml"
         ]
     ]
  where

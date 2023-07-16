@@ -1,16 +1,21 @@
 version: 1
 name: Subworld robots
 description: |
-  Demonstrate that system robots can be placed in any subworld
-# objectives:
-#   - goal:
-#     - |
-#       `place` the "flower" on the white cell.
-#     condition: |
-#       j <- robotnamed "judge";
-#       as j {ishere "flower"}
-# solution: |
-#   run "scenarios/Testing/144-subworlds/_basic-subworld/solution.sw"
+  Demonstrate that system robots can be placed in any subworld.
+
+  Also demonstrates tiebreaking logic for robot numbering based
+  on subworld.
+objectives:
+  - goal:
+    - |
+      `give` the "bitcoin" to the robot in the "root" world.
+    - |
+      First obtain it from the robot living underground.
+    condition: |
+      j <- robotnumbered 1;
+      as j {has "bitcoin"}
+solution: |
+  run "scenarios/Testing/144-subworlds/_subworld-robots/solution.sw"
 attrs:
   - name: portal_in
     fg: "#ff9a00"
@@ -38,6 +43,7 @@ robots:
     dir: [1, 0]
     devices:
       - ADT calculator
+      - antenna
       - branch predictor
       - comparator
       - compass
@@ -54,7 +60,9 @@ robots:
     system: true
     display:
       char: 'J'
-      invisible: true
+      invisible: false
+    program: |
+      run "scenarios/Testing/144-subworlds/_subworld-robots/judges.sw";
 known: [flower, boulder]
 subworlds:
   - name: underground
@@ -63,6 +71,7 @@ subworlds:
       '.': [dirt]
       'f': [dirt, flower]
       'b': [dirt, boulder]
+      't': [grass, null, judge]
       'p':
         cell: [dirt, telepad exit]
         waypoint:
@@ -79,14 +88,14 @@ subworlds:
     upperleft: [-1, 1]
     map: |
       b..b..b..b
-      .p..f...P.
+      .p.t....P.
       b..b..b..b
 world:
   default: [blank]
   palette:
     '.': [grass]
     'B': [grass, null, base]
-    't': [ice, null, judge]
+    't': [grass, null, judge]
     'p':
       cell: [grass, telepad exit]
       waypoint:
@@ -103,5 +112,5 @@ world:
         subworldName: underground
   map: |
     ..........
-    .p.Bt...P.
+    .p.B..t.P.
     ..........
