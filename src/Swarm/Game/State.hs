@@ -1160,7 +1160,8 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
   --   2.a. If multiple robots are specified in the map, prefer the one that
   --        is defined first within the Scenario file.
   --   2.b. If multiple robots are instantiated from the same template, then
-  --        prefer the one closest to the upper-left of the screen, with higher rows given precedence over columns.
+  --        prefer the one closest to the upper-left of the screen, with higher
+  --        rows given precedence over columns (i.e. first in row-major order).
   robotsByBasePrecedence = locatedRobots ++ map snd (sortOn fst genRobots)
 
   initialCodeToRun = getCodeToRun <$> toRun
