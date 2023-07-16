@@ -1,2 +1,3 @@
 basic-subworld.yaml
 subworld-shared-structures.yaml
+subworld-robots.yaml
