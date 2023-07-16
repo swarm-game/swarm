@@ -77,7 +77,7 @@ instance FromJSONE (EntityMap, RobotMap) Cell where
         traverse (localE fst . getEntity) meName
 
     let name2rob r = do
-          mrName <- liftE $ parseJSON @(Maybe Text) r
+          mrName <- liftE $ parseJSON @(Maybe RobotName) r
           traverse (localE snd . getRobot) mrName
 
     robs <- mapMaybeM name2rob (drop 2 tup)
