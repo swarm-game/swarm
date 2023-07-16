@@ -40,7 +40,7 @@ activateWorldEditorFunction AreaSelector = do
     SelectionComplete -> uiState . uiWorldEditor . editingBounds . boundsSelectionStep .= UpperLeftPending
     _ -> return ()
 activateWorldEditorFunction OutputPathSelector =
-  -- TODO
+  -- TODO: #1371
   liftIO $ putStrLn "File selection"
 activateWorldEditorFunction MapSaveButton = saveMapFile
 activateWorldEditorFunction ClearEntityButton =
