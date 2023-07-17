@@ -11,6 +11,7 @@ robots:
       - treads
       - grabber
 world:
+  offset: true
   dsl: |
     let pn0 = perlin seed 6 0.05 0.6,
         pn1 = perlin (seed + 1) 6 0.05 0.6,
