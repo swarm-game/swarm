@@ -929,7 +929,7 @@ drawKeyMenu s =
       , may isPaused (NoHighlight, "^o", "step")
       , may (isPaused && hasDebug) (if s ^. uiState . uiShowDebug then Alert else NoHighlight, "M-d", "debug")
       , Just (NoHighlight, "^zx", "speed")
-      , Just (NoHighlight, "^s", if s ^. uiState . uiShowREPL then "hide REPL" else "show REPL")
+      , Just (NoHighlight, "^,", if s ^. uiState . uiShowREPL then "hide REPL" else "show REPL")
       , Just (if s ^. uiState . uiShowRobots then NoHighlight else Alert, "M-h", "hide robots")
       ]
   may b = if b then Just else const Nothing
