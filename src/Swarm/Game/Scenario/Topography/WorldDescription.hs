@@ -59,7 +59,7 @@ instance FromJSONE (InheritedStructureDefs, (EntityMap, RobotMap)) WorldDescript
     (initialArea, mapWaypoints) <- liftE ((v .:? "map" .!= "") >>= Structure.paintMap Nothing pal)
 
     upperLeft <- liftE (v .:? "upperleft" .!= origin)
-    subWorldName <- liftE (v .:? "name" .!= defaultRootSubworldName)
+    subWorldName <- liftE (v .:? "name" .!= DefaultRootSubworld)
 
     let initialStructureDefs = scnenarioLevelStructureDefs <> rootWorldStructureDefs
         struc = Structure initialArea initialStructureDefs placementDefs $ waypointDefs <> mapWaypoints

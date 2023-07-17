@@ -83,6 +83,6 @@ initialWorldEditor ts =
     MapEditingBounds
       -- Note that these are in "world coordinates",
       -- not in player-facing "Location" coordinates
-      (Just $ Cosmo defaultRootSubworldName (W.Coords (-10, -20), W.Coords (10, 20)))
+      (Just $ Cosmo DefaultRootSubworld (W.Coords (-10, -20), W.Coords (10, 20)))
       (ts - 1)
       SelectionComplete

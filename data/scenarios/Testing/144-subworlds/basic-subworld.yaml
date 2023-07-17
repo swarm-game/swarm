@@ -82,6 +82,7 @@ subworlds:
       .p..f...P.
       b..b..b..b
 world:
+  name: root
   default: [blank]
   palette:
     '.': [grass]

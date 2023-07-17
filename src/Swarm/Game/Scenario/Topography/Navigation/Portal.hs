@@ -165,7 +165,7 @@ validatePortals (Navigation wpUniverse partialPortals) = do
 
   return $ M.fromList portalPairs
  where
-  getLocs (Cosmo swName@(SubworldName rawSwName) wpWrapper@(WaypointName exitName)) = do
+  getLocs (Cosmo swName wpWrapper@(WaypointName exitName)) = do
     subworldWaypoints <- case M.lookup swName wpUniverse of
       Just x -> return x
       Nothing ->
@@ -175,7 +175,7 @@ validatePortals (Navigation wpUniverse partialPortals) = do
               [ "Could not lookup waypoint"
               , quote exitName
               , "for portal exit because subworld"
-              , quote rawSwName
+              , quote $ renderWorldName swName
               , "does not exist"
               ]
 

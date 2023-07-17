@@ -170,6 +170,7 @@ subworlds:
       .....
       .....
 world:
+  name: root
   default: [blank]
   palette:
     '.': [grass]
