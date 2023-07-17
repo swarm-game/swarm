@@ -352,6 +352,7 @@ benchmark benchmark
                   mtl,
                   random,
                   swarm,
-                  text
+                  text,
+                  containers
   default-language: Haskell2010
   ghc-options:      -threaded
