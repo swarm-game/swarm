@@ -116,6 +116,10 @@ data WExp where
   WStruct :: WorldPalette Text -> [Text] -> WExp
   deriving (Eq, Show)
 
+-- We don't have an explicit Empty case because we can't infer its
+-- type.  It could be done but it would require a lot more care with
+-- inference vs checking mode.
+
 ------------------------------------------------------------
 -- Example
 

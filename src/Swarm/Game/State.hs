@@ -1160,7 +1160,7 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
   worldArray = listArray ((ulr, ulc), (ulr + rs - 1, ulc + cs - 1)) (concat worldGrid)
 
   wf = case (defaultTerrain, worldProg) of
-    (_, Just wexp) -> either undefined id . runWExp em wexp
+    (_, Just wexp) -> either (error . show) id . runWExp em wexp
     (Nothing, _) ->
       (if offsetOrigin then findGoodOrigin else id) . testWorld2FromArray em worldArray
     (Just (Cell t e _), _) -> const (worldFunFromArray worldArray (t, e))

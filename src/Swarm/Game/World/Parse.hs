@@ -40,7 +40,7 @@ sepByNE p sep = NE.fromList <$> p `sepBy1` sep
 -- Lexing
 
 reservedWords :: [Text]
-reservedWords = ["not", "true", "false", "seed", "x", "y", "hash", "let", "in", "overlay", "hcat", "vcat", "if", "then", "else", "perlin"]
+reservedWords = ["not", "true", "false", "seed", "x", "y", "hash", "let", "in", "overlay", "hcat", "vcat", "if", "then", "else", "perlin", "mask", "empty"]
 
 -- | Skip spaces and comments.
 sc :: Parser ()
@@ -119,6 +119,7 @@ parseWExpAtom =
     <|> parsePerlin
     <|> parseLet
     <|> parseOverlay
+    <|> parseMask
     <|> parseCat
     <|> parseStruct
     <|> parens parseWExp
@@ -204,6 +205,13 @@ parseOverlay :: Parser WExp
 parseOverlay = do
   reserved "overlay"
   brackets $ WOverlay <$> parseWExp `sepByNE` comma
+
+parseMask :: Parser WExp
+parseMask = do
+  reserved "mask"
+  w1 <- parseWExpAtom
+  w2 <- parseWExpAtom
+  return $ WOp Mask [w1, w2]
 
 parseCat :: Parser WExp
 parseCat =

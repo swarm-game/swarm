@@ -14,10 +14,12 @@
 module Swarm.Game.World.Compile where
 
 import Data.Kind (Type)
+import Numeric.Noise.Perlin
 import Swarm.Game.Location (pattern Location)
-import Swarm.Game.World.Coords (coordsToLoc)
+import Swarm.Game.World.Coords (Coords (..), coordsToLoc)
 import Swarm.Game.World.Syntax
 import Swarm.Game.World.Typecheck
+import Swarm.Game.WorldGen (Seed)
 
 -- XXX note this doesn't depend at all on WExp etc., only imports
 -- Syntax because of Over, Empty.  Should move those somewhere else?
@@ -125,12 +127,12 @@ instance Applicable CTerm where
   CFun f $$ x = f x
   _ $$ _ = error "impossible! bad call to CTerm.$$, CConst should never contain functions"
 
-compile :: BTerm a -> CTerm a
-compile (BApp b1 b2) = compile b1 $$ compile b2
-compile (BConst c) = compileConst c
+compile :: Seed -> BTerm a -> CTerm a
+compile seed (BApp b1 b2) = compile seed b1 $$ compile seed b2
+compile seed (BConst c) = compileConst seed c
 
-compileConst :: Const a -> CTerm a
-compileConst = \case
+compileConst :: Seed -> Const a -> CTerm a
+compileConst seed = \case
   (CLit i) -> CConst i
   CFI -> unary fromIntegral
   CIf -> CFun $ \(CConst b) -> CFun $ \t -> CFun $ \e -> if b then t else e
@@ -150,11 +152,11 @@ compileConst = \case
   CLeq -> binary (<=)
   CGt -> binary (>)
   CGeq -> binary (>=)
-  CMask -> undefined
-  CSeed -> undefined
+  CMask -> compileMask
+  CSeed -> CConst (fromIntegral seed)
   CCoord ax -> CFun $ \(CConst (coordsToLoc -> Location x y)) -> CConst (fromIntegral (case ax of X -> x; Y -> y))
   CHash -> undefined
-  CPerlin -> undefined
+  CPerlin -> compilePerlin
   CReflect _r -> undefined
   CRot _r -> undefined
   COver -> binary (<+>)
@@ -171,6 +173,24 @@ unary op = CFun $ \(CConst x) -> CConst (op x)
 
 binary :: (a -> b -> c) -> CTerm (a -> b -> c)
 binary op = CFun $ \(CConst x) -> CFun $ \(CConst y) -> CConst (op x y)
+
+-- Note we could desugar 'mask p a -> if p a empty' but that would
+-- require an explicit 'empty' node, whose type can't be inferred.
+compileMask :: (Empty a) => CTerm (World Bool -> World a -> World a)
+compileMask = CFun $ \p -> CFun $ \a -> CFun $ \ix ->
+  case p $$ ix of
+    CConst b -> if b then a $$ ix else CConst empty
+
+compilePerlin :: CTerm (Integer -> Integer -> Double -> Double -> World Double)
+compilePerlin =
+  CFun $ \(CConst s) ->
+    CFun $ \(CConst o) ->
+      CFun $ \(CConst k) ->
+        CFun $ \(CConst p) ->
+          let noise = perlin (fromIntegral s) (fromIntegral o) k p
+           in CFun $ \(CConst (Coords ix)) -> CConst (sample ix noise)
+ where
+  sample (i, j) noise = noiseValue noise (fromIntegral i / 2, fromIntegral j / 2, 0)
 
 runCTerm :: CTerm a -> a
 runCTerm (CConst a) = a

@@ -13,7 +13,23 @@ robots:
 known: [tree]
 world:
   dsl: |
+    let pn0 = perlin seed 6 0.05 0.6,
+        pn1 = perlin (seed + 1) 6 0.05 0.6,
+        pn2 = perlin (seed + 2) 6 0.05 0.6,
+        cl  = perlin seed 4 0.08 0.5,
+        big = pn0 > 0.0,
+        hard = pn1 > 0.0,
+        artificial = pn2 > 0.0,
+        small = not big,
+        soft = not hard,
+        natural = not artificial
+    in
     overlay
-      [ if (x + y >= 2) then {stone, tree} else {dirt}
-      , if (x < (-5)) then ({stone} <> {stone, flower}) else {dirt}
-      ]
+    [ mask (big && hard && artificial)
+        (if (cl > 0.85) then {stone, copper ore} else {stone})
+    ]
+    -- if p > 0.0 then {dirt, flower} else {stone}
+
+    --      [ if (x + y >= 2) then c else {dirt}
+    --      , if (x < (-5)) then ({stone} <> {stone, flower}) else {dirt}
+    --      ]
