@@ -19,5 +19,5 @@ import Swarm.Game.WorldGen (Seed)
 runWExp :: EntityMap -> WExp -> Seed -> Either CheckErr (WorldFun TerrainType Entity)
 runWExp em wexp seed = convert . runCTerm . compile seed . bracket <$> runReader em (check CNil (TTyWorld TTyCell) wexp)
 
-convert :: (Coords -> FilledCellVal) -> WorldFun TerrainType Entity
+convert :: (Coords -> CellVal) -> WorldFun TerrainType Entity
 convert f = WF ((\(CellVal (Last t) (Last e) _) -> (fromMaybe BlankT t, e)) . f)

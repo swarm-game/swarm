@@ -10,22 +10,24 @@ module Swarm.Game.World.Syntax (
   Over (..),
   -- | Various component types
   World,
-  CellVal (..),
   RawCellVal,
-  FilledCellVal,
+  CellTag (..),
+  CellVal (..),
   Rot (..),
   Var,
   Axis (..),
   Op (..),
   -- | The main AST type
   WExp (..),
-  -- | Examples/tests
-  testWorld1,
 )
 where
 
 -- XXX to do:
---   - finish inference/compiling code
+--   - make a way to load terms from files!
+--     - create subdir data/worlds/
+--     - during startup, load expression from each file in
+--       worlds/*.world and typecheck/compile it
+--     - 'import blah' syntax for importing term from 'blah.world'
 --   - add lambdas?
 --   - add error message reporting
 --   - pass in EntityMap, RobotMap etc. + resolve cell values
@@ -70,17 +72,25 @@ type World b = Coords -> b
 
 -- XXX TerrainType already has a Blank --- get rid of that and use Nothing???
 
-data CellVal e r = CellVal (Last TerrainType) (Last e) [r]
+-- syntax: {foo} will parse as cell containing either terrain, entity,
+-- or robot foo depending on which has that name.  to disambiguate we can use
+-- {terrain: foo} or {entity: foo} or {robot: foo}
+--
+-- allow writing {x, y, z} as shortcut for {x} <> {y} <> {z}
+
+data CellTag = CellTerrain | CellEntity | CellRobot
+  deriving (Eq, Ord, Show, Enum, Bounded)
+
+type RawCellVal = [(Maybe CellTag, Text)]
+
+data CellVal = CellVal (Last TerrainType) (Last Entity) [Robot]
   deriving (Eq, Show)
 
-instance Over (CellVal e r) where
+instance Over CellVal where
   CellVal t1 e1 r1 <+> CellVal t2 e2 r2 = CellVal (t1 <> t2) (e1 <> e2) (r1 <> r2)
 
-instance Empty (CellVal e r) where
+instance Empty CellVal where
   empty = CellVal mempty mempty mempty
-
-type RawCellVal = CellVal Text Text
-type FilledCellVal = CellVal Entity Robot
 
 data Rot = Rot0 | Rot90 | Rot180 | Rot270
   deriving (Eq, Ord, Show, Bounded, Enum)
@@ -120,27 +130,27 @@ data WExp where
 -- type.  It could be done but it would require a lot more care with
 -- inference vs checking mode.
 
-------------------------------------------------------------
--- Example
+-- ------------------------------------------------------------
+-- -- Example
 
-testWorld1 :: WExp
-testWorld1 =
-  WLet
-    [ ("pn1", WOp Perlin [WInt 0, WInt 5, WFloat 0.05, WFloat 0.5])
-    , ("pn2", WOp Perlin [WInt 0, WInt 5, WFloat 0.05, WFloat 0.75])
-    ]
-    $ WOverlay . NE.fromList
-    $ [ WCell (CellVal (Last (Just GrassT)) (Last Nothing) [])
-      , WOp Mask [WOp Gt [WVar "pn2", WFloat 0], WCell (CellVal (Last (Just StoneT)) (Last (Just "rock")) [])]
-      , WOp Mask [WOp Gt [WVar "pn1", WFloat 0], WCell (CellVal (Last (Just DirtT)) (Last (Just "tree")) [])]
-      , WOp
-          Mask
-          [ WOp And [WOp Eq [WCoord X, WInt 2], WOp Eq [WCoord Y, WInt (-1)]]
-          , WCell (CellVal (Last (Just GrassT)) (Last (Just "elephant")) [])
-          ]
-      , WOp
-          Mask
-          [ WOp And [WOp Eq [WCoord X, WInt (-5)], WOp Eq [WCoord Y, WInt 3]]
-          , WCell (CellVal (Last (Just StoneT)) (Last (Just "flerb")) [])
-          ]
-      ]
+-- testWorld1 :: WExp
+-- testWorld1 =
+--   WLet
+--     [ ("pn1", WOp Perlin [WInt 0, WInt 5, WFloat 0.05, WFloat 0.5])
+--     , ("pn2", WOp Perlin [WInt 0, WInt 5, WFloat 0.05, WFloat 0.75])
+--     ]
+--     $ WOverlay . NE.fromList
+--     $ [ WCell (CellVal (Last (Just GrassT)) (Last Nothing) [])
+--       , WOp Mask [WOp Gt [WVar "pn2", WFloat 0], WCell (CellVal (Last (Just StoneT)) (Last (Just "rock")) [])]
+--       , WOp Mask [WOp Gt [WVar "pn1", WFloat 0], WCell (CellVal (Last (Just DirtT)) (Last (Just "tree")) [])]
+--       , WOp
+--           Mask
+--           [ WOp And [WOp Eq [WCoord X, WInt 2], WOp Eq [WCoord Y, WInt (-1)]]
+--           , WCell (CellVal (Last (Just GrassT)) (Last (Just "elephant")) [])
+--           ]
+--       , WOp
+--           Mask
+--           [ WOp And [WOp Eq [WCoord X, WInt (-5)], WOp Eq [WCoord Y, WInt 3]]
+--           , WCell (CellVal (Last (Just StoneT)) (Last (Just "flerb")) [])
+--           ]
+--       ]

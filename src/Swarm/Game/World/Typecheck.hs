@@ -3,6 +3,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
@@ -14,13 +15,16 @@ module Swarm.Game.World.Typecheck where
 import Control.Algebra (Has)
 import Control.Effect.Reader (Reader, ask)
 import Control.Effect.Throw (Throw, throwError)
+import Data.Foldable qualified as F
 import Data.Functor.Const qualified as F
 import Data.Kind (Type)
+import Data.List (foldl')
 import Data.List.NonEmpty qualified as NE
 import Data.Monoid (Last (..))
 import Data.Text (Text)
 import Data.Type.Equality (TestEquality (..), type (:~:) (Refl))
 import Swarm.Game.Entity (EntityMap, lookupEntityName)
+import Swarm.Game.Terrain (readTerrain)
 import Swarm.Game.World.Syntax
 import Prelude hiding (lookup)
 
@@ -133,7 +137,7 @@ data Base :: Type -> Type where
   BInt :: Base Integer
   BFloat :: Base Double
   BBool :: Base Bool
-  BCell :: Base FilledCellVal
+  BCell :: Base CellVal
 
 deriving instance Show (Base ty)
 
@@ -160,7 +164,7 @@ pattern TTyInt = TTyBase BInt
 pattern TTyFloat :: TTy Double
 pattern TTyFloat = TTyBase BFloat
 
-pattern TTyCell :: TTy FilledCellVal
+pattern TTyCell :: TTy CellVal
 pattern TTyCell = TTyBase BCell
 
 deriving instance Show (TTy ty)
@@ -342,10 +346,41 @@ infer ctx (WOverlay ts) = inferOverlay ctx ts
 infer _ctx (WCat _ax _ts) = undefined
 infer _ctx (WStruct _pal _rect) = undefined
 
-resolveCell :: (Has (Reader EntityMap) sig m) => RawCellVal -> m FilledCellVal
-resolveCell (CellVal t (Last e) _rs) = do
-  em <- ask @EntityMap
-  return $ CellVal t (Last (e >>= flip lookupEntityName em)) []
+resolveCell ::
+  (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
+  RawCellVal ->
+  m CellVal
+resolveCell items = do
+  cellVals <- mapM resolveCellItem items
+  return $ foldl' (<+>) empty cellVals
+
+resolveCellItem ::
+  forall sig m.
+  (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
+  (Maybe CellTag, Text) ->
+  m CellVal
+resolveCellItem (mCellTag, item) = case mCellTag of
+  Just cellTag -> do
+    -- The item was tagged specifically, like {terrain: dirt} or {entity: water}
+    mCell <- resolverByTag cellTag item
+    maybe (throwError (UnknownErr 12)) return mCell -- cell item is not a 'cellTag'
+  Nothing -> do
+    -- The item was not tagged; try resolving in all possible ways and choose
+    -- the first that works
+    maybeCells <- mapM (`resolverByTag` item) [minBound .. maxBound :: CellTag]
+    case F.asum maybeCells of
+      Nothing -> throwError (UnknownErr 13) -- cell item does not refer to anything
+      Just cell -> return cell
+ where
+  mkTerrain t = CellVal (Last (Just t)) mempty mempty
+  mkEntity e = CellVal mempty (Last (Just e)) mempty
+  resolverByTag :: CellTag -> Text -> m (Maybe CellVal)
+  resolverByTag = \case
+    CellTerrain -> return . fmap mkTerrain . readTerrain
+    CellEntity -> \eName -> do
+      em <- ask @EntityMap
+      return . fmap mkEntity $ lookupEntityName eName em
+    CellRobot -> \_ -> return Nothing -- XXX robots!
 
 inferLet ::
   (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
@@ -359,7 +394,6 @@ inferLet ctx ((x, e) : xs) body = do
   Some ty2 let' <- inferLet (CCons x ty1 ctx) xs body
   apply (Some (ty1 :->: ty2) (TLam let')) e'
 
--- XXX make overlay work on non-World types?
 inferOverlay ::
   (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
   Ctx g ->

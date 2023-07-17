@@ -13,15 +13,12 @@ import Control.Monad (MonadPlus, void)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe)
-import Data.Monoid (Last (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Void
 import Data.Yaml (FromJSON (parseJSON), withText)
-import Swarm.Game.Terrain (TerrainType, readTerrain)
 import Swarm.Game.World.Syntax
-import Swarm.Util (failT, squote)
+import Swarm.Util (failT, showT, squote)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
@@ -158,26 +155,25 @@ parseWExp =
   unary op x = WOp op [x]
   binary op x1 x2 = WOp op [x1, x2]
 
--- XXX syntax for cells??  they will eventually have waypoints, portals, etc...
 parseCell :: Parser WExp
 parseCell =
-  braces $
-    WCell
-      <$> ( CellVal
-              <$> (Last . Just <$> parseTerrain)
-              <*> (Last <$> optional (comma *> parseName)) -- XXX 'empty'?
-              <*> (fromMaybe [] <$> optional (comma *> brackets (parseName `sepBy` comma)))
-          )
+  braces $ WCell <$> parseCellItem `sepBy1` comma
+
+parseCellItem :: Parser (Maybe CellTag, Text)
+parseCellItem =
+  (,)
+    <$> optional (parseCellTag <* symbol ":")
+    <*> parseName
+
+parseCellTag :: Parser CellTag
+parseCellTag = choice (map mkCellTagParser [minBound .. maxBound :: CellTag])
+ where
+  mkCellTagParser ct = ct <$ string' (showT ct)
 
 parseName :: Parser Text
-parseName = into @Text <$> manyTill anySingle (lookAhead (char ',' <|> char '}' <|> char ']'))
-
-parseTerrain :: Parser TerrainType
-parseTerrain = do
-  mt <- readTerrain <$> parseName
-  case mt of
-    Just t -> return t
-    Nothing -> fail "XXX"
+parseName =
+  into @Text
+    <$> manyTill anySingle (lookAhead (satisfy (\c -> c == ',' || c == '}' || c == ']')))
 
 parseIf :: Parser WExp
 parseIf =
