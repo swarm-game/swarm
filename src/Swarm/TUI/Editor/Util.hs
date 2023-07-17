@@ -29,7 +29,7 @@ getEditingBounds :: WorldDescription -> (Bool, Cosmo W.BoundsRectangle)
 getEditingBounds myWorld =
   (EA.isEmpty a, newBounds)
  where
-  newBounds = Cosmo defaultRootSubworldName (W.locToCoords upperLeftLoc, W.locToCoords lowerRightLoc)
+  newBounds = Cosmo DefaultRootSubworld (W.locToCoords upperLeftLoc, W.locToCoords lowerRightLoc)
   upperLeftLoc = ul myWorld
   a = EA.getAreaDimensions $ area myWorld
   lowerRightLoc = EA.upperLeftToBottomRight a upperLeftLoc

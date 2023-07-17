@@ -468,10 +468,10 @@ renderCoordsString cCoords =
   unwords
     [ VU.locationToString coords
     , "in"
-    , T.unpack swName
+    , T.unpack $ renderWorldName sw
     ]
  where
-  Cosmo (SubworldName swName) coords = cCoords
+  Cosmo sw coords = cCoords
 
 drawWorldCursorInfo :: WorldEditor Name -> GameState -> Cosmo W.Coords -> Widget Name
 drawWorldCursorInfo worldEditor g cCoords =
