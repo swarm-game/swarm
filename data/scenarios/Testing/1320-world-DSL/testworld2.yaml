@@ -1,5 +1,5 @@
 version: 1
-name: Test world DSL
+name: Test world 2, using new DSL
 description: foo
 robots:
   - name: base

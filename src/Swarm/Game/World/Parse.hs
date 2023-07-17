@@ -162,13 +162,13 @@ parseCell =
 parseCellItem :: Parser (Maybe CellTag, Text)
 parseCellItem =
   (,)
-    <$> optional (parseCellTag <* symbol ":")
+    <$> optional (try (parseCellTag <* symbol ":"))
     <*> parseName
 
 parseCellTag :: Parser CellTag
 parseCellTag = choice (map mkCellTagParser [minBound .. maxBound :: CellTag])
  where
-  mkCellTagParser ct = ct <$ string' (showT ct)
+  mkCellTagParser ct = ct <$ string' (T.drop 4 $ showT ct)
 
 parseName :: Parser Text
 parseName =
