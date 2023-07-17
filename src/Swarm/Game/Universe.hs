@@ -9,28 +9,21 @@ import Control.Lens (makeLenses, view)
 import Data.Function (on)
 import Data.Int (Int32)
 import Data.Text (Text)
-import Data.Yaml (FromJSON, ToJSON, Value (Object), parseJSON, (.:))
+import Data.Yaml (FromJSON, ToJSON, Value (Object), parseJSON, withText, (.:))
 import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Game.Location
 
--- TODO: It would be better not to use this as
--- an "in-band" reserved name. Preferably its use
--- should be eliminated entirely.
--- E.g., robot locations specified within a toplevel robot
--- definition (instead of on a map) should require the subworld
--- to be specified.  Currently, the subworld name is optional
--- for backwards compatibility.
--- If, after all, a "default" is still required, should
--- use a dedicated sum type member to designate
--- the "default" for cases in which it is required.
-defaultRootSubworldName :: SubworldName
-defaultRootSubworldName = SubworldName "root"
+data SubworldName = DefaultRootSubworld | SubworldName Text
+  deriving (Show, Eq, Ord, Generic, ToJSON)
 
--- | Note: The primary overworld shall use
--- the reserved name \"root\".
-newtype SubworldName = SubworldName Text
-  deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
+instance FromJSON SubworldName where
+  parseJSON = withText "subworld name" $ return . SubworldName
+
+renderWorldName :: SubworldName -> Text
+renderWorldName = \case
+  SubworldName s -> s
+  DefaultRootSubworld -> "<default>"
 
 -- | The swarm universe consists of locations
 -- indexed by subworld.
@@ -47,7 +40,7 @@ makeLenses ''Cosmo
 instance (FromJSON a) => FromJSON (Cosmo a) where
   parseJSON x = case x of
     Object v -> objParse v
-    _ -> Cosmo defaultRootSubworldName <$> parseJSON x
+    _ -> Cosmo DefaultRootSubworld <$> parseJSON x
    where
     objParse v =
       Cosmo
@@ -55,7 +48,7 @@ instance (FromJSON a) => FromJSON (Cosmo a) where
         <*> v .: "loc"
 
 defaultCosmoLocation :: Cosmo Location
-defaultCosmoLocation = Cosmo defaultRootSubworldName origin
+defaultCosmoLocation = Cosmo DefaultRootSubworld origin
 
 data DistanceMeasure b = Measurable b | InfinitelyFar
   deriving (Eq, Ord)

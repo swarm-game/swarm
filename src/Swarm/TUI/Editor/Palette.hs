@@ -129,7 +129,7 @@ constructScenario maybeOriginalScenario cellGrid =
       , ul = upperLeftCoord
       , area = cellGrid
       , navigation = Navigation mempty mempty
-      , worldName = defaultRootSubworldName
+      , worldName = DefaultRootSubworld
       }
 
   suggestedPalette = makeSuggestedPalette maybeOriginalScenario cellGrid

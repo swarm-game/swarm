@@ -48,7 +48,7 @@ module Swarm.Game.Scenario (
 
 import Control.Arrow ((&&&))
 import Control.Lens hiding (from, (.=), (<.>))
-import Control.Monad (filterM)
+import Control.Monad (filterM, unless)
 import Control.Monad.Except (ExceptT (..), runExceptT, withExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Trans.Except (except)
@@ -77,7 +77,7 @@ import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Universe
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Util (failT)
+import Swarm.Util (binTuples, failT)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
@@ -139,6 +139,16 @@ instance FromJSONE EntityMap Scenario where
         rootWorld <- v ..: "world"
         subworlds <- v ..:? "subworlds" ..!= []
         return $ rootWorld :| subworlds
+
+      let worldsByName = binTuples $ NE.toList $ NE.map (worldName &&& id) allWorlds
+          dupedNames = M.keys $ M.filter ((> 1) . length) worldsByName
+      unless (null dupedNames)
+        . fail
+        . T.unpack
+        $ T.unwords
+          [ "Subworld names are not unique:"
+          , T.intercalate ", " $ map renderWorldName dupedNames
+          ]
 
       let mergedWaypoints =
             M.fromList $
