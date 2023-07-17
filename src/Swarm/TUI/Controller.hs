@@ -78,7 +78,6 @@ import Swarm.Game.Robot
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (finishGameTick, gameTick)
-import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability (CDebug, CMake))
 import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
@@ -396,7 +395,7 @@ handleMainEvent ev = do
       case n of
         FocusablePanel WorldPanel -> do
           mouseCoordsM <- Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
-          shouldUpdateCursor <- EC.updateAreaBounds $ fmap (^. planar) mouseCoordsM
+          shouldUpdateCursor <- EC.updateAreaBounds mouseCoordsM
           when shouldUpdateCursor $
             uiState . uiWorldCursor .= mouseCoordsM
         REPLInput -> handleREPLEvent ev

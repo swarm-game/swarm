@@ -22,7 +22,7 @@ import System.Clock
 data BoundsSelectionStep
   = UpperLeftPending
   | -- | Stores the *world coords* of the upper-left click
-    LowerRightPending W.Coords
+    LowerRightPending (Cosmo W.Coords)
   | SelectionComplete
 
 data EntityPaint
