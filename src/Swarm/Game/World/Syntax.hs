@@ -28,12 +28,11 @@ where
 --     - during startup, load expression from each file in
 --       worlds/*.world and typecheck/compile it
 --     - 'import blah' syntax for importing term from 'blah.world'
---   - add lambdas?
+--   - get rid of BlankT and use Nothing
 --   - add error message reporting
---   - pass in EntityMap, RobotMap etc. + resolve cell values
---   - to evaluate, pass in things like seed
---   - finish parser for structures
---   - incorporate into parser for scenario descriptions
+--   - pass in RobotMap + resolve robot cell values
+--   - palettes + structures
+--   - alternative JSON syntax?
 
 import Data.List.NonEmpty qualified as NE
 import Data.Monoid (Last (..))
@@ -69,8 +68,6 @@ instance Over Double where
 -- Bits and bobs
 
 type World b = Coords -> b
-
--- XXX TerrainType already has a Blank --- get rid of that and use Nothing???
 
 -- syntax: {foo} will parse as cell containing either terrain, entity,
 -- or robot foo depending on which has that name.  to disambiguate we can use
