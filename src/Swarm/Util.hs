@@ -21,6 +21,7 @@ module Swarm.Util (
   histogram,
   findDup,
   both,
+  allEqual,
 
   -- * Directory utilities
   readFileMay,
@@ -188,6 +189,9 @@ findDup = go S.empty
 
 both :: Bifunctor p => (a -> d) -> p a a -> p d d
 both f = bimap f f
+
+allEqual :: (Ord a) => [a] -> Bool
+allEqual = (== 1) . S.size . S.fromList
 
 ------------------------------------------------------------
 -- Directory stuff

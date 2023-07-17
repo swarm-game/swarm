@@ -2,3 +2,4 @@ basic-subworld.yaml
 subworld-shared-structures.yaml
 subworld-mapped-robots.yaml
 subworld-located-robots.yaml
+spatial-consistency-enforcement.yaml
