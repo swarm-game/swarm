@@ -34,6 +34,13 @@ world:
         , mask (cl > 0.5) {stone, mountain}
         ]
       )
+    , mask (small && hard && natural)
+      ( overlay
+        [ {stone}
+        , mask (hash % 10 == 0) {stone, rock}
+        , mask (hash % 100 == 0) {stone, lodestone}
+        ]
+      )
     , mask (big && soft && natural)
       ( overlay
         [ {dirt, water}
@@ -41,7 +48,44 @@ world:
         , mask (abs pn1 < 0.1) {dirt, sand}
         ]
       )
+    , mask (small && soft && natural)
+      ( overlay
+        [ {grass}
+        , mask (hash % 20 == 10) {grass, cotton}
+        , mask (hash % 20 == 0)  {grass, flower}
+        ]
+      )
+    , mask (small && soft && artificial)
+      ( overlay
+        [ {grass}
+        , mask (hash % 10 == 0)
+            (if (x + y) % 2 == 0 then {grass, bit (0)} else {grass, bit (1)})
+        ]
+      )
+    , mask (big && soft && artificial)
+      ( overlay
+        [ {dirt}
+        , mask (cl > 0.5) {grass}
+        , mask (hash % 5000 == 0) {dirt, Linux}
+        ]
+      )
+    , mask (small && hard && artificial)
+      ( overlay
+        [ {stone}
+        , mask (hash % 50 == 0)
+            let i = (x - y) % 3 in
+            if (i == 0) then {stone, pixel (R)}
+            else if (i == 1) then {stone, pixel (G)}
+            else {stone, pixel (B)}
+        , mask (hash % 120 == 1) {stone, lambda}
+        ]
+      )
     ]
+
+    # genBiome Big Hard Artificial
+    #   | sample ix cl0 > 0.85 = (StoneT, Just "copper ore")
+    #   | otherwise = (StoneT, Nothing)
+
     -- if p > 0.0 then {dirt, flower} else {stone}
 
     --      [ if (x + y >= 2) then c else {dirt}
