@@ -90,7 +90,7 @@ type Var = Text
 data Axis = X | Y
   deriving (Eq, Ord, Show, Bounded, Enum)
 
-data Op = Not | Neg | And | Or | Add | Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | Geq | If | Perlin | Reflect Axis | Rot Rot | Mask | Overlay
+data Op = Not | Neg | And | Or | Add | Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | Geq | If | Perlin | Reflect Axis | Rot Rot | Mask | Overlay | Abs
   deriving (Eq, Ord, Show)
 
 ------------------------------------------------------------

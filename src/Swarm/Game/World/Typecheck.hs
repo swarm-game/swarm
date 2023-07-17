@@ -42,6 +42,7 @@ data Const :: Type -> Type where
   CIf :: Const (Bool -> a -> a -> a)
   CNot :: Const (Bool -> Bool)
   CNeg :: (Num a) => Const (a -> a)
+  CAbs :: (Num a) => Const (a -> a)
   CAnd :: Const (Bool -> Bool -> Bool)
   COr :: Const (Bool -> Bool -> Bool)
   CAdd :: (Num a) => Const (a -> a -> a)
@@ -277,6 +278,7 @@ inferOp _ Not = return $ Some (TTyBool :->: TTyBool) (embed CNot)
 inferOp [SomeTy tyA] Neg = Some (tyA :->: tyA) <$> checkNum tyA (return $ embed CNeg)
 inferOp _ And = return $ Some (TTyBool :->: TTyBool :->: TTyBool) (embed CAnd)
 inferOp _ Or = return $ Some (TTyBool :->: TTyBool :->: TTyBool) (embed COr)
+inferOp [SomeTy tyA] Abs = Some (tyA :->: tyA) <$> checkNum tyA (return $ embed CAbs)
 inferOp [SomeTy tyA] Add = Some (tyA :->: tyA :->: tyA) <$> checkNum tyA (return $ embed CAdd)
 inferOp [SomeTy tyA] Sub = Some (tyA :->: tyA :->: tyA) <$> checkNum tyA (return $ embed CSub)
 inferOp [SomeTy tyA] Mul = Some (tyA :->: tyA :->: tyA) <$> checkNum tyA (return $ embed CMul)
@@ -301,7 +303,7 @@ inferOp tys op = error $ "bad call to inferOp: " ++ show tys ++ " " ++ show op
 
 typeArgsFor :: Op -> [Some (TTerm g)] -> [SomeTy]
 typeArgsFor op (t : _)
-  | op `elem` [Neg, Add, Sub, Mul, Div, Mod, Eq, Neq, Lt, Leq, Gt, Geq] = [getBaseType t]
+  | op `elem` [Neg, Abs, Add, Sub, Mul, Div, Mod, Eq, Neq, Lt, Leq, Gt, Geq] = [getBaseType t]
 typeArgsFor (Reflect _) (t : _) = [getBaseType t]
 typeArgsFor (Rot _) (t : _) = [getBaseType t]
 typeArgsFor op (_ : t : _)

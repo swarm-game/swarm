@@ -13,13 +13,18 @@
 -- XXX for more info see ...
 module Swarm.Game.World.Compile where
 
+import Data.ByteString (ByteString)
+import Data.Hash.Murmur (murmur3)
 import Data.Kind (Type)
-import Numeric.Noise.Perlin
+import Data.Tagged (Tagged (unTagged))
+import Numeric.Noise.Perlin (noiseValue, perlin)
 import Swarm.Game.Location (pattern Location)
 import Swarm.Game.World.Coords (Coords (..), coordsToLoc)
 import Swarm.Game.World.Syntax
 import Swarm.Game.World.Typecheck
 import Swarm.Game.WorldGen (Seed)
+import Witch (from)
+import Witch.Encoding qualified as Encoding
 
 -- XXX note this doesn't depend at all on WExp etc., only imports
 -- Syntax because of Over, Empty.  Should move those somewhere else?
@@ -138,6 +143,7 @@ compileConst seed = \case
   CIf -> CFun $ \(CConst b) -> CFun $ \t -> CFun $ \e -> if b then t else e
   CNot -> unary not
   CNeg -> unary negate
+  CAbs -> unary abs
   CAnd -> binary (&&)
   COr -> binary (||)
   CAdd -> binary (+)
@@ -155,7 +161,7 @@ compileConst seed = \case
   CMask -> compileMask
   CSeed -> CConst (fromIntegral seed)
   CCoord ax -> CFun $ \(CConst (coordsToLoc -> Location x y)) -> CConst (fromIntegral (case ax of X -> x; Y -> y))
-  CHash -> undefined
+  CHash -> compileHash
   CPerlin -> compilePerlin
   CReflect _r -> undefined
   CRot _r -> undefined
@@ -180,6 +186,11 @@ compileMask :: (Empty a) => CTerm (World Bool -> World a -> World a)
 compileMask = CFun $ \p -> CFun $ \a -> CFun $ \ix ->
   case p $$ ix of
     CConst b -> if b then a $$ ix else CConst empty
+
+compileHash :: CTerm (Coords -> Integer)
+compileHash = CFun $ \(CConst (Coords ix)) -> CConst (fromIntegral (h ix))
+ where
+  h = murmur3 0 . unTagged . from @String @(Encoding.UTF_8 ByteString) . show
 
 compilePerlin :: CTerm (Integer -> Integer -> Double -> Double -> World Double)
 compilePerlin =

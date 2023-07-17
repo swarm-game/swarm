@@ -10,7 +10,6 @@ robots:
       - logger
       - treads
       - grabber
-known: [tree]
 world:
   dsl: |
     let pn0 = perlin seed 6 0.05 0.6,
@@ -27,6 +26,21 @@ world:
     overlay
     [ mask (big && hard && artificial)
         (if (cl > 0.85) then {stone, copper ore} else {stone})
+    , mask (big && hard && natural)
+      ( overlay
+        [ {grass}
+        , mask (cl > 0.0) (if (hash % 30 == 1) then {dirt, LaTeX} else {dirt, tree})
+        , mask (hash % 30 == 0) {stone, boulder}
+        , mask (cl > 0.5) {stone, mountain}
+        ]
+      )
+    , mask (big && soft && natural)
+      ( overlay
+        [ {dirt, water}
+        , mask ((x + y) % 2 == 0) {dirt, wavy water}
+        , mask (abs pn1 < 0.1) {dirt, sand}
+        ]
+      )
     ]
     -- if p > 0.0 then {dirt, flower} else {stone}
 
