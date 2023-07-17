@@ -109,7 +109,7 @@ handleWorldEditorPanelEvent = \case
   _ -> return ()
 
 -- | Return value: whether the cursor position should be updated
-updateAreaBounds :: Maybe W.Coords -> EventM Name AppState Bool
+updateAreaBounds :: Maybe (Cosmo W.Coords) -> EventM Name AppState Bool
 updateAreaBounds = \case
   Nothing -> return True
   Just mouseCoords -> do
@@ -118,10 +118,11 @@ updateAreaBounds = \case
       UpperLeftPending -> do
         uiState . uiWorldEditor . editingBounds . boundsSelectionStep .= LowerRightPending mouseCoords
         return False
-      -- TODO (#1152): Validate that the lower-right click is below and to the right of the top-left coord
+      -- TODO (#1152): Validate that the lower-right click is below and to the right of
+      -- the top-left coord and that they are within the same subworld
       LowerRightPending upperLeftMouseCoords -> do
         uiState . uiWorldEditor . editingBounds . boundsRect
-          .= Just (Cosmo defaultRootSubworldName (upperLeftMouseCoords, mouseCoords))
+          .= Just (fmap (,view planar mouseCoords) upperLeftMouseCoords)
         uiState . uiWorldEditor . lastWorldEditorMessage .= Nothing
         uiState . uiWorldEditor . editingBounds . boundsSelectionStep .= SelectionComplete
         t <- liftIO $ getTime Monotonic

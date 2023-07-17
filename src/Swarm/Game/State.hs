@@ -1215,8 +1215,9 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
   -- guaranteed to be first.
   genRobots = concat $ NE.toList $ NE.map (fst . snd) builtWorldTuples
 
-  builtWorldTuples = NE.map (worldName &&& buildWorld em)
-    $ scenario ^. scenarioWorlds
+  builtWorldTuples =
+    NE.map (worldName &&& buildWorld em) $
+      scenario ^. scenarioWorlds
 
   allSubworldsMap s =
     M.map genWorld
