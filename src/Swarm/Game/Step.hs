@@ -75,7 +75,7 @@ import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
-import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
+import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..), cosmoLocation)
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
 import Swarm.Game.State
 import Swarm.Game.Universe
@@ -2753,7 +2753,7 @@ updateRobotLocation oldLoc newLoc
  where
   applyPortal loc = do
     lms <- use worldNavigation
-    return $ M.findWithDefault loc loc $ portals lms
+    return . M.findWithDefault loc loc . M.map cosmoLocation $ portals lms
 
 -- | Execute a stateful action on a target robot --- whether the
 --   current one or another.

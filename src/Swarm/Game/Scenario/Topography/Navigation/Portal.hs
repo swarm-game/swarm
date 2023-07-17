@@ -5,10 +5,14 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Topography.Navigation.Portal where
 
+import Control.Arrow ((&&&))
+import Control.Lens (view)
 import Control.Monad (forM, forM_, unless)
-import Data.Aeson (FromJSON)
+import Data.Aeson
 import Data.Bifunctor (first)
+import Data.BoolExpr (Signed (..))
 import Data.Coerce
+import Data.Function (on)
 import Data.Functor.Identity
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty ((:|)))
@@ -16,13 +20,21 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Text qualified as T
+import Data.Tuple (swap)
 import GHC.Generics (Generic)
+import Linear (negated)
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Universe
-import Swarm.Util (binTuples, quote)
+import Swarm.Util (allEqual, binTuples, both, quote)
 
 type WaypointMap = M.Map WaypointName (NonEmpty Location)
+
+data AnnotatedDestination a = AnnotatedDestination
+  { enforceConsistency :: Bool
+  , cosmoLocation :: Cosmo a
+  }
+  deriving (Show, Eq)
 
 -- | Parameterized on the portal specification method.
 -- At the subworld parsing level, we only can obtain the planar location
@@ -34,7 +46,7 @@ data Navigation a b = Navigation
   -- ^ Note that waypoints defined at the "root" level are still relative to
   -- the top-left corner of the map rectangle; they are not in absolute world
   -- coordinates (as with applying the "ul" offset).
-  , portals :: M.Map (Cosmo Location) (Cosmo b)
+  , portals :: M.Map (Cosmo Location) (AnnotatedDestination b)
   }
 
 deriving instance (Eq (a WaypointMap), Eq b) => Eq (Navigation a b)
@@ -50,9 +62,18 @@ data PortalExit = PortalExit
 data Portal = Portal
   { entrance :: WaypointName
   , exitInfo :: PortalExit
-  , consistent :: Maybe Bool
+  , consistent :: Bool
   }
-  deriving (Show, Eq, Generic, FromJSON)
+  deriving (Show, Eq)
+
+instance FromJSON Portal where
+  parseJSON = withObject "Portal" $ \v ->
+    Portal
+      <$> v
+        .: "entrance"
+      <*> v
+        .: "exitInfo"
+      <*> v .:? "consistent" .!= False
 
 failUponDuplication ::
   (MonadFail m, Show a, Show b) =>
@@ -114,7 +135,7 @@ validatePartialNavigation ::
 validatePartialNavigation currentSubworldName upperLeft unmergedWaypoints portalDefs = do
   failUponDuplication "is required to be unique, but is duplicated in:" waypointsWithUniqueFlag
 
-  nestedPortalPairs <- forM portalDefs $ \(Portal entranceName (PortalExit exitName maybeExitSubworldName) _) -> do
+  nestedPortalPairs <- forM portalDefs $ \(Portal entranceName (PortalExit exitName maybeExitSubworldName) isConsistent) -> do
     -- Portals can have multiple entrances but only a single exit.
     -- That is, the pairings of entries to exits must form a proper mathematical "function".
     -- Multiple occurrences of entrance waypoints of a given name will result in
@@ -122,7 +143,7 @@ validatePartialNavigation currentSubworldName upperLeft unmergedWaypoints portal
     entranceLocs <- getLocs entranceName
 
     let sw = fromMaybe currentSubworldName maybeExitSubworldName
-        f = (,Cosmo sw exitName) . extractLoc
+        f = (,AnnotatedDestination isConsistent $ Cosmo sw exitName) . extractLoc
     return $ map f $ NE.toList entranceLocs
 
   let reconciledPortalPairs = concat nestedPortalPairs
@@ -149,9 +170,9 @@ validatePartialNavigation currentSubworldName upperLeft unmergedWaypoints portal
 validatePortals ::
   MonadFail m =>
   Navigation (M.Map SubworldName) WaypointName ->
-  m (M.Map (Cosmo Location) (Cosmo Location))
+  m (M.Map (Cosmo Location) (AnnotatedDestination Location))
 validatePortals (Navigation wpUniverse partialPortals) = do
-  portalPairs <- forM (M.toList partialPortals) $ \(portalEntrance, portalExit@(Cosmo swName (WaypointName rawExitName))) -> do
+  portalPairs <- forM (M.toList partialPortals) $ \(portalEntrance, AnnotatedDestination isConsistent portalExit@(Cosmo swName (WaypointName rawExitName))) -> do
     firstExitLoc :| otherExits <- getLocs portalExit
     unless (null otherExits)
       . fail
@@ -161,7 +182,9 @@ validatePortals (Navigation wpUniverse partialPortals) = do
         , quote rawExitName
         , "for portal"
         ]
-    return (portalEntrance, Cosmo swName firstExitLoc)
+    return (portalEntrance, AnnotatedDestination isConsistent $ Cosmo swName firstExitLoc)
+
+  ensureSpatialConsistency portalPairs
 
   return $ M.fromList portalPairs
  where
@@ -198,6 +221,41 @@ validatePortals (Navigation wpUniverse partialPortals) = do
 -- * The resulting \"vector\" from every pair must be equal.
 ensureSpatialConsistency ::
   MonadFail m =>
-  -- Navigation (M.Map SubworldName) WaypointName ->
+  [(Cosmo Location, AnnotatedDestination Location)] ->
   m ()
-ensureSpatialConsistency = return () -- TODO
+ensureSpatialConsistency xs =
+  unless (null nonUniform) $
+    fail $
+      unwords
+        [ "Non-uniform portal distances:"
+        , show nonUniform
+        ]
+ where
+  consistentPairs :: [(Cosmo Location, Cosmo Location)]
+  consistentPairs = map (fmap cosmoLocation) $ filter (enforceConsistency . snd) xs
+
+  interWorldPairs = filter (uncurry ((/=) `on` view subworld)) consistentPairs
+  normalizedOrdering = map normalizePairOrder interWorldPairs
+
+  normalizePairOrder pair =
+    if uncurry ((>) `on` view subworld) pair
+      then Negative $ swap pair
+      else Positive pair
+
+  tuplify = both (view subworld) &&& both (view planar)
+
+  nest ::
+    Signed (b, a) ->
+    (b, Signed a)
+  nest = \case
+    Positive x -> fmap Positive x
+    Negative x -> fmap Negative x
+
+  reExtract = \case
+    Positive x -> x
+    Negative x -> negated x
+
+  groupedBySubworldPair = binTuples $ map (nest . fmap tuplify) normalizedOrdering
+  vectorized = M.map (NE.map (reExtract . fmap (uncurry (.-.)))) groupedBySubworldPair
+
+  nonUniform = M.filter ((not . allEqual) . NE.toList) vectorized
