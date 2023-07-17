@@ -81,13 +81,3 @@ world:
         ]
       )
     ]
-
-    # genBiome Big Hard Artificial
-    #   | sample ix cl0 > 0.85 = (StoneT, Just "copper ore")
-    #   | otherwise = (StoneT, Nothing)
-
-    -- if p > 0.0 then {dirt, flower} else {stone}
-
-    --      [ if (x + y >= 2) then c else {dirt}
-    --      , if (x < (-5)) then ({stone} <> {stone, flower}) else {dirt}
-    --      ]
