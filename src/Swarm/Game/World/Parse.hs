@@ -61,6 +61,12 @@ lexeme = L.lexeme sc
 symbol :: Text -> Parser Text
 symbol = L.symbol sc
 
+operatorChar :: Parser Char
+operatorChar = oneOf ("!@#$%^&*=+-/<>" :: String)
+
+operator :: Text -> Parser Text
+operator op = (lexeme . try) $ string op <* notFollowedBy operatorChar
+
 -- | A positive integer literal token.
 integerOrFloat :: Parser (Either Integer Double)
 integerOrFloat =
@@ -123,27 +129,28 @@ parseWExp =
     parseWExpAtom
     [
       [ Prefix (unary Not <$ reserved "not")
-      , Prefix (unary Neg <$ symbol "-")
+      , Prefix (unary Neg <$ operator "-")
       ]
     ,
-      [ InfixL (binary Mul <$ symbol "*")
-      , InfixL (binary Div <$ symbol "/")
-      , InfixL (binary Mod <$ symbol "%")
+      [ InfixL (binary Mul <$ operator "*")
+      , InfixL (binary Div <$ operator "/")
+      , InfixL (binary Mod <$ operator "%")
       ]
     ,
-      [ InfixL (binary Add <$ symbol "+")
-      , InfixL (binary Sub <$ symbol "-")
+      [ InfixL (binary Add <$ operator "+")
+      , InfixL (binary Sub <$ operator "-")
+      , InfixR (binary Overlay <$ operator "<>")
       ]
     ,
-      [ InfixN (binary Eq <$ symbol "==")
-      , InfixN (binary Neq <$ symbol "/=")
-      , InfixN (binary Lt <$ symbol "<")
-      , InfixN (binary Leq <$ symbol "<=")
-      , InfixN (binary Gt <$ symbol ">")
-      , InfixN (binary Geq <$ symbol ">=")
+      [ InfixN (binary Eq <$ operator "==")
+      , InfixN (binary Neq <$ operator "/=")
+      , InfixN (binary Lt <$ operator "<")
+      , InfixN (binary Leq <$ operator "<=")
+      , InfixN (binary Gt <$ operator ">")
+      , InfixN (binary Geq <$ operator ">=")
       ]
-    , [InfixR (binary And <$ symbol "&&")]
-    , [InfixR (binary Or <$ symbol "||")]
+    , [InfixR (binary And <$ operator "&&")]
+    , [InfixR (binary Or <$ operator "||")]
     ]
  where
   unary op x = WOp op [x]
@@ -219,5 +226,5 @@ runParser p = parse p ""
 instance FromJSON WExp where
   parseJSON = withText "World DSL program" $ \t ->
     case runParser parseWExp t of
-      Left err -> undefined
+      Left err -> error (errorBundlePretty err)
       Right wexp -> return wexp

@@ -25,10 +25,8 @@ module Swarm.Game.World.Syntax (
 where
 
 -- XXX to do:
---   - get something working ASAP!
 --   - finish inference/compiling code
 --   - add lambdas?
---   - convert from Maybe to generic monad with effects
 --   - add error message reporting
 --   - pass in EntityMap, RobotMap etc. + resolve cell values
 --   - to evaluate, pass in things like seed
@@ -65,13 +63,12 @@ instance Over Integer where
 instance Over Double where
   _ <+> x = x
 
-instance (Over a) => Over (World a) where
-  w1 <+> w2 = \c -> w1 c <+> w2 c
-
 ------------------------------------------------------------
 -- Bits and bobs
 
 type World b = Coords -> b
+
+-- XXX TerrainType already has a Blank --- get rid of that and use Nothing???
 
 data CellVal e r = CellVal (Last TerrainType) (Last e) [r]
   deriving (Eq, Show)
@@ -93,7 +90,7 @@ type Var = Text
 data Axis = X | Y
   deriving (Eq, Ord, Show, Bounded, Enum)
 
-data Op = Not | Neg | And | Or | Add | Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | Geq | If | Perlin | Reflect Axis | Rot Rot | Mask
+data Op = Not | Neg | And | Or | Add | Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | Geq | If | Perlin | Reflect Axis | Rot Rot | Mask | Overlay
   deriving (Eq, Ord, Show)
 
 ------------------------------------------------------------

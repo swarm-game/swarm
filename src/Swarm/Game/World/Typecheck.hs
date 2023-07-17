@@ -2,6 +2,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -9,12 +11,16 @@
 -- Typechecking and elaboration for the Swarm world DSL.
 module Swarm.Game.World.Typecheck where
 
+import Control.Algebra (Has)
+import Control.Effect.Reader (Reader, ask)
+import Control.Effect.Throw (Throw, throwError)
+import Data.Functor.Const qualified as F
 import Data.Kind (Type)
 import Data.List.NonEmpty qualified as NE
 import Data.Monoid (Last (..))
 import Data.Text (Text)
 import Data.Type.Equality (TestEquality (..), type (:~:) (Refl))
-import Swarm.Game.Terrain (TerrainType (..))
+import Swarm.Game.Entity (EntityMap, lookupEntityName)
 import Swarm.Game.World.Syntax
 import Prelude hiding (lookup)
 
@@ -50,61 +56,23 @@ data Const :: Type -> Type where
   CLeq :: (Ord a) => Const (a -> a -> Bool)
   CGt :: (Ord a) => Const (a -> a -> Bool)
   CGeq :: (Ord a) => Const (a -> a -> Bool)
-  CMask :: (Empty a) => Const (World Bool -> World a -> World a) -- XXX add Empty/Over constraint(s)
+  CMask :: (Empty a, Over a) => Const (World Bool -> World a -> World a)
   CSeed :: Const Integer
   CCoord :: Axis -> Const (World Integer)
   CHash :: Const (World Integer)
   CPerlin :: Const (Integer -> Integer -> Double -> Double -> World Double)
   CReflect :: Axis -> Const (World a -> World a)
   CRot :: Rot -> Const (World a -> World a)
-  COver :: (Over a) => Const (World a -> World a -> World a)
-  CEmpty :: (Empty a) => Const (World a)
+  COver :: (Over a) => Const (a -> a -> a)
+  CEmpty :: (Empty a) => Const a
   K :: Const (a -> b -> a)
   S :: Const ((a -> b -> c) -> (a -> b) -> a -> c)
   I :: Const (a -> a)
   B :: Const ((b -> c) -> (a -> b) -> a -> c)
   C :: Const ((a -> b -> c) -> b -> a -> c)
+  Φ :: Const ((a -> b -> c) -> (d -> a) -> (d -> b) -> (d -> c)) -- Phoenix, aka liftA2
 
 deriving instance Show (Const ty)
-
--- -- Interpret constants directly into the host language.  We don't use
--- -- this in our ultimate compilation but it's nice to have for
--- -- debugging/comparison.
--- interpConst :: Const ty -> ty
--- interpConst = \case
---   CLit a -> a
---   CIf -> \b t e -> if b then t else e
---   CNot -> not
---   CNeg -> negate
---   CAnd -> (&&)
---   COr -> (||)
---   CAdd -> (+)
---   CSub -> (-)
---   CMul -> (*)
---   CDiv -> (/)
---   CIDiv -> div
---   CMod -> mod
---   CEq -> (==)
---   CNeq -> (/=)
---   CLt -> (<)
---   CLeq -> (<=)
---   CGt -> (>)
---   CGeq -> (>=)
---   CMask -> \b x c -> if b c then x c else empty
---   CSeed -> 0 -- XXX need seed provided as env to be able to interpret this
---   CCoord ax -> undefined -- \(Coords (x,y)) -> case ax of X -> x; Y -> y  -- XXX Integer vs Int32
---   CHash -> undefined
---   CPerlin -> undefined
---   CReflect ax -> undefined -- \w (Coords (r,c)) -> w (Coords (case ax of X ->
---   CRot _ -> undefined
---   CFI -> fromInteger
---   COver -> (<+>)
---   CEmpty -> empty
---   K -> const
---   S -> (<*>)
---   I -> id
---   B -> (.)
---   C -> flip
 
 class HasConst t where
   embed :: Const a -> t a
@@ -147,6 +115,11 @@ instance Applicable (TTerm g) where
 
 instance HasConst (TTerm g) where
   embed = TConst
+
+------------------------------------------------------------
+-- Errors
+
+type CheckErr = ()
 
 ------------------------------------------------------------
 -- Type representations
@@ -195,173 +168,204 @@ instance TestEquality TTy where
       Nothing -> Nothing
   testEquality _ _ = Nothing
 
-checkEq :: TTy ty -> ((Eq ty) => a) -> Maybe a
-checkEq (TTyBase BBool) a = Just a
-checkEq (TTyBase BInt) a = Just a
-checkEq (TTyBase BFloat) a = Just a
-checkEq _ _ = Nothing
+checkEq :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Eq ty) => m a) -> m a
+checkEq (TTyBase BBool) a = a
+checkEq (TTyBase BInt) a = a
+checkEq (TTyBase BFloat) a = a
+checkEq _ _ = throwError ()
 
-checkOrd :: TTy ty -> ((Ord ty) => a) -> Maybe a
-checkOrd (TTyBase BBool) a = Just a
-checkOrd (TTyBase BInt) a = Just a
-checkOrd (TTyBase BFloat) a = Just a
-checkOrd _ _ = Nothing
+checkOrd :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Ord ty) => m a) -> m a
+checkOrd (TTyBase BBool) a = a
+checkOrd (TTyBase BInt) a = a
+checkOrd (TTyBase BFloat) a = a
+checkOrd _ _ = throwError ()
 
-checkNum :: TTy ty -> ((Num ty) => a) -> Maybe a
-checkNum (TTyBase BInt) a = Just a
-checkNum (TTyBase BFloat) a = Just a
-checkNum _ _ = Nothing
+checkNum :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Num ty) => m a) -> m a
+checkNum (TTyBase BInt) a = a
+checkNum (TTyBase BFloat) a = a
+checkNum _ _ = throwError ()
 
-checkIntegral :: TTy ty -> ((Integral ty) => a) -> Maybe a
-checkIntegral (TTyBase BInt) a = Just a
-checkIntegral _ _ = Nothing
+checkIntegral :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Integral ty) => m a) -> m a
+checkIntegral (TTyBase BInt) a = a
+checkIntegral _ _ = throwError ()
 
-checkEmpty :: TTy ty -> ((Empty ty) => a) -> Maybe a
-checkEmpty _ _ = Nothing -- XXX fix me
+checkEmpty :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Empty ty) => m a) -> m a
+checkEmpty (TTyBase BCell) a = a
+checkEmpty _ _ = throwError ()
 
-checkOver :: TTy ty -> ((Over ty) => a) -> Maybe a
-checkOver (TTyBase BBool) a = Just a
-checkOver (TTyBase BInt) a = Just a
-checkOver (TTyBase BFloat) a = Just a
-checkOver (TTyBase BCell) a = Just a
-checkOver (TTyWorld ty) a = checkOver ty a
-checkOver _ _ = Nothing
+checkOver :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Over ty) => m a) -> m a
+checkOver (TTyBase BBool) a = a
+checkOver (TTyBase BInt) a = a
+checkOver (TTyBase BFloat) a = a
+checkOver (TTyBase BCell) a = a
+checkOver _ _ = throwError ()
 
 ------------------------------------------------------------
--- Contexts + existential wrappers
+-- Existential wrappers
+
+data Some :: (Type -> Type) -> Type where
+  Some :: TTy α -> t α -> Some t
+
+deriving instance (forall α. Show (t α)) => Show (Some t)
+
+mapSome :: (forall α. s α -> t α) -> Some s -> Some t
+mapSome f (Some ty t) = Some ty (f t)
+
+type SomeTy = Some (F.Const ())
+
+pattern SomeTy :: TTy α -> SomeTy
+pattern SomeTy α = Some α (F.Const ())
+{-# COMPLETE SomeTy #-}
 
 data Ctx :: [Type] -> Type where
   CNil :: Ctx '[]
   CCons :: Text -> TTy ty -> Ctx g -> Ctx (ty ': g)
 
-data SomeIdx :: [Type] -> Type where
-  SomeIdx :: Idx g ty -> TTy ty -> SomeIdx g
-
-mapSomeIdx :: (forall ty. Idx g1 ty -> Idx g2 ty) -> SomeIdx g1 -> SomeIdx g2
-mapSomeIdx f (SomeIdx i ty) = SomeIdx (f i) ty
-
-lookup :: Text -> Ctx g -> Maybe (SomeIdx g)
-lookup _ CNil = Nothing
+lookup :: (Has (Throw CheckErr) sig m) => Text -> Ctx g -> m (Some (Idx g))
+lookup _ CNil = throwError ()
 lookup x (CCons y ty ctx)
-  | x == y = Just (SomeIdx VZ ty)
-  | otherwise = mapSomeIdx VS <$> lookup x ctx
-
-data SomeTerm :: [Type] -> Type where
-  SomeTerm :: TTy ty -> TTerm g ty -> SomeTerm g
-
-deriving instance Show (SomeTerm g)
-
-data SomeType :: Type where
-  SomeType :: TTy ty -> SomeType
-
-deriving instance Show SomeType
+  | x == y = return $ Some ty VZ
+  | otherwise = mapSome VS <$> lookup x ctx
 
 ------------------------------------------------------------
 -- Type inference/checking + elaboration
 
-check :: Ctx g -> TTy t -> WExp -> Maybe (TTerm g t)
+check ::
+  (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
+  Ctx g ->
+  TTy t ->
+  WExp ->
+  m (TTerm g t)
 check e ty t = do
   t1 <- infer e t
-  SomeTerm ty' t' <- apply (SomeTerm (ty :->: ty) (embed I)) t1
+  Some ty' t' <- apply (Some (ty :->: ty) (embed I)) t1
   case testEquality ty ty' of
-    Nothing -> Nothing
-    Just Refl -> Just t'
+    Nothing -> throwError ()
+    Just Refl -> return t'
 
 -- -- For my own sanity I think we might get rid of the rule Int <: Float
 -- -- and only allow promoting/lifting to World.  Then 3 will always be
 -- -- Int and 3.0 will be Float.
 
-getBaseType :: SomeTerm g -> SomeType
-getBaseType (SomeTerm (TTyWorld ty) _) = SomeType ty
-getBaseType (SomeTerm ty _) = SomeType ty
+getBaseType :: Some (TTerm g) -> SomeTy
+getBaseType (Some (TTyWorld ty) _) = SomeTy ty
+getBaseType (Some ty _) = SomeTy ty
 
 -- Application is where we deal with lifting + promotion.
-apply :: SomeTerm g -> SomeTerm g -> Maybe (SomeTerm g)
-apply (SomeTerm (ty11 :->: ty12) t1) (SomeTerm ty2 t2)
-  | Just Refl <- testEquality ty11 ty2 = return $ SomeTerm ty12 (t1 $$ t2)
-apply (SomeTerm (TTyWorld ty11 :->: ty12) t1) (SomeTerm ty2 t2)
-  | Just Refl <- testEquality ty11 ty2 = return $ SomeTerm ty12 (t1 $$ (K .$$ t2))
-apply (SomeTerm (ty11 :->: ty12) t1) (SomeTerm (TTyWorld ty2) t2)
-  | Just Refl <- testEquality ty11 ty2 = return $ SomeTerm (TTyWorld ty12) (B .$$ t1 $$ t2)
-apply (SomeTerm (TTyWorld (ty11 :->: ty12)) t1) (SomeTerm ty2 t2)
-  | Just Refl <- testEquality ty11 ty2 = return $ SomeTerm (TTyWorld ty12) (S .$$ t1 $$ (K .$$ t2))
-apply (SomeTerm (TTyWorld (ty11 :->: ty12)) t1) (SomeTerm (TTyWorld ty2) t2)
-  | Just Refl <- testEquality ty11 ty2 = return $ SomeTerm (TTyWorld ty12) (S .$$ t1 $$ t2)
-apply _ _ = Nothing
+apply :: (Has (Throw CheckErr) sig m) => Some (TTerm g) -> Some (TTerm g) -> m (Some (TTerm g))
+apply (Some (ty11 :->: ty12) t1) (Some ty2 t2)
+  | Just Refl <- testEquality ty11 ty2 = return $ Some ty12 (t1 $$ t2)
+apply (Some (TTyWorld ty11 :->: ty12) t1) (Some ty2 t2)
+  | Just Refl <- testEquality ty11 ty2 = return $ Some ty12 (t1 $$ (K .$$ t2))
+apply (Some (ty11 :->: ty12) t1) (Some (TTyWorld ty2) t2)
+  | Just Refl <- testEquality ty11 ty2 = return $ Some (TTyWorld ty12) (B .$$ t1 $$ t2)
+apply (Some (TTyWorld (ty11 :->: ty12)) t1) (Some ty2 t2)
+  | Just Refl <- testEquality ty11 ty2 = return $ Some (TTyWorld ty12) (S .$$ t1 $$ (K .$$ t2))
+apply (Some (TTyWorld (ty11 :->: ty12)) t1) (Some (TTyWorld ty2) t2)
+  | Just Refl <- testEquality ty11 ty2 = return $ Some (TTyWorld ty12) (S .$$ t1 $$ t2)
+apply _ _ = throwError ()
 
-applyTo :: SomeTerm g -> SomeTerm g -> Maybe (SomeTerm g)
+applyTo :: (Has (Throw CheckErr) sig m) => Some (TTerm g) -> Some (TTerm g) -> m (Some (TTerm g))
 applyTo = flip apply
 
-inferOp :: [SomeType] -> Op -> Maybe (SomeTerm g)
-inferOp _ Not = return $ SomeTerm (TTyBool :->: TTyBool) (embed CNot)
-inferOp [SomeType tyA] Neg = SomeTerm (tyA :->: tyA) <$> checkNum tyA (embed CNeg)
-inferOp _ And = return $ SomeTerm (TTyBool :->: TTyBool :->: TTyBool) (embed CAnd)
-inferOp _ Or = return $ SomeTerm (TTyBool :->: TTyBool :->: TTyBool) (embed COr)
-inferOp [SomeType tyA] Add = SomeTerm (tyA :->: tyA :->: tyA) <$> checkNum tyA (embed CAdd)
-inferOp [SomeType tyA] Sub = SomeTerm (tyA :->: tyA :->: tyA) <$> checkNum tyA (embed CSub)
-inferOp [SomeType tyA] Mul = SomeTerm (tyA :->: tyA :->: tyA) <$> checkNum tyA (embed CMul)
-inferOp [SomeType tyA] Div = case tyA of
-  TTyBase BInt -> return $ SomeTerm (tyA :->: tyA :->: tyA) (embed CIDiv)
-  TTyBase BFloat -> return $ SomeTerm (tyA :->: tyA :->: tyA) (embed CDiv)
-  _ -> Nothing
-inferOp [SomeType tyA] Mod = SomeTerm (tyA :->: tyA :->: tyA) <$> checkIntegral tyA (embed CMod)
-inferOp [SomeType tyA] Eq = SomeTerm (tyA :->: tyA :->: TTyBool) <$> checkEq tyA (embed CEq)
-inferOp [SomeType tyA] Neq = SomeTerm (tyA :->: tyA :->: TTyBool) <$> checkEq tyA (embed CNeq)
-inferOp [SomeType tyA] Lt = SomeTerm (tyA :->: tyA :->: TTyBool) <$> checkOrd tyA (embed CLt)
-inferOp [SomeType tyA] Leq = SomeTerm (tyA :->: tyA :->: TTyBool) <$> checkOrd tyA (embed CLeq)
-inferOp [SomeType tyA] Gt = SomeTerm (tyA :->: tyA :->: TTyBool) <$> checkOrd tyA (embed CGt)
-inferOp [SomeType tyA] Geq = SomeTerm (tyA :->: tyA :->: TTyBool) <$> checkOrd tyA (embed CGeq)
-inferOp [SomeType tyA] If = return $ SomeTerm (TTyBool :->: tyA :->: tyA :->: tyA) (embed CIf)
-inferOp _ Perlin = return $ SomeTerm (TTyInt :->: TTyInt :->: TTyFloat :->: TTyFloat :->: TTyWorld TTyFloat) (embed CPerlin)
-inferOp [SomeType tyA] (Reflect r) = return $ SomeTerm (TTyWorld tyA :->: TTyWorld tyA) (embed (CReflect r))
-inferOp [SomeType tyA] (Rot r) = return $ SomeTerm (TTyWorld tyA :->: TTyWorld tyA) (embed (CRot r))
-inferOp [SomeType tyA] Mask = SomeTerm (TTyWorld TTyBool :->: TTyWorld tyA :->: TTyWorld tyA) <$> checkEmpty tyA (embed CMask)
-inferOp _ _ = error "bad call to inferOp!!"
+inferOp :: (Has (Throw CheckErr) sig m) => [SomeTy] -> Op -> m (Some (TTerm g))
+inferOp _ Not = return $ Some (TTyBool :->: TTyBool) (embed CNot)
+inferOp [SomeTy tyA] Neg = Some (tyA :->: tyA) <$> checkNum tyA (return $ embed CNeg)
+inferOp _ And = return $ Some (TTyBool :->: TTyBool :->: TTyBool) (embed CAnd)
+inferOp _ Or = return $ Some (TTyBool :->: TTyBool :->: TTyBool) (embed COr)
+inferOp [SomeTy tyA] Add = Some (tyA :->: tyA :->: tyA) <$> checkNum tyA (return $ embed CAdd)
+inferOp [SomeTy tyA] Sub = Some (tyA :->: tyA :->: tyA) <$> checkNum tyA (return $ embed CSub)
+inferOp [SomeTy tyA] Mul = Some (tyA :->: tyA :->: tyA) <$> checkNum tyA (return $ embed CMul)
+inferOp [SomeTy tyA] Div = case tyA of
+  TTyBase BInt -> return $ Some (tyA :->: tyA :->: tyA) (embed CIDiv)
+  TTyBase BFloat -> return $ Some (tyA :->: tyA :->: tyA) (embed CDiv)
+  _ -> throwError ()
+inferOp [SomeTy tyA] Mod = Some (tyA :->: tyA :->: tyA) <$> checkIntegral tyA (return $ embed CMod)
+inferOp [SomeTy tyA] Eq = Some (tyA :->: tyA :->: TTyBool) <$> checkEq tyA (return $ embed CEq)
+inferOp [SomeTy tyA] Neq = Some (tyA :->: tyA :->: TTyBool) <$> checkEq tyA (return $ embed CNeq)
+inferOp [SomeTy tyA] Lt = Some (tyA :->: tyA :->: TTyBool) <$> checkOrd tyA (return $ embed CLt)
+inferOp [SomeTy tyA] Leq = Some (tyA :->: tyA :->: TTyBool) <$> checkOrd tyA (return $ embed CLeq)
+inferOp [SomeTy tyA] Gt = Some (tyA :->: tyA :->: TTyBool) <$> checkOrd tyA (return $ embed CGt)
+inferOp [SomeTy tyA] Geq = Some (tyA :->: tyA :->: TTyBool) <$> checkOrd tyA (return $ embed CGeq)
+inferOp [SomeTy tyA] If = return $ Some (TTyBool :->: tyA :->: tyA :->: tyA) (embed CIf)
+inferOp _ Perlin = return $ Some (TTyInt :->: TTyInt :->: TTyFloat :->: TTyFloat :->: TTyWorld TTyFloat) (embed CPerlin)
+inferOp [SomeTy tyA] (Reflect r) = return $ Some (TTyWorld tyA :->: TTyWorld tyA) (embed (CReflect r))
+inferOp [SomeTy tyA] (Rot r) = return $ Some (TTyWorld tyA :->: TTyWorld tyA) (embed (CRot r))
+inferOp [SomeTy tyA] Mask = Some (TTyWorld TTyBool :->: TTyWorld tyA :->: TTyWorld tyA) <$> checkEmpty tyA (checkOver tyA (return $ embed CMask))
+inferOp [SomeTy tyA] Overlay = Some (tyA :->: tyA :->: tyA) <$> checkOver tyA (return $ embed COver)
+inferOp tys op = error $ "bad call to inferOp: " ++ show tys ++ " " ++ show op
 
-typeArgsFor :: Op -> [SomeTerm g] -> [SomeType]
+typeArgsFor :: Op -> [Some (TTerm g)] -> [SomeTy]
 typeArgsFor op (t : _)
   | op `elem` [Neg, Add, Sub, Mul, Div, Mod, Eq, Neq, Lt, Leq, Gt, Geq] = [getBaseType t]
 typeArgsFor (Reflect _) (t : _) = [getBaseType t]
 typeArgsFor (Rot _) (t : _) = [getBaseType t]
 typeArgsFor op (_ : t : _)
-  | op `elem` [If, Mask] = [getBaseType t]
+  | op `elem` [If, Mask, Overlay] = [getBaseType t]
 typeArgsFor _ _ = []
 
-applyOp :: Ctx g -> ([SomeTerm g] -> [SomeType]) -> Op -> [WExp] -> Maybe (SomeTerm g)
+applyOp ::
+  (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
+  Ctx g ->
+  ([Some (TTerm g)] -> [SomeTy]) ->
+  Op ->
+  [WExp] ->
+  m (Some (TTerm g))
 applyOp ctx typeArgs op ts = do
   tts <- mapM (infer ctx) ts
   foldl (\r -> (r >>=) . applyTo) (inferOp (typeArgs tts) op) tts
 
-infer :: Ctx g -> WExp -> Maybe (SomeTerm g)
-infer _ (WInt i) = return $ SomeTerm (TTyBase BInt) (embed (CLit i))
-infer _ (WFloat f) = return $ SomeTerm (TTyBase BFloat) (embed (CLit f))
-infer _ (WBool b) = return $ SomeTerm (TTyBase BBool) (embed (CLit b))
-infer _ (WCell (CellVal t _ _)) = return $ SomeTerm TTyCell (embed (CLit (CellVal t (Last Nothing) []))) -- XXX resolve cell
-infer ctx (WVar x) = (\(SomeIdx i ty) -> SomeTerm ty (TVar i)) <$> lookup x ctx
+infer ::
+  (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
+  Ctx g ->
+  WExp ->
+  m (Some (TTerm g))
+infer _ (WInt i) = return $ Some (TTyBase BInt) (embed (CLit i))
+infer _ (WFloat f) = return $ Some (TTyBase BFloat) (embed (CLit f))
+infer _ (WBool b) = return $ Some (TTyBase BBool) (embed (CLit b))
+infer _ (WCell c) = do
+  c' <- resolveCell c
+  return $ Some TTyCell (embed (CLit c')) -- XXX resolve cell
+infer ctx (WVar x) = mapSome TVar <$> lookup x ctx
 infer ctx (WOp op ts) = applyOp ctx (typeArgsFor op) op ts
-infer _ WSeed = return $ SomeTerm TTyInt (embed CSeed)
-infer _ (WCoord ax) = return $ SomeTerm (TTyWorld TTyInt) (embed (CCoord ax))
-infer _ WHash = return $ SomeTerm (TTyWorld TTyInt) (embed CHash)
+infer _ WSeed = return $ Some TTyInt (embed CSeed)
+infer _ (WCoord ax) = return $ Some (TTyWorld TTyInt) (embed (CCoord ax))
+infer _ WHash = return $ Some (TTyWorld TTyInt) (embed CHash)
 infer ctx (WLet defs body) = inferLet ctx defs body
 infer ctx (WOverlay ts) = inferOverlay ctx ts
-infer ctx (WCat ax ts) = undefined
-infer ctx (WStruct pal rect) = undefined
+infer _ctx (WCat _ax _ts) = undefined
+infer _ctx (WStruct _pal _rect) = undefined
 
-inferLet :: Ctx g -> [(Var, WExp)] -> WExp -> Maybe (SomeTerm g)
+resolveCell :: (Has (Reader EntityMap) sig m) => RawCellVal -> m FilledCellVal
+resolveCell (CellVal t (Last e) _rs) = do
+  em <- ask @EntityMap
+  return $ CellVal t (Last (e >>= flip lookupEntityName em)) []
+
+inferLet ::
+  (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
+  Ctx g ->
+  [(Var, WExp)] ->
+  WExp ->
+  m (Some (TTerm g))
 inferLet ctx [] body = infer ctx body
 inferLet ctx ((x, e) : xs) body = do
-  e'@(SomeTerm ty1 _) <- infer ctx e
-  SomeTerm ty2 let' <- inferLet (CCons x ty1 ctx) xs body
-  apply (SomeTerm (ty1 :->: ty2) (TLam let')) e'
+  e'@(Some ty1 _) <- infer ctx e
+  Some ty2 let' <- inferLet (CCons x ty1 ctx) xs body
+  apply (Some (ty1 :->: ty2) (TLam let')) e'
 
-inferOverlay :: Ctx g -> NE.NonEmpty WExp -> Maybe (SomeTerm g)
+-- XXX make overlay work on non-World types?
+inferOverlay ::
+  (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
+  Ctx g ->
+  NE.NonEmpty WExp ->
+  m (Some (TTerm g))
 inferOverlay ctx es = case NE.uncons es of
   (e, Nothing) -> infer ctx e
   (e, Just es') -> do
     e' <- infer ctx e
     o' <- inferOverlay ctx es'
     case getBaseType e' of
-      SomeType ty -> do
+      SomeTy ty -> do
         let wty = TTyWorld ty
-        c <- checkOver ty (embed COver)
-        apply (SomeTerm (wty :->: wty :->: wty) c) e' >>= applyTo o'
+        c <- checkOver ty (return $ embed COver)
+        apply (Some (wty :->: wty :->: wty) (Φ .$$ c)) e' >>= applyTo o'

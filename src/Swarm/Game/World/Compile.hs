@@ -42,11 +42,6 @@ data BTerm :: Type -> Type where
   BApp :: BTerm (a -> b) -> BTerm a -> BTerm b
   BConst :: Const a -> BTerm a
 
--- -- Direct interpreter for BTerm, for debugging/comparison.
--- interpBTerm :: BTerm ty -> ty
--- interpBTerm (BApp f x) = interpBTerm f (interpBTerm x)
--- interpBTerm (BConst c) = interpConst c
-
 deriving instance Show (BTerm t)
 
 instance Applicable BTerm where
@@ -160,8 +155,8 @@ compileConst = \case
   CCoord ax -> CFun $ \(CConst (coordsToLoc -> Location x y)) -> CConst (fromIntegral (case ax of X -> x; Y -> y))
   CHash -> undefined
   CPerlin -> undefined
-  CReflect r -> undefined
-  CRot r -> undefined
+  CReflect _r -> undefined
+  CRot _r -> undefined
   COver -> binary (<+>)
   CEmpty -> CConst empty
   K -> CFun $ \x -> CFun $ const x
@@ -169,6 +164,7 @@ compileConst = \case
   I -> CFun id
   B -> CFun $ \f -> CFun $ \g -> CFun $ \x -> f $$ (g $$ x)
   C -> CFun $ \f -> CFun $ \x -> CFun $ \y -> f $$ y $$ x
+  Φ -> CFun $ \c -> CFun $ \f -> CFun $ \g -> CFun $ \x -> c $$ (f $$ x) $$ (g $$ x)
 
 unary :: (a -> b) -> CTerm (a -> b)
 unary op = CFun $ \(CConst x) -> CConst (op x)

@@ -1,11 +1,6 @@
 version: 1
 name: Test world DSL
 description: foo
-objectives:
-  - condition: |
-      return false
-solution: |
-  move
 robots:
   - name: base
     loc: [0,0]
@@ -13,6 +8,12 @@ robots:
     devices:
       - 3D printer
       - logger
+      - treads
+      - grabber
+known: [tree]
 world:
   dsl: |
-    if (x + y < 2) then {dirt} else {stone}
+    overlay
+      [ if (x + y >= 2) then {stone, tree} else {dirt}
+      , if (x < (-5)) then ({stone} <> {stone, flower}) else {dirt}
+      ]
