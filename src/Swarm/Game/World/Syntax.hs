@@ -22,18 +22,6 @@ module Swarm.Game.World.Syntax (
 )
 where
 
--- XXX to do:
---   - make a way to load terms from files!
---     - create subdir data/worlds/
---     - during startup, load expression from each file in
---       worlds/*.world and typecheck/compile it
---     - 'import blah' syntax for importing term from 'blah.world'
---   - get rid of BlankT and use Nothing
---   - add error message reporting
---   - pass in RobotMap + resolve robot cell values
---   - palettes + structures
---   - alternative JSON syntax?
-
 import Data.List.NonEmpty qualified as NE
 import Data.Monoid (Last (..))
 import Data.Text (Text)
