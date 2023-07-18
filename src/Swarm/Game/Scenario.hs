@@ -159,7 +159,7 @@ instance FromJSONE EntityMap Scenario where
         validatePortals
           . Navigation mergedWaypoints
           . M.unions
-          $ map (portals . navigation)
+          . map (portals . navigation)
           $ NE.toList allWorlds
 
       let mergedNavigation = Navigation mergedWaypoints mergedPortals
