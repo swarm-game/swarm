@@ -1584,12 +1584,16 @@ execConst c vs s k = do
                 | otherwise -> es |> e
         let addToRobotLog :: Has (State GameState) sgn m => Robot -> m ()
             addToRobotLog r = do
-              r' <- execState r $ do
+              maybeRidLoc <- evalState r $ do
                 hasLog <- hasCapability CLog
                 hasListen <- hasCapability CListen
                 loc' <- use robotLocation
-                when (hasLog && hasListen) (robotLog %= addLatestClosest loc')
-              addRobot r'
+                rid <- use robotID
+                return $ do
+                  guard $ hasLog && hasListen
+                  Just (rid, loc')
+              forM_ maybeRidLoc $ \(rid, loc') ->
+                robotMap . at rid . _Just . robotLog %= addLatestClosest loc'
         robotsAround <-
           if isPrivileged
             then use $ robotMap . to IM.elems
