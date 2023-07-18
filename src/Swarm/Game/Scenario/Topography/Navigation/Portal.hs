@@ -26,13 +26,15 @@ import Linear (V2, negated)
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Universe
+import Swarm.Language.Directions
 import Swarm.Util (allEqual, binTuples, both, failT, quote, showT)
 
 type WaypointMap = M.Map WaypointName (NonEmpty Location)
 
 data AnnotatedDestination a = AnnotatedDestination
   { enforceConsistency :: Bool
-  , cosmoLocation :: Cosmic a
+  , reorientation :: Direction
+  , destination :: Cosmic a
   }
   deriving (Show, Eq)
 
@@ -72,6 +74,7 @@ data Portal = Portal
   { entrance :: WaypointName
   , exitInfo :: PortalExit
   , consistent :: Bool
+  , reorient :: PlanarRelativeDir
   }
   deriving (Show, Eq)
 
@@ -83,6 +86,7 @@ instance FromJSON Portal where
       <*> v
         .: "exitInfo"
       <*> v .:? "consistent" .!= False
+      <*> v .:? "reorient" .!= DForward
 
 failUponDuplication ::
   (MonadFail m, Show a, Show b) =>
@@ -136,7 +140,8 @@ validatePartialNavigation ::
 validatePartialNavigation currentSubworldName upperLeft unmergedWaypoints portalDefs = do
   failUponDuplication "is required to be unique, but is duplicated in:" waypointsWithUniqueFlag
 
-  nestedPortalPairs <- forM portalDefs $ \(Portal entranceName (PortalExit exitName maybeExitSubworldName) isConsistent) -> do
+  nestedPortalPairs <- forM portalDefs $ \p -> do
+    let Portal entranceName (PortalExit exitName maybeExitSubworldName) isConsistent reOrient = p
     -- Portals can have multiple entrances but only a single exit.
     -- That is, the pairings of entries to exits must form a proper mathematical "function".
     -- Multiple occurrences of entrance waypoints of a given name will result in
@@ -144,7 +149,7 @@ validatePartialNavigation currentSubworldName upperLeft unmergedWaypoints portal
     entranceLocs <- getLocs entranceName
 
     let sw = fromMaybe currentSubworldName maybeExitSubworldName
-        f = (,AnnotatedDestination isConsistent $ Cosmic sw exitName) . extractLoc
+        f = (,AnnotatedDestination isConsistent (DRelative $ DPlanar reOrient) $ Cosmic sw exitName) . extractLoc
     return $ map f $ NE.toList entranceLocs
 
   let reconciledPortalPairs = concat nestedPortalPairs
@@ -173,7 +178,7 @@ validatePortals ::
   Navigation (M.Map SubworldName) WaypointName ->
   m (M.Map (Cosmic Location) (AnnotatedDestination Location))
 validatePortals (Navigation wpUniverse partialPortals) = do
-  portalPairs <- forM (M.toList partialPortals) $ \(portalEntrance, AnnotatedDestination isConsistent portalExit@(Cosmic swName (WaypointName rawExitName))) -> do
+  portalPairs <- forM (M.toList partialPortals) $ \(portalEntrance, AnnotatedDestination isConsistent reOrient portalExit@(Cosmic swName (WaypointName rawExitName))) -> do
     firstExitLoc :| otherExits <- getLocs portalExit
     unless (null otherExits) $
       failT
@@ -181,7 +186,7 @@ validatePortals (Navigation wpUniverse partialPortals) = do
         , quote rawExitName
         , "for portal"
         ]
-    return (portalEntrance, AnnotatedDestination isConsistent $ Cosmic swName firstExitLoc)
+    return (portalEntrance, AnnotatedDestination isConsistent reOrient $ Cosmic swName firstExitLoc)
 
   ensureSpatialConsistency portalPairs
 
@@ -228,7 +233,7 @@ ensureSpatialConsistency xs =
       ]
  where
   consistentPairs :: [(Cosmic Location, Cosmic Location)]
-  consistentPairs = map (fmap cosmoLocation) $ filter (enforceConsistency . snd) xs
+  consistentPairs = map (fmap destination) $ filter (enforceConsistency . snd) xs
 
   interWorldPairs :: [(Cosmic Location, Cosmic Location)]
   interWorldPairs = filter (uncurry ((/=) `on` view subworld)) consistentPairs
