@@ -1,7 +1,7 @@
 version: 1
 name: Subworld uniqueness (default name)
 description: |
-  Has two unnamed subworlds, which fail uniquenss
+  Has two unnamed subworlds, which fail uniqueness
 attrs:
   - name: portal_in
     fg: "#ff9a00"

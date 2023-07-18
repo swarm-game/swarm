@@ -46,7 +46,7 @@ type WorldDescription = PWorldDescription Entity
 
 instance FromJSONE (InheritedStructureDefs, (EntityMap, RobotMap)) WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
-    (scnenarioLevelStructureDefs, (em, rm)) <- getE
+    (scenarioLevelStructureDefs, (em, rm)) <- getE
     (pal, terr, rootWorldStructureDefs) <- localE (const (em, rm)) $ do
       pal <- v ..:? "palette" ..!= WorldPalette mempty
       terr <- v ..:? "default"
@@ -61,7 +61,7 @@ instance FromJSONE (InheritedStructureDefs, (EntityMap, RobotMap)) WorldDescript
     upperLeft <- liftE (v .:? "upperleft" .!= origin)
     subWorldName <- liftE (v .:? "name" .!= DefaultRootSubworld)
 
-    let initialStructureDefs = scnenarioLevelStructureDefs <> rootWorldStructureDefs
+    let initialStructureDefs = scenarioLevelStructureDefs <> rootWorldStructureDefs
         struc = Structure initialArea initialStructureDefs placementDefs $ waypointDefs <> mapWaypoints
         MergedStructure mergedArea unmergedWaypoints = Structure.mergeStructures mempty Nothing struc
 
