@@ -22,6 +22,7 @@ module Swarm.Util (
   findDup,
   both,
   allEqual,
+  sequenceTuple,
 
   -- * Directory utilities
   readFileMay,
@@ -192,6 +193,22 @@ both f = bimap f f
 
 allEqual :: (Ord a) => [a] -> Bool
 allEqual = (== 1) . S.size . S.fromList
+
+-- | This function has a lamentable basis.
+-- The 'sequenceA' function requires an 'Applicative' instance
+-- for the inner 'Functor'. However, the 'Applicative' instance
+-- of @(,)@ (the two-element tuple) requires a 'Monoid' instance
+-- for the first element!
+-- See: https://hackage.haskell.org/package/base-4.18.0.0/docs/src/GHC.Base.html#line-523
+--
+-- The 'sequenceA' operation does not affect the first element
+-- of the tuple, so it shouldn't matter whether it has a 'Monoid' instance!
+-- To satisfy the compiler, we abuse a list to first wrap and then unwrap after a traversal.
+sequenceTuple ::
+  Traversable f =>
+  f (a, b) ->
+  (a, f b)
+sequenceTuple = first head . traverse (first pure)
 
 ------------------------------------------------------------
 -- Directory stuff

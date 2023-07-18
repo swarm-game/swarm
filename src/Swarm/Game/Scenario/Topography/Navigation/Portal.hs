@@ -26,7 +26,7 @@ import Linear (negated)
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Universe
-import Swarm.Util (allEqual, binTuples, both, quote)
+import Swarm.Util (allEqual, binTuples, both, quote, sequenceTuple)
 
 type WaypointMap = M.Map WaypointName (NonEmpty Location)
 
@@ -244,18 +244,11 @@ ensureSpatialConsistency xs =
 
   tuplify = both (view subworld) &&& both (view planar)
 
-  nest ::
-    Signed (b, a) ->
-    (b, Signed a)
-  nest = \case
-    Positive x -> fmap Positive x
-    Negative x -> fmap Negative x
-
   reExtract = \case
     Positive x -> x
     Negative x -> negated x
 
-  groupedBySubworldPair = binTuples $ map (nest . fmap tuplify) normalizedOrdering
+  groupedBySubworldPair = binTuples $ map (sequenceTuple . fmap tuplify) normalizedOrdering
   vectorized = M.map (NE.map (reExtract . fmap (uncurry (.-.)))) groupedBySubworldPair
 
   nonUniform = M.filter ((not . allEqual) . NE.toList) vectorized
