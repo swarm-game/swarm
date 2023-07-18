@@ -35,6 +35,13 @@ data TerrainType
 readTerrain :: T.Text -> Maybe TerrainType
 readTerrain t = readMaybe (into @String (T.toTitle t) ++ "T")
 
+instance Semigroup TerrainType where
+  t <> BlankT = t
+  _ <> t = t
+
+instance Monoid TerrainType where
+  mempty = BlankT
+
 instance FromJSON TerrainType where
   parseJSON = withText "text" $ \t ->
     case readTerrain t of

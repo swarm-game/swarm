@@ -5,7 +5,6 @@
 module Swarm.Game.World.Eval where
 
 import Control.Carrier.Reader (runReader)
-import Data.Maybe (fromMaybe)
 import Data.Monoid (Last (..))
 import Swarm.Game.Entity (Entity, EntityMap)
 import Swarm.Game.Terrain (TerrainType (..))
@@ -20,4 +19,4 @@ runWExp :: EntityMap -> WExp -> Seed -> Either CheckErr (WorldFun TerrainType En
 runWExp em wexp seed = convert . runCTerm . compile seed . bracket <$> runReader em (check CNil (TTyWorld TTyCell) wexp)
 
 convert :: (Coords -> CellVal) -> WorldFun TerrainType Entity
-convert f = WF ((\(CellVal (Last t) (Last e) _) -> (fromMaybe BlankT t, e)) . f)
+convert f = WF ((\(CellVal t (Last e) _) -> (t, e)) . f)

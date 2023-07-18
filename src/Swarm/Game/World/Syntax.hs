@@ -57,18 +57,12 @@ instance Over Double where
 
 type World b = Coords -> b
 
--- syntax: {foo} will parse as cell containing either terrain, entity,
--- or robot foo depending on which has that name.  to disambiguate we can use
--- {terrain: foo} or {entity: foo} or {robot: foo}
---
--- allow writing {x, y, z} as shortcut for {x} <> {y} <> {z}
-
 data CellTag = CellTerrain | CellEntity | CellRobot
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 type RawCellVal = [(Maybe CellTag, Text)]
 
-data CellVal = CellVal (Last TerrainType) (Last Entity) [Robot]
+data CellVal = CellVal TerrainType (Last Entity) [Robot]
   deriving (Eq, Show)
 
 instance Over CellVal where

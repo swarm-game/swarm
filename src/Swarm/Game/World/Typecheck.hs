@@ -372,7 +372,7 @@ resolveCellItem (mCellTag, item) = case mCellTag of
       Nothing -> throwError (UnknownErr 13) -- cell item does not refer to anything
       Just cell -> return cell
  where
-  mkTerrain t = CellVal (Last (Just t)) mempty mempty
+  mkTerrain t = CellVal t mempty mempty
   mkEntity e = CellVal mempty (Last (Just e)) mempty
   resolverByTag :: CellTag -> Text -> m (Maybe CellVal)
   resolverByTag = \case
