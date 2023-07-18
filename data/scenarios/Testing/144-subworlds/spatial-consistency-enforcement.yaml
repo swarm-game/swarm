@@ -64,7 +64,7 @@ subworlds:
     upperleft: [-1, 1]
     map: |
       b..b..b..b
-      .p......P.
+      .P......p.
       b..b..b..b
 world:
   name: root
