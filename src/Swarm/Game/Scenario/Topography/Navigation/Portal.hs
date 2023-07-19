@@ -13,15 +13,17 @@ import Data.Bifunctor (first)
 import Data.BoolExpr (Signed (..))
 import Data.Function (on)
 import Data.Functor.Identity
+import Data.Int (Int32)
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
+import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Text qualified as T
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
-import Linear (negated)
+import Linear (V2, negated)
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Universe
@@ -225,21 +227,32 @@ ensureSpatialConsistency xs =
   consistentPairs :: [(Cosmic Location, Cosmic Location)]
   consistentPairs = map (fmap cosmoLocation) $ filter (enforceConsistency . snd) xs
 
+  interWorldPairs :: [(Cosmic Location, Cosmic Location)]
   interWorldPairs = filter (uncurry ((/=) `on` view subworld)) consistentPairs
+
+  normalizedOrdering :: [Signed (Cosmic Location, Cosmic Location)]
   normalizedOrdering = map normalizePairOrder interWorldPairs
 
+  normalizePairOrder :: (Cosmic a, Cosmic a) -> Signed (Cosmic a, Cosmic a)
   normalizePairOrder pair =
     if uncurry ((>) `on` view subworld) pair
       then Negative $ swap pair
       else Positive pair
 
+  tuplify :: (Cosmic a, Cosmic a) -> ((SubworldName, SubworldName), (a, a))
   tuplify = both (view subworld) &&& both (view planar)
 
-  reExtract = \case
+  getSigned :: Signed (V2 Int32) -> V2 Int32
+  getSigned = \case
     Positive x -> x
     Negative x -> negated x
 
+  groupedBySubworldPair ::
+    Map (SubworldName, SubworldName) (NonEmpty (Signed (Location, Location)))
   groupedBySubworldPair = binTuples $ map (sequenceTuple . fmap tuplify) normalizedOrdering
-  vectorized = M.map (NE.map (reExtract . fmap (uncurry (.-.)))) groupedBySubworldPair
 
+  vectorized :: Map (SubworldName, SubworldName) (NonEmpty (V2 Int32))
+  vectorized = M.map (NE.map (getSigned . fmap (uncurry (.-.)))) groupedBySubworldPair
+
+  nonUniform :: Map (SubworldName, SubworldName) (NonEmpty (V2 Int32))
   nonUniform = M.filter ((not . allEqual) . NE.toList) vectorized
