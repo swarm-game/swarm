@@ -27,7 +27,7 @@ import Linear (V2, negated)
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Universe
-import Swarm.Util (allEqual, binTuples, both, failT, quote, sequenceTuple)
+import Swarm.Util (allEqual, binTuples, both, failT, quote)
 
 type WaypointMap = M.Map WaypointName (NonEmpty Location)
 
@@ -249,10 +249,44 @@ ensureSpatialConsistency xs =
 
   groupedBySubworldPair ::
     Map (SubworldName, SubworldName) (NonEmpty (Signed (Location, Location)))
-  groupedBySubworldPair = binTuples $ map (sequenceTuple . fmap tuplify) normalizedOrdering
+  groupedBySubworldPair = binTuples $ map (sequenceSigned . fmap tuplify) normalizedOrdering
 
   vectorized :: Map (SubworldName, SubworldName) (NonEmpty (V2 Int32))
   vectorized = M.map (NE.map (getSigned . fmap (uncurry (.-.)))) groupedBySubworldPair
 
   nonUniform :: Map (SubworldName, SubworldName) (NonEmpty (V2 Int32))
   nonUniform = M.filter ((not . allEqual) . NE.toList) vectorized
+
+-- |
+-- An implementation of 'sequenceA' for 'Signed' that does not
+-- require an 'Applicative' instance for the inner 'Functor'.
+--
+-- == Discussion
+-- Compare to the 'Traversable' instance of 'Signed':
+-- @
+-- instance Traversable Signed where
+--   traverse f (Positive x) = Positive <$> f x
+--   traverse f (Negative x) = Negative <$> f x
+-- @
+--
+-- if we were to substitute 'id' for f:
+-- @
+--   traverse id (Positive x) = Positive <$> id x
+--   traverse id (Negative x) = Negative <$> id x
+-- @
+-- our implementation essentially becomes @traverse id@.
+--
+-- However, we cannot simply write our implementation as @traverse id@, because
+-- the 'traverse' function has an 'Applicative' constraint, which is superfluous
+-- for our purpose.
+--
+-- Perhaps there is an opportunity to invent a typeclass for datatypes which
+-- consist exclusively of unary (or more ambitiously, non-nullary?) data constructors,
+-- for which a less-constrained 'sequence' function could be automatically derived.
+sequenceSigned ::
+  Functor f =>
+  Signed (f a) ->
+  f (Signed a)
+sequenceSigned = \case
+  Positive x -> Positive <$> x
+  Negative x -> Negative <$> x
