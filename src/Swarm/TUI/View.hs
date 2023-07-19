@@ -463,7 +463,7 @@ drawGameUI s =
           )
     ]
 
-renderCoordsString :: Cosmo Location -> String
+renderCoordsString :: Cosmic Location -> String
 renderCoordsString cCoords =
   unwords
     [ VU.locationToString coords
@@ -471,15 +471,15 @@ renderCoordsString cCoords =
     , T.unpack $ renderWorldName sw
     ]
  where
-  Cosmo sw coords = cCoords
+  Cosmic sw coords = cCoords
 
-drawWorldCursorInfo :: WorldEditor Name -> GameState -> Cosmo W.Coords -> Widget Name
+drawWorldCursorInfo :: WorldEditor Name -> GameState -> Cosmic W.Coords -> Widget Name
 drawWorldCursorInfo worldEditor g cCoords =
   case getStatic g coords of
     Just s -> renderDisplay $ displayStatic s
     Nothing -> hBox $ tileMemberWidgets ++ [coordsWidget]
  where
-  Cosmo _ coords = cCoords
+  Cosmic _ coords = cCoords
   coordsWidget = str $ renderCoordsString $ fmap W.coordsToLoc cCoords
 
   tileMembers = terrain : mapMaybe merge [entity, robot]
@@ -1014,7 +1014,7 @@ drawWorld ui g =
           h = ctx ^. availHeightL
           vr = viewingRegion g (fromIntegral w, fromIntegral h)
           ixs = range $ vr ^. planar
-      render . vBox . map hBox . chunksOf w . map (drawLoc ui g . Cosmo (vr ^. subworld)) $ ixs
+      render . vBox . map hBox . chunksOf w . map (drawLoc ui g . Cosmic (vr ^. subworld)) $ ixs
 
 ------------------------------------------------------------
 -- Robot inventory panel
@@ -1030,7 +1030,7 @@ drawRobotPanel s
   -- away and a robot that does not exist.
   | Just r <- s ^. gameState . to focusedRobot
   , Just (_, lst) <- s ^. uiState . uiInventory =
-      let Cosmo _subworldName (Location x y) = r ^. robotLocation
+      let Cosmic _subworldName (Location x y) = r ^. robotLocation
           drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
        in padBottom Max $
             vBox

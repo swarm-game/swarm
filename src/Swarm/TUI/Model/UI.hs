@@ -102,7 +102,7 @@ data UIState = UIState
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
   , _uiLaunchConfig :: LaunchOptions
-  , _uiWorldCursor :: Maybe (Cosmo W.Coords)
+  , _uiWorldCursor :: Maybe (Cosmic W.Coords)
   , _uiWorldEditor :: WorldEditor Name
   , _uiREPL :: REPLState
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
@@ -160,7 +160,7 @@ uiLaunchConfig :: Lens' UIState LaunchOptions
 uiFocusRing :: Lens' UIState (FocusRing Name)
 
 -- | The last clicked position on the world view.
-uiWorldCursor :: Lens' UIState (Maybe (Cosmo W.Coords))
+uiWorldCursor :: Lens' UIState (Maybe (Cosmic W.Coords))
 
 -- | State of all World Editor widgets
 uiWorldEditor :: Lens' UIState (WorldEditor Name)

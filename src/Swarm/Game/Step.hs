@@ -440,17 +440,17 @@ zoomWorld swName n = do
     return a
 
 -- | Get the entity (if any) at a given location.
-entityAt :: (Has (State GameState) sig m) => Cosmo Location -> m (Maybe Entity)
-entityAt (Cosmo subworldName loc) =
+entityAt :: (Has (State GameState) sig m) => Cosmic Location -> m (Maybe Entity)
+entityAt (Cosmic subworldName loc) =
   join <$> zoomWorld subworldName (W.lookupEntityM @Int (W.locToCoords loc))
 
 -- | Modify the entity (if any) at a given location.
 updateEntityAt ::
   (Has (State GameState) sig m) =>
-  Cosmo Location ->
+  Cosmic Location ->
   (Maybe Entity -> Maybe Entity) ->
   m ()
-updateEntityAt cLoc@(Cosmo subworldName loc) upd = do
+updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
   didChange <-
     fmap (fromMaybe False) $
       zoomWorld subworldName $
@@ -1068,7 +1068,7 @@ addSeedBot ::
   Has (State GameState) sig m =>
   Entity ->
   (Integer, Integer) ->
-  Cosmo Location ->
+  Cosmic Location ->
   TimeSpec ->
   m ()
 addSeedBot e (minT, maxT) loc ts =
@@ -1189,7 +1189,7 @@ execConst c vs s k = do
         let heading = orient ? zero
 
         -- Excludes the base location.
-        let locsInDirection :: [Cosmo Location]
+        let locsInDirection :: [Cosmic Location]
             locsInDirection =
               take (min (fromIntegral d) maxStrideRange) $
                 drop 1 $
@@ -1400,17 +1400,17 @@ execConst c vs s k = do
         selfRid <- use robotID
 
         -- Includes the base location, so we exclude the base robot later.
-        let locsInDirection :: [Cosmo Location]
+        let locsInDirection :: [Cosmic Location]
             locsInDirection = take maxScoutRange $ iterate (`offsetBy` heading) myLoc
 
         let hasOpaqueEntity =
               fmap (maybe False (`hasProperty` E.Opaque)) . entityAt
 
-        let hasVisibleBot :: Cosmo Location -> Bool
+        let hasVisibleBot :: Cosmic Location -> Bool
             hasVisibleBot = any botIsVisible . IS.toList . excludeSelf . botsHere
              where
               excludeSelf = (`IS.difference` IS.singleton selfRid)
-              botsHere (Cosmo swName loc) =
+              botsHere (Cosmic swName loc) =
                 M.findWithDefault mempty loc $
                   M.findWithDefault mempty swName botsByLocs
               botIsVisible = maybe False canSee . (`IM.lookup` rMap)
@@ -1419,7 +1419,7 @@ execConst c vs s k = do
         -- A robot on the same cell as an opaque entity is considered hidden.
         -- Returns (Just Bool) if the result is conclusively visible or opaque,
         -- or Nothing if we don't have a conclusive answer yet.
-        let isConclusivelyVisible :: Bool -> Cosmo Location -> Maybe Bool
+        let isConclusivelyVisible :: Bool -> Cosmic Location -> Maybe Bool
             isConclusivelyVisible isOpaque loc
               | isOpaque = Just False
               | hasVisibleBot loc = Just True
@@ -1442,7 +1442,7 @@ execConst c vs s k = do
     Waypoint -> case vs of
       [VText name, VInt idx] -> do
         lm <- use worldNavigation
-        Cosmo swName _ <- use robotLocation
+        Cosmic swName _ <- use robotLocation
         case M.lookup (WaypointName name) $ M.findWithDefault mempty swName $ waypoints lm of
           Nothing -> throwError $ CmdFailed Waypoint (T.unwords ["No waypoint named", name]) Nothing
           Just wps -> return $ Out (asValue (NE.length wps, indexWrapNonEmpty wps idx)) s k
@@ -1476,8 +1476,8 @@ execConst c vs s k = do
       _ -> badConst
     Surveil -> case vs of
       [VPair (VInt x) (VInt y)] -> do
-        Cosmo swName _ <- use robotLocation
-        let loc = Cosmo swName $ Location (fromIntegral x) (fromIntegral y)
+        Cosmic swName _ <- use robotLocation
+        let loc = Cosmic swName $ Location (fromIntegral x) (fromIntegral y)
         addWatchedLocation loc
         return $ Out VUnit s k
       _ -> badConst
@@ -2288,7 +2288,7 @@ execConst c vs s k = do
     when (isCardinal d) $ hasCapabilityFor COrient $ TDir d
     return $ applyTurn d $ orient ? zero
 
-  lookInDirection :: HasRobotStepState sig m => Direction -> m (Cosmo Location, Maybe Entity)
+  lookInDirection :: HasRobotStepState sig m => Direction -> m (Cosmic Location, Maybe Entity)
   lookInDirection d = do
     newHeading <- deriveHeading d
     loc <- use robotLocation
@@ -2470,7 +2470,7 @@ execConst c vs s k = do
 
   -- Make sure nothing is in the way. Note that system robots implicitly ignore
   -- and base throws on failure.
-  checkMoveFailure :: HasRobotStepState sig m => Cosmo Location -> m (Maybe MoveFailureDetails)
+  checkMoveFailure :: HasRobotStepState sig m => Cosmic Location -> m (Maybe MoveFailureDetails)
   checkMoveFailure nextLoc = do
     me <- entityAt nextLoc
     systemRob <- use systemRobot
@@ -2512,7 +2512,7 @@ execConst c vs s k = do
       IgnoreFail -> return ()
 
   -- Determine the move failure mode and apply the corresponding effect.
-  checkMoveAhead :: HasRobotStepState sig m => Cosmo Location -> MoveFailure -> m ()
+  checkMoveAhead :: HasRobotStepState sig m => Cosmic Location -> MoveFailure -> m ()
   checkMoveAhead nextLoc failureHandlers = do
     maybeFailure <- checkMoveFailure nextLoc
     applyMoveFailureEffect maybeFailure failureHandlers
@@ -2620,7 +2620,7 @@ execConst c vs s k = do
 
 addWatchedLocation ::
   HasRobotStepState sig m =>
-  Cosmo Location ->
+  Cosmic Location ->
   m ()
 addWatchedLocation loc = do
   rid <- use robotID
@@ -2653,7 +2653,7 @@ isPrivilegedBot = (||) <$> use systemRobot <*> use creativeMode
 
 -- | Requires that the target location is within one cell.
 -- Requirement is waived if the bot is privileged.
-isNearbyOrExempt :: Bool -> Cosmo Location -> Cosmo Location -> Bool
+isNearbyOrExempt :: Bool -> Cosmic Location -> Cosmic Location -> Bool
 isNearbyOrExempt privileged myLoc otherLoc =
   privileged || case cosmoMeasure manhattan myLoc otherLoc of
     InfinitelyFar -> False
@@ -2738,8 +2738,8 @@ provisionChild childID toEquip toGive = do
 -- Also implements teleportation by portals.
 updateRobotLocation ::
   (HasRobotStepState sig m) =>
-  Cosmo Location ->
-  Cosmo Location ->
+  Cosmic Location ->
+  Cosmic Location ->
   m ()
 updateRobotLocation oldLoc newLoc
   | oldLoc == newLoc = return ()
