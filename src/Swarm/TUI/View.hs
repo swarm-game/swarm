@@ -463,14 +463,12 @@ drawGameUI s =
     ]
 
 renderCoordsString :: Cosmic Location -> String
-renderCoordsString cCoords =
-  unwords
-    [ VU.locationToString coords
-    , "in"
-    , T.unpack $ renderWorldName sw
-    ]
+renderCoordsString (Cosmic sw coords) =
+  unwords $ VU.locationToString coords : suffix
  where
-  Cosmic sw coords = cCoords
+  suffix = case sw of
+    DefaultRootSubworld -> []
+    SubworldName swName -> ["in", T.unpack swName]
 
 drawWorldCursorInfo :: WorldEditor Name -> GameState -> Cosmic W.Coords -> Widget Name
 drawWorldCursorInfo worldEditor g cCoords =
