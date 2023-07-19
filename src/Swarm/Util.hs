@@ -192,7 +192,8 @@ both :: Bifunctor p => (a -> d) -> p a a -> p d d
 both f = bimap f f
 
 allEqual :: (Ord a) => [a] -> Bool
-allEqual = (== 1) . S.size . S.fromList
+allEqual [] = True
+allEqual (x:xs) = all (==x) xs
 
 -- | This function has a lamentable basis.
 -- The 'sequenceA' function requires an 'Applicative' instance

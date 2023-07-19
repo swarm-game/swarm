@@ -93,15 +93,7 @@ failUponDuplication message binnedMap =
   duplicated = M.filter ((> 1) . NE.length) binnedMap
 
 failWaypointLookup :: MonadFail m => WaypointName -> Maybe a -> m a
-failWaypointLookup (WaypointName rawName) lookupResult = case lookupResult of
-  Nothing ->
-    fail $
-      T.unpack $
-        T.unwords
-          [ "No waypoint named"
-          , quote rawName
-          ]
-  Just xs -> return xs
+failWaypointLookup (WaypointName rawName) = maybe (failT ["No waypoint named", quote rawName]) return
 
 -- |
 -- The following constraints must be enforced:
@@ -162,7 +154,7 @@ validatePartialNavigation currentSubworldName upperLeft unmergedWaypoints portal
   correctedWaypoints =
     binTuples $
       map
-        (\x -> (wpName $ wpConfig $ value x, fmap (offsetWaypoint $ coerce upperLeft) x))
+        (\x -> (wpName $ wpConfig $ value x, fmap (offsetWaypoint $ upperLeft .-. origin) x))
         unmergedWaypoints
   bareWaypoints = M.map (NE.map extractLoc) correctedWaypoints
   waypointsWithUniqueFlag = M.filter (any $ wpUnique . wpConfig . value) correctedWaypoints
