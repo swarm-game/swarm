@@ -193,7 +193,7 @@ both f = bimap f f
 
 allEqual :: (Ord a) => [a] -> Bool
 allEqual [] = True
-allEqual (x:xs) = all (==x) xs
+allEqual (x : xs) = all (== x) xs
 
 -- | This function has a lamentable basis.
 -- The 'sequenceA' function requires an 'Applicative' instance
