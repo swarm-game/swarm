@@ -387,7 +387,7 @@ handleMainEvent ev = do
       -- Paint with the World Editor
       EC.handleCtrlLeftClick mouseLoc
     -- toggle collapse/expand REPL
-    ControlChar ',' -> do
+    MetaChar ',' -> do
       invalidateCacheEntry WorldCache
       uiState . uiShowREPL %= not
     MouseDown n _ _ mouseLoc ->
