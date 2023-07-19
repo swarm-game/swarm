@@ -61,27 +61,30 @@ import Swarm.TUI.Model.UI
 import Swarm.TUI.View.CustomStyling (toAttrPair)
 import System.Clock
 
--- | Initialize the 'AppState'.
+-- | Initialize the 'AppState' from scratch.
 initAppState :: AppOpts -> ExceptT Text IO AppState
 initAppState opts = do
   (rs, ui) <- initPersistentState opts
   constructAppState rs ui opts
 
--- | XXX
-logWarning :: RuntimeState -> SystemFailure -> RuntimeState
-logWarning rs' w = rs' & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
-
--- | XXX
+-- | Add some system failures to the list of messages in the
+--   'RuntimeState'.
 addWarnings :: RuntimeState -> [SystemFailure] -> RuntimeState
 addWarnings = List.foldl' logWarning
+ where
+  logWarning rs' w = rs' & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
 
--- | XXX
+-- | Based on the command line options, should we skip displaying the
+--   menu?
 skipMenu :: AppOpts -> Bool
 skipMenu AppOpts {..} = isJust userScenario || isRunningInitialProgram || isJust userSeed
  where
   isRunningInitialProgram = isJust scriptToRun || autoPlay
 
--- | XXX
+-- | Initialize the more persistent parts of the app state, /i.e./ the
+--   'RuntimeState' and 'UIState'.  This is split out into a separate
+--   function so that in the integration test suite we can call this
+--   once and reuse the resulting states for all tests.
 initPersistentState :: AppOpts -> ExceptT Text IO (RuntimeState, UIState)
 initPersistentState opts@(AppOpts {..}) = do
   (rsWarnings, initRS) <- initRuntimeState
@@ -89,7 +92,8 @@ initPersistentState opts@(AppOpts {..}) = do
   let rs = addWarnings initRS $ rsWarnings <> uiWarnings
   return (rs, ui)
 
--- | XXX
+-- | Construct an 'AppState' from an already-loaded 'RuntimeState' and
+--   'UIState', given the 'AppOpts' the app was started with.
 constructAppState :: RuntimeState -> UIState -> AppOpts -> ExceptT Text IO AppState
 constructAppState rs ui opts@(AppOpts {..}) = do
   let gs = initGameState (mkGameStateConfig rs)
