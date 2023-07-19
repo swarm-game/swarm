@@ -224,10 +224,10 @@ emptyWorld t = newWorld (WF $ const (t, Nothing))
 
 lookupCosmoTerrain ::
   IArray U.UArray Int =>
-  Cosmo Coords ->
+  Cosmic Coords ->
   MultiWorld Int e ->
   TerrainType
-lookupCosmoTerrain (Cosmo subworldName i) multiWorld =
+lookupCosmoTerrain (Cosmic subworldName i) multiWorld =
   maybe BlankT (toEnum . lookupTerrain i) $ M.lookup subworldName multiWorld
 
 -- | Look up the terrain value at certain coordinates: try looking it
@@ -253,8 +253,8 @@ lookupTerrainM c = do
   modify @(World t e) $ loadCell c
   lookupTerrain c <$> get @(World t e)
 
-lookupCosmoEntity :: Cosmo Coords -> MultiWorld t e -> Maybe e
-lookupCosmoEntity (Cosmo subworldName i) multiWorld =
+lookupCosmoEntity :: Cosmic Coords -> MultiWorld t e -> Maybe e
+lookupCosmoEntity (Cosmic subworldName i) multiWorld =
   lookupEntity i =<< M.lookup subworldName multiWorld
 
 -- | Look up the entity at certain coordinates: first, see if it is in
@@ -345,7 +345,7 @@ loadRegion reg (World f t m) = World f t' m
 -- This type is used for changes by e.g. the drill command at later
 -- tick. Using ADT allows us to serialize and inspect the updates.
 data WorldUpdate e = ReplaceEntity
-  { updatedLoc :: Cosmo Location
+  { updatedLoc :: Cosmic Location
   , originalEntity :: e
   , newEntity :: Maybe e
   }

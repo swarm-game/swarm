@@ -109,7 +109,7 @@ handleWorldEditorPanelEvent = \case
   _ -> return ()
 
 -- | Return value: whether the cursor position should be updated
-updateAreaBounds :: Maybe (Cosmo W.Coords) -> EventM Name AppState Bool
+updateAreaBounds :: Maybe (Cosmic W.Coords) -> EventM Name AppState Bool
 updateAreaBounds = \case
   Nothing -> return True
   Just mouseCoords -> do

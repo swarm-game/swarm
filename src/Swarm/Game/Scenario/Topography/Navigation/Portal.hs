@@ -31,7 +31,7 @@ type WaypointMap = M.Map WaypointName (NonEmpty Location)
 
 data AnnotatedDestination a = AnnotatedDestination
   { enforceConsistency :: Bool
-  , cosmoLocation :: Cosmo a
+  , cosmoLocation :: Cosmic a
   }
   deriving (Show, Eq)
 
@@ -45,7 +45,7 @@ data Navigation a b = Navigation
   -- ^ Note that waypoints defined at the "root" level are still relative to
   -- the top-left corner of the map rectangle; they are not in absolute world
   -- coordinates (as with applying the "ul" offset).
-  , portals :: M.Map (Cosmo Location) (AnnotatedDestination b)
+  , portals :: M.Map (Cosmic Location) (AnnotatedDestination b)
   }
 
 deriving instance (Eq (a WaypointMap), Eq b) => Eq (Navigation a b)
@@ -134,7 +134,7 @@ validatePartialNavigation currentSubworldName upperLeft unmergedWaypoints portal
     entranceLocs <- getLocs entranceName
 
     let sw = fromMaybe currentSubworldName maybeExitSubworldName
-        f = (,AnnotatedDestination isConsistent $ Cosmo sw exitName) . extractLoc
+        f = (,AnnotatedDestination isConsistent $ Cosmic sw exitName) . extractLoc
     return $ map f $ NE.toList entranceLocs
 
   let reconciledPortalPairs = concat nestedPortalPairs
@@ -145,7 +145,7 @@ validatePartialNavigation currentSubworldName upperLeft unmergedWaypoints portal
     binTuples reconciledPortalPairs
 
   return . Navigation (pure bareWaypoints) . M.fromList $
-    map (first $ Cosmo currentSubworldName) reconciledPortalPairs
+    map (first $ Cosmic currentSubworldName) reconciledPortalPairs
  where
   getLocs wpWrapper = failWaypointLookup wpWrapper $ M.lookup wpWrapper correctedWaypoints
 
@@ -161,9 +161,9 @@ validatePartialNavigation currentSubworldName upperLeft unmergedWaypoints portal
 validatePortals ::
   MonadFail m =>
   Navigation (M.Map SubworldName) WaypointName ->
-  m (M.Map (Cosmo Location) (AnnotatedDestination Location))
+  m (M.Map (Cosmic Location) (AnnotatedDestination Location))
 validatePortals (Navigation wpUniverse partialPortals) = do
-  portalPairs <- forM (M.toList partialPortals) $ \(portalEntrance, AnnotatedDestination isConsistent portalExit@(Cosmo swName (WaypointName rawExitName))) -> do
+  portalPairs <- forM (M.toList partialPortals) $ \(portalEntrance, AnnotatedDestination isConsistent portalExit@(Cosmic swName (WaypointName rawExitName))) -> do
     firstExitLoc :| otherExits <- getLocs portalExit
     unless (null otherExits)
       . fail
@@ -173,13 +173,13 @@ validatePortals (Navigation wpUniverse partialPortals) = do
         , quote rawExitName
         , "for portal"
         ]
-    return (portalEntrance, AnnotatedDestination isConsistent $ Cosmo swName firstExitLoc)
+    return (portalEntrance, AnnotatedDestination isConsistent $ Cosmic swName firstExitLoc)
 
   ensureSpatialConsistency portalPairs
 
   return $ M.fromList portalPairs
  where
-  getLocs (Cosmo swName wpWrapper@(WaypointName exitName)) = do
+  getLocs (Cosmic swName wpWrapper@(WaypointName exitName)) = do
     subworldWaypoints <- case M.lookup swName wpUniverse of
       Just x -> return x
       Nothing ->
@@ -212,7 +212,7 @@ validatePortals (Navigation wpUniverse partialPortals) = do
 -- * The resulting \"vector\" from every pair must be equal.
 ensureSpatialConsistency ::
   MonadFail m =>
-  [(Cosmo Location, AnnotatedDestination Location)] ->
+  [(Cosmic Location, AnnotatedDestination Location)] ->
   m ()
 ensureSpatialConsistency xs =
   unless (null nonUniform) $
@@ -222,7 +222,7 @@ ensureSpatialConsistency xs =
         , show nonUniform
         ]
  where
-  consistentPairs :: [(Cosmo Location, Cosmo Location)]
+  consistentPairs :: [(Cosmic Location, Cosmic Location)]
   consistentPairs = map (fmap cosmoLocation) $ filter (enforceConsistency . snd) xs
 
   interWorldPairs = filter (uncurry ((/=) `on` view subworld)) consistentPairs

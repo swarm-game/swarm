@@ -35,7 +35,7 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import Swarm.Game.CESK (TickNumber)
 import Swarm.Game.Location (Location)
-import Swarm.Game.Universe (Cosmo)
+import Swarm.Game.Universe (Cosmic)
 
 -- | Severity of the error - critical errors are bugs
 --   and should be reported as Issues.
@@ -66,7 +66,7 @@ data LogEntry = LogEntry
   -- ^ The name of the robot that generated the entry.
   , _leRobotID :: Int
   -- ^ The ID of the robot that generated the entry.
-  , _leLocation :: LogLocation (Cosmo Location)
+  , _leLocation :: LogLocation (Cosmic Location)
   -- ^ Location of the robot at log entry creation.
   , _leText :: Text
   -- ^ The text of the log entry.

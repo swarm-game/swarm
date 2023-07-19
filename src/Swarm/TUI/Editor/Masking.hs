@@ -25,7 +25,7 @@ shouldHideWorldCell ui coords =
         )
 
   isOutsideSingleSelectedCorner = fromMaybe False $ do
-    Cosmo _ cornerCoords <- case we ^. editingBounds . boundsSelectionStep of
+    Cosmic _ cornerCoords <- case we ^. editingBounds . boundsSelectionStep of
       LowerRightPending cornerCoords -> Just cornerCoords
       _ -> Nothing
     pure $ EU.isOutsideTopLeftCorner cornerCoords coords

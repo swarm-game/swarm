@@ -40,8 +40,8 @@ renderDisplay :: Display -> Widget n
 renderDisplay disp = withAttr (disp ^. displayAttr . to toAttrName) $ str [displayChar disp]
 
 -- | Render the 'Display' for a specific location.
-drawLoc :: UIState -> GameState -> Cosmo W.Coords -> Widget Name
-drawLoc ui g cCoords@(Cosmo _ coords) =
+drawLoc :: UIState -> GameState -> Cosmic W.Coords -> Widget Name
+drawLoc ui g cCoords@(Cosmic _ coords) =
   if shouldHideWorldCell ui coords
     then str " "
     else drawCell
@@ -53,20 +53,20 @@ drawLoc ui g cCoords@(Cosmo _ coords) =
 displayTerrainCell ::
   WorldEditor Name ->
   GameState ->
-  Cosmo W.Coords ->
+  Cosmic W.Coords ->
   Display
 displayTerrainCell worldEditor g coords =
   terrainMap M.! EU.getTerrainAt worldEditor (g ^. multiWorld) coords
 
 displayRobotCell ::
   GameState ->
-  Cosmo W.Coords ->
+  Cosmic W.Coords ->
   [Display]
 displayRobotCell g coords =
   map (view robotDisplay) $
     robotsAtLocation (fmap W.coordsToLoc coords) g
 
-displayEntityCell :: WorldEditor Name -> GameState -> Cosmo W.Coords -> [Display]
+displayEntityCell :: WorldEditor Name -> GameState -> Cosmic W.Coords -> [Display]
 displayEntityCell worldEditor g coords =
   maybeToList $ displayForEntity <$> maybeEntity
  where
@@ -97,8 +97,8 @@ hidingMode g
 --   'Display's for the terrain, entity, and robots at the location, and
 --   taking into account "static" based on the distance to the robot
 --   being @view@ed.
-displayLoc :: Bool -> WorldEditor Name -> GameState -> Cosmo W.Coords -> Display
-displayLoc showRobots we g cCoords@(Cosmo _ coords) =
+displayLoc :: Bool -> WorldEditor Name -> GameState -> Cosmic W.Coords -> Display
+displayLoc showRobots we g cCoords@(Cosmic _ coords) =
   staticDisplay g coords
     <> displayLocRaw showRobots we g cCoords
 
@@ -108,7 +108,7 @@ displayLocRaw ::
   Bool ->
   WorldEditor Name ->
   GameState ->
-  Cosmo W.Coords ->
+  Cosmic W.Coords ->
   Display
 displayLocRaw showRobots worldEditor g coords = sconcat $ terrain NE.:| entity <> robots
  where

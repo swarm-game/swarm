@@ -22,7 +22,7 @@ import System.Clock
 data BoundsSelectionStep
   = UpperLeftPending
   | -- | Stores the *world coords* of the upper-left click
-    LowerRightPending (Cosmo W.Coords)
+    LowerRightPending (Cosmic W.Coords)
   | SelectionComplete
 
 data EntityPaint
@@ -43,7 +43,7 @@ getEntityName :: EntityFacade -> EntityName
 getEntityName (EntityFacade name _) = name
 
 data MapEditingBounds = MapEditingBounds
-  { _boundsRect :: Maybe (Cosmo W.BoundsRectangle)
+  { _boundsRect :: Maybe (Cosmic W.BoundsRectangle)
   -- ^ Upper-left and lower-right coordinates
   -- of the map to be saved.
   , _boundsPersistDisplayUntil :: TimeSpec
@@ -83,6 +83,6 @@ initialWorldEditor ts =
     MapEditingBounds
       -- Note that these are in "world coordinates",
       -- not in player-facing "Location" coordinates
-      (Just $ Cosmo DefaultRootSubworld (W.Coords (-10, -20), W.Coords (10, 20)))
+      (Just $ Cosmic DefaultRootSubworld (W.Coords (-10, -20), W.Coords (10, 20)))
       (ts - 1)
       SelectionComplete

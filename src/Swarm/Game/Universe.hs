@@ -29,35 +29,35 @@ renderWorldName = \case
 -- indexed by subworld.
 -- Not only is this datatype useful for planar (2D)
 -- coordinates, but is also used for named waypoints.
-data Cosmo a = Cosmo
+data Cosmic a = Cosmic
   { _subworld :: SubworldName
   , _planar :: a
   }
   deriving (Show, Eq, Ord, Functor, Generic, ToJSON)
 
-makeLenses ''Cosmo
+makeLenses ''Cosmic
 
-instance (FromJSON a) => FromJSON (Cosmo a) where
+instance (FromJSON a) => FromJSON (Cosmic a) where
   parseJSON x = case x of
     Object v -> objParse v
-    _ -> Cosmo DefaultRootSubworld <$> parseJSON x
+    _ -> Cosmic DefaultRootSubworld <$> parseJSON x
    where
     objParse v =
-      Cosmo
+      Cosmic
         <$> v .: "subworld"
         <*> v .: "loc"
 
-defaultCosmoLocation :: Cosmo Location
-defaultCosmoLocation = Cosmo DefaultRootSubworld origin
+defaultCosmoLocation :: Cosmic Location
+defaultCosmoLocation = Cosmic DefaultRootSubworld origin
 
 data DistanceMeasure b = Measurable b | InfinitelyFar
   deriving (Eq, Ord)
 
 -- | Returns 'InfinitelyFar' if not within the same subworld.
-cosmoMeasure :: (a -> a -> b) -> Cosmo a -> Cosmo a -> DistanceMeasure b
+cosmoMeasure :: (a -> a -> b) -> Cosmic a -> Cosmic a -> DistanceMeasure b
 cosmoMeasure f a b
   | ((/=) `on` view subworld) a b = InfinitelyFar
   | otherwise = Measurable $ (f `on` view planar) a b
 
-offsetBy :: Cosmo Location -> V2 Int32 -> Cosmo Location
+offsetBy :: Cosmic Location -> V2 Int32 -> Cosmic Location
 offsetBy loc v = fmap (.+^ v) loc
