@@ -10,7 +10,6 @@ import Control.Lens (view)
 import Control.Monad (forM, forM_, unless)
 import Data.Aeson
 import Data.Bifunctor (first)
-import Data.BoolExpr (Signed (..))
 import Data.Function (on)
 import Data.Functor.Identity
 import Data.Int (Int32)
@@ -198,6 +197,10 @@ validatePortals (Navigation wpUniverse partialPortals) = do
     failWaypointLookup wpWrapper $
       M.lookup wpWrapper subworldWaypoints
 
+data Inversion = NonInverted | Inverted
+
+type WithInversion a = (Inversion, a)
+
 -- | A portal can be marked as \"consistent\", meaning that it represents
 -- a conventional physical passage rather than a \"magical\" teleportation.
 --
@@ -230,25 +233,25 @@ ensureSpatialConsistency xs =
   interWorldPairs :: [(Cosmic Location, Cosmic Location)]
   interWorldPairs = filter (uncurry ((/=) `on` view subworld)) consistentPairs
 
-  normalizedOrdering :: [Signed (Cosmic Location, Cosmic Location)]
+  normalizedOrdering :: [WithInversion (Cosmic Location, Cosmic Location)]
   normalizedOrdering = map normalizePairOrder interWorldPairs
 
-  normalizePairOrder :: (Cosmic a, Cosmic a) -> Signed (Cosmic a, Cosmic a)
+  normalizePairOrder :: (Cosmic a, Cosmic a) -> WithInversion (Cosmic a, Cosmic a)
   normalizePairOrder pair =
     if uncurry ((>) `on` view subworld) pair
-      then Negative $ swap pair
-      else Positive pair
+      then (Inverted, swap pair)
+      else (NonInverted, pair)
 
   tuplify :: (Cosmic a, Cosmic a) -> ((SubworldName, SubworldName), (a, a))
   tuplify = both (view subworld) &&& both (view planar)
 
-  getSigned :: Signed (V2 Int32) -> V2 Int32
+  getSigned :: WithInversion (V2 Int32) -> V2 Int32
   getSigned = \case
-    Positive x -> x
-    Negative x -> negated x
+    (NonInverted, x) -> x
+    (Inverted, x) -> negated x
 
   groupedBySubworldPair ::
-    Map (SubworldName, SubworldName) (NonEmpty (Signed (Location, Location)))
+    Map (SubworldName, SubworldName) (NonEmpty (WithInversion (Location, Location)))
   groupedBySubworldPair = binTuples $ map (sequenceSigned . fmap tuplify) normalizedOrdering
 
   vectorized :: Map (SubworldName, SubworldName) (NonEmpty (V2 Int32))
@@ -257,36 +260,10 @@ ensureSpatialConsistency xs =
   nonUniform :: Map (SubworldName, SubworldName) (NonEmpty (V2 Int32))
   nonUniform = M.filter ((not . allEqual) . NE.toList) vectorized
 
--- |
--- An implementation of 'sequenceA' for 'Signed' that does not
--- require an 'Applicative' instance for the inner 'Functor'.
---
--- == Discussion
--- Compare to the 'Traversable' instance of 'Signed':
--- @
--- instance Traversable Signed where
---   traverse f (Positive x) = Positive <$> f x
---   traverse f (Negative x) = Negative <$> f x
--- @
---
--- if we were to substitute 'id' for f:
--- @
---   traverse id (Positive x) = Positive <$> id x
---   traverse id (Negative x) = Negative <$> id x
--- @
--- our implementation essentially becomes @traverse id@.
---
--- However, we cannot simply write our implementation as @traverse id@, because
--- the 'traverse' function has an 'Applicative' constraint, which is superfluous
--- for our purpose.
---
--- Perhaps there is an opportunity to invent a typeclass for datatypes which
--- consist exclusively of unary (or more ambitiously, non-nullary?) data constructors,
--- for which a less-constrained 'sequence' function could be automatically derived.
 sequenceSigned ::
   Functor f =>
-  Signed (f a) ->
-  f (Signed a)
+  WithInversion (f a) ->
+  f (WithInversion a)
 sequenceSigned = \case
-  Positive x -> Positive <$> x
-  Negative x -> Negative <$> x
+  (NonInverted, x) -> (NonInverted,) <$> x
+  (Inverted, x) -> (Inverted,) <$> x
