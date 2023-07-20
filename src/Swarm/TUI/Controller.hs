@@ -13,6 +13,7 @@ module Swarm.TUI.Controller (
   -- ** Handling 'Frame' events
   runFrameUI,
   runFrame,
+  ticksPerFrameCap,
   runFrameTicks,
   runGameTickUI,
   runGameTick,
