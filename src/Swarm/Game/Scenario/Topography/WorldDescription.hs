@@ -3,17 +3,19 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
-module Swarm.Game.Scenario.WorldDescription where
+module Swarm.Game.Scenario.Topography.WorldDescription where
 
+import Data.Coerce
 import Data.Maybe (catMaybes)
 import Data.Yaml as Y
 import Swarm.Game.Entity
 import Swarm.Game.Location
-import Swarm.Game.Scenario.Cell
-import Swarm.Game.Scenario.EntityFacade
 import Swarm.Game.Scenario.RobotLookup
-import Swarm.Game.Scenario.Structure qualified as Structure
-import Swarm.Game.Scenario.WorldPalette
+import Swarm.Game.Scenario.Topography.Cell
+import Swarm.Game.Scenario.Topography.EntityFacade
+import Swarm.Game.Scenario.Topography.Navigation.Portal
+import Swarm.Game.Scenario.Topography.Structure qualified as Structure
+import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.World.Parse ()
 import Swarm.Game.World.Syntax
 import Swarm.Util.Yaml
@@ -32,6 +34,7 @@ data PWorldDescription e = WorldDescription
   , palette :: WorldPalette e
   , ul :: Location
   , area :: [[PCell e]]
+  , navigation :: Navigation
   , worldProg :: Maybe WExp
   }
   deriving (Eq, Show)
@@ -42,19 +45,26 @@ instance FromJSONE (EntityMap, RobotMap) WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
     pal <- v ..:? "palette" ..!= WorldPalette mempty
     structureDefs <- v ..:? "structures" ..!= []
+    waypointDefs <- liftE $ v .:? "waypoints" .!= []
+    portalDefs <- liftE $ v .:? "portals" .!= []
     placementDefs <- liftE $ v .:? "placements" .!= []
-    initialArea <- liftE ((v .:? "map" .!= "") >>= Structure.paintMap Nothing pal)
+    (initialArea, mapWaypoints) <- liftE ((v .:? "map" .!= "") >>= Structure.paintMap Nothing pal)
 
-    let struc = Structure.Structure initialArea structureDefs placementDefs
-        Structure.MergedStructure mergedArea = Structure.mergeStructures mempty struc
+    upperLeft <- liftE (v .:? "upperleft" .!= origin)
+
+    let struc = Structure.Structure initialArea structureDefs placementDefs $ waypointDefs <> mapWaypoints
+        Structure.MergedStructure mergedArea unmergedWaypoints = Structure.mergeStructures mempty Nothing struc
+
+    validatedLandmarks <- validateNavigation (coerce upperLeft) unmergedWaypoints portalDefs
 
     WorldDescription
       <$> v ..:? "default"
       <*> liftE (v .:? "offset" .!= False)
       <*> liftE (v .:? "scrollable" .!= True)
       <*> pure pal
-      <*> liftE (v .:? "upperleft" .!= origin)
+      <*> pure upperLeft
       <*> pure (map catMaybes mergedArea) -- Root-level map has no transparent cells.
+      <*> pure validatedLandmarks
       <*> liftE (v .:? "dsl")
 
 ------------------------------------------------------------

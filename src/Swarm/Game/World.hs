@@ -72,6 +72,7 @@ import Prelude hiding (lookup)
 -- (exactly one per cell) and entities of type @e@ (at most one per
 -- cell).
 newtype WorldFun t e = WF {runWF :: Coords -> (t, Maybe e)}
+  deriving (Functor)
 
 instance Bifunctor WorldFun where
   bimap g h (WF z) = WF (bimap g (fmap h) . z)

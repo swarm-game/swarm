@@ -15,6 +15,7 @@ module Swarm.Util (
   maximum0,
   cycleEnum,
   listEnums,
+  indexWrapNonEmpty,
   uniq,
   binTuples,
   histogram,
@@ -136,6 +137,13 @@ cycleEnum e
 
 listEnums :: (Enum e, Bounded e) => [e]
 listEnums = [minBound .. maxBound]
+
+-- | Guaranteed to yield an element of the list
+indexWrapNonEmpty :: Integral b => NonEmpty a -> b -> a
+indexWrapNonEmpty list idx =
+  NE.toList list !! fromIntegral wrappedIdx
+ where
+  wrappedIdx = idx `mod` fromIntegral (NE.length list)
 
 -- | Drop repeated elements that are adjacent to each other.
 --

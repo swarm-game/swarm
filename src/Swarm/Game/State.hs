@@ -60,6 +60,7 @@ module Swarm.Game.State (
   recipesReq,
   currentScenarioPath,
   knownEntities,
+  worldNavigation,
   world,
   worldScrollable,
   viewCenterRule,
@@ -126,7 +127,8 @@ import Control.Arrow (Arrow ((&&&)), left)
 import Control.Effect.Lens
 import Control.Effect.State (State)
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
-import Control.Monad.Except
+import Control.Monad (forM_)
+import Control.Monad.Except (ExceptT (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
@@ -169,6 +171,7 @@ import Swarm.Game.Recipe (
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Status
+import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
@@ -399,6 +402,7 @@ data GameState = GameState
   , _recipesReq :: IntMap [Recipe Entity]
   , _currentScenarioPath :: Maybe FilePath
   , _knownEntities :: [Text]
+  , _worldNavigation :: Navigation
   , _world :: W.World Int Entity
   , _worldScrollable :: Bool
   , _viewCenterRule :: ViewCenterRule
@@ -559,6 +563,10 @@ currentScenarioPath :: Lens' GameState (Maybe FilePath)
 -- | The names of entities that should be considered "known", that is,
 --   robots know what they are without having to scan them.
 knownEntities :: Lens' GameState [Text]
+
+-- | Includes a Map of named locations and an
+-- "Edge list" (graph) that maps portal entrances to exits
+worldNavigation :: Lens' GameState Navigation
 
 -- | The current state of the world (terrain and entities only; robots
 --   are stored in the 'robotMap').  Int is used instead of
@@ -996,6 +1004,7 @@ initGameState gsc =
     , _recipesReq = reqRecipeMap (initRecipes gsc)
     , _currentScenarioPath = Nothing
     , _knownEntities = []
+    , _worldNavigation = Navigation mempty mempty
     , _world = W.emptyWorld (fromEnum StoneT)
     , _worldScrollable = True
     , _viewCenterRule = VCRobot 0
@@ -1052,6 +1061,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       & recipesIn %~ addRecipesWith inRecipeMap
       & recipesReq %~ addRecipesWith reqRecipeMap
       & knownEntities .~ scenario ^. scenarioKnown
+      & worldNavigation .~ navigation (scenario ^. scenarioWorld)
       & world .~ theWorld theSeed
       & worldScrollable .~ scenario ^. scenarioWorld . to scrollable
       & viewCenterRule .~ VCRobot baseID
@@ -1103,16 +1113,19 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       -- Note that this *replaces* any program the base robot otherwise
       -- would have run (i.e. any program specified in the program: field
       -- of the scenario description).
-      & ix baseID . machine
+      & ix baseID
+        . machine
         %~ case initialCodeToRun of
           Nothing -> id
           Just pt -> const $ initMachine pt Ctx.empty emptyStore
       -- If we are in creative mode, give base all the things
-      & ix baseID . robotInventory
+      & ix baseID
+        . robotInventory
         %~ case scenario ^. scenarioCreative of
           False -> id
           True -> union (fromElems (map (0,) things))
-      & ix baseID . equippedDevices
+      & ix baseID
+        . equippedDevices
         %~ case scenario ^. scenarioCreative of
           False -> id
           True -> const (fromList devices)

@@ -14,7 +14,7 @@ import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.Map qualified as M
 import Data.Yaml qualified as Y
 import Graphics.Vty qualified as V
-import Swarm.Game.Scenario.EntityFacade
+import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.State
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Controller.Util

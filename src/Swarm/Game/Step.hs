@@ -21,7 +21,7 @@
 -- See <https://github.com/swarm-game/swarm/issues/495>.
 module Swarm.Game.Step where
 
-import Control.Applicative (liftA2)
+import Control.Applicative (Applicative (..))
 import Control.Arrow ((&&&))
 import Control.Carrier.Error.Either (ErrorC, runError)
 import Control.Carrier.State.Lazy
@@ -47,6 +47,7 @@ import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
 import Data.List (find, sortOn)
 import Data.List qualified as L
+import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
 import Data.Ord (Down (Down))
@@ -74,6 +75,8 @@ import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
+import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
+import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
 import Swarm.Game.State
 import Swarm.Game.Value
 import Swarm.Game.World qualified as W
@@ -93,7 +96,7 @@ import System.Clock (TimeSpec)
 import System.Clock qualified
 import System.Random (UniformRange, uniformR)
 import Witch (From (from), into)
-import Prelude hiding (lookup)
+import Prelude hiding (Applicative (..), lookup)
 
 -- | The main function to do one game tick.
 --
@@ -1398,6 +1401,13 @@ execConst c vs s k = do
     Whereami -> do
       loc <- use robotLocation
       return $ Out (asValue loc) s k
+    Waypoint -> case vs of
+      [VText name, VInt idx] -> do
+        lm <- use worldNavigation
+        case M.lookup (WaypointName name) (waypoints lm) of
+          Nothing -> throwError $ CmdFailed Waypoint (T.unwords ["No waypoint named", name]) Nothing
+          Just wps -> return $ Out (asValue (NE.length wps, indexWrapNonEmpty wps idx)) s k
+      _ -> badConst
     Detect -> case vs of
       [VText name, VRect x1 y1 x2 y2] -> do
         loc <- use robotLocation
@@ -1439,7 +1449,8 @@ execConst c vs s k = do
               if countByName "compass" inst >= 1
                 then Just $ DAbsolute entityDir
                 else case mh >>= toDirection of
-                  Just (DAbsolute robotDir) -> Just $ DRelative $ entityDir `relativeTo` robotDir
+                  Just (DAbsolute robotDir) ->
+                    Just . DRelative . DPlanar $ entityDir `relativeTo` robotDir
                   _ -> Nothing -- This may happen if the robot is facing "down"
             val = VDir $ fromMaybe (DRelative DDown) $ do
               entLoc <- firstFound
@@ -1573,12 +1584,16 @@ execConst c vs s k = do
                 | otherwise -> es |> e
         let addToRobotLog :: Has (State GameState) sgn m => Robot -> m ()
             addToRobotLog r = do
-              r' <- execState r $ do
+              maybeRidLoc <- evalState r $ do
                 hasLog <- hasCapability CLog
                 hasListen <- hasCapability CListen
                 loc' <- use robotLocation
-                when (hasLog && hasListen) (robotLog %= addLatestClosest loc')
-              addRobot r'
+                rid <- use robotID
+                return $ do
+                  guard $ hasLog && hasListen
+                  Just (rid, loc')
+              forM_ maybeRidLoc $ \(rid, loc') ->
+                robotMap . at rid . _Just . robotLog %= addLatestClosest loc'
         robotsAround <-
           if isPrivileged
             then use $ robotMap . to IM.elems
@@ -2122,8 +2137,8 @@ execConst c vs s k = do
    where
     directionText = case d of
       DRelative DDown -> "under"
-      DRelative DForward -> "ahead of"
-      DRelative DBack -> "behind"
+      DRelative (DPlanar DForward) -> "ahead of"
+      DRelative (DPlanar DBack) -> "behind"
       _ -> directionSyntax d <> " of"
 
   goAtomic :: HasRobotStepState sig m => m CESK
@@ -2669,6 +2684,7 @@ provisionChild childID toEquip toGive = do
 --   'robotsByLocation' map, so we can always look up robots by
 --   location.  This should be the /only/ way to update the location
 --   of a robot.
+-- Also implements teleportation by portals.
 updateRobotLocation ::
   (HasRobotStepState sig m) =>
   Location ->
@@ -2677,12 +2693,17 @@ updateRobotLocation ::
 updateRobotLocation oldLoc newLoc
   | oldLoc == newLoc = return ()
   | otherwise = do
+      newlocWithPortal <- applyPortal newLoc
       rid <- use robotID
       robotsByLocation . at oldLoc %= deleteOne rid
-      robotsByLocation . at newLoc . non Empty %= IS.insert rid
-      modify (unsafeSetRobotLocation newLoc)
+      robotsByLocation . at newlocWithPortal . non Empty %= IS.insert rid
+      modify (unsafeSetRobotLocation newlocWithPortal)
       flagRedraw
  where
+  applyPortal loc = do
+    lms <- use worldNavigation
+    return $ M.findWithDefault loc loc $ portals lms
+
   -- Make sure empty sets don't hang around in the
   -- robotsByLocation map.  We don't want a key with an
   -- empty set at every location any robot has ever

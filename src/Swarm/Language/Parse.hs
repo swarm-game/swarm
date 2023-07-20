@@ -34,8 +34,12 @@ module Swarm.Language.Parse (
 ) where
 
 import Control.Lens (view, (^.))
+import Control.Monad (guard, join)
 import Control.Monad.Combinators.Expr
-import Control.Monad.Reader
+import Control.Monad.Reader (
+  MonadReader (ask),
+  ReaderT (runReaderT),
+ )
 import Data.Bifunctor
 import Data.Foldable (asum)
 import Data.List (foldl', nub)

@@ -57,8 +57,18 @@ import Control.Arrow ((***))
 import Control.Category ((>>>))
 import Control.Lens ((^.))
 import Control.Lens.Indexed (itraverse)
-import Control.Monad.Except
-import Control.Monad.Reader
+import Control.Monad (forM_, void, when)
+import Control.Monad.Except (
+  ExceptT,
+  MonadError (catchError, throwError),
+  runExceptT,
+ )
+import Control.Monad.Reader (
+  MonadReader (ask, local),
+  ReaderT (runReaderT),
+  mapReaderT,
+ )
+import Control.Monad.Trans.Class (MonadTrans (lift))
 import Control.Unification hiding (applyBindings, unify, (=:=))
 import Control.Unification qualified as U
 import Control.Unification.IntVar
@@ -731,6 +741,7 @@ inferConst c = case c of
   Time -> [tyQ| cmd int |]
   Scout -> [tyQ| dir -> cmd bool |]
   Whereami -> [tyQ| cmd (int * int) |]
+  Waypoint -> [tyQ| text -> int -> cmd (int * (int * int)) |]
   Detect -> [tyQ| text -> ((int * int) * (int * int)) -> cmd (unit + (int * int)) |]
   Resonate -> [tyQ| text -> ((int * int) * (int * int)) -> cmd int |]
   Density -> [tyQ| ((int * int) * (int * int)) -> cmd int |]

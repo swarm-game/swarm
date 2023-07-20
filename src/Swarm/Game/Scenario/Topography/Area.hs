@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Swarm.TUI.Editor.Area where
+module Swarm.Game.Scenario.Topography.Area where
 
 import Data.Int (Int32)
 import Data.List qualified as L

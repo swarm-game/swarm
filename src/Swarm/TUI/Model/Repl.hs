@@ -65,6 +65,7 @@ import Servant.Docs qualified as SD
 import Swarm.Language.Types
 import Swarm.TUI.Model.Name
 import Swarm.Util.Lens (makeLensesNoSigs)
+import Prelude hiding (Applicative (..))
 
 ------------------------------------------------------------
 -- REPL History
