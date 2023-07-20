@@ -13,6 +13,7 @@
 -- XXX for more info see ...
 module Swarm.Game.World.Compile where
 
+import Control.Applicative (liftA2)
 import Data.ByteString (ByteString)
 import Data.Hash.Murmur (murmur3)
 import Data.Kind (Type)
@@ -56,6 +57,51 @@ instance Applicable BTerm where
 
 instance HasConst BTerm where
   embed = BConst
+
+interpBTerm :: Seed -> BTerm a -> a
+interpBTerm seed (BApp f x) = interpBTerm seed f (interpBTerm seed x)
+interpBTerm seed (BConst c) = interpConst seed c
+
+interpConst :: Seed -> Const a -> a
+interpConst seed = \case
+  CLit a -> a
+  CIf -> \b t e -> if b then t else e
+  CNot -> not
+  CNeg -> negate
+  CAbs -> abs
+  CAnd -> (&&)
+  COr -> (||)
+  CAdd -> (+)
+  CSub -> (-)
+  CMul -> (*)
+  CDiv -> (/)
+  CIDiv -> div
+  CMod -> mod
+  CEq -> (==)
+  CNeq -> (/=)
+  CLt -> (<)
+  CLeq -> (<=)
+  CGt -> (>)
+  CGeq -> (>=)
+  CMask -> \b x c -> if b c then x c else empty
+  CSeed -> fromIntegral seed
+  CCoord ax -> \(Coords (x, y)) -> fromIntegral (case ax of X -> x; Y -> y)
+  CHash -> \(Coords ix) -> fromIntegral . murmur3 0 . unTagged . from @String @(Encoding.UTF_8 ByteString) . show $ ix
+  CPerlin -> \s o k p ->
+    let noise = perlin (fromIntegral s) (fromIntegral o) k p
+        sample (i, j) = noiseValue noise (fromIntegral i / 2, fromIntegral j / 2, 0)
+     in \(Coords ix) -> sample ix
+  CReflect ax -> undefined -- \w (Coords (r,c)) -> w (Coords (case ax of X ->
+  CRot _ -> undefined
+  CFI -> fromInteger
+  COver -> (<+>)
+  CEmpty -> empty
+  K -> const
+  S -> (<*>)
+  I -> id
+  B -> (.)
+  C -> flip
+  Φ -> liftA2
 
 --------------------------------------------------
 -- Open terms
