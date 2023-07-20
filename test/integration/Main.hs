@@ -47,8 +47,9 @@ import Swarm.Game.State (
 import Swarm.Game.Step (gameTick)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
-import Swarm.TUI.Model (gameState)
-import Swarm.TUI.Model.StateUpdate (initAppStateForScenario)
+import Swarm.TUI.Model (RuntimeState, defaultAppOpts, gameState, userScenario)
+import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
+import Swarm.TUI.Model.UI (UIState)
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.Environment (getEnvironment)
@@ -70,6 +71,11 @@ main = do
   scenarioPrograms <- acquire "data/scenarios" "sw"
   ci <- any (("CI" ==) . fst) <$> getEnvironment
   entities <- loadEntities
+  (rs, ui) <- do
+    out <- runExceptT $ initPersistentState defaultAppOpts
+    case out of
+      Left x -> assertFailure $ unwords ["Failure in initPersistentState:", T.unpack x]
+      Right res -> return res
   case entities of
     Left t -> fail $ "Couldn't load entities: " <> into @String t
     Right em -> do
@@ -80,7 +86,7 @@ main = do
           , exampleTests scenarioPrograms
           , scenarioParseTests em parseableScenarios
           , scenarioParseInvalidTests em unparseableScenarios
-          , testScenarioSolution ci em
+          , testScenarioSolution rs ui ci em
           , testEditorFiles
           ]
 
@@ -154,8 +160,8 @@ time = \case
 
 data ShouldCheckBadErrors = CheckForBadErrors | AllowBadErrors deriving (Eq, Show)
 
-testScenarioSolution :: Bool -> EntityMap -> TestTree
-testScenarioSolution _ci _em =
+testScenarioSolution :: RuntimeState -> UIState -> Bool -> EntityMap -> TestTree
+testScenarioSolution rs ui _ci _em =
   testGroup
     "Test scenario solutions"
     [ testGroup
@@ -171,9 +177,9 @@ testScenarioSolution _ci _em =
         , testTutorialSolution Default "Tutorials/build"
         , testTutorialSolution Default "Tutorials/bind2"
         , testTutorialSolution' Default "Tutorials/crash" CheckForBadErrors $ \g -> do
-            let rs = toList $ g ^. robotMap
+            let robots = toList $ g ^. robotMap
             let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
-            let win = isJust $ find hints rs
+            let win = isJust $ find hints robots
             assertBool "Could not find a robot with winning instructions!" win
         , testTutorialSolution Default "Tutorials/scan"
         , testTutorialSolution Default "Tutorials/give"
@@ -308,9 +314,9 @@ testScenarioSolution _ci _em =
 
   testSolution' :: Time -> FilePath -> ShouldCheckBadErrors -> (GameState -> Assertion) -> TestTree
   testSolution' s p shouldCheckBadErrors verify = testCase p $ do
-    out <- runExceptT $ initAppStateForScenario p Nothing Nothing
+    out <- runExceptT $ constructAppState rs ui $ defaultAppOpts {userScenario = Just p}
     case out of
-      Left x -> assertFailure $ unwords ["Failure in initAppStateForScenario:", T.unpack x]
+      Left x -> assertFailure $ unwords ["Failure in constructAppState:", T.unpack x]
       Right (view gameState -> gs) -> case gs ^. winSolution of
         Nothing -> assertFailure "No solution to test!"
         Just sol@(ProcessedTerm _ _ reqCtx) -> do
