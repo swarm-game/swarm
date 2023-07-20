@@ -27,7 +27,7 @@ import Data.Monoid (Last (..))
 import Data.Text (Text)
 import Swarm.Game.Entity (Entity)
 import Swarm.Game.Robot (Robot)
-import Swarm.Game.Scenario.WorldPalette (WorldPalette)
+import Swarm.Game.Scenario.Topography.WorldPalette (WorldPalette)
 import Swarm.Game.Terrain
 import Swarm.Game.World.Coords
 
