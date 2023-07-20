@@ -94,6 +94,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
+import Swarm.TUI.Controller (ticksPerFrameCap)
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.View qualified as EV
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
@@ -534,7 +535,9 @@ drawTPS s = hBox (tpsInfo : rateInfo)
   rateInfo
     | s ^. uiState . uiShowFPS =
         [ txt " ("
-        , str (printf "%0.1f" (s ^. uiState . uiTPF))
+        , let tpf = s ^. uiState . uiTPF
+           in (if tpf >= fromIntegral ticksPerFrameCap then withAttr redAttr else id)
+                (str (printf "%0.1f" tpf))
         , txt " tpf, "
         , str (printf "%0.1f" (s ^. uiState . uiFPS))
         , txt " fps)"
