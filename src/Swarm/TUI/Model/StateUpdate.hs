@@ -5,6 +5,8 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Model.StateUpdate (
   initAppState,
+  initPersistentState,
+  constructAppState,
   initAppStateForScenario,
   classicGame0,
   startGame,
@@ -31,6 +33,7 @@ import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
+import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
 import Swarm.Game.Scenario (loadScenario, scenarioAttrs, scenarioWorld)
@@ -58,18 +61,43 @@ import Swarm.TUI.Model.UI
 import Swarm.TUI.View.CustomStyling (toAttrPair)
 import System.Clock
 
--- | Initialize the 'AppState'.
+-- | Initialize the 'AppState' from scratch.
 initAppState :: AppOpts -> ExceptT Text IO AppState
-initAppState AppOpts {..} = do
-  let isRunningInitialProgram = isJust scriptToRun || autoPlay
-      skipMenu = isJust userScenario || isRunningInitialProgram || isJust userSeed
+initAppState opts = do
+  (rs, ui) <- initPersistentState opts
+  constructAppState rs ui opts
+
+-- | Add some system failures to the list of messages in the
+--   'RuntimeState'.
+addWarnings :: RuntimeState -> [SystemFailure] -> RuntimeState
+addWarnings = List.foldl' logWarning
+ where
+  logWarning rs' w = rs' & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
+
+-- | Based on the command line options, should we skip displaying the
+--   menu?
+skipMenu :: AppOpts -> Bool
+skipMenu AppOpts {..} = isJust userScenario || isRunningInitialProgram || isJust userSeed
+ where
+  isRunningInitialProgram = isJust scriptToRun || autoPlay
+
+-- | Initialize the more persistent parts of the app state, /i.e./ the
+--   'RuntimeState' and 'UIState'.  This is split out into a separate
+--   function so that in the integration test suite we can call this
+--   once and reuse the resulting states for all tests.
+initPersistentState :: AppOpts -> ExceptT Text IO (RuntimeState, UIState)
+initPersistentState opts@(AppOpts {..}) = do
   (rsWarnings, initRS) <- initRuntimeState
-  let gs = initGameState (mkGameStateConfig initRS)
-  (uiWarnings, ui) <- initUIState speed (not skipMenu) (cheatMode || autoPlay)
-  let logWarning rs' w = rs' & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
-      addWarnings = List.foldl' logWarning
-      rs = addWarnings initRS $ rsWarnings <> uiWarnings
-  case skipMenu of
+  (uiWarnings, ui) <- initUIState speed (not (skipMenu opts)) (cheatMode || autoPlay)
+  let rs = addWarnings initRS $ rsWarnings <> uiWarnings
+  return (rs, ui)
+
+-- | Construct an 'AppState' from an already-loaded 'RuntimeState' and
+--   'UIState', given the 'AppOpts' the app was started with.
+constructAppState :: RuntimeState -> UIState -> AppOpts -> ExceptT Text IO AppState
+constructAppState rs ui opts@(AppOpts {..}) = do
+  let gs = initGameState (mkGameStateConfig rs)
+  case skipMenu opts of
     False -> return $ AppState gs (ui & lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
     True -> do
       (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. entityMap)
