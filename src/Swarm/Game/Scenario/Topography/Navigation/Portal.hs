@@ -191,15 +191,13 @@ validatePortals (Navigation wpUniverse partialPortals) = do
     subworldWaypoints <- case M.lookup swName wpUniverse of
       Just x -> return x
       Nothing ->
-        fail $
-          T.unpack $
-            T.unwords
-              [ "Could not lookup waypoint"
-              , quote exitName
-              , "for portal exit because subworld"
-              , quote $ renderWorldName swName
-              , "does not exist"
-              ]
+        failT
+          [ "Could not lookup waypoint"
+          , quote exitName
+          , "for portal exit because subworld"
+          , quote $ renderWorldName swName
+          , "does not exist"
+          ]
 
     failWaypointLookup wpWrapper $
       M.lookup wpWrapper subworldWaypoints
@@ -224,11 +222,10 @@ ensureSpatialConsistency ::
   m ()
 ensureSpatialConsistency xs =
   unless (null nonUniform) $
-    fail $
-      unwords
-        [ "Non-uniform portal distances:"
-        , show nonUniform
-        ]
+    failT
+      [ "Non-uniform portal distances:"
+      , showT nonUniform
+      ]
  where
   consistentPairs :: [(Cosmic Location, Cosmic Location)]
   consistentPairs = map (fmap cosmoLocation) $ filter (enforceConsistency . snd) xs

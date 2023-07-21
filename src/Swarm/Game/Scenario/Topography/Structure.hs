@@ -22,6 +22,7 @@ import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.WorldPalette
+import Swarm.Util (failT, showT)
 import Swarm.Util.Yaml
 import Witch (into)
 
@@ -144,7 +145,7 @@ paintMap maskChar pal a = do
     if Just c == maskChar
       then return Nothing
       else case KeyMap.lookup (Key.fromString [c]) (unPalette pal) of
-        Nothing -> fail $ "Char not in world palette: " ++ show c
+        Nothing -> failT ["Char not in world palette:", showT c]
         Just cell -> return $ Just cell
 
 readMap :: Applicative f => (Char -> f b) -> Text -> f [[b]]
