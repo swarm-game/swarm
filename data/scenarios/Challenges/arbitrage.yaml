@@ -378,7 +378,8 @@ recipes:
       - [1, drill]
 known: []
 world:
-  default: [dirt]
+  dsl: |
+    {dirt}
   upperleft: [0, 0]
   offset: false
   palette:

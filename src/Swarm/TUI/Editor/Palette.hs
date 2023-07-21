@@ -27,7 +27,7 @@ import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.WorldPalette
-import Swarm.Game.Terrain (TerrainType (BlankT), getTerrainDefaultPaletteChar)
+import Swarm.Game.Terrain (TerrainType, getTerrainDefaultPaletteChar)
 import Swarm.TUI.Editor.Json (SkeletonScenario (SkeletonScenario))
 import Swarm.Util (binTuples, histogram)
 import Swarm.Util qualified as U
@@ -125,8 +125,7 @@ constructScenario maybeOriginalScenario cellGrid =
   customEntities = maybe mempty (^. scenarioEntities) maybeOriginalScenario
   wd =
     WorldDescription
-      { defaultTerrain = Just $ Cell BlankT ENothing []
-      , offsetOrigin = False
+      { offsetOrigin = False
       , scrollable = True
       , palette = WorldPalette suggestedPalette
       , ul = upperLeftCoord

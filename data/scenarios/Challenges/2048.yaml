@@ -179,7 +179,8 @@ robots:
       - [1, "1"]
 known: [water, wavy water, flower, tree]
 world:
-  default: [stone]
+  dsl: |
+    {stone}
   palette:
     "Ω": [grass, null, base]
     "┌": [stone, upper left corner]

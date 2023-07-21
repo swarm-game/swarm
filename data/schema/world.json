@@ -5,10 +5,10 @@
     "description": "Description of the world in the Swarm game",
     "type": "object",
     "properties": {
-        "default": {
+        "dsl": {
             "default": null,
-            "type": "array",
-            "description": "A tuple representing the contents of a default cell (see Cells, except that the default cell may not contain a robot). If this key is present, it means that the whole world besides the part specified with the map will be filled with this default cell. If omitted, the world besides the part specified with the map will be procedurally generated."
+            "type": "string",
+            "description": "A term in the Swarm world description DSL.  The world it describes will be layered underneath the world described by the rest of the fields."
         },
         "offset": {
             "default": false,

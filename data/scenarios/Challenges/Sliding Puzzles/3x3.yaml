@@ -721,7 +721,8 @@ recipes:
     time: 0
 known: []
 world:
-  default: [grass]
+  dsl: |
+    {grass}
   upperleft: [-3, 2]
   offset: false
   palette:

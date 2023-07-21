@@ -506,14 +506,15 @@ seed: 0
 solution: |
   run "scenarios/Challenges/Ranching/_gated-paddock/fence-construction.sw"
 world:
-  default: [dirt, water]
+  dsl: |
+    {dirt, water}
   palette:
-    'B': [grass, null, base]
-    '.': [grass]
+    'B': [grass, erase, base]
+    '.': [grass, erase]
     't': [dirt, tree]
     'x': [stone, mountain]
     'c': [stone, cabin]
-    's': [grass, null, sheep]
+    's': [grass, erase, sheep]
     '%': [grass, clover, null]
     'H': [stone, pier, null]
     '~': [dirt, water]

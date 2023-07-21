@@ -95,12 +95,13 @@ entities:
     properties: [known, unwalkable]
 known: [mountain, water, 3D printer, flower]
 world:
-  default: [grass, water]
+  dsl: |
+    {grass, water}
   upperleft: [-21, 10]
   offset: false
   palette:
-    'B': [ice, null, base]
-    '.': [grass]
+    'B': [ice, erase, base]
+    '.': [grass, erase]
     '*': [grass, flower]
     'b': [grass, boat]
     '3': [grass, 3D printer]
@@ -108,8 +109,8 @@ world:
     'c': [grass, crate]
     'A': [grass, wall]
     'w': [dirt, water]
-    'x': [stone]
-    'z': [dirt]
+    'x': [stone, erase]
+    'z': [dirt, erase]
   map: |
     ..................3...A.
     .................AAAA.A*

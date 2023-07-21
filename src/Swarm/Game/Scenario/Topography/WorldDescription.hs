@@ -28,8 +28,7 @@ import Swarm.Util.Yaml
 -- This type is parameterized to accommodate Cells that
 -- utilize a less stateful Entity type.
 data PWorldDescription e = WorldDescription
-  { defaultTerrain :: Maybe (PCell e)
-  , offsetOrigin :: Bool
+  { offsetOrigin :: Bool
   , scrollable :: Bool
   , palette :: WorldPalette e
   , ul :: Location
@@ -58,8 +57,7 @@ instance FromJSONE (EntityMap, RobotMap) WorldDescription where
     validatedLandmarks <- validateNavigation (coerce upperLeft) unmergedWaypoints portalDefs
 
     WorldDescription
-      <$> v ..:? "default"
-      <*> liftE (v .:? "offset" .!= False)
+      <$> liftE (v .:? "offset" .!= False)
       <*> liftE (v .:? "scrollable" .!= True)
       <*> pure pal
       <*> pure upperLeft
@@ -78,8 +76,7 @@ type WorldDescriptionPaint = PWorldDescription EntityFacade
 instance ToJSON WorldDescriptionPaint where
   toJSON w =
     object
-      [ "default" .= defaultTerrain w
-      , "offset" .= offsetOrigin w
+      [ "offset" .= offsetOrigin w
       , "palette" .= Y.toJSON paletteKeymap
       , "upperleft" .= ul w
       , "map" .= Y.toJSON mapText
