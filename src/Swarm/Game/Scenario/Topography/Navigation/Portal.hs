@@ -14,7 +14,6 @@ import Data.BoolExpr (Signed (..))
 import Data.Function (on)
 import Data.Functor.Identity
 import Data.Int (Int32)
-import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -27,7 +26,7 @@ import Linear (V2, negated)
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Universe
-import Swarm.Util (allEqual, binTuples, both, failT, quote)
+import Swarm.Util (allEqual, binTuples, both, failT, quote, showT)
 
 type WaypointMap = M.Map WaypointName (NonEmpty Location)
 
@@ -78,23 +77,23 @@ instance FromJSON Portal where
 
 failUponDuplication ::
   (MonadFail m, Show a, Show b) =>
-  String ->
+  T.Text ->
   M.Map a (NonEmpty b) ->
   m ()
 failUponDuplication message binnedMap =
   forM_ (listToMaybe $ M.toList duplicated) $ \(pIn, pOuts) ->
-    fail $
-      unwords
-        [ "Waypoint"
-        , show pIn
-        , message
-        , intercalate ", " $ map show $ NE.toList pOuts
-        ]
+    failT
+      [ "Waypoint"
+      , showT pIn
+      , message
+      , T.intercalate ", " $ map showT $ NE.toList pOuts
+      ]
  where
   duplicated = M.filter ((> 1) . NE.length) binnedMap
 
 failWaypointLookup :: MonadFail m => WaypointName -> Maybe a -> m a
-failWaypointLookup (WaypointName rawName) = maybe (failT ["No waypoint named", quote rawName]) return
+failWaypointLookup (WaypointName rawName) =
+  maybe (failT ["No waypoint named", quote rawName]) return
 
 -- |
 -- The following constraints must be enforced:
@@ -167,10 +166,8 @@ validatePortals ::
 validatePortals (Navigation wpUniverse partialPortals) = do
   portalPairs <- forM (M.toList partialPortals) $ \(portalEntrance, AnnotatedDestination isConsistent portalExit@(Cosmic swName (WaypointName rawExitName))) -> do
     firstExitLoc :| otherExits <- getLocs portalExit
-    unless (null otherExits)
-      . fail
-      . T.unpack
-      $ T.unwords
+    unless (null otherExits) $
+      failT
         [ "Ambiguous exit waypoints named"
         , quote rawExitName
         , "for portal"

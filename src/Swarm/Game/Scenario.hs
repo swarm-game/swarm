@@ -142,10 +142,8 @@ instance FromJSONE EntityMap Scenario where
 
       let worldsByName = binTuples $ NE.toList $ NE.map (worldName &&& id) allWorlds
           dupedNames = M.keys $ M.filter ((> 1) . length) worldsByName
-      unless (null dupedNames)
-        . fail
-        . T.unpack
-        $ T.unwords
+      unless (null dupedNames) $
+        failT
           [ "Subworld names are not unique:"
           , T.intercalate ", " $ map renderWorldName dupedNames
           ]
