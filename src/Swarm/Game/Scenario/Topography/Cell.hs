@@ -52,17 +52,20 @@ data AugmentedCell e = AugmentedCell
   deriving (Eq, Show)
 
 -- | Re-usable serialization for variants of "PCell"
-mkPCellJson :: ToJSON b => (a -> b) -> PCell a -> Value
+mkPCellJson :: ToJSON b => (Erasable a -> Maybe b) -> PCell a -> Value
 mkPCellJson modifier x =
   toJSON $
     catMaybes
       [ Just . toJSON . getTerrainWord $ cellTerrain x
-      , toJSON . modifier <$> cellEntity x
+      , fmap toJSON . modifier $ cellEntity x
       , listToMaybe []
       ]
 
 instance ToJSON Cell where
-  toJSON = mkPCellJson $ view entityName
+  toJSON = mkPCellJson $ \case
+    EErase -> Just "erase"
+    ENothing -> Nothing
+    EJust e -> Just (e ^. entityName)
 
 instance FromJSONE (EntityMap, RobotMap) Cell where
   parseJSONE = withArrayE "tuple" $ \v -> do
@@ -114,4 +117,7 @@ type CellPaintDisplay = PCell EntityFacade
 
 -- Note: This instance is used only for the purpose of WorldPalette
 instance ToJSON CellPaintDisplay where
-  toJSON = mkPCellJson id
+  toJSON = mkPCellJson $ \case
+    ENothing -> Nothing
+    EErase -> Just $ EntityFacade "erase" mempty
+    EJust e -> Just e

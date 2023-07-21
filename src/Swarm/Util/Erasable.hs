@@ -7,7 +7,7 @@ module Swarm.Util.Erasable where
 -- | Extend a semigroup to a monoid by adding an identity ('ENothing') /and/ an
 --   annihilator ('EErase').
 data Erasable e = ENothing | EErase | EJust e
-  deriving (Show, Eq, Functor)
+  deriving (Show, Eq, Ord, Functor)
 
 instance Semigroup e => Semigroup (Erasable e) where
   ENothing <> e = e
@@ -25,6 +25,7 @@ erasableToMaybe :: Erasable e -> Maybe e
 erasableToMaybe (EJust e) = Just e
 erasableToMaybe _ = Nothing
 
-instance ToJSON (Erasable e)
-
--- XXX
+-- | Inject a 'Maybe' value into 'Erasable'.
+maybeToErasable :: Maybe e -> Erasable e
+maybeToErasable Nothing = ENothing
+maybeToErasable (Just e) = EJust e

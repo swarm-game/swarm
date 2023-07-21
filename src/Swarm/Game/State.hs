@@ -145,7 +145,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
-import Data.Semigroup (Last (..))
 import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
 import Data.Set qualified as S
@@ -1009,7 +1008,7 @@ initGameState gsc =
     , _currentScenarioPath = Nothing
     , _knownEntities = []
     , _worldNavigation = Navigation mempty mempty
-    , _world = mempty
+    , _world = W.newWorld (WF (const (0, mempty)))
     , _worldScrollable = True
     , _viewCenterRule = VCRobot 0
     , _viewCenter = origin
