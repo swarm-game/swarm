@@ -22,6 +22,7 @@ import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointConfig)
 import Swarm.Game.Terrain
+import Swarm.Util.Erasable (Erasable (..))
 import Swarm.Util.Yaml
 
 ------------------------------------------------------------
@@ -34,7 +35,7 @@ import Swarm.Util.Yaml
 --   stateful versions of the Entity type in rendering scenario data.
 data PCell e = Cell
   { cellTerrain :: TerrainType
-  , cellEntity :: Maybe e
+  , cellEntity :: Erasable e
   , cellRobots :: [IndexedTRobot]
   }
   deriving (Eq, Show)
@@ -71,10 +72,13 @@ instance FromJSONE (EntityMap, RobotMap) Cell where
     terr <- liftE $ parseJSON (head tup)
 
     ent <- case tup ^? ix 1 of
-      Nothing -> return Nothing
+      Nothing -> return ENothing
       Just e -> do
         meName <- liftE $ parseJSON @(Maybe Text) e
-        traverse (localE fst . getEntity) meName
+        case meName of
+          Nothing -> return ENothing
+          Just "erase" -> return EErase
+          Just name -> fmap EJust . localE fst $ getEntity name
 
     let name2rob r = do
           mrName <- liftE $ parseJSON @(Maybe Text) r

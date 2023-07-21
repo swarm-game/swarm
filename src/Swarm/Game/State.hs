@@ -145,6 +145,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
+import Data.Semigroup (Last (..))
 import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
 import Data.Set qualified as S
@@ -188,6 +189,7 @@ import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
 import Swarm.Util (uniq, (<+=), (<<.=), (?))
+import Swarm.Util.Erasable
 import Swarm.Util.Lens (makeLensesExcluding)
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
@@ -1007,7 +1009,7 @@ initGameState gsc =
     , _currentScenarioPath = Nothing
     , _knownEntities = []
     , _worldNavigation = Navigation mempty mempty
-    , _world = W.emptyWorld (fromEnum StoneT)
+    , _world = mempty
     , _worldScrollable = True
     , _viewCenterRule = VCRobot 0
     , _viewCenter = origin
@@ -1168,16 +1170,18 @@ buildWorld em wexpMap WorldDescription {..} = (robots, first fromEnum . wf)
   cs = fromIntegral $ length (head area)
   Coords (ulr, ulc) = locToCoords ul
 
-  worldGrid :: [[(TerrainType, Maybe Entity)]]
+  worldGrid :: [[(TerrainType, Erasable Entity)]]
   worldGrid = (map . map) (cellTerrain &&& cellEntity) area
 
-  worldArray :: Array (Int32, Int32) (TerrainType, Maybe Entity)
+  worldArray :: Array (Int32, Int32) (TerrainType, Erasable Entity)
   worldArray = listArray ((ulr, ulc), (ulr + rs - 1, ulc + cs - 1)) (concat worldGrid)
 
-  wf = case (defaultTerrain, worldProg) of
-    (_, Just wexp) -> (if offsetOrigin then findGoodOrigin else id) . either (error . show) id . runWExp em wexpMap wexp
-    (Nothing, _) -> const (worldFunFromArray worldArray (BlankT, Nothing))
-    (Just (Cell t e _), _) -> const (worldFunFromArray worldArray (t, e))
+  -- XXX error
+  dslWF, arrayWF :: Seed -> WorldFun TerrainType Entity
+  dslWF = maybe mempty (fmap ((if offsetOrigin then findGoodOrigin else id) . either (error . show) id) . runWExp em wexpMap) worldProg
+  arrayWF = const (worldFunFromArray worldArray)
+
+  wf = dslWF <> arrayWF
 
   -- Get all the robots described in cells and set their locations appropriately
   robots :: [IndexedTRobot]

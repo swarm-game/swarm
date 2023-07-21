@@ -1,4 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -21,6 +23,7 @@ module Swarm.Game.World (
 
   -- * Worlds
   WorldFun (..),
+  runWF,
   worldFunFromArray,
   World,
 
@@ -30,7 +33,6 @@ module Swarm.Game.World (
 
   -- ** World functions
   newWorld,
-  emptyWorld,
   lookupTerrain,
   lookupEntity,
   update,
@@ -51,17 +53,20 @@ import Control.Lens
 import Data.Array qualified as A
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
+import Data.Bifunctor (second)
 import Data.Bits
 import Data.Foldable (foldl')
 import Data.Function (on)
 import Data.Int (Int32)
 import Data.Map.Strict qualified as M
+import Data.Semigroup (Last (..))
 import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Swarm.Game.Entity (Entity, entityHash)
 import Swarm.Game.Location
 import Swarm.Game.World.Coords
 import Swarm.Util ((?))
+import Swarm.Util.Erasable
 import Prelude hiding (lookup)
 
 ------------------------------------------------------------
@@ -71,19 +76,22 @@ import Prelude hiding (lookup)
 -- | A @WorldFun t e@ represents a 2D world with terrain of type @t@
 -- (exactly one per cell) and entities of type @e@ (at most one per
 -- cell).
-newtype WorldFun t e = WF {runWF :: Coords -> (t, Maybe e)}
-  deriving (Functor)
+newtype WorldFun t e = WF {getWF :: Coords -> (t, Erasable (Last e))}
+  deriving stock (Functor)
+  deriving newtype (Semigroup, Monoid)
+
+runWF :: WorldFun t e -> Coords -> (t, Maybe e)
+runWF wf = second (erasableToMaybe . fmap getLast) . getWF wf
 
 instance Bifunctor WorldFun where
-  bimap g h (WF z) = WF (bimap g (fmap h) . z)
+  bimap g h (WF z) = WF (bimap g (fmap (fmap h)) . z)
 
--- | Create a world function from a finite array of specified cells
---   plus a single default cell to use everywhere else.
-worldFunFromArray :: Array (Int32, Int32) (t, Maybe e) -> (t, Maybe e) -> WorldFun t e
-worldFunFromArray arr def = WF $ \(Coords (r, c)) ->
+-- | Create a world function from a finite array of specified cells.
+worldFunFromArray :: Monoid t => Array (Int32, Int32) (t, Erasable e) -> WorldFun t e
+worldFunFromArray arr = WF $ \(Coords (r, c)) ->
   if inRange bnds (r, c)
-    then arr ! (r, c)
-    else def
+    then second (fmap Last) (arr ! (r, c))
+    else mempty
  where
   bnds = bounds arr
 
@@ -180,11 +188,6 @@ data World t e = World
 -- | Create a new 'World' from a 'WorldFun'.
 newWorld :: WorldFun t e -> World t e
 newWorld f = World f M.empty M.empty
-
--- | Create a new empty 'World' consisting of nothing but the given
---   terrain.
-emptyWorld :: t -> World t e
-emptyWorld t = newWorld (WF $ const (t, Nothing))
 
 -- | Look up the terrain value at certain coordinates: try looking it
 --   up in the tile cache first, and fall back to running the 'WorldFun'

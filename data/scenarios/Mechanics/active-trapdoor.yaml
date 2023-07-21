@@ -55,9 +55,9 @@ solution: |
 known: [water, boulder, flower]
 seed: 0
 world:
-  default: [stone, water]
+  dsl: |
+    {stone, water}
   upperleft: [0, 0]
-  offset: false
   palette:
     '@': [stone, boulder]
     '.': [grass]
@@ -78,4 +78,3 @@ world:
     .....
     ..Ω..
     .....
-  

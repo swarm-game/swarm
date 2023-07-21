@@ -12,7 +12,6 @@ import Control.Carrier.Throw.Either (run, runThrow)
 import Data.Bifunctor (second)
 import Data.Either (partitionEithers)
 import Data.Map qualified as M
-import Data.Monoid (Last (..))
 import Data.Text (Text)
 import Swarm.Game.Entity (Entity, EntityMap)
 import Swarm.Game.Failure (Asset (..), AssetData (..), LoadingFailure (..), SystemFailure (..))
@@ -36,7 +35,7 @@ runWExp em wexpMap wexp seed =
     <$> runReader em (runReader wexpMap (check CNil (TTyWorld TTyCell) wexp))
 
 convert :: (Coords -> CellVal) -> WorldFun TerrainType Entity
-convert f = WF ((\(CellVal t (Last e) _) -> (t, e)) . f)
+convert f = WF ((\(CellVal t e _) -> (t, e)) . f)
 
 loadWorldsWithWarnings :: EntityMap -> IO ([SystemFailure], WExpMap)
 loadWorldsWithWarnings em = do

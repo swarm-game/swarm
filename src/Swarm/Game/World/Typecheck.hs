@@ -1,6 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE QuantifiedConstraints #-}
@@ -24,12 +25,13 @@ import Data.List (foldl')
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Monoid (Last (..))
+import Data.Semigroup (Last (..))
 import Data.Text (Text)
 import Data.Type.Equality (TestEquality (..), type (:~:) (Refl))
 import Swarm.Game.Entity (EntityMap, lookupEntityName)
 import Swarm.Game.Terrain (readTerrain)
 import Swarm.Game.World.Syntax
+import Swarm.Util.Erasable
 import Prelude hiding (lookup)
 
 ------------------------------------------------------------
@@ -408,13 +410,16 @@ resolveCellItem (mCellTag, item) = case mCellTag of
       Just cell -> return cell
  where
   mkTerrain t = CellVal t mempty mempty
-  mkEntity e = CellVal mempty (Last (Just e)) mempty
+  mkEntity e = CellVal mempty (EJust (Last e)) mempty
   resolverByTag :: CellTag -> Text -> m (Maybe CellVal)
   resolverByTag = \case
     CellTerrain -> return . fmap mkTerrain . readTerrain
-    CellEntity -> \eName -> do
-      em <- ask @EntityMap
-      return . fmap mkEntity $ lookupEntityName eName em
+    CellEntity -> \eName ->
+      case eName of
+        "erase" -> return $ Just (CellVal mempty EErase mempty)
+        _ -> do
+          em <- ask @EntityMap
+          return . fmap mkEntity $ lookupEntityName eName em
     CellRobot -> \_ -> return Nothing -- XXX robots!
 
 inferLet ::

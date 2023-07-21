@@ -23,13 +23,14 @@ module Swarm.Game.World.Syntax (
 where
 
 import Data.List.NonEmpty qualified as NE
-import Data.Monoid (Last (..))
+import Data.Semigroup (Last (..))
 import Data.Text (Text)
 import Swarm.Game.Entity (Entity)
 import Swarm.Game.Robot (Robot)
 import Swarm.Game.Scenario.Topography.WorldPalette (WorldPalette)
 import Swarm.Game.Terrain
 import Swarm.Game.World.Coords
+import Swarm.Util.Erasable
 
 ------------------------------------------------------------
 -- Merging
@@ -62,7 +63,7 @@ data CellTag = CellTerrain | CellEntity | CellRobot
 
 type RawCellVal = [(Maybe CellTag, Text)]
 
-data CellVal = CellVal TerrainType (Last Entity) [Robot]
+data CellVal = CellVal TerrainType (Erasable (Last Entity)) [Robot]
   deriving (Eq, Show)
 
 instance Over CellVal where

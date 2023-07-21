@@ -11,10 +11,12 @@ import Data.Enumeration
 import Data.Int (Int32)
 import Data.List (find)
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Semigroup (Last, getLast)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Swarm.Game.Entity
 import Swarm.Game.World
+import Swarm.Util.Erasable
 
 data Size = Small | Big deriving (Eq, Ord, Show, Read)
 data Hardness = Soft | Hard deriving (Eq, Ord, Show, Read)
@@ -47,7 +49,7 @@ testWorld2Entites =
 
 -- | Offset a world by a multiple of the @skip@ in such a way that it
 --   satisfies the given predicate.
-findOffset :: Integer -> ((Coords -> (t, Maybe e)) -> Bool) -> WorldFun t e -> WorldFun t e
+findOffset :: Integer -> ((Coords -> (t, Erasable (Last e))) -> Bool) -> WorldFun t e -> WorldFun t e
 findOffset skip isGood (WF f) = WF f'
  where
   offset :: Enumeration Int32
@@ -70,7 +72,7 @@ findPatchWith reqs = findOffset 32 isGoodPatch
   patchCoords = [(r, c) | r <- [-16 .. 16], c <- [-16 .. 16]]
   isGoodPatch f = all (`S.member` es) reqs
    where
-    es = S.fromList . map (view entityName) . mapMaybe (snd . f . Coords) $ patchCoords
+    es = S.fromList . map (view entityName) . mapMaybe (erasableToMaybe . fmap getLast . snd . f . Coords) $ patchCoords
 
 -- | Offset the world so the base starts on empty spot next to tree and grass.
 findTreeOffset :: WorldFun t Entity -> WorldFun t Entity
@@ -81,7 +83,7 @@ findTreeOffset = findOffset 1 isGoodPlace
       && any (hasEntity (Just "tree")) neighbors
       && all (\c -> hasEntity (Just "tree") c || hasEntity Nothing c) neighbors
    where
-    hasEntity mayE = (== mayE) . fmap (view entityName) . snd . f . Coords
+    hasEntity mayE = (== mayE) . erasableToMaybe . fmap (view entityName . getLast) . snd . f . Coords
 
   neighbors = [(r, c) | r <- [-1 .. 1], c <- [-1 .. 1]]
 
