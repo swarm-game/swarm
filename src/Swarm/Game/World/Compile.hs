@@ -21,9 +21,9 @@ import Data.Tagged (Tagged (unTagged))
 import Numeric.Noise.Perlin (noiseValue, perlin)
 import Swarm.Game.Location (pattern Location)
 import Swarm.Game.World.Coords (Coords (..), coordsToLoc)
+import Swarm.Game.World.Gen (Seed)
 import Swarm.Game.World.Syntax
 import Swarm.Game.World.Typecheck
-import Swarm.Game.WorldGen (Seed)
 import Witch (from)
 import Witch.Encoding qualified as Encoding
 

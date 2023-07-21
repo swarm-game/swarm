@@ -22,7 +22,7 @@ import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
-import Swarm.Game.WorldGen (Seed)
+import Swarm.Game.World.Gen (Seed)
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 -- | These launch parameters are used in a number of ways:

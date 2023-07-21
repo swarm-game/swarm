@@ -177,8 +177,8 @@ import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Eval (runWExp)
+import Swarm.Game.World.Gen (Seed, findGoodOrigin)
 import Swarm.Game.World.Typecheck (WExpMap)
-import Swarm.Game.WorldGen (Seed, findGoodOrigin)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Module (Module (Module))

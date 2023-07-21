@@ -20,10 +20,10 @@ import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (WorldFun (..))
 import Swarm.Game.World.Compile
 import Swarm.Game.World.Coords (Coords)
+import Swarm.Game.World.Gen (Seed)
 import Swarm.Game.World.Parse (parseWExp, runParser)
 import Swarm.Game.World.Syntax
 import Swarm.Game.World.Typecheck
-import Swarm.Game.WorldGen (Seed)
 import Swarm.Util (acquireAllWithExt, showT)
 import System.FilePath (dropExtension, joinPath, splitPath)
 import Witch (into)

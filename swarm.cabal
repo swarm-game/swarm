@@ -135,10 +135,10 @@ library
                       Swarm.Game.World.Compile
                       Swarm.Game.World.Coords
                       Swarm.Game.World.Eval
+                      Swarm.Game.World.Gen
                       Swarm.Game.World.Parse
                       Swarm.Game.World.Syntax
                       Swarm.Game.World.Typecheck
-                      Swarm.Game.WorldGen
                       Swarm.Language.Capability
                       Swarm.Language.Context
                       Swarm.Language.Elaborate
