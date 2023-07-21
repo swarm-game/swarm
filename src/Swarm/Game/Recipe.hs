@@ -152,7 +152,7 @@ loadRecipes ::
 loadRecipes em = do
   fileName <- getDataFileNameSafe Recipes f
   textRecipes <-
-    withExceptT (AssetNotLoaded (Data Recipes) fileName . CanNotParse)
+    withExceptT (AssetNotLoaded (Data Recipes) fileName . CanNotParseYaml)
       . ExceptT
       . liftIO
       $ decodeFileEither @[Recipe Text] fileName

@@ -84,6 +84,7 @@ module Swarm.TUI.Model (
   webPort,
   upstreamRelease,
   eventLog,
+  worlds,
   scenarios,
   stdEntityMap,
   stdRecipes,
@@ -126,6 +127,7 @@ import Control.Monad.State (MonadState)
 import Data.Array (Array, listArray)
 import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T (lines)
@@ -149,6 +151,8 @@ import Swarm.Game.ScenarioInfo (
   _SISingle,
  )
 import Swarm.Game.State
+import Swarm.Game.World.Eval (loadWorldsWithWarnings)
+import Swarm.Game.World.Typecheck (Some, TTerm, WExpMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
@@ -191,6 +195,7 @@ data RuntimeState = RuntimeState
   { _webPort :: Maybe Port
   , _upstreamRelease :: Either NewReleaseFailure String
   , _eventLog :: Notifications LogEntry
+  , _worlds :: WExpMap
   , _scenarios :: ScenarioCollection
   , _stdEntityMap :: EntityMap
   , _stdRecipes :: [Recipe Entity]
@@ -204,6 +209,8 @@ initRuntimeState = do
   recipes <- withExceptT prettyFailure $ loadRecipes entities
   (scenarioWarnings, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
 
+  (worldWarnings, loadedWorlds) <- liftIO $ loadWorldsWithWarnings entities
+
   (adjsFile, namesFile) <- withExceptT prettyFailure $ do
     adjsFile <- getDataFileNameSafe NameGeneration "adjectives.txt"
     namesFile <- getDataFileNameSafe NameGeneration "names.txt"
@@ -216,11 +223,12 @@ initRuntimeState = do
     return (as, ns)
 
   return
-    ( scenarioWarnings
+    ( scenarioWarnings <> worldWarnings
     , RuntimeState
         { _webPort = Nothing
         , _upstreamRelease = Left (NoMainUpstreamRelease [])
         , _eventLog = mempty
+        , _worlds = loadedWorlds
         , _scenarios = loadedScenarios
         , _stdEntityMap = entities
         , _stdRecipes = recipes
@@ -243,6 +251,10 @@ upstreamRelease :: Lens' RuntimeState (Either NewReleaseFailure String)
 -- If some error happens before a game is even selected, this is the
 -- place to log it.
 eventLog :: Lens' RuntimeState (Notifications LogEntry)
+
+-- | A collection of typechecked world DSL terms that are available to
+--   be used in scenario definitions.
+worlds :: Lens' RuntimeState WExpMap
 
 -- | The collection of scenarios that comes with the game.
 scenarios :: Lens' RuntimeState ScenarioCollection
@@ -283,6 +295,7 @@ mkGameStateConfig rs =
     , initNameList = rs ^. stdNameList
     , initEntities = rs ^. stdEntityMap
     , initRecipes = rs ^. stdRecipes
+    , initWExpMap = rs ^. worlds
     }
 
 -- ----------------------------------------------------------------------------

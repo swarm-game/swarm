@@ -234,7 +234,7 @@ loadScenarioFile ::
   FilePath ->
   ExceptT SystemFailure m Scenario
 loadScenarioFile em fileName =
-  withExceptT (AssetNotLoaded (Data Scenarios) fileName . CanNotParse)
+  withExceptT (AssetNotLoaded (Data Scenarios) fileName . CanNotParseYaml)
     . ExceptT
     . liftIO
     $ decodeFileEitherE em fileName

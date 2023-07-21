@@ -25,6 +25,7 @@ module Swarm.Util (
   -- * Directory utilities
   readFileMay,
   readFileMayT,
+  acquireAllWithExt,
 
   -- * Text utilities
   isIdentChar,
@@ -74,7 +75,8 @@ import Control.Algebra (Has)
 import Control.Effect.State (State, modify, state)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
-import Control.Monad (unless, (<=<))
+import Control.Lens.Operators ((<&>))
+import Control.Monad (filterM, unless, (<=<))
 import Control.Monad.Except (ExceptT (..), runExceptT)
 import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum)
@@ -98,6 +100,8 @@ import Language.Haskell.TH.Syntax (lift)
 import NLP.Minimorph.English qualified as MM
 import NLP.Minimorph.Util ((<+>))
 import System.Clock (TimeSpec)
+import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
+import System.FilePath (takeExtension, (</>))
 import System.IO.Error (catchIOError)
 import Witch (from)
 
@@ -199,6 +203,20 @@ readFileMay = catchIO . readFile
 -- | Safely attempt to (efficiently) read a file.
 readFileMayT :: FilePath -> IO (Maybe Text)
 readFileMayT = catchIO . T.readFile
+
+-- | Recursively acquire all files in the given directory with the
+--   given extension, and their contents.
+acquireAllWithExt :: FilePath -> String -> IO [(FilePath, String)]
+acquireAllWithExt dir ext = do
+  paths <- listDirectory dir <&> map (dir </>)
+  filePaths <- filterM (\path -> doesFileExist path <&> (&&) (hasExt path)) paths
+  children <- mapM (\path -> (,) path <$> readFile path) filePaths
+  -- recurse
+  sub <- filterM doesDirectoryExist paths
+  transChildren <- concat <$> mapM (`acquireAllWithExt` ext) sub
+  return $ children <> transChildren
+ where
+  hasExt path = takeExtension path == ("." ++ ext)
 
 -- | Turns any IO error into Nothing.
 catchIO :: IO a -> IO (Maybe a)

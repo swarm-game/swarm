@@ -24,7 +24,7 @@ extra-source-files: CHANGELOG.md
                     editors/emacs/*.el
                     editors/vscode/syntaxes/*.json
 data-dir:           data/
-data-files:         *.yaml, scenarios/**/*.yaml, scenarios/**/*.txt, scenarios/**/*.sw, *.txt, test/language-snippets/**/*.sw
+data-files:         *.yaml, worlds/*.world, scenarios/**/*.yaml, scenarios/**/*.txt, scenarios/**/*.sw, *.txt, test/language-snippets/**/*.sw
 
 source-repository head
     type:     git

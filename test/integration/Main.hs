@@ -49,6 +49,7 @@ import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.TUI.Model (gameState)
 import Swarm.TUI.Model.StateUpdate (initAppStateForScenario)
+import Swarm.Util (acquireAllWithExt)
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.Environment (getEnvironment)
@@ -64,10 +65,10 @@ isUnparseableTest (fp, _) = "_Validation" `elem` splitDirectories fp
 
 main :: IO ()
 main = do
-  examplePaths <- acquire "example" "sw"
-  scenarioPaths <- acquire "data/scenarios" "yaml"
+  examplePaths <- acquireAllWithExt "example" "sw"
+  scenarioPaths <- acquireAllWithExt "data/scenarios" "yaml"
   let (unparseableScenarios, parseableScenarios) = partition isUnparseableTest scenarioPaths
-  scenarioPrograms <- acquire "data/scenarios" "sw"
+  scenarioPrograms <- acquireAllWithExt "data/scenarios" "sw"
   ci <- any (("CI" ==) . fst) <$> getEnvironment
   entities <- loadEntities
   case entities of
@@ -122,18 +123,6 @@ getScenario expRes em p = do
     Failed -> case res of
       Left _err -> return ()
       Right _s -> assertFailure "Unexpectedly parsed invalid scenario!"
-
-acquire :: FilePath -> String -> IO [(FilePath, String)]
-acquire dir ext = do
-  paths <- listDirectory dir <&> map (dir </>)
-  filePaths <- filterM (\path -> doesFileExist path <&> (&&) (hasExt path)) paths
-  children <- mapM (\path -> (,) path <$> readFile path) filePaths
-  -- recurse
-  sub <- filterM doesDirectoryExist paths
-  transChildren <- concat <$> mapM (`acquire` ext) sub
-  return $ children <> transChildren
- where
-  hasExt path = takeExtension path == ("." ++ ext)
 
 data Time
   = -- | One second should be enough to run most programs.

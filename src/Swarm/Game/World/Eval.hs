@@ -1,25 +1,66 @@
+{-# LANGUAGE DataKinds #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Evaluation for the Swarm world description DSL.
 module Swarm.Game.World.Eval where
 
+import Control.Arrow (left)
 import Control.Carrier.Reader (runReader)
+import Control.Carrier.Throw.Either (run, runThrow)
+import Data.Bifunctor (second)
+import Data.Either (partitionEithers)
+import Data.Map qualified as M
 import Data.Monoid (Last (..))
+import Data.Text (Text)
 import Swarm.Game.Entity (Entity, EntityMap)
+import Swarm.Game.Failure (Asset (..), AssetData (..), LoadingFailure (..), SystemFailure (..))
+import Swarm.Game.ResourceLoading (getDataDirSafe)
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (WorldFun (..))
 import Swarm.Game.World.Compile
 import Swarm.Game.World.Coords (Coords)
+import Swarm.Game.World.Parse (parseWExp, runParser)
 import Swarm.Game.World.Syntax
 import Swarm.Game.World.Typecheck
 import Swarm.Game.WorldGen (Seed)
+import Swarm.Util (acquireAllWithExt, showT)
+import System.FilePath (dropExtension, joinPath, splitPath)
+import Witch (into)
 
-runWExp :: EntityMap -> WExp -> Seed -> Either CheckErr (WorldFun TerrainType Entity)
-runWExp em wexp seed =
+runWExp :: EntityMap -> WExpMap -> WExp -> Seed -> Either CheckErr (WorldFun TerrainType Entity)
+runWExp em wexpMap wexp seed =
   convert . interpBTerm seed . bracket
     -- runCTerm . compile seed . bracket
-    <$> runReader em (check CNil (TTyWorld TTyCell) wexp)
+    <$> runReader em (runReader wexpMap (check CNil (TTyWorld TTyCell) wexp))
 
 convert :: (Coords -> CellVal) -> WorldFun TerrainType Entity
 convert f = WF ((\(CellVal t (Last e) _) -> (t, e)) . f)
+
+loadWorldsWithWarnings :: EntityMap -> IO ([SystemFailure], WExpMap)
+loadWorldsWithWarnings em = do
+  res <- getDataDirSafe Worlds "worlds"
+  case res of
+    Left err -> return ([err], M.empty)
+    Right dir -> do
+      worldFiles <- acquireAllWithExt dir "world"
+      return $ second M.fromList . partitionEithers . map (processWorldFile dir em) $ worldFiles
+
+processWorldFile ::
+  FilePath ->
+  EntityMap ->
+  (FilePath, String) ->
+  Either SystemFailure (Text, Some (TTerm '[]))
+processWorldFile dir em (fp, src) = do
+  wexp <-
+    left (AssetNotLoaded (Data Worlds) fp . CanNotParseMegaparsec) $
+      runParser parseWExp (into @Text src)
+  t <-
+    left (AssetNotLoaded (Data Worlds) fp . CustomMessage . showT) $ -- XXX pretty type err
+      run . runThrow @CheckErr . runReader em . runReader @WExpMap M.empty $ -- XXX?
+        infer CNil wexp
+  return (into @Text (dropExtension (stripDir dir fp)), t)
+
+stripDir :: FilePath -> FilePath -> FilePath
+stripDir dir fp = joinPath (drop (length (splitPath dir)) (splitPath fp))

@@ -12,6 +12,7 @@ import Data.Text qualified as T
 import Data.Yaml (prettyPrintParseException)
 import Swarm.Game.Failure
 import Swarm.Util (quote)
+import Text.Megaparsec (errorBundlePretty)
 
 tShowLow :: Show a => a -> Text
 tShowLow = T.pack . map toLower . show
@@ -23,7 +24,8 @@ prettyLoadingFailure :: LoadingFailure -> Text
 prettyLoadingFailure = \case
   DoesNotExist e -> "The " <> tShowLow e <> " is missing!"
   EntryNot e -> "The entry is not a " <> tShowLow e <> "!"
-  CanNotParse p -> "Parse failure:\n" <> T.pack (indent 8 $ prettyPrintParseException p)
+  CanNotParseYaml p -> "Parse failure:\n" <> T.pack (indent 8 $ prettyPrintParseException p)
+  CanNotParseMegaparsec p -> "Parse failure:\n" <> T.pack (errorBundlePretty p)
   CustomMessage m -> m
  where
   indent n = unlines . map (replicate n ' ' ++) . lines

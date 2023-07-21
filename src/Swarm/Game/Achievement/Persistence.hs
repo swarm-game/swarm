@@ -43,7 +43,7 @@ loadAchievementsInfo = do
         if isFile
           then do
             eitherDecodedFile <- sendIO (Y.decodeFileEither fullPath)
-            return $ left (AssetNotLoaded Achievement p . CanNotParse) eitherDecodedFile
+            return $ left (AssetNotLoaded Achievement p . CanNotParseYaml) eitherDecodedFile
           else return . Left $ AssetNotLoaded Achievement p (EntryNot File)
       return $ partitionEithers eithersList
     else return ([AssetNotLoaded Achievement "." $ DoesNotExist Directory], [])

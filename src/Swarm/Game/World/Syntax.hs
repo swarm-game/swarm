@@ -103,33 +103,9 @@ data WExp where
   WOverlay :: NE.NonEmpty WExp -> WExp
   WCat :: Axis -> [WExp] -> WExp
   WStruct :: WorldPalette Text -> [Text] -> WExp
+  WImport :: Text -> WExp
   deriving (Eq, Show)
 
 -- We don't have an explicit Empty case because we can't infer its
 -- type.  It could be done but it would require a lot more care with
 -- inference vs checking mode.
-
--- ------------------------------------------------------------
--- -- Example
-
--- testWorld1 :: WExp
--- testWorld1 =
---   WLet
---     [ ("pn1", WOp Perlin [WInt 0, WInt 5, WFloat 0.05, WFloat 0.5])
---     , ("pn2", WOp Perlin [WInt 0, WInt 5, WFloat 0.05, WFloat 0.75])
---     ]
---     $ WOverlay . NE.fromList
---     $ [ WCell (CellVal (Last (Just GrassT)) (Last Nothing) [])
---       , WOp Mask [WOp Gt [WVar "pn2", WFloat 0], WCell (CellVal (Last (Just StoneT)) (Last (Just "rock")) [])]
---       , WOp Mask [WOp Gt [WVar "pn1", WFloat 0], WCell (CellVal (Last (Just DirtT)) (Last (Just "tree")) [])]
---       , WOp
---           Mask
---           [ WOp And [WOp Eq [WCoord X, WInt 2], WOp Eq [WCoord Y, WInt (-1)]]
---           , WCell (CellVal (Last (Just GrassT)) (Last (Just "elephant")) [])
---           ]
---       , WOp
---           Mask
---           [ WOp And [WOp Eq [WCoord X, WInt (-5)], WOp Eq [WCoord Y, WInt 3]]
---           , WCell (CellVal (Last (Just StoneT)) (Last (Just "flerb")) [])
---           ]
---       ]

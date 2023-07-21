@@ -177,6 +177,7 @@ import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Eval (runWExp)
+import Swarm.Game.World.Typecheck (WExpMap)
 import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
@@ -969,6 +970,7 @@ data GameStateConfig = GameStateConfig
   , initNameList :: Array Int Text
   , initEntities :: EntityMap
   , initRecipes :: [Recipe Entity]
+  , initWExpMap :: WExpMap
   }
 
 -- | Create an initial, fresh game state record when starting a new scenario.
@@ -1146,7 +1148,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       (maybe True (`S.member` initialCaps) . constCaps)
       allConst
 
-  (genRobots, wf) = buildWorld em (scenario ^. scenarioWorld)
+  (genRobots, wf) = buildWorld em (initWExpMap gsc) (scenario ^. scenarioWorld)
   theWorld = W.newWorld . wf
   theWinCondition =
     maybe
@@ -1159,8 +1161,8 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
 
 -- | Take a world description, parsed from a scenario file, and turn
 --   it into a list of located robots and a world function.
-buildWorld :: EntityMap -> WorldDescription -> ([IndexedTRobot], Seed -> WorldFun Int Entity)
-buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
+buildWorld :: EntityMap -> WExpMap -> WorldDescription -> ([IndexedTRobot], Seed -> WorldFun Int Entity)
+buildWorld em wexpMap WorldDescription {..} = (robots, first fromEnum . wf)
  where
   rs = fromIntegral $ length area
   cs = fromIntegral $ length (head area)
@@ -1173,7 +1175,7 @@ buildWorld em WorldDescription {..} = (robots, first fromEnum . wf)
   worldArray = listArray ((ulr, ulc), (ulr + rs - 1, ulc + cs - 1)) (concat worldGrid)
 
   wf = case (defaultTerrain, worldProg) of
-    (_, Just wexp) -> (if offsetOrigin then findGoodOrigin else id) . either (error . show) id . runWExp em wexp
+    (_, Just wexp) -> (if offsetOrigin then findGoodOrigin else id) . either (error . show) id . runWExp em wexpMap wexp
     (Nothing, _) ->
       (if offsetOrigin then findGoodOrigin else id) . testWorld2FromArray em worldArray
     (Just (Cell t e _), _) -> const (worldFunFromArray worldArray (t, e))

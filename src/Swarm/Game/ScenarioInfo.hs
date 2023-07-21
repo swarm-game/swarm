@@ -242,7 +242,7 @@ loadScenarioInfo p = do
       return $
         ScenarioInfo path NotStarted
     else
-      withExceptT (pure . AssetNotLoaded (Data Scenarios) infoPath . CanNotParse)
+      withExceptT (pure . AssetNotLoaded (Data Scenarios) infoPath . CanNotParseYaml)
         . ExceptT
         . liftIO
         $ decodeFileEither infoPath

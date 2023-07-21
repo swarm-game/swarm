@@ -120,6 +120,7 @@ parseWExpAtom =
     <|> parseMask
     <|> parseCat
     <|> parseStruct
+    <|> parseImport
     <|> parens parseWExp
 
 parseWExp :: Parser WExp
@@ -222,6 +223,9 @@ parseCat =
 
 parseStruct :: Parser WExp
 parseStruct = reserved "struct" *> fail "struct not implemented"
+
+parseImport :: Parser WExp
+parseImport = WImport . into @Text <$> between (symbol "\"") (symbol "\"") (some (satisfy (/= '"')))
 
 ------------------------------------------------------------
 -- Utility

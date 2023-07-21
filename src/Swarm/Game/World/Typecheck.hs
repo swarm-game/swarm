@@ -1,9 +1,11 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
@@ -20,6 +22,8 @@ import Data.Functor.Const qualified as F
 import Data.Kind (Type)
 import Data.List (foldl')
 import Data.List.NonEmpty qualified as NE
+import Data.Map (Map)
+import Data.Map qualified as M
 import Data.Monoid (Last (..))
 import Data.Text (Text)
 import Data.Type.Equality (TestEquality (..), type (:~:) (Refl))
@@ -97,12 +101,20 @@ c1 .$$. c2 = embed c1 $$ embed c2
 ------------------------------------------------------------
 -- Intrinsically typed core language
 
+type family Append (xs :: [k]) (ys :: [k]) :: [k] where
+  Append '[] ys = ys
+  Append (x ': xs) ys = x ': Append xs ys
+
 -- Typed de Bruijn indices.
 data Idx :: [Type] -> Type -> Type where
   VZ :: Idx (ty ': g) ty
   VS :: Idx g ty -> Idx (x ': g) ty
 
 deriving instance Show (Idx g ty)
+
+weakenVar :: forall h g a. Idx g a -> Idx (Append g h) a
+weakenVar VZ = VZ
+weakenVar (VS x) = VS (weakenVar @h x)
 
 -- Type-indexed terms.  Note this is a stripped-down core language,
 -- with only variables, lambdas, application, and constants.
@@ -120,6 +132,12 @@ instance Applicable (TTerm g) where
 
 instance HasConst (TTerm g) where
   embed = TConst
+
+weaken :: forall h g a. TTerm g a -> TTerm (Append g h) a
+weaken (TVar x) = TVar (weakenVar @h x)
+weaken (TLam t) = TLam (weaken @h t)
+weaken (TApp t1 t2) = TApp (weaken @h t1) (weaken @h t2)
+weaken (TConst c) = TConst c
 
 ------------------------------------------------------------
 -- Errors
@@ -239,8 +257,13 @@ lookup x (CCons y ty ctx)
 ------------------------------------------------------------
 -- Type inference/checking + elaboration
 
+type WExpMap = Map Text (Some (TTerm '[]))
+
 check ::
-  (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
+  ( Has (Throw CheckErr) sig m
+  , Has (Reader EntityMap) sig m
+  , Has (Reader WExpMap) sig m
+  ) =>
   Ctx g ->
   TTy t ->
   WExp ->
@@ -315,7 +338,10 @@ typeArgsFor op (_ : t : _)
 typeArgsFor _ _ = []
 
 applyOp ::
-  (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
+  ( Has (Throw CheckErr) sig m
+  , Has (Reader EntityMap) sig m
+  , Has (Reader WExpMap) sig m
+  ) =>
   Ctx g ->
   ([Some (TTerm g)] -> [SomeTy]) ->
   Op ->
@@ -326,7 +352,11 @@ applyOp ctx typeArgs op ts = do
   foldl (\r -> (r >>=) . applyTo) (inferOp (typeArgs tts) op) tts
 
 infer ::
-  (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
+  forall sig m g.
+  ( Has (Throw CheckErr) sig m
+  , Has (Reader EntityMap) sig m
+  , Has (Reader WExpMap) sig m
+  ) =>
   Ctx g ->
   WExp ->
   m (Some (TTerm g))
@@ -345,6 +375,11 @@ infer ctx (WLet defs body) = inferLet ctx defs body
 infer ctx (WOverlay ts) = inferOverlay ctx ts
 infer _ctx (WCat _ax _ts) = undefined
 infer _ctx (WStruct _pal _rect) = undefined
+infer _ctx (WImport key) = do
+  wexpMap <- ask @WExpMap
+  case M.lookup key wexpMap of
+    Just (Some ty t) -> return (Some ty (weaken @g t))
+    Nothing -> throwError (UnknownErr 14)
 
 resolveCell ::
   (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
@@ -383,7 +418,10 @@ resolveCellItem (mCellTag, item) = case mCellTag of
     CellRobot -> \_ -> return Nothing -- XXX robots!
 
 inferLet ::
-  (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
+  ( Has (Throw CheckErr) sig m
+  , Has (Reader EntityMap) sig m
+  , Has (Reader WExpMap) sig m
+  ) =>
   Ctx g ->
   [(Var, WExp)] ->
   WExp ->
@@ -395,7 +433,10 @@ inferLet ctx ((x, e) : xs) body = do
   apply (Some (ty1 :->: ty2) (TLam let')) e'
 
 inferOverlay ::
-  (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
+  ( Has (Throw CheckErr) sig m
+  , Has (Reader EntityMap) sig m
+  , Has (Reader WExpMap) sig m
+  ) =>
   Ctx g ->
   NE.NonEmpty WExp ->
   m (Some (TTerm g))
