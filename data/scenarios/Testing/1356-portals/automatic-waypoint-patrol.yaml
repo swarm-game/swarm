@@ -18,7 +18,6 @@ robots:
 known: [flower, boulder]
 world:
   upperleft: [-1, 1]
-  default: [blank]
   palette:
     '.': [grass]
     '*': [stone, flower]

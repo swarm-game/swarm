@@ -91,7 +91,6 @@ solution: |
 known:
   - flower
 world:
-  default: [blank]
   palette:
     '.': [blank]
     '*': [blank, flower]

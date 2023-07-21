@@ -60,7 +60,6 @@ robots:
       - [10, compass]
 known: [water]
 world:
-  default: [blank]
   palette:
     'Ω': [grass, null, base]
     '.': [grass]

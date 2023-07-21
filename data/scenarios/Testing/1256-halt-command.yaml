@@ -41,7 +41,6 @@ robots:
       def forever = \c. c ; forever c end;
       forever ( turn right )
 world:
-  default: [blank]
   palette:
     'Ω': [grass, null, base]
     '^': [grass, null, infinitebot]

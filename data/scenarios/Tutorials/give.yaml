@@ -51,7 +51,6 @@ robots:
       - [10, solar panel]
 known: [board, LaTeX, bit (0), copper ore]
 world:
-  default: [blank]
   palette:
     'Ω': [grass, null, base]
     '.': [grass]

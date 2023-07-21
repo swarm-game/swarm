@@ -264,7 +264,6 @@ solution:
 known: []
 seed: 0
 world:
-  default: [blank]
   palette:
     'B': [blank]
     'Ω': [blank, null, base]

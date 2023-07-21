@@ -30,7 +30,6 @@ robots:
 known: [tree]
 world:
   upperleft: [1, -1]
-  default: [blank]
   palette:
     '.': [grass]
     'B': [grass, null, base]

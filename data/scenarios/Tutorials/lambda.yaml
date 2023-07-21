@@ -58,7 +58,6 @@ robots:
       - [0, boulder]
       - [0, flower]
 world:
-  default: [blank]
   palette:
     'Ω': [grass, null, base]
     '.': [grass]

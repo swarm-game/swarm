@@ -35,7 +35,6 @@ robots:
     inventory:
       - [0, tree]
 world:
-  default: [blank]
   palette:
     '>': [grass, null, base]
     '.': [grass]

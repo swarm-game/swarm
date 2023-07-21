@@ -71,7 +71,6 @@ robots:
     inventory:
       - [0, spruce]
 world:
-  default: [blank]
   palette:
     '>': [grass, null, base]
     '.': [grass]

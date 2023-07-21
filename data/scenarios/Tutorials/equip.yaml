@@ -40,7 +40,6 @@ robots:
       - [10, logger]
 known: [3D printer, water]
 world:
-  default: [blank]
   palette:
     '>': [grass, null, base]
     '.': [grass]

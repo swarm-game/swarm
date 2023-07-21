@@ -62,7 +62,6 @@ robots:
       - [16, lambda]
       - [100, rock]
 world:
-  default: [blank]
   palette:
     'Ω': [grass, null, base]
     '.': [grass]

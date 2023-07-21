@@ -178,7 +178,7 @@ import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromAr
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Eval (runWExp)
 import Swarm.Game.World.Typecheck (WExpMap)
-import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
+import Swarm.Game.WorldGen (Seed, findGoodOrigin)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Module (Module (Module))
@@ -1176,8 +1176,7 @@ buildWorld em wexpMap WorldDescription {..} = (robots, first fromEnum . wf)
 
   wf = case (defaultTerrain, worldProg) of
     (_, Just wexp) -> (if offsetOrigin then findGoodOrigin else id) . either (error . show) id . runWExp em wexpMap wexp
-    (Nothing, _) ->
-      (if offsetOrigin then findGoodOrigin else id) . testWorld2FromArray em worldArray
+    (Nothing, _) -> const (worldFunFromArray worldArray (BlankT, Nothing))
     (Just (Cell t e _), _) -> const (worldFunFromArray worldArray (t, e))
 
   -- Get all the robots described in cells and set their locations appropriately

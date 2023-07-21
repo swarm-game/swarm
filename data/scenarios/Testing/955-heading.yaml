@@ -17,7 +17,6 @@ robots:
       - treads
       - compass
 world:
-  default: [blank]
   palette:
     '^': [grass, null, base]
     '.': [grass]

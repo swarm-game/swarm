@@ -8,7 +8,6 @@ robots:
     dir: [1, 0]
 known: [water, sand]
 world:
-  default: [blank]
   palette:
     '.': [grass]
   upperleft: [-1, 1]

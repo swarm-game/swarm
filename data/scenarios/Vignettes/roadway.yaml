@@ -39,7 +39,6 @@ robots:
       run "data/scenarios/Vignettes/_roadway/coordinator.sw"
 version: 1
 world:
-  default: [blank]
   palette:
     '.': [grass]
     'd': [grass, null, drone]

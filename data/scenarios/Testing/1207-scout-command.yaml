@@ -69,7 +69,6 @@ robots:
       attr: robot
 known: [tree, flower, boulder]
 world:
-  default: [blank]
   palette:
     'Ω': [grass, null, base]
     'b': [grass, null, bot]

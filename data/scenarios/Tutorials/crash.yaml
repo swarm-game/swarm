@@ -78,7 +78,6 @@ robots:
       run "scenarios/Tutorials/crash-secret.sw"
 known: [water, tree, mountain]
 world:
-  default: [blank]
   palette:
     'Ω': [grass, null, base]
     '!': [grass, null, secret]
