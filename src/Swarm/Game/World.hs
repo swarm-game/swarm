@@ -274,9 +274,9 @@ loadRegion reg (World f t m) = World f t' m
     tileCorner = tileOrigin tc
     (terrain, entities) = unzip $ map (runWF f . plusOffset tileCorner) (range tileBounds)
 
--- ------------------------------------------------------------------
+---------------------------------------------------------------------
 -- Runtime world update
--- ------------------------------------------------------------------
+---------------------------------------------------------------------
 
 -- | Update world in an inspectable way.
 --
