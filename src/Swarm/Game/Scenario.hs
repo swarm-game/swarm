@@ -220,6 +220,7 @@ scenarioRecipes :: Lens' Scenario [Recipe Entity]
 scenarioKnown :: Lens' Scenario [Text]
 
 -- | The subworlds of the scenario.
+-- The "root" subworld shall always be at the head of the list, by construction.
 scenarioWorlds :: Lens' Scenario (NonEmpty WorldDescription)
 
 -- | Waypoints and inter-world portals
