@@ -3,7 +3,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Procedural world generation via coherent noise.
+-- Utilities for working with procedurally generated worlds.
 module Swarm.Game.WorldGen where
 
 import Control.Lens (view)
@@ -18,9 +18,6 @@ import Swarm.Game.Entity
 import Swarm.Game.World
 import Swarm.Util.Erasable
 
-data Size = Small | Big deriving (Eq, Ord, Show, Read)
-data Hardness = Soft | Hard deriving (Eq, Ord, Show, Read)
-data Origin = Natural | Artificial deriving (Eq, Ord, Show, Read)
 type Seed = Int
 
 -- | A list of entities available in the initial world.
