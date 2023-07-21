@@ -127,7 +127,6 @@ import Control.Monad.State (MonadState)
 import Data.Array (Array, listArray)
 import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T (lines)
@@ -152,7 +151,7 @@ import Swarm.Game.ScenarioInfo (
  )
 import Swarm.Game.State
 import Swarm.Game.World.Eval (loadWorldsWithWarnings)
-import Swarm.Game.World.Typecheck (Some, TTerm, WExpMap)
+import Swarm.Game.World.Typecheck (WExpMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name

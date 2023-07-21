@@ -9,8 +9,8 @@
 -- Swarm integration tests
 module Main where
 
-import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (<>~), (^.), (^..), (^?!))
-import Control.Monad (filterM, forM_, unless, when)
+import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<>~), (^.), (^..), (^?!))
+import Control.Monad (forM_, unless, when)
 import Control.Monad.State (StateT (runStateT), gets)
 import Control.Monad.Trans.Except (runExceptT)
 import Data.Char (isSpace)
@@ -51,10 +51,8 @@ import Swarm.TUI.Model (gameState)
 import Swarm.TUI.Model.StateUpdate (initAppStateForScenario)
 import Swarm.Util (acquireAllWithExt)
 import Swarm.Util.Yaml (decodeFileEitherE)
-import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.Environment (getEnvironment)
-import System.FilePath (splitDirectories)
-import System.FilePath.Posix (takeExtension, (</>))
+import System.FilePath.Posix (splitDirectories)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
