@@ -36,17 +36,26 @@ data AnnotatedDestination a = AnnotatedDestination
   }
   deriving (Show, Eq)
 
--- | Parameterized on the portal specification method.
+-- | Parameterized on waypoint dimensionality ('additionalDimension') and
+-- on the portal location specification method ('portalExitLoc').
+-- == @additionalDimension@
+-- As a member of the 'WorldDescription', waypoints are only known within a
+-- a single subworld, so 'additionalDimension' is 'Identity' for the map
+-- of waypoint names to planar locations.
+-- At the Scenario level, in contrast, we have access to all subworlds, so
+-- we nest this map to planar locations in additional mapping layer by subworld.
+-- == @portalExitLoc@
 -- At the subworld parsing level, we only can obtain the planar location
--- for portal /entrances/.  At the Scenario-parsing level, we finally have
+-- for portal /entrances/, but the /exits/ remain as waypoint names.
+-- At the Scenario-parsing level, we finally have
 -- access to the waypoints across all subworlds, and can therefore translate
 -- the portal exits to concrete planar locations.
-data Navigation a b = Navigation
-  { waypoints :: a WaypointMap
+data Navigation additionalDimension portalExitLoc = Navigation
+  { waypoints :: additionalDimension WaypointMap
   -- ^ Note that waypoints defined at the "root" level are still relative to
   -- the top-left corner of the map rectangle; they are not in absolute world
   -- coordinates (as with applying the "ul" offset).
-  , portals :: M.Map (Cosmic Location) (AnnotatedDestination b)
+  , portals :: M.Map (Cosmic Location) (AnnotatedDestination portalExitLoc)
   }
 
 deriving instance (Eq (a WaypointMap), Eq b) => Eq (Navigation a b)
@@ -280,6 +289,7 @@ ensureSpatialConsistency xs =
 -- Perhaps there is an opportunity to invent a typeclass for datatypes which
 -- consist exclusively of unary (or more ambitiously, non-nullary?) data constructors,
 -- for which a less-constrained 'sequence' function could be automatically derived.
+-- Compare to the 'Comonad' class and its 'extract' function.
 sequenceSigned ::
   Functor f =>
   Signed (f a) ->
