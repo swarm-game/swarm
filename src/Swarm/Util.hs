@@ -22,6 +22,7 @@ module Swarm.Util (
   findDup,
   both,
   allEqual,
+  surfaceEmpty,
 
   -- * Directory utilities
   readFileMay,
@@ -72,10 +73,11 @@ module Swarm.Util (
 ) where
 
 import Control.Algebra (Has)
+import Control.Applicative (Alternative)
 import Control.Effect.State (State, modify, state)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
-import Control.Monad (unless, (<=<))
+import Control.Monad (guard, unless, (<=<))
 import Control.Monad.Except (ExceptT (..), runExceptT)
 import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum)
@@ -193,6 +195,9 @@ both f = bimap f f
 allEqual :: (Ord a) => [a] -> Bool
 allEqual [] = True
 allEqual (x : xs) = all (== x) xs
+
+surfaceEmpty :: Alternative f => (a -> Bool) -> a -> f a
+surfaceEmpty isEmpty t = t <$ guard (not (isEmpty t))
 
 ------------------------------------------------------------
 -- Directory stuff

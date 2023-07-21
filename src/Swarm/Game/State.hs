@@ -188,7 +188,7 @@ import Swarm.Language.Syntax (Const, SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
-import Swarm.Util (binTuples, uniq, (<+=), (<<.=), (?))
+import Swarm.Util (binTuples, surfaceEmpty, uniq, (<+=), (<<.=), (?))
 import Swarm.Util.Lens (makeLensesExcluding)
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
@@ -992,15 +992,10 @@ removeRobotFromLocationMap ::
 removeRobotFromLocationMap (Cosmic oldSubworld oldPlanar) rid =
   robotsByLocation %= M.update (tidyDelete rid) oldSubworld
  where
-  nullToNothing :: (a -> Bool) -> a -> Maybe a
-  nullToNothing isEmptyFunc t
-    | isEmptyFunc t = Nothing
-    | otherwise = Just t
-
-  deleteOne x = nullToNothing IS.null . IS.delete x
+  deleteOne x = surfaceEmpty IS.null . IS.delete x
 
   tidyDelete robID =
-    nullToNothing M.null . M.update (deleteOne robID) oldPlanar
+    surfaceEmpty M.null . M.update (deleteOne robID) oldPlanar
 
 ------------------------------------------------------------
 -- Initialization
