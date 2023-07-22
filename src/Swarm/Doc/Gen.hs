@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -33,7 +34,7 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (find, toList)
 import Data.List (transpose)
-import Data.Map.Lazy (Map)
+import Data.Map.Lazy (Map, (!))
 import Data.Map.Lazy qualified as Map
 import Data.Maybe (fromMaybe, isJust)
 import Data.Set (Set)
@@ -54,7 +55,9 @@ import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, reci
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot (equippedDevices, instantiateRobot, robotInventory)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
-import Swarm.Game.World.Gen (testWorld2Entites)
+import Swarm.Game.World.Eval (loadWorldsWithWarnings)
+import Swarm.Game.World.Gen (extractEntities)
+import Swarm.Game.World.Typecheck (Some (..), TTerm)
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Capability qualified as Capability
 import Swarm.Language.Key (specialKeyNames)
@@ -427,10 +430,11 @@ generateRecipe = simpleErrorHandle $ do
   entities <- ExceptT loadEntities
   recipes <- withExceptT F.prettyFailure $ loadRecipes entities
   classic <- classicScenario
-  return . Dot.showDot $ recipesToDot classic entities recipes
+  (_, loadedWorlds) <- liftIO $ loadWorldsWithWarnings entities
+  return . Dot.showDot $ recipesToDot classic (loadedWorlds ! "classic") entities recipes
 
-recipesToDot :: Scenario -> EntityMap -> [Recipe Entity] -> Dot ()
-recipesToDot classic emap recipes = do
+recipesToDot :: Scenario -> Some (TTerm '[]) -> EntityMap -> [Recipe Entity] -> Dot ()
+recipesToDot classic classicTerm emap recipes = do
   Dot.attribute ("rankdir", "LR")
   Dot.attribute ("ranksep", "2")
   world <- diamond "World"
@@ -450,8 +454,8 @@ recipesToDot classic emap recipes = do
   -- how hard each entity is to get - see 'recipeLevels'.
   let devs = startingDevices classic
       inv = startingInventory classic
-      worldEntites = Set.map (safeGetEntity $ entitiesByName emap) testWorld2Entites
-      levels = recipeLevels recipes (Set.unions [worldEntites, devs])
+      worldEntities = case classicTerm of Some _ t -> extractEntities t
+      levels = recipeLevels recipes (Set.unions [worldEntities, devs])
   -- --------------------------------------------------------------------------
   -- Base inventory
   (_bc, ()) <- Dot.cluster $ do
@@ -464,7 +468,7 @@ recipesToDot classic emap recipes = do
   (_wc, ()) <- Dot.cluster $ do
     Dot.attribute ("style", "filled")
     Dot.attribute ("color", "forestgreen")
-    mapM_ ((uncurry (Dot..->.) . (world,)) . getE) (toList testWorld2Entites)
+    mapM_ (uncurry (Dot..->.) . (world,) . getE . view entityName) (toList worldEntities)
   -- --------------------------------------------------------------------------
   let -- put a hidden node above and below entities and connect them by hidden edges
       wrapBelowAbove :: Set Entity -> Dot (NodeId, NodeId)
@@ -494,7 +498,7 @@ recipesToDot classic emap recipes = do
   -- --------------------------------------------------------------------------
   -- order entities into clusters based on how "far" they are from
   -- what is available at the start - see 'recipeLevels'.
-  bottom <- wrapBelowAbove worldEntites
+  bottom <- wrapBelowAbove worldEntities
   ls <- zipWithM subLevel [1 ..] (tail levels)
   let invisibleLine = zipWithM_ (.~>.)
   tls <- mapM (const hiddenNode) levels

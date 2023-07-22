@@ -48,6 +48,9 @@ class Applicable t where
 -- later as a compilation target.
 data Const :: Type -> Type where
   CLit :: (Show a) => a -> Const a
+  CCell :: CellVal -> Const CellVal
+  -- We have a separate CCell instead of using CLit for cells so that we can
+  -- later extract all the entities from a world expression.
   CFI :: Const (Integer -> Double)
   CIf :: Const (Bool -> a -> a -> a)
   CNot :: Const (Bool -> Bool)
@@ -118,8 +121,8 @@ weakenVar :: forall h g a. Idx g a -> Idx (Append g h) a
 weakenVar VZ = VZ
 weakenVar (VS x) = VS (weakenVar @h x)
 
--- Type-indexed terms.  Note this is a stripped-down core language,
--- with only variables, lambdas, application, and constants.
+-- | Type-indexed terms.  Note this is a stripped-down core language,
+--   with only variables, lambdas, application, and constants.
 data TTerm :: [Type] -> Type -> Type where
   TVar :: Idx g a -> TTerm g a
   TLam :: TTerm (ty1 ': g) ty2 -> TTerm g (ty1 -> ty2)
@@ -367,7 +370,7 @@ infer _ (WFloat f) = return $ Some (TTyBase BFloat) (embed (CLit f))
 infer _ (WBool b) = return $ Some (TTyBase BBool) (embed (CLit b))
 infer _ (WCell c) = do
   c' <- resolveCell c
-  return $ Some TTyCell (embed (CLit c')) -- XXX resolve cell
+  return $ Some TTyCell (embed (CCell c'))
 infer ctx (WVar x) = mapSome TVar <$> lookup x ctx
 infer ctx (WOp op ts) = applyOp ctx (typeArgsFor op) op ts
 infer _ WSeed = return $ Some TTyInt (embed CSeed)

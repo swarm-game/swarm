@@ -1,3 +1,4 @@
+{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -11,38 +12,26 @@ import Data.Enumeration
 import Data.Int (Int32)
 import Data.List (find)
 import Data.Maybe (fromMaybe, mapMaybe)
-import Data.Semigroup (Last, getLast)
+import Data.Semigroup (Last (..), getLast)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Swarm.Game.Entity
 import Swarm.Game.World
+import Swarm.Game.World.Syntax (CellVal (..))
+import Swarm.Game.World.Typecheck (Const (CCell), TTerm (..))
 import Swarm.Util.Erasable
 
 type Seed = Int
 
--- | A list of entities available in the initial world.
-testWorld2Entites :: S.Set Text
-testWorld2Entites =
-  S.fromList
-    [ "mountain"
-    , "boulder"
-    , "LaTeX"
-    , "tree"
-    , "rock"
-    , "lodestone"
-    , "sand"
-    , "wavy water"
-    , "water"
-    , "flower"
-    , "bit (0)"
-    , "bit (1)"
-    , "Linux"
-    , "lambda"
-    , "pixel (R)"
-    , "pixel (G)"
-    , "pixel (B)"
-    , "copper ore"
-    ]
+-- | Extract a list of all entities mentioned in a given world DSL term.
+extractEntities :: TTerm g a -> S.Set Entity
+extractEntities (TLam t) = extractEntities t
+extractEntities (TApp t1 t2) = extractEntities t1 <> extractEntities t2
+extractEntities (TConst (CCell (CellVal _ ee _))) = getEntity ee
+ where
+  getEntity (EJust (Last e)) = S.singleton e
+  getEntity _ = S.empty
+extractEntities _ = S.empty
 
 -- | Offset a world by a multiple of the @skip@ in such a way that it
 --   satisfies the given predicate.

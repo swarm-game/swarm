@@ -19,13 +19,18 @@ instance Semigroup e => Semigroup (Erasable e) where
 instance Semigroup e => Monoid (Erasable e) where
   mempty = ENothing
 
+-- | Generic eliminator for 'Erasable' values.
+erasable :: a -> a -> (e -> a) -> Erasable e -> a
+erasable x y z = \case
+  ENothing -> x
+  EErase -> y
+  EJust e -> z e
+
 -- | Convert an 'Erasable' value to 'Maybe', turning both 'ENothing'
 --   and 'EErase' into 'Nothing'.
 erasableToMaybe :: Erasable e -> Maybe e
-erasableToMaybe (EJust e) = Just e
-erasableToMaybe _ = Nothing
+erasableToMaybe = erasable Nothing Nothing Just
 
 -- | Inject a 'Maybe' value into 'Erasable'.
 maybeToErasable :: Maybe e -> Erasable e
-maybeToErasable Nothing = ENothing
-maybeToErasable (Just e) = EJust e
+maybeToErasable = maybe ENothing EJust
