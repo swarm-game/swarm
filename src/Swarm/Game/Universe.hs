@@ -47,8 +47,8 @@ instance (FromJSON a) => FromJSON (Cosmic a) where
         <$> v .: "subworld"
         <*> v .: "loc"
 
-defaultCosmoLocation :: Cosmic Location
-defaultCosmoLocation = Cosmic DefaultRootSubworld origin
+defaultCosmicLocation :: Cosmic Location
+defaultCosmicLocation = Cosmic DefaultRootSubworld origin
 
 data DistanceMeasure b = Measurable b | InfinitelyFar
   deriving (Eq, Ord)

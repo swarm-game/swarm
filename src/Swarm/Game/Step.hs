@@ -385,7 +385,7 @@ hypotheticalRobot c =
     Nothing
     "hypothesis"
     []
-    defaultCosmoLocation
+    defaultCosmicLocation
     zero
     defaultRobotDisplay
     c
@@ -639,7 +639,7 @@ updateWorld ::
   m ()
 updateWorld c (ReplaceEntity loc eThen down) = do
   w <- use multiWorld
-  let eNow = W.lookupCosmoEntity (fmap W.locToCoords loc) w
+  let eNow = W.lookupCosmicEntity (fmap W.locToCoords loc) w
   -- Can fail if a robot started a multi-tick "drill" operation on some entity
   -- and meanwhile another entity swaps it out from under them.
   if Just eThen /= eNow

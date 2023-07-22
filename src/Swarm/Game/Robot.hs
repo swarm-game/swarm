@@ -314,7 +314,7 @@ instantiateRobot :: RID -> TRobot -> Robot
 instantiateRobot i r =
   r
     { _robotID = i
-    , _robotLocation = fromMaybe defaultCosmoLocation $ _robotLocation r
+    , _robotLocation = fromMaybe defaultCosmicLocation $ _robotLocation r
     }
 
 -- | The ID number of the robot's parent, that is, the robot that

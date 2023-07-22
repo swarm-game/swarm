@@ -32,9 +32,9 @@ module Swarm.Game.World (
   -- ** World functions
   newWorld,
   emptyWorld,
-  lookupCosmoTerrain,
+  lookupCosmicTerrain,
   lookupTerrain,
-  lookupCosmoEntity,
+  lookupCosmicEntity,
   lookupEntity,
   update,
 
@@ -222,12 +222,12 @@ newWorld f = World f M.empty M.empty
 emptyWorld :: t -> World t e
 emptyWorld t = newWorld (WF $ const (t, Nothing))
 
-lookupCosmoTerrain ::
+lookupCosmicTerrain ::
   IArray U.UArray Int =>
   Cosmic Coords ->
   MultiWorld Int e ->
   TerrainType
-lookupCosmoTerrain (Cosmic subworldName i) multiWorld =
+lookupCosmicTerrain (Cosmic subworldName i) multiWorld =
   maybe BlankT (toEnum . lookupTerrain i) $ M.lookup subworldName multiWorld
 
 -- | Look up the terrain value at certain coordinates: try looking it
@@ -253,8 +253,8 @@ lookupTerrainM c = do
   modify @(World t e) $ loadCell c
   lookupTerrain c <$> get @(World t e)
 
-lookupCosmoEntity :: Cosmic Coords -> MultiWorld t e -> Maybe e
-lookupCosmoEntity (Cosmic subworldName i) multiWorld =
+lookupCosmicEntity :: Cosmic Coords -> MultiWorld t e -> Maybe e
+lookupCosmicEntity (Cosmic subworldName i) multiWorld =
   lookupEntity i =<< M.lookup subworldName multiWorld
 
 -- | Look up the entity at certain coordinates: first, see if it is in
