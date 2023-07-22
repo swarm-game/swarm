@@ -24,6 +24,7 @@ import Data.Char (isDigit)
 import Data.Either (lefts, rights)
 import Data.Foldable (toList)
 import Data.Maybe (listToMaybe)
+import Data.Text qualified as T
 import Data.Version (Version (..), parseVersion, showVersion)
 import Data.Yaml (ParseException, Parser, decodeEither', parseEither)
 import GitHash (GitInfo, giBranch)
@@ -38,6 +39,7 @@ import Network.HTTP.Client (
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Network.HTTP.Types (hUserAgent)
 import Paths_swarm qualified
+import Swarm.Util (failT, quote)
 import Text.ParserCombinators.ReadP (readP_to_S)
 
 -- $setup
@@ -104,7 +106,7 @@ parseRelease = \case
         t <- o .: "tag_name"
         if isSwarmReleaseTag t
           then return t
-          else fail $ "The release '" <> t <> "' is not main Swarm release!"
+          else failT ["The release", quote $ T.pack t, "is not main Swarm release!"]
   _otherValue -> fail "The JSON release is not an Object!"
 
 data NewReleaseFailure where

@@ -95,6 +95,7 @@ import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisib
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location (Heading, Location, toDirection)
 import Swarm.Game.Log
+import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirement (ReqCtx)
@@ -167,8 +168,8 @@ data RobotPhase
 -- | With a robot template, we may or may not have a location.  With a
 --   concrete robot we must have a location.
 type family RobotLocation (phase :: RobotPhase) :: Data.Kind.Type where
-  RobotLocation 'TemplateRobot = Maybe Location
-  RobotLocation 'ConcreteRobot = Location
+  RobotLocation 'TemplateRobot = Maybe (Cosmic Location)
+  RobotLocation 'ConcreteRobot = Cosmic Location
 
 -- | Robot templates have no ID; concrete robots definitely do.
 type family RobotID (phase :: RobotPhase) :: Data.Kind.Type where
@@ -270,19 +271,19 @@ robotDisplay = lens getDisplay setDisplay
 --   a getter, since when changing a robot's location we must remember
 --   to update the 'robotsByLocation' map as well.  You can use the
 --   'updateRobotLocation' function for this purpose.
-robotLocation :: Getter Robot Location
+robotLocation :: Getter Robot (Cosmic Location)
 
 -- | Set a robot's location.  This is unsafe and should never be
 --   called directly except by the 'updateRobotLocation' function.
 --   The reason is that we need to make sure the 'robotsByLocation'
 --   map stays in sync.
-unsafeSetRobotLocation :: Location -> Robot -> Robot
+unsafeSetRobotLocation :: Cosmic Location -> Robot -> Robot
 unsafeSetRobotLocation loc r = r {_robotLocation = loc}
 
 -- | A template robot's location.  Unlike 'robotLocation', this is a
 --   lens, since when dealing with robot templates there is as yet no
 --   'robotsByLocation' map to keep up-to-date.
-trobotLocation :: Lens' TRobot (Maybe Location)
+trobotLocation :: Lens' TRobot (Maybe (Cosmic Location))
 trobotLocation = lens _robotLocation (\r l -> r {_robotLocation = l})
 
 -- | Which way the robot is currently facing.
@@ -313,7 +314,7 @@ instantiateRobot :: RID -> TRobot -> Robot
 instantiateRobot i r =
   r
     { _robotID = i
-    , _robotLocation = fromMaybe zero (_robotLocation r)
+    , _robotLocation = fromMaybe defaultCosmicLocation $ _robotLocation r
     }
 
 -- | The ID number of the robot's parent, that is, the robot that

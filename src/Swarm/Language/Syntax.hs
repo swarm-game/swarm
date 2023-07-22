@@ -697,7 +697,8 @@ constInfo c = case c of
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
   Waypoint ->
     command 2 Intangible . doc "Get the x, y coordinates of a named waypoint, by index" $
-      [ "Since waypoint names can have plural multiplicity, returns a tuple of (count, (x, y))."
+      [ "Return only the waypoints in the same subworld as the calling robot."
+      , "Since waypoint names can have plural multiplicity, returns a tuple of (count, (x, y))."
       , "The supplied index will be wrapped automatically, modulo the waypoint count."
       , "A robot can use the count to know whether they have iterated over the full waypoint circuit."
       ]
