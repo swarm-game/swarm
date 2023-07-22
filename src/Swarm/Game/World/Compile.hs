@@ -65,6 +65,7 @@ interpBTerm seed (BConst c) = interpConst seed c
 interpConst :: Seed -> Const a -> a
 interpConst seed = \case
   CLit a -> a
+  CCell c -> c
   CIf -> \b t e -> if b then t else e
   CNot -> not
   CNeg -> negate
