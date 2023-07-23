@@ -136,6 +136,8 @@ library
                       Swarm.Game.World.Coords
                       Swarm.Game.World.Eval
                       Swarm.Game.World.Gen
+                      Swarm.Game.World.Abstract
+                      Swarm.Game.World.Interpret
                       Swarm.Game.World.Parse
                       Swarm.Game.World.Syntax
                       Swarm.Game.World.Typecheck
