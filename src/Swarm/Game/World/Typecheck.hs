@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -44,41 +45,47 @@ class Applicable t where
 ------------------------------------------------------------
 -- Type-indexed constants
 
+type family IsFun a where
+  IsFun (_ -> _) = 'True
+  IsFun _ = 'False
+
+type NotFun a = IsFun a ~ 'False
+
 -- Includes language built-ins as well as combinators we will use
 -- later as a compilation target.
 data Const :: Type -> Type where
-  CLit :: (Show a) => a -> Const a
+  CLit :: (Show a, NotFun a) => a -> Const a
   CCell :: CellVal -> Const CellVal
   -- We have a separate CCell instead of using CLit for cells so that we can
   -- later extract all the entities from a world expression.
   CFI :: Const (Integer -> Double)
   CIf :: Const (Bool -> a -> a -> a)
   CNot :: Const (Bool -> Bool)
-  CNeg :: (Num a) => Const (a -> a)
-  CAbs :: (Num a) => Const (a -> a)
+  CNeg :: (Num a, NotFun a) => Const (a -> a)
+  CAbs :: (Num a, NotFun a) => Const (a -> a)
   CAnd :: Const (Bool -> Bool -> Bool)
   COr :: Const (Bool -> Bool -> Bool)
-  CAdd :: (Num a) => Const (a -> a -> a)
-  CSub :: (Num a) => Const (a -> a -> a)
-  CMul :: (Num a) => Const (a -> a -> a)
-  CDiv :: (Fractional a) => Const (a -> a -> a)
-  CIDiv :: (Integral a) => Const (a -> a -> a)
-  CMod :: (Integral a) => Const (a -> a -> a)
-  CEq :: (Eq a) => Const (a -> a -> Bool)
-  CNeq :: (Eq a) => Const (a -> a -> Bool)
-  CLt :: (Ord a) => Const (a -> a -> Bool)
-  CLeq :: (Ord a) => Const (a -> a -> Bool)
-  CGt :: (Ord a) => Const (a -> a -> Bool)
-  CGeq :: (Ord a) => Const (a -> a -> Bool)
-  CMask :: (Empty a) => Const (World Bool -> World a -> World a)
+  CAdd :: (Num a, NotFun a) => Const (a -> a -> a)
+  CSub :: (Num a, NotFun a) => Const (a -> a -> a)
+  CMul :: (Num a, NotFun a) => Const (a -> a -> a)
+  CDiv :: (Fractional a, NotFun a) => Const (a -> a -> a)
+  CIDiv :: (Integral a, NotFun a) => Const (a -> a -> a)
+  CMod :: (Integral a, NotFun a) => Const (a -> a -> a)
+  CEq :: (Eq a, NotFun a) => Const (a -> a -> Bool)
+  CNeq :: (Eq a, NotFun a) => Const (a -> a -> Bool)
+  CLt :: (Ord a, NotFun a) => Const (a -> a -> Bool)
+  CLeq :: (Ord a, NotFun a) => Const (a -> a -> Bool)
+  CGt :: (Ord a, NotFun a) => Const (a -> a -> Bool)
+  CGeq :: (Ord a, NotFun a) => Const (a -> a -> Bool)
+  CMask :: (Empty a, NotFun a) => Const (World Bool -> World a -> World a)
   CSeed :: Const Integer
   CCoord :: Axis -> Const (World Integer)
   CHash :: Const (World Integer)
   CPerlin :: Const (Integer -> Integer -> Double -> Double -> World Double)
   CReflect :: Axis -> Const (World a -> World a)
   CRot :: Rot -> Const (World a -> World a)
-  COver :: (Over a) => Const (a -> a -> a)
-  CEmpty :: (Empty a) => Const a
+  COver :: (Over a, NotFun a) => Const (a -> a -> a)
+  CEmpty :: (Empty a, NotFun a) => Const a
   K :: Const (a -> b -> a)
   S :: Const ((a -> b -> c) -> (a -> b) -> a -> c)
   I :: Const (a -> a)
@@ -200,32 +207,32 @@ instance TestEquality TTy where
       Nothing -> Nothing
   testEquality _ _ = Nothing
 
-checkEq :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Eq ty) => m a) -> m a
+checkEq :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Eq ty, NotFun ty) => m a) -> m a
 checkEq (TTyBase BBool) a = a
 checkEq (TTyBase BInt) a = a
 checkEq (TTyBase BFloat) a = a
 checkEq _ _ = throwError (UnknownErr 0)
 
-checkOrd :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Ord ty) => m a) -> m a
+checkOrd :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Ord ty, NotFun ty) => m a) -> m a
 checkOrd (TTyBase BBool) a = a
 checkOrd (TTyBase BInt) a = a
 checkOrd (TTyBase BFloat) a = a
 checkOrd _ _ = throwError (UnknownErr 1)
 
-checkNum :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Num ty) => m a) -> m a
+checkNum :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Num ty, NotFun ty) => m a) -> m a
 checkNum (TTyBase BInt) a = a
 checkNum (TTyBase BFloat) a = a
 checkNum _ _ = throwError (UnknownErr 2)
 
-checkIntegral :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Integral ty) => m a) -> m a
+checkIntegral :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Integral ty, NotFun ty) => m a) -> m a
 checkIntegral (TTyBase BInt) a = a
 checkIntegral _ _ = throwError (UnknownErr 3)
 
-checkEmpty :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Empty ty) => m a) -> m a
+checkEmpty :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Empty ty, NotFun ty) => m a) -> m a
 checkEmpty (TTyBase BCell) a = a
 checkEmpty _ _ = throwError (UnknownErr 4)
 
-checkOver :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Over ty) => m a) -> m a
+checkOver :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Over ty, NotFun ty) => m a) -> m a
 checkOver (TTyBase BBool) a = a
 checkOver (TTyBase BInt) a = a
 checkOver (TTyBase BFloat) a = a
@@ -280,15 +287,12 @@ check e ty t = do
     Nothing -> throwError (UnknownErr 7)
     Just Refl -> return t'
 
--- -- For my own sanity I think we might get rid of the rule Int <: Float
--- -- and only allow promoting/lifting to World.  Then 3 will always be
--- -- Int and 3.0 will be Float.
-
+-- | XXX
 getBaseType :: Some (TTerm g) -> SomeTy
 getBaseType (Some (TTyWorld ty) _) = SomeTy ty
 getBaseType (Some ty _) = SomeTy ty
 
--- Application is where we deal with lifting + promotion.
+-- | XXX Application is where we deal with lifting + promotion.
 apply :: (Has (Throw CheckErr) sig m) => Some (TTerm g) -> Some (TTerm g) -> m (Some (TTerm g))
 apply (Some (ty11 :->: ty12) t1) (Some ty2 t2)
   | Just Refl <- testEquality ty11 ty2 = return $ Some ty12 (t1 $$ t2)

@@ -173,11 +173,10 @@ instance Applicable (OTerm g) where
 
 data CTerm a where
   CFun :: (CTerm a -> CTerm b) -> CTerm (a -> b)
-  CConst :: a -> CTerm a -- only for non-functions!
+  CConst :: NotFun a => a -> CTerm a
 
 instance Applicable CTerm where
   CFun f $$ x = f x
-  _ $$ _ = error "impossible! bad call to CTerm.$$, CConst should never contain functions"
 
 compile :: Seed -> BTerm a -> CTerm a
 compile seed (BApp b1 b2) = compile seed b1 $$ compile seed b2
@@ -185,7 +184,8 @@ compile seed (BConst c) = compileConst seed c
 
 compileConst :: Seed -> Const a -> CTerm a
 compileConst seed = \case
-  (CLit i) -> CConst i
+  CLit i -> CConst i
+  CCell c -> CConst c
   CFI -> unary fromIntegral
   CIf -> CFun $ \(CConst b) -> CFun $ \t -> CFun $ \e -> if b then t else e
   CNot -> unary not
@@ -221,15 +221,15 @@ compileConst seed = \case
   C -> CFun $ \f -> CFun $ \x -> CFun $ \y -> f $$ y $$ x
   Φ -> CFun $ \c -> CFun $ \f -> CFun $ \g -> CFun $ \x -> c $$ (f $$ x) $$ (g $$ x)
 
-unary :: (a -> b) -> CTerm (a -> b)
+unary :: (NotFun a, NotFun b) => (a -> b) -> CTerm (a -> b)
 unary op = CFun $ \(CConst x) -> CConst (op x)
 
-binary :: (a -> b -> c) -> CTerm (a -> b -> c)
+binary :: (NotFun a, NotFun b, NotFun c) => (a -> b -> c) -> CTerm (a -> b -> c)
 binary op = CFun $ \(CConst x) -> CFun $ \(CConst y) -> CConst (op x y)
 
 -- Note we could desugar 'mask p a -> if p a empty' but that would
 -- require an explicit 'empty' node, whose type can't be inferred.
-compileMask :: (Empty a) => CTerm (World Bool -> World a -> World a)
+compileMask :: (NotFun a, Empty a) => CTerm (World Bool -> World a -> World a)
 compileMask = CFun $ \p -> CFun $ \a -> CFun $ \ix ->
   case p $$ ix of
     CConst b -> if b then a $$ ix else CConst empty
@@ -250,6 +250,15 @@ compilePerlin =
  where
   sample (i, j) noise = noiseValue noise (fromIntegral i / 2, fromIntegral j / 2, 0)
 
-runCTerm :: CTerm a -> a
-runCTerm (CConst a) = a
-runCTerm (CFun f) = runCTerm . f . CConst
+liftCTerm :: TTy a -> a -> CTerm a
+liftCTerm (TTyBase BInt) a = CConst a
+liftCTerm (TTyBase BFloat) a = CConst a
+liftCTerm (TTyBase BBool) a = CConst a
+liftCTerm (TTyBase BCell) a = CConst a
+liftCTerm (TTyWorld ty) w = CFun $ \(CConst c) -> liftCTerm ty (w c)
+liftCTerm (ty1 :->: ty2) f = CFun $ liftCTerm ty2 . f . runCTerm ty1
+
+runCTerm :: TTy a -> CTerm a -> a
+runCTerm _ (CConst a) = a
+runCTerm (ty1 :->: ty2) (CFun f) = runCTerm ty2 . f . liftCTerm ty1
+runCTerm (TTyWorld ty) (CFun f) = runCTerm ty . f . CConst
