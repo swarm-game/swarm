@@ -11,9 +11,6 @@ module Swarm.Game.World.Abstract where
 import Data.Kind (Type)
 import Swarm.Game.World.Typecheck (Applicable (..), Const (..), HasConst (..), Idx (..), TTerm (..), ($$.), (.$$), (.$$.))
 
--- XXX note this doesn't depend at all on WExp etc., only imports
--- Syntax because of Over, Empty.  Should move those somewhere else?
-
 ------------------------------------------------------------
 -- Bracket abstraction
 ------------------------------------------------------------

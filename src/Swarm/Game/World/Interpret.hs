@@ -7,7 +7,8 @@
 module Swarm.Game.World.Interpret (
   interpBTerm,
   interpConst,
-  runCTerm,
+  interpReflect,
+  interpRot,
 ) where
 
 import Control.Applicative (liftA2)
@@ -16,11 +17,10 @@ import Data.Hash.Murmur (murmur3)
 import Data.Tagged (unTagged)
 import Numeric.Noise.Perlin (noiseValue, perlin)
 import Swarm.Game.World.Abstract (BTerm (..))
-import Swarm.Game.World.Compile (CTerm (..))
 import Swarm.Game.World.Coords (Coords (..))
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Game.World.Syntax (Axis (..), Rot (..))
-import Swarm.Game.World.Typecheck (Base (..), Const (..), Empty (..), Over (..), TTy (..))
+import Swarm.Game.World.Typecheck (Const (..), Empty (..), Over (..))
 import Witch (from)
 import Witch.Encoding qualified as Encoding
 
@@ -60,7 +60,7 @@ interpConst seed = \case
     let noise = perlin (fromIntegral s) (fromIntegral o) k p
         sample (i, j) = noiseValue noise (fromIntegral i / 2, fromIntegral j / 2, 0)
      in \(Coords ix) -> sample ix
-  CReflect ax -> \w (Coords (r, c)) -> w (Coords (case ax of X -> (r, -c); Y -> (-r, c)))
+  CReflect ax -> \w -> w . interpReflect ax
   CRot r -> \w -> w . interpRot r
   CFI -> fromInteger
   COver -> (<+>)
@@ -72,6 +72,10 @@ interpConst seed = \case
   C -> flip
   Φ -> liftA2
 
+-- | Interprect a reflection.
+interpReflect :: Axis -> Coords -> Coords
+interpReflect ax (Coords (r, c)) = Coords (case ax of X -> (r, -c); Y -> (-r, c))
+
 -- | Interpret a rotation.
 interpRot :: Rot -> Coords -> Coords
 interpRot rot (Coords crd) = Coords (rotTuple rot crd)
@@ -80,21 +84,3 @@ interpRot rot (Coords crd) = Coords (rotTuple rot crd)
   rotTuple Rot90 (r, c) = (-c, r)
   rotTuple Rot180 (r, c) = (-r, -c)
   rotTuple Rot270 (r, c) = (c, -r)
-
--- | Lift a host language value into a 'CTerm'.  Since 'CConst' cannot
---   contain functions, we need to also be able to pattern-match on
---   the type of the value being lifted to know the right way to lift
---   it.
-liftCTerm :: TTy a -> a -> CTerm a
-liftCTerm (TTyBase BInt) a = CConst a
-liftCTerm (TTyBase BFloat) a = CConst a
-liftCTerm (TTyBase BBool) a = CConst a
-liftCTerm (TTyBase BCell) a = CConst a
-liftCTerm (TTyWorld ty) w = CFun $ \(CConst c) -> liftCTerm ty (w c)
-liftCTerm (ty1 :->: ty2) f = CFun $ liftCTerm ty2 . f . runCTerm ty1
-
--- | Interpret a compiled term into the host language.
-runCTerm :: TTy a -> CTerm a -> a
-runCTerm _ (CConst a) = a
-runCTerm (ty1 :->: ty2) (CFun f) = runCTerm ty2 . f . liftCTerm ty1
-runCTerm (TTyWorld ty) (CFun f) = runCTerm ty . f . CConst

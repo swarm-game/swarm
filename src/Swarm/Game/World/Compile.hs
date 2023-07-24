@@ -7,10 +7,14 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Compiling Swarm world description DSL to native Haskell terms, via
--- combinators.
+-- Compiling abstracted combinator expressions ('BTerm') to native
+-- Haskell terms.  This can supposedly be more efficient than directly
+-- interpreting 'BTerm's, but some benchmarking is probably needed to
+-- decide whether we want this or not.
 --
--- XXX for more info see ...
+-- For more info, see:
+--
+--   https://byorgey.wordpress.com/2023/07/13/compiling-to-intrinsically-typed-combinators/
 module Swarm.Game.World.Compile where
 
 import Data.ByteString (ByteString)
@@ -21,19 +25,11 @@ import Swarm.Game.Location (pattern Location)
 import Swarm.Game.World.Abstract (BTerm (..))
 import Swarm.Game.World.Coords (Coords (..), coordsToLoc)
 import Swarm.Game.World.Gen (Seed)
-import Swarm.Game.World.Syntax
-import Swarm.Game.World.Typecheck
+import Swarm.Game.World.Interpret (interpReflect, interpRot)
+import Swarm.Game.World.Syntax (Axis (..), Rot, World)
+import Swarm.Game.World.Typecheck (Applicable (..), Base (..), Const (..), Empty (..), NotFun, Over (..), TTy (..))
 import Witch (from)
 import Witch.Encoding qualified as Encoding
-
-------------------------------------------------------------
--- Compiling
-
--- Compiling to the host language. i.e. we co-opt the host language
--- into doing evaluation for us.
-
--- XXX more efficient than directly interpreting BTerms?  Should try
--- benchmarking.
 
 data CTerm a where
   CFun :: (CTerm a -> CTerm b) -> CTerm (a -> b)
@@ -74,8 +70,8 @@ compileConst seed = \case
   CCoord ax -> CFun $ \(CConst (coordsToLoc -> Location x y)) -> CConst (fromIntegral (case ax of X -> x; Y -> y))
   CHash -> compileHash
   CPerlin -> compilePerlin
-  CReflect _r -> undefined
-  CRot _r -> undefined
+  CReflect ax -> compileReflect ax
+  CRot rot -> compileRot rot
   COver -> binary (<+>)
   CEmpty -> CConst empty
   K -> CFun $ \x -> CFun $ const x
@@ -113,3 +109,27 @@ compilePerlin =
            in CFun $ \(CConst (Coords ix)) -> CConst (sample ix noise)
  where
   sample (i, j) noise = noiseValue noise (fromIntegral i / 2, fromIntegral j / 2, 0)
+
+compileReflect :: Axis -> CTerm (World a -> World a)
+compileReflect ax = CFun $ \w -> CFun $ \(CConst c) -> w $$ CConst (interpReflect ax c)
+
+compileRot :: Rot -> CTerm (World a -> World a)
+compileRot rot = CFun $ \w -> CFun $ \(CConst c) -> w $$ CConst (interpRot rot c)
+
+-- | Lift a host language value into a 'CTerm'.  Since 'CConst' cannot
+--   contain functions, we need to also be able to pattern-match on
+--   the type of the value being lifted to know the right way to lift
+--   it.
+liftCTerm :: TTy a -> a -> CTerm a
+liftCTerm (TTyBase BInt) a = CConst a
+liftCTerm (TTyBase BFloat) a = CConst a
+liftCTerm (TTyBase BBool) a = CConst a
+liftCTerm (TTyBase BCell) a = CConst a
+liftCTerm (TTyWorld ty) w = CFun $ \(CConst c) -> liftCTerm ty (w c)
+liftCTerm (ty1 :->: ty2) f = CFun $ liftCTerm ty2 . f . runCTerm ty1
+
+-- | Interpret a compiled term into the host language.
+runCTerm :: TTy a -> CTerm a -> a
+runCTerm _ (CConst a) = a
+runCTerm (ty1 :->: ty2) (CFun f) = runCTerm ty2 . f . liftCTerm ty1
+runCTerm (TTyWorld ty) (CFun f) = runCTerm ty . f . CConst
