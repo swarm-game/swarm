@@ -86,8 +86,10 @@ type NotFun a = IsFun a ~ 'False
 ------------------------------------------------------------
 -- Type-indexed constants
 
--- Includes language built-ins as well as combinators we will use
--- later as a compilation target.
+-- | Type-indexed constants.  These include both language built-ins
+--   (@if@, arithmetic, comparison, @<>@, etc.) as well as combinators
+--   (@S@, @I@, @C@, @K@, @B@, @Φ@) we will use both for elaboration
+--   and later as a compilation target.
 data Const :: Type -> Type where
   CLit :: (Show a, NotFun a) => a -> Const a
   CCell :: CellVal -> Const CellVal
@@ -121,7 +123,7 @@ data Const :: Type -> Type where
   CRot :: Rot -> Const (World a -> World a)
   COver :: (Over a, NotFun a) => Const (a -> a -> a)
   CEmpty :: (Empty a, NotFun a) => Const a
-  -- Combinators generated during elaboration
+  -- Combinators generated during elaboration + variable abstraction
   K :: Const (a -> b -> a)
   S :: Const ((a -> b -> c) -> (a -> b) -> a -> c)
   I :: Const (a -> a)
