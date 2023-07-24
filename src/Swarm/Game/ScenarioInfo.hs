@@ -29,7 +29,6 @@ module Swarm.Game.ScenarioInfo (
   _SISingle,
 
   -- * Loading and saving scenarios
-  loadScenarios,
   loadScenariosWithWarnings,
   loadScenarioInfo,
   saveScenarioInfo,
@@ -43,6 +42,7 @@ import Control.Monad (filterM, unless, when)
 import Control.Monad.Except (ExceptT (..), runExceptT, withExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Char (isSpace)
+import Data.Either (partitionEithers)
 import Data.Either.Extra (fromRight')
 import Data.List (intercalate, isPrefixOf, stripPrefix, (\\))
 import Data.Map (Map)
@@ -126,31 +126,21 @@ flatten (SISingle p) = [p]
 flatten (SICollection _ c) = concatMap flatten $ scenarioCollectionToList c
 
 -- | Load all the scenarios from the scenarios data directory.
-loadScenarios ::
+loadScenariosWithWarnings ::
   EntityMap ->
-  ExceptT [SystemFailure] IO ([SystemFailure], ScenarioCollection)
-loadScenarios em = do
-  dataDir <- withExceptT pure $ ExceptT $ getDataDirSafe Scenarios p
-  loadScenarioDir em dataDir
- where
-  p = "scenarios"
-
-loadScenariosWithWarnings :: EntityMap -> IO ([SystemFailure], ScenarioCollection)
-loadScenariosWithWarnings entities = do
-  eitherLoadedScenarios <- runExceptT $ loadScenarios entities
-  return $ case eitherLoadedScenarios of
-    Left xs -> (xs, SC mempty mempty)
-    Right (warnings, x) -> (warnings, x)
+  IO ([SystemFailure], ScenarioCollection)
+loadScenariosWithWarnings em = do
+  res <- getDataDirSafe Scenarios "scenarios"
+  case res of
+    Left err -> return ([err], SC mempty mempty)
+    Right dataDir -> loadScenarioDir em dataDir
 
 -- | The name of the special file which indicates the order of
 --   scenarios in a folder.
 orderFileName :: FilePath
 orderFileName = "00-ORDER.txt"
 
-readOrderFile ::
-  (MonadIO m) =>
-  FilePath ->
-  ExceptT [SystemFailure] m [String]
+readOrderFile :: (MonadIO m) => FilePath -> m [String]
 readOrderFile orderFile =
   filter (not . null) . lines <$> liftIO (readFile orderFile)
 
@@ -160,7 +150,7 @@ loadScenarioDir ::
   (MonadIO m) =>
   EntityMap ->
   FilePath ->
-  ExceptT [SystemFailure] m ([SystemFailure], ScenarioCollection)
+  m ([SystemFailure], ScenarioCollection)
 loadScenarioDir em dir = do
   let orderFile = dir </> orderFileName
       dirName = takeBaseName dir
@@ -176,12 +166,12 @@ loadScenarioDir em dir = do
             <> ", using alphabetical order"
       return Nothing
     True -> Just <$> readOrderFile orderFile
-  fs <- liftIO $ keepYamlOrPublicDirectory dir =<< listDirectory dir
+  itemPaths <- liftIO $ keepYamlOrPublicDirectory dir =<< listDirectory dir
 
   case morder of
     Just order -> do
-      let missing = fs \\ order
-          dangling = order \\ fs
+      let missing = itemPaths \\ order
+          dangling = order \\ itemPaths
 
       unless (null missing) $
         liftIO . putStr . unlines $
@@ -203,14 +193,18 @@ loadScenarioDir em dir = do
     Nothing -> pure ()
 
   -- Only keep the files from 00-ORDER.txt that actually exist.
-  let morder' = filter (`elem` fs) <$> morder
-  let f filepath = do
+  let morder' = filter (`elem` itemPaths) <$> morder
+  let loadItem filepath = do
         (warnings, item) <- loadScenarioItem em (dir </> filepath)
         return (warnings, (filepath, item))
-  warningsAndScenarios <- mapM f fs
-  let (allWarnings, allPairs) = unzip warningsAndScenarios
-      collection = SC morder' . M.fromList $ allPairs
-  return (concat allWarnings, collection)
+  warningsAndScenarios <- mapM (runExceptT . loadItem) itemPaths
+  let (failures, successes) = partitionEithers warningsAndScenarios
+      (warnings, allPairs) = unzip successes
+      scenarioMap = M.fromList allPairs
+      -- Now only keep the files that successfully parsed.
+      morder'' = filter (`M.member` scenarioMap) <$> morder'
+      collection = SC morder'' scenarioMap
+  return (concat (failures ++ warnings), collection)
  where
   -- Keep only files which are .yaml files or directories that start
   -- with something other than an underscore.
