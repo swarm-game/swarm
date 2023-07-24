@@ -1,13 +1,8 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Abstract syntax for the Swarm world description DSL.
 module Swarm.Game.World.Syntax (
-  -- | Monoidal world stuff
-  Empty (..),
-  Over (..),
   -- | Various component types
   World,
   RawCellVal,
@@ -27,31 +22,9 @@ import Data.Semigroup (Last (..))
 import Data.Text (Text)
 import Swarm.Game.Entity (Entity)
 import Swarm.Game.Robot (Robot)
-import Swarm.Game.Scenario.Topography.WorldPalette (WorldPalette)
 import Swarm.Game.Terrain
 import Swarm.Game.World.Coords
 import Swarm.Util.Erasable
-
-------------------------------------------------------------
--- Merging
-
-class Empty e where
-  empty :: e
-
-instance (Empty a) => Empty (World a) where
-  empty = const empty
-
-class Over m where
-  (<+>) :: m -> m -> m
-
-instance Over Bool where
-  _ <+> x = x
-
-instance Over Integer where
-  _ <+> x = x
-
-instance Over Double where
-  _ <+> x = x
 
 ------------------------------------------------------------
 -- Bits and bobs
@@ -65,12 +38,6 @@ type RawCellVal = [(Maybe CellTag, Text)]
 
 data CellVal = CellVal TerrainType (Erasable (Last Entity)) [Robot]
   deriving (Eq, Show)
-
-instance Over CellVal where
-  CellVal t1 e1 r1 <+> CellVal t2 e2 r2 = CellVal (t1 <> t2) (e1 <> e2) (r1 <> r2)
-
-instance Empty CellVal where
-  empty = CellVal mempty mempty mempty
 
 data Rot = Rot0 | Rot90 | Rot180 | Rot270
   deriving (Eq, Ord, Show, Bounded, Enum)
@@ -102,9 +69,10 @@ data WExp where
   WHash :: WExp
   WLet :: [(Var, WExp)] -> WExp -> WExp
   WOverlay :: NE.NonEmpty WExp -> WExp
-  WCat :: Axis -> [WExp] -> WExp
-  WStruct :: WorldPalette Text -> [Text] -> WExp
   WImport :: Text -> WExp
+  -- We'll add these later.  XXX
+  -- WCat :: Axis -> [WExp] -> WExp
+  -- WStruct :: WorldPalette Text -> [Text] -> WExp
   deriving (Eq, Show)
 
 -- We don't have an explicit Empty case because we can't infer its

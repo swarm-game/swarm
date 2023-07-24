@@ -3,7 +3,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- XXX
+-- Interpreter for the Swarm world description DSL.
 module Swarm.Game.World.Interpret (
   interpBTerm,
   interpConst,
@@ -19,15 +19,17 @@ import Swarm.Game.World.Abstract (BTerm (..))
 import Swarm.Game.World.Compile (CTerm (..))
 import Swarm.Game.World.Coords (Coords (..))
 import Swarm.Game.World.Gen (Seed)
-import Swarm.Game.World.Syntax (Axis (..), Empty (..), Over (..))
-import Swarm.Game.World.Typecheck (Base (..), Const (..), TTy (..))
+import Swarm.Game.World.Syntax (Axis (..), Rot (..))
+import Swarm.Game.World.Typecheck (Base (..), Const (..), Empty (..), Over (..), TTy (..))
 import Witch (from)
 import Witch.Encoding qualified as Encoding
 
+-- | Interpret an abstracted term into the host language.
 interpBTerm :: Seed -> BTerm a -> a
 interpBTerm seed (BApp f x) = interpBTerm seed f (interpBTerm seed x)
 interpBTerm seed (BConst c) = interpConst seed c
 
+-- | Interpret a constant into the host language.
 interpConst :: Seed -> Const a -> a
 interpConst seed = \case
   CLit a -> a
@@ -70,14 +72,19 @@ interpConst seed = \case
   C -> flip
   Φ -> liftA2
 
+-- | Interpret a rotation.
 interpRot :: Rot -> Coords -> Coords
-interpRot r (Coords c) = Coords (rotTuple r c)
+interpRot rot (Coords crd) = Coords (rotTuple rot crd)
  where
   rotTuple Rot0 cds = cds
   rotTuple Rot90 (r, c) = (-c, r)
   rotTuple Rot180 (r, c) = (-r, -c)
   rotTuple Rot270 (r, c) = (c, -r)
 
+-- | Lift a host language value into a 'CTerm'.  Since 'CConst' cannot
+--   contain functions, we need to also be able to pattern-match on
+--   the type of the value being lifted to know the right way to lift
+--   it.
 liftCTerm :: TTy a -> a -> CTerm a
 liftCTerm (TTyBase BInt) a = CConst a
 liftCTerm (TTyBase BFloat) a = CConst a
@@ -86,6 +93,7 @@ liftCTerm (TTyBase BCell) a = CConst a
 liftCTerm (TTyWorld ty) w = CFun $ \(CConst c) -> liftCTerm ty (w c)
 liftCTerm (ty1 :->: ty2) f = CFun $ liftCTerm ty2 . f . runCTerm ty1
 
+-- | Interpret a compiled term into the host language.
 runCTerm :: TTy a -> CTerm a -> a
 runCTerm _ (CConst a) = a
 runCTerm (ty1 :->: ty2) (CFun f) = runCTerm ty2 . f . liftCTerm ty1

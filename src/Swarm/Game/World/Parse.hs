@@ -118,9 +118,9 @@ parseWExpAtom =
     <|> parseLet
     <|> parseOverlay
     <|> parseMask
-    <|> parseCat
-    <|> parseStruct
     <|> parseImport
+    -- <|> parseCat
+    -- <|> parseStruct
     <|> parens parseWExp
 
 parseWExp :: Parser WExp
@@ -215,17 +215,17 @@ parseMask = do
   w2 <- parseWExpAtom
   return $ WOp Mask [w1, w2]
 
-parseCat :: Parser WExp
-parseCat =
-  WCat
-    <$> (X <$ reserved "hcat" <|> Y <$ reserved "vcat")
-    <*> brackets (parseWExp `sepBy` comma)
-
-parseStruct :: Parser WExp
-parseStruct = reserved "struct" *> fail "struct not implemented"
-
 parseImport :: Parser WExp
 parseImport = WImport . into @Text <$> between (symbol "\"") (symbol "\"") (some (satisfy (/= '"')))
+
+-- parseCat :: Parser WExp
+-- parseCat =
+--   WCat
+--     <$> (X <$ reserved "hcat" <|> Y <$ reserved "vcat")
+--     <*> brackets (parseWExp `sepBy` comma)
+
+-- parseStruct :: Parser WExp
+-- parseStruct = reserved "struct" *> fail "struct not implemented"
 
 ------------------------------------------------------------
 -- Utility
