@@ -7,7 +7,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Abstract syntax for terms of the Swarm programming language.
-module Swarm.Language.Directions (
+module Swarm.Language.Direction (
   -- * Directions
   Direction (..),
   AbsoluteDir (..),

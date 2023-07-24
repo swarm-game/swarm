@@ -26,7 +26,7 @@ import Linear (V2, negated)
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Universe
-import Swarm.Language.Directions
+import Swarm.Language.Direction
 import Swarm.Util (allEqual, binTuples, both, failT, quote, showT)
 
 type WaypointMap = M.Map WaypointName (NonEmpty Location)

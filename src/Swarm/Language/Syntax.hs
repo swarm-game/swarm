@@ -102,7 +102,7 @@ import Data.Text hiding (filter, length, map)
 import Data.Text qualified as T
 import Data.Tree
 import GHC.Generics (Generic)
-import Swarm.Language.Directions
+import Swarm.Language.Direction
 import Swarm.Language.Types
 import Swarm.Util qualified as Util
 import Witch.From (from)

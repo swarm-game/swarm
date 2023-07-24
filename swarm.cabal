@@ -136,7 +136,7 @@ library
                       Swarm.Game.WorldGen
                       Swarm.Language.Capability
                       Swarm.Language.Context
-                      Swarm.Language.Directions
+                      Swarm.Language.Direction
                       Swarm.Language.Elaborate
                       Swarm.Language.Key
                       Swarm.Language.LSP
