@@ -6,7 +6,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Abstract syntax for terms of the Swarm programming language.
+-- Types and helper functions for working with directions
 module Swarm.Language.Direction (
   -- * Directions
   Direction (..),
@@ -97,7 +97,7 @@ instance ToJSON PlanarRelativeDir where
 data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
 
--- | Direction name is generated from Direction data constructor
+-- | Direction name is generated from the deepest nested data constructor
 -- e.g. DLeft becomes "left"
 directionSyntax :: Direction -> Text
 directionSyntax d = toLower . T.tail . from $ case d of
