@@ -37,9 +37,13 @@ module Swarm.Game.ScenarioInfo (
   module Swarm.Game.Scenario,
 ) where
 
+import Control.Algebra (Has)
+import Control.Carrier.Lift (runM)
+import Control.Carrier.Throw.Either (runThrow)
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Throw (Throw, liftEither)
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (filterM, unless, when)
-import Control.Monad.Except (ExceptT (..), runExceptT, withExceptT)
+import Control.Monad (filterM, unless, when, (<=<))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Char (isSpace)
 import Data.Either (partitionEithers)
@@ -56,6 +60,7 @@ import Swarm.Game.ResourceLoading (getDataDirSafe, getSwarmSavePath)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Status
+import Swarm.Util.Effect (withThrow)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
 import Witch (into)
@@ -109,7 +114,7 @@ normalizeScenarioPath col p =
         then return path
         else liftIO $ do
           canonPath <- canonicalizePath path
-          eitherDdir <- getDataDirSafe Scenarios "." -- no way we got this far without data directory
+          eitherDdir <- runM . runThrow @SystemFailure $ getDataDirSafe Scenarios "." -- no way we got this far without data directory
           d <- canonicalizePath $ fromRight' eitherDdir
           let n =
                 stripPrefix (d </> "scenarios") canonPath
@@ -130,7 +135,7 @@ loadScenariosWithWarnings ::
   EntityMap ->
   IO ([SystemFailure], ScenarioCollection)
 loadScenariosWithWarnings em = do
-  res <- getDataDirSafe Scenarios "scenarios"
+  res <- runM . runThrow $ getDataDirSafe Scenarios "scenarios"
   case res of
     Left err -> return ([err], SC mempty mempty)
     Right dataDir -> loadScenarioDir em dataDir
@@ -140,25 +145,25 @@ loadScenariosWithWarnings em = do
 orderFileName :: FilePath
 orderFileName = "00-ORDER.txt"
 
-readOrderFile :: (MonadIO m) => FilePath -> m [String]
+readOrderFile :: (Has (Lift IO) sig m) => FilePath -> m [String]
 readOrderFile orderFile =
-  filter (not . null) . lines <$> liftIO (readFile orderFile)
+  filter (not . null) . lines <$> sendIO (readFile orderFile)
 
 -- | Recursively load all scenarios from a particular directory, and also load
 --   the 00-ORDER file (if any) giving the order for the scenarios.
 loadScenarioDir ::
-  (MonadIO m) =>
+  (Has (Lift IO) sig m) =>
   EntityMap ->
   FilePath ->
   m ([SystemFailure], ScenarioCollection)
 loadScenarioDir em dir = do
   let orderFile = dir </> orderFileName
       dirName = takeBaseName dir
-  orderExists <- liftIO $ doesFileExist orderFile
+  orderExists <- sendIO $ doesFileExist orderFile
   morder <- case orderExists of
     False -> do
       when (dirName /= "Testing") $
-        liftIO . putStrLn $
+        sendIO . putStrLn $
           "Warning: no "
             <> orderFileName
             <> " file found in "
@@ -166,7 +171,7 @@ loadScenarioDir em dir = do
             <> ", using alphabetical order"
       return Nothing
     True -> Just <$> readOrderFile orderFile
-  itemPaths <- liftIO $ keepYamlOrPublicDirectory dir =<< listDirectory dir
+  itemPaths <- sendIO $ keepYamlOrPublicDirectory dir =<< listDirectory dir
 
   case morder of
     Just order -> do
@@ -174,7 +179,7 @@ loadScenarioDir em dir = do
           dangling = order \\ itemPaths
 
       unless (null missing) $
-        liftIO . putStr . unlines $
+        sendIO . putStr . unlines $
           ( "Warning: while processing "
               <> (dirName </> orderFileName)
               <> ": files not listed in "
@@ -184,7 +189,7 @@ loadScenarioDir em dir = do
             : map ("  - " <>) missing
 
       unless (null dangling) $
-        liftIO . putStr . unlines $
+        sendIO . putStr . unlines $
           ( "Warning: while processing "
               <> (dirName </> orderFileName)
               <> ": nonexistent files will be ignored"
@@ -197,14 +202,14 @@ loadScenarioDir em dir = do
   let loadItem filepath = do
         (warnings, item) <- loadScenarioItem em (dir </> filepath)
         return (warnings, (filepath, item))
-  warningsAndScenarios <- mapM (runExceptT . loadItem) itemPaths
+  warningsAndScenarios <- mapM (runThrow . loadItem) itemPaths
   let (failures, successes) = partitionEithers warningsAndScenarios
       (warnings, allPairs) = unzip successes
       scenarioMap = M.fromList allPairs
       -- Now only keep the files that successfully parsed.
       morder'' = filter (`M.member` scenarioMap) <$> morder'
       collection = SC morder'' scenarioMap
-  return (concat (failures ++ warnings), collection)
+  return (failures ++ concat warnings, collection)
  where
   -- Keep only files which are .yaml files or directories that start
   -- with something other than an underscore.
@@ -224,21 +229,20 @@ scenarioPathToSavePath path swarmData = swarmData </> Data.List.intercalate "_" 
 
 -- | Load saved info about played scenario from XDG data directory.
 loadScenarioInfo ::
-  (MonadIO m) =>
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   FilePath ->
-  ExceptT [SystemFailure] m ScenarioInfo
+  m ScenarioInfo
 loadScenarioInfo p = do
-  path <- liftIO $ normalizeScenarioPath (SC Nothing mempty) p
-  infoPath <- liftIO $ scenarioPathToSavePath path <$> getSwarmSavePath False
-  hasInfo <- liftIO $ doesFileExist infoPath
+  path <- sendIO $ normalizeScenarioPath (SC Nothing mempty) p
+  infoPath <- sendIO $ scenarioPathToSavePath path <$> getSwarmSavePath False
+  hasInfo <- sendIO $ doesFileExist infoPath
   if not hasInfo
     then do
       return $
         ScenarioInfo path NotStarted
     else
-      withExceptT (pure . AssetNotLoaded (Data Scenarios) infoPath . CanNotParse)
-        . ExceptT
-        . liftIO
+      withThrow (AssetNotLoaded (Data Scenarios) infoPath . CanNotParse)
+        . (liftEither <=< sendIO)
         $ decodeFileEither infoPath
 
 -- | Save info about played scenario to XDG data directory.
@@ -253,20 +257,20 @@ saveScenarioInfo path si = do
 -- | Load a scenario item (either a scenario, or a subdirectory
 --   containing a collection of scenarios) from a particular path.
 loadScenarioItem ::
-  (MonadIO m) =>
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   EntityMap ->
   FilePath ->
-  ExceptT [SystemFailure] m ([SystemFailure], ScenarioItem)
+  m ([SystemFailure], ScenarioItem)
 loadScenarioItem em path = do
-  isDir <- liftIO $ doesDirectoryExist path
+  isDir <- sendIO $ doesDirectoryExist path
   let collectionName = into @Text . dropWhile isSpace . takeBaseName $ path
   case isDir of
     True -> do
       (warnings, d) <- loadScenarioDir em path
       return (warnings, SICollection collectionName d)
     False -> do
-      s <- withExceptT pure $ loadScenarioFile em path
-      eitherSi <- runExceptT $ loadScenarioInfo path
+      s <- loadScenarioFile em path
+      eitherSi <- runThrow (loadScenarioInfo path)
       return $ case eitherSi of
         Right si -> ([], SISingle (s, si))
         Left warnings -> (warnings, SISingle (s, ScenarioInfo path NotStarted))

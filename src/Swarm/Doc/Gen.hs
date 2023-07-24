@@ -24,13 +24,13 @@ module Swarm.Doc.Gen (
 ) where
 
 import Control.Arrow (left)
+import Control.Carrier.Lift (runM)
 import Control.Lens (view, (^.))
 import Control.Lens.Combinators (to)
 import Control.Monad (zipWithM, zipWithM_)
-import Control.Monad.Except (ExceptT (..), runExceptT, withExceptT)
+import Control.Monad.Except (ExceptT (..), withExceptT)
 import Control.Monad.IO.Class (liftIO)
 import Data.Containers.ListUtils (nubOrd)
-import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (find, toList)
 import Data.List (transpose)
 import Data.Map.Lazy (Map)
@@ -63,6 +63,7 @@ import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Util (both, guardRight, listEnums, quote, simpleErrorHandle)
+import Swarm.Util.Effect (throwToMaybe)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 import Witch (from)
@@ -129,8 +130,7 @@ generateDocs = \case
       Entities -> simpleErrorHandle $ do
         let loadEntityList fp = left (from . prettyPrintParseException) <$> decodeFileEither fp
         let f = "entities.yaml"
-        let e2m = fmap eitherToMaybe . runExceptT
-        Just fileName <- liftIO $ e2m $ getDataFileNameSafe F.Entities f
+        Just fileName <- liftIO $ runM . throwToMaybe @F.SystemFailure $ getDataFileNameSafe F.Entities f
         entities <- liftIO (loadEntityList fileName) >>= guardRight "load entities"
         liftIO $ T.putStrLn $ entitiesPage address entities
       Recipes -> simpleErrorHandle $ do

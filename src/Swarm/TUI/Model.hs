@@ -154,6 +154,7 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.Util (failT, showT)
+import Swarm.Util.Effect (asExceptT, withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
 import Text.Fuzzy qualified as Fuzzy
@@ -201,7 +202,7 @@ data RuntimeState = RuntimeState
 initRuntimeState :: ExceptT Text IO ([SystemFailure], RuntimeState)
 initRuntimeState = do
   entities <- ExceptT loadEntities
-  recipes <- withExceptT prettyFailure $ loadRecipes entities
+  recipes <- asExceptT . withThrow prettyFailure $ loadRecipes entities
   (scenarioWarnings, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
 
   (adjsFile, namesFile) <- withExceptT prettyFailure $ do

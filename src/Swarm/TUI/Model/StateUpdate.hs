@@ -20,9 +20,11 @@ module Swarm.TUI.Model.StateUpdate (
 import Brick.AttrMap (applyAttrMappings)
 import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
+import Control.Carrier.Lift (runM)
+import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (guard, void)
-import Control.Monad.Except (ExceptT, runExceptT)
+import Control.Monad.Except (ExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execStateT)
 import Data.List qualified as List
@@ -110,10 +112,10 @@ constructAppState rs ui opts@(AppOpts {..}) = do
             return $ CodeToRun ScenarioSuggested soln
           codeToRun = maybeAutoplay <|> maybeRunScript
 
-      eitherSi <- runExceptT $ loadScenarioInfo path
+      eitherSi <- liftIO . runM . runThrow $ loadScenarioInfo path
       let (si, newRs) = case eitherSi of
             Right x -> (x, rs)
-            Left e -> (ScenarioInfo path NotStarted, addWarnings rs e)
+            Left e -> (ScenarioInfo path NotStarted, addWarnings rs [e])
       execStateT
         (startGameWithSeed (scenario, si) $ LaunchParams (pure userSeed) (pure codeToRun))
         (AppState gs ui newRs)
