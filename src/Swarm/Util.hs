@@ -53,7 +53,6 @@ module Swarm.Util (
   isJustOr,
   isRightOr,
   isSuccessOr,
-  guardRight,
 
   -- * Template Haskell utilities
   liftText,
@@ -76,7 +75,6 @@ import Control.Carrier.Throw.Either
 import Control.Effect.State (State, modify, state)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
 import Control.Monad (guard, unless)
-import Control.Monad.Except (ExceptT (..))
 import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum)
 import Data.Either.Validation
@@ -358,9 +356,6 @@ Left b `isRightOr` f = throwError (f b)
 isSuccessOr :: Has (Throw e) sig m => Validation b a -> (b -> e) -> m a
 Success a `isSuccessOr` _ = return a
 Failure b `isSuccessOr` f = throwError (f b)
-
-guardRight :: Text -> Either Text a -> ExceptT Text IO a
-guardRight what i = i `isRightOr` (\e -> "Failed to " <> what <> ": " <> e)
 
 ------------------------------------------------------------
 -- Template Haskell utilities
