@@ -12,8 +12,6 @@ import Control.Effect.Throw (Throw, liftEither, throwError)
 import Control.Exception (catch)
 import Control.Exception.Base (IOException)
 import Control.Monad (forM, when, (<=<))
-import Control.Monad.Except (ExceptT (..))
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)

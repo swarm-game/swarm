@@ -24,6 +24,7 @@ prettyLoadingFailure = \case
   DoesNotExist e -> "The " <> tShowLow e <> " is missing!"
   EntryNot e -> "The entry is not a " <> tShowLow e <> "!"
   CanNotParse p -> "Parse failure:\n" <> T.pack (indent 8 $ prettyPrintParseException p)
+  Duplicate duped -> "Duplicate " <> quote duped
   CustomMessage m -> m
  where
   indent n = unlines . map (replicate n ' ' ++) . lines

@@ -46,8 +46,9 @@ module Swarm.Game.Scenario (
   getScenarioPath,
 ) where
 
-import Control.Algebra (Has)
+import Control.Algebra (Has, run)
 import Control.Arrow ((&&&))
+import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw (Throw, liftEither)
 import Control.Lens hiding (from, (.=), (<.>))
@@ -117,9 +118,9 @@ instance FromJSONE EntityMap Scenario where
   parseJSONE = withObjectE "scenario" $ \v -> do
     -- parse custom entities
     emRaw <- liftE (v .:? "entities" .!= [])
-    em <- case buildEntityMap emRaw of
+    em <- case run . runThrow $ buildEntityMap emRaw of
       Right x -> return x
-      Left x -> failT [x]
+      Left x -> failT [prettyLoadingFailure x]
     -- extend ambient EntityMap with custom entities
 
     withE em $ do

@@ -46,7 +46,6 @@ module Swarm.TUI.Model.UI (
   uiFPS,
   uiAttrMap,
   scenarioRef,
-  appData,
 
   -- ** Initialization
   initFocusRing,
@@ -59,7 +58,7 @@ import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Arrow ((&&&))
 import Control.Lens hiding (from, (<.>))
-import Control.Monad.Except (ExceptT, withExceptT)
+import Control.Monad.Except (ExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Map (Map)
@@ -70,8 +69,7 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Failure.Render (prettyFailure)
-import Swarm.Game.ResourceLoading (getSwarmHistoryPath, readAppData)
+import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
@@ -131,7 +129,6 @@ data UIState = UIState
   , _lastFrameTime :: TimeSpec
   , _accumulatedTime :: TimeSpec
   , _lastInfoTime :: TimeSpec
-  , _appData :: Map Text Text
   , _uiAttrMap :: AttrMap
   , _scenarioRef :: Maybe ScenarioInfoPair
   }
@@ -283,10 +280,6 @@ lastFrameTime :: Lens' UIState TimeSpec
 --   See https://gafferongames.com/post/fix_your_timestep/ .
 accumulatedTime :: Lens' UIState TimeSpec
 
--- | Free-form data loaded from the @data@ directory, for things like
---   the logo, about page, tutorial story, etc.
-appData :: Lens' UIState (Map Text Text)
-
 --------------------------------------------------
 -- UIState initialization
 
@@ -309,7 +302,6 @@ defaultInitLgTicksPerSecond = 4 -- 2^4 = 16 ticks / second
 initUIState :: Int -> Bool -> Bool -> ExceptT Text IO ([SystemFailure], UIState)
 initUIState speedFactor showMainMenu cheatMode = do
   historyT <- liftIO $ readFileMayT =<< getSwarmHistoryPath False
-  appDataMap <- withExceptT prettyFailure readAppData
   let history = maybe [] (map REPLEntry . T.lines) historyT
   startTime <- liftIO $ getTime Monotonic
   (warnings, achievements) <- liftIO loadAchievementsInfo
@@ -350,7 +342,6 @@ initUIState speedFactor showMainMenu cheatMode = do
           , _tickCount = 0
           , _frameCount = 0
           , _frameTickCount = 0
-          , _appData = appDataMap
           , _uiAttrMap = swarmAttrMap
           , _scenarioRef = Nothing
           }

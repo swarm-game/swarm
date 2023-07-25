@@ -26,4 +26,5 @@ data LoadingFailure
   = DoesNotExist Entry
   | EntryNot Entry
   | CanNotParse ParseException
+  | Duplicate Text
   | CustomMessage Text
