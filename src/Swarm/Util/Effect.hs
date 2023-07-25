@@ -1,5 +1,7 @@
--- XXX
-
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- fused-effect utilities for Swarm.
 module Swarm.Util.Effect where
 
 import Control.Carrier.Error.Either (ErrorC (..))
