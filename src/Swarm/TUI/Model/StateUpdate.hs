@@ -20,17 +20,22 @@ module Swarm.TUI.Model.StateUpdate (
 import Brick.AttrMap (applyAttrMappings)
 import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
+import Control.Carrier.Accum.Strict (runAccum)
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
+import Control.Effect.Lift
+import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (guard, void)
 import Control.Monad.Except (ExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execStateT)
+import Data.Foldable qualified as F
 import Data.List qualified as List
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
+import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Achievement.Attainment
@@ -62,10 +67,14 @@ import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.CustomStyling (toAttrPair)
+import Swarm.Util.Effect (withThrow)
 import System.Clock
 
 -- | Initialize the 'AppState' from scratch.
-initAppState :: AppOpts -> ExceptT Text IO AppState
+initAppState ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  AppOpts ->
+  m AppState
 initAppState opts = do
   (rs, ui) <- initPersistentState opts
   constructAppState rs ui opts
@@ -88,16 +97,26 @@ skipMenu AppOpts {..} = isJust userScenario || isRunningInitialProgram || isJust
 --   'RuntimeState' and 'UIState'.  This is split out into a separate
 --   function so that in the integration test suite we can call this
 --   once and reuse the resulting states for all tests.
-initPersistentState :: AppOpts -> ExceptT Text IO (RuntimeState, UIState)
+initPersistentState ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  AppOpts ->
+  m (RuntimeState, UIState)
 initPersistentState opts@(AppOpts {..}) = do
-  (rsWarnings, initRS) <- initRuntimeState
-  (uiWarnings, ui) <- initUIState speed (not (skipMenu opts)) (cheatMode || autoPlay)
-  let rs = addWarnings initRS $ rsWarnings <> uiWarnings
-  return (rs, ui)
+  (warnings :: Seq SystemFailure, (initRS, initUI)) <- runAccum mempty $ do
+    rs <- initRuntimeState
+    ui <- initUIState speed (not (skipMenu opts)) (cheatMode || autoPlay)
+    return (rs, ui)
+  let initRS' = addWarnings initRS (F.toList warnings)
+  return (initRS', initUI)
 
 -- | Construct an 'AppState' from an already-loaded 'RuntimeState' and
 --   'UIState', given the 'AppOpts' the app was started with.
-constructAppState :: RuntimeState -> UIState -> AppOpts -> ExceptT Text IO AppState
+constructAppState ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  RuntimeState ->
+  UIState ->
+  AppOpts ->
+  m AppState
 constructAppState rs ui opts@(AppOpts {..}) = do
   let gs = initGameState (mkGameStateConfig rs)
   case skipMenu opts of

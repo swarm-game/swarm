@@ -2,13 +2,16 @@
 
 module Swarm.Util.Effect where
 
-import Control.Algebra (Has)
 import Control.Carrier.Error.Either (ErrorC (..))
 import Control.Carrier.Throw.Either (ThrowC (..), runThrow)
-import Control.Effect.Throw (Throw, throwError)
+import Control.Effect.Accum
+import Control.Effect.Throw
 import Control.Monad ((>=>))
 import Control.Monad.Trans.Except (ExceptT)
+import Data.Either (partitionEithers)
 import Data.Either.Extra (eitherToMaybe)
+import Data.Sequence (Seq)
+import Data.Sequence qualified as Seq
 
 -- | Transform a @Throw e1@ constraint into a @Throw e2@ constraint,
 --   by supplying an adapter function of type @(e1 -> e2)@.
@@ -26,3 +29,14 @@ throwToMaybe = fmap eitherToMaybe . runThrow
 --   of incrementally converting.  Eventually this should not be needed.
 asExceptT :: ThrowC e m a -> ExceptT e m a
 asExceptT (ThrowC (ErrorC m)) = m
+
+-- | A version of 'forM' that can also accumulate warnings.
+forMW ::
+  Has (Accum (Seq w)) sig m =>
+  [a] ->
+  (a -> m (Either w b)) ->
+  m [b]
+forMW as f = do
+  (ws, bs) <- partitionEithers <$> mapM f as
+  add (Seq.fromList ws)
+  return bs

@@ -261,7 +261,7 @@ getScenarioPath scenario = do
 --   to use.  This function is used if a specific scenario is
 --   requested on the command line.
 loadScenario ::
-  (Has (Throw Text) sig m, Has (Lift IO) sig m) =>
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   String ->
   EntityMap ->
   m (Scenario, FilePath)

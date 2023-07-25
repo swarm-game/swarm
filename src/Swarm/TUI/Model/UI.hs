@@ -57,12 +57,13 @@ import Brick (AttrMap)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Arrow ((&&&))
+import Control.Effect.Accum
+import Control.Effect.Lift
 import Control.Lens hiding (from, (<.>))
-import Control.Monad.Except (ExceptT)
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Achievement.Attainment
@@ -299,13 +300,20 @@ defaultInitLgTicksPerSecond = 4 -- 2^4 = 16 ticks / second
 --   time, and loading text files from the data directory.  The @Bool@
 --   parameter indicates whether we should start off by showing the
 --   main menu.
-initUIState :: Int -> Bool -> Bool -> ExceptT Text IO ([SystemFailure], UIState)
+initUIState ::
+  ( Has (Accum (Seq SystemFailure)) sig m
+  , Has (Lift IO) sig m
+  ) =>
+  Int ->
+  Bool ->
+  Bool ->
+  m UIState
 initUIState speedFactor showMainMenu cheatMode = do
-  historyT <- liftIO $ readFileMayT =<< getSwarmHistoryPath False
+  historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
   let history = maybe [] (map REPLEntry . T.lines) historyT
-  startTime <- liftIO $ getTime Monotonic
-  (warnings, achievements) <- liftIO loadAchievementsInfo
-  launchConfigPanel <- liftIO initConfigPanel
+  startTime <- sendIO $ getTime Monotonic
+  achievements <- loadAchievementsInfo
+  launchConfigPanel <- sendIO initConfigPanel
   let out =
         UIState
           { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
@@ -345,4 +353,4 @@ initUIState speedFactor showMainMenu cheatMode = do
           , _uiAttrMap = swarmAttrMap
           , _scenarioRef = Nothing
           }
-  return (warnings, out)
+  return out
