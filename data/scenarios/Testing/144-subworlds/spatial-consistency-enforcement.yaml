@@ -61,6 +61,7 @@ subworlds:
           exit: portal_out1
           subworldName: root
         consistent: true
+        reorient: back
     upperleft: [-1, 1]
     map: |
       b..b..b..b
@@ -87,6 +88,7 @@ world:
         exit: portal_out2
         subworldName: underground
       consistent: true
+      reorient: back
   map: |
     ..........
     .p.B....P.

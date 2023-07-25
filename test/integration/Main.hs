@@ -302,10 +302,11 @@ testScenarioSolution rs ui _ci _em =
         , testSolution Default "Testing/1234-push-command"
         , testSolution Default "Testing/1256-halt-command"
         , testSolution Default "Testing/1295-density-command"
-        , testSolution Default "Testing/1356-portals/portals-flip-and-rotate.yaml"
-        , testSolution Default "Testing/144-subworlds/basic-subworld.yaml"
-        , testSolution Default "Testing/144-subworlds/subworld-mapped-robots.yaml"
-        , testSolution Default "Testing/144-subworlds/subworld-located-robots.yaml"
+        , testSolution Default "Testing/1356-portals/portals-flip-and-rotate"
+        , testSolution Default "Testing/144-subworlds/basic-subworld"
+        , testSolution Default "Testing/144-subworlds/subworld-mapped-robots"
+        , testSolution Default "Testing/144-subworlds/subworld-located-robots"
+        , testSolution Default "Testing/1379-single-world-portal-reorientation"
         ]
     ]
  where
