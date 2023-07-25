@@ -9,11 +9,11 @@
 -- Swarm integration tests
 module Main where
 
+import Control.Carrier.Lift (runM)
+import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (<>~), (^.), (^..), (^?!))
 import Control.Monad (filterM, forM_, unless, when)
 import Control.Monad.State (StateT (runStateT), gets)
-import Control.Carrier.Throw.Either (runThrow)
-import Control.Carrier.Lift (runM)
 import Data.Char (isSpace)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (Foldable (toList), find)
