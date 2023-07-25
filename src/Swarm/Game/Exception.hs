@@ -103,9 +103,10 @@ formatIncapableFix = \case
 --   on how to fix it.
 --
 -- >>> import Data.Either (fromRight)
+-- >>> import Control.Carrier.Throw.Either (runThrow)
 -- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" [] [] [CAppear]
 -- >>> r = mkEntity (defaultEntityDisplay 'o') "the one ring" [] [] [CAppear]
--- >>> m = fromRight mempty $ buildEntityMap [w,r]
+-- >>> m = fromRight mempty . run . runThrow $ buildEntityMap [w,r]
 -- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByEquip cs t
 --
 -- >>> incapableError (R.singletonCap CGod) (TConst As)
