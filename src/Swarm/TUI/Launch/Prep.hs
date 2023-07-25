@@ -13,15 +13,18 @@ import Brick.Focus qualified as Focus
 import Brick.Widgets.Edit
 import Brick.Widgets.FileBrowser qualified as FB
 import Control.Arrow (left)
+import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens ((.=), (^.))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Functor.Identity (runIdentity)
 import Data.Text qualified as T
+import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (..), ScenarioInfoPair, getLaunchParams, scenarioStatus)
-import Swarm.Game.State (Seed, ValidatedLaunchParams, getRunCodePath)
+import Swarm.Game.State (Seed, ValidatedLaunchParams, getRunCodePath, parseCodeFile)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Model.Name
 import Swarm.Util (listEnums)
+import Swarm.Util.Effect (withThrow)
 import System.FilePath (takeDirectory)
 import Text.Read (readEither)
 
@@ -49,7 +52,7 @@ parseSeedInput seedEditor =
 
 parseWidgetParams :: LaunchControls -> IO EditingLaunchParams
 parseWidgetParams (LaunchControls (FileBrowserControl _fb maybeSelectedScript _) seedEditor _ _) = do
-  eitherParsedCode <- parseCode maybeSelectedScript
+  eitherParsedCode <- runThrow . withThrow prettyFailure $ traverse parseCodeFile maybeSelectedScript
   return $ LaunchParams eitherMaybeSeed eitherParsedCode
  where
   eitherMaybeSeed = parseSeedInput seedEditor

@@ -18,11 +18,8 @@ module Swarm.Doc.Pedagogy (
 
 import Control.Arrow ((&&&))
 import Control.Carrier.Accum.Strict (evalAccum)
-import Control.Carrier.Lift (runM)
 import Control.Lens (universe, view)
 import Control.Monad (guard, (<=<))
-import Control.Monad.Except (ExceptT (..))
-import Control.Monad.Trans.Class (lift)
 import Data.List (foldl', intercalate, sort, sortOn)
 import Data.List.Extra (zipFrom)
 import Data.Map (Map)
@@ -44,7 +41,7 @@ import Swarm.Language.Pipeline (ProcessedTerm (..))
 import Swarm.Language.Syntax
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Controller (getTutorials)
-import Swarm.Util (simpleErrorHandle)
+import Swarm.Util.Effect (simpleErrorHandle)
 
 -- * Constants
 
@@ -160,8 +157,8 @@ generateIntroductionsSequence =
 -- For unit tests, can instead access the scenarios via the GameState.
 loadScenarioCollection :: IO ScenarioCollection
 loadScenarioCollection = simpleErrorHandle $ do
-  entities <- ExceptT loadEntities
-  lift . runM . evalAccum (mempty :: Seq SystemFailure) $ loadScenarios entities
+  entities <- loadEntities
+  evalAccum (mempty :: Seq SystemFailure) $ loadScenarios entities -- ignore warnings
 
 renderUsagesMarkdown :: CoverageInfo -> Text
 renderUsagesMarkdown (CoverageInfo (TutorialInfo (s, si) idx _sCmds dCmds) novelCmds) =

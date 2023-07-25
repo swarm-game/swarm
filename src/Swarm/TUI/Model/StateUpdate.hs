@@ -27,7 +27,7 @@ import Control.Effect.Lift
 import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (guard, void)
-import Control.Monad.Except (ExceptT)
+import Control.Monad.Except (ExceptT (..))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execStateT)
 import Data.Foldable qualified as F
@@ -67,7 +67,7 @@ import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.CustomStyling (toAttrPair)
-import Swarm.Util.Effect (withThrow)
+import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
 
 -- | Initialize the 'AppState' from scratch.
@@ -123,7 +123,7 @@ constructAppState rs ui opts@(AppOpts {..}) = do
     False -> return $ AppState gs (ui & lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
     True -> do
       (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. entityMap)
-      maybeRunScript <- getParsedInitialCode scriptToRun
+      maybeRunScript <- traverse parseCodeFile scriptToRun
 
       let maybeAutoplay = do
             guard autoPlay
@@ -131,13 +131,14 @@ constructAppState rs ui opts@(AppOpts {..}) = do
             return $ CodeToRun ScenarioSuggested soln
           codeToRun = maybeAutoplay <|> maybeRunScript
 
-      eitherSi <- liftIO . runM . runThrow $ loadScenarioInfo path
+      eitherSi <- sendIO . runM . runThrow $ loadScenarioInfo path
       let (si, newRs) = case eitherSi of
             Right x -> (x, rs)
             Left e -> (ScenarioInfo path NotStarted, addWarnings rs [e])
-      execStateT
-        (startGameWithSeed (scenario, si) $ LaunchParams (pure userSeed) (pure codeToRun))
-        (AppState gs ui newRs)
+      sendIO $
+        execStateT
+          (startGameWithSeed (scenario, si) $ LaunchParams (pure userSeed) (pure codeToRun))
+          (AppState gs ui newRs)
 
 -- | Load a 'Scenario' and start playing the game.
 startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()
@@ -271,7 +272,7 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
 --   to update it using 'scenarioToAppState'.
 initAppStateForScenario :: String -> Maybe Seed -> Maybe FilePath -> ExceptT Text IO AppState
 initAppStateForScenario sceneName userSeed toRun =
-  initAppState (defaultAppOpts {userScenario = Just sceneName, userSeed = userSeed, scriptToRun = toRun})
+  asExceptT . withThrow prettyFailure $ initAppState (defaultAppOpts {userScenario = Just sceneName, userSeed = userSeed, scriptToRun = toRun})
 
 -- | For convenience, the 'AppState' corresponding to the classic game
 --   with seed 0.  This is used only for benchmarks and unit tests.

@@ -54,7 +54,6 @@ module Swarm.Util (
   isRightOr,
   isSuccessOr,
   guardRight,
-  simpleErrorHandle,
 
   -- * Template Haskell utilities
   liftText,
@@ -72,13 +71,12 @@ module Swarm.Util (
   smallHittingSet,
 ) where
 
-import Control.Algebra (Has)
 import Control.Applicative (Alternative)
+import Control.Carrier.Throw.Either
 import Control.Effect.State (State, modify, state)
-import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
-import Control.Monad (guard, unless, (<=<))
-import Control.Monad.Except (ExceptT (..), runExceptT)
+import Control.Monad (guard, unless)
+import Control.Monad.Except (ExceptT (..))
 import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum)
 import Data.Either.Validation
@@ -363,9 +361,6 @@ Failure b `isSuccessOr` f = throwError (f b)
 
 guardRight :: Text -> Either Text a -> ExceptT Text IO a
 guardRight what i = i `isRightOr` (\e -> "Failed to " <> what <> ": " <> e)
-
-simpleErrorHandle :: ExceptT Text IO a -> IO a
-simpleErrorHandle = either (fail . T.unpack) pure <=< runExceptT
 
 ------------------------------------------------------------
 -- Template Haskell utilities

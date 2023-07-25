@@ -130,7 +130,7 @@ drawUI s
       NewGameMenu stk -> drawNewGameMenuUI stk $ s ^. uiState . uiLaunchConfig
       AchievementsMenu l -> [drawAchievementsMenuUI s l]
       MessagesMenu -> [drawMainMessages s]
-      AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
+      AboutMenu -> [drawAboutMenuUI (s ^. runtimeState . appData . at "about")]
 
 drawMainMessages :: AppState -> Widget Name
 drawMainMessages s = renderDialog dial . padBottom Max . scrollList $ drawLogs ls
@@ -149,7 +149,7 @@ drawMainMenuUI s l =
         BL.renderList (const (hCenter . drawMainMenuEntry s)) True l
     ]
  where
-  logo = s ^. uiState . appData . at "logo"
+  logo = s ^. runtimeState . appData . at "logo"
   version = s ^. runtimeState . upstreamRelease
 
 newVersionWidget :: Either NewReleaseFailure String -> Maybe (Widget n)

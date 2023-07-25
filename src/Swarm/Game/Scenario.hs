@@ -46,15 +46,13 @@ module Swarm.Game.Scenario (
   getScenarioPath,
 ) where
 
-import Control.Algebra (Has, run)
 import Control.Arrow ((&&&))
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Throw (Throw, liftEither)
+import Control.Effect.Throw
 import Control.Lens hiding (from, (.=), (<.>))
 import Control.Monad (filterM, unless, (<=<))
 import Data.Aeson
-import Data.Either.Extra (maybeToEither)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
@@ -84,7 +82,6 @@ import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
-import Witch (into)
 
 ------------------------------------------------------------
 -- Scenario
@@ -262,14 +259,13 @@ getScenarioPath scenario = do
 --   requested on the command line.
 loadScenario ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  String ->
+  FilePath ->
   EntityMap ->
   m (Scenario, FilePath)
 loadScenario scenario em = do
   mfileName <- getScenarioPath scenario
-  fileName <- liftEither $ maybeToEither ("Scenario not found: " <> into @Text scenario) mfileName
-  s <- withThrow prettyFailure $ loadScenarioFile em fileName
-  return (s, fileName)
+  fileName <- maybe (throwError $ ScenarioNotFound scenario) return mfileName
+  (,fileName) <$> loadScenarioFile em fileName
 
 -- | Load a scenario from a file.
 loadScenarioFile ::

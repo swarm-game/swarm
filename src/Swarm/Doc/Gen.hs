@@ -62,8 +62,8 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Util (both, guardRight, listEnums, quote, simpleErrorHandle)
-import Swarm.Util.Effect (throwToMaybe)
+import Swarm.Util (both, guardRight, listEnums, quote)
+import Swarm.Util.Effect (simpleErrorHandle, throwToMaybe)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 import Witch (from)

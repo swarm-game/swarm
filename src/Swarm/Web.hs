@@ -35,6 +35,7 @@ import Data.ByteString.Lazy (ByteString)
 import Data.Foldable (toList)
 import Data.IntMap qualified as IM
 import Data.Maybe (fromMaybe)
+import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as L
 import Data.Text.Lazy.Encoding (encodeUtf8)
@@ -61,6 +62,7 @@ import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.UI
 import System.Timeout (timeout)
 import Text.Read (readEither)
+import Witch (into)
 
 newtype RobotID = RobotID Int
 
@@ -156,9 +158,9 @@ mkApp appStateRef chan =
     appState <- liftIO (readIORef appStateRef)
     return $ appState ^. gameState . winCondition
   codeRenderHandler contents = do
-    return $ T.pack $ case processTermEither contents of
+    return $ case processTermEither contents of
       Right (ProcessedTerm (Module stx@(Syntax' _srcLoc _term _) _) _ _) ->
-        drawTree . fmap prettyString . para Node $ stx
+        into @Text . drawTree . fmap prettyString . para Node $ stx
       Left x -> x
   codeRunHandler contents = do
     liftIO . writeBChan chan . Web $ RunWebCode contents

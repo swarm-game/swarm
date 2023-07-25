@@ -12,6 +12,8 @@ import Data.Yaml (ParseException)
 
 data SystemFailure
   = AssetNotLoaded Asset FilePath LoadingFailure
+  | ScenarioNotFound FilePath
+  | CustomFailure Text
 
 data AssetData = AppAsset | NameGeneration | Entities | Recipes | Scenarios | Script
   deriving (Eq, Show)

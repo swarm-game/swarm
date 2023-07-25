@@ -12,6 +12,7 @@ import Data.Text qualified as T
 import Data.Yaml (prettyPrintParseException)
 import Swarm.Game.Failure
 import Swarm.Util (quote)
+import Witch (into)
 
 tShowLow :: Show a => a -> Text
 tShowLow = T.pack . map toLower . show
@@ -33,3 +34,6 @@ prettyFailure :: SystemFailure -> Text
 prettyFailure = \case
   AssetNotLoaded a fp l ->
     T.unwords ["Failed to acquire", tShowLow a, tShow fp, "from path", quote $ T.pack fp] <> ": " <> prettyLoadingFailure l
+  ScenarioNotFound s ->
+    "Scenario not found: " <> into @Text s
+  CustomFailure m -> m
