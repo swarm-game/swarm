@@ -29,7 +29,7 @@ module Swarm.Game.ScenarioInfo (
   _SISingle,
 
   -- * Loading and saving scenarios
-  loadScenariosWithWarnings,
+  loadScenarios,
   loadScenarioInfo,
   saveScenarioInfo,
 
@@ -40,6 +40,7 @@ module Swarm.Game.ScenarioInfo (
 import Control.Algebra (Has)
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
+import Control.Effect.Accum (Accum, add)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw (Throw, liftEither)
 import Control.Lens hiding (from, (<.>))
@@ -52,6 +53,8 @@ import Data.List (intercalate, isPrefixOf, stripPrefix, (\\))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (isJust)
+import Data.Sequence (Seq)
+import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Yaml as Y
 import Swarm.Game.Entity
@@ -131,13 +134,16 @@ flatten (SISingle p) = [p]
 flatten (SICollection _ c) = concatMap flatten $ scenarioCollectionToList c
 
 -- | Load all the scenarios from the scenarios data directory.
-loadScenariosWithWarnings ::
+loadScenarios ::
+  (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
   EntityMap ->
-  IO ([SystemFailure], ScenarioCollection)
-loadScenariosWithWarnings em = do
-  res <- runM . runThrow $ getDataDirSafe Scenarios "scenarios"
+  m ScenarioCollection
+loadScenarios em = do
+  res <- runThrow @SystemFailure $ getDataDirSafe Scenarios "scenarios"
   case res of
-    Left err -> return ([err], SC mempty mempty)
+    Left err -> do
+      add (Seq.singleton err)
+      return $ SC mempty mempty
     Right dataDir -> loadScenarioDir em dataDir
 
 -- | The name of the special file which indicates the order of
@@ -152,10 +158,10 @@ readOrderFile orderFile =
 -- | Recursively load all scenarios from a particular directory, and also load
 --   the 00-ORDER file (if any) giving the order for the scenarios.
 loadScenarioDir ::
-  (Has (Lift IO) sig m) =>
+  (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
   EntityMap ->
   FilePath ->
-  m ([SystemFailure], ScenarioCollection)
+  m ScenarioCollection
 loadScenarioDir em dir = do
   let orderFile = dir </> orderFileName
       dirName = takeBaseName dir
@@ -199,17 +205,17 @@ loadScenarioDir em dir = do
 
   -- Only keep the files from 00-ORDER.txt that actually exist.
   let morder' = filter (`elem` itemPaths) <$> morder
-  let loadItem filepath = do
-        (warnings, item) <- loadScenarioItem em (dir </> filepath)
-        return (warnings, (filepath, item))
-  warningsAndScenarios <- mapM (runThrow . loadItem) itemPaths
-  let (failures, successes) = partitionEithers warningsAndScenarios
-      (warnings, allPairs) = unzip successes
-      scenarioMap = M.fromList allPairs
+      loadItem filepath = do
+        item <- loadScenarioItem em (dir </> filepath)
+        return (filepath, item)
+  scenarios <- mapM (runThrow @SystemFailure . loadItem) itemPaths
+  let (failures, successes) = partitionEithers scenarios
+      scenarioMap = M.fromList successes
       -- Now only keep the files that successfully parsed.
       morder'' = filter (`M.member` scenarioMap) <$> morder'
       collection = SC morder'' scenarioMap
-  return (failures ++ concat warnings, collection)
+  add (Seq.fromList failures) -- Register failed individual scenarios as warnings
+  return collection
  where
   -- Keep only files which are .yaml files or directories that start
   -- with something other than an underscore.
@@ -257,23 +263,26 @@ saveScenarioInfo path si = do
 -- | Load a scenario item (either a scenario, or a subdirectory
 --   containing a collection of scenarios) from a particular path.
 loadScenarioItem ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  ( Has (Throw SystemFailure) sig m
+  , Has (Accum (Seq SystemFailure)) sig m
+  , Has (Lift IO) sig m
+  ) =>
   EntityMap ->
   FilePath ->
-  m ([SystemFailure], ScenarioItem)
+  m ScenarioItem
 loadScenarioItem em path = do
   isDir <- sendIO $ doesDirectoryExist path
   let collectionName = into @Text . dropWhile isSpace . takeBaseName $ path
   case isDir of
-    True -> do
-      (warnings, d) <- loadScenarioDir em path
-      return (warnings, SICollection collectionName d)
+    True -> SICollection collectionName <$> loadScenarioDir em path
     False -> do
       s <- loadScenarioFile em path
-      eitherSi <- runThrow (loadScenarioInfo path)
-      return $ case eitherSi of
-        Right si -> ([], SISingle (s, si))
-        Left warnings -> (warnings, SISingle (s, ScenarioInfo path NotStarted))
+      eitherSi <- runThrow @SystemFailure (loadScenarioInfo path)
+      case eitherSi of
+        Right si -> return $ SISingle (s, si)
+        Left warning -> do
+          add $ Seq.singleton warning
+          return $ SISingle (s, ScenarioInfo path NotStarted)
 
 ------------------------------------------------------------
 -- Some lenses + prisms

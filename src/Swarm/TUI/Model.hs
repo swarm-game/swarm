@@ -118,15 +118,19 @@ module Swarm.TUI.Model (
 
 import Brick
 import Brick.Widgets.List qualified as BL
+import Control.Carrier.Accum.Strict (runAccum)
+import Control.Carrier.Lift (runM)
 import Control.Lens hiding (from, (<.>))
 import Control.Monad ((>=>))
 import Control.Monad.Except (ExceptT (..), MonadError (catchError), withExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState)
 import Data.Array (Array, listArray)
+import Data.Foldable qualified as F
 import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
+import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T (lines)
 import Data.Text.IO qualified as T (readFile)
@@ -142,11 +146,7 @@ import Swarm.Game.Recipe (Recipe, loadRecipes)
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Status
-import Swarm.Game.ScenarioInfo (
-  ScenarioCollection,
-  loadScenariosWithWarnings,
-  _SISingle,
- )
+import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios, _SISingle)
 import Swarm.Game.State
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Menu
@@ -203,7 +203,7 @@ initRuntimeState :: ExceptT Text IO ([SystemFailure], RuntimeState)
 initRuntimeState = do
   entities <- ExceptT loadEntities
   recipes <- asExceptT . withThrow prettyFailure $ loadRecipes entities
-  (scenarioWarnings, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
+  (F.toList -> scenarioWarnings, loadedScenarios) <- liftIO . runM . runAccum @(Seq SystemFailure) mempty $ loadScenarios entities
 
   (adjsFile, namesFile) <- withExceptT prettyFailure $ do
     adjsFile <- getDataFileNameSafe NameGeneration "adjectives.txt"

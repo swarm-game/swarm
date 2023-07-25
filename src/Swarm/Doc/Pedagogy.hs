@@ -17,24 +17,28 @@ module Swarm.Doc.Pedagogy (
 ) where
 
 import Control.Arrow ((&&&))
+import Control.Carrier.Accum.Strict (evalAccum)
+import Control.Carrier.Lift (runM)
 import Control.Lens (universe, view)
 import Control.Monad (guard, (<=<))
 import Control.Monad.Except (ExceptT (..))
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Trans.Class (lift)
 import Data.List (foldl', intercalate, sort, sortOn)
 import Data.List.Extra (zipFrom)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
+import Data.Sequence (Seq)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Constant
 import Swarm.Game.Entity (loadEntities)
+import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Scenario (Scenario, scenarioDescription, scenarioName, scenarioObjectives, scenarioSolution)
 import Swarm.Game.Scenario.Objective (objectiveGoal)
-import Swarm.Game.ScenarioInfo (ScenarioCollection, ScenarioInfoPair, flatten, loadScenariosWithWarnings, scenarioCollectionToList, scenarioPath)
+import Swarm.Game.ScenarioInfo (ScenarioCollection, ScenarioInfoPair, flatten, loadScenarios, scenarioCollectionToList, scenarioPath)
 import Swarm.Language.Module (Module (..))
 import Swarm.Language.Pipeline (ProcessedTerm (..))
 import Swarm.Language.Syntax
@@ -157,8 +161,7 @@ generateIntroductionsSequence =
 loadScenarioCollection :: IO ScenarioCollection
 loadScenarioCollection = simpleErrorHandle $ do
   entities <- ExceptT loadEntities
-  (_, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
-  return loadedScenarios
+  lift . runM . evalAccum (mempty :: Seq SystemFailure) $ loadScenarios entities
 
 renderUsagesMarkdown :: CoverageInfo -> Text
 renderUsagesMarkdown (CoverageInfo (TutorialInfo (s, si) idx _sCmds dCmds) novelCmds) =
