@@ -12,7 +12,8 @@ module Main where
 import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (<>~), (^.), (^..), (^?!))
 import Control.Monad (filterM, forM_, unless, when)
 import Control.Monad.State (StateT (runStateT), gets)
-import Control.Monad.Trans.Except (runExceptT)
+import Control.Carrier.Throw.Either (runThrow)
+import Control.Carrier.Lift (runM)
 import Data.Char (isSpace)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (Foldable (toList), find)
@@ -29,6 +30,7 @@ import Swarm.Doc.Gen (EditorType (..))
 import Swarm.Doc.Gen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
 import Swarm.Game.Entity (EntityMap, loadEntities, lookupByName)
+import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Robot (LogEntry, defReqs, equippedDevices, leText, machine, robotContext, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
@@ -70,14 +72,14 @@ main = do
   let (unparseableScenarios, parseableScenarios) = partition isUnparseableTest scenarioPaths
   scenarioPrograms <- acquire "data/scenarios" "sw"
   ci <- any (("CI" ==) . fst) <$> getEnvironment
-  entities <- loadEntities
+  entities <- runM . runThrow $ loadEntities
   (rs, ui) <- do
-    out <- runExceptT $ initPersistentState defaultAppOpts
+    out <- runM . runThrow $ initPersistentState defaultAppOpts
     case out of
-      Left x -> assertFailure $ unwords ["Failure in initPersistentState:", T.unpack x]
+      Left err -> assertFailure $ unwords ["Failure in initPersistentState:", into @String (prettyFailure err)]
       Right res -> return res
   case entities of
-    Left t -> fail $ "Couldn't load entities: " <> into @String t
+    Left err -> fail $ "Couldn't load entities: " <> into @String (prettyFailure err)
     Right em -> do
       defaultMain $
         testGroup
@@ -318,9 +320,9 @@ testScenarioSolution rs ui _ci _em =
 
   testSolution' :: Time -> FilePath -> ShouldCheckBadErrors -> (GameState -> Assertion) -> TestTree
   testSolution' s p shouldCheckBadErrors verify = testCase p $ do
-    out <- runExceptT $ constructAppState rs ui $ defaultAppOpts {userScenario = Just p}
+    out <- runM . runThrow $ constructAppState rs ui $ defaultAppOpts {userScenario = Just p}
     case out of
-      Left x -> assertFailure $ unwords ["Failure in constructAppState:", T.unpack x]
+      Left err -> assertFailure $ unwords ["Failure in constructAppState:", into @String (prettyFailure err)]
       Right (view gameState -> gs) -> case gs ^. winSolution of
         Nothing -> assertFailure "No solution to test!"
         Just sol@(ProcessedTerm _ _ reqCtx) -> do

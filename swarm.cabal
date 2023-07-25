@@ -330,6 +330,7 @@ test-suite swarm-integration
                       containers,
                       directory,
                       filepath,
+                      fused-effects,
                       lens,
                       linear,
                       mtl,

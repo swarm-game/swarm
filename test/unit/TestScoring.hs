@@ -17,6 +17,7 @@ import Swarm.Language.Syntax
 import System.FilePath ((</>))
 import Test.Tasty
 import Test.Tasty.HUnit
+import Witch (into)
 
 baseTestPath :: FilePath
 baseTestPath = "data/test/language-snippets/code-size"
@@ -62,7 +63,7 @@ compareAstSize expectedSize path = testCase (unwords ["size of", path]) $ do
   contents <- TIO.readFile $ baseTestPath </> path
   ProcessedTerm (Module stx _) _ _ <- case processTermEither contents of
     Right x -> return x
-    Left y -> assertFailure y
+    Left y -> assertFailure (into @String y)
   let actualSize = measureAstSize stx
   assertEqual "incorrect size" expectedSize actualSize
 
