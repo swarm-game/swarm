@@ -320,7 +320,7 @@ buildEntityMap :: Has (Throw LoadingFailure) sig m => [Entity] -> m EntityMap
 buildEntityMap es = do
   case findDup (map fst namedEntities) of
     Nothing -> return ()
-    Just duped -> throwError $ Duplicate duped
+    Just duped -> throwError $ Duplicate Entities duped
   return $
     EntityMap
       { entitiesByName = M.fromList namedEntities
