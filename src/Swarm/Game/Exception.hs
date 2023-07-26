@@ -104,6 +104,7 @@ formatIncapableFix = \case
 --
 -- >>> import Data.Either (fromRight)
 -- >>> import Control.Carrier.Throw.Either (runThrow)
+-- >>> import Control.Algebra (run)
 -- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" [] [] [CAppear]
 -- >>> r = mkEntity (defaultEntityDisplay 'o') "the one ring" [] [] [CAppear]
 -- >>> m = fromRight mempty . run . runThrow $ buildEntityMap [w,r]
