@@ -35,6 +35,10 @@ throwToMaybe = fmap eitherToMaybe . runThrow
 asExceptT :: ThrowC e m a -> ExceptT e m a
 asExceptT (ThrowC (ErrorC m)) = m
 
+-- | Log a single failure as a warning.
+warn :: Has (Accum (Seq w)) sig m => w -> m ()
+warn = add . Seq.singleton
+
 -- | A version of 'traverse'/'mapM' that also accumulates warnings.
 --
 --   Note that we can't generalize this to work over any 'Traversable'
@@ -48,9 +52,7 @@ traverseW ::
 traverseW f = do
   wither $
     f >=> \case
-      Left e -> do
-        add (Seq.singleton e)
-        return Nothing
+      Left e -> warn e >> return Nothing
       Right e -> return $ Just e
 
 -- | Flipped version of 'traverseW' for convenience.

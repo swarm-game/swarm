@@ -11,13 +11,12 @@ import Control.Effect.Accum
 import Control.Effect.Lift
 import Control.Monad (forM_)
 import Data.Sequence (Seq)
-import Data.Sequence qualified as Seq
 import Data.Yaml qualified as Y
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Failure
 import Swarm.Game.ResourceLoading (getSwarmXdgDataSubdir)
-import Swarm.Util.Effect (forMW)
+import Swarm.Util.Effect (forMW, warn)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath ((</>))
 
@@ -46,7 +45,7 @@ loadAchievementsInfo = do
             return $ left (AssetNotLoaded Achievement p . CanNotParse) eitherDecodedFile
           else return . Left $ AssetNotLoaded Achievement p (EntryNot File)
     else do
-      add . Seq.singleton $ AssetNotLoaded Achievement "." $ DoesNotExist Directory
+      warn $ AssetNotLoaded Achievement "." $ DoesNotExist Directory
       return []
 
 -- | Save info about achievements to XDG data directory.

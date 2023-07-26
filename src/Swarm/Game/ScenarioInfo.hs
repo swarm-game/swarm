@@ -63,7 +63,7 @@ import Swarm.Game.ResourceLoading (getDataDirSafe, getSwarmSavePath)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Status
-import Swarm.Util.Effect (withThrow)
+import Swarm.Util.Effect (warn, withThrow)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
 import Witch (into)
@@ -142,7 +142,7 @@ loadScenarios em = do
   res <- runThrow @SystemFailure $ getDataDirSafe Scenarios "scenarios"
   case res of
     Left err -> do
-      add (Seq.singleton err)
+      warn err
       return $ SC mempty mempty
     Right dataDir -> loadScenarioDir em dataDir
 
@@ -168,13 +168,8 @@ loadScenarioDir em dir = do
   orderExists <- sendIO $ doesFileExist orderFile
   morder <- case orderExists of
     False -> do
-      when (dirName /= "Testing") $
-        sendIO . putStrLn $
-          "Warning: no "
-            <> orderFileName
-            <> " file found in "
-            <> dirName
-            <> ", using alphabetical order"
+      when (dirName /= "Testing") . warn $
+        OrderFileWarning (dirName </> orderFileName) NoOrderFile
       return Nothing
     True -> Just <$> readOrderFile orderFile
   itemPaths <- sendIO $ keepYamlOrPublicDirectory dir =<< listDirectory dir
@@ -184,23 +179,11 @@ loadScenarioDir em dir = do
       let missing = itemPaths \\ order
           dangling = order \\ itemPaths
 
-      unless (null missing) $
-        sendIO . putStr . unlines $
-          ( "Warning: while processing "
-              <> (dirName </> orderFileName)
-              <> ": files not listed in "
-              <> orderFileName
-              <> " will be ignored"
-          )
-            : map ("  - " <>) missing
+      unless (null missing) . warn $
+        OrderFileWarning (dirName </> orderFileName) (MissingFiles missing)
 
-      unless (null dangling) $
-        sendIO . putStr . unlines $
-          ( "Warning: while processing "
-              <> (dirName </> orderFileName)
-              <> ": nonexistent files will be ignored"
-          )
-            : map ("  - " <>) dangling
+      unless (null dangling) . warn $
+        OrderFileWarning (dirName </> orderFileName) (DanglingFiles dangling)
     Nothing -> pure ()
 
   -- Only keep the files from 00-ORDER.txt that actually exist.
@@ -281,7 +264,7 @@ loadScenarioItem em path = do
       case eitherSi of
         Right si -> return $ SISingle (s, si)
         Left warning -> do
-          add $ Seq.singleton warning
+          warn warning
           return $ SISingle (s, ScenarioInfo path NotStarted)
 
 ------------------------------------------------------------

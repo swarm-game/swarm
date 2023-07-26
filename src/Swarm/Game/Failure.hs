@@ -11,27 +11,19 @@ module Swarm.Game.Failure where
 
 import Data.Text (Text)
 import Data.Yaml (ParseException)
-import Swarm.Util (showLowT)
 
 data SystemFailure
   = AssetNotLoaded Asset FilePath LoadingFailure
   | ScenarioNotFound FilePath
+  | OrderFileWarning FilePath OrderFileWarning
   | CustomFailure Text
+  deriving (Show)
 
 data AssetData = AppAsset | NameGeneration | Entities | Recipes | Scenarios | Script
   deriving (Eq, Show)
 
-prettyAssetData :: AssetData -> Text
-prettyAssetData NameGeneration = "name generation data"
-prettyAssetData AppAsset = "data assets"
-prettyAssetData d = showLowT d
-
 data Asset = Achievement | Data AssetData | History | Save
-  deriving (Show)
-
-prettyAsset :: Asset -> Text
-prettyAsset (Data ad) = prettyAssetData ad
-prettyAsset a = showLowT a
+  deriving (Eq, Show)
 
 data Entry = Directory | File
   deriving (Eq, Show)
@@ -42,3 +34,10 @@ data LoadingFailure
   | CanNotParse ParseException
   | Duplicate AssetData Text
   | CustomMessage Text
+  deriving (Show)
+
+data OrderFileWarning
+  = NoOrderFile
+  | MissingFiles [FilePath]
+  | DanglingFiles [FilePath]
+  deriving (Eq, Show)

@@ -23,6 +23,7 @@ import Control.Applicative ((<|>))
 import Control.Carrier.Accum.Strict (runAccum)
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
+import Control.Effect.Accum
 import Control.Effect.Lift
 import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))

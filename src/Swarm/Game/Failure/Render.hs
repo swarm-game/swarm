@@ -13,6 +13,15 @@ import Swarm.Game.Failure
 import Swarm.Util (quote, showLowT)
 import Witch (into)
 
+prettyAssetData :: AssetData -> Text
+prettyAssetData NameGeneration = "name generation data"
+prettyAssetData AppAsset = "data assets"
+prettyAssetData d = showLowT d
+
+prettyAsset :: Asset -> Text
+prettyAsset (Data ad) = prettyAssetData ad
+prettyAsset a = showLowT a
+
 prettyLoadingFailure :: LoadingFailure -> Text
 prettyLoadingFailure = \case
   DoesNotExist e -> "The " <> showLowT e <> " is missing!"
@@ -29,4 +38,16 @@ prettyFailure = \case
     T.unwords ["Failed to acquire", prettyAsset a, "from path", quote $ into @Text fp] <> ": " <> prettyLoadingFailure l
   ScenarioNotFound s ->
     "Scenario not found: " <> into @Text s
+  OrderFileWarning orderFile w ->
+    "Warning: while processing " <> into @Text orderFile <> ":\n" <> T.unlines (prettyOrderFileWarning w)
   CustomFailure m -> m
+
+prettyOrderFileWarning :: OrderFileWarning -> [Text]
+prettyOrderFileWarning = \case
+  NoOrderFile -> ["  File not found; using alphabetical order"]
+  MissingFiles missing ->
+    "  Files not listed will be ignored:"
+      : map (("  - " <>) . into @Text) missing
+  DanglingFiles dangling ->
+    "  Some listed files do not exist:"
+      : map (("  - " <>) . into @Text) dangling
