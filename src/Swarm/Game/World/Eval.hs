@@ -57,7 +57,7 @@ processWorldFile dir em (fp, src) = do
       runParser parseWExp (into @Text src)
   t <-
     left (AssetNotLoaded (Data Worlds) fp . CustomMessage . showT) $ -- XXX pretty type err
-      run . runThrow @CheckErr . runReader em . runReader @WExpMap M.empty $ -- XXX?
+      run . runThrow @CheckErr . runReader em . runReader @WExpMap M.empty $
         infer CNil wexp
   return (into @Text (dropExtension (stripDir dir fp)), t)
 

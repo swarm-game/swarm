@@ -157,7 +157,7 @@ generateIntroductionsSequence =
 loadScenarioCollection :: IO ScenarioCollection
 loadScenarioCollection = simpleErrorHandle $ do
   entities <- ExceptT loadEntities
-  (_, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities undefined
+  (_, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities undefined -- XXX
   return loadedScenarios
 
 renderUsagesMarkdown :: CoverageInfo -> Text

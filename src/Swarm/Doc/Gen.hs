@@ -553,7 +553,7 @@ recipeLevels recipes start = levels
 classicScenario :: ExceptT Text IO Scenario
 classicScenario = do
   entities <- loadEntities >>= guardRight "load entities"
-  fst <$> loadScenario "data/scenarios/classic.yaml" entities undefined
+  fst <$> loadScenario "data/scenarios/classic.yaml" entities undefined -- XXX
 
 startingHelper :: Scenario -> Robot
 startingHelper = instantiateRobot 0 . head . view scenarioRobots

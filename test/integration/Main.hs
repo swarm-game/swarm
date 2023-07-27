@@ -45,14 +45,14 @@ import Swarm.Game.State (
   winSolution,
  )
 import Swarm.Game.Step (gameTick)
+import Swarm.Game.World.Typecheck (WExpMap)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
-import Swarm.TUI.Model (RuntimeState, defaultAppOpts, gameState, userScenario)
+import Swarm.TUI.Model (RuntimeState, defaultAppOpts, gameState, userScenario, worlds)
 import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
 import Swarm.TUI.Model.UI (UIState)
 import Swarm.Util (acquireAllWithExt)
 import Swarm.Util.Yaml (decodeFileEitherE)
-import System.Environment (getEnvironment)
 import System.FilePath.Posix (splitDirectories)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
@@ -83,9 +83,9 @@ main = do
           "Tests"
           [ exampleTests examplePaths
           , exampleTests scenarioPrograms
-          , scenarioParseTests em parseableScenarios
-          , scenarioParseInvalidTests em unparseableScenarios
-          , testScenarioSolution rs ui ci em
+          , scenarioParseTests em (rs ^. worlds) parseableScenarios
+          , scenarioParseInvalidTests em (rs ^. worlds) unparseableScenarios
+          , testScenarioSolutions rs ui
           , testEditorFiles
           ]
 
@@ -99,27 +99,27 @@ exampleTest (path, fileContent) =
  where
   value = processTerm $ into @Text fileContent
 
-scenarioParseTests :: EntityMap -> [(FilePath, String)] -> TestTree
-scenarioParseTests em inputs =
+scenarioParseTests :: EntityMap -> WExpMap -> [(FilePath, String)] -> TestTree
+scenarioParseTests em wexpMap inputs =
   testGroup
     "Test scenarios parse"
-    (map (scenarioTest Parsed em) inputs)
+    (map (scenarioTest Parsed em wexpMap) inputs)
 
-scenarioParseInvalidTests :: EntityMap -> [(FilePath, String)] -> TestTree
-scenarioParseInvalidTests em inputs =
+scenarioParseInvalidTests :: EntityMap -> WExpMap -> [(FilePath, String)] -> TestTree
+scenarioParseInvalidTests em wexpMap inputs =
   testGroup
     "Test invalid scenarios fail to parse"
-    (map (scenarioTest Failed em) inputs)
+    (map (scenarioTest Failed em wexpMap) inputs)
 
 data ParseResult = Parsed | Failed
 
-scenarioTest :: ParseResult -> EntityMap -> (FilePath, String) -> TestTree
-scenarioTest expRes em (path, _) =
-  testCase ("parse scenario " ++ show path) (getScenario expRes em path)
+scenarioTest :: ParseResult -> EntityMap -> WExpMap -> (FilePath, String) -> TestTree
+scenarioTest expRes em wexpMap (path, _) =
+  testCase ("parse scenario " ++ show path) (getScenario expRes em wexpMap path)
 
-getScenario :: ParseResult -> EntityMap -> FilePath -> IO ()
-getScenario expRes em p = do
-  res <- decodeFileEitherE em p :: IO (Either ParseException Scenario)
+getScenario :: ParseResult -> EntityMap -> WExpMap -> FilePath -> IO ()
+getScenario expRes em wexpMap p = do
+  res <- decodeFileEitherE (em, wexpMap) p :: IO (Either ParseException Scenario)
   case expRes of
     Parsed -> case res of
       Left err -> assertFailure (prettyPrintParseException err)
@@ -147,8 +147,8 @@ time = \case
 
 data ShouldCheckBadErrors = CheckForBadErrors | AllowBadErrors deriving (Eq, Show)
 
-testScenarioSolution :: RuntimeState -> UIState -> Bool -> EntityMap -> TestTree
-testScenarioSolution rs ui _ci _em =
+testScenarioSolutions :: RuntimeState -> UIState -> TestTree
+testScenarioSolutions rs ui =
   testGroup
     "Test scenario solutions"
     [ testGroup
