@@ -22,6 +22,7 @@ import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.WorldPalette
+import Swarm.Util (failT, showT)
 import Swarm.Util.Yaml
 import Witch (into)
 
@@ -31,11 +32,13 @@ data NamedStructure c = NamedStructure
   }
   deriving (Eq, Show)
 
+type InheritedStructureDefs = [NamedStructure (Maybe (PCell Entity))]
+
 instance FromJSONE (EntityMap, RobotMap) (NamedStructure (Maybe (PCell Entity))) where
   parseJSONE = withObjectE "named structure" $ \v -> do
-    sName <- liftE $ v .: "name"
-    NamedStructure sName
-      <$> v
+    NamedStructure
+      <$> liftE (v .: "name")
+      <*> v
         ..: "structure"
 
 data PStructure c = Structure
@@ -111,12 +114,12 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
 instance FromJSONE (EntityMap, RobotMap) (PStructure (Maybe (PCell Entity))) where
   parseJSONE = withObjectE "structure definition" $ \v -> do
     pal <- v ..:? "palette" ..!= WorldPalette mempty
-    structureDefs <- v ..:? "structures" ..!= []
+    localStructureDefs <- v ..:? "structures" ..!= []
     placementDefs <- liftE $ v .:? "placements" .!= []
     waypointDefs <- liftE $ v .:? "waypoints" .!= []
     maybeMaskChar <- liftE $ v .:? "mask"
     (maskedArea, mapWaypoints) <- liftE $ (v .:? "map" .!= "") >>= paintMap maybeMaskChar pal
-    return $ Structure maskedArea structureDefs placementDefs $ waypointDefs <> mapWaypoints
+    return $ Structure maskedArea localStructureDefs placementDefs $ waypointDefs <> mapWaypoints
 
 -- | "Paint" a world map using a 'WorldPalette', turning it from a raw
 --   string into a nested list of 'Cell' values by looking up each
@@ -142,7 +145,7 @@ paintMap maskChar pal a = do
     if Just c == maskChar
       then return Nothing
       else case KeyMap.lookup (Key.fromString [c]) (unPalette pal) of
-        Nothing -> fail $ "Char not in world palette: " ++ show c
+        Nothing -> failT ["Char not in world palette:", showT c]
         Just cell -> return $ Just cell
 
 readMap :: Applicative f => (Char -> f b) -> Text -> f [[b]]

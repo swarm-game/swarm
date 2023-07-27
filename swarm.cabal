@@ -103,6 +103,7 @@ library
                       Swarm.Game.Robot
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Topography.Cell
+                      Swarm.Game.Universe
                       Swarm.TUI.Launch.Controller
                       Swarm.TUI.Launch.Model
                       Swarm.TUI.Launch.Prep
@@ -143,6 +144,7 @@ library
                       Swarm.Game.World.Typecheck
                       Swarm.Language.Capability
                       Swarm.Language.Context
+                      Swarm.Language.Direction
                       Swarm.Language.Elaborate
                       Swarm.Language.Key
                       Swarm.Language.LSP
@@ -360,6 +362,7 @@ benchmark benchmark
                   mtl,
                   random,
                   swarm,
-                  text
+                  text,
+                  containers
   default-language: Haskell2010
   ghc-options:      -threaded

@@ -90,12 +90,9 @@ module Swarm.Language.Syntax (
 
 import Control.Lens (Plated (..), Traversal', makeLenses, para, universe, (%~), (^.))
 import Data.Aeson.Types hiding (Key)
-import Data.Char qualified as C (toLower)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
-import Data.Hashable (Hashable)
 import Data.Int (Int32)
-import Data.List qualified as L (tail)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict (Map)
@@ -105,6 +102,7 @@ import Data.Text hiding (filter, length, map)
 import Data.Text qualified as T
 import Data.Tree
 import GHC.Generics (Generic)
+import Swarm.Language.Direction
 import Swarm.Language.Types
 import Swarm.Util qualified as Util
 import Witch.From (from)
@@ -119,92 +117,6 @@ maxScoutRange = 64
 
 maxStrideRange :: Int
 maxStrideRange = 64
-
-------------------------------------------------------------
--- Directions
-------------------------------------------------------------
-
--- | An absolute direction is one which is defined with respect to an
---   external frame of reference; robots need a compass in order to
---   use them.
---
--- NOTE: These values are ordered by increasing angle according to
--- the standard mathematical convention.
--- That is, the right-pointing direction, East, is considered
--- the "reference angle" and the order proceeds counter-clockwise.
--- See https://en.wikipedia.org/wiki/Polar_coordinate_system#Conventions
---
--- Do not alter this ordering, as there exist functions that depend on it
--- (e.g. "nearestDirection" and "relativeTo").
-data AbsoluteDir = DEast | DNorth | DWest | DSouth
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, Enum, Bounded)
-
-directionJsonModifier :: String -> String
-directionJsonModifier = map C.toLower . L.tail
-
-directionJsonOptions :: Options
-directionJsonOptions =
-  defaultOptions
-    { constructorTagModifier = directionJsonModifier
-    }
-
-instance FromJSON AbsoluteDir where
-  parseJSON = genericParseJSON directionJsonOptions
-
-instance ToJSON AbsoluteDir where
-  toJSON = genericToJSON directionJsonOptions
-
-cardinalDirectionKeyOptions :: JSONKeyOptions
-cardinalDirectionKeyOptions =
-  defaultJSONKeyOptions
-    { keyModifier = directionJsonModifier
-    }
-
-instance ToJSONKey AbsoluteDir where
-  toJSONKey = genericToJSONKey cardinalDirectionKeyOptions
-
-instance FromJSONKey AbsoluteDir where
-  fromJSONKey = genericFromJSONKey cardinalDirectionKeyOptions
-
--- | A relative direction is one which is defined with respect to the
---   robot's frame of reference; no special capability is needed to
---   use them.
-data RelativeDir = DPlanar PlanarRelativeDir | DDown
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
-
--- | Caution: Do not alter this ordering, as there exist functions that depend on it
--- (e.g. "nearestDirection" and "relativeTo").
-data PlanarRelativeDir = DForward | DLeft | DBack | DRight
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, Enum, Bounded)
-
-instance FromJSON PlanarRelativeDir where
-  parseJSON = genericParseJSON directionJsonOptions
-
-instance ToJSON PlanarRelativeDir where
-  toJSON = genericToJSON directionJsonOptions
-
--- | The type of directions. Used /e.g./ to indicate which way a robot
---   will turn.
-data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
-
--- | Direction name is generated from Direction data constructor
--- e.g. DLeft becomes "left"
-directionSyntax :: Direction -> Text
-directionSyntax d = toLower . T.tail . from $ case d of
-  DAbsolute x -> show x
-  DRelative x -> case x of
-    DPlanar y -> show y
-    _ -> show x
-
--- | Check if the direction is absolute (e.g. 'north' or 'south').
-isCardinal :: Direction -> Bool
-isCardinal = \case
-  DAbsolute _ -> True
-  _ -> False
-
-allDirs :: [Direction]
-allDirs = map DAbsolute Util.listEnums <> map DRelative (DDown : map DPlanar Util.listEnums)
 
 ------------------------------------------------------------
 -- Constants
@@ -697,7 +609,8 @@ constInfo c = case c of
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
   Waypoint ->
     command 2 Intangible . doc "Get the x, y coordinates of a named waypoint, by index" $
-      [ "Since waypoint names can have plural multiplicity, returns a tuple of (count, (x, y))."
+      [ "Return only the waypoints in the same subworld as the calling robot."
+      , "Since waypoint names can have plural multiplicity, returns a tuple of (count, (x, y))."
       , "The supplied index will be wrapped automatically, modulo the waypoint count."
       , "A robot can use the count to know whether they have iterated over the full waypoint circuit."
       ]

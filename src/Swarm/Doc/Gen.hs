@@ -53,7 +53,7 @@ import Swarm.Game.Failure qualified as F
 import Swarm.Game.Failure.Render qualified as F
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements, recipeTime, recipeWeight)
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
-import Swarm.Game.Robot (equippedDevices, instantiateRobot, robotInventory)
+import Swarm.Game.Robot (Robot, equippedDevices, instantiateRobot, robotInventory)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.World.Eval (loadWorldsWithWarnings)
 import Swarm.Game.World.Gen (extractEntities)
@@ -555,11 +555,14 @@ classicScenario = do
   entities <- loadEntities >>= guardRight "load entities"
   fst <$> loadScenario "data/scenarios/classic.yaml" entities
 
+startingHelper :: Scenario -> Robot
+startingHelper = instantiateRobot 0 . head . view scenarioRobots
+
 startingDevices :: Scenario -> Set Entity
-startingDevices = Set.fromList . map snd . E.elems . view equippedDevices . instantiateRobot 0 . head . view scenarioRobots
+startingDevices = Set.fromList . map snd . E.elems . view equippedDevices . startingHelper
 
 startingInventory :: Scenario -> Map Entity Int
-startingInventory = Map.fromList . map swap . E.elems . view robotInventory . instantiateRobot 0 . head . view scenarioRobots
+startingInventory = Map.fromList . map swap . E.elems . view robotInventory . startingHelper
 
 -- | Ignore utility entities that are just used for tutorials and challenges.
 ignoredEntities :: Set Text

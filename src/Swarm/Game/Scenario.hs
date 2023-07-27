@@ -33,7 +33,8 @@ module Swarm.Game.Scenario (
   scenarioEntities,
   scenarioRecipes,
   scenarioKnown,
-  scenarioWorld,
+  scenarioWorlds,
+  scenarioNavigation,
   scenarioRobots,
   scenarioObjectives,
   scenarioSolution,
@@ -45,19 +46,24 @@ module Swarm.Game.Scenario (
   getScenarioPath,
 ) where
 
+import Control.Arrow ((&&&))
 import Control.Lens hiding (from, (.=), (<.>))
-import Control.Monad (filterM)
+import Control.Monad (filterM, unless)
 import Control.Monad.Except (ExceptT (..), runExceptT, withExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Trans.Except (except)
 import Data.Aeson
 import Data.Either.Extra (eitherToMaybe, maybeToEither)
+import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty qualified as NE
+import Data.Map qualified as M
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Entity
 import Swarm.Game.Failure
 import Swarm.Game.Failure.Render
+import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot (TRobot)
@@ -66,9 +72,12 @@ import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.Topography.Cell
+import Swarm.Game.Scenario.Topography.Navigation.Portal
+import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.WorldDescription
+import Swarm.Game.Universe
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Util (failT)
+import Swarm.Util (binTuples, failT)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
@@ -92,7 +101,8 @@ data Scenario = Scenario
   , _scenarioEntities :: EntityMap
   , _scenarioRecipes :: [Recipe Entity]
   , _scenarioKnown :: [Text]
-  , _scenarioWorld :: WorldDescription
+  , _scenarioWorlds :: NonEmpty WorldDescription
+  , _scenarioNavigation :: Navigation (M.Map SubworldName) Location
   , _scenarioRobots :: [TRobot]
   , _scenarioObjectives :: [Objective]
   , _scenarioSolution :: Maybe ProcessedTerm
@@ -123,6 +133,35 @@ instance FromJSONE EntityMap Scenario where
       rs <- v ..: "robots"
       let rsMap = buildRobotMap rs
 
+      rootLevelSharedStructures <- localE (,rsMap) $ v ..:? "structures" ..!= []
+
+      allWorlds <- localE (\x -> (rootLevelSharedStructures :: Structure.InheritedStructureDefs, (x, rsMap))) $ do
+        rootWorld <- v ..: "world"
+        subworlds <- v ..:? "subworlds" ..!= []
+        return $ rootWorld :| subworlds
+
+      let worldsByName = binTuples $ NE.toList $ NE.map (worldName &&& id) allWorlds
+          dupedNames = M.keys $ M.filter ((> 1) . length) worldsByName
+      unless (null dupedNames) $
+        failT
+          [ "Subworld names are not unique:"
+          , T.intercalate ", " $ map renderWorldName dupedNames
+          ]
+
+      let mergedWaypoints =
+            M.fromList $
+              map (worldName &&& runIdentity . waypoints . navigation) $
+                NE.toList allWorlds
+
+      mergedPortals <-
+        validatePortals
+          . Navigation mergedWaypoints
+          . M.unions
+          . map (portals . navigation)
+          $ NE.toList allWorlds
+
+      let mergedNavigation = Navigation mergedWaypoints mergedPortals
+
       Scenario
         <$> liftE (v .: "version")
         <*> liftE (v .: "name")
@@ -134,7 +173,8 @@ instance FromJSONE EntityMap Scenario where
         <*> pure em
         <*> v ..:? "recipes" ..!= []
         <*> pure known
-        <*> localE (,rsMap) (v ..: "world")
+        <*> pure allWorlds
+        <*> pure mergedNavigation
         <*> pure rs
         <*> (liftE (v .:? "objectives" .!= []) >>= validateObjectives)
         <*> liftE (v .:? "solution")
@@ -179,8 +219,12 @@ scenarioRecipes :: Lens' Scenario [Recipe Entity]
 --   not have to scan them.
 scenarioKnown :: Lens' Scenario [Text]
 
--- | The starting world for the scenario.
-scenarioWorld :: Lens' Scenario WorldDescription
+-- | The subworlds of the scenario.
+-- The "root" subworld shall always be at the head of the list, by construction.
+scenarioWorlds :: Lens' Scenario (NonEmpty WorldDescription)
+
+-- | Waypoints and inter-world portals
+scenarioNavigation :: Lens' Scenario (Navigation (M.Map SubworldName) Location)
 
 -- | The starting robots for the scenario.  Note this should
 --   include the base.

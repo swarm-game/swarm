@@ -134,7 +134,6 @@ import Data.Text.IO qualified as T (readFile)
 import Data.Vector qualified as V
 import GitHash (GitInfo)
 import Graphics.Vty (ColorMode (..))
-import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Entity as E
@@ -157,6 +156,7 @@ import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
+import Swarm.Util (failT, showT)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
 import Text.Fuzzy qualified as Fuzzy
@@ -215,7 +215,7 @@ initRuntimeState = do
     namesFile <- getDataFileNameSafe NameGeneration "names.txt"
     return (adjsFile, namesFile)
 
-  let markEx what a = catchError a (\e -> fail $ "Failed to " <> what <> ": " <> show e)
+  let markEx what a = catchError a (\e -> failT ["Failed to", what <> ":", showT e])
   (adjs, names) <- liftIO . markEx "load name generation data" $ do
     as <- tail . T.lines <$> T.readFile adjsFile
     ns <- tail . T.lines <$> T.readFile namesFile
@@ -284,7 +284,7 @@ logEvent src (who, rid) msg el =
     & notificationsCount %~ succ
     & notificationsContent %~ (l :)
  where
-  l = LogEntry (TickNumber 0) src who rid zero msg
+  l = LogEntry (TickNumber 0) src who rid Omnipresent msg
 
 -- | Create a 'GameStateConfig' record from the 'RuntimeState'.
 mkGameStateConfig :: RuntimeState -> GameStateConfig

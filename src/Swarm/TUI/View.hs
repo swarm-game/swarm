@@ -87,6 +87,7 @@ import Swarm.Game.ScenarioInfo (
   scenarioItemName,
  )
 import Swarm.Game.State
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Pretty (prettyText)
@@ -416,11 +417,11 @@ drawGameUI s =
         ]
   ]
  where
-  addCursorPos = case s ^. uiState . uiWorldCursor of
-    Nothing -> id
-    Just coord ->
-      let worldCursorInfo = drawWorldCursorInfo (s ^. uiState . uiWorldEditor) (s ^. gameState) coord
-       in bottomLabels . leftLabel ?~ padLeftRight 1 worldCursorInfo
+  addCursorPos = bottomLabels . leftLabel ?~ padLeftRight 1 widg
+   where
+    widg = case s ^. uiState . uiWorldCursor of
+      Nothing -> str $ renderCoordsString $ s ^. gameState . viewCenter
+      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (s ^. uiState . uiWorldEditor) (s ^. gameState) coord
   -- Add clock display in top right of the world view if focused robot
   -- has a clock equipped
   addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (s ^. uiState . lgTicksPerSecond) $ s ^. gameState)
@@ -462,14 +463,22 @@ drawGameUI s =
           )
     ]
 
-drawWorldCursorInfo :: WorldEditor Name -> GameState -> W.Coords -> Widget Name
-drawWorldCursorInfo worldEditor g coords =
+renderCoordsString :: Cosmic Location -> String
+renderCoordsString (Cosmic sw coords) =
+  unwords $ VU.locationToString coords : suffix
+ where
+  suffix = case sw of
+    DefaultRootSubworld -> []
+    SubworldName swName -> ["in", T.unpack swName]
+
+drawWorldCursorInfo :: WorldEditor Name -> GameState -> Cosmic W.Coords -> Widget Name
+drawWorldCursorInfo worldEditor g cCoords =
   case getStatic g coords of
     Just s -> renderDisplay $ displayStatic s
     Nothing -> hBox $ tileMemberWidgets ++ [coordsWidget]
  where
-  coordsWidget =
-    str $ VU.locationToString $ W.coordsToLoc coords
+  Cosmic _ coords = cCoords
+  coordsWidget = str $ renderCoordsString $ fmap W.coordsToLoc cCoords
 
   tileMembers = terrain : mapMaybe merge [entity, robot]
   tileMemberWidgets =
@@ -481,9 +490,9 @@ drawWorldCursorInfo worldEditor g coords =
    where
     f cell preposition = [renderDisplay cell, txt preposition]
 
-  terrain = displayTerrainCell worldEditor g coords
-  entity = displayEntityCell worldEditor g coords
-  robot = displayRobotCell g coords
+  terrain = displayTerrainCell worldEditor g cCoords
+  entity = displayEntityCell worldEditor g cCoords
+  robot = displayRobotCell g cCoords
 
   merge = fmap sconcat . NE.nonEmpty . filter (not . (^. invisible))
 
@@ -649,15 +658,16 @@ robotsListWidget s = hCenter table
       | robot ^. robotLogUpdated = "x"
       | otherwise = " "
 
-    locWidget = hBox [worldCell, txt $ " " <> locStr]
+    locWidget = hBox [worldCell, str $ " " <> locStr]
      where
-      rloc@(Location x y) = robot ^. robotLocation
+      rCoords = fmap W.locToCoords rLoc
+      rLoc = robot ^. robotLocation
       worldCell =
         drawLoc
           (s ^. uiState)
           g
-          (W.locToCoords rloc)
-      locStr = from (show x) <> " " <> from (show y)
+          rCoords
+      locStr = renderCoordsString rLoc
 
     statusWidget = case robot ^. machine of
       Waiting {} -> txt "waiting"
@@ -666,11 +676,11 @@ robotsListWidget s = hCenter table
         | otherwise -> withAttr greenAttr $ txt "idle"
 
   basePos :: Point V2 Double
-  basePos = realToFrac <$> fromMaybe origin (g ^? baseRobot . robotLocation)
+  basePos = realToFrac <$> fromMaybe origin (g ^? baseRobot . robotLocation . planar)
   -- Keep the base and non system robot (e.g. no seed)
   isRelevant robot = robot ^. robotID == 0 || not (robot ^. systemRobot)
   -- Keep the robot that are less than 32 unit away from the base
-  isNear robot = creative || distance (realToFrac <$> robot ^. robotLocation) basePos < 32
+  isNear robot = creative || distance (realToFrac <$> robot ^. robotLocation . planar) basePos < 32
   robots :: [Robot]
   robots =
     filter (\robot -> debugging || (isRelevant robot && isNear robot))
@@ -1000,8 +1010,9 @@ drawWorld ui g =
       ctx <- getContext
       let w = ctx ^. availWidthL
           h = ctx ^. availHeightL
-          ixs = range (viewingRegion g (fromIntegral w, fromIntegral h))
-      render . vBox . map hBox . chunksOf w . map (drawLoc ui g) $ ixs
+          vr = viewingRegion g (fromIntegral w, fromIntegral h)
+          ixs = range $ vr ^. planar
+      render . vBox . map hBox . chunksOf w . map (drawLoc ui g . Cosmic (vr ^. subworld)) $ ixs
 
 ------------------------------------------------------------
 -- Robot inventory panel
@@ -1017,7 +1028,7 @@ drawRobotPanel s
   -- away and a robot that does not exist.
   | Just r <- s ^. gameState . to focusedRobot
   , Just (_, lst) <- s ^. uiState . uiInventory =
-      let Location x y = r ^. robotLocation
+      let Cosmic _subworldName (Location x y) = r ^. robotLocation
           drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
        in padBottom Max $
             vBox
