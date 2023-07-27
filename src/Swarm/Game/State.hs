@@ -143,6 +143,7 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
 import Data.List (partition, sortOn)
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -1212,12 +1213,15 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
   -- Subworld order as encountered in the scenario YAML file is preserved for
   -- the purpose of numbering robots, other than the "root" subworld
   -- guaranteed to be first.
+  genRobots :: [(Int, TRobot)]
   genRobots = concat $ NE.toList $ NE.map (fst . snd) builtWorldTuples
 
+  builtWorldTuples :: NonEmpty (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int Entity))
   builtWorldTuples =
-    NE.map (worldName &&& buildWorld em) $
+    NE.map (worldName &&& buildWorld em (initWExpMap gsc)) $
       scenario ^. scenarioWorlds
 
+  allSubworldsMap :: Seed -> W.MultiWorld Int Entity
   allSubworldsMap s =
     M.map genWorld
       . M.fromList
