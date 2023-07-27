@@ -27,7 +27,7 @@ import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.WorldPalette
-import Swarm.Game.Terrain (TerrainType (BlankT), getTerrainDefaultPaletteChar)
+import Swarm.Game.Terrain (TerrainType, getTerrainDefaultPaletteChar)
 import Swarm.Game.Universe
 import Swarm.TUI.Editor.Json (SkeletonScenario (SkeletonScenario))
 import Swarm.Util (binTuples, histogram)
