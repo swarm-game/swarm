@@ -68,7 +68,6 @@ main = do
   scenarioPaths <- acquireAllWithExt "data/scenarios" "yaml"
   let (unparseableScenarios, parseableScenarios) = partition isUnparseableTest scenarioPaths
   scenarioPrograms <- acquireAllWithExt "data/scenarios" "sw"
-  ci <- any (("CI" ==) . fst) <$> getEnvironment
   entities <- loadEntities
   (rs, ui) <- do
     out <- runExceptT $ initPersistentState defaultAppOpts
