@@ -26,6 +26,7 @@ prettyLoadingFailure = \case
   EntryNot e -> "The entry is not a " <> tShowLow e <> "!"
   CanNotParseYaml p -> "Parse failure:\n" <> T.pack (indent 8 $ prettyPrintParseException p)
   CanNotParseMegaparsec p -> "Parse failure:\n" <> T.pack (errorBundlePretty p)
+  DoesNotTypecheck t -> "Error during typechecking:\n" <> t
   CustomMessage m -> m
  where
   indent n = unlines . map (replicate n ' ' ++) . lines

@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -24,6 +26,7 @@ import Swarm.Game.Entity (Entity)
 import Swarm.Game.Robot (Robot)
 import Swarm.Game.Terrain
 import Swarm.Game.World.Coords
+import Swarm.Language.Pretty
 import Swarm.Util.Erasable
 
 ------------------------------------------------------------
@@ -39,13 +42,26 @@ type RawCellVal = [(Maybe CellTag, Text)]
 data CellVal = CellVal TerrainType (Erasable (Last Entity)) [Robot]
   deriving (Eq, Show)
 
+instance PrettyPrec CellVal where
+  prettyPrec _ _ = "cell" -- XXX
+
 data Rot = Rot0 | Rot90 | Rot180 | Rot270
   deriving (Eq, Ord, Show, Bounded, Enum)
+
+instance PrettyPrec Rot where
+  prettyPrec _ = \case
+    Rot0 -> "rot0"
+    Rot90 -> "rot90"
+    Rot180 -> "rot180"
+    Rot270 -> "rot270"
 
 type Var = Text
 
 data Axis = X | Y
   deriving (Eq, Ord, Show, Bounded, Enum)
+
+instance PrettyPrec Axis where
+  prettyPrec _ = \case X -> "x"; Y -> "y"
 
 data Op = Not | Neg | And | Or | Add | Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | Geq | If | Perlin | Reflect Axis | Rot Rot | Mask | Overlay | Abs
   deriving (Eq, Ord, Show)

@@ -72,8 +72,7 @@ compileConst seed = \case
   CPerlin -> compilePerlin
   CReflect ax -> compileReflect ax
   CRot rot -> compileRot rot
-  COver -> binary (<+>)
-  CEmpty -> CConst empty
+  COver -> binary (<!>)
   K -> CFun $ \x -> CFun $ const x
   S -> CFun $ \f -> CFun $ \g -> CFun $ \x -> f $$ x $$ (g $$ x)
   I -> CFun id

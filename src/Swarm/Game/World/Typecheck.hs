@@ -2,6 +2,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE PolyKinds #-}
@@ -28,10 +29,14 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Semigroup (Last (..))
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Type.Equality (TestEquality (..), type (:~:) (Refl))
+import Prettyprinter (Doc, pretty, (<+>))
 import Swarm.Game.Entity (EntityMap, lookupEntityName)
 import Swarm.Game.Terrain (readTerrain)
 import Swarm.Game.World.Syntax
+import Swarm.Language.Pretty
+import Swarm.Util (showT, squote)
 import Swarm.Util.Erasable
 import Prelude hiding (lookup)
 
@@ -50,19 +55,19 @@ instance Empty CellVal where
   empty = CellVal mempty mempty mempty
 
 class Over m where
-  (<+>) :: m -> m -> m
+  (<!>) :: m -> m -> m
 
 instance Over Bool where
-  _ <+> x = x
+  _ <!> x = x
 
 instance Over Integer where
-  _ <+> x = x
+  _ <!> x = x
 
 instance Over Double where
-  _ <+> x = x
+  _ <!> x = x
 
 instance Over CellVal where
-  CellVal t1 e1 r1 <+> CellVal t2 e2 r2 = CellVal (t1 <> t2) (e1 <> e2) (r1 <> r2)
+  CellVal t1 e1 r1 <!> CellVal t2 e2 r2 = CellVal (t1 <> t2) (e1 <> e2) (r1 <> r2)
 
 ------------------------------------------------------------
 -- Type class for type-indexed application
@@ -122,7 +127,6 @@ data Const :: Type -> Type where
   CReflect :: Axis -> Const (World a -> World a)
   CRot :: Rot -> Const (World a -> World a)
   COver :: (Over a, NotFun a) => Const (a -> a -> a)
-  CEmpty :: (Empty a, NotFun a) => Const a
   -- Combinators generated during elaboration + variable abstraction
   K :: Const (a -> b -> a)
   S :: Const ((a -> b -> c) -> (a -> b) -> a -> c)
@@ -151,6 +155,44 @@ infixl 1 .$$.
 (.$$.) :: (HasConst t, Applicable t) => Const (a -> b) -> Const a -> t b
 c1 .$$. c2 = embed c1 $$ embed c2
 
+instance PrettyPrec (Const α) where
+  prettyPrec _ = \case
+    CLit a -> pretty (showT a)
+    CCell c -> ppr c
+    CFI -> "fromIntegral"
+    CIf -> "if"
+    CNot -> "not"
+    CNeg -> "negate"
+    CAbs -> "abs"
+    CAnd -> "and"
+    COr -> "or"
+    CAdd -> "add"
+    CSub -> "sub"
+    CMul -> "mul"
+    CDiv -> "div"
+    CIDiv -> "idiv"
+    CMod -> "mod"
+    CEq -> "eq"
+    CNeq -> "neq"
+    CLt -> "lt"
+    CLeq -> "leq"
+    CGt -> "gt"
+    CGeq -> "geq"
+    CMask -> "mask"
+    CSeed -> "seed"
+    CCoord ax -> ppr ax
+    CHash -> "hash"
+    CPerlin -> "perlin"
+    CReflect ax -> case ax of X -> "vreflect"; Y -> "hreflect"
+    CRot rot -> ppr rot
+    COver -> "over"
+    K -> "K"
+    S -> "S"
+    I -> "I"
+    B -> "B"
+    C -> "C"
+    Φ -> "Φ"
+
 ------------------------------------------------------------
 -- Intrinsically typed core language
 
@@ -166,6 +208,10 @@ data Idx :: [Type] -> Type -> Type where
   VS :: Idx g ty -> Idx (x ': g) ty
 
 deriving instance Show (Idx g ty)
+
+idxToNat :: Idx g a -> Int
+idxToNat VZ = 0
+idxToNat (VS x) = 1 + idxToNat x
 
 -- | A variable valid in one context is also valid in another extended
 --   context with additional variables.
@@ -190,6 +236,18 @@ instance Applicable (TTerm g) where
 instance HasConst (TTerm g) where
   embed = TConst
 
+instance PrettyPrec (TTerm g α) where
+  prettyPrec :: Int -> TTerm g α -> Doc ann
+  prettyPrec p = \case
+    TVar ix -> pretty (idxToNat ix)
+    TLam t ->
+      pparens (p > 0) $
+        "λ." <+> ppr t
+    TApp t1 t2 ->
+      pparens (p > 1) $
+        prettyPrec 1 t1 <+> prettyPrec 2 t2
+    TConst c -> ppr c
+
 -- | A term valid in one context is also valid in another extended
 --   context with additional variables (which the term does not use).
 weaken :: forall h g a. TTerm g a -> TTerm (Append g h) a
@@ -207,6 +265,18 @@ data CheckErr where
   ApplyErr :: Some (TTerm g) -> Some (TTerm g) -> CheckErr
 
 deriving instance Show CheckErr
+
+-- XXX make into PrettyPrec instance?
+prettyCheckErr :: CheckErr -> Text
+prettyCheckErr = \case
+  ApplyErr (Some ty1 t1) (Some ty2 t2) ->
+    T.unlines
+      [ "Error in application:"
+      , "  " <> squote (prettyText t1) <> " has type " <> squote (prettyText ty1)
+      , "  and cannot be applied to"
+      , "  " <> squote (prettyText t2) <> " which has type " <> squote (prettyText ty2)
+      ]
+  UnknownErr n -> "Unknown error #" <> showT n
 
 ------------------------------------------------------------
 -- Type representations
@@ -228,6 +298,13 @@ instance TestEquality Base where
   testEquality BBool BBool = Just Refl
   testEquality BCell BCell = Just Refl
   testEquality _ _ = Nothing
+
+instance PrettyPrec (Base α) where
+  prettyPrec _ = \case
+    BInt -> "int"
+    BFloat -> "float"
+    BBool -> "bool"
+    BCell -> "cell"
 
 -- | Type representations indexed by the corresponding host language
 --   type.
@@ -261,6 +338,19 @@ instance TestEquality TTy where
       Just Refl -> Just Refl
       Nothing -> Nothing
   testEquality _ _ = Nothing
+
+instance PrettyPrec (TTy ty) where
+  prettyPrec :: Int -> TTy ty -> Doc ann
+  prettyPrec _ (TTyBase b) = ppr b
+  prettyPrec p (α :->: β) =
+    pparens (p > 0) $
+      prettyPrec 1 α <+> "->" <+> prettyPrec 0 β
+  prettyPrec p (TTyWorld t) =
+    pparens (p > 1) $
+      "World" <+> prettyPrec 2 t
+
+------------------------------------------------------------
+-- Instance checking
 
 -- | Check that a particular type has an 'Eq' instance, and run a
 --   computation in a context provided with an 'Eq' constraint. The
@@ -506,7 +596,7 @@ resolveCell ::
   m CellVal
 resolveCell items = do
   cellVals <- mapM resolveCellItem items
-  return $ foldl' (<+>) empty cellVals
+  return $ foldl' (<!>) empty cellVals
 
 -- | Try to resolve one cell item name into an actual item (terrain,
 -- entity, robot, etc.).

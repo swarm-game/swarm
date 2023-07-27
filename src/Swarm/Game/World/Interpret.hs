@@ -64,8 +64,7 @@ interpConst seed = \case
   CReflect ax -> \w -> w . interpReflect ax
   CRot r -> \w -> w . interpRot r
   CFI -> fromInteger
-  COver -> (<+>)
-  CEmpty -> empty
+  COver -> (<!>)
   K -> const
   S -> (<*>)
   I -> id

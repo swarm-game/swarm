@@ -29,4 +29,13 @@ data LoadingFailure
   | EntryNot Entry
   | CanNotParseYaml ParseException
   | CanNotParseMegaparsec (ParseErrorBundle Text Void)
+  | DoesNotTypecheck Text -- See Note [Typechecking errors]
   | CustomMessage Text
+
+-- ~~~~ Note [Pretty-printing typechecking errors]
+--
+-- It would make sense to store a CheckErr in DoesNotTypecheck;
+-- however, Swarm.Game.Failure is imported in lots of places, and
+-- CheckErr can contain high-level things like TTerms etc., so it
+-- would lead to an import cycle.  Instead, we choose to just
+-- pretty-print typechecking errors before storing them here.

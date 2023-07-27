@@ -25,7 +25,7 @@ import Swarm.Game.World.Interpret (interpBTerm)
 import Swarm.Game.World.Parse (parseWExp, runParser)
 import Swarm.Game.World.Syntax
 import Swarm.Game.World.Typecheck
-import Swarm.Util (acquireAllWithExt, showT)
+import Swarm.Util (acquireAllWithExt)
 import System.FilePath (dropExtension, joinPath, splitPath)
 import Witch (into)
 
@@ -56,7 +56,7 @@ processWorldFile dir em (fp, src) = do
     left (AssetNotLoaded (Data Worlds) fp . CanNotParseMegaparsec) $
       runParser parseWExp (into @Text src)
   t <-
-    left (AssetNotLoaded (Data Worlds) fp . CustomMessage . showT) $ -- XXX pretty type err
+    left (AssetNotLoaded (Data Worlds) fp . CustomMessage . prettyCheckErr) $
       run . runThrow @CheckErr . runReader em . runReader @WExpMap M.empty $
         infer CNil wexp
   return (into @Text (dropExtension (stripDir dir fp)), t)
