@@ -191,7 +191,7 @@ import Swarm.Language.Syntax (Const, SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
-import Swarm.Util (binTuples, surfaceEmpty, uniq, (<+=), (<<.=), (?), applyWhen)
+import Swarm.Util (applyWhen, binTuples, surfaceEmpty, uniq, (<+=), (<<.=), (?))
 import Swarm.Util.Erasable
 import Swarm.Util.Lens (makeLensesExcluding)
 import System.Clock qualified as Clock
