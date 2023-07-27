@@ -1,4 +1,4 @@
-{-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE GADTs #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
