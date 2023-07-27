@@ -191,7 +191,7 @@ import Swarm.Language.Syntax (Const, SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
-import Swarm.Util (binTuples, surfaceEmpty, uniq, (<+=), (<<.=), (?))
+import Swarm.Util (binTuples, surfaceEmpty, uniq, (<+=), (<<.=), (?), applyWhen)
 import Swarm.Util.Erasable
 import Swarm.Util.Lens (makeLensesExcluding)
 import System.Clock qualified as Clock
@@ -1255,7 +1255,7 @@ buildWorld WorldDescription {..} = (robots worldName, first fromEnum . wf)
   worldArray = listArray ((ulr, ulc), (ulr + rs - 1, ulc + cs - 1)) (concat worldGrid)
 
   dslWF, arrayWF :: Seed -> WorldFun TerrainType Entity
-  dslWF = maybe mempty (((if offsetOrigin then findGoodOrigin else id) .) . runTTerm) worldProg
+  dslWF = maybe mempty ((applyWhen offsetOrigin findGoodOrigin .) . runTTerm) worldProg
   arrayWF = const (worldFunFromArray worldArray)
 
   wf = dslWF <> arrayWF

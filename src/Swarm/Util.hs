@@ -23,6 +23,7 @@ module Swarm.Util (
   both,
   allEqual,
   surfaceEmpty,
+  applyWhen,
 
   -- * Directory utilities
   readFileMay,
@@ -202,6 +203,12 @@ allEqual (x : xs) = all (== x) xs
 
 surfaceEmpty :: Alternative f => (a -> Bool) -> a -> f a
 surfaceEmpty isEmpty t = t <$ guard (not (isEmpty t))
+
+-- Note, once we upgrade to an LTS version that includes
+-- base-compat-0.13, we should switch to using 'applyWhen' from there.
+applyWhen :: Bool -> (a -> a) -> a -> a
+applyWhen True f x = f x
+applyWhen False _ x = x
 
 ------------------------------------------------------------
 -- Directory stuff

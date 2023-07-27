@@ -8,6 +8,7 @@ module Swarm.Game.Scenario.Topography.WorldDescription where
 
 import Control.Carrier.Reader (runReader)
 import Control.Carrier.Throw.Either
+import Control.Monad (forM)
 import Data.Functor.Identity
 import Data.Maybe (catMaybes)
 import Data.Yaml as Y
@@ -78,16 +79,11 @@ instance FromJSONE (WExpMap, InheritedStructureDefs, EntityMap, RobotMap) WorldD
         portalDefs
 
     mwexp <- liftE (v .:? "dsl")
-    dslTerm <- case mwexp of
-      Nothing -> return Nothing
-      Just wexp -> do
-        let checkResult =
-              run . runThrow @CheckErr . runReader wexpMap . runReader em $
-                check CNil (TTyWorld TTyCell) wexp
-        case checkResult of
-          Left checkErr -> fail (show checkErr) -- XXX pretty checkErr
-          Right t -> return $ Just t
-
+    dslTerm <- forM mwexp $ \wexp -> do
+      let checkResult =
+            run . runThrow @CheckErr . runReader wexpMap . runReader em $
+              check CNil (TTyWorld TTyCell) wexp
+      either (fail . show) return checkResult -- XXX pretty checkErr
     WorldDescription
       <$> liftE (v .:? "offset" .!= False)
       <*> liftE (v .:? "scrollable" .!= True)

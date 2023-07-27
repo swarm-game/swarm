@@ -38,7 +38,27 @@ sepByNE p sep = NE.fromList <$> p `sepBy1` sep
 -- Lexing
 
 reservedWords :: [Text]
-reservedWords = ["not", "true", "false", "seed", "x", "y", "hash", "let", "in", "overlay", "hcat", "vcat", "if", "then", "else", "perlin", "mask", "empty", "abs"]
+reservedWords =
+  [ "not"
+  , "true"
+  , "false"
+  , "seed"
+  , "x"
+  , "y"
+  , "hash"
+  , "let"
+  , "in"
+  , "overlay"
+  , "hcat"
+  , "vcat"
+  , "if"
+  , "then"
+  , "else"
+  , "perlin"
+  , "mask"
+  , "empty"
+  , "abs"
+  ]
 
 -- | Skip spaces and comments.
 sc :: Parser ()
