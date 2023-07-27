@@ -180,7 +180,7 @@ import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Universe as U
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
 import Swarm.Game.World qualified as W
-import Swarm.Game.World.Eval (runWExp)
+import Swarm.Game.World.Eval (runTTerm)
 import Swarm.Game.World.Gen (Seed, findGoodOrigin)
 import Swarm.Game.World.Typecheck (WExpMap)
 import Swarm.Language.Capability (constCaps)
@@ -1218,7 +1218,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
 
   builtWorldTuples :: NonEmpty (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int Entity))
   builtWorldTuples =
-    NE.map (worldName &&& buildWorld em (initWExpMap gsc)) $
+    NE.map (worldName &&& buildWorld) $
       scenario ^. scenarioWorlds
 
   allSubworldsMap :: Seed -> W.MultiWorld Int Entity
@@ -1241,8 +1241,8 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
 
 -- | Take a world description, parsed from a scenario file, and turn
 --   it into a list of located robots and a world function.
-buildWorld :: EntityMap -> WExpMap -> WorldDescription -> ([IndexedTRobot], Seed -> WorldFun Int Entity)
-buildWorld em wexpMap WorldDescription {..} = (robots worldName, first fromEnum . wf)
+buildWorld :: WorldDescription -> ([IndexedTRobot], Seed -> WorldFun Int Entity)
+buildWorld WorldDescription {..} = (robots worldName, first fromEnum . wf)
  where
   rs = fromIntegral $ length area
   cs = fromIntegral $ length (head area)
@@ -1254,9 +1254,8 @@ buildWorld em wexpMap WorldDescription {..} = (robots worldName, first fromEnum 
   worldArray :: Array (Int32, Int32) (TerrainType, Erasable Entity)
   worldArray = listArray ((ulr, ulc), (ulr + rs - 1, ulc + cs - 1)) (concat worldGrid)
 
-  -- XXX error
   dslWF, arrayWF :: Seed -> WorldFun TerrainType Entity
-  dslWF = maybe mempty (fmap ((if offsetOrigin then findGoodOrigin else id) . either (error . show) id) . runWExp em wexpMap) worldProg
+  dslWF = maybe mempty (((if offsetOrigin then findGoodOrigin else id) .) . runTTerm) worldProg
   arrayWF = const (worldFunFromArray worldArray)
 
   wf = dslWF <> arrayWF

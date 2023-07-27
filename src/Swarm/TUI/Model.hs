@@ -206,9 +206,8 @@ initRuntimeState :: ExceptT Text IO ([SystemFailure], RuntimeState)
 initRuntimeState = do
   entities <- ExceptT loadEntities
   recipes <- withExceptT prettyFailure $ loadRecipes entities
-  (scenarioWarnings, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
-
   (worldWarnings, loadedWorlds) <- liftIO $ loadWorldsWithWarnings entities
+  (scenarioWarnings, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities loadedWorlds
 
   (adjsFile, namesFile) <- withExceptT prettyFailure $ do
     adjsFile <- getDataFileNameSafe NameGeneration "adjectives.txt"

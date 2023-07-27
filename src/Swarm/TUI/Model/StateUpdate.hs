@@ -101,7 +101,7 @@ constructAppState rs ui opts@(AppOpts {..}) = do
   case skipMenu opts of
     False -> return $ AppState gs (ui & lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
     True -> do
-      (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. entityMap)
+      (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. entityMap) (rs ^. worlds)
       maybeRunScript <- getParsedInitialCode scriptToRun
 
       let maybeAutoplay = do

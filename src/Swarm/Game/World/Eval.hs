@@ -29,11 +29,10 @@ import Swarm.Util (acquireAllWithExt, showT)
 import System.FilePath (dropExtension, joinPath, splitPath)
 import Witch (into)
 
-runWExp :: EntityMap -> WExpMap -> WExp -> Seed -> Either CheckErr (WorldFun TerrainType Entity)
-runWExp em wexpMap wexp seed =
-  convert . interpBTerm seed . bracket
-    -- runCTerm . compile seed . bracket
-    <$> runReader em (runReader wexpMap (check CNil (TTyWorld TTyCell) wexp))
+runTTerm :: TTerm '[] (World CellVal) -> Seed -> WorldFun TerrainType Entity
+runTTerm t seed = convert . interpBTerm seed . bracket $ t
+
+-- runCTerm . compile seed . bracket
 
 convert :: (Coords -> CellVal) -> WorldFun TerrainType Entity
 convert f = WF ((\(CellVal t e _) -> (t, e)) . f)

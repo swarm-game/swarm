@@ -76,6 +76,7 @@ import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Universe
+import Swarm.Game.World.Typecheck (WExpMap)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util (binTuples, failT)
 import Swarm.Util.Lens (makeLensesNoSigs)
@@ -108,11 +109,11 @@ data Scenario = Scenario
   , _scenarioSolution :: Maybe ProcessedTerm
   , _scenarioStepsPerTick :: Maybe Int
   }
-  deriving (Eq, Show)
+  deriving (Show)
 
 makeLensesNoSigs ''Scenario
 
-instance FromJSONE EntityMap Scenario where
+instance FromJSONE (EntityMap, WExpMap) Scenario where
   parseJSONE = withObjectE "scenario" $ \v -> do
     -- parse custom entities
     emRaw <- liftE (v .:? "entities" .!= [])
@@ -121,7 +122,12 @@ instance FromJSONE EntityMap Scenario where
       Left x -> failT [x]
     -- extend ambient EntityMap with custom entities
 
-    withE em $ do
+    -- Save the passed in WExpMap for later
+    wexpMap <- snd <$> getE
+
+    -- Get rid of WExpMap from context locally, and combine EntityMap
+    -- with any custom entities parsed above
+    localE fst $ withE em $ do
       -- parse 'known' entity names and make sure they exist
       known <- liftE (v .:? "known" .!= [])
       em' <- getE
@@ -133,9 +139,11 @@ instance FromJSONE EntityMap Scenario where
       rs <- v ..: "robots"
       let rsMap = buildRobotMap rs
 
-      rootLevelSharedStructures <- localE (,rsMap) $ v ..:? "structures" ..!= []
+      rootLevelSharedStructures :: Structure.InheritedStructureDefs <-
+        localE (,rsMap) $
+          v ..:? "structures" ..!= []
 
-      allWorlds <- localE (\x -> (rootLevelSharedStructures :: Structure.InheritedStructureDefs, (x, rsMap))) $ do
+      allWorlds <- localE (wexpMap,rootLevelSharedStructures,,rsMap) $ do
         rootWorld <- v ..: "world"
         subworlds <- v ..:? "subworlds" ..!= []
         return $ rootWorld :| subworlds
@@ -264,21 +272,23 @@ loadScenario ::
   (MonadIO m) =>
   String ->
   EntityMap ->
+  WExpMap ->
   ExceptT Text m (Scenario, FilePath)
-loadScenario scenario em = do
+loadScenario scenario em wexpMap = do
   mfileName <- liftIO $ getScenarioPath scenario
   fileName <- except $ maybeToEither ("Scenario not found: " <> from @String scenario) mfileName
-  s <- withExceptT prettyFailure $ loadScenarioFile em fileName
+  s <- withExceptT prettyFailure $ loadScenarioFile em wexpMap fileName
   return (s, fileName)
 
 -- | Load a scenario from a file.
 loadScenarioFile ::
   (MonadIO m) =>
   EntityMap ->
+  WExpMap ->
   FilePath ->
   ExceptT SystemFailure m Scenario
-loadScenarioFile em fileName =
+loadScenarioFile em wexpMap fileName =
   withExceptT (AssetNotLoaded (Data Scenarios) fileName . CanNotParseYaml)
     . ExceptT
     . liftIO
-    $ decodeFileEitherE em fileName
+    $ decodeFileEitherE (em, wexpMap) fileName

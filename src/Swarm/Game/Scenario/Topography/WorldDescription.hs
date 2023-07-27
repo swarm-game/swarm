@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -5,6 +6,8 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Topography.WorldDescription where
 
+import Control.Carrier.Reader (runReader)
+import Control.Carrier.Throw.Either
 import Data.Functor.Identity
 import Data.Maybe (catMaybes)
 import Data.Yaml as Y
@@ -23,6 +26,7 @@ import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Universe
 import Swarm.Game.World.Parse ()
 import Swarm.Game.World.Syntax
+import Swarm.Game.World.Typecheck
 import Swarm.Util.Yaml
 
 ------------------------------------------------------------
@@ -40,15 +44,15 @@ data PWorldDescription e = WorldDescription
   , area :: [[PCell e]]
   , navigation :: Navigation Identity WaypointName
   , worldName :: SubworldName
-  , worldProg :: Maybe WExp
+  , worldProg :: Maybe (TTerm '[] (World CellVal))
   }
-  deriving (Eq, Show)
+  deriving (Show)
 
 type WorldDescription = PWorldDescription Entity
 
-instance FromJSONE (InheritedStructureDefs, (EntityMap, RobotMap)) WorldDescription where
+instance FromJSONE (WExpMap, InheritedStructureDefs, EntityMap, RobotMap) WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
-    (scenarioLevelStructureDefs, (em, rm)) <- getE
+    (wexpMap, scenarioLevelStructureDefs, em, rm) <- getE
     (pal, rootWorldStructureDefs) <- localE (const (em, rm)) $ do
       pal <- v ..:? "palette" ..!= WorldPalette mempty
       rootWorldStructs <- v ..:? "structures" ..!= []
@@ -73,6 +77,17 @@ instance FromJSONE (InheritedStructureDefs, (EntityMap, RobotMap)) WorldDescript
         unmergedWaypoints
         portalDefs
 
+    mwexp <- liftE (v .:? "dsl")
+    dslTerm <- case mwexp of
+      Nothing -> return Nothing
+      Just wexp -> do
+        let checkResult =
+              run . runThrow @CheckErr . runReader wexpMap . runReader em $
+                check CNil (TTyWorld TTyCell) wexp
+        case checkResult of
+          Left checkErr -> fail (show checkErr) -- XXX pretty checkErr
+          Right t -> return $ Just t
+
     WorldDescription
       <$> liftE (v .:? "offset" .!= False)
       <*> liftE (v .:? "scrollable" .!= True)
@@ -81,7 +96,7 @@ instance FromJSONE (InheritedStructureDefs, (EntityMap, RobotMap)) WorldDescript
       <*> pure (map catMaybes mergedArea) -- Root-level map has no transparent cells.
       <*> pure validatedNavigation
       <*> pure subWorldName
-      <*> liftE (v .:? "dsl")
+      <*> pure dslTerm
 
 ------------------------------------------------------------
 -- World editor
