@@ -26,6 +26,7 @@ import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.TUI.Model (gameState)
 import Swarm.TUI.Model.StateUpdate (classicGame0)
+import Swarm.Util.Erasable
 
 -- | The program of a robot that does nothing.
 idleProgram :: ProcessedTerm
@@ -87,7 +88,7 @@ mkGameState robotMaker numRobots = do
     (mapM addTRobot robots)
     ( (initAppState ^. gameState)
         & creativeMode .~ True
-        & multiWorld .~ M.singleton DefaultRootSubworld (newWorld (WF $ const (fromEnum DirtT, Nothing)))
+        & multiWorld .~ M.singleton DefaultRootSubworld (newWorld (WF $ const (fromEnum DirtT, ENothing)))
     )
 
 -- | Runs numGameTicks ticks of the game.
