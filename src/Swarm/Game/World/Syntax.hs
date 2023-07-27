@@ -70,11 +70,14 @@ data WExp where
   WLet :: [(Var, WExp)] -> WExp -> WExp
   WOverlay :: NE.NonEmpty WExp -> WExp
   WImport :: Text -> WExp
-  -- We'll add these later.  XXX
-  -- WCat :: Axis -> [WExp] -> WExp
-  -- WStruct :: WorldPalette Text -> [Text] -> WExp
   deriving (Eq, Show)
 
 -- We don't have an explicit Empty case because we can't infer its
 -- type.  It could be done but it would require a lot more care with
 -- inference vs checking mode.
+
+-- TODO (#1394): Add hcat and vcat operations
+-- WCat :: Axis -> [WExp] -> WExp
+
+-- TODO (#1394): Add support for structures
+-- WStruct :: WorldPalette Text -> [Text] -> WExp
