@@ -539,7 +539,7 @@ resolveCellItem (mCellTag, item) = case mCellTag of
         _ -> do
           em <- ask @EntityMap
           return . fmap mkEntity $ lookupEntityName eName em
-    CellRobot -> \_ -> return Nothing -- XXX robots!
+    CellRobot -> \_ -> return Nothing -- TODO (#1396): support robots
 
 -- | Infer the type of a let expression, and elaborate into a series
 --   of lambda applications.
