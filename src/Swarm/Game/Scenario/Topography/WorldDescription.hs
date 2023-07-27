@@ -49,11 +49,10 @@ type WorldDescription = PWorldDescription Entity
 instance FromJSONE (InheritedStructureDefs, (EntityMap, RobotMap)) WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
     (scenarioLevelStructureDefs, (em, rm)) <- getE
-    (pal, terr, rootWorldStructureDefs) <- localE (const (em, rm)) $ do
+    (pal, rootWorldStructureDefs) <- localE (const (em, rm)) $ do
       pal <- v ..:? "palette" ..!= WorldPalette mempty
-      terr <- v ..:? "default"
       rootWorldStructs <- v ..:? "structures" ..!= []
-      return (pal, terr, rootWorldStructs)
+      return (pal, rootWorldStructs)
 
     waypointDefs <- liftE $ v .:? "waypoints" .!= []
     portalDefs <- liftE $ v .:? "portals" .!= []
@@ -74,7 +73,7 @@ instance FromJSONE (InheritedStructureDefs, (EntityMap, RobotMap)) WorldDescript
         unmergedWaypoints
         portalDefs
 
-    WorldDescription terr
+    WorldDescription
       <$> liftE (v .:? "offset" .!= False)
       <*> liftE (v .:? "scrollable" .!= True)
       <*> pure pal
