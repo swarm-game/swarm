@@ -38,7 +38,7 @@ runTTerm t seed = convert . interpBTerm seed . bracket $ t
 convert :: (Coords -> CellVal) -> WorldFun TerrainType Entity
 convert f = WF ((\(CellVal t e _) -> (t, e)) . f)
 
-loadWorldsWithWarnings :: EntityMap -> IO ([SystemFailure], WExpMap)
+loadWorldsWithWarnings :: EntityMap -> IO ([SystemFailure], WorldMap)
 loadWorldsWithWarnings em = do
   res <- getDataDirSafe Worlds "worlds"
   case res of
@@ -58,7 +58,7 @@ processWorldFile dir em (fp, src) = do
       runParser parseWExp (into @Text src)
   t <-
     left (AssetNotLoaded (Data Worlds) fp . CustomMessage . prettyText) $
-      run . runThrow @CheckErr . runReader em . runReader @WExpMap M.empty $
+      run . runThrow @CheckErr . runReader em . runReader @WorldMap M.empty $
         infer CNil wexp
   return (into @Text (dropExtension (stripDir dir fp)), t)
 

@@ -52,9 +52,9 @@ data PWorldDescription e = WorldDescription
 
 type WorldDescription = PWorldDescription Entity
 
-instance FromJSONE (WExpMap, InheritedStructureDefs, EntityMap, RobotMap) WorldDescription where
+instance FromJSONE (WorldMap, InheritedStructureDefs, EntityMap, RobotMap) WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
-    (wexpMap, scenarioLevelStructureDefs, em, rm) <- getE
+    (worldMap, scenarioLevelStructureDefs, em, rm) <- getE
     (pal, rootWorldStructureDefs) <- localE (const (em, rm)) $ do
       pal <- v ..:? "palette" ..!= WorldPalette mempty
       rootWorldStructs <- v ..:? "structures" ..!= []
@@ -82,7 +82,7 @@ instance FromJSONE (WExpMap, InheritedStructureDefs, EntityMap, RobotMap) WorldD
     mwexp <- liftE (v .:? "dsl")
     dslTerm <- forM mwexp $ \wexp -> do
       let checkResult =
-            run . runThrow @CheckErr . runReader wexpMap . runReader em $
+            run . runThrow @CheckErr . runReader worldMap . runReader em $
               check CNil (TTyWorld TTyCell) wexp
       either (fail . prettyString) return checkResult
     WorldDescription

@@ -182,7 +182,7 @@ import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromAr
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Eval (runTTerm)
 import Swarm.Game.World.Gen (Seed, findGoodOrigin)
-import Swarm.Game.World.Typecheck (WExpMap)
+import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Module (Module (Module))
@@ -1019,7 +1019,7 @@ data GameStateConfig = GameStateConfig
   , initNameList :: Array Int Text
   , initEntities :: EntityMap
   , initRecipes :: [Recipe Entity]
-  , initWExpMap :: WExpMap
+  , initWorldMap :: WorldMap
   }
 
 -- | Create an initial, fresh game state record when starting a new scenario.

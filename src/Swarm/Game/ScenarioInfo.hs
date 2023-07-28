@@ -56,7 +56,7 @@ import Swarm.Game.ResourceLoading (getDataDirSafe, getSwarmSavePath)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Status
-import Swarm.Game.World.Typecheck (WExpMap)
+import Swarm.Game.World.Typecheck (WorldMap)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
 import Witch (into)
@@ -129,13 +129,13 @@ flatten (SICollection _ c) = concatMap flatten $ scenarioCollectionToList c
 -- | Load all the scenarios from the scenarios data directory.
 loadScenariosWithWarnings ::
   EntityMap ->
-  WExpMap ->
+  WorldMap ->
   IO ([SystemFailure], ScenarioCollection)
-loadScenariosWithWarnings em wexpMap = do
+loadScenariosWithWarnings em worldMap = do
   res <- getDataDirSafe Scenarios "scenarios"
   case res of
     Left err -> return ([err], SC mempty mempty)
-    Right dataDir -> loadScenarioDir em wexpMap dataDir
+    Right dataDir -> loadScenarioDir em worldMap dataDir
 
 -- | The name of the special file which indicates the order of
 --   scenarios in a folder.
@@ -151,10 +151,10 @@ readOrderFile orderFile =
 loadScenarioDir ::
   (MonadIO m) =>
   EntityMap ->
-  WExpMap ->
+  WorldMap ->
   FilePath ->
   m ([SystemFailure], ScenarioCollection)
-loadScenarioDir em wexpMap dir = do
+loadScenarioDir em worldMap dir = do
   let orderFile = dir </> orderFileName
       dirName = takeBaseName dir
   orderExists <- liftIO $ doesFileExist orderFile
@@ -198,7 +198,7 @@ loadScenarioDir em wexpMap dir = do
   -- Only keep the files from 00-ORDER.txt that actually exist.
   let morder' = filter (`elem` itemPaths) <$> morder
   let loadItem filepath = do
-        (warnings, item) <- loadScenarioItem em wexpMap (dir </> filepath)
+        (warnings, item) <- loadScenarioItem em worldMap (dir </> filepath)
         return (warnings, (filepath, item))
   warningsAndScenarios <- mapM (runExceptT . loadItem) itemPaths
   let (failures, successes) = partitionEithers warningsAndScenarios
@@ -258,18 +258,18 @@ saveScenarioInfo path si = do
 loadScenarioItem ::
   (MonadIO m) =>
   EntityMap ->
-  WExpMap ->
+  WorldMap ->
   FilePath ->
   ExceptT [SystemFailure] m ([SystemFailure], ScenarioItem)
-loadScenarioItem em wexpMap path = do
+loadScenarioItem em worldMap path = do
   isDir <- liftIO $ doesDirectoryExist path
   let collectionName = into @Text . dropWhile isSpace . takeBaseName $ path
   case isDir of
     True -> do
-      (warnings, d) <- loadScenarioDir em wexpMap path
+      (warnings, d) <- loadScenarioDir em worldMap path
       return (warnings, SICollection collectionName d)
     False -> do
-      s <- withExceptT pure $ loadScenarioFile em wexpMap path
+      s <- withExceptT pure $ loadScenarioFile em worldMap path
       eitherSi <- runExceptT $ loadScenarioInfo path
       return $ case eitherSi of
         Right si -> ([], SISingle (s, si))

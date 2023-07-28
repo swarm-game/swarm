@@ -150,7 +150,7 @@ import Swarm.Game.ScenarioInfo (
  )
 import Swarm.Game.State
 import Swarm.Game.World.Eval (loadWorldsWithWarnings)
-import Swarm.Game.World.Typecheck (WExpMap)
+import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
@@ -194,7 +194,7 @@ data RuntimeState = RuntimeState
   { _webPort :: Maybe Port
   , _upstreamRelease :: Either NewReleaseFailure String
   , _eventLog :: Notifications LogEntry
-  , _worlds :: WExpMap
+  , _worlds :: WorldMap
   , _scenarios :: ScenarioCollection
   , _stdEntityMap :: EntityMap
   , _stdRecipes :: [Recipe Entity]
@@ -252,7 +252,7 @@ eventLog :: Lens' RuntimeState (Notifications LogEntry)
 
 -- | A collection of typechecked world DSL terms that are available to
 --   be used in scenario definitions.
-worlds :: Lens' RuntimeState WExpMap
+worlds :: Lens' RuntimeState WorldMap
 
 -- | The collection of scenarios that comes with the game.
 scenarios :: Lens' RuntimeState ScenarioCollection
@@ -293,7 +293,7 @@ mkGameStateConfig rs =
     , initNameList = rs ^. stdNameList
     , initEntities = rs ^. stdEntityMap
     , initRecipes = rs ^. stdRecipes
-    , initWExpMap = rs ^. worlds
+    , initWorldMap = rs ^. worlds
     }
 
 -- ----------------------------------------------------------------------------

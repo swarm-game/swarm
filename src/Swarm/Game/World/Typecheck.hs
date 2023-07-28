@@ -422,7 +422,7 @@ pattern SomeTy α = Some α (F.Const ())
 ------------------------------------------------------------
 -- Type inference/checking + elaboration
 
-type WExpMap = Map Text (Some (TTerm '[]))
+type WorldMap = Map Text (Some (TTerm '[]))
 
 -- | Type contexts, indexed by a type-level list of types of all the
 --   variables in the context.
@@ -446,7 +446,7 @@ lookup x (CCons y ty ctx)
 check ::
   ( Has (Throw CheckErr) sig m
   , Has (Reader EntityMap) sig m
-  , Has (Reader WExpMap) sig m
+  , Has (Reader WorldMap) sig m
   ) =>
   Ctx g ->
   TTy t ->
@@ -560,7 +560,7 @@ typeArgsFor _ _ = []
 applyOp ::
   ( Has (Throw CheckErr) sig m
   , Has (Reader EntityMap) sig m
-  , Has (Reader WExpMap) sig m
+  , Has (Reader WorldMap) sig m
   ) =>
   Ctx g ->
   Op ->
@@ -575,7 +575,7 @@ infer ::
   forall sig m g.
   ( Has (Throw CheckErr) sig m
   , Has (Reader EntityMap) sig m
-  , Has (Reader WExpMap) sig m
+  , Has (Reader WorldMap) sig m
   ) =>
   Ctx g ->
   WExp ->
@@ -594,8 +594,8 @@ infer _ WHash = return $ Some (TTyWorld TTyInt) (embed CHash)
 infer ctx (WLet defs body) = inferLet ctx defs body
 infer ctx (WOverlay ts) = inferOverlay ctx ts
 infer _ctx (WImport key) = do
-  wexpMap <- ask @WExpMap
-  case M.lookup key wexpMap of
+  worldMap <- ask @WorldMap
+  case M.lookup key worldMap of
     Just (Some ty t) -> return (Some ty (weaken @g t))
     Nothing -> throwError $ UnknownImport key
 
@@ -648,7 +648,7 @@ resolveCellItem (mCellTag, item) = case mCellTag of
 inferLet ::
   ( Has (Throw CheckErr) sig m
   , Has (Reader EntityMap) sig m
-  , Has (Reader WExpMap) sig m
+  , Has (Reader WorldMap) sig m
   ) =>
   Ctx g ->
   [(Var, WExp)] ->
@@ -665,7 +665,7 @@ inferLet ctx ((x, e) : xs) body = do
 inferOverlay ::
   ( Has (Throw CheckErr) sig m
   , Has (Reader EntityMap) sig m
-  , Has (Reader WExpMap) sig m
+  , Has (Reader WorldMap) sig m
   ) =>
   Ctx g ->
   NE.NonEmpty WExp ->
