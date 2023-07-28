@@ -259,6 +259,6 @@ runParser p = parse p ""
 
 instance FromJSON WExp where
   parseJSON = withText "World DSL program" $ \t ->
-    case runParser parseWExp t of
+    case runParser (parseWExp <* eof) t of
       Left err -> error (errorBundlePretty err)
       Right wexp -> return wexp
