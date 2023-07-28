@@ -37,6 +37,12 @@ type World b = Coords -> b
 data CellTag = CellTerrain | CellEntity | CellRobot
   deriving (Eq, Ord, Show, Enum, Bounded)
 
+instance PrettyPrec CellTag where
+  prettyPrec _ = \case
+    CellTerrain -> "terrain"
+    CellEntity -> "an entity"
+    CellRobot -> "a robot"
+
 type RawCellVal = [(Maybe CellTag, Text)]
 
 data CellVal = CellVal TerrainType (Erasable (Last Entity)) [Robot]

@@ -261,8 +261,14 @@ weaken (TConst c) = TConst c
 
 -- | Errors that can occur during typechecking/elaboration.
 data CheckErr where
-  UnknownErr :: Int -> CheckErr
   ApplyErr :: Some (TTerm g) -> Some (TTerm g) -> CheckErr
+  NoInstance :: Text -> TTy a -> CheckErr
+  Unbound :: Text -> CheckErr
+  BadType :: Some (TTerm g) -> TTy b -> CheckErr
+  BadDivType :: TTy a -> CheckErr
+  UnknownImport :: Text -> CheckErr
+  NotAThing :: Text -> CellTag -> CheckErr
+  NotAnything :: Text -> CheckErr
 
 deriving instance Show CheckErr
 
@@ -276,7 +282,17 @@ prettyCheckErr = \case
       , "  and cannot be applied to"
       , "  " <> squote (prettyText t2) <> " which has type " <> squote (prettyText ty2)
       ]
-  UnknownErr n -> "Unknown error #" <> showT n
+  NoInstance cls ty -> T.unwords [prettyText ty, "is not an instance of", cls]
+  Unbound x -> T.unwords ["Undefined variable", x]
+  BadType (Some tty t) ty ->
+    T.unlines
+      [ T.unwords [squote (prettyText t), "has type", squote (prettyText tty)]
+      , T.unwords ["and cannot be given type", squote (prettyText ty)]
+      ]
+  BadDivType ty -> T.unwords ["Division operator used at type", prettyText ty]
+  UnknownImport key -> T.unwords ["Import", squote key, "not found"]
+  NotAThing item tag -> T.unwords [squote item, "is not", prettyText tag]
+  NotAnything item -> T.unwords ["Cannot resolve cell item", squote item]
 
 ------------------------------------------------------------
 -- Type representations
@@ -359,33 +375,33 @@ checkEq :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Eq ty, NotFun ty) => m a)
 checkEq (TTyBase BBool) a = a
 checkEq (TTyBase BInt) a = a
 checkEq (TTyBase BFloat) a = a
-checkEq _ _ = throwError (UnknownErr 0)
+checkEq ty _ = throwError $ NoInstance "Eq" ty
 
 checkOrd :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Ord ty, NotFun ty) => m a) -> m a
 checkOrd (TTyBase BBool) a = a
 checkOrd (TTyBase BInt) a = a
 checkOrd (TTyBase BFloat) a = a
-checkOrd _ _ = throwError (UnknownErr 1)
+checkOrd ty _ = throwError $ NoInstance "Ord" ty
 
 checkNum :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Num ty, NotFun ty) => m a) -> m a
 checkNum (TTyBase BInt) a = a
 checkNum (TTyBase BFloat) a = a
-checkNum _ _ = throwError (UnknownErr 2)
+checkNum ty _ = throwError $ NoInstance "Num" ty
 
 checkIntegral :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Integral ty, NotFun ty) => m a) -> m a
 checkIntegral (TTyBase BInt) a = a
-checkIntegral _ _ = throwError (UnknownErr 3)
+checkIntegral ty _ = throwError $ NoInstance "Integral" ty
 
 checkEmpty :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Empty ty, NotFun ty) => m a) -> m a
 checkEmpty (TTyBase BCell) a = a
-checkEmpty _ _ = throwError (UnknownErr 4)
+checkEmpty ty _ = throwError $ NoInstance "Empty" ty
 
 checkOver :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Over ty, NotFun ty) => m a) -> m a
 checkOver (TTyBase BBool) a = a
 checkOver (TTyBase BInt) a = a
 checkOver (TTyBase BFloat) a = a
 checkOver (TTyBase BCell) a = a
-checkOver _ _ = throwError (UnknownErr 5)
+checkOver ty _ = throwError $ NoInstance "Over" ty
 
 ------------------------------------------------------------
 -- Existential wrappers
@@ -421,7 +437,7 @@ data Ctx :: [Type] -> Type where
 -- | Look up a variable name in the context, returning a type-indexed
 --   de Bruijn index.
 lookup :: (Has (Throw CheckErr) sig m) => Text -> Ctx g -> m (Some (Idx g))
-lookup _ CNil = throwError (UnknownErr 6)
+lookup x CNil = throwError $ Unbound x
 lookup x (CCons y ty ctx)
   | x == y = return $ Some ty VZ
   | otherwise = mapSome VS <$> lookup x ctx
@@ -444,7 +460,7 @@ check e ty t = do
   t1 <- infer e t
   Some ty' t' <- apply (Some (ty :->: ty) (embed I)) t1
   case testEquality ty ty' of
-    Nothing -> throwError (UnknownErr 7)
+    Nothing -> throwError $ BadType t1 ty
     Just Refl -> return t'
 
 -- | Get the underlying base type of a term which either has a base
@@ -506,7 +522,7 @@ inferOp [SomeTy tyA] Mul = Some (tyA :->: tyA :->: tyA) <$> checkNum tyA (return
 inferOp [SomeTy tyA] Div = case tyA of
   TTyBase BInt -> return $ Some (tyA :->: tyA :->: tyA) (embed CIDiv)
   TTyBase BFloat -> return $ Some (tyA :->: tyA :->: tyA) (embed CDiv)
-  _ -> throwError (UnknownErr 9)
+  _ -> throwError $ BadDivType tyA
 inferOp [SomeTy tyA] Mod = Some (tyA :->: tyA :->: tyA) <$> checkIntegral tyA (return $ embed CMod)
 inferOp [SomeTy tyA] Eq = Some (tyA :->: tyA :->: TTyBool) <$> checkEq tyA (return $ embed CEq)
 inferOp [SomeTy tyA] Neq = Some (tyA :->: tyA :->: TTyBool) <$> checkEq tyA (return $ embed CNeq)
@@ -585,7 +601,7 @@ infer _ctx (WImport key) = do
   wexpMap <- ask @WExpMap
   case M.lookup key wexpMap of
     Just (Some ty t) -> return (Some ty (weaken @g t))
-    Nothing -> throwError (UnknownErr 14)
+    Nothing -> throwError $ UnknownImport key
 
 -- | Try to resolve a 'RawCellVal'---containing only 'Text' names for
 --   terrain, entities, and robots---into a real 'CellVal' with
@@ -609,13 +625,13 @@ resolveCellItem (mCellTag, item) = case mCellTag of
   Just cellTag -> do
     -- The item was tagged specifically, like {terrain: dirt} or {entity: water}
     mCell <- resolverByTag cellTag item
-    maybe (throwError (UnknownErr 12)) return mCell -- cell item is not a 'cellTag'
+    maybe (throwError $ NotAThing item cellTag) return mCell
   Nothing -> do
     -- The item was not tagged; try resolving in all possible ways and choose
     -- the first that works
     maybeCells <- mapM (`resolverByTag` item) [minBound .. maxBound :: CellTag]
     case F.asum maybeCells of
-      Nothing -> throwError (UnknownErr 13) -- cell item does not refer to anything
+      Nothing -> throwError $ NotAnything item
       Just cell -> return cell
  where
   mkTerrain t = CellVal t mempty mempty
