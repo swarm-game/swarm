@@ -29,14 +29,13 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Semigroup (Last (..))
 import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Type.Equality (TestEquality (..), type (:~:) (Refl))
-import Prettyprinter (Doc, pretty, (<+>))
+import Prettyprinter
 import Swarm.Game.Entity (EntityMap, lookupEntityName)
 import Swarm.Game.Terrain (readTerrain)
 import Swarm.Game.World.Syntax
 import Swarm.Language.Pretty
-import Swarm.Util (showT, squote)
+import Swarm.Util (showT)
 import Swarm.Util.Erasable
 import Prelude hiding (lookup)
 
@@ -272,27 +271,24 @@ data CheckErr where
 
 deriving instance Show CheckErr
 
--- XXX make into PrettyPrec instance?
-prettyCheckErr :: CheckErr -> Text
-prettyCheckErr = \case
-  ApplyErr (Some ty1 t1) (Some ty2 t2) ->
-    T.unlines
-      [ "Error in application:"
-      , "  " <> squote (prettyText t1) <> " has type " <> squote (prettyText ty1)
-      , "  and cannot be applied to"
-      , "  " <> squote (prettyText t2) <> " which has type " <> squote (prettyText ty2)
-      ]
-  NoInstance cls ty -> T.unwords [prettyText ty, "is not an instance of", cls]
-  Unbound x -> T.unwords ["Undefined variable", x]
-  BadType (Some tty t) ty ->
-    T.unlines
-      [ T.unwords [squote (prettyText t), "has type", squote (prettyText tty)]
-      , T.unwords ["and cannot be given type", squote (prettyText ty)]
-      ]
-  BadDivType ty -> T.unwords ["Division operator used at type", prettyText ty]
-  UnknownImport key -> T.unwords ["Import", squote key, "not found"]
-  NotAThing item tag -> T.unwords [squote item, "is not", prettyText tag]
-  NotAnything item -> T.unwords ["Cannot resolve cell item", squote item]
+instance PrettyPrec CheckErr where
+  prettyPrec _ = \case
+    ApplyErr (Some ty1 t1) (Some ty2 t2) ->
+      nest 2 . vsep $
+        [ "Error in application:"
+        , squotes (ppr t1) <> " has type " <> squotes (ppr ty1)
+        , "and cannot be applied to"
+        , squotes (ppr t2) <> " which has type " <> squotes (ppr ty2)
+        ]
+    NoInstance cls ty -> squotes (ppr ty) <+> "is not an instance of" <+> pretty cls
+    Unbound x -> "Undefined variable" <+> pretty x
+    BadType (Some tty t) ty ->
+      hsep
+        [squotes (ppr t), "has type", squotes (ppr tty), "and cannot be given type", squotes (ppr ty)]
+    BadDivType ty -> "Division operator used at type" <+> squotes (ppr ty)
+    UnknownImport key -> "Import" <+> squotes (pretty key) <+> "not found"
+    NotAThing item tag -> squotes (pretty item) <+> "is not" <+> ppr tag
+    NotAnything item -> "Cannot resolve cell item" <+> squotes (pretty item)
 
 ------------------------------------------------------------
 -- Type representations

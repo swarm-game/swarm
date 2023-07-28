@@ -28,8 +28,8 @@ import Swarm.Game.Universe
 import Swarm.Game.World.Parse ()
 import Swarm.Game.World.Syntax
 import Swarm.Game.World.Typecheck
+import Swarm.Language.Pretty (prettyString)
 import Swarm.Util.Yaml
-import Witch (into)
 
 ------------------------------------------------------------
 -- World description
@@ -84,7 +84,7 @@ instance FromJSONE (WExpMap, InheritedStructureDefs, EntityMap, RobotMap) WorldD
       let checkResult =
             run . runThrow @CheckErr . runReader wexpMap . runReader em $
               check CNil (TTyWorld TTyCell) wexp
-      either (fail . into @String . prettyCheckErr) return checkResult
+      either (fail . prettyString) return checkResult
     WorldDescription
       <$> liftE (v .:? "offset" .!= False)
       <*> liftE (v .:? "scrollable" .!= True)
