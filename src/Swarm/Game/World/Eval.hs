@@ -30,8 +30,8 @@ import Swarm.Util (acquireAllWithExt)
 import System.FilePath (dropExtension, joinPath, splitPath)
 import Witch (into)
 
-runTTerm :: TTerm '[] (World CellVal) -> Seed -> WorldFun TerrainType Entity
-runTTerm t seed = convert . interpBTerm seed . bracket $ t
+runWorld :: TTerm '[] (World CellVal) -> Seed -> WorldFun TerrainType Entity
+runWorld t seed = convert . interpBTerm seed . bracket $ t
 
 -- runCTerm . compile seed . bracket
 

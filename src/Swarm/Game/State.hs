@@ -180,7 +180,7 @@ import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Universe as U
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
 import Swarm.Game.World qualified as W
-import Swarm.Game.World.Eval (runTTerm)
+import Swarm.Game.World.Eval (runWorld)
 import Swarm.Game.World.Gen (Seed, findGoodOrigin)
 import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Capability (constCaps)
@@ -1255,7 +1255,7 @@ buildWorld WorldDescription {..} = (robots worldName, first fromEnum . wf)
   worldArray = listArray ((ulr, ulc), (ulr + rs - 1, ulc + cs - 1)) (concat worldGrid)
 
   dslWF, arrayWF :: Seed -> WorldFun TerrainType Entity
-  dslWF = maybe mempty ((applyWhen offsetOrigin findGoodOrigin .) . runTTerm) worldProg
+  dslWF = maybe mempty ((applyWhen offsetOrigin findGoodOrigin .) . runWorld) worldProg
   arrayWF = const (worldFunFromArray worldArray)
 
   wf = dslWF <> arrayWF
