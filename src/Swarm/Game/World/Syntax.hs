@@ -19,14 +19,18 @@ module Swarm.Game.World.Syntax (
 )
 where
 
+import Control.Lens (view, (^.))
 import Data.List.NonEmpty qualified as NE
 import Data.Semigroup (Last (..))
 import Data.Text (Text)
-import Swarm.Game.Entity (Entity)
-import Swarm.Game.Robot (Robot)
+import Data.Text qualified as T
+import Prettyprinter
+import Swarm.Game.Entity (Entity, entityName)
+import Swarm.Game.Robot (Robot, robotName)
 import Swarm.Game.Terrain
 import Swarm.Game.World.Coords
 import Swarm.Language.Pretty
+import Swarm.Util (showT)
 import Swarm.Util.Erasable
 
 ------------------------------------------------------------
@@ -45,11 +49,21 @@ instance PrettyPrec CellTag where
 
 type RawCellVal = [(Maybe CellTag, Text)]
 
+prettyRawCellItem :: (Maybe CellTag, Text) -> Doc ann
+prettyRawCellItem (Nothing, t) = pretty t
+prettyRawCellItem (Just tag, t) = pretty (T.toLower . T.drop 4 . showT $ tag) <> ":" <> pretty t
+
 data CellVal = CellVal TerrainType (Erasable (Last Entity)) [Robot]
   deriving (Eq, Show)
 
 instance PrettyPrec CellVal where
-  prettyPrec _ _ = "cell" -- XXX
+  prettyPrec _ (CellVal terr ent rs) =
+    "{" <> hsep (punctuate "," (map prettyRawCellItem items)) <> "}"
+   where
+    items =
+      [(Just CellTerrain, getTerrainWord terr) | terr /= BlankT]
+        ++ [(Just CellEntity, e ^. entityName) | EJust (Last e) <- [ent]]
+        ++ map ((Just CellRobot,) . view robotName) rs
 
 data Rot = Rot0 | Rot90 | Rot180 | Rot270
   deriving (Eq, Ord, Show, Bounded, Enum)
