@@ -1,0 +1,123 @@
+version: 1
+name: Rocket thruster
+description: |
+  Where's the steering wheel on this thing?
+attrs:
+  - name: rightward_turntable
+    fg: "#3aaa00"
+    bg: "#5eee00"
+objectives:
+  - goal:
+    - |
+      Your robot is equipped only with *longitudinal* control; there is no rudder
+      or steering wheel providing *lateral* control.
+    - |
+      Fortunately, you may look to the environment to manipulate your orientation.
+      Stepping onto a "whirlpool" (R) will effect a single right turn.
+    condition: |
+      j <- robotnamed "judge";
+      as j {ishere "flower"}
+solution: |
+    def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+    doN 23 move;
+    f <- grab;
+    doN 23 move;
+    place f;
+entities:
+  - name: turbine engine
+    display:
+      attr: device
+      char: "@"
+    description:
+      - Generates forward propulsion
+    capabilities:
+      - move
+  - name: thrust reverser
+    display:
+      attr: device
+      char: "U"
+    description:
+      - Directs propulsion rearward, enabling the `backup` command.
+    capabilities:
+      - backup
+  - name: clockwise whirlpool
+    display:
+      attr: rightward_turntable
+      char: "R"
+    description:
+    - Turns the robot 90 degrees clockwise
+    properties: [known]
+robots:
+  - name: base
+    dir: [0, 1]
+    devices:
+      - branch predictor
+      - calculator
+      - comparator
+      - dictionary
+      - grabber
+      - lambda
+      - logger
+      - turbine engine
+      - strange loop
+      - thrust reverser
+  - name: judge
+    dir: [1, 0]
+    system: true
+    display:
+      char: 'J'
+      invisible: true
+known: [flower, mountain]
+world:
+  name: root
+  default: [blank]
+  palette:
+    '.': [grass]
+    'f': [grass, flower]
+    'A': [stone, mountain]
+    'g': [ice, null, judge]
+    'B': [grass, null, base]
+    '0':
+      cell: [grass, clockwise whirlpool]
+      waypoint:
+        name: wp0
+    '1':
+      cell: [grass, clockwise whirlpool]
+      waypoint:
+        name: wp1
+    '2':
+      cell: [grass, clockwise whirlpool]
+      waypoint:
+        name: wp2
+    '3':
+      cell: [grass, clockwise whirlpool]
+      waypoint:
+        name: wp3
+  upperleft: [-1, 1]
+  portals:
+    - entrance: wp0
+      exitInfo:
+        exit: wp0
+      reorient: right
+    - entrance: wp1
+      exitInfo:
+        exit: wp1
+      reorient: right
+    - entrance: wp2
+      exitInfo:
+        exit: wp2
+      reorient: right
+    - entrance: wp3
+      exitInfo:
+        exit: wp3
+      reorient: right
+  map: |
+    .A.......
+    .1.....2.
+    .........
+    .B.......
+    .f.......
+    .g.......
+    .........
+    .0.....3.
+    .........
