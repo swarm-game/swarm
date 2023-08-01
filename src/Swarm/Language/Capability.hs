@@ -34,6 +34,8 @@ data Capability
     CPower
   | -- | Execute the 'Move' command
     CMove
+  | -- | Execute the 'Backup' command
+    CBackup
   | -- | Execute the 'Push' command
     CPush
   | -- | Execute the 'Stride' command
@@ -207,6 +209,7 @@ constCaps = \case
   Log -> Just CLog
   Selfdestruct -> Just CSelfdestruct
   Move -> Just CMove
+  Backup -> Just CBackup
   Push -> Just CPush
   Stride -> Just CMovemultiple
   Turn -> Just CTurn
