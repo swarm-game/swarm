@@ -2465,7 +2465,7 @@ execConst c vs s k = do
       ["You consider destroying your base, but decide not to do it after all."]
       mAch
     selfDestruct .= True
-    
+
   moveInDirection :: (HasRobotStepState sig m, Has (Lift IO) sig m) => Heading -> m CESK
   moveInDirection orientation = do
     -- Figure out where we're going
