@@ -150,6 +150,8 @@ data Const
 
     -- | Move forward one step.
     Move
+  | -- | Move backward one step.
+    Backup
   | -- | Push an entity forward one step.
     Push
   | -- | Move forward multiple steps.
@@ -520,6 +522,7 @@ constInfo c = case c of
       , "This destroys the robot's inventory, so consider `salvage` as an alternative."
       ]
   Move -> command 0 short "Move forward one step."
+  Backup -> command 0 short "Move backward one step."
   Push ->
     command 1 short . doc "Push an entity forward one step." $
       [ "Both entity and robot moves forward one step."

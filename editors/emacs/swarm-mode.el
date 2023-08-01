@@ -54,6 +54,7 @@
                "wait"
                "selfdestruct"
                "move"
+               "backup"
                "push"
                "stride"
                "turn"
