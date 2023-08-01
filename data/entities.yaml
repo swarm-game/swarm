@@ -771,6 +771,15 @@
   capabilities: [move, turn, moveheavy]
   properties: [portable]
 
+- name: tape drive
+  display:
+    attr: device
+    char: '%'
+  description:
+  - A "tape drive" allows you to `backup`; that is, to 'drive' in reverse.
+  capabilities: [backup]
+  properties: [portable]
+
 - name: dozer blade
   display:
     attr: silver
