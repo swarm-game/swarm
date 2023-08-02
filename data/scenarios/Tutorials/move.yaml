@@ -10,7 +10,7 @@ objectives:
         in the direction they are currently facing.
       - To complete this challenge, move your robot two spaces to the right,
         to the coordinates (2,0) marked with the purple flower.
-      - Note that you can chain commands with semicolon, `;`.
+      - Note that you can chain commands with semicolon, `;`{=snippet}.
       - You can open this popup window at any time to remind yourself of the goal
         using Ctrl-G.
     condition: |
@@ -39,18 +39,18 @@ objectives:
     goal:
       - Well done! In addition to `move`, you can use the `turn` command
         to turn your robot, for example, `turn right` or `turn east`.
-      - Switch to the inventory view in the upper left (by clicking on it or typing `Alt+E`)
-        and select the `treads` device to read about the details.
+      - Switch to the inventory view in the upper left (by clicking on it or typing **Alt+E**)
+        and select the `treads`{=entity} device to read about the details.
         If the bottom-left info panel is not big enough to read the
-        whole thing, you can hit `Enter` on the `treads` device to pop
-        out the description, or you can focus the info panel (with
-        `Alt+T` or by clicking) and scroll it with arrow keys or PgUp/PgDown.
+        whole thing, you can hit **Enter** on the `treads`{=entity} device to pop
+        out the description, or you can focus the info panel (with **Alt+T** or
+        by clicking) and scroll it with arrow keys or PgUp/PgDown.
         When you're done reading, you can come back to the REPL prompt
-        by clicking on it or typing `Alt+R`.
+        by clicking on it or typing **Alt+R**.
       - Afterwards, move your robot to the coordinates (8,4) in the northeast corner
         marked with two flowers.
       - |
-        Remember, you can chain commands with `;`, for example:
+        Remember, you can chain commands with `;`{=snippet}, for example:
       - |
         `move;move;move;move`
       - You can open this popup window at any time to remind yourself of the goal

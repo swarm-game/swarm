@@ -5,10 +5,10 @@ description: |
 objectives:
   - goal:
       - In the previous tutorial challenge, you learned how to use
-        `require` to require specific devices to be equipped.
+        `require`{=snippet} to require specific devices to be equipped.
         Sometimes, instead of requiring equipped devices, you require
         supplies in your inventory.  In this case, you can write
-        `require <int> <name>` to require a certain number of copies of
+        `require <int> <name>`{=snippet} to require a certain number of copies of
         a certain entity to be placed in your inventory.
       - For example, `build {require 10 "flower"; move; move}` would
         build a robot with 10 flowers in its inventory.

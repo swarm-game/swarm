@@ -9,16 +9,16 @@ objectives:
       - |
         In this challenge, you should start by
         sending a robot to walk four steps straight east into the mountain,
-        crashing deliberately.  However, you must make sure it has a `logger`,
+        crashing deliberately.  However, you must make sure it has a `logger`{=entity},
         so we can see what command failed.  The simplest way to ensure
-        that is to have it execute the `log` command; `build` will
+        that is to have it execute the `log`{=entity} command; `build` will
         ensure it has the devices it needs to execute its commands.
         For example:
       - |
         build {log "Hi!"; turn east; move; move; move; log "3"; move; log "OK"}
       - |
-        `wait` for the robot to crash, then execute `view it0` (or whichever
-        `itN` variable corresponds to the result of the `build`
+        `wait` for the robot to crash, then execute `view it0`{=snippet} (or whichever
+        `itN`{=snippet} variable corresponds to the result of the `build`
         command) to see how far it got. Further instructions should
         appear in the crashed robot's log and `give` you an opportunity to `salvage`
         the situation...

@@ -11,11 +11,11 @@ objectives:
         build robots to do the work for you.
         You will start in a base ('Ω') that does not move (at least not yet).
       - Let's start by building a gardener robot to perform a simple task.
-      - You can `build` a robot with `build {COMMANDS}`,
-        where in place of `COMMANDS` you write the sequence
+      - You can `build` a robot with `build {COMMANDS}`{=snippet},
+        where in place of `COMMANDS`{=snippet} you write the sequence
         of commands for the robot to execute (separated by semicolons).
       - |
-        Build a robot to harvest the "flower" and place it next
+        Build a robot to harvest the `"flower"` and place it next
         to the water.
       - |
         TIP: Newly built robots start out facing the same

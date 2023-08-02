@@ -11,7 +11,7 @@ objectives:
         `grab` the Amulet of Yoneda from the northwest sanctum while
         timing your passage carefully to avoid Side Effects (X) on patrol.
       - |
-        To unlock a red door, `drill` it with the "door key" equipped.
+        To unlock a red door, `drill`{=entity} it with the "door key" equipped.
     condition: |
       as base {has "Amulet of Yoneda"}
     prerequisite:

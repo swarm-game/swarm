@@ -20,6 +20,7 @@ import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Util (reflow)
 import Swarm.Util.Lens (makeLensesNoSigs)
+import Swarm.Language.Syntax (Syntax)
 
 ------------------------------------------------------------
 -- Scenario objectives
@@ -66,7 +67,7 @@ instance FromJSON PrerequisiteConfig where
 -- | An objective is a condition to be achieved by a player in a
 --   scenario.
 data Objective = Objective
-  { _objectiveGoal :: [Markdown.Node]
+  { _objectiveGoal :: [Markdown.Document Syntax]
   , _objectiveTeaser :: Maybe Text
   , _objectiveCondition :: ProcessedTerm
   , _objectiveId :: Maybe ObjectiveLabel
@@ -84,7 +85,7 @@ instance ToSample Objective where
 
 -- | An explanation of the goal of the objective, shown to the player
 --   during play.  It is represented as a list of paragraphs.
-objectiveGoal :: Lens' Objective [Markdown.Node]
+objectiveGoal :: Lens' Objective [Markdown.Document Syntax]
 
 -- | A very short (3-5 words) description of the goal for
 -- displaying on the left side of the Objectives modal.

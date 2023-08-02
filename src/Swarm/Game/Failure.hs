@@ -12,12 +12,13 @@ import Data.Yaml (ParseException)
 
 data SystemFailure
   = AssetNotLoaded Asset FilePath LoadingFailure
+  deriving (Show)
 
 data AssetData = AppAsset | NameGeneration | Entities | Recipes | Scenarios | Script
   deriving (Eq, Show)
 
 data Asset = Achievement | Data AssetData | History | Save
-  deriving (Show)
+  deriving (Show, Eq)
 
 data Entry = Directory | File
   deriving (Eq, Show)
@@ -27,3 +28,4 @@ data LoadingFailure
   | EntryNot Entry
   | CanNotParse ParseException
   | CustomMessage Text
+  deriving (Show)

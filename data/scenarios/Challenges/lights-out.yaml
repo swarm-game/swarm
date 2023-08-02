@@ -13,7 +13,7 @@ objectives:
   - teaser: Extinguish lights
     goal:
       - |
-        `drill` a light to toggle it and its four direct neighbors
+        `drill`{=entity} a light to toggle it and its four direct neighbors
         between "off" and "on".
       - |
         The puzzle is won when all lights have been extinguished.

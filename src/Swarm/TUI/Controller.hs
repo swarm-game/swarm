@@ -211,7 +211,7 @@ handleMainMenuEvent menu = \case
 getTutorials :: ScenarioCollection -> ScenarioCollection
 getTutorials sc = case M.lookup tutorialsDirname (scMap sc) of
   Just (SICollection _ c) -> c
-  _ -> error "No tutorials exist!"
+  _ -> error $ "No tutorials exist: " ++ show sc
 
 -- | If we are in a New Game menu, advance the menu to the next item in order.
 --

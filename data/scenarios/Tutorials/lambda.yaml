@@ -12,14 +12,16 @@ objectives:
         the path that repeat four times; it seems like it could be really useful to have
         a function to repeat a command four times.
       - |
-        To write a function, you use lambda syntax: in general, `\x. blah` is the
-        function which takes an input (locally called `x`) and returns
-        `blah` as its output (`blah` can of course refer to `x`). For example:
+        To write a function, you use lambda syntax: in general, `\x. x + 1` is the
+        function which takes an input (locally called `x`{=snippet}) and returns
+        the right part as its output which can refer to `x`{=snippet}. For example:
       - |
+        ```
         def x4 : cmd unit -> cmd unit = \c. c; c; c; c end
-      - That is, `x4` is defined as the function which takes a command, called `c`,
-        as input, and returns the command
-        `c; c; c; c` which consists of executing `c` four times.
+        ```
+      - That is, `x4`{=snippet} is defined as the function which takes a command,
+        called `c`{=snippet}, as input, and returns the command
+        `c; c; c; c`{=snippet} which consists of executing `c`{=snippet} four times.
     condition: |
       try {
         teleport self (32,-16);

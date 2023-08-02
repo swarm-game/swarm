@@ -9,7 +9,7 @@ objectives:
       - There are some trees ahead of your robot; `move` to each one and `grab` it.
       - You can learn more by reading about the grabber device in your
         inventory.  Remember, if the description does not fit in the
-        lower left info box, you can either hit `Enter` to pop out the
+        lower left info box, you can either hit **Enter** to pop out the
         description, or focus the info box in order to scroll.
     condition: |
       try {
