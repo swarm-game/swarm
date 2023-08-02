@@ -22,7 +22,7 @@ import Control.Monad (guard, (<=<))
 import Control.Monad.Except (ExceptT (..))
 import Control.Monad.IO.Class (liftIO)
 import Data.List (foldl', intercalate, sort, sortOn)
-import Data.List.Extra (zipFrom)
+import Data.List.Extra (zipFrom, notNull)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
@@ -30,6 +30,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import Swarm.Constant
 import Swarm.Game.Entity (loadEntities)
 import Swarm.Game.Scenario (Scenario, scenarioDescription, scenarioName, scenarioObjectives, scenarioSolution)
@@ -42,6 +43,9 @@ import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Controller (getTutorials)
 import Swarm.Util (simpleErrorHandle)
 import Data.Text.Markdown (findCode)
+import Swarm.Game.Failure.Render (prettyFailure)
+import System.IO (stderr, hPutStrLn)
+import Control.Monad (when)
 
 -- * Constants
 
@@ -158,8 +162,9 @@ generateIntroductionsSequence =
 loadScenarioCollection :: IO ScenarioCollection
 loadScenarioCollection = simpleErrorHandle $ do
   entities <- ExceptT loadEntities
-  (_, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
-  liftIO $ putStr "TODO: ONDRA - " >> print loadedScenarios
+  (failures, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
+  when (notNull failures) $
+    liftIO $ hPutStrLn stderr "Loading failures: " >> mapM_ (T.putStrLn . prettyFailure) failures
   return loadedScenarios
 
 renderUsagesMarkdown :: CoverageInfo -> Text

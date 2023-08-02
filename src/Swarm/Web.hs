@@ -23,7 +23,7 @@
 module Swarm.Web where
 
 import Brick.BChan
-import CMarkGFM qualified as CMark (commonmarkToHtml)
+import Commonmark qualified as Mark (commonmark, renderHtml, Html)
 import Control.Arrow (left)
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar
@@ -99,8 +99,8 @@ api = Proxy
 docsBS :: ByteString
 docsBS =
   encodeUtf8
-    . L.fromStrict
-    . CMark.commonmarkToHtml [] []
+    . either (error . show) (Mark.renderHtml @())
+    . Mark.commonmark ""
     . T.pack
     . SD.markdownWith
       ( SD.defRenderingOptions

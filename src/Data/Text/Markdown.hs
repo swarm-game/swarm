@@ -1,11 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE InstanceSigs #-}
 
 module Data.Text.Markdown where
 
-import CMarkGFM qualified as CMark
-import Control.Applicative ((<|>))
+import Commonmark qualified as Mark
+import Commonmark.Extensions qualified as Mark (rawAttributeSpec)
 import Control.Monad (void)
-import Data.Function ((&))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
@@ -14,115 +15,168 @@ import Swarm.Language.Parse (readTerm)
 import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
 import Swarm.Language.Pretty (prettyText, prettyTypeErrText)
 import Swarm.Language.Syntax (Syntax)
+import Data.Maybe (catMaybes)
+import Data.List qualified as List
+import Data.Vector ( toList )
+import Data.Set (Set)
+import Data.Set qualified as Set
+import Control.Arrow (left)
+import Control.Applicative ((<|>))
+import Data.Functor.Identity (Identity(..))
 
-data Node
-  = Node NodeType [Node]
-  | LeafText Text
-  | LeafCode Syntax
-  | LeafCodeBlock String Syntax
-  deriving (Eq, Show)
+newtype Document c = Document { paragraphs :: [Paragraph c] }
+  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Semigroup, Monoid) via [Paragraph c]
 
-findCode :: Node -> [Syntax]
-findCode = \case
-  Node _type nodes -> concatMap findCode nodes
-  LeafText _t -> []
-  LeafCode s -> [s]
-  LeafCodeBlock _i s -> [s]
+newtype Paragraph c = Paragraph { nodes :: [Node c] }
+  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Semigroup, Monoid) via [Node c]
 
-data NodeType
-  = Document
-  | Paragraph
-  deriving (Eq, Show)
+mapP :: (Node c -> Node c) -> Paragraph c -> Paragraph c
+mapP f (Paragraph ns) = Paragraph (map f ns)
 
-instance ToJSON Node where
+pureP :: Node c -> Paragraph c
+pureP = Paragraph . List.singleton
+
+data Node c
+  = LeafText (Set TxtAttr) Text
+  | LeafRaw String Text
+  | LeafCode c
+  | LeafCodeBlock String c
+  deriving (Eq, Show, Functor, Foldable, Traversable)
+
+txt :: Text -> Node c
+txt = LeafText mempty
+
+addTextAttribute :: TxtAttr -> Node c -> Node c
+addTextAttribute a (LeafText as t) = LeafText (Set.insert a as) t
+addTextAttribute _ n = n
+
+data TxtAttr = Strong | Emphasis
+  deriving (Eq, Show, Ord)
+
+instance Mark.Rangeable (Paragraph c) where
+  ranged _ = id
+
+instance Mark.HasAttributes (Paragraph c) where
+  addAttributes _ = id
+
+instance Mark.Rangeable (Document c) where
+  ranged _ = id
+
+instance Mark.HasAttributes (Document c) where
+  addAttributes _ = id
+
+-- | Surround some text in double quotes if it is not empty.
+quoteMaybe :: Text -> Text
+quoteMaybe t = if T.null t then t else T.concat ["\"", t, "\""]
+
+instance Mark.IsInline (Paragraph Text) where
+  lineBreak = pureP $ txt "\n"
+  softBreak = mempty
+  str = pureP . txt
+  entity = Mark.str
+  escapedChar c = Mark.str $ T.pack ['\\', c]
+  emph = mapP $ addTextAttribute Emphasis
+  strong = mapP $ addTextAttribute Strong
+  link dest title desc = pureP (txt "[") <> desc <> pureP (txt $ "](" <> dest <> quoteMaybe title <> ")")
+  image dest title desc = pureP (txt "!") <> Mark.link dest title desc
+  code = pureP . LeafCode
+  rawInline (Mark.Format f) = pureP . LeafRaw (T.unpack f)
+
+instance Mark.IsBlock (Paragraph Text) (Document Text) where
+  paragraph = Document . List.singleton
+  plain = Mark.paragraph
+  thematicBreak = mempty
+  blockQuote (Document ns) = Document $ map Mark.emph ns
+  codeBlock f = Mark.plain . pureP . LeafCodeBlock (T.unpack f)
+  heading _lvl = Mark.plain . Mark.strong
+  rawBlock (Mark.Format f) t = error . T.unpack $ "Unsupported raw " <> f <> " block:\n" <> t 
+  referenceLinkDefinition = mempty
+  list _type _spacing = mconcat
+
+parseSyntax :: Text -> Either String Syntax
+parseSyntax t = case readTerm t of
+  Left e -> Left (T.unpack e)
+  Right Nothing -> Left "empty code"
+  Right (Just s) -> case processParsedTerm s of
+    Left e -> Left (T.unpack $ prettyTypeErrText t e)
+    Right (ProcessedTerm modul _req _reqCtx) -> Right $ void $ moduleAST modul
+
+findCode :: Document Syntax -> [Syntax]
+findCode = catMaybes . concatMap (map codeOnly . nodes) . paragraphs
+  where
+    codeOnly = \case
+      LeafCode s -> Just s
+      LeafCodeBlock _i s -> Just s
+      _l -> Nothing
+
+instance ToJSON (Paragraph Syntax) where
   toJSON = String . toText
 
-instance FromJSON Node where
-  parseJSON v =
-    withArray "markdown paragraphs" (foldMap parseJSON) v
-      <|> withText "markdown text" fromTextM v
-instance Semigroup Node where
-  Node Document cs1 <> Node Document cs2 = Node Document (cs1 <> cs2)
-  Node Document cs1 <> n2 = Node Document (cs1 <> [n2])
-  n1 <> Node Document cs2 = Node Document (n1 : cs2)
-  n1 <> n2 = Node Document [n1, n2]
+instance ToJSON (Document Syntax) where
+  toJSON = String . toText
 
-instance Monoid Node where
-  mempty = Node Document []
+instance FromJSON (Document Syntax) where
+  parseJSON v = parsePars v <|> parseDoc v
+    where 
+      parseDoc = withText "markdown" fromTextM
+      parsePars = withArray "markdown paragraphs" $ \a -> do
+        (ts :: [Text]) <- mapM parseJSON $ toList a
+        fromTextM $ T.intercalate "\n\n" ts
 
-fromText :: Text -> Node
+fromText :: Text -> Document Syntax
 fromText = either error id . fromTextE
 
-fromTextM :: MonadFail m => Text -> m Node
+fromTextM :: MonadFail m => Text -> m (Document Syntax)
 fromTextM = either fail pure . fromTextE
 
-fromTextE :: Text -> Either String Node
-fromTextE = fromGeneralNode . CMark.commonmarkToNode [CMark.optSourcePos] []
+fromTextE :: Text -> Either String (Document Syntax)
+fromTextE t = do
+  let spec = Mark.rawAttributeSpec <> Mark.defaultSyntaxSpec <> Mark.rawAttributeSpec
+  let runSimple = left show . runIdentity
+  (docT :: Document Text) <- runSimple $ Mark.commonmarkWith spec "markdown" t
+  traverse parseSyntax docT
 
--- TODO: use transformer kind of Error? (report all errors)
-fromGeneralNode :: CMark.Node -> Either String Node
-fromGeneralNode (CMark.Node p t cs) = case t of
-  CMark.DOCUMENT -> Node Document <$> mapM fromGeneralNode cs
-  CMark.PARAGRAPH -> Node Paragraph <$> mapM fromGeneralNode cs
-  CMark.SOFTBREAK -> leaf $ LeafText "\n" -- ?
-  CMark.LINEBREAK -> leaf $ LeafText "\n"
-  CMark.TEXT txt -> leaf $ LeafText txt
-  CMark.CODE txt -> leaf' $ LeafCode <$> parse txt
-  CMark.CODE_BLOCK i txt -> leaf' $ LeafCodeBlock (T.unpack i) <$> parse txt
-  _ -> Left $ "unsupported markdown node at " <> maybe "???" show p <> ":" <> show t
- where
-  parse txt =
-    readTerm txt & \case
-      Left e -> Left (T.unpack e)
-      Right Nothing -> Left "empty code"
-      Right (Just s) -> case processParsedTerm s of
-        Left e -> Left (T.unpack $ prettyTypeErrText txt e)
-        Right (ProcessedTerm modul _req _reqCtx) -> Right . void $ moduleAST modul
-  leaf' = if null cs then id else const . Left $ "Not a leaf node " <> show t <> ": " <> show cs
-  leaf = leaf' . pure
-
-toText :: Node -> Text
+toText :: ToStream a => a -> Text
 toText = streamToText . toStream
-
 data StreamNode
-  = TextNode Text
+  = TextNode (Set TxtAttr) Text
   | CodeNode Syntax
+  | RawNode String Text
   | ParagraphBreak
   deriving (Eq, Show)
 
 isText :: StreamNode -> Bool
 isText = \case
-  TextNode _ -> True
+  TextNode _ _ -> True
   _ -> False
 
 unText :: StreamNode -> Text
-unText (TextNode txt) = txt
+unText (TextNode _a t) = t
 unText _ = error "logical error: expected Text node"
 
 streamToText :: [StreamNode] -> Text
 streamToText = T.concat . map nodeToText
  where
   nodeToText = \case
-    TextNode txt -> txt
+    TextNode _a t -> t
+    RawNode _s t -> t
     CodeNode stx -> prettyText stx
     ParagraphBreak -> "\n"
 
-toStream :: Node -> [StreamNode]
-toStream = mergeText . toStreamLines
+class ToStream a where
+  toStream :: a -> [StreamNode]
 
-toStreamLines :: Node -> [StreamNode]
-toStreamLines = \case
-  LeafText txt -> [TextNode txt]
-  LeafCode txt -> [CodeNode txt]
-  LeafCodeBlock _i txt -> [TextNode "\n", CodeNode txt, TextNode "\n"]
-  Node Document cs -> concatMap toStreamLines cs
-  Node Paragraph cs -> {-ParagraphBreak :-} concatMap toStreamLines cs <> [ParagraphBreak]
+instance ToStream (Node Syntax) where
+  toStream = \case
+    LeafText a t -> [TextNode a t]
+    LeafCode t -> [CodeNode t]
+    LeafRaw s t -> [RawNode s t]
+    LeafCodeBlock _i t -> [TextNode mempty "\n", CodeNode t, TextNode mempty "\n"]
 
-mergeText :: [StreamNode] -> [StreamNode]
-mergeText = \case
-  [] -> []
-  [ParagraphBreak] -> []
-  (CodeNode txt : s) -> CodeNode txt : mergeText s
-  -- (ParagraphBreak:ParagraphBreak:s) -> mergeText (ParagraphBreak:s)
-  -- (ParagraphBreak:s) -> ParagraphBreak : mergeText s
-  s -> let (ts, r) = span isText s in TextNode (T.concat $ map unText ts) : mergeText r
+instance ToStream (Paragraph Syntax) where
+  toStream = concatMap toStream . nodes
+
+instance ToStream (Document Syntax) where
+  toStream = List.intercalate [ParagraphBreak] . map toStream . paragraphs
