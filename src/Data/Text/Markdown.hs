@@ -11,8 +11,8 @@ import Data.Text qualified as T
 import Data.Yaml
 import Swarm.Language.Module (moduleAST)
 import Swarm.Language.Parse (readTerm)
-import Swarm.Language.Pipeline (ProcessedTerm (..), prettyTypeErr, processParsedTerm)
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
+import Swarm.Language.Pretty (prettyText, prettyTypeErrText)
 import Swarm.Language.Syntax (Syntax)
 
 data Node
@@ -21,6 +21,13 @@ data Node
   | LeafCode Syntax
   | LeafCodeBlock String Syntax
   deriving (Eq, Show)
+
+findCode :: Node -> [Syntax]
+findCode = \case
+  Node _type nodes -> concatMap findCode nodes
+  LeafText _t -> []
+  LeafCode s -> [s]
+  LeafCodeBlock _i s -> [s]
 
 data NodeType
   = Document
@@ -69,7 +76,7 @@ fromGeneralNode (CMark.Node p t cs) = case t of
       Left e -> Left (T.unpack e)
       Right Nothing -> Left "empty code"
       Right (Just s) -> case processParsedTerm s of
-        Left e -> Left (T.unpack $ prettyTypeErr txt e)
+        Left e -> Left (T.unpack $ prettyTypeErrText txt e)
         Right (ProcessedTerm modul _req _reqCtx) -> Right . void $ moduleAST modul
   leaf' = if null cs then id else const . Left $ "Not a leaf node " <> show t <> ": " <> show cs
   leaf = leaf' . pure

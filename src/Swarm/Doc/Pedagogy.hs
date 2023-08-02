@@ -17,7 +17,7 @@ module Swarm.Doc.Pedagogy (
 ) where
 
 import Control.Arrow ((&&&))
-import Control.Lens (universe, view)
+import Control.Lens (universe, view, (^.))
 import Control.Monad (guard, (<=<))
 import Control.Monad.Except (ExceptT (..))
 import Control.Monad.IO.Class (liftIO)
@@ -41,6 +41,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Controller (getTutorials)
 import Swarm.Util (simpleErrorHandle)
+import Data.Text.Markdown (findCode)
 
 -- * Constants
 
@@ -87,16 +88,16 @@ extractCommandUsages idx siPair@(s, _si) =
 -- | Obtain the set of all commands mentioned by
 -- name in the tutorial's goal descriptions.
 getDescCommands :: Scenario -> Set Const
-getDescCommands s =
-  S.fromList $ mapMaybe (`M.lookup` txtLookups) backtickedWords
+getDescCommands s = S.fromList $ concatMap filterConst allCode
  where
   goalTextParagraphs = concatMap (view objectiveGoal) $ view scenarioObjectives s
-  allWords = concatMap (T.words . T.toLower) goalTextParagraphs
-  getBackticked = T.stripPrefix "`" <=< T.stripSuffix "`"
-  backtickedWords = mapMaybe getBackticked allWords
-
-  commandConsts = filter isConsidered allConst
-  txtLookups = M.fromList $ map (syntax . constInfo &&& id) commandConsts
+  allCode = concatMap findCode goalTextParagraphs
+  filterConst :: Syntax -> [Const]
+  filterConst sx = mapMaybe toConst $ universe (sx ^. sTerm)
+  toConst :: Term -> Maybe Const
+  toConst = \case
+    TConst c -> Just c
+    _ -> Nothing
 
 isConsidered :: Const -> Bool
 isConsidered c = isUserFunc c && c `S.notMember` ignoredCommands
@@ -158,6 +159,7 @@ loadScenarioCollection :: IO ScenarioCollection
 loadScenarioCollection = simpleErrorHandle $ do
   entities <- ExceptT loadEntities
   (_, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
+  liftIO $ putStr "TODO: ONDRA - " >> print loadedScenarios
   return loadedScenarios
 
 renderUsagesMarkdown :: CoverageInfo -> Text
