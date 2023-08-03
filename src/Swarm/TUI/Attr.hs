@@ -170,6 +170,7 @@ highlightAttr = attrName "highlight"
 notifAttr = attrName "notif"
 infoAttr = attrName "info"
 boldAttr = attrName "bold"
+
 italicAttr = attrName "italics"
 dimAttr = attrName "dim"
 defAttr = attrName "def"

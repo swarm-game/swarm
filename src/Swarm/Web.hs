@@ -23,7 +23,7 @@
 module Swarm.Web where
 
 import Brick.BChan
-import Commonmark qualified as Mark (commonmark, renderHtml, Html)
+import Commonmark qualified as Mark (Html, commonmark, renderHtml)
 import Control.Arrow (left)
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar

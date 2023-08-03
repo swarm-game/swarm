@@ -18,11 +18,11 @@ module Swarm.Doc.Pedagogy (
 
 import Control.Arrow ((&&&))
 import Control.Lens (universe, view, (^.))
-import Control.Monad (guard, (<=<))
+import Control.Monad (guard, when, (<=<))
 import Control.Monad.Except (ExceptT (..))
 import Control.Monad.IO.Class (liftIO)
 import Data.List (foldl', intercalate, sort, sortOn)
-import Data.List.Extra (zipFrom, notNull)
+import Data.List.Extra (notNull, zipFrom)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
@@ -31,8 +31,10 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Data.Text.Markdown (findCode)
 import Swarm.Constant
 import Swarm.Game.Entity (loadEntities)
+import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Scenario (Scenario, scenarioDescription, scenarioName, scenarioObjectives, scenarioSolution)
 import Swarm.Game.Scenario.Objective (objectiveGoal)
 import Swarm.Game.ScenarioInfo (ScenarioCollection, ScenarioInfoPair, flatten, loadScenariosWithWarnings, scenarioCollectionToList, scenarioPath)
@@ -42,10 +44,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Controller (getTutorials)
 import Swarm.Util (simpleErrorHandle)
-import Data.Text.Markdown (findCode)
-import Swarm.Game.Failure.Render (prettyFailure)
-import System.IO (stderr, hPutStrLn)
-import Control.Monad (when)
+import System.IO (hPutStrLn, stderr)
 
 -- * Constants
 
@@ -164,7 +163,8 @@ loadScenarioCollection = simpleErrorHandle $ do
   entities <- ExceptT loadEntities
   (failures, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
   when (notNull failures) $
-    liftIO $ hPutStrLn stderr "Loading failures: " >> mapM_ (T.putStrLn . prettyFailure) failures
+    liftIO $
+      hPutStrLn stderr "Loading failures: " >> mapM_ (T.putStrLn . prettyFailure) failures
   return loadedScenarios
 
 renderUsagesMarkdown :: CoverageInfo -> Text

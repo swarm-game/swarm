@@ -14,6 +14,7 @@ import Data.Map.Strict qualified as M
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Markdown qualified as Markdown
 import Graphics.Vty qualified as V
 import Swarm.Game.Entity as E
 import Swarm.Game.Location
@@ -22,6 +23,7 @@ import Swarm.Game.ScenarioInfo (scenarioItemName)
 import Swarm.Game.State
 import Swarm.Game.Terrain
 import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Attr
 import Swarm.TUI.Model
@@ -29,8 +31,6 @@ import Swarm.TUI.Model.UI
 import Swarm.TUI.View.CellDisplay
 import Swarm.Util (listEnums)
 import Witch (from, into)
-import Swarm.Language.Syntax (Syntax)
-import Data.Text.Markdown qualified as Markdown
 
 -- | Generate a fresh modal window of the requested type.
 generateModal :: AppState -> ModalType -> Modal
@@ -132,7 +132,6 @@ drawMarkdown d = do
   applyAttr a = withAttr $ case a of
     Markdown.Strong -> boldAttr
     Markdown.Emphasis -> italicAttr
-
 
 drawLabeledTerrainSwatch :: TerrainType -> Widget Name
 drawLabeledTerrainSwatch a =
