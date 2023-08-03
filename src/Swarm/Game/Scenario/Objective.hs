@@ -18,9 +18,9 @@ import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.Pipeline (ProcessedTerm)
+import Swarm.Language.Syntax (Syntax)
 import Swarm.Util (reflow)
 import Swarm.Util.Lens (makeLensesNoSigs)
-import Swarm.Language.Syntax (Syntax)
 
 ------------------------------------------------------------
 -- Scenario objectives

@@ -1,6 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DerivingVia #-}
-
+{-# LANGUAGE OverloadedStrings #-}
 
 module Data.Text.Markdown (
   -- ** Markdown document
@@ -22,31 +21,31 @@ module Data.Text.Markdown (
 
 import Commonmark qualified as Mark
 import Commonmark.Extensions qualified as Mark (rawAttributeSpec)
+import Control.Applicative ((<|>))
+import Control.Arrow (left)
 import Control.Monad (void)
+import Data.Functor.Identity (Identity (..))
+import Data.List qualified as List
+import Data.List.Split (chop)
+import Data.Maybe (catMaybes)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Tuple.Extra (both, first)
+import Data.Vector (toList)
 import Data.Yaml
 import Swarm.Language.Module (moduleAST)
 import Swarm.Language.Parse (readTerm)
 import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
 import Swarm.Language.Pretty (prettyText, prettyTypeErrText)
 import Swarm.Language.Syntax (Syntax)
-import Data.Maybe (catMaybes)
-import Data.List qualified as List
-import Data.Vector ( toList )
-import Data.Set (Set)
-import Data.Set qualified as Set
-import Control.Arrow (left)
-import Control.Applicative ((<|>))
-import Data.Functor.Identity (Identity(..))
-import Data.Tuple.Extra ( first, both )
-import Data.List.Split (chop)
 
-newtype Document c = Document { paragraphs :: [Paragraph c] }
+newtype Document c = Document {paragraphs :: [Paragraph c]}
   deriving (Eq, Show, Functor, Foldable, Traversable)
   deriving (Semigroup, Monoid) via [Paragraph c]
 
-newtype Paragraph c = Paragraph { nodes :: [Node c] }
+newtype Paragraph c = Paragraph {nodes :: [Node c]}
   deriving (Eq, Show, Functor, Foldable, Traversable)
   deriving (Semigroup, Monoid) via [Node c]
 
@@ -123,11 +122,11 @@ parseSyntax t = case readTerm t of
 
 findCode :: Document Syntax -> [Syntax]
 findCode = catMaybes . concatMap (map codeOnly . nodes) . paragraphs
-  where
-    codeOnly = \case
-      LeafCode s -> Just s
-      LeafCodeBlock _i s -> Just s
-      _l -> Nothing
+ where
+  codeOnly = \case
+    LeafCode s -> Just s
+    LeafCodeBlock _i s -> Just s
+    _l -> Nothing
 
 instance ToJSON (Paragraph Syntax) where
   toJSON = String . toText
@@ -137,11 +136,11 @@ instance ToJSON (Document Syntax) where
 
 instance FromJSON (Document Syntax) where
   parseJSON v = parsePars v <|> parseDoc v
-    where
-      parseDoc = withText "markdown" fromTextM
-      parsePars = withArray "markdown paragraphs" $ \a -> do
-        (ts :: [Text]) <- mapM parseJSON $ toList a
-        fromTextM $ T.intercalate "\n\n" ts
+   where
+    parseDoc = withText "markdown" fromTextM
+    parsePars = withArray "markdown paragraphs" $ \a -> do
+      (ts :: [Text]) <- mapM parseJSON $ toList a
+      fromTextM $ T.intercalate "\n\n" ts
 
 fromTextM :: MonadFail m => Text -> m (Document Syntax)
 fromTextM = either fail pure . fromTextE
@@ -176,37 +175,38 @@ unStream = \case
 
 chunksOf :: Int -> [StreamNode] -> [[StreamNode]]
 chunksOf n = chop (splitter True n)
-  where
-    nodeLength :: StreamNode -> Int
-    nodeLength = T.length . snd . unStream
-    splitter :: Bool -> Int -> [StreamNode] -> ([StreamNode], [StreamNode])
-    splitter start i = \case
-      [] -> ([], [])
-      (ParagraphBreak : ss) -> ([ParagraphBreak], ss)
-      (tn:ss) ->
-        let l = nodeLength tn
-        in if l <= i
-          then first (tn:) $ splitter False (i - l) ss
-          else let (tn1, tn2) = cut start i tn in ([tn1], tn2:ss)
-    cut :: Bool -> Int -> StreamNode -> (StreamNode, StreamNode)
-    cut start i tn =
-      let (con, t) = unStream tn
-      in case splitWordsAt i (T.words t) of
-        ([], []) -> (con "", con "")
-        ([], ws@(ww:wws)) -> both (con . T.unwords) $
-          -- In case single word (e.g. web link) does not fit on line we must put
-          -- it there and guarantee progress (otherwise chop will cycle)
-          if start then ([ww], wws) else ([], ws)
-        splitted -> both (con . T.unwords) splitted
+ where
+  nodeLength :: StreamNode -> Int
+  nodeLength = T.length . snd . unStream
+  splitter :: Bool -> Int -> [StreamNode] -> ([StreamNode], [StreamNode])
+  splitter start i = \case
+    [] -> ([], [])
+    (ParagraphBreak : ss) -> ([ParagraphBreak], ss)
+    (tn : ss) ->
+      let l = nodeLength tn
+       in if l <= i
+            then first (tn :) $ splitter False (i - l) ss
+            else let (tn1, tn2) = cut start i tn in ([tn1], tn2 : ss)
+  cut :: Bool -> Int -> StreamNode -> (StreamNode, StreamNode)
+  cut start i tn =
+    let (con, t) = unStream tn
+     in case splitWordsAt i (T.words t) of
+          ([], []) -> (con "", con "")
+          ([], ws@(ww : wws)) ->
+            both (con . T.unwords) $
+              -- In case single word (e.g. web link) does not fit on line we must put
+              -- it there and guarantee progress (otherwise chop will cycle)
+              if start then ([ww], wws) else ([], ws)
+          splitted -> both (con . T.unwords) splitted
 
 splitWordsAt :: Int -> [Text] -> ([Text], [Text])
 splitWordsAt i = \case
   [] -> ([], [])
   (w : ws) ->
     let l = T.length w
-    in if l < i
-      then first (w:) $ splitWordsAt (i - l - 1) ws
-      else ([], w:ws)
+     in if l < i
+          then first (w :) $ splitWordsAt (i - l - 1) ws
+          else ([], w : ws)
 
 streamToText :: [StreamNode] -> Text
 streamToText = T.concat . map nodeToText
