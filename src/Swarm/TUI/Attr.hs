@@ -163,6 +163,7 @@ highlightAttr
   , notifAttr
   , infoAttr
   , boldAttr
+  , italicAttr
   , dimAttr
   , defAttr ::
     AttrName

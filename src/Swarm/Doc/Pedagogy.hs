@@ -16,9 +16,8 @@ module Swarm.Doc.Pedagogy (
   TutorialInfo (..),
 ) where
 
-import Control.Arrow ((&&&))
 import Control.Lens (universe, view, (^.))
-import Control.Monad (guard, when, (<=<))
+import Control.Monad ( guard, when )
 import Control.Monad.Except (ExceptT (..))
 import Control.Monad.IO.Class (liftIO)
 import Data.List (foldl', intercalate, sort, sortOn)

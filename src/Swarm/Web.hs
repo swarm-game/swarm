@@ -23,7 +23,7 @@
 module Swarm.Web where
 
 import Brick.BChan
-import Commonmark qualified as Mark (Html, commonmark, renderHtml)
+import Commonmark qualified as Mark (commonmark, renderHtml)
 import Control.Arrow (left)
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar
@@ -36,7 +36,6 @@ import Data.Foldable (toList)
 import Data.IntMap qualified as IM
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
-import Data.Text.Lazy qualified as L
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Tree (Tree (Node), drawTree)
 import Network.HTTP.Types (ok200)
