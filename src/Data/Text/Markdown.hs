@@ -7,6 +7,7 @@ module Data.Text.Markdown (
   Paragraph (..),
   Node (..),
   TxtAttr (..),
+  fromTextM,
 
   -- ** Token stream
   StreamNode' (..),
@@ -41,10 +42,17 @@ import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
 import Swarm.Language.Pretty (prettyText, prettyTypeErrText)
 import Swarm.Language.Syntax (Syntax)
 
+-- | The top-level markdown document.
 newtype Document c = Document {paragraphs :: [Paragraph c]}
   deriving (Eq, Show, Functor, Foldable, Traversable)
   deriving (Semigroup, Monoid) via [Paragraph c]
 
+-- | Markdown paragraphs that contain inline leaf nodes.
+--
+-- The idea is that paragraphs do not have line breaks,
+-- and so the inline elements follow each other.
+-- In particular inline code can be followed by text without
+-- space between them (e.g. `logger`s).
 newtype Paragraph c = Paragraph {nodes :: [Node c]}
   deriving (Eq, Show, Functor, Foldable, Traversable)
   deriving (Semigroup, Monoid) via [Node c]
@@ -55,6 +63,10 @@ mapP f (Paragraph ns) = Paragraph (map f ns)
 pureP :: Node c -> Paragraph c
 pureP = Paragraph . List.singleton
 
+-- | Inline leaf nodes.
+--
+-- The raw node is from the raw_annotation extension,
+-- and can be used for types/entities/invalid code.
 data Node c
   = LeafText (Set TxtAttr) Text
   | LeafRaw String Text
@@ -69,6 +81,7 @@ addTextAttribute :: TxtAttr -> Node c -> Node c
 addTextAttribute a (LeafText as t) = LeafText (Set.insert a as) t
 addTextAttribute _ n = n
 
+-- | Simple text attributes that make it easier to find key info in descriptions.
 data TxtAttr = Strong | Emphasis
   deriving (Eq, Show, Ord)
 
@@ -142,21 +155,34 @@ instance FromJSON (Document Syntax) where
       (ts :: [Text]) <- mapM parseJSON $ toList a
       fromTextM $ T.intercalate "\n\n" ts
 
+-- | Read Markdown document and parse&validate the code.
+--
+-- If you want only the document with code as `Text`,
+-- use the 'fromTextPure' function.
 fromTextM :: MonadFail m => Text -> m (Document Syntax)
 fromTextM = either fail pure . fromTextE
 
 fromTextE :: Text -> Either String (Document Syntax)
-fromTextE t = do
+fromTextE t = fromTextPure t >>= traverse parseSyntax
+
+-- | Read Markdown document without code validation.
+fromTextPure :: Text -> Either String (Document Text)
+fromTextPure t = do
   let spec = Mark.rawAttributeSpec <> Mark.defaultSyntaxSpec <> Mark.rawAttributeSpec
   let runSimple = left show . runIdentity
-  (docT :: Document Text) <- runSimple $ Mark.commonmarkWith spec "markdown" t
-  traverse parseSyntax docT
+  runSimple $ Mark.commonmarkWith spec "markdown" t
+
+--------------------------------------------------------------
+-- DIY STREAM
+--------------------------------------------------------------
 
 -- | This is the naive and easy way to get text from markdown document.
 toText :: ToStream a => a -> Text
 toText = streamToText . toStream
 
 -- | Token stream that can be easily converted to text or brick widgets.
+--
+-- TODO: #574 Code blocks should probably be handled separately.
 data StreamNode' t
   = TextNode (Set TxtAttr) t
   | CodeNode t
@@ -173,6 +199,9 @@ unStream = \case
   RawNode a t -> (RawNode a, t)
   ParagraphBreak -> error "Logic error: Paragraph break can not be unstreamed!"
 
+-- | Get chunks of nodes not exceeding length and broken at word boundary.
+--
+-- The split will end when no more nodes (then words) can fit or on 'ParagraphBreak'.
 chunksOf :: Int -> [StreamNode] -> [[StreamNode]]
 chunksOf n = chop (splitter True n)
  where
@@ -217,6 +246,11 @@ streamToText = T.concat . map nodeToText
     CodeNode stx -> stx
     ParagraphBreak -> "\n"
 
+-- | Convert elements to one dimensional stream of nodes,
+-- that is easy to format and layout.
+--
+-- If you want to split the stream at line length, use
+-- the 'chunksOf' function afterward.
 class ToStream a where
   toStream :: a -> [StreamNode]
 

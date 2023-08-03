@@ -79,7 +79,6 @@ getCompletionIcon obj = \case
         then magentaAttr
         else greenAttr
 
--- TODO: ONDRA
 drawGoalListItem ::
   Bool ->
   GoalEntry ->

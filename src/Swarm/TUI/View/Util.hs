@@ -116,6 +116,9 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
 drawType :: Polytype -> Widget Name
 drawType = withAttr infoAttr . padLeftRight 1 . txt . prettyText
 
+-- | Draw markdown document with simple code/bold/italic attributes.
+--
+-- TODO: #574 Code blocks should probably be handled separately.
 drawMarkdown :: Markdown.Document Syntax -> Widget Name
 drawMarkdown d = do
   Widget Greedy Fixed $ do
