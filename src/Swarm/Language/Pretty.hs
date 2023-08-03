@@ -30,6 +30,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
 import Witch
+import Skylighting.Types (TokenType (..))
 
 ------------------------------------------------------------
 -- PrettyPrec class + utilities
@@ -37,10 +38,10 @@ import Witch
 -- | Type class for things that can be pretty-printed, given a
 --   precedence level of their context.
 class PrettyPrec a where
-  prettyPrec :: Int -> a -> Doc ann -- can replace with custom ann type later if desired
+  prettyPrec :: Int -> a -> Doc TokenType
 
 -- | Pretty-print a thing, with a context precedence level of zero.
-ppr :: (PrettyPrec a) => a -> Doc ann
+ppr :: (PrettyPrec a) => a -> Doc TokenType
 ppr = prettyPrec 0
 
 -- | Render a pretty-printed document as @Text@.
@@ -144,7 +145,7 @@ instance (PrettyPrec t) => PrettyPrec (Ctx t) where
   prettyPrec _ Empty = emptyDoc
   prettyPrec _ (assocs -> bs) = brackets (hsep (punctuate "," (map prettyBinding bs)))
 
-prettyBinding :: (Pretty a, PrettyPrec b) => (a, b) -> Doc ann
+prettyBinding :: (Pretty a, PrettyPrec b) => (a, b) -> Doc TokenType
 prettyBinding (x, ty) = pretty x <> ":" <+> ppr ty
 
 instance PrettyPrec Direction where
@@ -162,22 +163,27 @@ instance PrettyPrec (Syntax' ty) where
 instance PrettyPrec Term where
   prettyPrec _ TUnit = "()"
   prettyPrec p (TConst c) = prettyPrec p c
-  prettyPrec _ (TDir d) = ppr d
-  prettyPrec _ (TInt n) = pretty n
-  prettyPrec _ (TAntiInt v) = "$int:" <> pretty v
-  prettyPrec _ (TText s) = fromString (show s)
-  prettyPrec _ (TAntiText v) = "$str:" <> pretty v
-  prettyPrec _ (TBool b) = bool "false" "true" b
-  prettyPrec _ (TRobot r) = "<a" <> pretty r <> ">"
-  prettyPrec _ (TRef r) = "@" <> pretty r
-  prettyPrec p (TRequireDevice d) = pparens (p > 10) $ "require" <+> ppr @Term (TText d)
-  prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr @Term (TText e)
-  prettyPrec p (TRequirements _ e) = pparens (p > 10) $ "requirements" <+> ppr e
-  prettyPrec _ (TVar s) = pretty s
+  prettyPrec _ (TDir d) = annotate ConstantTok $ ppr d
+  prettyPrec _ (TInt n) = annotate DecValTok $ pretty n
+  prettyPrec _ (TAntiInt v) = annotate DecValTok $ "$int:" <> pretty v
+  prettyPrec _ (TText s) = annotate StringTok $ fromString (show s)
+  prettyPrec _ (TAntiText v) = annotate StringTok $ "$str:" <> pretty v
+  prettyPrec _ (TBool b) = annotate ConstantTok $ bool "false" "true" b
+  prettyPrec _ (TRobot r) = annotate VariableTok $ "<a" <> pretty r <> ">"
+  prettyPrec _ (TRef r) = annotate VariableTok $ "@" <> pretty r
+  prettyPrec p (TRequireDevice d) = pparens (p > 10) $ annotate KeywordTok "require" <+> ppr @Term (TText d)
+  prettyPrec p (TRequire n e) = pparens (p > 10) $ annotate KeywordTok "require" <+> pretty n <+> ppr @Term (TText e)
+  prettyPrec p (TRequirements _ e) = pparens (p > 10) $ annotate KeywordTok "requirements" <+> ppr e
+  prettyPrec _ (TVar s) = annotate VariableTok $ pretty s
   prettyPrec _ (TDelay _ t) = braces $ ppr t
   prettyPrec _ t@TPair {} = prettyTuple t
   prettyPrec _ (TLam x mty body) =
-    "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
+    mconcat [
+      annotate KeywordTok "\\",
+      annotate VariableTok (pretty x),
+      maybe "" ((":" <>) . ppr) mty,
+      annotate KeywordTok "."]
+    <+> ppr body
   -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3
   prettyPrec p (TApp t@(TApp (TConst c) l) r) =
     let ci = constInfo c
@@ -187,7 +193,7 @@ instance PrettyPrec Term where
             pparens (p > pC) $
               hsep
                 [ prettyPrec (pC + fromEnum (assoc == R)) l
-                , ppr c
+                , annotate OperatorTok $ ppr c
                 , prettyPrec (pC + fromEnum (assoc == L)) r
                 ]
           _ -> prettyPrecApp p t r
@@ -196,20 +202,24 @@ instance PrettyPrec Term where
       let ci = constInfo c
           pC = fixity ci
        in case constMeta ci of
-            ConstMUnOp P -> pparens (p > pC) $ ppr t1 <> prettyPrec (succ pC) t2
-            ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
+            ConstMUnOp P -> pparens (p > pC) $ annotate OperatorTok (ppr t1) <> prettyPrec (succ pC) t2
+            ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> annotate OperatorTok (ppr t1)
             _ -> prettyPrecApp p t1 t2
     _ -> prettyPrecApp p t1 t2
   prettyPrec _ (TLet _ x mty t1 t2) =
     hsep $
-      ["let", pretty x]
+      [annotate KeywordTok "let",
+      annotate VariableTok $ pretty x]
         ++ maybe [] (\ty -> [":", ppr ty]) mty
         ++ ["=", ppr t1, "in", ppr t2]
   prettyPrec _ (TDef _ x mty t1) =
     hsep $
-      ["def", pretty x]
+      [annotate KeywordTok "def",
+      annotate VariableTok $ pretty x]
         ++ maybe [] (\ty -> [":", ppr ty]) mty
-        ++ ["=", ppr t1, "end"]
+        ++ [annotate KeywordTok "=",
+        ppr t1,
+        annotate KeywordTok "end"]
   prettyPrec p (TBind Nothing t1 t2) =
     pparens (p > 0) $
       prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
@@ -217,25 +227,25 @@ instance PrettyPrec Term where
     pparens (p > 0) $
       pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
   prettyPrec _ (TRcd m) = brackets $ hsep (punctuate "," (map prettyEquality (M.assocs m)))
-  prettyPrec _ (TProj t x) = prettyPrec 11 t <> "." <> pretty x
+  prettyPrec _ (TProj t x) = prettyPrec 11 t <> annotate OperatorTok "." <> pretty x
   prettyPrec p (TAnnotate t pt) =
     pparens (p > 0) $
       prettyPrec 1 t <+> ":" <+> ppr pt
 
-prettyEquality :: (Pretty a, PrettyPrec b) => (a, Maybe b) -> Doc ann
+prettyEquality :: (Pretty a, PrettyPrec b) => (a, Maybe b) -> Doc TokenType
 prettyEquality (x, Nothing) = pretty x
-prettyEquality (x, Just t) = pretty x <+> "=" <+> ppr t
+prettyEquality (x, Just t) = pretty x <+> annotate OperatorTok "=" <+> ppr t
 
-prettyTuple :: Term -> Doc a
+prettyTuple :: Term -> Doc TokenType
 prettyTuple = pparens True . hsep . punctuate "," . map ppr . unnestTuple
  where
   unnestTuple (TPair t1 t2) = t1 : unnestTuple t2
   unnestTuple t = [t]
 
-prettyPrecApp :: Int -> Term -> Term -> Doc a
+prettyPrecApp :: Int -> Term -> Term -> Doc TokenType
 prettyPrecApp p t1 t2 =
   pparens (p > 10) $
-    prettyPrec 10 t1 <+> prettyPrec 11 t2
+    annotate FunctionTok (prettyPrec 10 t1) <+> prettyPrec 11 t2
 
 appliedTermPrec :: Term -> Int
 appliedTermPrec (TApp f _) = case f of
@@ -252,7 +262,7 @@ prettyTypeErrText :: Text -> ContextualTypeErr -> Text
 prettyTypeErrText code = docToText . prettyTypeErr code
 
 -- | Format a 'ContextualTypeError' for the user.
-prettyTypeErr :: Text -> ContextualTypeErr -> Doc ann
+prettyTypeErr :: Text -> ContextualTypeErr -> Doc TokenType
 prettyTypeErr code (CTE l tcStack te) =
   vcat
     [ teLoc <> ppr te
@@ -297,7 +307,7 @@ instance PrettyPrec TypeErr where
 
 -- | Given a type and its source, construct an appropriate description
 --   of it to go in a type mismatch error message.
-typeDescription :: Source -> UType -> Doc a
+typeDescription :: Source -> UType -> Doc TokenType
 typeDescription src ty
   | not (hasAnyUVars ty) =
       withSource src "have" "actually has" <+> "type" <+> bquote (ppr ty)

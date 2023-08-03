@@ -100,6 +100,7 @@ import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.Language.Value as V
+import Skylighting.Types (TokenType)
 
 newtype TickNumber = TickNumber {getTickNumber :: Integer}
   deriving (Eq, Ord, Show, Read, Generic, FromJSON, ToJSON)
@@ -356,7 +357,7 @@ instance PrettyPrec CESK where
 --   with a currently focused part, that is, we print the continuation
 --   from the inside out instead of as a list of frames.  This makes
 --   it much more intuitive to read.
-prettyCont :: Cont -> (Int, Doc ann) -> Doc ann
+prettyCont :: Cont -> (Int, Doc TokenType) -> Doc TokenType
 prettyCont [] (_, inner) = inner
 prettyCont (f : k) inner = prettyCont k (prettyFrame f inner)
 
@@ -367,7 +368,7 @@ prettyCont (f : k) inner = prettyCont k (prettyFrame f inner)
 --   precedence of the inside's top-level construct, return a
 --   pretty-printed version of the entire frame along with its
 --   top-level precedence.
-prettyFrame :: Frame -> (Int, Doc ann) -> (Int, Doc ann)
+prettyFrame :: Frame -> (Int, Doc TokenType) -> (Int, Doc TokenType)
 prettyFrame (FSnd t _) (_, inner) = (11, "(" <> inner <> "," <+> ppr t <> ")")
 prettyFrame (FFst v) (_, inner) = (11, "(" <> ppr (valueToTerm v) <> "," <+> inner <> ")")
 prettyFrame (FArg t _) (p, inner) = (10, pparens (p < 10) inner <+> prettyPrec 11 t)
