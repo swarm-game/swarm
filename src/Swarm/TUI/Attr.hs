@@ -35,6 +35,7 @@ module Swarm.TUI.Attr (
   notifAttr,
   infoAttr,
   boldAttr,
+  italicAttr,
   dimAttr,
   magentaAttr,
   cyanAttr,
@@ -86,6 +87,7 @@ swarmAttrMap =
          , (notifAttr, fg V.yellow `V.withStyle` V.bold)
          , (dimAttr, V.defAttr `V.withStyle` V.dim)
          , (boldAttr, V.defAttr `V.withStyle` V.bold)
+         , (italicAttr, V.defAttr `V.withStyle` V.italic)
          , -- Basic colors
            (redAttr, fg V.red)
          , (greenAttr, fg V.green)
@@ -168,6 +170,7 @@ highlightAttr = attrName "highlight"
 notifAttr = attrName "notif"
 infoAttr = attrName "info"
 boldAttr = attrName "bold"
+italicAttr = attrName "italics"
 dimAttr = attrName "dim"
 defAttr = attrName "def"
 

@@ -29,6 +29,8 @@ import Swarm.TUI.Model.UI
 import Swarm.TUI.View.CellDisplay
 import Swarm.Util (listEnums)
 import Witch (from, into)
+import Swarm.Language.Syntax (Syntax)
+import Data.Text.Markdown qualified as Markdown
 
 -- | Generate a fresh modal window of the requested type.
 generateModal :: AppState -> ModalType -> Modal
@@ -113,6 +115,24 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
 drawType = withAttr infoAttr . padLeftRight 1 . txt . prettyText
+
+drawMarkdown :: Markdown.Document Syntax -> Widget Name
+drawMarkdown d = do
+  Widget Greedy Fixed $ do
+    ctx <- getContext
+    let w = ctx ^. availWidthL
+    let docLines = Markdown.chunksOf w $ Markdown.toStream d
+    render $ vBox $ map (hBox . map mTxt) docLines
+ where
+  mTxt = \case
+    Markdown.TextNode as t -> foldr applyAttr (txt t) as
+    Markdown.CodeNode t -> withAttr highlightAttr $ txt t
+    Markdown.RawNode _f t -> withAttr highlightAttr $ txt t
+    Markdown.ParagraphBreak -> txt ""
+  applyAttr a = withAttr $ case a of
+    Markdown.Strong -> boldAttr
+    Markdown.Emphasis -> italicAttr
+
 
 drawLabeledTerrainSwatch :: TerrainType -> Widget Name
 drawLabeledTerrainSwatch a =

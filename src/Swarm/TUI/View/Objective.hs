@@ -79,6 +79,7 @@ getCompletionIcon obj = \case
         then magentaAttr
         else greenAttr
 
+-- TODO: ONDRA
 drawGoalListItem ::
   Bool ->
   GoalEntry ->
@@ -93,6 +94,6 @@ drawGoalListItem _isSelected e = case e of
 
 singleGoalDetails :: GoalEntry -> Widget Name
 singleGoalDetails = \case
-  Goal _gs obj -> displayParagraphs . map Markdown.toText $ obj ^. objectiveGoal
+  Goal _gs obj -> vBox . map (padBottom (Pad 1) . drawMarkdown) $ obj ^. objectiveGoal
   -- Only Goal entries are selectable, so we should never see this:
   _ -> emptyWidget

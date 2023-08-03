@@ -1,8 +1,24 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE InstanceSigs #-}
 
-module Data.Text.Markdown where
+
+module Data.Text.Markdown (
+  -- ** Markdown document
+  Document (..),
+  Paragraph (..),
+  Node (..),
+  TxtAttr (..),
+
+  -- ** Token stream
+  StreamNode' (..),
+  StreamNode,
+  ToStream (..),
+  toText,
+
+  -- ** Utilities
+  findCode,
+  chunksOf,
+) where
 
 import Commonmark qualified as Mark
 import Commonmark.Extensions qualified as Mark (rawAttributeSpec)
@@ -23,6 +39,8 @@ import Data.Set qualified as Set
 import Control.Arrow (left)
 import Control.Applicative ((<|>))
 import Data.Functor.Identity (Identity(..))
+import Data.Tuple.Extra ( first, both )
+import Data.List.Split (chop)
 
 newtype Document c = Document { paragraphs :: [Paragraph c] }
   deriving (Eq, Show, Functor, Foldable, Traversable)
@@ -91,7 +109,7 @@ instance Mark.IsBlock (Paragraph Text) (Document Text) where
   blockQuote (Document ns) = Document $ map Mark.emph ns
   codeBlock f = Mark.plain . pureP . LeafCodeBlock (T.unpack f)
   heading _lvl = Mark.plain . Mark.strong
-  rawBlock (Mark.Format f) t = error . T.unpack $ "Unsupported raw " <> f <> " block:\n" <> t 
+  rawBlock (Mark.Format f) t = error . T.unpack $ "Unsupported raw " <> f <> " block:\n" <> t
   referenceLinkDefinition = mempty
   list _type _spacing = mconcat
 
@@ -119,14 +137,11 @@ instance ToJSON (Document Syntax) where
 
 instance FromJSON (Document Syntax) where
   parseJSON v = parsePars v <|> parseDoc v
-    where 
+    where
       parseDoc = withText "markdown" fromTextM
       parsePars = withArray "markdown paragraphs" $ \a -> do
         (ts :: [Text]) <- mapM parseJSON $ toList a
         fromTextM $ T.intercalate "\n\n" ts
-
-fromText :: Text -> Document Syntax
-fromText = either error id . fromTextE
 
 fromTextM :: MonadFail m => Text -> m (Document Syntax)
 fromTextM = either fail pure . fromTextE
@@ -138,23 +153,60 @@ fromTextE t = do
   (docT :: Document Text) <- runSimple $ Mark.commonmarkWith spec "markdown" t
   traverse parseSyntax docT
 
+-- | This is the naive and easy way to get text from markdown document.
 toText :: ToStream a => a -> Text
 toText = streamToText . toStream
-data StreamNode
-  = TextNode (Set TxtAttr) Text
-  | CodeNode Syntax
-  | RawNode String Text
+
+-- | Token stream that can be easily converted to text or brick widgets.
+data StreamNode' t
+  = TextNode (Set TxtAttr) t
+  | CodeNode t
+  | RawNode String t
   | ParagraphBreak
-  deriving (Eq, Show)
+  deriving (Eq, Show, Functor)
 
-isText :: StreamNode -> Bool
-isText = \case
-  TextNode _ _ -> True
-  _ -> False
+type StreamNode = StreamNode' Text
 
-unText :: StreamNode -> Text
-unText (TextNode _a t) = t
-unText _ = error "logical error: expected Text node"
+unStream :: StreamNode' t -> (t -> StreamNode' t, t)
+unStream = \case
+  TextNode a t -> (TextNode a, t)
+  CodeNode t -> (CodeNode, t)
+  RawNode a t -> (RawNode a, t)
+  ParagraphBreak -> error "Logic error: Paragraph break can not be unstreamed!"
+
+chunksOf :: Int -> [StreamNode] -> [[StreamNode]]
+chunksOf n = chop (splitter True n)
+  where
+    nodeLength :: StreamNode -> Int
+    nodeLength = T.length . snd . unStream
+    splitter :: Bool -> Int -> [StreamNode] -> ([StreamNode], [StreamNode])
+    splitter start i = \case
+      [] -> ([], [])
+      (ParagraphBreak : ss) -> ([ParagraphBreak], ss)
+      (tn:ss) ->
+        let l = nodeLength tn
+        in if l <= i
+          then first (tn:) $ splitter False (i - l) ss
+          else let (tn1, tn2) = cut start i tn in ([tn1], tn2:ss)
+    cut :: Bool -> Int -> StreamNode -> (StreamNode, StreamNode)
+    cut start i tn =
+      let (con, t) = unStream tn
+      in case splitWordsAt i (T.words t) of
+        ([], []) -> (con "", con "")
+        ([], ws@(ww:wws)) -> both (con . T.unwords) $
+          -- In case single word (e.g. web link) does not fit on line we must put
+          -- it there and guarantee progress (otherwise chop will cycle)
+          if start then ([ww], wws) else ([], ws)
+        splitted -> both (con . T.unwords) splitted
+
+splitWordsAt :: Int -> [Text] -> ([Text], [Text])
+splitWordsAt i = \case
+  [] -> ([], [])
+  (w : ws) ->
+    let l = T.length w
+    in if l < i
+      then first (w:) $ splitWordsAt (i - l - 1) ws
+      else ([], w:ws)
 
 streamToText :: [StreamNode] -> Text
 streamToText = T.concat . map nodeToText
@@ -162,7 +214,7 @@ streamToText = T.concat . map nodeToText
   nodeToText = \case
     TextNode _a t -> t
     RawNode _s t -> t
-    CodeNode stx -> prettyText stx
+    CodeNode stx -> stx
     ParagraphBreak -> "\n"
 
 class ToStream a where
@@ -170,10 +222,10 @@ class ToStream a where
 
 instance ToStream (Node Syntax) where
   toStream = \case
-    LeafText a t -> [TextNode a t]
-    LeafCode t -> [CodeNode t]
-    LeafRaw s t -> [RawNode s t]
-    LeafCodeBlock _i t -> [TextNode mempty "\n", CodeNode t, TextNode mempty "\n"]
+    LeafText a t -> TextNode a <$> T.lines t
+    LeafCode t -> CodeNode <$> T.lines (prettyText t)
+    LeafRaw s t -> RawNode s <$> T.lines t
+    LeafCodeBlock _i t -> ParagraphBreak : (CodeNode <$> T.lines (prettyText t)) <> [ParagraphBreak]
 
 instance ToStream (Paragraph Syntax) where
   toStream = concatMap toStream . nodes
