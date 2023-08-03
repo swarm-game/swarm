@@ -61,7 +61,7 @@ mapP :: (Node c -> Node c) -> Paragraph c -> Paragraph c
 mapP f (Paragraph ns) = Paragraph (map f ns)
 
 pureP :: Node c -> Paragraph c
-pureP = Paragraph . List.singleton
+pureP = Paragraph . (: [])
 
 -- | Inline leaf nodes.
 --
@@ -115,7 +115,7 @@ instance Mark.IsInline (Paragraph Text) where
   rawInline (Mark.Format f) = pureP . LeafRaw (T.unpack f)
 
 instance Mark.IsBlock (Paragraph Text) (Document Text) where
-  paragraph = Document . List.singleton
+  paragraph = Document . (: [])
   plain = Mark.paragraph
   thematicBreak = mempty
   blockQuote (Document ns) = Document $ map Mark.emph ns
