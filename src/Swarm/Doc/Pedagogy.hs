@@ -161,9 +161,8 @@ loadScenarioCollection :: IO ScenarioCollection
 loadScenarioCollection = simpleErrorHandle $ do
   entities <- ExceptT loadEntities
   (failures, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
-  when (notNull failures) $
-    liftIO $
-      hPutStrLn stderr "Loading failures: " >> mapM_ (T.putStrLn . prettyFailure) failures
+  when (notNull failures) . liftIO $
+    hPutStrLn stderr "Loading failures: " >> mapM_ (T.hPutStrLn stderr . prettyFailure) failures
   return loadedScenarios
 
 renderUsagesMarkdown :: CoverageInfo -> Text
