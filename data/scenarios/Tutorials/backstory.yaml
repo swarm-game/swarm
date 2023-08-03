@@ -31,7 +31,9 @@ objectives:
         When you're ready for your first challenge, we will try the `say` command.
         Close this dialog with Esc or Ctrl-G, and type at the prompt:
       - |
+        ```
         say "Ready!"
+        ```
     condition: |
       try {
         l <- robotNamed "listener";
