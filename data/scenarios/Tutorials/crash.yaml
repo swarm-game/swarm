@@ -15,7 +15,9 @@ objectives:
         ensure it has the devices it needs to execute its commands.
         For example:
       - |
+        ```
         build {log "Hi!"; turn east; move; move; move; log "3"; move; log "OK"}
+        ```
       - |
         `wait` for the robot to crash, then execute `view it0`{=snippet} (or whichever
         `itN`{=snippet} variable corresponds to the result of the `build`

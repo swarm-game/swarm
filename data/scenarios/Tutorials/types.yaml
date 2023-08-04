@@ -18,17 +18,17 @@ objectives:
         and results in a command.
       - "Here are a few more expressions for you to try (feel free to try others as well):"
       - |
-        north
+        `north`
       - |
-        move; move
+        `move; move`
       - |
-        grab
+        `grab`
       - |
-        make
+        `make`
       - |
-        3
+        `3`
       - |
-        "tree"
+        `"tree"`
       - Once you are done experimenting, execute `place "Win"` to finish this challenge and
         move on to the next.
     condition: |

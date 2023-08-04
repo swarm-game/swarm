@@ -24,7 +24,9 @@ objectives:
         conditional expressions.  However, `if` is not special syntax;
         it is simply a built-in function of type
       - |
-        if : bool -> {a} -> {a} -> a.
+        ```
+        if : bool -> {a} -> {a} -> a
+        ```
       - |
         It takes a boolean expression and then returns either the first or second subsequent
         argument, depending on whether the boolean expression is true or false, respectively.

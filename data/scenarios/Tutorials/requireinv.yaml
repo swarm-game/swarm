@@ -16,8 +16,9 @@ objectives:
         with rocks!
       - |
         Remember that you can define commands to simplify your task, for example:
-      - |
-        `def PR = move; place "rock" end`
+        ```
+        def PR = move; place "rock" end
+        ```
     condition: |
       def repeat = \n. \c. if (n == 0) {} {c ; repeat (n-1) c} end;
       def ifC = \test. \then. \else. b <- test; if b then else end;

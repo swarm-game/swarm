@@ -42,7 +42,9 @@ objectives:
         consists of a variable name and a leftwards-pointing arrow
         before the command.  For example:
       - |
-        `move; t <- grab; place t`
+        ```
+        move; t <- grab; place t
+        ```
       - |
         In the above example, the result returned by `grab` is assigned
         to the variable name `t`{=snippet}, which can then be used later.
