@@ -12,7 +12,7 @@ objectives:
         to the coordinates `(2,0)` marked with the purple flower.
       - Note that you can chain commands with semicolon, `;`{=snippet}.
       - You can open this popup window at any time to remind yourself of the goal
-        using **Ctrl-G**.
+        using **Ctrl+G**.
     condition: |
       r <- robotNamed "check1";
       loc <- as r {has "Win"};
@@ -29,7 +29,7 @@ objectives:
       - Ahead of you is a six steps long corridor. Move to its end, i.e. the
         coordinates `(8,0)` marked with the second purple flower.
       - You can open this popup window at any time to remind yourself of the goal
-        using **Ctrl-G**.
+        using **Ctrl+G**.
     condition: |
       r <- robotNamed "check2";
       loc <- as r {has "Win"};
@@ -54,7 +54,7 @@ objectives:
       - |
         `move;move;move;move`
       - You can open this popup window at any time to remind yourself of the goal
-        using **Ctrl-G**.
+        using **Ctrl+G**.
     condition: |
       r <- robotNamed "check3";
       loc <- as r {has "Win"};
@@ -65,7 +65,7 @@ objectives:
         to the coordinates `(8,8)` marked with one flower.
       - Remember you can press the upward arrow on your keyboard to select previous commands.
       - You can open this popup window at any time to remind yourself of the goal
-        using **Ctrl-G**.
+        using **Ctrl+G**.
     condition: |
       r <- robotNamed "check4";
       loc <- as r {has "Win"};

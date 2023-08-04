@@ -7,7 +7,7 @@ objectives:
       - |
         Let's see what happens when you enter something that does not type check.
         Try typing `turn 1`{=snippet} at the REPL prompt.  Clearly this is nonsense, and
-        the expression will be highlighted in red.  To see what the error is, hit Enter.
+        the expression will be highlighted in red.  To see what the error is, hit **Enter**.
         A box will pop up with a type (or parser) error.
       - "Some other type errors for you to try:"
       - |

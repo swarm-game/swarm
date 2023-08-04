@@ -14,7 +14,7 @@ objectives:
         Build a robot to retrieve and restore the mystery artifact to its proper place!
       - |
         Note: If you find yourself stuck, you can select "Start over" from
-        the "Quit" (CTRL+q) dialog.
+        the "Quit" (**Ctrl+Q**) dialog.
     condition: |
       try {
         p <- robotnamed "floorspot";
