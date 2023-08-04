@@ -169,10 +169,15 @@ locationToString :: Location -> String
 locationToString (Location x y) =
   unwords $ map show [x, y]
 
--- | Display a list of text-wrapped paragraphs with one blank line after
---   each.
+-- | Display a list of text-wrapped paragraphs with one blank line after each.
 displayParagraphs :: [Text] -> Widget Name
-displayParagraphs = vBox . map (padBottom (Pad 1) . txtWrap)
+displayParagraphs = layoutParagraphs . map txtWrap
+
+-- | Display a list of paragraphs with one blank line after each.
+--
+-- For the common case of `[Text]` use 'displayParagraphs'.
+layoutParagraphs :: [Widget Name] -> Widget Name
+layoutParagraphs ps = vBox $ padBottom (Pad 1) <$> ps
 
 data EllipsisSide = Beginning | End
 

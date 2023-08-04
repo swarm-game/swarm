@@ -93,6 +93,6 @@ drawGoalListItem _isSelected e = case e of
 
 singleGoalDetails :: GoalEntry -> Widget Name
 singleGoalDetails = \case
-  Goal _gs obj -> vBox . map (padBottom (Pad 1) . drawMarkdown) $ obj ^. objectiveGoal
+  Goal _gs obj -> layoutParagraphs $ drawMarkdown <$> obj ^. objectiveGoal
   -- Only Goal entries are selectable, so we should never see this:
   _ -> emptyWidget
