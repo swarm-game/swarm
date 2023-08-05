@@ -62,7 +62,6 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Entity
 import Swarm.Game.Failure
-import Swarm.Game.Failure.Render
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)

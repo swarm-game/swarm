@@ -136,8 +136,11 @@ import Graphics.Vty (ColorMode (..))
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Entity as E
-import Swarm.Game.Failure
-import Swarm.Game.Failure.Render
+import Swarm.Game.Failure (
+  AssetData (NameGeneration),
+  SystemFailure,
+  prettyFailure,
+ )
 import Swarm.Game.Recipe (Recipe, loadRecipes)
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot

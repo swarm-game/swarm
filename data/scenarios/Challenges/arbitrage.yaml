@@ -10,7 +10,7 @@ objectives:
       - |
         Each shop offers different wares for trade.
         Recipes dictate which items may be exchanged
-        at any given shop. Use the `drill` on a shop to perform
+        at any given shop. Use the `drill`{=entity} on a shop to perform
         an exchange.
       - |
         As an itinerant merchant, you may exploit market asymmetry

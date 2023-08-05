@@ -18,6 +18,7 @@ import Data.Map.Strict qualified as M
 import Data.Maybe (listToMaybe)
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Objective
+import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.TUI.Attr
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
@@ -87,11 +88,11 @@ drawGoalListItem _isSelected e = case e of
   Header gs -> withAttr boldAttr $ str $ show gs
   Goal gs obj -> getCompletionIcon obj gs <+> titleWidget
    where
-    textSource = obj ^. objectiveTeaser <|> obj ^. objectiveId <|> listToMaybe (obj ^. objectiveGoal)
+    textSource = obj ^. objectiveTeaser <|> obj ^. objectiveId <|> listToMaybe (Markdown.toText <$> obj ^. objectiveGoal)
     titleWidget = maybe (txt "?") (withEllipsis End) textSource
 
 singleGoalDetails :: GoalEntry -> Widget Name
 singleGoalDetails = \case
-  Goal _gs obj -> displayParagraphs $ obj ^. objectiveGoal
+  Goal _gs obj -> layoutParagraphs $ drawMarkdown <$> obj ^. objectiveGoal
   -- Only Goal entries are selectable, so we should never see this:
   _ -> emptyWidget
