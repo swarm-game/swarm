@@ -13,7 +13,7 @@ module Swarm.Game.Failure (
   Asset (..),
   Entry (..),
   LoadingFailure (..),
-  OrderFileWarning(..),
+  OrderFileWarning (..),
   prettyLoadingFailure,
   prettyFailure,
 ) where
