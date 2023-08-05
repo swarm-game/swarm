@@ -16,9 +16,9 @@ import Data.List (intercalate)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Maybe (listToMaybe)
-import Swarm.Language.Text.Markdown qualified as Markdown
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Objective
+import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.TUI.Attr
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name

@@ -14,7 +14,6 @@ import Data.Map.Strict qualified as M
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Swarm.Language.Text.Markdown qualified as Markdown
 import Graphics.Vty qualified as V
 import Swarm.Game.Entity as E
 import Swarm.Game.Location
@@ -24,6 +23,7 @@ import Swarm.Game.State
 import Swarm.Game.Terrain
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Attr
 import Swarm.TUI.Model

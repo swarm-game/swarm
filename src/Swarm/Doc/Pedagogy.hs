@@ -30,7 +30,6 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import Swarm.Language.Text.Markdown (findCode)
 import Swarm.Constant
 import Swarm.Game.Entity (loadEntities)
 import Swarm.Game.Failure (prettyFailure)
@@ -40,6 +39,7 @@ import Swarm.Game.ScenarioInfo (ScenarioCollection, ScenarioInfoPair, flatten, l
 import Swarm.Language.Module (Module (..))
 import Swarm.Language.Pipeline (ProcessedTerm (..))
 import Swarm.Language.Syntax
+import Swarm.Language.Text.Markdown (findCode)
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Controller (getTutorials)
 import Swarm.Util (simpleErrorHandle)
