@@ -55,6 +55,8 @@ import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
 import Swarm.Language.Pretty (prettyText, prettyTypeErrText)
 import Swarm.Language.Syntax (Syntax)
 import GHC.Exts qualified (IsList(..), IsString(..)) 
+import Data.Char (isSpace)
+import Control.Lens ((%~), _last, _head, (&))
 
 -- | The top-level markdown document.
 newtype Document c = Document {paragraphs :: [Paragraph c]}
@@ -94,6 +96,18 @@ txt = LeafText mempty
 addTextAttribute :: TxtAttr -> Node c -> Node c
 addTextAttribute a (LeafText as t) = LeafText (Set.insert a as) t
 addTextAttribute _ n = n
+
+normalise :: (Eq c, Semigroup c) => Paragraph c -> Paragraph c
+normalise (Paragraph a) = Paragraph $ go a
+  where
+    go = \case
+      [] -> []
+      (n:ns) -> let (n', ns') = mergeSame n ns in n' : go ns'    
+    mergeSame = \case
+      l@(LeafText attrs1 t1) -> \case
+        (LeafText attrs2 t2 : rss) | attrs1 == attrs2 -> mergeSame (LeafText attrs1 $ t1 <> t2) rss
+        rs -> (l , rs)
+      l -> (l,)
 
 -- | Simple text attributes that make it easier to find key info in descriptions.
 data TxtAttr = Strong | Emphasis
@@ -202,7 +216,8 @@ fromTextPure :: Text -> Either String (Document Text)
 fromTextPure t = do
   let spec = Mark.rawAttributeSpec <> Mark.defaultSyntaxSpec <> Mark.rawAttributeSpec
   let runSimple = left show . runIdentity
-  runSimple $ Mark.commonmarkWith spec "markdown" t
+  Document tokenizedDoc <- runSimple $ Mark.commonmarkWith spec "markdown" t
+  return . Document $ normalise <$> tokenizedDoc
 
 --------------------------------------------------------------
 -- DIY STREAM
@@ -251,13 +266,16 @@ chunksOf n = chop (splitter True n)
   cut :: Bool -> Int -> StreamNode -> (StreamNode, StreamNode)
   cut start i tn =
     let (con, t) = unStream tn
-     in case splitWordsAt i (T.words t) of
+        endSpace = T.takeWhileEnd isSpace t
+        startSpace = T.takeWhile isSpace t
+        twords = T.words t & _head %~ (startSpace <>) & _last %~ (<> endSpace) 
+     in case splitWordsAt i twords of
           ([], []) -> (con "", con "")
           ([], ws@(ww : wws)) ->
             both (con . T.unwords) $
               -- In case single word (e.g. web link) does not fit on line we must put
               -- it there and guarantee progress (otherwise chop will cycle)
-              if start then ([ww], wws) else ([], ws)
+              if start then ([T.take i ww], T.drop i  ww : wws) else ([], ws)
           splitted -> both (con . T.unwords) splitted
 
 splitWordsAt :: Int -> [Text] -> ([Text], [Text])
