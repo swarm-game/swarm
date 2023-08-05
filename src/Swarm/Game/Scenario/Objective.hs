@@ -11,7 +11,7 @@ import Control.Lens hiding (from, (<.>))
 import Data.Aeson
 import Data.Set qualified as Set
 import Data.Text (Text)
-import Data.Text.Markdown qualified as Markdown
+import Swarm.Language.Text.Markdown qualified as Markdown
 import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD

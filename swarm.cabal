@@ -82,7 +82,7 @@ common ghc2021-extensions
 library
     import:           stan-config, common, ghc2021-extensions
     exposed-modules:  Data.BoolExpr.Simplify
-                      Data.Text.Markdown
+                      Swarm.Language.Text.Markdown
                       Swarm.App
                       Swarm.Constant
                       Swarm.Doc.Gen

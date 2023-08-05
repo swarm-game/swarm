@@ -30,7 +30,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import Data.Text.Markdown (findCode)
+import Swarm.Language.Text.Markdown (findCode)
 import Swarm.Constant
 import Swarm.Game.Entity (loadEntities)
 import Swarm.Game.Failure (prettyFailure)

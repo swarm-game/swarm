@@ -1,7 +1,17 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
-
-module Data.Text.Markdown (
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Simple Markdown AST and related utilities.
+--
+-- Parametrising 'Document' with the type of
+-- inline code and code blocks allows us to
+-- inspect and validate Swarm code in descriptions.
+--
+-- See 'Swarm.TUI.View.Util.drawMarkdown' for
+-- rendering the descriptions as brick widgets.
+module Swarm.Language.Text.Markdown (
   -- ** Markdown document
   Document (..),
   Paragraph (..),
