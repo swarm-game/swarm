@@ -81,7 +81,8 @@ common ghc2021-extensions
 
 library
     import:           stan-config, common, ghc2021-extensions
-    exposed-modules:  Data.BoolExpr.Simplify
+    exposed-modules:  Control.Carrier.Accum.FixedStrict
+                      Data.BoolExpr.Simplify
                       Swarm.App
                       Swarm.Constant
                       Swarm.Doc.Gen

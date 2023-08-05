@@ -20,7 +20,7 @@ module Swarm.TUI.Model.StateUpdate (
 import Brick.AttrMap (applyAttrMappings)
 import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
-import Control.Carrier.Accum.Strict (runAccum)
+import Control.Carrier.Accum.FixedStrict (runAccum)
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Accum

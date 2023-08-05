@@ -17,7 +17,7 @@ module Swarm.Doc.Pedagogy (
 ) where
 
 import Control.Arrow ((&&&))
-import Control.Carrier.Accum.Strict (evalAccum)
+import Control.Carrier.Accum.FixedStrict (evalAccum)
 import Control.Lens (universe, view)
 import Control.Monad (guard, (<=<))
 import Data.List (foldl', intercalate, sort, sortOn)
