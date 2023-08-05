@@ -38,7 +38,7 @@ objectives:
         evaluated until needed.  In this case, we want to make sure
         that only the correct branch is evaluated.  To write a value
         of type, say, `{int}`{=type}, we just surround a value of type `int`{=type}
-        in curly braces, like `{3}`{=type}.  This is why arguments to `build`
+        in curly braces, like `{3}`.  This is why arguments to `build`
         must also be in curly braces: the type of `build`
         is `{cmd a} -> cmd robot`{=type}.
       - |

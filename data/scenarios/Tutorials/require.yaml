@@ -13,9 +13,9 @@ objectives:
       - However, sometimes you need a device but `build` can't tell that
         you need it. In this case, you can use the special `require`{=snippet}
         command to require a particular device.  For example, if you
-        `build {require "3D printer"; move}`, a 3D printer will be
-        equipped on the new robot even though it does not execute any
-        commands that use a 3D printer.
+        `build {require "3D printer"; move}`, a `3D printer`{=entity} will be
+        equipped on the new robot (in addition to `treads`{=entity}) even though it does not execute any
+        commands that use one.
       - Your goal is to pick a flower on the other side of the river and
         bring it back to your base.  You win when the base has a
         `periwinkle`{=entity} flower in its inventory.

@@ -11,7 +11,7 @@ objectives:
         `require <int> <name>`{=snippet} to require a certain number of copies of
         a certain entity to be placed in your inventory.
       - For example, `build {require 10 "flower"; move; move}` would
-        build a robot with 10 flowers in its inventory.
+        build a robot with 10 `flower`{=entity}s in its inventory.
       - Your goal in this challenge is to cover the entire 4x4 gray area
         with rocks!
       - |
