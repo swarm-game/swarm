@@ -18,7 +18,7 @@ import Data.IORef (newIORef, writeIORef)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
-import Swarm.Game.Failure.Render (prettyFailure)
+import Swarm.Game.Failure (prettyFailure)
 import Swarm.Game.Robot (ErrorLevel (..), LogSource (ErrorTrace, Said))
 import Swarm.ReadableIORef (mkReadonly)
 import Swarm.TUI.Controller

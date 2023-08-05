@@ -13,8 +13,7 @@ import Control.Monad.Trans.Except (ExceptT)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
-import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Failure.Render (prettyFailure)
+import Swarm.Game.Failure (SystemFailure, prettyFailure)
 import Witch (into)
 import Witherable
 

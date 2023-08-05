@@ -544,6 +544,10 @@ traceLogShow = void . traceLog Logged . from . show
 constCapsFor :: Const -> Robot -> Maybe Capability
 constCapsFor Move r
   | r ^. robotHeavy = Just CMoveheavy
+constCapsFor Backup r
+  | r ^. robotHeavy = Just CMoveheavy
+constCapsFor Stride r
+  | r ^. robotHeavy = Just CMoveheavy
 constCapsFor c _ = constCaps c
 
 -- | Ensure that a robot is capable of executing a certain constant
@@ -1127,17 +1131,11 @@ execConst c vs s k = do
       flagRedraw
       return $ Out VUnit s k
     Move -> do
-      -- Figure out where we're going
-      loc <- use robotLocation
       orient <- use robotOrientation
-      let nextLoc = loc `offsetBy` (orient ? zero)
-      checkMoveAhead nextLoc $
-        MoveFailure
-          { failIfBlocked = ThrowExn
-          , failIfDrown = Destroy
-          }
-      updateRobotLocation loc nextLoc
-      return $ Out VUnit s k
+      moveInDirection $ orient ? zero
+    Backup -> do
+      orient <- use robotOrientation
+      moveInDirection $ applyTurn (DRelative $ DPlanar DBack) $ orient ? zero
     Push -> do
       -- Figure out where we're going
       loc <- use robotLocation
@@ -2465,6 +2463,19 @@ execConst c vs s k = do
       ["You consider destroying your base, but decide not to do it after all."]
       mAch
     selfDestruct .= True
+
+  moveInDirection :: (HasRobotStepState sig m, Has (Lift IO) sig m) => Heading -> m CESK
+  moveInDirection orientation = do
+    -- Figure out where we're going
+    loc <- use robotLocation
+    let nextLoc = loc `offsetBy` orientation
+    checkMoveAhead nextLoc $
+      MoveFailure
+        { failIfBlocked = ThrowExn
+        , failIfDrown = Destroy
+        }
+    updateRobotLocation loc nextLoc
+    return $ Out VUnit s k
 
   -- Make sure nothing is in the way. Note that system robots implicitly ignore
   -- and base throws on failure.

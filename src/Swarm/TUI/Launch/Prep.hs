@@ -18,7 +18,7 @@ import Control.Lens ((.=), (^.))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Functor.Identity (runIdentity)
 import Data.Text qualified as T
-import Swarm.Game.Failure.Render (prettyFailure)
+import Swarm.Game.Failure (prettyFailure)
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (..), ScenarioInfoPair, getLaunchParams, scenarioStatus)
 import Swarm.Game.State (Seed, ValidatedLaunchParams, getRunCodePath, parseCodeFile)
 import Swarm.TUI.Launch.Model

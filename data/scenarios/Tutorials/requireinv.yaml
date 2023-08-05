@@ -5,19 +5,20 @@ description: |
 objectives:
   - goal:
       - In the previous tutorial challenge, you learned how to use
-        `require` to require specific devices to be equipped.
+        `require`{=snippet} to require specific devices to be equipped.
         Sometimes, instead of requiring equipped devices, you require
         supplies in your inventory.  In this case, you can write
-        `require <int> <name>` to require a certain number of copies of
+        `require <int> <name>`{=snippet} to require a certain number of copies of
         a certain entity to be placed in your inventory.
       - For example, `build {require 10 "flower"; move; move}` would
-        build a robot with 10 flowers in its inventory.
+        build a robot with 10 `flower`{=entity}s in its inventory.
       - Your goal in this challenge is to cover the entire 4x4 gray area
         with rocks!
       - |
         Remember that you can define commands to simplify your task, for example:
-      - |
-        `def PR = move; place "rock" end`
+        ```
+        def PR = move; place "rock" end
+        ```
     condition: |
       def repeat = \n. \c. if (n == 0) {} {c ; repeat (n-1) c} end;
       def ifC = \test. \then. \else. b <- test; if b then else end;

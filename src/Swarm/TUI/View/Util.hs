@@ -22,6 +22,8 @@ import Swarm.Game.ScenarioInfo (scenarioItemName)
 import Swarm.Game.State
 import Swarm.Game.Terrain
 import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Attr
 import Swarm.TUI.Model
@@ -114,6 +116,26 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
 drawType :: Polytype -> Widget Name
 drawType = withAttr infoAttr . padLeftRight 1 . txt . prettyText
 
+-- | Draw markdown document with simple code/bold/italic attributes.
+--
+-- TODO: #574 Code blocks should probably be handled separately.
+drawMarkdown :: Markdown.Document Syntax -> Widget Name
+drawMarkdown d = do
+  Widget Greedy Fixed $ do
+    ctx <- getContext
+    let w = ctx ^. availWidthL
+    let docLines = Markdown.chunksOf w $ Markdown.toStream d
+    render $ vBox $ map (hBox . map mTxt) docLines
+ where
+  mTxt = \case
+    Markdown.TextNode as t -> foldr applyAttr (txt t) as
+    Markdown.CodeNode t -> withAttr highlightAttr $ txt t
+    Markdown.RawNode _f t -> withAttr highlightAttr $ txt t
+    Markdown.ParagraphBreak -> txt ""
+  applyAttr a = withAttr $ case a of
+    Markdown.Strong -> boldAttr
+    Markdown.Emphasis -> italicAttr
+
 drawLabeledTerrainSwatch :: TerrainType -> Widget Name
 drawLabeledTerrainSwatch a =
   tile <+> str materialName
@@ -147,10 +169,15 @@ locationToString :: Location -> String
 locationToString (Location x y) =
   unwords $ map show [x, y]
 
--- | Display a list of text-wrapped paragraphs with one blank line after
---   each.
+-- | Display a list of text-wrapped paragraphs with one blank line after each.
 displayParagraphs :: [Text] -> Widget Name
-displayParagraphs = vBox . map (padBottom (Pad 1) . txtWrap)
+displayParagraphs = layoutParagraphs . map txtWrap
+
+-- | Display a list of paragraphs with one blank line after each.
+--
+-- For the common case of `[Text]` use 'displayParagraphs'.
+layoutParagraphs :: [Widget Name] -> Widget Name
+layoutParagraphs ps = vBox $ padBottom (Pad 1) <$> ps
 
 data EllipsisSide = Beginning | End
 
