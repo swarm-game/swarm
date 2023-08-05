@@ -65,6 +65,7 @@ import Swarm.Util (both, guardRight, listEnums, quote, simpleErrorHandle)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 import Witch (from)
+import Swarm.Language.Text.Markdown as Markdown (toText)
 
 -- ============================================================================
 -- MAIN ENTRYPOINT TO CLI DOCUMENTATION GENERATOR
@@ -368,7 +369,7 @@ entityToSection e =
       <> [" - Properties: " <> T.intercalate ", " (map tshow $ toList props) | not $ null props]
       <> [" - Capabilities: " <> T.intercalate ", " (Capability.capabilityName <$> caps) | not $ null caps]
       <> ["\n"]
-      <> [T.intercalate "\n\n" $ view E.entityDescription e]
+      <> [Markdown.toText $ view E.entityDescription e]
  where
   props = view E.entityProperties e
   caps = Set.toList $ view E.entityCapabilities e

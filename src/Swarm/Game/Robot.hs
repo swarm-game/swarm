@@ -105,6 +105,8 @@ import Swarm.Language.Value as V
 import Swarm.Util.Lens (makeLensesExcluding)
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
+import Swarm.Language.Text.Markdown (Document)
+import Swarm.Language.Syntax (Syntax)
 
 -- | A record that stores the information
 --   for all definitions stored in a 'Robot'
@@ -444,7 +446,7 @@ mkRobot ::
   -- | Name of the robot.
   Text ->
   -- | Description of the robot.
-  [Text] ->
+  Document Syntax ->
   -- | Initial location.
   RobotLocation phase ->
   -- | Initial heading/direction.
@@ -501,7 +503,7 @@ instance FromJSONE EntityMap TRobot where
 
     mkRobot () Nothing
       <$> liftE (v .: "name")
-      <*> liftE (v .:? "description" .!= [])
+      <*> liftE (v .:? "description" .!= mempty)
       <*> liftE (v .:? "loc")
       <*> liftE (v .:? "dir" .!= zero)
       <*> localE (const defDisplay) (v ..:? "display" ..!= defDisplay)
