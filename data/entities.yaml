@@ -1409,7 +1409,7 @@
     installs a custom handler function that can be activated to
     respond to keyboard inputs typed at the REPL.
   - |
-    `key : text -> key` constructs values of type `key`{=entity}, for
+    `key : text -> key` constructs values of type `key`{=type}, for
     example `key "Down"` or `key "C-S-x"`.
   properties: [portable]
   capabilities: [handleinput]
