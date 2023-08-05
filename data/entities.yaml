@@ -923,7 +923,9 @@
     attr: device
     char: '!'
   description:
-  - A drill allows robots to drill through rocks and mountains, and extract resources from mines.
+  - A drill allows robots to `drill` through rocks and mountains (with
+    e.g. `drill forward`), and extract resources from mines (with
+    `drill down`).
   capabilities: [drill]
   properties: [portable]
 
