@@ -1,5 +1,6 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -19,6 +20,7 @@ module Swarm.Language.Text.Markdown (
   Node (..),
   TxtAttr (..),
   fromTextM,
+  fromText,
 
   -- ** Token stream
   StreamNode' (..),
@@ -52,6 +54,7 @@ import Swarm.Language.Parse (readTerm)
 import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
 import Swarm.Language.Pretty (prettyText, prettyTypeErrText)
 import Swarm.Language.Syntax (Syntax)
+import GHC.Exts qualified (IsList(..), IsString(..)) 
 
 -- | The top-level markdown document.
 newtype Document c = Document {paragraphs :: [Paragraph c]}
@@ -108,13 +111,27 @@ instance Mark.Rangeable (Document c) where
 instance Mark.HasAttributes (Document c) where
   addAttributes _ = id
 
+instance GHC.Exts.IsList (Document a) where
+  type Item (Document a) = Paragraph a
+  toList = paragraphs
+  fromList = Document
+
+instance GHC.Exts.IsString (Document Syntax) where
+  fromString = fromText . T.pack
+
+instance GHC.Exts.IsString (Paragraph Syntax) where
+  fromString s = case paragraphs $ GHC.Exts.fromString s of
+    [] -> mempty
+    [p] -> p
+    ps -> error $ "Error: expected one paragraph, but found " <> show (length ps)
+
 -- | Surround some text in double quotes if it is not empty.
 quoteMaybe :: Text -> Text
 quoteMaybe t = if T.null t then t else T.concat ["\"", t, "\""]
 
 instance Mark.IsInline (Paragraph Text) where
   lineBreak = pureP $ txt "\n"
-  softBreak = mempty
+  softBreak = pureP $ txt " "
   str = pureP . txt
   entity = Mark.str
   escapedChar c = Mark.str $ T.pack ['\\', c]
@@ -159,12 +176,16 @@ instance ToJSON (Document Syntax) where
   toJSON = String . toText
 
 instance FromJSON (Document Syntax) where
-  parseJSON v = parsePars v <|> parseDoc v
+  parseJSON v = parseDoc v <|> parsePars v
    where
     parseDoc = withText "markdown" fromTextM
     parsePars = withArray "markdown paragraphs" $ \a -> do
       (ts :: [Text]) <- mapM parseJSON $ toList a
       fromTextM $ T.intercalate "\n\n" ts
+
+-- | Parse Markdown document, but throw on invalid code.
+fromText :: Text -> Document Syntax
+fromText = either error id . fromTextE
 
 -- | Read Markdown document and parse&validate the code.
 --
@@ -255,7 +276,7 @@ streamToText = T.concat . map nodeToText
     TextNode _a t -> t
     RawNode _s t -> t
     CodeNode stx -> stx
-    ParagraphBreak -> "\n"
+    ParagraphBreak -> "\n\n"
 
 -- | Convert elements to one dimensional stream of nodes,
 -- that is easy to format and layout.

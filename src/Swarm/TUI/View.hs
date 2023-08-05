@@ -1105,7 +1105,7 @@ explainEntry :: AppState -> Entity -> Widget Name
 explainEntry s e =
   vBox $
     [ displayProperties $ Set.toList (e ^. entityProperties)
-    , displayParagraphs (e ^. entityDescription)
+    , drawMarkdown (e ^. entityDescription)
     , explainRecipes s e
     ]
       <> [drawRobotMachine s False | e ^. entityCapabilities . Lens.contains CDebug]
@@ -1251,7 +1251,7 @@ drawRecipe me inv (Recipe ins outs reqs time _weight) =
 
 -- | Ad-hoc entity to represent time - only used in recipe drawing
 timeE :: Entity
-timeE = mkEntity (defaultEntityDisplay '.') "ticks" [] [] []
+timeE = mkEntity (defaultEntityDisplay '.') "ticks" mempty [] []
 
 drawReqs :: IngredientList Entity -> Widget Name
 drawReqs = vBox . map (hCenter . drawReq)

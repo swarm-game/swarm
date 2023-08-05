@@ -109,12 +109,14 @@ import Swarm.Game.Failure
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Language.Capability
-import Swarm.Util (binTuples, failT, findDup, plural, reflow, (?))
+import Swarm.Util (binTuples, failT, findDup, plural, quote, (?))
 import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
 import Prelude hiding (lookup)
+import Swarm.Language.Text.Markdown (Document, toText)
+import Swarm.Language.Syntax (Syntax)
 
 ------------------------------------------------------------
 -- Properties
@@ -214,7 +216,7 @@ data Entity = Entity
   -- ^ The plural of the entity name, in case it is irregular.  If
   --   this field is @Nothing@, default pluralization heuristics
   --   will be used (see 'plural').
-  , _entityDescription :: [Text]
+  , _entityDescription :: Document Syntax
   -- ^ A longer-form description. Each 'Text' value is one
   --   paragraph.
   , _entityOrientation :: Maybe Heading
@@ -246,7 +248,7 @@ instance Hashable Entity where
       `hashWithSalt` disp
       `hashWithSalt` nm
       `hashWithSalt` pl
-      `hashWithSalt` descr
+      `hashWithSalt` toText descr
       `hashWithSalt` orient
       `hashWithSalt` grow
       `hashWithSalt` yld
@@ -275,7 +277,7 @@ mkEntity ::
   -- | Entity name
   Text ->
   -- | Entity description
-  [Text] ->
+  Document Syntax ->
   -- | Properties
   [EntityProperty] ->
   -- | Capabilities
@@ -340,7 +342,7 @@ instance FromJSON Entity where
               <$> v .: "display"
               <*> v .: "name"
               <*> v .:? "plural"
-              <*> (map reflow <$> (v .: "description"))
+              <*> (v .: "description")
               <*> v .:? "orientation"
               <*> v .:? "growth"
               <*> v .:? "yields"
@@ -432,7 +434,7 @@ entityNameFor _ = to $ \e ->
 
 -- | A longer, free-form description of the entity.  Each 'Text' value
 --   represents a paragraph.
-entityDescription :: Lens' Entity [Text]
+entityDescription :: Lens' Entity (Document Syntax)
 entityDescription = hashedLens _entityDescription (\e x -> e {_entityDescription = x})
 
 -- | The direction this entity is facing (if it has one).
