@@ -102,8 +102,7 @@ import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Game.Display
-import Swarm.Game.Failure
-import Swarm.Game.Failure.Render (prettyFailure)
+import Swarm.Game.Failure (AssetData (Entities), prettyFailure)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Language.Capability

@@ -82,12 +82,12 @@ common ghc2021-extensions
 library
     import:           stan-config, common, ghc2021-extensions
     exposed-modules:  Data.BoolExpr.Simplify
+                      Swarm.Language.Text.Markdown
                       Swarm.App
                       Swarm.Constant
                       Swarm.Doc.Gen
                       Swarm.Doc.Pedagogy
                       Swarm.Game.Failure
-                      Swarm.Game.Failure.Render
                       Swarm.Game.Achievement.Attainment
                       Swarm.Game.Achievement.Definitions
                       Swarm.Game.Achievement.Description
@@ -201,8 +201,9 @@ library
                       brick                         >= 1.5 && < 1.10,
                       bytestring                    >= 0.10 && < 0.12,
                       clock                         >= 0.8.2 && < 0.9,
-                      cmark-gfm                     >= 0.2 && < 0.3,
                       colour                        >= 2.3.6 && < 2.4,
+                      commonmark                    >= 0.2 && < 0.3,
+                      commonmark-extensions         >= 0.2 && < 0.3,
                       containers                    >= 0.6.2 && < 0.7,
                       directory                     >= 1.3 && < 1.4,
                       dotgen                        >= 0.4 && < 0.5,

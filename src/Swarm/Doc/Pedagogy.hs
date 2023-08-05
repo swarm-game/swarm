@@ -16,13 +16,12 @@ module Swarm.Doc.Pedagogy (
   TutorialInfo (..),
 ) where
 
-import Control.Arrow ((&&&))
-import Control.Lens (universe, view)
-import Control.Monad (guard, (<=<))
+import Control.Lens (universe, view, (^.))
+import Control.Monad (guard, when)
 import Control.Monad.Except (ExceptT (..))
 import Control.Monad.IO.Class (liftIO)
 import Data.List (foldl', intercalate, sort, sortOn)
-import Data.List.Extra (zipFrom)
+import Data.List.Extra (notNull, zipFrom)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
@@ -30,17 +29,21 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import Swarm.Constant
 import Swarm.Game.Entity (loadEntities)
+import Swarm.Game.Failure (prettyFailure)
 import Swarm.Game.Scenario (Scenario, scenarioDescription, scenarioName, scenarioObjectives, scenarioSolution)
 import Swarm.Game.Scenario.Objective (objectiveGoal)
 import Swarm.Game.ScenarioInfo (ScenarioCollection, ScenarioInfoPair, flatten, loadScenariosWithWarnings, scenarioCollectionToList, scenarioPath)
 import Swarm.Language.Module (Module (..))
 import Swarm.Language.Pipeline (ProcessedTerm (..))
 import Swarm.Language.Syntax
+import Swarm.Language.Text.Markdown (findCode)
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Controller (getTutorials)
 import Swarm.Util (simpleErrorHandle)
+import System.IO (hPutStrLn, stderr)
 
 -- * Constants
 
@@ -87,16 +90,16 @@ extractCommandUsages idx siPair@(s, _si) =
 -- | Obtain the set of all commands mentioned by
 -- name in the tutorial's goal descriptions.
 getDescCommands :: Scenario -> Set Const
-getDescCommands s =
-  S.fromList $ mapMaybe (`M.lookup` txtLookups) backtickedWords
+getDescCommands s = S.fromList $ concatMap filterConst allCode
  where
   goalTextParagraphs = concatMap (view objectiveGoal) $ view scenarioObjectives s
-  allWords = concatMap (T.words . T.toLower) goalTextParagraphs
-  getBackticked = T.stripPrefix "`" <=< T.stripSuffix "`"
-  backtickedWords = mapMaybe getBackticked allWords
-
-  commandConsts = filter isConsidered allConst
-  txtLookups = M.fromList $ map (syntax . constInfo &&& id) commandConsts
+  allCode = concatMap findCode goalTextParagraphs
+  filterConst :: Syntax -> [Const]
+  filterConst sx = mapMaybe toConst $ universe (sx ^. sTerm)
+  toConst :: Term -> Maybe Const
+  toConst = \case
+    TConst c -> Just c
+    _ -> Nothing
 
 isConsidered :: Const -> Bool
 isConsidered c = isUserFunc c && c `S.notMember` ignoredCommands
@@ -157,7 +160,9 @@ generateIntroductionsSequence =
 loadScenarioCollection :: IO ScenarioCollection
 loadScenarioCollection = simpleErrorHandle $ do
   entities <- ExceptT loadEntities
-  (_, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
+  (failures, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
+  when (notNull failures) . liftIO $
+    hPutStrLn stderr "Loading failures: " >> mapM_ (T.hPutStrLn stderr . prettyFailure) failures
   return loadedScenarios
 
 renderUsagesMarkdown :: CoverageInfo -> Text

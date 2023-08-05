@@ -69,8 +69,7 @@ import Data.Text qualified as T
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
-import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Failure.Render (prettyFailure)
+import Swarm.Game.Failure (SystemFailure, prettyFailure)
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath, readAppData)
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,

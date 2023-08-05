@@ -16,7 +16,7 @@ objectives:
         build more advanced devices and produce more robots,
         you'll need to explore, gather resources, and set up some
         automated production pipelines.
-      - At this point you may want to create an external `.sw` file
+      - At this point you may want to create an external `.sw`{=path} file
         with useful definitions you create.  You can then load it
         via the `run` command.  See
         https://github.com/swarm-game/swarm/tree/main/editors
@@ -47,7 +47,7 @@ objectives:
         send out a robot to harvest something, try programming it to come back
         to the base when it is done.  Then, execute `salvage` to get the harvester
         back, so you can reuse it in another robot later."
-      - One of the next things you will probably want is a `lambda`, so you can
+      - One of the next things you will probably want is a `lambda`{=entity}, so you can
         define and use parameterized commands.  Scan some things and use
         the process of elimination to find one.  Since lambdas regrow,
         once you find one, try getting it with `harvest`.
