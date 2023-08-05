@@ -88,7 +88,6 @@ library
                       Swarm.Doc.Gen
                       Swarm.Doc.Pedagogy
                       Swarm.Game.Failure
-                      Swarm.Game.Failure.Render
                       Swarm.Game.Achievement.Attainment
                       Swarm.Game.Achievement.Definitions
                       Swarm.Game.Achievement.Description
