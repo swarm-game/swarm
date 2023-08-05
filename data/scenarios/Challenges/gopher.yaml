@@ -15,7 +15,7 @@ objectives:
         He will burrow (o) underground awhile, then pop up
         anywhere within the rectangular grassy region
         to gloat atop his "mound" of dirt for a short time.
-        `drill`{=entity} the "mound" while he sits to drive him
+        `drill` the "mound" while he sits to drive him
         away. Eventually you should wear down his resolve!
     condition: |
       try {

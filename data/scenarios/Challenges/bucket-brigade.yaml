@@ -60,7 +60,7 @@ objectives:
       - Deliver a "coal lump" to the base.
       - |
         To excavate coal from the "lignite mine" (M), a robot needs to
-        `drill`{=entity} while in posession of a "bucketwheel excavator".
+        `drill` while in posession of a "bucketwheel excavator".
       - |
         To assemble the excavator, you'll need to repurpose
         some "treads".

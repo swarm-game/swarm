@@ -7,7 +7,7 @@ seed: 2
 creative: false
 objectives:
   - goal:
-      - Use the `drill`{=entity} command (e.g. "drill down" when on top of the
+      - Use the `drill` command (e.g. "drill down" when on top of the
         intended letter) to mark the sequence of letters that
         spells COW within the designated playfield.
       - |
@@ -117,10 +117,10 @@ objectives:
       /**
       It's possible we could be one cell away from
       a marked cell after finishing, either due
-      to using a directional `drill`{=entity} command instead of
+      to using a directional `drill` command instead of
       `drill down`, or due to an apparent bug which
       does not evaluate the goal condition between the
-      `drill`{=entity} and a `move` command.
+      `drill` and a `move` command.
       */
       def moveToMarkedCell = \n.
           if (n > 0) {

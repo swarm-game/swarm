@@ -21,7 +21,7 @@ objectives:
         To slide a tile into the empty space, position yourself
         behind it and `push`.
       - |
-        Or, if you prefer, `drill`{=entity} a tile to cause it to slide
+        Or, if you prefer, `drill` a tile to cause it to slide
         into the adjacent empty space. However, you must not drill a tile that
         has nowhere to slide. Also, drilling consumes "ink", which will be replenished
         after the sliding operation is complete, so avoid drilling too fast in
