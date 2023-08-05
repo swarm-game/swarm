@@ -33,7 +33,7 @@ import Data.Text.IO qualified as T
 import Data.Text.Markdown (findCode)
 import Swarm.Constant
 import Swarm.Game.Entity (loadEntities)
-import Swarm.Game.Failure.Render (prettyFailure)
+import Swarm.Game.Failure (prettyFailure)
 import Swarm.Game.Scenario (Scenario, scenarioDescription, scenarioName, scenarioObjectives, scenarioSolution)
 import Swarm.Game.Scenario.Objective (objectiveGoal)
 import Swarm.Game.ScenarioInfo (ScenarioCollection, ScenarioInfoPair, flatten, loadScenariosWithWarnings, scenarioCollectionToList, scenarioPath)

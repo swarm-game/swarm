@@ -49,7 +49,6 @@ import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Failure qualified as F
-import Swarm.Game.Failure.Render qualified as F
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements, recipeTime, recipeWeight)
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot (Robot, equippedDevices, instantiateRobot, robotInventory)
