@@ -29,8 +29,8 @@ import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Doc.Gen (EditorType (..))
 import Swarm.Doc.Gen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
-import Swarm.Game.Entity (EntityMap, loadEntities, lookupByName)
-import Swarm.Game.Failure (prettyFailure)
+import Swarm.Game.Entity (EntityMap, lookupByName)
+import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Robot (LogEntry, defReqs, equippedDevices, leText, machine, robotContext, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
@@ -49,7 +49,8 @@ import Swarm.Game.State (
 import Swarm.Game.Step (gameTick)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
-import Swarm.TUI.Model (RuntimeState, defaultAppOpts, gameState, userScenario)
+import Swarm.Language.Pretty (prettyString)
+import Swarm.TUI.Model (RuntimeState, defaultAppOpts, gameState, stdEntityMap, userScenario)
 import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
 import Swarm.TUI.Model.UI (UIState)
 import Swarm.Util.Yaml (decodeFileEitherE)
@@ -72,25 +73,20 @@ main = do
   let (unparseableScenarios, parseableScenarios) = partition isUnparseableTest scenarioPaths
   scenarioPrograms <- acquire "data/scenarios" "sw"
   ci <- any (("CI" ==) . fst) <$> getEnvironment
-  entities <- runM . runThrow $ loadEntities
   (rs, ui) <- do
-    out <- runM . runThrow $ initPersistentState defaultAppOpts
-    case out of
-      Left err -> assertFailure $ unwords ["Failure in initPersistentState:", into @String (prettyFailure err)]
-      Right res -> return res
-  case entities of
-    Left err -> fail $ "Couldn't load entities: " <> into @String (prettyFailure err)
-    Right em -> do
-      defaultMain $
-        testGroup
-          "Tests"
-          [ exampleTests examplePaths
-          , exampleTests scenarioPrograms
-          , scenarioParseTests em parseableScenarios
-          , scenarioParseInvalidTests em unparseableScenarios
-          , testScenarioSolution rs ui ci em
-          , testEditorFiles
-          ]
+    out <- runM . runThrow @SystemFailure $ initPersistentState defaultAppOpts
+    either (assertFailure . prettyString) return out
+  let em = rs ^. stdEntityMap
+  defaultMain $
+    testGroup
+      "Tests"
+      [ exampleTests examplePaths
+      , exampleTests scenarioPrograms
+      , scenarioParseTests em parseableScenarios
+      , scenarioParseInvalidTests em unparseableScenarios
+      , testScenarioSolution rs ui ci em
+      , testEditorFiles
+      ]
 
 exampleTests :: [(FilePath, String)] -> TestTree
 exampleTests inputs = testGroup "Test example" (map exampleTest inputs)
@@ -321,9 +317,9 @@ testScenarioSolution rs ui _ci _em =
 
   testSolution' :: Time -> FilePath -> ShouldCheckBadErrors -> (GameState -> Assertion) -> TestTree
   testSolution' s p shouldCheckBadErrors verify = testCase p $ do
-    out <- runM . runThrow $ constructAppState rs ui $ defaultAppOpts {userScenario = Just p}
+    out <- runM . runThrow @SystemFailure $ constructAppState rs ui $ defaultAppOpts {userScenario = Just p}
     case out of
-      Left err -> assertFailure $ unwords ["Failure in constructAppState:", into @String (prettyFailure err)]
+      Left err -> assertFailure $ prettyString err
       Right (view gameState -> gs) -> case gs ^. winSolution of
         Nothing -> assertFailure "No solution to test!"
         Just sol@(ProcessedTerm _ _ reqCtx) -> do
