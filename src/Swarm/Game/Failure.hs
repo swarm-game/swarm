@@ -79,7 +79,7 @@ instance PrettyPrec LoadingFailure where
     DoesNotExist e -> "The" <+> ppr e <+> "is missing!"
     EntryNot e -> "The entry is not a" <+> ppr e <> "!"
     CanNotParse p ->
-      nest 4 . vcat $
+      nest 2 . vcat $
         "Parse failure:"
           : map pretty (T.lines (into @Text (prettyPrintParseException p)))
     Duplicate thing duped -> "Duplicate" <+> ppr thing <> ":" <+> squotes (pretty duped)
@@ -98,13 +98,13 @@ instance PrettyPrec OrderFileWarning where
 instance PrettyPrec SystemFailure where
   prettyPrec _ = \case
     AssetNotLoaded a fp l ->
-      nest 4 . vcat $
+      nest 2 . vcat $
         [ "Failed to acquire" <+> ppr a <+> "from path" <+> squotes (pretty fp) <> ":"
         , ppr l
         ]
     ScenarioNotFound s -> "Scenario not found:" <+> pretty s
     OrderFileWarning orderFile w ->
-      nest 4 . vcat $
+      nest 2 . vcat $
         [ "Warning: while processing" <+> pretty orderFile <> ":"
         , ppr w
         ]
