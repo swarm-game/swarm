@@ -1,6 +1,7 @@
--- See https://github.com/fused-effects/fused-effects/issues/449
--- This file is a temporary copy of the code from fused-effects with the above bug fixed,
--- just until the above issue is fixed upstream.
+-- This file is a temporary copy of the code from fused-effects, with
+-- https://github.com/fused-effects/fused-effects/issues/449 fixed
+-- (the fixed line of code is marked with a comment below).  We should
+-- keep this only until the above issue is fixed upstream.
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -134,5 +135,5 @@ instance (Algebra sig m, Monoid w) => Algebra (Accum w :+: sig) (AccumC w m) whe
     L accum -> case accum of
       Add w' -> pure (w', ctx)
       Look -> pure (mempty, w <$ ctx)
-    R other -> thread (uncurry runAccum ~<~ hdl) other (mempty, ctx)
+    R other -> thread (uncurry runAccum ~<~ hdl) other (mempty, ctx) -- THIS IS THE FIXED LINE
   {-# INLINE alg #-}
