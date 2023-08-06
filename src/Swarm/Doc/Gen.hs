@@ -60,12 +60,12 @@ import Swarm.Language.Key (specialKeyNames)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
+import Swarm.Language.Text.Markdown as Markdown (toText)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Util (both, guardRight, listEnums, quote, simpleErrorHandle)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 import Witch (from)
-import Swarm.Language.Text.Markdown as Markdown (toText)
 
 -- ============================================================================
 -- MAIN ENTRYPOINT TO CLI DOCUMENTATION GENERATOR

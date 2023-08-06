@@ -99,14 +99,14 @@ import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirement (ReqCtx)
+import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown (Document)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types (TCtx)
 import Swarm.Language.Value as V
 import Swarm.Util.Lens (makeLensesExcluding)
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
-import Swarm.Language.Text.Markdown (Document)
-import Swarm.Language.Syntax (Syntax)
 
 -- | A record that stores the information
 --   for all definitions stored in a 'Robot'

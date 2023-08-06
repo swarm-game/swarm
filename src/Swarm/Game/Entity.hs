@@ -106,13 +106,13 @@ import Swarm.Game.Failure (AssetData (Entities), prettyFailure)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Language.Capability
+import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown (Document, toText)
 import Swarm.Util (binTuples, failT, findDup, plural, quote, (?))
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
 import Prelude hiding (lookup)
-import Swarm.Language.Text.Markdown (Document, toText)
-import Swarm.Language.Syntax (Syntax)
 
 ------------------------------------------------------------
 -- Properties
