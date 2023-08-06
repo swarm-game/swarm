@@ -44,12 +44,13 @@ import Control.Effect.Accum (Accum, add)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw (Throw, liftEither)
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (filterM, unless, when, (<=<))
+import Control.Monad (filterM, forM_, when, (<=<))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Char (isSpace)
 import Data.Either (partitionEithers)
 import Data.Either.Extra (fromRight')
 import Data.List (intercalate, isPrefixOf, stripPrefix, (\\))
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (isJust)
@@ -179,11 +180,15 @@ loadScenarioDir em dir = do
       let missing = itemPaths \\ order
           dangling = order \\ itemPaths
 
-      unless (null missing) . warn $
-        OrderFileWarning (dirName </> orderFileName) (MissingFiles missing)
+      forM_ (NE.nonEmpty missing) $
+        warn
+          . OrderFileWarning (dirName </> orderFileName)
+          . MissingFiles
 
-      unless (null dangling) . warn $
-        OrderFileWarning (dirName </> orderFileName) (DanglingFiles dangling)
+      forM_ (NE.nonEmpty dangling) $
+        warn
+          . OrderFileWarning (dirName </> orderFileName)
+          . DanglingFiles
     Nothing -> pure ()
 
   -- Only keep the files from 00-ORDER.txt that actually exist.

@@ -21,6 +21,7 @@ import Control.Lens ((^.))
 import Data.Bifunctor (first)
 import Data.Data (Data)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Language.Context
@@ -50,7 +51,7 @@ data ProcessedTerm = ProcessedTerm TModule Requirements ReqCtx
 
 processTermEither :: Text -> Either Text ProcessedTerm
 processTermEither t = case processTerm t of
-  Left err -> Left $ "Could not parse term: " <> err
+  Left err -> Left $ T.unwords ["Could not parse term:", err]
   Right Nothing -> Left "Term was only whitespace"
   Right (Just pt) -> Right pt
 

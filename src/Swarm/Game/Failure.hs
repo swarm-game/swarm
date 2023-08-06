@@ -16,6 +16,8 @@ module Swarm.Game.Failure (
   OrderFileWarning (..),
 ) where
 
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
@@ -46,8 +48,8 @@ data LoadingFailure
 
 data OrderFileWarning
   = NoOrderFile
-  | MissingFiles [FilePath]
-  | DanglingFiles [FilePath]
+  | MissingFiles (NonEmpty FilePath)
+  | DanglingFiles (NonEmpty FilePath)
   deriving (Eq, Show)
 
 data SystemFailure
@@ -90,10 +92,10 @@ instance PrettyPrec OrderFileWarning where
     NoOrderFile -> "File not found; using alphabetical order"
     MissingFiles missing ->
       ppr . BulletList "Files not listed will be ignored:" $
-        map (into @Text) missing
+        map (into @Text) (NE.toList missing)
     DanglingFiles dangling ->
       ppr . BulletList "Some listed files do not exist:" $
-        map (into @Text) dangling
+        map (into @Text) (NE.toList dangling)
 
 instance PrettyPrec SystemFailure where
   prettyPrec _ = \case
