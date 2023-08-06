@@ -13,8 +13,8 @@ import Control.Monad.Trans.Except (ExceptT)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
-import Swarm.Game.Failure (SystemFailure, prettyFailure)
-import Witch (into)
+import Swarm.Game.Failure (SystemFailure)
+import Swarm.Language.Pretty (prettyString)
 import Witherable
 
 -- | Transform a @Throw e1@ constraint into a @Throw e2@ constraint,
@@ -63,4 +63,4 @@ forMW ::
 forMW = flip traverseW
 
 simpleErrorHandle :: ThrowC SystemFailure IO a -> IO a
-simpleErrorHandle = either (fail . into @String . prettyFailure) pure <=< runThrow
+simpleErrorHandle = either (fail . prettyString) pure <=< runThrow

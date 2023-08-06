@@ -75,6 +75,7 @@ import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Universe
 import Swarm.Language.Pipeline (ProcessedTerm)
+import Swarm.Language.Pretty (prettyText)
 import Swarm.Util (binTuples, failT)
 import Swarm.Util.Effect (throwToMaybe, withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
@@ -116,9 +117,9 @@ instance FromJSONE EntityMap Scenario where
     emRaw <- liftE (v .:? "entities" .!= [])
     em <- case run . runThrow $ buildEntityMap emRaw of
       Right x -> return x
-      Left x -> failT [prettyLoadingFailure x]
-    -- extend ambient EntityMap with custom entities
+      Left x -> failT [prettyText @LoadingFailure x]
 
+    -- extend ambient EntityMap with custom entities
     withE em $ do
       -- parse 'known' entity names and make sure they exist
       known <- liftE (v .:? "known" .!= [])

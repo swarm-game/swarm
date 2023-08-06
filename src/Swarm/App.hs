@@ -18,8 +18,9 @@ import Data.IORef (newIORef, writeIORef)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
-import Swarm.Game.Failure (prettyFailure)
+import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Robot (ErrorLevel (..), LogSource (ErrorTrace, Said))
+import Swarm.Language.Pretty (prettyText)
 import Swarm.ReadableIORef (mkReadonly)
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
@@ -49,7 +50,7 @@ appMain :: AppOpts -> IO ()
 appMain opts = do
   res <- runM . runThrow $ initAppState opts
   case res of
-    Left err -> T.hPutStrLn stderr (prettyFailure err)
+    Left err -> T.hPutStrLn stderr (prettyText @SystemFailure err)
     Right s -> do
       -- Send Frame events as at a reasonable rate for 30 fps. The
       -- game is responsible for figuring out how many steps to take
@@ -116,7 +117,7 @@ demoWeb = do
   res <-
     runM . runThrow $ initAppState (defaultAppOpts {userScenario = demoScenario})
   case res of
-    Left err -> T.putStrLn (prettyFailure err)
+    Left err -> T.putStrLn (prettyText @SystemFailure err)
     Right s -> do
       appStateRef <- newIORef s
       chan <- newBChan 5

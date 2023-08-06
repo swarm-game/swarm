@@ -42,7 +42,7 @@ import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
-import Swarm.Game.Failure (SystemFailure, prettyFailure)
+import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
 import Swarm.Game.Scenario (loadScenario, scenarioAttrs, scenarioWorlds)
 import Swarm.Game.Scenario.Scoring.Best
@@ -57,6 +57,7 @@ import Swarm.Game.ScenarioInfo (
   _SISingle,
  )
 import Swarm.Game.State
+import Swarm.Language.Pretty (prettyText)
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Util qualified as EU
@@ -84,7 +85,7 @@ initAppState opts = do
 addWarnings :: RuntimeState -> [SystemFailure] -> RuntimeState
 addWarnings = List.foldl' logWarning
  where
-  logWarning rs' w = rs' & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
+  logWarning rs' w = rs' & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyText w)
 
 -- | Based on the command line options, should we skip displaying the
 --   menu?
@@ -272,7 +273,12 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
 --   to update it using 'scenarioToAppState'.
 initAppStateForScenario :: String -> Maybe Seed -> Maybe FilePath -> ExceptT Text IO AppState
 initAppStateForScenario sceneName userSeed toRun =
-  asExceptT . withThrow prettyFailure $ initAppState (defaultAppOpts {userScenario = Just sceneName, userSeed = userSeed, scriptToRun = toRun})
+  asExceptT . withThrow (prettyText @SystemFailure) . initAppState $
+    defaultAppOpts
+      { userScenario = Just sceneName
+      , userSeed = userSeed
+      , scriptToRun = toRun
+      }
 
 -- | For convenience, the 'AppState' corresponding to the classic game
 --   with seed 0.  This is used only for benchmarks and unit tests.
