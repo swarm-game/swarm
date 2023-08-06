@@ -29,6 +29,7 @@ import Swarm.Language.Parse (getLocRange)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
+import Swarm.Util (showLowT)
 import Witch
 
 ------------------------------------------------------------
@@ -68,6 +69,11 @@ pparens False = id
 -- | Surround a document with backticks.
 bquote :: Doc ann -> Doc ann
 bquote d = "`" <> d <> "`"
+
+-- | Turn a 'Show' instance into a @Doc@, lowercasing it in the
+--   process.
+prettyShowLow :: Show a => a -> Doc ann
+prettyShowLow = pretty . showLowT
 
 --------------------------------------------------
 -- Bullet lists

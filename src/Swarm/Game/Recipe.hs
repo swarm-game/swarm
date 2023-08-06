@@ -31,11 +31,12 @@ module Swarm.Game.Recipe (
   make',
 ) where
 
+import Control.Algebra (Has)
 import Control.Arrow (left)
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Throw (Throw, liftEither)
 import Control.Lens hiding (from, (.=))
-import Control.Monad.Except (ExceptT (..), withExceptT)
-import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Trans.Except (except)
+import Control.Monad ((<=<))
 import Data.Bifunctor (second)
 import Data.Either.Validation
 import Data.IntMap (IntMap)
@@ -49,6 +50,7 @@ import GHC.Generics (Generic)
 import Swarm.Game.Entity as E
 import Swarm.Game.Failure
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
+import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import Witch
@@ -146,18 +148,17 @@ instance FromJSONE EntityMap (Recipe Entity) where
 -- | Given an already loaded 'EntityMap', try to load a list of
 --   recipes from the data file @recipes.yaml@.
 loadRecipes ::
-  (MonadIO m) =>
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   EntityMap ->
-  ExceptT SystemFailure m [Recipe Entity]
+  m [Recipe Entity]
 loadRecipes em = do
   fileName <- getDataFileNameSafe Recipes f
   textRecipes <-
-    withExceptT (AssetNotLoaded (Data Recipes) fileName . CanNotParse)
-      . ExceptT
-      . liftIO
+    withThrow (AssetNotLoaded (Data Recipes) fileName . CanNotParse)
+      . (liftEither <=< sendIO)
       $ decodeFileEither @[Recipe Text] fileName
-  withExceptT (AssetNotLoaded (Data Recipes) fileName . CustomMessage)
-    . except
+  withThrow (AssetNotLoaded (Data Recipes) fileName . CustomMessage)
+    . liftEither
     . left (T.append "Unknown entities in recipe(s): " . T.intercalate ", ")
     . validationToEither
     $ resolveRecipes em textRecipes

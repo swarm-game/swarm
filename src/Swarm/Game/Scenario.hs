@@ -47,13 +47,12 @@ module Swarm.Game.Scenario (
 ) where
 
 import Control.Arrow ((&&&))
+import Control.Carrier.Throw.Either (runThrow)
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Throw
 import Control.Lens hiding (from, (.=), (<.>))
-import Control.Monad (filterM, unless)
-import Control.Monad.Except (ExceptT (..), runExceptT, withExceptT)
-import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Trans.Except (except)
+import Control.Monad (filterM, unless, (<=<))
 import Data.Aeson
-import Data.Either.Extra (eitherToMaybe, maybeToEither)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
@@ -76,12 +75,13 @@ import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Universe
 import Swarm.Language.Pipeline (ProcessedTerm)
+import Swarm.Language.Pretty (prettyText)
 import Swarm.Util (binTuples, failT)
+import Swarm.Util.Effect (throwToMaybe, withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
-import Witch (from)
 
 ------------------------------------------------------------
 -- Scenario
@@ -115,11 +115,11 @@ instance FromJSONE EntityMap Scenario where
   parseJSONE = withObjectE "scenario" $ \v -> do
     -- parse custom entities
     emRaw <- liftE (v .:? "entities" .!= [])
-    em <- case buildEntityMap emRaw of
+    em <- case run . runThrow $ buildEntityMap emRaw of
       Right x -> return x
-      Left x -> failT [x]
-    -- extend ambient EntityMap with custom entities
+      Left x -> failT [prettyText @LoadingFailure x]
 
+    -- extend ambient EntityMap with custom entities
     withE em $ do
       -- parse 'known' entity names and make sure they exist
       known <- liftE (v .:? "known" .!= [])
@@ -245,39 +245,36 @@ scenarioStepsPerTick :: Lens' Scenario (Maybe Int)
 ------------------------------------------------------------
 
 getScenarioPath ::
-  (MonadIO m) =>
+  (Has (Lift IO) sig m) =>
   FilePath ->
   m (Maybe FilePath)
 getScenarioPath scenario = do
-  libScenario <- e2m $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario
-  libScenarioExt <- e2m $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario <.> "yaml"
+  libScenario <- throwToMaybe @SystemFailure $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario
+  libScenarioExt <- throwToMaybe @SystemFailure $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario <.> "yaml"
   let candidates = catMaybes [Just scenario, libScenarioExt, libScenario]
-  listToMaybe <$> liftIO (filterM doesFileExist candidates)
- where
-  e2m = fmap eitherToMaybe . runExceptT
+  listToMaybe <$> sendIO (filterM doesFileExist candidates)
 
 -- | Load a scenario with a given name from disk, given an entity map
 --   to use.  This function is used if a specific scenario is
 --   requested on the command line.
 loadScenario ::
-  (MonadIO m) =>
-  String ->
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  FilePath ->
   EntityMap ->
-  ExceptT Text m (Scenario, FilePath)
+  m (Scenario, FilePath)
 loadScenario scenario em = do
-  mfileName <- liftIO $ getScenarioPath scenario
-  fileName <- except $ maybeToEither ("Scenario not found: " <> from @String scenario) mfileName
-  s <- withExceptT prettyFailure $ loadScenarioFile em fileName
-  return (s, fileName)
+  mfileName <- getScenarioPath scenario
+  fileName <- maybe (throwError $ ScenarioNotFound scenario) return mfileName
+  (,fileName) <$> loadScenarioFile em fileName
 
 -- | Load a scenario from a file.
 loadScenarioFile ::
-  (MonadIO m) =>
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   EntityMap ->
   FilePath ->
-  ExceptT SystemFailure m Scenario
+  m Scenario
 loadScenarioFile em fileName =
-  withExceptT (AssetNotLoaded (Data Scenarios) fileName . CanNotParse)
-    . ExceptT
-    . liftIO
-    $ decodeFileEitherE em fileName
+  (withThrow adaptError . (liftEither <=< sendIO)) $
+    decodeFileEitherE em fileName
+ where
+  adaptError = AssetNotLoaded (Data Scenarios) fileName . CanNotParse

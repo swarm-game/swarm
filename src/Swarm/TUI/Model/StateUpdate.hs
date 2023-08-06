@@ -20,21 +20,29 @@ module Swarm.TUI.Model.StateUpdate (
 import Brick.AttrMap (applyAttrMappings)
 import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
+import Control.Carrier.Accum.FixedStrict (runAccum)
+import Control.Carrier.Lift (runM)
+import Control.Carrier.Throw.Either (runThrow)
+import Control.Effect.Accum
+import Control.Effect.Lift
+import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))
 import Control.Monad (guard, void)
-import Control.Monad.Except (ExceptT, runExceptT)
+import Control.Monad.Except (ExceptT (..))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execStateT)
+import Data.Foldable qualified as F
 import Data.List qualified as List
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
+import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
-import Swarm.Game.Failure (SystemFailure, prettyFailure)
+import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
 import Swarm.Game.Scenario (loadScenario, scenarioAttrs, scenarioWorlds)
 import Swarm.Game.Scenario.Scoring.Best
@@ -49,6 +57,7 @@ import Swarm.Game.ScenarioInfo (
   _SISingle,
  )
 import Swarm.Game.State
+import Swarm.Language.Pretty (prettyText)
 import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Util qualified as EU
@@ -59,10 +68,14 @@ import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.CustomStyling (toAttrPair)
+import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
 
 -- | Initialize the 'AppState' from scratch.
-initAppState :: AppOpts -> ExceptT Text IO AppState
+initAppState ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  AppOpts ->
+  m AppState
 initAppState opts = do
   (rs, ui) <- initPersistentState opts
   constructAppState rs ui opts
@@ -72,7 +85,7 @@ initAppState opts = do
 addWarnings :: RuntimeState -> [SystemFailure] -> RuntimeState
 addWarnings = List.foldl' logWarning
  where
-  logWarning rs' w = rs' & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyFailure w)
+  logWarning rs' w = rs' & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyText w)
 
 -- | Based on the command line options, should we skip displaying the
 --   menu?
@@ -85,23 +98,33 @@ skipMenu AppOpts {..} = isJust userScenario || isRunningInitialProgram || isJust
 --   'RuntimeState' and 'UIState'.  This is split out into a separate
 --   function so that in the integration test suite we can call this
 --   once and reuse the resulting states for all tests.
-initPersistentState :: AppOpts -> ExceptT Text IO (RuntimeState, UIState)
+initPersistentState ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  AppOpts ->
+  m (RuntimeState, UIState)
 initPersistentState opts@(AppOpts {..}) = do
-  (rsWarnings, initRS) <- initRuntimeState
-  (uiWarnings, ui) <- initUIState speed (not (skipMenu opts)) (cheatMode || autoPlay)
-  let rs = addWarnings initRS $ rsWarnings <> uiWarnings
-  return (rs, ui)
+  (warnings :: Seq SystemFailure, (initRS, initUI)) <- runAccum mempty $ do
+    rs <- initRuntimeState
+    ui <- initUIState speed (not (skipMenu opts)) (cheatMode || autoPlay)
+    return (rs, ui)
+  let initRS' = addWarnings initRS (F.toList warnings)
+  return (initRS', initUI)
 
 -- | Construct an 'AppState' from an already-loaded 'RuntimeState' and
 --   'UIState', given the 'AppOpts' the app was started with.
-constructAppState :: RuntimeState -> UIState -> AppOpts -> ExceptT Text IO AppState
+constructAppState ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  RuntimeState ->
+  UIState ->
+  AppOpts ->
+  m AppState
 constructAppState rs ui opts@(AppOpts {..}) = do
   let gs = initGameState (mkGameStateConfig rs)
   case skipMenu opts of
     False -> return $ AppState gs (ui & lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
     True -> do
       (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. entityMap)
-      maybeRunScript <- getParsedInitialCode scriptToRun
+      maybeRunScript <- traverse parseCodeFile scriptToRun
 
       let maybeAutoplay = do
             guard autoPlay
@@ -109,13 +132,14 @@ constructAppState rs ui opts@(AppOpts {..}) = do
             return $ CodeToRun ScenarioSuggested soln
           codeToRun = maybeAutoplay <|> maybeRunScript
 
-      eitherSi <- runExceptT $ loadScenarioInfo path
+      eitherSi <- sendIO . runM . runThrow $ loadScenarioInfo path
       let (si, newRs) = case eitherSi of
             Right x -> (x, rs)
-            Left e -> (ScenarioInfo path NotStarted, addWarnings rs e)
-      execStateT
-        (startGameWithSeed (scenario, si) $ LaunchParams (pure userSeed) (pure codeToRun))
-        (AppState gs ui newRs)
+            Left e -> (ScenarioInfo path NotStarted, addWarnings rs [e])
+      sendIO $
+        execStateT
+          (startGameWithSeed (scenario, si) $ LaunchParams (pure userSeed) (pure codeToRun))
+          (AppState gs ui newRs)
 
 -- | Load a 'Scenario' and start playing the game.
 startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()
@@ -249,7 +273,12 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
 --   to update it using 'scenarioToAppState'.
 initAppStateForScenario :: String -> Maybe Seed -> Maybe FilePath -> ExceptT Text IO AppState
 initAppStateForScenario sceneName userSeed toRun =
-  initAppState (defaultAppOpts {userScenario = Just sceneName, userSeed = userSeed, scriptToRun = toRun})
+  asExceptT . withThrow (prettyText @SystemFailure) . initAppState $
+    defaultAppOpts
+      { userScenario = Just sceneName
+      , userSeed = userSeed
+      , scriptToRun = toRun
+      }
 
 -- | For convenience, the 'AppState' corresponding to the classic game
 --   with seed 0.  This is used only for benchmarks and unit tests.
