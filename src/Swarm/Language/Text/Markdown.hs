@@ -37,7 +37,9 @@ import Commonmark qualified as Mark
 import Commonmark.Extensions qualified as Mark (rawAttributeSpec)
 import Control.Applicative ((<|>))
 import Control.Arrow (left)
+import Control.Lens ((%~), (&), _head, _last)
 import Control.Monad (void)
+import Data.Char (isSpace)
 import Data.Functor.Identity (Identity (..))
 import Data.List qualified as List
 import Data.List.Split (chop)
@@ -49,14 +51,12 @@ import Data.Text qualified as T
 import Data.Tuple.Extra (both, first)
 import Data.Vector (toList)
 import Data.Yaml
+import GHC.Exts qualified (IsList (..), IsString (..))
 import Swarm.Language.Module (moduleAST)
 import Swarm.Language.Parse (readTerm)
 import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
 import Swarm.Language.Pretty (prettyText, prettyTypeErrText)
 import Swarm.Language.Syntax (Syntax)
-import GHC.Exts qualified (IsList(..), IsString(..)) 
-import Data.Char (isSpace)
-import Control.Lens ((%~), _last, _head, (&))
 
 -- | The top-level markdown document.
 newtype Document c = Document {paragraphs :: [Paragraph c]}
@@ -99,15 +99,15 @@ addTextAttribute _ n = n
 
 normalise :: (Eq c, Semigroup c) => Paragraph c -> Paragraph c
 normalise (Paragraph a) = Paragraph $ go a
-  where
-    go = \case
-      [] -> []
-      (n:ns) -> let (n', ns') = mergeSame n ns in n' : go ns'    
-    mergeSame = \case
-      l@(LeafText attrs1 t1) -> \case
-        (LeafText attrs2 t2 : rss) | attrs1 == attrs2 -> mergeSame (LeafText attrs1 $ t1 <> t2) rss
-        rs -> (l , rs)
-      l -> (l,)
+ where
+  go = \case
+    [] -> []
+    (n : ns) -> let (n', ns') = mergeSame n ns in n' : go ns'
+  mergeSame = \case
+    l@(LeafText attrs1 t1) -> \case
+      (LeafText attrs2 t2 : rss) | attrs1 == attrs2 -> mergeSame (LeafText attrs1 $ t1 <> t2) rss
+      rs -> (l, rs)
+    l -> (l,)
 
 -- | Simple text attributes that make it easier to find key info in descriptions.
 data TxtAttr = Strong | Emphasis
@@ -268,14 +268,14 @@ chunksOf n = chop (splitter True n)
     let (con, t) = unStream tn
         endSpace = T.takeWhileEnd isSpace t
         startSpace = T.takeWhile isSpace t
-        twords = T.words t & _head %~ (startSpace <>) & _last %~ (<> endSpace) 
+        twords = T.words t & _head %~ (startSpace <>) & _last %~ (<> endSpace)
      in case splitWordsAt i twords of
           ([], []) -> (con "", con "")
           ([], ws@(ww : wws)) ->
             both (con . T.unwords) $
               -- In case single word (e.g. web link) does not fit on line we must put
               -- it there and guarantee progress (otherwise chop will cycle)
-              if start then ([T.take i ww], T.drop i  ww : wws) else ([], ws)
+              if start then ([T.take i ww], T.drop i ww : wws) else ([], ws)
           splitted -> both (con . T.unwords) splitted
 
 splitWordsAt :: Int -> [Text] -> ([Text], [Text])

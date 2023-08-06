@@ -85,12 +85,12 @@ import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Parse (runParser)
-import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
+import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
 import Swarm.Util hiding (both)
