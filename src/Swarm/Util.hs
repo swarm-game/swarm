@@ -35,6 +35,7 @@ module Swarm.Util (
   replaceLast,
   failT,
   showT,
+  showLowT,
 
   -- * English language utilities
   reflow,
@@ -55,8 +56,6 @@ module Swarm.Util (
   isJustOr,
   isRightOr,
   isSuccessOr,
-  guardRight,
-  simpleErrorHandle,
 
   -- * Template Haskell utilities
   liftText,
@@ -74,16 +73,13 @@ module Swarm.Util (
   smallHittingSet,
 ) where
 
-import Control.Algebra (Has)
 import Control.Applicative (Alternative)
+import Control.Carrier.Throw.Either
 import Control.Effect.State (State, modify, state)
-import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
-import Control.Lens.Operators ((<&>))
-import Control.Monad (filterM, guard, unless, (<=<))
-import Control.Monad.Except (ExceptT (..), runExceptT)
+import Control.Monad (guard, unless)
 import Data.Bifunctor (Bifunctor (bimap), first)
-import Data.Char (isAlphaNum)
+import Data.Char (isAlphaNum, toLower)
 import Data.Either.Validation
 import Data.List (foldl', maximumBy, partition)
 import Data.List.NonEmpty (NonEmpty ((:|)))
@@ -273,6 +269,10 @@ failT = fail . from @Text . T.unwords
 showT :: Show a => a -> Text
 showT = from @String . show
 
+-- | Show a value in all lowercase, but as Text.
+showLowT :: Show a => a -> Text
+showLowT = from @String . map toLower . show
+
 ------------------------------------------------------------
 -- Some language-y stuff
 
@@ -385,12 +385,6 @@ Left b `isRightOr` f = throwError (f b)
 isSuccessOr :: Has (Throw e) sig m => Validation b a -> (b -> e) -> m a
 Success a `isSuccessOr` _ = return a
 Failure b `isSuccessOr` f = throwError (f b)
-
-guardRight :: Text -> Either Text a -> ExceptT Text IO a
-guardRight what i = i `isRightOr` (\e -> "Failed to " <> what <> ": " <> e)
-
-simpleErrorHandle :: ExceptT Text IO a -> IO a
-simpleErrorHandle = either (fail . T.unpack) pure <=< runExceptT
 
 ------------------------------------------------------------
 -- Template Haskell utilities

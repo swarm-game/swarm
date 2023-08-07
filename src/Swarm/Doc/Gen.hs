@@ -24,14 +24,12 @@ module Swarm.Doc.Gen (
   noPageAddresses,
 ) where
 
-import Control.Arrow (left)
+import Control.Effect.Lift
+import Control.Effect.Throw
 import Control.Lens (view, (^.))
 import Control.Lens.Combinators (to)
 import Control.Monad (zipWithM, zipWithM_)
-import Control.Monad.Except (ExceptT (..), runExceptT, withExceptT)
-import Control.Monad.IO.Class (liftIO)
 import Data.Containers.ListUtils (nubOrd)
-import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (find, toList)
 import Data.List (transpose)
 import Data.Map.Lazy (Map, (!))
@@ -43,16 +41,12 @@ import Data.Text (Text, unpack)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Tuple (swap)
-import Data.Yaml (decodeFileEither)
-import Data.Yaml.Aeson (prettyPrintParseException)
 import Swarm.Doc.Pedagogy
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
-import Swarm.Game.Failure qualified as F
-import Swarm.Game.Failure.Render qualified as F
+import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements, recipeTime, recipeWeight)
-import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot (Robot, equippedDevices, instantiateRobot, robotInventory)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.World.Eval (loadWorldsWithWarnings)
@@ -65,10 +59,10 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Util (both, guardRight, listEnums, quote, simpleErrorHandle)
+import Swarm.Util (both, listEnums, quote)
+import Swarm.Util.Effect (simpleErrorHandle)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
-import Witch (from)
 
 -- ============================================================================
 -- MAIN ENTRYPOINT TO CLI DOCUMENTATION GENERATOR
@@ -127,19 +121,15 @@ generateDocs = \case
     Just st -> case st of
       Commands -> T.putStrLn commandsPage
       Capabilities -> simpleErrorHandle $ do
-        entities <- ExceptT loadEntities
-        liftIO $ T.putStrLn $ capabilityPage address entities
+        entities <- loadEntities
+        sendIO $ T.putStrLn $ capabilityPage address entities
       Entities -> simpleErrorHandle $ do
-        let loadEntityList fp = left (from . prettyPrintParseException) <$> decodeFileEither fp
-        let f = "entities.yaml"
-        let e2m = fmap eitherToMaybe . runExceptT
-        Just fileName <- liftIO $ e2m $ getDataFileNameSafe F.Entities f
-        entities <- liftIO (loadEntityList fileName) >>= guardRight "load entities"
-        liftIO $ T.putStrLn $ entitiesPage address entities
+        entities <- loadEntities
+        sendIO $ T.putStrLn $ entitiesPage address (Map.elems $ entitiesByName entities)
       Recipes -> simpleErrorHandle $ do
-        entities <- ExceptT loadEntities
-        recipes <- withExceptT F.prettyFailure $ loadRecipes entities
-        liftIO $ T.putStrLn $ recipePage address recipes
+        entities <- loadEntities
+        recipes <- loadRecipes entities
+        sendIO $ T.putStrLn $ recipePage address recipes
   TutorialCoverage -> renderTutorialProgression >>= putStrLn . T.unpack
 
 -- ----------------------------------------------------------------------------
@@ -427,10 +417,10 @@ recipePage = recipeTable
 
 generateRecipe :: IO String
 generateRecipe = simpleErrorHandle $ do
-  entities <- ExceptT loadEntities
-  recipes <- withExceptT F.prettyFailure $ loadRecipes entities
-  classic <- classicScenario
-  (_, loadedWorlds) <- liftIO $ loadWorldsWithWarnings entities
+  entities <- loadEntities
+  recipes <- loadRecipes entities
+  worlds <- loadWorlds entities
+  classic <- fst <$> loadScenario "data/scenarios/classic.yaml" entities worlds
   return . Dot.showDot $ recipesToDot classic (loadedWorlds ! "classic") entities recipes
 
 recipesToDot :: Scenario -> Some (TTerm '[]) -> EntityMap -> [Recipe Entity] -> Dot ()
@@ -550,10 +540,11 @@ recipeLevels recipes start = levels
             else go (n : ls) (Set.union n known)
 
 -- | Get classic scenario to figure out starting entities.
-classicScenario :: ExceptT Text IO Scenario
+classicScenario :: (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) => m Scenario
 classicScenario = do
-  entities <- loadEntities >>= guardRight "load entities"
-  fst <$> loadScenario "data/scenarios/classic.yaml" entities undefined -- XXX, wait until after merging #1392
+  entities <- loadEntities
+  worldMap <- loadWorlds
+  fst <$> 
 
 startingHelper :: Scenario -> Robot
 startingHelper = instantiateRobot 0 . head . view scenarioRobots

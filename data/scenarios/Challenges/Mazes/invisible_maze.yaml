@@ -8,7 +8,7 @@ objectives:
   - There is a maze, but it can't be seen, only sensed... can you
     program a robot to navigate it successfully?  You need to get a robot
     to the goal square, labelled with an exclamation mark; you win by `grab`bing
-    the `goal`.
+    the `goal`{=entity}.
   - In this challenge, it is guaranteed that the maze is a tree, that is,
     there are no loops within the maze.
   condition: |

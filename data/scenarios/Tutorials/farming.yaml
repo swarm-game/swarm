@@ -11,13 +11,15 @@ objectives:
         them in order to create a reliable supply.
       - |
         In this scenario, you are a bit farther along: in particular,
-        you now have a few `harvester`s, a few `lambda`s, a few `logger`s,
-        some `branch predictor`s which
+        you now have a few `harvester`{=entity}s, a few `lambda`{=entity}s, a few `logger`{=entity}s,
+        some `branch predictor`{=entity}s which
         allow robots to evaluate conditional expressions, and some
-        `strange loops` which enable recursive functions.  For example,
+        `strange loop`{=entity}s which enable recursive functions.  For example,
         one simple, useful recursive function is
       - |
+        ```
         def forever = \c. c ; forever c end
+        ```
       - Your goal is to acquire 256 lambdas.  Of course, in order to
         accomplish this in a reasonable amount of time, it makes sense to plant
         a field of lambdas and then program one or more robots to
@@ -39,7 +41,7 @@ objectives:
         language features to unlock.
       - |
         To finally complete this tutorial, there is only one thing left for you to do:
-        use one of your lambdas to make some delicious `curry`.
+        use one of your lambdas to make some delicious `curry`{=entity}.
       - Afterwards, you will return to the menu where you can select
         "Classic game" for the complete game experience.  Or, play a
         "Creative game" if you just want to play around with

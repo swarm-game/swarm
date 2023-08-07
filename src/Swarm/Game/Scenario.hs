@@ -47,13 +47,12 @@ module Swarm.Game.Scenario (
 ) where
 
 import Control.Arrow ((&&&))
+import Control.Carrier.Throw.Either (runThrow)
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Throw
 import Control.Lens hiding (from, (.=), (<.>))
-import Control.Monad (filterM, unless)
-import Control.Monad.Except (ExceptT (..), runExceptT, withExceptT)
-import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Trans.Except (except)
+import Control.Monad (filterM, unless, (<=<))
 import Data.Aeson
-import Data.Either.Extra (eitherToMaybe, maybeToEither)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
@@ -62,7 +61,6 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Entity
 import Swarm.Game.Failure
-import Swarm.Game.Failure.Render
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
@@ -78,12 +76,13 @@ import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Universe
 import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Pipeline (ProcessedTerm)
+import Swarm.Language.Pretty (prettyText)
 import Swarm.Util (binTuples, failT)
+import Swarm.Util.Effect (throwToMaybe, withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
-import Witch (from)
 
 ------------------------------------------------------------
 -- Scenario
@@ -117,10 +116,9 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
   parseJSONE = withObjectE "scenario" $ \v -> do
     -- parse custom entities
     emRaw <- liftE (v .:? "entities" .!= [])
-    em <- case buildEntityMap emRaw of
+    em <- case run . runThrow $ buildEntityMap emRaw of
       Right x -> return x
-      Left x -> failT [x]
-    -- extend ambient EntityMap with custom entities
+      Left x -> failT [prettyText @LoadingFailure x]
 
     -- Save the passed in WorldMap for later
     worldMap <- snd <$> getE
@@ -254,41 +252,38 @@ scenarioStepsPerTick :: Lens' Scenario (Maybe Int)
 ------------------------------------------------------------
 
 getScenarioPath ::
-  (MonadIO m) =>
+  (Has (Lift IO) sig m) =>
   FilePath ->
   m (Maybe FilePath)
 getScenarioPath scenario = do
-  libScenario <- e2m $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario
-  libScenarioExt <- e2m $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario <.> "yaml"
+  libScenario <- throwToMaybe @SystemFailure $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario
+  libScenarioExt <- throwToMaybe @SystemFailure $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario <.> "yaml"
   let candidates = catMaybes [Just scenario, libScenarioExt, libScenario]
-  listToMaybe <$> liftIO (filterM doesFileExist candidates)
- where
-  e2m = fmap eitherToMaybe . runExceptT
+  listToMaybe <$> sendIO (filterM doesFileExist candidates)
 
 -- | Load a scenario with a given name from disk, given an entity map
 --   to use.  This function is used if a specific scenario is
 --   requested on the command line.
 loadScenario ::
-  (MonadIO m) =>
-  String ->
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  FilePath ->
   EntityMap ->
   WorldMap ->
-  ExceptT Text m (Scenario, FilePath)
-loadScenario scenario em worldMap = do
-  mfileName <- liftIO $ getScenarioPath scenario
-  fileName <- except $ maybeToEither ("Scenario not found: " <> from @String scenario) mfileName
-  s <- withExceptT prettyFailure $ loadScenarioFile em worldMap fileName
-  return (s, fileName)
+  m (Scenario, FilePath)
+loadScenario scenario em = do
+  mfileName <- getScenarioPath scenario
+  fileName <- maybe (throwError $ ScenarioNotFound scenario) return mfileName
+  (,fileName) <$> loadScenarioFile em worldMap fileName
 
 -- | Load a scenario from a file.
 loadScenarioFile ::
-  (MonadIO m) =>
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   EntityMap ->
   WorldMap ->
   FilePath ->
-  ExceptT SystemFailure m Scenario
-loadScenarioFile em worldMap fileName =
-  withExceptT (AssetNotLoaded (Data Scenarios) fileName . CanNotParseYaml)
-    . ExceptT
-    . liftIO
-    $ decodeFileEitherE (em, worldMap) fileName
+  m Scenario
+loadScenarioFile em fileName =
+  (withThrow adaptError . (liftEither <=< sendIO)) $
+    decodeFileEitherE em fileName
+ where
+  adaptError = AssetNotLoaded (Data Scenarios) fileName . CanNotParseYaml

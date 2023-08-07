@@ -38,20 +38,24 @@ runWorld t seed = convert . interpBTerm seed . bracket $ t
 convert :: (Coords -> CellVal) -> WorldFun TerrainType Entity
 convert f = WF ((\(CellVal t e _) -> (t, e)) . f)
 
-loadWorldsWithWarnings :: EntityMap -> IO ([SystemFailure], WorldMap)
-loadWorldsWithWarnings em = do
-  res <- getDataDirSafe Worlds "worlds"
+loadWorlds ::
+  (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m)
+  => EntityMap -> m WorldMap
+loadWorlds em = do
+  res <- throwToWarning @SystemFailure $ getDataDirSafe Worlds "worlds"
   case res of
-    Left err -> return ([err], M.empty)
-    Right dir -> do
-      worldFiles <- acquireAllWithExt dir "world"
-      return $ second M.fromList . partitionEithers . map (processWorldFile dir em) $ worldFiles
+    Nothing -> return M.empty
+    Just dir -> do
+      worldFiles <- sendIO $ acquireAllWithExt dir "world"
+      ws <- mapM (throwToWarning @SystemFailure . processWorldFile dir em) worldFiles
+      return . M.fromList . catMaybes $ ws
 
 processWorldFile ::
+  (Has (Throw SystemFailure) sig m) =>
   FilePath ->
   EntityMap ->
   (FilePath, String) ->
-  Either SystemFailure (Text, Some (TTerm '[]))
+  m (Text, Some (TTerm '[]))
 processWorldFile dir em (fp, src) = do
   wexp <-
     left (AssetNotLoaded (Data Worlds) fp . CanNotParseMegaparsec) $

@@ -21,6 +21,7 @@ import Control.Lens ((^.))
 import Data.Bifunctor (first)
 import Data.Data (Data)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Language.Context
@@ -32,7 +33,7 @@ import Swarm.Language.Requirement
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
-import Witch
+import Witch (into)
 
 -- | A record containing the results of the language processing
 --   pipeline.  Put a 'Term' in, and get one of these out.  A
@@ -48,14 +49,14 @@ import Witch
 data ProcessedTerm = ProcessedTerm TModule Requirements ReqCtx
   deriving (Data, Show, Eq, Generic)
 
-processTermEither :: Text -> Either String ProcessedTerm
+processTermEither :: Text -> Either Text ProcessedTerm
 processTermEither t = case processTerm t of
-  Left err -> Left $ "Could not parse term: " ++ from err
+  Left err -> Left $ T.unwords ["Could not parse term:", err]
   Right Nothing -> Left "Term was only whitespace"
   Right (Just pt) -> Right pt
 
 instance FromJSON ProcessedTerm where
-  parseJSON = withText "Term" $ either fail return . processTermEither
+  parseJSON = withText "Term" $ either (fail . into @String) return . processTermEither
 
 instance ToJSON ProcessedTerm where
   toJSON (ProcessedTerm t _ _) = String $ prettyText (moduleAST t)

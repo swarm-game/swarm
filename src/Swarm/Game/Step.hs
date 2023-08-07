@@ -31,13 +31,11 @@ import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (foldM, forM, forM_, guard, join, msum, unless, when, zipWithM)
-import Control.Monad.Except (runExceptT)
 import Data.Array (bounds, (!))
 import Data.Bifunctor (second)
 import Data.Bool (bool)
 import Data.Char (chr, ord)
 import Data.Either (partitionEithers, rights)
-import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (asum, for_, traverse_)
 import Data.Foldable.Extra (findM, firstJustM)
 import Data.Function (on)
@@ -93,6 +91,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
 import Swarm.Util hiding (both)
+import Swarm.Util.Effect (throwToMaybe)
 import System.Clock (TimeSpec)
 import System.Clock qualified
 import System.Random (UniformRange, uniformR)
@@ -544,6 +543,10 @@ traceLogShow = void . traceLog Logged . from . show
 --   be other exceptions added in the future.
 constCapsFor :: Const -> Robot -> Maybe Capability
 constCapsFor Move r
+  | r ^. robotHeavy = Just CMoveheavy
+constCapsFor Backup r
+  | r ^. robotHeavy = Just CMoveheavy
+constCapsFor Stride r
   | r ^. robotHeavy = Just CMoveheavy
 constCapsFor c _ = constCaps c
 
@@ -1128,17 +1131,11 @@ execConst c vs s k = do
       flagRedraw
       return $ Out VUnit s k
     Move -> do
-      -- Figure out where we're going
-      loc <- use robotLocation
       orient <- use robotOrientation
-      let nextLoc = loc `offsetBy` (orient ? zero)
-      checkMoveAhead nextLoc $
-        MoveFailure
-          { failIfBlocked = ThrowExn
-          , failIfDrown = Destroy
-          }
-      updateRobotLocation loc nextLoc
-      return $ Out VUnit s k
+      moveInDirection $ orient ? zero
+    Backup -> do
+      orient <- use robotOrientation
+      moveInDirection $ applyTurn (DRelative $ DPlanar DBack) $ orient ? zero
     Push -> do
       -- Figure out where we're going
       loc <- use robotLocation
@@ -2041,9 +2038,8 @@ execConst c vs s k = do
     Run -> case vs of
       [VText fileName] -> do
         let filePath = into @String fileName
-        let e2m = fmap eitherToMaybe . runExceptT
-        sData <- sendIO $ e2m $ getDataFileNameSafe Script filePath
-        sDataSW <- sendIO $ e2m $ getDataFileNameSafe Script (filePath <> ".sw")
+        sData <- throwToMaybe @SystemFailure $ getDataFileNameSafe Script filePath
+        sDataSW <- throwToMaybe @SystemFailure $ getDataFileNameSafe Script (filePath <> ".sw")
         mf <- sendIO $ mapM readFileMay $ [filePath, filePath <> ".sw"] <> catMaybes [sData, sDataSW]
 
         f <- msum mf `isJustOrFail` ["File not found:", fileName]
@@ -2467,6 +2463,19 @@ execConst c vs s k = do
       ["You consider destroying your base, but decide not to do it after all."]
       mAch
     selfDestruct .= True
+
+  moveInDirection :: (HasRobotStepState sig m, Has (Lift IO) sig m) => Heading -> m CESK
+  moveInDirection orientation = do
+    -- Figure out where we're going
+    loc <- use robotLocation
+    let nextLoc = loc `offsetBy` orientation
+    checkMoveAhead nextLoc $
+      MoveFailure
+        { failIfBlocked = ThrowExn
+        , failIfDrown = Destroy
+        }
+    updateRobotLocation loc nextLoc
+    return $ Out VUnit s k
 
   -- Make sure nothing is in the way. Note that system robots implicitly ignore
   -- and base throws on failure.

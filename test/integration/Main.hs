@@ -9,10 +9,11 @@
 -- Swarm integration tests
 module Main where
 
-import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<>~), (^.), (^..), (^?!))
-import Control.Monad (forM_, unless, when)
+import Control.Carrier.Lift (runM)
+import Control.Carrier.Throw.Either (runThrow)
+import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (<>~), (^.), (^..), (^?!))
+import Control.Monad (filterM, forM_, unless, when)
 import Control.Monad.State (StateT (runStateT), gets)
-import Control.Monad.Trans.Except (runExceptT)
 import Data.Char (isSpace)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (Foldable (toList), find)
@@ -28,7 +29,8 @@ import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Doc.Gen (EditorType (..))
 import Swarm.Doc.Gen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
-import Swarm.Game.Entity (EntityMap, loadEntities, lookupByName)
+import Swarm.Game.Entity (EntityMap, lookupByName)
+import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Robot (LogEntry, defReqs, equippedDevices, leText, machine, robotContext, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
@@ -48,7 +50,8 @@ import Swarm.Game.Step (gameTick)
 import Swarm.Game.World.Typecheck (WExpMap)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
-import Swarm.TUI.Model (RuntimeState, defaultAppOpts, gameState, userScenario, worlds)
+import Swarm.Language.Pretty (prettyString)
+import Swarm.TUI.Model (RuntimeState, defaultAppOpts, gameState, stdEntityMap, userScenario, worlds)
 import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
 import Swarm.TUI.Model.UI (UIState)
 import Swarm.Util (acquireAllWithExt)
@@ -67,26 +70,21 @@ main = do
   examplePaths <- acquireAllWithExt "example" "sw"
   scenarioPaths <- acquireAllWithExt "data/scenarios" "yaml"
   let (unparseableScenarios, parseableScenarios) = partition isUnparseableTest scenarioPaths
-  scenarioPrograms <- acquireAllWithExt "data/scenarios" "sw"
-  entities <- loadEntities
+  scenarioPrograms <- acquire "data/scenarios" "sw"
   (rs, ui) <- do
-    out <- runExceptT $ initPersistentState defaultAppOpts
-    case out of
-      Left x -> assertFailure $ unwords ["Failure in initPersistentState:", T.unpack x]
-      Right res -> return res
-  case entities of
-    Left t -> fail $ "Couldn't load entities: " <> into @String t
-    Right em -> do
-      defaultMain $
-        testGroup
-          "Tests"
-          [ exampleTests examplePaths
-          , exampleTests scenarioPrograms
-          , scenarioParseTests em (rs ^. worlds) parseableScenarios
-          , scenarioParseInvalidTests em (rs ^. worlds) unparseableScenarios
-          , testScenarioSolutions rs ui
-          , testEditorFiles
-          ]
+    out <- runM . runThrow @SystemFailure $ initPersistentState defaultAppOpts
+    either (assertFailure . prettyString) return out
+  let em = rs ^. stdEntityMap
+  defaultMain $
+    testGroup
+      "Tests"
+      [ exampleTests examplePaths
+      , exampleTests scenarioPrograms
+      , scenarioParseTests em (rs ^. worlds) parseableScenarios
+      , scenarioParseInvalidTests em (rs ^. worlds) unparseableScenarios
+      , testScenarioSolution rs ui
+      , testEditorFiles
+      ]
 
 exampleTests :: [(FilePath, String)] -> TestTree
 exampleTests inputs = testGroup "Test example" (map exampleTest inputs)
@@ -293,6 +291,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/144-subworlds/subworld-mapped-robots"
         , testSolution Default "Testing/144-subworlds/subworld-located-robots"
         , testSolution Default "Testing/1379-single-world-portal-reorientation"
+        , testSolution Default "Testing/1399-backup-command"
         ]
     ]
  where
@@ -304,9 +303,9 @@ testScenarioSolutions rs ui =
 
   testSolution' :: Time -> FilePath -> ShouldCheckBadErrors -> (GameState -> Assertion) -> TestTree
   testSolution' s p shouldCheckBadErrors verify = testCase p $ do
-    out <- runExceptT $ constructAppState rs ui $ defaultAppOpts {userScenario = Just p}
+    out <- runM . runThrow @SystemFailure $ constructAppState rs ui $ defaultAppOpts {userScenario = Just p}
     case out of
-      Left x -> assertFailure $ unwords ["Failure in constructAppState:", T.unpack x]
+      Left err -> assertFailure $ prettyString err
       Right (view gameState -> gs) -> case gs ^. winSolution of
         Nothing -> assertFailure "No solution to test!"
         Just sol@(ProcessedTerm _ _ reqCtx) -> do

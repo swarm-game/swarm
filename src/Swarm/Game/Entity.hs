@@ -78,10 +78,13 @@ module Swarm.Game.Entity (
   difference,
 ) where
 
+import Control.Algebra (Has)
 import Control.Arrow ((&&&))
+import Control.Carrier.Throw.Either (liftEither)
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (Getter, Lens', lens, to, view, (^.))
-import Control.Monad.IO.Class
-import Control.Monad.Trans.Except (ExceptT (..), except, runExceptT, withExceptT)
+import Control.Monad ((<=<))
 import Data.Bifunctor (first)
 import Data.Char (toLower)
 import Data.Function (on)
@@ -103,11 +106,11 @@ import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Game.Display
 import Swarm.Game.Failure
-import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Language.Capability
-import Swarm.Util (binTuples, failT, findDup, plural, quote, reflow, (?))
+import Swarm.Util (binTuples, failT, findDup, plural, reflow, (?))
+import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
@@ -313,11 +316,11 @@ deviceForCap cap = fromMaybe [] . M.lookup cap . entitiesByCap
 -- | Build an 'EntityMap' from a list of entities.  The idea is that
 --   this will be called once at startup, when loading the entities
 --   from a file; see 'loadEntities'.
-buildEntityMap :: [Entity] -> Either Text EntityMap
+buildEntityMap :: Has (Throw LoadingFailure) sig m => [Entity] -> m EntityMap
 buildEntityMap es = do
   case findDup (map fst namedEntities) of
-    Nothing -> Right ()
-    Just duped -> Left $ T.unwords ["Duplicate entity named", quote duped]
+    Nothing -> return ()
+    Just duped -> throwError $ Duplicate Entities duped
   return $
     EntityMap
       { entitiesByName = M.fromList namedEntities
@@ -369,13 +372,18 @@ instance ToJSON Entity where
         ++ ["capabilities" .= (e ^. entityCapabilities) | not . null $ e ^. entityCapabilities]
 
 -- | Load entities from a data file called @entities.yaml@, producing
---   either an 'EntityMap' or a pretty-printed parse error.
-loadEntities :: MonadIO m => m (Either Text EntityMap)
-loadEntities = runExceptT $ do
-  let f = "entities.yaml"
-  fileName <- withExceptT prettyFailure $ getDataFileNameSafe Entities f
-  decoded <- withExceptT (from . prettyPrintParseException) . ExceptT . liftIO $ decodeFileEither fileName
-  except $ buildEntityMap decoded
+--   either an 'EntityMap' or a parse error.
+loadEntities ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  m EntityMap
+loadEntities = do
+  let entityFile = "entities.yaml"
+      entityFailure = AssetNotLoaded (Data Entities) entityFile
+  fileName <- getDataFileNameSafe Entities entityFile
+  decoded <-
+    withThrow (entityFailure . CanNotParse) . (liftEither <=< sendIO) $
+      decodeFileEither fileName
+  withThrow entityFailure $ buildEntityMap decoded
 
 ------------------------------------------------------------
 -- Entity lenses

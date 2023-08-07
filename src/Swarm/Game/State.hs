@@ -94,7 +94,6 @@ module Swarm.Game.State (
   Sha1 (..),
   SolutionSource (..),
   parseCodeFile,
-  getParsedInitialCode,
 
   -- * Utilities
   applyViewCenterRule,
@@ -123,14 +122,14 @@ module Swarm.Game.State (
   getRunCodePath,
 ) where
 
-import Control.Algebra (Has)
 import Control.Applicative ((<|>))
-import Control.Arrow (Arrow ((&&&)), left)
+import Control.Arrow (Arrow ((&&&)))
 import Control.Effect.Lens
+import Control.Effect.Lift
 import Control.Effect.State (State)
+import Control.Effect.Throw
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad (forM_)
-import Control.Monad.Except (ExceptT (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
@@ -152,7 +151,7 @@ import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
 import Data.Set qualified as S
 import Data.Text (Text)
-import Data.Text qualified as T (drop, pack, take)
+import Data.Text qualified as T (drop, take)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
@@ -164,6 +163,7 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (CESK (Waiting), TickNumber (..), addTicks, emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
+import Swarm.Game.Failure (SystemFailure (..))
 import Swarm.Game.Location
 import Swarm.Game.Recipe (
   Recipe,
@@ -303,23 +303,22 @@ getRunCodePath (CodeToRun solutionSource _) = case solutionSource of
   ScenarioSuggested -> Nothing
   PlayerAuthored fp _ -> Just fp
 
-parseCodeFile :: FilePath -> IO (Either Text CodeToRun)
+parseCodeFile ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  FilePath ->
+  m CodeToRun
 parseCodeFile filepath = do
-  contents <- TIO.readFile filepath
-  return $ do
-    pt@(ProcessedTerm (Module (Syntax' srcLoc _ _) _) _ _) <-
-      left T.pack $ processTermEither contents
-    let strippedText = stripSrc srcLoc contents
-        programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
-        sha1Hash = showDigest $ sha1 programBytestring
-    return $ CodeToRun (PlayerAuthored filepath $ Sha1 sha1Hash) pt
+  contents <- sendIO $ TIO.readFile filepath
+  pt@(ProcessedTerm (Module (Syntax' srcLoc _ _) _) _ _) <-
+    either (throwError . CustomFailure) return (processTermEither contents)
+  let strippedText = stripSrc srcLoc contents
+      programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
+      sha1Hash = showDigest $ sha1 programBytestring
+  return $ CodeToRun (PlayerAuthored filepath $ Sha1 sha1Hash) pt
  where
   stripSrc :: SrcLoc -> Text -> Text
   stripSrc (SrcLoc start end) txt = T.drop start $ T.take end txt
   stripSrc NoLoc txt = txt
-
-getParsedInitialCode :: Maybe FilePath -> ExceptT Text IO (Maybe CodeToRun)
-getParsedInitialCode = traverse $ ExceptT . parseCodeFile
 
 ------------------------------------------------------------
 -- The main GameState record type

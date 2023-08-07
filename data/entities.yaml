@@ -42,8 +42,11 @@
   description:
   - A plain wooden workbench, providing space to make other
     things using the `make` command.
-  - 'Example:'
-  - 'make "log"'
+  - |
+    Example:
+    ```
+    make "log"
+    ```
   properties: [portable]
   capabilities: [make]
 
@@ -343,10 +346,11 @@
   description:
   - Employs hot lead typesetting to arrange glyphs into a mold for printing.
   - |
-    An equipped `linotype` device enables the `format` command:
-  - |
-    `format : a -> text` can turn any value into a suitable text
-    representation.
+    An equipped `linotype`{=entity} device enables the `format` command:
+    ```
+    format : a -> text
+    ```
+    which can turn any value into a suitable text representation.
   properties: [portable]
   capabilities: [format]
 
@@ -359,7 +363,10 @@
   - |
     Facilitates the concatenation of text values.
   - |
-    The infix operator `++ : text -> text -> text`
+    The infix operator
+    ```
+    ++ : text -> text -> text
+    ```
     can be used to concatenate two text values.  For example,
   - |
     "Number of widgets: " ++ format numWidgets
@@ -373,8 +380,10 @@
   description:
   - Simple, yet accurate measuring device. Can determine the length of a text value.
   - |
-    `chars : text -> int` computes the number of characters in a
-    `text` value.
+    ```
+    chars : text -> int
+    ```
+    computes the number of characters in a `text`{=type} value.
   properties: [portable]
   capabilities: [charcount]
 
@@ -385,10 +394,11 @@
   description:
   - A simple machine for the textually-inclined; plain but effective.
   - |
-    An equipped `wedge` enables the `split` command:
-  - |
-    `split : int -> text -> text * text` splits a `text` value into
-    two pieces, one before the given index and one after.
+    An equipped `wedge`{=entity} enables the `split` command:
+    ```
+    split : int -> text -> text * text
+    ```
+    splits a `text`{=type} value into two pieces, one before the given index and one after.
   properties: [portable]
   capabilities: [split]
 
@@ -401,7 +411,7 @@
     information, made of twisted cotton fibers.  Multiple strings can
     also be woven into larger configurations such as cloth or nets.
   - |
-    An equipped `string` device enables several commands for working with
+    An equipped `string`{=entity} device enables several commands for working with
     `text` values:
   - |
     `format : a -> text` can turn any value into a suitable text
@@ -410,7 +420,9 @@
     The infix operator `++ : text -> text -> text`
     can be used to concatenate two text values.  For example,
   - |
+    ```
     "Number of widgets: " ++ format numWidgets
+    ```
   - |
     `chars : text -> int` computes the number of characters in a
     `text` value.
@@ -446,7 +458,10 @@
   - A wild lambda.  They are somewhat rare, but regrow when picked.  Lambdas
     are delicious when cooked into curry.
   - Lambdas can also be used to create functions. For example,
-  - '  def thrice : cmd unit -> cmd unit = \c. c;c;c end'
+  - |
+    ```
+    def thrice : cmd unit -> cmd unit = \c. c;c;c end
+    ```
   - defines the function `thrice` which repeats a command three times.
   properties: [portable, growable]
   growth: [100, 200]
@@ -751,13 +766,19 @@
   description:
   - Equipping treads on a robot allows it to move and turn.
   - The `move` command moves the robot forward one unit.
-  - 'Example:'
-  - '  move; move; // move two units'
+  - |
+    Example:'
+    ```
+    move; move; // move two units
+    ```
   - The `turn` command takes a direction as an argument, which
     can be either absolute (north, west, east, south) or relative
     (left, right, forward, back, down).
-  - 'Example:'
-  - '  move; turn left; move; turn right'
+  - |
+    Example:
+    ```
+    move; turn left; move; turn right
+    ```
   capabilities: [move, turn]
   properties: [portable]
 
@@ -769,6 +790,15 @@
   description:
   - Tank treads work like treads, but are large enough to move even heavy robots around.
   capabilities: [move, turn, moveheavy]
+  properties: [portable]
+
+- name: tape drive
+  display:
+    attr: device
+    char: '%'
+  description:
+  - A "tape drive" allows you to `backup`; that is, to `drive` in reverse.
+  capabilities: [backup]
   properties: [portable]
 
 - name: dozer blade
@@ -809,13 +839,13 @@
     char: '≪'
   description:
   - A fast grabber is an improved version of the basic grabber - not only
-    can it 'grab', 'place', and 'give', it can also 'swap'.
-  - The 'swap' command allows the robot to execute grab and place at the
+    can it `grab`, `place`, and `give`, it can also `swap`.
+  - The `swap` command allows the robot to execute grab and place at the
     same time so that the location where the robot is standing does not
     become empty.
   - You can use this to prevent failures where multiple robots
     are trying to grab, place or scan a given location.
-  - In addition you retain the capability to use the 'atomic' command,
+  - In addition you retain the capability to use the `atomic` command,
     with which you can implement other commands that are safe when
     run in parallel.
   capabilities: [grab, swap, give, place, atomic]
@@ -893,7 +923,9 @@
     attr: device
     char: '!'
   description:
-  - A drill allows robots to drill through rocks and mountains, and extract resources from mines.
+  - A drill allows robots to `drill` through rocks and mountains (with
+    e.g. `drill forward`), and extract resources from mines (with
+    `drill down`).
   capabilities: [drill]
   properties: [portable]
 
@@ -926,12 +958,18 @@
   - A 3D printer gives you the capability of printing more robots! You
     can access the 3D printer via the `build` command.
   - 'Example:'
-  - '  build {move; grab; turn back; move; give base "tree"}'
+  - |
+    ```
+    build {move; grab; turn back; move; give base "tree"}
+    ```
   - |
     builds a robot to get the tree on the cell to the
     north (if there is one) and bring it back to the base. The `build` command
     always returns a reference to the newly constructed robot. For example,
-  - '  r <- build {move}; view r'
+  - |
+    ```
+    r <- build {move}; view r
+    ```
   - |
     builds a robot and then views it.
 
@@ -946,13 +984,19 @@
   description:
   - |
     A dictionary allows a robot to remember definitions and reuse them
-    later.  You can access this ability with either a `def` command,
+    later.  You can access this ability with either a `def`{=snippet} command,
     which creates a name for an expression or command that is
-    available from then on, or with a `let` expression, which names an
+    available from then on, or with a `let`{=snippet} expression, which names an
     expression or command locally within another expression.
-  - '  def m2 : cmd unit = move; move end'
-  - '  let x : int = 3 in x^2 + 2*x + 1'
-  - The type annotations in `def` and `let` are optional.
+  - |
+    ```
+    def m2 : cmd unit = move; move end
+    ```
+  - |
+    ```
+    let x : int = 3 in x^2 + 2*x + 1
+    ```
+  - The type annotations in `def`{=snippet} are optional.
 
   properties: [portable]
   capabilities: [env]
@@ -968,7 +1012,10 @@
     is `if` followed by three arguments: a boolean test and then
     two delayed expressions (i.e. expressions in curly braces) of the same type.
   - 'Example:'
-  - 'if (x > 3) {move} {turn right; move}'
+  - |
+    ```
+    if (x > 3) {move} {turn right; move}'
+    ```
   properties: [portable]
   capabilities: [cond]
 
@@ -1080,7 +1127,10 @@
   - "That way you can view any heard message later either in
      the logger or the message window."
   - "To wait for a message and get the string value, use:"
-  - "`l <- listen; log $ \"I have waited for someone to say \" ++ l`"
+  - |
+    ```
+    l <- listen; log $ \"I have waited for someone to say \" ++ l
+    ```
   properties: [portable]
   capabilities: [listen]
 
@@ -1158,7 +1208,9 @@
     robot's current heading. For example, the following code moves
     east and then restores the same heading as before:
   - |
+    ```
     d <- heading; turn east; move; turn d
+    ```
   properties: [portable]
   capabilities: [orient]
 
@@ -1191,7 +1243,7 @@
     char: R
     attr: silver
   description:
-  - Enables robots to use the 'watch' command.
+  - Enables robots to use the `watch` command.
   - |
     `watch : dir -> cmd unit` will mark an adjacent (in the specified direction) location of interest to monitor for placement or removal of items.
     A subsequent call to `wait` will be interrupted upon a change to the location.
@@ -1226,8 +1278,9 @@
     commands in between them.  It can be used via the `atomic` command. For example, suppose
     robot A executes the following code:"
   - |
+    ```
     b <- ishere "rock"; if b {grab} {}
-
+    ```
   - "This seems like a safe way to execute `grab` only when there is a
     rock to grab.  However, it is actually possible for the `grab` to
     fail, if some other robot B snatches the rock right after robot A sensed
@@ -1235,7 +1288,9 @@
   - "This will make robot A very sad and it will crash."
   - "To prevent this situation, robot A can wrap the commands in `atomic`, like so:"
   - |
+    ```
     atomic (b <- ishere "rock"; if b {grab} {})
+    ```
 
   properties: [portable]
   capabilities: [atomic]
@@ -1246,9 +1301,11 @@
     char: '#'
   description:
   - A net is a device woven out of many strings.  With a net
-    equipped, you can use the `try` command to catch errors. For example,
+    equipped, you can use the `try` command to catch errors. For example
   - |
-    `try {move} {turn left}`
+    ```
+    try {move} {turn left}
+    ```
   - will attempt to move, but if that fails, turn left instead.
   properties: [portable]
   capabilities: [try]
@@ -1354,7 +1411,7 @@
     installs a custom handler function that can be activated to
     respond to keyboard inputs typed at the REPL.
   - |
-    `key : text -> key` constructs values of type `key`, for
+    `key : text -> key` constructs values of type `key`{=type}, for
     example `key "Down"` or `key "C-S-x"`.
   properties: [portable]
   capabilities: [handleinput]
