@@ -103,9 +103,13 @@ formatIncapableFix = \case
 --   on how to fix it.
 --
 -- >>> import Data.Either (fromRight)
+-- >>> import Control.Carrier.Throw.Either (runThrow)
+-- >>> import Control.Algebra (run)
+-- >>> import Swarm.Game.Failure (LoadingFailure)
+-- >>> :set -XTypeApplications
 -- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" [] [] [CAppear]
 -- >>> r = mkEntity (defaultEntityDisplay 'o') "the one ring" [] [] [CAppear]
--- >>> m = fromRight mempty $ buildEntityMap [w,r]
+-- >>> m = fromRight mempty . run . runThrow @LoadingFailure $ buildEntityMap [w,r]
 -- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByEquip cs t
 --
 -- >>> incapableError (R.singletonCap CGod) (TConst As)

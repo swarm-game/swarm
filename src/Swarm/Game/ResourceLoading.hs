@@ -6,11 +6,12 @@
 -- Various utilities related to loading game data files.
 module Swarm.Game.ResourceLoading where
 
+import Control.Algebra (Has)
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Throw (Throw, liftEither, throwError)
 import Control.Exception (catch)
 import Control.Exception.Base (IOException)
-import Control.Monad (forM, when)
-import Control.Monad.Except (ExceptT (..))
-import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad (forM, when, (<=<))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
@@ -38,16 +39,20 @@ import Witch
 -- The idea is that when installing with Cabal/Stack the first
 -- is preferred, but when the players install a binary they
 -- need to extract the `data` archive to the XDG directory.
-getDataDirSafe :: (MonadIO m) => AssetData -> FilePath -> m (Either SystemFailure FilePath)
+getDataDirSafe ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  AssetData ->
+  FilePath ->
+  m FilePath
 getDataDirSafe asset p = do
-  d <- (`appDir` p) <$> liftIO getDataDir
-  de <- liftIO $ doesDirectoryExist d
+  d <- (`appDir` p) <$> sendIO getDataDir
+  de <- sendIO $ doesDirectoryExist d
   if de
-    then return $ Right d
+    then return d
     else do
-      xd <- (`appDir` p) <$> liftIO (getSwarmXdgDataSubdir False "data")
-      xde <- liftIO $ doesDirectoryExist xd
-      return $ if xde then Right xd else Left $ AssetNotLoaded (Data asset) xd $ DoesNotExist Directory
+      xd <- (`appDir` p) <$> sendIO (getSwarmXdgDataSubdir False "data")
+      xde <- sendIO $ doesDirectoryExist xd
+      if xde then return xd else throwError $ AssetNotLoaded (Data asset) xd $ DoesNotExist Directory
  where
   appDir r = \case
     "" -> r
@@ -58,19 +63,17 @@ getDataDirSafe asset p = do
 --
 -- See the note in 'getDataDirSafe'.
 getDataFileNameSafe ::
-  (MonadIO m) =>
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   AssetData ->
   FilePath ->
-  ExceptT SystemFailure m FilePath
+  m FilePath
 getDataFileNameSafe asset name = do
-  d <- ExceptT $ getDataDirSafe asset "."
+  d <- getDataDirSafe asset "."
   let fp = d </> name
-  fe <- liftIO $ doesFileExist fp
-  ExceptT $
-    return $
-      if fe
-        then Right fp
-        else Left $ AssetNotLoaded (Data asset) fp $ DoesNotExist File
+  fe <- sendIO $ doesFileExist fp
+  if fe
+    then return fp
+    else throwError $ AssetNotLoaded (Data asset) fp $ DoesNotExist File
 
 -- | Get a nice message suggesting to download `data` directory to 'XdgData'.
 dataNotFound :: FilePath -> IO LoadingFailure
@@ -110,14 +113,16 @@ getSwarmHistoryPath :: Bool -> IO FilePath
 getSwarmHistoryPath createDirs = getSwarmXdgDataFile createDirs "history"
 
 -- | Read all the .txt files in the data/ directory.
-readAppData :: ExceptT SystemFailure IO (Map Text Text)
+readAppData ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  m (Map Text Text)
 readAppData = do
-  d <- ExceptT $ getDataDirSafe AppAsset "."
-  dirMembers <-
-    ExceptT $
-      fmap pure (listDirectory d) `catch` \(e :: IOException) ->
+  d <- getDataDirSafe AppAsset "."
+  dirMembers :: [FilePath] <-
+    (liftEither <=< sendIO) $
+      (pure <$> listDirectory d) `catch` \(e :: IOException) ->
         return . Left . AssetNotLoaded (Data AppAsset) d . CustomMessage . T.pack $ show e
   let fs = filter ((== ".txt") . takeExtension) dirMembers
 
-  filesList <- liftIO $ forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT (d </> f))
+  filesList <- sendIO $ forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT (d </> f))
   return $ M.fromList . mapMaybe sequenceA $ filesList
