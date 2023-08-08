@@ -270,7 +270,7 @@ loadScenario ::
   EntityMap ->
   WorldMap ->
   m (Scenario, FilePath)
-loadScenario scenario em = do
+loadScenario scenario em worldMap = do
   mfileName <- getScenarioPath scenario
   fileName <- maybe (throwError $ ScenarioNotFound scenario) return mfileName
   (,fileName) <$> loadScenarioFile em worldMap fileName
@@ -282,8 +282,8 @@ loadScenarioFile ::
   WorldMap ->
   FilePath ->
   m Scenario
-loadScenarioFile em fileName =
+loadScenarioFile em worldMap fileName =
   (withThrow adaptError . (liftEither <=< sendIO)) $
-    decodeFileEitherE em fileName
+    decodeFileEitherE (em, worldMap) fileName
  where
   adaptError = AssetNotLoaded (Data Scenarios) fileName . CanNotParseYaml

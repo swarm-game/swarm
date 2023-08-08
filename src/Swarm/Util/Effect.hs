@@ -4,9 +4,9 @@
 -- fused-effect utilities for Swarm.
 module Swarm.Util.Effect where
 
+import Control.Carrier.Accum.FixedStrict
 import Control.Carrier.Error.Either (ErrorC (..))
 import Control.Carrier.Throw.Either (ThrowC (..), runThrow)
-import Control.Effect.Accum
 import Control.Effect.Throw
 import Control.Monad ((<=<), (>=>))
 import Control.Monad.Trans.Except (ExceptT)
@@ -35,6 +35,9 @@ throwToWarning m = do
   case res of
     Left err -> warn err >> return Nothing
     Right a -> return (Just a)
+
+ignoreWarnings :: forall e m a. (Monoid e, Functor m) => AccumC e m a -> m a
+ignoreWarnings = evalAccum mempty
 
 -- | Convert a fused-effects style computation using a @Throw e@
 --   constraint into an @ExceptT@ computation.  This is mostly a stub

@@ -25,7 +25,7 @@ import Data.Yaml (ParseException, prettyPrintParseException)
 import Prettyprinter (Pretty (pretty), nest, squotes, vcat, (<+>))
 import Swarm.Language.Pretty
 import Swarm.Util (showLowT)
-import Text.Megaparsec (ParseErrorBundle)
+import Text.Megaparsec (ParseErrorBundle, errorBundlePretty)
 import Witch (into)
 
 ------------------------------------------------------------

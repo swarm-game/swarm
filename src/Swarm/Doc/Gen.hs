@@ -25,7 +25,6 @@ module Swarm.Doc.Gen (
 ) where
 
 import Control.Effect.Lift
-import Control.Effect.Throw
 import Control.Lens (view, (^.))
 import Control.Lens.Combinators (to)
 import Control.Monad (zipWithM, zipWithM_)
@@ -35,6 +34,7 @@ import Data.List (transpose)
 import Data.Map.Lazy (Map, (!))
 import Data.Map.Lazy qualified as Map
 import Data.Maybe (fromMaybe, isJust)
+import Data.Sequence (Seq)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text, unpack)
@@ -49,7 +49,7 @@ import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements, recipeTime, recipeWeight)
 import Swarm.Game.Robot (Robot, equippedDevices, instantiateRobot, robotInventory)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
-import Swarm.Game.World.Eval (loadWorldsWithWarnings)
+import Swarm.Game.World.Eval (loadWorlds)
 import Swarm.Game.World.Gen (extractEntities)
 import Swarm.Game.World.Typecheck (Some (..), TTerm)
 import Swarm.Language.Capability (Capability)
@@ -60,7 +60,7 @@ import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Util (both, listEnums, quote)
-import Swarm.Util.Effect (simpleErrorHandle)
+import Swarm.Util.Effect (ignoreWarnings, simpleErrorHandle)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 
@@ -419,9 +419,9 @@ generateRecipe :: IO String
 generateRecipe = simpleErrorHandle $ do
   entities <- loadEntities
   recipes <- loadRecipes entities
-  worlds <- loadWorlds entities
+  worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds entities
   classic <- fst <$> loadScenario "data/scenarios/classic.yaml" entities worlds
-  return . Dot.showDot $ recipesToDot classic (loadedWorlds ! "classic") entities recipes
+  return . Dot.showDot $ recipesToDot classic (worlds ! "classic") entities recipes
 
 recipesToDot :: Scenario -> Some (TTerm '[]) -> EntityMap -> [Recipe Entity] -> Dot ()
 recipesToDot classic classicTerm emap recipes = do
@@ -538,13 +538,6 @@ recipeLevels recipes start = levels
        in if null n
             then ls
             else go (n : ls) (Set.union n known)
-
--- | Get classic scenario to figure out starting entities.
-classicScenario :: (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) => m Scenario
-classicScenario = do
-  entities <- loadEntities
-  worldMap <- loadWorlds
-  fst <$> 
 
 startingHelper :: Scenario -> Robot
 startingHelper = instantiateRobot 0 . head . view scenarioRobots

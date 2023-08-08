@@ -76,8 +76,8 @@ module Swarm.Util (
 import Control.Applicative (Alternative)
 import Control.Carrier.Throw.Either
 import Control.Effect.State (State, modify, state)
-import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
-import Control.Monad (guard, unless)
+import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<&>), (<>~))
+import Control.Monad (filterM, guard, unless)
 import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum, toLower)
 import Data.Either.Validation
