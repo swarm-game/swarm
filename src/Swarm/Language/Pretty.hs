@@ -295,7 +295,7 @@ instance PrettyPrec TypeErr where
   prettyPrec _ (InvalidAtomic reason t) =
     "Invalid atomic block:" <+> ppr reason <> ":" <+> ppr t
   prettyPrec _ Impredicative =
-    "Impredicative type encountered. See https://github.com/swarm-game/swarm/issues/351"
+    "Unconstrained unification type variables encountered, likely due to an impredicative type. This is a known bug; for more information see https://github.com/swarm-game/swarm/issues/351 ."
 
 -- | Given a type and its source, construct an appropriate description
 --   of it to go in a type mismatch error message.
