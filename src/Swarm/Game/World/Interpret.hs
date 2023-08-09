@@ -80,7 +80,8 @@ interpReflect ax (Coords (r, c)) = Coords (case ax of X -> (r, -c); Y -> (-r, c)
 interpRot :: Rot -> Coords -> Coords
 interpRot rot (Coords crd) = Coords (rotTuple rot crd)
  where
-  rotTuple Rot0 cds = cds
-  rotTuple Rot90 (r, c) = (-c, r)
-  rotTuple Rot180 (r, c) = (-r, -c)
-  rotTuple Rot270 (r, c) = (c, -r)
+  rotTuple = \case
+    Rot0 -> id
+    Rot90 -> \(r, c) -> (-c, r)
+    Rot180 -> \(r, c) -> (-r, -c)
+    Rot270 -> \(r, c) -> (c, -r)
