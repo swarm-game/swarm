@@ -292,6 +292,17 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/144-subworlds/subworld-located-robots"
         , testSolution Default "Testing/1379-single-world-portal-reorientation"
         , testSolution Default "Testing/1399-backup-command"
+        , testGroup
+            -- Note that the description of the classic world in
+            -- data/worlds/classic.yaml (automatically tested to some
+            -- extent by the solution to Tutorial/world101 and
+            -- Tutorial/farming) also constitutes a fairly
+            -- comprehensive test of world DSL features.
+            "World DSL (#1320)"
+            [ testSolution Default "Testing/1320-world-DSL/constant"
+            , testSolution Default "Testing/1320-world-DSL/erase"
+            , testSolution Default "Testing/1320-world-DSL/override"
+            ]
         ]
     ]
  where
