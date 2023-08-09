@@ -57,7 +57,7 @@ import Control.Arrow ((***))
 import Control.Category ((>>>))
 import Control.Lens ((^.))
 import Control.Lens.Indexed (itraverse)
-import Control.Monad (forM_, void, when)
+import Control.Monad (forM_, void, when, (<=<))
 import Control.Monad.Except (
   ExceptT,
   MonadError (catchError, throwError),
@@ -182,14 +182,17 @@ runTC ctx =
     >>> ( >>=
             \(Module u uctx) ->
               Module
-                <$> mapM (fmap fromU . generalize) u
-                <*> pure (fromU uctx)
+                <$> mapM (checkPredicative <=< (fmap fromU . generalize)) u
+                <*> checkPredicative (fromU uctx)
         )
     >>> flip runReaderT (toU ctx)
     >>> flip runReaderT []
     >>> runExceptT
     >>> evalIntBindingT
     >>> runIdentity
+
+checkPredicative :: Maybe a -> TC a
+checkPredicative = maybe (throwError (mkRawTypeErr Impredicative)) pure
 
 -- | Look up a variable in the ambient type context, either throwing
 --   an 'UnboundVar' error if it is not found, or opening its
@@ -431,6 +434,9 @@ data TypeErr
     UnknownProj Var Term
   | -- | An invalid argument was provided to @atomic@.
     InvalidAtomic InvalidAtomicReason Term
+  | -- | Some unification variables ended up in a type, probably due to
+    --   impredicativity.  See https://github.com/swarm-game/swarm/issues/351 .
+    Impredicative
   deriving (Show)
 
 -- | Various reasons the body of an @atomic@ might be invalid.

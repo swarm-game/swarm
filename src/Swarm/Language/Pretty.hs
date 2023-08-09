@@ -300,6 +300,8 @@ instance PrettyPrec TypeErr where
     "Record does not have a field with name" <+> pretty x <> ":" <+> ppr t
   prettyPrec _ (InvalidAtomic reason t) =
     "Invalid atomic block:" <+> ppr reason <> ":" <+> ppr t
+  prettyPrec _ Impredicative =
+    "Unconstrained unification type variables encountered, likely due to an impredicative type. This is a known bug; for more information see https://github.com/swarm-game/swarm/issues/351 ."
 
 -- | Given a type and its source, construct an appropriate description
 --   of it to go in a type mismatch error message.

@@ -83,7 +83,6 @@ import Data.Kind qualified
 import Data.Map.Merge.Strict qualified as M
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
-import Data.Maybe (fromJust)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.String (IsString (..))
@@ -223,7 +222,8 @@ type UCtx = Ctx UPolytype
 -- | A @Poly t@ is a universally quantified @t@.  The variables in the
 --   list are bound inside the @t@.  For example, the type @forall
 --   a. a -> a@ would be represented as @Forall ["a"] (TyFun "a" "a")@.
-data Poly t = Forall [Var] t deriving (Show, Eq, Functor, Data, Generic, FromJSON, ToJSON)
+data Poly t = Forall [Var] t
+  deriving (Show, Eq, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
 -- | A polytype without unification variables.
 type Polytype = Poly Type
@@ -259,20 +259,20 @@ class WithU t where
   --   Generally, this direction requires somehow knowing that there
   --   are no longer any unification variables in the value being
   --   converted.
-  fromU :: U t -> t
+  fromU :: U t -> Maybe t
 
 -- | 'Type' is an instance of 'WithU', with associated type 'UType'.
 instance WithU Type where
   type U Type = UType
   toU = unfreeze
-  fromU = fromJust . freeze
+  fromU = freeze
 
 -- | A 'WithU' instance can be lifted through any functor (including,
 --   in particular, 'Ctx' and 'Poly').
-instance (WithU t, Functor f) => WithU (f t) where
+instance (WithU t, Traversable f) => WithU (f t) where
   type U (f t) = f (U t)
   toU = fmap toU
-  fromU = fmap fromU
+  fromU = traverse fromU
 
 ------------------------------------------------------------
 -- Pattern synonyms
