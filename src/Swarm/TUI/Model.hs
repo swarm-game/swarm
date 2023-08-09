@@ -148,7 +148,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios, _SISingle)
 import Swarm.Game.State
-import Swarm.Game.World.Eval (loadWorlds)
+import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Menu

@@ -35,7 +35,7 @@ import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Scenario (Scenario, scenarioDescription, scenarioName, scenarioObjectives, scenarioSolution)
 import Swarm.Game.Scenario.Objective (objectiveGoal)
 import Swarm.Game.ScenarioInfo (ScenarioCollection, ScenarioInfoPair, flatten, loadScenarios, scenarioCollectionToList, scenarioPath)
-import Swarm.Game.World.Eval (loadWorlds)
+import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Language.Module (Module (..))
 import Swarm.Language.Pipeline (ProcessedTerm (..))
 import Swarm.Language.Syntax
