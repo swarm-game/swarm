@@ -14,7 +14,10 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Typechecking and elaboration for the Swarm world DSL.
+-- Typechecking and elaboration for the Swarm world DSL. For more
+-- information, see:
+--
+--   https://byorgey.wordpress.com/2023/07/13/compiling-to-intrinsically-typed-combinators/
 module Swarm.Game.World.Typecheck where
 
 import Control.Algebra (Has)
