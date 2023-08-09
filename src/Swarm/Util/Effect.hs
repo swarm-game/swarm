@@ -36,6 +36,8 @@ throwToWarning m = do
     Left err -> warn err >> return Nothing
     Right a -> return (Just a)
 
+-- | Run a computation with an @Accum@ effect (typically accumulating
+--   a list of warnings), ignoring the accumulated value.
 ignoreWarnings :: forall e m a. (Monoid e, Functor m) => AccumC e m a -> m a
 ignoreWarnings = evalAccum mempty
 
