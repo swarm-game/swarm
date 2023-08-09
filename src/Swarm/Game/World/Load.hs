@@ -27,7 +27,8 @@ import Swarm.Util.Effect (throwToWarning, withThrow)
 import System.FilePath (dropExtension, joinPath, splitPath)
 import Witch (into)
 
--- | XXX
+-- | Load and typecheck all world descriptions from `worlds/*.world`.
+--   Emit a warning for each one which fails to parse or typecheck.
 loadWorlds ::
   (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
   EntityMap ->
@@ -38,17 +39,18 @@ loadWorlds em = do
     Nothing -> return M.empty
     Just dir -> do
       worldFiles <- sendIO $ acquireAllWithExt dir "world"
-      ws <- mapM (throwToWarning @SystemFailure . processWorldFile dir em) worldFiles
+      ws <- mapM (throwToWarning @SystemFailure . loadWorld dir em) worldFiles
       return . M.fromList . catMaybes $ ws
 
--- | XXX
-processWorldFile ::
+-- | Load a file containing a world DSL term, throwing an exception if
+--   it fails to parse or typecheck.
+loadWorld ::
   (Has (Throw SystemFailure) sig m) =>
   FilePath ->
   EntityMap ->
   (FilePath, String) ->
   m (Text, Some (TTerm '[]))
-processWorldFile dir em (fp, src) = do
+loadWorld dir em (fp, src) = do
   wexp <-
     liftEither . left (AssetNotLoaded (Data Worlds) fp . CanNotParseMegaparsec) $
       runParser parseWExp (into @Text src)
@@ -58,6 +60,6 @@ processWorldFile dir em (fp, src) = do
         infer CNil wexp
   return (into @Text (dropExtension (stripDir dir fp)), t)
 
--- | XXX
+-- | Strip a leading directory from a 'FilePath'.
 stripDir :: FilePath -> FilePath -> FilePath
 stripDir dir fp = joinPath (drop (length (splitPath dir)) (splitPath fp))
