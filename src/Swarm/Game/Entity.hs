@@ -337,25 +337,15 @@ instance FromJSON Entity where
   parseJSON = withObject "Entity" $ \v ->
     rehashEntity
       <$> ( Entity 0
-              <$> v
-              .: "display"
-              <*> v
-              .: "name"
-              <*> v
-              .:? "plural"
+              <$> v .: "display"
+              <*> v .: "name"
+              <*> v .:? "plural"
               <*> (map reflow <$> (v .: "description"))
-              <*> v
-              .:? "orientation"
-              <*> v
-              .:? "growth"
-              <*> v
-              .:? "yields"
-              <*> v
-              .:? "properties"
-              .!= mempty
-              <*> v
-              .:? "capabilities"
-              .!= mempty
+              <*> v .:? "orientation"
+              <*> v .:? "growth"
+              <*> v .:? "yields"
+              <*> v .:? "properties" .!= mempty
+              <*> v .:? "capabilities" .!= mempty
               <*> pure empty
           )
 
