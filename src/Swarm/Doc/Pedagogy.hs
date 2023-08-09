@@ -6,8 +6,9 @@
 -- Assess pedagogical soundness of the tutorials.
 --
 -- Approach:
+--
 -- 1. Obtain a list of all of the tutorial scenarios, in order
--- 2. Search their "solution" code for `commands`
+-- 2. Search their \"solution\" code for `commands`
 -- 3. "fold" over the tutorial list, noting which tutorial was first to introduce each command
 module Swarm.Doc.Pedagogy (
   renderTutorialProgression,

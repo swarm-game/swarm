@@ -44,7 +44,7 @@ import Witch.From (from)
 -- See https://en.wikipedia.org/wiki/Polar_coordinate_system#Conventions
 --
 -- Do not alter this ordering, as there exist functions that depend on it
--- (e.g. "nearestDirection" and "relativeTo").
+-- (e.g. 'nearestDirection' and 'relativeTo').
 data AbsoluteDir = DEast | DNorth | DWest | DSouth
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, Enum, Bounded)
 
@@ -82,7 +82,7 @@ data RelativeDir = DPlanar PlanarRelativeDir | DDown
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
 
 -- | Caution: Do not alter this ordering, as there exist functions that depend on it
--- (e.g. "nearestDirection" and "relativeTo").
+-- (e.g. 'nearestDirection' and 'relativeTo').
 data PlanarRelativeDir = DForward | DLeft | DBack | DRight
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, Enum, Bounded)
 
@@ -98,7 +98,7 @@ data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
 
 -- | Direction name is generated from the deepest nested data constructor
--- e.g. DLeft becomes "left"
+-- e.g. 'DLeft' becomes "left"
 directionSyntax :: Direction -> Text
 directionSyntax d = toLower . T.tail . from $ case d of
   DAbsolute x -> show x

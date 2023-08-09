@@ -3,7 +3,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Validity checking for Objective prerequisites
+-- Validity checking for 'Objective' prerequisites
 module Swarm.Game.Scenario.Objective.Validation where
 
 import Control.Monad (unless)
@@ -19,9 +19,10 @@ import Swarm.Util (failT, quote)
 -- | Performs monadic validation before returning
 -- the "pure" construction of a wrapper record.
 -- This validation entails:
--- 1) Ensuring that all goal references utilized in prerequisites
+--
+-- 1. Ensuring that all goal references utilized in prerequisites
 --    actually exist
--- 2) Ensuring that the graph of dependencies is acyclic.
+-- 2. Ensuring that the graph of dependencies is acyclic.
 validateObjectives ::
   MonadFail m =>
   [Objective] ->

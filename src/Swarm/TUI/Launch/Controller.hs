@@ -44,7 +44,7 @@ cacheValidatedInputs = do
   editingParams .= parsedParams
   updateFocusRing parsedParams
 
--- | Split this out from the combined parameter-validation function
+-- | This is split out from the combined parameter-validation function
 -- because validating the seed is cheap, and shouldn't have to pay
 -- the cost of re-parsing script code as the user types in the seed
 -- selection field.
@@ -57,7 +57,7 @@ cacheValidatedSeedInput = do
   editingParams .= newParams
   updateFocusRing newParams
 
--- | If the FileBrowser is in "search mode", then we allow
+-- | If the 'FileBrowser' is in "search mode", then we allow
 -- more of the key events to pass through. Otherwise,
 -- we intercept things like "q" (for quit) and Space (so that
 -- we can restrict file selection to at most one).
