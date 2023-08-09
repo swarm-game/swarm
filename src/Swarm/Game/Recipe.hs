@@ -116,18 +116,18 @@ instance FromJSON (Recipe Text) where
   parseJSON = withObject "Recipe" $ \v ->
     Recipe
       <$> v
-      .: "in"
+        .: "in"
       <*> v
-      .: "out"
+        .: "out"
       <*> v
-      .:? "required"
-      .!= []
+        .:? "required"
+        .!= []
       <*> v
-      .:? "time"
-      .!= 1
+        .:? "time"
+        .!= 1
       <*> v
-      .:? "weight"
-      .!= 1
+        .:? "weight"
+        .!= 1
 
 -- | Given an 'EntityMap', turn a list of recipes containing /names/
 --   of entities into a list of recipes containing actual 'Entity'

@@ -338,24 +338,24 @@ instance FromJSON Entity where
     rehashEntity
       <$> ( Entity 0
               <$> v
-              .: "display"
+                .: "display"
               <*> v
-              .: "name"
+                .: "name"
               <*> v
-              .:? "plural"
+                .:? "plural"
               <*> (map reflow <$> (v .: "description"))
               <*> v
-              .:? "orientation"
+                .:? "orientation"
               <*> v
-              .:? "growth"
+                .:? "growth"
               <*> v
-              .:? "yields"
+                .:? "yields"
               <*> v
-              .:? "properties"
-              .!= mempty
+                .:? "properties"
+                .!= mempty
               <*> v
-              .:? "capabilities"
-              .!= mempty
+                .:? "capabilities"
+                .!= mempty
               <*> pure empty
           )
 
