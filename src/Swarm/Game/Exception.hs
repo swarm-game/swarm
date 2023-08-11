@@ -107,8 +107,8 @@ formatIncapableFix = \case
 -- >>> import Control.Algebra (run)
 -- >>> import Swarm.Game.Failure (LoadingFailure)
 -- >>> :set -XTypeApplications
--- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" [] [] [CAppear]
--- >>> r = mkEntity (defaultEntityDisplay 'o') "the one ring" [] [] [CAppear]
+-- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" mempty mempty [CAppear]
+-- >>> r = mkEntity (defaultEntityDisplay 'o') "the one ring" mempty mempty [CAppear]
 -- >>> m = fromRight mempty . run . runThrow @LoadingFailure $ buildEntityMap [w,r]
 -- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByEquip cs t
 --
