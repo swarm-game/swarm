@@ -327,7 +327,7 @@ nodeToMark = \case
   LeafCode c -> wrap "`" (prettyText c)
   LeafCodeBlock f c -> codeBlock f $ prettyText c
  where
-  codeBlock f t = "```" <> T.pack f <> "\n" <> t <> "\n```"
+  codeBlock f t = wrap "```" $ T.pack f <> "\n" <> t <> "\n"
   wrap c t = c <> t <> c
   attr t a = case a of
     Emphasis -> wrap "_" t
