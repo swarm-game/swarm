@@ -21,6 +21,8 @@ module Swarm.Language.Text.Markdown (
   TxtAttr (..),
   fromTextM,
   fromText,
+  docToText,
+  docToMark,
 
   -- ** Token stream
   StreamNode' (..),
@@ -41,7 +43,6 @@ import Control.Lens ((%~), (&), _head, _last)
 import Control.Monad (void)
 import Data.Char (isSpace)
 import Data.Functor.Identity (Identity (..))
-import Data.List qualified as List
 import Data.List.Split (chop)
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
@@ -55,7 +56,7 @@ import GHC.Exts qualified (IsList (..), IsString (..))
 import Swarm.Language.Module (moduleAST)
 import Swarm.Language.Parse (readTerm)
 import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
-import Swarm.Language.Pretty (prettyText, prettyTypeErrText)
+import Swarm.Language.Pretty (prettyText, prettyTypeErrText, PrettyPrec (..))
 import Swarm.Language.Syntax (Syntax)
 
 -- | The top-level markdown document.
@@ -187,7 +188,7 @@ instance ToJSON (Paragraph Syntax) where
   toJSON = String . toText
 
 instance ToJSON (Document Syntax) where
-  toJSON = String . toText
+  toJSON = String . docToMark
 
 instance FromJSON (Document Syntax) where
   parseJSON v = parseDoc v <|> parsePars v
@@ -223,6 +224,13 @@ fromTextPure t = do
 -- DIY STREAM
 --------------------------------------------------------------
 
+-- | Convert 'Document' to 'Text'.
+--
+-- Note that this will strip some markdown, emphasis and bold marks.
+-- If you want to get markdown again, use 'docToMark'.
+docToText :: PrettyPrec a => Document a -> Text
+docToText = T.intercalate "\n\n" . map toText . paragraphs
+
 -- | This is the naive and easy way to get text from markdown document.
 toText :: ToStream a => a -> Text
 toText = streamToText . toStream
@@ -234,7 +242,6 @@ data StreamNode' t
   = TextNode (Set TxtAttr) t
   | CodeNode t
   | RawNode String t
-  | ParagraphBreak
   deriving (Eq, Show, Functor)
 
 type StreamNode = StreamNode' Text
@@ -244,11 +251,8 @@ unStream = \case
   TextNode a t -> (TextNode a, t)
   CodeNode t -> (CodeNode, t)
   RawNode a t -> (RawNode a, t)
-  ParagraphBreak -> error "Logic error: Paragraph break can not be unstreamed!"
 
 -- | Get chunks of nodes not exceeding length and broken at word boundary.
---
--- The split will end when no more nodes (then words) can fit or on 'ParagraphBreak'.
 chunksOf :: Int -> [StreamNode] -> [[StreamNode]]
 chunksOf n = chop (splitter True n)
  where
@@ -257,7 +261,6 @@ chunksOf n = chop (splitter True n)
   splitter :: Bool -> Int -> [StreamNode] -> ([StreamNode], [StreamNode])
   splitter start i = \case
     [] -> ([], [])
-    (ParagraphBreak : ss) -> ([ParagraphBreak], ss)
     (tn : ss) ->
       let l = nodeLength tn
        in if l <= i
@@ -294,7 +297,6 @@ streamToText = T.concat . map nodeToText
     TextNode _a t -> t
     RawNode _s t -> t
     CodeNode stx -> stx
-    ParagraphBreak -> "\n\n"
 
 -- | Convert elements to one dimensional stream of nodes,
 -- that is easy to format and layout.
@@ -304,15 +306,36 @@ streamToText = T.concat . map nodeToText
 class ToStream a where
   toStream :: a -> [StreamNode]
 
-instance ToStream (Node Syntax) where
+instance PrettyPrec a => ToStream (Node a) where
   toStream = \case
-    LeafText a t -> TextNode a <$> T.lines t
-    LeafCode t -> CodeNode <$> T.lines (prettyText t)
-    LeafRaw s t -> RawNode s <$> T.lines t
-    LeafCodeBlock _i t -> ParagraphBreak : (CodeNode <$> T.lines (prettyText t)) <> [ParagraphBreak]
+    LeafText a t -> [TextNode a t]
+    LeafCode t -> [CodeNode (prettyText t)]
+    LeafRaw s t -> [RawNode s t]
+    LeafCodeBlock _i t -> [CodeNode (prettyText t)]
 
-instance ToStream (Paragraph Syntax) where
+instance PrettyPrec a => ToStream (Paragraph a) where
   toStream = concatMap toStream . nodes
 
-instance ToStream (Document Syntax) where
-  toStream = List.intercalate [ParagraphBreak] . map toStream . paragraphs
+--------------------------------------------------------------
+-- Markdown 
+--------------------------------------------------------------
+
+nodeToMark :: PrettyPrec a => Node a -> Text
+nodeToMark = \case
+  LeafText a t -> foldl attr t a
+  LeafRaw _ c -> wrap "`" c
+  LeafCode c -> wrap "`" (prettyText c)
+  LeafCodeBlock f c -> codeBlock f $ prettyText c
+ where
+  codeBlock f t = "```" <> T.pack f <> "\n" <> t <> "\n```"
+  wrap c t = c <> t <> c
+  attr t a = case a of
+    Emphasis -> wrap "_" t
+    Strong -> wrap "**" t
+
+paragraphToMark :: PrettyPrec a => Paragraph a -> Text
+paragraphToMark = foldMap nodeToMark . nodes
+
+-- | Convert 'Document' to markdown text.
+docToMark :: PrettyPrec a => Document a -> Text
+docToMark = T.intercalate "\n\n" . map paragraphToMark . paragraphs

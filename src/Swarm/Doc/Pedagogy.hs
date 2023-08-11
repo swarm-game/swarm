@@ -90,7 +90,7 @@ extractCommandUsages idx siPair@(s, _si) =
 getDescCommands :: Scenario -> Set Const
 getDescCommands s = S.fromList $ concatMap filterConst allCode
  where
-  goalTextParagraphs = concatMap (view objectiveGoal) $ view scenarioObjectives s
+  goalTextParagraphs = view objectiveGoal <$> view scenarioObjectives s
   allCode = concatMap findCode goalTextParagraphs
   filterConst :: Syntax -> [Const]
   filterConst sx = mapMaybe toConst $ universe (sx ^. sTerm)
