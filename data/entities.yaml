@@ -795,7 +795,7 @@
     attr: device
     char: '%'
   description:
-  - A "tape drive" allows you to `backup`; that is, to drive in reverse.
+  - A `tape drive`{=entity} allows you to `backup`; that is, to drive in reverse.
   capabilities: [backup]
   properties: [portable]
 
