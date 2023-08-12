@@ -10,9 +10,10 @@ else
     SWARM="cabal run swarm -O0 --"
 fi
 
-for s in scenarios/Tutorials/*.yaml; do
-    $SWARM -i $s --autoplay;
-    echo -en "$s\tCONTINUE [Y/n]: "
+for tutorial in $(cat scenarios/Tutorials/00-ORDER.txt | xargs); do
+    echo -n "$tutorial"
+    $SWARM -i "scenarios/Tutorials/$tutorial" --autoplay --cheat;
+    echo -en "\tCONTINUE [Y/n]: "
     read answer;
     case "${answer:0:1}" in
         n|N )
