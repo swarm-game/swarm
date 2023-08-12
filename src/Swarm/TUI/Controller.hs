@@ -964,8 +964,8 @@ doGoalUpdates = do
         -- automatically popped up.
         gameState . announcementQueue .= mempty
 
-        isAutoplaying <- use $ uiState . uiIsAutoplay
-        unless (isAutoplaying && not isCheating) $
+        hideGoals <- use $ uiState . uiHideGoals
+        unless hideGoals $
           openModal GoalModal
 
       return goalWasUpdated

@@ -26,7 +26,7 @@ module Swarm.TUI.Model.UI (
   uiError,
   uiModal,
   uiGoal,
-  uiIsAutoplay,
+  uiHideGoals,
   uiAchievements,
   lgTicksPerSecond,
   lastFrameTime,
@@ -113,7 +113,7 @@ data UIState = UIState
   , _uiError :: Maybe Text
   , _uiModal :: Maybe Modal
   , _uiGoal :: GoalDisplay
-  , _uiIsAutoplay :: Bool
+  , _uiHideGoals :: Bool
   , _uiAchievements :: Map CategorizedAchievement Attainment
   , _uiShowFPS :: Bool
   , _uiShowREPL :: Bool
@@ -199,8 +199,10 @@ uiModal :: Lens' UIState (Maybe Modal)
 --   has been displayed to the user initially.
 uiGoal :: Lens' UIState GoalDisplay
 
--- | When running with --autoplay, suppress the goal dialogs
-uiIsAutoplay :: Lens' UIState Bool
+-- | When running with --autoplay, suppress the goal dialogs.
+--
+-- For developement, the --cheat flag shows goals again.
+uiHideGoals :: Lens' UIState Bool
 
 -- | Map of achievements that were attained
 uiAchievements :: Lens' UIState (Map CategorizedAchievement Attainment)
@@ -333,7 +335,7 @@ initUIState speedFactor showMainMenu cheatMode = do
           , _uiError = Nothing
           , _uiModal = Nothing
           , _uiGoal = emptyGoalDisplay
-          , _uiIsAutoplay = False
+          , _uiHideGoals = False
           , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
           , _uiShowFPS = False
           , _uiShowREPL = True
