@@ -55,6 +55,7 @@ import Swarm.Language.Key (specialKeyNames)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
+import Swarm.Language.Text.Markdown as Markdown (docToMark)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Util (both, listEnums, quote)
 import Swarm.Util.Effect (simpleErrorHandle)
@@ -359,7 +360,7 @@ entityToSection e =
       <> [" - Properties: " <> T.intercalate ", " (map tshow $ toList props) | not $ null props]
       <> [" - Capabilities: " <> T.intercalate ", " (Capability.capabilityName <$> caps) | not $ null caps]
       <> ["\n"]
-      <> [T.intercalate "\n\n" $ view E.entityDescription e]
+      <> [Markdown.docToMark $ view E.entityDescription e]
  where
   props = view E.entityProperties e
   caps = Set.toList $ view E.entityCapabilities e

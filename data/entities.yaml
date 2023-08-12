@@ -363,10 +363,7 @@
   - |
     Facilitates the concatenation of text values.
   - |
-    The infix operator
-    ```
-    ++ : text -> text -> text
-    ```
+    The infix operator `++ : text -> text -> text`{=snippet}
     can be used to concatenate two text values.  For example,
   - |
     "Number of widgets: " ++ format numWidgets
@@ -412,22 +409,23 @@
     also be woven into larger configurations such as cloth or nets.
   - |
     An equipped `string`{=entity} device enables several commands for working with
-    `text` values:
+    `text`{=type} values:
   - |
     `format : a -> text` can turn any value into a suitable text
     representation.
   - |
-    The infix operator `++ : text -> text -> text`
+    The infix operator `++ : text -> text -> text`{=snippet}
     can be used to concatenate two text values.  For example,
   - |
     ```
-    "Number of widgets: " ++ format numWidgets
+    let numWidgets = 42
+    in "Number of widgets: " ++ format numWidgets
     ```
   - |
     `chars : text -> int` computes the number of characters in a
-    `text` value.
+    `text`{=type} value.
   - |
-    `split : int -> text -> text * text` splits a `text` value into
+    `split : int -> text -> text * text` splits a `text`{=type} value into
     two pieces, one before the given index and one after.
   properties: [portable]
   capabilities: [format, concat, charcount, split]
@@ -443,9 +441,9 @@
     enables two functions:
   - |
     `charAt : int -> text -> int` returns the numeric code of the
-    character at a specific index in a (0-indexed) `text` value.
+    character at a specific index in a (0-indexed) `text`{=type} value.
   - |
-    `toChar : int -> text` creates a singleton (length-1) `text`
+    `toChar : int -> text` creates a singleton (length-1) `text`{=type}
     value containing a character with the given numeric code.
   properties: [portable]
   capabilities: [code]
@@ -462,7 +460,7 @@
     ```
     def thrice : cmd unit -> cmd unit = \c. c;c;c end
     ```
-  - defines the function `thrice` which repeats a command three times.
+  - defines the function `thrice`{=snippet} which repeats a command three times.
   properties: [portable, growable]
   growth: [100, 200]
   capabilities: [lambda]
@@ -797,7 +795,7 @@
     attr: device
     char: '%'
   description:
-  - A "tape drive" allows you to `backup`; that is, to `drive` in reverse.
+  - A `tape drive`{=entity} allows you to `backup`; that is, to drive in reverse.
   capabilities: [backup]
   properties: [portable]
 
@@ -1014,7 +1012,8 @@
   - 'Example:'
   - |
     ```
-    if (x > 3) {move} {turn right; move}'
+    let x = 2 in
+    if (x > 3) {move} {turn right; move}
     ```
   properties: [portable]
   capabilities: [cond]
@@ -1129,7 +1128,7 @@
   - "To wait for a message and get the string value, use:"
   - |
     ```
-    l <- listen; log $ \"I have waited for someone to say \" ++ l
+    l <- listen; log $ "I have waited for someone to say " ++ l
     ```
   properties: [portable]
   capabilities: [listen]
@@ -1140,7 +1139,7 @@
     char: 'C'
   description:
   - |
-    A counter enables the command `count : string -> cmd int`,
+    A counter enables the command `count : text -> cmd int`,
     which counts how many occurrences of an entity are currently
     in the inventory.  This is an upgraded version of the `has`
     command, which returns a bool instead of an int and does
@@ -1170,21 +1169,21 @@
     addition to the usual arithmetic on numbers, an ADT calculator can
     also do arithmetic on types!  After all, the helpful typewritten manual
     explains, a type is just a collection of values, and a finite collection
-    of values is just a fancy number.  For example, the type `bool` is
+    of values is just a fancy number.  For example, the type `bool`{=type} is
     just a fancy version of the number 2, where the two things happen to be
-    labelled `false` and `true`.  There are also types `unit` and
-    `void` that correspond to 1 and 0, respectively.
+    labelled `false` and `true`.  There are also types `unit`{=type} and
+    `void`{=type} that correspond to 1 and 0, respectively.
   - |
     The product of two types is a type of pairs, since, for example,
-    if `t` is a type with three elements, then there are 2 * 3 = 6
-    different pairs containing a `bool` and a `t`, that is, 6 elements
-    of type `bool * t`.  For working with products of types, the ADT
-    calculator enables pair syntax `(a, b)` as well as the projection
+    if `t`{=type} is a type with three elements, then there are 2 * 3 = 6
+    different pairs containing a `bool`{=type} and a `t`{=type}, that is, 6 elements
+    of type `bool * t`{=type}.  For working with products of types, the ADT
+    calculator enables pair syntax `(1, "Hi!")` as well as the projection
     functions `fst : a * b -> a` and `snd : a * b -> b`.
   - |
     The sum of two types is a type with two options; for example, a
-    value of type `bool + t` is either a `bool` value or a `t` value,
-    and there are 2 + 3 = 5 such values.  For working with sums of
+    value of type `bool + t`{=type} is either a `bool`{=type} value or a `t`{=type} value,
+    and there are `2 + 3 == 5` such values.  For working with sums of
     types, the ADT calculator provides the injection functions `inl :
     a -> a + b` and `inr : b -> a + b`, as well as the case analysis
     function `case : (a + b) -> (a -> c) -> (b -> c) -> c`.  For
@@ -1279,7 +1278,7 @@
     robot A executes the following code:"
   - |
     ```
-    b <- ishere "rock"; if b {grab} {}
+    b <- ishere "rock"; if b {grab; return ()} {}
     ```
   - "This seems like a safe way to execute `grab` only when there is a
     rock to grab.  However, it is actually possible for the `grab` to
@@ -1289,7 +1288,7 @@
   - "To prevent this situation, robot A can wrap the commands in `atomic`, like so:"
   - |
     ```
-    atomic (b <- ishere "rock"; if b {grab} {})
+    atomic (b <- ishere "rock"; if b {grab; return ()} {})
     ```
 
   properties: [portable]
@@ -1323,16 +1322,17 @@
     waves off them and listening for the echo.  This capability can be
     accessed via two commands:
   - |
-    `meet : cmd (() + actor)` tries to locate a
+    `meet : cmd (unit + actor)` tries to locate a
     nearby actor (a robot, or... something else?) up to one cell away.
     It returns a reference to the nearest actor, or a unit value if
     none are found.
   - |
     `meetAll : (b -> actor -> cmd b) -> b -> cmd b` runs a command on
     every nearby actor (other than oneself), folding over the results
-    to compute a final result of type `b`.  For example, if `x`, `y`,
-    and `z` are nearby actors, then `meetAll f b0` is equivalent to
-    `b1 <- f b0 x; b2 <- f b1 y; f b2 z`.
+    to compute a final result of type `b`{=type}.  For example, if
+    `x`{=snippet}, `y`{=snippet}, and `z`{=snippet}
+    are nearby actors, then `meetAll f b0`{=snippet} is equivalent to
+    `b1 <- f b0 x; b2 <- f b1 y; f b2 z`{=snippet}.
   properties: [portable]
   capabilities: [meet]
 
@@ -1374,9 +1374,9 @@
   - |
     Also allows manipulating composite values consisting of a
     collection of named fields.  For example, `[x = 2, y = "hi"]`
-    is a value of type `[x : int, y : text]`.  Individual fields
+    is a value of type `[x : int, y : text]`{=type}.  Individual fields
     can be projected using dot notation.  For example,
-    `let r = [y="hi", x=2] in r.x` has the value 2.  The order
+    `let r = [y="hi", x=2] in r.x` has the value `2`.  The order
     of the fields does not matter.
   properties: [portable]
   capabilities: [record]

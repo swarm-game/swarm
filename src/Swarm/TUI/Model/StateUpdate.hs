@@ -105,7 +105,7 @@ initPersistentState ::
 initPersistentState opts@(AppOpts {..}) = do
   (warnings :: Seq SystemFailure, (initRS, initUI)) <- runAccum mempty $ do
     rs <- initRuntimeState
-    ui <- initUIState speed (not (skipMenu opts)) (cheatMode || autoPlay)
+    ui <- initUIState speed (not (skipMenu opts)) cheatMode
     return (rs, ui)
   let initRS' = addWarnings initRS (F.toList warnings)
   return (initRS', initUI)
@@ -243,7 +243,8 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
     u
       & uiPlaying .~ True
       & uiGoal .~ emptyGoalDisplay
-      & uiIsAutoplay .~ isAutoplaying
+      & uiCheatMode ||~ isAutoplaying
+      & uiHideGoals .~ (isAutoplaying && not (u ^. uiCheatMode))
       & uiFocusRing .~ initFocusRing
       & uiInventory .~ Nothing
       & uiInventorySort .~ defaultSortOptions

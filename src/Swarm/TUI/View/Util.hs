@@ -124,17 +124,20 @@ drawMarkdown d = do
   Widget Greedy Fixed $ do
     ctx <- getContext
     let w = ctx ^. availWidthL
-    let docLines = Markdown.chunksOf w $ Markdown.toStream d
-    render $ vBox $ map (hBox . map mTxt) docLines
+    let docLines = Markdown.chunksOf w . Markdown.toStream <$> Markdown.paragraphs d
+    render . layoutParagraphs $ vBox . map (hBox . map mTxt) <$> docLines
  where
   mTxt = \case
     Markdown.TextNode as t -> foldr applyAttr (txt t) as
     Markdown.CodeNode t -> withAttr highlightAttr $ txt t
-    Markdown.RawNode _f t -> withAttr highlightAttr $ txt t
-    Markdown.ParagraphBreak -> txt ""
+    Markdown.RawNode f t -> withAttr (rawAttr f) $ txt t
   applyAttr a = withAttr $ case a of
     Markdown.Strong -> boldAttr
     Markdown.Emphasis -> italicAttr
+  rawAttr = \case
+    "entity" -> greenAttr
+    "type" -> magentaAttr
+    _snippet -> highlightAttr -- same as plain code
 
 drawLabeledTerrainSwatch :: TerrainType -> Widget Name
 drawLabeledTerrainSwatch a =
