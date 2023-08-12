@@ -19,7 +19,7 @@ objectives:
         Note: when used after opening quotes in the REPL, the Tab key can cycle through
         possible completions of a name. E.g., type:
       - |
-        > make "br[Tab][Tab]
+        `> make "br[Tab][Tab]`{=snippet}
     condition: |
       try {
         as base {has "branch predictor"}
