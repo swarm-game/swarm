@@ -130,10 +130,14 @@ drawMarkdown d = do
   mTxt = \case
     Markdown.TextNode as t -> foldr applyAttr (txt t) as
     Markdown.CodeNode t -> withAttr highlightAttr $ txt t
-    Markdown.RawNode _f t -> withAttr highlightAttr $ txt t
+    Markdown.RawNode f t -> withAttr (rawAttr f) $ txt t
   applyAttr a = withAttr $ case a of
     Markdown.Strong -> boldAttr
     Markdown.Emphasis -> italicAttr
+  rawAttr = \case
+    "entity" -> greenAttr
+    "type" -> magentaAttr
+    _snippet -> highlightAttr -- same as plain code
 
 drawLabeledTerrainSwatch :: TerrainType -> Widget Name
 drawLabeledTerrainSwatch a =
