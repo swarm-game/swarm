@@ -1,3 +1,7 @@
+/* See README.md for a thorough description of the world DSL.  Some
+   comments are provided below to help explain the language by
+   example. */
+
 let
     /* pn0, pn1, pn2 are Perlin noise functions, which
        associate a floating-point value to every coordinate
