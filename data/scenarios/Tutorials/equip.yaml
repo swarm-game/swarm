@@ -13,7 +13,7 @@ objectives:
         Try typing `build {}` - you should get an error telling you that you
         need to equip a `3D printer`{=entity}.
       - |
-        Fortunately, there is a 3D printer lying nearby.  Go `grab` it, then
+        Fortunately, there is a `3D printer`{=entity} lying nearby.  Go `grab` it, then
         `equip` it with `equip "3D printer"`.
       - |
         You win by building your first robot:

@@ -9,7 +9,7 @@ objectives:
       - Robots can use the `move` command to move forward one unit
         in the direction they are currently facing.
       - To complete this challenge, move your robot two spaces to the right,
-        to the coordinates `(2,0)` marked with the purple flower.
+        to the coordinates `(2,0)` marked with the purple `flower`{=entity}.
       - Note that you can chain commands with semicolon, `;`{=snippet}.
       - You can open this popup window at any time to remind yourself of the goal
         using **Ctrl+G**.
@@ -27,7 +27,7 @@ objectives:
       - To reuse that command without having to retype it press the upward
         arrow on your keyboard. This will allow you to select previous commands.
       - Ahead of you is a six steps long corridor. Move to its end, i.e. the
-        coordinates `(8,0)` marked with the second purple flower.
+        coordinates `(8,0)` marked with the second purple `flower`{=entity}.
       - You can open this popup window at any time to remind yourself of the goal
         using **Ctrl+G**.
     condition: |
@@ -64,7 +64,7 @@ objectives:
   - goal:
       - Good job! You are now ready to move and turn on your own.
       - To complete this challenge, move your robot to the northeast corner,
-        to the coordinates `(8,8)` marked with one flower.
+        to the coordinates `(8,8)` marked with one `flower`{=entity}.
       - Remember you can press the upward arrow on your keyboard to select previous commands.
       - You can open this popup window at any time to remind yourself of the goal
         using **Ctrl+G**.

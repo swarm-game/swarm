@@ -21,8 +21,8 @@ objectives:
         via the `run` command.  See
         https://github.com/swarm-game/swarm/tree/main/editors
         for help configuring your editor with support for swarm-lang.
-      - Your first task is to collect three or more trees. You can
-        remind yourself of the available commands using F4.
+      - Your first task is to collect three or more `tree`{=entity}s. You can
+        remind yourself of the available commands using **F4**.
     condition: |
       try {
         n <- as base {count "tree"};

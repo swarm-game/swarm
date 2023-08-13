@@ -7,7 +7,7 @@ objectives:
       - When you land on an alien planet, all the entities in the
         world will be unfamiliar to you, but you can learn what they are using
         the `scan` command, enabled by a `scanner`{=entity} device.
-      - Send one or more robots to move next to some of the unknown entities (marked as ?),
+      - Send one or more robots to move next to some of the unknown entities (marked as "?"),
         scan them (with something like `scan forward` or `scan north`), and then return
         to the base and execute `upload base`.
       - For more information about the `scan` and `upload` commands, read

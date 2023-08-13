@@ -10,11 +10,11 @@ objectives:
   - goal:
       - Robots can use the `make` command to make things, as long as
         they have a `workbench`{=entity} and the proper ingredients.  For
-        example, `make "circuit"` will make a circuit.
-      - Your base has a few trees in its inventory. Select them to see the
+        example, `make "circuit"` will make a `circuit`{=entity}.
+      - Your base has a few `tree`{=entity}s in its inventory. Select them to see the
         available recipes.
       - Your goal is to make a `branch predictor`{=entity}, so you will have to make
-        some `"branch"`es first.
+        some `branch`{=entity}es first.
       - |
         Note: when used after opening quotes in the REPL, the Tab key can cycle through
         possible completions of a name. E.g., type:

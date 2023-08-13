@@ -11,7 +11,7 @@ objectives:
   - goal:
       - Previously you learned how to plunder a plentiful forest for wood.
         Now you will learn how to plant trees to obtain as much wood as you need.
-      - There is a fast-growing tree (called `"spruce"`) ahead of you.  You could `grab`
+      - There is a fast-growing tree (called `spruce`{=entity}) ahead of you.  You could `grab`
         it as before, but you now have a new device called a `harvester`{=entity}.
         If you `harvest` a tree rather than `grab` it, a new tree will grow in its
         place after some time.
@@ -19,12 +19,12 @@ objectives:
         below you using the `place` command.
       - |
         Using these commands in conjunction, you can plant new growable entities by
-        placing and then harvesting them.  For example, to plant a new spruce seed
+        placing and then harvesting them.  For example, to plant a new `spruce`{=entity} seed
         you can write:
         ```
         place "spruce"; harvest
         ```
-      - Your goal is to collect 6 spruce trees.  You can speed this up
+      - Your goal is to collect 6 `spruce`{=entity} trees.  You can speed this up
         by planting more trees.
       - |
         TIP: You can get a sneak peak at a feature we will explain later and type:

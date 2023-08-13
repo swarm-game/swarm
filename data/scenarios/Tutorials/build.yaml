@@ -15,8 +15,8 @@ objectives:
         where in place of `COMMANDS`{=snippet} you write the sequence
         of commands for the robot to execute (separated by semicolons).
       - |
-        Build a robot to harvest the `"flower"` and place it next
-        to the water.
+        Build a robot to harvest the `flower`{=entity} and place it next
+        to the `water`{=entity}.
       - |
         TIP: Newly built robots start out facing the same
         direction as their parent, which in the tutorials will always be north.

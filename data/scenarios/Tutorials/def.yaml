@@ -4,9 +4,9 @@ description: |
   Learn how to define new commands.
 objectives:
   - goal:
-      - Your goal is to build a robot to fetch the flower growing in the
+      - Your goal is to build a robot to fetch the `flower`{=entity} growing in the
         upper right and bring it back to you; you win the challenge when the base
-        has a flower in its inventory.
+        has a `flower`{=entity} in its inventory.
       - |
         However, it would be extremely tedious to simply type out all the individual
         `move` and `turn` commands required.  Your base has a `dictionary`{=entity} device
@@ -20,12 +20,12 @@ objectives:
         use of new definitions, it should be possible to complete this challenge
         in just a few lines of code.
       - |
-        TIP: your base is at coordinates (0,0), and the flower is at (16,4), which
+        TIP: your base is at coordinates `(0,0)`, and the `flower`{=entity} is at `(16,4)`, which
         you can confirm by clicking in the world map panel. When you click on a cell,
         its contents and coordinates are shown in the lower left.
       - |
         TIP: the type annotation in a definition is optional.  You could also write
-        `def m4 = move; move; move; move end`, and Swarm would infer
+        `def m4 = move; move; move; move end`{=snippet}, and Swarm would infer
         the type of `m4`{=snippet}.
       - |
         TIP: writing function definitions at the prompt is annoying.
