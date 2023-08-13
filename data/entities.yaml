@@ -765,7 +765,7 @@
   - Equipping treads on a robot allows it to move and turn.
   - The `move` command moves the robot forward one unit.
   - |
-    Example:'
+    Example:
     ```
     move; move; // move two units
     ```
