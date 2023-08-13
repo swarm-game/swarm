@@ -142,7 +142,7 @@ objectives:
           create specialDrill;
           equip specialDrill;
 
-          // NOTE: System robots can walk on water
+          // **NOTE:** System robots can walk on water
           // so we only need this if we want to
           // demo the algorithm with a player robot.
       //    create "boat";

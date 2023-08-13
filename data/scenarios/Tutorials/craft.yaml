@@ -16,7 +16,7 @@ objectives:
       - Your goal is to make a `branch predictor`{=entity}, so you will have to make
         some `branch`{=entity}es first.
       - |
-        Note: when used after opening quotes in the REPL, the Tab key can cycle through
+        **NOTE:** when used after opening quotes in the REPL, the Tab key can cycle through
         possible completions of a name. E.g., type:
       - |
         `> make "br[Tab][Tab]`{=snippet}

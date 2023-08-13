@@ -18,7 +18,7 @@ objectives:
         Build a robot to harvest the `flower`{=entity} and place it next
         to the `water`{=entity}.
       - |
-        TIP: Newly built robots start out facing the same
+        **TIP:** Newly built robots start out facing the same
         direction as their parent, which in the tutorials will always be north.
     condition: |
       try {

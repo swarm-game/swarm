@@ -23,7 +23,9 @@ objectives:
       - |
         Previously you could move twice by chaining the move command:
       - |
+        ```
         move; move
+        ```
       - To reuse that command without having to retype it press the upward
         arrow on your keyboard. This will allow you to select previous commands.
       - Ahead of you is a six steps long corridor. Move to its end, i.e. the

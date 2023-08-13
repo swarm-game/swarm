@@ -27,7 +27,7 @@ objectives:
       - Your goal is to collect 6 `spruce`{=entity} trees.  You can speed this up
         by planting more trees.
       - |
-        TIP: You can get a sneak peak at a feature we will explain later and type:
+        **TIP:** You can get a sneak peak at a feature we will explain later and type:
         ```
         def t = move; place "spruce"; harvest; end
         ```

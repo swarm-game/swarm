@@ -27,7 +27,7 @@ objectives:
         a field of `lambda`{=entity}s and then program one or more robots to
         harvest them in an automated way.
       - |
-        TIP: the `ishere` command can be used to test for the presence of a
+        **TIP:** the `ishere` command can be used to test for the presence of a
         (fully-grown) `lambda`{=entity}, and the `has` command can be used to test whether
         a robot has a `lambda`{=entity} in its inventory.
     condition: |
