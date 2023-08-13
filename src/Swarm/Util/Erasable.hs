@@ -8,12 +8,12 @@ module Swarm.Util.Erasable where
 -- | Extend a semigroup to a monoid by adding an identity ('ENothing') /and/ an
 --   annihilator ('EErase').  That is,
 --
---   * `ENothing <> e = e <> ENothing = e`
---   * `EErase <> e = e <> EErase = EErase`
+--   * @ENothing <> e = e <> ENothing = e@
+--   * @EErase <> e = e <> EErase = EErase@
 --
 --   This allows us to "erase" previous values by combining with
---   'EErase'.  The 'erasableToMaybe' function turns an @Erasable@
---   into a @Maybe@ by collapsing 'ENothing' and 'EErase' both back
+--   'EErase'.  The 'erasableToMaybe' function turns an 'Erasable'
+--   into a 'Maybe' by collapsing 'ENothing' and 'EErase' both back
 --   into 'Nothing'.
 data Erasable e = ENothing | EErase | EJust e
   deriving (Show, Eq, Ord, Functor)
