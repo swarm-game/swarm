@@ -8,6 +8,9 @@ let
        an explanation of how these parameters affect
        the resulting noise function, see
        https://libnoise.sourceforge.net/glossary/index.html#perlinnoise
+
+       'seed' is a special constant which holds the value of the seed used
+       for world generation (whether chosen by the user, chosen randomly, etc.)
     */
     pn0 = perlin seed 6 0.05 0.6,
     pn1 = perlin (seed + 1) 6 0.05 0.6,
