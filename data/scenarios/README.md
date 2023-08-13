@@ -26,7 +26,7 @@ request](https://github.com/swarm-game/swarm/blob/main/CONTRIBUTING.md)!
 The "blessed" scenarios that come with Swarm are stored in
 `data/scenarios` and can be accessed via the "New game" menu.
 However, other scenarios can be loaded directly from a file: simply
-run swarm with the `--scenario` flag (`-c` for short) and point it to
+run swarm with the `--scenario` flag (`-i` for short) and point it to
 a specific `.yaml` file containing a scenario.  For example:
 
 ```
