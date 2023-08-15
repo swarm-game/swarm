@@ -497,7 +497,7 @@
   description:
   - A robot with a boat equipped can float on top of water without drowning.
   - |
-    Note: most devices are automatically equipped on robots that
+    **NOTE:** most devices are automatically equipped on robots that
     will require them; but this doesn't work in the case of boats since floating is not
     associated with any particular command.  To manually ensure a boat is equipped on
     a robot, just add the special command `require "boat"` to the robot's program.
@@ -765,7 +765,7 @@
   - Equipping treads on a robot allows it to move and turn.
   - The `move` command moves the robot forward one unit.
   - |
-    Example:'
+    Example:
     ```
     move; move; // move two units
     ```
