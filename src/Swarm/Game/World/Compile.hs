@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
@@ -19,6 +19,7 @@ module Swarm.Game.World.Compile where
 
 import Data.ByteString (ByteString)
 import Data.Hash.Murmur (murmur3)
+import Data.Kind (Constraint)
 import Data.Tagged (Tagged (unTagged))
 import Numeric.Noise.Perlin (noiseValue, perlin)
 import Swarm.Game.Location (pattern Location)
@@ -33,7 +34,7 @@ import Witch.Encoding qualified as Encoding
 
 data CTerm a where
   CFun :: (CTerm a -> CTerm b) -> CTerm (a -> b)
-  CConst :: NotFun a => a -> CTerm a
+  CConst :: (NotFun a) => a -> CTerm a
 
 instance Applicable CTerm where
   CFun f $$ x = f x
@@ -115,20 +116,11 @@ compileReflect ax = CFun $ \w -> CFun $ \(CConst c) -> w $$ CConst (interpReflec
 compileRot :: Rot -> CTerm (World a -> World a)
 compileRot rot = CFun $ \w -> CFun $ \(CConst c) -> w $$ CConst (interpRot rot c)
 
--- | Lift a host language value into a 'CTerm'.  Since 'CConst' cannot
---   contain functions, we need to also be able to pattern-match on
---   the type of the value being lifted to know the right way to lift
---   it.
-liftCTerm :: TTy a -> a -> CTerm a
-liftCTerm (TTyBase BInt) a = CConst a
-liftCTerm (TTyBase BFloat) a = CConst a
-liftCTerm (TTyBase BBool) a = CConst a
-liftCTerm (TTyBase BCell) a = CConst a
-liftCTerm (TTyWorld ty) w = CFun $ \(CConst c) -> liftCTerm ty (w c)
-liftCTerm (ty1 :->: ty2) f = CFun $ liftCTerm ty2 . f . runCTerm ty1
+type family NoFunParams a :: Constraint where
+  NoFunParams (a -> b) = (NotFun a, NoFunParams b)
+  NoFunParams _ = ()
 
 -- | Interpret a compiled term into the host language.
-runCTerm :: TTy a -> CTerm a -> a
-runCTerm _ (CConst a) = a
-runCTerm (ty1 :->: ty2) (CFun f) = runCTerm ty2 . f . liftCTerm ty1
-runCTerm (TTyWorld ty) (CFun f) = runCTerm ty . f . CConst
+runCTerm :: (NoFunParams a) => CTerm a -> a
+runCTerm (CConst a) = a
+runCTerm (CFun f) = runCTerm . f . CConst
