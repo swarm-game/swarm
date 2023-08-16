@@ -28,7 +28,7 @@ import Swarm.Game.World.Coords (Coords (..), coordsToLoc)
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Game.World.Interpret (interpReflect, interpRot)
 import Swarm.Game.World.Syntax (Axis (..), Rot, World)
-import Swarm.Game.World.Typecheck (Applicable (..), Base (..), Const (..), Empty (..), NotFun, Over (..), TTy (..))
+import Swarm.Game.World.Typecheck (Applicable (..), Const (..), Empty (..), NotFun, Over (..))
 import Witch (from)
 import Witch.Encoding qualified as Encoding
 
