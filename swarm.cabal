@@ -198,6 +198,7 @@ library
                       Swarm.Util.Effect
                       Swarm.Util.Erasable
                       Swarm.Util.Lens
+                      Swarm.Util.Parse
                       Swarm.Util.Yaml
                       Swarm.Version
                       Swarm.Web

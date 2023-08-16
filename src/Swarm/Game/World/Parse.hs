@@ -20,6 +20,7 @@ import Data.Void
 import Data.Yaml (FromJSON (parseJSON), withText)
 import Swarm.Game.World.Syntax
 import Swarm.Util (failT, showT, squote)
+import Swarm.Util.Parse (fully)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
@@ -252,13 +253,13 @@ parseImport = WImport . into @Text <$> between (symbol "\"") (symbol "\"") (some
 -- Utility
 
 runParser :: Parser a -> Text -> Either ParserError a
-runParser p = parse p ""
+runParser p = parse (fully sc p) ""
 
 ------------------------------------------------------------
 -- JSON instance
 
 instance FromJSON WExp where
   parseJSON = withText "World DSL program" $ \t ->
-    case runParser (parseWExp <* eof) t of
+    case runParser parseWExp t of
       Left err -> error (errorBundlePretty err)
       Right wexp -> return wexp
