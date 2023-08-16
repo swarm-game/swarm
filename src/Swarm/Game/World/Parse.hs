@@ -125,6 +125,11 @@ comma = void $ symbol ","
 ------------------------------------------------------------
 -- Parser
 
+----------------------------------------------------------------------
+-- NOTE: when updating the parser, be sure to update the BNF in
+-- data/worlds/README.md to match!
+----------------------------------------------------------------------
+
 parseWExpAtom :: Parser WExp
 parseWExpAtom =
   either WInt WFloat <$> integerOrFloat
