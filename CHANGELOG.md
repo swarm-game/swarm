@@ -1,18 +1,19 @@
 # Revision history for swarm
 
-## **0.4.0.0** - 2023-06-09
+## **0.4.0.0** - 2023-08-18
 
 ### Bugfixes
-
 * Save completion time immediately upon finishing scenario by @xsebek
   ([#1118](https://github.com/swarm-game/swarm/pull/1118))
 * Fix rightward bleeding of custom attributes by @kostmo ([#1137](https://github.com/swarm-game/swarm/pull/1137))
 * Recreate `GameState` from scratch when starting a scenario by @byorgey ([#1277](https://github.com/swarm-game/swarm/pull/1277))
+* Load persistent state from disk only once and reuse for all integration tests by @byorgey ([#1383](https://github.com/swarm-game/swarm/pull/1383))
+* Continue parsing the rest of the scenarios in a directory when one fails by @byorgey ([#1391](https://github.com/swarm-game/swarm/pull/1391))
+* Throw an error instead of crashing on impredicative types by @byorgey ([#1418](https://github.com/swarm-game/swarm/pull/1418))
 
 ### New Features
 
 #### Swarm language
-
 * The `drill` command now returns the first inventory addition by @kostmo ([#1165](https://github.com/swarm-game/swarm/pull/1165))
 * Type ascription syntax by @Alexander-Block ([#1164](https://github.com/swarm-game/swarm/pull/1164))
 * Records and record types by @byorgey ([#1148](https://github.com/swarm-game/swarm/pull/1148))
@@ -32,29 +33,33 @@
 * `density` command by @kostmo ([#1296](https://github.com/swarm-game/swarm/pull/1296))
 * `use` command by @kostmo ([#1287](https://github.com/swarm-game/swarm/pull/1287))
 * `halt` command by @byorgey ([#1256](https://github.com/swarm-game/swarm/pull/1256))
+* `backup` command by @kostmo ([#1400](https://github.com/swarm-game/swarm/pull/1400))
 
 #### Entities + recipes
-
 * Make `sand` a bit harder to get by @byorgey ([#1024](https://github.com/swarm-game/swarm/pull/1024))
 * New `tweezers` entity to enable debugging view and single-stepping CESK machine by @xsebek ([#1081](https://github.com/swarm-game/swarm/pull/1081))
 * `ADT calculator` description now mentions `unit` and `void` types [#1226](https://github.com/swarm-game/swarm/pull/1226)
 * Allow zero-tick recipes to apply immediately by @kostmo ([#1272](https://github.com/swarm-game/swarm/pull/1272))
 * New `hourglass` device that provides relative (`wait`) but not absolute (`time`) capability by @kostmo ([#1261](https://github.com/swarm-game/swarm/pull/1261))
+* New `binoculars` device that provides `scout` command by @kostmo ([#1337](https://github.com/swarm-game/swarm/pull/1337))
+* Separate entities to provide each text operation by @kostmo ([#1339](https://github.com/swarm-game/swarm/pull/1339))
+
+#### World features
+* Structure templates by @kostmo ([#1332](https://github.com/swarm-game/swarm/pull/1332))
+* Waypoints and portals by @kostmo ([#1356](https://github.com/swarm-game/swarm/pull/1356))
+* Subworlds by @kostmo ([#1353](https://github.com/swarm-game/swarm/pull/1353))
+* World description DSL by @byorgey ([#1376](https://github.com/swarm-game/swarm/pull/1376))
 
 #### LSP improvements
-
 * `let`-`in` syntax highlighting by @kostmo ([#1162](https://github.com/swarm-game/swarm/pull/1162))
 
 #### Web API
-
 * Web API to parse, render, and run code by @kostmo ([#1142](https://github.com/swarm-game/swarm/pull/1142))
 
 #### Command line options
-
 * CLI option to set initial speed by @kostmo ([#1255](https://github.com/swarm-game/swarm/pull/1255))
 
 #### New scenarios
-
 * Adventure game scenario by @kostmo ([#1136](https://github.com/swarm-game/swarm/pull/1136))
 * Run around in circles by @kostmo ([#1158](https://github.com/swarm-game/swarm/pull/1158))
 * hackman by @kostmo ([#1135](https://github.com/swarm-game/swarm/pull/1135))
@@ -63,9 +68,14 @@
 * Lights out by @kostmo ([#1273](https://github.com/swarm-game/swarm/pull/1273))
 * Pig capturing scenario by @kostmo ([#1258](https://github.com/swarm-game/swarm/pull/1258))
 * Sokoban levels by @kostmo ([#1269](https://github.com/swarm-game/swarm/pull/1269))
+* Traffic vignette by @kostmo ([#1334](https://github.com/swarm-game/swarm/pull/1334))
+* Active trapdoor demo by @kostmo ([#976](https://github.com/swarm-game/swarm/pull/976))
+* Sliding puzzle by @kostmo ([#1237](https://github.com/swarm-game/swarm/pull/1237))
+* Scenario with enemies by @kostmo ([#971](https://github.com/swarm-game/swarm/pull/971))
+* Arbitrage scenario by @kostmo ([#1192](https://github.com/swarm-game/swarm/pull/1192))
+* Powerset scenario by @kostmo ([#1342](https://github.com/swarm-game/swarm/pull/1342))
 
 #### UI enhancements
-
 * Allow scrolling the world map unless explicitly disallowed by @byorgey ([#1109](https://github.com/swarm-game/swarm/pull/1109))
 * Add random "static" to `view` outside a certain range by @byorgey
   ([#1110](https://github.com/swarm-game/swarm/pull/1110), [#1241](https://github.com/swarm-game/swarm/pull/1241))
@@ -76,10 +86,18 @@
 * Inventory search/filter mode by @byorgey ([#1250](https://github.com/swarm-game/swarm/pull/1250))
 * Display higher clock resolution at lower speeds by @kostmo ([#1253](https://github.com/swarm-game/swarm/pull/1253))
 * Make REPL panel collapsible by @ussgarci ([#1076](https://github.com/swarm-game/swarm/pull/1076))
+* Better typechecking error messages by @byorgey
+  ([#1308](https://github.com/swarm-game/swarm/pull/1308), [#1318](https://github.com/swarm-game/swarm/pull/1318))
+* Rename inventory to compendium by @kostmo ([#1346](https://github.com/swarm-game/swarm/pull/1346))
+* Goal dialog suppression with `--autoplay` by @kostmo ([#1344](https://github.com/swarm-game/swarm/pull/1344))
+* Change binding for Hide REPL to `M-,` by @noahyor ([#1375](https://github.com/swarm-game/swarm/pull/1375))
+* Highlight ticks per frame in red when it reaches the cap by @byorgey ([#1386](https://github.com/swarm-game/swarm/pull/1386))
+* Parse and render markdown descriptions by @xsebek ([#1106](https://github.com/swarm-game/swarm/pull/1106), [#1413](https://github.com/swarm-game/swarm/pull/1413))
 
 #### Achievements
 
 * Achievement for disorientation by @kostmo ([#1173](https://github.com/swarm-game/swarm/pull/1173))
+
 
 ## **0.3.0.1** - 2023-02-01
 
