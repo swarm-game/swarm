@@ -51,7 +51,6 @@ robots:
       - [10, treads]
 known: [water]
 world:
-  default: [blank]
   palette:
     'Ω': [grass, null, base]
     '.': [grass]

@@ -190,22 +190,23 @@ recipes:
 known: [water]
 seed: 0
 world:
-  default: [stone, water]
+  dsl: |
+    {stone, water}
   upperleft: [0, 0]
   offset: false
   palette:
     '0': [stone, water]
     '@': [stone, granite boulder]
-    '.': [grass]
-    'L': [stone]
+    '.': [grass, erase]
+    'L': [stone, erase]
     '>': [stone, bind gt]
     '=': [stone, bind eq]
-    H: [dirt]
+    H: [dirt, erase]
     A: [grass, water, ccw_robot]
     a: [grass, water, ccw_robot_down]
-    B: [grass, null, cw_robot]
-    b: [grass, null, cw_robot_down]
-    Ω: [grass, null, base]
+    B: [grass, erase, cw_robot]
+    b: [grass, erase, cw_robot_down]
+    Ω: [grass, erase, base]
     f: [stone, Amulet of Yoneda]
     x: [stone, locked door]
     k: [grass, door key]

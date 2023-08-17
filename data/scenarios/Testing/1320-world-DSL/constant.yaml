@@ -1,0 +1,23 @@
+version: 1
+name: Constant (uniform) world description
+description: |
+  Test that we can describe a uniform world by giving a
+  single cell value.
+objectives:
+  - condition: |
+      as base { n <- count "tree"; return (n >= 4) }
+    goal:
+    - Get 4 trees
+solution: |
+  grab; move; grab; move; grab; move; grab
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - logger
+      - treads
+      - grabber
+world:
+  dsl: |
+    {terrain: ice} <> {entity: tree}

@@ -65,7 +65,8 @@ entities:
     - The place you're trying to reach!  You win by executing `grab` on this item.
     properties: [known, portable]
 world:
-  default: [ice]
+  dsl: |
+    {ice}
   palette:
     'Ω': [stone, null, base]
     ' ': [stone, null]

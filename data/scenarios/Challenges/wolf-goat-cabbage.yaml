@@ -98,7 +98,6 @@ entities:
 known: [water, boulder]
 seed: 0
 world:
-  default: [blank]
   palette:
     'A': [stone, boulder]
     'B': [stone, boulder, base]

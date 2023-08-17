@@ -32,7 +32,6 @@ robots:
     program: |
       log "I shall sleep"; wait 1; log "I have awoken"
 world:
-  default: [blank]
   palette:
     '.': [grass]
     '┌': [stone, upper left corner]

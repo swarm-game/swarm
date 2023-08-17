@@ -1,0 +1,119 @@
+/* See README.md for a thorough description of the world DSL.  Some
+   comments are provided below to help explain the language by
+   example. */
+
+let
+    /* pn0, pn1, pn2 are Perlin noise functions, which
+       associate a floating-point value to every coordinate
+       in a way that is random yet continuous (i.e. nearby
+       coordinates have close floating-point values).  We use
+       these to determine "biomes".  The four parameters
+       represent seed, octaves, scale, and persistence. For
+       an explanation of how these parameters affect
+       the resulting noise function, see
+       https://libnoise.sourceforge.net/glossary/index.html#perlinnoise
+
+       'seed' is a special constant which holds the value of the seed used
+       for world generation (whether chosen by the user, chosen randomly, etc.)
+    */
+    pn0 = perlin seed 6 0.05 0.6,
+    pn1 = perlin (seed + 1) 6 0.05 0.6,
+    pn2 = perlin (seed + 2) 6 0.05 0.6,
+
+    // cl is another Perlin noise function that we use to generate
+    // "clumps" of things inside biomes
+    cl  = perlin seed 4 0.08 0.5,
+
+    /* We now define some Boolean variables for determining which
+       biome we are in.  Note that implicitly, as with everything
+       in this world description DSL, these are actually
+       parameterized over coordinates --- that is, we can get a different
+       Boolean value associated to each coordinate.
+    */
+    big = pn0 > 0.0,  // 'big' is true for coordinates where pn0 > 0.0, and false otherwise
+    hard = pn1 > 0.0, // etc.
+    artificial = pn2 > 0.0,
+    small = not big,
+    soft = not hard,
+    natural = not artificial
+in
+/* The world is built up by a series of layers, with each layer thought of as a function
+   from coordinates to cell values.  The first layer is bottommost.
+   The layers are combined coordinatewise according to the semigroup operation for
+   cells.
+
+   'mask b e' takes the value of 'e' where 'b' is true, and is empty elsewhere.
+
+   '{x1, x2, ...}' specifies the value of a cell with a list of contents.  A cell
+   can have at most one terrain value, and at most one entity, which are disambiguated
+   by name (though one can also write e.g. '{entity: tree}' or '{terrain: dirt}' to
+   disambiguate).
+
+   'hash' is a special variable which takes on the value of a murmur3 hash applied
+   to the coordinates; it can be used to obtain non-coherent randomness (i.e.
+   random values such that nearby values are not correlated).
+
+   'x' and 'y' are special variables which always take on the x- or y-value of the
+   coordinates.
+*/
+overlay
+[ mask (big && hard && artificial)
+    (if (cl > 0.85) then {stone, copper ore} else {stone})
+, mask (big && hard && natural)
+  ( overlay
+    [ {grass}  // grass by default
+    // clumps of forest with LaTeX sprinkled in
+    , mask (cl > 0.0) (if (hash % 30 == 1) then {dirt, LaTeX} else {dirt, tree})
+    // random boulders scattered around
+    , mask (hash % 30 == 0) {stone, boulder}
+    // mountains in the middle of forests
+    , mask (cl > 0.5) {stone, mountain}
+    ]
+  )
+, mask (small && hard && natural)
+  ( overlay
+    [ {stone}
+    , mask (hash % 10 == 0) {stone, rock}
+    , mask (hash % 100 == 0) {stone, lodestone}
+    ]
+  )
+, mask (big && soft && natural)
+  ( overlay
+    [ {dirt, water}
+    , mask ((x + y) % 2 == 0) {dirt, wavy water}
+    , mask (abs pn1 < 0.1) {dirt, sand}
+    ]
+  )
+, mask (small && soft && natural)
+  ( overlay
+    [ {grass}
+    , mask (hash % 20 == 10) {grass, cotton}
+    , mask (hash % 20 == 0)  {grass, flower}
+    ]
+  )
+, mask (small && soft && artificial)
+  ( overlay
+    [ {grass}
+    , mask (hash % 10 == 0)
+        (if (x + y) % 2 == 0 then {grass, bit (0)} else {grass, bit (1)})
+    ]
+  )
+, mask (big && soft && artificial)
+  ( overlay
+    [ {dirt}
+    , mask (cl > 0.5) {grass}
+    , mask (hash % 5000 == 0) {dirt, Linux}
+    ]
+  )
+, mask (small && hard && artificial)
+  ( overlay
+    [ {stone}
+    , mask (hash % 50 == 0)
+        let i = (x - y) % 3 in
+        if (i == 0) then {stone, pixel (R)}
+        else if (i == 1) then {stone, pixel (G)}
+        else {stone, pixel (B)}
+    , mask (hash % 120 == 1) {stone, lambda}
+    ]
+  )
+]

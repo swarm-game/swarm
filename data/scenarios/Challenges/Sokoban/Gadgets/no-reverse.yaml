@@ -66,12 +66,13 @@ entities:
     properties: [known, unwalkable, portable]
 known: [mountain, water, flower]
 world:
-  default: [grass, water]
+  dsl: |
+    {grass, water}
   upperleft: [-1, 1]
   offset: false
   palette:
-    'B': [grass, null, base]
-    '.': [grass]
+    'B': [grass, erase, base]
+    '.': [grass, erase]
     '@': [grass, monolith]
     'A': [grass, mountain]
     '*': [grass, flower]

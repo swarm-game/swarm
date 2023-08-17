@@ -18,6 +18,7 @@ import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Model
+import Swarm.Util.Erasable
 
 getEntitiesForList :: EntityMap -> V.Vector EntityFacade
 getEntitiesForList em =
@@ -46,9 +47,10 @@ getContentAt editor w coords =
     (terrainOverride, _) <- maybePaintedCell
     return terrainOverride
 
+  maybeEntityOverride :: Maybe EntityPaint
   maybeEntityOverride = do
     (_, e) <- maybePaintedCell
-    Facade <$> e
+    Facade <$> erasableToMaybe e
 
   maybePaintedCell = do
     guard $ editor ^. isWorldEditorEnabled
@@ -112,9 +114,9 @@ getEditedMapRectangle worldEditor (Just (Cosmic subworldName coords)) w =
   drawCell rowIndex colIndex =
     Cell
       terrain
-      (toFacade <$> maybeEntity)
+      (toFacade <$> maybeToErasable erasableEntity)
       []
    where
-    (terrain, maybeEntity) = getContent $ W.Coords (rowIndex, colIndex)
+    (terrain, erasableEntity) = getContent $ W.Coords (rowIndex, colIndex)
 
   renderRow rowIndex = map (drawCell rowIndex) [xLeft .. xRight]

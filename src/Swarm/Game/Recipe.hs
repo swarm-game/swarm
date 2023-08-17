@@ -154,7 +154,7 @@ loadRecipes ::
 loadRecipes em = do
   fileName <- getDataFileNameSafe Recipes f
   textRecipes <-
-    withThrow (AssetNotLoaded (Data Recipes) fileName . CanNotParse)
+    withThrow (AssetNotLoaded (Data Recipes) fileName . CanNotParseYaml)
       . (liftEither <=< sendIO)
       $ decodeFileEither @[Recipe Text] fileName
   withThrow (AssetNotLoaded (Data Recipes) fileName . CustomMessage)

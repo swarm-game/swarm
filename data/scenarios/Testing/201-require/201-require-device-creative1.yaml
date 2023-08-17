@@ -26,7 +26,6 @@ robots:
     inventory:
       - [1, boat]
 world:
-  default: [blank, null]
   palette:
     '.': [grass]
     '~': [dirt, knownwater]

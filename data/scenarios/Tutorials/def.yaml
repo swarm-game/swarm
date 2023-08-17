@@ -71,7 +71,6 @@ robots:
       - [0, flower]
 known: [boulder]
 world:
-  default: [blank]
   palette:
     'Ω': [grass, null, base]
     '.': [grass]

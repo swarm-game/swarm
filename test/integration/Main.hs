@@ -11,8 +11,8 @@ module Main where
 
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
-import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (<>~), (^.), (^..), (^?!))
-import Control.Monad (filterM, forM_, unless, when)
+import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<>~), (^.), (^..), (^?!))
+import Control.Monad (forM_, unless, when)
 import Control.Monad.State (StateT (runStateT), gets)
 import Data.Char (isSpace)
 import Data.Containers.ListUtils (nubOrd)
@@ -47,17 +47,16 @@ import Swarm.Game.State (
   winSolution,
  )
 import Swarm.Game.Step (gameTick)
+import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty (prettyString)
-import Swarm.TUI.Model (RuntimeState, defaultAppOpts, gameState, stdEntityMap, userScenario)
+import Swarm.TUI.Model (RuntimeState, defaultAppOpts, gameState, stdEntityMap, userScenario, worlds)
 import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
 import Swarm.TUI.Model.UI (UIState)
+import Swarm.Util (acquireAllWithExt)
 import Swarm.Util.Yaml (decodeFileEitherE)
-import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
-import System.Environment (getEnvironment)
-import System.FilePath (splitDirectories)
-import System.FilePath.Posix (takeExtension, (</>))
+import System.FilePath.Posix (splitDirectories)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
@@ -68,11 +67,10 @@ isUnparseableTest (fp, _) = "_Validation" `elem` splitDirectories fp
 
 main :: IO ()
 main = do
-  examplePaths <- acquire "example" "sw"
-  scenarioPaths <- acquire "data/scenarios" "yaml"
+  examplePaths <- acquireAllWithExt "example" "sw"
+  scenarioPaths <- acquireAllWithExt "data/scenarios" "yaml"
   let (unparseableScenarios, parseableScenarios) = partition isUnparseableTest scenarioPaths
-  scenarioPrograms <- acquire "data/scenarios" "sw"
-  ci <- any (("CI" ==) . fst) <$> getEnvironment
+  scenarioPrograms <- acquireAllWithExt "data/scenarios" "sw"
   (rs, ui) <- do
     out <- runM . runThrow @SystemFailure $ initPersistentState defaultAppOpts
     either (assertFailure . prettyString) return out
@@ -82,9 +80,9 @@ main = do
       "Tests"
       [ exampleTests examplePaths
       , exampleTests scenarioPrograms
-      , scenarioParseTests em parseableScenarios
-      , scenarioParseInvalidTests em unparseableScenarios
-      , testScenarioSolution rs ui ci em
+      , scenarioParseTests em (rs ^. worlds) parseableScenarios
+      , scenarioParseInvalidTests em (rs ^. worlds) unparseableScenarios
+      , testScenarioSolutions rs ui
       , testEditorFiles
       ]
 
@@ -98,27 +96,27 @@ exampleTest (path, fileContent) =
  where
   value = processTerm $ into @Text fileContent
 
-scenarioParseTests :: EntityMap -> [(FilePath, String)] -> TestTree
-scenarioParseTests em inputs =
+scenarioParseTests :: EntityMap -> WorldMap -> [(FilePath, String)] -> TestTree
+scenarioParseTests em worldMap inputs =
   testGroup
     "Test scenarios parse"
-    (map (scenarioTest Parsed em) inputs)
+    (map (scenarioTest Parsed em worldMap) inputs)
 
-scenarioParseInvalidTests :: EntityMap -> [(FilePath, String)] -> TestTree
-scenarioParseInvalidTests em inputs =
+scenarioParseInvalidTests :: EntityMap -> WorldMap -> [(FilePath, String)] -> TestTree
+scenarioParseInvalidTests em worldMap inputs =
   testGroup
     "Test invalid scenarios fail to parse"
-    (map (scenarioTest Failed em) inputs)
+    (map (scenarioTest Failed em worldMap) inputs)
 
 data ParseResult = Parsed | Failed
 
-scenarioTest :: ParseResult -> EntityMap -> (FilePath, String) -> TestTree
-scenarioTest expRes em (path, _) =
-  testCase ("parse scenario " ++ show path) (getScenario expRes em path)
+scenarioTest :: ParseResult -> EntityMap -> WorldMap -> (FilePath, String) -> TestTree
+scenarioTest expRes em worldMap (path, _) =
+  testCase ("parse scenario " ++ show path) (getScenario expRes em worldMap path)
 
-getScenario :: ParseResult -> EntityMap -> FilePath -> IO ()
-getScenario expRes em p = do
-  res <- decodeFileEitherE em p :: IO (Either ParseException Scenario)
+getScenario :: ParseResult -> EntityMap -> WorldMap -> FilePath -> IO ()
+getScenario expRes em worldMap p = do
+  res <- decodeFileEitherE (em, worldMap) p :: IO (Either ParseException Scenario)
   case expRes of
     Parsed -> case res of
       Left err -> assertFailure (prettyPrintParseException err)
@@ -126,18 +124,6 @@ getScenario expRes em p = do
     Failed -> case res of
       Left _err -> return ()
       Right _s -> assertFailure "Unexpectedly parsed invalid scenario!"
-
-acquire :: FilePath -> String -> IO [(FilePath, String)]
-acquire dir ext = do
-  paths <- listDirectory dir <&> map (dir </>)
-  filePaths <- filterM (\path -> doesFileExist path <&> (&&) (hasExt path)) paths
-  children <- mapM (\path -> (,) path <$> readFile path) filePaths
-  -- recurse
-  sub <- filterM doesDirectoryExist paths
-  transChildren <- concat <$> mapM (`acquire` ext) sub
-  return $ children <> transChildren
- where
-  hasExt path = takeExtension path == ("." ++ ext)
 
 data Time
   = -- | One second should be enough to run most programs.
@@ -158,8 +144,8 @@ time = \case
 
 data ShouldCheckBadErrors = CheckForBadErrors | AllowBadErrors deriving (Eq, Show)
 
-testScenarioSolution :: RuntimeState -> UIState -> Bool -> EntityMap -> TestTree
-testScenarioSolution rs ui _ci _em =
+testScenarioSolutions :: RuntimeState -> UIState -> TestTree
+testScenarioSolutions rs ui =
   testGroup
     "Test scenario solutions"
     [ testGroup
@@ -306,6 +292,17 @@ testScenarioSolution rs ui _ci _em =
         , testSolution Default "Testing/144-subworlds/subworld-located-robots"
         , testSolution Default "Testing/1379-single-world-portal-reorientation"
         , testSolution Default "Testing/1399-backup-command"
+        , testGroup
+            -- Note that the description of the classic world in
+            -- data/worlds/classic.yaml (automatically tested to some
+            -- extent by the solution to Tutorial/world101 and
+            -- Tutorial/farming) also constitutes a fairly
+            -- comprehensive test of world DSL features.
+            "World DSL (#1320)"
+            [ testSolution Default "Testing/1320-world-DSL/constant"
+            , testSolution Default "Testing/1320-world-DSL/erase"
+            , testSolution Default "Testing/1320-world-DSL/override"
+            ]
         ]
     ]
  where

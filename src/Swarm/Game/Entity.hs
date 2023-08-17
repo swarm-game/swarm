@@ -383,7 +383,7 @@ loadEntities = do
       entityFailure = AssetNotLoaded (Data Entities) entityFile
   fileName <- getDataFileNameSafe Entities entityFile
   decoded <-
-    withThrow (entityFailure . CanNotParse) . (liftEither <=< sendIO) $
+    withThrow (entityFailure . CanNotParseYaml) . (liftEither <=< sendIO) $
       decodeFileEither fileName
   withThrow entityFailure $ buildEntityMap decoded
 

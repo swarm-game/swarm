@@ -85,3 +85,5 @@ seed: 0
 world:
   offset: true
   scrollable: false
+  dsl: |
+    "classic"

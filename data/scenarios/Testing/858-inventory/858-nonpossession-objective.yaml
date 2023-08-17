@@ -25,7 +25,6 @@ solution: |
   place "tree";
 known: [tree]
 world:
-  default: [blank]
   palette:
     'B': [grass, null, base]
     'w': [grass]

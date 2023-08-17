@@ -100,7 +100,6 @@ robots:
   - name: pedestal
     system: true
 world:
-  default: [blank]
   palette:
     '.': [blank, null]
     'Ω': [blank, null, base]

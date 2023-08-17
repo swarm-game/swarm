@@ -74,6 +74,7 @@ import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Universe
+import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Util (binTuples, failT)
@@ -107,11 +108,11 @@ data Scenario = Scenario
   , _scenarioSolution :: Maybe ProcessedTerm
   , _scenarioStepsPerTick :: Maybe Int
   }
-  deriving (Eq, Show)
+  deriving (Show)
 
 makeLensesNoSigs ''Scenario
 
-instance FromJSONE EntityMap Scenario where
+instance FromJSONE (EntityMap, WorldMap) Scenario where
   parseJSONE = withObjectE "scenario" $ \v -> do
     -- parse custom entities
     emRaw <- liftE (v .:? "entities" .!= [])
@@ -119,8 +120,12 @@ instance FromJSONE EntityMap Scenario where
       Right x -> return x
       Left x -> failT [prettyText @LoadingFailure x]
 
-    -- extend ambient EntityMap with custom entities
-    withE em $ do
+    -- Save the passed in WorldMap for later
+    worldMap <- snd <$> getE
+
+    -- Get rid of WorldMap from context locally, and combine EntityMap
+    -- with any custom entities parsed above
+    localE fst $ withE em $ do
       -- parse 'known' entity names and make sure they exist
       known <- liftE (v .:? "known" .!= [])
       em' <- getE
@@ -132,9 +137,11 @@ instance FromJSONE EntityMap Scenario where
       rs <- v ..: "robots"
       let rsMap = buildRobotMap rs
 
-      rootLevelSharedStructures <- localE (,rsMap) $ v ..:? "structures" ..!= []
+      rootLevelSharedStructures :: Structure.InheritedStructureDefs <-
+        localE (,rsMap) $
+          v ..:? "structures" ..!= []
 
-      allWorlds <- localE (\x -> (rootLevelSharedStructures :: Structure.InheritedStructureDefs, (x, rsMap))) $ do
+      allWorlds <- localE (worldMap,rootLevelSharedStructures,,rsMap) $ do
         rootWorld <- v ..: "world"
         subworlds <- v ..:? "subworlds" ..!= []
         return $ rootWorld :| subworlds
@@ -261,20 +268,22 @@ loadScenario ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   FilePath ->
   EntityMap ->
+  WorldMap ->
   m (Scenario, FilePath)
-loadScenario scenario em = do
+loadScenario scenario em worldMap = do
   mfileName <- getScenarioPath scenario
   fileName <- maybe (throwError $ ScenarioNotFound scenario) return mfileName
-  (,fileName) <$> loadScenarioFile em fileName
+  (,fileName) <$> loadScenarioFile em worldMap fileName
 
 -- | Load a scenario from a file.
 loadScenarioFile ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   EntityMap ->
+  WorldMap ->
   FilePath ->
   m Scenario
-loadScenarioFile em fileName =
+loadScenarioFile em worldMap fileName =
   (withThrow adaptError . (liftEither <=< sendIO)) $
-    decodeFileEitherE em fileName
+    decodeFileEitherE (em, worldMap) fileName
  where
-  adaptError = AssetNotLoaded (Data Scenarios) fileName . CanNotParse
+  adaptError = AssetNotLoaded (Data Scenarios) fileName . CanNotParseYaml

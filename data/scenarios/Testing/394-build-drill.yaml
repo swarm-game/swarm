@@ -41,7 +41,6 @@ robots:
     inventory:
       - [1, detonator] # used to mark win
 world:
-  default: [blank]
   palette:
     '.': [grass]
     'M': [stone, mountain]

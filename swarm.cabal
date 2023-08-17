@@ -24,7 +24,7 @@ extra-source-files: CHANGELOG.md
                     editors/emacs/*.el
                     editors/vscode/syntaxes/*.json
 data-dir:           data/
-data-files:         *.yaml, scenarios/**/*.yaml, scenarios/**/*.txt, scenarios/**/*.sw, *.txt, test/language-snippets/**/*.sw
+data-files:         *.yaml, worlds/*.world, scenarios/**/*.yaml, scenarios/**/*.txt, scenarios/**/*.sw, *.txt, test/language-snippets/**/*.sw
 
 source-repository head
     type:     git
@@ -133,7 +133,16 @@ library
                       Swarm.Game.Terrain
                       Swarm.Game.Value
                       Swarm.Game.World
-                      Swarm.Game.WorldGen
+                      Swarm.Game.World.Abstract
+                      Swarm.Game.World.Compile
+                      Swarm.Game.World.Coords
+                      Swarm.Game.World.Eval
+                      Swarm.Game.World.Gen
+                      Swarm.Game.World.Interpret
+                      Swarm.Game.World.Load
+                      Swarm.Game.World.Parse
+                      Swarm.Game.World.Syntax
+                      Swarm.Game.World.Typecheck
                       Swarm.Language.Capability
                       Swarm.Language.Context
                       Swarm.Language.Direction
@@ -187,7 +196,9 @@ library
                       Swarm.TUI.View.Util
                       Swarm.Util
                       Swarm.Util.Effect
+                      Swarm.Util.Erasable
                       Swarm.Util.Lens
+                      Swarm.Util.Parse
                       Swarm.Util.Yaml
                       Swarm.Version
                       Swarm.Web

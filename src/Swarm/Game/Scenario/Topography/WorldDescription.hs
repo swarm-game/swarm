@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -5,6 +6,9 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Topography.WorldDescription where
 
+import Control.Carrier.Reader (runReader)
+import Control.Carrier.Throw.Either
+import Control.Monad (forM)
 import Data.Functor.Identity
 import Data.Maybe (catMaybes)
 import Data.Yaml as Y
@@ -21,6 +25,10 @@ import Swarm.Game.Scenario.Topography.Structure (InheritedStructureDefs, MergedS
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Universe
+import Swarm.Game.World.Parse ()
+import Swarm.Game.World.Syntax
+import Swarm.Game.World.Typecheck
+import Swarm.Language.Pretty (prettyString)
 import Swarm.Util.Yaml
 
 ------------------------------------------------------------
@@ -31,27 +39,26 @@ import Swarm.Util.Yaml
 -- This type is parameterized to accommodate Cells that
 -- utilize a less stateful Entity type.
 data PWorldDescription e = WorldDescription
-  { defaultTerrain :: Maybe (PCell e)
-  , offsetOrigin :: Bool
+  { offsetOrigin :: Bool
   , scrollable :: Bool
   , palette :: WorldPalette e
   , ul :: Location
   , area :: [[PCell e]]
   , navigation :: Navigation Identity WaypointName
   , worldName :: SubworldName
+  , worldProg :: Maybe (TTerm '[] (World CellVal))
   }
-  deriving (Eq, Show)
+  deriving (Show)
 
 type WorldDescription = PWorldDescription Entity
 
-instance FromJSONE (InheritedStructureDefs, (EntityMap, RobotMap)) WorldDescription where
+instance FromJSONE (WorldMap, InheritedStructureDefs, EntityMap, RobotMap) WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
-    (scenarioLevelStructureDefs, (em, rm)) <- getE
-    (pal, terr, rootWorldStructureDefs) <- localE (const (em, rm)) $ do
+    (worldMap, scenarioLevelStructureDefs, em, rm) <- getE
+    (pal, rootWorldStructureDefs) <- localE (const (em, rm)) $ do
       pal <- v ..:? "palette" ..!= WorldPalette mempty
-      terr <- v ..:? "default"
       rootWorldStructs <- v ..:? "structures" ..!= []
-      return (pal, terr, rootWorldStructs)
+      return (pal, rootWorldStructs)
 
     waypointDefs <- liftE $ v .:? "waypoints" .!= []
     portalDefs <- liftE $ v .:? "portals" .!= []
@@ -72,7 +79,13 @@ instance FromJSONE (InheritedStructureDefs, (EntityMap, RobotMap)) WorldDescript
         unmergedWaypoints
         portalDefs
 
-    WorldDescription terr
+    mwexp <- liftE (v .:? "dsl")
+    dslTerm <- forM mwexp $ \wexp -> do
+      let checkResult =
+            run . runThrow @CheckErr . runReader worldMap . runReader em $
+              check CNil (TTyWorld TTyCell) wexp
+      either (fail . prettyString) return checkResult
+    WorldDescription
       <$> liftE (v .:? "offset" .!= False)
       <*> liftE (v .:? "scrollable" .!= True)
       <*> pure pal
@@ -80,6 +93,7 @@ instance FromJSONE (InheritedStructureDefs, (EntityMap, RobotMap)) WorldDescript
       <*> pure (map catMaybes mergedArea) -- Root-level map has no transparent cells.
       <*> pure validatedNavigation
       <*> pure subWorldName
+      <*> pure dslTerm
 
 ------------------------------------------------------------
 -- World editor
@@ -92,8 +106,7 @@ type WorldDescriptionPaint = PWorldDescription EntityFacade
 instance ToJSON WorldDescriptionPaint where
   toJSON w =
     object
-      [ "default" .= defaultTerrain w
-      , "offset" .= offsetOrigin w
+      [ "offset" .= offsetOrigin w
       , "palette" .= Y.toJSON paletteKeymap
       , "upperleft" .= ul w
       , "map" .= Y.toJSON mapText

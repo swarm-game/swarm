@@ -55,14 +55,14 @@ solution: |
 known: [water, boulder, flower]
 seed: 0
 world:
-  default: [stone, water]
+  dsl: |
+    {stone, water}
   upperleft: [0, 0]
-  offset: false
   palette:
     '@': [stone, boulder]
-    '.': [grass]
-    G: [stone, null, gate]
-    Ω: [grass, null, base]
+    '.': [grass, erase]
+    G: [stone, erase, gate]
+    Ω: [grass, erase, base]
     f: [grass, flower]
   map: |
     .....
@@ -78,4 +78,3 @@ world:
     .....
     ..Ω..
     .....
-  

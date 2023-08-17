@@ -98,7 +98,6 @@ entities:
       - A small rock.  It is so small, it is practically invisible.
     properties: [portable]
 world:
-  default: [blank]
   palette:
     'Ω': [grass, null, base]
     '.': [grass]

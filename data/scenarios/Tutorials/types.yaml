@@ -58,7 +58,6 @@ robots:
     inventory:
       - [1, Win]
 world:
-  default: [blank]
   palette:
     '>': [grass, null, base]
     '.': [grass]

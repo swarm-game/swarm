@@ -84,6 +84,7 @@ module Swarm.TUI.Model (
   webPort,
   upstreamRelease,
   eventLog,
+  worlds,
   scenarios,
   stdEntityMap,
   stdRecipes,
@@ -147,6 +148,8 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios, _SISingle)
 import Swarm.Game.State
+import Swarm.Game.World.Load (loadWorlds)
+import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
@@ -191,6 +194,7 @@ data RuntimeState = RuntimeState
   { _webPort :: Maybe Port
   , _upstreamRelease :: Either NewReleaseFailure String
   , _eventLog :: Notifications LogEntry
+  , _worlds :: WorldMap
   , _scenarios :: ScenarioCollection
   , _stdEntityMap :: EntityMap
   , _stdRecipes :: [Recipe Entity]
@@ -208,7 +212,8 @@ initRuntimeState ::
 initRuntimeState = do
   entities <- loadEntities
   recipes <- loadRecipes entities
-  scenarios <- loadScenarios entities
+  worlds <- loadWorlds entities
+  scenarios <- loadScenarios entities worlds
   appDataMap <- readAppData
 
   let getDataLines f = case M.lookup f appDataMap of
@@ -224,6 +229,7 @@ initRuntimeState = do
       { _webPort = Nothing
       , _upstreamRelease = Left (NoMainUpstreamRelease [])
       , _eventLog = mempty
+      , _worlds = worlds
       , _scenarios = scenarios
       , _stdEntityMap = entities
       , _stdRecipes = recipes
@@ -246,6 +252,10 @@ upstreamRelease :: Lens' RuntimeState (Either NewReleaseFailure String)
 -- If some error happens before a game is even selected, this is the
 -- place to log it.
 eventLog :: Lens' RuntimeState (Notifications LogEntry)
+
+-- | A collection of typechecked world DSL terms that are available to
+--   be used in scenario definitions.
+worlds :: Lens' RuntimeState WorldMap
 
 -- | The collection of scenarios that comes with the game.
 scenarios :: Lens' RuntimeState ScenarioCollection
@@ -290,6 +300,7 @@ mkGameStateConfig rs =
     , initNameList = rs ^. stdNameList
     , initEntities = rs ^. stdEntityMap
     , initRecipes = rs ^. stdRecipes
+    , initWorldMap = rs ^. worlds
     }
 
 -- ----------------------------------------------------------------------------

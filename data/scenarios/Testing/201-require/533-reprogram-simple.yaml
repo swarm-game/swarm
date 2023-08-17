@@ -46,7 +46,6 @@ robots:
       - [50, rock]
 known: [water]
 world:
-  default: [blank, null]
   palette:
     '.': [grass]
     '~': [dirt, water]
