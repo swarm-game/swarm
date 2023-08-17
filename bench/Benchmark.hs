@@ -76,7 +76,7 @@ circlerProgram =
 
 -- | Initializes a robot with program prog at location loc facing north.
 initRobot :: ProcessedTerm -> Location -> TRobot
-initRobot prog loc = mkRobot () Nothing "" [] (Just $ Cosmic DefaultRootSubworld loc) north defaultRobotDisplay (initMachine prog Context.empty emptyStore) [] [] False False 0
+initRobot prog loc = mkRobot () Nothing "" mempty (Just $ Cosmic DefaultRootSubworld loc) north defaultRobotDisplay (initMachine prog Context.empty emptyStore) [] [] False False 0
 
 -- | Creates a GameState with numRobot copies of robot on a blank map, aligned
 --   in a row starting at (0,0) and spreading east.

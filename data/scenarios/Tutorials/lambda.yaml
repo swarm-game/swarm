@@ -5,7 +5,7 @@ description: |
 objectives:
   - goal:
       - Your goal in this challenge is to send a robot to grab the
-        flower in the lower right (you don't need to bring it back).
+        `flower`{=entity} in the lower right (you don't need to bring it back).
       - |
         The path looks complex, but if you study it, you will see that it
         has a lot of structure.  In particular, there are many parts of

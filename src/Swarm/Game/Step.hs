@@ -88,6 +88,7 @@ import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
+import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
 import Swarm.Util hiding (both)
@@ -383,7 +384,7 @@ hypotheticalRobot c =
     (-1)
     Nothing
     "hypothesis"
-    []
+    mempty
     defaultCosmicLocation
     zero
     defaultRobotDisplay
@@ -1081,7 +1082,7 @@ addSeedBot e (minT, maxT) loc ts =
         ()
         Nothing
         "seed"
-        ["A growing seed."]
+        "A growing seed."
         (Just loc)
         zero
         ( defaultEntityDisplay '.'
@@ -1957,7 +1958,7 @@ execConst c vs s k = do
               ()
               (Just pid)
               displayName
-              ["A robot built by the robot named " <> r ^. robotName <> "."]
+              (Markdown.fromText $ "A robot built by the robot named " <> (r ^. robotName) <> ".")
               (Just (r ^. robotLocation))
               ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
                   ? north

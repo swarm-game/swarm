@@ -42,13 +42,13 @@ objectives:
         must also be in curly braces: the type of `build`
         is `{cmd a} -> cmd robot`{=type}.
       - |
-        TIP: Note that `if` requires a `bool`{=type}, not a `cmd bool`{=type}!  So you cannot directly say
+        **TIP:** Note that `if` requires a `bool`{=type}, not a `cmd bool`{=type}!  So you cannot directly say
         `if (ishere "very small rock") {...} {...}`{=snippet}.
         Instead you can write `b <- ishere "very small rock"; if b {...} {...}`{=snippet}.
         You might enjoy writing your own function of
         type `cmd bool -> {cmd a} -> {cmd a} -> cmd a`{=type} to encapsulate this pattern.
       - |
-        TIP: the two branches of an `if` must have the same type. In particular,
+        **TIP:** the two branches of an `if` must have the same type. In particular,
         `if ... {grab} {}`{=snippet} is not
         allowed, because `{grab}` has type `{cmd text}`{=type} whereas `{}` has type `{cmd unit}`{=type}.
         In this case `{grab; return ()}` has the right type.

@@ -6,7 +6,8 @@ objectives:
   - id: get_many_lambdas
     teaser: Get 256 lambdas
     goal:
-      - Lambdas are an essential item for building robots, but they
+      - |
+        `lambda`{=entity}s are an essential item for building robots, but they
         are somewhat rare in the wild.  Therefore, it makes sense to farm
         them in order to create a reliable supply.
       - |
@@ -20,13 +21,15 @@ objectives:
         ```
         def forever = \c. c ; forever c end
         ```
-      - Your goal is to acquire 256 lambdas.  Of course, in order to
+      - |
+        Your goal is to acquire 256 `lambda`{=entity}s.  Of course, in order to
         accomplish this in a reasonable amount of time, it makes sense to plant
-        a field of lambdas and then program one or more robots to
+        a field of `lambda`{=entity}s and then program one or more robots to
         harvest them in an automated way.
-      - "TIP: the `ishere` command can be used to test for the presence of a
-        (fully-grown) lambda, and the `has` command can be used to test whether
-        a robot has a lambda in its inventory."
+      - |
+        **TIP:** the `ishere` command can be used to test for the presence of a
+        (fully-grown) `lambda`{=entity}, and the `has` command can be used to test whether
+        a robot has a `lambda`{=entity} in its inventory.
     condition: |
       try {
         as base {

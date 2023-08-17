@@ -99,6 +99,8 @@ import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirement (ReqCtx)
+import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown (Document)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types (TCtx)
 import Swarm.Language.Value as V
@@ -444,7 +446,7 @@ mkRobot ::
   -- | Name of the robot.
   Text ->
   -- | Description of the robot.
-  [Text] ->
+  Document Syntax ->
   -- | Initial location.
   RobotLocation phase ->
   -- | Initial heading/direction.
@@ -501,7 +503,7 @@ instance FromJSONE EntityMap TRobot where
 
     mkRobot () Nothing
       <$> liftE (v .: "name")
-      <*> liftE (v .:? "description" .!= [])
+      <*> liftE (v .:? "description" .!= mempty)
       <*> liftE (v .:? "loc")
       <*> liftE (v .:? "dir" .!= zero)
       <*> localE (const defDisplay) (v ..:? "display" ..!= defDisplay)

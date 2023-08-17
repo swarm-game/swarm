@@ -19,7 +19,7 @@ objectives:
       - Your goal is to pick a flower on the other side of the river and
         bring it back to your base.  You win when the base has a
         `periwinkle`{=entity} flower in its inventory.
-      - "Hint: robots will drown in the water unless they have a `boat`{=entity} device
+      - "Hint: robots will drown in the `water`{=entity} unless they have a `boat`{=entity} device
         equipped!"
     condition: |
       try {
