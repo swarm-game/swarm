@@ -46,7 +46,6 @@ robots:
       - [10, solar panel]
       - [0, harvester]
 world:
-  default: [blank]
   palette:
     'Ω': [grass, null, base]
     '.': [grass]

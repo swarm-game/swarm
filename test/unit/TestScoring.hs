@@ -6,6 +6,7 @@ module TestScoring where
 import Data.Text.IO qualified as TIO
 import Data.Time.Calendar.OrdinalDate
 import Data.Time.LocalTime
+import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
@@ -16,6 +17,7 @@ import Swarm.Language.Syntax
 import System.FilePath ((</>))
 import Test.Tasty
 import Test.Tasty.HUnit
+import Witch (into)
 
 baseTestPath :: FilePath
 baseTestPath = "data/test/language-snippets/code-size"
@@ -61,7 +63,7 @@ compareAstSize expectedSize path = testCase (unwords ["size of", path]) $ do
   contents <- TIO.readFile $ baseTestPath </> path
   ProcessedTerm (Module stx _) _ _ <- case processTermEither contents of
     Right x -> return x
-    Left y -> assertFailure y
+    Left y -> assertFailure (into @String y)
   let actualSize = measureAstSize stx
   assertEqual "incorrect size" expectedSize actualSize
 
@@ -76,14 +78,14 @@ betterReplTimeAfterCodeSizeRecord =
     Metric Completed $
       ProgressStats (mkZonedTime 1) $
         AttemptMetrics
-          (DurationMetrics 1 1)
+          (DurationMetrics 1 $ TickNumber 1)
           Nothing
 
   oldCompletedRunWithCodeSize =
     Metric Completed $
       ProgressStats (mkZonedTime 0) $
         AttemptMetrics
-          (DurationMetrics 2 2)
+          (DurationMetrics 2 $ TickNumber 2)
           (Just $ ScenarioCodeMetrics 1 1)
 
   oldBestWithCodeSize =
@@ -116,14 +118,14 @@ betterCodeWorseTime =
     Metric Completed $
       ProgressStats (mkZonedTime 1) $
         AttemptMetrics
-          (DurationMetrics 2 2)
+          (DurationMetrics 2 $ TickNumber 2)
           (Just $ ScenarioCodeMetrics 1 1)
 
   oldRunPoorCodeSize =
     Metric Completed $
       ProgressStats (mkZonedTime 0) $
         AttemptMetrics
-          (DurationMetrics 1 1)
+          (DurationMetrics 1 $ TickNumber 1)
           (Just $ ScenarioCodeMetrics 2 2)
 
   oldBests =

@@ -1,0 +1,229 @@
+version: 1
+name: Fortress infiltration
+author: Karl Ostmo
+description: |
+  Navigate enemy-infested passages of Lambda Fortress to retrieve the prize.
+creative: false
+objectives:
+  - teaser: Get amulet
+    goal:
+      - |
+        `grab` the Amulet of Yoneda from the northwest sanctum while
+        timing your passage carefully to avoid Side Effects (X) on patrol.
+      - |
+        To unlock a red door, `drill` it with the "door key" equipped.
+    condition: |
+      as base {has "Amulet of Yoneda"}
+    prerequisite:
+      not: get_caught
+  - id: get_caught
+    teaser: Apprehended
+    goal:
+      - Got caught by the patrolling bots
+    hidden: true
+    optional: true
+    condition: |
+      // run "scenarios/Challenges/_blender/apprehension-checker.sw"
+      def hasMetBase = \r.
+          let basename = "base" in
+          x <- as r {whoami};
+          if (x == basename) {
+              return false;
+          } {
+              mr0 <- as r {meet};
+              case mr0
+                (\_. return false)
+                (\bot. name <- as bot {whoami}; return $ name == basename);
+          };
+          end;
+
+      /**
+      Iterates sequentially until
+      encountering an invalid robot index.
+
+      Distinguishes system bots from the base by name.
+      Returns true if a bot has "met" the base.
+      */
+      def anyHasMetBase : int -> cmd bool = \idx.
+          
+          try {
+              bot <- robotnumbered idx;
+              intermediate <- hasMetBase bot;
+              let foo = intermediate in
+              let newIdx = idx + 1 in
+              recursiveResult <- anyHasMetBase newIdx;
+              return $ foo || recursiveResult;
+          } {
+            // Terminates the recursion on the
+            // lowest index at which a robot does not exist
+            return false;
+          };
+          end;
+
+      anyHasMetBase 1;
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - ADT calculator
+      - binoculars
+      - branch predictor
+      - clock
+      - comparator
+      - compass
+      - counter
+      - dictionary
+      - grabber
+      - hearing aid
+      - keyboard
+      - lambda
+      - logger
+      - mirror
+      - net
+      - scanner
+      - strange loop
+      - string
+      - treads
+      - welder
+  - name: cw_robot
+    system: true
+    dir: [0, 1]
+    display:
+      invisible: false
+      char: 'X'
+      attr: robot
+    program: |
+      run "scenarios/Challenges/_blender/patrol-clockwise.sw"
+  - name: cw_robot_down
+    system: true
+    dir: [0, -1]
+    display:
+      invisible: false
+      char: 'X'
+      attr: robot
+    program: |
+      run "scenarios/Challenges/_blender/patrol-clockwise.sw"
+  - name: ccw_robot
+    system: true
+    dir: [0, 1]
+    display:
+      invisible: false
+      char: 'X'
+      attr: robot
+    program: |
+      run "scenarios/Challenges/_blender/patrol-counter-clockwise.sw"
+  - name: ccw_robot_down
+    system: true
+    dir: [0, -1]
+    display:
+      invisible: false
+      char: 'X'
+      attr: robot
+    program: |
+      run "scenarios/Challenges/_blender/patrol-counter-clockwise.sw"
+solution: |
+  run "scenarios/Challenges/_blender/solution.sw"
+entities:
+  - name: granite boulder
+    display:
+      char: '@'
+      attr: rock
+    description:
+      - Impassible rock, resistant to drilling
+    properties: [known, unwalkable]
+  - name: locked door
+    display:
+      char: '@'
+      attr: red
+    description:
+      - Locked door
+    properties: [known, unwalkable]
+  - name: unlocked door
+    display:
+      char: '@'
+      attr: green
+    description:
+      - Unlocked door
+    properties: [known]
+  - name: door key
+    display:
+      char: 'k'
+      attr: gold
+    description:
+      - used to unlock a door
+    properties: [known, portable]
+    capabilities: [drill]
+  - name: bind gt
+    display:
+      char: '>'
+      attr: gold
+    description:
+      - Decorative sculpture
+    properties: [known]
+  - name: bind eq
+    display:
+      char: '='
+      attr: gold
+    description:
+      - Decorative sculpture
+    properties: [known]
+  - name: Amulet of Yoneda
+    display:
+      char: 'Y'
+      attr: snow
+    description:
+      - The figurative jewel of category theory
+    properties: [known, portable]
+recipes:
+  - in:
+      - [1, locked door]
+    out:
+      - [1, unlocked door]
+    required:
+      - [1, door key]
+  - in:
+      - [1, unlocked door]
+    out:
+      - [1, locked door]
+    required:
+      - [1, door key]
+known: [water]
+seed: 0
+world:
+  dsl: |
+    {stone, water}
+  upperleft: [0, 0]
+  offset: false
+  palette:
+    '0': [stone, water]
+    '@': [stone, granite boulder]
+    '.': [grass, erase]
+    'L': [stone, erase]
+    '>': [stone, bind gt]
+    '=': [stone, bind eq]
+    H: [dirt, erase]
+    A: [grass, water, ccw_robot]
+    a: [grass, water, ccw_robot_down]
+    B: [grass, erase, cw_robot]
+    b: [grass, erase, cw_robot_down]
+    Ω: [grass, erase, base]
+    f: [stone, Amulet of Yoneda]
+    x: [stone, locked door]
+    k: [grass, door key]
+  map: |
+    ..@@@@@@@@@@@@@@@@@@@@@@@@@@@..
+    ..LxLLLLLf@.........x.....k.@..
+    ..@@@@@@@@@.@@@@@@@.@@@@@@@.@..
+    ..@H000A000H0000000H000A000H@..
+    ..@.@@@@@@@.@@@@@@@.@@@@@@@.@..
+    ..@.@L....@.@L....x.@L....@.@..
+    ..@.@.L...@.@.L...@.@.L...@.@..
+    ..@.@..L..@B@..L..@b@..L..@.@..
+    ..@.@.L.L.@.@.L.L.@.@.L.L.@.@..
+    ..@.@L...L@.xL...L@.@L...L@.@..
+    ..@.@@@@@@@.@@@@@@@.@@@@@@@.@..
+    ..@H000a000H0000000H000a000H@..
+    ..@@@@@@@@@.@@@@@@@.@@@@@@@.@..
+    ..Ω.........@.....@.........@..
+    @@@@@@@@@@@@@.>>=.@@@@@@@@@@@..
+    ...............................

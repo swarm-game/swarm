@@ -11,4 +11,5 @@ robots:
       char: Ω
       attr: robot
 world:
-  default: [grass]
+  dsl: |
+    {grass}

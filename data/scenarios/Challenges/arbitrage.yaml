@@ -1,0 +1,417 @@
+version: 1
+name: Paperclip maximizer
+author: Karl Ostmo
+description: |
+  Make trades to earn your fortune.
+creative: false
+objectives:
+  - teaser: Earn riches
+    goal:
+      - |
+        Each shop offers different wares for trade.
+        Recipes dictate which items may be exchanged
+        at any given shop. Use the `drill`{=entity} on a shop to perform
+        an exchange.
+      - |
+        As an itinerant merchant, you may exploit market asymmetry
+        for profit.
+      - |
+        Amass a fortune of 100 paperclips.
+    condition: |
+      as base {
+        pcount <- count "paperclip";
+        return $ pcount >= 100;
+      };
+  - teaser: Beginner capital
+    goal:
+      - |
+        Great start! Perhaps it is time
+        to enter a higher-end goods market?
+    optional: true
+    hidden: true
+    condition: |
+      as base {
+        pcount <- count "paperclip";
+        return $ pcount >= 20;
+      };
+attrs:
+  - name: shopA
+    fg: '#ff0000'
+  - name: shopB
+    fg: '#00ff00'
+  - name: shopC
+    fg: '#0000ff'
+  - name: shopD
+    fg: '#ffff00'
+  - name: shopE
+    fg: '#ff00ff'
+  - name: shopF
+    fg: '#00ffff'
+  - name: shopG
+    fg: '#bb8844'
+  - name: shopX
+    fg: '#000000'
+    bg: '#ffffff'
+  - name: shopY
+    fg: '#ffffff'
+    bg: '#000000'
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - ADT calculator
+      - antenna
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - drill
+      - grabber
+      - keyboard
+      - lambda
+      - lodestone
+      - logger
+      - net
+      - scanner
+      - strange loop
+      - treads
+    inventory:
+      - [5, paperclip]
+solution: |
+   run "scenarios/Challenges/_arbitrage/solution.sw"
+entities:
+  - name: paperclip
+    display:
+      char: '@'
+      attr: red
+    description:
+      - An ubiquitous office accoutrement.
+      - Practically worthless as a single unit.
+    properties: [known, portable]
+  - name: pinwheel
+    display:
+      char: 'P'
+      attr: gold
+    description:
+      - Watch it spin. Wheee!
+    properties: [portable]
+  - name: stapler
+    display:
+      char: 'S'
+      attr: red
+    description:
+      - A shiny red stapler
+    properties: [portable]
+  - name: toothbrush
+    display:
+      char: 'b'
+      attr: blue
+    description:
+      - Brushy brushy
+    properties: [portable]
+  - name: Pez dispenser
+    display:
+      char: 'P'
+    description:
+      - Classic collectible toy. Absent its chalky candy.
+    properties: [portable]
+  - name: shoehorn
+    display:
+      char: 'h'
+    description:
+      - Handheld apparatus for donning snug footwear
+    properties: [portable]
+  - name: trivet
+    display:
+      char: 'v'
+    description:
+      - Protective silicone mat for hot cookware
+    properties: [portable]
+  - name: coffee mug
+    display:
+      char: 'c'
+    description:
+      - Caffeine conveyance
+    properties: [portable]
+  - name: toaster
+    display:
+      char: 'A'
+    description:
+      - Bread warmer-upper
+    properties: [portable]
+  - name: blender
+    display:
+      char: 'B'
+    description:
+      - Essential for smoothie preparation
+    properties: [portable]
+  - name: electric can opener
+    display:
+      char: 'B'
+    description:
+      - |
+        For when you can't be bothered to manually open a can
+    properties: [portable]
+  - name: wok
+    display:
+      char: 'w'
+    description:
+      - One must wok before one can run.
+    properties: [portable]
+  - name: sous vide cooker
+    display:
+      char: 's'
+    description:
+      - trendy gourmet cooking appliance
+    properties: [portable]
+  - name: french press
+    display:
+      char: 'f'
+    description:
+      - plunger-based coffee maker
+    properties: [portable]
+  - name: stand mixer
+    display:
+      char: 'm'
+    description:
+      - whips, kneads, and mixes
+    properties: [portable]
+  - name: shopA
+    display:
+      char: 'A'
+      attr: shopA
+    description:
+      - A trading post
+    properties: [known]
+  - name: shopB
+    display:
+      char: 'B'
+      attr: shopB
+    description:
+      - A trading post
+    properties: [known]
+  - name: shopC
+    display:
+      char: 'C'
+      attr: shopC
+    description:
+      - A trading post
+    properties: [known]
+  - name: shopD
+    display:
+      char: 'D'
+      attr: shopD
+    description:
+      - A trading post
+    properties: [known]
+  - name: shopE
+    display:
+      char: 'E'
+      attr: shopE
+    description:
+      - A trading post
+    properties: [known]
+  - name: shopF
+    display:
+      char: 'F'
+      attr: shopF
+    description:
+      - A trading post
+    properties: [known]
+  - name: shopG
+    display:
+      char: 'G'
+      attr: shopG
+    description:
+      - A trading post
+    properties: [known]
+  - name: shopX
+    display:
+      char: 'X'
+      attr: shopX
+    description:
+      - A high-end trading post
+    properties: [known]
+  - name: shopY
+    display:
+      char: 'Y'
+      attr: shopY
+    description:
+      - A high-end trading post
+    properties: [known]
+recipes:
+  - in:
+      - [1, shopA]
+      - [10, paperclip]
+    out:
+      - [1, shopA]
+      - [1, pinwheel]
+    required:
+      - [1, drill]
+  - in:
+      - [1, shopB]
+      - [1, pinwheel]
+    out:
+      - [1, shopB]
+      - [1, stapler]
+    required:
+      - [1, drill]
+  - in:
+      - [1, shopC]
+      - [1, stapler]
+    out:
+      - [1, shopC]
+      - [1, toothbrush]
+    required:
+      - [1, drill]
+  - in:
+      - [1, shopD]
+      - [1, toothbrush]
+    out:
+      - [1, shopD]
+      - [1, Pez dispenser]
+    required:
+      - [1, drill]
+  - in:
+      - [1, shopD]
+      - [1, toaster]
+    out:
+      - [1, shopD]
+      - [1, blender]
+    required:
+      - [1, drill]
+  - in:
+      - [1, shopE]
+      - [1, Pez dispenser]
+    out:
+      - [1, shopE]
+      - [1, shoehorn]
+    required:
+      - [1, drill]
+  - in:
+      - [1, shopC]
+      - [1, blender]
+    out:
+      - [1, shopC]
+      - [1, electric can opener]
+    required:
+      - [1, drill]
+  - in:
+      - [1, shopF]
+      - [1, shoehorn]
+    out:
+      - [1, shopF]
+      - [1, trivet]
+    required:
+      - [1, drill]
+  - in:
+      - [1, shopX]
+      - [20, paperclip]
+    out:
+      - [1, shopX]
+      - [1, toaster]
+    required:
+      - [1, drill]
+  - in:
+      - [1, shopG]
+      - [1, coffee mug]
+    out:
+      - [1, shopG]
+      - [11, paperclip]
+    required:
+      - [1, drill]
+  - in:
+      - [1, shopG]
+      - [1, stand mixer]
+    out:
+      - [1, shopG]
+      - [30, paperclip]
+    required:
+      - [1, drill]
+  - in:
+      - [1, shopC]
+      - [1, trivet]
+    out:
+      - [1, shopC]
+      - [1, coffee mug]
+    required:
+      - [1, drill]
+  - in:
+      - [1, shopB]
+      - [1, electric can opener]
+    out:
+      - [1, shopB]
+      - [1, wok]
+    required:
+      - [1, drill]
+  - in:
+      - [1, shopY]
+      - [1, wok]
+    out:
+      - [1, shopY]
+      - [1, sous vide cooker]
+    required:
+      - [1, drill]
+  - in:
+      - [1, shopF]
+      - [1, sous vide cooker]
+    out:
+      - [1, shopF]
+      - [1, french press]
+    required:
+      - [1, drill]
+  - in:
+      - [1, shopC]
+      - [1, french press]
+    out:
+      - [1, shopC]
+      - [1, stand mixer]
+    required:
+      - [1, drill]
+  - in:
+      - [1, shopY]
+      - [1, wok]
+    out:
+      - [1, shopY]
+      - [1, sous vide cooker]
+    required:
+      - [1, drill]
+known: []
+world:
+  dsl: |
+    {dirt}
+  upperleft: [0, 0]
+  offset: false
+  palette:
+    '.': [grass]
+    '*': [stone]
+    '/': [dirt]
+    '1': [dirt, shopA]
+    '2': [dirt, shopB]
+    '3': [dirt, shopC]
+    '4': [dirt, shopD]
+    '5': [dirt, shopE]
+    '6': [dirt, shopF]
+    '7': [dirt, shopG]
+    'X': [dirt, shopX]
+    'Y': [dirt, shopY]
+    'B': [grass, null, base]
+    'p': [grass, paperclip]
+  map: |
+    /.............../
+    .................
+    ........*........
+    ...5****6****Y...
+    ...*....*....*...
+    ...*....*........
+    ...*....*........
+    ...*....*........
+    ...4****3****2...
+    ........*....*...
+    ........*....*...
+    ........*....*...
+    ...*....*....*...
+    ...X****7****1...
+    ........*........
+    B....p.p.p.p.p...
+    /.............../

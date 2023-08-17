@@ -179,7 +179,8 @@ recipes:
 known: [boulder, lignite mine]
 seed: 0
 world:
-  default: [grass]
+  dsl: |
+    {grass}
   palette:
     'B': [dirt, null, base]
     '.': [dirt]

@@ -34,6 +34,8 @@ data Capability
     CPower
   | -- | Execute the 'Move' command
     CMove
+  | -- | Execute the 'Backup' command
+    CBackup
   | -- | Execute the 'Push' command
     CPush
   | -- | Execute the 'Stride' command
@@ -98,8 +100,14 @@ data Capability
     CListen
   | -- | Execute the 'Log' command
     CLog
-  | -- | Manipulate text values
-    CText
+  | -- | Format values as text
+    CFormat
+  | -- | Split text into two pieces
+    CConcat
+  | -- | Join two text values into one
+    CSplit
+  | -- | Count the characters in a text value
+    CCharcount
   | -- | Convert between characters/text and Unicode values
     CCode
   | -- | Don't drown in liquid
@@ -201,6 +209,7 @@ constCaps = \case
   Log -> Just CLog
   Selfdestruct -> Just CSelfdestruct
   Move -> Just CMove
+  Backup -> Just CBackup
   Push -> Just CPush
   Stride -> Just CMovemultiple
   Turn -> Just CTurn
@@ -240,6 +249,7 @@ constCaps = \case
   Wait -> Just CTimerel
   Scout -> Just CRecondir
   Whereami -> Just CSenseloc
+  Waypoint -> Just CGod
   Detect -> Just CDetectloc
   Resonate -> Just CDetectcount
   Density -> Just CDetectcount
@@ -252,10 +262,10 @@ constCaps = \case
   Halt -> Just CHalt
   -- ----------------------------------------------------------------
   -- Text operations
-  Format -> Just CText
-  Concat -> Just CText
-  Split -> Just CText
-  Chars -> Just CText
+  Format -> Just CFormat
+  Concat -> Just CConcat
+  Split -> Just CSplit
+  Chars -> Just CCharcount
   CharAt -> Just CCode
   ToChar -> Just CCode
   -- ----------------------------------------------------------------

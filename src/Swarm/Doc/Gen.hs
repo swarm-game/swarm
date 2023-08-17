@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -23,48 +24,46 @@ module Swarm.Doc.Gen (
   noPageAddresses,
 ) where
 
-import Control.Arrow (left)
+import Control.Effect.Lift
 import Control.Lens (view, (^.))
 import Control.Lens.Combinators (to)
 import Control.Monad (zipWithM, zipWithM_)
-import Control.Monad.Except (ExceptT (..), liftIO, runExceptT, withExceptT)
 import Data.Containers.ListUtils (nubOrd)
-import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (find, toList)
 import Data.List (transpose)
-import Data.Map.Lazy (Map)
+import Data.Map.Lazy (Map, (!))
 import Data.Map.Lazy qualified as Map
 import Data.Maybe (fromMaybe, isJust)
+import Data.Sequence (Seq)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text, unpack)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Tuple (swap)
-import Data.Yaml (decodeFileEither)
-import Data.Yaml.Aeson (prettyPrintParseException)
 import Swarm.Doc.Pedagogy
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
-import Swarm.Game.Failure qualified as F
-import Swarm.Game.Failure.Render qualified as F
+import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements, recipeTime, recipeWeight)
-import Swarm.Game.ResourceLoading (getDataFileNameSafe)
-import Swarm.Game.Robot (equippedDevices, instantiateRobot, robotInventory)
+import Swarm.Game.Robot (Robot, equippedDevices, instantiateRobot, robotInventory)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
-import Swarm.Game.WorldGen (testWorld2Entites)
+import Swarm.Game.World.Gen (extractEntities)
+import Swarm.Game.World.Load (loadWorlds)
+import Swarm.Game.World.Typecheck (Some (..), TTerm)
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Capability qualified as Capability
 import Swarm.Language.Key (specialKeyNames)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
+import Swarm.Language.Text.Markdown as Markdown (docToMark)
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Util (both, guardRight, listEnums, quote, simpleErrorHandle)
+import Swarm.Util (both, listEnums, quote)
+import Swarm.Util.Effect (ignoreWarnings, simpleErrorHandle)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
-import Witch (from)
 
 -- ============================================================================
 -- MAIN ENTRYPOINT TO CLI DOCUMENTATION GENERATOR
@@ -123,19 +122,15 @@ generateDocs = \case
     Just st -> case st of
       Commands -> T.putStrLn commandsPage
       Capabilities -> simpleErrorHandle $ do
-        entities <- ExceptT loadEntities
-        liftIO $ T.putStrLn $ capabilityPage address entities
+        entities <- loadEntities
+        sendIO $ T.putStrLn $ capabilityPage address entities
       Entities -> simpleErrorHandle $ do
-        let loadEntityList fp = left (from . prettyPrintParseException) <$> decodeFileEither fp
-        let f = "entities.yaml"
-        let e2m = fmap eitherToMaybe . runExceptT
-        Just fileName <- liftIO $ e2m $ getDataFileNameSafe F.Entities f
-        entities <- liftIO (loadEntityList fileName) >>= guardRight "load entities"
-        liftIO $ T.putStrLn $ entitiesPage address entities
+        entities <- loadEntities
+        sendIO $ T.putStrLn $ entitiesPage address (Map.elems $ entitiesByName entities)
       Recipes -> simpleErrorHandle $ do
-        entities <- ExceptT loadEntities
-        recipes <- withExceptT F.prettyFailure $ loadRecipes entities
-        liftIO $ T.putStrLn $ recipePage address recipes
+        entities <- loadEntities
+        recipes <- loadRecipes entities
+        sendIO $ T.putStrLn $ recipePage address recipes
   TutorialCoverage -> renderTutorialProgression >>= putStrLn . T.unpack
 
 -- ----------------------------------------------------------------------------
@@ -232,7 +227,7 @@ maxWidths = map (maximum . map T.length) . transpose
 addLink :: Text -> Text -> Text
 addLink l t = T.concat ["[", t, "](", l, ")"]
 
-tshow :: Show a => a -> Text
+tshow :: (Show a) => a -> Text
 tshow = T.pack . show
 
 -- ---------
@@ -368,7 +363,7 @@ entityToSection e =
       <> [" - Properties: " <> T.intercalate ", " (map tshow $ toList props) | not $ null props]
       <> [" - Capabilities: " <> T.intercalate ", " (Capability.capabilityName <$> caps) | not $ null caps]
       <> ["\n"]
-      <> [T.intercalate "\n\n" $ view E.entityDescription e]
+      <> [Markdown.docToMark $ view E.entityDescription e]
  where
   props = view E.entityProperties e
   caps = Set.toList $ view E.entityCapabilities e
@@ -423,13 +418,14 @@ recipePage = recipeTable
 
 generateRecipe :: IO String
 generateRecipe = simpleErrorHandle $ do
-  entities <- ExceptT loadEntities
-  recipes <- withExceptT F.prettyFailure $ loadRecipes entities
-  classic <- classicScenario
-  return . Dot.showDot $ recipesToDot classic entities recipes
+  entities <- loadEntities
+  recipes <- loadRecipes entities
+  worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds entities
+  classic <- fst <$> loadScenario "data/scenarios/classic.yaml" entities worlds
+  return . Dot.showDot $ recipesToDot classic (worlds ! "classic") entities recipes
 
-recipesToDot :: Scenario -> EntityMap -> [Recipe Entity] -> Dot ()
-recipesToDot classic emap recipes = do
+recipesToDot :: Scenario -> Some (TTerm '[]) -> EntityMap -> [Recipe Entity] -> Dot ()
+recipesToDot classic classicTerm emap recipes = do
   Dot.attribute ("rankdir", "LR")
   Dot.attribute ("ranksep", "2")
   world <- diamond "World"
@@ -449,8 +445,8 @@ recipesToDot classic emap recipes = do
   -- how hard each entity is to get - see 'recipeLevels'.
   let devs = startingDevices classic
       inv = startingInventory classic
-      worldEntites = Set.map (safeGetEntity $ entitiesByName emap) testWorld2Entites
-      levels = recipeLevels recipes (Set.unions [worldEntites, devs])
+      worldEntities = case classicTerm of Some _ t -> extractEntities t
+      levels = recipeLevels recipes (Set.unions [worldEntities, devs])
   -- --------------------------------------------------------------------------
   -- Base inventory
   (_bc, ()) <- Dot.cluster $ do
@@ -463,7 +459,7 @@ recipesToDot classic emap recipes = do
   (_wc, ()) <- Dot.cluster $ do
     Dot.attribute ("style", "filled")
     Dot.attribute ("color", "forestgreen")
-    mapM_ ((uncurry (Dot..->.) . (world,)) . getE) (toList testWorld2Entites)
+    mapM_ (uncurry (Dot..->.) . (world,) . getE . view entityName) (toList worldEntities)
   -- --------------------------------------------------------------------------
   let -- put a hidden node above and below entities and connect them by hidden edges
       wrapBelowAbove :: Set Entity -> Dot (NodeId, NodeId)
@@ -493,7 +489,7 @@ recipesToDot classic emap recipes = do
   -- --------------------------------------------------------------------------
   -- order entities into clusters based on how "far" they are from
   -- what is available at the start - see 'recipeLevels'.
-  bottom <- wrapBelowAbove worldEntites
+  bottom <- wrapBelowAbove worldEntities
   ls <- zipWithM subLevel [1 ..] (tail levels)
   let invisibleLine = zipWithM_ (.~>.)
   tls <- mapM (const hiddenNode) levels
@@ -544,17 +540,14 @@ recipeLevels recipes start = levels
             then ls
             else go (n : ls) (Set.union n known)
 
--- | Get classic scenario to figure out starting entities.
-classicScenario :: ExceptT Text IO Scenario
-classicScenario = do
-  entities <- loadEntities >>= guardRight "load entities"
-  fst <$> loadScenario "data/scenarios/classic.yaml" entities
+startingHelper :: Scenario -> Robot
+startingHelper = instantiateRobot 0 . head . view scenarioRobots
 
 startingDevices :: Scenario -> Set Entity
-startingDevices = Set.fromList . map snd . E.elems . view equippedDevices . instantiateRobot 0 . head . view scenarioRobots
+startingDevices = Set.fromList . map snd . E.elems . view equippedDevices . startingHelper
 
 startingInventory :: Scenario -> Map Entity Int
-startingInventory = Map.fromList . map swap . E.elems . view robotInventory . instantiateRobot 0 . head . view scenarioRobots
+startingInventory = Map.fromList . map swap . E.elems . view robotInventory . startingHelper
 
 -- | Ignore utility entities that are just used for tutorials and challenges.
 ignoredEntities :: Set Text

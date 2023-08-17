@@ -16,6 +16,7 @@ module Swarm.Language.Syntax (
   Direction (..),
   AbsoluteDir (..),
   RelativeDir (..),
+  PlanarRelativeDir (..),
   directionSyntax,
   isCardinal,
   allDirs,
@@ -89,12 +90,9 @@ module Swarm.Language.Syntax (
 
 import Control.Lens (Plated (..), Traversal', makeLenses, para, universe, (%~), (^.))
 import Data.Aeson.Types hiding (Key)
-import Data.Char qualified as C (toLower)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
-import Data.Hashable (Hashable)
 import Data.Int (Int32)
-import Data.List qualified as L (tail)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict (Map)
@@ -104,6 +102,7 @@ import Data.Text hiding (filter, length, map)
 import Data.Text qualified as T
 import Data.Tree
 import GHC.Generics (Generic)
+import Swarm.Language.Direction
 import Swarm.Language.Types
 import Swarm.Util qualified as Util
 import Witch.From (from)
@@ -118,64 +117,6 @@ maxScoutRange = 64
 
 maxStrideRange :: Int
 maxStrideRange = 64
-
-------------------------------------------------------------
--- Directions
-------------------------------------------------------------
-
--- | An absolute direction is one which is defined with respect to an
---   external frame of reference; robots need a compass in order to
---   use them.
---
--- NOTE: These values are ordered by increasing angle according to
--- the standard mathematical convention.
--- That is, the right-pointing direction, East, is considered
--- the "reference angle" and the order proceeds counter-clockwise.
--- See https://en.wikipedia.org/wiki/Polar_coordinate_system#Conventions
---
--- Do not alter this ordering, as there exist functions that depend on it
--- (e.g. "nearestDirection" and "relativeTo").
-data AbsoluteDir = DEast | DNorth | DWest | DSouth
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
-
-cardinalDirectionKeyOptions :: JSONKeyOptions
-cardinalDirectionKeyOptions =
-  defaultJSONKeyOptions
-    { keyModifier = map C.toLower . L.tail
-    }
-
-instance ToJSONKey AbsoluteDir where
-  toJSONKey = genericToJSONKey cardinalDirectionKeyOptions
-
-instance FromJSONKey AbsoluteDir where
-  fromJSONKey = genericFromJSONKey cardinalDirectionKeyOptions
-
--- | A relative direction is one which is defined with respect to the
---   robot's frame of reference; no special capability is needed to
---   use them.
-data RelativeDir = DLeft | DRight | DBack | DForward | DDown
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
-
--- | The type of directions. Used /e.g./ to indicate which way a robot
---   will turn.
-data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
-
--- | Direction name is generated from Direction data constuctor
--- e.g. DLeft becomes "left"
-directionSyntax :: Direction -> Text
-directionSyntax d = toLower . T.tail . from $ case d of
-  DAbsolute x -> show x
-  DRelative x -> show x
-
--- | Check if the direction is absolute (e.g. 'north' or 'south').
-isCardinal :: Direction -> Bool
-isCardinal = \case
-  DAbsolute _ -> True
-  _ -> False
-
-allDirs :: [Direction]
-allDirs = map DAbsolute Util.listEnums <> map DRelative Util.listEnums
 
 ------------------------------------------------------------
 -- Constants
@@ -209,6 +150,8 @@ data Const
 
     -- | Move forward one step.
     Move
+  | -- | Move backward one step.
+    Backup
   | -- | Push an entity forward one step.
     Push
   | -- | Move forward multiple steps.
@@ -269,6 +212,8 @@ data Const
     Scout
   | -- | Get the current x, y coordinates
     Whereami
+  | -- | Get the x, y coordinates of a named waypoint, by index
+    Waypoint
   | -- | Locate the closest instance of a given entity within the rectangle
     -- specified by opposite corners, relative to the current location.
     Detect
@@ -577,6 +522,7 @@ constInfo c = case c of
       , "This destroys the robot's inventory, so consider `salvage` as an alternative."
       ]
   Move -> command 0 short "Move forward one step."
+  Backup -> command 0 short "Move backward one step."
   Push ->
     command 1 short . doc "Push an entity forward one step." $
       [ "Both entity and robot moves forward one step."
@@ -664,6 +610,13 @@ constInfo c = case c of
       , T.unwords ["Has a max range of", T.pack $ show maxScoutRange, "units."]
       ]
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
+  Waypoint ->
+    command 2 Intangible . doc "Get the x, y coordinates of a named waypoint, by index" $
+      [ "Return only the waypoints in the same subworld as the calling robot."
+      , "Since waypoint names can have plural multiplicity, returns a tuple of (count, (x, y))."
+      , "The supplied index will be wrapped automatically, modulo the waypoint count."
+      , "A robot can use the count to know whether they have iterated over the full waypoint circuit."
+      ]
   Detect ->
     command 2 Intangible . doc "Detect an entity within a rectangle." $
       ["Locate the closest instance of a given entity within the rectangle specified by opposite corners, relative to the current location."]

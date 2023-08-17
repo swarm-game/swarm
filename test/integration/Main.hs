@@ -9,10 +9,11 @@
 -- Swarm integration tests
 module Main where
 
-import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<&>), (<>~), (^.), (^..), (^?!))
-import Control.Monad (filterM, forM_, unless, when)
+import Control.Carrier.Lift (runM)
+import Control.Carrier.Throw.Either (runThrow)
+import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<>~), (^.), (^..), (^?!))
+import Control.Monad (forM_, unless, when)
 import Control.Monad.State (StateT (runStateT), gets)
-import Control.Monad.Trans.Except (runExceptT)
 import Data.Char (isSpace)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (Foldable (toList), find)
@@ -27,8 +28,9 @@ import Data.Text.IO qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Doc.Gen (EditorType (..))
 import Swarm.Doc.Gen qualified as DocGen
-import Swarm.Game.CESK (emptyStore, initMachine)
-import Swarm.Game.Entity (EntityMap, loadEntities, lookupByName)
+import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
+import Swarm.Game.Entity (EntityMap, lookupByName)
+import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Robot (LogEntry, defReqs, equippedDevices, leText, machine, robotContext, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
@@ -45,15 +47,16 @@ import Swarm.Game.State (
   winSolution,
  )
 import Swarm.Game.Step (gameTick)
+import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
-import Swarm.TUI.Model (gameState)
-import Swarm.TUI.Model.StateUpdate (initAppStateForScenario)
+import Swarm.Language.Pretty (prettyString)
+import Swarm.TUI.Model (RuntimeState, defaultAppOpts, gameState, stdEntityMap, userScenario, worlds)
+import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
+import Swarm.TUI.Model.UI (UIState)
+import Swarm.Util (acquireAllWithExt)
 import Swarm.Util.Yaml (decodeFileEitherE)
-import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
-import System.Environment (getEnvironment)
-import System.FilePath (splitDirectories)
-import System.FilePath.Posix (takeExtension, (</>))
+import System.FilePath.Posix (splitDirectories)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
@@ -64,25 +67,24 @@ isUnparseableTest (fp, _) = "_Validation" `elem` splitDirectories fp
 
 main :: IO ()
 main = do
-  examplePaths <- acquire "example" "sw"
-  scenarioPaths <- acquire "data/scenarios" "yaml"
+  examplePaths <- acquireAllWithExt "example" "sw"
+  scenarioPaths <- acquireAllWithExt "data/scenarios" "yaml"
   let (unparseableScenarios, parseableScenarios) = partition isUnparseableTest scenarioPaths
-  scenarioPrograms <- acquire "data/scenarios" "sw"
-  ci <- any (("CI" ==) . fst) <$> getEnvironment
-  entities <- loadEntities
-  case entities of
-    Left t -> fail $ "Couldn't load entities: " <> into @String t
-    Right em -> do
-      defaultMain $
-        testGroup
-          "Tests"
-          [ exampleTests examplePaths
-          , exampleTests scenarioPrograms
-          , scenarioParseTests em parseableScenarios
-          , scenarioParseInvalidTests em unparseableScenarios
-          , testScenarioSolution ci em
-          , testEditorFiles
-          ]
+  scenarioPrograms <- acquireAllWithExt "data/scenarios" "sw"
+  (rs, ui) <- do
+    out <- runM . runThrow @SystemFailure $ initPersistentState defaultAppOpts
+    either (assertFailure . prettyString) return out
+  let em = rs ^. stdEntityMap
+  defaultMain $
+    testGroup
+      "Tests"
+      [ exampleTests examplePaths
+      , exampleTests scenarioPrograms
+      , scenarioParseTests em (rs ^. worlds) parseableScenarios
+      , scenarioParseInvalidTests em (rs ^. worlds) unparseableScenarios
+      , testScenarioSolutions rs ui
+      , testEditorFiles
+      ]
 
 exampleTests :: [(FilePath, String)] -> TestTree
 exampleTests inputs = testGroup "Test example" (map exampleTest inputs)
@@ -94,27 +96,27 @@ exampleTest (path, fileContent) =
  where
   value = processTerm $ into @Text fileContent
 
-scenarioParseTests :: EntityMap -> [(FilePath, String)] -> TestTree
-scenarioParseTests em inputs =
+scenarioParseTests :: EntityMap -> WorldMap -> [(FilePath, String)] -> TestTree
+scenarioParseTests em worldMap inputs =
   testGroup
     "Test scenarios parse"
-    (map (scenarioTest Parsed em) inputs)
+    (map (scenarioTest Parsed em worldMap) inputs)
 
-scenarioParseInvalidTests :: EntityMap -> [(FilePath, String)] -> TestTree
-scenarioParseInvalidTests em inputs =
+scenarioParseInvalidTests :: EntityMap -> WorldMap -> [(FilePath, String)] -> TestTree
+scenarioParseInvalidTests em worldMap inputs =
   testGroup
     "Test invalid scenarios fail to parse"
-    (map (scenarioTest Failed em) inputs)
+    (map (scenarioTest Failed em worldMap) inputs)
 
 data ParseResult = Parsed | Failed
 
-scenarioTest :: ParseResult -> EntityMap -> (FilePath, String) -> TestTree
-scenarioTest expRes em (path, _) =
-  testCase ("parse scenario " ++ show path) (getScenario expRes em path)
+scenarioTest :: ParseResult -> EntityMap -> WorldMap -> (FilePath, String) -> TestTree
+scenarioTest expRes em worldMap (path, _) =
+  testCase ("parse scenario " ++ show path) (getScenario expRes em worldMap path)
 
-getScenario :: ParseResult -> EntityMap -> FilePath -> IO ()
-getScenario expRes em p = do
-  res <- decodeFileEitherE em p :: IO (Either ParseException Scenario)
+getScenario :: ParseResult -> EntityMap -> WorldMap -> FilePath -> IO ()
+getScenario expRes em worldMap p = do
+  res <- decodeFileEitherE (em, worldMap) p :: IO (Either ParseException Scenario)
   case expRes of
     Parsed -> case res of
       Left err -> assertFailure (prettyPrintParseException err)
@@ -122,18 +124,6 @@ getScenario expRes em p = do
     Failed -> case res of
       Left _err -> return ()
       Right _s -> assertFailure "Unexpectedly parsed invalid scenario!"
-
-acquire :: FilePath -> String -> IO [(FilePath, String)]
-acquire dir ext = do
-  paths <- listDirectory dir <&> map (dir </>)
-  filePaths <- filterM (\path -> doesFileExist path <&> (&&) (hasExt path)) paths
-  children <- mapM (\path -> (,) path <$> readFile path) filePaths
-  -- recurse
-  sub <- filterM doesDirectoryExist paths
-  transChildren <- concat <$> mapM (`acquire` ext) sub
-  return $ children <> transChildren
- where
-  hasExt path = takeExtension path == ("." ++ ext)
 
 data Time
   = -- | One second should be enough to run most programs.
@@ -154,8 +144,8 @@ time = \case
 
 data ShouldCheckBadErrors = CheckForBadErrors | AllowBadErrors deriving (Eq, Show)
 
-testScenarioSolution :: Bool -> EntityMap -> TestTree
-testScenarioSolution _ci _em =
+testScenarioSolutions :: RuntimeState -> UIState -> TestTree
+testScenarioSolutions rs ui =
   testGroup
     "Test scenario solutions"
     [ testGroup
@@ -171,9 +161,9 @@ testScenarioSolution _ci _em =
         , testTutorialSolution Default "Tutorials/build"
         , testTutorialSolution Default "Tutorials/bind2"
         , testTutorialSolution' Default "Tutorials/crash" CheckForBadErrors $ \g -> do
-            let rs = toList $ g ^. robotMap
+            let robots = toList $ g ^. robotMap
             let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
-            let win = isJust $ find hints rs
+            let win = isJust $ find hints robots
             assertBool "Could not find a robot with winning instructions!" win
         , testTutorialSolution Default "Tutorials/scan"
         , testTutorialSolution Default "Tutorials/give"
@@ -193,10 +183,13 @@ testScenarioSolution _ci _em =
         , testSolution (Sec 3) "Challenges/word-search"
         , testSolution (Sec 5) "Challenges/bridge-building"
         , testSolution (Sec 3) "Challenges/ice-cream"
+        , testSolution (Sec 3) "Challenges/arbitrage"
         , testSolution (Sec 5) "Challenges/gopher"
         , testSolution (Sec 5) "Challenges/hackman"
+        , testSolution (Sec 5) "Challenges/blender"
         , testSolution (Sec 10) "Challenges/hanoi"
         , testSolution (Sec 3) "Challenges/lights-out"
+        , testSolution (Sec 10) "Challenges/Sliding Puzzles/3x3"
         , testSolution Default "Challenges/friend"
         , testGroup
             "Mazes"
@@ -208,6 +201,7 @@ testScenarioSolution _ci _em =
         , testGroup
             "Ranching"
             [ testSolution Default "Challenges/Ranching/capture"
+            , testSolution (Sec 5) "Challenges/Ranching/powerset"
             , testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
             ]
         , testGroup
@@ -216,6 +210,10 @@ testScenarioSolution _ci _em =
             , testSolution Default "Challenges/Sokoban/Gadgets/no-reverse.yaml"
             , testSolution Default "Challenges/Sokoban/Gadgets/one-way.yaml"
             , testSolution Default "Challenges/Sokoban/Simple/trapdoor.yaml"
+            ]
+        , testGroup
+            "Mechanics"
+            [ testSolution Default "Mechanics/active-trapdoor.yaml"
             ]
         ]
     , testGroup
@@ -228,7 +226,7 @@ testScenarioSolution _ci _em =
                 r1Waits = g ^?! robotMap . ix 1 . to waitingUntil
                 active = IS.member 1 $ g ^. activeRobots
                 waiting = elem 1 . concat . M.elems $ g ^. waitingRobots
-            assertBool "The game should only take two ticks" $ t == 2
+            assertBool "The game should only take two ticks" $ getTickNumber t == 2
             assertBool "Robot 1 should have waiting machine" $ isJust r1Waits
             assertBool "Robot 1 should be still active" active
             assertBool "Robot 1 should not be in waiting set" $ not waiting
@@ -288,6 +286,23 @@ testScenarioSolution _ci _em =
         , testSolution Default "Testing/1234-push-command"
         , testSolution Default "Testing/1256-halt-command"
         , testSolution Default "Testing/1295-density-command"
+        , testSolution Default "Testing/1356-portals/portals-flip-and-rotate"
+        , testSolution Default "Testing/144-subworlds/basic-subworld"
+        , testSolution Default "Testing/144-subworlds/subworld-mapped-robots"
+        , testSolution Default "Testing/144-subworlds/subworld-located-robots"
+        , testSolution Default "Testing/1379-single-world-portal-reorientation"
+        , testSolution Default "Testing/1399-backup-command"
+        , testGroup
+            -- Note that the description of the classic world in
+            -- data/worlds/classic.yaml (automatically tested to some
+            -- extent by the solution to Tutorial/world101 and
+            -- Tutorial/farming) also constitutes a fairly
+            -- comprehensive test of world DSL features.
+            "World DSL (#1320)"
+            [ testSolution Default "Testing/1320-world-DSL/constant"
+            , testSolution Default "Testing/1320-world-DSL/erase"
+            , testSolution Default "Testing/1320-world-DSL/override"
+            ]
         ]
     ]
  where
@@ -299,9 +314,9 @@ testScenarioSolution _ci _em =
 
   testSolution' :: Time -> FilePath -> ShouldCheckBadErrors -> (GameState -> Assertion) -> TestTree
   testSolution' s p shouldCheckBadErrors verify = testCase p $ do
-    out <- runExceptT $ initAppStateForScenario p Nothing Nothing
+    out <- runM . runThrow @SystemFailure $ constructAppState rs ui $ defaultAppOpts {userScenario = Just p}
     case out of
-      Left x -> assertFailure $ unwords ["Failure in initAppStateForScenario:", T.unpack x]
+      Left err -> assertFailure $ prettyString err
       Right (view gameState -> gs) -> case gs ^. winSolution of
         Nothing -> assertFailure "No solution to test!"
         Just sol@(ProcessedTerm _ _ reqCtx) -> do

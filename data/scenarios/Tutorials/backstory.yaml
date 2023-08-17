@@ -29,9 +29,11 @@ objectives:
         up again where you left off.
       - |
         When you're ready for your first challenge, we will try the `say` command.
-        Close this dialog with Esc or Ctrl-G, and type at the prompt:
+        Close this dialog with **Esc** or **Ctrl+G**, and type at the prompt:
       - |
+        ```
         say "Ready!"
+        ```
     condition: |
       try {
         l <- robotNamed "listener";
@@ -48,9 +50,11 @@ entities:
       - |
         When you're ready for your first tutorial challenge, type at the prompt:
       - |
+        ```
         say "Ready!"
+        ```
       - |
-        To open the full goal text again, you can hit Ctrl-G.
+        To open the full goal text again, you can hit **Ctrl+G**.
     properties: [known, portable]
 robots:
   - name: base
@@ -91,3 +95,5 @@ seed: 0
 world:
   offset: true
   scrollable: false
+  dsl: |
+    "classic"

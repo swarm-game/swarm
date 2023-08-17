@@ -15,6 +15,7 @@ module Swarm.TUI.Model.UI (
   uiFocusRing,
   uiLaunchConfig,
   uiWorldCursor,
+  uiWorldEditor,
   uiREPL,
   uiInventory,
   uiInventorySort,
@@ -25,6 +26,7 @@ module Swarm.TUI.Model.UI (
   uiError,
   uiModal,
   uiGoal,
+  uiHideGoals,
   uiAchievements,
   lgTicksPerSecond,
   lastFrameTime,
@@ -44,7 +46,6 @@ module Swarm.TUI.Model.UI (
   uiFPS,
   uiAttrMap,
   scenarioRef,
-  appData,
 
   -- ** Initialization
   initFocusRing,
@@ -56,24 +57,27 @@ import Brick (AttrMap)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Arrow ((&&&))
+import Control.Effect.Accum
+import Control.Effect.Lift
 import Control.Lens hiding (from, (<.>))
-import Control.Monad.Except
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Failure.Render (prettyFailure)
-import Swarm.Game.ResourceLoading (getSwarmHistoryPath, readAppData)
+import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Attr (swarmAttrMap)
+import Swarm.TUI.Editor.Model
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep
@@ -97,7 +101,8 @@ data UIState = UIState
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
   , _uiLaunchConfig :: LaunchOptions
-  , _uiWorldCursor :: Maybe W.Coords
+  , _uiWorldCursor :: Maybe (Cosmic W.Coords)
+  , _uiWorldEditor :: WorldEditor Name
   , _uiREPL :: REPLState
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
   , _uiInventorySort :: InventorySortOptions
@@ -108,6 +113,7 @@ data UIState = UIState
   , _uiError :: Maybe Text
   , _uiModal :: Maybe Modal
   , _uiGoal :: GoalDisplay
+  , _uiHideGoals :: Bool
   , _uiAchievements :: Map CategorizedAchievement Attainment
   , _uiShowFPS :: Bool
   , _uiShowREPL :: Bool
@@ -124,7 +130,6 @@ data UIState = UIState
   , _lastFrameTime :: TimeSpec
   , _accumulatedTime :: TimeSpec
   , _lastInfoTime :: TimeSpec
-  , _appData :: Map Text Text
   , _uiAttrMap :: AttrMap
   , _scenarioRef :: Maybe ScenarioInfoPair
   }
@@ -153,7 +158,10 @@ uiLaunchConfig :: Lens' UIState LaunchOptions
 uiFocusRing :: Lens' UIState (FocusRing Name)
 
 -- | The last clicked position on the world view.
-uiWorldCursor :: Lens' UIState (Maybe W.Coords)
+uiWorldCursor :: Lens' UIState (Maybe (Cosmic W.Coords))
+
+-- | State of all World Editor widgets
+uiWorldEditor :: Lens' UIState (WorldEditor Name)
 
 -- | The state of REPL panel.
 uiREPL :: Lens' UIState REPLState
@@ -190,6 +198,11 @@ uiModal :: Lens' UIState (Maybe Modal)
 -- | Status of the scenario goal: whether there is one, and whether it
 --   has been displayed to the user initially.
 uiGoal :: Lens' UIState GoalDisplay
+
+-- | When running with --autoplay, suppress the goal dialogs.
+--
+-- For developement, the --cheat flag shows goals again.
+uiHideGoals :: Lens' UIState Bool
 
 -- | Map of achievements that were attained
 uiAchievements :: Lens' UIState (Map CategorizedAchievement Attainment)
@@ -270,14 +283,13 @@ lastFrameTime :: Lens' UIState TimeSpec
 --   See https://gafferongames.com/post/fix_your_timestep/ .
 accumulatedTime :: Lens' UIState TimeSpec
 
--- | Free-form data loaded from the @data@ directory, for things like
---   the logo, about page, tutorial story, etc.
-appData :: Lens' UIState (Map Text Text)
-
 --------------------------------------------------
 -- UIState initialization
 
 -- | The initial state of the focus ring.
+-- NOTE: Normally, the Tab key might cycle through the members of the
+-- focus ring. However, the REPL already uses Tab. So, to is not used
+-- at all right now for navigating the toplevel focus ring.
 initFocusRing :: FocusRing Name
 initFocusRing = focusRing $ map FocusablePanel listEnums
 
@@ -290,14 +302,20 @@ defaultInitLgTicksPerSecond = 4 -- 2^4 = 16 ticks / second
 --   time, and loading text files from the data directory.  The @Bool@
 --   parameter indicates whether we should start off by showing the
 --   main menu.
-initUIState :: Int -> Bool -> Bool -> ExceptT Text IO ([SystemFailure], UIState)
+initUIState ::
+  ( Has (Accum (Seq SystemFailure)) sig m
+  , Has (Lift IO) sig m
+  ) =>
+  Int ->
+  Bool ->
+  Bool ->
+  m UIState
 initUIState speedFactor showMainMenu cheatMode = do
-  historyT <- liftIO $ readFileMayT =<< getSwarmHistoryPath False
-  appDataMap <- withExceptT prettyFailure readAppData
+  historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
   let history = maybe [] (map REPLEntry . T.lines) historyT
-  startTime <- liftIO $ getTime Monotonic
-  (warnings, achievements) <- liftIO loadAchievementsInfo
-  launchConfigPanel <- liftIO initConfigPanel
+  startTime <- sendIO $ getTime Monotonic
+  achievements <- loadAchievementsInfo
+  launchConfigPanel <- sendIO initConfigPanel
   let out =
         UIState
           { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
@@ -306,6 +324,7 @@ initUIState speedFactor showMainMenu cheatMode = do
           , _uiLaunchConfig = launchConfigPanel
           , _uiFocusRing = initFocusRing
           , _uiWorldCursor = Nothing
+          , _uiWorldEditor = initialWorldEditor startTime
           , _uiREPL = initREPLState $ newREPLHistory history
           , _uiInventory = Nothing
           , _uiInventorySort = defaultSortOptions
@@ -316,6 +335,7 @@ initUIState speedFactor showMainMenu cheatMode = do
           , _uiError = Nothing
           , _uiModal = Nothing
           , _uiGoal = emptyGoalDisplay
+          , _uiHideGoals = False
           , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
           , _uiShowFPS = False
           , _uiShowREPL = True
@@ -332,8 +352,7 @@ initUIState speedFactor showMainMenu cheatMode = do
           , _tickCount = 0
           , _frameCount = 0
           , _frameTickCount = 0
-          , _appData = appDataMap
           , _uiAttrMap = swarmAttrMap
           , _scenarioRef = Nothing
           }
-  return (warnings, out)
+  return out

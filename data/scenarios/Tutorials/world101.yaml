@@ -16,13 +16,13 @@ objectives:
         build more advanced devices and produce more robots,
         you'll need to explore, gather resources, and set up some
         automated production pipelines.
-      - At this point you may want to create an external `.sw` file
+      - At this point you may want to create an external `.sw`{=path} file
         with useful definitions you create.  You can then load it
         via the `run` command.  See
         https://github.com/swarm-game/swarm/tree/main/editors
         for help configuring your editor with support for swarm-lang.
-      - Your first task is to collect three or more trees. You can
-        remind yourself of the available commands using F4.
+      - Your first task is to collect three or more `tree`{=entity}s. You can
+        remind yourself of the available commands using **F4**.
     condition: |
       try {
         n <- as base {count "tree"};
@@ -43,15 +43,15 @@ objectives:
       - Now that you have a harvester, you can use `harvest` instead of `grab`
         whenever you pick up a growing item (check for the word "growing" at the
         top of the item description), to leave behind a seed that will regrow.
-      - "TIP: since you only have a single harvester device for now, whenever you
+      - "**TIP:** since you only have a single harvester device for now, whenever you
         send out a robot to harvest something, try programming it to come back
         to the base when it is done.  Then, execute `salvage` to get the harvester
         back, so you can reuse it in another robot later."
-      - One of the next things you will probably want is a `lambda`, so you can
+      - One of the next things you will probably want is a `lambda`{=entity}, so you can
         define and use parameterized commands.  Scan some things and use
         the process of elimination to find one.  Since lambdas regrow,
         once you find one, try getting it with `harvest`.
-      - "TIP: remember that you can click on cells in the world to see their
+      - "**TIP:** remember that you can click on cells in the world to see their
         coordinates."
     condition: |
       try { as base {has "lambda"} } {return false}
@@ -85,3 +85,5 @@ seed: 0
 world:
   offset: true
   scrollable: false
+  dsl: |
+    "classic"

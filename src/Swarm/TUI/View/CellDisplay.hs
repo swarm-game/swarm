@@ -1,4 +1,8 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
+-- Rendering of cells in the map view
+--
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.View.CellDisplay where
 
@@ -13,14 +17,21 @@ import Data.Semigroup (sconcat)
 import Data.Tagged (unTagged)
 import Data.Word (Word32)
 import Linear.Affine ((.-.))
+import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Display
 import Swarm.Game.Entity
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.State
 import Swarm.Game.Terrain
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Attr
+import Swarm.TUI.Editor.Masking
+import Swarm.TUI.Editor.Model
+import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model.Name
+import Swarm.TUI.Model.UI
 import Witch (from)
 import Witch.Encoding qualified as Encoding
 
@@ -29,24 +40,47 @@ renderDisplay :: Display -> Widget n
 renderDisplay disp = withAttr (disp ^. displayAttr . to toAttrName) $ str [displayChar disp]
 
 -- | Render the 'Display' for a specific location.
-drawLoc :: Bool -> GameState -> W.Coords -> Widget Name
-drawLoc showRobots g = renderDisplay . displayLoc showRobots g
-
-displayTerrainCell :: GameState -> W.Coords -> Display
-displayTerrainCell g coords = terrainMap M.! toEnum (W.lookupTerrain coords (g ^. world))
-
-displayEntityCell, displayRobotCell :: GameState -> W.Coords -> [Display]
-displayRobotCell g coords = map (view robotDisplay) (robotsAtLocation (W.coordsToLoc coords) g)
-displayEntityCell g coords = maybeToList (displayForEntity <$> W.lookupEntity coords (g ^. world))
+drawLoc :: UIState -> GameState -> Cosmic W.Coords -> Widget Name
+drawLoc ui g cCoords@(Cosmic _ coords) =
+  if shouldHideWorldCell ui coords
+    then str " "
+    else drawCell
  where
-  displayForEntity :: Entity -> Display
-  displayForEntity e = (if known e then id else hidden) (e ^. entityDisplay)
+  showRobots = ui ^. uiShowRobots
+  we = ui ^. uiWorldEditor
+  drawCell = renderDisplay $ displayLoc showRobots we g cCoords
 
-  known e =
+displayTerrainCell ::
+  WorldEditor Name ->
+  GameState ->
+  Cosmic W.Coords ->
+  Display
+displayTerrainCell worldEditor g coords =
+  terrainMap M.! EU.getTerrainAt worldEditor (g ^. multiWorld) coords
+
+displayRobotCell ::
+  GameState ->
+  Cosmic W.Coords ->
+  [Display]
+displayRobotCell g coords =
+  map (view robotDisplay) $
+    robotsAtLocation (fmap W.coordsToLoc coords) g
+
+displayEntityCell :: WorldEditor Name -> GameState -> Cosmic W.Coords -> [Display]
+displayEntityCell worldEditor g coords =
+  maybeToList $ displayForEntity <$> maybeEntity
+ where
+  (_, maybeEntity) = EU.getContentAt worldEditor (g ^. multiWorld) coords
+
+  displayForEntity :: EntityPaint -> Display
+  displayForEntity e = (if known e then id else hidden) $ getDisplay e
+
+  known (Facade (EntityFacade _ _)) = True
+  known (Ref e) =
     e
       `hasProperty` Known
       || (e ^. entityName)
-      `elem` (g ^. knownEntities)
+        `elem` (g ^. knownEntities)
       || case hidingMode g of
         HideAllEntities -> False
         HideNoEntity -> True
@@ -63,16 +97,23 @@ hidingMode g
 --   'Display's for the terrain, entity, and robots at the location, and
 --   taking into account "static" based on the distance to the robot
 --   being @view@ed.
-displayLoc :: Bool -> GameState -> W.Coords -> Display
-displayLoc showRobots g coords = staticDisplay g coords <> displayLocRaw showRobots g coords
+displayLoc :: Bool -> WorldEditor Name -> GameState -> Cosmic W.Coords -> Display
+displayLoc showRobots we g cCoords@(Cosmic _ coords) =
+  staticDisplay g coords
+    <> displayLocRaw showRobots we g cCoords
 
 -- | Get the 'Display' for a specific location, by combining the
 --   'Display's for the terrain, entity, and robots at the location.
-displayLocRaw :: Bool -> GameState -> W.Coords -> Display
-displayLocRaw showRobots g coords = sconcat $ terrain NE.:| entity <> robots
+displayLocRaw ::
+  Bool ->
+  WorldEditor Name ->
+  GameState ->
+  Cosmic W.Coords ->
+  Display
+displayLocRaw showRobots worldEditor g coords = sconcat $ terrain NE.:| entity <> robots
  where
-  terrain = displayTerrainCell g coords
-  entity = displayEntityCell g coords
+  terrain = displayTerrainCell worldEditor g coords
+  entity = displayEntityCell worldEditor g coords
   robots =
     if showRobots
       then displayRobotCell g coords
@@ -124,14 +165,14 @@ getStatic g coords
  where
   -- Offset from the location of the view center to the location under
   -- consideration for display.
-  offset = W.coordsToLoc coords .-. (g ^. viewCenter)
+  offset = W.coordsToLoc coords .-. (g ^. viewCenter . planar)
 
   -- Hash.
   h =
     murmur3 1 . unTagged . from @String @(Encoding.UTF_8 ByteString) . show $
       -- include the current tick count / 16 in the hash, so the pattern of static
       -- changes once every 16 ticks
-      (offset, (g ^. ticks) `div` 16)
+      (offset, getTickNumber (g ^. ticks) `div` 16)
 
   -- Hashed probability, i.e. convert the hash into a floating-point number between 0 and 1
   hp :: Double

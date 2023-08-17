@@ -11,19 +11,22 @@ import Control.Monad.Except (runExceptT)
 import Control.Monad.State (evalStateT, execStateT)
 import Criterion.Main (Benchmark, bench, bgroup, defaultConfig, defaultMainWith, whnfAppIO)
 import Criterion.Types (Config (timeLimit))
+import Data.Map qualified as M
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display (defaultRobotDisplay)
 import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, mkRobot)
-import Swarm.Game.State (GameState, addTRobot, creativeMode, world)
+import Swarm.Game.State (GameState, addTRobot, creativeMode, multiWorld)
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Terrain (TerrainType (DirtT))
+import Swarm.Game.Universe (Cosmic (..), SubworldName (DefaultRootSubworld))
 import Swarm.Game.World (WorldFun (..), newWorld)
 import Swarm.Language.Context qualified as Context
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.TUI.Model (gameState)
 import Swarm.TUI.Model.StateUpdate (classicGame0)
+import Swarm.Util.Erasable
 
 -- | The program of a robot that does nothing.
 idleProgram :: ProcessedTerm
@@ -73,7 +76,7 @@ circlerProgram =
 
 -- | Initializes a robot with program prog at location loc facing north.
 initRobot :: ProcessedTerm -> Location -> TRobot
-initRobot prog loc = mkRobot () Nothing "" [] (Just loc) north defaultRobotDisplay (initMachine prog Context.empty emptyStore) [] [] False False 0
+initRobot prog loc = mkRobot () Nothing "" mempty (Just $ Cosmic DefaultRootSubworld loc) north defaultRobotDisplay (initMachine prog Context.empty emptyStore) [] [] False False 0
 
 -- | Creates a GameState with numRobot copies of robot on a blank map, aligned
 --   in a row starting at (0,0) and spreading east.
@@ -85,7 +88,7 @@ mkGameState robotMaker numRobots = do
     (mapM addTRobot robots)
     ( (initAppState ^. gameState)
         & creativeMode .~ True
-        & world .~ newWorld (WF $ const (fromEnum DirtT, Nothing))
+        & multiWorld .~ M.singleton DefaultRootSubworld (newWorld (WF $ const (fromEnum DirtT, ENothing)))
     )
 
 -- | Runs numGameTicks ticks of the game.

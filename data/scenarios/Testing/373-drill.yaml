@@ -40,10 +40,11 @@ robots:
       - [5, grabber]
 known: [water, wavy water]
 world:
-  default: [ice, water]
+  dsl: |
+    {ice, water}
   palette:
-    'Ω': [grass, null, base]
-    '.': [grass]
+    'Ω': [grass, erase, base]
+    '.': [grass, erase]
     ' ': [ice, water]
     '~': [ice, wavy water]
     'L': [grass, Linux]

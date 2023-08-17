@@ -10,7 +10,6 @@ module Swarm.TUI.View (
 
   -- * Dialog box
   drawDialog,
-  generateModal,
   chooseCursor,
 
   -- * Key hint menu
@@ -71,7 +70,7 @@ import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
 import Linear
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Constant
-import Swarm.Game.CESK (CESK (..), TickNumber)
+import Swarm.Game.CESK (CESK (..), TickNumber (..))
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Location
@@ -88,6 +87,7 @@ import Swarm.Game.ScenarioInfo (
   scenarioItemName,
  )
 import Swarm.Game.State
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Pretty (prettyText)
@@ -95,6 +95,9 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.TUI.Attr
 import Swarm.TUI.Border
+import Swarm.TUI.Controller (ticksPerFrameCap)
+import Swarm.TUI.Editor.Model
+import Swarm.TUI.Editor.View qualified as EV
 import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.View
@@ -106,7 +109,7 @@ import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
 import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Objective qualified as GR
-import Swarm.TUI.View.Util
+import Swarm.TUI.View.Util as VU
 import Swarm.Util
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock (TimeSpec (..))
@@ -127,7 +130,7 @@ drawUI s
       NewGameMenu stk -> drawNewGameMenuUI stk $ s ^. uiState . uiLaunchConfig
       AchievementsMenu l -> [drawAchievementsMenuUI s l]
       MessagesMenu -> [drawMainMessages s]
-      AboutMenu -> [drawAboutMenuUI (s ^. uiState . appData . at "about")]
+      AboutMenu -> [drawAboutMenuUI (s ^. runtimeState . appData . at "about")]
 
 drawMainMessages :: AppState -> Widget Name
 drawMainMessages s = renderDialog dial . padBottom Max . scrollList $ drawLogs ls
@@ -146,7 +149,7 @@ drawMainMenuUI s l =
         BL.renderList (const (hCenter . drawMainMenuEntry s)) True l
     ]
  where
-  logo = s ^. uiState . appData . at "logo"
+  logo = s ^. runtimeState . appData . at "logo"
   version = s ^. runtimeState . upstreamRelease
 
 newVersionWidget :: Either NewReleaseFailure String -> Maybe (Widget n)
@@ -405,16 +408,20 @@ drawGameUI s =
                         .~ (if moreBot then Just (txt " · · · ") else Nothing)
                   )
                   $ drawInfoPanel s
+              , hCenter
+                  . clickable (FocusablePanel WorldEditorPanel)
+                  . EV.drawWorldEditor fr
+                  $ s ^. uiState
               ]
         , vBox rightPanel
         ]
   ]
  where
-  addCursorPos = case s ^. uiState . uiWorldCursor of
-    Nothing -> id
-    Just coord ->
-      let worldCursorInfo = drawWorldCursorInfo (s ^. gameState) coord
-       in bottomLabels . leftLabel ?~ padLeftRight 1 worldCursorInfo
+  addCursorPos = bottomLabels . leftLabel ?~ padLeftRight 1 widg
+   where
+    widg = case s ^. uiState . uiWorldCursor of
+      Nothing -> str $ renderCoordsString $ s ^. gameState . viewCenter
+      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (s ^. uiState . uiWorldEditor) (s ^. gameState) coord
   -- Add clock display in top right of the world view if focused robot
   -- has a clock equipped
   addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (s ^. uiState . lgTicksPerSecond) $ s ^. gameState)
@@ -437,7 +444,7 @@ drawGameUI s =
             & addCursorPos
             & addClock
         )
-        (drawWorld (s ^. uiState . uiShowRobots) (s ^. gameState))
+        (drawWorld (s ^. uiState) (s ^. gameState))
     , drawKeyMenu s
     ]
   replPanel =
@@ -456,18 +463,22 @@ drawGameUI s =
           )
     ]
 
-drawWorldCursorInfo :: GameState -> W.Coords -> Widget Name
-drawWorldCursorInfo g coords@(W.Coords (y, x)) =
+renderCoordsString :: Cosmic Location -> String
+renderCoordsString (Cosmic sw coords) =
+  unwords $ VU.locationToString coords : suffix
+ where
+  suffix = case sw of
+    DefaultRootSubworld -> []
+    SubworldName swName -> ["in", T.unpack swName]
+
+drawWorldCursorInfo :: WorldEditor Name -> GameState -> Cosmic W.Coords -> Widget Name
+drawWorldCursorInfo worldEditor g cCoords =
   case getStatic g coords of
     Just s -> renderDisplay $ displayStatic s
     Nothing -> hBox $ tileMemberWidgets ++ [coordsWidget]
  where
-  coordsWidget =
-    txt $
-      T.unwords
-        [ from $ show x
-        , from $ show $ y * (-1)
-        ]
+  Cosmic _ coords = cCoords
+  coordsWidget = str $ renderCoordsString $ fmap W.coordsToLoc cCoords
 
   tileMembers = terrain : mapMaybe merge [entity, robot]
   tileMemberWidgets =
@@ -479,9 +490,9 @@ drawWorldCursorInfo g coords@(W.Coords (y, x)) =
    where
     f cell preposition = [renderDisplay cell, txt preposition]
 
-  terrain = displayTerrainCell g coords
-  entity = displayEntityCell g coords
-  robot = displayRobotCell g coords
+  terrain = displayTerrainCell worldEditor g cCoords
+  entity = displayEntityCell worldEditor g cCoords
+  robot = displayRobotCell g cCoords
 
   merge = fmap sconcat . NE.nonEmpty . filter (not . (^. invisible))
 
@@ -504,7 +515,7 @@ clockEquipped gs = case focusedRobot gs of
 
 -- | Format a ticks count as a hexadecimal clock.
 drawTime :: TickNumber -> Bool -> String
-drawTime t showTicks =
+drawTime (TickNumber t) showTicks =
   mconcat $
     intersperse
       ":"
@@ -533,7 +544,9 @@ drawTPS s = hBox (tpsInfo : rateInfo)
   rateInfo
     | s ^. uiState . uiShowFPS =
         [ txt " ("
-        , str (printf "%0.1f" (s ^. uiState . uiTPF))
+        , let tpf = s ^. uiState . uiTPF
+           in (if tpf >= fromIntegral ticksPerFrameCap then withAttr redAttr else id)
+                (str (printf "%0.1f" tpf))
         , txt " tpf, "
         , str (printf "%0.1f" (s ^. uiState . uiFPS))
         , txt " fps)"
@@ -594,6 +607,8 @@ drawModal s = \case
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal -> GR.renderGoalsDisplay (s ^. uiState . uiGoal)
   KeepPlayingModal -> padLeftRight 1 (displayParagraphs ["Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."])
+  TerrainPaletteModal -> EV.drawTerrainSelector s
+  EntityPaletteModal -> EV.drawEntityPaintSelector s
 
 robotsListWidget :: AppState -> Widget Name
 robotsListWidget s = hCenter table
@@ -643,11 +658,16 @@ robotsListWidget s = hCenter table
       | robot ^. robotLogUpdated = "x"
       | otherwise = " "
 
-    locWidget = hBox [worldCell, txt $ " " <> locStr]
+    locWidget = hBox [worldCell, str $ " " <> locStr]
      where
-      rloc@(Location x y) = robot ^. robotLocation
-      worldCell = drawLoc (s ^. uiState . uiShowRobots) g (W.locToCoords rloc)
-      locStr = from (show x) <> " " <> from (show y)
+      rCoords = fmap W.locToCoords rLoc
+      rLoc = robot ^. robotLocation
+      worldCell =
+        drawLoc
+          (s ^. uiState)
+          g
+          rCoords
+      locStr = renderCoordsString rLoc
 
     statusWidget = case robot ^. machine of
       Waiting {} -> txt "waiting"
@@ -656,11 +676,11 @@ robotsListWidget s = hCenter table
         | otherwise -> withAttr greenAttr $ txt "idle"
 
   basePos :: Point V2 Double
-  basePos = realToFrac <$> fromMaybe origin (g ^? baseRobot . robotLocation)
+  basePos = realToFrac <$> fromMaybe origin (g ^? baseRobot . robotLocation . planar)
   -- Keep the base and non system robot (e.g. no seed)
   isRelevant robot = robot ^. robotID == 0 || not (robot ^. systemRobot)
   -- Keep the robot that are less than 32 unit away from the base
-  isNear robot = creative || distance (realToFrac <$> robot ^. robotLocation) basePos < 32
+  isNear robot = creative || distance (realToFrac <$> robot ^. robotLocation . planar) basePos < 32
   robots :: [Robot]
   robots =
     filter (\robot -> debugging || (isRelevant robot && isNear robot))
@@ -917,11 +937,12 @@ drawKeyMenu s =
     catMaybes
       [ may goal (NoHighlight, "^g", "goal")
       , may cheat (NoHighlight, "^v", "creative")
+      , may cheat (NoHighlight, "^e", "editor")
       , Just (NoHighlight, "^p", if isPaused then "unpause" else "pause")
       , may isPaused (NoHighlight, "^o", "step")
       , may (isPaused && hasDebug) (if s ^. uiState . uiShowDebug then Alert else NoHighlight, "M-d", "debug")
       , Just (NoHighlight, "^zx", "speed")
-      , Just (NoHighlight, "^s", if s ^. uiState . uiShowREPL then "hide REPL" else "show REPL")
+      , Just (NoHighlight, "M-,", if s ^. uiState . uiShowREPL then "hide REPL" else "show REPL")
       , Just (if s ^. uiState . uiShowRobots then NoHighlight else Alert, "M-h", "hide robots")
       ]
   may b = if b then Just else const Nothing
@@ -930,6 +951,8 @@ drawKeyMenu s =
     "pop out" | (s ^. uiState . uiMoreInfoBot) || (s ^. uiState . uiMoreInfoTop) -> Alert
     _ -> PanelSpecific
 
+  keyCmdsFor (Just (FocusablePanel WorldEditorPanel)) =
+    [("^s", "save map")]
   keyCmdsFor (Just (FocusablePanel REPLPanel)) =
     [ ("↓↑", "history")
     ]
@@ -975,8 +998,8 @@ drawKeyCmd (h, key, cmd) =
 ------------------------------------------------------------
 
 -- | Draw the current world view.
-drawWorld :: Bool -> GameState -> Widget Name
-drawWorld showRobots g =
+drawWorld :: UIState -> GameState -> Widget Name
+drawWorld ui g =
   center
     . cached WorldCache
     . reportExtent WorldExtent
@@ -987,8 +1010,9 @@ drawWorld showRobots g =
       ctx <- getContext
       let w = ctx ^. availWidthL
           h = ctx ^. availHeightL
-          ixs = range (viewingRegion g (fromIntegral w, fromIntegral h))
-      render . vBox . map hBox . chunksOf w . map (drawLoc showRobots g) $ ixs
+          vr = viewingRegion g (fromIntegral w, fromIntegral h)
+          ixs = range $ vr ^. planar
+      render . vBox . map hBox . chunksOf w . map (drawLoc ui g . Cosmic (vr ^. subworld)) $ ixs
 
 ------------------------------------------------------------
 -- Robot inventory panel
@@ -1004,7 +1028,7 @@ drawRobotPanel s
   -- away and a robot that does not exist.
   | Just r <- s ^. gameState . to focusedRobot
   , Just (_, lst) <- s ^. uiState . uiInventory =
-      let Location x y = r ^. robotLocation
+      let Cosmic _subworldName (Location x y) = r ^. robotLocation
           drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
        in padBottom Max $
             vBox
@@ -1081,7 +1105,7 @@ explainEntry :: AppState -> Entity -> Widget Name
 explainEntry s e =
   vBox $
     [ displayProperties $ Set.toList (e ^. entityProperties)
-    , displayParagraphs (e ^. entityDescription)
+    , drawMarkdown (e ^. entityDescription)
     , explainRecipes s e
     ]
       <> [drawRobotMachine s False | e ^. entityCapabilities . Lens.contains CDebug]
@@ -1227,7 +1251,7 @@ drawRecipe me inv (Recipe ins outs reqs time _weight) =
 
 -- | Ad-hoc entity to represent time - only used in recipe drawing
 timeE :: Entity
-timeE = mkEntity (defaultEntityDisplay '.') "ticks" [] [] []
+timeE = mkEntity (defaultEntityDisplay '.') "ticks" mempty [] []
 
 drawReqs :: IngredientList Entity -> Widget Name
 drawReqs = vBox . map (hCenter . drawReq)

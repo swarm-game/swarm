@@ -15,7 +15,6 @@ entities:
     description:
       - Your scooter
 world:
-  default: [blank]
   palette:
     'x': [grass, null, base]
   upperleft: [0, 0]

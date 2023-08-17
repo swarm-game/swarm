@@ -25,7 +25,6 @@ robots:
       - logger
 known: [water]
 world:
-  default: [blank, null]
   palette:
     '.': [grass]
     '~': [dirt, water]

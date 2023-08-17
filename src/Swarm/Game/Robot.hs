@@ -68,6 +68,7 @@ module Swarm.Game.Robot (
   -- ** Query
   robotKnows,
   isActive,
+  wantsToStep,
   waitingUntil,
   getResult,
 
@@ -78,6 +79,7 @@ module Swarm.Game.Robot (
 import Control.Lens hiding (contains)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (hashWithSalt)
+import Data.Kind qualified
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
@@ -93,9 +95,12 @@ import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisib
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location (Heading, Location, toDirection)
 import Swarm.Game.Log
+import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirement (ReqCtx)
+import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown (Document)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types (TCtx)
 import Swarm.Language.Value as V
@@ -164,12 +169,12 @@ data RobotPhase
 
 -- | With a robot template, we may or may not have a location.  With a
 --   concrete robot we must have a location.
-type family RobotLocation (phase :: RobotPhase) :: * where
-  RobotLocation 'TemplateRobot = Maybe Location
-  RobotLocation 'ConcreteRobot = Location
+type family RobotLocation (phase :: RobotPhase) :: Data.Kind.Type where
+  RobotLocation 'TemplateRobot = Maybe (Cosmic Location)
+  RobotLocation 'ConcreteRobot = Cosmic Location
 
 -- | Robot templates have no ID; concrete robots definitely do.
-type family RobotID (phase :: RobotPhase) :: * where
+type family RobotID (phase :: RobotPhase) :: Data.Kind.Type where
   RobotID 'TemplateRobot = ()
   RobotID 'ConcreteRobot = RID
 
@@ -268,19 +273,19 @@ robotDisplay = lens getDisplay setDisplay
 --   a getter, since when changing a robot's location we must remember
 --   to update the 'robotsByLocation' map as well.  You can use the
 --   'updateRobotLocation' function for this purpose.
-robotLocation :: Getter Robot Location
+robotLocation :: Getter Robot (Cosmic Location)
 
 -- | Set a robot's location.  This is unsafe and should never be
 --   called directly except by the 'updateRobotLocation' function.
 --   The reason is that we need to make sure the 'robotsByLocation'
 --   map stays in sync.
-unsafeSetRobotLocation :: Location -> Robot -> Robot
+unsafeSetRobotLocation :: Cosmic Location -> Robot -> Robot
 unsafeSetRobotLocation loc r = r {_robotLocation = loc}
 
 -- | A template robot's location.  Unlike 'robotLocation', this is a
 --   lens, since when dealing with robot templates there is as yet no
 --   'robotsByLocation' map to keep up-to-date.
-trobotLocation :: Lens' TRobot (Maybe Location)
+trobotLocation :: Lens' TRobot (Maybe (Cosmic Location))
 trobotLocation = lens _robotLocation (\r l -> r {_robotLocation = l})
 
 -- | Which way the robot is currently facing.
@@ -311,7 +316,7 @@ instantiateRobot :: RID -> TRobot -> Robot
 instantiateRobot i r =
   r
     { _robotID = i
-    , _robotLocation = fromMaybe zero (_robotLocation r)
+    , _robotLocation = fromMaybe defaultCosmicLocation $ _robotLocation r
     }
 
 -- | The ID number of the robot's parent, that is, the robot that
@@ -441,7 +446,7 @@ mkRobot ::
   -- | Name of the robot.
   Text ->
   -- | Description of the robot.
-  [Text] ->
+  Document Syntax ->
   -- | Initial location.
   RobotLocation phase ->
   -- | Initial heading/direction.
@@ -498,7 +503,7 @@ instance FromJSONE EntityMap TRobot where
 
     mkRobot () Nothing
       <$> liftE (v .: "name")
-      <*> liftE (v .:? "description" .!= [])
+      <*> liftE (v .:? "description" .!= mempty)
       <*> liftE (v .:? "loc")
       <*> liftE (v .:? "dir" .!= zero)
       <*> localE (const defDisplay) (v ..:? "display" ..!= defDisplay)
@@ -517,6 +522,14 @@ isActive :: Robot -> Bool
 {-# INLINE isActive #-}
 isActive = isNothing . getResult
 
+-- | "Active" robots include robots that are waiting; 'wantsToStep' is
+--   true if the robot actually wants to take another step right now
+--   (this is a /subset/ of active robots).
+wantsToStep :: TickNumber -> Robot -> Bool
+wantsToStep now robot
+  | not (isActive robot) = False
+  | otherwise = maybe True (now >=) (waitingUntil robot)
+
 -- | The time until which the robot is waiting, if any.
 waitingUntil :: Robot -> Maybe TickNumber
 waitingUntil robot =
@@ -529,5 +542,5 @@ getResult :: Robot -> Maybe (Value, Store)
 {-# INLINE getResult #-}
 getResult = finalValue . view machine
 
-hearingDistance :: Num i => i
+hearingDistance :: (Num i) => i
 hearingDistance = 32

@@ -8,14 +8,19 @@ module Swarm.App where
 
 import Brick
 import Brick.BChan
+import Control.Carrier.Lift (runM)
+import Control.Carrier.Throw.Either (runThrow)
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Lens (view, (%~), (&), (?~))
-import Control.Monad.Except
+import Control.Monad (forever, void, when)
+import Control.Monad.IO.Class (liftIO)
 import Data.IORef (newIORef, writeIORef)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
+import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Robot (ErrorLevel (..), LogSource (ErrorTrace, Said))
+import Swarm.Language.Pretty (prettyText)
 import Swarm.ReadableIORef (mkReadonly)
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
@@ -43,9 +48,9 @@ app eventHandler =
 --   some communication channels, and runs the UI.
 appMain :: AppOpts -> IO ()
 appMain opts = do
-  res <- runExceptT $ initAppState opts
+  res <- runM . runThrow $ initAppState opts
   case res of
-    Left errMsg -> T.hPutStrLn stderr errMsg
+    Left err -> T.hPutStrLn stderr (prettyText @SystemFailure err)
     Right s -> do
       -- Send Frame events as at a reasonable rate for 30 fps. The
       -- game is responsible for figuring out how many steps to take
@@ -110,9 +115,9 @@ demoWeb :: IO ()
 demoWeb = do
   let demoPort = 8080
   res <-
-    runExceptT $ initAppState (defaultAppOpts {userScenario = demoScenario})
+    runM . runThrow $ initAppState (defaultAppOpts {userScenario = demoScenario})
   case res of
-    Left errMsg -> T.putStrLn errMsg
+    Left err -> T.putStrLn (prettyText @SystemFailure err)
     Right s -> do
       appStateRef <- newIORef s
       chan <- newBChan 5

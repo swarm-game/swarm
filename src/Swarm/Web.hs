@@ -23,7 +23,7 @@
 module Swarm.Web where
 
 import Brick.BChan
-import CMarkGFM qualified as CMark (commonmarkToHtml)
+import Commonmark qualified as Mark (commonmark, renderHtml)
 import Control.Arrow (left)
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar
@@ -35,8 +35,8 @@ import Data.ByteString.Lazy (ByteString)
 import Data.Foldable (toList)
 import Data.IntMap qualified as IM
 import Data.Maybe (fromMaybe)
+import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.Lazy qualified as L
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Tree (Tree (Node), drawTree)
 import Network.HTTP.Types (ok200)
@@ -61,6 +61,7 @@ import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.UI
 import System.Timeout (timeout)
 import Text.Read (readEither)
+import Witch (into)
 
 newtype RobotID = RobotID Int
 
@@ -99,8 +100,8 @@ api = Proxy
 docsBS :: ByteString
 docsBS =
   encodeUtf8
-    . L.fromStrict
-    . CMark.commonmarkToHtml [] []
+    . either (error . show) (Mark.renderHtml @())
+    . Mark.commonmark ""
     . T.pack
     . SD.markdownWith
       ( SD.defRenderingOptions
@@ -156,9 +157,9 @@ mkApp appStateRef chan =
     appState <- liftIO (readIORef appStateRef)
     return $ appState ^. gameState . winCondition
   codeRenderHandler contents = do
-    return $ T.pack $ case processTermEither contents of
+    return $ case processTermEither contents of
       Right (ProcessedTerm (Module stx@(Syntax' _srcLoc _term _) _) _ _) ->
-        drawTree . fmap prettyString . para Node $ stx
+        into @Text . drawTree . fmap prettyString . para Node $ stx
       Left x -> x
   codeRunHandler contents = do
     liftIO . writeBChan chan . Web $ RunWebCode contents
@@ -169,8 +170,11 @@ mkApp appStateRef chan =
         items = toList replHistorySeq
     pure items
 
+-- | Simple result type to report errors from forked startup thread.
+data WebStartResult = WebStarted | WebStartError String
+
 webMain ::
-  Maybe (MVar (Either String ())) ->
+  Maybe (MVar WebStartResult) ->
   Warp.Port ->
   ReadableIORef AppState ->
   -- | Writable
@@ -180,7 +184,7 @@ webMain baton port appStateRef chan = catch (Warp.runSettings settings app) hand
  where
   settings = Warp.setPort port $ onReady Warp.defaultSettings
   onReady = case baton of
-    Just mv -> Warp.setBeforeMainLoop $ putMVar mv (Right ())
+    Just mv -> Warp.setBeforeMainLoop $ putMVar mv WebStarted
     Nothing -> id
 
   server :: Server ToplevelAPI
@@ -195,7 +199,7 @@ webMain baton port appStateRef chan = catch (Warp.runSettings settings app) hand
 
   handleErr :: IOException -> IO ()
   handleErr e = case baton of
-    Just mv -> putMVar mv (Left $ displayException e)
+    Just mv -> putMVar mv (WebStartError $ displayException e)
     Nothing -> throwIO e
 
 defaultPort :: Warp.Port
@@ -216,18 +220,16 @@ startWebThread ::
   IO (Either String Warp.Port)
 -- User explicitly provided port '0': don't run the web server
 startWebThread (Just 0) _ _ = pure $ Left "The web port has been turned off."
-startWebThread portM appStateRef chan = do
+startWebThread userPort appStateRef chan = do
   baton <- newEmptyMVar
-  let port = fromMaybe defaultPort portM
+  let port = fromMaybe defaultPort userPort
+      failMsg = "Failed to start the web API on :" <> show port
   void $ forkIO $ webMain (Just baton) port appStateRef chan
   res <- timeout 500_000 (takeMVar baton)
-  case (portM, res) of
-    -- User requested explicit port but server didn't start: fail
-    (Just _, Nothing) -> fail $ failMsg port
-    -- If we are using the default port, we just report the timeout
-    (Nothing, Nothing) -> return . Left $ failMsg port <> " (timeout)"
-    (_, Just (Left e)) -> return . Left $ failMsg port <> " - " <> e
-    -- If all works, we report on what port the web server is running
-    (_, Just _) -> return (Right port)
- where
-  failMsg p = "Failed to start the web API on :" <> show p
+  case res of
+    Just WebStarted -> return (Right port)
+    Just (WebStartError e) -> return . Left $ failMsg <> " - " <> e
+    -- If user explicitly specified port exit, otherwise just report timeout
+    Nothing -> case userPort of
+      Just _p -> fail failMsg
+      Nothing -> return . Left $ failMsg <> " (timeout)"

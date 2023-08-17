@@ -33,5 +33,7 @@ robots:
       - [50, scanner]
       - [5, toolkit]
 world:
-  seed: null
   offset: true
+  scrollable: false
+  dsl: |
+    "classic"

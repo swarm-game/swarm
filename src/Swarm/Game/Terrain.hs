@@ -7,7 +7,10 @@
 module Swarm.Game.Terrain (
   -- * Terrain
   TerrainType (..),
+  readTerrain,
   terrainMap,
+  getTerrainDefaultPaletteChar,
+  getTerrainWord,
 ) where
 
 import Data.Aeson (FromJSON (..), withText)
@@ -29,11 +32,27 @@ data TerrainType
   | BlankT
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
+readTerrain :: T.Text -> Maybe TerrainType
+readTerrain t = readMaybe (into @String (T.toTitle t) ++ "T")
+
+instance Semigroup TerrainType where
+  t <> BlankT = t
+  _ <> t = t
+
+instance Monoid TerrainType where
+  mempty = BlankT
+
 instance FromJSON TerrainType where
   parseJSON = withText "text" $ \t ->
-    case readMaybe (into @String (T.toTitle t) ++ "T") of
+    case readTerrain t of
       Just ter -> return ter
       Nothing -> failT ["Unknown terrain type:", t]
+
+getTerrainDefaultPaletteChar :: TerrainType -> Char
+getTerrainDefaultPaletteChar = head . show
+
+getTerrainWord :: TerrainType -> T.Text
+getTerrainWord = T.toLower . T.pack . init . show
 
 -- | A map containing a 'Display' record for each different 'TerrainType'.
 terrainMap :: Map TerrainType Display

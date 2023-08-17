@@ -1,0 +1,743 @@
+version: 1
+name: 3x3 Sliding Puzzle
+author: Karl Ostmo
+description: |
+  Place the 8 tiles in order
+creative: false
+seed: 0
+attrs:
+  - name: oddtile
+    fg: "#D2B48C"
+    bg: "#400000"
+  - name: eventile
+    fg: "#000000"
+    bg: "#B0B0B0"
+objectives:
+  - teaser: Solve puzzle
+    goal:
+      - |
+        Arrange the tiles in increasing (row-major) order.
+      - |
+        To slide a tile into the empty space, position yourself
+        behind it and `push`.
+      - |
+        Or, if you prefer, `drill` a tile to cause it to slide
+        into the adjacent empty space. However, you must not drill a tile that
+        has nowhere to slide. Also, drilling consumes "ink", which will be replenished
+        after the sliding operation is complete, so avoid drilling too fast in
+        succession.
+    condition: |
+      j <- robotnamed "setup";
+      as j {run "scenarios/Challenges/Sliding Puzzles/_sliding-puzzle/validate-board.sw"};
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - ADT calculator
+      - branch predictor
+      - comparator
+      - compass
+      - counter
+      - decoder ring
+      - dictionary
+      - dozer blade
+      - drill
+      - gradiator
+      - GPS receiver
+      - hearing aid
+      - hourglass
+      - keyboard
+      - lambda
+      - locator
+      - logger
+      - mirror
+      - scanner
+      - string
+      - strange loop
+      - treads
+    inventory:
+      - [1, ink]
+      - [1, a-tile-ordinal]
+      - [2, b-tile-ordinal]
+      - [3, c-tile-ordinal]
+      - [4, d-tile-ordinal]
+      - [5, e-tile-ordinal]
+      - [6, f-tile-ordinal]
+      - [7, g-tile-ordinal]
+      - [8, h-tile-ordinal]
+      - [9, i-tile-ordinal]
+      - [10, j-tile-ordinal]
+      - [11, k-tile-ordinal]
+      - [12, l-tile-ordinal]
+      - [13, m-tile-ordinal]
+      - [14, n-tile-ordinal]
+      - [15, o-tile-ordinal]
+      - [16, p-tile-ordinal]
+      - [17, q-tile-ordinal]
+      - [18, r-tile-ordinal]
+      - [19, s-tile-ordinal]
+      - [20, t-tile-ordinal]
+      - [21, u-tile-ordinal]
+      - [22, v-tile-ordinal]
+      - [23, w-tile-ordinal]
+      - [24, x-tile-ordinal]
+      - [25, y-tile-ordinal]
+  - name: maintainer
+    system: true
+    dir: [1, 0]
+    display:
+      invisible: true
+      attr: 'gold'
+    inventory:
+      - [1, a-tile-ordinal]
+      - [2, b-tile-ordinal]
+      - [3, c-tile-ordinal]
+      - [4, d-tile-ordinal]
+      - [5, e-tile-ordinal]
+      - [6, f-tile-ordinal]
+      - [7, g-tile-ordinal]
+      - [8, h-tile-ordinal]
+      - [9, i-tile-ordinal]
+      - [10, j-tile-ordinal]
+      - [11, k-tile-ordinal]
+      - [12, l-tile-ordinal]
+      - [13, m-tile-ordinal]
+      - [14, n-tile-ordinal]
+      - [15, o-tile-ordinal]
+      - [16, p-tile-ordinal]
+      - [17, q-tile-ordinal]
+      - [18, r-tile-ordinal]
+      - [19, s-tile-ordinal]
+      - [20, t-tile-ordinal]
+      - [21, u-tile-ordinal]
+      - [22, v-tile-ordinal]
+      - [23, w-tile-ordinal]
+      - [24, x-tile-ordinal]
+      - [25, y-tile-ordinal]
+    program: |
+      run "scenarios/Challenges/Sliding Puzzles/_sliding-puzzle/maintainer.sw";
+  - name: setup
+    system: true
+    dir: [1, 0]
+    display:
+      invisible: true
+      attr: 'iron'
+    inventory:
+      - [1, a-tile-ordinal]
+      - [2, b-tile-ordinal]
+      - [3, c-tile-ordinal]
+      - [4, d-tile-ordinal]
+      - [5, e-tile-ordinal]
+      - [6, f-tile-ordinal]
+      - [7, g-tile-ordinal]
+      - [8, h-tile-ordinal]
+      - [9, i-tile-ordinal]
+      - [10, j-tile-ordinal]
+      - [11, k-tile-ordinal]
+      - [12, l-tile-ordinal]
+      - [13, m-tile-ordinal]
+      - [14, n-tile-ordinal]
+      - [15, o-tile-ordinal]
+      - [16, p-tile-ordinal]
+      - [17, q-tile-ordinal]
+      - [18, r-tile-ordinal]
+      - [19, s-tile-ordinal]
+      - [20, t-tile-ordinal]
+      - [21, u-tile-ordinal]
+      - [22, v-tile-ordinal]
+      - [23, w-tile-ordinal]
+      - [24, x-tile-ordinal]
+      - [25, y-tile-ordinal]
+    program: |
+      run "scenarios/Challenges/Sliding Puzzles/_sliding-puzzle/setup.sw";
+solution: |
+   run "scenarios/Challenges/Sliding Puzzles/_sliding-puzzle/solution.sw"
+entities:
+  - name: gradiator
+    display:
+      char: 'G'
+    description:
+      - Generates a magnetic field gradient that allows the use of `resonate`
+    properties: [known]
+    capabilities: [detectcount]
+  - name: locator
+    display:
+      char: '{'
+    description:
+      - Enables the `detect` command
+    properties: [known]
+    capabilities: [detectloc]
+  - name: border
+    display:
+      char: '▒'
+    description:
+      - Immovable playfield border
+    properties: [known]
+  - name: ink
+    display:
+      char: 'i'
+    description:
+      - Marking fluid to designate the tile to slide
+    properties: [known]
+  - name: dozer blade
+    display:
+      attr: silver
+      char: '/'
+    description:
+    - Facilitates pushing
+    properties: [known, portable]
+    capabilities: [push]
+  - name: sliding-tile
+    display:
+      char: '*'
+    description:
+      - Tile that is being moved
+    properties: [known]
+  - name: a-tile
+    display:
+      char: 'a'
+      attr: oddtile
+    description:
+      - One
+    properties: [known, portable]
+  - name: b-tile
+    display:
+      char: 'b'
+      attr: eventile
+    description:
+      - Two
+    properties: [known, portable]
+  - name: c-tile
+    display:
+      char: 'c'
+      attr: oddtile
+    description:
+      - Three
+    properties: [known, portable]
+  - name: d-tile
+    display:
+      char: 'd'
+      attr: eventile
+    description:
+      - Four
+    properties: [known, portable]
+  - name: e-tile
+    display:
+      char: 'e'
+      attr: oddtile
+    description:
+      - Five
+    properties: [known, portable]
+  - name: f-tile
+    display:
+      char: 'f'
+      attr: eventile
+    description:
+      - Six
+    properties: [known, portable]
+  - name: g-tile
+    display:
+      char: 'g'
+      attr: oddtile
+    description:
+      - Seven
+    properties: [known, portable]
+  - name: h-tile
+    display:
+      char: 'h'
+      attr: eventile
+    description:
+      - Eight
+    properties: [known, portable]
+  - name: i-tile
+    display:
+      char: 'i'
+      attr: oddtile
+    description:
+      - Nine
+    properties: [known, portable]
+  - name: j-tile
+    display:
+      char: 'j'
+      attr: eventile
+    description:
+      - Ten
+    properties: [known, portable]
+  - name: k-tile
+    display:
+      char: 'k'
+      attr: oddtile
+    description:
+      - Eleven
+    properties: [known, portable]
+  - name: l-tile
+    display:
+      char: 'l'
+      attr: eventile
+    description:
+      - Twelve
+    properties: [known, portable]
+  - name: m-tile
+    display:
+      char: 'm'
+      attr: oddtile
+    description:
+      - Thirteen
+    properties: [known, portable]
+  - name: n-tile
+    display:
+      char: 'n'
+      attr: eventile
+    description:
+      - Fourteen
+    properties: [known, portable]
+  - name: o-tile
+    display:
+      char: 'o'
+      attr: oddtile
+    description:
+      - Fifteen
+    properties: [known, portable]
+  - name: p-tile
+    display:
+      char: 'p'
+      attr: eventile
+    description:
+      - Sixteen
+    properties: [known, portable]
+  - name: q-tile
+    display:
+      char: 'q'
+      attr: oddtile
+    description:
+      - Seventeen
+    properties: [known, portable]
+  - name: r-tile
+    display:
+      char: 'r'
+      attr: eventile
+    description:
+      - Eighteen
+    properties: [known, portable]
+  - name: s-tile
+    display:
+      char: 's'
+      attr: oddtile
+    description:
+      - Nineteen
+    properties: [known, portable]
+  - name: t-tile
+    display:
+      char: 't'
+      attr: eventile
+    description:
+      - Twenty
+    properties: [known, portable]
+  - name: u-tile
+    display:
+      char: 'u'
+      attr: oddtile
+    description:
+      - Twenty-one
+    properties: [known, portable]
+  - name: v-tile
+    display:
+      char: 'v'
+      attr: eventile
+    description:
+      - Twenty-two
+    properties: [known, portable]
+  - name: w-tile
+    display:
+      char: 'w'
+      attr: oddtile
+    description:
+      - Twenty-three
+    properties: [known, portable]
+  - name: x-tile
+    display:
+      char: 'x'
+      attr: eventile
+    description:
+      - Twenty-four
+    properties: [known, portable]
+  - name: y-tile
+    display:
+      char: 'y'
+      attr: oddtile
+    description:
+      - Twenty-five
+    properties: [known, portable]
+  - name: a-tile-ordinal
+    display:
+      char: 'a'
+    description:
+      - One
+    properties: [known]
+  - name: b-tile-ordinal
+    display:
+      char: 'b'
+    description:
+      - Two
+    properties: [known]
+  - name: c-tile-ordinal
+    display:
+      char: 'c'
+    description:
+      - Three
+    properties: [known]
+  - name: d-tile-ordinal
+    display:
+      char: 'd'
+    description:
+      - Four
+    properties: [known]
+  - name: e-tile-ordinal
+    display:
+      char: 'e'
+    description:
+      - Five
+    properties: [known]
+  - name: f-tile-ordinal
+    display:
+      char: 'f'
+    description:
+      - Six
+    properties: [known]
+  - name: g-tile-ordinal
+    display:
+      char: 'g'
+    description:
+      - Seven
+    properties: [known]
+  - name: h-tile-ordinal
+    display:
+      char: 'h'
+    description:
+      - Eight
+    properties: [known]
+  - name: i-tile-ordinal
+    display:
+      char: 'i'
+    description:
+      - Nine
+    properties: [known]
+  - name: j-tile-ordinal
+    display:
+      char: 'j'
+    description:
+      - Ten
+    properties: [known]
+  - name: k-tile-ordinal
+    display:
+      char: 'k'
+    description:
+      - Eleven
+    properties: [known]
+  - name: l-tile-ordinal
+    display:
+      char: 'l'
+    description:
+      - Twelve
+    properties: [known]
+  - name: m-tile-ordinal
+    display:
+      char: 'm'
+    description:
+      - Thirteen
+    properties: [known]
+  - name: n-tile-ordinal
+    display:
+      char: 'n'
+    description:
+      - Fourteen
+    properties: [known]
+  - name: o-tile-ordinal
+    display:
+      char: 'o'
+    description:
+      - Fifteen
+    properties: [known]
+  - name: p-tile-ordinal
+    display:
+      char: 'p'
+    description:
+      - Sixteen
+    properties: [known]
+  - name: q-tile-ordinal
+    display:
+      char: 'q'
+    description:
+      - Seventeen
+    properties: [known]
+  - name: r-tile-ordinal
+    display:
+      char: 'r'
+    description:
+      - Eighteen
+    properties: [known]
+  - name: s-tile-ordinal
+    display:
+      char: 's'
+    description:
+      - Nineteen
+    properties: [known]
+  - name: t-tile-ordinal
+    display:
+      char: 't'
+    description:
+      - Twenty
+    properties: [known]
+  - name: u-tile-ordinal
+    display:
+      char: 'u'
+    description:
+      - Twenty-one
+    properties: [known]
+  - name: v-tile-ordinal
+    display:
+      char: 'v'
+    description:
+      - Twenty-two
+    properties: [known]
+  - name: w-tile-ordinal
+    display:
+      char: 'w'
+    description:
+      - Twenty-three
+    properties: [known]
+  - name: x-tile-ordinal
+    display:
+      char: 'x'
+    description:
+      - Twenty-four
+    properties: [known]
+  - name: y-tile-ordinal
+    display:
+      char: 'y'
+    description:
+      - Twenty-five
+    properties: [known]
+recipes:
+  - in:
+      - [1, ink]
+      - [1, a-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, b-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, c-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, d-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, e-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, f-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, g-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, h-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, i-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, j-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, k-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, l-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, m-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, n-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, o-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, p-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, q-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, r-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, s-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, t-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, u-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, v-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, w-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, x-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+  - in:
+      - [1, ink]
+      - [1, y-tile]
+    out:
+      - [1, sliding-tile]
+    required:
+      - [1, drill]
+    time: 0
+known: []
+world:
+  dsl: |
+    {grass}
+  upperleft: [-3, 2]
+  offset: false
+  palette:
+    B: [grass, null, base]
+    y: [grass, null, setup]
+    z: [grass, null, maintainer]
+    '.': [grass]
+    'x': [grass]
+  map: |
+    ..................
+    ..xxxxxx..........
+    B.x....x..........
+    ..x....x..........
+    ..x....x..........
+    ..x....x..........
+    ..xxxxxx..........
+    ..................
+    zy................

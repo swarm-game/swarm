@@ -65,7 +65,6 @@ recipes:
       - [1, gate key]
 known: [flower]
 world:
-  default: [blank]
   palette:
     'Ω': [grass, null, base]
     '.': [grass]

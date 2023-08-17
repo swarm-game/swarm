@@ -28,7 +28,6 @@ robots:
       - [1, treads]
       - [1, solar panel]
 world:
-  default: [blank]
   palette:
     'Ω': [grass, null, base]
     '.': [grass]

@@ -6,18 +6,18 @@ objectives:
   - goal:
       - |
         Let's see what happens when you enter something that does not type check.
-        Try typing `turn 1` at the REPL prompt.  Clearly this is nonsense, and
-        the expression will be highlighted in red.  To see what the error is, hit Enter.
+        Try typing `turn 1`{=snippet} at the REPL prompt.  Clearly this is nonsense, and
+        the expression will be highlighted in red.  To see what the error is, hit **Enter**.
         A box will pop up with a type (or parser) error.
       - "Some other type errors for you to try:"
       - |
-        `turn move`
+        `turn move`{=snippet}
       - |
-        `place tree` (without double quotes around "tree")
+        `place tree`{=snippet} (without double quotes around `tree`{=snippet})
       - |
-        `move move`
+        `move move`{=snippet}
       - The last expression might give the most confusing error.
-        Obviously we are just missing a `;` separating the two `move`
+        Obviously we are just missing a `;`{=snippet} separating the two `move`
         commands.  However, without the semicolon, it looks like
         `move` is a function being applied to an argument, but of course
         `move` is not a function.
@@ -49,7 +49,6 @@ robots:
     inventory:
       - [1, Win]
 world:
-  default: [blank]
   palette:
     '>': [grass, null, base]
     '.': [grass]

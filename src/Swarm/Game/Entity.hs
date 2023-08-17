@@ -78,10 +78,13 @@ module Swarm.Game.Entity (
   difference,
 ) where
 
+import Control.Algebra (Has)
 import Control.Arrow ((&&&))
+import Control.Carrier.Throw.Either (liftEither)
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (Getter, Lens', lens, to, view, (^.))
-import Control.Monad.IO.Class
-import Control.Monad.Trans.Except (ExceptT (..), except, runExceptT, withExceptT)
+import Control.Monad ((<=<))
 import Data.Bifunctor (first)
 import Data.Char (toLower)
 import Data.Function (on)
@@ -103,11 +106,13 @@ import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Game.Display
 import Swarm.Game.Failure
-import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Language.Capability
-import Swarm.Util (binTuples, failT, findDup, plural, quote, reflow, (?))
+import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown (Document, docToText)
+import Swarm.Util (binTuples, failT, findDup, plural, (?))
+import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
@@ -211,7 +216,7 @@ data Entity = Entity
   -- ^ The plural of the entity name, in case it is irregular.  If
   --   this field is @Nothing@, default pluralization heuristics
   --   will be used (see 'plural').
-  , _entityDescription :: [Text]
+  , _entityDescription :: Document Syntax
   -- ^ A longer-form description. Each 'Text' value is one
   --   paragraph.
   , _entityOrientation :: Maybe Heading
@@ -243,7 +248,7 @@ instance Hashable Entity where
       `hashWithSalt` disp
       `hashWithSalt` nm
       `hashWithSalt` pl
-      `hashWithSalt` descr
+      `hashWithSalt` docToText descr
       `hashWithSalt` orient
       `hashWithSalt` grow
       `hashWithSalt` yld
@@ -272,7 +277,7 @@ mkEntity ::
   -- | Entity name
   Text ->
   -- | Entity description
-  [Text] ->
+  Document Syntax ->
   -- | Properties
   [EntityProperty] ->
   -- | Capabilities
@@ -313,11 +318,11 @@ deviceForCap cap = fromMaybe [] . M.lookup cap . entitiesByCap
 -- | Build an 'EntityMap' from a list of entities.  The idea is that
 --   this will be called once at startup, when loading the entities
 --   from a file; see 'loadEntities'.
-buildEntityMap :: [Entity] -> Either Text EntityMap
+buildEntityMap :: Has (Throw LoadingFailure) sig m => [Entity] -> m EntityMap
 buildEntityMap es = do
   case findDup (map fst namedEntities) of
-    Nothing -> Right ()
-    Just duped -> Left $ T.unwords ["Duplicate entity named", quote duped]
+    Nothing -> return ()
+    Just duped -> throwError $ Duplicate Entities duped
   return $
     EntityMap
       { entitiesByName = M.fromList namedEntities
@@ -337,7 +342,7 @@ instance FromJSON Entity where
               <$> v .: "display"
               <*> v .: "name"
               <*> v .:? "plural"
-              <*> (map reflow <$> (v .: "description"))
+              <*> (v .: "description")
               <*> v .:? "orientation"
               <*> v .:? "growth"
               <*> v .:? "yields"
@@ -369,13 +374,18 @@ instance ToJSON Entity where
         ++ ["capabilities" .= (e ^. entityCapabilities) | not . null $ e ^. entityCapabilities]
 
 -- | Load entities from a data file called @entities.yaml@, producing
---   either an 'EntityMap' or a pretty-printed parse error.
-loadEntities :: MonadIO m => m (Either Text EntityMap)
-loadEntities = runExceptT $ do
-  let f = "entities.yaml"
-  fileName <- withExceptT prettyFailure $ getDataFileNameSafe Entities f
-  decoded <- withExceptT (from . prettyPrintParseException) . ExceptT . liftIO $ decodeFileEither fileName
-  except $ buildEntityMap decoded
+--   either an 'EntityMap' or a parse error.
+loadEntities ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  m EntityMap
+loadEntities = do
+  let entityFile = "entities.yaml"
+      entityFailure = AssetNotLoaded (Data Entities) entityFile
+  fileName <- getDataFileNameSafe Entities entityFile
+  decoded <-
+    withThrow (entityFailure . CanNotParseYaml) . (liftEither <=< sendIO) $
+      decodeFileEither fileName
+  withThrow entityFailure $ buildEntityMap decoded
 
 ------------------------------------------------------------
 -- Entity lenses
@@ -424,7 +434,7 @@ entityNameFor _ = to $ \e ->
 
 -- | A longer, free-form description of the entity.  Each 'Text' value
 --   represents a paragraph.
-entityDescription :: Lens' Entity [Text]
+entityDescription :: Lens' Entity (Document Syntax)
 entityDescription = hashedLens _entityDescription (\e x -> e {_entityDescription = x})
 
 -- | The direction this entity is facing (if it has one).

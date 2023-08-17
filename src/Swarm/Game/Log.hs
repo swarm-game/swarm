@@ -20,6 +20,7 @@ module Swarm.Game.Log (
 
   -- * Robot log entries
   LogEntry (..),
+  LogLocation (..),
   leText,
   leSource,
   leRobotName,
@@ -34,6 +35,7 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import Swarm.Game.CESK (TickNumber)
 import Swarm.Game.Location (Location)
+import Swarm.Game.Universe (Cosmic)
 
 -- | Severity of the error - critical errors are bugs
 --   and should be reported as Issues.
@@ -50,6 +52,9 @@ data LogSource
     ErrorTrace ErrorLevel
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
+data LogLocation a = Omnipresent | Located a
+  deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
+
 -- | An entry in a robot's log.
 data LogEntry = LogEntry
   { _leTime :: TickNumber
@@ -61,7 +66,7 @@ data LogEntry = LogEntry
   -- ^ The name of the robot that generated the entry.
   , _leRobotID :: Int
   -- ^ The ID of the robot that generated the entry.
-  , _leLocation :: Location
+  , _leLocation :: LogLocation (Cosmic Location)
   -- ^ Location of the robot at log entry creation.
   , _leText :: Text
   -- ^ The text of the log entry.

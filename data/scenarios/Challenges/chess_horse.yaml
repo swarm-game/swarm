@@ -34,10 +34,11 @@ robots:
       char: '♚'
 known: [water]
 world:
-  default: [ice, water]
+  dsl: |
+    {ice, water}
   palette:
-    '.': [grass]
-    '#': [ice]
+    '.': [grass, erase]
+    '#': [ice, erase]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
     '└': [stone, lower left corner]

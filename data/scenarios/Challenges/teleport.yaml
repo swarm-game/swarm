@@ -56,15 +56,16 @@ robots:
       );
 known: [water, wavy water, flower, tree]
 world:
-  default: [ice, water]
+  dsl: |
+    {ice, water}
   palette:
     ',': [ice, water]
     ' ': [ice, water]
     '~': [ice, wavy water]
     '*': [grass, flower]
     'T': [grass, tree]
-    '.': [grass]
-    '_': [stone]
+    '.': [grass, erase]
+    '_': [stone, erase]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
     '└': [stone, lower left corner]

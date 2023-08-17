@@ -25,10 +25,15 @@ import Prettyprinter.Render.String qualified as RS
 import Prettyprinter.Render.Text qualified as RT
 import Swarm.Language.Capability
 import Swarm.Language.Context
+import Swarm.Language.Parse (getLocRange)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
+import Swarm.Util (showLowT)
 import Witch
+
+------------------------------------------------------------
+-- PrettyPrec class + utilities
 
 -- | Type class for things that can be pretty-printed, given a
 --   precedence level of their context.
@@ -36,16 +41,24 @@ class PrettyPrec a where
   prettyPrec :: Int -> a -> Doc ann -- can replace with custom ann type later if desired
 
 -- | Pretty-print a thing, with a context precedence level of zero.
-ppr :: PrettyPrec a => a -> Doc ann
+ppr :: (PrettyPrec a) => a -> Doc ann
 ppr = prettyPrec 0
 
+-- | Render a pretty-printed document as @Text@.
+docToText :: Doc a -> Text
+docToText = RT.renderStrict . layoutPretty defaultLayoutOptions
+
 -- | Pretty-print something and render it as @Text@.
-prettyText :: PrettyPrec a => a -> Text
-prettyText = RT.renderStrict . layoutPretty defaultLayoutOptions . ppr
+prettyText :: (PrettyPrec a) => a -> Text
+prettyText = docToText . ppr
+
+-- | Render a pretty-printed document as a @String@.
+docToString :: Doc a -> String
+docToString = RS.renderString . layoutPretty defaultLayoutOptions
 
 -- | Pretty-print something and render it as a @String@.
-prettyString :: PrettyPrec a => a -> String
-prettyString = RS.renderString . layoutPretty defaultLayoutOptions . ppr
+prettyString :: (PrettyPrec a) => a -> String
+prettyString = docToString . ppr
 
 -- | Optionally surround a document with parentheses depending on the
 --   @Bool@ argument.
@@ -53,8 +66,29 @@ pparens :: Bool -> Doc ann -> Doc ann
 pparens True = parens
 pparens False = id
 
+-- | Surround a document with backticks.
 bquote :: Doc ann -> Doc ann
 bquote d = "`" <> d <> "`"
+
+-- | Turn a 'Show' instance into a @Doc@, lowercasing it in the
+--   process.
+prettyShowLow :: Show a => a -> Doc ann
+prettyShowLow = pretty . showLowT
+
+--------------------------------------------------
+-- Bullet lists
+
+data BulletList i = BulletList
+  { bulletListHeader :: forall a. Doc a
+  , bulletListItems :: [i]
+  }
+
+instance (PrettyPrec i) => PrettyPrec (BulletList i) where
+  prettyPrec _ (BulletList hdr items) =
+    nest 2 . vcat $ hdr : map (("-" <+>) . ppr) items
+
+------------------------------------------------------------
+-- PrettyPrec instances for terms, types, etc.
 
 instance PrettyPrec Text where
   prettyPrec _ = pretty
@@ -72,14 +106,23 @@ instance PrettyPrec BaseTy where
 instance PrettyPrec IntVar where
   prettyPrec _ = pretty . mkVarName "u"
 
-instance PrettyPrec (t (Fix t)) => PrettyPrec (Fix t) where
+-- | We can use the 'Wildcard' value to replace unification variables
+--   when we don't care about them, e.g. to print out the shape of a
+--   type like @(_ -> _) * _@
+data Wildcard = Wildcard
+  deriving (Eq, Ord, Show)
+
+instance PrettyPrec Wildcard where
+  prettyPrec _ _ = "_"
+
+instance (PrettyPrec (t (Fix t))) => PrettyPrec (Fix t) where
   prettyPrec p = prettyPrec p . unFix
 
 instance (PrettyPrec (t (UTerm t v)), PrettyPrec v) => PrettyPrec (UTerm t v) where
   prettyPrec p (UTerm t) = prettyPrec p t
   prettyPrec p (UVar v) = prettyPrec p v
 
-instance PrettyPrec t => PrettyPrec (TypeF t) where
+instance (PrettyPrec t) => PrettyPrec (TypeF t) where
   prettyPrec _ (TyBaseF b) = ppr b
   prettyPrec _ (TyVarF v) = pretty v
   prettyPrec p (TySumF ty1 ty2) =
@@ -103,7 +146,7 @@ instance PrettyPrec UPolytype where
   prettyPrec _ (Forall [] t) = ppr t
   prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
 
-instance PrettyPrec t => PrettyPrec (Ctx t) where
+instance (PrettyPrec t) => PrettyPrec (Ctx t) where
   prettyPrec _ Empty = emptyDoc
   prettyPrec _ (assocs -> bs) = brackets (hsep (punctuate "," (map prettyBinding bs)))
 
@@ -206,20 +249,41 @@ appliedTermPrec (TApp f _) = case f of
   _ -> appliedTermPrec f
 appliedTermPrec _ = 10
 
+------------------------------------------------------------
+-- Error messages
+
+-- | Format a 'ContextualTypeError' for the user and render it as
+--   @Text@.
+prettyTypeErrText :: Text -> ContextualTypeErr -> Text
+prettyTypeErrText code = docToText . prettyTypeErr code
+
+-- | Format a 'ContextualTypeError' for the user.
+prettyTypeErr :: Text -> ContextualTypeErr -> Doc ann
+prettyTypeErr code (CTE l tcStack te) =
+  vcat
+    [ teLoc <> ppr te
+    , ppr (BulletList "" tcStack)
+    ]
+ where
+  teLoc = case l of
+    SrcLoc s e -> (showLoc . fst $ getLocRange code (s, e)) <> ": "
+    NoLoc -> emptyDoc
+  showLoc (r, c) = pretty r <> ":" <> pretty c
+
 instance PrettyPrec TypeErr where
   prettyPrec _ (UnifyErr ty1 ty2) =
     "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
-  prettyPrec _ (Mismatch Nothing ty1 ty2) =
+  prettyPrec _ (Mismatch Nothing (getJoin -> (ty1, ty2))) =
     "Type mismatch: expected" <+> ppr ty1 <> ", but got" <+> ppr ty2
-  prettyPrec _ (Mismatch (Just t) ty1 ty2) =
+  prettyPrec _ (Mismatch (Just t) (getJoin -> (ty1, ty2))) =
     nest 2 . vcat $
       [ "Type mismatch:"
-      , "From context, expected" <+> bquote (ppr t) <+> "to have type" <+> bquote (ppr ty1) <> ","
-      , "but it actually has type" <+> bquote (ppr ty2)
+      , "From context, expected" <+> bquote (ppr t) <+> "to" <+> typeDescription Expected ty1 <> ","
+      , "but it" <+> typeDescription Actual ty2
       ]
-  prettyPrec _ (LambdaArgMismatch ty1 ty2) =
-    "Lambda argument has type annotation" <+> ppr ty2 <> ", but expected argument type" <+> ppr ty1
-  prettyPrec _ (FieldsMismatch expFs actFs) = fieldMismatchMsg expFs actFs
+  prettyPrec _ (LambdaArgMismatch (getJoin -> (ty1, ty2))) =
+    "Lambda argument has type annotation" <+> bquote (ppr ty2) <> ", but expected argument type" <+> bquote (ppr ty1)
+  prettyPrec _ (FieldsMismatch (getJoin -> (expFs, actFs))) = fieldMismatchMsg expFs actFs
   prettyPrec _ (EscapedSkolem x) =
     "Skolem variable" <+> pretty x <+> "would escape its scope"
   prettyPrec _ (UnboundVar x) =
@@ -236,7 +300,63 @@ instance PrettyPrec TypeErr where
     "Record does not have a field with name" <+> pretty x <> ":" <+> ppr t
   prettyPrec _ (InvalidAtomic reason t) =
     "Invalid atomic block:" <+> ppr reason <> ":" <+> ppr t
+  prettyPrec _ Impredicative =
+    "Unconstrained unification type variables encountered, likely due to an impredicative type. This is a known bug; for more information see https://github.com/swarm-game/swarm/issues/351 ."
 
+-- | Given a type and its source, construct an appropriate description
+--   of it to go in a type mismatch error message.
+typeDescription :: Source -> UType -> Doc a
+typeDescription src ty
+  | not (hasAnyUVars ty) =
+      withSource src "have" "actually has" <+> "type" <+> bquote (ppr ty)
+  | Just f <- isTopLevelConstructor ty =
+      withSource src "be" "is actually" <+> tyNounPhrase f
+  | otherwise =
+      withSource src "have" "actually has" <+> "a type like" <+> bquote (ppr (fmap (const Wildcard) ty))
+
+-- | Check whether a type contains any unification variables at all.
+hasAnyUVars :: UType -> Bool
+hasAnyUVars = ucata (const True) or
+
+-- | Check whether a type consists of a top-level type constructor
+--   immediately applied to unification variables.
+isTopLevelConstructor :: UType -> Maybe (TypeF ())
+isTopLevelConstructor (UTyCmd (UVar {})) = Just $ TyCmdF ()
+isTopLevelConstructor (UTyDelay (UVar {})) = Just $ TyDelayF ()
+isTopLevelConstructor (UTySum (UVar {}) (UVar {})) = Just $ TySumF () ()
+isTopLevelConstructor (UTyProd (UVar {}) (UVar {})) = Just $ TyProdF () ()
+isTopLevelConstructor (UTyFun (UVar {}) (UVar {})) = Just $ TyFunF () ()
+isTopLevelConstructor _ = Nothing
+
+-- | Return an English noun phrase describing things with the given
+--   top-level type constructor.
+tyNounPhrase :: TypeF () -> Doc a
+tyNounPhrase = \case
+  TyBaseF b -> baseTyNounPhrase b
+  TyVarF {} -> "a type variable"
+  TyCmdF {} -> "a command"
+  TyDelayF {} -> "a delayed expression"
+  TySumF {} -> "a sum"
+  TyProdF {} -> "a pair"
+  TyFunF {} -> "a function"
+  TyRcdF {} -> "a record"
+
+-- | Return an English noun phrase describing things with the given
+--   base type.
+baseTyNounPhrase :: BaseTy -> Doc a
+baseTyNounPhrase = \case
+  BVoid -> "void"
+  BUnit -> "the unit value"
+  BInt -> "an integer"
+  BText -> "text"
+  BDir -> "a direction"
+  BBool -> "a boolean"
+  BActor -> "an actor"
+  BKey -> "a key"
+
+-- | Generate an appropriate message when the sets of fields in two
+--   record types do not match, explaining which fields are extra and
+--   which are missing.
 fieldMismatchMsg :: Set Var -> Set Var -> Doc a
 fieldMismatchMsg expFs actFs =
   nest 2 . vcat $
@@ -255,11 +375,10 @@ instance PrettyPrec InvalidAtomicReason where
   prettyPrec _ NestedAtomic = "nested atomic block"
   prettyPrec _ LongConst = "commands that can take multiple ticks to execute are not allowed"
 
-data BulletList i = BulletList
-  { bulletListHeader :: forall a. Doc a
-  , bulletListItems :: [i]
-  }
+instance PrettyPrec LocatedTCFrame where
+  prettyPrec p (LocatedTCFrame _ f) = prettyPrec p f
 
-instance PrettyPrec i => PrettyPrec (BulletList i) where
-  prettyPrec _ (BulletList hdr items) =
-    nest 2 . vcat $ hdr : map (("-" <+>) . ppr) items
+instance PrettyPrec TCFrame where
+  prettyPrec _ (TCDef x) = "While checking the definition of" <+> pretty x
+  prettyPrec _ TCBindL = "While checking the left-hand side of a semicolon"
+  prettyPrec _ TCBindR = "While checking the right-hand side of a semicolon"

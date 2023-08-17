@@ -84,9 +84,11 @@ module Swarm.TUI.Model (
   webPort,
   upstreamRelease,
   eventLog,
+  worlds,
   scenarios,
   stdEntityMap,
   stdRecipes,
+  appData,
   stdAdjList,
   stdNameList,
 
@@ -118,34 +120,36 @@ module Swarm.TUI.Model (
 
 import Brick
 import Brick.Widgets.List qualified as BL
+import Control.Effect.Accum
+import Control.Effect.Lift
+import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))
-import Control.Monad.Except
-import Control.Monad.State
+import Control.Monad ((>=>))
+import Control.Monad.State (MonadState)
 import Data.Array (Array, listArray)
 import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Map (Map)
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
+import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T (lines)
-import Data.Text.IO qualified as T (readFile)
 import Data.Vector qualified as V
 import GitHash (GitInfo)
 import Graphics.Vty (ColorMode (..))
-import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
+import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Entity as E
 import Swarm.Game.Failure
-import Swarm.Game.Failure.Render
 import Swarm.Game.Recipe (Recipe, loadRecipes)
-import Swarm.Game.ResourceLoading (getDataFileNameSafe)
+import Swarm.Game.ResourceLoading (readAppData)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Status
-import Swarm.Game.ScenarioInfo (
-  ScenarioCollection,
-  loadScenariosWithWarnings,
-  _SISingle,
- )
+import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios, _SISingle)
 import Swarm.Game.State
+import Swarm.Game.World.Load (loadWorlds)
+import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
@@ -153,7 +157,9 @@ import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
+import System.FilePath ((<.>))
 import Text.Fuzzy qualified as Fuzzy
+import Witch (into)
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -188,43 +194,49 @@ data RuntimeState = RuntimeState
   { _webPort :: Maybe Port
   , _upstreamRelease :: Either NewReleaseFailure String
   , _eventLog :: Notifications LogEntry
+  , _worlds :: WorldMap
   , _scenarios :: ScenarioCollection
   , _stdEntityMap :: EntityMap
   , _stdRecipes :: [Recipe Entity]
+  , _appData :: Map Text Text
   , _stdAdjList :: Array Int Text
   , _stdNameList :: Array Int Text
   }
 
-initRuntimeState :: ExceptT Text IO ([SystemFailure], RuntimeState)
+initRuntimeState ::
+  ( Has (Throw SystemFailure) sig m
+  , Has (Accum (Seq SystemFailure)) sig m
+  , Has (Lift IO) sig m
+  ) =>
+  m RuntimeState
 initRuntimeState = do
-  entities <- ExceptT loadEntities
-  recipes <- withExceptT prettyFailure $ loadRecipes entities
-  (scenarioWarnings, loadedScenarios) <- liftIO $ loadScenariosWithWarnings entities
+  entities <- loadEntities
+  recipes <- loadRecipes entities
+  worlds <- loadWorlds entities
+  scenarios <- loadScenarios entities worlds
+  appDataMap <- readAppData
 
-  (adjsFile, namesFile) <- withExceptT prettyFailure $ do
-    adjsFile <- getDataFileNameSafe NameGeneration "adjectives.txt"
-    namesFile <- getDataFileNameSafe NameGeneration "names.txt"
-    return (adjsFile, namesFile)
+  let getDataLines f = case M.lookup f appDataMap of
+        Nothing ->
+          throwError $
+            AssetNotLoaded (Data NameGeneration) (into @FilePath f <.> ".txt") (DoesNotExist File)
+        Just content -> return . tail . T.lines $ content
+  adjs <- getDataLines "adjectives"
+  names <- getDataLines "names"
 
-  let markEx what a = catchError a (\e -> fail $ "Failed to " <> what <> ": " <> show e)
-  (adjs, names) <- liftIO . markEx "load name generation data" $ do
-    as <- tail . T.lines <$> T.readFile adjsFile
-    ns <- tail . T.lines <$> T.readFile namesFile
-    return (as, ns)
-
-  return
-    ( scenarioWarnings
-    , RuntimeState
-        { _webPort = Nothing
-        , _upstreamRelease = Left (NoMainUpstreamRelease [])
-        , _eventLog = mempty
-        , _scenarios = loadedScenarios
-        , _stdEntityMap = entities
-        , _stdRecipes = recipes
-        , _stdAdjList = listArray (0, length adjs - 1) adjs
-        , _stdNameList = listArray (0, length names - 1) names
-        }
-    )
+  return $
+    RuntimeState
+      { _webPort = Nothing
+      , _upstreamRelease = Left (NoMainUpstreamRelease [])
+      , _eventLog = mempty
+      , _worlds = worlds
+      , _scenarios = scenarios
+      , _stdEntityMap = entities
+      , _stdRecipes = recipes
+      , _appData = appDataMap
+      , _stdAdjList = listArray (0, length adjs - 1) adjs
+      , _stdNameList = listArray (0, length names - 1) names
+      }
 
 makeLensesNoSigs ''RuntimeState
 
@@ -241,6 +253,10 @@ upstreamRelease :: Lens' RuntimeState (Either NewReleaseFailure String)
 -- place to log it.
 eventLog :: Lens' RuntimeState (Notifications LogEntry)
 
+-- | A collection of typechecked world DSL terms that are available to
+--   be used in scenario definitions.
+worlds :: Lens' RuntimeState WorldMap
+
 -- | The collection of scenarios that comes with the game.
 scenarios :: Lens' RuntimeState ScenarioCollection
 
@@ -253,6 +269,10 @@ stdEntityMap :: Lens' RuntimeState EntityMap
 --   may define additional recipes which will get added to this list
 --   when loading the scenario.
 stdRecipes :: Lens' RuntimeState [Recipe Entity]
+
+-- | Free-form data loaded from the @data@ directory, for things like
+--   the logo, about page, tutorial story, etc.
+appData :: Lens' RuntimeState (Map Text Text)
 
 -- | List of words for use in building random robot names.
 stdAdjList :: Lens' RuntimeState (Array Int Text)
@@ -270,7 +290,7 @@ logEvent src (who, rid) msg el =
     & notificationsCount %~ succ
     & notificationsContent %~ (l :)
  where
-  l = LogEntry 0 src who rid zero msg
+  l = LogEntry (TickNumber 0) src who rid Omnipresent msg
 
 -- | Create a 'GameStateConfig' record from the 'RuntimeState'.
 mkGameStateConfig :: RuntimeState -> GameStateConfig
@@ -280,6 +300,7 @@ mkGameStateConfig rs =
     , initNameList = rs ^. stdNameList
     , initEntities = rs ^. stdEntityMap
     , initRecipes = rs ^. stdRecipes
+    , initWorldMap = rs ^. worlds
     }
 
 -- ----------------------------------------------------------------------------
@@ -338,7 +359,7 @@ focusedEntity =
 
 -- | Given the focused robot, populate the UI inventory list in the info
 --   panel with information about its inventory.
-populateInventoryList :: MonadState UIState m => Maybe Robot -> m ()
+populateInventoryList :: (MonadState UIState m) => Maybe Robot -> m ()
 populateInventoryList Nothing = uiInventory .= Nothing
 populateInventoryList (Just r) = do
   mList <- preuse (uiInventory . _Just . _2)
@@ -368,7 +389,7 @@ populateInventoryList (Just r) = do
       matchesSearch (_, e) = maybe (const True) Fuzzy.test search (e ^. E.entityName)
 
       items =
-        (r ^. robotInventory . to (itemList True mkInvEntry "Inventory"))
+        (r ^. robotInventory . to (itemList True mkInvEntry "Compendium"))
           ++ (r ^. equippedDevices . to (itemList False mkInstEntry "Equipped devices"))
 
       -- Attempt to keep the selected element steady.
