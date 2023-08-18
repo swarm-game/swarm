@@ -7,8 +7,21 @@
     A tall, living entity made of a tough cellular material called "wood".
     They regrow after being harvested and are an important raw ingredient used
     in making many different devices.
-  properties: [portable, growable, opaque]
+  properties: [portable, growable, opaque, combustible]
   growth: [500, 600]
+  combustion:
+    ignition: 0.01
+    duration: [80, 120]
+    product: ash
+
+- name: ash
+  display:
+    attr: rock
+    char: '#'
+  description:
+  - |
+    Burned-out remnants of combustion.
+  properties: [portable]
 
 - name: branch
   display:
@@ -25,7 +38,11 @@
     char: 'l'
   description:
   - A wooden log, obtained by harvesting a tree and cutting off its branches.
-  properties: [portable]
+  properties: [portable, combustible]
+  combustion:
+    ignition: 0.05
+    duration: [40, 80]
+    product: ash
 
 - name: board
   display:
@@ -33,7 +50,11 @@
     char: 'w'
   description:
   - A wooden board, made by cutting a log into pieces.
-  properties: [portable]
+  properties: [portable, combustible]
+  combustion:
+    ignition: 0.2
+    duration: [20, 40]
+    product: ash
 
 - name: workbench
   display:
@@ -57,7 +78,11 @@
   description:
   - A flat material made of pressed and dried wood fibers,
     used as a surface on which to inscribe symbols.
-  properties: [portable]
+  properties: [portable, combustible]
+  combustion:
+    ignition: 0.5
+    duration: [10, 20]
+    product: ash
 
 - name: PhD thesis
   display:
@@ -336,8 +361,12 @@
   - A plant with tufts of soft fibers that can be harvested and used
     to make things, including sheets of material that the local
     aliens like to drape over their bodies.
-  properties: [portable, growable]
+  properties: [portable, growable, combustible]
   growth: [100, 800]
+  combustion:
+    ignition: 0.1
+    duration: [20, 40]
+    product: ash
 
 - name: linotype
   display:

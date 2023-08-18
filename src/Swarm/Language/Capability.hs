@@ -52,6 +52,8 @@ data Capability
     CGrab
   | -- | Execute the 'Harvest' command
     CHarvest
+  | -- | Execute the 'Ignite' command
+    CIgnite
   | -- | Execute the 'Place' command
     CPlace
   | -- | Execute the 'Give' command
@@ -215,6 +217,7 @@ constCaps = \case
   Turn -> Just CTurn
   Grab -> Just CGrab
   Harvest -> Just CHarvest
+  Ignite -> Just CIgnite
   Place -> Just CPlace
   Give -> Just CGive
   Equip -> Just CEquip

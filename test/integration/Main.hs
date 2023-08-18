@@ -290,6 +290,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/144-subworlds/basic-subworld"
         , testSolution Default "Testing/144-subworlds/subworld-mapped-robots"
         , testSolution Default "Testing/144-subworlds/subworld-located-robots"
+        , testSolution Default "Testing/1355-combustion"
         , testSolution Default "Testing/1379-single-world-portal-reorientation"
         , testSolution Default "Testing/1399-backup-command"
         , testGroup
