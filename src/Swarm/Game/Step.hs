@@ -1949,6 +1949,7 @@ execConst c vs s k = do
         -- Pick a random display name.
         displayName <- randomName
         createdAt <- getNow
+        isSystemRobot <- use systemRobot
 
         -- Construct the new robot and add it to the world.
         parentCtx <- use robotContext
@@ -1967,7 +1968,7 @@ execConst c vs s k = do
               (In cmd e s [FExec])
               []
               []
-              False
+              isSystemRobot
               False
               createdAt
 
