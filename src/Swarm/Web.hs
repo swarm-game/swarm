@@ -20,7 +20,11 @@
 --
 --   * TODO: #625 run endpoint to load definitions
 --   * TODO: #493 export the whole game state
-module Swarm.Web where
+module Swarm.Web (
+  webMain,
+  startWebThread,
+  defaultPort,
+) where
 
 import Brick.BChan
 import Commonmark qualified as Mark (commonmark, renderHtml)
@@ -114,67 +118,87 @@ docsBS =
 
 mkApp ::
   ReadableIORef AppState ->
-  -- | Writable
+  -- | Writable channel to send events to the game
   BChan AppEvent ->
   Servant.Server SwarmAPI
-mkApp appStateRef chan =
-  robotsHandler
-    :<|> robotHandler
-    :<|> prereqsHandler
-    :<|> activeGoalsHandler
-    :<|> goalsGraphHandler
-    :<|> uiGoalHandler
-    :<|> goalsHandler
+mkApp state events =
+  robotsHandler state
+    :<|> robotHandler state
+    :<|> prereqsHandler state
+    :<|> activeGoalsHandler state
+    :<|> goalsGraphHandler state
+    :<|> uiGoalHandler state
+    :<|> goalsHandler state
     :<|> codeRenderHandler
-    :<|> codeRunHandler
-    :<|> replHandler
- where
-  robotsHandler = do
-    appState <- liftIO (readIORef appStateRef)
-    pure $ IM.elems $ appState ^. gameState . robotMap
-  robotHandler (RobotID rid) = do
-    appState <- liftIO (readIORef appStateRef)
-    pure $ IM.lookup rid (appState ^. gameState . robotMap)
-  prereqsHandler = do
-    appState <- liftIO (readIORef appStateRef)
-    case appState ^. gameState . winCondition of
-      WinConditions _winState oc -> return $ getSatisfaction oc
-      _ -> return []
-  activeGoalsHandler = do
-    appState <- liftIO (readIORef appStateRef)
-    case appState ^. gameState . winCondition of
-      WinConditions _winState oc -> return $ getActiveObjectives oc
-      _ -> return []
-  goalsGraphHandler = do
-    appState <- liftIO (readIORef appStateRef)
-    return $ case appState ^. gameState . winCondition of
-      WinConditions _winState oc -> Just $ makeGraphInfo oc
-      _ -> Nothing
-  uiGoalHandler = do
-    appState <- liftIO (readIORef appStateRef)
-    return $ appState ^. uiState . uiGoal . goalsContent
-  goalsHandler = do
-    appState <- liftIO (readIORef appStateRef)
-    return $ appState ^. gameState . winCondition
-  codeRenderHandler contents = do
-    return $ case processTermEither contents of
-      Right (ProcessedTerm (Module stx@(Syntax' _srcLoc _term _) _) _ _) ->
-        into @Text . drawTree . fmap prettyString . para Node $ stx
-      Left x -> x
-  codeRunHandler contents = do
-    liftIO . writeBChan chan . Web $ RunWebCode contents
-    return $ T.pack "Sent\n"
-  replHandler = do
-    appState <- liftIO (readIORef appStateRef)
-    let replHistorySeq = appState ^. uiState . uiREPL . replHistory . replSeq
-        items = toList replHistorySeq
-    pure items
+    :<|> codeRunHandler events
+    :<|> replHandler state
+
+robotsHandler :: ReadableIORef AppState -> Handler [Robot]
+robotsHandler appStateRef = do
+  appState <- liftIO (readIORef appStateRef)
+  pure $ IM.elems $ appState ^. gameState . robotMap
+
+robotHandler :: ReadableIORef AppState -> RobotID -> Handler (Maybe Robot)
+robotHandler appStateRef (RobotID rid) = do
+  appState <- liftIO (readIORef appStateRef)
+  pure $ IM.lookup rid (appState ^. gameState . robotMap)
+
+prereqsHandler :: ReadableIORef AppState -> Handler [PrereqSatisfaction]
+prereqsHandler appStateRef = do
+  appState <- liftIO (readIORef appStateRef)
+  case appState ^. gameState . winCondition of
+    WinConditions _winState oc -> return $ getSatisfaction oc
+    _ -> return []
+
+activeGoalsHandler :: ReadableIORef AppState -> Handler [Objective]
+activeGoalsHandler appStateRef = do
+  appState <- liftIO (readIORef appStateRef)
+  case appState ^. gameState . winCondition of
+    WinConditions _winState oc -> return $ getActiveObjectives oc
+    _ -> return []
+
+goalsGraphHandler :: ReadableIORef AppState -> Handler (Maybe GraphInfo)
+goalsGraphHandler appStateRef = do
+  appState <- liftIO (readIORef appStateRef)
+  return $ case appState ^. gameState . winCondition of
+    WinConditions _winState oc -> Just $ makeGraphInfo oc
+    _ -> Nothing
+
+uiGoalHandler :: ReadableIORef AppState -> Handler GoalTracking
+uiGoalHandler appStateRef = do
+  appState <- liftIO (readIORef appStateRef)
+  return $ appState ^. uiState . uiGoal . goalsContent
+
+goalsHandler :: ReadableIORef AppState -> Handler WinCondition
+goalsHandler appStateRef = do
+  appState <- liftIO (readIORef appStateRef)
+  return $ appState ^. gameState . winCondition
+
+codeRenderHandler :: Text -> Handler Text
+codeRenderHandler contents = do
+  return $ case processTermEither contents of
+    Right (ProcessedTerm (Module stx@(Syntax' _srcLoc _term _) _) _ _) ->
+      into @Text . drawTree . fmap prettyString . para Node $ stx
+    Left x -> x
+
+codeRunHandler :: BChan AppEvent -> Text -> Handler Text
+codeRunHandler chan contents = do
+  liftIO . writeBChan chan . Web $ RunWebCode contents
+  return $ T.pack "Sent\n"
+
+replHandler :: ReadableIORef AppState -> Handler [REPLHistItem]
+replHandler appStateRef = do
+  appState <- liftIO (readIORef appStateRef)
+  let replHistorySeq = appState ^. uiState . uiREPL . replHistory . replSeq
+      items = toList replHistorySeq
+  pure items
 
 webMain ::
   Maybe (MVar (Either String ())) ->
   Warp.Port ->
+  -- | Read-only reference to the application state.
   ReadableIORef AppState ->
-  -- | Writable
+  -- | Writable channel to send events to the game
   BChan AppEvent ->
   IO ()
 webMain baton port appStateRef chan = catch (Warp.runSettings settings app) handleErr
