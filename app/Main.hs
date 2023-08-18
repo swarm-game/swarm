@@ -44,6 +44,7 @@ data CLI
   = Run AppOpts
   | Format Input (Maybe Width)
   | DocGen GenerateDocs
+  | RenderMap
   | LSP
   | Version
 
