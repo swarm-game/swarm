@@ -13,6 +13,9 @@
 
 ### New Features
 
+#### Tutorials
+* Some tutorial improvements, and enforce in CI that commands and entities are introduced before they are required by @kostmo ([#1186](https://github.com/swarm-game/swarm/pull/1186))
+
 #### Swarm language
 * The `drill` command now returns the first inventory addition by @kostmo ([#1165](https://github.com/swarm-game/swarm/pull/1165))
 * Type ascription syntax by @Alexander-Block ([#1164](https://github.com/swarm-game/swarm/pull/1164))
@@ -77,8 +80,7 @@
 
 #### UI enhancements
 * Allow scrolling the world map unless explicitly disallowed by @byorgey ([#1109](https://github.com/swarm-game/swarm/pull/1109))
-* Add random "static" to `view` outside a certain range by @byorgey
-  ([#1110](https://github.com/swarm-game/swarm/pull/1110), [#1241](https://github.com/swarm-game/swarm/pull/1241))
+* Add random "static" to `view` outside a certain range by @byorgey ([#1110](https://github.com/swarm-game/swarm/pull/1110), [#1241](https://github.com/swarm-game/swarm/pull/1241))
 * Display the scenario in which an achievement was obtained by @kostmo ([#1175](https://github.com/swarm-game/swarm/pull/1175))
 * World editor prototype by @kostmo ([#873](https://github.com/swarm-game/swarm/pull/873))
 * Scenario launch options selection by @kostmo ([#1010](https://github.com/swarm-game/swarm/pull/1010))
