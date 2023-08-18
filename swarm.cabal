@@ -159,6 +159,7 @@ library
                       Swarm.Game.World.Interpret
                       Swarm.Game.World.Load
                       Swarm.Game.World.Parse
+                      Swarm.Game.World.Render
                       Swarm.Game.World.Syntax
                       Swarm.Game.World.Typecheck
                       Swarm.Language.Capability

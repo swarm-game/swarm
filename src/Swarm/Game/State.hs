@@ -69,7 +69,6 @@ module Swarm.Game.State (
 
   -- *** Robot naming
   RobotNaming,
-  NameGenerator (..),
   nameGenerator,
   gensym,
 
@@ -152,6 +151,9 @@ module Swarm.Game.State (
   messageIsRecent,
   messageIsFromNearby,
   getRunCodePath,
+  buildWorldTuples,
+  genMultiWorld,
+  genRobotTemplates,
 ) where
 
 import Control.Applicative ((<|>))
@@ -203,6 +205,7 @@ import Swarm.Game.Recipe (
   inRecipeMap,
   outRecipeMap,
  )
+import Swarm.Game.ResourceLoading (NameGenerator)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Status
@@ -435,12 +438,6 @@ lastSeenMessageTime :: Lens' Messages TickNumber
 --
 -- Note that we put the newest entry to the right.
 announcementQueue :: Lens' Messages (Seq Announcement)
-
--- | Read-only lists of adjectives and words for use in building random robot names
-data NameGenerator = NameGenerator
-  { adjList :: Array Int Text
-  , nameList :: Array Int Text
-  }
 
 data RobotNaming = RobotNaming
   { _nameGenerator :: NameGenerator
@@ -855,10 +852,10 @@ unfocus = (\g -> g {_focusedRobotID = -1000}) . modifyViewCenter id
 
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.
-viewingRegion :: GameState -> (Int32, Int32) -> Cosmic W.BoundsRectangle
-viewingRegion g (w, h) = Cosmic sw (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
+viewingRegion :: Cosmic Location -> (Int32, Int32) -> Cosmic W.BoundsRectangle
+viewingRegion (Cosmic sw (Location cx cy)) (w, h) =
+  Cosmic sw (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
  where
-  Cosmic sw (Location cx cy) = g ^. viewCenter
   (rmin, rmax) = over both (+ (-cy - h `div` 2)) (0, h - 1)
   (cmin, cmax) = over both (+ (cx - w `div` 2)) (0, w - 1)
 
@@ -1117,8 +1114,7 @@ type ValidatedLaunchParams = LaunchParams Identity
 -- | Record to pass information needed to create an initial
 --   'GameState' record when starting a scenario.
 data GameStateConfig = GameStateConfig
-  { initAdjList :: Array Int Text
-  , initNameList :: Array Int Text
+  { initNameParts :: NameGenerator
   , initEntities :: EntityMap
   , initRecipes :: [Recipe Entity]
   , initWorldMap :: WorldMap
@@ -1157,11 +1153,7 @@ initGameState gsc =
     , _randGen = mkStdGen 0
     , _robotNaming =
         RobotNaming
-          { _nameGenerator =
-              NameGenerator
-                { adjList = initAdjList gsc
-                , nameList = initNameList gsc
-                }
+          { _nameGenerator = initNameParts gsc
           , _gensym = 0
           }
     , _recipesInfo =
@@ -1196,6 +1188,68 @@ initGameState gsc =
           }
     , _focusedRobotID = 0
     }
+
+type WorldTuples = NonEmpty (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int Entity))
+
+buildWorldTuples :: Scenario -> WorldTuples
+buildWorldTuples s =
+  NE.map (worldName &&& buildWorld) $
+    s ^. scenarioWorlds
+
+genMultiWorld :: WorldTuples -> Seed -> W.MultiWorld Int Entity
+genMultiWorld worldTuples s =
+  M.map genWorld
+    . M.fromList
+    . NE.toList
+    $ worldTuples
+ where
+  genWorld x = W.newWorld $ snd x s
+
+-- |
+-- Returns a list of robots, ordered by decreasing preference
+-- to serve as the "base".
+--
+-- ## Rules for selecting the "base" robot:
+--
+-- What follows is a thorough description of how the base
+-- choice is made as of the most recent study of the code.
+-- This level of detail is not meant to be public-facing.
+--
+-- For an abbreviated explanation, see the "Base robot" section of the
+-- "Scenario Authoring Guide".
+-- https://github.com/swarm-game/swarm/tree/main/data/scenarios#base-robot
+--
+-- Precedence rules:
+-- 1. Prefer those robots defined with a loc in the Scenario file
+--   1.a. If multiple robots define a loc, use the robot that is defined
+--        first within the Scenario file.
+--   1.b. Note that if a robot is both given a loc AND is specified in the
+--        world map, then two instances of the robot shall be created. The
+--        instance with the loc shall be preferred as the base.
+-- 2. Fall back to robots generated from templates via the map and palette.
+--   2.a. If multiple robots are specified in the map, prefer the one that
+--        is defined first within the Scenario file.
+--   2.b. If multiple robots are instantiated from the same template, then
+--        prefer the one with a lower-indexed subworld. Note that the root
+--        subworld is always first.
+--   2.c. If multiple robots instantiated from the same template are in the
+--        same subworld, then
+--        prefer the one closest to the upper-left of the screen, with higher
+--        rows given precedence over columns (i.e. first in row-major order).
+genRobotTemplates :: Scenario -> NonEmpty (a, ([(Int, TRobot)], b)) -> [TRobot]
+genRobotTemplates scenario worldTuples =
+  locatedRobots ++ map snd (sortOn fst genRobots)
+ where
+  -- Keep only robots from the robot list with a concrete location;
+  -- the others existed only to serve as a template for robots drawn
+  -- in the world map
+  locatedRobots = filter (isJust . view trobotLocation) $ scenario ^. scenarioRobots
+
+  -- Subworld order as encountered in the scenario YAML file is preserved for
+  -- the purpose of numbering robots, other than the "root" subworld
+  -- guaranteed to be first.
+  genRobots :: [(Int, TRobot)]
+  genRobots = concat $ NE.toList $ NE.map (fst . snd) worldTuples
 
 -- | Create an initial game state corresponding to the given scenario.
 scenarioToGameState ::
@@ -1239,7 +1293,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       & recipesInfo %~ modifyRecipesInfo
       & landscape . entityMap .~ em
       & landscape . worldNavigation .~ scenario ^. scenarioNavigation
-      & landscape . multiWorld .~ allSubworldsMap theSeed
+      & landscape . multiWorld .~ genMultiWorld worldTuples theSeed
       -- TODO (#1370): Should we allow subworlds to have their own scrollability?
       -- Leaning toward no , but for now just adopt the root world scrollability
       -- as being universal.
@@ -1263,40 +1317,10 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
   em = initEntities gsc <> scenario ^. scenarioEntities
   baseID = 0
   (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
-  -- Keep only robots from the robot list with a concrete location;
-  -- the others existed only to serve as a template for robots drawn
-  -- in the world map
-  locatedRobots = filter (isJust . view trobotLocation) $ scenario ^. scenarioRobots
+
   getCodeToRun (CodeToRun _ s) = s
 
-  -- Rules for selecting the "base" robot:
-  -- -------------------------------------
-  -- What follows is a thorough description of how the base
-  -- choice is made as of the most recent study of the code.
-  -- This level of detail is not meant to be public-facing.
-  --
-  -- For an abbreviated explanation, see the "Base robot" section of the
-  -- "Scenario Authoring Guide".
-  -- https://github.com/swarm-game/swarm/tree/main/data/scenarios#base-robot
-  --
-  -- Precedence rules:
-  -- 1. Prefer those robots defined with a loc in the Scenario file
-  --   1.a. If multiple robots define a loc, use the robot that is defined
-  --        first within the Scenario file.
-  --   1.b. Note that if a robot is both given a loc AND is specified in the
-  --        world map, then two instances of the robot shall be created. The
-  --        instance with the loc shall be preferred as the base.
-  -- 2. Fall back to robots generated from templates via the map and palette.
-  --   2.a. If multiple robots are specified in the map, prefer the one that
-  --        is defined first within the Scenario file.
-  --   2.b. If multiple robots are instantiated from the same template, then
-  --        prefer the one with a lower-indexed subworld. Note that the root
-  --        subworld is always first.
-  --   2.c. If multiple robots instantiated from the same template are in the
-  --        same subworld, then
-  --        prefer the one closest to the upper-left of the screen, with higher
-  --        rows given precedence over columns (i.e. first in row-major order).
-  robotsByBasePrecedence = locatedRobots ++ map snd (sortOn fst genRobots)
+  robotsByBasePrecedence = genRobotTemplates scenario worldTuples
 
   initialCodeToRun = getCodeToRun <$> toRun
 
@@ -1340,25 +1364,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       (maybe True (`S.member` initialCaps) . constCaps)
       allConst
 
-  -- Subworld order as encountered in the scenario YAML file is preserved for
-  -- the purpose of numbering robots, other than the "root" subworld
-  -- guaranteed to be first.
-  genRobots :: [(Int, TRobot)]
-  genRobots = concat $ NE.toList $ NE.map (fst . snd) builtWorldTuples
-
-  builtWorldTuples :: NonEmpty (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int Entity))
-  builtWorldTuples =
-    NE.map (worldName &&& buildWorld) $
-      scenario ^. scenarioWorlds
-
-  allSubworldsMap :: Seed -> W.MultiWorld Int Entity
-  allSubworldsMap s =
-    M.map genWorld
-      . M.fromList
-      . NE.toList
-      $ builtWorldTuples
-   where
-    genWorld x = W.newWorld $ snd x s
+  worldTuples = buildWorldTuples scenario
 
   theWinCondition =
     maybe

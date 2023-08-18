@@ -5,7 +5,6 @@ module Swarm.TUI.Editor.Util where
 import Control.Applicative ((<|>))
 import Control.Lens hiding (Const, from)
 import Control.Monad (guard)
-import Data.Int (Int32)
 import Data.Map qualified as M
 import Data.Map qualified as Map
 import Data.Maybe qualified as Maybe
@@ -19,7 +18,6 @@ import Swarm.Game.Terrain (TerrainType)
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Editor.Model
-import Swarm.TUI.Model
 import Swarm.Util.Erasable
 
 getEntitiesForList :: EntityMap -> V.Vector EntityFacade
@@ -37,12 +35,18 @@ getEditingBounds myWorld =
   a = EA.getAreaDimensions $ area myWorld
   lowerRightLoc = EA.upperLeftToBottomRight a upperLeftLoc
 
-getContentAt ::
-  WorldEditor Name ->
+getContentAt :: W.MultiWorld Int e -> Cosmic W.Coords -> (TerrainType, Maybe e)
+getContentAt w coords = (underlyingCellTerrain, underlyingCellEntity)
+ where
+  underlyingCellEntity = W.lookupCosmicEntity coords w
+  underlyingCellTerrain = W.lookupCosmicTerrain coords w
+
+getEditorContentAt ::
+  WorldOverdraw ->
   W.MultiWorld Int Entity ->
   Cosmic W.Coords ->
   (TerrainType, Maybe EntityPaint)
-getContentAt editor w coords =
+getEditorContentAt editorOverdraw w coords =
   (terrainWithOverride, entityWithOverride)
  where
   terrainWithOverride = Maybe.fromMaybe underlyingCellTerrain $ do
@@ -55,22 +59,21 @@ getContentAt editor w coords =
     Facade <$> erasableToMaybe e
 
   maybePaintedCell = do
-    guard $ editor ^. isWorldEditorEnabled
+    guard $ editorOverdraw ^. isWorldEditorEnabled
     Map.lookup (coords ^. planar) pm
 
-  pm = editor ^. paintedTerrain
+  pm = editorOverdraw ^. paintedTerrain
 
   entityWithOverride = (Ref <$> underlyingCellEntity) <|> maybeEntityOverride
-  underlyingCellEntity = W.lookupCosmicEntity coords w
-  underlyingCellTerrain = W.lookupCosmicTerrain coords w
+  (underlyingCellTerrain, underlyingCellEntity) = getContentAt w coords
 
 getTerrainAt ::
-  WorldEditor Name ->
+  WorldOverdraw ->
   W.MultiWorld Int Entity ->
   Cosmic W.Coords ->
   TerrainType
 getTerrainAt editor w coords =
-  fst $ getContentAt editor w coords
+  fst $ getEditorContentAt editor w coords
 
 isOutsideTopLeftCorner ::
   -- | top left corner coords
@@ -100,25 +103,32 @@ isOutsideRegion (tl, br) coord =
   isOutsideTopLeftCorner tl coord || isOutsideBottomRightCorner br coord
 
 getEditedMapRectangle ::
-  WorldEditor Name ->
+  WorldOverdraw ->
   Maybe (Cosmic W.BoundsRectangle) ->
   W.MultiWorld Int Entity ->
   [[CellPaintDisplay]]
 getEditedMapRectangle _ Nothing _ = []
 getEditedMapRectangle worldEditor (Just (Cosmic subworldName coords)) w =
+  getMapRectangle toFacade getContent coords
+ where
+  getContent = getEditorContentAt worldEditor w . Cosmic subworldName
+
+getMapRectangle ::
+  (d -> e) ->
+  (W.Coords -> (TerrainType, Maybe d)) ->
+  W.BoundsRectangle ->
+  [[PCell e]]
+getMapRectangle paintTransform contentFunc coords =
   map renderRow [yTop .. yBottom]
  where
   (W.Coords (yTop, xLeft), W.Coords (yBottom, xRight)) = coords
 
-  getContent = getContentAt worldEditor w . Cosmic subworldName
-
-  drawCell :: Int32 -> Int32 -> CellPaintDisplay
-  drawCell rowIndex colIndex =
+  drawCell f rowIndex colIndex =
     Cell
       terrain
-      (toFacade <$> maybeToErasable erasableEntity)
+      (f <$> maybeToErasable erasableEntity)
       []
    where
-    (terrain, erasableEntity) = getContent $ W.Coords (rowIndex, colIndex)
+    (terrain, erasableEntity) = contentFunc $ W.Coords (rowIndex, colIndex)
 
-  renderRow rowIndex = map (drawCell rowIndex) [xLeft .. xRight]
+  renderRow rowIndex = map (drawCell paintTransform rowIndex) [xLeft .. xRight]

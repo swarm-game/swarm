@@ -67,9 +67,12 @@ instance ToJSON ScenarioStatus where
   toEncoding = genericToEncoding scenarioOptions
   toJSON = genericToJSON scenarioOptions
 
+emptyLaunchParams :: Applicative f => ParameterizableLaunchParams a f
+emptyLaunchParams = LaunchParams (pure Nothing) (pure Nothing)
+
 getLaunchParams :: ScenarioStatus -> SerializableLaunchParams
 getLaunchParams = \case
-  NotStarted -> LaunchParams (pure Nothing) (pure Nothing)
+  NotStarted -> emptyLaunchParams
   Played x _ _ -> x
 
 -- | A 'ScenarioInfo' record stores metadata about a scenario: its

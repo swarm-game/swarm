@@ -79,7 +79,7 @@ loadVisibleRegion = do
   mext <- lookupExtent WorldExtent
   forM_ mext $ \(Extent _ _ size) -> do
     gs <- use gameState
-    let vr = viewingRegion gs (over both fromIntegral size)
+    let vr = viewingRegion (gs ^. viewCenter) (over both fromIntegral size)
     gameState . landscape . multiWorld %= M.adjust (W.loadRegion (vr ^. planar)) (vr ^. subworld)
 
 mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe (Cosmic W.Coords))
@@ -88,7 +88,7 @@ mouseLocToWorldCoords (Brick.Location mouseLoc) = do
   case mext of
     Nothing -> pure Nothing
     Just ext -> do
-      region <- gets $ flip viewingRegion (bimap fromIntegral fromIntegral (extentSize ext))
+      region <- gets $ flip viewingRegion (bimap fromIntegral fromIntegral (extentSize ext)) . view viewCenter
       let regionStart = W.unCoords (fst $ region ^. planar)
           mouseLoc' = bimap fromIntegral fromIntegral mouseLoc
           mx = snd mouseLoc' + fst regionStart
