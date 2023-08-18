@@ -7,6 +7,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Step.Util where
 
+import Swarm.Game.ResourceLoading (NameGenerator (..))
 import Control.Applicative (Applicative (..))
 import Control.Carrier.State.Lazy
 import Control.Effect.Error

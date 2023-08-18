@@ -54,13 +54,19 @@ data MapEditingBounds = MapEditingBounds
 
 makeLenses ''MapEditingBounds
 
+data WorldOverdraw = WorldOverdraw {
+    _isWorldEditorEnabled :: Bool
+    -- ^ This field has deferred initialization; it gets populated when a game
+    -- is initialized.
+  , _paintedTerrain :: M.Map W.Coords (TerrainWith EntityFacade)
+  }
+
+makeLenses ''WorldOverdraw
+
 data WorldEditor n = WorldEditor
-  { _isWorldEditorEnabled :: Bool
+  { _worldOverdraw :: WorldOverdraw
   , _terrainList :: BL.List n TerrainType
   , _entityPaintList :: BL.List n EntityFacade
-  -- ^ This field has deferred initialization; it gets populated when a game
-  -- is initialized.
-  , _paintedTerrain :: M.Map W.Coords (TerrainWith EntityFacade)
   , _editingBounds :: MapEditingBounds
   , _editorFocusRing :: FocusRing n
   , _outputFilePath :: FilePath
@@ -72,10 +78,9 @@ makeLenses ''WorldEditor
 initialWorldEditor :: TimeSpec -> WorldEditor Name
 initialWorldEditor ts =
   WorldEditor
-    False
+    (WorldOverdraw False mempty)
     (BL.list TerrainList (V.fromList listEnums) 1)
     (BL.list EntityPaintList (V.fromList []) 1)
-    mempty
     bounds
     (focusRing $ map WorldEditorPanelControl listEnums)
     "mymap.yaml"

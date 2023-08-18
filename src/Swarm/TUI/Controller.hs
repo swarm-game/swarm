@@ -375,7 +375,7 @@ handleMainEvent ev = do
     -- toggle world editor mode if in "cheat mode"
     ControlChar 'e'
       | s ^. uiState . uiCheatMode -> do
-          uiState . uiWorldEditor . isWorldEditorEnabled %= not
+          uiState . uiWorldEditor . worldOverdraw . isWorldEditorEnabled %= not
           setFocus WorldEditorPanel
     MouseDown WorldPositionIndicator _ _ _ -> uiState . uiWorldCursor .= Nothing
     MouseDown (FocusablePanel WorldPanel) V.BMiddle _ mouseLoc ->

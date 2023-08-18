@@ -18,7 +18,7 @@ module Swarm.TUI.View (
   drawKeyCmd,
 
   -- * World
-  drawWorld,
+  drawWorldPane,
 
   -- * Robot panel
   drawRobotPanel,
@@ -238,9 +238,28 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
   drawDescription (SISingle (s, si)) =
     vBox
       [ txtWrap (nonBlank (s ^. scenarioDescription))
+      , hCenter . padTop (Pad 1) . vLimit 4 $ hLimit 6 worldPeek
       , padTop (Pad 1) table
       ]
    where
+    -- FIXME Use scenario info to select view center
+    vc = Cosmic DefaultRootSubworld $ Location 0 0
+
+    -- FIXME Choose seed
+    theWorlds = allSubworldsMap s 0
+    ri = RenderingInput theWorlds (const True)
+    renderCoord = renderDisplay . displayLocRaw (WorldOverdraw False mempty) ri []
+    worldPeek = worldWidget renderCoord vc
+
+    -- worldPeek = vBox [
+    --     txt "000000"
+    --   , txt "111111"
+    --   , txt "222222"
+    --   , txt "333333"
+    --   , txt "444444"
+    --   , txt "555555"
+    --   ]
+
     firstRow =
       ( withAttr dimAttr $ txt "Author:"
       , withAttr dimAttr . txt <$> s ^. scenarioAuthor
@@ -420,7 +439,7 @@ drawGameUI s =
    where
     widg = case s ^. uiState . uiWorldCursor of
       Nothing -> str $ renderCoordsString $ s ^. gameState . viewCenter
-      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (s ^. uiState . uiWorldEditor) (s ^. gameState) coord
+      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (s ^. uiState . uiWorldEditor . worldOverdraw) (s ^. gameState) coord
   -- Add clock display in top right of the world view if focused robot
   -- has a clock equipped
   addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (s ^. uiState . lgTicksPerSecond) $ s ^. gameState)
@@ -441,7 +460,7 @@ drawGameUI s =
             & addCursorPos
             & addClock
         )
-        (drawWorld (s ^. uiState) (s ^. gameState))
+        (drawWorldPane (s ^. uiState) (s ^. gameState))
     , drawKeyMenu s
     ]
   replPanel =
@@ -468,7 +487,7 @@ renderCoordsString (Cosmic sw coords) =
     DefaultRootSubworld -> []
     SubworldName swName -> ["in", T.unpack swName]
 
-drawWorldCursorInfo :: WorldEditor Name -> GameState -> Cosmic W.Coords -> Widget Name
+drawWorldCursorInfo :: WorldOverdraw -> GameState -> Cosmic W.Coords -> Widget Name
 drawWorldCursorInfo worldEditor g cCoords =
   case getStatic g coords of
     Just s -> renderDisplay $ displayStatic s
@@ -487,8 +506,9 @@ drawWorldCursorInfo worldEditor g cCoords =
    where
     f cell preposition = [renderDisplay cell, txt preposition]
 
-  terrain = displayTerrainCell worldEditor g cCoords
-  entity = displayEntityCell worldEditor g cCoords
+  ri = RenderingInput (g ^. landscape . multiWorld) (standardEntityIsKnown g)
+  terrain = displayTerrainCell worldEditor ri cCoords
+  entity = displayEntityCell worldEditor ri cCoords
   robot = displayRobotCell g cCoords
 
   merge = fmap sconcat . NE.nonEmpty . filter (not . (^. invisible))
@@ -1022,7 +1042,7 @@ data KeyHighlight = NoHighlight | Alert | PanelSpecific
 drawKeyCmd :: (KeyHighlight, Text, Text) -> Widget Name
 drawKeyCmd (h, key, cmd) =
   hBox
-    [ withAttr attr (txt $ T.concat ["[", key, "] "])
+    [ withAttr attr (txt $ brackets key)
     , txt cmd
     ]
  where
@@ -1035,22 +1055,30 @@ drawKeyCmd (h, key, cmd) =
 -- World panel
 ------------------------------------------------------------
 
+worldWidget ::
+     (Cosmic W.Coords -> Widget n)
+  -> Cosmic Location -- ^ view center
+  -> Widget n
+worldWidget renderCoord gameViewCenter = Widget Fixed Fixed
+  $ do
+    ctx <- getContext
+    let w = ctx ^. availWidthL
+        h = ctx ^. availHeightL
+        vr = viewingRegion gameViewCenter (fromIntegral w, fromIntegral h)
+        ixs = range $ vr ^. planar
+    render . vBox . map hBox . chunksOf w . map (renderCoord . Cosmic (vr ^. subworld)) $ ixs
+
 -- | Draw the current world view.
-drawWorld :: UIState -> GameState -> Widget Name
-drawWorld ui g =
+drawWorldPane :: UIState -> GameState -> Widget Name
+drawWorldPane ui g =
   center
     . cached WorldCache
     . reportExtent WorldExtent
     -- Set the clickable request after the extent to play nice with the cache
     . clickable (FocusablePanel WorldPanel)
-    . Widget Fixed Fixed
-    $ do
-      ctx <- getContext
-      let w = ctx ^. availWidthL
-          h = ctx ^. availHeightL
-          vr = viewingRegion g (fromIntegral w, fromIntegral h)
-          ixs = range $ vr ^. planar
-      render . vBox . map hBox . chunksOf w . map (drawLoc ui g . Cosmic (vr ^. subworld)) $ ixs
+    $ worldWidget renderCoord (g ^. viewCenter)
+  where
+    renderCoord = drawLoc ui g
 
 ------------------------------------------------------------
 -- Robot inventory panel

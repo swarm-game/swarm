@@ -69,7 +69,6 @@ module Swarm.Game.State (
 
   -- *** Robot naming
   RobotNaming,
-  NameGenerator (..),
   nameGenerator,
   gensym,
 
@@ -152,6 +151,7 @@ module Swarm.Game.State (
   messageIsRecent,
   messageIsFromNearby,
   getRunCodePath,
+  allSubworldsMap,
 ) where
 
 import Control.Applicative ((<|>))
@@ -163,6 +163,7 @@ import Control.Effect.Throw
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad (forM_)
 import Data.Aeson (FromJSON, ToJSON)
+import Swarm.Game.ResourceLoading (NameGenerator)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
 import Data.Digest.Pure.SHA (sha1, showDigest)
@@ -432,12 +433,6 @@ lastSeenMessageTime :: Lens' Messages TickNumber
 --
 -- Note that we put the newest entry to the right.
 announcementQueue :: Lens' Messages (Seq Announcement)
-
--- | Read-only lists of adjectives and words for use in building random robot names
-data NameGenerator = NameGenerator
-  { adjList :: Array Int Text
-  , nameList :: Array Int Text
-  }
 
 data RobotNaming = RobotNaming
   { _nameGenerator :: NameGenerator
@@ -848,10 +843,10 @@ unfocus = (\g -> g {_focusedRobotID = -1000}) . modifyViewCenter id
 
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.
-viewingRegion :: GameState -> (Int32, Int32) -> Cosmic W.BoundsRectangle
-viewingRegion g (w, h) = Cosmic sw (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
+viewingRegion :: Cosmic Location -> (Int32, Int32) -> Cosmic W.BoundsRectangle
+viewingRegion (Cosmic sw (Location cx cy)) (w, h) =
+  Cosmic sw (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
  where
-  Cosmic sw (Location cx cy) = g ^. viewCenter
   (rmin, rmax) = over both (+ (-cy - h `div` 2)) (0, h - 1)
   (cmin, cmax) = over both (+ (cx - w `div` 2)) (0, w - 1)
 
@@ -1110,8 +1105,7 @@ type ValidatedLaunchParams = LaunchParams Identity
 -- | Record to pass information needed to create an initial
 --   'GameState' record when starting a scenario.
 data GameStateConfig = GameStateConfig
-  { initAdjList :: Array Int Text
-  , initNameList :: Array Int Text
+  { initNameParts :: NameGenerator
   , initEntities :: EntityMap
   , initRecipes :: [Recipe Entity]
   , initWorldMap :: WorldMap
@@ -1150,11 +1144,7 @@ initGameState gsc =
     , _randGen = mkStdGen 0
     , _robotNaming =
         RobotNaming
-          { _nameGenerator =
-              NameGenerator
-                { adjList = initAdjList gsc
-                , nameList = initNameList gsc
-                }
+          { _nameGenerator = initNameParts gsc
           , _gensym = 0
           }
     , _recipesInfo =
@@ -1189,6 +1179,20 @@ initGameState gsc =
           }
     , _focusedRobotID = 0
     }
+
+builtWorldTuples :: Scenario -> NonEmpty (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int Entity))
+builtWorldTuples s =
+  NE.map (worldName &&& buildWorld) $
+    s ^. scenarioWorlds
+
+allSubworldsMap :: Scenario -> Seed -> W.MultiWorld Int Entity
+allSubworldsMap scene s =
+  M.map genWorld
+    . M.fromList
+    . NE.toList
+    $ builtWorldTuples scene
+  where
+  genWorld x = W.newWorld $ snd x s
 
 -- | Create an initial game state corresponding to the given scenario.
 scenarioToGameState ::
@@ -1232,7 +1236,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       & recipesInfo %~ modifyRecipesInfo
       & landscape . entityMap .~ em
       & landscape . worldNavigation .~ scenario ^. scenarioNavigation
-      & landscape . multiWorld .~ allSubworldsMap theSeed
+      & landscape . multiWorld .~ allSubworldsMap scenario theSeed
       -- TODO (#1370): Should we allow subworlds to have their own scrollability?
       -- Leaning toward no , but for now just adopt the root world scrollability
       -- as being universal.
@@ -1337,21 +1341,8 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
   -- the purpose of numbering robots, other than the "root" subworld
   -- guaranteed to be first.
   genRobots :: [(Int, TRobot)]
-  genRobots = concat $ NE.toList $ NE.map (fst . snd) builtWorldTuples
+  genRobots = concat $ NE.toList $ NE.map (fst . snd) (builtWorldTuples scenario)
 
-  builtWorldTuples :: NonEmpty (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int Entity))
-  builtWorldTuples =
-    NE.map (worldName &&& buildWorld) $
-      scenario ^. scenarioWorlds
-
-  allSubworldsMap :: Seed -> W.MultiWorld Int Entity
-  allSubworldsMap s =
-    M.map genWorld
-      . M.fromList
-      . NE.toList
-      $ builtWorldTuples
-   where
-    genWorld x = W.newWorld $ snd x s
 
   theWinCondition =
     maybe

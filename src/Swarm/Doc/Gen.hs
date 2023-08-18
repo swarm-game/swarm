@@ -12,6 +12,7 @@ module Swarm.Doc.Gen (
   GenerateDocs (..),
   EditorType (..),
   SheetType (..),
+  loadStandaloneScenario,
 
   -- ** Formatted keyword lists
   keywordsCommands,
@@ -51,7 +52,7 @@ import Swarm.Game.Robot (Robot, equippedDevices, instantiateRobot, robotInventor
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.World.Gen (extractEntities)
 import Swarm.Game.World.Load (loadWorlds)
-import Swarm.Game.World.Typecheck (Some (..), TTerm)
+import Swarm.Game.World.Typecheck (Some (..), TTerm, WorldMap)
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Capability qualified as Capability
 import Swarm.Language.Key (specialKeyNames)
@@ -429,12 +430,20 @@ getBaseRobot s = case listToMaybe $ view scenarioRobots s of
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
 -- ----------------------------------------------------------------------------
 
-generateRecipe :: IO String
-generateRecipe = simpleErrorHandle $ do
+loadStandaloneScenario ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  FilePath ->
+  m (Scenario, (WorldMap, EntityMap, [Recipe Entity]))
+loadStandaloneScenario fp = do
   entities <- loadEntities
   recipes <- loadRecipes entities
   worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds entities
-  classic <- fst <$> loadScenario "data/scenarios/classic.yaml" entities worlds
+  scene <- fst <$> loadScenario fp entities worlds
+  return (scene, (worlds, entities, recipes))
+
+generateRecipe :: IO String
+generateRecipe = simpleErrorHandle $ do
+  (classic, (worlds, entities, recipes)) <- loadStandaloneScenario "data/scenarios/classic.yaml"
   baseRobot <- getBaseRobot classic
   return . Dot.showDot $ recipesToDot baseRobot (worlds ! "classic") entities recipes
 
