@@ -14,12 +14,14 @@
 -- have inventories).
 module Swarm.Game.Entity (
   EntityName,
+
   -- * Properties
   EntityProperty (..),
   GrowthTime (..),
   defaultGrowthTime,
   Combustibility (..),
   defaultCombustibility,
+
   -- * Entities
   Entity,
   mkEntity,
@@ -170,15 +172,15 @@ defaultGrowthTime :: GrowthTime
 defaultGrowthTime = GrowthTime (100, 200)
 
 -- | Properties of combustion
-data Combustibility = Combustibility {
-    ignition :: Double
-    -- ^ Likelihood of ignition by a neighbor, per tick.
-    -- This gets multiplied by the number of (4-adjacent) neighbors
-    -- currently burning.
+data Combustibility = Combustibility
+  { ignition :: Double
+  -- ^ Likelihood of ignition by a neighbor, per tick.
+  -- This gets multiplied by the number of (4-adjacent) neighbors
+  -- currently burning.
   , duration :: (Integer, Integer)
-    -- ^ min and max tick counts for combustion to persist
+  -- ^ min and max tick counts for combustion to persist
   , product :: Maybe EntityName
-    -- ^ what entity, if any, is left over after combustion
+  -- ^ what entity, if any, is left over after combustion
   }
   deriving (Eq, Ord, Show, Read, Generic, Hashable, FromJSON, ToJSON)
 
@@ -310,19 +312,20 @@ mkEntity ::
   [Capability] ->
   Entity
 mkEntity disp nm descr props caps =
-  rehashEntity $ Entity
-    0
-    disp
-    nm
-    Nothing
-    descr
-    Nothing
-    Nothing
-    Nothing
-    Nothing
-    (Set.fromList props)
-    (Set.fromList caps)
-    empty
+  rehashEntity $
+    Entity
+      0
+      disp
+      nm
+      Nothing
+      descr
+      Nothing
+      Nothing
+      Nothing
+      Nothing
+      (Set.fromList props)
+      (Set.fromList caps)
+      empty
 
 ------------------------------------------------------------
 -- Entity map

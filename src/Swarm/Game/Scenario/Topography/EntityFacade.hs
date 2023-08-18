@@ -13,7 +13,6 @@ import Data.Yaml as Y (ToJSON (toJSON))
 import Swarm.Game.Display (Display)
 import Swarm.Game.Entity qualified as E
 
-
 -- | This datatype is a lightweight stand-in for the
 -- full-fledged "Entity" type without the baggage of all
 -- of its other fields.

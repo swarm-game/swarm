@@ -1113,8 +1113,8 @@ combustionProgram minTime randTime thing spreadProbabilityPerTick =
     } {};
     selfdestruct
   |]
-  where
-    spreadProbabilityDenominator = floor (1 / spreadProbabilityPerTick) :: Integer
+ where
+  spreadProbabilityDenominator = floor (1 / spreadProbabilityPerTick) :: Integer
 
 -- | Construct a "combustion robot" from entity, time range and position,
 --   and add it to the world.  It has low priority and will be covered
@@ -1145,11 +1145,11 @@ addCombustionBot combustibility loc ts =
         True
         False
         ts
-  where
-    combustionProg = combustionProgram minT (maxT - minT) combustionOutput spreadLikelihood
-    -- FIXME should support Maybe
-    Combustibility spreadLikelihood (minT, maxT) maybeCombustionProduct = combustibility
-    combustionOutput = fromMaybe "ash" maybeCombustionProduct
+ where
+  combustionProg = combustionProgram minT (maxT - minT) combustionOutput spreadLikelihood
+  -- FIXME should support Maybe
+  Combustibility spreadLikelihood (minT, maxT) maybeCombustionProduct = combustibility
+  combustionOutput = fromMaybe "ash" maybeCombustionProduct
 
 -- | Construct a "seed robot" from entity, time range and position,
 --   and add it to the world.  It has low priority and will be covered
@@ -1168,7 +1168,7 @@ addSeedBot e (minT, maxT) loc ts =
         ()
         Nothing
         "seed"
-        (Markdown.fromText $ T.unwords ["A growing", e ^. entityName,  "seed."])
+        (Markdown.fromText $ T.unwords ["A growing", e ^. entityName, "seed."])
         (Just loc)
         zero
         ( defaultEntityDisplay '.'
@@ -1339,10 +1339,9 @@ execConst c vs s k = do
 
         createdAt <- getNow
 
-        addCombustionBot combustibility loc createdAt 
+        addCombustionBot combustibility loc createdAt
 
         return $ Out VUnit s k
-
       _ -> badConst
     Swap -> case vs of
       [VText name] -> do
