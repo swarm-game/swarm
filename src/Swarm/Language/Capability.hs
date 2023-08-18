@@ -215,6 +215,7 @@ constCaps = \case
   Turn -> Just CTurn
   Grab -> Just CGrab
   Harvest -> Just CHarvest
+  Ignite -> Just CGod
   Place -> Just CPlace
   Give -> Just CGive
   Equip -> Just CEquip

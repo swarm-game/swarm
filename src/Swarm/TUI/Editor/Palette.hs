@@ -19,7 +19,7 @@ import Data.Set qualified as Set
 import Data.Text qualified as T
 import Data.Tuple (swap)
 import Swarm.Game.Display (Display, defaultChar)
-import Swarm.Game.Entity (entitiesByName)
+import Swarm.Game.Entity (entitiesByName, EntityName)
 import Swarm.Game.Location
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..), getAreaDimensions)

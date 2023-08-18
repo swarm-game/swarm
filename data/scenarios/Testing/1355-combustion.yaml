@@ -1,0 +1,72 @@
+version: 1
+name: Combustion
+creative: true
+seed: 0
+description: Demo of spreading fire
+solution: |
+  move;
+  ignite forward;
+  turn right;
+  move;
+  ignite forward;
+  turn right;
+  move; move; move;
+  turn right;
+  move;
+  ignite left;
+  turn right;
+  move; move;
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - logger
+      - treads
+entities:
+- name: fuse
+  display:
+    attr: wood
+    char: '~'
+  description:
+    - Reliably combustible
+  combustion:
+    ignition: 1
+    duration: [8, 8]
+  properties: [known, portable, combustible]
+- name: dynamite
+  display:
+    attr: red
+    char: '!'
+  description:
+    - Explosive material
+  combustion:
+    ignition: 1
+    duration: [2, 2]
+    product: crater
+  properties: [known, portable, combustible]
+- name: crater
+  display:
+    attr: rock
+    char: '@'
+  description:
+    - Result of explosive excavation
+  properties: [known]
+known: [tree]
+world:
+  palette:
+    'Ω': [grass, null, base]
+    'T': [grass, tree]
+    'F': [grass, fuse]
+    'd': [grass, dynamite]
+    '.': [grass]
+  upperleft: [0, 0]
+  map: |
+   ......T............FFFFF...d..
+   ......TT...........F...F...F..
+   ......TTT..........F...F...F..
+   ......TTTTT........F...F...F..
+   ......TTTTTT..Ω.FFFF...FFFFF..
+   ......TTTTT...................
+   ......TTT....TTTTTTTTT........
+   ......TT.....TTTTTTTTT........
+   ......T......TTTTTTTTT........

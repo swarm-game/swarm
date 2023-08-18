@@ -1065,6 +1065,92 @@ seedProgram minTime randTime thing =
     selfdestruct
   |]
 
+-- | A system program for a "combustion robot", to burn an entity
+--   after it is ignited.
+--
+-- Creates sub-partitions (of 10-tick duration) of the "stages"
+-- of combustion for opportunities to light adjacent entities on fire.
+combustionProgram :: Integer -> Integer -> Text -> Double -> ProcessedTerm
+combustionProgram minTime randTime thing spreadProbabilityPerTick =
+  [tmQ|
+    def max = \a. \b.
+      if (a > b) {a} {b};
+      end;
+
+    def trySpread = \denom. \d.
+      try {
+        r <- random denom;
+        if (r == 0) {
+          ignite d;
+          noop;
+        } {};
+      } {};
+      end;
+
+    def tryDirs = \denom.
+      trySpread denom forward;
+      trySpread denom left;
+      trySpread denom back;
+      trySpread denom right;
+      end;
+
+
+    try {
+      r <- random (1 + $int:randTime);
+      wait (r + $int:minTime);
+      appear "X";
+      r <- random (1 + $int:randTime);
+      let spreadableDuration = r + $int:minTime in
+      let segmentCount = max 1 $ spreadableDuration/10 in
+
+      tryDirs $int:spreadProbabilityDenominator;
+      wait spreadableDuration;
+    } {};
+
+    try {
+      create $str:thing;
+      place $str:thing;
+    } {};
+    selfdestruct
+  |]
+  where
+    spreadProbabilityDenominator = floor (1 / spreadProbabilityPerTick) :: Integer
+
+-- | Construct a "combustion robot" from entity, time range and position,
+--   and add it to the world.  It has low priority and will be covered
+--   by placed entities.
+addCombustionBot ::
+  Has (State GameState) sig m =>
+  Combustibility ->
+  Cosmic Location ->
+  TimeSpec ->
+  m ()
+addCombustionBot combustibility loc ts =
+  void $
+    addTRobot $
+      mkRobot
+        ()
+        Nothing
+        "fire"
+        (Markdown.fromText $ T.unwords ["A burning", combustionOutput <> "."])
+        (Just loc)
+        north
+        ( defaultEntityDisplay '*'
+            & displayAttr .~ AWorld "fire"
+            & displayPriority .~ 0
+        )
+        (initMachine combustionProg empty emptyStore)
+        []
+        []
+        True
+        False
+        ts
+  where
+    combustionProg = combustionProgram minT (maxT - minT) combustionOutput spreadLikelihood
+    -- FIXME should support Maybe
+    Combustibility spreadLikelihood (minT, maxT) maybeCombustionProduct = combustibility
+    combustionOutput = fromMaybe "ash" maybeCombustionProduct
+
 -- | Construct a "seed robot" from entity, time range and position,
 --   and add it to the world.  It has low priority and will be covered
 --   by placed entities.
@@ -1082,7 +1168,7 @@ addSeedBot e (minT, maxT) loc ts =
         ()
         Nothing
         "seed"
-        "A growing seed."
+        (Markdown.fromText $ T.unwords ["A growing", e ^. entityName,  "seed."])
         (Just loc)
         zero
         ( defaultEntityDisplay '.'
@@ -1230,6 +1316,34 @@ execConst c vs s k = do
       _ -> badConst
     Grab -> doGrab Grab'
     Harvest -> doGrab Harvest'
+    Ignite -> case vs of
+      [VDir d] -> do
+        let verb = "ignite"
+            verbed = "ignited"
+
+        (loc, me) <- lookInDirection d
+        -- Ensure there is an entity here.
+        e <-
+          me `isJustOrFail` ["There is nothing here to", verb <> "."]
+
+        -- Ensure it can be ignited.
+        (e `hasProperty` Combustible)
+          `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
+
+        -- Remove the entity from the world.
+        updateEntityAt loc (const Nothing)
+        flagRedraw
+
+        -- Start burning process
+        let combustibility = (e ^. entityCombustion) ? defaultCombustibility
+
+        createdAt <- getNow
+
+        addCombustionBot combustibility loc createdAt 
+
+        return $ Out VUnit s k
+
+      _ -> badConst
     Swap -> case vs of
       [VText name] -> do
         loc <- use robotLocation

@@ -39,7 +39,7 @@ toFacade = \case
   Facade f -> f
   Ref e -> mkFacade e
 
-getEntityName :: EntityFacade -> EntityName
+getEntityName :: EntityFacade -> E.EntityName
 getEntityName (EntityFacade name _) = name
 
 data MapEditingBounds = MapEditingBounds

@@ -1115,6 +1115,7 @@ displayProperties :: [EntityProperty] -> Widget Name
 displayProperties = displayList . mapMaybe showProperty
  where
   showProperty Growable = Just "growing"
+  showProperty Combustible = Just "burning"
   showProperty Infinite = Just "infinite"
   showProperty Liquid = Just "liquid"
   showProperty Unwalkable = Just "blocking"

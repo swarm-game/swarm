@@ -7,8 +7,20 @@
     A tall, living entity made of a tough cellular material called "wood".
     They regrow after being harvested and are an important raw ingredient used
     in making many different devices.
-  properties: [portable, growable, opaque]
+  properties: [portable, growable, opaque, combustible]
   growth: [500, 600]
+  combustion:
+    ignition: 0.5
+    duration: [50, 100]
+
+- name: ash
+  display:
+    attr: rock
+    char: '#'
+  description:
+  - |
+    Burned-out remnants of combustion.
+  properties: [portable]
 
 - name: branch
   display:
