@@ -66,6 +66,8 @@ import Swarm.TUI.Model.UI
 import System.Timeout (timeout)
 import Text.Read (readEither)
 import Witch (into)
+import System.Random (randomIO)
+import Swarm.TUI.Model.Repl (getLatestREPLHistoryResult)
 
 newtype RobotID = RobotID Int
 
@@ -130,7 +132,7 @@ mkApp state events =
     :<|> uiGoalHandler state
     :<|> goalsHandler state
     :<|> codeRenderHandler
-    :<|> codeRunHandler events
+    :<|> codeRunHandler state events
     :<|> replHandler state
 
 robotsHandler :: ReadableIORef AppState -> Handler [Robot]
@@ -181,10 +183,19 @@ codeRenderHandler contents = do
       into @Text . drawTree . fmap prettyString . para Node $ stx
     Left x -> x
 
-codeRunHandler :: BChan AppEvent -> Text -> Handler Text
-codeRunHandler chan contents = do
-  liftIO . writeBChan chan . Web $ RunWebCode contents
-  return $ T.pack "Sent\n"
+codeRunHandler :: ReadableIORef AppState -> BChan AppEvent -> Text -> Handler Text
+codeRunHandler appStateRef chan contents = do
+  appState <- liftIO (readIORef appStateRef)
+  let latest = appState ^. runtimeState . latestWebResult
+  uuid <- liftIO randomIO
+  liftIO . writeBChan chan . Web $ RunWebCode uuid contents
+  l <- liftIO $ readMVar latest
+  case fst l of
+    WebCommandDropped -> return "Command was dropped - other command in progress"
+    WebCommandProcessing -> return "..."
+    WebCommandFinished ->
+      let history = appState ^. uiState . uiREPL . replHistory
+      in return (maybe "???" replItemText $ getLatestREPLHistoryResult history)
 
 replHandler :: ReadableIORef AppState -> Handler [REPLHistItem]
 replHandler appStateRef = do

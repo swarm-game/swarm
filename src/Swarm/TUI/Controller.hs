@@ -114,6 +114,10 @@ import System.Clock
 import System.FilePath (splitDirectories)
 import Witch (into)
 import Prelude hiding (Applicative (..)) -- See Note [liftA2 re-export from Prelude]
+import Data.UUID (UUID)
+import Control.Concurrent (modifyMVar_)
+import Control.Concurrent.Extra (tryTakeMVar)
+import Control.Concurrent (putMVar)
 
 -- ~~~~ Note [liftA2 re-export from Prelude]
 --
@@ -297,7 +301,7 @@ handleMainEvent ev = do
       Frame
         | s ^. gameState . paused -> continueWithoutRedraw
         | otherwise -> runFrameUI
-      Web (RunWebCode c) -> runBaseWebCode c
+      Web (RunWebCode u c) -> runBaseWebCode u c
       _ -> continueWithoutRedraw
     -- ctrl-q works everywhere
     ControlChar 'q' ->
@@ -759,6 +763,13 @@ runGameTick = do
   ticked <- zoomGameState gameTick
   when ticked updateAchievements
 
+updateWebCommandToFinished :: (MonadState AppState m, MonadIO m) => m ()
+updateWebCommandToFinished = do
+  latest <- use $ runtimeState . latestWebResult
+  liftIO . modifyMVar_ latest $ \case
+        (WebCommandProcessing, uuid) -> pure (WebCommandFinished, uuid)
+        finishedCommand -> pure finishedCommand
+
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
 updateUI :: EventM Name AppState Bool
@@ -818,6 +829,7 @@ updateUI = do
       gameState . replStatus .= REPLDone (Just val)
       gameState . baseRobot . robotContext . at itName .= Just val
       gameState . replNextValueIndex %= (+ 1)
+      updateWebCommandToFinished
       pure True
 
     -- Otherwise, do nothing.
@@ -1082,23 +1094,44 @@ handleREPLEventPiloting x = case x of
       & replPromptText .~ nt
       & replPromptType .~ CmdPrompt []
 
-runBaseWebCode :: (MonadState AppState m) => T.Text -> m ()
-runBaseWebCode uinput = do
+notifyWebCommand :: (MonadState AppState m, MonadIO m) => (WebCommandProgress, UUID) -> m ()
+notifyWebCommand wu = do
+  s <- get
+  let latest = s ^. runtimeState . latestWebResult
+  liftIO $ do
+    _ <- tryTakeMVar latest
+    putMVar latest wu
+
+runBaseWebCode :: (MonadState AppState m, MonadIO m) => UUID -> T.Text -> m ()
+runBaseWebCode uuid uinput = do
   s <- get
   let topCtx = topContext s
-  unless (s ^. gameState . replWorking) $
-    runBaseCode topCtx uinput
+  if s ^. gameState . replWorking
+    then do
+      notifyWebCommand (WebCommandDropped, uuid)
+    else do
+      notifyWebCommand (WebCommandProcessing, uuid)
+      runBaseCode' (Just uuid) topCtx uinput
 
-runBaseCode :: (MonadState AppState m) => RobotContext -> T.Text -> m ()
-runBaseCode topCtx uinput =
+runBaseCode :: (MonadState AppState m, MonadIO m) => RobotContext -> T.Text -> m ()
+runBaseCode = runBaseCode' Nothing
+
+runBaseCode' :: (MonadState AppState m, MonadIO m) => Maybe UUID -> RobotContext -> T.Text -> m ()
+runBaseCode' mUuid topCtx uinput =
   case processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput of
     Right mt -> do
+      forM_ mUuid $ \uuid ->
+        notifyWebCommand (WebCommandProcessing, uuid)
       uiState %= resetREPL "" (CmdPrompt [])
       uiState . uiREPL . replHistory %= addREPLItem (REPLEntry uinput)
       uiState . uiREPL . replHistory . replHasExecutedManualInput .= True
       runBaseTerm topCtx mt
-    Left err -> do
-      uiState . uiError ?= err
+    Left err -> case mUuid of
+      Nothing -> uiState . uiError ?= err
+      Just uuid -> do
+        uiState . uiREPL . replHistory %= addREPLItem (REPLEntry uinput)
+        uiState . uiREPL . replHistory %= addREPLItem (REPLFailParse err)
+        notifyWebCommand (WebCommandFinished, uuid)
 
 runBaseTerm :: (MonadState AppState m) => RobotContext -> Maybe ProcessedTerm -> m ()
 runBaseTerm topCtx =

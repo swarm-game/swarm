@@ -1344,6 +1344,8 @@ drawREPL s = vBox $ latestHistory <> [currentPrompt] <> mayDebug
   debugLines = 3 * fromEnum (s ^. uiState . uiShowDebug)
   repl = s ^. uiState . uiREPL
   base = s ^. gameState . robotMap . at 0
-  fmt (REPLEntry e) = txt $ "> " <> e
-  fmt (REPLOutput t) = txt t
+  fmt = \case
+    REPLEntry e -> txt $ "> " <> e
+    REPLOutput t -> txt t
+    REPLFailParse t -> withAttr redAttr $ txtWrapWith indent2 t
   mayDebug = [drawRobotMachine s True | s ^. uiState . uiShowDebug]

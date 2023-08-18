@@ -13,6 +13,7 @@ module Swarm.TUI.Model (
   -- $uilabel
   AppEvent (..),
   WebCommand (..),
+  WebCommandProgress (..),
   FocusablePanel (..),
   Name (..),
 
@@ -84,6 +85,7 @@ module Swarm.TUI.Model (
   webPort,
   upstreamRelease,
   eventLog,
+  latestWebResult,
   scenarios,
   stdEntityMap,
   stdRecipes,
@@ -157,6 +159,8 @@ import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
 import System.FilePath ((<.>))
 import Text.Fuzzy qualified as Fuzzy
 import Witch (into)
+import Data.UUID (UUID)
+import Control.Concurrent (MVar, newEmptyMVar)
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -165,7 +169,7 @@ import Witch (into)
 -- $uilabel These types are used as parameters to various @brick@
 -- types.
 
-newtype WebCommand = RunWebCode Text
+data WebCommand = RunWebCode UUID Text
   deriving (Show)
 
 -- | 'Swarm.TUI.Model.AppEvent' represents a type for custom event types our app can
@@ -187,10 +191,17 @@ modalScroll = viewportScroll ModalViewport
 --                                Runtime state                              --
 -- ----------------------------------------------------------------------------
 
+data WebCommandProgress
+  = WebCommandDropped
+  | WebCommandProcessing
+  | WebCommandFinished
+  deriving (Eq, Show)
+
 data RuntimeState = RuntimeState
   { _webPort :: Maybe Port
   , _upstreamRelease :: Either NewReleaseFailure String
   , _eventLog :: Notifications LogEntry
+  , _latestWebResult :: MVar (WebCommandProgress, UUID)
   , _scenarios :: ScenarioCollection
   , _stdEntityMap :: EntityMap
   , _stdRecipes :: [Recipe Entity]
@@ -210,6 +221,7 @@ initRuntimeState = do
   recipes <- loadRecipes entities
   scenarios <- loadScenarios entities
   appDataMap <- readAppData
+  noWebResultYet <- sendIO newEmptyMVar
 
   let getDataLines f = case M.lookup f appDataMap of
         Nothing ->
@@ -224,6 +236,7 @@ initRuntimeState = do
       { _webPort = Nothing
       , _upstreamRelease = Left (NoMainUpstreamRelease [])
       , _eventLog = mempty
+      , _latestWebResult = noWebResultYet
       , _scenarios = scenarios
       , _stdEntityMap = entities
       , _stdRecipes = recipes
@@ -246,6 +259,17 @@ upstreamRelease :: Lens' RuntimeState (Either NewReleaseFailure String)
 -- If some error happens before a game is even selected, this is the
 -- place to log it.
 eventLog :: Lens' RuntimeState (Notifications LogEntry)
+
+-- | Get the UUID of the latest Web result.
+--
+-- Note to Web: If you take an UUID out and it is not yours, it means
+-- that other Web run code, but did not pick up the result.
+-- For this to hold, the Web handler must not run more than one...
+--
+-- Wait a minute, maybe this works with mode REPL handlers, just
+-- put the UUID back and the other is sure to get it...
+-- or maybe not, the other one could be canceled... :/
+latestWebResult :: Lens' RuntimeState (MVar (WebCommandProgress, UUID))
 
 -- | The collection of scenarios that comes with the game.
 scenarios :: Lens' RuntimeState ScenarioCollection

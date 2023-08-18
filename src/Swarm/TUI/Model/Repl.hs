@@ -20,6 +20,7 @@ module Swarm.TUI.Model.Repl (
   newREPLHistory,
   addREPLItem,
   restartREPLHistory,
+  getLatestREPLHistoryResult,
   getLatestREPLHistoryItems,
   moveReplHistIndex,
   getCurrentItemText,
@@ -77,6 +78,8 @@ data REPLHistItem
     REPLEntry Text
   | -- | A response printed by the system.
     REPLOutput Text
+  | -- | A parsing error from remote entry.
+    REPLFailParse Text
   deriving (Eq, Ord, Show, Read)
 
 instance ToSample REPLHistItem where
@@ -86,6 +89,7 @@ instance ToJSON REPLHistItem where
   toJSON e = case e of
     REPLEntry x -> object ["in" .= x]
     REPLOutput x -> object ["out" .= x]
+    REPLFailParse x -> object ["fail" .= x]
 
 -- | Useful helper function to only get user input text.
 getREPLEntry :: REPLHistItem -> Maybe Text
@@ -102,6 +106,7 @@ replItemText :: REPLHistItem -> Text
 replItemText = \case
   REPLEntry t -> t
   REPLOutput t -> t
+  REPLFailParse t -> t
 
 -- | History of the REPL with indices (0 is first entry) to the current
 --   line and to the first entry since loading saved history.
@@ -174,6 +179,17 @@ addREPLItem t h =
   h
     & replSeq %~ (|> t)
     & replIndex .~ 1 + replLength h
+
+getLatestREPLHistoryResult :: REPLHistory -> Maybe REPLHistItem
+getLatestREPLHistoryResult h = do
+  i <- Seq.findIndexR isRes hs
+  Seq.lookup i hs
+ where
+  hs = h ^. replSeq
+  isRes = \case
+    REPLEntry _ -> False
+    REPLFailParse _ -> True
+    REPLOutput _ -> True
 
 -- | Get the latest N items in history, starting with the oldest one.
 --
