@@ -1114,6 +1114,11 @@ combustionProgram combustionDuration (Combustibility _ _ maybeCombustionProduct)
     Nothing -> (0, "")
     Just p -> (1, p)
 
+-- | We treat the 'ignition' field in the 'Combustion' record
+-- as a /rate/ in a poisson distribution.
+-- Ignition of neighbors depends on that particular neighbor entity's
+-- combustion /rate/, but also on the duration
+-- that the current entity will burn.
 igniteNeighbor ::
   Has (State GameState) sig m =>
   TimeSpec ->
@@ -1140,8 +1145,9 @@ igniteNeighbor creationTime sourceDuration loc = do
     rate = E.ignition neighborCombustibility
     probabilityOfIgnition = 1 - exp (negate $ rate * fromIntegral sourceDuration)
 
--- | Construct an invisible "ignition robot" from entity
---   and add it to the world.
+-- | Construct an invisible "ignition robot" and add it to the world.
+--   Its sole purpose is to delay the `ignite` command for a neighbor
+--   that has been a priori determined that it shall be ignited.
 addIgnitionBot ::
   Has (State GameState) sig m =>
   Integer ->
@@ -1169,9 +1175,13 @@ addIgnitionBot ignitionDelay inputEntity ts loc =
         False
         ts
 
--- | Construct a "combustion robot" from entity, time range and position,
---   and add it to the world.  It has low priority and will be covered
+-- | Construct a "combustion robot" from entity and position
+--   and add it to the world.
+--   It has low priority and will be covered
 --   by placed entities.
+--   The "combustion bot" represents the burning of a single
+--   entity; propagating the fire to neighbors is handled upstream,
+--   within the `ignite` command.
 addCombustionBot ::
   Has (State GameState) sig m =>
   Entity ->
@@ -1399,7 +1409,6 @@ execConst c vs s k = do
         combustionDurationRand <- addCombustionBot e selfCombustibility createdAt loc
 
         let neighborLocs = map (offsetBy loc . flip applyTurn north . DRelative . DPlanar) listEnums
-
         forM_ neighborLocs $ igniteNeighbor createdAt combustionDurationRand
 
         return $ Out VUnit s k
