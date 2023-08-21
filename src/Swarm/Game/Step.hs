@@ -75,6 +75,8 @@ import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..), destination, reorientation)
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
 import Swarm.Game.State
+import Swarm.Game.Step.Combustion qualified as Combustion
+import Swarm.Game.Step.Util
 import Swarm.Game.Universe
 import Swarm.Game.Value
 import Swarm.Game.World qualified as W
@@ -95,8 +97,6 @@ import Swarm.Util.Effect (throwToMaybe)
 import System.Clock (TimeSpec)
 import Witch (From (from), into)
 import Prelude hiding (Applicative (..), lookup)
-import Swarm.Game.Step.Combustion qualified as Combustion
-import Swarm.Game.Step.Util
 
 -- | The main function to do one game tick.
 --
@@ -475,8 +475,6 @@ ensureCanExecute c =
       let hasCaps = cap `S.member` robotCaps
       (isPrivileged || hasCaps)
         `holdsOr` Incapable FixByEquip (R.singletonCap cap) (TConst c)
-
-
 
 -- | Create an exception about a command failing, with an achievement
 cmdExnWithAchievement :: Const -> [Text] -> GameplayAchievement -> Exn

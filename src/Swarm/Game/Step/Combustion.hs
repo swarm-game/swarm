@@ -1,8 +1,8 @@
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -16,28 +16,28 @@
 -- well as to initiate the delayed combustion of its neighbors.
 module Swarm.Game.Step.Combustion where
 
-import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Swarm.Language.Context (empty)
-import Swarm.Game.CESK (emptyStore, initMachine)
-import Swarm.Game.Display
-import Swarm.Game.State
-import Swarm.Game.Step.Util
-import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Game.Universe
-import Swarm.Game.Entity qualified as E
-import Swarm.Game.Location
-import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
-import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Text.Markdown qualified as Markdown
 import Control.Applicative (Applicative (..))
 import Control.Carrier.State.Lazy
 import Control.Effect.Lens
 import Control.Effect.Lift
-import Control.Monad (when, void, forM_)
+import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
+import Control.Monad (forM_, void, when)
 import Data.Text qualified as T
 import Linear (zero)
+import Swarm.Game.CESK (emptyStore, initMachine)
+import Swarm.Game.Display
+import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
+import Swarm.Game.Entity qualified as E
+import Swarm.Game.Location
 import Swarm.Game.Robot
+import Swarm.Game.State
+import Swarm.Game.Step.Util
+import Swarm.Game.Universe
+import Swarm.Language.Context (empty)
+import Swarm.Language.Pipeline (ProcessedTerm)
+import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax
+import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Util hiding (both)
 import System.Clock (TimeSpec)
 import Prelude hiding (Applicative (..), lookup)
@@ -64,14 +64,12 @@ igniteCommand c d = do
 
   let neighborLocs = map (offsetBy loc . flip applyTurn north . DRelative . DPlanar) listEnums
   forM_ neighborLocs $ igniteNeighbor createdAt combustionDurationRand
+ where
+  verb = "ignite"
+  verbed = "ignited"
 
-  where
-    verb = "ignite"
-    verbed = "ignited"
-
-    holdsOrFail = holdsOrFail' c
-    isJustOrFail = isJustOrFail' c
-
+  holdsOrFail = holdsOrFail' c
+  isJustOrFail = isJustOrFail' c
 
 -- | Construct a "combustion robot" from entity and position
 --   and add it to the world.

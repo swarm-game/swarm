@@ -51,14 +51,12 @@ deriveHeading d = do
   when (isCardinal d) $ hasCapabilityFor COrient $ TDir d
   return $ applyTurn d $ orient ? zero
 
-
 lookInDirection :: HasRobotStepState sig m => Direction -> m (Cosmic Location, Maybe Entity)
 lookInDirection d = do
   newHeading <- deriveHeading d
   loc <- use robotLocation
   let nextLoc = loc `offsetBy` newHeading
   (nextLoc,) <$> entityAt nextLoc
-
 
 -- | Modify the entity (if any) at a given location.
 updateEntityAt ::
@@ -108,10 +106,8 @@ isJustOrFail' c a ts = a `isJustOr` cmdExn c ts
 cmdExn :: Const -> [Text] -> Exn
 cmdExn c parts = CmdFailed c (T.unwords parts) Nothing
 
-
 getNow :: Has (Lift IO) sig m => m TimeSpec
 getNow = sendIO $ System.Clock.getTime System.Clock.Monotonic
-
 
 ------------------------------------------------------------
 -- Some utility functions
