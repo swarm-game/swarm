@@ -6,9 +6,9 @@
 module Swarm.Doc.Schema where
 
 import Data.Aeson
-import GHC.Generics (Generic)
-import Data.Text (Text)
 import Data.Map (Map)
+import Data.Text (Text)
+import GHC.Generics (Generic)
 
 schemaJsonOptions :: Options
 schemaJsonOptions =
@@ -16,15 +16,17 @@ schemaJsonOptions =
     { fieldLabelModifier = tail -- drops leading underscore
     }
 
-data Prop = Prop {
-    _type :: Text
+data Prop = Prop
+  { _type :: Text
   , _floop :: Text
-  } deriving (Eq, Ord, Show, Generic)
+  }
+  deriving (Eq, Ord, Show, Generic)
 
 instance FromJSON Prop where
   parseJSON = genericParseJSON schemaJsonOptions
 
-data Schema = Schema {
-    description :: Maybe Text
+data Schema = Schema
+  { description :: Maybe Text
   , properties :: Map Text Prop
-  } deriving (Eq, Ord, Show, Generic, FromJSON)
+  }
+  deriving (Eq, Ord, Show, Generic, FromJSON)
