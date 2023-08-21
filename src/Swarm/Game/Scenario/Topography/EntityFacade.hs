@@ -1,6 +1,9 @@
 {-# LANGUAGE DerivingVia #-}
 
--- | Stand-in type for an "Entity" for purposes
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Stand-in type for an "Entity" for purposes
 -- that do not require carrying around the entire state
 -- of an Entity.
 --

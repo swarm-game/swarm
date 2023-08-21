@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Editor.Controller where
 
 import Brick hiding (Direction (..), Location (..))

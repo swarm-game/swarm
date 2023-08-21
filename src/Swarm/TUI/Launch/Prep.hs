@@ -70,10 +70,10 @@ initEditorWidget =
     (Just 1) -- only allow a single line
 
 -- | Called before any particular scenario is selected, so we
--- supply some "Nothing"s as defaults to the "ValidatedLaunchParams".
+-- supply some 'Nothing's as defaults to the 'ValidatedLaunchParams'.
 initConfigPanel :: IO LaunchOptions
 initConfigPanel = do
-  -- NOTE: This is kind of pointless, because we must re-instantiate the FileBrowser
+  -- NOTE: This is kind of pointless, because we must re-instantiate the 'FileBrowser'
   -- when it is first displayed, anyway.
   fb <-
     FB.newFileBrowser
@@ -108,10 +108,11 @@ initFileBrowserWidget maybePlayedScript = do
 -- Note that the FileBrowser widget normally allows multiple selections ("marked" files).
 -- However, there do not exist any public "setters" set the marked files, so we have
 -- some workarounds:
--- * When the user marks the first file, we immediately close the FileBrowser widget.
--- * We re-instantiate the FileBrowser from scratch every time it is opened, so that
+--
+-- * When the user marks the first file, we immediately close the 'FileBrowser' widget.
+-- * We re-instantiate the 'FileBrowser' from scratch every time it is opened, so that
 --   it is not possible to mark more than one file.
--- * The "marked file" is persisted outside of the FileBrowser state, and the
+-- * The "marked file" is persisted outside of the 'FileBrowser' state, and the
 --   "initial directory" is set upon instantiation from that external state.
 prepareLaunchDialog ::
   ScenarioInfoPair ->

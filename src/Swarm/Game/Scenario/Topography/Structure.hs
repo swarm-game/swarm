@@ -2,6 +2,9 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Definitions of "structures" for use within a map,
+-- as well as logic for combining them.
 module Swarm.Game.Scenario.Topography.Structure where
 
 import Control.Applicative ((<|>))
@@ -94,7 +97,7 @@ overlaySingleStructure
           else drop $ abs integralOffset
 
 -- | Overlays all of the "child placements", such that the children encountered earlier
--- in the YAML file supersede the later ones (due to use of "foldr" instead of "foldl").
+-- in the YAML file supersede the later ones (due to use of 'foldr' instead of 'foldl').
 mergeStructures ::
   M.Map StructureName (PStructure (Maybe a)) ->
   Maybe Placement ->
@@ -121,7 +124,7 @@ instance FromJSONE (EntityMap, RobotMap) (PStructure (Maybe (PCell Entity))) whe
     (maskedArea, mapWaypoints) <- liftE $ (v .:? "map" .!= "") >>= paintMap maybeMaskChar pal
     return $ Structure maskedArea localStructureDefs placementDefs $ waypointDefs <> mapWaypoints
 
--- | "Paint" a world map using a 'WorldPalette', turning it from a raw
+-- | \"Paint\" a world map using a 'WorldPalette', turning it from a raw
 --   string into a nested list of 'Cell' values by looking up each
 --   character in the palette, failing if any character in the raw map
 --   is not contained in the palette.

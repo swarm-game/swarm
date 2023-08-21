@@ -35,17 +35,17 @@ data PrerequisiteConfig = PrerequisiteConfig
   -- explain the broader intention behind potentially multiple
   -- prerequisites.
   --
-  -- Set this to option True to display this goal in the "upcoming" section even
+  -- Set this option to 'True' to display this goal in the "upcoming" section even
   -- if the objective has currently unmet prerequisites.
   , logic :: Prerequisite ObjectiveLabel
   -- ^ Boolean expression of dependencies upon other objectives. Variables in this expression
   -- are the "id"s of other objectives, and become "true" if the corresponding objective is completed.
   -- The "condition" of the objective at hand shall not be evaluated until its
-  -- prerequisite expression evaluates as True.
+  -- prerequisite expression evaluates as 'True'.
   --
   -- Note that the achievement of these objective dependencies is
   -- persistent; once achieved, they still count even if their "condition"
-  -- might not still hold. The condition is never re-evaluated once True.
+  -- might not still hold. The condition is never re-evaluated once true.
   }
   deriving (Eq, Show, Generic, ToJSON)
 
@@ -115,7 +115,7 @@ objectivePrerequisite :: Lens' Objective (Maybe PrerequisiteConfig)
 -- This attribute often goes along with an Achievement.
 objectiveHidden :: Lens' Objective Bool
 
--- | An optional Achievement that is to be registered globally
+-- | An optional achievement that is to be registered globally
 -- when this objective is completed.
 objectiveAchievement :: Lens' Objective (Maybe AchievementInfo)
 

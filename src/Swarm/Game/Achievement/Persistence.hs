@@ -4,6 +4,8 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Load/save logic for achievements.
+-- Each achievement is saved to its own file to better
+-- support forward-compatibility.
 module Swarm.Game.Achievement.Persistence where
 
 import Control.Arrow (left)
