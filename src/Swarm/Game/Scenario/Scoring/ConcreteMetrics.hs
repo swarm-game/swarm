@@ -1,6 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 
--- | Data types and instances for specific scoring methods
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Data types and instances for specific scoring methods
 module Swarm.Game.Scenario.Scoring.ConcreteMetrics where
 
 import Control.Lens hiding (from, (<.>))

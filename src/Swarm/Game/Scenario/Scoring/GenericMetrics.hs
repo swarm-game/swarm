@@ -1,4 +1,7 @@
--- | Data types and functions applicable across different
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Data types and functions applicable across different
 -- scoring methods.
 module Swarm.Game.Scenario.Scoring.GenericMetrics where
 

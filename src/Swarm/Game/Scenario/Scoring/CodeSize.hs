@@ -1,4 +1,7 @@
--- | Types and utilities to compute code size
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Types and utilities to compute code size
 -- in terms of textual length and AST.
 module Swarm.Game.Scenario.Scoring.CodeSize where
 

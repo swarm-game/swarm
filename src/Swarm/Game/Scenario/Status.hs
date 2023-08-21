@@ -2,7 +2,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
--- | High-level status of scenario play.
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- High-level status of scenario play.
 -- Representation of progress, logic for updating.
 module Swarm.Game.Scenario.Status where
 
