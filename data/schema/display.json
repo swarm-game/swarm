@@ -1,8 +1,8 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/display.json",
-    "title": "Swarm entity display",
-    "description": "How to display an entity or robot in the Swarm game",
+    "title": "Display",
+    "description": "Swarm entity display. A display specifies how an entity or a robot (robots are essentially special kinds of entities) is displayed in the world.  It consists of a key-value mapping described by the following table.",
     "type": "object",
     "additionalProperties": false,
     "properties": {
@@ -13,8 +13,7 @@
         },
         "orientationMap": {
             "default": {},
-            "type": "object",
-            "description": "Currently unused"
+            "$ref": "orientation-map.json"
         },
         "curOrientation": {
             "default": null,
@@ -47,12 +46,12 @@
                 "blue",
                 "water"
             ],
-            "description": "The name of the attribute that should be used to style the robot or entity. A list of currently valid attributes can be found at https://github.com/swarm-game/swarm/blob/main/src/Swarm/TUI/Attr.hs."
+            "description": "The name of the attribute that should be used to style the robot or entity. A list of currently valid attributes can be found [here](https://github.com/swarm-game/swarm/blob/main/src/Swarm/TUI/View/Attribute/Attr.hs)."
         },
         "priority": {
             "default": 1,
             "type": "number",
-            "description": "When multiple entities and robots occupy the same cell, the one with the highest priority is drawn. By default, entities have priority 1, and robots have priority 10."
+            "description": "When multiple entities and robots occupy the same cell, the one with the highest priority is drawn. By default, entities have priority `1`, and robots have priority `10`."
         },
         "invisible": {
             "default": false,
