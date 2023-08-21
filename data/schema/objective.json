@@ -35,6 +35,8 @@
             "description": "A compact (2-3 word) summary of the goal",
             "type": "string"
         },
-        "prerequisite": {}
+        "prerequisite": {
+            "type": "object"
+        }
     }
 }

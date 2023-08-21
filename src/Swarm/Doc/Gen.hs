@@ -42,6 +42,7 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Tuple (swap)
 import Swarm.Doc.Pedagogy
+import Swarm.Doc.Schema.Scenario
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
@@ -92,7 +93,7 @@ data EditorType = Emacs | VSCode | Vim
   deriving (Eq, Show, Enum, Bounded)
 
 -- | An enumeration of the kinds of cheat sheets we can produce.
-data SheetType = Entities | Commands | Capabilities | Recipes
+data SheetType = Entities | Commands | Capabilities | Recipes | Scenario
   deriving (Eq, Show, Enum, Bounded)
 
 -- | A configuration record holding the URLs of the various cheat
@@ -135,6 +136,7 @@ generateDocs = \case
         entities <- loadEntities
         recipes <- loadRecipes entities
         sendIO $ T.putStrLn $ recipePage address recipes
+      Scenario -> genScenarioSchemaDocs
   TutorialCoverage -> renderTutorialProgression >>= putStrLn . T.unpack
 
 -- ----------------------------------------------------------------------------

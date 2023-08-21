@@ -103,6 +103,9 @@ library
                       Swarm.Constant
                       Swarm.Doc.Gen
                       Swarm.Doc.Pedagogy
+                      Swarm.Doc.Schema.Refined
+                      Swarm.Doc.Schema.Scenario
+                      Swarm.Doc.Schema.Surface
                       Swarm.Game.Failure
                       Swarm.Game.Achievement.Attainment
                       Swarm.Game.Achievement.Definitions
@@ -263,6 +266,8 @@ library
                       minimorph                     >= 0.3 && < 0.4,
                       transformers                  >= 0.5 && < 0.7,
                       mtl                           >= 2.2.2 && < 2.4,
+                      pandoc                        >= 3.0 && < 3.2,
+                      pandoc-types                  >= 1.23 && < 1.24,
                       murmur3                       >= 1.0.4 && < 1.1,
                       natural-sort                  >= 0.1.2 && < 0.2,
                       palette                       >= 0.3 && < 0.4,
