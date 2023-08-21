@@ -87,6 +87,8 @@ library
                       Swarm.Constant
                       Swarm.Doc.Gen
                       Swarm.Doc.Pedagogy
+                      Swarm.Doc.Scenario
+                      Swarm.Doc.Schema
                       Swarm.Game.Failure
                       Swarm.Game.Achievement.Attainment
                       Swarm.Game.Achievement.Definitions

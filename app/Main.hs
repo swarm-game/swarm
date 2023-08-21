@@ -103,6 +103,7 @@ cliParser =
       , Just Recipes <$ switch (long "recipes" <> help "Generate recipes page (uses data from recipes.yaml)")
       , Just Capabilities <$ switch (long "capabilities" <> help "Generate capabilities page (uses entity map)")
       , Just Commands <$ switch (long "commands" <> help "Generate commands page (uses constInfo, constCaps and inferConst)")
+      , Just Scenario <$ switch (long "scenario" <> help "Generate scenario schema page")
       ]
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")

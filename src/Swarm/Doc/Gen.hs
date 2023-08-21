@@ -42,6 +42,7 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Tuple (swap)
 import Swarm.Doc.Pedagogy
+import Swarm.Doc.Scenario
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
@@ -88,7 +89,7 @@ data GenerateDocs where
 data EditorType = Emacs | VSCode
   deriving (Eq, Show, Enum, Bounded)
 
-data SheetType = Entities | Commands | Capabilities | Recipes
+data SheetType = Entities | Commands | Capabilities | Recipes | Scenario
   deriving (Eq, Show, Enum, Bounded)
 
 data PageAddress = PageAddress
@@ -131,6 +132,7 @@ generateDocs = \case
         entities <- loadEntities
         recipes <- loadRecipes entities
         sendIO $ T.putStrLn $ recipePage address recipes
+      Scenario -> genScenarioSchemaDocs
   TutorialCoverage -> renderTutorialProgression >>= putStrLn . T.unpack
 
 -- ----------------------------------------------------------------------------
