@@ -130,6 +130,8 @@ library
                       Swarm.Game.ScenarioInfo
                       Swarm.Game.State
                       Swarm.Game.Step
+                      Swarm.Game.Step.Combustion
+                      Swarm.Game.Step.Util
                       Swarm.Game.Terrain
                       Swarm.Game.Value
                       Swarm.Game.World
