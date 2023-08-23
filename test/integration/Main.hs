@@ -51,7 +51,7 @@ import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty (prettyString)
-import Swarm.TUI.Model (RuntimeState, defaultAppOpts, gameState, stdEntityMap, userScenario, worlds, eventLog)
+import Swarm.TUI.Model (RuntimeState, defaultAppOpts, gameState, stdEntityMap, userScenario, worlds, eventLog, runtimeState)
 import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
 import Swarm.TUI.Model.UI (UIState)
 import Swarm.Util (acquireAllWithExt)
@@ -76,6 +76,7 @@ main = do
     out <- runM . runThrow @SystemFailure $ initPersistentState defaultAppOpts
     either (assertFailure . prettyString) return out
   let em = rs ^. stdEntityMap
+  let rs' = rs & eventLog .~ mempty
   defaultMain $
     testGroup
       "Tests"
@@ -84,18 +85,21 @@ main = do
       , exampleTests scenarioPrograms
       , scenarioParseTests em (rs ^. worlds) parseableScenarios
       , scenarioParseInvalidTests em (rs ^. worlds) unparseableScenarios
-      , testScenarioSolutions rs ui
+      , testScenarioSolutions rs' ui
       , testEditorFiles
       ]
 
 testNoLoadingErrors :: RuntimeState -> TestTree
 testNoLoadingErrors r =
-  testCase "Test runtime log does not contain errors" $
-    forM_ (r ^. eventLog . notificationsContent) $ \e ->
-      case e ^. leSource of
-        ErrorTrace l | l >= Warning -> assertFailure $
-          show l <> " was produced during loading: " <> T.unpack (e ^. leText)
-        _ -> pure ()
+  testCase "Test runtime log does not contain errors" (checkNoRuntimeErrors r)
+
+checkNoRuntimeErrors :: RuntimeState -> IO ()
+checkNoRuntimeErrors r = 
+  forM_ (r ^. eventLog . notificationsContent) $ \e ->
+    case e ^. leSource of
+      ErrorTrace l | l >= Warning -> assertFailure $
+        show l <> " was produced during loading: " <> T.unpack (e ^. leText)
+      _ -> pure ()
 
 exampleTests :: [(FilePath, String)] -> TestTree
 exampleTests inputs = testGroup "Test example" (map exampleTest inputs)
@@ -329,11 +333,12 @@ testScenarioSolutions rs ui =
     out <- runM . runThrow @SystemFailure $ constructAppState rs ui $ defaultAppOpts {userScenario = Just p}
     case out of
       Left err -> assertFailure $ prettyString err
-      Right (view gameState -> gs) -> case gs ^. winSolution of
+      Right appState -> case appState ^. gameState . winSolution of
         Nothing -> assertFailure "No solution to test!"
         Just sol@(ProcessedTerm _ _ reqCtx) -> do
+          when (shouldCheckBadErrors == CheckForBadErrors) (checkNoRuntimeErrors $ appState ^. runtimeState)
           let gs' =
-                gs
+                (appState ^. gameState)
                   -- See #827 for an explanation of why it's important to add to
                   -- the robotContext defReqs here (and also why this will,
                   -- hopefully, eventually, go away).
