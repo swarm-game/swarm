@@ -63,7 +63,7 @@ prettyString = docToString . ppr
 -- | Optionally surround a document with parentheses depending on the
 --   @Bool@ argument.
 pparens :: Bool -> Doc ann -> Doc ann
-pparens True = parens
+pparens True = group . parens
 pparens False = id
 
 -- | Surround a document with backticks.
@@ -180,7 +180,7 @@ instance PrettyPrec Term where
   prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr @Term (TText e)
   prettyPrec p (TRequirements _ e) = pparens (p > 10) $ "requirements" <+> ppr e
   prettyPrec _ (TVar s) = pretty s
-  prettyPrec _ (TDelay _ t) = braces $ ppr t
+  prettyPrec _ (TDelay _ t) = group . braces $ line' <> nest 1 (ppr t) <> line'
   prettyPrec _ t@TPair {} = prettyTuple t
   prettyPrec _ (TLam x mty body) =
     "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
@@ -207,21 +207,28 @@ instance PrettyPrec Term where
             _ -> prettyPrecApp p t1 t2
     _ -> prettyPrecApp p t1 t2
   prettyPrec _ (TLet _ x mty t1 t2) =
-    hsep $
-      ["let", pretty x]
-        ++ maybe [] (\ty -> [":", ppr ty]) mty
-        ++ ["=", ppr t1, "in", ppr t2]
+    group . vsep $
+      [ hsep $
+          ["let", pretty x]
+          ++ maybe [] (\ty -> [":", ppr ty]) mty
+          ++ ["=", ppr t1, "in"]
+      , nest 1 (ppr t2)
+      ]
   prettyPrec _ (TDef _ x mty t1) =
-    hsep $
-      ["def", pretty x]
+    group . vsep $
+    [ hsep $
+      [ "def", pretty x]
         ++ maybe [] (\ty -> [":", ppr ty]) mty
-        ++ ["=", ppr t1, "end"]
+        ++ ["="]
+    , nest 1 (ppr t1)
+    , "end"
+    ]
   prettyPrec p (TBind Nothing t1 t2) =
     pparens (p > 0) $
-      prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
+      prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
   prettyPrec p (TBind (Just x) t1 t2) =
     pparens (p > 0) $
-      pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
+      pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
   prettyPrec _ (TRcd m) = brackets $ hsep (punctuate "," (map prettyEquality (M.assocs m)))
   prettyPrec _ (TProj t x) = prettyPrec 11 t <> "." <> pretty x
   prettyPrec p (TAnnotate t pt) =
