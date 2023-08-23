@@ -206,7 +206,8 @@ recipes:
       - [1, scoop]
 known: []
 world:
-  default: [grass]
+  dsl: |
+    {grass}
   upperleft: [0, 0]
   offset: false
   palette:

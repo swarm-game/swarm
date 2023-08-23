@@ -18,6 +18,7 @@ import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Terrain (TerrainType)
+import Swarm.Util.Erasable
 import Swarm.Util.Yaml
 
 -- | A world palette maps characters to 'Cell' values.
@@ -28,10 +29,10 @@ newtype WorldPalette e = WorldPalette
 instance FromJSONE (EntityMap, RobotMap) (WorldPalette Entity) where
   parseJSONE = withObjectE "palette" $ fmap WorldPalette . mapM parseJSONE
 
-type TerrainWith a = (TerrainType, Maybe a)
+type TerrainWith a = (TerrainType, Erasable a)
 
 cellToTerrainPair :: CellPaintDisplay -> TerrainWith EntityFacade
-cellToTerrainPair (Cell terrain maybeEntity _) = (terrain, maybeEntity)
+cellToTerrainPair (Cell terrain erasableEntity _) = (terrain, erasableEntity)
 
 toCellPaintDisplay :: Cell -> CellPaintDisplay
 toCellPaintDisplay (Cell terrain maybeEntity r) =

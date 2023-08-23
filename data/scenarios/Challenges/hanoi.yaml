@@ -155,7 +155,8 @@ known:
   - blocked two
   - blocked three
 world:
-  default: [grass, null]
+  dsl: |
+    {grass}
   palette:
     ',': [grass]
     '_': [stone]

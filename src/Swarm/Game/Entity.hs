@@ -13,10 +13,14 @@
 -- are mutually recursive (an inventory contains entities, which can
 -- have inventories).
 module Swarm.Game.Entity (
+  EntityName,
+
   -- * Properties
   EntityProperty (..),
   GrowthTime (..),
   defaultGrowthTime,
+  Combustibility (..),
+  defaultCombustibility,
 
   -- * Entities
   Entity,
@@ -31,6 +35,7 @@ module Swarm.Game.Entity (
   entityDescription,
   entityOrientation,
   entityGrowth,
+  entityCombustion,
   entityYields,
   entityProperties,
   hasProperty,
@@ -118,6 +123,8 @@ import Text.Read (readMaybe)
 import Witch
 import Prelude hiding (lookup)
 
+type EntityName = Text
+
 ------------------------------------------------------------
 -- Properties
 ------------------------------------------------------------
@@ -133,6 +140,8 @@ data EntityProperty
     Opaque
   | -- | Regrows from a seed after it is harvested.
     Growable
+  | -- | Can use the Ignite command on it
+    Combustible
   | -- | Regenerates infinitely when grabbed or harvested.
     Infinite
   | -- | Robots drown if they walk on this without a boat.
@@ -161,6 +170,24 @@ newtype GrowthTime = GrowthTime (Integer, Integer)
 
 defaultGrowthTime :: GrowthTime
 defaultGrowthTime = GrowthTime (100, 200)
+
+-- | Properties of combustion
+data Combustibility = Combustibility
+  { ignition :: Double
+  -- ^ Rate of ignition by a neighbor, per tick.
+  -- When denoted as "lambda",
+  -- probability of ignition over a period "t" is:
+  -- 1 - e^(-(lambda * t))
+  -- See: https://math.stackexchange.com/a/1243629
+  , duration :: (Integer, Integer)
+  -- ^ min and max tick counts for combustion to persist
+  , product :: Maybe EntityName
+  -- ^ what entity, if any, is left over after combustion
+  }
+  deriving (Eq, Ord, Show, Read, Generic, Hashable, FromJSON, ToJSON)
+
+defaultCombustibility :: Combustibility
+defaultCombustibility = Combustibility 0.5 (100, 200) (Just "ash")
 
 ------------------------------------------------------------
 -- Entity
@@ -224,6 +251,8 @@ data Entity = Entity
   --   a robot moves, it moves in the direction of its orientation.
   , _entityGrowth :: Maybe GrowthTime
   -- ^ If this entity grows, how long does it take?
+  , _entityCombustion :: Maybe Combustibility
+  -- ^ If this entity is combustible, how spreadable is it?
   , _entityYields :: Maybe Text
   -- ^ The name of a different entity obtained when this entity is
   -- grabbed.
@@ -243,7 +272,7 @@ data Entity = Entity
 -- | The @Hashable@ instance for @Entity@ ignores the cached hash
 --   value and simply combines the other fields.
 instance Hashable Entity where
-  hashWithSalt s (Entity _ disp nm pl descr orient grow yld props caps inv) =
+  hashWithSalt s (Entity _ disp nm pl descr orient grow combust yld props caps inv) =
     s
       `hashWithSalt` disp
       `hashWithSalt` nm
@@ -251,6 +280,7 @@ instance Hashable Entity where
       `hashWithSalt` docToText descr
       `hashWithSalt` orient
       `hashWithSalt` grow
+      `hashWithSalt` combust
       `hashWithSalt` yld
       `hashWithSalt` props
       `hashWithSalt` caps
@@ -284,7 +314,20 @@ mkEntity ::
   [Capability] ->
   Entity
 mkEntity disp nm descr props caps =
-  rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing Nothing (Set.fromList props) (Set.fromList caps) empty
+  rehashEntity $
+    Entity
+      0
+      disp
+      nm
+      Nothing
+      descr
+      Nothing
+      Nothing
+      Nothing
+      Nothing
+      (Set.fromList props)
+      (Set.fromList caps)
+      empty
 
 ------------------------------------------------------------
 -- Entity map
@@ -345,6 +388,7 @@ instance FromJSON Entity where
               <*> (v .: "description")
               <*> v .:? "orientation"
               <*> v .:? "growth"
+              <*> v .:? "combustion"
               <*> v .:? "yields"
               <*> v .:? "properties" .!= mempty
               <*> v .:? "capabilities" .!= mempty
@@ -383,7 +427,7 @@ loadEntities = do
       entityFailure = AssetNotLoaded (Data Entities) entityFile
   fileName <- getDataFileNameSafe Entities entityFile
   decoded <-
-    withThrow (entityFailure . CanNotParse) . (liftEither <=< sendIO) $
+    withThrow (entityFailure . CanNotParseYaml) . (liftEither <=< sendIO) $
       decodeFileEither fileName
   withThrow entityFailure $ buildEntityMap decoded
 
@@ -444,6 +488,10 @@ entityOrientation = hashedLens _entityOrientation (\e x -> e {_entityOrientation
 -- | How long this entity takes to grow, if it regrows.
 entityGrowth :: Lens' Entity (Maybe GrowthTime)
 entityGrowth = hashedLens _entityGrowth (\e x -> e {_entityGrowth = x})
+
+-- | Susceptibility to and duration of combustion
+entityCombustion :: Lens' Entity (Maybe Combustibility)
+entityCombustion = hashedLens _entityCombustion (\e x -> e {_entityCombustion = x})
 
 -- | The name of a different entity yielded when this entity is
 --   grabbed, if any.

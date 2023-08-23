@@ -142,6 +142,7 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
 import Data.List (partition, sortOn)
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -179,7 +180,9 @@ import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Universe as U
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
 import Swarm.Game.World qualified as W
-import Swarm.Game.WorldGen (Seed, findGoodOrigin, testWorld2FromArray)
+import Swarm.Game.World.Eval (runWorld)
+import Swarm.Game.World.Gen (Seed, findGoodOrigin)
+import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Module (Module (Module))
@@ -188,7 +191,8 @@ import Swarm.Language.Syntax (Const, SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
-import Swarm.Util (binTuples, surfaceEmpty, uniq, (<+=), (<<.=), (?))
+import Swarm.Util (applyWhen, binTuples, surfaceEmpty, uniq, (<+=), (<<.=), (?))
+import Swarm.Util.Erasable
 import Swarm.Util.Lens (makeLensesExcluding)
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
@@ -1014,6 +1018,7 @@ data GameStateConfig = GameStateConfig
   , initNameList :: Array Int Text
   , initEntities :: EntityMap
   , initRecipes :: [Recipe Entity]
+  , initWorldMap :: WorldMap
   }
 
 -- | Create an initial, fresh game state record when starting a new scenario.
@@ -1207,12 +1212,15 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
   -- Subworld order as encountered in the scenario YAML file is preserved for
   -- the purpose of numbering robots, other than the "root" subworld
   -- guaranteed to be first.
+  genRobots :: [(Int, TRobot)]
   genRobots = concat $ NE.toList $ NE.map (fst . snd) builtWorldTuples
 
+  builtWorldTuples :: NonEmpty (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int Entity))
   builtWorldTuples =
-    NE.map (worldName &&& buildWorld em) $
+    NE.map (worldName &&& buildWorld) $
       scenario ^. scenarioWorlds
 
+  allSubworldsMap :: Seed -> W.MultiWorld Int Entity
   allSubworldsMap s =
     M.map genWorld
       . M.fromList
@@ -1232,23 +1240,24 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
 
 -- | Take a world description, parsed from a scenario file, and turn
 --   it into a list of located robots and a world function.
-buildWorld :: EntityMap -> WorldDescription -> ([IndexedTRobot], Seed -> WorldFun Int Entity)
-buildWorld em WorldDescription {..} = (robots worldName, first fromEnum . wf)
+buildWorld :: WorldDescription -> ([IndexedTRobot], Seed -> WorldFun Int Entity)
+buildWorld WorldDescription {..} = (robots worldName, first fromEnum . wf)
  where
   rs = fromIntegral $ length area
   cs = fromIntegral $ length (head area)
   Coords (ulr, ulc) = locToCoords ul
 
-  worldGrid :: [[(TerrainType, Maybe Entity)]]
+  worldGrid :: [[(TerrainType, Erasable Entity)]]
   worldGrid = (map . map) (cellTerrain &&& cellEntity) area
 
-  worldArray :: Array (Int32, Int32) (TerrainType, Maybe Entity)
+  worldArray :: Array (Int32, Int32) (TerrainType, Erasable Entity)
   worldArray = listArray ((ulr, ulc), (ulr + rs - 1, ulc + cs - 1)) (concat worldGrid)
 
-  wf = case defaultTerrain of
-    Nothing ->
-      (if offsetOrigin then findGoodOrigin else id) . testWorld2FromArray em worldArray
-    Just (Cell t e _) -> const (worldFunFromArray worldArray (t, e))
+  dslWF, arrayWF :: Seed -> WorldFun TerrainType Entity
+  dslWF = maybe mempty ((applyWhen offsetOrigin findGoodOrigin .) . runWorld) worldProg
+  arrayWF = const (worldFunFromArray worldArray)
+
+  wf = dslWF <> arrayWF
 
   -- Get all the robots described in cells and set their locations appropriately
   robots :: SubworldName -> [IndexedTRobot]

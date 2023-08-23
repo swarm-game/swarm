@@ -179,7 +179,6 @@ entities:
     properties: [known]
 robots: []
 world:
-  default: [blank]
   palette:
     '.': [blank]
     '1': [blank, color1]

@@ -2,10 +2,10 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Conversions from native Haskell values
 -- to values in the swarm language.
---
--- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Value where
 
 import Control.Lens (view)

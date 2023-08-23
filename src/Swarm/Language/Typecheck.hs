@@ -725,6 +725,7 @@ inferConst c = case c of
   Turn -> [tyQ| dir -> cmd unit |]
   Grab -> [tyQ| cmd text |]
   Harvest -> [tyQ| cmd text |]
+  Ignite -> [tyQ| dir -> cmd unit |]
   Place -> [tyQ| text -> cmd unit |]
   Give -> [tyQ| actor -> text -> cmd unit |]
   Equip -> [tyQ| text -> cmd unit |]

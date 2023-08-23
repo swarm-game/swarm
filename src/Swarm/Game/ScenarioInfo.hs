@@ -64,6 +64,7 @@ import Swarm.Game.ResourceLoading (getDataDirSafe, getSwarmSavePath)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Status
+import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Util.Effect (warn, withThrow)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
@@ -76,7 +77,7 @@ import Witch (into)
 -- | A scenario item is either a specific scenario, or a collection of
 --   scenarios (*e.g.* the scenarios contained in a subdirectory).
 data ScenarioItem = SISingle ScenarioInfoPair | SICollection Text ScenarioCollection
-  deriving (Eq, Show)
+  deriving (Show)
 
 -- | Retrieve the name of a scenario item.
 scenarioItemName :: ScenarioItem -> Text
@@ -90,7 +91,7 @@ data ScenarioCollection = SC
   { scOrder :: Maybe [FilePath]
   , scMap :: Map FilePath ScenarioItem
   }
-  deriving (Eq, Show)
+  deriving (Show)
 
 -- | Access and modify ScenarioItems in collection based on their path.
 scenarioItemByPath :: FilePath -> Traversal' ScenarioCollection ScenarioItem
@@ -138,14 +139,15 @@ flatten (SICollection _ c) = concatMap flatten $ scenarioCollectionToList c
 loadScenarios ::
   (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
   EntityMap ->
+  WorldMap ->
   m ScenarioCollection
-loadScenarios em = do
+loadScenarios em worldMap = do
   res <- runThrow @SystemFailure $ getDataDirSafe Scenarios "scenarios"
   case res of
     Left err -> do
       warn err
       return $ SC mempty mempty
-    Right dataDir -> loadScenarioDir em dataDir
+    Right dataDir -> loadScenarioDir em worldMap dataDir
 
 -- | The name of the special file which indicates the order of
 --   scenarios in a folder.
@@ -161,9 +163,10 @@ readOrderFile orderFile =
 loadScenarioDir ::
   (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
   EntityMap ->
+  WorldMap ->
   FilePath ->
   m ScenarioCollection
-loadScenarioDir em dir = do
+loadScenarioDir em worldMap dir = do
   let orderFile = dir </> orderFileName
       dirName = takeBaseName dir
   orderExists <- sendIO $ doesFileExist orderFile
@@ -194,7 +197,7 @@ loadScenarioDir em dir = do
   -- Only keep the files from 00-ORDER.txt that actually exist.
   let morder' = filter (`elem` itemPaths) <$> morder
       loadItem filepath = do
-        item <- loadScenarioItem em (dir </> filepath)
+        item <- loadScenarioItem em worldMap (dir </> filepath)
         return (filepath, item)
   scenarios <- mapM (runThrow @SystemFailure . loadItem) itemPaths
   let (failures, successes) = partitionEithers scenarios
@@ -235,7 +238,7 @@ loadScenarioInfo p = do
       return $
         ScenarioInfo path NotStarted
     else
-      withThrow (AssetNotLoaded (Data Scenarios) infoPath . CanNotParse)
+      withThrow (AssetNotLoaded (Data Scenarios) infoPath . CanNotParseYaml)
         . (liftEither <=< sendIO)
         $ decodeFileEither infoPath
 
@@ -256,15 +259,16 @@ loadScenarioItem ::
   , Has (Lift IO) sig m
   ) =>
   EntityMap ->
+  WorldMap ->
   FilePath ->
   m ScenarioItem
-loadScenarioItem em path = do
+loadScenarioItem em worldMap path = do
   isDir <- sendIO $ doesDirectoryExist path
   let collectionName = into @Text . dropWhile isSpace . takeBaseName $ path
   case isDir of
-    True -> SICollection collectionName <$> loadScenarioDir em path
+    True -> SICollection collectionName <$> loadScenarioDir em worldMap path
     False -> do
-      s <- loadScenarioFile em path
+      s <- loadScenarioFile em worldMap path
       eitherSi <- runThrow @SystemFailure (loadScenarioInfo path)
       case eitherSi of
         Right si -> return $ SISingle (s, si)

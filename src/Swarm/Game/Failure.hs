@@ -20,16 +20,18 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Void
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Prettyprinter (Pretty (pretty), nest, squotes, vcat, (<+>))
 import Swarm.Language.Pretty
 import Swarm.Util (showLowT)
+import Text.Megaparsec (ParseErrorBundle, errorBundlePretty)
 import Witch (into)
 
 ------------------------------------------------------------
 -- Failure descriptions
 
-data AssetData = AppAsset | NameGeneration | Entities | Recipes | Scenarios | Script
+data AssetData = AppAsset | NameGeneration | Entities | Recipes | Worlds | Scenarios | Script
   deriving (Eq, Show)
 
 data Asset = Achievement | Data AssetData | History | Save
@@ -41,10 +43,20 @@ data Entry = Directory | File
 data LoadingFailure
   = DoesNotExist Entry
   | EntryNot Entry
-  | CanNotParse ParseException
+  | CanNotParseYaml ParseException
+  | CanNotParseMegaparsec (ParseErrorBundle Text Void)
+  | DoesNotTypecheck Text -- See Note [Typechecking errors]
   | Duplicate AssetData Text
   | CustomMessage Text
   deriving (Show)
+
+-- ~~~~ Note [Pretty-printing typechecking errors]
+--
+-- It would make sense to store a CheckErr in DoesNotTypecheck;
+-- however, Swarm.Game.Failure is imported in lots of places, and
+-- CheckErr can contain high-level things like TTerms etc., so it
+-- would lead to an import cycle.  Instead, we choose to just
+-- pretty-print typechecking errors before storing them here.
 
 data OrderFileWarning
   = NoOrderFile
@@ -80,10 +92,18 @@ instance PrettyPrec LoadingFailure where
   prettyPrec _ = \case
     DoesNotExist e -> "The" <+> ppr e <+> "is missing!"
     EntryNot e -> "The entry is not a" <+> ppr e <> "!"
-    CanNotParse p ->
+    CanNotParseYaml p ->
       nest 2 . vcat $
         "Parse failure:"
           : map pretty (T.lines (into @Text (prettyPrintParseException p)))
+    CanNotParseMegaparsec p ->
+      nest 2 . vcat $
+        "Parse failure:"
+          : map pretty (T.lines (into @Text (errorBundlePretty p)))
+    DoesNotTypecheck t ->
+      nest 2 . vcat $
+        "Parse failure:"
+          : map pretty (T.lines t)
     Duplicate thing duped -> "Duplicate" <+> ppr thing <> ":" <+> squotes (pretty duped)
     CustomMessage m -> pretty m
 

@@ -4,6 +4,8 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Load/save logic for achievements.
+-- Each achievement is saved to its own file to better
+-- support forward-compatibility.
 module Swarm.Game.Achievement.Persistence where
 
 import Control.Arrow (left)
@@ -42,7 +44,7 @@ loadAchievementsInfo = do
         if isFile
           then do
             eitherDecodedFile <- sendIO (Y.decodeFileEither fullPath)
-            return $ left (AssetNotLoaded Achievement p . CanNotParse) eitherDecodedFile
+            return $ left (AssetNotLoaded Achievement p . CanNotParseYaml) eitherDecodedFile
           else return . Left $ AssetNotLoaded Achievement p (EntryNot File)
     else do
       warn $ AssetNotLoaded Achievement "." $ DoesNotExist Directory

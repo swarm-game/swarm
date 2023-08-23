@@ -615,7 +615,6 @@ recipes:
 known: [water, sand, flower, iron mine]
 seed: 0
 world:
-  default: [blank]
   palette:
     '.': [blank]
     '/': [blank, left roof]

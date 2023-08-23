@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -24,16 +25,16 @@ module Swarm.Doc.Gen (
 ) where
 
 import Control.Effect.Lift
-import Control.Effect.Throw
 import Control.Lens (view, (^.))
 import Control.Lens.Combinators (to)
 import Control.Monad (zipWithM, zipWithM_)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (find, toList)
 import Data.List (transpose)
-import Data.Map.Lazy (Map)
+import Data.Map.Lazy (Map, (!))
 import Data.Map.Lazy qualified as Map
 import Data.Maybe (fromMaybe, isJust)
+import Data.Sequence (Seq)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text, unpack)
@@ -48,7 +49,9 @@ import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements, recipeTime, recipeWeight)
 import Swarm.Game.Robot (Robot, equippedDevices, instantiateRobot, robotInventory)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
-import Swarm.Game.WorldGen (testWorld2Entites)
+import Swarm.Game.World.Gen (extractEntities)
+import Swarm.Game.World.Load (loadWorlds)
+import Swarm.Game.World.Typecheck (Some (..), TTerm)
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Capability qualified as Capability
 import Swarm.Language.Key (specialKeyNames)
@@ -58,7 +61,7 @@ import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Text.Markdown as Markdown (docToMark)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Util (both, listEnums, quote)
-import Swarm.Util.Effect (simpleErrorHandle)
+import Swarm.Util.Effect (ignoreWarnings, simpleErrorHandle)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 
@@ -417,11 +420,12 @@ generateRecipe :: IO String
 generateRecipe = simpleErrorHandle $ do
   entities <- loadEntities
   recipes <- loadRecipes entities
-  classic <- classicScenario
-  return . Dot.showDot $ recipesToDot classic entities recipes
+  worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds entities
+  classic <- fst <$> loadScenario "data/scenarios/classic.yaml" entities worlds
+  return . Dot.showDot $ recipesToDot classic (worlds ! "classic") entities recipes
 
-recipesToDot :: Scenario -> EntityMap -> [Recipe Entity] -> Dot ()
-recipesToDot classic emap recipes = do
+recipesToDot :: Scenario -> Some (TTerm '[]) -> EntityMap -> [Recipe Entity] -> Dot ()
+recipesToDot classic classicTerm emap recipes = do
   Dot.attribute ("rankdir", "LR")
   Dot.attribute ("ranksep", "2")
   world <- diamond "World"
@@ -441,8 +445,8 @@ recipesToDot classic emap recipes = do
   -- how hard each entity is to get - see 'recipeLevels'.
   let devs = startingDevices classic
       inv = startingInventory classic
-      worldEntites = Set.map (safeGetEntity $ entitiesByName emap) testWorld2Entites
-      levels = recipeLevels recipes (Set.unions [worldEntites, devs])
+      worldEntities = case classicTerm of Some _ t -> extractEntities t
+      levels = recipeLevels recipes (Set.unions [worldEntities, devs])
   -- --------------------------------------------------------------------------
   -- Base inventory
   (_bc, ()) <- Dot.cluster $ do
@@ -455,7 +459,7 @@ recipesToDot classic emap recipes = do
   (_wc, ()) <- Dot.cluster $ do
     Dot.attribute ("style", "filled")
     Dot.attribute ("color", "forestgreen")
-    mapM_ ((uncurry (Dot..->.) . (world,)) . getE) (toList testWorld2Entites)
+    mapM_ (uncurry (Dot..->.) . (world,) . getE . view entityName) (toList worldEntities)
   -- --------------------------------------------------------------------------
   let -- put a hidden node above and below entities and connect them by hidden edges
       wrapBelowAbove :: Set Entity -> Dot (NodeId, NodeId)
@@ -485,7 +489,7 @@ recipesToDot classic emap recipes = do
   -- --------------------------------------------------------------------------
   -- order entities into clusters based on how "far" they are from
   -- what is available at the start - see 'recipeLevels'.
-  bottom <- wrapBelowAbove worldEntites
+  bottom <- wrapBelowAbove worldEntities
   ls <- zipWithM subLevel [1 ..] (tail levels)
   let invisibleLine = zipWithM_ (.~>.)
   tls <- mapM (const hiddenNode) levels
@@ -535,12 +539,6 @@ recipeLevels recipes start = levels
        in if null n
             then ls
             else go (n : ls) (Set.union n known)
-
--- | Get classic scenario to figure out starting entities.
-classicScenario :: (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) => m Scenario
-classicScenario = do
-  entities <- loadEntities
-  fst <$> loadScenario "data/scenarios/classic.yaml" entities
 
 startingHelper :: Scenario -> Robot
 startingHelper = instantiateRobot 0 . head . view scenarioRobots

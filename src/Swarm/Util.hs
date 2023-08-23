@@ -23,10 +23,12 @@ module Swarm.Util (
   both,
   allEqual,
   surfaceEmpty,
+  applyWhen,
 
   -- * Directory utilities
   readFileMay,
   readFileMayT,
+  acquireAllWithExt,
 
   -- * Text utilities
   isIdentChar,
@@ -74,8 +76,8 @@ module Swarm.Util (
 import Control.Applicative (Alternative)
 import Control.Carrier.Throw.Either
 import Control.Effect.State (State, modify, state)
-import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
-import Control.Monad (guard, unless)
+import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<&>), (<>~))
+import Control.Monad (filterM, guard, unless)
 import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum, toLower)
 import Data.Either.Validation
@@ -98,6 +100,8 @@ import Language.Haskell.TH.Syntax (lift)
 import NLP.Minimorph.English qualified as MM
 import NLP.Minimorph.Util ((<+>))
 import System.Clock (TimeSpec)
+import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
+import System.FilePath (takeExtension, (</>))
 import System.IO.Error (catchIOError)
 import Witch (from)
 
@@ -196,6 +200,12 @@ allEqual (x : xs) = all (== x) xs
 surfaceEmpty :: Alternative f => (a -> Bool) -> a -> f a
 surfaceEmpty isEmpty t = t <$ guard (not (isEmpty t))
 
+-- Note, once we upgrade to an LTS version that includes
+-- base-compat-0.13, we should switch to using 'applyWhen' from there.
+applyWhen :: Bool -> (a -> a) -> a -> a
+applyWhen True f x = f x
+applyWhen False _ x = x
+
 ------------------------------------------------------------
 -- Directory stuff
 
@@ -206,6 +216,20 @@ readFileMay = catchIO . readFile
 -- | Safely attempt to (efficiently) read a file.
 readFileMayT :: FilePath -> IO (Maybe Text)
 readFileMayT = catchIO . T.readFile
+
+-- | Recursively acquire all files in the given directory with the
+--   given extension, and their contents.
+acquireAllWithExt :: FilePath -> String -> IO [(FilePath, String)]
+acquireAllWithExt dir ext = do
+  paths <- listDirectory dir <&> map (dir </>)
+  filePaths <- filterM (\path -> doesFileExist path <&> (&&) (hasExt path)) paths
+  children <- mapM (\path -> (,) path <$> readFile path) filePaths
+  -- recurse
+  sub <- filterM doesDirectoryExist paths
+  transChildren <- concat <$> mapM (`acquireAllWithExt` ext) sub
+  return $ children <> transChildren
+ where
+  hasExt path = takeExtension path == ("." ++ ext)
 
 -- | Turns any IO error into Nothing.
 catchIO :: IO a -> IO (Maybe a)

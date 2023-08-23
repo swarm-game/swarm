@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Editor.Controller where
 
 import Brick hiding (Direction (..), Location (..))
@@ -25,6 +27,7 @@ import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
+import Swarm.Util.Erasable (maybeToErasable)
 import System.Clock
 
 ------------------------------------------------------------
@@ -57,7 +60,7 @@ handleCtrlLeftClick mouseLoc = do
     -- TODO (#1151): Use hoistMaybe when available
     terrain <- MaybeT . pure $ maybeTerrainType
     mouseCoords <- MaybeT $ Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
-    uiState . uiWorldEditor . paintedTerrain %= M.insert (mouseCoords ^. planar) (terrain, maybeEntityPaint)
+    uiState . uiWorldEditor . paintedTerrain %= M.insert (mouseCoords ^. planar) (terrain, maybeToErasable maybeEntityPaint)
     uiState . uiWorldEditor . lastWorldEditorMessage .= Nothing
   immediatelyRedrawWorld
   return ()
@@ -121,7 +124,10 @@ updateAreaBounds = \case
       -- TODO (#1152): Validate that the lower-right click is below and to the right of
       -- the top-left coord and that they are within the same subworld
       LowerRightPending upperLeftMouseCoords -> do
-        uiState . uiWorldEditor . editingBounds . boundsRect
+        uiState
+          . uiWorldEditor
+          . editingBounds
+          . boundsRect
           .= Just (fmap (,view planar mouseCoords) upperLeftMouseCoords)
         uiState . uiWorldEditor . lastWorldEditorMessage .= Nothing
         uiState . uiWorldEditor . editingBounds . boundsSelectionStep .= SelectionComplete

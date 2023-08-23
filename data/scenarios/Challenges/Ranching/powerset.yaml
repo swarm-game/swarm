@@ -179,7 +179,8 @@ entities:
     properties: [known, growable, portable]
 known: [sand]
 world:
-  default: [grass]
+  dsl: |
+    {grass}
   upperleft: [-1, -1]
   offset: false
   palette:

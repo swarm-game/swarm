@@ -60,6 +60,7 @@
                "turn"
                "grab"
                "harvest"
+               "ignite"
                "place"
                "give"
                "equip"

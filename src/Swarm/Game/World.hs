@@ -1,4 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -10,8 +12,8 @@
 -- mutable /entity/ layer, with at most one entity per cell.
 --
 -- A world is technically finite but practically infinite (worlds are
--- indexed by 64-bit signed integers, so they correspond to a
--- \( 2^{64} \times 2^{64} \) torus).
+-- indexed by 32-bit signed integers, so they correspond to a
+-- \( 2^{32} \times 2^{32} \) torus).
 module Swarm.Game.World (
   -- * World coordinates
   Coords (..),
@@ -21,6 +23,7 @@ module Swarm.Game.World (
 
   -- * Worlds
   WorldFun (..),
+  runWF,
   worldFunFromArray,
   World,
   MultiWorld,
@@ -31,7 +34,6 @@ module Swarm.Game.World (
 
   -- ** World functions
   newWorld,
-  emptyWorld,
   lookupCosmicTerrain,
   lookupTerrain,
   lookupCosmicEntity,
@@ -54,49 +56,24 @@ import Control.Lens
 import Data.Array qualified as A
 import Data.Array.IArray
 import Data.Array.Unboxed qualified as U
+import Data.Bifunctor (second)
 import Data.Bits
 import Data.Foldable (foldl')
 import Data.Function (on)
 import Data.Int (Int32)
 import Data.Map (Map)
 import Data.Map.Strict qualified as M
+import Data.Semigroup (Last (..))
 import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Swarm.Game.Entity (Entity, entityHash)
 import Swarm.Game.Location
 import Swarm.Game.Terrain (TerrainType (BlankT))
 import Swarm.Game.Universe
+import Swarm.Game.World.Coords
 import Swarm.Util ((?))
+import Swarm.Util.Erasable
 import Prelude hiding (lookup)
-
-------------------------------------------------------------
--- World coordinates
-------------------------------------------------------------
-
--- | World coordinates use (row,column) format, with the row
---   increasing as we move down the screen.  We use this format for
---   indexing worlds internally, since it plays nicely with things
---   like drawing the screen, and reading maps from configuration
---   files. The 'locToCoords' and 'coordsToLoc' functions convert back
---   and forth between this type and 'Location', which is used when
---   presenting coordinates externally to the player.
-newtype Coords = Coords {unCoords :: (Int32, Int32)}
-  deriving (Eq, Ord, Show, Ix, Generic)
-
-instance Rewrapped Coords t
-instance Wrapped Coords
-
--- | Convert an external (x,y) location to an internal 'Coords' value.
-locToCoords :: Location -> Coords
-locToCoords (Location x y) = Coords (-y, x)
-
--- | Convert an internal 'Coords' value to an external (x,y) location.
-coordsToLoc :: Coords -> Location
-coordsToLoc (Coords (r, c)) = Location c (-r)
-
--- | Represents the top-left and bottom-right coordinates
--- of a bounding rectangle of cells in the world map
-type BoundsRectangle = (Coords, Coords)
 
 ------------------------------------------------------------
 -- World function
@@ -105,19 +82,22 @@ type BoundsRectangle = (Coords, Coords)
 -- | A @WorldFun t e@ represents a 2D world with terrain of type @t@
 -- (exactly one per cell) and entities of type @e@ (at most one per
 -- cell).
-newtype WorldFun t e = WF {runWF :: Coords -> (t, Maybe e)}
-  deriving (Functor)
+newtype WorldFun t e = WF {getWF :: Coords -> (t, Erasable (Last e))}
+  deriving stock (Functor)
+  deriving newtype (Semigroup, Monoid)
+
+runWF :: WorldFun t e -> Coords -> (t, Maybe e)
+runWF wf = second (erasableToMaybe . fmap getLast) . getWF wf
 
 instance Bifunctor WorldFun where
-  bimap g h (WF z) = WF (bimap g (fmap h) . z)
+  bimap g h (WF z) = WF (bimap g (fmap (fmap h)) . z)
 
--- | Create a world function from a finite array of specified cells
---   plus a single default cell to use everywhere else.
-worldFunFromArray :: Array (Int32, Int32) (t, Maybe e) -> (t, Maybe e) -> WorldFun t e
-worldFunFromArray arr def = WF $ \(Coords (r, c)) ->
+-- | Create a world function from a finite array of specified cells.
+worldFunFromArray :: Monoid t => Array (Int32, Int32) (t, Erasable e) -> WorldFun t e
+worldFunFromArray arr = WF $ \(Coords (r, c)) ->
   if inRange bnds (r, c)
-    then arr ! (r, c)
-    else def
+    then second (fmap Last) (arr ! (r, c))
+    else mempty
  where
   bnds = bounds arr
 
@@ -216,11 +196,6 @@ data World t e = World
 -- | Create a new 'World' from a 'WorldFun'.
 newWorld :: WorldFun t e -> World t e
 newWorld f = World f M.empty M.empty
-
--- | Create a new empty 'World' consisting of nothing but the given
---   terrain.
-emptyWorld :: t -> World t e
-emptyWorld t = newWorld (WF $ const (t, Nothing))
 
 lookupCosmicTerrain ::
   IArray U.UArray Int =>
@@ -336,9 +311,9 @@ loadRegion reg (World f t m) = World f t' m
     tileCorner = tileOrigin tc
     (terrain, entities) = unzip $ map (runWF f . plusOffset tileCorner) (range tileBounds)
 
--- ------------------------------------------------------------------
+---------------------------------------------------------------------
 -- Runtime world update
--- ------------------------------------------------------------------
+---------------------------------------------------------------------
 
 -- | Update world in an inspectable way.
 --

@@ -1,6 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 
--- | Data types and instances for specific scoring methods
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Data types and instances for specific scoring methods
 module Swarm.Game.Scenario.Scoring.ConcreteMetrics where
 
 import Control.Lens hiding (from, (<.>))
@@ -14,7 +17,7 @@ import Swarm.Game.Scenario.Scoring.CodeSize
 scenarioOptions :: Options
 scenarioOptions =
   defaultOptions
-    { fieldLabelModifier = map toLower . drop (length "_scenario")
+    { fieldLabelModifier = map toLower . drop (length ("_scenario" :: String))
     }
 
 data DurationMetrics = DurationMetrics

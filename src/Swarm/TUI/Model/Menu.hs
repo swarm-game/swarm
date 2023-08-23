@@ -6,6 +6,9 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Sum types that represent menu options,
+-- modal dialogs, and buttons.
 module Swarm.TUI.Model.Menu where
 
 import Brick.Widgets.Dialog (Dialog)

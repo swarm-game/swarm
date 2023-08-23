@@ -13,7 +13,7 @@ objectives:
       - |
         Build a robot to retrieve and restore the mystery artifact to its proper place!
       - |
-        Note: If you find yourself stuck, you can select "Start over" from
+        **NOTE:** If you find yourself stuck, you can select "Start over" from
         the "Quit" (**Ctrl+Q**) dialog.
     condition: |
       try {
@@ -38,7 +38,7 @@ objectives:
         For example, `grab` has type `cmd text`{=type}, and returns the name of the
         grabbed entity as a text value.
       - |
-        To use the result of a command later, you need "bind notation", which
+        To use the result of a command later, you need _bind notation_, which
         consists of a variable name and a leftwards-pointing arrow
         before the command.  For example:
       - |
@@ -100,7 +100,6 @@ robots:
   - name: pedestal
     system: true
 world:
-  default: [blank]
   palette:
     '.': [blank, null]
     'Ω': [blank, null, base]

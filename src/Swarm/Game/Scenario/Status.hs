@@ -2,7 +2,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
--- | High-level status of scenario play.
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- High-level status of scenario play.
 -- Representation of progress, logic for updating.
 module Swarm.Game.Scenario.Status where
 
@@ -22,12 +25,13 @@ import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
-import Swarm.Game.WorldGen (Seed)
+import Swarm.Game.World.Gen (Seed)
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 -- | These launch parameters are used in a number of ways:
+--
 -- * Serializing the seed/script path for saves
--- * Holding parse status from form fields, including Error info
+-- * Holding parse status from form fields, including error info
 -- * Carrying fully-validated launch parameters.
 --
 -- Type parameters are utilized to support all of these use cases.
@@ -45,9 +49,9 @@ deriving instance Generic SerializableLaunchParams
 deriving instance FromJSON SerializableLaunchParams
 deriving instance ToJSON SerializableLaunchParams
 
--- | A "ScenarioStatus" stores the status of a scenario along with
---   appropriate metadata: "NotStarted", or "Played".
---   The "Played" status has two sub-states: "Attempted" or "Completed".
+-- | A 'ScenarioStatus' stores the status of a scenario along with
+--   appropriate metadata: 'NotStarted', or 'Played'.
+--   The 'Played' status has two sub-states: 'Attempted' or 'Completed'.
 data ScenarioStatus
   = NotStarted
   | Played
@@ -68,9 +72,9 @@ getLaunchParams = \case
   NotStarted -> LaunchParams (pure Nothing) (pure Nothing)
   Played x _ _ -> x
 
--- | A "ScenarioInfo" record stores metadata about a scenario: its
+-- | A 'ScenarioInfo' record stores metadata about a scenario: its
 -- canonical path and status.
--- By way of the "ScenarioStatus" record, it stores the
+-- By way of the 'ScenarioStatus' record, it stores the
 -- most recent status and best-ever status.
 data ScenarioInfo = ScenarioInfo
   { _scenarioPath :: FilePath
@@ -95,11 +99,11 @@ scenarioPath :: Lens' ScenarioInfo FilePath
 -- | The status of the scenario.
 scenarioStatus :: Lens' ScenarioInfo ScenarioStatus
 
--- | Update the current "ScenarioInfo" record when quitting a game.
+-- | Update the current 'ScenarioInfo' record when quitting a game.
 --
 -- Note that when comparing \"best\" times, shorter is not always better!
 -- As long as the scenario is not completed (e.g. some do not have win condition)
--- we consider having fun _longer_ to be better.
+-- we consider having fun /longer/ to be better.
 updateScenarioInfoOnFinish ::
   CodeSizeDeterminators ->
   ZonedTime ->

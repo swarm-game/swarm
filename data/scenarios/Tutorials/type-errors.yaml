@@ -13,7 +13,7 @@ objectives:
       - |
         `turn move`{=snippet}
       - |
-        `place tree`{=snippet} (without double quotes around "tree")
+        `place tree`{=snippet} (without double quotes around `tree`{=snippet})
       - |
         `move move`{=snippet}
       - The last expression might give the most confusing error.
@@ -49,7 +49,6 @@ robots:
     inventory:
       - [1, Win]
 world:
-  default: [blank]
   palette:
     '>': [grass, null, base]
     '.': [grass]

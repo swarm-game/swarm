@@ -349,7 +349,8 @@ recipes:
       - [1, highlighter]
 known: [boulder]
 world:
-  default: [dirt]
+  dsl: |
+    {dirt}
   upperleft: [0, 0]
   offset: false
   palette:
