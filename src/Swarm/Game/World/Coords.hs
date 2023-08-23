@@ -35,11 +35,11 @@ newtype Coords = Coords {unCoords :: (Int32, Int32)}
 instance Rewrapped Coords t
 instance Wrapped Coords
 
--- | Convert an external (x,y) location to an internal 'Coords' value.
+-- | Convert an external @(x,y)@ location to an internal 'Coords' value.
 locToCoords :: Location -> Coords
 locToCoords (Location x y) = Coords (-y, x)
 
--- | Convert an internal 'Coords' value to an external (x,y) location.
+-- | Convert an internal 'Coords' value to an external @(x,y)@ location.
 coordsToLoc :: Coords -> Location
 coordsToLoc (Coords (r, c)) = Location c (-r)
 

@@ -1,6 +1,9 @@
 {-# LANGUAGE DerivingVia #-}
 
--- | Stand-in type for an "Entity" for purposes
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Stand-in type for an "Entity" for purposes
 -- that do not require carrying around the entire state
 -- of an Entity.
 --
@@ -9,19 +12,16 @@
 module Swarm.Game.Scenario.Topography.EntityFacade where
 
 import Control.Lens ((^.))
-import Data.Text (Text)
 import Data.Yaml as Y (ToJSON (toJSON))
 import Swarm.Game.Display (Display)
 import Swarm.Game.Entity qualified as E
-
-type EntityName = Text
 
 -- | This datatype is a lightweight stand-in for the
 -- full-fledged "Entity" type without the baggage of all
 -- of its other fields.
 -- It contains the bare minimum display information
 -- for rendering.
-data EntityFacade = EntityFacade EntityName Display
+data EntityFacade = EntityFacade E.EntityName Display
   deriving (Eq)
 
 -- Note: This instance is used only for the purpose of WorldPalette

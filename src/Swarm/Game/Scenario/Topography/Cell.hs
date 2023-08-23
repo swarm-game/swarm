@@ -31,8 +31,8 @@ import Swarm.Util.Yaml
 
 -- | A single cell in a world map, which contains a terrain value,
 --   and optionally an entity and robot.
---   It is parameterized on the Entity type to facilitate less
---   stateful versions of the Entity type in rendering scenario data.
+--   It is parameterized on the 'Entity' type to facilitate less
+--   stateful versions of the 'Entity' type in rendering scenario data.
 data PCell e = Cell
   { cellTerrain :: TerrainType
   , cellEntity :: Erasable e
@@ -51,7 +51,7 @@ data AugmentedCell e = AugmentedCell
   }
   deriving (Eq, Show)
 
--- | Re-usable serialization for variants of "PCell"
+-- | Re-usable serialization for variants of 'PCell'
 mkPCellJson :: ToJSON b => (Erasable a -> Maybe b) -> PCell a -> Value
 mkPCellJson modifier x =
   toJSON $
@@ -115,7 +115,7 @@ instance FromJSONE (EntityMap, RobotMap) (AugmentedCell Entity) where
 -- for rendering.
 type CellPaintDisplay = PCell EntityFacade
 
--- Note: This instance is used only for the purpose of WorldPalette
+-- Note: This instance is used only for the purpose of 'WorldPalette'
 instance ToJSON CellPaintDisplay where
   toJSON = mkPCellJson $ \case
     ENothing -> Nothing

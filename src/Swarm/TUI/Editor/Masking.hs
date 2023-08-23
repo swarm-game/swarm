@@ -1,3 +1,5 @@
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Editor.Masking where
 
 import Control.Lens hiding (Const, from)

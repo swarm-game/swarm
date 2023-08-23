@@ -2,6 +2,9 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Descriptions of the orientation and offset by
+-- which a structure should be placed.
 module Swarm.Game.Scenario.Topography.Placement where
 
 import Data.List (transpose)

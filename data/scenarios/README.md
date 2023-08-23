@@ -149,6 +149,7 @@ table.
 | `description`  |          | `string list` | A description of the entity, as a list of paragraphs.                                                                                                                                                                                                                            |
 | `orientation`  | `null`   | `int × int`   | A 2-tuple of integers specifying an orientation vector for the entity. Currently unused.                                                                                                                                                                                         |
 | `growth`       | `null`   | `int × int`   | For growable entities, a 2-tuple of integers specifying the minimum and maximum amount of time taken for one growth stage.  The actual time for one growth stage will be chosen uniformly at random from this range; it takes two growth stages for an entity to be fully grown. |
+| `combustion`      |          | `object`      | [Combustion](#combustion) information for the entity.                                                                                                                                                                                                                                  |
 | `yields`       | `null`   | `string`      | The name of the entity which will be added to a robot's inventory when it executes `grab` or `harvest` on this entity.  If omitted, the entity will simply yield itself.                                                                                                         |
 | `properties`   | `[]`     | `string list` | A list of properties of this entity.  See [Entity properties](#entity-properties).                                                                                                                                                                                               |
 | `capabilities` | `[]`     | `string list` | A list of capabilities provided by entity, when it is equipped as a device.  See [Capabilities](#capabilities).                                                                                                                                                                 |
@@ -181,6 +182,16 @@ capabilities here, which would be annoying to keep up-to-date, see the
 (automatically generated) [Commands cheat
 sheet](https://github.com/swarm-game/swarm/wiki/Commands-Cheat-Sheet)
 on the Swarm wiki.
+
+### Combustion
+
+The *combustion* property specifies whether and how an entity may combust, described by the following table.
+
+| Key              | Default? | Type      | Description                                                                                                                                                                                            |
+|------------------|----------|-----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `ignition`           | `0.5`    | `number`  | The rate of ignition by a neighbor, per tick.                                                                                                                                 |
+| `duration`       | `null`   | `int × int`   | For combustible entities, a 2-tuple of integers specifying the minimum and maximum amount of time taken for combustion. |
+| `product`           | `ash`    | `string`  | What entity, if any, is left over after combustion                                                                                                                                 |
 
 ### Display
 

@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Topography.Area where
 
 import Data.Int (Int32)
@@ -22,7 +24,7 @@ invertY (V2 x y) = V2 x (-y)
 
 -- | Incorporates an offset by -1, since the area is
 -- "inclusive" of the lower-right coordinate.
--- Inverse of "cornersToArea".
+-- Inverse of 'cornersToArea'.
 upperLeftToBottomRight :: AreaDimensions -> Location -> Location
 upperLeftToBottomRight (AreaDimensions w h) upperLeft =
   upperLeft .+^ displacement
@@ -30,9 +32,9 @@ upperLeftToBottomRight (AreaDimensions w h) upperLeft =
   displacement = invertY $ subtract 1 <$> V2 w h
 
 -- | Converts the displacement vector between the two
--- diagonal corners of the rectangle into an "AreaDimensions" record.
+-- diagonal corners of the rectangle into an 'AreaDimensions' record.
 -- Adds one to both dimensions since the corner coordinates are "inclusive".
--- Inverse of "upperLeftToBottomRight".
+-- Inverse of 'upperLeftToBottomRight'.
 cornersToArea :: Location -> Location -> AreaDimensions
 cornersToArea upperLeft lowerRight =
   AreaDimensions x y

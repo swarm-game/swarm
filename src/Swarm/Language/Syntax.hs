@@ -162,6 +162,8 @@ data Const
     Grab
   | -- | Harvest an item from the current location.
     Harvest
+  | -- | Ignite a combustible item
+    Ignite
   | -- | Try to place an item at the current location.
     Place
   | -- | Give an item to another robot at the current location.
@@ -538,6 +540,10 @@ constInfo c = case c of
     command 0 short . doc "Harvest an item from the current location." $
       [ "Leaves behind a growing seed if the harvested item is growable."
       , "Otherwise it works exactly like `grab`."
+      ]
+  Ignite ->
+    command 1 short . doc "Ignite a combustible item in the specified direction." $
+      [ "Combustion persists for a random duration and may spread."
       ]
   Place ->
     command 1 short . doc "Place an item at the current location." $

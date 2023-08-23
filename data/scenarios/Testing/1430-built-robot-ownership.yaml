@@ -1,0 +1,44 @@
+version: 1
+name: Ownership of system-built robots
+creative: true
+description: Demo of system robot construction
+robots:
+  - name: base
+    dir: [1, 0]
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - logger
+  - name: sysbot
+    dir: [0, 1]
+    system: true
+    display:
+      char: j
+      attr: robot
+      invisible: true
+    devices:
+      - treads
+      - solar panel
+      - logger
+      - 3D printer
+    inventory:
+      - [1, solar panel]
+      - [1, logger]
+      - [1, treads]
+      - [1, string]
+    program: |
+      build {move; move; x <- as parent {whoami}; log x}
+known: []
+world:
+  palette:
+    'Ω': [grass, null, base]
+    'r': [stone, null, sysbot]
+    '.': [grass]
+  upperleft: [0, 0]
+  map: |
+   .........
+   .........
+   ...Ω..r..
+   .........
+   .........

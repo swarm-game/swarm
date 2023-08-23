@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               swarm
-version:            0.4
+version:            0.4.0.0
 synopsis:           2D resource gathering game with programmable robots
 
 description:        Swarm is a 2D programming and resource gathering
@@ -130,6 +130,8 @@ library
                       Swarm.Game.ScenarioInfo
                       Swarm.Game.State
                       Swarm.Game.Step
+                      Swarm.Game.Step.Combustion
+                      Swarm.Game.Step.Util
                       Swarm.Game.Terrain
                       Swarm.Game.Value
                       Swarm.Game.World

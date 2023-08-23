@@ -1,5 +1,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Types for styling custom entity attributes
 module Swarm.Game.Scenario.Style where
 
 import Data.Aeson

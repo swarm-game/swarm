@@ -1,5 +1,11 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Sum types representing the Brick names
+-- for every referenceable widget.
+--
+-- Nesting of name types is utilized often to simplify
+-- case matching.
 module Swarm.TUI.Model.Name where
 
 data WorldEditorFocusable

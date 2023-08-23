@@ -27,7 +27,7 @@ renderWorldName = \case
 
 -- | The swarm universe consists of locations
 -- indexed by subworld.
--- Not only is this datatype useful for planar (2D)
+-- Not only is this parameterized datatype useful for planar (2D)
 -- coordinates, but is also used for named waypoints.
 data Cosmic a = Cosmic
   { _subworld :: SubworldName

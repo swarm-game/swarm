@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Editor.Model where
 
 import Brick.Focus
@@ -39,7 +41,7 @@ toFacade = \case
   Facade f -> f
   Ref e -> mkFacade e
 
-getEntityName :: EntityFacade -> EntityName
+getEntityName :: EntityFacade -> E.EntityName
 getEntityName (EntityFacade name _) = name
 
 data MapEditingBounds = MapEditingBounds

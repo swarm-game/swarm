@@ -2,7 +2,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
--- | Types and records for updating and retrieving
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Types and records for updating and retrieving
 -- the best scores for a scenario.
 module Swarm.Game.Scenario.Scoring.Best where
 

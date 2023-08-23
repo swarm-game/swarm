@@ -3,6 +3,15 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Type definitions and validation logic for portals.
+--
+-- Portals can be inter-world or intra-world.
+-- It is legal for a portal exit to be on the same cell as its entrance.
+--
+-- By default, passage through a portal preserves the orientation
+-- of the robot, but an extra portal parameter can specify
+-- that the robot should be re-oriented.
 module Swarm.Game.Scenario.Topography.Navigation.Portal where
 
 import Control.Arrow ((&&&))
@@ -40,12 +49,14 @@ data AnnotatedDestination a = AnnotatedDestination
 
 -- | Parameterized on waypoint dimensionality ('additionalDimension') and
 -- on the portal location specification method ('portalExitLoc').
+--
 -- == @additionalDimension@
 -- As a member of the 'WorldDescription', waypoints are only known within a
 -- a single subworld, so 'additionalDimension' is 'Identity' for the map
 -- of waypoint names to planar locations.
 -- At the Scenario level, in contrast, we have access to all subworlds, so
 -- we nest this map to planar locations in additional mapping layer by subworld.
+--
 -- == @portalExitLoc@
 -- At the subworld parsing level, we only can obtain the planar location
 -- for portal /entrances/, but the /exits/ remain as waypoint names.
@@ -110,11 +121,12 @@ failWaypointLookup (WaypointName rawName) =
 
 -- |
 -- The following constraints must be enforced:
+--
 -- * portals based on plural waypoint multiplicity can have multiple entrances but only a single exit
 -- * no two portals share the same entrance location
 -- * waypoint uniqueness within a subworld when the 'unique' flag is specified
 --
--- == Data flow:
+-- == Data flow
 --
 -- Waypoints are defined within a subworld and are namespaced by it.
 -- Optional intra-subworld uniqueness of Waypoints is enforced at WorldDescription
@@ -217,6 +229,7 @@ validatePortals (Navigation wpUniverse partialPortals) = do
 --
 -- Verifying this is simple:
 -- For all of the portals between Subworlds A and B:
+--
 -- * The coordinates of all \"consistent\" portal locations in Subworld A
 --   are subtracted from the corresponding coordinates in Subworld B. It
 --   does not matter which are exits vs. entrances.
@@ -271,6 +284,7 @@ ensureSpatialConsistency xs =
 --
 -- == Discussion
 -- Compare to the 'Traversable' instance of 'Signed':
+--
 -- @
 -- instance Traversable Signed where
 --   traverse f (Positive x) = Positive <$> f x
@@ -278,6 +292,7 @@ ensureSpatialConsistency xs =
 -- @
 --
 -- if we were to substitute 'id' for f:
+--
 -- @
 --   traverse id (Positive x) = Positive <$> id x
 --   traverse id (Negative x) = Negative <$> id x
