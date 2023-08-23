@@ -31,7 +31,8 @@ import Swarm.Doc.Gen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
 import Swarm.Game.Entity (EntityMap, lookupByName)
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Robot (LogEntry, defReqs, equippedDevices, leText, machine, robotContext, robotLog, waitingUntil, LogSource (..))
+import Swarm.Game.Log (ErrorLevel (..), leSource)
+import Swarm.Game.Robot (LogEntry, LogSource (..), defReqs, equippedDevices, leText, machine, robotContext, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
@@ -40,18 +41,19 @@ import Swarm.Game.State (
   activeRobots,
   baseRobot,
   messageQueue,
+  notificationsContent,
   robotMap,
   ticks,
   waitingRobots,
   winCondition,
-  winSolution, notificationsContent,
+  winSolution,
  )
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty (prettyString)
-import Swarm.TUI.Model (RuntimeState, defaultAppOpts, gameState, stdEntityMap, userScenario, worlds, eventLog, runtimeState)
+import Swarm.TUI.Model (RuntimeState, defaultAppOpts, eventLog, gameState, runtimeState, stdEntityMap, userScenario, worlds)
 import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
 import Swarm.TUI.Model.UI (UIState)
 import Swarm.Util (acquireAllWithExt)
@@ -61,7 +63,6 @@ import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
 import Witch (into)
-import Swarm.Game.Log (leSource, ErrorLevel (..))
 
 isUnparseableTest :: (FilePath, String) -> Bool
 isUnparseableTest (fp, _) = "_Validation" `elem` splitDirectories fp
@@ -94,11 +95,13 @@ testNoLoadingErrors r =
   testCase "Test runtime log does not contain errors" (checkNoRuntimeErrors r)
 
 checkNoRuntimeErrors :: RuntimeState -> IO ()
-checkNoRuntimeErrors r = 
+checkNoRuntimeErrors r =
   forM_ (r ^. eventLog . notificationsContent) $ \e ->
     case e ^. leSource of
-      ErrorTrace l | l >= Warning -> assertFailure $
-        show l <> " was produced during loading: " <> T.unpack (e ^. leText)
+      ErrorTrace l
+        | l >= Warning ->
+            assertFailure $
+              show l <> " was produced during loading: " <> T.unpack (e ^. leText)
       _ -> pure ()
 
 exampleTests :: [(FilePath, String)] -> TestTree
