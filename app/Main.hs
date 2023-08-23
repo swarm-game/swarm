@@ -16,7 +16,9 @@ import Options.Applicative
 import Swarm.App (appMain)
 import Swarm.Doc.Gen (EditorType (..), GenerateDocs (..), PageAddress (..), SheetType (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
-import Swarm.Language.Pipeline (processTerm)
+import Swarm.Language.Module (Module (..))
+import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
+import Swarm.Language.Pretty (prettyText)
 import Swarm.TUI.Model (AppOpts (..), ColorMode (..))
 import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond)
 import Swarm.Version
@@ -161,8 +163,11 @@ formatFile :: Input -> IO ()
 formatFile input = do
   content <- getInput input
   case processTerm content of
-    Right _ -> do
-      Text.putStrLn content
+    Right t -> do
+      case t of
+        Nothing -> Text.putStrLn ""
+        Just (ProcessedTerm (Module ast _mctx) _req _ctx) ->
+          Text.putStrLn $ prettyText ast
       exitSuccess
     Left e -> do
       Text.hPutStrLn stderr $ showInput input <> ":" <> e
