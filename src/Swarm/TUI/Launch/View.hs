@@ -152,7 +152,7 @@ drawLaunchConfigPanel (LaunchOptions lc launchParams) =
       , infoBox
       , if isRight validatedOptions then startButton else emptyWidget
       ]
-    
+
     checkMark x = txt (if x then "[x]" else "[ ]")
 
     formatInfo header content =
