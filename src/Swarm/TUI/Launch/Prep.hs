@@ -20,7 +20,7 @@ import Data.Functor.Identity (runIdentity)
 import Data.Text qualified as T
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (..), ScenarioInfoPair, getLaunchParams, scenarioStatus)
-import Swarm.Game.State (Seed, ValidatedLaunchParams, getRunCodePath, parseCodeFile)
+import Swarm.Game.State (Seed, ValidatedLaunchParams, getRunCodePath, parseCodeFile, SolutionSource (..), CodeToRun (..))
 import Swarm.Language.Pretty (prettyText)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Model.Name
@@ -28,6 +28,7 @@ import Swarm.Util (listEnums)
 import Swarm.Util.Effect (withThrow)
 import System.FilePath (takeDirectory)
 import Text.Read (readEither)
+import Swarm.Language.Pipeline (ProcessedTerm)
 
 swarmLangFileExtension :: String
 swarmLangFileExtension = "sw"
@@ -51,11 +52,13 @@ parseSeedInput seedEditor =
  where
   seedFieldText = mconcat $ getEditContents seedEditor
 
-parseWidgetParams :: LaunchControls -> IO EditingLaunchParams
-parseWidgetParams (LaunchControls (FileBrowserControl _fb maybeSelectedScript _) seedEditor _ _) = do
+parseWidgetParams :: Maybe ProcessedTerm -> LaunchControls -> IO EditingLaunchParams
+parseWidgetParams solution (LaunchControls autoPlay (FileBrowserControl _fb maybeSelectedScript _) seedEditor _ _) = do
   eitherParsedCode <-
-    runThrow . withThrow (prettyText @SystemFailure) $
-      traverse parseCodeFile maybeSelectedScript
+    if autoPlay
+      then pure . Right $ CodeToRun ScenarioSuggested <$> solution
+      else runThrow . withThrow (prettyText @SystemFailure) $
+        traverse parseCodeFile maybeSelectedScript
   return $ LaunchParams eitherMaybeSeed eitherParsedCode
  where
   eitherMaybeSeed = parseSeedInput seedEditor
@@ -82,7 +85,7 @@ initConfigPanel = do
       Nothing -- Initial working directory to display
   return $
     LaunchOptions
-      (LaunchControls (FileBrowserControl fb Nothing False) myForm ring Nothing)
+      (LaunchControls False (FileBrowserControl fb Nothing False) myForm ring Nothing)
       (LaunchParams (Right Nothing) (Right Nothing))
  where
   myForm = initEditorWidget ""

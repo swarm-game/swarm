@@ -36,7 +36,9 @@ data ScenarioConfigPanel
   deriving (Eq, Ord, Show, Read)
 
 data ScenarioConfigPanelFocusable
-  = -- | The file selector for launching a scenario with a script
+  = 
+    AutoPlaySelector
+  | -- | The file selector for launching a scenario with a script
     ScriptSelector
   | SeedSelector
   | StartGameButton

@@ -63,6 +63,7 @@ drawFileBrowser b =
 
 optionDescription :: ScenarioConfigPanelFocusable -> Maybe Text
 optionDescription = \case
+  AutoPlaySelector -> Just "Use provided scenario solution."
   SeedSelector -> Just "Leaving this field blank will use the default seed for the scenario."
   ScriptSelector -> Just "Selecting a script to be run upon start permits eligibility for code size scoring."
   StartGameButton -> Nothing
@@ -72,7 +73,7 @@ drawLaunchConfigPanel (LaunchOptions lc launchParams) =
   addFileBrowser [panelWidget]
  where
   validatedOptions = toValidatedParams launchParams
-  LaunchControls (FileBrowserControl fb _ isFbDisplayed) seedEditor ring displayedFor = lc
+  LaunchControls autoPlay (FileBrowserControl fb _ isFbDisplayed) seedEditor ring displayedFor = lc
   addFileBrowser =
     if isFbDisplayed
       then (drawFileBrowser fb :)
@@ -151,6 +152,8 @@ drawLaunchConfigPanel (LaunchOptions lc launchParams) =
       , infoBox
       , if isRight validatedOptions then startButton else emptyWidget
       ]
+    
+    checkMark x = txt (if x then "[x]" else "[ ]")
 
     formatInfo header content =
       hBox
@@ -180,6 +183,7 @@ drawLaunchConfigPanel (LaunchOptions lc launchParams) =
 
     controlsBox =
       vBox
-        [ padControl ScriptSelector "Script" fileEntryWidget
+        [ padControl AutoPlaySelector "AutoPlay" (checkMark autoPlay)
+        , padControl ScriptSelector "Script" fileEntryWidget
         , padControl SeedSelector "Seed" seedEntryWidget
         ]

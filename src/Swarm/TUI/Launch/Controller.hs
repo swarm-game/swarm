@@ -24,6 +24,7 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
 import Swarm.Util (listEnums)
+import Swarm.Language.Pipeline (ProcessedTerm (..))
 
 updateFocusRing :: EditingLaunchParams -> EventM Name LaunchOptions ()
 updateFocusRing parsedParams = do
@@ -37,10 +38,10 @@ updateFocusRing parsedParams = do
 
   controls . scenarioConfigFocusRing .= refocusRing (makeFocusRingWith $ modifyRingMembers listEnums)
 
-cacheValidatedInputs :: EventM Name LaunchOptions ()
-cacheValidatedInputs = do
+cacheValidatedInputs :: Maybe ProcessedTerm -> EventM Name LaunchOptions ()
+cacheValidatedInputs solution = do
   launchControls <- use controls
-  parsedParams <- liftIO $ parseWidgetParams launchControls
+  parsedParams <- liftIO $ parseWidgetParams solution launchControls
   editingParams .= parsedParams
   updateFocusRing parsedParams
 
@@ -66,7 +67,12 @@ handleFBEvent ::
   EventM Name AppState ()
 handleFBEvent ev = do
   fb <- use $ uiState . uiLaunchConfig . controls . fileBrowser . fbWidget
+  mScenario <- use $ uiState . scenarioRef
+  let solution = view scenarioSolution . fst =<< mScenario
   let isSearching = fileBrowserIsSearching fb
+  let closeModal = Brick.zoom (uiState . uiLaunchConfig) $ do
+        controls . fileBrowser . fbIsDisplayed .= False
+        cacheValidatedInputs solution
   case (isSearching, ev) of
     (False, Key V.KEsc) -> closeModal
     (False, CharKey 'q') -> closeModal
@@ -111,10 +117,6 @@ handleFBEvent ev = do
         uiState . uiLaunchConfig . controls . fileBrowser . maybeSelectedFile .= maybeSingleFile
         closeModal
     _ -> return ()
- where
-  closeModal = Brick.zoom (uiState . uiLaunchConfig) $ do
-    controls . fileBrowser . fbIsDisplayed .= False
-    cacheValidatedInputs
 
 handleLaunchOptionsEvent ::
   ScenarioInfoPair ->
@@ -157,6 +159,8 @@ handleLaunchOptionsEvent siPair = \case
 
   activateFocusedControl item = case item of
     SeedSelector -> return ()
+    AutoPlaySelector ->
+      uiState . uiLaunchConfig . controls . autoPlayCheck %= not
     ScriptSelector -> Brick.zoom (uiState . uiLaunchConfig . controls . fileBrowser) $ do
       maybeSingleFile <- use maybeSelectedFile
       configuredFB <- initFileBrowserWidget maybeSingleFile
