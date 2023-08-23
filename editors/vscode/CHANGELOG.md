@@ -2,6 +2,14 @@
 
 All notable changes to the "swarm-language" extension will be documented in this file.
 
+## version 0.0.9
+- [Highlighter] add `unit` and `actor` types
+- [Highlighter] add many new commands:
+  - backup, charat, chirp, density, detect, equip, equipped, halt, heading,
+    installkeyhandler, instant, isempty, key, meet, meetall, push, resonate,
+    scout, sniff, stride, surveil, tochar, unequip, use, watch, waypoint
+- [Highlighter] remove `install` and `installed` commands
+
 ## version 0.0.8
 - [Highlighter] update regex to recognize `void` and `text` types
 - [Highlighter] improve the coloring of types and lambda parameters
