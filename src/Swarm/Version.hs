@@ -142,6 +142,12 @@ instance Show NewReleaseFailure where
 tagToVersion :: String -> Version
 tagToVersion = fst . last . readP_to_S parseVersion
 
+-- | Drop trailing zeros from versions so that we can compare them.
+normalize :: Version -> Version
+normalize (Version ns tags) = Version (dropTrailing0 ns) tags
+ where
+  dropTrailing0 = reverse . dropWhile (== 0) . reverse
+
 -- | Get a newer upstream release version.
 --
 -- This function can fail if the current branch is not main,
@@ -161,6 +167,6 @@ getNewerReleaseVersion mgi =
   getUpVer :: String -> Either NewReleaseFailure String
   getUpVer upTag =
     let upVer = tagToVersion upTag
-     in if myVer >= upVer
+     in if normalize myVer >= normalize upVer
           then Left $ OldUpstreamRelease upVer myVer
           else Right upTag
