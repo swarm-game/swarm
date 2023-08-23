@@ -4,12 +4,22 @@ creative: true
 description: Demo of system robot construction
 robots:
   - name: base
-    dir: [1, 0]
+    dir: [0, -1]
     display:
       char: Ω
       attr: robot
+    inventory:
+      - [5, logger]
+      - [5, compass]
+      - [5, solar panel]
+      - [5, treads]
+      - [5, grabber]
     devices:
       - logger
+      - 3D printer
+      - dictionary
+      - grabber
+      - hearing aid
   - name: sysbot
     dir: [0, 1]
     system: true
@@ -28,7 +38,17 @@ robots:
       - [1, treads]
       - [1, string]
     program: |
-      build {move; move; x <- as parent {whoami}; log x}
+      build {move; say (format parent)}
+solution: |
+    listen; build {move; say (format parent)}
+objectives:
+  - goal:
+    - Check that system robots build system robots and normal robots do not.
+    - This check is performed in integration tests.
+    condition: |
+      r2 <- robotNumbered 2;
+      r3 <- robotNumbered 3;
+      return true
 known: []
 world:
   palette:

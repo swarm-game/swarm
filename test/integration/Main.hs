@@ -11,7 +11,7 @@ module Main where
 
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
-import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<>~), (^.), (^..), (^?!))
+import Control.Lens (Ixed (ix), to, use, view, (&), (.~), (<>~), (^.), (^..), (^?!), at)
 import Control.Monad (forM_, unless, when)
 import Control.Monad.State (StateT (runStateT), gets)
 import Data.Char (isSpace)
@@ -31,7 +31,7 @@ import Swarm.Doc.Gen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
 import Swarm.Game.Entity (EntityMap, lookupByName)
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Robot (LogEntry, defReqs, equippedDevices, leText, machine, robotContext, robotLog, waitingUntil)
+import Swarm.Game.Robot (LogEntry, defReqs, equippedDevices, leText, machine, robotContext, robotLog, waitingUntil, systemRobot)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
@@ -305,6 +305,13 @@ testScenarioSolutions rs ui =
             , testSolution Default "Testing/1320-world-DSL/override"
             ]
         ]
+        , testSolution' Default "Testing/1430-built-robot-ownership.yaml" CheckForBadErrors $ \g -> do
+            let r2 = g ^. robotMap . at 2
+            let r3 = g ^. robotMap . at 3
+            assertBool "The second built robot should be a system robot like it's parent." $
+              maybe False (view systemRobot) r2
+            assertBool "The third built robot should be a normal robot like base." $
+              maybe False (not . view systemRobot) r3
     ]
  where
   -- expectFailIf :: Bool -> String -> TestTree -> TestTree
