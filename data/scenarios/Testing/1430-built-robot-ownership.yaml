@@ -4,7 +4,7 @@ creative: true
 description: Demo of system robot construction
 robots:
   - name: base
-    dir: [0, -1]
+    dir: [1, 0]
     display:
       char: Ω
       attr: robot
@@ -21,7 +21,7 @@ robots:
       - grabber
       - hearing aid
   - name: sysbot
-    dir: [0, 1]
+    dir: [-1, 0]
     system: true
     display:
       char: j
