@@ -305,7 +305,7 @@ testScenarioSolutions rs ui =
             , testSolution Default "Testing/1320-world-DSL/override"
             ]
         ]
-    , testSolution' Default "Testing/1430-built-robot-ownership.yaml" CheckForBadErrors $ \g -> do
+    , testSolution' Default "Testing/1430-built-robot-ownership" CheckForBadErrors $ \g -> do
         let r2 = g ^. robotMap . at 2
         let r3 = g ^. robotMap . at 3
         assertBool "The second built robot should be a system robot like it's parent." $
