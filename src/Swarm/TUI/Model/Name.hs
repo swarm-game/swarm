@@ -36,8 +36,7 @@ data ScenarioConfigPanel
   deriving (Eq, Ord, Show, Read)
 
 data ScenarioConfigPanelFocusable
-  = 
-    AutoPlaySelector
+  = AutoPlaySelector
   | -- | The file selector for launching a scenario with a script
     ScriptSelector
   | SeedSelector

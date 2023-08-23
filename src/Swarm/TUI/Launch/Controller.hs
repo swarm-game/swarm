@@ -16,6 +16,7 @@ import Data.Maybe (listToMaybe)
 import Graphics.Vty qualified as V
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (LaunchParams))
 import Swarm.Game.ScenarioInfo
+import Swarm.Language.Pipeline (ProcessedTerm (..))
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep (initFileBrowserWidget, makeFocusRingWith, parseSeedInput, parseWidgetParams, toValidatedParams)
@@ -24,7 +25,6 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
 import Swarm.Util (listEnums)
-import Swarm.Language.Pipeline (ProcessedTerm (..))
 
 updateFocusRing :: EditingLaunchParams -> EventM Name LaunchOptions ()
 updateFocusRing parsedParams = do

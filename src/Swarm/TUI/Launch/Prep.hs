@@ -20,7 +20,8 @@ import Data.Functor.Identity (runIdentity)
 import Data.Text qualified as T
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (..), ScenarioInfoPair, getLaunchParams, scenarioStatus)
-import Swarm.Game.State (Seed, ValidatedLaunchParams, getRunCodePath, parseCodeFile, SolutionSource (..), CodeToRun (..))
+import Swarm.Game.State (CodeToRun (..), Seed, SolutionSource (..), ValidatedLaunchParams, getRunCodePath, parseCodeFile)
+import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Model.Name
@@ -28,7 +29,6 @@ import Swarm.Util (listEnums)
 import Swarm.Util.Effect (withThrow)
 import System.FilePath (takeDirectory)
 import Text.Read (readEither)
-import Swarm.Language.Pipeline (ProcessedTerm)
 
 swarmLangFileExtension :: String
 swarmLangFileExtension = "sw"
@@ -57,8 +57,9 @@ parseWidgetParams solution (LaunchControls autoPlay (FileBrowserControl _fb mayb
   eitherParsedCode <-
     if autoPlay
       then pure . Right $ CodeToRun ScenarioSuggested <$> solution
-      else runThrow . withThrow (prettyText @SystemFailure) $
-        traverse parseCodeFile maybeSelectedScript
+      else
+        runThrow . withThrow (prettyText @SystemFailure) $
+          traverse parseCodeFile maybeSelectedScript
   return $ LaunchParams eitherMaybeSeed eitherParsedCode
  where
   eitherMaybeSeed = parseSeedInput seedEditor
