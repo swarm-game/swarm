@@ -86,7 +86,7 @@ instance PrettyPrec Asset where
     a -> pretty (showLowT a)
 
 instance PrettyPrec Entry where
-  prettyPrec = const . prettyShowLow
+  prettyPrec _ = prettyShowLow
 
 instance PrettyPrec LoadingFailure where
   prettyPrec _ = \case
