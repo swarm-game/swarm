@@ -72,7 +72,7 @@ encloseWithIndent i l r = nest i . enclose (l <> line') (nest (-2) $ line' <> r)
 
 -- | Surround a document with backticks.
 bquote :: Doc ann -> Doc ann
-bquote d = "`" <> d <> "`"
+bquote = group . enclose "`" "`"
 
 -- | Turn a 'Show' instance into a @Doc@, lowercasing it in the
 --   process.
@@ -299,37 +299,42 @@ prettyTypeErr code (CTE l tcStack te) =
   showLoc (r, c) = pretty r <> ":" <> pretty c
 
 instance PrettyPrec TypeErr where
-  prettyPrec _ (UnifyErr ty1 ty2) =
-    "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
-  prettyPrec _ (Mismatch Nothing (getJoin -> (ty1, ty2))) =
-    "Type mismatch: expected" <+> ppr ty1 <> ", but got" <+> ppr ty2
-  prettyPrec _ (Mismatch (Just t) (getJoin -> (ty1, ty2))) =
-    nest 2 . vcat $
-      [ "Type mismatch:"
-      , "From context, expected" <+> bquote (ppr t) <+> "to" <+> typeDescription Expected ty1 <> ","
-      , "but it" <+> typeDescription Actual ty2
-      ]
-  prettyPrec _ (LambdaArgMismatch (getJoin -> (ty1, ty2))) =
-    "Lambda argument has type annotation" <+> bquote (ppr ty2) <> ", but expected argument type" <+> bquote (ppr ty1)
-  prettyPrec _ (FieldsMismatch (getJoin -> (expFs, actFs))) = fieldMismatchMsg expFs actFs
-  prettyPrec _ (EscapedSkolem x) =
-    "Skolem variable" <+> pretty x <+> "would escape its scope"
-  prettyPrec _ (UnboundVar x) =
-    "Unbound variable" <+> pretty x
-  prettyPrec _ (Infinite x uty) =
-    "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
-  prettyPrec _ (DefNotTopLevel t) =
-    "Definitions may only be at the top level:" <+> ppr t
-  prettyPrec _ (CantInfer t) =
-    "Couldn't infer the type of term (this shouldn't happen; please report this as a bug!):" <+> ppr t
-  prettyPrec _ (CantInferProj t) =
-    "Can't infer the type of a record projection:" <+> ppr t
-  prettyPrec _ (UnknownProj x t) =
-    "Record does not have a field with name" <+> pretty x <> ":" <+> ppr t
-  prettyPrec _ (InvalidAtomic reason t) =
-    "Invalid atomic block:" <+> ppr reason <> ":" <+> ppr t
-  prettyPrec _ Impredicative =
-    "Unconstrained unification type variables encountered, likely due to an impredicative type. This is a known bug; for more information see https://github.com/swarm-game/swarm/issues/351 ."
+  prettyPrec _ = \case
+    (UnifyErr ty1 ty2) ->
+      "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
+    (Mismatch Nothing (getJoin -> (ty1, ty2))) ->
+      "Type mismatch: expected" <+> ppr ty1 <> ", but got" <+> ppr ty2
+    (Mismatch (Just t) (getJoin -> (ty1, ty2))) ->
+      nest 2 . vcat $
+        [ "Type mismatch:"
+        , "From context, expected" <+> pprCode t <+> "to" <+> typeDescription Expected ty1 <> ","
+        , "but it" <+> typeDescription Actual ty2
+        ]
+    (LambdaArgMismatch (getJoin -> (ty1, ty2))) ->
+      "Lambda argument has type annotation" <+> pprCode ty2 <> ", but expected argument type" <+> pprCode ty1
+    (FieldsMismatch (getJoin -> (expFs, actFs))) ->
+      fieldMismatchMsg expFs actFs
+    (EscapedSkolem x) ->
+      "Skolem variable" <+> pretty x <+> "would escape its scope"
+    (UnboundVar x) ->
+      "Unbound variable" <+> pretty x
+    (Infinite x uty) ->
+      "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
+    (DefNotTopLevel t) ->
+      "Definitions may only be at the top level:" <+> pprCode t
+    (CantInfer t) ->
+      "Couldn't infer the type of term (this shouldn't happen; please report this as a bug!):" <+> pprCode t
+    (CantInferProj t) ->
+      "Can't infer the type of a record projection:" <+> pprCode t
+    (UnknownProj x t) ->
+      "Record does not have a field with name" <+> pretty x <> ":" <+> pprCode t
+    (InvalidAtomic reason t) ->
+      "Invalid atomic block:" <+> ppr reason <> ":" <+> pprCode t
+    Impredicative ->
+      "Unconstrained unification type variables encountered, likely due to an impredicative type. This is a known bug; for more information see https://github.com/swarm-game/swarm/issues/351 ."
+   where
+    pprCode :: PrettyPrec a => a -> Doc ann
+    pprCode = bquote . ppr
 
 -- | Given a type and its source, construct an appropriate description
 --   of it to go in a type mismatch error message.
