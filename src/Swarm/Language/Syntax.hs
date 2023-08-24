@@ -75,7 +75,6 @@ module Swarm.Language.Syntax (
   unfoldApps,
 
   -- * Erasure
-  erase,
   eraseS,
 
   -- * Term traversal
@@ -1066,14 +1065,10 @@ unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
 --------------------------------------------------
 -- Erasure
 
--- | Erase a 'Syntax' tree annotated with @SrcLoc@ and type
+-- | Erase a 'Syntax' tree annotated with type
 --   information to a bare unannotated 'Term'.
 eraseS :: Syntax' ty -> Term
 eraseS (Syntax' _ t _) = void t
-
--- | Erase a type-annotated term to a bare term.
-erase :: Term' ty -> Term
-erase = void
 
 ------------------------------------------------------------
 -- Free variable traversals
