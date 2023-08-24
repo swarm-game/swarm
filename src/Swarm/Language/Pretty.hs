@@ -61,10 +61,14 @@ prettyString :: (PrettyPrec a) => a -> String
 prettyString = docToString . ppr
 
 -- | Optionally surround a document with parentheses depending on the
---   @Bool@ argument.
+--   @Bool@ argument and if it does not fit on line, indent the lines,
+--   with the parens on separate lines.
 pparens :: Bool -> Doc ann -> Doc ann
-pparens True = group . parens
+pparens True = group . encloseWithIndent 2 lparen rparen
 pparens False = id
+
+encloseWithIndent :: Int -> Doc ann -> Doc ann -> Doc ann -> Doc ann
+encloseWithIndent i l r = nest i . enclose (l <> line') (nest (-2) $ line' <> r)
 
 -- | Surround a document with backticks.
 bquote :: Doc ann -> Doc ann
@@ -180,7 +184,7 @@ instance PrettyPrec Term where
   prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr @Term (TText e)
   prettyPrec p (TRequirements _ e) = pparens (p > 10) $ "requirements" <+> ppr e
   prettyPrec _ (TVar s) = pretty s
-  prettyPrec _ (TDelay _ t) = group . braces $ line' <> nest 2 (ppr t) <> line'
+  prettyPrec _ (TDelay _ t) = group . encloseWithIndent 2 lbrace rbrace $ ppr t
   prettyPrec _ t@TPair {} = prettyTuple t
   prettyPrec _ t@(TLam {}) = prettyLambdas t
   -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3
