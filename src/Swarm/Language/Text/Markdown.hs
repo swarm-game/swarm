@@ -56,8 +56,10 @@ import GHC.Exts qualified (IsList (..), IsString (..))
 import Swarm.Language.Module (moduleAST)
 import Swarm.Language.Parse (readTerm)
 import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
-import Swarm.Language.Pretty (PrettyPrec (..), prettyText, prettyTypeErrText)
+import Swarm.Language.Pretty (PrettyPrec (..), prettyText, prettyTypeErrText, ppr)
 import Swarm.Language.Syntax (Syntax)
+import Prettyprinter (LayoutOptions(..), PageWidth (..), layoutPretty, group)
+import Prettyprinter.Render.Text qualified as RT
 
 -- | The top-level markdown document.
 newtype Document c = Document {paragraphs :: [Paragraph c]}
@@ -309,9 +311,11 @@ class ToStream a where
 instance PrettyPrec a => ToStream (Node a) where
   toStream = \case
     LeafText a t -> [TextNode a t]
-    LeafCode t -> [CodeNode (prettyText t)]
+    LeafCode t -> [CodeNode (pprOneLine t)]
     LeafRaw s t -> [RawNode s t]
     LeafCodeBlock _i t -> [CodeNode (prettyText t)]
+   where
+    pprOneLine = RT.renderStrict . layoutPretty (LayoutOptions Unbounded) . group . ppr 
 
 instance PrettyPrec a => ToStream (Paragraph a) where
   toStream = concatMap toStream . nodes
