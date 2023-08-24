@@ -75,7 +75,6 @@ module Swarm.Language.Syntax (
   unfoldApps,
 
   -- * Erasure
-  erase,
   eraseS,
 
   -- * Term traversal
@@ -89,6 +88,7 @@ module Swarm.Language.Syntax (
 ) where
 
 import Control.Lens (Plated (..), Traversal', makeLenses, para, universe, (%~), (^.))
+import Control.Monad (void)
 import Data.Aeson.Types hiding (Key)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
@@ -1065,37 +1065,10 @@ unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
 --------------------------------------------------
 -- Erasure
 
--- | Erase a 'Syntax' tree annotated with @SrcLoc@ and type
+-- | Erase a 'Syntax' tree annotated with type
 --   information to a bare unannotated 'Term'.
 eraseS :: Syntax' ty -> Term
-eraseS (Syntax' _ t _) = erase t
-
--- | Erase a type-annotated term to a bare term.
-erase :: Term' ty -> Term
-erase TUnit = TUnit
-erase (TConst c) = TConst c
-erase (TDir d) = TDir d
-erase (TInt n) = TInt n
-erase (TAntiInt v) = TAntiInt v
-erase (TText t) = TText t
-erase (TAntiText v) = TAntiText v
-erase (TBool b) = TBool b
-erase (TRobot r) = TRobot r
-erase (TRef r) = TRef r
-erase (TRequireDevice d) = TRequireDevice d
-erase (TRequire n e) = TRequire n e
-erase (SRequirements x s) = TRequirements x (eraseS s)
-erase (TVar s) = TVar s
-erase (SDelay x s) = TDelay x (eraseS s)
-erase (SPair s1 s2) = TPair (eraseS s1) (eraseS s2)
-erase (SLam x mty body) = TLam (lvVar x) mty (eraseS body)
-erase (SApp s1 s2) = TApp (eraseS s1) (eraseS s2)
-erase (SLet r x mty s1 s2) = TLet r (lvVar x) mty (eraseS s1) (eraseS s2)
-erase (SDef r x mty s) = TDef r (lvVar x) mty (eraseS s)
-erase (SBind mx s1 s2) = TBind (lvVar <$> mx) (eraseS s1) (eraseS s2)
-erase (SRcd m) = TRcd ((fmap . fmap) eraseS m)
-erase (SProj s x) = TProj (eraseS s) x
-erase (SAnnotate s pty) = TAnnotate (eraseS s) pty
+eraseS (Syntax' _ t _) = void t
 
 ------------------------------------------------------------
 -- Free variable traversals
