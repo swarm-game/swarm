@@ -206,7 +206,7 @@ instance PrettyPrec Term where
             _ -> prettyPrecApp p t1 t2
     _ -> prettyPrecApp p t1 t2
   prettyPrec _ (TLet _ x mty t1 t2) =
-    group . nest 2 . vsep $
+    group . vsep $
       [ hsep $
           ["let", pretty x]
             ++ maybe [] (\ty -> [":", ppr ty]) mty
