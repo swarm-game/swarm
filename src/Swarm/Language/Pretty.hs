@@ -180,10 +180,9 @@ instance PrettyPrec Term where
   prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr @Term (TText e)
   prettyPrec p (TRequirements _ e) = pparens (p > 10) $ "requirements" <+> ppr e
   prettyPrec _ (TVar s) = pretty s
-  prettyPrec _ (TDelay _ t) = group . braces $ line' <> nest 1 (ppr t) <> line'
+  prettyPrec _ (TDelay _ t) = group . braces $ line' <> nest 2 (ppr t) <> line'
   prettyPrec _ t@TPair {} = prettyTuple t
-  prettyPrec _ (TLam x mty body) =
-    "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
+  prettyPrec _ t@(TLam {}) = prettyLambdas t
   -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3
   prettyPrec p (TApp t@(TApp (TConst c) l) r) =
     let ci = constInfo c
@@ -207,22 +206,26 @@ instance PrettyPrec Term where
             _ -> prettyPrecApp p t1 t2
     _ -> prettyPrecApp p t1 t2
   prettyPrec _ (TLet _ x mty t1 t2) =
-    group . vsep $
+    group . nest 2 . vsep $
       [ hsep $
           ["let", pretty x]
           ++ maybe [] (\ty -> [":", ppr ty]) mty
           ++ ["=", ppr t1, "in"]
-      , nest 1 (ppr t2)
+      , ppr t2
       ]
   prettyPrec _ (TDef _ x mty t1) =
+    let (t1rest, t1lams) = unchainLambdas t1 in
     group . vsep $
-    [ hsep $
-      [ "def", pretty x]
-        ++ maybe [] (\ty -> [":", ppr ty]) mty
-        ++ ["="]
-    , nest 1 (ppr t1)
-    , "end"
-    ]
+      [ nest 2 $ vsep
+        [ hsep $
+          [ "def", pretty x]
+          ++ maybe [] (\ty -> [":", ppr ty]) mty
+          ++ ["="]
+          ++ map prettyLambda t1lams
+        , ppr t1rest
+        ]
+      , "end"
+      ]
   prettyPrec p (TBind Nothing t1 t2) =
     pparens (p > 0) $
       prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
@@ -240,7 +243,7 @@ prettyEquality (x, Nothing) = pretty x
 prettyEquality (x, Just t) = pretty x <+> "=" <+> ppr t
 
 prettyTuple :: Term -> Doc a
-prettyTuple = pparens True . hsep . punctuate "," . map ppr . unnestTuple
+prettyTuple = tupled . map ppr . unnestTuple
  where
   unnestTuple (TPair t1 t2) = t1 : unnestTuple t2
   unnestTuple t = [t]
@@ -255,6 +258,19 @@ appliedTermPrec (TApp f _) = case f of
   TConst c -> fixity $ constInfo c
   _ -> appliedTermPrec f
 appliedTermPrec _ = 10
+
+prettyLambdas :: Term -> Doc a
+prettyLambdas t = hsep (prettyLambda <$> lms) <> softline <> ppr rest
+ where
+  (rest, lms) = unchainLambdas t
+
+unchainLambdas :: Term -> (Term, [(Var, Maybe Type)])
+unchainLambdas = \case
+  TLam x mty body -> ((x, mty) :) <$> unchainLambdas body
+  body -> (body, [])
+
+prettyLambda :: (Pretty a1, PrettyPrec a2) => (a1, Maybe a2) -> Doc ann
+prettyLambda (x, mty) = "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "."
 
 ------------------------------------------------------------
 -- Error messages
