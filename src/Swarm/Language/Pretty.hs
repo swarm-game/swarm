@@ -209,23 +209,24 @@ instance PrettyPrec Term where
     group . nest 2 . vsep $
       [ hsep $
           ["let", pretty x]
-          ++ maybe [] (\ty -> [":", ppr ty]) mty
-          ++ ["=", ppr t1, "in"]
+            ++ maybe [] (\ty -> [":", ppr ty]) mty
+            ++ ["=", ppr t1, "in"]
       , ppr t2
       ]
   prettyPrec _ (TDef _ x mty t1) =
-    let (t1rest, t1lams) = unchainLambdas t1 in
-    group . vsep $
-      [ nest 2 $ vsep
-        [ hsep $
-          [ "def", pretty x]
-          ++ maybe [] (\ty -> [":", ppr ty]) mty
-          ++ ["="]
-          ++ map prettyLambda t1lams
-        , ppr t1rest
-        ]
-      , "end"
-      ]
+    let (t1rest, t1lams) = unchainLambdas t1
+     in group . vsep $
+          [ nest 2 $
+              vsep
+                [ hsep $
+                    ["def", pretty x]
+                      ++ maybe [] (\ty -> [":", ppr ty]) mty
+                      ++ ["="]
+                      ++ map prettyLambda t1lams
+                , ppr t1rest
+                ]
+          , "end"
+          ]
   prettyPrec p (TBind Nothing t1 t2) =
     pparens (p > 0) $
       prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
