@@ -904,16 +904,25 @@ data Term' ty
     SProj (Syntax' ty) Var
   | -- | Annotate a term with a type
     SAnnotate (Syntax' ty) Polytype
-  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
-
--- The Traversable instance for Term (and for Syntax') is used during
--- typechecking: during intermediate type inference, many of the type
--- annotations placed on AST nodes will have unification variables in
--- them. Once we have finished solving everything we need to do a
--- final traversal over all the types in the AST to substitute away
--- all the unification variables (and generalize, i.e. stick 'forall'
--- on, as appropriate).  See the call to 'mapM' in
--- Swarm.Language.Typecheck.runInfer.
+  deriving
+    ( Eq
+    , Show
+    , Functor
+    , Foldable
+    , Data
+    , Generic
+    , FromJSON
+    , ToJSON
+    , -- | The Traversable instance for Term (and for Syntax') is used during
+      -- typechecking: during intermediate type inference, many of the type
+      -- annotations placed on AST nodes will have unification variables in
+      -- them. Once we have finished solving everything we need to do a
+      -- final traversal over all the types in the AST to substitute away
+      -- all the unification variables (and generalize, i.e. stick 'forall'
+      -- on, as appropriate).  See the call to 'mapM' in
+      -- Swarm.Language.Typecheck.runInfer.
+      Traversable
+    )
 
 type Term = Term' ()
 
