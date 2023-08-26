@@ -180,19 +180,19 @@ testLanguagePipeline =
             "atomic move+move"
             ( process
                 "atomic (move; move)"
-                "1:8: Invalid atomic block: block could take too many ticks (2): move; move"
+                "1:8: Invalid atomic block: block could take too many ticks (2): `move; move`"
             )
         , testCase
             "atomic lambda"
             ( process
                 "atomic ((\\c. c;c) move)"
-                "1:9: Invalid atomic block: def, let, and lambda are not allowed: \\c. c; c"
+                "1:9: Invalid atomic block: def, let, and lambda are not allowed: `\\c. c; c`"
             )
         , testCase
             "atomic non-simple"
             ( process
                 "def dup = \\c. c; c end; atomic (dup (dup move))"
-                "1:33: Invalid atomic block: reference to variable with non-simple type ∀ a. cmd a -> cmd a: dup"
+                "1:33: Invalid atomic block: reference to variable with non-simple type ∀ a. cmd a -> cmd a: `dup`"
             )
         , testCase
             "atomic nested"
@@ -204,25 +204,25 @@ testLanguagePipeline =
             "atomic wait"
             ( process
                 "atomic (wait 1)"
-                "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: wait"
+                "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: `wait`"
             )
         , testCase
             "atomic make"
             ( process
                 "atomic (make \"PhD thesis\")"
-                "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: make"
+                "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: `make`"
             )
         , testCase
             "atomic drill"
             ( process
                 "atomic (drill forward)"
-                "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: drill"
+                "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: `drill`"
             )
         , testCase
             "atomic salvage"
             ( process
                 "atomic (salvage)"
-                "1:8: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: salvage"
+                "1:8: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: `salvage`"
             )
         ]
     , testGroup
@@ -396,7 +396,9 @@ testLanguagePipeline =
   process code expect = case processTerm code of
     Left e
       | not (T.null expect) && expect `T.isPrefixOf` e -> pure ()
-      | otherwise -> error $ "Unexpected failure: " <> show e
+      | otherwise ->
+          error $
+            "Unexpected failure:\n\n  " <> show e <> "\n\nExpected:\n\n  " <> show expect <> "\n"
     Right _
       | expect == "" -> pure ()
       | otherwise -> error "Unexpected success"

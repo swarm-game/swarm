@@ -61,14 +61,18 @@ prettyString :: (PrettyPrec a) => a -> String
 prettyString = docToString . ppr
 
 -- | Optionally surround a document with parentheses depending on the
---   @Bool@ argument.
+--   @Bool@ argument and if it does not fit on line, indent the lines,
+--   with the parens on separate lines.
 pparens :: Bool -> Doc ann -> Doc ann
-pparens True = parens
+pparens True = group . encloseWithIndent 2 lparen rparen
 pparens False = id
+
+encloseWithIndent :: Int -> Doc ann -> Doc ann -> Doc ann -> Doc ann
+encloseWithIndent i l r = nest i . enclose (l <> line') (nest (-2) $ line' <> r)
 
 -- | Surround a document with backticks.
 bquote :: Doc ann -> Doc ann
-bquote d = "`" <> d <> "`"
+bquote = group . enclose "`" "`"
 
 -- | Turn a 'Show' instance into a @Doc@, lowercasing it in the
 --   process.
@@ -77,6 +81,8 @@ prettyShowLow = pretty . showLowT
 
 --------------------------------------------------
 -- Bullet lists
+
+data Prec a = Prec Int a
 
 data BulletList i = BulletList
   { bulletListHeader :: forall a. Doc a
@@ -180,10 +186,9 @@ instance PrettyPrec Term where
   prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr @Term (TText e)
   prettyPrec p (TRequirements _ e) = pparens (p > 10) $ "requirements" <+> ppr e
   prettyPrec _ (TVar s) = pretty s
-  prettyPrec _ (TDelay _ t) = braces $ ppr t
+  prettyPrec _ (TDelay _ t) = group . encloseWithIndent 2 lbrace rbrace $ ppr t
   prettyPrec _ t@TPair {} = prettyTuple t
-  prettyPrec _ (TLam x mty body) =
-    "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "." <+> ppr body
+  prettyPrec _ t@(TLam {}) = prettyLambdas t
   -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3
   prettyPrec p (TApp t@(TApp (TConst c) l) r) =
     let ci = constInfo c
@@ -207,21 +212,33 @@ instance PrettyPrec Term where
             _ -> prettyPrecApp p t1 t2
     _ -> prettyPrecApp p t1 t2
   prettyPrec _ (TLet _ x mty t1 t2) =
-    hsep $
-      ["let", pretty x]
-        ++ maybe [] (\ty -> [":", ppr ty]) mty
-        ++ ["=", ppr t1, "in", ppr t2]
+    group . vsep $
+      [ hsep $
+          ["let", pretty x]
+            ++ maybe [] (\ty -> [":", ppr ty]) mty
+            ++ ["=", ppr t1, "in"]
+      , ppr t2
+      ]
   prettyPrec _ (TDef _ x mty t1) =
-    hsep $
-      ["def", pretty x]
-        ++ maybe [] (\ty -> [":", ppr ty]) mty
-        ++ ["=", ppr t1, "end"]
+    let (t1rest, t1lams) = unchainLambdas t1
+     in group . vsep $
+          [ nest 2 $
+              vsep
+                [ hsep $
+                    ["def", pretty x]
+                      ++ maybe [] (\ty -> [":", ppr ty]) mty
+                      ++ ["="]
+                      ++ map prettyLambda t1lams
+                , ppr t1rest
+                ]
+          , "end"
+          ]
   prettyPrec p (TBind Nothing t1 t2) =
     pparens (p > 0) $
-      prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
+      prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
   prettyPrec p (TBind (Just x) t1 t2) =
     pparens (p > 0) $
-      pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <+> prettyPrec 0 t2
+      pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
   prettyPrec _ (TRcd m) = brackets $ hsep (punctuate "," (map prettyEquality (M.assocs m)))
   prettyPrec _ (TProj t x) = prettyPrec 11 t <> "." <> pretty x
   prettyPrec p (TAnnotate t pt) =
@@ -233,7 +250,7 @@ prettyEquality (x, Nothing) = pretty x
 prettyEquality (x, Just t) = pretty x <+> "=" <+> ppr t
 
 prettyTuple :: Term -> Doc a
-prettyTuple = pparens True . hsep . punctuate "," . map ppr . unnestTuple
+prettyTuple = tupled . map ppr . unnestTuple
  where
   unnestTuple (TPair t1 t2) = t1 : unnestTuple t2
   unnestTuple t = [t]
@@ -248,6 +265,19 @@ appliedTermPrec (TApp f _) = case f of
   TConst c -> fixity $ constInfo c
   _ -> appliedTermPrec f
 appliedTermPrec _ = 10
+
+prettyLambdas :: Term -> Doc a
+prettyLambdas t = hsep (prettyLambda <$> lms) <> softline <> ppr rest
+ where
+  (rest, lms) = unchainLambdas t
+
+unchainLambdas :: Term -> (Term, [(Var, Maybe Type)])
+unchainLambdas = \case
+  TLam x mty body -> ((x, mty) :) <$> unchainLambdas body
+  body -> (body, [])
+
+prettyLambda :: (Pretty a1, PrettyPrec a2) => (a1, Maybe a2) -> Doc ann
+prettyLambda (x, mty) = "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "."
 
 ------------------------------------------------------------
 -- Error messages
@@ -271,37 +301,42 @@ prettyTypeErr code (CTE l tcStack te) =
   showLoc (r, c) = pretty r <> ":" <> pretty c
 
 instance PrettyPrec TypeErr where
-  prettyPrec _ (UnifyErr ty1 ty2) =
-    "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
-  prettyPrec _ (Mismatch Nothing (getJoin -> (ty1, ty2))) =
-    "Type mismatch: expected" <+> ppr ty1 <> ", but got" <+> ppr ty2
-  prettyPrec _ (Mismatch (Just t) (getJoin -> (ty1, ty2))) =
-    nest 2 . vcat $
-      [ "Type mismatch:"
-      , "From context, expected" <+> bquote (ppr t) <+> "to" <+> typeDescription Expected ty1 <> ","
-      , "but it" <+> typeDescription Actual ty2
-      ]
-  prettyPrec _ (LambdaArgMismatch (getJoin -> (ty1, ty2))) =
-    "Lambda argument has type annotation" <+> bquote (ppr ty2) <> ", but expected argument type" <+> bquote (ppr ty1)
-  prettyPrec _ (FieldsMismatch (getJoin -> (expFs, actFs))) = fieldMismatchMsg expFs actFs
-  prettyPrec _ (EscapedSkolem x) =
-    "Skolem variable" <+> pretty x <+> "would escape its scope"
-  prettyPrec _ (UnboundVar x) =
-    "Unbound variable" <+> pretty x
-  prettyPrec _ (Infinite x uty) =
-    "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
-  prettyPrec _ (DefNotTopLevel t) =
-    "Definitions may only be at the top level:" <+> ppr t
-  prettyPrec _ (CantInfer t) =
-    "Couldn't infer the type of term (this shouldn't happen; please report this as a bug!):" <+> ppr t
-  prettyPrec _ (CantInferProj t) =
-    "Can't infer the type of a record projection:" <+> ppr t
-  prettyPrec _ (UnknownProj x t) =
-    "Record does not have a field with name" <+> pretty x <> ":" <+> ppr t
-  prettyPrec _ (InvalidAtomic reason t) =
-    "Invalid atomic block:" <+> ppr reason <> ":" <+> ppr t
-  prettyPrec _ Impredicative =
-    "Unconstrained unification type variables encountered, likely due to an impredicative type. This is a known bug; for more information see https://github.com/swarm-game/swarm/issues/351 ."
+  prettyPrec _ = \case
+    UnifyErr ty1 ty2 ->
+      "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
+    Mismatch Nothing (getJoin -> (ty1, ty2)) ->
+      "Type mismatch: expected" <+> ppr ty1 <> ", but got" <+> ppr ty2
+    Mismatch (Just t) (getJoin -> (ty1, ty2)) ->
+      nest 2 . vcat $
+        [ "Type mismatch:"
+        , "From context, expected" <+> pprCode t <+> "to" <+> typeDescription Expected ty1 <> ","
+        , "but it" <+> typeDescription Actual ty2
+        ]
+    LambdaArgMismatch (getJoin -> (ty1, ty2)) ->
+      "Lambda argument has type annotation" <+> pprCode ty2 <> ", but expected argument type" <+> pprCode ty1
+    FieldsMismatch (getJoin -> (expFs, actFs)) ->
+      fieldMismatchMsg expFs actFs
+    EscapedSkolem x ->
+      "Skolem variable" <+> pretty x <+> "would escape its scope"
+    UnboundVar x ->
+      "Unbound variable" <+> pretty x
+    Infinite x uty ->
+      "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
+    DefNotTopLevel t ->
+      "Definitions may only be at the top level:" <+> pprCode t
+    CantInfer t ->
+      "Couldn't infer the type of term (this shouldn't happen; please report this as a bug!):" <+> pprCode t
+    CantInferProj t ->
+      "Can't infer the type of a record projection:" <+> pprCode t
+    UnknownProj x t ->
+      "Record does not have a field with name" <+> pretty x <> ":" <+> pprCode t
+    InvalidAtomic reason t ->
+      "Invalid atomic block:" <+> ppr reason <> ":" <+> pprCode t
+    Impredicative ->
+      "Unconstrained unification type variables encountered, likely due to an impredicative type. This is a known bug; for more information see https://github.com/swarm-game/swarm/issues/351 ."
+   where
+    pprCode :: PrettyPrec a => a -> Doc ann
+    pprCode = bquote . ppr
 
 -- | Given a type and its source, construct an appropriate description
 --   of it to go in a type mismatch error message.

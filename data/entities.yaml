@@ -794,18 +794,16 @@
   - Equipping treads on a robot allows it to move and turn.
   - The `move` command moves the robot forward one unit.
   - |
-    Example:
-    ```
-    move; move; // move two units
-    ```
+    For example to move two units:
+  - |
+    `move; move;`
   - The `turn` command takes a direction as an argument, which
     can be either absolute (north, west, east, south) or relative
     (left, right, forward, back, down).
   - |
     Example:
-    ```
-    move; turn left; move; turn right
-    ```
+  - |
+    `move; turn left; move; turn right`
   capabilities: [move, turn]
   properties: [portable]
 
@@ -1229,16 +1227,15 @@
   description:
   - |
     A compass gives a robot the ability to orient using the cardinal
-    directions north, south, west, and east; for example, `turn west;
-    move; turn north`.
+    directions north, south, west, and east. For example:
+  - |
+    `turn west; move; turn north`
   - |
     It also enables the `heading : cmd dir` command, which returns the
     robot's current heading. For example, the following code moves
     east and then restores the same heading as before:
   - |
-    ```
-    d <- heading; turn east; move; turn d
-    ```
+    `d <- heading; turn east; move; turn d`
   properties: [portable]
   capabilities: [orient]
 
