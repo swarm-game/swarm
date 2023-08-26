@@ -47,7 +47,6 @@ loadAchievementsInfo = do
             return $ left (AssetNotLoaded Achievement p . CanNotParseYaml) eitherDecodedFile
           else return . Left $ AssetNotLoaded Achievement p (EntryNot File)
     else do
-      warn $ AssetNotLoaded Achievement "." $ DoesNotExist Directory
       return []
 
 -- | Save info about achievements to XDG data directory.
