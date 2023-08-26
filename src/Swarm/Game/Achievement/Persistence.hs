@@ -18,7 +18,7 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Failure
 import Swarm.Game.ResourceLoading (getSwarmXdgDataSubdir)
-import Swarm.Util.Effect (forMW, warn)
+import Swarm.Util.Effect (forMW)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath ((</>))
 
@@ -47,7 +47,6 @@ loadAchievementsInfo = do
             return $ left (AssetNotLoaded Achievement p . CanNotParseYaml) eitherDecodedFile
           else return . Left $ AssetNotLoaded Achievement p (EntryNot File)
     else do
-      warn $ AssetNotLoaded Achievement "." $ DoesNotExist Directory
       return []
 
 -- | Save info about achievements to XDG data directory.
