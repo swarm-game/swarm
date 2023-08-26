@@ -188,7 +188,7 @@ instance PrettyPrec Term where
   prettyPrec _ (TVar s) = pretty s
   prettyPrec _ (TDelay _ t) = group . encloseWithIndent 2 lbrace rbrace $ ppr t
   prettyPrec _ t@TPair {} = prettyTuple t
-  prettyPrec p t@(TLam {}) = 
+  prettyPrec p t@(TLam {}) =
     pparens (p > 9) $
       prettyLambdas t
   -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3
