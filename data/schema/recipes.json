@@ -26,16 +26,16 @@
         ],
         "properties": {
             "in": {
-                "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/inventory.json",
+                "$ref": "./inventory.json",
                 "description": "A list of ingredients consumed by the recipe. Each ingredient is a tuple consisting of an integer and an entity name, indicating the number of copies of the given entity that are needed."
             },
             "out": {
-                "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/inventory.json",
+                "$ref": "./inventory.json",
                 "description": "A list of outputs produced by the recipe. It is a list of [count, entity name] tuples just like in."
             },
             "required": {
                 "default": [],
-                "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/inventory.json",
+                "$ref": "./inventory.json",
                 "description": "A list of catalysts required by the recipe. They are neither consumed nor produced, but must be present in order for the recipe to be carried out. It is a list of [count, entity name] tuples just like in and out."
             },
             "time": {

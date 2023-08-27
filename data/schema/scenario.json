@@ -34,12 +34,12 @@
         "entities": {
             "description": "An optional list of custom entities, to be used in addition to the built-in entities. See description of Entities.",
             "default": [],
-            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/entities.json"
+            "$ref": "./entities.json"
         },
         "recipes": {
             "description": "An optional list of custom recipes, to be used in addition to the built-in recipes. They can refer to built-in entities as well as custom entities. See description of Recipes.",
             "default": [],
-            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/recipes.json"
+            "$ref": "./recipes.json"
         },
         "known": {
             "description": "A list of names of standard or custom entities which should have the Known property added to them; that is, robots should know what they are without having to scan them.",
@@ -52,13 +52,13 @@
             ]
         },
         "world": {
-            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/world.json"
+            "$ref": "./world.json"
         },
         "robots": {
             "description": "A list of robots that will inhabit the world. See the description of Robots.",
             "type": "array",
             "items": {
-                "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/robot.json"
+                "$ref": "./robot.json"
             }
         },
         "objectives": {

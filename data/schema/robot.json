@@ -46,7 +46,7 @@
         },
         "display": {
             "default": "default",
-            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/display.json",
+            "$ref": "./display.json",
             "description": "Display information for the robot. If this field is omitted, the default robot display will be used."
         },
         "program": {
@@ -64,7 +64,7 @@
         },
         "inventory": {
             "default": [],
-            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/inventory.json",
+            "$ref": "./inventory.json",
             "description": "A list of [count, entity name] pairs, specifying the entities in the robot's starting inventory, and the number of each."
         },
         "system": {
