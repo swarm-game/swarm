@@ -25,4 +25,4 @@ jobs:
           python -m pip install --upgrade pip
           pip install check-jsonschema
       - run: |
-          find data/scenarios -name "*.yaml" -type f -print0 | xargs -0 check-jsonschema --base-uri $(git rev-parse --show-toplevel)/data/schema/scenario.json --schemafile data/schema/scenario.json
+          scripts/validate-json-schemas.sh
