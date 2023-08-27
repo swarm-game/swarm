@@ -356,8 +356,8 @@ robots:
       - [0, gate]
       - [10, hinge]
   - name: sheep
-    description:
-      - meandering livestock
+    description: |
+      meandering livestock
     display:
       invisible: false
       char: '@'
