@@ -15,19 +15,11 @@
             "description": "A description of the robot, given as a list of paragraphs. This is currently not used for much (perhaps not at all?)."
         },
         "loc": {
-            "default": null,
-            "type": "array",
-            "items": [
-                {
-                    "name": "X coordinate",
-                    "type": "number"
-                },
-                {
-                    "name": "Y coordinate",
-                    "type": "number"
-                }
-            ],
-            "description": "An optional (x,y) starting location for the robot. If the loc field is specified, then a concrete robot will be created at the given location. If this field is omitted, then this robot record exists only as a template which can be referenced from a cell in the world palette. Concrete robots will then be created wherever the corresponding palette character is used in the world map."
+            "description": "An optional (x,y) starting location for the robot. If the loc field is specified, then a concrete robot will be created at the given location. If this field is omitted, then this robot record exists only as a template which can be referenced from a cell in the world palette. Concrete robots will then be created wherever the corresponding palette character is used in the world map.",
+            "oneOf": [
+                {"$ref": "./cosmicloc.json"},
+                {"$ref": "./planarloc.json"}
+            ]
         },
         "dir": {
             "type": "array",
