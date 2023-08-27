@@ -13,16 +13,19 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as Text
 import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
+import Prettyprinter
+import Prettyprinter.Render.Text qualified as RT
 import Swarm.App (appMain)
 import Swarm.Doc.Gen (EditorType (..), GenerateDocs (..), PageAddress (..), SheetType (..), generateDocs)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Parse (readTerm)
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Pretty (ppr)
 import Swarm.TUI.Model (AppOpts (..), ColorMode (..))
 import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond)
 import Swarm.Version
 import Swarm.Web (defaultPort)
-import System.Exit (exitFailure, exitSuccess)
+import System.Console.Terminal.Size qualified as Term
+import System.Exit (exitFailure)
 import System.IO (hPrint, stderr)
 import Text.Read (readMaybe)
 
@@ -34,9 +37,11 @@ commitInfo = case gitInfo of
   Nothing -> ""
   Just git -> " (" <> giBranch git <> "@" <> take 10 (giHash git) <> ")"
 
+type Width = Int
+
 data CLI
   = Run AppOpts
-  | Format Input
+  | Format Input (Maybe Width)
   | DocGen GenerateDocs
   | LSP
   | Version
@@ -45,7 +50,7 @@ cliParser :: Parser CLI
 cliParser =
   subparser
     ( mconcat
-        [ command "format" (info (format <**> helper) (progDesc "Format a file"))
+        [ command "format" (info (Format <$> format <*> optional widthOpt <**> helper) (progDesc "Format a file"))
         , command "generate" (info (DocGen <$> docgen <**> helper) (progDesc "Generate docs"))
         , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
@@ -64,10 +69,12 @@ cliParser =
               <*> pure gitInfo
           )
  where
-  format :: Parser CLI
+  format :: Parser Input
   format =
-    (Format Stdin <$ switch (long "stdin" <> help "Read code from stdin"))
-      <|> (Format . File <$> strArgument (metavar "FILE"))
+    (Stdin <$ switch (long "stdin" <> help "Read code from stdin"))
+      <|> (File <$> strArgument (metavar "FILE"))
+  widthOpt :: Parser Width
+  widthOpt = option auto (long "width" <> metavar "COLUMNS" <> help "Use layout with maximum width")
   docgen :: Parser GenerateDocs
   docgen =
     subparser . mconcat $
@@ -157,16 +164,24 @@ showInput :: Input -> Text
 showInput Stdin = "(input)"
 showInput (File fp) = pack fp
 
+infixl 3 <??>
+(<??>) :: Maybe a -> a -> a
+(<??>) = flip fromMaybe
+
 -- | Utility function to validate and format swarm-lang code
-formatFile :: Input -> IO ()
-formatFile input = do
+formatFile :: Input -> Maybe Width -> IO ()
+formatFile input mWidth = do
   content <- getInput input
   case readTerm content of
-    Right t -> do
-      case t of
-        Nothing -> Text.putStrLn ""
-        Just ast -> Text.putStrLn $ prettyText ast
-      exitSuccess
+    Right Nothing -> Text.putStrLn ""
+    Right (Just ast) -> do
+      mWindow <- Term.size
+      let mkOpt w = LayoutOptions (AvailablePerLine w 1.0)
+      let opt =
+            fmap mkOpt mWidth
+              <|> fmap (\(Term.Window _h w) -> mkOpt w) mWindow
+                <??> defaultLayoutOptions
+      Text.putStrLn . RT.renderStrict . layoutPretty opt $ ppr ast
     Left e -> do
       Text.hPutStrLn stderr $ showInput input <> ":" <> e
       exitFailure
@@ -183,6 +198,6 @@ main = do
   case cli of
     Run opts -> appMain opts
     DocGen g -> generateDocs g
-    Format fo -> formatFile fo
+    Format fo w -> formatFile fo w
     LSP -> lspMain
     Version -> showVersion
