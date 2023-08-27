@@ -4,6 +4,7 @@
     "title": "Swarm scenario",
     "description": "Scenario for the swarm game",
     "type": "object",
+    "additionalProperties": false,
     "properties": {
         "version": {
             "description": "The version number of the scenario schema.  Currently, this should always be 1.",
