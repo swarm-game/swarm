@@ -185,13 +185,13 @@ parseWExp =
 
 parseCell :: Parser WExp
 parseCell =
-  braces $ WCell <$> parseCellItem `sepBy1` comma
+  braces $ WCell <$> parseCellItem `sepBy` comma
 
 parseCellItem :: Parser (Maybe CellTag, Text)
 parseCellItem =
   (,)
     <$> optional (try (parseCellTag <* symbol ":"))
-    <*> parseName
+    <*> (sc *> parseName)
 
 parseCellTag :: Parser CellTag
 parseCellTag = choice (map mkCellTagParser [minBound .. maxBound :: CellTag])
@@ -199,9 +199,7 @@ parseCellTag = choice (map mkCellTagParser [minBound .. maxBound :: CellTag])
   mkCellTagParser ct = ct <$ string' (T.drop 4 $ showT ct)
 
 parseName :: Parser Text
-parseName =
-  into @Text
-    <$> manyTill anySingle (lookAhead (satisfy (\c -> c == ',' || c == '}' || c == ']')))
+parseName = into @Text <$> some (noneOf (",}]" :: String))
 
 parseIf :: Parser WExp
 parseIf =

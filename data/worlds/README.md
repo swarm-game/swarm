@@ -84,7 +84,7 @@ repetitions of `S` separated by `,`.
   | '"' <nonquote>+ '"'
   | '(' <exp> ')'
 
-<cell> ::= '{' <item>+, '}
+<cell> ::= '{' <item>*, '}
 <item> ::= <name> | <tag> ':' <name>
 <tag> ::= 'terrain' | 'entity' | 'robot'
 <name> ::= 'erase' | <nameChar>*
@@ -124,7 +124,7 @@ robots is not accessible via the DSL.
 Cells have a monoid structure:
 
 - The empty cell has no terrain, no entity, and an empty list of
-  robots.
+  robots, and can be written `{}`.
 - To combine two cells, we:
     - Take the last non-empty terrain value
     - Take the last non-null entity
