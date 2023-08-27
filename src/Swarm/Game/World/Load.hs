@@ -19,6 +19,7 @@ import Data.Text (Text)
 import Swarm.Game.Entity (EntityMap)
 import Swarm.Game.Failure (Asset (..), AssetData (..), LoadingFailure (..), SystemFailure (..))
 import Swarm.Game.ResourceLoading (getDataDirSafe)
+import Swarm.Game.Scenario.RobotLookup (RobotMap)
 import Swarm.Game.World.Parse (parseWExp, runParser)
 import Swarm.Game.World.Typecheck
 import Swarm.Language.Pretty (prettyText)
@@ -55,9 +56,11 @@ loadWorld dir em (fp, src) = do
     liftEither . left (AssetNotLoaded (Data Worlds) fp . CanNotParseMegaparsec) $
       runParser parseWExp (into @Text src)
   t <-
-    withThrow (AssetNotLoaded (Data Worlds) fp . DoesNotTypecheck . prettyText @CheckErr) $
-      runReader em . runReader @WorldMap M.empty $
-        infer CNil wexp
+    withThrow (AssetNotLoaded (Data Worlds) fp . DoesNotTypecheck . prettyText @CheckErr)
+      $ runReader em
+        . runReader @WorldMap M.empty
+        . runReader @RobotMap M.empty
+      $ infer CNil wexp
   return (into @Text (dropExtension (stripDir dir fp)), t)
 
 -- | Strip a leading directory from a 'FilePath'.

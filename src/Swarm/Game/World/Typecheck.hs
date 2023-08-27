@@ -35,6 +35,7 @@ import Data.Text (Text)
 import Data.Type.Equality (TestEquality (..), type (:~:) (Refl))
 import Prettyprinter
 import Swarm.Game.Entity (EntityMap, lookupEntityName)
+import Swarm.Game.Scenario.RobotLookup (RobotMap, RobotName (RobotName))
 import Swarm.Game.Terrain (readTerrain)
 import Swarm.Game.World.Syntax
 import Swarm.Language.Pretty
@@ -450,6 +451,7 @@ check ::
   ( Has (Throw CheckErr) sig m
   , Has (Reader EntityMap) sig m
   , Has (Reader WorldMap) sig m
+  , Has (Reader RobotMap) sig m
   ) =>
   Ctx g ->
   TTy t ->
@@ -564,6 +566,7 @@ applyOp ::
   ( Has (Throw CheckErr) sig m
   , Has (Reader EntityMap) sig m
   , Has (Reader WorldMap) sig m
+  , Has (Reader RobotMap) sig m
   ) =>
   Ctx g ->
   Op ->
@@ -579,34 +582,39 @@ infer ::
   ( Has (Throw CheckErr) sig m
   , Has (Reader EntityMap) sig m
   , Has (Reader WorldMap) sig m
+  , Has (Reader RobotMap) sig m
   ) =>
   Ctx g ->
   WExp ->
   m (Some (TTerm g))
-infer _ (WInt i) = return $ Some (TTyBase BInt) (embed (CLit i))
-infer _ (WFloat f) = return $ Some (TTyBase BFloat) (embed (CLit f))
-infer _ (WBool b) = return $ Some (TTyBase BBool) (embed (CLit b))
-infer _ (WCell c) = do
-  c' <- resolveCell c
-  return $ Some TTyCell (embed (CCell c'))
-infer ctx (WVar x) = mapSome TVar <$> lookup x ctx
-infer ctx (WOp op ts) = applyOp ctx op ts
-infer _ WSeed = return $ Some TTyInt (embed CSeed)
-infer _ (WCoord ax) = return $ Some (TTyWorld TTyInt) (embed (CCoord ax))
-infer _ WHash = return $ Some (TTyWorld TTyInt) (embed CHash)
-infer ctx (WLet defs body) = inferLet ctx defs body
-infer ctx (WOverlay ts) = inferOverlay ctx ts
-infer _ctx (WImport key) = do
-  worldMap <- ask @WorldMap
-  case M.lookup key worldMap of
-    Just (Some ty t) -> return (Some ty (weaken @g t))
-    Nothing -> throwError $ UnknownImport key
+infer ctx = \case
+  WInt i -> return $ Some (TTyBase BInt) (embed (CLit i))
+  WFloat f -> return $ Some (TTyBase BFloat) (embed (CLit f))
+  WBool b -> return $ Some (TTyBase BBool) (embed (CLit b))
+  WCell c -> do
+    c' <- resolveCell c
+    return $ Some TTyCell (embed (CCell c'))
+  WVar x -> mapSome TVar <$> lookup x ctx
+  WOp op ts -> applyOp ctx op ts
+  WSeed -> return $ Some TTyInt (embed CSeed)
+  WCoord ax -> return $ Some (TTyWorld TTyInt) (embed (CCoord ax))
+  WHash -> return $ Some (TTyWorld TTyInt) (embed CHash)
+  WLet defs body -> inferLet ctx defs body
+  WOverlay ts -> inferOverlay ctx ts
+  WImport key -> do
+    worldMap <- ask @WorldMap
+    case M.lookup key worldMap of
+      Just (Some ty t) -> return (Some ty (weaken @g t))
+      Nothing -> throwError $ UnknownImport key
 
 -- | Try to resolve a 'RawCellVal'---containing only 'Text' names for
 --   terrain, entities, and robots---into a real 'CellVal' with
 --   references to actual terrain, entities, and robots.
 resolveCell ::
-  (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
+  ( Has (Throw CheckErr) sig m
+  , Has (Reader EntityMap) sig m
+  , Has (Reader RobotMap) sig m
+  ) =>
   RawCellVal ->
   m CellVal
 resolveCell items = do
@@ -617,7 +625,10 @@ resolveCell items = do
 -- entity, robot, etc.).
 resolveCellItem ::
   forall sig m.
-  (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
+  ( Has (Throw CheckErr) sig m
+  , Has (Reader EntityMap) sig m
+  , Has (Reader RobotMap) sig m
+  ) =>
   (Maybe CellTag, Text) ->
   m CellVal
 resolveCellItem (mCellTag, item) = case mCellTag of
@@ -635,6 +646,7 @@ resolveCellItem (mCellTag, item) = case mCellTag of
  where
   mkTerrain t = CellVal t mempty mempty
   mkEntity e = CellVal mempty (EJust (Last e)) mempty
+  mkRobot r = CellVal mempty mempty [r]
   resolverByTag :: CellTag -> Text -> m (Maybe CellVal)
   resolverByTag = \case
     CellTerrain -> return . fmap mkTerrain . readTerrain
@@ -644,7 +656,9 @@ resolveCellItem (mCellTag, item) = case mCellTag of
         _ -> do
           em <- ask @EntityMap
           return . fmap mkEntity $ lookupEntityName eName em
-    CellRobot -> \_ -> return Nothing -- TODO (#1396): support robots
+    CellRobot -> \rName -> do
+      rm <- ask @RobotMap
+      return $ mkRobot . snd <$> M.lookup (RobotName rName) rm
 
 -- | Infer the type of a let expression, and elaborate into a series
 --   of lambda applications.
@@ -652,6 +666,7 @@ inferLet ::
   ( Has (Throw CheckErr) sig m
   , Has (Reader EntityMap) sig m
   , Has (Reader WorldMap) sig m
+  , Has (Reader RobotMap) sig m
   ) =>
   Ctx g ->
   [(Var, WExp)] ->
@@ -669,6 +684,7 @@ inferOverlay ::
   ( Has (Throw CheckErr) sig m
   , Has (Reader EntityMap) sig m
   , Has (Reader WorldMap) sig m
+  , Has (Reader RobotMap) sig m
   ) =>
   Ctx g ->
   NE.NonEmpty WExp ->

@@ -1,0 +1,33 @@
+version: 1
+name: Robots
+description: |
+  Test that we can refer to robots from the world DSL.
+objectives:
+  - condition: |
+      as base { n <- count "rock"; return (n == 1) }
+    goal:
+    - Get a rock.
+solution: |
+  move; move; move; turn right; move; move; move; move; grab
+robots:
+  - name: base
+    dir: [1,0]
+    devices:
+      - logger
+      - treads
+      - grabber
+  - name: friend
+    dir: [1,0]
+    devices:
+      - grabber
+    inventory:
+      - [5, rock]
+    program: |
+      grab; place "rock"
+world:
+  dsl: |
+    overlay
+    [ {stone, tree}
+    , if x == 2 && y == 3 then {base} else {}
+    , if x == 5 && y == -1 then {robot:friend} else {}
+    ]

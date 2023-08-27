@@ -82,8 +82,12 @@ instance FromJSONE (WorldMap, InheritedStructureDefs, EntityMap, RobotMap) World
     mwexp <- liftE (v .:? "dsl")
     dslTerm <- forM mwexp $ \wexp -> do
       let checkResult =
-            run . runThrow @CheckErr . runReader worldMap . runReader em $
-              check CNil (TTyWorld TTyCell) wexp
+            run
+              . runThrow @CheckErr
+              . runReader worldMap
+              . runReader em
+              . runReader rm
+              $ check CNil (TTyWorld TTyCell) wexp
       either (fail . prettyString) return checkResult
     WorldDescription
       <$> liftE (v .:? "offset" .!= False)

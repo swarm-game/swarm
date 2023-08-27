@@ -330,6 +330,7 @@ testScenarioSolutions rs ui =
             [ testSolution Default "Testing/1320-world-DSL/constant"
             , testSolution Default "Testing/1320-world-DSL/erase"
             , testSolution Default "Testing/1320-world-DSL/override"
+            , testSolution Default "Testing/1320-world-DSL/robots"
             ]
         ]
     , testSolution' Default "Testing/1430-built-robot-ownership" CheckForBadErrors $ \g -> do
