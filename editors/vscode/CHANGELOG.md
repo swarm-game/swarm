@@ -2,6 +2,9 @@
 
 All notable changes to the "swarm-language" extension will be documented in this file.
 
+## version 0.1.1
+- Move the extension under "swarm-game" org
+
 ## version 0.0.9
 - [Highlighter] add `unit` and `actor` types
 - [Highlighter] add many new commands:
