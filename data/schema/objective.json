@@ -32,7 +32,7 @@
             "type": "boolean"
         },        
         "teaser": {
-            "description": "A 2-3 word summary of the goal",
+            "description": "A compact (2-3 word) summary of the goal",
             "type": "string"
         },
         "prerequisite": {}

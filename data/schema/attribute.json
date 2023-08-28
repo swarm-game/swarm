@@ -1,14 +1,14 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/attribute.json",
-    "title": "Planar location",
-    "description": "Local attribute",
+    "title": "Scenario-local attributes",
+    "description": "Local attribute definitions",
     "type": "object",
     "additionalProperties": false,
     "properties": {
         "name": {
             "type": "string",
-            "description": "Name of subworld"
+            "description": "Name of attribute"
         },
         "fg": {
             "type": "string",
@@ -19,7 +19,7 @@
             "description": "Background color"
         },
         "style": {
-            "description": "Style properties",
+            "description": "Style properties list",
             "type": "array",
             "items": {
                 "type": "string"

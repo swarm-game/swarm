@@ -14,8 +14,9 @@
             "$ref": "./planar-loc.json"
         },
         "orient": {
-            "type": "object",
             "description": "Orientation of structure",
+            "type": "object",
+            "additionalProperties": false,
             "properties": {
                 "up": {
                     "type": "string"

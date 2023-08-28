@@ -15,12 +15,13 @@
             "type": "string"
         },    
         "consistent": {
-            "description": "This portal is spatially consistent across worlds",
+            "description": "Whether this portal is spatially consistent across worlds",
             "type": "boolean"
         },          
         "exitInfo": {
             "description": "Exit definition",
             "type": "object",
+            "additionalProperties": false,
             "properties": {
                 "exit": {
                     "type": "string",
@@ -28,7 +29,7 @@
                 },
                 "subworldName": {
                     "type": "string",
-                    "description": "Name of subworld"
+                    "description": "Name of exit subworld"
                 }
             }
         }
