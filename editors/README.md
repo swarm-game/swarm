@@ -29,6 +29,26 @@ You can get it by:
 - **TBD** get the VSIX from GitHub releases
 - **TBD** installing from the VS codium free marketplace
 
+### YAML schema validation
+
+To configure YAML editor tabs for schema validation, install the [YAML plugin](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml) and add the following to `.vscode/settings.json` under the workspace root:
+
+```json
+{
+    "yaml.schemas": {
+        "data/schema/scenario.json": [
+            "data/scenarios/**/*.yaml"
+        ],
+        "data/schema/entities.json": [
+            "data/entities.yaml"
+        ],
+        "data/schema/recipes.json": [
+            "data/recipes.yaml"
+        ],
+    }
+}
+```
+
 ## Vim and Neovim
 
 Currently there is neither highlighting nor LSP support for Vim,
