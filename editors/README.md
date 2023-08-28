@@ -28,6 +28,26 @@ You can get it by:
 - installing from the Open VSX Registry ([link](https://open-vsx.org/extension/swarm-game/swarm-language))
 - building from source in the [vscode folder](./vscode/DEVELOPING.md)
 
+### YAML schema validation
+
+To configure YAML editor tabs for schema validation, install the [YAML plugin](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml) and add the following to `.vscode/settings.json` under the workspace root:
+
+```json
+{
+    "yaml.schemas": {
+        "data/schema/scenario.json": [
+            "data/scenarios/**/*.yaml"
+        ],
+        "data/schema/entities.json": [
+            "data/entities.yaml"
+        ],
+        "data/schema/recipes.json": [
+            "data/recipes.yaml"
+        ],
+    }
+}
+```
+
 ## Vim and Neovim
 
 Currently there is neither highlighting nor LSP support for Vim,

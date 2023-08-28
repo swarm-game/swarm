@@ -7,6 +7,7 @@
     "items": {
         "description": "Description of an entity in the Swarm game",
         "type": "object",
+        "additionalProperties": false,
         "properties": {
             "name": {
                 "type": "string",
@@ -14,7 +15,7 @@
             },
             "display": {
                 "type": "object",
-                "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/display.json",
+                "$ref": "./display.json",
                 "description": "Display information for the entity."
             },
             "plural": {
@@ -63,7 +64,7 @@
             },
             "combustion": {
                 "type": "object",
-                "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/combustion.json",
+                "$ref": "./combustion.json",
                 "description": "Properties of combustion."
             },
             "yields": {
