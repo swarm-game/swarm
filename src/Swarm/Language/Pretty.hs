@@ -9,12 +9,14 @@
 -- Pretty-printing for the Swarm language.
 module Swarm.Language.Pretty where
 
+import Control.Lens (unsnoc)
 import Control.Lens.Combinators (pattern Empty)
 import Control.Unification
 import Control.Unification.IntVar
 import Data.Bool (bool)
 import Data.Functor.Fixedpoint (Fix, unFix)
 import Data.Map.Strict qualified as M
+import Data.Maybe (fromJust)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.String (fromString)
@@ -31,8 +33,6 @@ import Swarm.Language.Typecheck
 import Swarm.Language.Types
 import Swarm.Util (showLowT)
 import Witch
-import Control.Lens (unsnoc)
-import Data.Maybe (fromJust)
 
 ------------------------------------------------------------
 -- PrettyPrec class + utilities
@@ -246,10 +246,10 @@ instance PrettyPrec Term where
           [ nest 2 $
               vsep
                 [ "def"
-                  <+> pretty x
-                  <> maybe "" (\ty -> ":" <> softline <> ppr ty) mty
-                  <+> softline' <> "="
-                  <+> hsep (map prettyLambda t1lams)
+                    <+> pretty x
+                      <> maybe "" (\ty -> ":" <> softline <> ppr ty) mty
+                    <+> softline' <> "="
+                    <+> hsep (map prettyLambda t1lams)
                 , ppr t1rest
                 ]
           , "end"
