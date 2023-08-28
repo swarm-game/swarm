@@ -2,9 +2,9 @@
     "name": "swarm-language",
     "displayName": "swarm-language",
     "description": "VSCode support for swarm (the game) programming language.",
-    "version": "0.0.9",
+    "version": "0.1.1",
     "icon": "images/swarm-logo.png",
-    "publisher": "xsebek",
+    "publisher": "swarm-game",
     "repository": {
         "url": "https://github.com/swarm-game/swarm"
     },

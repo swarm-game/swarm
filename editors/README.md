@@ -24,10 +24,9 @@ LSP client. That is if you have `swarm` executable in PATH, then
 the executable will be used as LSP server to show errors as you type.
 
 You can get it by:
-- installing from MS marketplace ([link](https://marketplace.visualstudio.com/items?itemName=xsebek.swarm-language))
+- installing from the MS marketplace ([link](https://marketplace.visualstudio.com/items?itemName=swarm-game.swarm-language))
+- installing from the Open VSX Registry ([link](https://open-vsx.org/extension/swarm-game/swarm-language))
 - building from source in the [vscode folder](./vscode/DEVELOPING.md)
-- **TBD** get the VSIX from GitHub releases
-- **TBD** installing from the VS codium free marketplace
 
 ### YAML schema validation
 
