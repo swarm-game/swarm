@@ -30,23 +30,7 @@ You can get it by:
 
 ### YAML schema validation
 
-To configure YAML editor tabs for schema validation, install the [YAML plugin](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml) and add the following to `.vscode/settings.json` under the workspace root:
-
-```json
-{
-    "yaml.schemas": {
-        "data/schema/scenario.json": [
-            "data/scenarios/**/*.yaml"
-        ],
-        "data/schema/entities.json": [
-            "data/entities.yaml"
-        ],
-        "data/schema/recipes.json": [
-            "data/recipes.yaml"
-        ],
-    }
-}
-```
+To configure YAML editor tabs for schema validation, install the [YAML plugin](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml).  The appropriate settings are already included in `.vscode/settings.json` under the workspace root.
 
 ## Vim and Neovim
 
