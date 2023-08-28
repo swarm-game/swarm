@@ -22,6 +22,7 @@ import Swarm.Language.Parse (readTerm)
 import Swarm.Language.Pretty (ppr)
 import Swarm.TUI.Model (AppOpts (..), ColorMode (..))
 import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond)
+import Swarm.Util ((?))
 import Swarm.Version
 import Swarm.Web (defaultPort)
 import System.Console.Terminal.Size qualified as Term
@@ -164,10 +165,6 @@ showInput :: Input -> Text
 showInput Stdin = "(input)"
 showInput (File fp) = pack fp
 
-infixl 3 <??>
-(<??>) :: Maybe a -> a -> a
-(<??>) = flip fromMaybe
-
 -- | Utility function to validate and format swarm-lang code
 formatFile :: Input -> Maybe Width -> IO ()
 formatFile input mWidth = do
@@ -179,8 +176,8 @@ formatFile input mWidth = do
       let mkOpt w = LayoutOptions (AvailablePerLine w 1.0)
       let opt =
             fmap mkOpt mWidth
-              <|> fmap (\(Term.Window _h w) -> mkOpt w) mWindow
-                <??> defaultLayoutOptions
+              ? fmap (\(Term.Window _h w) -> mkOpt w) mWindow
+              ? defaultLayoutOptions
       Text.putStrLn . RT.renderStrict . layoutPretty opt $ ppr ast
     Left e -> do
       Text.hPutStrLn stderr $ showInput input <> ":" <> e
