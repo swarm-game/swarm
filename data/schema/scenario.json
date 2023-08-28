@@ -88,24 +88,7 @@
             "default": [],
             "type": "array",
             "items": {
-                "name": "objective",
-                "description": "The top-level objectives field contains a list of objectives that must be completed in sequence. Each objective has a goal description and a condition.",
-                "type": "object",
-                "properties": {
-                    "goal": {
-                        "type": "array",
-                        "items": [
-                            {
-                                "type": "string"
-                            }
-                        ],
-                        "description": "The goal description as a list of paragraphs that the player can read."
-                    },
-                    "condition": {
-                        "description": "A swarm program that will be hypothetically run each tick to check if the condition is fulfilled.",
-                        "type": "string"
-                    }
-                }
+                "$ref": "./objective.json"
             }
         },
         "solution": {

@@ -13,7 +13,16 @@
         "structure": {
             "description": "Structure properties",
             "type": "object",
+            "additionalProperties": false,
             "properties": {
+                "map": {
+                    "type": "string",
+                    "description": "Cell-based representation of the structure using palette entries"
+                },
+                "mask": {
+                    "type": "string",
+                    "description": "A speceial palette character that indicates that map cell should be transparent"
+                },
                 "palette": {
                     "description": "Structure properties",
                     "type": "object"
@@ -23,6 +32,13 @@
                     "type": "array",
                     "items": {
                         "$ref": "./explicit-waypoint.json"
+                    }
+                },
+                "placements": {
+                    "description": "Structure placements",
+                    "type": "array",
+                    "items": {
+                        "$ref": "./placement.json"
                     }
                 },
                 "structures": {

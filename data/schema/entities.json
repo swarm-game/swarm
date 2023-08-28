@@ -7,6 +7,7 @@
     "items": {
         "description": "Description of an entity in the Swarm game",
         "type": "object",
+        "additionalProperties": false,
         "properties": {
             "name": {
                 "type": "string",

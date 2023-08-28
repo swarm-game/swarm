@@ -4,11 +4,20 @@
     "title": "Portals",
     "description": "Portal definition",
     "type": "object",
+    "additionalProperties": false,
     "properties": {
         "entrance": {
             "type": "string",
             "description": "Name of entrance waypoint"
         },
+        "reorient": {
+            "description": "Passing through this portal changes a robot's orientation",
+            "type": "string"
+        },    
+        "consistent": {
+            "description": "This portal is spatially consistent across worlds",
+            "type": "boolean"
+        },          
         "exitInfo": {
             "description": "Exit definition",
             "type": "object",

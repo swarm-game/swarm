@@ -4,6 +4,7 @@
     "title": "Waypoint",
     "description": "Explicit waypoint definition",
     "type": "object",
+    "additionalProperties": false,
     "properties": {
         "name": {
             "description": "Waypoint name",

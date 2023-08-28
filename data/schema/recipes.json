@@ -25,6 +25,7 @@
             }
         ],
         "properties": {
+            "additionalProperties": false,
             "in": {
                 "$ref": "./inventory.json",
                 "description": "A list of ingredients consumed by the recipe. Each ingredient is a tuple consisting of an integer and an entity name, indicating the number of copies of the given entity that are needed."

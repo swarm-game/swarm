@@ -4,6 +4,7 @@
     "title": "Swarm robot",
     "description": "Description of a robot in the Swarm game",
     "type": "object",
+    "additionalProperties": false,
     "properties": {
         "name": {
             "type": "string",
