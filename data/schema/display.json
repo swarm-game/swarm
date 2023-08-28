@@ -4,6 +4,7 @@
     "title": "Swarm entity display",
     "description": "How to display an entity or robot in the Swarm game",
     "type": "object",
+    "additionalProperties": false,
     "properties": {
         "char": {
             "default": " ",

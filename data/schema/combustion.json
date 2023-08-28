@@ -4,6 +4,7 @@
     "title": "Swarm entity combustion",
     "description": "Properties of combustion",
     "type": "object",
+    "additionalProperties": false,
     "properties": {
         "ignition": {
             "default": 0.5,
@@ -26,7 +27,7 @@
         },
         "product": {
             "default": "ash",
-            "type": "string",
+            "type": ["string", "null"],
             "description": "What entity, if any, is left over after combustion"
         }
     }

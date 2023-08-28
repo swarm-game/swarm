@@ -4,7 +4,40 @@
     "title": "Swarm world",
     "description": "Description of the world in the Swarm game",
     "type": "object",
+    "additionalProperties": false,
     "properties": {
+        "name": {
+            "type": "string",
+            "description": "Name of this subworld"
+        },
+        "default": {
+            "description": "Default world cell content",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "structures": {
+            "description": "Structure definitions",
+            "type": "array",
+            "items": {
+                "$ref": "./structure.json"
+            }
+        },
+        "placements": {
+            "description": "Structure placements",
+            "type": "array",
+            "items": {
+                "$ref": "./placement.json"
+            }
+        },
+        "waypoints": {
+            "description": "Single-location waypoint definitions",
+            "type": "array",
+            "items": {
+                "$ref": "./explicit-waypoint.json"
+            }
+        },
         "dsl": {
             "default": null,
             "type": "string",
@@ -25,6 +58,13 @@
             "type": "object",
             "examples": [{"T": ["grass", "tree"]}],
             "description": "The palette maps single character keys to tuples representing contents of cells in the world, so that a world containing entities and robots can be drawn graphically. See Cells for the contents of the tuples representing a cell."
+        },
+        "portals": {
+            "description": "A list of portal definitions that reference waypoints.",
+            "type": "array",
+            "items": {
+                "$ref": "./portal.json"
+            }
         },
         "map": {
             "default": "",
