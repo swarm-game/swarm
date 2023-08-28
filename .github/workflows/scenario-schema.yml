@@ -1,4 +1,4 @@
-name: Validate scenarios against schema
+name: JSON schema
 on:
   push:
     paths:
@@ -12,7 +12,7 @@ on:
       - main
 jobs:
   validate-scenario-schema:
-    name: Validate scenarios schema
+    name: Validate scenarios against schema
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
