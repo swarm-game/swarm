@@ -121,6 +121,19 @@ data Wildcard = Wildcard
 instance PrettyPrec Wildcard where
   prettyPrec _ _ = "_"
 
+-- | Split a function type chain, so that we can pretty print
+--   the type parameters aligned on each line when they don't fit.
+class UnchainableFun t where
+  unchainFun :: t -> [t]
+
+instance UnchainableFun Type where
+  unchainFun (a :->: ty) = a : unchainFun ty
+  unchainFun ty = [ty]
+
+instance UnchainableFun (UTerm TypeF ty) where
+  unchainFun (UTerm (TyFunF ty1 ty2)) = ty1 : unchainFun ty2
+  unchainFun ty = [ty]
+
 instance (PrettyPrec (t (Fix t))) => PrettyPrec (Fix t) where
   prettyPrec p = prettyPrec p . unFix
 
@@ -128,7 +141,7 @@ instance (PrettyPrec (t (UTerm t v)), PrettyPrec v) => PrettyPrec (UTerm t v) wh
   prettyPrec p (UTerm t) = prettyPrec p t
   prettyPrec p (UVar v) = prettyPrec p v
 
-instance (PrettyPrec t) => PrettyPrec (TypeF t) where
+instance ((UnchainableFun t), (PrettyPrec t)) => PrettyPrec (TypeF t) where
   prettyPrec _ (TyBaseF b) = ppr b
   prettyPrec _ (TyVarF v) = pretty v
   prettyPrec p (TySumF ty1 ty2) =
@@ -140,8 +153,11 @@ instance (PrettyPrec t) => PrettyPrec (TypeF t) where
   prettyPrec p (TyCmdF ty) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty
   prettyPrec _ (TyDelayF ty) = braces $ ppr ty
   prettyPrec p (TyFunF ty1 ty2) =
-    pparens (p > 0) $
-      prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
+    let funs = ppr <$> ty1 : unchainFun ty2
+        inLine l r = l <+> "->" <+> r
+        multiLine l r = l <+> "->" <> hardline <> r
+     in pparens (p > 0) . align $
+          flatAlt (concatWith multiLine funs) (concatWith inLine funs)
   prettyPrec _ (TyRcdF m) = brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
 
 instance PrettyPrec Polytype where
@@ -226,11 +242,11 @@ instance PrettyPrec Term where
      in group . vsep $
           [ nest 2 $
               vsep
-                [ hsep $
-                    ["def", pretty x]
-                      ++ maybe [] (\ty -> [":", ppr ty]) mty
-                      ++ ["="]
-                      ++ map prettyLambda t1lams
+                [ "def"
+                  <+> pretty x
+                  <> maybe "" (\ty -> ":" <> softline <> ppr ty) mty
+                  <+> softline' <> "="
+                  <+> hsep (map prettyLambda t1lams)
                 , ppr t1rest
                 ]
           , "end"
@@ -246,6 +262,17 @@ instance PrettyPrec Term where
   prettyPrec p (TAnnotate t pt) =
     pparens (p > 0) $
       prettyPrec 1 t <+> ":" <+> ppr pt
+
+{-
+def harvestbox : dir ->
+                 cmd unit ->
+                 cmd unit ->
+                 cmd unit ->
+                 cmd unit ->
+                 cmd unit = \d. \rep1. \rep2.
+  doboxP harvest d rep1 rep2 notempty
+end
+-}
 
 prettyEquality :: (Pretty a, PrettyPrec b) => (a, Maybe b) -> Doc ann
 prettyEquality (x, Nothing) = pretty x
