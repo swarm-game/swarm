@@ -31,6 +31,8 @@ import Swarm.Language.Typecheck
 import Swarm.Language.Types
 import Swarm.Util (showLowT)
 import Witch
+import Control.Lens (unsnoc)
+import Data.Maybe (fromJust)
 
 ------------------------------------------------------------
 -- PrettyPrec class + utilities
@@ -153,7 +155,8 @@ instance ((UnchainableFun t), (PrettyPrec t)) => PrettyPrec (TypeF t) where
   prettyPrec p (TyCmdF ty) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty
   prettyPrec _ (TyDelayF ty) = braces $ ppr ty
   prettyPrec p (TyFunF ty1 ty2) =
-    let funs = ppr <$> ty1 : unchainFun ty2
+    let (iniF, lastF) = fromJust . unsnoc $ ty1 : unchainFun ty2
+        funs = (prettyPrec 1 <$> iniF) <> [ppr lastF]
         inLine l r = l <+> "->" <+> r
         multiLine l r = l <+> "->" <> hardline <> r
      in pparens (p > 0) . align $
