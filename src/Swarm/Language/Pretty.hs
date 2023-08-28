@@ -247,8 +247,9 @@ instance PrettyPrec Term where
               vsep
                 [ "def"
                     <+> pretty x
-                      <> maybe "" (\ty -> ":" <> softline <> ppr ty) mty
-                    <+> softline' <> "="
+                    <> maybe "" (\ty -> ":" <> softline <> ppr ty) mty
+                    <+> softline'
+                    <> "="
                     <+> hsep (map prettyLambda t1lams)
                 , ppr t1rest
                 ]
