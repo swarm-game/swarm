@@ -1,0 +1,27 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/portal.json",
+    "title": "Portals",
+    "description": "Portal definition",
+    "type": "object",
+    "properties": {
+        "entrance": {
+            "type": "string",
+            "description": "Name of entrance waypoint"
+        },
+        "exitInfo": {
+            "description": "Exit definition",
+            "type": "object",
+            "properties": {
+                "exit": {
+                    "type": "string",
+                    "description": "Name of exit waypoint"
+                },
+                "subworldName": {
+                    "type": "string",
+                    "description": "Name of subworld"
+                }
+            }
+        }
+    }
+}

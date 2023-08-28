@@ -55,6 +55,27 @@
         "world": {
             "$ref": "./world.json"
         },
+        "attrs": {
+            "description": "A list of local attribute definitions",
+            "type": "array",
+            "items": {
+                "$ref": "./attribute.json"
+            }
+        },
+        "subworlds": {
+            "description": "A list of subworld definitions",
+            "type": "array",
+            "items": {
+                "$ref": "./world.json"
+            }
+        },
+        "structures": {
+            "description": "Structure definitions",
+            "type": "array",
+            "items": {
+                "$ref": "./structure.json"
+            }
+        },
         "robots": {
             "description": "A list of robots that will inhabit the world. See the description of Robots.",
             "type": "array",
