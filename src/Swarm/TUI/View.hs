@@ -952,6 +952,7 @@ drawKeyMenu s =
       ++ [("^c", "cancel") | isReplWorking]
       ++ [("M-p", renderPilotModeSwitch ctrlMode) | creative]
       ++ [("M-k", renderHandlerModeSwitch ctrlMode) | handlerInstalled]
+      ++ [("PgUp/Dn", "scroll")]
   keyCmdsFor (Just (FocusablePanel WorldPanel)) =
     [ ("←↓↑→ / hjkl", "scroll") | canScroll
     ]
