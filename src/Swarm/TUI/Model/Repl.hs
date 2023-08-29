@@ -21,6 +21,7 @@ module Swarm.TUI.Model.Repl (
   addREPLItem,
   restartREPLHistory,
   getLatestREPLHistoryItems,
+  getSessionREPLHistoryItems,
   moveReplHistIndex,
   getCurrentItemText,
   replIndexIsAtInput,
@@ -184,6 +185,11 @@ getLatestREPLHistoryItems n h = toList latestN
  where
   latestN = Seq.drop oldestIndex $ h ^. replSeq
   oldestIndex = max (h ^. replStart) $ length (h ^. replSeq) - n
+
+-- | Get only the items from the REPL history that were entered during
+--   the current session.
+getSessionREPLHistoryItems :: REPLHistory -> [REPLHistItem]
+getSessionREPLHistoryItems h = toList $ Seq.drop (h ^. replStart) (h ^. replSeq)
 
 data TimeDir = Newer | Older deriving (Eq, Ord, Show)
 

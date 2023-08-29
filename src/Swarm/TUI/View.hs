@@ -103,7 +103,7 @@ import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.View
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
-import Swarm.TUI.Model.Repl (lastEntry)
+import Swarm.TUI.Model.Repl (getSessionREPLHistoryItems, lastEntry)
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
@@ -451,7 +451,7 @@ drawGameUI s =
           )
           ( vLimit replHeight
               . padBottom Max
-              . padLeftRight 1
+              . padLeft (Pad 1)
               $ drawREPL s
           )
     ]
@@ -1325,18 +1325,20 @@ renderREPLPrompt focus repl = ps1 <+> replE
 
 -- | Draw the REPL.
 drawREPL :: AppState -> Widget Name
-drawREPL s = vBox $ latestHistory <> [currentPrompt] <> mayDebug
+drawREPL s =
+  vBox
+    [ withVScrollBars OnRight . viewport REPLViewport Vertical . vBox $ history <> [currentPrompt]
+    , vBox mayDebug
+    ]
  where
   -- rendered history lines fitting above REPL prompt
-  latestHistory :: [Widget n]
-  latestHistory = map fmt (getLatestREPLHistoryItems (replHeight - inputLines - debugLines) (repl ^. replHistory))
+  history :: [Widget n]
+  history = map fmt . getSessionREPLHistoryItems $ repl ^. replHistory
   currentPrompt :: Widget Name
   currentPrompt = case (isActive <$> base, repl ^. replControlMode) of
     (_, Handling) -> padRight Max $ txt "[key handler running, M-k to toggle]"
     (Just False, _) -> renderREPLPrompt (s ^. uiState . uiFocusRing) repl
     _running -> padRight Max $ txt "..."
-  inputLines = 1
-  debugLines = 3 * fromEnum (s ^. uiState . uiShowDebug)
   repl = s ^. uiState . uiREPL
   base = s ^. gameState . robotMap . at 0
   fmt (REPLEntry e) = txt $ "> " <> e

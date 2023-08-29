@@ -78,6 +78,7 @@ module Swarm.TUI.Model (
   populateInventoryList,
   infoScroll,
   modalScroll,
+  replScroll,
 
   -- * Runtime state
   RuntimeState,
@@ -185,6 +186,9 @@ infoScroll = viewportScroll InfoViewport
 
 modalScroll :: ViewportScroll Name
 modalScroll = viewportScroll ModalViewport
+
+replScroll :: ViewportScroll Name
+replScroll = viewportScroll REPLViewport
 
 -- ----------------------------------------------------------------------------
 --                                Runtime state                              --

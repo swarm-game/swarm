@@ -97,6 +97,8 @@ data Name
     InfoViewport
   | -- | The scrollable viewport for any modal dialog.
     ModalViewport
+  | -- | The scrollable viewport for the REPL.
+    REPLViewport
   | -- | A clickable button in a modal dialog.
     Button Button
   deriving (Eq, Ord, Show, Read)

@@ -1157,6 +1157,8 @@ handleREPLEventTyping = \case
     if text == T.empty
       then toggleModal QuitModal
       else continueWithoutRedraw
+  Key V.KPageUp -> vScrollPage replScroll Brick.Up
+  Key V.KPageDown -> vScrollPage replScroll Brick.Down
   -- finally if none match pass the event to the editor
   ev -> do
     Brick.zoom (uiState . uiREPL . replPromptEditor) (handleEditorEvent ev)
