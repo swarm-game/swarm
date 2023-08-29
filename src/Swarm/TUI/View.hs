@@ -401,12 +401,7 @@ drawGameUI s =
                   highlightAttr
                   fr
                   (FocusablePanel InfoPanel)
-                  ( plainBorder
-                      & topLabels . centerLabel
-                        .~ (if moreTop then Just (txt " · · · ") else Nothing)
-                      & bottomLabels . centerLabel
-                        .~ (if moreBot then Just (txt " · · · ") else Nothing)
-                  )
+                  plainBorder
                   $ drawInfoPanel s
               , hCenter
                   . clickable (FocusablePanel WorldEditorPanel)
@@ -426,8 +421,6 @@ drawGameUI s =
   -- has a clock equipped
   addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (s ^. uiState . lgTicksPerSecond) $ s ^. gameState)
   fr = s ^. uiState . uiFocusRing
-  moreTop = s ^. uiState . uiMoreInfoTop
-  moreBot = s ^. uiState . uiMoreInfoBot
   showREPL = s ^. uiState . uiShowREPL
   rightPanel = if showREPL then worldPanel ++ replPanel else worldPanel ++ minimizedREPL
   minimizedREPL = case focusGetCurrent fr of
@@ -882,10 +875,11 @@ drawKeyMenu :: AppState -> Widget Name
 drawKeyMenu s =
   vLimit 2 $
     hBox
-      [ vBox
-          [ mkCmdRow globalKeyCmds
-          , padLeft (Pad 2) contextCmds
-          ]
+      [ padBottom Max $
+          vBox
+            [ mkCmdRow globalKeyCmds
+            , padLeft (Pad 2) contextCmds
+            ]
       , gameModeWidget
       ]
  where
@@ -947,9 +941,7 @@ drawKeyMenu s =
       ]
   may b = if b then Just else const Nothing
 
-  highlightKeyCmds (k, n) = (,k,n) $ case n of
-    "pop out" | (s ^. uiState . uiMoreInfoBot) || (s ^. uiState . uiMoreInfoTop) -> Alert
-    _ -> PanelSpecific
+  highlightKeyCmds (k, n) = (PanelSpecific, k, n)
 
   keyCmdsFor (Just (FocusablePanel WorldEditorPanel)) =
     [("^s", "save map")]
@@ -1029,7 +1021,7 @@ drawRobotPanel s
   | Just r <- s ^. gameState . to focusedRobot
   , Just (_, lst) <- s ^. uiState . uiInventory =
       let Cosmic _subworldName (Location x y) = r ^. robotLocation
-          drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
+          drawClickableItem pos selb = padRight (Pad 1) . clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
        in padBottom Max $
             vBox
               [ hCenter $
@@ -1038,7 +1030,8 @@ drawRobotPanel s
                     , padLeft (Pad 2) $ str (printf "(%d, %d)" x y)
                     , padLeft (Pad 2) $ renderDisplay (r ^. robotDisplay)
                     ]
-              , padAll 1 (BL.renderListWithIndex drawClickableItem True lst)
+              , withVScrollBars OnRight . padLeft (Pad 1) . padTop (Pad 1) $
+                  BL.renderListWithIndex drawClickableItem True lst
               ]
   | otherwise = blank
 
@@ -1089,7 +1082,8 @@ drawInfoPanel :: AppState -> Widget Name
 drawInfoPanel s
   | Just Far <- s ^. gameState . to focusedRange = blank
   | otherwise =
-      viewport InfoViewport Vertical
+      withVScrollBars OnRight
+        . viewport InfoViewport Vertical
         . padLeftRight 1
         $ explainFocusedItem s
 
