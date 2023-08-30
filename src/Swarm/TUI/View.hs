@@ -1028,16 +1028,15 @@ drawRobotPanel s
   -- away and a robot that does not exist.
   | Just r <- s ^. gameState . to focusedRobot
   , Just (_, lst) <- s ^. uiState . uiInventory =
-      let Cosmic _subworldName (Location x y) = r ^. robotLocation
-          drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
+      let drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
+          row =
+            [ txt (r ^. robotName)
+            , padLeft (Pad 2) . str . renderCoordsString $ r ^. robotLocation
+            , padLeft (Pad 2) $ renderDisplay (r ^. robotDisplay)
+            ]
        in padBottom Max $
             vBox
-              [ hCenter $
-                  hBox
-                    [ txt (r ^. robotName)
-                    , padLeft (Pad 2) $ str (printf "(%d, %d)" x y)
-                    , padLeft (Pad 2) $ renderDisplay (r ^. robotDisplay)
-                    ]
+              [ hCenter $ hBox row
               , padAll 1 (BL.renderListWithIndex drawClickableItem True lst)
               ]
   | otherwise = blank
