@@ -523,7 +523,10 @@ stepRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Ro
 stepRobot r = do
   (r', cesk') <- runState (r & activityCounts . tickStepBudget -~ 1) (stepCESK (r ^. machine))
   -- sendIO $ appendFile "out.txt" (prettyString cesk' ++ "\n")
-  return $ r' & machine .~ cesk'
+  return $
+    r'
+      & machine .~ cesk'
+      & activityCounts . lifetimeStepCount +~ 1
 
 -- | replace some entity in the world with another entity
 updateWorld ::
@@ -1002,6 +1005,8 @@ execConst c vs s k = do
   -- Increment command count regardless of success
   when (isTangible c) $
     activityCounts . tangibleCommandCount %= (+ 1)
+
+  activityCounts . anyCommandCount %= (+ 1)
 
   -- Now proceed to actually carry out the operation.
   case c of

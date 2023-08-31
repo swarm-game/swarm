@@ -40,7 +40,7 @@
 1320-world-DSL
 1356-portals
 144-subworlds
-1341-command-count
+1341-command-count.yaml
 1355-combustion.yaml
 1379-single-world-portal-reorientation.yaml
 1399-backup-command.yaml

@@ -615,6 +615,8 @@ robotsListWidget s = hCenter table
     , "Inventory"
     , "Status"
     , "Actions"
+    , "Commands"
+    , "Cycles"
     , "Log"
     ]
   headers = withAttr robotAttr . txt <$> applyWhen cheat ("ID" :) headings
@@ -629,6 +631,8 @@ robotsListWidget s = hCenter table
       , padRight (Pad 1) (str $ show rInvCount)
       , statusWidget
       , str $ show $ robot ^. activityCounts . tangibleCommandCount
+      , str $ show $ robot ^. activityCounts . anyCommandCount
+      , str $ show $ robot ^. activityCounts . lifetimeStepCount
       , txt rLog
       ]
     idWidget = str $ show $ robot ^. robotID
