@@ -115,7 +115,7 @@ import Swarm.Version (NewReleaseFailure (..))
 import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
-import Witch (from, into)
+import Witch (into)
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -627,6 +627,7 @@ robotsListWidget s = hCenter table
     , "Position"
     , "Inventory"
     , "Status"
+    , "Actions"
     , "Log"
     ]
   headers = withAttr robotAttr . txt <$> applyWhen cheat ("ID" :) headings
@@ -636,10 +637,11 @@ robotsListWidget s = hCenter table
    where
     cells =
       [ nameWidget
-      , txt $ from ageStr
+      , str ageStr
       , locWidget
-      , padRight (Pad 1) (txt $ from $ show rInvCount)
+      , padRight (Pad 1) (str $ show rInvCount)
       , statusWidget
+      , str $ show $ robot ^. tangibleCommandCount
       , txt rLog
       ]
     idWidget = str $ show $ robot ^. robotID

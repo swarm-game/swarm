@@ -58,7 +58,8 @@ module Swarm.Game.Robot (
   machine,
   systemRobot,
   selfDestruct,
-  tickSteps,
+  tickStepBudget,
+  tangibleCommandCount,
   runningAtomic,
 
   -- ** Creation & instantiation
@@ -197,7 +198,8 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _machine :: CESK
   , _systemRobot :: Bool
   , _selfDestruct :: Bool
-  , _tickSteps :: Int
+  , _tickStepBudget :: Int
+  , _tangibleCommandCount :: Int
   , _runningAtomic :: Bool
   , _robotCreatedAt :: TimeSpec
   }
@@ -396,7 +398,10 @@ systemRobot :: Lens' Robot Bool
 -- | Does this robot wish to self destruct?
 selfDestruct :: Lens' Robot Bool
 
--- | The need for 'tickSteps' is a bit technical, and I hope I can
+-- | A counter that is decremented upon each step of the robot within the
+--   CESK machine. Initially set to 'robotStepsPerTick' at each new tick.
+--
+--   The need for 'tickStepBudget' is a bit technical, and I hope I can
 --   eventually find a different, better way to accomplish it.
 --   Ideally, we would want each robot to execute a single
 --   /command/ at every game tick, so that /e.g./ two robots
@@ -423,8 +428,8 @@ selfDestruct :: Lens' Robot Bool
 --   keeping track of itself, but that seemed the most technically
 --   convenient way to do it at the time.  The robot needs some
 --   way to signal when it has executed a command, which it
---   currently does by setting tickSteps to zero.  However, that
---   has the disadvantage that when tickSteps becomes zero, we
+--   currently does by setting tickStepBudget to zero.  However, that
+--   has the disadvantage that when tickStepBudget becomes zero, we
 --   can't tell whether that happened because the robot ran out of
 --   steps, or because it executed a command and set it to zero
 --   manually.
@@ -432,7 +437,10 @@ selfDestruct :: Lens' Robot Bool
 --   Perhaps instead, each robot should keep a counter saying how
 --   many commands it has executed.  The loop stepping the robot
 --   can tell when the counter increments.
-tickSteps :: Lens' Robot Int
+tickStepBudget :: Lens' Robot Int
+
+-- | Total number of commands executed over robot's lifetime
+tangibleCommandCount :: Lens' Robot Int
 
 -- | Is the robot currently running an atomic block?
 runningAtomic :: Lens' Robot Bool
@@ -485,7 +493,8 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
     , _machine = m
     , _systemRobot = sys
     , _selfDestruct = False
-    , _tickSteps = 0
+    , _tickStepBudget = 0
+    , _tangibleCommandCount = 0
     , _runningAtomic = False
     }
  where
