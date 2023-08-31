@@ -628,7 +628,7 @@ robotsListWidget s = hCenter table
       , locWidget
       , padRight (Pad 1) (str $ show rInvCount)
       , statusWidget
-      , str $ show $ robot ^. tangibleCommandCount
+      , str $ show $ robot ^. activityCounts . tangibleCommandCount
       , txt rLog
       ]
     idWidget = str $ show $ robot ^. robotID

@@ -194,7 +194,7 @@ singleStep ss focRID robotSet = do
       gameStep .= RobotStep (SSingle focRID)
       -- also set ticks of focused robot
       steps <- use robotStepsPerTick
-      robotMap . ix focRID . tickStepBudget .= steps
+      robotMap . ix focRID . activityCounts . tickStepBudget .= steps
       -- continue to focused robot if there were no previous robots
       -- DO NOT SKIP THE ROBOT SETUP above
       if IS.null preFoc
@@ -222,7 +222,7 @@ singleStep ss focRID robotSet = do
           insertBackRobot focRID newR
           if rid == focRID
             then do
-              when (newR ^. tickStepBudget == 0) $ gameStep .= RobotStep (SAfter focRID)
+              when (newR ^. activityCounts . tickStepBudget == 0) $ gameStep .= RobotStep (SAfter focRID)
               return False
             else do
               -- continue to newly focused
@@ -504,7 +504,7 @@ withExceptions s k m = do
 tickRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
 tickRobot r = do
   steps <- use robotStepsPerTick
-  tickRobotRec (r & tickStepBudget .~ steps)
+  tickRobotRec (r & activityCounts . tickStepBudget .~ steps)
 
 -- | Recursive helper function for 'tickRobot', which checks if the
 --   robot is actively running and still has steps left, and if so
@@ -513,7 +513,7 @@ tickRobot r = do
 tickRobotRec :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
 tickRobotRec r = do
   time <- use ticks
-  case wantsToStep time r && (r ^. runningAtomic || r ^. tickStepBudget > 0) of
+  case wantsToStep time r && (r ^. runningAtomic || r ^. activityCounts . tickStepBudget > 0) of
     True -> stepRobot r >>= tickRobotRec
     False -> return r
 
@@ -521,7 +521,7 @@ tickRobotRec r = do
 --   running its CESK machine for one step.
 stepRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
 stepRobot r = do
-  (r', cesk') <- runState (r & tickStepBudget -~ 1) (stepCESK (r ^. machine))
+  (r', cesk') <- runState (r & activityCounts . tickStepBudget -~ 1) (stepCESK (r ^. machine))
   -- sendIO $ appendFile "out.txt" (prettyString cesk' ++ "\n")
   return $ r' & machine .~ cesk'
 
@@ -777,7 +777,7 @@ stepCESK cesk = case cesk of
   -- function.  Set tickStepBudget to 0 if the command is supposed to take
   -- a tick, so the robot won't take any more steps this tick.
   Out (VCApp c args) s (FExec : k) -> do
-    when (isTangible c) $ tickStepBudget .= 0
+    when (isTangible c) $ activityCounts . tickStepBudget .= 0
     evalConst c (reverse args) s k
 
   -- Reset the runningAtomic flag when we encounter an FFinishAtomic frame.
@@ -1001,7 +1001,7 @@ execConst c vs s k = do
 
   -- Increment command count regardless of success
   when (isTangible c) $
-    tangibleCommandCount %= (+ 1)
+    activityCounts . tangibleCommandCount %= (+ 1)
 
   -- Now proceed to actually carry out the operation.
   case c of
