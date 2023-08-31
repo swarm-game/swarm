@@ -14,7 +14,10 @@ solution: |
     wait 10;
     x <- harvest;
     if (x == "flower") {
-      turn back;
+      turn right;
+      move;
+      grab;
+      return ();
     } {move;
     };
 robots:
@@ -28,15 +31,16 @@ robots:
       - comparator
       - hourglass
       - branch predictor
-known: [flower]
+known: [flower, tree]
 world:
   default: [blank]
   palette:
     '.': [grass]
     'f': [grass, flower]
+    'T': [grass, tree]
     'B': [grass, null, base]
   upperleft: [-1, 1]
   map: |
     .......
     .B.fff.
-    .......
+    ...T...

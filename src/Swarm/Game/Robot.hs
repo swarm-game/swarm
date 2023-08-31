@@ -62,6 +62,8 @@ module Swarm.Game.Robot (
   activityCounts,
   tickStepBudget,
   tangibleCommandCount,
+  anyCommandCount,
+  lifetimeStepCount,
 
   -- ** Creation & instantiation
   mkRobot,
@@ -172,6 +174,8 @@ data RobotPhase
 data ActivityCounts = ActivityCounts
   { _tickStepBudget :: Int
   , _tangibleCommandCount :: Int
+  , _anyCommandCount :: Int
+  , _lifetimeStepCount :: Int
   }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
@@ -218,8 +222,16 @@ makeLensesNoSigs ''ActivityCounts
 --   can tell when the counter increments.
 tickStepBudget :: Lens' ActivityCounts Int
 
--- | Total number of commands executed over robot's lifetime
+-- | Total number of tangible commands executed over robot's lifetime
 tangibleCommandCount :: Lens' ActivityCounts Int
+
+-- | Total number of commands executed over robot's lifetime
+anyCommandCount :: Lens' ActivityCounts Int
+
+-- | Total number of CESK steps executed over robot's lifetime.
+-- This could be thought of as "CPU cycles" consumed, and is labeled
+-- as "cycles" in the F2 dialog in the UI.
+lifetimeStepCount :: Lens' ActivityCounts Int
 
 -- | With a robot template, we may or may not have a location.  With a
 --   concrete robot we must have a location.
@@ -508,6 +520,8 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
         ActivityCounts
           { _tickStepBudget = 0
           , _tangibleCommandCount = 0
+          , _anyCommandCount = 0
+          , _lifetimeStepCount = 0
           }
     , _runningAtomic = False
     }

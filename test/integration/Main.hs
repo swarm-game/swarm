@@ -32,7 +32,7 @@ import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
 import Swarm.Game.Entity (EntityMap, lookupByName)
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Log (ErrorLevel (..), LogEntry, LogSource (..), leSource, leText)
-import Swarm.Game.Robot (defReqs, equippedDevices, machine, robotContext, robotLog, systemRobot, waitingUntil)
+import Swarm.Game.Robot (defReqs, equippedDevices, machine, robotContext, robotLog, systemRobot, waitingUntil, activityCounts, tangibleCommandCount, anyCommandCount, lifetimeStepCount)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
@@ -70,7 +70,7 @@ import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath.Posix (splitDirectories)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
-import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
+import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase, assertEqual)
 import Witch (into)
 
 isUnparseableTest :: (FilePath, String) -> Bool
@@ -339,6 +339,13 @@ testScenarioSolutions rs ui =
           maybe False (view systemRobot) r2
         assertBool "The third built robot should be a normal robot like base." $
           maybe False (not . view systemRobot) r3
+    , testSolution' Default "Testing/1341-command-count" CheckForBadErrors $ \g -> case g ^. robotMap . at 0 of
+        Nothing -> assertFailure "No base bot!"
+        Just base -> do
+          let counters = base ^. activityCounts
+          assertEqual "Incorrect tangible command count." 7 $ view tangibleCommandCount counters
+          assertEqual "Incorrect command count." 10 $ view anyCommandCount counters
+          assertEqual "Incorrect step count." 64 $ view lifetimeStepCount counters
     ]
  where
   -- expectFailIf :: Bool -> String -> TestTree -> TestTree
