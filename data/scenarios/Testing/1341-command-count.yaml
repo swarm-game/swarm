@@ -1,0 +1,42 @@
+version: 1
+name: Count commands
+description: |
+  Count commands
+objectives:
+  - goal:
+    - |
+      `grab` the "tree".
+    condition: |
+      as base {has "tree"}
+solution: |
+    move;
+    move;
+    wait 10;
+    x <- harvest;
+    if (x == "flower") {
+      turn back;
+    } {move;
+    };
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - treads
+      - grabber
+      - harvester
+      - logger
+      - comparator
+      - hourglass
+      - branch predictor
+known: [flower]
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+    'f': [grass, flower]
+    'B': [grass, null, base]
+  upperleft: [-1, 1]
+  map: |
+    .......
+    .B.fff.
+    .......
