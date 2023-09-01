@@ -32,7 +32,7 @@ import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
 import Swarm.Game.Entity (EntityMap, lookupByName)
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Log (ErrorLevel (..), LogEntry, LogSource (..), leSource, leText)
-import Swarm.Game.Robot (defReqs, equippedDevices, machine, robotContext, robotLog, systemRobot, waitingUntil, activityCounts, tangibleCommandCount, anyCommandCount, lifetimeStepCount)
+import Swarm.Game.Robot (activityCounts, anyCommandCount, defReqs, equippedDevices, lifetimeStepCount, machine, robotContext, robotLog, systemRobot, tangibleCommandCount, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
@@ -70,7 +70,7 @@ import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath.Posix (splitDirectories)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
-import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase, assertEqual)
+import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
 import Witch (into)
 
 isUnparseableTest :: (FilePath, String) -> Bool
