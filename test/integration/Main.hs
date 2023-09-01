@@ -32,7 +32,7 @@ import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
 import Swarm.Game.Entity (EntityMap, lookupByName)
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Log (ErrorLevel (..), LogEntry, LogSource (..), leSource, leText)
-import Swarm.Game.Robot (activityCounts, anyCommandCount, defReqs, equippedDevices, lifetimeStepCount, machine, robotContext, robotLog, systemRobot, tangibleCommandCount, waitingUntil)
+import Swarm.Game.Robot (activityCounts, commandsHistogram, defReqs, equippedDevices, lifetimeStepCount, machine, robotContext, robotLog, systemRobot, tangibleCommandCount, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
@@ -344,8 +344,8 @@ testScenarioSolutions rs ui =
         Just base -> do
           let counters = base ^. activityCounts
           assertEqual "Incorrect tangible command count." 7 $ view tangibleCommandCount counters
-          assertEqual "Incorrect command count." 10 $ view anyCommandCount counters
-          assertEqual "Incorrect step count." 64 $ view lifetimeStepCount counters
+          assertEqual "Incorrect command count." 10 $ sum . M.elems $ view commandsHistogram counters
+          assertEqual "Incorrect step count." 62 $ view lifetimeStepCount counters
     ]
  where
   -- expectFailIf :: Bool -> String -> TestTree -> TestTree

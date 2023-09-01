@@ -62,7 +62,7 @@ module Swarm.Game.Robot (
   activityCounts,
   tickStepBudget,
   tangibleCommandCount,
-  anyCommandCount,
+  commandsHistogram,
   lifetimeStepCount,
 
   -- ** Creation & instantiation
@@ -80,10 +80,11 @@ module Swarm.Game.Robot (
   hearingDistance,
 ) where
 
-import Control.Lens hiding (contains)
+import Control.Lens hiding (Const, contains)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (hashWithSalt)
 import Data.Kind qualified
+import Data.Map (Map)
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
@@ -103,7 +104,7 @@ import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirement (ReqCtx)
-import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Syntax (Const, Syntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types (TCtx)
@@ -174,7 +175,7 @@ data RobotPhase
 data ActivityCounts = ActivityCounts
   { _tickStepBudget :: Int
   , _tangibleCommandCount :: Int
-  , _anyCommandCount :: Int
+  , _commandsHistogram :: Map Const Int
   , _lifetimeStepCount :: Int
   }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
@@ -226,7 +227,7 @@ tickStepBudget :: Lens' ActivityCounts Int
 tangibleCommandCount :: Lens' ActivityCounts Int
 
 -- | Total number of commands executed over robot's lifetime
-anyCommandCount :: Lens' ActivityCounts Int
+commandsHistogram :: Lens' ActivityCounts (Map Const Int)
 
 -- | Total number of CESK steps executed over robot's lifetime.
 -- This could be thought of as "CPU cycles" consumed, and is labeled
@@ -520,7 +521,7 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
         ActivityCounts
           { _tickStepBudget = 0
           , _tangibleCommandCount = 0
-          , _anyCommandCount = 0
+          , _commandsHistogram = mempty
           , _lifetimeStepCount = 0
           }
     , _runningAtomic = False

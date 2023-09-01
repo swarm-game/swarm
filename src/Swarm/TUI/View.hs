@@ -631,7 +631,7 @@ robotsListWidget s = hCenter table
       , padRight (Pad 1) (str $ show rInvCount)
       , statusWidget
       , str $ show $ robot ^. activityCounts . tangibleCommandCount
-      , str $ show $ robot ^. activityCounts . anyCommandCount
+      , str . show . sum . M.elems $ robot ^. activityCounts . commandsHistogram
       , str $ show $ robot ^. activityCounts . lifetimeStepCount
       , txt rLog
       ]

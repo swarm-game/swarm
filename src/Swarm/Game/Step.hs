@@ -1006,7 +1006,7 @@ execConst c vs s k = do
   when (isTangible c) $
     activityCounts . tangibleCommandCount %= (+ 1)
 
-  activityCounts . anyCommandCount %= (+ 1)
+  activityCounts . commandsHistogram %= M.insertWith (+) c 1
 
   -- Now proceed to actually carry out the operation.
   case c of
