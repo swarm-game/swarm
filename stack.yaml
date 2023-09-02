@@ -8,5 +8,7 @@ extra-deps:
 # breaking changes; see https://github.com/swarm-game/swarm/issues/1350
 - lsp-1.6.0.0
 - lsp-types-1.6.0.0
+- github: jtdaugherty/brick
+  commit: 6b7195cf6e5bc95f9f3f588b0ec68103c0c5cd6d
 resolver: lts-21.0
 

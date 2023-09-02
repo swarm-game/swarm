@@ -1022,7 +1022,7 @@ drawRobotPanel s
   | Just r <- s ^. gameState . to focusedRobot
   , Just (_, lst) <- s ^. uiState . uiInventory =
       let Cosmic _subworldName (Location x y) = r ^. robotLocation
-          drawClickableItem pos selb = padRight (Pad 1) . clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
+          drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
        in padBottom Max $
             vBox
               [ hCenter $
@@ -1031,7 +1031,7 @@ drawRobotPanel s
                     , padLeft (Pad 2) $ str (printf "(%d, %d)" x y)
                     , padLeft (Pad 2) $ renderDisplay (r ^. robotDisplay)
                     ]
-              , withVScrollBars OnRight . padLeft (Pad 1) . padTop (Pad 1) $
+              , withLeftPaddedVScrollBars . padLeft (Pad 1) . padTop (Pad 1) $
                   BL.renderListWithIndex drawClickableItem True lst
               ]
   | otherwise = blank
@@ -1328,7 +1328,7 @@ renderREPLPrompt focus repl = ps1 <+> replE
 drawREPL :: AppState -> Widget Name
 drawREPL s =
   vBox
-    [ withVScrollBars OnRight . viewport REPLViewport Vertical . vBox $ history <> [currentPrompt]
+    [ withLeftPaddedVScrollBars . viewport REPLViewport Vertical . vBox $ history <> [currentPrompt]
     , vBox mayDebug
     ]
  where
@@ -1345,3 +1345,21 @@ drawREPL s =
   fmt (REPLEntry e) = txt $ "> " <> e
   fmt (REPLOutput t) = txt t
   mayDebug = [drawRobotMachine s True | s ^. uiState . uiShowDebug]
+
+------------------------------------------------------------
+-- Utility
+------------------------------------------------------------
+
+-- See https://github.com/jtdaugherty/brick/discussions/484
+withLeftPaddedVScrollBars :: Widget n -> Widget n
+withLeftPaddedVScrollBars =
+  withVScrollBarRenderer (addLeftSpacing verticalScrollbarRenderer)
+    . withVScrollBars OnRight
+ where
+  addLeftSpacing :: VScrollbarRenderer n -> VScrollbarRenderer n
+  addLeftSpacing r =
+    r
+      { scrollbarWidthAllocation = 2
+      , renderVScrollbar = hLimit 1 $ renderVScrollbar r
+      , renderVScrollbarTrough = hLimit 1 $ renderVScrollbarTrough r
+      }
