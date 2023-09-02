@@ -614,27 +614,30 @@ robotsListWidget s = hCenter table
       . BT.alignRight 4
       . BT.table
       $ map (padLeftRight 1) <$> (headers : robotsTable)
-  headers =
-    withAttr robotAttr
-      <$> [ txt "Name"
-          , txt "Age"
-          , txt "Position"
-          , txt "Inventory"
-          , txt "Status"
-          , txt "Log"
-          ]
+  headings =
+    [ "Name"
+    , "Age"
+    , "Position"
+    , "Inventory"
+    , "Status"
+    , "Log"
+    ]
+  headers = withAttr robotAttr . txt <$> applyWhen cheat ("ID" :) headings
   robotsTable = mkRobotRow <$> robots
   mkRobotRow robot =
-    [ nameWidget
-    , txt $ from ageStr
-    , locWidget
-    , padRight (Pad 1) (txt $ from $ show rInvCount)
-    , statusWidget
-    , txt rLog
-    ]
+    applyWhen cheat (idWidget :) cells
    where
-    nameWidget = hBox [renderDisplay (robot ^. robotDisplay), higlightSystem . txt $ " " <> robot ^. robotName]
-    higlightSystem = if robot ^. systemRobot then withAttr highlightAttr else id
+    cells =
+      [ nameWidget
+      , txt $ from ageStr
+      , locWidget
+      , padRight (Pad 1) (txt $ from $ show rInvCount)
+      , statusWidget
+      , txt rLog
+      ]
+    idWidget = str $ show $ robot ^. robotID
+    nameWidget = hBox [renderDisplay (robot ^. robotDisplay), highlightSystem . txt $ " " <> robot ^. robotName]
+    highlightSystem = if robot ^. systemRobot then withAttr highlightAttr else id
 
     ageStr
       | age < 60 = show age <> "sec"
@@ -1021,16 +1024,15 @@ drawRobotPanel s
   -- away and a robot that does not exist.
   | Just r <- s ^. gameState . to focusedRobot
   , Just (_, lst) <- s ^. uiState . uiInventory =
-      let Cosmic _subworldName (Location x y) = r ^. robotLocation
-          drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
+      let drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
+          row =
+            [ txt (r ^. robotName)
+            , padLeft (Pad 2) . str . renderCoordsString $ r ^. robotLocation
+            , padLeft (Pad 2) $ renderDisplay (r ^. robotDisplay)
+            ]
        in padBottom Max $
             vBox
-              [ hCenter $
-                  hBox
-                    [ txt (r ^. robotName)
-                    , padLeft (Pad 2) $ str (printf "(%d, %d)" x y)
-                    , padLeft (Pad 2) $ renderDisplay (r ^. robotDisplay)
-                    ]
+              [ hCenter $ hBox row
               , withLeftPaddedVScrollBars . padLeft (Pad 1) . padTop (Pad 1) $
                   BL.renderListWithIndex drawClickableItem True lst
               ]
