@@ -3,12 +3,11 @@ extra-deps:
 - hsnoise-0.0.3@sha256:260b39175b8a3e3b1719ad3987b7d72a3fd7a0fa99be8639b91cf4dc3f1c8796,1476
 - simple-enumeration-0.2.1@sha256:8625b269c1650d3dd0e3887351c153049f4369853e0d525219e07480ea004b9f,1178
 - boolexpr-0.2@sha256:07f38a0206ad63c2c893e3c6271a2e45ea25ab4ef3a9e973edc746876f0ab9e8,853
-- brick-list-skip-0.1.1.4
+- brick-1.10
+- brick-list-skip-0.1.1.5
 # We should update to lsp-2.0 and lsp-types-2.0 but it involves some
 # breaking changes; see https://github.com/swarm-game/swarm/issues/1350
 - lsp-1.6.0.0
 - lsp-types-1.6.0.0
-- github: jtdaugherty/brick
-  commit: 6b7195cf6e5bc95f9f3f588b0ec68103c0c5cd6d
 resolver: lts-21.0
 
