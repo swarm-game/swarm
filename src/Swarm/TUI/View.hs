@@ -51,6 +51,7 @@ import Control.Lens as Lens hiding (Const, from)
 import Control.Monad (guard)
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
+import Data.Foldable (toList)
 import Data.Foldable qualified as F
 import Data.Functor (($>))
 import Data.IntMap qualified as IM
@@ -1330,13 +1331,16 @@ renderREPLPrompt focus repl = ps1 <+> replE
 drawREPL :: AppState -> Widget Name
 drawREPL s =
   vBox
-    [ withLeftPaddedVScrollBars . viewport REPLViewport Vertical . vBox $ history <> [currentPrompt]
+    [ withLeftPaddedVScrollBars
+        . viewport REPLViewport Vertical
+        . vBox
+        $ [cached REPLHistoryCache (vBox history), currentPrompt]
     , vBox mayDebug
     ]
  where
   -- rendered history lines fitting above REPL prompt
   history :: [Widget n]
-  history = map fmt . getSessionREPLHistoryItems $ repl ^. replHistory
+  history = map fmt . toList . getSessionREPLHistoryItems $ repl ^. replHistory
   currentPrompt :: Widget Name
   currentPrompt = case (isActive <$> base, repl ^. replControlMode) of
     (_, Handling) -> padRight Max $ txt "[key handler running, M-k to toggle]"

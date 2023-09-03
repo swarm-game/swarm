@@ -64,6 +64,8 @@ data Name
     WorldEditorPanelControl WorldEditorFocusable
   | -- | The REPL input form.
     REPLInput
+  | -- | The REPL history cache.
+    REPLHistoryCache
   | -- | The render cache for the world view.
     WorldCache
   | -- | The cached extent for the world view.

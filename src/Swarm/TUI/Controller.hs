@@ -815,6 +815,7 @@ updateUI = do
       let itName = fromString $ "it" ++ show itIx
       let out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
       uiState . uiREPL . replHistory %= addREPLItem (REPLOutput out)
+      invalidateCacheEntry REPLHistoryCache
       vScrollToEnd replScroll
       gameState . replStatus .= REPLDone (Just val)
       gameState . baseRobot . robotContext . at itName .= Just val
@@ -1129,7 +1130,9 @@ handleREPLEventTyping = \case
 
         if not $ s ^. gameState . replWorking
           then case repl ^. replPromptType of
-            CmdPrompt _ -> runBaseCode topCtx uinput
+            CmdPrompt _ -> do
+              runBaseCode topCtx uinput
+              invalidateCacheEntry REPLHistoryCache
             SearchPrompt hist ->
               case lastEntry uinput hist of
                 Nothing -> uiState %= resetREPL "" (CmdPrompt [])

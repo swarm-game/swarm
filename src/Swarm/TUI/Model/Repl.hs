@@ -188,8 +188,8 @@ getLatestREPLHistoryItems n h = toList latestN
 
 -- | Get only the items from the REPL history that were entered during
 --   the current session.
-getSessionREPLHistoryItems :: REPLHistory -> [REPLHistItem]
-getSessionREPLHistoryItems h = toList $ Seq.drop (h ^. replStart) (h ^. replSeq)
+getSessionREPLHistoryItems :: REPLHistory -> Seq REPLHistItem
+getSessionREPLHistoryItems h = Seq.drop (h ^. replStart) (h ^. replSeq)
 
 data TimeDir = Newer | Older deriving (Eq, Ord, Show)
 
