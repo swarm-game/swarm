@@ -20,8 +20,6 @@ module Swarm.TUI.Model.UI (
   uiInventory,
   uiInventorySort,
   uiInventorySearch,
-  uiMoreInfoTop,
-  uiMoreInfoBot,
   uiScrollToEnd,
   uiError,
   uiModal,
@@ -107,8 +105,6 @@ data UIState = UIState
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
   , _uiInventorySort :: InventorySortOptions
   , _uiInventorySearch :: Maybe Text
-  , _uiMoreInfoTop :: Bool
-  , _uiMoreInfoBot :: Bool
   , _uiScrollToEnd :: Bool
   , _uiError :: Maybe Text
   , _uiModal :: Maybe Modal
@@ -176,12 +172,6 @@ uiInventorySearch :: Lens' UIState (Maybe Text)
 --   inventory changed) along with a list of the items in the
 --   focused robot's inventory.
 uiInventory :: Lens' UIState (Maybe (Int, BL.List Name InventoryListEntry))
-
--- | Does the info panel contain more content past the top of the panel?
-uiMoreInfoTop :: Lens' UIState Bool
-
--- | Does the info panel contain more content past the bottom of the panel?
-uiMoreInfoBot :: Lens' UIState Bool
 
 -- | A flag telling the UI to scroll the info panel to the very end
 --   (used when a new log message is appended).
@@ -329,8 +319,6 @@ initUIState speedFactor showMainMenu cheatMode = do
           , _uiInventory = Nothing
           , _uiInventorySort = defaultSortOptions
           , _uiInventorySearch = Nothing
-          , _uiMoreInfoTop = False
-          , _uiMoreInfoBot = False
           , _uiScrollToEnd = False
           , _uiError = Nothing
           , _uiModal = Nothing

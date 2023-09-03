@@ -51,6 +51,7 @@ import Control.Lens as Lens hiding (Const, from)
 import Control.Monad (guard)
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
+import Data.Foldable (toList)
 import Data.Foldable qualified as F
 import Data.Functor (($>))
 import Data.IntMap qualified as IM
@@ -103,7 +104,7 @@ import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.View
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
-import Swarm.TUI.Model.Repl (lastEntry)
+import Swarm.TUI.Model.Repl (getSessionREPLHistoryItems, lastEntry)
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
@@ -401,12 +402,7 @@ drawGameUI s =
                   highlightAttr
                   fr
                   (FocusablePanel InfoPanel)
-                  ( plainBorder
-                      & topLabels . centerLabel
-                        .~ (if moreTop then Just (txt " · · · ") else Nothing)
-                      & bottomLabels . centerLabel
-                        .~ (if moreBot then Just (txt " · · · ") else Nothing)
-                  )
+                  plainBorder
                   $ drawInfoPanel s
               , hCenter
                   . clickable (FocusablePanel WorldEditorPanel)
@@ -426,8 +422,6 @@ drawGameUI s =
   -- has a clock equipped
   addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (s ^. uiState . lgTicksPerSecond) $ s ^. gameState)
   fr = s ^. uiState . uiFocusRing
-  moreTop = s ^. uiState . uiMoreInfoTop
-  moreBot = s ^. uiState . uiMoreInfoBot
   showREPL = s ^. uiState . uiShowREPL
   rightPanel = if showREPL then worldPanel ++ replPanel else worldPanel ++ minimizedREPL
   minimizedREPL = case focusGetCurrent fr of
@@ -458,7 +452,7 @@ drawGameUI s =
           )
           ( vLimit replHeight
               . padBottom Max
-              . padLeftRight 1
+              . padLeft (Pad 1)
               $ drawREPL s
           )
     ]
@@ -885,10 +879,11 @@ drawKeyMenu :: AppState -> Widget Name
 drawKeyMenu s =
   vLimit 2 $
     hBox
-      [ vBox
-          [ mkCmdRow globalKeyCmds
-          , padLeft (Pad 2) contextCmds
-          ]
+      [ padBottom Max $
+          vBox
+            [ mkCmdRow globalKeyCmds
+            , padLeft (Pad 2) contextCmds
+            ]
       , gameModeWidget
       ]
  where
@@ -950,9 +945,7 @@ drawKeyMenu s =
       ]
   may b = if b then Just else const Nothing
 
-  highlightKeyCmds (k, n) = (,k,n) $ case n of
-    "pop out" | (s ^. uiState . uiMoreInfoBot) || (s ^. uiState . uiMoreInfoTop) -> Alert
-    _ -> PanelSpecific
+  highlightKeyCmds (k, n) = (PanelSpecific, k, n)
 
   keyCmdsFor (Just (FocusablePanel WorldEditorPanel)) =
     [("^s", "save map")]
@@ -963,6 +956,7 @@ drawKeyMenu s =
       ++ [("^c", "cancel") | isReplWorking]
       ++ [("M-p", renderPilotModeSwitch ctrlMode) | creative]
       ++ [("M-k", renderHandlerModeSwitch ctrlMode) | handlerInstalled]
+      ++ [("PgUp/Dn", "scroll")]
   keyCmdsFor (Just (FocusablePanel WorldPanel)) =
     [ ("←↓↑→ / hjkl", "scroll") | canScroll
     ]
@@ -1040,7 +1034,8 @@ drawRobotPanel s
        in padBottom Max $
             vBox
               [ hCenter $ hBox row
-              , padAll 1 (BL.renderListWithIndex drawClickableItem True lst)
+              , withLeftPaddedVScrollBars . padLeft (Pad 1) . padTop (Pad 1) $
+                  BL.renderListWithIndex drawClickableItem True lst
               ]
   | otherwise = blank
 
@@ -1091,7 +1086,8 @@ drawInfoPanel :: AppState -> Widget Name
 drawInfoPanel s
   | Just Far <- s ^. gameState . to focusedRange = blank
   | otherwise =
-      viewport InfoViewport Vertical
+      withVScrollBars OnRight
+        . viewport InfoViewport Vertical
         . padLeftRight 1
         $ explainFocusedItem s
 
@@ -1333,20 +1329,43 @@ renderREPLPrompt focus repl = ps1 <+> replE
 
 -- | Draw the REPL.
 drawREPL :: AppState -> Widget Name
-drawREPL s = vBox $ latestHistory <> [currentPrompt] <> mayDebug
+drawREPL s =
+  vBox
+    [ withLeftPaddedVScrollBars
+        . viewport REPLViewport Vertical
+        . vBox
+        $ [cached REPLHistoryCache (vBox history), currentPrompt]
+    , vBox mayDebug
+    ]
  where
   -- rendered history lines fitting above REPL prompt
-  latestHistory :: [Widget n]
-  latestHistory = map fmt (getLatestREPLHistoryItems (replHeight - inputLines - debugLines) (repl ^. replHistory))
+  history :: [Widget n]
+  history = map fmt . toList . getSessionREPLHistoryItems $ repl ^. replHistory
   currentPrompt :: Widget Name
   currentPrompt = case (isActive <$> base, repl ^. replControlMode) of
     (_, Handling) -> padRight Max $ txt "[key handler running, M-k to toggle]"
     (Just False, _) -> renderREPLPrompt (s ^. uiState . uiFocusRing) repl
     _running -> padRight Max $ txt "..."
-  inputLines = 1
-  debugLines = 3 * fromEnum (s ^. uiState . uiShowDebug)
   repl = s ^. uiState . uiREPL
   base = s ^. gameState . robotMap . at 0
   fmt (REPLEntry e) = txt $ "> " <> e
   fmt (REPLOutput t) = txt t
   mayDebug = [drawRobotMachine s True | s ^. uiState . uiShowDebug]
+
+------------------------------------------------------------
+-- Utility
+------------------------------------------------------------
+
+-- See https://github.com/jtdaugherty/brick/discussions/484
+withLeftPaddedVScrollBars :: Widget n -> Widget n
+withLeftPaddedVScrollBars =
+  withVScrollBarRenderer (addLeftSpacing verticalScrollbarRenderer)
+    . withVScrollBars OnRight
+ where
+  addLeftSpacing :: VScrollbarRenderer n -> VScrollbarRenderer n
+  addLeftSpacing r =
+    r
+      { scrollbarWidthAllocation = 2
+      , renderVScrollbar = hLimit 1 $ renderVScrollbar r
+      , renderVScrollbarTrough = hLimit 1 $ renderVScrollbarTrough r
+      }

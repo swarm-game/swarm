@@ -64,6 +64,8 @@ data Name
     WorldEditorPanelControl WorldEditorFocusable
   | -- | The REPL input form.
     REPLInput
+  | -- | The REPL history cache.
+    REPLHistoryCache
   | -- | The render cache for the world view.
     WorldCache
   | -- | The cached extent for the world view.
@@ -97,6 +99,8 @@ data Name
     InfoViewport
   | -- | The scrollable viewport for any modal dialog.
     ModalViewport
+  | -- | The scrollable viewport for the REPL.
+    REPLViewport
   | -- | A clickable button in a modal dialog.
     Button Button
   deriving (Eq, Ord, Show, Read)

@@ -815,6 +815,8 @@ updateUI = do
       let itName = fromString $ "it" ++ show itIx
       let out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
       uiState . uiREPL . replHistory %= addREPLItem (REPLOutput out)
+      invalidateCacheEntry REPLHistoryCache
+      vScrollToEnd replScroll
       gameState . replStatus .= REPLDone (Just val)
       gameState . baseRobot . robotContext . at itName .= Just val
       gameState . replNextValueIndex %= (+ 1)
@@ -856,23 +858,6 @@ updateUI = do
         uiState . uiScrollToEnd .= True
         pure True
 
-  -- Decide whether the info panel has more content scrolled off the
-  -- top and/or bottom, so we can draw some indicators to show it if
-  -- so.  Note, because we only know the update size and position of
-  -- the viewport *after* it has been rendered, this means the top and
-  -- bottom indicators will only be updated one frame *after* the info
-  -- panel updates, but this isn't really that big of deal.
-  infoPanelUpdated <- do
-    mvp <- lookupViewport InfoViewport
-    case mvp of
-      Nothing -> return False
-      Just vp -> do
-        let topMore = (vp ^. vpTop) > 0
-            botMore = (vp ^. vpTop + snd (vp ^. vpSize)) < snd (vp ^. vpContentSize)
-        oldTopMore <- uiState . uiMoreInfoTop <<.= topMore
-        oldBotMore <- uiState . uiMoreInfoBot <<.= botMore
-        return $ oldTopMore /= topMore || oldBotMore /= botMore
-
   goalOrWinUpdated <- doGoalUpdates
 
   let redraw =
@@ -880,7 +865,6 @@ updateUI = do
           || inventoryUpdated
           || replUpdated
           || logUpdated
-          || infoPanelUpdated
           || goalOrWinUpdated
   pure redraw
 
@@ -1131,57 +1115,66 @@ runBaseTerm topCtx =
 -- | Handle a user input event for the REPL.
 handleREPLEventTyping :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleREPLEventTyping = \case
-  Key V.KEnter -> do
-    s <- get
-    let topCtx = topContext s
-        repl = s ^. uiState . uiREPL
-        uinput = repl ^. replPromptText
+  -- Scroll the REPL on PageUp or PageDown
+  Key V.KPageUp -> vScrollPage replScroll Brick.Up
+  Key V.KPageDown -> vScrollPage replScroll Brick.Down
+  k -> do
+    -- On any other key event, jump to the bottom of the REPL then handle the event
+    vScrollToEnd replScroll
+    case k of
+      Key V.KEnter -> do
+        s <- get
+        let topCtx = topContext s
+            repl = s ^. uiState . uiREPL
+            uinput = repl ^. replPromptText
 
-    if not $ s ^. gameState . replWorking
-      then case repl ^. replPromptType of
-        CmdPrompt _ -> runBaseCode topCtx uinput
-        SearchPrompt hist ->
-          case lastEntry uinput hist of
-            Nothing -> uiState %= resetREPL "" (CmdPrompt [])
-            Just found
-              | T.null uinput -> uiState %= resetREPL "" (CmdPrompt [])
-              | otherwise -> do
-                  uiState %= resetREPL found (CmdPrompt [])
-                  modify validateREPLForm
-      else continueWithoutRedraw
-  Key V.KUp -> modify $ adjReplHistIndex Older
-  Key V.KDown -> modify $ adjReplHistIndex Newer
-  ControlChar 'r' -> do
-    s <- get
-    let uinput = s ^. uiState . uiREPL . replPromptText
-    case s ^. uiState . uiREPL . replPromptType of
-      CmdPrompt _ -> uiState . uiREPL . replPromptType .= SearchPrompt (s ^. uiState . uiREPL . replHistory)
-      SearchPrompt rh -> case lastEntry uinput rh of
-        Nothing -> pure ()
-        Just found -> uiState . uiREPL . replPromptType .= SearchPrompt (removeEntry found rh)
-  CharKey '\t' -> do
-    s <- get
-    let names = s ^.. gameState . baseRobot . robotContext . defTypes . to assocs . traverse . _1
-    uiState . uiREPL %= tabComplete names (s ^. gameState . entityMap)
-    modify validateREPLForm
-  EscapeKey -> do
-    formSt <- use $ uiState . uiREPL . replPromptType
-    case formSt of
-      CmdPrompt {} -> continueWithoutRedraw
-      SearchPrompt _ ->
-        uiState %= resetREPL "" (CmdPrompt [])
-  ControlChar 'd' -> do
-    text <- use $ uiState . uiREPL . replPromptText
-    if text == T.empty
-      then toggleModal QuitModal
-      else continueWithoutRedraw
-  -- finally if none match pass the event to the editor
-  ev -> do
-    Brick.zoom (uiState . uiREPL . replPromptEditor) (handleEditorEvent ev)
-    uiState . uiREPL . replPromptType %= \case
-      CmdPrompt _ -> CmdPrompt [] -- reset completions on any event passed to editor
-      SearchPrompt a -> SearchPrompt a
-    modify validateREPLForm
+        if not $ s ^. gameState . replWorking
+          then case repl ^. replPromptType of
+            CmdPrompt _ -> do
+              runBaseCode topCtx uinput
+              invalidateCacheEntry REPLHistoryCache
+            SearchPrompt hist ->
+              case lastEntry uinput hist of
+                Nothing -> uiState %= resetREPL "" (CmdPrompt [])
+                Just found
+                  | T.null uinput -> uiState %= resetREPL "" (CmdPrompt [])
+                  | otherwise -> do
+                      uiState %= resetREPL found (CmdPrompt [])
+                      modify validateREPLForm
+          else continueWithoutRedraw
+      Key V.KUp -> modify $ adjReplHistIndex Older
+      Key V.KDown -> modify $ adjReplHistIndex Newer
+      ControlChar 'r' -> do
+        s <- get
+        let uinput = s ^. uiState . uiREPL . replPromptText
+        case s ^. uiState . uiREPL . replPromptType of
+          CmdPrompt _ -> uiState . uiREPL . replPromptType .= SearchPrompt (s ^. uiState . uiREPL . replHistory)
+          SearchPrompt rh -> case lastEntry uinput rh of
+            Nothing -> pure ()
+            Just found -> uiState . uiREPL . replPromptType .= SearchPrompt (removeEntry found rh)
+      CharKey '\t' -> do
+        s <- get
+        let names = s ^.. gameState . baseRobot . robotContext . defTypes . to assocs . traverse . _1
+        uiState . uiREPL %= tabComplete names (s ^. gameState . entityMap)
+        modify validateREPLForm
+      EscapeKey -> do
+        formSt <- use $ uiState . uiREPL . replPromptType
+        case formSt of
+          CmdPrompt {} -> continueWithoutRedraw
+          SearchPrompt _ ->
+            uiState %= resetREPL "" (CmdPrompt [])
+      ControlChar 'd' -> do
+        text <- use $ uiState . uiREPL . replPromptText
+        if text == T.empty
+          then toggleModal QuitModal
+          else continueWithoutRedraw
+      -- finally if none match pass the event to the editor
+      ev -> do
+        Brick.zoom (uiState . uiREPL . replPromptEditor) (handleEditorEvent ev)
+        uiState . uiREPL . replPromptType %= \case
+          CmdPrompt _ -> CmdPrompt [] -- reset completions on any event passed to editor
+          SearchPrompt a -> SearchPrompt a
+        modify validateREPLForm
 
 data CompletionType
   = FunctionName
