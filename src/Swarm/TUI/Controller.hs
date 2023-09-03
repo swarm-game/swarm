@@ -253,7 +253,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement curMenu of
       Nothing -> continueWithoutRedraw
-      Just (SISingle siPair) -> startGame siPair Nothing
+      Just (SISingle siPair) -> invalidateCache >> startGame siPair Nothing
       Just (SICollection _ c) -> do
         cheat <- use $ uiState . uiCheatMode
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack)
@@ -471,8 +471,13 @@ handleModalEvent = \case
     case dialogSelection =<< mdialog of
       Just (Button QuitButton, _) -> quitGame
       Just (Button KeepPlayingButton, _) -> toggleModal KeepPlayingModal
-      Just (Button StartOverButton, StartOver currentSeed siPair) -> restartGame currentSeed siPair
-      Just (Button NextButton, Next siPair) -> quitGame >> startGame siPair Nothing
+      Just (Button StartOverButton, StartOver currentSeed siPair) -> do
+        invalidateCache
+        restartGame currentSeed siPair
+      Just (Button NextButton, Next siPair) -> do
+        quitGame
+        invalidateCache
+        startGame siPair Nothing
       _ -> return ()
   ev -> do
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
