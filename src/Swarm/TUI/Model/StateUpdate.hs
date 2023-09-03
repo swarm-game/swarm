@@ -58,7 +58,6 @@ import Swarm.Game.ScenarioInfo (
  )
 import Swarm.Game.State
 import Swarm.Language.Pretty (prettyText)
-import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting
@@ -67,7 +66,8 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
-import Swarm.TUI.View.CustomStyling (toAttrPair)
+import Swarm.TUI.View.Attribute.Attr (swarmAttrMap)
+import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
 

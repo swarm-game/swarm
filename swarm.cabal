@@ -168,7 +168,9 @@ library
                       Swarm.Language.Types
                       Swarm.Language.Value
                       Swarm.ReadableIORef
-                      Swarm.TUI.Attr
+                      Swarm.TUI.View.Attribute.CustomStyling
+                      Swarm.TUI.View.Attribute.Attr
+                      Swarm.TUI.View.Attribute.Util
                       Swarm.TUI.Border
                       Swarm.Game.Scenario.Topography.Area
                       Swarm.TUI.Editor.Controller
@@ -193,7 +195,6 @@ library
                       Swarm.TUI.View
                       Swarm.TUI.View.Achievement
                       Swarm.TUI.View.CellDisplay
-                      Swarm.TUI.View.CustomStyling
                       Swarm.TUI.View.Objective
                       Swarm.TUI.View.Util
                       Swarm.Util
@@ -201,6 +202,7 @@ library
                       Swarm.Util.Erasable
                       Swarm.Util.Lens
                       Swarm.Util.Parse
+                      Swarm.Util.WindowedCounter
                       Swarm.Util.Yaml
                       Swarm.Version
                       Swarm.Web
@@ -243,6 +245,7 @@ library
                       mtl                           >= 2.2.2 && < 2.4,
                       murmur3                       >= 1.0.4 && < 1.1,
                       natural-sort                  >= 0.1.2 && < 0.2,
+                      palette                       >= 0.3 && < 0.4,
                       parser-combinators            >= 1.2 && < 1.4,
                       prettyprinter                 >= 1.7.0 && < 1.8,
                       random                        >= 1.2.0 && < 1.3,

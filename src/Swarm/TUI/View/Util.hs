@@ -25,9 +25,9 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Types (Polytype)
-import Swarm.TUI.Attr
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
+import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Swarm.Util (listEnums)
 import Witch (from, into)

@@ -26,12 +26,12 @@ import Swarm.Game.State
 import Swarm.Game.Terrain
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
-import Swarm.TUI.Attr
 import Swarm.TUI.Editor.Masking
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
+import Swarm.TUI.View.Attribute.Attr
 import Witch (from)
 import Witch.Encoding qualified as Encoding
 

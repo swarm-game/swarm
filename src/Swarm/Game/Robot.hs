@@ -64,6 +64,7 @@ module Swarm.Game.Robot (
   tangibleCommandCount,
   commandsHistogram,
   lifetimeStepCount,
+  activityWindow,
 
   -- ** Creation & instantiation
   mkRobot,
@@ -110,6 +111,7 @@ import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types (TCtx)
 import Swarm.Language.Value as V
 import Swarm.Util.Lens (makeLensesExcluding, makeLensesNoSigs)
+import Swarm.Util.WindowedCounter
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
 
@@ -177,6 +179,7 @@ data ActivityCounts = ActivityCounts
   , _tangibleCommandCount :: Int
   , _commandsHistogram :: Map Const Int
   , _lifetimeStepCount :: Int
+  , _activityWindow :: WindowedCounter Integer
   }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
@@ -226,13 +229,16 @@ tickStepBudget :: Lens' ActivityCounts Int
 -- | Total number of tangible commands executed over robot's lifetime
 tangibleCommandCount :: Lens' ActivityCounts Int
 
--- | Total number of commands executed over robot's lifetime
+-- | Histogram of commands executed over robot's lifetime
 commandsHistogram :: Lens' ActivityCounts (Map Const Int)
 
 -- | Total number of CESK steps executed over robot's lifetime.
 -- This could be thought of as "CPU cycles" consumed, and is labeled
 -- as "cycles" in the F2 dialog in the UI.
 lifetimeStepCount :: Lens' ActivityCounts Int
+
+-- | Sliding window over a span of ticks indicating ratio of activity
+activityWindow :: Lens' ActivityCounts (WindowedCounter Integer)
 
 -- | With a robot template, we may or may not have a location.  With a
 --   concrete robot we must have a location.
@@ -523,6 +529,9 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
           , _tangibleCommandCount = 0
           , _commandsHistogram = mempty
           , _lifetimeStepCount = 0
+          , -- NOTE: This value was chosen experimentally.
+            -- TODO(#1341): Make this dynamic based on game speed.
+            _activityWindow = mkWindow 64
           }
     , _runningAtomic = False
     }

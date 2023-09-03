@@ -94,6 +94,7 @@ import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
 import Swarm.Util hiding (both)
 import Swarm.Util.Effect (throwToMaybe)
+import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec)
 import Witch (From (from), into)
 import Prelude hiding (Applicative (..), lookup)
@@ -523,10 +524,12 @@ stepRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Ro
 stepRobot r = do
   (r', cesk') <- runState (r & activityCounts . tickStepBudget -~ 1) (stepCESK (r ^. machine))
   -- sendIO $ appendFile "out.txt" (prettyString cesk' ++ "\n")
+  TickNumber t <- use ticks
   return $
     r'
       & machine .~ cesk'
       & activityCounts . lifetimeStepCount +~ 1
+      & (activityCounts . activityWindow %~ WC.insert t)
 
 -- | replace some entity in the world with another entity
 updateWorld ::

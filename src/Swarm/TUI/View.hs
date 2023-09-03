@@ -70,6 +70,7 @@ import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
 import Linear
 import Network.Wai.Handler.Warp (Port)
+import Numeric (fromRat, showFFloat)
 import Swarm.Constant
 import Swarm.Game.CESK (CESK (..), TickNumber (..))
 import Swarm.Game.Display
@@ -94,7 +95,6 @@ import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Controller (ticksPerFrameCap)
 import Swarm.TUI.Editor.Model
@@ -108,10 +108,12 @@ import Swarm.TUI.Model.Repl (getSessionREPLHistoryItems, lastEntry)
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
+import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Util as VU
 import Swarm.Util
+import Swarm.Util.WindowedCounter qualified as WC
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock (TimeSpec (..))
 import Text.Printf
@@ -593,13 +595,18 @@ drawModal s = \case
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal -> GR.renderGoalsDisplay (s ^. uiState . uiGoal)
-  KeepPlayingModal -> padLeftRight 1 (displayParagraphs ["Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."])
+  KeepPlayingModal ->
+    padLeftRight 1 $
+      displayParagraphs $
+        pure
+          "Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."
   TerrainPaletteModal -> EV.drawTerrainSelector s
   EntityPaletteModal -> EV.drawEntityPaintSelector s
 
 robotsListWidget :: AppState -> Widget Name
 robotsListWidget s = hCenter table
  where
+  TickNumber curTicks = s ^. gameState . ticks
   table =
     BT.renderTable
       . BT.columnBorders False
@@ -617,6 +624,7 @@ robotsListWidget s = hCenter table
     , "Actions"
     , "Commands"
     , "Cycles"
+    , "Activity"
     , "Log"
     ]
   headers = withAttr robotAttr . txt <$> applyWhen cheat ("ID" :) headings
@@ -631,12 +639,32 @@ robotsListWidget s = hCenter table
       , padRight (Pad 1) (str $ show rInvCount)
       , statusWidget
       , str $ show $ robot ^. activityCounts . tangibleCommandCount
-      , str . show . sum . M.elems $ robot ^. activityCounts . commandsHistogram
+      , -- TODO(#1341): May want to expose the details of this histogram in
+        -- a per-robot pop-up
+        str . show . sum . M.elems $ robot ^. activityCounts . commandsHistogram
       , str $ show $ robot ^. activityCounts . lifetimeStepCount
+      , dutyCycleDisplay
       , txt rLog
       ]
+
+    dutyCycleAttrIdx = floor $ dutyCycleRatio * fromIntegral (length meterAttributeNames - 1)
+    dutyCycleAttr = meterAttributeNames !! dutyCycleAttrIdx
+    dutyCycleDisplay = withAttr dutyCycleAttr . str . flip (showFFloat (Just 1)) "%" $ dutyCyclePercentage
+
+    dutyCycleRatio =
+      WC.getOccupancy curTicks $
+        robot ^. activityCounts . activityWindow
+
+    dutyCyclePercentage :: Double
+    dutyCyclePercentage = fromRat . (100 *) $ dutyCycleRatio
+
     idWidget = str $ show $ robot ^. robotID
-    nameWidget = hBox [renderDisplay (robot ^. robotDisplay), highlightSystem . txt $ " " <> robot ^. robotName]
+    nameWidget =
+      hBox
+        [ renderDisplay (robot ^. robotDisplay)
+        , highlightSystem . txt $ " " <> robot ^. robotName
+        ]
+
     highlightSystem = if robot ^. systemRobot then withAttr highlightAttr else id
 
     ageStr
@@ -843,9 +871,8 @@ colorLogs e = case e ^. leSource of
     Critical -> redAttr
  where
   -- color each robot message with different color of the world
-  robotColor rid = fgCols !! (rid `mod` fgColLen)
-  fgCols = map fst worldAttributes
-  fgColLen = length fgCols
+  robotColor rid = worldAttributeNames !! (rid `mod` fgColLen)
+  fgColLen = length worldAttributeNames
 
 -- | Draw the F-key modal menu. This is displayed in the top left world corner.
 drawModalMenu :: AppState -> Widget Name
