@@ -78,6 +78,8 @@ data REPLHistItem
     REPLEntry Text
   | -- | A response printed by the system.
     REPLOutput Text
+  | -- | An error printed by the system.
+    REPLError Text
   deriving (Eq, Ord, Show, Read)
 
 instance ToSample REPLHistItem where
@@ -87,6 +89,7 @@ instance ToJSON REPLHistItem where
   toJSON e = case e of
     REPLEntry x -> object ["in" .= x]
     REPLOutput x -> object ["out" .= x]
+    REPLError x -> object ["err" .= x]
 
 -- | Useful helper function to only get user input text.
 getREPLEntry :: REPLHistItem -> Maybe Text
@@ -103,6 +106,7 @@ replItemText :: REPLHistItem -> Text
 replItemText = \case
   REPLEntry t -> t
   REPLOutput t -> t
+  REPLError t -> t
 
 -- | History of the REPL with indices (0 is first entry) to the current
 --   line and to the first entry since loading saved history.
