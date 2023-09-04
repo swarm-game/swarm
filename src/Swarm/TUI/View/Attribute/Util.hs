@@ -16,7 +16,7 @@ kolorToAttrColor c =
   RGB r g b = toSRGB24 c
 
 -- | Automatically selects black or white for the foreground
--- based on the darkness of the supplied background.
+-- based on the luminance of the supplied background.
 bgWithAutoForeground :: Kolor -> Attr
 bgWithAutoForeground c = fgColor `on` kolorToAttrColor c
  where

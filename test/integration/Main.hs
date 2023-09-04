@@ -343,6 +343,10 @@ testScenarioSolutions rs ui =
         Nothing -> assertFailure "No base bot!"
         Just base -> do
           let counters = base ^. activityCounts
+          -- NOTE: The values of 7 and 10 for "tangible" and "total" command counts
+          -- make sense from the test program and match the F2 screen upon winning the scenario.
+          -- However, the F2 dialog actually shows 64 for the step count. This test was
+          -- hardcoded to 62 just to make it pass.
           assertEqual "Incorrect tangible command count." 7 $ view tangibleCommandCount counters
           assertEqual "Incorrect command count." 10 $ sum . M.elems $ view commandsHistogram counters
           assertEqual "Incorrect step count." 62 $ view lifetimeStepCount counters

@@ -3,13 +3,13 @@
 module Swarm.TUI.View.Attribute.CustomStyling where
 
 import Brick (AttrName, attrName)
-import Data.Colour.Palette.BrewerSet (Kolor)
-import Data.Colour.SRGB (RGB (..), sRGB24read, toSRGB24)
+import Data.Colour.SRGB (sRGB24read)
 import Data.Set (toList)
 import Data.Text qualified as T
 import Graphics.Vty.Attributes
 import Swarm.Game.Scenario.Style
 import Swarm.TUI.View.Attribute.Attr (worldPrefix)
+import Swarm.TUI.View.Attribute.Util
 
 toStyle :: StyleFlag -> Style
 toStyle = \case
@@ -24,10 +24,8 @@ toStyle = \case
 
 hexToAttrColor :: HexColor -> Color
 hexToAttrColor (HexColor colorText) =
-  RGBColor r g b
+  kolorToAttrColor c
  where
-  RGB r g b = toSRGB24 c
-  c :: Kolor
   c = sRGB24read $ T.unpack colorText
 
 toAttrPair :: CustomAttr -> (AttrName, Attr)
