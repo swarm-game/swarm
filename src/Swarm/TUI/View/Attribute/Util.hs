@@ -21,6 +21,8 @@ bgWithAutoForeground :: Kolor -> Attr
 bgWithAutoForeground c = fgColor `on` kolorToAttrColor c
  where
   fgColor =
-    if luminance c > 0.5
+    -- "white" is actually gray-ish, so we nudge the threshold
+    -- below 0.5.
+    if luminance c > 0.4
       then V.black
       else V.white

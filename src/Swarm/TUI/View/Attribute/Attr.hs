@@ -149,7 +149,7 @@ activityMeterAttributes =
   bimap ((activityMeterPrefix <>) . attrName . show) bgWithAutoForeground
     <$> zip [0 :: Int ..] brewers
  where
-  brewers = reverse $ brewerSet RdYlGn 5
+  brewers = reverse $ brewerSet RdYlGn 7
 
 meterAttributeNames :: [AttrName]
 meterAttributeNames = map fst activityMeterAttributes

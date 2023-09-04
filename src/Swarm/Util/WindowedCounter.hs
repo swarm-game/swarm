@@ -59,6 +59,9 @@ import Prelude hiding (length)
 -- of the UI view.
 -- However, we also store the largest element of the window separately from the 'Set' so that
 -- we can compare against it for a @O(1)@ short-circuited path once every member ages out.
+--
+-- The maximum number of elements ever stored in the 'Set' will be the width of the nominal
+-- span, even after some protracted failure to "garbage collect".
 data WindowedCounter a = WindowedCounter
   { _members :: Set a
   , _lastLargest :: Maybe a
@@ -77,10 +80,9 @@ mkWindow ::
 mkWindow = WindowedCounter Set.empty Nothing
 
 -- | Return the ratio of {members in the window} to the {integral span
--- represented by the window} (actually, the beginning of the window up to
--- some reference tick).
+-- represented by the window}.
 --
--- The "reference tick" must be at least as large as the largest
+-- The "current time" must be at least as large as the largest
 -- element of the window.
 --
 -- A fully-contiguous collection of ticks would have an occupancy ratio of @1@.
@@ -90,12 +92,14 @@ getOccupancy ::
   a ->
   WindowedCounter a ->
   Ratio a
-getOccupancy referenceTick (WindowedCounter s lastLargest nominalSpan) =
-  if Set.null s || maybe False (< referenceTick - nominalSpan) lastLargest
+getOccupancy currentTime wc@(WindowedCounter s lastLargest nominalSpan) =
+  if Set.null s || maybe False (< referenceTick) lastLargest
     then 0
-    else case Set.lookupMin s of
-      Nothing -> 0
-      Just minElement -> fromIntegral (Set.size s) % (referenceTick - minElement)
+    else fromIntegral (Set.size culledSet) % nominalSpan
+ where
+  referenceTick = currentTime - nominalSpan
+  -- Cull the window according to the current time
+  WindowedCounter culledSet _ _ = discardGarbage currentTime wc
 
 -- | Invocations of this function shall be guarded externally
 -- by the conditions meant to be tracked in the window.
