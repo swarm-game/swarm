@@ -104,26 +104,17 @@ getOccupancy currentTime wc@(WindowedCounter s lastLargest nominalSpan) =
 -- | Invocations of this function shall be guarded externally
 -- by the conditions meant to be tracked in the window.
 --
--- The value inserted must always be at least as large as the
--- current largest element of the set!
--- If it is equal, it is ignored.
+-- Proper usage dictates that the value inserted should always
+-- be at least as large as the current largest element of the set.
+-- If not, the insertion has no effect.
 --
 -- The 'discardGarbage' function is called from inside this function
 -- so that maintenance of the data structure is simplified.
 insert :: (Show a, Integral a) => a -> WindowedCounter a -> WindowedCounter a
-insert x statusQuo@(WindowedCounter s lastLargest nominalSpan)
-  | maybe False (x <) lastLargest =
-      error $
-        unwords
-          [ show x
-          , "is less than the current maximum of"
-          , show lastLargest <> "."
-          , "Insertions into the sliding window must monotonically increase!"
-          ]
-  | Just x == lastLargest = statusQuo
-  | otherwise =
-      discardGarbage x $
-        WindowedCounter (Set.insert x s) (Just x) nominalSpan
+insert x (WindowedCounter s lastLargest nominalSpan) =
+  discardGarbage x $ WindowedCounter (Set.insert x s) newLargest nominalSpan
+ where
+  newLargest = Just $ maybe x (max x) lastLargest
 
 -- | Drop the leading elements that are not larger than the cutoff.
 --
