@@ -315,10 +315,11 @@ loadRegion reg (World f t m) = World f t' m
 -- Runtime world update
 ---------------------------------------------------------------------
 
--- | Update world in an inspectable way.
---
--- This type is used for changes by e.g. the drill command at later
--- tick. Using ADT allows us to serialize and inspect the updates.
+-- | Enumeration of world updates.  This type is used for changes by
+--   /e.g./ the @drill@ command which must be carried out at a later
+--   tick. Using a first-order representation (as opposed to /e.g./
+--   just a @World -> World@ function) allows us to serialize and
+--   inspect the updates.
 data WorldUpdate e = ReplaceEntity
   { updatedLoc :: Cosmic Location
   , originalEntity :: e

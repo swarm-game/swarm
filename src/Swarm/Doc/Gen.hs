@@ -4,7 +4,10 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Auto-generation of various forms of documentation.
 module Swarm.Doc.Gen (
+  -- ** Main document generation function + types
   generateDocs,
   GenerateDocs (..),
   EditorType (..),
@@ -14,14 +17,9 @@ module Swarm.Doc.Gen (
   keywordsCommands,
   keywordsDirections,
   operatorNames,
-  builtinFunctionList,
-  editorList,
 
   -- ** Wiki pages
   PageAddress (..),
-  commandsPage,
-  capabilityPage,
-  noPageAddresses,
 ) where
 
 import Control.Effect.Lift
@@ -73,6 +71,7 @@ import Text.Dot qualified as Dot
 --
 -- ----------------------------------------------------------------------------
 
+-- | An enumeration of the kinds of documentation we can generate.
 data GenerateDocs where
   -- | Entity dependencies by recipes.
   RecipeGraph :: GenerateDocs
@@ -80,17 +79,23 @@ data GenerateDocs where
   EditorKeywords :: Maybe EditorType -> GenerateDocs
   -- | List of special key names recognized by 'key' command
   SpecialKeyNames :: GenerateDocs
+  -- | Cheat sheets for inclusion on the Swarm wiki.
   CheatSheet :: PageAddress -> Maybe SheetType -> GenerateDocs
   -- | List command introductions by tutorial
   TutorialCoverage :: GenerateDocs
   deriving (Eq, Show)
 
+-- | An enumeration of the editors supported by Swarm (currently,
+--   Emacs and VS Code).
 data EditorType = Emacs | VSCode
   deriving (Eq, Show, Enum, Bounded)
 
+-- | An enumeration of the kinds of cheat sheets we can produce.
 data SheetType = Entities | Commands | Capabilities | Recipes
   deriving (Eq, Show, Enum, Bounded)
 
+-- | A configuration record holding the URLs of the various cheat
+--   sheets, to facilitate cross-linking.
 data PageAddress = PageAddress
   { entityAddress :: Text
   , commandsAddress :: Text
@@ -99,9 +104,7 @@ data PageAddress = PageAddress
   }
   deriving (Eq, Show)
 
-noPageAddresses :: PageAddress
-noPageAddresses = PageAddress "" "" "" ""
-
+-- | Generate the requested kind of documentation to stdout.
 generateDocs :: GenerateDocs -> IO ()
 generateDocs = \case
   RecipeGraph -> generateRecipe >>= putStrLn
@@ -137,6 +140,8 @@ generateDocs = \case
 -- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED
 -- ----------------------------------------------------------------------------
 
+-- | Generate a list of keywords in the format expected by one of the
+--   supported editors.
 generateEditorKeywords :: EditorType -> IO ()
 generateEditorKeywords = \case
   Emacs -> do
@@ -182,6 +187,7 @@ keywordsCommands e = editorList e $ map constSyntax commands
 keywordsDirections :: EditorType -> Text
 keywordsDirections e = editorList e $ map Syntax.directionSyntax Syntax.allDirs
 
+-- | A list of the names of all the operators in the language.
 operatorNames :: Text
 operatorNames = T.intercalate "|" $ map (escape . constSyntax) operators
  where

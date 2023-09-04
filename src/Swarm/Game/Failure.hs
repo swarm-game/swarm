@@ -3,7 +3,8 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- A data type to represent system failures.
+-- A data type to represent system failures (as distinct from robot
+-- program failures).
 --
 -- These failures are often not fatal and serve
 -- to create common infrastructure for logging.
@@ -31,15 +32,19 @@ import Witch (into)
 ------------------------------------------------------------
 -- Failure descriptions
 
+-- | Enumeration of various assets we can attempt to load.
 data AssetData = AppAsset | NameGeneration | Entities | Recipes | Worlds | Scenarios | Script
   deriving (Eq, Show)
 
+-- | Overarching enumeration of various assets we can attempt to load.
 data Asset = Achievement | Data AssetData | History | Save
   deriving (Eq, Show)
 
+-- | Enumeration type to distinguish between directories and files.
 data Entry = Directory | File
   deriving (Eq, Show)
 
+-- | An error that occured while attempting to load some kind of asset.
 data LoadingFailure
   = DoesNotExist Entry
   | EntryNot Entry
@@ -58,12 +63,15 @@ data LoadingFailure
 -- would lead to an import cycle.  Instead, we choose to just
 -- pretty-print typechecking errors before storing them here.
 
+-- | A warning that arose while processing an @00-ORDER.txt@ file.
 data OrderFileWarning
   = NoOrderFile
   | MissingFiles (NonEmpty FilePath)
   | DanglingFiles (NonEmpty FilePath)
   deriving (Eq, Show)
 
+-- | An enumeration of various types of failures (errors or warnings)
+--   that can occur.
 data SystemFailure
   = AssetNotLoaded Asset FilePath LoadingFailure
   | ScenarioNotFound FilePath

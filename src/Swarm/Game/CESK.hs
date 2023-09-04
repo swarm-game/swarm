@@ -53,8 +53,6 @@ module Swarm.Game.CESK (
   Cont,
 
   -- ** Wrappers for creating delayed change of state
-
-  --    See 'FImmediate'.
   WorldUpdate (..),
   RobotUpdate (..),
 
@@ -62,10 +60,10 @@ module Swarm.Game.CESK (
   Store,
   Addr,
   emptyStore,
-  Cell (..),
+  MemCell (..),
   allocate,
-  lookupCell,
-  setCell,
+  lookupStore,
+  setStore,
 
   -- * CESK machine states
   CESK (..),
@@ -101,9 +99,12 @@ import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.Language.Value as V
 
+-- | A newtype representing a count of ticks (typically since the
+--   start of a game).
 newtype TickNumber = TickNumber {getTickNumber :: Integer}
   deriving (Eq, Ord, Show, Read, Generic, FromJSON, ToJSON)
 
+-- | Add an offset to a 'TickNumber'.
 addTicks :: Integer -> TickNumber -> TickNumber
 addTicks i (TickNumber n) = TickNumber $ n + i
 
@@ -184,7 +185,7 @@ data Frame
     --   already been evaluated; we are focusing on evaluating one
     --   field; and some fields have yet to be evaluated.
     FRcd Env [(Var, Value)] Var [(Var, Maybe Term)]
-  | -- | We are in the middle of evaluating a record field projection.(:*:)
+  | -- | We are in the middle of evaluating a record field projection.
     FProj Var
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
@@ -197,11 +198,13 @@ type Cont = [Frame]
 
 type Addr = Int
 
--- | 'Store' represents a store, indexing integer locations to 'Cell's.
-data Store = Store {next :: Addr, mu :: IntMap Cell} deriving (Show, Eq, Generic, FromJSON, ToJSON)
+-- | 'Store' represents a store, /i.e./ memory, indexing integer
+--   locations to 'MemCell's.
+data Store = Store {next :: Addr, mu :: IntMap MemCell}
+  deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 -- | A memory cell can be in one of three states.
-data Cell
+data MemCell
   = -- | A cell starts out life as an unevaluated term together with
     --   its environment.
     E Term Env
@@ -219,7 +222,7 @@ data Cell
     --   'Blackhole' can be reset to 'E'.
     Blackhole Term Env
   | -- | Once evaluation is complete, we cache the final 'Value' in
-    --   the 'Cell', so that subsequent lookups can just use it
+    --   the 'MemCell', so that subsequent lookups can just use it
     --   without recomputing anything.
     V Value
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
@@ -234,19 +237,19 @@ allocate :: Env -> Term -> Store -> (Addr, Store)
 allocate e t (Store n m) = (n, Store (n + 1) (IM.insert n (E t e) m))
 
 -- | Look up the cell at a given index.
-lookupCell :: Addr -> Store -> Maybe Cell
-lookupCell n = IM.lookup n . mu
+lookupStore :: Addr -> Store -> Maybe MemCell
+lookupStore n = IM.lookup n . mu
 
 -- | Set the cell at a given index.
-setCell :: Addr -> Cell -> Store -> Store
-setCell n c (Store nxt m) = Store nxt (IM.insert n c m)
+setStore :: Addr -> MemCell -> Store -> Store
+setStore n c (Store nxt m) = Store nxt (IM.insert n c m)
 
 ------------------------------------------------------------
 -- CESK machine
 ------------------------------------------------------------
 
 -- | The overall state of a CESK machine, which can actually be one of
---   three kinds of states. The CESK machine is named after the first
+--   four kinds of states. The CESK machine is named after the first
 --   kind of state, and it would probably be possible to inline a
 --   bunch of things and get rid of the second state, but I find it
 --   much more natural and elegant this way.  Most tutorial
@@ -405,14 +408,17 @@ prettyPrefix pre (p, inner) = (11, pre <+> pparens (p < 11) inner)
 -- Runtime robot update
 --------------------------------------------------------------
 
--- | Update the robot in an inspectable way.
+-- | Enumeration of robot updates.  This type is used for changes by
+--   /e.g./ the @drill@ command which must be carried out at a later
+--   tick. Using a first-order representation (as opposed to /e.g./
+--   just a @Robot -> Robot@ function) allows us to serialize and
+--   inspect the updates.
 --
--- This type is used for changes by e.g. the drill command at later
--- tick. Using ADT allows us to serialize and inspect the updates.
---
--- Note that this can not be in 'Swarm.Game.Robot' as it would create
--- a cyclic dependency.
+--   Note that this can not be in 'Swarm.Game.Robot' as it would create
+--   a cyclic dependency.
 data RobotUpdate
-  = AddEntity Count Entity
-  | LearnEntity Entity
+  = -- | Add copies of an entity to the robot's inventory.
+    AddEntity Count Entity
+  | -- | Make the robot learn about an entity.
+    LearnEntity Entity
   deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)

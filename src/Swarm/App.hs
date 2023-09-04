@@ -33,7 +33,8 @@ import System.IO (stderr)
 
 type EventHandler = BrickEvent Name AppEvent -> EventM Name AppState ()
 
--- | The definition of the app used by the @brick@ library.
+-- | The configuration of the Swarm app which we pass to the @brick@
+--   library.
 app :: EventHandler -> App AppState AppEvent Name
 app eventHandler =
   App
@@ -110,7 +111,7 @@ appMain opts = do
       void $ customMain initialVty buildVty (Just chan) (app eventHandler) s'
 
 -- | A demo program to run the web service directly, without the terminal application.
--- This is useful to live update the code using `ghcid -W --test "Swarm.App.demoWeb"`
+--   This is useful to live update the code using @ghcid -W --test "Swarm.App.demoWeb"@.
 demoWeb :: IO ()
 demoWeb = do
   let demoPort = 8080

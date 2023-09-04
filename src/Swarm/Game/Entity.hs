@@ -13,9 +13,8 @@
 -- are mutually recursive (an inventory contains entities, which can
 -- have inventories).
 module Swarm.Game.Entity (
+  -- * Entity properties
   EntityName,
-
-  -- * Properties
   EntityProperty (..),
   GrowthTime (..),
   defaultGrowthTime,
@@ -26,7 +25,7 @@ module Swarm.Game.Entity (
   Entity,
   mkEntity,
 
-  -- ** Lenses
+  -- ** Fields
   -- $lenses
   entityDisplay,
   entityName,
@@ -123,11 +122,13 @@ import Text.Read (readMaybe)
 import Witch
 import Prelude hiding (lookup)
 
-type EntityName = Text
-
 ------------------------------------------------------------
 -- Properties
 ------------------------------------------------------------
+
+-- | A type representing entity names, currently a synonym for 'Text'.
+--   In the future it is conceivable that it might become more complex.
+type EntityName = Text
 
 -- | Various properties that an entity can have, which affect how
 --   robots can interact with it.
@@ -140,7 +141,8 @@ data EntityProperty
     Opaque
   | -- | Regrows from a seed after it is harvested.
     Growable
-  | -- | Can use the Ignite command on it
+  | -- | Can burn when ignited (either via 'Swarm.Language.Syntax.Ignite' or by
+    --   an adjacent burning entity).
     Combustible
   | -- | Regenerates infinitely when grabbed or harvested.
     Infinite
@@ -168,17 +170,18 @@ instance FromJSON EntityProperty where
 newtype GrowthTime = GrowthTime (Integer, Integer)
   deriving (Eq, Ord, Show, Read, Generic, Hashable, FromJSON, ToJSON)
 
+-- | The default growth time (100, 200) for a growable entity with no
+--   growth time specification.
 defaultGrowthTime :: GrowthTime
 defaultGrowthTime = GrowthTime (100, 200)
 
--- | Properties of combustion
+-- | Properties of combustion.
 data Combustibility = Combustibility
   { ignition :: Double
   -- ^ Rate of ignition by a neighbor, per tick.
-  -- When denoted as "lambda",
-  -- probability of ignition over a period "t" is:
-  -- 1 - e^(-(lambda * t))
-  -- See: https://math.stackexchange.com/a/1243629
+  --   If this rate is denoted \(\lambda\), the probability of
+  --   ignition over a period of \(t\) ticks is \(1 - e^{-\lambda t}\).
+  --   See <https://math.stackexchange.com/a/1243629>.
   , duration :: (Integer, Integer)
   -- ^ min and max tick counts for combustion to persist
   , product :: Maybe EntityName
@@ -186,6 +189,12 @@ data Combustibility = Combustibility
   }
   deriving (Eq, Ord, Show, Read, Generic, Hashable, FromJSON, ToJSON)
 
+-- | The default combustion specification for a combustible entity
+--   with no combustion specification:
+--
+--   * ignition rate 0.5
+--   * duration (100, 200)
+--   * product @ash@
 defaultCombustibility :: Combustibility
 defaultCombustibility = Combustibility 0.5 (100, 200) (Just "ash")
 
@@ -237,7 +246,7 @@ data Entity = Entity
   -- ^ A hash value computed from the other fields
   , _entityDisplay :: Display
   -- ^ The way this entity should be displayed on the world map.
-  , _entityName :: Text
+  , _entityName :: EntityName
   -- ^ The name of the entity, used /e.g./ in an inventory display.
   , _entityPlural :: Maybe Text
   -- ^ The plural of the entity name, in case it is irregular.  If
@@ -457,7 +466,7 @@ entityDisplay :: Lens' Entity Display
 entityDisplay = hashedLens _entityDisplay (\e x -> e {_entityDisplay = x})
 
 -- | The name of the entity.
-entityName :: Lens' Entity Text
+entityName :: Lens' Entity EntityName
 entityName = hashedLens _entityName (\e x -> e {_entityName = x})
 
 -- | The irregular plural version of the entity's name, if there is
@@ -557,8 +566,8 @@ lookup e (Inventory cs _ _) = maybe 0 fst $ IM.lookup (e ^. entityHash) cs
 
 -- | Look up an entity by name in an inventory, returning a list of
 --   matching entities.  Note, if this returns some entities, it does
---   *not* mean we necessarily have any in our inventory!  It just
---   means we *know about* them.  If you want to know whether you have
+--   /not/ mean we necessarily have any in our inventory!  It just
+--   means we /know about/ them.  If you want to know whether you have
 --   any, use 'lookup' and see whether the resulting 'Count' is
 --   positive, or just use 'countByName' in the first place.
 lookupByName :: Text -> Inventory -> [Entity]
@@ -617,7 +626,9 @@ insertCount k e (Inventory cs byN h) =
 contains :: Inventory -> Entity -> Bool
 contains inv e = lookup e inv > 0
 
--- | Check whether an inventory has an entry for entity (used by robots).
+-- | Check whether an inventory has an entry for the given entity,
+--   even if there are 0 copies.  In particular this is used to
+--   indicate whether a robot "knows about" an entity.
 contains0plus :: Entity -> Inventory -> Bool
 contains0plus e = isJust . IM.lookup (e ^. entityHash) . counts
 
