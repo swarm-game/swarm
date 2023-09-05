@@ -17,6 +17,7 @@ module Swarm.Doc.Gen (
   keywordsCommands,
   keywordsDirections,
   operatorNames,
+  builtinFunctionList,
 
   -- ** Wiki pages
   PageAddress (..),
