@@ -70,7 +70,7 @@ import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
 import Linear
 import Network.Wai.Handler.Warp (Port)
-import Numeric (fromRat, showFFloat)
+import Numeric (showFFloat)
 import Swarm.Constant
 import Swarm.Game.CESK (CESK (..), TickNumber (..))
 import Swarm.Game.Display
@@ -656,7 +656,7 @@ robotsListWidget s = hCenter table
         robot ^. activityCounts . activityWindow
 
     dutyCyclePercentage :: Double
-    dutyCyclePercentage = fromRat . (100 *) $ dutyCycleRatio
+    dutyCyclePercentage = 100 * dutyCycleRatio
 
     idWidget = str $ show $ robot ^. robotID
     nameWidget =

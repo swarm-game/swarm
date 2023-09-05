@@ -19,7 +19,6 @@ module Swarm.Util.WindowedCounter (
 ) where
 
 import Data.Aeson
-import Data.Ratio
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Prelude hiding (length)
@@ -67,7 +66,7 @@ data WindowedCounter a = WindowedCounter
   { _members :: Set a
   , _lastLargest :: Maybe a
   -- ^ NOTE: It is possible that '_lastLargest' may not exist in the 'Set'.
-  , _nominalSpan :: a
+  , _nominalSpan :: Int
   -- ^ Data retention window
   }
   deriving (Eq, Show)
@@ -85,11 +84,11 @@ instance (ToJSON a) => ToJSON (WindowedCounter a) where
 instance (Num a) => FromJSON (WindowedCounter a) where
   parseJSON = withObject "WindowedCounter" $ \v -> do
     s <- v .: "span"
-    return $ mkWindow $ fromIntegral (s :: Int)
+    return $ mkWindow s
 
 mkWindow ::
   -- | Window span
-  a ->
+  Int ->
   WindowedCounter a
 mkWindow = WindowedCounter Set.empty Nothing
 
@@ -105,13 +104,13 @@ getOccupancy ::
   -- | current time
   a ->
   WindowedCounter a ->
-  Ratio a
+  Double
 getOccupancy currentTime wc@(WindowedCounter s lastLargest nominalSpan) =
   if Set.null s || maybe False (< referenceTick) lastLargest
     then 0
-    else fromIntegral (Set.size culledSet) % nominalSpan
+    else fromIntegral (Set.size culledSet) / fromIntegral nominalSpan
  where
-  referenceTick = currentTime - nominalSpan
+  referenceTick = currentTime - fromIntegral nominalSpan
   -- Cull the window according to the current time
   WindowedCounter culledSet _ _ = discardGarbage currentTime wc
 
@@ -141,4 +140,4 @@ discardGarbage :: Integral a => a -> WindowedCounter a -> WindowedCounter a
 discardGarbage currentTime (WindowedCounter s lastLargest nominalSpan) =
   WindowedCounter larger lastLargest nominalSpan
  where
-  (_smaller, larger) = Set.split (currentTime - nominalSpan) s
+  (_smaller, larger) = Set.split (currentTime - fromIntegral nominalSpan) s
