@@ -2020,7 +2020,7 @@ execConst c vs s k = do
     inRs <- use recipesIn
 
     let recipes = filter isApplicableRecipe (recipesFor inRs nextE)
-        isApplicableRecipe = any ((== tool) . snd) . view recipeRequirements
+        isApplicableRecipe = any ((== tool) . snd) . view recipeCatalysts
 
     not (null recipes)
       `holdsOrFail` [ "There is no way to"

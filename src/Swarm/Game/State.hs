@@ -57,7 +57,7 @@ module Swarm.Game.State (
   entityMap,
   recipesOut,
   recipesIn,
-  recipesReq,
+  recipesCat,
   currentScenarioPath,
   knownEntities,
   worldNavigation,
@@ -167,9 +167,9 @@ import Swarm.Game.Failure (SystemFailure (..))
 import Swarm.Game.Location
 import Swarm.Game.Recipe (
   Recipe,
+  catRecipeMap,
   inRecipeMap,
   outRecipeMap,
-  reqRecipeMap,
  )
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
@@ -404,7 +404,7 @@ data GameState = GameState
   , _entityMap :: EntityMap
   , _recipesOut :: IntMap [Recipe Entity]
   , _recipesIn :: IntMap [Recipe Entity]
-  , _recipesReq :: IntMap [Recipe Entity]
+  , _recipesCat :: IntMap [Recipe Entity]
   , _currentScenarioPath :: Maybe FilePath
   , _knownEntities :: [Text]
   , _worldNavigation :: Navigation (M.Map SubworldName) Location
@@ -561,7 +561,7 @@ recipesOut :: Lens' GameState (IntMap [Recipe Entity])
 recipesIn :: Lens' GameState (IntMap [Recipe Entity])
 
 -- | All recipes the game knows about, indexed by requirement/catalyst.
-recipesReq :: Lens' GameState (IntMap [Recipe Entity])
+recipesCat :: Lens' GameState (IntMap [Recipe Entity])
 
 -- | The filepath of the currently running scenario.
 --
@@ -1051,7 +1051,7 @@ initGameState gsc =
     , _entityMap = initEntities gsc
     , _recipesOut = outRecipeMap (initRecipes gsc)
     , _recipesIn = inRecipeMap (initRecipes gsc)
-    , _recipesReq = reqRecipeMap (initRecipes gsc)
+    , _recipesCat = catRecipeMap (initRecipes gsc)
     , _currentScenarioPath = Nothing
     , _knownEntities = []
     , _worldNavigation = Navigation mempty mempty
@@ -1106,7 +1106,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       & entityMap .~ em
       & recipesOut %~ addRecipesWith outRecipeMap
       & recipesIn %~ addRecipesWith inRecipeMap
-      & recipesReq %~ addRecipesWith reqRecipeMap
+      & recipesCat %~ addRecipesWith catRecipeMap
       & knownEntities .~ scenario ^. scenarioKnown
       & worldNavigation .~ scenario ^. scenarioNavigation
       & multiWorld .~ allSubworldsMap theSeed

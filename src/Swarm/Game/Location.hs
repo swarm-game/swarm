@@ -49,6 +49,8 @@ import Swarm.Util qualified as Util
 
 -- $setup
 -- >>> import qualified Data.Map as Map
+-- >>> import Linear
+-- >>> import Swarm.Language.Direction
 
 -- | A Location is a pair of (x,y) coordinates, both up to 32 bits.
 --   The positive x-axis points east and the positive y-axis points

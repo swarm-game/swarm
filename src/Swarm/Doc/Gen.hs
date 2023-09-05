@@ -44,7 +44,7 @@ import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements, recipeTime, recipeWeight)
+import Swarm.Game.Recipe (Recipe, loadRecipes, recipeCatalysts, recipeInputs, recipeOutputs, recipeTime, recipeWeight)
 import Swarm.Game.Robot (Robot, equippedDevices, instantiateRobot, robotInventory)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.World.Gen (extractEntities)
@@ -397,7 +397,7 @@ recipeRow PageAddress {..} r =
     escapeTable
     [ T.intercalate ", " (map formatCE $ view recipeInputs r)
     , T.intercalate ", " (map formatCE $ view recipeOutputs r)
-    , T.intercalate ", " (map formatCE $ view recipeRequirements r)
+    , T.intercalate ", " (map formatCE $ view recipeCatalysts r)
     , tshow $ view recipeTime r
     , tshow $ view recipeWeight r
     ]
@@ -508,7 +508,7 @@ recipesToDot classic classicTerm emap recipes = do
   -- add node for the world and draw a line to each entity found in the wild
   -- finally draw recipes
   let recipeInOut r = [(snd i, snd o) | i <- r ^. recipeInputs, o <- r ^. recipeOutputs]
-      recipeReqOut r = [(snd q, snd o) | q <- r ^. recipeRequirements, o <- r ^. recipeOutputs]
+      recipeReqOut r = [(snd q, snd o) | q <- r ^. recipeCatalysts, o <- r ^. recipeOutputs]
       recipesToPairs f rs = both nid <$> nubOrd (concatMap f rs)
   mapM_ (uncurry (.->.)) (recipesToPairs recipeInOut recipes)
   mapM_ (uncurry (---<>)) (recipesToPairs recipeReqOut recipes)
@@ -532,7 +532,7 @@ recipesToDot classic classicTerm emap recipes = do
 recipeLevels :: [Recipe Entity] -> Set Entity -> [Set Entity]
 recipeLevels recipes start = levels
  where
-  recipeParts r = ((r ^. recipeInputs) <> (r ^. recipeRequirements), r ^. recipeOutputs)
+  recipeParts r = ((r ^. recipeInputs) <> (r ^. recipeCatalysts), r ^. recipeOutputs)
   m :: [(Set Entity, Set Entity)]
   m = map (both (Set.fromList . map snd) . recipeParts) recipes
   levels :: [Set Entity]
