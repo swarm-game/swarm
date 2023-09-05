@@ -21,7 +21,6 @@ module Swarm.TUI.Model.UI (
   uiInventorySort,
   uiInventorySearch,
   uiScrollToEnd,
-  uiError,
   uiModal,
   uiGoal,
   uiHideGoals,
@@ -106,7 +105,6 @@ data UIState = UIState
   , _uiInventorySort :: InventorySortOptions
   , _uiInventorySearch :: Maybe Text
   , _uiScrollToEnd :: Bool
-  , _uiError :: Maybe Text
   , _uiModal :: Maybe Modal
   , _uiGoal :: GoalDisplay
   , _uiHideGoals :: Bool
@@ -176,10 +174,6 @@ uiInventory :: Lens' UIState (Maybe (Int, BL.List Name InventoryListEntry))
 -- | A flag telling the UI to scroll the info panel to the very end
 --   (used when a new log message is appended).
 uiScrollToEnd :: Lens' UIState Bool
-
--- | When this is @Just@, it represents a popup box containing an
---   error message that is shown on top of the rest of the UI.
-uiError :: Lens' UIState (Maybe Text)
 
 -- | When this is @Just@, it represents a modal to be displayed on
 --   top of the UI, e.g. for the Help screen.
@@ -320,7 +314,6 @@ initUIState speedFactor showMainMenu cheatMode = do
           , _uiInventorySort = defaultSortOptions
           , _uiInventorySearch = Nothing
           , _uiScrollToEnd = False
-          , _uiError = Nothing
           , _uiModal = Nothing
           , _uiGoal = emptyGoalDisplay
           , _uiHideGoals = False
