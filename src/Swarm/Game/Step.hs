@@ -714,7 +714,7 @@ stepCESK cesk = case cesk of
     return $ Out (VRef loc) s' k
   -- If we see an update frame, it means we're supposed to set the value
   -- of a particular cell to the value we just finished computing.
-  Out v s (FUpdate loc : k) -> return $ Out v (setCell loc (V v) s) k
+  Out v s (FUpdate loc : k) -> return $ Out v (setStore loc (V v) s) k
   ------------------------------------------------------------
   -- Execution
 
@@ -1688,7 +1688,7 @@ execConst c vs s k = do
       [VDelay t e] -> return $ In t e s k
       [VRef loc] ->
         -- To force a VRef, we look up the location in the store.
-        case lookupCell loc s of
+        case lookupStore loc s of
           -- If there's no cell at that location, it's a bug!  It
           -- shouldn't be possible to get a VRef to a non-existent
           -- location, since the only way VRefs get created is at the
@@ -1701,7 +1701,7 @@ execConst c vs s k = do
           -- an 'FUpdate' frame so we remember to update the location
           -- to its value once we finish evaluating it, and focus on
           -- the expression.
-          Just (E t e') -> return $ In t e' (setCell loc (Blackhole t e') s) (FUpdate loc : k)
+          Just (E t e') -> return $ In t e' (setStore loc (Blackhole t e') s) (FUpdate loc : k)
           -- If the location contains a Blackhole, that means we are
           -- already currently in the middle of evaluating it, i.e. it
           -- depends on itself, so throw an 'InfiniteLoop' error.
@@ -2020,7 +2020,7 @@ execConst c vs s k = do
     inRs <- use recipesIn
 
     let recipes = filter isApplicableRecipe (recipesFor inRs nextE)
-        isApplicableRecipe = any ((== tool) . snd) . view recipeRequirements
+        isApplicableRecipe = any ((== tool) . snd) . view recipeCatalysts
 
     not (null recipes)
       `holdsOrFail` [ "There is no way to"

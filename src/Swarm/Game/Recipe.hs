@@ -10,9 +10,11 @@ module Swarm.Game.Recipe (
   -- * Ingredient lists and recipes
   IngredientList,
   Recipe (..),
+
+  -- ** Fields
   recipeInputs,
   recipeOutputs,
-  recipeRequirements,
+  recipeCatalysts,
   recipeTime,
   recipeWeight,
 
@@ -20,7 +22,7 @@ module Swarm.Game.Recipe (
   loadRecipes,
   outRecipeMap,
   inRecipeMap,
-  reqRecipeMap,
+  catRecipeMap,
 
   -- * Looking up recipes
   MissingIngredient (..),
@@ -61,14 +63,12 @@ import Witch
 --   game is running.
 type IngredientList e = [(Count, e)]
 
--- | A recipe is just a list of input entities and a list of output
---   entities (both with multiplicity).  The idea is that it
---   represents some kind of process where the inputs are
---   transformed into the outputs.
+-- | A recipe represents some kind of process where inputs are
+--   transformed into outputs.
 data Recipe e = Recipe
   { _recipeInputs :: IngredientList e
   , _recipeOutputs :: IngredientList e
-  , _recipeRequirements :: IngredientList e
+  , _recipeCatalysts :: IngredientList e
   , _recipeTime :: Integer
   , _recipeWeight :: Integer
   }
@@ -90,7 +90,7 @@ recipeTime :: Lens' (Recipe e) Integer
 
 -- | Other entities which the recipe requires you to have, but which
 --   are not consumed by the recipe (e.g. a furnace).
-recipeRequirements :: Lens' (Recipe e) (IngredientList e)
+recipeCatalysts :: Lens' (Recipe e) (IngredientList e)
 
 -- | How this recipe is weighted against other recipes.  Any time
 --   there are multiple valid recipes that fit certain criteria, one
@@ -103,12 +103,12 @@ recipeWeight :: Lens' (Recipe e) Integer
 ------------------------------------------------------------
 
 instance ToJSON (Recipe Text) where
-  toJSON (Recipe ins outs reqs time weight) =
+  toJSON (Recipe ins outs cats time weight) =
     object $
       [ "in" .= ins
       , "out" .= outs
       ]
-        ++ ["required" .= reqs | not (null reqs)]
+        ++ ["required" .= cats | not (null cats)]
         ++ ["time" .= time | time /= 1]
         ++ ["weight" .= weight | weight /= 1]
 
@@ -185,9 +185,9 @@ outRecipeMap = buildRecipeMap recipeOutputs
 inRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
 inRecipeMap = buildRecipeMap recipeInputs
 
--- | Build a map of recipes indexed by requirements.
-reqRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
-reqRecipeMap = buildRecipeMap recipeRequirements
+-- | Build a map of recipes indexed by catalysts.
+catRecipeMap :: [Recipe Entity] -> IntMap [Recipe Entity]
+catRecipeMap = buildRecipeMap recipeCatalysts
 
 -- | Get a list of all the recipes for the given entity.  Look up an
 --   entity in either an 'inRecipeMap' or 'outRecipeMap' depending on
@@ -196,28 +196,32 @@ reqRecipeMap = buildRecipeMap recipeRequirements
 recipesFor :: IntMap [Recipe Entity] -> Entity -> [Recipe Entity]
 recipesFor rm e = fromMaybe [] $ IM.lookup (e ^. entityHash) rm
 
+-- | Record information about something missing from a recipe.
 data MissingIngredient = MissingIngredient MissingType Count Entity
   deriving (Show, Eq)
 
+-- | What kind of thing is missing?
 data MissingType = MissingInput | MissingCatalyst
   deriving (Show, Eq)
 
 -- | Figure out which ingredients (if any) are lacking from an
---   inventory to be able to carry out the recipe.
---   Requirements are not consumed and so can use equipped.
+--   inventory to be able to carry out the recipe.  Catalysts are not
+--   consumed and so can be used even when equipped.
 missingIngredientsFor :: (Inventory, Inventory) -> Recipe Entity -> [MissingIngredient]
-missingIngredientsFor (inv, ins) (Recipe inps _ reqs _ _) =
+missingIngredientsFor (inv, ins) (Recipe inps _ cats _ _) =
   mkMissing MissingInput (findLacking inv inps)
-    <> mkMissing MissingCatalyst (findLacking ins (findLacking inv reqs))
+    <> mkMissing MissingCatalyst (findLacking ins (findLacking inv cats))
  where
   mkMissing k = map (uncurry (MissingIngredient k))
   findLacking inven = filter ((> 0) . fst) . map (countNeeded inven)
   countNeeded inven (need, entity) = (need - E.lookup entity inven, entity)
 
--- | Figure out if a recipe is available, but it can be lacking items.
+-- | Figure out if a recipe is available, /i.e./ if we at least know
+--   about all the ingredients.  Note it does not matter whether we have
+--   enough of the ingredients.
 knowsIngredientsFor :: (Inventory, Inventory) -> Recipe Entity -> Bool
 knowsIngredientsFor (inv, ins) recipe =
-  knowsAll inv (recipe ^. recipeInputs) && knowsAll ins (recipe ^. recipeRequirements)
+  knowsAll inv (recipe ^. recipeInputs) && knowsAll ins (recipe ^. recipeCatalysts)
  where
   knowsAll xs = all (E.contains xs . snd)
 
@@ -227,12 +231,10 @@ knowsIngredientsFor (inv, ins) recipe =
 --   or an inventory without inputs and function adding outputs if
 --   it was successful.
 make ::
-  -- robots inventory and equipped devices
+  -- | The robot's inventory and equipped devices
   (Inventory, Inventory) ->
-  -- considered recipe
+  -- | The recipe we are trying to make
   Recipe Entity ->
-  -- failure (with count of missing) or success with a new inventory,
-  -- a function to add results and the recipe repeated
   Either
     [MissingIngredient]
     (Inventory, IngredientList Entity, Recipe Entity)

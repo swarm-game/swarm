@@ -47,7 +47,8 @@ import Witch (from)
 
 -- ------------------------------------------------------------------
 
--- | Suggested way to fix incapable error.
+-- | Suggested way to fix things when a robot does not meet the
+--   requirements to run a command.
 data IncapableFix
   = -- | Equip the missing device on yourself/target
     FixByEquip
@@ -66,13 +67,16 @@ data Exn
     InfiniteLoop
   | -- | A robot tried to do something for which it does not have some
     --   of the required capabilities.  This cannot be caught by a
-    --   @try@ block.
+    --   @try@ block.  Also contains the missing requirements, the
+    --   term that caused the problem, and a suggestion for how to fix
+    --   things.
     Incapable IncapableFix Requirements Term
   | -- | A command failed in some "normal" way (/e.g./ a 'Move'
     --   command could not move, or a 'Grab' command found nothing to
-    --   grab, /etc./).
+    --   grab, /etc./).  Can be caught by a @try@ block.
     CmdFailed Const Text (Maybe GameplayAchievement)
-  | -- | The user program explicitly called 'Undefined' or 'Fail'.
+  | -- | The user program explicitly called 'Undefined' or 'Fail'. Can
+    --   be caught by a @try@ block.
     User Text
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
@@ -94,6 +98,7 @@ formatExn em = \case
 -- INCAPABLE HELPERS
 -- ------------------------------------------------------------------
 
+-- | Pretty-print an 'IncapableFix': either "equip" or "obtain".
 formatIncapableFix :: IncapableFix -> Text
 formatIncapableFix = \case
   FixByEquip -> "equip"

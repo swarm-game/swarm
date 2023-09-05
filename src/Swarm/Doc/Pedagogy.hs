@@ -212,6 +212,10 @@ cmdSetToSortedText = sort . map (T.pack . show) . S.toList
 renderCmdList :: Set Const -> [Text]
 renderCmdList = renderList . map linkifyCommand . cmdSetToSortedText
 
+-- | Generate a document which lists all the tutorial scenarios,
+--   highlighting for each one which commands are introduced for the
+--   first time in the canonical solution, and which commands are
+--   referenced in the tutorial description.
 renderTutorialProgression :: IO Text
 renderTutorialProgression =
   processAndRender <$> loadScenarioCollection

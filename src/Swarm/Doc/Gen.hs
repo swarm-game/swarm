@@ -4,7 +4,10 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Auto-generation of various forms of documentation.
 module Swarm.Doc.Gen (
+  -- ** Main document generation function + types
   generateDocs,
   GenerateDocs (..),
   EditorType (..),
@@ -15,13 +18,9 @@ module Swarm.Doc.Gen (
   keywordsDirections,
   operatorNames,
   builtinFunctionList,
-  editorList,
 
   -- ** Wiki pages
   PageAddress (..),
-  commandsPage,
-  capabilityPage,
-  noPageAddresses,
 ) where
 
 import Control.Effect.Lift
@@ -46,7 +45,7 @@ import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Recipe (Recipe, loadRecipes, recipeInputs, recipeOutputs, recipeRequirements, recipeTime, recipeWeight)
+import Swarm.Game.Recipe (Recipe, loadRecipes, recipeCatalysts, recipeInputs, recipeOutputs, recipeTime, recipeWeight)
 import Swarm.Game.Robot (Robot, equippedDevices, instantiateRobot, robotInventory)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
 import Swarm.Game.World.Gen (extractEntities)
@@ -73,6 +72,7 @@ import Text.Dot qualified as Dot
 --
 -- ----------------------------------------------------------------------------
 
+-- | An enumeration of the kinds of documentation we can generate.
 data GenerateDocs where
   -- | Entity dependencies by recipes.
   RecipeGraph :: GenerateDocs
@@ -80,17 +80,23 @@ data GenerateDocs where
   EditorKeywords :: Maybe EditorType -> GenerateDocs
   -- | List of special key names recognized by 'key' command
   SpecialKeyNames :: GenerateDocs
+  -- | Cheat sheets for inclusion on the Swarm wiki.
   CheatSheet :: PageAddress -> Maybe SheetType -> GenerateDocs
   -- | List command introductions by tutorial
   TutorialCoverage :: GenerateDocs
   deriving (Eq, Show)
 
+-- | An enumeration of the editors supported by Swarm (currently,
+--   Emacs and VS Code).
 data EditorType = Emacs | VSCode
   deriving (Eq, Show, Enum, Bounded)
 
+-- | An enumeration of the kinds of cheat sheets we can produce.
 data SheetType = Entities | Commands | Capabilities | Recipes
   deriving (Eq, Show, Enum, Bounded)
 
+-- | A configuration record holding the URLs of the various cheat
+--   sheets, to facilitate cross-linking.
 data PageAddress = PageAddress
   { entityAddress :: Text
   , commandsAddress :: Text
@@ -99,9 +105,7 @@ data PageAddress = PageAddress
   }
   deriving (Eq, Show)
 
-noPageAddresses :: PageAddress
-noPageAddresses = PageAddress "" "" "" ""
-
+-- | Generate the requested kind of documentation to stdout.
 generateDocs :: GenerateDocs -> IO ()
 generateDocs = \case
   RecipeGraph -> generateRecipe >>= putStrLn
@@ -137,6 +141,8 @@ generateDocs = \case
 -- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED
 -- ----------------------------------------------------------------------------
 
+-- | Generate a list of keywords in the format expected by one of the
+--   supported editors.
 generateEditorKeywords :: EditorType -> IO ()
 generateEditorKeywords = \case
   Emacs -> do
@@ -182,6 +188,7 @@ keywordsCommands e = editorList e $ map constSyntax commands
 keywordsDirections :: EditorType -> Text
 keywordsDirections e = editorList e $ map Syntax.directionSyntax Syntax.allDirs
 
+-- | A list of the names of all the operators in the language.
 operatorNames :: Text
 operatorNames = T.intercalate "|" $ map (escape . constSyntax) operators
  where
@@ -391,7 +398,7 @@ recipeRow PageAddress {..} r =
     escapeTable
     [ T.intercalate ", " (map formatCE $ view recipeInputs r)
     , T.intercalate ", " (map formatCE $ view recipeOutputs r)
-    , T.intercalate ", " (map formatCE $ view recipeRequirements r)
+    , T.intercalate ", " (map formatCE $ view recipeCatalysts r)
     , tshow $ view recipeTime r
     , tshow $ view recipeWeight r
     ]
@@ -502,7 +509,7 @@ recipesToDot classic classicTerm emap recipes = do
   -- add node for the world and draw a line to each entity found in the wild
   -- finally draw recipes
   let recipeInOut r = [(snd i, snd o) | i <- r ^. recipeInputs, o <- r ^. recipeOutputs]
-      recipeReqOut r = [(snd q, snd o) | q <- r ^. recipeRequirements, o <- r ^. recipeOutputs]
+      recipeReqOut r = [(snd q, snd o) | q <- r ^. recipeCatalysts, o <- r ^. recipeOutputs]
       recipesToPairs f rs = both nid <$> nubOrd (concatMap f rs)
   mapM_ (uncurry (.->.)) (recipesToPairs recipeInOut recipes)
   mapM_ (uncurry (---<>)) (recipesToPairs recipeReqOut recipes)
@@ -526,7 +533,7 @@ recipesToDot classic classicTerm emap recipes = do
 recipeLevels :: [Recipe Entity] -> Set Entity -> [Set Entity]
 recipeLevels recipes start = levels
  where
-  recipeParts r = ((r ^. recipeInputs) <> (r ^. recipeRequirements), r ^. recipeOutputs)
+  recipeParts r = ((r ^. recipeInputs) <> (r ^. recipeCatalysts), r ^. recipeOutputs)
   m :: [(Set Entity, Set Entity)]
   m = map (both (Set.fromList . map snd) . recipeParts) recipes
   levels :: [Set Entity]

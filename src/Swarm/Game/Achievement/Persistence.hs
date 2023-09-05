@@ -22,13 +22,14 @@ import Swarm.Util.Effect (forMW)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath ((</>))
 
--- | Get path to swarm achievements, optionally creating necessary
---   directories.
+-- | Get a path to the directory where achievement records are
+--   stored. If the argument is set to @True@, create the directory if
+--   it does not exist.
 getSwarmAchievementsPath :: Bool -> IO FilePath
 getSwarmAchievementsPath createDirs = getSwarmXdgDataSubdir createDirs "achievement"
 
 -- | Load saved info about achievements from XDG data directory.
--- Returns a tuple of warnings and attained achievements.
+--   Returns a list of attained achievements.
 loadAchievementsInfo ::
   (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
   m [Attainment]

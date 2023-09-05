@@ -1167,7 +1167,7 @@ recipesWith s e =
       --   3. Recipes where it is an output --- these should go last,
       --      since if you have it, you probably already figured out how
       --      to make it.
-      L.nub $ getRecipes recipesIn ++ getRecipes recipesReq ++ getRecipes recipesOut
+      L.nub $ getRecipes recipesIn ++ getRecipes recipesCat ++ getRecipes recipesOut
 
 -- | Draw an ASCII art representation of a recipe.  For now, the
 --   weight is not shown.

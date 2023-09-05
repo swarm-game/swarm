@@ -24,12 +24,12 @@ module Swarm.Game.Location (
   east,
   west,
 
-  -- ** utility functions
+  -- ** Utility functions
   manhattan,
   euclidean,
   getElemsInArea,
 
-  -- ** reexports for convenience
+  -- ** Re-exports for convenience
   Affine (..),
   Point (..),
   origin,
@@ -49,15 +49,17 @@ import Swarm.Util qualified as Util
 
 -- $setup
 -- >>> import qualified Data.Map as Map
+-- >>> import Linear
+-- >>> import Swarm.Language.Direction
 
 -- | A Location is a pair of (x,y) coordinates, both up to 32 bits.
 --   The positive x-axis points east and the positive y-axis points
 --   north.  These are the coordinates that are shown to players.
 --
---   See also the 'Coords' type defined in "Swarm.Game.World", which
+--   See also the 'Swarm.Game.World.Coords' type defined in "Swarm.Game.World", which
 --   use a (row, column) format instead, which is more convenient for
 --   internal use.  The "Swarm.Game.World" module also defines
---   conversions between 'Location' and 'Coords'.
+--   conversions between 'Location' and 'Swarm.Game.World.Coords'.
 type Location = Point V2 Int32
 
 -- | A convenient way to pattern-match on 'Location' values.
@@ -80,7 +82,7 @@ instance ToJSON Location where
 --
 --   * Two headings can be added with '^+^'.
 --   * The difference between two 'Location's is a 'Heading' (via '.-.').
---   * A 'Location' plus a 'Heading' is another 'Location' (via '.^+').
+--   * A 'Location' plus a 'Heading' is another 'Location' (via 'Linear.Affine..^+').
 type Heading = V2 Int32
 
 deriving instance ToJSON (V2 Int32)
@@ -118,7 +120,12 @@ down = zero
 
 -- | The 'applyTurn' function gives the meaning of each 'Direction' by
 --   turning relative to the given heading or by turning to an absolute
---   heading
+--   heading.
+--
+--   >>> applyTurn (DRelative (DPlanar DLeft)) (V2 5 3)
+--   V2 (-3) 5
+--   >>> applyTurn (DAbsolute DWest) (V2 5 3)
+--   V2 (-1) 0
 applyTurn :: Direction -> Heading -> Heading
 applyTurn d = case d of
   DRelative e -> case e of
@@ -138,11 +145,21 @@ cardinalDirs =
 -- | Possibly convert a heading into a 'Direction'---that is, if the
 --   vector happens to be a unit vector in one of the cardinal
 --   directions.
+--
+--   >>> toDirection (V2 0 (-1))
+--   Just (DAbsolute DSouth)
+--   >>> toDirection (V2 3 7)
+--   Nothing
 toDirection :: Heading -> Maybe Direction
 toDirection v = M.lookup v cardinalDirs
 
--- | Example:
---      DWest `relativeTo` DSouth == DRight
+-- | Return the 'PlanarRelativeDir' which would result in turning to
+--   the first (target) direction from the second (reference) direction.
+--
+--   >>> DWest `relativeTo` DSouth
+--   DRight
+--   >>> DWest `relativeTo` DWest
+--   DForward
 relativeTo :: AbsoluteDir -> AbsoluteDir -> PlanarRelativeDir
 relativeTo targetDir referenceDir =
   toEnum indexDiff
@@ -150,8 +167,9 @@ relativeTo targetDir referenceDir =
   enumCount = length (Util.listEnums :: [AbsoluteDir])
   indexDiff = ((-) `on` fromEnum) targetDir referenceDir `mod` enumCount
 
--- | Logic adapted from:
--- https://gamedev.stackexchange.com/questions/49290/#comment213403_49300
+-- | Compute the absolute direction nearest to a given 'Heading'.
+--
+--   Logic adapted from <https://gamedev.stackexchange.com/questions/49290/#comment213403_49300>.
 nearestDirection :: Heading -> AbsoluteDir
 nearestDirection coord =
   orderedDirs !! index
@@ -163,7 +181,7 @@ nearestDirection coord =
   orderedDirs = Util.listEnums
   enumCount = length orderedDirs
 
--- | Convert a 'Direction' into a corresponding heading.  Note that
+-- | Convert a 'Direction' into a corresponding 'Heading'.  Note that
 --   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',
 --   and 'DWest'---other 'Direction's return the zero vector.
 fromDirection :: Direction -> Heading
@@ -179,7 +197,7 @@ manhattan (Location x1 y1) (Location x2 y2) = abs (x1 - x2) + abs (y1 - y2)
 euclidean :: Location -> Location -> Double
 euclidean p1 p2 = norm (fromIntegral <$> (p2 .-. p1))
 
--- | Get elements that are in manhattan distance from location.
+-- | Get elements that are within a certain manhattan distance from location.
 --
 -- >>> v2s i = [(p, manhattan origin p) | x <- [-i..i], y <- [-i..i], let p = Location x y]
 -- >>> v2s 0

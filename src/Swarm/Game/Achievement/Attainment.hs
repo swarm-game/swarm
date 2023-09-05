@@ -3,8 +3,13 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Metadata about achievements that the player has obtained
-module Swarm.Game.Achievement.Attainment where
+-- Metadata about achievements that the player has obtained.
+module Swarm.Game.Achievement.Attainment (
+  Attainment (..),
+  achievement,
+  maybeScenarioPath,
+  obtainedAt,
+) where
 
 import Control.Lens hiding (from, (<.>))
 import Data.Aeson (
@@ -19,11 +24,16 @@ import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Game.Achievement.Definitions
 
+-- | A record holding an achievement along with some metadata to
+--   record the time at which the achievement was obtained, and the
+--   scenario in which it was achieved.
 data Attainment = Attainment
   { _achievement :: CategorizedAchievement
+  -- ^ The achievement.
   , _maybeScenarioPath :: Maybe FilePath
-  -- ^ from which scenario was it obtained?
+  -- ^ From which scenario was it obtained?
   , _obtainedAt :: ZonedTime
+  -- ^ What time was it obtained?
   }
   deriving (Generic)
 
