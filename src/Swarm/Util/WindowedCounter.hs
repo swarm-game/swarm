@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -16,11 +18,10 @@ module Swarm.Util.WindowedCounter (
   discardGarbage,
 ) where
 
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson
 import Data.Ratio
 import Data.Set (Set)
 import Data.Set qualified as Set
-import GHC.Generics (Generic)
 import Prelude hiding (length)
 
 -- | A "sliding window" of a designated span that supports insertion
@@ -69,9 +70,22 @@ data WindowedCounter a = WindowedCounter
   , _nominalSpan :: a
   -- ^ Data retention window
   }
-  -- NOTE: deriving 'FromJSON' circumvents the protection offered by "smart constructors",
-  -- and the 'ToJSON' instance may expose internal details.
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show)
+
+-- Automatically deriving 'FromJSON' circumvents the protection offered by "smart constructors",
+-- and the 'ToJSON' instance may expose internal details.
+-- Therefore, we write our own custom implementations.
+instance (ToJSON a) => ToJSON (WindowedCounter a) where
+  toJSON (WindowedCounter membersSet _lastLargest nominalSpan) =
+    object
+      [ "members" .= Set.size membersSet
+      , "span" .= nominalSpan
+      ]
+
+instance (Num a) => FromJSON (WindowedCounter a) where
+  parseJSON = withObject "WindowedCounter" $ \v -> do
+    s <- v .: "span"
+    return $ mkWindow $ fromIntegral (s :: Int)
 
 mkWindow ::
   -- | Window span
@@ -88,7 +102,7 @@ mkWindow = WindowedCounter Set.empty Nothing
 -- A fully-contiguous collection of ticks would have an occupancy ratio of @1@.
 getOccupancy ::
   Integral a =>
-  -- | reference tick
+  -- | current time
   a ->
   WindowedCounter a ->
   Ratio a
