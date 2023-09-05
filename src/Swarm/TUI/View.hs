@@ -561,20 +561,13 @@ chooseCursor s locs = case s ^. uiState . uiModal of
   Nothing -> showFirstCursor s locs
   Just _ -> Nothing
 
--- | Render the error dialog window with a given error message
-renderErrorDialog :: Text -> Widget Name
-renderErrorDialog err = renderDialog (dialog (Just $ str "Error") Nothing (maxModalWindowWidth `min` requiredWidth)) errContent
- where
-  errContent = txtWrapWith indent2 {preserveIndentation = True} err
-  requiredWidth = 2 + maximum (textWidth <$> T.lines err)
-
--- | Draw the error dialog window, if it should be displayed right now.
+-- | Draw a dialog window, if one should be displayed right now.
 drawDialog :: AppState -> Widget Name
 drawDialog s = case s ^. uiState . uiModal of
   Just (Modal mt d) -> renderDialog d $ case mt of
     GoalModal -> drawModal s mt
     _ -> maybeScroll ModalViewport $ drawModal s mt
-  Nothing -> maybe emptyWidget renderErrorDialog (s ^. uiState . uiError)
+  Nothing -> emptyWidget
 
 -- | Draw one of the various types of modal dialog.
 drawModal :: AppState -> ModalType -> Widget Name
@@ -1350,6 +1343,7 @@ drawREPL s =
   base = s ^. gameState . robotMap . at 0
   fmt (REPLEntry e) = txt $ "> " <> e
   fmt (REPLOutput t) = txt t
+  fmt (REPLError t) = txtWrapWith indent2 {preserveIndentation = True} t
   mayDebug = [drawRobotMachine s True | s ^. uiState . uiShowDebug]
 
 ------------------------------------------------------------

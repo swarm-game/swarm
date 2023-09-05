@@ -78,6 +78,8 @@ data REPLHistItem
     REPLEntry Text
   | -- | A response printed by the system.
     REPLOutput Text
+  | -- | An error printed by the system.
+    REPLError Text
   deriving (Eq, Ord, Show, Read)
 
 instance ToSample REPLHistItem where
@@ -87,6 +89,7 @@ instance ToJSON REPLHistItem where
   toJSON e = case e of
     REPLEntry x -> object ["in" .= x]
     REPLOutput x -> object ["out" .= x]
+    REPLError x -> object ["err" .= x]
 
 -- | Useful helper function to only get user input text.
 getREPLEntry :: REPLHistItem -> Maybe Text
@@ -103,6 +106,7 @@ replItemText :: REPLHistItem -> Text
 replItemText = \case
   REPLEntry t -> t
   REPLOutput t -> t
+  REPLError t -> t
 
 -- | History of the REPL with indices (0 is first entry) to the current
 --   line and to the first entry since loading saved history.
@@ -130,23 +134,24 @@ replIndex :: Lens' REPLHistory Int
 -- It will be set on load and reset on save (happens during exit).
 replStart :: Lens' REPLHistory Int
 
--- | Note: Instead of adding a dedicated field to the REPLHistory record,
--- an early attempt entailed checking for:
+-- | Keep track of whether the user has explicitly executed commands
+--   at the REPL prompt, thus making them ineligible for code size scoring.
 --
---    _replIndex > _replStart
+--   Note: Instead of adding a dedicated field to the REPLHistory record,
+--   an early attempt entailed checking for:
 --
--- However, executing an initial script causes
--- a "REPLOutput" to be appended to the REPL history,
--- which increments the replIndex, and thus makes
--- the Index greater than the Start even though
--- the player has input not commands into the REPL.
+--     _replIndex > _replStart
 --
--- Therefore, a dedicated boolean is introduced into
--- REPLHistory which simply latches True when the user
--- has input a command.
+--   However, executing an initial script causes a "REPLOutput" to be
+--   appended to the REPL history, which increments the replIndex, and
+--   thus makes the Index greater than the Start even though the
+--   player has not input commands directly into the REPL.
 --
--- An alternative is described here:
--- https://github.com/swarm-game/swarm/pull/974#discussion_r1112380380
+--   Therefore, a dedicated boolean is introduced into REPLHistory
+--   which simply latches True when the user has input a command.
+--
+--   An alternative is described here:
+--   https://github.com/swarm-game/swarm/pull/974#discussion_r1112380380
 replHasExecutedManualInput :: Lens' REPLHistory Bool
 
 -- | Create new REPL history (i.e. from loaded history file lines).

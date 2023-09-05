@@ -253,7 +253,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement curMenu of
       Nothing -> continueWithoutRedraw
-      Just (SISingle siPair) -> startGame siPair Nothing
+      Just (SISingle siPair) -> invalidateCache >> startGame siPair Nothing
       Just (SICollection _ c) -> do
         cheat <- use $ uiState . uiCheatMode
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack)
@@ -305,9 +305,8 @@ handleMainEvent ev = do
         WinConditions (Won _) _ -> toggleModal $ ScenarioEndModal WinModal
         WinConditions (Unwinnable _) _ -> toggleModal $ ScenarioEndModal LoseModal
         _ -> toggleModal QuitModal
-    VtyEvent (V.EvResize _ _) -> invalidateCacheEntry WorldCache
+    VtyEvent (V.EvResize _ _) -> invalidateCache
     Key V.KEsc
-      | isJust (s ^. uiState . uiError) -> uiState . uiError .= Nothing
       | Just m <- s ^. uiState . uiModal -> do
           safeAutoUnpause
           uiState . uiModal .= Nothing
@@ -472,8 +471,13 @@ handleModalEvent = \case
     case dialogSelection =<< mdialog of
       Just (Button QuitButton, _) -> quitGame
       Just (Button KeepPlayingButton, _) -> toggleModal KeepPlayingModal
-      Just (Button StartOverButton, StartOver currentSeed siPair) -> restartGame currentSeed siPair
-      Just (Button NextButton, Next siPair) -> quitGame >> startGame siPair Nothing
+      Just (Button StartOverButton, StartOver currentSeed siPair) -> do
+        invalidateCache
+        restartGame currentSeed siPair
+      Just (Button NextButton, Next siPair) -> do
+        quitGame
+        invalidateCache
+        startGame siPair Nothing
       _ -> return ()
   ev -> do
     Brick.zoom (uiState . uiModal . _Just . modalDialog) (handleDialogEvent ev)
@@ -964,14 +968,12 @@ stripCmd pty = pty
 -- REPL events
 ------------------------------------------------------------
 
--- | Set the REPLForm to the given value, resetting type error checks to Nothing
---   and removing uiError.
+-- | Set the REPL to the given text and REPL prompt type.
 resetREPL :: T.Text -> REPLPrompt -> UIState -> UIState
 resetREPL t r ui =
   ui
     & uiREPL . replPromptText .~ t
     & uiREPL . replPromptType .~ r
-    & uiError .~ Nothing
 
 -- | Handle a user input event for the REPL.
 handleREPLEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -997,7 +999,10 @@ handleREPLEvent x = do
           _ ->
             if T.null uinput
               then uiState . uiREPL . replControlMode .= Piloting
-              else uiState . uiError ?= "Please clear the REPL first."
+              else do
+                let err = REPLError "Please clear the REPL before engaging pilot mode."
+                uiState . uiREPL . replHistory %= addREPLItem err
+                invalidateCacheEntry REPLHistoryCache
     MetaChar 'k' -> do
       when (isJust (s ^. gameState . inputHandler)) $ do
         curMode <- use $ uiState . uiREPL . replControlMode
@@ -1074,15 +1079,15 @@ runBaseWebCode uinput = do
     runBaseCode topCtx uinput
 
 runBaseCode :: (MonadState AppState m) => RobotContext -> T.Text -> m ()
-runBaseCode topCtx uinput =
+runBaseCode topCtx uinput = do
+  uiState . uiREPL . replHistory %= addREPLItem (REPLEntry uinput)
+  uiState %= resetREPL "" (CmdPrompt [])
   case processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput of
     Right mt -> do
-      uiState %= resetREPL "" (CmdPrompt [])
-      uiState . uiREPL . replHistory %= addREPLItem (REPLEntry uinput)
       uiState . uiREPL . replHistory . replHasExecutedManualInput .= True
       runBaseTerm topCtx mt
     Left err -> do
-      uiState . uiError ?= err
+      uiState . uiREPL . replHistory %= addREPLItem (REPLError err)
 
 runBaseTerm :: (MonadState AppState m) => RobotContext -> Maybe ProcessedTerm -> m ()
 runBaseTerm topCtx =
