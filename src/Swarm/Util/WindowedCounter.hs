@@ -42,7 +42,8 @@ import Prelude hiding (length)
 -- upon every tick; we only want to "visit" a robot if it is actually
 -- doing work that tick.
 -- Because of this, there may be some ticks in which the oldest element
--- that is still stored falls outside of the nominal retention window.
+-- that is still stored falls outside of the nominal retention window
+-- while a robot is inactive.
 --
 -- One might think we could perform garbage collection whenever we execute queries.
 -- However, in the context in which the view powered by the query is generated, we
@@ -132,7 +133,7 @@ insert x (WindowedCounter s lastLargest nominalSpan) =
 -- | Drop the leading elements that are not larger than the cutoff.
 --
 -- This function is already called by the 'insert' function, so clients
--- no not necessarily every have to call this directly.
+-- do not necessarily ever have to call this directly.
 -- However, there may
 -- be opportunity to call this even more often, i.e. in code paths where the
 -- robot is visited but the condition for insertion is not met.
