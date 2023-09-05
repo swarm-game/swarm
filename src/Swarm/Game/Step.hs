@@ -1007,7 +1007,7 @@ execConst c vs s k = do
 
   -- Increment command count regardless of success
   when (isTangible c) $
-    activityCounts . tangibleCommandCount %= (+ 1)
+    activityCounts . tangibleCommandCount += 1
 
   activityCounts . commandsHistogram %= M.insertWith (+) c 1
 
