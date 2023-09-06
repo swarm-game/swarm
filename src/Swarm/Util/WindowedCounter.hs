@@ -22,6 +22,7 @@ module Swarm.Util.WindowedCounter (
 import Data.Aeson
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Swarm.Util.UnitInterval
 import Prelude hiding (length)
 
 -- | Values that can be offset by an integral amount
@@ -128,11 +129,12 @@ getOccupancy ::
   -- | current time
   a ->
   WindowedCounter a ->
-  Double
+  UnitInterval Double
 getOccupancy currentTime wc@(WindowedCounter s lastLargest nominalSpan) =
-  if Set.null s || maybe False (< referenceTick) lastLargest
-    then 0
-    else fromIntegral (Set.size culledSet) / fromIntegral nominalSpan
+  mkInterval $
+    if Set.null s || maybe False (< referenceTick) lastLargest
+      then 0
+      else fromIntegral (Set.size culledSet) / fromIntegral nominalSpan
  where
   referenceTick = offsetBy (negate nominalSpan) currentTime
   -- Cull the window according to the current time

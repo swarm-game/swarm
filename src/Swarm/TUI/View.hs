@@ -113,6 +113,7 @@ import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Util as VU
 import Swarm.Util
+import Swarm.Util.UnitInterval
 import Swarm.Util.WindowedCounter qualified as WC
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock (TimeSpec (..))
@@ -647,12 +648,7 @@ robotsListWidget s = hCenter table
       , txt rLog
       ]
 
-    dutyCycleAttrIdx = floor $ dutyCycleRatio * fromIntegral (length meterAttributeNames - 1)
-    -- Since (!!) is partial, here is "proof" that it is safe:
-    -- \* 'dutyCycleRatio' lies within the unit interval
-    -- \* If 'dutyCycleRatio' is 1, then the maximum value of 'dutyCycleAttrIdx' is
-    --   one less than the length of 'meterAttributeNames' (i.e., a valid index).
-    dutyCycleAttr = meterAttributeNames !! dutyCycleAttrIdx
+    dutyCycleAttr = safeIndex dutyCycleRatio meterAttributeNames
     dutyCycleDisplay = withAttr dutyCycleAttr . str . flip (showFFloat (Just 1)) "%" $ dutyCyclePercentage
 
     dutyCycleRatio =
@@ -660,7 +656,7 @@ robotsListWidget s = hCenter table
         robot ^. activityCounts . activityWindow
 
     dutyCyclePercentage :: Double
-    dutyCyclePercentage = 100 * dutyCycleRatio
+    dutyCyclePercentage = 100 * getValue dutyCycleRatio
 
     idWidget = str $ show $ robot ^. robotID
     nameWidget =
