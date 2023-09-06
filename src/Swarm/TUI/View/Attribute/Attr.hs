@@ -49,8 +49,6 @@ module Swarm.TUI.View.Attribute.Attr (
   customEditFocusedAttr,
 ) where
 
-import Data.List.NonEmpty (NonEmpty (..))
-import Data.List.NonEmpty qualified as NE
 import Brick
 import Brick.Forms
 import Brick.Widgets.Dialog
@@ -58,11 +56,13 @@ import Brick.Widgets.Edit qualified as E
 import Brick.Widgets.List hiding (reverse)
 import Data.Bifunctor (bimap)
 import Data.Colour.Palette.BrewerSet
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
+import Data.Maybe (fromMaybe)
 import Data.Text (unpack)
 import Graphics.Vty qualified as V
 import Swarm.Game.Display (Attribute (..))
 import Swarm.TUI.View.Attribute.Util
-import Data.Maybe (fromMaybe)
 
 toAttrName :: Attribute -> AttrName
 toAttrName = \case
@@ -149,9 +149,9 @@ activityMeterPrefix = attrName "activityMeter"
 
 activityMeterAttributes :: NonEmpty (AttrName, V.Attr)
 activityMeterAttributes =
-   NE.zip indices $ fromMaybe (pure $ bg V.black) $ NE.nonEmpty brewers
+  NE.zip indices $ fromMaybe (pure $ bg V.black) $ NE.nonEmpty brewers
  where
-  indices = NE.map ((activityMeterPrefix <>) . attrName . show) $ (0 :: Int) :| [1..]
+  indices = NE.map ((activityMeterPrefix <>) . attrName . show) $ (0 :: Int) :| [1 ..]
   brewers = map bgWithAutoForeground $ reverse $ brewerSet RdYlGn 7
 
 meterAttributeNames :: NonEmpty AttrName

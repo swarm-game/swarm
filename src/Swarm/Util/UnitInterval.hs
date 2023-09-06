@@ -9,8 +9,8 @@ module Swarm.Util.UnitInterval (
   safeIndex,
 ) where
 
-import Prelude hiding ((!!))
 import Data.List.NonEmpty (NonEmpty, (!!))
+import Prelude hiding ((!!))
 
 newtype UnitInterval a = UnitInterval
   { getValue :: a
@@ -27,10 +27,11 @@ mkInterval = UnitInterval . max 0 . min 1
 --    --   one less than the length of 'meterAttributeNames' (i.e., a valid index).
 --
 -- See also: 'Swarm.Util.indexWrapNonEmpty'.
-safeIndex :: RealFrac a =>
+safeIndex ::
+  RealFrac a =>
   -- | alpha
   UnitInterval a ->
-    NonEmpty b ->
-      b
+  NonEmpty b ->
+  b
 safeIndex (UnitInterval alpha) xs =
   xs !! floor (alpha * fromIntegral (length xs - 1))
