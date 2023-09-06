@@ -72,7 +72,7 @@ import Linear
 import Network.Wai.Handler.Warp (Port)
 import Numeric (showFFloat)
 import Swarm.Constant
-import Swarm.Game.CESK (CESK (..), TickNumber (..))
+import Swarm.Game.CESK (CESK (..), TickNumber (..), addTicks)
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Location
@@ -604,10 +604,36 @@ drawModal s = \case
   TerrainPaletteModal -> EV.drawTerrainSelector s
   EntityPaletteModal -> EV.drawEntityPaintSelector s
 
+-- | Render the percentage of ticks that this robot was active.
+-- This indicator can take some time to "warm up" and stabilize
+-- due to the sliding window.
+--
+-- == Use of previous tick
+-- The 'gameTick' function runs all robots, then increments the current tick.
+-- So at the time we are rendering a frame, the current tick will always be
+-- strictly greater than any ticks stored in the 'WindowedCounter' for any robot;
+-- hence 'getOccupancy' will never be @1@ if we use the current tick directly as
+-- obtained from the 'ticks' function.
+-- So we "rewind" it to the previous tick for the purpose of this display.
+renderDutyCycle :: GameState -> Robot -> Widget Name
+renderDutyCycle gs robot =
+  withAttr dutyCycleAttr . str . flip (showFFloat (Just 1)) "%" $ dutyCyclePercentage
+ where
+  curTicks = gs ^. ticks
+  window = robot ^. activityCounts . activityWindow
+
+  -- Rewind to previous tick
+  latestRobotTick = addTicks (-1) curTicks
+  dutyCycleRatio = WC.getOccupancy latestRobotTick window
+
+  dutyCycleAttr = safeIndex dutyCycleRatio meterAttributeNames
+
+  dutyCyclePercentage :: Double
+  dutyCyclePercentage = 100 * getValue dutyCycleRatio
+
 robotsListWidget :: AppState -> Widget Name
 robotsListWidget s = hCenter table
  where
-  curTicks = s ^. gameState . ticks
   table =
     BT.renderTable
       . BT.columnBorders False
@@ -644,19 +670,9 @@ robotsListWidget s = hCenter table
         -- a per-robot pop-up
         str . show . sum . M.elems $ robot ^. activityCounts . commandsHistogram
       , str $ show $ robot ^. activityCounts . lifetimeStepCount
-      , dutyCycleDisplay
+      , renderDutyCycle (s ^. gameState) robot
       , txt rLog
       ]
-
-    dutyCycleAttr = safeIndex dutyCycleRatio meterAttributeNames
-    dutyCycleDisplay = withAttr dutyCycleAttr . str . flip (showFFloat (Just 1)) "%" $ dutyCyclePercentage
-
-    dutyCycleRatio =
-      WC.getOccupancy curTicks $
-        robot ^. activityCounts . activityWindow
-
-    dutyCyclePercentage :: Double
-    dutyCyclePercentage = 100 * getValue dutyCycleRatio
 
     idWidget = str $ show $ robot ^. robotID
     nameWidget =
