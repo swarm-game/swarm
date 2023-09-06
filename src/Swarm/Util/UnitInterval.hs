@@ -1,7 +1,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Creation and utilities for tge unit interval
+-- Creation and utilities for the unit interval
 module Swarm.Util.UnitInterval (
   UnitInterval,
   getValue,
@@ -16,7 +16,7 @@ newtype UnitInterval a = UnitInterval
   { getValue :: a
   }
 
--- | Guarantees that the stored interval falls on the range
+-- | Guarantees that the stored value falls within the closed interval
 --   @[0, 1]@. It is up to clients to ensure that the promotion
 --   to this type is lossless.
 mkInterval :: (Ord a, Num a) => a -> UnitInterval a
