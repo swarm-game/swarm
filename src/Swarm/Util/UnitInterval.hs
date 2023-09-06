@@ -9,8 +9,8 @@ module Swarm.Util.UnitInterval (
   safeIndex,
 ) where
 
-import Prelude hiding ((!!))
 import Data.List.NonEmpty (NonEmpty, (!!))
+import Prelude hiding ((!!))
 
 newtype UnitInterval a = UnitInterval
   { getValue :: a
@@ -23,14 +23,16 @@ mkInterval :: (Ord a, Num a) => a -> UnitInterval a
 mkInterval = UnitInterval . max 0 . min 1
 
 -- | Since '(!!)' is partial, here is "proof" that it is safe:
--- If 'dutyCycleRatio' is 1, then the maximum value of 'dutyCycleAttrIdx' is
---    --   one less than the length of 'meterAttributeNames' (i.e., a valid index).
+-- If "alpha" is its maximum value of @1@, then the maximum value
+-- of the computed index shall be one less than the length of the
+-- list (i.e., a valid index).
 --
 -- See also: 'Swarm.Util.indexWrapNonEmpty'.
-safeIndex :: RealFrac a =>
+safeIndex ::
+  RealFrac a =>
   -- | alpha
   UnitInterval a ->
-    NonEmpty b ->
-      b
+  NonEmpty b ->
+  b
 safeIndex (UnitInterval alpha) xs =
   xs !! floor (alpha * fromIntegral (length xs - 1))
