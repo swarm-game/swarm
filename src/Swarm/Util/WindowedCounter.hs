@@ -73,7 +73,7 @@ data WindowedCounter a = WindowedCounter
   , _lastLargest :: Maybe a
   -- ^ NOTE: It is possible that '_lastLargest' may not exist in the 'Set'.
   , _nominalSpan :: Int
-  -- ^ Data retention window
+  -- ^ Data retention window. This value is guaranteed positive by the smart constructor.
   }
   deriving (Eq, Show)
 
@@ -92,19 +92,28 @@ instance FromJSON (WindowedCounter a) where
     s <- v .: "span"
     return $ mkWindow s
 
+-- | NOTE: We take the absolute value of the "window span" argument
+-- so that we can make guarantees about the output of 'getOccupancy'.
 mkWindow ::
-  -- | Window span
+  -- | window span
   Int ->
   WindowedCounter a
-mkWindow = WindowedCounter Set.empty Nothing
+mkWindow = WindowedCounter Set.empty Nothing . abs
 
 -- | Return the ratio of {members in the window} to the {integral span
 -- represented by the window}.
 --
--- The "current time" must be at least as large as the largest
+-- The "current time" should be at least as large as the largest
 -- element of the window.
 --
 -- A fully-contiguous collection of ticks would have an occupancy ratio of @1@.
+--
+-- == Unit interval guarantee
+-- The returned ratio is /guaranteed/ to lie on the unit interval, because:
+--
+-- * Both the numerator and denominator of the ratio are guaranteed positive, and
+-- * 'discardGarbage' guarantees that the set size is less than or equal to
+--   the nominal span.
 getOccupancy ::
   (Ord a, Offsettable a) =>
   -- | current time
@@ -129,7 +138,12 @@ getOccupancy currentTime wc@(WindowedCounter s lastLargest nominalSpan) =
 --
 -- The 'discardGarbage' function is called from inside this function
 -- so that maintenance of the data structure is simplified.
-insert :: (Ord a, Offsettable a) => a -> WindowedCounter a -> WindowedCounter a
+insert ::
+  (Ord a, Offsettable a) =>
+  -- | current time
+  a ->
+  WindowedCounter a ->
+  WindowedCounter a
 insert x (WindowedCounter s lastLargest nominalSpan) =
   discardGarbage x $ WindowedCounter (Set.insert x s) newLargest nominalSpan
  where
@@ -142,8 +156,24 @@ insert x (WindowedCounter s lastLargest nominalSpan) =
 -- However, there may
 -- be opportunity to call this even more often, i.e. in code paths where the
 -- robot is visited but the condition for insertion is not met.
-discardGarbage :: (Ord a, Offsettable a) => a -> WindowedCounter a -> WindowedCounter a
+--
+-- == Invariant
+-- If the largest member of the set is the current time,
+-- then after calling this function, the difference between smallest and largest
+-- value in the set is strictly less than the "nominal span", and the size of the
+-- set is less than or equal to the nominal span.
+--
+-- For example, if the nominal span is @3@, the current time is @7@, and the
+-- set entails a contiguous sequence @{2, 3, 4, 5, 6, 7}@, then the pivot for 'Set.split' will be
+-- @7 - 3 = 4@. The set becomes @{5, 6, 7}@, with cardinality equal to the nominal span.
+discardGarbage ::
+  (Ord a, Offsettable a) =>
+  -- | current time
+  a ->
+  WindowedCounter a ->
+  WindowedCounter a
 discardGarbage currentTime (WindowedCounter s lastLargest nominalSpan) =
   WindowedCounter larger lastLargest nominalSpan
  where
+  -- NOTE: Neither output set of 'split' includes the "pivot" value.
   (_smaller, larger) = Set.split (offsetBy (negate nominalSpan) currentTime) s
