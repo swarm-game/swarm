@@ -145,7 +145,6 @@ getOccupancy currentTime wc@(WindowedCounter s lastLargest nominalSpan) =
 --
 -- Proper usage dictates that the value inserted should always
 -- be at least as large as the current largest element of the set.
--- If not, the insertion has no effect.
 --
 -- The 'discardGarbage' function is called from inside this function
 -- so that maintenance of the data structure is simplified.
