@@ -49,6 +49,8 @@ module Swarm.TUI.View.Attribute.Attr (
   customEditFocusedAttr,
 ) where
 
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
 import Brick
 import Brick.Forms
 import Brick.Widgets.Dialog
@@ -60,6 +62,7 @@ import Data.Text (unpack)
 import Graphics.Vty qualified as V
 import Swarm.Game.Display (Attribute (..))
 import Swarm.TUI.View.Attribute.Util
+import Data.Maybe (fromMaybe)
 
 toAttrName :: Attribute -> AttrName
 toAttrName = \case
@@ -74,7 +77,7 @@ swarmAttrMap :: AttrMap
 swarmAttrMap =
   attrMap
     V.defAttr
-    $ activityMeterAttributes
+    $ NE.toList activityMeterAttributes
       <> worldAttributes
       <> [(waterAttr, V.white `on` V.blue)]
       <> terrainAttr
@@ -144,15 +147,15 @@ worldAttributeNames = map fst worldAttributes
 activityMeterPrefix :: AttrName
 activityMeterPrefix = attrName "activityMeter"
 
-activityMeterAttributes :: [(AttrName, V.Attr)]
+activityMeterAttributes :: NonEmpty (AttrName, V.Attr)
 activityMeterAttributes =
-  bimap ((activityMeterPrefix <>) . attrName . show) bgWithAutoForeground
-    <$> zip [0 :: Int ..] brewers
+   NE.zip indices $ fromMaybe (pure $ bg V.black) $ NE.nonEmpty brewers
  where
-  brewers = reverse $ brewerSet RdYlGn 7
+  indices = NE.map ((activityMeterPrefix <>) . attrName . show) $ (0 :: Int) :| [1..]
+  brewers = map bgWithAutoForeground $ reverse $ brewerSet RdYlGn 7
 
-meterAttributeNames :: [AttrName]
-meterAttributeNames = map fst activityMeterAttributes
+meterAttributeNames :: NonEmpty AttrName
+meterAttributeNames = NE.map fst activityMeterAttributes
 
 terrainPrefix :: AttrName
 terrainPrefix = attrName "terrain"
