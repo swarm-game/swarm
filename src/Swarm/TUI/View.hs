@@ -648,6 +648,10 @@ robotsListWidget s = hCenter table
       ]
 
     dutyCycleAttrIdx = floor $ dutyCycleRatio * fromIntegral (length meterAttributeNames - 1)
+    -- Since (!!) is partial, here is "proof" that it is safe:
+    -- * 'dutyCycleRatio' lies within the unit interval
+    -- * If 'dutyCycleRatio' is 1, then the maximum value of 'dutyCycleAttrIdx' is
+    --   one less than the length of 'meterAttributeNames' (i.e., a valid index).
     dutyCycleAttr = meterAttributeNames !! dutyCycleAttrIdx
     dutyCycleDisplay = withAttr dutyCycleAttr . str . flip (showFFloat (Just 1)) "%" $ dutyCyclePercentage
 
