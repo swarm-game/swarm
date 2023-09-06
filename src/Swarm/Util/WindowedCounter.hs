@@ -77,16 +77,25 @@ data WindowedCounter a = WindowedCounter
   }
   deriving (Eq, Show)
 
--- Automatically deriving 'FromJSON' circumvents the protection offered by "smart constructors",
+-- | Automatically deriving 'FromJSON' circumvents the protection offered by "smart constructors",
 -- and the 'ToJSON' instance may expose internal details.
 -- Therefore, we write our own custom implementations.
-instance ToJSON (WindowedCounter a) where
+--
+-- This 'ToJSON' instance is strictly for diagnostic purposes, and we can reveal
+-- a bit more information than is used for parsing.
+instance (ToJSON a) => ToJSON (WindowedCounter a) where
   toJSON (WindowedCounter membersSet _lastLargest nominalSpan) =
     object
-      [ "members" .= Set.size membersSet
+      [ "members" .= toJSON membersSet
       , "span" .= nominalSpan
       ]
 
+-- | We discard any "internal state" revealed by the 'ToJSON' instance and
+-- just use the "span" so that we can rely on any guarantees offered by the
+-- smart constructor, no matter the origin of the JSON.
+--
+-- Discarding the internal state is OK, because it is not integral to gameplay;
+-- it is merely informational as a live indicator in the UI.
 instance FromJSON (WindowedCounter a) where
   parseJSON = withObject "WindowedCounter" $ \v -> do
     s <- v .: "span"
