@@ -524,7 +524,7 @@ stepRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Ro
 stepRobot r = do
   (r', cesk') <- runState (r & activityCounts . tickStepBudget -~ 1) (stepCESK (r ^. machine))
   -- sendIO $ appendFile "out.txt" (prettyString cesk' ++ "\n")
-  TickNumber t <- use ticks
+  t <- use ticks
   return $
     r'
       & machine .~ cesk'

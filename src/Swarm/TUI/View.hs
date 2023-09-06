@@ -606,7 +606,7 @@ drawModal s = \case
 robotsListWidget :: AppState -> Widget Name
 robotsListWidget s = hCenter table
  where
-  TickNumber curTicks = s ^. gameState . ticks
+  curTicks = s ^. gameState . ticks
   table =
     BT.renderTable
       . BT.columnBorders False

@@ -179,7 +179,7 @@ data ActivityCounts = ActivityCounts
   , _tangibleCommandCount :: Int
   , _commandsHistogram :: Map Const Int
   , _lifetimeStepCount :: Int
-  , _activityWindow :: WindowedCounter Integer
+  , _activityWindow :: WindowedCounter TickNumber
   }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
@@ -238,7 +238,7 @@ commandsHistogram :: Lens' ActivityCounts (Map Const Int)
 lifetimeStepCount :: Lens' ActivityCounts Int
 
 -- | Sliding window over a span of ticks indicating ratio of activity
-activityWindow :: Lens' ActivityCounts (WindowedCounter Integer)
+activityWindow :: Lens' ActivityCounts (WindowedCounter TickNumber)
 
 -- | With a robot template, we may or may not have a location.  With a
 --   concrete robot we must have a location.

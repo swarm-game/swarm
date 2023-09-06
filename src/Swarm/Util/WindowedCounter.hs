@@ -6,6 +6,7 @@
 -- Sliding window for activity monitoring.
 module Swarm.Util.WindowedCounter (
   WindowedCounter,
+  Offsettable (..),
 
   -- * Construction
   mkWindow,
@@ -22,6 +23,10 @@ import Data.Aeson
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Prelude hiding (length)
+
+-- | Values that can be offset by an integral amount
+class Offsettable a where
+  offsetBy :: Int -> a -> a
 
 -- | A "sliding window" of a designated span that supports insertion
 -- of tick "timestamps" that represent some state of interest during that tick.
@@ -75,14 +80,14 @@ data WindowedCounter a = WindowedCounter
 -- Automatically deriving 'FromJSON' circumvents the protection offered by "smart constructors",
 -- and the 'ToJSON' instance may expose internal details.
 -- Therefore, we write our own custom implementations.
-instance (ToJSON a) => ToJSON (WindowedCounter a) where
+instance ToJSON (WindowedCounter a) where
   toJSON (WindowedCounter membersSet _lastLargest nominalSpan) =
     object
       [ "members" .= Set.size membersSet
       , "span" .= nominalSpan
       ]
 
-instance (Num a) => FromJSON (WindowedCounter a) where
+instance FromJSON (WindowedCounter a) where
   parseJSON = withObject "WindowedCounter" $ \v -> do
     s <- v .: "span"
     return $ mkWindow s
@@ -101,7 +106,7 @@ mkWindow = WindowedCounter Set.empty Nothing
 --
 -- A fully-contiguous collection of ticks would have an occupancy ratio of @1@.
 getOccupancy ::
-  Integral a =>
+  (Ord a, Offsettable a) =>
   -- | current time
   a ->
   WindowedCounter a ->
@@ -111,7 +116,7 @@ getOccupancy currentTime wc@(WindowedCounter s lastLargest nominalSpan) =
     then 0
     else fromIntegral (Set.size culledSet) / fromIntegral nominalSpan
  where
-  referenceTick = currentTime - fromIntegral nominalSpan
+  referenceTick = offsetBy (negate nominalSpan) currentTime
   -- Cull the window according to the current time
   WindowedCounter culledSet _ _ = discardGarbage currentTime wc
 
@@ -124,7 +129,7 @@ getOccupancy currentTime wc@(WindowedCounter s lastLargest nominalSpan) =
 --
 -- The 'discardGarbage' function is called from inside this function
 -- so that maintenance of the data structure is simplified.
-insert :: (Show a, Integral a) => a -> WindowedCounter a -> WindowedCounter a
+insert :: (Ord a, Offsettable a) => a -> WindowedCounter a -> WindowedCounter a
 insert x (WindowedCounter s lastLargest nominalSpan) =
   discardGarbage x $ WindowedCounter (Set.insert x s) newLargest nominalSpan
  where
@@ -137,8 +142,8 @@ insert x (WindowedCounter s lastLargest nominalSpan) =
 -- However, there may
 -- be opportunity to call this even more often, i.e. in code paths where the
 -- robot is visited but the condition for insertion is not met.
-discardGarbage :: Integral a => a -> WindowedCounter a -> WindowedCounter a
+discardGarbage :: (Ord a, Offsettable a) => a -> WindowedCounter a -> WindowedCounter a
 discardGarbage currentTime (WindowedCounter s lastLargest nominalSpan) =
   WindowedCounter larger lastLargest nominalSpan
  where
-  (_smaller, larger) = Set.split (currentTime - fromIntegral nominalSpan) s
+  (_smaller, larger) = Set.split (offsetBy (negate nominalSpan) currentTime) s
