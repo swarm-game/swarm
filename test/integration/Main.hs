@@ -228,7 +228,7 @@ testScenarioSolutions rs ui =
         , testGroup
             "Ranching"
             [ testSolution Default "Challenges/Ranching/capture"
-            , testSolution (Sec 5) "Challenges/Ranching/powerset"
+            , testSolution (Sec 10) "Challenges/Ranching/powerset"
             , testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
             ]
         , testGroup

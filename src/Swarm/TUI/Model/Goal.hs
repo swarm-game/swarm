@@ -41,9 +41,9 @@ data GoalStatus
     Completed
   | -- | A goal that can no longer be achieved.
     -- If this goal is not an "optional" goal, then the player
-    -- also "Loses" the scenario.
+    -- also "loses" the scenario.
     --
-    -- Note that currently the only way to "Fail" a goal is by way
+    -- Note that currently the only way to "fail" a goal is by way
     -- of a negative prerequisite that was completed.
     Failed
   deriving (Show, Eq, Ord, Bounded, Enum, Generic, ToJSON, ToJSONKey)
