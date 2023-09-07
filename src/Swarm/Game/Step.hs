@@ -1009,7 +1009,7 @@ execConst c vs s k = do
       [VInt d] -> do
         time <- use ticks
         purgeFarAwayWatches
-        return $ Waiting (addTicks d time) (Out VUnit s k)
+        return $ Waiting (addTicks (fromIntegral d) time) (Out VUnit s k)
       _ -> badConst
     Selfdestruct -> do
       destroyIfNotBase $ Just AttemptSelfDestructBase
@@ -1399,7 +1399,7 @@ execConst c vs s k = do
       return $ Out (VDir (fromMaybe (DRelative DDown) $ mh >>= toDirection)) s k
     Time -> do
       TickNumber t <- use ticks
-      return $ Out (VInt t) s k
+      return $ Out (VInt $ fromIntegral t) s k
     Drill -> case vs of
       [VDir d] -> doDrill d
       _ -> badConst
@@ -1921,7 +1921,7 @@ execConst c vs s k = do
 
             -- Now wait the right amount of time for it to finish.
             time <- use ticks
-            return $ Waiting (addTicks (fromIntegral numItems + 1) time) (Out VUnit s k)
+            return $ Waiting (addTicks (numItems + 1) time) (Out VUnit s k)
       _ -> badConst
     -- run can take both types of text inputs
     -- with and without file extension as in
@@ -2164,7 +2164,7 @@ execConst c vs s k = do
         return $ Out v s k
       else do
         time <- use ticks
-        return . (if remTime <= 1 then id else Waiting (addTicks remTime time)) $
+        return . (if remTime <= 1 then id else Waiting (addTicks (fromIntegral remTime) time)) $
           Out v s (FImmediate c wf rf : k)
    where
     remTime = r ^. recipeTime
