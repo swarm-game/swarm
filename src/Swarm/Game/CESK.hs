@@ -83,9 +83,9 @@ module Swarm.Game.CESK (
 import Control.Lens ((^.))
 import Control.Lens.Combinators (pattern Empty)
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Int (Int64)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
-import Data.Int (Int64)
 import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..), encloseSep, hsep, (<+>))
 import Swarm.Game.Entity (Count, Entity)
