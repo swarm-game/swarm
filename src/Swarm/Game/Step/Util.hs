@@ -171,7 +171,7 @@ weightedChoice weight as = do
    where
     w = weight x
 
--- | Generate a random robot name in the form adjective_name.
+-- | Generate a random robot name in the form @adjective_name@.
 randomName :: Has (State GameState) sig m => m Text
 randomName = do
   adjs <- use @GameState adjList

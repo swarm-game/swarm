@@ -7,9 +7,23 @@ description:        Swarm is a 2D programming and resource gathering
                     game. Program your robots to explore the world and
                     collect resources, which in turn allows you to
                     build upgraded robots that can run more
-                    interesting and complex programs. See the README
+                    interesting and complex programs. See the
+                    <https://github.com/swarm-game/swarm/blob/main/README.md README>
                     for more information and instructions on how to
                     play or contribute!
+                    .
+                    == Module organization
+                    For developers getting oriented, Swarm's modules are organized into
+                    roughly the following layers, from inner to outer:
+                    .
+                    * utilities
+                    * swarm language
+                    * swarm game
+                    * swarm TUI
+                    * swarm app
+                    .
+                    To maintain this separation, inner layers should avoid introducing
+                    dependencies on layers above them.
 
 license:            BSD-3-Clause
 license-file:       LICENSE

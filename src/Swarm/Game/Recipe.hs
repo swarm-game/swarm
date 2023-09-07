@@ -6,6 +6,21 @@
 --
 -- A recipe represents some kind of process for transforming
 -- some input entities into some output entities.
+--
+-- Recipes support a number of different game mechanics, including:
+--
+-- * crafting
+-- * mining
+-- * randomized "loot boxes"
+-- * unlocking doors
+--
+-- == Synchronous vs Async
+-- Recipes can be completed either within the same tick
+-- as execution is started, or execution may span
+-- multiple ticks. It is possible for the execution
+-- of multi-tick recipes to be interrupted in one way or
+-- another, in which case the recipe fails without producing
+-- the "outputs".
 module Swarm.Game.Recipe (
   -- * Ingredient lists and recipes
   IngredientList,
@@ -89,7 +104,7 @@ recipeOutputs :: Lens' (Recipe e) (IngredientList e)
 recipeTime :: Lens' (Recipe e) Integer
 
 -- | Other entities which the recipe requires you to have, but which
---   are not consumed by the recipe (e.g. a furnace).
+--   are not consumed by the recipe (e.g. a @\"furnace\"@).
 recipeCatalysts :: Lens' (Recipe e) (IngredientList e)
 
 -- | How this recipe is weighted against other recipes.  Any time
