@@ -22,10 +22,10 @@ import Data.Text qualified as T
 import Swarm.Game.Scenario (scenarioSeed)
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (..))
 import Swarm.Game.State (getRunCodePath)
-import Swarm.TUI.Attr
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep
 import Swarm.TUI.Model.Name
+import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.Util (EllipsisSide (Beginning), withEllipsis)
 import Swarm.Util (brackets, parens)
 

@@ -372,7 +372,7 @@ data Const
     RobotNumbered
   | -- | Check if an entity is known.
     Knows
-  deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, FromJSON, ToJSON, FromJSONKey, ToJSONKey)
 
 allConst :: [Const]
 allConst = Util.listEnums

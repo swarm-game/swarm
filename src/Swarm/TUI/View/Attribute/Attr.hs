@@ -11,10 +11,11 @@
 -- For example using the robot attribute to highlight some text.
 --
 -- The few attributes that we use for drawing the logo are an exception.
-module Swarm.TUI.Attr (
+module Swarm.TUI.View.Attribute.Attr (
   swarmAttrMap,
-  worldAttributes,
+  worldAttributeNames,
   worldPrefix,
+  meterAttributeNames,
   toAttrName,
 
   -- ** Terrain attributes
@@ -52,11 +53,16 @@ import Brick
 import Brick.Forms
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit qualified as E
-import Brick.Widgets.List
+import Brick.Widgets.List hiding (reverse)
 import Data.Bifunctor (bimap)
+import Data.Colour.Palette.BrewerSet
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NE
+import Data.Maybe (fromMaybe)
 import Data.Text (unpack)
 import Graphics.Vty qualified as V
 import Swarm.Game.Display (Attribute (..))
+import Swarm.TUI.View.Attribute.Util
 
 toAttrName :: Attribute -> AttrName
 toAttrName = \case
@@ -71,7 +77,8 @@ swarmAttrMap :: AttrMap
 swarmAttrMap =
   attrMap
     V.defAttr
-    $ worldAttributes
+    $ NE.toList activityMeterAttributes
+      <> worldAttributes
       <> [(waterAttr, V.white `on` V.blue)]
       <> terrainAttr
       <> [ -- Robot attribute
@@ -133,6 +140,22 @@ worldAttributes =
         , ("green", V.green)
         , ("blue", V.blue)
         ]
+
+worldAttributeNames :: [AttrName]
+worldAttributeNames = map fst worldAttributes
+
+activityMeterPrefix :: AttrName
+activityMeterPrefix = attrName "activityMeter"
+
+activityMeterAttributes :: NonEmpty (AttrName, V.Attr)
+activityMeterAttributes =
+  NE.zip indices $ fromMaybe (pure $ bg V.black) $ NE.nonEmpty brewers
+ where
+  indices = NE.map ((activityMeterPrefix <>) . attrName . show) $ (0 :: Int) :| [1 ..]
+  brewers = map bgWithAutoForeground $ reverse $ brewerSet RdYlGn 7
+
+meterAttributeNames :: NonEmpty AttrName
+meterAttributeNames = NE.map fst activityMeterAttributes
 
 terrainPrefix :: AttrName
 terrainPrefix = attrName "terrain"

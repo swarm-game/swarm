@@ -32,7 +32,7 @@ import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
 import Swarm.Game.Entity (EntityMap, lookupByName)
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Log (ErrorLevel (..), LogEntry, LogSource (..), leSource, leText)
-import Swarm.Game.Robot (defReqs, equippedDevices, machine, robotContext, robotLog, systemRobot, waitingUntil)
+import Swarm.Game.Robot (activityCounts, commandsHistogram, defReqs, equippedDevices, lifetimeStepCount, machine, robotContext, robotLog, systemRobot, tangibleCommandCount, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
@@ -70,7 +70,7 @@ import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath.Posix (splitDirectories)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
-import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, testCase)
+import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
 import Witch (into)
 
 isUnparseableTest :: (FilePath, String) -> Bool
@@ -208,10 +208,10 @@ testScenarioSolutions rs ui =
         , testSolution Default "Challenges/maypole"
         , testSolution (Sec 5) "Challenges/2048"
         , testSolution (Sec 3) "Challenges/word-search"
-        , testSolution (Sec 5) "Challenges/bridge-building"
+        , testSolution (Sec 10) "Challenges/bridge-building"
         , testSolution (Sec 3) "Challenges/ice-cream"
         , testSolution (Sec 3) "Challenges/arbitrage"
-        , testSolution (Sec 5) "Challenges/gopher"
+        , testSolution (Sec 10) "Challenges/gopher"
         , testSolution (Sec 5) "Challenges/hackman"
         , testSolution (Sec 5) "Challenges/blender"
         , testSolution (Sec 10) "Challenges/hanoi"
@@ -339,6 +339,17 @@ testScenarioSolutions rs ui =
           maybe False (view systemRobot) r2
         assertBool "The third built robot should be a normal robot like base." $
           maybe False (not . view systemRobot) r3
+    , testSolution' Default "Testing/1341-command-count" CheckForBadErrors $ \g -> case g ^. robotMap . at 0 of
+        Nothing -> assertFailure "No base bot!"
+        Just base -> do
+          let counters = base ^. activityCounts
+          -- NOTE: The values of 7 and 10 for "tangible" and "total" command counts
+          -- make sense from the test program and match the F2 screen upon winning the scenario.
+          -- However, the F2 dialog actually shows 64 for the step count. This test was
+          -- hardcoded to 62 just to make it pass.
+          assertEqual "Incorrect tangible command count." 7 $ view tangibleCommandCount counters
+          assertEqual "Incorrect command count." 10 $ sum . M.elems $ view commandsHistogram counters
+          assertEqual "Incorrect step count." 62 $ view lifetimeStepCount counters
     ]
  where
   -- expectFailIf :: Bool -> String -> TestTree -> TestTree

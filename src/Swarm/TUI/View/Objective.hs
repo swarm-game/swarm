@@ -18,9 +18,9 @@ import Data.Map.Strict qualified as M
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Objective
 import Swarm.Language.Text.Markdown qualified as Markdown
-import Swarm.TUI.Attr
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
+import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.Util
 
 makeListWidget :: GoalTracking -> BL.List Name GoalEntry
