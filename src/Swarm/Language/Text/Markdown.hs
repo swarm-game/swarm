@@ -40,7 +40,6 @@ import Commonmark.Extensions qualified as Mark (rawAttributeSpec)
 import Control.Applicative ((<|>))
 import Control.Arrow (left)
 import Control.Lens ((%~), (&), _head, _last)
-import Control.Monad (void)
 import Data.Char (isSpace)
 import Data.Functor.Identity (Identity (..))
 import Data.List.Split (chop)
@@ -55,9 +54,8 @@ import Data.Yaml
 import GHC.Exts qualified (IsList (..), IsString (..))
 import Prettyprinter (LayoutOptions (..), PageWidth (..), group, layoutPretty)
 import Prettyprinter.Render.Text qualified as RT
-import Swarm.Language.Module (moduleAST)
 import Swarm.Language.Parse (readTerm)
-import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
+import Swarm.Language.Pipeline (processParsedTerm)
 import Swarm.Language.Pretty (PrettyPrec (..), ppr, prettyText, prettyTypeErrText)
 import Swarm.Language.Syntax (Syntax)
 
@@ -175,8 +173,11 @@ parseSyntax t = case readTerm t of
   Left e -> Left (T.unpack e)
   Right Nothing -> Left "empty code"
   Right (Just s) -> case processParsedTerm s of
+    -- Just run the typechecker etc. to make sure the term typechecks
     Left e -> Left (T.unpack $ prettyTypeErrText t e)
-    Right (ProcessedTerm modul _req _reqCtx) -> Right $ void $ moduleAST modul
+    -- ...but if it does, we just go back to using the original parsed
+    -- (*unelaborated*) AST.  See #1496.
+    Right _ -> Right s
 
 findCode :: Document Syntax -> [Syntax]
 findCode = catMaybes . concatMap (map codeOnly . nodes) . paragraphs
