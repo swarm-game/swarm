@@ -56,6 +56,8 @@ objectives:
     condition: |
       try { as base {has "lambda"} } {return false}
     prerequisite: get_harvester
+solution: |
+  run "scenarios/Tutorials/world101.sw"
 robots:
   - name: base
     display:

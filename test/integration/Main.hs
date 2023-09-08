@@ -199,6 +199,7 @@ testScenarioSolutions rs ui =
         , testTutorialSolution Default "Tutorials/require"
         , testTutorialSolution (Sec 3) "Tutorials/requireinv"
         , testTutorialSolution Default "Tutorials/conditionals"
+        , testTutorialSolution Default "Tutorials/world101"
         , testTutorialSolution (Sec 5) "Tutorials/farming"
         ]
     , testGroup
