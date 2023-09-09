@@ -12,7 +12,7 @@ creative: false
 seed: 0
 objectives:
   - goal:
-      - Place the flower on the target.
+      - Place the `flower`{=entity} on the target.
       - You may have to start over if you get stuck.
     condition: |
       as base {

@@ -4,8 +4,8 @@ author: Ondřej Šebek
 description: In this quirky challenge, you move as the chess knight piece. Can you capture the enemy king?
 objectives:
   - goal:
-      - Robots can use the 'move' command to move.
-        But they only 'turn' in cardinal directions. 
+      - Robots can use the `move` command to move.
+        But they only `turn` in cardinal directions.
       - You are special. You are a knight. 
       - Go forth and capture the King!
     condition: |

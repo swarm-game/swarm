@@ -23,7 +23,7 @@ objectives:
       - |
         Or, if you prefer, `drill` a tile to cause it to slide
         into the adjacent empty space. However, you must not drill a tile that
-        has nowhere to slide. Also, drilling consumes "ink", which will be replenished
+        has nowhere to slide. Also, drilling consumes `ink`{=entity}, which will be replenished
         after the sliding operation is complete, so avoid drilling too fast in
         succession.
     condition: |

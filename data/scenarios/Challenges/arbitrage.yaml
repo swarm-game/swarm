@@ -16,7 +16,7 @@ objectives:
         As an itinerant merchant, you may exploit market asymmetry
         for profit.
       - |
-        Amass a fortune of 100 paperclips.
+        Amass a fortune of 100 `paperclip`{=entity}s.
     condition: |
       as base {
         pcount <- count "paperclip";
