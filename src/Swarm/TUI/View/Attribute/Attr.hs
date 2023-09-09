@@ -54,7 +54,7 @@ import Brick.Forms
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit qualified as E
 import Brick.Widgets.List hiding (reverse)
-import Data.Bifunctor (bimap)
+import Data.Bifunctor (bimap, first)
 import Data.Colour.Palette.BrewerSet
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -78,7 +78,7 @@ swarmAttrMap =
   attrMap
     V.defAttr
     $ NE.toList activityMeterAttributes
-      <> worldAttributes
+      <> NE.toList (NE.map (first getWorldAttrName) worldAttributes)
       <> [(waterAttr, V.white `on` V.blue)]
       <> terrainAttr
       <> [ -- Robot attribute
@@ -107,42 +107,59 @@ swarmAttrMap =
            (defAttr, V.defAttr)
          ]
 
-entityAttr :: AttrName
-entityAttr = fst $ head worldAttributes
-
 worldPrefix :: AttrName
 worldPrefix = attrName "world"
+
+-- | We introduce this (module-private) newtype
+-- so that we can define the 'entity' attribute
+-- separate from the list of other 'worldAttributes',
+-- while enforcing the convention that both its attribute
+-- name and the rest of 'worldAttributes' be consistently
+-- prefixed by 'worldPrefix'.
+newtype WorldAttr = WorldAttr
+  { getWorldAttrName :: AttrName
+  }
+
+mkWorldAttr :: String -> WorldAttr
+mkWorldAttr = WorldAttr . (worldPrefix <>) . attrName
+
+entity :: (WorldAttr, V.Attr)
+entity = (mkWorldAttr "entity", fg V.white)
+
+entityAttr :: AttrName
+entityAttr = getWorldAttrName $ fst entity
 
 -- | Colors of entities in the world.
 --
 -- Also used to color messages, so water is special and excluded.
-worldAttributes :: [(AttrName, V.Attr)]
+worldAttributes :: NonEmpty (WorldAttr, V.Attr)
 worldAttributes =
-  bimap ((worldPrefix <>) . attrName) fg
-    <$> [ ("entity", V.white)
-        , ("device", V.brightYellow)
-        , ("plant", V.green)
-        , ("rock", V.rgbColor @Int 80 80 80)
-        , ("wood", V.rgbColor @Int 139 69 19)
-        , ("flower", V.rgbColor @Int 200 0 200)
-        , ("rubber", V.rgbColor @Int 245 224 179)
-        , ("copper", V.yellow)
-        , ("copper'", V.rgbColor @Int 78 117 102)
-        , ("iron", V.rgbColor @Int 97 102 106)
-        , ("iron'", V.rgbColor @Int 183 65 14)
-        , ("quartz", V.white)
-        , ("silver", V.rgbColor @Int 192 192 192)
-        , ("gold", V.rgbColor @Int 255 215 0)
-        , ("snow", V.white)
-        , ("sand", V.rgbColor @Int 194 178 128)
-        , ("fire", V.brightRed)
-        , ("red", V.red)
-        , ("green", V.green)
-        , ("blue", V.blue)
-        ]
+  entity
+    :| map
+      (bimap mkWorldAttr fg)
+      [ ("device", V.brightYellow)
+      , ("plant", V.green)
+      , ("rock", V.rgbColor @Int 80 80 80)
+      , ("wood", V.rgbColor @Int 139 69 19)
+      , ("flower", V.rgbColor @Int 200 0 200)
+      , ("rubber", V.rgbColor @Int 245 224 179)
+      , ("copper", V.yellow)
+      , ("copper'", V.rgbColor @Int 78 117 102)
+      , ("iron", V.rgbColor @Int 97 102 106)
+      , ("iron'", V.rgbColor @Int 183 65 14)
+      , ("quartz", V.white)
+      , ("silver", V.rgbColor @Int 192 192 192)
+      , ("gold", V.rgbColor @Int 255 215 0)
+      , ("snow", V.white)
+      , ("sand", V.rgbColor @Int 194 178 128)
+      , ("fire", V.brightRed)
+      , ("red", V.red)
+      , ("green", V.green)
+      , ("blue", V.blue)
+      ]
 
-worldAttributeNames :: [AttrName]
-worldAttributeNames = map fst worldAttributes
+worldAttributeNames :: NonEmpty AttrName
+worldAttributeNames = NE.map (getWorldAttrName . fst) worldAttributes
 
 activityMeterPrefix :: AttrName
 activityMeterPrefix = attrName "activityMeter"

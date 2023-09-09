@@ -10,12 +10,12 @@ objectives:
     teaser: Defeat gopher
     goal:
       - |
-        A gopher (G) is defiling your immaculate garden!
+        A gopher (**G**) is defiling your immaculate garden!
       - |
-        He will burrow (o) underground awhile, then pop up
+        He will burrow (**o**) underground awhile, then pop up
         anywhere within the rectangular grassy region
-        to gloat atop his "mound" of dirt for a short time.
-        `drill` the "mound" while he sits to drive him
+        to gloat atop his `mound`{=entity} of dirt for a short time.
+        `drill` the `mound`{=entity} while he sits to drive him
         away. Eventually you should wear down his resolve!
     condition: |
       try {

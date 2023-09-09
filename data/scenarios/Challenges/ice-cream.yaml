@@ -11,15 +11,15 @@ objectives:
     goal:
       - |
         Congratulations on the grand opening of your new ice cream shop.
-        You have advertised: "All you can eat, for 1 bitcoin!"
+        You have advertised: "All you can eat, for 1 `bitcoin`{=entity}!"
       - |
-        A customer is approaching the "Counter". They look hungry!
+        A customer is approaching the `Counter`{=entity}. They look hungry!
       - "..."
       - |
         Customer: "`give` me a cone, and then I'll tell you how many scoops I want."
       - "..."
       - |
-        Oh dear, you've forgotten to stock your shop with a "calculator".
+        Oh dear, you've forgotten to provision your shop with a `calculator`{=entity}.
         Let's hope this order is simple.
     condition: |
       customer <- robotnamed "customer";

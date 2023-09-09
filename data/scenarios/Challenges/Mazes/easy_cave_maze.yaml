@@ -7,7 +7,7 @@ objectives:
   - You are at the top of a cave that gradually descends until reaching a dead end.
   - At its bottom is a great treasure.
   - Luckily, the cave does not branch out, so it is easy to find the path to the treasure.
-  - Send a robot to the the item marked as '!'. You win once the robot grabs it.
+  - Send a robot to the the item marked as '**!**'. You win once the robot `grab`s it.
   condition: |
     j <- robotNamed "judge";
     as j {has "goal"}

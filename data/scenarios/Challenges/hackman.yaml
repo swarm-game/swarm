@@ -19,10 +19,10 @@ objectives:
   - teaser: Get pellets
     goal:
       - |
-        Pick up all of the caffeine "pellets" so that Hackman can write more code.
+        Pick up all of the caffeine `pellet`{=entity}s so that Hackman can write more code.
       - |
         Pay no mind to the colorful ghosts meandering about. That is, unless
-        you are feeling generous with your "donuts"...
+        you are feeling generous with your `donut`{=entity}s...
       - |
         Can you find all of the secret objectives?
     condition: |

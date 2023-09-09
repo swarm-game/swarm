@@ -40,11 +40,11 @@ robots:
 objectives:
   - goal:
       - |
-        Ferry all three of the wolf, goat, and cabbage across the lake.
+        Ferry all three of the `wolf`{=entity}, `goat`{=entity}, and `cabbage`{=entity} across the lake.
         However, only one of these can be carried at a time.
       - |
-        Furthermore, if left unattended together, the wolf will eat the goat,
-        or the goat will eat the cabbage.
+        Furthermore, if left unattended together, the `wolf`{=entity} will eat the `goat`{=entity},
+        or the `goat`{=entity} will eat the `cabbage`{=entity}.
     condition: |
       run "data/scenarios/Challenges/_wolf-goat-cabbage/together-on-east-bank.sw";
     prerequisite:

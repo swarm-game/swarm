@@ -7,9 +7,9 @@ seed: 2
 creative: false
 objectives:
   - goal:
-      - Use the `drill` command (e.g. "drill down" when on top of the
+      - Use the `drill` command (e.g. `drill down` when on top of the
         intended letter) to mark the sequence of letters that
-        spells COW within the designated playfield.
+        spells `C`{=entity}`O`{=entity}`W`{=entity} within the designated playfield.
       - |
         The sequence may appear horizontally in either the
         leftward or rightward direction,
