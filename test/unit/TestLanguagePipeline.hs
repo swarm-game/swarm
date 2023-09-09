@@ -389,6 +389,9 @@ testLanguagePipeline =
         , testCase
             "top-level bind is polymorphic"
             (valid "f <- return (\\x.x); return (f 3, f \"hi\")")
+        , testCase
+            "local bind is polymorphic"
+            (valid "def foo : cmd (int * text) = f <- return (\\x.x); return (f 3, f \"hi\") end")
         ]
     ]
  where

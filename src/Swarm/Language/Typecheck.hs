@@ -680,14 +680,9 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
   SBind mx c1 c2 -> do
     c1' <- withFrame l TCBindL $ infer c1
     a <- decomposeCmdTy c1 (Actual, c1' ^. sType)
-    -- We do not need to generalize the type 'a' here (unlike
-    -- top-level binds) because a variable bound here (mx) can only
-    -- have local scope.  In other words, when we generalize at the
-    -- very end, the variable will no longer be in the context, so we
-    -- will be able to safely generalize over any unification
-    -- variables that occurred in its type.
+    genA <- generalize a
     c2' <-
-      maybe id ((`withBinding` Forall [] a) . lvVar) mx
+      maybe id ((`withBinding` genA) . lvVar) mx
         . withFrame l TCBindR
         $ infer c2
     _ <- decomposeCmdTy c2 (Actual, c2' ^. sType)
