@@ -381,6 +381,15 @@ testLanguagePipeline =
                 "1:5: Type mismatch:\n  From context, expected `\\x. \\y. 3` to have type `int`,\n  but it is actually a function\n"
             )
         ]
+    , testGroup
+        "generalize top-level binds #351 #1501"
+        [ testCase
+            "top-level polymorphic bind is OK"
+            (valid "r <- return (\\x.x)")
+        , testCase
+            "top-level bind is polymorphic"
+            (valid "f <- return (\\x.x); return (f 3, f \"hi\")")
+        ]
     ]
  where
   valid = flip process ""
