@@ -13,7 +13,7 @@ attrs:
     fg: "#bbbbff"
 objectives:
   - goal:
-      - Push a monolith onto the base's initial location.
+      - Push a `monolith`{=entity} onto the base's initial location.
     condition: |
       as base {
         teleport self (0,0);
@@ -23,7 +23,7 @@ objectives:
     hidden: true
     optional: true
     goal:
-      - Grab the flower
+      - Grab the `flower`{=entity}
     condition: |
       as base {
         has "flower";
