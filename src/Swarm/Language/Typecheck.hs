@@ -541,6 +541,20 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
     -- First, infer the left side.
     Module c1' ctx1 <- withFrame l TCBindL $ inferModule c1
     a <- decomposeCmdTy c1 (Actual, c1' ^. sType)
+
+    -- Note we generalize here, similar to how we generalize at let
+    -- bindings, since the result type of the LHS will be the type of
+    -- the variable (if there is one).  In many cases this doesn't
+    -- matter, but variables bound by top-level bind expressions can
+    -- end up in the top-level context (e.g. if someone writes `x <-
+    -- blah` at the REPL). We must generalize here, before adding the
+    -- variable to the context, since afterwards it will be too late:
+    -- we cannot generalize over any unification variables occurring
+    -- in the context.
+    --
+    -- This is safe since it is always safe to generalize at any point.
+    --
+    -- See #351, #1501.
     genA <- generalize a
 
     -- Now infer the right side under an extended context: things in
@@ -666,6 +680,12 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
   SBind mx c1 c2 -> do
     c1' <- withFrame l TCBindL $ infer c1
     a <- decomposeCmdTy c1 (Actual, c1' ^. sType)
+    -- We do not need to generalize the type 'a' here (unlike
+    -- top-level binds) because a variable bound here (mx) can only
+    -- have local scope.  In other words, when we generalize at the
+    -- very end, the variable will no longer be in the context, so we
+    -- will be able to safely generalize over any unification
+    -- variables that occurred in its type.
     c2' <-
       maybe id ((`withBinding` Forall [] a) . lvVar) mx
         . withFrame l TCBindR
