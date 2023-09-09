@@ -887,8 +887,7 @@ colorLogs e = case e ^. leSource of
     Critical -> redAttr
  where
   -- color each robot message with different color of the world
-  robotColor rid = worldAttributeNames !! (rid `mod` fgColLen)
-  fgColLen = length worldAttributeNames
+  robotColor = indexWrapNonEmpty worldAttributeNames
 
 -- | Draw the F-key modal menu. This is displayed in the top left world corner.
 drawModalMenu :: AppState -> Widget Name
