@@ -541,6 +541,7 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
     -- First, infer the left side.
     Module c1' ctx1 <- withFrame l TCBindL $ inferModule c1
     a <- decomposeCmdTy c1 (Actual, c1' ^. sType)
+    genA <- generalize a
 
     -- Now infer the right side under an extended context: things in
     -- scope on the right-hand side include both any definitions
@@ -550,7 +551,7 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
     -- case the bound x should shadow the defined one; hence, we apply
     -- that binding /after/ (i.e. /within/) the application of @ctx1@.
     withBindings ctx1 $
-      maybe id ((`withBinding` Forall [] a) . lvVar) mx $ do
+      maybe id ((`withBinding` genA) . lvVar) mx $ do
         Module c2' ctx2 <- withFrame l TCBindR $ inferModule c2
 
         -- We don't actually need the result type since we're just
@@ -564,7 +565,7 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
         -- (if any) as well, since binders are made available at the top
         -- level, just like definitions. e.g. if the user writes `r <- build {move}`,
         -- then they will be able to refer to r again later.
-        let ctxX = maybe Ctx.empty ((`Ctx.singleton` Forall [] a) . lvVar) mx
+        let ctxX = maybe Ctx.empty ((`Ctx.singleton` genA) . lvVar) mx
         return $
           Module
             (Syntax' l (SBind mx c1' c2') (c2' ^. sType))
