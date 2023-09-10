@@ -1004,7 +1004,7 @@ handleREPLEvent x = do
                 uiState . uiREPL . replHistory %= addREPLItem err
                 invalidateCacheEntry REPLHistoryCache
     MetaChar 'k' -> do
-      when (isJust (s ^. gameState . inputHandler)) $ do
+      when (isJust (s ^. gameState . repl . inputHandler)) $ do
         curMode <- use $ uiState . uiREPL . replControlMode
         (uiState . uiREPL . replControlMode) .= case curMode of Handling -> Typing; _ -> Handling
 
@@ -1022,7 +1022,7 @@ handleREPLEvent x = do
 -- | Run the installed input handler on a key combo entered by the user.
 runInputHandler :: KeyCombo -> EventM Name AppState ()
 runInputHandler kc = do
-  mhandler <- use $ gameState . inputHandler
+  mhandler <- use $ gameState . repl . inputHandler
   case mhandler of
     -- Shouldn't be possible to get here if there is no input handler, but
     -- if we do somehow, just do nothing.

@@ -931,7 +931,7 @@ drawKeyMenu s =
   mkCmdRow = hBox . map drawPaddedCmd
   drawPaddedCmd = padLeftRight 1 . drawKeyCmd
   contextCmds
-    | ctrlMode == Handling = txt $ fromMaybe "" (s ^? gameState . inputHandler . _Just . _1)
+    | ctrlMode == Handling = txt $ fromMaybe "" (s ^? gameState . repl . inputHandler . _Just . _1)
     | otherwise = mkCmdRow focusedPanelCmds
   focusedPanelCmds =
     map highlightKeyCmds
@@ -952,7 +952,7 @@ drawKeyMenu s =
   inventorySearch = s ^. uiState . uiInventorySearch
   ctrlMode = s ^. uiState . uiREPL . replControlMode
   canScroll = creative || (s ^. gameState . worldScrollable)
-  handlerInstalled = isJust (s ^. gameState . inputHandler)
+  handlerInstalled = isJust (s ^. gameState . repl . inputHandler)
 
   renderPilotModeSwitch :: ReplControlMode -> T.Text
   renderPilotModeSwitch = \case
