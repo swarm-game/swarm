@@ -76,9 +76,15 @@ import Swarm.Game.CESK (CESK (..), TickNumber (..), addTicks)
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Location
+import Swarm.Game.Log
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
+import Swarm.Game.Scenario (
+  scenarioAuthor,
+  scenarioDescription,
+  scenarioName,
+  scenarioObjectives,
+ )
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
@@ -871,23 +877,29 @@ messagesWidget gs = widgetList
     withAttr (colorLogs e) $
       hBox
         [ fromMaybe (txt "") $ maybeDrawTime (e ^. leTime) True gs
-        , padLeft (Pad 2) . txt $ brackets $ e ^. leRobotName
+        , padLeft (Pad 2) . txt $ brackets $ e ^. leName
         , padLeft (Pad 1) . txt2 $ e ^. leText
         ]
   txt2 = txtWrapWith indent2
 
 colorLogs :: LogEntry -> AttrName
 colorLogs e = case e ^. leSource of
-  Said -> robotColor (e ^. leRobotID)
-  Logged -> notifAttr
-  ErrorTrace l -> case l of
-    Debug -> dimAttr
-    Warning -> yellowAttr
-    Error -> redAttr
-    Critical -> redAttr
+  SystemLog -> colorSeverity (e ^. leSeverity)
+  RobotLog rls rid -> case rls of
+    Said -> robotColor rid
+    Logged -> notifAttr
+    RobotError -> colorSeverity (e ^. leSeverity)
  where
   -- color each robot message with different color of the world
   robotColor = indexWrapNonEmpty worldAttributeNames
+
+colorSeverity :: Severity -> AttrName
+colorSeverity = \case
+  Info -> infoAttr
+  Debug -> dimAttr
+  Warning -> yellowAttr
+  Error -> redAttr
+  Critical -> redAttr
 
 -- | Draw the F-key modal menu. This is displayed in the top left world corner.
 drawModalMenu :: AppState -> Widget Name
@@ -1311,10 +1323,13 @@ drawRobotLog s =
  where
   logEntries = s ^. gameState . to focusedRobot . _Just . robotLog
 
-  rn = s ^? gameState . to focusedRobot . _Just . robotName
+  rid = s ^? gameState . to focusedRobot . _Just . robotID
   n = Seq.length logEntries
 
-  allMe = all ((== rn) . Just . view leRobotName) logEntries
+  allMe = all me logEntries
+  me le = case le ^. leSource of
+    RobotLog _ i -> Just i == rid
+    _ -> False
 
   drawEntry i e =
     (if i == n - 1 && s ^. uiState . uiScrollToEnd then visible else id) $
@@ -1336,10 +1351,18 @@ drawRobotMachine s showName = case s ^. gameState . to focusedRobot of
 
 -- | Draw one log entry with an optional robot name first.
 drawLogEntry :: Bool -> LogEntry -> Widget a
-drawLogEntry addName e = withAttr (colorLogs e) . txtWrapWith indent2 $ if addName then name else t
+drawLogEntry addName e =
+  withAttr (colorLogs e) . txtWrapWith indent2 $
+    if addName then name else t
  where
   t = e ^. leText
-  name = "[" <> view leRobotName e <> "] " <> (if e ^. leSource == Said then "said " <> quote t else t)
+  name =
+    "["
+      <> view leName e
+      <> "] "
+      <> case e ^. leSource of
+        RobotLog Said _ -> "said " <> quote t
+        _ -> t
 
 ------------------------------------------------------------
 -- REPL panel

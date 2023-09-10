@@ -43,7 +43,7 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Log (Severity (..), LogSource (SystemLog))
+import Swarm.Game.Log (LogSource (SystemLog), Severity (..))
 import Swarm.Game.Scenario (loadScenario, scenarioAttrs, scenarioWorlds)
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
@@ -85,7 +85,7 @@ initAppState opts = do
 addWarnings :: RuntimeState -> [SystemFailure] -> RuntimeState
 addWarnings = List.foldl' logWarning
  where
-  logWarning rs' w = rs' & eventLog %~ logEvent (SystemLog Error) "UI Loading" (prettyText w)
+  logWarning rs' w = rs' & eventLog %~ logEvent SystemLog Error "UI Loading" (prettyText w)
 
 -- | Based on the command line options, should we skip displaying the
 --   menu?

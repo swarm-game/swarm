@@ -143,6 +143,7 @@ import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Entity as E
 import Swarm.Game.Failure
+import Swarm.Game.Log
 import Swarm.Game.Recipe (Recipe, loadRecipes)
 import Swarm.Game.ResourceLoading (readAppData)
 import Swarm.Game.Robot
@@ -288,13 +289,13 @@ stdNameList :: Lens' RuntimeState (Array Int Text)
 -- Utility
 
 -- | Simply log to the runtime event log.
-logEvent :: LogSource -> Text -> Text -> Notifications LogEntry -> Notifications LogEntry
-logEvent src who msg el =
+logEvent :: LogSource -> Severity -> Text -> Text -> Notifications LogEntry -> Notifications LogEntry
+logEvent src sev who msg el =
   el
     & notificationsCount %~ succ
     & notificationsContent %~ (l :)
  where
-  l = LogEntry (TickNumber 0) src who Omnipresent msg
+  l = LogEntry (TickNumber 0) src sev who Omnipresent msg
 
 -- | Create a 'GameStateConfig' record from the 'RuntimeState'.
 mkGameStateConfig :: RuntimeState -> GameStateConfig

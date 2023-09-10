@@ -13,9 +13,6 @@
 module Swarm.Game.Robot (
   -- * Robots data
 
-  -- * Robot log entries
-  module Swarm.Game.Log,
-
   -- * Robots
   RobotPhase (..),
   RID,

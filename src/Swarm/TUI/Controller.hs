@@ -74,6 +74,7 @@ import Swarm.Game.Achievement.Persistence
 import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec), cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location
+import Swarm.Game.Log
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Game.Robot
 import Swarm.Game.ScenarioInfo
@@ -134,10 +135,14 @@ handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleEvent = \case
   -- the query for upstream version could finish at any time, so we have to handle it here
   AppEvent (UpstreamVersion ev) -> do
-    let logReleaseEvent l e = runtimeState . eventLog %= logEvent l ("Release", -7) (T.pack $ show e)
+    let logReleaseEvent l sev e = runtimeState . eventLog %= logEvent l sev "Release" (T.pack $ show e)
     case ev of
-      Left e@(FailedReleaseQuery _e) -> logReleaseEvent (ErrorTrace Error) e
-      Left e -> logReleaseEvent (ErrorTrace Warning) e
+      Left e ->
+        let sev = case e of
+              FailedReleaseQuery {} -> Error
+              OnDevelopmentBranch {} -> Info
+              _ -> Warning
+         in logReleaseEvent SystemLog sev e
       Right _ -> pure ()
     runtimeState . upstreamRelease .= ev
   e -> do

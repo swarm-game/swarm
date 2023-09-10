@@ -27,12 +27,13 @@
 -- message queue.
 module Swarm.Game.Log (
   Severity (..),
-  LogCommand (..),
+  RobotLogSource (..),
   LogSource (..),
   LogLocation (..),
   LogEntry (..),
   leTime,
   leSource,
+  leSeverity,
   leName,
   leLocation,
   leText,
@@ -51,21 +52,23 @@ import Swarm.Game.Universe (Cosmic)
 data Severity = Info | Debug | Warning | Error | Critical
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
--- | Which robot command produced a log message.
-data LogCommand
+-- | How a robot log entry was produced.
+data RobotLogSource
   = -- | Produced by 'Swarm.Language.Syntax.Say'
     Said
   | -- | Produced by 'Swarm.Language.Syntax.Log'
     Logged
+  | -- | Produced as the result of an error.
+    RobotError
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
 -- | Source of a log entry.
 data LogSource
   = -- | Log produced by a robot.  Stores information about which
-    --   command was used, and the name and ID of the producing robot.
-    RobotLog LogCommand Text Int
+    --   command was used and the ID of the producing robot.
+    RobotLog RobotLogSource Int
   | -- | Log produced by an exception or system.
-    SystemLog Severity
+    SystemLog
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
 data LogLocation a = Omnipresent | Located a
@@ -78,6 +81,8 @@ data LogEntry = LogEntry
   --   Note that this is the first field we sort on.
   , _leSource :: LogSource
   -- ^ Where this log message came from.
+  , _leSeverity :: Severity
+  -- ^ Severity level of this log message.
   , _leName :: Text
   -- ^ Name of the robot or subsystem that generated this log entry.
   , _leLocation :: LogLocation (Cosmic Location)

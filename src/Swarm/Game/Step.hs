@@ -67,6 +67,7 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Failure
 import Swarm.Game.Location
+import Swarm.Game.Log
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
@@ -246,7 +247,7 @@ singleStep ss focRID robotSet = do
  where
   h = hypotheticalRobot (Out VUnit emptyStore []) 0
   debugLog txt = do
-    m <- evalState @Robot h $ createLogEntry (ErrorTrace Debug) txt
+    m <- evalState @Robot h $ createLogEntry RobotError Debug txt
     emitMessage m
 
 -- | An accumulator for folding over the incomplete
@@ -361,7 +362,7 @@ hypotheticalWinCheck em g ws oc = do
 
   -- Log exceptions in the message queue so we can check for them in tests
   handleException exnText = do
-    m <- evalState @Robot h $ createLogEntry (ErrorTrace Critical) exnText
+    m <- evalState @Robot h $ createLogEntry RobotError Critical exnText
     emitMessage m
    where
     h = hypotheticalRobot (Out VUnit emptyStore []) 0
@@ -425,20 +426,21 @@ runCESK cesk = case finalValue cesk of
 --   messages and normal logs.
 createLogEntry ::
   (Has (State GameState) sig m, Has (State Robot) sig m) =>
-  LogCommand ->
+  RobotLogSource ->
+  Severity ->
   Text ->
   m LogEntry
-createLogEntry cmd msg = do
+createLogEntry source sev msg = do
   rid <- use robotID
   rn <- use robotName
   time <- use ticks
   loc <- use robotLocation
-  pure $ LogEntry time (RobotLog cmd rn rid) (Located loc) msg
+  pure $ LogEntry time (RobotLog source rid) sev rn (Located loc) msg
 
 -- | Print some text via the robot's log.
-traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => LogCommand -> Text -> m LogEntry
-traceLog cmd msg = do
-  m <- createLogEntry cmd msg
+traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => RobotLogSource -> Severity -> Text -> m LogEntry
+traceLog source sev msg = do
+  m <- createLogEntry source sev msg
   robotLog %= (Seq.|> m)
   return m
 
@@ -446,7 +448,7 @@ traceLog cmd msg = do
 --
 -- Useful for debugging.
 traceLogShow :: (Has (State GameState) sig m, Has (State Robot) sig m, Show a) => a -> m ()
-traceLogShow = void . traceLog Logged . from . show
+traceLogShow = void . traceLog Logged Info . from . show
 
 ------------------------------------------------------------
 -- Exceptions and validation
@@ -765,7 +767,7 @@ stepCESK cesk = case cesk of
                   ]
               )
 
-    _ <- traceLog Logged reqLog
+    _ <- traceLog Logged Info reqLog
     return $ Out VUnit s k
 
   -- To execute a definition, we immediately turn the body into a
@@ -893,7 +895,7 @@ stepCESK cesk = case cesk of
     em <- use entityMap
     if h
       then do
-        void $ traceLog (ErrorTrace Error) (formatExn em exn)
+        void $ traceLog RobotError Error (formatExn em exn)
         return $ Out VUnit s []
       else return $ Out VUnit s' []
   -- Fatal errors, capability errors, and infinite loop errors can't
@@ -1516,7 +1518,7 @@ execConst c vs s k = do
       [VText msg] -> do
         isPrivileged <- isPrivilegedBot
         loc <- use robotLocation
-        m <- traceLog Said msg -- current robot will inserted to robot set, so it needs the log
+        m <- traceLog Said Info msg -- current robot will inserted to robot set, so it needs the log
         emitMessage m
         let measureToLog robLoc rawLogLoc = case rawLogLoc of
               Located logLoc -> cosmoMeasure manhattan robLoc logLoc
@@ -1556,11 +1558,13 @@ execConst c vs s k = do
       isPrivileged <- isPrivilegedBot
       mq <- use messageQueue
       let isClose e = isPrivileged || messageIsFromNearby loc e
-      let notMine e = rid /= e ^. leRobotID
-      let limitLast = \case
+          notMine e = case e ^. leSource of
+            SystemLog {} -> False
+            RobotLog _ lrid -> rid /= lrid
+          limitLast = \case
             _s Seq.:|> l -> Just $ l ^. leText
             _ -> Nothing
-      let mm = limitLast . Seq.filter (liftA2 (&&) notMine isClose) $ Seq.takeWhileR (messageIsRecent gs) mq
+          mm = limitLast . Seq.filter (liftA2 (&&) notMine isClose) $ Seq.takeWhileR (messageIsRecent gs) mq
       return $
         maybe
           (In (TConst Listen) mempty s (FExec : k)) -- continue listening
@@ -1568,7 +1572,7 @@ execConst c vs s k = do
           mm
     Log -> case vs of
       [VText msg] -> do
-        void $ traceLog Logged msg
+        void $ traceLog Logged Info msg
         return $ Out VUnit s k
       _ -> badConst
     View -> case vs of

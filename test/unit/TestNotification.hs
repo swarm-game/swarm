@@ -10,6 +10,7 @@ import Control.Lens (Getter, Ixed (ix), view, (&), (.~), (^.), (^?!))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.CESK (TickNumber (..))
+import Swarm.Game.Log
 import Swarm.Game.Robot
 import Swarm.Game.State
 import Test.Tasty

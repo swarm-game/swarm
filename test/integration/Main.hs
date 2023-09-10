@@ -31,7 +31,7 @@ import Swarm.Doc.Gen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
 import Swarm.Game.Entity (EntityMap, lookupByName)
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Log (ErrorLevel (..), LogEntry, LogSource (..), leSource, leText)
+import Swarm.Game.Log
 import Swarm.Game.Robot (activityCounts, commandsHistogram, defReqs, equippedDevices, lifetimeStepCount, machine, robotContext, robotLog, systemRobot, tangibleCommandCount, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
@@ -106,12 +106,12 @@ testNoLoadingErrors r =
 checkNoRuntimeErrors :: RuntimeState -> IO ()
 checkNoRuntimeErrors r =
   forM_ (r ^. eventLog . notificationsContent) $ \e ->
-    case e ^. leSource of
-      ErrorTrace l
-        | l >= Warning ->
-            assertFailure $
-              show l <> " was produced during loading: " <> T.unpack (e ^. leText)
-      _ -> pure ()
+    when (isError e) $
+      assertFailure $
+        show (e ^. leSeverity) <> " was produced during loading: " <> T.unpack (e ^. leText)
+
+isError :: LogEntry -> Bool
+isError = (>= Warning) . view leSeverity
 
 exampleTests :: [(FilePath, String)] -> TestTree
 exampleTests inputs = testGroup "Test example" (map exampleTest inputs)

@@ -165,6 +165,7 @@ import Swarm.Game.CESK (CESK (Waiting), TickNumber (..), addTicks, emptyStore, f
 import Swarm.Game.Entity
 import Swarm.Game.Failure (SystemFailure (..))
 import Swarm.Game.Location
+import Swarm.Game.Log
 import Swarm.Game.Recipe (
   Recipe,
   catRecipeMap,
@@ -690,7 +691,7 @@ messageNotifications = to getNotif
     latestMsg = messageIsRecent gs
     closeMsg = messageIsFromNearby (gs ^. viewCenter)
     generatedBy rid logEntry = case logEntry ^. leSource of
-      RobotLog _ _ rid' -> rid == rid'
+      RobotLog _ rid' -> rid == rid'
       _ -> False
 
     focusedOrLatestClose mq =

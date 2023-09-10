@@ -89,7 +89,7 @@ swarmAttrMap =
          , (focusedFormInputAttr, V.defAttr)
          , (customEditFocusedAttr, V.black `on` V.yellow)
          , (listSelectedFocusedAttr, bg V.blue)
-         , (infoAttr, fg (V.rgbColor @Int 50 50 50))
+         , (infoAttr, fg (V.rgbColor @Int 100 100 100))
          , (buttonSelectedAttr, bg V.blue)
          , (notifAttr, fg V.yellow `V.withStyle` V.bold)
          , (dimAttr, V.defAttr `V.withStyle` V.dim)

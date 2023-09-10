@@ -19,7 +19,7 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Robot (ErrorLevel (..), LogSource (ErrorTrace, Said))
+import Swarm.Game.Log (LogSource (SystemLog), Severity (..))
 import Swarm.Language.Pretty (prettyText)
 import Swarm.ReadableIORef (mkReadonly)
 import Swarm.TUI.Controller
@@ -87,8 +87,8 @@ appMain opts = do
           (mkReadonly appStateRef)
           chan
 
-      let logP p = logEvent Said ("Web API", -2) ("started on :" <> T.pack (show p))
-      let logE e = logEvent (ErrorTrace Error) ("Web API", -2) (T.pack e)
+      let logP p = logEvent SystemLog Info "Web API" ("started on :" <> T.pack (show p))
+      let logE e = logEvent SystemLog Error "Web API" (T.pack e)
       let s' =
             s
               & runtimeState
