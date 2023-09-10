@@ -4,18 +4,8 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- XXX Also make 'Notification' documentation more generic
---
--- A data type to represent in-game logs by robots.
---
--- Because of the use of system robots, we sometimes
--- want to use special kinds of logs that will be
--- shown to the player.
---
--- TODO: #1039 Currently we abuse this system for system
--- logs, which is fun, but we should eventually make
--- a dedicated `SystemLogEntry` type for 'RuntimeState'
--- message queue.
+-- A data type to represent log messages, both for robot logs and
+-- the system log.
 module Swarm.Log (
   Severity (..),
   RobotLogSource (..),
@@ -30,7 +20,7 @@ module Swarm.Log (
   leText,
 ) where
 
-import Control.Lens hiding (contains)
+import Control.Lens (makeLenses)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)

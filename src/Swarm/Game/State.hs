@@ -273,7 +273,9 @@ data RunStatus
 toggleRunStatus :: RunStatus -> RunStatus
 toggleRunStatus s = if s == Running then ManualPause else Running
 
--- | A data type to keep track of discovered recipes and commands
+-- | A data type to keep track of some kind of log or sequence, with
+--   an index to remember which ones are "new" and which ones have
+--   "already been seen".
 data Notifications a = Notifications
   { _notificationsCount :: Int
   , _notificationsContent :: [a]
