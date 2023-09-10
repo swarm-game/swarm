@@ -44,7 +44,7 @@ data Asset = Achievement | Data AssetData | History | Save
 data Entry = Directory | File
   deriving (Eq, Show)
 
--- | An error that occured while attempting to load some kind of asset.
+-- | An error that occurred while attempting to load some kind of asset.
 data LoadingFailure
   = DoesNotExist Entry
   | EntryNot Entry

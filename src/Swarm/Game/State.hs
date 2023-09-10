@@ -146,7 +146,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
 import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
 import Data.Set qualified as S
@@ -1244,7 +1244,7 @@ buildWorld :: WorldDescription -> ([IndexedTRobot], Seed -> WorldFun Int Entity)
 buildWorld WorldDescription {..} = (robots worldName, first fromEnum . wf)
  where
   rs = fromIntegral $ length area
-  cs = fromIntegral $ length (head area)
+  cs = fromIntegral $ maybe 0 length $ listToMaybe area
   Coords (ulr, ulc) = locToCoords ul
 
   worldGrid :: [[(TerrainType, Erasable Entity)]]

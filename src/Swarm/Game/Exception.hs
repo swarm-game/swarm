@@ -17,6 +17,7 @@ module Swarm.Game.Exception (
 
 import Control.Lens ((^.))
 import Data.Aeson (FromJSON, ToJSON)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.Text (Text)
@@ -142,29 +143,29 @@ formatIncapableFix = \case
 formatIncapable :: EntityMap -> IncapableFix -> Requirements -> Term -> Text
 formatIncapable em f (Requirements caps _ inv) tm
   | CGod `S.member` caps =
-      unlinesExText
-        [ "Thou shalt not utter such blasphemy:"
-        , squote $ prettyText tm
-        , "If God in troth thou wantest to play, try thou a Creative game."
-        ]
+      unlinesExText $
+        "Thou shalt not utter such blasphemy:"
+          :| [ squote $ prettyText tm
+             , "If God in troth thou wantest to play, try thou a Creative game."
+             ]
   | not (null capsNone) =
-      unlinesExText
-        [ "Missing the " <> capMsg <> " for:"
-        , squote $ prettyText tm
-        , "but no device yet provides it. See"
-        , swarmRepoUrl <> "issues/26"
-        ]
+      unlinesExText $
+        "Missing the " <> capMsg <> " for:"
+          :| [ squote $ prettyText tm
+             , "but no device yet provides it. See"
+             , swarmRepoUrl <> "issues/26"
+             ]
   | not (S.null caps) =
       unlinesExText
         ( "You do not have the devices required for:"
-            : squote (prettyText tm)
+            :| squote (prettyText tm)
             : "Please " <> formatIncapableFix f <> ":"
             : (("- " <>) . formatDevices <$> filter (not . null) deviceSets)
         )
   | otherwise =
       unlinesExText
         ( "You are missing required inventory for:"
-            : squote (prettyText tm)
+            :| squote (prettyText tm)
             : "Please obtain:"
             : (("- " <>) . formatEntity <$> M.assocs inv)
         )
@@ -182,5 +183,5 @@ formatIncapable em f (Requirements caps _ inv) tm
   formatEntity (e, n) = e <> " (" <> from (show n) <> ")"
 
 -- | Exceptions that span multiple lines should be indented.
-unlinesExText :: [Text] -> Text
-unlinesExText ts = T.unlines . (head ts :) . map ("  " <>) $ tail ts
+unlinesExText :: NonEmpty Text -> Text
+unlinesExText (t :| ts) = T.unlines $ (t :) $ map ("  " <>) ts

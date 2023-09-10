@@ -15,6 +15,7 @@ module Swarm.Util (
   maximum0,
   cycleEnum,
   listEnums,
+  showEnum,
   indexWrapNonEmpty,
   uniq,
   binTuples,
@@ -141,6 +142,11 @@ cycleEnum e
 
 listEnums :: (Enum e, Bounded e) => [e]
 listEnums = [minBound .. maxBound]
+
+-- | We know by the syntax rules of Haskell that constructor
+--  names must consist of one or more symbols!
+showEnum :: (Show e, Enum e) => e -> NonEmpty Char
+showEnum = NE.fromList . show
 
 -- | Guaranteed to yield an element of the list
 indexWrapNonEmpty :: Integral b => NonEmpty a -> b -> a

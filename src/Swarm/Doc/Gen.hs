@@ -24,6 +24,7 @@ module Swarm.Doc.Gen (
 ) where
 
 import Control.Effect.Lift
+import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (view, (^.))
 import Control.Lens.Combinators (to)
 import Control.Monad (zipWithM, zipWithM_)
@@ -32,7 +33,7 @@ import Data.Foldable (find, toList)
 import Data.List (transpose)
 import Data.Map.Lazy (Map, (!))
 import Data.Map.Lazy qualified as Map
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Sequence (Seq)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -44,7 +45,7 @@ import Swarm.Doc.Pedagogy
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
-import Swarm.Game.Failure (SystemFailure)
+import Swarm.Game.Failure (SystemFailure (CustomFailure))
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeCatalysts, recipeInputs, recipeOutputs, recipeTime, recipeWeight)
 import Swarm.Game.Robot (Robot, equippedDevices, instantiateRobot, robotInventory)
 import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
@@ -419,6 +420,11 @@ recipeTable a rs = T.unlines $ header <> map (listToRow mw) recipeRows
 recipePage :: PageAddress -> [Recipe Entity] -> Text
 recipePage = recipeTable
 
+getBaseRobot :: Has (Throw SystemFailure) sig m => Scenario -> m Robot
+getBaseRobot s = case listToMaybe $ view scenarioRobots s of
+  Just r -> pure $ instantiateRobot 0 r
+  Nothing -> throwError $ CustomFailure "Scenario contains no robots"
+
 -- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
 -- ----------------------------------------------------------------------------
@@ -429,10 +435,11 @@ generateRecipe = simpleErrorHandle $ do
   recipes <- loadRecipes entities
   worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds entities
   classic <- fst <$> loadScenario "data/scenarios/classic.yaml" entities worlds
-  return . Dot.showDot $ recipesToDot classic (worlds ! "classic") entities recipes
+  baseRobot <- getBaseRobot classic
+  return . Dot.showDot $ recipesToDot baseRobot (worlds ! "classic") entities recipes
 
-recipesToDot :: Scenario -> Some (TTerm '[]) -> EntityMap -> [Recipe Entity] -> Dot ()
-recipesToDot classic classicTerm emap recipes = do
+recipesToDot :: Robot -> Some (TTerm '[]) -> EntityMap -> [Recipe Entity] -> Dot ()
+recipesToDot baseRobot classicTerm emap recipes = do
   Dot.attribute ("rankdir", "LR")
   Dot.attribute ("ranksep", "2")
   world <- diamond "World"
@@ -450,8 +457,8 @@ recipesToDot classic classicTerm emap recipes = do
   -- --------------------------------------------------------------------------
   -- Get the starting inventories, entities present in the world and compute
   -- how hard each entity is to get - see 'recipeLevels'.
-  let devs = startingDevices classic
-      inv = startingInventory classic
+  let devs = startingDevices baseRobot
+      inv = startingInventory baseRobot
       worldEntities = case classicTerm of Some _ t -> extractEntities t
       levels = recipeLevels recipes (Set.unions [worldEntities, devs])
   -- --------------------------------------------------------------------------
@@ -547,14 +554,11 @@ recipeLevels recipes start = levels
             then ls
             else go (n : ls) (Set.union n known)
 
-startingHelper :: Scenario -> Robot
-startingHelper = instantiateRobot 0 . head . view scenarioRobots
+startingDevices :: Robot -> Set Entity
+startingDevices = Set.fromList . map snd . E.elems . view equippedDevices
 
-startingDevices :: Scenario -> Set Entity
-startingDevices = Set.fromList . map snd . E.elems . view equippedDevices . startingHelper
-
-startingInventory :: Scenario -> Map Entity Int
-startingInventory = Map.fromList . map swap . E.elems . view robotInventory . startingHelper
+startingInventory :: Robot -> Map Entity Int
+startingInventory = Map.fromList . map swap . E.elems . view robotInventory
 
 -- | Ignore utility entities that are just used for tutorials and challenges.
 ignoredEntities :: Set Text
