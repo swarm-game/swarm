@@ -1,6 +1,17 @@
 version: 1
 name: RobotIntoWater achievement test
 description: Drive a robot into the water
+objectives:
+  - id: build
+    goal:
+      - Build a robot
+    condition: |
+      try {robotNumbered 1; return True} {return False}
+  - goal:
+      - Drown it
+    prerequisite: build
+    condition: |
+      try {robotNumbered 1; return False} {return True}
 solution: |
   build { turn right; move; move; move }
 robots:
