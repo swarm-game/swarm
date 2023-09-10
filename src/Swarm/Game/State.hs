@@ -72,6 +72,7 @@ module Swarm.Game.State (
   replWorking,
   replActiveType,
   inputHandler,
+  messageInfo,
   messageQueue,
   lastSeenMessageTime,
   focusedRobotID,
@@ -379,6 +380,21 @@ recipesIn :: Lens' Recipes (IntMap [Recipe Entity])
 -- | All recipes the game knows about, indexed by requirement/catalyst.
 recipesCat :: Lens' Recipes (IntMap [Recipe Entity])
 
+data Messages = Messages
+  { _messageQueue :: Seq LogEntry
+  , _lastSeenMessageTime :: TickNumber
+  }
+
+makeLensesNoSigs ''Messages
+
+-- | A queue of global messages.
+--
+-- Note that we put the newest entry to the right.
+messageQueue :: Lens' Messages (Seq LogEntry)
+
+-- | Last time message queue has been viewed (used for notification).
+lastSeenMessageTime :: Lens' Messages TickNumber
+
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
@@ -432,8 +448,7 @@ data GameState = GameState
   , _replStatus :: REPLStatus
   , _replNextValueIndex :: Integer
   , _inputHandler :: Maybe (Text, Value)
-  , _messageQueue :: Seq LogEntry
-  , _lastSeenMessageTime :: TickNumber
+  , _messageInfo :: Messages
   , _focusedRobotID :: RID
   , _ticks :: TickNumber
   , _robotStepsPerTick :: Int
@@ -615,13 +630,8 @@ replNextValueIndex :: Lens' GameState Integer
 -- | The currently installed input handler and hint text.
 inputHandler :: Lens' GameState (Maybe (Text, Value))
 
--- | A queue of global messages.
---
--- Note that we put the newest entry to the right.
-messageQueue :: Lens' GameState (Seq LogEntry)
-
--- | Last time message queue has been viewed (used for notification).
-lastSeenMessageTime :: Lens' GameState TickNumber
+-- | Message info
+messageInfo :: Lens' GameState Messages
 
 -- | The current robot in focus.
 --
@@ -689,10 +699,10 @@ messageNotifications = to getNotif
   getNotif gs = Notifications {_notificationsCount = length new, _notificationsContent = allUniq}
    where
     allUniq = uniq $ toList allMessages
-    new = takeWhile (\l -> l ^. leTime > gs ^. lastSeenMessageTime) $ reverse allUniq
+    new = takeWhile (\l -> l ^. leTime > gs ^. messageInfo . lastSeenMessageTime) $ reverse allUniq
     -- creative players and system robots just see all messages (and focused robots logs)
     unchecked = gs ^. creativeMode || fromMaybe False (focusedRobot gs ^? _Just . systemRobot)
-    messages = (if unchecked then id else focusedOrLatestClose) (gs ^. messageQueue)
+    messages = (if unchecked then id else focusedOrLatestClose) (gs ^. messageInfo . messageQueue)
     allMessages = Seq.sort $ focusedLogs <> messages
     focusedLogs = maybe Empty (view robotLog) (focusedRobot gs)
     -- classic players only get to see messages that they said and a one message that they just heard
@@ -879,7 +889,7 @@ maxMessageQueueSize = 1000
 
 -- | Add a message to the message queue.
 emitMessage :: (Has (State GameState) sig m) => LogEntry -> m ()
-emitMessage msg = messageQueue %= (|> msg) . dropLastIfLong
+emitMessage msg = messageInfo . messageQueue %= (|> msg) . dropLastIfLong
  where
   tooLong s = Seq.length s >= maxMessageQueueSize
   dropLastIfLong whole@(_oldest :<| newer) = if tooLong whole then newer else whole
@@ -1076,8 +1086,11 @@ initGameState gsc =
     , _replStatus = REPLDone Nothing
     , _replNextValueIndex = 0
     , _inputHandler = Nothing
-    , _messageQueue = Empty
-    , _lastSeenMessageTime = TickNumber (-1)
+    , _messageInfo =
+        Messages
+          { _messageQueue = Empty
+          , _lastSeenMessageTime = TickNumber (-1)
+          }
     , _focusedRobotID = 0
     , _ticks = TickNumber 0
     , _robotStepsPerTick = defaultRobotStepsPerTick

@@ -1552,7 +1552,7 @@ execConst c vs s k = do
       loc <- use robotLocation
       rid <- use robotID
       isPrivileged <- isPrivilegedBot
-      mq <- use messageQueue
+      mq <- use $ messageInfo . messageQueue
       let isClose e = isPrivileged || messageIsFromNearby loc e
       let notMine e = rid /= e ^. leRobotID
       let limitLast = \case
