@@ -313,7 +313,7 @@ handleMainEvent ev = do
           -- message modal is not autopaused, so update notifications when leaving it
           case m ^. modalType of
             MessagesModal -> do
-              gameState . lastSeenMessageTime .= s ^. gameState . ticks
+              gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . ticks
             _ -> return ()
     FKey 1 -> toggleModal HelpModal
     FKey 2 -> toggleModal RobotsModal
@@ -325,7 +325,7 @@ handleMainEvent ev = do
       gameState . availableCommands . notificationsCount .= 0
     FKey 5 | not (null (s ^. gameState . messageNotifications . notificationsContent)) -> do
       toggleModal MessagesModal
-      gameState . lastSeenMessageTime .= s ^. gameState . ticks
+      gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . ticks
     -- show goal
     ControlChar 'g' ->
       if hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent
