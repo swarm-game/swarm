@@ -24,7 +24,7 @@ module Swarm.Doc.Gen (
 ) where
 
 import Control.Effect.Lift
-import Control.Effect.Throw (throwError)
+import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (view, (^.))
 import Control.Lens.Combinators (to)
 import Control.Monad (zipWithM, zipWithM_)
@@ -420,10 +420,10 @@ recipeTable a rs = T.unlines $ header <> map (listToRow mw) recipeRows
 recipePage :: PageAddress -> [Recipe Entity] -> Text
 recipePage = recipeTable
 
-getBaseRobot :: Scenario -> Either Text Robot
+getBaseRobot :: Has (Throw SystemFailure) sig m => Scenario -> m Robot
 getBaseRobot s = case listToMaybe $ view scenarioRobots s of
   Just r -> pure $ instantiateRobot 0 r
-  Nothing -> Left "Scenario contains no robots"
+  Nothing -> throwError $ CustomFailure "Scenario contains no robots"
 
 -- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
@@ -435,7 +435,7 @@ generateRecipe = simpleErrorHandle $ do
   recipes <- loadRecipes entities
   worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds entities
   classic <- fst <$> loadScenario "data/scenarios/classic.yaml" entities worlds
-  baseRobot <- either (throwError . CustomFailure) return $ getBaseRobot classic
+  baseRobot <- getBaseRobot classic
   return . Dot.showDot $ recipesToDot baseRobot (worlds ! "classic") entities recipes
 
 recipesToDot :: Robot -> Some (TTerm '[]) -> EntityMap -> [Recipe Entity] -> Dot ()

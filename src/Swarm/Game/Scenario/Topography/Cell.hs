@@ -71,7 +71,7 @@ instance FromJSONE (EntityMap, RobotMap) Cell where
   parseJSONE = withArrayE "tuple" $ \v -> do
     let tupRaw = V.toList v
     tup <- case NE.nonEmpty tupRaw of
-      Nothing -> fail "palette entry must nonzero length (terrain, optional entity and then robots if any)"
+      Nothing -> fail "palette entry must have nonzero length (terrain, optional entity and then robots if any)"
       Just x -> return x
 
     terr <- liftE $ parseJSON (NE.head tup)
