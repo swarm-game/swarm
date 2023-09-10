@@ -85,6 +85,6 @@ describe = \case
               "Lil Jon"
               "Fire up that loud / Another round of shots / Turn down for what?"
       )
-      "'turn down' without a compass. Congratulations, you are 'disoriented'. How are you supposed to move now?"
+      "`turn down` without a compass. Congratulations, you are \"disoriented\". How are you supposed to move now?"
       Easy
       True
