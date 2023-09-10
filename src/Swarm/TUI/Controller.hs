@@ -289,13 +289,13 @@ handleMainEvent ev = do
   s <- get
   mt <- preuse $ uiState . uiModal . _Just . modalType
   let isRunning = maybe True isRunningModal mt
-  let isPaused = s ^. gameState . paused
+  let isPaused = s ^. gameState . temporal . paused
   let isCreative = s ^. gameState . creativeMode
   let hasDebug = fromMaybe isCreative $ s ^? gameState . to focusedRobot . _Just . robotCapabilities . Lens.contains CDebug
   case ev of
     AppEvent ae -> case ae of
       Frame
-        | s ^. gameState . paused -> continueWithoutRedraw
+        | s ^. gameState . temporal . paused -> continueWithoutRedraw
         | otherwise -> runFrameUI
       Web (RunWebCode c) -> runBaseWebCode c
       _ -> continueWithoutRedraw
@@ -313,7 +313,7 @@ handleMainEvent ev = do
           -- message modal is not autopaused, so update notifications when leaving it
           case m ^. modalType of
             MessagesModal -> do
-              gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . ticks
+              gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . temporal . ticks
             _ -> return ()
     FKey 1 -> toggleModal HelpModal
     FKey 2 -> toggleModal RobotsModal
@@ -325,7 +325,7 @@ handleMainEvent ev = do
       gameState . availableCommands . notificationsCount .= 0
     FKey 5 | not (null (s ^. gameState . messageNotifications . notificationsContent)) -> do
       toggleModal MessagesModal
-      gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . ticks
+      gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . temporal . ticks
     -- show goal
     ControlChar 'g' ->
       if hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent
@@ -346,12 +346,12 @@ handleMainEvent ev = do
     MetaChar 'd' | isPaused && hasDebug -> do
       debug <- uiState . uiShowDebug Lens.<%= not
       if debug
-        then gameState . gameStep .= RobotStep SBefore
+        then gameState . temporal . gameStep .= RobotStep SBefore
         else zoomGameState finishGameTick >> void updateUI
     -- pausing and stepping
     ControlChar 'p' | isRunning -> safeTogglePause
     ControlChar 'o' | isRunning -> do
-      gameState . runStatus .= ManualPause
+      gameState . temporal . runStatus .= ManualPause
       runGameTickUI
     -- speed controls
     ControlChar 'x' | isRunning -> modify $ adjustTPS (+)
@@ -444,7 +444,7 @@ safeTogglePause = do
   curTime <- liftIO $ getTime Monotonic
   uiState . lastFrameTime .= curTime
   uiState . uiShowDebug .= False
-  p <- gameState . runStatus Lens.<%= toggleRunStatus
+  p <- gameState . temporal . runStatus Lens.<%= toggleRunStatus
   when (p == Running) $ zoomGameState finishGameTick
 
 -- | Only unpause the game if leaving autopaused modal.
@@ -453,7 +453,7 @@ safeTogglePause = do
 -- the modal, in that case, leave the game paused.
 safeAutoUnpause :: EventM Name AppState ()
 safeAutoUnpause = do
-  runs <- use $ gameState . runStatus
+  runs <- use $ gameState . temporal . runStatus
   when (runs == AutoPause) safeTogglePause
 
 toggleModal :: ModalType -> EventM Name AppState ()
@@ -521,7 +521,7 @@ saveScenarioInfoOnFinish p = do
   let won = case wc of
         WinConditions (Won _) _ -> True
         _ -> False
-  ts <- use $ gameState . ticks
+  ts <- use $ gameState . temporal . ticks
 
   -- NOTE: This traversal is apparently not the same one as used by
   -- the scenario selection menu, so the menu needs to be updated separately.

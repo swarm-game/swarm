@@ -498,8 +498,8 @@ drawWorldCursorInfo worldEditor g cCoords =
 drawClockDisplay :: Int -> GameState -> Widget n
 drawClockDisplay lgTPS gs = hBox . intersperse (txt " ") $ catMaybes [clockWidget, pauseWidget]
  where
-  clockWidget = maybeDrawTime (gs ^. ticks) (gs ^. paused || lgTPS < 3) gs
-  pauseWidget = guard (gs ^. paused) $> txt "(PAUSED)"
+  clockWidget = maybeDrawTime (gs ^. temporal . ticks) (gs ^. temporal . paused || lgTPS < 3) gs
+  pauseWidget = guard (gs ^. temporal . paused) $> txt "(PAUSED)"
 
 -- | Check whether the currently focused robot (if any) has a clock
 --   device equipped.
@@ -619,7 +619,7 @@ renderDutyCycle :: GameState -> Robot -> Widget Name
 renderDutyCycle gs robot =
   withAttr dutyCycleAttr . str . flip (showFFloat (Just 1)) "%" $ dutyCyclePercentage
  where
-  curTicks = gs ^. ticks
+  curTicks = gs ^. temporal . ticks
   window = robot ^. activityCounts . activityWindow
 
   -- Rewind to previous tick
@@ -866,7 +866,7 @@ messagesWidget :: GameState -> [Widget Name]
 messagesWidget gs = widgetList
  where
   widgetList = focusNewest . map drawLogEntry' $ gs ^. messageNotifications . notificationsContent
-  focusNewest = if gs ^. paused then id else over _last visible
+  focusNewest = if gs ^. temporal . paused then id else over _last visible
   drawLogEntry' e =
     withAttr (colorLogs e) $
       hBox
@@ -941,7 +941,7 @@ drawKeyMenu s =
       $ s
 
   isReplWorking = s ^. gameState . replWorking
-  isPaused = s ^. gameState . paused
+  isPaused = s ^. gameState . temporal . paused
   hasDebug = fromMaybe creative $ s ^? gameState . to focusedRobot . _Just . robotCapabilities . Lens.contains CDebug
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode

@@ -110,10 +110,10 @@ gameTick = do
   focusedRob <- use focusedRobotID
 
   ticked <-
-    use gameStep >>= \case
+    use (temporal . gameStep) >>= \case
       WorldTick -> do
         runRobotIDs active
-        ticks %= addTicks 1
+        temporal . ticks %= addTicks 1
         pure True
       RobotStep ss -> singleStep ss focusedRob active
 
@@ -153,16 +153,16 @@ gameTick = do
 -- Use this function if you need to unpause the game.
 finishGameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m) => m ()
 finishGameTick =
-  use gameStep >>= \case
+  use (temporal . gameStep) >>= \case
     WorldTick -> pure ()
-    RobotStep SBefore -> gameStep .= WorldTick
+    RobotStep SBefore -> temporal . gameStep .= WorldTick
     RobotStep _ -> void gameTick >> finishGameTick
 
 -- Insert the robot back to robot map.
 -- Will selfdestruct or put the robot to sleep if it has that set.
 insertBackRobot :: Has (State GameState) sig m => RID -> Robot -> m ()
 insertBackRobot rn rob = do
-  time <- use ticks
+  time <- use $ temporal . ticks
   if rob ^. selfDestruct
     then deleteRobot rn
     else do
@@ -192,9 +192,9 @@ singleStep ss focRID robotSet = do
     -- run robots from the beginning until focused robot
     SBefore -> do
       runRobotIDs preFoc
-      gameStep .= RobotStep (SSingle focRID)
+      temporal . gameStep .= RobotStep (SSingle focRID)
       -- also set ticks of focused robot
-      steps <- use robotStepsPerTick
+      steps <- use $ temporal . robotStepsPerTick
       robotMap . ix focRID . activityCounts . tickStepBudget .= steps
       -- continue to focused robot if there were no previous robots
       -- DO NOT SKIP THE ROBOT SETUP above
@@ -211,8 +211,8 @@ singleStep ss focRID robotSet = do
         Nothing | rid == focRID -> do
           debugLog "The debugged robot does not exist! Exiting single step mode."
           runRobotIDs postFoc
-          gameStep .= WorldTick
-          ticks %= addTicks 1
+          temporal . gameStep .= WorldTick
+          temporal . ticks %= addTicks 1
           return True
         Nothing | otherwise -> do
           debugLog "The previously debugged robot does not exist!"
@@ -223,7 +223,8 @@ singleStep ss focRID robotSet = do
           insertBackRobot focRID newR
           if rid == focRID
             then do
-              when (newR ^. activityCounts . tickStepBudget == 0) $ gameStep .= RobotStep (SAfter focRID)
+              when (newR ^. activityCounts . tickStepBudget == 0) $
+                temporal . gameStep .= RobotStep (SAfter focRID)
               return False
             else do
               -- continue to newly focused
@@ -236,8 +237,8 @@ singleStep ss focRID robotSet = do
       -- 2. changed focus and the newly focused robot has previously run
       --    so we just finish the tick the same way
       runRobotIDs postFoc
-      gameStep .= RobotStep SBefore
-      ticks %= addTicks 1
+      temporal . gameStep .= RobotStep SBefore
+      temporal . ticks %= addTicks 1
       return True
     SAfter rid | otherwise -> do
       -- go to single step if new robot is focused
@@ -429,7 +430,7 @@ createLogEntry ::
 createLogEntry source msg = do
   rid <- use robotID
   rn <- use robotName
-  time <- use ticks
+  time <- use $ temporal . ticks
   loc <- use robotLocation
   pure $ LogEntry time source rn rid (Located loc) msg
 
@@ -504,7 +505,7 @@ withExceptions s k m = do
 --   command execution, whichever comes first.
 tickRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
 tickRobot r = do
-  steps <- use robotStepsPerTick
+  steps <- use $ temporal . robotStepsPerTick
   tickRobotRec (r & activityCounts . tickStepBudget .~ steps)
 
 -- | Recursive helper function for 'tickRobot', which checks if the
@@ -513,7 +514,7 @@ tickRobot r = do
 --   stepping the robot.
 tickRobotRec :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
 tickRobotRec r = do
-  time <- use ticks
+  time <- use $ temporal . ticks
   case wantsToStep time r && (r ^. runningAtomic || r ^. activityCounts . tickStepBudget > 0) of
     True -> stepRobot r >>= tickRobotRec
     False -> return r
@@ -524,7 +525,7 @@ stepRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Ro
 stepRobot r = do
   (r', cesk') <- runState (r & activityCounts . tickStepBudget -~ 1) (stepCESK (r ^. machine))
   -- sendIO $ appendFile "out.txt" (prettyString cesk' ++ "\n")
-  t <- use ticks
+  t <- use $ temporal . ticks
   return $
     r'
       & machine .~ cesk'
@@ -597,7 +598,7 @@ stepCESK cesk = case cesk of
   -- We wake up robots whose wake-up time has been reached. If it hasn't yet
   -- then stepCESK is a no-op.
   Waiting wakeupTime cesk' -> do
-    time <- use ticks
+    time <- use $ temporal . ticks
     if wakeupTime <= time
       then stepCESK cesk'
       else return cesk
@@ -1019,7 +1020,7 @@ execConst c vs s k = do
       _ -> badConst
     Wait -> case vs of
       [VInt d] -> do
-        time <- use ticks
+        time <- use $ temporal . ticks
         purgeFarAwayWatches
         return $ Waiting (addTicks d time) (Out VUnit s k)
       _ -> badConst
@@ -1410,7 +1411,7 @@ execConst c vs s k = do
       -- otherwise have anything reasonable to return.
       return $ Out (VDir (fromMaybe (DRelative DDown) $ mh >>= toDirection)) s k
     Time -> do
-      TickNumber t <- use ticks
+      TickNumber t <- use $ temporal . ticks
       return $ Out (VInt t) s k
     Drill -> case vs of
       [VDir d] -> doDrill d
@@ -1932,7 +1933,7 @@ execConst c vs s k = do
             activateRobot (target ^. robotID)
 
             -- Now wait the right amount of time for it to finish.
-            time <- use ticks
+            time <- use $ temporal . ticks
             return $ Waiting (addTicks (fromIntegral numItems + 1) time) (Out VUnit s k)
       _ -> badConst
     -- run can take both types of text inputs
@@ -2175,7 +2176,7 @@ execConst c vs s k = do
         updateWorldAndRobots c wf rf
         return $ Out v s k
       else do
-        time <- use ticks
+        time <- use $ temporal . ticks
         return . (if remTime <= 1 then id else Waiting (addTicks remTime time)) $
           Out v s (FImmediate c wf rf : k)
    where
