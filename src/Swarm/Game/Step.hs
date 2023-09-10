@@ -1024,7 +1024,7 @@ execConst c vs s k = do
         return $ Waiting (addTicks d time) (Out VUnit s k)
       _ -> badConst
     Selfdestruct -> do
-      destroyIfNotBase $ Just AttemptSelfDestructBase
+      destroyIfNotBase $ \case False -> Just AttemptSelfDestructBase; _ -> Nothing
       flagRedraw
       return $ Out VUnit s k
     Move -> do
@@ -1092,11 +1092,9 @@ execConst c vs s k = do
         failureMaybes <- mapM checkMoveFailure locsInDirection
         let maybeFirstFailure = asum failureMaybes
 
-        applyMoveFailureEffect maybeFirstFailure $
-          MoveFailure
-            { failIfBlocked = ThrowExn
-            , failIfDrown = Destroy
-            }
+        applyMoveFailureEffect maybeFirstFailure $ \case
+          PathBlocked -> ThrowExn
+          PathLiquid -> Destroy
 
         let maybeLastLoc = do
               guard $ null maybeFirstFailure
@@ -1115,11 +1113,9 @@ execConst c vs s k = do
             nextLoc = fmap (const $ Location (fromIntegral x) (fromIntegral y)) oldLoc
 
         onTarget rid $ do
-          checkMoveAhead nextLoc $
-            MoveFailure
-              { failIfBlocked = Destroy
-              , failIfDrown = Destroy
-              }
+          checkMoveAhead nextLoc $ \case
+            PathBlocked -> Destroy
+            PathLiquid -> Destroy
           updateRobotLocation oldLoc nextLoc
 
         return $ Out VUnit s k
@@ -2345,25 +2341,37 @@ execConst c vs s k = do
 
         return (minimalEquipSet, missingChildInv)
 
-  destroyIfNotBase :: HasRobotStepState sig m => Maybe GameplayAchievement -> m ()
+  -- Destroy the current robot, as long as it is not the base robot.
+  --
+  -- Depending on whether we destroy (True) or do not destroy
+  -- (False) the current robot, possibly grant an achievement.
+  --
+  -- Note we cannot simply return a Boolean and grant achievements
+  -- at call sites, because in the case that we do not destroy the
+  -- base we actually throw an exception, so we do not return to the
+  -- original call site.
+  destroyIfNotBase ::
+    (HasRobotStepState sig m, Has (Lift IO) sig m) =>
+    (Bool -> Maybe GameplayAchievement) ->
+    m ()
   destroyIfNotBase mAch = do
     rid <- use robotID
     holdsOrFailWithAchievement
       (rid /= 0)
       ["You consider destroying your base, but decide not to do it after all."]
-      mAch
+      (mAch False)
+
     selfDestruct .= True
+    maybe (return ()) grantAchievement (mAch True)
 
   moveInDirection :: (HasRobotStepState sig m, Has (Lift IO) sig m) => Heading -> m CESK
   moveInDirection orientation = do
     -- Figure out where we're going
     loc <- use robotLocation
     let nextLoc = loc `offsetBy` orientation
-    checkMoveAhead nextLoc $
-      MoveFailure
-        { failIfBlocked = ThrowExn
-        , failIfDrown = Destroy
-        }
+    checkMoveAhead nextLoc $ \case
+      PathBlocked -> ThrowExn
+      PathLiquid -> Destroy
     updateRobotLocation loc nextLoc
     return $ Out VUnit s k
 
@@ -2388,33 +2396,32 @@ execConst c vs s k = do
       | otherwise = Nothing
 
   applyMoveFailureEffect ::
-    HasRobotStepState sig m =>
+    (HasRobotStepState sig m, Has (Lift IO) sig m) =>
     Maybe MoveFailureDetails ->
-    MoveFailure ->
+    MoveFailureHandler ->
     m ()
-  applyMoveFailureEffect maybeFailure MoveFailure {..} =
+  applyMoveFailureEffect maybeFailure failureHandler =
     case maybeFailure of
       Nothing -> return ()
-      Just (MoveFailureDetails e failureMode) -> case failureMode of
-        PathBlocked ->
-          handleFailure
-            failIfBlocked
-            ["There is a", e ^. entityName, "in the way!"]
-        PathLiquid ->
-          handleFailure
-            failIfDrown
-            ["There is a dangerous liquid", e ^. entityName, "in the way!"]
-   where
-    handleFailure behavior message = case behavior of
-      Destroy -> destroyIfNotBase Nothing
-      ThrowExn -> throwError $ cmdExn c message
-      IgnoreFail -> return ()
+      Just (MoveFailureDetails e failureMode) -> case failureHandler failureMode of
+        IgnoreFail -> return ()
+        Destroy -> destroyIfNotBase $ \b -> case (b, failureMode) of
+          (True, PathLiquid) -> Just RobotIntoWater -- achievement for drowning
+          _ -> Nothing
+        ThrowExn -> throwError . cmdExn c $
+          case failureMode of
+            PathBlocked -> ["There is a", e ^. entityName, "in the way!"]
+            PathLiquid -> ["There is a dangerous liquid", e ^. entityName, "in the way!"]
 
   -- Determine the move failure mode and apply the corresponding effect.
-  checkMoveAhead :: HasRobotStepState sig m => Cosmic Location -> MoveFailure -> m ()
-  checkMoveAhead nextLoc failureHandlers = do
+  checkMoveAhead ::
+    (HasRobotStepState sig m, Has (Lift IO) sig m) =>
+    Cosmic Location ->
+    MoveFailureHandler ->
+    m ()
+  checkMoveAhead nextLoc failureHandler = do
     maybeFailure <- checkMoveFailure nextLoc
-    applyMoveFailureEffect maybeFailure failureHandlers
+    applyMoveFailureEffect maybeFailure failureHandler
 
   getRobotWithinTouch :: HasRobotStepState sig m => RID -> m Robot
   getRobotWithinTouch rid = do
@@ -2572,11 +2579,9 @@ data MoveFailureDetails = MoveFailureDetails Entity MoveFailureMode
 -- | How to handle failure, for example when moving to blocked location
 data RobotFailure = ThrowExn | Destroy | IgnoreFail
 
--- | How to handle failure when moving/teleporting to a location.
-data MoveFailure = MoveFailure
-  { failIfBlocked :: RobotFailure
-  , failIfDrown :: RobotFailure
-  }
+-- | How to handle different types of failure when moving/teleporting
+--   to a location.
+type MoveFailureHandler = MoveFailureMode -> RobotFailure
 
 data GrabbingCmd = Grab' | Harvest' | Swap' | Push' deriving (Eq, Show)
 
@@ -2657,9 +2662,9 @@ updateRobotLocation oldLoc newLoc
 -- | Execute a stateful action on a target robot --- whether the
 --   current one or another.
 onTarget ::
-  HasRobotStepState sig m =>
+  (HasRobotStepState sig m, Has (Lift IO) sig m) =>
   RID ->
-  (forall sig' m'. (HasRobotStepState sig' m') => m' ()) ->
+  (forall sig' m'. (HasRobotStepState sig' m', Has (Lift IO) sig' m') => m' ()) ->
   m ()
 onTarget rid act = do
   myID <- use robotID
