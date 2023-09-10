@@ -24,9 +24,9 @@
 #   - {name: [Data.Set, Data.HashSet], as: Set} # if you import Data.Set qualified, it must be as 'Set'
 #   - {name: Control.Arrow, within: []} # Certain modules are banned entirely
 #
-# - functions:
-#   - {name: unsafePerformIO, within: []} # unsafePerformIO can only appear in no modules
-
+- functions:
+  - {name: Data.List.head, within: []}
+  - {name: Prelude.head, within: []}
 
 # Add custom hints for this project
 #
