@@ -124,11 +124,11 @@ gameTick = do
   mr <- use (robotMap . at 0)
   case mr of
     Just r -> do
-      res <- use replStatus
+      res <- use $ repl . replStatus
       case res of
         REPLWorking (Typed Nothing ty req) -> case getResult r of
           Just (v, s) -> do
-            replStatus .= REPLWorking (Typed (Just v) ty req)
+            repl . replStatus .= REPLWorking (Typed (Just v) ty req)
             baseRobot . robotContext . defStore .= s
           Nothing -> pure ()
         _otherREPLStatus -> pure ()
