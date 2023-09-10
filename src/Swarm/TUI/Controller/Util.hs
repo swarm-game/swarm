@@ -53,9 +53,9 @@ openModal mt = do
  where
   -- Set the game to AutoPause if needed
   ensurePause = do
-    pause <- use $ gameState . paused
+    pause <- use $ gameState . temporal . paused
     unless (pause || isRunningModal mt) $ do
-      gameState . runStatus .= AutoPause
+      gameState . temporal . runStatus .= AutoPause
 
 -- | The running modals do not autopause the game.
 isRunningModal :: ModalType -> Bool

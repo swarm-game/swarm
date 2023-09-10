@@ -29,12 +29,15 @@ module Swarm.Game.State (
 
   -- ** GameState fields
   creativeMode,
+  temporal,
   gameStep,
+  runStatus,
+  ticks,
+  robotStepsPerTick,
   winCondition,
   winSolution,
   gameAchievements,
   announcementQueue,
-  runStatus,
   paused,
   robotMap,
   robotsByLocation,
@@ -76,8 +79,6 @@ module Swarm.Game.State (
   messageQueue,
   lastSeenMessageTime,
   focusedRobotID,
-  ticks,
-  robotStepsPerTick,
 
   -- ** Notifications
   Notifications (..),
@@ -401,17 +402,42 @@ data NameGenerator = NameGenerator
   , nameList :: Array Int Text
   }
 
+data TemporalState = TemporalState
+  { _gameStep :: Step
+  , _runStatus :: RunStatus
+  , _ticks :: TickNumber
+  , _robotStepsPerTick :: Int
+  }
+
+makeLensesNoSigs ''TemporalState
+
+-- | How to step the game - 'WorldTick' or 'RobotStep' for debugging the 'CESK' machine.
+gameStep :: Lens' TemporalState Step
+
+-- | The current 'RunStatus'.
+runStatus :: Lens' TemporalState RunStatus
+
+-- | Whether the game is currently paused.
+paused :: Getter TemporalState Bool
+paused = to (\s -> s ^. runStatus /= Running)
+
+-- | The number of ticks elapsed since the game started.
+ticks :: Lens' TemporalState TickNumber
+
+-- | The maximum number of CESK machine steps a robot may take during
+--   a single tick.
+robotStepsPerTick :: Lens' TemporalState Int
+
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
 data GameState = GameState
   { _creativeMode :: Bool
-  , _gameStep :: Step
+  , _temporal :: TemporalState
   , _winCondition :: WinCondition
   , _winSolution :: Maybe ProcessedTerm
   , _gameAchievements :: Map GameplayAchievement Attainment
   , _announcementQueue :: Seq Announcement
-  , _runStatus :: RunStatus
   , _robotMap :: IntMap Robot
   , -- A set of robots to consider for the next game tick. It is guaranteed to
     -- be a subset of the keys of robotMap. It may contain waiting or idle
@@ -455,8 +481,6 @@ data GameState = GameState
   , _inputHandler :: Maybe (Text, Value)
   , _messageInfo :: Messages
   , _focusedRobotID :: RID
-  , _ticks :: TickNumber
-  , _robotStepsPerTick :: Int
   }
 
 ------------------------------------------------------------
@@ -476,8 +500,8 @@ makeLensesExcluding ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeR
 -- | Is the user in creative mode (i.e. able to do anything without restriction)?
 creativeMode :: Lens' GameState Bool
 
--- | How to step the game - 'WorldTick' or 'RobotStep' for debugging the 'CESK' machine.
-gameStep :: Lens' GameState Step
+-- | Aspects of the temporal state of the game
+temporal :: Lens' GameState TemporalState
 
 -- | How to determine whether the player has won.
 winCondition :: Lens' GameState WinCondition
@@ -495,13 +519,6 @@ gameAchievements :: Lens' GameState (Map GameplayAchievement Attainment)
 --
 -- Note that we put the newest entry to the right.
 announcementQueue :: Lens' GameState (Seq Announcement)
-
--- | The current 'RunStatus'.
-runStatus :: Lens' GameState RunStatus
-
--- | Whether the game is currently paused.
-paused :: Getter GameState Bool
-paused = to (\s -> s ^. runStatus /= Running)
 
 -- | All the robots that currently exist in the game, indexed by ID.
 robotMap :: Lens' GameState (IntMap Robot)
@@ -643,13 +660,6 @@ messageInfo :: Lens' GameState Messages
 focusedRobotID :: Getter GameState RID
 focusedRobotID = to _focusedRobotID
 
--- | The number of ticks elapsed since the game started.
-ticks :: Lens' GameState TickNumber
-
--- | The maximum number of CESK machine steps a robot may take during
---   a single tick.
-robotStepsPerTick :: Lens' GameState Int
-
 ------------------------------------------------------------
 -- Utilities
 ------------------------------------------------------------
@@ -714,7 +724,7 @@ messageNotifications = to getNotif
         <> Seq.filter ((== gs ^. focusedRobotID) . view leRobotID) mq
 
 messageIsRecent :: GameState -> LogEntry -> Bool
-messageIsRecent gs e = addTicks 1 (e ^. leTime) >= gs ^. ticks
+messageIsRecent gs e = addTicks 1 (e ^. leTime) >= gs ^. temporal . ticks
 
 -- | Reconciles the possibilities of log messages being
 -- omnipresent and robots being in different worlds
@@ -915,7 +925,7 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 --   if they still exist in the keys of robotMap.
 wakeUpRobotsDoneSleeping :: (Has (State GameState) sig m) => m ()
 wakeUpRobotsDoneSleeping = do
-  time <- use ticks
+  time <- use $ temporal . ticks
   mrids <- internalWaitingRobots . at time <<.= Nothing
   case mrids of
     Nothing -> return ()
@@ -944,7 +954,7 @@ clearWatchingRobots rids = do
 -- upon wakeup is handled by "wakeUpRobotsDoneSleeping" in State.hs
 wakeWatchingRobots :: (Has (State GameState) sig m) => Cosmic Location -> m ()
 wakeWatchingRobots loc = do
-  currentTick <- use ticks
+  currentTick <- use $ temporal . ticks
   waitingMap <- use waitingRobots
   rMap <- use robotMap
   watchingMap <- use robotsWatching
@@ -1046,14 +1056,19 @@ initGameState :: GameStateConfig -> GameState
 initGameState gsc =
   GameState
     { _creativeMode = False
-    , _gameStep = WorldTick
+    , _temporal =
+        TemporalState
+          { _gameStep = WorldTick
+          , _runStatus = Running
+          , _ticks = TickNumber 0
+          , _robotStepsPerTick = defaultRobotStepsPerTick
+          }
     , _winCondition = NoWinCondition
     , _winSolution = Nothing
     , -- This does not need to be initialized with anything,
       -- since the master list of achievements is stored in UIState
       _gameAchievements = mempty
     , _announcementQueue = mempty
-    , _runStatus = Running
     , _robotMap = IM.empty
     , _robotsByLocation = M.empty
     , _robotsWatching = mempty
@@ -1095,8 +1110,6 @@ initGameState gsc =
           , _lastSeenMessageTime = TickNumber (-1)
           }
     , _focusedRobotID = 0
-    , _ticks = TickNumber 0
-    , _robotStepsPerTick = defaultRobotStepsPerTick
     }
 
 -- | Create an initial game state corresponding to the given scenario.
@@ -1152,7 +1165,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       -- otherwise the store of definition cells is not saved (see #333, #838)
         False -> REPLDone Nothing
         True -> REPLWorking (Typed Nothing PolyUnit mempty)
-      & robotStepsPerTick .~ ((scenario ^. scenarioStepsPerTick) ? defaultRobotStepsPerTick)
+      & temporal . robotStepsPerTick .~ ((scenario ^. scenarioStepsPerTick) ? defaultRobotStepsPerTick)
  where
   groupRobotsBySubworld =
     binTuples . map (view (robotLocation . subworld) &&& id)
