@@ -1518,7 +1518,9 @@ execConst c vs s k = do
       [VText msg] -> do
         isPrivileged <- isPrivilegedBot
         loc <- use robotLocation
-        m <- traceLog Said Info msg -- current robot will inserted to robot set, so it needs the log
+
+        -- current robot will be inserted into the robot set, so it needs the log
+        m <- traceLog Said Info msg
         emitMessage m
         let measureToLog robLoc rawLogLoc = case rawLogLoc of
               Located logLoc -> cosmoMeasure manhattan robLoc logLoc
