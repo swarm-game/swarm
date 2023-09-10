@@ -940,7 +940,7 @@ drawKeyMenu s =
       . view (uiState . uiFocusRing)
       $ s
 
-  isReplWorking = s ^. gameState . replWorking
+  isReplWorking = s ^. gameState . repl . replWorking
   isPaused = s ^. gameState . temporal . paused
   hasDebug = fromMaybe creative $ s ^? gameState . to focusedRobot . _Just . robotCapabilities . Lens.contains CDebug
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
@@ -1361,11 +1361,11 @@ replPromptAsWidget t (SearchPrompt rh) =
       | otherwise -> txt $ "[found: \"" <> lastentry <> "\"] "
 
 renderREPLPrompt :: FocusRing Name -> REPLState -> Widget Name
-renderREPLPrompt focus repl = ps1 <+> replE
+renderREPLPrompt focus theRepl = ps1 <+> replE
  where
-  prompt = repl ^. replPromptType
-  replEditor = repl ^. replPromptEditor
-  color = if repl ^. replValid then id else withAttr redAttr
+  prompt = theRepl ^. replPromptType
+  replEditor = theRepl ^. replPromptEditor
+  color = if theRepl ^. replValid then id else withAttr redAttr
   ps1 = replPromptAsWidget (T.concat $ getEditContents replEditor) prompt
   replE =
     renderEditor
@@ -1386,13 +1386,13 @@ drawREPL s =
  where
   -- rendered history lines fitting above REPL prompt
   history :: [Widget n]
-  history = map fmt . toList . getSessionREPLHistoryItems $ repl ^. replHistory
+  history = map fmt . toList . getSessionREPLHistoryItems $ theRepl ^. replHistory
   currentPrompt :: Widget Name
-  currentPrompt = case (isActive <$> base, repl ^. replControlMode) of
+  currentPrompt = case (isActive <$> base, theRepl ^. replControlMode) of
     (_, Handling) -> padRight Max $ txt "[key handler running, M-k to toggle]"
-    (Just False, _) -> renderREPLPrompt (s ^. uiState . uiFocusRing) repl
+    (Just False, _) -> renderREPLPrompt (s ^. uiState . uiFocusRing) theRepl
     _running -> padRight Max $ txt "..."
-  repl = s ^. uiState . uiREPL
+  theRepl = s ^. uiState . uiREPL
   base = s ^. gameState . robotMap . at 0
   fmt (REPLEntry e) = txt $ "> " <> e
   fmt (REPLOutput t) = txt t
