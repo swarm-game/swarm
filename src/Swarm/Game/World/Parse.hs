@@ -12,13 +12,14 @@ module Swarm.Game.World.Parse where
 
 import Control.Monad (void)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
+import Control.Monad.Combinators.NonEmpty qualified as CNE (sepBy1)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Void (Void)
 import Data.Yaml (FromJSON (parseJSON), withText)
 import Swarm.Game.World.Syntax
 import Swarm.Util (failT, showT, squote)
-import Swarm.Util.Parse (fully, sepByNE)
+import Swarm.Util.Parse (fully)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
@@ -225,7 +226,7 @@ parseLet =
 parseOverlay :: Parser WExp
 parseOverlay = do
   reserved "overlay"
-  brackets $ WOverlay <$> parseWExp `sepByNE` comma
+  brackets $ WOverlay <$> parseWExp `CNE.sepBy1` comma
 
 parseMask :: Parser WExp
 parseMask = do
