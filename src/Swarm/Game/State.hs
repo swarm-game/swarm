@@ -51,12 +51,13 @@ module Swarm.Game.State (
   availableCommands,
   messageNotifications,
   allDiscoveredEntities,
-  robotNaming,
-  gensym,
-  seed,
-  randGen,
   NameGenerator (..),
   nameGenerator,
+  robotNaming,
+  gensym,
+  discovery,
+  seed,
+  randGen,
   initiallyRunCode,
   entityMap,
   recipesInfo,
@@ -461,6 +462,32 @@ replNextValueIndex :: Lens' REPLData Integer
 -- | The currently installed input handler and hint text.
 inputHandler :: Lens' REPLData (Maybe (Text, Value))
 
+data Discovery = Discovery
+  { _allDiscoveredEntities :: Inventory
+  , _availableRecipes :: Notifications (Recipe Entity)
+  , _availableCommands :: Notifications Const
+  , _knownEntities :: [Text]
+  , _gameAchievements :: Map GameplayAchievement Attainment
+  }
+
+makeLensesNoSigs ''Discovery
+
+-- | The list of entities that have been discovered.
+allDiscoveredEntities :: Lens' Discovery Inventory
+
+-- | The list of available recipes.
+availableRecipes :: Lens' Discovery (Notifications (Recipe Entity))
+
+-- | The list of available commands.
+availableCommands :: Lens' Discovery (Notifications Const)
+
+-- | The names of entities that should be considered \"known\", that is,
+--   robots know what they are without having to scan them.
+knownEntities :: Lens' Discovery [Text]
+
+-- | Map of in-game achievements that were attained
+gameAchievements :: Lens' Discovery (Map GameplayAchievement Attainment)
+
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
@@ -469,7 +496,6 @@ data GameState = GameState
   , _temporal :: TemporalState
   , _winCondition :: WinCondition
   , _winSolution :: Maybe ProcessedTerm
-  , _gameAchievements :: Map GameplayAchievement Attainment
   , _announcementQueue :: Seq Announcement
   , _robotMap :: IntMap Robot
   , -- A set of robots to consider for the next game tick. It is guaranteed to
@@ -491,9 +517,7 @@ data GameState = GameState
     -- that we do not have to iterate over all "waiting" robots,
     -- since there may be many.
     _robotsWatching :: Map (Cosmic Location) (S.Set RID)
-  , _allDiscoveredEntities :: Inventory
-  , _availableRecipes :: Notifications (Recipe Entity)
-  , _availableCommands :: Notifications Const
+  , _discovery :: Discovery
   , _seed :: Seed
   , _randGen :: StdGen
   , _robotNaming :: RobotNaming
@@ -501,7 +525,6 @@ data GameState = GameState
   , _entityMap :: EntityMap
   , _recipesInfo :: Recipes
   , _currentScenarioPath :: Maybe FilePath
-  , _knownEntities :: [Text]
   , _worldNavigation :: Navigation (M.Map SubworldName) Location
   , _multiWorld :: W.MultiWorld Int Entity
   , _worldScrollable :: Bool
@@ -539,9 +562,6 @@ winCondition :: Lens' GameState WinCondition
 -- | How to win (if possible). This is useful for automated testing
 --   and to show help to cheaters (or testers).
 winSolution :: Lens' GameState (Maybe ProcessedTerm)
-
--- | Map of in-game achievements that were attained
-gameAchievements :: Lens' GameState (Map GameplayAchievement Attainment)
 
 -- | A queue of global announcements.
 -- Note that this is distinct from the "messageQueue",
@@ -593,15 +613,6 @@ robotsInArea (Cosmic subworldName o) d gs = map (rm IM.!) rids
 baseRobot :: Traversal' GameState Robot
 baseRobot = robotMap . ix 0
 
--- | The list of entities that have been discovered.
-allDiscoveredEntities :: Lens' GameState Inventory
-
--- | The list of available recipes.
-availableRecipes :: Lens' GameState (Notifications (Recipe Entity))
-
--- | The list of available commands.
-availableCommands :: Lens' GameState (Notifications Const)
-
 -- | The names of the robots that are currently not sleeping.
 activeRobots :: Getter GameState IntSet
 activeRobots = internalActiveRobots
@@ -611,6 +622,9 @@ activeRobots = internalActiveRobots
 --   those that are only taking a short nap (e.g. wait 1).
 waitingRobots :: Getter GameState (Map TickNumber [RID])
 waitingRobots = internalWaitingRobots
+
+-- | Discovery state of entities, commands, recipes
+discovery :: Lens' GameState Discovery
 
 -- | The initial seed that was used for the random number generator,
 --   and world generation.
@@ -637,10 +651,6 @@ recipesInfo :: Lens' GameState Recipes
 -- This is useful as an index to 'scenarios' collection,
 -- see 'Swarm.Game.ScenarioInfo.scenarioItemByPath'.
 currentScenarioPath :: Lens' GameState (Maybe FilePath)
-
--- | The names of entities that should be considered \"known\", that is,
---   robots know what they are without having to scan them.
-knownEntities :: Lens' GameState [Text]
 
 -- | Includes a 'Map' of named locations and an
 -- "Edge list" (graph) that maps portal entrances to exits
@@ -1086,16 +1096,20 @@ initGameState gsc =
           }
     , _winCondition = NoWinCondition
     , _winSolution = Nothing
-    , -- This does not need to be initialized with anything,
-      -- since the master list of achievements is stored in UIState
-      _gameAchievements = mempty
     , _announcementQueue = mempty
     , _robotMap = IM.empty
     , _robotsByLocation = M.empty
     , _robotsWatching = mempty
-    , _availableRecipes = mempty
-    , _availableCommands = mempty
-    , _allDiscoveredEntities = empty
+    , _discovery =
+        Discovery
+          { _availableRecipes = mempty
+          , _availableCommands = mempty
+          , _allDiscoveredEntities = empty
+          , _knownEntities = []
+          , -- This does not need to be initialized with anything,
+            -- since the master list of achievements is stored in UIState
+            _gameAchievements = mempty
+          }
     , _activeRobots = IS.empty
     , _waitingRobots = M.empty
     , _seed = 0
@@ -1118,7 +1132,6 @@ initGameState gsc =
           , _recipesCat = catRecipeMap (initRecipes gsc)
           }
     , _currentScenarioPath = Nothing
-    , _knownEntities = []
     , _worldNavigation = Navigation mempty mempty
     , _multiWorld = mempty
     , _worldScrollable = True
@@ -1173,14 +1186,14 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       & robotMap .~ IM.fromList (map (view robotID &&& id) robotList')
       & robotsByLocation .~ M.map (groupRobotsByPlanarLocation . NE.toList) (groupRobotsBySubworld robotList')
       & internalActiveRobots .~ setOf (traverse . robotID) robotList'
-      & availableCommands .~ Notifications 0 initialCommands
+      & discovery . availableCommands .~ Notifications 0 initialCommands
+      & discovery . knownEntities .~ scenario ^. scenarioKnown
       & robotNaming . gensym .~ initGensym
       & seed .~ theSeed
       & randGen .~ mkStdGen theSeed
       & initiallyRunCode .~ initialCodeToRun
       & entityMap .~ em
       & recipesInfo %~ modifyRecipesInfo
-      & knownEntities .~ scenario ^. scenarioKnown
       & worldNavigation .~ scenario ^. scenarioNavigation
       & multiWorld .~ allSubworldsMap theSeed
       -- TODO (#1370): Should we allow subworlds to have their own scrollability?

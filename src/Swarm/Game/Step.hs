@@ -2561,7 +2561,7 @@ grantAchievement ::
 grantAchievement a = do
   currentTime <- sendIO getZonedTime
   scenarioPath <- use currentScenarioPath
-  gameAchievements
+  discovery . gameAchievements
     %= M.insertWith
       (<>)
       a
@@ -2783,14 +2783,14 @@ safeExp a b
 -- | Update the global list of discovered entities, and check for new recipes.
 updateDiscoveredEntities :: (HasRobotStepState sig m) => Entity -> m ()
 updateDiscoveredEntities e = do
-  allDiscovered <- use allDiscoveredEntities
+  allDiscovered <- use $ discovery . allDiscoveredEntities
   if E.contains0plus e allDiscovered
     then pure ()
     else do
       let newAllDiscovered = E.insertCount 1 e allDiscovered
       updateAvailableRecipes (newAllDiscovered, newAllDiscovered) e
       updateAvailableCommands e
-      allDiscoveredEntities .= newAllDiscovered
+      discovery . allDiscoveredEntities .= newAllDiscovered
 
 -- | Update the availableRecipes list.
 -- This implementation is not efficient:
@@ -2805,10 +2805,10 @@ updateAvailableRecipes invs e = do
   allInRecipes <- use $ recipesInfo . recipesIn
   let entityRecipes = recipesFor allInRecipes e
       usableRecipes = filter (knowsIngredientsFor invs) entityRecipes
-  knownRecipes <- use (availableRecipes . notificationsContent)
+  knownRecipes <- use $ discovery . availableRecipes . notificationsContent
   let newRecipes = filter (`notElem` knownRecipes) usableRecipes
       newCount = length newRecipes
-  availableRecipes %= mappend (Notifications newCount newRecipes)
+  discovery . availableRecipes %= mappend (Notifications newCount newRecipes)
   updateAvailableCommands e
 
 updateAvailableCommands :: Has (State GameState) sig m => Entity -> m ()
@@ -2818,7 +2818,7 @@ updateAvailableCommands e = do
         Just cap -> cap `S.member` newCaps
         Nothing -> False
       entityConsts = filter (keepConsts . constCaps) allConst
-  knownCommands <- use (availableCommands . notificationsContent)
+  knownCommands <- use $ discovery . availableCommands . notificationsContent
   let newCommands = filter (`notElem` knownCommands) entityConsts
       newCount = length newCommands
-  availableCommands %= mappend (Notifications newCount newCommands)
+  discovery . availableCommands %= mappend (Notifications newCount newCommands)
