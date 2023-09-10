@@ -70,8 +70,9 @@ import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
 import Linear
 import Network.Wai.Handler.Warp (Port)
+import Numeric (showFFloat)
 import Swarm.Constant
-import Swarm.Game.CESK (CESK (..), TickNumber (..))
+import Swarm.Game.CESK (CESK (..), TickNumber (..), addTicks)
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Location
@@ -94,7 +95,6 @@ import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Controller (ticksPerFrameCap)
 import Swarm.TUI.Editor.Model
@@ -108,15 +108,18 @@ import Swarm.TUI.Model.Repl (getSessionREPLHistoryItems, lastEntry)
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
+import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Util as VU
 import Swarm.Util
+import Swarm.Util.UnitInterval
+import Swarm.Util.WindowedCounter qualified as WC
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
-import Witch (from, into)
+import Witch (into)
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -593,9 +596,40 @@ drawModal s = \case
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal -> GR.renderGoalsDisplay (s ^. uiState . uiGoal)
-  KeepPlayingModal -> padLeftRight 1 (displayParagraphs ["Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."])
+  KeepPlayingModal ->
+    padLeftRight 1 $
+      displayParagraphs $
+        pure
+          "Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."
   TerrainPaletteModal -> EV.drawTerrainSelector s
   EntityPaletteModal -> EV.drawEntityPaintSelector s
+
+-- | Render the percentage of ticks that this robot was active.
+-- This indicator can take some time to "warm up" and stabilize
+-- due to the sliding window.
+--
+-- == Use of previous tick
+-- The 'gameTick' function runs all robots, then increments the current tick.
+-- So at the time we are rendering a frame, the current tick will always be
+-- strictly greater than any ticks stored in the 'WindowedCounter' for any robot;
+-- hence 'getOccupancy' will never be @1@ if we use the current tick directly as
+-- obtained from the 'ticks' function.
+-- So we "rewind" it to the previous tick for the purpose of this display.
+renderDutyCycle :: GameState -> Robot -> Widget Name
+renderDutyCycle gs robot =
+  withAttr dutyCycleAttr . str . flip (showFFloat (Just 1)) "%" $ dutyCyclePercentage
+ where
+  curTicks = gs ^. ticks
+  window = robot ^. activityCounts . activityWindow
+
+  -- Rewind to previous tick
+  latestRobotTick = addTicks (-1) curTicks
+  dutyCycleRatio = WC.getOccupancy latestRobotTick window
+
+  dutyCycleAttr = safeIndex dutyCycleRatio meterAttributeNames
+
+  dutyCyclePercentage :: Double
+  dutyCyclePercentage = 100 * getValue dutyCycleRatio
 
 robotsListWidget :: AppState -> Widget Name
 robotsListWidget s = hCenter table
@@ -611,9 +645,13 @@ robotsListWidget s = hCenter table
   headings =
     [ "Name"
     , "Age"
-    , "Position"
-    , "Inventory"
+    , "Pos"
+    , "Items"
     , "Status"
+    , "Actns"
+    , "Cmds"
+    , "Cycles"
+    , "Activity"
     , "Log"
     ]
   headers = withAttr robotAttr . txt <$> applyWhen cheat ("ID" :) headings
@@ -623,14 +661,26 @@ robotsListWidget s = hCenter table
    where
     cells =
       [ nameWidget
-      , txt $ from ageStr
+      , str ageStr
       , locWidget
-      , padRight (Pad 1) (txt $ from $ show rInvCount)
+      , padRight (Pad 1) (str $ show rInvCount)
       , statusWidget
+      , str $ show $ robot ^. activityCounts . tangibleCommandCount
+      , -- TODO(#1341): May want to expose the details of this histogram in
+        -- a per-robot pop-up
+        str . show . sum . M.elems $ robot ^. activityCounts . commandsHistogram
+      , str $ show $ robot ^. activityCounts . lifetimeStepCount
+      , renderDutyCycle (s ^. gameState) robot
       , txt rLog
       ]
+
     idWidget = str $ show $ robot ^. robotID
-    nameWidget = hBox [renderDisplay (robot ^. robotDisplay), highlightSystem . txt $ " " <> robot ^. robotName]
+    nameWidget =
+      hBox
+        [ renderDisplay (robot ^. robotDisplay)
+        , highlightSystem . txt $ " " <> robot ^. robotName
+        ]
+
     highlightSystem = if robot ^. systemRobot then withAttr highlightAttr else id
 
     ageStr
@@ -837,9 +887,7 @@ colorLogs e = case e ^. leSource of
     Critical -> redAttr
  where
   -- color each robot message with different color of the world
-  robotColor rid = fgCols !! (rid `mod` fgColLen)
-  fgCols = map fst worldAttributes
-  fgColLen = length fgCols
+  robotColor = indexWrapNonEmpty worldAttributeNames
 
 -- | Draw the F-key modal menu. This is displayed in the top left world corner.
 drawModalMenu :: AppState -> Widget Name

@@ -73,7 +73,6 @@ import Swarm.Game.ScenarioInfo (
  )
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
-import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Launch.Model
@@ -82,6 +81,7 @@ import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
+import Swarm.TUI.View.Attribute.Attr (swarmAttrMap)
 import Swarm.Util
 import Swarm.Util.Lens (makeLensesExcluding)
 import System.Clock

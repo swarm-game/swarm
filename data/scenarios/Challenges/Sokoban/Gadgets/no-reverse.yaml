@@ -7,7 +7,7 @@ creative: false
 seed: 0
 objectives:
   - goal:
-      - Grab the flower.
+      - Grab the `flower`{=entity}.
     condition: |
       as base {
         has "flower";

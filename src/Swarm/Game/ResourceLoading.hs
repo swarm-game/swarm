@@ -34,7 +34,7 @@ import Witch
 -- | Get subdirectory from swarm data directory.
 --
 -- This will first look in Cabal generated path and then
--- try a `data` directory in 'XdgData' path.
+-- try a @data@ directory in 'XdgData' path.
 --
 -- The idea is that when installing with Cabal/Stack the first
 -- is preferred, but when the players install a binary they
@@ -75,7 +75,7 @@ getDataFileNameSafe asset name = do
     then return fp
     else throwError $ AssetNotLoaded (Data asset) fp $ DoesNotExist File
 
--- | Get a nice message suggesting to download `data` directory to 'XdgData'.
+-- | Get a nice message suggesting to download @data@ directory to 'XdgData'.
 dataNotFound :: FilePath -> IO LoadingFailure
 dataNotFound f = do
   d <- getSwarmXdgDataSubdir False ""
@@ -89,7 +89,7 @@ dataNotFound f = do
 
 -- | Get path to swarm data, optionally creating necessary
 --   directories. This could fail if user has bad permissions
---   on his own $HOME or $XDG_DATA_HOME which is unlikely.
+--   on his own @$HOME@ or @$XDG_DATA_HOME@ which is unlikely.
 getSwarmXdgDataSubdir :: Bool -> FilePath -> IO FilePath
 getSwarmXdgDataSubdir createDirs subDir = do
   swarmData <- (</> subDir) <$> getXdgDirectory XdgData "swarm"
@@ -112,7 +112,7 @@ getSwarmSavePath createDirs = getSwarmXdgDataSubdir createDirs "saves"
 getSwarmHistoryPath :: Bool -> IO FilePath
 getSwarmHistoryPath createDirs = getSwarmXdgDataFile createDirs "history"
 
--- | Read all the .txt files in the data/ directory.
+-- | Read all the @.txt@ files in the @data/@ directory.
 readAppData ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   m (Map Text Text)

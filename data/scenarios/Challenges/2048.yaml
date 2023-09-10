@@ -5,10 +5,10 @@ description: Make 2048!
 objectives:
   - goal:
     - OK, OK, it's not really the same as the classic "2048" game.
-      However, your goal is still to make 2048!  You start with a `1`
+      However, your goal is still to make 2048!  You start with a `1`{=entity}
       which regrows immediately when
-      it is harvested, so if you plant it, you can get as many as you want.  Your
-      job is to combine `1`s in order to make a `2048`
+      it is `harvest`ed, so if you plant it, you can get as many as you want.  Your
+      job is to combine `1`{=entity}s in order to make a `2048`{=entity}
       entity.
     - "Hint: the `format` command can turn numbers into strings!"
     condition: |

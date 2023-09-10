@@ -4,7 +4,7 @@ author: Ondřej Šebek
 description: An impossible challenge - can you magically jump across the water?
 objectives:
   - goal:
-      - Get to the other room and grab the lambda.
+      - Get to the other room and grab the `lambda`{=entity}.
       - Oh wait.
       - The tunnel is flooded.
       - Just give up then. It is impossible to get there.

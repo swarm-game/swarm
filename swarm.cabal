@@ -7,9 +7,23 @@ description:        Swarm is a 2D programming and resource gathering
                     game. Program your robots to explore the world and
                     collect resources, which in turn allows you to
                     build upgraded robots that can run more
-                    interesting and complex programs. See the README
+                    interesting and complex programs. See the
+                    <https://github.com/swarm-game/swarm/blob/main/README.md README>
                     for more information and instructions on how to
                     play or contribute!
+                    .
+                    == Module organization
+                    For developers getting oriented, Swarm's modules are organized into
+                    roughly the following layers, from inner to outer:
+                    .
+                    * utilities
+                    * swarm language
+                    * swarm game
+                    * swarm TUI
+                    * swarm app
+                    .
+                    To maintain this separation, inner layers should avoid introducing
+                    dependencies on layers above them.
 
 license:            BSD-3-Clause
 license-file:       LICENSE
@@ -168,7 +182,9 @@ library
                       Swarm.Language.Types
                       Swarm.Language.Value
                       Swarm.ReadableIORef
-                      Swarm.TUI.Attr
+                      Swarm.TUI.View.Attribute.CustomStyling
+                      Swarm.TUI.View.Attribute.Attr
+                      Swarm.TUI.View.Attribute.Util
                       Swarm.TUI.Border
                       Swarm.Game.Scenario.Topography.Area
                       Swarm.TUI.Editor.Controller
@@ -193,7 +209,6 @@ library
                       Swarm.TUI.View
                       Swarm.TUI.View.Achievement
                       Swarm.TUI.View.CellDisplay
-                      Swarm.TUI.View.CustomStyling
                       Swarm.TUI.View.Objective
                       Swarm.TUI.View.Util
                       Swarm.Util
@@ -201,6 +216,8 @@ library
                       Swarm.Util.Erasable
                       Swarm.Util.Lens
                       Swarm.Util.Parse
+                      Swarm.Util.UnitInterval
+                      Swarm.Util.WindowedCounter
                       Swarm.Util.Yaml
                       Swarm.Version
                       Swarm.Web
@@ -243,6 +260,7 @@ library
                       mtl                           >= 2.2.2 && < 2.4,
                       murmur3                       >= 1.0.4 && < 1.1,
                       natural-sort                  >= 0.1.2 && < 0.2,
+                      palette                       >= 0.3 && < 0.4,
                       parser-combinators            >= 1.2 && < 1.4,
                       prettyprinter                 >= 1.7.0 && < 1.8,
                       random                        >= 1.2.0 && < 1.3,

@@ -12,14 +12,14 @@ objectives:
         You've homesteaded on a small island in the ocean.
         It's time to gather resources to trade.
       - |
-        You encounter some feral sheep (@). They slowly wander the island and eat grass.
+        You encounter some feral sheep (**@**). They slowly wander the island and eat grass.
         Your mind wanders to textiles...
       - |
         First, paddock at least one sheep so they don't drown.
         Make sure there are no gaps in the fence!
       - |
-        Note that you can use the "drill" command (by way of the "post puller" tool)
-        to demolish a fence that has been "placed".
+        Note that you can use the `drill` command (by way of the `post puller`{=entity} tool)
+        to demolish a `fence`{=entity} that has been `place`d.
     condition: |-
       // Algorithm:
       // ----------
@@ -287,7 +287,7 @@ objectives:
         The sheep will move toward something edible on
         an adjacent tile and will eat it if they walk over it.
       - |
-        You may want to add a gate to the fence
+        You may want to add a `gate`{=entity} to the fence
         to give yourself easier access.
     condition: |-
       def getTruthForSheepIndex = \predicateCmd. \i.
@@ -317,11 +317,12 @@ objectives:
 
       anySheep (has "clover") 3;
     prerequisite: enclose_sheep
-  - goal:
+  - teaser: Knit sweater
+    goal:
       - |
-        Yum! Contented, well-fed sheep may drop wool.
+        Yum! Contented, well-fed sheep may drop `wool`{=entity}.
       - |
-        Winter is coming! Collect three wool bundles to make a sweater.
+        Winter is coming! Collect three wool bundles to make a `sweater`{=entity}.
       - |
         Each sheep drops a finite amount over
         their lifetime.

@@ -32,7 +32,7 @@ objectives:
         However, his experiment is incomplete! He has forgotten one combination.
       - |
         Place the missing hybrid combination in the empty eastern-most column.
-        After you have done this, `place` the "bell" anywhere, and then Bill will inspect
+        After you have done this, `place` the `bell`{=entity} anywhere, and then Bill will inspect
         your work.
     prerequisite:
         not: wrong_anwser

@@ -13,13 +13,13 @@ import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
-import Swarm.TUI.Attr
 import Swarm.TUI.Border
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
+import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay (renderDisplay)
 import Swarm.TUI.View.Util qualified as VU
 import Swarm.Util (listEnums)

@@ -15,7 +15,7 @@ objectives:
     goal:
       - |
         This porcine pest has been running amok.
-        Block the pig by a "monolith" on all four sides to capture it.
+        Block the pig by a `monolith`{=entity} on all four sides to capture it.
       - Blocking on fewer than four sides will spook the pig, and he will escape!
     condition: |
       def isSurrounded = \n.
