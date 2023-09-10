@@ -174,7 +174,7 @@ weightedChoice weight as = do
 -- | Generate a random robot name in the form @adjective_name@.
 randomName :: Has (State GameState) sig m => m Text
 randomName = do
-  NameGenerator adjs names <- use @GameState nameGenerator
+  NameGenerator adjs names <- use $ robotNaming . nameGenerator
   i <- uniform (bounds adjs)
   j <- uniform (bounds names)
   return $ T.concat [adjs ! i, "_", names ! j]

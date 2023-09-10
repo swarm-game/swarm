@@ -51,6 +51,7 @@ module Swarm.Game.State (
   availableCommands,
   messageNotifications,
   allDiscoveredEntities,
+  robotNaming,
   gensym,
   seed,
   randGen,
@@ -403,6 +404,20 @@ data NameGenerator = NameGenerator
   , nameList :: Array Int Text
   }
 
+data RobotNaming = RobotNaming
+  { _nameGenerator :: NameGenerator
+  , _gensym :: Int
+  }
+
+makeLensesExcluding ['_nameGenerator] ''RobotNaming
+
+--- | Read-only list of words, for use in building random robot names.
+nameGenerator :: Getter RobotNaming NameGenerator
+nameGenerator = to _nameGenerator
+
+-- | A counter used to generate globally unique IDs.
+gensym :: Lens' RobotNaming Int
+
 data TemporalState = TemporalState
   { _gameStep :: Step
   , _runStatus :: RunStatus
@@ -475,10 +490,9 @@ data GameState = GameState
   , _allDiscoveredEntities :: Inventory
   , _availableRecipes :: Notifications (Recipe Entity)
   , _availableCommands :: Notifications Const
-  , _gensym :: Int
   , _seed :: Seed
   , _randGen :: StdGen
-  , _nameGenerator :: NameGenerator
+  , _robotNaming :: RobotNaming
   , _initiallyRunCode :: Maybe ProcessedTerm
   , _entityMap :: EntityMap
   , _recipesInfo :: Recipes
@@ -508,7 +522,7 @@ makeLensesFor
   ]
   ''GameState
 
-makeLensesExcluding ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots, '_nameGenerator] ''GameState
+makeLensesExcluding ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots] ''GameState
 
 -- | Is the user in creative mode (i.e. able to do anything without restriction)?
 creativeMode :: Lens' GameState Bool
@@ -595,18 +609,15 @@ activeRobots = internalActiveRobots
 waitingRobots :: Getter GameState (Map TickNumber [RID])
 waitingRobots = internalWaitingRobots
 
--- | A counter used to generate globally unique IDs.
-gensym :: Lens' GameState Int
-
 -- | The initial seed that was used for the random number generator,
 --   and world generation.
 seed :: Lens' GameState Seed
 
 -- | Pseudorandom generator initialized at start.
 randGen :: Lens' GameState StdGen
---- | Read-only list of words, for use in building random robot names.
-nameGenerator :: Getter GameState NameGenerator
-nameGenerator = to _nameGenerator
+
+-- | State and data for assigning identifiers to robots
+robotNaming :: Lens' GameState RobotNaming
 
 -- | Code that is run upon scenario start, before any
 -- REPL interaction.
@@ -879,7 +890,7 @@ clearFocusedRobotLogUpdated = do
 --   robots by location. Return the updated robot.
 addTRobot :: (Has (State GameState) sig m) => TRobot -> m Robot
 addTRobot r = do
-  rid <- gensym <+= 1
+  rid <- robotNaming . gensym <+= 1
   let r' = instantiateRobot rid r
   addRobot r'
   return r'
@@ -1087,13 +1098,16 @@ initGameState gsc =
     , _allDiscoveredEntities = empty
     , _activeRobots = IS.empty
     , _waitingRobots = M.empty
-    , _gensym = 0
     , _seed = 0
     , _randGen = mkStdGen 0
-    , _nameGenerator =
-        NameGenerator
-          { adjList = initAdjList gsc
-          , nameList = initNameList gsc
+    , _robotNaming =
+        RobotNaming
+          { _nameGenerator =
+              NameGenerator
+                { adjList = initAdjList gsc
+                , nameList = initNameList gsc
+                }
+          , _gensym = 0
           }
     , _initiallyRunCode = Nothing
     , _entityMap = initEntities gsc
@@ -1160,7 +1174,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       & robotsByLocation .~ M.map (groupRobotsByPlanarLocation . NE.toList) (groupRobotsBySubworld robotList')
       & internalActiveRobots .~ setOf (traverse . robotID) robotList'
       & availableCommands .~ Notifications 0 initialCommands
-      & gensym .~ initGensym
+      & robotNaming . gensym .~ initGensym
       & seed .~ theSeed
       & randGen .~ mkStdGen theSeed
       & initiallyRunCode .~ initialCodeToRun
