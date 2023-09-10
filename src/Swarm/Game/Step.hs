@@ -1237,7 +1237,7 @@ execConst c vs s k = do
           lookupEntityName name em
             `isJustOrFail` ["I've never heard of", indefiniteQ name <> "."]
 
-        outRs <- use recipesOut
+        outRs <- use $ recipesInfo . recipesOut
 
         creative <- use creativeMode
         let create l = l <> ["You can use 'create \"" <> name <> "\"' instead." | creative]
@@ -2029,7 +2029,7 @@ execConst c vs s k = do
 
   applyDevice ins verbPhrase d tool = do
     (nextLoc, nextE) <- getDeviceTarget verbPhrase d
-    inRs <- use recipesIn
+    inRs <- use $ recipesInfo . recipesIn
 
     let recipes = filter isApplicableRecipe (recipesFor inRs nextE)
         isApplicableRecipe = any ((== tool) . snd) . view recipeCatalysts
@@ -2801,7 +2801,7 @@ updateDiscoveredEntities e = do
 --   But it probably doesn't really make that much difference until we get up to thousands of recipes.
 updateAvailableRecipes :: Has (State GameState) sig m => (Inventory, Inventory) -> Entity -> m ()
 updateAvailableRecipes invs e = do
-  allInRecipes <- use recipesIn
+  allInRecipes <- use $ recipesInfo . recipesIn
   let entityRecipes = recipesFor allInRecipes e
       usableRecipes = filter (knowsIngredientsFor invs) entityRecipes
   knownRecipes <- use (availableRecipes . notificationsContent)

@@ -55,6 +55,7 @@ module Swarm.Game.State (
   nameList,
   initiallyRunCode,
   entityMap,
+  recipesInfo,
   recipesOut,
   recipesIn,
   recipesCat,
@@ -193,7 +194,7 @@ import Swarm.Language.Types
 import Swarm.Language.Value (Value)
 import Swarm.Util (applyWhen, binTuples, surfaceEmpty, uniq, (<+=), (<<.=), (?))
 import Swarm.Util.Erasable
-import Swarm.Util.Lens (makeLensesExcluding)
+import Swarm.Util.Lens (makeLensesExcluding, makeLensesNoSigs)
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 
@@ -361,6 +362,23 @@ data SingleStep
 -- | Game step mode - we use the single step mode when debugging robot 'CESK' machine.
 data Step = WorldTick | RobotStep SingleStep
 
+data Recipes = Recipes
+  { _recipesOut :: IntMap [Recipe Entity]
+  , _recipesIn :: IntMap [Recipe Entity]
+  , _recipesCat :: IntMap [Recipe Entity]
+  }
+
+makeLensesNoSigs ''Recipes
+
+-- | All recipes the game knows about, indexed by outputs.
+recipesOut :: Lens' Recipes (IntMap [Recipe Entity])
+
+-- | All recipes the game knows about, indexed by inputs.
+recipesIn :: Lens' Recipes (IntMap [Recipe Entity])
+
+-- | All recipes the game knows about, indexed by requirement/catalyst.
+recipesCat :: Lens' Recipes (IntMap [Recipe Entity])
+
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
@@ -402,9 +420,7 @@ data GameState = GameState
   , _nameList :: Array Int Text
   , _initiallyRunCode :: Maybe ProcessedTerm
   , _entityMap :: EntityMap
-  , _recipesOut :: IntMap [Recipe Entity]
-  , _recipesIn :: IntMap [Recipe Entity]
-  , _recipesCat :: IntMap [Recipe Entity]
+  , _recipesInfo :: Recipes
   , _currentScenarioPath :: Maybe FilePath
   , _knownEntities :: [Text]
   , _worldNavigation :: Navigation (M.Map SubworldName) Location
@@ -554,14 +570,8 @@ initiallyRunCode :: Lens' GameState (Maybe ProcessedTerm)
 -- | The catalog of all entities that the game knows about.
 entityMap :: Lens' GameState EntityMap
 
--- | All recipes the game knows about, indexed by outputs.
-recipesOut :: Lens' GameState (IntMap [Recipe Entity])
-
--- | All recipes the game knows about, indexed by inputs.
-recipesIn :: Lens' GameState (IntMap [Recipe Entity])
-
--- | All recipes the game knows about, indexed by requirement/catalyst.
-recipesCat :: Lens' GameState (IntMap [Recipe Entity])
+-- | Collection of recipe info
+recipesInfo :: Lens' GameState Recipes
 
 -- | The filepath of the currently running scenario.
 --
@@ -1049,9 +1059,12 @@ initGameState gsc =
     , _nameList = initNameList gsc
     , _initiallyRunCode = Nothing
     , _entityMap = initEntities gsc
-    , _recipesOut = outRecipeMap (initRecipes gsc)
-    , _recipesIn = inRecipeMap (initRecipes gsc)
-    , _recipesCat = catRecipeMap (initRecipes gsc)
+    , _recipesInfo =
+        Recipes
+          { _recipesOut = outRecipeMap (initRecipes gsc)
+          , _recipesIn = inRecipeMap (initRecipes gsc)
+          , _recipesCat = catRecipeMap (initRecipes gsc)
+          }
     , _currentScenarioPath = Nothing
     , _knownEntities = []
     , _worldNavigation = Navigation mempty mempty
@@ -1088,6 +1101,12 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
   now <- Clock.getTime Clock.Monotonic
   let robotList' = (robotCreatedAt .~ now) <$> robotList
 
+  let modifyRecipesInfo oldRecipesInfo =
+        oldRecipesInfo
+          & recipesOut %~ addRecipesWith outRecipeMap
+          & recipesIn %~ addRecipesWith inRecipeMap
+          & recipesCat %~ addRecipesWith catRecipeMap
+
   return $
     (initGameState gsc)
       { _focusedRobotID = baseID
@@ -1104,9 +1123,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       & randGen .~ mkStdGen theSeed
       & initiallyRunCode .~ initialCodeToRun
       & entityMap .~ em
-      & recipesOut %~ addRecipesWith outRecipeMap
-      & recipesIn %~ addRecipesWith inRecipeMap
-      & recipesCat %~ addRecipesWith catRecipeMap
+      & recipesInfo %~ modifyRecipesInfo
       & knownEntities .~ scenario ^. scenarioKnown
       & worldNavigation .~ scenario ^. scenarioNavigation
       & multiWorld .~ allSubworldsMap theSeed
