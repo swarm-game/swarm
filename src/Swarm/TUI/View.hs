@@ -790,7 +790,7 @@ availableListWidget :: GameState -> NotificationList -> Widget Name
 availableListWidget gs nl = padTop (Pad 1) $ vBox widgetList
  where
   widgetList = case nl of
-    RecipeList -> mkAvailableList gs availableRecipes renderRecipe
+    RecipeList -> mkAvailableList gs (discovery . availableRecipes) renderRecipe
     MessageList -> messagesWidget gs
   renderRecipe = padLeftRight 18 . drawRecipe Nothing (fromMaybe E.empty inv)
   inv = gs ^? to focusedRobot . _Just . robotInventory
@@ -816,7 +816,7 @@ commandsListWidget gs =
       , txt wikiCheatSheet
       ]
  where
-  commands = gs ^. availableCommands . notificationsContent
+  commands = gs ^. discovery . availableCommands . notificationsContent
   table =
     BT.renderTable
       . BT.surroundingBorder False
@@ -906,8 +906,8 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
     catMaybes
       [ Just (NoHighlight, "F1", "Help")
       , Just (NoHighlight, "F2", "Robots")
-      , notificationKey availableRecipes "F3" "Recipes"
-      , notificationKey availableCommands "F4" "Commands"
+      , notificationKey (discovery . availableRecipes) "F3" "Recipes"
+      , notificationKey (discovery . availableCommands) "F4" "Commands"
       , notificationKey messageNotifications "F5" "Messages"
       ]
 

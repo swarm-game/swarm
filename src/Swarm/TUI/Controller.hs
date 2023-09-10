@@ -317,12 +317,12 @@ handleMainEvent ev = do
             _ -> return ()
     FKey 1 -> toggleModal HelpModal
     FKey 2 -> toggleModal RobotsModal
-    FKey 3 | not (null (s ^. gameState . availableRecipes . notificationsContent)) -> do
+    FKey 3 | not (null (s ^. gameState . discovery . availableRecipes . notificationsContent)) -> do
       toggleModal RecipesModal
-      gameState . availableRecipes . notificationsCount .= 0
-    FKey 4 | not (null (s ^. gameState . availableCommands . notificationsContent)) -> do
+      gameState . discovery . availableRecipes . notificationsCount .= 0
+    FKey 4 | not (null (s ^. gameState . discovery . availableCommands . notificationsContent)) -> do
       toggleModal CommandsModal
-      gameState . availableCommands . notificationsCount .= 0
+      gameState . discovery . availableCommands . notificationsCount .= 0
     FKey 5 | not (null (s ^. gameState . messageNotifications . notificationsContent)) -> do
       toggleModal MessagesModal
       gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . temporal . ticks
@@ -741,7 +741,7 @@ zoomGameState f = do
 updateAchievements :: EventM Name AppState ()
 updateAchievements = do
   -- Merge the in-game achievements with the master list in UIState
-  achievementsFromGame <- use $ gameState . gameAchievements
+  achievementsFromGame <- use $ gameState . discovery . gameAchievements
   let wrappedGameAchievements = M.mapKeys GameplayAchievement achievementsFromGame
 
   oldMasterAchievementsList <- use $ uiState . uiAchievements
