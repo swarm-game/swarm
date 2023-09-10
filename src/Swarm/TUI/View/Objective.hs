@@ -34,12 +34,16 @@ renderGoalsDisplay :: GoalDisplay -> Widget Name
 renderGoalsDisplay gd =
   if hasMultiple
     then
-      hBox
-        [ leftSide
-        , hLimitPercent 70 $ padLeft (Pad 2) goalElaboration
+      vBox
+        [ hBox
+            [ leftSide
+            , hLimitPercent 70 $ padLeft (Pad 2) goalElaboration
+            ]
+        , footer
         ]
     else goalElaboration
  where
+  footer = hCenter $ withAttr italicAttr $ txt "NOTE: [Tab] toggles focus between panes"
   hasMultiple = hasMultipleGoals $ gd ^. goalsContent
   lw = _listWidget gd
   fr = _focus gd
