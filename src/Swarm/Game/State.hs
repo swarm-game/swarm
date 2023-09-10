@@ -447,6 +447,7 @@ robotStepsPerTick :: Lens' TemporalState Int
 data REPLData = REPLData
   { _replStatus :: REPLStatus
   , _replNextValueIndex :: Integer
+  , _inputHandler :: Maybe (Text, Value)
   }
 
 makeLensesNoSigs ''REPLData
@@ -456,6 +457,9 @@ replStatus :: Lens' REPLData REPLStatus
 
 -- | The index of the next it{index} value
 replNextValueIndex :: Lens' REPLData Integer
+
+-- | The currently installed input handler and hint text.
+inputHandler :: Lens' REPLData (Maybe (Text, Value))
 
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
@@ -505,7 +509,6 @@ data GameState = GameState
   , _viewCenter :: Cosmic Location
   , _needsRedraw :: Bool
   , _repl :: REPLData
-  , _inputHandler :: Maybe (Text, Value)
   , _messageInfo :: Messages
   , _focusedRobotID :: RID
   }
@@ -664,9 +667,6 @@ needsRedraw :: Lens' GameState Bool
 
 -- | Info about the REPL
 repl :: Lens' GameState REPLData
-
--- | The currently installed input handler and hint text.
-inputHandler :: Lens' GameState (Maybe (Text, Value))
 
 -- | Message info
 messageInfo :: Lens' GameState Messages
@@ -1129,8 +1129,8 @@ initGameState gsc =
         REPLData
           { _replStatus = REPLDone Nothing
           , _replNextValueIndex = 0
+          , _inputHandler = Nothing
           }
-    , _inputHandler = Nothing
     , _messageInfo =
         Messages
           { _messageQueue = Empty

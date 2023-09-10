@@ -1756,7 +1756,7 @@ execConst c vs s k = do
       _ -> badConst
     InstallKeyHandler -> case vs of
       [VText hint, handler] -> do
-        inputHandler .= Just (hint, handler)
+        repl . inputHandler .= Just (hint, handler)
         return $ Out VUnit s k
       _ -> badConst
     Reprogram -> case vs of
