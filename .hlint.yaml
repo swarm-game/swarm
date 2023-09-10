@@ -27,6 +27,7 @@
 - functions:
   - {name: Data.List.head, within: []}
   - {name: Prelude.head, within: []}
+  - {name: Data.List.NonEmpty.fromList, within: [Swarm.Util, Swarm.Util.Parse]}
 
 # Add custom hints for this project
 #

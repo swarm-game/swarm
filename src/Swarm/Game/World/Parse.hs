@@ -10,17 +10,15 @@
 -- Parser for the Swarm world description DSL.
 module Swarm.Game.World.Parse where
 
-import Control.Monad (MonadPlus, void)
+import Control.Monad (void)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
-import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Void
+import Data.Void (Void)
 import Data.Yaml (FromJSON (parseJSON), withText)
 import Swarm.Game.World.Syntax
 import Swarm.Util (failT, showT, squote)
-import Swarm.Util.Parse (fully)
+import Swarm.Util.Parse (fully, sepByNE)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
@@ -28,12 +26,6 @@ import Witch (into)
 
 type Parser = Parsec Void Text
 type ParserError = ParseErrorBundle Text Void
-
-------------------------------------------------------------
--- Utility
-
-sepByNE :: (MonadPlus m) => m a -> m sep -> m (NonEmpty a)
-sepByNE p sep = NE.fromList <$> p `sepBy1` sep
 
 ------------------------------------------------------------
 -- Lexing
