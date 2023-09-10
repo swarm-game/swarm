@@ -11,7 +11,7 @@ module Main where
 
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
-import Control.Lens (Ixed (ix), at, to, use, view, (&), (.~), (<>~), (^.), (^..), (^?!), (^?))
+import Control.Lens (Ixed (ix), at, to, use, view, (&), (.~), (<>~), (^.), (^..), (^?), (^?!))
 import Control.Monad (forM_, unless, when)
 import Control.Monad.State (StateT (runStateT), gets)
 import Data.Char (isSpace)
@@ -28,7 +28,7 @@ import Data.Text.IO qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Doc.Gen (EditorType (..))
 import Swarm.Doc.Gen qualified as DocGen
-import Swarm.Game.Achievement.Definitions (GameplayAchievement(..))
+import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
 import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
 import Swarm.Game.Entity (EntityMap, lookupByName)
 import Swarm.Game.Failure (SystemFailure)
@@ -41,6 +41,7 @@ import Swarm.Game.State (
   WinStatus (Won),
   activeRobots,
   baseRobot,
+  gameAchievements,
   messageQueue,
   notificationsContent,
   robotMap,
@@ -48,7 +49,6 @@ import Swarm.Game.State (
   waitingRobots,
   winCondition,
   winSolution,
-  gameAchievements,
  )
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.World.Typecheck (WorldMap)
@@ -247,11 +247,12 @@ testScenarioSolutions rs ui =
             ]
         ]
     , testGroup
-      "Achievements"
-      [ testSolution' Default "Testing/Achievements/RobotIntoWater" CheckForBadErrors $ \g ->
-          assertBool "Did not get RobotIntoWater achievement!"
-            (isJust $ g ^? gameAchievements . at RobotIntoWater)
-      ]
+        "Achievements"
+        [ testSolution' Default "Testing/Achievements/RobotIntoWater" CheckForBadErrors $ \g ->
+            assertBool
+              "Did not get RobotIntoWater achievement!"
+              (isJust $ g ^? gameAchievements . at RobotIntoWater)
+        ]
     , testGroup
         "Regression tests"
         [ testSolution Default "Testing/394-build-drill"
