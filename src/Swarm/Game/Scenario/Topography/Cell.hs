@@ -11,8 +11,8 @@ module Swarm.Game.Scenario.Topography.Cell (
 ) where
 
 import Control.Lens hiding (from, (.=), (<.>))
-import Control.Monad (when)
 import Control.Monad.Extra (mapMaybeM)
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, listToMaybe)
 import Data.Text (Text)
 import Data.Vector qualified as V
@@ -69,10 +69,12 @@ instance ToJSON Cell where
 
 instance FromJSONE (EntityMap, RobotMap) Cell where
   parseJSONE = withArrayE "tuple" $ \v -> do
-    let tup = V.toList v
-    when (null tup) $ fail "palette entry must nonzero length (terrain, optional entity and then robots if any)"
+    let tupRaw = V.toList v
+    tup <- case NE.nonEmpty tupRaw of
+      Nothing -> fail "palette entry must nonzero length (terrain, optional entity and then robots if any)"
+      Just x -> return x
 
-    terr <- liftE $ parseJSON (head tup)
+    terr <- liftE $ parseJSON (NE.head tup)
 
     ent <- case tup ^? ix 1 of
       Nothing -> return ENothing
@@ -87,7 +89,7 @@ instance FromJSONE (EntityMap, RobotMap) Cell where
           mrName <- liftE $ parseJSON @(Maybe RobotName) r
           traverse (localE snd . getRobot) mrName
 
-    robs <- mapMaybeM name2rob (drop 2 tup)
+    robs <- mapMaybeM name2rob (drop 2 tupRaw)
 
     return $ Cell terr ent robs
 
