@@ -26,18 +26,16 @@
 -- a dedicated `SystemLogEntry` type for 'RuntimeState'
 -- message queue.
 module Swarm.Game.Log (
+  Severity (..),
+  LogCommand (..),
   LogSource (..),
-  ErrorLevel (..),
-
-  -- * Robot log entries
-  LogEntry (..),
   LogLocation (..),
-  leText,
-  leSource,
-  leRobotName,
+  LogEntry (..),
   leTime,
+  leSource,
+  leName,
   leLocation,
-  leRobotID,
+  leText,
 ) where
 
 import Control.Lens hiding (contains)
@@ -50,35 +48,40 @@ import Swarm.Game.Universe (Cosmic)
 
 -- | Severity of the error - critical errors are bugs
 --   and should be reported as Issues.
-data ErrorLevel = Debug | Warning | Error | Critical
+data Severity = Info | Debug | Warning | Error | Critical
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
--- | Source of the robot log.
-data LogSource
-  = -- | Log produced by 'Swarm.Language.Syntax.Say'
+-- | Which robot command produced a log message.
+data LogCommand
+  = -- | Produced by 'Swarm.Language.Syntax.Say'
     Said
-  | -- | Log produced by 'Swarm.Language.Syntax.Log'
+  | -- | Produced by 'Swarm.Language.Syntax.Log'
     Logged
+  deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
+
+-- | Source of a log entry.
+data LogSource
+  = -- | Log produced by a robot.  Stores information about which
+    --   command was used, and the name and ID of the producing robot.
+    RobotLog LogCommand Text Int
   | -- | Log produced by an exception or system.
-    ErrorTrace ErrorLevel
+    SystemLog Severity
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
 data LogLocation a = Omnipresent | Located a
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
--- | An entry in a robot's log.
+-- | A log entry.
 data LogEntry = LogEntry
   { _leTime :: TickNumber
   -- ^ The time at which the entry was created.
   --   Note that this is the first field we sort on.
   , _leSource :: LogSource
-  -- ^ Whether this log records a said message.
-  , _leRobotName :: Text
-  -- ^ The name of the robot that generated the entry.
-  , _leRobotID :: Int
-  -- ^ The ID of the robot that generated the entry.
+  -- ^ Where this log message came from.
+  , _leName :: Text
+  -- ^ Name of the robot or subsystem that generated this log entry.
   , _leLocation :: LogLocation (Cosmic Location)
-  -- ^ Location of the robot at log entry creation.
+  -- ^ Location associated with this log message.
   , _leText :: Text
   -- ^ The text of the log entry.
   }

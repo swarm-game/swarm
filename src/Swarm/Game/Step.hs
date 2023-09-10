@@ -418,25 +418,27 @@ runCESK cesk = case finalValue cesk of
 -- Debugging
 ------------------------------------------------------------
 
--- | Create a log entry given current robot and game time in ticks noting whether it has been said.
+-- | Create a log entry given current robot and game time in ticks
+--   noting whether it has been said.
 --
---   This is the more generic version used both for (recorded) said messages and normal logs.
+--   This is the more generic version used both for (recorded) said
+--   messages and normal logs.
 createLogEntry ::
   (Has (State GameState) sig m, Has (State Robot) sig m) =>
-  LogSource ->
+  LogCommand ->
   Text ->
   m LogEntry
-createLogEntry source msg = do
+createLogEntry cmd msg = do
   rid <- use robotID
   rn <- use robotName
   time <- use ticks
   loc <- use robotLocation
-  pure $ LogEntry time source rn rid (Located loc) msg
+  pure $ LogEntry time (RobotLog cmd rn rid) (Located loc) msg
 
 -- | Print some text via the robot's log.
-traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => LogSource -> Text -> m LogEntry
-traceLog source msg = do
-  m <- createLogEntry source msg
+traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => LogCommand -> Text -> m LogEntry
+traceLog cmd msg = do
+  m <- createLogEntry cmd msg
   robotLog %= (Seq.|> m)
   return m
 

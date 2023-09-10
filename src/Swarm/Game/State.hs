@@ -689,15 +689,19 @@ messageNotifications = to getNotif
     -- other they have to get from log
     latestMsg = messageIsRecent gs
     closeMsg = messageIsFromNearby (gs ^. viewCenter)
+    generatedBy rid logEntry = case logEntry ^. leSource of
+      RobotLog _ _ rid' -> rid == rid'
+      _ -> False
+
     focusedOrLatestClose mq =
       (Seq.take 1 . Seq.reverse . Seq.filter closeMsg $ Seq.takeWhileR latestMsg mq)
-        <> Seq.filter ((== gs ^. focusedRobotID) . view leRobotID) mq
+        <> Seq.filter (generatedBy (gs ^. focusedRobotID)) mq
 
 messageIsRecent :: GameState -> LogEntry -> Bool
 messageIsRecent gs e = addTicks 1 (e ^. leTime) >= gs ^. ticks
 
 -- | Reconciles the possibilities of log messages being
--- omnipresent and robots being in different worlds
+--   omnipresent and robots being in different worlds
 messageIsFromNearby :: Cosmic Location -> LogEntry -> Bool
 messageIsFromNearby l e = case e ^. leLocation of
   Omnipresent -> True

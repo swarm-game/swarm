@@ -288,13 +288,13 @@ stdNameList :: Lens' RuntimeState (Array Int Text)
 -- Utility
 
 -- | Simply log to the runtime event log.
-logEvent :: LogSource -> (Text, RID) -> Text -> Notifications LogEntry -> Notifications LogEntry
-logEvent src (who, rid) msg el =
+logEvent :: LogSource -> Text -> Text -> Notifications LogEntry -> Notifications LogEntry
+logEvent src who msg el =
   el
     & notificationsCount %~ succ
     & notificationsContent %~ (l :)
  where
-  l = LogEntry (TickNumber 0) src who rid Omnipresent msg
+  l = LogEntry (TickNumber 0) src who Omnipresent msg
 
 -- | Create a 'GameStateConfig' record from the 'RuntimeState'.
 mkGameStateConfig :: RuntimeState -> GameStateConfig
