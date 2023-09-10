@@ -272,7 +272,7 @@ Feel free to open a pull request very early in the process, and mark
 it as a draft.  This way you can get feedback (and even allow others
 to contribute) as you go.
 
-#### Merging pull requests
+#### Pull request workflow
 
 Pull requests should be merged by the `mergify` bot rather than by
 hand. PRs will be merged as a single squashed commit, using the
@@ -280,9 +280,28 @@ title and description of the pull request, so make sure that they
 give a good overview of the content of the PR.
 
 This workflow is preferable because it makes sure that the changes
-pass _when merged_ not just in the possibly outdated branch.
+pass _when merged_, not just in the (possibly outdated) branch.
 
-To merge a pull request, just add the <kbd>merge me</kbd> label.
+Before being merged, a pull request must have at least one approving
+review (and no reviews marked "request changes"). To merge a pull
+request, just add the <kbd>merge me</kbd> label.  Our typical workflow
+is as follows:
+
+- A contributor opens a pull request from a branch, possibly marked as
+  a draft if it's still being worked on
+- Once the PR is ready for review, the contributor changes it from
+  draft to ready status, and (optionally) requests a review from one or
+  more other contributors.
+- If changes are requested, the contributor can continue pushing
+  additional commits to the PR branch.  Note that when merged, the PR
+  will be squashed into a single commit, so it's not particularly
+  important to have a clean commit history on the PR branch.
+- Often, if the reviewer has only minor changes to suggest, they can
+  leave some comments suggesting changes *and* approve the pull
+  request.  This indicates trust in the PR author to make appropriate
+  changes before merging.
+- Typically, the reviewer(s) will leave it to the original PR author
+  to apply the `merge me` label once they are happy with it.
 
 
 ## I have push access to the Swarm repository, now what?
@@ -309,10 +328,3 @@ generous in what you accept from newer contributors---the code can be
 fixed up later if necessary, and it's more important to help them feel
 welcome and that their contribution is valued.  More experienced
 contributors can be held to a higher standard.
-
-Having push access also means, of course, that you can push directly
-to `main`. You are welcome to do so for typos, small fixes,
-documentation improvements, and the like; for larger fixes, new
-features, _etc._ you should still open a pull request from a feature
-branch, to give a chance for others to offer suggestions for
-improvement.
