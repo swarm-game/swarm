@@ -43,7 +43,6 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Log (LogSource (SystemLog), Severity (..))
 import Swarm.Game.Scenario (loadScenario, scenarioAttrs, scenarioWorlds)
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
@@ -58,6 +57,7 @@ import Swarm.Game.ScenarioInfo (
  )
 import Swarm.Game.State
 import Swarm.Language.Pretty (prettyText)
+import Swarm.Log (LogSource (SystemLog), Severity (..))
 import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting

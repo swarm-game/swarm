@@ -67,7 +67,6 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Failure
 import Swarm.Game.Location
-import Swarm.Game.Log
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
@@ -93,6 +92,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
+import Swarm.Log
 import Swarm.Util hiding (both)
 import Swarm.Util.Effect (throwToMaybe)
 import Swarm.Util.WindowedCounter qualified as WC

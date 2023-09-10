@@ -143,7 +143,6 @@ import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Entity as E
 import Swarm.Game.Failure
-import Swarm.Game.Log
 import Swarm.Game.Recipe (Recipe, loadRecipes)
 import Swarm.Game.ResourceLoading (readAppData)
 import Swarm.Game.Robot
@@ -152,6 +151,7 @@ import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios, _SISingle)
 import Swarm.Game.State
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (WorldMap)
+import Swarm.Log
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name

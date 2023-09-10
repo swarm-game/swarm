@@ -31,7 +31,6 @@ import Swarm.Doc.Gen qualified as DocGen
 import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
 import Swarm.Game.Entity (EntityMap, lookupByName)
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Log
 import Swarm.Game.Robot (activityCounts, commandsHistogram, defReqs, equippedDevices, lifetimeStepCount, machine, robotContext, robotLog, systemRobot, tangibleCommandCount, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
@@ -53,6 +52,7 @@ import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty (prettyString)
+import Swarm.Log
 import Swarm.TUI.Model (
   RuntimeState,
   defaultAppOpts,

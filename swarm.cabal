@@ -111,13 +111,13 @@ library
                       Swarm.Game.Entity
                       Swarm.Game.Exception
                       Swarm.Game.Location
-                      Swarm.Game.Log
                       Swarm.Game.Recipe
                       Swarm.Game.ResourceLoading
                       Swarm.Game.Robot
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Topography.Cell
                       Swarm.Game.Universe
+                      Swarm.Log
                       Swarm.TUI.Launch.Controller
                       Swarm.TUI.Launch.Model
                       Swarm.TUI.Launch.Prep

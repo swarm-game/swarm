@@ -76,7 +76,6 @@ import Swarm.Game.CESK (CESK (..), TickNumber (..), addTicks)
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Location
-import Swarm.Game.Log
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (
@@ -101,6 +100,7 @@ import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
+import Swarm.Log
 import Swarm.TUI.Border
 import Swarm.TUI.Controller (ticksPerFrameCap)
 import Swarm.TUI.Editor.Model

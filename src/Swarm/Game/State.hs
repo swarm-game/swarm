@@ -165,7 +165,6 @@ import Swarm.Game.CESK (CESK (Waiting), TickNumber (..), addTicks, emptyStore, f
 import Swarm.Game.Entity
 import Swarm.Game.Failure (SystemFailure (..))
 import Swarm.Game.Location
-import Swarm.Game.Log
 import Swarm.Game.Recipe (
   Recipe,
   catRecipeMap,
@@ -192,6 +191,7 @@ import Swarm.Language.Syntax (Const, SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
+import Swarm.Log
 import Swarm.Util (applyWhen, binTuples, surfaceEmpty, uniq, (<+=), (<<.=), (?))
 import Swarm.Util.Erasable
 import Swarm.Util.Lens (makeLensesExcluding)

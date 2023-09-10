@@ -19,8 +19,8 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Log (LogSource (SystemLog), Severity (..))
 import Swarm.Language.Pretty (prettyText)
+import Swarm.Log (LogSource (SystemLog), Severity (..))
 import Swarm.ReadableIORef (mkReadonly)
 import Swarm.TUI.Controller
 import Swarm.TUI.Model

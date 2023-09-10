@@ -4,16 +4,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- XXX move this to Swarm.Log, update documentation to make it more
--- generic --- used both in robots as well as in RuntimeState.eventLog
---
--- XXX or make a separate 'SystemLogEntry' type, as suggested by the
--- TODO below?
---
 -- XXX Also make 'Notification' documentation more generic
---
--- XXX eventLog uses negative numbers for robot ID?  Make robot ID
--- optional perhaps?
 --
 -- A data type to represent in-game logs by robots.
 --
@@ -25,7 +16,7 @@
 -- logs, which is fun, but we should eventually make
 -- a dedicated `SystemLogEntry` type for 'RuntimeState'
 -- message queue.
-module Swarm.Game.Log (
+module Swarm.Log (
   Severity (..),
   RobotLogSource (..),
   LogSource (..),
