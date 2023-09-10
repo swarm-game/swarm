@@ -51,8 +51,8 @@ module Swarm.Game.State (
   gensym,
   seed,
   randGen,
-  adjList,
-  nameList,
+  NameGenerator (..),
+  nameGenerator,
   initiallyRunCode,
   entityMap,
   recipesInfo,
@@ -395,6 +395,12 @@ messageQueue :: Lens' Messages (Seq LogEntry)
 -- | Last time message queue has been viewed (used for notification).
 lastSeenMessageTime :: Lens' Messages TickNumber
 
+-- | Read-only lists of adjectives and words for use in building random robot names
+data NameGenerator = NameGenerator
+  { adjList :: Array Int Text
+  , nameList :: Array Int Text
+  }
+
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
@@ -432,8 +438,7 @@ data GameState = GameState
   , _gensym :: Int
   , _seed :: Seed
   , _randGen :: StdGen
-  , _adjList :: Array Int Text
-  , _nameList :: Array Int Text
+  , _nameGenerator :: NameGenerator
   , _initiallyRunCode :: Maybe ProcessedTerm
   , _entityMap :: EntityMap
   , _recipesInfo :: Recipes
@@ -466,7 +471,7 @@ makeLensesFor
   ]
   ''GameState
 
-makeLensesExcluding ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots, '_adjList, '_nameList] ''GameState
+makeLensesExcluding ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots, '_nameGenerator] ''GameState
 
 -- | Is the user in creative mode (i.e. able to do anything without restriction)?
 creativeMode :: Lens' GameState Bool
@@ -569,14 +574,9 @@ seed :: Lens' GameState Seed
 
 -- | Pseudorandom generator initialized at start.
 randGen :: Lens' GameState StdGen
-
--- | Read-only list of words, for use in building random robot names.
-adjList :: Getter GameState (Array Int Text)
-adjList = to _adjList
-
--- | Read-only list of words, for use in building random robot names.
-nameList :: Getter GameState (Array Int Text)
-nameList = to _nameList
+--- | Read-only list of words, for use in building random robot names.
+nameGenerator :: Getter GameState NameGenerator
+nameGenerator = to _nameGenerator
 
 -- | Code that is run upon scenario start, before any
 -- REPL interaction.
@@ -1065,8 +1065,11 @@ initGameState gsc =
     , _gensym = 0
     , _seed = 0
     , _randGen = mkStdGen 0
-    , _adjList = initAdjList gsc
-    , _nameList = initNameList gsc
+    , _nameGenerator =
+        NameGenerator
+          { adjList = initAdjList gsc
+          , nameList = initNameList gsc
+          }
     , _initiallyRunCode = Nothing
     , _entityMap = initEntities gsc
     , _recipesInfo =
