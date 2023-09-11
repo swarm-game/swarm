@@ -106,11 +106,18 @@ getEditedMapRectangle ::
   [[CellPaintDisplay]]
 getEditedMapRectangle _ Nothing _ = []
 getEditedMapRectangle worldEditor (Just (Cosmic subworldName coords)) w =
+  getMapRectangle getContent coords
+ where
+  getContent = getContentAt worldEditor w . Cosmic subworldName
+
+getMapRectangle ::
+  (W.Coords -> (TerrainType, Maybe EntityPaint)) ->
+  W.BoundsRectangle ->
+  [[CellPaintDisplay]]
+getMapRectangle contentFunc coords =
   map renderRow [yTop .. yBottom]
  where
   (W.Coords (yTop, xLeft), W.Coords (yBottom, xRight)) = coords
-
-  getContent = getContentAt worldEditor w . Cosmic subworldName
 
   drawCell :: Int32 -> Int32 -> CellPaintDisplay
   drawCell rowIndex colIndex =
@@ -119,6 +126,6 @@ getEditedMapRectangle worldEditor (Just (Cosmic subworldName coords)) w =
       (toFacade <$> maybeToErasable erasableEntity)
       []
    where
-    (terrain, erasableEntity) = getContent $ W.Coords (rowIndex, colIndex)
+    (terrain, erasableEntity) = contentFunc $ W.Coords (rowIndex, colIndex)
 
   renderRow rowIndex = map (drawCell rowIndex) [xLeft .. xRight]

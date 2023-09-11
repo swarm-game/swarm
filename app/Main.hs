@@ -29,6 +29,7 @@ import System.Console.Terminal.Size qualified as Term
 import System.Exit (exitFailure)
 import System.IO (hPrint, stderr)
 import Text.Read (readMaybe)
+import Swarm.Game.World.Render (renderScenarioMap)
 
 gitInfo :: Maybe GitInfo
 gitInfo = either (const Nothing) Just ($$tGitInfoCwdTry)
@@ -44,7 +45,7 @@ data CLI
   = Run AppOpts
   | Format Input (Maybe Width)
   | DocGen GenerateDocs
-  | RenderMap
+  | RenderMap FilePath
   | LSP
   | Version
 
@@ -54,6 +55,7 @@ cliParser =
     ( mconcat
         [ command "format" (info (Format <$> format <*> optional widthOpt <**> helper) (progDesc "Format a file"))
         , command "generate" (info (DocGen <$> docgen <**> helper) (progDesc "Generate docs"))
+        , command "map" (info (RenderMap <$> strArgument (metavar "FILE")) (progDesc "Render a scenario world map."))
         , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
         ]
@@ -86,6 +88,7 @@ cliParser =
       , command "cheatsheet" (info (CheatSheet <$> address <*> cheatsheet <**> helper) $ progDesc "Output nice Wiki tables")
       , command "pedagogy" (info (pure TutorialCoverage) $ progDesc "Output tutorial coverage")
       ]
+
   editor :: Parser (Maybe EditorType)
   editor =
     Data.Foldable.asum
@@ -197,5 +200,6 @@ main = do
     Run opts -> appMain opts
     DocGen g -> generateDocs g
     Format fo w -> formatFile fo w
+    RenderMap mapPath -> renderScenarioMap mapPath
     LSP -> lspMain
     Version -> showVersion
