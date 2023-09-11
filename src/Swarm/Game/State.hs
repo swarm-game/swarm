@@ -388,6 +388,7 @@ recipesCat :: Lens' Recipes (IntMap [Recipe Entity])
 data Messages = Messages
   { _messageQueue :: Seq LogEntry
   , _lastSeenMessageTime :: TickNumber
+  , _announcementQueue :: Seq Announcement
   }
 
 makeLensesNoSigs ''Messages
@@ -399,6 +400,13 @@ messageQueue :: Lens' Messages (Seq LogEntry)
 
 -- | Last time message queue has been viewed (used for notification).
 lastSeenMessageTime :: Lens' Messages TickNumber
+
+-- | A queue of global announcements.
+-- Note that this is distinct from the "messageQueue",
+-- which is for messages emitted by robots.
+--
+-- Note that we put the newest entry to the right.
+announcementQueue :: Lens' Messages (Seq Announcement)
 
 -- | Read-only lists of adjectives and words for use in building random robot names
 data NameGenerator = NameGenerator
@@ -523,7 +531,6 @@ data GameState = GameState
   , _temporal :: TemporalState
   , _winCondition :: WinCondition
   , _winSolution :: Maybe ProcessedTerm
-  , _announcementQueue :: Seq Announcement
   , _robotMap :: IntMap Robot
   , -- A set of robots to consider for the next game tick. It is guaranteed to
     -- be a subset of the keys of robotMap. It may contain waiting or idle
@@ -586,13 +593,6 @@ winCondition :: Lens' GameState WinCondition
 -- | How to win (if possible). This is useful for automated testing
 --   and to show help to cheaters (or testers).
 winSolution :: Lens' GameState (Maybe ProcessedTerm)
-
--- | A queue of global announcements.
--- Note that this is distinct from the "messageQueue",
--- which is for messages emitted by robots.
---
--- Note that we put the newest entry to the right.
-announcementQueue :: Lens' GameState (Seq Announcement)
 
 -- | All the robots that currently exist in the game, indexed by ID.
 robotMap :: Lens' GameState (IntMap Robot)
@@ -1106,7 +1106,6 @@ initGameState gsc =
           }
     , _winCondition = NoWinCondition
     , _winSolution = Nothing
-    , _announcementQueue = mempty
     , _robotMap = IM.empty
     , _robotsByLocation = M.empty
     , _robotsWatching = mempty
@@ -1161,6 +1160,7 @@ initGameState gsc =
         Messages
           { _messageQueue = Empty
           , _lastSeenMessageTime = TickNumber (-1)
+          , _announcementQueue = mempty
           }
     , _focusedRobotID = 0
     }

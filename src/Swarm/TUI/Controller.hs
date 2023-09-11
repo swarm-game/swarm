@@ -889,7 +889,7 @@ doGoalUpdates = do
   curGoal <- use (uiState . uiGoal . goalsContent)
   isCheating <- use (uiState . uiCheatMode)
   curWinCondition <- use (gameState . winCondition)
-  announcementsSeq <- use (gameState . announcementQueue)
+  announcementsSeq <- use (gameState . messageInfo . announcementQueue)
   let announcementsList = toList announcementsSeq
 
   -- Decide whether we need to update the current goal text and pop
@@ -950,7 +950,7 @@ doGoalUpdates = do
 
         -- This clears the "flag" that indicate that the goals dialog needs to be
         -- automatically popped up.
-        gameState . announcementQueue .= mempty
+        gameState . messageInfo . announcementQueue .= mempty
 
         hideGoals <- use $ uiState . uiHideGoals
         unless hideGoals $
