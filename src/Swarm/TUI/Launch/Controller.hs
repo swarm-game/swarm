@@ -147,12 +147,12 @@ handleLaunchOptionsEvent siPair = \case
         e <- use $ uiState . uiLaunchConfig . editingParams
         uiState . uiLaunchConfig . editingParams
           .= ( e
-                 { initialCode =
-                     maybe
-                       (Left $ T.pack "No solution.")
-                       (Right . Just . CodeToRun ScenarioSuggested)
-                       solution
-                 }
+                { initialCode =
+                    maybe
+                      (Left $ T.pack "No solution.")
+                      (Right . Just . CodeToRun ScenarioSuggested)
+                      solution
+                }
              )
       _ -> return ()
   Key V.KEsc -> closeModal
@@ -165,28 +165,28 @@ handleLaunchOptionsEvent siPair = \case
         Brick.zoom (controls . seedValueEditor) (handleEditorEvent ev)
         cacheValidatedSeedInput
       _ -> return ()
-  where
-    activateControl = do
-      fr <- use $ uiState . uiLaunchConfig . controls . scenarioConfigFocusRing
-      case focusGetCurrent fr of
-        Just (ScenarioConfigControl (ScenarioConfigPanelControl item)) ->
-          activateFocusedControl item
-        _ -> return ()
+ where
+  activateControl = do
+    fr <- use $ uiState . uiLaunchConfig . controls . scenarioConfigFocusRing
+    case focusGetCurrent fr of
+      Just (ScenarioConfigControl (ScenarioConfigPanelControl item)) ->
+        activateFocusedControl item
+      _ -> return ()
 
-    activateFocusedControl item = case item of
-      SeedSelector -> return ()
-      AutoPlaySelector ->
-        uiState . uiLaunchConfig . controls . autoPlayCheck %= not
-      ScriptSelector -> Brick.zoom (uiState . uiLaunchConfig . controls . fileBrowser) $ do
-        maybeSingleFile <- use maybeSelectedFile
-        configuredFB <- initFileBrowserWidget maybeSingleFile
-        fbWidget .= configuredFB
-        fbIsDisplayed .= True
-      StartGameButton -> do
-        params <- use $ uiState . uiLaunchConfig . editingParams
-        let eitherLaunchParams = toValidatedParams params
-        forM_ eitherLaunchParams $ \launchParams -> do
-          closeModal
-          startGameWithSeed siPair launchParams
+  activateFocusedControl item = case item of
+    SeedSelector -> return ()
+    AutoPlaySelector ->
+      uiState . uiLaunchConfig . controls . autoPlayCheck %= not
+    ScriptSelector -> Brick.zoom (uiState . uiLaunchConfig . controls . fileBrowser) $ do
+      maybeSingleFile <- use maybeSelectedFile
+      configuredFB <- initFileBrowserWidget maybeSingleFile
+      fbWidget .= configuredFB
+      fbIsDisplayed .= True
+    StartGameButton -> do
+      params <- use $ uiState . uiLaunchConfig . editingParams
+      let eitherLaunchParams = toValidatedParams params
+      forM_ eitherLaunchParams $ \launchParams -> do
+        closeModal
+        startGameWithSeed siPair launchParams
 
-    closeModal = uiState . uiLaunchConfig . controls . isDisplayedFor .= Nothing
+  closeModal = uiState . uiLaunchConfig . controls . isDisplayedFor .= Nothing

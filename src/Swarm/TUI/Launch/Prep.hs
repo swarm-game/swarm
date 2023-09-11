@@ -55,7 +55,7 @@ parseWidgetParams :: LaunchControls -> IO EditingLaunchParams
 parseWidgetParams (LaunchControls _autoPlay (FileBrowserControl _fb maybeSelectedScript _) seedEditor _ _) = do
   eitherParsedCode <-
     runThrow . withThrow (prettyText @SystemFailure) $
-          traverse parseCodeFile maybeSelectedScript
+      traverse parseCodeFile maybeSelectedScript
   return $ LaunchParams eitherMaybeSeed eitherParsedCode
  where
   eitherMaybeSeed = parseSeedInput seedEditor
