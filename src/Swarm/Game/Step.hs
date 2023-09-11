@@ -305,7 +305,7 @@ hypotheticalWinCheck em g ws oc = do
       grantAchievement LoseScenario
     _ -> return ()
 
-  announcementQueue %= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
+  messageInfo . announcementQueue %= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
 
   mapM_ handleException $ exceptions finalAccumulator
  where
