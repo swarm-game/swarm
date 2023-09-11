@@ -505,6 +505,7 @@ gameAchievements :: Lens' Discovery (Map GameplayAchievement Attainment)
 data Landscape = Landscape
   { _worldNavigation :: Navigation (M.Map SubworldName) Location
   , _multiWorld :: W.MultiWorld Int Entity
+  , _entityMap :: EntityMap
   , _worldScrollable :: Bool
   }
 
@@ -519,6 +520,9 @@ worldNavigation :: Lens' Landscape (Navigation (M.Map SubworldName) Location)
 --   'TerrainType' because we need to be able to store terrain values in
 --   unboxed tile arrays.
 multiWorld :: Lens' Landscape (W.MultiWorld Int Entity)
+
+-- | The catalog of all entities that the game knows about.
+entityMap :: Lens' Landscape EntityMap
 
 -- | Whether the world map is supposed to be scrollable or not.
 worldScrollable :: Lens' Landscape Bool
@@ -555,7 +559,6 @@ data GameState = GameState
   , _seed :: Seed
   , _randGen :: StdGen
   , _robotNaming :: RobotNaming
-  , _entityMap :: EntityMap
   , _recipesInfo :: Recipes
   , _currentScenarioPath :: Maybe FilePath
   , _landscape :: Landscape
@@ -659,9 +662,6 @@ randGen :: Lens' GameState StdGen
 
 -- | State and data for assigning identifiers to robots
 robotNaming :: Lens' GameState RobotNaming
-
--- | The catalog of all entities that the game knows about.
-entityMap :: Lens' GameState EntityMap
 
 -- | Collection of recipe info
 recipesInfo :: Lens' GameState Recipes
@@ -1132,7 +1132,6 @@ initGameState gsc =
                 }
           , _gensym = 0
           }
-    , _entityMap = initEntities gsc
     , _recipesInfo =
         Recipes
           { _recipesOut = outRecipeMap (initRecipes gsc)
@@ -1144,6 +1143,7 @@ initGameState gsc =
         Landscape
           { _worldNavigation = Navigation mempty mempty
           , _multiWorld = mempty
+          , _entityMap = initEntities gsc
           , _worldScrollable = True
           }
     , _viewCenterRule = VCRobot 0
@@ -1204,8 +1204,8 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       & robotNaming . gensym .~ initGensym
       & seed .~ theSeed
       & randGen .~ mkStdGen theSeed
-      & entityMap .~ em
       & recipesInfo %~ modifyRecipesInfo
+      & landscape . entityMap .~ em
       & landscape . worldNavigation .~ scenario ^. scenarioNavigation
       & landscape . multiWorld .~ allSubworldsMap theSeed
       -- TODO (#1370): Should we allow subworlds to have their own scrollability?

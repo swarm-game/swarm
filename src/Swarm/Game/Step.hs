@@ -143,7 +143,7 @@ gameTick = do
     case wc of
       WinConditions winState oc -> do
         g <- get @GameState
-        em <- use entityMap
+        em <- use $ landscape . entityMap
         hypotheticalWinCheck em g winState oc
       _ -> pure ()
   return ticked
@@ -729,7 +729,7 @@ stepCESK cesk = case cesk of
   -- listing the requirements of the given expression.
   Out (VRequirements src t _) s (FExec : k) -> do
     currentContext <- use $ robotContext . defReqs
-    em <- use entityMap
+    em <- use $ landscape . entityMap
     let (R.Requirements caps devs inv, _) = R.requirements currentContext t
 
         devicesForCaps, requiredDevices :: Set (Set Text)
@@ -889,7 +889,7 @@ stepCESK cesk = case cesk of
     -- cells which were in the middle of being evaluated will be reset.
     let s' = resetBlackholes s
     h <- hasCapability CLog
-    em <- use entityMap
+    em <- use $ landscape . entityMap
     if h
       then do
         void $ traceLog (ErrorTrace Error) (formatExn em exn)
@@ -1233,7 +1233,7 @@ execConst c vs s k = do
       [VText name] -> do
         inv <- use robotInventory
         ins <- use equippedDevices
-        em <- use entityMap
+        em <- use $ landscape . entityMap
         e <-
           lookupEntityName name em
             `isJustOrFail` ["I've never heard of", indefiniteQ name <> "."]
@@ -1616,7 +1616,7 @@ execConst c vs s k = do
       _ -> badConst
     Create -> case vs of
       [VText name] -> do
-        em <- use entityMap
+        em <- use $ landscape . entityMap
         e <-
           lookupEntityName name em
             `isJustOrFail` ["I've never heard of", indefiniteQ name <> "."]
@@ -1899,7 +1899,7 @@ execConst c vs s k = do
 
             -- Copy over the salvaged robot's log, if we have one
             inst <- use equippedDevices
-            em <- use entityMap
+            em <- use $ landscape . entityMap
             isPrivileged <- isPrivilegedBot
             logger <-
               lookupEntityName "logger" em
@@ -2232,7 +2232,7 @@ execConst c vs s k = do
     m (Set Entity, Inventory)
   checkRequirements parentInventory childInventory childDevices cmd subject fixI = do
     currentContext <- use $ robotContext . defReqs
-    em <- use entityMap
+    em <- use $ landscape . entityMap
     creative <- use creativeMode
     let -- Note that _capCtx must be empty: at least at the
         -- moment, definitions are only allowed at the top level,
@@ -2506,7 +2506,7 @@ execConst c vs s k = do
     let yieldName = e ^. entityYields
     e' <- case yieldName of
       Nothing -> return e
-      Just n -> fromMaybe e <$> uses entityMap (lookupEntityName n)
+      Just n -> fromMaybe e <$> uses (landscape . entityMap) (lookupEntityName n)
 
     robotInventory %= insert e'
     updateDiscoveredEntities e'
