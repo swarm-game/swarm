@@ -1160,7 +1160,7 @@ handleREPLEventTyping = \case
       CharKey '\t' -> do
         s <- get
         let names = s ^.. gameState . baseRobot . robotContext . defTypes . to assocs . traverse . _1
-        uiState . uiREPL %= tabComplete names (s ^. gameState . entityMap)
+        uiState . uiREPL %= tabComplete names (s ^. gameState . landscape . entityMap)
         modify validateREPLForm
       EscapeKey -> do
         formSt <- use $ uiState . uiREPL . replPromptType
