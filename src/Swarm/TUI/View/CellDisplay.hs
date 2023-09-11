@@ -56,7 +56,7 @@ displayTerrainCell ::
   Cosmic W.Coords ->
   Display
 displayTerrainCell worldEditor g coords =
-  terrainMap M.! EU.getTerrainAt worldEditor (g ^. multiWorld) coords
+  terrainMap M.! EU.getTerrainAt worldEditor (g ^. landscape . multiWorld) coords
 
 displayRobotCell ::
   GameState ->
@@ -70,7 +70,7 @@ displayEntityCell :: WorldEditor Name -> GameState -> Cosmic W.Coords -> [Displa
 displayEntityCell worldEditor g coords =
   maybeToList $ displayForEntity <$> maybeEntity
  where
-  (_, maybeEntity) = EU.getContentAt worldEditor (g ^. multiWorld) coords
+  (_, maybeEntity) = EU.getContentAt worldEditor (g ^. landscape . multiWorld) coords
 
   displayForEntity :: EntityPaint -> Display
   displayForEntity e = (if known e then id else hidden) $ getDisplay e

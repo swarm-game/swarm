@@ -125,10 +125,10 @@ zoomWorld ::
   StateC (W.World Int Entity) Identity b ->
   m (Maybe b)
 zoomWorld swName n = do
-  mw <- use multiWorld
+  mw <- use $ landscape . multiWorld
   forM (M.lookup swName mw) $ \w -> do
     let (w', a) = run (runState w n)
-    multiWorld %= M.insert swName w'
+    landscape . multiWorld %= M.insert swName w'
     return a
 
 -- | Get the entity (if any) at a given location.
