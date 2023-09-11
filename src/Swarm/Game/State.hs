@@ -450,6 +450,7 @@ data GameControls = GameControls
   { _replStatus :: REPLStatus
   , _replNextValueIndex :: Integer
   , _inputHandler :: Maybe (Text, Value)
+  , _initiallyRunCode :: Maybe ProcessedTerm
   }
 
 makeLensesNoSigs ''GameControls
@@ -462,6 +463,10 @@ replNextValueIndex :: Lens' GameControls Integer
 
 -- | The currently installed input handler and hint text.
 inputHandler :: Lens' GameControls (Maybe (Text, Value))
+
+-- | Code that is run upon scenario start, before any
+-- REPL interaction.
+initiallyRunCode :: Lens' GameControls (Maybe ProcessedTerm)
 
 data Discovery = Discovery
   { _allDiscoveredEntities :: Inventory
@@ -543,7 +548,6 @@ data GameState = GameState
   , _seed :: Seed
   , _randGen :: StdGen
   , _robotNaming :: RobotNaming
-  , _initiallyRunCode :: Maybe ProcessedTerm
   , _entityMap :: EntityMap
   , _recipesInfo :: Recipes
   , _currentScenarioPath :: Maybe FilePath
@@ -655,10 +659,6 @@ randGen :: Lens' GameState StdGen
 
 -- | State and data for assigning identifiers to robots
 robotNaming :: Lens' GameState RobotNaming
-
--- | Code that is run upon scenario start, before any
--- REPL interaction.
-initiallyRunCode :: Lens' GameState (Maybe ProcessedTerm)
 
 -- | The catalog of all entities that the game knows about.
 entityMap :: Lens' GameState EntityMap
@@ -1133,7 +1133,6 @@ initGameState gsc =
                 }
           , _gensym = 0
           }
-    , _initiallyRunCode = Nothing
     , _entityMap = initEntities gsc
     , _recipesInfo =
         Recipes
@@ -1156,6 +1155,7 @@ initGameState gsc =
           { _replStatus = REPLDone Nothing
           , _replNextValueIndex = 0
           , _inputHandler = Nothing
+          , _initiallyRunCode = Nothing
           }
     , _messageInfo =
         Messages
@@ -1204,7 +1204,6 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       & robotNaming . gensym .~ initGensym
       & seed .~ theSeed
       & randGen .~ mkStdGen theSeed
-      & initiallyRunCode .~ initialCodeToRun
       & entityMap .~ em
       & recipesInfo %~ modifyRecipesInfo
       & landscape . worldNavigation .~ scenario ^. scenarioNavigation
@@ -1214,6 +1213,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       -- as being universal.
       & landscape . worldScrollable .~ NE.head (scenario ^. scenarioWorlds) ^. to scrollable
       & viewCenterRule .~ VCRobot baseID
+      & gameControls . initiallyRunCode .~ initialCodeToRun
       & gameControls . replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
       -- otherwise the store of definition cells is not saved (see #333, #838)
         False -> REPLDone Nothing

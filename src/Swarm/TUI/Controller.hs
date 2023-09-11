@@ -515,7 +515,7 @@ getNormalizedCurrentScenarioPath =
 
 saveScenarioInfoOnFinish :: (MonadIO m, MonadState AppState m) => FilePath -> m (Maybe ScenarioInfo)
 saveScenarioInfoOnFinish p = do
-  initialRunCode <- use $ gameState . initiallyRunCode
+  initialRunCode <- use $ gameState . gameControls . initiallyRunCode
   t <- liftIO getZonedTime
   wc <- use $ gameState . winCondition
   let won = case wc of
