@@ -804,10 +804,10 @@ updateUI = do
       else pure False
 
   -- Now check if the base finished running a program entered at the REPL.
-  replUpdated <- case g ^. repl . replStatus of
+  replUpdated <- case g ^. gameControls . replStatus of
     -- It did, and the result was the unit value.  Just reset replStatus.
     REPLWorking (Typed (Just VUnit) typ reqs) -> do
-      gameState . repl . replStatus .= REPLDone (Just $ Typed VUnit typ reqs)
+      gameState . gameControls . replStatus .= REPLDone (Just $ Typed VUnit typ reqs)
       pure True
 
     -- It did, and returned some other value.  Pretty-print the
@@ -815,15 +815,15 @@ updateUI = do
     REPLWorking (Typed (Just v) pty reqs) -> do
       let finalType = stripCmd pty
       let val = Typed (stripVResult v) finalType reqs
-      itIx <- use (gameState . repl . replNextValueIndex)
+      itIx <- use (gameState . gameControls . replNextValueIndex)
       let itName = fromString $ "it" ++ show itIx
       let out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
       uiState . uiREPL . replHistory %= addREPLItem (REPLOutput out)
       invalidateCacheEntry REPLHistoryCache
       vScrollToEnd replScroll
-      gameState . repl . replStatus .= REPLDone (Just val)
+      gameState . gameControls . replStatus .= REPLDone (Just val)
       gameState . baseRobot . robotContext . at itName .= Just val
-      gameState . repl . replNextValueIndex %= (+ 1)
+      gameState . gameControls . replNextValueIndex %= (+ 1)
       pure True
 
     -- Otherwise, do nothing.
@@ -1004,7 +1004,7 @@ handleREPLEvent x = do
                 uiState . uiREPL . replHistory %= addREPLItem err
                 invalidateCacheEntry REPLHistoryCache
     MetaChar 'k' -> do
-      when (isJust (s ^. gameState . repl . inputHandler)) $ do
+      when (isJust (s ^. gameState . gameControls . inputHandler)) $ do
         curMode <- use $ uiState . uiREPL . replControlMode
         (uiState . uiREPL . replControlMode) .= case curMode of Handling -> Typing; _ -> Handling
 
@@ -1022,7 +1022,7 @@ handleREPLEvent x = do
 -- | Run the installed input handler on a key combo entered by the user.
 runInputHandler :: KeyCombo -> EventM Name AppState ()
 runInputHandler kc = do
-  mhandler <- use $ gameState . repl . inputHandler
+  mhandler <- use $ gameState . gameControls . inputHandler
   case mhandler of
     -- Shouldn't be possible to get here if there is no input handler, but
     -- if we do somehow, just do nothing.
@@ -1031,7 +1031,7 @@ runInputHandler kc = do
       -- Make sure the base is currently idle; if so, apply the
       -- installed input handler function to a `key` value
       -- representing the typed input.
-      working <- use $ gameState . repl . replWorking
+      working <- use $ gameState . gameControls . replWorking
       unless working $ do
         s <- get
         let topCtx = topContext s
@@ -1075,7 +1075,7 @@ runBaseWebCode :: (MonadState AppState m) => T.Text -> m ()
 runBaseWebCode uinput = do
   s <- get
   let topCtx = topContext s
-  unless (s ^. gameState . repl . replWorking) $
+  unless (s ^. gameState . gameControls . replWorking) $
     runBaseCode topCtx uinput
 
 runBaseCode :: (MonadState AppState m) => RobotContext -> T.Text -> m ()
@@ -1098,7 +1098,7 @@ runBaseTerm topCtx =
   -- input is valid) and sets up the base robot to run it.
   startBaseProgram t@(ProcessedTerm (Module tm _) reqs reqCtx) =
     -- Set the REPL status to Working
-    (gameState . repl . replStatus .~ REPLWorking (Typed Nothing (tm ^. sType) reqs))
+    (gameState . gameControls . replStatus .~ REPLWorking (Typed Nothing (tm ^. sType) reqs))
       -- The `reqCtx` maps names of variables defined in the
       -- term (by `def` statements) to their requirements.
       -- E.g. if we had `def m = move end`, the reqCtx would
@@ -1133,7 +1133,7 @@ handleREPLEventTyping = \case
             theRepl = s ^. uiState . uiREPL
             uinput = theRepl ^. replPromptText
 
-        if not $ s ^. gameState . repl . replWorking
+        if not $ s ^. gameState . gameControls . replWorking
           then case theRepl ^. replPromptType of
             CmdPrompt _ -> do
               runBaseCode topCtx uinput
@@ -1252,7 +1252,7 @@ validateREPLForm s =
   case replPrompt of
     CmdPrompt _
       | T.null uinput ->
-          let theType = s ^. gameState . repl . replStatus . replActiveType
+          let theType = s ^. gameState . gameControls . replStatus . replActiveType
            in s & uiState . uiREPL . replType .~ theType
     CmdPrompt _
       | otherwise ->
@@ -1443,7 +1443,7 @@ makeEntity e = do
 
   case isActive <$> (s ^? gameState . baseRobot) of
     Just False -> do
-      gameState . repl . replStatus .= REPLWorking (Typed Nothing PolyUnit (R.singletonCap CMake))
+      gameState . gameControls . replStatus .= REPLWorking (Typed Nothing PolyUnit (R.singletonCap CMake))
       gameState . baseRobot . machine .= initMachine mkPT empty topStore
       gameState %= execState (activateRobot 0)
     _ -> continueWithoutRedraw

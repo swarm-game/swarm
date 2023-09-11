@@ -124,11 +124,11 @@ gameTick = do
   mr <- use (robotMap . at 0)
   case mr of
     Just r -> do
-      res <- use $ repl . replStatus
+      res <- use $ gameControls . replStatus
       case res of
         REPLWorking (Typed Nothing ty req) -> case getResult r of
           Just (v, s) -> do
-            repl . replStatus .= REPLWorking (Typed (Just v) ty req)
+            gameControls . replStatus .= REPLWorking (Typed (Just v) ty req)
             baseRobot . robotContext . defStore .= s
           Nothing -> pure ()
         _otherREPLStatus -> pure ()
@@ -1756,7 +1756,7 @@ execConst c vs s k = do
       _ -> badConst
     InstallKeyHandler -> case vs of
       [VText hint, handler] -> do
-        repl . inputHandler .= Just (hint, handler)
+        gameControls . inputHandler .= Just (hint, handler)
         return $ Out VUnit s k
       _ -> badConst
     Reprogram -> case vs of

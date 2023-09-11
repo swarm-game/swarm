@@ -73,7 +73,7 @@ module Swarm.Game.State (
   viewCenterRule,
   viewCenter,
   needsRedraw,
-  repl,
+  gameControls,
   replStatus,
   replNextValueIndex,
   replWorking,
@@ -446,22 +446,22 @@ ticks :: Lens' TemporalState TickNumber
 --   a single tick.
 robotStepsPerTick :: Lens' TemporalState Int
 
-data REPLData = REPLData
+data GameControls = GameControls
   { _replStatus :: REPLStatus
   , _replNextValueIndex :: Integer
   , _inputHandler :: Maybe (Text, Value)
   }
 
-makeLensesNoSigs ''REPLData
+makeLensesNoSigs ''GameControls
 
 -- | The current status of the REPL.
-replStatus :: Lens' REPLData REPLStatus
+replStatus :: Lens' GameControls REPLStatus
 
 -- | The index of the next it{index} value
-replNextValueIndex :: Lens' REPLData Integer
+replNextValueIndex :: Lens' GameControls Integer
 
 -- | The currently installed input handler and hint text.
-inputHandler :: Lens' REPLData (Maybe (Text, Value))
+inputHandler :: Lens' GameControls (Maybe (Text, Value))
 
 data Discovery = Discovery
   { _allDiscoveredEntities :: Inventory
@@ -551,7 +551,7 @@ data GameState = GameState
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter :: Cosmic Location
   , _needsRedraw :: Bool
-  , _repl :: REPLData
+  , _gameControls :: GameControls
   , _messageInfo :: Messages
   , _focusedRobotID :: RID
   }
@@ -685,8 +685,8 @@ viewCenter = to _viewCenter
 -- | Whether the world view needs to be redrawn.
 needsRedraw :: Lens' GameState Bool
 
--- | Info about the REPL
-repl :: Lens' GameState REPLData
+-- | Controls, including REPL and key mapping
+gameControls :: Lens' GameState GameControls
 
 -- | Message info
 messageInfo :: Lens' GameState Messages
@@ -729,7 +729,7 @@ viewCenterRule = lens getter setter
               Just loc -> g {_viewCenterRule = rule, _viewCenter = loc, _focusedRobotID = rid}
 
 -- | Whether the repl is currently working.
-replWorking :: Getter REPLData Bool
+replWorking :: Getter GameControls Bool
 replWorking = to (\s -> matchesWorking $ s ^. replStatus)
  where
   matchesWorking (REPLDone _) = False
@@ -1151,8 +1151,8 @@ initGameState gsc =
     , _viewCenterRule = VCRobot 0
     , _viewCenter = defaultCosmicLocation
     , _needsRedraw = False
-    , _repl =
-        REPLData
+    , _gameControls =
+        GameControls
           { _replStatus = REPLDone Nothing
           , _replNextValueIndex = 0
           , _inputHandler = Nothing
@@ -1214,7 +1214,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       -- as being universal.
       & landscape . worldScrollable .~ NE.head (scenario ^. scenarioWorlds) ^. to scrollable
       & viewCenterRule .~ VCRobot baseID
-      & repl . replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
+      & gameControls . replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
       -- otherwise the store of definition cells is not saved (see #333, #838)
         False -> REPLDone Nothing
         True -> REPLWorking (Typed Nothing PolyUnit mempty)

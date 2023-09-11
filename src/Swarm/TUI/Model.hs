@@ -481,6 +481,6 @@ topContext s = ctxPossiblyWithIt
  where
   ctx = fromMaybe emptyRobotContext $ s ^? gameState . baseRobot . robotContext
 
-  ctxPossiblyWithIt = case s ^. gameState . repl . replStatus of
+  ctxPossiblyWithIt = case s ^. gameState . gameControls . replStatus of
     REPLDone (Just p) -> ctx & at "it" ?~ p
     _ -> ctx
