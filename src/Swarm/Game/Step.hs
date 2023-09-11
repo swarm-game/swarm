@@ -539,7 +539,7 @@ updateWorld ::
   WorldUpdate Entity ->
   m ()
 updateWorld c (ReplaceEntity loc eThen down) = do
-  w <- use multiWorld
+  w <- use $ landscape . multiWorld
   let eNow = W.lookupCosmicEntity (fmap W.locToCoords loc) w
   -- Can fail if a robot started a multi-tick "drill" operation on some entity
   -- and meanwhile another entity swaps it out from under them.
@@ -1337,7 +1337,7 @@ execConst c vs s k = do
       return $ Out (asValue $ loc ^. planar) s k
     Waypoint -> case vs of
       [VText name, VInt idx] -> do
-        lm <- use worldNavigation
+        lm <- use $ landscape . worldNavigation
         Cosmic swName _ <- use robotLocation
         case M.lookup (WaypointName name) $ M.findWithDefault mempty swName $ waypoints lm of
           Nothing -> throwError $ CmdFailed Waypoint (T.unwords ["No waypoint named", name]) Nothing
@@ -1576,7 +1576,7 @@ execConst c vs s k = do
             -- If the robot does not exist...
             Nothing -> do
               cr <- use creativeMode
-              ws <- use worldScrollable
+              ws <- use $ landscape . worldScrollable
               case cr || ws of
                 -- If we are in creative mode or allowed to scroll, then we are allowed
                 -- to learn that the robot doesn't exist.
@@ -2652,7 +2652,7 @@ updateRobotLocation oldLoc newLoc
       flagRedraw
  where
   applyPortal loc = do
-    lms <- use worldNavigation
+    lms <- use $ landscape . worldNavigation
     let maybePortalInfo = M.lookup loc $ portals lms
         updatedLoc = maybe loc destination maybePortalInfo
         maybeTurn = reorientation <$> maybePortalInfo

@@ -787,7 +787,7 @@ updateUI = do
   -- Whether the focused robot is too far away to sense, & whether
   -- that has recently changed
   dist <- use (gameState . to focusedRange)
-  farOK <- liftA2 (||) (use (gameState . creativeMode)) (use (gameState . worldScrollable))
+  farOK <- liftA2 (||) (use (gameState . creativeMode)) (use (gameState . landscape . worldScrollable))
   let tooFar = not farOK && dist == Just Far
       farChanged = tooFar /= isNothing listRobotHash
 
@@ -1311,7 +1311,7 @@ handleWorldEvent = \case
   Key k
     | k `elem` moveKeys -> do
         c <- use $ gameState . creativeMode
-        s <- use $ gameState . worldScrollable
+        s <- use $ gameState . landscape . worldScrollable
         when (c || s) $ scrollView (.+^ (worldScrollDist *^ keyToDir k))
   CharKey 'c' -> do
     invalidateCacheEntry WorldCache

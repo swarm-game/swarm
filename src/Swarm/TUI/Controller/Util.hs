@@ -80,7 +80,7 @@ loadVisibleRegion = do
   forM_ mext $ \(Extent _ _ size) -> do
     gs <- use gameState
     let vr = viewingRegion gs (over both fromIntegral size)
-    gameState . multiWorld %= M.adjust (W.loadRegion (vr ^. planar)) (vr ^. subworld)
+    gameState . landscape . multiWorld %= M.adjust (W.loadRegion (vr ^. planar)) (vr ^. subworld)
 
 mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe (Cosmic W.Coords))
 mouseLocToWorldCoords (Brick.Location mouseLoc) = do

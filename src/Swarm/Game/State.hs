@@ -66,6 +66,7 @@ module Swarm.Game.State (
   recipesCat,
   currentScenarioPath,
   knownEntities,
+  landscape,
   worldNavigation,
   multiWorld,
   worldScrollable,
@@ -488,6 +489,27 @@ knownEntities :: Lens' Discovery [Text]
 -- | Map of in-game achievements that were attained
 gameAchievements :: Lens' Discovery (Map GameplayAchievement Attainment)
 
+data Landscape = Landscape
+  { _worldNavigation :: Navigation (M.Map SubworldName) Location
+  , _multiWorld :: W.MultiWorld Int Entity
+  , _worldScrollable :: Bool
+  }
+
+makeLensesNoSigs ''Landscape
+
+-- | Includes a 'Map' of named locations and an
+-- "Edge list" (graph) that maps portal entrances to exits
+worldNavigation :: Lens' Landscape (Navigation (M.Map SubworldName) Location)
+
+-- | The current state of the world (terrain and entities only; robots
+--   are stored in the 'robotMap').  'Int' is used instead of
+--   'TerrainType' because we need to be able to store terrain values in
+--   unboxed tile arrays.
+multiWorld :: Lens' Landscape (W.MultiWorld Int Entity)
+
+-- | Whether the world map is supposed to be scrollable or not.
+worldScrollable :: Lens' Landscape Bool
+
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
@@ -525,9 +547,7 @@ data GameState = GameState
   , _entityMap :: EntityMap
   , _recipesInfo :: Recipes
   , _currentScenarioPath :: Maybe FilePath
-  , _worldNavigation :: Navigation (M.Map SubworldName) Location
-  , _multiWorld :: W.MultiWorld Int Entity
-  , _worldScrollable :: Bool
+  , _landscape :: Landscape
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter :: Cosmic Location
   , _needsRedraw :: Bool
@@ -652,18 +672,8 @@ recipesInfo :: Lens' GameState Recipes
 -- see 'Swarm.Game.ScenarioInfo.scenarioItemByPath'.
 currentScenarioPath :: Lens' GameState (Maybe FilePath)
 
--- | Includes a 'Map' of named locations and an
--- "Edge list" (graph) that maps portal entrances to exits
-worldNavigation :: Lens' GameState (Navigation (M.Map SubworldName) Location)
-
--- | The current state of the world (terrain and entities only; robots
---   are stored in the 'robotMap').  'Int' is used instead of
---   'TerrainType' because we need to be able to store terrain values in
---   unboxed tile arrays.
-multiWorld :: Lens' GameState (W.MultiWorld Int Entity)
-
--- | Whether the world map is supposed to be scrollable or not.
-worldScrollable :: Lens' GameState Bool
+-- | Info about the lay of the land
+landscape :: Lens' GameState Landscape
 
 -- | The current center of the world view. Note that this cannot be
 --   modified directly, since it is calculated automatically from the
@@ -863,7 +873,7 @@ focusedRange g = checkRange <$ focusedRobot g
     Measurable r' -> computedRange r'
 
   computedRange r'
-    | g ^. creativeMode || g ^. worldScrollable || r' <= minRadius = Close
+    | g ^. creativeMode || g ^. landscape . worldScrollable || r' <= minRadius = Close
     | r' > maxRadius = Far
     | otherwise = MidRange $ (r' - minRadius) / (maxRadius - minRadius)
 
@@ -1132,9 +1142,12 @@ initGameState gsc =
           , _recipesCat = catRecipeMap (initRecipes gsc)
           }
     , _currentScenarioPath = Nothing
-    , _worldNavigation = Navigation mempty mempty
-    , _multiWorld = mempty
-    , _worldScrollable = True
+    , _landscape =
+        Landscape
+          { _worldNavigation = Navigation mempty mempty
+          , _multiWorld = mempty
+          , _worldScrollable = True
+          }
     , _viewCenterRule = VCRobot 0
     , _viewCenter = defaultCosmicLocation
     , _needsRedraw = False
@@ -1194,12 +1207,12 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       & initiallyRunCode .~ initialCodeToRun
       & entityMap .~ em
       & recipesInfo %~ modifyRecipesInfo
-      & worldNavigation .~ scenario ^. scenarioNavigation
-      & multiWorld .~ allSubworldsMap theSeed
+      & landscape . worldNavigation .~ scenario ^. scenarioNavigation
+      & landscape . multiWorld .~ allSubworldsMap theSeed
       -- TODO (#1370): Should we allow subworlds to have their own scrollability?
       -- Leaning toward no , but for now just adopt the root world scrollability
       -- as being universal.
-      & worldScrollable .~ NE.head (scenario ^. scenarioWorlds) ^. to scrollable
+      & landscape . worldScrollable .~ NE.head (scenario ^. scenarioWorlds) ^. to scrollable
       & viewCenterRule .~ VCRobot baseID
       & repl . replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
       -- otherwise the store of definition cells is not saved (see #333, #838)

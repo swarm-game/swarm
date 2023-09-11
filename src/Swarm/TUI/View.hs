@@ -951,7 +951,7 @@ drawKeyMenu s =
   inventorySort = s ^. uiState . uiInventorySort
   inventorySearch = s ^. uiState . uiInventorySearch
   ctrlMode = s ^. uiState . uiREPL . replControlMode
-  canScroll = creative || (s ^. gameState . worldScrollable)
+  canScroll = creative || (s ^. gameState . landscape . worldScrollable)
   handlerInstalled = isJust (s ^. gameState . repl . inputHandler)
 
   renderPilotModeSwitch :: ReplControlMode -> T.Text
