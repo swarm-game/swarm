@@ -125,10 +125,10 @@ zoomWorld ::
   StateC (W.World Int Entity) Identity b ->
   m (Maybe b)
 zoomWorld swName n = do
-  mw <- use multiWorld
+  mw <- use $ landscape . multiWorld
   forM (M.lookup swName mw) $ \w -> do
     let (w', a) = run (runState w n)
-    multiWorld %= M.insert swName w'
+    landscape . multiWorld %= M.insert swName w'
     return a
 
 -- | Get the entity (if any) at a given location.
@@ -174,8 +174,7 @@ weightedChoice weight as = do
 -- | Generate a random robot name in the form @adjective_name@.
 randomName :: Has (State GameState) sig m => m Text
 randomName = do
-  adjs <- use @GameState adjList
-  names <- use @GameState nameList
+  NameGenerator adjs names <- use $ robotNaming . nameGenerator
   i <- uniform (bounds adjs)
   j <- uniform (bounds names)
   return $ T.concat [adjs ! i, "_", names ! j]

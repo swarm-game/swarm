@@ -89,7 +89,7 @@ addCombustionBot inputEntity combustibility ts loc = do
   botInventory <- case maybeCombustionProduct of
     Nothing -> return []
     Just n -> do
-      maybeE <- uses entityMap (lookupEntityName n)
+      maybeE <- uses (landscape . entityMap) (lookupEntityName n)
       return $ maybe [] (pure . (1,)) maybeE
   combustionDurationRand <- uniform durationRange
   let combustionProg = combustionProgram combustionDurationRand combustibility

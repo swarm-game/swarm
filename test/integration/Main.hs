@@ -41,10 +41,13 @@ import Swarm.Game.State (
   WinStatus (Won),
   activeRobots,
   baseRobot,
+  discovery,
   gameAchievements,
+  messageInfo,
   messageQueue,
   notificationsContent,
   robotMap,
+  temporal,
   ticks,
   waitingRobots,
   winCondition,
@@ -251,7 +254,7 @@ testScenarioSolutions rs ui =
         [ testSolution' Default "Testing/Achievements/RobotIntoWater" CheckForBadErrors $ \g ->
             assertBool
               "Did not get RobotIntoWater achievement!"
-              (isJust $ g ^? gameAchievements . at RobotIntoWater)
+              (isJust $ g ^? discovery . gameAchievements . at RobotIntoWater)
         ]
     , testGroup
         "Regression tests"
@@ -259,7 +262,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/373-drill"
         , testSolution Default "Testing/428-drowning-destroy"
         , testSolution' Default "Testing/475-wait-one" CheckForBadErrors $ \g -> do
-            let t = g ^. ticks
+            let t = g ^. temporal . ticks
                 r1Waits = g ^?! robotMap . ix 1 . to waitingUntil
                 active = IS.member 1 $ g ^. activeRobots
                 waiting = elem 1 . concat . M.elems $ g ^. waitingRobots
@@ -300,7 +303,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/955-heading"
         , testSolution' Default "Testing/397-wrong-missing" CheckForBadErrors $ \g -> do
             let msgs =
-                  (g ^. messageQueue . to seqToTexts)
+                  (g ^. messageInfo . messageQueue . to seqToTexts)
                     <> (g ^.. robotMap . traverse . robotLog . to seqToTexts . traverse)
 
             assertBool "Should be some messages" (not (null msgs))
@@ -419,7 +422,7 @@ badErrorsInLogs g =
   concatMap
     (\r -> filter isBad (seqToTexts $ r ^. robotLog))
     (g ^. robotMap)
-    <> filter isBad (seqToTexts $ g ^. messageQueue)
+    <> filter isBad (seqToTexts $ g ^. messageInfo . messageQueue)
  where
   isBad m = "Fatal error:" `T.isInfixOf` m || "swarm/issues" `T.isInfixOf` m
 
