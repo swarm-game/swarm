@@ -172,7 +172,7 @@ handleMainMenuEvent menu = \case
         NewGame -> do
           cheat <- use $ uiState . uiCheatMode
           ss <- use $ runtimeState . scenarios
-          uiState . uiMenu .= NewGameMenu (NE.fromList [mkScenarioList cheat ss])
+          uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList cheat ss)
         Tutorial -> do
           -- Set up the menu stack as if the user had chosen "New Game > Tutorials"
           cheat <- use $ uiState . uiCheatMode
@@ -183,7 +183,7 @@ handleMainMenuEvent menu = \case
                   ((== tutorialsDirname) . T.unpack . scenarioItemName)
                   (mkScenarioList cheat ss)
               tutorialMenu = mkScenarioList cheat tutorialCollection
-              menuStack = NE.fromList [tutorialMenu, topMenu]
+              menuStack = tutorialMenu :| pure topMenu
           uiState . uiMenu .= NewGameMenu menuStack
 
           -- Extract the first tutorial challenge and run it

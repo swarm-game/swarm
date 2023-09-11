@@ -19,6 +19,8 @@ module Swarm.Game.Achievement.Definitions (
 import Data.Aeson
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown (Document)
 import Swarm.Util
 
 -- | How hard do we expect the achievement to be?
@@ -39,7 +41,7 @@ data Quotation = Quotation
 -- | Flavor text to spice up the description of an achievement, either
 --   freeform text or a quotation.
 data FlavorText
-  = Freeform Text
+  = Freeform (Document Syntax)
   | FTQuotation Quotation
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
@@ -58,7 +60,7 @@ data AchievementInfo = AchievementInfo
   -- ^ Explain the reference, e.g. in the form of a full quote
   -- from a movie, or something you might find
   -- in a fortune cookie
-  , attainmentProcess :: Text
+  , attainmentProcess :: Document Syntax
   -- ^ Precisely what must be done to obtain this achievement.
   , effort :: ExpectedEffort
   -- ^ How hard the achievement is expected to be.
