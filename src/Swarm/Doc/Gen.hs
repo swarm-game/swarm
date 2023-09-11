@@ -12,7 +12,6 @@ module Swarm.Doc.Gen (
   GenerateDocs (..),
   EditorType (..),
   SheetType (..),
-
   loadStandaloneScenario,
 
   -- ** Formatted keyword lists

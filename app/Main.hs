@@ -17,6 +17,7 @@ import Prettyprinter
 import Prettyprinter.Render.Text qualified as RT
 import Swarm.App (appMain)
 import Swarm.Doc.Gen (EditorType (..), GenerateDocs (..), PageAddress (..), SheetType (..), generateDocs)
+import Swarm.Game.World.Render (renderScenarioMap)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Parse (readTerm)
 import Swarm.Language.Pretty (ppr)
@@ -29,7 +30,6 @@ import System.Console.Terminal.Size qualified as Term
 import System.Exit (exitFailure)
 import System.IO (hPrint, stderr)
 import Text.Read (readMaybe)
-import Swarm.Game.World.Render (renderScenarioMap)
 
 gitInfo :: Maybe GitInfo
 gitInfo = either (const Nothing) Just ($$tGitInfoCwdTry)
