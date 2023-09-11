@@ -16,7 +16,7 @@ import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display (defaultRobotDisplay)
 import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, mkRobot)
-import Swarm.Game.State (GameState, addTRobot, creativeMode, multiWorld, landscape)
+import Swarm.Game.State (GameState, addTRobot, creativeMode, landscape, multiWorld)
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Terrain (TerrainType (DirtT))
 import Swarm.Game.Universe (Cosmic (..), SubworldName (DefaultRootSubworld))
