@@ -29,6 +29,7 @@ import Swarm.Util (listEnums)
 import Swarm.Util.Effect (withThrow)
 import System.FilePath (takeDirectory)
 import Text.Read (readEither)
+import System.IO (openFile, IOMode (AppendMode), hPutStrLn)
 
 swarmLangFileExtension :: String
 swarmLangFileExtension = "sw"
@@ -52,13 +53,10 @@ parseSeedInput seedEditor =
  where
   seedFieldText = mconcat $ getEditContents seedEditor
 
-parseWidgetParams :: Maybe ProcessedTerm -> LaunchControls -> IO EditingLaunchParams
-parseWidgetParams solution (LaunchControls autoPlay (FileBrowserControl _fb maybeSelectedScript _) seedEditor _ _) = do
+parseWidgetParams :: LaunchControls -> IO EditingLaunchParams
+parseWidgetParams (LaunchControls _autoPlay (FileBrowserControl _fb maybeSelectedScript _) seedEditor _ _) = do
   eitherParsedCode <-
-    if autoPlay
-      then pure . Right $ CodeToRun ScenarioSuggested <$> solution
-      else
-        runThrow . withThrow (prettyText @SystemFailure) $
+    runThrow . withThrow (prettyText @SystemFailure) $
           traverse parseCodeFile maybeSelectedScript
   return $ LaunchParams eitherMaybeSeed eitherParsedCode
  where
