@@ -29,16 +29,8 @@ module Swarm.Game.State (
 
   -- ** GameState fields
   creativeMode,
-  temporal,
-  gameStep,
-  runStatus,
-  ticks,
-  robotStepsPerTick,
   winCondition,
   winSolution,
-  gameAchievements,
-  announcementQueue,
-  paused,
   robotMap,
   robotsByLocation,
   robotsAtLocation,
@@ -47,42 +39,75 @@ module Swarm.Game.State (
   baseRobot,
   activeRobots,
   waitingRobots,
-  availableRecipes,
-  availableCommands,
   messageNotifications,
-  allDiscoveredEntities,
-  NameGenerator (..),
-  nameGenerator,
-  robotNaming,
-  gensym,
-  discovery,
   seed,
   randGen,
-  initiallyRunCode,
-  entityMap,
-  recipesInfo,
-  recipesOut,
-  recipesIn,
-  recipesCat,
   currentScenarioPath,
-  knownEntities,
-  landscape,
-  worldNavigation,
-  multiWorld,
-  worldScrollable,
   viewCenterRule,
   viewCenter,
   needsRedraw,
+  focusedRobotID,
+
+  -- *** Subrecord accessors
+  temporal,
+  robotNaming,
+  recipesInfo,
+  messageInfo,
   gameControls,
+  discovery,
+  landscape,
+
+  -- ** GameState subrecords
+
+  -- *** Temporal state
+  TemporalState,
+  gameStep,
+  runStatus,
+  ticks,
+  robotStepsPerTick,
+  paused,
+
+  -- *** Robot naming
+  RobotNaming,
+  NameGenerator (..),
+  nameGenerator,
+  gensym,
+
+  -- *** Recipes
+  Recipes,
+  recipesOut,
+  recipesIn,
+  recipesCat,
+
+  -- *** Messages
+  Messages,
+  messageQueue,
+  lastSeenMessageTime,
+  announcementQueue,
+
+  -- *** Controls
+  GameControls,
+  initiallyRunCode,
   replStatus,
   replNextValueIndex,
   replWorking,
   replActiveType,
   inputHandler,
-  messageInfo,
-  messageQueue,
-  lastSeenMessageTime,
-  focusedRobotID,
+
+  -- *** Discovery
+  Discovery,
+  allDiscoveredEntities,
+  availableRecipes,
+  availableCommands,
+  knownEntities,
+  gameAchievements,
+
+  -- *** Landscape
+  Landscape,
+  worldNavigation,
+  multiWorld,
+  worldScrollable,
+  entityMap,
 
   -- ** Notifications
   Notifications (..),

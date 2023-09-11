@@ -41,6 +41,7 @@ import Swarm.Game.State (
   WinStatus (Won),
   activeRobots,
   baseRobot,
+  discovery,
   gameAchievements,
   messageInfo,
   messageQueue,
@@ -253,7 +254,7 @@ testScenarioSolutions rs ui =
         [ testSolution' Default "Testing/Achievements/RobotIntoWater" CheckForBadErrors $ \g ->
             assertBool
               "Did not get RobotIntoWater achievement!"
-              (isJust $ g ^? gameAchievements . at RobotIntoWater)
+              (isJust $ g ^? discovery . gameAchievements . at RobotIntoWater)
         ]
     , testGroup
         "Regression tests"
