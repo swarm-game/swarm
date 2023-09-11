@@ -18,7 +18,6 @@ import Graphics.Vty qualified as V
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (..))
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State (CodeToRun (CodeToRun), SolutionSource (..))
-import Swarm.Language.Pipeline (ProcessedTerm (..))
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep (initFileBrowserWidget, makeFocusRingWith, parseSeedInput, parseWidgetParams, toValidatedParams)

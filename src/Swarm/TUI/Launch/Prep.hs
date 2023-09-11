@@ -20,8 +20,7 @@ import Data.Functor.Identity (runIdentity)
 import Data.Text qualified as T
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (..), ScenarioInfoPair, getLaunchParams, scenarioStatus)
-import Swarm.Game.State (CodeToRun (..), Seed, SolutionSource (..), ValidatedLaunchParams, getRunCodePath, parseCodeFile)
-import Swarm.Language.Pipeline (ProcessedTerm)
+import Swarm.Game.State (Seed, ValidatedLaunchParams, getRunCodePath, parseCodeFile)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Model.Name
@@ -29,7 +28,6 @@ import Swarm.Util (listEnums)
 import Swarm.Util.Effect (withThrow)
 import System.FilePath (takeDirectory)
 import Text.Read (readEither)
-import System.IO (openFile, IOMode (AppendMode), hPutStrLn)
 
 swarmLangFileExtension :: String
 swarmLangFileExtension = "sw"
