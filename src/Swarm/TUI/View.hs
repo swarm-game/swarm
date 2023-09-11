@@ -931,7 +931,7 @@ drawKeyMenu s =
   mkCmdRow = hBox . map drawPaddedCmd
   drawPaddedCmd = padLeftRight 1 . drawKeyCmd
   contextCmds
-    | ctrlMode == Handling = txt $ fromMaybe "" (s ^? gameState . repl . inputHandler . _Just . _1)
+    | ctrlMode == Handling = txt $ fromMaybe "" (s ^? gameState . gameControls . inputHandler . _Just . _1)
     | otherwise = mkCmdRow focusedPanelCmds
   focusedPanelCmds =
     map highlightKeyCmds
@@ -940,7 +940,7 @@ drawKeyMenu s =
       . view (uiState . uiFocusRing)
       $ s
 
-  isReplWorking = s ^. gameState . repl . replWorking
+  isReplWorking = s ^. gameState . gameControls . replWorking
   isPaused = s ^. gameState . temporal . paused
   hasDebug = fromMaybe creative $ s ^? gameState . to focusedRobot . _Just . robotCapabilities . Lens.contains CDebug
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
@@ -952,7 +952,7 @@ drawKeyMenu s =
   inventorySearch = s ^. uiState . uiInventorySearch
   ctrlMode = s ^. uiState . uiREPL . replControlMode
   canScroll = creative || (s ^. gameState . landscape . worldScrollable)
-  handlerInstalled = isJust (s ^. gameState . repl . inputHandler)
+  handlerInstalled = isJust (s ^. gameState . gameControls . inputHandler)
 
   renderPilotModeSwitch :: ReplControlMode -> T.Text
   renderPilotModeSwitch = \case
