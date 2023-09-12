@@ -77,6 +77,8 @@ import Swarm.Game.Universe
 import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown (Document)
 import Swarm.Util (binTuples, failT)
 import Swarm.Util.Effect (throwToMaybe, withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
@@ -94,7 +96,7 @@ data Scenario = Scenario
   { _scenarioVersion :: Int
   , _scenarioName :: Text
   , _scenarioAuthor :: Maybe Text
-  , _scenarioDescription :: Text
+  , _scenarioDescription :: Document Syntax
   , _scenarioCreative :: Bool
   , _scenarioSeed :: Maybe Int
   , _scenarioAttrs :: [CustomAttr]
@@ -203,7 +205,7 @@ scenarioAuthor :: Lens' Scenario (Maybe Text)
 
 -- | A high-level description of the scenario, shown /e.g./ in the
 --   menu.
-scenarioDescription :: Lens' Scenario Text
+scenarioDescription :: Lens' Scenario (Document Syntax)
 
 -- | Whether the scenario should start in creative mode.
 scenarioCreative :: Lens' Scenario Bool

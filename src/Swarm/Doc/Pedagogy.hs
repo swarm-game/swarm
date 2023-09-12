@@ -39,7 +39,7 @@ import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Language.Module (Module (..))
 import Swarm.Language.Pipeline (ProcessedTerm (..))
 import Swarm.Language.Syntax
-import Swarm.Language.Text.Markdown (findCode)
+import Swarm.Language.Text.Markdown (docToText, findCode)
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Controller (getTutorials)
 import Swarm.Util.Effect (ignoreWarnings, simpleErrorHandle)
@@ -175,7 +175,7 @@ renderUsagesMarkdown (CoverageInfo (TutorialInfo (s, si) idx _sCmds dCmds) novel
     intercalate
       [""]
       [ pure . surround "`" . T.pack $ view scenarioPath si
-      , pure . surround "*" . T.strip $ view scenarioDescription s
+      , pure . surround "*" . T.strip . docToText $ view scenarioDescription s
       , renderSection "Introduced in solution" . renderCmdList $ M.keysSet novelCmds
       , renderSection "Referenced in description" $ renderCmdList dCmds
       ]
