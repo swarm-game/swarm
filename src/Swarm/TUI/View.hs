@@ -237,7 +237,7 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
   drawDescription (SICollection _ _) = txtWrap " "
   drawDescription (SISingle (s, si)) =
     vBox
-      [ txtWrap (nonBlank (s ^. scenarioDescription))
+      [ drawMarkdown (nonBlank (s ^. scenarioDescription))
       , padTop (Pad 1) table
       ]
    where
