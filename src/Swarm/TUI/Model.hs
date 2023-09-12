@@ -126,7 +126,6 @@ import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))
 import Control.Monad ((>=>))
 import Control.Monad.State (MonadState)
-import Swarm.Game.ResourceLoading (initNameGenerator, NameGenerator, readAppData)
 import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
@@ -141,6 +140,7 @@ import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Entity as E
 import Swarm.Game.Failure
 import Swarm.Game.Recipe (Recipe, loadRecipes)
+import Swarm.Game.ResourceLoading (NameGenerator, initNameGenerator, readAppData)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios, _SISingle)

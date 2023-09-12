@@ -163,7 +163,6 @@ import Control.Effect.Throw
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad (forM_)
 import Data.Aeson (FromJSON, ToJSON)
-import Swarm.Game.ResourceLoading (NameGenerator)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
 import Data.Digest.Pure.SHA (sha1, showDigest)
@@ -204,6 +203,7 @@ import Swarm.Game.Recipe (
   inRecipeMap,
   outRecipeMap,
  )
+import Swarm.Game.ResourceLoading (NameGenerator)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Status
@@ -1191,7 +1191,7 @@ allSubworldsMap scene s =
     . M.fromList
     . NE.toList
     $ builtWorldTuples scene
-  where
+ where
   genWorld x = W.newWorld $ snd x s
 
 -- | Create an initial game state corresponding to the given scenario.
@@ -1342,7 +1342,6 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
   -- guaranteed to be first.
   genRobots :: [(Int, TRobot)]
   genRobots = concat $ NE.toList $ NE.map (fst . snd) (builtWorldTuples scenario)
-
 
   theWinCondition =
     maybe

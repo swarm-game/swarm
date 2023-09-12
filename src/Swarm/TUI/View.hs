@@ -1056,11 +1056,12 @@ drawKeyCmd (h, key, cmd) =
 ------------------------------------------------------------
 
 worldWidget ::
-     (Cosmic W.Coords -> Widget n)
-  -> Cosmic Location -- ^ view center
-  -> Widget n
-worldWidget renderCoord gameViewCenter = Widget Fixed Fixed
-  $ do
+  (Cosmic W.Coords -> Widget n) ->
+  -- | view center
+  Cosmic Location ->
+  Widget n
+worldWidget renderCoord gameViewCenter = Widget Fixed Fixed $
+  do
     ctx <- getContext
     let w = ctx ^. availWidthL
         h = ctx ^. availHeightL
@@ -1077,8 +1078,8 @@ drawWorldPane ui g =
     -- Set the clickable request after the extent to play nice with the cache
     . clickable (FocusablePanel WorldPanel)
     $ worldWidget renderCoord (g ^. viewCenter)
-  where
-    renderCoord = drawLoc ui g
+ where
+  renderCoord = drawLoc ui g
 
 ------------------------------------------------------------
 -- Robot inventory panel

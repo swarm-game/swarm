@@ -50,10 +50,10 @@ drawLoc ui g cCoords@(Cosmic _ coords) =
   we = ui ^. uiWorldEditor . worldOverdraw
   drawCell = renderDisplay $ displayLoc showRobots we g cCoords
 
-data RenderingInput = RenderingInput {
-  multiworldFoo :: W.MultiWorld Int Entity
-, isKnownFunc :: EntityPaint -> Bool
-}
+data RenderingInput = RenderingInput
+  { multiworldFoo :: W.MultiWorld Int Entity
+  , isKnownFunc :: EntityPaint -> Bool
+  }
 
 displayTerrainCell ::
   WorldOverdraw ->
@@ -85,10 +85,10 @@ standardEntityIsKnown gs ep = case ep of
         HideEntityUnknownTo ro -> ro `robotKnows` e
 
 displayEntityCell ::
-     WorldOverdraw
-  -> RenderingInput
-  -> Cosmic W.Coords
-  -> [Display]
+  WorldOverdraw ->
+  RenderingInput ->
+  Cosmic W.Coords ->
+  [Display]
 displayEntityCell worldEditor ri coords =
   maybeToList $ displayForEntity <$> maybeEntity
  where
@@ -96,7 +96,6 @@ displayEntityCell worldEditor ri coords =
 
   displayForEntity :: EntityPaint -> Display
   displayForEntity e = (if isKnownFunc ri e then id else hidden) $ getDisplay e
-
 
 data HideEntity = HideAllEntities | HideNoEntity | HideEntityUnknownTo Robot
 
@@ -113,12 +112,12 @@ displayLoc :: Bool -> WorldOverdraw -> GameState -> Cosmic W.Coords -> Display
 displayLoc showRobots we g cCoords@(Cosmic _ coords) =
   staticDisplay g coords
     <> displayLocRaw we ri robots cCoords
-  where
-    ri = RenderingInput (g ^. landscape . multiWorld) (standardEntityIsKnown g)
-    robots =
-      if showRobots
-        then displayRobotCell g cCoords
-        else []
+ where
+  ri = RenderingInput (g ^. landscape . multiWorld) (standardEntityIsKnown g)
+  robots =
+    if showRobots
+      then displayRobotCell g cCoords
+      else []
 
 -- | Get the 'Display' for a specific location, by combining the
 --   'Display's for the terrain, entity, and robots at the location.
@@ -126,7 +125,7 @@ displayLocRaw ::
   WorldOverdraw ->
   RenderingInput ->
   -- | Robot displays
-  [Display] -> 
+  [Display] ->
   Cosmic W.Coords ->
   Display
 displayLocRaw worldEditor ri robotDisplays coords =

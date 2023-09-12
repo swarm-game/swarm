@@ -12,11 +12,11 @@ import Control.Effect.Throw (Throw, liftEither, throwError)
 import Control.Exception (catch)
 import Control.Exception.Base (IOException)
 import Control.Monad (forM, when, (<=<))
+import Data.Array (Array, listArray)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Text (Text)
-import Data.Array (Array, listArray)
 import Data.Text qualified as T
 import Paths_swarm (getDataDir)
 import Swarm.Game.Failure

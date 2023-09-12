@@ -7,7 +7,6 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Step.Util where
 
-import Swarm.Game.ResourceLoading (NameGenerator (..))
 import Control.Applicative (Applicative (..))
 import Control.Carrier.State.Lazy
 import Control.Effect.Error
@@ -27,6 +26,7 @@ import Linear (zero)
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Exception
 import Swarm.Game.Location
+import Swarm.Game.ResourceLoading (NameGenerator (..))
 import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.Game.Universe

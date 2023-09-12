@@ -54,10 +54,10 @@ data MapEditingBounds = MapEditingBounds
 
 makeLenses ''MapEditingBounds
 
-data WorldOverdraw = WorldOverdraw {
-    _isWorldEditorEnabled :: Bool
-    -- ^ This field has deferred initialization; it gets populated when a game
-    -- is initialized.
+data WorldOverdraw = WorldOverdraw
+  { _isWorldEditorEnabled :: Bool
+  -- ^ This field has deferred initialization; it gets populated when a game
+  -- is initialized.
   , _paintedTerrain :: M.Map W.Coords (TerrainWith EntityFacade)
   }
 
