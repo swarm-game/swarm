@@ -11,7 +11,7 @@ module Main where
 
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
-import Control.Lens (Ixed (ix), at, to, use, view, (&), (.~), (<>~), (^.), (^..), (^?!))
+import Control.Lens (Ixed (ix), at, to, use, view, (&), (.~), (<>~), (^.), (^..), (^?), (^?!))
 import Control.Monad (forM_, unless, when)
 import Control.Monad.State (StateT (runStateT), gets)
 import Data.Char (isSpace)
@@ -28,6 +28,7 @@ import Data.Text.IO qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Doc.Gen (EditorType (..))
 import Swarm.Doc.Gen qualified as DocGen
+import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
 import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
 import Swarm.Game.Entity (EntityMap, lookupByName)
 import Swarm.Game.Failure (SystemFailure)
@@ -40,9 +41,13 @@ import Swarm.Game.State (
   WinStatus (Won),
   activeRobots,
   baseRobot,
+  discovery,
+  gameAchievements,
+  messageInfo,
   messageQueue,
   notificationsContent,
   robotMap,
+  temporal,
   ticks,
   waitingRobots,
   winCondition,
@@ -245,12 +250,19 @@ testScenarioSolutions rs ui =
             ]
         ]
     , testGroup
+        "Achievements"
+        [ testSolution' Default "Testing/Achievements/RobotIntoWater" CheckForBadErrors $ \g ->
+            assertBool
+              "Did not get RobotIntoWater achievement!"
+              (isJust $ g ^? discovery . gameAchievements . at RobotIntoWater)
+        ]
+    , testGroup
         "Regression tests"
         [ testSolution Default "Testing/394-build-drill"
         , testSolution Default "Testing/373-drill"
         , testSolution Default "Testing/428-drowning-destroy"
         , testSolution' Default "Testing/475-wait-one" CheckForBadErrors $ \g -> do
-            let t = g ^. ticks
+            let t = g ^. temporal . ticks
                 r1Waits = g ^?! robotMap . ix 1 . to waitingUntil
                 active = IS.member 1 $ g ^. activeRobots
                 waiting = elem 1 . concat . M.elems $ g ^. waitingRobots
@@ -291,7 +303,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/955-heading"
         , testSolution' Default "Testing/397-wrong-missing" CheckForBadErrors $ \g -> do
             let msgs =
-                  (g ^. messageQueue . to seqToTexts)
+                  (g ^. messageInfo . messageQueue . to seqToTexts)
                     <> (g ^.. robotMap . traverse . robotLog . to seqToTexts . traverse)
 
             assertBool "Should be some messages" (not (null msgs))
@@ -410,7 +422,7 @@ badErrorsInLogs g =
   concatMap
     (\r -> filter isBad (seqToTexts $ r ^. robotLog))
     (g ^. robotMap)
-    <> filter isBad (seqToTexts $ g ^. messageQueue)
+    <> filter isBad (seqToTexts $ g ^. messageInfo . messageQueue)
  where
   isBad m = "Fatal error:" `T.isInfixOf` m || "swarm/issues" `T.isInfixOf` m
 
