@@ -34,5 +34,20 @@ To configure YAML editor tabs for schema validation, install the [YAML plugin](h
 
 ## Vim and Neovim
 
-Currently there is neither highlighting nor LSP support for Vim,
-but we would be happy to [accept a contribution](../CONTRIBUTING.md).
+Add the following lines to your Vim/Neovim configuration file for files with the `.sw` extension to be recognized as `swarm` programs:
+
+
+`init.vim`:
+
+`au BufRead,BufNewFile *.sw setfiletype swarm`
+
+
+`init.lua`:
+
+`vim.cmd[[au BufRead,BufNewFile *.sw setfiletype swarm]]`
+
+
+Basic syntax highlighting is available for both Vim and Neovim. To make use of this capability, copy [swarm.vim](vim/swarm.vim) to the `syntax` directory in your Vim or Neovim configuration directory.
+
+
+An LSP configuration leveraging Neovim's native LSP client is also available. It only works with Neovim. To enable it, copy [swarm.lua](vim/swarm.lua) to `after/ftplugin` in your Neovim configuration directory.

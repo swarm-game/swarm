@@ -89,7 +89,7 @@ data GenerateDocs where
 
 -- | An enumeration of the editors supported by Swarm (currently,
 --   Emacs and VS Code).
-data EditorType = Emacs | VSCode
+data EditorType = Emacs | VSCode | Vim
   deriving (Eq, Show, Enum, Bounded)
 
 -- | An enumeration of the kinds of cheat sheets we can produce.
@@ -160,6 +160,13 @@ generateEditorKeywords = \case
     T.putStrLn $ keywordsDirections VSCode
     putStrLn "\nOperators:"
     T.putStrLn operatorNames
+  Vim -> do
+    putStr "syn keyword Builtins "
+    T.putStr $ builtinFunctionList Vim
+    putStr "\nsyn keyword Command "
+    T.putStr $ keywordsCommands Vim
+    putStr "\nsyn keyword Direction "
+    T.putStrLn $ keywordsDirections Vim
 
 commands :: [Const]
 commands = filter Syntax.isCmd Syntax.allConst
@@ -177,6 +184,7 @@ editorList :: EditorType -> [Text] -> Text
 editorList = \case
   Emacs -> T.unlines . map (("  " <>) . quote)
   VSCode -> T.intercalate "|"
+  Vim -> T.intercalate " "
 
 constSyntax :: Const -> Text
 constSyntax = Syntax.syntax . Syntax.constInfo
