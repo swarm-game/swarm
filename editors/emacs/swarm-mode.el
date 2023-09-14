@@ -55,6 +55,7 @@
                "selfdestruct"
                "move"
                "backup"
+               "path"
                "push"
                "stride"
                "turn"

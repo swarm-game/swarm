@@ -27,6 +27,7 @@ import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
+import Swarm.Util (hoistMaybe)
 import Swarm.Util.Erasable (maybeToErasable)
 import System.Clock
 
@@ -57,8 +58,7 @@ handleCtrlLeftClick mouseLoc = do
     let getSelected x = snd <$> BL.listSelectedElement x
         maybeTerrainType = getSelected $ worldEditor ^. terrainList
         maybeEntityPaint = getSelected $ worldEditor ^. entityPaintList
-    -- TODO (#1151): Use hoistMaybe when available
-    terrain <- MaybeT . pure $ maybeTerrainType
+    terrain <- hoistMaybe maybeTerrainType
     mouseCoords <- MaybeT $ Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
     uiState . uiWorldEditor . worldOverdraw . paintedTerrain %= M.insert (mouseCoords ^. planar) (terrain, maybeToErasable maybeEntityPaint)
     uiState . uiWorldEditor . lastWorldEditorMessage .= Nothing

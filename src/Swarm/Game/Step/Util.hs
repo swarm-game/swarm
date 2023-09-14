@@ -13,7 +13,9 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (forM, join, when)
+import Control.Monad (forM, guard, join, when)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.Array (bounds, (!))
 import Data.IntMap qualified as IM
 import Data.List (find)
@@ -73,12 +75,12 @@ updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
   when didChange $
     wakeWatchingRobots cLoc
 
+-- * Capabilities
+
 -- | Exempts the robot from various command constraints
 -- when it is either a system robot or playing in creative mode
 isPrivilegedBot :: (Has (State GameState) sig m, Has (State Robot) sig m) => m Bool
 isPrivilegedBot = (||) <$> use systemRobot <*> use creativeMode
-
--- * Exceptions
 
 -- | Test whether the current robot has a given capability (either
 --   because it has a device which gives it that capability, or it is a
@@ -97,6 +99,8 @@ hasCapabilityFor cap term = do
   h <- hasCapability cap
   h `holdsOr` Incapable FixByEquip (R.singletonCap cap) term
 
+-- * Exceptions
+
 holdsOrFail' :: (Has (Throw Exn) sig m) => Const -> Bool -> [Text] -> m ()
 holdsOrFail' c a ts = a `holdsOr` cmdExn c ts
 
@@ -107,16 +111,19 @@ isJustOrFail' c a ts = a `isJustOr` cmdExn c ts
 cmdExn :: Const -> [Text] -> Exn
 cmdExn c parts = CmdFailed c (T.unwords parts) Nothing
 
+-- * Some utility functions
+
 getNow :: Has (Lift IO) sig m => m TimeSpec
 getNow = sendIO $ System.Clock.getTime System.Clock.Monotonic
-
-------------------------------------------------------------
--- Some utility functions
-------------------------------------------------------------
 
 -- | Set a flag telling the UI that the world needs to be redrawn.
 flagRedraw :: (Has (State GameState) sig m) => m ()
 flagRedraw = needsRedraw .= True
+
+-- * World queries
+
+getNeighborLocs :: Cosmic Location -> [Cosmic Location]
+getNeighborLocs loc = map (offsetBy loc . flip applyTurn north . DRelative . DPlanar) listEnums
 
 -- | Perform an action requiring a 'W.World' state component in a
 --   larger context with a 'GameState'.
@@ -144,6 +151,8 @@ robotWithID rid = use (robotMap . at rid)
 -- | Get the robot with a given name.
 robotWithName :: (Has (State GameState) sig m) => Text -> m (Maybe Robot)
 robotWithName rname = use (robotMap . to IM.elems . to (find $ \r -> r ^. robotName == rname))
+
+-- * Randomness
 
 -- | Generate a uniformly random number using the random generator in
 --   the game state.
@@ -179,3 +188,36 @@ randomName = do
   i <- uniform (bounds adjs)
   j <- uniform (bounds names)
   return $ T.concat [adjs ! i, "_", names ! j]
+
+-- * Moving
+
+data MoveFailureMode = PathBlocked | PathLiquid
+data MoveFailureDetails = MoveFailureDetails Entity MoveFailureMode
+
+-- | Make sure nothing is in the way.
+-- No exception for system robots
+checkMoveFailureUnprivileged :: HasRobotStepState sig m => Cosmic Location -> m (Maybe MoveFailureDetails)
+checkMoveFailureUnprivileged nextLoc = do
+  me <- entityAt nextLoc
+  caps <- use robotCapabilities
+  return $ do
+    e <- me
+    go caps e
+ where
+  go caps e
+    -- robots can not walk through walls
+    | e `hasProperty` Unwalkable = Just $ MoveFailureDetails e PathBlocked
+    -- robots drown if they walk over liquid without boat
+    | e `hasProperty` Liquid && CFloat `S.notMember` caps =
+        Just $ MoveFailureDetails e PathLiquid
+    | otherwise = Nothing
+
+-- | Make sure nothing is in the way. Note that system robots implicitly ignore
+-- and base throws on failure.
+checkMoveFailure :: HasRobotStepState sig m => Cosmic Location -> m (Maybe MoveFailureDetails)
+checkMoveFailure nextLoc = do
+  systemRob <- use systemRobot
+  runMaybeT $ do
+    guard $ not systemRob
+    maybeMoveFailure <- lift $ checkMoveFailureUnprivileged nextLoc
+    hoistMaybe maybeMoveFailure

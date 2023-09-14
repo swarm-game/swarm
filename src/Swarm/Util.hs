@@ -25,6 +25,7 @@ module Swarm.Util (
   allEqual,
   surfaceEmpty,
   applyWhen,
+  hoistMaybe,
 
   -- * Directory utilities
   readFileMay,
@@ -79,6 +80,7 @@ import Control.Carrier.Throw.Either
 import Control.Effect.State (State, modify, state)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<&>), (<>~))
 import Control.Monad (filterM, guard, unless)
+import Control.Monad.Trans.Maybe (MaybeT (..))
 import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum, toLower)
 import Data.Either.Validation
@@ -206,11 +208,20 @@ allEqual (x : xs) = all (== x) xs
 surfaceEmpty :: Alternative f => (a -> Bool) -> a -> f a
 surfaceEmpty isEmpty t = t <$ guard (not (isEmpty t))
 
+------------------------------------------------------------
+-- Forward-compatibility functions
+
 -- Note, once we upgrade to an LTS version that includes
 -- base-compat-0.13, we should switch to using 'applyWhen' from there.
 applyWhen :: Bool -> (a -> a) -> a -> a
 applyWhen True f x = f x
 applyWhen False _ x = x
+
+-- | Convert a 'Maybe' computation to 'MaybeT'.
+--
+-- TODO (#1151): Use implementation from "transformers" package v0.6.0.0
+hoistMaybe :: (Applicative m) => Maybe b -> MaybeT m b
+hoistMaybe = MaybeT . pure
 
 ------------------------------------------------------------
 -- Directory stuff

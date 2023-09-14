@@ -1,0 +1,47 @@
+version: 1
+name: Builtin pathfinding - entity target
+description: |
+  Use `path` command to navigate to an entity
+creative: false
+objectives:
+  - goal:
+      - Get the flower.
+    condition: |
+      as base {has "flower";}
+solution: |
+  run "scenarios/Testing/836-pathfinding/_836-path-exists/find-entity-solution.sw";
+entities:
+  - name: wayfinder
+    display:
+      char: 'w'
+    description:
+      - Enables `path` command
+    properties: [known, portable]
+    capabilities: [path]
+robots:
+  - name: base
+    dir: [1,0]
+    devices:
+      - ADT calculator
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - logger
+      - grabber
+      - treads
+      - wayfinder
+known: [flower, mountain]
+world:
+  palette:
+    'B': [grass, null, base]
+    '.': [grass]
+    'x': [stone, mountain]
+    'f': [grass, flower]
+  upperleft: [0, 0]
+  map: |
+    xxxxfx
+    x.Bx.x
+    x.xx.x
+    x....x
+    xxxxxx
