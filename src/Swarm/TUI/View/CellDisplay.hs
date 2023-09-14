@@ -41,7 +41,6 @@ import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Attribute.Attr
-import Swarm.Util (isAny)
 import Witch (from)
 import Witch.Encoding qualified as Encoding
 
@@ -71,7 +70,7 @@ displayTerrainCell ::
   Cosmic W.Coords ->
   Display
 displayTerrainCell worldEditor ri coords =
-  terrainMap M.! EU.getTerrainAt worldEditor (multiworldFoo ri) coords
+  terrainMap M.! EU.getEditorTerrainAt worldEditor (multiworldFoo ri) coords
 
 displayRobotCell ::
   GameState ->
@@ -98,7 +97,7 @@ data EntityKnowledgeDependencies = EntityKnowledgeDependencies
 getEntityIsKnown :: EntityKnowledgeDependencies -> EntityPaint -> Bool
 getEntityIsKnown knowledge ep = case ep of
   Facade (EntityFacade _ _) -> True
-  Ref e -> isAny reasonsToShow
+  Ref e -> or reasonsToShow
    where
     reasonsToShow =
       [ isCreativeMode knowledge

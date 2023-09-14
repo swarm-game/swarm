@@ -67,12 +67,12 @@ getEditorContentAt editorOverdraw w coords =
   entityWithOverride = (Ref <$> underlyingCellEntity) <|> maybeEntityOverride
   (underlyingCellTerrain, underlyingCellEntity) = getContentAt w coords
 
-getTerrainAt ::
+getEditorTerrainAt ::
   WorldOverdraw ->
   W.MultiWorld Int Entity ->
   Cosmic W.Coords ->
   TerrainType
-getTerrainAt editor w coords =
+getEditorTerrainAt editor w coords =
   fst $ getEditorContentAt editor w coords
 
 isOutsideTopLeftCorner ::

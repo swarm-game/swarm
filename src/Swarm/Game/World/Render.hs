@@ -46,7 +46,7 @@ getDisplayGrid myScenario gs =
   mkCosmic = Cosmic $ worldName firstScenarioWorld
   boundingBox = (W.locToCoords upperLeftLocation, W.locToCoords lowerRightLocation)
 
-renderScenarioMap :: FilePath -> IO ()
+renderScenarioMap :: FilePath -> IO [String]
 renderScenarioMap fp = simpleErrorHandle $ do
   (myScenario, (worldDefs, entities, recipes)) <- loadStandaloneScenario fp
   appDataMap <- readAppData
@@ -55,5 +55,8 @@ renderScenarioMap fp = simpleErrorHandle $ do
   gs <- sendIO $ scenarioToGameState myScenario emptyLaunchParams gsc
   let grid = getDisplayGrid myScenario gs
 
-  sendIO $ forM_ grid $ \line ->
-    putStrLn $ map getDisplayChar line
+  return $ map (map getDisplayChar) grid
+
+printScenarioMap :: [String] -> IO ()
+printScenarioMap grid =
+  sendIO $ forM_ grid putStrLn

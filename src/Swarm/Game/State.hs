@@ -1194,14 +1194,14 @@ initGameState gsc =
     , _focusedRobotID = 0
     }
 
-type WorldTuples = NonEmpty (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int Entity))
+type SubworldDescription = (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int Entity))
 
-buildWorldTuples :: Scenario -> WorldTuples
+buildWorldTuples :: Scenario -> NonEmpty SubworldDescription
 buildWorldTuples s =
   NE.map (worldName &&& buildWorld) $
     s ^. scenarioWorlds
 
-genMultiWorld :: WorldTuples -> Seed -> W.MultiWorld Int Entity
+genMultiWorld :: NonEmpty SubworldDescription -> Seed -> W.MultiWorld Int Entity
 genMultiWorld worldTuples s =
   M.map genWorld
     . M.fromList

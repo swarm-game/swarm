@@ -17,7 +17,7 @@ import Prettyprinter
 import Prettyprinter.Render.Text qualified as RT
 import Swarm.App (appMain)
 import Swarm.Doc.Gen (EditorType (..), GenerateDocs (..), PageAddress (..), SheetType (..), generateDocs)
-import Swarm.Game.World.Render (renderScenarioMap)
+import Swarm.Game.World.Render (printScenarioMap, renderScenarioMap)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Parse (readTerm)
 import Swarm.Language.Pretty (ppr)
@@ -200,6 +200,6 @@ main = do
     Run opts -> appMain opts
     DocGen g -> generateDocs g
     Format fo w -> formatFile fo w
-    RenderMap mapPath -> renderScenarioMap mapPath
+    RenderMap mapPath -> printScenarioMap =<< renderScenarioMap mapPath
     LSP -> lspMain
     Version -> showVersion

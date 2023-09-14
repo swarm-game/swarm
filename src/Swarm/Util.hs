@@ -13,7 +13,6 @@ module Swarm.Util (
   sortPair,
   maxOn,
   maximum0,
-  isAny,
   cycleEnum,
   listEnums,
   showEnum,
@@ -89,7 +88,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
-import Data.Monoid (Any (..))
 import Data.Ord (comparing)
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -134,9 +132,6 @@ maxOn f x y
 maximum0 :: (Num a, Ord a) => [a] -> a
 maximum0 [] = 0
 maximum0 xs = maximum xs
-
-isAny :: [Bool] -> Bool
-isAny = getAny . mconcat . map Any
 
 -- | Take the successor of an 'Enum' type, wrapping around when it
 --   reaches the end.

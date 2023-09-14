@@ -79,10 +79,13 @@ import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario (
-  scenarioAuthor, scenarioCreative,
-  scenarioDescription, scenarioKnown,
+  scenarioAuthor,
+  scenarioCreative,
+  scenarioDescription,
+  scenarioKnown,
   scenarioName,
-  scenarioObjectives, scenarioSeed,
+  scenarioObjectives,
+  scenarioSeed,
  )
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.CodeSize
@@ -250,6 +253,7 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
    where
     defaultVC = Cosmic DefaultRootSubworld origin
 
+    -- The first robot is guaranteed to be the base.
     baseRobotLoc :: Maybe (Cosmic Location)
     baseRobotLoc = do
       theBaseRobot <- listToMaybe theRobots

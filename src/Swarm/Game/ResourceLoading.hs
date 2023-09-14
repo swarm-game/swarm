@@ -134,12 +134,7 @@ readAppData = do
   filesList <- sendIO $ forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT (d </> f))
   return $ M.fromList . mapMaybe sequenceA $ filesList
 
-initNameGenerator ::
-  ( Has (Throw SystemFailure) sig m
-  , Has (Lift IO) sig m
-  ) =>
-  Map Text Text ->
-  m NameGenerator
+initNameGenerator :: Has (Throw SystemFailure) sig m => Map Text Text -> m NameGenerator
 initNameGenerator appDataMap = do
   adjs <- getDataLines "adjectives"
   names <- getDataLines "names"
