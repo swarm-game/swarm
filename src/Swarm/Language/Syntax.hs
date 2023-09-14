@@ -40,6 +40,7 @@ module Swarm.Language.Syntax (
   maxSniffRange,
   maxScoutRange,
   maxStrideRange,
+  maxPathRange,
 
   -- * Syntax
   Syntax' (..),
@@ -118,6 +119,9 @@ maxScoutRange = 64
 maxStrideRange :: Int
 maxStrideRange = 64
 
+maxPathRange :: Int32
+maxPathRange = 128
+
 ------------------------------------------------------------
 -- Constants
 ------------------------------------------------------------
@@ -152,6 +156,8 @@ data Const
     Move
   | -- | Move backward one step.
     Backup
+  | -- | Describe a path to the destination.
+    Path
   | -- | Push an entity forward one step.
     Push
   | -- | Move forward multiple steps.
@@ -525,6 +531,7 @@ constInfo c = case c of
       ]
   Move -> command 0 short "Move forward one step."
   Backup -> command 0 short "Move backward one step."
+  Path -> command 1 short "Describe a path to the destination."
   Push ->
     command 1 short . doc "Push an entity forward one step." $
       [ "Both entity and robot moves forward one step."

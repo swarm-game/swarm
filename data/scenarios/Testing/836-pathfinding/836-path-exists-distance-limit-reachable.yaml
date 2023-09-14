@@ -1,0 +1,34 @@
+version: 1
+name: Builtin pathfinding - entity target
+description: |
+  Use distance limit with `path` command
+creative: false
+objectives:
+  - goal:
+      - Flower must be reachable within 3 cells.
+    condition: |
+      as base {
+        nextDir <- path (inR 3) (inR "flower");
+        return $ case nextDir (\_. false) (\_. true);
+      };
+solution: |
+  move;
+robots:
+  - name: base
+    dir: [1,0]
+    devices:
+      - treads
+      - logger
+      - 3D printer
+      - dictionary
+      - grabber
+world:
+  palette:
+    'B': [grass, null, base]
+    '.': [grass]
+    'f': [grass, flower]
+  upperleft: [0, 0]
+  map: |
+    .......
+    .B...f.
+    .......

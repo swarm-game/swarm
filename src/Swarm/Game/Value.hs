@@ -14,6 +14,7 @@ import Linear (V2 (..))
 import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Robot
+import Swarm.Language.Direction
 import Swarm.Language.Value
 
 -- * Patterns
@@ -52,6 +53,9 @@ instance Valuable Entity where
 
 instance Valuable Robot where
   asValue = VRobot . view robotID
+
+instance Valuable Direction where
+  asValue = VDir
 
 instance (Valuable a) => Valuable (Maybe a) where
   asValue Nothing = VInj False VUnit
