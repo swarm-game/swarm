@@ -693,7 +693,7 @@ messageNotifications = to getNotif
     latestMsg = messageIsRecent gs
     closeMsg = messageIsFromNearby (gs ^. viewCenter)
     generatedBy rid logEntry = case logEntry ^. leSource of
-      RobotLog _ rid' -> rid == rid'
+      RobotLog _ rid' _ -> rid == rid'
       _ -> False
 
     focusedOrLatestClose mq =
@@ -706,9 +706,9 @@ messageIsRecent gs e = addTicks 1 (e ^. leTime) >= gs ^. ticks
 -- | Reconciles the possibilities of log messages being
 --   omnipresent and robots being in different worlds
 messageIsFromNearby :: Cosmic Location -> LogEntry -> Bool
-messageIsFromNearby l e = case e ^. leLocation of
-  Omnipresent -> True
-  Located x -> f x
+messageIsFromNearby l e = case e ^. leSource of
+  SystemLog -> True
+  RobotLog _ _ loc -> f loc
  where
   f logLoc = case cosmoMeasure manhattan l logLoc of
     InfinitelyFar -> False

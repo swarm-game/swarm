@@ -435,7 +435,7 @@ createLogEntry source sev msg = do
   rn <- use robotName
   time <- use ticks
   loc <- use robotLocation
-  pure $ LogEntry time (RobotLog source rid) sev rn (Located loc) msg
+  pure $ LogEntry time (RobotLog source rid loc) sev rn msg
 
 -- | Print some text via the robot's log.
 traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => RobotLogSource -> Severity -> Text -> m LogEntry
@@ -1522,9 +1522,9 @@ execConst c vs s k = do
         -- current robot will be inserted into the robot set, so it needs the log
         m <- traceLog Said Info msg
         emitMessage m
-        let measureToLog robLoc rawLogLoc = case rawLogLoc of
-              Located logLoc -> cosmoMeasure manhattan robLoc logLoc
-              Omnipresent -> Measurable 0
+        let measureToLog robLoc = \case
+              RobotLog _ _ logLoc -> cosmoMeasure manhattan robLoc logLoc
+              SystemLog -> Measurable 0
             addLatestClosest rl = \case
               Seq.Empty -> Seq.singleton m
               es Seq.:|> e
@@ -1533,8 +1533,8 @@ execConst c vs s k = do
                 | otherwise -> es |> e
              where
               isEarlierThan = (<) `on` (^. leTime)
-              isFartherThan = (>) `on` (measureToLog rl . view leLocation)
-        let addToRobotLog :: Has (State GameState) sgn m => Robot -> m ()
+              isFartherThan = (>) `on` (measureToLog rl . view leSource)
+        let addToRobotLog :: (Has (State GameState) sgn m) => Robot -> m ()
             addToRobotLog r = do
               maybeRidLoc <- evalState r $ do
                 hasLog <- hasCapability CLog
@@ -1562,7 +1562,7 @@ execConst c vs s k = do
       let isClose e = isPrivileged || messageIsFromNearby loc e
           notMine e = case e ^. leSource of
             SystemLog {} -> False
-            RobotLog _ lrid -> rid /= lrid
+            RobotLog _ lrid _ -> rid /= lrid
           limitLast = \case
             _s Seq.:|> l -> Just $ l ^. leText
             _ -> Nothing

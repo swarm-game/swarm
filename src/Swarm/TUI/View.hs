@@ -885,7 +885,7 @@ messagesWidget gs = widgetList
 colorLogs :: LogEntry -> AttrName
 colorLogs e = case e ^. leSource of
   SystemLog -> colorSeverity (e ^. leSeverity)
-  RobotLog rls rid -> case rls of
+  RobotLog rls rid _loc -> case rls of
     Said -> robotColor rid
     Logged -> notifAttr
     RobotError -> colorSeverity (e ^. leSeverity)
@@ -1328,7 +1328,7 @@ drawRobotLog s =
 
   allMe = all me logEntries
   me le = case le ^. leSource of
-    RobotLog _ i -> Just i == rid
+    RobotLog _ i _ -> Just i == rid
     _ -> False
 
   drawEntry i e =
@@ -1361,7 +1361,7 @@ drawLogEntry addName e =
       <> view leName e
       <> "] "
       <> case e ^. leSource of
-        RobotLog Said _ -> "said " <> quote t
+        RobotLog Said _ _ -> "said " <> quote t
         _ -> t
 
 ------------------------------------------------------------

@@ -10,13 +10,11 @@ module Swarm.Log (
   Severity (..),
   RobotLogSource (..),
   LogSource (..),
-  LogLocation (..),
   LogEntry (..),
   leTime,
   leSource,
   leSeverity,
   leName,
-  leLocation,
   leText,
 ) where
 
@@ -46,13 +44,11 @@ data RobotLogSource
 -- | Source of a log entry.
 data LogSource
   = -- | Log produced by a robot.  Stores information about which
-    --   command was used and the ID of the producing robot.
-    RobotLog RobotLogSource Int
+    --   command was used and the ID and location of the producing
+    --   robot.
+    RobotLog RobotLogSource Int (Cosmic Location)
   | -- | Log produced by an exception or system.
     SystemLog
-  deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
-
-data LogLocation a = Omnipresent | Located a
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
 -- | A log entry.
@@ -66,8 +62,6 @@ data LogEntry = LogEntry
   -- ^ Severity level of this log message.
   , _leName :: Text
   -- ^ Name of the robot or subsystem that generated this log entry.
-  , _leLocation :: LogLocation (Cosmic Location)
-  -- ^ Location associated with this log message.
   , _leText :: Text
   -- ^ The text of the log entry.
   }
