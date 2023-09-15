@@ -44,10 +44,12 @@ module Swarm.Game.Scenario (
   loadScenario,
   loadScenarioFile,
   getScenarioPath,
+  loadStandaloneScenario,
 ) where
 
 import Control.Arrow ((&&&))
 import Control.Carrier.Throw.Either (runThrow)
+import Swarm.Game.World.Load (loadWorlds)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw
 import Control.Lens hiding (from, (.=), (<.>))
@@ -59,6 +61,7 @@ import Data.Map qualified as M
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Sequence (Seq)
 import Swarm.Game.Entity
 import Swarm.Game.Failure
 import Swarm.Game.Location
@@ -80,7 +83,7 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Util (binTuples, failT)
-import Swarm.Util.Effect (throwToMaybe, withThrow)
+import Swarm.Util.Effect (throwToMaybe, withThrow, ignoreWarnings)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
@@ -289,3 +292,14 @@ loadScenarioFile em worldMap fileName =
     decodeFileEitherE (em, worldMap) fileName
  where
   adaptError = AssetNotLoaded (Data Scenarios) fileName . CanNotParseYaml
+
+loadStandaloneScenario ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  FilePath ->
+  m (Scenario, (WorldMap, EntityMap, [Recipe Entity]))
+loadStandaloneScenario fp = do
+  entities <- loadEntities
+  recipes <- loadRecipes entities
+  worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds entities
+  scene <- fst <$> loadScenario fp entities worlds
+  return (scene, (worlds, entities, recipes))

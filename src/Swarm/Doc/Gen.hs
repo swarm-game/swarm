@@ -49,7 +49,7 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Failure (SystemFailure (CustomFailure))
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeCatalysts, recipeInputs, recipeOutputs, recipeTime, recipeWeight)
 import Swarm.Game.Robot (Robot, equippedDevices, instantiateRobot, robotInventory)
-import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
+import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots, loadStandaloneScenario)
 import Swarm.Game.World.Gen (extractEntities)
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (Some (..), TTerm, WorldMap)
@@ -437,17 +437,6 @@ getBaseRobot s = case listToMaybe $ view scenarioRobots s of
 -- ----------------------------------------------------------------------------
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
 -- ----------------------------------------------------------------------------
-
-loadStandaloneScenario ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  FilePath ->
-  m (Scenario, (WorldMap, EntityMap, [Recipe Entity]))
-loadStandaloneScenario fp = do
-  entities <- loadEntities
-  recipes <- loadRecipes entities
-  worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds entities
-  scene <- fst <$> loadScenario fp entities worlds
-  return (scene, (worlds, entities, recipes))
 
 generateRecipe :: IO String
 generateRecipe = simpleErrorHandle $ do
