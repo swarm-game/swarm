@@ -35,7 +35,6 @@ import Data.List (transpose)
 import Data.Map.Lazy (Map, (!))
 import Data.Map.Lazy qualified as Map
 import Data.Maybe (fromMaybe, isJust, listToMaybe)
-import Data.Sequence (Seq)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text, unpack)
@@ -49,10 +48,9 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Failure (SystemFailure (CustomFailure))
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeCatalysts, recipeInputs, recipeOutputs, recipeTime, recipeWeight)
 import Swarm.Game.Robot (Robot, equippedDevices, instantiateRobot, robotInventory)
-import Swarm.Game.Scenario (Scenario, loadScenario, loadStandaloneScenario, scenarioRobots)
+import Swarm.Game.Scenario (Scenario, loadStandaloneScenario, scenarioRobots)
 import Swarm.Game.World.Gen (extractEntities)
-import Swarm.Game.World.Load (loadWorlds)
-import Swarm.Game.World.Typecheck (Some (..), TTerm, WorldMap)
+import Swarm.Game.World.Typecheck (Some (..), TTerm)
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Capability qualified as Capability
 import Swarm.Language.Key (specialKeyNames)
@@ -62,7 +60,7 @@ import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Text.Markdown as Markdown (docToMark)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Util (both, listEnums, quote)
-import Swarm.Util.Effect (ignoreWarnings, simpleErrorHandle)
+import Swarm.Util.Effect (simpleErrorHandle)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 
