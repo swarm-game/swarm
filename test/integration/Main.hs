@@ -32,7 +32,6 @@ import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
 import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
 import Swarm.Game.Entity (EntityMap, lookupByName)
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Log (ErrorLevel (..), LogEntry, LogSource (..), leSource, leText)
 import Swarm.Game.Robot (activityCounts, commandsHistogram, defReqs, equippedDevices, lifetimeStepCount, machine, robotContext, robotLog, systemRobot, tangibleCommandCount, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
@@ -58,6 +57,7 @@ import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty (prettyString)
+import Swarm.Log
 import Swarm.TUI.Model (
   RuntimeState,
   defaultAppOpts,
@@ -111,12 +111,12 @@ testNoLoadingErrors r =
 checkNoRuntimeErrors :: RuntimeState -> IO ()
 checkNoRuntimeErrors r =
   forM_ (r ^. eventLog . notificationsContent) $ \e ->
-    case e ^. leSource of
-      ErrorTrace l
-        | l >= Warning ->
-            assertFailure $
-              show l <> " was produced during loading: " <> T.unpack (e ^. leText)
-      _ -> pure ()
+    when (isError e) $
+      assertFailure $
+        show (e ^. leSeverity) <> " was produced during loading: " <> T.unpack (e ^. leText)
+
+isError :: LogEntry -> Bool
+isError = (>= Warning) . view leSeverity
 
 exampleTests :: [(FilePath, String)] -> TestTree
 exampleTests inputs = testGroup "Test example" (map exampleTest inputs)

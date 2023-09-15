@@ -92,6 +92,7 @@ import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value (VKey, VUnit), prettyValue, stripVResult)
+import Swarm.Log
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Controller qualified as EC
 import Swarm.TUI.Editor.Model
@@ -134,10 +135,14 @@ handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleEvent = \case
   -- the query for upstream version could finish at any time, so we have to handle it here
   AppEvent (UpstreamVersion ev) -> do
-    let logReleaseEvent l e = runtimeState . eventLog %= logEvent l ("Release", -7) (T.pack $ show e)
+    let logReleaseEvent l sev e = runtimeState . eventLog %= logEvent l sev "Release" (T.pack $ show e)
     case ev of
-      Left e@(FailedReleaseQuery _e) -> logReleaseEvent (ErrorTrace Error) e
-      Left e -> logReleaseEvent (ErrorTrace Warning) e
+      Left e ->
+        let sev = case e of
+              FailedReleaseQuery {} -> Error
+              OnDevelopmentBranch {} -> Info
+              _ -> Warning
+         in logReleaseEvent SystemLog sev e
       Right _ -> pure ()
     runtimeState . upstreamRelease .= ev
   e -> do

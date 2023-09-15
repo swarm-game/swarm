@@ -151,6 +151,7 @@ import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios, _SISingle)
 import Swarm.Game.State
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (WorldMap)
+import Swarm.Log
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
@@ -288,13 +289,13 @@ stdNameList :: Lens' RuntimeState (Array Int Text)
 -- Utility
 
 -- | Simply log to the runtime event log.
-logEvent :: LogSource -> (Text, RID) -> Text -> Notifications LogEntry -> Notifications LogEntry
-logEvent src (who, rid) msg el =
+logEvent :: LogSource -> Severity -> Text -> Text -> Notifications LogEntry -> Notifications LogEntry
+logEvent src sev who msg el =
   el
     & notificationsCount %~ succ
     & notificationsContent %~ (l :)
  where
-  l = LogEntry (TickNumber 0) src who rid Omnipresent msg
+  l = LogEntry (TickNumber 0) src sev who msg
 
 -- | Create a 'GameStateConfig' record from the 'RuntimeState'.
 mkGameStateConfig :: RuntimeState -> GameStateConfig

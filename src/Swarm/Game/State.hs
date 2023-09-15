@@ -223,6 +223,7 @@ import Swarm.Language.Syntax (Const, SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
+import Swarm.Log
 import Swarm.Util (applyWhen, binTuples, surfaceEmpty, uniq, (<+=), (<<.=), (?))
 import Swarm.Util.Erasable
 import Swarm.Util.Lens (makeLensesExcluding, makeLensesNoSigs)
@@ -304,7 +305,9 @@ data RunStatus
 toggleRunStatus :: RunStatus -> RunStatus
 toggleRunStatus s = if s == Running then ManualPause else Running
 
--- | A data type to keep track of discovered recipes and commands
+-- | A data type to keep track of some kind of log or sequence, with
+--   an index to remember which ones are "new" and which ones have
+--   "already been seen".
 data Notifications a = Notifications
   { _notificationsCount :: Int
   , _notificationsContent :: [a]
@@ -785,19 +788,23 @@ messageNotifications = to getNotif
     -- other they have to get from log
     latestMsg = messageIsRecent gs
     closeMsg = messageIsFromNearby (gs ^. viewCenter)
+    generatedBy rid logEntry = case logEntry ^. leSource of
+      RobotLog _ rid' _ -> rid == rid'
+      _ -> False
+
     focusedOrLatestClose mq =
       (Seq.take 1 . Seq.reverse . Seq.filter closeMsg $ Seq.takeWhileR latestMsg mq)
-        <> Seq.filter ((== gs ^. focusedRobotID) . view leRobotID) mq
+        <> Seq.filter (generatedBy (gs ^. focusedRobotID)) mq
 
 messageIsRecent :: GameState -> LogEntry -> Bool
 messageIsRecent gs e = addTicks 1 (e ^. leTime) >= gs ^. temporal . ticks
 
 -- | Reconciles the possibilities of log messages being
--- omnipresent and robots being in different worlds
+--   omnipresent and robots being in different worlds
 messageIsFromNearby :: Cosmic Location -> LogEntry -> Bool
-messageIsFromNearby l e = case e ^. leLocation of
-  Omnipresent -> True
-  Located x -> f x
+messageIsFromNearby l e = case e ^. leSource of
+  SystemLog -> True
+  RobotLog _ _ loc -> f loc
  where
   f logLoc = case cosmoMeasure manhattan l logLoc of
     InfinitelyFar -> False

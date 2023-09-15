@@ -92,6 +92,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
+import Swarm.Log
 import Swarm.Util hiding (both)
 import Swarm.Util.Effect (throwToMaybe)
 import Swarm.Util.WindowedCounter qualified as WC
@@ -247,7 +248,7 @@ singleStep ss focRID robotSet = do
  where
   h = hypotheticalRobot (Out VUnit emptyStore []) 0
   debugLog txt = do
-    m <- evalState @Robot h $ createLogEntry (ErrorTrace Debug) txt
+    m <- evalState @Robot h $ createLogEntry RobotError Debug txt
     emitMessage m
 
 -- | An accumulator for folding over the incomplete
@@ -362,7 +363,7 @@ hypotheticalWinCheck em g ws oc = do
 
   -- Log exceptions in the message queue so we can check for them in tests
   handleException exnText = do
-    m <- evalState @Robot h $ createLogEntry (ErrorTrace Critical) exnText
+    m <- evalState @Robot h $ createLogEntry RobotError Critical exnText
     emitMessage m
    where
     h = hypotheticalRobot (Out VUnit emptyStore []) 0
@@ -419,25 +420,28 @@ runCESK cesk = case finalValue cesk of
 -- Debugging
 ------------------------------------------------------------
 
--- | Create a log entry given current robot and game time in ticks noting whether it has been said.
+-- | Create a log entry given current robot and game time in ticks
+--   noting whether it has been said.
 --
---   This is the more generic version used both for (recorded) said messages and normal logs.
+--   This is the more generic version used both for (recorded) said
+--   messages and normal logs.
 createLogEntry ::
   (Has (State GameState) sig m, Has (State Robot) sig m) =>
-  LogSource ->
+  RobotLogSource ->
+  Severity ->
   Text ->
   m LogEntry
-createLogEntry source msg = do
+createLogEntry source sev msg = do
   rid <- use robotID
   rn <- use robotName
   time <- use $ temporal . ticks
   loc <- use robotLocation
-  pure $ LogEntry time source rn rid (Located loc) msg
+  pure $ LogEntry time (RobotLog source rid loc) sev rn msg
 
 -- | Print some text via the robot's log.
-traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => LogSource -> Text -> m LogEntry
-traceLog source msg = do
-  m <- createLogEntry source msg
+traceLog :: (Has (State GameState) sig m, Has (State Robot) sig m) => RobotLogSource -> Severity -> Text -> m LogEntry
+traceLog source sev msg = do
+  m <- createLogEntry source sev msg
   robotLog %= (Seq.|> m)
   return m
 
@@ -445,7 +449,7 @@ traceLog source msg = do
 --
 -- Useful for debugging.
 traceLogShow :: (Has (State GameState) sig m, Has (State Robot) sig m, Show a) => a -> m ()
-traceLogShow = void . traceLog Logged . from . show
+traceLogShow = void . traceLog Logged Info . from . show
 
 ------------------------------------------------------------
 -- Exceptions and validation
@@ -764,7 +768,7 @@ stepCESK cesk = case cesk of
                   ]
               )
 
-    _ <- traceLog Logged reqLog
+    _ <- traceLog Logged Info reqLog
     return $ Out VUnit s k
 
   -- To execute a definition, we immediately turn the body into a
@@ -892,7 +896,7 @@ stepCESK cesk = case cesk of
     em <- use $ landscape . entityMap
     if h
       then do
-        void $ traceLog (ErrorTrace Error) (formatExn em exn)
+        void $ traceLog RobotError Error (formatExn em exn)
         return $ Out VUnit s []
       else return $ Out VUnit s' []
   -- Fatal errors, capability errors, and infinite loop errors can't
@@ -1511,11 +1515,13 @@ execConst c vs s k = do
       [VText msg] -> do
         isPrivileged <- isPrivilegedBot
         loc <- use robotLocation
-        m <- traceLog Said msg -- current robot will inserted to robot set, so it needs the log
+
+        -- current robot will be inserted into the robot set, so it needs the log
+        m <- traceLog Said Info msg
         emitMessage m
-        let measureToLog robLoc rawLogLoc = case rawLogLoc of
-              Located logLoc -> cosmoMeasure manhattan robLoc logLoc
-              Omnipresent -> Measurable 0
+        let measureToLog robLoc = \case
+              RobotLog _ _ logLoc -> cosmoMeasure manhattan robLoc logLoc
+              SystemLog -> Measurable 0
             addLatestClosest rl = \case
               Seq.Empty -> Seq.singleton m
               es Seq.:|> e
@@ -1524,8 +1530,8 @@ execConst c vs s k = do
                 | otherwise -> es |> e
              where
               isEarlierThan = (<) `on` (^. leTime)
-              isFartherThan = (>) `on` (measureToLog rl . view leLocation)
-        let addToRobotLog :: Has (State GameState) sgn m => Robot -> m ()
+              isFartherThan = (>) `on` (measureToLog rl . view leSource)
+        let addToRobotLog :: (Has (State GameState) sgn m) => Robot -> m ()
             addToRobotLog r = do
               maybeRidLoc <- evalState r $ do
                 hasLog <- hasCapability CLog
@@ -1551,11 +1557,13 @@ execConst c vs s k = do
       isPrivileged <- isPrivilegedBot
       mq <- use $ messageInfo . messageQueue
       let isClose e = isPrivileged || messageIsFromNearby loc e
-      let notMine e = rid /= e ^. leRobotID
-      let limitLast = \case
+          notMine e = case e ^. leSource of
+            SystemLog {} -> False
+            RobotLog _ lrid _ -> rid /= lrid
+          limitLast = \case
             _s Seq.:|> l -> Just $ l ^. leText
             _ -> Nothing
-      let mm = limitLast . Seq.filter (liftA2 (&&) notMine isClose) $ Seq.takeWhileR (messageIsRecent gs) mq
+          mm = limitLast . Seq.filter (liftA2 (&&) notMine isClose) $ Seq.takeWhileR (messageIsRecent gs) mq
       return $
         maybe
           (In (TConst Listen) mempty s (FExec : k)) -- continue listening
@@ -1563,7 +1571,7 @@ execConst c vs s k = do
           mm
     Log -> case vs of
       [VText msg] -> do
-        void $ traceLog Logged msg
+        void $ traceLog Logged Info msg
         return $ Out VUnit s k
       _ -> badConst
     View -> case vs of
