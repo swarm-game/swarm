@@ -49,7 +49,7 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Failure (SystemFailure (CustomFailure))
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeCatalysts, recipeInputs, recipeOutputs, recipeTime, recipeWeight)
 import Swarm.Game.Robot (Robot, equippedDevices, instantiateRobot, robotInventory)
-import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots, loadStandaloneScenario)
+import Swarm.Game.Scenario (Scenario, loadScenario, loadStandaloneScenario, scenarioRobots)
 import Swarm.Game.World.Gen (extractEntities)
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (Some (..), TTerm, WorldMap)

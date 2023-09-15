@@ -6,14 +6,13 @@ module Swarm.Game.World.Render where
 
 import Control.Effect.Lift (sendIO)
 import Control.Lens (view)
-import Control.Monad (forM_)
 import Data.List.NonEmpty qualified as NE
 import Swarm.Doc.Gen (loadStandaloneScenario)
 import Swarm.Game.Display (defaultChar)
 import Swarm.Game.ResourceLoading (initNameGenerator, readAppData)
 import Swarm.Game.Scenario (Scenario, area, scenarioWorlds, ul, worldName)
 import Swarm.Game.Scenario.Status (emptyLaunchParams)
-import Swarm.Game.Scenario.Topography.Area (getAreaDimensions, upperLeftToBottomRight)
+import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..), getAreaDimensions, isEmpty, upperLeftToBottomRight)
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade (EntityFacade (..), mkFacade)
 import Swarm.Game.State
@@ -40,7 +39,11 @@ getDisplayGrid myScenario gs =
   firstScenarioWorld = NE.head $ view scenarioWorlds myScenario
   worldArea = area firstScenarioWorld
   upperLeftLocation = ul firstScenarioWorld
-  areaDims = getAreaDimensions worldArea
+  rawAreaDims = getAreaDimensions worldArea
+  areaDims =
+    if isEmpty rawAreaDims
+      then AreaDimensions 20 10
+      else rawAreaDims
   lowerRightLocation = upperLeftToBottomRight areaDims upperLeftLocation
 
   mkCosmic = Cosmic $ worldName firstScenarioWorld
@@ -58,5 +61,5 @@ renderScenarioMap fp = simpleErrorHandle $ do
   return $ map (map getDisplayChar) grid
 
 printScenarioMap :: [String] -> IO ()
-printScenarioMap grid =
-  sendIO $ forM_ grid putStrLn
+printScenarioMap =
+  sendIO . mapM_ putStrLn
