@@ -12,6 +12,7 @@ import Control.Effect.Throw (Throw, liftEither, throwError)
 import Control.Exception (catch)
 import Control.Exception.Base (IOException)
 import Control.Monad (forM, when, (<=<))
+import Data.Array (Array, listArray)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
@@ -30,6 +31,12 @@ import System.Directory (
  )
 import System.FilePath
 import Witch
+
+-- | Read-only lists of adjectives and words for use in building random robot names
+data NameGenerator = NameGenerator
+  { adjList :: Array Int Text
+  , nameList :: Array Int Text
+  }
 
 -- | Get subdirectory from swarm data directory.
 --
@@ -126,3 +133,20 @@ readAppData = do
 
   filesList <- sendIO $ forM fs (\f -> (into @Text (dropExtension f),) <$> readFileMayT (d </> f))
   return $ M.fromList . mapMaybe sequenceA $ filesList
+
+initNameGenerator :: Has (Throw SystemFailure) sig m => Map Text Text -> m NameGenerator
+initNameGenerator appDataMap = do
+  adjs <- getDataLines "adjectives"
+  names <- getDataLines "names"
+  return $
+    NameGenerator
+      { adjList = makeArr adjs
+      , nameList = makeArr names
+      }
+ where
+  makeArr xs = listArray (0, length xs - 1) xs
+  getDataLines f = case M.lookup f appDataMap of
+    Nothing ->
+      throwError $
+        AssetNotLoaded (Data NameGeneration) (into @FilePath f <.> "txt") (DoesNotExist File)
+    Just content -> return . tail . T.lines $ content

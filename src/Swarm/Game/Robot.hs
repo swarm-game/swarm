@@ -339,7 +339,7 @@ robotDisplay = lens getDisplay setDisplay
       & curOrientation .~ ((r ^. robotOrientation) >>= toDirection)
   setDisplay r d = r & robotEntity . entityDisplay .~ d
 
--- | The robot's current location, represented as (x,y).  This is only
+-- | The robot's current location, represented as @(x,y)@.  This is only
 --   a getter, since when changing a robot's location we must remember
 --   to update the 'robotsByLocation' map as well.  You can use the
 --   'updateRobotLocation' function for this purpose.
