@@ -59,6 +59,7 @@ drawLoc ui g cCoords@(Cosmic _ coords) =
   we = ui ^. uiWorldEditor . worldOverdraw
   drawCell = renderDisplay $ displayLoc showRobots we g cCoords
 
+-- | Subset of the game state needed to render the world
 data RenderingInput = RenderingInput
   { multiworldInfo :: W.MultiWorld Int Entity
   , isKnownFunc :: EntityPaint -> Bool
@@ -80,6 +81,8 @@ displayRobotCell g coords =
   map (view robotDisplay) $
     robotsAtLocation (fmap W.coordsToLoc coords) g
 
+-- | Extract the relevant subset of information from the 'GameState' to be able
+-- to compute whether an entity is "known".
 mkEntityKnowledge :: GameState -> EntityKnowledgeDependencies
 mkEntityKnowledge gs =
   EntityKnowledgeDependencies
@@ -88,12 +91,17 @@ mkEntityKnowledge gs =
     , theFocusedRobot = focusedRobot gs
     }
 
+-- | The subset of information required to compute whether
+-- an entity is "known", and therefore should be rendered
+-- normally vs as a question mark.
 data EntityKnowledgeDependencies = EntityKnowledgeDependencies
   { isCreativeMode :: Bool
   , globallyKnownEntities :: [Text]
   , theFocusedRobot :: Maybe Robot
   }
 
+-- | Determines whether an entity should be rendered
+-- normally vs as a question mark.
 getEntityIsKnown :: EntityKnowledgeDependencies -> EntityPaint -> Bool
 getEntityIsKnown knowledge ep = case ep of
   Facade (EntityFacade _ _) -> True
