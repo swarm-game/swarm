@@ -18,6 +18,7 @@ import Swarm.Game.Achievement.Description
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Attribute.Attr
+import Swarm.TUI.View.Util (drawMarkdown)
 import Text.Wrap
 
 padAllEvenly :: Int -> Widget Name -> Widget Name
@@ -66,7 +67,7 @@ singleAchievementDetails attainedMap x =
   wasAttained = M.member x attainedMap
 
   renderFlavorTextWidget :: FlavorText -> Widget Name
-  renderFlavorTextWidget (Freeform t) = txtWrap t
+  renderFlavorTextWidget (Freeform t) = drawMarkdown t
   renderFlavorTextWidget (FTQuotation (Quotation author quoteContent)) =
     vBox
       [ txtWrap quoteContent
@@ -79,10 +80,9 @@ singleAchievementDetails attainedMap x =
   innerContent =
     vBox
       [ maybe emptyWidget (padAllEvenly 2 . renderFlavorTextWidget) $ humorousElaboration details
-      , txtWrap $
-          if wasAttained || not (isObfuscated details)
-            then attainmentProcess details
-            else "???"
+      , if wasAttained || not (isObfuscated details)
+          then drawMarkdown $ attainmentProcess details
+          else txt "???"
       , case M.lookup x attainedMap of
           Nothing -> emptyWidget
           Just attainment ->

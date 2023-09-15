@@ -37,6 +37,8 @@ extra-source-files: CHANGELOG.md
                     example/*.sw
                     editors/emacs/*.el
                     editors/vscode/syntaxes/*.json
+                    editors/vim/*.vim
+                    editors/vim/*.lua
 data-dir:           data/
 data-files:         *.yaml, worlds/*.world, scenarios/**/*.yaml, scenarios/**/*.txt, scenarios/**/*.sw, *.txt, test/language-snippets/**/*.sw
 
@@ -329,7 +331,7 @@ test-suite swarm-unit
                       TestScoring
                       TestUtil
 
-    build-depends:    tasty                         >= 0.10 && < 1.5,
+    build-depends:    tasty                         >= 0.10 && < 1.6,
                       tasty-hunit                   >= 0.10 && < 0.11,
                       tasty-quickcheck              >= 0.10 && < 0.11,
                       QuickCheck                    >= 2.14 && < 2.15,
@@ -357,7 +359,7 @@ test-suite swarm-integration
     main-is:          Main.hs
     type:             exitcode-stdio-1.0
 
-    build-depends:    tasty                         >= 0.10 && < 1.5,
+    build-depends:    tasty                         >= 0.10 && < 1.6,
                       tasty-hunit                   >= 0.10 && < 0.11,
                       tasty-expected-failure        >= 0.12 && < 0.13,
                       -- Imports shared with the library don't need bounds

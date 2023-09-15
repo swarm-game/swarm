@@ -123,7 +123,7 @@ constructAppState rs ui opts@(AppOpts {..}) = do
   case skipMenu opts of
     False -> return $ AppState gs (ui & lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
     True -> do
-      (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. entityMap) (rs ^. worlds)
+      (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. landscape . entityMap) (rs ^. worlds)
       maybeRunScript <- traverse parseCodeFile scriptToRun
 
       let maybeAutoplay = do
@@ -258,7 +258,7 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
       & uiWorldEditor . EM.entityPaintList %~ BL.listReplace entityList Nothing
       & uiWorldEditor . EM.editingBounds . EM.boundsRect %~ setNewBounds
  where
-  entityList = EU.getEntitiesForList $ gs ^. entityMap
+  entityList = EU.getEntitiesForList $ gs ^. landscape . entityMap
 
   (isEmptyArea, newBounds) = EU.getEditingBounds $ NE.head $ scenario ^. scenarioWorlds
   setNewBounds maybeOldBounds =

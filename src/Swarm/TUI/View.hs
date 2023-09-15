@@ -243,7 +243,7 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
   drawDescription (SICollection _ _) = txtWrap " "
   drawDescription (SISingle (s, si)) =
     vBox
-      [ txtWrap (nonBlank (s ^. scenarioDescription))
+      [ drawMarkdown (nonBlank (s ^. scenarioDescription))
       , padTop (Pad 1) table
       ]
    where
@@ -504,8 +504,8 @@ drawWorldCursorInfo worldEditor g cCoords =
 drawClockDisplay :: Int -> GameState -> Widget n
 drawClockDisplay lgTPS gs = hBox . intersperse (txt " ") $ catMaybes [clockWidget, pauseWidget]
  where
-  clockWidget = maybeDrawTime (gs ^. ticks) (gs ^. paused || lgTPS < 3) gs
-  pauseWidget = guard (gs ^. paused) $> txt "(PAUSED)"
+  clockWidget = maybeDrawTime (gs ^. temporal . ticks) (gs ^. temporal . paused || lgTPS < 3) gs
+  pauseWidget = guard (gs ^. temporal . paused) $> txt "(PAUSED)"
 
 -- | Check whether the currently focused robot (if any) has a clock
 --   device equipped.
@@ -625,7 +625,7 @@ renderDutyCycle :: GameState -> Robot -> Widget Name
 renderDutyCycle gs robot =
   withAttr dutyCycleAttr . str . flip (showFFloat (Just 1)) "%" $ dutyCyclePercentage
  where
-  curTicks = gs ^. ticks
+  curTicks = gs ^. temporal . ticks
   window = robot ^. activityCounts . activityWindow
 
   -- Rewind to previous tick
@@ -796,7 +796,7 @@ availableListWidget :: GameState -> NotificationList -> Widget Name
 availableListWidget gs nl = padTop (Pad 1) $ vBox widgetList
  where
   widgetList = case nl of
-    RecipeList -> mkAvailableList gs availableRecipes renderRecipe
+    RecipeList -> mkAvailableList gs (discovery . availableRecipes) renderRecipe
     MessageList -> messagesWidget gs
   renderRecipe = padLeftRight 18 . drawRecipe Nothing (fromMaybe E.empty inv)
   inv = gs ^? to focusedRobot . _Just . robotInventory
@@ -822,7 +822,7 @@ commandsListWidget gs =
       , txt wikiCheatSheet
       ]
  where
-  commands = gs ^. availableCommands . notificationsContent
+  commands = gs ^. discovery . availableCommands . notificationsContent
   table =
     BT.renderTable
       . BT.surroundingBorder False
@@ -872,7 +872,7 @@ messagesWidget :: GameState -> [Widget Name]
 messagesWidget gs = widgetList
  where
   widgetList = focusNewest . map drawLogEntry' $ gs ^. messageNotifications . notificationsContent
-  focusNewest = if gs ^. paused then id else over _last visible
+  focusNewest = if gs ^. temporal . paused then id else over _last visible
   drawLogEntry' e =
     withAttr (colorLogs e) $
       hBox
@@ -918,8 +918,8 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
     catMaybes
       [ Just (NoHighlight, "F1", "Help")
       , Just (NoHighlight, "F2", "Robots")
-      , notificationKey availableRecipes "F3" "Recipes"
-      , notificationKey availableCommands "F4" "Commands"
+      , notificationKey (discovery . availableRecipes) "F3" "Recipes"
+      , notificationKey (discovery . availableCommands) "F4" "Commands"
       , notificationKey messageNotifications "F5" "Messages"
       ]
 
@@ -943,7 +943,7 @@ drawKeyMenu s =
   mkCmdRow = hBox . map drawPaddedCmd
   drawPaddedCmd = padLeftRight 1 . drawKeyCmd
   contextCmds
-    | ctrlMode == Handling = txt $ fromMaybe "" (s ^? gameState . inputHandler . _Just . _1)
+    | ctrlMode == Handling = txt $ fromMaybe "" (s ^? gameState . gameControls . inputHandler . _Just . _1)
     | otherwise = mkCmdRow focusedPanelCmds
   focusedPanelCmds =
     map highlightKeyCmds
@@ -952,8 +952,8 @@ drawKeyMenu s =
       . view (uiState . uiFocusRing)
       $ s
 
-  isReplWorking = s ^. gameState . replWorking
-  isPaused = s ^. gameState . paused
+  isReplWorking = s ^. gameState . gameControls . replWorking
+  isPaused = s ^. gameState . temporal . paused
   hasDebug = fromMaybe creative $ s ^? gameState . to focusedRobot . _Just . robotCapabilities . Lens.contains CDebug
   viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
@@ -963,8 +963,8 @@ drawKeyMenu s =
   inventorySort = s ^. uiState . uiInventorySort
   inventorySearch = s ^. uiState . uiInventorySearch
   ctrlMode = s ^. uiState . uiREPL . replControlMode
-  canScroll = creative || (s ^. gameState . worldScrollable)
-  handlerInstalled = isJust (s ^. gameState . inputHandler)
+  canScroll = creative || (s ^. gameState . landscape . worldScrollable)
+  handlerInstalled = isJust (s ^. gameState . gameControls . inputHandler)
 
   renderPilotModeSwitch :: ReplControlMode -> T.Text
   renderPilotModeSwitch = \case
@@ -1215,7 +1215,7 @@ explainRecipes s e
 -- | Return all recipes that involve a given entity.
 recipesWith :: AppState -> Entity -> [Recipe Entity]
 recipesWith s e =
-  let getRecipes select = recipesFor (s ^. gameState . select) e
+  let getRecipes select = recipesFor (s ^. gameState . recipesInfo . select) e
    in -- The order here is chosen intentionally.  See https://github.com/swarm-game/swarm/issues/418.
       --
       --   1. Recipes where the entity is an input --- these should go
@@ -1227,7 +1227,12 @@ recipesWith s e =
       --   3. Recipes where it is an output --- these should go last,
       --      since if you have it, you probably already figured out how
       --      to make it.
-      L.nub $ getRecipes recipesIn ++ getRecipes recipesCat ++ getRecipes recipesOut
+      L.nub $
+        concat
+          [ getRecipes recipesIn
+          , getRecipes recipesCat
+          , getRecipes recipesOut
+          ]
 
 -- | Draw an ASCII art representation of a recipe.  For now, the
 --   weight is not shown.
@@ -1379,11 +1384,11 @@ replPromptAsWidget t (SearchPrompt rh) =
       | otherwise -> txt $ "[found: \"" <> lastentry <> "\"] "
 
 renderREPLPrompt :: FocusRing Name -> REPLState -> Widget Name
-renderREPLPrompt focus repl = ps1 <+> replE
+renderREPLPrompt focus theRepl = ps1 <+> replE
  where
-  prompt = repl ^. replPromptType
-  replEditor = repl ^. replPromptEditor
-  color = if repl ^. replValid then id else withAttr redAttr
+  prompt = theRepl ^. replPromptType
+  replEditor = theRepl ^. replPromptEditor
+  color = if theRepl ^. replValid then id else withAttr redAttr
   ps1 = replPromptAsWidget (T.concat $ getEditContents replEditor) prompt
   replE =
     renderEditor
@@ -1404,13 +1409,13 @@ drawREPL s =
  where
   -- rendered history lines fitting above REPL prompt
   history :: [Widget n]
-  history = map fmt . toList . getSessionREPLHistoryItems $ repl ^. replHistory
+  history = map fmt . toList . getSessionREPLHistoryItems $ theRepl ^. replHistory
   currentPrompt :: Widget Name
-  currentPrompt = case (isActive <$> base, repl ^. replControlMode) of
+  currentPrompt = case (isActive <$> base, theRepl ^. replControlMode) of
     (_, Handling) -> padRight Max $ txt "[key handler running, M-k to toggle]"
-    (Just False, _) -> renderREPLPrompt (s ^. uiState . uiFocusRing) repl
+    (Just False, _) -> renderREPLPrompt (s ^. uiState . uiFocusRing) theRepl
     _running -> padRight Max $ txt "..."
-  repl = s ^. uiState . uiREPL
+  theRepl = s ^. uiState . uiREPL
   base = s ^. gameState . robotMap . at 0
   fmt (REPLEntry e) = txt $ "> " <> e
   fmt (REPLOutput t) = txt t

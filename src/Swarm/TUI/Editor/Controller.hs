@@ -80,7 +80,7 @@ handleMiddleClick :: B.Location -> EventM Name AppState ()
 handleMiddleClick mouseLoc = do
   worldEditor <- use $ uiState . uiWorldEditor
   when (worldEditor ^. isWorldEditorEnabled) $ do
-    w <- use $ gameState . multiWorld
+    w <- use $ gameState . landscape . multiWorld
     let setTerrainPaint coords = do
           let (terrain, maybeElementPaint) =
                 EU.getContentAt
@@ -141,7 +141,7 @@ saveMapFile :: EventM Name AppState ()
 saveMapFile = do
   worldEditor <- use $ uiState . uiWorldEditor
   maybeBounds <- use $ uiState . uiWorldEditor . editingBounds . boundsRect
-  w <- use $ gameState . multiWorld
+  w <- use $ gameState . landscape . multiWorld
   let mapCellGrid = EU.getEditedMapRectangle worldEditor maybeBounds w
 
   let fp = worldEditor ^. outputFilePath

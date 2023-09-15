@@ -7,11 +7,13 @@ import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Game.Entity (Entity)
 import Swarm.Game.Scenario.Topography.WorldDescription
+import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown (Document)
 
 data SkeletonScenario = SkeletonScenario
   { version :: Int
   , name :: Text
-  , description :: Text
+  , description :: Document Syntax
   , creative :: Bool
   , entities :: [Entity]
   , world :: WorldDescriptionPaint

@@ -14,11 +14,12 @@ module Swarm.Game.Terrain (
 ) where
 
 import Data.Aeson (FromJSON (..), withText)
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Swarm.Game.Display
-import Swarm.Util (failT)
+import Swarm.Util (failT, showEnum)
 import Text.Read (readMaybe)
 import Witch (into)
 
@@ -49,7 +50,7 @@ instance FromJSON TerrainType where
       Nothing -> failT ["Unknown terrain type:", t]
 
 getTerrainDefaultPaletteChar :: TerrainType -> Char
-getTerrainDefaultPaletteChar = head . show
+getTerrainDefaultPaletteChar = NE.head . showEnum
 
 getTerrainWord :: TerrainType -> T.Text
 getTerrainWord = T.toLower . T.pack . init . show
