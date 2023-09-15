@@ -18,7 +18,7 @@ module Swarm.TUI.View (
   drawKeyCmd,
 
   -- * World
-  drawWorld,
+  drawWorldPane,
 
   -- * Robot panel
   drawRobotPanel,
@@ -61,7 +61,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chunksOf)
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, isJust, listToMaybe, mapMaybe, maybeToList)
 import Data.Semigroup (sconcat)
 import Data.Sequence qualified as Seq
 import Data.Set qualified as Set (toList)
@@ -78,7 +78,15 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (scenarioAuthor, scenarioDescription, scenarioName, scenarioObjectives)
+import Swarm.Game.Scenario (
+  scenarioAuthor,
+  scenarioCreative,
+  scenarioDescription,
+  scenarioKnown,
+  scenarioName,
+  scenarioObjectives,
+  scenarioSeed,
+ )
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
@@ -95,6 +103,7 @@ import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
+import Swarm.Log
 import Swarm.TUI.Border
 import Swarm.TUI.Controller (ticksPerFrameCap)
 import Swarm.TUI.Editor.Model
@@ -238,9 +247,35 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
   drawDescription (SISingle (s, si)) =
     vBox
       [ drawMarkdown (nonBlank (s ^. scenarioDescription))
+      , hCenter . padTop (Pad 1) . vLimit 6 $ hLimitPercent 60 worldPeek
       , padTop (Pad 1) table
       ]
    where
+    defaultVC = Cosmic DefaultRootSubworld origin
+
+    -- The first robot is guaranteed to be the base.
+    baseRobotLoc :: Maybe (Cosmic Location)
+    baseRobotLoc = do
+      theBaseRobot <- listToMaybe theRobots
+      view trobotLocation theBaseRobot
+
+    vc = fromMaybe defaultVC baseRobotLoc
+
+    worldTuples = buildWorldTuples s
+    theWorlds = genMultiWorld worldTuples $ fromMaybe 0 $ s ^. scenarioSeed
+    theRobots = genRobotTemplates s worldTuples
+
+    ri =
+      RenderingInput theWorlds $
+        getEntityIsKnown $
+          EntityKnowledgeDependencies
+            { isCreativeMode = s ^. scenarioCreative
+            , globallyKnownEntities = s ^. scenarioKnown
+            , theFocusedRobot = Nothing
+            }
+    renderCoord = renderDisplay . displayLocRaw (WorldOverdraw False mempty) ri []
+    worldPeek = worldWidget renderCoord vc
+
     firstRow =
       ( withAttr dimAttr $ txt "Author:"
       , withAttr dimAttr . txt <$> s ^. scenarioAuthor
@@ -420,7 +455,7 @@ drawGameUI s =
    where
     widg = case s ^. uiState . uiWorldCursor of
       Nothing -> str $ renderCoordsString $ s ^. gameState . viewCenter
-      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (s ^. uiState . uiWorldEditor) (s ^. gameState) coord
+      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (s ^. uiState . uiWorldEditor . worldOverdraw) (s ^. gameState) coord
   -- Add clock display in top right of the world view if focused robot
   -- has a clock equipped
   addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (s ^. uiState . lgTicksPerSecond) $ s ^. gameState)
@@ -441,7 +476,7 @@ drawGameUI s =
             & addCursorPos
             & addClock
         )
-        (drawWorld (s ^. uiState) (s ^. gameState))
+        (drawWorldPane (s ^. uiState) (s ^. gameState))
     , drawKeyMenu s
     ]
   replPanel =
@@ -468,7 +503,7 @@ renderCoordsString (Cosmic sw coords) =
     DefaultRootSubworld -> []
     SubworldName swName -> ["in", T.unpack swName]
 
-drawWorldCursorInfo :: WorldEditor Name -> GameState -> Cosmic W.Coords -> Widget Name
+drawWorldCursorInfo :: WorldOverdraw -> GameState -> Cosmic W.Coords -> Widget Name
 drawWorldCursorInfo worldEditor g cCoords =
   case getStatic g coords of
     Just s -> renderDisplay $ displayStatic s
@@ -487,8 +522,9 @@ drawWorldCursorInfo worldEditor g cCoords =
    where
     f cell preposition = [renderDisplay cell, txt preposition]
 
-  terrain = displayTerrainCell worldEditor g cCoords
-  entity = displayEntityCell worldEditor g cCoords
+  ri = RenderingInput (g ^. landscape . multiWorld) (getEntityIsKnown $ mkEntityKnowledge g)
+  terrain = displayTerrainCell worldEditor ri cCoords
+  entity = displayEntityCell worldEditor ri cCoords
   robot = displayRobotCell g cCoords
 
   merge = fmap sconcat . NE.nonEmpty . filter (not . (^. invisible))
@@ -871,23 +907,29 @@ messagesWidget gs = widgetList
     withAttr (colorLogs e) $
       hBox
         [ fromMaybe (txt "") $ maybeDrawTime (e ^. leTime) True gs
-        , padLeft (Pad 2) . txt $ brackets $ e ^. leRobotName
+        , padLeft (Pad 2) . txt $ brackets $ e ^. leName
         , padLeft (Pad 1) . txt2 $ e ^. leText
         ]
   txt2 = txtWrapWith indent2
 
 colorLogs :: LogEntry -> AttrName
 colorLogs e = case e ^. leSource of
-  Said -> robotColor (e ^. leRobotID)
-  Logged -> notifAttr
-  ErrorTrace l -> case l of
-    Debug -> dimAttr
-    Warning -> yellowAttr
-    Error -> redAttr
-    Critical -> redAttr
+  SystemLog -> colorSeverity (e ^. leSeverity)
+  RobotLog rls rid _loc -> case rls of
+    Said -> robotColor rid
+    Logged -> notifAttr
+    RobotError -> colorSeverity (e ^. leSeverity)
  where
   -- color each robot message with different color of the world
   robotColor = indexWrapNonEmpty worldAttributeNames
+
+colorSeverity :: Severity -> AttrName
+colorSeverity = \case
+  Info -> infoAttr
+  Debug -> dimAttr
+  Warning -> yellowAttr
+  Error -> redAttr
+  Critical -> redAttr
 
 -- | Draw the F-key modal menu. This is displayed in the top left world corner.
 drawModalMenu :: AppState -> Widget Name
@@ -1022,7 +1064,7 @@ data KeyHighlight = NoHighlight | Alert | PanelSpecific
 drawKeyCmd :: (KeyHighlight, Text, Text) -> Widget Name
 drawKeyCmd (h, key, cmd) =
   hBox
-    [ withAttr attr (txt $ T.concat ["[", key, "] "])
+    [ withAttr attr (txt $ brackets key)
     , txt cmd
     ]
  where
@@ -1035,22 +1077,31 @@ drawKeyCmd (h, key, cmd) =
 -- World panel
 ------------------------------------------------------------
 
+worldWidget ::
+  (Cosmic W.Coords -> Widget n) ->
+  -- | view center
+  Cosmic Location ->
+  Widget n
+worldWidget renderCoord gameViewCenter = Widget Fixed Fixed $
+  do
+    ctx <- getContext
+    let w = ctx ^. availWidthL
+        h = ctx ^. availHeightL
+        vr = viewingRegion gameViewCenter (fromIntegral w, fromIntegral h)
+        ixs = range $ vr ^. planar
+    render . vBox . map hBox . chunksOf w . map (renderCoord . Cosmic (vr ^. subworld)) $ ixs
+
 -- | Draw the current world view.
-drawWorld :: UIState -> GameState -> Widget Name
-drawWorld ui g =
+drawWorldPane :: UIState -> GameState -> Widget Name
+drawWorldPane ui g =
   center
     . cached WorldCache
     . reportExtent WorldExtent
     -- Set the clickable request after the extent to play nice with the cache
     . clickable (FocusablePanel WorldPanel)
-    . Widget Fixed Fixed
-    $ do
-      ctx <- getContext
-      let w = ctx ^. availWidthL
-          h = ctx ^. availHeightL
-          vr = viewingRegion g (fromIntegral w, fromIntegral h)
-          ixs = range $ vr ^. planar
-      render . vBox . map hBox . chunksOf w . map (drawLoc ui g . Cosmic (vr ^. subworld)) $ ixs
+    $ worldWidget renderCoord (g ^. viewCenter)
+ where
+  renderCoord = drawLoc ui g
 
 ------------------------------------------------------------
 -- Robot inventory panel
@@ -1316,10 +1367,13 @@ drawRobotLog s =
  where
   logEntries = s ^. gameState . to focusedRobot . _Just . robotLog
 
-  rn = s ^? gameState . to focusedRobot . _Just . robotName
+  rid = s ^? gameState . to focusedRobot . _Just . robotID
   n = Seq.length logEntries
 
-  allMe = all ((== rn) . Just . view leRobotName) logEntries
+  allMe = all me logEntries
+  me le = case le ^. leSource of
+    RobotLog _ i _ -> Just i == rid
+    _ -> False
 
   drawEntry i e =
     (if i == n - 1 && s ^. uiState . uiScrollToEnd then visible else id) $
@@ -1341,10 +1395,18 @@ drawRobotMachine s showName = case s ^. gameState . to focusedRobot of
 
 -- | Draw one log entry with an optional robot name first.
 drawLogEntry :: Bool -> LogEntry -> Widget a
-drawLogEntry addName e = withAttr (colorLogs e) . txtWrapWith indent2 $ if addName then name else t
+drawLogEntry addName e =
+  withAttr (colorLogs e) . txtWrapWith indent2 $
+    if addName then name else t
  where
   t = e ^. leText
-  name = "[" <> view leRobotName e <> "] " <> (if e ^. leSource == Said then "said " <> quote t else t)
+  name =
+    "["
+      <> view leName e
+      <> "] "
+      <> case e ^. leSource of
+        RobotLog Said _ _ -> "said " <> quote t
+        _ -> t
 
 ------------------------------------------------------------
 -- REPL panel

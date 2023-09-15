@@ -13,9 +13,6 @@
 module Swarm.Game.Robot (
   -- * Robots data
 
-  -- * Robot log entries
-  module Swarm.Game.Log,
-
   -- * Robots
   RobotPhase (..),
   RID,
@@ -100,7 +97,6 @@ import Swarm.Game.CESK
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location (Heading, Location, toDirection)
-import Swarm.Game.Log
 import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
@@ -110,6 +106,7 @@ import Swarm.Language.Text.Markdown (Document)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types (TCtx)
 import Swarm.Language.Value as V
+import Swarm.Log
 import Swarm.Util.Lens (makeLensesExcluding, makeLensesNoSigs)
 import Swarm.Util.WindowedCounter
 import Swarm.Util.Yaml
@@ -342,7 +339,7 @@ robotDisplay = lens getDisplay setDisplay
       & curOrientation .~ ((r ^. robotOrientation) >>= toDirection)
   setDisplay r d = r & robotEntity . entityDisplay .~ d
 
--- | The robot's current location, represented as (x,y).  This is only
+-- | The robot's current location, represented as @(x,y)@.  This is only
 --   a getter, since when changing a robot's location we must remember
 --   to update the 'robotsByLocation' map as well.  You can use the
 --   'updateRobotLocation' function for this purpose.

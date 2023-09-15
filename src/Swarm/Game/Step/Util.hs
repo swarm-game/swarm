@@ -26,6 +26,7 @@ import Linear (zero)
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Exception
 import Swarm.Game.Location
+import Swarm.Game.ResourceLoading (NameGenerator (..))
 import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.Game.Universe

@@ -15,10 +15,19 @@ import Data.Map qualified as M
 import Data.Maybe (maybeToList)
 import Data.Semigroup (sconcat)
 import Data.Tagged (unTagged)
+import Data.Text (Text)
 import Data.Word (Word32)
 import Linear.Affine ((.-.))
 import Swarm.Game.CESK (TickNumber (..))
-import Swarm.Game.Display
+import Swarm.Game.Display (
+  Attribute (AEntity),
+  Display,
+  defaultEntityDisplay,
+  displayAttr,
+  displayChar,
+  displayPriority,
+  hidden,
+ )
 import Swarm.Game.Entity
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Topography.EntityFacade
@@ -47,16 +56,22 @@ drawLoc ui g cCoords@(Cosmic _ coords) =
     else drawCell
  where
   showRobots = ui ^. uiShowRobots
-  we = ui ^. uiWorldEditor
+  we = ui ^. uiWorldEditor . worldOverdraw
   drawCell = renderDisplay $ displayLoc showRobots we g cCoords
 
+-- | Subset of the game state needed to render the world
+data RenderingInput = RenderingInput
+  { multiworldInfo :: W.MultiWorld Int Entity
+  , isKnownFunc :: EntityPaint -> Bool
+  }
+
 displayTerrainCell ::
-  WorldEditor Name ->
-  GameState ->
+  WorldOverdraw ->
+  RenderingInput ->
   Cosmic W.Coords ->
   Display
-displayTerrainCell worldEditor g coords =
-  terrainMap M.! EU.getTerrainAt worldEditor (g ^. landscape . multiWorld) coords
+displayTerrainCell worldEditor ri coords =
+  terrainMap M.! EU.getEditorTerrainAt worldEditor (multiworldInfo ri) coords
 
 displayRobotCell ::
   GameState ->
@@ -66,58 +81,82 @@ displayRobotCell g coords =
   map (view robotDisplay) $
     robotsAtLocation (fmap W.coordsToLoc coords) g
 
-displayEntityCell :: WorldEditor Name -> GameState -> Cosmic W.Coords -> [Display]
-displayEntityCell worldEditor g coords =
+-- | Extract the relevant subset of information from the 'GameState' to be able
+-- to compute whether an entity is "known".
+mkEntityKnowledge :: GameState -> EntityKnowledgeDependencies
+mkEntityKnowledge gs =
+  EntityKnowledgeDependencies
+    { isCreativeMode = gs ^. creativeMode
+    , globallyKnownEntities = gs ^. discovery . knownEntities
+    , theFocusedRobot = focusedRobot gs
+    }
+
+-- | The subset of information required to compute whether
+-- an entity is "known", and therefore should be rendered
+-- normally vs as a question mark.
+data EntityKnowledgeDependencies = EntityKnowledgeDependencies
+  { isCreativeMode :: Bool
+  , globallyKnownEntities :: [Text]
+  , theFocusedRobot :: Maybe Robot
+  }
+
+-- | Determines whether an entity should be rendered
+-- normally vs as a question mark.
+getEntityIsKnown :: EntityKnowledgeDependencies -> EntityPaint -> Bool
+getEntityIsKnown knowledge ep = case ep of
+  Facade (EntityFacade _ _) -> True
+  Ref e -> or reasonsToShow
+   where
+    reasonsToShow =
+      [ isCreativeMode knowledge
+      , e `hasProperty` Known
+      , (e ^. entityName) `elem` globallyKnownEntities knowledge
+      , showBasedOnRobotKnowledge
+      ]
+    showBasedOnRobotKnowledge = maybe False (`robotKnows` e) $ theFocusedRobot knowledge
+
+displayEntityCell ::
+  WorldOverdraw ->
+  RenderingInput ->
+  Cosmic W.Coords ->
+  [Display]
+displayEntityCell worldEditor ri coords =
   maybeToList $ displayForEntity <$> maybeEntity
  where
-  (_, maybeEntity) = EU.getContentAt worldEditor (g ^. landscape . multiWorld) coords
+  (_, maybeEntity) = EU.getEditorContentAt worldEditor (multiworldInfo ri) coords
 
   displayForEntity :: EntityPaint -> Display
-  displayForEntity e = (if known e then id else hidden) $ getDisplay e
-
-  known (Facade (EntityFacade _ _)) = True
-  known (Ref e) =
-    e
-      `hasProperty` Known
-      || (e ^. entityName)
-        `elem` (g ^. discovery . knownEntities)
-      || case hidingMode g of
-        HideAllEntities -> False
-        HideNoEntity -> True
-        HideEntityUnknownTo ro -> ro `robotKnows` e
-
-data HideEntity = HideAllEntities | HideNoEntity | HideEntityUnknownTo Robot
-
-hidingMode :: GameState -> HideEntity
-hidingMode g
-  | g ^. creativeMode = HideNoEntity
-  | otherwise = maybe HideAllEntities HideEntityUnknownTo $ focusedRobot g
+  displayForEntity e = (if isKnownFunc ri e then id else hidden) $ getDisplay e
 
 -- | Get the 'Display' for a specific location, by combining the
 --   'Display's for the terrain, entity, and robots at the location, and
 --   taking into account "static" based on the distance to the robot
 --   being @view@ed.
-displayLoc :: Bool -> WorldEditor Name -> GameState -> Cosmic W.Coords -> Display
+displayLoc :: Bool -> WorldOverdraw -> GameState -> Cosmic W.Coords -> Display
 displayLoc showRobots we g cCoords@(Cosmic _ coords) =
   staticDisplay g coords
-    <> displayLocRaw showRobots we g cCoords
+    <> displayLocRaw we ri robots cCoords
+ where
+  ri = RenderingInput (g ^. landscape . multiWorld) (getEntityIsKnown $ mkEntityKnowledge g)
+  robots =
+    if showRobots
+      then displayRobotCell g cCoords
+      else []
 
 -- | Get the 'Display' for a specific location, by combining the
 --   'Display's for the terrain, entity, and robots at the location.
 displayLocRaw ::
-  Bool ->
-  WorldEditor Name ->
-  GameState ->
+  WorldOverdraw ->
+  RenderingInput ->
+  -- | Robot displays
+  [Display] ->
   Cosmic W.Coords ->
   Display
-displayLocRaw showRobots worldEditor g coords = sconcat $ terrain NE.:| entity <> robots
+displayLocRaw worldEditor ri robotDisplays coords =
+  sconcat $ terrain NE.:| entity <> robotDisplays
  where
-  terrain = displayTerrainCell worldEditor g coords
-  entity = displayEntityCell worldEditor g coords
-  robots =
-    if showRobots
-      then displayRobotCell g coords
-      else []
+  terrain = displayTerrainCell worldEditor ri coords
+  entity = displayEntityCell worldEditor ri coords
 
 -- | Random "static" based on the distance to the robot being
 --   @view@ed.

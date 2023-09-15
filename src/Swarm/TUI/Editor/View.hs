@@ -26,7 +26,7 @@ import Swarm.Util (listEnums)
 
 drawWorldEditor :: FocusRing Name -> UIState -> Widget Name
 drawWorldEditor toplevelFocusRing uis =
-  if worldEditor ^. isWorldEditorEnabled
+  if worldEditor ^. worldOverdraw . isWorldEditorEnabled
     then
       panel
         highlightAttr
