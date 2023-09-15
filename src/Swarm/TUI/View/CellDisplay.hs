@@ -60,7 +60,7 @@ drawLoc ui g cCoords@(Cosmic _ coords) =
   drawCell = renderDisplay $ displayLoc showRobots we g cCoords
 
 data RenderingInput = RenderingInput
-  { multiworldFoo :: W.MultiWorld Int Entity
+  { multiworldInfo :: W.MultiWorld Int Entity
   , isKnownFunc :: EntityPaint -> Bool
   }
 
@@ -70,7 +70,7 @@ displayTerrainCell ::
   Cosmic W.Coords ->
   Display
 displayTerrainCell worldEditor ri coords =
-  terrainMap M.! EU.getEditorTerrainAt worldEditor (multiworldFoo ri) coords
+  terrainMap M.! EU.getEditorTerrainAt worldEditor (multiworldInfo ri) coords
 
 displayRobotCell ::
   GameState ->
@@ -115,7 +115,7 @@ displayEntityCell ::
 displayEntityCell worldEditor ri coords =
   maybeToList $ displayForEntity <$> maybeEntity
  where
-  (_, maybeEntity) = EU.getEditorContentAt worldEditor (multiworldFoo ri) coords
+  (_, maybeEntity) = EU.getEditorContentAt worldEditor (multiworldInfo ri) coords
 
   displayForEntity :: EntityPaint -> Display
   displayForEntity e = (if isKnownFunc ri e then id else hidden) $ getDisplay e
