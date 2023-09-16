@@ -80,11 +80,11 @@ module Swarm.Game.Robot (
 ) where
 
 import Control.Lens hiding (Const, contains)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson qualified as Ae (FromJSON, ToJSON (..), object, (.=), KeyValue, Key)
 import Data.Hashable (hashWithSalt)
 import Data.Kind qualified
 import Data.Map (Map)
-import Data.Maybe (fromMaybe, isNothing)
+import Data.Maybe (fromMaybe, isNothing, catMaybes)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
@@ -97,6 +97,7 @@ import Servant.Docs qualified as SD
 import Swarm.Game.CESK
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Entity qualified as Inventory (empty)
 import Swarm.Game.Location (Heading, Location, toDirection)
 import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
@@ -130,7 +131,7 @@ data RobotContext = RobotContext
   -- ^ A store containing memory cells allocated to hold
   --   definitions.
   }
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic, Ae.FromJSON, Ae.ToJSON)
 
 makeLenses ''RobotContext
 
@@ -180,7 +181,19 @@ data ActivityCounts = ActivityCounts
   , _lifetimeStepCount :: Int
   , _activityWindow :: WindowedCounter TickNumber
   }
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic, Ae.FromJSON, Ae.ToJSON)
+
+emptyActivityCount :: ActivityCounts
+emptyActivityCount =
+  ActivityCounts
+    { _tickStepBudget = 0
+    , _tangibleCommandCount = 0
+    , _commandsHistogram = mempty
+    , _lifetimeStepCount = 0
+    , -- NOTE: This value was chosen experimentally.
+      -- TODO(#1341): Make this dynamic based on game speed.
+      _activityWindow = mkWindow 64
+    }
 
 makeLensesNoSigs ''ActivityCounts
 
@@ -279,8 +292,6 @@ data RobotR (phase :: RobotPhase) = RobotR
 
 deriving instance (Show (RobotLocation phase), Show (RobotID phase)) => Show (RobotR phase)
 deriving instance (Eq (RobotLocation phase), Eq (RobotID phase)) => Eq (RobotR phase)
-
-deriving instance (ToJSON (RobotLocation phase), ToJSON (RobotID phase)) => ToJSON (RobotR phase)
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
@@ -547,16 +558,7 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
     , _machine = m
     , _systemRobot = sys
     , _selfDestruct = False
-    , _activityCounts =
-        ActivityCounts
-          { _tickStepBudget = 0
-          , _tangibleCommandCount = 0
-          , _commandsHistogram = mempty
-          , _lifetimeStepCount = 0
-          , -- NOTE: This value was chosen experimentally.
-            -- TODO(#1341): Make this dynamic based on game speed.
-            _activityWindow = mkWindow 64
-          }
+    , _activityCounts = emptyActivityCount
     , _runningAtomic = False
     , _unwalkableEntities = unwalkables
     }
@@ -589,6 +591,39 @@ instance FromJSONE EntityMap TRobot where
    where
     mkMachine Nothing = Out VUnit emptyStore []
     mkMachine (Just pt) = initMachine pt mempty emptyStore
+
+(.=?) :: (Ae.KeyValue a, Ae.ToJSON v, Eq v) => Ae.Key -> v -> v -> Maybe a
+(.=?) n v defaultVal = if defaultVal /= v then Just $ n Ae..= v else Nothing
+
+(.==) :: (Ae.KeyValue a, Ae.ToJSON v) => Ae.Key -> v -> Maybe a
+(.==) n v = Just $ n Ae..= v
+
+instance Ae.ToJSON Robot where
+  toJSON r = Ae.object $ catMaybes
+    [ "id" .== (r ^. robotID)
+    , "name" .== (r ^. robotEntity . entityDisplay)
+    , "description" .=? (r ^. robotEntity . entityDescription) $ mempty
+    , "loc" .== (r ^. robotLocation)
+    , "dir" .=? (r ^. robotEntity . entityOrientation) $ zero
+    , "display" .=? (r ^. robotDisplay) $ (defaultRobotDisplay & invisible .~ sys)
+    , "program" .== (r ^. machine)
+    , "devices" .=? (r ^. equippedDevices) $ Inventory.empty
+    , "inventory" .=? (r ^. robotInventory) $ Inventory.empty
+    , "system" .=? sys $ False
+    , "heavy" .=? (r ^. robotHeavy) $ False
+    , "log" .=? (r ^. robotLog) $ mempty
+    -- debug
+    , "capabilities" .=? (r ^.robotCapabilities) $ mempty
+    , "logUpdated" .=? (r ^. robotLogUpdated) $ False
+    , "context" .=? (r ^. robotContext) $ emptyRobotContext
+    , "parent" .=? (r ^. robotParentID) $ Nothing
+    , "createdAt" .=? (r ^. robotCreatedAt) $ 0
+    , "selfDestruct" .=? (r ^. selfDestruct) $ False
+    , "activity" .=? (r ^. activityCounts) $ emptyActivityCount
+    , "runningAtomic" .=? (r ^. runningAtomic) $ False
+    ]
+   where
+    sys = r ^. systemRobot
 
 -- | Is the robot actively in the middle of a computation?
 isActive :: Robot -> Bool
