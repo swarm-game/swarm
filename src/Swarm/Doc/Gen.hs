@@ -63,6 +63,7 @@ import Swarm.Util (both, listEnums, quote)
 import Swarm.Util.Effect (simpleErrorHandle)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
+import Swarm.Web (swarmApiMarkdown)
 
 -- ============================================================================
 -- MAIN ENTRYPOINT TO CLI DOCUMENTATION GENERATOR
@@ -84,6 +85,8 @@ data GenerateDocs where
   CheatSheet :: PageAddress -> Maybe SheetType -> GenerateDocs
   -- | List command introductions by tutorial
   TutorialCoverage :: GenerateDocs
+  -- | Web API endpoints
+  WebAPIEndpoints :: GenerateDocs
   deriving (Eq, Show)
 
 -- | An enumeration of the editors supported by Swarm (currently,
@@ -136,6 +139,7 @@ generateDocs = \case
         recipes <- loadRecipes entities
         sendIO $ T.putStrLn $ recipePage address recipes
   TutorialCoverage -> renderTutorialProgression >>= putStrLn . T.unpack
+  WebAPIEndpoints -> putStrLn swarmApiMarkdown
 
 -- ----------------------------------------------------------------------------
 -- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED

@@ -14,6 +14,8 @@
 -- See 'SwarmAPI' for the available endpoints. You can also see them in your
 -- browser on the top level endpoint:
 -- @lynx localhost:5357 -dump@
+-- or you can output the markdown documentation to your terminal:
+-- @cabal run swarm -O0 -- generate endpoints@
 --
 -- Missing endpoints:
 --
@@ -22,7 +24,10 @@
 module Swarm.Web (
   startWebThread,
   defaultPort,
-
+  -- ** Docs
+  SwarmAPI,
+  swarmApiHtml,
+  swarmApiMarkdown,
   -- ** Development
   webMain,
 ) where
@@ -110,13 +115,16 @@ type ToplevelAPI = SwarmAPI :<|> Raw
 api :: Proxy ToplevelAPI
 api = Proxy
 
-docsBS :: ByteString
-docsBS =
+swarmApiHtml :: ByteString
+swarmApiHtml =
   encodeUtf8
     . either (error . show) (Mark.renderHtml @())
     . Mark.commonmark ""
-    . T.pack
-    . SD.markdownWith
+    $ T.pack swarmApiMarkdown
+
+swarmApiMarkdown :: String
+swarmApiMarkdown =
+  SD.markdownWith
       ( SD.defRenderingOptions
           & SD.requestExamples .~ SD.FirstContentType
           & SD.responseExamples .~ SD.FirstContentType
@@ -232,7 +240,7 @@ webMain baton port appStateRef chan = catch (Warp.runSettings settings app) hand
   server = mkApp appStateRef chan :<|> Tagged serveDocs
    where
     serveDocs _ resp =
-      resp $ responseLBS ok200 [plain] docsBS
+      resp $ responseLBS ok200 [plain] swarmApiHtml
     plain = ("Content-Type", "text/html")
 
   app :: Network.Wai.Application
