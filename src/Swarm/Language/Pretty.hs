@@ -52,6 +52,10 @@ docToText = RT.renderStrict . layoutPretty defaultLayoutOptions
 prettyText :: (PrettyPrec a) => a -> Text
 prettyText = docToText . ppr
 
+-- | Pretty-print something and render it as (preferably) one line @Text@.
+prettyTextLine :: (PrettyPrec a) => a -> Text
+prettyTextLine = RT.renderStrict . layoutPretty (LayoutOptions Unbounded) . group . ppr
+
 -- | Render a pretty-printed document as a @String@.
 docToString :: Doc a -> String
 docToString = RS.renderString . layoutPretty defaultLayoutOptions

@@ -64,7 +64,7 @@ import Swarm.Game.Scenario.Objective.WinCheck
 import Swarm.Game.State
 import Swarm.Language.Module
 import Swarm.Language.Pipeline
-import Swarm.Language.Pretty (prettyString)
+import Swarm.Language.Pretty (prettyTextLine)
 import Swarm.Language.Syntax
 import Swarm.ReadableIORef
 import Swarm.TUI.Model
@@ -185,7 +185,7 @@ codeRenderHandler :: Text -> Handler Text
 codeRenderHandler contents = do
   return $ case processTermEither contents of
     Right (ProcessedTerm (Module stx@(Syntax' _srcLoc _term _) _) _ _) ->
-      into @Text . drawTree . fmap prettyString . para Node $ stx
+      into @Text . drawTree . fmap (T.unpack . prettyTextLine) . para Node $ stx
     Left x -> x
 
 codeRunHandler :: BChan AppEvent -> Text -> Handler Text
