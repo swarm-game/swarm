@@ -112,6 +112,7 @@
                "installkeyhandler"
                "teleport"
                "as"
+               "be"
                "robotnamed"
                "robotnumbered"
                "knows"
