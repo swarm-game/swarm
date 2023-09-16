@@ -112,6 +112,7 @@ import Swarm.Util.Lens (makeLensesExcluding, makeLensesNoSigs)
 import Swarm.Util.WindowedCounter
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
+import Swarm.Language.Pipeline.QQ (tmQ)
 
 -- | A record that stores the information
 --   for all definitions stored in a 'Robot'
@@ -294,7 +295,24 @@ type TRobot = RobotR 'TemplateRobot
 type Robot = RobotR 'ConcreteRobot
 
 instance ToSample Robot where
-  toSamples _ = SD.noSamples
+  toSamples _ = SD.singleSample sampleBase
+    where
+      sampleBase :: Robot
+      sampleBase =
+        mkRobot
+          0
+          Nothing
+          "base"
+          "The starting robot."
+          defaultCosmicLocation
+          zero
+          defaultRobotDisplay
+          (initMachine [tmQ| move |] mempty emptyStore)
+          []
+          []
+          False
+          False
+          0
 
 -- In theory we could make all these lenses over (RobotR phase), but
 -- that leads to lots of type ambiguity problems later.  In practice
