@@ -607,8 +607,8 @@ instance Ae.ToJSON Robot where
     , "dir" .=? (r ^. robotEntity . entityOrientation) $ zero
     , "display" .=? (r ^. robotDisplay) $ (defaultRobotDisplay & invisible .~ sys)
     , "program" .== (r ^. machine)
-    , "devices" .=? (r ^. equippedDevices) $ Inventory.empty
-    , "inventory" .=? (r ^. robotInventory) $ Inventory.empty
+    , "devices" .=? (map (^. _2 . entityName) . elems $ r ^. equippedDevices) $ []
+    , "inventory" .=? (map (_2 %~ view entityName) . elems $ r ^. robotInventory) $ []
     , "system" .=? sys $ False
     , "heavy" .=? (r ^. robotHeavy) $ False
     , "log" .=? (r ^. robotLog) $ mempty
