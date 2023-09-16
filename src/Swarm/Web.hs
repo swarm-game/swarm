@@ -56,6 +56,7 @@ import Network.Wai.Handler.Warp qualified as Warp
 import Servant
 import Servant.Docs (ToCapture)
 import Servant.Docs qualified as SD
+import Servant.Docs.Internal qualified as SD (renderCurlBasePath)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
@@ -74,20 +75,10 @@ import Text.Read (readEither)
 import Witch (into)
 
 -- ------------------------------------------------------------------
--- Necessary instances
+-- Docs
 -- ------------------------------------------------------------------
 
 newtype RobotID = RobotID Int
-
-instance FromHttpApiData RobotID where
-  parseUrlPiece = fmap RobotID . left T.pack . readEither . T.unpack
-
-instance SD.ToSample T.Text where
-  toSamples _ = SD.noSamples
-
--- ------------------------------------------------------------------
--- Docs
--- ------------------------------------------------------------------
 
 type SwarmAPI =
   "robots" :> Get '[JSON] [Robot]
@@ -100,12 +91,6 @@ type SwarmAPI =
     :<|> "code" :> "render" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
     :<|> "code" :> "run" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [REPLHistItem]
-
-instance ToCapture (Capture "id" RobotID) where
-  toCapture _ =
-    SD.DocCapture
-      "id" -- name
-      "(integer) robot ID" -- description
 
 swarmApi :: Proxy SwarmAPI
 swarmApi = Proxy
@@ -128,6 +113,7 @@ swarmApiMarkdown =
       ( SD.defRenderingOptions
           & SD.requestExamples .~ SD.FirstContentType
           & SD.responseExamples .~ SD.FirstContentType
+          & SD.renderCurlBasePath ?~ "http://localhost:" <> show defaultPort
       )
     $ SD.docsWithIntros [intro] swarmApi
  where
@@ -286,3 +272,22 @@ startWebThread userPort appStateRef chan = do
     Nothing -> case userPort of
       Just _p -> fail failMsg
       Nothing -> return . Left $ failMsg <> " (timeout)"
+
+-- ------------------------------------------------------------------
+-- Necessary instances
+-- ------------------------------------------------------------------
+
+instance SD.ToSample T.Text where
+  toSamples _ = SD.noSamples
+
+instance FromHttpApiData RobotID where
+  parseUrlPiece = fmap RobotID . left T.pack . readEither . T.unpack
+
+instance SD.ToSample RobotID where
+  toSamples _ = SD.samples [RobotID 0, RobotID 1]
+
+instance ToCapture (Capture "id" RobotID) where
+  toCapture _ =
+    SD.DocCapture
+      "id" -- name
+      "(integer) robot ID" -- description
