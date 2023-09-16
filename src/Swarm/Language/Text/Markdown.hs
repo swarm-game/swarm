@@ -54,7 +54,7 @@ import Data.Yaml
 import GHC.Exts qualified (IsList (..), IsString (..))
 import Swarm.Language.Parse (readTerm)
 import Swarm.Language.Pipeline (processParsedTerm)
-import Swarm.Language.Pretty (PrettyPrec (..), prettyText, prettyTypeErrText, prettyTextLine)
+import Swarm.Language.Pretty (PrettyPrec (..), prettyText, prettyTextLine, prettyTypeErrText)
 import Swarm.Language.Syntax (Syntax)
 
 -- | The top-level markdown document.

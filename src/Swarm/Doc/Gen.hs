@@ -61,9 +61,9 @@ import Swarm.Language.Text.Markdown as Markdown (docToMark)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Util (both, listEnums, quote)
 import Swarm.Util.Effect (simpleErrorHandle)
+import Swarm.Web (swarmApiMarkdown)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
-import Swarm.Web (swarmApiMarkdown)
 
 -- ============================================================================
 -- MAIN ENTRYPOINT TO CLI DOCUMENTATION GENERATOR

@@ -24,10 +24,12 @@
 module Swarm.Web (
   startWebThread,
   defaultPort,
+
   -- ** Docs
   SwarmAPI,
   swarmApiHtml,
   swarmApiMarkdown,
+
   -- ** Development
   webMain,
 ) where
@@ -110,11 +112,11 @@ swarmApiHtml =
 swarmApiMarkdown :: String
 swarmApiMarkdown =
   SD.markdownWith
-      ( SD.defRenderingOptions
-          & SD.requestExamples .~ SD.FirstContentType
-          & SD.responseExamples .~ SD.FirstContentType
-          & SD.renderCurlBasePath ?~ "http://localhost:" <> show defaultPort
-      )
+    ( SD.defRenderingOptions
+        & SD.requestExamples .~ SD.FirstContentType
+        & SD.responseExamples .~ SD.FirstContentType
+        & SD.renderCurlBasePath ?~ "http://localhost:" <> show defaultPort
+    )
     $ SD.docsWithIntros [intro] swarmApi
  where
   intro = SD.DocIntro "Swarm Web API" ["All of the valid endpoints are documented below."]

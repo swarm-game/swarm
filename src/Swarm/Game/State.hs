@@ -290,10 +290,11 @@ data WinCondition
 makePrisms ''WinCondition
 
 instance ToSample WinCondition where
-  toSamples _ = SD.samples
-    [ NoWinCondition
-    -- TODO: add simple objective sample
-    ]
+  toSamples _ =
+    SD.samples
+      [ NoWinCondition
+      -- TODO: add simple objective sample
+      ]
 
 -- | A data type to keep track of the pause mode.
 data RunStatus

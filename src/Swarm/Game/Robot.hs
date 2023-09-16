@@ -80,11 +80,11 @@ module Swarm.Game.Robot (
 ) where
 
 import Control.Lens hiding (Const, contains)
-import Data.Aeson qualified as Ae (FromJSON, ToJSON (..), object, (.=), KeyValue, Key)
+import Data.Aeson qualified as Ae (FromJSON, Key, KeyValue, ToJSON (..), object, (.=))
 import Data.Hashable (hashWithSalt)
 import Data.Kind qualified
 import Data.Map (Map)
-import Data.Maybe (fromMaybe, isNothing, catMaybes)
+import Data.Maybe (catMaybes, fromMaybe, isNothing)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
@@ -102,6 +102,7 @@ import Swarm.Game.Location (Heading, Location, toDirection)
 import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
+import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax (Const, Syntax)
 import Swarm.Language.Text.Markdown (Document)
@@ -113,7 +114,6 @@ import Swarm.Util.Lens (makeLensesExcluding, makeLensesNoSigs)
 import Swarm.Util.WindowedCounter
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
-import Swarm.Language.Pipeline.QQ (tmQ)
 
 -- | A record that stores the information
 --   for all definitions stored in a 'Robot'
@@ -307,23 +307,23 @@ type Robot = RobotR 'ConcreteRobot
 
 instance ToSample Robot where
   toSamples _ = SD.singleSample sampleBase
-    where
-      sampleBase :: Robot
-      sampleBase =
-        mkRobot
-          0
-          Nothing
-          "base"
-          "The starting robot."
-          defaultCosmicLocation
-          zero
-          defaultRobotDisplay
-          (initMachine [tmQ| move |] mempty emptyStore)
-          []
-          []
-          False
-          False
-          0
+   where
+    sampleBase :: Robot
+    sampleBase =
+      mkRobot
+        0
+        Nothing
+        "base"
+        "The starting robot."
+        defaultCosmicLocation
+        zero
+        defaultRobotDisplay
+        (initMachine [tmQ| move |] mempty emptyStore)
+        []
+        []
+        False
+        False
+        0
 
 -- In theory we could make all these lenses over (RobotR phase), but
 -- that leads to lots of type ambiguity problems later.  In practice
@@ -599,29 +599,31 @@ instance FromJSONE EntityMap TRobot where
 (.==) n v = Just $ n Ae..= v
 
 instance Ae.ToJSON Robot where
-  toJSON r = Ae.object $ catMaybes
-    [ "id" .== (r ^. robotID)
-    , "name" .== (r ^. robotEntity . entityDisplay)
-    , "description" .=? (r ^. robotEntity . entityDescription) $ mempty
-    , "loc" .== (r ^. robotLocation)
-    , "dir" .=? (r ^. robotEntity . entityOrientation) $ zero
-    , "display" .=? (r ^. robotDisplay) $ (defaultRobotDisplay & invisible .~ sys)
-    , "program" .== (r ^. machine)
-    , "devices" .=? (map (^. _2 . entityName) . elems $ r ^. equippedDevices) $ []
-    , "inventory" .=? (map (_2 %~ view entityName) . elems $ r ^. robotInventory) $ []
-    , "system" .=? sys $ False
-    , "heavy" .=? (r ^. robotHeavy) $ False
-    , "log" .=? (r ^. robotLog) $ mempty
-    -- debug
-    , "capabilities" .=? (r ^.robotCapabilities) $ mempty
-    , "logUpdated" .=? (r ^. robotLogUpdated) $ False
-    , "context" .=? (r ^. robotContext) $ emptyRobotContext
-    , "parent" .=? (r ^. robotParentID) $ Nothing
-    , "createdAt" .=? (r ^. robotCreatedAt) $ 0
-    , "selfDestruct" .=? (r ^. selfDestruct) $ False
-    , "activity" .=? (r ^. activityCounts) $ emptyActivityCount
-    , "runningAtomic" .=? (r ^. runningAtomic) $ False
-    ]
+  toJSON r =
+    Ae.object $
+      catMaybes
+        [ "id" .== (r ^. robotID)
+        , "name" .== (r ^. robotEntity . entityDisplay)
+        , "description" .=? (r ^. robotEntity . entityDescription) $ mempty
+        , "loc" .== (r ^. robotLocation)
+        , "dir" .=? (r ^. robotEntity . entityOrientation) $ zero
+        , "display" .=? (r ^. robotDisplay) $ (defaultRobotDisplay & invisible .~ sys)
+        , "program" .== (r ^. machine)
+        , "devices" .=? (map (^. _2 . entityName) . elems $ r ^. equippedDevices) $ []
+        , "inventory" .=? (map (_2 %~ view entityName) . elems $ r ^. robotInventory) $ []
+        , "system" .=? sys $ False
+        , "heavy" .=? (r ^. robotHeavy) $ False
+        , "log" .=? (r ^. robotLog) $ mempty
+        , -- debug
+          "capabilities" .=? (r ^. robotCapabilities) $ mempty
+        , "logUpdated" .=? (r ^. robotLogUpdated) $ False
+        , "context" .=? (r ^. robotContext) $ emptyRobotContext
+        , "parent" .=? (r ^. robotParentID) $ Nothing
+        , "createdAt" .=? (r ^. robotCreatedAt) $ 0
+        , "selfDestruct" .=? (r ^. selfDestruct) $ False
+        , "activity" .=? (r ^. activityCounts) $ emptyActivityCount
+        , "runningAtomic" .=? (r ^. runningAtomic) $ False
+        ]
    where
     sys = r ^. systemRobot
 
