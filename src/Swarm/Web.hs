@@ -22,6 +22,7 @@
 module Swarm.Web (
   startWebThread,
   defaultPort,
+
   -- ** Development
   webMain,
 ) where
@@ -208,7 +209,6 @@ replHandler appStateRef = do
 -- ------------------------------------------------------------------
 -- Main app (used by service and for development)
 -- ------------------------------------------------------------------
-
 
 -- | Simple result type to report errors from forked startup thread.
 data WebStartResult = WebStarted | WebStartError String
