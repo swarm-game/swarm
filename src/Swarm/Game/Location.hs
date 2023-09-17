@@ -52,17 +52,17 @@ import Swarm.Util qualified as Util
 -- >>> import Linear
 -- >>> import Swarm.Language.Direction
 
--- | A Location is a pair of (x,y) coordinates, both up to 32 bits.
+-- | A t'Location' is a pair of @(x,y)@ coordinates, both up to 32 bits.
 --   The positive x-axis points east and the positive y-axis points
 --   north.  These are the coordinates that are shown to players.
 --
 --   See also the 'Swarm.Game.World.Coords' type defined in "Swarm.Game.World", which
 --   use a (row, column) format instead, which is more convenient for
 --   internal use.  The "Swarm.Game.World" module also defines
---   conversions between 'Location' and 'Swarm.Game.World.Coords'.
+--   conversions between t'Location' and 'Swarm.Game.World.Coords'.
 type Location = Point V2 Int32
 
--- | A convenient way to pattern-match on 'Location' values.
+-- | A convenient way to pattern-match on t'Location' values.
 pattern Location :: Int32 -> Int32 -> Location
 pattern Location x y = P (V2 x y)
 
@@ -76,13 +76,13 @@ instance ToJSON Location where
 
 -- | A @Heading@ is a 2D vector, with 32-bit coordinates.
 --
---   'Location' and 'Heading' are both represented using types from
+--   t'Location' and 'Heading' are both represented using types from
 --   the @linear@ package, so they can be manipulated using a large
 --   number of operators from that package.  For example:
 --
 --   * Two headings can be added with '^+^'.
---   * The difference between two 'Location's is a 'Heading' (via '.-.').
---   * A 'Location' plus a 'Heading' is another 'Location' (via 'Linear.Affine..^+').
+--   * The difference between two t'Location's is a 'Heading' (via '.-.').
+--   * A t'Location' plus a 'Heading' is another t'Location' (via 'Linear.Affine..^+').
 type Heading = V2 Int32
 
 deriving instance ToJSON (V2 Int32)

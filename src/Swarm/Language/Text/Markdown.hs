@@ -69,7 +69,7 @@ newtype Document c = Document {paragraphs :: [Paragraph c]}
 -- The idea is that paragraphs do not have line breaks,
 -- and so the inline elements follow each other.
 -- In particular inline code can be followed by text without
--- space between them (e.g. `logger`s).
+-- space between them (e.g. @\`logger\`s@).
 newtype Paragraph c = Paragraph {nodes :: [Node c]}
   deriving (Eq, Show, Functor, Foldable, Traversable)
   deriving (Semigroup, Monoid) via [Node c]

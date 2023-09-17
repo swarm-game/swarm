@@ -75,7 +75,7 @@ import Witch (into)
 -- ----------------------------------------------------------------------------
 
 -- | A scenario item is either a specific scenario, or a collection of
---   scenarios (*e.g.* the scenarios contained in a subdirectory).
+--   scenarios (/e.g./ the scenarios contained in a subdirectory).
 data ScenarioItem = SISingle ScenarioInfoPair | SICollection Text ScenarioCollection
   deriving (Show)
 
@@ -85,15 +85,17 @@ scenarioItemName (SISingle (s, _ss)) = s ^. scenarioName
 scenarioItemName (SICollection name _) = name
 
 -- | A scenario collection is a tree of scenarios, keyed by name,
---   together with an optional order.  Invariant: every item in the
---   scOrder exists as a key in the scMap.
+--   together with an optional order.
+--
+--   /Invariant:/ every item in the
+--   'scOrder' exists as a key in the 'scMap'.
 data ScenarioCollection = SC
   { scOrder :: Maybe [FilePath]
   , scMap :: Map FilePath ScenarioItem
   }
   deriving (Show)
 
--- | Access and modify ScenarioItems in collection based on their path.
+-- | Access and modify 'ScenarioItem's in collection based on their path.
 scenarioItemByPath :: FilePath -> Traversal' ScenarioCollection ScenarioItem
 scenarioItemByPath path = ixp ps
  where

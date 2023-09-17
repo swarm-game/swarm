@@ -24,6 +24,7 @@ module Swarm.TUI.View (
   drawRobotPanel,
   drawItem,
   drawLabelledEntityName,
+  renderDutyCycle,
 
   -- * Info panel
   drawInfoPanel,
@@ -645,10 +646,10 @@ drawModal s = \case
 -- due to the sliding window.
 --
 -- == Use of previous tick
--- The 'gameTick' function runs all robots, then increments the current tick.
+-- The 'Swarm.Game.Step.gameTick' function runs all robots, then increments the current tick.
 -- So at the time we are rendering a frame, the current tick will always be
--- strictly greater than any ticks stored in the 'WindowedCounter' for any robot;
--- hence 'getOccupancy' will never be @1@ if we use the current tick directly as
+-- strictly greater than any ticks stored in the 'WC.WindowedCounter' for any robot;
+-- hence 'WC.getOccupancy' will never be @1@ if we use the current tick directly as
 -- obtained from the 'ticks' function.
 -- So we "rewind" it to the previous tick for the purpose of this display.
 renderDutyCycle :: GameState -> Robot -> Widget Name

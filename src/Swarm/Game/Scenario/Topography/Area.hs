@@ -10,6 +10,7 @@ import Data.Maybe (listToMaybe)
 import Linear (V2 (..))
 import Swarm.Game.Location
 
+-- | Height and width of a 2D map region
 data AreaDimensions = AreaDimensions
   { rectWidth :: Int32
   , rectHeight :: Int32
@@ -22,7 +23,7 @@ renderRectDimensions (AreaDimensions w h) =
 invertY :: V2 Int32 -> V2 Int32
 invertY (V2 x y) = V2 x (-y)
 
--- | Incorporates an offset by -1, since the area is
+-- | Incorporates an offset by @-1@, since the area is
 -- "inclusive" of the lower-right coordinate.
 -- Inverse of 'cornersToArea'.
 upperLeftToBottomRight :: AreaDimensions -> Location -> Location
@@ -41,9 +42,11 @@ cornersToArea upperLeft lowerRight =
  where
   V2 x y = (+ 1) <$> invertY (lowerRight .-. upperLeft)
 
+-- | Has zero width or height.
 isEmpty :: AreaDimensions -> Bool
 isEmpty (AreaDimensions w h) = w == 0 || h == 0
 
+-- | Extracts the dimensions of a map grid.
 getAreaDimensions :: [[a]] -> AreaDimensions
 getAreaDimensions cellGrid =
   AreaDimensions w h

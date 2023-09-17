@@ -51,7 +51,7 @@ data AnnotatedDestination a = AnnotatedDestination
 -- on the portal location specification method ('portalExitLoc').
 --
 -- == @additionalDimension@
--- As a member of the 'WorldDescription', waypoints are only known within a
+-- As a member of the 'Swarm.Game.Scenario.Topography.WorldDescription.WorldDescription', waypoints are only known within a
 -- a single subworld, so 'additionalDimension' is 'Identity' for the map
 -- of waypoint names to planar locations.
 -- At the Scenario level, in contrast, we have access to all subworlds, so
@@ -129,7 +129,7 @@ failWaypointLookup (WaypointName rawName) =
 -- == Data flow
 --
 -- Waypoints are defined within a subworld and are namespaced by it.
--- Optional intra-subworld uniqueness of Waypoints is enforced at WorldDescription
+-- Optional intra-subworld uniqueness of Waypoints is enforced at 'Swarm.Game.Scenario.Topography.WorldDescription.WorldDescription'
 -- parse time.
 -- Portals are declared within a subworld. The portal entrance must be a waypoint
 -- within this subworld.
@@ -140,7 +140,7 @@ failWaypointLookup (WaypointName rawName) =
 --   no entrances overlap can also be performed at that level.
 -- * However, enforcement of single-multiplicity on portal /exits/ must be performed
 --   at scenario-parse level, because for a portal exit that references a waypoint in
---   another subworld, we can't know at the single-WorldDescription level whether
+--   another subworld, we can't know at the single-'Swarm.Game.Scenario.Topography.WorldDescription.WorldDescription' level whether
 --   that waypoint has plural multiplicity.
 validatePartialNavigation ::
   (MonadFail m, Traversable t) =>
