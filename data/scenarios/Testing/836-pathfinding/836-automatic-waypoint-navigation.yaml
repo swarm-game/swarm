@@ -45,7 +45,7 @@ entities:
       char: 'o'
       attr: easter_egg
     description:
-      - Just the flower top of the plant
+      - A colorful egg laid by the rabbit
     properties: [known, portable]
     growth: [5, 10]
 robots:
@@ -66,6 +66,7 @@ robots:
       - treads
       - wayfinder
   - name: gardener
+    description: Periodically chops down the kudzu plant
     dir: [1, 0]
     system: true
     devices:
@@ -109,7 +110,7 @@ world:
     '─': [stone, horizontal wall]
     '│': [stone, vertical wall]
   structures:
-    - name: bigbox
+    - name: cornerbox
       structure:
         palette:
           '.': [dirt]
@@ -123,19 +124,19 @@ world:
           @w.
           @.@
   placements:
-    - src: bigbox
+    - src: cornerbox
       offset: [2, -2]
       orient:
         up: north
-    - src: bigbox
+    - src: cornerbox
       offset: [8, -2]
       orient:
         up: east
-    - src: bigbox
+    - src: cornerbox
       offset: [8, -6]
       orient:
         up: south
-    - src: bigbox
+    - src: cornerbox
       offset: [2, -6]
       orient:
         up: west

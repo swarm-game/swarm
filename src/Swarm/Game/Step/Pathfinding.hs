@@ -14,11 +14,11 @@
 --
 -- Instead, in the current implementation a complete path is computed
 -- internally upon invoking the @path@ command, and just the direction of the
--- first "move" along that path is returned as a result to the callee.
+-- first "move" along that path is returned as a result to the caller.
 --
 -- == Max distance
 --
--- We allow the callee to supply a max distance, but also impose an internal maximum
+-- We allow the caller to supply a max distance, but also impose an internal maximum
 -- distance to prevent programming errors from irrecoverably freezing the game.
 module Swarm.Game.Step.Pathfinding where
 
@@ -48,7 +48,7 @@ data PathfindingTarget
     EntityTarget EntityName
 
 -- | swarm command arguments are converted to idiomatic Haskell
--- types before invoking this function, and conversely the callee
+-- types before invoking this function, and conversely the callsite
 -- is also responsible for translating the output type to a swarm value.
 --
 -- The cost function is uniformly @1@ between adjacent cells.
