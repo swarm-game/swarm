@@ -15,8 +15,8 @@
 -- ** Note on the IO:
 --
 -- The only reason we need @IO@ is so that robots can run programs
--- loaded from files, via the 'Run' command.
--- This could be avoided by using 'Import' command instead and parsing
+-- loaded from files, via the 'Swarm.Language.Syntax.Run' command.
+-- This could be avoided by using a hypothetical @import@ command instead and parsing
 -- the required files at the time of declaration.
 -- See <https://github.com/swarm-game/swarm/issues/495>.
 module Swarm.Game.Step where
@@ -457,7 +457,7 @@ traceLogShow = void . traceLog Logged Info . from . show
 
 -- | Capabilities needed for a specific robot to evaluate or execute a
 --   constant.  Right now, the only difference is whether the robot is
---   heavy or not when executing the 'Move' command, but there might
+--   heavy or not when executing the 'Swarm.Language.Syntax.Move' command, but there might
 --   be other exceptions added in the future.
 constCapsFor :: Const -> Robot -> Maybe Capability
 constCapsFor Move r
@@ -796,7 +796,7 @@ stepCESK cesk = case cesk of
     runningAtomic .= False
     return $ Out v s k
 
-  -- Machinery for implementing the 'meetAll' command.
+  -- Machinery for implementing the 'Swarm.Language.Syntax.MeetAll' command.
   -- First case: done meeting everyone.
   Out b s (FMeetAll _ [] : k) -> return $ Out b s k
   -- More still to meet: apply the function to the current value b and
@@ -2615,7 +2615,8 @@ formatDevices = T.intercalate " or " . map (^. entityName) . S.toList
 
 -- | Give some entities from a parent robot (the robot represented by
 --   the ambient @State Robot@ effect) to a child robot (represented
---   by the given 'RID') as part of a 'Build' or 'Reprogram' command.
+--   by the given 'RID') as part of a 'Swarm.Language.Syntax.Build'
+--   or 'Swarm.Language.Syntax.Reprogram' command.
 --   The first 'Inventory' is devices to be equipped, and the second
 --   is entities to be transferred.
 --

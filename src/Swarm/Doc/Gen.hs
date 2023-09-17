@@ -78,7 +78,7 @@ data GenerateDocs where
   RecipeGraph :: GenerateDocs
   -- | Keyword lists for editors.
   EditorKeywords :: Maybe EditorType -> GenerateDocs
-  -- | List of special key names recognized by 'key' command
+  -- | List of special key names recognized by 'Swarm.Language.Syntax.Key' command
   SpecialKeyNames :: GenerateDocs
   -- | Cheat sheets for inclusion on the Swarm wiki.
   CheatSheet :: PageAddress -> Maybe SheetType -> GenerateDocs

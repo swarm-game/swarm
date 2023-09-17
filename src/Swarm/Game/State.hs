@@ -253,7 +253,7 @@ data REPLStatus
   = -- | The REPL is not doing anything actively at the moment.
     --   We persist the last value and its type though.
     --
-    --   INVARIANT: the 'Value' stored here is not a 'VResult'.
+    --   INVARIANT: the 'Value' stored here is not a 'Swarm.Language.Value.VResult'.
     REPLDone (Maybe (Typed Value))
   | -- | A command entered at the REPL is currently being run.  The
     --   'Polytype' represents the type of the expression that was
@@ -694,7 +694,7 @@ recipesInfo :: Lens' GameState Recipes
 
 -- | The filepath of the currently running scenario.
 --
--- This is useful as an index to 'scenarios' collection,
+-- This is useful as an index to the scenarios collection,
 -- see 'Swarm.Game.ScenarioInfo.scenarioItemByPath'.
 currentScenarioPath :: Lens' GameState (Maybe FilePath)
 
@@ -732,7 +732,7 @@ focusedRobotID = to _focusedRobotID
 ------------------------------------------------------------
 
 -- | The current rule for determining the center of the world view.
---   It updates also, viewCenter and 'focusedRobotName' to keep
+--   It updates also, 'viewCenter' and 'focusedRobot' to keep
 --   everything synchronized.
 viewCenterRule :: Lens' GameState ViewCenterRule
 viewCenterRule = lens getter setter
@@ -740,7 +740,7 @@ viewCenterRule = lens getter setter
   getter :: GameState -> ViewCenterRule
   getter = _viewCenterRule
 
-  -- The setter takes care of updating viewCenter and focusedRobotName
+  -- The setter takes care of updating 'viewCenter' and 'focusedRobot'
   -- So non of this fields get out of sync.
   setter :: GameState -> ViewCenterRule -> GameState
   setter g rule =

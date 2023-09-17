@@ -367,8 +367,8 @@ instance PrettyPrec (TTy ty) where
 ------------------------------------------------------------
 -- Instance checking
 
--- | Check that a particular type has an 'Eq' instance, and run a
---   computation in a context provided with an 'Eq' constraint. The
+-- | Check that a particular type has an 'GHC.Classes.Eq' instance, and run a
+--   computation in a context provided with an 'GHC.Classes.Eq' constraint. The
 --   other @checkX@ functions are similar.
 checkEq :: (Has (Throw CheckErr) sig m) => TTy ty -> ((Eq ty, NotFun ty) => m a) -> m a
 checkEq (TTyBase BBool) a = a

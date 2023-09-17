@@ -55,7 +55,7 @@ mkKeyCombo mods k = KeyCombo k (sort mods)
 parseKeyComboFull :: Parser KeyCombo
 parseKeyComboFull = parseKeyCombo <* eof
 
--- | Parse a key combo like "M-C-F5", "Down", or "C-x".
+-- | Parse a key combo like @\"M-C-F5\"@, @\"Down\"@, or @\"C-x\"@.
 parseKeyCombo :: Parser KeyCombo
 parseKeyCombo =
   mkKeyCombo <$> many (try (parseModifier <* char '-')) <*> parseKey
@@ -115,8 +115,8 @@ instance (Constructor c) => Names' (C1 c f) where
 ------------------------------------------------------------
 -- Pretty-printing
 
--- | Pretty-print a key combo, e.g. "C-M-F5".  Right inverse to
---   parseKeyCombo.  Left inverse up to reordering of modifiers.
+-- | Pretty-print a key combo, e.g. @\"C-M-F5\"@.  Right inverse to
+--   'parseKeyCombo'.  Left inverse up to reordering of modifiers.
 prettyKeyCombo :: KeyCombo -> Text
 prettyKeyCombo (KeyCombo k mods) = T.append (T.concat (map prettyModifier mods)) (prettyKey k)
 

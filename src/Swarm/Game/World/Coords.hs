@@ -22,12 +22,12 @@ import Swarm.Game.Location (Location, pattern Location)
 -- World coordinates
 ------------------------------------------------------------
 
--- | World coordinates use (row,column) format, with the row
+-- | World coordinates use @(row,column)@ format, with the row
 --   increasing as we move down the screen.  We use this format for
 --   indexing worlds internally, since it plays nicely with things
 --   like drawing the screen, and reading maps from configuration
 --   files. The 'locToCoords' and 'coordsToLoc' functions convert back
---   and forth between this type and 'Location', which is used when
+--   and forth between this type and t'Location', which is used when
 --   presenting coordinates externally to the player.
 newtype Coords = Coords {unCoords :: (Int32, Int32)}
   deriving (Eq, Ord, Show, Ix, Generic)

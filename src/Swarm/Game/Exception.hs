@@ -51,7 +51,7 @@ import Witch (from)
 -- | Suggested way to fix things when a robot does not meet the
 --   requirements to run a command.
 data IncapableFix
-  = -- | Equip the missing device on yourself/target
+  = -- | 'Swarm.Language.Syntax.Equip' the missing device on yourself/target
     FixByEquip
   | -- | Add the missing device to your inventory
     FixByObtain
@@ -72,11 +72,11 @@ data Exn
     --   term that caused the problem, and a suggestion for how to fix
     --   things.
     Incapable IncapableFix Requirements Term
-  | -- | A command failed in some "normal" way (/e.g./ a 'Move'
-    --   command could not move, or a 'Grab' command found nothing to
+  | -- | A command failed in some "normal" way (/e.g./ a 'Swarm.Language.Syntax.Move'
+    --   command could not move, or a 'Swarm.Language.Syntax.Grab' command found nothing to
     --   grab, /etc./).  Can be caught by a @try@ block.
     CmdFailed Const Text (Maybe GameplayAchievement)
-  | -- | The user program explicitly called 'Undefined' or 'Fail'. Can
+  | -- | The user program explicitly called 'Swarm.Language.Syntax.Undefined' or 'Swarm.Language.Syntax.Fail'. Can
     --   be caught by a @try@ block.
     User Text
   deriving (Eq, Show, Generic, FromJSON, ToJSON)

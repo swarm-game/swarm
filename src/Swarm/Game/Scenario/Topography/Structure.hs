@@ -125,7 +125,7 @@ instance FromJSONE (EntityMap, RobotMap) (PStructure (Maybe (PCell Entity))) whe
     return $ Structure maskedArea localStructureDefs placementDefs $ waypointDefs <> mapWaypoints
 
 -- | \"Paint\" a world map using a 'WorldPalette', turning it from a raw
---   string into a nested list of 'Cell' values by looking up each
+--   string into a nested list of 'PCell' values by looking up each
 --   character in the palette, failing if any character in the raw map
 --   is not contained in the palette.
 paintMap ::

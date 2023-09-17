@@ -136,8 +136,11 @@ makeLensesExcluding ['_lgTicksPerSecond] ''UIState
 -- | The current menu state.
 uiMenu :: Lens' UIState Menu
 
--- | Are we currently playing the game?  True = we are playing, and
---   should thus display a world, REPL, etc.; False = we should
+-- | Are we currently playing the game?
+--
+-- * 'True' = we are playing, and
+--   should thus display a world, REPL, etc.
+-- * False = we should
 --   display the current menu.
 uiPlaying :: Lens' UIState Bool
 
@@ -148,7 +151,7 @@ uiCheatMode :: Lens' UIState Bool
 uiLaunchConfig :: Lens' UIState LaunchOptions
 
 -- | The focus ring is the set of UI panels we can cycle among using
---   the Tab key.
+--   the @Tab@ key.
 uiFocusRing :: Lens' UIState (FocusRing Name)
 
 -- | The last clicked position on the world view.
@@ -175,7 +178,7 @@ uiInventory :: Lens' UIState (Maybe (Int, BL.List Name InventoryListEntry))
 --   (used when a new log message is appended).
 uiScrollToEnd :: Lens' UIState Bool
 
--- | When this is @Just@, it represents a modal to be displayed on
+-- | When this is 'Just', it represents a modal to be displayed on
 --   top of the UI, e.g. for the Help screen.
 uiModal :: Lens' UIState (Maybe Modal)
 
@@ -183,21 +186,21 @@ uiModal :: Lens' UIState (Maybe Modal)
 --   has been displayed to the user initially.
 uiGoal :: Lens' UIState GoalDisplay
 
--- | When running with --autoplay, suppress the goal dialogs.
+-- | When running with @--autoplay@, suppress the goal dialogs.
 --
--- For developement, the --cheat flag shows goals again.
+-- For development, the @--cheat@ flag shows goals again.
 uiHideGoals :: Lens' UIState Bool
 
 -- | Map of achievements that were attained
 uiAchievements :: Lens' UIState (Map CategorizedAchievement Attainment)
 
--- | A toggle to show the FPS by pressing `f`
+-- | A toggle to show the FPS by pressing @f@
 uiShowFPS :: Lens' UIState Bool
 
--- | A toggle to expand or collapse the REPL by pressing `Ctrl-k`
+-- | A toggle to expand or collapse the REPL by pressing @Ctrl-k@
 uiShowREPL :: Lens' UIState Bool
 
--- | A toggle to show or hide inventory items with count 0 by pressing `0`
+-- | A toggle to show or hide inventory items with count 0 by pressing @0@
 uiShowZero :: Lens' UIState Bool
 
 -- | A toggle to show debug.
@@ -215,10 +218,10 @@ uiShowRobots = to (\ui -> ui ^. lastFrameTime > ui ^. uiHideRobotsUntil)
 -- | Whether the Inventory ui panel should update
 uiInventoryShouldUpdate :: Lens' UIState Bool
 
--- | Computed ticks per milli seconds
+-- | Computed ticks per milliseconds
 uiTPF :: Lens' UIState Double
 
--- | Computed frames per milli seconds
+-- | Computed frames per milliseconds
 uiFPS :: Lens' UIState Double
 
 -- | Attribute map
@@ -256,10 +259,10 @@ frameTickCount :: Lens' UIState Int
 -- | The time of the last info widget update
 lastInfoTime :: Lens' UIState TimeSpec
 
--- | The time of the last 'Frame' event.
+-- | The time of the last 'Swarm.TUI.Model.Frame' event.
 lastFrameTime :: Lens' UIState TimeSpec
 
--- | The amount of accumulated real time.  Every time we get a 'Frame'
+-- | The amount of accumulated real time.  Every time we get a 'Swarm.TUI.Model.Frame'
 --   event, we accumulate the amount of real time that happened since
 --   the last frame, then attempt to take an appropriate number of
 --   ticks to "catch up", based on the target tick rate.

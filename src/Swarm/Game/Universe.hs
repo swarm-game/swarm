@@ -3,6 +3,9 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Types and utilities for working with "universal locations";
+-- locations that encompass different 2-D subworlds.
 module Swarm.Game.Universe where
 
 import Control.Lens (makeLenses, view)
@@ -14,6 +17,8 @@ import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Game.Location
 
+-- * Referring to subworlds
+
 data SubworldName = DefaultRootSubworld | SubworldName Text
   deriving (Show, Eq, Ord, Generic, ToJSON)
 
@@ -24,6 +29,8 @@ renderWorldName :: SubworldName -> Text
 renderWorldName = \case
   SubworldName s -> s
   DefaultRootSubworld -> "<default>"
+
+-- * Universal location
 
 -- | The swarm universe consists of locations
 -- indexed by subworld.
@@ -47,8 +54,7 @@ instance (FromJSON a) => FromJSON (Cosmic a) where
         <$> v .: "subworld"
         <*> v .: "loc"
 
-defaultCosmicLocation :: Cosmic Location
-defaultCosmicLocation = Cosmic DefaultRootSubworld origin
+-- * Measurement
 
 data DistanceMeasure b = Measurable b | InfinitelyFar
   deriving (Eq, Ord)
@@ -58,6 +64,11 @@ cosmoMeasure :: (a -> a -> b) -> Cosmic a -> Cosmic a -> DistanceMeasure b
 cosmoMeasure f a b
   | ((/=) `on` view subworld) a b = InfinitelyFar
   | otherwise = Measurable $ (f `on` view planar) a b
+
+-- * Utilities
+
+defaultCosmicLocation :: Cosmic Location
+defaultCosmicLocation = Cosmic DefaultRootSubworld origin
 
 offsetBy :: Cosmic Location -> V2 Int32 -> Cosmic Location
 offsetBy loc v = fmap (.+^ v) loc

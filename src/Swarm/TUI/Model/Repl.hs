@@ -137,21 +137,21 @@ replStart :: Lens' REPLHistory Int
 -- | Keep track of whether the user has explicitly executed commands
 --   at the REPL prompt, thus making them ineligible for code size scoring.
 --
---   Note: Instead of adding a dedicated field to the REPLHistory record,
+--   Note: Instead of adding a dedicated field to the 'REPLHistory' record,
 --   an early attempt entailed checking for:
 --
---     _replIndex > _replStart
+--     @_replIndex > _replStart@
 --
 --   However, executing an initial script causes a "REPLOutput" to be
 --   appended to the REPL history, which increments the replIndex, and
 --   thus makes the Index greater than the Start even though the
 --   player has not input commands directly into the REPL.
 --
---   Therefore, a dedicated boolean is introduced into REPLHistory
+--   Therefore, a dedicated boolean is introduced into 'REPLHistory'
 --   which simply latches True when the user has input a command.
 --
---   An alternative is described here:
---   https://github.com/swarm-game/swarm/pull/974#discussion_r1112380380
+--   An alternative is described in
+--   <https://github.com/swarm-game/swarm/pull/974#discussion_r1112380380 issue #974>.
 replHasExecutedManualInput :: Lens' REPLHistory Bool
 
 -- | Create new REPL history (i.e. from loaded history file lines).
@@ -221,14 +221,14 @@ getCurrentItemText history = replItemText <$> Seq.lookup (history ^. replIndex) 
 replIndexIsAtInput :: REPLHistory -> Bool
 replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 
--- | Given some text,  removes the REPLEntry within REPLHistory which is equal to that.
+-- | Given some text,  removes the 'REPLEntry' within 'REPLHistory' which is equal to that.
 --   This is used when the user enters in search mode and want to traverse the history.
 --   If a command has been used many times, the history will be populated with it causing
 --   the effect that search command always finds the same command.
 removeEntry :: Text -> REPLHistory -> REPLHistory
 removeEntry foundtext hist = hist & replSeq %~ Seq.filter (/= REPLEntry foundtext)
 
--- | Get the last REPLEntry in REPLHistory matching the given text
+-- | Get the last 'REPLEntry' in 'REPLHistory' matching the given text
 lastEntry :: Text -> REPLHistory -> Maybe Text
 lastEntry t h =
   case Seq.viewr $ Seq.filter matchEntry $ h ^. replSeq of
@@ -302,7 +302,7 @@ replPromptType :: Lens' REPLState REPLPrompt
 -- | The prompt where the user can type input at the REPL.
 replPromptEditor :: Lens' REPLState (Editor Text Name)
 
--- | Convinience lens to get text from editor and replace it with new
+-- | Convenience lens to get text from editor and replace it with new
 --   one that has the provided text.
 replPromptText :: Lens' REPLState Text
 replPromptText = lens g s
@@ -310,7 +310,7 @@ replPromptText = lens g s
   g r = r ^. replPromptEditor . to getEditContents . to T.concat
   s r t = r & replPromptEditor .~ newREPLEditor t
 
--- | Whether the prompt text is a valid 'Term'.
+-- | Whether the prompt text is a valid 'Swarm.Language.Syntax.Term'.
 replValid :: Lens' REPLState Bool
 
 -- | The type of the current REPL input which should be displayed to

@@ -44,7 +44,7 @@ import Witch.From (from)
 -- See https://en.wikipedia.org/wiki/Polar_coordinate_system#Conventions
 --
 -- Do not alter this ordering, as there exist functions that depend on it
--- (e.g. 'nearestDirection' and 'relativeTo').
+-- (e.g. 'Swarm.Game.Location.nearestDirection' and 'Swarm.Game.Location.relativeTo').
 data AbsoluteDir = DEast | DNorth | DWest | DSouth
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, Enum, Bounded)
 
@@ -82,7 +82,7 @@ data RelativeDir = DPlanar PlanarRelativeDir | DDown
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
 
 -- | Caution: Do not alter this ordering, as there exist functions that depend on it
--- (e.g. 'nearestDirection' and 'relativeTo').
+-- (e.g. 'Swarm.Game.Location.nearestDirection' and 'Swarm.Game.Location.relativeTo').
 data PlanarRelativeDir = DForward | DLeft | DBack | DRight
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, Enum, Bounded)
 
@@ -106,7 +106,7 @@ directionSyntax d = toLower . T.tail . from $ case d of
     DPlanar y -> show y
     _ -> show x
 
--- | Check if the direction is absolute (e.g. 'north' or 'south').
+-- | Check if the direction is absolute (e.g. 'Swarm.Game.Location.north' or 'Swarm.Game.Location.south').
 isCardinal :: Direction -> Bool
 isCardinal = \case
   DAbsolute _ -> True

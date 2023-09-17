@@ -183,7 +183,8 @@ data ActivityCounts = ActivityCounts
 makeLensesNoSigs ''ActivityCounts
 
 -- | A counter that is decremented upon each step of the robot within the
---   CESK machine. Initially set to 'robotStepsPerTick' at each new tick.
+--   CESK machine. Initially set to 'Swarm.Game.State.robotStepsPerTick'
+--   at each new tick.
 --
 --   The need for 'tickStepBudget' is a bit technical, and I hope I can
 --   eventually find a different, better way to accomplish it.
@@ -341,20 +342,20 @@ robotDisplay = lens getDisplay setDisplay
 
 -- | The robot's current location, represented as @(x,y)@.  This is only
 --   a getter, since when changing a robot's location we must remember
---   to update the 'robotsByLocation' map as well.  You can use the
---   'updateRobotLocation' function for this purpose.
+--   to update the 'Swarm.Game.State.robotsByLocation' map as well.  You can use the
+--   'Swarm.Game.Step.updateRobotLocation' function for this purpose.
 robotLocation :: Getter Robot (Cosmic Location)
 
 -- | Set a robot's location.  This is unsafe and should never be
---   called directly except by the 'updateRobotLocation' function.
---   The reason is that we need to make sure the 'robotsByLocation'
+--   called directly except by the 'Swarm.Game.Step.updateRobotLocation' function.
+--   The reason is that we need to make sure the 'Swarm.Game.State.robotsByLocation'
 --   map stays in sync.
 unsafeSetRobotLocation :: Cosmic Location -> Robot -> Robot
 unsafeSetRobotLocation loc r = r {_robotLocation = loc}
 
 -- | A template robot's location.  Unlike 'robotLocation', this is a
 --   lens, since when dealing with robot templates there is as yet no
---   'robotsByLocation' map to keep up-to-date.
+--   'Swarm.Game.State.robotsByLocation' map to keep up-to-date.
 trobotLocation :: Lens' TRobot (Maybe (Cosmic Location))
 trobotLocation = lens _robotLocation (\r l -> r {_robotLocation = l})
 
@@ -414,8 +415,8 @@ equippedDevices = lens _equippedDevices setEquipped
       }
 
 -- | The robot's own private message log, most recent message last.
---   Messages can be added both by explicit use of the 'Log' command,
---   and by uncaught exceptions.  Stored as a "Data.Sequence" so that
+--   Messages can be added both by explicit use of the 'Swarm.Language.Syntax.Log' command,
+--   and by uncaught exceptions.  Stored as a 'Seq' so that
 --   we can efficiently add to the end and also process from beginning
 --   to end.  Note that updating via this lens will also set the
 --   'robotLogUpdated'.

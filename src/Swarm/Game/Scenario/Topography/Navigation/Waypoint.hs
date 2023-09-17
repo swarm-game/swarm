@@ -2,6 +2,22 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Landmarks that are used to specify portal locations
+-- and can serve as navigation aids via the `waypoint` command.
+--
+-- = Waypoint ordering
+--
+-- The sequence of waypoints of a given name is dictated by criteria in the following order:
+--
+-- 1. Ordering of structure placements
+--    (see implementation of 'Swarm.Game.Scenario.Topography.Structure.mergeStructures');
+--    later placements are ordered first.
+-- 2. Placement of cells within a map. Map locations go by row-major order
+--    (compare to docs for 'Swarm.Game.State.genRobotTemplates').
+--
+-- TODO (#1366): May be useful to have a mechanism for more
+-- precise control of ordering.
 module Swarm.Game.Scenario.Topography.Navigation.Waypoint where
 
 import Data.Int (Int32)

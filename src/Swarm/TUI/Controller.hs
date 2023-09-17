@@ -10,7 +10,7 @@ module Swarm.TUI.Controller (
   handleEvent,
   quitGame,
 
-  -- ** Handling 'Frame' events
+  -- ** Handling 'Swarm.TUI.Model.Frame' events
   runFrameUI,
   runFrame,
   ticksPerFrameCap,
@@ -646,7 +646,7 @@ runFrameUI = do
 -- | Run the game for a single frame, without updating the UI.
 runFrame :: EventM Name AppState ()
 runFrame = do
-  -- Reset the needsRedraw flag.  While procssing the frame and stepping the robots,
+  -- Reset the needsRedraw flag.  While processing the frame and stepping the robots,
   -- the flag will get set to true if anything changes that requires redrawing the
   -- world (e.g. a robot moving or disappearing).
   gameState . needsRedraw .= False

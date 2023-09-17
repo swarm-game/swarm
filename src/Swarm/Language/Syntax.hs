@@ -108,7 +108,7 @@ import Swarm.Util qualified as Util
 import Witch.From (from)
 
 -- | Maximum perception distance for
--- 'chirp' and 'sniff' commands
+-- 'Chirp' and 'Sniff' commands
 maxSniffRange :: Int32
 maxSniffRange = 256
 
