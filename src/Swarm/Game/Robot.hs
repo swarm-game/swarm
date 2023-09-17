@@ -35,6 +35,7 @@ module Swarm.Game.Robot (
   robotEntity,
   robotName,
   trobotName,
+  unwalkableEntities,
   robotCreatedAt,
   robotDisplay,
   robotLocation,
@@ -270,6 +271,7 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _selfDestruct :: Bool
   , _activityCounts :: ActivityCounts
   , _runningAtomic :: Bool
+  , _unwalkableEntities :: Set EntityName
   , _robotCreatedAt :: TimeSpec
   }
   deriving (Generic)
@@ -310,11 +312,15 @@ instance ToSample Robot where
 --   . 'entityName'@.
 robotEntity :: Lens' (RobotR phase) Entity
 
+-- | Entities that the robot cannot move onto
+unwalkableEntities :: Lens' Robot (Set EntityName)
+
 -- | The creation date of the robot.
 robotCreatedAt :: Lens' Robot TimeSpec
 
--- robotName and trobotName could be generalized to robotName' ::
--- Lens' (RobotR phase) Text.  However, type inference does not work
+-- robotName and trobotName could be generalized to
+-- @robotName' :: Lens' (RobotR phase) Text@.
+-- However, type inference does not work
 -- very well with the polymorphic version, so we export both
 -- monomorphic versions instead.
 
@@ -499,10 +505,12 @@ mkRobot ::
   Bool ->
   -- | Is this robot heavy?
   Bool ->
+  -- | Unwalkable entities
+  Set EntityName ->
   -- | Creation date
   TimeSpec ->
   RobotR phase
-mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
+mkRobot rid pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
   RobotR
     { _robotEntity =
         mkEntity disp name descr [] []
@@ -532,6 +540,7 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
             _activityWindow = mkWindow 64
           }
     , _runningAtomic = False
+    , _unwalkableEntities = unwalkables
     }
  where
   inst = fromList devs
@@ -557,6 +566,7 @@ instance FromJSONE EntityMap TRobot where
       <*> v ..:? "inventory" ..!= []
       <*> pure sys
       <*> liftE (v .:? "heavy" .!= False)
+      <*> liftE (v .:? "unwalkable" ..!= mempty)
       <*> pure 0
    where
     mkMachine Nothing = Out VUnit emptyStore []

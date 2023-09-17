@@ -200,13 +200,14 @@ checkMoveFailureUnprivileged :: HasRobotStepState sig m => Cosmic Location -> m 
 checkMoveFailureUnprivileged nextLoc = do
   me <- entityAt nextLoc
   caps <- use robotCapabilities
+  unwalkables <- use unwalkableEntities
   return $ do
     e <- me
-    go caps e
+    go caps unwalkables e
  where
-  go caps e
+  go caps unwalkables e
     -- robots can not walk through walls
-    | e `hasProperty` Unwalkable = Just $ MoveFailureDetails e PathBlocked
+    | e `hasProperty` Unwalkable || (e ^. entityName) `S.member` unwalkables = Just $ MoveFailureDetails e PathBlocked
     -- robots drown if they walk over liquid without boat
     | e `hasProperty` Liquid && CFloat `S.notMember` caps =
         Just $ MoveFailureDetails e PathLiquid

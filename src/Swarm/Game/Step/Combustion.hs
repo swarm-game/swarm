@@ -109,6 +109,7 @@ addCombustionBot inputEntity combustibility ts loc = do
         botInventory
         True
         False
+        mempty
         ts
   return combustionDurationRand
  where
@@ -222,4 +223,5 @@ addIgnitionBot ignitionDelay inputEntity ts loc =
         []
         True
         False
+        mempty
         ts

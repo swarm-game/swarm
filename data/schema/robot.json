@@ -68,6 +68,14 @@
             "default": false,
             "type": "boolean",
             "description": "Whether the robot is heavy. Heavy robots require tank treads to move (rather than just treads for other robots)."
+        },
+        "unwalkable": {
+            "default": [],
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "A list of entities that this robot cannot walk across."
         }
     },
     "required": [
