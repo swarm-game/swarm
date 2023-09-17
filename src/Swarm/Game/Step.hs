@@ -1479,26 +1479,8 @@ execConst c vs s k = do
       _ -> badConst
     Atomic -> goAtomic
     Instant -> goAtomic
-    As -> case vs of
-      [VRobot rid, prog] -> do
-        -- Get the named robot and current game state
-        r <- robotWithID rid >>= (`isJustOrFail` ["There is no actor with ID", from (show rid)])
-        g <- get @GameState
-
-        -- Execute the given program *hypothetically*: i.e. in a fresh
-        -- CESK machine, using *copies* of the current store, robot
-        -- and game state.  We discard the state afterwards so any
-        -- modifications made by prog do not persist.  Note we also
-        -- set the copied robot to be a "system" robot so it is
-        -- capable of executing any commands; the As command
-        -- already requires "God" capability.
-        v <-
-          evalState @Robot (r & systemRobot .~ True) . evalState @GameState g $
-            runCESK (Out prog s [FApp (VCApp Force []), FExec])
-
-        -- Return the value returned by the hypothetical command.
-        return $ Out v s k
-      _ -> badConst
+    As -> impersonateCommand True
+    Be -> impersonateCommand False
     RobotNamed -> case vs of
       [VText rname] -> do
         r <- robotWithName rname >>= (`isJustOrFail` ["There is no robot named", rname])
@@ -2092,6 +2074,25 @@ execConst c vs s k = do
       DRelative (DPlanar DForward) -> "ahead of"
       DRelative (DPlanar DBack) -> "behind"
       _ -> directionSyntax d <> " of"
+
+  impersonateCommand forceSystemRobot = case vs of
+    [VRobot rid, prog] -> do
+      -- Get the named robot and current game state
+      r <- robotWithID rid >>= (`isJustOrFail` ["There is no actor with ID", from (show rid)])
+      g <- get @GameState
+
+      let modifiedRobot = applyWhen forceSystemRobot (\x -> x & systemRobot .~ True) r
+      -- Execute the given program *hypothetically*: i.e. in a fresh
+      -- CESK machine, using *copies* of the current store, robot
+      -- and game state.  We discard the state afterwards so any
+      -- modifications made by prog do not persist.
+      v <-
+        evalState @Robot modifiedRobot . evalState @GameState g $
+          runCESK (Out prog s [FApp (VCApp Force []), FExec])
+
+      -- Return the value returned by the hypothetical command.
+      return $ Out v s k
+    _ -> badConst
 
   goAtomic :: HasRobotStepState sig m => m CESK
   goAtomic = case vs of

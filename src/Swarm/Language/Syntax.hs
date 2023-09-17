@@ -364,8 +364,10 @@ data Const
 
     -- | Teleport a robot to the given position.
     Teleport
-  | -- | Run a command as if you were another robot.
+  | -- | Run a command as if you were another robot, and with "system robot" privileges.
     As
+  | -- | Run a command as if you were another robot.
+    Be
   | -- | Find an actor by name.
     RobotNamed
   | -- | Find an actor by number.
@@ -762,7 +764,8 @@ constInfo c = case c of
       , "The second argument is a function to handle keyboard inputs."
       ]
   Teleport -> command 2 short "Teleport a robot to the given location."
-  As -> command 2 Intangible "Hypothetically run a command as if you were another robot."
+  As -> command 2 Intangible "Hypothetically run a command as if you were another robot, with system privileges."
+  Be -> command 2 Intangible "Hypothetically run a command as if you were another robot."
   RobotNamed -> command 1 Intangible "Find an actor by name."
   RobotNumbered -> command 1 Intangible "Find an actor by number."
   Knows -> command 1 Intangible "Check if the robot knows about an entity."

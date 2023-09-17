@@ -274,6 +274,7 @@ constCaps = \case
   -- ----------------------------------------------------------------
   -- Some God-like abilities.
   As -> Just CGod
+  Be -> Just CGod
   RobotNamed -> Just CGod
   RobotNumbered -> Just CGod
   Create -> Just CGod
