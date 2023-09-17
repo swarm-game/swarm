@@ -20,7 +20,6 @@
 --
 -- We allow the callee to supply a max distance, but also impose an internal maximum
 -- distance to prevent programming errors from irrecoverably freezing the game.
---
 module Swarm.Game.Step.Pathfinding where
 
 import Control.Carrier.State.Lazy
@@ -42,11 +41,11 @@ import Swarm.Util (hoistMaybe)
 
 -- | Shortest paths can either be computed to the nearest entity of
 -- a given type or to a specific location.
-data PathfindingTarget =
-  LocationTarget Location
+data PathfindingTarget
+  = LocationTarget Location
   | -- | Note: navigation to entities does not benefit from the
--- distance heuristic optimization of the A* algorithm.
-  EntityTarget EntityName
+    -- distance heuristic optimization of the A* algorithm.
+    EntityTarget EntityName
 
 -- | swarm command arguments are converted to idiomatic Haskell
 -- types before invoking this function, and conversely the callee
