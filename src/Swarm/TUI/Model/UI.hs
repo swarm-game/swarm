@@ -137,7 +137,7 @@ makeLensesExcluding ['_lgTicksPerSecond] ''UIState
 uiMenu :: Lens' UIState Menu
 
 -- | Are we currently playing the game?
--- 
+--
 -- * 'True' = we are playing, and
 --   should thus display a world, REPL, etc.
 -- * False = we should
