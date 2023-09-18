@@ -333,6 +333,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/1355-combustion"
         , testSolution Default "Testing/1379-single-world-portal-reorientation"
         , testSolution Default "Testing/1399-backup-command"
+        , testSolution Default "Testing/1536-custom-unwalkable-entities"
         , testGroup
             -- Note that the description of the classic world in
             -- data/worlds/classic.yaml (automatically tested to some
