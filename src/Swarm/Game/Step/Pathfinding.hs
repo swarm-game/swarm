@@ -52,6 +52,10 @@ data PathfindingTarget
 -- is also responsible for translating the output type to a swarm value.
 --
 -- The cost function is uniformly @1@ between adjacent cells.
+--
+-- Viable paths are determined by walkability.
+-- If the goal type is an Entity, than it is permissible for that
+-- entity to be 'Unwalkable'.
 pathCommand ::
   (HasRobotStepState sig m, Has (State GameState) sig m) =>
   -- | Distance limit
@@ -105,7 +109,11 @@ pathCommand maybeLimit (Cosmic currentSubworld robotLoc) target = do
     isWalkableLoc someLoc =
       if not $ isWithinRange $ view planar someLoc
         then return False
-        else null <$> checkMoveFailureUnprivileged someLoc
+        else do
+          isGoal <- goalReachedFunc $ view planar someLoc
+          if isGoal
+            then return True
+            else null <$> checkMoveFailureUnprivileged someLoc
 
   -- This is an optimization for when a specific location
   -- is given as the target.

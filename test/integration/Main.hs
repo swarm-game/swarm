@@ -348,6 +348,7 @@ testScenarioSolutions rs ui =
             "Pathfinding (#836)"
             [ testSolution Default "Testing/836-pathfinding/836-path-exists-find-entity"
             , testSolution Default "Testing/836-pathfinding/836-path-exists-find-location"
+            , testSolution Default "Testing/836-pathfinding/836-path-exists-find-entity-unwalkable"
             , testSolution Default "Testing/836-pathfinding/836-path-exists-distance-limit-unreachable"
             , testSolution Default "Testing/836-pathfinding/836-path-exists-distance-limit-unreachable"
             , testSolution Default "Testing/836-pathfinding/836-no-path-exists1"

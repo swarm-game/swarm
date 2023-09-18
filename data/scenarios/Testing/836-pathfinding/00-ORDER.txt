@@ -1,5 +1,6 @@
 836-path-exists-find-location.yaml
 836-path-exists-find-entity.yaml
+836-path-exists-find-entity-unwalkable.yaml
 836-path-exists-distance-limit-unreachable.yaml
 836-path-exists-distance-limit-reachable.yaml
 836-no-path-exists1.yaml
