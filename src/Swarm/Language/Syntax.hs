@@ -562,7 +562,8 @@ constInfo c = case c of
   Place ->
     command 1 short . doc "Place an item at the current location." $
       ["The current location has to be empty for this to work."]
-  Ping -> command 1 short . doc "Obtain the relative location of another robot." $
+  Ping ->
+    command 1 short . doc "Obtain the relative location of another robot." $
       ["The other robot must be within range, accounting for antennas installed on either end."]
   Give -> command 2 short "Give an item to another actor nearby."
   Equip -> command 1 short "Equip a device on oneself."
