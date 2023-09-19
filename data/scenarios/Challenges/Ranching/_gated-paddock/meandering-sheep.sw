@@ -1,25 +1,6 @@
 // A "sheep" that wanders around randomly.
 
-/** A "gate" is walkable, so we need to supplement the "blocked" check with this function.
-Since fences are "unwalkable", they do not need to be mentioned in this function.
-*/
-def isFenced =
-    s <- scan forward;
-    return (
-        case s
-            (\_. false)
-            (\x. x == "gate")
-    );
-    end;
-
-def isBlockedOrFenced =
-    b <- blocked;
-    f <- isFenced;
-    return (b || f);
-    end;
-
 def elif = \p.\t.\e. {if p t e} end;
-
 
 def turnToClover = \direction.
 
@@ -95,7 +76,7 @@ forever (
   dist <- random 3;
   repeat dist (
 
-    b <- isBlockedOrFenced;
+    b <- blocked;
     if b {} {
       move;
     };

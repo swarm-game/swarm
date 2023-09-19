@@ -393,6 +393,7 @@ hypotheticalRobot c =
     []
     True
     False
+    mempty
 
 evaluateCESK ::
   (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>
@@ -996,6 +997,7 @@ addSeedBot e (minT, maxT) loc ts =
         [(1, e)]
         True
         False
+        mempty
         ts
 
 -- | Interpret the execution (or evaluation) of a constant application
@@ -1900,6 +1902,7 @@ execConst c vs s k = do
               []
               isSystemRobot
               False
+              mempty
               createdAt
 
         -- Provision the new robot with the necessary devices and inventory.

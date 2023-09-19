@@ -47,3 +47,4 @@ Achievements
 1379-single-world-portal-reorientation.yaml
 1399-backup-command.yaml
 1430-built-robot-ownership.yaml
+1536-custom-unwalkable-entities.yaml
