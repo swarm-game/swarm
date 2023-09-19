@@ -58,6 +58,8 @@ data Capability
     CIgnite
   | -- | Execute the 'Place' command
     CPlace
+  | -- | Execute the 'Ping' command
+    CPing
   | -- | Execute the 'Give' command
     CGive
   | -- | Execute the 'Equip' command
@@ -224,6 +226,7 @@ constCaps = \case
   Harvest -> Just CHarvest
   Ignite -> Just CIgnite
   Place -> Just CPlace
+  Ping -> Just CPing
   Give -> Just CGive
   Equip -> Just CEquip
   Unequip -> Just CUnequip

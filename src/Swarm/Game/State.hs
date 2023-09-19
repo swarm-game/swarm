@@ -135,6 +135,7 @@ module Swarm.Game.State (
   focusedRobot,
   RobotRange (..),
   focusedRange,
+  getRadioRange,
   clearFocusedRobotLogUpdated,
   addRobot,
   addRobotToLocation,
