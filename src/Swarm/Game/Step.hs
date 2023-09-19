@@ -1203,6 +1203,24 @@ execConst c vs s k = do
         flagRedraw
         return $ Out VUnit s k
       _ -> badConst
+    Ping -> case vs of
+      [VRobot otherID] -> do
+        maybeOtherRobot <- robotWithID otherID
+        otherRobot <- maybeOtherRobot `isJustOrFail` ["There is no robot with ID", from (show otherID) <> "."]
+
+        selfRobot <- get
+        let dist = (cosmoMeasure euclidean `on` view robotLocation) selfRobot otherRobot
+            (_minRange, maxRange) = getRadioRange (Just selfRobot) maybeOtherRobot
+
+        let otherLoc = otherRobot ^. robotLocation . planar
+            retval = case dist of
+              InfinitelyFar -> Nothing
+              Measurable d ->
+                if d > maxRange
+                  then Nothing
+                  else Just otherLoc
+        return $ Out (asValue retval) s k
+      _ -> badConst
     Give -> case vs of
       [VRobot otherID, VText itemName] -> do
         -- Make sure the other robot exists and is close

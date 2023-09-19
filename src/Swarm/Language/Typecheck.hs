@@ -750,6 +750,7 @@ inferConst c = case c of
   Harvest -> [tyQ| cmd text |]
   Ignite -> [tyQ| dir -> cmd unit |]
   Place -> [tyQ| text -> cmd unit |]
+  Ping -> [tyQ| actor -> cmd (unit + (int * int)) |]
   Give -> [tyQ| actor -> text -> cmd unit |]
   Equip -> [tyQ| text -> cmd unit |]
   Unequip -> [tyQ| text -> cmd unit |]

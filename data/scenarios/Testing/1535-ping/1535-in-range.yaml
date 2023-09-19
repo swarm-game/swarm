@@ -1,0 +1,40 @@
+version: 1
+name: Ping command
+description: |
+  Robot is in range for ping
+creative: false
+objectives:
+  - goal:
+      - Flower must not be reachable.
+    condition: |
+      as base {
+        nextDir <- path (inL ()) (inR "flower");
+        return $ case nextDir (\_. true) (\_. false);
+      };
+solution: |
+  noop;
+entities:
+  - name: wayfinder
+    display:
+      char: 'w'
+    description:
+      - Enables `path` command
+    properties: [known, portable]
+    capabilities: [path]
+robots:
+  - name: base
+    dir: [1,0]
+    devices:
+      - treads
+      - logger
+      - ADT calculator
+      - dictionary
+      - wayfinder
+known: [mountain, flower, tree]
+world:
+  palette:
+    'B': [grass, null, base]
+    '.': [grass]
+  upperleft: [0, 0]
+  map: |
+    .B..r.
