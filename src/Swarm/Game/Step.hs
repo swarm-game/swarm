@@ -76,6 +76,7 @@ import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..), destin
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
 import Swarm.Game.State
 import Swarm.Game.Step.Combustion qualified as Combustion
+import Swarm.Game.Step.Pathfinding
 import Swarm.Game.Step.Util
 import Swarm.Game.Universe
 import Swarm.Game.Value
@@ -392,6 +393,7 @@ hypotheticalRobot c =
     []
     True
     False
+    mempty
 
 evaluateCESK ::
   (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>
@@ -995,6 +997,7 @@ addSeedBot e (minT, maxT) loc ts =
         [(1, e)]
         True
         False
+        mempty
         ts
 
 -- | Interpret the execution (or evaluation) of a constant application
@@ -1038,6 +1041,29 @@ execConst c vs s k = do
     Backup -> do
       orient <- use robotOrientation
       moveInDirection $ applyTurn (DRelative $ DPlanar DBack) $ orient ? zero
+    Path -> case vs of
+      [VInj hasLimit limitVal, VInj findEntity goalVal] -> do
+        maybeLimit <-
+          if hasLimit
+            then case limitVal of
+              VInt d -> return $ Just d
+              _ -> badConst
+            else return Nothing
+        goal <-
+          if findEntity
+            then case goalVal of
+              VText eName -> return $ EntityTarget eName
+              _ -> badConst
+            else case goalVal of
+              VPair (VInt x) (VInt y) ->
+                return $
+                  LocationTarget $
+                    Location (fromIntegral x) (fromIntegral y)
+              _ -> badConst
+        robotLoc <- use robotLocation
+        result <- pathCommand maybeLimit robotLoc goal
+        return $ Out (asValue result) s k
+      _ -> badConst
     Push -> do
       -- Figure out where we're going
       loc <- use robotLocation
@@ -1876,6 +1902,7 @@ execConst c vs s k = do
               []
               isSystemRobot
               False
+              mempty
               createdAt
 
         -- Provision the new robot with the necessary devices and inventory.
@@ -2384,26 +2411,6 @@ execConst c vs s k = do
     updateRobotLocation loc nextLoc
     return $ Out VUnit s k
 
-  -- Make sure nothing is in the way. Note that system robots implicitly ignore
-  -- and base throws on failure.
-  checkMoveFailure :: HasRobotStepState sig m => Cosmic Location -> m (Maybe MoveFailureDetails)
-  checkMoveFailure nextLoc = do
-    me <- entityAt nextLoc
-    systemRob <- use systemRobot
-    caps <- use robotCapabilities
-    return $ do
-      e <- me
-      guard $ not systemRob
-      go caps e
-   where
-    go caps e
-      -- robots can not walk through walls
-      | e `hasProperty` Unwalkable = Just $ MoveFailureDetails e PathBlocked
-      -- robots drown if they walk over liquid without boat
-      | e `hasProperty` Liquid && CFloat `S.notMember` caps =
-          Just $ MoveFailureDetails e PathLiquid
-      | otherwise = Nothing
-
   applyMoveFailureEffect ::
     (HasRobotStepState sig m, Has (Lift IO) sig m) =>
     Maybe MoveFailureDetails ->
@@ -2581,9 +2588,6 @@ grantAchievement a = do
       (<>)
       a
       (Attainment (GameplayAchievement a) scenarioPath currentTime)
-
-data MoveFailureMode = PathBlocked | PathLiquid
-data MoveFailureDetails = MoveFailureDetails Entity MoveFailureMode
 
 -- | How to handle failure, for example when moving to blocked location
 data RobotFailure = ThrowExn | Destroy | IgnoreFail

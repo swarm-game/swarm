@@ -36,6 +36,8 @@ data Capability
     CMove
   | -- | Execute the 'Backup' command
     CBackup
+  | -- | Execute the 'Path' command
+    CPath
   | -- | Execute the 'Push' command
     CPush
   | -- | Execute the 'Stride' command
@@ -74,6 +76,8 @@ data Capability
     CSalvage
   | -- | Execute the 'Drill' command
     CDrill
+  | -- | Execute the 'Waypoint' command
+    CWaypoint
   | -- | Execute the 'Whereami' command
     CSenseloc
   | -- | Execute the 'Blocked' command
@@ -212,6 +216,7 @@ constCaps = \case
   Selfdestruct -> Just CSelfdestruct
   Move -> Just CMove
   Backup -> Just CBackup
+  Path -> Just CPath
   Push -> Just CPush
   Stride -> Just CMovemultiple
   Turn -> Just CTurn
@@ -252,7 +257,7 @@ constCaps = \case
   Wait -> Just CTimerel
   Scout -> Just CRecondir
   Whereami -> Just CSenseloc
-  Waypoint -> Just CGod
+  Waypoint -> Just CWaypoint
   Detect -> Just CDetectloc
   Resonate -> Just CDetectcount
   Density -> Just CDetectcount

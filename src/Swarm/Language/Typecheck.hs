@@ -742,6 +742,7 @@ inferConst c = case c of
   Selfdestruct -> [tyQ| cmd unit |]
   Move -> [tyQ| cmd unit |]
   Backup -> [tyQ| cmd unit |]
+  Path -> [tyQ| (unit + int) -> ((int * int) + entity) -> cmd (unit + dir) |]
   Push -> [tyQ| cmd unit |]
   Stride -> [tyQ| int -> cmd unit |]
   Turn -> [tyQ| dir -> cmd unit |]

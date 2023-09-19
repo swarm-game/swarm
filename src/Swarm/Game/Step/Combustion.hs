@@ -61,9 +61,7 @@ igniteCommand c d = do
   let selfCombustibility = (e ^. entityCombustion) ? defaultCombustibility
   createdAt <- getNow
   combustionDurationRand <- addCombustionBot e selfCombustibility createdAt loc
-
-  let neighborLocs = map (offsetBy loc . flip applyTurn north . DRelative . DPlanar) listEnums
-  forM_ neighborLocs $ igniteNeighbor createdAt combustionDurationRand
+  forM_ (getNeighborLocs loc) $ igniteNeighbor createdAt combustionDurationRand
  where
   verb = "ignite"
   verbed = "ignited"
@@ -111,6 +109,7 @@ addCombustionBot inputEntity combustibility ts loc = do
         botInventory
         True
         False
+        mempty
         ts
   return combustionDurationRand
  where
@@ -224,4 +223,5 @@ addIgnitionBot ignitionDelay inputEntity ts loc =
         []
         True
         False
+        mempty
         ts

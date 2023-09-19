@@ -333,6 +333,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/1355-combustion"
         , testSolution Default "Testing/1379-single-world-portal-reorientation"
         , testSolution Default "Testing/1399-backup-command"
+        , testSolution Default "Testing/1536-custom-unwalkable-entities"
         , testGroup
             -- Note that the description of the classic world in
             -- data/worlds/classic.yaml (automatically tested to some
@@ -343,6 +344,17 @@ testScenarioSolutions rs ui =
             [ testSolution Default "Testing/1320-world-DSL/constant"
             , testSolution Default "Testing/1320-world-DSL/erase"
             , testSolution Default "Testing/1320-world-DSL/override"
+            ]
+        , testGroup
+            "Pathfinding (#836)"
+            [ testSolution Default "Testing/836-pathfinding/836-path-exists-find-entity"
+            , testSolution Default "Testing/836-pathfinding/836-path-exists-find-location"
+            , testSolution Default "Testing/836-pathfinding/836-path-exists-find-entity-unwalkable"
+            , testSolution Default "Testing/836-pathfinding/836-path-exists-distance-limit-unreachable"
+            , testSolution Default "Testing/836-pathfinding/836-path-exists-distance-limit-unreachable"
+            , testSolution Default "Testing/836-pathfinding/836-no-path-exists1"
+            , testSolution (Sec 10) "Testing/836-pathfinding/836-no-path-exists2"
+            , testSolution (Sec 3) "Testing/836-pathfinding/836-automatic-waypoint-navigation.yaml"
             ]
         ]
     , testSolution' Default "Testing/1430-built-robot-ownership" CheckForBadErrors $ \g -> do
