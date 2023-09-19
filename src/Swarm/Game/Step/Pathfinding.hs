@@ -59,7 +59,7 @@ data PathfindingTarget
 pathCommand ::
   (HasRobotStepState sig m, Has (State GameState) sig m) =>
   -- | Distance limit
-  Maybe Int32 ->
+  Maybe Integer ->
   -- | Starting location
   Cosmic Location ->
   -- | Search goal
@@ -87,7 +87,7 @@ pathCommand maybeLimit (Cosmic currentSubworld robotLoc) target = do
       (return robotLoc)
 
   withinDistanceLimit :: Location -> Bool
-  withinDistanceLimit = (<= distanceLimit) . manhattan robotLoc
+  withinDistanceLimit = (<= distanceLimit) . fromIntegral . manhattan robotLoc
 
   -- Extracts the head of the found path to determine
   -- the next direction for the robot to proceed along

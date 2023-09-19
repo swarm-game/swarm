@@ -1046,7 +1046,7 @@ execConst c vs s k = do
         maybeLimit <-
           if hasLimit
             then case limitVal of
-              VInt d -> return $ Just $ fromIntegral d
+              VInt d -> return $ Just d
               _ -> badConst
             else return Nothing
         goal <-

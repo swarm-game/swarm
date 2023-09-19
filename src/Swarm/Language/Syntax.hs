@@ -119,7 +119,7 @@ maxScoutRange = 64
 maxStrideRange :: Int
 maxStrideRange = 64
 
-maxPathRange :: Int32
+maxPathRange :: Integer
 maxPathRange = 128
 
 ------------------------------------------------------------
