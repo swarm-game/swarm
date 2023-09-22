@@ -11,15 +11,15 @@
 -- simply for rendering Markdown documentation from Swarm's schema.
 module Swarm.Doc.Schema.Surface where
 
+import Control.Applicative ((<|>))
 import Data.Aeson
 import Data.List.Extra (replace)
 import Data.Map (Map)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Control.Applicative ((<|>))
 import GHC.Generics (Generic)
-import System.FilePath (takeBaseName)
 import Swarm.Doc.Schema.Refined
+import System.FilePath (takeBaseName)
 
 schemaJsonOptions :: Options
 schemaJsonOptions =
@@ -49,8 +49,8 @@ instance FromJSON SchemaRaw where
 -- TODO: Conveniently, this extra layer of processing
 -- is able to enforce that all "object" definitions in the schema
 -- contain the @additionalProperties: false@ property.
-data SwarmSchema = SwarmSchema {
-    schemaType :: SchemaType
+data SwarmSchema = SwarmSchema
+  { schemaType :: SchemaType
   , defaultValue :: Maybe Value
   , items :: Maybe Value
   , description :: Maybe Text
@@ -61,20 +61,20 @@ data SwarmSchema = SwarmSchema {
 
 instance FromJSON SwarmSchema where
   parseJSON x = do
-
     rawSchema :: rawSchema <- parseJSON x
     let maybeType =
-              (Reference . T.pack . takeBaseName . T.unpack <$> _Sref rawSchema)
-          <|> (Simple <$> _type rawSchema)
-          <|> (Alternates <$> _oneOf rawSchema)
+          (Reference . T.pack . takeBaseName . T.unpack <$> _Sref rawSchema)
+            <|> (Simple <$> _type rawSchema)
+            <|> (Alternates <$> _oneOf rawSchema)
 
     theType <- maybe (fail "Unspecified sub-schema type") return maybeType
 
-    return $ SwarmSchema {
-        schemaType = theType
-      , defaultValue = _default rawSchema
-      , items = _items rawSchema
-      , description = _description rawSchema
-      , examples = _examples rawSchema
-      , properties = _properties rawSchema
-      }
+    return $
+      SwarmSchema
+        { schemaType = theType
+        , defaultValue = _default rawSchema
+        , items = _items rawSchema
+        , description = _description rawSchema
+        , examples = _examples rawSchema
+        , properties = _properties rawSchema
+        }

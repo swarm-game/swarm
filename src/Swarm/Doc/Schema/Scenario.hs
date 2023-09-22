@@ -10,15 +10,15 @@ module Swarm.Doc.Schema.Scenario where
 import Control.Arrow (left, (&&&))
 import Data.Aeson
 import Data.Map.Strict qualified as M
-import Swarm.Doc.Schema.Refined
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
+import Swarm.Doc.Schema.Refined
 import Swarm.Doc.Schema.Surface
 import Swarm.Util (quote, showT)
-import System.FilePath ((<.>), (</>), splitExtension, takeBaseName)
+import System.Directory (listDirectory)
+import System.FilePath (splitExtension, takeBaseName, (<.>), (</>))
 import Text.Pandoc
 import Text.Pandoc.Builder
-import System.Directory (listDirectory)
 
 scenariosDir :: FilePath
 scenariosDir = "data/scenarios"
@@ -76,14 +76,13 @@ genScenarioSchemaDocs = do
     Left e -> print $ unwords ["Failed:", T.unpack e]
     Right md -> writeFile (scenariosDir </> "README_NEW.md") $ T.unpack md
  where
-
   parseSchemaFile :: FileStemAndExtension -> IO (Either T.Text SwarmSchema)
   parseSchemaFile stemAndExtension =
     left (prependPath . T.pack) <$> eitherDecodeFileStrict fullPath
-    where
-      prependPath = ((T.unwords ["in", quote (T.pack filename)] <> ": ") <>)
-      filename = recombineExtension stemAndExtension
-      fullPath = schemasDir </> filename
+   where
+    prependPath = ((T.unwords ["in", quote (T.pack filename)] <> ": ") <>)
+    filename = recombineExtension stemAndExtension
+    fullPath = schemasDir </> filename
 
 renderValue :: Value -> T.Text
 renderValue = \case
