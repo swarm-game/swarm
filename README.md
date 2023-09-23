@@ -26,3 +26,41 @@ complex programs.  More info can be found on the [Swarm
 website](https://swarm-game.github.io).
 
 [![World 0 after scanning a tree and making a log.](images/tutorial/log.png)](https://swarm-game.github.io)
+
+Contributing
+------------
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for information about various
+ways you can contribute to Swarm development!
+
+Building
+--------
+
+If you just want to play the game, [head over to the Swarm website for
+installation instructions](https://swarm-game.github.io/installing/).
+If you want to build Swarm from source (*e.g.* in order to
+[contribute](CONTRIBUTING.md), or to test out the latest bleeding-edge
+unreleased features), read on.
+
+1. Clone the Swarm repository, e.g.
+
+       git clone https://github.com/swarm-game/swarm.git
+
+1. If you don't already have the `stack` tool:
+    1. Get the [`ghcup` tool](https://www.haskell.org/ghcup/), a handy
+       one-stop utility for managing all the different pieces of a
+       Haskell toolchain.
+    1. Use `ghcup` to install `stack`:
+
+           ghcup install stack
+
+1. Now use `stack` to build and run Swarm:
+
+       cd /path/to/the/swarm/repo
+       stack run
+
+1. Go get a snack while `stack` downloads a Haskell compiler and
+   all of Swarm's dependencies.
+
+1. You might also want to check out the `scripts` directory, which
+   contains an assortment of useful scripts for developers.
