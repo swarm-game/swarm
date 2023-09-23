@@ -7,7 +7,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Some entities are "combustible". A command, `ignite`, will
+-- Some entities are "combustible". A command, 'Swarm.Language.Syntax.Ignite', will
 -- initiate combustion on such an entity.
 -- Furthermore, combustion can spread to (4-)adjacent entities, depending
 -- on the 'ignition' property of that entity.
@@ -61,9 +61,7 @@ igniteCommand c d = do
   let selfCombustibility = (e ^. entityCombustion) ? defaultCombustibility
   createdAt <- getNow
   combustionDurationRand <- addCombustionBot e selfCombustibility createdAt loc
-
-  let neighborLocs = map (offsetBy loc . flip applyTurn north . DRelative . DPlanar) listEnums
-  forM_ neighborLocs $ igniteNeighbor createdAt combustionDurationRand
+  forM_ (getNeighborLocs loc) $ igniteNeighbor createdAt combustionDurationRand
  where
   verb = "ignite"
   verbed = "ignited"
@@ -77,7 +75,7 @@ igniteCommand c d = do
 --   by placed entities.
 --   The "combustion bot" represents the burning of a single
 --   entity; propagating the fire to neighbors is handled upstream,
---   within the `ignite` command.
+--   within the 'Swarm.Language.Syntax.Ignite' command.
 addCombustionBot ::
   Has (State GameState) sig m =>
   Entity ->
@@ -89,7 +87,7 @@ addCombustionBot inputEntity combustibility ts loc = do
   botInventory <- case maybeCombustionProduct of
     Nothing -> return []
     Just n -> do
-      maybeE <- uses entityMap (lookupEntityName n)
+      maybeE <- uses (landscape . entityMap) (lookupEntityName n)
       return $ maybe [] (pure . (1,)) maybeE
   combustionDurationRand <- uniform durationRange
   let combustionProg = combustionProgram combustionDurationRand combustibility
@@ -111,6 +109,7 @@ addCombustionBot inputEntity combustibility ts loc = do
         botInventory
         True
         False
+        mempty
         ts
   return combustionDurationRand
  where
@@ -143,8 +142,8 @@ ignitionProgram waitTime =
 --
 -- 1. Create sub-partitions (of say, 10-tick duration) of the combustion duration
 --    to re-evaluate opportunities to light adjacent entities on fire.
--- 2. Use the `watch` command to observe for changes to adjacent entities.
---    Note that if we "wake" from our `wait` due to the `watch` being triggered,
+-- 2. Use the 'Swarm.Language.Syntax.Watch' command to observe for changes to adjacent entities.
+--    Note that if we "wake" from our 'Swarm.Language.Syntax.Wait' due to the 'Swarm.Language.Syntax.Watch' being triggered,
 --    we would need to maintain bookkeeping of how much time is left.
 -- 3. Spawn more robots whose sole purpose is to observe for changes to neighbor
 --    cells. This would avoid polluting the logic of the currently burning cell
@@ -165,7 +164,7 @@ combustionProgram combustionDuration (Combustibility _ _ maybeCombustionProduct)
     Nothing -> (0, "")
     Just p -> (1, p)
 
--- | We treat the 'ignition' field in the 'Combustion' record
+-- | We treat the 'ignition' field in the 'Combustibility' record
 -- as a /rate/ in a Poisson distribution.
 -- Ignition of neighbors depends on that particular neighbor entity's
 -- combustion /rate/, but also on the duration
@@ -197,7 +196,7 @@ igniteNeighbor creationTime sourceDuration loc = do
     probabilityOfIgnition = 1 - exp (negate $ rate * fromIntegral sourceDuration)
 
 -- | Construct an invisible "ignition robot" and add it to the world.
---   Its sole purpose is to delay the `ignite` command for a neighbor
+--   Its sole purpose is to delay the 'Swarm.Language.Syntax.Ignite' command for a neighbor
 --   that has been a priori determined that it shall be ignited.
 addIgnitionBot ::
   Has (State GameState) sig m =>
@@ -224,4 +223,5 @@ addIgnitionBot ignitionDelay inputEntity ts loc =
         []
         True
         False
+        mempty
         ts

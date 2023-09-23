@@ -10,7 +10,7 @@ module Swarm.TUI.Controller (
   handleEvent,
   quitGame,
 
-  -- ** Handling 'Frame' events
+  -- ** Handling 'Swarm.TUI.Model.Frame' events
   runFrameUI,
   runFrame,
   ticksPerFrameCap,
@@ -92,6 +92,7 @@ import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value (VKey, VUnit), prettyValue, stripVResult)
+import Swarm.Log
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Controller qualified as EC
 import Swarm.TUI.Editor.Model
@@ -134,10 +135,14 @@ handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleEvent = \case
   -- the query for upstream version could finish at any time, so we have to handle it here
   AppEvent (UpstreamVersion ev) -> do
-    let logReleaseEvent l e = runtimeState . eventLog %= logEvent l ("Release", -7) (T.pack $ show e)
+    let logReleaseEvent l sev e = runtimeState . eventLog %= logEvent l sev "Release" (T.pack $ show e)
     case ev of
-      Left e@(FailedReleaseQuery _e) -> logReleaseEvent (ErrorTrace Error) e
-      Left e -> logReleaseEvent (ErrorTrace Warning) e
+      Left e ->
+        let sev = case e of
+              FailedReleaseQuery {} -> Error
+              OnDevelopmentBranch {} -> Info
+              _ -> Warning
+         in logReleaseEvent SystemLog sev e
       Right _ -> pure ()
     runtimeState . upstreamRelease .= ev
   e -> do
@@ -289,13 +294,13 @@ handleMainEvent ev = do
   s <- get
   mt <- preuse $ uiState . uiModal . _Just . modalType
   let isRunning = maybe True isRunningModal mt
-  let isPaused = s ^. gameState . paused
+  let isPaused = s ^. gameState . temporal . paused
   let isCreative = s ^. gameState . creativeMode
   let hasDebug = fromMaybe isCreative $ s ^? gameState . to focusedRobot . _Just . robotCapabilities . Lens.contains CDebug
   case ev of
     AppEvent ae -> case ae of
       Frame
-        | s ^. gameState . paused -> continueWithoutRedraw
+        | s ^. gameState . temporal . paused -> continueWithoutRedraw
         | otherwise -> runFrameUI
       Web (RunWebCode c) -> runBaseWebCode c
       _ -> continueWithoutRedraw
@@ -313,19 +318,19 @@ handleMainEvent ev = do
           -- message modal is not autopaused, so update notifications when leaving it
           case m ^. modalType of
             MessagesModal -> do
-              gameState . lastSeenMessageTime .= s ^. gameState . ticks
+              gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . temporal . ticks
             _ -> return ()
     FKey 1 -> toggleModal HelpModal
     FKey 2 -> toggleModal RobotsModal
-    FKey 3 | not (null (s ^. gameState . availableRecipes . notificationsContent)) -> do
+    FKey 3 | not (null (s ^. gameState . discovery . availableRecipes . notificationsContent)) -> do
       toggleModal RecipesModal
-      gameState . availableRecipes . notificationsCount .= 0
-    FKey 4 | not (null (s ^. gameState . availableCommands . notificationsContent)) -> do
+      gameState . discovery . availableRecipes . notificationsCount .= 0
+    FKey 4 | not (null (s ^. gameState . discovery . availableCommands . notificationsContent)) -> do
       toggleModal CommandsModal
-      gameState . availableCommands . notificationsCount .= 0
+      gameState . discovery . availableCommands . notificationsCount .= 0
     FKey 5 | not (null (s ^. gameState . messageNotifications . notificationsContent)) -> do
       toggleModal MessagesModal
-      gameState . lastSeenMessageTime .= s ^. gameState . ticks
+      gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . temporal . ticks
     -- show goal
     ControlChar 'g' ->
       if hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent
@@ -346,12 +351,12 @@ handleMainEvent ev = do
     MetaChar 'd' | isPaused && hasDebug -> do
       debug <- uiState . uiShowDebug Lens.<%= not
       if debug
-        then gameState . gameStep .= RobotStep SBefore
+        then gameState . temporal . gameStep .= RobotStep SBefore
         else zoomGameState finishGameTick >> void updateUI
     -- pausing and stepping
     ControlChar 'p' | isRunning -> safeTogglePause
     ControlChar 'o' | isRunning -> do
-      gameState . runStatus .= ManualPause
+      gameState . temporal . runStatus .= ManualPause
       runGameTickUI
     -- speed controls
     ControlChar 'x' | isRunning -> modify $ adjustTPS (+)
@@ -375,7 +380,7 @@ handleMainEvent ev = do
     -- toggle world editor mode if in "cheat mode"
     ControlChar 'e'
       | s ^. uiState . uiCheatMode -> do
-          uiState . uiWorldEditor . isWorldEditorEnabled %= not
+          uiState . uiWorldEditor . worldOverdraw . isWorldEditorEnabled %= not
           setFocus WorldEditorPanel
     MouseDown WorldPositionIndicator _ _ _ -> uiState . uiWorldCursor .= Nothing
     MouseDown (FocusablePanel WorldPanel) V.BMiddle _ mouseLoc ->
@@ -444,7 +449,7 @@ safeTogglePause = do
   curTime <- liftIO $ getTime Monotonic
   uiState . lastFrameTime .= curTime
   uiState . uiShowDebug .= False
-  p <- gameState . runStatus Lens.<%= toggleRunStatus
+  p <- gameState . temporal . runStatus Lens.<%= toggleRunStatus
   when (p == Running) $ zoomGameState finishGameTick
 
 -- | Only unpause the game if leaving autopaused modal.
@@ -453,7 +458,7 @@ safeTogglePause = do
 -- the modal, in that case, leave the game paused.
 safeAutoUnpause :: EventM Name AppState ()
 safeAutoUnpause = do
-  runs <- use $ gameState . runStatus
+  runs <- use $ gameState . temporal . runStatus
   when (runs == AutoPause) safeTogglePause
 
 toggleModal :: ModalType -> EventM Name AppState ()
@@ -515,13 +520,13 @@ getNormalizedCurrentScenarioPath =
 
 saveScenarioInfoOnFinish :: (MonadIO m, MonadState AppState m) => FilePath -> m (Maybe ScenarioInfo)
 saveScenarioInfoOnFinish p = do
-  initialRunCode <- use $ gameState . initiallyRunCode
+  initialRunCode <- use $ gameState . gameControls . initiallyRunCode
   t <- liftIO getZonedTime
   wc <- use $ gameState . winCondition
   let won = case wc of
         WinConditions (Won _) _ -> True
         _ -> False
-  ts <- use $ gameState . ticks
+  ts <- use $ gameState . temporal . ticks
 
   -- NOTE: This traversal is apparently not the same one as used by
   -- the scenario selection menu, so the menu needs to be updated separately.
@@ -641,7 +646,7 @@ runFrameUI = do
 -- | Run the game for a single frame, without updating the UI.
 runFrame :: EventM Name AppState ()
 runFrame = do
-  -- Reset the needsRedraw flag.  While procssing the frame and stepping the robots,
+  -- Reset the needsRedraw flag.  While processing the frame and stepping the robots,
   -- the flag will get set to true if anything changes that requires redrawing the
   -- world (e.g. a robot moving or disappearing).
   gameState . needsRedraw .= False
@@ -741,7 +746,7 @@ zoomGameState f = do
 updateAchievements :: EventM Name AppState ()
 updateAchievements = do
   -- Merge the in-game achievements with the master list in UIState
-  achievementsFromGame <- use $ gameState . gameAchievements
+  achievementsFromGame <- use $ gameState . discovery . gameAchievements
   let wrappedGameAchievements = M.mapKeys GameplayAchievement achievementsFromGame
 
   oldMasterAchievementsList <- use $ uiState . uiAchievements
@@ -787,7 +792,7 @@ updateUI = do
   -- Whether the focused robot is too far away to sense, & whether
   -- that has recently changed
   dist <- use (gameState . to focusedRange)
-  farOK <- liftA2 (||) (use (gameState . creativeMode)) (use (gameState . worldScrollable))
+  farOK <- liftA2 (||) (use (gameState . creativeMode)) (use (gameState . landscape . worldScrollable))
   let tooFar = not farOK && dist == Just Far
       farChanged = tooFar /= isNothing listRobotHash
 
@@ -804,10 +809,10 @@ updateUI = do
       else pure False
 
   -- Now check if the base finished running a program entered at the REPL.
-  replUpdated <- case g ^. replStatus of
+  replUpdated <- case g ^. gameControls . replStatus of
     -- It did, and the result was the unit value.  Just reset replStatus.
     REPLWorking (Typed (Just VUnit) typ reqs) -> do
-      gameState . replStatus .= REPLDone (Just $ Typed VUnit typ reqs)
+      gameState . gameControls . replStatus .= REPLDone (Just $ Typed VUnit typ reqs)
       pure True
 
     -- It did, and returned some other value.  Pretty-print the
@@ -815,15 +820,15 @@ updateUI = do
     REPLWorking (Typed (Just v) pty reqs) -> do
       let finalType = stripCmd pty
       let val = Typed (stripVResult v) finalType reqs
-      itIx <- use (gameState . replNextValueIndex)
+      itIx <- use (gameState . gameControls . replNextValueIndex)
       let itName = fromString $ "it" ++ show itIx
       let out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
       uiState . uiREPL . replHistory %= addREPLItem (REPLOutput out)
       invalidateCacheEntry REPLHistoryCache
       vScrollToEnd replScroll
-      gameState . replStatus .= REPLDone (Just val)
+      gameState . gameControls . replStatus .= REPLDone (Just val)
       gameState . baseRobot . robotContext . at itName .= Just val
-      gameState . replNextValueIndex %= (+ 1)
+      gameState . gameControls . replNextValueIndex %= (+ 1)
       pure True
 
     -- Otherwise, do nothing.
@@ -889,7 +894,7 @@ doGoalUpdates = do
   curGoal <- use (uiState . uiGoal . goalsContent)
   isCheating <- use (uiState . uiCheatMode)
   curWinCondition <- use (gameState . winCondition)
-  announcementsSeq <- use (gameState . announcementQueue)
+  announcementsSeq <- use (gameState . messageInfo . announcementQueue)
   let announcementsList = toList announcementsSeq
 
   -- Decide whether we need to update the current goal text and pop
@@ -950,7 +955,7 @@ doGoalUpdates = do
 
         -- This clears the "flag" that indicate that the goals dialog needs to be
         -- automatically popped up.
-        gameState . announcementQueue .= mempty
+        gameState . messageInfo . announcementQueue .= mempty
 
         hideGoals <- use $ uiState . uiHideGoals
         unless hideGoals $
@@ -979,9 +984,9 @@ resetREPL t r ui =
 handleREPLEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleREPLEvent x = do
   s <- get
-  let repl = s ^. uiState . uiREPL
-      controlMode = repl ^. replControlMode
-      uinput = repl ^. replPromptText
+  let theRepl = s ^. uiState . uiREPL
+      controlMode = theRepl ^. replControlMode
+      uinput = theRepl ^. replPromptText
   case x of
     -- Handle Ctrl-c here so we can always cancel the currently running
     -- base program no matter what REPL control mode we are in.
@@ -1004,7 +1009,7 @@ handleREPLEvent x = do
                 uiState . uiREPL . replHistory %= addREPLItem err
                 invalidateCacheEntry REPLHistoryCache
     MetaChar 'k' -> do
-      when (isJust (s ^. gameState . inputHandler)) $ do
+      when (isJust (s ^. gameState . gameControls . inputHandler)) $ do
         curMode <- use $ uiState . uiREPL . replControlMode
         (uiState . uiREPL . replControlMode) .= case curMode of Handling -> Typing; _ -> Handling
 
@@ -1022,7 +1027,7 @@ handleREPLEvent x = do
 -- | Run the installed input handler on a key combo entered by the user.
 runInputHandler :: KeyCombo -> EventM Name AppState ()
 runInputHandler kc = do
-  mhandler <- use $ gameState . inputHandler
+  mhandler <- use $ gameState . gameControls . inputHandler
   case mhandler of
     -- Shouldn't be possible to get here if there is no input handler, but
     -- if we do somehow, just do nothing.
@@ -1031,7 +1036,7 @@ runInputHandler kc = do
       -- Make sure the base is currently idle; if so, apply the
       -- installed input handler function to a `key` value
       -- representing the typed input.
-      working <- use $ gameState . replWorking
+      working <- use $ gameState . gameControls . replWorking
       unless working $ do
         s <- get
         let topCtx = topContext s
@@ -1066,8 +1071,8 @@ handleREPLEventPiloting x = case x of
     modify validateREPLForm
     handleREPLEventTyping $ Key V.KEnter
 
-  setCmd nt repl =
-    repl
+  setCmd nt theRepl =
+    theRepl
       & replPromptText .~ nt
       & replPromptType .~ CmdPrompt []
 
@@ -1075,7 +1080,7 @@ runBaseWebCode :: (MonadState AppState m) => T.Text -> m ()
 runBaseWebCode uinput = do
   s <- get
   let topCtx = topContext s
-  unless (s ^. gameState . replWorking) $
+  unless (s ^. gameState . gameControls . replWorking) $
     runBaseCode topCtx uinput
 
 runBaseCode :: (MonadState AppState m) => RobotContext -> T.Text -> m ()
@@ -1098,7 +1103,7 @@ runBaseTerm topCtx =
   -- input is valid) and sets up the base robot to run it.
   startBaseProgram t@(ProcessedTerm (Module tm _) reqs reqCtx) =
     -- Set the REPL status to Working
-    (gameState . replStatus .~ REPLWorking (Typed Nothing (tm ^. sType) reqs))
+    (gameState . gameControls . replStatus .~ REPLWorking (Typed Nothing (tm ^. sType) reqs))
       -- The `reqCtx` maps names of variables defined in the
       -- term (by `def` statements) to their requirements.
       -- E.g. if we had `def m = move end`, the reqCtx would
@@ -1130,11 +1135,11 @@ handleREPLEventTyping = \case
       Key V.KEnter -> do
         s <- get
         let topCtx = topContext s
-            repl = s ^. uiState . uiREPL
-            uinput = repl ^. replPromptText
+            theRepl = s ^. uiState . uiREPL
+            uinput = theRepl ^. replPromptText
 
-        if not $ s ^. gameState . replWorking
-          then case repl ^. replPromptType of
+        if not $ s ^. gameState . gameControls . replWorking
+          then case theRepl ^. replPromptType of
             CmdPrompt _ -> do
               runBaseCode topCtx uinput
               invalidateCacheEntry REPLHistoryCache
@@ -1160,7 +1165,7 @@ handleREPLEventTyping = \case
       CharKey '\t' -> do
         s <- get
         let names = s ^.. gameState . baseRobot . robotContext . defTypes . to assocs . traverse . _1
-        uiState . uiREPL %= tabComplete names (s ^. gameState . entityMap)
+        uiState . uiREPL %= tabComplete names (s ^. gameState . landscape . entityMap)
         modify validateREPLForm
       EscapeKey -> do
         formSt <- use $ uiState . uiREPL . replPromptType
@@ -1190,8 +1195,8 @@ data CompletionType
 --   reserved words and names in scope (in the case of function names) or
 --   entity names (in the case of string literals).
 tabComplete :: [Var] -> EntityMap -> REPLState -> REPLState
-tabComplete names em repl = case repl ^. replPromptType of
-  SearchPrompt _ -> repl
+tabComplete names em theRepl = case theRepl ^. replPromptType of
+  SearchPrompt _ -> theRepl
   CmdPrompt mms
     -- Case 1: If completion candidates have already been
     -- populated via case (3), cycle through them.
@@ -1239,9 +1244,9 @@ tabComplete names em repl = case repl ^. replPromptType of
 
   entityNames = M.keys $ entitiesByName em
 
-  t = repl ^. replPromptText
+  t = theRepl ^. replPromptText
   setCmd nt ms =
-    repl
+    theRepl
       & replPromptText .~ nt
       & replPromptType .~ CmdPrompt ms
 
@@ -1252,7 +1257,7 @@ validateREPLForm s =
   case replPrompt of
     CmdPrompt _
       | T.null uinput ->
-          let theType = s ^. gameState . replStatus . replActiveType
+          let theType = s ^. gameState . gameControls . replStatus . replActiveType
            in s & uiState . uiREPL . replType .~ theType
     CmdPrompt _
       | otherwise ->
@@ -1277,20 +1282,20 @@ adjReplHistIndex d s =
     & validateREPLForm
  where
   moveREPL :: REPLState -> REPLState
-  moveREPL repl =
+  moveREPL theRepl =
     newREPL
-      & (if replIndexIsAtInput (repl ^. replHistory) then saveLastEntry else id)
+      & (if replIndexIsAtInput (theRepl ^. replHistory) then saveLastEntry else id)
       & (if oldEntry /= newEntry then showNewEntry else id)
    where
     -- new AppState after moving the repl index
     newREPL :: REPLState
-    newREPL = repl & replHistory %~ moveReplHistIndex d oldEntry
+    newREPL = theRepl & replHistory %~ moveReplHistIndex d oldEntry
 
-    saveLastEntry = replLast .~ (repl ^. replPromptText)
+    saveLastEntry = replLast .~ (theRepl ^. replPromptText)
     showNewEntry = (replPromptEditor .~ newREPLEditor newEntry) . (replPromptType .~ CmdPrompt [])
     -- get REPL data
-    getCurrEntry = fromMaybe (repl ^. replLast) . getCurrentItemText . view replHistory
-    oldEntry = getCurrEntry repl
+    getCurrEntry = fromMaybe (theRepl ^. replLast) . getCurrentItemText . view replHistory
+    oldEntry = getCurrEntry theRepl
     newEntry = getCurrEntry newREPL
 
 ------------------------------------------------------------
@@ -1311,7 +1316,7 @@ handleWorldEvent = \case
   Key k
     | k `elem` moveKeys -> do
         c <- use $ gameState . creativeMode
-        s <- use $ gameState . worldScrollable
+        s <- use $ gameState . landscape . worldScrollable
         when (c || s) $ scrollView (.+^ (worldScrollDist *^ keyToDir k))
   CharKey 'c' -> do
     invalidateCacheEntry WorldCache
@@ -1443,7 +1448,7 @@ makeEntity e = do
 
   case isActive <$> (s ^? gameState . baseRobot) of
     Just False -> do
-      gameState . replStatus .= REPLWorking (Typed Nothing PolyUnit (R.singletonCap CMake))
+      gameState . gameControls . replStatus .= REPLWorking (Typed Nothing PolyUnit (R.singletonCap CMake))
       gameState . baseRobot . machine .= initMachine mkPT empty topStore
       gameState %= execState (activateRobot 0)
     _ -> continueWithoutRedraw

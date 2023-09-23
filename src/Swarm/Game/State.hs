@@ -29,13 +29,8 @@ module Swarm.Game.State (
 
   -- ** GameState fields
   creativeMode,
-  gameStep,
   winCondition,
   winSolution,
-  gameAchievements,
-  announcementQueue,
-  runStatus,
-  paused,
   robotMap,
   robotsByLocation,
   robotsAtLocation,
@@ -44,38 +39,74 @@ module Swarm.Game.State (
   baseRobot,
   activeRobots,
   waitingRobots,
-  availableRecipes,
-  availableCommands,
   messageNotifications,
-  allDiscoveredEntities,
-  gensym,
   seed,
   randGen,
-  adjList,
-  nameList,
-  initiallyRunCode,
-  entityMap,
-  recipesOut,
-  recipesIn,
-  recipesCat,
   currentScenarioPath,
-  knownEntities,
-  worldNavigation,
-  multiWorld,
-  worldScrollable,
   viewCenterRule,
   viewCenter,
   needsRedraw,
+  focusedRobotID,
+
+  -- *** Subrecord accessors
+  temporal,
+  robotNaming,
+  recipesInfo,
+  messageInfo,
+  gameControls,
+  discovery,
+  landscape,
+
+  -- ** GameState subrecords
+
+  -- *** Temporal state
+  TemporalState,
+  gameStep,
+  runStatus,
+  ticks,
+  robotStepsPerTick,
+  paused,
+
+  -- *** Robot naming
+  RobotNaming,
+  nameGenerator,
+  gensym,
+
+  -- *** Recipes
+  Recipes,
+  recipesOut,
+  recipesIn,
+  recipesCat,
+
+  -- *** Messages
+  Messages,
+  messageQueue,
+  lastSeenMessageTime,
+  announcementQueue,
+
+  -- *** Controls
+  GameControls,
+  initiallyRunCode,
   replStatus,
   replNextValueIndex,
   replWorking,
   replActiveType,
   inputHandler,
-  messageQueue,
-  lastSeenMessageTime,
-  focusedRobotID,
-  ticks,
-  robotStepsPerTick,
+
+  -- *** Discovery
+  Discovery,
+  allDiscoveredEntities,
+  availableRecipes,
+  availableCommands,
+  knownEntities,
+  gameAchievements,
+
+  -- *** Landscape
+  Landscape,
+  worldNavigation,
+  multiWorld,
+  worldScrollable,
+  entityMap,
 
   -- ** Notifications
   Notifications (..),
@@ -120,6 +151,9 @@ module Swarm.Game.State (
   messageIsRecent,
   messageIsFromNearby,
   getRunCodePath,
+  buildWorldTuples,
+  genMultiWorld,
+  genRobotTemplates,
 ) where
 
 import Control.Applicative ((<|>))
@@ -171,6 +205,7 @@ import Swarm.Game.Recipe (
   inRecipeMap,
   outRecipeMap,
  )
+import Swarm.Game.ResourceLoading (NameGenerator)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Status
@@ -191,9 +226,10 @@ import Swarm.Language.Syntax (Const, SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value)
+import Swarm.Log
 import Swarm.Util (applyWhen, binTuples, surfaceEmpty, uniq, (<+=), (<<.=), (?))
 import Swarm.Util.Erasable
-import Swarm.Util.Lens (makeLensesExcluding)
+import Swarm.Util.Lens (makeLensesExcluding, makeLensesNoSigs)
 import System.Clock qualified as Clock
 import System.Random (StdGen, mkStdGen, randomRIO)
 
@@ -216,11 +252,12 @@ makePrisms ''ViewCenterRule
 data REPLStatus
   = -- | The REPL is not doing anything actively at the moment.
     --   We persist the last value and its type though.
-    --   INVARIANT: the Value stored here is not a VResult.
+    --
+    --   INVARIANT: the 'Value' stored here is not a 'Swarm.Language.Value.VResult'.
     REPLDone (Maybe (Typed Value))
   | -- | A command entered at the REPL is currently being run.  The
     --   'Polytype' represents the type of the expression that was
-    --   entered.  The @Maybe Value@ starts out as @Nothing@ and gets
+    --   entered.  The @Maybe Value@ starts out as 'Nothing' and gets
     --   filled in with a result once the command completes.
     REPLWorking (Typed (Maybe Value))
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
@@ -268,11 +305,13 @@ data RunStatus
 -- | Switch (auto or manually) paused game to running and running to manually paused.
 --
 --   Note that this function is not safe to use in the app directly, because the UI
---   also tracks time between ticks - use 'Swarm.TUI.Controller.safeTogglePause' instead.
+--   also tracks time between ticks---use 'Swarm.TUI.Controller.safeTogglePause' instead.
 toggleRunStatus :: RunStatus -> RunStatus
 toggleRunStatus s = if s == Running then ManualPause else Running
 
--- | A data type to keep track of discovered recipes and commands
+-- | A data type to keep track of some kind of log or sequence, with
+--   an index to remember which ones are "new" and which ones have
+--   "already been seen".
 data Notifications a = Notifications
   { _notificationsCount :: Int
   , _notificationsContent :: [a]
@@ -329,9 +368,9 @@ parseCodeFile filepath = do
 defaultRobotStepsPerTick :: Int
 defaultRobotStepsPerTick = 100
 
--- | Type for remebering which robots will be run next in a robot step mode.
+-- | Type for remembering which robots will be run next in a robot step mode.
 --
--- Once some robots have run, we need to store RID to know which ones should go next.
+-- Once some robots have run, we need to store 'RID' to know which ones should go next.
 -- At 'SBefore' no robots were run yet, so it is safe to transition to and from 'WorldTick'.
 --
 -- @
@@ -361,21 +400,171 @@ data SingleStep
 -- | Game step mode - we use the single step mode when debugging robot 'CESK' machine.
 data Step = WorldTick | RobotStep SingleStep
 
+data Recipes = Recipes
+  { _recipesOut :: IntMap [Recipe Entity]
+  , _recipesIn :: IntMap [Recipe Entity]
+  , _recipesCat :: IntMap [Recipe Entity]
+  }
+
+makeLensesNoSigs ''Recipes
+
+-- | All recipes the game knows about, indexed by outputs.
+recipesOut :: Lens' Recipes (IntMap [Recipe Entity])
+
+-- | All recipes the game knows about, indexed by inputs.
+recipesIn :: Lens' Recipes (IntMap [Recipe Entity])
+
+-- | All recipes the game knows about, indexed by requirement/catalyst.
+recipesCat :: Lens' Recipes (IntMap [Recipe Entity])
+
+data Messages = Messages
+  { _messageQueue :: Seq LogEntry
+  , _lastSeenMessageTime :: TickNumber
+  , _announcementQueue :: Seq Announcement
+  }
+
+makeLensesNoSigs ''Messages
+
+-- | A queue of global messages.
+--
+-- Note that we put the newest entry to the right.
+messageQueue :: Lens' Messages (Seq LogEntry)
+
+-- | Last time message queue has been viewed (used for notification).
+lastSeenMessageTime :: Lens' Messages TickNumber
+
+-- | A queue of global announcements.
+-- Note that this is distinct from the 'messageQueue',
+-- which is for messages emitted by robots.
+--
+-- Note that we put the newest entry to the right.
+announcementQueue :: Lens' Messages (Seq Announcement)
+
+data RobotNaming = RobotNaming
+  { _nameGenerator :: NameGenerator
+  , _gensym :: Int
+  }
+
+makeLensesExcluding ['_nameGenerator] ''RobotNaming
+
+--- | Read-only list of words, for use in building random robot names.
+nameGenerator :: Getter RobotNaming NameGenerator
+nameGenerator = to _nameGenerator
+
+-- | A counter used to generate globally unique IDs.
+gensym :: Lens' RobotNaming Int
+
+data TemporalState = TemporalState
+  { _gameStep :: Step
+  , _runStatus :: RunStatus
+  , _ticks :: TickNumber
+  , _robotStepsPerTick :: Int
+  }
+
+makeLensesNoSigs ''TemporalState
+
+-- | How to step the game: 'WorldTick' or 'RobotStep' for debugging the 'CESK' machine.
+gameStep :: Lens' TemporalState Step
+
+-- | The current 'RunStatus'.
+runStatus :: Lens' TemporalState RunStatus
+
+-- | Whether the game is currently paused.
+paused :: Getter TemporalState Bool
+paused = to (\s -> s ^. runStatus /= Running)
+
+-- | The number of ticks elapsed since the game started.
+ticks :: Lens' TemporalState TickNumber
+
+-- | The maximum number of CESK machine steps a robot may take during
+--   a single tick.
+robotStepsPerTick :: Lens' TemporalState Int
+
+data GameControls = GameControls
+  { _replStatus :: REPLStatus
+  , _replNextValueIndex :: Integer
+  , _inputHandler :: Maybe (Text, Value)
+  , _initiallyRunCode :: Maybe ProcessedTerm
+  }
+
+makeLensesNoSigs ''GameControls
+
+-- | The current status of the REPL.
+replStatus :: Lens' GameControls REPLStatus
+
+-- | The index of the next @it{index}@ value
+replNextValueIndex :: Lens' GameControls Integer
+
+-- | The currently installed input handler and hint text.
+inputHandler :: Lens' GameControls (Maybe (Text, Value))
+
+-- | Code that is run upon scenario start, before any
+-- REPL interaction.
+initiallyRunCode :: Lens' GameControls (Maybe ProcessedTerm)
+
+data Discovery = Discovery
+  { _allDiscoveredEntities :: Inventory
+  , _availableRecipes :: Notifications (Recipe Entity)
+  , _availableCommands :: Notifications Const
+  , _knownEntities :: [Text]
+  , _gameAchievements :: Map GameplayAchievement Attainment
+  }
+
+makeLensesNoSigs ''Discovery
+
+-- | The list of entities that have been discovered.
+allDiscoveredEntities :: Lens' Discovery Inventory
+
+-- | The list of available recipes.
+availableRecipes :: Lens' Discovery (Notifications (Recipe Entity))
+
+-- | The list of available commands.
+availableCommands :: Lens' Discovery (Notifications Const)
+
+-- | The names of entities that should be considered \"known\", that is,
+--   robots know what they are without having to scan them.
+knownEntities :: Lens' Discovery [Text]
+
+-- | Map of in-game achievements that were obtained
+gameAchievements :: Lens' Discovery (Map GameplayAchievement Attainment)
+
+data Landscape = Landscape
+  { _worldNavigation :: Navigation (M.Map SubworldName) Location
+  , _multiWorld :: W.MultiWorld Int Entity
+  , _entityMap :: EntityMap
+  , _worldScrollable :: Bool
+  }
+
+makeLensesNoSigs ''Landscape
+
+-- | Includes a 'Map' of named locations and an
+-- "edge list" (graph) that maps portal entrances to exits
+worldNavigation :: Lens' Landscape (Navigation (M.Map SubworldName) Location)
+
+-- | The current state of the world (terrain and entities only; robots
+--   are stored in the 'robotMap').  'Int' is used instead of
+--   'TerrainType' because we need to be able to store terrain values in
+--   unboxed tile arrays.
+multiWorld :: Lens' Landscape (W.MultiWorld Int Entity)
+
+-- | The catalog of all entities that the game knows about.
+entityMap :: Lens' Landscape EntityMap
+
+-- | Whether the world map is supposed to be scrollable or not.
+worldScrollable :: Lens' Landscape Bool
+
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
 data GameState = GameState
   { _creativeMode :: Bool
-  , _gameStep :: Step
+  , _temporal :: TemporalState
   , _winCondition :: WinCondition
   , _winSolution :: Maybe ProcessedTerm
-  , _gameAchievements :: Map GameplayAchievement Attainment
-  , _announcementQueue :: Seq Announcement
-  , _runStatus :: RunStatus
   , _robotMap :: IntMap Robot
   , -- A set of robots to consider for the next game tick. It is guaranteed to
-    -- be a subset of the keys of robotMap. It may contain waiting or idle
-    -- robots. But robots that are present in robotMap and not in activeRobots
+    -- be a subset of the keys of 'robotMap'. It may contain waiting or idle
+    -- robots. But robots that are present in 'robotMap' and not in 'activeRobots'
     -- are guaranteed to be either waiting or idle.
     _activeRobots :: IntSet
   , -- A set of probably waiting robots, indexed by probable wake-up time. It
@@ -383,44 +572,28 @@ data GameState = GameState
     -- that do not exist anymore. Its only guarantee is that once a robot name
     -- with its wake up time is inserted in it, it will remain there until the
     -- wake-up time is reached, at which point it is removed via
-    -- wakeUpRobotsDoneSleeping.
+    -- 'wakeUpRobotsDoneSleeping'.
     -- Waiting robots for a given time are a list because it is cheaper to
-    -- prepend to a list than insert into a Set.
+    -- prepend to a list than insert into a 'Set'.
     _waitingRobots :: Map TickNumber [RID]
   , _robotsByLocation :: Map SubworldName (Map Location IntSet)
   , -- This member exists as an optimization so
     -- that we do not have to iterate over all "waiting" robots,
     -- since there may be many.
     _robotsWatching :: Map (Cosmic Location) (S.Set RID)
-  , _allDiscoveredEntities :: Inventory
-  , _availableRecipes :: Notifications (Recipe Entity)
-  , _availableCommands :: Notifications Const
-  , _gensym :: Int
+  , _discovery :: Discovery
   , _seed :: Seed
   , _randGen :: StdGen
-  , _adjList :: Array Int Text
-  , _nameList :: Array Int Text
-  , _initiallyRunCode :: Maybe ProcessedTerm
-  , _entityMap :: EntityMap
-  , _recipesOut :: IntMap [Recipe Entity]
-  , _recipesIn :: IntMap [Recipe Entity]
-  , _recipesCat :: IntMap [Recipe Entity]
+  , _robotNaming :: RobotNaming
+  , _recipesInfo :: Recipes
   , _currentScenarioPath :: Maybe FilePath
-  , _knownEntities :: [Text]
-  , _worldNavigation :: Navigation (M.Map SubworldName) Location
-  , _multiWorld :: W.MultiWorld Int Entity
-  , _worldScrollable :: Bool
+  , _landscape :: Landscape
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter :: Cosmic Location
   , _needsRedraw :: Bool
-  , _replStatus :: REPLStatus
-  , _replNextValueIndex :: Integer
-  , _inputHandler :: Maybe (Text, Value)
-  , _messageQueue :: Seq LogEntry
-  , _lastSeenMessageTime :: TickNumber
+  , _gameControls :: GameControls
+  , _messageInfo :: Messages
   , _focusedRobotID :: RID
-  , _ticks :: TickNumber
-  , _robotStepsPerTick :: Int
   }
 
 ------------------------------------------------------------
@@ -435,13 +608,13 @@ makeLensesFor
   ]
   ''GameState
 
-makeLensesExcluding ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots, '_adjList, '_nameList] ''GameState
+makeLensesExcluding ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots] ''GameState
 
 -- | Is the user in creative mode (i.e. able to do anything without restriction)?
 creativeMode :: Lens' GameState Bool
 
--- | How to step the game - 'WorldTick' or 'RobotStep' for debugging the 'CESK' machine.
-gameStep :: Lens' GameState Step
+-- | Aspects of the temporal state of the game
+temporal :: Lens' GameState TemporalState
 
 -- | How to determine whether the player has won.
 winCondition :: Lens' GameState WinCondition
@@ -450,28 +623,11 @@ winCondition :: Lens' GameState WinCondition
 --   and to show help to cheaters (or testers).
 winSolution :: Lens' GameState (Maybe ProcessedTerm)
 
--- | Map of in-game achievements that were attained
-gameAchievements :: Lens' GameState (Map GameplayAchievement Attainment)
-
--- | A queue of global announcements.
--- Note that this is distinct from the "messageQueue",
--- which is for messages emitted by robots.
---
--- Note that we put the newest entry to the right.
-announcementQueue :: Lens' GameState (Seq Announcement)
-
--- | The current 'RunStatus'.
-runStatus :: Lens' GameState RunStatus
-
--- | Whether the game is currently paused.
-paused :: Getter GameState Bool
-paused = to (\s -> s ^. runStatus /= Running)
-
 -- | All the robots that currently exist in the game, indexed by ID.
 robotMap :: Lens' GameState (IntMap Robot)
 
 -- | The names of all robots that currently exist in the game, indexed by
---   location (which we need both for /e.g./ the 'Salvage' command as
+--   location (which we need both for /e.g./ the @salvage@ command as
 --   well as for actually drawing the world).  Unfortunately there is
 --   no good way to automatically keep this up to date, since we don't
 --   just want to completely rebuild it every time the 'robotMap'
@@ -510,27 +666,18 @@ robotsInArea (Cosmic subworldName o) d gs = map (rm IM.!) rids
 baseRobot :: Traversal' GameState Robot
 baseRobot = robotMap . ix 0
 
--- | The list of entities that have been discovered.
-allDiscoveredEntities :: Lens' GameState Inventory
-
--- | The list of available recipes.
-availableRecipes :: Lens' GameState (Notifications (Recipe Entity))
-
--- | The list of available commands.
-availableCommands :: Lens' GameState (Notifications Const)
-
 -- | The names of the robots that are currently not sleeping.
 activeRobots :: Getter GameState IntSet
 activeRobots = internalActiveRobots
 
 -- | The names of the robots that are currently sleeping, indexed by wake up
 --   time. Note that this may not include all sleeping robots, particularly
---   those that are only taking a short nap (e.g. wait 1).
+--   those that are only taking a short nap (e.g. @wait 1@).
 waitingRobots :: Getter GameState (Map TickNumber [RID])
 waitingRobots = internalWaitingRobots
 
--- | A counter used to generate globally unique IDs.
-gensym :: Lens' GameState Int
+-- | Discovery state of entities, commands, recipes
+discovery :: Lens' GameState Discovery
 
 -- | The initial seed that was used for the random number generator,
 --   and world generation.
@@ -539,52 +686,20 @@ seed :: Lens' GameState Seed
 -- | Pseudorandom generator initialized at start.
 randGen :: Lens' GameState StdGen
 
--- | Read-only list of words, for use in building random robot names.
-adjList :: Getter GameState (Array Int Text)
-adjList = to _adjList
+-- | State and data for assigning identifiers to robots
+robotNaming :: Lens' GameState RobotNaming
 
--- | Read-only list of words, for use in building random robot names.
-nameList :: Getter GameState (Array Int Text)
-nameList = to _nameList
-
--- | Code that is run upon scenario start, before any
--- REPL interaction.
-initiallyRunCode :: Lens' GameState (Maybe ProcessedTerm)
-
--- | The catalog of all entities that the game knows about.
-entityMap :: Lens' GameState EntityMap
-
--- | All recipes the game knows about, indexed by outputs.
-recipesOut :: Lens' GameState (IntMap [Recipe Entity])
-
--- | All recipes the game knows about, indexed by inputs.
-recipesIn :: Lens' GameState (IntMap [Recipe Entity])
-
--- | All recipes the game knows about, indexed by requirement/catalyst.
-recipesCat :: Lens' GameState (IntMap [Recipe Entity])
+-- | Collection of recipe info
+recipesInfo :: Lens' GameState Recipes
 
 -- | The filepath of the currently running scenario.
 --
--- This is useful as an index to 'scenarios' collection,
+-- This is useful as an index to the scenarios collection,
 -- see 'Swarm.Game.ScenarioInfo.scenarioItemByPath'.
 currentScenarioPath :: Lens' GameState (Maybe FilePath)
 
--- | The names of entities that should be considered \"known\", that is,
---   robots know what they are without having to scan them.
-knownEntities :: Lens' GameState [Text]
-
--- | Includes a 'Map' of named locations and an
--- "Edge list" (graph) that maps portal entrances to exits
-worldNavigation :: Lens' GameState (Navigation (M.Map SubworldName) Location)
-
--- | The current state of the world (terrain and entities only; robots
---   are stored in the 'robotMap').  'Int' is used instead of
---   'TerrainType' because we need to be able to store terrain values in
---   unboxed tile arrays.
-multiWorld :: Lens' GameState (W.MultiWorld Int Entity)
-
--- | Whether the world map is supposed to be scrollable or not.
-worldScrollable :: Lens' GameState Bool
+-- | Info about the lay of the land
+landscape :: Lens' GameState Landscape
 
 -- | The current center of the world view. Note that this cannot be
 --   modified directly, since it is calculated automatically from the
@@ -596,22 +711,11 @@ viewCenter = to _viewCenter
 -- | Whether the world view needs to be redrawn.
 needsRedraw :: Lens' GameState Bool
 
--- | The current status of the REPL.
-replStatus :: Lens' GameState REPLStatus
+-- | Controls, including REPL and key mapping
+gameControls :: Lens' GameState GameControls
 
--- | The index of the next it{index} value
-replNextValueIndex :: Lens' GameState Integer
-
--- | The currently installed input handler and hint text.
-inputHandler :: Lens' GameState (Maybe (Text, Value))
-
--- | A queue of global messages.
---
--- Note that we put the newest entry to the right.
-messageQueue :: Lens' GameState (Seq LogEntry)
-
--- | Last time message queue has been viewed (used for notification).
-lastSeenMessageTime :: Lens' GameState TickNumber
+-- | Message info
+messageInfo :: Lens' GameState Messages
 
 -- | The current robot in focus.
 --
@@ -623,27 +727,20 @@ lastSeenMessageTime :: Lens' GameState TickNumber
 focusedRobotID :: Getter GameState RID
 focusedRobotID = to _focusedRobotID
 
--- | The number of ticks elapsed since the game started.
-ticks :: Lens' GameState TickNumber
-
--- | The maximum number of CESK machine steps a robot may take during
---   a single tick.
-robotStepsPerTick :: Lens' GameState Int
-
 ------------------------------------------------------------
 -- Utilities
 ------------------------------------------------------------
 
 -- | The current rule for determining the center of the world view.
---   It updates also, viewCenter and focusedRobotName to keep
---   everything synchronize.
+--   It updates also, 'viewCenter' and 'focusedRobot' to keep
+--   everything synchronized.
 viewCenterRule :: Lens' GameState ViewCenterRule
 viewCenterRule = lens getter setter
  where
   getter :: GameState -> ViewCenterRule
   getter = _viewCenterRule
 
-  -- The setter takes care of updating viewCenter and focusedRobotName
+  -- The setter takes care of updating 'viewCenter' and 'focusedRobot'
   -- So non of this fields get out of sync.
   setter :: GameState -> ViewCenterRule -> GameState
   setter g rule =
@@ -658,7 +755,7 @@ viewCenterRule = lens getter setter
               Just loc -> g {_viewCenterRule = rule, _viewCenter = loc, _focusedRobotID = rid}
 
 -- | Whether the repl is currently working.
-replWorking :: Getter GameState Bool
+replWorking :: Getter GameControls Bool
 replWorking = to (\s -> matchesWorking $ s ^. replStatus)
  where
   matchesWorking (REPLDone _) = False
@@ -679,29 +776,33 @@ messageNotifications = to getNotif
   getNotif gs = Notifications {_notificationsCount = length new, _notificationsContent = allUniq}
    where
     allUniq = uniq $ toList allMessages
-    new = takeWhile (\l -> l ^. leTime > gs ^. lastSeenMessageTime) $ reverse allUniq
+    new = takeWhile (\l -> l ^. leTime > gs ^. messageInfo . lastSeenMessageTime) $ reverse allUniq
     -- creative players and system robots just see all messages (and focused robots logs)
     unchecked = gs ^. creativeMode || fromMaybe False (focusedRobot gs ^? _Just . systemRobot)
-    messages = (if unchecked then id else focusedOrLatestClose) (gs ^. messageQueue)
+    messages = (if unchecked then id else focusedOrLatestClose) (gs ^. messageInfo . messageQueue)
     allMessages = Seq.sort $ focusedLogs <> messages
     focusedLogs = maybe Empty (view robotLog) (focusedRobot gs)
     -- classic players only get to see messages that they said and a one message that they just heard
     -- other they have to get from log
     latestMsg = messageIsRecent gs
     closeMsg = messageIsFromNearby (gs ^. viewCenter)
+    generatedBy rid logEntry = case logEntry ^. leSource of
+      RobotLog _ rid' _ -> rid == rid'
+      _ -> False
+
     focusedOrLatestClose mq =
       (Seq.take 1 . Seq.reverse . Seq.filter closeMsg $ Seq.takeWhileR latestMsg mq)
-        <> Seq.filter ((== gs ^. focusedRobotID) . view leRobotID) mq
+        <> Seq.filter (generatedBy (gs ^. focusedRobotID)) mq
 
 messageIsRecent :: GameState -> LogEntry -> Bool
-messageIsRecent gs e = addTicks 1 (e ^. leTime) >= gs ^. ticks
+messageIsRecent gs e = addTicks 1 (e ^. leTime) >= gs ^. temporal . ticks
 
 -- | Reconciles the possibilities of log messages being
--- omnipresent and robots being in different worlds
+--   omnipresent and robots being in different worlds
 messageIsFromNearby :: Cosmic Location -> LogEntry -> Bool
-messageIsFromNearby l e = case e ^. leLocation of
-  Omnipresent -> True
-  Located x -> f x
+messageIsFromNearby l e = case e ^. leSource of
+  SystemLog -> True
+  RobotLog _ _ loc -> f loc
  where
   f logLoc = case cosmoMeasure manhattan l logLoc of
     InfinitelyFar -> False
@@ -715,7 +816,7 @@ applyViewCenterRule :: ViewCenterRule -> IntMap Robot -> Maybe (Cosmic Location)
 applyViewCenterRule (VCLocation l) _ = Just l
 applyViewCenterRule (VCRobot name) m = m ^? at name . _Just . robotLocation
 
--- | Recalculate the veiw center (and cache the result in the
+-- | Recalculate the view center (and cache the result in the
 --   'viewCenter' field) based on the current 'viewCenterRule'.  If
 --   the 'viewCenterRule' specifies a robot which does not exist,
 --   simply leave the current 'viewCenter' as it is. Set 'needsRedraw'
@@ -752,10 +853,10 @@ unfocus = (\g -> g {_focusedRobotID = -1000}) . modifyViewCenter id
 
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.
-viewingRegion :: GameState -> (Int32, Int32) -> Cosmic W.BoundsRectangle
-viewingRegion g (w, h) = Cosmic sw (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
+viewingRegion :: Cosmic Location -> (Int32, Int32) -> Cosmic W.BoundsRectangle
+viewingRegion (Cosmic sw (Location cx cy)) (w, h) =
+  Cosmic sw (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
  where
-  Cosmic sw (Location cx cy) = g ^. viewCenter
   (rmin, rmax) = over both (+ (-cy - h `div` 2)) (0, h - 1)
   (cmin, cmax) = over both (+ (cx - w `div` 2)) (0, w - 1)
 
@@ -782,18 +883,22 @@ data RobotRange
 --   * If we are in creative or scroll-enabled mode, the focused robot is
 --   always considered 'Close'.
 --   * Otherwise, there is a "minimum radius" and "maximum radius".
---       - If the robot is within the minimum radius, it is 'Close'.
---       - If the robot is between the minimum and maximum radii, it
+--
+--       * If the robot is within the minimum radius, it is 'Close'.
+--       * If the robot is between the minimum and maximum radii, it
 --         is 'MidRange', with a 'Double' value ranging linearly from
 --         0 to 1 proportional to the distance from the minimum to
---         maximum radius.  For example, 'MidRange 0.5' would indicate
+--         maximum radius.  For example, @MidRange 0.5@ would indicate
 --         a robot exactly halfway between the minimum and maximum
 --         radii.
---       - If the robot is beyond the maximum radius, it is 'Far'.
+--       * If the robot is beyond the maximum radius, it is 'Far'.
+--
 --   * By default, the minimum radius is 16, and maximum is 64.
---   * If the focused robot has an @antenna@ installed, it doubles
---     both radii.
---   * If the base has an @antenna@ installed, it also doubles both radii.
+--   * Device augmentations
+--
+--       * If the focused robot has an @antenna@ installed, it doubles
+--         both radii.
+--       * If the base has an @antenna@ installed, it also doubles both radii.
 focusedRange :: GameState -> Maybe RobotRange
 focusedRange g = checkRange <$ focusedRobot g
  where
@@ -802,7 +907,7 @@ focusedRange g = checkRange <$ focusedRobot g
     Measurable r' -> computedRange r'
 
   computedRange r'
-    | g ^. creativeMode || g ^. worldScrollable || r' <= minRadius = Close
+    | g ^. creativeMode || g ^. landscape . worldScrollable || r' <= minRadius = Close
     | r' > maxRadius = Far
     | otherwise = MidRange $ (r' - minRadius) / (maxRadius - minRadius)
 
@@ -834,12 +939,12 @@ clearFocusedRobotLogUpdated = do
   robotMap . ix n . robotLogUpdated .= False
 
 -- | Add a concrete instance of a robot template to the game state:
---   first, generate a unique ID number for it.  Then, add it to the
+--   First, generate a unique ID number for it.  Then, add it to the
 --   main robot map, the active robot set, and to to the index of
 --   robots by location. Return the updated robot.
 addTRobot :: (Has (State GameState) sig m) => TRobot -> m Robot
 addTRobot r = do
-  rid <- gensym <+= 1
+  rid <- robotNaming . gensym <+= 1
   let r' = instantiateRobot rid r
   addRobot r'
   return r'
@@ -869,33 +974,33 @@ maxMessageQueueSize = 1000
 
 -- | Add a message to the message queue.
 emitMessage :: (Has (State GameState) sig m) => LogEntry -> m ()
-emitMessage msg = messageQueue %= (|> msg) . dropLastIfLong
+emitMessage msg = messageInfo . messageQueue %= (|> msg) . dropLastIfLong
  where
   tooLong s = Seq.length s >= maxMessageQueueSize
   dropLastIfLong whole@(_oldest :<| newer) = if tooLong whole then newer else whole
   dropLastIfLong emptyQueue = emptyQueue
 
--- | Takes a robot out of the activeRobots set and puts it in the waitingRobots
+-- | Takes a robot out of the 'activeRobots' set and puts it in the 'waitingRobots'
 --   queue.
 sleepUntil :: (Has (State GameState) sig m) => RID -> TickNumber -> m ()
 sleepUntil rid time = do
   internalActiveRobots %= IS.delete rid
   internalWaitingRobots . at time . non [] %= (rid :)
 
--- | Takes a robot out of the activeRobots set.
+-- | Takes a robot out of the 'activeRobots' set.
 sleepForever :: (Has (State GameState) sig m) => RID -> m ()
 sleepForever rid = internalActiveRobots %= IS.delete rid
 
--- | Adds a robot to the activeRobots set.
+-- | Adds a robot to the 'activeRobots' set.
 activateRobot :: (Has (State GameState) sig m) => RID -> m ()
 activateRobot rid = internalActiveRobots %= IS.insert rid
 
 -- | Removes robots whose wake up time matches the current game ticks count
---   from the waitingRobots queue and put them back in the activeRobots set
---   if they still exist in the keys of robotMap.
+--   from the 'waitingRobots' queue and put them back in the 'activeRobots' set
+--   if they still exist in the keys of 'robotMap'.
 wakeUpRobotsDoneSleeping :: (Has (State GameState) sig m) => m ()
 wakeUpRobotsDoneSleeping = do
-  time <- use ticks
+  time <- use $ temporal . ticks
   mrids <- internalWaitingRobots . at time <<.= Nothing
   case mrids of
     Nothing -> return ()
@@ -905,7 +1010,7 @@ wakeUpRobotsDoneSleeping = do
       internalActiveRobots %= IS.union (IS.fromList aliveRids)
 
       -- These robots' wake times may have been moved "forward"
-      -- by "wakeWatchingRobots".
+      -- by 'wakeWatchingRobots'.
       clearWatchingRobots rids
 
 -- | Clear the "watch" state of all of the
@@ -917,14 +1022,14 @@ clearWatchingRobots ::
 clearWatchingRobots rids = do
   robotsWatching %= M.map (`S.difference` S.fromList rids)
 
--- | Iterates through all of the currently "wait"-ing robots,
--- and moves forward the wake time of the ones that are watching this location.
+-- | Iterates through all of the currently @wait@-ing robots,
+-- and moves forward the wake time of the ones that are @watch@-ing this location.
 --
--- NOTE: Clearing "TickNumber" map entries from "internalWaitingRobots"
--- upon wakeup is handled by "wakeUpRobotsDoneSleeping" in State.hs
+-- NOTE: Clearing 'TickNumber' map entries from 'internalWaitingRobots'
+-- upon wakeup is handled by 'wakeUpRobotsDoneSleeping'
 wakeWatchingRobots :: (Has (State GameState) sig m) => Cosmic Location -> m ()
 wakeWatchingRobots loc = do
-  currentTick <- use ticks
+  currentTick <- use $ temporal . ticks
   waitingMap <- use waitingRobots
   rMap <- use robotMap
   watchingMap <- use robotsWatching
@@ -1014,8 +1119,7 @@ type ValidatedLaunchParams = LaunchParams Identity
 -- | Record to pass information needed to create an initial
 --   'GameState' record when starting a scenario.
 data GameStateConfig = GameStateConfig
-  { initAdjList :: Array Int Text
-  , initNameList :: Array Int Text
+  { initNameParts :: NameGenerator
   , initEntities :: EntityMap
   , initRecipes :: [Recipe Entity]
   , initWorldMap :: WorldMap
@@ -1026,49 +1130,134 @@ initGameState :: GameStateConfig -> GameState
 initGameState gsc =
   GameState
     { _creativeMode = False
-    , _gameStep = WorldTick
+    , _temporal =
+        TemporalState
+          { _gameStep = WorldTick
+          , _runStatus = Running
+          , _ticks = TickNumber 0
+          , _robotStepsPerTick = defaultRobotStepsPerTick
+          }
     , _winCondition = NoWinCondition
     , _winSolution = Nothing
-    , -- This does not need to be initialized with anything,
-      -- since the master list of achievements is stored in UIState
-      _gameAchievements = mempty
-    , _announcementQueue = mempty
-    , _runStatus = Running
     , _robotMap = IM.empty
     , _robotsByLocation = M.empty
     , _robotsWatching = mempty
-    , _availableRecipes = mempty
-    , _availableCommands = mempty
-    , _allDiscoveredEntities = empty
+    , _discovery =
+        Discovery
+          { _availableRecipes = mempty
+          , _availableCommands = mempty
+          , _allDiscoveredEntities = empty
+          , _knownEntities = []
+          , -- This does not need to be initialized with anything,
+            -- since the master list of achievements is stored in UIState
+            _gameAchievements = mempty
+          }
     , _activeRobots = IS.empty
     , _waitingRobots = M.empty
-    , _gensym = 0
     , _seed = 0
     , _randGen = mkStdGen 0
-    , _adjList = initAdjList gsc
-    , _nameList = initNameList gsc
-    , _initiallyRunCode = Nothing
-    , _entityMap = initEntities gsc
-    , _recipesOut = outRecipeMap (initRecipes gsc)
-    , _recipesIn = inRecipeMap (initRecipes gsc)
-    , _recipesCat = catRecipeMap (initRecipes gsc)
+    , _robotNaming =
+        RobotNaming
+          { _nameGenerator = initNameParts gsc
+          , _gensym = 0
+          }
+    , _recipesInfo =
+        Recipes
+          { _recipesOut = outRecipeMap (initRecipes gsc)
+          , _recipesIn = inRecipeMap (initRecipes gsc)
+          , _recipesCat = catRecipeMap (initRecipes gsc)
+          }
     , _currentScenarioPath = Nothing
-    , _knownEntities = []
-    , _worldNavigation = Navigation mempty mempty
-    , _multiWorld = mempty
-    , _worldScrollable = True
+    , _landscape =
+        Landscape
+          { _worldNavigation = Navigation mempty mempty
+          , _multiWorld = mempty
+          , _entityMap = initEntities gsc
+          , _worldScrollable = True
+          }
     , _viewCenterRule = VCRobot 0
     , _viewCenter = defaultCosmicLocation
     , _needsRedraw = False
-    , _replStatus = REPLDone Nothing
-    , _replNextValueIndex = 0
-    , _inputHandler = Nothing
-    , _messageQueue = Empty
-    , _lastSeenMessageTime = TickNumber (-1)
+    , _gameControls =
+        GameControls
+          { _replStatus = REPLDone Nothing
+          , _replNextValueIndex = 0
+          , _inputHandler = Nothing
+          , _initiallyRunCode = Nothing
+          }
+    , _messageInfo =
+        Messages
+          { _messageQueue = Empty
+          , _lastSeenMessageTime = TickNumber (-1)
+          , _announcementQueue = mempty
+          }
     , _focusedRobotID = 0
-    , _ticks = TickNumber 0
-    , _robotStepsPerTick = defaultRobotStepsPerTick
     }
+
+type SubworldDescription = (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int Entity))
+
+buildWorldTuples :: Scenario -> NonEmpty SubworldDescription
+buildWorldTuples s =
+  NE.map (worldName &&& buildWorld) $
+    s ^. scenarioWorlds
+
+genMultiWorld :: NonEmpty SubworldDescription -> Seed -> W.MultiWorld Int Entity
+genMultiWorld worldTuples s =
+  M.map genWorld
+    . M.fromList
+    . NE.toList
+    $ worldTuples
+ where
+  genWorld x = W.newWorld $ snd x s
+
+-- |
+-- Returns a list of robots, ordered by decreasing preference
+-- to serve as the "base".
+--
+-- = Rules for selecting the "base" robot:
+--
+-- What follows is a thorough description of how the base
+-- choice is made as of the most recent study of the code.
+-- This level of detail is not meant to be public-facing.
+--
+-- For an abbreviated explanation, see the "Base robot" section of the
+-- <https://github.com/swarm-game/swarm/tree/main/data/scenarios#base-robot Scenario Authoring Guide>.
+--
+-- == Precedence rules
+--
+-- 1. Prefer those robots defined with a @loc@ ('robotLocation') in the scenario file
+--
+--     1. If multiple robots define a @loc@, use the robot that is defined
+--        first within the scenario file.
+--     2. Note that if a robot is both given a @loc@ AND is specified in the
+--        world map, then two instances of the robot shall be created. The
+--        instance with the @loc@ shall be preferred as the base.
+--
+-- 2. Fall back to robots generated from templates via the map and palette.
+--
+--     1. If multiple robots are specified in the map, prefer the one that
+--        is defined first within the scenario file.
+--     2. If multiple robots are instantiated from the same template, then
+--        prefer the one with a lower-indexed subworld. Note that the root
+--        subworld is always first.
+--     3. If multiple robots instantiated from the same template are in the
+--        same subworld, then
+--        prefer the one closest to the upper-left of the screen, with higher
+--        rows given precedence over columns (i.e. first in row-major order).
+genRobotTemplates :: Scenario -> NonEmpty (a, ([(Int, TRobot)], b)) -> [TRobot]
+genRobotTemplates scenario worldTuples =
+  locatedRobots ++ map snd (sortOn fst genRobots)
+ where
+  -- Keep only robots from the robot list with a concrete location;
+  -- the others existed only to serve as a template for robots drawn
+  -- in the world map
+  locatedRobots = filter (isJust . view trobotLocation) $ scenario ^. scenarioRobots
+
+  -- Subworld order as encountered in the scenario YAML file is preserved for
+  -- the purpose of numbering robots, other than the "root" subworld
+  -- guaranteed to be first.
+  genRobots :: [(Int, TRobot)]
+  genRobots = concat $ NE.toList $ NE.map (fst . snd) worldTuples
 
 -- | Create an initial game state corresponding to the given scenario.
 scenarioToGameState ::
@@ -1088,6 +1277,12 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
   now <- Clock.getTime Clock.Monotonic
   let robotList' = (robotCreatedAt .~ now) <$> robotList
 
+  let modifyRecipesInfo oldRecipesInfo =
+        oldRecipesInfo
+          & recipesOut %~ addRecipesWith outRecipeMap
+          & recipesIn %~ addRecipesWith inRecipeMap
+          & recipesCat %~ addRecipesWith catRecipeMap
+
   return $
     (initGameState gsc)
       { _focusedRobotID = baseID
@@ -1098,28 +1293,26 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       & robotMap .~ IM.fromList (map (view robotID &&& id) robotList')
       & robotsByLocation .~ M.map (groupRobotsByPlanarLocation . NE.toList) (groupRobotsBySubworld robotList')
       & internalActiveRobots .~ setOf (traverse . robotID) robotList'
-      & availableCommands .~ Notifications 0 initialCommands
-      & gensym .~ initGensym
+      & discovery . availableCommands .~ Notifications 0 initialCommands
+      & discovery . knownEntities .~ scenario ^. scenarioKnown
+      & robotNaming . gensym .~ initGensym
       & seed .~ theSeed
       & randGen .~ mkStdGen theSeed
-      & initiallyRunCode .~ initialCodeToRun
-      & entityMap .~ em
-      & recipesOut %~ addRecipesWith outRecipeMap
-      & recipesIn %~ addRecipesWith inRecipeMap
-      & recipesCat %~ addRecipesWith catRecipeMap
-      & knownEntities .~ scenario ^. scenarioKnown
-      & worldNavigation .~ scenario ^. scenarioNavigation
-      & multiWorld .~ allSubworldsMap theSeed
+      & recipesInfo %~ modifyRecipesInfo
+      & landscape . entityMap .~ em
+      & landscape . worldNavigation .~ scenario ^. scenarioNavigation
+      & landscape . multiWorld .~ genMultiWorld worldTuples theSeed
       -- TODO (#1370): Should we allow subworlds to have their own scrollability?
       -- Leaning toward no , but for now just adopt the root world scrollability
       -- as being universal.
-      & worldScrollable .~ NE.head (scenario ^. scenarioWorlds) ^. to scrollable
+      & landscape . worldScrollable .~ NE.head (scenario ^. scenarioWorlds) ^. to scrollable
       & viewCenterRule .~ VCRobot baseID
-      & replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
+      & gameControls . initiallyRunCode .~ initialCodeToRun
+      & gameControls . replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
       -- otherwise the store of definition cells is not saved (see #333, #838)
         False -> REPLDone Nothing
         True -> REPLWorking (Typed Nothing PolyUnit mempty)
-      & robotStepsPerTick .~ ((scenario ^. scenarioStepsPerTick) ? defaultRobotStepsPerTick)
+      & temporal . robotStepsPerTick .~ ((scenario ^. scenarioStepsPerTick) ? defaultRobotStepsPerTick)
  where
   groupRobotsBySubworld =
     binTuples . map (view (robotLocation . subworld) &&& id)
@@ -1132,40 +1325,10 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
   em = initEntities gsc <> scenario ^. scenarioEntities
   baseID = 0
   (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
-  -- Keep only robots from the robot list with a concrete location;
-  -- the others existed only to serve as a template for robots drawn
-  -- in the world map
-  locatedRobots = filter (isJust . view trobotLocation) $ scenario ^. scenarioRobots
+
   getCodeToRun (CodeToRun _ s) = s
 
-  -- Rules for selecting the "base" robot:
-  -- -------------------------------------
-  -- What follows is a thorough description of how the base
-  -- choice is made as of the most recent study of the code.
-  -- This level of detail is not meant to be public-facing.
-  --
-  -- For an abbreviated explanation, see the "Base robot" section of the
-  -- "Scenario Authoring Guide".
-  -- https://github.com/swarm-game/swarm/tree/main/data/scenarios#base-robot
-  --
-  -- Precedence rules:
-  -- 1. Prefer those robots defined with a loc in the Scenario file
-  --   1.a. If multiple robots define a loc, use the robot that is defined
-  --        first within the Scenario file.
-  --   1.b. Note that if a robot is both given a loc AND is specified in the
-  --        world map, then two instances of the robot shall be created. The
-  --        instance with the loc shall be preferred as the base.
-  -- 2. Fall back to robots generated from templates via the map and palette.
-  --   2.a. If multiple robots are specified in the map, prefer the one that
-  --        is defined first within the Scenario file.
-  --   2.b. If multiple robots are instantiated from the same template, then
-  --        prefer the one with a lower-indexed subworld. Note that the root
-  --        subworld is always first.
-  --   2.c. If multiple robots instantiated from the same template are in the
-  --        same subworld, then
-  --        prefer the one closest to the upper-left of the screen, with higher
-  --        rows given precedence over columns (i.e. first in row-major order).
-  robotsByBasePrecedence = locatedRobots ++ map snd (sortOn fst genRobots)
+  robotsByBasePrecedence = genRobotTemplates scenario worldTuples
 
   initialCodeToRun = getCodeToRun <$> toRun
 
@@ -1209,25 +1372,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       (maybe True (`S.member` initialCaps) . constCaps)
       allConst
 
-  -- Subworld order as encountered in the scenario YAML file is preserved for
-  -- the purpose of numbering robots, other than the "root" subworld
-  -- guaranteed to be first.
-  genRobots :: [(Int, TRobot)]
-  genRobots = concat $ NE.toList $ NE.map (fst . snd) builtWorldTuples
-
-  builtWorldTuples :: NonEmpty (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int Entity))
-  builtWorldTuples =
-    NE.map (worldName &&& buildWorld) $
-      scenario ^. scenarioWorlds
-
-  allSubworldsMap :: Seed -> W.MultiWorld Int Entity
-  allSubworldsMap s =
-    M.map genWorld
-      . M.fromList
-      . NE.toList
-      $ builtWorldTuples
-   where
-    genWorld x = W.newWorld $ snd x s
+  worldTuples = buildWorldTuples scenario
 
   theWinCondition =
     maybe

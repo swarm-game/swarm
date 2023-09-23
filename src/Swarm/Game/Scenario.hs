@@ -44,6 +44,7 @@ module Swarm.Game.Scenario (
   loadScenario,
   loadScenarioFile,
   getScenarioPath,
+  loadStandaloneScenario,
 ) where
 
 import Control.Arrow ((&&&))
@@ -57,6 +58,7 @@ import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
+import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Entity
@@ -74,11 +76,14 @@ import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Universe
+import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown (Document)
 import Swarm.Util (binTuples, failT)
-import Swarm.Util.Effect (throwToMaybe, withThrow)
+import Swarm.Util.Effect (ignoreWarnings, throwToMaybe, withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
@@ -94,7 +99,7 @@ data Scenario = Scenario
   { _scenarioVersion :: Int
   , _scenarioName :: Text
   , _scenarioAuthor :: Maybe Text
-  , _scenarioDescription :: Text
+  , _scenarioDescription :: Document Syntax
   , _scenarioCreative :: Bool
   , _scenarioSeed :: Maybe Int
   , _scenarioAttrs :: [CustomAttr]
@@ -203,7 +208,7 @@ scenarioAuthor :: Lens' Scenario (Maybe Text)
 
 -- | A high-level description of the scenario, shown /e.g./ in the
 --   menu.
-scenarioDescription :: Lens' Scenario Text
+scenarioDescription :: Lens' Scenario (Document Syntax)
 
 -- | Whether the scenario should start in creative mode.
 scenarioCreative :: Lens' Scenario Bool
@@ -287,3 +292,14 @@ loadScenarioFile em worldMap fileName =
     decodeFileEitherE (em, worldMap) fileName
  where
   adaptError = AssetNotLoaded (Data Scenarios) fileName . CanNotParseYaml
+
+loadStandaloneScenario ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  FilePath ->
+  m (Scenario, (WorldMap, EntityMap, [Recipe Entity]))
+loadStandaloneScenario fp = do
+  entities <- loadEntities
+  recipes <- loadRecipes entities
+  worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds entities
+  scene <- fst <$> loadScenario fp entities worlds
+  return (scene, (worlds, entities, recipes))

@@ -13,9 +13,6 @@
 module Swarm.Game.Robot (
   -- * Robots data
 
-  -- * Robot log entries
-  module Swarm.Game.Log,
-
   -- * Robots
   RobotPhase (..),
   RID,
@@ -38,6 +35,7 @@ module Swarm.Game.Robot (
   robotEntity,
   robotName,
   trobotName,
+  unwalkableEntities,
   robotCreatedAt,
   robotDisplay,
   robotLocation,
@@ -100,7 +98,6 @@ import Swarm.Game.CESK
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location (Heading, Location, toDirection)
-import Swarm.Game.Log
 import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
@@ -110,6 +107,7 @@ import Swarm.Language.Text.Markdown (Document)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types (TCtx)
 import Swarm.Language.Value as V
+import Swarm.Log
 import Swarm.Util.Lens (makeLensesExcluding, makeLensesNoSigs)
 import Swarm.Util.WindowedCounter
 import Swarm.Util.Yaml
@@ -186,7 +184,8 @@ data ActivityCounts = ActivityCounts
 makeLensesNoSigs ''ActivityCounts
 
 -- | A counter that is decremented upon each step of the robot within the
---   CESK machine. Initially set to 'robotStepsPerTick' at each new tick.
+--   CESK machine. Initially set to 'Swarm.Game.State.robotStepsPerTick'
+--   at each new tick.
 --
 --   The need for 'tickStepBudget' is a bit technical, and I hope I can
 --   eventually find a different, better way to accomplish it.
@@ -272,6 +271,7 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _selfDestruct :: Bool
   , _activityCounts :: ActivityCounts
   , _runningAtomic :: Bool
+  , _unwalkableEntities :: Set EntityName
   , _robotCreatedAt :: TimeSpec
   }
   deriving (Generic)
@@ -312,11 +312,15 @@ instance ToSample Robot where
 --   . 'entityName'@.
 robotEntity :: Lens' (RobotR phase) Entity
 
+-- | Entities that the robot cannot move onto
+unwalkableEntities :: Lens' Robot (Set EntityName)
+
 -- | The creation date of the robot.
 robotCreatedAt :: Lens' Robot TimeSpec
 
--- robotName and trobotName could be generalized to robotName' ::
--- Lens' (RobotR phase) Text.  However, type inference does not work
+-- robotName and trobotName could be generalized to
+-- @robotName' :: Lens' (RobotR phase) Text@.
+-- However, type inference does not work
 -- very well with the polymorphic version, so we export both
 -- monomorphic versions instead.
 
@@ -342,22 +346,22 @@ robotDisplay = lens getDisplay setDisplay
       & curOrientation .~ ((r ^. robotOrientation) >>= toDirection)
   setDisplay r d = r & robotEntity . entityDisplay .~ d
 
--- | The robot's current location, represented as (x,y).  This is only
+-- | The robot's current location, represented as @(x,y)@.  This is only
 --   a getter, since when changing a robot's location we must remember
---   to update the 'robotsByLocation' map as well.  You can use the
---   'updateRobotLocation' function for this purpose.
+--   to update the 'Swarm.Game.State.robotsByLocation' map as well.  You can use the
+--   'Swarm.Game.Step.updateRobotLocation' function for this purpose.
 robotLocation :: Getter Robot (Cosmic Location)
 
 -- | Set a robot's location.  This is unsafe and should never be
---   called directly except by the 'updateRobotLocation' function.
---   The reason is that we need to make sure the 'robotsByLocation'
+--   called directly except by the 'Swarm.Game.Step.updateRobotLocation' function.
+--   The reason is that we need to make sure the 'Swarm.Game.State.robotsByLocation'
 --   map stays in sync.
 unsafeSetRobotLocation :: Cosmic Location -> Robot -> Robot
 unsafeSetRobotLocation loc r = r {_robotLocation = loc}
 
 -- | A template robot's location.  Unlike 'robotLocation', this is a
 --   lens, since when dealing with robot templates there is as yet no
---   'robotsByLocation' map to keep up-to-date.
+--   'Swarm.Game.State.robotsByLocation' map to keep up-to-date.
 trobotLocation :: Lens' TRobot (Maybe (Cosmic Location))
 trobotLocation = lens _robotLocation (\r l -> r {_robotLocation = l})
 
@@ -417,8 +421,8 @@ equippedDevices = lens _equippedDevices setEquipped
       }
 
 -- | The robot's own private message log, most recent message last.
---   Messages can be added both by explicit use of the 'Log' command,
---   and by uncaught exceptions.  Stored as a "Data.Sequence" so that
+--   Messages can be added both by explicit use of the 'Swarm.Language.Syntax.Log' command,
+--   and by uncaught exceptions.  Stored as a 'Seq' so that
 --   we can efficiently add to the end and also process from beginning
 --   to end.  Note that updating via this lens will also set the
 --   'robotLogUpdated'.
@@ -501,10 +505,12 @@ mkRobot ::
   Bool ->
   -- | Is this robot heavy?
   Bool ->
+  -- | Unwalkable entities
+  Set EntityName ->
   -- | Creation date
   TimeSpec ->
   RobotR phase
-mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
+mkRobot rid pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
   RobotR
     { _robotEntity =
         mkEntity disp name descr [] []
@@ -534,6 +540,7 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
             _activityWindow = mkWindow 64
           }
     , _runningAtomic = False
+    , _unwalkableEntities = unwalkables
     }
  where
   inst = fromList devs
@@ -559,6 +566,7 @@ instance FromJSONE EntityMap TRobot where
       <*> v ..:? "inventory" ..!= []
       <*> pure sys
       <*> liftE (v .:? "heavy" .!= False)
+      <*> liftE (v .:? "unwalkable" ..!= mempty)
       <*> pure 0
    where
     mkMachine Nothing = Out VUnit emptyStore []

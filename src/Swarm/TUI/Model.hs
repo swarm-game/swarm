@@ -90,8 +90,7 @@ module Swarm.TUI.Model (
   stdEntityMap,
   stdRecipes,
   appData,
-  stdAdjList,
-  stdNameList,
+  nameParts,
 
   -- ** Utility
   logEvent,
@@ -127,15 +126,12 @@ import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))
 import Control.Monad ((>=>))
 import Control.Monad.State (MonadState)
-import Data.Array (Array, listArray)
 import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
-import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Sequence (Seq)
 import Data.Text (Text)
-import Data.Text qualified as T (lines)
 import Data.Vector qualified as V
 import GitHash (GitInfo)
 import Graphics.Vty (ColorMode (..))
@@ -144,13 +140,14 @@ import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Entity as E
 import Swarm.Game.Failure
 import Swarm.Game.Recipe (Recipe, loadRecipes)
-import Swarm.Game.ResourceLoading (readAppData)
+import Swarm.Game.ResourceLoading (NameGenerator, initNameGenerator, readAppData)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios, _SISingle)
 import Swarm.Game.State
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (WorldMap)
+import Swarm.Log
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
@@ -158,9 +155,7 @@ import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
-import System.FilePath ((<.>))
 import Text.Fuzzy qualified as Fuzzy
-import Witch (into)
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -203,8 +198,7 @@ data RuntimeState = RuntimeState
   , _stdEntityMap :: EntityMap
   , _stdRecipes :: [Recipe Entity]
   , _appData :: Map Text Text
-  , _stdAdjList :: Array Int Text
-  , _stdNameList :: Array Int Text
+  , _nameParts :: NameGenerator
   }
 
 initRuntimeState ::
@@ -219,15 +213,7 @@ initRuntimeState = do
   worlds <- loadWorlds entities
   scenarios <- loadScenarios entities worlds
   appDataMap <- readAppData
-
-  let getDataLines f = case M.lookup f appDataMap of
-        Nothing ->
-          throwError $
-            AssetNotLoaded (Data NameGeneration) (into @FilePath f <.> ".txt") (DoesNotExist File)
-        Just content -> return . tail . T.lines $ content
-  adjs <- getDataLines "adjectives"
-  names <- getDataLines "names"
-
+  nameGen <- initNameGenerator appDataMap
   return $
     RuntimeState
       { _webPort = Nothing
@@ -238,8 +224,7 @@ initRuntimeState = do
       , _stdEntityMap = entities
       , _stdRecipes = recipes
       , _appData = appDataMap
-      , _stdAdjList = listArray (0, length adjs - 1) adjs
-      , _stdNameList = listArray (0, length names - 1) names
+      , _nameParts = nameGen
       }
 
 makeLensesNoSigs ''RuntimeState
@@ -278,30 +263,26 @@ stdRecipes :: Lens' RuntimeState [Recipe Entity]
 --   the logo, about page, tutorial story, etc.
 appData :: Lens' RuntimeState (Map Text Text)
 
--- | List of words for use in building random robot names.
-stdAdjList :: Lens' RuntimeState (Array Int Text)
-
--- | List of words for use in building random robot names.
-stdNameList :: Lens' RuntimeState (Array Int Text)
+-- | Lists of words/adjectives for use in building random robot names.
+nameParts :: Lens' RuntimeState NameGenerator
 
 --------------------------------------------------
 -- Utility
 
 -- | Simply log to the runtime event log.
-logEvent :: LogSource -> (Text, RID) -> Text -> Notifications LogEntry -> Notifications LogEntry
-logEvent src (who, rid) msg el =
+logEvent :: LogSource -> Severity -> Text -> Text -> Notifications LogEntry -> Notifications LogEntry
+logEvent src sev who msg el =
   el
     & notificationsCount %~ succ
     & notificationsContent %~ (l :)
  where
-  l = LogEntry (TickNumber 0) src who rid Omnipresent msg
+  l = LogEntry (TickNumber 0) src sev who msg
 
 -- | Create a 'GameStateConfig' record from the 'RuntimeState'.
 mkGameStateConfig :: RuntimeState -> GameStateConfig
 mkGameStateConfig rs =
   GameStateConfig
-    { initAdjList = rs ^. stdAdjList
-    , initNameList = rs ^. stdNameList
+    { initNameParts = rs ^. nameParts
     , initEntities = rs ^. stdEntityMap
     , initRecipes = rs ^. stdRecipes
     , initWorldMap = rs ^. worlds
@@ -481,6 +462,6 @@ topContext s = ctxPossiblyWithIt
  where
   ctx = fromMaybe emptyRobotContext $ s ^? gameState . baseRobot . robotContext
 
-  ctxPossiblyWithIt = case s ^. gameState . replStatus of
+  ctxPossiblyWithIt = case s ^. gameState . gameControls . replStatus of
     REPLDone (Just p) -> ctx & at "it" ?~ p
     _ -> ctx

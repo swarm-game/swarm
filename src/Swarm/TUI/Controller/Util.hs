@@ -53,9 +53,9 @@ openModal mt = do
  where
   -- Set the game to AutoPause if needed
   ensurePause = do
-    pause <- use $ gameState . paused
+    pause <- use $ gameState . temporal . paused
     unless (pause || isRunningModal mt) $ do
-      gameState . runStatus .= AutoPause
+      gameState . temporal . runStatus .= AutoPause
 
 -- | The running modals do not autopause the game.
 isRunningModal :: ModalType -> Bool
@@ -79,8 +79,8 @@ loadVisibleRegion = do
   mext <- lookupExtent WorldExtent
   forM_ mext $ \(Extent _ _ size) -> do
     gs <- use gameState
-    let vr = viewingRegion gs (over both fromIntegral size)
-    gameState . multiWorld %= M.adjust (W.loadRegion (vr ^. planar)) (vr ^. subworld)
+    let vr = viewingRegion (gs ^. viewCenter) (over both fromIntegral size)
+    gameState . landscape . multiWorld %= M.adjust (W.loadRegion (vr ^. planar)) (vr ^. subworld)
 
 mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe (Cosmic W.Coords))
 mouseLocToWorldCoords (Brick.Location mouseLoc) = do
@@ -88,7 +88,7 @@ mouseLocToWorldCoords (Brick.Location mouseLoc) = do
   case mext of
     Nothing -> pure Nothing
     Just ext -> do
-      region <- gets $ flip viewingRegion (bimap fromIntegral fromIntegral (extentSize ext))
+      region <- gets $ flip viewingRegion (bimap fromIntegral fromIntegral (extentSize ext)) . view viewCenter
       let regionStart = W.unCoords (fst $ region ^. planar)
           mouseLoc' = bimap fromIntegral fromIntegral mouseLoc
           mx = snd mouseLoc' + fst regionStart

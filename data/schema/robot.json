@@ -11,9 +11,8 @@
             "description": "The name of the robot. This shows up in the list of robots in the game (F2), and is also how the robot will be referred to in the world palette."
         },
         "description": {
-            "default": [],
             "type": "string",
-            "description": "A description of the robot, given as a list of paragraphs. This is currently not used for much (perhaps not at all?)."
+            "description": "A description of the robot. This is currently not used for much, other than scenario documentation."
         },
         "loc": {
             "description": "An optional starting location for the robot. If the loc field is specified, then a concrete robot will be created at the given location. If this field is omitted, then this robot record exists only as a template which can be referenced from a cell in the world palette. Concrete robots will then be created wherever the corresponding palette character is used in the world map.",
@@ -69,6 +68,14 @@
             "default": false,
             "type": "boolean",
             "description": "Whether the robot is heavy. Heavy robots require tank treads to move (rather than just treads for other robots)."
+        },
+        "unwalkable": {
+            "default": [],
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "A list of entities that this robot cannot walk across."
         }
     },
     "required": [

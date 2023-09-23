@@ -12,6 +12,7 @@ module Swarm.Doc.Gen (
   GenerateDocs (..),
   EditorType (..),
   SheetType (..),
+  loadStandaloneScenario,
 
   -- ** Formatted keyword lists
   keywordsCommands,
@@ -34,7 +35,6 @@ import Data.List (transpose)
 import Data.Map.Lazy (Map, (!))
 import Data.Map.Lazy qualified as Map
 import Data.Maybe (fromMaybe, isJust, listToMaybe)
-import Data.Sequence (Seq)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text, unpack)
@@ -48,9 +48,8 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Failure (SystemFailure (CustomFailure))
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeCatalysts, recipeInputs, recipeOutputs, recipeTime, recipeWeight)
 import Swarm.Game.Robot (Robot, equippedDevices, instantiateRobot, robotInventory)
-import Swarm.Game.Scenario (Scenario, loadScenario, scenarioRobots)
+import Swarm.Game.Scenario (Scenario, loadStandaloneScenario, scenarioRobots)
 import Swarm.Game.World.Gen (extractEntities)
-import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (Some (..), TTerm)
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Capability qualified as Capability
@@ -61,7 +60,7 @@ import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Text.Markdown as Markdown (docToMark)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Util (both, listEnums, quote)
-import Swarm.Util.Effect (ignoreWarnings, simpleErrorHandle)
+import Swarm.Util.Effect (simpleErrorHandle)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 
@@ -79,7 +78,7 @@ data GenerateDocs where
   RecipeGraph :: GenerateDocs
   -- | Keyword lists for editors.
   EditorKeywords :: Maybe EditorType -> GenerateDocs
-  -- | List of special key names recognized by 'key' command
+  -- | List of special key names recognized by 'Swarm.Language.Syntax.Key' command
   SpecialKeyNames :: GenerateDocs
   -- | Cheat sheets for inclusion on the Swarm wiki.
   CheatSheet :: PageAddress -> Maybe SheetType -> GenerateDocs
@@ -89,7 +88,7 @@ data GenerateDocs where
 
 -- | An enumeration of the editors supported by Swarm (currently,
 --   Emacs and VS Code).
-data EditorType = Emacs | VSCode
+data EditorType = Emacs | VSCode | Vim
   deriving (Eq, Show, Enum, Bounded)
 
 -- | An enumeration of the kinds of cheat sheets we can produce.
@@ -160,6 +159,13 @@ generateEditorKeywords = \case
     T.putStrLn $ keywordsDirections VSCode
     putStrLn "\nOperators:"
     T.putStrLn operatorNames
+  Vim -> do
+    putStr "syn keyword Builtins "
+    T.putStr $ builtinFunctionList Vim
+    putStr "\nsyn keyword Command "
+    T.putStr $ keywordsCommands Vim
+    putStr "\nsyn keyword Direction "
+    T.putStrLn $ keywordsDirections Vim
 
 commands :: [Const]
 commands = filter Syntax.isCmd Syntax.allConst
@@ -177,6 +183,7 @@ editorList :: EditorType -> [Text] -> Text
 editorList = \case
   Emacs -> T.unlines . map (("  " <>) . quote)
   VSCode -> T.intercalate "|"
+  Vim -> T.intercalate " "
 
 constSyntax :: Const -> Text
 constSyntax = Syntax.syntax . Syntax.constInfo
@@ -431,10 +438,7 @@ getBaseRobot s = case listToMaybe $ view scenarioRobots s of
 
 generateRecipe :: IO String
 generateRecipe = simpleErrorHandle $ do
-  entities <- loadEntities
-  recipes <- loadRecipes entities
-  worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds entities
-  classic <- fst <$> loadScenario "data/scenarios/classic.yaml" entities worlds
+  (classic, (worlds, entities, recipes)) <- loadStandaloneScenario "data/scenarios/classic.yaml"
   baseRobot <- getBaseRobot classic
   return . Dot.showDot $ recipesToDot baseRobot (worlds ! "classic") entities recipes
 

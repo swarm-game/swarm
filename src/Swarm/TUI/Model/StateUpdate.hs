@@ -43,7 +43,6 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Log (ErrorLevel (..), LogSource (ErrorTrace))
 import Swarm.Game.Scenario (loadScenario, scenarioAttrs, scenarioWorlds)
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
@@ -58,6 +57,7 @@ import Swarm.Game.ScenarioInfo (
  )
 import Swarm.Game.State
 import Swarm.Language.Pretty (prettyText)
+import Swarm.Log (LogSource (SystemLog), Severity (..))
 import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting
@@ -85,7 +85,7 @@ initAppState opts = do
 addWarnings :: RuntimeState -> [SystemFailure] -> RuntimeState
 addWarnings = List.foldl' logWarning
  where
-  logWarning rs' w = rs' & eventLog %~ logEvent (ErrorTrace Error) ("UI Loading", -8) (prettyText w)
+  logWarning rs' w = rs' & eventLog %~ logEvent SystemLog Error "UI Loading" (prettyText w)
 
 -- | Based on the command line options, should we skip displaying the
 --   menu?
@@ -123,7 +123,7 @@ constructAppState rs ui opts@(AppOpts {..}) = do
   case skipMenu opts of
     False -> return $ AppState gs (ui & lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
     True -> do
-      (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. entityMap) (rs ^. worlds)
+      (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. landscape . entityMap) (rs ^. worlds)
       maybeRunScript <- traverse parseCodeFile scriptToRun
 
       let maybeAutoplay = do
@@ -258,7 +258,7 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
       & uiWorldEditor . EM.entityPaintList %~ BL.listReplace entityList Nothing
       & uiWorldEditor . EM.editingBounds . EM.boundsRect %~ setNewBounds
  where
-  entityList = EU.getEntitiesForList $ gs ^. entityMap
+  entityList = EU.getEntitiesForList $ gs ^. landscape . entityMap
 
   (isEmptyArea, newBounds) = EU.getEditingBounds $ NE.head $ scenario ^. scenarioWorlds
   setNewBounds maybeOldBounds =

@@ -37,6 +37,8 @@ extra-source-files: CHANGELOG.md
                     example/*.sw
                     editors/emacs/*.el
                     editors/vscode/syntaxes/*.json
+                    editors/vim/*.vim
+                    editors/vim/*.lua
 data-dir:           data/
 data-files:         *.yaml, worlds/*.world, scenarios/**/*.yaml, scenarios/**/*.txt, scenarios/**/*.sw, *.txt, test/language-snippets/**/*.sw
 
@@ -111,13 +113,13 @@ library
                       Swarm.Game.Entity
                       Swarm.Game.Exception
                       Swarm.Game.Location
-                      Swarm.Game.Log
                       Swarm.Game.Recipe
                       Swarm.Game.ResourceLoading
                       Swarm.Game.Robot
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Topography.Cell
                       Swarm.Game.Universe
+                      Swarm.Log
                       Swarm.TUI.Launch.Controller
                       Swarm.TUI.Launch.Model
                       Swarm.TUI.Launch.Prep
@@ -145,6 +147,7 @@ library
                       Swarm.Game.State
                       Swarm.Game.Step
                       Swarm.Game.Step.Combustion
+                      Swarm.Game.Step.Pathfinding
                       Swarm.Game.Step.Util
                       Swarm.Game.Terrain
                       Swarm.Game.Value
@@ -157,6 +160,7 @@ library
                       Swarm.Game.World.Interpret
                       Swarm.Game.World.Load
                       Swarm.Game.World.Parse
+                      Swarm.Game.World.Render
                       Swarm.Game.World.Syntax
                       Swarm.Game.World.Typecheck
                       Swarm.Language.Capability
@@ -228,6 +232,7 @@ library
                       brick-list-skip               >= 0.1.1.2 && < 0.2,
                       aeson                         >= 2 && < 2.2,
                       array                         >= 0.5.4 && < 0.6,
+                      astar                         >= 0.3 && < 0.3.1,
                       blaze-html                    >= 0.9.1 && < 0.9.2,
                       boolexpr                      >= 0.2 && < 0.3,
                       brick                         >= 1.10 && < 1.11,
@@ -254,7 +259,7 @@ library
                       lens                          >= 4.19 && < 5.3,
                       linear                        >= 1.21.6 && < 1.23,
                       lsp                           >= 1.6 && < 1.7,
-                      megaparsec                    >= 9.0 && < 9.5,
+                      megaparsec                    >= 9.0 && < 9.6,
                       minimorph                     >= 0.3 && < 0.4,
                       transformers                  >= 0.5 && < 0.7,
                       mtl                           >= 2.2.2 && < 2.4,

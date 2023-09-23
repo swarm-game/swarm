@@ -161,6 +161,12 @@ getJoin (Join j) = (j Expected, j Actual)
 --   monad transformer provided by the @unification-fd@ library which
 --   supports various operations such as generating fresh variables
 --   and unifying things.
+--
+--   Note that we are sort of constrained to use a concrete monad stack by
+--   @unification-fd@, which has some strange types on some of its exported
+--   functions that actually require various monad transformers to be stacked
+--   in certain ways.  For example, see <https://hackage.haskell.org/package/unification-fd-0.11.2/docs/Control-Unification.html#v:unify>.  I don't really see a way
+--   to use "capability style" like we do elsewhere in the codebase.
 type TC = ReaderT UCtx (ReaderT TCStack (ExceptT ContextualTypeErr (IntBindingT TypeF Identity)))
 
 -- | Push a frame on the typechecking stack within a local 'TC'
@@ -736,6 +742,7 @@ inferConst c = case c of
   Selfdestruct -> [tyQ| cmd unit |]
   Move -> [tyQ| cmd unit |]
   Backup -> [tyQ| cmd unit |]
+  Path -> [tyQ| (unit + int) -> ((int * int) + entity) -> cmd (unit + dir) |]
   Push -> [tyQ| cmd unit |]
   Stride -> [tyQ| int -> cmd unit |]
   Turn -> [tyQ| dir -> cmd unit |]

@@ -16,7 +16,7 @@ import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display (defaultRobotDisplay)
 import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, mkRobot)
-import Swarm.Game.State (GameState, addTRobot, creativeMode, multiWorld)
+import Swarm.Game.State (GameState, addTRobot, creativeMode, landscape, multiWorld)
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Terrain (TerrainType (DirtT))
 import Swarm.Game.Universe (Cosmic (..), SubworldName (DefaultRootSubworld))
@@ -76,7 +76,7 @@ circlerProgram =
 
 -- | Initializes a robot with program prog at location loc facing north.
 initRobot :: ProcessedTerm -> Location -> TRobot
-initRobot prog loc = mkRobot () Nothing "" mempty (Just $ Cosmic DefaultRootSubworld loc) north defaultRobotDisplay (initMachine prog Context.empty emptyStore) [] [] False False 0
+initRobot prog loc = mkRobot () Nothing "" mempty (Just $ Cosmic DefaultRootSubworld loc) north defaultRobotDisplay (initMachine prog Context.empty emptyStore) [] [] False False mempty 0
 
 -- | Creates a GameState with numRobot copies of robot on a blank map, aligned
 --   in a row starting at (0,0) and spreading east.
@@ -88,7 +88,7 @@ mkGameState robotMaker numRobots = do
     (mapM addTRobot robots)
     ( (initAppState ^. gameState)
         & creativeMode .~ True
-        & multiWorld .~ M.singleton DefaultRootSubworld (newWorld (WF $ const (fromEnum DirtT, ENothing)))
+        & landscape . multiWorld .~ M.singleton DefaultRootSubworld (newWorld (WF $ const (fromEnum DirtT, ENothing)))
     )
 
 -- | Runs numGameTicks ticks of the game.

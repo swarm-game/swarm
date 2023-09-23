@@ -1,0 +1,51 @@
+version: 1
+name: Builtin pathfinding - entity target
+description: |
+  Use `path` command to navigate to an entity
+creative: false
+objectives:
+  - goal:
+      - Reach and face the water.
+    condition: |
+      as base {
+        itemAhead <- scan forward;
+        return $ case itemAhead (\_. false) (\item. item == "water");
+      };
+solution: |
+  run "scenarios/Testing/836-pathfinding/_836-path-exists/find-entity-unwalkable-solution.sw";
+entities:
+  - name: wayfinder
+    display:
+      char: 'w'
+    description:
+      - Enables `path` command
+    properties: [known, portable]
+    capabilities: [path]
+robots:
+  - name: base
+    dir: [1,0]
+    devices:
+      - ADT calculator
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - logger
+      - grabber
+      - scanner
+      - treads
+      - wayfinder
+known: [water, boulder]
+world:
+  dsl: |
+    {blank, boulder}
+  palette:
+    'B': [grass, erase, base]
+    '.': [grass, erase]
+    'x': [stone, boulder]
+    'w': [grass, water]
+  upperleft: [0, 0]
+  map: |
+    Bx...
+    .x.x.
+    ...xw

@@ -11,7 +11,7 @@ module Main where
 
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
-import Control.Lens (Ixed (ix), at, to, use, view, (&), (.~), (<>~), (^.), (^..), (^?!))
+import Control.Lens (Ixed (ix), at, to, use, view, (&), (.~), (<>~), (^.), (^..), (^?), (^?!))
 import Control.Monad (forM_, unless, when)
 import Control.Monad.State (StateT (runStateT), gets)
 import Data.Char (isSpace)
@@ -28,10 +28,10 @@ import Data.Text.IO qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Doc.Gen (EditorType (..))
 import Swarm.Doc.Gen qualified as DocGen
+import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
 import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
 import Swarm.Game.Entity (EntityMap, lookupByName)
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Log (ErrorLevel (..), LogEntry, LogSource (..), leSource, leText)
 import Swarm.Game.Robot (activityCounts, commandsHistogram, defReqs, equippedDevices, lifetimeStepCount, machine, robotContext, robotLog, systemRobot, tangibleCommandCount, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
@@ -40,9 +40,13 @@ import Swarm.Game.State (
   WinStatus (Won),
   activeRobots,
   baseRobot,
+  discovery,
+  gameAchievements,
+  messageInfo,
   messageQueue,
   notificationsContent,
   robotMap,
+  temporal,
   ticks,
   waitingRobots,
   winCondition,
@@ -53,6 +57,7 @@ import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty (prettyString)
+import Swarm.Log
 import Swarm.TUI.Model (
   RuntimeState,
   defaultAppOpts,
@@ -106,12 +111,12 @@ testNoLoadingErrors r =
 checkNoRuntimeErrors :: RuntimeState -> IO ()
 checkNoRuntimeErrors r =
   forM_ (r ^. eventLog . notificationsContent) $ \e ->
-    case e ^. leSource of
-      ErrorTrace l
-        | l >= Warning ->
-            assertFailure $
-              show l <> " was produced during loading: " <> T.unpack (e ^. leText)
-      _ -> pure ()
+    when (isError e) $
+      assertFailure $
+        show (e ^. leSeverity) <> " was produced during loading: " <> T.unpack (e ^. leText)
+
+isError :: LogEntry -> Bool
+isError = (>= Warning) . view leSeverity
 
 exampleTests :: [(FilePath, String)] -> TestTree
 exampleTests inputs = testGroup "Test example" (map exampleTest inputs)
@@ -210,7 +215,7 @@ testScenarioSolutions rs ui =
         , testSolution (Sec 5) "Challenges/2048"
         , testSolution (Sec 3) "Challenges/word-search"
         , testSolution (Sec 10) "Challenges/bridge-building"
-        , testSolution (Sec 3) "Challenges/ice-cream"
+        , testSolution (Sec 5) "Challenges/ice-cream"
         , testSolution (Sec 3) "Challenges/arbitrage"
         , testSolution (Sec 10) "Challenges/gopher"
         , testSolution (Sec 5) "Challenges/hackman"
@@ -245,12 +250,19 @@ testScenarioSolutions rs ui =
             ]
         ]
     , testGroup
+        "Achievements"
+        [ testSolution' Default "Testing/Achievements/RobotIntoWater" CheckForBadErrors $ \g ->
+            assertBool
+              "Did not get RobotIntoWater achievement!"
+              (isJust $ g ^? discovery . gameAchievements . at RobotIntoWater)
+        ]
+    , testGroup
         "Regression tests"
         [ testSolution Default "Testing/394-build-drill"
         , testSolution Default "Testing/373-drill"
         , testSolution Default "Testing/428-drowning-destroy"
         , testSolution' Default "Testing/475-wait-one" CheckForBadErrors $ \g -> do
-            let t = g ^. ticks
+            let t = g ^. temporal . ticks
                 r1Waits = g ^?! robotMap . ix 1 . to waitingUntil
                 active = IS.member 1 $ g ^. activeRobots
                 waiting = elem 1 . concat . M.elems $ g ^. waitingRobots
@@ -291,7 +303,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/955-heading"
         , testSolution' Default "Testing/397-wrong-missing" CheckForBadErrors $ \g -> do
             let msgs =
-                  (g ^. messageQueue . to seqToTexts)
+                  (g ^. messageInfo . messageQueue . to seqToTexts)
                     <> (g ^.. robotMap . traverse . robotLog . to seqToTexts . traverse)
 
             assertBool "Should be some messages" (not (null msgs))
@@ -321,6 +333,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/1355-combustion"
         , testSolution Default "Testing/1379-single-world-portal-reorientation"
         , testSolution Default "Testing/1399-backup-command"
+        , testSolution Default "Testing/1536-custom-unwalkable-entities"
         , testGroup
             -- Note that the description of the classic world in
             -- data/worlds/classic.yaml (automatically tested to some
@@ -331,6 +344,17 @@ testScenarioSolutions rs ui =
             [ testSolution Default "Testing/1320-world-DSL/constant"
             , testSolution Default "Testing/1320-world-DSL/erase"
             , testSolution Default "Testing/1320-world-DSL/override"
+            ]
+        , testGroup
+            "Pathfinding (#836)"
+            [ testSolution Default "Testing/836-pathfinding/836-path-exists-find-entity"
+            , testSolution Default "Testing/836-pathfinding/836-path-exists-find-location"
+            , testSolution Default "Testing/836-pathfinding/836-path-exists-find-entity-unwalkable"
+            , testSolution Default "Testing/836-pathfinding/836-path-exists-distance-limit-unreachable"
+            , testSolution Default "Testing/836-pathfinding/836-path-exists-distance-limit-unreachable"
+            , testSolution Default "Testing/836-pathfinding/836-no-path-exists1"
+            , testSolution (Sec 10) "Testing/836-pathfinding/836-no-path-exists2"
+            , testSolution (Sec 3) "Testing/836-pathfinding/836-automatic-waypoint-navigation.yaml"
             ]
         ]
     , testSolution' Default "Testing/1430-built-robot-ownership" CheckForBadErrors $ \g -> do
@@ -410,7 +434,7 @@ badErrorsInLogs g =
   concatMap
     (\r -> filter isBad (seqToTexts $ r ^. robotLog))
     (g ^. robotMap)
-    <> filter isBad (seqToTexts $ g ^. messageQueue)
+    <> filter isBad (seqToTexts $ g ^. messageInfo . messageQueue)
  where
   isBad m = "Fatal error:" `T.isInfixOf` m || "swarm/issues" `T.isInfixOf` m
 
@@ -441,10 +465,17 @@ testEditorFiles =
         , testTextInEmacs "commands" DocGen.keywordsCommands
         , testTextInEmacs "directions" DocGen.keywordsDirections
         ]
+    , testGroup
+        "Vim"
+        [ testTextInVim "builtin" DocGen.builtinFunctionList
+        , testTextInVim "commands" DocGen.keywordsCommands
+        , testTextInVim "directions" DocGen.keywordsDirections
+        ]
     ]
  where
   testTextInVSCode name tf = testTextInFile False name (tf VSCode) "editors/vscode/syntaxes/swarm.tmLanguage.json"
   testTextInEmacs name tf = testTextInFile True name (tf Emacs) "editors/emacs/swarm-mode.el"
+  testTextInVim name tf = testTextInFile True name (tf Vim) "editors/vim/swarm.vim"
   testTextInFile :: Bool -> String -> Text -> FilePath -> TestTree
   testTextInFile whitespace name t fp = testCase name $ do
     let removeLW' = T.unlines . map (T.dropWhile isSpace) . T.lines

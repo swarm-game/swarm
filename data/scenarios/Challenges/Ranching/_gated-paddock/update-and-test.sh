@@ -7,4 +7,5 @@ SCENARIO_FILE=$PARENT_DIR/gated-paddock.yaml
 
 PROGRAM=$(cat $SCRIPT_DIR/enclosure-checking.sw | sed -e 's/[[:blank:]]\+$//') yq -i '.objectives[0].condition = strenv(PROGRAM) | .objectives[].condition style="literal"' $SCENARIO_FILE
 
-stack run -- --scenario $SCENARIO_FILE --run $SCRIPT_DIR/fence-construction.sw --cheat
+stack build --fast
+stack exec swarm -- --scenario $SCENARIO_FILE --run $SCRIPT_DIR/fence-construction.sw --cheat
