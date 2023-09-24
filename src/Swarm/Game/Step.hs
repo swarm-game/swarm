@@ -1209,18 +1209,15 @@ execConst c vs s k = do
         maybeOtherRobot <- robotWithID otherID
         selfRobot <- get
         return $ Out (asValue $ displacementVector selfRobot maybeOtherRobot) s k
-        where
-          displacementVector :: Robot -> Maybe Robot -> Maybe (V2 Int32)
-          displacementVector selfRobot maybeOtherRobot = do
-            otherRobot <- maybeOtherRobot
-
-            let dist = (cosmoMeasure euclidean `on` view robotLocation) selfRobot otherRobot
-                (_minRange, maxRange) = getRadioRange (Just selfRobot) (Just otherRobot)
-
-            d <- getFiniteDistance dist
-            guard $ d <= maxRange
-            return $ orientationBasedRelativePosition selfRobot $ view robotLocation otherRobot
-
+       where
+        displacementVector :: Robot -> Maybe Robot -> Maybe (V2 Int32)
+        displacementVector selfRobot maybeOtherRobot = do
+          otherRobot <- maybeOtherRobot
+          let dist = (cosmoMeasure euclidean `on` view robotLocation) selfRobot otherRobot
+              (_minRange, maxRange) = getRadioRange (Just selfRobot) (Just otherRobot)
+          d <- getFiniteDistance dist
+          guard $ d <= maxRange
+          orientationBasedRelativePosition selfRobot $ view robotLocation otherRobot
       _ -> badConst
     Give -> case vs of
       [VRobot otherID, VText itemName] -> do
