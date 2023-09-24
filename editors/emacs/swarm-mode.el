@@ -63,6 +63,7 @@
                "harvest"
                "ignite"
                "place"
+               "ping"
                "give"
                "equip"
                "unequip"

@@ -73,6 +73,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..), destination, reorientation)
+import Swarm.Game.Scenario.Topography.Navigation.Util
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
 import Swarm.Game.State
 import Swarm.Game.Step.Combustion qualified as Combustion
@@ -1202,6 +1203,21 @@ execConst c vs s k = do
 
         flagRedraw
         return $ Out VUnit s k
+      _ -> badConst
+    Ping -> case vs of
+      [VRobot otherID] -> do
+        maybeOtherRobot <- robotWithID otherID
+        selfRobot <- get
+        return $ Out (asValue $ displacementVector selfRobot maybeOtherRobot) s k
+       where
+        displacementVector :: Robot -> Maybe Robot -> Maybe (V2 Int32)
+        displacementVector selfRobot maybeOtherRobot = do
+          otherRobot <- maybeOtherRobot
+          let dist = (cosmoMeasure euclidean `on` view robotLocation) selfRobot otherRobot
+              (_minRange, maxRange) = getRadioRange (Just selfRobot) (Just otherRobot)
+          d <- getFiniteDistance dist
+          guard $ d <= maxRange
+          orientationBasedRelativePosition selfRobot $ view robotLocation otherRobot
       _ -> badConst
     Give -> case vs of
       [VRobot otherID, VText itemName] -> do
