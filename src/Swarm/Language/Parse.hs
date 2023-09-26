@@ -190,10 +190,10 @@ brackets = between (symbol "[") (symbol "]")
 --   type variables must be explicitly introduced by a @forall@.
 parsePolytype :: Parser Polytype
 parsePolytype =
-  join
-    $ quantify
-    <$> (fromMaybe [] <$> optional (quantifier *> some identifier <* symbol "."))
-    <*> parseType
+  join $
+    quantify
+      <$> (fromMaybe [] <$> optional (quantifier *> some identifier <* symbol "."))
+      <*> parseType
  where
   quantifier = reserved "forall" <|> reserved "∀"
 
@@ -202,8 +202,8 @@ parsePolytype =
     -- Wrap in a Forall quantifier as long as there are no free type variables.
     | S.null free = return $ Forall xs ty
     | otherwise =
-        fail
-          $ unlines
+        fail $
+          unlines
             [ "  Type contains free variable(s): " ++ unwords (map from (S.toList free))
             , "  - If you don't want a polymorphic type, maybe check your spelling."
             , "  - If you do want a polymorphic type, you must explicitly bind all type variables with a 'forall'."

@@ -426,12 +426,12 @@ testLanguagePipeline =
     Left e
       | not (T.null expect) && expect `T.isPrefixOf` e -> pure ()
       | otherwise ->
-          error
-            $ "Unexpected failure:\n\n  "
-            <> show e
-            <> "\n\nExpected:\n\n  "
-            <> show expect
-            <> "\n"
+          error $
+            "Unexpected failure:\n\n  "
+              <> show e
+              <> "\n\nExpected:\n\n  "
+              <> show expect
+              <> "\n"
     Right _
       | expect == "" -> pure ()
       | otherwise -> error "Unexpected success"
