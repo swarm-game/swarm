@@ -46,7 +46,7 @@ objectives:
         `if (ishere "very small rock") {...} {...}`{=snippet}.
         Instead you can write `b <- ishere "very small rock"; if b {...} {...}`{=snippet}.
         You might enjoy writing your own function of
-        type `∀ a. cmd bool -> {cmd a} -> {cmd a} -> cmd a`{=type} to encapsulate this pattern.
+        type `forall a. cmd bool -> {cmd a} -> {cmd a} -> cmd a`{=type} to encapsulate this pattern.
       - |
         **TIP:** the two branches of an `if` must have the same type. In particular,
         `if ... {grab} {}`{=snippet} is not
