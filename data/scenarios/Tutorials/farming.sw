@@ -5,10 +5,10 @@ def tR = turn right end;
 def tL = turn left end;
 def tB = turn back end;
 def forever = \c. c ; forever c end;
-def ifC : cmd bool -> {cmd a} -> {cmd a} -> cmd a = \test. \then. \else.
+def ifC : ∀ a. cmd bool -> {cmd a} -> {cmd a} -> cmd a = \test. \then. \else.
   b <- test; if b then else
 end;
-def while : cmd bool -> {cmd a} -> cmd unit = \test. \body.
+def while : ∀ a. cmd bool -> {cmd a} -> cmd unit = \test. \body.
   ifC test {force body ; while test body} {}
 end;
 def giveall : actor -> text -> cmd unit = \r. \thing.

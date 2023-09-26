@@ -33,11 +33,27 @@ testLanguagePipeline =
     "Language - pipeline"
     [ testCase "end semicolon #79" (valid "def a = 41 end def b = a + 1 end def c = b + 2 end")
     , testCase
-        "quantification #148 - implicit"
-        (valid "def id : a -> a = \\x. x end; id move")
-    , testCase
         "quantification #148 - explicit"
         (valid "def id : forall a. a -> a = \\x. x end; id move")
+    , testCase
+        "quantification #148 - explicit with ∀"
+        (valid "def id : ∀ a. a -> a = \\x. x end; id move")
+    , testCase
+        "quantification #148 - disallow implicit"
+        ( process
+            "def id : a -> a = \\x. x end; id move"
+            ( T.unlines
+                [ "1:17:"
+                , "  |"
+                , "1 | def id : a -> a = \\x. x end; id move"
+                , "  |                 ^"
+                , "  Type contains free variable(s): a"
+                , "  - If you don't want a polymorphic type, maybe check your spelling."
+                , "  - If you do want a polymorphic type, you must explicitly bind all type variables with a 'forall'."
+                , ""
+                ]
+            )
+        )
     , testCase
         "quantification #148 - explicit with free tyvars"
         ( process
@@ -48,7 +64,8 @@ testLanguagePipeline =
                 , "1 | def id : forall a. b -> b = \\x. x end; id move"
                 , "  |                           ^"
                 , "  Type contains free variable(s): b"
-                , "  Try adding them to the 'forall'."
+                , "  - If you don't want a polymorphic type, maybe check your spelling."
+                , "  - If you do want a polymorphic type, you must explicitly bind all type variables with a 'forall'."
                 , ""
                 ]
             )
@@ -254,7 +271,7 @@ testLanguagePipeline =
             )
         , testCase
             "valid type signature"
-            (valid "def f : void -> a = \\x. undefined end")
+            (valid "def f : ∀ a. void -> a = \\x. undefined end")
         ]
     , testGroup
         "record type"
@@ -316,13 +333,13 @@ testLanguagePipeline =
             (process "1 : text" "1:1: Type mismatch:\n  From context, expected `1` to have type `text`,\n  but it actually has type `int`")
         , testCase
             "type ascription with a polytype"
-            (valid "((\\x . x) : a -> a) 3")
+            (valid "((\\x . x) : forall a. a -> a) 3")
         , testCase
             "type ascription too general"
-            (process "1 : a" "1:1: Type mismatch:\n  From context, expected `1` to have type `s0`,\n  but it actually has type `int`")
+            (process "1 : forall a. a" "1:1: Type mismatch:\n  From context, expected `1` to have type `s0`,\n  but it actually has type `int`")
         , testCase
             "type specialization through type ascription"
-            (valid "fst:(int + b) * a -> int + b")
+            (valid "fst: forall a b. (int + b) * a -> int + b")
         , testCase
             "type ascription doesn't allow rank 2 types"
             ( process
@@ -409,8 +426,12 @@ testLanguagePipeline =
     Left e
       | not (T.null expect) && expect `T.isPrefixOf` e -> pure ()
       | otherwise ->
-          error $
-            "Unexpected failure:\n\n  " <> show e <> "\n\nExpected:\n\n  " <> show expect <> "\n"
+          error
+            $ "Unexpected failure:\n\n  "
+            <> show e
+            <> "\n\nExpected:\n\n  "
+            <> show expect
+            <> "\n"
     Right _
       | expect == "" -> pure ()
       | otherwise -> error "Unexpected success"

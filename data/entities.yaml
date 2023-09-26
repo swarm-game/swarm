@@ -377,7 +377,7 @@
   - |
     An equipped `linotype`{=entity} device enables the `format` command:
     ```
-    format : a -> text
+    format : ∀ a. a -> text
     ```
     which can turn any value into a suitable text representation.
   properties: [portable]
@@ -440,7 +440,7 @@
     An equipped `string`{=entity} device enables several commands for working with
     `text`{=type} values:
   - |
-    `format : a -> text` can turn any value into a suitable text
+    `format : ∀ a. a -> text` can turn any value into a suitable text
     representation.
   - |
     The infix operator `++ : text -> text -> text`{=snippet}
@@ -1202,18 +1202,18 @@
     `void`{=type} that correspond to 1 and 0, respectively.
   - |
     The product of two types is a type of pairs, since, for example,
-    if `t`{=type} is a type with three elements, then there are 2 * 3 = 6
-    different pairs containing a `bool`{=type} and a `t`{=type}, that is, 6 elements
-    of type `bool * t`{=type}.  For working with products of types, the ADT
+    if `t`{=snippet} is a type with three elements, then there are 2 * 3 = 6
+    different pairs containing a `bool`{=type} and a `t`{=snippet}, that is, 6 elements
+    of type `bool * t`{=snippet}.  For working with products of types, the ADT
     calculator enables pair syntax `(1, "Hi!")` as well as the projection
-    functions `fst : a * b -> a` and `snd : a * b -> b`.
+    functions `fst : ∀ a b. a * b -> a` and `snd : ∀ a b. a * b -> b`.
   - |
     The sum of two types is a type with two options; for example, a
-    value of type `bool + t`{=type} is either a `bool`{=type} value or a `t`{=type} value,
+    value of type `bool + t`{=snippet} is either a `bool`{=type} value or a `t`{=snippet} value,
     and there are `2 + 3 == 5` such values.  For working with sums of
     types, the ADT calculator provides the injection functions `inl :
-    a -> a + b` and `inr : b -> a + b`, as well as the case analysis
-    function `case : (a + b) -> (a -> c) -> (b -> c) -> c`.  For
+    ∀ a b. a -> a + b` and `inr : ∀ a b. b -> a + b`, as well as the case analysis
+    function `case : ∀ a b c. (a + b) -> (a -> c) -> (b -> c) -> c`.  For
     example, `case (inl 3) (\x. 2*x) (\y. 3*y) == 6`, and `case (inr
     3) (\x. 2*x) (\y. 3*y) == 9`.
 
@@ -1353,9 +1353,9 @@
     It returns a reference to the nearest actor, or a unit value if
     none are found.
   - |
-    `meetAll : (b -> actor -> cmd b) -> b -> cmd b` runs a command on
+    `meetAll : ∀ b. (b -> actor -> cmd b) -> b -> cmd b` runs a command on
     every nearby actor (other than oneself), folding over the results
-    to compute a final result of type `b`{=type}.  For example, if
+    to compute a final result of type `b`{=snippet}.  For example, if
     `x`{=snippet}, `y`{=snippet}, and `z`{=snippet}
     are nearby actors, then `meetAll f b0`{=snippet} is equivalent to
     `b1 <- f b0 x; b2 <- f b1 y; f b2 z`{=snippet}.

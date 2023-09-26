@@ -104,6 +104,7 @@ reservedWords =
        , "true"
        , "false"
        , "forall"
+       , "∀"
        , "require"
        , "requirements"
        ]
@@ -181,27 +182,31 @@ brackets = between (symbol "[") (symbol "]")
 -- Parser
 
 -- | Parse a Swarm language polytype, which starts with an optional
---   quanitifation (@forall@ followed by one or more variables and a
+--   quanitifation (@forall@ or @∀@ followed by one or more variables and a
 --   period) followed by a type.  Note that anything accepted by
 --   'parseType' is also accepted by 'parsePolytype'.
+--
+--   @parsePolytype@ does /not/ allow implicit quantification: any
+--   type variables must be explicitly introduced by a @forall@.
 parsePolytype :: Parser Polytype
 parsePolytype =
-  join $
-    quantify
-      <$> (fromMaybe [] <$> optional (reserved "forall" *> some identifier <* symbol "."))
-      <*> parseType
+  join
+    $ quantify
+    <$> (fromMaybe [] <$> optional (quantifier *> some identifier <* symbol "."))
+    <*> parseType
  where
+  quantifier = reserved "forall" <|> reserved "∀"
+
   quantify :: [Var] -> Type -> Parser Polytype
   quantify xs ty
-    -- Iplicitly quantify over free type variables if the user didn't write a forall
-    | null xs = return $ Forall (S.toList free) ty
-    -- Otherwise, require all variables to be explicitly quantified
+    -- Wrap in a Forall quantifier as long as there are no free type variables.
     | S.null free = return $ Forall xs ty
     | otherwise =
-        fail $
-          unlines
+        fail
+          $ unlines
             [ "  Type contains free variable(s): " ++ unwords (map from (S.toList free))
-            , "  Try adding them to the 'forall'."
+            , "  - If you don't want a polymorphic type, maybe check your spelling."
+            , "  - If you do want a polymorphic type, you must explicitly bind all type variables with a 'forall'."
             ]
    where
     free = tyVars ty `S.difference` S.fromList xs

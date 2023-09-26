@@ -25,14 +25,14 @@ objectives:
         it is simply a built-in function of type
       - |
         ```
-        if : bool -> {a} -> {a} -> a
+        if : ∀ a. bool -> {a} -> {a} -> a
         ```
       - |
         It takes a boolean expression and then returns either the first or second subsequent
         argument, depending on whether the boolean expression is true or false, respectively.
       - |
-        The type variable `a`{=type} can stand for any type; `{a}`{=type}
-        indicates a *delayed* expression of type `a`{=type}.  Normally,
+        The type variable `a`{=snippet} can stand for any type; `{a}`{=snippet}
+        indicates a *delayed* expression of type `a`{=snippet}.  Normally,
         function arguments are evaluated strictly before the function
         is called. Delayed expressions, on the other hand, are not
         evaluated until needed.  In this case, we want to make sure
@@ -40,13 +40,13 @@ objectives:
         of type, say, `{int}`{=type}, we just surround a value of type `int`{=type}
         in curly braces, like `{3}`.  This is why arguments to `build`
         must also be in curly braces: the type of `build`
-        is `{cmd a} -> cmd robot`{=type}.
+        is `∀ a. {cmd a} -> cmd robot`{=type}.
       - |
         **TIP:** Note that `if` requires a `bool`{=type}, not a `cmd bool`{=type}!  So you cannot directly say
         `if (ishere "very small rock") {...} {...}`{=snippet}.
         Instead you can write `b <- ishere "very small rock"; if b {...} {...}`{=snippet}.
         You might enjoy writing your own function of
-        type `cmd bool -> {cmd a} -> {cmd a} -> cmd a`{=type} to encapsulate this pattern.
+        type `∀ a. cmd bool -> {cmd a} -> {cmd a} -> cmd a`{=type} to encapsulate this pattern.
       - |
         **TIP:** the two branches of an `if` must have the same type. In particular,
         `if ... {grab} {}`{=snippet} is not
