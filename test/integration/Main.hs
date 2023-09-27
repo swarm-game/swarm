@@ -356,6 +356,11 @@ testScenarioSolutions rs ui =
             , testSolution (Sec 10) "Testing/836-pathfinding/836-no-path-exists2"
             , testSolution (Sec 3) "Testing/836-pathfinding/836-automatic-waypoint-navigation.yaml"
             ]
+        , testGroup
+            "Ping (#1535)"
+            [ testSolution Default "Testing/1535-ping/1535-in-range"
+            , testSolution Default "Testing/1535-ping/1535-out-of-range"
+            ]
         ]
     , testSolution' Default "Testing/1430-built-robot-ownership" CheckForBadErrors $ \g -> do
         let r2 = g ^. robotMap . at 2

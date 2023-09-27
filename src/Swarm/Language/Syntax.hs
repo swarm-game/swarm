@@ -172,6 +172,8 @@ data Const
     Ignite
   | -- | Try to place an item at the current location.
     Place
+  | -- | Obtain the relative location of another robot.
+    Ping
   | -- | Give an item to another robot at the current location.
     Give
   | -- | Equip a device on oneself.
@@ -560,6 +562,12 @@ constInfo c = case c of
   Place ->
     command 1 short . doc "Place an item at the current location." $
       ["The current location has to be empty for this to work."]
+  Ping ->
+    command 1 short . doc "Obtain the relative location of another robot." $
+      [ "The other robot must be within transmission range, accounting for antennas installed on either end, and the invoking robot must be oriented in a cardinal direction."
+      , "The location (x, y) is given relative to one's current orientation:"
+      , "Positive x value is to the right, negative left. Likewise, positive y value is forward, negative back."
+      ]
   Give -> command 2 short "Give an item to another actor nearby."
   Equip -> command 1 short "Equip a device on oneself."
   Unequip -> command 1 short "Unequip an equipped device, returning to inventory."

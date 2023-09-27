@@ -16,6 +16,7 @@ module Swarm.Game.Location (
   applyTurn,
   relativeTo,
   toDirection,
+  toAbsDirection,
   nearestDirection,
   fromDirection,
   isCardinal,
@@ -138,9 +139,9 @@ applyTurn d = case d of
 
 -- | Mapping from heading to their corresponding cardinal directions.
 --   Only absolute directions are mapped.
-cardinalDirs :: M.Map Heading Direction
+cardinalDirs :: M.Map Heading AbsoluteDir
 cardinalDirs =
-  M.fromList $ map (toHeading &&& DAbsolute) Util.listEnums
+  M.fromList $ map (toHeading &&& id) Util.listEnums
 
 -- | Possibly convert a heading into a 'Direction'---that is, if the
 --   vector happens to be a unit vector in one of the cardinal
@@ -151,7 +152,11 @@ cardinalDirs =
 --   >>> toDirection (V2 3 7)
 --   Nothing
 toDirection :: Heading -> Maybe Direction
-toDirection v = M.lookup v cardinalDirs
+toDirection = fmap DAbsolute . toAbsDirection
+
+-- | Like 'toDirection', but preserve the type guarantee of an absolute direction
+toAbsDirection :: Heading -> Maybe AbsoluteDir
+toAbsDirection v = M.lookup v cardinalDirs
 
 -- | Return the 'PlanarRelativeDir' which would result in turning to
 --   the first (target) direction from the second (reference) direction.

@@ -59,6 +59,11 @@ instance (FromJSON a) => FromJSON (Cosmic a) where
 data DistanceMeasure b = Measurable b | InfinitelyFar
   deriving (Eq, Ord)
 
+getFiniteDistance :: DistanceMeasure b -> Maybe b
+getFiniteDistance = \case
+  Measurable x -> Just x
+  InfinitelyFar -> Nothing
+
 -- | Returns 'InfinitelyFar' if not within the same subworld.
 cosmoMeasure :: (a -> a -> b) -> Cosmic a -> Cosmic a -> DistanceMeasure b
 cosmoMeasure f a b

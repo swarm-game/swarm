@@ -135,6 +135,7 @@ module Swarm.Game.State (
   focusedRobot,
   RobotRange (..),
   focusedRange,
+  getRadioRange,
   clearFocusedRobotLogUpdated,
   addRobot,
   addRobotToLocation,
@@ -900,8 +901,11 @@ data RobotRange
 --         both radii.
 --       * If the base has an @antenna@ installed, it also doubles both radii.
 focusedRange :: GameState -> Maybe RobotRange
-focusedRange g = checkRange <$ focusedRobot g
+focusedRange g = checkRange <$ maybeFocusedRobot
  where
+  maybeBaseRobot = g ^. robotMap . at 0
+  maybeFocusedRobot = focusedRobot g
+
   checkRange = case r of
     InfinitelyFar -> Far
     Measurable r' -> computedRange r'
@@ -912,15 +916,22 @@ focusedRange g = checkRange <$ focusedRobot g
     | otherwise = MidRange $ (r' - minRadius) / (maxRadius - minRadius)
 
   -- Euclidean distance from the base to the view center.
-  r = case g ^. robotMap . at 0 of
+  r = case maybeBaseRobot of
     -- if the base doesn't exist, we have bigger problems
     Nothing -> InfinitelyFar
     Just br -> cosmoMeasure euclidean (g ^. viewCenter) (br ^. robotLocation)
 
+  (minRadius, maxRadius) = getRadioRange maybeBaseRobot maybeFocusedRobot
+
+-- | Get the min/max communication radii given possible augmentations on each end
+getRadioRange :: Maybe Robot -> Maybe Robot -> (Double, Double)
+getRadioRange maybeBaseRobot maybeTargetRobot =
+  (minRadius, maxRadius)
+ where
   -- See whether the base or focused robot have antennas installed.
   baseInv, focInv :: Maybe Inventory
-  baseInv = g ^? robotMap . ix 0 . equippedDevices
-  focInv = view equippedDevices <$> focusedRobot g
+  baseInv = view equippedDevices <$> maybeBaseRobot
+  focInv = view equippedDevices <$> maybeTargetRobot
 
   gain :: Maybe Inventory -> (Double -> Double)
   gain (Just inv)

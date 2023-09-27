@@ -138,6 +138,7 @@ library
                       Swarm.Game.Scenario.Style
                       Swarm.Game.Scenario.Topography.EntityFacade
                       Swarm.Game.Scenario.Topography.Navigation.Portal
+                      Swarm.Game.Scenario.Topography.Navigation.Util
                       Swarm.Game.Scenario.Topography.Navigation.Waypoint
                       Swarm.Game.Scenario.Topography.Placement
                       Swarm.Game.Scenario.Topography.Structure
