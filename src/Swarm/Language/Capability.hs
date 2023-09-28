@@ -18,6 +18,11 @@ module Swarm.Language.Capability (
 import Data.Aeson (FromJSONKey, ToJSONKey)
 import Data.Data (Data)
 import Data.Hashable (Hashable)
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
+import Data.Maybe (mapMaybe)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
@@ -25,11 +30,6 @@ import GHC.Generics (Generic)
 import Swarm.Language.Syntax
 import Swarm.Util (failT)
 import Prelude hiding (lookup)
-import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as Map
-import Data.Set (Set)
-import Data.Set qualified as Set
-import Data.Maybe (mapMaybe)
 
 -- | Various capabilities which robots can have.
 data Capability
@@ -82,36 +82,37 @@ allCapabilities = Map.keys $ fst capabilityNames'
 
 capabilityNames :: (Capability -> Text, Text -> Maybe Capability)
 capabilityNames = ((fromC Map.!), (`Map.lookup` toC))
-  where
-    (fromC, toC) = capabilityNames'
+ where
+  (fromC, toC) = capabilityNames'
 
 capabilityNames' :: (Map Capability Text, Map Text Capability)
 capabilityNames' = (fromC, toC)
-  where
-    toC = Map.fromList mapping
-    fromC = Map.fromList $ map (\(t, c) -> (c, t)) mapping
-    mapping = mappingExec <> mapping'
-    mappingExec = map (\c -> (T.toLower . T.pack $ show c, CExecute c)) $ Set.toList execCaps
-    mapping' =
-      [ ("power", CPower)
-      , ("code", CCode)
-      , ("float", CFloat)
-      , ("cond", CCond)
-      , ("negation", CNegation)
-      , ("compare", CCompare)
-      , ("orient", COrient)
-      , ("arith", CArith)
-      , ("env", CEnv)
-      , ("lambda", CLambda)
-      , ("recursion", CRecursion)
-      , ("whoami", CWhoami)
-      , ("sum", CSum)
-      , ("prod", CProd)
-      , ("record", CRecord)
-      , ("debug", CDebug)
-      , ("heavy robot move", CMoveHeavy)
-      , ("handle input", CHandleInput)
-      , ("god", CGod)]
+ where
+  toC = Map.fromList mapping
+  fromC = Map.fromList $ map (\(t, c) -> (c, t)) mapping
+  mapping = mappingExec <> mapping'
+  mappingExec = map (\c -> (T.toLower . T.pack $ show c, CExecute c)) $ Set.toList execCaps
+  mapping' =
+    [ ("power", CPower)
+    , ("code", CCode)
+    , ("float", CFloat)
+    , ("cond", CCond)
+    , ("negation", CNegation)
+    , ("compare", CCompare)
+    , ("orient", COrient)
+    , ("arith", CArith)
+    , ("env", CEnv)
+    , ("lambda", CLambda)
+    , ("recursion", CRecursion)
+    , ("whoami", CWhoami)
+    , ("sum", CSum)
+    , ("prod", CProd)
+    , ("record", CRecord)
+    , ("debug", CDebug)
+    , ("heavy robot move", CMoveHeavy)
+    , ("handle input", CHandleInput)
+    , ("god", CGod)
+    ]
 
 -- TODO: test no show instance
 capabilityName :: Capability -> Text
@@ -125,15 +126,15 @@ instance FromJSON Capability where
    where
     tryRead :: Text -> Parser Capability
     tryRead t = case snd capabilityNames $ T.strip t of
-        Just c -> return c
-        Nothing -> failT ["Unknown capability", t]
+      Just c -> return c
+      Nothing -> failT ["Unknown capability", t]
 
 execCaps :: Set Const
 execCaps = Set.fromList . mapMaybe getConst $ mapMaybe constCaps allConst
-  where
-    getConst = \case
-      CExecute c -> Just c
-      _ -> Nothing
+ where
+  getConst = \case
+    CExecute c -> Just c
+    _ -> Nothing
 
 -- | Capabilities needed to evaluate or execute a constant.
 constCaps :: Const -> Maybe Capability
@@ -210,8 +211,8 @@ constCaps = \case
   {- TODO: #26
   Some capabilities currently cannot be used in classic mode since there
   is no craftable item which conveys their capability:
-  * Teleport  Some space-time machine like Tardis?
-  * Appear  paint?
-  * Random  randomness device (with bitcoins)?
+  \* Teleport  Some space-time machine like Tardis?
+  \* Appear  paint?
+  \* Random  randomness device (with bitcoins)?
   -}
   c -> Just (CExecute c)

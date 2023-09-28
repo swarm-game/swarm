@@ -93,6 +93,7 @@ import Control.Monad (void)
 import Data.Aeson.Types hiding (Key)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
+import Data.Hashable (Hashable)
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
@@ -107,7 +108,6 @@ import Swarm.Language.Direction
 import Swarm.Language.Types
 import Swarm.Util qualified as Util
 import Witch.From (from)
-import Data.Hashable (Hashable)
 
 -- | Maximum perception distance for
 -- 'Chirp' and 'Sniff' commands
