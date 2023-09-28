@@ -14,6 +14,8 @@
 -- See 'SwarmAPI' for the available endpoints. You can also see them in your
 -- browser on the top level endpoint:
 -- @lynx localhost:5357 -dump@
+-- or you can output the markdown documentation to your terminal:
+-- @cabal run swarm -O0 -- generate endpoints@
 --
 -- Missing endpoints:
 --
@@ -22,6 +24,11 @@
 module Swarm.Web (
   startWebThread,
   defaultPort,
+
+  -- ** Docs
+  SwarmAPI,
+  swarmApiHtml,
+  swarmApiMarkdown,
 
   -- ** Development
   webMain,
@@ -51,6 +58,7 @@ import Network.Wai.Handler.Warp qualified as Warp
 import Servant
 import Servant.Docs (ToCapture)
 import Servant.Docs qualified as SD
+import Servant.Docs.Internal qualified as SD (renderCurlBasePath)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
@@ -58,7 +66,7 @@ import Swarm.Game.Scenario.Objective.WinCheck
 import Swarm.Game.State
 import Swarm.Language.Module
 import Swarm.Language.Pipeline
-import Swarm.Language.Pretty (prettyString)
+import Swarm.Language.Pretty (prettyTextLine)
 import Swarm.Language.Syntax
 import Swarm.ReadableIORef
 import Swarm.TUI.Model
@@ -69,20 +77,10 @@ import Text.Read (readEither)
 import Witch (into)
 
 -- ------------------------------------------------------------------
--- Necessary instances
+-- Docs
 -- ------------------------------------------------------------------
 
 newtype RobotID = RobotID Int
-
-instance FromHttpApiData RobotID where
-  parseUrlPiece = fmap RobotID . left T.pack . readEither . T.unpack
-
-instance SD.ToSample T.Text where
-  toSamples _ = SD.noSamples
-
--- ------------------------------------------------------------------
--- Docs
--- ------------------------------------------------------------------
 
 type SwarmAPI =
   "robots" :> Get '[JSON] [Robot]
@@ -96,12 +94,6 @@ type SwarmAPI =
     :<|> "code" :> "run" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [REPLHistItem]
 
-instance ToCapture (Capture "id" RobotID) where
-  toCapture _ =
-    SD.DocCapture
-      "id" -- name
-      "(integer) robot ID" -- description
-
 swarmApi :: Proxy SwarmAPI
 swarmApi = Proxy
 
@@ -110,17 +102,21 @@ type ToplevelAPI = SwarmAPI :<|> Raw
 api :: Proxy ToplevelAPI
 api = Proxy
 
-docsBS :: ByteString
-docsBS =
+swarmApiHtml :: ByteString
+swarmApiHtml =
   encodeUtf8
     . either (error . show) (Mark.renderHtml @())
     . Mark.commonmark ""
-    . T.pack
-    . SD.markdownWith
-      ( SD.defRenderingOptions
-          & SD.requestExamples .~ SD.FirstContentType
-          & SD.responseExamples .~ SD.FirstContentType
-      )
+    $ T.pack swarmApiMarkdown
+
+swarmApiMarkdown :: String
+swarmApiMarkdown =
+  SD.markdownWith
+    ( SD.defRenderingOptions
+        & SD.requestExamples .~ SD.FirstContentType
+        & SD.responseExamples .~ SD.FirstContentType
+        & SD.renderCurlBasePath ?~ "http://localhost:" <> show defaultPort
+    )
     $ SD.docsWithIntros [intro] swarmApi
  where
   intro = SD.DocIntro "Swarm Web API" ["All of the valid endpoints are documented below."]
@@ -191,7 +187,7 @@ codeRenderHandler :: Text -> Handler Text
 codeRenderHandler contents = do
   return $ case processTermEither contents of
     Right (ProcessedTerm (Module stx@(Syntax' _srcLoc _term _) _) _ _) ->
-      into @Text . drawTree . fmap prettyString . para Node $ stx
+      into @Text . drawTree . fmap (T.unpack . prettyTextLine) . para Node $ stx
     Left x -> x
 
 codeRunHandler :: BChan AppEvent -> Text -> Handler Text
@@ -232,7 +228,7 @@ webMain baton port appStateRef chan = catch (Warp.runSettings settings app) hand
   server = mkApp appStateRef chan :<|> Tagged serveDocs
    where
     serveDocs _ resp =
-      resp $ responseLBS ok200 [plain] docsBS
+      resp $ responseLBS ok200 [plain] swarmApiHtml
     plain = ("Content-Type", "text/html")
 
   app :: Network.Wai.Application
@@ -278,3 +274,22 @@ startWebThread userPort appStateRef chan = do
     Nothing -> case userPort of
       Just _p -> fail failMsg
       Nothing -> return . Left $ failMsg <> " (timeout)"
+
+-- ------------------------------------------------------------------
+-- Necessary instances
+-- ------------------------------------------------------------------
+
+instance SD.ToSample T.Text where
+  toSamples _ = SD.noSamples
+
+instance FromHttpApiData RobotID where
+  parseUrlPiece = fmap RobotID . left T.pack . readEither . T.unpack
+
+instance SD.ToSample RobotID where
+  toSamples _ = SD.samples [RobotID 0, RobotID 1]
+
+instance ToCapture (Capture "id" RobotID) where
+  toCapture _ =
+    SD.DocCapture
+      "id" -- name
+      "(integer) robot ID" -- description

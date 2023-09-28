@@ -83,7 +83,13 @@ data REPLHistItem
   deriving (Eq, Ord, Show, Read)
 
 instance ToSample REPLHistItem where
-  toSamples _ = SD.noSamples
+  toSamples _ =
+    SD.samples
+      [ REPLEntry "grab"
+      , REPLOutput "it0 : text = \"tree\""
+      , REPLEntry "place tree"
+      , REPLError "1:7: Unbound variable tree"
+      ]
 
 instance ToJSON REPLHistItem where
   toJSON e = case e of

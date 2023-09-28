@@ -69,7 +69,11 @@ data GoalTracking = GoalTracking
   deriving (Generic, ToJSON)
 
 instance ToSample GoalTracking where
-  toSamples _ = SD.noSamples
+  toSamples _ =
+    SD.samples
+      [ GoalTracking mempty mempty
+      -- TODO: #1552 add simple objective sample
+      ]
 
 data GoalDisplay = GoalDisplay
   { _goalsContent :: GoalTracking
