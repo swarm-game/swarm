@@ -79,6 +79,8 @@ import Swarm.Game.Robot
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (finishGameTick, gameTick)
+-- See Note [liftA2 re-export from Prelude]
+import Swarm.Language.Capability (Capability (..))
 import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
 import Swarm.Language.Module
@@ -113,8 +115,7 @@ import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import System.FilePath (splitDirectories)
 import Witch (into)
-import Prelude hiding (Applicative (..)) -- See Note [liftA2 re-export from Prelude]
-import Swarm.Language.Capability (Capability(..))
+import Prelude hiding (Applicative (..))
 
 -- ~~~~ Note [liftA2 re-export from Prelude]
 --
