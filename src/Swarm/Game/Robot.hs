@@ -322,6 +322,7 @@ instance ToSample Robot where
         []
         False
         False
+        mempty
         0
 
 -- In theory we could make all these lenses over (RobotR phase), but
