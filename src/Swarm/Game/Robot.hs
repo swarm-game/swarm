@@ -97,7 +97,6 @@ import Servant.Docs qualified as SD
 import Swarm.Game.CESK
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
-import Swarm.Game.Entity qualified as Inventory (empty)
 import Swarm.Game.Location (Heading, Location, toDirection)
 import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
