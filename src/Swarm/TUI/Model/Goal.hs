@@ -72,7 +72,7 @@ instance ToSample GoalTracking where
   toSamples _ =
     SD.samples
       [ GoalTracking mempty mempty
-      -- TODO: add simple objective sample
+      -- TODO: #1552 add simple objective sample
       ]
 
 data GoalDisplay = GoalDisplay

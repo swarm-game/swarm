@@ -293,7 +293,7 @@ instance ToSample WinCondition where
   toSamples _ =
     SD.samples
       [ NoWinCondition
-      -- TODO: add simple objective sample
+      -- TODO: #1552 add simple objective sample
       ]
 
 -- | A data type to keep track of the pause mode.
