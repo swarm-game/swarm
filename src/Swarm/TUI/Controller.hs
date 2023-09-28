@@ -79,6 +79,7 @@ import Swarm.Game.Robot
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (finishGameTick, gameTick)
+
 -- See Note [liftA2 re-export from Prelude]
 import Swarm.Language.Capability (Capability (..))
 import Swarm.Language.Context
