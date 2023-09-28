@@ -460,15 +460,15 @@ traceLogShow = void . traceLog Logged Info . from . show
 
 -- | Capabilities needed for a specific robot to evaluate or execute a
 --   constant.  Right now, the only difference is whether the robot is
---   heavy or not when executing the 'Swarm.Language.Syntax.Move' command, but there might
---   be other exceptions added in the future.
+--   heavy or not when it is moving, but there might be other exceptions
+--   added in the future.
 constCapsFor :: Const -> Robot -> Maybe Capability
 constCapsFor Move r
-  | r ^. robotHeavy = Just CMoveheavy
+  | r ^. robotHeavy = Just CMoveHeavy
 constCapsFor Backup r
-  | r ^. robotHeavy = Just CMoveheavy
+  | r ^. robotHeavy = Just CMoveHeavy
 constCapsFor Stride r
-  | r ^. robotHeavy = Just CMoveheavy
+  | r ^. robotHeavy = Just CMoveHeavy
 constCapsFor c _ = constCaps c
 
 -- | Ensure that a robot is capable of executing a certain constant
@@ -895,7 +895,7 @@ stepCESK cesk = case cesk of
     -- Notice how we call resetBlackholes on the store, so that any
     -- cells which were in the middle of being evaluated will be reset.
     let s' = resetBlackholes s
-    h <- hasCapability CLog
+    h <- hasCapability (CExecute Log)
     em <- use $ landscape . entityMap
     if h
       then do
@@ -1576,8 +1576,8 @@ execConst c vs s k = do
         let addToRobotLog :: (Has (State GameState) sgn m) => Robot -> m ()
             addToRobotLog r = do
               maybeRidLoc <- evalState r $ do
-                hasLog <- hasCapability CLog
-                hasListen <- hasCapability CListen
+                hasLog <- hasCapability (CExecute Log)
+                hasListen <- hasCapability (CExecute Listen)
                 loc' <- use robotLocation
                 rid <- use robotID
                 return $ do
@@ -2067,7 +2067,7 @@ execConst c vs s k = do
   doDrill d = do
     ins <- use equippedDevices
 
-    let equippedDrills = extantElemsWithCapability CDrill ins
+    let equippedDrills = extantElemsWithCapability (CExecute Drill) ins
         -- Heuristic: choose the drill with the more elaborate name.
         -- E.g. "metal drill" vs. "drill"
         preferredDrill = listToMaybe $ sortOn (Down . T.length . (^. entityName)) equippedDrills

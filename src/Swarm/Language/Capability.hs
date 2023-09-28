@@ -12,10 +12,10 @@ module Swarm.Language.Capability (
   Capability (..),
   capabilityName,
   constCaps,
+  allCapabilities,
 ) where
 
 import Data.Aeson (FromJSONKey, ToJSONKey)
-import Data.Char (toLower)
 import Data.Data (Data)
 import Data.Hashable (Hashable)
 import Data.Text (Text)
@@ -24,100 +24,23 @@ import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax
 import Swarm.Util (failT)
-import Text.Read (readMaybe)
-import Witch (from)
 import Prelude hiding (lookup)
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
+import Data.Set (Set)
+import Data.Set qualified as Set
+import Data.Maybe (mapMaybe)
 
 -- | Various capabilities which robots can have.
 data Capability
-  = -- | Be powered, i.e. execute anything at all
+  = -- | Execute the command or function.
+    CExecute Const
+  | -- | Be powered, i.e. execute anything at all
     CPower
-  | -- | Execute the 'Move' command
-    CMove
-  | -- | Execute the 'Backup' command
-    CBackup
-  | -- | Execute the 'Path' command
-    CPath
-  | -- | Execute the 'Push' command
-    CPush
-  | -- | Execute the 'Stride' command
-    CMovemultiple
-  | -- | Execute the 'Move' command for a heavy robot
-    CMoveheavy
-  | -- | Execute the 'Turn' command
-    --
-    -- NOTE: using cardinal directions is separate 'COrient' capability
-    CTurn
-  | -- | Execute the 'Selfdestruct' command
-    CSelfdestruct
-  | -- | Execute the 'Grab' command
-    CGrab
-  | -- | Execute the 'Harvest' command
-    CHarvest
-  | -- | Execute the 'Ignite' command
-    CIgnite
-  | -- | Execute the 'Place' command
-    CPlace
-  | -- | Execute the 'Ping' command
-    CPing
-  | -- | Execute the 'Give' command
-    CGive
-  | -- | Execute the 'Equip' command
-    CEquip
-  | -- | Execute the 'Unequip' command
-    CUnequip
-  | -- | Execute the 'Make' command
-    CMake
-  | -- | Execute the 'Count' command
-    CCount
-  | -- | Execute the 'Scout' command. Reconnaissance along a line in a direction.
-    CRecondir
-  | -- | Execute the 'Build' command
-    CBuild
-  | -- | Execute the 'Salvage' command
-    CSalvage
-  | -- | Execute the 'Drill' command
-    CDrill
-  | -- | Execute the 'Waypoint' command
-    CWaypoint
-  | -- | Execute the 'Whereami' command
-    CSenseloc
-  | -- | Execute the 'Blocked' command
-    CSensefront
-  | -- | Execute the 'Ishere' and 'Isempty' commands
-    CSensehere
-  | -- | Execute the 'Detect' command
-    CDetectloc
-  | -- | Execute the 'Resonate' and 'Density' commands
-    CDetectcount
-  | -- | Execute the 'Sniff' command
-    CDetectdistance
-  | -- | Execute the 'Chirp' command
-    CDetectdirection
-  | -- | Execute the 'Watch' command
-    CWakeself
-  | -- | Execute the 'Scan' command
-    CScan
-  | -- | Execute the 'Random' command
-    CRandom
-  | -- | Execute the 'Appear' command
-    CAppear
-  | -- | Execute the 'Create' command
-    CCreate
-  | -- | Execute the 'Listen' command and passively log messages if also has 'CLog'
-    CListen
-  | -- | Execute the 'Log' command
-    CLog
-  | -- | Format values as text
-    CFormat
-  | -- | Split text into two pieces
-    CConcat
-  | -- | Join two text values into one
-    CSplit
-  | -- | Count the characters in a text value
-    CCharcount
   | -- | Convert between characters/text and Unicode values
     CCode
+  | -- | Allow a heavy robot to move, backup and stride.
+    CMoveHeavy
   | -- | Don't drown in liquid
     CFloat
   | -- | Evaluate conditional expressions
@@ -136,27 +59,8 @@ data Capability
     CLambda
   | -- | Enable recursive definitions
     CRecursion
-  | -- | Execute the 'Reprogram' command
-    CReprogram
-  | -- | Execute the `meet` and `meetAll` commands.
-    CMeet
   | -- | Capability to introspect and see its own name
     CWhoami
-  | -- | Capability to set its own name
-    CSetname
-  | -- | Capability to move unrestricted to any place
-    CTeleport
-  | -- | Capability to run commands atomically
-    CAtomic
-  | -- | Capability to execute swap (grab and place atomically at the same time).
-    CSwap
-  | -- | Capability to obtain absolute time, namely via the `time` command.
-    CTimeabs
-  | -- | Capability to utilize relative passage of time, namely via the `wait` command.
-    --   This is strictly weaker than "CTimeAbs".
-    CTimerel
-  | -- | Capability to execute `try`.
-    CTry
   | -- | Capability for working with sum types.
     CSum
   | -- | Capability for working with product types.
@@ -166,17 +70,52 @@ data Capability
   | -- | Debug capability.
     CDebug
   | -- | Capability to handle keyboard input.
-    CHandleinput
-  | -- | Capability to make other robots halt.
-    CHalt
+    CHandleInput
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
     CGod
-  deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable, Data, FromJSONKey, ToJSONKey)
+  deriving (Eq, Ord, Show, Generic, Hashable, Data, FromJSONKey, ToJSONKey)
 
+allCapabilities :: [Capability]
+allCapabilities = Map.keys $ fst capabilityNames'
+
+capabilityNames :: (Capability -> Text, Text -> Maybe Capability)
+capabilityNames = ((fromC Map.!), (`Map.lookup` toC))
+  where
+    (fromC, toC) = capabilityNames'
+
+capabilityNames' :: (Map Capability Text, Map Text Capability)
+capabilityNames' = (fromC, toC)
+  where
+    toC = Map.fromList mapping
+    fromC = Map.fromList $ map (\(t, c) -> (c, t)) mapping
+    mapping = mappingExec <> mapping'
+    mappingExec = map (\c -> (T.toLower . T.pack $ show c, CExecute c)) $ Set.toList execCaps
+    mapping' =
+      [ ("power", CPower)
+      , ("code", CCode)
+      , ("float", CFloat)
+      , ("cond", CCond)
+      , ("negation", CNegation)
+      , ("compare", CCompare)
+      , ("orient", COrient)
+      , ("arith", CArith)
+      , ("env", CEnv)
+      , ("lambda", CLambda)
+      , ("recursion", CRecursion)
+      , ("whoami", CWhoami)
+      , ("sum", CSum)
+      , ("prod", CProd)
+      , ("record", CRecord)
+      , ("debug", CDebug)
+      , ("heavy robot move", CMoveHeavy)
+      , ("handle input", CHandleInput)
+      , ("god", CGod)]
+
+-- TODO: test no show instance
 capabilityName :: Capability -> Text
-capabilityName = from @String . map toLower . drop 1 . show
+capabilityName = fst capabilityNames
 
 instance ToJSON Capability where
   toJSON = String . capabilityName
@@ -185,9 +124,16 @@ instance FromJSON Capability where
   parseJSON = withText "Capability" tryRead
    where
     tryRead :: Text -> Parser Capability
-    tryRead t = case readMaybe . from . T.cons 'C' . T.toTitle $ t of
-      Just c -> return c
-      Nothing -> failT ["Unknown capability", t]
+    tryRead t = case snd capabilityNames $ T.strip t of
+        Just c -> return c
+        Nothing -> failT ["Unknown capability", t]
+
+execCaps :: Set Const
+execCaps = Set.fromList . mapMaybe getConst $ mapMaybe constCaps allConst
+  where
+    getConst = \case
+      CExecute c -> Just c
+      _ -> Nothing
 
 -- | Capabilities needed to evaluate or execute a constant.
 constCaps :: Const -> Maybe Capability
@@ -211,40 +157,9 @@ constCaps = \case
   --   the require command will be inlined once the Issue is fixed
   --   so the capabilities of the run commands will be checked instead
   Run -> Nothing
+  -- Recipes alone shall dictate whether things can be "used"
+  Use -> Nothing
   -- ----------------------------------------------------------------
-  -- Some straightforward ones.
-  Listen -> Just CListen
-  Log -> Just CLog
-  Selfdestruct -> Just CSelfdestruct
-  Move -> Just CMove
-  Backup -> Just CBackup
-  Path -> Just CPath
-  Push -> Just CPush
-  Stride -> Just CMovemultiple
-  Turn -> Just CTurn
-  Grab -> Just CGrab
-  Harvest -> Just CHarvest
-  Ignite -> Just CIgnite
-  Place -> Just CPlace
-  Ping -> Just CPing
-  Give -> Just CGive
-  Equip -> Just CEquip
-  Unequip -> Just CUnequip
-  Make -> Just CMake
-  Count -> Just CCount
-  If -> Just CCond
-  Blocked -> Just CSensefront
-  Scan -> Just CScan
-  Ishere -> Just CSensehere
-  Isempty -> Just CSensehere
-  Upload -> Just CScan
-  Build -> Just CBuild
-  Salvage -> Just CSalvage
-  Reprogram -> Just CReprogram
-  Meet -> Just CMeet
-  MeetAll -> Just CMeet
-  Drill -> Just CDrill
-  Use -> Nothing -- Recipes alone shall dictate whether things can be "used"
   Neg -> Just CArith
   Add -> Just CArith
   Sub -> Just CArith
@@ -253,32 +168,9 @@ constCaps = \case
   Exp -> Just CArith
   Whoami -> Just CWhoami
   Self -> Just CWhoami
-  Swap -> Just CSwap
-  Atomic -> Just CAtomic
-  Instant -> Just CGod
-  Time -> Just CTimeabs
-  Wait -> Just CTimerel
-  Scout -> Just CRecondir
-  Whereami -> Just CSenseloc
-  Waypoint -> Just CWaypoint
-  Detect -> Just CDetectloc
-  Resonate -> Just CDetectcount
-  Density -> Just CDetectcount
-  Sniff -> Just CDetectdistance
-  Chirp -> Just CDetectdirection
-  Watch -> Just CWakeself
   Heading -> Just COrient
-  Key -> Just CHandleinput
-  InstallKeyHandler -> Just CHandleinput
-  Halt -> Just CHalt
-  -- ----------------------------------------------------------------
-  -- Text operations
-  Format -> Just CFormat
-  Concat -> Just CConcat
-  Split -> Just CSplit
-  Chars -> Just CCharcount
-  CharAt -> Just CCode
-  ToChar -> Just CCode
+  Key -> Just CHandleInput
+  InstallKeyHandler -> Just CHandleInput
   -- ----------------------------------------------------------------
   -- Some God-like abilities.
   As -> Just CGod
@@ -286,6 +178,7 @@ constCaps = \case
   RobotNumbered -> Just CGod
   Create -> Just CGod
   Surveil -> Just CGod
+  Instant -> Just CGod
   -- ----------------------------------------------------------------
   -- arithmetic
   Eq -> Just CCompare
@@ -300,9 +193,6 @@ constCaps = \case
   Or -> Just CCond
   Not -> Just CNegation
   -- ----------------------------------------------------------------
-  -- exceptions
-  Try -> Just CTry
-  -- ----------------------------------------------------------------
   -- type-level arithmetic
   Inl -> Just CSum
   Inr -> Just CSum
@@ -310,16 +200,18 @@ constCaps = \case
   Fst -> Just CProd
   Snd -> Just CProd
   -- TODO: #563 pair syntax (1,2,3...) should require CProd too
-
-  -- ----------------------------------------------------------------
-  -- Some additional straightforward ones, which however currently
-  -- cannot be used in classic mode since there is no craftable item
-  -- which conveys their capability. TODO: #26
-  Teleport -> Just CTeleport -- Some space-time machine like Tardis?
-  Appear -> Just CAppear -- paint?
-  Random -> Just CRandom -- randomness device (with bitcoins)?
   -- ----------------------------------------------------------------
   -- Some more constants which *ought* to have their own capability but
   -- currently don't.
   View -> Nothing -- TODO: #17 should require equipping an antenna
   Knows -> Nothing
+  -- ----------------------------------------------------------------
+  -- The rest is straightforward
+  {- TODO: #26
+  Some capabilities currently cannot be used in classic mode since there
+  is no craftable item which conveys their capability:
+  * Teleport  Some space-time machine like Tardis?
+  * Appear  paint?
+  * Random  randomness device (with bitcoins)?
+  -}
+  c -> Just (CExecute c)

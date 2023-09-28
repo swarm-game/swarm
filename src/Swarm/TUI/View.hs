@@ -1200,7 +1200,7 @@ explainEntry s e =
     , explainRecipes s e
     ]
       <> [drawRobotMachine s False | e ^. entityCapabilities . Lens.contains CDebug]
-      <> [drawRobotLog s | e ^. entityCapabilities . Lens.contains CLog]
+      <> [drawRobotLog s | e ^. entityCapabilities . Lens.contains (CExecute Log)]
 
 displayProperties :: [EntityProperty] -> Widget Name
 displayProperties = displayList . mapMaybe showProperty

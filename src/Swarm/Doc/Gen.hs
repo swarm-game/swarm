@@ -336,7 +336,7 @@ capabilityTable a em cs = T.unlines $ header <> map (listToRow mw) capabilityRow
   header = [listToRow mw capabilityHeader, separatingLine mw]
 
 capabilityPage :: PageAddress -> EntityMap -> Text
-capabilityPage a em = capabilityTable a em listEnums
+capabilityPage a em = capabilityTable a em Capability.allCapabilities
 
 -- ---------
 -- Entities

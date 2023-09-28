@@ -107,6 +107,7 @@ import Swarm.Language.Direction
 import Swarm.Language.Types
 import Swarm.Util qualified as Util
 import Witch.From (from)
+import Data.Hashable (Hashable)
 
 -- | Maximum perception distance for
 -- 'Chirp' and 'Sniff' commands
@@ -380,7 +381,7 @@ data Const
     RobotNumbered
   | -- | Check if an entity is known.
     Knows
-  deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, FromJSON, ToJSON, FromJSONKey, ToJSONKey)
+  deriving (Eq, Ord, Enum, Bounded, Data, Show, Read, Generic, Hashable, FromJSON, ToJSON, FromJSONKey, ToJSONKey)
 
 allConst :: [Const]
 allConst = Util.listEnums

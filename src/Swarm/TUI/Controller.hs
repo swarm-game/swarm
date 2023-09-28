@@ -79,7 +79,6 @@ import Swarm.Game.Robot
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (finishGameTick, gameTick)
-import Swarm.Language.Capability (Capability (CDebug, CMake))
 import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
 import Swarm.Language.Module
@@ -115,6 +114,7 @@ import System.Clock
 import System.FilePath (splitDirectories)
 import Witch (into)
 import Prelude hiding (Applicative (..)) -- See Note [liftA2 re-export from Prelude]
+import Swarm.Language.Capability (Capability(..))
 
 -- ~~~~ Note [liftA2 re-export from Prelude]
 --
@@ -1448,7 +1448,7 @@ makeEntity e = do
 
   case isActive <$> (s ^? gameState . baseRobot) of
     Just False -> do
-      gameState . gameControls . replStatus .= REPLWorking (Typed Nothing PolyUnit (R.singletonCap CMake))
+      gameState . gameControls . replStatus .= REPLWorking (Typed Nothing PolyUnit (R.singletonCap $ CExecute Make))
       gameState . baseRobot . machine .= initMachine mkPT empty topStore
       gameState %= execState (activateRobot 0)
     _ -> continueWithoutRedraw
