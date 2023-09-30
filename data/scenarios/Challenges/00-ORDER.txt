@@ -11,6 +11,7 @@ hanoi.yaml
 hackman.yaml
 lights-out.yaml
 bucket-brigade.yaml
+wave.yaml
 wolf-goat-cabbage.yaml
 blender.yaml
 friend.yaml
