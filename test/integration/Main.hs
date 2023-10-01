@@ -216,6 +216,7 @@ testScenarioSolutions rs ui =
         , testSolution (Sec 3) "Challenges/word-search"
         , testSolution (Sec 10) "Challenges/bridge-building"
         , testSolution (Sec 5) "Challenges/ice-cream"
+        , testSolution (Sec 15) "Challenges/wave"
         , testSolution (Sec 3) "Challenges/arbitrage"
         , testSolution (Sec 10) "Challenges/gopher"
         , testSolution (Sec 5) "Challenges/hackman"
