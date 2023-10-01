@@ -98,7 +98,7 @@ import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.Language.Value as V
-import Swarm.Util.WindowedCounter
+import Swarm.Util.WindowedCounter (Offsettable (..))
 
 -- | A newtype representing a count of ticks (typically since the
 --   start of a game).

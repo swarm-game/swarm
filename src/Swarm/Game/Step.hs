@@ -533,11 +533,18 @@ stepRobot r = do
   (r', cesk') <- runState (r & activityCounts . tickStepBudget -~ 1) (stepCESK (r ^. machine))
   -- sendIO $ appendFile "out.txt" (prettyString cesk' ++ "\n")
   t <- use $ temporal . ticks
+
+  isCreative <- use creativeMode
+  let shouldTrackActivity = isCreative || not (r' ^. systemRobot)
+
   return $
-    r'
-      & machine .~ cesk'
-      & activityCounts . lifetimeStepCount +~ 1
-      & (activityCounts . activityWindow %~ WC.insert t)
+    applyWhen shouldTrackActivity (maintainActivityWindow t) $
+      r'
+        & machine .~ cesk'
+        & activityCounts . lifetimeStepCount +~ 1
+ where
+  maintainActivityWindow t bot =
+    bot & (activityCounts . activityWindow %~ WC.insert t)
 
 -- | replace some entity in the world with another entity
 updateWorld ::
