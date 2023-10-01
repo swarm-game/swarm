@@ -31,6 +31,7 @@ robots:
       - dictionary
       - grabber
       - hourglass
+      - clock
       - lambda
       - logger
       - net
@@ -44,7 +45,21 @@ robots:
       invisible: false
       attr: 'plant'
     program: |
-      run "scenarios/Challenges/_wave/wavebot.sw"
+      def crossPath =
+          move; move; move; move; move; move;
+          turn back;
+          wait 5;
+          end;
+      def go =
+          crossPath;
+          go;
+          end;
+      def start =
+          pos <- whereami;
+          wait $ fst pos;
+          go;
+          end;
+      start;
 solution: |
    run "scenarios/Challenges/_wave/solution.sw"
 entities: []
