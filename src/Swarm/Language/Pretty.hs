@@ -30,7 +30,7 @@ import Swarm.Language.Parse (getLocRange)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
-import Swarm.Util (showLowT)
+import Swarm.Util (showEnum, showLowT)
 import Witch
 
 ------------------------------------------------------------

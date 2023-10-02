@@ -15,6 +15,7 @@ module Swarm.Util (
   maximum0,
   cycleEnum,
   listEnums,
+  listEnumsNonempty,
   showEnum,
   indexWrapNonEmpty,
   uniq,
@@ -145,13 +146,28 @@ cycleEnum e
 listEnums :: (Enum e, Bounded e) => [e]
 listEnums = [minBound .. maxBound]
 
+-- | Members of the Bounded class are guaranteed to
+-- have at least one element.
+listEnumsNonempty :: (Enum e, Bounded e) => NonEmpty e
+listEnumsNonempty = NE.fromList listEnums
+
 -- | We know by the syntax rules of Haskell that constructor
 --  names must consist of one or more symbols!
 showEnum :: (Show e, Enum e) => e -> NonEmpty Char
 showEnum = NE.fromList . show
 
--- | Guaranteed to yield an element of the list
-indexWrapNonEmpty :: Integral b => NonEmpty a -> b -> a
+-- | Guaranteed to yield an element of the list.
+--
+-- This is true even if the supplied @index@ is negative,
+-- since 'mod' always satisfies @0 <= a `mod` b < b@
+-- when @b@ is positive
+-- (see <comment https://github.com/swarm-game/swarm/pull/1181#discussion_r1151177735>).
+indexWrapNonEmpty ::
+  Integral b =>
+  NonEmpty a ->
+  -- | index
+  b ->
+  a
 indexWrapNonEmpty list idx =
   NE.toList list !! fromIntegral wrappedIdx
  where
