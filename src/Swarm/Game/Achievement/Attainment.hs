@@ -57,5 +57,5 @@ instance ToJSON Attainment where
 achievementJsonOptions :: Options
 achievementJsonOptions =
   defaultOptions
-    { fieldLabelModifier = tail -- drops leading underscore
+    { fieldLabelModifier = drop 1 -- drops leading underscore
     }

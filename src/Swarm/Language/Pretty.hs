@@ -14,6 +14,7 @@ import Control.Unification
 import Control.Unification.IntVar
 import Data.Bool (bool)
 import Data.Functor.Fixedpoint (Fix, unFix)
+import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -167,7 +168,7 @@ instance PrettyPrec Direction where
   prettyPrec _ = pretty . directionSyntax
 
 instance PrettyPrec Capability where
-  prettyPrec _ c = pretty $ T.toLower (from (tail $ show c))
+  prettyPrec _ c = pretty $ T.toLower (from (NE.tail $ showEnum c))
 
 instance PrettyPrec Const where
   prettyPrec p c = pparens (p > fixity (constInfo c)) $ pretty . syntax . constInfo $ c

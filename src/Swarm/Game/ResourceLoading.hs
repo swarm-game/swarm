@@ -149,4 +149,4 @@ initNameGenerator appDataMap = do
     Nothing ->
       throwError $
         AssetNotLoaded (Data NameGeneration) (into @FilePath f <.> "txt") (DoesNotExist File)
-    Just content -> return . tail . T.lines $ content
+    Just content -> return . drop 1 . T.lines $ content
