@@ -99,7 +99,7 @@ import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.Language.Value as V
-import Swarm.Util.WindowedCounter (Offsettable (..))
+import Swarm.Util.WindowedCounter (Offsettable (..), ToInt (..))
 
 -- | A newtype representing a count of ticks (typically since the
 --   start of a game).
@@ -112,6 +112,9 @@ addTicks i (TickNumber n) = TickNumber $ n + fromIntegral i
 
 instance Offsettable TickNumber where
   offsetBy = addTicks
+
+instance ToInt TickNumber where
+  toInt = fromIntegral . getTickNumber
 
 instance Pretty TickNumber where
   pretty (TickNumber i) = pretty i

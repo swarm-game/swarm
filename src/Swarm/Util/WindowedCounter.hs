@@ -7,6 +7,7 @@
 module Swarm.Util.WindowedCounter (
   WindowedCounter,
   Offsettable (..),
+  ToInt (..),
 
   -- * Construction
   mkWindow,
@@ -20,14 +21,17 @@ module Swarm.Util.WindowedCounter (
 ) where
 
 import Data.Aeson
-import Data.Set (Set)
-import Data.Set qualified as Set
+import Data.IntSet (IntSet)
+import Data.IntSet qualified as Set
 import Swarm.Util.UnitInterval
 import Prelude hiding (length)
 
 -- | Values that can be offset by an integral amount
 class Offsettable a where
   offsetBy :: Int -> a -> a
+
+class ToInt a where
+  toInt :: a -> Int
 
 -- | A "sliding window" of a designated span that supports insertion
 -- of tick "timestamps" that represent some state of interest during that tick.
@@ -70,7 +74,7 @@ class Offsettable a where
 -- The maximum number of elements ever stored in the 'Set' will be the width of the nominal
 -- span, even after some protracted failure to "garbage collect".
 data WindowedCounter a = WindowedCounter
-  { _members :: Set a
+  { _members :: IntSet
   , _lastLargest :: Maybe a
   -- ^ NOTE: It is possible that '_lastLargest' may not exist in the 'Set'.
   , _nominalSpan :: Int
@@ -125,7 +129,7 @@ mkWindow = WindowedCounter Set.empty Nothing . abs
 -- * 'discardGarbage' guarantees that the set size is less than or equal to
 --   the nominal span.
 getOccupancy ::
-  (Ord a, Offsettable a) =>
+  (Ord a, Offsettable a, ToInt a) =>
   -- | current time
   a ->
   WindowedCounter a ->
@@ -149,13 +153,13 @@ getOccupancy currentTime wc@(WindowedCounter s lastLargest nominalSpan) =
 -- The 'discardGarbage' function is called from inside this function
 -- so that maintenance of the data structure is simplified.
 insert ::
-  (Ord a, Offsettable a) =>
+  (Ord a, Offsettable a, ToInt a) =>
   -- | current time
   a ->
   WindowedCounter a ->
   WindowedCounter a
 insert x (WindowedCounter s lastLargest nominalSpan) =
-  discardGarbage x $ WindowedCounter (Set.insert x s) newLargest nominalSpan
+  discardGarbage x $ WindowedCounter (Set.insert (toInt x) s) newLargest nominalSpan
  where
   newLargest = Just $ maybe x (max x) lastLargest
 
@@ -177,7 +181,7 @@ insert x (WindowedCounter s lastLargest nominalSpan) =
 -- set entails a contiguous sequence @{2, 3, 4, 5, 6, 7}@, then the pivot for 'Set.split' will be
 -- @7 - 3 = 4@. The set becomes @{5, 6, 7}@, with cardinality equal to the nominal span.
 discardGarbage ::
-  (Ord a, Offsettable a) =>
+  (Ord a, Offsettable a, ToInt a) =>
   -- | current time
   a ->
   WindowedCounter a ->
@@ -186,4 +190,4 @@ discardGarbage currentTime (WindowedCounter s lastLargest nominalSpan) =
   WindowedCounter larger lastLargest nominalSpan
  where
   -- NOTE: Neither output set of 'split' includes the "pivot" value.
-  (_smaller, larger) = Set.split (offsetBy (negate nominalSpan) currentTime) s
+  (_smaller, larger) = Set.split (toInt $ offsetBy (negate nominalSpan) currentTime) s
