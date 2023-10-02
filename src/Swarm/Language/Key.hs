@@ -134,4 +134,4 @@ prettyKey =
   from @String . \case
     V.KChar c -> [c]
     V.KFun n -> 'F' : show n
-    k -> tail (show k)
+    k -> drop 1 (show k)

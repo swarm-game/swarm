@@ -512,12 +512,12 @@ recipesToDot baseRobot classicTerm emap recipes = do
   -- order entities into clusters based on how "far" they are from
   -- what is available at the start - see 'recipeLevels'.
   bottom <- wrapBelowAbove worldEntities
-  ls <- zipWithM subLevel [1 ..] (tail levels)
+  ls <- zipWithM subLevel [1 ..] (drop 1 levels)
   let invisibleLine = zipWithM_ (.~>.)
   tls <- mapM (const hiddenNode) levels
   bls <- mapM (const hiddenNode) levels
   invisibleLine tls bls
-  invisibleLine bls (tail tls)
+  invisibleLine bls (drop 1 tls)
   let sameBelowAbove (b1, t1) (b2, t2) = Dot.same [b1, b2] >> Dot.same [t1, t2]
   zipWithM_ sameBelowAbove (bottom : ls) (zip bls tls)
   -- --------------------------------------------------------------------------

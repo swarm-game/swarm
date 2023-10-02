@@ -27,7 +27,13 @@
 - functions:
   - {name: Data.List.head, within: []}
   - {name: Prelude.head, within: []}
-  - {name: Data.List.NonEmpty.fromList, within: [Swarm.Util, Swarm.Util.Parse]}
+  - {name: Data.List.NonEmpty.fromList, within: [Swarm.Util]}
+  - {name: Prelude.tail, within: []}
+  - {name: Prelude.!!, within: [Swarm.Util.indexWrapNonEmpty, TestEval]}
+  - {name: undefined, within: [Swarm.Language.Key, TestUtil]}
+  - {name: fromJust, within: []}
+# - {name: Data.Map.!, within: []} # TODO: #1494
+# - {name: error, within: []} # TODO: #1494
 
 # Add custom hints for this project
 #

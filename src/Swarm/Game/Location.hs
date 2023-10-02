@@ -177,14 +177,14 @@ relativeTo targetDir referenceDir =
 --   Logic adapted from <https://gamedev.stackexchange.com/questions/49290/#comment213403_49300>.
 nearestDirection :: Heading -> AbsoluteDir
 nearestDirection coord =
-  orderedDirs !! index
+  Util.indexWrapNonEmpty orderedDirs index
  where
   angle :: Double
   angle = unangle (fmap fromIntegral coord) / (2 * pi)
 
-  index = round (fromIntegral enumCount * angle) `mod` enumCount
-  orderedDirs = Util.listEnums
-  enumCount = length orderedDirs
+  index :: Int
+  index = round $ fromIntegral (length orderedDirs) * angle
+  orderedDirs = Util.listEnumsNonempty
 
 -- | Convert a 'Direction' into a corresponding 'Heading'.  Note that
 --   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',

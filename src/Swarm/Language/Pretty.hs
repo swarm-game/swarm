@@ -14,6 +14,7 @@ import Control.Unification
 import Control.Unification.IntVar
 import Data.Bool (bool)
 import Data.Functor.Fixedpoint (Fix, unFix)
+import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -29,7 +30,7 @@ import Swarm.Language.Parse (getLocRange)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
-import Swarm.Util (showLowT)
+import Swarm.Util (showEnum, showLowT)
 import Witch
 
 ------------------------------------------------------------
@@ -167,7 +168,7 @@ instance PrettyPrec Direction where
   prettyPrec _ = pretty . directionSyntax
 
 instance PrettyPrec Capability where
-  prettyPrec _ c = pretty $ T.toLower (from (tail $ show c))
+  prettyPrec _ c = pretty $ T.toLower (from (NE.tail $ showEnum c))
 
 instance PrettyPrec Const where
   prettyPrec p c = pparens (p > fixity (constInfo c)) $ pretty . syntax . constInfo $ c
