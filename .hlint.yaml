@@ -32,8 +32,25 @@
   - {name: Prelude.!!, within: [Swarm.Util.indexWrapNonEmpty, TestEval]}
   - {name: undefined, within: [Swarm.Language.Key, TestUtil]}
   - {name: fromJust, within: []}
-# - {name: Data.Map.!, within: []} # TODO: #1494
-# - {name: error, within: []} # TODO: #1494
+  - {name: Data.Map.!, within: [
+      Swarm.Game.ScenarioInfo,
+      Swarm.Language.Typecheck,
+      Swarm.TUI.View.CellDisplay,
+    ]} # TODO: #1494
+  - {name: error, within: [
+      Swarm.TUI.Controller,
+      Swarm.Game.Scenario.Topography.WorldPalette,
+      Swarm.Language.Text.Markdown,
+      Swarm.Game.World.Gen,
+      Swarm.Game.World.Parse,
+      Swarm.Doc.Gen,
+      Swarm.Language.Typecheck,
+      Swarm.Game.World.Typecheck,
+      Swarm.Language.Parse.QQ,
+      Swarm.Language.Pipeline.QQ,
+      Swarm.Web,
+      TestLanguagePipeline,
+      ]} # TODO: #1494
 
 # Add custom hints for this project
 #
