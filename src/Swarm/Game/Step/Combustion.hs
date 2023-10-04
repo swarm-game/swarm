@@ -31,6 +31,7 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.State
+import Swarm.Game.Step.Sig
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Inspect
 import Swarm.Game.Universe

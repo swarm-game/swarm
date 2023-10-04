@@ -81,7 +81,9 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByNam
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type.Toplevel (foundStructures)
 import Swarm.Game.State
 import Swarm.Game.Step.Combustion qualified as Combustion
-import Swarm.Game.Step.Pathfinding
+import Swarm.Game.Step.Path.Finding
+import Swarm.Game.Step.Path.Type
+import Swarm.Game.Step.Sig
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Inspect
 import Swarm.Game.Universe

@@ -56,8 +56,7 @@ module Swarm.Game.State (
   gameControls,
   discovery,
   landscape,
-
-  -- ** GameState subrecords
+  pathCaching,
 
   -- *** Temporal state
   TemporalState,
@@ -222,6 +221,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type.Toplevel
 import Swarm.Game.ScenarioInfo
+import Swarm.Game.Step.Path.Type
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Universe as U
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
@@ -600,6 +600,7 @@ data GameState = GameState
     -- that we do not have to iterate over all "waiting" robots,
     -- since there may be many.
     _robotsWatching :: Map (Cosmic Location) (S.Set RID)
+  , _pathCaching :: PathCaching
   , _discovery :: Discovery
   , _seed :: Seed
   , _randGen :: StdGen
@@ -668,6 +669,9 @@ robotsAtLocation loc gs =
 
 -- | Get a list of all the robots that are \"watching\" by location.
 robotsWatching :: Lens' GameState (Map (Cosmic Location) (S.Set RID))
+
+-- | Registry for caching output of the @path@ command
+pathCaching :: Lens' GameState PathCaching
 
 -- | Get all the robots within a given Manhattan distance from a
 --   location.
@@ -1171,6 +1175,7 @@ initGameState gsc =
     , _robotMap = IM.empty
     , _robotsByLocation = M.empty
     , _robotsWatching = mempty
+    , _pathCaching = emptyPathCache
     , _discovery =
         Discovery
           { _availableRecipes = mempty

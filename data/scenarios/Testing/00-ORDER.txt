@@ -42,6 +42,7 @@ Achievements
 1356-portals
 144-subworlds
 836-pathfinding
+1569-pathfinding-cache
 1341-command-count.yaml
 1355-combustion.yaml
 1379-single-world-portal-reorientation.yaml

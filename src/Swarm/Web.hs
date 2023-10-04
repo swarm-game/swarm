@@ -70,6 +70,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type.Toplevel
 import Swarm.Game.State
+import Swarm.Game.Step.Path.Type
 import Swarm.Language.Module
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (prettyTextLine)
@@ -78,6 +79,7 @@ import Swarm.ReadableIORef
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.UI
+import Swarm.Util.RingBuffer
 import System.Timeout (timeout)
 import Text.Read (readEither)
 import Witch (into)
@@ -100,6 +102,7 @@ type SwarmAPI =
     :<|> "recognize" :> "found" :> Get '[JSON] [StructureLocation]
     :<|> "code" :> "render" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
     :<|> "code" :> "run" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
+    :<|> "paths" :> "log" :> Get '[JSON] (RingBuffer CacheUpdate)
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [REPLHistItem]
 
 swarmApi :: Proxy SwarmAPI
@@ -150,6 +153,7 @@ mkApp state events =
     :<|> recogFoundHandler state
     :<|> codeRenderHandler
     :<|> codeRunHandler events
+    :<|> pathsLogHandler state
     :<|> replHandler state
 
 robotsHandler :: ReadableIORef AppState -> Handler [Robot]
@@ -220,6 +224,12 @@ codeRunHandler :: BChan AppEvent -> Text -> Handler Text
 codeRunHandler chan contents = do
   liftIO . writeBChan chan . Web $ RunWebCode contents
   return $ T.pack "Sent\n"
+
+pathsLogHandler :: ReadableIORef AppState -> Handler (RingBuffer CacheUpdate)
+pathsLogHandler appStateRef = do
+  appState <- liftIO (readIORef appStateRef)
+  let cacheLog = appState ^. gameState . pathCaching . pathCachingLog
+  pure cacheLog
 
 replHandler :: ReadableIORef AppState -> Handler [REPLHistItem]
 replHandler appStateRef = do
