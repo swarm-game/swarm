@@ -1,0 +1,130 @@
+version: 1
+name: Pathfinding cache - changing distance limit
+description: |
+  The following sequence is performed:
+
+  1. xx
+creative: false
+objectives:
+  - goal:
+      - Make lemonade
+    condition: |
+      as base {
+        has "lemonade";
+      };
+solution: |
+  def go =
+
+    // The cache gets initially populated with an
+    // unlimited distance, so in a sequence of
+    // (1) a decreased limit followed by
+    // (2) an increased finite limit,
+    // the increase in (2) is still considered a decrease
+    // relative to the cache.
+
+    // Invocation #1: Expect RECOMPUTATION
+    path (inL ()) (inR "flower");
+
+    // Invocation #2: Expect SUCCESS
+    path (inL ()) (inR "flower");
+
+    // Invocation #3: Expect SUCCESS
+    path (inR 5) (inR "flower");
+
+    // Invocation #4: Expect SUCCESS
+    // Even though this is an increase relative to the previous invocation,
+    // it is a decrease relative to the cached limit.
+    path (inR 6) (inR "flower");
+
+    move;
+
+    // Invocation #5: Expect RECOMPUTATION
+    // We have invoked 'path' from a new location, so evict the cache.
+    path (inR 6) (inR "flower");
+
+    // Invocation #6: Expect SUCCESS
+    path (inR 4) (inR "flower");
+
+    // Invocation #7: Expect RECOMPUTATION
+    path (inR 7) (inR "flower");
+
+    // Invocation #8: Expect SUCCESS
+    path (inR 5) (inR "flower");
+
+    // Invocation #9: Expect FAILURE
+    // This failure is not cached.
+    path (inR 2) (inR "flower");
+
+    // Invocation #10: Expect SUCCESS
+    // The cache is still valid from the previous success.
+    path (inR 4) (inR "flower");
+  
+    make "lemonade";
+    end;
+
+  go;
+entities:
+  - name: wayfinder
+    display:
+      char: 'w'
+    description:
+      - Enables `path` command
+    properties: [known, portable]
+    capabilities: [path]
+  - name: monolith
+    display:
+      char: '@'
+      attr: rock
+    description:
+    - Pushable rock
+    properties: [known, unwalkable, portable]
+  - name: lemon
+    display:
+      char: 'o'
+      attr: gold
+    description:
+    - Sour fruit
+    properties: [known, portable]
+  - name: lemonade
+    display:
+      char: 'c'
+      attr: gold
+    description:
+    - Sweet drink
+    properties: [known, portable]
+recipes:
+  - in:
+      - [1, lemon]
+    out:
+      - [1, lemonade]
+robots:
+  - name: base
+    dir: [0, 1]
+    devices:
+      - ADT calculator
+      - antenna
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - linotype
+      - logger
+      - grabber
+      - toolkit
+      - treads
+      - wayfinder
+      - workbench
+    inventory:
+      - [1, lemon]
+known: [flower]
+world:
+  palette:
+    'B': [grass, erase, base]
+    '.': [grass]
+    'f': [grass, flower]
+    '@': [grass, monolith]
+  upperleft: [0, 0]
+  map: |
+    ....
+    B..f
+    ....

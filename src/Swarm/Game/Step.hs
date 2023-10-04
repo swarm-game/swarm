@@ -81,8 +81,10 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.State
 import Swarm.Game.Step.Combustion qualified as Combustion
+import Swarm.Game.Step.Path.Finding
+import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Path.Walkability
-import Swarm.Game.Step.Pathfinding
+import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Inspect
 import Swarm.Game.Universe
@@ -1075,7 +1077,7 @@ execConst c vs s k = do
                     Location (fromIntegral x) (fromIntegral y)
               _ -> badConst
         robotLoc <- use robotLocation
-        result <- pathCommand maybeLimit robotLoc goal
+        result <- pathCommand $ PathfindingParameters maybeLimit robotLoc goal
         return $ mkReturn result
       _ -> badConst
     Push -> do

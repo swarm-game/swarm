@@ -45,6 +45,7 @@ import Swarm.Game.State (
   messageInfo,
   messageQueue,
   notificationsContent,
+  pathCaching,
   robotMap,
   temporal,
   ticks,
@@ -53,6 +54,7 @@ import Swarm.Game.State (
   winSolution,
  )
 import Swarm.Game.Step (gameTick)
+import Swarm.Game.Step.Path.Type
 import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
@@ -71,6 +73,7 @@ import Swarm.TUI.Model (
 import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
 import Swarm.TUI.Model.UI (UIState)
 import Swarm.Util (acquireAllWithExt)
+import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath.Posix (splitDirectories)
 import System.Timeout (timeout)
@@ -356,7 +359,43 @@ testScenarioSolutions rs ui =
             , testSolution Default "Testing/836-pathfinding/836-path-exists-distance-limit-unreachable"
             , testSolution Default "Testing/836-pathfinding/836-no-path-exists1"
             , testSolution (Sec 10) "Testing/836-pathfinding/836-no-path-exists2"
-            , testSolution (Sec 3) "Testing/836-pathfinding/836-automatic-waypoint-navigation.yaml"
+            , testSolution (Sec 3) "Testing/836-pathfinding/836-automatic-waypoint-navigation"
+            ]
+        , testGroup
+            "Pathfinding cache (#1569)"
+            [ testSolution Default "Testing/1569-pathfinding-cache/1569-harvest-batch"
+            , testTutorialSolution' Default "Testing/1569-pathfinding-cache/1569-cache-invalidation-modes" CheckForBadErrors $ \g -> do
+                let cachingLog = g ^. pathCaching . pathCachingLog
+                    actualEntries = map (\(CacheLogEntry _ x) -> x) $ toList $ RB.getValues cachingLog
+                    expectedEntries =
+                      [ RetrievalAttempt (RecomputationRequired NotCached)
+                      , Invalidate UnwalkableOntoPath
+                      , RetrievalAttempt (RecomputationRequired NotCached)
+                      , RetrievalAttempt Success
+                      , Invalidate UnwalkableRemoved
+                      , RetrievalAttempt (RecomputationRequired NotCached)
+                      , Invalidate TargetEntityAddedOutsidePath
+                      , RetrievalAttempt (RecomputationRequired NotCached)
+                      , Preserve PathTruncated
+                      , RetrievalAttempt Success
+                      ]
+                assertEqual "Incorrect sequence of invalidations!" expectedEntries actualEntries
+            , testTutorialSolution' Default "Testing/1569-pathfinding-cache/1569-cache-invalidation-distance-limit" CheckForBadErrors $ \g -> do
+                let cachingLog = g ^. pathCaching . pathCachingLog
+                    actualEntries = map (\(CacheLogEntry _ x) -> x) $ toList $ RB.getValues cachingLog
+                    expectedEntries =
+                      [ RetrievalAttempt (RecomputationRequired NotCached)
+                      , RetrievalAttempt Success
+                      , RetrievalAttempt Success
+                      , RetrievalAttempt Success
+                      , RetrievalAttempt (RecomputationRequired PositionOutsidePath)
+                      , RetrievalAttempt Success
+                      , RetrievalAttempt (RecomputationRequired (DifferentArg (NewDistanceLimit LimitIncreased)))
+                      , RetrievalAttempt Success
+                      , RetrievalAttempt (RecomputationRequired (DifferentArg (NewDistanceLimit PathExceededLimit)))
+                      , RetrievalAttempt Success
+                      ]
+                assertEqual "Incorrect sequence of invalidations!" expectedEntries actualEntries
             ]
         , testGroup
             "Ping (#1535)"

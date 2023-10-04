@@ -1,0 +1,84 @@
+version: 1
+name: Horton's Field
+author: Karl Ostmo
+seed: 1
+description: |
+  Horton picks all of the flowers
+creative: false
+objectives:
+  - goal:
+      - |
+        Pluck every flower.
+    condition: |
+      as base {
+        flowerCount <- count "flower";
+        return $ flowerCount >= 399;
+      }
+robots:
+  - name: Horton
+    dir: [0, 1]
+    devices:
+      - ADT calculator
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - grabber
+      - hourglass
+      - clock
+      - lambda
+      - logger
+      - net
+      - scanner
+      - strange loop
+      - treads
+      - wayfinder
+solution: |
+  def goDir = \f. \d.
+    if (d == down) {grab; f;} {turn d; move; f;}
+    end;
+
+  def followRoute =
+      nextDir <- path (inL ()) (inR "flower");
+      case nextDir return $ goDir followRoute;
+      end;
+
+  followRoute;
+entities:
+  - name: wayfinder
+    display:
+      char: 'w'
+    description:
+      - Enables `path` command
+    properties: [known, portable]
+    capabilities: [path]
+known: [water, boulder, flower]
+world:
+  dsl: |
+    let
+      cl  = perlin seed 4 0.08 0.5,
+      patch = cl > 0.0,
+      prize = cl < -0.8
+    in
+      overlay
+      [ {dirt}
+      , mask (patch) {boulder}
+      , mask (prize) {flower}
+      , mask (y < -80 || y > 80 || x < -60 || x > 60) (overlay [{water}])
+      ]
+  upperleft: [-4, 4]
+  offset: false
+  palette:
+    'B': [grass, erase, Horton]
+    '.': [grass, erase]
+    'x': [blank]
+  map: |
+    xxx...xxx
+    x.......x
+    x.......x
+    .........
+    ....B....
+    .........
+    x.......x
+    x.......x
+    xxx...xxx

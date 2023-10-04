@@ -1,0 +1,56 @@
+version: 1
+name: Pathfinding cache - harvest entity batches
+description: |
+  Use `path` command to navigate to an entity
+creative: false
+objectives:
+  - goal:
+      - Get 4 flowers.
+    condition: |
+      as base {
+        fCount <- count "flower";
+        return $ fCount >= 4;
+      };
+solution: |
+  def goDir = \f. \d.
+    if (d == down) {grab; f;} {turn d; move; f;}
+    end;
+
+  def followRoute =
+      nextDir <- path (inL ()) (inR "flower");
+      case nextDir return $ goDir followRoute;
+      end;
+
+  followRoute;
+entities:
+  - name: wayfinder
+    display:
+      char: 'w'
+    description:
+      - Enables `path` command
+    properties: [known, portable]
+    capabilities: [path]
+robots:
+  - name: base
+    dir: [1,0]
+    devices:
+      - ADT calculator
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - logger
+      - grabber
+      - treads
+      - wayfinder
+known: [flower]
+world:
+  palette:
+    'B': [grass, erase, base]
+    '.': [grass]
+    'f': [grass, flower]
+  upperleft: [0, 0]
+  map: |
+    B...
+    ..ff
+    ..ff
