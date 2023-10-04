@@ -5,6 +5,8 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Utilities for implementing robot commands.
 module Swarm.Game.Step.Util where
 
 import Control.Applicative (Applicative (..))
@@ -16,6 +18,7 @@ import Control.Monad (forM_, guard, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.Array (bounds, (!))
+import Data.IntMap qualified as IM
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -27,7 +30,10 @@ import Swarm.Game.ResourceLoading (NameGenerator (..))
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking qualified as SRT
 import Swarm.Game.State
+import Swarm.Game.Step.Path.Cache
+import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Path.Walkability
+import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Modify qualified as WM
@@ -39,12 +45,6 @@ import System.Clock (TimeSpec)
 import System.Clock qualified
 import System.Random (UniformRange, uniformR)
 import Prelude hiding (Applicative (..), lookup)
-
--- | All functions that are used for robot step can access 'GameState' and the current 'Robot'.
---
--- They can also throw exception of our custom type, which is handled elsewhere.
--- Because of that the constraint is only 'Throw', but not 'Catch'/'Error'.
-type HasRobotStepState sig m = (Has (State GameState) sig m, Has (State Robot) sig m, Has (Throw Exn) sig m)
 
 deriveHeading :: HasRobotStepState sig m => Direction -> m Heading
 deriveHeading d = do
@@ -73,6 +73,9 @@ updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
   forM_ (WM.getModification =<< someChange) $ \modType -> do
     wakeWatchingRobots cLoc
     SRT.entityModified modType cLoc
+
+    pcr <- use $ pathCaching . pathCachingRobots
+    mapM_ (revalidatePathCache cLoc modType) $ IM.toList pcr
 
 -- * Capabilities
 

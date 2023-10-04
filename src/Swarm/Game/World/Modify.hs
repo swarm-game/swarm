@@ -21,6 +21,7 @@ getModification (Modified x) = Just x
 
 data CellModification e
   = -- | Fields represent what existed in the cell "before" and "after", in that order.
+    -- The values are guaranteed to be different.
     Swap e e
   | Remove e
   | Add e
