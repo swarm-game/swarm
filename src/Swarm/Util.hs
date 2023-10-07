@@ -245,7 +245,7 @@ hoistMaybe = MaybeT . pure
 -- Taken from Cabal-syntax Distribution.Utils.Generic.
 --
 -- Example:
---
+-- >>> import Data.List.NonEmpty (NonEmpty ((:|)))
 -- >>> unsnocNE (1 :| [2, 3])
 -- ([1,2],3)
 --
