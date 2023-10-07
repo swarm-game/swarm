@@ -238,28 +238,15 @@ instance PrettyPrec Term where
             _ -> prettyPrecApp p t1 t2
     _ -> prettyPrecApp p t1 t2
   prettyPrec _ (TLet _ x mty t1 t2) =
-    group . vsep $
-      [ hsep $
-          ["let", pretty x]
-            ++ maybe [] (\ty -> [":", ppr ty]) mty
-            ++ ["=", ppr t1, "in"]
+    sep
+      [ prettyDefinition "let" x mty t1 <+> "in"
       , ppr t2
       ]
   prettyPrec _ (TDef _ x mty t1) =
-    let (defBody, defLambdaList) = unchainLambdas t1
-        defHead = "def" <+> pretty x
-        defType = maybe "" (\ty -> ":" <+> flatAlt (line <> indent 2 (ppr ty)) (ppr ty)) mty
-        defType' = maybe "" (\ty -> ":" <+> ppr ty) mty
-        defLambdas = hsep (map prettyLambda defLambdaList)
-     in sep
-          [ nest 2 . sep $
-              [ flatAlt
-                (defHead <> group defType <> line <> "=" <+> defLambdas)
-                (defHead <> group defType' <+> "=" <+> defLambdas)
-              , ppr defBody
-              ]
-          , "end"
-          ]
+    sep
+      [ prettyDefinition "def" x mty t1
+      , "end"
+      ]
   prettyPrec p (TBind Nothing t1 t2) =
     pparens (p > 0) $
       prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
@@ -281,6 +268,22 @@ prettyTuple = tupled . map ppr . unnestTuple
  where
   unnestTuple (TPair t1 t2) = t1 : unnestTuple t2
   unnestTuple t = [t]
+
+prettyDefinition :: Doc ann -> Var -> Maybe Polytype -> Term -> Doc ann
+prettyDefinition defName x mty t1 =
+  nest 2 . sep $
+              [ flatAlt
+                (defHead <> group defType <+> eqAndLambdaLine)
+                (defHead <> group defType' <+> "=" <+> defLambdas)
+              , ppr defBody
+              ]
+  where
+    (defBody, defLambdaList) = unchainLambdas t1
+    defHead = defName <+> pretty x
+    defType = maybe "" (\ty -> ":" <+> flatAlt (line <> indent 2 (ppr ty)) (ppr ty)) mty
+    defType' = maybe "" (\ty -> ":" <+> ppr ty) mty
+    defLambdas = hsep (map prettyLambda defLambdaList)
+    eqAndLambdaLine = if null defLambdaList then "=" else line <> "=" <+> defLambdas
 
 prettyPrecApp :: Int -> Term -> Term -> Doc a
 prettyPrecApp p t1 t2 =
