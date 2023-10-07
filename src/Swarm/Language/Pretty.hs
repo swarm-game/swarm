@@ -9,6 +9,7 @@
 -- Pretty-printing for the Swarm language.
 module Swarm.Language.Pretty where
 
+import Control.Lens (unsnoc)
 import Control.Lens.Combinators (pattern Empty)
 import Control.Unification
 import Control.Unification.IntVar
@@ -16,6 +17,7 @@ import Data.Bool (bool)
 import Data.Functor.Fixedpoint (Fix, unFix)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
+import Data.Maybe (fromJust)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.String (fromString)
@@ -126,6 +128,19 @@ data Wildcard = Wildcard
 instance PrettyPrec Wildcard where
   prettyPrec _ _ = "_"
 
+-- | Split a function type chain, so that we can pretty print
+--   the type parameters aligned on each line when they don't fit.
+class UnchainableFun t where
+  unchainFun :: t -> [t]
+
+instance UnchainableFun Type where
+  unchainFun (a :->: ty) = a : unchainFun ty
+  unchainFun ty = [ty]
+
+instance UnchainableFun (UTerm TypeF ty) where
+  unchainFun (UTerm (TyFunF ty1 ty2)) = ty1 : unchainFun ty2
+  unchainFun ty = [ty]
+
 instance (PrettyPrec (t (Fix t))) => PrettyPrec (Fix t) where
   prettyPrec p = prettyPrec p . unFix
 
@@ -133,7 +148,7 @@ instance (PrettyPrec (t (UTerm t v)), PrettyPrec v) => PrettyPrec (UTerm t v) wh
   prettyPrec p (UTerm t) = prettyPrec p t
   prettyPrec p (UVar v) = prettyPrec p v
 
-instance (PrettyPrec t) => PrettyPrec (TypeF t) where
+instance ((UnchainableFun t), (PrettyPrec t)) => PrettyPrec (TypeF t) where
   prettyPrec _ (TyBaseF b) = ppr b
   prettyPrec _ (TyVarF v) = pretty v
   prettyPrec p (TySumF ty1 ty2) =
@@ -145,8 +160,12 @@ instance (PrettyPrec t) => PrettyPrec (TypeF t) where
   prettyPrec p (TyCmdF ty) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty
   prettyPrec _ (TyDelayF ty) = braces $ ppr ty
   prettyPrec p (TyFunF ty1 ty2) =
-    pparens (p > 0) $
-      prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
+    let (iniF, lastF) = fromJust . unsnoc $ ty1 : unchainFun ty2
+        funs = (prettyPrec 1 <$> iniF) <> [ppr lastF]
+        inLine l r = l <+> "->" <+> r
+        multiLine l r = l <+> "->" <> hardline <> r
+     in pparens (p > 0) . align $
+          flatAlt (concatWith multiLine funs) (concatWith inLine funs)
   prettyPrec _ (TyRcdF m) = brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
 
 instance PrettyPrec Polytype where
@@ -227,17 +246,18 @@ instance PrettyPrec Term where
       , ppr t2
       ]
   prettyPrec _ (TDef _ x mty t1) =
-    let (t1rest, t1lams) = unchainLambdas t1
-     in group . vsep $
-          [ nest 2 $
-              vsep
-                [ hsep $
-                    ["def", pretty x]
-                      ++ maybe [] (\ty -> [":", ppr ty]) mty
-                      ++ ["="]
-                      ++ map prettyLambda t1lams
-                , ppr t1rest
-                ]
+    let (defBody, defLambdaList) = unchainLambdas t1
+        defHead = "def" <+> pretty x
+        defType = maybe "" (\ty -> ":" <+> flatAlt (line <> indent 2 (ppr ty)) (ppr ty)) mty
+        defType' = maybe "" (\ty -> ":" <+> ppr ty) mty
+        defLambdas = hsep (map prettyLambda defLambdaList)
+     in sep
+          [ nest 2 . sep $
+              [ flatAlt
+                (defHead <> group defType <> line <> "=" <+> defLambdas)
+                (defHead <> group defType' <+> "=" <+> defLambdas)
+              , ppr defBody
+              ]
           , "end"
           ]
   prettyPrec p (TBind Nothing t1 t2) =
