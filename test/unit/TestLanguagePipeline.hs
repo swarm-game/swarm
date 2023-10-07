@@ -11,15 +11,16 @@ import Control.Arrow ((&&&))
 import Control.Lens (toListOf)
 import Control.Lens.Plated (universe)
 import Data.Aeson (eitherDecode, encode)
-import Data.Either
 import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Swarm.Language.Module (Module (..))
+import Swarm.Language.Parse (readTerm)
 import Swarm.Language.Parse.QQ (tyQ)
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (isSimpleUType)
 import Swarm.Language.Types
@@ -161,8 +162,8 @@ testLanguagePipeline =
         ]
     , testGroup
         "json encoding"
-        [ testCase "simple expr" (roundTrip "42 + 43")
-        , testCase "module def" (roundTrip "def x = 41 end; def y = 42 end")
+        [ testCase "simple expr" (roundTripTerm "42 + 43")
+        , testCase "module def" (roundTripTerm "def x = 41 end;\ndef y = 42 end")
         ]
     , testGroup
         "atomic - #479"
@@ -397,13 +398,6 @@ testLanguagePipeline =
  where
   valid = flip process ""
 
-  roundTrip txt = assertEqual "roundtrip" term (decodeThrow $ encode term)
-   where
-    decodeThrow v = case eitherDecode v of
-      Left e -> error $ "Decoding of " <> from (T.decodeUtf8 (from v)) <> " failed with: " <> from e
-      Right x -> x
-    term = fromMaybe (error "") $ fromRight (error "") $ processTerm txt
-
   process :: Text -> Text -> Assertion
   process code expect = case processTerm code of
     Left e
@@ -417,3 +411,14 @@ testLanguagePipeline =
 
   getSyntax :: ProcessedTerm -> Syntax' Polytype
   getSyntax (ProcessedTerm (Module s _) _ _) = s
+
+-- | Check round tripping of term from and to text, then test ToJSON/FromJSON.
+roundTripTerm :: Text -> Assertion
+roundTripTerm txt = do
+  assertEqual "roundtrip (readTerm -> prettyText)" txt (prettyText term)
+  assertEqual "roundtrip (ToJSON -> FromJSON)" term (decodeThrow $ encode term)
+ where
+  decodeThrow v = case eitherDecode v of
+    Left e -> error $ "Decoding of " <> from (T.decodeUtf8 (from v)) <> " failed with: " <> from e
+    Right x -> x
+  term = fromMaybe (error "empty document") $ either (error . T.unpack) id $ readTerm txt

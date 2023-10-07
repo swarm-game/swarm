@@ -30,7 +30,7 @@ import Swarm.Language.Parse (getLocRange)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
-import Swarm.Util (showEnum, showLowT)
+import Swarm.Util (showEnum, showLowT, unsnocNE)
 import Witch
 
 ------------------------------------------------------------
@@ -126,6 +126,19 @@ data Wildcard = Wildcard
 instance PrettyPrec Wildcard where
   prettyPrec _ _ = "_"
 
+-- | Split a function type chain, so that we can pretty print
+--   the type parameters aligned on each line when they don't fit.
+class UnchainableFun t where
+  unchainFun :: t -> [t]
+
+instance UnchainableFun Type where
+  unchainFun (a :->: ty) = a : unchainFun ty
+  unchainFun ty = [ty]
+
+instance UnchainableFun (UTerm TypeF ty) where
+  unchainFun (UTerm (TyFunF ty1 ty2)) = ty1 : unchainFun ty2
+  unchainFun ty = [ty]
+
 instance (PrettyPrec (t (Fix t))) => PrettyPrec (Fix t) where
   prettyPrec p = prettyPrec p . unFix
 
@@ -133,7 +146,7 @@ instance (PrettyPrec (t (UTerm t v)), PrettyPrec v) => PrettyPrec (UTerm t v) wh
   prettyPrec p (UTerm t) = prettyPrec p t
   prettyPrec p (UVar v) = prettyPrec p v
 
-instance (PrettyPrec t) => PrettyPrec (TypeF t) where
+instance ((UnchainableFun t), (PrettyPrec t)) => PrettyPrec (TypeF t) where
   prettyPrec _ (TyBaseF b) = ppr b
   prettyPrec _ (TyVarF v) = pretty v
   prettyPrec p (TySumF ty1 ty2) =
@@ -145,8 +158,12 @@ instance (PrettyPrec t) => PrettyPrec (TypeF t) where
   prettyPrec p (TyCmdF ty) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty
   prettyPrec _ (TyDelayF ty) = braces $ ppr ty
   prettyPrec p (TyFunF ty1 ty2) =
-    pparens (p > 0) $
-      prettyPrec 1 ty1 <+> "->" <+> prettyPrec 0 ty2
+    let (iniF, lastF) = unsnocNE $ ty1 NE.:| unchainFun ty2
+        funs = (prettyPrec 1 <$> iniF) <> [ppr lastF]
+        inLine l r = l <+> "->" <+> r
+        multiLine l r = l <+> "->" <> hardline <> r
+     in pparens (p > 0) . align $
+          flatAlt (concatWith multiLine funs) (concatWith inLine funs)
   prettyPrec _ (TyRcdF m) = brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
 
 instance PrettyPrec Polytype where
@@ -219,27 +236,15 @@ instance PrettyPrec Term where
             _ -> prettyPrecApp p t1 t2
     _ -> prettyPrecApp p t1 t2
   prettyPrec _ (TLet _ x mty t1 t2) =
-    group . vsep $
-      [ hsep $
-          ["let", pretty x]
-            ++ maybe [] (\ty -> [":", ppr ty]) mty
-            ++ ["=", ppr t1, "in"]
+    sep
+      [ prettyDefinition "let" x mty t1 <+> "in"
       , ppr t2
       ]
   prettyPrec _ (TDef _ x mty t1) =
-    let (t1rest, t1lams) = unchainLambdas t1
-     in group . vsep $
-          [ nest 2 $
-              vsep
-                [ hsep $
-                    ["def", pretty x]
-                      ++ maybe [] (\ty -> [":", ppr ty]) mty
-                      ++ ["="]
-                      ++ map prettyLambda t1lams
-                , ppr t1rest
-                ]
-          , "end"
-          ]
+    sep
+      [ prettyDefinition "def" x mty t1
+      , "end"
+      ]
   prettyPrec p (TBind Nothing t1 t2) =
     pparens (p > 0) $
       prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
@@ -261,6 +266,22 @@ prettyTuple = tupled . map ppr . unnestTuple
  where
   unnestTuple (TPair t1 t2) = t1 : unnestTuple t2
   unnestTuple t = [t]
+
+prettyDefinition :: Doc ann -> Var -> Maybe Polytype -> Term -> Doc ann
+prettyDefinition defName x mty t1 =
+  nest 2 . sep $
+    [ flatAlt
+        (defHead <> group defType <+> eqAndLambdaLine)
+        (defHead <> group defType' <+> defEqLambdas)
+    , ppr defBody
+    ]
+ where
+  (defBody, defLambdaList) = unchainLambdas t1
+  defHead = defName <+> pretty x
+  defType = maybe "" (\ty -> ":" <+> flatAlt (line <> indent 2 (ppr ty)) (ppr ty)) mty
+  defType' = maybe "" (\ty -> ":" <+> ppr ty) mty
+  defEqLambdas = hsep ("=" : map prettyLambda defLambdaList)
+  eqAndLambdaLine = if null defLambdaList then "=" else line <> defEqLambdas
 
 prettyPrecApp :: Int -> Term -> Term -> Doc a
 prettyPrecApp p t1 t2 =
@@ -413,7 +434,7 @@ fieldMismatchMsg expFs actFs =
 instance PrettyPrec InvalidAtomicReason where
   prettyPrec _ (TooManyTicks n) = "block could take too many ticks (" <> pretty n <> ")"
   prettyPrec _ AtomicDupingThing = "def, let, and lambda are not allowed"
-  prettyPrec _ (NonSimpleVarType _ ty) = "reference to variable with non-simple type" <+> ppr ty
+  prettyPrec _ (NonSimpleVarType _ ty) = "reference to variable with non-simple type" <+> ppr (prettyTextLine ty)
   prettyPrec _ NestedAtomic = "nested atomic block"
   prettyPrec _ LongConst = "commands that can take multiple ticks to execute are not allowed"
 
