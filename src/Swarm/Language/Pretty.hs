@@ -282,7 +282,7 @@ prettyDefinition defName x mty t1 =
   defHead = defName <+> pretty x
   defType = maybe "" (\ty -> ":" <+> flatAlt (line <> indent 2 (ppr ty)) (ppr ty)) mty
   defType' = maybe "" (\ty -> ":" <+> ppr ty) mty
-  defEqLambdas = hsep ("=": map prettyLambda defLambdaList)
+  defEqLambdas = hsep ("=" : map prettyLambda defLambdaList)
   eqAndLambdaLine = if null defLambdaList then "=" else line <> defEqLambdas
 
 prettyPrecApp :: Int -> Term -> Term -> Doc a
