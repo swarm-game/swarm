@@ -27,6 +27,7 @@ module Swarm.Util (
   surfaceEmpty,
   applyWhen,
   hoistMaybe,
+  unsnocNE,
 
   -- * Directory utilities
   readFileMay,
@@ -238,6 +239,23 @@ applyWhen False _ x = x
 -- TODO (#1151): Use implementation from "transformers" package v0.6.0.0
 hoistMaybe :: (Applicative m) => Maybe b -> MaybeT m b
 hoistMaybe = MaybeT . pure
+
+-- | Like 'unsnoc', but for 'NonEmpty' so without the 'Maybe'
+--
+-- Taken from Cabal-syntax Distribution.Utils.Generic.
+--
+-- Example:
+--
+-- >>> unsnocNE (1 :| [2, 3])
+-- ([1,2],3)
+--
+-- >>> unsnocNE (1 :| [])
+-- ([],1)
+unsnocNE :: NonEmpty a -> ([a], a)
+unsnocNE (x :| xs) = go x xs
+ where
+  go y [] = ([], y)
+  go y (z : zs) = let ~(ws, w) = go z zs in (y : ws, w)
 
 ------------------------------------------------------------
 -- Directory stuff

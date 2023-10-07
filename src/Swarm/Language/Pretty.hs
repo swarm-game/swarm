@@ -9,7 +9,6 @@
 -- Pretty-printing for the Swarm language.
 module Swarm.Language.Pretty where
 
-import Control.Lens (unsnoc)
 import Control.Lens.Combinators (pattern Empty)
 import Control.Unification
 import Control.Unification.IntVar
@@ -17,7 +16,6 @@ import Data.Bool (bool)
 import Data.Functor.Fixedpoint (Fix, unFix)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
-import Data.Maybe (fromJust)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.String (fromString)
@@ -32,7 +30,7 @@ import Swarm.Language.Parse (getLocRange)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
-import Swarm.Util (showEnum, showLowT)
+import Swarm.Util (showEnum, showLowT, unsnocNE)
 import Witch
 
 ------------------------------------------------------------
@@ -160,7 +158,7 @@ instance ((UnchainableFun t), (PrettyPrec t)) => PrettyPrec (TypeF t) where
   prettyPrec p (TyCmdF ty) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty
   prettyPrec _ (TyDelayF ty) = braces $ ppr ty
   prettyPrec p (TyFunF ty1 ty2) =
-    let (iniF, lastF) = fromJust . unsnoc $ ty1 : unchainFun ty2
+    let (iniF, lastF) = unsnocNE $ ty1 NE.:| unchainFun ty2
         funs = (prettyPrec 1 <$> iniF) <> [ppr lastF]
         inLine l r = l <+> "->" <+> r
         multiLine l r = l <+> "->" <> hardline <> r
