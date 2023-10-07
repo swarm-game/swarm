@@ -274,7 +274,7 @@ prettyDefinition defName x mty t1 =
   nest 2 . sep $
     [ flatAlt
         (defHead <> group defType <+> eqAndLambdaLine)
-        (defHead <> group defType' <+> "=" <+> defLambdas)
+        (defHead <> group defType' <+> defEqLambdas)
     , ppr defBody
     ]
  where
@@ -282,8 +282,8 @@ prettyDefinition defName x mty t1 =
   defHead = defName <+> pretty x
   defType = maybe "" (\ty -> ":" <+> flatAlt (line <> indent 2 (ppr ty)) (ppr ty)) mty
   defType' = maybe "" (\ty -> ":" <+> ppr ty) mty
-  defLambdas = hsep (map prettyLambda defLambdaList)
-  eqAndLambdaLine = if null defLambdaList then "=" else line <> "=" <+> defLambdas
+  defEqLambdas = hsep ("=": map prettyLambda defLambdaList)
+  eqAndLambdaLine = if null defLambdaList then "=" else line <> defEqLambdas
 
 prettyPrecApp :: Int -> Term -> Term -> Doc a
 prettyPrecApp p t1 t2 =
@@ -436,7 +436,7 @@ fieldMismatchMsg expFs actFs =
 instance PrettyPrec InvalidAtomicReason where
   prettyPrec _ (TooManyTicks n) = "block could take too many ticks (" <> pretty n <> ")"
   prettyPrec _ AtomicDupingThing = "def, let, and lambda are not allowed"
-  prettyPrec _ (NonSimpleVarType _ ty) = "reference to variable with non-simple type" <+> ppr ty
+  prettyPrec _ (NonSimpleVarType _ ty) = "reference to variable with non-simple type" <+> ppr (prettyTextLine ty)
   prettyPrec _ NestedAtomic = "nested atomic block"
   prettyPrec _ LongConst = "commands that can take multiple ticks to execute are not allowed"
 
