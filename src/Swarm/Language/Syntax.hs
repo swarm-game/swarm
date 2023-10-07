@@ -1,9 +1,11 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -43,12 +45,10 @@ module Swarm.Language.Syntax (
   maxPathRange,
 
   -- * Syntax
-  Syntax' (..),
+  Syntax (..),
   sLoc,
   sTerm,
   sType,
-  Syntax,
-  pattern Syntax,
   LocVar (..),
   SrcLoc (..),
   noLoc,
@@ -91,8 +91,9 @@ module Swarm.Language.Syntax (
 import Control.Lens (Plated (..), Traversal', makeLenses, para, universe, (%~), (^.))
 import Control.Monad (void)
 import Data.Aeson.Types hiding (Key)
-import Data.Data (Data)
+import Data.Data (Data, Typeable)
 import Data.Data.Lens (uniplate)
+import Data.Functor.Fixedpoint (Fix)
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
@@ -104,6 +105,7 @@ import Data.Text qualified as T
 import Data.Tree
 import GHC.Generics (Generic)
 import Swarm.Language.Direction
+import Swarm.Language.Phase
 import Swarm.Language.Types
 import Swarm.Util qualified as Util
 import Witch.From (from)
@@ -851,11 +853,11 @@ data DelayType
 data LocVar = LV {lvSrcLoc :: SrcLoc, lvVar :: Var}
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
-locVarToSyntax' :: LocVar -> ty -> Syntax' ty
-locVarToSyntax' (LV s v) = Syntax' s (TVar v)
+locVarToSyntax :: LocVar -> Annot phase -> Syntax phase
+locVarToSyntax (LV s v) = Syntax s (TVar v)
 
 -- | Terms of the Swarm language.
-data Term' ty
+data Term (phase :: Phase)
   = -- | The unit value.
     TUnit
   | -- | A constant.
@@ -888,26 +890,26 @@ data Term' ty
     --   in displaying the log message (since once we get to execution time the
     --   original term may have been elaborated, e.g. `force` may have been added
     --   around some variables, etc.)
-    SRequirements Text (Syntax' ty)
+    SRequirements Text (Syntax phase)
   | -- | A variable.
     TVar Var
   | -- | A pair.
-    SPair (Syntax' ty) (Syntax' ty)
+    SPair (Syntax phase) (Syntax phase)
   | -- | A lambda expression, with or without a type annotation on the
     --   binder.
-    SLam LocVar (Maybe Type) (Syntax' ty)
+    SLam LocVar (Maybe Type) (Syntax phase)
   | -- | Function application.
-    SApp (Syntax' ty) (Syntax' ty)
+    SApp (Syntax phase) (Syntax phase)
   | -- | A (recursive) let expression, with or without a type
     --   annotation on the variable. The @Bool@ indicates whether
     --   it is known to be recursive.
-    SLet Bool LocVar (Maybe Polytype) (Syntax' ty) (Syntax' ty)
+    SLet Bool LocVar (Maybe Polytype) (Syntax phase) (Syntax phase)
   | -- | A (recursive) definition command, which binds a variable to a
     --   value in subsequent commands. The @Bool@ indicates whether the
     --   definition is known to be recursive.
-    SDef Bool LocVar (Maybe Polytype) (Syntax' ty)
+    SDef Bool LocVar (Maybe Polytype) (Syntax phase)
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
-    SBind (Maybe LocVar) (Syntax' ty) (Syntax' ty)
+    SBind (Maybe LocVar) (Syntax phase) (Syntax phase)
   | -- | Delay evaluation of a term, written @{...}@.  Swarm is an
     --   eager language, but in some cases (e.g. for @if@ statements
     --   and recursive bindings) we need to delay evaluation.  The
@@ -915,53 +917,52 @@ data Term' ty
     --   Note that 'Force' is just a constant, whereas 'SDelay' has to
     --   be a special syntactic form so its argument can get special
     --   treatment during evaluation.
-    SDelay DelayType (Syntax' ty)
+    SDelay DelayType (Syntax phase)
   | -- | Record literals @[x1 = e1, x2 = e2, x3, ...]@ Names @x@
     --   without an accompanying definition are sugar for writing
     --   @x=x@.
-    SRcd (Map Var (Maybe (Syntax' ty)))
+    SRcd (Map Var (Maybe (Syntax phase)))
   | -- | Record projection @e.x@
-    SProj (Syntax' ty) Var
+    SProj (Syntax phase) Var
   | -- | Annotate a term with a type
-    SAnnotate (Syntax' ty) Polytype
-  deriving
-    ( Eq
-    , Show
-    , Functor
-    , Foldable
-    , Data
-    , Generic
-    , FromJSON
-    , ToJSON
-    , -- | The Traversable instance for Term (and for Syntax') is used during
-      -- typechecking: during intermediate type inference, many of the type
-      -- annotations placed on AST nodes will have unification variables in
-      -- them. Once we have finished solving everything we need to do a
-      -- final traversal over all the types in the AST to substitute away
-      -- all the unification variables (and generalize, i.e. stick 'forall'
-      -- on, as appropriate).  See the call to 'mapM' in
-      -- Swarm.Language.Typecheck.runInfer.
-      Traversable
-    )
+    SAnnotate (Syntax phase) Polytype
+  deriving (Generic)
 
-type Term = Term' ()
+deriving instance Eq (Annot phase) => Eq (Term phase)
+deriving instance (Data (Annot phase), Typeable phase) => Data (Term phase)
+deriving instance ToJSON (Annot phase) => ToJSON (Term phase)
+deriving instance FromJSON (Annot phase) => FromJSON (Term phase)
 
-instance Data ty => Plated (Term' ty) where
+type ParsedTerm = Term Parsed
+type ResolvedTerm = Term Resolved
+type InferredTerm = Term Inferred
+type CheckedTerm = Term Checked
+type ElaboratedTerm = Term Elaborated
+
+instance (Data (Annot phase), Typeable phase) => Plated (Term phase) where
   plate = uniplate
 
 ------------------------------------------------------------
--- Syntax: annotation on top of Terms with SrcLoc and type
+-- Syntax: annotation on top of Terms with SrcLoc and arbitrary annotation
 ------------------------------------------------------------
 
--- | The surface syntax for the language, with location and type annotations.
-data Syntax' ty = Syntax'
-  { _sLoc :: SrcLoc
-  , _sTerm :: Term' ty
-  , _sType :: ty
-  }
-  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
+type family Annot :: Phase -> *
 
-instance Data ty => Plated (Syntax' ty) where
+-- | The surface syntax for the language, with location and (e.g. type) annotations.
+data Syntax (phase :: Phase) = Syntax
+  { _sLoc :: SrcLoc
+  , _sTerm :: Term phase
+  , _sType :: Annot phase
+  }
+  deriving (Generic)
+
+deriving instance (Show (Annot phase), Show (Term phase)) => Show (Syntax phase)
+deriving instance Eq (Annot phase) => Eq (Syntax phase)
+deriving instance (Data (Annot phase), Typeable phase) => Data (Syntax phase)
+deriving instance FromJSON (Annot phase) => FromJSON (Syntax phase)
+deriving instance ToJSON (Annot phase) => ToJSON (Syntax phase)
+
+instance (Data (Annot phase), Typeable phase) => Plated (Syntax phase) where
   plate = uniplate
 
 data SrcLoc
@@ -982,81 +983,80 @@ instance Monoid SrcLoc where
 -- Pattern synonyms for untyped terms
 ------------------------------------------------------------
 
-type Syntax = Syntax' ()
+type ParsedSyntax = Syntax Parsed
+type ResolvedSyntax = Syntax Resolved
+type InferredSyntax = Syntax Inferred
+type CheckedSyntax = Syntax Checked
+type ElaboratedSyntax = Syntax Elaborated
 
-pattern Syntax :: SrcLoc -> Term -> Syntax
-pattern Syntax l t = Syntax' l t ()
+makeLenses ''Syntax
 
-{-# COMPLETE Syntax #-}
-
-makeLenses ''Syntax'
-
-noLoc :: Term -> Syntax
-noLoc = Syntax mempty
+noLoc :: (Annot phase ~ ()) => Term phase -> Syntax phase
+noLoc t = Syntax mempty t ()
 
 -- | Match an untyped term without its 'SrcLoc'.
-pattern STerm :: Term -> Syntax
+pattern STerm :: (Annot phase ~ ()) => Term phase -> Syntax phase
 pattern STerm t <-
-  Syntax _ t
+  Syntax _ t ()
   where
-    STerm t = Syntax mempty t
+    STerm t = Syntax mempty t ()
 
-pattern TRequirements :: Text -> Term -> Term
+pattern TRequirements :: Text -> Term phase -> Term phase
 pattern TRequirements x t = SRequirements x (STerm t)
 
 -- | Match a TPair without syntax
-pattern TPair :: Term -> Term -> Term
+pattern TPair :: Term phase -> Term phase -> Term phase
 pattern TPair t1 t2 = SPair (STerm t1) (STerm t2)
 
 -- | Match a TLam without syntax
-pattern TLam :: Var -> Maybe Type -> Term -> Term
+pattern TLam :: Var -> Maybe Type -> Term phase -> Term phase
 pattern TLam v ty t <- SLam (lvVar -> v) ty (STerm t)
   where
     TLam v ty t = SLam (LV NoLoc v) ty (STerm t)
 
 -- | Match a TApp without syntax
-pattern TApp :: Term -> Term -> Term
+pattern TApp :: Term phase -> Term phase -> Term phase
 pattern TApp t1 t2 = SApp (STerm t1) (STerm t2)
 
 infixl 0 :$:
 
 -- | Convenient infix pattern synonym for application.
-pattern (:$:) :: Term -> Syntax -> Term
+pattern (:$:) :: Term phase -> Syntax phase -> Term phase
 pattern (:$:) t1 s2 = SApp (STerm t1) s2
 
 -- | Match a TLet without syntax
-pattern TLet :: Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
+pattern TLet :: Bool -> Var -> Maybe Polytype -> Term phase -> Term phase -> Term phase
 pattern TLet r v pt t1 t2 <- SLet r (lvVar -> v) pt (STerm t1) (STerm t2)
   where
     TLet r v pt t1 t2 = SLet r (LV NoLoc v) pt (STerm t1) (STerm t2)
 
 -- | Match a TDef without syntax
-pattern TDef :: Bool -> Var -> Maybe Polytype -> Term -> Term
+pattern TDef :: Bool -> Var -> Maybe Polytype -> Term phase -> Term phase
 pattern TDef r v pt t <- SDef r (lvVar -> v) pt (STerm t)
   where
     TDef r v pt t = SDef r (LV NoLoc v) pt (STerm t)
 
 -- | Match a TBind without syntax
-pattern TBind :: Maybe Var -> Term -> Term -> Term
+pattern TBind :: Maybe Var -> Term phase -> Term phase -> Term phase
 pattern TBind mv t1 t2 <- SBind (fmap lvVar -> mv) (STerm t1) (STerm t2)
   where
     TBind mv t1 t2 = SBind (LV NoLoc <$> mv) (STerm t1) (STerm t2)
 
 -- | Match a TDelay without syntax
-pattern TDelay :: DelayType -> Term -> Term
+pattern TDelay :: DelayType -> Term phase -> Term phase
 pattern TDelay m t = SDelay m (STerm t)
 
 -- | Match a TRcd without syntax
-pattern TRcd :: Map Var (Maybe Term) -> Term
+pattern TRcd :: Map Var (Maybe (Term phase)) -> Term phase
 pattern TRcd m <- SRcd ((fmap . fmap) _sTerm -> m)
   where
     TRcd m = SRcd ((fmap . fmap) STerm m)
 
-pattern TProj :: Term -> Var -> Term
+pattern TProj :: Term phase -> Var -> Term phase
 pattern TProj t x = SProj (STerm t) x
 
 -- | Match a TAnnotate without syntax
-pattern TAnnotate :: Term -> Polytype -> Term
+pattern TAnnotate :: Term phase -> Polytype -> Term phase
 pattern TAnnotate t pt = SAnnotate (STerm t) pt
 
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
@@ -1064,18 +1064,18 @@ pattern TAnnotate t pt = SAnnotate (STerm t) pt
 
 -- | Make infix operation (e.g. @2 + 3@) a curried function
 --   application (@((+) 2) 3@).
-mkOp :: Const -> Syntax -> Syntax -> Syntax
-mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
+mkOp :: (() ~ Annot phase) => Const -> Syntax phase -> Syntax phase -> Syntax phase
+mkOp c s1@(Syntax l1 _ ()) s2@(Syntax l2 _ ()) = Syntax newLoc newTerm ()
  where
   -- The new syntax span both terms
   newLoc = l1 <> l2
   -- We don't assign a source location for the operator since it is
   -- usually provided as-is and it is not likely to be useful.
   sop = noLoc (TConst c)
-  newTerm = SApp (Syntax l1 $ SApp sop s1) s2
+  newTerm = SApp (Syntax l1 (SApp sop s1) ()) s2
 
 -- | Make infix operation, discarding any syntax related location
-mkOp' :: Const -> Term -> Term -> Term
+mkOp' :: Const -> Term phase -> Term phase -> Term phase
 mkOp' c t1 = TApp (TApp (TConst c) t1)
 
 -- $setup
@@ -1086,9 +1086,9 @@ mkOp' c t1 = TApp (TApp (TConst c) t1)
 -- >>> syntaxWrap f = fmap (^. sTerm) . f . Syntax NoLoc
 -- >>> syntaxWrap unfoldApps (mkOp' Mul (TInt 1) (TInt 2)) -- 1 * 2
 -- TConst Mul :| [TInt 1,TInt 2]
-unfoldApps :: Syntax' ty -> NonEmpty (Syntax' ty)
+unfoldApps :: Syntax phase -> NonEmpty (Syntax phase)
 unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
-  Syntax' _ (SApp s1 s2) _ -> (s2, Just s1)
+  Syntax _ (SApp s1 s2) _ -> (s2, Just s1)
   s -> (s, Nothing)
 
 --------------------------------------------------
@@ -1096,8 +1096,8 @@ unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
 
 -- | Erase a 'Syntax' tree annotated with type
 --   information to a bare unannotated 'Term'.
-eraseS :: Syntax' ty -> Term
-eraseS (Syntax' _ t _) = void t
+-- eraseS :: Syntax phase -> Term
+-- eraseS (Syntax _ t _) = void t
 
 ------------------------------------------------------------
 -- Free variable traversals
@@ -1110,11 +1110,11 @@ eraseS (Syntax' _ t _) = void t
 --   that if you want to get the list of all `Syntax` nodes
 --   representing free variables, you can do so via @'toListOf'
 --   'freeVarsS'@.
-freeVarsS :: forall ty. Traversal' (Syntax' ty) (Syntax' ty)
+freeVarsS :: Traversal' (Syntax phase) (Syntax phase)
 freeVarsS f = go S.empty
  where
   -- go :: Applicative f => Set Var -> Syntax' ty -> f (Syntax' ty)
-  go bound s@(Syntax' l t ty) = case t of
+  go bound s@(Syntax l t ty) = case t of
     TUnit -> pure s
     TConst {} -> pure s
     TDir {} -> pure s
@@ -1144,14 +1144,14 @@ freeVarsS f = go S.empty
     SProj s1 x -> rewrap $ SProj <$> go bound s1 <*> pure x
     SAnnotate s1 pty -> rewrap $ SAnnotate <$> go bound s1 <*> pure pty
    where
-    rewrap s' = Syntax' l <$> s' <*> pure ty
+    rewrap s' = Syntax l <$> s' <*> pure ty
 
 -- | Like 'freeVarsS', but traverse over the 'Term's containing free
 --   variables.  More direct if you don't need to know the types or
 --   source locations of the variables.  Note that if you want to get
 --   the list of all `Term`s representing free variables, you can do so via
 --   @'toListOf' 'freeVarsT'@.
-freeVarsT :: forall ty. Traversal' (Syntax' ty) (Term' ty)
+freeVarsT :: Traversal' (Syntax phase) (Term phase)
 freeVarsT = freeVarsS . sTerm
 
 -- | Traversal over the free variables of a term.  Like 'freeVarsS'
@@ -1159,19 +1159,19 @@ freeVarsT = freeVarsS . sTerm
 --   themselves.  Note that if you want to get the set of all free
 --   variable names, you can do so via @'Data.Set.Lens.setOf'
 --   'freeVarsV'@.
-freeVarsV :: Traversal' (Syntax' ty) Var
+freeVarsV :: Traversal' (Syntax phase) Var
 freeVarsV = freeVarsT . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
 
 -- | Apply a function to all free occurrences of a particular variable.
-mapFreeS :: Var -> (Syntax' ty -> Syntax' ty) -> Syntax' ty -> Syntax' ty
+mapFreeS :: Var -> (Syntax phase -> Syntax phase) -> Syntax phase -> Syntax phase
 mapFreeS x f = freeVarsS %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ -> t)
 
 -- | Transform the AST into a Tree datatype.
 -- Useful for pretty-printing (e.g. via "Data.Tree.drawTree").
-asTree :: Data a => Syntax' a -> Tree (Syntax' a)
+asTree :: Data (Annot phase) => Syntax phase -> Tree (Syntax phase)
 asTree = para Node
 
 -- | Each constructor is a assigned a value of 1, plus
 -- any recursive syntax it entails.
-measureAstSize :: Data a => Syntax' a -> Int
+measureAstSize :: Data (Annot phase) => Syntax phase -> Int
 measureAstSize = length . universe
