@@ -272,18 +272,18 @@ prettyTuple = tupled . map ppr . unnestTuple
 prettyDefinition :: Doc ann -> Var -> Maybe Polytype -> Term -> Doc ann
 prettyDefinition defName x mty t1 =
   nest 2 . sep $
-              [ flatAlt
-                (defHead <> group defType <+> eqAndLambdaLine)
-                (defHead <> group defType' <+> "=" <+> defLambdas)
-              , ppr defBody
-              ]
-  where
-    (defBody, defLambdaList) = unchainLambdas t1
-    defHead = defName <+> pretty x
-    defType = maybe "" (\ty -> ":" <+> flatAlt (line <> indent 2 (ppr ty)) (ppr ty)) mty
-    defType' = maybe "" (\ty -> ":" <+> ppr ty) mty
-    defLambdas = hsep (map prettyLambda defLambdaList)
-    eqAndLambdaLine = if null defLambdaList then "=" else line <> "=" <+> defLambdas
+    [ flatAlt
+        (defHead <> group defType <+> eqAndLambdaLine)
+        (defHead <> group defType' <+> "=" <+> defLambdas)
+    , ppr defBody
+    ]
+ where
+  (defBody, defLambdaList) = unchainLambdas t1
+  defHead = defName <+> pretty x
+  defType = maybe "" (\ty -> ":" <+> flatAlt (line <> indent 2 (ppr ty)) (ppr ty)) mty
+  defType' = maybe "" (\ty -> ":" <+> ppr ty) mty
+  defLambdas = hsep (map prettyLambda defLambdaList)
+  eqAndLambdaLine = if null defLambdaList then "=" else line <> "=" <+> defLambdas
 
 prettyPrecApp :: Int -> Term -> Term -> Doc a
 prettyPrecApp p t1 t2 =
