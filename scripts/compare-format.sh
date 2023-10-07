@@ -12,7 +12,7 @@ function help() {
     echo "as markdown with triple backticks."
 }
 
-# Simple argumet parsing from https://stackoverflow.com/a/14203146
+# Simple argument parsing from https://stackoverflow.com/a/14203146
 POSITIONAL_ARGS=()
 while [[ $# -gt 0 ]]; do
   case $1 in
