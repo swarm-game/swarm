@@ -9,7 +9,7 @@ function help() {
     echo
     echo "This script helps to compare the format layout for a range"
     echo "of output widths. Afterwards it prints those that differ"
-    echo "as markdown with tripple backticks."
+    echo "as markdown with triple backticks."
 }
 
 # Simple argumet parsing from https://stackoverflow.com/a/14203146
