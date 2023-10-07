@@ -162,7 +162,7 @@ testLanguagePipeline =
     , testGroup
         "json encoding"
         [ testCase "simple expr" (roundTrip "42 + 43")
-        , testCase "module def" (roundTrip "def x = 41 end; def y = 42 end")
+        , testCase "module def" (roundTrip "def x = 41 end;\ndef y = 42 end")
         ]
     , testGroup
         "atomic - #479"
