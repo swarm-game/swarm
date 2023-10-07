@@ -129,12 +129,14 @@ solution: |
    run "scenarios/Challenges/_gopher/solution.sw"
 known: []
 world:
+  dsl: |
+    "classic"
   upperleft: [-1, 1]
   offset: false
   palette:
-    'x': [dirt]
-    '.': [grass]
-    'g': [dirt, null, gopher]
+    'x': [dirt, erase]
+    '.': [grass, erase]
+    'g': [dirt, erase, gopher]
   map: |
     xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     x............................x
