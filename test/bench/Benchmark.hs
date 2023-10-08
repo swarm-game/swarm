@@ -9,7 +9,6 @@ import Control.Lens ((&), (.~), (^.))
 import Control.Monad (replicateM_)
 import Control.Monad.Except (runExceptT)
 import Control.Monad.State (evalStateT, execStateT)
-import Test.Tasty.Bench (Benchmark, bcompare, bench, bgroup, defaultMain, whnfAppIO)
 import Data.Map qualified as M
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display (defaultRobotDisplay)
@@ -27,6 +26,7 @@ import Swarm.Language.Syntax
 import Swarm.TUI.Model (gameState)
 import Swarm.TUI.Model.StateUpdate (classicGame0)
 import Swarm.Util.Erasable
+import Test.Tasty.Bench (Benchmark, bcompare, bench, bgroup, defaultMain, whnfAppIO)
 
 -- | The program of a robot that does nothing.
 idleProgram :: ProcessedTerm
