@@ -9,8 +9,7 @@ import Control.Lens ((&), (.~), (^.))
 import Control.Monad (replicateM_)
 import Control.Monad.Except (runExceptT)
 import Control.Monad.State (evalStateT, execStateT)
-import Criterion.Main (Benchmark, bench, bgroup, defaultConfig, defaultMainWith, whnfAppIO)
-import Criterion.Types (Config (timeLimit))
+import Test.Tasty.Bench (Benchmark, bcompare, bench, bgroup, defaultMain, whnfAppIO)
 import Data.Map qualified as M
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display (defaultRobotDisplay)
@@ -24,6 +23,7 @@ import Swarm.Game.World (WorldFun (..), newWorld)
 import Swarm.Language.Context qualified as Context
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Language.Syntax
 import Swarm.TUI.Model (gameState)
 import Swarm.TUI.Model.StateUpdate (classicGame0)
 import Swarm.Util.Erasable
@@ -74,6 +74,40 @@ circlerProgram =
     )
   |]
 
+-- | The program of a robot that moves back and forth.
+--
+-- Each robot in a line starts a tick later, forming a wave.
+-- See data/scenarios/Challenges/wave.yaml
+--
+-- This is used to compare the performance degradation caused
+-- by using definitions and chains of ifs. Ideally there should
+-- not be cost if the code is inlined and simplified. TODO: #1557
+waveProgram :: Bool -> ProcessedTerm
+waveProgram manualInline =
+  let inlineDef = if manualInline then (1 :: Integer) else 0
+   in [tmQ|
+    def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+    def crossPath =
+        if ($int:inlineDef == 0) {
+          doN 6 move;
+        } {
+          move; move; move; move; move; move;
+        };
+        turn back;
+        wait 5;
+        end;
+    def go =
+        crossPath;
+        go;
+        end;
+    def start =
+        pos <- whereami;
+        wait $ fst pos;
+        go;
+        end;
+    start;
+  |]
+
 -- | Initializes a robot with program prog at location loc facing north.
 initRobot :: ProcessedTerm -> Location -> TRobot
 initRobot prog loc = mkRobot () Nothing "" mempty (Just $ Cosmic DefaultRootSubworld loc) north defaultRobotDisplay (initMachine prog Context.empty emptyStore) [] [] False False mempty 0
@@ -97,26 +131,35 @@ runGame numGameTicks = evalStateT (replicateM_ numGameTicks gameTick)
 
 main :: IO ()
 main = do
-  idlers <- mkGameStates idleProgram [10, 20 .. 40]
-  trees <- mkGameStates treeProgram [10, 20 .. 40]
-  circlers <- mkGameStates circlerProgram [10, 20 .. 40]
-  movers <- mkGameStates moverProgram [10, 20 .. 40]
+  idlers <- mkGameStates idleProgram
+  trees <- mkGameStates treeProgram
+  circlers <- mkGameStates circlerProgram
+  movers <- mkGameStates moverProgram
+  wavesInlined <- mkGameStates (waveProgram True)
+  wavesWithDef <- mkGameStates (waveProgram False)
   -- In theory we should force the evaluation of these game states to normal
   -- form before running the benchmarks. In practice, the first of the many
   -- criterion runs for each of these benchmarks doesn't look like an outlier.
-  defaultMainWith
-    (defaultConfig {timeLimit = 10})
+  defaultMain
     [ bgroup
         "run 1000 game ticks"
         [ bgroup "idlers" (toBenchmarks idlers)
         , bgroup "trees" (toBenchmarks trees)
         , bgroup "circlers" (toBenchmarks circlers)
         , bgroup "movers" (toBenchmarks movers)
+        , bgroup "wavesInlined" (toBenchmarks wavesInlined)
+        , bgroup
+            "wavesWithDef"
+            ( zipWith (\i -> bcompare ("wavesInlined." <> show i)) robotNumbers $
+                toBenchmarks wavesWithDef
+            )
         ]
     ]
  where
-  mkGameStates :: ProcessedTerm -> [Int] -> IO [(Int, GameState)]
-  mkGameStates prog sizes = zip sizes <$> mapM (mkGameState (initRobot prog)) sizes
+  robotNumbers = [10, 20 .. 40]
+
+  mkGameStates :: ProcessedTerm -> IO [(Int, GameState)]
+  mkGameStates prog = zip robotNumbers <$> mapM (mkGameState (initRobot prog)) robotNumbers
 
   toBenchmarks :: [(Int, GameState)] -> [Benchmark]
   toBenchmarks gameStates =

@@ -387,10 +387,9 @@ test-suite swarm-integration
 benchmark benchmark
   import:         stan-config, common, ghc2021-extensions
   main-is:        Benchmark.hs
-  hs-source-dirs: bench
+  hs-source-dirs: test/bench
   type:           exitcode-stdio-1.0
-  build-depends:  criterion                         >= 1.6.0.0 && < 1.7,
-                  -- Import shared with the library don't need bounds
+  build-depends:  tasty-bench >= 0.3.1 && < 0.4,
                   base,
                   lens,
                   linear,
@@ -398,6 +397,6 @@ benchmark benchmark
                   random,
                   swarm,
                   text,
-                  containers
+                  containers,
   default-language: Haskell2010
   ghc-options:      -threaded
