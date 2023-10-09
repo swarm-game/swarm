@@ -59,18 +59,18 @@ import Data.Array.Unboxed qualified as U
 import Data.Bifunctor (second)
 import Data.Bits
 import Data.Foldable (foldl')
-import Data.Function (on)
 import Data.Int (Int32)
 import Data.Map (Map)
 import Data.Map.Strict qualified as M
 import Data.Semigroup (Last (..))
 import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
-import Swarm.Game.Entity (Entity, entityHash)
+import Swarm.Game.Entity (Entity)
 import Swarm.Game.Location
 import Swarm.Game.Terrain (TerrainType (BlankT))
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
+import Swarm.Game.World.Modify
 import Swarm.Util ((?))
 import Swarm.Util.Erasable
 import Prelude hiding (lookup)
@@ -265,9 +265,9 @@ update ::
   Coords ->
   (Maybe Entity -> Maybe Entity) ->
   World t Entity ->
-  (World t Entity, Bool)
+  (World t Entity, CellUpdate Entity)
 update i g w@(World f t m) =
-  (wNew, ((/=) `on` fmap (view entityHash)) entityAfter entityBefore)
+  (wNew, classifyModification entityBefore entityAfter)
  where
   wNew = World f t $ M.insert i entityAfter m
   entityBefore = lookupEntity i w
@@ -280,7 +280,7 @@ updateM ::
   (Has (State (World t Entity)) sig m, IArray U.UArray t) =>
   Coords ->
   (Maybe Entity -> Maybe Entity) ->
-  m Bool
+  m (CellUpdate Entity)
 updateM c g = do
   state @(World t Entity) $ update c g . loadCell c
 

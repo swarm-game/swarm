@@ -1,0 +1,76 @@
+version: 1
+name: Structure recognizer - Tiebreaking overlaps by position
+description: |
+  A more lower-left overlapping structure of
+  identical size should win the tiebreaker
+creative: false
+objectives:
+  - teaser: Build structure
+    prerequisite:
+      not: wrong_structure
+    goal:
+      - |
+        Build a structure
+    condition: |
+      foundStructure <- structure "topleft" 0;
+      return $ case foundStructure (\_. false) (\_. true);
+  - id: wrong_structure
+    teaser: Don't recognize small structure
+    optional: true
+    goal:
+      - |
+        The "bottomright" structure shouldn't be recognized.
+    condition: |
+      foundStructure <- structure "bottomright" 0;
+      return $ case foundStructure (\_. false) (\_. true);
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - grabber
+      - treads
+    inventory:
+      - [1, gold]
+      - [1, silver]
+solution: |
+   move; move; move;
+   place "gold";
+structures:
+  - name: topleft
+    recognize: true
+    structure:
+      mask: '.'
+      palette:
+        'g': [stone, gold]
+        's': [stone, silver]
+      map: |
+       ss
+       gg
+       gg
+  - name: bottomright
+    recognize: true
+    structure:
+      mask: '.'
+      palette:
+        'g': [stone, gold]
+        's': [stone, silver]
+      map: |
+       gg
+       gg
+       ss
+world:
+  name: root
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass]
+    'g': [grass, gold]
+    's': [grass, silver]
+    'B': [grass, null, base]
+  upperleft: [0, 0]
+  map: |
+       ..ss.
+       ..gg.
+       B.g.g
+       ...gg
+       ...ss

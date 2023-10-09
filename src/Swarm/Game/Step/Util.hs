@@ -13,14 +13,10 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (forM, guard, join, when)
+import Control.Monad (forM_, guard, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.Array (bounds, (!))
-import Data.IntMap qualified as IM
-import Data.List (find)
-import Data.Map qualified as M
-import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -30,9 +26,11 @@ import Swarm.Game.Exception
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (NameGenerator (..))
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking qualified as SRT
 import Swarm.Game.State
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
+import Swarm.Game.World.Modify qualified as WM
 import Swarm.Language.Capability
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
@@ -68,12 +66,13 @@ updateEntityAt ::
   (Maybe Entity -> Maybe Entity) ->
   m ()
 updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
-  didChange <-
-    fmap (fromMaybe False) $
-      zoomWorld subworldName $
-        W.updateM @Int (W.locToCoords loc) upd
-  when didChange $
+  someChange <-
+    zoomWorld subworldName $
+      W.updateM @Int (W.locToCoords loc) upd
+
+  forM_ (WM.getModification =<< someChange) $ \modType -> do
     wakeWatchingRobots cLoc
+    SRT.entityModified modType cLoc
 
 -- * Capabilities
 
@@ -119,38 +118,6 @@ getNow = sendIO $ System.Clock.getTime System.Clock.Monotonic
 -- | Set a flag telling the UI that the world needs to be redrawn.
 flagRedraw :: (Has (State GameState) sig m) => m ()
 flagRedraw = needsRedraw .= True
-
--- * World queries
-
-getNeighborLocs :: Cosmic Location -> [Cosmic Location]
-getNeighborLocs loc = map (offsetBy loc . flip applyTurn north . DRelative . DPlanar) listEnums
-
--- | Perform an action requiring a 'W.World' state component in a
---   larger context with a 'GameState'.
-zoomWorld ::
-  (Has (State GameState) sig m) =>
-  SubworldName ->
-  StateC (W.World Int Entity) Identity b ->
-  m (Maybe b)
-zoomWorld swName n = do
-  mw <- use $ landscape . multiWorld
-  forM (M.lookup swName mw) $ \w -> do
-    let (w', a) = run (runState w n)
-    landscape . multiWorld %= M.insert swName w'
-    return a
-
--- | Get the entity (if any) at a given location.
-entityAt :: (Has (State GameState) sig m) => Cosmic Location -> m (Maybe Entity)
-entityAt (Cosmic subworldName loc) =
-  join <$> zoomWorld subworldName (W.lookupEntityM @Int (W.locToCoords loc))
-
--- | Get the robot with a given ID.
-robotWithID :: (Has (State GameState) sig m) => RID -> m (Maybe Robot)
-robotWithID rid = use (robotMap . at rid)
-
--- | Get the robot with a given name.
-robotWithName :: (Has (State GameState) sig m) => Text -> m (Maybe Robot)
-robotWithName rname = use (robotMap . to IM.elems . to (find $ \r -> r ^. robotName == rname))
 
 -- * Randomness
 
