@@ -37,8 +37,8 @@ defaultOrientation :: Orientation
 defaultOrientation = Orientation DNorth False
 
 -- | This is the point-wise equivalent of "applyOrientationTransform"
-reorientWaypoint :: Orientation -> AreaDimensions -> Location -> Location
-reorientWaypoint (Orientation upDir shouldFlip) (AreaDimensions width height) =
+reorientLandmark :: Orientation -> AreaDimensions -> Location -> Location
+reorientLandmark (Orientation upDir shouldFlip) (AreaDimensions width height) =
   rotational . flipping
  where
   transposeLoc (Location x y) = Location (-y) (-x)

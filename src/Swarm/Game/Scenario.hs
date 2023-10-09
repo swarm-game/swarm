@@ -35,6 +35,8 @@ module Swarm.Game.Scenario (
   scenarioKnown,
   scenarioWorlds,
   scenarioNavigation,
+  scenarioStructures,
+  scenarioStructurePlacements,
   scenarioRobots,
   scenarioObjectives,
   scenarioSolution,
@@ -108,6 +110,8 @@ data Scenario = Scenario
   , _scenarioKnown :: [Text]
   , _scenarioWorlds :: NonEmpty WorldDescription
   , _scenarioNavigation :: Navigation (M.Map SubworldName) Location
+  , _scenarioStructures :: Structure.InheritedStructureDefs
+  , _scenarioStructurePlacements :: M.Map SubworldName [Structure.LocatedStructure (Maybe Cell)]
   , _scenarioRobots :: [TRobot]
   , _scenarioObjectives :: [Objective]
   , _scenarioSolution :: Maybe ProcessedTerm
@@ -186,6 +190,8 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
         <*> pure known
         <*> pure allWorlds
         <*> pure mergedNavigation
+        <*> pure rootLevelSharedStructures
+        <*> pure (M.fromList $ NE.toList $ NE.map (worldName &&& placedStructures) allWorlds)
         <*> pure rs
         <*> (liftE (v .:? "objectives" .!= []) >>= validateObjectives)
         <*> liftE (v .:? "solution")
@@ -236,6 +242,14 @@ scenarioWorlds :: Lens' Scenario (NonEmpty WorldDescription)
 
 -- | Waypoints and inter-world portals
 scenarioNavigation :: Lens' Scenario (Navigation (M.Map SubworldName) Location)
+
+-- | Structure templates that may be auto-recognized when constructed
+-- by a robot
+scenarioStructures :: Lens' Scenario Structure.InheritedStructureDefs
+
+-- | A record of the static placements of structures, so that they can be
+-- added to the "recognized" list upon scenario initialization
+scenarioStructurePlacements :: Lens' Scenario (M.Map SubworldName [Structure.LocatedStructure (Maybe Cell)])
 
 -- | The starting robots for the scenario.  Note this should
 --   include the base.

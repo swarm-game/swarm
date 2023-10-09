@@ -1,0 +1,7 @@
+1575-browse-structures.yaml
+1575-recognize-overlapping.yaml
+1575-ensure-single-recognition.yaml
+1575-ensure-disjoint.yaml
+1575-overlapping-tiebreaker.yaml
+1575-remove-structure.yaml
+1575-swap-structure.yaml

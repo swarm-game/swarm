@@ -46,6 +46,8 @@ import Control.Monad.IO.Class (liftIO)
 import Data.ByteString.Lazy (ByteString)
 import Data.Foldable (toList)
 import Data.IntMap qualified as IM
+import Data.Map qualified as M
+import Data.Map.NonEmpty qualified as NEM
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -63,6 +65,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
 import Swarm.Game.Scenario.Objective.WinCheck
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
 import Swarm.Language.Module
 import Swarm.Language.Pipeline
@@ -90,6 +93,8 @@ type SwarmAPI =
     :<|> "goals" :> "graph" :> Get '[JSON] (Maybe GraphInfo)
     :<|> "goals" :> "uigoal" :> Get '[JSON] GoalTracking
     :<|> "goals" :> Get '[JSON] WinCondition
+    :<|> "recognize" :> "log" :> Get '[JSON] [T.Text]
+    :<|> "recognize" :> "found" :> Get '[JSON] [T.Text]
     :<|> "code" :> "render" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
     :<|> "code" :> "run" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [REPLHistItem]
@@ -138,6 +143,8 @@ mkApp state events =
     :<|> goalsGraphHandler state
     :<|> uiGoalHandler state
     :<|> goalsHandler state
+    :<|> recogLogHandler state
+    :<|> recogFoundHandler state
     :<|> codeRenderHandler
     :<|> codeRunHandler events
     :<|> replHandler state
@@ -182,6 +189,20 @@ goalsHandler :: ReadableIORef AppState -> Handler WinCondition
 goalsHandler appStateRef = do
   appState <- liftIO (readIORef appStateRef)
   return $ appState ^. gameState . winCondition
+
+recogLogHandler :: ReadableIORef AppState -> Handler [T.Text]
+recogLogHandler appStateRef = do
+  appState <- liftIO (readIORef appStateRef)
+  return $ appState ^. gameState . discovery . structureRecognition . recognitionLog
+
+recogFoundHandler :: ReadableIORef AppState -> Handler [T.Text]
+recogFoundHandler appStateRef = do
+  appState <- liftIO (readIORef appStateRef)
+  return
+    . map (T.pack . show)
+    . M.toList
+    . M.map NEM.keys
+    $ appState ^. gameState . discovery . structureRecognition . foundStructures . foundByName
 
 codeRenderHandler :: Text -> Handler Text
 codeRenderHandler contents = do

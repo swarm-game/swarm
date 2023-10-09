@@ -100,6 +100,7 @@ module Swarm.Game.State (
   availableCommands,
   knownEntities,
   gameAchievements,
+  structureRecognition,
 
   -- *** Landscape
   Landscape,
@@ -211,6 +212,8 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Universe as U
@@ -513,6 +516,7 @@ data Discovery = Discovery
   , _availableCommands :: Notifications Const
   , _knownEntities :: [Text]
   , _gameAchievements :: Map GameplayAchievement Attainment
+  , _structureRecognition :: StructureRecognizer
   }
 
 makeLensesNoSigs ''Discovery
@@ -532,6 +536,9 @@ knownEntities :: Lens' Discovery [Text]
 
 -- | Map of in-game achievements that were obtained
 gameAchievements :: Lens' Discovery (Map GameplayAchievement Attainment)
+
+-- | Recognizer for robot-constructed structures
+structureRecognition :: Lens' Discovery StructureRecognizer
 
 data Landscape = Landscape
   { _worldNavigation :: Navigation (M.Map SubworldName) Location
@@ -1166,6 +1173,7 @@ initGameState gsc =
           , -- This does not need to be initialized with anything,
             -- since the master list of achievements is stored in UIState
             _gameAchievements = mempty
+          , _structureRecognition = StructureRecognizer (RecognizerAutomatons [] mempty) emptyFoundStructures []
           }
     , _activeRobots = IS.empty
     , _waitingRobots = M.empty
@@ -1310,6 +1318,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       & internalActiveRobots .~ setOf (traverse . robotID) robotList'
       & discovery . availableCommands .~ Notifications 0 initialCommands
       & discovery . knownEntities .~ scenario ^. scenarioKnown
+      & discovery . structureRecognition .~ mkRecognizer (scenario ^. scenarioStructures) (scenario ^. scenarioStructurePlacements)
       & robotNaming . gensym .~ initGensym
       & seed .~ theSeed
       & randGen .~ mkStdGen theSeed
