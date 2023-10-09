@@ -1,20 +1,9 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/inventory.json",
-    "title": "Swarm entity inventory",
-    "description": "A list of [count, entity name] pairs, specifying the number of each entity.",
+    "title": "Inventory",
     "type": "array",
     "items": {
-        "type": "array",
-        "items": [
-            {
-                "title": "Entity count",
-                "type": "number"
-            },
-            {
-                "title": "Entity name",
-                "type": "string"
-            }
-        ]
+        "$ref": "entity-count.json"
     }
 }

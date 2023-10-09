@@ -10,6 +10,6 @@
             "description": "Waypoint name",
             "type": "string"
         },
-        "loc": {"$ref": "./planar-loc.json"}
+        "loc": {"$ref": "planar-loc.json"}
     }
 }

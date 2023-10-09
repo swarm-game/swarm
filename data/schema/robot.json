@@ -1,24 +1,27 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/robot.json",
-    "title": "Swarm robot",
+    "title": "Robot",
     "description": "Description of a robot in the Swarm game",
+    "footers": [
+        "doc-fragments/base-robot.md"
+    ],
     "type": "object",
     "additionalProperties": false,
     "properties": {
         "name": {
             "type": "string",
-            "description": "The name of the robot. This shows up in the list of robots in the game (F2), and is also how the robot will be referred to in the world palette."
+            "description": "The name of the robot. This shows up in the list of robots in the game (`F2`), and is also how the robot will be referred to in the world palette."
         },
         "description": {
             "type": "string",
             "description": "A description of the robot. This is currently not used for much, other than scenario documentation."
         },
         "loc": {
-            "description": "An optional starting location for the robot. If the loc field is specified, then a concrete robot will be created at the given location. If this field is omitted, then this robot record exists only as a template which can be referenced from a cell in the world palette. Concrete robots will then be created wherever the corresponding palette character is used in the world map.",
+            "description": "An optional starting location for the robot. If the `loc` field is specified, then a concrete robot will be created at the given location. If this field is omitted, then this robot record exists only as a template which can be referenced from a cell in the world palette. Concrete robots will then be created wherever the corresponding palette character is used in the world map.",
             "oneOf": [
-                {"$ref": "./cosmic-loc.json"},
-                {"$ref": "./planar-loc.json"}
+                {"$ref": "cosmic-loc.json"},
+                {"$ref": "planar-loc.json"}
             ]
         },
         "dir": {
@@ -38,7 +41,7 @@
         },
         "display": {
             "default": "default",
-            "$ref": "./display.json",
+            "$ref": "display.json",
             "description": "Display information for the robot. If this field is omitted, the default robot display will be used."
         },
         "program": {
@@ -56,8 +59,8 @@
         },
         "inventory": {
             "default": [],
-            "$ref": "./inventory.json",
-            "description": "A list of [count, entity name] pairs, specifying the entities in the robot's starting inventory, and the number of each."
+            "$ref": "inventory.json",
+            "description": "A list of `[count, entity name]` pairs, specifying the entities in the robot's starting inventory, and the number of each."
         },
         "system": {
             "default": false,
@@ -67,7 +70,7 @@
         "heavy": {
             "default": false,
             "type": "boolean",
-            "description": "Whether the robot is heavy. Heavy robots require tank treads to move (rather than just treads for other robots)."
+            "description": "Whether the robot is heavy. Heavy robots require `tank treads` to `move` (rather than just `treads` for other robots)."
         },
         "unwalkable": {
             "default": [],

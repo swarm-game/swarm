@@ -1,8 +1,8 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/attribute.json",
-    "title": "Scenario-local attributes",
-    "description": "Local attribute definitions",
+    "title": "Attributes",
+    "description": "Scenario-local attribute definitions",
     "type": "object",
     "additionalProperties": false,
     "properties": {
