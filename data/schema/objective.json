@@ -1,18 +1,16 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/objective.json",
-    "title": "Scenario goals and their prerequisites",
-    "description": "The top-level objectives field contains a list of objectives that must be completed in sequence. Each objective has a goal description and a condition.",
+    "title": "Objective",
+    "description": "Scenario goals and their prerequisites. The top-level objectives field contains a list of objectives that must be completed in sequence. Each objective has a goal description and a condition.",
     "type": "object",
     "additionalProperties": false,
     "properties": {
         "goal": {
             "type": "array",
-            "items": [
-                {
-                    "type": "string"
-                }
-            ],
+            "items": {
+                "type": "string"
+            },
             "description": "The goal description as a list of paragraphs that the player can read."
         },
         "condition": {
@@ -35,6 +33,8 @@
             "description": "A compact (2-3 word) summary of the goal",
             "type": "string"
         },
-        "prerequisite": {}
+        "prerequisite": {
+            "$ref": "prerequisite.json"
+        }
     }
 }

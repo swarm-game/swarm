@@ -10,6 +10,6 @@
             "type": "string",
             "description": "Name of subworld"
         },
-        "loc": {"$ref": "./planar-loc.json"}
+        "loc": {"$ref": "planar-loc.json"}
     }
 }
