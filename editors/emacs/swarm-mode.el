@@ -87,6 +87,7 @@
                "scout"
                "whereami"
                "waypoint"
+               "structure"
                "detect"
                "resonate"
                "density"

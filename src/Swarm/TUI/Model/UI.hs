@@ -23,6 +23,7 @@ module Swarm.TUI.Model.UI (
   uiScrollToEnd,
   uiModal,
   uiGoal,
+  uiStructure,
   uiHideGoals,
   uiAchievements,
   lgTicksPerSecond,
@@ -81,6 +82,7 @@ import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
+import Swarm.TUI.Model.Structure
 import Swarm.TUI.View.Attribute.Attr (swarmAttrMap)
 import Swarm.Util
 import Swarm.Util.Lens (makeLensesExcluding)
@@ -107,6 +109,7 @@ data UIState = UIState
   , _uiScrollToEnd :: Bool
   , _uiModal :: Maybe Modal
   , _uiGoal :: GoalDisplay
+  , _uiStructure :: StructureDisplay
   , _uiHideGoals :: Bool
   , _uiAchievements :: Map CategorizedAchievement Attainment
   , _uiShowFPS :: Bool
@@ -185,6 +188,9 @@ uiModal :: Lens' UIState (Maybe Modal)
 -- | Status of the scenario goal: whether there is one, and whether it
 --   has been displayed to the user initially.
 uiGoal :: Lens' UIState GoalDisplay
+
+-- | Definition and status of a recognizable structure
+uiStructure :: Lens' UIState StructureDisplay
 
 -- | When running with @--autoplay@, suppress the goal dialogs.
 --
@@ -319,6 +325,7 @@ initUIState speedFactor showMainMenu cheatMode = do
           , _uiScrollToEnd = False
           , _uiModal = Nothing
           , _uiGoal = emptyGoalDisplay
+          , _uiStructure = emptyStructureDisplay
           , _uiHideGoals = False
           , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
           , _uiShowFPS = False

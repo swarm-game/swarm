@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -28,10 +29,16 @@ import Linear (V2 (..))
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Placement
 
+-- | This type is isomorphic to 'Maybe'.
+data Parentage a
+  = WithParent a
+  | Root
+  deriving (Show, Eq)
+
 -- | Indicates which structure something came from
 -- for debugging purposes.
 data Originated a = Originated
-  { parent :: Maybe Placement
+  { parent :: Parentage Placement
   , value :: a
   }
   deriving (Show, Eq, Functor)
@@ -75,16 +82,13 @@ instance FromJSON Waypoint where
       <$> parseWaypointConfig v
       <*> v .: "loc"
 
--- | Basically "fmap" for the "Location" field
-modifyLocation ::
-  (Location -> Location) ->
-  Waypoint ->
-  Waypoint
-modifyLocation f (Waypoint cfg originalLoc) = Waypoint cfg $ f originalLoc
+instance HasLocation Waypoint where
+  modifyLoc :: (Location -> Location) -> Waypoint -> Waypoint
+  modifyLoc f (Waypoint cfg originalLoc) = Waypoint cfg $ f originalLoc
 
 -- | Translation by a vector
 offsetWaypoint ::
   V2 Int32 ->
   Waypoint ->
   Waypoint
-offsetWaypoint locOffset = modifyLocation (.+^ locOffset)
+offsetWaypoint locOffset = modifyLoc (.+^ locOffset)

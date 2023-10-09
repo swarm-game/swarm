@@ -13,10 +13,13 @@ import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
-import Swarm.Language.Syntax (AbsoluteDir (..))
+import Swarm.Language.Direction (AbsoluteDir (..))
 
 newtype StructureName = StructureName Text
-  deriving (Eq, Ord, Show, Generic, FromJSON)
+  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
+
+getStructureName :: StructureName -> Text
+getStructureName (StructureName sn) = sn
 
 -- | Orientation transformations are applied before translation.
 data Orientation = Orientation
@@ -37,8 +40,8 @@ defaultOrientation :: Orientation
 defaultOrientation = Orientation DNorth False
 
 -- | This is the point-wise equivalent of "applyOrientationTransform"
-reorientWaypoint :: Orientation -> AreaDimensions -> Location -> Location
-reorientWaypoint (Orientation upDir shouldFlip) (AreaDimensions width height) =
+reorientLandmark :: Orientation -> AreaDimensions -> Location -> Location
+reorientLandmark (Orientation upDir shouldFlip) (AreaDimensions width height) =
   rotational . flipping
  where
   transposeLoc (Location x y) = Location (-y) (-x)

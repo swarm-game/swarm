@@ -93,6 +93,8 @@ import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Scenario.Status
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type.Toplevel (automatons)
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   scenarioItemName,
@@ -121,6 +123,7 @@ import Swarm.TUI.View.Achievement
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Objective qualified as GR
+import Swarm.TUI.View.Structure qualified as SR
 import Swarm.TUI.View.Util as VU
 import Swarm.Util
 import Swarm.Util.UnitInterval
@@ -617,6 +620,7 @@ drawModal s = \case
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList
+  StructuresModal -> SR.renderStructuresDisplay (s ^. gameState) (s ^. uiState . uiStructure)
   ScenarioEndModal outcome ->
     padBottom (Pad 1) $
       vBox $
@@ -807,6 +811,7 @@ helpWidget theSeed mport =
     , ("F3", "Available recipes")
     , ("F4", "Available commands")
     , ("F5", "Messages")
+    , ("F6", "Structures")
     , ("Ctrl-g", "show goal")
     , ("Ctrl-p", "pause")
     , ("Ctrl-o", "single step")
@@ -945,6 +950,12 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
               | otherwise = NoHighlight
          in Just (highlight, key, name)
 
+  -- Hides this key if the recognizable structure list is empty
+  structuresKey =
+    if null $ s ^. gameState . discovery . structureRecognition . automatons . definitions
+      then Nothing
+      else Just (NoHighlight, "F6", "Structures")
+
   globalKeyCmds =
     catMaybes
       [ Just (NoHighlight, "F1", "Help")
@@ -952,6 +963,7 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
       , notificationKey (discovery . availableRecipes) "F3" "Recipes"
       , notificationKey (discovery . availableCommands) "F4" "Commands"
       , notificationKey messageNotifications "F5" "Messages"
+      , structuresKey
       ]
 
 -- | Draw a menu explaining what key commands are available for the
