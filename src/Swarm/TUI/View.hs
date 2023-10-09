@@ -62,6 +62,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chunksOf)
 import Data.Map qualified as M
+import Data.Map.NonEmpty qualified as NEM
 import Data.Maybe (catMaybes, fromMaybe, isJust, listToMaybe, mapMaybe, maybeToList)
 import Data.Semigroup (sconcat)
 import Data.Sequence qualified as Seq
@@ -93,6 +94,11 @@ import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Scenario.Status
+import Swarm.Game.Scenario.Topography.Placement (StructureName (..))
+import Swarm.Game.Scenario.Topography.Structure qualified as Structure
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type.Toplevel (automatons, foundStructures)
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   scenarioItemName,
@@ -617,6 +623,7 @@ drawModal s = \case
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList
+  StructuresModal -> structuresListWidget (s ^. gameState)
   ScenarioEndModal outcome ->
     padBottom (Pad 1) $
       vBox $
@@ -807,6 +814,7 @@ helpWidget theSeed mport =
     , ("F3", "Available recipes")
     , ("F4", "Available commands")
     , ("F5", "Messages")
+    , ("F6", "Structures")
     , ("Ctrl-g", "show goal")
     , ("Ctrl-p", "pause")
     , ("Ctrl-o", "single step")
@@ -843,6 +851,15 @@ mkAvailableList gs notifLens notifRender = map padRender news <> notifSep <> map
         [ padBottom (Pad 1) (withAttr redAttr $ hBorderWithLabel (padLeftRight 1 (txt "new↑")))
         ]
     | otherwise = []
+
+-- TODO: Make this a selectable list widget
+structuresListWidget :: GameState -> Widget Name
+structuresListWidget gs =
+  vBox $
+    map (padTopBottom 1 . structureWidget gs) $
+      filter (Structure.recognize . originalDefinition . withGrid) defs
+ where
+  defs = gs ^. discovery . structureRecognition . automatons . definitions
 
 commandsListWidget :: GameState -> Widget Name
 commandsListWidget gs =
@@ -945,6 +962,12 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
               | otherwise = NoHighlight
          in Just (highlight, key, name)
 
+  -- Hides this key if the recognizable structure list is empty
+  structuresKey =
+    if null $ s ^. gameState . discovery . structureRecognition . automatons . definitions
+      then Nothing
+      else Just (NoHighlight, "F6", "Structures")
+
   globalKeyCmds =
     catMaybes
       [ Just (NoHighlight, "F1", "Help")
@@ -952,6 +975,7 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
       , notificationKey (discovery . availableRecipes) "F3" "Recipes"
       , notificationKey (discovery . availableCommands) "F4" "Commands"
       , notificationKey messageNotifications "F5" "Messages"
+      , structuresKey
       ]
 
 -- | Draw a menu explaining what key commands are available for the
@@ -1077,6 +1101,42 @@ drawKeyCmd (h, key, cmd) =
 ------------------------------------------------------------
 -- World panel
 ------------------------------------------------------------
+
+structureWidget :: GameState -> StructureInfo -> Widget n
+structureWidget gs s =
+  hLimit 30 $
+    vBox $
+      map
+        hCenter
+        [ txt $ theName <> occurrenceCountTxt
+        , padTop (Pad 1) $
+            hBox
+              [ structureIllustration
+              , padLeft (Pad 2) countLines
+              ]
+        ]
+ where
+  recognizedByName = gs ^. discovery . structureRecognition . foundStructures . foundByName
+  occurrenceCountTxt = case M.lookup sName recognizedByName of
+    Nothing -> ""
+    Just inner -> " " <> parens (T.pack $ show $ NEM.size inner)
+
+  structureIllustration = vBox $ map (hBox . map renderOneCell) cells
+  d = originalDefinition $ withGrid s
+
+  countLines = vBox . map showCount . M.toList $ entityCounts s
+
+  showCount (e, c) =
+    txt $
+      T.unwords
+        [ view entityName e <> ":"
+        , T.pack $ show c
+        ]
+
+  sName = Structure.name d
+  StructureName theName = sName
+  cells = getEntityGrid d
+  renderOneCell = maybe (txt " ") (renderDisplay . view entityDisplay)
 
 worldWidget ::
   (Cosmic W.Coords -> Widget n) ->

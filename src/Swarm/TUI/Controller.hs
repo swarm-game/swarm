@@ -76,6 +76,8 @@ import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (definitions)
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type.Toplevel (automatons)
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (finishGameTick, gameTick)
@@ -331,6 +333,7 @@ handleMainEvent ev = do
     FKey 5 | not (null (s ^. gameState . messageNotifications . notificationsContent)) -> do
       toggleModal MessagesModal
       gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . temporal . ticks
+    FKey 6 | not (null $ s ^. gameState . discovery . structureRecognition . automatons . definitions) -> toggleModal StructuresModal
     -- show goal
     ControlChar 'g' ->
       if hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent

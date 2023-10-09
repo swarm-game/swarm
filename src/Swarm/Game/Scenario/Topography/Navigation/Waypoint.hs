@@ -28,10 +28,16 @@ import Linear (V2 (..))
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Placement
 
+-- | This type is isomorphic to 'Maybe'.
+data Parentage a
+  = WithParent a
+  | Root
+  deriving (Show, Eq)
+
 -- | Indicates which structure something came from
 -- for debugging purposes.
 data Originated a = Originated
-  { parent :: Maybe Placement
+  { parent :: Parentage Placement
   , value :: a
   }
   deriving (Show, Eq, Functor)

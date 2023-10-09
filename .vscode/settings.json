@@ -1,7 +1,8 @@
 {
     "yaml.schemas": {
         "data/schema/scenario.json": [
-            "data/scenarios/**/*.yaml"
+            "data/scenarios/**/*.yaml",
+            "scenarios/**/*.yaml"
         ],
         "data/schema/entities.json": [
             "data/entities.yaml"

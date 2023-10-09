@@ -21,6 +21,9 @@ module Swarm.Game.Scenario (
 
   -- * Scenario
   Scenario (..),
+  StaticStructureInfo (..),
+  staticPlacements,
+  structureDefs,
 
   -- ** Fields
   scenarioVersion,
@@ -35,6 +38,7 @@ module Swarm.Game.Scenario (
   scenarioKnown,
   scenarioWorlds,
   scenarioNavigation,
+  scenarioStructures,
   scenarioRobots,
   scenarioObjectives,
   scenarioSolution,
@@ -89,6 +93,22 @@ import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 
+data StaticStructureInfo = StaticStructureInfo
+  { _structureDefs :: Structure.InheritedStructureDefs
+  , _staticPlacements :: M.Map SubworldName [Structure.LocatedStructure (Maybe Cell)]
+  }
+  deriving (Show)
+
+makeLensesNoSigs ''StaticStructureInfo
+
+-- | Structure templates that may be auto-recognized when constructed
+-- by a robot
+structureDefs :: Lens' StaticStructureInfo Structure.InheritedStructureDefs
+
+-- | A record of the static placements of structures, so that they can be
+-- added to the "recognized" list upon scenario initialization
+staticPlacements :: Lens' StaticStructureInfo (M.Map SubworldName [Structure.LocatedStructure (Maybe Cell)])
+
 ------------------------------------------------------------
 -- Scenario
 ------------------------------------------------------------
@@ -108,6 +128,7 @@ data Scenario = Scenario
   , _scenarioKnown :: [Text]
   , _scenarioWorlds :: NonEmpty WorldDescription
   , _scenarioNavigation :: Navigation (M.Map SubworldName) Location
+  , _scenarioStructures :: StaticStructureInfo
   , _scenarioRobots :: [TRobot]
   , _scenarioObjectives :: [Objective]
   , _scenarioSolution :: Maybe ProcessedTerm
@@ -172,6 +193,11 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
           $ NE.toList allWorlds
 
       let mergedNavigation = Navigation mergedWaypoints mergedPortals
+          structureInfo =
+            StaticStructureInfo (filter Structure.recognize rootLevelSharedStructures)
+              . M.fromList
+              . NE.toList
+              $ NE.map (worldName &&& placedStructures) allWorlds
 
       Scenario
         <$> liftE (v .: "version")
@@ -186,6 +212,7 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
         <*> pure known
         <*> pure allWorlds
         <*> pure mergedNavigation
+        <*> pure structureInfo
         <*> pure rs
         <*> (liftE (v .:? "objectives" .!= []) >>= validateObjectives)
         <*> liftE (v .:? "solution")
@@ -233,6 +260,9 @@ scenarioKnown :: Lens' Scenario [Text]
 -- | The subworlds of the scenario.
 -- The "root" subworld shall always be at the head of the list, by construction.
 scenarioWorlds :: Lens' Scenario (NonEmpty WorldDescription)
+
+-- | Information required for structure recognition
+scenarioStructures :: Lens' Scenario StaticStructureInfo
 
 -- | Waypoints and inter-world portals
 scenarioNavigation :: Lens' Scenario (Navigation (M.Map SubworldName) Location)

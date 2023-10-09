@@ -1,0 +1,76 @@
+version: 1
+name: Structure recognizer - Overlaps
+description: |
+  Completing a row that lies between two partially-complete structures
+  may complete both of them, but only one will be registered.
+creative: false
+objectives:
+  - teaser: Build structure
+    goal:
+      - |
+        Build a "precious" structure
+    condition: |
+      foundStructure <- structure "precious" 0;
+      return $ case foundStructure (\_. false) (\_. true);
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - grabber
+      - treads
+    inventory:
+      - [50, quartz]
+      - [50, gold]
+      - [50, silver]
+      - [50, mithril]
+      - [50, cotton]
+solution: |
+   move;
+   place "quartz";
+   move;
+   place "quartz";
+   move;
+   place "mithril";
+structures:
+  - name: precious
+    recognize: true
+    structure:
+      mask: '.'
+      palette:
+        'q': [stone, quartz]
+        'g': [stone, gold]
+        's': [stone, silver]
+        'm': [stone, mithril]
+      map: |
+       qgs
+       gsq
+       qqm
+  - name: smallish
+    structure:
+      recognize: true
+      mask: '.'
+      palette:
+        'q': [stone, quartz]
+        'm': [stone, mithril]
+        'c': [stone, cotton]
+      map: |
+       qqm
+       cqq
+world:
+  name: root
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass]
+    'q': [grass, quartz]
+    'g': [grass, gold]
+    's': [grass, silver]
+    'm': [grass, mithril]
+    'c': [grass, cotton]
+    'B': [grass, null, base]
+  upperleft: [0, 0]
+  map: |
+    .qgs.
+    .gsq.
+    B....
+    .cqq.

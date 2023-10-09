@@ -9,8 +9,10 @@ module Swarm.Game.Scenario.Topography.WorldDescription where
 import Control.Carrier.Reader (runReader)
 import Control.Carrier.Throw.Either
 import Control.Monad (forM)
+import Data.Coerce
 import Data.Functor.Identity
 import Data.Maybe (catMaybes)
+import Data.Text qualified as T
 import Data.Yaml as Y
 import Swarm.Game.Entity
 import Swarm.Game.Location
@@ -19,9 +21,15 @@ import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (
+  Parentage (Root),
   WaypointName,
  )
-import Swarm.Game.Scenario.Topography.Structure (InheritedStructureDefs, MergedStructure (MergedStructure), PStructure (Structure))
+import Swarm.Game.Scenario.Topography.Structure (
+  InheritedStructureDefs,
+  LocatedStructure,
+  MergedStructure (MergedStructure),
+  PStructure (Structure),
+ )
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Universe
@@ -45,6 +53,7 @@ data PWorldDescription e = WorldDescription
   , ul :: Location
   , area :: [[PCell e]]
   , navigation :: Navigation Identity WaypointName
+  , placedStructures :: [LocatedStructure (Maybe (PCell e))]
   , worldName :: SubworldName
   , worldProg :: Maybe (TTerm '[] (World CellVal))
   }
@@ -70,7 +79,13 @@ instance FromJSONE (WorldMap, InheritedStructureDefs, EntityMap, RobotMap) World
 
     let initialStructureDefs = scenarioLevelStructureDefs <> rootWorldStructureDefs
         struc = Structure initialArea initialStructureDefs placementDefs $ waypointDefs <> mapWaypoints
-        MergedStructure mergedArea unmergedWaypoints = Structure.mergeStructures mempty Nothing struc
+
+    MergedStructure mergedArea staticStructurePlacements unmergedWaypoints <-
+      either (fail . T.unpack) return $
+        Structure.mergeStructures mempty Root struc
+
+    let absoluteStructurePlacements =
+          map (Structure.offsetLocatedStructure $ coerce upperLeft) staticStructurePlacements
 
     validatedNavigation <-
       validatePartialNavigation
@@ -92,6 +107,7 @@ instance FromJSONE (WorldMap, InheritedStructureDefs, EntityMap, RobotMap) World
       <*> pure upperLeft
       <*> pure (map catMaybes mergedArea) -- Root-level map has no transparent cells.
       <*> pure validatedNavigation
+      <*> pure absoluteStructurePlacements
       <*> pure subWorldName
       <*> pure dslTerm
 
