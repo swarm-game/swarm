@@ -331,6 +331,7 @@ handleMainEvent ev = do
     FKey 5 | not (null (s ^. gameState . messageNotifications . notificationsContent)) -> do
       toggleModal MessagesModal
       gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . temporal . ticks
+    FKey 6 -> toggleModal StructuresModal
     -- show goal
     ControlChar 'g' ->
       if hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent

@@ -48,12 +48,16 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (getEditContents, renderEditor)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
+import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Control.Lens as Lens hiding (Const, from)
 import Control.Monad (guard)
+import Swarm.Game.Scenario.Topography.Structure
+    ( PStructure(area), NamedStructure(structure) )
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable (toList)
 import Data.Foldable qualified as F
+import Swarm.Util.Erasable ( erasableToMaybe )
 import Data.Functor (($>))
 import Data.IntMap qualified as IM
 import Data.List (intersperse)
@@ -93,6 +97,7 @@ import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Scenario.Status
+import Swarm.Game.Scenario.Topography.Cell (Cell, cellEntity)
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   scenarioItemName,
@@ -617,6 +622,7 @@ drawModal s = \case
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList
+  StructuresModal -> structuresListWidget (s ^. gameState)
   ScenarioEndModal outcome ->
     padBottom (Pad 1) $
       vBox $
@@ -807,6 +813,7 @@ helpWidget theSeed mport =
     , ("F3", "Available recipes")
     , ("F4", "Available commands")
     , ("F5", "Messages")
+    , ("F6", "Structures")
     , ("Ctrl-g", "show goal")
     , ("Ctrl-p", "pause")
     , ("Ctrl-o", "single step")
@@ -843,6 +850,13 @@ mkAvailableList gs notifLens notifRender = map padRender news <> notifSep <> map
         [ padBottom (Pad 1) (withAttr redAttr $ hBorderWithLabel (padLeftRight 1 (txt "new↑")))
         ]
     | otherwise = []
+
+structuresListWidget :: GameState -> Widget Name
+structuresListWidget gs =
+  hCenter $ vBox $ map (structureWidget . area . structure) defs
+  where
+    recognizer = gs ^. discovery . structureRecognition
+    defs = definitions recognizer
 
 commandsListWidget :: GameState -> Widget Name
 commandsListWidget gs =
@@ -952,6 +966,7 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
       , notificationKey (discovery . availableRecipes) "F3" "Recipes"
       , notificationKey (discovery . availableCommands) "F4" "Commands"
       , notificationKey messageNotifications "F5" "Messages"
+      , Just (NoHighlight, "F6", "Structures")
       ]
 
 -- | Draw a menu explaining what key commands are available for the
@@ -1077,6 +1092,15 @@ drawKeyCmd (h, key, cmd) =
 ------------------------------------------------------------
 -- World panel
 ------------------------------------------------------------
+
+structureWidget :: [[Maybe Cell]] -> Widget n
+structureWidget = vBox . map (hBox . map g)
+  where
+    g mayE = maybe (txt " ") h $ do
+      e <- mayE
+      erasableToMaybe $ cellEntity e
+
+    h = renderDisplay . view entityDisplay
 
 worldWidget ::
   (Cosmic W.Coords -> Widget n) ->

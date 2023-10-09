@@ -100,6 +100,7 @@ module Swarm.Game.State (
   availableCommands,
   knownEntities,
   gameAchievements,
+  structureRecognition,
 
   -- *** Landscape
   Landscape,
@@ -166,6 +167,7 @@ import Control.Effect.Throw
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad (forM_)
 import Data.Aeson (FromJSON, ToJSON)
+import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
 import Data.Digest.Pure.SHA (sha1, showDigest)
@@ -513,6 +515,7 @@ data Discovery = Discovery
   , _availableCommands :: Notifications Const
   , _knownEntities :: [Text]
   , _gameAchievements :: Map GameplayAchievement Attainment
+  , _structureRecognition :: StructureRecognizer
   }
 
 makeLensesNoSigs ''Discovery
@@ -532,6 +535,9 @@ knownEntities :: Lens' Discovery [Text]
 
 -- | Map of in-game achievements that were obtained
 gameAchievements :: Lens' Discovery (Map GameplayAchievement Attainment)
+
+-- | Recognizer for robot-constructed structures
+structureRecognition :: Lens' Discovery StructureRecognizer
 
 data Landscape = Landscape
   { _worldNavigation :: Navigation (M.Map SubworldName) Location
@@ -1166,6 +1172,7 @@ initGameState gsc =
           , -- This does not need to be initialized with anything,
             -- since the master list of achievements is stored in UIState
             _gameAchievements = mempty
+          , _structureRecognition = StructureRecognizer [] 0
           }
     , _activeRobots = IS.empty
     , _waitingRobots = M.empty
@@ -1310,6 +1317,7 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
       & internalActiveRobots .~ setOf (traverse . robotID) robotList'
       & discovery . availableCommands .~ Notifications 0 initialCommands
       & discovery . knownEntities .~ scenario ^. scenarioKnown
+      & discovery . structureRecognition .~ StructureRecognizer (scenario ^. scenarioStructures) 0
       & robotNaming . gensym .~ initGensym
       & seed .~ theSeed
       & randGen .~ mkStdGen theSeed

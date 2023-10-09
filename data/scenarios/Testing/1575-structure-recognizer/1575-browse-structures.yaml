@@ -1,0 +1,59 @@
+version: 1
+name: Subworld shared structures
+description: |
+  Traverse floors of the tower
+robots:
+  - name: base
+    dir: [1, 0]
+    loc: [0, 0]
+    devices:
+      - ADT calculator
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - GPS receiver
+      - grabber
+      - lambda
+      - lodestone
+      - logger
+      - strange loop
+      - treads
+known: [flower]
+structures:
+  - name: donut
+    structure:
+      palette:
+        '.': [stone]
+        '@': [dirt, boulder]
+      map: |
+        .@@@.
+        @@@@@
+        @@.@@
+        @@@@@
+        .@@@.
+  - name: diamond
+    structure:
+      mask: '.'
+      palette:
+        'x': [stone, flower]
+      map: |
+        ...x...
+        ..xxx..
+        .xxxxx.
+        xxxxxxx
+        .xxxxx.
+        ..xxx..
+        ...x...
+world:
+  name: root
+  default: [blank]
+  palette:
+    '.': [grass]
+  upperleft: [0, 0]
+  map: |
+    .....
+    .....
+    .....
+    .....
+    .....
