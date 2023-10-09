@@ -180,7 +180,7 @@ validatePartialNavigation currentSubworldName upperLeft unmergedWaypoints portal
   correctedWaypoints =
     binTuples $
       map
-        (\x -> (wpName $ wpConfig $ value x, fmap (offsetWaypoint $ upperLeft .-. origin) x))
+        (\x -> (wpName $ wpConfig $ value x, fmap (offsetLoc $ upperLeft .-. origin) x))
         unmergedWaypoints
   bareWaypoints = M.map (NE.map extractLoc) correctedWaypoints
   waypointsWithUniqueFlag = M.filter (any $ wpUnique . wpConfig . value) correctedWaypoints

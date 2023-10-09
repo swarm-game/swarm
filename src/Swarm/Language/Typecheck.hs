@@ -774,6 +774,7 @@ inferConst c = case c of
   Scout -> [tyQ| dir -> cmd bool |]
   Whereami -> [tyQ| cmd (int * int) |]
   Waypoint -> [tyQ| text -> int -> cmd (int * (int * int)) |]
+  Structure -> [tyQ| text -> int -> cmd (unit + (int * (int * int))) |]
   Detect -> [tyQ| text -> ((int * int) * (int * int)) -> cmd (unit + (int * int)) |]
   Resonate -> [tyQ| text -> ((int * int) * (int * int)) -> cmd int |]
   Density -> [tyQ| ((int * int) * (int * int)) -> cmd int |]

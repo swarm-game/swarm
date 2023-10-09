@@ -20,18 +20,22 @@
 -- precise control of ordering.
 module Swarm.Game.Scenario.Topography.Navigation.Waypoint where
 
-import Data.Int (Int32)
 import Data.Text qualified as T
 import Data.Yaml as Y
 import GHC.Generics (Generic)
-import Linear (V2 (..))
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Placement
+
+-- | This type is isomorphic to 'Maybe'.
+data Parentage a
+  = WithParent a
+  | Root
+  deriving (Show, Eq)
 
 -- | Indicates which structure something came from
 -- for debugging purposes.
 data Originated a = Originated
-  { parent :: Maybe Placement
+  { parent :: Parentage Placement
   , value :: a
   }
   deriving (Show, Eq, Functor)
@@ -75,16 +79,5 @@ instance FromJSON Waypoint where
       <$> parseWaypointConfig v
       <*> v .: "loc"
 
--- | Basically "fmap" for the "Location" field
-modifyLocation ::
-  (Location -> Location) ->
-  Waypoint ->
-  Waypoint
-modifyLocation f (Waypoint cfg originalLoc) = Waypoint cfg $ f originalLoc
-
--- | Translation by a vector
-offsetWaypoint ::
-  V2 Int32 ->
-  Waypoint ->
-  Waypoint
-offsetWaypoint locOffset = modifyLocation (.+^ locOffset)
+instance HasLocation Waypoint where
+  modifyLoc f (Waypoint cfg originalLoc) = Waypoint cfg $ f originalLoc
