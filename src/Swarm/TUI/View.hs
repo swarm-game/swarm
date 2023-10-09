@@ -875,8 +875,8 @@ commandsListWidget gs =
     map
       (padTop $ Pad 1)
       [ txt $ syntax $ constInfo cmd
-      -- , padRight (Pad 2) $ hLimit 20 $ padRight Max $ txt $ " : " <> prettyText (inferConst cmd)
-      , padRight (Pad 2) . withAttr magentaAttr . txt $ " : " <> prettyTextLine (inferConst cmd)
+      , -- , padRight (Pad 2) $ hLimit 20 $ padRight Max $ txt $ " : " <> prettyText (inferConst cmd)
+        padRight (Pad 2) . withAttr magentaAttr . txt $ " : " <> prettyTextLine (inferConst cmd)
       , listDevices cmd
       ]
 
