@@ -101,7 +101,7 @@ import Swarm.Game.State
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability (Capability (..), constCaps)
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Pretty (prettyText, prettyTextLine)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Log
@@ -875,7 +875,7 @@ commandsListWidget gs =
     map
       (padTop $ Pad 1)
       [ txt $ syntax $ constInfo cmd
-      , padRight (Pad 2) $ txt $ " : " <> prettyText (inferConst cmd)
+      , padRight (Pad 2) . withAttr magentaAttr . txt $ " : " <> prettyTextLine (inferConst cmd)
       , listDevices cmd
       ]
 
