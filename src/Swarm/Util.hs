@@ -25,6 +25,7 @@ module Swarm.Util (
   both,
   allEqual,
   surfaceEmpty,
+  deleteKeys,
   applyWhen,
   hoistMaybe,
   unsnocNE,
@@ -224,6 +225,11 @@ allEqual (x : xs) = all (== x) xs
 
 surfaceEmpty :: Alternative f => (a -> Bool) -> a -> f a
 surfaceEmpty isEmpty t = t <$ guard (not (isEmpty t))
+
+-- | Taken from here:
+-- https://hackage.haskell.org/package/ghc-9.8.1/docs/GHC-Data-FiniteMap.html#v:deleteList
+deleteKeys :: Ord key => [key] -> Map key elt -> Map key elt
+deleteKeys ks m = foldl' (flip M.delete) m ks
 
 ------------------------------------------------------------
 -- Forward-compatibility functions

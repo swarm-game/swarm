@@ -53,3 +53,6 @@ getAreaDimensions cellGrid =
  where
   w = fromIntegral $ maybe 0 length $ listToMaybe cellGrid -- column count
   h = fromIntegral $ length cellGrid -- row count
+
+computeArea :: AreaDimensions -> Int32
+computeArea (AreaDimensions w h) = w * h

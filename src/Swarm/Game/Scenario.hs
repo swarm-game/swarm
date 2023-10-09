@@ -35,6 +35,7 @@ module Swarm.Game.Scenario (
   scenarioKnown,
   scenarioWorlds,
   scenarioNavigation,
+  scenarioStructures,
   scenarioRobots,
   scenarioObjectives,
   scenarioSolution,
@@ -108,6 +109,7 @@ data Scenario = Scenario
   , _scenarioKnown :: [Text]
   , _scenarioWorlds :: NonEmpty WorldDescription
   , _scenarioNavigation :: Navigation (M.Map SubworldName) Location
+  , _scenarioStructures :: Structure.InheritedStructureDefs
   , _scenarioRobots :: [TRobot]
   , _scenarioObjectives :: [Objective]
   , _scenarioSolution :: Maybe ProcessedTerm
@@ -186,6 +188,7 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
         <*> pure known
         <*> pure allWorlds
         <*> pure mergedNavigation
+        <*> pure rootLevelSharedStructures
         <*> pure rs
         <*> (liftE (v .:? "objectives" .!= []) >>= validateObjectives)
         <*> liftE (v .:? "solution")
@@ -236,6 +239,10 @@ scenarioWorlds :: Lens' Scenario (NonEmpty WorldDescription)
 
 -- | Waypoints and inter-world portals
 scenarioNavigation :: Lens' Scenario (Navigation (M.Map SubworldName) Location)
+
+-- | Structure templates that may be auto-recognized when constructed
+-- by a robot
+scenarioStructures :: Lens' Scenario Structure.InheritedStructureDefs
 
 -- | The starting robots for the scenario.  Note this should
 --   include the base.

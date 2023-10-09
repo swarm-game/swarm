@@ -31,16 +31,19 @@ import Witch (into)
 
 data NamedStructure c = NamedStructure
   { name :: StructureName
+  , recognize :: Bool
+  -- ^ whether this structure should be registered for automatic recognition
   , structure :: PStructure c
   }
   deriving (Eq, Show)
 
-type InheritedStructureDefs = [NamedStructure (Maybe (PCell Entity))]
+type InheritedStructureDefs = [NamedStructure (Maybe Cell)]
 
-instance FromJSONE (EntityMap, RobotMap) (NamedStructure (Maybe (PCell Entity))) where
+instance FromJSONE (EntityMap, RobotMap) (NamedStructure (Maybe Cell)) where
   parseJSONE = withObjectE "named structure" $ \v -> do
     NamedStructure
       <$> liftE (v .: "name")
+      <*> liftE (v .:? "recognize" .!= False)
       <*> v
         ..: "structure"
 
@@ -114,7 +117,7 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
   g placement@(Placement sName _ _) =
     sequenceA (placement, M.lookup sName structureMap)
 
-instance FromJSONE (EntityMap, RobotMap) (PStructure (Maybe (PCell Entity))) where
+instance FromJSONE (EntityMap, RobotMap) (PStructure (Maybe Cell)) where
   parseJSONE = withObjectE "structure definition" $ \v -> do
     pal <- v ..:? "palette" ..!= WorldPalette mempty
     localStructureDefs <- v ..:? "structures" ..!= []

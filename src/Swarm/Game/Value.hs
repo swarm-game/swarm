@@ -10,10 +10,12 @@ module Swarm.Game.Value where
 
 import Control.Lens (view)
 import Data.Int (Int32)
+import Data.Map (Map)
 import Linear (V2 (..))
 import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Robot
+import Swarm.Game.World.Syntax (Var)
 import Swarm.Language.Direction
 import Swarm.Language.Value
 
@@ -64,3 +66,6 @@ instance (Valuable a) => Valuable (Maybe a) where
 instance (Valuable a, Valuable b) => Valuable (Either a b) where
   asValue (Left x) = VInj False $ asValue x
   asValue (Right x) = VInj True $ asValue x
+
+instance Valuable (Map Var Value) where
+  asValue = VRcd

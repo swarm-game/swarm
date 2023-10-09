@@ -46,6 +46,7 @@ import Data.List (find, sortOn)
 import Data.List qualified as L
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
+import Data.Map.NonEmpty qualified as NEM
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
 import Data.Ord (Down (Down))
 import Data.Sequence ((><))
@@ -75,10 +76,13 @@ import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..), destination, reorientation)
 import Swarm.Game.Scenario.Topography.Navigation.Util
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
+import Swarm.Game.Scenario.Topography.Placement
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (foundByName, foundStructures)
 import Swarm.Game.State
 import Swarm.Game.Step.Combustion qualified as Combustion
 import Swarm.Game.Step.Pathfinding
 import Swarm.Game.Step.Util
+import Swarm.Game.Step.Util.Inspect
 import Swarm.Game.Universe
 import Swarm.Game.Value
 import Swarm.Game.World qualified as W
@@ -1395,6 +1399,15 @@ execConst c vs s k = do
         case M.lookup (WaypointName name) $ M.findWithDefault mempty swName $ waypoints lm of
           Nothing -> throwError $ CmdFailed Waypoint (T.unwords ["No waypoint named", name]) Nothing
           Just wps -> return $ Out (asValue (NE.length wps, indexWrapNonEmpty wps idx)) s k
+      _ -> badConst
+    Structure -> case vs of
+      [VText name, VInt idx] -> do
+        foundMap <- use $ discovery . structureRecognition . foundStructures . foundByName
+        let maybeFoundStructures = M.lookup (StructureName name) foundMap
+            mkOutput mapNE = (NE.length xs, indexWrapNonEmpty xs idx ^. planar)
+             where
+              xs = NEM.keys mapNE
+        return $ Out (asValue $ mkOutput <$> maybeFoundStructures) s k
       _ -> badConst
     Detect -> case vs of
       [VText name, VRect x1 y1 x2 y2] -> do
