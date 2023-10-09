@@ -133,6 +133,7 @@ constructScenario maybeOriginalScenario cellGrid =
       , ul = upperLeftCoord
       , area = cellGrid
       , navigation = Navigation mempty mempty
+      , placedStructures = mempty
       , worldName = DefaultRootSubworld
       , worldProg = Nothing
       }

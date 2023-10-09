@@ -34,6 +34,7 @@ import TestLSP (testLSP)
 import TestLanguagePipeline (testLanguagePipeline)
 import TestModel (testModel)
 import TestNotification (testNotification)
+import TestOrdering (testOrdering)
 import TestPedagogy (testPedagogy)
 import TestPretty (testPrettyConst)
 import TestScoring (testHighScores)
@@ -60,6 +61,7 @@ tests s =
     , testPedagogy (s ^. runtimeState)
     , testInventory
     , testNotification (s ^. gameState)
+    , testOrdering
     , testMisc
     , testLSP
     ]

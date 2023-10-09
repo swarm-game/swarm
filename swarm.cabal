@@ -148,6 +148,12 @@ library
                       Swarm.Game.Scenario.Topography.Navigation.Waypoint
                       Swarm.Game.Scenario.Topography.Placement
                       Swarm.Game.Scenario.Topography.Structure
+                      Swarm.Game.Scenario.Topography.Structure.Recognition.Log
+                      Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
+                      Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
+                      Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking
+                      Swarm.Game.Scenario.Topography.Structure.Recognition.Type
+                      Swarm.Game.Scenario.Topography.Structure.Recognition.Type.Toplevel
                       Swarm.Game.Scenario.Topography.WorldDescription
                       Swarm.Game.Scenario.Topography.WorldPalette
                       Swarm.Game.ScenarioInfo
@@ -156,6 +162,7 @@ library
                       Swarm.Game.Step.Combustion
                       Swarm.Game.Step.Pathfinding
                       Swarm.Game.Step.Util
+                      Swarm.Game.Step.Util.Inspect
                       Swarm.Game.Terrain
                       Swarm.Game.Value
                       Swarm.Game.World
@@ -166,6 +173,7 @@ library
                       Swarm.Game.World.Gen
                       Swarm.Game.World.Interpret
                       Swarm.Game.World.Load
+                      Swarm.Game.World.Modify
                       Swarm.Game.World.Parse
                       Swarm.Game.World.Render
                       Swarm.Game.World.Syntax
@@ -215,12 +223,14 @@ library
                       Swarm.TUI.Model.Name
                       Swarm.TUI.Model.Repl
                       Swarm.TUI.Model.StateUpdate
+                      Swarm.TUI.Model.Structure
                       Swarm.TUI.Model.UI
                       Swarm.TUI.Panel
                       Swarm.TUI.View
                       Swarm.TUI.View.Achievement
                       Swarm.TUI.View.CellDisplay
                       Swarm.TUI.View.Objective
+                      Swarm.TUI.View.Structure
                       Swarm.TUI.View.Util
                       Swarm.Util
                       Swarm.Util.Effect
@@ -237,6 +247,7 @@ library
 
     build-depends:    base                          >= 4.14 && < 4.19,
                       brick-list-skip               >= 0.1.1.2 && < 0.2,
+                      AhoCorasick                   >= 0.0.4 && < 0.0.5,
                       aeson                         >= 2 && < 2.2,
                       array                         >= 0.5.4 && < 0.6,
                       astar                         >= 0.3 && < 0.3.1,
@@ -274,6 +285,7 @@ library
                       pandoc-types                  >= 1.23 && < 1.24,
                       murmur3                       >= 1.0.4 && < 1.1,
                       natural-sort                  >= 0.1.2 && < 0.2,
+                      nonempty-containers           >= 0.3.4 && < 0.3.5,
                       palette                       >= 0.3 && < 0.4,
                       parser-combinators            >= 1.2 && < 1.4,
                       prettyprinter                 >= 1.7.0 && < 1.8,
@@ -337,6 +349,7 @@ test-suite swarm-unit
                       TestPedagogy
                       TestNotification
                       TestLanguagePipeline
+                      TestOrdering
                       TestPretty
                       TestBoolExpr
                       TestCommand

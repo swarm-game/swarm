@@ -224,6 +224,8 @@ data Const
     Whereami
   | -- | Get the x, y coordinates of a named waypoint, by index
     Waypoint
+  | -- | Get the x, y coordinates of a constructed structure, by index
+    Structure
   | -- | Locate the closest instance of a given entity within the rectangle
     -- specified by opposite corners, relative to the current location.
     Detect
@@ -642,6 +644,13 @@ constInfo c = case c of
       , "Since waypoint names can have plural multiplicity, returns a tuple of (count, (x, y))."
       , "The supplied index will be wrapped automatically, modulo the waypoint count."
       , "A robot can use the count to know whether they have iterated over the full waypoint circuit."
+      ]
+  Structure ->
+    command 2 Intangible . doc "Get the x, y coordinates of a constructed structure, by name and index" $
+      [ "The outermost type of the return value indicates whether any structure of such name exists."
+      , "Since structures can have multiple occurrences, returns a tuple of (count, (x, y))."
+      , "The supplied index will be wrapped automatically, modulo the structure count."
+      , "A robot can use the count to know whether they have iterated over the full structure list."
       ]
   Detect ->
     command 2 Intangible . doc "Detect an entity within a rectangle." $

@@ -1,0 +1,40 @@
+version: 1
+name: Structure recognizer - placement occlusion
+description: |
+  Disallow recognized structures from being placed with non-default orientation.
+creative: false
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - treads
+structures:
+  - name: red_jewel
+    recognize: true
+    structure:
+      mask: '.'
+      palette:
+        'r': [stone, pixel (R)]
+      map: |
+       rrrr
+       rrrr
+known: [pixel (R), pixel (G)]
+world:
+  name: root
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass]
+    'B': [grass, null, base]
+  upperleft: [0, 0]
+  placements:
+    - src: red_jewel
+      offset: [2, -2]
+      orient:
+        up: west
+  map: |
+    .......
+    .......
+    B......
+    .......
+    .......
