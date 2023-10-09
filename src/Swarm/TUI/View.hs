@@ -48,16 +48,12 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (getEditContents, renderEditor)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
-import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Control.Lens as Lens hiding (Const, from)
 import Control.Monad (guard)
-import Swarm.Game.Scenario.Topography.Structure
-    ( PStructure(area), NamedStructure(structure) )
 import Data.Array (range)
 import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable (toList)
 import Data.Foldable qualified as F
-import Swarm.Util.Erasable ( erasableToMaybe )
 import Data.Functor (($>))
 import Data.IntMap qualified as IM
 import Data.List (intersperse)
@@ -98,6 +94,11 @@ import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.Cell (Cell, cellEntity)
+import Swarm.Game.Scenario.Topography.Structure (
+  NamedStructure (structure),
+  PStructure (area),
+ )
+import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   scenarioItemName,
@@ -128,6 +129,7 @@ import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Util as VU
 import Swarm.Util
+import Swarm.Util.Erasable (erasableToMaybe)
 import Swarm.Util.UnitInterval
 import Swarm.Util.WindowedCounter qualified as WC
 import Swarm.Version (NewReleaseFailure (..))
@@ -854,9 +856,9 @@ mkAvailableList gs notifLens notifRender = map padRender news <> notifSep <> map
 structuresListWidget :: GameState -> Widget Name
 structuresListWidget gs =
   hCenter $ vBox $ map (structureWidget . area . structure) defs
-  where
-    recognizer = gs ^. discovery . structureRecognition
-    defs = definitions recognizer
+ where
+  recognizer = gs ^. discovery . structureRecognition
+  defs = definitions recognizer
 
 commandsListWidget :: GameState -> Widget Name
 commandsListWidget gs =
@@ -1095,12 +1097,12 @@ drawKeyCmd (h, key, cmd) =
 
 structureWidget :: [[Maybe Cell]] -> Widget n
 structureWidget = vBox . map (hBox . map g)
-  where
-    g mayE = maybe (txt " ") h $ do
-      e <- mayE
-      erasableToMaybe $ cellEntity e
+ where
+  g mayE = maybe (txt " ") h $ do
+    e <- mayE
+    erasableToMaybe $ cellEntity e
 
-    h = renderDisplay . view entityDisplay
+  h = renderDisplay . view entityDisplay
 
 worldWidget ::
   (Cosmic W.Coords -> Widget n) ->
