@@ -87,16 +87,15 @@ reservedWords :: [Text]
 reservedWords =
   map (syntax . constInfo) (filter isUserFunc allConst)
     ++ map directionSyntax allDirs
-    ++ [ "void"
-       , "unit"
-       , "int"
-       , "text"
-       , "dir"
-       , "bool"
-       , "actor"
-       , "key"
-       , "cmd"
-       , "delay"
+    ++ [ "Void"
+       , "Unit"
+       , "Int"
+       , "Text"
+       , "Dir"
+       , "Bool"
+       , "Actor"
+       , "Key"
+       , "Cmd"
        , "let"
        , "def"
        , "end"
@@ -127,11 +126,20 @@ lexeme = L.lexeme sc
 symbol :: Text -> Parser Text
 symbol = L.symbol sc
 
--- | Parse a case-insensitive reserved word, making sure it is not a
---   prefix of a longer variable name, and allowing the parser to
---   backtrack if it fails.
+-- | Parse a reserved word, given a string recognizer (which can
+--   /e.g./ be case sensitive or not), making sure it is not a prefix
+--   of a longer variable name, and allowing the parser to backtrack
+--   if it fails.
+reservedGen :: (Text -> Parser ()) -> Text -> Parser ()
+reservedGen str w = (lexeme . try) $ str w *> notFollowedBy (alphaNumChar <|> char '_')
+
+-- | Parse a case-sensitive reserved word.
+reservedCS :: Text -> Parser ()
+reservedCS = reservedGen string
+
+-- | Parse a case-insensitive reserved word.
 reserved :: Text -> Parser ()
-reserved w = (lexeme . try) $ string' w *> notFollowedBy (alphaNumChar <|> char '_')
+reserved = reservedGen string'
 
 -- | Parse an identifier, i.e. any non-reserved string containing
 --   alphanumeric characters and underscores and not starting with a
@@ -218,16 +226,16 @@ parseType = makeExprParser parseTypeAtom table
 
 parseTypeAtom :: Parser Type
 parseTypeAtom =
-  TyVoid <$ reserved "void"
-    <|> TyUnit <$ reserved "unit"
+  TyVoid <$ reservedCS "Void"
+    <|> TyUnit <$ reservedCS "Unit"
     <|> TyVar <$> identifier
-    <|> TyInt <$ reserved "int"
-    <|> TyText <$ reserved "text"
-    <|> TyDir <$ reserved "dir"
-    <|> TyBool <$ reserved "bool"
-    <|> TyActor <$ reserved "actor"
-    <|> TyKey <$ reserved "key"
-    <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
+    <|> TyInt <$ reservedCS "Int"
+    <|> TyText <$ reservedCS "Text"
+    <|> TyDir <$ reservedCS "Dir"
+    <|> TyBool <$ reservedCS "Bool"
+    <|> TyActor <$ reservedCS "Actor"
+    <|> TyKey <$ reservedCS "Key"
+    <|> TyCmd <$> (reservedCS "Cmd" *> parseTypeAtom)
     <|> TyDelay <$> braces parseType
     <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))
     <|> parens parseType
