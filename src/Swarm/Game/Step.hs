@@ -789,7 +789,7 @@ stepCESK cesk = case cesk of
     return $ In (TDelay (MemoizedDelay $ bool Nothing (Just x) r) t) e s (FDef x : k)
   -- Once we have finished evaluating the (memoized, delayed) body of
   -- a definition, we return a special VResult value, which packages
-  -- up the return value from the @def@ command itself (@unit@)
+  -- up the return value from the @def@ command itself (@()@)
   -- together with the resulting environment (the variable bound to
   -- the delayed value).
   Out v s (FDef x : k) ->
@@ -1453,8 +1453,8 @@ execConst c vs s k = do
       -- In general, (1) entities might not have an orientation, and
       -- (2) even if they do, orientation is a general vector, which
       -- might not correspond to a cardinal direction.  We could make
-      -- 'heading' return a 'maybe dir' i.e. 'unit + dir', or return a
-      -- vector of type 'int * int', but those would both be annoying
+      -- 'heading' return a 'Maybe Dir' i.e. 'Unit + Dir', or return a
+      -- vector of type 'Int * Int', but those would both be annoying
       -- for players in the vast majority of cases.  We rather choose
       -- to just return the direction 'down' in any case where we don't
       -- otherwise have anything reasonable to return.

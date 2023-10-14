@@ -13,9 +13,9 @@ objectives:
         that can be used to define new commands.  For example:
       - |
         ```
-        def m4 : cmd unit = move; move; move; move end
+        def m4 : Cmd Unit = move; move; move; move end
         ```
-      - defines a new command `m4`{=snippet}, with type `cmd unit`{=type}, as four consecutive `move` commands.
+      - defines a new command `m4`{=snippet}, with type `Cmd Unit`{=type}, as four consecutive `move` commands.
         With judicious
         use of new definitions, it should be possible to complete this challenge
         in just a few lines of code.

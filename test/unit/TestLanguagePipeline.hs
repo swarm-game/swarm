@@ -82,7 +82,7 @@ testLanguagePipeline =
         )
     , testCase
         "Parse pair syntax #225"
-        (valid "def f : (int -> bool) * (int -> bool) = (\\x. false, \\x. true) end")
+        (valid "def f : (Int -> Bool) * (Int -> Bool) = (\\x. false, \\x. true) end")
     , testCase
         "Nested pair syntax"
         (valid "(1,2,3,4)")
@@ -95,19 +95,19 @@ testLanguagePipeline =
             "located type error"
             ( process
                 "def a =\n 42 + \"oops\"\nend"
-                "2:7: Type mismatch:\n  From context, expected `\"oops\"` to have type `int`,\n  but it actually has type `text`"
+                "2:7: Type mismatch:\n  From context, expected `\"oops\"` to have type `Int`,\n  but it actually has type `Text`"
             )
         , testCase
             "failure inside bind chain"
             ( process
                 "move;\n1;\nmove"
-                "2:1: Type mismatch:\n  From context, expected `1` to be a command,\n  but it actually has type `int`"
+                "2:1: Type mismatch:\n  From context, expected `1` to be a command,\n  but it actually has type `Int`"
             )
         , testCase
             "failure inside function call"
             ( process
                 "if true \n{} \n(move)"
-                "3:1: Type mismatch:\n  From context, expected `move` to have type `{cmd unit}`,\n  but it actually has type `cmd unit`"
+                "3:1: Type mismatch:\n  From context, expected `move` to have type `{Cmd Unit}`,\n  but it actually has type `Cmd Unit`"
             )
         , testCase
             "parsing operators #236 - report failure on invalid operator start"
@@ -173,10 +173,10 @@ testLanguagePipeline =
             )
         , testCase
             "grabif"
-            (valid "def grabif : text -> cmd unit = \\x. atomic (b <- ishere x; if b {grab; return ()} {}) end")
+            (valid "def grabif : Text -> Cmd Unit = \\x. atomic (b <- ishere x; if b {grab; return ()} {}) end")
         , testCase
             "placeif"
-            (valid "def placeif : text -> cmd bool = \\thing. atomic (res <- scan down; if (res == inl ()) {place thing; return true} {return false}) end")
+            (valid "def placeif : Text -> Cmd Bool = \\thing. atomic (res <- scan down; if (res == inl ()) {place thing; return true} {return false}) end")
         , testCase
             "atomic move+move"
             ( process
@@ -193,7 +193,7 @@ testLanguagePipeline =
             "atomic non-simple"
             ( process
                 "def dup = \\c. c; c end; atomic (dup (dup move))"
-                "1:33: Invalid atomic block: reference to variable with non-simple type ∀ a. cmd a -> cmd a: `dup`"
+                "1:33: Invalid atomic block: reference to variable with non-simple type ∀ a. Cmd a -> Cmd a: `dup`"
             )
         , testCase
             "atomic nested"
@@ -261,26 +261,26 @@ testLanguagePipeline =
         "record type"
         [ testCase
             "valid record"
-            (valid "\\x:int. ([y = \"hi\", x, z = \\x.x] : [x:int, y:text, z:bool -> bool])")
+            (valid "\\x:Int. ([y = \"hi\", x, z = \\x.x] : [x:Int, y:Text, z:Bool -> Bool])")
         , testCase
             "infer record type"
             (valid "[x = 3, y = \"hi\"]")
         , testCase
             "field mismatch - missing"
             ( process
-                "(\\r:[x:int, y:int]. r.x) [x = 3]"
+                "(\\r:[x:Int, y:Int]. r.x) [x = 3]"
                 "1:26: Field mismatch; record literal has:\n  - Missing field(s) `y`"
             )
         , testCase
             "field mismatch - extra"
             ( process
-                "(\\r:[x:int, y:int]. r.x) [x = 3, y = 4, z = 5]"
+                "(\\r:[x:Int, y:Int]. r.x) [x = 3, y = 4, z = 5]"
                 "1:26: Field mismatch; record literal has:\n  - Extra field(s) `z`"
             )
         , testCase
             "field mismatch - both"
             ( process
-                "(\\r:[x:int, y:int]. r.x) [x = 3, z = 5]"
+                "(\\r:[x:Int, y:Int]. r.x) [x = 3, z = 5]"
                 "1:26: Field mismatch; record literal has:\n  - Extra field(s) `z`\n  - Missing field(s) `y`"
             )
         ]
@@ -291,13 +291,13 @@ testLanguagePipeline =
             ( assertEqual
                 "type annotations"
                 (toListOf traverse (getSyntax [tmQ| 1 + 1 |]))
-                [[tyQ| int -> int -> int|], [tyQ|int|], [tyQ|int -> int|], [tyQ|int|], [tyQ|int|]]
+                [[tyQ| Int -> Int -> Int|], [tyQ|Int|], [tyQ|Int -> Int|], [tyQ|Int|], [tyQ|Int|]]
             )
         , testCase
             "get all annotated variable types"
             ( let s =
                     getSyntax
-                      [tmQ| def f : (int -> int) -> int -> text = \g. \x. format (g x) end |]
+                      [tmQ| def f : (Int -> Int) -> Int -> Text = \g. \x. format (g x) end |]
 
                   isVar (TVar {}) = True
                   isVar _ = False
@@ -305,25 +305,25 @@ testLanguagePipeline =
                in assertEqual
                     "variable types"
                     (getVars s)
-                    [ (TVar "g", [tyQ| int -> int |])
-                    , (TVar "x", [tyQ| int |])
+                    [ (TVar "g", [tyQ| Int -> Int |])
+                    , (TVar "x", [tyQ| Int |])
                     ]
             )
         , testCase
             "simple type ascription"
-            (valid "(3 : int) + 5")
+            (valid "(3 : Int) + 5")
         , testCase
             "invalid type ascription"
-            (process "1 : text" "1:1: Type mismatch:\n  From context, expected `1` to have type `text`,\n  but it actually has type `int`")
+            (process "1 : Text" "1:1: Type mismatch:\n  From context, expected `1` to have type `Text`,\n  but it actually has type `Int`")
         , testCase
             "type ascription with a polytype"
             (valid "((\\x . x) : a -> a) 3")
         , testCase
             "type ascription too general"
-            (process "1 : a" "1:1: Type mismatch:\n  From context, expected `1` to have type `s0`,\n  but it actually has type `int`")
+            (process "1 : a" "1:1: Type mismatch:\n  From context, expected `1` to have type `s0`,\n  but it actually has type `Int`")
         , testCase
             "type specialization through type ascription"
-            (valid "fst:(int + b) * a -> int + b")
+            (valid "fst:(Int + b) * a -> Int + b")
         , testCase
             "type ascription doesn't allow rank 2 types"
             ( process
@@ -333,8 +333,8 @@ testLanguagePipeline =
         , testCase
             "checking a lambda with the wrong argument type"
             ( process
-                "(\\x:int. x + 2) : text -> int"
-                "1:1: Lambda argument has type annotation `int`, but expected argument type `text`"
+                "(\\x:Int. x + 2) : Text -> Int"
+                "1:1: Lambda argument has type annotation `Int`, but expected argument type `Text`"
             )
         ]
     , testGroup
@@ -348,38 +348,38 @@ testLanguagePipeline =
         , testCase
             "providing a pair as an argument"
             ( process
-                "(\\x:int. x + 1) (1,2)"
-                "1:17: Type mismatch:\n  From context, expected `(1, 2)` to have type `int`,\n  but it is actually a pair"
+                "(\\x:Int. x + 1) (1,2)"
+                "1:17: Type mismatch:\n  From context, expected `(1, 2)` to have type `Int`,\n  but it is actually a pair"
             )
         , testCase
             "mismatched if branches"
             ( process
                 "if true {grab} {}"
-                "1:16: Type mismatch:\n  From context, expected `noop` to have type `cmd text`,\n  but it actually has type `cmd unit`"
+                "1:16: Type mismatch:\n  From context, expected `noop` to have type `Cmd Text`,\n  but it actually has type `Cmd Unit`"
             )
         , testCase
             "definition with wrong result"
             ( process
-                "def m : int -> int -> int = \\x. \\y. {3} end"
-                "1:37: Type mismatch:\n  From context, expected `{3}` to have type `int`,\n  but it is actually a delayed expression\n\n  - While checking the definition of m"
+                "def m : Int -> Int -> Int = \\x. \\y. {3} end"
+                "1:37: Type mismatch:\n  From context, expected `{3}` to have type `Int`,\n  but it is actually a delayed expression\n\n  - While checking the definition of m"
             )
         , testCase
             "comparing two incompatible functions"
             ( process
-                "(\\f:int -> text. f 3) (\\x:int. 3)"
-                "1:32: Type mismatch:\n  From context, expected `3` to have type `text`,\n  but it actually has type `int`\n"
+                "(\\f:Int -> Text. f 3) (\\x:Int. 3)"
+                "1:32: Type mismatch:\n  From context, expected `3` to have type `Text`,\n  but it actually has type `Int`\n"
             )
         , testCase
             "comparing two incompatible functions 2"
             ( process
-                "(\\f:int -> text. f 3) (\\x:int. \\y:int. \"hi\")"
-                "1:32: Type mismatch:\n  From context, expected `\\y:int. \"hi\"` to have type `text`,\n  but it is actually a function\n"
+                "(\\f:Int -> Text. f 3) (\\x:Int. \\y:Int. \"hi\")"
+                "1:32: Type mismatch:\n  From context, expected `\\y:Int. \"hi\"` to have type `Text`,\n  but it is actually a function\n"
             )
         , testCase
-            "unify two-argument function and int"
+            "unify two-argument function and Int"
             ( process
                 "1 + (\\x. \\y. 3)"
-                "1:5: Type mismatch:\n  From context, expected `\\x. \\y. 3` to have type `int`,\n  but it is actually a function\n"
+                "1:5: Type mismatch:\n  From context, expected `\\x. \\y. 3` to have type `Int`,\n  but it is actually a function\n"
             )
         ]
     , testGroup
@@ -392,7 +392,7 @@ testLanguagePipeline =
             (valid "f <- return (\\x.x); return (f 3, f \"hi\")")
         , testCase
             "local bind is polymorphic"
-            (valid "def foo : cmd (int * text) = f <- return (\\x.x); return (f 3, f \"hi\") end")
+            (valid "def foo : Cmd (Int * Text) = f <- return (\\x.x); return (f 3, f \"hi\") end")
         ]
     ]
  where

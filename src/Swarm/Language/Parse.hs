@@ -49,7 +49,7 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
-import Data.Text (Text, index, toLower)
+import Data.Text (Text, index)
 import Data.Text qualified as T
 import Data.Void
 import Swarm.Language.Syntax
@@ -82,21 +82,27 @@ type ParserError = ParseErrorBundle Text Void
 --------------------------------------------------
 -- Lexer
 
+-- | Names of types built into the language.
+primitiveTypeNames :: [Text]
+primitiveTypeNames =
+  [ "Void"
+  , "Unit"
+  , "Int"
+  , "Text"
+  , "Dir"
+  , "Bool"
+  , "Actor"
+  , "Key"
+  , "Cmd"
+  ]
+
 -- | List of reserved words that cannot be used as variable names.
 reservedWords :: [Text]
 reservedWords =
   map (syntax . constInfo) (filter isUserFunc allConst)
     ++ map directionSyntax allDirs
-    ++ [ "Void"
-       , "Unit"
-       , "Int"
-       , "Text"
-       , "Dir"
-       , "Bool"
-       , "Actor"
-       , "Key"
-       , "Cmd"
-       , "let"
+    ++ primitiveTypeNames
+    ++ [ "let"
        , "def"
        , "end"
        , "in"
@@ -130,7 +136,7 @@ symbol = L.symbol sc
 --   /e.g./ be case sensitive or not), making sure it is not a prefix
 --   of a longer variable name, and allowing the parser to backtrack
 --   if it fails.
-reservedGen :: (Text -> Parser ()) -> Text -> Parser ()
+reservedGen :: (Text -> Parser a) -> Text -> Parser ()
 reservedGen str w = (lexeme . try) $ str w *> notFollowedBy (alphaNumChar <|> char '_')
 
 -- | Parse a case-sensitive reserved word.

@@ -377,7 +377,7 @@
   - |
     An equipped `linotype`{=entity} device enables the `format` command:
     ```
-    format : a -> text
+    format : a -> Text
     ```
     which can turn any value into a suitable text representation.
   properties: [portable]
@@ -392,8 +392,8 @@
   - |
     Facilitates the concatenation of text values.
   - |
-    The infix operator `++ : text -> text -> text`{=snippet}
-    can be used to concatenate two text values.  For example,
+    The infix operator `++ : Text -> Text -> Text`{=snippet}
+    can be used to concatenate two Text values.  For example,
   - |
     "Number of widgets: " ++ format numWidgets
   properties: [portable]
@@ -407,9 +407,9 @@
   - Simple, yet accurate measuring device. Can determine the length of a text value.
   - |
     ```
-    chars : text -> int
+    chars : Text -> Int
     ```
-    computes the number of characters in a `text`{=type} value.
+    computes the number of characters in a `Text`{=type} value.
   properties: [portable]
   capabilities: [charcount]
 
@@ -422,9 +422,9 @@
   - |
     An equipped `wedge`{=entity} enables the `split` command:
     ```
-    split : int -> text -> text * text
+    split : Int -> Text -> Text * Text
     ```
-    splits a `text`{=type} value into two pieces, one before the given index and one after.
+    splits a `Text`{=type} value into two pieces, one before the given index and one after.
   properties: [portable]
   capabilities: [split]
 
@@ -438,12 +438,12 @@
     also be woven into larger configurations such as cloth or nets.
   - |
     An equipped `string`{=entity} device enables several commands for working with
-    `text`{=type} values:
+    `Text`{=type} values:
   - |
-    `format : a -> text` can turn any value into a suitable text
+    `format : a -> Text` can turn any value into a suitable text
     representation.
   - |
-    The infix operator `++ : text -> text -> text`{=snippet}
+    The infix operator `++ : Text -> Text -> Text`{=snippet}
     can be used to concatenate two text values.  For example,
   - |
     ```
@@ -451,10 +451,10 @@
     in "Number of widgets: " ++ format numWidgets
     ```
   - |
-    `chars : text -> int` computes the number of characters in a
-    `text`{=type} value.
+    `chars : Text -> Int` computes the number of characters in a
+    `Text`{=type} value.
   - |
-    `split : int -> text -> text * text` splits a `text`{=type} value into
+    `split : Int -> Text -> Text * Text` splits a `Text`{=type} value into
     two pieces, one before the given index and one after.
   properties: [portable]
   capabilities: [format, concat, charcount, split]
@@ -469,10 +469,10 @@
     back, shaped for some reason into a ring.  When equipped, it
     enables two functions:
   - |
-    `charAt : int -> text -> int` returns the numeric code of the
-    character at a specific index in a (0-indexed) `text`{=type} value.
+    `charAt : Int -> Text -> Int` returns the numeric code of the
+    character at a specific index in a (0-indexed) `Text`{=type} value.
   - |
-    `toChar : int -> text` creates a singleton (length-1) `text`{=type}
+    `toChar : Int -> Text` creates a singleton (length-1) `Text`{=type}
     value containing a character with the given numeric code.
   properties: [portable]
   capabilities: [code]
@@ -487,7 +487,7 @@
   - Lambdas can also be used to create functions. For example,
   - |
     ```
-    def thrice : cmd unit -> cmd unit = \c. c;c;c end
+    def thrice : Cmd Unit -> Cmd Unit = \c. c;c;c end
     ```
   - defines the function `thrice`{=snippet} which repeats a command three times.
   properties: [portable, growable]
@@ -833,7 +833,7 @@
   description:
   - A broad, sturdy surface that can be attached to a robot and used to `push` objects.
   - |
-    `push : cmd unit` will advance the robot and the entity in front of it forward by one step.
+    `push : Cmd Unit` will advance the robot and the entity in front of it forward by one step.
   properties: [portable]
   capabilities: [push]
 
@@ -852,7 +852,7 @@
     place.  The item is removed from the robot's inventory and placed
     in the robot's current cell (which must be empty).  Raises an
     exception if the operation fails.
-  - "The `give` command takes two arguments: the actor to
+  - "The `give` command takes two arguments: the `Actor`{=type} to
     give an item to (which can be at most 1 cell away), and the name
     of the item to give. Raises an exception if the operation fails."
   capabilities: [grab, give, place]
@@ -1015,11 +1015,11 @@
     expression or command locally within another expression.
   - |
     ```
-    def m2 : cmd unit = move; move end
+    def m2 : Cmd Unit = move; move end
     ```
   - |
     ```
-    let x : int = 3 in x^2 + 2*x + 1
+    let x : Int = 3 in x^2 + 2*x + 1
     ```
   - The type annotations in `def`{=snippet} are optional.
 
@@ -1080,11 +1080,11 @@
     about their surroundings.  Simply give `scan` a direction in which to scan,
     and information about the scanned item (if any) will be added to the robot's
     inventory."
-  - "A scanner also enables `blocked : cmd bool`, which returns a
+  - "A scanner also enables `blocked : Cmd Bool`, which returns a
      boolean value indicating whether the robot's path is blocked
      (i.e. whether executing a `move` command would fail);
-     `ishere : text -> cmd bool` for checking whether the current
-     cell contains a particular entity; and `isempty : cmd bool` for
+     `ishere : Text -> Cmd Bool` for checking whether the current
+     cell contains a particular entity; and `isempty : Cmd Bool` for
      checking whether the current cell is empty of entities. Note that
      `ishere` and `isempty` do not detect robots, only entities."
   - "Finally, robots can use the `upload` command to copy their accumulated
@@ -1098,7 +1098,7 @@
   description:
   - An electronic "nose" that can tell how far away something is.
   - |
-    `sniff : text -> cmd int` returns the distance to the nearest specified entity.
+    `sniff : Text -> Cmd Int` returns the distance to the nearest specified entity.
   properties: [portable]
   capabilities: [detectdistance]
 
@@ -1166,10 +1166,10 @@
     char: 'C'
   description:
   - |
-    A counter enables the command `count : text -> cmd int`,
+    A counter enables the command `count : Text -> Cmd Int`,
     which counts how many occurrences of an entity are currently
     in the inventory.  This is an upgraded version of the `has`
-    command, which returns a bool instead of an int and does
+    command, which returns a `Bool`{=type} instead of an `Int`{=type} and does
     not require any special device.
   properties: [portable]
   capabilities: [count]
@@ -1196,20 +1196,20 @@
     addition to the usual arithmetic on numbers, an ADT calculator can
     also do arithmetic on types!  After all, the helpful typewritten manual
     explains, a type is just a collection of values, and a finite collection
-    of values is just a fancy number.  For example, the type `bool`{=type} is
+    of values is just a fancy number.  For example, the type `Bool`{=type} is
     just a fancy version of the number 2, where the two things happen to be
-    labelled `false` and `true`.  There are also types `unit`{=type} and
+    labelled `false` and `true`.  There are also types `Unit`{=type} and
     `void`{=type} that correspond to 1 and 0, respectively.
   - |
     The product of two types is a type of pairs, since, for example,
     if `t`{=type} is a type with three elements, then there are 2 * 3 = 6
-    different pairs containing a `bool`{=type} and a `t`{=type}, that is, 6 elements
-    of type `bool * t`{=type}.  For working with products of types, the ADT
+    different pairs containing a `Bool`{=type} and a `t`{=type}, that is, 6 elements
+    of type `Bool * t`{=type}.  For working with products of types, the ADT
     calculator enables pair syntax `(1, "Hi!")` as well as the projection
     functions `fst : a * b -> a` and `snd : a * b -> b`.
   - |
     The sum of two types is a type with two options; for example, a
-    value of type `bool + t`{=type} is either a `bool`{=type} value or a `t`{=type} value,
+    value of type `Bool + t`{=type} is either a `Bool`{=type} value or a `t`{=type} value,
     and there are `2 + 3 == 5` such values.  For working with sums of
     types, the ADT calculator provides the injection functions `inl :
     a -> a + b` and `inr : b -> a + b`, as well as the case analysis
@@ -1231,7 +1231,7 @@
   - |
     `turn west; move; turn north`
   - |
-    It also enables the `heading : cmd dir` command, which returns the
+    It also enables the `heading : Cmd Dir` command, which returns the
     robot's current heading. For example, the following code moves
     east and then restores the same heading as before:
   - |
@@ -1246,9 +1246,9 @@
   description:
   - A clock is a device for keeping track of time.  It enables the `wait` and `time` commands.
   - |
-    `time : cmd int` returns the current time, measured in game ticks since the beginning of the game.
+    `time : Cmd Int` returns the current time, measured in game ticks since the beginning of the game.
   - |
-    `wait : int -> cmd unit` causes a robot to sleep for a specified amount of time (measured in game ticks).
+    `wait : Int -> Cmd Unit` causes a robot to sleep for a specified amount of time (measured in game ticks).
   properties: [portable]
   capabilities: [timeabs, timerel]
 
@@ -1259,7 +1259,7 @@
   description:
   - An hourglass can measure the relative passage of time.  It enables the `wait` command.
   - |
-    `wait : int -> cmd unit` causes a robot to sleep for a specified amount of time (measured in game ticks).
+    `wait : Int -> Cmd Unit` causes a robot to sleep for a specified amount of time (measured in game ticks).
   properties: [portable]
   capabilities: [timerel]
 
@@ -1270,7 +1270,7 @@
   description:
   - Enables robots to use the `watch` command.
   - |
-    `watch : dir -> cmd unit` will mark an adjacent (in the specified direction) location of interest to monitor for placement or removal of items.
+    `watch : Dir -> Cmd Unit` will mark an adjacent (in the specified direction) location of interest to monitor for placement or removal of items.
     A subsequent call to `wait` will be interrupted upon a change to the location.
   properties: [portable]
   capabilities: [wakeself]
@@ -1348,12 +1348,12 @@
     waves off them and listening for the echo.  This capability can be
     accessed via two commands:
   - |
-    `meet : cmd (unit + actor)` tries to locate a
+    `meet : Cmd (Unit + Actor)` tries to locate a
     nearby actor (a robot, or... something else?) up to one cell away.
     It returns a reference to the nearest actor, or a unit value if
     none are found.
   - |
-    `meetAll : (b -> actor -> cmd b) -> b -> cmd b` runs a command on
+    `meetAll : (b -> Actor -> Cmd b) -> b -> Cmd b` runs a command on
     every nearby actor (other than oneself), folding over the results
     to compute a final result of type `b`{=type}.  For example, if
     `x`{=snippet}, `y`{=snippet}, and `z`{=snippet}
@@ -1370,7 +1370,7 @@
   - |
     A GPS receiver triangulates your current (x,y) coordinates from
     some convenient satellite signals,
-    enabling the command `whereami : cmd (int * int)`.
+    enabling the command `whereami : Cmd (Int * Int)`.
   properties: [portable]
   capabilities: [senseloc]
 
@@ -1400,7 +1400,7 @@
   - |
     Also allows manipulating composite values consisting of a
     collection of named fields.  For example, `[x = 2, y = "hi"]`
-    is a value of type `[x : int, y : text]`{=type}.  Individual fields
+    is a value of type `[x : Int, y : Text]`{=type}.  Individual fields
     can be projected using dot notation.  For example,
     `let r = [y="hi", x=2] in r.x` has the value `2`.  The order
     of the fields does not matter.
@@ -1433,11 +1433,11 @@
   description:
   - A small device with multiple keys, adapted for your unique anatomy.
   - |
-    `installKeyHandler : text -> (key -> cmd unit) -> cmd unit`
+    `installKeyHandler : Text -> (Key -> Cmd Unit) -> Cmd Unit`
     installs a custom handler function that can be activated to
     respond to keyboard inputs typed at the REPL.
   - |
-    `key : text -> key` constructs values of type `key`{=type}, for
+    `key : Text -> Key` constructs values of type `Key`{=type}, for
     example `key "Down"` or `key "C-S-x"`.
   properties: [portable]
   capabilities: [handleinput]
@@ -1451,7 +1451,7 @@
     particular robot program will halt, it always answers YES.
     And it is always correct... or else!
   - |
-    Enables the command `halt : actor -> cmd unit` which takes
+    Enables the command `halt : Actor -> Cmd Unit` which takes
     a robot as an argument and, if it is up to one cell away,
     cancels its currently running program (if any).  In creative mode,
     there is no distance limitation.
