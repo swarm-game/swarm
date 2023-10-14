@@ -672,11 +672,11 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
     -- type mismatches between the branches of an 'if' tend to get
     -- caught in the unifier, resulting in vague "can't unify"
     -- messages (for example, "if true {3} {move}" yields "can't
-    -- unify int and cmd unit").  With this 'applyBindings' call, we
+    -- unify Int and Cmd Unit").  With this 'applyBindings' call, we
     -- get more specific errors about how the second branch was
     -- expected to have the same type as the first (e.g. "expected
-    -- `move` to have type `int`, but it actually has type `cmd
-    -- unit`).
+    -- `move` to have type `Int`, but it actually has type `Cmd
+    -- Unit`).
     resTy' <- applyBindings resTy
 
     return $ Syntax' l (SApp f' x') resTy'
@@ -737,111 +737,111 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
 inferConst c = case c of
-  Wait -> [tyQ| int -> cmd unit |]
-  Noop -> [tyQ| cmd unit |]
-  Selfdestruct -> [tyQ| cmd unit |]
-  Move -> [tyQ| cmd unit |]
-  Backup -> [tyQ| cmd unit |]
-  Path -> [tyQ| (unit + int) -> ((int * int) + text) -> cmd (unit + dir) |]
-  Push -> [tyQ| cmd unit |]
-  Stride -> [tyQ| int -> cmd unit |]
-  Turn -> [tyQ| dir -> cmd unit |]
-  Grab -> [tyQ| cmd text |]
-  Harvest -> [tyQ| cmd text |]
-  Ignite -> [tyQ| dir -> cmd unit |]
-  Place -> [tyQ| text -> cmd unit |]
-  Ping -> [tyQ| actor -> cmd (unit + (int * int)) |]
-  Give -> [tyQ| actor -> text -> cmd unit |]
-  Equip -> [tyQ| text -> cmd unit |]
-  Unequip -> [tyQ| text -> cmd unit |]
-  Make -> [tyQ| text -> cmd unit |]
-  Has -> [tyQ| text -> cmd bool |]
-  Equipped -> [tyQ| text -> cmd bool |]
-  Count -> [tyQ| text -> cmd int |]
-  Reprogram -> [tyQ| actor -> {cmd a} -> cmd unit |]
-  Build -> [tyQ| {cmd a} -> cmd actor |]
-  Drill -> [tyQ| dir -> cmd (unit + text) |]
-  Use -> [tyQ| text -> dir -> cmd (unit + text) |]
-  Salvage -> [tyQ| cmd unit |]
-  Say -> [tyQ| text -> cmd unit |]
-  Listen -> [tyQ| cmd text |]
-  Log -> [tyQ| text -> cmd unit |]
-  View -> [tyQ| actor -> cmd unit |]
-  Appear -> [tyQ| text -> cmd unit |]
-  Create -> [tyQ| text -> cmd unit |]
-  Halt -> [tyQ| actor -> cmd unit |]
-  Time -> [tyQ| cmd int |]
-  Scout -> [tyQ| dir -> cmd bool |]
-  Whereami -> [tyQ| cmd (int * int) |]
-  Waypoint -> [tyQ| text -> int -> cmd (int * (int * int)) |]
-  Detect -> [tyQ| text -> ((int * int) * (int * int)) -> cmd (unit + (int * int)) |]
-  Resonate -> [tyQ| text -> ((int * int) * (int * int)) -> cmd int |]
-  Density -> [tyQ| ((int * int) * (int * int)) -> cmd int |]
-  Sniff -> [tyQ| text -> cmd int |]
-  Chirp -> [tyQ| text -> cmd dir |]
-  Watch -> [tyQ| dir -> cmd unit |]
-  Surveil -> [tyQ| (int * int) -> cmd unit |]
-  Heading -> [tyQ| cmd dir |]
-  Blocked -> [tyQ| cmd bool |]
-  Scan -> [tyQ| dir -> cmd (unit + text) |]
-  Upload -> [tyQ| actor -> cmd unit |]
-  Ishere -> [tyQ| text -> cmd bool |]
-  Isempty -> [tyQ| cmd bool |]
-  Self -> [tyQ| actor |]
-  Parent -> [tyQ| actor |]
-  Base -> [tyQ| actor |]
-  Meet -> [tyQ| cmd (unit + actor) |]
-  MeetAll -> [tyQ| (b -> actor -> cmd b) -> b -> cmd b |]
-  Whoami -> [tyQ| cmd text |]
-  Setname -> [tyQ| text -> cmd unit |]
-  Random -> [tyQ| int -> cmd int |]
-  Run -> [tyQ| text -> cmd unit |]
-  If -> [tyQ| bool -> {a} -> {a} -> a |]
+  Wait -> [tyQ| Int -> Cmd Unit |]
+  Noop -> [tyQ| Cmd Unit |]
+  Selfdestruct -> [tyQ| Cmd Unit |]
+  Move -> [tyQ| Cmd Unit |]
+  Backup -> [tyQ| Cmd Unit |]
+  Path -> [tyQ| (Unit + Int) -> ((Int * Int) + Text) -> Cmd (Unit + Dir) |]
+  Push -> [tyQ| Cmd Unit |]
+  Stride -> [tyQ| Int -> Cmd Unit |]
+  Turn -> [tyQ| Dir -> Cmd Unit |]
+  Grab -> [tyQ| Cmd Text |]
+  Harvest -> [tyQ| Cmd Text |]
+  Ignite -> [tyQ| Dir -> Cmd Unit |]
+  Place -> [tyQ| Text -> Cmd Unit |]
+  Ping -> [tyQ| Actor -> Cmd (Unit + (Int * Int)) |]
+  Give -> [tyQ| Actor -> Text -> Cmd Unit |]
+  Equip -> [tyQ| Text -> Cmd Unit |]
+  Unequip -> [tyQ| Text -> Cmd Unit |]
+  Make -> [tyQ| Text -> Cmd Unit |]
+  Has -> [tyQ| Text -> Cmd Bool |]
+  Equipped -> [tyQ| Text -> Cmd Bool |]
+  Count -> [tyQ| Text -> Cmd Int |]
+  Reprogram -> [tyQ| Actor -> {Cmd a} -> Cmd Unit |]
+  Build -> [tyQ| {Cmd a} -> Cmd Actor |]
+  Drill -> [tyQ| Dir -> Cmd (Unit + Text) |]
+  Use -> [tyQ| Text -> Dir -> Cmd (Unit + Text) |]
+  Salvage -> [tyQ| Cmd Unit |]
+  Say -> [tyQ| Text -> Cmd Unit |]
+  Listen -> [tyQ| Cmd Text |]
+  Log -> [tyQ| Text -> Cmd Unit |]
+  View -> [tyQ| Actor -> Cmd Unit |]
+  Appear -> [tyQ| Text -> Cmd Unit |]
+  Create -> [tyQ| Text -> Cmd Unit |]
+  Halt -> [tyQ| Actor -> Cmd Unit |]
+  Time -> [tyQ| Cmd Int |]
+  Scout -> [tyQ| Dir -> Cmd Bool |]
+  Whereami -> [tyQ| Cmd (Int * Int) |]
+  Waypoint -> [tyQ| Text -> Int -> Cmd (Int * (Int * Int)) |]
+  Detect -> [tyQ| Text -> ((Int * Int) * (Int * Int)) -> Cmd (Unit + (Int * Int)) |]
+  Resonate -> [tyQ| Text -> ((Int * Int) * (Int * Int)) -> Cmd Int |]
+  Density -> [tyQ| ((Int * Int) * (Int * Int)) -> Cmd Int |]
+  Sniff -> [tyQ| Text -> Cmd Int |]
+  Chirp -> [tyQ| Text -> Cmd Dir |]
+  Watch -> [tyQ| Dir -> Cmd Unit |]
+  Surveil -> [tyQ| (Int * Int) -> Cmd Unit |]
+  Heading -> [tyQ| Cmd Dir |]
+  Blocked -> [tyQ| Cmd Bool |]
+  Scan -> [tyQ| Dir -> Cmd (Unit + Text) |]
+  Upload -> [tyQ| Actor -> Cmd Unit |]
+  Ishere -> [tyQ| Text -> Cmd Bool |]
+  Isempty -> [tyQ| Cmd Bool |]
+  Self -> [tyQ| Actor |]
+  Parent -> [tyQ| Actor |]
+  Base -> [tyQ| Actor |]
+  Meet -> [tyQ| Cmd (Unit + Actor) |]
+  MeetAll -> [tyQ| (b -> Actor -> Cmd b) -> b -> Cmd b |]
+  Whoami -> [tyQ| Cmd Text |]
+  Setname -> [tyQ| Text -> Cmd Unit |]
+  Random -> [tyQ| Int -> Cmd Int |]
+  Run -> [tyQ| Text -> Cmd Unit |]
+  If -> [tyQ| Bool -> {a} -> {a} -> a |]
   Inl -> [tyQ| a -> a + b |]
   Inr -> [tyQ| b -> a + b |]
   Case -> [tyQ|a + b -> (a -> c) -> (b -> c) -> c |]
   Fst -> [tyQ| a * b -> a |]
   Snd -> [tyQ| a * b -> b |]
   Force -> [tyQ| {a} -> a |]
-  Return -> [tyQ| a -> cmd a |]
-  Try -> [tyQ| {cmd a} -> {cmd a} -> cmd a |]
+  Return -> [tyQ| a -> Cmd a |]
+  Try -> [tyQ| {Cmd a} -> {Cmd a} -> Cmd a |]
   Undefined -> [tyQ| a |]
-  Fail -> [tyQ| text -> a |]
-  Not -> [tyQ| bool -> bool |]
-  Neg -> [tyQ| int -> int |]
+  Fail -> [tyQ| Text -> a |]
+  Not -> [tyQ| Bool -> Bool |]
+  Neg -> [tyQ| Int -> Int |]
   Eq -> cmpBinT
   Neq -> cmpBinT
   Lt -> cmpBinT
   Gt -> cmpBinT
   Leq -> cmpBinT
   Geq -> cmpBinT
-  And -> [tyQ| bool -> bool -> bool|]
-  Or -> [tyQ| bool -> bool -> bool|]
+  And -> [tyQ| Bool -> Bool -> Bool|]
+  Or -> [tyQ| Bool -> Bool -> Bool|]
   Add -> arithBinT
   Sub -> arithBinT
   Mul -> arithBinT
   Div -> arithBinT
   Exp -> arithBinT
-  Format -> [tyQ| a -> text |]
-  Concat -> [tyQ| text -> text -> text |]
-  Chars -> [tyQ| text -> int |]
-  Split -> [tyQ| int -> text -> (text * text) |]
-  CharAt -> [tyQ| int -> text -> int |]
-  ToChar -> [tyQ| int -> text |]
+  Format -> [tyQ| a -> Text |]
+  Concat -> [tyQ| Text -> Text -> Text |]
+  Chars -> [tyQ| Text -> Int |]
+  Split -> [tyQ| Int -> Text -> (Text * Text) |]
+  CharAt -> [tyQ| Int -> Text -> Int |]
+  ToChar -> [tyQ| Int -> Text |]
   AppF -> [tyQ| (a -> b) -> a -> b |]
-  Swap -> [tyQ| text -> cmd text |]
-  Atomic -> [tyQ| cmd a -> cmd a |]
-  Instant -> [tyQ| cmd a -> cmd a |]
-  Key -> [tyQ| text -> key |]
-  InstallKeyHandler -> [tyQ| text -> (key -> cmd unit) -> cmd unit |]
-  Teleport -> [tyQ| actor -> (int * int) -> cmd unit |]
-  As -> [tyQ| actor -> {cmd a} -> cmd a |]
-  RobotNamed -> [tyQ| text -> cmd actor |]
-  RobotNumbered -> [tyQ| int -> cmd actor |]
-  Knows -> [tyQ| text -> cmd bool |]
+  Swap -> [tyQ| Text -> Cmd Text |]
+  Atomic -> [tyQ| Cmd a -> Cmd a |]
+  Instant -> [tyQ| Cmd a -> Cmd a |]
+  Key -> [tyQ| Text -> Key |]
+  InstallKeyHandler -> [tyQ| Text -> (Key -> Cmd Unit) -> Cmd Unit |]
+  Teleport -> [tyQ| Actor -> (Int * Int) -> Cmd Unit |]
+  As -> [tyQ| Actor -> {Cmd a} -> Cmd a |]
+  RobotNamed -> [tyQ| Text -> Cmd Actor |]
+  RobotNumbered -> [tyQ| Int -> Cmd Actor |]
+  Knows -> [tyQ| Text -> Cmd Bool |]
  where
-  cmpBinT = [tyQ| a -> a -> bool |]
-  arithBinT = [tyQ| int -> int -> int |]
+  cmpBinT = [tyQ| a -> a -> Bool |]
+  arithBinT = [tyQ| Int -> Int -> Int |]
 
 -- | @check t ty@ checks that @t@ has type @ty@, returning a
 --   type-annotated AST if so.
@@ -879,7 +879,7 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
       Just xTy -> case unifyCheck argTy xTy of
         -- Generate a special error when the explicit type annotation
         -- on a lambda doesn't match the expected type,
-        -- e.g. (\x:int. x + 2) : text -> int, since the usual
+        -- e.g. (\x:Int. x + 2) : Text -> Int, since the usual
         -- "expected/but got" language would probably be confusing.
         Apart -> throwTypeErr l $ LambdaArgMismatch (joined argTy xTy)
         -- Otherwise, make sure to unify the annotation with the
@@ -891,7 +891,7 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
 
   -- Special case for checking the argument to 'atomic' (or
   -- 'instant').  'atomic t' has the same type as 't', which must have
-  -- a type of the form 'cmd a' for some 'a'.
+  -- a type of the form 'Cmd a' for some 'a'.
 
   TConst c :$: at
     | c `elem` [Atomic, Instant] -> do
@@ -988,12 +988,12 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
 -- | Ensure a term is a valid argument to @atomic@.  Valid arguments
 --   may not contain @def@, @let@, or lambda. Any variables which are
 --   referenced must have a primitive, first-order type such as
---   @text@ or @int@ (in particular, no functions, @cmd@, or
+--   @Text@ or @Int@ (in particular, no functions, @Cmd@, or
 --   @delay@).  We simply assume that any locally bound variables are
 --   OK without checking their type: the only way to bind a variable
 --   locally is with a binder of the form @x <- c1; c2@, where @c1@ is
 --   some primitive command (since we can't refer to external
---   variables of type @cmd a@).  If we wanted to do something more
+--   variables of type @Cmd a@).  If we wanted to do something more
 --   sophisticated with locally bound variables we would have to
 --   inline this analysis into typechecking proper, instead of having
 --   it be a separate, out-of-band check.

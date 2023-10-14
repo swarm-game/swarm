@@ -105,14 +105,7 @@ instance PrettyPrec Text where
   prettyPrec _ = pretty
 
 instance PrettyPrec BaseTy where
-  prettyPrec _ BVoid = "void"
-  prettyPrec _ BUnit = "unit"
-  prettyPrec _ BInt = "int"
-  prettyPrec _ BDir = "dir"
-  prettyPrec _ BText = "text"
-  prettyPrec _ BBool = "bool"
-  prettyPrec _ BActor = "actor"
-  prettyPrec _ BKey = "key"
+  prettyPrec _ = pretty . drop 1 . show
 
 instance PrettyPrec IntVar where
   prettyPrec _ = pretty . mkVarName "u"

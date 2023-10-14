@@ -159,7 +159,7 @@ locIdentifier = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "vari
  where
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
   check (into @Text -> t)
-    | toLower t `elem` reservedWords =
+    | t `elem` reservedWords =
         failT ["reserved word", squote t, "cannot be used as variable name"]
     | otherwise = return t
 
@@ -234,7 +234,6 @@ parseTypeAtom :: Parser Type
 parseTypeAtom =
   TyVoid <$ reservedCS "Void"
     <|> TyUnit <$ reservedCS "Unit"
-    <|> TyVar <$> identifier
     <|> TyInt <$ reservedCS "Int"
     <|> TyText <$ reservedCS "Text"
     <|> TyDir <$ reservedCS "Dir"
@@ -242,6 +241,7 @@ parseTypeAtom =
     <|> TyActor <$ reservedCS "Actor"
     <|> TyKey <$ reservedCS "Key"
     <|> TyCmd <$> (reservedCS "Cmd" *> parseTypeAtom)
+    <|> TyVar <$> identifier
     <|> TyDelay <$> braces parseType
     <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))
     <|> parens parseType
