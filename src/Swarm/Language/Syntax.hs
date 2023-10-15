@@ -647,6 +647,7 @@ constInfo c = case c of
       ]
   Structure ->
     command 2 Intangible . doc "Get the x, y coordinates of a constructed structure, by index" $
+      -- TODO Improve this documentation
       [ "Since structures can have multiple occurrences, returns a tuple of (count, (x, y))."
       , "The supplied index will be wrapped automatically, modulo the structure count."
       , "A robot can use the count to know whether they have iterated over the full structure list."

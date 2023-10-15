@@ -111,6 +111,7 @@ overlaySingleStructure
 
     return $ MergedStructure mergedArea mergedPlacements mergedWaypoints
    where
+    -- TODO: Consolidate this with "placeWaypoint"
     placeStructureTemplate overArea =
       offsetLocatedStructure (coerce loc)
         . modifyLocatedStructureLocation (reorientLandmark orientation $ getAreaDimensions overArea)

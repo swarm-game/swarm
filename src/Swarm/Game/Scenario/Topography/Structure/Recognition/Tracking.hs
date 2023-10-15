@@ -41,9 +41,7 @@ entityModified modification cLoc = do
   case modification of
     Add newEntity -> doAddition newEntity
     Remove _ -> doRemoval
-    Swap _ newEntity -> do
-      doRemoval
-      doAddition newEntity
+    Swap _ newEntity -> doRemoval >> doAddition newEntity
  where
   doAddition newEntity = do
     entLookup <- use $ discovery . structureRecognition . automatons . automatonsByEntity

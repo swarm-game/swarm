@@ -110,6 +110,7 @@ data Scenario = Scenario
   , _scenarioKnown :: [Text]
   , _scenarioWorlds :: NonEmpty WorldDescription
   , _scenarioNavigation :: Navigation (M.Map SubworldName) Location
+    -- TODO Group the following two into a single "StaticStructureRecognition" record
   , _scenarioStructures :: Structure.InheritedStructureDefs
   , _scenarioStructurePlacements :: M.Map SubworldName [Structure.LocatedStructure (Maybe Cell)]
   , _scenarioRobots :: [TRobot]

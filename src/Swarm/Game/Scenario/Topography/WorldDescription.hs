@@ -83,9 +83,6 @@ instance FromJSONE (WorldMap, InheritedStructureDefs, EntityMap, RobotMap) World
       either (fail . T.unpack) return $
         Structure.mergeStructures mempty Root struc
 
-    -- TODO: Pre-populate toplevel placed structures
-    -- Each of these are re-checked in case a subsequent placement occludes them.
-
     validatedNavigation <-
       validatePartialNavigation
         subWorldName

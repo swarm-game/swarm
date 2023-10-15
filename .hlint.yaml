@@ -31,7 +31,7 @@
   - {name: Prelude.tail, within: []}
   - {name: Prelude.!!, within: [Swarm.Util.indexWrapNonEmpty, TestEval]}
   - {name: undefined, within: [Swarm.Language.Key, TestUtil]}
-  - {name: fromJust, within: [Text.AhoCorasick]}
+  - {name: fromJust, within: []}
 # - {name: Data.Map.!, within: []} # TODO: #1494
 # - {name: error, within: []} # TODO: #1494
 

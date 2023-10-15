@@ -850,6 +850,7 @@ mkAvailableList gs notifLens notifRender = map padRender news <> notifSep <> map
         ]
     | otherwise = []
 
+-- TODO: Make this a selectable list widget
 structuresListWidget :: GameState -> Widget Name
 structuresListWidget gs =
   vBox $
@@ -966,6 +967,7 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
       , notificationKey (discovery . availableRecipes) "F3" "Recipes"
       , notificationKey (discovery . availableCommands) "F4" "Commands"
       , notificationKey messageNotifications "F5" "Messages"
+        -- TODO: Hide this if the recognizable structure list is empty
       , Just (NoHighlight, "F6", "Structures")
       ]
 
