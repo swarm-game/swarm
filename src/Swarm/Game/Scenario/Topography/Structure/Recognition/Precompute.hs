@@ -125,7 +125,6 @@ mkAutomatons xs =
 
   process g = StructureInfo g . histogram . concatMap catMaybes $ entityGrid g
 
-
 -- TODO: Pre-populate toplevel placed structures
 -- Each of these are re-checked in case a subsequent placement occludes them.
 populateStaticFoundStructures = FoundStructures mempty mempty
