@@ -852,8 +852,9 @@ mkAvailableList gs notifLens notifRender = map padRender news <> notifSep <> map
 
 structuresListWidget :: GameState -> Widget Name
 structuresListWidget gs =
-  vBox $ map (padTopBottom 1 . structureWidget) $
-    filter (Structure.recognize . originalDefinition . withGrid) defs
+  vBox $
+    map (padTopBottom 1 . structureWidget) $
+      filter (Structure.recognize . originalDefinition . withGrid) defs
  where
   defs = gs ^. discovery . structureRecognition . automatons . definitions
 

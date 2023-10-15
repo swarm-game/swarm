@@ -28,9 +28,9 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
 import Swarm.Game.Step.Util.Inspect
 import Swarm.Game.Universe
+import Swarm.Game.World.Modify
 import Swarm.Util (deleteKeys)
 import Text.AhoCorasick
-import Swarm.Game.World.Modify
 
 entityModified ::
   (Has (State GameState) sig m) =>
@@ -44,36 +44,35 @@ entityModified modification cLoc = do
     Swap _ newEntity -> do
       doRemoval
       doAddition newEntity
-
-  where
-    doAddition newEntity = do
-      entLookup <- use $ discovery . structureRecognition . automatons . automatonsByEntity
-      forM_ (M.lookup newEntity entLookup) $ \finder -> do
-        let msg = T.unwords
+ where
+  doAddition newEntity = do
+    entLookup <- use $ discovery . structureRecognition . automatons . automatonsByEntity
+    forM_ (M.lookup newEntity entLookup) $ \finder -> do
+      let msg =
+            T.unwords
               [ "Found new"
               , view entityName newEntity
               , "; Finder:"
               , T.pack . show . (^. inspectionOffsets) $ finder
               ]
-        discovery . structureRecognition . recognitionLog %= (msg :)
-        registerRowMatches cLoc finder
+      discovery . structureRecognition . recognitionLog %= (msg :)
+      registerRowMatches cLoc finder
 
-    doRemoval = do
-      -- Entity was removed; may need to remove registered structure.
-      entLookup <- use $ discovery . structureRecognition . foundStructures . foundByLocation
-      forM_ (M.lookup cLoc entLookup) $ \fs ->
-        let allOccupiedCoords = genOccupiedCoords fs
-            structureName@(StructureName sn) = Structure.name $ originalDefinition $ structureWithGrid fs
-            upperLeft = upperLeftCorner fs
-            tidyDelete = NEM.nonEmptyMap . NEM.delete upperLeft
-         in do
-              discovery . structureRecognition . recognitionLog %= (T.unwords ["Removed:", sn] :)
-              discovery . structureRecognition . foundStructures . foundByLocation %= deleteKeys allOccupiedCoords
+  doRemoval = do
+    -- Entity was removed; may need to remove registered structure.
+    entLookup <- use $ discovery . structureRecognition . foundStructures . foundByLocation
+    forM_ (M.lookup cLoc entLookup) $ \fs ->
+      let allOccupiedCoords = genOccupiedCoords fs
+          structureName@(StructureName sn) = Structure.name $ originalDefinition $ structureWithGrid fs
+          upperLeft = upperLeftCorner fs
+          tidyDelete = NEM.nonEmptyMap . NEM.delete upperLeft
+       in do
+            discovery . structureRecognition . recognitionLog %= (T.unwords ["Removed:", sn] :)
+            discovery . structureRecognition . foundStructures . foundByLocation %= deleteKeys allOccupiedCoords
 
-              -- NOTE: Observe similarities to
-              -- Swarm.Game.State.removeRobotFromLocationMap
-              discovery . structureRecognition . foundStructures . foundByName %= M.update tidyDelete structureName
-
+            -- NOTE: Observe similarities to
+            -- Swarm.Game.State.removeRobotFromLocationMap
+            discovery . structureRecognition . foundStructures . foundByName %= M.update tidyDelete structureName
 
 -- | Ensures that the entity in this cell is not already
 -- participating in a registered structure

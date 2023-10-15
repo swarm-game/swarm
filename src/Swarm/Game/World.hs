@@ -60,7 +60,6 @@ import Data.Bifunctor (second)
 import Data.Bits
 import Data.Foldable (foldl')
 import Data.Int (Int32)
-import Swarm.Game.World.Modify
 import Data.Map (Map)
 import Data.Map.Strict qualified as M
 import Data.Semigroup (Last (..))
@@ -71,6 +70,7 @@ import Swarm.Game.Location
 import Swarm.Game.Terrain (TerrainType (BlankT))
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
+import Swarm.Game.World.Modify
 import Swarm.Util ((?))
 import Swarm.Util.Erasable
 import Prelude hiding (lookup)

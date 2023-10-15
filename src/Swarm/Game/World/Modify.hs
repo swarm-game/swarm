@@ -1,12 +1,11 @@
-
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Modifying the world
 module Swarm.Game.World.Modify where
 
-import Data.Function (on)
 import Control.Lens
+import Data.Function (on)
 import Swarm.Game.Entity (Entity, entityHash)
 
 -- | Compare to 'WorldUpdate' in "Swarm.Game.World"
@@ -20,19 +19,23 @@ getModification (Modified x) = Just x
 
 data CellModification e
   = Swap
-      e -- ^ before
-      e -- ^ after
+      -- | before
+      e
+      -- | after
+      e
   | Remove e
   | Add e
 
-classifyModification
-  :: Maybe Entity -- ^ before
-  -> Maybe Entity -- ^ after
-  -> CellUpdate Entity
+classifyModification ::
+  -- | before
+  Maybe Entity ->
+  -- | after
+  Maybe Entity ->
+  CellUpdate Entity
 classifyModification Nothing Nothing = NoChange Nothing
 classifyModification Nothing (Just x) = Modified $ Add x
 classifyModification (Just x) Nothing = Modified $ Remove x
-classifyModification (Just x) (Just y) = if ((/=) `on` view entityHash) x y
-  then NoChange $ Just x
-  else Modified $ Swap x y
-  
+classifyModification (Just x) (Just y) =
+  if ((/=) `on` view entityHash) x y
+    then NoChange $ Just x
+    else Modified $ Swap x y

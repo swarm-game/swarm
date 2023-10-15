@@ -13,7 +13,7 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (guard, when, forM_)
+import Control.Monad (forM_, guard, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.Array (bounds, (!))
@@ -31,6 +31,7 @@ import Swarm.Game.State
 import Swarm.Game.Step.Util.Inspect
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
+import Swarm.Game.World.Modify qualified as WM
 import Swarm.Language.Capability
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
@@ -39,7 +40,6 @@ import System.Clock (TimeSpec)
 import System.Clock qualified
 import System.Random (UniformRange, uniformR)
 import Prelude hiding (Applicative (..), lookup)
-import Swarm.Game.World.Modify qualified as WM
 
 -- | All functions that are used for robot step can access 'GameState' and the current 'Robot'.
 --
