@@ -393,7 +393,7 @@
     Facilitates the concatenation of text values.
   - |
     The infix operator `++ : Text -> Text -> Text`{=snippet}
-    can be used to concatenate two `Text{=type}` values.  For example,
+    can be used to concatenate two `Text`{=type} values.  For example,
   - |
     "Number of widgets: " ++ format numWidgets
   properties: [portable]
