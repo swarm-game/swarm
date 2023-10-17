@@ -159,7 +159,7 @@ locIdentifier = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "vari
  where
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
   check (into @Text -> t)
-    | t `elem` reservedWords =
+    | t `elem` reservedWords || T.toLower t `elem` reservedWords =
         failT ["reserved word", squote t, "cannot be used as variable name"]
     | otherwise = return t
 
