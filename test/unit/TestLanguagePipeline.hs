@@ -248,14 +248,14 @@ testLanguagePipeline =
             (process "0xabcD6G2" "1:8:\n  |\n1 | 0xabcD6G2\n  |        ^\nunexpected 'G'\n")
         ]
     , testGroup
-        "void type"
+        "Void type"
         [ testCase
             "isSimpleUType"
             ( assertBool "" $ isSimpleUType UTyVoid
             )
         , testCase
             "valid type signature"
-            (valid "def f : void -> a = \\x. undefined end")
+            (valid "def f : Void -> a = \\x. undefined end")
         ]
     , testGroup
         "record type"
