@@ -41,6 +41,7 @@ import Control.Monad.Reader (
   ReaderT (runReaderT),
  )
 import Data.Bifunctor
+import Data.Char (isUpper)
 import Data.Foldable (asum)
 import Data.List (foldl', nub)
 import Data.List.NonEmpty qualified (head)
@@ -148,8 +149,8 @@ reserved :: Text -> Parser ()
 reserved = reservedGen string'
 
 -- | Parse an identifier, i.e. any non-reserved string containing
---   alphanumeric characters and underscores and not starting with a
---   number.
+--   alphanumeric characters and underscores and starting with either
+--   an underscore or a lowercase letter.
 identifier :: Parser Var
 identifier = lvVar <$> locIdentifier
 
@@ -160,7 +161,9 @@ locIdentifier = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "vari
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
   check (into @Text -> t)
     | t `elem` reservedWords || T.toLower t `elem` reservedWords =
-        failT ["reserved word", squote t, "cannot be used as variable name"]
+        failT ["reserved word", squote t, "cannot be used as a variable name"]
+    | isUpper (T.head t) =
+        failT ["Variable names must start with a lowercase letter"]
     | otherwise = return t
 
 -- | Parse a text literal (including escape sequences) in double quotes.

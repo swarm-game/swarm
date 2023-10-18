@@ -63,23 +63,52 @@ testLanguagePipeline =
     , testCase
         "parsing operators #239 - parse valid operator ($)"
         (valid "fst $ snd $ (1,2,3)")
-    , testCase
-        "Allow ' in variable names #269 - parse variable name containing '"
-        (valid "def a'_' = 0 end")
-    , testCase
-        "Allow ' in variable names #269 - do not parse variable starting with '"
-        ( process
-            "def 'a = 0 end"
-            ( T.unlines
-                [ "1:5:"
-                , "  |"
-                , "1 | def 'a = 0 end"
-                , "  |     ^"
-                , "unexpected '''"
-                , "expecting variable name"
-                ]
+    , testGroup
+        "Identifiers"
+        [ testCase
+            "Allow ' in variable names #269 - parse variable name containing '"
+            (valid "def a'_' = 0 end")
+        , testCase
+            "Allow ' in variable names #269 - do not parse variable starting with '"
+            ( process
+                "def 'a = 0 end"
+                ( T.unlines
+                    [ "1:5:"
+                    , "  |"
+                    , "1 | def 'a = 0 end"
+                    , "  |     ^"
+                    , "unexpected '''"
+                    , "expecting variable name"
+                    ]
+                )
             )
-        )
+        , testCase
+            "Disallow type name as variable name"
+            ( process
+                "let Int = 3 in Int + 1"
+                ( T.unlines
+                    [ "1:8:"
+                    , "  |"
+                    , "1 | let Int = 3 in Int + 1"
+                    , "  |        ^"
+                    , "reserved word 'Int' cannot be used as a variable name"
+                    ]
+                )
+            )
+        , testCase
+            "Disallow any uppercase variable name"
+            ( process
+                "let Is = 3 in Is + 1"
+                ( T.unlines
+                    [ "1:7:"
+                    , "  |"
+                    , "1 | let Is = 3 in Is + 1"
+                    , "  |       ^"
+                    , "Variable names must start with a lowercase letter"
+                    ]
+                )
+            )
+        ]
     , testCase
         "Parse pair syntax #225"
         (valid "def f : (Int -> Bool) * (Int -> Bool) = (\\x. false, \\x. true) end")
