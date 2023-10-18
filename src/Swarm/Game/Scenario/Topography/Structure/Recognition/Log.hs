@@ -18,8 +18,8 @@ import Swarm.Game.Universe (Cosmic)
 type StructureRowContent = [Maybe EntityName]
 type WorldRowContent = [Maybe EntityName]
 
-data MatchingRowFrom = MatchingRowFrom {
-    rowIdx :: Int32
+data MatchingRowFrom = MatchingRowFrom
+  { rowIdx :: Int32
   , structure :: StructureName
   }
   deriving (Generic, ToJSON)
@@ -27,23 +27,24 @@ data MatchingRowFrom = MatchingRowFrom {
 newtype HaystackPosition = HaystackPosition Int
   deriving (Generic, ToJSON)
 
-data HaystackContext = HaystackContext {
-    worldRow :: WorldRowContent
+data HaystackContext = HaystackContext
+  { worldRow :: WorldRowContent
   , haystackPosition :: HaystackPosition
   }
   deriving (Generic, ToJSON)
 
-data FoundRowCandidate = FoundRowCandidate {
-    haystackContext :: HaystackContext
+data FoundRowCandidate = FoundRowCandidate
+  { haystackContext :: HaystackContext
   , structureContent :: StructureRowContent
   , rowCandidates :: [MatchingRowFrom]
   }
   deriving (Generic, ToJSON)
 
-data ParticipatingEntity = ParticipatingEntity {
-    entity :: EntityName
+data ParticipatingEntity = ParticipatingEntity
+  { entity :: EntityName
   , searchOffsets :: InspectionOffsets
-  } deriving (Generic, ToJSON)
+  }
+  deriving (Generic, ToJSON)
 
 data SearchLog
   = FoundParticipatingEntity ParticipatingEntity
