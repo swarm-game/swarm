@@ -7,7 +7,7 @@
 --
 -- Simple Markdown AST and related utilities.
 --
--- Parametrising 'Document' with the type of
+-- Parameterising 'Document' with the type of
 -- inline code and code blocks allows us to
 -- inspect and validate Swarm code in descriptions.
 --
