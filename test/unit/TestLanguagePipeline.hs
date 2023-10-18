@@ -108,6 +108,19 @@ testLanguagePipeline =
                     ]
                 )
             )
+        , testCase
+            "Disallow uppercase type variable names"
+            ( process
+                "def id : A -> A = \\x. x end"
+                ( T.unlines
+                    [ "1:11:"
+                    , "  |"
+                    , "1 | def id : A -> A = \\x. x end"
+                    , "  |           ^"
+                    , "Variable names must start with a lowercase letter"
+                    ]
+                )
+            )
         ]
     , testCase
         "Parse pair syntax #225"
