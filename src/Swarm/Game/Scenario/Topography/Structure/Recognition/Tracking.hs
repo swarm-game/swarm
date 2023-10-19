@@ -1,14 +1,12 @@
-{- |
-SPDX-License-Identifier: BSD-3-Clause
-
-Structure recognizer: online operations
-
-= Structure recognition overview
-
-2D structures may be defined
-at the <toplevel of a scenario file >.
-
--}
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Structure recognizer: online operations
+--
+-- = Structure recognition overview
+--
+-- 2D structures may be defined
+-- at the <toplevel of a scenario file >.
 module Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking (
   entityModified,
 ) where
@@ -40,8 +38,6 @@ import Swarm.Util (deleteKeys)
 import Text.AhoCorasick
 
 -- | A hook to be added to the centralized entity update function.
---
--- 
 entityModified ::
   (Has (State GameState) sig m) =>
   CellModification Entity ->
