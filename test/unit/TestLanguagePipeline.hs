@@ -91,23 +91,13 @@ testLanguagePipeline =
                     , "  |"
                     , "1 | let Int = 3 in Int + 1"
                     , "  |        ^"
-                    , "reserved word 'Int' cannot be used as a variable name"
+                    , "Reserved word 'Int' cannot be used as a variable name"
                     ]
                 )
             )
         , testCase
-            "Disallow any uppercase variable name"
-            ( process
-                "let Is = 3 in Is + 1"
-                ( T.unlines
-                    [ "1:7:"
-                    , "  |"
-                    , "1 | let Is = 3 in Is + 1"
-                    , "  |       ^"
-                    , "Variable names must start with a lowercase letter"
-                    ]
-                )
-            )
+            "Allow uppercase term variable names"
+            (valid "let Is = 3 in Is + 1")
         , testCase
             "Disallow uppercase type variable names"
             ( process
@@ -117,7 +107,23 @@ testLanguagePipeline =
                     , "  |"
                     , "1 | def id : A -> A = \\x. x end"
                     , "  |           ^"
-                    , "Variable names must start with a lowercase letter"
+                    , "Type variable names must start with a lowercase letter"
+                    ]
+                )
+            )
+        , testCase
+            "Allow term variable names which are lowercase versions of reserved type names"
+            (valid "def idInt : Int -> Int = \\int. int end")
+        , testCase
+            "Disallow type variable names which are lowercase versions of reserved type names"
+            ( process
+                "def id : int -> int = \\x. x end"
+                ( T.unlines
+                    [ "1:13:"
+                    , "  |"
+                    , "1 | def id : int -> int = \\x. x end"
+                    , "  |             ^"
+                    , "Reserved type name 'Int' cannot be used as a type variable name"
                     ]
                 )
             )

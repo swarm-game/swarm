@@ -149,21 +149,37 @@ reserved :: Text -> Parser ()
 reserved = reservedGen string'
 
 -- | Parse an identifier, i.e. any non-reserved string containing
---   alphanumeric characters and underscores and starting with either
---   an underscore or a lowercase letter.
-identifier :: Parser Var
-identifier = lvVar <$> locIdentifier
+--   alphanumeric characters and underscores, not starting with a
+--   digit. The Bool indicates whether we are parsing a type variable.
+identifier :: Bool -> Parser Var
+identifier = fmap lvVar . locIdentifier
 
--- | Parse an identifier together with its source location info.
-locIdentifier :: Parser LocVar
-locIdentifier = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
+-- | Parse a type variable, which must start with an underscore or
+--   lowercase letter and cannot be the lowercase version of a type
+--   name.
+tyVar :: Parser Var
+tyVar = identifier True
+
+-- | Parse a term variable, which can start in any case and just
+--   cannot be the same (case-insensitively) as a lowercase reserved
+--   word.
+tmVar :: Parser Var
+tmVar = identifier False
+
+-- | Parse an identifier together with its source location info. The
+--   Bool indicates whether we are parsing a type variable (which are
+--   not allowed to start with an uppercase letter).
+locIdentifier :: Bool -> Parser LocVar
+locIdentifier isTV = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
  where
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
   check (into @Text -> t)
     | t `elem` reservedWords || T.toLower t `elem` reservedWords =
-        failT ["reserved word", squote t, "cannot be used as a variable name"]
-    | isUpper (T.head t) =
-        failT ["Variable names must start with a lowercase letter"]
+        failT ["Reserved word", squote t, "cannot be used as a variable name"]
+    | isTV && T.toTitle t `elem` reservedWords =
+        failT ["Reserved type name", squote (T.toTitle t), "cannot be used as a type variable name"]
+    | isTV && isUpper (T.head t) =
+        failT ["Type variable names must start with a lowercase letter"]
     | otherwise = return t
 
 -- | Parse a text literal (including escape sequences) in double quotes.
@@ -205,7 +221,7 @@ parsePolytype :: Parser Polytype
 parsePolytype =
   join $
     quantify
-      <$> (fromMaybe [] <$> optional (reserved "forall" *> some identifier <* symbol "."))
+      <$> (fromMaybe [] <$> optional (reserved "forall" *> some tyVar <* symbol "."))
       <*> parseType
  where
   quantify :: [Var] -> Type -> Parser Polytype
@@ -244,7 +260,7 @@ parseTypeAtom =
     <|> TyActor <$ reservedCS "Actor"
     <|> TyKey <$ reservedCS "Key"
     <|> TyCmd <$> (reservedCS "Cmd" *> parseTypeAtom)
-    <|> TyVar <$> identifier
+    <|> TyVar <$> tyVar
     <|> TyDelay <$> braces parseType
     <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))
     <|> parens parseType
@@ -252,7 +268,7 @@ parseTypeAtom =
 parseRecord :: Parser a -> Parser (Map Var a)
 parseRecord p = (parseBinding `sepBy` symbol ",") >>= fromListUnique
  where
-  parseBinding = (,) <$> identifier <*> p
+  parseBinding = (,) <$> tmVar <*> p
   fromListUnique kvs = case findDup (map fst kvs) of
     Nothing -> return $ Map.fromList kvs
     Just x -> failT ["duplicate field name", squote x, "in record literal"]
@@ -286,7 +302,7 @@ parseLoc pterm = uncurry Syntax <$> parseLocG pterm
 parseTermAtom :: Parser Syntax
 parseTermAtom = do
   s1 <- parseTermAtom2
-  ps <- many (symbol "." *> parseLocG identifier)
+  ps <- many (symbol "." *> parseLocG tmVar)
   return $ foldl' (\(Syntax l1 t) (l2, x) -> Syntax (l1 <> l2) (TProj t x)) s1 ps
 
 -- | Parse an atomic term.
@@ -295,7 +311,7 @@ parseTermAtom2 =
   parseLoc
     ( TUnit <$ symbol "()"
         <|> TConst <$> parseConst
-        <|> TVar <$> identifier
+        <|> TVar <$> tmVar
         <|> TDir <$> parseDirection
         <|> TInt <$> integer
         <|> TText <$> textLiteral
@@ -311,16 +327,16 @@ parseTermAtom2 =
              )
         <|> uncurry SRequirements <$> (reserved "requirements" *> match parseTerm)
         <|> SLam
-          <$> (symbol "\\" *> locIdentifier)
+          <$> (symbol "\\" *> locIdentifier False)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)
         <|> sLet
-          <$> (reserved "let" *> locIdentifier)
+          <$> (reserved "let" *> locIdentifier False)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
         <|> sDef
-          <$> (reserved "def" *> locIdentifier)
+          <$> (reserved "def" *> locIdentifier False)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
         <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
@@ -360,8 +376,8 @@ sDef x ty t = SDef (lvVar x `S.member` setOf freeVarsV t) x ty t
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =
-  TAntiText <$> (lexeme . try) (symbol "$str:" *> identifier)
-    <|> TAntiInt <$> (lexeme . try) (symbol "$int:" *> identifier)
+  TAntiText <$> (lexeme . try) (symbol "$str:" *> tmVar)
+    <|> TAntiInt <$> (lexeme . try) (symbol "$int:" *> tmVar)
 
 -- | Parse a Swarm language term.
 parseTerm :: Parser Syntax
@@ -383,7 +399,7 @@ data Stmt
 
 parseStmt :: Parser Stmt
 parseStmt =
-  mkStmt <$> optional (try (locIdentifier <* symbol "<-")) <*> parseExpr
+  mkStmt <$> optional (try (locIdentifier False <* symbol "<-")) <*> parseExpr
 
 mkStmt :: Maybe LocVar -> Syntax -> Stmt
 mkStmt Nothing = BareTerm
