@@ -9,7 +9,6 @@ module Swarm.Game.Step.Util where
 
 import Control.Applicative (Applicative (..))
 import Control.Carrier.State.Lazy
-import Data.IntMap qualified as IM
 import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
@@ -18,6 +17,7 @@ import Control.Monad (forM_, guard, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.Array (bounds, (!))
+import Data.IntMap qualified as IM
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T

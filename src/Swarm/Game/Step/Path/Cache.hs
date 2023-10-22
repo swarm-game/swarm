@@ -8,7 +8,6 @@ import Control.Arrow ((&&&))
 import Control.Carrier.State.Lazy
 import Control.Effect.Lens
 import Data.IntMap qualified as IM
-import Swarm.Game.World.Modify
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
@@ -19,6 +18,7 @@ import Swarm.Game.State
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Sig
 import Swarm.Game.Universe (Cosmic (..), SubworldName)
+import Swarm.Game.World.Modify
 import Swarm.Util (tails1)
 import Swarm.Util.RingBuffer qualified as RB
 
@@ -54,7 +54,8 @@ perhapsInvalidateForRobot
     | otherwise = case tgt of
         LocationTarget _locTarget -> Right Nothing
         EntityTarget targetEntityName -> case entityModification of
-          Swap oldEntity newEntity -> -- TODO: Is this correct?
+          Swap oldEntity newEntity ->
+            -- TODO: Is this correct?
             handleRemovedEntity oldEntity >> handleNewEntity newEntity targetEntityName
           Remove oldEntity -> handleRemovedEntity oldEntity
           Add newEntity -> handleNewEntity newEntity targetEntityName
