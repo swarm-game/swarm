@@ -335,6 +335,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/1355-combustion"
         , testSolution Default "Testing/1379-single-world-portal-reorientation"
         , testSolution Default "Testing/1322-wait-with-instant"
+        , testSolution Default "Testing/1598-detect-entity-change"
         , testSolution Default "Testing/1399-backup-command"
         , testSolution Default "Testing/1536-custom-unwalkable-entities"
         , testGroup

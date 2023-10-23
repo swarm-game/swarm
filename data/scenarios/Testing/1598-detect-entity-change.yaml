@@ -47,14 +47,12 @@ robots:
     inventory:
       - [1, flower]
 solution: |
-    wait 4;
+    wait 8;
+    move;
     move;
     swap "dial (G)";
     //wait 0;
     swap "dial (B)";
-
-    wait 4;
-    swap "dial (G)";
 entities:
   - name: "dial (R)"
     display:
@@ -83,8 +81,9 @@ world:
   upperleft: [-1, -1]
   offset: false
   palette:
+    '.': [grass, erase]
     'B': [grass, erase, base]
     'c': [grass, dial (R), lockbot]
   map: |
-    Bc
+    B.c
     

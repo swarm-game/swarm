@@ -1,26 +1,17 @@
-def checkCombo = \colorString.
-    herenow <- ishere colorString;
-    if herenow {
-        return true;
-    } {
-        watch down;
-        return false;
-    }
-    end;
-
 def doUntilCorrect =
-    isCorrect <- instant $ checkCombo "dial (G)";
-    if isCorrect {
+    herenow <- ishere "dial (G)";
+    if herenow {
         give base "flower";
     } {
+        watch down;
         wait 1000;
         doUntilCorrect;
-    };
+    }
     end;
     
 def go =
-
-    doUntilCorrect;
+    instant $
+        doUntilCorrect;
     end;
 
 go;

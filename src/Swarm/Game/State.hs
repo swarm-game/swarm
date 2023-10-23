@@ -586,6 +586,7 @@ data GameState = GameState
     -- that we do not have to iterate over all "waiting" robots,
     -- since there may be many.
     _robotsWatching :: Map (Cosmic Location) (S.Set RID)
+  -- , _wakeLog :: [WakeLogEvent]
   , _discovery :: Discovery
   , _seed :: Seed
   , _randGen :: StdGen
@@ -1034,7 +1035,7 @@ clearWatchingRobots ::
   (Has (State GameState) sig m) =>
   [RID] ->
   m ()
-clearWatchingRobots rids = do
+clearWatchingRobots rids =
   robotsWatching %= M.map (`S.difference` S.fromList rids)
 
 -- | Iterates through all of the currently @wait@-ing robots,
@@ -1079,7 +1080,8 @@ wakeWatchingRobots loc = do
 
       -- Step 4: Re-add the watching bots to be awakened at the next tick:
       wakeableBotIds = map fst wakeTimes
-      newWakeTime = addTicks 1 currentTick
+      -- newWakeTime = addTicks 1 currentTick
+      newWakeTime = currentTick
       newInsertions = M.singleton newWakeTime wakeableBotIds
 
   -- NOTE: There are two "sources of truth" for the waiting state of robots:
