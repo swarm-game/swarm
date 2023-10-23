@@ -1,0 +1,94 @@
+version: 1
+name: Entity change detection
+author: Karl Ostmo
+description: |
+  Ensure that a change to an entity can be observed
+  by a system robot within a single tick.
+
+  In this scenario, the base will first `swap` the
+  existing `dial (R)`{=entity} with a `dial (G)`{=entity},
+  then immediately `swap` again with a `dial (B)`{=entity}.
+
+  The system robot should be able to detect the presence
+  of the `dial (G)`{=entity} before it is `swap`ped a second time.
+creative: false
+seed: 0
+objectives:
+  - goal:
+      - |
+        Turn the light green
+    condition: |
+      as base {has "flower"};
+    prerequisite:
+      not: blue_light
+  - id: blue_light
+    teaser: No blue light
+    optional: true
+    goal:
+      - |
+        Turn the light blue
+    condition: |
+      r <- robotnamed "lockbot";
+      as r {ishere "dial (B)"};
+robots:
+  - name: base
+    dir: [1, 0]
+    display:
+      invisible: true
+    devices:
+      - hourglass
+      - fast grabber
+      - logger
+      - treads
+    inventory:
+      - [1, "dial (R)"]
+      - [1, "dial (G)"]
+      - [1, "dial (B)"]
+  - name: lockbot
+    system: true
+    display:
+      invisible: true
+    dir: [1, 0]
+    program: |
+      run "scenarios/Testing/_1598-detect-entity-change/setup.sw"
+    inventory:
+      - [1, flower]
+solution: |
+  wait 2;
+  move;
+  move;
+  swap "dial (G)";
+  swap "dial (B)";
+entities:
+  - name: "dial (R)"
+    display:
+      char: '•'
+      attr: red
+    description:
+      - A red dial
+    properties: [known, pickable]
+  - name: "dial (G)"
+    display:
+      char: '•'
+      attr: green
+    description:
+      - A green dial
+    properties: [known, pickable]
+  - name: "dial (B)"
+    display:
+      char: '•'
+      attr: blue
+    description:
+      - A blue dial
+    properties: [known, pickable]
+world:
+  dsl: |
+    {blank}
+  upperleft: [-1, -1]
+  offset: false
+  palette:
+    '.': [grass, erase]
+    'B': [grass, erase, base]
+    'c': [grass, dial (R), lockbot]
+  map: |
+    B.c
