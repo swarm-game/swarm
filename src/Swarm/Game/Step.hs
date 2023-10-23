@@ -1159,8 +1159,8 @@ execConst c vs s k = do
 
         return $ Out VUnit s k
       _ -> badConst
-    Grab -> doGrab Grab'
-    Harvest -> doGrab Harvest'
+    Grab -> mkReturn <$> doGrab Grab'
+    Harvest -> mkReturn <$> doGrab Harvest'
     Ignite -> case vs of
       [VDir d] -> do
         Combustion.igniteCommand c d
@@ -1172,14 +1172,16 @@ execConst c vs s k = do
         -- Make sure the robot has the thing in its inventory
         e <- hasInInventoryOrFail name
         -- Grab
-        r <- doGrab Swap'
-        case r of
-          Out {} -> do
-            -- Place the entity and remove it from the inventory
-            updateEntityAt loc (const (Just e))
-            robotInventory %= delete e
-          _ -> pure ()
-        return r
+        newE <- doGrab Swap'
+
+        -- Place the entity and remove it from the inventory
+        updateEntityAt loc (const (Just e))
+        robotInventory %= delete e
+
+        when (e == newE) $
+          grantAchievement SwapSame
+
+        return $ mkReturn newE
       _ -> badConst
     Turn -> case vs of
       [VDir d] -> do
@@ -2510,9 +2512,12 @@ execConst c vs s k = do
       `holdsOrFail` ["You don't have", indefinite eName, "to", cmd <> "."]
     return e
 
+  mkReturn :: Valuable a => a -> CESK
+  mkReturn x = Out (asValue x) s k
+
   -- The code for grab and harvest is almost identical, hence factored
   -- out here.
-  doGrab :: (HasRobotStepState sig m, Has (Lift IO) sig m) => GrabbingCmd -> m CESK
+  doGrab :: (HasRobotStepState sig m, Has (Lift IO) sig m) => GrabbingCmd -> m Entity
   doGrab cmd = do
     let verb = verbGrabbingCmd cmd
         verbed = verbedGrabbingCmd cmd
@@ -2556,8 +2561,8 @@ execConst c vs s k = do
     robotInventory %= insert e'
     updateDiscoveredEntities e'
 
-    -- Return the name of the item obtained.
-    return $ Out (VText (e' ^. entityName)) s k
+    -- Return the item obtained.
+    return e'
 
 ------------------------------------------------------------
 -- The "watch" command

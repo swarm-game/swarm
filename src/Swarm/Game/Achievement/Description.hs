@@ -88,3 +88,10 @@ describe = \case
       "`turn down` without a compass. Congratulations, you are \"disoriented\". How are you supposed to move now?"
       Easy
       True
+  GameplayAchievement SwapSame ->
+    AchievementInfo
+      "Fair Trade"
+      (Just $ Freeform "The *Law of Equivalent Exchange*... taken literally.")
+      "`swap` an item for itself."
+      Easy
+      True
