@@ -334,6 +334,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/144-subworlds/subworld-located-robots"
         , testSolution Default "Testing/1355-combustion"
         , testSolution Default "Testing/1379-single-world-portal-reorientation"
+        , testSolution Default "Testing/1322-wait-with-instant"
         , testSolution Default "Testing/1399-backup-command"
         , testSolution Default "Testing/1536-custom-unwalkable-entities"
         , testGroup

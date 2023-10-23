@@ -1,0 +1,73 @@
+version: 1
+name: Using wait with instant
+author: Karl Ostmo
+description: |
+  Observe timing of (instant $ wait 1)
+  interspersed with other commands
+creative: false
+seed: 0
+objectives:
+  - goal:
+      - |
+        Hare must win by three cells
+    condition: |
+      h <- robotnamed "hare";
+      hareloc <- as h {whereami};
+
+      t <- robotnamed "tortoise";
+      tortoiseloc <- as t {whereami};
+
+      let xDiff = fst hareloc - fst tortoiseloc in
+
+      return $ fst hareloc == 0 && xDiff == 3;
+solution: |
+  noop;
+robots:
+  - name: base
+    dir: [1, 0]
+    display:
+      invisible: true
+    devices:
+      - hourglass
+      - logger
+  - name: tortoise
+    system: true
+    display:
+      invisible: false
+      attr: green
+    dir: [1, 0]
+    program: |
+      move; move;
+      move; move;
+      move; move;
+  - name: hare
+    system: true
+    display:
+      invisible: false
+      attr: snow
+    dir: [1, 0]
+    program: |
+      instant (
+        move; move;
+        wait 1;
+        move; move;
+        wait 1;
+        move; move;
+      );
+world:
+  dsl: |
+    {blank}
+  upperleft: [-6, 2]
+  offset: false
+  palette:
+    '.': [grass, erase]
+    'd': [dirt, erase]
+    'B': [grass, erase, base]
+    'T': [grass, erase, tortoise]
+    'H': [grass, erase, hare]
+  map: |
+    B.....d.
+    T.....d.
+    H.....d.
+    ......d.
+    
