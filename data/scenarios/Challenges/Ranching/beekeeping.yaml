@@ -1,0 +1,140 @@
+version: 1
+name: Beekeeping
+author: Karl Ostmo
+description: |
+  Build an apiary
+creative: true
+seed: 2
+objectives:
+  - teaser: Construct hives
+    goal:
+      - |
+        Build eight `beehive`{=entity}s
+    condition: |
+      foundStructure <- structure "beehive" 0;
+      return $ case foundStructure (\_. false) (\_. true);
+  - teaser: Collect honey
+    goal:
+      - |
+        Collect 12 jars of honey
+    condition: |
+      return false;
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - 3D printer
+      - branch predictor
+      - calculator
+      - clock
+      - comparator
+      - dictionary
+      - dozer blade
+      - grabber
+      - hearing aid
+      - keyboard
+      - lambda
+      - logger
+      - scanner
+      - strange loop
+      - treads
+      - welder
+      - workbench
+    inventory:
+      - [100, board]
+      - [50, copper wall]
+      - [3, copper pipe]
+  - name: queenbee
+    dir: [1, 0]
+    system: true
+    display:
+      invisible: false
+    program:
+      run "scenarios/Challenges/Ranching/_beekeeping/queenbee.sw"
+solution: |
+   run "scenarios/Challenges/Ranching/_beekeeping/solution.sw"
+structures:
+  - name: beehive
+    recognize: true
+    structure:
+      palette:
+        '-': [dirt, slat]
+        'b': [dirt, board]
+      map: |
+        bbbbb
+        b---b
+        b---b
+        b---b
+        bbbbb
+  - name: brewery
+    recognize: true
+    structure:
+      palette:
+        'p': [dirt, copper wall]
+        'I': [dirt, copper pipe]
+        '.': [dirt]
+      map: |
+        ..ppp..
+        .p...p.
+        p.....p
+        p.III.p
+        p.....p
+        .p...p.
+        ..ppp..
+entities:
+  - name: honeycomb
+    display:
+      char: 'x'
+      attr: gold
+    description:
+    - Pushable rock
+    properties: [known, unwalkable, portable]
+  - name: slat
+    display:
+      char: '-'
+      attr: ice
+    description:
+    - Internal component of a beehive
+    properties: [known, portable]
+  - name: copper wall
+    display:
+      char: 't'
+      attr: copper
+    description:
+    - Material for brewery tank
+    properties: [known, portable, unwalkable]
+recipes:
+  - in:
+      - [1, board]
+    out:
+      - [3, slat]
+known: [flower, tree]
+world:
+  dsl: |
+    let
+      cl = perlin seed 1 0.15 0.0,
+      flowers = cl > 0.7
+    in
+      overlay
+      [ {grass}
+      , mask (flowers && (x + y) % 3 == 0) {flower}
+      ]
+  upperleft: [0, 0]
+  offset: false
+  palette:
+    'B': [grass, erase, base]
+    'Q': [grass, erase, queenbee]
+    '.': [grass, erase]
+    '*': [grass, flower]
+  map: |
+    ..........Q.....
+    ................
+    ..B.............
+    ................
+    ................
+    ................
+    ................
+    ................
+    ................
+
+    
