@@ -1,0 +1,61 @@
+version: 1
+name: Watch and Wait with Instant
+author: Karl Ostmo
+description: |
+  Ensure that the `watch` command does
+  not introduce a tick delay.
+creative: false
+seed: 0
+objectives:
+  - teaser: Has item
+    goal:
+      - |
+        Observe item
+    condition: |
+      r <- robotnamed "watchbot";
+      as r {ishere "rock"};
+      //as r {return false};
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - hourglass
+      - fast grabber
+      - logger
+      - treads
+    inventory:
+      - [1, flower]
+      - [1, tree]
+      - [1, rock]
+  - name: watchbot
+    system: true
+    display:
+      invisible: false
+    dir: [1, 0]
+    program: |
+      def watchAndWait =
+        watch down;
+        wait 1000;
+        watchAndWait;
+        end;
+
+      instant watchAndWait;
+    inventory:
+      - [1, flower]
+solution: |
+  move; move;
+  swap "flower";
+  swap "tree";
+  swap "rock";
+known: [gold]
+world:
+  dsl: |
+    {blank}
+  upperleft: [-1, -1]
+  offset: false
+  palette:
+    '.': [grass, erase]
+    'B': [grass, erase, base]
+    'c': [grass, gold, watchbot]
+  map: |
+    B.c
