@@ -1,0 +1,453 @@
+version: 1
+name: Beekeeping
+author: Karl Ostmo
+description: |
+  Bootstrap an organic *bee*verage industry.
+creative: false
+seed: 2
+attrs:
+  - name: bee
+    fg: '#ffff00'
+    bg: '#000000'
+  - name: water_cask
+    fg: '#4488ff'
+    bg: '#8B4513'
+  - name: mybase
+    fg: '#e0c0e0'
+objectives:
+  - teaser: Apiarist
+    goal:
+      - |
+        Build a `beehive`{=structure}.
+      - |
+        This will attract bees, which will gather
+        `nectar`{=entity} from nearby `wildflower`{=entity}s.
+      - |
+        Do not crowd hives; provide at least one cell margin
+        between them.
+      - |
+        Given that `wildflower`{=entity}s cannot be relocated,
+        judicious choice of location can expedite `honeycomb`{=entity}
+        production.
+    condition: |
+      foundStructure <- structure "beehive" 0;
+      return $ case foundStructure (\_. false) (\_. true);
+  - teaser: Collect honeycomb
+    goal:
+      - |
+        Collect `honeycomb`{=entity} from the `beehive`{=structure}s.
+      - |
+        After gathering a certain amount of nectar, a bee will return
+        to its hive and place honeycomb alongside it.
+        A finite amount of honeycomb may be accumulated before the
+        bee becomes dormant.
+    condition: |
+      as base {
+        has "honeycomb"
+      }
+  - teaser: Cooper
+    goal:
+      - |
+        Make a `cask`{=entity}.
+      - |
+        Utilize local timber and your on-hand supply of iron material.
+      - |
+        You may `use "siphon" forward` when positioned in front of
+        a lake to fill a `cask`{=entity} with `lakewater`{=entity}.
+    condition: |
+      as base {
+        has "cask"
+      }
+  - teaser: Brewmeister
+    goal:
+      - |
+        Ferment 2 barrels of `mead`{=entity}.
+    condition: |
+      as base {
+        meadCount <- count "mead";
+        return $ meadCount >= 2;
+      }
+  - teaser: Tavern keeper
+    optional: true
+    goal:
+      - |
+        Construct a `mead hall`{=structure}.
+    condition: |
+      foundStructure <- structure "mead hall" 0;
+      return $ case foundStructure (\_. false) (\_. true);
+robots:
+  - name: base
+    display:
+      attr: mybase
+    dir: [1, 0]
+    devices:
+      - 3D printer
+      - blueprint
+      - branch predictor
+      - ADT calculator
+      - clock
+      - comparator
+      - compass
+      - counter
+      - dictionary
+      - fast grabber
+      - GPS receiver
+      - harvester
+      - hearing aid
+      - honey extractor
+      - keyboard
+      - lambda
+      - logger
+      - net
+      - rolex
+      - scanner
+      - siphon
+      - strange loop
+      - toolkit
+      - treads
+      - welder
+      - workbench
+    inventory:
+      - [20, iron plate]
+      - [100, tree]
+      - [4, botkit]
+  - name: queenbee
+    dir: [1, 0]
+    system: true
+    display:
+      invisible: false
+      char: 'Q'
+      attr: bee
+    program:
+      run "scenarios/Challenges/Ranching/_beekeeping/queenbee.sw"
+solution: |
+   run "scenarios/Challenges/Ranching/_beekeeping/solution.sw"
+structures:
+  - name: beehive
+    recognize: true
+    structure:
+      palette:
+        '-': [dirt, honey frame]
+        'b': [dirt, board]
+      map: |
+        bbbbb
+        b---b
+        b---b
+        b---b
+        bbbbb
+  - name: mead hall
+    recognize: true
+    structure:
+      palette:
+        'w': [dirt, wall]
+        't': [dirt, table]
+        'h': [dirt, hearth]
+        'a': [dirt, archway]
+        '.': [stone, stone tile]
+      mask: 'x'
+      map: |
+        wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww
+        w.............hhhh.............w
+        w..ttttttttt........ttttttttt..w
+        w..............................w
+        w..ttttttttt........ttttttttt..w
+        w..............................w
+        wwwwwwwwwwwwwwaaaawwwwwwwwwwwwww
+        xxxxxxxxxxxxxxaaaaxxxxxxxxxxxxxx
+entities:
+  - name: wildflower
+    display:
+      attr: flower
+      char: '*'
+    description:
+    - A delicate flower that grows wild in local meadows.
+      Produces `nectar`{=entity} when `harvest`ed.
+    properties: [known, growable]
+    yields: nectar
+    growth: [80, 120]
+  - name: botkit
+    display:
+      attr: device
+      char: 'k'
+    description:
+    - All the essentials to equip your own "worker bee"
+    properties: [known, portable]
+  - name: reed
+    display:
+      attr: plant
+      char: 'r'
+    description:
+    - Reeds, grow near water
+    properties: [known, portable, growable]
+  - name: honeycomb
+    display:
+      char: 'x'
+      attr: gold
+    description:
+    - Product of bees that have consumed nectar
+    properties: [known, portable]
+  - name: proboscis
+    display:
+      char: 'p'
+      attr: device
+    description:
+    - Senses direction to nectar-producing flowers
+    properties: [known, portable]
+    capabilities: [detectdirection, structure]
+  - name: honey
+    display:
+      char: 'h'
+      attr: gold
+    description:
+    - Pure liquid honey
+    properties: [known, portable]
+  - name: mead
+    display:
+      char: 'm'
+    description:
+    - Honey-based alcoholic beverage
+    properties: [known, portable]
+  - name: honey extractor
+    display:
+      char: 'e'
+      attr: device
+    description:
+    - Device for extracting honey from the comb
+    properties: [known, portable]
+  - name: buzz
+    display:
+      char: 'z'
+    description:
+    - Result of discarding surplus honeycomb
+    properties: [known, portable]
+  - name: wax gland
+    display:
+      char: 'g'
+    description:
+    - Required to make honeycomb
+    properties: [known]
+  - name: nectar
+    display:
+      char: 'n'
+      attr: gold
+    description:
+    - Obtained from wildflowers
+    properties: [known, portable]
+  - name: honey frame
+    display:
+      char: '-'
+      attr: ice
+    description:
+    - Internal component of a beehive
+    properties: [known, portable]
+  - name: stave
+    display:
+      char: 'l'
+      attr: wood
+    description:
+    - Wooden plank comprising the sides of a cask
+    properties: [known, portable]
+  - name: cask
+    display:
+      char: 'c'
+      attr: wood
+    description:
+    - Wooden barrel for liquids
+    properties: [known, portable]
+  - name: water cask
+    display:
+      char: 'c'
+      attr: water_cask
+    description:
+    - Water-filled cask
+    properties: [known, portable]
+  - name: lakewater
+    display:
+      attr: water
+      char: ' '
+    description:
+    - Potable water from a lake
+    properties: [known, infinite, liquid]
+  - name: siphon
+    display:
+      char: 's'
+      attr: device
+    description:
+    - Used to fill a cask with water
+    properties: [known, portable]
+  - name: steel hoop
+    display:
+      char: 'o'
+      attr: iron
+    description:
+    - Binds staves into a cask
+    properties: [known, portable]
+  - name: wall
+    display:
+      char: 'w'
+      attr: wood
+    description:
+    - Outer walls of the building
+    properties: [known, unwalkable]
+  - name: table
+    display:
+      char: 't'
+      attr: wood
+    description:
+    - A segment of banquet table
+    properties: [known, portable]
+  - name: hearth
+    display:
+      char: 'h'
+      attr: rock
+    description:
+    - Encloses a fire to warm the hall
+    properties: [known, unwalkable]
+  - name: archway
+    display:
+      char: 'a'
+      attr: rock
+    description:
+    - Grand entrance
+    properties: [known, portable]
+  - name: stone tile
+    display:
+      char: '.'
+      attr: stone
+    description:
+    - Refined flooring
+    properties: [known, portable]
+recipes:
+  - in:
+      - [1, botkit]
+    out:
+      - [1, branch predictor]
+      - [1, ADT calculator]
+      - [1, blueprint]
+      - [1, clock]
+      - [1, comparator]
+      - [1, compass]
+      - [1, counter]
+      - [1, dictionary]
+      - [1, grabber]
+      - [1, GPS receiver]
+      - [1, harvester]
+      - [1, lambda]
+      - [1, logger]
+      - [1, net]
+      - [1, rolex]
+      - [1, scanner]
+      - [1, solar panel]
+      - [1, strange loop]
+      - [1, treads]
+      - [1, welder]
+      - [1, workbench]
+
+  - in:
+      - [1, board]
+    out:
+      - [3, honey frame]
+  - in:
+      - [1, rock]
+    out:
+      - [16, stone tile]
+  - in:
+      - [2, rock]
+    out:
+      - [1, hearth]
+  - in:
+      - [4, rock]
+    out:
+      - [1, archway]
+  - in:
+      - [2, board]
+    out:
+      - [1, table]
+  - in:
+      - [1, rock]
+      - [1, log]
+    out:
+      - [2, wall]
+  - in:
+      - [1, board]
+    out:
+      - [2, stave]
+  - in:
+      - [2, iron plate]
+    out:
+      - [1, steel hoop]
+  - in:
+      - [20, stave]
+      - [2, steel hoop]
+    out:
+      - [1, cask]
+  - in:
+      - [1, cask]
+      - [1, lakewater]
+    out:
+      - [1, water cask]
+      - [1, lakewater]
+    required:
+      - [1, siphon]
+  - in:
+      - [16, nectar]
+    out:
+      - [1, honeycomb]
+    required:
+      - [1, wax gland]
+  - in:
+      - [1, water cask]
+      - [30, honey]
+    out:
+      - [1, mead]
+  - in:
+      - [1, honeycomb]
+    out:
+      - [1, honey]
+    required:
+      - [1, honey extractor]
+  - in:
+      - [1, honeycomb]
+    out:
+      - [1, buzz]
+    required:
+      - [1, wax gland]
+known: [tree, rock, board]
+world:
+  dsl: |
+    let
+      flowerNoise = perlin seed 1 0.15 0.0,
+      stoneNoise = perlin (seed + 1) 1 0.05 0.0,
+      lakeNoise = perlin seed 1 0.02 0.0,
+      forestNoise = perlin seed 2 0.04 1.0,
+      
+      flowers = flowerNoise > 0.65,
+      rubble = stoneNoise > 0.8,
+      rock = stoneNoise > 0.9,
+      outerShore = -0.55 <= lakeNoise && lakeNoise < -0.5,
+      innerShore = lakeNoise < -0.55,
+      lakes = lakeNoise < -0.6,
+      trees = forestNoise > 0.8
+    in
+      overlay
+      [ {grass}
+      , mask (flowers && (x + y) % 3 == 0) {wildflower}
+      , mask (rubble && (x + y) % 2 == 0) {rock}
+      , mask rock {rock}
+      , mask trees {tree}
+      , mask (outerShore && (x + y) % 2 == 0) {reed}
+      , mask innerShore {reed}
+      , mask lakes {lakewater}
+      ]
+  upperleft: [0, 0]
+  offset: false
+  palette:
+    'B': [grass, erase, base]
+    'Q': [grass, erase, queenbee]
+    '.': [grass, erase]
+  map: |
+    Q....
+    .....
+    ..B..
+    .....
+    .....
