@@ -69,6 +69,7 @@ import Swarm.Game.Failure
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
+import Swarm.Game.Step.WakeLog
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
@@ -1037,6 +1038,10 @@ execConst c vs s k = do
       [VInt d] -> do
         time <- use $ temporal . ticks
         purgeFarAwayWatches
+
+        rid <- use robotID
+        wakeLog %= (WakeLogEvent rid time CalledWaitCommand :)
+
         return $ Waiting (addTicks (fromIntegral d) time) (Out VUnit s k)
       _ -> badConst
     Selfdestruct -> do
@@ -1168,6 +1173,11 @@ execConst c vs s k = do
       _ -> badConst
     Swap -> case vs of
       [VText name] -> do
+
+        time <- use $ temporal . ticks
+        rid <- use robotID
+        wakeLog %= (WakeLogEvent rid time CalledSwapCommand :)
+
         loc <- use robotLocation
         -- Make sure the robot has the thing in its inventory
         e <- hasInInventoryOrFail name

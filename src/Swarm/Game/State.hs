@@ -35,6 +35,7 @@ module Swarm.Game.State (
   robotsByLocation,
   robotsAtLocation,
   robotsWatching,
+  wakeLog,
   robotsInArea,
   baseRobot,
   activeRobots,
@@ -174,6 +175,7 @@ import Data.Int (Int32)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
+import Swarm.Game.Step.WakeLog
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
 import Data.List (partition, sortOn)
@@ -586,7 +588,7 @@ data GameState = GameState
     -- that we do not have to iterate over all "waiting" robots,
     -- since there may be many.
     _robotsWatching :: Map (Cosmic Location) (S.Set RID)
-  -- , _wakeLog :: [WakeLogEvent]
+  , _wakeLog :: [WakeLogEvent]
   , _discovery :: Discovery
   , _seed :: Seed
   , _randGen :: StdGen
@@ -655,6 +657,8 @@ robotsAtLocation loc gs =
 
 -- | Get a list of all the robots that are \"watching\" by location.
 robotsWatching :: Lens' GameState (Map (Cosmic Location) (S.Set RID))
+
+wakeLog :: Lens' GameState [WakeLogEvent]
 
 -- | Get all the robots within a given Manhattan distance from a
 --   location.
@@ -1017,17 +1021,22 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 wakeUpRobotsDoneSleeping :: (Has (State GameState) sig m) => m ()
 wakeUpRobotsDoneSleeping = do
   time <- use $ temporal . ticks
-  mrids <- internalWaitingRobots . at time <<.= Nothing
+  waitingMap <- use waitingRobots
+  let (beforeMap, maybeAt, _) = M.splitLookup time waitingMap
+      mrids = NE.nonEmpty $ concat $ fromMaybe [] maybeAt : M.elems beforeMap
   case mrids of
     Nothing -> return ()
     Just rids -> do
       robots <- use robotMap
-      let aliveRids = filter (`IM.member` robots) rids
+      let aliveRids = filter (`IM.member` robots) $ NE.toList rids
       internalActiveRobots %= IS.union (IS.fromList aliveRids)
+
+      forM_ aliveRids $ \rid ->
+        wakeLog %= (WakeLogEvent rid time DoneSleeping :)
 
       -- These robots' wake times may have been moved "forward"
       -- by 'wakeWatchingRobots'.
-      clearWatchingRobots rids
+      clearWatchingRobots $ NE.toList rids
 
 -- | Clear the "watch" state of all of the
 -- awakened robots
@@ -1083,6 +1092,9 @@ wakeWatchingRobots loc = do
       -- newWakeTime = addTicks 1 currentTick
       newWakeTime = currentTick
       newInsertions = M.singleton newWakeTime wakeableBotIds
+
+  forM_ wakeableBotIds $ \rid ->
+    wakeLog %= (WakeLogEvent rid newWakeTime ScheduledWakeup :)
 
   -- NOTE: There are two "sources of truth" for the waiting state of robots:
   -- 1. In the GameState via "internalWaitingRobots"
@@ -1159,6 +1171,7 @@ initGameState gsc =
     , _robotMap = IM.empty
     , _robotsByLocation = M.empty
     , _robotsWatching = mempty
+    , _wakeLog = mempty
     , _discovery =
         Discovery
           { _availableRecipes = mempty

@@ -63,6 +63,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
 import Swarm.Game.Scenario.Objective.WinCheck
+import Swarm.Game.Step.WakeLog
 import Swarm.Game.State
 import Swarm.Language.Module
 import Swarm.Language.Pipeline
@@ -85,6 +86,7 @@ newtype RobotID = RobotID Int
 type SwarmAPI =
   "robots" :> Get '[JSON] [Robot]
     :<|> "robot" :> Capture "id" RobotID :> Get '[JSON] (Maybe Robot)
+    :<|> "sleep" :> Get '[JSON] [WakeLogEvent]
     :<|> "goals" :> "prereqs" :> Get '[JSON] [PrereqSatisfaction]
     :<|> "goals" :> "active" :> Get '[JSON] [Objective]
     :<|> "goals" :> "graph" :> Get '[JSON] (Maybe GraphInfo)
@@ -133,6 +135,7 @@ mkApp ::
 mkApp state events =
   robotsHandler state
     :<|> robotHandler state
+    :<|> sleepHandler state
     :<|> prereqsHandler state
     :<|> activeGoalsHandler state
     :<|> goalsGraphHandler state
@@ -151,6 +154,11 @@ robotHandler :: ReadableIORef AppState -> RobotID -> Handler (Maybe Robot)
 robotHandler appStateRef (RobotID rid) = do
   appState <- liftIO (readIORef appStateRef)
   pure $ IM.lookup rid (appState ^. gameState . robotMap)
+
+sleepHandler :: ReadableIORef AppState -> Handler [WakeLogEvent]
+sleepHandler appStateRef = do
+  appState <- liftIO (readIORef appStateRef)
+  pure $ appState ^. gameState . wakeLog
 
 prereqsHandler :: ReadableIORef AppState -> Handler [PrereqSatisfaction]
 prereqsHandler appStateRef = do
