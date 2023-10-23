@@ -3,21 +3,21 @@
 module Swarm.Game.Step.WakeLog where
 
 import Data.Aeson (Options (..), SumEncoding (ObjectWithSingleField), ToJSON (..), defaultOptions, genericToJSON)
-import Swarm.Game.CESK (TickNumber)
-import Swarm.Game.Robot (RID)
 import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
+import Swarm.Game.CESK (TickNumber)
+import Swarm.Game.Robot (RID)
 
-data WakeLogEvent = WakeLogEvent {
-    targetRobotID :: RID
+data WakeLogEvent = WakeLogEvent
+  { targetRobotID :: RID
   , thisEventTime :: TickNumber
   , thisEventType :: WakeLogEventType
   }
   deriving (Show, Eq, Generic, ToJSON)
 
-data WakeLogEventType =
-    ScheduledWakeup
+data WakeLogEventType
+  = ScheduledWakeup
   | CalledWaitCommand
   | CalledSwapCommand
   | DoneSleeping

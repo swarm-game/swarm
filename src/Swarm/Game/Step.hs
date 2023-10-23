@@ -69,7 +69,6 @@ import Swarm.Game.Failure
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
-import Swarm.Game.Step.WakeLog
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
@@ -80,6 +79,7 @@ import Swarm.Game.State
 import Swarm.Game.Step.Combustion qualified as Combustion
 import Swarm.Game.Step.Pathfinding
 import Swarm.Game.Step.Util
+import Swarm.Game.Step.WakeLog
 import Swarm.Game.Universe
 import Swarm.Game.Value
 import Swarm.Game.World qualified as W
@@ -1173,7 +1173,6 @@ execConst c vs s k = do
       _ -> badConst
     Swap -> case vs of
       [VText name] -> do
-
         time <- use $ temporal . ticks
         rid <- use robotID
         wakeLog %= (WakeLogEvent rid time CalledSwapCommand :)

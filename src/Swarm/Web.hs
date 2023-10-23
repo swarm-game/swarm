@@ -63,8 +63,8 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
 import Swarm.Game.Scenario.Objective.WinCheck
-import Swarm.Game.Step.WakeLog
 import Swarm.Game.State
+import Swarm.Game.Step.WakeLog
 import Swarm.Language.Module
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (prettyTextLine)

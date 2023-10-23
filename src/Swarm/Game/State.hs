@@ -175,7 +175,6 @@ import Data.Int (Int32)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
-import Swarm.Game.Step.WakeLog
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
 import Data.List (partition, sortOn)
@@ -214,6 +213,7 @@ import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.ScenarioInfo
+import Swarm.Game.Step.WakeLog
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Universe as U
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
@@ -657,7 +657,6 @@ robotsAtLocation loc gs =
 
 -- | Get a list of all the robots that are \"watching\" by location.
 robotsWatching :: Lens' GameState (Map (Cosmic Location) (S.Set RID))
-
 wakeLog :: Lens' GameState [WakeLogEvent]
 
 -- | Get all the robots within a given Manhattan distance from a
