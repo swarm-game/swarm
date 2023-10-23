@@ -67,15 +67,15 @@ structureWidget gs s =
       ]
   ingredientLines = vBox . map showCount . M.toList $ entityCounts s
 
-  showCount (e, c) = hBox [
-      drawLabelledEntityName e
-    , txt $ T.unwords
-        [ ":"
-        , T.pack $ show c
-        ]
-    ]
-
-      
+  showCount (e, c) =
+    hBox
+      [ drawLabelledEntityName e
+      , txt $
+          T.unwords
+            [ ":"
+            , T.pack $ show c
+            ]
+      ]
 
   sName = Structure.name d
   StructureName theName = sName

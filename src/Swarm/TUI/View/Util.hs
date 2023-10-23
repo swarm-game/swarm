@@ -216,7 +216,6 @@ maybeScroll vpName contents =
           . Widget Fixed Fixed
           $ return result
 
-
 -- | Draw the name of an entity, labelled with its visual
 --   representation as a cell in the world.
 drawLabelledEntityName :: Entity -> Widget n
