@@ -33,13 +33,15 @@ module Swarm.Language.Parse (
   unTuple,
 ) where
 
+import Control.Arrow (right)
 import Control.Lens (view, (^.))
-import Control.Monad (guard, join)
+import Control.Monad (guard, join, void)
 import Control.Monad.Combinators.Expr
 import Control.Monad.Reader (
   MonadReader (ask),
   ReaderT (runReaderT),
  )
+import Control.Monad.State (StateT, lift, modify, runStateT)
 import Data.Bifunctor
 import Data.Foldable (asum)
 import Data.List (foldl', nub)
@@ -47,8 +49,11 @@ import Data.List.NonEmpty qualified (head)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Sequence (Seq)
+import Data.Sequence qualified as Seq
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
+import Data.String (fromString)
 import Data.Text (Text, index, toLower)
 import Data.Text qualified as T
 import Data.Void
@@ -75,7 +80,15 @@ import Witch
 data Antiquoting = AllowAntiquoting | DisallowAntiquoting
   deriving (Eq, Ord, Show)
 
-type Parser = ReaderT Antiquoting (Parsec Void Text)
+-- XXX move this + insertComments function into Swarm.Language.Syntax
+
+-- | A comment is retained as some text + its original SrcLoc.  While
+--   parsing we record all comments out-of-band, for later
+--   re-insertion when formatting code.
+data Comment = Comment {commentSrcLoc :: SrcLoc, commentText :: Text}
+  deriving (Eq, Show)
+
+type Parser = ReaderT Antiquoting (StateT (Seq Comment) (Parsec Void Text))
 
 type ParserError = ParseErrorBundle Text Void
 
@@ -108,13 +121,32 @@ reservedWords =
        , "requirements"
        ]
 
+-- Approach for preserving comments taken from https://www.reddit.com/r/haskell/comments/ni4gpm/comment/gz0ipmp/
+
+-- | Parse a line comment, while appending it out-of-band to the list of
+--   comments saved in the custom state.
+lineComment :: Text -> Parser ()
+lineComment start = do
+  (loc, t) <- parseLocG $ do
+    string start *> takeWhileP (Just "character") (/= '\n')
+  lift . modify $ (Seq.|> Comment loc t)
+
+-- | Parse a block comment, while appending it out-of-band to the list of
+--   comments saved in the custom state.
+blockComment :: Text -> Text -> Parser ()
+blockComment start end = do
+  (loc, t) <- parseLocG $ do
+    void $ string start
+    manyTill anySingle (string end)
+  lift . modify $ (Seq.|> Comment loc (fromString t))
+
 -- | Skip spaces and comments.
 sc :: Parser ()
 sc =
   L.space
     space1
-    (L.skipLineComment "//")
-    (L.skipBlockComment "/*" "*/")
+    (lineComment "//")
+    (blockComment "/*" "*/")
 
 -- | In general, we follow the convention that every token parser
 --   assumes no leading whitespace and consumes all trailing
@@ -472,17 +504,17 @@ operatorSymbol = T.singleton <$> oneOf opChars
 --------------------------------------------------
 -- Utilities
 
--- | Run a parser on some input text, returning either the result or a
---   pretty-printed parse error message.
-runParser :: Parser a -> Text -> Either Text a
-runParser p t = first (from . errorBundlePretty) (parse (runReaderT p DisallowAntiquoting) "" t)
+-- | Run a parser on some input text, returning either the result +
+--   all collected comments, or a pretty-printed parse error message.
+runParser :: Parser a -> Text -> Either Text (a, Seq Comment)
+runParser p t = first (from . errorBundlePretty) (parse (runStateT (runReaderT p DisallowAntiquoting) Seq.empty) "" t)
 
 -- | A utility for running a parser in an arbitrary 'MonadFail' (which
 --   is going to be the TemplateHaskell 'Language.Haskell.TH.Q' monad --- see
 --   "Swarm.Language.Parse.QQ"), with a specified source position.
-runParserTH :: (Monad m, MonadFail m) => (String, Int, Int) -> Parser a -> String -> m a
+runParserTH :: (Monad m, MonadFail m) => (String, Int, Int) -> Parser a -> String -> m (a, Seq Comment)
 runParserTH (file, line, col) p s =
-  case snd (runParser' (runReaderT (fully sc p) AllowAntiquoting) initState) of
+  case snd (runParser' (runStateT (runReaderT (fully sc p) AllowAntiquoting) Seq.empty) initState) of
     Left err -> fail $ errorBundlePretty err
     Right e -> return e
  where
@@ -490,6 +522,8 @@ runParserTH (file, line, col) p s =
   -- construct an initial parser state, so we can't just use that
   -- and then change the one field we need to be different (the
   -- 'pstateSourcePos'). We have to copy-paste the whole thing.
+  --
+  -- XXX upgrade to megaparsec 9.6.0 which fixes this
   initState :: State Text Void
   initState =
     State
@@ -510,14 +544,19 @@ runParserTH (file, line, col) p s =
 --   whitespace and ensuring the parsing extends all the way to the
 --   end of the input 'Text'.  Returns either the resulting 'Term' (or
 --   'Nothing' if the input was only whitespace) or a pretty-printed
---   parse error message.
+--   parse error message.  Any parsed comments have been inserted in
+--   appropriate associated syntax nodes.
 readTerm :: Text -> Either Text (Maybe Syntax)
-readTerm = runParser (fullyMaybe sc parseTerm)
+readTerm = right insertComments . runParser (fullyMaybe sc parseTerm)
 
 -- | A lower-level `readTerm` which returns the megaparsec bundle error
 --   for precise error reporting.
 readTerm' :: Text -> Either ParserError (Maybe Syntax)
-readTerm' = parse (runReaderT (fullyMaybe sc parseTerm) DisallowAntiquoting) ""
+readTerm' = right insertComments . parse (runStateT (runReaderT (fullyMaybe sc parseTerm) DisallowAntiquoting) Seq.empty) ""
+
+-- XXX write me
+insertComments :: (Maybe Syntax, Seq Comment) -> Maybe Syntax
+insertComments = undefined
 
 -- | A utility for converting a ParserError into a one line message:
 --   @<line-nr>: <error-msg>@

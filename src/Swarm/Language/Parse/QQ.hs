@@ -35,5 +35,5 @@ quoteTypeExp s = do
         , fst (TH.loc_start loc)
         , snd (TH.loc_start loc)
         )
-  parsed <- runParserTH pos parsePolytype s
+  (parsed, _) <- runParserTH pos parsePolytype s
   dataToExpQ (fmap liftText . cast) parsed
