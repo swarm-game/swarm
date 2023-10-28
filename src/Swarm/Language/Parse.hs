@@ -80,14 +80,6 @@ import Witch
 data Antiquoting = AllowAntiquoting | DisallowAntiquoting
   deriving (Eq, Ord, Show)
 
--- XXX move this + insertComments function into Swarm.Language.Syntax
-
--- | A comment is retained as some text + its original SrcLoc.  While
---   parsing we record all comments out-of-band, for later
---   re-insertion when formatting code.
-data Comment = Comment {commentSrcLoc :: SrcLoc, commentText :: Text}
-  deriving (Eq, Show)
-
 type Parser = ReaderT Antiquoting (StateT (Seq Comment) (Parsec Void Text))
 
 type ParserError = ParseErrorBundle Text Void
@@ -544,19 +536,14 @@ runParserTH (file, line, col) p s =
 --   whitespace and ensuring the parsing extends all the way to the
 --   end of the input 'Text'.  Returns either the resulting 'Term' (or
 --   'Nothing' if the input was only whitespace) or a pretty-printed
---   parse error message.  Any parsed comments have been inserted in
---   appropriate associated syntax nodes.
+--   parse error message.
 readTerm :: Text -> Either Text (Maybe Syntax)
-readTerm = right insertComments . runParser (fullyMaybe sc parseTerm)
+readTerm = right fst . runParser (fullyMaybe sc parseTerm)
 
 -- | A lower-level `readTerm` which returns the megaparsec bundle error
---   for precise error reporting.
-readTerm' :: Text -> Either ParserError (Maybe Syntax)
-readTerm' = right insertComments . parse (runStateT (runReaderT (fullyMaybe sc parseTerm) DisallowAntiquoting) Seq.empty) ""
-
--- XXX write me
-insertComments :: (Maybe Syntax, Seq Comment) -> Maybe Syntax
-insertComments = undefined
+--   for precise error reporting, as well as the parsed comments.
+readTerm' :: Text -> Either ParserError (Maybe Syntax, Seq Comment)
+readTerm' = parse (runStateT (runReaderT (fullyMaybe sc parseTerm) DisallowAntiquoting) Seq.empty) ""
 
 -- | A utility for converting a ParserError into a one line message:
 --   @<line-nr>: <error-msg>@

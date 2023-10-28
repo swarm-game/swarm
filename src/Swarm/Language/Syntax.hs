@@ -66,6 +66,9 @@ module Swarm.Language.Syntax (
   pattern TProj,
   pattern TAnnotate,
 
+  -- * Comments
+  Comment(..),
+  
   -- * Terms
   Var,
   DelayType (..),
@@ -977,6 +980,16 @@ instance Semigroup SrcLoc where
 
 instance Monoid SrcLoc where
   mempty = NoLoc
+
+------------------------------------------------------------
+-- Comments
+------------------------------------------------------------
+
+-- | A comment is retained as some text + its original 'SrcLoc'.
+--   While parsing we record all comments out-of-band, for later
+--   re-insertion when formatting code.
+data Comment = Comment {commentSrcLoc :: SrcLoc, commentText :: Text}
+  deriving (Eq, Show)
 
 ------------------------------------------------------------
 -- Pattern synonyms for untyped terms
