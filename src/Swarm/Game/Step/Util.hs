@@ -13,14 +13,13 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (forM, guard, join, when)
+import Control.Monad (forM, forM_, guard, join, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.Array (bounds, (!))
 import Data.IntMap qualified as IM
 import Data.List (find)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -33,6 +32,7 @@ import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
+import Swarm.Game.World.Modify qualified as WM
 import Swarm.Language.Capability
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
@@ -68,11 +68,11 @@ updateEntityAt ::
   (Maybe Entity -> Maybe Entity) ->
   m ()
 updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
-  didChange <-
-    fmap (fromMaybe False) $
-      zoomWorld subworldName $
-        W.updateM @Int (W.locToCoords loc) upd
-  when didChange $
+  someChange <-
+    zoomWorld subworldName $
+      W.updateM @Int (W.locToCoords loc) upd
+
+  forM_ (WM.getModification =<< someChange) $ \_modType -> do
     wakeWatchingRobots cLoc
 
 -- * Capabilities
