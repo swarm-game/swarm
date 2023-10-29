@@ -67,8 +67,9 @@ module Swarm.Language.Syntax (
   pattern TAnnotate,
 
   -- * Comments
+  CommentType(..),
   Comment(..),
-  
+
   -- * Terms
   Var,
   DelayType (..),
@@ -985,10 +986,13 @@ instance Monoid SrcLoc where
 -- Comments
 ------------------------------------------------------------
 
+data CommentType = LineComment | BlockComment
+  deriving (Eq, Ord, Read, Show, Enum, Bounded)
+
 -- | A comment is retained as some text + its original 'SrcLoc'.
 --   While parsing we record all comments out-of-band, for later
 --   re-insertion when formatting code.
-data Comment = Comment {commentSrcLoc :: SrcLoc, commentText :: Text}
+data Comment = Comment {commentSrcLoc :: SrcLoc, commentType :: CommentType, commentText :: Text}
   deriving (Eq, Show)
 
 ------------------------------------------------------------

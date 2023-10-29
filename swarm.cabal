@@ -357,6 +357,7 @@ test-suite swarm-unit
                       hashable,
                       lens,
                       linear,
+                      megaparsec,
                       mtl,
                       swarm,
                       text,

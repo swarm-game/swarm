@@ -12,7 +12,7 @@ import Data.Text (Text)
 import Graphics.Vty.Input.Events qualified as V
 import Swarm.Game.Location
 import Swarm.Language.Key
-import Swarm.Language.Parse (runParser)
+import Text.Megaparsec (runParser)
 import Swarm.Language.Syntax
 import Test.QuickCheck qualified as QC
 import Test.Tasty
@@ -47,7 +47,7 @@ testCommands =
         [ testGroup
             "Parsing"
             ( let parseKeyTest input mods k =
-                    assertEqual "" (runParser parseKeyCombo input) (Right (mkKeyCombo mods k))
+                    assertEqual "" (runParser parseKeyCombo "" input) (Right (mkKeyCombo mods k))
                in [ testCase "parse x" $ parseKeyTest "x" [] (V.KChar 'x')
                   , testCase "parse X" $ parseKeyTest "X" [] (V.KChar 'X')
                   , testCase "parse C" $ parseKeyTest "C" [] (V.KChar 'C')
@@ -89,4 +89,4 @@ arbitraryModifiers = QC.sublistOf [V.MAlt, V.MCtrl, V.MMeta, V.MShift]
 
 prop_parse_pretty_key :: KeyCombo -> Bool
 prop_parse_pretty_key kc =
-  runParser parseKeyCombo (prettyKeyCombo kc) == Right kc
+  runParser parseKeyCombo "" (prettyKeyCombo kc) == Right kc

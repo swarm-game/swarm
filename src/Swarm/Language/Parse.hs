@@ -121,7 +121,7 @@ lineComment :: Text -> Parser ()
 lineComment start = do
   (loc, t) <- parseLocG $ do
     string start *> takeWhileP (Just "character") (/= '\n')
-  lift . modify $ (Seq.|> Comment loc t)
+  lift . modify $ (Seq.|> Comment loc LineComment t)
 
 -- | Parse a block comment, while appending it out-of-band to the list of
 --   comments saved in the custom state.
@@ -130,7 +130,7 @@ blockComment start end = do
   (loc, t) <- parseLocG $ do
     void $ string start
     manyTill anySingle (string end)
-  lift . modify $ (Seq.|> Comment loc (fromString t))
+  lift . modify $ (Seq.|> Comment loc BlockComment (fromString t))
 
 -- | Skip spaces and comments.
 sc :: Parser ()
@@ -504,11 +504,11 @@ runParser p t = first (from . errorBundlePretty) (parse (runStateT (runReaderT p
 -- | A utility for running a parser in an arbitrary 'MonadFail' (which
 --   is going to be the TemplateHaskell 'Language.Haskell.TH.Q' monad --- see
 --   "Swarm.Language.Parse.QQ"), with a specified source position.
-runParserTH :: (Monad m, MonadFail m) => (String, Int, Int) -> Parser a -> String -> m (a, Seq Comment)
+runParserTH :: (Monad m, MonadFail m) => (String, Int, Int) -> Parser a -> String -> m a
 runParserTH (file, line, col) p s =
   case snd (runParser' (runStateT (runReaderT (fully sc p) AllowAntiquoting) Seq.empty) initState) of
     Left err -> fail $ errorBundlePretty err
-    Right e -> return e
+    Right e -> return (fst e)
  where
   -- This is annoying --- megaparsec does not export its function to
   -- construct an initial parser state, so we can't just use that
