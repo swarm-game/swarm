@@ -1,6 +1,6 @@
 # Revision history for swarm
 
-## **0.5.0.0** - 2023-10-31
+## **0.5.0.0** - 2023-11-01
 
 ### Bugfixes
 
