@@ -18,7 +18,7 @@ encountering an invalid robot index.
 Distinguishes system bots from the base by name.
 Returns true if a bot has "met" the base.
 */
-def anyHasMetBase : int -> cmd bool = \idx.
+def anyHasMetBase : Int -> Cmd Bool = \idx.
     
     try {
         bot <- robotnumbered idx;

@@ -202,7 +202,7 @@ def collectWool =
 
     turn back;
 
-    let forever : cmd unit -> cmd unit = \c. c ; forever c in
+    let forever : Cmd Unit -> Cmd Unit = \c. c ; forever c in
     forever sweepAreaForWool;
     end;
 

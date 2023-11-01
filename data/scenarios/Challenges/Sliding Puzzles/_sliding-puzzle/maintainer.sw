@@ -11,7 +11,7 @@ def computeTriangularNumber = \n.
     (n * (n + 1)) / 2
     end;
 
-def mod : int -> int -> int = \i.\m.
+def mod : Int -> Int -> Int = \i.\m.
     i - m * (i / m);
     end
 
@@ -46,7 +46,7 @@ def teleportToDetectResult = \referenceLoc. \relativeLoc.
     teleport self newLoc;
     end;
 
-def getOrdinal : text -> cmd int = \item.
+def getOrdinal : Text -> Cmd Int = \item.
     count $ item ++ "-ordinal";
     end;
 
@@ -166,7 +166,7 @@ def handleMarker = \boardWidth. \boardHeight.
 
   Precondition: Facing east at location (0, 0).
 */
-def iterateAllTiles : cmd unit -> cmd unit = \func.
+def iterateAllTiles : Cmd Unit -> Cmd Unit = \func.
     let b = "border" in
     isOnBottomBorder <- itemIsHere b;
     if isOnBottomBorder {} {

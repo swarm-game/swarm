@@ -7,7 +7,7 @@ def itemIsHere = \item.
     case x (\_. return false) (\found. return $ found == item);
     end;
 
-def getOrdinal : text -> cmd int = \item.
+def getOrdinal : Text -> Cmd Int = \item.
     count $ item ++ "-ordinal";
     end;
 
@@ -16,7 +16,7 @@ def getOrdinal : text -> cmd int = \item.
   Returns a Left if we are non-monotonic.
   Otherwise returns the next expected value.
 */
-def isMonotonic : int -> cmd (unit + int) = \expectedVal.
+def isMonotonic : Int -> Cmd (Unit + Int) = \expectedVal.
     maybeItem <- scan down;
     case maybeItem
         (\_. return $ inR expectedVal) // Cell was blank
@@ -38,7 +38,7 @@ def isMonotonic : int -> cmd (unit + int) = \expectedVal.
 
   Precondition: Facing east at location (0, 0).
 */
-def loopMonotonicityCheck : int -> cmd bool = \expectedVal.
+def loopMonotonicityCheck : Int -> Cmd Bool = \expectedVal.
     isOnBottomBorder <- itemIsHere "border";
     if isOnBottomBorder {
         return true;

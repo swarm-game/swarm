@@ -13,9 +13,9 @@ objectives:
         to sweep over the entire 4x4 square and pick up a `very small rock`{=entity}
         any time you detect one.
       - |
-        The `ishere` command, with type `text -> cmd bool`{=type}, can be used
+        The `ishere` command, with type `Text -> Cmd Bool`{=type}, can be used
         for detecting the presence of a specific item such as a `very small rock`{=entity}.
-        What we need is a way to take the `bool`{=type} output from `ishere`
+        What we need is a way to take the `Bool`{=type} output from `ishere`
         and use it to decide whether to `grab` a rock or not.
         (Trying to execute `grab` in a cell without anything to grab will
         throw an exception, causing the robot to crash.)
@@ -25,7 +25,7 @@ objectives:
         it is simply a built-in function of type
       - |
         ```
-        if : bool -> {a} -> {a} -> a
+        if : Bool -> {a} -> {a} -> a
         ```
       - |
         It takes a boolean expression and then returns either the first or second subsequent
@@ -37,20 +37,20 @@ objectives:
         is called. Delayed expressions, on the other hand, are not
         evaluated until needed.  In this case, we want to make sure
         that only the correct branch is evaluated.  To write a value
-        of type, say, `{int}`{=type}, we just surround a value of type `int`{=type}
+        of type, say, `{Int}`{=type}, we just surround a value of type `Int`{=type}
         in curly braces, like `{3}`.  This is why arguments to `build`
         must also be in curly braces: the type of `build`
-        is `{cmd a} -> cmd robot`{=type}.
+        is `{Cmd a} -> Cmd Actor`{=type}.
       - |
-        **TIP:** Note that `if` requires a `bool`{=type}, not a `cmd bool`{=type}!  So you cannot directly say
+        **TIP:** Note that `if` requires a `Bool`{=type}, not a `Cmd Bool`{=type}!  So you cannot directly say
         `if (ishere "very small rock") {...} {...}`{=snippet}.
         Instead you can write `b <- ishere "very small rock"; if b {...} {...}`{=snippet}.
         You might enjoy writing your own function of
-        type `cmd bool -> {cmd a} -> {cmd a} -> cmd a`{=type} to encapsulate this pattern.
+        type `Cmd Bool -> {Cmd a} -> {Cmd a} -> Cmd a`{=type} to encapsulate this pattern.
       - |
         **TIP:** the two branches of an `if` must have the same type. In particular,
         `if ... {grab} {}`{=snippet} is not
-        allowed, because `{grab}` has type `{cmd text}`{=type} whereas `{}` has type `{cmd unit}`{=type}.
+        allowed, because `{grab}` has type `{Cmd Text}`{=type} whereas `{}` has type `{Cmd Unit}`{=type}.
         In this case `{grab; return ()}` has the right type.
     condition: |
       try {

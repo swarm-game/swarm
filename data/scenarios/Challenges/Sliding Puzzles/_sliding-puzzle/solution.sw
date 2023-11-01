@@ -21,7 +21,7 @@ def signum = \x.
     $ else {0};
     end;
 
-def mod : int -> int -> int = \i.\m.
+def mod : Int -> Int -> Int = \i.\m.
     i - m * (i / m);
     end
 
@@ -35,7 +35,7 @@ def sumTuples = \t1. \t2.
     (fst t1 + fst t2, snd t1 + snd t2);
     end;
 
-def getOrdinal : text -> cmd int = \item.
+def getOrdinal : Text -> Cmd Int = \item.
     count $ item ++ "-ordinal";
     end;
 
@@ -60,7 +60,7 @@ def getRelativeLocation = \absLoc.
     return $ sumTuples negatedLoc absLoc;
     end;
 
-def getRelativeRectangle : (int * int) * (int * int) -> cmd ((int * int) * (int * int)) = \corners.
+def getRelativeRectangle : (Int * Int) * (Int * Int) -> Cmd ((Int * Int) * (Int * Int)) = \corners.
     myloc <- whereami;
     let negatedLoc = negateTuple myloc in
     return $ mapTuple (sumTuples negatedLoc) corners;

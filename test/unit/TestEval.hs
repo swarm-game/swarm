@@ -133,13 +133,13 @@ testEval g =
             ("case (inr 2) (\\x. x + 1) (\\y. y * 17)" `evaluatesTo` VInt 34)
         , testCase
             "nested 1"
-            ("(\\x : int + bool + text. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inl 3)" `evaluatesTo` VInt 1)
+            ("(\\x : Int + Bool + Text. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inl 3)" `evaluatesTo` VInt 1)
         , testCase
             "nested 2"
-            ("(\\x : int + bool + text. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inr (inl false))" `evaluatesTo` VInt 2)
+            ("(\\x : Int + Bool + Text. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inr (inl false))" `evaluatesTo` VInt 2)
         , testCase
             "nested 2"
-            ("(\\x : int + bool + text. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inr (inr \"hi\"))" `evaluatesTo` VInt 3)
+            ("(\\x : Int + Bool + Text. case x (\\q. 1) (\\s. case s (\\y. 2) (\\z. 3))) (inr (inr \"hi\"))" `evaluatesTo` VInt 3)
         ]
     , testGroup
         "operator evaluation"
@@ -295,7 +295,7 @@ testEval g =
             ("[y=1, x=3] < [x=3,y=0]" `evaluatesTo` VBool False)
         , testCase
             "record function"
-            ("let f : [x:int, y:text] -> int = \\r.r.x + 1 in f [x=3,y=\"hi\"]" `evaluatesTo` VInt 4)
+            ("let f : [x:Int, y:Text] -> Int = \\r.r.x + 1 in f [x=3,y=\"hi\"]" `evaluatesTo` VInt 4)
         , testCase
             "format record"
             ("format [y = 2, x = 1+2]" `evaluatesTo` VText "[x = 3, y = 2]")

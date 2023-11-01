@@ -7,7 +7,7 @@ def boolToInt = \b.
     end;
 
 // modulus function (%)
-def mod : int -> int -> int = \i.\m.
+def mod : Int -> Int -> Int = \i.\m.
   i - m * (i / m)
 end
 
@@ -137,7 +137,7 @@ def advanceRowViaTeleport =
     teleport self (0, snd curLoc - 1);
     end;
 
-def shouldCorrectTile : (bool * bool) -> (bool * bool) -> cmd bool = \evenOverlaps. \isQuietTiles.
+def shouldCorrectTile : (Bool * Bool) -> (Bool * Bool) -> Cmd Bool = \evenOverlaps. \isQuietTiles.
     if (evenOverlaps == isQuietTiles) {
         toggleLightHere;
         return true;
@@ -220,7 +220,7 @@ def atLocation = \newLoc. \f.
     return retval;
     end;
 
-def analyzeSolvability : int -> int -> cmd (bool * bool) = \boardWidth. \boardHeight.
+def analyzeSolvability : Int -> Int -> Cmd (Bool * Bool) = \boardWidth. \boardHeight.
     atLocation (0, 0) $
         checkIsSolvable boardWidth boardHeight;
     end;

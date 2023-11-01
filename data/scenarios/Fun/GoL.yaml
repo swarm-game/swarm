@@ -35,7 +35,7 @@ robots:
         b <- scan back;
         return (cnt h + cnt f + cnt b)
       end;
-      def mod : int -> int -> int = \a. \b. a - (a/b)*b end;
+      def mod : Int -> Int -> Int = \a. \b. a - (a/b)*b end;
       def waitUntil = \p.
         b <- p;
         if b {wait 1} {waitUntil p}

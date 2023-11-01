@@ -17,7 +17,7 @@ objectives:
         one more than `x`{=snippet}. As another example:
       - |
         ```
-        def x4 : cmd unit -> cmd unit = \c. c; c; c; c end
+        def x4 : Cmd Unit -> Cmd Unit = \c. c; c; c; c end
         ```
       - That is, `x4`{=snippet} is defined as the function which takes a command,
         called `c`{=snippet}, as input, and returns the command

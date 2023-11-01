@@ -1,4 +1,4 @@
-def forever : cmd unit -> cmd unit = \c. c ; forever c end
+def forever : Cmd Unit -> Cmd Unit = \c. c ; forever c end
 
 /** Teleports to a new location to execute a function
   then returns to the original location before

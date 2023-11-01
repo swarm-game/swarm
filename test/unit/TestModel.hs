@@ -33,15 +33,15 @@ testModel =
     , testCase
         "latest repl lines after one input and output"
         ( assertEqual
-            "get 5 history [0|1,1:int] --> [1,1:int]"
-            [REPLEntry "1", REPLOutput "1:int"]
+            "get 5 history [0|1,1:Int] --> [1,1:Int]"
+            [REPLEntry "1", REPLOutput "1:Int"]
             (getLatestREPLHistoryItems 5 (addInOutInt 1 history0))
         )
     , testCase
         "latest repl lines after nine inputs and outputs"
         ( assertEqual
-            "get 6 history [0|1,1:int .. 9,9:int] --> [7,7:int..9,9:int]"
-            (concat [[REPLEntry (toT x), REPLOutput (toT x <> ":int")] | x <- [7 .. 9]])
+            "get 6 history [0|1,1:Int .. 9,9:Int] --> [7,7:Int..9,9:Int]"
+            (concat [[REPLEntry (toT x), REPLOutput (toT x <> ":Int")] | x <- [7 .. 9]])
             (getLatestREPLHistoryItems 6 (foldl (flip addInOutInt) history0 [1 .. 9]))
         )
     , testCase
@@ -71,14 +71,14 @@ testModel =
     , testCase
         "current item after move past output"
         ( assertEqual
-            "getText ([0,1,1:int]<=='') --> Just 1"
+            "getText ([0,1,1:Int]<=='') --> Just 1"
             (Just "1")
             (getCurrentItemText $ moveReplHistIndex Older "" (addInOutInt 1 history0))
         )
     , testCase
         "current item after move past same"
         ( assertEqual
-            "getText ([0,1,1:int]<=='1') --> Just 0"
+            "getText ([0,1,1:Int]<=='1') --> Just 0"
             (Just "0")
             (getCurrentItemText $ moveReplHistIndex Older "1" (addInOutInt 1 history0))
         )
@@ -88,4 +88,4 @@ testModel =
   toT :: Int -> Text
   toT = fromString . show
   addInOutInt :: Int -> REPLHistory -> REPLHistory
-  addInOutInt i = addREPLItem (REPLOutput $ toT i <> ":int") . addREPLItem (REPLEntry $ toT i)
+  addInOutInt i = addREPLItem (REPLOutput $ toT i <> ":Int") . addREPLItem (REPLEntry $ toT i)

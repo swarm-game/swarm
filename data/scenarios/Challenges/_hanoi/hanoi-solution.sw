@@ -42,12 +42,12 @@ def moveToCol = \w.\x.
 end;
 
 def hanoi :
-  int -> // The number of disks in each column
-  int -> // Current column (basically offset of all columns)
-  int -> // The offset to first column
-  int -> // The offset to second column
-  int -> // The offset to third column
-  cmd int
+  Int -> // The number of disks in each column
+  Int -> // Current column (basically offset of all columns)
+  Int -> // The offset to first column
+  Int -> // The offset to second column
+  Int -> // The offset to third column
+  Cmd Int
   = \n. \o. \a. \b. \c.
   if (n == 0) {return o}
   {

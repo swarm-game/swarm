@@ -2,7 +2,7 @@ def elif = \t. \then. \else. {if t then else} end
 def else = \t. t end
 
 // modulus function (%)
-def mod : int -> int -> int = \i. \m.
+def mod : Int -> Int -> Int = \i. \m.
   i - m * (i / m)
 end
 
@@ -218,7 +218,7 @@ def setup = \inputCardinality.
 /**
 One-based ordinal of the item.
 */
-def getOrdinal : text -> cmd int = \item.
+def getOrdinal : Text -> Cmd Int = \item.
     count item;
     end;
 

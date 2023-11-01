@@ -1,6 +1,6 @@
-def forever : cmd unit -> cmd unit = \c. c ; forever c end
+def forever : Cmd Unit -> Cmd Unit = \c. c ; forever c end
 
-def repeat : int -> cmd unit -> cmd unit =
+def repeat : Int -> Cmd Unit -> Cmd Unit =
   \n. \c. if (n == 0) {} {c ; repeat (n-1) c}
 end
 
@@ -9,7 +9,7 @@ def else = \t. t end
 
 def abs = \n. if (n < 0) {-n} {n} end
 
-def randdir : cmd dir =
+def randdir : Cmd Dir =
   d <- random 4;
   return (
     if (d == 0) {north}
@@ -19,7 +19,7 @@ def randdir : cmd dir =
   )
 end
 
-def chooseWait : cmd int =
+def chooseWait : Cmd Int =
   t <- random (16*2);
   return (16 + t)
 end
@@ -35,7 +35,7 @@ end
 
 def disappointed = \cat. say "meow??"; cat end
 
-def follow : cmd unit -> actor -> cmd unit = \cat. \r.
+def follow : Cmd Unit -> Actor -> Cmd Unit = \cat. \r.
   rLoc <- as r {whereami};
   myLoc <- whereami;
   let dx = fst rLoc - fst myLoc in

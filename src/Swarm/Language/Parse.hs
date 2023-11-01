@@ -41,6 +41,7 @@ import Control.Monad.Reader (
   ReaderT (runReaderT),
  )
 import Data.Bifunctor
+import Data.Char (isUpper)
 import Data.Foldable (asum)
 import Data.List (foldl', nub)
 import Data.List.NonEmpty qualified (head)
@@ -49,7 +50,7 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
-import Data.Text (Text, index, toLower)
+import Data.Text (Text, index)
 import Data.Text qualified as T
 import Data.Void
 import Swarm.Language.Syntax
@@ -82,22 +83,27 @@ type ParserError = ParseErrorBundle Text Void
 --------------------------------------------------
 -- Lexer
 
+-- | Names of types built into the language.
+primitiveTypeNames :: [Text]
+primitiveTypeNames =
+  [ "Void"
+  , "Unit"
+  , "Int"
+  , "Text"
+  , "Dir"
+  , "Bool"
+  , "Actor"
+  , "Key"
+  , "Cmd"
+  ]
+
 -- | List of reserved words that cannot be used as variable names.
 reservedWords :: [Text]
 reservedWords =
   map (syntax . constInfo) (filter isUserFunc allConst)
     ++ map directionSyntax allDirs
-    ++ [ "void"
-       , "unit"
-       , "int"
-       , "text"
-       , "dir"
-       , "bool"
-       , "actor"
-       , "key"
-       , "cmd"
-       , "delay"
-       , "let"
+    ++ primitiveTypeNames
+    ++ [ "let"
        , "def"
        , "end"
        , "in"
@@ -127,26 +133,53 @@ lexeme = L.lexeme sc
 symbol :: Text -> Parser Text
 symbol = L.symbol sc
 
--- | Parse a case-insensitive reserved word, making sure it is not a
---   prefix of a longer variable name, and allowing the parser to
---   backtrack if it fails.
+-- | Parse a reserved word, given a string recognizer (which can
+--   /e.g./ be case sensitive or not), making sure it is not a prefix
+--   of a longer variable name, and allowing the parser to backtrack
+--   if it fails.
+reservedGen :: (Text -> Parser a) -> Text -> Parser ()
+reservedGen str w = (lexeme . try) $ str w *> notFollowedBy (alphaNumChar <|> char '_')
+
+-- | Parse a case-sensitive reserved word.
+reservedCS :: Text -> Parser ()
+reservedCS = reservedGen string
+
+-- | Parse a case-insensitive reserved word.
 reserved :: Text -> Parser ()
-reserved w = (lexeme . try) $ string' w *> notFollowedBy (alphaNumChar <|> char '_')
+reserved = reservedGen string'
 
 -- | Parse an identifier, i.e. any non-reserved string containing
---   alphanumeric characters and underscores and not starting with a
---   number.
-identifier :: Parser Var
-identifier = lvVar <$> locIdentifier
+--   alphanumeric characters and underscores, not starting with a
+--   digit. The Bool indicates whether we are parsing a type variable.
+identifier :: Bool -> Parser Var
+identifier = fmap lvVar . locIdentifier
 
--- | Parse an identifier together with its source location info.
-locIdentifier :: Parser LocVar
-locIdentifier = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
+-- | Parse a type variable, which must start with an underscore or
+--   lowercase letter and cannot be the lowercase version of a type
+--   name.
+tyVar :: Parser Var
+tyVar = identifier True
+
+-- | Parse a term variable, which can start in any case and just
+--   cannot be the same (case-insensitively) as a lowercase reserved
+--   word.
+tmVar :: Parser Var
+tmVar = identifier False
+
+-- | Parse an identifier together with its source location info. The
+--   Bool indicates whether we are parsing a type variable (which are
+--   not allowed to start with an uppercase letter).
+locIdentifier :: Bool -> Parser LocVar
+locIdentifier isTV = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
  where
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
   check (into @Text -> t)
-    | toLower t `elem` reservedWords =
-        failT ["reserved word", squote t, "cannot be used as variable name"]
+    | t `elem` reservedWords || T.toLower t `elem` reservedWords =
+        failT ["Reserved word", squote t, "cannot be used as a variable name"]
+    | isTV && T.toTitle t `elem` reservedWords =
+        failT ["Reserved type name", squote (T.toTitle t), "cannot be used as a type variable name"]
+    | isTV && isUpper (T.head t) =
+        failT ["Type variable names must start with a lowercase letter"]
     | otherwise = return t
 
 -- | Parse a text literal (including escape sequences) in double quotes.
@@ -188,7 +221,7 @@ parsePolytype :: Parser Polytype
 parsePolytype =
   join $
     quantify
-      <$> (fromMaybe [] <$> optional (reserved "forall" *> some identifier <* symbol "."))
+      <$> (fromMaybe [] <$> optional (reserved "forall" *> some tyVar <* symbol "."))
       <*> parseType
  where
   quantify :: [Var] -> Type -> Parser Polytype
@@ -218,16 +251,16 @@ parseType = makeExprParser parseTypeAtom table
 
 parseTypeAtom :: Parser Type
 parseTypeAtom =
-  TyVoid <$ reserved "void"
-    <|> TyUnit <$ reserved "unit"
-    <|> TyVar <$> identifier
-    <|> TyInt <$ reserved "int"
-    <|> TyText <$ reserved "text"
-    <|> TyDir <$ reserved "dir"
-    <|> TyBool <$ reserved "bool"
-    <|> TyActor <$ reserved "actor"
-    <|> TyKey <$ reserved "key"
-    <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
+  TyVoid <$ reservedCS "Void"
+    <|> TyUnit <$ reservedCS "Unit"
+    <|> TyInt <$ reservedCS "Int"
+    <|> TyText <$ reservedCS "Text"
+    <|> TyDir <$ reservedCS "Dir"
+    <|> TyBool <$ reservedCS "Bool"
+    <|> TyActor <$ reservedCS "Actor"
+    <|> TyKey <$ reservedCS "Key"
+    <|> TyCmd <$> (reservedCS "Cmd" *> parseTypeAtom)
+    <|> TyVar <$> tyVar
     <|> TyDelay <$> braces parseType
     <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))
     <|> parens parseType
@@ -235,7 +268,7 @@ parseTypeAtom =
 parseRecord :: Parser a -> Parser (Map Var a)
 parseRecord p = (parseBinding `sepBy` symbol ",") >>= fromListUnique
  where
-  parseBinding = (,) <$> identifier <*> p
+  parseBinding = (,) <$> tmVar <*> p
   fromListUnique kvs = case findDup (map fst kvs) of
     Nothing -> return $ Map.fromList kvs
     Just x -> failT ["duplicate field name", squote x, "in record literal"]
@@ -269,7 +302,7 @@ parseLoc pterm = uncurry Syntax <$> parseLocG pterm
 parseTermAtom :: Parser Syntax
 parseTermAtom = do
   s1 <- parseTermAtom2
-  ps <- many (symbol "." *> parseLocG identifier)
+  ps <- many (symbol "." *> parseLocG tmVar)
   return $ foldl' (\(Syntax l1 t) (l2, x) -> Syntax (l1 <> l2) (TProj t x)) s1 ps
 
 -- | Parse an atomic term.
@@ -278,7 +311,7 @@ parseTermAtom2 =
   parseLoc
     ( TUnit <$ symbol "()"
         <|> TConst <$> parseConst
-        <|> TVar <$> identifier
+        <|> TVar <$> tmVar
         <|> TDir <$> parseDirection
         <|> TInt <$> integer
         <|> TText <$> textLiteral
@@ -294,16 +327,16 @@ parseTermAtom2 =
              )
         <|> uncurry SRequirements <$> (reserved "requirements" *> match parseTerm)
         <|> SLam
-          <$> (symbol "\\" *> locIdentifier)
+          <$> (symbol "\\" *> locIdentifier False)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)
         <|> sLet
-          <$> (reserved "let" *> locIdentifier)
+          <$> (reserved "let" *> locIdentifier False)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
         <|> sDef
-          <$> (reserved "def" *> locIdentifier)
+          <$> (reserved "def" *> locIdentifier False)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
         <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
@@ -343,8 +376,8 @@ sDef x ty t = SDef (lvVar x `S.member` setOf freeVarsV t) x ty t
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =
-  TAntiText <$> (lexeme . try) (symbol "$str:" *> identifier)
-    <|> TAntiInt <$> (lexeme . try) (symbol "$int:" *> identifier)
+  TAntiText <$> (lexeme . try) (symbol "$str:" *> tmVar)
+    <|> TAntiInt <$> (lexeme . try) (symbol "$int:" *> tmVar)
 
 -- | Parse a Swarm language term.
 parseTerm :: Parser Syntax
@@ -366,7 +399,7 @@ data Stmt
 
 parseStmt :: Parser Stmt
 parseStmt =
-  mkStmt <$> optional (try (locIdentifier <* symbol "<-")) <*> parseExpr
+  mkStmt <$> optional (try (locIdentifier False <* symbol "<-")) <*> parseExpr
 
 mkStmt :: Maybe LocVar -> Syntax -> Stmt
 mkStmt Nothing = BareTerm

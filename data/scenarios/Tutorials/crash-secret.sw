@@ -15,7 +15,7 @@ def iterate = \state.\com.
 end;
 
 // At the beginning all robots can be given Win.
-def allOK: actor -> bool = \rob.
+def allOK: Actor -> Bool = \rob.
   true
 end;
 
@@ -23,8 +23,8 @@ myLoc <- whereami;
 
 // Try to give a robot a Win, filtering out those that were already given a Win.
 // The robot will also receive instructions, so it **must have a logger!**
-def tryGive: text -> (actor -> bool) -> cmd (actor -> bool) = \msg.
-  // (b -> actor -> cmd b) -> b -> cmd b
+def tryGive: Text -> (Actor -> Bool) -> Cmd (Actor -> Bool) = \msg.
+  // (b -> Actor -> Cmd b) -> b -> Cmd b
   meetAll $ \f.\rob.
     if (not $ f rob) {
       log $ "skipping the robot " ++ format rob ++ "because it already has a Win";

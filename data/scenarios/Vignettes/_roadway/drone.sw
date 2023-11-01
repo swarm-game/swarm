@@ -14,7 +14,7 @@ def mapTuple = \f. \t.
     end;
 
 // modulus function (%)
-def mod : int -> int -> int = \i.\m.
+def mod : Int -> Int -> Int = \i.\m.
     i - m * (i / m)
 end
 
@@ -28,9 +28,9 @@ def isEven = \n.
 Decide where to initially teleport to based on the initial coords.
 */
 def init :
-           [xMin : int, xMax : int, yMin : int, yMax : int]
-        -> [yWest : int, yEast : int, xSouth : int, xNorth : int]
-        -> cmd (bool * int) = \extents. \lanes.
+           [xMin : Int, xMax : Int, yMin : Int, yMax : Int]
+        -> [yWest : Int, yEast : Int, xSouth : Int, xNorth : Int]
+        -> Cmd (Bool * Int) = \extents. \lanes.
     let topCorner = (-18, 30) in
     absloc <- whereami;
     let loc = sumTuples absloc $ mapTuple (\x. -x) topCorner in
@@ -68,9 +68,9 @@ def isGreenLight = \isLongitudinal.
     end;
 
 def getCanMove :
-    [xWest : int, xEast : int, ySouth : int, yNorth : int]
-    -> bool
-    -> cmd bool
+    [xWest : Int, xEast : Int, ySouth : Int, yNorth : Int]
+    -> Bool
+    -> Cmd Bool
     = \stoplines. \hasGreenLight.
 
     d <- heading;
@@ -95,7 +95,7 @@ def getCanMove :
     return $ hasGreenLight || not (atStopLine || neighborIsStopped);
     end;
 
-def doTunnelWrap : [xMin : int, xMax : int, yMin : int, yMax : int] -> cmd bool = \extents.
+def doTunnelWrap : [xMin : Int, xMax : Int, yMin : Int, yMax : Int] -> Cmd Bool = \extents.
     myloc <- whereami;
     didWrap <- if (fst myloc < extents.xMin) {
         teleport self (extents.xMax, snd myloc);
@@ -116,10 +116,10 @@ def doTunnelWrap : [xMin : int, xMax : int, yMin : int, yMax : int] -> cmd bool 
     end;
 
 def moveWithWrap :
-       [xWest : int, xEast : int, ySouth : int, yNorth : int]
-    -> [xMin : int, xMax : int, yMin : int, yMax : int] // extents
-    -> bool
-    -> cmd (bool * bool)
+       [xWest : Int, xEast : Int, ySouth : Int, yNorth : Int]
+    -> [xMin : Int, xMax : Int, yMin : Int, yMax : Int] // extents
+    -> Bool
+    -> Cmd (Bool * Bool)
     = \stoplines. \extents. \isLongitudinal.
 
     hasGreenLight <- isGreenLight isLongitudinal;
@@ -141,9 +141,9 @@ def moveWithWrap :
     end;
 
 def getNewDelayState :
-    bool
-    -> [moveDelay : int, transitionCountdown : int]
-    -> [moveDelay : int, transitionCountdown : int]
+    Bool
+    -> [moveDelay : Int, transitionCountdown : Int]
+    -> [moveDelay : Int, transitionCountdown : Int]
     = \canGo. \delayState.
     if (not canGo) {
         // reset to max delay and pause the countdown at max
@@ -165,12 +165,12 @@ Initially we wait several ticks between movements.
 Then we continually decrease the delay by 1, until reaching no delay.
 */
 def advance :
-           int
-        -> bool
-        -> [xWest : int, xEast : int, ySouth : int, yNorth : int]
-        -> [xMin : int, xMax : int, yMin : int, yMax : int]
-        -> [moveDelay : int, transitionCountdown : int]
-        -> cmd unit
+           Int
+        -> Bool
+        -> [xWest : Int, xEast : Int, ySouth : Int, yNorth : Int]
+        -> [xMin : Int, xMax : Int, yMin : Int, yMax : Int]
+        -> [moveDelay : Int, transitionCountdown : Int]
+        -> Cmd Unit
         = \idx. \isLongitudinal. \stoplines. \extents. \delayState.
 
     wait delayState.moveDelay;
