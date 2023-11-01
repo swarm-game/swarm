@@ -16,10 +16,12 @@
 #### New scenarios
 
 * "Robot wave" scenario by @kostmo ([#1556](https://github.com/swarm-game/swarm/pull/1556))
+* Combination locks scenario by @kostmo ([#1591](https://github.com/swarm-game/swarm/pull/1591))
 
 #### New achievements
 
 * Grant `RobotIntoWater` achievement by @byorgey ([#1504](https://github.com/swarm-game/swarm/pull/1504))
+* Achievement for pointless swapping by @kostmo ([#1588](https://github.com/swarm-game/swarm/pull/1588))
 
 #### UI enhancements
 
