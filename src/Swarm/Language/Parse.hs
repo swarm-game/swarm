@@ -60,6 +60,7 @@ import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Megaparsec.Pos qualified as Pos
+import Text.Megaparsec.State (initialPosState, initialState)
 import Witch
 
 -- Imports for doctests (cabal-docspec needs this)
@@ -486,24 +487,13 @@ runParserTH (file, line, col) p s =
     Left err -> fail $ errorBundlePretty err
     Right e -> return e
  where
-  -- This is annoying --- megaparsec does not export its function to
-  -- construct an initial parser state, so we can't just use that
-  -- and then change the one field we need to be different (the
-  -- 'pstateSourcePos'). We have to copy-paste the whole thing.
   initState :: State Text Void
   initState =
-    State
-      { stateInput = from s
-      , stateOffset = 0
-      , statePosState =
-          PosState
-            { pstateInput = from s
-            , pstateOffset = 0
-            , pstateSourcePos = SourcePos file (mkPos line) (mkPos col)
-            , pstateTabWidth = defaultTabWidth
-            , pstateLinePrefix = ""
+    (initialState file (from s))
+      { statePosState =
+          (initialPosState file (from s))
+            { pstateSourcePos = SourcePos file (mkPos line) (mkPos col)
             }
-      , stateParseErrors = []
       }
 
 -- | Parse some input 'Text' completely as a 'Term', consuming leading

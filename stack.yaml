@@ -10,5 +10,6 @@ extra-deps:
 # breaking changes; see https://github.com/swarm-game/swarm/issues/1350
 - lsp-1.6.0.0
 - lsp-types-1.6.0.0
-resolver: lts-21.0
+- megaparsec-9.6.1
+resolver: lts-21.19
 
