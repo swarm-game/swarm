@@ -35,29 +35,31 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (
 
   -- * Helper functions
   populateStaticFoundStructures,
-  placedToFound,
   getEntityGrid,
+  extractGrid,
+  lookupStaticPlacements,
 ) where
 
 import Control.Arrow ((&&&))
 import Data.Int (Int32)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, mapMaybe)
 import Data.Semigroup (sconcat)
 import Data.Tuple (swap)
 import Swarm.Game.Entity (Entity)
+import Swarm.Game.Scenario (StaticStructureInfo (..))
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Swarm.Game.Universe (Cosmic (..), SubworldName)
+import Swarm.Game.Universe (Cosmic (..))
 import Swarm.Util (binTuples, histogram)
 import Swarm.Util.Erasable (erasableToMaybe)
 import Text.AhoCorasick
 
-getEntityGrid :: NamedStructure (Maybe Cell) -> [SymbolSequence]
-getEntityGrid = map (map ((erasableToMaybe . cellEntity) =<<)) . area . structure
+getEntityGrid :: Grid (Maybe Cell) -> [SymbolSequence]
+getEntityGrid (Grid cells) = map (map ((erasableToMaybe . cellEntity) =<<)) cells
 
 allStructureRows :: [StructureWithGrid] -> [StructureRow]
 allStructureRows =
@@ -147,7 +149,7 @@ mkEntityLookup grids =
         catMaybes $
           zipWith (\idx -> fmap (PositionWithinRow idx r,)) [0 ..] rowMembers
 
-mkAutomatons :: InheritedStructureDefs -> RecognizerAutomatons
+mkAutomatons :: [NamedGrid (Maybe Cell)] -> RecognizerAutomatons
 mkAutomatons xs =
   RecognizerAutomatons
     infos
@@ -158,9 +160,17 @@ mkAutomatons xs =
   process g = StructureInfo g . histogram . concatMap catMaybes $ entityGrid g
   infos = map process grids
 
-extractGrid :: NamedStructure (Maybe Cell) -> StructureWithGrid
-extractGrid x = StructureWithGrid x $ getEntityGrid x
+extractGrid :: NamedGrid (Maybe Cell) -> StructureWithGrid
+extractGrid x = StructureWithGrid x $ getEntityGrid $ structure x
 
-placedToFound :: SubworldName -> LocatedStructure (Maybe Cell) -> FoundStructure
-placedToFound swName (LocatedStructure (Placed _ ns) loc) =
-  FoundStructure (extractGrid ns) $ Cosmic swName loc
+lookupStaticPlacements :: StaticStructureInfo -> [FoundStructure]
+lookupStaticPlacements (StaticStructureInfo structDefs thePlacements) =
+  concatMap f $ M.toList thePlacements
+ where
+  definitionMap = M.fromList $ map (name &&& id) structDefs
+
+  f (subworldName, locatedList) = mapMaybe g locatedList
+   where
+    g (LocatedStructure theName loc) = do
+      sGrid <- M.lookup theName definitionMap
+      return $ FoundStructure (extractGrid sGrid) $ Cosmic subworldName loc

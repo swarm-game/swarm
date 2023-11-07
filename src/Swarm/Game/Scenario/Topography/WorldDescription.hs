@@ -53,7 +53,7 @@ data PWorldDescription e = WorldDescription
   , ul :: Location
   , area :: [[PCell e]]
   , navigation :: Navigation Identity WaypointName
-  , placedStructures :: [LocatedStructure (Maybe (PCell e))]
+  , placedStructures :: [LocatedStructure]
   , worldName :: SubworldName
   , worldProg :: Maybe (TTerm '[] (World CellVal))
   }

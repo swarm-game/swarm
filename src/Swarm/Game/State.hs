@@ -168,7 +168,7 @@ import Control.Effect.Lift
 import Control.Effect.State (State)
 import Control.Effect.Throw
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
-import Control.Monad (filterM, forM, forM_, join)
+import Control.Monad (forM, forM_, join)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
@@ -217,6 +217,8 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
+import Swarm.Game.Scenario.Topography.Structure qualified as Structure
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
@@ -1318,23 +1320,25 @@ ensureStructureIntact ::
 ensureStructureIntact (FoundStructure (StructureWithGrid _ grid) upperLeft) =
   allM outer $ zip [0 ..] grid
  where
-  outer (i, row) = allM (inner i) $ zip [0 ..] row
-  inner i (j, cell) =
+  outer (y, row) = allM (inner y) $ zip [0 ..] row
+  inner y (x, cell) =
     fmap (== cell) $
       entityAt $
-        upperLeft `offsetBy` V2 i (negate j)
+        upperLeft `offsetBy` V2 x (negate y)
 
 mkRecognizer ::
   (Has (State GameState) sig m) =>
   StaticStructureInfo ->
   m StructureRecognizer
-mkRecognizer (StaticStructureInfo xs thePlacements) = do
-  filteredFound <- filterM ensureStructureIntact allFound
-  let fs = populateStaticFoundStructures filteredFound
-  return $ StructureRecognizer (mkAutomatons xs) fs []
+mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
+  foundIntact <- mapM (sequenceA . (id &&& ensureStructureIntact)) allPlaced
+  let fs = populateStaticFoundStructures . map fst . filter snd $ foundIntact
+      foundIntactLog =
+        IntactStaticPlacement $
+          map (\(x, isIntact) -> (isIntact, (Structure.name . originalDefinition . structureWithGrid) x, upperLeftCorner x)) foundIntact
+  return $ StructureRecognizer (mkAutomatons structDefs) fs [foundIntactLog]
  where
-  f (swn, locatedList) = map (placedToFound swn) locatedList
-  allFound = concatMap f $ M.toList thePlacements
+  allPlaced = lookupStaticPlacements structInfo
 
 pureScenarioToGameState ::
   Scenario ->

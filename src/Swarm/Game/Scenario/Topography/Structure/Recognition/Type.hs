@@ -24,7 +24,7 @@ import Swarm.Game.Entity (Entity)
 import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
-import Swarm.Game.Scenario.Topography.Structure (NamedStructure)
+import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Swarm.Game.Universe (Cosmic, offsetBy)
 import Text.AhoCorasick (StateMachine)
 
@@ -71,7 +71,7 @@ data StructureRow = StructureRow
 -- | The original definition of a structure, bundled
 -- with its grid of cells having been extracted for convenience.
 data StructureWithGrid = StructureWithGrid
-  { originalDefinition :: NamedStructure (Maybe Cell)
+  { originalDefinition :: NamedGrid (Maybe Cell)
   , entityGrid :: [SymbolSequence]
   }
   deriving (Eq)
@@ -132,7 +132,7 @@ data RecognizerAutomatons = RecognizerAutomatons
 
 makeLenses ''RecognizerAutomatons
 
--- | Finals output of the search process.
+-- | Final output of the search process.
 -- These are the elements that are stored in the 'FoundRegistry'.
 data FoundStructure = FoundStructure
   { structureWithGrid :: StructureWithGrid

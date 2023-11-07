@@ -51,6 +51,7 @@ data SearchLog
   | StructureRemoved StructureName
   | FoundRowCandidates [FoundRowCandidate]
   | FoundCompleteStructureCandidates [StructureName]
+  | IntactStaticPlacement [(Bool, StructureName, Cosmic Location)]
   deriving (Generic)
 
 instance ToJSON SearchLog where

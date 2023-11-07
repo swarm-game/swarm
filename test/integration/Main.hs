@@ -366,6 +366,7 @@ testScenarioSolutions rs ui =
         , testGroup
             "Structure recognition (#1575)"
             [ testSolution Default "Testing/1575-structure-recognizer/1575-browse-structures"
+            , testSolution Default "Testing/1575-structure-recognizer/1575-nested-structure-definition"
             , testSolution Default "Testing/1575-structure-recognizer/1575-construction-count"
             , testSolution Default "Testing/1575-structure-recognizer/1575-handle-overlapping"
             , testSolution Default "Testing/1575-structure-recognizer/1575-ensure-single-recognition"
