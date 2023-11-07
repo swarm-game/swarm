@@ -21,7 +21,7 @@ import Swarm.Game.Scenario (scenarioName)
 import Swarm.Game.ScenarioInfo (scenarioItemName)
 import Swarm.Game.State
 import Swarm.Game.Terrain
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Pretty (prettyTextLine)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Types (Polytype)
@@ -114,7 +114,7 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
-drawType = withAttr infoAttr . padLeftRight 1 . txt . prettyText
+drawType = withAttr infoAttr . padLeftRight 1 . txt . prettyTextLine
 
 -- | Draw markdown document with simple code/bold/italic attributes.
 --
