@@ -25,7 +25,8 @@
 -- at a certain offset horizontally or vertically from the placed entity,
 -- based on where within a structure that entity (or row) may occur.
 --
--- Upon locating a complete structure, it is added to a registry, which
+-- Upon locating a complete structure, it is added to a registry
+-- (see 'Swarm.Game.Scenario.Topography.Structure.Recognition.Registry.FoundRegistry'), which
 -- supports lookups by either name or by location (using two different
 -- maps maintained in parallel). The map by location is used to remove
 -- a structure from the registry if a member entity is changed.
@@ -108,14 +109,14 @@ mkEntityLookup grids =
 
   -- The input here are all rows across all structures
   -- that share the same entity sequence.
-  mkSmValue :: SymbolSequence -> NE.NonEmpty SingleRowEntityRecurrences -> StructureSearcher
+  mkSmValue :: SymbolSequence -> NE.NonEmpty SingleRowEntityOccurrences -> StructureSearcher
   mkSmValue ksms singleRows =
     StructureSearcher sm2D ksms singleRows
    where
     structureRowsNE = NE.map myRow singleRows
     sm2D = mkRowLookup structureRowsNE
 
-  mkValues :: NE.NonEmpty SingleRowEntityRecurrences -> AutomatonInfo AtomicKeySymbol StructureSearcher
+  mkValues :: NE.NonEmpty SingleRowEntityOccurrences -> AutomatonInfo AtomicKeySymbol StructureSearcher
   mkValues neList = AutomatonInfo bounds sm
    where
     groupedByUniqueRow = binTuples $ NE.toList $ NE.map (rowContent . myRow &&& id) neList
@@ -124,7 +125,7 @@ mkEntityLookup grids =
 
   -- The values of this map are guaranteed to contain only one
   -- entry per row of a given structure.
-  rowsByEntityParticipation :: M.Map Entity (NE.NonEmpty SingleRowEntityRecurrences)
+  rowsByEntityParticipation :: M.Map Entity (NE.NonEmpty SingleRowEntityOccurrences)
   rowsByEntityParticipation =
     binTuples $
       map (myEntity &&& id) $
@@ -136,12 +137,12 @@ mkEntityLookup grids =
 
   -- The members of "rowMembers" are of 'Maybe' type; the 'Nothing's
   -- are dropped but accounted for when indexing the columns.
-  explodeRowEntities :: StructureRow -> [SingleRowEntityRecurrences]
+  explodeRowEntities :: StructureRow -> [SingleRowEntityOccurrences]
   explodeRowEntities r@(StructureRow _ _ rowMembers) =
     map f $ M.toList $ binTuples unconsolidated
    where
     f (e, occurrences) =
-      SingleRowEntityRecurrences r e occurrences $
+      SingleRowEntityOccurrences r e occurrences $
         sconcat $
           NE.map deriveEntityOffsets occurrences
     unconsolidated =

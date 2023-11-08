@@ -7,6 +7,15 @@
 --
 -- See overview of the structure recognizer feature in
 -- "Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute".
+--
+-- The following structure template shall be used to illustrate
+-- roles of the types in this module:
+--
+-- @
+-- cdc
+-- aab
+-- cdc
+-- @
 module Swarm.Game.Scenario.Topography.Structure.Recognition.Type where
 
 import Control.Arrow ((&&&))
@@ -29,11 +38,25 @@ import Swarm.Game.Universe (Cosmic, offsetBy)
 import Text.AhoCorasick (StateMachine)
 
 -- | A "needle" consisting of a single cell within
--- the haystack (a row of cells) to be searched
+-- the haystack (a row of cells) to be searched.
+--
+-- === Example
+-- A single entity @a@ in the row:
+--
+-- @
+-- aab
+-- @
 type AtomicKeySymbol = Maybe Entity
 
 -- | A "needle" consisting row of cells within the haystack
--- (a sequence of rows) to be searched
+-- (a sequence of rows) to be searched.
+--
+-- === Example
+-- The complete row:
+--
+-- @
+-- aab
+-- @
 type SymbolSequence = [AtomicKeySymbol]
 
 -- | This is returned as a value of the 1-D searcher.
@@ -45,6 +68,17 @@ data StructureSearcher = StructureSearcher
   , singleRowItems :: NE.NonEmpty SingleRowEntityOccurrences
   }
 
+-- |
+-- Position specific to a single entity within a horizontal row.
+--
+-- === Example
+-- For entity @b@ within the row:
+--
+-- @
+-- aab
+-- @
+--
+-- Its '_position' is @2@.
 data PositionWithinRow = PositionWithinRow
   { _position :: Int32
   -- ^ horizontal index of the entity within the row
@@ -53,6 +87,15 @@ data PositionWithinRow = PositionWithinRow
 
 -- Represents all of the locations that particular entity
 -- occurs within a specific row of a particular structure.
+--
+-- === Example
+-- For entity @a@ within the row:
+--
+-- @
+-- aab
+-- @
+--
+-- this record will contain two entries in its 'entityOccurrences' field.
 data SingleRowEntityOccurrences = SingleRowEntityOccurrences
   { myRow :: StructureRow
   , myEntity :: Entity
@@ -61,6 +104,17 @@ data SingleRowEntityOccurrences = SingleRowEntityOccurrences
   }
 
 -- | A a specific row within a particular structure.
+--
+-- === Example
+-- For the second occurrence of @cdc@ within the structure:
+--
+-- @
+-- cdc
+-- aab
+-- cdc
+-- @
+--
+-- it's 'rowIndex' is @2@.
 data StructureRow = StructureRow
   { wholeStructure :: StructureWithGrid
   , rowIndex :: Int32
@@ -76,7 +130,7 @@ data StructureWithGrid = StructureWithGrid
   }
   deriving (Eq)
 
--- | Structure definitions with metadata for consumption by the UI
+-- | Structure definitions with precomputed metadata for consumption by the UI
 data StructureInfo = StructureInfo
   { withGrid :: StructureWithGrid
   , entityCounts :: Map Entity Int

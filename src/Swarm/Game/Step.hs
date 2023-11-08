@@ -77,8 +77,8 @@ import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..), destin
 import Swarm.Game.Scenario.Topography.Navigation.Util
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
 import Swarm.Game.Scenario.Topography.Placement
+import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Type.Toplevel (foundStructures)
 import Swarm.Game.State
 import Swarm.Game.Step.Combustion qualified as Combustion
 import Swarm.Game.Step.Pathfinding

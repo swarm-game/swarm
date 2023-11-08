@@ -49,8 +49,8 @@ import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Scenario.Status
+import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (definitions)
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Type.Toplevel (automatons)
 import Swarm.Game.ScenarioInfo (
   loadScenarioInfo,
   normalizeScenarioPath,

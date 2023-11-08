@@ -66,9 +66,9 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
 import Swarm.Game.Scenario.Objective.WinCheck
+import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Type.Toplevel
 import Swarm.Game.State
 import Swarm.Language.Module
 import Swarm.Language.Pipeline

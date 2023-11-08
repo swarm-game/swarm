@@ -148,12 +148,12 @@ library
                       Swarm.Game.Scenario.Topography.Navigation.Waypoint
                       Swarm.Game.Scenario.Topography.Placement
                       Swarm.Game.Scenario.Topography.Structure
+                      Swarm.Game.Scenario.Topography.Structure.Recognition
                       Swarm.Game.Scenario.Topography.Structure.Recognition.Log
                       Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
                       Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
                       Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking
                       Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-                      Swarm.Game.Scenario.Topography.Structure.Recognition.Type.Toplevel
                       Swarm.Game.Scenario.Topography.WorldDescription
                       Swarm.Game.Scenario.Topography.WorldPalette
                       Swarm.Game.ScenarioInfo
