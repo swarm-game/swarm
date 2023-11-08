@@ -42,7 +42,7 @@ type SymbolSequence = [AtomicKeySymbol]
 data StructureSearcher = StructureSearcher
   { automaton2D :: AutomatonInfo SymbolSequence StructureRow
   , needleContent :: SymbolSequence
-  , singleRowItems :: NE.NonEmpty SingleRowEntityRecurrences
+  , singleRowItems :: NE.NonEmpty SingleRowEntityOccurrences
   }
 
 data PositionWithinRow = PositionWithinRow
@@ -53,7 +53,7 @@ data PositionWithinRow = PositionWithinRow
 
 -- Represents all of the locations that particular entity
 -- occurs within a specific row of a particular structure.
-data SingleRowEntityRecurrences = SingleRowEntityRecurrences
+data SingleRowEntityOccurrences = SingleRowEntityOccurrences
   { myRow :: StructureRow
   , myEntity :: Entity
   , entityOccurrences :: NE.NonEmpty PositionWithinRow

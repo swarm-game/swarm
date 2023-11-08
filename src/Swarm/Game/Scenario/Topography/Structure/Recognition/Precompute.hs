@@ -75,7 +75,7 @@ mkOffsets pos xs =
       fromIntegral (length xs) - 1 - pos
 
 -- | Given a row of entities observed in the world,
--- yield a searcher that can determine of adjacent
+-- yield a searcher that can determine whether adjacent
 -- rows constitute a complete structure.
 mkRowLookup ::
   NE.NonEmpty StructureRow ->
