@@ -1,0 +1,11 @@
+1575-browse-structures.yaml
+1575-nested-structure-definition.yaml
+1575-construction-count.yaml
+1575-handle-overlapping.yaml
+1575-ensure-single-recognition.yaml
+1575-ensure-disjoint.yaml
+1575-overlapping-tiebreaker-by-largest.yaml
+1575-overlapping-tiebreaker-by-location.yaml
+1575-remove-structure.yaml
+1575-swap-structure.yaml
+1575-placement-occlusion.yaml

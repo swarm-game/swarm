@@ -47,6 +47,11 @@ data GoalWidget
   | GoalSummary
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
+data StructureWidget
+  = StructuresList
+  | StructureSummary
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
 -- | Clickable buttons in modal dialogs.
 data Button
   = CancelButton
@@ -93,6 +98,8 @@ data Name
     ScenarioConfigControl ScenarioConfigPanel
   | -- | The list of goals/objectives.
     GoalWidgets GoalWidget
+  | -- | The list of goals/objectives.
+    StructureWidgets StructureWidget
   | -- | The list of scenario choices.
     ScenarioList
   | -- | The scrollable viewport for the info panel.

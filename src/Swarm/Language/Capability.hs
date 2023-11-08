@@ -80,6 +80,8 @@ data Capability
     CDrill
   | -- | Execute the 'Waypoint' command
     CWaypoint
+  | -- | Execute the 'Structure' command
+    CStructure
   | -- | Execute the 'Whereami' command
     CSenseloc
   | -- | Execute the 'Blocked' command
@@ -261,6 +263,7 @@ constCaps = \case
   Scout -> Just CRecondir
   Whereami -> Just CSenseloc
   Waypoint -> Just CWaypoint
+  Structure -> Just CStructure
   Detect -> Just CDetectloc
   Resonate -> Just CDetectcount
   Density -> Just CDetectcount

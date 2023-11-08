@@ -29,11 +29,11 @@ import Swarm.Util (listEnums)
 data GoalStatus
   = -- | Goals in this category have other goals as prerequisites.
     -- However, they are only displayed if the "previewable" attribute
-    -- is `true`.
+    -- is @true@.
     Upcoming
   | -- | Goals in this category may be pursued in parallel.
     -- However, they are only displayed if the "hidden" attribute
-    -- is `false`.
+    -- is @false@.
     Active
   | -- | A goal's programmatic condition, as well as all its prerequisites, were completed.
     -- This is a "latch" mechanism; at some point the conditions required to meet the goal may

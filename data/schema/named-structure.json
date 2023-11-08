@@ -10,6 +10,14 @@
             "type": "string",
             "description": "Name of this substructure"
         },
+        "description": {
+            "type": "string",
+            "description": "Description of this substructure"
+        },
+        "recognize": {
+            "type": "boolean",
+            "description": "Whether this structure participates in automatic recognition when constructed"
+        },
         "structure": {
             "$ref": "structure.json"
         }

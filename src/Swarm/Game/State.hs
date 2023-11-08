@@ -100,6 +100,7 @@ module Swarm.Game.State (
   availableCommands,
   knownEntities,
   gameAchievements,
+  structureRecognition,
 
   -- *** Landscape
   Landscape,
@@ -155,21 +156,25 @@ module Swarm.Game.State (
   buildWorldTuples,
   genMultiWorld,
   genRobotTemplates,
+  entityAt,
+  zoomWorld,
 ) where
 
 import Control.Applicative ((<|>))
 import Control.Arrow (Arrow ((&&&)))
+import Control.Carrier.State.Lazy qualified as Fused
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Effect.State (State)
 import Control.Effect.Throw
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
-import Control.Monad (forM_)
+import Control.Monad (forM, forM_, join)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
 import Data.Digest.Pure.SHA (sha1, showDigest)
 import Data.Foldable (toList)
+import Data.Foldable.Extra (allM)
 import Data.Int (Int32)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
@@ -192,6 +197,7 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
+import Linear (V2 (..))
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Attainment
@@ -211,6 +217,12 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
+import Swarm.Game.Scenario.Topography.Structure qualified as Structure
+import Swarm.Game.Scenario.Topography.Structure.Recognition
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Universe as U
@@ -513,6 +525,7 @@ data Discovery = Discovery
   , _availableCommands :: Notifications Const
   , _knownEntities :: [Text]
   , _gameAchievements :: Map GameplayAchievement Attainment
+  , _structureRecognition :: StructureRecognizer
   }
 
 makeLensesNoSigs ''Discovery
@@ -532,6 +545,9 @@ knownEntities :: Lens' Discovery [Text]
 
 -- | Map of in-game achievements that were obtained
 gameAchievements :: Lens' Discovery (Map GameplayAchievement Attainment)
+
+-- | Recognizer for robot-constructed structures
+structureRecognition :: Lens' Discovery StructureRecognizer
 
 data Landscape = Landscape
   { _worldNavigation :: Navigation (M.Map SubworldName) Location
@@ -1166,6 +1182,7 @@ initGameState gsc =
           , -- This does not need to be initialized with anything,
             -- since the master list of achievements is stored in UIState
             _gameAchievements = mempty
+          , _structureRecognition = StructureRecognizer (RecognizerAutomatons [] mempty) emptyFoundStructures []
           }
     , _activeRobots = IS.empty
     , _waitingRobots = M.empty
@@ -1274,31 +1291,72 @@ genRobotTemplates scenario worldTuples =
   genRobots :: [(Int, TRobot)]
   genRobots = concat $ NE.toList $ NE.map (fst . snd) worldTuples
 
--- | Create an initial game state corresponding to the given scenario.
-scenarioToGameState ::
+-- | Get the entity (if any) at a given location.
+entityAt :: (Has (State GameState) sig m) => Cosmic Location -> m (Maybe Entity)
+entityAt (Cosmic subworldName loc) =
+  join <$> zoomWorld subworldName (W.lookupEntityM @Int (W.locToCoords loc))
+
+-- | Perform an action requiring a 'W.World' state component in a
+--   larger context with a 'GameState'.
+zoomWorld ::
+  (Has (State GameState) sig m) =>
+  SubworldName ->
+  Fused.StateC (W.World Int Entity) Identity b ->
+  m (Maybe b)
+zoomWorld swName n = do
+  mw <- use $ landscape . multiWorld
+  forM (M.lookup swName mw) $ \w -> do
+    let (w', a) = run (Fused.runState w n)
+    landscape . multiWorld %= M.insert swName w'
+    return a
+
+-- | Matches definitions against the placements.
+-- Fails fast (short-circuits) if a non-matching
+-- cell is encountered.
+ensureStructureIntact ::
+  (Has (State GameState) sig m) =>
+  FoundStructure ->
+  m Bool
+ensureStructureIntact (FoundStructure (StructureWithGrid _ grid) upperLeft) =
+  allM outer $ zip [0 ..] grid
+ where
+  outer (y, row) = allM (inner y) $ zip [0 ..] row
+  inner y (x, cell) =
+    fmap (== cell) $
+      entityAt $
+        upperLeft `offsetBy` V2 x (negate y)
+
+mkRecognizer ::
+  (Has (State GameState) sig m) =>
+  StaticStructureInfo ->
+  m StructureRecognizer
+mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
+  foundIntact <- mapM (sequenceA . (id &&& ensureStructureIntact)) allPlaced
+  let fs = populateStaticFoundStructures . map fst . filter snd $ foundIntact
+      foundIntactLog =
+        IntactStaticPlacement $
+          map (\(x, isIntact) -> (isIntact, (Structure.name . originalDefinition . structureWithGrid) x, upperLeftCorner x)) foundIntact
+  return $ StructureRecognizer (mkAutomatons structDefs) fs [foundIntactLog]
+ where
+  allPlaced = lookupStaticPlacements structInfo
+
+pureScenarioToGameState ::
   Scenario ->
-  ValidatedLaunchParams ->
+  Seed ->
+  Clock.TimeSpec ->
+  Maybe CodeToRun ->
   GameStateConfig ->
-  IO GameState
-scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun)) gsc = do
-  -- Decide on a seed.  In order of preference, we will use:
-  --   1. seed value provided by the user
-  --   2. seed value specified in the scenario description
-  --   3. randomly chosen seed value
-  theSeed <- case userSeed <|> scenario ^. scenarioSeed of
-    Just s -> return s
-    Nothing -> randomRIO (0, maxBound :: Int)
+  GameState
+pureScenarioToGameState scenario theSeed now toRun gsc =
+  preliminaryGameState
+    & discovery . structureRecognition .~ recognizer
+ where
+  recognizer =
+    runIdentity $
+      Fused.evalState preliminaryGameState $
+        mkRecognizer (scenario ^. scenarioStructures)
 
-  now <- Clock.getTime Clock.Monotonic
-  let robotList' = (robotCreatedAt .~ now) <$> robotList
-
-  let modifyRecipesInfo oldRecipesInfo =
-        oldRecipesInfo
-          & recipesOut %~ addRecipesWith outRecipeMap
-          & recipesIn %~ addRecipesWith inRecipeMap
-          & recipesCat %~ addRecipesWith catRecipeMap
-
-  return $
+  preliminaryGameState =
     (initGameState gsc)
       { _focusedRobotID = baseID
       }
@@ -1328,7 +1386,15 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
         False -> REPLDone Nothing
         True -> REPLWorking (Typed Nothing PolyUnit mempty)
       & temporal . robotStepsPerTick .~ ((scenario ^. scenarioStepsPerTick) ? defaultRobotStepsPerTick)
- where
+
+  robotList' = (robotCreatedAt .~ now) <$> robotList
+
+  modifyRecipesInfo oldRecipesInfo =
+    oldRecipesInfo
+      & recipesOut %~ addRecipesWith outRecipeMap
+      & recipesIn %~ addRecipesWith inRecipeMap
+      & recipesCat %~ addRecipesWith catRecipeMap
+
   groupRobotsBySubworld =
     binTuples . map (view (robotLocation . subworld) &&& id)
 
@@ -1397,6 +1463,24 @@ scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun))
 
   initGensym = length robotList - 1
   addRecipesWith f = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes)
+
+-- | Create an initial game state corresponding to the given scenario.
+scenarioToGameState ::
+  Scenario ->
+  ValidatedLaunchParams ->
+  GameStateConfig ->
+  IO GameState
+scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun)) gsc = do
+  -- Decide on a seed.  In order of preference, we will use:
+  --   1. seed value provided by the user
+  --   2. seed value specified in the scenario description
+  --   3. randomly chosen seed value
+  theSeed <- case userSeed <|> scenario ^. scenarioSeed of
+    Just s -> return s
+    Nothing -> randomRIO (0, maxBound :: Int)
+
+  now <- Clock.getTime Clock.Monotonic
+  return $ pureScenarioToGameState scenario theSeed now toRun gsc
 
 -- | Take a world description, parsed from a scenario file, and turn
 --   it into a list of located robots and a world function.
