@@ -18,7 +18,6 @@ queue_rules:
           - check-success=Haskell-CI - Linux - ghc-9.4.5
           - check-success=Haskell-CI - Linux - ghc-9.2.7
           - check-success=Haskell-CI - Linux - ghc-9.0.2
-          - check-success=Haskell-CI - Linux - ghc-8.10.7
 
 pull_request_rules:
 - actions:
@@ -49,7 +48,6 @@ pull_request_rules:
       - check-success=Haskell-CI - Linux - ghc-9.4.5
       - check-success=Haskell-CI - Linux - ghc-9.2.7
       - check-success=Haskell-CI - Linux - ghc-9.0.2
-      - check-success=Haskell-CI - Linux - ghc-8.10.7
   - label=merge me
   - ! '#approved-reviews-by>=1'
   - ! '#changes-requested-reviews-by=0'
