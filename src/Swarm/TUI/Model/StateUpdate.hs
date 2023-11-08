@@ -18,6 +18,7 @@ module Swarm.TUI.Model.StateUpdate (
 ) where
 
 import Brick.AttrMap (applyAttrMappings)
+import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
 import Control.Carrier.Accum.FixedStrict (runAccum)
@@ -48,6 +49,8 @@ import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Scenario.Status
+import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons)
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (definitions)
 import Swarm.Game.ScenarioInfo (
   loadScenarioInfo,
   normalizeScenarioPath,
@@ -64,10 +67,14 @@ import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Launch.Model (toSerializableParams)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal (emptyGoalDisplay)
+import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
+import Swarm.TUI.Model.Structure
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Attribute.Attr (swarmAttrMap)
 import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
+import Swarm.TUI.View.Structure qualified as SR
+import Swarm.Util (listEnums)
 import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
 
@@ -257,6 +264,10 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
       & lastFrameTime .~ curTime
       & uiWorldEditor . EM.entityPaintList %~ BL.listReplace entityList Nothing
       & uiWorldEditor . EM.editingBounds . EM.boundsRect %~ setNewBounds
+      & uiStructure
+        .~ StructureDisplay
+          (SR.makeListWidget $ gs ^. discovery . structureRecognition . automatons . definitions)
+          (focusSetCurrent (StructureWidgets StructuresList) $ focusRing $ map StructureWidgets listEnums)
  where
   entityList = EU.getEntitiesForList $ gs ^. landscape . entityMap
 

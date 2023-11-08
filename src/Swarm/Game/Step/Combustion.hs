@@ -32,6 +32,7 @@ import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.Game.Step.Util
+import Swarm.Game.Step.Util.Inspect
 import Swarm.Game.Universe
 import Swarm.Language.Context (empty)
 import Swarm.Language.Pipeline (ProcessedTerm)

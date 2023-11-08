@@ -21,6 +21,9 @@ module Swarm.Game.Scenario (
 
   -- * Scenario
   Scenario (..),
+  StaticStructureInfo (..),
+  staticPlacements,
+  structureDefs,
 
   -- ** Fields
   scenarioVersion,
@@ -35,6 +38,7 @@ module Swarm.Game.Scenario (
   scenarioKnown,
   scenarioWorlds,
   scenarioNavigation,
+  scenarioStructures,
   scenarioRobots,
   scenarioObjectives,
   scenarioSolution,
@@ -73,6 +77,7 @@ import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Navigation.Portal
+import Swarm.Game.Scenario.Topography.Navigation.Waypoint (Parentage (..))
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Universe
@@ -88,6 +93,22 @@ import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
+
+data StaticStructureInfo = StaticStructureInfo
+  { _structureDefs :: [Structure.NamedGrid (Maybe Cell)]
+  , _staticPlacements :: M.Map SubworldName [Structure.LocatedStructure]
+  }
+  deriving (Show)
+
+makeLensesNoSigs ''StaticStructureInfo
+
+-- | Structure templates that may be auto-recognized when constructed
+-- by a robot
+structureDefs :: Lens' StaticStructureInfo [Structure.NamedGrid (Maybe Cell)]
+
+-- | A record of the static placements of structures, so that they can be
+-- added to the "recognized" list upon scenario initialization
+staticPlacements :: Lens' StaticStructureInfo (M.Map SubworldName [Structure.LocatedStructure])
 
 ------------------------------------------------------------
 -- Scenario
@@ -108,6 +129,7 @@ data Scenario = Scenario
   , _scenarioKnown :: [Text]
   , _scenarioWorlds :: NonEmpty WorldDescription
   , _scenarioNavigation :: Navigation (M.Map SubworldName) Location
+  , _scenarioStructures :: StaticStructureInfo
   , _scenarioRobots :: [TRobot]
   , _scenarioObjectives :: [Objective]
   , _scenarioSolution :: Maybe ProcessedTerm
@@ -142,9 +164,26 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
       rs <- v ..: "robots"
       let rsMap = buildRobotMap rs
 
+      -- NOTE: These have not been merged with their children yet.
       rootLevelSharedStructures :: Structure.InheritedStructureDefs <-
         localE (,rsMap) $
           v ..:? "structures" ..!= []
+
+      -- TODO (#1611) This is inefficient; instead, we should
+      -- form a DAG of structure references and visit deepest first,
+      -- caching in a map as we go.
+      -- Then, if a given sub-structure is referenced more than once, we don't
+      -- have to re-assemble it.
+      --
+      -- We should also make use of such a pre-computed map in the
+      -- invocation of 'mergeStructures' inside WorldDescription.hs.
+      mergedStructures <-
+        either (fail . T.unpack) return $
+          mapM
+            (sequenceA . (id &&& (Structure.mergeStructures mempty Root . Structure.structure)))
+            rootLevelSharedStructures
+
+      let namedGrids = map (\(ns, Structure.MergedStructure s _ _) -> Structure.Grid s <$ ns) mergedStructures
 
       allWorlds <- localE (worldMap,rootLevelSharedStructures,,rsMap) $ do
         rootWorld <- v ..: "world"
@@ -172,6 +211,11 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
           $ NE.toList allWorlds
 
       let mergedNavigation = Navigation mergedWaypoints mergedPortals
+          structureInfo =
+            StaticStructureInfo (filter Structure.recognize namedGrids)
+              . M.fromList
+              . NE.toList
+              $ NE.map (worldName &&& placedStructures) allWorlds
 
       Scenario
         <$> liftE (v .: "version")
@@ -186,6 +230,7 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
         <*> pure known
         <*> pure allWorlds
         <*> pure mergedNavigation
+        <*> pure structureInfo
         <*> pure rs
         <*> (liftE (v .:? "objectives" .!= []) >>= validateObjectives)
         <*> liftE (v .:? "solution")
@@ -233,6 +278,9 @@ scenarioKnown :: Lens' Scenario [Text]
 -- | The subworlds of the scenario.
 -- The "root" subworld shall always be at the head of the list, by construction.
 scenarioWorlds :: Lens' Scenario (NonEmpty WorldDescription)
+
+-- | Information required for structure recognition
+scenarioStructures :: Lens' Scenario StaticStructureInfo
 
 -- | Waypoints and inter-world portals
 scenarioNavigation :: Lens' Scenario (Navigation (M.Map SubworldName) Location)
