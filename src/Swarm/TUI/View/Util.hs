@@ -137,6 +137,7 @@ drawMarkdown d = do
     Markdown.Emphasis -> italicAttr
   rawAttr = \case
     "entity" -> greenAttr
+    "structure" -> redAttr
     "type" -> magentaAttr
     _snippet -> highlightAttr -- same as plain code
 

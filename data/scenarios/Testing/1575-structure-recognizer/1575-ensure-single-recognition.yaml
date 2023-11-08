@@ -6,7 +6,7 @@ description: |
   structure template.
 creative: false
 objectives:
-  - teaser: Build 2 chessboards
+  - teaser: Build 2 `chessboard`{=structure}s
     prerequisite:
       not: premature_win
     goal:
