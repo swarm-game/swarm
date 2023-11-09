@@ -22,6 +22,7 @@ import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.Util
+import Swarm.Util (applyWhen)
 
 makeListWidget :: GoalTracking -> BL.List Name GoalEntry
 makeListWidget (GoalTracking _announcements categorizedObjs) =
@@ -37,7 +38,7 @@ renderGoalsDisplay gd =
       vBox
         [ hBox
             [ leftSide
-            , hLimitPercent 70 $ padLeft (Pad 2) goalElaboration
+            , padLeft (Pad 2) goalElaboration
             ]
         , footer
         ]
@@ -92,10 +93,20 @@ drawGoalListItem _isSelected e = case e of
   Goal gs obj -> getCompletionIcon obj gs <+> titleWidget
    where
     textSource = obj ^. objectiveTeaser <|> obj ^. objectiveId <|> Just (Markdown.docToText $ obj ^. objectiveGoal)
-    titleWidget = maybe (txt "?") (withEllipsis End) textSource
+    titleWidget = maybe (txt "?") (titleColor . withEllipsis End) textSource
+    titleColor = applyWhen (obj ^. objectiveOptional) $ withAttr grayAttr
 
 singleGoalDetails :: GoalEntry -> Widget Name
 singleGoalDetails = \case
-  Goal _gs obj -> drawMarkdown $ obj ^. objectiveGoal
+  Goal _gs obj ->
+    vBox
+      [ optionalIndicator
+      , drawMarkdown $ obj ^. objectiveGoal
+      ]
+   where
+    optionalIndicator =
+      if obj ^. objectiveOptional
+        then withAttr grayAttr $ txt "[Optional]"
+        else emptyWidget
   -- Only Goal entries are selectable, so we should never see this:
   _ -> emptyWidget
