@@ -50,6 +50,7 @@ module Swarm.Util (
   parens,
   brackets,
   commaList,
+  prettyAge,
   indefinite,
   indefiniteQ,
   singularSubjectVerb,
@@ -87,6 +88,7 @@ import Control.Monad.Trans.Maybe (MaybeT (..))
 import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum, toLower)
 import Data.Either.Validation
+import Data.Int (Int64)
 import Data.List (foldl', maximumBy, partition)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
@@ -412,6 +414,13 @@ commaList [] = ""
 commaList [t] = t
 commaList [s, t] = T.unwords [s, "and", t]
 commaList ts = T.unwords $ map (`T.append` ",") (init ts) ++ ["and", last ts]
+
+prettyAge :: Int64 -> String
+prettyAge age
+  | age < 60 = show age <> "sec"
+  | age < 3600 = show (age `div` 60) <> "min"
+  | age < 3600 * 24 = show (age `div` 3600) <> "hour"
+  | otherwise = show (age `div` 3600 * 24) <> "day"
 
 ------------------------------------------------------------
 -- Some orphan instances
