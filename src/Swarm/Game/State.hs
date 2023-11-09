@@ -1321,10 +1321,12 @@ ensureStructureIntact (FoundStructure (StructureWithGrid _ grid) upperLeft) =
   allM outer $ zip [0 ..] grid
  where
   outer (y, row) = allM (inner y) $ zip [0 ..] row
-  inner y (x, cell) =
-    fmap (== cell) $
-      entityAt $
-        upperLeft `offsetBy` V2 x (negate y)
+  inner y (x, maybeTemplateEntity) = case maybeTemplateEntity of
+    Nothing -> return True
+    Just _ ->
+      fmap (== maybeTemplateEntity) $
+        entityAt $
+          upperLeft `offsetBy` V2 x (negate y)
 
 mkRecognizer ::
   (Has (State GameState) sig m) =>

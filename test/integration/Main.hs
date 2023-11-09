@@ -376,6 +376,7 @@ testScenarioSolutions rs ui =
             , testSolution Default "Testing/1575-structure-recognizer/1575-remove-structure"
             , testSolution Default "Testing/1575-structure-recognizer/1575-swap-structure"
             , testSolution Default "Testing/1575-structure-recognizer/1575-placement-occlusion"
+            , testSolution Default "Testing/1575-structure-recognizer/1575-interior-entity-placement"
             , testSolution Default "Testing/1575-structure-recognizer/1575-floorplan-command"
             ]
         ]
