@@ -161,6 +161,7 @@ library
                       Swarm.Game.Step
                       Swarm.Game.Step.Combustion
                       Swarm.Game.Step.Pathfinding
+                      Swarm.Game.Step.Path.Walkability
                       Swarm.Game.Step.Util
                       Swarm.Game.Step.Util.Inspect
                       Swarm.Game.Terrain

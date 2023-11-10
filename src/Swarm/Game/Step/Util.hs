@@ -12,7 +12,6 @@ import Control.Carrier.State.Lazy
 import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
-import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (forM_, guard, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
@@ -28,6 +27,7 @@ import Swarm.Game.ResourceLoading (NameGenerator (..))
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking qualified as SRT
 import Swarm.Game.State
+import Swarm.Game.Step.Path.Walkability
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Modify qualified as WM
@@ -158,27 +158,18 @@ randomName = do
 
 -- * Moving
 
-data MoveFailureMode = PathBlocked | PathLiquid
-data MoveFailureDetails = MoveFailureDetails Entity MoveFailureMode
-
 -- | Make sure nothing is in the way.
 -- No exception for system robots
-checkMoveFailureUnprivileged :: HasRobotStepState sig m => Cosmic Location -> m (Maybe MoveFailureDetails)
+checkMoveFailureUnprivileged ::
+  HasRobotStepState sig m =>
+  Cosmic Location ->
+  m (Maybe MoveFailureDetails)
 checkMoveFailureUnprivileged nextLoc = do
   me <- entityAt nextLoc
-  caps <- use robotCapabilities
-  unwalkables <- use unwalkableEntities
+  wc <- use walkabilityContext
   return $ do
     e <- me
-    go caps unwalkables e
- where
-  go caps unwalkables e
-    -- robots can not walk through walls
-    | e `hasProperty` Unwalkable || (e ^. entityName) `S.member` unwalkables = Just $ MoveFailureDetails e PathBlocked
-    -- robots drown if they walk over liquid without boat
-    | e `hasProperty` Liquid && CFloat `S.notMember` caps =
-        Just $ MoveFailureDetails e PathLiquid
-    | otherwise = Nothing
+    checkUnwalkable wc e
 
 -- | Make sure nothing is in the way. Note that system robots implicitly ignore
 -- and base throws on failure.

@@ -81,6 +81,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.State
 import Swarm.Game.Step.Combustion qualified as Combustion
+import Swarm.Game.Step.Path.Walkability
 import Swarm.Game.Step.Pathfinding
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Inspect
