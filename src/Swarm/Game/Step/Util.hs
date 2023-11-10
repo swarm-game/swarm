@@ -158,27 +158,18 @@ randomName = do
 
 -- * Moving
 
-data MoveFailureMode = PathBlocked | PathLiquid
-data MoveFailureDetails = MoveFailureDetails Entity MoveFailureMode
-
 -- | Make sure nothing is in the way.
 -- No exception for system robots
-checkMoveFailureUnprivileged :: HasRobotStepState sig m => Cosmic Location -> m (Maybe MoveFailureDetails)
+checkMoveFailureUnprivileged ::
+  HasRobotStepState sig m =>
+  Cosmic Location ->
+  m (Maybe MoveFailureDetails)
 checkMoveFailureUnprivileged nextLoc = do
   me <- entityAt nextLoc
-  caps <- use robotCapabilities
-  unwalkables <- use unwalkableEntities
+  wc <- use walkabilityContext
   return $ do
     e <- me
-    go caps unwalkables e
- where
-  go caps unwalkables e
-    -- robots can not walk through walls
-    | e `hasProperty` Unwalkable || (e ^. entityName) `S.member` unwalkables = Just $ MoveFailureDetails e PathBlocked
-    -- robots drown if they walk over liquid without boat
-    | e `hasProperty` Liquid && CFloat `S.notMember` caps =
-        Just $ MoveFailureDetails e PathLiquid
-    | otherwise = Nothing
+    checkUnwalkable wc e
 
 -- | Make sure nothing is in the way. Note that system robots implicitly ignore
 -- and base throws on failure.
