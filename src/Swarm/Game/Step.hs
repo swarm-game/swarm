@@ -73,12 +73,14 @@ import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
+import Swarm.Game.Scenario.Topography.Area (getAreaDimensions)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..), destination, reorientation)
 import Swarm.Game.Scenario.Topography.Navigation.Util
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
 import Swarm.Game.Scenario.Topography.Placement
-import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
+import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons, foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
 import Swarm.Game.Step.Combustion qualified as Combustion
 import Swarm.Game.Step.Path.Walkability
@@ -1412,6 +1414,15 @@ execConst c vs s k = do
              where
               xs = NEM.keys mapNE
         return $ mkReturn $ mkOutput <$> maybeFoundStructures
+      _ -> badConst
+    Floorplan -> case vs of
+      [VText name] -> do
+        structureTemplates <- use $ discovery . structureRecognition . automatons . definitions
+        let maybeStructure = M.lookup (StructureName name) structureTemplates
+        structureDef <-
+          maybeStructure
+            `isJustOr` cmdExn Floorplan (pure $ T.unwords ["Unknown structure", quote name])
+        return . mkReturn . getAreaDimensions . entityGrid $ withGrid structureDef
       _ -> badConst
     Detect -> case vs of
       [VText name, VRect x1 y1 x2 y2] -> do

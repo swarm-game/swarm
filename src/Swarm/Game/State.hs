@@ -1182,7 +1182,7 @@ initGameState gsc =
           , -- This does not need to be initialized with anything,
             -- since the master list of achievements is stored in UIState
             _gameAchievements = mempty
-          , _structureRecognition = StructureRecognizer (RecognizerAutomatons [] mempty) emptyFoundStructures []
+          , _structureRecognition = StructureRecognizer (RecognizerAutomatons mempty mempty) emptyFoundStructures []
           }
     , _activeRobots = IS.empty
     , _waitingRobots = M.empty

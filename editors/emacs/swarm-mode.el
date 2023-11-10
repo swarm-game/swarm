@@ -88,6 +88,7 @@
                "whereami"
                "waypoint"
                "structure"
+               "floorplan"
                "detect"
                "resonate"
                "density"

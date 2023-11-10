@@ -9,3 +9,4 @@
 1575-remove-structure.yaml
 1575-swap-structure.yaml
 1575-placement-occlusion.yaml
+1575-floorplan-command.yaml

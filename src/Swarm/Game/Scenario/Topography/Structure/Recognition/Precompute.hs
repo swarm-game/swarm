@@ -159,7 +159,7 @@ mkAutomatons xs =
   grids = map extractGrid xs
 
   process g = StructureInfo g . histogram . concatMap catMaybes $ entityGrid g
-  infos = map process grids
+  infos = M.fromList $ map (name . originalDefinition &&& process) grids
 
 extractGrid :: NamedGrid (Maybe Cell) -> StructureWithGrid
 extractGrid x = StructureWithGrid x $ getEntityGrid $ structure x
