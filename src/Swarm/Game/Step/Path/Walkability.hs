@@ -11,9 +11,15 @@ import Swarm.Game.Robot
 import Swarm.Language.Capability
 
 data MoveFailureMode = PathBlocked | PathLiquid
-data MoveFailureDetails = MoveFailureDetails Entity MoveFailureMode
 
--- | Pure logic used inside of 'checkMoveFailureUnprivileged'
+data MoveFailureDetails
+  = MoveFailureDetails
+      -- | Occupies the destination cell
+      Entity
+      MoveFailureMode
+
+-- | Pure logic used inside of
+-- 'Swarm.Game.Step.Util.checkMoveFailureUnprivileged'
 checkUnwalkable ::
   WalkabilityContext ->
   Entity ->
