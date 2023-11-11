@@ -10,6 +10,7 @@
 module Swarm.Game.Location (
   Location,
   pattern Location,
+  HasLocation (..),
 
   -- ** Heading and Direction functions
   Heading,
@@ -234,3 +235,13 @@ getElemsInArea o@(Location x y) d m = M.elems sm'
       & M.split (Location (x + d) (y + 1)) -- B
       & fst -- B>
   sm' = M.filterWithKey (const . (<= d) . manhattan o) sm
+
+-- * Locatable things
+
+class HasLocation a where
+  -- | Basically 'fmap' for the 'Location' field of a record
+  modifyLoc :: (Location -> Location) -> a -> a
+
+  -- | Translation by a vector
+  offsetLoc :: V2 Int32 -> a -> a
+  offsetLoc locOffset = modifyLoc (.+^ locOffset)

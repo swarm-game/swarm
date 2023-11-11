@@ -76,6 +76,8 @@ import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons)
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (definitions)
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (finishGameTick, gameTick)
@@ -106,6 +108,7 @@ import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
+import Swarm.TUI.Model.Structure
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Util (generateModal)
@@ -331,6 +334,7 @@ handleMainEvent ev = do
     FKey 5 | not (null (s ^. gameState . messageNotifications . notificationsContent)) -> do
       toggleModal MessagesModal
       gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . temporal . ticks
+    FKey 6 | not (null $ s ^. gameState . discovery . structureRecognition . automatons . definitions) -> toggleModal StructuresModal
     -- show goal
     ControlChar 'g' ->
       if hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent
@@ -503,6 +507,16 @@ handleModalEvent = \case
                 newList <- refreshGoalList lw
                 uiState . uiGoal . listWidget .= newList
               GoalSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
+            _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
+      Just StructuresModal -> case ev of
+        V.EvKey (V.KChar '\t') [] -> uiState . uiStructure . structurePanelFocus %= focusNext
+        _ -> do
+          focused <- use $ uiState . uiStructure . structurePanelFocus
+          case focusGetCurrent focused of
+            Just (StructureWidgets w) -> case w of
+              StructuresList ->
+                refreshList $ uiState . uiStructure . structurePanelListWidget
+              StructureSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
             _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
    where

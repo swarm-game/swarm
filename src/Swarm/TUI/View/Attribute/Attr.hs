@@ -45,6 +45,7 @@ module Swarm.TUI.View.Attribute.Attr (
   blueAttr,
   greenAttr,
   redAttr,
+  grayAttr,
   defAttr,
   customEditFocusedAttr,
 ) where
@@ -103,6 +104,7 @@ swarmAttrMap =
          , (cyanAttr, fg V.cyan)
          , (lightCyanAttr, fg (V.rgbColor @Int 200 255 255))
          , (magentaAttr, fg V.magenta)
+         , (grayAttr, fg (V.rgbColor @Int 128 128 128))
          , -- Default attribute
            (defAttr, V.defAttr)
          ]
@@ -219,7 +221,7 @@ customEditFocusedAttr :: AttrName
 customEditFocusedAttr = attrName "custom" <> E.editFocusedAttr
 
 -- | Some basic colors used in TUI.
-redAttr, greenAttr, blueAttr, yellowAttr, cyanAttr, lightCyanAttr, magentaAttr :: AttrName
+redAttr, greenAttr, blueAttr, yellowAttr, cyanAttr, lightCyanAttr, magentaAttr, grayAttr :: AttrName
 redAttr = attrName "red"
 greenAttr = attrName "green"
 blueAttr = attrName "blue"
@@ -227,3 +229,4 @@ yellowAttr = attrName "yellow"
 cyanAttr = attrName "cyan"
 lightCyanAttr = attrName "lightCyan"
 magentaAttr = attrName "magenta"
+grayAttr = attrName "gray"

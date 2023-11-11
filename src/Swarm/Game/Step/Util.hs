@@ -12,14 +12,10 @@ import Control.Carrier.State.Lazy
 import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
-import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (forM, forM_, guard, join, when)
+import Control.Monad (forM_, guard, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.Array (bounds, (!))
-import Data.IntMap qualified as IM
-import Data.List (find)
-import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -29,7 +25,9 @@ import Swarm.Game.Exception
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (NameGenerator (..))
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking qualified as SRT
 import Swarm.Game.State
+import Swarm.Game.Step.Path.Walkability
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Modify qualified as WM
@@ -72,8 +70,9 @@ updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
     zoomWorld subworldName $
       W.updateM @Int (W.locToCoords loc) upd
 
-  forM_ (WM.getModification =<< someChange) $ \_modType -> do
+  forM_ (WM.getModification =<< someChange) $ \modType -> do
     wakeWatchingRobots cLoc
+    SRT.entityModified modType cLoc
 
 -- * Capabilities
 
@@ -120,38 +119,6 @@ getNow = sendIO $ System.Clock.getTime System.Clock.Monotonic
 flagRedraw :: (Has (State GameState) sig m) => m ()
 flagRedraw = needsRedraw .= True
 
--- * World queries
-
-getNeighborLocs :: Cosmic Location -> [Cosmic Location]
-getNeighborLocs loc = map (offsetBy loc . flip applyTurn north . DRelative . DPlanar) listEnums
-
--- | Perform an action requiring a 'W.World' state component in a
---   larger context with a 'GameState'.
-zoomWorld ::
-  (Has (State GameState) sig m) =>
-  SubworldName ->
-  StateC (W.World Int Entity) Identity b ->
-  m (Maybe b)
-zoomWorld swName n = do
-  mw <- use $ landscape . multiWorld
-  forM (M.lookup swName mw) $ \w -> do
-    let (w', a) = run (runState w n)
-    landscape . multiWorld %= M.insert swName w'
-    return a
-
--- | Get the entity (if any) at a given location.
-entityAt :: (Has (State GameState) sig m) => Cosmic Location -> m (Maybe Entity)
-entityAt (Cosmic subworldName loc) =
-  join <$> zoomWorld subworldName (W.lookupEntityM @Int (W.locToCoords loc))
-
--- | Get the robot with a given ID.
-robotWithID :: (Has (State GameState) sig m) => RID -> m (Maybe Robot)
-robotWithID rid = use (robotMap . at rid)
-
--- | Get the robot with a given name.
-robotWithName :: (Has (State GameState) sig m) => Text -> m (Maybe Robot)
-robotWithName rname = use (robotMap . to IM.elems . to (find $ \r -> r ^. robotName == rname))
-
 -- * Randomness
 
 -- | Generate a uniformly random number using the random generator in
@@ -191,27 +158,18 @@ randomName = do
 
 -- * Moving
 
-data MoveFailureMode = PathBlocked | PathLiquid
-data MoveFailureDetails = MoveFailureDetails Entity MoveFailureMode
-
 -- | Make sure nothing is in the way.
 -- No exception for system robots
-checkMoveFailureUnprivileged :: HasRobotStepState sig m => Cosmic Location -> m (Maybe MoveFailureDetails)
+checkMoveFailureUnprivileged ::
+  HasRobotStepState sig m =>
+  Cosmic Location ->
+  m (Maybe MoveFailureDetails)
 checkMoveFailureUnprivileged nextLoc = do
   me <- entityAt nextLoc
-  caps <- use robotCapabilities
-  unwalkables <- use unwalkableEntities
+  wc <- use walkabilityContext
   return $ do
     e <- me
-    go caps unwalkables e
- where
-  go caps unwalkables e
-    -- robots can not walk through walls
-    | e `hasProperty` Unwalkable || (e ^. entityName) `S.member` unwalkables = Just $ MoveFailureDetails e PathBlocked
-    -- robots drown if they walk over liquid without boat
-    | e `hasProperty` Liquid && CFloat `S.notMember` caps =
-        Just $ MoveFailureDetails e PathLiquid
-    | otherwise = Nothing
+    checkUnwalkable wc e
 
 -- | Make sure nothing is in the way. Note that system robots implicitly ignore
 -- and base throws on failure.

@@ -30,6 +30,7 @@ module Swarm.Game.Robot (
   defVals,
   defStore,
   emptyRobotContext,
+  WalkabilityContext (..),
 
   -- ** Lenses
   robotEntity,
@@ -48,6 +49,7 @@ module Swarm.Game.Robot (
   robotLogUpdated,
   inventoryHash,
   robotCapabilities,
+  walkabilityContext,
   robotContext,
   trobotContext,
   robotID,
@@ -507,6 +509,18 @@ activityCounts :: Lens' Robot ActivityCounts
 
 -- | Is the robot currently running an atomic block?
 runningAtomic :: Lens' Robot Bool
+
+-- | Properties of a robot used to determine whether an entity is walkable
+data WalkabilityContext
+  = WalkabilityContext
+      (Set Capability)
+      -- | which entities are unwalkable by this robot
+      (Set EntityName)
+  deriving (Show, Eq, Generic, Ae.ToJSON)
+
+walkabilityContext :: Getter Robot WalkabilityContext
+walkabilityContext = to $
+  \x -> WalkabilityContext (_robotCapabilities x) (_unwalkableEntities x)
 
 -- | A general function for creating robots.
 mkRobot ::

@@ -35,6 +35,7 @@ import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.State
 import Swarm.Game.Step.Util
+import Swarm.Game.Step.Util.Inspect
 import Swarm.Game.Universe
 import Swarm.Language.Syntax
 import Swarm.Util (hoistMaybe)

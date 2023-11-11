@@ -32,7 +32,7 @@ maintainer:         byorgey@gmail.com
 bug-reports:        https://github.com/swarm-game/swarm/issues
 copyright:          Brent Yorgey 2021
 category:           Game
-tested-with:        GHC ==8.10.7 || ==9.0.2 || ==9.2.7 || ==9.4.5 || ==9.6.2
+tested-with:        GHC ==9.0.2 || ==9.2.7 || ==9.4.5 || ==9.6.2
 extra-source-files: CHANGELOG.md
                     example/*.sw
                     editors/emacs/*.el
@@ -148,6 +148,12 @@ library
                       Swarm.Game.Scenario.Topography.Navigation.Waypoint
                       Swarm.Game.Scenario.Topography.Placement
                       Swarm.Game.Scenario.Topography.Structure
+                      Swarm.Game.Scenario.Topography.Structure.Recognition
+                      Swarm.Game.Scenario.Topography.Structure.Recognition.Log
+                      Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
+                      Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
+                      Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking
+                      Swarm.Game.Scenario.Topography.Structure.Recognition.Type
                       Swarm.Game.Scenario.Topography.WorldDescription
                       Swarm.Game.Scenario.Topography.WorldPalette
                       Swarm.Game.ScenarioInfo
@@ -155,7 +161,9 @@ library
                       Swarm.Game.Step
                       Swarm.Game.Step.Combustion
                       Swarm.Game.Step.Pathfinding
+                      Swarm.Game.Step.Path.Walkability
                       Swarm.Game.Step.Util
+                      Swarm.Game.Step.Util.Inspect
                       Swarm.Game.Terrain
                       Swarm.Game.Value
                       Swarm.Game.World
@@ -216,12 +224,14 @@ library
                       Swarm.TUI.Model.Name
                       Swarm.TUI.Model.Repl
                       Swarm.TUI.Model.StateUpdate
+                      Swarm.TUI.Model.Structure
                       Swarm.TUI.Model.UI
                       Swarm.TUI.Panel
                       Swarm.TUI.View
                       Swarm.TUI.View.Achievement
                       Swarm.TUI.View.CellDisplay
                       Swarm.TUI.View.Objective
+                      Swarm.TUI.View.Structure
                       Swarm.TUI.View.Util
                       Swarm.Util
                       Swarm.Util.Effect
@@ -238,6 +248,7 @@ library
 
     build-depends:    base                          >= 4.14 && < 4.19,
                       brick-list-skip               >= 0.1.1.2 && < 0.2,
+                      AhoCorasick                   >= 0.0.4 && < 0.0.5,
                       aeson                         >= 2 && < 2.2,
                       array                         >= 0.5.4 && < 0.6,
                       astar                         >= 0.3 && < 0.3.1,
@@ -267,7 +278,7 @@ library
                       lens                          >= 4.19 && < 5.3,
                       linear                        >= 1.21.6 && < 1.23,
                       lsp                           >= 1.6 && < 1.7,
-                      megaparsec                    >= 9.0 && < 9.6,
+                      megaparsec                    >= 9.6.1 && < 9.7,
                       minimorph                     >= 0.3 && < 0.4,
                       transformers                  >= 0.5 && < 0.7,
                       mtl                           >= 2.2.2 && < 2.4,
@@ -275,6 +286,7 @@ library
                       pandoc-types                  >= 1.23 && < 1.24,
                       murmur3                       >= 1.0.4 && < 1.1,
                       natural-sort                  >= 0.1.2 && < 0.2,
+                      nonempty-containers           >= 0.3.4 && < 0.3.5,
                       palette                       >= 0.3 && < 0.4,
                       parser-combinators            >= 1.2 && < 1.4,
                       prettyprinter                 >= 1.7.0 && < 1.8,
@@ -338,6 +350,7 @@ test-suite swarm-unit
                       TestPedagogy
                       TestNotification
                       TestLanguagePipeline
+                      TestOrdering
                       TestPretty
                       TestBoolExpr
                       TestCommand
