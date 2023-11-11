@@ -10,6 +10,7 @@ module Swarm.Game.Value where
 
 import Control.Lens (view)
 import Data.Int (Int32)
+import Data.Text (Text)
 import Linear (V2 (..))
 import Swarm.Game.Entity
 import Swarm.Game.Location
@@ -38,6 +39,18 @@ instance Valuable Int32 where
 
 instance Valuable Int where
   asValue = VInt . fromIntegral
+
+instance Valuable Integer where
+  asValue = VInt
+
+instance Valuable Bool where
+  asValue = VBool
+
+instance Valuable Text where
+  asValue = VText
+
+instance Valuable () where
+  asValue = const VUnit
 
 instance (Valuable a) => Valuable (V2 a) where
   asValue (V2 x y) = asValue (x, y)
