@@ -114,7 +114,14 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
-drawType = withAttr infoAttr . padLeftRight 1 . txt . prettyTextLine
+drawType ty = Widget Fixed Fixed $ do
+  ctx <- getContext
+  let w = ctx ^. availWidthL
+      renderedTy = prettyTextLine ty
+      displayedTy
+        | T.length renderedTy <= w `div` 2 - 2 = renderedTy
+        | otherwise = T.take (w `div` 2 - 2 - 3) renderedTy <> "..."
+  render . withAttr infoAttr . padLeftRight 1 . txt $ displayedTy
 
 -- | Draw markdown document with simple code/bold/italic attributes.
 --
