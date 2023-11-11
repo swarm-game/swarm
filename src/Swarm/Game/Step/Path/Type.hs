@@ -57,10 +57,11 @@ data CachePreservationMode
   | PathTruncated
   deriving (Show, Eq, Generic, ToJSON)
 
-data CacheLogEntry = CacheLogEntry {
-    robot :: RID
+data CacheLogEntry = CacheLogEntry
+  { robot :: RID
   , event :: CacheEvent
-  } deriving (Show, Eq, Generic, ToJSON)
+  }
+  deriving (Show, Eq, Generic, ToJSON)
 
 objectSingleFieldEncoding :: Options
 objectSingleFieldEncoding =
