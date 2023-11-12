@@ -111,18 +111,18 @@ appMain opts = do
             handleEvent e
 
       -- Setup virtual terminal
-      let mkVty =
+      let buildVty =
             case colorMode opts of
               Nothing    -> VS.mkVty V.defaultConfig
               Just cMode -> do
-                    platformSettings <- VS.defaultSettings
-                    VS.mkVtyWithSettings V.defaultConfig $ platformSettings { VS.settingColorMode = cMode }
-      vty <- mkVty
+                platformSettings <- VS.defaultSettings
+                VS.mkVtyWithSettings V.defaultConfig $ platformSettings {VS.settingColorMode = cMode}
+      vty <- buildVty
 
       V.setMode (V.outputIface vty) V.Mouse True
 
       -- Run the app.
-      void $ customMain vty mkVty (Just chan) (app eventHandler) s'
+      void $ customMain vty buildVty (Just chan) (app eventHandler) s'
 
 -- | A demo program to run the web service directly, without the terminal application.
 --   This is useful to live update the code using @ghcid -W --test "Swarm.App.demoWeb"@.
