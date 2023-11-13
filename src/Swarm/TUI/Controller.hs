@@ -82,7 +82,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (definitions)
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (finishGameTick, gameTick)
-import Swarm.Language.Capability (Capability (CDebug, CMake, CGod), constCaps)
+import Swarm.Language.Capability (Capability (CDebug, CGod, CMake), constCaps)
 import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
 import Swarm.Language.Module
@@ -1206,8 +1206,7 @@ data CompletionType
   | EntityName
   deriving (Eq)
 
-newtype CompletionContext
-  = CompletionContext { ctxCreativeMode :: Bool }
+newtype CompletionContext = CompletionContext {ctxCreativeMode :: Bool}
   deriving (Eq)
 
 -- | Try to complete the last word in a partially-entered REPL prompt using
@@ -1261,9 +1260,10 @@ tabComplete CompletionContext {..} names em theRepl = case theRepl ^. replPrompt
 
   creativeWords = map (syntax . constInfo) $ filter (\w -> constCaps w == Just CGod) allConst
 
-  possibleWords = names <> case ctxCreativeMode of
-    True -> reservedWords
-    False -> filter (\w -> (not $ w `elem` creativeWords)) reservedWords
+  possibleWords =
+    names <> case ctxCreativeMode of
+      True -> reservedWords
+      False -> filter (\w -> (not $ w `elem` creativeWords)) reservedWords
 
   entityNames = M.keys $ entitiesByName em
 
