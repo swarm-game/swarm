@@ -1263,7 +1263,7 @@ tabComplete CompletionContext {..} names em theRepl = case theRepl ^. replPrompt
   possibleWords =
     names <> case ctxCreativeMode of
       True -> reservedWords
-      False -> filter (\w -> (not $ w `elem` creativeWords)) reservedWords
+      False -> filter (\w -> w `notElem` creativeWords) reservedWords
 
   entityNames = M.keys $ entitiesByName em
 
