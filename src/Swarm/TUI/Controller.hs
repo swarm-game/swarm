@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -81,7 +82,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (definitions)
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.Step (finishGameTick, gameTick)
-import Swarm.Language.Capability (Capability (CDebug, CMake))
+import Swarm.Language.Capability (Capability (CDebug, CMake, CGod), constCaps)
 import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
 import Swarm.Language.Module
@@ -1179,7 +1180,7 @@ handleREPLEventTyping = \case
       CharKey '\t' -> do
         s <- get
         let names = s ^.. gameState . baseRobot . robotContext . defTypes . to assocs . traverse . _1
-        uiState . uiREPL %= tabComplete names (s ^. gameState . landscape . entityMap)
+        uiState . uiREPL %= tabComplete (CompletionContext (s ^. gameState . creativeMode)) names (s ^. gameState . landscape . entityMap)
         modify validateREPLForm
       EscapeKey -> do
         formSt <- use $ uiState . uiREPL . replPromptType
@@ -1205,11 +1206,15 @@ data CompletionType
   | EntityName
   deriving (Eq)
 
+newtype CompletionContext
+  = CompletionContext { ctxCreativeMode :: Bool }
+  deriving (Eq)
+
 -- | Try to complete the last word in a partially-entered REPL prompt using
 --   reserved words and names in scope (in the case of function names) or
 --   entity names (in the case of string literals).
-tabComplete :: [Var] -> EntityMap -> REPLState -> REPLState
-tabComplete names em theRepl = case theRepl ^. replPromptType of
+tabComplete :: CompletionContext -> [Var] -> EntityMap -> REPLState -> REPLState
+tabComplete CompletionContext {..} names em theRepl = case theRepl ^. replPromptType of
   SearchPrompt _ -> theRepl
   CmdPrompt mms
     -- Case 1: If completion candidates have already been
@@ -1254,7 +1259,11 @@ tabComplete names em theRepl = case theRepl ^. replPromptType of
     EntityName -> (entityNames, (/= '"'))
     FunctionName -> (possibleWords, isIdentChar)
 
-  possibleWords = reservedWords ++ names
+  creativeWords = map (syntax . constInfo) $ filter (\w -> constCaps w == Just CGod) allConst
+
+  possibleWords = names <> case ctxCreativeMode of
+    True -> reservedWords
+    False -> filter (\w -> (not $ w `elem` creativeWords)) reservedWords
 
   entityNames = M.keys $ entitiesByName em
 
