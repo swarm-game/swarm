@@ -224,7 +224,7 @@ data Const
     Whereami
   | -- | Get the x, y coordinates of a named waypoint, by index
     Waypoint
-  | -- | Get the x, y coordinates of a constructed structure, by index
+  | -- | Get the x, y coordinates of southwest corner of a constructed structure, by index
     Structure
   | -- | Get the width and height of a structure template
     Floorplan
@@ -648,7 +648,7 @@ constInfo c = case c of
       , "A robot can use the count to know whether they have iterated over the full waypoint circuit."
       ]
   Structure ->
-    command 2 Intangible . doc "Get the x, y coordinates of a constructed structure, by name and index" $
+    command 2 Intangible . doc "Get the x, y coordinates of the southwest corner of a constructed structure, by name and index" $
       [ "The outermost type of the return value indicates whether any structure of such name exists."
       , "Since structures can have multiple occurrences, returns a tuple of (count, (x, y))."
       , "The supplied index will be wrapped automatically, modulo the structure count."

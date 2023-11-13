@@ -1410,9 +1410,14 @@ execConst c vs s k = do
       [VText name, VInt idx] -> do
         registry <- use $ discovery . structureRecognition . foundStructures
         let maybeFoundStructures = M.lookup (StructureName name) $ foundByName registry
-            mkOutput mapNE = (NE.length xs, indexWrapNonEmpty xs idx ^. planar)
+            mkOutput mapNE = (NE.length xs, bottomLeftCorner)
              where
-              xs = NEM.keys mapNE
+              xs = NEM.toList mapNE
+              (pos, struc) = indexWrapNonEmpty xs idx
+              topLeftCorner = pos ^. planar
+              offsetHeight = V2 0 $ -fromIntegral (length (entityGrid struc) - 1)
+              bottomLeftCorner :: Location
+              bottomLeftCorner = topLeftCorner .+^ offsetHeight
         return $ mkReturn $ mkOutput <$> maybeFoundStructures
       _ -> badConst
     Floorplan -> case vs of
