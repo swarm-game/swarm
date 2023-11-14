@@ -112,9 +112,6 @@ cmdExn c parts = CmdFailed c (T.unwords parts) Nothing
 
 -- * Some utility functions
 
-getNow :: Has (Lift IO) sig m => m TimeSpec
-getNow = sendIO $ System.Clock.getTime System.Clock.Monotonic
-
 -- | Set a flag telling the UI that the world needs to be redrawn.
 flagRedraw :: (Has (State GameState) sig m) => m ()
 flagRedraw = needsRedraw .= True

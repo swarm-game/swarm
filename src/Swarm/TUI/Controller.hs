@@ -114,6 +114,7 @@ import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Util (generateModal)
 import Swarm.Util hiding (both, (<<.=))
+import Swarm.Util.Effect (TimeEffectIO (..))
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import System.FilePath (splitDirectories)
@@ -751,10 +752,10 @@ runGameTickUI :: EventM Name AppState ()
 runGameTickUI = runGameTick >> void updateUI
 
 -- | Modifies the game state using a fused-effect state action.
-zoomGameState :: (MonadState AppState m, MonadIO m) => Fused.StateC GameState (Fused.LiftC IO) a -> m a
+zoomGameState :: (MonadState AppState m, MonadIO m) => Fused.StateC GameState (TimeEffectIO (Fused.LiftC IO)) a -> m a
 zoomGameState f = do
   gs <- use gameState
-  (gs', a) <- liftIO (Fused.runM (Fused.runState gs f))
+  (gs', a) <- liftIO (Fused.runM (runTimeEffectIO (Fused.runState gs f)))
   gameState .= gs'
   return a
 
