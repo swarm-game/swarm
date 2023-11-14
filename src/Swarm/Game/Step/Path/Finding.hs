@@ -6,7 +6,7 @@
 -- = Design considerations
 -- One possible design of the @path@ command entailed storing a computed
 -- shortest path and providing an interface to incrementally retrieve
--- segments parts of it without recomputing the whole thing.
+-- segments of it without recomputing the whole thing.
 -- However, in general the playfield can be dynamic, and obstructions may
 -- appear that invalidate a given computed shortest path.
 -- Therefore, there can be only limited value in storing a computed path,

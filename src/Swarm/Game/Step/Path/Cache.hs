@@ -63,9 +63,7 @@ retrieveCachedPath currentWalkabilityContext newParms = do
   rid <- use robotID
   let eitherCachedPath = guardFailures rid pcr
       myEntry :: CacheRetrievalAttempt
-      myEntry = case eitherCachedPath of
-        Left reason -> RecomputationRequired reason
-        Right _ -> Success
+      myEntry = either RecomputationRequired (const Success) eitherCachedPath
 
   pathCaching . pathCachingLog
     %= RB.insert (CacheLogEntry rid $ RetrievalAttempt myEntry)
