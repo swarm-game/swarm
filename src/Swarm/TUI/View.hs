@@ -47,6 +47,7 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (getEditContents, renderEditor)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
+import Control.Arrow ((&&&))
 import Control.Lens as Lens hiding (Const, from)
 import Control.Monad (guard)
 import Data.Array (range)
@@ -55,7 +56,7 @@ import Data.Foldable (toList)
 import Data.Foldable qualified as F
 import Data.Functor (($>))
 import Data.IntMap qualified as IM
-import Data.List (intersperse)
+import Data.List (intersperse, partition)
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -672,8 +673,16 @@ renderDutyCycle gs robot =
   dutyCyclePercentage = 100 * getValue dutyCycleRatio
 
 robotsListWidget :: AppState -> Widget Name
-robotsListWidget s = hCenter table
+robotsListWidget s =
+  vBox
+    [ hCenter table
+    , hCenter $ maybe emptyWidget footnote maybeOutOfRangeCount
+    ]
  where
+  footnote tooFarCount =
+    withAttr italicAttr . str $
+      unwords [show tooFarCount, "out of range"]
+
   table =
     BT.renderTable
       . BT.columnBorders False
@@ -695,7 +704,7 @@ robotsListWidget s = hCenter table
     , "Log"
     ]
   headers = withAttr robotAttr . txt <$> applyWhen cheat ("ID" :) headings
-  robotsTable = mkRobotRow <$> robots
+  robotsTable = mkRobotRow <$> displayedRobots
   mkRobotRow robot =
     applyWhen cheat (idWidget :) cells
    where
@@ -723,11 +732,7 @@ robotsListWidget s = hCenter table
 
     highlightSystem = if robot ^. systemRobot then withAttr highlightAttr else id
 
-    ageStr
-      | age < 60 = show age <> "sec"
-      | age < 3600 = show (age `div` 60) <> "min"
-      | age < 3600 * 24 = show (age `div` 3600) <> "hour"
-      | otherwise = show (age `div` 3600 * 24) <> "day"
+    ageStr = prettyAge age
      where
       TimeSpec createdAtSec _ = robot ^. robotCreatedAt
       TimeSpec nowSec _ = s ^. uiState . lastFrameTime
@@ -757,19 +762,39 @@ robotsListWidget s = hCenter table
 
   basePos :: Point V2 Double
   basePos = realToFrac <$> fromMaybe origin (g ^? baseRobot . robotLocation . planar)
+
+  isBase robot = robot ^. robotID == 0
+
   -- Keep the base and non system robot (e.g. no seed)
-  isRelevant robot = robot ^. robotID == 0 || not (robot ^. systemRobot)
   -- Keep the robot that are less than 32 unit away from the base
-  isNear robot = creative || distance (realToFrac <$> robot ^. robotLocation . planar) basePos < 32
-  robots :: [Robot]
-  robots =
-    filter (\robot -> debugging || (isRelevant robot && isNear robot))
-      . IM.elems
-      $ g ^. robotMap
+  getSuppressionReason robot
+    | robot ^. systemRobot = Just SystemRobot
+    | distance (realToFrac <$> robot ^. robotLocation . planar) basePos >= 32 = Just TooFar
+    | otherwise = Nothing
+
+  ensureDisplay robot = debugging || creative || isBase robot
+
+  allRobots = IM.elems $ g ^. robotMap
+
+  (ensuredDisplayed, conditionallyDisplayed) = partition ensureDisplay allRobots
+  withSuppressionReason = map (id &&& getSuppressionReason) conditionallyDisplayed
+  (unsurpressed, surpressed) = partition (null . snd) withSuppressionReason
+  annotatedSurpressed = histogram $ map snd $ mapMaybe sequenceA surpressed
+
+  displayedRobots :: [Robot]
+  displayedRobots = ensuredDisplayed ++ map fst unsurpressed
+
+  maybeOutOfRangeCount = M.lookup TooFar annotatedSurpressed
+
   creative = g ^. creativeMode
   cheat = s ^. uiState . uiCheatMode
   debugging = creative && cheat
   g = s ^. gameState
+
+data SuppressionReason
+  = SystemRobot
+  | TooFar
+  deriving (Eq, Ord)
 
 helpWidget :: Seed -> Maybe Port -> Widget Name
 helpWidget theSeed mport =
