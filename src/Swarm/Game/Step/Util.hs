@@ -11,7 +11,6 @@ import Control.Applicative (Applicative (..))
 import Control.Carrier.State.Lazy
 import Control.Effect.Error
 import Control.Effect.Lens
-import Control.Effect.Lift
 import Control.Monad (forM_, guard, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
@@ -35,8 +34,6 @@ import Swarm.Language.Capability
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Util hiding (both)
-import System.Clock (TimeSpec)
-import System.Clock qualified
 import System.Random (UniformRange, uniformR)
 import Prelude hiding (Applicative (..), lookup)
 
