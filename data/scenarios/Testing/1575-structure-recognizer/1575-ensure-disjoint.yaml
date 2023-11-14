@@ -9,7 +9,7 @@ description: |
   should not be counted until all three are placed.
 creative: false
 objectives:
-  - teaser: Build 2 chessboards
+  - teaser: Build 2 `chessboard`{=structure}s
     prerequisite:
       not: premature_win
     goal:

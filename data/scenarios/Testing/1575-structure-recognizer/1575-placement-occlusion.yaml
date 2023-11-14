@@ -11,7 +11,7 @@ objectives:
       not: complete_red_structure
     goal:
       - |
-        Build a "green_jewel" structure
+        Build a `green_jewel`{=structure} structure
     condition: |
       def isRight = \x. case x (\_. false) (\_. true); end;
 
@@ -22,7 +22,7 @@ objectives:
     teaser: Complete red structure
     goal:
       - |
-        A "red_jewel" structure should not be recognized
+        A `red_jewel`{=structure} structure should not be recognized
     condition: |
       def isRight = \x. case x (\_. false) (\_. true); end;
 

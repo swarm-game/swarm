@@ -10,8 +10,8 @@ objectives:
     prerequisite: grab_tree
     goal:
       - |
-        Replace tree after grabbing.
-        Structure should be recognized again.
+        Replace `tree`{=entity} after grabbing.
+        The `double ring`{=structure} structure should be recognized again.
     condition: |
       foundStructure <- structure "double ring" 0;
       return $ case foundStructure (\_. false) (\_. true);
@@ -29,7 +29,7 @@ objectives:
     id: grab_tree
     goal:
       - |
-        Grab a tree
+        Grab a `tree`{=entity}
     condition: |
       as base {
         has "tree";

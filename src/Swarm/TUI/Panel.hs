@@ -1,5 +1,3 @@
------------------------------------------------------------------------------
------------------------------------------------------------------------------
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
@@ -9,7 +7,8 @@
 -- a border around some content, with the color of the border
 -- depending on whether the panel is currently focused.  Panels exist
 -- within a 'FocusRing' such that the user can cycle between the
--- panels (using /e.g./ the @Tab@ key).
+-- panels (using /e.g./ the @Tab@ key).  Panels can also have labels
+-- at up to 6 locations (top\/bottom, left\/center\/right).
 module Swarm.TUI.Panel (
   panel,
 ) where

@@ -7,7 +7,7 @@ objectives:
   - teaser: Build 12 structures
     goal:
       - |
-        Build 12 copies of the "green_jewel" structure
+        Build 12 copies of the `green_jewel`{=structure} structure
     condition: |
       foundGreen <- structure "green_jewel" 0;
       return $ case foundGreen (\_. false) (\x. fst x >= 12);

@@ -1182,7 +1182,7 @@ initGameState gsc =
           , -- This does not need to be initialized with anything,
             -- since the master list of achievements is stored in UIState
             _gameAchievements = mempty
-          , _structureRecognition = StructureRecognizer (RecognizerAutomatons [] mempty) emptyFoundStructures []
+          , _structureRecognition = StructureRecognizer (RecognizerAutomatons mempty mempty) emptyFoundStructures []
           }
     , _activeRobots = IS.empty
     , _waitingRobots = M.empty
@@ -1321,10 +1321,12 @@ ensureStructureIntact (FoundStructure (StructureWithGrid _ grid) upperLeft) =
   allM outer $ zip [0 ..] grid
  where
   outer (y, row) = allM (inner y) $ zip [0 ..] row
-  inner y (x, cell) =
-    fmap (== cell) $
-      entityAt $
-        upperLeft `offsetBy` V2 x (negate y)
+  inner y (x, maybeTemplateEntity) = case maybeTemplateEntity of
+    Nothing -> return True
+    Just _ ->
+      fmap (== maybeTemplateEntity) $
+        entityAt $
+          upperLeft `offsetBy` V2 x (negate y)
 
 mkRecognizer ::
   (Has (State GameState) sig m) =>

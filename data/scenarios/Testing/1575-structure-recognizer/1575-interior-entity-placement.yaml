@@ -1,0 +1,111 @@
+version: 1
+name: Structure recognition - interior space
+description: |
+  Entities can be added and removed
+  on empty cells within the rectangular
+  boundary of an already-placed structure without
+  affecting its recognition status.
+
+  Additionally, recognition of statically-placed
+  structures at scenario initialization is also
+  unaffected by interior entities.
+
+  However, any such "contaminating" entities
+  will prevent the recognition of a structure
+  when constructed by a robot.
+creative: false
+objectives:
+  - teaser: Replace rock
+    prerequisite: grab_rock
+    goal:
+      - |
+        Place the `rock`{=entity} entity back inside the `pigpen`{=structure}.
+    condition: |
+      foundBox <- structure "pigpen" 0;
+      case foundBox (\_. return false) (\struc.
+        let structPos = snd struc in
+        j <- robotnamed "judge";
+        as j {
+          structBounds <- floorplan "pigpen";
+
+          // Move to bottom-left corner
+          teleport self structPos;
+
+          rockCount <- resonate "rock" ((0, 0), structBounds);
+          return $ rockCount > 0;
+        }
+      );
+  - teaser: Grab rock
+    id: grab_rock
+    prerequisite: prerecognized
+    goal:
+      - |
+        Grab an entity from inside a `pigpen`{=structure} structure.
+    condition: |
+      as base {
+        has "rock";
+      }
+  - teaser: Prerecognize
+    id: prerecognized
+    goal:
+      - |
+        `pigpen`{=structure} structure should be recognized upon initialization,
+        even with an extraneous entity within its bounds.
+    condition: |
+      def isRight = \x. case x (\_. false) (\_. true); end;
+      foundBox <- structure "pigpen" 0;
+      return $ isRight foundBox;
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - ADT calculator
+      - blueprint
+      - grabber
+      - logger
+      - treads
+  - name: judge
+    dir: [1, 0]
+    system: true
+    display:
+      invisible: true
+solution: |
+  move; move;
+  x <- grab;
+  move;
+  place x;
+structures:
+  - name: pigpen
+    recognize: true
+    structure:
+      palette:
+        'b': [stone, board]
+      mask: '.'
+      map: |
+       bbbb
+       b..b
+       b..b
+       bbbb
+known: [board, rock]
+world:
+  dsl: |
+    {blank}
+  placements:
+    - src: pigpen
+      offset: [1, 0]
+    - src: pigpen
+      offset: [3, -6]
+  palette:
+    '.': [grass, erase]
+    'B': [grass, erase, base]
+    'r': [grass, rock]
+    'j': [grass, erase, judge]
+  upperleft: [-7, 3]
+  map: |
+    j.....
+    ......
+    B.r...
+    ......
+    ......
+
+

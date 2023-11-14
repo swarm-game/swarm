@@ -224,8 +224,10 @@ data Const
     Whereami
   | -- | Get the x, y coordinates of a named waypoint, by index
     Waypoint
-  | -- | Get the x, y coordinates of a constructed structure, by index
+  | -- | Get the x, y coordinates of southwest corner of a constructed structure, by index
     Structure
+  | -- | Get the width and height of a structure template
+    Floorplan
   | -- | Locate the closest instance of a given entity within the rectangle
     -- specified by opposite corners, relative to the current location.
     Detect
@@ -646,11 +648,16 @@ constInfo c = case c of
       , "A robot can use the count to know whether they have iterated over the full waypoint circuit."
       ]
   Structure ->
-    command 2 Intangible . doc "Get the x, y coordinates of a constructed structure, by name and index" $
+    command 2 Intangible . doc "Get the x, y coordinates of the southwest corner of a constructed structure, by name and index" $
       [ "The outermost type of the return value indicates whether any structure of such name exists."
       , "Since structures can have multiple occurrences, returns a tuple of (count, (x, y))."
       , "The supplied index will be wrapped automatically, modulo the structure count."
       , "A robot can use the count to know whether they have iterated over the full structure list."
+      ]
+  Floorplan ->
+    command 1 Intangible . doc "Get the dimensions of a structure template" $
+      [ "Returns a tuple of (width, height) for the structure of the requested name."
+      , "Yields an error if the supplied string is not the name of a structure."
       ]
   Detect ->
     command 2 Intangible . doc "Detect an entity within a rectangle." $

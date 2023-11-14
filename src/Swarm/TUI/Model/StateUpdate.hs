@@ -266,7 +266,7 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
       & uiWorldEditor . EM.editingBounds . EM.boundsRect %~ setNewBounds
       & uiStructure
         .~ StructureDisplay
-          (SR.makeListWidget $ gs ^. discovery . structureRecognition . automatons . definitions)
+          (SR.makeListWidget . M.elems $ gs ^. discovery . structureRecognition . automatons . definitions)
           (focusSetCurrent (StructureWidgets StructuresList) $ focusRing $ map StructureWidgets listEnums)
  where
   entityList = EU.getEntitiesForList $ gs ^. landscape . entityMap
