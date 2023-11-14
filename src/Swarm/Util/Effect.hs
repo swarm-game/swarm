@@ -96,10 +96,10 @@ data TimeEffect (m :: Type -> Type) k where
 getNow :: Has TimeEffect sig m => m TimeSpec
 getNow = send GetNow
 
-newtype TimeEffectIO m a = TimeEffectIO {runTimeEffectIO :: m a}
+newtype TimeEffectIOC m a = TimeEffectIO {runTimeEffectIO :: m a}
   deriving newtype (Applicative, Functor, Monad, MonadIO)
 
-instance (MonadIO m, Algebra sig m) => Algebra (TimeEffect :+: sig) (TimeEffectIO m) where
+instance (MonadIO m, Algebra sig m) => Algebra (TimeEffect :+: sig) (TimeEffectIOC m) where
   alg hdl sig ctx = case sig of
     L GetNow -> (<$ ctx) <$> liftIO (System.Clock.getTime System.Clock.Monotonic)
     R other -> TimeEffectIO (alg (runTimeEffectIO . hdl) other ctx)

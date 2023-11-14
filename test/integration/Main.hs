@@ -34,6 +34,7 @@ import Swarm.Game.Entity (EntityMap, lookupByName)
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Robot (activityCounts, commandsHistogram, defReqs, equippedDevices, lifetimeStepCount, machine, robotContext, robotLog, systemRobot, tangibleCommandCount, waitingUntil)
 import Swarm.Game.Scenario (Scenario)
+import Swarm.Util.Effect
 import Swarm.Game.State (
   GameState,
   WinCondition (WinConditions),
@@ -443,7 +444,7 @@ testScenarioSolutions rs ui =
     b <- gets badErrorsInLogs
     when (null b) $ case w of
       WinConditions (Won _) _ -> return ()
-      _ -> gameTick >> playUntilWin
+      _ -> runTimeEffectIO gameTick >> playUntilWin
 
 noBadErrors :: GameState -> Assertion
 noBadErrors g = do
