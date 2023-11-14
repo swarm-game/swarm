@@ -25,6 +25,7 @@ import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax
 import Swarm.TUI.Model (gameState)
 import Swarm.TUI.Model.StateUpdate (classicGame0)
+import Swarm.Util.Effect
 import Swarm.Util.Erasable
 import Test.Tasty.Bench (Benchmark, bcompare, bench, bgroup, defaultMain, whnfAppIO)
 
@@ -127,7 +128,7 @@ mkGameState robotMaker numRobots = do
 
 -- | Runs numGameTicks ticks of the game.
 runGame :: Int -> GameState -> IO ()
-runGame numGameTicks = evalStateT (replicateM_ numGameTicks gameTick)
+runGame numGameTicks = evalStateT (replicateM_ numGameTicks $ runTimeEffectIO gameTick)
 
 main :: IO ()
 main = do
