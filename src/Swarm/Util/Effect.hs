@@ -1,9 +1,3 @@
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralisedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE UndecidableInstances #-}
-
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -16,15 +10,12 @@ import Control.Carrier.Error.Either (ErrorC (..))
 import Control.Carrier.Throw.Either (ThrowC (..), runThrow)
 import Control.Effect.Throw
 import Control.Monad ((<=<), (>=>))
-import Control.Monad.Trans (MonadIO (liftIO))
 import Control.Monad.Trans.Except (ExceptT)
 import Data.Either.Extra (eitherToMaybe)
-import Data.Kind (Type)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Language.Pretty (prettyString)
-import System.Clock (Clock (Monotonic), TimeSpec, getTime)
 import Witherable
 
 -- | Transform a @Throw e1@ constraint into a @Throw e2@ constraint,
@@ -88,18 +79,3 @@ forMW = flip traverseW
 
 simpleErrorHandle :: ThrowC SystemFailure IO a -> IO a
 simpleErrorHandle = either (fail . prettyString) pure <=< runThrow
-
--- | Effect for things related to time
-data TimeEffect (m :: Type -> Type) k where
-  GetNow :: TimeEffect m TimeSpec
-
-getNow :: Has TimeEffect sig m => m TimeSpec
-getNow = send GetNow
-
-newtype TimeEffectIOC m a = TimeEffectIO {runTimeEffectIO :: m a}
-  deriving newtype (Applicative, Functor, Monad, MonadIO)
-
-instance (MonadIO m, Algebra sig m) => Algebra (TimeEffect :+: sig) (TimeEffectIOC m) where
-  alg hdl sig ctx = case sig of
-    L GetNow -> (<$ ctx) <$> liftIO (System.Clock.getTime System.Clock.Monotonic)
-    R other -> TimeEffectIO (alg (runTimeEffectIO . hdl) other ctx)

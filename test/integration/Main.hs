@@ -28,6 +28,7 @@ import Data.Text.IO qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Doc.Gen (EditorType (..))
 import Swarm.Doc.Gen qualified as DocGen
+import Swarm.Effect (runTimeIO)
 import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
 import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
 import Swarm.Game.Entity (EntityMap, lookupByName)
@@ -71,7 +72,6 @@ import Swarm.TUI.Model (
 import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
 import Swarm.TUI.Model.UI (UIState)
 import Swarm.Util (acquireAllWithExt)
-import Swarm.Util.Effect
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath.Posix (splitDirectories)
 import System.Timeout (timeout)
@@ -444,7 +444,7 @@ testScenarioSolutions rs ui =
     b <- gets badErrorsInLogs
     when (null b) $ case w of
       WinConditions (Won _) _ -> return ()
-      _ -> runTimeEffectIO gameTick >> playUntilWin
+      _ -> runTimeIO gameTick >> playUntilWin
 
 noBadErrors :: GameState -> Assertion
 noBadErrors g = do
