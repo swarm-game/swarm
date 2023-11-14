@@ -15,6 +15,7 @@ import Linear (V2 (..))
 import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..))
 import Swarm.Language.Direction
 import Swarm.Language.Value
 
@@ -77,3 +78,6 @@ instance (Valuable a) => Valuable (Maybe a) where
 instance (Valuable a, Valuable b) => Valuable (Either a b) where
   asValue (Left x) = VInj False $ asValue x
   asValue (Right x) = VInj True $ asValue x
+
+instance Valuable AreaDimensions where
+  asValue (AreaDimensions w h) = asValue (w, h)

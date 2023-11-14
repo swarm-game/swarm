@@ -9,7 +9,7 @@ objectives:
     prerequisite: complete_green_structure
     goal:
       - |
-        Build a "blue_jewel" structure
+        Build a `blue_jewel`{=structure} structure
     condition: |
       def isRight = \x. case x (\_. false) (\_. true); end;
 
@@ -22,7 +22,7 @@ objectives:
     prerequisite: complete_red_structure
     goal:
       - |
-        Build a "green_jewel" structure
+        Build a `green_jewel`{=structure} structure
     condition: |
       def isRight = \x. case x (\_. false) (\_. true); end;
 
@@ -33,7 +33,7 @@ objectives:
     teaser: Complete red structure
     goal:
       - |
-        Build a "red_jewel" structure
+        Build a `red_jewel`{=structure} structure
     condition: |
       def isRight = \x. case x (\_. false) (\_. true); end;
 

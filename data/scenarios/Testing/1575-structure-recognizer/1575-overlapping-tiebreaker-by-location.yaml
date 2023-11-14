@@ -10,7 +10,7 @@ objectives:
       not: wrong_structure
     goal:
       - |
-        Build a structure
+        Build a `topleft`{=structure} structure
     condition: |
       foundStructure <- structure "topleft" 0;
       return $ case foundStructure (\_. false) (\_. true);
@@ -19,7 +19,7 @@ objectives:
     optional: true
     goal:
       - |
-        The "bottomright" structure shouldn't be recognized.
+        The `bottomright`{=structure} structure shouldn't be recognized.
     condition: |
       foundStructure <- structure "bottomright" 0;
       return $ case foundStructure (\_. false) (\_. true);

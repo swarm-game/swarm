@@ -8,7 +8,7 @@ objectives:
   - teaser: Build structure
     goal:
       - |
-        Build a "precious" structure
+        Build a `precious`{=structure} structure
     condition: |
       foundStructure <- structure "precious" 0;
       return $ case foundStructure (\_. false) (\_. true);
