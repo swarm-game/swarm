@@ -49,7 +49,18 @@ entities:
     display:
       char: 'w'
     description:
-      - Enables `path` command
+      - |
+        Enables the `path` command:
+      - |
+        `path : (unit + int) -> ((int * int) + text) -> cmd (unit + dir)`
+      - |
+        Optionally supply a distance limit as the first argument, and
+        supply either a location (`inL`) or an entity (`inR`) as the second argument.
+      - |
+        Example:
+      - |
+        `path (inL ()) (inR "tree");`
+      - If a path exists, returns the direction to proceed along.
     properties: [known, portable]
     capabilities: [path]
 known: [water, boulder, flower]

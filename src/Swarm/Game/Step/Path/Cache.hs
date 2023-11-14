@@ -3,6 +3,7 @@
 --
 -- Pathfinding cache invalidation logic
 --
+-- == Overview
 -- Each time the 'Path' command is invoked, the computed
 -- shortest-path is placed in in a cache specific to the invoking robot.
 -- If the 'Path' command is invoked again by that robot
@@ -76,7 +77,7 @@ retrieveCachedPath currentWalkabilityContext newParms = do
     -- Checks whether this robot has a cached path
     cached <- maybeToEither NotCached $ IM.lookup rid pcr
 
-    let PathfindingCache prevParms prevWalkabilityContext _targetLoc pathCells (TailMap ps) = cached
+    let PathfindingCache prevParms prevWalkabilityContext _targetLoc (CachedPath pathCells (TailMap ps)) = cached
         PathfindingParameters prevDistLimit previousSubworldName t = prevParms
 
     -- Subworlds must match
@@ -113,7 +114,7 @@ recordCache parms wc pathLocs = do
   rid <- use robotID
   pathCaching . pathCachingRobots %= IM.insert rid newCache
  where
-  newCache = PathfindingCache parms wc (NE.last pathLocs) pathLocs $ mkTailMap pathLocs
+  newCache = PathfindingCache parms wc (NE.last pathLocs) $ CachedPath pathLocs $ mkTailMap pathLocs
 
 -- | For every non-empty suffix of the path, place its tail in a map keyed
 -- by its head.
@@ -123,6 +124,10 @@ mkTailMap pathLocs = TailMap locsMap
   locsMap = M.fromList . NE.toList . NE.map (NE.head &&& NE.tail) $ tails1 pathLocs
 
 -- |
+-- Returns either a 'Left' which mandates cache invalidation (with a reason),
+-- or a 'Right' containing a 'Maybe'; 'Nothing' indicates the cache should
+-- remain unchanged, while 'Just' supplies a modified cache.
+--
 -- Cache is affected by modification of:
 --
 -- * "unwalkable" entities (an entity is placed or removed that is "unwalkable" with respect to the invoking robot)
@@ -155,7 +160,7 @@ perhapsInvalidateForRobot
   walkInfo
   (Cosmic swn entityLoc)
   entityModification
-  oldCache@(PathfindingCache (PathfindingParameters _distLimit pathSubworld tgt) _previousWalkabilityInfo destLoc origPath (TailMap locmap))
+  oldCache@(PathfindingCache parms _previousWalkabilityInfo destLoc p)
     | swn /= pathSubworld = Right Nothing
     | otherwise = case entityModification of
         Swap oldEntity newEntity ->
@@ -163,6 +168,9 @@ perhapsInvalidateForRobot
         Remove oldEntity -> handleRemovedEntity oldEntity
         Add newEntity -> handleNewEntity newEntity
    where
+    PathfindingParameters _distLimit pathSubworld tgt = parms
+    CachedPath origPath (TailMap locmap) = p
+
     isUnwalkable = not . null . checkUnwalkable walkInfo
     isOnPath = entityLoc `M.member` locmap
 
@@ -177,20 +185,24 @@ perhapsInvalidateForRobot
           LocationTarget _locTarget -> Right Nothing
           EntityTarget targetEntityName -> handleNewEntityWithEntityTarget newEntity targetEntityName
 
+    -- If the pathfinding target is an Entity rather than a specific location
     handleNewEntityWithEntityTarget newEntity targetEntityName
       | view entityName newEntity /= targetEntityName = Right Nothing
-      -- If the newly-added target entity lies on the existing path,
-      -- truncate the path to set it as the goal.
-      | isOnPath =
-          let truncPath = prependList truncPathExcludingEntityLoc $ pure entityLoc
-              truncPathExcludingEntityLoc = fst $ NE.break (/= entityLoc) origPath
-           in Right $
-                Just
-                  oldCache
-                    { originalPath = truncPath
-                    , locations = mkTailMap truncPath
-                    }
+      | isOnPath = Right $ Just $ truncatePath origPath entityLoc oldCache
       | otherwise = Left TargetEntityAddedOutsidePath
+
+-- | If the newly-added target entity lies on the existing path,
+-- truncate the path to set it as the goal.
+truncatePath ::
+  NonEmpty Location ->
+  Location ->
+  PathfindingCache ->
+  PathfindingCache
+truncatePath origPath entityLoc oldCache =
+  oldCache {cachedPath = CachedPath truncPath $ mkTailMap truncPath}
+ where
+  truncPath = prependList truncPathExcludingEntityLoc $ pure entityLoc
+  truncPathExcludingEntityLoc = fst $ NE.break (/= entityLoc) origPath
 
 -- | Given an event that entails the modification of some cell,
 -- check whether a shortest-path previously computed for a

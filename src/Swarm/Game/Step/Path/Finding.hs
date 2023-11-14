@@ -4,18 +4,20 @@
 -- Implementation of the 'Swarm.Language.Syntax.Path' command for robots.
 --
 -- = Design considerations
--- One possible design of the @path@ command entailed storing a computed
--- shortest path and providing an interface to incrementally retrieve
--- segments of it without recomputing the whole thing.
--- However, in general the playfield can be dynamic, and obstructions may
+-- In general the playfield can be dynamic, and obstructions may
 -- appear that invalidate a given computed shortest path.
--- Therefore, there can be only limited value in storing a computed path,
--- either on the client side (i.e. in a swarm-lang program) or internally
--- for use across ticks.
+-- Therefore, there would be limited value in a command that returns
+-- an entirely static computed path that is somehow stored on the client side
+-- (i.e. inside a swarm-lang program).
 --
--- Instead, in the current implementation a complete path is computed
--- internally upon invoking the @path@ command, and just the direction of the
--- first "move" along that path is returned as a result to the caller.
+-- In the current implementation, a complete path is computed
+-- internally upon invoking the @path@ command
+-- and doled out incrementally across ticks.
+-- Each @path@ invocation returns the direction of the
+-- next "move" along the computed shortest path.
+--
+-- This internally stored path is re-used across invocations until some
+-- event invalidates its cache (see "Swarm.Game.Step.Path.Cache").
 --
 -- == Max distance
 --
@@ -70,7 +72,7 @@ pathCommand parms = do
   eitherCachedPath <- retrieveCachedPath currentWalkabilityContext parms
 
   case eitherCachedPath of
-    Right cachedPath -> return $ Just $ nextDir cachedPath
+    Right foundCachedPath -> return $ Just $ nextDir foundCachedPath
     Left _ -> do
       -- This is a short-circuiting optimization; if the goal location itself
       -- is not a walkable cell, then no amount of searching will reach it.

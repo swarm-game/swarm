@@ -17,7 +17,7 @@ import Swarm.Game.Step.Path.Type
 
 -- |
 -- A greater distance limit might yield a shorter path
--- if there was an better route that just needed to venture outside
+-- if there was a better route that just needed to venture outside
 -- of the allowed radius.
 --
 -- On the other hand, a smaller distance limit /will not/ invalidate
@@ -57,7 +57,7 @@ handleLimitDecreased robotLoc pathCells currLimit =
 
 -- | This function is shared between path computation logic
 -- and patch cache invalidation logic to ensure that
--- the inequality operator is consistent (e.g. @<@ vs. @<=@).
+-- the choice of inequality operator is consistent (e.g. @<@ vs. @<=@).
 withinDistance ::
   -- | distance limit
   Integer ->

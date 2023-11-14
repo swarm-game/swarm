@@ -145,15 +145,20 @@ newtype TailMap = TailMap (Map Location [Location])
 instance ToJSON TailMap where
   toJSON (TailMap x) = toJSON $ M.toList x
 
+data CachedPath = CachedPath
+  { originalPath :: NonEmpty Location
+  , locations :: TailMap
+  -- ^ Fast lookup map of path suffix by
+  -- current location
+  }
+  deriving (Generic, Eq, Show, ToJSON)
+
 -- | A per-robot cache for the @path@ command.
 data PathfindingCache = PathfindingCache
   { invocationParms :: PathfindingParameters SubworldName
   , walkabilityInfo :: WalkabilityContext
   , targetLoc :: Location
-  , originalPath :: NonEmpty Location
-  , locations :: TailMap
-  -- ^ Fast lookup map of path suffix by
-  -- current location
+  , cachedPath :: CachedPath
   }
   deriving (Generic, Eq, Show, ToJSON)
 
