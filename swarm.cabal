@@ -160,8 +160,12 @@ library
                       Swarm.Game.State
                       Swarm.Game.Step
                       Swarm.Game.Step.Combustion
-                      Swarm.Game.Step.Pathfinding
+                      Swarm.Game.Step.Path.Cache
+                      Swarm.Game.Step.Path.Cache.DistanceLimit
+                      Swarm.Game.Step.Path.Finding
+                      Swarm.Game.Step.Path.Type
                       Swarm.Game.Step.Path.Walkability
+                      Swarm.Game.Step.RobotStepState
                       Swarm.Game.Step.Util
                       Swarm.Game.Step.Util.Inspect
                       Swarm.Game.Terrain
@@ -238,6 +242,7 @@ library
                       Swarm.Util.Erasable
                       Swarm.Util.Lens
                       Swarm.Util.Parse
+                      Swarm.Util.RingBuffer
                       Swarm.Util.UnitInterval
                       Swarm.Util.WindowedCounter
                       Swarm.Util.Yaml
