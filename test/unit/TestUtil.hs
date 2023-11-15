@@ -13,6 +13,7 @@ import Control.Monad.State (StateT (..), execState)
 import Control.Monad.Trans (lift)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Swarm.Effect
 import Swarm.Game.CESK
 import Swarm.Game.Exception
 import Swarm.Game.Robot
@@ -47,7 +48,7 @@ runCESK :: Int -> CESK -> StateT Robot (StateT GameState IO) (Either Text (Value
 runCESK _ (Up exn _ []) = Left . flip formatExn exn <$> lift (use $ landscape . entityMap)
 runCESK !steps cesk = case finalValue cesk of
   Just (v, _) -> return (Right (v, steps))
-  Nothing -> stepCESK cesk >>= runCESK (steps + 1)
+  Nothing -> runTimeIO (stepCESK cesk) >>= runCESK (steps + 1)
 
 play :: GameState -> Text -> IO (Either Text (), GameState)
 play g = either (return . (,g) . Left) playPT . processTerm1
@@ -68,7 +69,7 @@ playUntilDone rid = do
   w <- use robotMap
   case w ^? ix rid . to isActive of
     Just True -> do
-      void gameTick
+      void $ runTimeIO gameTick
       playUntilDone rid
     Just False -> return $ Right ()
     Nothing -> return $ Left . T.pack $ "The robot with ID " <> show rid <> " is nowhere to be found!"

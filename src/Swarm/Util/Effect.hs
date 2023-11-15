@@ -4,6 +4,7 @@
 -- fused-effect utilities for Swarm.
 module Swarm.Util.Effect where
 
+import Control.Algebra
 import Control.Carrier.Accum.FixedStrict
 import Control.Carrier.Error.Either (ErrorC (..))
 import Control.Carrier.Throw.Either (ThrowC (..), runThrow)

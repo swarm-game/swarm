@@ -125,6 +125,8 @@ library
                       Swarm.Game.Scenario
                       Swarm.Game.Scenario.Topography.Cell
                       Swarm.Game.Universe
+                      Swarm.Effect
+                      Swarm.Effect.Time
                       Swarm.Log
                       Swarm.TUI.Launch.Controller
                       Swarm.TUI.Launch.Model
