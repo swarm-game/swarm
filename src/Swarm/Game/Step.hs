@@ -1253,13 +1253,15 @@ execConst c vs s k = do
         -- directly in the robotMap during the tick.
         myID <- use robotID
         focusedID <- use focusedRobotID
-        when (otherID /= myID) $ do
-          -- Make the exchange
-          robotMap . at otherID . _Just . robotInventory %= insert item
-          robotInventory %= delete item
+        if otherID /= myID
+          then do
+            -- Make the exchange
+            robotMap . at otherID . _Just . robotInventory %= insert item
+            robotInventory %= delete item
 
-          -- Flag the UI for a redraw if we are currently showing either robot's inventory
-          when (focusedID == myID || focusedID == otherID) flagRedraw
+            -- Flag the UI for a redraw if we are currently showing either robot's inventory
+            when (focusedID == myID || focusedID == otherID) flagRedraw
+          else grantAchievement GaveToSelf
 
         return $ mkReturn ()
       _ -> badConst
