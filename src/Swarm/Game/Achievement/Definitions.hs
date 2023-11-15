@@ -108,6 +108,7 @@ data GameplayAchievement
   | LoseScenario
   | GetDisoriented
   | SwapSame
+  | GaveToSelf
   deriving (Eq, Ord, Show, Bounded, Enum, Generic)
 
 instance FromJSON GameplayAchievement
