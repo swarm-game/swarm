@@ -1261,8 +1261,7 @@ execConst c vs s k = do
 
             -- Flag the UI for a redraw if we are currently showing either robot's inventory
             when (focusedID == myID || focusedID == otherID) flagRedraw
-          else
-            grantAchievement GaveToSelf
+          else grantAchievement GaveToSelf
 
         return $ mkReturn ()
       _ -> badConst

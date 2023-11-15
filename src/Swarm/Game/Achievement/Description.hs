@@ -102,5 +102,3 @@ describe = \case
       "`give` something to your`self`."
       Easy
       True
-
-      
