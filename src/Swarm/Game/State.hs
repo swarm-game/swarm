@@ -56,6 +56,7 @@ module Swarm.Game.State (
   gameControls,
   discovery,
   landscape,
+  pathCaching,
 
   -- ** GameState subrecords
 
@@ -224,6 +225,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.ScenarioInfo
+import Swarm.Game.Step.Path.Type
 import Swarm.Game.Terrain (TerrainType (..))
 import Swarm.Game.Universe as U
 import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
@@ -602,6 +604,7 @@ data GameState = GameState
     -- that we do not have to iterate over all "waiting" robots,
     -- since there may be many.
     _robotsWatching :: Map (Cosmic Location) (S.Set RID)
+  , _pathCaching :: PathCaching
   , _discovery :: Discovery
   , _seed :: Seed
   , _randGen :: StdGen
@@ -670,6 +673,9 @@ robotsAtLocation loc gs =
 
 -- | Get a list of all the robots that are \"watching\" by location.
 robotsWatching :: Lens' GameState (Map (Cosmic Location) (S.Set RID))
+
+-- | Registry for caching output of the @path@ command
+pathCaching :: Lens' GameState PathCaching
 
 -- | Get all the robots within a given Manhattan distance from a
 --   location.
@@ -1173,6 +1179,7 @@ initGameState gsc =
     , _robotMap = IM.empty
     , _robotsByLocation = M.empty
     , _robotsWatching = mempty
+    , _pathCaching = emptyPathCache
     , _discovery =
         Discovery
           { _availableRecipes = mempty
@@ -1182,7 +1189,7 @@ initGameState gsc =
           , -- This does not need to be initialized with anything,
             -- since the master list of achievements is stored in UIState
             _gameAchievements = mempty
-          , _structureRecognition = StructureRecognizer (RecognizerAutomatons [] mempty) emptyFoundStructures []
+          , _structureRecognition = StructureRecognizer (RecognizerAutomatons mempty mempty) emptyFoundStructures []
           }
     , _activeRobots = IS.empty
     , _waitingRobots = M.empty
@@ -1321,10 +1328,12 @@ ensureStructureIntact (FoundStructure (StructureWithGrid _ grid) upperLeft) =
   allM outer $ zip [0 ..] grid
  where
   outer (y, row) = allM (inner y) $ zip [0 ..] row
-  inner y (x, cell) =
-    fmap (== cell) $
-      entityAt $
-        upperLeft `offsetBy` V2 x (negate y)
+  inner y (x, maybeTemplateEntity) = case maybeTemplateEntity of
+    Nothing -> return True
+    Just _ ->
+      fmap (== maybeTemplateEntity) $
+        entityAt $
+          upperLeft `offsetBy` V2 x (negate y)
 
 mkRecognizer ::
   (Has (State GameState) sig m) =>

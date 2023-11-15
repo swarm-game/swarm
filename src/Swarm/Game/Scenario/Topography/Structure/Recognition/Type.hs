@@ -25,6 +25,7 @@ import Data.Function (on)
 import Data.Int (Int32)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
+import Data.Maybe (catMaybes)
 import Data.Ord (Down (Down))
 import Data.Semigroup (Max, Min)
 import GHC.Generics (Generic)
@@ -33,6 +34,7 @@ import Swarm.Game.Entity (Entity)
 import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
+import Swarm.Game.Scenario.Topography.Placement (StructureName)
 import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Swarm.Game.Universe (Cosmic, offsetBy)
 import Text.AhoCorasick (StateMachine)
@@ -177,7 +179,7 @@ makeLenses ''AutomatonInfo
 -- | The complete set of data needed to identify applicable
 -- structures, based on a just-placed entity.
 data RecognizerAutomatons = RecognizerAutomatons
-  { _definitions :: [StructureInfo]
+  { _definitions :: Map StructureName StructureInfo
   -- ^ all of the structures that shall participate in automatic recognition.
   -- This list is used only by the UI.
   , _automatonsByEntity :: Map Entity (AutomatonInfo AtomicKeySymbol StructureSearcher)
@@ -210,8 +212,12 @@ instance Ord FoundStructure where
     f1 = computeArea . getAreaDimensions . entityGrid . structureWithGrid
     f2 = Down . upperLeftCorner
 
+-- | Yields coordinates that are occupied by an entity of a placed structure.
+-- Cells within the rectangular bounds of the structure that are unoccupied
+-- are not included.
 genOccupiedCoords :: FoundStructure -> [Cosmic Location]
 genOccupiedCoords (FoundStructure swg loc) =
-  [loc `offsetBy` V2 x (negate y) | x <- [0 .. w - 1], y <- [0 .. h - 1]]
+  catMaybes . concat . zipWith mkRow [0 ..] $ entityGrid swg
  where
-  AreaDimensions w h = getAreaDimensions $ entityGrid swg
+  mkCol y x ent = loc `offsetBy` V2 x (negate y) <$ ent
+  mkRow rowIdx = zipWith (mkCol rowIdx) [0 ..]

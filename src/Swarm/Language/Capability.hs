@@ -80,7 +80,7 @@ data Capability
     CDrill
   | -- | Execute the 'Waypoint' command
     CWaypoint
-  | -- | Execute the 'Structure' command
+  | -- | Execute the 'Structure' and 'Floorplan' commands
     CStructure
   | -- | Execute the 'Whereami' command
     CSenseloc
@@ -264,6 +264,7 @@ constCaps = \case
   Whereami -> Just CSenseloc
   Waypoint -> Just CWaypoint
   Structure -> Just CStructure
+  Floorplan -> Just CStructure
   Detect -> Just CDetectloc
   Resonate -> Just CDetectcount
   Density -> Just CDetectcount

@@ -3,7 +3,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Display logic for Objectives.
+-- Display logic for Structures.
 module Swarm.TUI.View.Structure (
   renderStructuresDisplay,
   makeListWidget,
@@ -33,6 +33,8 @@ import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Util
 
+-- | Render a two-pane widget with structure selection on the left
+-- and single-structure details on the right.
 structureWidget :: GameState -> StructureInfo -> Widget n
 structureWidget gs s =
   vBox
@@ -73,7 +75,7 @@ structureWidget gs s =
 
   ingredientsBox =
     vBox
-      [ padBottom (Pad 1) $ withAttr boldAttr $ txt "Ingredients:"
+      [ padBottom (Pad 1) $ withAttr boldAttr $ txt "Materials:"
       , ingredientLines
       ]
   ingredientLines = vBox . map showCount . M.toList $ entityCounts s

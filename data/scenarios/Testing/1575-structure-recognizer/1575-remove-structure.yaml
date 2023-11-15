@@ -17,7 +17,7 @@ objectives:
     teaser: Complete structure
     goal:
       - |
-        Build a structure
+        Build a `chessboard`{=structure} structure
     condition: |
       foundStructure <- structure "chessboard" 0;
       return $ case foundStructure (\_. false) (\_. true);

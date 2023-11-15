@@ -74,16 +74,20 @@ import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
+import Swarm.Game.Scenario.Topography.Area (getAreaDimensions)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..), destination, reorientation)
 import Swarm.Game.Scenario.Topography.Navigation.Util
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
 import Swarm.Game.Scenario.Topography.Placement
-import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
+import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons, foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
 import Swarm.Game.Step.Combustion qualified as Combustion
+import Swarm.Game.Step.Path.Finding
+import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Path.Walkability
-import Swarm.Game.Step.Pathfinding
+import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Inspect
 import Swarm.Game.Universe
@@ -1085,7 +1089,7 @@ execConst c vs s k = do
                     Location (fromIntegral x) (fromIntegral y)
               _ -> badConst
         robotLoc <- use robotLocation
-        result <- pathCommand maybeLimit robotLoc goal
+        result <- pathCommand $ PathfindingParameters maybeLimit robotLoc goal
         return $ mkReturn result
       _ -> badConst
     Push -> do
@@ -1418,10 +1422,24 @@ execConst c vs s k = do
       [VText name, VInt idx] -> do
         registry <- use $ discovery . structureRecognition . foundStructures
         let maybeFoundStructures = M.lookup (StructureName name) $ foundByName registry
-            mkOutput mapNE = (NE.length xs, indexWrapNonEmpty xs idx ^. planar)
+            mkOutput mapNE = (NE.length xs, bottomLeftCorner)
              where
-              xs = NEM.keys mapNE
+              xs = NEM.toList mapNE
+              (pos, struc) = indexWrapNonEmpty xs idx
+              topLeftCorner = pos ^. planar
+              offsetHeight = V2 0 $ -fromIntegral (length (entityGrid struc) - 1)
+              bottomLeftCorner :: Location
+              bottomLeftCorner = topLeftCorner .+^ offsetHeight
         return $ mkReturn $ mkOutput <$> maybeFoundStructures
+      _ -> badConst
+    Floorplan -> case vs of
+      [VText name] -> do
+        structureTemplates <- use $ discovery . structureRecognition . automatons . definitions
+        let maybeStructure = M.lookup (StructureName name) structureTemplates
+        structureDef <-
+          maybeStructure
+            `isJustOr` cmdExn Floorplan (pure $ T.unwords ["Unknown structure", quote name])
+        return . mkReturn . getAreaDimensions . entityGrid $ withGrid structureDef
       _ -> badConst
     Detect -> case vs of
       [VText name, VRect x1 y1 x2 y2] -> do

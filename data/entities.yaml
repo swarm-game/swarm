@@ -633,6 +633,15 @@
     A circuit is needed for constructing various "smart" devices.
   properties: [portable]
 
+- name: blueprint
+  display:
+    attr: blue
+    char: 'B'
+  description:
+  - Locate and analyze structures placed in the world.
+  properties: [portable]
+  capabilities: [structure]
+
 - name: drill bit
   display:
     attr: entity

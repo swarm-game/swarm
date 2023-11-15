@@ -25,6 +25,8 @@ module Swarm.Util (
   both,
   allEqual,
   surfaceEmpty,
+  tails1,
+  prependList,
   deleteKeys,
   applyWhen,
   hoistMaybe,
@@ -87,7 +89,9 @@ import Control.Monad.Trans.Maybe (MaybeT (..))
 import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum, toLower)
 import Data.Either.Validation
+import Data.Foldable qualified as Foldable
 import Data.List (foldl', maximumBy, partition)
+import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -232,7 +236,32 @@ deleteKeys :: Ord key => [key] -> Map key elt -> Map key elt
 deleteKeys ks m = foldl' (flip M.delete) m ks
 
 ------------------------------------------------------------
--- Forward-compatibility functions
+-- Backported functions
+
+-- | The 'tails1' function takes a 'NonEmpty' stream @xs@ and returns all the
+-- non-empty suffixes of @xs@, starting with the longest.
+--
+-- > tails1 (1 :| [2,3]) == (1 :| [2,3]) :| [2 :| [3], 3 :| []]
+-- > tails1 (1 :| []) == (1 :| []) :| []
+--
+-- @since 4.18
+tails1 :: NonEmpty a -> NonEmpty (NonEmpty a)
+tails1 =
+  -- fromList is an unsafe function, but this usage should be safe, since:
+  -- \* `tails xs = [xs, tail xs, tail (tail xs), ..., []]`
+  -- \* If `xs` is nonempty, it follows that `tails xs` contains at least one nonempty
+  --   list, since `head (tails xs) = xs`.
+  -- \* The only empty element of `tails xs` is the last one (by the definition of `tails`)
+  -- \* Therefore, if we take all but the last element of `tails xs` i.e.
+  --   `init (tails xs)`, we have a nonempty list of nonempty lists
+  NE.fromList . Prelude.map NE.fromList . List.init . List.tails . Foldable.toList
+
+-- | Attach a list at the beginning of a 'NonEmpty'.
+-- @since 4.16
+prependList :: [a] -> NonEmpty a -> NonEmpty a
+prependList ls ne = case ls of
+  [] -> ne
+  (x : xs) -> x :| xs <> NE.toList ne
 
 -- Note, once we upgrade to an LTS version that includes
 -- base-compat-0.13, we should switch to using 'applyWhen' from there.

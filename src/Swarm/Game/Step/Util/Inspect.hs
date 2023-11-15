@@ -1,5 +1,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Utilities for querying robots and their neighbors
 module Swarm.Game.Step.Util.Inspect where
 
 import Control.Carrier.State.Lazy
