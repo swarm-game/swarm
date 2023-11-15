@@ -19,11 +19,11 @@ module Swarm.Game.Step.Combustion where
 import Control.Applicative (Applicative (..))
 import Control.Carrier.State.Lazy
 import Control.Effect.Lens
-import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (forM_, void, when)
 import Data.Text qualified as T
 import Linear (zero)
+import Swarm.Effect as Effect (Time, getNow)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
@@ -44,7 +44,7 @@ import Swarm.Util hiding (both)
 import System.Clock (TimeSpec)
 import Prelude hiding (Applicative (..), lookup)
 
-igniteCommand :: (HasRobotStepState sig m, Has (Lift IO) sig m) => Const -> Direction -> m ()
+igniteCommand :: (HasRobotStepState sig m, Has Effect.Time sig m) => Const -> Direction -> m ()
 igniteCommand c d = do
   (loc, me) <- lookInDirection d
   -- Ensure there is an entity here.

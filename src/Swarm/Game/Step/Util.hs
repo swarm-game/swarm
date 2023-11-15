@@ -13,7 +13,6 @@ import Control.Applicative (Applicative (..))
 import Control.Carrier.State.Lazy
 import Control.Effect.Error
 import Control.Effect.Lens
-import Control.Effect.Lift
 import Control.Monad (forM_, guard, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
@@ -41,8 +40,6 @@ import Swarm.Language.Capability
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Util hiding (both)
-import System.Clock (TimeSpec)
-import System.Clock qualified
 import System.Random (UniformRange, uniformR)
 import Prelude hiding (Applicative (..), lookup)
 
@@ -114,9 +111,6 @@ cmdExn :: Const -> [Text] -> Exn
 cmdExn c parts = CmdFailed c (T.unwords parts) Nothing
 
 -- * Some utility functions
-
-getNow :: Has (Lift IO) sig m => m TimeSpec
-getNow = sendIO $ System.Clock.getTime System.Clock.Monotonic
 
 -- | Set a flag telling the UI that the world needs to be redrawn.
 flagRedraw :: (Has (State GameState) sig m) => m ()

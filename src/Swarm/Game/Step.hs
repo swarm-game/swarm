@@ -59,6 +59,7 @@ import Data.Time (getZonedTime)
 import Data.Tuple (swap)
 import Linear (V2 (..), perp, zero)
 import Prettyprinter (pretty)
+import Swarm.Effect as Effect (Time, getNow)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
@@ -116,7 +117,7 @@ import Prelude hiding (Applicative (..), lookup)
 --
 --   Note that the game may be in 'RobotStep' mode and not finish
 --   the tick. Use the return value to check whether a full tick happened.
-gameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m) => m Bool
+gameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => m Bool
 gameTick = do
   wakeUpRobotsDoneSleeping
   active <- use activeRobots
@@ -164,7 +165,7 @@ gameTick = do
 -- | Finish a game tick in progress and set the game to 'WorldTick' mode afterwards.
 --
 -- Use this function if you need to unpause the game.
-finishGameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m) => m ()
+finishGameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => m ()
 finishGameTick =
   use (temporal . gameStep) >>= \case
     WorldTick -> pure ()
@@ -189,7 +190,7 @@ insertBackRobot rn rob = do
           unless (isActive rob) (sleepForever rn)
 
 -- Run a set of robots - this is used to run robots before/after the focused one.
-runRobotIDs :: (Has (State GameState) sig m, Has (Lift IO) sig m) => IS.IntSet -> m ()
+runRobotIDs :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => IS.IntSet -> m ()
 runRobotIDs robotNames = forM_ (IS.toList robotNames) $ \rn -> do
   mr <- uses robotMap (IM.lookup rn)
   forM_ mr (stepOneRobot rn)
@@ -197,7 +198,7 @@ runRobotIDs robotNames = forM_ (IS.toList robotNames) $ \rn -> do
   stepOneRobot rn rob = tickRobot rob >>= insertBackRobot rn
 
 -- This is a helper function to do one robot step or run robots before/after.
-singleStep :: (Has (State GameState) sig m, Has (Lift IO) sig m) => SingleStep -> RID -> IS.IntSet -> m Bool
+singleStep :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => SingleStep -> RID -> IS.IntSet -> m Bool
 singleStep ss focRID robotSet = do
   let (preFoc, focusedActive, postFoc) = IS.splitMember focRID robotSet
   case ss of
@@ -291,7 +292,7 @@ data CompletionsWithExceptions = CompletionsWithExceptions
 -- 3) The iteration needs to be a "fold", so that state is updated
 --    after each element.
 hypotheticalWinCheck ::
-  (Has (State GameState) sig m, Has (Lift IO) sig m) =>
+  (Has (State GameState) sig m, Has Effect.Time sig m, Has (Lift IO) sig m) =>
   EntityMap ->
   GameState ->
   WinStatus ->
@@ -381,7 +382,11 @@ hypotheticalWinCheck em g ws oc = do
     h = hypotheticalRobot (Out VUnit emptyStore []) 0
 
 evalPT ::
-  (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>
+  ( Has Effect.Time sig m
+  , Has (Throw Exn) sig m
+  , Has (State GameState) sig m
+  , Has (Lift IO) sig m
+  ) =>
   ProcessedTerm ->
   m Value
 evalPT t = evaluateCESK (initMachine t empty emptyStore)
@@ -407,7 +412,11 @@ hypotheticalRobot c =
     mempty
 
 evaluateCESK ::
-  (Has (Lift IO) sig m, Has (Throw Exn) sig m, Has (State GameState) sig m) =>
+  ( Has Effect.Time sig m
+  , Has (Throw Exn) sig m
+  , Has (State GameState) sig m
+  , Has (Lift IO) sig m
+  ) =>
   CESK ->
   m Value
 evaluateCESK cesk = do
@@ -417,7 +426,8 @@ evaluateCESK cesk = do
   evalState r . runCESK $ cesk
 
 runCESK ::
-  ( Has (Lift IO) sig m
+  ( Has Effect.Time sig m
+  , Has (Lift IO) sig m
   , Has (Throw Exn) sig m
   , Has (State GameState) sig m
   , Has (State Robot) sig m
@@ -520,7 +530,7 @@ withExceptions s k m = do
 -- | Run a robot for one tick, which may consist of up to
 --   'robotStepsPerTick' CESK machine steps and at most one tangible
 --   command execution, whichever comes first.
-tickRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
+tickRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => Robot -> m Robot
 tickRobot r = do
   steps <- use $ temporal . robotStepsPerTick
   tickRobotRec (r & activityCounts . tickStepBudget .~ steps)
@@ -529,7 +539,7 @@ tickRobot r = do
 --   robot is actively running and still has steps left, and if so
 --   runs it for one step, then calls itself recursively to continue
 --   stepping the robot.
-tickRobotRec :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
+tickRobotRec :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => Robot -> m Robot
 tickRobotRec r = do
   time <- use $ temporal . ticks
   case wantsToStep time r && (r ^. runningAtomic || r ^. activityCounts . tickStepBudget > 0) of
@@ -538,7 +548,7 @@ tickRobotRec r = do
 
 -- | Single-step a robot by decrementing its 'tickStepBudget' counter and
 --   running its CESK machine for one step.
-stepRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m) => Robot -> m Robot
+stepRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => Robot -> m Robot
 stepRobot r = do
   (r', cesk') <- runState (r & activityCounts . tickStepBudget -~ 1) (stepCESK (r ^. machine))
   -- sendIO $ appendFile "out.txt" (prettyString cesk' ++ "\n")
@@ -589,7 +599,7 @@ data SKpair = SKpair Store Cont
 --
 -- Compare to "withExceptions".
 processImmediateFrame ::
-  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m) =>
+  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) =>
   Value ->
   SKpair ->
   -- | the unreliable computation
@@ -614,7 +624,7 @@ updateWorldAndRobots cmd wf rf = do
 
 -- | The main CESK machine workhorse.  Given a robot, look at its CESK
 --   machine state and figure out a single next step.
-stepCESK :: (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m) => CESK -> m CESK
+stepCESK :: (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => CESK -> m CESK
 stepCESK cesk = case cesk of
   ------------------------------------------------------------
   -- Evaluation
@@ -963,7 +973,7 @@ stepCESK cesk = case cesk of
 -- | Eexecute a constant, catching any exception thrown and returning
 --   it via a CESK machine state.
 evalConst ::
-  (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m) => Const -> [Value] -> Store -> Cont -> m CESK
+  (Has (State GameState) sig m, Has (State Robot) sig m, Has Effect.Time sig m, Has (Lift IO) sig m) => Const -> [Value] -> Store -> Cont -> m CESK
 evalConst c vs s k = do
   res <- runError $ execConst c vs s k
   case res of
@@ -1021,7 +1031,7 @@ addSeedBot e (minT, maxT) loc ts =
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
 execConst ::
-  (HasRobotStepState sig m, Has (Lift IO) sig m) =>
+  (HasRobotStepState sig m, Has Effect.Time sig m, Has (Lift IO) sig m) =>
   Const ->
   [Value] ->
   Store ->
@@ -2550,7 +2560,7 @@ execConst c vs s k = do
 
   -- The code for grab and harvest is almost identical, hence factored
   -- out here.
-  doGrab :: (HasRobotStepState sig m, Has (Lift IO) sig m) => GrabbingCmd -> m Entity
+  doGrab :: (HasRobotStepState sig m, Has Effect.Time sig m) => GrabbingCmd -> m Entity
   doGrab cmd = do
     let verb = verbGrabbingCmd cmd
         verbed = verbedGrabbingCmd cmd

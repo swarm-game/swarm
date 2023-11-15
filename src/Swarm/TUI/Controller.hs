@@ -70,6 +70,7 @@ import Data.Time (getZonedTime)
 import Data.Vector qualified as V
 import Graphics.Vty qualified as V
 import Linear
+import Swarm.Effect (TimeIOC (..))
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec), cancel, emptyStore, initMachine)
@@ -751,10 +752,10 @@ runGameTickUI :: EventM Name AppState ()
 runGameTickUI = runGameTick >> void updateUI
 
 -- | Modifies the game state using a fused-effect state action.
-zoomGameState :: (MonadState AppState m, MonadIO m) => Fused.StateC GameState (Fused.LiftC IO) a -> m a
+zoomGameState :: (MonadState AppState m, MonadIO m) => Fused.StateC GameState (TimeIOC (Fused.LiftC IO)) a -> m a
 zoomGameState f = do
   gs <- use gameState
-  (gs', a) <- liftIO (Fused.runM (Fused.runState gs f))
+  (gs', a) <- liftIO (Fused.runM (runTimeIO (Fused.runState gs f)))
   gameState .= gs'
   return a
 

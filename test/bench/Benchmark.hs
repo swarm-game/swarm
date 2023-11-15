@@ -10,6 +10,7 @@ import Control.Monad (replicateM_)
 import Control.Monad.Except (runExceptT)
 import Control.Monad.State (evalStateT, execStateT)
 import Data.Map qualified as M
+import Swarm.Effect (runTimeIO)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display (defaultRobotDisplay)
 import Swarm.Game.Location
@@ -127,7 +128,7 @@ mkGameState robotMaker numRobots = do
 
 -- | Runs numGameTicks ticks of the game.
 runGame :: Int -> GameState -> IO ()
-runGame numGameTicks = evalStateT (replicateM_ numGameTicks gameTick)
+runGame numGameTicks = evalStateT (replicateM_ numGameTicks $ runTimeIO gameTick)
 
 main :: IO ()
 main = do
