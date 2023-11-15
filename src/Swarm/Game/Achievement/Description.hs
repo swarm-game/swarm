@@ -95,3 +95,10 @@ describe = \case
       "`swap` an item for itself."
       Easy
       True
+  GameplayAchievement GaveToSelf ->
+    AchievementInfo
+      "Treat. Yo. Self."
+      (Just $ FTQuotation $ Quotation "Tom, Parks and Recreation" "Fragrances. Massages. Treat yourself. Mimosas. Fine leather goods...It's the best day of the year.")
+      "`give` something to your`self`."
+      Easy
+      True
