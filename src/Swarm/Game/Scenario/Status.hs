@@ -67,6 +67,9 @@ instance ToJSON ScenarioStatus where
   toEncoding = genericToEncoding scenarioOptions
   toJSON = genericToJSON scenarioOptions
 
+seedLaunchParams :: Applicative f => Maybe Seed -> ParameterizableLaunchParams a f
+seedLaunchParams s = LaunchParams (pure s) (pure Nothing)
+
 emptyLaunchParams :: Applicative f => ParameterizableLaunchParams a f
 emptyLaunchParams = LaunchParams (pure Nothing) (pure Nothing)
 
