@@ -55,12 +55,13 @@ getDisplayColor aMap (Cell terr cellEnt _) =
  where
   transparent = PixelRGBA8 0 0 0 0
   facadeColor (EntityFacade _ d) = PixelRGBA8 255 0 255 255
-  -- facadeColor (EntityFacade _ d) = case attrForeColor attr of
-  --   SetTo c -> case c of
-  --     RGBColor r g b -> PixelRGBA8 r g b 255
-  --     _ -> transparent
-  --   _ -> transparent
    where
+    -- facadeColor (EntityFacade _ d) = case attrForeColor attr of
+    --   SetTo c -> case c of
+    --     RGBColor r g b -> PixelRGBA8 r g b 255
+    --     _ -> transparent
+    --   _ -> transparent
+
     attr = attrMapLookup (d ^. displayAttr . to toAttrName) aMap
 
 getDisplayGrid :: Scenario -> GameState -> Maybe AreaDimensions -> [[PCell EntityFacade]]
