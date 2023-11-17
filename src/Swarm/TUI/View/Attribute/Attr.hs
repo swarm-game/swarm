@@ -82,7 +82,6 @@ swarmAttrMap =
     $ NE.toList activityMeterAttributes
       <> NE.toList robotMessageAttributes
       <> NE.toList (NE.map (first getWorldAttrName) worldAttributes)
-      <> [(waterAttr, V.white `on` V.blue)]
       <> terrainAttr
       <> [ -- Robot attribute
            (robotAttr, fg V.white `V.withStyle` V.bold)
@@ -133,13 +132,18 @@ entity = (mkWorldAttr "entity", fg V.white)
 entityAttr :: AttrName
 entityAttr = getWorldAttrName $ fst entity
 
+water :: (WorldAttr, V.Attr)
+water = (mkWorldAttr "water", V.white `on` V.blue)
+
+waterAttr :: AttrName
+waterAttr = getWorldAttrName $ fst water
+
 -- | Colors of entities in the world.
---
--- Also used to color messages, so water is special and excluded.
 worldAttributes :: NonEmpty (WorldAttr, V.Attr)
 worldAttributes =
   entity
-    :| map
+    :| water
+    : map
       (bimap mkWorldAttr fg)
       [ ("device", V.brightYellow)
       , ("plant", V.green)
@@ -206,12 +210,11 @@ terrainAttr =
 robotAttr :: AttrName
 robotAttr = attrName "robot"
 
-dirtAttr, grassAttr, stoneAttr, iceAttr, waterAttr, rockAttr, plantAttr :: AttrName
+dirtAttr, grassAttr, stoneAttr, iceAttr, rockAttr, plantAttr :: AttrName
 dirtAttr = terrainPrefix <> attrName "dirt"
 grassAttr = terrainPrefix <> attrName "grass"
 stoneAttr = terrainPrefix <> attrName "stone"
 iceAttr = terrainPrefix <> attrName "ice"
-waterAttr = worldPrefix <> attrName "water"
 rockAttr = worldPrefix <> attrName "rock"
 plantAttr = worldPrefix <> attrName "plant"
 
