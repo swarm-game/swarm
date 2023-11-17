@@ -16,6 +16,7 @@ module Swarm.TUI.View.Attribute.Attr (
   worldAttributeNames,
   worldPrefix,
   meterAttributeNames,
+  messageAttributeNames,
   toAttrName,
 
   -- ** Terrain attributes
@@ -79,6 +80,7 @@ swarmAttrMap =
   attrMap
     V.defAttr
     $ NE.toList activityMeterAttributes
+      <> NE.toList robotMessageAttributes
       <> NE.toList (NE.map (first getWorldAttrName) worldAttributes)
       <> [(waterAttr, V.white `on` V.blue)]
       <> terrainAttr
@@ -162,6 +164,19 @@ worldAttributes =
 
 worldAttributeNames :: NonEmpty AttrName
 worldAttributeNames = NE.map (getWorldAttrName . fst) worldAttributes
+
+robotMessagePrefix :: AttrName
+robotMessagePrefix = attrName "robotMessage"
+
+robotMessageAttributes :: NonEmpty (AttrName, V.Attr)
+robotMessageAttributes =
+  NE.zip indices $ fromMaybe (pure $ fg V.white) $ NE.nonEmpty brewers
+ where
+  indices = NE.map ((robotMessagePrefix <>) . attrName . show) $ (0 :: Int) :| [1 ..]
+  brewers = map (fg . kolorToAttrColor) $ brewerSet Set3 12
+
+messageAttributeNames :: NonEmpty AttrName
+messageAttributeNames = NE.map fst robotMessageAttributes
 
 activityMeterPrefix :: AttrName
 activityMeterPrefix = attrName "activityMeter"
