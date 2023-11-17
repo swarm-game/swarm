@@ -34,6 +34,7 @@ module Swarm.Game.Scenario (
   scenarioSeed,
   scenarioAttrs,
   scenarioEntities,
+  scenarioCosmetics,
   scenarioRecipes,
   scenarioKnown,
   scenarioWorlds,
@@ -62,6 +63,7 @@ import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
+import Swarm.Game.Entity.Cosmetic
 import Data.Sequence (Seq)
 import Data.Set qualified as Set
 import Data.Set (Set)
@@ -130,6 +132,7 @@ data Scenario = Scenario
   , _scenarioSeed :: Maybe Int
   , _scenarioAttrs :: [CustomAttr]
   , _scenarioEntities :: EntityMap
+  , _scenarioCosmetics :: M.Map WorldAttr HiFiColor
   , _scenarioRecipes :: [Recipe Entity]
   , _scenarioKnown :: Set EntityName
   , _scenarioWorlds :: NonEmpty WorldDescription
@@ -150,7 +153,8 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
     emRaw <- liftE (v .:? "entities" .!= [])
 
     parsedAttrs <- liftE (v .:? "attrs" .!= [])
-    let attrsUnion = Set.fromList (map (fst . toAttrPair) parsedAttrs) <> M.keysSet worldAttributes
+    let mergedCosmetics = worldAttributes <> M.fromList (map toHifiPair parsedAttrs)
+        attrsUnion = M.keysSet mergedCosmetics
 
     em <- case run . runThrow $ buildEntityMap attrsUnion emRaw of
       Right x -> return x
@@ -235,6 +239,7 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
         <*> liftE (v .:? "seed")
         <*> pure parsedAttrs
         <*> pure em
+        <*> pure mergedCosmetics
         <*> v ..:? "recipes" ..!= []
         <*> pure (Set.fromList known)
         <*> pure allWorlds
@@ -276,6 +281,9 @@ scenarioAttrs :: Lens' Scenario [CustomAttr]
 
 -- | Any custom entities used for this scenario.
 scenarioEntities :: Lens' Scenario EntityMap
+
+-- | High-fidelity color map for entities
+scenarioCosmetics :: Lens' Scenario (M.Map WorldAttr HiFiColor)
 
 -- | Any custom recipes used in this scenario.
 scenarioRecipes :: Lens' Scenario [Recipe Entity]

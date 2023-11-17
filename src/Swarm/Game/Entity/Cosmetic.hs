@@ -26,6 +26,7 @@ data HiFiColor
       RGBColor
       -- | background
       RGBColor
+    deriving (Show)
 
 newtype WorldAttr = WorldAttr
   { attrSuffix :: String
