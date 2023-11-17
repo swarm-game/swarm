@@ -12,7 +12,7 @@ import Control.Lens (to, view, (^.))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.Vector qualified as V
-import Graphics.Vty.Attributes (Color (..), MaybeDefault (..), attrForeColor)
+import Data.Bifunctor (first)
 import Swarm.Doc.Gen (loadStandaloneScenario)
 import Swarm.Game.Display (defaultChar, displayAttr)
 import Swarm.Game.ResourceLoading (initNameGenerator, readAppData)
@@ -25,7 +25,7 @@ import Swarm.Game.State
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Editor.Util (getContentAt, getMapRectangle)
-import Swarm.TUI.View.Attribute.Attr (swarmAttrMap, toAttrName)
+import Swarm.TUI.View.Attribute.Attr (swarmAttrMap, toAttrName, getWorldAttrName)
 import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.Util (surfaceEmpty)
 import Swarm.Util.Effect (simpleErrorHandle)
@@ -86,7 +86,7 @@ getDisplayGrid myScenario gs maybeSize =
 getRenderableGrid :: RenderOpts -> FilePath -> IO ([[PCell EntityFacade]], AttrMap)
 getRenderableGrid (RenderOpts maybeSeed _ _ maybeSize) fp = simpleErrorHandle $ do
   (myScenario, (worldDefs, entities, recipes)) <- loadStandaloneScenario fp
-  let aMap = applyAttrMappings (map toAttrPair $ myScenario ^. scenarioAttrs) swarmAttrMap
+  let aMap = applyAttrMappings (map (first getWorldAttrName . toAttrPair) $ myScenario ^. scenarioAttrs) swarmAttrMap
   appDataMap <- readAppData
   nameGen <- initNameGenerator appDataMap
   let gsc = GameStateConfig nameGen entities recipes worldDefs

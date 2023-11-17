@@ -7,7 +7,7 @@ import Data.Colour.CIE (luminance)
 import Data.Colour.Palette.BrewerSet (Kolor)
 import Data.Colour.SRGB (RGB (..), toSRGB24)
 import Graphics.Vty qualified as V
-import Graphics.Vty.Attributes
+import Graphics.Vty.Attributes ( Attr, Color(RGBColor) )
 
 kolorToAttrColor :: Kolor -> Color
 kolorToAttrColor c =

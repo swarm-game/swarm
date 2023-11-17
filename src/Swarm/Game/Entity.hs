@@ -83,7 +83,6 @@ module Swarm.Game.Entity (
   difference,
 ) where
 
-import Brick (AttrName)
 import Control.Algebra (Has)
 import Control.Arrow ((&&&))
 import Control.Carrier.Throw.Either (liftEither)
@@ -101,6 +100,7 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
 import Data.List (foldl')
 import Data.List.NonEmpty qualified as NE
+import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, listToMaybe)
@@ -117,7 +117,7 @@ import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document, docToText)
-import Swarm.TUI.View.Attribute.Attr (toAttrName, worldAttributeNames)
+import Swarm.TUI.View.Attribute.Attr (worldAttributeNames)
 import Swarm.Util (binTuples, failT, findDup, plural, quote, (?))
 import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Yaml
@@ -377,7 +377,7 @@ deviceForCap cap = fromMaybe [] . M.lookup cap . entitiesByCap
 -- | Build an 'EntityMap' from a list of entities.  The idea is that
 --   this will be called once at startup, when loading the entities
 --   from a file; see 'loadEntities'.
-buildEntityMap :: Has (Throw LoadingFailure) sig m => Set AttrName -> [Entity] -> m EntityMap
+buildEntityMap :: Has (Throw LoadingFailure) sig m => Set WorldAttr -> [Entity] -> m EntityMap
 buildEntityMap validAttrs es = do
   case findDup (map fst namedEntities) of
     Nothing -> return ()
@@ -388,7 +388,7 @@ buildEntityMap validAttrs es = do
     let a = ent ^. entityDisplay . displayAttr
      in case a of
           AWorld n ->
-            unless (Set.member (toAttrName a) validAttrs)
+            unless (Set.member (WorldAttr $ T.unpack n) validAttrs)
               . throwError
               . CustomMessage
               $ T.unwords

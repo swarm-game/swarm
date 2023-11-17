@@ -18,6 +18,7 @@ module Swarm.TUI.View.Attribute.Attr (
   meterAttributeNames,
   messageAttributeNames,
   toAttrName,
+  getWorldAttrName,
 
   -- ** Terrain attributes
   dirtAttr,
@@ -52,10 +53,10 @@ module Swarm.TUI.View.Attribute.Attr (
 ) where
 
 import Brick
-import Brick.Forms
+import Brick.Forms ( focusedFormInputAttr, invalidFormInputAttr )
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit qualified as E
-import Brick.Widgets.List hiding (reverse)
+import Brick.Widgets.List ( listSelectedFocusedAttr )
 import Data.Bifunctor (bimap, first)
 import Data.Colour.Palette.BrewerSet
 import Data.List.NonEmpty (NonEmpty (..))
@@ -63,6 +64,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Swarm.Game.Entity.Cosmetic
 import Data.Text (unpack)
 import Graphics.Vty qualified as V
 import Swarm.Game.Display (Attribute (..))
@@ -115,39 +117,29 @@ swarmAttrMap =
 worldPrefix :: AttrName
 worldPrefix = attrName "world"
 
--- | We introduce this (module-private) newtype
--- so that we can define the 'entity' attribute
--- separate from the list of other 'worldAttributes',
--- while enforcing the convention that both its attribute
--- name and the rest of 'worldAttributes' be consistently
--- prefixed by 'worldPrefix'.
-newtype WorldAttr = WorldAttr
-  { getWorldAttrName :: AttrName
-  }
-
-mkWorldAttr :: String -> WorldAttr
-mkWorldAttr = WorldAttr . (worldPrefix <>) . attrName
+getWorldAttrName :: WorldAttr -> AttrName
+getWorldAttrName (WorldAttr n) = worldPrefix <> attrName n
 
 entity :: (WorldAttr, V.Attr)
-entity = (mkWorldAttr "entity", fg V.white)
+entity = (WorldAttr "entity", fg V.white)
 
 entityAttr :: AttrName
 entityAttr = getWorldAttrName $ fst entity
 
 water :: (WorldAttr, V.Attr)
-water = (mkWorldAttr "water", V.white `on` V.blue)
+water = (WorldAttr "water", V.white `on` V.blue)
 
 waterAttr :: AttrName
 waterAttr = getWorldAttrName $ fst water
 
 rock :: (WorldAttr, V.Attr)
-rock = (mkWorldAttr "rock", fg $ V.rgbColor @Int 80 80 80)
+rock = (WorldAttr "rock", fg $ V.rgbColor @Int 80 80 80)
 
 rockAttr :: AttrName
 rockAttr = getWorldAttrName $ fst rock
 
 plant :: (WorldAttr, V.Attr)
-plant = (mkWorldAttr "plant", fg V.green)
+plant = (WorldAttr "plant", fg V.green)
 
 plantAttr :: AttrName
 plantAttr = getWorldAttrName $ fst rock
@@ -160,7 +152,7 @@ worldAttributes =
     : rock
     : plant
     : map
-      (bimap mkWorldAttr fg)
+      (bimap WorldAttr fg)
       [ ("device", V.brightYellow)
       , ("wood", V.rgbColor @Int 139 69 19)
       , ("flower", V.rgbColor @Int 200 0 200)
@@ -180,8 +172,8 @@ worldAttributes =
       , ("blue", V.blue)
       ]
 
-worldAttributeNames :: Set AttrName
-worldAttributeNames = Set.fromList $ NE.toList $ NE.map (getWorldAttrName . fst) worldAttributes
+worldAttributeNames :: Set WorldAttr
+worldAttributeNames = Set.fromList $ NE.toList $ NE.map fst worldAttributes
 
 robotMessagePrefix :: AttrName
 robotMessagePrefix = attrName "robotMessage"
