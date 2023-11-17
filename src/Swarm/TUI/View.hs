@@ -926,7 +926,7 @@ colorLogs e = case e ^. leSource of
     RobotError -> colorSeverity (e ^. leSeverity)
  where
   -- color each robot message with different color of the world
-  robotColor = indexWrapNonEmpty worldAttributeNames
+  robotColor = indexWrapNonEmpty messageAttributeNames
 
 colorSeverity :: Severity -> AttrName
 colorSeverity = \case
