@@ -138,16 +138,28 @@ water = (mkWorldAttr "water", V.white `on` V.blue)
 waterAttr :: AttrName
 waterAttr = getWorldAttrName $ fst water
 
+rock :: (WorldAttr, V.Attr)
+rock = (mkWorldAttr "rock", fg $ V.rgbColor @Int 80 80 80)
+
+rockAttr :: AttrName
+rockAttr = getWorldAttrName $ fst rock
+
+plant :: (WorldAttr, V.Attr)
+plant = (mkWorldAttr "plant", fg V.green)
+
+plantAttr :: AttrName
+plantAttr = getWorldAttrName $ fst rock
+
 -- | Colors of entities in the world.
 worldAttributes :: NonEmpty (WorldAttr, V.Attr)
 worldAttributes =
   entity
     :| water
+    : rock
+    : plant
     : map
       (bimap mkWorldAttr fg)
       [ ("device", V.brightYellow)
-      , ("plant", V.green)
-      , ("rock", V.rgbColor @Int 80 80 80)
       , ("wood", V.rgbColor @Int 139 69 19)
       , ("flower", V.rgbColor @Int 200 0 200)
       , ("rubber", V.rgbColor @Int 245 224 179)
@@ -210,13 +222,11 @@ terrainAttr =
 robotAttr :: AttrName
 robotAttr = attrName "robot"
 
-dirtAttr, grassAttr, stoneAttr, iceAttr, rockAttr, plantAttr :: AttrName
+dirtAttr, grassAttr, stoneAttr, iceAttr :: AttrName
 dirtAttr = terrainPrefix <> attrName "dirt"
 grassAttr = terrainPrefix <> attrName "grass"
 stoneAttr = terrainPrefix <> attrName "stone"
 iceAttr = terrainPrefix <> attrName "ice"
-rockAttr = worldPrefix <> attrName "rock"
-plantAttr = worldPrefix <> attrName "plant"
 
 -- | Some defined attribute names used in the Swarm TUI.
 highlightAttr
