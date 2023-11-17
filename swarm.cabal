@@ -208,8 +208,9 @@ library
                       Swarm.Language.Types
                       Swarm.Language.Value
                       Swarm.ReadableIORef
-                      Swarm.TUI.View.Attribute.CustomStyling
                       Swarm.TUI.View.Attribute.Attr
+                      Swarm.TUI.View.Attribute.CustomStyling
+                      Swarm.TUI.View.Attribute.Color
                       Swarm.TUI.View.Attribute.Util
                       Swarm.TUI.Border
                       Swarm.Game.Scenario.Topography.Area
