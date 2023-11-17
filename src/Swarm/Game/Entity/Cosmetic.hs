@@ -22,11 +22,12 @@ data HiFiColor
   = FgOnly RGBColor
   | BgOnly RGBColor
   | FgAndBg
-    -- | foreground
-    RGBColor
-    -- | background
-    RGBColor
+      -- | foreground
+      RGBColor
+      -- | background
+      RGBColor
 
 newtype WorldAttr = WorldAttr
   { attrSuffix :: String
-  } deriving (Eq, Ord, Show)
+  }
+  deriving (Eq, Ord, Show)

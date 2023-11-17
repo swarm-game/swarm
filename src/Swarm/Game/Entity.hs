@@ -100,7 +100,6 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
 import Data.List (foldl')
 import Data.List.NonEmpty qualified as NE
-import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, listToMaybe)
@@ -111,13 +110,14 @@ import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Game.Display
+import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
+import Swarm.Game.Entity.Specimens (worldAttributes)
 import Swarm.Game.Failure
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document, docToText)
-import Swarm.TUI.View.Attribute.Attr (worldAttributeNames)
 import Swarm.Util (binTuples, failT, findDup, plural, quote, (?))
 import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Yaml
@@ -464,7 +464,7 @@ loadEntities = do
   decoded <-
     withThrow (entityFailure . CanNotParseYaml) . (liftEither <=< sendIO) $
       decodeFileEither fileName
-  withThrow entityFailure $ buildEntityMap worldAttributeNames decoded
+  withThrow entityFailure $ buildEntityMap (M.keysSet worldAttributes) decoded
 
 ------------------------------------------------------------
 -- Entity lenses
