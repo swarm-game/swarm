@@ -68,6 +68,7 @@ import Swarm.Game.Entity.Cosmetic
 import Data.Text (unpack)
 import Graphics.Vty qualified as V
 import Swarm.Game.Display (Attribute (..))
+import Data.Colour.SRGB (RGB (..))
 import Swarm.TUI.View.Attribute.Util
 
 toAttrName :: Attribute -> AttrName
@@ -126,20 +127,20 @@ entity = (WorldAttr "entity", fg V.white)
 entityAttr :: AttrName
 entityAttr = getWorldAttrName $ fst entity
 
-water :: (WorldAttr, V.Attr)
-water = (WorldAttr "water", V.rgbColor @Int 208 207 204 `on` V.rgbColor @Int 42 123 222)
+water :: (WorldAttr, HiFiColor)
+water = (WorldAttr "water", FgAndBg (RGB 208 207 204) (RGB 42 123 222))
 
 waterAttr :: AttrName
 waterAttr = getWorldAttrName $ fst water
 
-rock :: (WorldAttr, V.Attr)
-rock = (WorldAttr "rock", fg $ V.rgbColor @Int 80 80 80)
+rock :: (WorldAttr, HiFiColor)
+rock = (WorldAttr "rock", FgOnly $ RGB 80 80 80)
 
 rockAttr :: AttrName
 rockAttr = getWorldAttrName $ fst rock
 
-plant :: (WorldAttr, V.Attr)
-plant = (WorldAttr "plant", fg $ V.rgbColor @Int 38 162 105)
+plant :: (WorldAttr, HiFiColor)
+plant = (WorldAttr "plant", FgOnly $ RGB 38 162 105)
 
 plantAttr :: AttrName
 plantAttr = getWorldAttrName $ fst rock
@@ -152,24 +153,24 @@ worldAttributes =
     : rock
     : plant
     : map
-      (bimap WorldAttr fg)
-      [ ("device", V.rgbColor @Int 233 173 12)
-      , ("wood", V.rgbColor @Int 139 69 19)
-      , ("flower", V.rgbColor @Int 200 0 200)
-      , ("rubber", V.rgbColor @Int 245 224 179)
-      , ("copper", V.rgbColor @Int 162 115 76)
-      , ("copper'", V.rgbColor @Int 78 117 102)
-      , ("iron", V.rgbColor @Int 97 102 106)
-      , ("iron'", V.rgbColor @Int 183 65 14)
-      , ("quartz", V.rgbColor @Int 208 207 204)
-      , ("silver", V.rgbColor @Int 192 192 192)
-      , ("gold", V.rgbColor @Int 255 215 0)
-      , ("snow", V.rgbColor @Int 208 207 204)
-      , ("sand", V.rgbColor @Int 194 178 128)
-      , ("fire", V.rgbColor @Int 246 97 81)
-      , ("red", V.rgbColor @Int 192 28 40)
-      , ("green", V.rgbColor @Int 38 162 105)
-      , ("blue", V.rgbColor @Int 42 123 222)
+      (bimap WorldAttr FgOnly)
+      [ ("device", RGB 233 173 12)
+      , ("wood", RGB 139 69 19)
+      , ("flower", RGB 200 0 200)
+      , ("rubber", RGB 245 224 179)
+      , ("copper", RGB 162 115 76)
+      , ("copper'", RGB 78 117 102)
+      , ("iron", RGB 97 102 106)
+      , ("iron'", RGB 183 65 14)
+      , ("quartz", RGB 208 207 204)
+      , ("silver", RGB 192 192 192)
+      , ("gold", RGB 255 215 0)
+      , ("snow", RGB 208 207 204)
+      , ("sand", RGB 194 178 128)
+      , ("fire", RGB 246 97 81)
+      , ("red", RGB 192 28 40)
+      , ("green", RGB 38 162 105)
+      , ("blue", RGB 42 123 222)
       ]
 
 worldAttributeNames :: Set WorldAttr
