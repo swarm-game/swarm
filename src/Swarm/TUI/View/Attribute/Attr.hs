@@ -53,25 +53,22 @@ module Swarm.TUI.View.Attribute.Attr (
 ) where
 
 import Brick
-import Brick.Forms ( focusedFormInputAttr, invalidFormInputAttr )
+import Brick.Forms (focusedFormInputAttr, invalidFormInputAttr)
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit qualified as E
-import Brick.Widgets.List ( listSelectedFocusedAttr )
-import Data.Bifunctor (bimap)
+import Brick.Widgets.List (listSelectedFocusedAttr)
+import Control.Arrow ((***))
 import Data.Colour.Palette.BrewerSet
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
-import Control.Arrow ((***))
-import Data.Maybe (fromMaybe)
-import Data.Set (Set)
-import Swarm.Game.Entity.Cosmetic
-import Swarm.TUI.View.Attribute.Color
-import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Text (unpack)
 import Graphics.Vty qualified as V
 import Swarm.Game.Display (Attribute (..))
-import Data.Colour.SRGB (RGB (..))
+import Swarm.Game.Entity.Cosmetic
+import Swarm.Game.Entity.Specimens
+import Swarm.TUI.View.Attribute.Color
 import Swarm.TUI.View.Attribute.Util
 
 toAttrName :: Attribute -> AttrName
@@ -124,69 +121,17 @@ worldPrefix = attrName "world"
 getWorldAttrName :: WorldAttr -> AttrName
 getWorldAttrName (WorldAttr n) = worldPrefix <> attrName n
 
-whiteRGB :: RGBColor
-whiteRGB = RGB 208 207 204
-
-blueRGB :: RGBColor
-blueRGB = RGB 42 123 222
-
-greenRGB :: RGBColor
-greenRGB = RGB 38 162 105
-
-brightYellowRGB :: RGBColor
-brightYellowRGB = RGB 233 173 12
-
-yellowRGB :: RGBColor
-yellowRGB = RGB 162 115 76
-
-entity :: (WorldAttr, HiFiColor)
-entity = (WorldAttr "entity", FgOnly whiteRGB)
-
 entityAttr :: AttrName
 entityAttr = getWorldAttrName $ fst entity
-
-water :: (WorldAttr, HiFiColor)
-water = (WorldAttr "water", FgAndBg whiteRGB blueRGB)
 
 waterAttr :: AttrName
 waterAttr = getWorldAttrName $ fst water
 
-rock :: (WorldAttr, HiFiColor)
-rock = (WorldAttr "rock", FgOnly $ RGB 80 80 80)
-
 rockAttr :: AttrName
 rockAttr = getWorldAttrName $ fst rock
 
-plant :: (WorldAttr, HiFiColor)
-plant = (WorldAttr "plant", FgOnly greenRGB)
-
 plantAttr :: AttrName
 plantAttr = getWorldAttrName $ fst rock
-
--- | Colors of entities in the world.
-worldAttributes :: Map WorldAttr HiFiColor
-worldAttributes = M.fromList $
-  [entity, water, rock, plant] <>
-     map
-      (bimap WorldAttr FgOnly)
-      [ ("device", brightYellowRGB)
-      , ("wood", RGB 139 69 19)
-      , ("flower", RGB 200 0 200)
-      , ("rubber", RGB 245 224 179)
-      , ("copper", yellowRGB)
-      , ("copper'", RGB 78 117 102)
-      , ("iron", RGB 97 102 106)
-      , ("iron'", RGB 183 65 14)
-      , ("quartz", whiteRGB)
-      , ("silver", RGB 192 192 192)
-      , ("gold", RGB 255 215 0)
-      , ("snow", whiteRGB)
-      , ("sand", RGB 194 178 128)
-      , ("fire", RGB 246 97 81)
-      , ("red", RGB 192 28 40)
-      , ("green", greenRGB)
-      , ("blue", blueRGB)
-      ]
 
 robotMessagePrefix :: AttrName
 robotMessagePrefix = attrName "robotMessage"

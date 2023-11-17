@@ -23,7 +23,6 @@ import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
 import Control.Carrier.Accum.FixedStrict (runAccum)
 import Control.Carrier.Lift (runM)
-import Data.Bifunctor (first)
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Accum
 import Control.Effect.Lift
@@ -33,6 +32,7 @@ import Control.Monad (guard, void)
 import Control.Monad.Except (ExceptT (..))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execStateT)
+import Data.Bifunctor (first)
 import Data.Foldable qualified as F
 import Data.List qualified as List
 import Data.List.NonEmpty qualified as NE
@@ -72,7 +72,7 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.Structure
 import Swarm.TUI.Model.UI
-import Swarm.TUI.View.Attribute.Attr (swarmAttrMap, getWorldAttrName)
+import Swarm.TUI.View.Attribute.Attr (getWorldAttrName, swarmAttrMap)
 import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.Util (listEnums)

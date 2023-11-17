@@ -6,9 +6,9 @@ import Data.Colour.SRGB (sRGB24read)
 import Data.Set (toList)
 import Data.Text qualified as T
 import Graphics.Vty.Attributes
+import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
 import Swarm.Game.Scenario.Style
 import Swarm.TUI.View.Attribute.Util
-import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
 
 toStyle :: StyleFlag -> Style
 toStyle = \case

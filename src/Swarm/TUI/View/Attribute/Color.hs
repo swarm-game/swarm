@@ -4,10 +4,10 @@
 -- Preserve color fidelity for non-TUI rendering
 module Swarm.TUI.View.Attribute.Color where
 
-import Swarm.Game.Entity.Cosmetic ( HiFiColor (..) )
-import Graphics.Vty qualified as V
-import Data.Colour.SRGB (RGB (..))
 import Brick qualified as B
+import Data.Colour.SRGB (RGB (..))
+import Graphics.Vty qualified as V
+import Swarm.Game.Entity.Cosmetic (HiFiColor (..))
 
 -- | Includes both a VTY-specific style specification and a
 -- high-fidelity color specification for rendering to other mediums.
@@ -23,11 +23,10 @@ data EntityStyle = EntityStyle
 
 fromHiFi :: HiFiColor -> EntityStyle
 fromHiFi hifi = EntityStyle v hifi
-  where
-    v = case hifi of
-      FgOnly c -> B.fg $ mkBrickColor c
-      BgOnly c -> B.bg $ mkBrickColor c
-      FgAndBg foreground background -> mkBrickColor foreground `B.on` mkBrickColor background
+ where
+  v = case hifi of
+    FgOnly c -> B.fg $ mkBrickColor c
+    BgOnly c -> B.bg $ mkBrickColor c
+    FgAndBg foreground background -> mkBrickColor foreground `B.on` mkBrickColor background
 
-    mkBrickColor (RGB r g b) = V.RGBColor r g b
-  
+  mkBrickColor (RGB r g b) = V.RGBColor r g b

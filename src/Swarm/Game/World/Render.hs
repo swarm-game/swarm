@@ -9,10 +9,10 @@ import Codec.Picture
 import Control.Applicative ((<|>))
 import Control.Effect.Lift (sendIO)
 import Control.Lens (to, view, (^.))
+import Data.Bifunctor (first)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.Vector qualified as V
-import Data.Bifunctor (first)
 import Swarm.Doc.Gen (loadStandaloneScenario)
 import Swarm.Game.Display (defaultChar, displayAttr)
 import Swarm.Game.ResourceLoading (initNameGenerator, readAppData)
@@ -25,7 +25,7 @@ import Swarm.Game.State
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Editor.Util (getContentAt, getMapRectangle)
-import Swarm.TUI.View.Attribute.Attr (swarmAttrMap, toAttrName, getWorldAttrName)
+import Swarm.TUI.View.Attribute.Attr (getWorldAttrName, swarmAttrMap, toAttrName)
 import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.Util (surfaceEmpty)
 import Swarm.Util.Effect (simpleErrorHandle)
