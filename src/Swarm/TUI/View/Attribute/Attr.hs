@@ -61,6 +61,8 @@ import Data.Colour.Palette.BrewerSet
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (unpack)
 import Graphics.Vty qualified as V
 import Swarm.Game.Display (Attribute (..))
@@ -178,8 +180,8 @@ worldAttributes =
       , ("blue", V.blue)
       ]
 
-worldAttributeNames :: NonEmpty AttrName
-worldAttributeNames = NE.map (getWorldAttrName . fst) worldAttributes
+worldAttributeNames :: Set AttrName
+worldAttributeNames = Set.fromList $ NE.toList $ NE.map (getWorldAttrName . fst) worldAttributes
 
 robotMessagePrefix :: AttrName
 robotMessagePrefix = attrName "robotMessage"

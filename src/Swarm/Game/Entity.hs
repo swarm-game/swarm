@@ -83,13 +83,14 @@ module Swarm.Game.Entity (
   difference,
 ) where
 
+import Brick (AttrName)
 import Control.Algebra (Has)
 import Control.Arrow ((&&&))
 import Control.Carrier.Throw.Either (liftEither)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (Getter, Lens', lens, to, view, (^.))
-import Control.Monad ((<=<))
+import Control.Monad (forM_, unless, (<=<))
 import Data.Bifunctor (first)
 import Data.Char (toLower)
 import Data.Function (on)
@@ -116,7 +117,8 @@ import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document, docToText)
-import Swarm.Util (binTuples, failT, findDup, plural, (?))
+import Swarm.TUI.View.Attribute.Attr (toAttrName, worldAttributeNames)
+import Swarm.Util (binTuples, failT, findDup, plural, quote, (?))
 import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
@@ -375,11 +377,28 @@ deviceForCap cap = fromMaybe [] . M.lookup cap . entitiesByCap
 -- | Build an 'EntityMap' from a list of entities.  The idea is that
 --   this will be called once at startup, when loading the entities
 --   from a file; see 'loadEntities'.
-buildEntityMap :: Has (Throw LoadingFailure) sig m => [Entity] -> m EntityMap
-buildEntityMap es = do
+buildEntityMap :: Has (Throw LoadingFailure) sig m => Set AttrName -> [Entity] -> m EntityMap
+buildEntityMap validAttrs es = do
   case findDup (map fst namedEntities) of
     Nothing -> return ()
     Just duped -> throwError $ Duplicate Entities duped
+
+  -- Validate attribute references
+  forM_ namedEntities $ \(eName, ent) ->
+    let a = ent ^. entityDisplay . displayAttr
+     in case a of
+          AWorld n ->
+            unless (Set.member (toAttrName a) validAttrs)
+              . throwError
+              . CustomMessage
+              $ T.unwords
+                [ "Nonexistent attribute"
+                , quote n
+                , "referenced by entity"
+                , quote eName
+                ]
+          _ -> return ()
+
   return $
     EntityMap
       { entitiesByName = M.fromList namedEntities
@@ -445,7 +464,7 @@ loadEntities = do
   decoded <-
     withThrow (entityFailure . CanNotParseYaml) . (liftEither <=< sendIO) $
       decodeFileEither fileName
-  withThrow entityFailure $ buildEntityMap decoded
+  withThrow entityFailure $ buildEntityMap worldAttributeNames decoded
 
 ------------------------------------------------------------
 -- Entity lenses

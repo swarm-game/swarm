@@ -63,6 +63,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import Data.Sequence (Seq)
+import Data.Set qualified as Set
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -89,6 +90,8 @@ import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document)
+import Swarm.TUI.View.Attribute.Attr (worldAttributeNames)
+import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.Util (binTuples, failT)
 import Swarm.Util.Effect (ignoreWarnings, throwToMaybe, withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
@@ -145,7 +148,11 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
   parseJSONE = withObjectE "scenario" $ \v -> do
     -- parse custom entities
     emRaw <- liftE (v .:? "entities" .!= [])
-    em <- case run . runThrow $ buildEntityMap emRaw of
+
+    parsedAttrs <- liftE (v .:? "attrs" .!= [])
+    let attrsUnion = Set.fromList (map (fst . toAttrPair) parsedAttrs) <> worldAttributeNames
+
+    em <- case run . runThrow $ buildEntityMap attrsUnion emRaw of
       Right x -> return x
       Left x -> failT [prettyText @LoadingFailure x]
 
@@ -226,7 +233,7 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
         <*> liftE (v .:? "description" .!= "")
         <*> liftE (v .:? "creative" .!= False)
         <*> liftE (v .:? "seed")
-        <*> liftE (v .:? "attrs" .!= [])
+        <*> pure parsedAttrs
         <*> pure em
         <*> v ..:? "recipes" ..!= []
         <*> pure (Set.fromList known)
