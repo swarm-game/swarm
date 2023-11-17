@@ -13,7 +13,7 @@
 -- The few attributes that we use for drawing the logo are an exception.
 module Swarm.TUI.View.Attribute.Attr (
   swarmAttrMap,
-  worldAttributeNames,
+  worldAttributes,
   worldPrefix,
   meterAttributeNames,
   messageAttributeNames,
@@ -57,14 +57,17 @@ import Brick.Forms ( focusedFormInputAttr, invalidFormInputAttr )
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit qualified as E
 import Brick.Widgets.List ( listSelectedFocusedAttr )
-import Data.Bifunctor (bimap, first)
+import Data.Bifunctor (bimap)
 import Data.Colour.Palette.BrewerSet
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
+import Control.Arrow ((***))
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
-import Data.Set qualified as Set
 import Swarm.Game.Entity.Cosmetic
+import Swarm.TUI.View.Attribute.Color
+import Data.Map (Map)
+import Data.Map qualified as M
 import Data.Text (unpack)
 import Graphics.Vty qualified as V
 import Swarm.Game.Display (Attribute (..))
@@ -86,7 +89,7 @@ swarmAttrMap =
     V.defAttr
     $ NE.toList activityMeterAttributes
       <> NE.toList robotMessageAttributes
-      <> NE.toList (NE.map (first getWorldAttrName) worldAttributes)
+      <> map (getWorldAttrName *** vtyColor . fromHiFi) (M.toList worldAttributes)
       <> terrainAttr
       <> [ -- Robot attribute
            (robotAttr, fg V.white `V.withStyle` V.bold)
@@ -136,8 +139,8 @@ brightYellowRGB = RGB 233 173 12
 yellowRGB :: RGBColor
 yellowRGB = RGB 162 115 76
 
-entity :: (WorldAttr, V.Attr)
-entity = (WorldAttr "entity", fg V.white)
+entity :: (WorldAttr, HiFiColor)
+entity = (WorldAttr "entity", FgOnly whiteRGB)
 
 entityAttr :: AttrName
 entityAttr = getWorldAttrName $ fst entity
@@ -161,13 +164,10 @@ plantAttr :: AttrName
 plantAttr = getWorldAttrName $ fst rock
 
 -- | Colors of entities in the world.
-worldAttributes :: NonEmpty (WorldAttr, V.Attr)
-worldAttributes =
-  entity
-    :| water
-    : rock
-    : plant
-    : map
+worldAttributes :: Map WorldAttr HiFiColor
+worldAttributes = M.fromList $
+  [entity, water, rock, plant] <>
+     map
       (bimap WorldAttr FgOnly)
       [ ("device", brightYellowRGB)
       , ("wood", RGB 139 69 19)
@@ -187,9 +187,6 @@ worldAttributes =
       , ("green", greenRGB)
       , ("blue", blueRGB)
       ]
-
-worldAttributeNames :: Set WorldAttr
-worldAttributeNames = Set.fromList $ NE.toList $ NE.map fst worldAttributes
 
 robotMessagePrefix :: AttrName
 robotMessagePrefix = attrName "robotMessage"
