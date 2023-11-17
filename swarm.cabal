@@ -117,6 +117,7 @@ library
                       Swarm.Game.CESK
                       Swarm.Game.Display
                       Swarm.Game.Entity
+                      Swarm.Game.Entity.Cosmetic
                       Swarm.Game.Exception
                       Swarm.Game.Location
                       Swarm.Game.Recipe
