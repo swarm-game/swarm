@@ -127,7 +127,7 @@ entityAttr :: AttrName
 entityAttr = getWorldAttrName $ fst entity
 
 water :: (WorldAttr, V.Attr)
-water = (WorldAttr "water", V.white `on` V.blue)
+water = (WorldAttr "water", V.rgbColor @Int 208 207 204 `on` V.rgbColor @Int 42 123 222)
 
 waterAttr :: AttrName
 waterAttr = getWorldAttrName $ fst water
@@ -139,7 +139,7 @@ rockAttr :: AttrName
 rockAttr = getWorldAttrName $ fst rock
 
 plant :: (WorldAttr, V.Attr)
-plant = (WorldAttr "plant", fg V.green)
+plant = (WorldAttr "plant", fg $ V.rgbColor @Int 38 162 105)
 
 plantAttr :: AttrName
 plantAttr = getWorldAttrName $ fst rock
@@ -153,23 +153,23 @@ worldAttributes =
     : plant
     : map
       (bimap WorldAttr fg)
-      [ ("device", V.brightYellow)
+      [ ("device", V.rgbColor @Int 233 173 12)
       , ("wood", V.rgbColor @Int 139 69 19)
       , ("flower", V.rgbColor @Int 200 0 200)
       , ("rubber", V.rgbColor @Int 245 224 179)
-      , ("copper", V.yellow)
+      , ("copper", V.rgbColor @Int 162 115 76)
       , ("copper'", V.rgbColor @Int 78 117 102)
       , ("iron", V.rgbColor @Int 97 102 106)
       , ("iron'", V.rgbColor @Int 183 65 14)
-      , ("quartz", V.white)
+      , ("quartz", V.rgbColor @Int 208 207 204)
       , ("silver", V.rgbColor @Int 192 192 192)
       , ("gold", V.rgbColor @Int 255 215 0)
-      , ("snow", V.white)
+      , ("snow", V.rgbColor @Int 208 207 204)
       , ("sand", V.rgbColor @Int 194 178 128)
-      , ("fire", V.brightRed)
-      , ("red", V.red)
-      , ("green", V.green)
-      , ("blue", V.blue)
+      , ("fire", V.rgbColor @Int 246 97 81)
+      , ("red", V.rgbColor @Int 192 28 40)
+      , ("green", V.rgbColor @Int 38 162 105)
+      , ("blue", V.rgbColor @Int 42 123 222)
       ]
 
 worldAttributeNames :: Set WorldAttr
