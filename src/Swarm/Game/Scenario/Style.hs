@@ -8,6 +8,9 @@ import Data.Aeson
 import Data.Set (Set)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Data.Colour.SRGB (RGB (..), sRGB24read, toSRGB24)
+import Data.Text qualified as T
+import Swarm.Game.Entity.Cosmetic
 
 data StyleFlag
   = Standout
@@ -51,3 +54,16 @@ instance ToJSON CustomAttr where
       defaultOptions
         { omitNothingFields = True
         }
+
+-- | TODO Fail if neither fg nor bg are provided
+toHifiPair :: CustomAttr -> (WorldAttr, HiFiColor)
+toHifiPair (CustomAttr n maybeFg maybeBg _) =
+  (WorldAttr n, c)
+  where
+    c = case (maybeFg, maybeBg) of
+      (Just f, Just b) -> FgAndBg (conv f) (conv b)
+      (Just f, Nothing) -> FgOnly (conv f)
+      (Nothing, Just b) -> BgOnly  (conv b)
+      (Nothing, Nothing) -> BgOnly $ RGB 0 0 0
+
+    conv (HexColor x) = toSRGB24 . sRGB24read $ T.unpack x

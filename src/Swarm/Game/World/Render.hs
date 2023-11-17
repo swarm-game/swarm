@@ -4,19 +4,21 @@
 -- TUI-independent world rendering.
 module Swarm.Game.World.Render where
 
-import Brick (AttrMap, applyAttrMappings, attrMapLookup)
+import Data.Text qualified as T
 import Codec.Picture
 import Control.Applicative ((<|>))
 import Control.Effect.Lift (sendIO)
-import Control.Lens (to, view, (^.))
-import Data.Bifunctor (first)
+import Data.Colour.SRGB (RGB (..))
+import Swarm.Game.Entity.Cosmetic
+import Control.Lens (view, (^.))
 import Data.List.NonEmpty qualified as NE
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Vector qualified as V
 import Swarm.Doc.Gen (loadStandaloneScenario)
-import Swarm.Game.Display (defaultChar, displayAttr)
+import Swarm.Game.Display (defaultChar, displayAttr, Attribute (AWorld))
 import Swarm.Game.ResourceLoading (initNameGenerator, readAppData)
-import Swarm.Game.Scenario (Scenario, area, scenarioAttrs, scenarioWorlds, ul, worldName)
+import Swarm.Game.Scenario (Scenario, area, scenarioWorlds, ul, worldName, scenarioCosmetics)
 import Swarm.Game.Scenario.Status (seedLaunchParams)
 import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..), getAreaDimensions, isEmpty, upperLeftToBottomRight)
 import Swarm.Game.Scenario.Topography.Cell
@@ -25,8 +27,6 @@ import Swarm.Game.State
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Editor.Util (getContentAt, getMapRectangle)
-import Swarm.TUI.View.Attribute.Attr (getWorldAttrName, swarmAttrMap, toAttrName)
-import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.Util (surfaceEmpty)
 import Swarm.Util.Effect (simpleErrorHandle)
 import Swarm.Util.Erasable (erasableToMaybe)
@@ -49,20 +49,23 @@ getDisplayChar = maybe ' ' facadeChar . erasableToMaybe . cellEntity
  where
   facadeChar (EntityFacade _ d) = view defaultChar d
 
-getDisplayColor :: AttrMap -> PCell EntityFacade -> PixelRGBA8
-getDisplayColor aMap (Cell terr cellEnt _) =
+getDisplayColor :: M.Map WorldAttr HiFiColor -> PCell EntityFacade -> PixelRGBA8
+getDisplayColor aMap (Cell _terr cellEnt _) =
   maybe transparent facadeColor $ erasableToMaybe cellEnt
  where
   transparent = PixelRGBA8 0 0 0 0
-  facadeColor (EntityFacade _ d) = PixelRGBA8 255 0 255 255
-   where
-    -- facadeColor (EntityFacade _ d) = case attrForeColor attr of
-    --   SetTo c -> case c of
-    --     RGBColor r g b -> PixelRGBA8 r g b 255
-    --     _ -> transparent
-    --   _ -> transparent
+  facadeColor (EntityFacade _ d) = maybe transparent mkPixelColor $ case d ^. displayAttr of
+    AWorld n -> M.lookup (WorldAttr $ T.unpack n) aMap
+    _ -> Nothing
 
-    attr = attrMapLookup (d ^. displayAttr . to toAttrName) aMap
+mkPixelColor :: HiFiColor -> PixelRGBA8
+mkPixelColor h = PixelRGBA8 r g b 255
+  where
+    RGB r g b = case h of
+      FgOnly c -> c
+      BgOnly c -> c
+      -- TODO: if displayChar is whitespace, use bg color. Otherwise use fg color.
+      FgAndBg _ c -> c
 
 getDisplayGrid :: Scenario -> GameState -> Maybe AreaDimensions -> [[PCell EntityFacade]]
 getDisplayGrid myScenario gs maybeSize =
@@ -83,10 +86,9 @@ getDisplayGrid myScenario gs maybeSize =
   mkCosmic = Cosmic $ worldName firstScenarioWorld
   boundingBox = (W.locToCoords upperLeftLocation, W.locToCoords lowerRightLocation)
 
-getRenderableGrid :: RenderOpts -> FilePath -> IO ([[PCell EntityFacade]], AttrMap)
+getRenderableGrid :: RenderOpts -> FilePath -> IO ([[PCell EntityFacade]], M.Map WorldAttr HiFiColor)
 getRenderableGrid (RenderOpts maybeSeed _ _ maybeSize) fp = simpleErrorHandle $ do
   (myScenario, (worldDefs, entities, recipes)) <- loadStandaloneScenario fp
-  let aMap = applyAttrMappings (map (first getWorldAttrName . toAttrPair) $ myScenario ^. scenarioAttrs) swarmAttrMap
   appDataMap <- readAppData
   nameGen <- initNameGenerator appDataMap
   let gsc = GameStateConfig nameGen entities recipes worldDefs
@@ -96,7 +98,7 @@ getRenderableGrid (RenderOpts maybeSeed _ _ maybeSize) fp = simpleErrorHandle $ 
         myScenario
         (seedLaunchParams maybeSeed)
         gsc
-  return (getDisplayGrid myScenario gs maybeSize, aMap)
+  return (getDisplayGrid myScenario gs maybeSize, myScenario ^. scenarioCosmetics)
 
 doRenderCmd :: RenderOpts -> FilePath -> IO ()
 doRenderCmd opts@(RenderOpts _ asPng _ _) mapPath =
