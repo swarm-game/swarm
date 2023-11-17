@@ -121,6 +121,21 @@ worldPrefix = attrName "world"
 getWorldAttrName :: WorldAttr -> AttrName
 getWorldAttrName (WorldAttr n) = worldPrefix <> attrName n
 
+whiteRGB :: RGBColor
+whiteRGB = RGB 208 207 204
+
+blueRGB :: RGBColor
+blueRGB = RGB 42 123 222
+
+greenRGB :: RGBColor
+greenRGB = RGB 38 162 105
+
+brightYellowRGB :: RGBColor
+brightYellowRGB = RGB 233 173 12
+
+yellowRGB :: RGBColor
+yellowRGB = RGB 162 115 76
+
 entity :: (WorldAttr, V.Attr)
 entity = (WorldAttr "entity", fg V.white)
 
@@ -128,7 +143,7 @@ entityAttr :: AttrName
 entityAttr = getWorldAttrName $ fst entity
 
 water :: (WorldAttr, HiFiColor)
-water = (WorldAttr "water", FgAndBg (RGB 208 207 204) (RGB 42 123 222))
+water = (WorldAttr "water", FgAndBg whiteRGB blueRGB)
 
 waterAttr :: AttrName
 waterAttr = getWorldAttrName $ fst water
@@ -140,7 +155,7 @@ rockAttr :: AttrName
 rockAttr = getWorldAttrName $ fst rock
 
 plant :: (WorldAttr, HiFiColor)
-plant = (WorldAttr "plant", FgOnly $ RGB 38 162 105)
+plant = (WorldAttr "plant", FgOnly greenRGB)
 
 plantAttr :: AttrName
 plantAttr = getWorldAttrName $ fst rock
@@ -154,23 +169,23 @@ worldAttributes =
     : plant
     : map
       (bimap WorldAttr FgOnly)
-      [ ("device", RGB 233 173 12)
+      [ ("device", brightYellowRGB)
       , ("wood", RGB 139 69 19)
       , ("flower", RGB 200 0 200)
       , ("rubber", RGB 245 224 179)
-      , ("copper", RGB 162 115 76)
+      , ("copper", yellowRGB)
       , ("copper'", RGB 78 117 102)
       , ("iron", RGB 97 102 106)
       , ("iron'", RGB 183 65 14)
-      , ("quartz", RGB 208 207 204)
+      , ("quartz", whiteRGB)
       , ("silver", RGB 192 192 192)
       , ("gold", RGB 255 215 0)
-      , ("snow", RGB 208 207 204)
+      , ("snow", whiteRGB)
       , ("sand", RGB 194 178 128)
       , ("fire", RGB 246 97 81)
       , ("red", RGB 192 28 40)
-      , ("green", RGB 38 162 105)
-      , ("blue", RGB 42 123 222)
+      , ("green", greenRGB)
+      , ("blue", blueRGB)
       ]
 
 worldAttributeNames :: Set WorldAttr
