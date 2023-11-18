@@ -10,6 +10,8 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Swarm.Game.Entity.Cosmetic
 
+-- * Entities
+
 entity :: (WorldAttr, HiFiColor)
 entity = (WorldAttr "entity", FgOnly whiteRGB)
 
@@ -47,6 +49,29 @@ worldAttributes =
         , ("green", greenRGB)
         , ("blue", blueRGB)
         ]
+
+-- * Terrain
+
+dirt :: (TerrainAttr, HiFiColor)
+dirt = (TerrainAttr "dirt", FgOnly $ RGB 165 42 42)
+
+grass :: (TerrainAttr, HiFiColor)
+grass = (TerrainAttr "grass", FgOnly $ RGB 0 32 0) -- dark green
+
+stone :: (TerrainAttr, HiFiColor)
+stone = (TerrainAttr "stone", FgOnly $ RGB 32 32 32)
+
+ice :: (TerrainAttr, HiFiColor)
+ice = (TerrainAttr "ice", BgOnly whiteRGB)
+
+terrainAttributes :: M.Map TerrainAttr HiFiColor
+terrainAttributes =
+  M.fromList
+    [ dirt
+    , grass
+    , stone
+    , ice
+    ]
 
 -- * Named colors
 

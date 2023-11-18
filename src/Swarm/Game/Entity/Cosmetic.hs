@@ -32,3 +32,8 @@ newtype WorldAttr = WorldAttr
   { attrSuffix :: String
   }
   deriving (Eq, Ord, Show)
+
+newtype TerrainAttr = TerrainAttr
+  { terrainAttrSuffix :: String
+  }
+  deriving (Eq, Ord, Show)

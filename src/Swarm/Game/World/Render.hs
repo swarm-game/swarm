@@ -19,14 +19,16 @@ import Linear (V2 (..))
 import Swarm.Doc.Gen (loadStandaloneScenario)
 import Swarm.Game.Display (Attribute (AWorld), defaultChar, displayAttr)
 import Swarm.Game.Entity.Cosmetic
+import Swarm.Game.Entity.Specimens (terrainAttributes)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (initNameGenerator, readAppData)
-import Swarm.Game.Scenario (Scenario, area, scenarioCosmetics, scenarioWorlds, ul, worldName)
+import Swarm.Game.Scenario (Scenario, area, scenarioCosmetics, scenarioWorlds, worldName)
 import Swarm.Game.Scenario.Status (seedLaunchParams)
 import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..), getAreaDimensions, isEmpty, upperLeftToBottomRight)
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade (EntityFacade (..), mkFacade)
 import Swarm.Game.State
+import Swarm.Game.Terrain (getTerrainWord)
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Editor.Util (getContentAt, getMapRectangle)
@@ -54,9 +56,13 @@ getDisplayChar = maybe ' ' facadeChar . erasableToMaybe . cellEntity
   facadeChar (EntityFacade _ d) = view defaultChar d
 
 getDisplayColor :: M.Map WorldAttr HiFiColor -> PCell EntityFacade -> PixelRGBA8
-getDisplayColor aMap (Cell _terr cellEnt _) =
-  maybe transparent facadeColor $ erasableToMaybe cellEnt
+getDisplayColor aMap (Cell terr cellEnt _) =
+  maybe terrainFallback facadeColor $ erasableToMaybe cellEnt
  where
+  terrainFallback =
+    maybe transparent mkPixelColor $
+      M.lookup (TerrainAttr $ T.unpack $ getTerrainWord terr) terrainAttributes
+
   transparent = PixelRGBA8 0 0 0 0
   facadeColor (EntityFacade _ d) = maybe transparent mkPixelColor $ case d ^. displayAttr of
     AWorld n -> M.lookup (WorldAttr $ T.unpack n) aMap
