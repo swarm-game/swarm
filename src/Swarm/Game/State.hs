@@ -160,6 +160,7 @@ module Swarm.Game.State (
   genRobotTemplates,
   entityAt,
   zoomWorld,
+  SubworldDescription,
 ) where
 
 import Control.Applicative ((<|>))

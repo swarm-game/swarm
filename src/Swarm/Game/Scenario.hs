@@ -63,7 +63,6 @@ import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
-import Swarm.Game.Entity.Cosmetic
 import Data.Sequence (Seq)
 import Data.Set qualified as Set
 import Data.Set (Set)
@@ -71,6 +70,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Entity
+import Swarm.Game.Entity.Cosmetic
 import Swarm.Game.Entity.Specimens (worldAttributes)
 import Swarm.Game.Failure
 import Swarm.Game.Location

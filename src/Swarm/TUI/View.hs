@@ -61,7 +61,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chunksOf)
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, fromMaybe, isJust, listToMaybe, mapMaybe, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.Semigroup (sconcat)
 import Data.Sequence qualified as Seq
 import Data.Set qualified as Set (toList)
@@ -254,19 +254,10 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
       , padTop (Pad 1) table
       ]
    where
-    defaultVC = Cosmic DefaultRootSubworld origin
-
-    -- The first robot is guaranteed to be the base.
-    baseRobotLoc :: Maybe (Cosmic Location)
-    baseRobotLoc = do
-      theBaseRobot <- listToMaybe theRobots
-      view trobotLocation theBaseRobot
-
-    vc = fromMaybe defaultVC baseRobotLoc
+    vc = determineViewCenter s worldTuples
 
     worldTuples = buildWorldTuples s
     theWorlds = genMultiWorld worldTuples $ fromMaybe 0 $ s ^. scenarioSeed
-    theRobots = genRobotTemplates s worldTuples
 
     ri =
       RenderingInput theWorlds $

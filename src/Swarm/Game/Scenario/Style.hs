@@ -5,11 +5,11 @@
 module Swarm.Game.Scenario.Style where
 
 import Data.Aeson
+import Data.Colour.SRGB (RGB (..), sRGB24read, toSRGB24)
 import Data.Set (Set)
 import Data.Text (Text)
-import GHC.Generics (Generic)
-import Data.Colour.SRGB (RGB (..), sRGB24read, toSRGB24)
 import Data.Text qualified as T
+import GHC.Generics (Generic)
 import Swarm.Game.Entity.Cosmetic
 
 data StyleFlag
@@ -59,11 +59,11 @@ instance ToJSON CustomAttr where
 toHifiPair :: CustomAttr -> (WorldAttr, HiFiColor)
 toHifiPair (CustomAttr n maybeFg maybeBg _) =
   (WorldAttr n, c)
-  where
-    c = case (maybeFg, maybeBg) of
-      (Just f, Just b) -> FgAndBg (conv f) (conv b)
-      (Just f, Nothing) -> FgOnly (conv f)
-      (Nothing, Just b) -> BgOnly  (conv b)
-      (Nothing, Nothing) -> BgOnly $ RGB 0 0 0
+ where
+  c = case (maybeFg, maybeBg) of
+    (Just f, Just b) -> FgAndBg (conv f) (conv b)
+    (Just f, Nothing) -> FgOnly (conv f)
+    (Nothing, Just b) -> BgOnly (conv b)
+    (Nothing, Nothing) -> BgOnly $ RGB 0 0 0
 
-    conv (HexColor x) = toSRGB24 . sRGB24read $ T.unpack x
+  conv (HexColor x) = toSRGB24 . sRGB24read $ T.unpack x
