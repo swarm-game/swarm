@@ -11,16 +11,18 @@ import Control.Lens hiding (Const, from)
 import Control.Monad.Reader (withReaderT)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map.Strict qualified as M
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Game.Entity as E
 import Swarm.Game.Location
-import Swarm.Game.Scenario (scenarioName)
+import Swarm.Game.Robot (trobotLocation)
+import Swarm.Game.Scenario (Scenario, scenarioName)
 import Swarm.Game.ScenarioInfo (scenarioItemName)
 import Swarm.Game.State
 import Swarm.Game.Terrain
+import Swarm.Game.Universe (Cosmic (..), SubworldName (DefaultRootSubworld))
 import Swarm.Language.Pretty (prettyTextLine)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown qualified as Markdown
@@ -233,3 +235,19 @@ drawLabelledEntityName e =
     [ padRight (Pad 2) (renderDisplay (e ^. entityDisplay))
     , txt (e ^. entityName)
     ]
+
+determineViewCenter ::
+  Scenario ->
+  NonEmpty SubworldDescription ->
+  Cosmic Location
+determineViewCenter s worldTuples =
+  fromMaybe defaultVC baseRobotLoc
+ where
+  theRobots = genRobotTemplates s worldTuples
+  defaultVC = Cosmic DefaultRootSubworld origin
+
+  -- The first robot is guaranteed to be the base.
+  baseRobotLoc :: Maybe (Cosmic Location)
+  baseRobotLoc = do
+    theBaseRobot <- listToMaybe theRobots
+    view trobotLocation theBaseRobot

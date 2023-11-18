@@ -4,21 +4,24 @@
 -- TUI-independent world rendering.
 module Swarm.Game.World.Render where
 
-import Data.Text qualified as T
 import Codec.Picture
 import Control.Applicative ((<|>))
 import Control.Effect.Lift (sendIO)
-import Data.Colour.SRGB (RGB (..))
-import Swarm.Game.Entity.Cosmetic
 import Control.Lens (view, (^.))
+import Data.Colour.SRGB (RGB (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
+import Data.Text qualified as T
+import Data.Tuple.Extra (both)
 import Data.Vector qualified as V
+import Linear (V2 (..))
 import Swarm.Doc.Gen (loadStandaloneScenario)
-import Swarm.Game.Display (defaultChar, displayAttr, Attribute (AWorld))
+import Swarm.Game.Display (Attribute (AWorld), defaultChar, displayAttr)
+import Swarm.Game.Entity.Cosmetic
+import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (initNameGenerator, readAppData)
-import Swarm.Game.Scenario (Scenario, area, scenarioWorlds, ul, worldName, scenarioCosmetics)
+import Swarm.Game.Scenario (Scenario, area, scenarioCosmetics, scenarioWorlds, ul, worldName)
 import Swarm.Game.Scenario.Status (seedLaunchParams)
 import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..), getAreaDimensions, isEmpty, upperLeftToBottomRight)
 import Swarm.Game.Scenario.Topography.Cell
@@ -27,6 +30,7 @@ import Swarm.Game.State
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Editor.Util (getContentAt, getMapRectangle)
+import Swarm.TUI.View.Util (determineViewCenter)
 import Swarm.Util (surfaceEmpty)
 import Swarm.Util.Effect (simpleErrorHandle)
 import Swarm.Util.Erasable (erasableToMaybe)
@@ -60,12 +64,12 @@ getDisplayColor aMap (Cell _terr cellEnt _) =
 
 mkPixelColor :: HiFiColor -> PixelRGBA8
 mkPixelColor h = PixelRGBA8 r g b 255
-  where
-    RGB r g b = case h of
-      FgOnly c -> c
-      BgOnly c -> c
-      -- TODO: if displayChar is whitespace, use bg color. Otherwise use fg color.
-      FgAndBg _ c -> c
+ where
+  RGB r g b = case h of
+    FgOnly c -> c
+    BgOnly c -> c
+    -- TODO: if displayChar is whitespace, use bg color. Otherwise use fg color.
+    FgAndBg _ c -> c
 
 getDisplayGrid :: Scenario -> GameState -> Maybe AreaDimensions -> [[PCell EntityFacade]]
 getDisplayGrid myScenario gs maybeSize =
@@ -74,17 +78,25 @@ getDisplayGrid myScenario gs maybeSize =
     (getContentAt worlds . mkCosmic)
     boundingBox
  where
+  mkCosmic = Cosmic $ worldName firstScenarioWorld
+
   worlds = view (landscape . multiWorld) gs
+
+  worldTuples = buildWorldTuples myScenario
+  vc = determineViewCenter myScenario worldTuples
 
   firstScenarioWorld = NE.head $ view scenarioWorlds myScenario
   worldArea = area firstScenarioWorld
-  upperLeftLocation = ul firstScenarioWorld
-  rawAreaDims = getAreaDimensions worldArea
-  areaDims = fromMaybe (AreaDimensions 20 10) $ maybeSize <|> surfaceEmpty isEmpty rawAreaDims
+  mapAreaDims = getAreaDimensions worldArea
+  areaDims@(AreaDimensions w h) =
+    fromMaybe (AreaDimensions 20 10) $
+      maybeSize <|> surfaceEmpty isEmpty mapAreaDims
+
+  upperLeftLocation = view planar vc .+^ V2 (negate $ floor $ fromIntegral w / 2) (floor $ fromIntegral h / 2)
   lowerRightLocation = upperLeftToBottomRight areaDims upperLeftLocation
 
-  mkCosmic = Cosmic $ worldName firstScenarioWorld
-  boundingBox = (W.locToCoords upperLeftLocation, W.locToCoords lowerRightLocation)
+  locationBounds = (upperLeftLocation, lowerRightLocation)
+  boundingBox = both W.locToCoords locationBounds
 
 getRenderableGrid :: RenderOpts -> FilePath -> IO ([[PCell EntityFacade]], M.Map WorldAttr HiFiColor)
 getRenderableGrid (RenderOpts maybeSeed _ _ maybeSize) fp = simpleErrorHandle $ do
