@@ -87,7 +87,7 @@ swarmAttrMap =
     $ NE.toList activityMeterAttributes
       <> NE.toList robotMessageAttributes
       <> map (getWorldAttrName *** vtyColor . fromHiFi) (M.toList worldAttributes)
-      <> terrainAttr
+      <> map (getTerrainAttrName *** vtyColor . fromHiFi) (M.toList terrainAttributes)
       <> [ -- Robot attribute
            (robotAttr, fg V.white `V.withStyle` V.bold)
          , -- UI rendering attributes
@@ -114,6 +114,12 @@ swarmAttrMap =
          , -- Default attribute
            (defAttr, V.defAttr)
          ]
+
+terrainPrefix :: AttrName
+terrainPrefix = attrName "terrain"
+
+getTerrainAttrName :: TerrainAttr -> AttrName
+getTerrainAttrName (TerrainAttr n) = terrainPrefix <> attrName n
 
 worldPrefix :: AttrName
 worldPrefix = attrName "world"
@@ -159,26 +165,15 @@ activityMeterAttributes =
 meterAttributeNames :: NonEmpty AttrName
 meterAttributeNames = NE.map fst activityMeterAttributes
 
-terrainPrefix :: AttrName
-terrainPrefix = attrName "terrain"
-
-terrainAttr :: [(AttrName, V.Attr)]
-terrainAttr =
-  [ (dirtAttr, fg (V.rgbColor @Int 165 42 42))
-  , (grassAttr, fg (V.rgbColor @Int 0 32 0)) -- dark green
-  , (stoneAttr, fg (V.rgbColor @Int 32 32 32))
-  , (iceAttr, bg V.white)
-  ]
-
 -- | The default robot attribute.
 robotAttr :: AttrName
 robotAttr = attrName "robot"
 
 dirtAttr, grassAttr, stoneAttr, iceAttr :: AttrName
-dirtAttr = terrainPrefix <> attrName "dirt"
-grassAttr = terrainPrefix <> attrName "grass"
-stoneAttr = terrainPrefix <> attrName "stone"
-iceAttr = terrainPrefix <> attrName "ice"
+dirtAttr = getTerrainAttrName $ fst dirt
+grassAttr = getTerrainAttrName $ fst grass
+stoneAttr = getTerrainAttrName $ fst stone
+iceAttr = getTerrainAttrName $ fst ice
 
 -- | Some defined attribute names used in the Swarm TUI.
 highlightAttr

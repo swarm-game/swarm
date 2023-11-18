@@ -16,10 +16,6 @@ data AreaDimensions = AreaDimensions
   , rectHeight :: Int32
   }
 
--- | Apply the same function to both dimensions
-modify :: (Int32 -> Int32) -> AreaDimensions -> AreaDimensions
-modify f (AreaDimensions w h) = AreaDimensions (f w) (f h)
-
 renderRectDimensions :: AreaDimensions -> String
 renderRectDimensions (AreaDimensions w h) =
   L.intercalate "x" $ map show [w, h]
