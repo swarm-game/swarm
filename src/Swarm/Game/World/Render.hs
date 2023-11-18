@@ -26,13 +26,13 @@ import Swarm.Game.Scenario (Scenario, area, scenarioCosmetics, scenarioWorlds, u
 import Swarm.Game.Scenario.Status (seedLaunchParams)
 import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..), getAreaDimensions, isEmpty, upperLeftToBottomRight)
 import Swarm.Game.Scenario.Topography.Cell
+import Swarm.Game.Scenario.Topography.Center
 import Swarm.Game.Scenario.Topography.EntityFacade (EntityFacade (..), mkFacade)
 import Swarm.Game.State
 import Swarm.Game.Terrain (getTerrainWord)
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Editor.Util (getContentAt, getMapRectangle)
-import Swarm.TUI.View.Util (determineViewCenter)
 import Swarm.Util (surfaceEmpty)
 import Swarm.Util.Effect (simpleErrorHandle)
 import Swarm.Util.Erasable (erasableToMaybe)
@@ -134,9 +134,7 @@ getRenderableGrid (RenderOpts maybeSeed _ _ maybeSize) fp = simpleErrorHandle $ 
 doRenderCmd :: RenderOpts -> FilePath -> IO ()
 doRenderCmd opts@(RenderOpts _ asPng _ _) mapPath =
   case asPng of
-    ConsoleText -> do
-      outputLines <- renderScenarioMap opts mapPath
-      printScenarioMap outputLines
+    ConsoleText -> printScenarioMap =<< renderScenarioMap opts mapPath
     PngImage -> renderScenarioPng opts mapPath
 
 renderScenarioMap :: RenderOpts -> FilePath -> IO [String]
@@ -144,8 +142,8 @@ renderScenarioMap opts fp = do
   (grid, _) <- getRenderableGrid opts fp
   return $ map (map getDisplayChar) grid
 
--- | To facilitate random access
--- when assembling the image
+-- | Converts linked lists to vectors to facilitate
+-- random access when assembling the image
 gridToVec :: [[a]] -> V.Vector (V.Vector a)
 gridToVec = V.fromList . map V.fromList
 

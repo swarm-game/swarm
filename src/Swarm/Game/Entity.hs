@@ -46,6 +46,7 @@ module Swarm.Game.Entity (
   -- ** Entity map
   EntityMap (..),
   buildEntityMap,
+  validateAttrRefs,
   loadEntities,
   lookupEntityName,
   deviceForCap,
@@ -374,18 +375,9 @@ lookupEntityName nm = M.lookup nm . entitiesByName
 deviceForCap :: Capability -> EntityMap -> [Entity]
 deviceForCap cap = fromMaybe [] . M.lookup cap . entitiesByCap
 
--- | Build an 'EntityMap' from a list of entities.  The idea is that
---   this will be called once at startup, when loading the entities
---   from a file; see 'loadEntities'.
---
--- Also validates references to 'Display' attributes
-buildEntityMap :: Has (Throw LoadingFailure) sig m => Set WorldAttr -> [Entity] -> m EntityMap
-buildEntityMap validAttrs es = do
-  case findDup (map fst namedEntities) of
-    Nothing -> return ()
-    Just duped -> throwError $ Duplicate Entities duped
-
-  -- Validate attribute references
+-- | Validates references to 'Display' attributes
+validateAttrRefs :: Has (Throw LoadingFailure) sig m => Set WorldAttr -> [Entity] -> m ()
+validateAttrRefs validAttrs es =
   forM_ namedEntities $ \(eName, ent) ->
     case ent ^. entityDisplay . displayAttr of
       AWorld n ->
@@ -399,6 +391,17 @@ buildEntityMap validAttrs es = do
             , quote eName
             ]
       _ -> return ()
+ where
+  namedEntities = map (view entityName &&& id) es
+
+-- | Build an 'EntityMap' from a list of entities.  The idea is that
+--   this will be called once at startup, when loading the entities
+--   from a file; see 'loadEntities'.
+buildEntityMap :: Has (Throw LoadingFailure) sig m => [Entity] -> m EntityMap
+buildEntityMap es = do
+  case findDup (map fst namedEntities) of
+    Nothing -> return ()
+    Just duped -> throwError $ Duplicate Entities duped
 
   return $
     EntityMap
@@ -465,7 +468,9 @@ loadEntities = do
   decoded <-
     withThrow (entityFailure . CanNotParseYaml) . (liftEither <=< sendIO) $
       decodeFileEither fileName
-  withThrow entityFailure $ buildEntityMap (M.keysSet worldAttributes) decoded
+
+  withThrow entityFailure $ validateAttrRefs (M.keysSet worldAttributes) decoded
+  withThrow entityFailure $ buildEntityMap decoded
 
 ------------------------------------------------------------
 -- Entity lenses

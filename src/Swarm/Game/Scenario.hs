@@ -154,7 +154,11 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
     let mergedCosmetics = worldAttributes <> M.fromList (mapMaybe toHifiPair parsedAttrs)
         attrsUnion = M.keysSet mergedCosmetics
 
-    em <- case run . runThrow $ buildEntityMap attrsUnion emRaw of
+    case run . runThrow $ validateAttrRefs attrsUnion emRaw of
+      Right x -> return x
+      Left x -> failT [prettyText @LoadingFailure x]
+
+    em <- case run . runThrow $ buildEntityMap emRaw of
       Right x -> return x
       Left x -> failT [prettyText @LoadingFailure x]
 

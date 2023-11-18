@@ -125,7 +125,6 @@ library
                       Swarm.Game.ResourceLoading
                       Swarm.Game.Robot
                       Swarm.Game.Scenario
-                      Swarm.Game.Scenario.Topography.Cell
                       Swarm.Game.Universe
                       Swarm.Effect
                       Swarm.Effect.Time
@@ -146,6 +145,8 @@ library
                       Swarm.Game.Scenario.Scoring.GenericMetrics
                       Swarm.Game.Scenario.Status
                       Swarm.Game.Scenario.Style
+                      Swarm.Game.Scenario.Topography.Cell
+                      Swarm.Game.Scenario.Topography.Center
                       Swarm.Game.Scenario.Topography.EntityFacade
                       Swarm.Game.Scenario.Topography.Navigation.Portal
                       Swarm.Game.Scenario.Topography.Navigation.Util
@@ -210,10 +211,17 @@ library
                       Swarm.Language.Types
                       Swarm.Language.Value
                       Swarm.ReadableIORef
+                      Swarm.TUI.View
+                      Swarm.TUI.View.Achievement
                       Swarm.TUI.View.Attribute.Attr
                       Swarm.TUI.View.Attribute.CustomStyling
                       Swarm.TUI.View.Attribute.Color
                       Swarm.TUI.View.Attribute.Util
+                      Swarm.TUI.View.CellDisplay
+                      Swarm.TUI.View.Logo
+                      Swarm.TUI.View.Objective
+                      Swarm.TUI.View.Structure
+                      Swarm.TUI.View.Util
                       Swarm.TUI.Border
                       Swarm.Game.Scenario.Topography.Area
                       Swarm.TUI.Editor.Controller
@@ -236,12 +244,6 @@ library
                       Swarm.TUI.Model.Structure
                       Swarm.TUI.Model.UI
                       Swarm.TUI.Panel
-                      Swarm.TUI.View
-                      Swarm.TUI.View.Achievement
-                      Swarm.TUI.View.CellDisplay
-                      Swarm.TUI.View.Objective
-                      Swarm.TUI.View.Structure
-                      Swarm.TUI.View.Util
                       Swarm.Util
                       Swarm.Util.Effect
                       Swarm.Util.Erasable
