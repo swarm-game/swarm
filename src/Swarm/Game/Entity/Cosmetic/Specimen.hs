@@ -1,14 +1,37 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Preserve color fidelity for non-TUI rendering
-module Swarm.Game.Entity.Specimens where
+-- Entity and terrain coloring.
+module Swarm.Game.Entity.Cosmetic.Specimen where
 
 import Data.Bifunctor (bimap)
 import Data.Colour.SRGB (RGB (..))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Swarm.Game.Entity.Cosmetic
+
+-- * Named colors
+
+whiteRGB :: RGBColor
+whiteRGB = RGB 208 207 204
+
+brightRedRGB :: RGBColor
+brightRedRGB = RGB 246 97 81
+
+redRGB :: RGBColor
+redRGB = RGB 192 28 40
+
+greenRGB :: RGBColor
+greenRGB = RGB 38 162 105
+
+blueRGB :: RGBColor
+blueRGB = RGB 42 123 222
+
+brightYellowRGB :: RGBColor
+brightYellowRGB = RGB 233 173 12
+
+yellowRGB :: RGBColor
+yellowRGB = RGB 162 115 76
 
 -- * Entities
 
@@ -28,6 +51,8 @@ plant = (WorldAttr "plant", FgOnly greenRGB)
 worldAttributes :: Map WorldAttr HiFiColor
 worldAttributes =
   M.fromList $
+    -- these four are referenced elsewhere,
+    -- so they have their own toplevel definition
     [entity, water, rock, plant]
       <> map
         (bimap WorldAttr FgOnly)
@@ -44,8 +69,8 @@ worldAttributes =
         , ("gold", RGB 255 215 0)
         , ("snow", whiteRGB)
         , ("sand", RGB 194 178 128)
-        , ("fire", RGB 246 97 81)
-        , ("red", RGB 192 28 40)
+        , ("fire", brightRedRGB)
+        , ("red", redRGB)
         , ("green", greenRGB)
         , ("blue", blueRGB)
         ]
@@ -72,20 +97,3 @@ terrainAttributes =
     , stone
     , ice
     ]
-
--- * Named colors
-
-whiteRGB :: RGBColor
-whiteRGB = RGB 208 207 204
-
-blueRGB :: RGBColor
-blueRGB = RGB 42 123 222
-
-greenRGB :: RGBColor
-greenRGB = RGB 38 162 105
-
-brightYellowRGB :: RGBColor
-brightYellowRGB = RGB 233 173 12
-
-yellowRGB :: RGBColor
-yellowRGB = RGB 162 115 76

@@ -28,12 +28,8 @@ data HiFiColor
       RGBColor
   deriving (Show)
 
-newtype WorldAttr = WorldAttr
-  { attrSuffix :: String
-  }
+newtype WorldAttr = WorldAttr String
   deriving (Eq, Ord, Show)
 
-newtype TerrainAttr = TerrainAttr
-  { terrainAttrSuffix :: String
-  }
+newtype TerrainAttr = TerrainAttr String
   deriving (Eq, Ord, Show)
