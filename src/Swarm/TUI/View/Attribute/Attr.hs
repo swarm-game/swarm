@@ -19,19 +19,11 @@ module Swarm.TUI.View.Attribute.Attr (
   messageAttributeNames,
   toAttrName,
   getWorldAttrName,
-
-  -- ** Terrain attributes
-  dirtAttr,
-  grassAttr,
-  stoneAttr,
-  waterAttr,
-  iceAttr,
+  getTerrainAttrName,
 
   -- ** Common attributes
   entityAttr,
   robotAttr,
-  rockAttr,
-  plantAttr,
 
   -- ** Swarm TUI Attributes
   highlightAttr,
@@ -130,15 +122,6 @@ getWorldAttrName (WorldAttr n) = worldPrefix <> attrName n
 entityAttr :: AttrName
 entityAttr = getWorldAttrName $ fst entity
 
-waterAttr :: AttrName
-waterAttr = getWorldAttrName $ fst water
-
-rockAttr :: AttrName
-rockAttr = getWorldAttrName $ fst rock
-
-plantAttr :: AttrName
-plantAttr = getWorldAttrName $ fst rock
-
 robotMessagePrefix :: AttrName
 robotMessagePrefix = attrName "robotMessage"
 
@@ -168,12 +151,6 @@ meterAttributeNames = NE.map fst activityMeterAttributes
 -- | The default robot attribute.
 robotAttr :: AttrName
 robotAttr = attrName "robot"
-
-dirtAttr, grassAttr, stoneAttr, iceAttr :: AttrName
-dirtAttr = getTerrainAttrName $ fst dirt
-grassAttr = getTerrainAttrName $ fst grass
-stoneAttr = getTerrainAttrName $ fst stone
-iceAttr = getTerrainAttrName $ fst ice
 
 -- | Some defined attribute names used in the Swarm TUI.
 highlightAttr
