@@ -62,16 +62,15 @@ import Data.Aeson
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, isNothing, listToMaybe)
+import Data.Maybe (catMaybes, isNothing, listToMaybe, mapMaybe)
 import Data.Sequence (Seq)
 import Data.Set qualified as Set
 import Data.Set (Set)
-import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Entity
 import Swarm.Game.Entity.Cosmetic
-import Swarm.Game.Entity.Specimens (worldAttributes)
+import Swarm.Game.Entity.Cosmetic.Specimen (worldAttributes)
 import Swarm.Game.Failure
 import Swarm.Game.Location
 import Swarm.Game.Recipe
@@ -93,7 +92,6 @@ import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document)
-import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.Util (binTuples, failT)
 import Swarm.Util.Effect (ignoreWarnings, throwToMaybe, withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
@@ -153,7 +151,7 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
     emRaw <- liftE (v .:? "entities" .!= [])
 
     parsedAttrs <- liftE (v .:? "attrs" .!= [])
-    let mergedCosmetics = worldAttributes <> M.fromList (map toHifiPair parsedAttrs)
+    let mergedCosmetics = worldAttributes <> M.fromList (mapMaybe toHifiPair parsedAttrs)
         attrsUnion = M.keysSet mergedCosmetics
 
     em <- case run . runThrow $ buildEntityMap attrsUnion emRaw of

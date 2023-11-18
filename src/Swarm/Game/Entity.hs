@@ -111,7 +111,7 @@ import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Game.Display
 import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
-import Swarm.Game.Entity.Specimens (worldAttributes)
+import Swarm.Game.Entity.Cosmetic.Specimen (worldAttributes)
 import Swarm.Game.Failure
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
@@ -377,6 +377,8 @@ deviceForCap cap = fromMaybe [] . M.lookup cap . entitiesByCap
 -- | Build an 'EntityMap' from a list of entities.  The idea is that
 --   this will be called once at startup, when loading the entities
 --   from a file; see 'loadEntities'.
+--
+-- Also validates references to 'Display' attributes
 buildEntityMap :: Has (Throw LoadingFailure) sig m => Set WorldAttr -> [Entity] -> m EntityMap
 buildEntityMap validAttrs es = do
   case findDup (map fst namedEntities) of
@@ -385,19 +387,18 @@ buildEntityMap validAttrs es = do
 
   -- Validate attribute references
   forM_ namedEntities $ \(eName, ent) ->
-    let a = ent ^. entityDisplay . displayAttr
-     in case a of
-          AWorld n ->
-            unless (Set.member (WorldAttr $ T.unpack n) validAttrs)
-              . throwError
-              . CustomMessage
-              $ T.unwords
-                [ "Nonexistent attribute"
-                , quote n
-                , "referenced by entity"
-                , quote eName
-                ]
-          _ -> return ()
+    case ent ^. entityDisplay . displayAttr of
+      AWorld n ->
+        unless (Set.member (WorldAttr $ T.unpack n) validAttrs)
+          . throwError
+          . CustomMessage
+          $ T.unwords
+            [ "Nonexistent attribute"
+            , quote n
+            , "referenced by entity"
+            , quote eName
+            ]
+      _ -> return ()
 
   return $
     EntityMap

@@ -5,7 +5,8 @@
 module Swarm.Game.Scenario.Style where
 
 import Data.Aeson
-import Data.Colour.SRGB (RGB (..), sRGB24read, toSRGB24)
+import Data.Colour.Palette.BrewerSet (Kolor)
+import Data.Colour.SRGB (sRGB24read, toSRGB24)
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -55,15 +56,19 @@ instance ToJSON CustomAttr where
         { omitNothingFields = True
         }
 
--- | TODO Fail if neither fg nor bg are provided
-toHifiPair :: CustomAttr -> (WorldAttr, HiFiColor)
+-- | Must specify either a foreground or background color;
+-- just a style is not sufficient.
+toHifiPair :: CustomAttr -> Maybe (WorldAttr, HiFiColor)
 toHifiPair (CustomAttr n maybeFg maybeBg _) =
-  (WorldAttr n, c)
+  sequenceA (WorldAttr n, c)
  where
   c = case (maybeFg, maybeBg) of
-    (Just f, Just b) -> FgAndBg (conv f) (conv b)
-    (Just f, Nothing) -> FgOnly (conv f)
-    (Nothing, Just b) -> BgOnly (conv b)
-    (Nothing, Nothing) -> BgOnly $ RGB 0 0 0
+    (Just f, Just b) -> Just $ FgAndBg (conv f) (conv b)
+    (Just f, Nothing) -> Just $ FgOnly (conv f)
+    (Nothing, Just b) -> Just $ BgOnly (conv b)
+    (Nothing, Nothing) -> Nothing
 
-  conv (HexColor x) = toSRGB24 . sRGB24read $ T.unpack x
+  conv (HexColor x) = toSRGB24 kolor
+   where
+    kolor :: Kolor
+    kolor = sRGB24read $ T.unpack x

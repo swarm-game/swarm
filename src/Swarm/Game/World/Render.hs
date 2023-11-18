@@ -19,10 +19,10 @@ import Linear (V2 (..))
 import Swarm.Doc.Gen (loadStandaloneScenario)
 import Swarm.Game.Display (Attribute (AWorld), defaultChar, displayAttr)
 import Swarm.Game.Entity.Cosmetic
-import Swarm.Game.Entity.Specimens (terrainAttributes)
+import Swarm.Game.Entity.Cosmetic.Specimen (terrainAttributes)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (initNameGenerator, readAppData)
-import Swarm.Game.Scenario (Scenario, area, scenarioCosmetics, scenarioWorlds, worldName)
+import Swarm.Game.Scenario (Scenario, area, scenarioCosmetics, scenarioWorlds, ul, worldName)
 import Swarm.Game.Scenario.Status (seedLaunchParams)
 import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..), getAreaDimensions, isEmpty, upperLeftToBottomRight)
 import Swarm.Game.Scenario.Topography.Cell
@@ -74,15 +74,20 @@ mkPixelColor h = PixelRGBA8 r g b 255
   RGB r g b = case h of
     FgOnly c -> c
     BgOnly c -> c
-    -- TODO: if displayChar is whitespace, use bg color. Otherwise use fg color.
     FgAndBg _ c -> c
 
-getDisplayGrid :: Scenario -> GameState -> Maybe AreaDimensions -> [[PCell EntityFacade]]
+-- | When output size is not explicitly provided on command line,
+-- uses natural map bounds (if a map exists).
+getDisplayGrid ::
+  Scenario ->
+  GameState ->
+  Maybe AreaDimensions ->
+  [[PCell EntityFacade]]
 getDisplayGrid myScenario gs maybeSize =
   getMapRectangle
     mkFacade
     (getContentAt worlds . mkCosmic)
-    boundingBox
+    (mkBoundingBox areaDims upperLeftLocation)
  where
   mkCosmic = Cosmic $ worldName firstScenarioWorld
 
@@ -98,13 +103,21 @@ getDisplayGrid myScenario gs maybeSize =
     fromMaybe (AreaDimensions 20 10) $
       maybeSize <|> surfaceEmpty isEmpty mapAreaDims
 
-  upperLeftLocation = view planar vc .+^ V2 (negate $ floor $ fromIntegral w / 2) (floor $ fromIntegral h / 2)
-  lowerRightLocation = upperLeftToBottomRight areaDims upperLeftLocation
+  upperLeftLocation =
+    if null maybeSize && not (isEmpty mapAreaDims)
+      then ul firstScenarioWorld
+      else view planar vc .+^ V2 (negate $ w `div` 2) (h `div` 2)
 
-  locationBounds = (upperLeftLocation, lowerRightLocation)
-  boundingBox = both W.locToCoords locationBounds
+  mkBoundingBox areaDimens upperLeftLoc =
+    both W.locToCoords locationBounds
+   where
+    lowerRightLocation = upperLeftToBottomRight areaDimens upperLeftLoc
+    locationBounds = (upperLeftLoc, lowerRightLocation)
 
-getRenderableGrid :: RenderOpts -> FilePath -> IO ([[PCell EntityFacade]], M.Map WorldAttr HiFiColor)
+getRenderableGrid ::
+  RenderOpts ->
+  FilePath ->
+  IO ([[PCell EntityFacade]], M.Map WorldAttr HiFiColor)
 getRenderableGrid (RenderOpts maybeSeed _ _ maybeSize) fp = simpleErrorHandle $ do
   (myScenario, (worldDefs, entities, recipes)) <- loadStandaloneScenario fp
   appDataMap <- readAppData
@@ -131,6 +144,8 @@ renderScenarioMap opts fp = do
   (grid, _) <- getRenderableGrid opts fp
   return $ map (map getDisplayChar) grid
 
+-- | To facilitate random access
+-- when assembling the image
 gridToVec :: [[a]] -> V.Vector (V.Vector a)
 gridToVec = V.fromList . map V.fromList
 

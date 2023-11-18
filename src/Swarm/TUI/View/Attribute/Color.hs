@@ -1,7 +1,9 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Preserve color fidelity for non-TUI rendering
+-- Facilitate color definitions to serve as a single source
+-- of truth across TUI rendering and other mediums
+-- (e.g. PNG output).
 module Swarm.TUI.View.Attribute.Color where
 
 import Brick qualified as B
@@ -14,7 +16,7 @@ import Swarm.Game.Entity.Cosmetic (HiFiColor (..))
 --
 -- Preferably, in most cases a single source of truth serves to specify
 -- a color upstream, and the other of the two specifications is derived,
--- using the utility functions in this module.
+-- using the 'fromHiFi' function.
 data EntityStyle = EntityStyle
   { vtyColor :: V.Attr
   -- ^ Includes foreground, background, and styling
