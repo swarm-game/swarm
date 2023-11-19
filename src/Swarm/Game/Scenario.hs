@@ -130,7 +130,7 @@ data Scenario = Scenario
   , _scenarioSeed :: Maybe Int
   , _scenarioAttrs :: [CustomAttr]
   , _scenarioEntities :: EntityMap
-  , _scenarioCosmetics :: M.Map WorldAttr HiFiColor
+  , _scenarioCosmetics :: M.Map WorldAttr PreservableColor
   , _scenarioRecipes :: [Recipe Entity]
   , _scenarioKnown :: Set EntityName
   , _scenarioWorlds :: NonEmpty WorldDescription
@@ -285,7 +285,7 @@ scenarioAttrs :: Lens' Scenario [CustomAttr]
 scenarioEntities :: Lens' Scenario EntityMap
 
 -- | High-fidelity color map for entities
-scenarioCosmetics :: Lens' Scenario (M.Map WorldAttr HiFiColor)
+scenarioCosmetics :: Lens' Scenario (M.Map WorldAttr PreservableColor)
 
 -- | Any custom recipes used in this scenario.
 scenarioRecipes :: Lens' Scenario [Recipe Entity]

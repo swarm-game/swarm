@@ -10,45 +10,22 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Swarm.Game.Entity.Cosmetic
 
--- * Named colors
-
-whiteRGB :: RGBColor
-whiteRGB = RGB 208 207 204
-
-brightRedRGB :: RGBColor
-brightRedRGB = RGB 246 97 81
-
-redRGB :: RGBColor
-redRGB = RGB 192 28 40
-
-greenRGB :: RGBColor
-greenRGB = RGB 38 162 105
-
-blueRGB :: RGBColor
-blueRGB = RGB 18 72 139
-
-brightYellowRGB :: RGBColor
-brightYellowRGB = RGB 233 173 12
-
-yellowRGB :: RGBColor
-yellowRGB = RGB 162 115 76
-
 -- * Entities
 
-entity :: (WorldAttr, HiFiColor)
-entity = (WorldAttr "entity", FgOnly whiteRGB)
+entity :: (WorldAttr, PreservableColor)
+entity = (WorldAttr "entity", FgOnly $ AnsiColor White)
 
-water :: (WorldAttr, HiFiColor)
-water = (WorldAttr "water", FgAndBg whiteRGB blueRGB)
+water :: (WorldAttr, PreservableColor)
+water = (WorldAttr "water", FgAndBg (AnsiColor White) (AnsiColor Blue))
 
-rock :: (WorldAttr, HiFiColor)
-rock = (WorldAttr "rock", FgOnly $ RGB 80 80 80)
+rock :: (WorldAttr, PreservableColor)
+rock = (WorldAttr "rock", FgOnly $ Triple $ RGB 80 80 80)
 
-plant :: (WorldAttr, HiFiColor)
-plant = (WorldAttr "plant", FgOnly greenRGB)
+plant :: (WorldAttr, PreservableColor)
+plant = (WorldAttr "plant", FgOnly $ AnsiColor Green)
 
 -- | Colors of entities in the world.
-worldAttributes :: Map WorldAttr HiFiColor
+worldAttributes :: Map WorldAttr PreservableColor
 worldAttributes =
   M.fromList $
     -- these four are referenced elsewhere,
@@ -56,40 +33,40 @@ worldAttributes =
     [entity, water, rock, plant]
       <> map
         (bimap WorldAttr FgOnly)
-        [ ("device", brightYellowRGB)
-        , ("wood", RGB 139 69 19)
-        , ("flower", RGB 200 0 200)
-        , ("rubber", RGB 245 224 179)
-        , ("copper", yellowRGB)
-        , ("copper'", RGB 78 117 102)
-        , ("iron", RGB 97 102 106)
-        , ("iron'", RGB 183 65 14)
-        , ("quartz", whiteRGB)
-        , ("silver", RGB 192 192 192)
-        , ("gold", RGB 255 215 0)
-        , ("snow", whiteRGB)
-        , ("sand", RGB 194 178 128)
-        , ("fire", brightRedRGB)
-        , ("red", redRGB)
-        , ("green", greenRGB)
-        , ("blue", blueRGB)
+        [ ("device", AnsiColor BrightYellow)
+        , ("wood", Triple $ RGB 139 69 19)
+        , ("flower", Triple $ RGB 200 0 200)
+        , ("rubber", Triple $ RGB 245 224 179)
+        , ("copper", AnsiColor Yellow)
+        , ("copper'", Triple $ RGB 78 117 102)
+        , ("iron", Triple $ RGB 97 102 106)
+        , ("iron'", Triple $ RGB 183 65 14)
+        , ("quartz", AnsiColor White)
+        , ("silver", Triple $ RGB 192 192 192)
+        , ("gold", Triple $ RGB 255 215 0)
+        , ("snow", AnsiColor White)
+        , ("sand", Triple $ RGB 194 178 128)
+        , ("fire", AnsiColor BrightRed)
+        , ("red", AnsiColor Red)
+        , ("green", AnsiColor Green)
+        , ("blue", AnsiColor Blue)
         ]
 
 -- * Terrain
 
-dirt :: (TerrainAttr, HiFiColor)
-dirt = (TerrainAttr "dirt", FgOnly $ RGB 165 42 42)
+dirt :: (TerrainAttr, PreservableColor)
+dirt = (TerrainAttr "dirt", FgOnly $ Triple $ RGB 165 42 42)
 
-grass :: (TerrainAttr, HiFiColor)
-grass = (TerrainAttr "grass", FgOnly $ RGB 0 32 0) -- dark green
+grass :: (TerrainAttr, PreservableColor)
+grass = (TerrainAttr "grass", FgOnly $ Triple $ RGB 0 32 0) -- dark green
 
-stone :: (TerrainAttr, HiFiColor)
-stone = (TerrainAttr "stone", FgOnly $ RGB 32 32 32)
+stone :: (TerrainAttr, PreservableColor)
+stone = (TerrainAttr "stone", FgOnly $ Triple $ RGB 32 32 32)
 
-ice :: (TerrainAttr, HiFiColor)
-ice = (TerrainAttr "ice", BgOnly whiteRGB)
+ice :: (TerrainAttr, PreservableColor)
+ice = (TerrainAttr "ice", BgOnly $ AnsiColor White)
 
-terrainAttributes :: M.Map TerrainAttr HiFiColor
+terrainAttributes :: M.Map TerrainAttr PreservableColor
 terrainAttributes =
   M.fromList
     [ dirt

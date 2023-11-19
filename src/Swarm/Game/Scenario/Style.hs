@@ -58,17 +58,17 @@ instance ToJSON CustomAttr where
 
 -- | Must specify either a foreground or background color;
 -- just a style is not sufficient.
-toHifiPair :: CustomAttr -> Maybe (WorldAttr, HiFiColor)
+toHifiPair :: CustomAttr -> Maybe (WorldAttr, PreservableColor)
 toHifiPair (CustomAttr n maybeFg maybeBg _) =
-  sequenceA (WorldAttr n, c)
+  sequenceA (WorldAttr n, fmap conv <$> c)
  where
   c = case (maybeFg, maybeBg) of
-    (Just f, Just b) -> Just $ FgAndBg (conv f) (conv b)
-    (Just f, Nothing) -> Just $ FgOnly (conv f)
-    (Nothing, Just b) -> Just $ BgOnly (conv b)
+    (Just f, Just b) -> Just $ FgAndBg f b
+    (Just f, Nothing) -> Just $ FgOnly f
+    (Nothing, Just b) -> Just $ BgOnly b
     (Nothing, Nothing) -> Nothing
 
-  conv (HexColor x) = toSRGB24 kolor
+  conv (HexColor x) = Triple $ toSRGB24 kolor
    where
     kolor :: Kolor
     kolor = sRGB24read $ T.unpack x

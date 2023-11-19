@@ -15,6 +15,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Data.Tuple.Extra (both)
 import Data.Vector qualified as V
+import Graphics.Vty.Attributes.Color240
 import Linear (V2 (..))
 import Swarm.Doc.Gen (loadStandaloneScenario)
 import Swarm.Game.Display (Attribute (AWorld), defaultChar, displayAttr)
@@ -55,7 +56,7 @@ getDisplayChar = maybe ' ' facadeChar . erasableToMaybe . cellEntity
  where
   facadeChar (EntityFacade _ d) = view defaultChar d
 
-getDisplayColor :: M.Map WorldAttr HiFiColor -> PCell EntityFacade -> PixelRGBA8
+getDisplayColor :: M.Map WorldAttr PreservableColor -> PCell EntityFacade -> PixelRGBA8
 getDisplayColor aMap (Cell terr cellEnt _) =
   maybe terrainFallback facadeColor $ erasableToMaybe cellEnt
  where
@@ -68,13 +69,44 @@ getDisplayColor aMap (Cell terr cellEnt _) =
     AWorld n -> M.lookup (WorldAttr $ T.unpack n) aMap
     _ -> Nothing
 
-mkPixelColor :: HiFiColor -> PixelRGBA8
+-- | Round-trip conversion to fit into the terminal color space
+roundTripVty :: RGBColor -> RGBColor
+roundTripVty c@(RGB r g b) =
+  maybe
+    c
+    (\(r', g', b') -> fromIntegral <$> RGB r' g' b')
+    converted
+ where
+  converted = color240CodeToRGB $ rgbColorToColor240 r g b
+
+mkPixelColor :: PreservableColor -> PixelRGBA8
 mkPixelColor h = PixelRGBA8 r g b 255
  where
-  RGB r g b = case h of
+  RGB r g b = case fromHiFi h of
     FgOnly c -> c
     BgOnly c -> c
     FgAndBg _ c -> c
+
+-- | Since terminals can customize these named
+-- colors using themes or explicit user overrides,
+-- these color assignments are somewhat arbitrary.
+namedToTriple :: NamedColor -> RGBColor
+namedToTriple = \case
+  White -> RGB 208 207 204
+  BrightRed -> RGB 246 97 81
+  Red -> RGB 192 28 40
+  Green -> RGB 38 162 105
+  Blue -> RGB 18 72 139
+  BrightYellow -> RGB 233 173 12
+  Yellow -> RGB 162 115 76
+
+fromHiFi :: PreservableColor -> HiFiColor RGBColor
+fromHiFi = fmap $ \case
+  Triple x -> roundTripVty x
+  -- The triples we've manually assigned for named
+  -- ANSI colors do not need to be round-tripped, since
+  -- those triples are not inputs to the VTY attribute creation.
+  AnsiColor x -> namedToTriple x
 
 -- | When output size is not explicitly provided on command line,
 -- uses natural map bounds (if a map exists).
@@ -117,7 +149,7 @@ getDisplayGrid myScenario gs maybeSize =
 getRenderableGrid ::
   RenderOpts ->
   FilePath ->
-  IO ([[PCell EntityFacade]], M.Map WorldAttr HiFiColor)
+  IO ([[PCell EntityFacade]], M.Map WorldAttr PreservableColor)
 getRenderableGrid (RenderOpts maybeSeed _ _ maybeSize) fp = simpleErrorHandle $ do
   (myScenario, (worldDefs, entities, recipes)) <- loadStandaloneScenario fp
   appDataMap <- readAppData
