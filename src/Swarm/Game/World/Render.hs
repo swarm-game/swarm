@@ -138,7 +138,7 @@ getDisplayGrid myScenario gs maybeSize =
   upperLeftLocation =
     if null maybeSize && not (isEmpty mapAreaDims)
       then ul firstScenarioWorld
-      else view planar vc .+^ V2 (negate $ w `div` 2) (h `div` 2)
+      else view planar vc .+^ ((`div` 2) <$> V2 (negate w) h)
 
   mkBoundingBox areaDimens upperLeftLoc =
     both W.locToCoords locationBounds
