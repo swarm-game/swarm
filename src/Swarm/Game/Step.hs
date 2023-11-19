@@ -1443,6 +1443,21 @@ execConst c vs s k = do
             `isJustOr` cmdExn Floorplan (pure $ T.unwords ["Unknown structure", quote name])
         return . mkReturn . getAreaDimensions . entityGrid $ withGrid structureDef
       _ -> badConst
+    HasTag -> case vs of
+      [VText eName, VText tName] -> do
+        em <- use $ landscape . entityMap
+        e <-
+          lookupEntityName eName em
+            `isJustOrFail` ["I've never heard of", indefiniteQ eName <> "."]
+        return $ mkReturn $ tName `S.member` (e ^. entityTags)
+      _ -> badConst
+    TagMembers -> case vs of
+      [VText tagName, VInt idx] -> do
+        tm <- use $ discovery . tagMembers
+        case M.lookup tagName tm of
+          Nothing -> throwError $ CmdFailed Waypoint (T.unwords ["No tag named", tagName]) Nothing
+          Just theMembers -> return $ mkReturn (NE.length theMembers, indexWrapNonEmpty theMembers idx)
+      _ -> badConst
     Detect -> case vs of
       [VText name, VRect x1 y1 x2 y2] -> do
         loc <- use robotLocation

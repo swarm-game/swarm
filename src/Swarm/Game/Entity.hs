@@ -32,6 +32,7 @@ module Swarm.Game.Entity (
   entityPlural,
   entityNameFor,
   entityDescription,
+  entityTags,
   entityOrientation,
   entityGrowth,
   entityCombustion,
@@ -255,6 +256,8 @@ data Entity = Entity
   , _entityDescription :: Document Syntax
   -- ^ A longer-form description. Each 'Text' value is one
   --   paragraph.
+  , _entityTags :: Set Text
+  -- ^ A set of categories to which the entity belongs
   , _entityOrientation :: Maybe Heading
   -- ^ The entity's orientation (if it has one).  For example, when
   --   a robot moves, it moves in the direction of its orientation.
@@ -281,12 +284,13 @@ data Entity = Entity
 -- | The @Hashable@ instance for @Entity@ ignores the cached hash
 --   value and simply combines the other fields.
 instance Hashable Entity where
-  hashWithSalt s (Entity _ disp nm pl descr orient grow combust yld props caps inv) =
+  hashWithSalt s (Entity _ disp nm pl descr tags orient grow combust yld props caps inv) =
     s
       `hashWithSalt` disp
       `hashWithSalt` nm
       `hashWithSalt` pl
       `hashWithSalt` docToText descr
+      `hashWithSalt` tags
       `hashWithSalt` orient
       `hashWithSalt` grow
       `hashWithSalt` combust
@@ -330,6 +334,7 @@ mkEntity disp nm descr props caps =
       nm
       Nothing
       descr
+      mempty
       Nothing
       Nothing
       Nothing
@@ -394,7 +399,8 @@ instance FromJSON Entity where
               <$> v .: "display"
               <*> v .: "name"
               <*> v .:? "plural"
-              <*> (v .: "description")
+              <*> v .: "description"
+              <*> v .:? "tags" .!= mempty
               <*> v .:? "orientation"
               <*> v .:? "growth"
               <*> v .:? "combustion"
@@ -418,6 +424,7 @@ instance ToJSON Entity where
       [ "display" .= (e ^. entityDisplay)
       , "name" .= (e ^. entityName)
       , "description" .= (e ^. entityDescription)
+      , "tags" .= (e ^. entityTags)
       ]
         ++ ["plural" .= (e ^. entityPlural) | isJust (e ^. entityPlural)]
         ++ ["orientation" .= (e ^. entityOrientation) | isJust (e ^. entityOrientation)]
@@ -489,6 +496,10 @@ entityNameFor _ = to $ \e ->
 --   represents a paragraph.
 entityDescription :: Lens' Entity (Document Syntax)
 entityDescription = hashedLens _entityDescription (\e x -> e {_entityDescription = x})
+
+-- | A set of categories to which the entity belongs
+entityTags :: Lens' Entity (Set Text)
+entityTags = hashedLens _entityTags (\e x -> e {_entityTags = x})
 
 -- | The direction this entity is facing (if it has one).
 entityOrientation :: Lens' Entity (Maybe Heading)

@@ -102,6 +102,7 @@ module Swarm.Game.State (
   knownEntities,
   gameAchievements,
   structureRecognition,
+  tagMembers,
 
   -- *** Landscape
   Landscape,
@@ -525,9 +526,10 @@ data Discovery = Discovery
   { _allDiscoveredEntities :: Inventory
   , _availableRecipes :: Notifications (Recipe Entity)
   , _availableCommands :: Notifications Const
-  , _knownEntities :: [Text]
+  , _knownEntities :: S.Set EntityName
   , _gameAchievements :: Map GameplayAchievement Attainment
   , _structureRecognition :: StructureRecognizer
+  , _tagMembers :: Map Text (NonEmpty EntityName)
   }
 
 makeLensesNoSigs ''Discovery
@@ -543,13 +545,16 @@ availableCommands :: Lens' Discovery (Notifications Const)
 
 -- | The names of entities that should be considered \"known\", that is,
 --   robots know what they are without having to scan them.
-knownEntities :: Lens' Discovery [Text]
+knownEntities :: Lens' Discovery (S.Set EntityName)
 
 -- | Map of in-game achievements that were obtained
 gameAchievements :: Lens' Discovery (Map GameplayAchievement Attainment)
 
 -- | Recognizer for robot-constructed structures
 structureRecognition :: Lens' Discovery StructureRecognizer
+
+-- | Recognizer for robot-constructed structures
+tagMembers :: Lens' Discovery (Map Text (NonEmpty EntityName))
 
 data Landscape = Landscape
   { _worldNavigation :: Navigation (M.Map SubworldName) Location
@@ -1185,11 +1190,12 @@ initGameState gsc =
           { _availableRecipes = mempty
           , _availableCommands = mempty
           , _allDiscoveredEntities = empty
-          , _knownEntities = []
+          , _knownEntities = mempty
           , -- This does not need to be initialized with anything,
             -- since the master list of achievements is stored in UIState
             _gameAchievements = mempty
           , _structureRecognition = StructureRecognizer (RecognizerAutomatons mempty mempty) emptyFoundStructures []
+          , _tagMembers = mempty
           }
     , _activeRobots = IS.empty
     , _waitingRobots = M.empty

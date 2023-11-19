@@ -58,6 +58,8 @@ import Control.Effect.Throw
 import Control.Lens hiding (from, (.=), (<.>))
 import Control.Monad (filterM, unless, (<=<))
 import Data.Aeson
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
@@ -126,7 +128,7 @@ data Scenario = Scenario
   , _scenarioAttrs :: [CustomAttr]
   , _scenarioEntities :: EntityMap
   , _scenarioRecipes :: [Recipe Entity]
-  , _scenarioKnown :: [Text]
+  , _scenarioKnown :: Set EntityName
   , _scenarioWorlds :: NonEmpty WorldDescription
   , _scenarioNavigation :: Navigation (M.Map SubworldName) Location
   , _scenarioStructures :: StaticStructureInfo
@@ -154,7 +156,7 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
     -- with any custom entities parsed above
     localE fst $ withE em $ do
       -- parse 'known' entity names and make sure they exist
-      known <- liftE (v .:? "known" .!= [])
+      known <- liftE (v .:? "known" .!= mempty)
       em' <- getE
       case filter (isNothing . (`lookupEntityName` em')) known of
         [] -> return ()
@@ -227,7 +229,7 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
         <*> liftE (v .:? "attrs" .!= [])
         <*> pure em
         <*> v ..:? "recipes" ..!= []
-        <*> pure known
+        <*> pure (Set.fromList known)
         <*> pure allWorlds
         <*> pure mergedNavigation
         <*> pure structureInfo
@@ -273,7 +275,7 @@ scenarioRecipes :: Lens' Scenario [Recipe Entity]
 
 -- | List of entities that should be considered "known", so robots do
 --   not have to scan them.
-scenarioKnown :: Lens' Scenario [Text]
+scenarioKnown :: Lens' Scenario (Set EntityName)
 
 -- | The subworlds of the scenario.
 -- The "root" subworld shall always be at the head of the list, by construction.

@@ -228,6 +228,10 @@ data Const
     Structure
   | -- | Get the width and height of a structure template
     Floorplan
+  | -- | Answer whether a given entity has the given tag
+    HasTag
+  | -- | Cycle through the entity names that are labeled with a given tag
+    TagMembers
   | -- | Locate the closest instance of a given entity within the rectangle
     -- specified by opposite corners, relative to the current location.
     Detect
@@ -658,6 +662,18 @@ constInfo c = case c of
     command 1 Intangible . doc "Get the dimensions of a structure template" $
       [ "Returns a tuple of (width, height) for the structure of the requested name."
       , "Yields an error if the supplied string is not the name of a structure."
+      ]
+  HasTag ->
+    command 2 Intangible . doc "Check whether the given entity has the given tag" $
+      [ "Returns true if the first argument is an entity that is labeled by the tag in the second argument."
+      , "Yields an error if the first argument is not a known entity."
+      ]
+  TagMembers ->
+    command 2 Intangible . doc "Get the entities labeled by a tag, by alphabetical index" $
+      [ "Returns a tuple of (member count, entity)."
+      , "The supplied index will be wrapped automatically, modulo the member count."
+      , "A robot can use the count to know whether they have iterated over the full list."
+      , "This command does not take into account whether an entity is 'known'."
       ]
   Detect ->
     command 2 Intangible . doc "Detect an entity within a rectangle." $
