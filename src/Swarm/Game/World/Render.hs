@@ -100,7 +100,7 @@ namedToTriple = \case
   BrightYellow -> RGB 233 173 12
   Yellow -> RGB 162 115 76
 
-fromHiFi :: PreservableColor -> HiFiColor RGBColor
+fromHiFi :: PreservableColor -> ColorLayers RGBColor
 fromHiFi = fmap $ \case
   Triple x -> roundTripVty x
   -- The triples we've manually assigned for named
