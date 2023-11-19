@@ -31,4 +31,4 @@ fromHiFi hifi = EntityStyle v hifi
     BgOnly c -> B.bg $ mkBrickColor c
     FgAndBg foreground background -> mkBrickColor foreground `B.on` mkBrickColor background
 
-  mkBrickColor (RGB r g b) = V.RGBColor r g b
+  mkBrickColor (RGB r g b) = V.rgbColor r g b
