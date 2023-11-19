@@ -553,7 +553,7 @@ gameAchievements :: Lens' Discovery (Map GameplayAchievement Attainment)
 -- | Recognizer for robot-constructed structures
 structureRecognition :: Lens' Discovery StructureRecognizer
 
--- | Recognizer for robot-constructed structures
+-- | Map from tags to entities that possess that tag
 tagMembers :: Lens' Discovery (Map Text (NonEmpty EntityName))
 
 data Landscape = Landscape
