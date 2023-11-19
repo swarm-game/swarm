@@ -73,6 +73,12 @@ unifyCheckF t1 t2 = case (t1, t2) of
     True -> Equal
     False -> Apart
   (TyVarF {}, _) -> Apart
+  (TyRecVarF v1, TyRecVarF v2) -> case v1 == v2 of
+    True -> Equal
+    False -> Apart
+  (TyRecVarF {}, _) -> Apart
+  (TyMuF _ t1', TyMuF _ t2') -> unifyCheck t1' t2'
+  (TyMuF {}, _) -> Apart
   (TySumF t11 t12, TySumF t21 t22) -> unifyCheck t11 t21 <> unifyCheck t12 t22
   (TySumF {}, _) -> Apart
   (TyProdF t11 t12, TyProdF t21 t22) -> unifyCheck t11 t21 <> unifyCheck t12 t22
