@@ -25,7 +25,7 @@ greenRGB :: RGBColor
 greenRGB = RGB 38 162 105
 
 blueRGB :: RGBColor
-blueRGB = RGB 42 123 222
+blueRGB = RGB 18 72 139
 
 brightYellowRGB :: RGBColor
 brightYellowRGB = RGB 233 173 12
