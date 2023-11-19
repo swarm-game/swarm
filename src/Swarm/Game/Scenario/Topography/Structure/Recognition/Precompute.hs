@@ -42,13 +42,15 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (
 ) where
 
 import Control.Arrow ((&&&))
+import Control.Lens (view)
 import Data.Int (Int32)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, mapMaybe)
 import Data.Semigroup (sconcat)
+import Data.Set qualified as S
 import Data.Tuple (swap)
-import Swarm.Game.Entity (Entity)
+import Swarm.Game.Entity (Entity, entityName)
 import Swarm.Game.Scenario (StaticStructureInfo (..))
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Structure
@@ -75,23 +77,30 @@ mkOffsets pos xs =
     pure $
       fromIntegral (length xs) - 1 - pos
 
--- | Given a row of entities observed in the world,
+-- | Given each possible row of entities observed in the world,
 -- yield a searcher that can determine whether adjacent
 -- rows constitute a complete structure.
 mkRowLookup ::
   NE.NonEmpty StructureRow ->
-  AutomatonInfo SymbolSequence StructureRow
+  AutomatonInfo SymbolSequence StructureWithGrid
 mkRowLookup neList =
-  AutomatonInfo bounds sm
+  AutomatonInfo participatingEnts bounds sm
  where
-  mkSmTuple = entityGrid . wholeStructure &&& id
+  mkSmTuple = entityGrid &&& id
+  tuples = NE.toList $ NE.map (mkSmTuple . wholeStructure) neList
+
+  -- All of the unique entities across all of the full candidate structures
+  participatingEnts =
+    S.fromList $
+      map (view entityName) $
+        concatMap (concatMap catMaybes . fst) tuples
 
   deriveRowOffsets :: StructureRow -> InspectionOffsets
   deriveRowOffsets (StructureRow (StructureWithGrid _ g) rwIdx _) =
     mkOffsets rwIdx g
 
   bounds = sconcat $ NE.map deriveRowOffsets neList
-  sm = makeStateMachine $ NE.toList $ NE.map mkSmTuple neList
+  sm = makeStateMachine tuples
 
 -- | Make the first-phase lookup map, keyed by 'Entity',
 -- along with automatons whose key symbols are "Maybe Entity".
@@ -117,11 +126,19 @@ mkEntityLookup grids =
     sm2D = mkRowLookup structureRowsNE
 
   mkValues :: NE.NonEmpty SingleRowEntityOccurrences -> AutomatonInfo AtomicKeySymbol StructureSearcher
-  mkValues neList = AutomatonInfo bounds sm
+  mkValues neList = AutomatonInfo participatingEnts bounds sm
    where
+    participatingEnts =
+      S.fromList
+        . map (view entityName)
+        . catMaybes
+        $ concatMap fst tuples
+
+    tuples = M.toList $ M.mapWithKey mkSmValue groupedByUniqueRow
+
     groupedByUniqueRow = binTuples $ NE.toList $ NE.map (rowContent . myRow &&& id) neList
     bounds = sconcat $ NE.map expandedOffsets neList
-    sm = makeStateMachine $ M.toList $ M.mapWithKey mkSmValue groupedByUniqueRow
+    sm = makeStateMachine tuples
 
   -- The values of this map are guaranteed to contain only one
   -- entry per row of a given structure.
