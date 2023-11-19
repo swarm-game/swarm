@@ -402,7 +402,6 @@ buildEntityMap es = do
   case findDup (map fst namedEntities) of
     Nothing -> return ()
     Just duped -> throwError $ Duplicate Entities duped
-
   return $
     EntityMap
       { entitiesByName = M.fromList namedEntities

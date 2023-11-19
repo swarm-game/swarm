@@ -7,7 +7,22 @@ module Swarm.Game.Entity.Cosmetic where
 import Data.Colour.SRGB (RGB)
 import Data.Word (Word8)
 
+data NamedColor
+  = White
+  | BrightRed
+  | Red
+  | Green
+  | Blue
+  | BrightYellow
+  | Yellow
+  deriving (Show)
+
 type RGBColor = RGB Word8
+
+data TrueColor
+  = AnsiColor NamedColor
+  | Triple RGBColor
+  deriving (Show)
 
 -- | High-fidelity color representation, for rendering
 -- outside of the TUI.
@@ -18,15 +33,17 @@ type RGBColor = RGB Word8
 -- * Single pixel per world cell (one color must be chosen between foreground and background, if both are specified)
 -- * Pixel block per world cell (can show two colors in some stylized manner)
 -- * Glyph per world cell (can render a colored display character on a colored background)
-data HiFiColor
-  = FgOnly RGBColor
-  | BgOnly RGBColor
+data HiFiColor a
+  = FgOnly a
+  | BgOnly a
   | FgAndBg
       -- | foreground
-      RGBColor
+      a
       -- | background
-      RGBColor
-  deriving (Show)
+      a
+  deriving (Show, Functor)
+
+type PreservableColor = HiFiColor TrueColor
 
 newtype WorldAttr = WorldAttr String
   deriving (Eq, Ord, Show)

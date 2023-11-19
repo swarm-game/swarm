@@ -51,6 +51,7 @@ import Brick.Widgets.Edit qualified as E
 import Brick.Widgets.List (listSelectedFocusedAttr)
 import Control.Arrow ((***))
 import Data.Colour.Palette.BrewerSet
+import Data.Colour.SRGB (RGB (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
@@ -60,7 +61,6 @@ import Graphics.Vty qualified as V
 import Swarm.Game.Display (Attribute (..))
 import Swarm.Game.Entity.Cosmetic
 import Swarm.Game.Entity.Cosmetic.Specimen
-import Swarm.TUI.View.Attribute.Color
 import Swarm.TUI.View.Attribute.Util
 
 toAttrName :: Attribute -> AttrName
@@ -71,6 +71,23 @@ toAttrName = \case
   ATerrain n -> terrainPrefix <> attrName (unpack n)
   ADefault -> defAttr
 
+toVtyAttr :: PreservableColor -> V.Attr
+toVtyAttr hifi = case fmap mkBrickColor hifi of
+  FgOnly c -> fg c
+  BgOnly c -> bg c
+  FgAndBg foreground background -> foreground `on` background
+ where
+  mkBrickColor = \case
+    Triple (RGB r g b) -> V.rgbColor r g b
+    AnsiColor x -> case x of
+      White -> V.white
+      BrightRed -> V.brightRed
+      Red -> V.red
+      Green -> V.green
+      Blue -> V.blue
+      BrightYellow -> V.brightYellow
+      Yellow -> V.yellow
+
 -- | A mapping from the defined attribute names to TUI attributes.
 swarmAttrMap :: AttrMap
 swarmAttrMap =
@@ -78,8 +95,8 @@ swarmAttrMap =
     V.defAttr
     $ NE.toList activityMeterAttributes
       <> NE.toList robotMessageAttributes
-      <> map (getWorldAttrName *** vtyColor . fromHiFi) (M.toList worldAttributes)
-      <> map (getTerrainAttrName *** vtyColor . fromHiFi) (M.toList terrainAttributes)
+      <> map (getWorldAttrName *** toVtyAttr) (M.toList worldAttributes)
+      <> map (getTerrainAttrName *** toVtyAttr) (M.toList terrainAttributes)
       <> [ -- Robot attribute
            (robotAttr, fg V.white `V.withStyle` V.bold)
          , -- UI rendering attributes
