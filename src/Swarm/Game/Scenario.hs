@@ -58,13 +58,13 @@ import Control.Effect.Throw
 import Control.Lens hiding (from, (.=), (<.>))
 import Control.Monad (filterM, unless, (<=<))
 import Data.Aeson
-import Data.Set (Set)
-import Data.Set qualified as Set
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import Data.Sequence (Seq)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Entity

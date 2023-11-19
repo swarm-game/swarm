@@ -9,13 +9,13 @@ module Swarm.TUI.View.CellDisplay where
 import Brick
 import Control.Lens (to, view, (&), (.~), (^.))
 import Data.ByteString (ByteString)
-import Data.Set (Set)
-import Data.Set qualified as S
 import Data.Hash.Murmur
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (maybeToList)
 import Data.Semigroup (sconcat)
+import Data.Set (Set)
+import Data.Set qualified as S
 import Data.Tagged (unTagged)
 import Data.Word (Word32)
 import Linear.Affine ((.-.))
