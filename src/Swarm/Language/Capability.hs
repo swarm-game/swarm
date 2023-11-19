@@ -82,6 +82,10 @@ data Capability
     CWaypoint
   | -- | Execute the 'Structure' and 'Floorplan' commands
     CStructure
+  | -- | Execute the 'HasTag' command
+    CHastag
+  | -- | Execute the 'TagMembers' command
+    CTagmembers
   | -- | Execute the 'Whereami' command
     CSenseloc
   | -- | Execute the 'Blocked' command
@@ -265,6 +269,8 @@ constCaps = \case
   Waypoint -> Just CWaypoint
   Structure -> Just CStructure
   Floorplan -> Just CStructure
+  HasTag -> Just CHastag
+  TagMembers -> Just CTagmembers
   Detect -> Just CDetectloc
   Resonate -> Just CDetectcount
   Density -> Just CDetectcount

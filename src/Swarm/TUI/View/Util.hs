@@ -145,6 +145,7 @@ drawMarkdown d = do
   rawAttr = \case
     "entity" -> greenAttr
     "structure" -> redAttr
+    "tag" -> yellowAttr
     "type" -> magentaAttr
     _snippet -> highlightAttr -- same as plain code
 

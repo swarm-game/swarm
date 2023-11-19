@@ -776,6 +776,8 @@ inferConst c = case c of
   Waypoint -> [tyQ| text -> int -> cmd (int * (int * int)) |]
   Structure -> [tyQ| text -> int -> cmd (unit + (int * (int * int))) |]
   Floorplan -> [tyQ| text -> cmd (int * int) |]
+  HasTag -> [tyQ| text -> text -> cmd bool |]
+  TagMembers -> [tyQ| text -> int -> cmd (int * text) |]
   Detect -> [tyQ| text -> ((int * int) * (int * int)) -> cmd (unit + (int * int)) |]
   Resonate -> [tyQ| text -> ((int * int) * (int * int)) -> cmd int |]
   Density -> [tyQ| ((int * int) * (int * int)) -> cmd int |]

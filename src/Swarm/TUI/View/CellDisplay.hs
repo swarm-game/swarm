@@ -14,8 +14,9 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (maybeToList)
 import Data.Semigroup (sconcat)
+import Data.Set (Set)
+import Data.Set qualified as S
 import Data.Tagged (unTagged)
-import Data.Text (Text)
 import Data.Word (Word32)
 import Linear.Affine ((.-.))
 import Swarm.Game.CESK (TickNumber (..))
@@ -96,7 +97,7 @@ mkEntityKnowledge gs =
 -- normally vs as a question mark.
 data EntityKnowledgeDependencies = EntityKnowledgeDependencies
   { isCreativeMode :: Bool
-  , globallyKnownEntities :: [Text]
+  , globallyKnownEntities :: Set EntityName
   , theFocusedRobot :: Maybe Robot
   }
 
@@ -110,7 +111,7 @@ getEntityIsKnown knowledge ep = case ep of
     reasonsToShow =
       [ isCreativeMode knowledge
       , e `hasProperty` Known
-      , (e ^. entityName) `elem` globallyKnownEntities knowledge
+      , (e ^. entityName) `S.member` globallyKnownEntities knowledge
       , showBasedOnRobotKnowledge
       ]
     showBasedOnRobotKnowledge = maybe False (`robotKnows` e) $ theFocusedRobot knowledge
