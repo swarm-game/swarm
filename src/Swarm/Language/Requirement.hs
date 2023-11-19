@@ -51,10 +51,10 @@ data Requirement
     ReqCap Capability
   | -- | Require a specific device to be equipped.  Note that at this
     --   point it is only a name, and has not been resolved to an actual
-    --   'Entity'.  That's because programs have to be type- and
-    --   capability-checked independent of an 'EntityMap'.  The name
-    --   will be looked up at runtime, when actually executing a 'Build'
-    --   or 'Reprogram' command, and an appropriate exception thrown if
+    --   'Swarm.Game.Entity.Entity'.  That's because programs have to be type- and
+    --   capability-checked independent of an 'Swarm.Game.Entity.EntityMap'.  The name
+    --   will be looked up at runtime, when actually executing a 'Swarm.Language.Syntax.Build'
+    --   or 'Swarm.Language.Syntax.Reprogram' command, and an appropriate exception thrown if
     --   a device with the given name does not exist.
     --
     --   Requiring the same device multiple times is the same as
@@ -62,10 +62,10 @@ data Requirement
     ReqDev Text
   | -- | Require a certain number of a specific entity to be available
     --   in the inventory.  The same comments apply re: resolving the
-    --   entity name to an actual 'Entity'.
+    --   entity name to an actual 'Swarm.Game.Entity.Entity'.
     --
     --   Inventory requirements are additive, that is, say, requiring 5
-    --   of entity `e` and later requiring 7 is the same as requiring
+    --   of entity @"e"@ and later requiring 7 is the same as requiring
     --   12.
     ReqInv Int Text
   deriving (Eq, Ord, Show, Read, Generic, Hashable, Data, FromJSON, ToJSON)

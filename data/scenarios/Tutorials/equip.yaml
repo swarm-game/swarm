@@ -11,14 +11,16 @@ objectives:
       - Before you start building new robots in the later tutorials, you need
         to gain the `build` capability.
         Try typing `build {}` - you should get an error telling you that you
-        need to equip a "3D printer".
+        need to equip a `3D printer`{=entity}.
       - |
-        Fortunately, there is a 3D printer lying nearby.  Go `grab` it, then
+        Fortunately, there is a `3D printer`{=entity} lying nearby.  Go `grab` it, then
         `equip` it with `equip "3D printer"`.
       - |
         You win by building your first robot:
       - |
+        ```
         build {}
+        ```
     condition: |
       try {
         _ <- robotNumbered 1;
@@ -40,7 +42,6 @@ robots:
       - [10, logger]
 known: [3D printer, water]
 world:
-  default: [blank]
   palette:
     '>': [grass, null, base]
     '.': [grass]

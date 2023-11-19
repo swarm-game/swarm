@@ -1,12 +1,13 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/scenario.json",
-    "title": "Swarm scenario",
-    "description": "Scenario for the swarm game",
+    "title": "Top level",
+    "description": "At the top level, a scenario file contains a key-value mapping described by the following table.",
     "type": "object",
+    "additionalProperties": false,
     "properties": {
         "version": {
-            "description": "The version number of the scenario schema.  Currently, this should always be 1.",
+            "description": "The version number of the scenario schema.  Currently, this should always be `1`.",
             "type": "number"
         },
         "name": {
@@ -32,62 +33,68 @@
             "type": "number"
         },
         "entities": {
-            "description": "An optional list of custom entities, to be used in addition to the built-in entities. See description of Entities.",
+            "description": "An optional list of custom entities, to be used in addition to the built-in entities.",
             "default": [],
-            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/entities.json"
+            "items": {
+                "$ref": "entity.json"
+            }
         },
         "recipes": {
-            "description": "An optional list of custom recipes, to be used in addition to the built-in recipes. They can refer to built-in entities as well as custom entities. See description of Recipes.",
+            "description": "An optional list of custom recipes, to be used in addition to the built-in recipes. They can refer to built-in entities as well as custom entities.",
             "default": [],
-            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/recipes.json"
+            "items": {
+                "$ref": "recipe.json"
+            }
         },
         "known": {
             "description": "A list of names of standard or custom entities which should have the Known property added to them; that is, robots should know what they are without having to scan them.",
             "default": [],
             "type": "array",
-            "items": [
-                {
-                    "type": "string"
-                }
-            ]
+            "items": {
+                "type": "string"
+            }
         },
         "world": {
-            "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/world.json"
+            "$ref": "world.json"
         },
-        "robots": {
-            "description": "A list of robots that will inhabit the world. See the description of Robots.",
+        "attrs": {
+            "description": "A list of local attribute definitions",
             "type": "array",
             "items": {
-                "$ref": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/robot.json"
+                "$ref": "attribute.json"
+            }
+        },
+        "subworlds": {
+            "description": "A list of subworld definitions",
+            "type": "array",
+            "items": {
+                "$ref": "world.json"
+            }
+        },
+        "structures": {
+            "description": "Structure definitions",
+            "type": "array",
+            "items": {
+                "$ref": "named-structure.json"
+            }
+        },
+        "robots": {
+            "description": "A list of robots that will inhabit the world.",
+            "type": "array",
+            "items": {
+                "$ref": "robot.json"
             }
         },
         "objectives": {
-            "description": "An optional list of objectives, aka winning conditions. The player has to complete the objectives in sequence to win. See the description of Objectives.",
+            "description": "An optional list of objectives, aka winning conditions. The player has to complete the objectives in sequence to win.",
             "default": [],
             "type": "array",
             "items": {
-                "name": "objective",
-                "description": "The top-level objectives field contains a list of objectives that must be completed in sequence. Each objective has a goal description and a condition.",
-                "type": "object",
-                "properties": {
-                    "goal": {
-                        "type": "array",
-                        "items": [
-                            {
-                                "type": "string"
-                            }
-                        ],
-                        "description": "The goal description as a list of paragraphs that the player can read."
-                    },
-                    "condition": {
-                        "description": "A swarm program that will be hypothetically run each tick to check if the condition is fulfilled.",
-                        "type": "string"
-                    }
-                }
+                "$ref": "objective.json"
             }
         },
         "solution": {
-            "description": "The (optional) text of a Swarm program that, when run on the base robot, completes all the objectives. For scenarios which are officially part of the Swarm repository, such a solution will be tested as part of CI testing. For scenarios loaded directly from a file, any provided solution is simply ignored.",
+            "description": "The (optional) text of a Swarm program that, when run on the base robot, completes all the objectives. For scenarios which are officially part of the Swarm repository, such a solution will be tested as part of CI testing.",
             "default": null,
             "type": "string"
         },

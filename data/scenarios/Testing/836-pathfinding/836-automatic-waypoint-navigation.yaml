@@ -1,0 +1,154 @@
+version: 1
+name: Automatic navigation between waypoints
+description: |
+  Demonstrate shortest-path patrolling between waypoints
+creative: false
+solution: |
+  run "scenarios/Testing/836-pathfinding/_836-automatic-waypoint-navigation/patrol.sw"
+objectives:
+  - goal:
+      - Collect 64 eggs
+    condition: |
+      as base {
+        eggCount <- count "egg";
+        return $ eggCount >= 64;
+      };
+attrs:
+  - name: easter_egg
+    fg: "#ffff88"
+    bg: "#eebbff"
+entities:
+  - name: wayfinder
+    display:
+      char: 'w'
+    description:
+      - Enables `path` command
+    properties: [known, portable]
+    capabilities: [path]
+  - name: atlas
+    display:
+      char: 'a'
+    description:
+      - Enables `waypoint` command
+    properties: [known, portable]
+    capabilities: [waypoint]
+  - name: kudzu
+    display:
+      char: 'k'
+      attr: plant
+    description:
+      - Dense, impassable plant.
+    properties: [known, unwalkable, growable]
+    growth: [30, 50]
+  - name: egg
+    display:
+      char: 'o'
+      attr: easter_egg
+    description:
+      - A colorful egg laid by the rabbit
+    properties: [known, portable]
+    growth: [5, 10]
+robots:
+  - name: base
+    loc: [0, 0]
+    dir: [1, 0]
+    devices:
+      - ADT calculator
+      - atlas
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - grabber
+      - logger
+      - net
+      - scanner
+      - treads
+      - wayfinder
+  - name: gardener
+    description: Periodically chops down the kudzu plant
+    dir: [1, 0]
+    system: true
+    devices:
+      - ADT calculator
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - harvester
+      - treads
+      - logger
+    display:
+      invisible: true
+    program: |
+      run "scenarios/Testing/836-pathfinding/_836-automatic-waypoint-navigation/gardener.sw"
+  - name: rabbit
+    dir: [1, 0]
+    loc: [2, -2]
+    system: true
+    devices:
+      - treads
+      - logger
+    inventory:
+      - [64, egg]
+    display:
+      invisible: false
+      attr: snow
+      char: R
+    program: |
+      run "scenarios/Testing/836-pathfinding/_836-automatic-waypoint-navigation/rabbit.sw"
+known: [flower, boulder, kudzu]
+world:
+  upperleft: [-1, 1]
+  palette:
+    '.': [grass]
+    'k': [stone, kudzu, gardener]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  structures:
+    - name: cornerbox
+      structure:
+        palette:
+          '.': [dirt]
+          '@': [dirt, boulder]
+          'w':
+            cell: [dirt]
+            waypoint:
+              name: wp
+        map: |
+          @@@
+          @w.
+          @.@
+  placements:
+    - src: cornerbox
+      offset: [2, -2]
+      orient:
+        up: north
+    - src: cornerbox
+      offset: [8, -2]
+      orient:
+        up: east
+    - src: cornerbox
+      offset: [8, -6]
+      orient:
+        up: south
+    - src: cornerbox
+      offset: [2, -6]
+      orient:
+        up: west
+  map: |
+    ┌───────────┐
+    │...........│
+    │...........│
+    │.....k.....│
+    │...........│
+    │...........│
+    │...........│
+    │.....k.....│
+    │...........│
+    │...........│
+    └───────────┘

@@ -1,0 +1,52 @@
+version: 1
+name: Builtin pathfinding, unreachable goal, enclosed goal
+description: |
+  There is infinite area to explore, so
+  this will fail to terminate unless
+  a limit is set on the max distance.
+
+  In this scenario, we fall back onto the internal distance limit.
+  Normally, it would be very expensive to allow this goal condition
+  check to run upon every tick. But in this case, we should
+  have won the scenario by the first tick.
+creative: false
+objectives:
+  - goal:
+      - Flower must not be reachable.
+    condition: |
+      as base {
+        nextDir <- path (inL ()) (inR "flower");
+        return $ case nextDir (\_. true) (\_. false);
+      };
+solution: |
+  noop;
+entities:
+  - name: wayfinder
+    display:
+      char: 'w'
+    description:
+      - Enables `path` command
+    properties: [known, portable]
+    capabilities: [path]
+robots:
+  - name: base
+    dir: [1,0]
+    devices:
+      - treads
+      - logger
+      - ADT calculator
+      - dictionary
+      - wayfinder
+world:
+  palette:
+    'B': [grass, null, base]
+    '.': [grass]
+    'x': [stone, mountain]
+    'f': [grass, flower]
+  upperleft: [0, 0]
+  map: |
+    ......xxxxx
+    ......x...x
+    ..B...x.f.x
+    ......x...x
+    ......xxxxx

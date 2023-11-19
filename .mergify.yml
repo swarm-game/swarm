@@ -11,11 +11,13 @@ queue_rules:
           - -files~=^[^/]*\.yaml$
           - -files~=^data/.*\.yaml$
         - and:
-          - check-success=Enforce issue references
-          - check-success=Haskell-CI - Linux - ghc-9.4.2
-          - check-success=Haskell-CI - Linux - ghc-9.2.4
+          - or:
+            - check-success=Enforce issue references
+            - -files~=\.hs$
+          - check-success=Haskell-CI - Linux - ghc-9.6.2
+          - check-success=Haskell-CI - Linux - ghc-9.4.5
+          - check-success=Haskell-CI - Linux - ghc-9.2.7
           - check-success=Haskell-CI - Linux - ghc-9.0.2
-          - check-success=Haskell-CI - Linux - ghc-8.10.7
 
 pull_request_rules:
 - actions:
@@ -39,11 +41,13 @@ pull_request_rules:
       - -files~=^[^/]*\.yaml$
       - -files~=^data/.*\.yaml$
     - and:
-      - check-success=Enforce issue references
-      - check-success=Haskell-CI - Linux - ghc-9.4.2
-      - check-success=Haskell-CI - Linux - ghc-9.2.4
+      - or:
+        - check-success=Enforce issue references
+        - -files~=\.hs$
+      - check-success=Haskell-CI - Linux - ghc-9.6.2
+      - check-success=Haskell-CI - Linux - ghc-9.4.5
+      - check-success=Haskell-CI - Linux - ghc-9.2.7
       - check-success=Haskell-CI - Linux - ghc-9.0.2
-      - check-success=Haskell-CI - Linux - ghc-8.10.7
   - label=merge me
   - ! '#approved-reviews-by>=1'
   - ! '#changes-requested-reviews-by=0'

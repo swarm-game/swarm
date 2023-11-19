@@ -1,5 +1,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Types for styling custom entity attributes
 module Swarm.Game.Scenario.Style where
 
 import Data.Aeson
@@ -30,6 +32,8 @@ instance FromJSON StyleFlag where
 instance ToJSON StyleFlag where
   toJSON = genericToJSON styleFlagJsonOptions
 
+-- | Hexadecimal color notation.
+-- May include a leading hash symbol (see 'Data.Colour.SRGB.sRGB24read').
 newtype HexColor = HexColor Text
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 

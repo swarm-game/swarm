@@ -1,4 +1,4 @@
-Copyright 2021-2022, Brent Yorgey and other Swarm contributors
+Copyright 2021-2023, Brent Yorgey and other Swarm contributors
 For a full list of contributors, see https://github.com/swarm-game/swarm/graphs/contributors.
 
 Join the community!

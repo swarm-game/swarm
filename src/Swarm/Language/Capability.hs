@@ -34,6 +34,10 @@ data Capability
     CPower
   | -- | Execute the 'Move' command
     CMove
+  | -- | Execute the 'Backup' command
+    CBackup
+  | -- | Execute the 'Path' command
+    CPath
   | -- | Execute the 'Push' command
     CPush
   | -- | Execute the 'Stride' command
@@ -50,8 +54,12 @@ data Capability
     CGrab
   | -- | Execute the 'Harvest' command
     CHarvest
+  | -- | Execute the 'Ignite' command
+    CIgnite
   | -- | Execute the 'Place' command
     CPlace
+  | -- | Execute the 'Ping' command
+    CPing
   | -- | Execute the 'Give' command
     CGive
   | -- | Execute the 'Equip' command
@@ -70,6 +78,10 @@ data Capability
     CSalvage
   | -- | Execute the 'Drill' command
     CDrill
+  | -- | Execute the 'Waypoint' command
+    CWaypoint
+  | -- | Execute the 'Structure' and 'Floorplan' commands
+    CStructure
   | -- | Execute the 'Whereami' command
     CSenseloc
   | -- | Execute the 'Blocked' command
@@ -78,7 +90,7 @@ data Capability
     CSensehere
   | -- | Execute the 'Detect' command
     CDetectloc
-  | -- | Execute the 'Resonate' command
+  | -- | Execute the 'Resonate' and 'Density' commands
     CDetectcount
   | -- | Execute the 'Sniff' command
     CDetectdistance
@@ -98,8 +110,14 @@ data Capability
     CListen
   | -- | Execute the 'Log' command
     CLog
-  | -- | Manipulate text values
-    CText
+  | -- | Format values as text
+    CFormat
+  | -- | Split text into two pieces
+    CConcat
+  | -- | Join two text values into one
+    CSplit
+  | -- | Count the characters in a text value
+    CCharcount
   | -- | Convert between characters/text and Unicode values
     CCode
   | -- | Don't drown in liquid
@@ -134,9 +152,11 @@ data Capability
     CAtomic
   | -- | Capability to execute swap (grab and place atomically at the same time).
     CSwap
-  | -- | Capabiltiy to do time-related things, like `wait` and get the
-    --   current time.
-    CTime
+  | -- | Capability to obtain absolute time, namely via the `time` command.
+    CTimeabs
+  | -- | Capability to utilize relative passage of time, namely via the `wait` command.
+    --   This is strictly weaker than "CTimeAbs".
+    CTimerel
   | -- | Capability to execute `try`.
     CTry
   | -- | Capability for working with sum types.
@@ -149,6 +169,8 @@ data Capability
     CDebug
   | -- | Capability to handle keyboard input.
     CHandleinput
+  | -- | Capability to make other robots halt.
+    CHalt
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
@@ -197,12 +219,16 @@ constCaps = \case
   Log -> Just CLog
   Selfdestruct -> Just CSelfdestruct
   Move -> Just CMove
+  Backup -> Just CBackup
+  Path -> Just CPath
   Push -> Just CPush
   Stride -> Just CMovemultiple
   Turn -> Just CTurn
   Grab -> Just CGrab
   Harvest -> Just CHarvest
+  Ignite -> Just CIgnite
   Place -> Just CPlace
+  Ping -> Just CPing
   Give -> Just CGive
   Equip -> Just CEquip
   Unequip -> Just CUnequip
@@ -220,6 +246,7 @@ constCaps = \case
   Meet -> Just CMeet
   MeetAll -> Just CMeet
   Drill -> Just CDrill
+  Use -> Nothing -- Recipes alone shall dictate whether things can be "used"
   Neg -> Just CArith
   Add -> Just CArith
   Sub -> Just CArith
@@ -231,24 +258,29 @@ constCaps = \case
   Swap -> Just CSwap
   Atomic -> Just CAtomic
   Instant -> Just CGod
-  Time -> Just CTime
-  Wait -> Just CTime
+  Time -> Just CTimeabs
+  Wait -> Just CTimerel
   Scout -> Just CRecondir
   Whereami -> Just CSenseloc
+  Waypoint -> Just CWaypoint
+  Structure -> Just CStructure
+  Floorplan -> Just CStructure
   Detect -> Just CDetectloc
   Resonate -> Just CDetectcount
+  Density -> Just CDetectcount
   Sniff -> Just CDetectdistance
   Chirp -> Just CDetectdirection
   Watch -> Just CWakeself
   Heading -> Just COrient
   Key -> Just CHandleinput
   InstallKeyHandler -> Just CHandleinput
+  Halt -> Just CHalt
   -- ----------------------------------------------------------------
   -- Text operations
-  Format -> Just CText
-  Concat -> Just CText
-  Split -> Just CText
-  Chars -> Just CText
+  Format -> Just CFormat
+  Concat -> Just CConcat
+  Split -> Just CSplit
+  Chars -> Just CCharcount
   CharAt -> Just CCode
   ToChar -> Just CCode
   -- ----------------------------------------------------------------

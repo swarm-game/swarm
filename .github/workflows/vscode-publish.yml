@@ -29,3 +29,8 @@ jobs:
           packagePath: editors/vscode
           pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
           registryUrl: https://marketplace.visualstudio.com
+      - name: Publish to Open VSX Registry
+        uses: HaaLeo/publish-vscode-extension@v1
+        with:
+          packagePath: editors/vscode
+          pat: ${{ secrets.VSX_MARKETPLACE_TOKEN }}

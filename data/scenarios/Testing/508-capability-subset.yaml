@@ -37,9 +37,10 @@ robots:
       - [1, ADT calculator]
 known: [water]
 world:
-  default: [ice, water]
+  dsl: |
+    {ice, water}
   palette:
-    '.': [grass]
+    '.': [grass, erase]
     ' ': [ice, water]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]

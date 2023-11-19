@@ -43,6 +43,7 @@ import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax (AbsoluteDir (..), Direction (..))
 import Swarm.Util (maxOn)
+import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
 
 -- | Display priority.  Entities with higher priority will be drawn on
@@ -91,7 +92,7 @@ instance Semigroup Display where
     | _invisible d2 = d1
     | otherwise = maxOn _displayPriority d1 d2
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''Display
+makeLensesNoSigs ''Display
 
 -- | The default character to use for display.
 defaultChar :: Lens' Display Char

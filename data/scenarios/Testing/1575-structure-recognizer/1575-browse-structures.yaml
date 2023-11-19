@@ -1,0 +1,131 @@
+version: 1
+name: Structure browser
+description: |
+  Hit *F6* to view the recognizable structures.
+
+  Only the subset of the structures marked with
+  *recognize: true* are browseable.
+  In particular, the `donut`{=structure} structure is placed
+  in the map but not displayed in the *F6* dialog.
+creative: false
+objectives:
+  - teaser: Build structure
+    goal:
+      - |
+        Build a `precious`{=structure} structure
+    condition: |
+      foundStructure <- structure "precious" 0;
+      return $ case foundStructure (\_. false) (\_. true);
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - grabber
+      - treads
+    inventory:
+      - [50, flower]
+      - [50, log]
+      - [50, rock]
+      - [50, copper pipe]
+      - [50, iron gear]
+      - [50, quartz]
+      - [50, gold]
+      - [50, silver]
+      - [50, mithril]
+      - [50, cotton]
+solution: |
+   move;
+   place "quartz";
+   move;
+   place "quartz";
+   move;
+   place "mithril";
+structures:
+  - name: donut
+    structure:
+      palette:
+        '@': [dirt, rock]
+      mask: '.'
+      map: |
+        .@@@.
+        @@@@@
+        @@.@@
+        @@@@@
+        .@@@.
+  - name: diamond
+    recognize: true
+    description: "A diamond pattern of flowers"
+    structure:
+      mask: '.'
+      palette:
+        'x': [stone, flower]
+      map: |
+        ...x...
+        ..xxx..
+        .xxxxx.
+        xxxxxxx
+        .xxxxx.
+        ..xxx..
+        ...x...
+  - name: contraption
+    recognize: true
+    description: "A device for assembling useful widgets"
+    structure:
+      mask: '.'
+      palette:
+        'r': [stone, log]
+        'I': [stone, rock]
+        'l': [stone, copper pipe]
+        'g': [stone, iron gear]
+      map: |
+       rllllr
+       lIIIIl
+       lIIIgg
+       rlllgg
+  - name: precious
+    recognize: true
+    structure:
+      mask: '.'
+      palette:
+        'q': [stone, quartz]
+        'g': [stone, gold]
+        's': [stone, silver]
+        'm': [stone, mithril]
+      map: |
+       qgs
+       gsq
+       qqm
+  - name: smallish
+    recognize: true
+    structure:
+      mask: '.'
+      palette:
+        'q': [stone, quartz]
+        'm': [stone, mithril]
+        'c': [stone, cotton]
+      map: |
+       qqm
+       cqq
+known: [flower, log, rock, copper pipe, iron plate]
+world:
+  name: root
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass]
+    'q': [grass, quartz]
+    'g': [grass, gold]
+    's': [grass, silver]
+    'm': [grass, mithril]
+    'c': [grass, cotton]
+    'B': [grass, null, base]
+  upperleft: [0, 0]
+  placements:
+    - src: donut
+      offset: [6, 0]
+  map: |
+    .qgs.........
+    .gsq.........
+    B............
+    .cqq.........
+    .............

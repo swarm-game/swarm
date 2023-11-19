@@ -77,7 +77,6 @@ entities:
       - You win!
     properties: [known, portable]
 world:
-  default: [blank]
   palette:
     '.': [grass]
   upperleft: [0,0]

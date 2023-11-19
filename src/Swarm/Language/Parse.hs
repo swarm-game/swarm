@@ -34,8 +34,12 @@ module Swarm.Language.Parse (
 ) where
 
 import Control.Lens (view, (^.))
+import Control.Monad (guard, join)
 import Control.Monad.Combinators.Expr
-import Control.Monad.Reader
+import Control.Monad.Reader (
+  MonadReader (ask),
+  ReaderT (runReaderT),
+ )
 import Data.Bifunctor
 import Data.Foldable (asum)
 import Data.List (foldl', nub)
@@ -51,10 +55,12 @@ import Data.Void
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.Util (failT, findDup, squote)
+import Swarm.Util.Parse (fully, fullyMaybe)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Megaparsec.Pos qualified as Pos
+import Text.Megaparsec.State (initialPosState, initialState)
 import Witch
 
 -- Imports for doctests (cabal-docspec needs this)
@@ -473,60 +479,38 @@ runParser :: Parser a -> Text -> Either Text a
 runParser p t = first (from . errorBundlePretty) (parse (runReaderT p DisallowAntiquoting) "" t)
 
 -- | A utility for running a parser in an arbitrary 'MonadFail' (which
---   is going to be the TemplateHaskell 'Q' monad --- see
+--   is going to be the TemplateHaskell 'Language.Haskell.TH.Q' monad --- see
 --   "Swarm.Language.Parse.QQ"), with a specified source position.
 runParserTH :: (Monad m, MonadFail m) => (String, Int, Int) -> Parser a -> String -> m a
 runParserTH (file, line, col) p s =
-  case snd (runParser' (runReaderT (fully p) AllowAntiquoting) initState) of
+  case snd (runParser' (runReaderT (fully sc p) AllowAntiquoting) initState) of
     Left err -> fail $ errorBundlePretty err
     Right e -> return e
  where
-  -- This is annoying --- megaparsec does not export its function to
-  -- construct an initial parser state, so we can't just use that
-  -- and then change the one field we need to be different (the
-  -- pstateSourcePos). We have to copy-paste the whole thing.
   initState :: State Text Void
   initState =
-    State
-      { stateInput = from s
-      , stateOffset = 0
-      , statePosState =
-          PosState
-            { pstateInput = from s
-            , pstateOffset = 0
-            , pstateSourcePos = SourcePos file (mkPos line) (mkPos col)
-            , pstateTabWidth = defaultTabWidth
-            , pstateLinePrefix = ""
+    (initialState file (from s))
+      { statePosState =
+          (initialPosState file (from s))
+            { pstateSourcePos = SourcePos file (mkPos line) (mkPos col)
             }
-      , stateParseErrors = []
       }
-
--- | Run a parser "fully", consuming leading whitespace and ensuring
---   that the parser extends all the way to eof.
-fully :: Parser a -> Parser a
-fully p = sc *> p <* eof
-
--- | Run a parser "fully", consuming leading whitespace (including the
---   possibility that the input is nothing but whitespace) and
---   ensuring that the parser extends all the way to eof.
-fullyMaybe :: Parser a -> Parser (Maybe a)
-fullyMaybe = fully . optional
 
 -- | Parse some input 'Text' completely as a 'Term', consuming leading
 --   whitespace and ensuring the parsing extends all the way to the
 --   end of the input 'Text'.  Returns either the resulting 'Term' (or
---   @Nothing@ if the input was only whitespace) or a pretty-printed
+--   'Nothing' if the input was only whitespace) or a pretty-printed
 --   parse error message.
 readTerm :: Text -> Either Text (Maybe Syntax)
-readTerm = runParser (fullyMaybe parseTerm)
+readTerm = runParser (fullyMaybe sc parseTerm)
 
 -- | A lower-level `readTerm` which returns the megaparsec bundle error
 --   for precise error reporting.
 readTerm' :: Text -> Either ParserError (Maybe Syntax)
-readTerm' = parse (runReaderT (fullyMaybe parseTerm) DisallowAntiquoting) ""
+readTerm' = parse (runReaderT (fullyMaybe sc parseTerm) DisallowAntiquoting) ""
 
 -- | A utility for converting a ParserError into a one line message:
---   <line-nr>: <error-msg>
+--   @<line-nr>: <error-msg>@
 showShortError :: ParserError -> String
 showShortError pe = show (line + 1) <> ": " <> from msg
  where

@@ -78,13 +78,23 @@ module Swarm.TUI.Model (
   populateInventoryList,
   infoScroll,
   modalScroll,
+  replScroll,
 
   -- * Runtime state
   RuntimeState,
   webPort,
   upstreamRelease,
   eventLog,
+  worlds,
+  scenarios,
+  stdEntityMap,
+  stdRecipes,
+  appData,
+  nameParts,
+
+  -- ** Utility
   logEvent,
+  mkGameStateConfig,
 
   -- * App state
   AppState (AppState),
@@ -94,6 +104,7 @@ module Swarm.TUI.Model (
 
   -- ** Initialization
   AppOpts (..),
+  defaultAppOpts,
   Seed,
 
   -- *** Re-exported types used in options
@@ -109,31 +120,42 @@ module Swarm.TUI.Model (
 
 import Brick
 import Brick.Widgets.List qualified as BL
+import Control.Effect.Accum
+import Control.Effect.Lift
+import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))
-import Control.Monad.Except
-import Control.Monad.State
+import Control.Monad ((>=>))
+import Control.Monad.State (MonadState)
 import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Map (Map)
 import Data.Maybe (fromMaybe)
+import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Vector qualified as V
 import GitHash (GitInfo)
 import Graphics.Vty (ColorMode (..))
-import Linear (zero)
 import Network.Wai.Handler.Warp (Port)
+import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Entity as E
+import Swarm.Game.Failure
+import Swarm.Game.Recipe (Recipe, loadRecipes)
+import Swarm.Game.ResourceLoading (NameGenerator, initNameGenerator, readAppData)
 import Swarm.Game.Robot
-import Swarm.Game.ScenarioInfo (
-  ScenarioInfoPair,
-  _SISingle,
- )
+import Swarm.Game.Scenario.Status
+import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios, _SISingle)
 import Swarm.Game.State
+import Swarm.Game.World.Load (loadWorlds)
+import Swarm.Game.World.Typecheck (WorldMap)
+import Swarm.Log
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
+import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Version (NewReleaseFailure (NoMainUpstreamRelease))
+import Text.Fuzzy qualified as Fuzzy
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -160,6 +182,9 @@ infoScroll = viewportScroll InfoViewport
 modalScroll :: ViewportScroll Name
 modalScroll = viewportScroll ModalViewport
 
+replScroll :: ViewportScroll Name
+replScroll = viewportScroll REPLViewport
+
 -- ----------------------------------------------------------------------------
 --                                Runtime state                              --
 -- ----------------------------------------------------------------------------
@@ -168,17 +193,41 @@ data RuntimeState = RuntimeState
   { _webPort :: Maybe Port
   , _upstreamRelease :: Either NewReleaseFailure String
   , _eventLog :: Notifications LogEntry
+  , _worlds :: WorldMap
+  , _scenarios :: ScenarioCollection
+  , _stdEntityMap :: EntityMap
+  , _stdRecipes :: [Recipe Entity]
+  , _appData :: Map Text Text
+  , _nameParts :: NameGenerator
   }
 
-initRuntimeState :: RuntimeState
-initRuntimeState =
-  RuntimeState
-    { _webPort = Nothing
-    , _upstreamRelease = Left (NoMainUpstreamRelease [])
-    , _eventLog = mempty
-    }
+initRuntimeState ::
+  ( Has (Throw SystemFailure) sig m
+  , Has (Accum (Seq SystemFailure)) sig m
+  , Has (Lift IO) sig m
+  ) =>
+  m RuntimeState
+initRuntimeState = do
+  entities <- loadEntities
+  recipes <- loadRecipes entities
+  worlds <- loadWorlds entities
+  scenarios <- loadScenarios entities worlds
+  appDataMap <- readAppData
+  nameGen <- initNameGenerator appDataMap
+  return $
+    RuntimeState
+      { _webPort = Nothing
+      , _upstreamRelease = Left (NoMainUpstreamRelease [])
+      , _eventLog = mempty
+      , _worlds = worlds
+      , _scenarios = scenarios
+      , _stdEntityMap = entities
+      , _stdRecipes = recipes
+      , _appData = appDataMap
+      , _nameParts = nameGen
+      }
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''RuntimeState
+makeLensesNoSigs ''RuntimeState
 
 -- | The port on which the HTTP debug service is running.
 webPort :: Lens' RuntimeState (Maybe Port)
@@ -193,14 +242,51 @@ upstreamRelease :: Lens' RuntimeState (Either NewReleaseFailure String)
 -- place to log it.
 eventLog :: Lens' RuntimeState (Notifications LogEntry)
 
+-- | A collection of typechecked world DSL terms that are available to
+--   be used in scenario definitions.
+worlds :: Lens' RuntimeState WorldMap
+
+-- | The collection of scenarios that comes with the game.
+scenarios :: Lens' RuntimeState ScenarioCollection
+
+-- | The standard entity map loaded from disk.  Individual scenarios
+--   may define additional entities which will get added to this map
+--   when loading the scenario.
+stdEntityMap :: Lens' RuntimeState EntityMap
+
+-- | The standard list of recipes loaded from disk.  Individual scenarios
+--   may define additional recipes which will get added to this list
+--   when loading the scenario.
+stdRecipes :: Lens' RuntimeState [Recipe Entity]
+
+-- | Free-form data loaded from the @data@ directory, for things like
+--   the logo, about page, tutorial story, etc.
+appData :: Lens' RuntimeState (Map Text Text)
+
+-- | Lists of words/adjectives for use in building random robot names.
+nameParts :: Lens' RuntimeState NameGenerator
+
+--------------------------------------------------
+-- Utility
+
 -- | Simply log to the runtime event log.
-logEvent :: LogSource -> (Text, RID) -> Text -> Notifications LogEntry -> Notifications LogEntry
-logEvent src (who, rid) msg el =
+logEvent :: LogSource -> Severity -> Text -> Text -> Notifications LogEntry -> Notifications LogEntry
+logEvent src sev who msg el =
   el
     & notificationsCount %~ succ
     & notificationsContent %~ (l :)
  where
-  l = LogEntry 0 src who rid zero msg
+  l = LogEntry (TickNumber 0) src sev who msg
+
+-- | Create a 'GameStateConfig' record from the 'RuntimeState'.
+mkGameStateConfig :: RuntimeState -> GameStateConfig
+mkGameStateConfig rs =
+  GameStateConfig
+    { initNameParts = rs ^. nameParts
+    , initEntities = rs ^. stdEntityMap
+    , initRecipes = rs ^. stdRecipes
+    , initWorldMap = rs ^. worlds
+    }
 
 -- ----------------------------------------------------------------------------
 --                                   APPSTATE                                --
@@ -220,7 +306,7 @@ data AppState = AppState
 --------------------------------------------------
 -- Lenses for AppState
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''AppState
+makeLensesNoSigs ''AppState
 
 -- | The 'GameState' record.
 gameState :: Lens' AppState GameState
@@ -258,19 +344,20 @@ focusedEntity =
 
 -- | Given the focused robot, populate the UI inventory list in the info
 --   panel with information about its inventory.
-populateInventoryList :: MonadState UIState m => Maybe Robot -> m ()
+populateInventoryList :: (MonadState UIState m) => Maybe Robot -> m ()
 populateInventoryList Nothing = uiInventory .= Nothing
 populateInventoryList (Just r) = do
   mList <- preuse (uiInventory . _Just . _2)
   showZero <- use uiShowZero
   sortOptions <- use uiInventorySort
+  search <- use uiInventorySearch
   let mkInvEntry (n, e) = InventoryEntry n e
       mkInstEntry (_, e) = EquippedEntry e
       itemList isInventoryDisplay mk label =
         (\case [] -> []; xs -> Separator label : xs)
           . map mk
           . sortInventory sortOptions
-          . filter shouldDisplay
+          . filter ((&&) <$> matchesSearch <*> shouldDisplay)
           . elems
        where
         -- Display items if we have a positive number of them, or they
@@ -283,8 +370,11 @@ populateInventoryList (Just r) = do
               && showZero
               && not ((r ^. equippedDevices) `E.contains` e)
 
+      matchesSearch :: (Count, Entity) -> Bool
+      matchesSearch (_, e) = maybe (const True) Fuzzy.test search (e ^. E.entityName)
+
       items =
-        (r ^. robotInventory . to (itemList True mkInvEntry "Inventory"))
+        (r ^. robotInventory . to (itemList True mkInvEntry "Compendium"))
           ++ (r ^. equippedDevices . to (itemList False mkInstEntry "Equipped devices"))
 
       -- Attempt to keep the selected element steady.
@@ -322,6 +412,8 @@ data AppOpts = AppOpts
   -- ^ Code to be run on base.
   , autoPlay :: Bool
   -- ^ Automatically run the solution defined in the scenario file
+  , speed :: Int
+  -- ^ Initial game speed (logarithm)
   , cheatMode :: Bool
   -- ^ Should cheat mode be enabled?
   , colorMode :: Maybe ColorMode
@@ -331,6 +423,21 @@ data AppOpts = AppOpts
   , repoGitInfo :: Maybe GitInfo
   -- ^ Information about the Git repository (not present in release).
   }
+
+-- | A default/empty 'AppOpts' record.
+defaultAppOpts :: AppOpts
+defaultAppOpts =
+  AppOpts
+    { userSeed = Nothing
+    , userScenario = Nothing
+    , scriptToRun = Nothing
+    , autoPlay = False
+    , speed = defaultInitLgTicksPerSecond
+    , cheatMode = False
+    , colorMode = Nothing
+    , userWebPort = Nothing
+    , repoGitInfo = Nothing
+    }
 
 -- | Extract the scenario which would come next in the menu from the
 --   currently selected scenario (if any).  Can return @Nothing@ if
@@ -355,6 +462,6 @@ topContext s = ctxPossiblyWithIt
  where
   ctx = fromMaybe emptyRobotContext $ s ^? gameState . baseRobot . robotContext
 
-  ctxPossiblyWithIt = case s ^. gameState . replStatus of
+  ctxPossiblyWithIt = case s ^. gameState . gameControls . replStatus of
     REPLDone (Just p) -> ctx & at "it" ?~ p
     _ -> ctx

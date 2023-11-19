@@ -64,7 +64,6 @@ robots:
       doN 7 (move; wait 4; place "tree";);
 known: []
 world:
-  default: [blank]
   palette:
     'Ω': [grass, null, base]
     p : [grass, null, planter]

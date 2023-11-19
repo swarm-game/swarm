@@ -19,7 +19,7 @@ objectives:
     teaser: Around you go!
     goal:
       - |
-        Go around the maypole several times counter-clockwise.
+        Go around the `maypole`{=entity} several times counter-clockwise.
     condition: |
       monitor <- robotnamed "monitor";
       as monitor {has "dizzy"};
@@ -100,7 +100,8 @@ entities:
     properties: [known, unwalkable]
 known: [bitcoin]
 world:
-  default: [grass]
+  dsl: |
+    {grass}
   upperleft: [0, 0]
   offset: false
   palette:

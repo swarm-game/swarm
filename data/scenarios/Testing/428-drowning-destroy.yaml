@@ -35,7 +35,6 @@ robots:
     program: "move"
 known: [water]
 world:
-  default: [blank]
   palette:
     '.': [grass]
     ' ': [ice, water]

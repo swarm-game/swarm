@@ -1,0 +1,75 @@
+version: 1
+name: Floorplan command
+description: |
+  Query the dimensions of a structure
+  template to build one.
+creative: false
+objectives:
+  - teaser: Build structure
+    goal:
+      - |
+        Build a `wooden box`{=structure} structure.
+    condition: |
+      def isRight = \x. case x (\_. false) (\_. true); end;
+      foundBox <- structure "wooden box" 0;
+      return $ isRight foundBox;
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - ADT calculator
+      - blueprint
+      - branch predictor
+      - comparator
+      - dictionary
+      - grabber
+      - logger
+      - treads
+    inventory:
+      - [100, board]
+solution: |
+  def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+
+  def mkRow = \width.
+    doN width $ (place "board"; move;);
+    turn back;
+    doN width move;
+    end;
+
+  def mkRows = \height. \width.
+    doN height $ (mkRow width; turn left; move; turn left);
+    end;
+
+  dims <- floorplan "wooden box";
+  let width = fst dims in
+  let height = snd dims in
+
+  mkRows height width;
+structures:
+  - name: wooden box
+    recognize: true
+    structure:
+      palette:
+        'b': [stone, board]
+      map: |
+       bbbbbbb
+       bbbbbbb
+       bbbbbbb
+       bbbbbbb
+       bbbbbbb
+known: [board]
+world:
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass, erase]
+    'B': [grass, erase, base]
+  upperleft: [0, 0]
+  map: |
+    ..........
+    .B........
+    ..........
+    ..........
+    ..........
+    ..........
+    ..........

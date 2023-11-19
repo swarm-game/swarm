@@ -4,7 +4,7 @@ author: Ondřej Šebek
 description: An impossible challenge - can you magically jump across the water?
 objectives:
   - goal:
-      - Get to the other room and grab the lambda.
+      - Get to the other room and grab the `lambda`{=entity}.
       - Oh wait.
       - The tunnel is flooded.
       - Just give up then. It is impossible to get there.
@@ -56,15 +56,16 @@ robots:
       );
 known: [water, wavy water, flower, tree]
 world:
-  default: [ice, water]
+  dsl: |
+    {ice, water}
   palette:
     ',': [ice, water]
     ' ': [ice, water]
     '~': [ice, wavy water]
     '*': [grass, flower]
     'T': [grass, tree]
-    '.': [grass]
-    '_': [stone]
+    '.': [grass, erase]
+    '_': [stone, erase]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
     '└': [stone, lower left corner]

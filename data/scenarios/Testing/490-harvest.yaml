@@ -26,7 +26,6 @@ robots:
       - grabber
       - boat
 world:
-  default: [blank]
   palette:
     '.': [grass]
     'T': [stone, tree]

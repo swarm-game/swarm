@@ -1,0 +1,107 @@
+version: 1
+name: Count commands
+creative: true
+description: |
+  Count commands and demonstrate various "duty cycles"
+  with system robots. The four robots should have duty
+  cycles of 100%, 50%, 33%, and 25% based on the number
+  of ticks that they `wait`.
+objectives:
+  - goal:
+    - |
+      `grab` the "tree".
+    condition: |
+      as base {has "tree"}
+solution: |
+    move;
+    move;
+    wait 10;
+    x <- harvest;
+    if (x == "flower") {
+      turn right;
+      move;
+      grab;
+    } {
+      return "";
+    };
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - treads
+      - grabber
+      - harvester
+      - logger
+      - comparator
+      - hourglass
+      - branch predictor
+  - name: idler1
+    dir: [1, 0]
+    system: true
+    devices:
+      - dictionary
+      - strange loop
+      - hourglass
+    program: |
+      def go =
+          wait 1;
+          go;
+          end;
+      go;
+  - name: idler2
+    dir: [1, 0]
+    system: true
+    devices:
+      - dictionary
+      - strange loop
+      - hourglass
+    program: |
+      def go =
+          wait 2;
+          go;
+          end;
+      go;
+  - name: idler3
+    dir: [1, 0]
+    system: true
+    devices:
+      - dictionary
+      - strange loop
+      - hourglass
+    program: |
+      def go =
+          wait 3;
+          go;
+          end;
+      go;
+  - name: idler4
+    dir: [1, 0]
+    system: true
+    devices:
+      - dictionary
+      - strange loop
+      - hourglass
+    program: |
+      def go =
+          wait 4;
+          go;
+          end;
+      go;
+known: [flower, tree]
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+    'f': [grass, flower]
+    'T': [grass, tree]
+    'B': [grass, null, base]
+    '1': [grass, null, idler1]
+    '2': [grass, null, idler2]
+    '3': [grass, null, idler3]
+    '4': [grass, null, idler4]
+  upperleft: [-1, 1]
+  map: |
+    ........1
+    .B.fff..2
+    ...T....3
+    ........4

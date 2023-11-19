@@ -23,7 +23,6 @@ objectives:
 solution: |
   move;move;move; move;move;move; move;move;move;
 world:
-  default: [blank]
   palette:
     '.': [blank]
     # FIRST ROOM

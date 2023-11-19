@@ -1,0 +1,87 @@
+version: 1
+name: Ping command - Demo
+description: |
+  Robot is in range for ping
+creative: false
+objectives:
+  - teaser: Follow buddy
+    goal:
+      - You and your buddy each have half of a map to a cache of buried treasure.
+      - |
+        `give` him your `map piece`{=entity}, which he will use to
+        locate the `bitcoin`{=entity}, which you must `grab`.
+    condition: |
+      as base {
+        has "bitcoin";
+      }
+solution: |
+  run "scenarios/Testing/1535-ping/_1535-in-range/solution.sw"
+entities:
+  - name: transponder
+    display:
+      char: 'x'
+    description:
+      - Enables `ping` command
+    properties: [known, portable]
+    capabilities: [ping]
+  - name: map piece
+    display:
+      char: 'm'
+    description:
+      - Half of a treasure map
+    properties: [known, portable]
+robots:
+  - name: base
+    dir: [1,0]
+    devices:
+      - ADT calculator
+      - antenna
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - grabber
+      - hourglass
+      - logger
+      - transponder
+      - treads
+    inventory:
+      - [1, map piece]
+  - name: buddy
+    dir: [-1, 0]
+    system: true
+    display:
+      invisible: false
+    devices:
+      - ADT calculator
+      - antenna
+      - bitcoin
+      - branch predictor
+      - comparator
+      - counter
+      - dictionary
+      - grabber
+      - hourglass
+      - logger
+      - transponder
+      - treads
+    inventory:
+      - [1, map piece]
+      - [1, bitcoin]
+    program: |
+      run "scenarios/Testing/1535-ping/_1535-in-range/buddy.sw"
+known: [bitcoin]
+world:
+  dsl: |
+    overlay
+    [ {terrain: stone}
+    , if (x/5 + y/5) % 2 == 0 then {terrain: dirt} else {blank}
+    , if ((x + 3) % 19)/12 + (y % 19)/12 == 0 then {terrain: grass} else {blank}
+    ]
+  palette:
+    'B': [blank, null, base]
+    'r': [blank, null, buddy]
+    '.': [blank]
+  upperleft: [-1, 0]
+  map: |
+    B.r

@@ -15,11 +15,13 @@ module Swarm.TUI.Model.Repl (
   REPLHistory,
   replIndex,
   replLength,
+  replHasExecutedManualInput,
   replSeq,
   newREPLHistory,
   addREPLItem,
   restartREPLHistory,
   getLatestREPLHistoryItems,
+  getSessionREPLHistoryItems,
   moveReplHistIndex,
   getCurrentItemText,
   replIndexIsAtInput,
@@ -63,6 +65,8 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Language.Types
 import Swarm.TUI.Model.Name
+import Swarm.Util.Lens (makeLensesNoSigs)
+import Prelude hiding (Applicative (..))
 
 ------------------------------------------------------------
 -- REPL History
@@ -74,15 +78,24 @@ data REPLHistItem
     REPLEntry Text
   | -- | A response printed by the system.
     REPLOutput Text
+  | -- | An error printed by the system.
+    REPLError Text
   deriving (Eq, Ord, Show, Read)
 
 instance ToSample REPLHistItem where
-  toSamples _ = SD.noSamples
+  toSamples _ =
+    SD.samples
+      [ REPLEntry "grab"
+      , REPLOutput "it0 : text = \"tree\""
+      , REPLEntry "place tree"
+      , REPLError "1:7: Unbound variable tree"
+      ]
 
 instance ToJSON REPLHistItem where
   toJSON e = case e of
     REPLEntry x -> object ["in" .= x]
     REPLOutput x -> object ["out" .= x]
+    REPLError x -> object ["err" .= x]
 
 -- | Useful helper function to only get user input text.
 getREPLEntry :: REPLHistItem -> Maybe Text
@@ -99,6 +112,7 @@ replItemText :: REPLHistItem -> Text
 replItemText = \case
   REPLEntry t -> t
   REPLOutput t -> t
+  REPLError t -> t
 
 -- | History of the REPL with indices (0 is first entry) to the current
 --   line and to the first entry since loading saved history.
@@ -108,9 +122,11 @@ data REPLHistory = REPLHistory
   { _replSeq :: Seq REPLHistItem
   , _replIndex :: Int
   , _replStart :: Int
+  , _replHasExecutedManualInput :: Bool
   }
+  deriving (Show)
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''REPLHistory
+makeLensesNoSigs ''REPLHistory
 
 -- | Sequence of REPL inputs and outputs, oldest entry is leftmost.
 replSeq :: Lens' REPLHistory (Seq REPLHistItem)
@@ -124,6 +140,26 @@ replIndex :: Lens' REPLHistory Int
 -- It will be set on load and reset on save (happens during exit).
 replStart :: Lens' REPLHistory Int
 
+-- | Keep track of whether the user has explicitly executed commands
+--   at the REPL prompt, thus making them ineligible for code size scoring.
+--
+--   Note: Instead of adding a dedicated field to the 'REPLHistory' record,
+--   an early attempt entailed checking for:
+--
+--     @_replIndex > _replStart@
+--
+--   However, executing an initial script causes a "REPLOutput" to be
+--   appended to the REPL history, which increments the replIndex, and
+--   thus makes the Index greater than the Start even though the
+--   player has not input commands directly into the REPL.
+--
+--   Therefore, a dedicated boolean is introduced into 'REPLHistory'
+--   which simply latches True when the user has input a command.
+--
+--   An alternative is described in
+--   <https://github.com/swarm-game/swarm/pull/974#discussion_r1112380380 issue #974>.
+replHasExecutedManualInput :: Lens' REPLHistory Bool
+
 -- | Create new REPL history (i.e. from loaded history file lines).
 newREPLHistory :: [REPLHistItem] -> REPLHistory
 newREPLHistory xs =
@@ -132,6 +168,7 @@ newREPLHistory xs =
         { _replSeq = s
         , _replStart = length s
         , _replIndex = length s
+        , _replHasExecutedManualInput = False
         }
 
 -- | Point the start of REPL history after current last line. See 'replStart'.
@@ -160,6 +197,11 @@ getLatestREPLHistoryItems n h = toList latestN
   latestN = Seq.drop oldestIndex $ h ^. replSeq
   oldestIndex = max (h ^. replStart) $ length (h ^. replSeq) - n
 
+-- | Get only the items from the REPL history that were entered during
+--   the current session.
+getSessionREPLHistoryItems :: REPLHistory -> Seq REPLHistItem
+getSessionREPLHistoryItems h = Seq.drop (h ^. replStart) (h ^. replSeq)
+
 data TimeDir = Newer | Older deriving (Eq, Ord, Show)
 
 moveReplHistIndex :: TimeDir -> Text -> REPLHistory -> REPLHistory
@@ -185,14 +227,14 @@ getCurrentItemText history = replItemText <$> Seq.lookup (history ^. replIndex) 
 replIndexIsAtInput :: REPLHistory -> Bool
 replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 
--- | Given some text,  removes the REPLEntry within REPLHistory which is equal to that.
+-- | Given some text,  removes the 'REPLEntry' within 'REPLHistory' which is equal to that.
 --   This is used when the user enters in search mode and want to traverse the history.
 --   If a command has been used many times, the history will be populated with it causing
 --   the effect that search command always finds the same command.
 removeEntry :: Text -> REPLHistory -> REPLHistory
 removeEntry foundtext hist = hist & replSeq %~ Seq.filter (/= REPLEntry foundtext)
 
--- | Get the last REPLEntry in REPLHistory matching the given text
+-- | Get the last 'REPLEntry' in 'REPLHistory' matching the given text
 lastEntry :: Text -> REPLHistory -> Maybe Text
 lastEntry t h =
   case Seq.viewr $ Seq.filter matchEntry $ h ^. replSeq of
@@ -258,7 +300,7 @@ initREPLState hist =
     , _replHistory = hist
     }
 
-makeLensesWith (lensRules & generateSignatures .~ False) ''REPLState
+makeLensesNoSigs ''REPLState
 
 -- | The way we interpret text typed by the player in the REPL prompt.
 replPromptType :: Lens' REPLState REPLPrompt
@@ -266,7 +308,7 @@ replPromptType :: Lens' REPLState REPLPrompt
 -- | The prompt where the user can type input at the REPL.
 replPromptEditor :: Lens' REPLState (Editor Text Name)
 
--- | Convinience lens to get text from editor and replace it with new
+-- | Convenience lens to get text from editor and replace it with new
 --   one that has the provided text.
 replPromptText :: Lens' REPLState Text
 replPromptText = lens g s
@@ -274,7 +316,7 @@ replPromptText = lens g s
   g r = r ^. replPromptEditor . to getEditContents . to T.concat
   s r t = r & replPromptEditor .~ newREPLEditor t
 
--- | Whether the prompt text is a valid 'Term'.
+-- | Whether the prompt text is a valid 'Swarm.Language.Syntax.Term'.
 replValid :: Lens' REPLState Bool
 
 -- | The type of the current REPL input which should be displayed to

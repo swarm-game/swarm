@@ -1,0 +1,117 @@
+version: 1
+name: Structure recognizer - swap
+description: |
+  Change one structure into another.
+  Also tests pre-registration of structures.
+creative: false
+objectives:
+  - teaser: Complete blue structure
+    prerequisite: complete_green_structure
+    goal:
+      - |
+        Build a `blue_jewel`{=structure} structure
+    condition: |
+      def isRight = \x. case x (\_. false) (\_. true); end;
+
+      foundBlue <- structure "blue_jewel" 0;
+      foundGreen <- structure "green_jewel" 0;
+      foundRed <- structure "red_jewel" 0;
+      return $ isRight foundBlue && not (isRight foundRed) && not (isRight foundRed);
+  - id: complete_green_structure
+    teaser: Complete green structure
+    prerequisite: complete_red_structure
+    goal:
+      - |
+        Build a `green_jewel`{=structure} structure
+    condition: |
+      def isRight = \x. case x (\_. false) (\_. true); end;
+
+      foundGreen <- structure "green_jewel" 0;
+      foundRed <- structure "red_jewel" 0;
+      return $ isRight foundGreen && not (isRight foundRed);
+  - id: complete_red_structure
+    teaser: Complete red structure
+    goal:
+      - |
+        Build a `red_jewel`{=structure} structure
+    condition: |
+      def isRight = \x. case x (\_. false) (\_. true); end;
+
+      foundRed <- structure "red_jewel" 0;
+      return $ isRight foundRed;
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - fast grabber
+      - treads
+    inventory:
+      - [1, pixel (G)]
+      - [1, pixel (B)]
+solution: |
+   move; move; move;
+   swap "pixel (G)";
+   swap "pixel (B)";
+structures:
+  - name: red_jewel
+    recognize: true
+    structure:
+      mask: '.'
+      palette:
+        'g': [stone, gold]
+        's': [stone, silver]
+        'j': [stone, pixel (R)]
+      map: |
+       ggggg
+       gsssg
+       gsjsg
+       gsssg
+       ggggg
+  - name: green_jewel
+    recognize: true
+    structure:
+      mask: '.'
+      palette:
+        'g': [stone, gold]
+        's': [stone, silver]
+        'j': [stone, pixel (G)]
+      map: |
+       ggggg
+       gsssg
+       gsjsg
+       gsssg
+       ggggg
+  - name: blue_jewel
+    recognize: true
+    structure:
+      mask: '.'
+      palette:
+        'g': [stone, gold]
+        's': [stone, silver]
+        'j': [stone, pixel (B)]
+      map: |
+       ggggg
+       gsssg
+       gsjsg
+       gsssg
+       ggggg
+known: [gold, silver, pixel (R), pixel (G), pixel (B)]
+world:
+  name: root
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass]
+    'g': [grass, gold]
+    's': [grass, silver]
+    'B': [grass, null, base]
+  upperleft: [0, 0]
+  placements:
+    - src: red_jewel
+      offset: [1, 0]
+  map: |
+    ......
+    ......
+    B.....
+    ......
+    ......

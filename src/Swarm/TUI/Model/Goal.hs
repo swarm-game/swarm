@@ -29,11 +29,11 @@ import Swarm.Util (listEnums)
 data GoalStatus
   = -- | Goals in this category have other goals as prerequisites.
     -- However, they are only displayed if the "previewable" attribute
-    -- is `true`.
+    -- is @true@.
     Upcoming
   | -- | Goals in this category may be pursued in parallel.
     -- However, they are only displayed if the "hidden" attribute
-    -- is `false`.
+    -- is @false@.
     Active
   | -- | A goal's programmatic condition, as well as all its prerequisites, were completed.
     -- This is a "latch" mechanism; at some point the conditions required to meet the goal may
@@ -41,9 +41,9 @@ data GoalStatus
     Completed
   | -- | A goal that can no longer be achieved.
     -- If this goal is not an "optional" goal, then the player
-    -- also "Loses" the scenario.
+    -- also "loses" the scenario.
     --
-    -- Note that currently the only way to "Fail" a goal is by way
+    -- Note that currently the only way to "fail" a goal is by way
     -- of a negative prerequisite that was completed.
     Failed
   deriving (Show, Eq, Ord, Bounded, Enum, Generic, ToJSON, ToJSONKey)
@@ -69,7 +69,11 @@ data GoalTracking = GoalTracking
   deriving (Generic, ToJSON)
 
 instance ToSample GoalTracking where
-  toSamples _ = SD.noSamples
+  toSamples _ =
+    SD.samples
+      [ GoalTracking mempty mempty
+      -- TODO: #1552 add simple objective sample
+      ]
 
 data GoalDisplay = GoalDisplay
   { _goalsContent :: GoalTracking

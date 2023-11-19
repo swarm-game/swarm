@@ -1,0 +1,48 @@
+version: 1
+name: RobotIntoWater achievement test
+description: Drive a robot into the water
+objectives:
+  - id: build
+    goal:
+      - Build a robot
+    condition: |
+      try {robotNumbered 1; return True} {return False}
+  - goal:
+      - Drown it
+    prerequisite: build
+    condition: |
+      try {robotNumbered 1; return False} {return True}
+solution: |
+  build { turn right; move; move; move }
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [0,1]
+    heavy: true
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - 3D printer
+      - dictionary
+      - grabber
+      - welder
+      - life support system
+      - logger
+      - toolkit
+      - solar panel
+      - workbench
+      - clock
+    inventory:
+      - [5, 3D printer]
+      - [100, treads]
+      - [70, grabber]
+      - [100, solar panel]
+      - [50, scanner]
+      - [50, clock]
+      - [5, toolkit]
+seed: 0
+world:
+  offset: true
+  dsl: |
+    "classic"

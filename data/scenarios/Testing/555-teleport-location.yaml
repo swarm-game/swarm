@@ -24,4 +24,5 @@ robots:
     inventory:
       - [1, rock]
 world:
-  default: [grass, null]
+  dsl: |
+    {grass}

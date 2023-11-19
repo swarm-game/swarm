@@ -58,6 +58,18 @@ def getCurrentQuadrant : (int * int) -> cmd int = \myLoc.
   return $ getQuadrant baseLoc myLoc;
   end;
 
+def checkNewQuadrant = \myLoc. \prevQuadrant. \quadrantTraversalCount.
+  currentQuadrant <- getCurrentQuadrant myLoc;
+  let changeCount = getQuadrantIncrement prevQuadrant currentQuadrant in
+  let newQuadrantCount = quadrantTraversalCount + changeCount in
+
+  if (changeCount != 0) {
+    swap $ "maypole " ++ format currentQuadrant;
+    return ();
+  } {};
+  return (currentQuadrant, newQuadrantCount);
+  end;
+
 /*
 Although conceivably the current quadrant could
 be derived from the quadrant traversal count,
@@ -70,15 +82,9 @@ with the absolute quadrant index.
 */
 def monitorAngle : (int * int) -> int -> int -> int -> cmd unit =
     \myLoc. \targetQuadrantCount. \prevQuadrant. \quadrantTraversalCount.
-  
-  currentQuadrant <- getCurrentQuadrant myLoc;
-  let changeCount = getQuadrantIncrement prevQuadrant currentQuadrant in
-  let newQuadrantCount = quadrantTraversalCount + changeCount in
-
-  if (changeCount != 0) {
-    swap $ "maypole " ++ format currentQuadrant;
-    return ();
-  } {};
+  result <- instant $ checkNewQuadrant myLoc prevQuadrant quadrantTraversalCount;
+  let currentQuadrant = fst result in
+  let newQuadrantCount = snd result in
 
   if (newQuadrantCount < targetQuadrantCount) {
     monitorAngle myLoc targetQuadrantCount currentQuadrant newQuadrantCount;

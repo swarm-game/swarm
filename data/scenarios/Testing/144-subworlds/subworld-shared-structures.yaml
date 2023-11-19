@@ -1,0 +1,193 @@
+version: 1
+name: Subworld shared structures
+description: |
+  Traverse floors of the tower
+attrs:
+  - name: portal_in
+    fg: "#ff9a00"
+    bg: "#ff5d00"
+  - name: portal_out
+    fg: "#00a2ff"
+    bg: "#0065ff"
+entities:
+  - name: telepad entrance
+    display:
+      attr: portal_in
+      char: "o"
+    description:
+    - Portal entrance
+    properties: [known]
+  - name: telepad exit
+    display:
+      attr: portal_out
+      char: "o"
+    description:
+    - Portal exit
+    properties: [known]
+robots:
+  - name: base
+    dir: [1, 0]
+    loc: [0, 0]
+    devices:
+      - ADT calculator
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - GPS receiver
+      - grabber
+      - lambda
+      - lodestone
+      - logger
+      - strange loop
+      - treads
+known: [flower]
+structures:
+  - name: minibox
+    structure:
+      palette:
+        '.': [stone]
+        'd': [dirt]
+        'f': [stone, flower]
+        'p':
+          cell: [grass, telepad exit]
+          waypoint:
+            name: portal_out
+        'P':
+          cell: [grass, telepad entrance]
+          waypoint:
+            name: portal_in
+      map: |
+        p....
+        .ddd.
+        .d.d.
+        .ddd.
+        ....P
+  - name: flowers
+    structure:
+      mask: '.'
+      palette:
+        'f': [stone, flower]
+      map: |
+        f.f
+        .f.
+        f.f
+subworlds:
+  - name: floor1
+    default: [blank]
+    palette:
+      '.': [dirt]
+      'f': [dirt, flower]
+      'p':
+        cell: [dirt, telepad exit]
+        waypoint:
+          name: portal_out
+      'P':
+        cell: [dirt, telepad entrance]
+        waypoint:
+          name: portal_in
+    placements:
+      - src: flowers
+        offset: [1, 1]
+      - src: minibox
+        offset: [0, 0]
+        orient:
+          up: west
+    portals:
+      - entrance: portal_in
+        exitInfo:
+          exit: portal_out
+          subworldName: floor2
+    upperleft: [0, 0]
+    map: |
+      .....
+      .....
+      .....
+      .....
+      .....
+  - name: floor2
+    default: [blank]
+    palette:
+      '.': [dirt]
+      'f': [dirt, flower]
+      'p':
+        cell: [dirt, telepad exit]
+        waypoint:
+          name: portal_out
+      'P':
+        cell: [dirt, telepad entrance]
+        waypoint:
+          name: portal_in
+    placements:
+      - src: flowers
+        offset: [1, 0]
+      - src: minibox
+        offset: [0, 0]
+        orient:
+          up: south
+    portals:
+      - entrance: portal_in
+        exitInfo:
+          exit: portal_out
+          subworldName: floor3
+    upperleft: [0, 0]
+    map: |
+      .....
+      .....
+      .....
+      .....
+      .....
+  - name: floor3
+    default: [blank]
+    palette:
+      '.': [dirt]
+      'f': [dirt, flower]
+      'p':
+        cell: [dirt, telepad exit]
+        waypoint:
+          name: portal_out
+      'P':
+        cell: [dirt, telepad entrance]
+        waypoint:
+          name: portal_in
+    placements:
+      - src: flowers
+        offset: [1, -2]
+      - src: minibox
+        offset: [0, 0]
+        orient:
+          up: east
+    portals:
+      - entrance: portal_in
+        exitInfo:
+          exit: portal_out
+          subworldName: root
+    upperleft: [0, 0]
+    map: |
+      .....
+      .....
+      .....
+      .....
+      .....
+world:
+  name: root
+  default: [blank]
+  palette:
+    '.': [grass]
+  upperleft: [0, 0]
+  placements:
+    - src: flowers
+      offset: [0, -2]
+    - src: minibox
+      offset: [0, 0]
+  portals:
+    - entrance: portal_in
+      exitInfo:
+        exit: portal_out
+        subworldName: floor1
+  map: |
+    .....
+    .....
+    .....
+    .....
+    .....

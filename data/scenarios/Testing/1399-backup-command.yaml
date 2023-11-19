@@ -1,0 +1,30 @@
+version: 1
+name: Demo backup command
+description: |
+  Locomote backwards without access to the turn command
+objectives:
+  - goal:
+    - |
+      `grab` the "flower".
+    condition: |
+      as base {has "flower"}
+solution: |
+    backup; backup; grab;
+robots:
+  - name: base
+    dir: [0, 1]
+    devices:
+      - tape drive
+      - grabber
+known: [flower]
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+    'f': [grass, flower]
+    'B': [grass, null, base]
+  upperleft: [-1, 1]
+  map: |
+    .B.
+    ...
+    .f.

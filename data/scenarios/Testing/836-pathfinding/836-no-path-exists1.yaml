@@ -1,0 +1,48 @@
+version: 1
+name: Builtin pathfinding, unreachable goal, enclosed robot
+description: |
+  There is finite area to explore, so
+  this will terminate quickly.
+creative: false
+objectives:
+  - goal:
+      - Flower must not be reachable.
+    condition: |
+      as base {
+        nextDir <- path (inL ()) (inR "flower");
+        return $ case nextDir (\_. true) (\_. false);
+      };
+solution: |
+  noop;
+entities:
+  - name: wayfinder
+    display:
+      char: 'w'
+    description:
+      - Enables `path` command
+    properties: [known, portable]
+    capabilities: [path]
+robots:
+  - name: base
+    dir: [1,0]
+    devices:
+      - treads
+      - logger
+      - ADT calculator
+      - dictionary
+      - wayfinder
+known: [mountain, flower, tree]
+world:
+  palette:
+    'B': [grass, null, base]
+    '.': [grass]
+    'x': [stone, mountain]
+    'f': [grass, flower]
+    'T': [grass, tree]
+  upperleft: [0, 0]
+  map: |
+    xxxxx......
+    x...x......
+    x.B.x...f..
+    x...x......
+    xxxxx......

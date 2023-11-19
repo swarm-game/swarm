@@ -32,7 +32,6 @@ robots:
   - name: other
     dir: [1,0]
 world:
-  default: [blank]
   palette:
     '.': [grass]
     'Ω': [grass, null]

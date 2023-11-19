@@ -1,0 +1,55 @@
+version: 1
+name: Structure placement (nested)
+description: |
+  Try to place a structure named "bitpair_bogus"
+  which does not exist.
+robots:
+  - name: base
+    loc: [11, 0]
+    dir: [1, 0]
+world:
+  palette:
+    '.': [grass]
+  upperleft: [-1, 1]
+  structures:
+    - name: bitpair
+      structure:
+        palette:
+          '0': [stone, bit (0)]
+          '1': [stone, bit (1)]
+        map: |
+          1
+          0
+    - name: bigbox
+      structure:
+        palette:
+          '.': [stone]
+          'T': [stone, tree]
+        structures:
+          - name: minibox
+            structure:
+              palette:
+                '.': [stone]
+                'x': [stone, tree]
+              placements:
+                - src: bitpair_bogus
+                  offset: [1, 0]
+              map: |
+                x.
+                .x
+        placements:
+          - src: minibox
+            offset: [0, -1]
+        map: |
+          T.T.
+          .T.T
+  placements:
+    - src: bigbox
+      offset: [1, -1]
+    - src: bitpair
+      offset: [1, -7]
+  map: |
+    ........
+    ........
+    ........
+    ........

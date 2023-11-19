@@ -88,6 +88,8 @@ world:
     '*': [grass, flower]
     '@': [stone, boulder]
   upperleft: [-20, 2]
+  dsl: |
+    "classic"
   map: |-
     c,..,,,,,,..,,,,...,.
     ,..,,,,,,,...........

@@ -1,0 +1,16 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/structure-orient.json",
+    "title": "Structure orientation",
+    "description": "Structure orientation properties",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "up": {
+            "type": "string"
+        },
+        "flip": {
+            "type": "boolean"
+        }
+    }
+}

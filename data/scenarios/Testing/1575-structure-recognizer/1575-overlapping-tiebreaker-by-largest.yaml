@@ -1,0 +1,71 @@
+version: 1
+name: Structure recognizer - Tiebreaking overlaps by size
+description: |
+  A larger overlapping structure should always win the tiebreaker
+creative: false
+objectives:
+  - teaser: Build structure
+    prerequisite:
+      not: wrong_structure
+    goal:
+      - |
+        Build a 3x3 structure
+    condition: |
+      foundStructure <- structure "large" 0;
+      return $ case foundStructure (\_. false) (\_. true);
+  - id: wrong_structure
+    teaser: Don't recognize small structure
+    optional: true
+    goal:
+      - |
+        The small structure shouldn't be recognized.
+    condition: |
+      foundStructure <- structure "small" 0;
+      return $ case foundStructure (\_. false) (\_. true);
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - grabber
+      - treads
+    inventory:
+      - [1, gold]
+      - [1, silver]
+solution: |
+   move;
+   place "gold";
+structures:
+  - name: large
+    recognize: true
+    structure:
+      mask: '.'
+      palette:
+        'g': [stone, gold]
+        's': [stone, silver]
+      map: |
+       sss
+       ggs
+       ggs
+  - name: small
+    recognize: true
+    structure:
+      mask: '.'
+      palette:
+        'g': [stone, gold]
+      map: |
+       gg
+       gg
+world:
+  name: root
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass]
+    'g': [grass, gold]
+    's': [grass, silver]
+    'B': [grass, null, base]
+  upperleft: [0, 0]
+  map: |
+       .sss
+       .ggs
+       B.gs

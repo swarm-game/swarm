@@ -6,7 +6,7 @@
 -- Utilities to check whether conditions are met for a game win/loss.
 module Swarm.Game.Scenario.Objective.WinCheck where
 
-import Data.Aeson
+import Data.Aeson (ToJSON)
 import Data.BoolExpr qualified as BE
 import Data.BoolExpr.Simplify qualified as Simplify
 import Data.List (partition)

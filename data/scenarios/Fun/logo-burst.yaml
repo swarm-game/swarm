@@ -56,7 +56,6 @@ robots:
   
 known: [boulder, tree, water, wavy water]
 world:
-  default: [blank]
   upperleft: [0, 0]
   offset: false
   palette:

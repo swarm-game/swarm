@@ -1,0 +1,25 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/named-structure.json",
+    "title": "Named structure",
+    "description": "Structure definitions",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "Name of this substructure"
+        },
+        "description": {
+            "type": "string",
+            "description": "Description of this substructure"
+        },
+        "recognize": {
+            "type": "boolean",
+            "description": "Whether this structure participates in automatic recognition when constructed"
+        },
+        "structure": {
+            "$ref": "structure.json"
+        }
+    }
+}

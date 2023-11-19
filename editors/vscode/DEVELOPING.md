@@ -63,3 +63,16 @@ vsce package --baseImagesUrl "https://raw.githubusercontent.com/swarm-game/swarm
 ```
 
 To share this extension with the world, read on https://code.visualstudio.com/docs about publishing an extension or ask @xsebek to do it.
+
+## Troubleshooting
+
+If you encounter an error that looks like this:
+```
+ERROR in test case test/hello.sw
+    -- existing snapshot
+    ++ new changes
+```
+Then you may have to update the test snapshot as follows:
+```
+npm test vscode-tmgrammar-snap -- --updateSnapshot
+```

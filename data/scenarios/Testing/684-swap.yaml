@@ -45,7 +45,6 @@ robots:
         )
       )
 world:
-  default: [blank]
   palette:
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]

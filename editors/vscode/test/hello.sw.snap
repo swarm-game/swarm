@@ -18,8 +18,5 @@
 >
 >return "";
 #^^^^^^ source.swarm keyword.other
-#      ^ source.swarm
-#       ^ source.swarm string.quoted.double
-#        ^ source.swarm string.quoted.double
-#         ^^ source.swarm
+#      ^^^^^ source.swarm
 >

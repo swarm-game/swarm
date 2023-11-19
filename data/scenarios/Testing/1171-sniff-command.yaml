@@ -42,7 +42,6 @@ robots:
       - treads
 known: []
 world:
-  default: [blank]
   palette:
     'Ω': [grass, null, base]
     '.': [grass]

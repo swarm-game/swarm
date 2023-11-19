@@ -4,8 +4,8 @@
 	"description": "VSCode part of the swarm language server",
 	"author": "Ondřej Šebek",
 	"license": "MIT",
-	"version": "0.0.3",
-	"publisher": "xsebek",
+	"version": "0.1.1",
+	"publisher": "swarm-game",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/swarm-game/swarm"

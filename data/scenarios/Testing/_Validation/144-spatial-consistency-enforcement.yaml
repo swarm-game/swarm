@@ -1,0 +1,93 @@
+version: 1
+name: Subworld spatial consistency enforcement
+description: |
+  Portals annotated to enforce spatial consistency between subworlds
+attrs:
+  - name: portal_in
+    fg: "#ff9a00"
+    bg: "#ff5d00"
+  - name: portal_out
+    fg: "#00a2ff"
+    bg: "#0065ff"
+entities:
+  - name: telepad entrance
+    display:
+      attr: portal_in
+      char: "o"
+    description:
+    - Portal entrance
+    properties: [known]
+  - name: telepad exit
+    display:
+      attr: portal_out
+      char: "o"
+    description:
+    - Portal exit
+    properties: [known]
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - ADT calculator
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - GPS receiver
+      - grabber
+      - lambda
+      - lodestone
+      - logger
+      - strange loop
+      - treads
+known: [boulder]
+subworlds:
+  - name: underground
+    default: [blank]
+    palette:
+      '.': [dirt]
+      'b': [dirt, boulder]
+      'p':
+        cell: [dirt, telepad exit]
+        waypoint:
+          name: portal_out2
+      'P':
+        cell: [dirt, telepad entrance]
+        waypoint:
+          name: portal_in2
+    portals:
+      - entrance: portal_in2
+        exitInfo:
+          exit: portal_out1
+          subworldName: root
+        consistent: true
+    upperleft: [-1, 1]
+    map: |
+      b..b..b..b
+      .P.....p..
+      b..b..b..b
+world:
+  name: root
+  default: [blank]
+  palette:
+    '.': [grass]
+    'B': [grass, null, base]
+    'p':
+      cell: [grass, telepad exit]
+      waypoint:
+        name: portal_out1
+    'P':
+      cell: [grass, telepad entrance]
+      waypoint:
+        name: portal_in1
+  upperleft: [-1, 1]
+  portals:
+    - entrance: portal_in1
+      exitInfo:
+        exit: portal_out2
+        subworldName: underground
+      consistent: true
+  map: |
+    ..........
+    .p.B....P.
+    ..........

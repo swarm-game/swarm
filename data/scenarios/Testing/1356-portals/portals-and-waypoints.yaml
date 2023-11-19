@@ -1,0 +1,114 @@
+version: 1
+name: Waypoints for nested structures
+description: |
+  Demonstrate behavior of waypoints across structure overlays
+creative: true
+attrs:
+  - name: portal_in
+    fg: "#ff9a00"
+    bg: "#ff5d00"
+  - name: portal_out
+    fg: "#00a2ff"
+    bg: "#0065ff"
+entities:
+  - name: telepad entrance
+    display:
+      attr: portal_in
+      char: "o"
+    description:
+    - Portal entrance
+    properties: [known]
+  - name: telepad exit
+    display:
+      attr: portal_out
+      char: "o"
+    description:
+    - Portal exit
+    properties: [known]
+robots:
+  - name: base
+    loc: [0, 4]
+    dir: [1, 0]
+known: [tree, flower, sand, bit (0), bit (1)]
+world:
+  upperleft: [-4, 7]
+  palette:
+    '.': [grass]
+    '*': [stone, flower]
+    'P': [grass, telepad entrance]
+    'p': [grass, telepad exit]
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  structures:
+    - name: bitpair
+      structure:
+        palette:
+          'p': [stone, telepad exit]
+          '1': [stone, bit (1)]
+        map: |
+          1
+          p
+        waypoints:
+          - name: bitpair_bottom
+            loc: [0, -1]
+    - name: minibox
+      structure:
+        palette:
+          '.': [stone]
+          's': [stone, sand]
+          'P': [stone, telepad entrance]
+        placements:
+          - src: bitpair
+            offset: [1, 0]
+        waypoints:
+          - name: minibox_corner
+            loc: [0, 0]
+        map: |
+          P.s
+          s.s
+    - name: bigbox
+      structure:
+        palette:
+          '.': [stone]
+          'T': [stone, tree]
+          'w':
+            cell: [dirt, telepad entrance]
+            waypoint:
+              name: bigbox_middle
+        map: |
+          TTTTTT
+          T.TwT.
+          .T.T.T
+          TTTTTT
+  placements:
+    - src: bigbox
+      offset: [1, -1]
+    - src: bigbox
+      offset: [7, -5]
+    - src: minibox
+      offset: [1, -7]
+  waypoints:
+    - name: meadow
+      loc: [12, -1]
+  portals:
+    - entrance: bigbox_middle
+      exitInfo:
+        exit: bitpair_bottom
+    - entrance: minibox_corner
+      exitInfo:
+        exit: meadow
+  map: |
+    ┌────────────┐
+    │*..*..*..*.p│
+    │.*..*..*..*.│
+    │..*..*..*..*│
+    │*..*..*..*..│
+    │.*..*..*..*.│
+    │..*..*..*..*│
+    │*..*..*..*..│
+    │.*..*..*..*.│
+    └────────────┘
