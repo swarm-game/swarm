@@ -165,6 +165,10 @@ instance ((UnchainableFun t), (PrettyPrec t)) => PrettyPrec (TypeF t) where
      in pparens (p > 0) . align $
           flatAlt (concatWith multiLine funs) (concatWith inLine funs)
   prettyPrec _ (TyRcdF m) = brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
+  prettyPrec _ (TyRecVarF i) = pretty (show i)
+  prettyPrec p (TyMuF _ ty) = pparens (p > 0) "μ." <+> prettyPrec 0 ty
+
+-- XXX pass along context with names for tyvars bound by μ?
 
 instance PrettyPrec Polytype where
   prettyPrec _ (Forall [] t) = ppr t
@@ -403,6 +407,8 @@ tyNounPhrase = \case
   TyProdF {} -> "a pair"
   TyFunF {} -> "a function"
   TyRcdF {} -> "a record"
+  TyRecVarF {} -> "a type variable"
+  TyMuF {} -> "a recursive type"
 
 -- | Return an English noun phrase describing things with the given
 --   base type.
