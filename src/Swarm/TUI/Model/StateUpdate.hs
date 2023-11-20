@@ -32,6 +32,7 @@ import Control.Monad (guard, void)
 import Control.Monad.Except (ExceptT (..))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execStateT)
+import Data.Bifunctor (first)
 import Data.Foldable qualified as F
 import Data.List qualified as List
 import Data.List.NonEmpty qualified as NE
@@ -71,7 +72,7 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.Structure
 import Swarm.TUI.Model.UI
-import Swarm.TUI.View.Attribute.Attr (swarmAttrMap)
+import Swarm.TUI.View.Attribute.Attr (getWorldAttrName, swarmAttrMap)
 import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.Util (listEnums)
@@ -259,7 +260,7 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
       & uiShowZero .~ True
       & uiREPL .~ initREPLState (u ^. uiREPL . replHistory)
       & uiREPL . replHistory %~ restartREPLHistory
-      & uiAttrMap .~ applyAttrMappings (map toAttrPair $ fst siPair ^. scenarioAttrs) swarmAttrMap
+      & uiAttrMap .~ applyAttrMappings (map (first getWorldAttrName . toAttrPair) $ fst siPair ^. scenarioAttrs) swarmAttrMap
       & scenarioRef ?~ siPair
       & lastFrameTime .~ curTime
       & uiWorldEditor . EM.entityPaintList %~ BL.listReplace entityList Nothing

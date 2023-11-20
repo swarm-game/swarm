@@ -17,7 +17,8 @@ import Prettyprinter
 import Prettyprinter.Render.Text qualified as RT
 import Swarm.App (appMain)
 import Swarm.Doc.Gen (EditorType (..), GenerateDocs (..), PageAddress (..), SheetType (..), generateDocs)
-import Swarm.Game.World.Render (printScenarioMap, renderScenarioMap)
+import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..))
+import Swarm.Game.World.Render (OuputFormat (..), RenderOpts (..), doRenderCmd)
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Parse (readTerm)
 import Swarm.Language.Pretty (ppr)
@@ -45,7 +46,7 @@ data CLI
   = Run AppOpts
   | Format Input (Maybe Width)
   | DocGen GenerateDocs
-  | RenderMap FilePath
+  | RenderMap FilePath RenderOpts
   | LSP
   | Version
 
@@ -55,7 +56,7 @@ cliParser =
     ( mconcat
         [ command "format" (info (Format <$> format <*> optional widthOpt <**> helper) (progDesc "Format a file"))
         , command "generate" (info (DocGen <$> docgen <**> helper) (progDesc "Generate docs"))
-        , command "map" (info (RenderMap <$> strArgument (metavar "FILE")) (progDesc "Render a scenario world map."))
+        , command "map" (info (render <**> helper) (progDesc "Render a scenario world map."))
         , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
         ]
@@ -73,12 +74,29 @@ cliParser =
               <*> pure gitInfo
           )
  where
+  render :: Parser CLI
+  render = RenderMap <$> strArgument (metavar "SCENARIO") <*> subOpts
+   where
+    sizeOpts =
+      AreaDimensions
+        <$> option auto (metavar "WIDTH" <> short 'w' <> long "width" <> help "width of source grid")
+        <*> option auto (metavar "HEIGHT" <> short 'h' <> long "height" <> help "height of source grid")
+
+    subOpts =
+      RenderOpts
+        <$> seed
+        <*> flag ConsoleText PngImage (long "png" <> help "Render to PNG")
+        <*> option str (long "dest" <> short 'd' <> value "output.png" <> help "Output filepath")
+        <*> optional sizeOpts
+
   format :: Parser Input
   format =
-    (Stdin <$ switch (long "stdin" <> help "Read code from stdin"))
+    flag' Stdin (long "stdin" <> help "Read code from stdin")
       <|> (File <$> strArgument (metavar "FILE"))
+
   widthOpt :: Parser Width
   widthOpt = option auto (long "width" <> metavar "COLUMNS" <> help "Use layout with maximum width")
+
   docgen :: Parser GenerateDocs
   docgen =
     subparser . mconcat $
@@ -202,6 +220,6 @@ main = do
     Run opts -> appMain opts
     DocGen g -> generateDocs g
     Format fo w -> formatFile fo w
-    RenderMap mapPath -> printScenarioMap =<< renderScenarioMap mapPath
+    RenderMap mapPath opts -> doRenderCmd opts mapPath
     LSP -> lspMain
     Version -> showVersion

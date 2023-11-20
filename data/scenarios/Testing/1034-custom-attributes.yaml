@@ -29,10 +29,12 @@ attrs:
   - name: blueBackround
     bg: "#0000ff"
   - name: italicAndUnderline
+    fg: "#ffffff"
     style:
       - Italic
       - Underline
   - name: boldAndStrikethrough
+    fg: "#ffffff"
     style:
       - Bold
       - Strikethrough

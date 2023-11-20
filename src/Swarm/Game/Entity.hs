@@ -46,6 +46,7 @@ module Swarm.Game.Entity (
   -- ** Entity map
   EntityMap (..),
   buildEntityMap,
+  validateAttrRefs,
   loadEntities,
   lookupEntityName,
   deviceForCap,
@@ -89,7 +90,7 @@ import Control.Carrier.Throw.Either (liftEither)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (Getter, Lens', lens, to, view, (^.))
-import Control.Monad ((<=<))
+import Control.Monad (forM_, unless, (<=<))
 import Data.Bifunctor (first)
 import Data.Char (toLower)
 import Data.Function (on)
@@ -110,13 +111,15 @@ import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Game.Display
+import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
+import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Failure
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document, docToText)
-import Swarm.Util (binTuples, failT, findDup, plural, (?))
+import Swarm.Util (binTuples, failT, findDup, plural, quote, (?))
 import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
@@ -372,6 +375,25 @@ lookupEntityName nm = M.lookup nm . entitiesByName
 deviceForCap :: Capability -> EntityMap -> [Entity]
 deviceForCap cap = fromMaybe [] . M.lookup cap . entitiesByCap
 
+-- | Validates references to 'Display' attributes
+validateAttrRefs :: Has (Throw LoadingFailure) sig m => Set WorldAttr -> [Entity] -> m ()
+validateAttrRefs validAttrs es =
+  forM_ namedEntities $ \(eName, ent) ->
+    case ent ^. entityDisplay . displayAttr of
+      AWorld n ->
+        unless (Set.member (WorldAttr $ T.unpack n) validAttrs)
+          . throwError
+          . CustomMessage
+          $ T.unwords
+            [ "Nonexistent attribute"
+            , quote n
+            , "referenced by entity"
+            , quote eName
+            ]
+      _ -> return ()
+ where
+  namedEntities = map (view entityName &&& id) es
+
 -- | Build an 'EntityMap' from a list of entities.  The idea is that
 --   this will be called once at startup, when loading the entities
 --   from a file; see 'loadEntities'.
@@ -445,6 +467,8 @@ loadEntities = do
   decoded <-
     withThrow (entityFailure . CanNotParseYaml) . (liftEither <=< sendIO) $
       decodeFileEither fileName
+
+  withThrow entityFailure $ validateAttrRefs (M.keysSet worldAttributes) decoded
   withThrow entityFailure $ buildEntityMap decoded
 
 ------------------------------------------------------------

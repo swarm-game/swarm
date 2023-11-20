@@ -61,7 +61,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chunksOf)
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, fromMaybe, isJust, listToMaybe, mapMaybe, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.Semigroup (sconcat)
 import Data.Sequence qualified as Seq
 import Data.Set qualified as Set (toList)
@@ -92,6 +92,7 @@ import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Scenario.Status
+import Swarm.Game.Scenario.Topography.Center
 import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.ScenarioInfo (
@@ -121,6 +122,7 @@ import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
+import Swarm.TUI.View.Logo
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.TUI.View.Util as VU
@@ -175,21 +177,6 @@ newVersionWidget = \case
   Left (FailedReleaseQuery _f) -> Nothing
   Left (NoMainUpstreamRelease _fails) -> Nothing
   Left (OldUpstreamRelease _up _my) -> Nothing
-
-drawLogo :: Text -> Widget Name
-drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) []) . T.lines
- where
-  drawThing :: Char -> Widget Name
-  drawThing c = withAttr (attrFor c) $ str [c]
-
-  attrFor :: Char -> AttrName
-  attrFor c
-    | c `elem` ("<>v^" :: String) = robotAttr
-  attrFor 'T' = plantAttr
-  attrFor '@' = rockAttr
-  attrFor '~' = waterAttr
-  attrFor '▒' = dirtAttr
-  attrFor _ = defAttr
 
 -- | When launching a game, a modal prompt may appear on another layer
 -- to input seed and/or a script to run.
@@ -254,19 +241,10 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
       , padTop (Pad 1) table
       ]
    where
-    defaultVC = Cosmic DefaultRootSubworld origin
-
-    -- The first robot is guaranteed to be the base.
-    baseRobotLoc :: Maybe (Cosmic Location)
-    baseRobotLoc = do
-      theBaseRobot <- listToMaybe theRobots
-      view trobotLocation theBaseRobot
-
-    vc = fromMaybe defaultVC baseRobotLoc
+    vc = determineViewCenter s worldTuples
 
     worldTuples = buildWorldTuples s
     theWorlds = genMultiWorld worldTuples $ fromMaybe 0 $ s ^. scenarioSeed
-    theRobots = genRobotTemplates s worldTuples
 
     ri =
       RenderingInput theWorlds $

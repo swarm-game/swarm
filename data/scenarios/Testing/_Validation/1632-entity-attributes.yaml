@@ -1,0 +1,19 @@
+version: 1
+name: |
+  Entity attribute validity
+description: |
+  This should be rejected by the parser.
+entities:
+  - name: scooter
+    display:
+      char: 'M'
+      attr: 'foobar'
+    description:
+      - My scooter
+robots: []
+world:
+  palette:
+    'x': [grass, null, base]
+  upperleft: [0, 0]
+  map: |
+    x

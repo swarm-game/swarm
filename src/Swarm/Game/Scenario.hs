@@ -34,6 +34,7 @@ module Swarm.Game.Scenario (
   scenarioSeed,
   scenarioAttrs,
   scenarioEntities,
+  scenarioCosmetics,
   scenarioRecipes,
   scenarioKnown,
   scenarioWorlds,
@@ -61,13 +62,15 @@ import Data.Aeson
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, isNothing, listToMaybe)
+import Data.Maybe (catMaybes, isNothing, listToMaybe, mapMaybe)
 import Data.Sequence (Seq)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Entity
+import Swarm.Game.Entity.Cosmetic
+import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Failure
 import Swarm.Game.Location
 import Swarm.Game.Recipe
@@ -127,6 +130,7 @@ data Scenario = Scenario
   , _scenarioSeed :: Maybe Int
   , _scenarioAttrs :: [CustomAttr]
   , _scenarioEntities :: EntityMap
+  , _scenarioCosmetics :: M.Map WorldAttr PreservableColor
   , _scenarioRecipes :: [Recipe Entity]
   , _scenarioKnown :: Set EntityName
   , _scenarioWorlds :: NonEmpty WorldDescription
@@ -145,6 +149,15 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
   parseJSONE = withObjectE "scenario" $ \v -> do
     -- parse custom entities
     emRaw <- liftE (v .:? "entities" .!= [])
+
+    parsedAttrs <- liftE (v .:? "attrs" .!= [])
+    let mergedCosmetics = worldAttributes <> M.fromList (mapMaybe toHifiPair parsedAttrs)
+        attrsUnion = M.keysSet mergedCosmetics
+
+    case run . runThrow $ validateAttrRefs attrsUnion emRaw of
+      Right x -> return x
+      Left x -> failT [prettyText @LoadingFailure x]
+
     em <- case run . runThrow $ buildEntityMap emRaw of
       Right x -> return x
       Left x -> failT [prettyText @LoadingFailure x]
@@ -226,8 +239,9 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
         <*> liftE (v .:? "description" .!= "")
         <*> liftE (v .:? "creative" .!= False)
         <*> liftE (v .:? "seed")
-        <*> liftE (v .:? "attrs" .!= [])
+        <*> pure parsedAttrs
         <*> pure em
+        <*> pure mergedCosmetics
         <*> v ..:? "recipes" ..!= []
         <*> pure (Set.fromList known)
         <*> pure allWorlds
@@ -269,6 +283,9 @@ scenarioAttrs :: Lens' Scenario [CustomAttr]
 
 -- | Any custom entities used for this scenario.
 scenarioEntities :: Lens' Scenario EntityMap
+
+-- | High-fidelity color map for entities
+scenarioCosmetics :: Lens' Scenario (M.Map WorldAttr PreservableColor)
 
 -- | Any custom recipes used in this scenario.
 scenarioRecipes :: Lens' Scenario [Recipe Entity]

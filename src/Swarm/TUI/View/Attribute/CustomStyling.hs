@@ -2,13 +2,12 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.View.Attribute.CustomStyling where
 
-import Brick (AttrName, attrName)
 import Data.Colour.SRGB (sRGB24read)
 import Data.Set (toList)
 import Data.Text qualified as T
 import Graphics.Vty.Attributes
+import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
 import Swarm.Game.Scenario.Style
-import Swarm.TUI.View.Attribute.Attr (worldPrefix)
 import Swarm.TUI.View.Attribute.Util
 
 toStyle :: StyleFlag -> Style
@@ -28,9 +27,9 @@ hexToAttrColor (HexColor colorText) =
  where
   c = sRGB24read $ T.unpack colorText
 
-toAttrPair :: CustomAttr -> (AttrName, Attr)
+toAttrPair :: CustomAttr -> (WorldAttr, Attr)
 toAttrPair ca =
-  (worldPrefix <> attrName (name ca), addStyle $ addFg $ addBg defAttr)
+  (WorldAttr (name ca), addStyle $ addFg $ addBg defAttr)
  where
   addFg = maybe id (flip withForeColor . hexToAttrColor) $ fg ca
   addBg = maybe id (flip withBackColor . hexToAttrColor) $ bg ca
