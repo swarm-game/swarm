@@ -75,7 +75,7 @@ cliParser =
           )
  where
   render :: Parser CLI
-  render = RenderMap <$> strArgument (metavar "FILE") <*> subOpts
+  render = RenderMap <$> strArgument (metavar "SCENARIO") <*> subOpts
    where
     sizeOpts =
       AreaDimensions
