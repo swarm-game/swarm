@@ -42,6 +42,7 @@ import Control.Monad.Reader (
  )
 import Data.Bifunctor
 import Data.Foldable (asum)
+import Data.Functor.Fixedpoint (Fix (..), cata)
 import Data.List (foldl', nub)
 import Data.List.NonEmpty qualified (head)
 import Data.Map.Strict (Map)
@@ -232,7 +233,7 @@ parseTypeAtom =
     <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
     <|> TyDelay <$> braces parseType
     <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))
-    <|> TyMu <$> (reserved "rec" *> identifier) <*> (symbol "." *> parseType)
+    <|> tyMu <$> (reserved "rec" *> identifier) <*> (symbol "." *> parseType)
     <|> parens parseType
 
 parseRecord :: Parser a -> Parser (Map Var a)
@@ -242,6 +243,17 @@ parseRecord p = (parseBinding `sepBy` symbol ",") >>= fromListUnique
   fromListUnique kvs = case findDup (map fst kvs) of
     Nothing -> return $ Map.fromList kvs
     Just x -> failT ["duplicate field name", squote x, "in record literal"]
+
+tyMu :: Var -> Type -> Type
+tyMu x = TyMu x . ($ NZ) . cata s
+ where
+  s :: TypeF (Nat -> Type) -> Nat -> Type
+  s = \case
+    TyMuF y ty -> Fix . TyMuF y . ty . NS
+    TyVarF y
+      | x == y -> Fix . TyRecVarF
+      | otherwise -> const (Fix (TyVarF y))
+    fty -> \i -> Fix (fmap ($ i) fty)
 
 parseDirection :: Parser Direction
 parseDirection = asum (map alternative allDirs) <?> "direction constant"

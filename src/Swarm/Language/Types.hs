@@ -13,6 +13,7 @@ module Swarm.Language.Types (
   BaseTy (..),
   Var,
   TypeF (..),
+  Nat (..),
 
   -- * @Type@
   Type,
@@ -122,8 +123,8 @@ data BaseTy
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
 data Nat where
-  Z :: Nat
-  S :: Nat -> Nat
+  NZ :: Nat
+  NS :: Nat -> Nat
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
 -- | A "structure functor" encoding the shape of type expressions.
