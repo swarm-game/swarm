@@ -51,4 +51,5 @@ Achievements
 1536-custom-unwalkable-entities.yaml
 1535-ping
 1575-structure-recognizer
+1631-tags.yaml
 1634-message-colors.yaml

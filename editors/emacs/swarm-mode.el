@@ -89,6 +89,8 @@
                "waypoint"
                "structure"
                "floorplan"
+               "hastag"
+               "tagmembers"
                "detect"
                "resonate"
                "density"
