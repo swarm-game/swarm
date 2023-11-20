@@ -12,7 +12,7 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking (
 import Control.Carrier.State.Lazy
 import Control.Effect.Lens
 import Control.Lens ((^.))
-import Control.Monad (forM, forM_)
+import Control.Monad (forM, forM_, guard)
 import Data.Hashable (Hashable)
 import Data.Int (Int32)
 import Data.List (sortOn)
@@ -21,6 +21,8 @@ import Data.Map qualified as M
 import Data.Maybe (listToMaybe)
 import Data.Ord (Down (..))
 import Data.Semigroup (Max (..), Min (..))
+import Data.Set (Set)
+import Data.Set qualified as S
 import Linear (V2 (..))
 import Swarm.Game.Entity
 import Swarm.Game.Location
@@ -67,28 +69,48 @@ entityModified modification cLoc = do
             discovery . structureRecognition . recognitionLog %= (StructureRemoved structureName :)
             discovery . structureRecognition . foundStructures %= removeStructure fs
 
--- | Ensures that the entity in this cell is not already
--- participating in a registered structure
-availableEntityAt ::
+-- | In case this cell would match a candidate structure,
+-- ensures that the entity in this cell is not already
+-- participating in a registered structure.
+--
+-- Furthermore, treating cells in registered structures
+-- as 'Nothing' has the effect of "masking" them out,
+-- so that they can overlap empty cells within the bounding
+-- box of the candidate structure.
+--
+-- Finally, entities that are not members of any candidate
+-- structure are also masked out, so that it is OK for them
+-- to intrude into the candidate structure's bounding box
+-- where the candidate structure has empty cells.
+candidateEntityAt ::
   (Has (State GameState) sig m) =>
+  -- | participating entities
+  Set EntityName ->
   Cosmic Location ->
   m (Maybe Entity)
-availableEntityAt cLoc = do
+candidateEntityAt participating cLoc = do
   registry <- use $ discovery . structureRecognition . foundStructures
   if M.member cLoc $ foundByLocation registry
     then return Nothing
-    else entityAt cLoc
+    else do
+      maybeEnt <- entityAt cLoc
+      return $ do
+        ent <- maybeEnt
+        guard $ S.member (ent ^. entityName) participating
+        return ent
 
 -- | Excludes entities that are already part of a
 -- registered found structure.
 getWorldRow ::
   (Has (State GameState) sig m) =>
+  -- | participating entities
+  Set EntityName ->
   Cosmic Location ->
   InspectionOffsets ->
   Int32 ->
   m [Maybe Entity]
-getWorldRow cLoc (InspectionOffsets (Min offsetLeft) (Max offsetRight)) yOffset =
-  mapM availableEntityAt horizontalOffsets
+getWorldRow participatingEnts cLoc (InspectionOffsets (Min offsetLeft) (Max offsetRight)) yOffset =
+  mapM (candidateEntityAt participatingEnts) horizontalOffsets
  where
   horizontalOffsets = map mkLoc [offsetLeft .. offsetRight]
 
@@ -96,13 +118,15 @@ getWorldRow cLoc (InspectionOffsets (Min offsetLeft) (Max offsetRight)) yOffset 
   -- to bottom, but swarm world coordinates increase from bottom to top.
   mkLoc x = cLoc `offsetBy` V2 x (negate yOffset)
 
+-- | This is the first (one-dimensional) stage
+-- in a two-stage (two-dimensional) search.
 registerRowMatches ::
   (Has (State GameState) sig m) =>
   Cosmic Location ->
   AutomatonInfo AtomicKeySymbol StructureSearcher ->
   m ()
-registerRowMatches cLoc (AutomatonInfo horizontalOffsets sm) = do
-  entitiesRow <- getWorldRow cLoc horizontalOffsets 0
+registerRowMatches cLoc (AutomatonInfo participatingEnts horizontalOffsets sm) = do
+  entitiesRow <- getWorldRow participatingEnts cLoc horizontalOffsets 0
   let candidates = findAll sm entitiesRow
       mkCandidateLogEntry c =
         FoundRowCandidate
@@ -138,14 +162,14 @@ getFoundStructures ::
   Hashable keySymb =>
   (Int32, Int32) ->
   Cosmic Location ->
-  StateMachine keySymb StructureRow ->
+  StateMachine keySymb StructureWithGrid ->
   [keySymb] ->
   [FoundStructure]
 getFoundStructures (offsetTop, offsetLeft) cLoc sm entityRows =
   map mkFound candidates
  where
   candidates = findAll sm entityRows
-  mkFound candidate = FoundStructure (wholeStructure $ pVal candidate) $ cLoc `offsetBy` loc
+  mkFound candidate = FoundStructure (pVal candidate) $ cLoc `offsetBy` loc
    where
     -- NOTE: We negate the yOffset because structure rows are numbered increasing from top
     -- to bottom, but swarm world coordinates increase from bottom to top.
@@ -156,16 +180,16 @@ getMatches2D ::
   Cosmic Location ->
   -- | Horizontal found offsets (inclusive indices)
   InspectionOffsets ->
-  AutomatonInfo SymbolSequence StructureRow ->
+  AutomatonInfo SymbolSequence StructureWithGrid ->
   m [FoundStructure]
 getMatches2D
   cLoc
   horizontalFoundOffsets@(InspectionOffsets (Min offsetLeft) _)
-  (AutomatonInfo (InspectionOffsets (Min offsetTop) (Max offsetBottom)) sm) = do
+  (AutomatonInfo participatingEnts (InspectionOffsets (Min offsetTop) (Max offsetBottom)) sm) = do
     entityRows <- mapM getRow verticalOffsets
     return $ getFoundStructures (offsetTop, offsetLeft) cLoc sm entityRows
    where
-    getRow = getWorldRow cLoc horizontalFoundOffsets
+    getRow = getWorldRow participatingEnts cLoc horizontalFoundOffsets
     verticalOffsets = [offsetTop .. offsetBottom]
 
 -- |

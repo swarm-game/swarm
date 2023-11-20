@@ -28,9 +28,10 @@ import Data.Map (Map)
 import Data.Maybe (catMaybes)
 import Data.Ord (Down (Down))
 import Data.Semigroup (Max, Min)
+import Data.Set (Set)
 import GHC.Generics (Generic)
 import Linear (V2 (..))
-import Swarm.Game.Entity (Entity)
+import Swarm.Game.Entity (Entity, EntityName)
 import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
@@ -65,7 +66,7 @@ type SymbolSequence = [AtomicKeySymbol]
 -- It contains search automatons customized to the 2-D structures
 -- that may possibly contain the row found by the 1-D searcher.
 data StructureSearcher = StructureSearcher
-  { automaton2D :: AutomatonInfo SymbolSequence StructureRow
+  { automaton2D :: AutomatonInfo SymbolSequence StructureWithGrid
   , needleContent :: SymbolSequence
   , singleRowItems :: NE.NonEmpty SingleRowEntityOccurrences
   }
@@ -169,7 +170,8 @@ instance Semigroup InspectionOffsets where
 -- a certain subset of structure rows, that may either
 -- all be within one structure, or span multiple structures.
 data AutomatonInfo k v = AutomatonInfo
-  { _inspectionOffsets :: InspectionOffsets
+  { _participatingEntities :: Set EntityName
+  , _inspectionOffsets :: InspectionOffsets
   , _automaton :: StateMachine k v
   }
   deriving (Generic)

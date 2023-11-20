@@ -419,6 +419,7 @@ testScenarioSolutions rs ui =
             , testSolution Default "Testing/1575-structure-recognizer/1575-placement-occlusion"
             , testSolution Default "Testing/1575-structure-recognizer/1575-interior-entity-placement"
             , testSolution Default "Testing/1575-structure-recognizer/1575-floorplan-command"
+            , testSolution Default "Testing/1575-structure-recognizer/1575-bounding-box-overlap"
             ]
         ]
     , testSolution' Default "Testing/1430-built-robot-ownership" CheckForBadErrors $ \g -> do
