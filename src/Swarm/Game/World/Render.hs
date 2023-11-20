@@ -20,7 +20,7 @@ import Linear (V2 (..))
 import Swarm.Doc.Gen (loadStandaloneScenario)
 import Swarm.Game.Display (Attribute (AWorld), defaultChar, displayAttr)
 import Swarm.Game.Entity.Cosmetic
-import Swarm.Game.Entity.Cosmetic.Specimen (terrainAttributes)
+import Swarm.Game.Entity.Cosmetic.Assignment (terrainAttributes)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (initNameGenerator, readAppData)
 import Swarm.Game.Scenario (Scenario, area, scenarioCosmetics, scenarioWorlds, ul, worldName)

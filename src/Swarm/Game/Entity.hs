@@ -112,7 +112,7 @@ import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Game.Display
 import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
-import Swarm.Game.Entity.Cosmetic.Specimen (worldAttributes)
+import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Failure
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)

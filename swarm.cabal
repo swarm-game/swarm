@@ -118,7 +118,7 @@ library
                       Swarm.Game.Display
                       Swarm.Game.Entity
                       Swarm.Game.Entity.Cosmetic
-                      Swarm.Game.Entity.Cosmetic.Specimen
+                      Swarm.Game.Entity.Cosmetic.Assignment
                       Swarm.Game.Exception
                       Swarm.Game.Location
                       Swarm.Game.Recipe

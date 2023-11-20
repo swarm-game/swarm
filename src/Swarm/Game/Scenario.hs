@@ -64,13 +64,13 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, isNothing, listToMaybe, mapMaybe)
 import Data.Sequence (Seq)
-import Data.Set qualified as Set
 import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Entity
 import Swarm.Game.Entity.Cosmetic
-import Swarm.Game.Entity.Cosmetic.Specimen (worldAttributes)
+import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Failure
 import Swarm.Game.Location
 import Swarm.Game.Recipe
