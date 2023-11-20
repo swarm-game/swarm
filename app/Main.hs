@@ -56,7 +56,7 @@ cliParser =
     ( mconcat
         [ command "format" (info (Format <$> format <*> optional widthOpt <**> helper) (progDesc "Format a file"))
         , command "generate" (info (DocGen <$> docgen <**> helper) (progDesc "Generate docs"))
-        , command "map" (info render (progDesc "Render a scenario world map."))
+        , command "map" (info (render <**> helper) (progDesc "Render a scenario world map."))
         , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
         ]
