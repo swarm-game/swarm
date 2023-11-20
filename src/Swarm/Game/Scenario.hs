@@ -64,8 +64,8 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, isNothing, listToMaybe, mapMaybe)
 import Data.Sequence (Seq)
-import Data.Set qualified as Set
 import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Entity
