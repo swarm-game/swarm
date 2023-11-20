@@ -244,6 +244,21 @@ parseRecord p = (parseBinding `sepBy` symbol ",") >>= fromListUnique
     Nothing -> return $ Map.fromList kvs
     Just x -> failT ["duplicate field name", squote x, "in record literal"]
 
+-- | Close over a mu (recursive) type, replacing any bound occurrences
+--   of its variable in the body with de Bruijn indices.  Note that
+--   (1) we don't have to worry about conflicts with type variables
+--   bound by a top-level @forall@; since @forall@ must always be at
+--   the top level, any @rec@ will necessarily be lexically within the
+--   scope of any @forall@ and hence variables bound by @rec@ will
+--   shadow any variables bound by a @forall@.  For example, @forall
+--   a. a -> (rec a. unit + a)@ is a function from an arbitrary type
+--   to a recursive natural number. (2) Any @rec@ contained inside
+--   this one will have already been closed over when it was parsed,
+--   and its bound variables thus replaced by de Bruijn indices, so
+--   neither do we have to worry about being shadowed --- any
+--   remaining free occurrences of the variable name in question are
+--   indeed references to this @rec@ binder.
+
 tyMu :: Var -> Type -> Type
 tyMu x = TyMu x . ($ NZ) . cata s
  where
