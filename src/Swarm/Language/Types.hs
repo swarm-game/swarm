@@ -33,6 +33,7 @@ module Swarm.Language.Types (
   pattern TyRcd,
   pattern TyCmd,
   pattern TyDelay,
+  pattern TyMu,
 
   -- * @UType@
   UType,
@@ -52,6 +53,7 @@ module Swarm.Language.Types (
   pattern UTyRcd,
   pattern UTyCmd,
   pattern UTyDelay,
+  pattern UTyMu,
 
   -- ** Utilities
   ucata,
@@ -343,6 +345,9 @@ pattern TyCmd ty1 = Fix (TyCmdF ty1)
 pattern TyDelay :: Type -> Type
 pattern TyDelay ty1 = Fix (TyDelayF ty1)
 
+pattern TyMu :: Var -> Type -> Type
+pattern TyMu x ty = Fix (TyMuF x ty)
+
 pattern UTyBase :: BaseTy -> UType
 pattern UTyBase b = UTerm (TyBaseF b)
 
@@ -390,6 +395,9 @@ pattern UTyCmd ty1 = UTerm (TyCmdF ty1)
 
 pattern UTyDelay :: UType -> UType
 pattern UTyDelay ty1 = UTerm (TyDelayF ty1)
+
+pattern UTyMu :: Var -> UType -> UType
+pattern UTyMu x ty = UTerm (TyMuF x ty)
 
 pattern PolyUnit :: Polytype
 pattern PolyUnit = Forall [] (TyCmd TyUnit)

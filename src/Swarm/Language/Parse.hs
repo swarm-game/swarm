@@ -95,6 +95,7 @@ reservedWords =
        , "dir"
        , "bool"
        , "actor"
+       , "rec"
        , "key"
        , "cmd"
        , "delay"
@@ -231,6 +232,7 @@ parseTypeAtom =
     <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
     <|> TyDelay <$> braces parseType
     <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))
+    <|> TyMu <$> (reserved "rec" *> identifier) <*> (symbol "." *> parseType)
     <|> parens parseType
 
 parseRecord :: Parser a -> Parser (Map Var a)
