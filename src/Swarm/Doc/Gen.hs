@@ -56,7 +56,7 @@ import Swarm.Game.World.Typecheck (Some (..), TTerm)
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Capability qualified as Capability
 import Swarm.Language.Key (specialKeyNames)
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Pretty (prettyText, prettyTextLine)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Text.Markdown as Markdown (docToMark)
@@ -252,7 +252,7 @@ commandToList c =
   map
     escapeTable
     [ addLink ("#" <> tshow c) . codeQuote $ constSyntax c
-    , codeQuote . prettyText $ inferConst c
+    , codeQuote . prettyTextLine $ inferConst c
     , maybe "" Capability.capabilityName $ Capability.constCaps c
     , Syntax.briefDoc . Syntax.constDoc $ Syntax.constInfo c
     ]
