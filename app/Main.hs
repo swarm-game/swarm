@@ -86,7 +86,7 @@ cliParser =
       RenderOpts
         <$> seed
         <*> flag ConsoleText PngImage (long "png" <> help "Render to PNG")
-        <*> option auto (long "dest" <> short 'd' <> value "output.png" <> help "Output filepath")
+        <*> option str (long "dest" <> short 'd' <> value "output.png" <> help "Output filepath")
         <*> optional sizeOpts
 
   format :: Parser Input
