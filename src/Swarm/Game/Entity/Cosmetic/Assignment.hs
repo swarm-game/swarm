@@ -2,7 +2,12 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Entity and terrain coloring.
-module Swarm.Game.Entity.Cosmetic.Specimen where
+--
+-- This module is the sole "ground truth" for color
+-- assignment of entities and terrain.
+-- More specifically, it sets colors for "attributes",
+-- and the attributes are referenced by entities\/terrain.
+module Swarm.Game.Entity.Cosmetic.Assignment where
 
 import Data.Bifunctor (bimap)
 import Data.Colour.SRGB (RGB (..))

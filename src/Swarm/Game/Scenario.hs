@@ -70,7 +70,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Entity
 import Swarm.Game.Entity.Cosmetic
-import Swarm.Game.Entity.Cosmetic.Specimen (worldAttributes)
+import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Failure
 import Swarm.Game.Location
 import Swarm.Game.Recipe

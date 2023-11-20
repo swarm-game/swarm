@@ -60,7 +60,7 @@ import Data.Text (unpack)
 import Graphics.Vty qualified as V
 import Swarm.Game.Display (Attribute (..))
 import Swarm.Game.Entity.Cosmetic
-import Swarm.Game.Entity.Cosmetic.Specimen
+import Swarm.Game.Entity.Cosmetic.Assignment
 import Swarm.TUI.View.Attribute.Util
 
 toAttrName :: Attribute -> AttrName

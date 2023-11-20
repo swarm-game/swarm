@@ -17,6 +17,7 @@ data NamedColor
   | Yellow
   deriving (Show)
 
+-- | 8-bit color
 type RGBColor = RGB Word8
 
 -- | High-fidelity color representation for rendering
@@ -27,11 +28,19 @@ data TrueColor
   deriving (Show)
 
 -- |
--- Ignores vty "styles", such as bold/italic/underline.
+-- A value of type @ColorLayers a@ represents the assignment of
+-- foreground and\/or background color to an 'Entity' or terrain,
+-- where @a@ may be a medium-independent (i.e. "authoritative") color
+-- representation, or medium-specific (e.g. a @vty@ color).
+-- The 'Functor' instance facilitates easy conversion from the
+-- authoritative color to the specialized representation.
+--
+-- Ignores @vty@ "styles", such as bold\/italic\/underline.
 --
 -- This is intended to facilitate multiple rendering mediums:
 --
--- * Single pixel per world cell (one color must be chosen between foreground and background, if both are specified)
+-- * Single pixel per world cell (one color must be chosen
+--   between foreground and background, if both are specified)
 -- * Pixel block per world cell (can show two colors in some stylized manner)
 -- * Glyph per world cell (can render a colored display character on a colored background)
 data ColorLayers a
