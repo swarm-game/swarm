@@ -31,6 +31,13 @@
             },
             "description": "A description of the entity, as a list of paragraphs."
         },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "A list of categories this entity belongs to."
+        },
         "orientation": {
             "default": null,
             "type": "array",
