@@ -34,6 +34,7 @@ module Swarm.Web (
   webMain,
 ) where
 
+import WaiAppStatic.Types (unsafeToPiece)
 import Brick.BChan
 import Commonmark qualified as Mark (commonmark, renderHtml)
 import Control.Arrow (left)
@@ -44,6 +45,7 @@ import Control.Lens
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
 import Data.ByteString.Lazy (ByteString)
+import Network.Wai.Application.Static (ssIndices, defaultFileServerSettings)
 import Data.Foldable (toList)
 import Data.IntMap qualified as IM
 import Data.List.NonEmpty qualified as NE
@@ -108,7 +110,9 @@ type SwarmAPI =
 swarmApi :: Proxy SwarmAPI
 swarmApi = Proxy
 
-type ToplevelAPI = SwarmAPI :<|> Raw
+type ToplevelAPI = SwarmAPI
+  :<|> "api" :> Raw
+  :<|> Raw
 
 api :: Proxy ToplevelAPI
 api = Proxy
@@ -260,7 +264,9 @@ webMain baton port appStateRef chan = catch (Warp.runSettings settings app) hand
     Nothing -> id
 
   server :: Server ToplevelAPI
-  server = mkApp appStateRef chan :<|> Tagged serveDocs
+  server = mkApp appStateRef chan
+    :<|> Tagged serveDocs
+    :<|> serveDirectoryWith (defaultFileServerSettings "web") { ssIndices = [unsafeToPiece "index.html"]}
    where
     serveDocs _ resp =
       resp $ responseLBS ok200 [plain] swarmApiHtml
