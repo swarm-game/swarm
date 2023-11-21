@@ -718,6 +718,9 @@ stepCESK cesk = case cesk of
       Nothing -> badMachineState s $ T.unwords ["Record projection for variable", x, "that does not exist"]
       Just xv -> return $ Out xv s k
     _ -> badMachineState s "FProj frame with non-record value"
+  -- Roll & unroll are runtime no-ops
+  In (TRoll t) e s k -> return $ In t e s k
+  In (TUnroll t) e s k -> return $ In t e s k
   -- To evaluate non-recursive let expressions, we start by focusing on the
   -- let-bound expression.
   In (TLet False x _ t1 t2) e s k -> return $ In t1 e s (FLet x t2 e : k)

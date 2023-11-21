@@ -246,5 +246,7 @@ requirements' = go
       expandEq (x, Nothing) = TVar x
       expandEq (_, Just t) = t
     TProj t _ -> insert (ReqCap CRecord) $ go ctx t
+    TRoll t -> insert (ReqCap CRectype) $ go ctx t
+    TUnroll t -> insert (ReqCap CRectype) $ go ctx t
     -- A type ascription doesn't change requirements
     TAnnotate t _ -> go ctx t

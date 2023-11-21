@@ -65,6 +65,8 @@ module Swarm.Language.Syntax (
   pattern TRcd,
   pattern TProj,
   pattern TAnnotate,
+  pattern TUnroll,
+  pattern TRoll,
 
   -- * Terms
   Var,
@@ -301,10 +303,6 @@ data Const
     Undefined
   | -- | User error
     Fail
-  | -- | Explicitly unroll a recursive type one step
-    Unroll
-  | -- | Explicitly roll a recursive type one step
-    Roll
   | -- Arithmetic unary operators
 
     -- | Logical negation.
@@ -729,8 +727,6 @@ constInfo c = case c of
   Try -> command 2 Intangible "Execute a command, catching errors."
   Undefined -> function 0 "A value of any type, that is evaluated as error."
   Fail -> function 1 "A value of any type, that is evaluated as error with message."
-  Roll -> function 1 "Roll, i.e. construct, a recursive type."
-  Unroll -> function 1 "Unroll/deconstruct a recursive type, i.e. expand it one step."
   If ->
     function 3 . doc "If-Then-Else function." $
       ["If the bool predicate is true then evaluate the first expression, otherwise the second."]
@@ -946,6 +942,16 @@ data Term' ty
     SProj (Syntax' ty) Var
   | -- | Annotate a term with a type
     SAnnotate (Syntax' ty) Polytype
+  | -- | Explicitly unroll a recursive type one step.  This is a
+    --   special syntax form, rather than a constant, since it needs a
+    --   special typechecking rule and we cannot give it a standalone
+    --   function type.
+    SUnroll (Syntax' ty)
+  | -- | Explicitly roll a recursive type one step. This is a
+    --   special syntax form, rather than a constant, since it needs a
+    --   special typechecking rule and we cannot give it a standalone
+    --   function type.
+    SRoll (Syntax' ty)
   deriving
     ( Eq
     , Show
@@ -1081,8 +1087,16 @@ pattern TProj t x = SProj (STerm t) x
 pattern TAnnotate :: Term -> Polytype -> Term
 pattern TAnnotate t pt = SAnnotate (STerm t) pt
 
+-- | Match a TUnroll without syntax
+pattern TUnroll :: Term -> Term
+pattern TUnroll t = SUnroll (STerm t)
+
+-- | Match a TRoll without syntax
+pattern TRoll :: Term -> Term
+pattern TRoll t = SRoll (STerm t)
+
 -- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TRequirements, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TRcd, TProj, TAnnotate #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TRequirements, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TRcd, TProj, TAnnotate, TUnroll, TRoll #-}
 
 -- | Make infix operation (e.g. @2 + 3@) a curried function
 --   application (@((+) 2) 3@).
@@ -1165,6 +1179,8 @@ freeVarsS f = go S.empty
     SRcd m -> rewrap $ SRcd <$> (traverse . traverse) (go bound) m
     SProj s1 x -> rewrap $ SProj <$> go bound s1 <*> pure x
     SAnnotate s1 pty -> rewrap $ SAnnotate <$> go bound s1 <*> pure pty
+    SUnroll s1 -> rewrap $ SUnroll <$> go bound s1
+    SRoll s1 -> rewrap $ SRoll <$> go bound s1
    where
     rewrap s' = Syntax' l <$> s' <*> pure ty
 

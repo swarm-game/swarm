@@ -97,6 +97,8 @@ reservedWords =
        , "bool"
        , "actor"
        , "rec"
+       , "roll"
+       , "unroll"
        , "key"
        , "cmd"
        , "delay"
@@ -337,6 +339,8 @@ parseTermAtom2 =
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
         <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
+        <|> SRoll <$> (reserved "roll" *> parseTermAtom)
+        <|> SUnroll <$> (reserved "unroll" *> parseTerm)
         <|> parens (view sTerm . mkTuple <$> (parseTerm `sepBy` symbol ","))
     )
     -- Potential syntax for explicitly requesting memoized delay.

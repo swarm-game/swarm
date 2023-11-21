@@ -929,13 +929,6 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
         when (c == Atomic) $ validAtomic at
         return $ Syntax' l (SApp atomic' at') (UTyCmd argTy)
 
-    -- Special case for checking an application of 'roll'.
-    | c == Roll -> do
-        unrolledTy <- unrollRecTy s (Expected, expected)
-        let roll' = Syntax' l (TConst Roll) (UTyFun unrolledTy expected)
-        at' <- check at unrolledTy
-        return $ Syntax' l (SApp roll' at') expected
-
   -- Checking the type of a let-expression.
   SLet r x mxTy t1 t2 -> do
     (upty, t1') <- case mxTy of
@@ -988,6 +981,12 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
             FieldsMismatch (joined expectedFields actualFields)
         m' <- itraverse (\x ms -> check (fromMaybe (STerm (TVar x)) ms) (tyMap ! x)) fields
         return $ Syntax' l (SRcd (Just <$> m')) expected
+
+  -- Checking an application of 'roll'.
+  SRoll at -> do
+    unrolledTy <- unrollRecTy s (Expected, expected)
+    at' <- check at unrolledTy
+    return $ Syntax' l (SRoll at') expected
 
   -- Fallback: switch into inference mode, and check that the type we
   -- get is what we expected.
@@ -1076,10 +1075,12 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- executed.
   TConst If :$: tst :$: thn :$: els ->
     (+) <$> analyzeAtomic locals tst <*> (max <$> analyzeAtomic locals thn <*> analyzeAtomic locals els)
-  -- Pairs, application, and delay are simple: just recurse and sum the results.
+  -- Pairs, application, roll, unroll, and delay are simple: just recurse and sum the results.
   SPair s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic locals s2
   SApp s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic locals s2
   SDelay _ s1 -> analyzeAtomic locals s1
+  SUnroll s1 -> analyzeAtomic locals s1
+  SRoll s1 -> analyzeAtomic locals s1
   -- Bind is similarly simple except that we have to keep track of a local variable
   -- bound in the RHS.
   SBind mx s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2

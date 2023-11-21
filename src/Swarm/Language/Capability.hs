@@ -277,8 +277,6 @@ constCaps = \case
   Key -> Just CHandleinput
   InstallKeyHandler -> Just CHandleinput
   Halt -> Just CHalt
-  Roll -> Just CRectype
-  Unroll -> Just CRectype
   -- ----------------------------------------------------------------
   -- Text operations
   Format -> Just CFormat
