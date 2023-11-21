@@ -18,6 +18,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Tagged (unTagged)
 import Data.Word (Word32)
+import Graphics.Vty qualified as V
 import Linear.Affine ((.-.))
 import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Display (
@@ -32,6 +33,8 @@ import Swarm.Game.Display (
 import Swarm.Game.Entity
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Topography.EntityFacade
+import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByLocation)
 import Swarm.Game.State
 import Swarm.Game.Terrain
 import Swarm.Game.Universe
@@ -42,6 +45,7 @@ import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Attribute.Attr
+import Swarm.Util (applyWhen)
 import Witch (from)
 import Witch.Encoding qualified as Encoding
 
@@ -54,11 +58,16 @@ drawLoc :: UIState -> GameState -> Cosmic W.Coords -> Widget Name
 drawLoc ui g cCoords@(Cosmic _ coords) =
   if shouldHideWorldCell ui coords
     then str " "
-    else drawCell
+    else boldStructure drawCell
  where
   showRobots = ui ^. uiShowRobots
   we = ui ^. uiWorldEditor . worldOverdraw
   drawCell = renderDisplay $ displayLoc showRobots we g cCoords
+
+  boldStructure = applyWhen isStructure $ modifyDefAttr (`V.withStyle` V.bold)
+   where
+    sMap = foundByLocation $ g ^. discovery . structureRecognition . foundStructures
+    isStructure = M.member (W.coordsToLoc <$> cCoords) sMap
 
 -- | Subset of the game state needed to render the world
 data RenderingInput = RenderingInput
