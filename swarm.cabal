@@ -109,6 +109,7 @@ library
                       Swarm.Doc.Schema.Render
                       Swarm.Doc.Schema.SchemaType
                       Swarm.Doc.Util
+                      Swarm.Doc.Wiki.Cheatsheet
                       Swarm.Game.Failure
                       Swarm.Game.Achievement.Attainment
                       Swarm.Game.Achievement.Definitions
