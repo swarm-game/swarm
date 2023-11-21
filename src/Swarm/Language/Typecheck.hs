@@ -508,6 +508,23 @@ decomposeProdTy t ty = do
   _ <- unify (Just t) (mkJoin ty (UTyProd ty1 ty2))
   return (ty1, ty2)
 
+-- | Unroll a type that is supposed to be a recursive type.  Also take
+--   the term which is supposed to have that type, for use in error
+--   messages.
+unrollRecTy :: Syntax -> Sourced UType -> TC UType
+unrollRecTy _ (_, recty@(UTyMu _ ty)) = return $ substRec recty ty NZ
+unrollRecTy t ty = error "unrollRecTy"
+
+-- | XXX comment me.
+--   XXX should this function move elsewhere?
+substRec :: UType -> UType -> Nat -> UType
+substRec s = ucata (\i _ -> UVar i) $ \f i -> case f of
+  TyRecVarF j
+    | i == j -> s
+    | otherwise -> UTerm (TyRecVarF j)
+  TyMuF x g -> UTerm (TyMuF x (g (NS i)))
+  _ -> UTerm (fmap ($ i) f)
+
 ------------------------------------------------------------
 -- Type inference / checking
 
@@ -891,11 +908,12 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
     body' <- withBinding (lvVar x) (Forall [] argTy) $ check body resTy
     return $ Syntax' l (SLam x mxTy body') (UTyFun argTy resTy)
 
-  -- Special case for checking the argument to 'atomic' (or
-  -- 'instant').  'atomic t' has the same type as 't', which must have
-  -- a type of the form 'cmd a' for some 'a'.
-
+  -- Some special cases for checking applications of certain constants.
   TConst c :$: at
+
+    -- Special case for checking the argument to 'atomic' (or
+    -- 'instant').  'atomic t' has the same type as 't', which must have
+    -- a type of the form 'cmd a' for some 'a'.
     | c `elem` [Atomic, Instant] -> do
         argTy <- decomposeCmdTy s (Expected, expected)
         at' <- check at (UTyCmd argTy)
@@ -910,6 +928,14 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
         -- we skip this check.
         when (c == Atomic) $ validAtomic at
         return $ Syntax' l (SApp atomic' at') (UTyCmd argTy)
+
+    -- Special case for checking an application of 'roll'.
+    | c == Roll -> do
+        unrolledTy <- unrollRecTy s (Expected, expected)
+        let roll' = Syntax' l (TConst Roll) (UTyFun unrolledTy expected)
+        at' <- check at unrolledTy
+        return $ Syntax' l (SApp roll' at') expected
+
   -- Checking the type of a let-expression.
   SLet r x mxTy t1 t2 -> do
     (upty, t1') <- case mxTy of

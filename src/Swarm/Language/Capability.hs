@@ -171,6 +171,8 @@ data Capability
     CHandleinput
   | -- | Capability to make other robots halt.
     CHalt
+  | -- | Capability to handle recursive types.
+    CRectype
   | -- | God-like capabilities.  For e.g. commands intended only for
     --   checking challenge mode win conditions, and not for use by
     --   players.
@@ -275,6 +277,8 @@ constCaps = \case
   Key -> Just CHandleinput
   InstallKeyHandler -> Just CHandleinput
   Halt -> Just CHalt
+  Roll -> Just CRectype
+  Unroll -> Just CRectype
   -- ----------------------------------------------------------------
   -- Text operations
   Format -> Just CFormat

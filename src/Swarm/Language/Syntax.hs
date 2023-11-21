@@ -301,6 +301,10 @@ data Const
     Undefined
   | -- | User error
     Fail
+  | -- | Explicitly unroll a recursive type one step
+    Unroll
+  | -- | Explicitly roll a recursive type one step
+    Roll
   | -- Arithmetic unary operators
 
     -- | Logical negation.
@@ -725,6 +729,8 @@ constInfo c = case c of
   Try -> command 2 Intangible "Execute a command, catching errors."
   Undefined -> function 0 "A value of any type, that is evaluated as error."
   Fail -> function 1 "A value of any type, that is evaluated as error with message."
+  Roll -> function 1 "Roll, i.e. construct, a recursive type."
+  Unroll -> function 1 "Unroll/deconstruct a recursive type, i.e. expand it one step."
   If ->
     function 3 . doc "If-Then-Else function." $
       ["If the bool predicate is true then evaluate the first expression, otherwise the second."]
