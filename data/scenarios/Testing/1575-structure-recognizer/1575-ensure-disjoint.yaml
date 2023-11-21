@@ -65,6 +65,7 @@ structures:
        sgsg
        gsgs
        sgsg
+known: [water, gold, silver]
 world:
   name: root
   dsl: |
