@@ -34,7 +34,6 @@ module Swarm.Web (
   webMain,
 ) where
 
-import WaiAppStatic.Types (unsafeToPiece)
 import Brick.BChan
 import Commonmark qualified as Mark (commonmark, renderHtml)
 import Control.Arrow (left)
@@ -45,7 +44,6 @@ import Control.Lens
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
 import Data.ByteString.Lazy (ByteString)
-import Network.Wai.Application.Static (ssIndices, defaultFileServerSettings)
 import Data.Foldable (toList)
 import Data.IntMap qualified as IM
 import Data.List.NonEmpty qualified as NE
@@ -59,6 +57,7 @@ import Data.Tree (Tree (Node), drawTree)
 import Network.HTTP.Types (ok200)
 import Network.Wai (responseLBS)
 import Network.Wai qualified
+import Network.Wai.Application.Static (defaultFileServerSettings, ssIndices)
 import Network.Wai.Handler.Warp qualified as Warp
 import Servant
 import Servant.Docs (ToCapture)
@@ -84,6 +83,7 @@ import Swarm.TUI.Model.UI
 import Swarm.Util.RingBuffer
 import System.Timeout (timeout)
 import Text.Read (readEither)
+import WaiAppStatic.Types (unsafeToPiece)
 import Witch (into)
 
 -- ------------------------------------------------------------------
@@ -110,9 +110,10 @@ type SwarmAPI =
 swarmApi :: Proxy SwarmAPI
 swarmApi = Proxy
 
-type ToplevelAPI = SwarmAPI
-  :<|> "api" :> Raw
-  :<|> Raw
+type ToplevelAPI =
+  SwarmAPI
+    :<|> "api" :> Raw
+    :<|> Raw
 
 api :: Proxy ToplevelAPI
 api = Proxy
@@ -264,9 +265,10 @@ webMain baton port appStateRef chan = catch (Warp.runSettings settings app) hand
     Nothing -> id
 
   server :: Server ToplevelAPI
-  server = mkApp appStateRef chan
-    :<|> Tagged serveDocs
-    :<|> serveDirectoryWith (defaultFileServerSettings "web") { ssIndices = [unsafeToPiece "index.html"]}
+  server =
+    mkApp appStateRef chan
+      :<|> Tagged serveDocs
+      :<|> serveDirectoryWith (defaultFileServerSettings "web") {ssIndices = [unsafeToPiece "index.html"]}
    where
     serveDocs _ resp =
       resp $ responseLBS ok200 [plain] swarmApiHtml
