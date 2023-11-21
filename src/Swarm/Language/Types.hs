@@ -14,6 +14,7 @@ module Swarm.Language.Types (
   Var,
   TypeF (..),
   Nat (..),
+  natToInt,
 
   -- * @Type@
   Type,
@@ -126,6 +127,10 @@ data Nat where
   NZ :: Nat
   NS :: Nat -> Nat
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
+
+natToInt :: Nat -> Int
+natToInt NZ = 0
+natToInt (NS n) = 1 + natToInt n
 
 -- | A "structure functor" encoding the shape of type expressions.
 --   Actual types are then represented by taking a fixed point of this

@@ -13,7 +13,7 @@ import Control.Lens.Combinators (pattern Empty)
 import Control.Unification
 import Control.Unification.IntVar
 import Data.Bool (bool)
-import Data.Functor.Fixedpoint (Fix, unFix)
+import Data.Functor.Fixedpoint (Fix, cata, unFix)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Set (Set)
@@ -165,10 +165,11 @@ instance ((UnchainableFun t), (PrettyPrec t)) => PrettyPrec (TypeF t) where
      in pparens (p > 0) . align $
           flatAlt (concatWith multiLine funs) (concatWith inLine funs)
   prettyPrec _ (TyRcdF m) = brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
-  prettyPrec _ (TyRecVarF i) = pretty (show i)
-  prettyPrec p (TyMuF _ ty) = pparens (p > 0) "μ." <+> prettyPrec 0 ty
+  prettyPrec _ (TyRecVarF i) = pretty (show (natToInt i))
+  prettyPrec p (TyMuF _ ty) = pparens (p > 0) $ "rec." <+> prettyPrec 0 ty
 
--- XXX pass along context with names for tyvars bound by μ?
+-- openRec :: Var -> Type -> (Var, Type)
+-- openRec x ty = (x, cata _ ty NZ)
 
 instance PrettyPrec Polytype where
   prettyPrec _ (Forall [] t) = ppr t
