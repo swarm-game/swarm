@@ -287,7 +287,7 @@ entities:
     properties: [known, unwalkable]
   - name: pier
     display:
-      char: 且
+      char: H
       attr: rock
     description:
       - Docking area for ships
