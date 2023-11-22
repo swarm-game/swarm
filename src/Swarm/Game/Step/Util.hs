@@ -122,9 +122,9 @@ flagRedraw = needsRedraw .= True
 --   the game state.
 uniform :: (Has (State GameState) sig m, UniformRange a) => (a, a) -> m a
 uniform bnds = do
-  rand <- use randGen
+  rand <- use $ randomness . randGen
   let (n, g) = uniformR bnds rand
-  randGen .= g
+  randomness . randGen .= g
   return n
 
 -- | Given a weighting function and a list of values, choose one of
