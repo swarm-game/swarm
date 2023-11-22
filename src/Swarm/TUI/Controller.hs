@@ -1344,7 +1344,7 @@ handleWorldEvent = \case
         when (c || s) $ scrollView (.+^ (worldScrollDist *^ keyToDir k))
   CharKey 'c' -> do
     invalidateCacheEntry WorldCache
-    gameState . viewCenterRule .= VCRobot 0
+    gameState . robotInfo . viewCenterRule .= VCRobot 0
   -- show fps
   CharKey 'f' -> uiState . uiShowFPS %= not
   -- Fall-through case: don't do anything.

@@ -56,6 +56,7 @@ module Swarm.Game.State (
   gameControls,
   discovery,
   landscape,
+  robotInfo,
   pathCaching,
 
   -- ** GameState subrecords
@@ -582,15 +583,8 @@ entityMap :: Lens' Landscape EntityMap
 -- | Whether the world map is supposed to be scrollable or not.
 worldScrollable :: Lens' Landscape Bool
 
--- | The main record holding the state for the game itself (as
---   distinct from the UI).  See the lenses below for access to its
---   fields.
-data GameState = GameState
-  { _creativeMode :: Bool
-  , _temporal :: TemporalState
-  , _winCondition :: WinCondition
-  , _winSolution :: Maybe ProcessedTerm
-  , _robotMap :: IntMap Robot
+data Robots = Robots
+  { _robotMap :: IntMap Robot
   , -- A set of robots to consider for the next game tick. It is guaranteed to
     -- be a subset of the keys of 'robotMap'. It may contain waiting or idle
     -- robots. But robots that are present in 'robotMap' and not in 'activeRobots'
@@ -610,25 +604,11 @@ data GameState = GameState
     -- that we do not have to iterate over all "waiting" robots,
     -- since there may be many.
     _robotsWatching :: Map (Cosmic Location) (S.Set RID)
-  , _pathCaching :: PathCaching
-  , _discovery :: Discovery
-  , _seed :: Seed
-  , _randGen :: StdGen
   , _robotNaming :: RobotNaming
-  , _recipesInfo :: Recipes
-  , _currentScenarioPath :: Maybe FilePath
-  , _landscape :: Landscape
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter :: Cosmic Location
-  , _needsRedraw :: Bool
-  , _gameControls :: GameControls
-  , _messageInfo :: Messages
   , _focusedRobotID :: RID
   }
-
-------------------------------------------------------------
--- Lenses
-------------------------------------------------------------
 
 -- We want to access active and waiting robots via lenses inside
 -- this module but to expose it as a Getter to protect invariants.
@@ -636,9 +616,83 @@ makeLensesFor
   [ ("_activeRobots", "internalActiveRobots")
   , ("_waitingRobots", "internalWaitingRobots")
   ]
-  ''GameState
+  ''Robots
 
-makeLensesExcluding ['_viewCenter, '_focusedRobotID, '_viewCenterRule, '_activeRobots, '_waitingRobots] ''GameState
+makeLensesExcluding ['_viewCenter, '_viewCenterRule, '_focusedRobotID, '_activeRobots, '_waitingRobots] ''Robots
+
+-- | All the robots that currently exist in the game, indexed by ID.
+robotMap :: Lens' Robots (IntMap Robot)
+
+-- | The names of the robots that are currently not sleeping.
+activeRobots :: Getter Robots IntSet
+activeRobots = internalActiveRobots
+
+-- | The names of the robots that are currently sleeping, indexed by wake up
+--   time. Note that this may not include all sleeping robots, particularly
+--   those that are only taking a short nap (e.g. @wait 1@).
+waitingRobots :: Getter Robots (Map TickNumber [RID])
+waitingRobots = internalWaitingRobots
+
+-- | The names of all robots that currently exist in the game, indexed by
+--   location (which we need both for /e.g./ the @salvage@ command as
+--   well as for actually drawing the world).  Unfortunately there is
+--   no good way to automatically keep this up to date, since we don't
+--   just want to completely rebuild it every time the 'robotMap'
+--   changes.  Instead, we just make sure to update it every time the
+--   location of a robot changes, or a robot is created or destroyed.
+--   Fortunately, there are relatively few ways for these things to
+--   happen.
+robotsByLocation :: Lens' Robots (Map SubworldName (Map Location IntSet))
+
+-- | Get a list of all the robots that are \"watching\" by location.
+robotsWatching :: Lens' Robots (Map (Cosmic Location) (S.Set RID))
+
+-- | State and data for assigning identifiers to robots
+robotNaming :: Lens' Robots RobotNaming
+
+-- | The current center of the world view. Note that this cannot be
+--   modified directly, since it is calculated automatically from the
+--   'viewCenterRule'.  To modify the view center, either set the
+--   'viewCenterRule', or use 'modifyViewCenter'.
+viewCenter :: Getter Robots (Cosmic Location)
+viewCenter = to _viewCenter
+
+-- | The current robot in focus.
+--
+-- It is only a 'Getter' because this value should be updated only when
+-- the 'viewCenterRule' is specified to be a robot.
+--
+-- Technically it's the last robot ID specified by 'viewCenterRule',
+-- but that robot may not be alive anymore - to be safe use 'focusedRobot'.
+focusedRobotID :: Getter Robots RID
+focusedRobotID = to _focusedRobotID
+
+-- | The main record holding the state for the game itself (as
+--   distinct from the UI).  See the lenses below for access to its
+--   fields.
+data GameState = GameState
+  { _creativeMode :: Bool
+  , _temporal :: TemporalState
+  , _winCondition :: WinCondition
+  , _winSolution :: Maybe ProcessedTerm
+  , _robotInfo :: Robots
+  , _pathCaching :: PathCaching
+  , _discovery :: Discovery
+  , _seed :: Seed
+  , _randGen :: StdGen
+  , _recipesInfo :: Recipes
+  , _currentScenarioPath :: Maybe FilePath
+  , _landscape :: Landscape
+  , _needsRedraw :: Bool
+  , _gameControls :: GameControls
+  , _messageInfo :: Messages
+  }
+
+makeLensesNoSigs ''GameState
+
+------------------------------------------------------------
+-- Lenses
+------------------------------------------------------------
 
 -- | Is the user in creative mode (i.e. able to do anything without restriction)?
 creativeMode :: Lens' GameState Bool
@@ -653,32 +707,15 @@ winCondition :: Lens' GameState WinCondition
 --   and to show help to cheaters (or testers).
 winSolution :: Lens' GameState (Maybe ProcessedTerm)
 
--- | All the robots that currently exist in the game, indexed by ID.
-robotMap :: Lens' GameState (IntMap Robot)
-
--- | The names of all robots that currently exist in the game, indexed by
---   location (which we need both for /e.g./ the @salvage@ command as
---   well as for actually drawing the world).  Unfortunately there is
---   no good way to automatically keep this up to date, since we don't
---   just want to completely rebuild it every time the 'robotMap'
---   changes.  Instead, we just make sure to update it every time the
---   location of a robot changes, or a robot is created or destroyed.
---   Fortunately, there are relatively few ways for these things to
---   happen.
-robotsByLocation :: Lens' GameState (Map SubworldName (Map Location IntSet))
-
 -- | Get a list of all the robots at a particular location.
 robotsAtLocation :: Cosmic Location -> GameState -> [Robot]
 robotsAtLocation loc gs =
-  mapMaybe (`IM.lookup` (gs ^. robotMap))
+  mapMaybe (`IM.lookup` (gs ^. robotInfo . robotMap))
     . maybe [] IS.toList
     . M.lookup (loc ^. planar)
     . M.findWithDefault mempty (loc ^. subworld)
-    . view robotsByLocation
+    . view (robotInfo . robotsByLocation)
     $ gs
-
--- | Get a list of all the robots that are \"watching\" by location.
-robotsWatching :: Lens' GameState (Map (Cosmic Location) (S.Set RID))
 
 -- | Registry for caching output of the @path@ command
 pathCaching :: Lens' GameState PathCaching
@@ -688,8 +725,8 @@ pathCaching :: Lens' GameState PathCaching
 robotsInArea :: Cosmic Location -> Int32 -> GameState -> [Robot]
 robotsInArea (Cosmic subworldName o) d gs = map (rm IM.!) rids
  where
-  rm = gs ^. robotMap
-  rl = gs ^. robotsByLocation
+  rm = gs ^. robotInfo . robotMap
+  rl = gs ^. robotInfo . robotsByLocation
   rids =
     concatMap IS.elems $
       getElemsInArea o d $
@@ -697,17 +734,7 @@ robotsInArea (Cosmic subworldName o) d gs = map (rm IM.!) rids
 
 -- | The base robot, if it exists.
 baseRobot :: Traversal' GameState Robot
-baseRobot = robotMap . ix 0
-
--- | The names of the robots that are currently not sleeping.
-activeRobots :: Getter GameState IntSet
-activeRobots = internalActiveRobots
-
--- | The names of the robots that are currently sleeping, indexed by wake up
---   time. Note that this may not include all sleeping robots, particularly
---   those that are only taking a short nap (e.g. @wait 1@).
-waitingRobots :: Getter GameState (Map TickNumber [RID])
-waitingRobots = internalWaitingRobots
+baseRobot = robotInfo . robotMap . ix 0
 
 -- | Discovery state of entities, commands, recipes
 discovery :: Lens' GameState Discovery
@@ -718,9 +745,6 @@ seed :: Lens' GameState Seed
 
 -- | Pseudorandom generator initialized at start.
 randGen :: Lens' GameState StdGen
-
--- | State and data for assigning identifiers to robots
-robotNaming :: Lens' GameState RobotNaming
 
 -- | Collection of recipe info
 recipesInfo :: Lens' GameState Recipes
@@ -734,12 +758,8 @@ currentScenarioPath :: Lens' GameState (Maybe FilePath)
 -- | Info about the lay of the land
 landscape :: Lens' GameState Landscape
 
--- | The current center of the world view. Note that this cannot be
---   modified directly, since it is calculated automatically from the
---   'viewCenterRule'.  To modify the view center, either set the
---   'viewCenterRule', or use 'modifyViewCenter'.
-viewCenter :: Getter GameState (Cosmic Location)
-viewCenter = to _viewCenter
+-- | Info about robots
+robotInfo :: Lens' GameState Robots
 
 -- | Whether the world view needs to be redrawn.
 needsRedraw :: Lens' GameState Bool
@@ -750,16 +770,6 @@ gameControls :: Lens' GameState GameControls
 -- | Message info
 messageInfo :: Lens' GameState Messages
 
--- | The current robot in focus.
---
--- It is only a 'Getter' because this value should be updated only when
--- the 'viewCenterRule' is specified to be a robot.
---
--- Technically it's the last robot ID specified by 'viewCenterRule',
--- but that robot may not be alive anymore - to be safe use 'focusedRobot'.
-focusedRobotID :: Getter GameState RID
-focusedRobotID = to _focusedRobotID
-
 ------------------------------------------------------------
 -- Utilities
 ------------------------------------------------------------
@@ -767,15 +777,15 @@ focusedRobotID = to _focusedRobotID
 -- | The current rule for determining the center of the world view.
 --   It updates also, 'viewCenter' and 'focusedRobot' to keep
 --   everything synchronized.
-viewCenterRule :: Lens' GameState ViewCenterRule
+viewCenterRule :: Lens' Robots ViewCenterRule
 viewCenterRule = lens getter setter
  where
-  getter :: GameState -> ViewCenterRule
+  getter :: Robots -> ViewCenterRule
   getter = _viewCenterRule
 
   -- The setter takes care of updating 'viewCenter' and 'focusedRobot'
-  -- So non of this fields get out of sync.
-  setter :: GameState -> ViewCenterRule -> GameState
+  -- So none of these fields get out of sync.
+  setter :: Robots -> ViewCenterRule -> Robots
   setter g rule =
     case rule of
       VCLocation loc -> g {_viewCenterRule = rule, _viewCenter = loc}
@@ -818,14 +828,14 @@ messageNotifications = to getNotif
     -- classic players only get to see messages that they said and a one message that they just heard
     -- other they have to get from log
     latestMsg = messageIsRecent gs
-    closeMsg = messageIsFromNearby (gs ^. viewCenter)
+    closeMsg = messageIsFromNearby (gs ^. robotInfo . viewCenter)
     generatedBy rid logEntry = case logEntry ^. leSource of
       RobotLog _ rid' _ -> rid == rid'
       _ -> False
 
     focusedOrLatestClose mq =
       (Seq.take 1 . Seq.reverse . Seq.filter closeMsg $ Seq.takeWhileR latestMsg mq)
-        <> Seq.filter (generatedBy (gs ^. focusedRobotID)) mq
+        <> Seq.filter (generatedBy (gs ^. robotInfo . focusedRobotID)) mq
 
 messageIsRecent :: GameState -> LogEntry -> Bool
 messageIsRecent gs e = addTicks 1 (e ^. leTime) >= gs ^. temporal . ticks
@@ -857,14 +867,17 @@ applyViewCenterRule (VCRobot name) m = m ^? at name . _Just . robotLocation
 recalcViewCenter :: GameState -> GameState
 recalcViewCenter g =
   g
-    { _viewCenter = newViewCenter
+    { _robotInfo =
+        (g ^. robotInfo)
+          { _viewCenter = newViewCenter
+          }
     }
     & (if newViewCenter /= oldViewCenter then needsRedraw .~ True else id)
  where
-  oldViewCenter = g ^. viewCenter
+  oldViewCenter = g ^. robotInfo . viewCenter
   newViewCenter =
     fromMaybe oldViewCenter $
-      applyViewCenterRule (g ^. viewCenterRule) (g ^. robotMap)
+      applyViewCenterRule (g ^. robotInfo . viewCenterRule) (g ^. robotInfo . robotMap)
 
 -- | Modify the 'viewCenter' by applying an arbitrary function to the
 --   current value.  Note that this also modifies the 'viewCenterRule'
@@ -873,16 +886,16 @@ recalcViewCenter g =
 modifyViewCenter :: (Cosmic Location -> Cosmic Location) -> GameState -> GameState
 modifyViewCenter update g =
   g
-    & case g ^. viewCenterRule of
-      VCLocation l -> viewCenterRule .~ VCLocation (update l)
-      VCRobot _ -> viewCenterRule .~ VCLocation (update (g ^. viewCenter))
+    & case g ^. robotInfo . viewCenterRule of
+      VCLocation l -> robotInfo . viewCenterRule .~ VCLocation (update l)
+      VCRobot _ -> robotInfo . viewCenterRule .~ VCLocation (update (g ^. robotInfo . viewCenter))
 
 -- | "Unfocus" by modifying the view center rule to look at the
 --   current location instead of a specific robot, and also set the
 --   focused robot ID to an invalid value.  In classic mode this
 --   causes the map view to become nothing but static.
 unfocus :: GameState -> GameState
-unfocus = (\g -> g {_focusedRobotID = -1000}) . modifyViewCenter id
+unfocus = (\g -> g {_robotInfo = (g ^. robotInfo) {_focusedRobotID = -1000}}) . modifyViewCenter id
 
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.
@@ -896,7 +909,7 @@ viewingRegion (Cosmic sw (Location cx cy)) (w, h) =
 -- | Find out which robot has been last specified by the
 --   'viewCenterRule', if any.
 focusedRobot :: GameState -> Maybe Robot
-focusedRobot g = g ^. robotMap . at (g ^. focusedRobotID)
+focusedRobot g = g ^. robotInfo . robotMap . at (g ^. robotInfo . focusedRobotID)
 
 -- | Type for describing how far away a robot is from the base, which
 --   determines what kind of communication can take place.
@@ -935,7 +948,7 @@ data RobotRange
 focusedRange :: GameState -> Maybe RobotRange
 focusedRange g = checkRange <$ maybeFocusedRobot
  where
-  maybeBaseRobot = g ^. robotMap . at 0
+  maybeBaseRobot = g ^. robotInfo . robotMap . at 0
   maybeFocusedRobot = focusedRobot g
 
   checkRange = case r of
@@ -951,7 +964,7 @@ focusedRange g = checkRange <$ maybeFocusedRobot
   r = case maybeBaseRobot of
     -- if the base doesn't exist, we have bigger problems
     Nothing -> InfinitelyFar
-    Just br -> cosmoMeasure euclidean (g ^. viewCenter) (br ^. robotLocation)
+    Just br -> cosmoMeasure euclidean (g ^. robotInfo . viewCenter) (br ^. robotLocation)
 
   (minRadius, maxRadius) = getRadioRange maybeBaseRobot maybeFocusedRobot
 
@@ -978,8 +991,8 @@ getRadioRange maybeBaseRobot maybeTargetRobot =
 -- | Clear the 'robotLogUpdated' flag of the focused robot.
 clearFocusedRobotLogUpdated :: (Has (State GameState) sig m) => m ()
 clearFocusedRobotLogUpdated = do
-  n <- use focusedRobotID
-  robotMap . ix n . robotLogUpdated .= False
+  n <- use $ robotInfo . focusedRobotID
+  robotInfo . robotMap . ix n . robotLogUpdated .= False
 
 -- | Add a concrete instance of a robot template to the game state:
 --   First, generate a unique ID number for it.  Then, add it to the
@@ -987,7 +1000,7 @@ clearFocusedRobotLogUpdated = do
 --   robots by location. Return the updated robot.
 addTRobot :: (Has (State GameState) sig m) => TRobot -> m Robot
 addTRobot r = do
-  rid <- robotNaming . gensym <+= 1
+  rid <- robotInfo . robotNaming . gensym <+= 1
   let r' = instantiateRobot rid r
   addRobot r'
   return r'
@@ -999,14 +1012,14 @@ addRobot :: (Has (State GameState) sig m) => Robot -> m ()
 addRobot r = do
   let rid = r ^. robotID
 
-  robotMap %= IM.insert rid r
+  robotInfo . robotMap %= IM.insert rid r
   addRobotToLocation rid $ r ^. robotLocation
-  internalActiveRobots %= IS.insert rid
+  robotInfo . internalActiveRobots %= IS.insert rid
 
 -- | Helper function for updating the "robotsByLocation" bookkeeping
 addRobotToLocation :: (Has (State GameState) sig m) => RID -> Cosmic Location -> m ()
 addRobotToLocation rid rLoc =
-  robotsByLocation
+  robotInfo . robotsByLocation
     %= M.insertWith
       (M.unionWith IS.union)
       (rLoc ^. subworld)
@@ -1027,16 +1040,16 @@ emitMessage msg = messageInfo . messageQueue %= (|> msg) . dropLastIfLong
 --   queue.
 sleepUntil :: (Has (State GameState) sig m) => RID -> TickNumber -> m ()
 sleepUntil rid time = do
-  internalActiveRobots %= IS.delete rid
-  internalWaitingRobots . at time . non [] %= (rid :)
+  robotInfo . internalActiveRobots %= IS.delete rid
+  robotInfo . internalWaitingRobots . at time . non [] %= (rid :)
 
 -- | Takes a robot out of the 'activeRobots' set.
 sleepForever :: (Has (State GameState) sig m) => RID -> m ()
-sleepForever rid = internalActiveRobots %= IS.delete rid
+sleepForever rid = robotInfo . internalActiveRobots %= IS.delete rid
 
 -- | Adds a robot to the 'activeRobots' set.
 activateRobot :: (Has (State GameState) sig m) => RID -> m ()
-activateRobot rid = internalActiveRobots %= IS.insert rid
+activateRobot rid = robotInfo . internalActiveRobots %= IS.insert rid
 
 -- | Removes robots whose wake up time matches the current game ticks count
 --   from the 'waitingRobots' queue and put them back in the 'activeRobots' set
@@ -1044,13 +1057,13 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 wakeUpRobotsDoneSleeping :: (Has (State GameState) sig m) => m ()
 wakeUpRobotsDoneSleeping = do
   time <- use $ temporal . ticks
-  mrids <- internalWaitingRobots . at time <<.= Nothing
+  mrids <- robotInfo . internalWaitingRobots . at time <<.= Nothing
   case mrids of
     Nothing -> return ()
     Just rids -> do
-      robots <- use robotMap
+      robots <- use $ robotInfo . robotMap
       let aliveRids = filter (`IM.member` robots) rids
-      internalActiveRobots %= IS.union (IS.fromList aliveRids)
+      robotInfo . internalActiveRobots %= IS.union (IS.fromList aliveRids)
 
       -- These robots' wake times may have been moved "forward"
       -- by 'wakeWatchingRobots'.
@@ -1063,7 +1076,7 @@ clearWatchingRobots ::
   [RID] ->
   m ()
 clearWatchingRobots rids = do
-  robotsWatching %= M.map (`S.difference` S.fromList rids)
+  robotInfo . robotsWatching %= M.map (`S.difference` S.fromList rids)
 
 -- | Iterates through all of the currently @wait@-ing robots,
 -- and moves forward the wake time of the ones that are @watch@-ing this location.
@@ -1073,9 +1086,9 @@ clearWatchingRobots rids = do
 wakeWatchingRobots :: (Has (State GameState) sig m) => Cosmic Location -> m ()
 wakeWatchingRobots loc = do
   currentTick <- use $ temporal . ticks
-  waitingMap <- use waitingRobots
-  rMap <- use robotMap
-  watchingMap <- use robotsWatching
+  waitingMap <- use $ robotInfo . waitingRobots
+  rMap <- use $ robotInfo . robotMap
+  watchingMap <- use $ robotInfo . robotsWatching
 
   -- The bookkeeping updates to robot waiting
   -- states are prepared in 4 steps...
@@ -1115,18 +1128,18 @@ wakeWatchingRobots loc = do
   -- 2. In each robot, via the CESK machine state
 
   -- 1. Update the game state
-  internalWaitingRobots .= M.unionWith (<>) filteredWaiting newInsertions
+  robotInfo . internalWaitingRobots .= M.unionWith (<>) filteredWaiting newInsertions
 
   -- 2. Update the machine of each robot
   forM_ wakeableBotIds $ \rid ->
-    robotMap . at rid . _Just . machine %= \case
+    robotInfo . robotMap . at rid . _Just . machine %= \case
       Waiting _ c -> Waiting newWakeTime c
       x -> x
 
 deleteRobot :: (Has (State GameState) sig m) => RID -> m ()
 deleteRobot rn = do
-  internalActiveRobots %= IS.delete rn
-  mrobot <- robotMap . at rn <<.= Nothing
+  robotInfo . internalActiveRobots %= IS.delete rn
+  mrobot <- robotInfo . robotMap . at rn <<.= Nothing
   mrobot `forM_` \robot -> do
     -- Delete the robot from the index of robots by location.
     removeRobotFromLocationMap (robot ^. robotLocation) rn
@@ -1141,7 +1154,7 @@ removeRobotFromLocationMap ::
   RID ->
   m ()
 removeRobotFromLocationMap (Cosmic oldSubworld oldPlanar) rid =
-  robotsByLocation %= M.update (tidyDelete rid) oldSubworld
+  robotInfo . robotsByLocation %= M.update (tidyDelete rid) oldSubworld
  where
   deleteOne x = surfaceEmpty IS.null . IS.delete x
 
@@ -1182,9 +1195,22 @@ initGameState gsc =
           }
     , _winCondition = NoWinCondition
     , _winSolution = Nothing
-    , _robotMap = IM.empty
-    , _robotsByLocation = M.empty
-    , _robotsWatching = mempty
+    , _robotInfo =
+        Robots
+          { _robotMap = IM.empty
+          , _activeRobots = IS.empty
+          , _waitingRobots = M.empty
+          , _robotsByLocation = M.empty
+          , _robotsWatching = mempty
+          , _robotNaming =
+              RobotNaming
+                { _nameGenerator = initNameParts gsc
+                , _gensym = 0
+                }
+          , _viewCenterRule = VCRobot 0
+          , _viewCenter = defaultCosmicLocation
+          , _focusedRobotID = 0
+          }
     , _pathCaching = emptyPathCache
     , _discovery =
         Discovery
@@ -1198,15 +1224,8 @@ initGameState gsc =
           , _structureRecognition = StructureRecognizer (RecognizerAutomatons mempty mempty) emptyFoundStructures []
           , _tagMembers = mempty
           }
-    , _activeRobots = IS.empty
-    , _waitingRobots = M.empty
     , _seed = 0
     , _randGen = mkStdGen 0
-    , _robotNaming =
-        RobotNaming
-          { _nameGenerator = initNameParts gsc
-          , _gensym = 0
-          }
     , _recipesInfo =
         Recipes
           { _recipesOut = outRecipeMap (initRecipes gsc)
@@ -1221,8 +1240,6 @@ initGameState gsc =
           , _entityMap = initEntities gsc
           , _worldScrollable = True
           }
-    , _viewCenterRule = VCRobot 0
-    , _viewCenter = defaultCosmicLocation
     , _needsRedraw = False
     , _gameControls =
         GameControls
@@ -1237,7 +1254,6 @@ initGameState gsc =
           , _lastSeenMessageTime = TickNumber (-1)
           , _announcementQueue = mempty
           }
-    , _focusedRobotID = 0
     }
 
 type SubworldDescription = (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int Entity))
@@ -1379,20 +1395,20 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       Fused.evalState preliminaryGameState $
         mkRecognizer (scenario ^. scenarioStructures)
 
+  gs = initGameState gsc
   preliminaryGameState =
-    (initGameState gsc)
-      { _focusedRobotID = baseID
-      }
+    gs
+      & robotInfo .~ (gs ^. robotInfo) {_focusedRobotID = baseID}
       & creativeMode .~ scenario ^. scenarioCreative
       & winCondition .~ theWinCondition
       & winSolution .~ scenario ^. scenarioSolution
-      & robotMap .~ IM.fromList (map (view robotID &&& id) robotList')
-      & robotsByLocation .~ M.map (groupRobotsByPlanarLocation . NE.toList) (groupRobotsBySubworld robotList')
-      & internalActiveRobots .~ setOf (traverse . robotID) robotList'
+      & robotInfo . robotMap .~ IM.fromList (map (view robotID &&& id) robotList')
+      & robotInfo . robotsByLocation .~ M.map (groupRobotsByPlanarLocation . NE.toList) (groupRobotsBySubworld robotList')
+      & robotInfo . internalActiveRobots .~ setOf (traverse . robotID) robotList'
       & discovery . availableCommands .~ Notifications 0 initialCommands
       & discovery . knownEntities .~ scenario ^. scenarioKnown
       & discovery . tagMembers .~ buildTagMap em
-      & robotNaming . gensym .~ initGensym
+      & robotInfo . robotNaming . gensym .~ initGensym
       & seed .~ theSeed
       & randGen .~ mkStdGen theSeed
       & recipesInfo %~ modifyRecipesInfo
@@ -1403,7 +1419,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       -- Leaning toward no , but for now just adopt the root world scrollability
       -- as being universal.
       & landscape . worldScrollable .~ NE.head (scenario ^. scenarioWorlds) ^. to scrollable
-      & viewCenterRule .~ VCRobot baseID
+      & robotInfo . viewCenterRule .~ VCRobot baseID
       & gameControls . initiallyRunCode .~ initialCodeToRun
       & gameControls . replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
       -- otherwise the store of definition cells is not saved (see #333, #838)

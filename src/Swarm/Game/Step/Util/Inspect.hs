@@ -24,8 +24,8 @@ getNeighborLocs loc = map (offsetBy loc . flip applyTurn north . DRelative . DPl
 
 -- | Get the robot with a given ID.
 robotWithID :: (Has (State GameState) sig m) => RID -> m (Maybe Robot)
-robotWithID rid = use (robotMap . at rid)
+robotWithID rid = use (robotInfo . robotMap . at rid)
 
 -- | Get the robot with a given name.
 robotWithName :: (Has (State GameState) sig m) => Text -> m (Maybe Robot)
-robotWithName rname = use (robotMap . to IM.elems . to (find $ \r -> r ^. robotName == rname))
+robotWithName rname = use (robotInfo . robotMap . to IM.elems . to (find $ \r -> r ^. robotName == rname))
