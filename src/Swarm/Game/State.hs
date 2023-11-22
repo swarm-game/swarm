@@ -668,8 +668,8 @@ viewCenter = to _viewCenter
 focusedRobotID :: Getter Robots RID
 focusedRobotID = to _focusedRobotID
 
-data Randomness = Randomness {
-    _seed :: Seed
+data Randomness = Randomness
+  { _seed :: Seed
   , _randGen :: StdGen
   }
 
@@ -1234,10 +1234,11 @@ initGameState gsc =
           , _structureRecognition = StructureRecognizer (RecognizerAutomatons mempty mempty) emptyFoundStructures []
           , _tagMembers = mempty
           }
-    , _randomness = Randomness {
-        _seed = 0
-      , _randGen = mkStdGen 0
-      }
+    , _randomness =
+        Randomness
+          { _seed = 0
+          , _randGen = mkStdGen 0
+          }
     , _recipesInfo =
         Recipes
           { _recipesOut = outRecipeMap (initRecipes gsc)
