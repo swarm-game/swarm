@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Command matrix</title>
+
+    <link rel="stylesheet" href="style/tablesort.css"/>
+    <link rel="stylesheet" href="style/command-matrix.css"/>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tablesort/5.1.0/tablesort.min.js"></script>
+    <script src="script/command-matrix.js"></script>
+
+    <script>
+      window.onload=()=>{
+        const tableElement = document.querySelector("table");
+        doFetch(tableElement);
+      }
+    </script>
+  </head>
+  <body>
+    <table id="my-table">
+        <thead>
+          <tr data-sort-method="none">
+            <th>Command</th>
+            <th>Actor target</th>
+            <th>Pure computation</th>
+          </tr>
+        </thead>
+        <tbody id="my-table-body">
+        </tbody>
+      </table>
+  </body>
+</html>

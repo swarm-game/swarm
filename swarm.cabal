@@ -674,6 +674,8 @@ executable swarm-docs
                       Swarm.Doc.Schema.Render
                       Swarm.Doc.Schema.SchemaType
                       Swarm.Doc.Wiki.Cheatsheet
+                      Swarm.Doc.Wiki.Matrix
+                      Swarm.Doc.Wiki.Util
     build-depends:    optparse-applicative          >= 0.16 && < 0.19,
                       dotgen                        >= 0.4 && < 0.5,
                       pandoc                        >= 3.0 && < 3.2,
