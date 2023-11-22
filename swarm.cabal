@@ -110,7 +110,7 @@ library
                       Swarm.Doc.Schema.SchemaType
                       Swarm.Doc.Util
                       Swarm.Doc.Wiki.Cheatsheet
-                      Swarm.Game.Failure
+                      Swarm.Doc.Wiki.Matrix
                       Swarm.Game.Achievement.Attainment
                       Swarm.Game.Achievement.Definitions
                       Swarm.Game.Achievement.Description
@@ -121,6 +121,7 @@ library
                       Swarm.Game.Entity.Cosmetic
                       Swarm.Game.Entity.Cosmetic.Assignment
                       Swarm.Game.Exception
+                      Swarm.Game.Failure
                       Swarm.Game.Location
                       Swarm.Game.Recipe
                       Swarm.Game.ResourceLoading
@@ -205,6 +206,7 @@ library
                       Swarm.Language.Pretty
                       Swarm.Language.Requirement
                       Swarm.Language.Syntax
+                      Swarm.Language.Syntax.CommandMetadata
                       Swarm.Language.Text.Markdown
                       Swarm.Language.Typecheck
                       Swarm.Language.Typecheck.Unify
@@ -212,6 +214,7 @@ library
                       Swarm.Language.Types
                       Swarm.Language.Value
                       Swarm.ReadableIORef
+                      Swarm.TUI.Border
                       Swarm.TUI.View
                       Swarm.TUI.View.Achievement
                       Swarm.TUI.View.Attribute.Attr
@@ -222,7 +225,6 @@ library
                       Swarm.TUI.View.Objective
                       Swarm.TUI.View.Structure
                       Swarm.TUI.View.Util
-                      Swarm.TUI.Border
                       Swarm.Game.Scenario.Topography.Area
                       Swarm.TUI.Editor.Controller
                       Swarm.TUI.Editor.Json

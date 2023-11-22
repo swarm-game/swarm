@@ -1,0 +1,24 @@
+body {font-family: sans-serif;}
+
+a:link {
+  color: lavender;
+  text-decoration: none;
+  }
+  
+  /* visited link */
+  a:visited {
+  color: lightblue;
+  text-decoration: none;
+  }
+  
+  /* mouse over link */
+  a:hover {
+  color: hotpink;
+  text-decoration: underline;
+  }
+  
+  /* selected link */
+  a:active {
+  color: blue;
+  text-decoration: underline;
+  }

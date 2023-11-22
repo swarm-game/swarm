@@ -111,9 +111,7 @@ recombineExtension (filenameStem, fileExtension) =
 
 genMarkdown :: [SchemaData] -> Either T.Text T.Text
 genMarkdown schemaThings =
-  left renderError $
-    runPure $
-      writeMarkdown (def {writerExtensions = extensionsFromList [Ext_pipe_tables]}) pd
+  pandocToText pd
  where
   titleMap = makeTitleMap schemaThings
   pd =

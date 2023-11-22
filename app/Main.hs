@@ -135,6 +135,7 @@ cliParser =
       , Just Recipes <$ switch (long "recipes" <> help "Generate recipes page (uses data from recipes.yaml)")
       , Just Capabilities <$ switch (long "capabilities" <> help "Generate capabilities page (uses entity map)")
       , Just Commands <$ switch (long "commands" <> help "Generate commands page (uses constInfo, constCaps and inferConst)")
+      , Just CommandMatrix <$ switch (long "matrix" <> help "Generate commands matrix page")
       , Just Scenario <$ switch (long "scenario" <> help "Generate scenario schema page")
       ]
   seed :: Parser (Maybe Int)

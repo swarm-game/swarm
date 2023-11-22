@@ -6,6 +6,7 @@
 -- Utilities for generating doc markup
 module Swarm.Doc.Util where
 
+import Control.Arrow (left)
 import Control.Effect.Throw (Has, Throw, throwError)
 import Control.Lens (view)
 import Data.Maybe (listToMaybe)
@@ -16,6 +17,7 @@ import Swarm.Game.Robot (Robot, instantiateRobot)
 import Swarm.Game.Scenario (Scenario, scenarioRobots)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
+import Text.Pandoc
 
 -- * Text operations
 
@@ -51,3 +53,9 @@ getBaseRobot :: Has (Throw SystemFailure) sig m => Scenario -> m Robot
 getBaseRobot s = case listToMaybe $ view scenarioRobots s of
   Just r -> pure $ instantiateRobot 0 r
   Nothing -> throwError $ CustomFailure "Scenario contains no robots"
+
+pandocToText :: Pandoc -> Either Text Text
+pandocToText =
+  left renderError
+    . runPure
+    . writeMarkdown (def {writerExtensions = extensionsFromList [Ext_pipe_tables]})
