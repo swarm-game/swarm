@@ -14,6 +14,7 @@ import Control.Unification
 import Control.Unification.IntVar
 import Data.Bool (bool)
 import Data.Functor.Fixedpoint (Fix, unFix)
+import Data.List.NonEmpty ((<|))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Set (Set)
@@ -129,15 +130,15 @@ instance PrettyPrec Wildcard where
 -- | Split a function type chain, so that we can pretty print
 --   the type parameters aligned on each line when they don't fit.
 class UnchainableFun t where
-  unchainFun :: t -> [t]
+  unchainFun :: t -> NE.NonEmpty t
 
 instance UnchainableFun Type where
-  unchainFun (a :->: ty) = a : unchainFun ty
-  unchainFun ty = [ty]
+  unchainFun (a :->: ty) = a <| unchainFun ty
+  unchainFun ty = pure ty
 
 instance UnchainableFun (UTerm TypeF ty) where
-  unchainFun (UTerm (TyFunF ty1 ty2)) = ty1 : unchainFun ty2
-  unchainFun ty = [ty]
+  unchainFun (UTerm (TyFunF ty1 ty2)) = ty1 <| unchainFun ty2
+  unchainFun ty = pure ty
 
 instance (PrettyPrec (t (Fix t))) => PrettyPrec (Fix t) where
   prettyPrec p = prettyPrec p . unFix
@@ -158,7 +159,7 @@ instance ((UnchainableFun t), (PrettyPrec t)) => PrettyPrec (TypeF t) where
   prettyPrec p (TyCmdF ty) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty
   prettyPrec _ (TyDelayF ty) = braces $ ppr ty
   prettyPrec p (TyFunF ty1 ty2) =
-    let (iniF, lastF) = unsnocNE $ ty1 NE.:| unchainFun ty2
+    let (iniF, lastF) = unsnocNE $ ty1 <| unchainFun ty2
         funs = (prettyPrec 1 <$> iniF) <> [ppr lastF]
         inLine l r = l <+> "->" <+> r
         multiLine l r = l <+> "->" <> hardline <> r
