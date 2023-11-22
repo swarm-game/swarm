@@ -47,6 +47,7 @@ import Swarm.Game.State (
   messageQueue,
   notificationsContent,
   pathCaching,
+  robotInfo,
   robotMap,
   temporal,
   ticks,
@@ -197,7 +198,7 @@ testScenarioSolutions rs ui =
         , testTutorialSolution Default "Tutorials/build"
         , testTutorialSolution Default "Tutorials/bind2"
         , testTutorialSolution' Default "Tutorials/crash" CheckForBadErrors $ \g -> do
-            let robots = toList $ g ^. robotMap
+            let robots = toList $ g ^. robotInfo . robotMap
             let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
             let win = isJust $ find hints robots
             assertBool "Could not find a robot with winning instructions!" win
@@ -269,9 +270,9 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/428-drowning-destroy"
         , testSolution' Default "Testing/475-wait-one" CheckForBadErrors $ \g -> do
             let t = g ^. temporal . ticks
-                r1Waits = g ^?! robotMap . ix 1 . to waitingUntil
-                active = IS.member 1 $ g ^. activeRobots
-                waiting = elem 1 . concat . M.elems $ g ^. waitingRobots
+                r1Waits = g ^?! robotInfo . robotMap . ix 1 . to waitingUntil
+                active = IS.member 1 $ g ^. robotInfo . activeRobots
+                waiting = elem 1 . concat . M.elems $ g ^. robotInfo . waitingRobots
             assertBool "The game should only take two ticks" $ getTickNumber t == 2
             assertBool "Robot 1 should have waiting machine" $ isJust r1Waits
             assertBool "Robot 1 should be still active" active
@@ -310,7 +311,7 @@ testScenarioSolutions rs ui =
         , testSolution' Default "Testing/397-wrong-missing" CheckForBadErrors $ \g -> do
             let msgs =
                   (g ^. messageInfo . messageQueue . to seqToTexts)
-                    <> (g ^.. robotMap . traverse . robotLog . to seqToTexts . traverse)
+                    <> (g ^.. robotInfo . robotMap . traverse . robotLog . to seqToTexts . traverse)
 
             assertBool "Should be some messages" (not (null msgs))
             assertBool "Error messages should not mention treads" $
@@ -423,13 +424,13 @@ testScenarioSolutions rs ui =
             ]
         ]
     , testSolution' Default "Testing/1430-built-robot-ownership" CheckForBadErrors $ \g -> do
-        let r2 = g ^. robotMap . at 2
-        let r3 = g ^. robotMap . at 3
+        let r2 = g ^. robotInfo . robotMap . at 2
+        let r3 = g ^. robotInfo . robotMap . at 3
         assertBool "The second built robot should be a system robot like it's parent." $
           maybe False (view systemRobot) r2
         assertBool "The third built robot should be a normal robot like base." $
           maybe False (not . view systemRobot) r3
-    , testSolution' Default "Testing/1341-command-count" CheckForBadErrors $ \g -> case g ^. robotMap . at 0 of
+    , testSolution' Default "Testing/1341-command-count" CheckForBadErrors $ \g -> case g ^. robotInfo . robotMap . at 0 of
         Nothing -> assertFailure "No base bot!"
         Just base -> do
           let counters = base ^. activityCounts
@@ -498,7 +499,7 @@ badErrorsInLogs :: GameState -> [Text]
 badErrorsInLogs g =
   concatMap
     (\r -> filter isBad (seqToTexts $ r ^. robotLog))
-    (g ^. robotMap)
+    (g ^. robotInfo . robotMap)
     <> filter isBad (seqToTexts $ g ^. messageInfo . messageQueue)
  where
   isBad m = "Fatal error:" `T.isInfixOf` m || "swarm/issues" `T.isInfixOf` m
@@ -510,7 +511,7 @@ printAllLogs :: GameState -> IO ()
 printAllLogs g =
   mapM_
     (\r -> forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText))
-    (g ^. robotMap)
+    (g ^. robotInfo . robotMap)
 
 -- | Test that editor files are up-to-date.
 testEditorFiles :: TestTree

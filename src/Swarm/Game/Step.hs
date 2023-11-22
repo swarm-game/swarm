@@ -120,8 +120,8 @@ import Prelude hiding (Applicative (..), lookup)
 gameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => m Bool
 gameTick = do
   wakeUpRobotsDoneSleeping
-  active <- use activeRobots
-  focusedRob <- use focusedRobotID
+  active <- use $ robotInfo . activeRobots
+  focusedRob <- use $ robotInfo . focusedRobotID
 
   ticked <-
     use (temporal . gameStep) >>= \case
@@ -135,7 +135,7 @@ gameTick = do
   -- the result in the game state so it can be displayed by the REPL;
   -- also save the current store into the robotContext so we can
   -- restore it the next time we start a computation.
-  mr <- use (robotMap . at 0)
+  mr <- use (robotInfo . robotMap . at 0)
   case mr of
     Just r -> do
       res <- use $ gameControls . replStatus
@@ -180,7 +180,7 @@ insertBackRobot rn rob = do
   if rob ^. selfDestruct
     then deleteRobot rn
     else do
-      robotMap %= IM.insert rn rob
+      robotInfo . robotMap %= IM.insert rn rob
       case waitingUntil rob of
         Just wakeUpTime
           -- if w=2 t=1 then we do not needlessly put robot to waiting queue
@@ -192,7 +192,7 @@ insertBackRobot rn rob = do
 -- Run a set of robots - this is used to run robots before/after the focused one.
 runRobotIDs :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => IS.IntSet -> m ()
 runRobotIDs robotNames = forM_ (IS.toList robotNames) $ \rn -> do
-  mr <- uses robotMap (IM.lookup rn)
+  mr <- uses (robotInfo . robotMap) (IM.lookup rn)
   forM_ mr (stepOneRobot rn)
  where
   stepOneRobot rn rob = tickRobot rob >>= insertBackRobot rn
@@ -209,7 +209,7 @@ singleStep ss focRID robotSet = do
       temporal . gameStep .= RobotStep (SSingle focRID)
       -- also set ticks of focused robot
       steps <- use $ temporal . robotStepsPerTick
-      robotMap . ix focRID . activityCounts . tickStepBudget .= steps
+      robotInfo . robotMap . ix focRID . activityCounts . tickStepBudget .= steps
       -- continue to focused robot if there were no previous robots
       -- DO NOT SKIP THE ROBOT SETUP above
       if IS.null preFoc
@@ -220,7 +220,7 @@ singleStep ss focRID robotSet = do
     SSingle rid | not focusedActive -> do
       singleStep (SAfter rid) rid postFoc -- skip inactive focused robot
     SSingle rid -> do
-      mOldR <- uses robotMap (IM.lookup focRID)
+      mOldR <- uses (robotInfo . robotMap) (IM.lookup focRID)
       case mOldR of
         Nothing | rid == focRID -> do
           debugLog "The debugged robot does not exist! Exiting single step mode."
@@ -1262,11 +1262,11 @@ execConst c vs s k = do
         -- robotMap, overwriting any changes to this robot made
         -- directly in the robotMap during the tick.
         myID <- use robotID
-        focusedID <- use focusedRobotID
+        focusedID <- use $ robotInfo . focusedRobotID
         if otherID /= myID
           then do
             -- Make the exchange
-            robotMap . at otherID . _Just . robotInventory %= insert item
+            robotInfo . robotMap . at otherID . _Just . robotInventory %= insert item
             robotInventory %= delete item
 
             -- Flag the UI for a redraw if we are currently showing either robot's inventory
@@ -1279,7 +1279,7 @@ execConst c vs s k = do
       [VText itemName] -> do
         item <- ensureItem itemName "equip"
         myID <- use robotID
-        focusedID <- use focusedRobotID
+        focusedID <- use $ robotInfo . focusedRobotID
         -- Don't do anything if the robot already has the device.
         already <- use (equippedDevices . to (`E.contains` item))
         unless already $ do
@@ -1295,7 +1295,7 @@ execConst c vs s k = do
       [VText itemName] -> do
         item <- ensureEquipped itemName
         myID <- use robotID
-        focusedID <- use focusedRobotID
+        focusedID <- use $ robotInfo . focusedRobotID
         equippedDevices %= delete item
         robotInventory %= insert item
         -- Flag the UI for a redraw if we are currently showing our inventory
@@ -1366,10 +1366,10 @@ execConst c vs s k = do
       _ -> badConst
     Scout -> case vs of
       [VDir d] -> do
-        rMap <- use robotMap
+        rMap <- use $ robotInfo . robotMap
         myLoc <- use robotLocation
         heading <- deriveHeading d
-        botsByLocs <- use robotsByLocation
+        botsByLocs <- use $ robotInfo . robotsByLocation
         selfRid <- use robotID
 
         -- Includes the base location, so we exclude the base robot later.
@@ -1570,11 +1570,11 @@ execConst c vs s k = do
         -- Upload knowledge of everything in our inventory
         inv <- use robotInventory
         forM_ (elems inv) $ \(_, e) ->
-          robotMap . at otherID . _Just . robotInventory %= insertCount 0 e
+          robotInfo . robotMap . at otherID . _Just . robotInventory %= insertCount 0 e
 
         -- Upload our log
         rlog <- use robotLog
-        robotMap . at otherID . _Just . robotLog <>= rlog
+        robotInfo . robotMap . at otherID . _Just . robotLog <>= rlog
 
         -- Flag the world for redraw since uploading may change the
         -- base's knowledge and hence how entities are drawn (if they
@@ -1653,10 +1653,10 @@ execConst c vs s k = do
                   guard $ hasLog && hasListen
                   Just (rid, loc')
               forM_ maybeRidLoc $ \(rid, loc') ->
-                robotMap . at rid . _Just . robotLog %= addLatestClosest loc'
+                robotInfo . robotMap . at rid . _Just . robotLog %= addLatestClosest loc'
         robotsAround <-
           if isPrivileged
-            then use $ robotMap . to IM.elems
+            then use $ robotInfo . robotMap . to IM.elems
             else gets $ robotsInArea loc hearingDistance
         mapM_ addToRobotLog robotsAround
         return $ mkReturn ()
@@ -1708,7 +1708,7 @@ execConst c vs s k = do
                 False -> modify unfocus
 
             -- If it does exist, set it as the view center.
-            Just _ -> viewCenterRule .= VCRobot rid
+            Just _ -> robotInfo . viewCenterRule .= VCRobot rid
 
         return $ mkReturn ()
       _ -> badConst
@@ -1761,7 +1761,7 @@ execConst c vs s k = do
             case omni || not (target ^. systemRobot) of
               True -> do
                 -- Cancel its CESK machine, and put it to sleep.
-                robotMap . at targetID . _Just . machine %= cancel
+                robotInfo . robotMap . at targetID . _Just . machine %= cancel
                 sleepForever targetID
                 return $ mkReturn ()
               False -> throwError $ cmdExn c ["You are not authorized to halt that robot."]
@@ -1921,8 +1921,8 @@ execConst c vs s k = do
         -- the childRobot inherits the parent robot's environment
         -- and context which collectively mean all the variables
         -- declared in the parent robot
-        robotMap . at childRobotID . _Just . machine .= In cmd e s [FExec]
-        robotMap . at childRobotID . _Just . robotContext .= r ^. robotContext
+        robotInfo . robotMap . at childRobotID . _Just . machine .= In cmd e s [FExec]
+        robotInfo . robotMap . at childRobotID . _Just . robotContext .= r ^. robotContext
 
         -- Provision the target robot with any required devices and
         -- inventory that are lacking.
@@ -2008,7 +2008,7 @@ execConst c vs s k = do
             -- Copy the salvaged robot's equipped devices into its inventory, in preparation
             -- for transferring it.
             let salvageInventory = E.union (target ^. robotInventory) (target ^. equippedDevices)
-            robotMap . at (target ^. robotID) . traverse . robotInventory .= salvageInventory
+            robotInfo . robotMap . at (target ^. robotID) . traverse . robotInventory .= salvageInventory
 
             let salvageItems = concatMap (\(n, e) -> replicate n (e ^. entityName)) (E.elems salvageInventory)
                 numItems = length salvageItems
@@ -2031,7 +2031,7 @@ execConst c vs s k = do
             -- item in its inventory to us, one at a time, then
             -- self-destruct at the end.  Make it a system robot so we
             -- don't have to worry about capabilities.
-            robotMap . at (target ^. robotID) . traverse . systemRobot .= True
+            robotInfo . robotMap . at (target ^. robotID) . traverse . systemRobot .= True
 
             ourID <- use @Robot robotID
 
@@ -2041,7 +2041,8 @@ execConst c vs s k = do
                 giveItem item = TApp (TApp (TConst Give) (TRobot ourID)) (TText item)
 
             -- Reprogram and activate the salvaged robot
-            robotMap
+            robotInfo
+              . robotMap
               . at (target ^. robotID)
               . traverse
               . machine
@@ -2634,7 +2635,7 @@ addWatchedLocation ::
   m ()
 addWatchedLocation loc = do
   rid <- use robotID
-  robotsWatching %= M.insertWith (<>) loc (S.singleton rid)
+  robotInfo . robotsWatching %= M.insertWith (<>) loc (S.singleton rid)
 
 -- | Clear watches that are out of range
 purgeFarAwayWatches ::
@@ -2650,7 +2651,7 @@ purgeFarAwayWatches = do
           then S.delete rid
           else id
 
-  robotsWatching %= M.filter (not . null) . M.mapWithKey f
+  robotInfo . robotsWatching %= M.filter (not . null) . M.mapWithKey f
 
 ------------------------------------------------------------
 -- Some utility functions
@@ -2724,8 +2725,8 @@ provisionChild ::
   m ()
 provisionChild childID toEquip toGive = do
   -- Equip and give devices to child
-  robotMap . ix childID . equippedDevices %= E.union toEquip
-  robotMap . ix childID . robotInventory %= E.union toGive
+  robotInfo . robotMap . ix childID . equippedDevices %= E.union toEquip
+  robotInfo . robotMap . ix childID . robotInventory %= E.union toGive
 
   -- Delete all items from parent in classic mode
   creative <- use creativeMode
@@ -2773,14 +2774,14 @@ onTarget rid act = do
   case myID == rid of
     True -> act
     False -> do
-      mtgt <- use (robotMap . at rid)
+      mtgt <- use (robotInfo . robotMap . at rid)
       case mtgt of
         Nothing -> return ()
         Just tgt -> do
           tgt' <- execState @Robot tgt act
           if tgt' ^. selfDestruct
             then deleteRobot rid
-            else robotMap . ix rid .= tgt'
+            else robotInfo . robotMap . ix rid .= tgt'
 
 ------------------------------------------------------------
 -- Comparison

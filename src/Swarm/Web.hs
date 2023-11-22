@@ -164,12 +164,12 @@ mkApp state events =
 robotsHandler :: ReadableIORef AppState -> Handler [Robot]
 robotsHandler appStateRef = do
   appState <- liftIO (readIORef appStateRef)
-  pure $ IM.elems $ appState ^. gameState . robotMap
+  pure $ IM.elems $ appState ^. gameState . robotInfo . robotMap
 
 robotHandler :: ReadableIORef AppState -> RobotID -> Handler (Maybe Robot)
 robotHandler appStateRef (RobotID rid) = do
   appState <- liftIO (readIORef appStateRef)
-  pure $ IM.lookup rid (appState ^. gameState . robotMap)
+  pure $ IM.lookup rid (appState ^. gameState . robotInfo . robotMap)
 
 prereqsHandler :: ReadableIORef AppState -> Handler [PrereqSatisfaction]
 prereqsHandler appStateRef = do

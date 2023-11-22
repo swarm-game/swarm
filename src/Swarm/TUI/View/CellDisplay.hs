@@ -214,7 +214,7 @@ getStatic g coords
  where
   -- Offset from the location of the view center to the location under
   -- consideration for display.
-  offset = W.coordsToLoc coords .-. (g ^. viewCenter . planar)
+  offset = W.coordsToLoc coords .-. (g ^. robotInfo . viewCenter . planar)
 
   -- Hash.
   h =
