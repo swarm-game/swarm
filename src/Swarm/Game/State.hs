@@ -54,6 +54,7 @@ module Swarm.Game.State (
   recipesInfo,
   messageInfo,
   gameControls,
+  randomness,
   discovery,
   landscape,
   robotInfo,
@@ -667,6 +668,20 @@ viewCenter = to _viewCenter
 focusedRobotID :: Getter Robots RID
 focusedRobotID = to _focusedRobotID
 
+data Randomness = Randomness
+  { _seed :: Seed
+  , _randGen :: StdGen
+  }
+
+makeLensesNoSigs ''Randomness
+
+-- | The initial seed that was used for the random number generator,
+--   and world generation.
+seed :: Lens' Randomness Seed
+
+-- | Pseudorandom generator initialized at start.
+randGen :: Lens' Randomness StdGen
+
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
@@ -678,8 +693,7 @@ data GameState = GameState
   , _robotInfo :: Robots
   , _pathCaching :: PathCaching
   , _discovery :: Discovery
-  , _seed :: Seed
-  , _randGen :: StdGen
+  , _randomness :: Randomness
   , _recipesInfo :: Recipes
   , _currentScenarioPath :: Maybe FilePath
   , _landscape :: Landscape
@@ -736,15 +750,11 @@ robotsInArea (Cosmic subworldName o) d gs = map (rm IM.!) rids
 baseRobot :: Traversal' GameState Robot
 baseRobot = robotInfo . robotMap . ix 0
 
+-- | Inputs for randomness
+randomness :: Lens' GameState Randomness
+
 -- | Discovery state of entities, commands, recipes
 discovery :: Lens' GameState Discovery
-
--- | The initial seed that was used for the random number generator,
---   and world generation.
-seed :: Lens' GameState Seed
-
--- | Pseudorandom generator initialized at start.
-randGen :: Lens' GameState StdGen
 
 -- | Collection of recipe info
 recipesInfo :: Lens' GameState Recipes
@@ -1224,8 +1234,11 @@ initGameState gsc =
           , _structureRecognition = StructureRecognizer (RecognizerAutomatons mempty mempty) emptyFoundStructures []
           , _tagMembers = mempty
           }
-    , _seed = 0
-    , _randGen = mkStdGen 0
+    , _randomness =
+        Randomness
+          { _seed = 0
+          , _randGen = mkStdGen 0
+          }
     , _recipesInfo =
         Recipes
           { _recipesOut = outRecipeMap (initRecipes gsc)
@@ -1409,8 +1422,8 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       & discovery . knownEntities .~ scenario ^. scenarioKnown
       & discovery . tagMembers .~ buildTagMap em
       & robotInfo . robotNaming . gensym .~ initGensym
-      & seed .~ theSeed
-      & randGen .~ mkStdGen theSeed
+      & randomness . seed .~ theSeed
+      & randomness . randGen .~ mkStdGen theSeed
       & recipesInfo %~ modifyRecipesInfo
       & landscape . entityMap .~ em
       & landscape . worldNavigation .~ scenario ^. scenarioNavigation
