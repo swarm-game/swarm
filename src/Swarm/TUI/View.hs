@@ -592,7 +592,7 @@ drawDialog s = case s ^. uiState . uiModal of
 -- | Draw one of the various types of modal dialog.
 drawModal :: AppState -> ModalType -> Widget Name
 drawModal s = \case
-  HelpModal -> helpWidget (s ^. gameState . seed) (s ^. runtimeState . webPort)
+  HelpModal -> helpWidget (s ^. gameState . randomness . seed) (s ^. runtimeState . webPort)
   RobotsModal -> robotsListWidget s
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> commandsListWidget (s ^. gameState)

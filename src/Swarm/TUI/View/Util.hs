@@ -37,7 +37,7 @@ generateModal :: AppState -> ModalType -> Modal
 generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth))
  where
   currentScenario = s ^. uiState . scenarioRef
-  currentSeed = s ^. gameState . seed
+  currentSeed = s ^. gameState . randomness . seed
   haltingMessage = case s ^. uiState . uiMenu of
     NoMenu -> Just "Quit"
     _ -> Nothing
