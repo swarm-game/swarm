@@ -40,7 +40,7 @@ testNotification gs =
         assertNew (gs' & messageInfo . lastSeenMessageTime .~ TickNumber 0) 1 "message" messageNotifications
     , testCase "new message after log" $ do
         gs' <- goodPlay "create \"logger\"; equip \"logger\"; log \"Hello world!\""
-        let r = gs' ^?! robotMap . ix (-1)
+        let r = gs' ^?! robotInfo . robotMap . ix (-1)
         assertBool "There should be one log entry in robots log" (length (r ^. robotLog) == 1)
         assertEqual "The hypothetical robot should be in focus" (Just (r ^. robotID)) (view robotID <$> focusedRobot gs')
         assertEqual "There should be one log notification" [TickNumber 2] (view leTime <$> gs' ^. messageNotifications . notificationsContent)

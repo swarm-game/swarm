@@ -61,12 +61,12 @@ play g = either (return . (,g) . Left) playPT . processTerm1
     gs =
       g
         & execState (addRobot hr)
-        & viewCenterRule .~ VCRobot hid
+        & robotInfo . viewCenterRule .~ VCRobot hid
         & creativeMode .~ True
 
 playUntilDone :: RID -> StateT GameState IO (Either Text ())
 playUntilDone rid = do
-  w <- use robotMap
+  w <- use $ robotInfo . robotMap
   case w ^? ix rid . to isActive of
     Just True -> do
       void $ runTimeIO gameTick

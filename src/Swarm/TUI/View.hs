@@ -435,7 +435,7 @@ drawGameUI s =
   addCursorPos = bottomLabels . leftLabel ?~ padLeftRight 1 widg
    where
     widg = case s ^. uiState . uiWorldCursor of
-      Nothing -> str $ renderCoordsString $ s ^. gameState . viewCenter
+      Nothing -> str $ renderCoordsString $ s ^. gameState . robotInfo . viewCenter
       Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (s ^. uiState . uiWorldEditor . worldOverdraw) (s ^. gameState) coord
   -- Add clock display in top right of the world view if focused robot
   -- has a clock equipped
@@ -743,7 +743,7 @@ robotsListWidget s = hCenter table
   robots =
     filter (\robot -> debugging || (isRelevant robot && isNear robot))
       . IM.elems
-      $ g ^. robotMap
+      $ g ^. robotInfo . robotMap
   creative = g ^. creativeMode
   cheat = s ^. uiState . uiCheatMode
   debugging = creative && cheat
@@ -975,7 +975,7 @@ drawKeyMenu s =
   isReplWorking = s ^. gameState . gameControls . replWorking
   isPaused = s ^. gameState . temporal . paused
   hasDebug = fromMaybe creative $ s ^? gameState . to focusedRobot . _Just . robotCapabilities . Lens.contains CDebug
-  viewingBase = (s ^. gameState . viewCenterRule) == VCRobot 0
+  viewingBase = (s ^. gameState . robotInfo . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
   goal = hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent
@@ -1089,7 +1089,7 @@ drawWorldPane ui g =
     . reportExtent WorldExtent
     -- Set the clickable request after the extent to play nice with the cache
     . clickable (FocusablePanel WorldPanel)
-    $ worldWidget renderCoord (g ^. viewCenter)
+    $ worldWidget renderCoord (g ^. robotInfo . viewCenter)
  where
   renderCoord = drawLoc ui g
 
@@ -1436,7 +1436,7 @@ drawREPL s =
     (Just False, _) -> renderREPLPrompt (s ^. uiState . uiFocusRing) theRepl
     _running -> padRight Max $ txt "..."
   theRepl = s ^. uiState . uiREPL
-  base = s ^. gameState . robotMap . at 0
+  base = s ^. gameState . robotInfo . robotMap . at 0
   fmt (REPLEntry e) = txt $ "> " <> e
   fmt (REPLOutput t) = txt t
   fmt (REPLError t) = txtWrapWith indent2 {preserveIndentation = True} t
