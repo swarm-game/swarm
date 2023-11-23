@@ -14,6 +14,8 @@ attrs:
     bg: '#8B4513'
   - name: mybase
     fg: '#e0c0e0'
+  - name: iceblue
+    fg: '#ddddff'
 objectives:
   - teaser: Apiarist
     goal:
@@ -109,13 +111,12 @@ robots:
       - workbench
     inventory:
       - [20, iron plate]
-      - [100, tree]
       - [4, botkit]
   - name: queenbee
     dir: [1, 0]
     system: true
     display:
-      invisible: false
+      invisible: true
       char: 'Q'
       attr: bee
     program:
@@ -236,7 +237,7 @@ entities:
   - name: honey frame
     display:
       char: '-'
-      attr: ice
+      attr: iceblue
     description:
     - Internal component of a beehive
     properties: [known, portable]
@@ -313,7 +314,7 @@ entities:
   - name: stone tile
     display:
       char: '.'
-      attr: stone
+      attr: rock
     description:
     - Refined flooring
     properties: [known, portable]
@@ -342,7 +343,6 @@ recipes:
       - [1, treads]
       - [1, welder]
       - [1, workbench]
-
   - in:
       - [1, board]
     out:

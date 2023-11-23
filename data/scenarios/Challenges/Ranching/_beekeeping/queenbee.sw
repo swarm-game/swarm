@@ -3,6 +3,10 @@
 def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 def mod : int -> int -> int = \a. \b. a - (a/b)*b end;
 def abs = \n. if (n < 0) {-n} {n} end;
+def min = \x. \y. if (x < y) {x} {y} end;
+
+def elif = \t. \then. \else. {if t then else} end
+def else = \t. t end
 
 def sumTuples = \t1. \t2.
     (fst t1 + fst t2, snd t1 + snd t2);
@@ -20,6 +24,7 @@ def subtractTuple = \t1. \t2.
     sumTuples t1 $ negateTuple t2;
     end;
 
+// Deprecated
 def moveTuple = \tup.
     let x = fst tup in
     let y = snd tup in
@@ -28,6 +33,46 @@ def moveTuple = \tup.
 
     turn $ if (y > 0) {north} {south};
     doN (abs y) move;
+    end;
+
+def randomDir =
+    r <- random 4;
+    return $ if (r == 1) {north}
+        $ elif (r == 2) {west}
+        $ elif (r == 3) {south}
+        $ else {east};
+    end;
+
+def moveHorizontal = \maxDirect. \dist.
+    turn $ if (dist > 0) {east} {west};
+    doN (min maxDirect $ abs dist) move;
+    end;
+
+def moveVertical = \maxDirect. \dist.
+    turn $ if (dist > 0) {north} {south};
+    doN (min maxDirect $ abs dist) move;
+    end;
+
+def moveToward = \maxDirect. \goal.
+
+    currLocOrig <- whereami;
+    if (currLocOrig == goal) {} {
+
+        // Include some random motion
+        randDir <- randomDir;
+        turn randDir;
+        move;
+
+        currLoc <- whereami;
+        let delta = subtractTuple goal currLoc in
+        let x = fst delta in
+        let y = snd delta in
+
+        moveHorizontal maxDirect x;
+        moveVertical maxDirect y;
+
+        moveToward maxDirect goal;
+    }
     end;
 
 def watchForHoneycombRemoval = \dist.
@@ -48,9 +93,7 @@ the honeycomb. Gives up when distance
 threshold exceeded.
 */
 def depositHoneycomb = \dist.
-
     if (dist < 5) {
-            
         emptyHere <- isempty;
         if emptyHere {
             place "honeycomb";
@@ -71,10 +114,8 @@ def depositHoneycomb = \dist.
     end;
 
 def goToHive = \hiveLoc.
-    currLoc <- whereami;
     let depositLoc = (fst hiveLoc - 1, snd hiveLoc) in
-    let delta = subtractTuple depositLoc currLoc in
-    moveTuple delta;
+    moveToward 2 depositLoc;
     turn north;
     depositHoneycomb 0;
     end;
@@ -83,6 +124,8 @@ def goToHive = \hiveLoc.
 Harvests an item when reached
 */
 def takeStepTowardItem = \item.
+    // NOTE: Max radius is hard-coded to 256
+    // (see maxSniffRange in Syntax.hs)
     direction <- chirp item;
     if (direction == down) {
         // Need a try block in case
@@ -132,31 +175,31 @@ def observeHives = \lastHiveCount.
     foundStructure <- structure "beehive" lastHiveCount;
     newHiveCount <- case foundStructure (\_. return lastHiveCount) (\fs. 
         let newHiveCount = fst fs in
-
         if (newHiveCount > lastHiveCount) {
             // Build worker bee, assign ID, location
             create "wax gland";
             create "proboscis";
 
-            create "solar panel";
-            create "treads";
-            create "detonator";
-            create "harvester";
-            create "fast grabber";
-            create "workbench";
-            create "GPS receiver";
-            create "scanner";
-            create "rolex";
+            create "ADT calculator";
             create "beaglepuss";
+            create "bitcoin";
             create "branch predictor";
             create "comparator";
             create "compass";
-            create "ADT calculator";
+            create "detonator";
             create "dictionary";
-            create "lambda";
-            create "strange loop";
+            create "fast grabber";
+            create "GPS receiver";
+            create "harvester";
             create "hourglass";
+            create "lambda";
             create "net";
+            create "rolex";
+            create "scanner";
+            create "strange loop";
+            create "solar panel";
+            create "treads";
+            create "workbench";
 
             teleport self $ snd fs;
             build {
