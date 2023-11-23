@@ -52,7 +52,7 @@ objectives:
       - |
         Make a `cask`{=entity}.
       - |
-        Utilize local timber and your on-hand supply of iron material.
+        Use local timber and your on-hand supply of iron material.
       - |
         You may `use "siphon" forward` when positioned in front of
         a lake to fill a `cask`{=entity} with `lakewater`{=entity}.
