@@ -97,17 +97,17 @@ import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict (Map)
-import Swarm.Language.Syntax.CommandMetadata
 import Data.Set qualified as S
+import Data.Set qualified as Set
 import Data.Text hiding (filter, length, map)
 import Data.Text qualified as T
 import Data.Tree
 import GHC.Generics (Generic)
 import Swarm.Language.Direction
+import Swarm.Language.Syntax.CommandMetadata
 import Swarm.Language.Types
 import Swarm.Util qualified as Util
 import Witch.From (from)
-import Data.Set qualified as Set
 
 -- | Maximum perception distance for
 -- 'Chirp' and 'Sniff' commands
@@ -403,8 +403,8 @@ data ConstInfo = ConstInfo
   }
   deriving (Eq, Ord, Show)
 
-data ConstDoc = ConstDoc {
-    effectInfo :: CommandEffect
+data ConstDoc = ConstDoc
+  { effectInfo :: CommandEffect
   , briefDoc :: Text
   , longDoc :: Text
   }
@@ -533,8 +533,11 @@ isLong c = case tangibility (constInfo c) of
 -- matching gives us warning if we add more constants.
 constInfo :: Const -> ConstInfo
 constInfo c = case c of
-  Wait -> command 0 long $ shortDoc (Mutation $ Set.singleton $ RobotChange BehaviorChange)
-    "Wait for a number of time steps."
+  Wait ->
+    command 0 long $
+      shortDoc
+        (Mutation $ Set.singleton $ RobotChange BehaviorChange)
+        "Wait for a number of time steps."
   Noop ->
     command 0 Intangible . doc Computation "Do nothing." $
       [ "This is different than `Wait` in that it does not take up a time step."
@@ -542,86 +545,137 @@ constInfo c = case c of
       , "Usually it is automatically inserted where needed, so you do not have to worry about it."
       ]
   Selfdestruct ->
-    command 0 short . doc (Mutation $ Set.singleton $ RobotChange ExistenceChange)
-      "Self-destruct a robot." $
-      [ "Useful to not clutter the world."
-      , "This destroys the robot's inventory, so consider `salvage` as an alternative."
-      ]
-  Move -> command 0 short $ shortDoc (Mutation $ Set.singleton $ RobotChange PositionChange)
-    "Move forward one step."
-  Backup -> command 0 short $ shortDoc (Mutation $ Set.singleton $ RobotChange PositionChange)
-    "Move backward one step."
+    command 0 short
+      . doc
+        (Mutation $ Set.singleton $ RobotChange ExistenceChange)
+        "Self-destruct a robot."
+      $ [ "Useful to not clutter the world."
+        , "This destroys the robot's inventory, so consider `salvage` as an alternative."
+        ]
+  Move ->
+    command 0 short $
+      shortDoc
+        (Mutation $ Set.singleton $ RobotChange PositionChange)
+        "Move forward one step."
+  Backup ->
+    command 0 short $
+      shortDoc
+        (Mutation $ Set.singleton $ RobotChange PositionChange)
+        "Move backward one step."
   Path ->
-    command 2 short . doc (Query $ Sensing EntitySensing)
-      "Obtain shortest path to the destination." $
-      [ "Optionally supply a distance limit as the first argument."
-      , "Supply either a location (`inL`) or an entity (`inR`) as the second argument."
-      , "If a path exists, returns the direction to proceed along."
-      ]
+    command 2 short
+      . doc
+        (Query $ Sensing EntitySensing)
+        "Obtain shortest path to the destination."
+      $ [ "Optionally supply a distance limit as the first argument."
+        , "Supply either a location (`inL`) or an entity (`inR`) as the second argument."
+        , "If a path exists, returns the direction to proceed along."
+        ]
   Push ->
-    command 1 short . doc (Mutation $ Set.singleton EntityChange)
-      "Push an entity forward one step." $
-      [ "Both entity and robot moves forward one step."
-      , "Destination must not contain an entity."
-      ]
+    command 1 short
+      . doc
+        (Mutation $ Set.singleton EntityChange)
+        "Push an entity forward one step."
+      $ [ "Both entity and robot moves forward one step."
+        , "Destination must not contain an entity."
+        ]
   Stride ->
-    command 1 short . doc (Mutation $ Set.singleton $ RobotChange PositionChange)
-      "Move forward multiple steps." $
-      [ T.unwords ["Has a max range of", T.pack $ show maxStrideRange, "units."]
-      ]
-  Turn -> command 1 short $ shortDoc (Mutation $ Set.singleton $ RobotChange PositionChange)
-    "Turn in some direction."
-  Grab -> command 0 short $ shortDoc (Mutation $ Set.fromList [EntityChange, RobotChange InventoryChange])
-    "Grab an item from the current location."
+    command 1 short
+      . doc
+        (Mutation $ Set.singleton $ RobotChange PositionChange)
+        "Move forward multiple steps."
+      $ [ T.unwords ["Has a max range of", T.pack $ show maxStrideRange, "units."]
+        ]
+  Turn ->
+    command 1 short $
+      shortDoc
+        (Mutation $ Set.singleton $ RobotChange PositionChange)
+        "Turn in some direction."
+  Grab ->
+    command 0 short $
+      shortDoc
+        (Mutation $ Set.fromList [EntityChange, RobotChange InventoryChange])
+        "Grab an item from the current location."
   Harvest ->
     command 0 short . doc (Mutation $ Set.singleton EntityChange) "Harvest an item from the current location." $
       [ "Leaves behind a growing seed if the harvested item is growable."
       , "Otherwise it works exactly like `grab`."
       ]
   Ignite ->
-    command 1 short . doc (Mutation $ Set.singleton EntityChange)
-      "Ignite a combustible item in the specified direction." $
-      [ "Combustion persists for a random duration and may spread."
-      ]
+    command 1 short
+      . doc
+        (Mutation $ Set.singleton EntityChange)
+        "Ignite a combustible item in the specified direction."
+      $ [ "Combustion persists for a random duration and may spread."
+        ]
   Place ->
-    command 1 short . doc (Mutation $ Set.singleton EntityChange)
-      "Place an item at the current location." $
-      ["The current location has to be empty for this to work."]
+    command 1 short
+      . doc
+        (Mutation $ Set.singleton EntityChange)
+        "Place an item at the current location."
+      $ ["The current location has to be empty for this to work."]
   Ping ->
-    command 1 short . doc (Query $ Sensing RobotSensing)
-      "Obtain the relative location of another robot." $
-      [ "The other robot must be within transmission range, accounting for antennas installed on either end, and the invoking robot must be oriented in a cardinal direction."
-      , "The location (x, y) is given relative to one's current orientation:"
-      , "Positive x value is to the right, negative left. Likewise, positive y value is forward, negative back."
-      ]
-  Give -> command 2 short $ shortDoc (Mutation $ Set.singleton $ RobotChange InventoryChange)
-    "Give an item to another actor nearby."
-  Equip -> command 1 short $ shortDoc (Mutation $ Set.fromList [RobotChange InventoryChange, RobotChange BehaviorChange])
-    "Equip a device on oneself."
-  Unequip -> command 1 short $ shortDoc (Mutation $ Set.fromList [RobotChange InventoryChange, RobotChange BehaviorChange])
-    "Unequip an equipped device, returning to inventory."
-  Make -> command 1 long $ shortDoc (Mutation $ Set.singleton $ RobotChange InventoryChange)
-    "Make an item using a recipe."
-  Has -> command 1 Intangible $ shortDoc (Query $ Sensing RobotSensing)
-    "Sense whether the robot has a given item in its inventory."
-  Equipped -> command 1 Intangible $ shortDoc (Query $ Sensing RobotSensing)
-    "Sense whether the robot has a specific device equipped."
-  Count -> command 1 Intangible $ shortDoc (Query $ Sensing RobotSensing)
-    "Get the count of a given item in a robot's inventory."
+    command 1 short
+      . doc
+        (Query $ Sensing RobotSensing)
+        "Obtain the relative location of another robot."
+      $ [ "The other robot must be within transmission range, accounting for antennas installed on either end, and the invoking robot must be oriented in a cardinal direction."
+        , "The location (x, y) is given relative to one's current orientation:"
+        , "Positive x value is to the right, negative left. Likewise, positive y value is forward, negative back."
+        ]
+  Give ->
+    command 2 short $
+      shortDoc
+        (Mutation $ Set.singleton $ RobotChange InventoryChange)
+        "Give an item to another actor nearby."
+  Equip ->
+    command 1 short $
+      shortDoc
+        (Mutation $ Set.fromList [RobotChange InventoryChange, RobotChange BehaviorChange])
+        "Equip a device on oneself."
+  Unequip ->
+    command 1 short $
+      shortDoc
+        (Mutation $ Set.fromList [RobotChange InventoryChange, RobotChange BehaviorChange])
+        "Unequip an equipped device, returning to inventory."
+  Make ->
+    command 1 long $
+      shortDoc
+        (Mutation $ Set.singleton $ RobotChange InventoryChange)
+        "Make an item using a recipe."
+  Has ->
+    command 1 Intangible $
+      shortDoc
+        (Query $ Sensing RobotSensing)
+        "Sense whether the robot has a given item in its inventory."
+  Equipped ->
+    command 1 Intangible $
+      shortDoc
+        (Query $ Sensing RobotSensing)
+        "Sense whether the robot has a specific device equipped."
+  Count ->
+    command 1 Intangible $
+      shortDoc
+        (Query $ Sensing RobotSensing)
+        "Get the count of a given item in a robot's inventory."
   Reprogram ->
-    command 2 long . doc (Mutation $ Set.singleton $ RobotChange BehaviorChange)
-      "Reprogram another robot with a new command." $
-      ["The other robot has to be nearby and idle."]
+    command 2 long
+      . doc
+        (Mutation $ Set.singleton $ RobotChange BehaviorChange)
+        "Reprogram another robot with a new command."
+      $ ["The other robot has to be nearby and idle."]
   Drill ->
-    command 1 long . doc (Mutation $ Set.fromList [EntityChange, RobotChange InventoryChange])
-      "Drill through an entity." $
-      [ "Usually you want to `drill forward` when exploring to clear out obstacles."
-      , "When you have found a source to drill, you can stand on it and `drill down`."
-      , "See what recipes with drill you have available."
-      , "The `drill` command may return the name of an entity added to your inventory."
-      ]
+    command 1 long
+      . doc
+        (Mutation $ Set.fromList [EntityChange, RobotChange InventoryChange])
+        "Drill through an entity."
+      $ [ "Usually you want to `drill forward` when exploring to clear out obstacles."
+        , "When you have found a source to drill, you can stand on it and `drill down`."
+        , "See what recipes with drill you have available."
+        , "The `drill` command may return the name of an entity added to your inventory."
+        ]
   Use ->
-    command 2 long . doc (Mutation $ Set.singleton EntityChange)"Use one entity upon another." $
+    command 2 long . doc (Mutation $ Set.singleton EntityChange) "Use one entity upon another." $
       [ "Which entities you can `use` with others depends on the available recipes."
       , "The object being used must be a 'required' entity in a recipe."
       ]
@@ -664,15 +718,21 @@ constInfo c = case c of
     command 1 short . doc (Mutation $ Set.fromList [EntityChange, RobotChange InventoryChange]) "Create an item out of thin air." $
       ["Only available in creative mode."]
   Halt -> command 1 short $ shortDoc (Mutation $ Set.singleton $ RobotChange BehaviorChange) "Tell a robot to halt."
-  Time -> command 0 Intangible $ shortDoc (Query $ Sensing WorldCondition) 
-    "Get the current time."
+  Time ->
+    command 0 Intangible $
+      shortDoc
+        (Query $ Sensing WorldCondition)
+        "Get the current time."
   Scout ->
     command 1 short . doc (Query $ Sensing RobotSensing) "Detect whether a robot is within line-of-sight in a direction." $
       [ "Perception is blocked by 'Opaque' entities."
       , T.unwords ["Has a max range of", T.pack $ show maxScoutRange, "units."]
       ]
-  Whereami -> command 0 Intangible $ shortDoc (Query $ Sensing RobotSensing)
-    "Get the current x and y coordinates."
+  Whereami ->
+    command 0 Intangible $
+      shortDoc
+        (Query $ Sensing RobotSensing)
+        "Get the current x and y coordinates."
   Waypoint ->
     command 2 Intangible . doc (Query APriori) "Get the x, y coordinates of a named waypoint, by index" $
       [ "Return only the waypoints in the same subworld as the calling robot."

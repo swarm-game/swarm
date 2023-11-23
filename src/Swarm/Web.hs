@@ -63,9 +63,9 @@ import Servant
 import Servant.Docs (ToCapture)
 import Servant.Docs qualified as SD
 import Servant.Docs.Internal qualified as SD (renderCurlBasePath)
+import Swarm.Doc.Wiki.Matrix
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
-import Swarm.Doc.Wiki.Matrix
 import Swarm.Game.Scenario.Objective.Graph
 import Swarm.Game.Scenario.Objective.WinCheck
 import Swarm.Game.Scenario.Topography.Structure.Recognition

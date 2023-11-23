@@ -8,34 +8,34 @@ import Data.Aeson (ToJSON)
 import Data.Set (Set)
 import GHC.Generics (Generic)
 
-data SensingType =
-    RobotSensing
+data SensingType
+  = RobotSensing
   | EntitySensing
   | WorldCondition
   deriving (Eq, Ord, Show, Generic, ToJSON)
 
-data QueryType =
-    -- | empirical knowledge
+data QueryType
+  = -- | empirical knowledge
     Sensing SensingType
-    -- | a priori knowledge
-  | APriori
+  | -- | a priori knowledge
+    APriori
   deriving (Eq, Ord, Show, Generic, ToJSON)
 
-data RobotChangeType =
-    PositionChange
+data RobotChangeType
+  = PositionChange
   | InventoryChange
   | ExistenceChange
   | BehaviorChange
   deriving (Eq, Ord, Show, Generic, ToJSON)
 
-data MutationType =
-    Cosmetic
+data MutationType
+  = Cosmetic
   | EntityChange
   | RobotChange RobotChangeType
   deriving (Eq, Ord, Show, Generic, ToJSON)
 
-data CommandEffect =
-    Computation
+data CommandEffect
+  = Computation
   | Query QueryType
   | MetaEffect
   | Mutation (Set MutationType)
