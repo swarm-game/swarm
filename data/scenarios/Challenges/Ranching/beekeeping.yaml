@@ -29,8 +29,8 @@ objectives:
         between them.
       - |
         Given that `wildflower`{=entity}s cannot be relocated,
-        judicious choice of location can expedite `honeycomb`{=entity}
-        production.
+        judicious placement is essential for efficient
+        `honeycomb`{=entity} production.
     condition: |
       foundStructure <- structure "beehive" 0;
       return $ case foundStructure (\_. false) (\_. true);

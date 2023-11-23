@@ -53,15 +53,19 @@ def moveVertical = \maxDirect. \dist.
     doN (min maxDirect $ abs dist) move;
     end;
 
+def randomStep =
+    randDir <- randomDir;
+    turn randDir;
+    move;
+    end;
+
 def moveToward = \maxDirect. \goal.
 
     currLocOrig <- whereami;
     if (currLocOrig == goal) {} {
 
         // Include some random motion
-        randDir <- randomDir;
-        turn randDir;
-        move;
+        randomStep;
 
         currLoc <- whereami;
         let delta = subtractTuple goal currLoc in
@@ -135,8 +139,15 @@ def takeStepTowardItem = \item.
             return ();
         } {};
     } {
-        turn direction;
-        move;
+        // Include some random motion
+        r <- random 4;
+        if (r == 0) {
+            randomStep;
+        } {
+            turn direction;
+            move;
+        };
+
         takeStepTowardItem item;
     }
     end;
@@ -166,6 +177,7 @@ def workerProgram = \hiveIdx. \structureLoc.
 
 def workerProgramInit = \hiveIdx. \structureLoc.
     appear "B";
+    setname "bee";
     if (mod hiveIdx 2 == 0) {turn left;} {};
     workerProgram hiveIdx structureLoc;
     end;
