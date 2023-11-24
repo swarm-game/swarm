@@ -46,6 +46,7 @@ robots:
       - 3D printer
       - logger
       - grabber
+      - toolkit
     inventory:
       - [50, solar panel]
       - [50, treads]
