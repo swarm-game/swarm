@@ -41,7 +41,7 @@ def checkPath : cmd bool =
   if g {return false}
   {
     n <- resonate "path" ((0,0), (27, -17));
-    if (n != 50) {return false} {
+    if (n != 51) {return false} {
       loc <- as base {whereami};
       teleport self loc;
       followPath "path"
