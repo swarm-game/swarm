@@ -3,7 +3,7 @@ def tR = turn right end;
 def tB = turn back end;
 def ifM = \p.\t.\e. b <- p; if b t e end;
 def DFSn = \n.
-  say $ "DFSn at level " ++ format n;
+  // say $ "DFSn at level " ++ format n;
   ifM (ishere "goal") {swap "path"; return ()} {};
   if (n == 0) {} {
     r <- ishere "rock";
@@ -33,7 +33,8 @@ def clear_rocks =
   tB; ifM blocked {} {move}; tB
 end;
 def DFS = \n.
-  say ("Searching with depth " ++ format n); place "path";
+  // say ("Searching with depth " ++ format n);
+  place "path";
   startDFS n; tL; startDFS n; tL; startDFS n; tL; startDFS n;
   swap "rock"; clear_rocks
 end;

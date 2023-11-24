@@ -10,7 +10,7 @@ objectives:
     possible path? You win by marking any shortest path from the
     base to the goal with `path` markers.
   condition: |
-    return false
+    run "scenarios/Challenges/Mazes/_shortest_path/check_shortest_path.sw"
 solution: |
   run "scenarios/Challenges/Mazes/_shortest_path/shortest_path_sol.sw"
 robots:
