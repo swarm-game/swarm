@@ -6,9 +6,9 @@ description: There is a maze, but it can't be seen, only sensed... can you
 objectives:
 - goal:
   - There is a maze, but it can't be seen, only sensed... can you
-    program a robot to navigate it successfully, via the shortest path?
-    You win by marking any shortest path from the base to the goal with `path`
-    markers.
+    program a robot to navigate it successfully, via the shortest
+    possible path? You win by marking any shortest path from the
+    base to the goal with `path` markers.
   condition: |
     return false
     // def tL = turn left end;
