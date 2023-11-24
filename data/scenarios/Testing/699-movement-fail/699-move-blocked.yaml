@@ -29,7 +29,6 @@ robots:
     program: |
       try {move} {say "Fatal error: two was unable to move into a boulder even though it is system robot!"}
 world:
-  default: [blank]
   palette:
     '@': [stone, boulder]
     'B': [grass, null, base]

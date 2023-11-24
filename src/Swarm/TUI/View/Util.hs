@@ -21,11 +21,13 @@ import Swarm.Game.Scenario (scenarioName)
 import Swarm.Game.ScenarioInfo (scenarioItemName)
 import Swarm.Game.State
 import Swarm.Game.Terrain
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Pretty (prettyTextLine)
+import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Types (Polytype)
-import Swarm.TUI.Attr
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
+import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Swarm.Util (listEnums)
 import Witch (from, into)
@@ -35,7 +37,7 @@ generateModal :: AppState -> ModalType -> Modal
 generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth))
  where
   currentScenario = s ^. uiState . scenarioRef
-  currentSeed = s ^. gameState . seed
+  currentSeed = s ^. gameState . randomness . seed
   haltingMessage = case s ^. uiState . uiMenu of
     NoMenu -> Just "Quit"
     _ -> Nothing
@@ -48,6 +50,7 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
       RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
       CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
       MessagesModal -> ("Messages", Nothing, descriptionWidth)
+      StructuresModal -> ("Buildable Structures", Nothing, descriptionWidth)
       ScenarioEndModal WinModal ->
         let nextMsg = "Next challenge!"
             stopMsg = fromMaybe "Return to the menu" haltingMessage
@@ -112,7 +115,39 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
-drawType = withAttr infoAttr . padLeftRight 1 . txt . prettyText
+drawType ty = Widget Fixed Fixed $ do
+  ctx <- getContext
+  let w = ctx ^. availWidthL
+      renderedTy = prettyTextLine ty
+      displayedTy
+        | T.length renderedTy <= w `div` 2 - 2 = renderedTy
+        | otherwise = T.take (w `div` 2 - 2 - 3) renderedTy <> "..."
+  render . withAttr infoAttr . padLeftRight 1 . txt $ displayedTy
+
+-- | Draw markdown document with simple code/bold/italic attributes.
+--
+-- TODO: #574 Code blocks should probably be handled separately.
+drawMarkdown :: Markdown.Document Syntax -> Widget Name
+drawMarkdown d = do
+  Widget Greedy Fixed $ do
+    ctx <- getContext
+    let w = ctx ^. availWidthL
+    let docLines = Markdown.chunksOf w . Markdown.toStream <$> Markdown.paragraphs d
+    render . layoutParagraphs $ vBox . map (hBox . map mTxt) <$> docLines
+ where
+  mTxt = \case
+    Markdown.TextNode as t -> foldr applyAttr (txt t) as
+    Markdown.CodeNode t -> withAttr highlightAttr $ txt t
+    Markdown.RawNode f t -> withAttr (rawAttr f) $ txt t
+  applyAttr a = withAttr $ case a of
+    Markdown.Strong -> boldAttr
+    Markdown.Emphasis -> italicAttr
+  rawAttr = \case
+    "entity" -> greenAttr
+    "structure" -> redAttr
+    "tag" -> yellowAttr
+    "type" -> magentaAttr
+    _snippet -> highlightAttr -- same as plain code
 
 drawLabeledTerrainSwatch :: TerrainType -> Widget Name
 drawLabeledTerrainSwatch a =
@@ -147,10 +182,15 @@ locationToString :: Location -> String
 locationToString (Location x y) =
   unwords $ map show [x, y]
 
--- | Display a list of text-wrapped paragraphs with one blank line after
---   each.
+-- | Display a list of text-wrapped paragraphs with one blank line after each.
 displayParagraphs :: [Text] -> Widget Name
-displayParagraphs = vBox . map (padBottom (Pad 1) . txtWrap)
+displayParagraphs = layoutParagraphs . map txtWrap
+
+-- | Display a list of paragraphs with one blank line after each.
+--
+-- For the common case of `[Text]` use 'displayParagraphs'.
+layoutParagraphs :: [Widget Name] -> Widget Name
+layoutParagraphs ps = vBox $ padBottom (Pad 1) <$> ps
 
 data EllipsisSide = Beginning | End
 
@@ -184,3 +224,12 @@ maybeScroll vpName contents =
           . viewport vpName Vertical
           . Widget Fixed Fixed
           $ return result
+
+-- | Draw the name of an entity, labelled with its visual
+--   representation as a cell in the world.
+drawLabelledEntityName :: Entity -> Widget n
+drawLabelledEntityName e =
+  hBox
+    [ padRight (Pad 2) (renderDisplay (e ^. entityDisplay))
+    , txt (e ^. entityName)
+    ]

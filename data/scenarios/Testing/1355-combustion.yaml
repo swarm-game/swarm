@@ -1,0 +1,133 @@
+version: 1
+name: Combustion
+creative: false
+seed: 0
+description: Demo of spreading fire
+objectives:
+  - goal:
+      - Blow up the dynamite
+    condition: |
+      j <- robotnamed "judge";
+      as j {
+        ishere "crater";
+      };
+solution: |
+  def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+
+  move;
+  ignite forward;
+  turn right;
+  move;
+  ignite forward;
+  turn right;
+  move; move; move;
+  turn right;
+  move;
+  ignite left;
+  move;
+  turn right;
+  doN 2 (move; ignite left);
+  doN 14 move;
+  turn left;
+  doN 5 move;
+  turn left;
+  ignite right;
+  doN 8 move;
+  ignite right;
+  doN 10 move;
+  ignite right;
+  doN 8 move;
+  ignite right;
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - branch predictor
+      - calculator
+      - dictionary
+      - comparator
+      - logger
+      - treads
+      - torch
+  - name: judge
+    dir: [1, 0]
+    system: true
+    display:
+      invisible: true
+      char: J
+entities:
+- name: torch
+  display:
+    attr: wood
+    char: 't'
+  description:
+    - Can set things on fire
+  properties: [known, portable]
+  capabilities: [ignite]
+- name: fuse
+  display:
+    attr: wood
+    char: '~'
+  description:
+    - Reliably combustible
+  combustion:
+    ignition: 1
+    duration: [8, 8]
+    product: null
+  properties: [known, portable, combustible]
+- name: dynamite
+  display:
+    attr: red
+    char: '!'
+  description:
+    - Explosive material
+  combustion:
+    ignition: 1
+    duration: [2, 2]
+    product: crater
+  properties: [known, portable, combustible]
+- name: crater
+  display:
+    attr: rock
+    char: '@'
+  description:
+    - Result of explosive excavation
+  properties: [known]
+known: [ash, tree, log, board, paper, cotton]
+world:
+  palette:
+    'Ω': [grass, null, base]
+    'T': [grass, tree]
+    'q': [grass, paper]
+    'l': [grass, log]
+    'b': [grass, board]
+    'i': [grass, cotton]
+    'F': [grass, fuse]
+    'd': [grass, dynamite, judge]
+    '.': [grass]
+  upperleft: [0, 0]
+  map: |
+   ..iiii....bbbb..TT..llll....iiii.....
+   ..iiii....bbbb..TT..llll....iiii.....
+   ..iiii....bbbb..TT..llll....iiii.....
+   ..iiii....bbbb..TT..llll....iiii.....
+   ..iiii....bbbb..TT..llll....iiii.....
+   ..iiii....bbbb..TT..llll....iiii.....
+   ..TTTT....TTTT..TT..TTTT....TTTT.....
+   ..TTTT....TTTT..TT..TTTT....TTTT.....
+   ................TT...................
+   ................TT...................
+   iiiiiiiiiii.....TT....FFFFF...FFFFF..
+   ......iiiiii....TT....F...F...F...F..
+   iiiiiiiiiiiii...TT....F...F...F...F..
+   ......iiiiiiii........F...F...F...F..
+   iiiiiiiiiiiiiii..Ω.FFFF...FFFFF...d..
+   ......iiiiiiii.......................
+   iiiiiiiiiiiii.....qqqqqqqqqqqqqqqq...
+   ......iiiiii......qqqqqqqqqqqqqqqq...
+   iiiiiiiiiii.......qqqqqqqqqqqqqqqq...
+   ..................qqqqqqqqqqqqqqqq...
+   ..................qqqqqqqqqqqqqqqq...
+   ..................qqqqqqqqqqqqqqqq...
+   ..................qqqqqqqqqqqqqqqq...
+   ..................qqqqqqqqqqqqqqqq...

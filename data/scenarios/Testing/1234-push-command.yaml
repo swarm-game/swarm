@@ -51,7 +51,6 @@ entities:
   properties: [known, portable, unwalkable]
 known: [tree, flower, boulder, water]
 world:
-  default: [blank]
   palette:
     'Ω': [grass, null, base]
     'j': [stone, null, judge]

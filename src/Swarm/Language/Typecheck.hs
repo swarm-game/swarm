@@ -20,6 +20,7 @@ module Swarm.Language.Typecheck (
 
   -- * Type provenance
   Source (..),
+  withSource,
   Join,
   getJoin,
 
@@ -56,8 +57,18 @@ import Control.Arrow ((***))
 import Control.Category ((>>>))
 import Control.Lens ((^.))
 import Control.Lens.Indexed (itraverse)
-import Control.Monad.Except
-import Control.Monad.Reader
+import Control.Monad (forM_, void, when, (<=<))
+import Control.Monad.Except (
+  ExceptT,
+  MonadError (catchError, throwError),
+  runExceptT,
+ )
+import Control.Monad.Reader (
+  MonadReader (ask, local),
+  ReaderT (runReaderT),
+  mapReaderT,
+ )
+import Control.Monad.Trans.Class (MonadTrans (lift))
 import Control.Unification hiding (applyBindings, unify, (=:=))
 import Control.Unification qualified as U
 import Control.Unification.IntVar
@@ -113,6 +124,12 @@ data Source
     Actual
   deriving (Show, Eq, Ord, Bounded, Enum)
 
+-- | Generic eliminator for 'Source'.  Choose the first argument if
+--   the 'Source' is 'Expected', and the second argument if 'Actual'.
+withSource :: Source -> a -> a -> a
+withSource Expected e _ = e
+withSource Actual _ a = a
+
 -- | A value along with its source (expected vs actual).
 type Sourced a = (Source, a)
 
@@ -144,6 +161,12 @@ getJoin (Join j) = (j Expected, j Actual)
 --   monad transformer provided by the @unification-fd@ library which
 --   supports various operations such as generating fresh variables
 --   and unifying things.
+--
+--   Note that we are sort of constrained to use a concrete monad stack by
+--   @unification-fd@, which has some strange types on some of its exported
+--   functions that actually require various monad transformers to be stacked
+--   in certain ways.  For example, see <https://hackage.haskell.org/package/unification-fd-0.11.2/docs/Control-Unification.html#v:unify>.  I don't really see a way
+--   to use "capability style" like we do elsewhere in the codebase.
 type TC = ReaderT UCtx (ReaderT TCStack (ExceptT ContextualTypeErr (IntBindingT TypeF Identity)))
 
 -- | Push a frame on the typechecking stack within a local 'TC'
@@ -165,14 +188,17 @@ runTC ctx =
     >>> ( >>=
             \(Module u uctx) ->
               Module
-                <$> mapM (fmap fromU . generalize) u
-                <*> pure (fromU uctx)
+                <$> mapM (checkPredicative <=< (fmap fromU . generalize)) u
+                <*> checkPredicative (fromU uctx)
         )
     >>> flip runReaderT (toU ctx)
     >>> flip runReaderT []
     >>> runExceptT
     >>> evalIntBindingT
     >>> runIdentity
+
+checkPredicative :: Maybe a -> TC a
+checkPredicative = maybe (throwError (mkRawTypeErr Impredicative)) pure
 
 -- | Look up a variable in the ambient type context, either throwing
 --   an 'UnboundVar' error if it is not found, or opening its
@@ -414,6 +440,9 @@ data TypeErr
     UnknownProj Var Term
   | -- | An invalid argument was provided to @atomic@.
     InvalidAtomic InvalidAtomicReason Term
+  | -- | Some unification variables ended up in a type, probably due to
+    --   impredicativity.  See https://github.com/swarm-game/swarm/issues/351 .
+    Impredicative
   deriving (Show)
 
 -- | Various reasons the body of an @atomic@ might be invalid.
@@ -519,6 +548,21 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
     Module c1' ctx1 <- withFrame l TCBindL $ inferModule c1
     a <- decomposeCmdTy c1 (Actual, c1' ^. sType)
 
+    -- Note we generalize here, similar to how we generalize at let
+    -- bindings, since the result type of the LHS will be the type of
+    -- the variable (if there is one).  In many cases this doesn't
+    -- matter, but variables bound by top-level bind expressions can
+    -- end up in the top-level context (e.g. if someone writes `x <-
+    -- blah` at the REPL). We must generalize here, before adding the
+    -- variable to the context, since afterwards it will be too late:
+    -- we cannot generalize over any unification variables occurring
+    -- in the context.
+    --
+    -- This is safe since it is always safe to generalize at any point.
+    --
+    -- See #351, #1501.
+    genA <- generalize a
+
     -- Now infer the right side under an extended context: things in
     -- scope on the right-hand side include both any definitions
     -- created by the left-hand side, as well as a variable as in @x
@@ -527,7 +571,7 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
     -- case the bound x should shadow the defined one; hence, we apply
     -- that binding /after/ (i.e. /within/) the application of @ctx1@.
     withBindings ctx1 $
-      maybe id ((`withBinding` Forall [] a) . lvVar) mx $ do
+      maybe id ((`withBinding` genA) . lvVar) mx $ do
         Module c2' ctx2 <- withFrame l TCBindR $ inferModule c2
 
         -- We don't actually need the result type since we're just
@@ -541,7 +585,7 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
         -- (if any) as well, since binders are made available at the top
         -- level, just like definitions. e.g. if the user writes `r <- build {move}`,
         -- then they will be able to refer to r again later.
-        let ctxX = maybe Ctx.empty ((`Ctx.singleton` Forall [] a) . lvVar) mx
+        let ctxX = maybe Ctx.empty ((`Ctx.singleton` genA) . lvVar) mx
         return $
           Module
             (Syntax' l (SBind mx c1' c2') (c2' ^. sType))
@@ -642,8 +686,9 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
   SBind mx c1 c2 -> do
     c1' <- withFrame l TCBindL $ infer c1
     a <- decomposeCmdTy c1 (Actual, c1' ^. sType)
+    genA <- generalize a
     c2' <-
-      maybe id ((`withBinding` Forall [] a) . lvVar) mx
+      maybe id ((`withBinding` genA) . lvVar) mx
         . withFrame l TCBindR
         $ infer c2
     _ <- decomposeCmdTy c2 (Actual, c2' ^. sType)
@@ -696,12 +741,16 @@ inferConst c = case c of
   Noop -> [tyQ| cmd unit |]
   Selfdestruct -> [tyQ| cmd unit |]
   Move -> [tyQ| cmd unit |]
+  Backup -> [tyQ| cmd unit |]
+  Path -> [tyQ| (unit + int) -> ((int * int) + text) -> cmd (unit + dir) |]
   Push -> [tyQ| cmd unit |]
   Stride -> [tyQ| int -> cmd unit |]
   Turn -> [tyQ| dir -> cmd unit |]
   Grab -> [tyQ| cmd text |]
   Harvest -> [tyQ| cmd text |]
+  Ignite -> [tyQ| dir -> cmd unit |]
   Place -> [tyQ| text -> cmd unit |]
+  Ping -> [tyQ| actor -> cmd (unit + (int * int)) |]
   Give -> [tyQ| actor -> text -> cmd unit |]
   Equip -> [tyQ| text -> cmd unit |]
   Unequip -> [tyQ| text -> cmd unit |]
@@ -724,6 +773,11 @@ inferConst c = case c of
   Time -> [tyQ| cmd int |]
   Scout -> [tyQ| dir -> cmd bool |]
   Whereami -> [tyQ| cmd (int * int) |]
+  Waypoint -> [tyQ| text -> int -> cmd (int * (int * int)) |]
+  Structure -> [tyQ| text -> int -> cmd (unit + (int * (int * int))) |]
+  Floorplan -> [tyQ| text -> cmd (int * int) |]
+  HasTag -> [tyQ| text -> text -> cmd bool |]
+  TagMembers -> [tyQ| text -> int -> cmd (int * text) |]
   Detect -> [tyQ| text -> ((int * int) * (int * int)) -> cmd (unit + (int * int)) |]
   Resonate -> [tyQ| text -> ((int * int) * (int * int)) -> cmd int |]
   Density -> [tyQ| ((int * int) * (int * int)) -> cmd int |]

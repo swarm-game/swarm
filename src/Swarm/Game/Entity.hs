@@ -13,24 +13,29 @@
 -- are mutually recursive (an inventory contains entities, which can
 -- have inventories).
 module Swarm.Game.Entity (
-  -- * Properties
+  -- * Entity properties
+  EntityName,
   EntityProperty (..),
   GrowthTime (..),
   defaultGrowthTime,
+  Combustibility (..),
+  defaultCombustibility,
 
   -- * Entities
   Entity,
   mkEntity,
 
-  -- ** Lenses
+  -- ** Fields
   -- $lenses
   entityDisplay,
   entityName,
   entityPlural,
   entityNameFor,
   entityDescription,
+  entityTags,
   entityOrientation,
   entityGrowth,
+  entityCombustion,
   entityYields,
   entityProperties,
   hasProperty,
@@ -41,6 +46,7 @@ module Swarm.Game.Entity (
   -- ** Entity map
   EntityMap (..),
   buildEntityMap,
+  validateAttrRefs,
   loadEntities,
   lookupEntityName,
   deviceForCap,
@@ -78,10 +84,13 @@ module Swarm.Game.Entity (
   difference,
 ) where
 
+import Control.Algebra (Has)
 import Control.Arrow ((&&&))
+import Control.Carrier.Throw.Either (liftEither)
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (Getter, Lens', lens, to, view, (^.))
-import Control.Monad.IO.Class
-import Control.Monad.Trans.Except (ExceptT (..), except, runExceptT, withExceptT)
+import Control.Monad (forM_, unless, (<=<))
 import Data.Bifunctor (first)
 import Data.Char (toLower)
 import Data.Function (on)
@@ -102,12 +111,16 @@ import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Game.Display
+import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
+import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Failure
-import Swarm.Game.Failure.Render (prettyFailure)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Language.Capability
-import Swarm.Util (binTuples, failT, findDup, plural, quote, reflow, (?))
+import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown (Document, docToText)
+import Swarm.Util (binTuples, failT, findDup, plural, quote, (?))
+import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
@@ -116,6 +129,10 @@ import Prelude hiding (lookup)
 ------------------------------------------------------------
 -- Properties
 ------------------------------------------------------------
+
+-- | A type representing entity names, currently a synonym for 'Text'.
+--   In the future it is conceivable that it might become more complex.
+type EntityName = Text
 
 -- | Various properties that an entity can have, which affect how
 --   robots can interact with it.
@@ -128,6 +145,9 @@ data EntityProperty
     Opaque
   | -- | Regrows from a seed after it is harvested.
     Growable
+  | -- | Can burn when ignited (either via 'Swarm.Language.Syntax.Ignite' or by
+    --   an adjacent burning entity).
+    Combustible
   | -- | Regenerates infinitely when grabbed or harvested.
     Infinite
   | -- | Robots drown if they walk on this without a boat.
@@ -154,8 +174,33 @@ instance FromJSON EntityProperty where
 newtype GrowthTime = GrowthTime (Integer, Integer)
   deriving (Eq, Ord, Show, Read, Generic, Hashable, FromJSON, ToJSON)
 
+-- | The default growth time (100, 200) for a growable entity with no
+--   growth time specification.
 defaultGrowthTime :: GrowthTime
 defaultGrowthTime = GrowthTime (100, 200)
+
+-- | Properties of combustion.
+data Combustibility = Combustibility
+  { ignition :: Double
+  -- ^ Rate of ignition by a neighbor, per tick.
+  --   If this rate is denoted \(\lambda\), the probability of
+  --   ignition over a period of \(t\) ticks is \(1 - e^{-\lambda t}\).
+  --   See <https://math.stackexchange.com/a/1243629>.
+  , duration :: (Integer, Integer)
+  -- ^ min and max tick counts for combustion to persist
+  , product :: Maybe EntityName
+  -- ^ what entity, if any, is left over after combustion
+  }
+  deriving (Eq, Ord, Show, Read, Generic, Hashable, FromJSON, ToJSON)
+
+-- | The default combustion specification for a combustible entity
+--   with no combustion specification:
+--
+--   * ignition rate 0.5
+--   * duration (100, 200)
+--   * product @ash@
+defaultCombustibility :: Combustibility
+defaultCombustibility = Combustibility 0.5 (100, 200) (Just "ash")
 
 ------------------------------------------------------------
 -- Entity
@@ -205,20 +250,24 @@ data Entity = Entity
   -- ^ A hash value computed from the other fields
   , _entityDisplay :: Display
   -- ^ The way this entity should be displayed on the world map.
-  , _entityName :: Text
+  , _entityName :: EntityName
   -- ^ The name of the entity, used /e.g./ in an inventory display.
   , _entityPlural :: Maybe Text
   -- ^ The plural of the entity name, in case it is irregular.  If
   --   this field is @Nothing@, default pluralization heuristics
   --   will be used (see 'plural').
-  , _entityDescription :: [Text]
+  , _entityDescription :: Document Syntax
   -- ^ A longer-form description. Each 'Text' value is one
   --   paragraph.
+  , _entityTags :: Set Text
+  -- ^ A set of categories to which the entity belongs
   , _entityOrientation :: Maybe Heading
   -- ^ The entity's orientation (if it has one).  For example, when
   --   a robot moves, it moves in the direction of its orientation.
   , _entityGrowth :: Maybe GrowthTime
   -- ^ If this entity grows, how long does it take?
+  , _entityCombustion :: Maybe Combustibility
+  -- ^ If this entity is combustible, how spreadable is it?
   , _entityYields :: Maybe Text
   -- ^ The name of a different entity obtained when this entity is
   -- grabbed.
@@ -238,14 +287,16 @@ data Entity = Entity
 -- | The @Hashable@ instance for @Entity@ ignores the cached hash
 --   value and simply combines the other fields.
 instance Hashable Entity where
-  hashWithSalt s (Entity _ disp nm pl descr orient grow yld props caps inv) =
+  hashWithSalt s (Entity _ disp nm pl descr tags orient grow combust yld props caps inv) =
     s
       `hashWithSalt` disp
       `hashWithSalt` nm
       `hashWithSalt` pl
-      `hashWithSalt` descr
+      `hashWithSalt` docToText descr
+      `hashWithSalt` tags
       `hashWithSalt` orient
       `hashWithSalt` grow
+      `hashWithSalt` combust
       `hashWithSalt` yld
       `hashWithSalt` props
       `hashWithSalt` caps
@@ -272,14 +323,28 @@ mkEntity ::
   -- | Entity name
   Text ->
   -- | Entity description
-  [Text] ->
+  Document Syntax ->
   -- | Properties
   [EntityProperty] ->
   -- | Capabilities
   [Capability] ->
   Entity
 mkEntity disp nm descr props caps =
-  rehashEntity $ Entity 0 disp nm Nothing descr Nothing Nothing Nothing (Set.fromList props) (Set.fromList caps) empty
+  rehashEntity $
+    Entity
+      0
+      disp
+      nm
+      Nothing
+      descr
+      mempty
+      Nothing
+      Nothing
+      Nothing
+      Nothing
+      (Set.fromList props)
+      (Set.fromList caps)
+      empty
 
 ------------------------------------------------------------
 -- Entity map
@@ -310,14 +375,33 @@ lookupEntityName nm = M.lookup nm . entitiesByName
 deviceForCap :: Capability -> EntityMap -> [Entity]
 deviceForCap cap = fromMaybe [] . M.lookup cap . entitiesByCap
 
+-- | Validates references to 'Display' attributes
+validateAttrRefs :: Has (Throw LoadingFailure) sig m => Set WorldAttr -> [Entity] -> m ()
+validateAttrRefs validAttrs es =
+  forM_ namedEntities $ \(eName, ent) ->
+    case ent ^. entityDisplay . displayAttr of
+      AWorld n ->
+        unless (Set.member (WorldAttr $ T.unpack n) validAttrs)
+          . throwError
+          . CustomMessage
+          $ T.unwords
+            [ "Nonexistent attribute"
+            , quote n
+            , "referenced by entity"
+            , quote eName
+            ]
+      _ -> return ()
+ where
+  namedEntities = map (view entityName &&& id) es
+
 -- | Build an 'EntityMap' from a list of entities.  The idea is that
 --   this will be called once at startup, when loading the entities
 --   from a file; see 'loadEntities'.
-buildEntityMap :: [Entity] -> Either Text EntityMap
+buildEntityMap :: Has (Throw LoadingFailure) sig m => [Entity] -> m EntityMap
 buildEntityMap es = do
   case findDup (map fst namedEntities) of
-    Nothing -> Right ()
-    Just duped -> Left $ T.unwords ["Duplicate entity named", quote duped]
+    Nothing -> return ()
+    Just duped -> throwError $ Duplicate Entities duped
   return $
     EntityMap
       { entitiesByName = M.fromList namedEntities
@@ -337,9 +421,11 @@ instance FromJSON Entity where
               <$> v .: "display"
               <*> v .: "name"
               <*> v .:? "plural"
-              <*> (map reflow <$> (v .: "description"))
+              <*> v .: "description"
+              <*> v .:? "tags" .!= mempty
               <*> v .:? "orientation"
               <*> v .:? "growth"
+              <*> v .:? "combustion"
               <*> v .:? "yields"
               <*> v .:? "properties" .!= mempty
               <*> v .:? "capabilities" .!= mempty
@@ -360,6 +446,7 @@ instance ToJSON Entity where
       [ "display" .= (e ^. entityDisplay)
       , "name" .= (e ^. entityName)
       , "description" .= (e ^. entityDescription)
+      , "tags" .= (e ^. entityTags)
       ]
         ++ ["plural" .= (e ^. entityPlural) | isJust (e ^. entityPlural)]
         ++ ["orientation" .= (e ^. entityOrientation) | isJust (e ^. entityOrientation)]
@@ -369,13 +456,20 @@ instance ToJSON Entity where
         ++ ["capabilities" .= (e ^. entityCapabilities) | not . null $ e ^. entityCapabilities]
 
 -- | Load entities from a data file called @entities.yaml@, producing
---   either an 'EntityMap' or a pretty-printed parse error.
-loadEntities :: MonadIO m => m (Either Text EntityMap)
-loadEntities = runExceptT $ do
-  let f = "entities.yaml"
-  fileName <- withExceptT prettyFailure $ getDataFileNameSafe Entities f
-  decoded <- withExceptT (from . prettyPrintParseException) . ExceptT . liftIO $ decodeFileEither fileName
-  except $ buildEntityMap decoded
+--   either an 'EntityMap' or a parse error.
+loadEntities ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  m EntityMap
+loadEntities = do
+  let entityFile = "entities.yaml"
+      entityFailure = AssetNotLoaded (Data Entities) entityFile
+  fileName <- getDataFileNameSafe Entities entityFile
+  decoded <-
+    withThrow (entityFailure . CanNotParseYaml) . (liftEither <=< sendIO) $
+      decodeFileEither fileName
+
+  withThrow entityFailure $ validateAttrRefs (M.keysSet worldAttributes) decoded
+  withThrow entityFailure $ buildEntityMap decoded
 
 ------------------------------------------------------------
 -- Entity lenses
@@ -403,7 +497,7 @@ entityDisplay :: Lens' Entity Display
 entityDisplay = hashedLens _entityDisplay (\e x -> e {_entityDisplay = x})
 
 -- | The name of the entity.
-entityName :: Lens' Entity Text
+entityName :: Lens' Entity EntityName
 entityName = hashedLens _entityName (\e x -> e {_entityName = x})
 
 -- | The irregular plural version of the entity's name, if there is
@@ -424,8 +518,12 @@ entityNameFor _ = to $ \e ->
 
 -- | A longer, free-form description of the entity.  Each 'Text' value
 --   represents a paragraph.
-entityDescription :: Lens' Entity [Text]
+entityDescription :: Lens' Entity (Document Syntax)
 entityDescription = hashedLens _entityDescription (\e x -> e {_entityDescription = x})
+
+-- | A set of categories to which the entity belongs
+entityTags :: Lens' Entity (Set Text)
+entityTags = hashedLens _entityTags (\e x -> e {_entityTags = x})
 
 -- | The direction this entity is facing (if it has one).
 entityOrientation :: Lens' Entity (Maybe Heading)
@@ -434,6 +532,10 @@ entityOrientation = hashedLens _entityOrientation (\e x -> e {_entityOrientation
 -- | How long this entity takes to grow, if it regrows.
 entityGrowth :: Lens' Entity (Maybe GrowthTime)
 entityGrowth = hashedLens _entityGrowth (\e x -> e {_entityGrowth = x})
+
+-- | Susceptibility to and duration of combustion
+entityCombustion :: Lens' Entity (Maybe Combustibility)
+entityCombustion = hashedLens _entityCombustion (\e x -> e {_entityCombustion = x})
 
 -- | The name of a different entity yielded when this entity is
 --   grabbed, if any.
@@ -499,8 +601,8 @@ lookup e (Inventory cs _ _) = maybe 0 fst $ IM.lookup (e ^. entityHash) cs
 
 -- | Look up an entity by name in an inventory, returning a list of
 --   matching entities.  Note, if this returns some entities, it does
---   *not* mean we necessarily have any in our inventory!  It just
---   means we *know about* them.  If you want to know whether you have
+--   /not/ mean we necessarily have any in our inventory!  It just
+--   means we /know about/ them.  If you want to know whether you have
 --   any, use 'lookup' and see whether the resulting 'Count' is
 --   positive, or just use 'countByName' in the first place.
 lookupByName :: Text -> Inventory -> [Entity]
@@ -559,7 +661,9 @@ insertCount k e (Inventory cs byN h) =
 contains :: Inventory -> Entity -> Bool
 contains inv e = lookup e inv > 0
 
--- | Check whether an inventory has an entry for entity (used by robots).
+-- | Check whether an inventory has an entry for the given entity,
+--   even if there are 0 copies.  In particular this is used to
+--   indicate whether a robot "knows about" an entity.
 contains0plus :: Entity -> Inventory -> Bool
 contains0plus e = isJust . IM.lookup (e ^. entityHash) . counts
 

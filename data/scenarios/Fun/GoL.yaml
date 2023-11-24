@@ -58,7 +58,8 @@ robots:
         waitUntil (t <- time; return (mod t 0x20 == 0))
       )
 world:
-  default: [ice]
+  dsl: |
+    {ice}
   palette:
     'o': [ice, rock, cell]
     '.': [ice, null, cell]

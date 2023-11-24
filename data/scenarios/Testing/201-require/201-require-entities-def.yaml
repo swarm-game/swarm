@@ -30,7 +30,6 @@ robots:
       - [1, grabber]
       - [1, logger]
 world:
-  default: [blank, null]
   palette:
     '.': [grass]
     '┌': [stone, upper left corner]

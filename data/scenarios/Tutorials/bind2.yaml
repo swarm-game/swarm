@@ -13,8 +13,8 @@ objectives:
       - |
         Build a robot to retrieve and restore the mystery artifact to its proper place!
       - |
-        Note: If you find yourself stuck, you can select "Start over" from
-        the "Quit" (CTRL+q) dialog.
+        **NOTE:** If you find yourself stuck, you can select "Start over" from
+        the "Quit" (**Ctrl+Q**) dialog.
     condition: |
       try {
         p <- robotnamed "floorspot";
@@ -29,23 +29,25 @@ objectives:
       - |
         Every command returns a value.  However, some simple commands, like
         `move`, do not have any meaningful
-        value to return.  Swarm has a special type, `unit`, with only one value,
+        value to return.  Swarm has a special type, `unit`{=type}, with only one value,
         called `()`. Since there is only one possible value of type
-        `unit`, returning it does not convey any information.
-        Thus, the type of `move` is `cmd unit`.
+        `unit`{=type}, returning it does not convey any information.
+        Thus, the type of `move` is `cmd unit`{=type}.
       - |
         Other commands do return a nontrivial value after executing.
-        For example, `grab` has type `cmd text`, and returns the name of the
+        For example, `grab` has type `cmd text`{=type}, and returns the name of the
         grabbed entity as a text value.
       - |
-        To use the result of a command later, you need "bind notation", which
+        To use the result of a command later, you need _bind notation_, which
         consists of a variable name and a leftwards-pointing arrow
         before the command.  For example:
       - |
+        ```
         move; t <- grab; place t
+        ```
       - |
         In the above example, the result returned by `grab` is assigned
-        to the variable name `t`, which can then be used later.
+        to the variable name `t`{=snippet}, which can then be used later.
         This is useful, for example, if you do not care what you
         grabbed and just want to move it to another cell, or if you
         are not sure of the name of the thing being grabbed.
@@ -98,7 +100,6 @@ robots:
   - name: pedestal
     system: true
 world:
-  default: [blank]
   palette:
     '.': [blank, null]
     'Ω': [blank, null, base]

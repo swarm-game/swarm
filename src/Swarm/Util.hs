@@ -15,21 +15,34 @@ module Swarm.Util (
   maximum0,
   cycleEnum,
   listEnums,
+  listEnumsNonempty,
+  showEnum,
+  indexWrapNonEmpty,
   uniq,
   binTuples,
   histogram,
   findDup,
   both,
+  allEqual,
+  surfaceEmpty,
+  tails1,
+  prependList,
+  deleteKeys,
+  applyWhen,
+  hoistMaybe,
+  unsnocNE,
 
   -- * Directory utilities
   readFileMay,
   readFileMayT,
+  acquireAllWithExt,
 
   -- * Text utilities
   isIdentChar,
   replaceLast,
   failT,
   showT,
+  showLowT,
 
   -- * English language utilities
   reflow,
@@ -50,8 +63,6 @@ module Swarm.Util (
   isJustOr,
   isRightOr,
   isSuccessOr,
-  guardRight,
-  simpleErrorHandle,
 
   -- * Template Haskell utilities
   liftText,
@@ -69,16 +80,18 @@ module Swarm.Util (
   smallHittingSet,
 ) where
 
-import Control.Algebra (Has)
+import Control.Applicative (Alternative)
+import Control.Carrier.Throw.Either
 import Control.Effect.State (State, modify, state)
-import Control.Effect.Throw (Throw, throwError)
-import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<>~))
-import Control.Monad (unless, (<=<))
-import Control.Monad.Except (ExceptT (..), runExceptT)
+import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<&>), (<>~))
+import Control.Monad (filterM, guard, unless)
+import Control.Monad.Trans.Maybe (MaybeT (..))
 import Data.Bifunctor (Bifunctor (bimap), first)
-import Data.Char (isAlphaNum)
+import Data.Char (isAlphaNum, toLower)
 import Data.Either.Validation
+import Data.Foldable qualified as Foldable
 import Data.List (foldl', maximumBy, partition)
+import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -97,6 +110,8 @@ import Language.Haskell.TH.Syntax (lift)
 import NLP.Minimorph.English qualified as MM
 import NLP.Minimorph.Util ((<+>))
 import System.Clock (TimeSpec)
+import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
+import System.FilePath (takeExtension, (</>))
 import System.IO.Error (catchIOError)
 import Witch (from)
 
@@ -136,6 +151,33 @@ cycleEnum e
 
 listEnums :: (Enum e, Bounded e) => [e]
 listEnums = [minBound .. maxBound]
+
+-- | Members of the Bounded class are guaranteed to
+-- have at least one element.
+listEnumsNonempty :: (Enum e, Bounded e) => NonEmpty e
+listEnumsNonempty = NE.fromList listEnums
+
+-- | We know by the syntax rules of Haskell that constructor
+--  names must consist of one or more symbols!
+showEnum :: (Show e, Enum e) => e -> NonEmpty Char
+showEnum = NE.fromList . show
+
+-- | Guaranteed to yield an element of the list.
+--
+-- This is true even if the supplied @index@ is negative,
+-- since 'mod' always satisfies @0 <= a `mod` b < b@
+-- when @b@ is positive
+-- (see <comment https://github.com/swarm-game/swarm/pull/1181#discussion_r1151177735>).
+indexWrapNonEmpty ::
+  Integral b =>
+  NonEmpty a ->
+  -- | index
+  b ->
+  a
+indexWrapNonEmpty list idx =
+  NE.toList list !! fromIntegral wrappedIdx
+ where
+  wrappedIdx = idx `mod` fromIntegral (NE.length list)
 
 -- | Drop repeated elements that are adjacent to each other.
 --
@@ -181,6 +223,75 @@ findDup = go S.empty
 both :: Bifunctor p => (a -> d) -> p a a -> p d d
 both f = bimap f f
 
+allEqual :: (Ord a) => [a] -> Bool
+allEqual [] = True
+allEqual (x : xs) = all (== x) xs
+
+surfaceEmpty :: Alternative f => (a -> Bool) -> a -> f a
+surfaceEmpty isEmpty t = t <$ guard (not (isEmpty t))
+
+-- | Taken from here:
+-- https://hackage.haskell.org/package/ghc-9.8.1/docs/GHC-Data-FiniteMap.html#v:deleteList
+deleteKeys :: Ord key => [key] -> Map key elt -> Map key elt
+deleteKeys ks m = foldl' (flip M.delete) m ks
+
+------------------------------------------------------------
+-- Backported functions
+
+-- | The 'tails1' function takes a 'NonEmpty' stream @xs@ and returns all the
+-- non-empty suffixes of @xs@, starting with the longest.
+--
+-- > tails1 (1 :| [2,3]) == (1 :| [2,3]) :| [2 :| [3], 3 :| []]
+-- > tails1 (1 :| []) == (1 :| []) :| []
+--
+-- @since 4.18
+tails1 :: NonEmpty a -> NonEmpty (NonEmpty a)
+tails1 =
+  -- fromList is an unsafe function, but this usage should be safe, since:
+  -- \* `tails xs = [xs, tail xs, tail (tail xs), ..., []]`
+  -- \* If `xs` is nonempty, it follows that `tails xs` contains at least one nonempty
+  --   list, since `head (tails xs) = xs`.
+  -- \* The only empty element of `tails xs` is the last one (by the definition of `tails`)
+  -- \* Therefore, if we take all but the last element of `tails xs` i.e.
+  --   `init (tails xs)`, we have a nonempty list of nonempty lists
+  NE.fromList . Prelude.map NE.fromList . List.init . List.tails . Foldable.toList
+
+-- | Attach a list at the beginning of a 'NonEmpty'.
+-- @since 4.16
+prependList :: [a] -> NonEmpty a -> NonEmpty a
+prependList ls ne = case ls of
+  [] -> ne
+  (x : xs) -> x :| xs <> NE.toList ne
+
+-- Note, once we upgrade to an LTS version that includes
+-- base-compat-0.13, we should switch to using 'applyWhen' from there.
+applyWhen :: Bool -> (a -> a) -> a -> a
+applyWhen True f x = f x
+applyWhen False _ x = x
+
+-- | Convert a 'Maybe' computation to 'MaybeT'.
+--
+-- TODO (#1151): Use implementation from "transformers" package v0.6.0.0
+hoistMaybe :: (Applicative m) => Maybe b -> MaybeT m b
+hoistMaybe = MaybeT . pure
+
+-- | Like 'unsnoc', but for 'NonEmpty' so without the 'Maybe'
+--
+-- Taken from Cabal-syntax Distribution.Utils.Generic.
+--
+-- Example:
+-- >>> import Data.List.NonEmpty (NonEmpty ((:|)))
+-- >>> unsnocNE (1 :| [2, 3])
+-- ([1,2],3)
+--
+-- >>> unsnocNE (1 :| [])
+-- ([],1)
+unsnocNE :: NonEmpty a -> ([a], a)
+unsnocNE (x :| xs) = go x xs
+ where
+  go y [] = ([], y)
+  go y (z : zs) = let ~(ws, w) = go z zs in (y : ws, w)
+
 ------------------------------------------------------------
 -- Directory stuff
 
@@ -191,6 +302,20 @@ readFileMay = catchIO . readFile
 -- | Safely attempt to (efficiently) read a file.
 readFileMayT :: FilePath -> IO (Maybe Text)
 readFileMayT = catchIO . T.readFile
+
+-- | Recursively acquire all files in the given directory with the
+--   given extension, and their contents.
+acquireAllWithExt :: FilePath -> String -> IO [(FilePath, String)]
+acquireAllWithExt dir ext = do
+  paths <- listDirectory dir <&> map (dir </>)
+  filePaths <- filterM (\path -> doesFileExist path <&> (&&) (hasExt path)) paths
+  children <- mapM (\path -> (,) path <$> readFile path) filePaths
+  -- recurse
+  sub <- filterM doesDirectoryExist paths
+  transChildren <- concat <$> mapM (`acquireAllWithExt` ext) sub
+  return $ children <> transChildren
+ where
+  hasExt path = takeExtension path == ("." ++ ext)
 
 -- | Turns any IO error into Nothing.
 catchIO :: IO a -> IO (Maybe a)
@@ -229,6 +354,10 @@ failT = fail . from @Text . T.unwords
 -- | Show a value, but as Text.
 showT :: Show a => a -> Text
 showT = from @String . show
+
+-- | Show a value in all lowercase, but as Text.
+showLowT :: Show a => a -> Text
+showLowT = from @String . map toLower . show
 
 ------------------------------------------------------------
 -- Some language-y stuff
@@ -342,12 +471,6 @@ Left b `isRightOr` f = throwError (f b)
 isSuccessOr :: Has (Throw e) sig m => Validation b a -> (b -> e) -> m a
 Success a `isSuccessOr` _ = return a
 Failure b `isSuccessOr` f = throwError (f b)
-
-guardRight :: Text -> Either Text a -> ExceptT Text IO a
-guardRight what i = i `isRightOr` (\e -> "Failed to " <> what <> ": " <> e)
-
-simpleErrorHandle :: ExceptT Text IO a -> IO a
-simpleErrorHandle = either (fail . T.unpack) pure <=< runExceptT
 
 ------------------------------------------------------------
 -- Template Haskell utilities

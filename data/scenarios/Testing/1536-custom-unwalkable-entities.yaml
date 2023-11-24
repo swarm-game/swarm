@@ -1,0 +1,50 @@
+version: 1
+name: Custom unwalkability
+description: The base robot cannot walk through trees.
+  The scenario shall be failed if the robot
+  manages to walk through the tree by moving
+  three cells to the east.
+objectives:
+  - goal:
+      - Get the flower
+    condition: |
+      as base {has "flower"};
+    prerequisite:
+      not: has_bitcoin
+  - id: has_bitcoin
+    optional: true
+    goal:
+      - Do not get the bitcoin
+    condition: |
+      as base {has "bitcoin"};
+solution: |
+  def tryMove = try {move} {}; end;
+  tryMove;
+  tryMove;
+  tryMove;
+  grab;
+robots:
+  - name: base
+    dir: [1, 0]
+    display:
+      attr: robot
+    devices:
+      - logger
+      - grabber
+      - treads
+      - dictionary
+      - net
+    unwalkable:
+       - tree
+known: [tree, flower, bitcoin]
+world:
+  palette:
+    'B': [grass, null, base]
+    '.': [grass]
+    'T': [grass, tree]
+    'b': [grass, bitcoin]
+    'f': [grass, flower]
+  upperleft: [0, 0]
+  map: |
+    BfTb
+    

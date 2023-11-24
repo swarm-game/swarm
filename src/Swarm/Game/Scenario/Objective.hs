@@ -17,7 +17,8 @@ import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Util (reflow)
+import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 ------------------------------------------------------------
@@ -34,17 +35,17 @@ data PrerequisiteConfig = PrerequisiteConfig
   -- explain the broader intention behind potentially multiple
   -- prerequisites.
   --
-  -- Set this to option True to display this goal in the "upcoming" section even
+  -- Set this option to 'True' to display this goal in the "upcoming" section even
   -- if the objective has currently unmet prerequisites.
   , logic :: Prerequisite ObjectiveLabel
   -- ^ Boolean expression of dependencies upon other objectives. Variables in this expression
   -- are the "id"s of other objectives, and become "true" if the corresponding objective is completed.
   -- The "condition" of the objective at hand shall not be evaluated until its
-  -- prerequisite expression evaluates as True.
+  -- prerequisite expression evaluates as 'True'.
   --
   -- Note that the achievement of these objective dependencies is
   -- persistent; once achieved, they still count even if their "condition"
-  -- might not still hold. The condition is never re-evaluated once True.
+  -- might not still hold. The condition is never re-evaluated once true.
   }
   deriving (Eq, Show, Generic, ToJSON)
 
@@ -65,7 +66,7 @@ instance FromJSON PrerequisiteConfig where
 -- | An objective is a condition to be achieved by a player in a
 --   scenario.
 data Objective = Objective
-  { _objectiveGoal :: [Text]
+  { _objectiveGoal :: Markdown.Document Syntax
   , _objectiveTeaser :: Maybe Text
   , _objectiveCondition :: ProcessedTerm
   , _objectiveId :: Maybe ObjectiveLabel
@@ -83,7 +84,7 @@ instance ToSample Objective where
 
 -- | An explanation of the goal of the objective, shown to the player
 --   during play.  It is represented as a list of paragraphs.
-objectiveGoal :: Lens' Objective [Text]
+objectiveGoal :: Lens' Objective (Markdown.Document Syntax)
 
 -- | A very short (3-5 words) description of the goal for
 -- displaying on the left side of the Objectives modal.
@@ -114,14 +115,14 @@ objectivePrerequisite :: Lens' Objective (Maybe PrerequisiteConfig)
 -- This attribute often goes along with an Achievement.
 objectiveHidden :: Lens' Objective Bool
 
--- | An optional Achievement that is to be registered globally
+-- | An optional achievement that is to be registered globally
 -- when this objective is completed.
 objectiveAchievement :: Lens' Objective (Maybe AchievementInfo)
 
 instance FromJSON Objective where
   parseJSON = withObject "objective" $ \v ->
     Objective
-      <$> (fmap . map) reflow (v .:? "goal" .!= [])
+      <$> (v .:? "goal" .!= mempty)
       <*> (v .:? "teaser")
       <*> (v .: "condition")
       <*> (v .:? "id")

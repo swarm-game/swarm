@@ -8,10 +8,12 @@
 module TestUtil where
 
 import Control.Lens (Ixed (ix), to, use, (&), (.~), (^.), (^?))
-import Control.Monad.Except
-import Control.Monad.State
+import Control.Monad (void)
+import Control.Monad.State (StateT (..), execState)
+import Control.Monad.Trans (lift)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Swarm.Effect
 import Swarm.Game.CESK
 import Swarm.Game.Exception
 import Swarm.Game.Robot
@@ -43,10 +45,10 @@ evalCESK g cesk =
   orderResult ((res, rr), rg) = (rg, rr, res)
 
 runCESK :: Int -> CESK -> StateT Robot (StateT GameState IO) (Either Text (Value, Int))
-runCESK _ (Up exn _ []) = Left . flip formatExn exn <$> lift (use entityMap)
+runCESK _ (Up exn _ []) = Left . flip formatExn exn <$> lift (use $ landscape . entityMap)
 runCESK !steps cesk = case finalValue cesk of
   Just (v, _) -> return (Right (v, steps))
-  Nothing -> stepCESK cesk >>= runCESK (steps + 1)
+  Nothing -> runTimeIO (stepCESK cesk) >>= runCESK (steps + 1)
 
 play :: GameState -> Text -> IO (Either Text (), GameState)
 play g = either (return . (,g) . Left) playPT . processTerm1
@@ -59,15 +61,15 @@ play g = either (return . (,g) . Left) playPT . processTerm1
     gs =
       g
         & execState (addRobot hr)
-        & viewCenterRule .~ VCRobot hid
+        & robotInfo . viewCenterRule .~ VCRobot hid
         & creativeMode .~ True
 
 playUntilDone :: RID -> StateT GameState IO (Either Text ())
 playUntilDone rid = do
-  w <- use robotMap
+  w <- use $ robotInfo . robotMap
   case w ^? ix rid . to isActive of
     Just True -> do
-      void gameTick
+      void $ runTimeIO gameTick
       playUntilDone rid
     Just False -> return $ Right ()
     Nothing -> return $ Left . T.pack $ "The robot with ID " <> show rid <> " is nowhere to be found!"

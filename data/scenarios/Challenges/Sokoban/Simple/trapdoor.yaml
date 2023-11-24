@@ -12,7 +12,7 @@ creative: false
 seed: 0
 objectives:
   - goal:
-      - Place the flower on the target.
+      - Place the `flower`{=entity} on the target.
       - You may have to start over if you get stuck.
     condition: |
       as base {
@@ -101,13 +101,14 @@ entities:
     properties: [known, unwalkable, portable]
 known: [mountain, water, flower]
 world:
-  default: [grass, water]
+  dsl: |
+    {grass, water}
   upperleft: [-1, 1]
   offset: false
   palette:
-    'B': [ice, null, base]
-    '.': [grass]
-    'x': [dirt]
+    'B': [ice, erase, base]
+    '.': [grass, erase]
+    'x': [dirt, erase]
     '@': [grass, monolith]
     'A': [grass, mountain]
     '*': [grass, flower]

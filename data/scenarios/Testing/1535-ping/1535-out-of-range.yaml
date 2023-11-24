@@ -1,0 +1,67 @@
+version: 1
+name: Ping command - Range limits
+description: |
+  Demo effect of antenna on ping range
+creative: false
+objectives:
+  - teaser: Escape
+    goal:
+      - Get out of `ping` range of your buddy's `transponder`{=entity}
+    condition: |
+      r <- robotnamed "buddy";
+      as r {
+        response <- ping base;
+        return $ case response (\_. true) (\_. false);
+      }
+solution: |
+  run "scenarios/Testing/1535-ping/_1535-out-of-range/solution.sw"
+entities:
+  - name: transponder
+    display:
+      char: 'x'
+    description:
+      - Enables `ping` command
+    properties: [known, portable]
+    capabilities: [ping]
+robots:
+  - name: base
+    dir: [-1,0]
+    devices:
+      - calculator
+      - antenna
+      - branch predictor
+      - comparator
+      - dictionary
+      - grabber
+      - hourglass
+      - logger
+      - transponder
+      - welder
+  - name: buddy
+    dir: [1, 0]
+    devices:
+      - ADT calculator
+      - grabber
+      - hourglass
+      - logger
+      - transponder
+    inventory:
+      - [1, treads]
+    program:
+      give base "treads";
+known: []
+world:
+  dsl: |
+    overlay
+    [ {terrain: blank}
+    , if (x/4 + y/4) % 2 == 0 then {terrain: dirt} else {blank}
+    , if ((x + 3) % 19)/12 + (y % 19)/12 == 0 then {terrain: grass} else {blank}
+    ]
+  palette:
+    'B': [stone, null, base]
+    'r': [blank, null, buddy]
+    '.': [ice]
+    'x': [stone]
+  upperleft: [0, 0]
+  map: |
+    rB.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x

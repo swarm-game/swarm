@@ -1,0 +1,89 @@
+version: 1
+name: Structure recognizer - placement occlusion
+description: |
+  Pre-placed structures should be recognized, unless some other
+  structure or content has overwritten them.
+creative: false
+objectives:
+  - id: complete_green_structure
+    teaser: Complete green structure
+    prerequisite:
+      not: complete_red_structure
+    goal:
+      - |
+        Build a `green_jewel`{=structure} structure
+    condition: |
+      def isRight = \x. case x (\_. false) (\_. true); end;
+
+      foundGreen <- structure "green_jewel" 0;
+      return $ isRight foundGreen;
+  - id: complete_red_structure
+    optional: true
+    teaser: Complete red structure
+    goal:
+      - |
+        A `red_jewel`{=structure} structure should not be recognized
+    condition: |
+      def isRight = \x. case x (\_. false) (\_. true); end;
+
+      foundRed <- structure "red_jewel" 0;
+      return $ isRight foundRed;
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - fast grabber
+      - treads
+    inventory:
+      - [1, pixel (R)]
+solution: |
+   noop;
+structures:
+  - name: red_jewel
+    recognize: true
+    structure:
+      palette:
+        'r': [stone, pixel (R)]
+      map: |
+       rrr
+       rrr
+       rrr
+  - name: green_jewel
+    recognize: true
+    structure:
+      palette:
+        'g': [stone, pixel (G)]
+      map: |
+       ggg
+       ggg
+       ggg
+known: [pixel (R), pixel (G)]
+world:
+  name: root
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass]
+    'B': [grass, null, base]
+  upperleft: [-97, 17]
+  placements:
+    - src: green_jewel
+      offset: [3, -3]
+    - src: red_jewel
+      offset: [1, -1]
+    - src: red_jewel
+      offset: [1, -5]
+    - src: red_jewel
+      offset: [5, -1]
+    - src: red_jewel
+      offset: [5, -5]
+  map: |
+    .........
+    .........
+    .........
+    B........
+    .........
+    .........
+    .........
+    .........
+    .........

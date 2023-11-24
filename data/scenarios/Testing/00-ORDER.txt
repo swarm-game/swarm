@@ -1,3 +1,4 @@
+Achievements
 373-drill.yaml
 394-build-drill.yaml
 428-drowning-destroy.yaml
@@ -36,3 +37,19 @@
 1234-push-command.yaml
 1256-halt-command.yaml
 1295-density-command.yaml
+1138-structures
+1320-world-DSL
+1356-portals
+144-subworlds
+836-pathfinding
+1569-pathfinding-cache
+1341-command-count.yaml
+1355-combustion.yaml
+1379-single-world-portal-reorientation.yaml
+1399-backup-command.yaml
+1430-built-robot-ownership.yaml
+1536-custom-unwalkable-entities.yaml
+1535-ping
+1575-structure-recognizer
+1631-tags.yaml
+1634-message-colors.yaml

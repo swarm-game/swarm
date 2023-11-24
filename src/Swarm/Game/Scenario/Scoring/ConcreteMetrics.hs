@@ -1,6 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 
--- | Data types and instances for specific scoring methods
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Data types and instances for specific scoring methods
 module Swarm.Game.Scenario.Scoring.ConcreteMetrics where
 
 import Control.Lens hiding (from, (<.>))
@@ -8,13 +11,13 @@ import Data.Aeson
 import Data.Char (toLower)
 import Data.Time (NominalDiffTime)
 import GHC.Generics (Generic)
-import Swarm.Game.CESK (TickNumber)
+import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Scenario.Scoring.CodeSize
 
 scenarioOptions :: Options
 scenarioOptions =
   defaultOptions
-    { fieldLabelModifier = map toLower . drop (length "_scenario")
+    { fieldLabelModifier = map toLower . drop (length ("_scenario" :: String))
     }
 
 data DurationMetrics = DurationMetrics
@@ -28,7 +31,7 @@ data DurationMetrics = DurationMetrics
 makeLenses ''DurationMetrics
 
 emptyDurationMetric :: DurationMetrics
-emptyDurationMetric = DurationMetrics 0 0
+emptyDurationMetric = DurationMetrics 0 $ TickNumber 0
 
 instance FromJSON DurationMetrics where
   parseJSON = genericParseJSON scenarioOptions

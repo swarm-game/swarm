@@ -20,6 +20,7 @@ where
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Foldable (asum)
+import Data.Kind qualified
 import Data.List (sort, (\\))
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -54,7 +55,7 @@ mkKeyCombo mods k = KeyCombo k (sort mods)
 parseKeyComboFull :: Parser KeyCombo
 parseKeyComboFull = parseKeyCombo <* eof
 
--- | Parse a key combo like "M-C-F5", "Down", or "C-x".
+-- | Parse a key combo like @\"M-C-F5\"@, @\"Down\"@, or @\"C-x\"@.
 parseKeyCombo :: Parser KeyCombo
 parseKeyCombo =
   mkKeyCombo <$> many (try (parseModifier <* char '-')) <*> parseKey
@@ -102,7 +103,7 @@ specialKeyParser t = read . ('K' :) . from @Text <$> string t
 specialKeyNames :: Set Text
 specialKeyNames = S.fromList . map T.tail $ (names' @(Rep V.Key) \\ ["KChar", "KFun"])
 
-class Names' (f :: * -> *) where
+class Names' (f :: Data.Kind.Type -> Data.Kind.Type) where
   names' :: [Text]
 instance (Names' f) => Names' (M1 D t f) where
   names' = names' @f
@@ -114,8 +115,8 @@ instance (Constructor c) => Names' (C1 c f) where
 ------------------------------------------------------------
 -- Pretty-printing
 
--- | Pretty-print a key combo, e.g. "C-M-F5".  Right inverse to
---   parseKeyCombo.  Left inverse up to reordering of modifiers.
+-- | Pretty-print a key combo, e.g. @\"C-M-F5\"@.  Right inverse to
+--   'parseKeyCombo'.  Left inverse up to reordering of modifiers.
 prettyKeyCombo :: KeyCombo -> Text
 prettyKeyCombo (KeyCombo k mods) = T.append (T.concat (map prettyModifier mods)) (prettyKey k)
 
@@ -133,4 +134,4 @@ prettyKey =
   from @String . \case
     V.KChar c -> [c]
     V.KFun n -> 'F' : show n
-    k -> tail (show k)
+    k -> drop 1 (show k)

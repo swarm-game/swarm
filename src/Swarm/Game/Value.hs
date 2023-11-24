@@ -2,18 +2,21 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
 -- Conversions from native Haskell values
 -- to values in the swarm language.
---
--- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Value where
 
 import Control.Lens (view)
 import Data.Int (Int32)
+import Data.Text (Text)
 import Linear (V2 (..))
 import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Robot
+import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..))
+import Swarm.Language.Direction
 import Swarm.Language.Value
 
 -- * Patterns
@@ -35,8 +38,29 @@ class Valuable a where
 instance Valuable Int32 where
   asValue = VInt . fromIntegral
 
+instance Valuable Int where
+  asValue = VInt . fromIntegral
+
+instance Valuable Integer where
+  asValue = VInt
+
+instance Valuable Bool where
+  asValue = VBool
+
+instance Valuable Text where
+  asValue = VText
+
+instance Valuable () where
+  asValue = const VUnit
+
 instance (Valuable a) => Valuable (V2 a) where
-  asValue (V2 x y) = VPair (asValue x) (asValue y)
+  asValue (V2 x y) = asValue (x, y)
+
+instance (Valuable a, Valuable b) => Valuable (a, b) where
+  asValue (x, y) = VPair (asValue x) (asValue y)
+
+instance Valuable Location where
+  asValue (Location x y) = asValue (x, y)
 
 instance Valuable Entity where
   asValue = VText . view entityName
@@ -44,8 +68,8 @@ instance Valuable Entity where
 instance Valuable Robot where
   asValue = VRobot . view robotID
 
-instance Valuable Location where
-  asValue (Location x y) = VPair (VInt (fromIntegral x)) (VInt (fromIntegral y))
+instance Valuable Direction where
+  asValue = VDir
 
 instance (Valuable a) => Valuable (Maybe a) where
   asValue Nothing = VInj False VUnit
@@ -54,3 +78,6 @@ instance (Valuable a) => Valuable (Maybe a) where
 instance (Valuable a, Valuable b) => Valuable (Either a b) where
   asValue (Left x) = VInj False $ asValue x
   asValue (Right x) = VInj True $ asValue x
+
+instance Valuable AreaDimensions where
+  asValue (AreaDimensions w h) = asValue (w, h)

@@ -1,0 +1,25 @@
+version: 1
+name: Overlay with overriding
+description: |
+  Test that later entities override earlier ones when overlaying
+objectives:
+  - condition: |
+      as base { n <- count "tree"; return (n == 1) }
+    goal:
+    - Get a tree.
+solution: |
+  grab
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - logger
+      - treads
+      - grabber
+world:
+  dsl: |
+    overlay
+    [ {terrain: ice} <> {entity: rock}
+    , {entity: tree}
+    ]

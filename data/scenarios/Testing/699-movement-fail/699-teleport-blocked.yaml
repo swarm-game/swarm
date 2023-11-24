@@ -33,7 +33,6 @@ robots:
     dir: [0,-1]
     system: true
 world:
-  default: [blank]
   palette:
     '@': [stone, boulder]
     'B': [grass, null, base]

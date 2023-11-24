@@ -1,0 +1,30 @@
+version: 1
+name: Overlay with erasure
+description: |
+  Test that we can erase entities when overlaying
+objectives:
+  - condition: |
+      as base { n <- count "tree"; return (n == 0) }
+    goal:
+    - Get rid of your trees.
+solution: |
+  place "tree"; move; move;
+  place "tree"; move; move;
+  place "tree"; move; move;
+  place "tree"
+robots:
+  - name: base
+    loc: [0,0]
+    dir: [1,0]
+    devices:
+      - logger
+      - treads
+      - grabber
+    inventory:
+      - [4, tree]
+world:
+  dsl: |
+    overlay
+    [ {terrain: ice} <> {entity: tree}
+    , if (x + y) % 2 == 0 then {erase} else {blank}
+    ]

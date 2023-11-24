@@ -39,7 +39,6 @@ entities:
     - A thing that everyone needs!
     properties: [portable]
 world:
-  default: [blank]
   palette:
     '.': [grass]
     '>': [grass, tree, base]

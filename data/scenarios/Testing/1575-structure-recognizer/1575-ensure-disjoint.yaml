@@ -1,0 +1,85 @@
+version: 1
+name: Structure recognizer - Disjoint recognitions
+description: |
+  Ensure that the completion of a second structure
+  template is not recognized if it overlaps
+  with a previously completed structure.
+
+  Player starts with 3 `silver`{=entity}. A win
+  should not be counted until all three are placed.
+creative: false
+objectives:
+  - teaser: Build 2 `chessboard`{=structure}s
+    prerequisite:
+      not: premature_win
+    goal:
+      - |
+        Build 2 of the same structure
+    condition: |
+      foundStructure <- structure "chessboard" 0;
+      return $ case foundStructure (\_. false) (\fs. 
+        let boardCount = fst fs in
+        boardCount >= 2;
+      );
+  - id: premature_win
+    teaser: Don't count win early
+    optional: true
+    goal:
+      - |
+        Two structures shouldn't be recognized
+        while the bases still possesses `silver`{=entity}
+    condition: |
+      robotHasSilver <- as base {has "silver"};
+
+      foundStructure <- structure "chessboard" 0;
+      return $ case foundStructure (\_. false) (\fs. 
+        let boardCount = fst fs in
+        boardCount >= 2 && robotHasSilver;
+      );
+robots:
+  - name: base
+    dir: [0, -1]
+    devices:
+      - grabber
+      - treads
+    inventory:
+      - [3, silver]
+solution: |
+   move;
+   turn left;
+   place "silver";
+   move; move;
+   place "silver";
+   move; move;
+   place "silver";
+structures:
+  - name: chessboard
+    recognize: true
+    structure:
+      mask: '.'
+      palette:
+        'g': [stone, gold]
+        's': [stone, silver]
+      map: |
+       gsgs
+       sgsg
+       gsgs
+       sgsg
+known: [water, gold, silver]
+world:
+  name: root
+  dsl: |
+    {water}
+  palette:
+    '.': [grass, water]
+    'x': [grass, erase]
+    'g': [grass, gold]
+    's': [grass, silver]
+    'B': [grass, water, base]
+  upperleft: [0, 0]
+  map: |
+    ...B....
+    gsgxgxgx
+    sgsgsgsg
+    gsgsgsgs
+    sgsgsgsg

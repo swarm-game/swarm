@@ -1,5 +1,11 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Sum types representing the Brick names
+-- for every referenceable widget.
+--
+-- Nesting of name types is utilized often to simplify
+-- case matching.
 module Swarm.TUI.Model.Name where
 
 data WorldEditorFocusable
@@ -41,6 +47,11 @@ data GoalWidget
   | GoalSummary
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
+data StructureWidget
+  = StructuresList
+  | StructureSummary
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
 -- | Clickable buttons in modal dialogs.
 data Button
   = CancelButton
@@ -58,10 +69,14 @@ data Name
     WorldEditorPanelControl WorldEditorFocusable
   | -- | The REPL input form.
     REPLInput
+  | -- | The REPL history cache.
+    REPLHistoryCache
   | -- | The render cache for the world view.
     WorldCache
   | -- | The cached extent for the world view.
     WorldExtent
+  | -- | The cursor/viewCenter display in the bottom left of the World view
+    WorldPositionIndicator
   | -- | The list of possible entities to paint a map with.
     EntityPaintList
   | -- | The entity paint item position in the EntityPaintList.
@@ -83,12 +98,16 @@ data Name
     ScenarioConfigControl ScenarioConfigPanel
   | -- | The list of goals/objectives.
     GoalWidgets GoalWidget
+  | -- | The list of goals/objectives.
+    StructureWidgets StructureWidget
   | -- | The list of scenario choices.
     ScenarioList
   | -- | The scrollable viewport for the info panel.
     InfoViewport
   | -- | The scrollable viewport for any modal dialog.
     ModalViewport
+  | -- | The scrollable viewport for the REPL.
+    REPLViewport
   | -- | A clickable button in a modal dialog.
     Button Button
   deriving (Eq, Ord, Show, Read)

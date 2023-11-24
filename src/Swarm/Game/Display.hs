@@ -33,6 +33,7 @@ module Swarm.Game.Display (
 ) where
 
 import Control.Lens hiding (Const, from, (.=))
+import Control.Monad (when)
 import Data.Hashable (Hashable)
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -41,8 +42,9 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
+import Graphics.Text.Width
 import Swarm.Language.Syntax (AbsoluteDir (..), Direction (..))
-import Swarm.Util (maxOn)
+import Swarm.Util (maxOn, quote)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
 
@@ -124,8 +126,13 @@ instance FromJSONE Display Display where
   parseJSONE = withObjectE "Display" $ \v -> do
     defD <- getE
     mc <- liftE $ v .:? "char"
+
     let c = fromMaybe (defD ^. defaultChar) mc
+    validateChar c
+
     let dOM = if isJust mc then mempty else defD ^. orientationMap
+    mapM_ validateChar $ M.elems dOM
+
     liftE $
       Display c
         <$> v .:? "orientationMap" .!= dOM
@@ -133,6 +140,19 @@ instance FromJSONE Display Display where
         <*> (v .:? "attr") .!= (defD ^. displayAttr)
         <*> v .:? "priority" .!= (defD ^. displayPriority)
         <*> v .:? "invisible" .!= (defD ^. invisible)
+   where
+    validateChar c =
+      when (charWidth > 1)
+        . fail
+        . T.unpack
+        $ T.unwords
+          [ "Character"
+          , quote $ T.singleton c
+          , "is too wide:"
+          , T.pack $ show charWidth
+          ]
+     where
+      charWidth = safeWcwidth c
 
 instance ToJSON Display where
   toJSON d =

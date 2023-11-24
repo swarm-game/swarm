@@ -6,6 +6,9 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Sum types that represent menu options,
+-- modal dialogs, and buttons.
 module Swarm.TUI.Model.Menu where
 
 import Brick.Widgets.Dialog (Dialog)
@@ -44,6 +47,7 @@ data ModalType
   | RecipesModal
   | CommandsModal
   | MessagesModal
+  | StructuresModal
   | EntityPaletteModal
   | TerrainPaletteModal
   | RobotsModal
@@ -105,7 +109,7 @@ mkScenarioList cheat = flip (BL.list ScenarioList) 1 . V.fromList . filterTest .
 --   path to some folder or scenario, construct a 'NewGameMenu' stack
 --   focused on the given item, if possible.
 mkNewGameMenu :: Bool -> ScenarioCollection -> FilePath -> Maybe Menu
-mkNewGameMenu cheat sc path = NewGameMenu . NE.fromList <$> go (Just sc) (splitPath path) []
+mkNewGameMenu cheat sc path = fmap NewGameMenu $ NE.nonEmpty =<< go (Just sc) (splitPath path) []
  where
   go ::
     Maybe ScenarioCollection ->

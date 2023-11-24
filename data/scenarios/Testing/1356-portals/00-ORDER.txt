@@ -1,0 +1,3 @@
+automatic-waypoint-patrol.yaml
+portals-and-waypoints.yaml
+portals-flip-and-rotate.yaml

@@ -1,4 +1,7 @@
--- | Data types and functions applicable across different
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Data types and functions applicable across different
 -- scoring methods.
 module Swarm.Game.Scenario.Scoring.GenericMetrics where
 
@@ -36,10 +39,10 @@ getMetric (Metric _ x) = x
 -- for incomplete games (rationale: more play = more fun),
 --  whereas "smaller inputs are better" for completed games.
 --
--- Since "Maybe" has its own "Ord" instance where
+-- Since 'Maybe' has its own 'Ord' instance where
 -- @Nothing < Just x@ regardless of @x@, when we want to
--- choose the minimum value we `fmap Down` to ensure that
--- the `Just` is selected while inverting the ordering of
+-- choose the minimum value we @fmap Down@ to ensure that
+-- the 'Just' is selected while inverting the ordering of
 -- the inner member.
 chooseBetter ::
   Ord a =>

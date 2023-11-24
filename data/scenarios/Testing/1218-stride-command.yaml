@@ -78,7 +78,6 @@ entities:
   capabilities: [movemultiple]
 known: [tree, flower, boulder, water]
 world:
-  default: [blank]
   palette:
     'Ω': [grass, null, base]
     '.': [grass]

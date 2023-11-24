@@ -17,6 +17,7 @@ module Swarm.Game.Exception (
 
 import Control.Lens ((^.))
 import Data.Aeson (FromJSON, ToJSON)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.Text (Text)
@@ -47,9 +48,10 @@ import Witch (from)
 
 -- ------------------------------------------------------------------
 
--- | Suggested way to fix incapable error.
+-- | Suggested way to fix things when a robot does not meet the
+--   requirements to run a command.
 data IncapableFix
-  = -- | Equip the missing device on yourself/target
+  = -- | 'Swarm.Language.Syntax.Equip' the missing device on yourself/target
     FixByEquip
   | -- | Add the missing device to your inventory
     FixByObtain
@@ -66,13 +68,16 @@ data Exn
     InfiniteLoop
   | -- | A robot tried to do something for which it does not have some
     --   of the required capabilities.  This cannot be caught by a
-    --   @try@ block.
+    --   @try@ block.  Also contains the missing requirements, the
+    --   term that caused the problem, and a suggestion for how to fix
+    --   things.
     Incapable IncapableFix Requirements Term
-  | -- | A command failed in some "normal" way (/e.g./ a 'Move'
-    --   command could not move, or a 'Grab' command found nothing to
-    --   grab, /etc./).
+  | -- | A command failed in some "normal" way (/e.g./ a 'Swarm.Language.Syntax.Move'
+    --   command could not move, or a 'Swarm.Language.Syntax.Grab' command found nothing to
+    --   grab, /etc./).  Can be caught by a @try@ block.
     CmdFailed Const Text (Maybe GameplayAchievement)
-  | -- | The user program explicitly called 'Undefined' or 'Fail'.
+  | -- | The user program explicitly called 'Swarm.Language.Syntax.Undefined' or 'Swarm.Language.Syntax.Fail'. Can
+    --   be caught by a @try@ block.
     User Text
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
@@ -94,6 +99,7 @@ formatExn em = \case
 -- INCAPABLE HELPERS
 -- ------------------------------------------------------------------
 
+-- | Pretty-print an 'IncapableFix': either "equip" or "obtain".
 formatIncapableFix :: IncapableFix -> Text
 formatIncapableFix = \case
   FixByEquip -> "equip"
@@ -103,9 +109,13 @@ formatIncapableFix = \case
 --   on how to fix it.
 --
 -- >>> import Data.Either (fromRight)
--- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" [] [] [CAppear]
--- >>> r = mkEntity (defaultEntityDisplay 'o') "the one ring" [] [] [CAppear]
--- >>> m = fromRight mempty $ buildEntityMap [w,r]
+-- >>> import Control.Carrier.Throw.Either (runThrow)
+-- >>> import Control.Algebra (run)
+-- >>> import Swarm.Game.Failure (LoadingFailure)
+-- >>> :set -XTypeApplications
+-- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" mempty mempty [CAppear]
+-- >>> r = mkEntity (defaultEntityDisplay 'o') "the one ring" mempty mempty [CAppear]
+-- >>> m = fromRight mempty . run . runThrow @LoadingFailure $ buildEntityMap [w,r]
 -- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByEquip cs t
 --
 -- >>> incapableError (R.singletonCap CGod) (TConst As)
@@ -133,29 +143,29 @@ formatIncapableFix = \case
 formatIncapable :: EntityMap -> IncapableFix -> Requirements -> Term -> Text
 formatIncapable em f (Requirements caps _ inv) tm
   | CGod `S.member` caps =
-      unlinesExText
-        [ "Thou shalt not utter such blasphemy:"
-        , squote $ prettyText tm
-        , "If God in troth thou wantest to play, try thou a Creative game."
-        ]
+      unlinesExText $
+        "Thou shalt not utter such blasphemy:"
+          :| [ squote $ prettyText tm
+             , "If God in troth thou wantest to play, try thou a Creative game."
+             ]
   | not (null capsNone) =
-      unlinesExText
-        [ "Missing the " <> capMsg <> " for:"
-        , squote $ prettyText tm
-        , "but no device yet provides it. See"
-        , swarmRepoUrl <> "issues/26"
-        ]
+      unlinesExText $
+        "Missing the " <> capMsg <> " for:"
+          :| [ squote $ prettyText tm
+             , "but no device yet provides it. See"
+             , swarmRepoUrl <> "issues/26"
+             ]
   | not (S.null caps) =
       unlinesExText
         ( "You do not have the devices required for:"
-            : squote (prettyText tm)
+            :| squote (prettyText tm)
             : "Please " <> formatIncapableFix f <> ":"
             : (("- " <>) . formatDevices <$> filter (not . null) deviceSets)
         )
   | otherwise =
       unlinesExText
         ( "You are missing required inventory for:"
-            : squote (prettyText tm)
+            :| squote (prettyText tm)
             : "Please obtain:"
             : (("- " <>) . formatEntity <$> M.assocs inv)
         )
@@ -173,5 +183,5 @@ formatIncapable em f (Requirements caps _ inv) tm
   formatEntity (e, n) = e <> " (" <> from (show n) <> ")"
 
 -- | Exceptions that span multiple lines should be indented.
-unlinesExText :: [Text] -> Text
-unlinesExText ts = T.unlines . (head ts :) . map ("  " <>) $ tail ts
+unlinesExText :: NonEmpty Text -> Text
+unlinesExText (t :| ts) = T.unlines $ (t :) $ map ("  " <>) ts

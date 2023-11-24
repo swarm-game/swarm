@@ -37,11 +37,12 @@ robots:
       char: J
 known: []
 world:
-  default: [blank, boulder]
+  dsl: |
+    {blank, boulder}
   palette:
-    'Ω': [grass, null, base]
-    'J': [grass, null, judge]
-    '.': [grass]
+    'Ω': [grass, erase, base]
+    'J': [grass, erase, judge]
+    '.': [grass, erase]
   upperleft: [4, -1]
   map: |
    J........

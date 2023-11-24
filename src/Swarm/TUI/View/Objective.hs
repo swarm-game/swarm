@@ -15,13 +15,14 @@ import Control.Lens hiding (Const, from)
 import Data.List (intercalate)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
-import Data.Maybe (listToMaybe)
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Objective
-import Swarm.TUI.Attr
+import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
+import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.Util
+import Swarm.Util (applyWhen)
 
 makeListWidget :: GoalTracking -> BL.List Name GoalEntry
 makeListWidget (GoalTracking _announcements categorizedObjs) =
@@ -34,12 +35,16 @@ renderGoalsDisplay :: GoalDisplay -> Widget Name
 renderGoalsDisplay gd =
   if hasMultiple
     then
-      hBox
-        [ leftSide
-        , hLimitPercent 70 $ padLeft (Pad 2) goalElaboration
+      vBox
+        [ hBox
+            [ leftSide
+            , padLeft (Pad 2) goalElaboration
+            ]
+        , footer
         ]
     else goalElaboration
  where
+  footer = hCenter $ withAttr italicAttr $ txt "NOTE: [Tab] toggles focus between panes"
   hasMultiple = hasMultipleGoals $ gd ^. goalsContent
   lw = _listWidget gd
   fr = _focus gd
@@ -87,11 +92,21 @@ drawGoalListItem _isSelected e = case e of
   Header gs -> withAttr boldAttr $ str $ show gs
   Goal gs obj -> getCompletionIcon obj gs <+> titleWidget
    where
-    textSource = obj ^. objectiveTeaser <|> obj ^. objectiveId <|> listToMaybe (obj ^. objectiveGoal)
-    titleWidget = maybe (txt "?") (withEllipsis End) textSource
+    textSource = obj ^. objectiveTeaser <|> obj ^. objectiveId <|> Just (Markdown.docToText $ obj ^. objectiveGoal)
+    titleWidget = maybe (txt "?") (titleColor . withEllipsis End) textSource
+    titleColor = applyWhen (obj ^. objectiveOptional) $ withAttr grayAttr
 
 singleGoalDetails :: GoalEntry -> Widget Name
 singleGoalDetails = \case
-  Goal _gs obj -> displayParagraphs $ obj ^. objectiveGoal
+  Goal _gs obj ->
+    vBox
+      [ optionalIndicator
+      , drawMarkdown $ obj ^. objectiveGoal
+      ]
+   where
+    optionalIndicator =
+      if obj ^. objectiveOptional
+        then withAttr grayAttr $ txt "[Optional]"
+        else emptyWidget
   -- Only Goal entries are selectable, so we should never see this:
   _ -> emptyWidget

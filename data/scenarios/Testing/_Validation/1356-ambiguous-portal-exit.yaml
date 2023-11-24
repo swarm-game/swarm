@@ -1,0 +1,59 @@
+version: 1
+name: Reject overlapping portal entrances
+description: |
+  Two portals must not share the same entrance location
+attrs:
+  - name: portal_in
+    fg: "#ff9a00"
+    bg: "#ff5d00"
+  - name: portal_out
+    fg: "#00a2ff"
+    bg: "#0065ff"
+entities:
+  - name: telepad entrance
+    display:
+      attr: portal_in
+      char: "o"
+    description:
+    - Portal entrance
+    properties: [known]
+  - name: telepad exit
+    display:
+      attr: portal_out
+      char: "o"
+    description:
+    - Portal exit
+    properties: [known]
+robots:
+  - name: base
+    dir: [1, 0]
+known: [tree]
+world:
+  upperleft: [1, -1]
+  palette:
+    '.': [grass]
+    'B': [grass, null, base]
+    'P':
+      cell: [grass, telepad entrance]
+      waypoint:
+        name: inportal
+    'p':
+      cell: [grass, telepad exit]
+      waypoint:
+        name: outportal
+    '┌': [stone, upper left corner]
+    '┐': [stone, upper right corner]
+    '└': [stone, lower left corner]
+    '┘': [stone, lower right corner]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+  portals:
+    - entrance: inportal
+      exitInfo:
+        exit: outportal
+  map: |
+    ┌────────┐
+    │....B..p│
+    │.p......│
+    │....P...│
+    └────────┘

@@ -11,15 +11,16 @@ import Control.Arrow ((&&&))
 import Control.Lens (toListOf)
 import Control.Lens.Plated (universe)
 import Data.Aeson (eitherDecode, encode)
-import Data.Either
 import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Swarm.Language.Module (Module (..))
+import Swarm.Language.Parse (readTerm)
 import Swarm.Language.Parse.QQ (tyQ)
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (isSimpleUType)
 import Swarm.Language.Types
@@ -100,7 +101,7 @@ testLanguagePipeline =
             "failure inside bind chain"
             ( process
                 "move;\n1;\nmove"
-                "2:1: Type mismatch:\n  From context, expected `1` to have type `cmd u0`,\n  but it actually has type `int`"
+                "2:1: Type mismatch:\n  From context, expected `1` to be a command,\n  but it actually has type `int`"
             )
         , testCase
             "failure inside function call"
@@ -161,8 +162,8 @@ testLanguagePipeline =
         ]
     , testGroup
         "json encoding"
-        [ testCase "simple expr" (roundTrip "42 + 43")
-        , testCase "module def" (roundTrip "def x = 41 end; def y = 42 end")
+        [ testCase "simple expr" (roundTripTerm "42 + 43")
+        , testCase "module def" (roundTripTerm "def x = 41 end;\ndef y = 42 end")
         ]
     , testGroup
         "atomic - #479"
@@ -180,19 +181,19 @@ testLanguagePipeline =
             "atomic move+move"
             ( process
                 "atomic (move; move)"
-                "1:8: Invalid atomic block: block could take too many ticks (2): move; move"
+                "1:8: Invalid atomic block: block could take too many ticks (2): `move; move`"
             )
         , testCase
             "atomic lambda"
             ( process
                 "atomic ((\\c. c;c) move)"
-                "1:9: Invalid atomic block: def, let, and lambda are not allowed: \\c. c; c"
+                "1:9: Invalid atomic block: def, let, and lambda are not allowed: `\\c. c; c`"
             )
         , testCase
             "atomic non-simple"
             ( process
                 "def dup = \\c. c; c end; atomic (dup (dup move))"
-                "1:33: Invalid atomic block: reference to variable with non-simple type ∀ a. cmd a -> cmd a: dup"
+                "1:33: Invalid atomic block: reference to variable with non-simple type ∀ a. cmd a -> cmd a: `dup`"
             )
         , testCase
             "atomic nested"
@@ -204,25 +205,25 @@ testLanguagePipeline =
             "atomic wait"
             ( process
                 "atomic (wait 1)"
-                "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: wait"
+                "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: `wait`"
             )
         , testCase
             "atomic make"
             ( process
                 "atomic (make \"PhD thesis\")"
-                "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: make"
+                "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: `make`"
             )
         , testCase
             "atomic drill"
             ( process
                 "atomic (drill forward)"
-                "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: drill"
+                "1:9: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: `drill`"
             )
         , testCase
             "atomic salvage"
             ( process
                 "atomic (salvage)"
-                "1:8: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: salvage"
+                "1:8: Invalid atomic block: commands that can take multiple ticks to execute are not allowed: `salvage`"
             )
         ]
     , testGroup
@@ -333,7 +334,7 @@ testLanguagePipeline =
             "checking a lambda with the wrong argument type"
             ( process
                 "(\\x:int. x + 2) : text -> int"
-                "1:1: Lambda argument has type annotation int, but expected argument type text"
+                "1:1: Lambda argument has type annotation `int`, but expected argument type `text`"
             )
         ]
     , testGroup
@@ -342,13 +343,13 @@ testLanguagePipeline =
             "applying a pair"
             ( process
                 "(1,2) \"hi\""
-                "1:1: Type mismatch:\n  From context, expected `(1, 2)` to have type `u3 -> u4`,\n  but it actually has type `u1 * u2`"
+                "1:1: Type mismatch:\n  From context, expected `(1, 2)` to be a function,\n  but it is actually a pair"
             )
         , testCase
             "providing a pair as an argument"
             ( process
                 "(\\x:int. x + 1) (1,2)"
-                "1:17: Type mismatch:\n  From context, expected `(1, 2)` to have type `int`,\n  but it actually has type `u0 * u1`"
+                "1:17: Type mismatch:\n  From context, expected `(1, 2)` to have type `int`,\n  but it is actually a pair"
             )
         , testCase
             "mismatched if branches"
@@ -360,28 +361,64 @@ testLanguagePipeline =
             "definition with wrong result"
             ( process
                 "def m : int -> int -> int = \\x. \\y. {3} end"
-                "1:37: Type mismatch:\n  From context, expected `{3}` to have type `int`,\n  but it actually has type `{u0}`"
+                "1:37: Type mismatch:\n  From context, expected `{3}` to have type `int`,\n  but it is actually a delayed expression\n\n  - While checking the definition of m"
             )
+        , testCase
+            "comparing two incompatible functions"
+            ( process
+                "(\\f:int -> text. f 3) (\\x:int. 3)"
+                "1:32: Type mismatch:\n  From context, expected `3` to have type `text`,\n  but it actually has type `int`\n"
+            )
+        , testCase
+            "comparing two incompatible functions 2"
+            ( process
+                "(\\f:int -> text. f 3) (\\x:int. \\y:int. \"hi\")"
+                "1:32: Type mismatch:\n  From context, expected `\\y:int. \"hi\"` to have type `text`,\n  but it is actually a function\n"
+            )
+        , testCase
+            "unify two-argument function and int"
+            ( process
+                "1 + (\\x. \\y. 3)"
+                "1:5: Type mismatch:\n  From context, expected `\\x. \\y. 3` to have type `int`,\n  but it is actually a function\n"
+            )
+        ]
+    , testGroup
+        "generalize top-level binds #351 #1501"
+        [ testCase
+            "top-level polymorphic bind is OK"
+            (valid "r <- return (\\x.x)")
+        , testCase
+            "top-level bind is polymorphic"
+            (valid "f <- return (\\x.x); return (f 3, f \"hi\")")
+        , testCase
+            "local bind is polymorphic"
+            (valid "def foo : cmd (int * text) = f <- return (\\x.x); return (f 3, f \"hi\") end")
         ]
     ]
  where
   valid = flip process ""
 
-  roundTrip txt = assertEqual "roundtrip" term (decodeThrow $ encode term)
-   where
-    decodeThrow v = case eitherDecode v of
-      Left e -> error $ "Decoding of " <> from (T.decodeUtf8 (from v)) <> " failed with: " <> from e
-      Right x -> x
-    term = fromMaybe (error "") $ fromRight (error "") $ processTerm txt
-
   process :: Text -> Text -> Assertion
   process code expect = case processTerm code of
     Left e
       | not (T.null expect) && expect `T.isPrefixOf` e -> pure ()
-      | otherwise -> error $ "Unexpected failure: " <> show e
+      | otherwise ->
+          error $
+            "Unexpected failure:\n\n  " <> show e <> "\n\nExpected:\n\n  " <> show expect <> "\n"
     Right _
       | expect == "" -> pure ()
       | otherwise -> error "Unexpected success"
 
   getSyntax :: ProcessedTerm -> Syntax' Polytype
   getSyntax (ProcessedTerm (Module s _) _ _) = s
+
+-- | Check round tripping of term from and to text, then test ToJSON/FromJSON.
+roundTripTerm :: Text -> Assertion
+roundTripTerm txt = do
+  assertEqual "roundtrip (readTerm -> prettyText)" txt (prettyText term)
+  assertEqual "roundtrip (ToJSON -> FromJSON)" term (decodeThrow $ encode term)
+ where
+  decodeThrow v = case eitherDecode v of
+    Left e -> error $ "Decoding of " <> from (T.decodeUtf8 (from v)) <> " failed with: " <> from e
+    Right x -> x
+  term = fromMaybe (error "empty document") $ either (error . T.unpack) id $ readTerm txt

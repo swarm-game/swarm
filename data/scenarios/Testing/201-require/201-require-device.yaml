@@ -28,7 +28,6 @@ robots:
       - [1, treads]
 known: [water]
 world:
-  default: [blank, null]
   palette:
     '.': [grass]
     '~': [dirt, water]

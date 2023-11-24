@@ -1,19 +1,55 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/world.json",
-    "title": "Swarm world",
+    "title": "World",
     "description": "Description of the world in the Swarm game",
+    "footers": [
+        "doc-fragments/cells.md"
+    ],
     "type": "object",
+    "additionalProperties": false,
     "properties": {
+        "name": {
+            "type": "string",
+            "description": "Name of this subworld"
+        },
         "default": {
-            "default": null,
+            "description": "Default world cell content",
             "type": "array",
-            "description": "A tuple representing the contents of a default cell (see Cells, except that the default cell may not contain a robot). If this key is present, it means that the whole world besides the part specified with the map will be filled with this default cell. If omitted, the world besides the part specified with the map will be procedurally generated."
+            "items": {
+                "type": "string"
+            }
+        },
+        "structures": {
+            "description": "Structure definitions",
+            "type": "array",
+            "items": {
+                "$ref": "named-structure.json"
+            }
+        },
+        "placements": {
+            "description": "Structure placements. Earlier members may occlude later members of the list.",
+            "type": "array",
+            "items": {
+                "$ref": "placement.json"
+            }
+        },
+        "waypoints": {
+            "description": "Single-location waypoint definitions",
+            "type": "array",
+            "items": {
+                "$ref": "explicit-waypoint.json"
+            }
+        },
+        "dsl": {
+            "default": null,
+            "type": "string",
+            "description": "A term in the Swarm world description DSL.  The world it describes will be layered underneath the world described by the rest of the fields."
         },
         "offset": {
             "default": false,
             "type": "boolean",
-            "description": "Whether the base robot's position should be moved to the nearest \"good\" location, currently defined as a location near a tree, in a 16x16 patch which contains at least one each of tree, copper ore, bit (0), bit (1), rock, lambda, water, and sand. The classic scenario uses offset: True to make sure that the it is not unreasonably difficult to obtain necessary resources in the early game. See https://github.com/swarm-game/swarm/blob/main/src/Swarm/Game/WorldGen.hs#L204 ."
+            "description": "Whether the base robot's position should be moved to the nearest \"good\" location, currently defined as a location near a `tree`, in a 16x16 patch which contains at least one each of `tree`, `copper ore`, `bit (0)`, `bit (1)`, `rock`, `lambda`, `water`, and `sand`. The classic scenario uses `offset: True` to make sure that the it is not unreasonably difficult to obtain necessary resources in the early game (see [code](https://github.com/swarm-game/swarm/blob/e06e04f622a3762a10e7c942c1cbd2c1e396144f/src/Swarm/Game/World/Gen.hs#L79))."
         },
         "scrollable": {
             "default": true,
@@ -21,10 +57,16 @@
             "description": "Whether players are allowed to scroll the world map."
         },
         "palette": {
-            "default": {},
             "type": "object",
             "examples": [{"T": ["grass", "tree"]}],
-            "description": "The palette maps single character keys to tuples representing contents of cells in the world, so that a world containing entities and robots can be drawn graphically. See Cells for the contents of the tuples representing a cell."
+            "description": "The palette maps single character keys to tuples representing contents of cells in the world, so that a world containing entities and robots can be drawn graphically. See [Cells](#cells) for the contents of the tuples representing a cell."
+        },
+        "portals": {
+            "description": "A list of portal definitions that reference waypoints.",
+            "type": "array",
+            "items": {
+                "$ref": "portal.json"
+            }
         },
         "map": {
             "default": "",
@@ -47,7 +89,7 @@
                     "type": "number"
                 }
             ],
-            "description": "A 2-tuple of int values specifying the (x,y) coordinates of the upper left corner of the map."
+            "description": "A 2-tuple of `int` values specifying the `(x,y)` coordinates of the upper left corner of the map."
         }
     }
 }

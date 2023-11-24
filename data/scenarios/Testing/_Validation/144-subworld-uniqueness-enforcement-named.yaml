@@ -1,0 +1,89 @@
+version: 1
+name: Subworld uniqueness (explicit name)
+description: |
+  Has two identically-named subworlds
+attrs:
+  - name: portal_in
+    fg: "#ff9a00"
+    bg: "#ff5d00"
+  - name: portal_out
+    fg: "#00a2ff"
+    bg: "#0065ff"
+entities:
+  - name: telepad entrance
+    display:
+      attr: portal_in
+      char: "o"
+    description:
+    - Portal entrance
+    properties: [known]
+  - name: telepad exit
+    display:
+      attr: portal_out
+      char: "o"
+    description:
+    - Portal exit
+    properties: [known]
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - ADT calculator
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - GPS receiver
+      - grabber
+      - lambda
+      - lodestone
+      - logger
+      - strange loop
+      - treads
+  - name: judge
+    dir: [1, 0]
+    system: true
+    display:
+      char: 'J'
+      invisible: true
+known: [flower, boulder]
+subworlds:
+  - name: foo
+    default: [blank]
+    palette:
+      '.': [dirt]
+      'f': [dirt, flower]
+      'b': [dirt, boulder]
+      'p':
+        cell: [dirt, telepad exit]
+        waypoint:
+          name: portal_out2
+      'P':
+        cell: [dirt, telepad entrance]
+        waypoint:
+          name: portal_in2
+    upperleft: [-1, 1]
+    map: |
+      b..b..b..b
+      .p..f...P.
+      b..b..b..b
+world:
+  name: foo
+  default: [blank]
+  palette:
+    '.': [grass]
+    'B': [grass, null, base]
+    't': [ice, null, judge]
+    'p':
+      cell: [grass, telepad exit]
+      waypoint:
+        name: portal_out1
+    'P':
+      cell: [grass, telepad entrance]
+      waypoint:
+        name: portal_in1
+  upperleft: [-1, 1]
+  map: |
+    ..........
+    .p.Bt...P.
+    ..........

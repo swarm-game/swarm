@@ -23,7 +23,6 @@ robots:
     inventory:
     - [1, tree]
 world:
-  default: [blank]
   palette:
     '.': [grass]
     '┌': [stone, upper left corner]

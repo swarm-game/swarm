@@ -35,7 +35,8 @@ robots:
       char: J
 known: []
 world:
-  default: [blank, boulder]
+  dsl: |
+    {blank, boulder}
   palette:
     'Ω': [grass, tree, base]
     'J': [grass, tree, judge]

@@ -37,7 +37,6 @@ robots:
       - solar panel
       - treads
 world:
-  default: [blank]
   palette:
     '>': [grass, null, base]
     'Å': [stone, copper mine]

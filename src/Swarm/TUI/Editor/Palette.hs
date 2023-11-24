@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -18,31 +19,38 @@ import Data.Set qualified as Set
 import Data.Text qualified as T
 import Data.Tuple (swap)
 import Swarm.Game.Display (Display, defaultChar)
-import Swarm.Game.Entity (entitiesByName)
+import Swarm.Game.Entity (EntityName, entitiesByName)
 import Swarm.Game.Location
 import Swarm.Game.Scenario
-import Swarm.Game.Scenario.Cell
-import Swarm.Game.Scenario.EntityFacade
-import Swarm.Game.Scenario.WorldPalette
-import Swarm.Game.Terrain (TerrainType (BlankT), getTerrainDefaultPaletteChar)
-import Swarm.TUI.Editor.Area (AreaDimensions (..), getAreaDimensions)
+import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..), getAreaDimensions)
+import Swarm.Game.Scenario.Topography.Cell
+import Swarm.Game.Scenario.Topography.EntityFacade
+import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
+import Swarm.Game.Scenario.Topography.WorldPalette
+import Swarm.Game.Terrain (TerrainType, getTerrainDefaultPaletteChar)
+import Swarm.Game.Universe
+import Swarm.Language.Text.Markdown (fromText)
 import Swarm.TUI.Editor.Json (SkeletonScenario (SkeletonScenario))
 import Swarm.Util (binTuples, histogram)
 import Swarm.Util qualified as U
+import Swarm.Util.Erasable
 
-makeSuggestedPalette :: Maybe Scenario -> [[CellPaintDisplay]] -> KM.KeyMap CellPaintDisplay
+makeSuggestedPalette :: Maybe Scenario -> [[CellPaintDisplay]] -> KM.KeyMap (AugmentedCell EntityFacade)
 makeSuggestedPalette maybeOriginalScenario cellGrid =
   KM.fromMapText
+    . M.map (AugmentedCell Nothing)
     . M.fromList
     . M.elems
     -- NOTE: the left-most maps take precedence!
     $ paletteCellsByKey <> pairsWithDisplays <> terrainOnlyPalette
  where
-  getMaybeEntityDisplay (Cell _terrain maybeEntity _) = do
+  getMaybeEntityDisplay :: PCell EntityFacade -> Maybe (EntityName, Display)
+  getMaybeEntityDisplay (Cell _terrain (erasableToMaybe -> maybeEntity) _) = do
     EntityFacade eName d <- maybeEntity
     return (eName, d)
 
-  getMaybeEntityNameTerrainPair (Cell terrain maybeEntity _) = do
+  getMaybeEntityNameTerrainPair :: PCell EntityFacade -> Maybe (EntityName, TerrainType)
+  getMaybeEntityNameTerrainPair (Cell terrain (erasableToMaybe -> maybeEntity) _) = do
     EntityFacade eName _ <- maybeEntity
     return (eName, terrain)
 
@@ -83,8 +91,8 @@ makeSuggestedPalette maybeOriginalScenario cellGrid =
 
   originalPalette :: KM.KeyMap CellPaintDisplay
   originalPalette =
-    KM.map toCellPaintDisplay $
-      maybe mempty (unPalette . palette . (^. scenarioWorld)) maybeOriginalScenario
+    KM.map (toCellPaintDisplay . standardCell) $
+      maybe mempty (unPalette . palette . NE.head . (^. scenarioWorlds)) maybeOriginalScenario
 
   pairsWithDisplays :: Map (TerrainWith EntityName) (T.Text, CellPaintDisplay)
   pairsWithDisplays = M.fromList $ mapMaybe g entitiesWithModalTerrain
@@ -93,15 +101,15 @@ makeSuggestedPalette maybeOriginalScenario cellGrid =
       eDisplay <- M.lookup eName usedEntityDisplays
       let displayChar = eDisplay ^. defaultChar
       guard $ Set.notMember displayChar excludedPaletteChars
-      let cell = Cell terrain (Just $ EntityFacade eName eDisplay) []
-      return ((terrain, Just eName), (T.singleton displayChar, cell))
+      let cell = Cell terrain (EJust $ EntityFacade eName eDisplay) []
+      return ((terrain, EJust eName), (T.singleton displayChar, cell))
 
   -- TODO (#1153): Filter out terrain-only palette entries that aren't actually
   -- used in the map.
   terrainOnlyPalette :: Map (TerrainWith EntityName) (T.Text, CellPaintDisplay)
   terrainOnlyPalette = M.fromList $ map f U.listEnums
    where
-    f x = ((x, Nothing), (T.singleton $ getTerrainDefaultPaletteChar x, Cell x Nothing []))
+    f x = ((x, ENothing), (T.singleton $ getTerrainDefaultPaletteChar x, Cell x ENothing []))
 
 -- | Generate a \"skeleton\" scenario with placeholders for certain required fields
 constructScenario :: Maybe Scenario -> [[CellPaintDisplay]] -> SkeletonScenario
@@ -109,7 +117,7 @@ constructScenario maybeOriginalScenario cellGrid =
   SkeletonScenario
     (maybe 1 (^. scenarioVersion) maybeOriginalScenario)
     (maybe "My Scenario" (^. scenarioName) maybeOriginalScenario)
-    (maybe "The scenario description..." (^. scenarioDescription) maybeOriginalScenario)
+    (maybe (fromText "The scenario description...") (^. scenarioDescription) maybeOriginalScenario)
     -- (maybe True (^. scenarioCreative) maybeOriginalScenario)
     True
     (M.elems $ entitiesByName customEntities)
@@ -119,12 +127,15 @@ constructScenario maybeOriginalScenario cellGrid =
   customEntities = maybe mempty (^. scenarioEntities) maybeOriginalScenario
   wd =
     WorldDescription
-      { defaultTerrain = Just $ Cell BlankT Nothing []
-      , offsetOrigin = False
+      { offsetOrigin = False
       , scrollable = True
       , palette = WorldPalette suggestedPalette
       , ul = upperLeftCoord
       , area = cellGrid
+      , navigation = Navigation mempty mempty
+      , placedStructures = mempty
+      , worldName = DefaultRootSubworld
+      , worldProg = Nothing
       }
 
   suggestedPalette = makeSuggestedPalette maybeOriginalScenario cellGrid

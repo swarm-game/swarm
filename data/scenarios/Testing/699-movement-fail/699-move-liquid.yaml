@@ -35,7 +35,6 @@ robots:
     program: |
       try {move} {say "Fatal error: three was unable to move into water even though it is system robot!"}
 world:
-  default: [blank]
   palette:
     '~': [stone, water]
     'B': [grass, null, base]

@@ -6,3 +6,5 @@ Challenges
 Fun
 Speedruns
 Testing
+Vignettes
+Mechanics

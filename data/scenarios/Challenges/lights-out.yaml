@@ -143,7 +143,6 @@ recipes:
     time: 0
 known: []
 world:
-  default: [blank]
   upperleft: [-1, 1]
   offset: false
   palette:

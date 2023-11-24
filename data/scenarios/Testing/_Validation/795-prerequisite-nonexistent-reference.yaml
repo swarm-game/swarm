@@ -30,7 +30,6 @@ robots:
       - [2, board]
       - [5, rock]
 world:
-  default: [blank]
   palette:
     'x': [grass, flower, base]
   upperleft: [0, 0]

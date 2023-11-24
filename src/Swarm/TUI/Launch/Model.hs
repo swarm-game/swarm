@@ -11,38 +11,30 @@ module Swarm.TUI.Launch.Model where
 import Brick.Focus qualified as Focus
 import Brick.Widgets.Edit
 import Brick.Widgets.FileBrowser qualified as FB
+import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens (makeLenses)
 import Data.Functor.Identity (Identity (Identity))
 import Data.Text (Text)
+import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (LaunchParams), ScenarioInfoPair, SerializableLaunchParams)
-import Swarm.Game.State (CodeToRun, getRunCodePath, parseCodeFile)
+import Swarm.Game.State (LaunchParams, ValidatedLaunchParams, getRunCodePath, parseCodeFile)
+import Swarm.Language.Pretty (prettyText)
 import Swarm.TUI.Model.Name
-
-type LaunchParams a = ParameterizableLaunchParams CodeToRun a
+import Swarm.Util.Effect (withThrow)
 
 -- | Use this to store error messages
 -- on individual fields
 type EditingLaunchParams = LaunchParams (Either Text)
 
--- | In this stage in the UI pipeline, both fields
--- have already been validated, and "Nothing" means
--- that the field is simply absent.
-type ValidatedLaunchParams = LaunchParams Identity
-
 toSerializableParams :: ValidatedLaunchParams -> SerializableLaunchParams
 toSerializableParams (LaunchParams seedValue (Identity codeToRun)) =
   LaunchParams seedValue $ pure $ getRunCodePath =<< codeToRun
 
-parseCode :: Maybe FilePath -> IO (Either Text (Maybe CodeToRun))
-parseCode maybeSelectedFile = case maybeSelectedFile of
-  Just codeFile -> do
-    eitherParsedCode <- parseCodeFile codeFile
-    return $ Just <$> eitherParsedCode
-  Nothing -> return $ Right Nothing
-
 fromSerializableParams :: SerializableLaunchParams -> IO EditingLaunchParams
 fromSerializableParams (LaunchParams (Identity maybeSeedValue) (Identity maybeCodePath)) = do
-  eitherCode <- parseCode maybeCodePath
+  eitherCode <-
+    runThrow . withThrow (prettyText @SystemFailure) $
+      traverse parseCodeFile maybeCodePath
   return $ LaunchParams (Right maybeSeedValue) eitherCode
 
 data FileBrowserControl = FileBrowserControl

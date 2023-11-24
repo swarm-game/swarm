@@ -16,6 +16,7 @@ module Swarm.Language.Syntax (
   Direction (..),
   AbsoluteDir (..),
   RelativeDir (..),
+  PlanarRelativeDir (..),
   directionSyntax,
   isCardinal,
   allDirs,
@@ -39,6 +40,7 @@ module Swarm.Language.Syntax (
   maxSniffRange,
   maxScoutRange,
   maxStrideRange,
+  maxPathRange,
 
   -- * Syntax
   Syntax' (..),
@@ -74,7 +76,6 @@ module Swarm.Language.Syntax (
   unfoldApps,
 
   -- * Erasure
-  erase,
   eraseS,
 
   -- * Term traversal
@@ -88,13 +89,11 @@ module Swarm.Language.Syntax (
 ) where
 
 import Control.Lens (Plated (..), Traversal', makeLenses, para, universe, (%~), (^.))
+import Control.Monad (void)
 import Data.Aeson.Types hiding (Key)
-import Data.Char qualified as C (toLower)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
-import Data.Hashable (Hashable)
 import Data.Int (Int32)
-import Data.List qualified as L (tail)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict (Map)
@@ -104,12 +103,13 @@ import Data.Text hiding (filter, length, map)
 import Data.Text qualified as T
 import Data.Tree
 import GHC.Generics (Generic)
+import Swarm.Language.Direction
 import Swarm.Language.Types
 import Swarm.Util qualified as Util
 import Witch.From (from)
 
 -- | Maximum perception distance for
--- 'chirp' and 'sniff' commands
+-- 'Chirp' and 'Sniff' commands
 maxSniffRange :: Int32
 maxSniffRange = 256
 
@@ -119,63 +119,8 @@ maxScoutRange = 64
 maxStrideRange :: Int
 maxStrideRange = 64
 
-------------------------------------------------------------
--- Directions
-------------------------------------------------------------
-
--- | An absolute direction is one which is defined with respect to an
---   external frame of reference; robots need a compass in order to
---   use them.
---
--- NOTE: These values are ordered by increasing angle according to
--- the standard mathematical convention.
--- That is, the right-pointing direction, East, is considered
--- the "reference angle" and the order proceeds counter-clockwise.
--- See https://en.wikipedia.org/wiki/Polar_coordinate_system#Conventions
---
--- Do not alter this ordering, as there exist functions that depend on it
--- (e.g. "nearestDirection" and "relativeTo").
-data AbsoluteDir = DEast | DNorth | DWest | DSouth
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
-
-cardinalDirectionKeyOptions :: JSONKeyOptions
-cardinalDirectionKeyOptions =
-  defaultJSONKeyOptions
-    { keyModifier = map C.toLower . L.tail
-    }
-
-instance ToJSONKey AbsoluteDir where
-  toJSONKey = genericToJSONKey cardinalDirectionKeyOptions
-
-instance FromJSONKey AbsoluteDir where
-  fromJSONKey = genericFromJSONKey cardinalDirectionKeyOptions
-
--- | A relative direction is one which is defined with respect to the
---   robot's frame of reference; no special capability is needed to
---   use them.
-data RelativeDir = DLeft | DRight | DBack | DForward | DDown
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON, Enum, Bounded)
-
--- | The type of directions. Used /e.g./ to indicate which way a robot
---   will turn.
-data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
-
--- | Direction name is generated from Direction data constuctor
--- e.g. DLeft becomes "left"
-directionSyntax :: Direction -> Text
-directionSyntax d = toLower . T.tail . from $ case d of
-  DAbsolute x -> show x
-  DRelative x -> show x
-
--- | Check if the direction is absolute (e.g. 'north' or 'south').
-isCardinal :: Direction -> Bool
-isCardinal = \case
-  DAbsolute _ -> True
-  _ -> False
-
-allDirs :: [Direction]
-allDirs = map DAbsolute Util.listEnums <> map DRelative Util.listEnums
+maxPathRange :: Integer
+maxPathRange = 128
 
 ------------------------------------------------------------
 -- Constants
@@ -209,6 +154,10 @@ data Const
 
     -- | Move forward one step.
     Move
+  | -- | Move backward one step.
+    Backup
+  | -- | Describe a path to the destination.
+    Path
   | -- | Push an entity forward one step.
     Push
   | -- | Move forward multiple steps.
@@ -219,8 +168,12 @@ data Const
     Grab
   | -- | Harvest an item from the current location.
     Harvest
+  | -- | Ignite a combustible item
+    Ignite
   | -- | Try to place an item at the current location.
     Place
+  | -- | Obtain the relative location of another robot.
+    Ping
   | -- | Give an item to another robot at the current location.
     Give
   | -- | Equip a device on oneself.
@@ -269,6 +222,16 @@ data Const
     Scout
   | -- | Get the current x, y coordinates
     Whereami
+  | -- | Get the x, y coordinates of a named waypoint, by index
+    Waypoint
+  | -- | Get the x, y coordinates of southwest corner of a constructed structure, by index
+    Structure
+  | -- | Get the width and height of a structure template
+    Floorplan
+  | -- | Answer whether a given entity has the given tag
+    HasTag
+  | -- | Cycle through the entity names that are labeled with a given tag
+    TagMembers
   | -- | Locate the closest instance of a given entity within the rectangle
     -- specified by opposite corners, relative to the current location.
     Detect
@@ -425,7 +388,7 @@ data Const
     RobotNumbered
   | -- | Check if an entity is known.
     Knows
-  deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, FromJSON, ToJSON, FromJSONKey, ToJSONKey)
 
 allConst :: [Const]
 allConst = Util.listEnums
@@ -577,6 +540,13 @@ constInfo c = case c of
       , "This destroys the robot's inventory, so consider `salvage` as an alternative."
       ]
   Move -> command 0 short "Move forward one step."
+  Backup -> command 0 short "Move backward one step."
+  Path ->
+    command 2 short . doc "Obtain shortest path to the destination." $
+      [ "Optionally supply a distance limit as the first argument."
+      , "Supply either a location (`inL`) or an entity (`inR`) as the second argument."
+      , "If a path exists, returns the direction to proceed along."
+      ]
   Push ->
     command 1 short . doc "Push an entity forward one step." $
       [ "Both entity and robot moves forward one step."
@@ -593,9 +563,19 @@ constInfo c = case c of
       [ "Leaves behind a growing seed if the harvested item is growable."
       , "Otherwise it works exactly like `grab`."
       ]
+  Ignite ->
+    command 1 short . doc "Ignite a combustible item in the specified direction." $
+      [ "Combustion persists for a random duration and may spread."
+      ]
   Place ->
     command 1 short . doc "Place an item at the current location." $
       ["The current location has to be empty for this to work."]
+  Ping ->
+    command 1 short . doc "Obtain the relative location of another robot." $
+      [ "The other robot must be within transmission range, accounting for antennas installed on either end, and the invoking robot must be oriented in a cardinal direction."
+      , "The location (x, y) is given relative to one's current orientation:"
+      , "Positive x value is to the right, negative left. Likewise, positive y value is forward, negative back."
+      ]
   Give -> command 2 short "Give an item to another actor nearby."
   Equip -> command 1 short "Equip a device on oneself."
   Unequip -> command 1 short "Unequip an equipped device, returning to inventory."
@@ -664,6 +644,36 @@ constInfo c = case c of
       , T.unwords ["Has a max range of", T.pack $ show maxScoutRange, "units."]
       ]
   Whereami -> command 0 Intangible "Get the current x and y coordinates."
+  Waypoint ->
+    command 2 Intangible . doc "Get the x, y coordinates of a named waypoint, by index" $
+      [ "Return only the waypoints in the same subworld as the calling robot."
+      , "Since waypoint names can have plural multiplicity, returns a tuple of (count, (x, y))."
+      , "The supplied index will be wrapped automatically, modulo the waypoint count."
+      , "A robot can use the count to know whether they have iterated over the full waypoint circuit."
+      ]
+  Structure ->
+    command 2 Intangible . doc "Get the x, y coordinates of the southwest corner of a constructed structure, by name and index" $
+      [ "The outermost type of the return value indicates whether any structure of such name exists."
+      , "Since structures can have multiple occurrences, returns a tuple of (count, (x, y))."
+      , "The supplied index will be wrapped automatically, modulo the structure count."
+      , "A robot can use the count to know whether they have iterated over the full structure list."
+      ]
+  Floorplan ->
+    command 1 Intangible . doc "Get the dimensions of a structure template" $
+      [ "Returns a tuple of (width, height) for the structure of the requested name."
+      , "Yields an error if the supplied string is not the name of a structure."
+      ]
+  HasTag ->
+    command 2 Intangible . doc "Check whether the given entity has the given tag" $
+      [ "Returns true if the first argument is an entity that is labeled by the tag in the second argument."
+      , "Yields an error if the first argument is not a valid entity."
+      ]
+  TagMembers ->
+    command 2 Intangible . doc "Get the entities labeled by a tag, by alphabetical index" $
+      [ "Returns a tuple of (member count, entity)."
+      , "The supplied index will be wrapped automatically, modulo the member count."
+      , "A robot can use the count to know whether they have iterated over the full list."
+      ]
   Detect ->
     command 2 Intangible . doc "Detect an entity within a rectangle." $
       ["Locate the closest instance of a given entity within the rectangle specified by opposite corners, relative to the current location."]
@@ -945,16 +955,25 @@ data Term' ty
     SProj (Syntax' ty) Var
   | -- | Annotate a term with a type
     SAnnotate (Syntax' ty) Polytype
-  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
-
--- The Traversable instance for Term (and for Syntax') is used during
--- typechecking: during intermediate type inference, many of the type
--- annotations placed on AST nodes will have unification variables in
--- them. Once we have finished solving everything we need to do a
--- final traversal over all the types in the AST to substitute away
--- all the unification variables (and generalize, i.e. stick 'forall'
--- on, as appropriate).  See the call to 'mapM' in
--- Swarm.Language.Typecheck.runInfer.
+  deriving
+    ( Eq
+    , Show
+    , Functor
+    , Foldable
+    , Data
+    , Generic
+    , FromJSON
+    , ToJSON
+    , -- | The Traversable instance for Term (and for Syntax') is used during
+      -- typechecking: during intermediate type inference, many of the type
+      -- annotations placed on AST nodes will have unification variables in
+      -- them. Once we have finished solving everything we need to do a
+      -- final traversal over all the types in the AST to substitute away
+      -- all the unification variables (and generalize, i.e. stick 'forall'
+      -- on, as appropriate).  See the call to 'mapM' in
+      -- Swarm.Language.Typecheck.runInfer.
+      Traversable
+    )
 
 type Term = Term' ()
 
@@ -1106,37 +1125,10 @@ unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
 --------------------------------------------------
 -- Erasure
 
--- | Erase a 'Syntax' tree annotated with @SrcLoc@ and type
+-- | Erase a 'Syntax' tree annotated with type
 --   information to a bare unannotated 'Term'.
 eraseS :: Syntax' ty -> Term
-eraseS (Syntax' _ t _) = erase t
-
--- | Erase a type-annotated term to a bare term.
-erase :: Term' ty -> Term
-erase TUnit = TUnit
-erase (TConst c) = TConst c
-erase (TDir d) = TDir d
-erase (TInt n) = TInt n
-erase (TAntiInt v) = TAntiInt v
-erase (TText t) = TText t
-erase (TAntiText v) = TAntiText v
-erase (TBool b) = TBool b
-erase (TRobot r) = TRobot r
-erase (TRef r) = TRef r
-erase (TRequireDevice d) = TRequireDevice d
-erase (TRequire n e) = TRequire n e
-erase (SRequirements x s) = TRequirements x (eraseS s)
-erase (TVar s) = TVar s
-erase (SDelay x s) = TDelay x (eraseS s)
-erase (SPair s1 s2) = TPair (eraseS s1) (eraseS s2)
-erase (SLam x mty body) = TLam (lvVar x) mty (eraseS body)
-erase (SApp s1 s2) = TApp (eraseS s1) (eraseS s2)
-erase (SLet r x mty s1 s2) = TLet r (lvVar x) mty (eraseS s1) (eraseS s2)
-erase (SDef r x mty s) = TDef r (lvVar x) mty (eraseS s)
-erase (SBind mx s1 s2) = TBind (lvVar <$> mx) (eraseS s1) (eraseS s2)
-erase (SRcd m) = TRcd ((fmap . fmap) eraseS m)
-erase (SProj s x) = TProj (eraseS s) x
-erase (SAnnotate s pty) = TAnnotate (eraseS s) pty
+eraseS (Syntax' _ t _) = void t
 
 ------------------------------------------------------------
 -- Free variable traversals

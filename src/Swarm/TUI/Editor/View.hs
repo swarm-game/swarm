@@ -1,3 +1,5 @@
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Editor.View where
 
 import Brick hiding (Direction)
@@ -6,24 +8,25 @@ import Brick.Widgets.Center (hCenter)
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
 import Data.List qualified as L
-import Swarm.Game.Scenario.EntityFacade
+import Swarm.Game.Scenario.Topography.Area qualified as EA
+import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Terrain (TerrainType)
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
-import Swarm.TUI.Attr
 import Swarm.TUI.Border
-import Swarm.TUI.Editor.Area qualified as EA
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
+import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay (renderDisplay)
 import Swarm.TUI.View.Util qualified as VU
 import Swarm.Util (listEnums)
 
 drawWorldEditor :: FocusRing Name -> UIState -> Widget Name
 drawWorldEditor toplevelFocusRing uis =
-  if worldEditor ^. isWorldEditorEnabled
+  if worldEditor ^. worldOverdraw . isWorldEditorEnabled
     then
       panel
         highlightAttr
@@ -92,7 +95,7 @@ drawWorldEditor toplevelFocusRing uis =
   areaContent = case worldEditor ^. editingBounds . boundsSelectionStep of
     UpperLeftPending -> str "Click top-left"
     LowerRightPending _wcoords -> str "Click bottom-right"
-    SelectionComplete -> maybe emptyWidget renderBounds maybeAreaBounds
+    SelectionComplete -> maybe emptyWidget (renderBounds . view planar) maybeAreaBounds
 
   areaWidget =
     mkFormControl (WorldEditorPanelControl AreaSelector) $

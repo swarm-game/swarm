@@ -1,0 +1,116 @@
+version: 1
+name: Subworld robots (map placement)
+description: |
+  Demonstrate that system robots can be placed in any subworld.
+
+  Also demonstrates tiebreaking logic for robot numbering based
+  on subworld.
+objectives:
+  - goal:
+    - |
+      `give` the "bitcoin" to the robot in the "root" world.
+    - |
+      First obtain it from the robot living underground.
+    condition: |
+      j <- robotnumbered 1;
+      as j {has "bitcoin"}
+solution: |
+  run "scenarios/Testing/144-subworlds/_subworld-mapped-robots/solution.sw"
+attrs:
+  - name: portal_in
+    fg: "#ff9a00"
+    bg: "#ff5d00"
+  - name: portal_out
+    fg: "#00a2ff"
+    bg: "#0065ff"
+entities:
+  - name: telepad entrance
+    display:
+      attr: portal_in
+      char: "o"
+    description:
+    - Portal entrance
+    properties: [known]
+  - name: telepad exit
+    display:
+      attr: portal_out
+      char: "o"
+    description:
+    - Portal exit
+    properties: [known]
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - ADT calculator
+      - antenna
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - GPS receiver
+      - grabber
+      - lambda
+      - lodestone
+      - logger
+      - strange loop
+      - treads
+  - name: judge
+    dir: [1, 0]
+    system: true
+    display:
+      char: 'J'
+      invisible: false
+    program: |
+      run "scenarios/Testing/144-subworlds/_subworld-mapped-robots/judges.sw";
+known: [boulder]
+subworlds:
+  - name: underground
+    default: [blank]
+    palette:
+      '.': [dirt]
+      'b': [dirt, boulder]
+      't': [grass, null, judge]
+      'p':
+        cell: [dirt, telepad exit]
+        waypoint:
+          name: portal_out2
+      'P':
+        cell: [dirt, telepad entrance]
+        waypoint:
+          name: portal_in2
+    portals:
+      - entrance: portal_in2
+        exitInfo:
+          exit: portal_out1
+          subworldName: root
+    upperleft: [-1, 1]
+    map: |
+      b..b..b..b
+      .p.t....P.
+      b..b..b..b
+world:
+  name: root
+  default: [blank]
+  palette:
+    '.': [grass]
+    'B': [grass, null, base]
+    't': [grass, null, judge]
+    'p':
+      cell: [grass, telepad exit]
+      waypoint:
+        name: portal_out1
+    'P':
+      cell: [grass, telepad entrance]
+      waypoint:
+        name: portal_in1
+  upperleft: [-1, 1]
+  portals:
+    - entrance: portal_in1
+      exitInfo:
+        exit: portal_out2
+        subworldName: underground
+  map: |
+    ..........
+    .p.B..t.P.
+    ..........

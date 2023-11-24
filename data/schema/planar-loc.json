@@ -1,0 +1,17 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/planar-loc.json",
+    "title": "Planar location",
+    "description": "x and y coordinates of a location in a particular world",
+    "type": "array",
+    "items": [
+        {
+            "name": "X coordinate",
+            "type": "number"
+        },
+        {
+            "name": "Y coordinate",
+            "type": "number"
+        }
+    ]
+}

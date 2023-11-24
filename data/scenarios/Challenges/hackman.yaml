@@ -19,10 +19,10 @@ objectives:
   - teaser: Get pellets
     goal:
       - |
-        Pick up all of the caffeine "pellets" so that Hackman can write more code.
+        Pick up all of the caffeine `pellet`{=entity}s so that Hackman can write more code.
       - |
         Pay no mind to the colorful ghosts meandering about. That is, unless
-        you are feeling generous with your "donuts"...
+        you are feeling generous with your `donut`{=entity}s...
       - |
         Can you find all of the secret objectives?
     condition: |
@@ -76,7 +76,7 @@ objectives:
       - |
         Be teleported
     condition: |
-      r <- robotnamed "teleporter";
+      r <- robotnamed "teleport_monitor";
       loc <- as r {
         has "bit (0)"
       };
@@ -149,14 +149,14 @@ robots:
       - strange loop
       - treads
       - workbench
-  - name: teleporter
+  - name: teleport_monitor
     dir: [0, 1]
     system: true
     display:
       invisible: true
       char: 'T'
     program: |
-      run "scenarios/Challenges/_hackman/teleporter.sw"
+      run "scenarios/Challenges/_hackman/teleport_monitor.sw"
   - name: ghost1
     dir: [0, 1]
     system: true
@@ -264,7 +264,6 @@ solution:
 known: []
 seed: 0
 world:
-  default: [blank]
   palette:
     'B': [blank]
     'Ω': [blank, null, base]
@@ -273,10 +272,10 @@ world:
     'b': [blank, null, ghost2]
     'c': [blank, null, ghost3]
     'd': [blank, null, ghost4]
-    'T': [blank, null, teleporter]
     '.': [blank, pellet]
     '*': [blank, donut]
     'x': [blank, wall]
+    'T': [blank, null, teleport_monitor]
     '=': [blank, gate]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
@@ -284,27 +283,50 @@ world:
     '┘': [stone, lower right corner]
     '─': [stone, horizontal wall]
     '│': [stone, vertical wall]
-  upperleft: [-11, 10]
+    'W':
+      cell: [blank]
+      waypoint:
+        name: western_exit
+    'X':
+      cell: [blank]
+      waypoint:
+        name: western_entrance
+    'Y':
+      cell: [blank]
+      waypoint:
+        name: eastern_exit
+    'Z':
+      cell: [blank]
+      waypoint:
+        name: eastern_entrance
+  portals:
+    - entrance: eastern_entrance
+      exitInfo:
+        exit: western_exit
+    - entrance: western_entrance
+      exitInfo:
+        exit: eastern_exit
+  upperleft: [-12, 10]
   map: |-
-    xxxxxxxxxxxxxxxxxxxxxxx
-    x..........x..........x
-    x*xxx.xxxx.x.xxxx.xxx*x
-    x.xxx.xxxx.x.xxxx.xxx.x
-    x.....................x
-    x.xxx.x.xxxxxxx.x.xxx.x
-    x.....x....x....x.....x
-    xxxxx.xxxxBxBxxxx.xxxxx
-    BBBBx.xBBBBBBBBBx.xBBBB
-    xxxxx.xB┌──=──┐Bx.xxxxx
-    TBBBB.BB│abBcd│BB.BBBBT
-    xxxxx.xB└─────┘Bx.xxxxx
-    BBBBx.xBBBfΩBBBBx.xBBBB
-    xxxxx.xBxxxxxxxBx.xxxxx
-    x..........x..........x
-    x.xxx.xxxx.x.xxxx.xxx.x
-    x*..x.............x..*x
-    xxx.x.x.xxxxxxx.x.x.xxx
-    x.....x....x....x.....x
-    x.xxxxxxxx.x.xxxxxxxx.x
-    x.....................x
-    xxxxxxxxxxxxxxxxxxxxxxx
+    BxxxxxxxxxxxxxxxxxxxxxxxT
+    Bx..........x..........xB
+    Bx*xxx.xxxx.x.xxxx.xxx*xB
+    Bx.xxx.xxxx.x.xxxx.xxx.xB
+    Bx.....................xB
+    Bx.xxx.x.xxxxxxx.x.xxx.xB
+    Bx.....x....x....x.....xB
+    Bxxxxx.xxxxBxBxxxx.xxxxxB
+    BBBBBx.xBBBBBBBBBx.xBBBBB
+    Bxxxxx.xB┌──=──┐Bx.xxxxxB
+    ZYBBBB.BB│abBcd│BB.BBBBWX
+    Bxxxxx.xB└─────┘Bx.xxxxxB
+    BBBBBx.xBBBfΩBBBBx.xBBBBB
+    Bxxxxx.xBxxxxxxxBx.xxxxxB
+    Bx..........x..........xB
+    Bx.xxx.xxxx.x.xxxx.xxx.xB
+    Bx*..x.............x..*xB
+    Bxxx.x.x.xxxxxxx.x.x.xxxB
+    Bx.....x....x....x.....xB
+    Bx.xxxxxxxx.x.xxxxxxxx.xB
+    Bx.....................xB
+    BxxxxxxxxxxxxxxxxxxxxxxxB

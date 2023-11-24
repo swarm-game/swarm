@@ -9,8 +9,10 @@ import Brick.Focus
 import Control.Lens
 import Control.Monad (forM_, unless)
 import Control.Monad.IO.Class (liftIO)
+import Data.Map qualified as M
 import Graphics.Vty qualified as V
 import Swarm.Game.State
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
@@ -51,9 +53,9 @@ openModal mt = do
  where
   -- Set the game to AutoPause if needed
   ensurePause = do
-    pause <- use $ gameState . paused
+    pause <- use $ gameState . temporal . paused
     unless (pause || isRunningModal mt) $ do
-      gameState . runStatus .= AutoPause
+      gameState . temporal . runStatus .= AutoPause
 
 -- | The running modals do not autopause the game.
 isRunningModal :: ModalType -> Bool
@@ -77,17 +79,18 @@ loadVisibleRegion = do
   mext <- lookupExtent WorldExtent
   forM_ mext $ \(Extent _ _ size) -> do
     gs <- use gameState
-    gameState . world %= W.loadRegion (viewingRegion gs (over both fromIntegral size))
+    let vr = viewingRegion (gs ^. robotInfo . viewCenter) (over both fromIntegral size)
+    gameState . landscape . multiWorld %= M.adjust (W.loadRegion (vr ^. planar)) (vr ^. subworld)
 
-mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe W.Coords)
+mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe (Cosmic W.Coords))
 mouseLocToWorldCoords (Brick.Location mouseLoc) = do
   mext <- lookupExtent WorldExtent
   case mext of
     Nothing -> pure Nothing
     Just ext -> do
-      region <- gets $ flip viewingRegion (bimap fromIntegral fromIntegral (extentSize ext))
-      let regionStart = W.unCoords (fst region)
+      region <- gets $ flip viewingRegion (bimap fromIntegral fromIntegral (extentSize ext)) . view (robotInfo . viewCenter)
+      let regionStart = W.unCoords (fst $ region ^. planar)
           mouseLoc' = bimap fromIntegral fromIntegral mouseLoc
           mx = snd mouseLoc' + fst regionStart
           my = fst mouseLoc' + snd regionStart
-       in pure . Just $ W.Coords (mx, my)
+       in pure . Just $ Cosmic (region ^. subworld) $ W.Coords (mx, my)

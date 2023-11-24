@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -8,14 +9,26 @@ module Swarm.App where
 
 import Brick
 import Brick.BChan
+import Control.Carrier.Lift (runM)
+import Control.Carrier.Throw.Either (runThrow)
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Lens (view, (%~), (&), (?~))
-import Control.Monad.Except
+import Control.Monad (forever, void, when)
+import Control.Monad.IO.Class (liftIO)
 import Data.IORef (newIORef, writeIORef)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
-import Swarm.Game.Robot (ErrorLevel (..), LogSource (ErrorTrace, Said))
+#if defined(mingw32_HOST_OS) || defined(__MINGW32__)
+import Graphics.Vty.Platform.Windows.Settings qualified as VS
+import Graphics.Vty.Platform.Windows qualified as VS
+#else
+import Graphics.Vty.Platform.Unix.Settings qualified as VS
+import Graphics.Vty.Platform.Unix qualified as VS
+#endif
+import Swarm.Game.Failure (SystemFailure)
+import Swarm.Language.Pretty (prettyText)
+import Swarm.Log (LogSource (SystemLog), Severity (..))
 import Swarm.ReadableIORef (mkReadonly)
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
@@ -28,7 +41,8 @@ import System.IO (stderr)
 
 type EventHandler = BrickEvent Name AppEvent -> EventM Name AppState ()
 
--- | The definition of the app used by the @brick@ library.
+-- | The configuration of the Swarm app which we pass to the @brick@
+--   library.
 app :: EventHandler -> App AppState AppEvent Name
 app eventHandler =
   App
@@ -43,9 +57,9 @@ app eventHandler =
 --   some communication channels, and runs the UI.
 appMain :: AppOpts -> IO ()
 appMain opts = do
-  res <- runExceptT $ initAppState opts
+  res <- runM . runThrow $ initAppState opts
   case res of
-    Left errMsg -> T.hPutStrLn stderr errMsg
+    Left err -> T.hPutStrLn stderr (prettyText @SystemFailure err)
     Right s -> do
       -- Send Frame events as at a reasonable rate for 30 fps. The
       -- game is responsible for figuring out how many steps to take
@@ -81,8 +95,8 @@ appMain opts = do
           (mkReadonly appStateRef)
           chan
 
-      let logP p = logEvent Said ("Web API", -2) ("started on :" <> T.pack (show p))
-      let logE e = logEvent (ErrorTrace Error) ("Web API", -2) (T.pack e)
+      let logP p = logEvent SystemLog Info "Web API" ("started on :" <> T.pack (show p))
+      let logE e = logEvent SystemLog Error "Web API" (T.pack e)
       let s' =
             s
               & runtimeState
@@ -97,22 +111,28 @@ appMain opts = do
             handleEvent e
 
       -- Setup virtual terminal
-      let buildVty = V.mkVty $ V.defaultConfig {V.colorMode = colorMode opts}
-      initialVty <- buildVty
-      V.setMode (V.outputIface initialVty) V.Mouse True
+      let buildVty =
+            case colorMode opts of
+              Nothing -> VS.mkVty V.defaultConfig
+              Just cMode -> do
+                platformSettings <- VS.defaultSettings
+                VS.mkVtyWithSettings V.defaultConfig $ platformSettings {VS.settingColorMode = cMode}
+      vty <- buildVty
+
+      V.setMode (V.outputIface vty) V.Mouse True
 
       -- Run the app.
-      void $ customMain initialVty buildVty (Just chan) (app eventHandler) s'
+      void $ customMain vty buildVty (Just chan) (app eventHandler) s'
 
 -- | A demo program to run the web service directly, without the terminal application.
--- This is useful to live update the code using `ghcid -W --test "Swarm.App.demoWeb"`
+--   This is useful to live update the code using @ghcid -W --test "Swarm.App.demoWeb"@.
 demoWeb :: IO ()
 demoWeb = do
   let demoPort = 8080
   res <-
-    runExceptT $ initAppState (defaultAppOpts {userScenario = demoScenario})
+    runM . runThrow $ initAppState (defaultAppOpts {userScenario = demoScenario})
   case res of
-    Left errMsg -> T.putStrLn errMsg
+    Left err -> T.putStrLn (prettyText @SystemFailure err)
     Right s -> do
       appStateRef <- newIORef s
       chan <- newBChan 5

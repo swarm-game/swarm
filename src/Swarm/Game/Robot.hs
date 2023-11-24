@@ -13,9 +13,6 @@
 module Swarm.Game.Robot (
   -- * Robots data
 
-  -- * Robot log entries
-  module Swarm.Game.Log,
-
   -- * Robots
   RobotPhase (..),
   RID,
@@ -33,11 +30,13 @@ module Swarm.Game.Robot (
   defVals,
   defStore,
   emptyRobotContext,
+  WalkabilityContext (..),
 
   -- ** Lenses
   robotEntity,
   robotName,
   trobotName,
+  unwalkableEntities,
   robotCreatedAt,
   robotDisplay,
   robotLocation,
@@ -50,6 +49,7 @@ module Swarm.Game.Robot (
   robotLogUpdated,
   inventoryHash,
   robotCapabilities,
+  walkabilityContext,
   robotContext,
   trobotContext,
   robotID,
@@ -58,8 +58,13 @@ module Swarm.Game.Robot (
   machine,
   systemRobot,
   selfDestruct,
-  tickSteps,
   runningAtomic,
+  activityCounts,
+  tickStepBudget,
+  tangibleCommandCount,
+  commandsHistogram,
+  lifetimeStepCount,
+  activityWindow,
 
   -- ** Creation & instantiation
   mkRobot,
@@ -76,10 +81,12 @@ module Swarm.Game.Robot (
   hearingDistance,
 ) where
 
-import Control.Lens hiding (contains)
-import Data.Aeson (FromJSON, ToJSON)
+import Control.Lens hiding (Const, contains)
+import Data.Aeson qualified as Ae (FromJSON, Key, KeyValue, ToJSON (..), object, (.=))
 import Data.Hashable (hashWithSalt)
-import Data.Maybe (fromMaybe, isNothing)
+import Data.Kind qualified
+import Data.Map (Map)
+import Data.Maybe (catMaybes, fromMaybe, isNothing)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
@@ -93,14 +100,19 @@ import Swarm.Game.CESK
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location (Heading, Location, toDirection)
-import Swarm.Game.Log
+import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
+import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Requirement (ReqCtx)
+import Swarm.Language.Syntax (Const, Syntax)
+import Swarm.Language.Text.Markdown (Document)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types (TCtx)
 import Swarm.Language.Value as V
-import Swarm.Util.Lens (makeLensesExcluding)
+import Swarm.Log
+import Swarm.Util.Lens (makeLensesExcluding, makeLensesNoSigs)
+import Swarm.Util.WindowedCounter
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
 
@@ -120,7 +132,7 @@ data RobotContext = RobotContext
   -- ^ A store containing memory cells allocated to hold
   --   definitions.
   }
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic, Ae.FromJSON, Ae.ToJSON)
 
 makeLenses ''RobotContext
 
@@ -163,14 +175,93 @@ data RobotPhase
   | -- | The robot record represents a concrete robot in the world.
     ConcreteRobot
 
+data ActivityCounts = ActivityCounts
+  { _tickStepBudget :: Int
+  , _tangibleCommandCount :: Int
+  , _commandsHistogram :: Map Const Int
+  , _lifetimeStepCount :: Int
+  , _activityWindow :: WindowedCounter TickNumber
+  }
+  deriving (Eq, Show, Generic, Ae.FromJSON, Ae.ToJSON)
+
+emptyActivityCount :: ActivityCounts
+emptyActivityCount =
+  ActivityCounts
+    { _tickStepBudget = 0
+    , _tangibleCommandCount = 0
+    , _commandsHistogram = mempty
+    , _lifetimeStepCount = 0
+    , -- NOTE: This value was chosen experimentally.
+      -- TODO(#1341): Make this dynamic based on game speed.
+      _activityWindow = mkWindow 64
+    }
+
+makeLensesNoSigs ''ActivityCounts
+
+-- | A counter that is decremented upon each step of the robot within the
+--   CESK machine. Initially set to 'Swarm.Game.State.robotStepsPerTick'
+--   at each new tick.
+--
+--   The need for 'tickStepBudget' is a bit technical, and I hope I can
+--   eventually find a different, better way to accomplish it.
+--   Ideally, we would want each robot to execute a single
+--   /command/ at every game tick, so that /e.g./ two robots
+--   executing @move;move;move@ and @repeat 3 move@ (given a
+--   suitable definition of @repeat@) will move in lockstep.
+--   However, the second robot actually has to do more computation
+--   than the first (it has to look up the definition of @repeat@,
+--   reduce its application to the number 3, etc.), so its CESK
+--   machine will take more steps.  It won't do to simply let each
+--   robot run until executing a command---because robot programs
+--   can involve arbitrary recursion, it is very easy to write a
+--   program that evaluates forever without ever executing a
+--   command, which in this scenario would completely freeze the
+--   UI. (It also wouldn't help to ensure all programs are
+--   terminating---it would still be possible to effectively do
+--   the same thing by making a program that takes a very, very
+--   long time to terminate.)  So instead, we allocate each robot
+--   a certain maximum number of computation steps per tick
+--   (defined in 'Swarm.Game.Step.evalStepsPerTick'), and it
+--   suspends computation when it either executes a command or
+--   reaches the maximum number of steps, whichever comes first.
+--
+--   It seems like this really isn't something the robot should be
+--   keeping track of itself, but that seemed the most technically
+--   convenient way to do it at the time.  The robot needs some
+--   way to signal when it has executed a command, which it
+--   currently does by setting tickStepBudget to zero.  However, that
+--   has the disadvantage that when tickStepBudget becomes zero, we
+--   can't tell whether that happened because the robot ran out of
+--   steps, or because it executed a command and set it to zero
+--   manually.
+--
+--   Perhaps instead, each robot should keep a counter saying how
+--   many commands it has executed.  The loop stepping the robot
+--   can tell when the counter increments.
+tickStepBudget :: Lens' ActivityCounts Int
+
+-- | Total number of tangible commands executed over robot's lifetime
+tangibleCommandCount :: Lens' ActivityCounts Int
+
+-- | Histogram of commands executed over robot's lifetime
+commandsHistogram :: Lens' ActivityCounts (Map Const Int)
+
+-- | Total number of CESK steps executed over robot's lifetime.
+-- This could be thought of as "CPU cycles" consumed, and is labeled
+-- as "cycles" in the F2 dialog in the UI.
+lifetimeStepCount :: Lens' ActivityCounts Int
+
+-- | Sliding window over a span of ticks indicating ratio of activity
+activityWindow :: Lens' ActivityCounts (WindowedCounter TickNumber)
+
 -- | With a robot template, we may or may not have a location.  With a
 --   concrete robot we must have a location.
-type family RobotLocation (phase :: RobotPhase) :: * where
-  RobotLocation 'TemplateRobot = Maybe Location
-  RobotLocation 'ConcreteRobot = Location
+type family RobotLocation (phase :: RobotPhase) :: Data.Kind.Type where
+  RobotLocation 'TemplateRobot = Maybe (Cosmic Location)
+  RobotLocation 'ConcreteRobot = Cosmic Location
 
 -- | Robot templates have no ID; concrete robots definitely do.
-type family RobotID (phase :: RobotPhase) :: * where
+type family RobotID (phase :: RobotPhase) :: Data.Kind.Type where
   RobotID 'TemplateRobot = ()
   RobotID 'ConcreteRobot = RID
 
@@ -193,16 +284,15 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _machine :: CESK
   , _systemRobot :: Bool
   , _selfDestruct :: Bool
-  , _tickSteps :: Int
+  , _activityCounts :: ActivityCounts
   , _runningAtomic :: Bool
+  , _unwalkableEntities :: Set EntityName
   , _robotCreatedAt :: TimeSpec
   }
   deriving (Generic)
 
 deriving instance (Show (RobotLocation phase), Show (RobotID phase)) => Show (RobotR phase)
 deriving instance (Eq (RobotLocation phase), Eq (RobotID phase)) => Eq (RobotR phase)
-
-deriving instance (ToJSON (RobotLocation phase), ToJSON (RobotID phase)) => ToJSON (RobotR phase)
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
@@ -217,7 +307,25 @@ type TRobot = RobotR 'TemplateRobot
 type Robot = RobotR 'ConcreteRobot
 
 instance ToSample Robot where
-  toSamples _ = SD.noSamples
+  toSamples _ = SD.singleSample sampleBase
+   where
+    sampleBase :: Robot
+    sampleBase =
+      mkRobot
+        0
+        Nothing
+        "base"
+        "The starting robot."
+        defaultCosmicLocation
+        zero
+        defaultRobotDisplay
+        (initMachine [tmQ| move |] mempty emptyStore)
+        []
+        []
+        False
+        False
+        mempty
+        0
 
 -- In theory we could make all these lenses over (RobotR phase), but
 -- that leads to lots of type ambiguity problems later.  In practice
@@ -235,11 +343,15 @@ instance ToSample Robot where
 --   . 'entityName'@.
 robotEntity :: Lens' (RobotR phase) Entity
 
+-- | Entities that the robot cannot move onto
+unwalkableEntities :: Lens' Robot (Set EntityName)
+
 -- | The creation date of the robot.
 robotCreatedAt :: Lens' Robot TimeSpec
 
--- robotName and trobotName could be generalized to robotName' ::
--- Lens' (RobotR phase) Text.  However, type inference does not work
+-- robotName and trobotName could be generalized to
+-- @robotName' :: Lens' (RobotR phase) Text@.
+-- However, type inference does not work
 -- very well with the polymorphic version, so we export both
 -- monomorphic versions instead.
 
@@ -265,23 +377,23 @@ robotDisplay = lens getDisplay setDisplay
       & curOrientation .~ ((r ^. robotOrientation) >>= toDirection)
   setDisplay r d = r & robotEntity . entityDisplay .~ d
 
--- | The robot's current location, represented as (x,y).  This is only
+-- | The robot's current location, represented as @(x,y)@.  This is only
 --   a getter, since when changing a robot's location we must remember
---   to update the 'robotsByLocation' map as well.  You can use the
---   'updateRobotLocation' function for this purpose.
-robotLocation :: Getter Robot Location
+--   to update the 'Swarm.Game.State.robotsByLocation' map as well.  You can use the
+--   'Swarm.Game.Step.updateRobotLocation' function for this purpose.
+robotLocation :: Getter Robot (Cosmic Location)
 
 -- | Set a robot's location.  This is unsafe and should never be
---   called directly except by the 'updateRobotLocation' function.
---   The reason is that we need to make sure the 'robotsByLocation'
+--   called directly except by the 'Swarm.Game.Step.updateRobotLocation' function.
+--   The reason is that we need to make sure the 'Swarm.Game.State.robotsByLocation'
 --   map stays in sync.
-unsafeSetRobotLocation :: Location -> Robot -> Robot
+unsafeSetRobotLocation :: Cosmic Location -> Robot -> Robot
 unsafeSetRobotLocation loc r = r {_robotLocation = loc}
 
 -- | A template robot's location.  Unlike 'robotLocation', this is a
 --   lens, since when dealing with robot templates there is as yet no
---   'robotsByLocation' map to keep up-to-date.
-trobotLocation :: Lens' TRobot (Maybe Location)
+--   'Swarm.Game.State.robotsByLocation' map to keep up-to-date.
+trobotLocation :: Lens' TRobot (Maybe (Cosmic Location))
 trobotLocation = lens _robotLocation (\r l -> r {_robotLocation = l})
 
 -- | Which way the robot is currently facing.
@@ -312,7 +424,7 @@ instantiateRobot :: RID -> TRobot -> Robot
 instantiateRobot i r =
   r
     { _robotID = i
-    , _robotLocation = fromMaybe zero (_robotLocation r)
+    , _robotLocation = fromMaybe defaultCosmicLocation $ _robotLocation r
     }
 
 -- | The ID number of the robot's parent, that is, the robot that
@@ -340,8 +452,8 @@ equippedDevices = lens _equippedDevices setEquipped
       }
 
 -- | The robot's own private message log, most recent message last.
---   Messages can be added both by explicit use of the 'Log' command,
---   and by uncaught exceptions.  Stored as a "Data.Sequence" so that
+--   Messages can be added both by explicit use of the 'Swarm.Language.Syntax.Log' command,
+--   and by uncaught exceptions.  Stored as a 'Seq' so that
 --   we can efficiently add to the end and also process from beginning
 --   to end.  Note that updating via this lens will also set the
 --   'robotLogUpdated'.
@@ -392,46 +504,23 @@ systemRobot :: Lens' Robot Bool
 -- | Does this robot wish to self destruct?
 selfDestruct :: Lens' Robot Bool
 
--- | The need for 'tickSteps' is a bit technical, and I hope I can
---   eventually find a different, better way to accomplish it.
---   Ideally, we would want each robot to execute a single
---   /command/ at every game tick, so that /e.g./ two robots
---   executing @move;move;move@ and @repeat 3 move@ (given a
---   suitable definition of @repeat@) will move in lockstep.
---   However, the second robot actually has to do more computation
---   than the first (it has to look up the definition of @repeat@,
---   reduce its application to the number 3, etc.), so its CESK
---   machine will take more steps.  It won't do to simply let each
---   robot run until executing a command---because robot programs
---   can involve arbitrary recursion, it is very easy to write a
---   program that evaluates forever without ever executing a
---   command, which in this scenario would completely freeze the
---   UI. (It also wouldn't help to ensure all programs are
---   terminating---it would still be possible to effectively do
---   the same thing by making a program that takes a very, very
---   long time to terminate.)  So instead, we allocate each robot
---   a certain maximum number of computation steps per tick
---   (defined in 'Swarm.Game.Step.evalStepsPerTick'), and it
---   suspends computation when it either executes a command or
---   reaches the maximum number of steps, whichever comes first.
---
---   It seems like this really isn't something the robot should be
---   keeping track of itself, but that seemed the most technically
---   convenient way to do it at the time.  The robot needs some
---   way to signal when it has executed a command, which it
---   currently does by setting tickSteps to zero.  However, that
---   has the disadvantage that when tickSteps becomes zero, we
---   can't tell whether that happened because the robot ran out of
---   steps, or because it executed a command and set it to zero
---   manually.
---
---   Perhaps instead, each robot should keep a counter saying how
---   many commands it has executed.  The loop stepping the robot
---   can tell when the counter increments.
-tickSteps :: Lens' Robot Int
+-- | Diagnostic and operational tracking of CESK steps or other activity
+activityCounts :: Lens' Robot ActivityCounts
 
 -- | Is the robot currently running an atomic block?
 runningAtomic :: Lens' Robot Bool
+
+-- | Properties of a robot used to determine whether an entity is walkable
+data WalkabilityContext
+  = WalkabilityContext
+      (Set Capability)
+      -- | which entities are unwalkable by this robot
+      (Set EntityName)
+  deriving (Show, Eq, Generic, Ae.ToJSON)
+
+walkabilityContext :: Getter Robot WalkabilityContext
+walkabilityContext = to $
+  \x -> WalkabilityContext (_robotCapabilities x) (_unwalkableEntities x)
 
 -- | A general function for creating robots.
 mkRobot ::
@@ -442,7 +531,7 @@ mkRobot ::
   -- | Name of the robot.
   Text ->
   -- | Description of the robot.
-  [Text] ->
+  Document Syntax ->
   -- | Initial location.
   RobotLocation phase ->
   -- | Initial heading/direction.
@@ -459,10 +548,12 @@ mkRobot ::
   Bool ->
   -- | Is this robot heavy?
   Bool ->
+  -- | Unwalkable entities
+  Set EntityName ->
   -- | Creation date
   TimeSpec ->
   RobotR phase
-mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
+mkRobot rid pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
   RobotR
     { _robotEntity =
         mkEntity disp name descr [] []
@@ -481,8 +572,9 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy ts =
     , _machine = m
     , _systemRobot = sys
     , _selfDestruct = False
-    , _tickSteps = 0
+    , _activityCounts = emptyActivityCount
     , _runningAtomic = False
+    , _unwalkableEntities = unwalkables
     }
  where
   inst = fromList devs
@@ -499,7 +591,7 @@ instance FromJSONE EntityMap TRobot where
 
     mkRobot () Nothing
       <$> liftE (v .: "name")
-      <*> liftE (v .:? "description" .!= [])
+      <*> liftE (v .:? "description" .!= mempty)
       <*> liftE (v .:? "loc")
       <*> liftE (v .:? "dir" .!= zero)
       <*> localE (const defDisplay) (v ..:? "display" ..!= defDisplay)
@@ -508,10 +600,46 @@ instance FromJSONE EntityMap TRobot where
       <*> v ..:? "inventory" ..!= []
       <*> pure sys
       <*> liftE (v .:? "heavy" .!= False)
+      <*> liftE (v .:? "unwalkable" ..!= mempty)
       <*> pure 0
    where
     mkMachine Nothing = Out VUnit emptyStore []
     mkMachine (Just pt) = initMachine pt mempty emptyStore
+
+(.=?) :: (Ae.KeyValue a, Ae.ToJSON v, Eq v) => Ae.Key -> v -> v -> Maybe a
+(.=?) n v defaultVal = if defaultVal /= v then Just $ n Ae..= v else Nothing
+
+(.==) :: (Ae.KeyValue a, Ae.ToJSON v) => Ae.Key -> v -> Maybe a
+(.==) n v = Just $ n Ae..= v
+
+instance Ae.ToJSON Robot where
+  toJSON r =
+    Ae.object $
+      catMaybes
+        [ "id" .== (r ^. robotID)
+        , "name" .== (r ^. robotEntity . entityDisplay)
+        , "description" .=? (r ^. robotEntity . entityDescription) $ mempty
+        , "loc" .== (r ^. robotLocation)
+        , "dir" .=? (r ^. robotEntity . entityOrientation) $ zero
+        , "display" .=? (r ^. robotDisplay) $ (defaultRobotDisplay & invisible .~ sys)
+        , "program" .== (r ^. machine)
+        , "devices" .=? (map (^. _2 . entityName) . elems $ r ^. equippedDevices) $ []
+        , "inventory" .=? (map (_2 %~ view entityName) . elems $ r ^. robotInventory) $ []
+        , "system" .=? sys $ False
+        , "heavy" .=? (r ^. robotHeavy) $ False
+        , "log" .=? (r ^. robotLog) $ mempty
+        , -- debug
+          "capabilities" .=? (r ^. robotCapabilities) $ mempty
+        , "logUpdated" .=? (r ^. robotLogUpdated) $ False
+        , "context" .=? (r ^. robotContext) $ emptyRobotContext
+        , "parent" .=? (r ^. robotParentID) $ Nothing
+        , "createdAt" .=? (r ^. robotCreatedAt) $ 0
+        , "selfDestruct" .=? (r ^. selfDestruct) $ False
+        , "activity" .=? (r ^. activityCounts) $ emptyActivityCount
+        , "runningAtomic" .=? (r ^. runningAtomic) $ False
+        ]
+   where
+    sys = r ^. systemRobot
 
 -- | Is the robot actively in the middle of a computation?
 isActive :: Robot -> Bool
@@ -520,7 +648,7 @@ isActive = isNothing . getResult
 
 -- | "Active" robots include robots that are waiting; 'wantsToStep' is
 --   true if the robot actually wants to take another step right now
---   (this is a *subset* of active robots).
+--   (this is a /subset/ of active robots).
 wantsToStep :: TickNumber -> Robot -> Bool
 wantsToStep now robot
   | not (isActive robot) = False
@@ -538,5 +666,5 @@ getResult :: Robot -> Maybe (Value, Store)
 {-# INLINE getResult #-}
 getResult = finalValue . view machine
 
-hearingDistance :: Num i => i
+hearingDistance :: (Num i) => i
 hearingDistance = 32

@@ -95,6 +95,18 @@ testPrettyConst =
         ( equalPretty "1 : int" $
             TAnnotate (TInt 1) (Forall [] TyInt)
         )
+    , testCase
+        "lambda precedence (#1468)"
+        ( equalPretty "\\m. case m (\\x. x + 1) (\\y. y * 2)" $
+            TLam
+              "m"
+              Nothing
+              ( TConst Case
+                  :$: STerm (TVar "m")
+                  :$: STerm (TLam "x" Nothing (mkOp' Add (TVar "x") (TInt 1)))
+                  :$: STerm (TLam "y" Nothing (mkOp' Mul (TVar "y") (TInt 2)))
+              )
+        )
     ]
  where
   equalPretty :: String -> Term -> Assertion

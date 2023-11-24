@@ -1,7 +1,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Ensures that access to an IORef is read-only
+-- Ensures that access to an 'IORef' is read-only
 -- by hiding behind a newtype.
 module Swarm.ReadableIORef (mkReadonly, ReadableIORef, readIORef) where
 

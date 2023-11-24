@@ -47,7 +47,6 @@ robots:
       y <- random 11;
       teleport base (x-5, y-5)
 world:
-  default: [blank]
   palette:
     '.': [grass]
   upperleft: [-5, 5]

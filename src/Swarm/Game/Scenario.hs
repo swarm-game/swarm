@@ -21,6 +21,9 @@ module Swarm.Game.Scenario (
 
   -- * Scenario
   Scenario (..),
+  StaticStructureInfo (..),
+  staticPlacements,
+  structureDefs,
 
   -- ** Fields
   scenarioVersion,
@@ -31,9 +34,12 @@ module Swarm.Game.Scenario (
   scenarioSeed,
   scenarioAttrs,
   scenarioEntities,
+  scenarioCosmetics,
   scenarioRecipes,
   scenarioKnown,
-  scenarioWorld,
+  scenarioWorlds,
+  scenarioNavigation,
+  scenarioStructures,
   scenarioRobots,
   scenarioObjectives,
   scenarioSolution,
@@ -43,36 +49,71 @@ module Swarm.Game.Scenario (
   loadScenario,
   loadScenarioFile,
   getScenarioPath,
+  loadStandaloneScenario,
 ) where
 
+import Control.Arrow ((&&&))
+import Control.Carrier.Throw.Either (runThrow)
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Throw
 import Control.Lens hiding (from, (.=), (<.>))
-import Control.Monad (filterM)
-import Control.Monad.Except (ExceptT (..), MonadIO, liftIO, runExceptT, withExceptT)
-import Control.Monad.Trans.Except (except)
+import Control.Monad (filterM, unless, (<=<))
 import Data.Aeson
-import Data.Either.Extra (eitherToMaybe, maybeToEither)
-import Data.Maybe (catMaybes, isNothing, listToMaybe)
+import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty qualified as NE
+import Data.Map qualified as M
+import Data.Maybe (catMaybes, isNothing, listToMaybe, mapMaybe)
+import Data.Sequence (Seq)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Entity
+import Swarm.Game.Entity.Cosmetic
+import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Failure
-import Swarm.Game.Failure.Render
+import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot (TRobot)
-import Swarm.Game.Scenario.Cell
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Style
-import Swarm.Game.Scenario.WorldDescription
+import Swarm.Game.Scenario.Topography.Cell
+import Swarm.Game.Scenario.Topography.Navigation.Portal
+import Swarm.Game.Scenario.Topography.Navigation.Waypoint (Parentage (..))
+import Swarm.Game.Scenario.Topography.Structure qualified as Structure
+import Swarm.Game.Scenario.Topography.WorldDescription
+import Swarm.Game.Universe
+import Swarm.Game.World.Load (loadWorlds)
+import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Util (failT)
+import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown (Document)
+import Swarm.Util (binTuples, failT)
+import Swarm.Util.Effect (ignoreWarnings, throwToMaybe, withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
-import Witch (from)
+
+data StaticStructureInfo = StaticStructureInfo
+  { _structureDefs :: [Structure.NamedGrid (Maybe Cell)]
+  , _staticPlacements :: M.Map SubworldName [Structure.LocatedStructure]
+  }
+  deriving (Show)
+
+makeLensesNoSigs ''StaticStructureInfo
+
+-- | Structure templates that may be auto-recognized when constructed
+-- by a robot
+structureDefs :: Lens' StaticStructureInfo [Structure.NamedGrid (Maybe Cell)]
+
+-- | A record of the static placements of structures, so that they can be
+-- added to the "recognized" list upon scenario initialization
+staticPlacements :: Lens' StaticStructureInfo (M.Map SubworldName [Structure.LocatedStructure])
 
 ------------------------------------------------------------
 -- Scenario
@@ -84,35 +125,51 @@ data Scenario = Scenario
   { _scenarioVersion :: Int
   , _scenarioName :: Text
   , _scenarioAuthor :: Maybe Text
-  , _scenarioDescription :: Text
+  , _scenarioDescription :: Document Syntax
   , _scenarioCreative :: Bool
   , _scenarioSeed :: Maybe Int
   , _scenarioAttrs :: [CustomAttr]
   , _scenarioEntities :: EntityMap
+  , _scenarioCosmetics :: M.Map WorldAttr PreservableColor
   , _scenarioRecipes :: [Recipe Entity]
-  , _scenarioKnown :: [Text]
-  , _scenarioWorld :: WorldDescription
+  , _scenarioKnown :: Set EntityName
+  , _scenarioWorlds :: NonEmpty WorldDescription
+  , _scenarioNavigation :: Navigation (M.Map SubworldName) Location
+  , _scenarioStructures :: StaticStructureInfo
   , _scenarioRobots :: [TRobot]
   , _scenarioObjectives :: [Objective]
   , _scenarioSolution :: Maybe ProcessedTerm
   , _scenarioStepsPerTick :: Maybe Int
   }
-  deriving (Eq, Show)
+  deriving (Show)
 
 makeLensesNoSigs ''Scenario
 
-instance FromJSONE EntityMap Scenario where
+instance FromJSONE (EntityMap, WorldMap) Scenario where
   parseJSONE = withObjectE "scenario" $ \v -> do
     -- parse custom entities
     emRaw <- liftE (v .:? "entities" .!= [])
-    em <- case buildEntityMap emRaw of
-      Right x -> return x
-      Left x -> failT [x]
-    -- extend ambient EntityMap with custom entities
 
-    withE em $ do
+    parsedAttrs <- liftE (v .:? "attrs" .!= [])
+    let mergedCosmetics = worldAttributes <> M.fromList (mapMaybe toHifiPair parsedAttrs)
+        attrsUnion = M.keysSet mergedCosmetics
+
+    case run . runThrow $ validateAttrRefs attrsUnion emRaw of
+      Right x -> return x
+      Left x -> failT [prettyText @LoadingFailure x]
+
+    em <- case run . runThrow $ buildEntityMap emRaw of
+      Right x -> return x
+      Left x -> failT [prettyText @LoadingFailure x]
+
+    -- Save the passed in WorldMap for later
+    worldMap <- snd <$> getE
+
+    -- Get rid of WorldMap from context locally, and combine EntityMap
+    -- with any custom entities parsed above
+    localE fst $ withE em $ do
       -- parse 'known' entity names and make sure they exist
-      known <- liftE (v .:? "known" .!= [])
+      known <- liftE (v .:? "known" .!= mempty)
       em' <- getE
       case filter (isNothing . (`lookupEntityName` em')) known of
         [] -> return ()
@@ -122,6 +179,59 @@ instance FromJSONE EntityMap Scenario where
       rs <- v ..: "robots"
       let rsMap = buildRobotMap rs
 
+      -- NOTE: These have not been merged with their children yet.
+      rootLevelSharedStructures :: Structure.InheritedStructureDefs <-
+        localE (,rsMap) $
+          v ..:? "structures" ..!= []
+
+      -- TODO (#1611) This is inefficient; instead, we should
+      -- form a DAG of structure references and visit deepest first,
+      -- caching in a map as we go.
+      -- Then, if a given sub-structure is referenced more than once, we don't
+      -- have to re-assemble it.
+      --
+      -- We should also make use of such a pre-computed map in the
+      -- invocation of 'mergeStructures' inside WorldDescription.hs.
+      mergedStructures <-
+        either (fail . T.unpack) return $
+          mapM
+            (sequenceA . (id &&& (Structure.mergeStructures mempty Root . Structure.structure)))
+            rootLevelSharedStructures
+
+      let namedGrids = map (\(ns, Structure.MergedStructure s _ _) -> Structure.Grid s <$ ns) mergedStructures
+
+      allWorlds <- localE (worldMap,rootLevelSharedStructures,,rsMap) $ do
+        rootWorld <- v ..: "world"
+        subworlds <- v ..:? "subworlds" ..!= []
+        return $ rootWorld :| subworlds
+
+      let worldsByName = binTuples $ NE.toList $ NE.map (worldName &&& id) allWorlds
+          dupedNames = M.keys $ M.filter ((> 1) . length) worldsByName
+      unless (null dupedNames) $
+        failT
+          [ "Subworld names are not unique:"
+          , T.intercalate ", " $ map renderWorldName dupedNames
+          ]
+
+      let mergedWaypoints =
+            M.fromList $
+              map (worldName &&& runIdentity . waypoints . navigation) $
+                NE.toList allWorlds
+
+      mergedPortals <-
+        validatePortals
+          . Navigation mergedWaypoints
+          . M.unions
+          . map (portals . navigation)
+          $ NE.toList allWorlds
+
+      let mergedNavigation = Navigation mergedWaypoints mergedPortals
+          structureInfo =
+            StaticStructureInfo (filter Structure.recognize namedGrids)
+              . M.fromList
+              . NE.toList
+              $ NE.map (worldName &&& placedStructures) allWorlds
+
       Scenario
         <$> liftE (v .: "version")
         <*> liftE (v .: "name")
@@ -129,11 +239,14 @@ instance FromJSONE EntityMap Scenario where
         <*> liftE (v .:? "description" .!= "")
         <*> liftE (v .:? "creative" .!= False)
         <*> liftE (v .:? "seed")
-        <*> liftE (v .:? "attrs" .!= [])
+        <*> pure parsedAttrs
         <*> pure em
+        <*> pure mergedCosmetics
         <*> v ..:? "recipes" ..!= []
-        <*> pure known
-        <*> localE (,rsMap) (v ..: "world")
+        <*> pure (Set.fromList known)
+        <*> pure allWorlds
+        <*> pure mergedNavigation
+        <*> pure structureInfo
         <*> pure rs
         <*> (liftE (v .:? "objectives" .!= []) >>= validateObjectives)
         <*> liftE (v .:? "solution")
@@ -156,7 +269,7 @@ scenarioAuthor :: Lens' Scenario (Maybe Text)
 
 -- | A high-level description of the scenario, shown /e.g./ in the
 --   menu.
-scenarioDescription :: Lens' Scenario Text
+scenarioDescription :: Lens' Scenario (Document Syntax)
 
 -- | Whether the scenario should start in creative mode.
 scenarioCreative :: Lens' Scenario Bool
@@ -171,15 +284,25 @@ scenarioAttrs :: Lens' Scenario [CustomAttr]
 -- | Any custom entities used for this scenario.
 scenarioEntities :: Lens' Scenario EntityMap
 
+-- | High-fidelity color map for entities
+scenarioCosmetics :: Lens' Scenario (M.Map WorldAttr PreservableColor)
+
 -- | Any custom recipes used in this scenario.
 scenarioRecipes :: Lens' Scenario [Recipe Entity]
 
 -- | List of entities that should be considered "known", so robots do
 --   not have to scan them.
-scenarioKnown :: Lens' Scenario [Text]
+scenarioKnown :: Lens' Scenario (Set EntityName)
 
--- | The starting world for the scenario.
-scenarioWorld :: Lens' Scenario WorldDescription
+-- | The subworlds of the scenario.
+-- The "root" subworld shall always be at the head of the list, by construction.
+scenarioWorlds :: Lens' Scenario (NonEmpty WorldDescription)
+
+-- | Information required for structure recognition
+scenarioStructures :: Lens' Scenario StaticStructureInfo
+
+-- | Waypoints and inter-world portals
+scenarioNavigation :: Lens' Scenario (Navigation (M.Map SubworldName) Location)
 
 -- | The starting robots for the scenario.  Note this should
 --   include the base.
@@ -201,39 +324,49 @@ scenarioStepsPerTick :: Lens' Scenario (Maybe Int)
 ------------------------------------------------------------
 
 getScenarioPath ::
-  MonadIO m =>
+  (Has (Lift IO) sig m) =>
   FilePath ->
   m (Maybe FilePath)
 getScenarioPath scenario = do
-  libScenario <- e2m $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario
-  libScenarioExt <- e2m $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario <.> "yaml"
+  libScenario <- throwToMaybe @SystemFailure $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario
+  libScenarioExt <- throwToMaybe @SystemFailure $ getDataFileNameSafe Scenarios $ "scenarios" </> scenario <.> "yaml"
   let candidates = catMaybes [Just scenario, libScenarioExt, libScenario]
-  listToMaybe <$> liftIO (filterM doesFileExist candidates)
- where
-  e2m = fmap eitherToMaybe . runExceptT
+  listToMaybe <$> sendIO (filterM doesFileExist candidates)
 
 -- | Load a scenario with a given name from disk, given an entity map
 --   to use.  This function is used if a specific scenario is
 --   requested on the command line.
 loadScenario ::
-  MonadIO m =>
-  String ->
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  FilePath ->
   EntityMap ->
-  ExceptT Text m (Scenario, FilePath)
-loadScenario scenario em = do
-  mfileName <- liftIO $ getScenarioPath scenario
-  fileName <- except $ maybeToEither ("Scenario not found: " <> from @String scenario) mfileName
-  s <- withExceptT prettyFailure $ loadScenarioFile em fileName
-  return (s, fileName)
+  WorldMap ->
+  m (Scenario, FilePath)
+loadScenario scenario em worldMap = do
+  mfileName <- getScenarioPath scenario
+  fileName <- maybe (throwError $ ScenarioNotFound scenario) return mfileName
+  (,fileName) <$> loadScenarioFile em worldMap fileName
 
 -- | Load a scenario from a file.
 loadScenarioFile ::
-  MonadIO m =>
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   EntityMap ->
+  WorldMap ->
   FilePath ->
-  ExceptT SystemFailure m Scenario
-loadScenarioFile em fileName =
-  withExceptT (AssetNotLoaded (Data Scenarios) fileName . CanNotParse)
-    . ExceptT
-    . liftIO
-    $ decodeFileEitherE em fileName
+  m Scenario
+loadScenarioFile em worldMap fileName =
+  (withThrow adaptError . (liftEither <=< sendIO)) $
+    decodeFileEitherE (em, worldMap) fileName
+ where
+  adaptError = AssetNotLoaded (Data Scenarios) fileName . CanNotParseYaml
+
+loadStandaloneScenario ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  FilePath ->
+  m (Scenario, (WorldMap, EntityMap, [Recipe Entity]))
+loadStandaloneScenario fp = do
+  entities <- loadEntities
+  recipes <- loadRecipes entities
+  worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds entities
+  scene <- fst <$> loadScenario fp entities worlds
+  return (scene, (worlds, entities, recipes))

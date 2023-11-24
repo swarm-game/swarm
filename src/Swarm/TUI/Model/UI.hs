@@ -20,12 +20,11 @@ module Swarm.TUI.Model.UI (
   uiInventory,
   uiInventorySort,
   uiInventorySearch,
-  uiMoreInfoTop,
-  uiMoreInfoBot,
   uiScrollToEnd,
-  uiError,
   uiModal,
   uiGoal,
+  uiStructure,
+  uiHideGoals,
   uiAchievements,
   lgTicksPerSecond,
   lastFrameTime,
@@ -45,7 +44,6 @@ module Swarm.TUI.Model.UI (
   uiFPS,
   uiAttrMap,
   scenarioRef,
-  appData,
 
   -- ** Initialization
   initFocusRing,
@@ -57,24 +55,25 @@ import Brick (AttrMap)
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Arrow ((&&&))
+import Control.Effect.Accum
+import Control.Effect.Lift
 import Control.Lens hiding (from, (<.>))
-import Control.Monad.Except
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Failure.Render (prettyFailure)
-import Swarm.Game.ResourceLoading (getSwarmHistoryPath, readAppData)
+import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
+import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
-import Swarm.TUI.Attr (swarmAttrMap)
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Launch.Model
@@ -83,6 +82,8 @@ import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
+import Swarm.TUI.Model.Structure
+import Swarm.TUI.View.Attribute.Attr (swarmAttrMap)
 import Swarm.Util
 import Swarm.Util.Lens (makeLensesExcluding)
 import System.Clock
@@ -99,18 +100,17 @@ data UIState = UIState
   , _uiCheatMode :: Bool
   , _uiFocusRing :: FocusRing Name
   , _uiLaunchConfig :: LaunchOptions
-  , _uiWorldCursor :: Maybe W.Coords
+  , _uiWorldCursor :: Maybe (Cosmic W.Coords)
   , _uiWorldEditor :: WorldEditor Name
   , _uiREPL :: REPLState
   , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
   , _uiInventorySort :: InventorySortOptions
   , _uiInventorySearch :: Maybe Text
-  , _uiMoreInfoTop :: Bool
-  , _uiMoreInfoBot :: Bool
   , _uiScrollToEnd :: Bool
-  , _uiError :: Maybe Text
   , _uiModal :: Maybe Modal
   , _uiGoal :: GoalDisplay
+  , _uiStructure :: StructureDisplay
+  , _uiHideGoals :: Bool
   , _uiAchievements :: Map CategorizedAchievement Attainment
   , _uiShowFPS :: Bool
   , _uiShowREPL :: Bool
@@ -127,7 +127,6 @@ data UIState = UIState
   , _lastFrameTime :: TimeSpec
   , _accumulatedTime :: TimeSpec
   , _lastInfoTime :: TimeSpec
-  , _appData :: Map Text Text
   , _uiAttrMap :: AttrMap
   , _scenarioRef :: Maybe ScenarioInfoPair
   }
@@ -140,8 +139,11 @@ makeLensesExcluding ['_lgTicksPerSecond] ''UIState
 -- | The current menu state.
 uiMenu :: Lens' UIState Menu
 
--- | Are we currently playing the game?  True = we are playing, and
---   should thus display a world, REPL, etc.; False = we should
+-- | Are we currently playing the game?
+--
+-- * 'True' = we are playing, and
+--   should thus display a world, REPL, etc.
+-- * False = we should
 --   display the current menu.
 uiPlaying :: Lens' UIState Bool
 
@@ -152,11 +154,11 @@ uiCheatMode :: Lens' UIState Bool
 uiLaunchConfig :: Lens' UIState LaunchOptions
 
 -- | The focus ring is the set of UI panels we can cycle among using
---   the Tab key.
+--   the @Tab@ key.
 uiFocusRing :: Lens' UIState (FocusRing Name)
 
 -- | The last clicked position on the world view.
-uiWorldCursor :: Lens' UIState (Maybe W.Coords)
+uiWorldCursor :: Lens' UIState (Maybe (Cosmic W.Coords))
 
 -- | State of all World Editor widgets
 uiWorldEditor :: Lens' UIState (WorldEditor Name)
@@ -175,21 +177,11 @@ uiInventorySearch :: Lens' UIState (Maybe Text)
 --   focused robot's inventory.
 uiInventory :: Lens' UIState (Maybe (Int, BL.List Name InventoryListEntry))
 
--- | Does the info panel contain more content past the top of the panel?
-uiMoreInfoTop :: Lens' UIState Bool
-
--- | Does the info panel contain more content past the bottom of the panel?
-uiMoreInfoBot :: Lens' UIState Bool
-
 -- | A flag telling the UI to scroll the info panel to the very end
 --   (used when a new log message is appended).
 uiScrollToEnd :: Lens' UIState Bool
 
--- | When this is @Just@, it represents a popup box containing an
---   error message that is shown on top of the rest of the UI.
-uiError :: Lens' UIState (Maybe Text)
-
--- | When this is @Just@, it represents a modal to be displayed on
+-- | When this is 'Just', it represents a modal to be displayed on
 --   top of the UI, e.g. for the Help screen.
 uiModal :: Lens' UIState (Maybe Modal)
 
@@ -197,16 +189,24 @@ uiModal :: Lens' UIState (Maybe Modal)
 --   has been displayed to the user initially.
 uiGoal :: Lens' UIState GoalDisplay
 
+-- | Definition and status of a recognizable structure
+uiStructure :: Lens' UIState StructureDisplay
+
+-- | When running with @--autoplay@, suppress the goal dialogs.
+--
+-- For development, the @--cheat@ flag shows goals again.
+uiHideGoals :: Lens' UIState Bool
+
 -- | Map of achievements that were attained
 uiAchievements :: Lens' UIState (Map CategorizedAchievement Attainment)
 
--- | A toggle to show the FPS by pressing `f`
+-- | A toggle to show the FPS by pressing @f@
 uiShowFPS :: Lens' UIState Bool
 
--- | A toggle to expand or collapse the REPL by pressing `Ctrl-k`
+-- | A toggle to expand or collapse the REPL by pressing @Ctrl-k@
 uiShowREPL :: Lens' UIState Bool
 
--- | A toggle to show or hide inventory items with count 0 by pressing `0`
+-- | A toggle to show or hide inventory items with count 0 by pressing @0@
 uiShowZero :: Lens' UIState Bool
 
 -- | A toggle to show debug.
@@ -224,10 +224,10 @@ uiShowRobots = to (\ui -> ui ^. lastFrameTime > ui ^. uiHideRobotsUntil)
 -- | Whether the Inventory ui panel should update
 uiInventoryShouldUpdate :: Lens' UIState Bool
 
--- | Computed ticks per milli seconds
+-- | Computed ticks per milliseconds
 uiTPF :: Lens' UIState Double
 
--- | Computed frames per milli seconds
+-- | Computed frames per milliseconds
 uiFPS :: Lens' UIState Double
 
 -- | Attribute map
@@ -265,20 +265,16 @@ frameTickCount :: Lens' UIState Int
 -- | The time of the last info widget update
 lastInfoTime :: Lens' UIState TimeSpec
 
--- | The time of the last 'Frame' event.
+-- | The time of the last 'Swarm.TUI.Model.Frame' event.
 lastFrameTime :: Lens' UIState TimeSpec
 
--- | The amount of accumulated real time.  Every time we get a 'Frame'
+-- | The amount of accumulated real time.  Every time we get a 'Swarm.TUI.Model.Frame'
 --   event, we accumulate the amount of real time that happened since
 --   the last frame, then attempt to take an appropriate number of
 --   ticks to "catch up", based on the target tick rate.
 --
 --   See https://gafferongames.com/post/fix_your_timestep/ .
 accumulatedTime :: Lens' UIState TimeSpec
-
--- | Free-form data loaded from the @data@ directory, for things like
---   the logo, about page, tutorial story, etc.
-appData :: Lens' UIState (Map Text Text)
 
 --------------------------------------------------
 -- UIState initialization
@@ -299,14 +295,20 @@ defaultInitLgTicksPerSecond = 4 -- 2^4 = 16 ticks / second
 --   time, and loading text files from the data directory.  The @Bool@
 --   parameter indicates whether we should start off by showing the
 --   main menu.
-initUIState :: Int -> Bool -> Bool -> ExceptT Text IO ([SystemFailure], UIState)
+initUIState ::
+  ( Has (Accum (Seq SystemFailure)) sig m
+  , Has (Lift IO) sig m
+  ) =>
+  Int ->
+  Bool ->
+  Bool ->
+  m UIState
 initUIState speedFactor showMainMenu cheatMode = do
-  historyT <- liftIO $ readFileMayT =<< getSwarmHistoryPath False
-  appDataMap <- withExceptT prettyFailure readAppData
+  historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
   let history = maybe [] (map REPLEntry . T.lines) historyT
-  startTime <- liftIO $ getTime Monotonic
-  (warnings, achievements) <- liftIO loadAchievementsInfo
-  launchConfigPanel <- liftIO initConfigPanel
+  startTime <- sendIO $ getTime Monotonic
+  achievements <- loadAchievementsInfo
+  launchConfigPanel <- sendIO initConfigPanel
   let out =
         UIState
           { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
@@ -320,12 +322,11 @@ initUIState speedFactor showMainMenu cheatMode = do
           , _uiInventory = Nothing
           , _uiInventorySort = defaultSortOptions
           , _uiInventorySearch = Nothing
-          , _uiMoreInfoTop = False
-          , _uiMoreInfoBot = False
           , _uiScrollToEnd = False
-          , _uiError = Nothing
           , _uiModal = Nothing
           , _uiGoal = emptyGoalDisplay
+          , _uiStructure = emptyStructureDisplay
+          , _uiHideGoals = False
           , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
           , _uiShowFPS = False
           , _uiShowREPL = True
@@ -342,8 +343,7 @@ initUIState speedFactor showMainMenu cheatMode = do
           , _tickCount = 0
           , _frameCount = 0
           , _frameTickCount = 0
-          , _appData = appDataMap
           , _uiAttrMap = swarmAttrMap
           , _scenarioRef = Nothing
           }
-  return (warnings, out)
+  return out

@@ -5,6 +5,11 @@ indent-wheres: false # 'false' means save space by only half-indenting the 'wher
 diff-friendly-import-export: true
 let-style: inline
 respectful: true
-single-constraint-parens: false
+single-constraint-parens: auto
 haddock-style: single-line
 newlines-between-decls: 1
+reexports:
+  - module Text.Megaparsec exports Control.Applicative
+  - module Options.Applicative exports Control.Applicative
+fixities:
+  - infixl 9 ".:"
