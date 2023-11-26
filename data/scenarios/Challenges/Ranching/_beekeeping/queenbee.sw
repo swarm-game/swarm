@@ -152,84 +152,147 @@ def takeStepTowardItem = \item.
     }
     end;
 
-def workerProgram = \hiveIdx. \structureLoc.
-    foundStructure <- structure "beehive" hiveIdx;
-    let stillHasStructure = case foundStructure (\_. false) (\fs.
-        structureLoc == snd fs;
-    ) in
-
-    if (stillHasStructure) {
-
-        try {make "honeycomb";} {};
-        
-        hasHoneycomb <- has "honeycomb";
-        if hasHoneycomb {
-            goToHive structureLoc;
-        } {
-            takeStepTowardItem "wildflower";
-            return ();
-        };
-        workerProgram hiveIdx structureLoc;
+/**
+Searches through the existing instances of
+a given structure template, starting at a supplied
+index.
+Either returns the (potentially new) index of the structure
+(in the case that more had been built since the last check),
+or unit. Re-using the newly found index amortizes the "search"
+within the structure list over many ticks to constant time
+rather than linear time.
+*/
+def findStructureNewIndex = \remainingCount. \structureLoc. \lastIdx.
+    if (remainingCount > 0) {
+        foundStructure <- structure "beehive" lastIdx;
+        case foundStructure (\_. return $ inL ()) (\fs.
+            if (structureLoc == snd fs) {
+                return $ inR lastIdx;
+            } {
+                findStructureNewIndex (remainingCount - 1) structureLoc $ lastIdx + 1;
+            }
+        );
     } {
-        selfdestruct;
+        return $ inL ();
     }
     end;
 
-def workerProgramInit = \hiveIdx. \structureLoc.
+def workerProgram = \hiveIdx. \structureLoc.
+    eitherFoundStructure <- structure "beehive" hiveIdx;
+    case eitherFoundStructure return (\fs.
+        let hasSameStructure = structureLoc == snd fs in
+        if hasSameStructure {
+            try {make "honeycomb";} {};
+            hasHoneycomb <- has "honeycomb";
+            if hasHoneycomb {
+                goToHive structureLoc;
+            } {
+                takeStepTowardItem "wildflower";
+                return ();
+            };
+            workerProgram hiveIdx structureLoc;
+        } {
+            eitherNewIdx <- findStructureNewIndex (fst fs) structureLoc hiveIdx;
+            case eitherNewIdx
+                (\_. selfdestruct)
+                (\newIdx. workerProgram newIdx structureLoc);
+        }
+    );
+    end;
+
+def mkBeeName = \structureLoc.
+    "bee" ++ format structureLoc;
+    end;
+
+def workerProgramInit = \beename. \hiveIdx. \structureLoc.
+    setname beename;
     appear "B";
-    setname "bee";
-    if (mod hiveIdx 2 == 0) {turn left;} {};
     workerProgram hiveIdx structureLoc;
     end;
 
-def observeHives = \lastHiveCount.
+def createWorkerForStructure = \structureIdx. \fs.
+    // Build worker bee, assign ID, location
+    create "wax gland";
+    create "proboscis";
 
-    foundStructure <- structure "beehive" lastHiveCount;
-    newHiveCount <- case foundStructure (\_. return lastHiveCount) (\fs. 
-        let newHiveCount = fst fs in
-        if (newHiveCount > lastHiveCount) {
-            // Build worker bee, assign ID, location
-            create "wax gland";
-            create "proboscis";
+    create "ADT calculator";
+    create "beaglepuss";
+    create "bitcoin";
+    create "branch predictor";
+    create "comparator";
+    create "compass";
+    create "detonator";
+    create "dictionary";
+    create "fast grabber";
+    create "GPS receiver";
+    create "harvester";
+    create "hourglass";
+    create "lambda";
+    create "net";
+    create "rolex";
+    create "scanner";
+    create "strange loop";
+    create "solar panel";
+    create "treads";
+    create "workbench";
 
-            create "ADT calculator";
-            create "beaglepuss";
-            create "bitcoin";
-            create "branch predictor";
-            create "comparator";
-            create "compass";
-            create "detonator";
-            create "dictionary";
-            create "fast grabber";
-            create "GPS receiver";
-            create "harvester";
-            create "hourglass";
-            create "lambda";
-            create "net";
-            create "rolex";
-            create "scanner";
-            create "strange loop";
-            create "solar panel";
-            create "treads";
-            create "workbench";
+    teleport self $ snd fs;
+    let beename = mkBeeName (snd fs) in
+    build {
+        require 1 "wax gland";
+        workerProgramInit beename structureIdx $ snd fs;
+    };
+    return ();
+    end;
 
-            teleport self $ snd fs;
-            build {
-                require 1 "wax gland";
-                workerProgramInit lastHiveCount $ snd fs;
+def associateAllHives = \remainingCount. \idx.
+    if (remainingCount > 0) {
+
+        foundStructure <- structure "beehive" idx;
+        case foundStructure return (\fs.
+            let beename = mkBeeName (snd fs) in
+            try {
+                // Fails if the robot does not exist
+                robotnamed beename;
+                return ();
+            } {
+                createWorkerForStructure idx fs;
+
+                // Give the child robot time to register its new
+                // name so that we don't end up spawning multiple
+                // bees for the same location
+                wait 1;
             };
-            return ();
-        } {};
 
-        return newHiveCount;
+            associateAllHives (remainingCount - 1) (idx + 1);
+        );
+    } {}
+    end;
+
+/**
+Each tick, iterates through all hives,
+and makes sure a "bee" robot is associated with
+their location.
+If a structure exists without such an association,
+creates a bee named after the location.
+*/
+def observeHives =
+
+    // This invocation is just to get the total structure count.
+    // We will invoke it again once per iteration of 'associateAllHives'.
+    foundStructure <- structure "beehive" 0;
+    case foundStructure return (\fs.
+        associateAllHives (fst fs) 0;
     );
 
+    // Wait at least 1 tick so that we do not spin infinitely until
+    // we saturate our computation quota for the tick.
     wait 1;
-    observeHives newHiveCount;
+    observeHives;
     end;
 
 def go =
-    instant $ observeHives 0;
+    instant $ observeHives;
     end;
 
 go;
