@@ -164,7 +164,9 @@ library
                       Swarm.Game.ScenarioInfo
                       Swarm.Game.State
                       Swarm.Game.Step
+                      Swarm.Game.Step.Arithmetic
                       Swarm.Game.Step.Combustion
+                      Swarm.Game.Step.Const
                       Swarm.Game.Step.Path.Cache
                       Swarm.Game.Step.Path.Cache.DistanceLimit
                       Swarm.Game.Step.Path.Finding
@@ -172,6 +174,7 @@ library
                       Swarm.Game.Step.Path.Walkability
                       Swarm.Game.Step.RobotStepState
                       Swarm.Game.Step.Util
+                      Swarm.Game.Step.Util.Command
                       Swarm.Game.Step.Util.Inspect
                       Swarm.Game.Terrain
                       Swarm.Game.Value
