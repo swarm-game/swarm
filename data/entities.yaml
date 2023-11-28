@@ -638,7 +638,14 @@
     attr: blue
     char: 'B'
   description:
-  - Locate and analyze structures placed in the world.
+  - This enables the `structure` and `floorplan` commands to
+    locate and analyze structures placed in the world.
+  - |
+    `structure : text -> int -> cmd (unit + (int * (int * int)))`
+  - Gets the x, y coordinates of the southwest corner of a constructed structure, by name and index.
+  - |
+    `floorplan : text -> cmd (int * int)`
+  - Gets the dimensions of a structure template.
   properties: [portable]
   capabilities: [structure]
 
