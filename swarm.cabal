@@ -60,8 +60,7 @@ common common
                     -Wincomplete-uni-patterns
                     -Wincomplete-record-updates
                     -Wno-star-is-type
-  if impl(ghc >= 8.4)
-    ghc-options:    -Wpartial-fields
+                    -Wpartial-fields
   default-language: Haskell2010
 
 common stan-config
@@ -165,7 +164,9 @@ library
                       Swarm.Game.ScenarioInfo
                       Swarm.Game.State
                       Swarm.Game.Step
+                      Swarm.Game.Step.Arithmetic
                       Swarm.Game.Step.Combustion
+                      Swarm.Game.Step.Const
                       Swarm.Game.Step.Path.Cache
                       Swarm.Game.Step.Path.Cache.DistanceLimit
                       Swarm.Game.Step.Path.Finding
@@ -173,6 +174,7 @@ library
                       Swarm.Game.Step.Path.Walkability
                       Swarm.Game.Step.RobotStepState
                       Swarm.Game.Step.Util
+                      Swarm.Game.Step.Util.Command
                       Swarm.Game.Step.Util.Inspect
                       Swarm.Game.Terrain
                       Swarm.Game.Value
@@ -442,3 +444,5 @@ benchmark benchmark
                   containers,
   default-language: Haskell2010
   ghc-options:      -threaded
+                    "-with-rtsopts=-A32m"
+                    -fproc-alignment=64
