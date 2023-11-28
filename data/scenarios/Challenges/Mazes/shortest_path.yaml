@@ -87,6 +87,7 @@ robots:
       - [50, logger]
       - [50, string]
       - [50, fast grabber]
+      - [50, detonator]
       - [1000, rock]
       - [1000, lodestone]
       - [1000, flower]
