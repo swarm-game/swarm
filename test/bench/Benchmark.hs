@@ -15,7 +15,9 @@ import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display (defaultRobotDisplay)
 import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, mkRobot)
-import Swarm.Game.State (GameState, addTRobot, creativeMode, landscape, multiWorld)
+import Swarm.Game.State (GameState, creativeMode, landscape, zoomRobots)
+import Swarm.Game.State.Robot (addTRobot)
+import Swarm.Game.State.Substate (multiWorld)
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Terrain (TerrainType (DirtT))
 import Swarm.Game.Universe (Cosmic (..), SubworldName (DefaultRootSubworld))
@@ -120,7 +122,7 @@ mkGameState robotMaker numRobots = do
   let robots = [robotMaker (Location (fromIntegral x) 0) | x <- [0 .. numRobots - 1]]
   Right initAppState <- runExceptT classicGame0
   execStateT
-    (mapM addTRobot robots)
+    (zoomRobots $ mapM addTRobot robots)
     ( (initAppState ^. gameState)
         & creativeMode .~ True
         & landscape . multiWorld .~ M.singleton DefaultRootSubworld (newWorld (WF $ const (fromEnum DirtT, ENothing)))

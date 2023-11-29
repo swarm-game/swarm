@@ -18,6 +18,8 @@ import Swarm.Game.CESK
 import Swarm.Game.Exception
 import Swarm.Game.Robot
 import Swarm.Game.State
+import Swarm.Game.State.Robot
+import Swarm.Game.State.Substate
 import Swarm.Game.Step (gameTick, hypotheticalRobot, stepCESK)
 import Swarm.Language.Context
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
@@ -60,7 +62,7 @@ play g = either (return . (,g) . Left) playPT . processTerm1
     hid = hr ^. robotID
     gs =
       g
-        & execState (addRobot hr)
+        & execState (zoomRobots $ addRobot hr)
         & robotInfo . viewCenterRule .~ VCRobot hid
         & creativeMode .~ True
 

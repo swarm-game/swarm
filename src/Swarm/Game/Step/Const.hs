@@ -64,6 +64,8 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons, foundSt
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
+import Swarm.Game.State.Robot
+import Swarm.Game.State.Substate
 import Swarm.Game.Step.Arithmetic
 import Swarm.Game.Step.Combustion qualified as Combustion
 import Swarm.Game.Step.Path.Finding
@@ -823,7 +825,7 @@ execConst runChildProg c vs s k = do
               True -> do
                 -- Cancel its CESK machine, and put it to sleep.
                 robotInfo . robotMap . at targetID . _Just . machine %= cancel
-                sleepForever targetID
+                zoomRobots $ sleepForever targetID
                 return $ mkReturn ()
               False -> throwError $ cmdExn c ["You are not authorized to halt that robot."]
       _ -> badConst
@@ -990,7 +992,7 @@ execConst runChildProg c vs s k = do
         provisionChild childRobotID (fromList . S.toList $ toEquip) toGive
 
         -- Finally, re-activate the reprogrammed target robot.
-        activateRobot childRobotID
+        zoomRobots $ activateRobot childRobotID
 
         return $ mkReturn ()
       _ -> badConst
@@ -1032,7 +1034,7 @@ execConst runChildProg c vs s k = do
         -- Construct the new robot and add it to the world.
         parentCtx <- use robotContext
         newRobot <-
-          addTRobot . (trobotContext .~ parentCtx) $
+          zoomRobots . addTRobot . (trobotContext .~ parentCtx) $
             mkRobot
               ()
               (Just pid)
@@ -1108,7 +1110,7 @@ execConst runChildProg c vs s k = do
               . traverse
               . machine
               .= In giveInventory empty emptyStore [FExec]
-            activateRobot (target ^. robotID)
+            zoomRobots $ activateRobot (target ^. robotID)
 
             -- Now wait the right amount of time for it to finish.
             time <- use $ temporal . ticks

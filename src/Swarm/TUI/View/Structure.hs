@@ -27,6 +27,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (getEntit
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
+import Swarm.Game.State.Substate
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Structure
 import Swarm.TUI.View.Attribute.Attr

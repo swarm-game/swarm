@@ -145,6 +145,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios, _SISingle)
 import Swarm.Game.State
+import Swarm.Game.State.Substate
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Log

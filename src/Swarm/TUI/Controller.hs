@@ -82,6 +82,8 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (definitions)
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
+import Swarm.Game.State.Robot
+import Swarm.Game.State.Substate
 import Swarm.Game.Step (finishGameTick, gameTick)
 import Swarm.Language.Capability (Capability (CDebug, CGod, CMake), constCaps)
 import Swarm.Language.Context
@@ -1058,7 +1060,7 @@ runInputHandler kc = do
         let topCtx = topContext s
             handlerCESK = Out (VKey kc) (topCtx ^. defStore) [FApp handler, FExec]
         gameState . baseRobot . machine .= handlerCESK
-        gameState %= execState (activateRobot 0)
+        gameState %= execState (zoomRobots $ activateRobot 0)
 
 -- | Handle a user "piloting" input event for the REPL.
 handleREPLEventPiloting :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -1136,7 +1138,7 @@ runBaseTerm topCtx =
       -- environment and store from the top-level context.
       . (gameState . baseRobot . machine .~ initMachine t (topCtx ^. defVals) (topCtx ^. defStore))
       -- Finally, be sure to activate the base robot.
-      . (gameState %~ execState (activateRobot 0))
+      . (gameState %~ execState (zoomRobots $ activateRobot 0))
 
 -- | Handle a user input event for the REPL.
 handleREPLEventTyping :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -1474,7 +1476,7 @@ makeEntity e = do
     Just False -> do
       gameState . gameControls . replStatus .= REPLWorking (Typed Nothing PolyUnit (R.singletonCap CMake))
       gameState . baseRobot . machine .= initMachine mkPT empty topStore
-      gameState %= execState (activateRobot 0)
+      gameState %= execState (zoomRobots $ activateRobot 0)
     _ -> continueWithoutRedraw
 
 -- | Display a modal window with the description of an entity.

@@ -51,6 +51,8 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
 import Swarm.Game.State
+import Swarm.Game.State.Robot
+import Swarm.Game.State.Substate
 import Swarm.Game.Step.Const
 import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
@@ -77,7 +79,8 @@ import Prelude hiding (Applicative (..), lookup)
 --   the tick. Use the return value to check whether a full tick happened.
 gameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => m Bool
 gameTick = do
-  wakeUpRobotsDoneSleeping
+  time <- use $ temporal . ticks
+  zoomRobots $ wakeUpRobotsDoneSleeping time
   active <- use $ robotInfo . activeRobots
   focusedRob <- use $ robotInfo . focusedRobotID
 
@@ -135,17 +138,18 @@ finishGameTick =
 insertBackRobot :: Has (State GameState) sig m => RID -> Robot -> m ()
 insertBackRobot rn rob = do
   time <- use $ temporal . ticks
-  if rob ^. selfDestruct
-    then deleteRobot rn
-    else do
-      robotInfo . robotMap %= IM.insert rn rob
-      case waitingUntil rob of
-        Just wakeUpTime
-          -- if w=2 t=1 then we do not needlessly put robot to waiting queue
-          | wakeUpTime <= addTicks 2 time -> return ()
-          | otherwise -> sleepUntil rn wakeUpTime
-        Nothing ->
-          unless (isActive rob) (sleepForever rn)
+  zoomRobots $
+    if rob ^. selfDestruct
+      then deleteRobot rn
+      else do
+        robotMap %= IM.insert rn rob
+        case waitingUntil rob of
+          Just wakeUpTime
+            -- if w=2 t=1 then we do not needlessly put robot to waiting queue
+            | wakeUpTime <= addTicks 2 time -> return ()
+            | otherwise -> sleepUntil rn wakeUpTime
+          Nothing ->
+            unless (isActive rob) (sleepForever rn)
 
 -- Run a set of robots - this is used to run robots before/after the focused one.
 runRobotIDs :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => IS.IntSet -> m ()
@@ -380,7 +384,7 @@ evaluateCESK ::
 evaluateCESK cesk = do
   createdAt <- getNow
   let r = hypotheticalRobot cesk createdAt
-  addRobot r -- Add the special robot to the robot map, so it can look itself up if needed
+  zoomRobots $ addRobot r -- Add the special robot to the robot map, so it can look itself up if needed
   evalState r . runCESK $ cesk
 
 runCESK ::

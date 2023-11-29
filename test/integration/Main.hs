@@ -37,23 +37,27 @@ import Swarm.Game.Robot (activityCounts, commandsHistogram, defReqs, equippedDev
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
-  WinCondition (WinConditions),
-  WinStatus (Won),
-  activeRobots,
   baseRobot,
   discovery,
-  gameAchievements,
   messageInfo,
-  messageQueue,
-  notificationsContent,
   pathCaching,
   robotInfo,
-  robotMap,
   temporal,
-  ticks,
-  waitingRobots,
   winCondition,
   winSolution,
+ )
+import Swarm.Game.State.Robot (
+  activeRobots,
+  robotMap,
+  waitingRobots,
+ )
+import Swarm.Game.State.Substate (
+  WinCondition (WinConditions),
+  WinStatus (Won),
+  gameAchievements,
+  messageQueue,
+  notificationsContent,
+  ticks,
  )
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Step.Path.Type

@@ -163,6 +163,9 @@ library
                       Swarm.Game.Scenario.Topography.WorldPalette
                       Swarm.Game.ScenarioInfo
                       Swarm.Game.State
+                      Swarm.Game.State.Config
+                      Swarm.Game.State.Robot
+                      Swarm.Game.State.Substate
                       Swarm.Game.Step
                       Swarm.Game.Step.Arithmetic
                       Swarm.Game.Step.Combustion

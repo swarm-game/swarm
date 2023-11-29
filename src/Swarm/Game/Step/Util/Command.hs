@@ -41,6 +41,8 @@ import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..), destination, reorientation)
 import Swarm.Game.State
+import Swarm.Game.State.Robot
+import Swarm.Game.State.Substate
 import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Universe
@@ -111,8 +113,9 @@ updateRobotLocation oldLoc newLoc
   | otherwise = do
       newlocWithPortal <- applyPortal newLoc
       rid <- use robotID
-      removeRobotFromLocationMap oldLoc rid
-      addRobotToLocation rid newlocWithPortal
+      zoomRobots $ do
+        removeRobotFromLocationMap oldLoc rid
+        addRobotToLocation rid newlocWithPortal
       modify (unsafeSetRobotLocation newlocWithPortal)
       flagRedraw
  where
@@ -142,9 +145,10 @@ onTarget rid act = do
         Nothing -> return ()
         Just tgt -> do
           tgt' <- execState @Robot tgt act
-          if tgt' ^. selfDestruct
-            then deleteRobot rid
-            else robotInfo . robotMap . ix rid .= tgt'
+          zoomRobots $
+            if tgt' ^. selfDestruct
+              then deleteRobot rid
+              else robotMap . ix rid .= tgt'
 
 grantAchievement ::
   (Has (State GameState) sig m, Has (Lift IO) sig m) =>
@@ -368,26 +372,27 @@ addSeedBot ::
   TimeSpec ->
   m ()
 addSeedBot e (minT, maxT) loc ts =
-  void $
-    addTRobot $
-      mkRobot
-        ()
-        Nothing
-        "seed"
-        (Markdown.fromText $ T.unwords ["A growing", e ^. entityName, "seed."])
-        (Just loc)
-        zero
-        ( defaultEntityDisplay '.'
-            & displayAttr .~ (e ^. entityDisplay . displayAttr)
-            & displayPriority .~ 0
-        )
-        (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty emptyStore)
-        []
-        [(1, e)]
-        True
-        False
-        mempty
-        ts
+  void
+    . zoomRobots
+    . addTRobot
+    $ mkRobot
+      ()
+      Nothing
+      "seed"
+      (Markdown.fromText $ T.unwords ["A growing", e ^. entityName, "seed."])
+      (Just loc)
+      zero
+      ( defaultEntityDisplay '.'
+          & displayAttr .~ (e ^. entityDisplay . displayAttr)
+          & displayPriority .~ 0
+      )
+      (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty emptyStore)
+      []
+      [(1, e)]
+      True
+      False
+      mempty
+      ts
 
 -- | A system program for a "seed robot", to regrow a growable entity
 --   after it is harvested.
