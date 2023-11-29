@@ -31,6 +31,8 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.State
+import Swarm.Game.State.Robot
+import Swarm.Game.State.Substate
 import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Inspect
@@ -93,26 +95,27 @@ addCombustionBot inputEntity combustibility ts loc = do
       return $ maybe [] (pure . (1,)) maybeE
   combustionDurationRand <- uniform durationRange
   let combustionProg = combustionProgram combustionDurationRand combustibility
-  void $
-    addTRobot $
-      mkRobot
-        ()
-        Nothing
-        "fire"
-        (Markdown.fromText $ T.unwords ["A burning", (inputEntity ^. entityName) <> "."])
-        (Just loc)
-        zero
-        ( defaultEntityDisplay '*'
-            & displayAttr .~ AWorld "fire"
-            & displayPriority .~ 0
-        )
-        (initMachine combustionProg empty emptyStore)
-        []
-        botInventory
-        True
-        False
-        mempty
-        ts
+  void
+    . zoomRobots
+    . addTRobot
+    $ mkRobot
+      ()
+      Nothing
+      "fire"
+      (Markdown.fromText $ T.unwords ["A burning", (inputEntity ^. entityName) <> "."])
+      (Just loc)
+      zero
+      ( defaultEntityDisplay '*'
+          & displayAttr .~ AWorld "fire"
+          & displayPriority .~ 0
+      )
+      (initMachine combustionProg empty emptyStore)
+      []
+      botInventory
+      True
+      False
+      mempty
+      ts
   return combustionDurationRand
  where
   Combustibility _ durationRange maybeCombustionProduct = combustibility
@@ -208,22 +211,23 @@ addIgnitionBot ::
   Cosmic Location ->
   m ()
 addIgnitionBot ignitionDelay inputEntity ts loc =
-  void $
-    addTRobot $
-      mkRobot
-        ()
-        Nothing
-        "firestarter"
-        (Markdown.fromText $ T.unwords ["Delayed ignition of", (inputEntity ^. entityName) <> "."])
-        (Just loc)
-        zero
-        ( defaultEntityDisplay '*'
-            & invisible .~ True
-        )
-        (initMachine (ignitionProgram ignitionDelay) empty emptyStore)
-        []
-        []
-        True
-        False
-        mempty
-        ts
+  void
+    . zoomRobots
+    . addTRobot
+    $ mkRobot
+      ()
+      Nothing
+      "firestarter"
+      (Markdown.fromText $ T.unwords ["Delayed ignition of", (inputEntity ^. entityName) <> "."])
+      (Just loc)
+      zero
+      ( defaultEntityDisplay '*'
+          & invisible .~ True
+      )
+      (initMachine (ignitionProgram ignitionDelay) empty emptyStore)
+      []
+      []
+      True
+      False
+      mempty
+      ts

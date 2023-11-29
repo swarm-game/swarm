@@ -30,6 +30,7 @@ import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Center
 import Swarm.Game.Scenario.Topography.EntityFacade (EntityFacade (..), mkFacade)
 import Swarm.Game.State
+import Swarm.Game.State.Substate
 import Swarm.Game.Terrain (getTerrainWord)
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W

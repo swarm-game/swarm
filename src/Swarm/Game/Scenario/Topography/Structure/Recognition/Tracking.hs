@@ -32,6 +32,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
+import Swarm.Game.State.Substate
 import Swarm.Game.Universe
 import Swarm.Game.World.Modify
 import Text.AhoCorasick

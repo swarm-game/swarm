@@ -12,6 +12,8 @@ import Data.Text qualified as T
 import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Robot
 import Swarm.Game.State
+import Swarm.Game.State.Robot
+import Swarm.Game.State.Substate
 import Swarm.Log
 import Test.Tasty
 import Test.Tasty.HUnit

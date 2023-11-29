@@ -120,7 +120,7 @@ mkGameState robotMaker numRobots = do
   let robots = [robotMaker (Location (fromIntegral x) 0) | x <- [0 .. numRobots - 1]]
   Right initAppState <- runExceptT classicGame0
   execStateT
-    (mapM addTRobot robots)
+    (mapM (zoomRobots . addTRobot) robots)
     ( (initAppState ^. gameState)
         & creativeMode .~ True
         & landscape . multiWorld .~ M.singleton DefaultRootSubworld (newWorld (WF $ const (fromEnum DirtT, ENothing)))
