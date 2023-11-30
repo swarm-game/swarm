@@ -20,6 +20,7 @@ import Swarm.Game.Location
 import Swarm.Game.Scenario (scenarioName)
 import Swarm.Game.ScenarioInfo (scenarioItemName)
 import Swarm.Game.State
+import Swarm.Game.State.Substate
 import Swarm.Game.Terrain
 import Swarm.Language.Pretty (prettyTextLine)
 import Swarm.Language.Syntax (Syntax)

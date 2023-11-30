@@ -100,6 +100,8 @@ import Swarm.Game.ScenarioInfo (
   scenarioItemName,
  )
 import Swarm.Game.State
+import Swarm.Game.State.Robot
+import Swarm.Game.State.Substate
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Language.Capability (Capability (..), constCaps)
@@ -1436,7 +1438,11 @@ drawREPL s =
     (Just False, _) -> renderREPLPrompt (s ^. uiState . uiFocusRing) theRepl
     _running -> padRight Max $ txt "..."
   theRepl = s ^. uiState . uiREPL
+
+  -- NOTE: there exists a lens named 'baseRobot' that uses "unsafe"
+  -- indexing that may be an alternative to this:
   base = s ^. gameState . robotInfo . robotMap . at 0
+
   fmt (REPLEntry e) = txt $ "> " <> e
   fmt (REPLOutput t) = txt t
   fmt (REPLError t) = txtWrapWith indent2 {preserveIndentation = True} t

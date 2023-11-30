@@ -12,6 +12,8 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Map qualified as M
 import Graphics.Vty qualified as V
 import Swarm.Game.State
+import Swarm.Game.State.Robot
+import Swarm.Game.State.Substate
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Model

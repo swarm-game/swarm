@@ -31,6 +31,8 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.State
+import Swarm.Game.State.Robot
+import Swarm.Game.State.Substate
 import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Inspect
@@ -93,26 +95,27 @@ addCombustionBot inputEntity combustibility ts loc = do
       return $ maybe [] (pure . (1,)) maybeE
   combustionDurationRand <- uniform durationRange
   let combustionProg = combustionProgram combustionDurationRand combustibility
-  void $
-    addTRobot $
-      mkRobot
-        ()
-        Nothing
-        "fire"
-        (Markdown.fromText $ T.unwords ["A burning", (inputEntity ^. entityName) <> "."])
-        (Just loc)
-        zero
-        ( defaultEntityDisplay '*'
-            & displayAttr .~ AWorld "fire"
-            & displayPriority .~ 0
-        )
-        (initMachine combustionProg empty emptyStore)
-        []
-        botInventory
-        True
-        False
-        mempty
-        ts
+  void
+    . zoomRobots
+    . addTRobot
+    $ mkRobot
+      ()
+      Nothing
+      "fire"
+      (Markdown.fromText $ T.unwords ["A burning", (inputEntity ^. entityName) <> "."])
+      (Just loc)
+      zero
+      ( defaultEntityDisplay '*'
+          & displayAttr .~ AWorld "fire"
+          & displayPriority .~ 0
+      )
+      (initMachine combustionProg empty emptyStore)
+      []
+      botInventory
+      True
+      False
+      mempty
+      ts
   return combustionDurationRand
  where
   Combustibility _ durationRange maybeCombustionProduct = combustibility
@@ -191,7 +194,7 @@ igniteNeighbor creationTime sourceDuration loc = do
                 . min (fromIntegral sourceDuration)
                 . negate
                 $ log ignitionDelayRand / rate
-        addIgnitionBot ignitionDelay e creationTime loc
+        zoomRobots $ addIgnitionBot ignitionDelay e creationTime loc
    where
     neighborCombustibility = (e ^. entityCombustion) ? defaultCombustibility
     rate = E.ignition neighborCombustibility
@@ -201,7 +204,7 @@ igniteNeighbor creationTime sourceDuration loc = do
 --   Its sole purpose is to delay the 'Swarm.Language.Syntax.Ignite' command for a neighbor
 --   that has been a priori determined that it shall be ignited.
 addIgnitionBot ::
-  Has (State GameState) sig m =>
+  Has (State Robots) sig m =>
   Integer ->
   Entity ->
   TimeSpec ->

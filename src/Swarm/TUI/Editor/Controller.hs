@@ -18,6 +18,7 @@ import Data.Yaml qualified as Y
 import Graphics.Vty qualified as V
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.State
+import Swarm.Game.State.Substate
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Controller.Util

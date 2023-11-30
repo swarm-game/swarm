@@ -29,6 +29,8 @@ import Swarm.Game.ResourceLoading (NameGenerator (..))
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking qualified as SRT
 import Swarm.Game.State
+import Swarm.Game.State.Robot
+import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Cache
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Path.Walkability
@@ -68,7 +70,8 @@ updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
       W.updateM @Int (W.locToCoords loc) upd
 
   forM_ (WM.getModification =<< someChange) $ \modType -> do
-    wakeWatchingRobots cLoc
+    currentTick <- use $ temporal . ticks
+    zoomRobots $ wakeWatchingRobots currentTick cLoc
     SRT.entityModified modType cLoc
 
     pcr <- use $ pathCaching . pathCachingRobots

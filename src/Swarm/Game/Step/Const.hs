@@ -64,6 +64,8 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons, foundSt
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
+import Swarm.Game.State.Robot
+import Swarm.Game.State.Substate
 import Swarm.Game.Step.Arithmetic
 import Swarm.Game.Step.Combustion qualified as Combustion
 import Swarm.Game.Step.Path.Finding
@@ -716,9 +718,10 @@ execConst runChildProg c vs s k = do
               forM_ maybeRidLoc $ \(rid, loc') ->
                 robotInfo . robotMap . at rid . _Just . robotLog %= addLatestClosest loc'
         robotsAround <-
-          if isPrivileged
-            then use $ robotInfo . robotMap . to IM.elems
-            else gets $ robotsInArea loc hearingDistance
+          zoomRobots $
+            if isPrivileged
+              then use $ robotMap . to IM.elems
+              else gets $ robotsInArea loc hearingDistance
         mapM_ addToRobotLog robotsAround
         return $ mkReturn ()
       _ -> badConst
@@ -820,9 +823,9 @@ execConst runChildProg c vs s k = do
             -- able to halt privileged ones.
             omni <- isPrivilegedBot
             case omni || not (target ^. systemRobot) of
-              True -> do
+              True -> zoomRobots $ do
                 -- Cancel its CESK machine, and put it to sleep.
-                robotInfo . robotMap . at targetID . _Just . machine %= cancel
+                robotMap . at targetID . _Just . machine %= cancel
                 sleepForever targetID
                 return $ mkReturn ()
               False -> throwError $ cmdExn c ["You are not authorized to halt that robot."]
@@ -853,14 +856,15 @@ execConst runChildProg c vs s k = do
       let neighbor =
             find ((/= rid) . (^. robotID)) -- pick one other than ourself
               . sortOn ((manhattan `on` view planar) loc . (^. robotLocation)) -- prefer closer
-              $ robotsInArea loc 1 g -- all robots within Manhattan distance 1
+              $ robotsInArea loc 1
+              $ g ^. robotInfo -- all robots within Manhattan distance 1
       return $ mkReturn neighbor
     MeetAll -> case vs of
       [f, b] -> do
         loc <- use robotLocation
         rid <- use robotID
         g <- get @GameState
-        let neighborIDs = filter (/= rid) . map (^. robotID) $ robotsInArea loc 1 g
+        let neighborIDs = filter (/= rid) . map (^. robotID) $ robotsInArea loc 1 $ g ^. robotInfo
         return $ Out b s (FMeetAll f neighborIDs : k)
       _ -> badConst
     Whoami -> case vs of
@@ -982,15 +986,16 @@ execConst runChildProg c vs s k = do
         -- the childRobot inherits the parent robot's environment
         -- and context which collectively mean all the variables
         -- declared in the parent robot
-        robotInfo . robotMap . at childRobotID . _Just . machine .= In cmd e s [FExec]
-        robotInfo . robotMap . at childRobotID . _Just . robotContext .= r ^. robotContext
+        zoomRobots $ do
+          robotMap . at childRobotID . _Just . machine .= In cmd e s [FExec]
+          robotMap . at childRobotID . _Just . robotContext .= r ^. robotContext
 
         -- Provision the target robot with any required devices and
         -- inventory that are lacking.
         provisionChild childRobotID (fromList . S.toList $ toEquip) toGive
 
         -- Finally, re-activate the reprogrammed target robot.
-        activateRobot childRobotID
+        zoomRobots $ activateRobot childRobotID
 
         return $ mkReturn ()
       _ -> badConst
@@ -1032,7 +1037,7 @@ execConst runChildProg c vs s k = do
         -- Construct the new robot and add it to the world.
         parentCtx <- use robotContext
         newRobot <-
-          addTRobot . (trobotContext .~ parentCtx) $
+          zoomRobots . addTRobot . (trobotContext .~ parentCtx) $
             mkRobot
               ()
               (Just pid)
@@ -1102,13 +1107,14 @@ execConst runChildProg c vs s k = do
                 giveItem item = TApp (TApp (TConst Give) (TRobot ourID)) (TText item)
 
             -- Reprogram and activate the salvaged robot
-            robotInfo
-              . robotMap
-              . at (target ^. robotID)
-              . traverse
-              . machine
-              .= In giveInventory empty emptyStore [FExec]
-            activateRobot (target ^. robotID)
+            zoomRobots $ do
+              robotMap
+                . at (target ^. robotID)
+                . traverse
+                . machine
+                .= In giveInventory empty emptyStore [FExec]
+
+              activateRobot $ target ^. robotID
 
             -- Now wait the right amount of time for it to finish.
             time <- use $ temporal . ticks
