@@ -5,7 +5,6 @@
 --
 -- Robot-specific subrecords and utilities used by 'Swarm.Game.State.GameState'
 module Swarm.Game.State.Robot (
-
   -- * Types
   ViewCenterRule (..),
   Robots,
