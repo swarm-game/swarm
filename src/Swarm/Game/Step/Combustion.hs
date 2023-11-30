@@ -194,7 +194,7 @@ igniteNeighbor creationTime sourceDuration loc = do
                 . min (fromIntegral sourceDuration)
                 . negate
                 $ log ignitionDelayRand / rate
-        addIgnitionBot ignitionDelay e creationTime loc
+        zoomRobots $ addIgnitionBot ignitionDelay e creationTime loc
    where
     neighborCombustibility = (e ^. entityCombustion) ? defaultCombustibility
     rate = E.ignition neighborCombustibility
@@ -204,30 +204,29 @@ igniteNeighbor creationTime sourceDuration loc = do
 --   Its sole purpose is to delay the 'Swarm.Language.Syntax.Ignite' command for a neighbor
 --   that has been a priori determined that it shall be ignited.
 addIgnitionBot ::
-  Has (State GameState) sig m =>
+  Has (State Robots) sig m =>
   Integer ->
   Entity ->
   TimeSpec ->
   Cosmic Location ->
   m ()
 addIgnitionBot ignitionDelay inputEntity ts loc =
-  void
-    . zoomRobots
-    . addTRobot
-    $ mkRobot
-      ()
-      Nothing
-      "firestarter"
-      (Markdown.fromText $ T.unwords ["Delayed ignition of", (inputEntity ^. entityName) <> "."])
-      (Just loc)
-      zero
-      ( defaultEntityDisplay '*'
-          & invisible .~ True
-      )
-      (initMachine (ignitionProgram ignitionDelay) empty emptyStore)
-      []
-      []
-      True
-      False
-      mempty
-      ts
+  void $
+    addTRobot $
+      mkRobot
+        ()
+        Nothing
+        "firestarter"
+        (Markdown.fromText $ T.unwords ["Delayed ignition of", (inputEntity ^. entityName) <> "."])
+        (Just loc)
+        zero
+        ( defaultEntityDisplay '*'
+            & invisible .~ True
+        )
+        (initMachine (ignitionProgram ignitionDelay) empty emptyStore)
+        []
+        []
+        True
+        False
+        mempty
+        ts

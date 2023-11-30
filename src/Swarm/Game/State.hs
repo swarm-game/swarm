@@ -236,11 +236,11 @@ pathCaching :: Lens' GameState PathCaching
 
 -- | Get all the robots within a given Manhattan distance from a
 --   location.
-robotsInArea :: Cosmic Location -> Int32 -> GameState -> [Robot]
-robotsInArea (Cosmic subworldName o) d gs = map (rm IM.!) rids
+robotsInArea :: Cosmic Location -> Int32 -> Robots -> [Robot]
+robotsInArea (Cosmic subworldName o) d rs = map (rm IM.!) rids
  where
-  rm = gs ^. robotInfo . robotMap
-  rl = gs ^. robotInfo . robotsByLocation
+  rm = rs ^. robotMap
+  rl = rs ^. robotsByLocation
   rids =
     concatMap IS.elems $
       getElemsInArea o d $
@@ -461,10 +461,10 @@ getRadioRange maybeBaseRobot maybeTargetRobot =
   (minRadius, maxRadius) = over both (gain baseInv . gain focInv) (16, 64)
 
 -- | Clear the 'robotLogUpdated' flag of the focused robot.
-clearFocusedRobotLogUpdated :: (Has (State GameState) sig m) => m ()
+clearFocusedRobotLogUpdated :: (Has (State Robots) sig m) => m ()
 clearFocusedRobotLogUpdated = do
-  n <- use $ robotInfo . focusedRobotID
-  robotInfo . robotMap . ix n . robotLogUpdated .= False
+  n <- use focusedRobotID
+  robotMap . ix n . robotLogUpdated .= False
 
 maxMessageQueueSize :: Int
 maxMessageQueueSize = 1000

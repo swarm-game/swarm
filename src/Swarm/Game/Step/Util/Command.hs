@@ -262,8 +262,9 @@ provisionChild ::
   m ()
 provisionChild childID toEquip toGive = do
   -- Equip and give devices to child
-  robotInfo . robotMap . ix childID . equippedDevices %= E.union toEquip
-  robotInfo . robotMap . ix childID . robotInventory %= E.union toGive
+  zoomRobots $ do
+    robotMap . ix childID . equippedDevices %= E.union toEquip
+    robotMap . ix childID . robotInventory %= E.union toGive
 
   -- Delete all items from parent in classic mode
   creative <- use creativeMode

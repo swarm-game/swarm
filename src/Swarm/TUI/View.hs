@@ -1438,7 +1438,11 @@ drawREPL s =
     (Just False, _) -> renderREPLPrompt (s ^. uiState . uiFocusRing) theRepl
     _running -> padRight Max $ txt "..."
   theRepl = s ^. uiState . uiREPL
+
+  -- NOTE: there exists a lens named 'baseRobot' that uses "unsafe"
+  -- indexing that may be an alternative to this:
   base = s ^. gameState . robotInfo . robotMap . at 0
+
   fmt (REPLEntry e) = txt $ "> " <> e
   fmt (REPLOutput t) = txt t
   fmt (REPLError t) = txtWrapWith indent2 {preserveIndentation = True} t
