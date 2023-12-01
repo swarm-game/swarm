@@ -17,10 +17,9 @@ module Swarm.Game.State.Robot (
 
   -- * Initialization
   initRobots,
+  setRobotInfo,
 
   -- * Accessors
-  _viewCenter,
-  _focusedRobotID,
   robotMap,
   robotsByLocation,
   robotsWatching,
@@ -41,7 +40,11 @@ module Swarm.Game.State.Robot (
   addRobot,
   addRobotToLocation,
   addTRobot,
-  setRobotList,
+
+  -- ** View
+  modifyViewCenter,
+  unfocus,
+  recalcViewCenter,
 ) where
 
 import Control.Arrow (Arrow ((&&&)))
@@ -59,7 +62,7 @@ import Data.IntSet.Lens (setOf)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as S
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
@@ -378,13 +381,21 @@ removeRobotFromLocationMap (Cosmic oldSubworld oldPlanar) rid =
   tidyDelete robID =
     surfaceEmpty M.null . M.update (deleteOne robID) oldPlanar
 
+setRobotInfo :: RID -> [Robot] -> Robots -> Robots
+setRobotInfo baseID robotList rState =
+  (setRobotList robotList rState) {_focusedRobotID = baseID}
+    & viewCenterRule .~ VCRobot baseID
+
 setRobotList :: [Robot] -> Robots -> Robots
 setRobotList robotList rState =
   rState
     & robotMap .~ IM.fromList (map (view robotID &&& id) robotList)
     & robotsByLocation .~ M.map (groupRobotsByPlanarLocation . NE.toList) (groupRobotsBySubworld robotList)
     & internalActiveRobots .~ setOf (traverse . robotID) robotList
+    & robotNaming . gensym .~ initGensym
  where
+  initGensym = length robotList - 1
+
   groupRobotsBySubworld =
     binTuples . map (view (robotLocation . subworld) &&& id)
 
@@ -392,3 +403,44 @@ setRobotList robotList rState =
     M.fromListWith
       IS.union
       (map (view (robotLocation . planar) &&& (IS.singleton . view robotID)) rs)
+
+-- | Modify the 'viewCenter' by applying an arbitrary function to the
+--   current value.  Note that this also modifies the 'viewCenterRule'
+--   to match.  After calling this function the 'viewCenterRule' will
+--   specify a particular location, not a robot.
+modifyViewCenter :: (Cosmic Location -> Cosmic Location) -> Robots -> Robots
+modifyViewCenter update rInfo =
+  rInfo
+    & case rInfo ^. viewCenterRule of
+      VCLocation l -> viewCenterRule .~ VCLocation (update l)
+      VCRobot _ -> viewCenterRule .~ VCLocation (update (rInfo ^. viewCenter))
+
+-- | "Unfocus" by modifying the view center rule to look at the
+--   current location instead of a specific robot, and also set the
+--   focused robot ID to an invalid value.  In classic mode this
+--   causes the map view to become nothing but static.
+unfocus :: Robots -> Robots
+unfocus = (\ri -> ri {_focusedRobotID = -1000}) . modifyViewCenter id
+
+-- | Recalculate the view center (and cache the result in the
+--   'viewCenter' field) based on the current 'viewCenterRule'.  If
+--   the 'viewCenterRule' specifies a robot which does not exist,
+--   simply leave the current 'viewCenter' as it is. Set 'needsRedraw'
+--   if the view center changes.
+recalcViewCenter :: Robots -> Robots
+recalcViewCenter rInfo =
+  rInfo
+    { _viewCenter = newViewCenter
+    }
+ where
+  newViewCenter =
+    fromMaybe (rInfo ^. viewCenter) $
+      applyViewCenterRule (rInfo ^. viewCenterRule) (rInfo ^. robotMap)
+
+-- | Given a current mapping from robot names to robots, apply a
+--   'ViewCenterRule' to derive the location it refers to.  The result
+--   is 'Maybe' because the rule may refer to a robot which does not
+--   exist.
+applyViewCenterRule :: ViewCenterRule -> IntMap Robot -> Maybe (Cosmic Location)
+applyViewCenterRule (VCLocation l) _ = Just l
+applyViewCenterRule (VCRobot name) m = m ^? at name . _Just . robotLocation
