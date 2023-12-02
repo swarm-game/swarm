@@ -1047,7 +1047,7 @@ execConst runChildProg c vs s k = do
               ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
                   ? north
               )
-              defaultRobotDisplay
+              ((r ^. robotDisplay) & invisible .~ False)
               (In cmd e s [FExec])
               []
               []
