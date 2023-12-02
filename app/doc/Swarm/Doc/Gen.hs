@@ -9,15 +9,7 @@ module Swarm.Doc.Gen (
   -- ** Main document generation function + types
   generateDocs,
   GenerateDocs (..),
-  EditorType (..),
   SheetType (..),
-  loadStandaloneScenario,
-
-  -- ** Formatted keyword lists
-  keywordsCommands,
-  keywordsDirections,
-  operatorNames,
-  builtinFunctionList,
 
   -- ** Wiki pages
   PageAddress (..),
@@ -36,6 +28,7 @@ import Data.Text (Text, unpack)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Tuple (swap)
+import Swarm.Doc.Keyword
 import Swarm.Doc.Pedagogy
 import Swarm.Doc.Util
 import Swarm.Doc.Wiki.Cheatsheet
@@ -47,8 +40,7 @@ import Swarm.Game.Scenario (loadStandaloneScenario)
 import Swarm.Game.World.Gen (extractEntities)
 import Swarm.Game.World.Typecheck (Some (..), TTerm)
 import Swarm.Language.Key (specialKeyNames)
-import Swarm.Language.Syntax qualified as Syntax
-import Swarm.Util (both, listEnums, quote)
+import Swarm.Util (both, listEnums)
 import Swarm.Util.Effect (simpleErrorHandle)
 import Swarm.Web (swarmApiMarkdown)
 import Text.Dot (Dot, NodeId, (.->.))
@@ -77,11 +69,6 @@ data GenerateDocs where
   -- | Web API endpoints
   WebAPIEndpoints :: GenerateDocs
   deriving (Eq, Show)
-
--- | An enumeration of the editors supported by Swarm (currently,
---   Emacs and VS Code).
-data EditorType = Emacs | VSCode | Vim
-  deriving (Eq, Show, Enum, Bounded)
 
 -- | Generate the requested kind of documentation to stdout.
 generateDocs :: GenerateDocs -> IO ()
@@ -132,34 +119,6 @@ generateEditorKeywords = \case
     T.putStr $ keywordsCommands Vim
     putStr "\nsyn keyword Direction "
     T.putStrLn $ keywordsDirections Vim
-
-builtinFunctionList :: EditorType -> Text
-builtinFunctionList e = editorList e $ map constSyntax builtinFunctions
-
-editorList :: EditorType -> [Text] -> Text
-editorList = \case
-  Emacs -> T.unlines . map (("  " <>) . quote)
-  VSCode -> T.intercalate "|"
-  Vim -> T.intercalate " "
-
--- | Get formatted list of basic functions/commands.
-keywordsCommands :: EditorType -> Text
-keywordsCommands e = editorList e $ map constSyntax commands
-
--- | Get formatted list of directions.
-keywordsDirections :: EditorType -> Text
-keywordsDirections e = editorList e $ map Syntax.directionSyntax Syntax.allDirs
-
--- | A list of the names of all the operators in the language.
-operatorNames :: Text
-operatorNames = T.intercalate "|" $ map (escape . constSyntax) operators
- where
-  special :: String
-  special = "*+$[]|^"
-  slashNotComment = \case
-    '/' -> "/(?![/|*])"
-    c -> T.singleton c
-  escape = T.concatMap (\c -> if c `elem` special then T.snoc "\\\\" c else slashNotComment c)
 
 -- ----------------------------------------------------------------------------
 -- GENERATE SPECIAL KEY NAMES
