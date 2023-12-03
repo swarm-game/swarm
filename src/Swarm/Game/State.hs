@@ -47,11 +47,8 @@ module Swarm.Game.State (
   currentScenarioPath,
   needsRedraw,
   replWorking,
-  applyViewCenterRule,
-  recalcViewCenter,
-  modifyViewCenter,
+  recalcViewCenterAndRedraw,
   viewingRegion,
-  unfocus,
   focusedRobot,
   RobotRange (..),
   focusedRange,
@@ -84,8 +81,8 @@ import Data.Bifunctor (first)
 import Data.Digest.Pure.SHA (sha1, showDigest)
 import Data.Foldable (toList)
 import Data.Foldable.Extra (allM)
+import Data.Function (on)
 import Data.Int (Int32)
-import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
 import Data.List (partition, sortOn)
@@ -323,51 +320,19 @@ messageIsFromNearby l e = case e ^. leSource of
     InfinitelyFar -> False
     Measurable x -> x <= hearingDistance
 
--- | Given a current mapping from robot names to robots, apply a
---   'ViewCenterRule' to derive the location it refers to.  The result
---   is 'Maybe' because the rule may refer to a robot which does not
---   exist.
-applyViewCenterRule :: ViewCenterRule -> IntMap Robot -> Maybe (Cosmic Location)
-applyViewCenterRule (VCLocation l) _ = Just l
-applyViewCenterRule (VCRobot name) m = m ^? at name . _Just . robotLocation
-
 -- | Recalculate the view center (and cache the result in the
 --   'viewCenter' field) based on the current 'viewCenterRule'.  If
 --   the 'viewCenterRule' specifies a robot which does not exist,
 --   simply leave the current 'viewCenter' as it is. Set 'needsRedraw'
 --   if the view center changes.
-recalcViewCenter :: GameState -> GameState
-recalcViewCenter g =
+recalcViewCenterAndRedraw :: GameState -> GameState
+recalcViewCenterAndRedraw g =
   g
-    { _robotInfo =
-        (g ^. robotInfo)
-          { _viewCenter = newViewCenter
-          }
-    }
-    & (if newViewCenter /= oldViewCenter then needsRedraw .~ True else id)
+    & robotInfo .~ newRobotInfo
+    & (if ((/=) `on` (^. viewCenter)) oldRobotInfo newRobotInfo then needsRedraw .~ True else id)
  where
-  oldViewCenter = g ^. robotInfo . viewCenter
-  newViewCenter =
-    fromMaybe oldViewCenter $
-      applyViewCenterRule (g ^. robotInfo . viewCenterRule) (g ^. robotInfo . robotMap)
-
--- | Modify the 'viewCenter' by applying an arbitrary function to the
---   current value.  Note that this also modifies the 'viewCenterRule'
---   to match.  After calling this function the 'viewCenterRule' will
---   specify a particular location, not a robot.
-modifyViewCenter :: (Cosmic Location -> Cosmic Location) -> GameState -> GameState
-modifyViewCenter update g =
-  g
-    & case g ^. robotInfo . viewCenterRule of
-      VCLocation l -> robotInfo . viewCenterRule .~ VCLocation (update l)
-      VCRobot _ -> robotInfo . viewCenterRule .~ VCLocation (update (g ^. robotInfo . viewCenter))
-
--- | "Unfocus" by modifying the view center rule to look at the
---   current location instead of a specific robot, and also set the
---   focused robot ID to an invalid value.  In classic mode this
---   causes the map view to become nothing but static.
-unfocus :: GameState -> GameState
-unfocus = (\g -> g {_robotInfo = (g ^. robotInfo) {_focusedRobotID = -1000}}) . modifyViewCenter id
+  oldRobotInfo = g ^. robotInfo
+  newRobotInfo = recalcViewCenter oldRobotInfo
 
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.
@@ -663,10 +628,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
   gs = initGameState gsc
   preliminaryGameState =
     gs
-      & robotInfo .~ (gs ^. robotInfo) {_focusedRobotID = baseID}
-      & robotInfo %~ setRobotList robotList'
-      & robotInfo . viewCenterRule .~ VCRobot baseID
-      & robotInfo . robotNaming . gensym .~ initGensym
+      & robotInfo %~ setRobotInfo baseID robotList'
       & creativeMode .~ scenario ^. scenarioCreative
       & winCondition .~ theWinCondition
       & winSolution .~ scenario ^. scenarioSolution
@@ -756,7 +718,6 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       (\x -> WinConditions Ongoing (ObjectiveCompletion (CompletionBuckets (NE.toList x) mempty mempty) mempty))
       (NE.nonEmpty (scenario ^. scenarioObjectives))
 
-  initGensym = length robotList - 1
   addRecipesWith f = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes)
 
 -- | Create an initial game state corresponding to the given scenario.

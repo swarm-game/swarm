@@ -1371,7 +1371,7 @@ scrollView update = do
   -- always work, but there seems to be some sort of race condition
   -- where 'needsRedraw' gets reset before the UI drawing code runs.
   invalidateCacheEntry WorldCache
-  gameState %= modifyViewCenter (fmap update)
+  gameState . robotInfo %= modifyViewCenter (fmap update)
 
 -- | Convert a directional key into a direction.
 keyToDir :: V.Key -> Heading
