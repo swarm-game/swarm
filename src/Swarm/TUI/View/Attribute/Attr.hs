@@ -20,6 +20,7 @@ module Swarm.TUI.View.Attribute.Attr (
   toAttrName,
   getWorldAttrName,
   getTerrainAttrName,
+  mkBrickColor,
 
   -- ** Common attributes
   entityAttr,
@@ -76,17 +77,18 @@ toVtyAttr hifi = case fmap mkBrickColor hifi of
   FgOnly c -> fg c
   BgOnly c -> bg c
   FgAndBg foreground background -> foreground `on` background
- where
-  mkBrickColor = \case
-    Triple (RGB r g b) -> V.rgbColor r g b
-    AnsiColor x -> case x of
-      White -> V.white
-      BrightRed -> V.brightRed
-      Red -> V.red
-      Green -> V.green
-      Blue -> V.blue
-      BrightYellow -> V.brightYellow
-      Yellow -> V.yellow
+
+mkBrickColor :: TrueColor -> V.Color
+mkBrickColor = \case
+  Triple (RGB r g b) -> V.rgbColor r g b
+  AnsiColor x -> case x of
+    White -> V.white
+    BrightRed -> V.brightRed
+    Red -> V.red
+    Green -> V.green
+    Blue -> V.blue
+    BrightYellow -> V.brightYellow
+    Yellow -> V.yellow
 
 -- | A mapping from the defined attribute names to TUI attributes.
 swarmAttrMap :: AttrMap

@@ -55,6 +55,12 @@ data ColorLayers a
 
 type PreservableColor = ColorLayers TrueColor
 
+getBackground :: ColorLayers a -> Maybe a
+getBackground = \case
+  FgOnly _ -> Nothing
+  BgOnly x -> Just x
+  FgAndBg _ x -> Just x
+
 newtype WorldAttr = WorldAttr String
   deriving (Eq, Ord, Show)
 
