@@ -425,8 +425,7 @@ unfocus = (\ri -> ri {_focusedRobotID = -1000}) . modifyViewCenter id
 -- | Recalculate the view center (and cache the result in the
 --   'viewCenter' field) based on the current 'viewCenterRule'.  If
 --   the 'viewCenterRule' specifies a robot which does not exist,
---   simply leave the current 'viewCenter' as it is. Set 'needsRedraw'
---   if the view center changes.
+--   simply leave the current 'viewCenter' as it is.
 recalcViewCenter :: Robots -> Robots
 recalcViewCenter rInfo =
   rInfo
