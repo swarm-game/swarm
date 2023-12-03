@@ -179,7 +179,7 @@ def index = \i.\xs.
     {index (i-1) (tail xs)}
 end
 
-def for : int -> int -> (int -> cmd a) -> cmd unit = \s.\e.\act.
+def for : forall a. int -> int -> (int -> cmd a) -> cmd unit = \s.\e.\act.
   if (s == e) {}
   {act s; for (s+1) e act}
 end

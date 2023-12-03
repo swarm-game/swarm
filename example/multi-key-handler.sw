@@ -1,11 +1,11 @@
 // Proof of concept illustrating the possibility of key
 // handlers that process multi-key sequences.
 
-def cons : a * b -> (a -> b) -> (a -> b) = \p. \k. \a.
+def cons : forall a b. a * b -> (a -> b) -> (a -> b) = \p. \k. \a.
   if (a == fst p) {snd p} {k a}
 end
 
-def nil : a -> cmd unit = \a. return () end
+def nil : forall a. a -> cmd unit = \a. return () end
 
 // The delay around the first argument is necessary to prevent
 // infinite recursion
