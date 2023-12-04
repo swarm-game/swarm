@@ -78,7 +78,7 @@ toVtyAttr hifi = case fmap mkBrickColor hifi of
   FgAndBg foreground background -> foreground `on` background
  where
   mkBrickColor = \case
-    Triple (RGB r g b) -> V.rgbColor r g b
+    Triple (RGB r g b) -> V.linearColor r g b
     AnsiColor x -> case x of
       White -> V.white
       BrightRed -> V.brightRed
