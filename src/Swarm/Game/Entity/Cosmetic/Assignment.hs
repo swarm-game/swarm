@@ -60,13 +60,13 @@ worldAttributes =
 -- * Terrain
 
 dirt :: (TerrainAttr, PreservableColor)
-dirt = (TerrainAttr "dirt", FgOnly $ Triple $ RGB 165 42 42)
+dirt = (TerrainAttr "dirt", BgOnly $ Triple $ RGB 100 1 1)
 
 grass :: (TerrainAttr, PreservableColor)
-grass = (TerrainAttr "grass", FgOnly $ Triple $ RGB 0 32 0) -- dark green
+grass = (TerrainAttr "grass", BgOnly $ Triple $ RGB 0 1 0) -- dark green
 
 stone :: (TerrainAttr, PreservableColor)
-stone = (TerrainAttr "stone", FgOnly $ Triple $ RGB 32 32 32)
+stone = (TerrainAttr "stone", BgOnly $ Triple $ RGB 1 1 1)
 
 ice :: (TerrainAttr, PreservableColor)
 ice = (TerrainAttr "ice", BgOnly $ AnsiColor White)

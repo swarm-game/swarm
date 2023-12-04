@@ -59,9 +59,9 @@ getTerrainWord = T.toLower . T.pack . init . show
 terrainMap :: Map TerrainType Display
 terrainMap =
   M.fromList
-    [ (StoneT, defaultTerrainDisplay '▒' (ATerrain "stone"))
-    , (DirtT, defaultTerrainDisplay '▒' (ATerrain "dirt"))
-    , (GrassT, defaultTerrainDisplay '▒' (ATerrain "grass"))
+    [ (StoneT, defaultTerrainDisplay ' ' (ATerrain "stone"))
+    , (DirtT, defaultTerrainDisplay ' ' (ATerrain "dirt"))
+    , (GrassT, defaultTerrainDisplay ' ' (ATerrain "grass"))
     , (IceT, defaultTerrainDisplay ' ' (ATerrain "ice"))
     , (BlankT, defaultTerrainDisplay ' ' ADefault)
     ]
