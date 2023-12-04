@@ -769,7 +769,7 @@ execConst runChildProg c vs s k = do
                 -- point is that there's no way to tell the difference
                 -- between this situation and the situation where the
                 -- robot exists but is too far away.
-                False -> modify unfocus
+                False -> robotInfo %= unfocus
 
             -- If it does exist, set it as the view center.
             Just _ -> robotInfo . viewCenterRule .= VCRobot rid
@@ -1047,7 +1047,7 @@ execConst runChildProg c vs s k = do
               ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
                   ? north
               )
-              defaultRobotDisplay
+              ((r ^. robotDisplay) & invisible .~ False)
               (In cmd e s [FExec])
               []
               []

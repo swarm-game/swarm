@@ -110,7 +110,7 @@ gameTick = do
     Nothing -> pure ()
 
   -- Possibly update the view center.
-  modify recalcViewCenter
+  modify recalcViewCenterAndRedraw
 
   when ticked $ do
     -- On new tick see if the winning condition for the current objective is met.
