@@ -7,22 +7,19 @@
 module Swarm.TUI.View.CellDisplay where
 
 import Brick
-import Control.Monad (guard)
-import Control.Lens (to, view, (&), (.~), (^.))
 import Control.Applicative ((<|>))
-import Swarm.Game.Entity.Cosmetic.Assignment (terrainAttributes)
+import Control.Lens (to, view, (&), (.~), (^.))
+import Control.Monad (guard)
 import Data.ByteString (ByteString)
 import Data.Hash.Murmur
 import Data.List.NonEmpty qualified as NE
-import Data.Text qualified as T
-import Swarm.Game.Entity.Cosmetic
 import Data.Map qualified as M
 import Data.Maybe (maybeToList)
 import Data.Semigroup (sconcat)
 import Data.Set (Set)
 import Data.Set qualified as S
-import Swarm.Game.Scenario (scenarioCosmetics)
 import Data.Tagged (unTagged)
+import Data.Text qualified as T
 import Data.Word (Word32)
 import Graphics.Vty qualified as V
 import Linear.Affine ((.-.))
@@ -33,22 +30,24 @@ import Swarm.Game.Display (
   defaultEntityDisplay,
   displayAttr,
   displayChar,
-  displayPriority,
   displayObscured,
+  displayPriority,
   hidden,
   invisible,
  )
 import Swarm.Game.Entity
+import Swarm.Game.Entity.Cosmetic
+import Swarm.Game.Entity.Cosmetic.Assignment (terrainAttributes)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario (scenarioCosmetics)
+import Swarm.Game.Scenario.Topography.Cell (PCell (..))
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByLocation)
 import Swarm.Game.State
 import Swarm.Game.State.Robot
-import Swarm.Game.Scenario.Topography.Cell (PCell (..))
 import Swarm.Game.State.Substate
 import Swarm.Game.Terrain
-import Swarm.Util.Erasable (maybeToErasable, erasableToMaybe)
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Editor.Masking
@@ -58,6 +57,7 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.Util (applyWhen)
+import Swarm.Util.Erasable (erasableToMaybe, maybeToErasable)
 import Witch (from)
 import Witch.Encoding qualified as Encoding
 
@@ -71,11 +71,11 @@ getTerrainEntityColor ::
   Maybe PreservableColor
 getTerrainEntityColor aMap (Cell terr cellEnt _) =
   (entityColor =<< erasableToMaybe cellEnt) <|> terrainFallback
-  where
-    terrainFallback = M.lookup (TerrainAttr $ T.unpack $ getTerrainWord terr) terrainAttributes
-    entityColor (EntityFacade _ d) = case d ^. displayAttr of
-      AWorld n -> M.lookup (WorldAttr $ T.unpack n) aMap
-      _ -> Nothing
+ where
+  terrainFallback = M.lookup (TerrainAttr $ T.unpack $ getTerrainWord terr) terrainAttributes
+  entityColor (EntityFacade _ d) = case d ^. displayAttr of
+    AWorld n -> M.lookup (WorldAttr $ T.unpack n) aMap
+    _ -> Nothing
 
 -- | Render the 'Display' for a specific location.
 drawLoc :: UIState -> GameState -> Cosmic W.Coords -> Widget Name
@@ -99,13 +99,14 @@ drawLoc ui g cCoords@(Cosmic _ coords) =
       guard $ not $ null maybeRoboDisplay
       maybeBgColor
 
-  mycell = Cell
+  mycell =
+    Cell
       terrain
       (toFacade <$> maybeToErasable erasableEntity)
       []
-    where
-      (terrain, erasableEntity) = EU.getEditorContentAt we worlds cCoords
-      worlds = view (landscape . multiWorld) g
+   where
+    (terrain, erasableEntity) = EU.getEditorContentAt we worlds cCoords
+    worlds = view (landscape . multiWorld) g
 
   maybeBgColor = do
     (myScenario, _) <- ui ^. scenarioRef
@@ -198,15 +199,16 @@ displayLoc ::
   Cosmic W.Coords ->
   (Display, Maybe Display)
 displayLoc showRobots we g cCoords@(Cosmic _ coords) =
- (combined, maybeRobotAttribute)
+  (combined, maybeRobotAttribute)
  where
-  combined = staticDisplay g coords
-    <> displayLocRaw we ri robots cCoords
+  combined =
+    staticDisplay g coords
+      <> displayLocRaw we ri robots cCoords
 
   ri = RenderingInput (g ^. landscape . multiWorld) (getEntityIsKnown $ mkEntityKnowledge g)
 
   maybeRobotAttribute = do
-    guard $ not $ combined  ^. displayObscured
+    guard $ not $ combined ^. displayObscured
     sconcat <$> NE.nonEmpty (filter (not . view invisible) robots)
 
   robots =

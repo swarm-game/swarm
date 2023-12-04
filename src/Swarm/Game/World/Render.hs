@@ -15,7 +15,6 @@ import Data.Maybe (fromMaybe)
 import Data.Tuple.Extra (both)
 import Data.Vector qualified as V
 import Graphics.Vty.Attributes.Color240
-import Swarm.TUI.View.CellDisplay (getTerrainEntityColor)
 import Linear (V2 (..))
 import Swarm.Game.Display (defaultChar)
 import Swarm.Game.Entity.Cosmetic
@@ -32,6 +31,7 @@ import Swarm.Game.State.Substate
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Editor.Util (getContentAt, getMapRectangle)
+import Swarm.TUI.View.CellDisplay (getTerrainEntityColor)
 import Swarm.Util (surfaceEmpty)
 import Swarm.Util.Effect (simpleErrorHandle)
 import Swarm.Util.Erasable (erasableToMaybe)
