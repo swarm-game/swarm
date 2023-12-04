@@ -7,16 +7,13 @@
 module Main where
 
 import Data.Foldable qualified
-import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack)
-import Data.Text qualified as T
 import Data.Text.IO qualified as Text
 import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Prettyprinter
 import Prettyprinter.Render.Text qualified as RT
 import Swarm.App (appMain)
-import Swarm.Doc.Gen (EditorType (..), GenerateDocs (..), PageAddress (..), SheetType (..), generateDocs)
 import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..))
 import Swarm.Game.World.Render (OuputFormat (..), RenderOpts (..), doRenderCmd)
 import Swarm.Language.LSP (lspMain)
@@ -45,7 +42,6 @@ type Width = Int
 data CLI
   = Run AppOpts
   | Format Input (Maybe Width)
-  | DocGen GenerateDocs
   | RenderMap FilePath RenderOpts
   | LSP
   | Version
@@ -55,7 +51,6 @@ cliParser =
   subparser
     ( mconcat
         [ command "format" (info (Format <$> format <*> optional widthOpt <**> helper) (progDesc "Format a file"))
-        , command "generate" (info (DocGen <$> docgen <**> helper) (progDesc "Generate docs"))
         , command "map" (info (render <**> helper) (progDesc "Render a scenario world map."))
         , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
@@ -97,46 +92,6 @@ cliParser =
   widthOpt :: Parser Width
   widthOpt = option auto (long "width" <> metavar "COLUMNS" <> help "Use layout with maximum width")
 
-  docgen :: Parser GenerateDocs
-  docgen =
-    subparser . mconcat $
-      [ command "recipes" (info (pure RecipeGraph) $ progDesc "Output graphviz dotfile of entity dependencies based on recipes")
-      , command "editors" (info (EditorKeywords <$> editor <**> helper) $ progDesc "Output editor keywords")
-      , command "keys" (info (pure SpecialKeyNames) $ progDesc "Output list of recognized special key names")
-      , command "cheatsheet" (info (CheatSheet <$> address <*> cheatsheet <**> helper) $ progDesc "Output nice Wiki tables")
-      , command "pedagogy" (info (pure TutorialCoverage) $ progDesc "Output tutorial coverage")
-      , command "endpoints" (info (pure WebAPIEndpoints) $ progDesc "Generate markdown Web API documentation.")
-      ]
-
-  editor :: Parser (Maybe EditorType)
-  editor =
-    Data.Foldable.asum
-      [ pure Nothing
-      , Just VSCode <$ switch (long "code" <> help "Generate for the VS Code editor")
-      , Just Emacs <$ switch (long "emacs" <> help "Generate for the Emacs editor")
-      ]
-  address :: Parser PageAddress
-  address =
-    let replace a b = T.unpack . T.replace a b . T.pack
-        opt n =
-          fmap (fromMaybe "") . optional $
-            option
-              str
-              ( long n
-                  <> metavar "ADDRESS"
-                  <> help ("Set the address of " <> replace "-" " " n <> ". Default no link.")
-              )
-     in PageAddress <$> opt "entities-page" <*> opt "commands-page" <*> opt "capabilities-page" <*> opt "recipes-page"
-  cheatsheet :: Parser (Maybe SheetType)
-  cheatsheet =
-    Data.Foldable.asum
-      [ pure Nothing
-      , Just Entities <$ switch (long "entities" <> help "Generate entities page (uses data from entities.yaml)")
-      , Just Recipes <$ switch (long "recipes" <> help "Generate recipes page (uses data from recipes.yaml)")
-      , Just Capabilities <$ switch (long "capabilities" <> help "Generate capabilities page (uses entity map)")
-      , Just Commands <$ switch (long "commands" <> help "Generate commands page (uses constInfo, constCaps and inferConst)")
-      , Just Scenario <$ switch (long "scenario" <> help "Generate scenario schema page")
-      ]
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
   webPort :: Parser (Maybe Int)
@@ -218,7 +173,6 @@ main = do
   cli <- execParser cliInfo
   case cli of
     Run opts -> appMain opts
-    DocGen g -> generateDocs g
     Format fo w -> formatFile fo w
     RenderMap mapPath opts -> doRenderCmd opts mapPath
     LSP -> lspMain

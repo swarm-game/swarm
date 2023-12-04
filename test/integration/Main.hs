@@ -26,8 +26,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
-import Swarm.Doc.Gen (EditorType (..))
-import Swarm.Doc.Gen qualified as DocGen
+import Swarm.Doc.Keyword (EditorType (..))
+import Swarm.Doc.Keyword qualified as Keyword
 import Swarm.Effect (runTimeIO)
 import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
 import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
@@ -525,22 +525,22 @@ testEditorFiles =
     "editors"
     [ testGroup
         "VS Code"
-        [ testTextInVSCode "operators" (const DocGen.operatorNames)
-        , testTextInVSCode "builtin" DocGen.builtinFunctionList
-        , testTextInVSCode "commands" DocGen.keywordsCommands
-        , testTextInVSCode "directions" DocGen.keywordsDirections
+        [ testTextInVSCode "operators" (const Keyword.operatorNames)
+        , testTextInVSCode "builtin" Keyword.builtinFunctionList
+        , testTextInVSCode "commands" Keyword.keywordsCommands
+        , testTextInVSCode "directions" Keyword.keywordsDirections
         ]
     , testGroup
         "Emacs"
-        [ testTextInEmacs "builtin" DocGen.builtinFunctionList
-        , testTextInEmacs "commands" DocGen.keywordsCommands
-        , testTextInEmacs "directions" DocGen.keywordsDirections
+        [ testTextInEmacs "builtin" Keyword.builtinFunctionList
+        , testTextInEmacs "commands" Keyword.keywordsCommands
+        , testTextInEmacs "directions" Keyword.keywordsDirections
         ]
     , testGroup
         "Vim"
-        [ testTextInVim "builtin" DocGen.builtinFunctionList
-        , testTextInVim "commands" DocGen.keywordsCommands
-        , testTextInVim "directions" DocGen.keywordsDirections
+        [ testTextInVim "builtin" Keyword.builtinFunctionList
+        , testTextInVim "commands" Keyword.keywordsCommands
+        , testTextInVim "directions" Keyword.keywordsDirections
         ]
     ]
  where

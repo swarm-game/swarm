@@ -17,13 +17,12 @@ import Data.Tuple.Extra (both)
 import Data.Vector qualified as V
 import Graphics.Vty.Attributes.Color240
 import Linear (V2 (..))
-import Swarm.Doc.Gen (loadStandaloneScenario)
 import Swarm.Game.Display (Attribute (AWorld), defaultChar, displayAttr)
 import Swarm.Game.Entity.Cosmetic
 import Swarm.Game.Entity.Cosmetic.Assignment (terrainAttributes)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (initNameGenerator, readAppData)
-import Swarm.Game.Scenario (Scenario, area, scenarioCosmetics, scenarioWorlds, ul, worldName)
+import Swarm.Game.Scenario (Scenario, area, loadStandaloneScenario, scenarioCosmetics, scenarioWorlds, ul, worldName)
 import Swarm.Game.Scenario.Status (seedLaunchParams)
 import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..), getAreaDimensions, isEmpty, upperLeftToBottomRight)
 import Swarm.Game.Scenario.Topography.Cell
