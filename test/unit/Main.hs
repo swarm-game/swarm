@@ -37,6 +37,7 @@ import TestNotification (testNotification)
 import TestOrdering (testOrdering)
 import TestPedagogy (testPedagogy)
 import TestPretty (testPrettyConst)
+import TestRecipeCoverage (testDeviceRecipeCoverage)
 import TestScoring (testHighScores)
 import Witch (from)
 
@@ -55,6 +56,7 @@ tests s =
     , testPrettyConst
     , testBoolExpr
     , testCommands
+    , testDeviceRecipeCoverage (s ^. runtimeState)
     , testHighScores
     , testEval (s ^. gameState)
     , testModel
