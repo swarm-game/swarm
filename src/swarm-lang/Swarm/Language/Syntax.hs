@@ -574,7 +574,7 @@ constInfo c = case c of
   Push ->
     command 1 short
       . doc
-        (Mutation $ Set.singleton EntityChange)
+        (Mutation $ Set.fromList [EntityChange, RobotChange PositionChange])
         "Push an entity forward one step."
       $ [ "Both entity and robot moves forward one step."
         , "Destination must not contain an entity."
@@ -597,7 +597,7 @@ constInfo c = case c of
         (Mutation $ Set.fromList [EntityChange, RobotChange InventoryChange])
         "Grab an item from the current location."
   Harvest ->
-    command 0 short . doc (Mutation $ Set.singleton EntityChange) "Harvest an item from the current location." $
+    command 0 short . doc (Mutation $ Set.fromList [EntityChange, RobotChange InventoryChange]) "Harvest an item from the current location." $
       [ "Leaves behind a growing seed if the harvested item is growable."
       , "Otherwise it works exactly like `grab`."
       ]
@@ -611,7 +611,7 @@ constInfo c = case c of
   Place ->
     command 1 short
       . doc
-        (Mutation $ Set.singleton EntityChange)
+        (Mutation $ Set.fromList [EntityChange, RobotChange InventoryChange])
         "Place an item at the current location."
       $ ["The current location has to be empty for this to work."]
   Ping ->
