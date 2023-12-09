@@ -1,0 +1,51 @@
+version: 1
+name: Requirements of system-robot children
+description: |
+  Normally, system robots are not required to possess devices in order to use any particular command.
+  However, a robot built by a system robot becomes subject to the requirement.
+  This is a bug.
+
+  In this scenario, the child robot cannot be built because the
+  parent robot ("queenbee") does not possess a "beaglepuss" in its inventory.
+objectives:
+  - condition: |
+      try {
+        robotnamed "childbot";
+        return true;
+      } {
+        return false;
+      }
+solution: |
+  noop;
+robots:
+  - name: base
+    dir: [1, 0]
+  - name: queenbee
+    dir: [1, 0]
+    system: true
+    display:
+      invisible: false
+      char: 'Q'
+    inventory:
+      - [1, solar panel]
+      - [0, beaglepuss]
+    program: |
+      def createWorker =
+          build {
+              setname "childbot";
+              appear "B";
+          };
+          end;
+
+      createWorker;
+known: [water]
+world:
+  palette:
+    '.': [grass]
+    'B': [grass, null, base]
+    'Q': [grass, null, queenbee]
+  upperleft: [-1, 1]
+  map: |
+    B..Q
+    ....
+    ....
