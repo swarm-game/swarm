@@ -9,6 +9,7 @@
 -- Swarm integration tests
 module Main where
 
+import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens (Ixed (ix), at, to, use, view, (&), (.~), (<>~), (^.), (^..), (^?), (^?!))
@@ -300,6 +301,7 @@ testScenarioSolutions rs ui =
             , testSolution Default "Testing/201-require/201-require-entities-def"
             , testSolution Default "Testing/201-require/533-reprogram-simple"
             , testSolution Default "Testing/201-require/533-reprogram"
+            , expectFailBecause "Fix #1664" $ testSolution Default "Testing/201-require/1664-require-system-robot-children"
             ]
         , testSolution Default "Testing/479-atomic-race"
         , testSolution (Sec 5) "Testing/479-atomic"
