@@ -8,6 +8,7 @@ module Swarm.TUI.View.CellDisplay where
 
 import Brick
 import Control.Lens (to, view, (&), (.~), (^.))
+import Control.Monad (guard)
 import Data.ByteString (ByteString)
 import Data.Hash.Murmur
 import Data.List.NonEmpty qualified as NE
@@ -31,11 +32,14 @@ import Swarm.Game.Display (
   displayPriority,
   getBoundaryDisplay,
   hidden,
+  invisible,
  )
 import Swarm.Game.Entity
 import Swarm.Game.Land
 import Swarm.Game.Location (Point (..), toHeading)
 import Swarm.Game.Robot
+import Swarm.Game.Scenario (scenarioCosmetics)
+import Swarm.Game.Scenario.Topography.Cell (CellPaintDisplay, PCell (..))
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByLocation)
@@ -56,7 +60,7 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.Util (applyWhen)
-import Swarm.Util.Content (getContentAt)
+import Swarm.Util.Content (getContentAt, maybeToErasable)
 import Witch (from)
 import Witch.Encoding qualified as Encoding
 
@@ -64,16 +68,31 @@ import Witch.Encoding qualified as Encoding
 renderDisplay :: Display -> Widget n
 renderDisplay disp = withAttr (disp ^. displayAttr . to toAttrName) $ str [displayChar disp]
 
+-- | Returns the background color of either the terrain or
+-- any entity in this cell that specifies a background color.
+getCellBackground :: UIState -> CellPaintDisplay -> Maybe V.Color
+getCellBackground ui mycell = do
+  (myScenario, _) <- ui ^. scenarioRef
+  hifi <- getTerrainEntityColor (myScenario ^. scenarioCosmetics) mycell
+  getBackground $ fmap mkBrickColor hifi
+
 -- | Render the 'Display' for a specific location.
 drawLoc :: UIGameplay -> GameState -> Cosmic Coords -> Widget Name
 drawLoc ui g cCoords@(Cosmic _ coords) =
   if shouldHideWorldCell ui coords
     then str " "
-    else boldStructure drawCell
+    else boldStructure $ passthroughBackgroundForRobot drawCell
  where
   showRobots = ui ^. uiShowRobots
   we = ui ^. uiWorldEditor . worldOverdraw
-  drawCell = renderDisplay $ displayLoc showRobots we g cCoords
+
+  (combinedDisplay, maybeBgForRobot) = displayLoc ui showRobots we g cCoords
+  drawCell = renderDisplay combinedDisplay
+
+  passthroughBackgroundForRobot =
+    case maybeBgForRobot of
+      Just c -> modifyDefAttr (`V.withBackColor` c)
+      Nothing -> id
 
   boldStructure = applyWhen isStructure $ modifyDefAttr (`V.withStyle` V.bold)
    where
@@ -146,7 +165,7 @@ displayEntityCell ::
   Cosmic Coords ->
   [Display]
 displayEntityCell worldEditor ri coords =
-  maybeToList $ assignBoundaryOverride . displayForEntity <$> maybeEntityPaint
+  maybeToList $ assignBoundaryOverride . displayForEntity ri <$> maybeEntityPaint
  where
   maybeEntityPaint = getEntPaintAtCoord coords
 
@@ -161,17 +180,26 @@ displayEntityCell worldEditor ri coords =
       offsettedCoord = (`addTuple` xy) <$> coords
       Coords xy = locToCoords $ P $ toHeading d
 
-  displayForEntity :: EntityPaint -> Display
-  displayForEntity e = applyWhen (not $ isKnownFunc ri e) hidden $ getDisplay e
+displayForEntity :: RenderingInput -> EntityPaint -> Display
+displayForEntity ri e = applyWhen (not $ isKnownFunc ri e) hidden $ getDisplay e
 
 -- | Get the 'Display' for a specific location, by combining the
 --   'Display's for the terrain, entity, and robots at the location, and
 --   taking into account "static" based on the distance to the robot
 --   being @view@ed.
-displayLoc :: Bool -> WorldOverdraw -> GameState -> Cosmic Coords -> Display
-displayLoc showRobots we g cCoords@(Cosmic _ coords) =
-  staticDisplay g coords
-    <> displayLocRaw we ri robots cCoords
+--
+-- In case a robot occupies the cell, propagates the background color
+-- that should be displayed "underneath" the robot.
+displayLoc ::
+  UIState ->
+  -- | Should show robots
+  Bool ->
+  WorldOverdraw ->
+  GameState ->
+  Cosmic W.Coords ->
+  (Display, Maybe V.Color)
+displayLoc ui showRobots we g cCoords@(Cosmic _ coords) =
+  (combinedDisplay, maybeRobotPassthroughBg)
  where
   ri =
     RenderingInput
@@ -179,10 +207,35 @@ displayLoc showRobots we g cCoords@(Cosmic _ coords) =
       (getEntityIsKnown $ mkEntityKnowledge g)
       (g ^. landscape . terrainAndEntities . terrainMap)
 
-  robots =
+
+  combinedDisplay =
+    staticDisplay g coords
+      <> terrainEntityRobotDisplay
+
+  (terrain, maybeEntity) = EU.getEditorContentAt we (multiworldInfo ri) cCoords
+
+  hasVisibleRobot =
+    not (combinedDisplay ^. displayObscured)
+      && not (all (view invisible) robotDisplays)
+
+  cellPaint =
+    Cell
+      terrain
+      (toFacade <$> maybeToErasable maybeEntity)
+      []
+
+  maybeRobotPassthroughBg = do
+    guard hasVisibleRobot
+    getCellBackground ui cellPaint
+
+  entityDisplays = maybeToList $ displayForEntity ri <$> maybeEntity
+  terrainDisplay = terrainMap M.! terrain
+  robotDisplays =
     if showRobots
       then displayRobotCell g cCoords
       else []
+
+  terrainEntityRobotDisplay = sconcat $ terrainDisplay NE.:| entityDisplays <> robotDisplays
 
 -- | Get the 'Display' for a specific location, by combining the
 --   'Display's for the terrain, entity, and robots at the location.

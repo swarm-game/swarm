@@ -136,9 +136,9 @@ displayAttr :: Lens' Display Attribute
 --   on top of lower.
 displayPriority :: Lens' Display Priority
 
--- | True for static. This field is a workaround to allow robot-occupied
--- cells to take on ambient background; it distinguishes displays
--- that have an adoptable background from displays that do not.
+-- | True for static "fog of war" overlay. This field is a workaround to allow
+-- robot-occupied cells to take on ambient background; it distinguishes
+-- displays that have an adoptable background from displays that do not.
 displayObscured :: Lens' Display Bool
 
 -- | Whether the entity is currently invisible.
