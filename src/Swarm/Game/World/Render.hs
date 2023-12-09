@@ -12,13 +12,11 @@ import Data.Colour.SRGB (RGB (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
-import Data.Text qualified as T
 import Data.Tuple.Extra (both)
 import Data.Vector qualified as V
 import Linear (V2 (..))
-import Swarm.Game.Display (Attribute (AWorld), defaultChar, displayAttr)
+import Swarm.Game.Display (defaultChar)
 import Swarm.Game.Entity.Cosmetic
-import Swarm.Game.Entity.Cosmetic.Assignment (terrainAttributes)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (initNameGenerator, readAppData)
 import Swarm.Game.Scenario (Scenario, area, loadStandaloneScenario, scenarioCosmetics, scenarioWorlds, ul, worldName)
@@ -29,10 +27,10 @@ import Swarm.Game.Scenario.Topography.Center
 import Swarm.Game.Scenario.Topography.EntityFacade (EntityFacade (..), mkFacade)
 import Swarm.Game.State
 import Swarm.Game.State.Substate
-import Swarm.Game.Terrain (getTerrainWord)
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Editor.Util (getContentAt, getMapRectangle)
+import Swarm.TUI.View.CellDisplay (getTerrainEntityColor)
 import Swarm.Util (surfaceEmpty)
 import Swarm.Util.Effect (simpleErrorHandle)
 import Swarm.Util.Erasable (erasableToMaybe)
@@ -56,17 +54,10 @@ getDisplayChar = maybe ' ' facadeChar . erasableToMaybe . cellEntity
   facadeChar (EntityFacade _ d) = view defaultChar d
 
 getDisplayColor :: M.Map WorldAttr PreservableColor -> PCell EntityFacade -> PixelRGBA8
-getDisplayColor aMap (Cell terr cellEnt _) =
-  maybe terrainFallback facadeColor $ erasableToMaybe cellEnt
+getDisplayColor aMap c =
+  maybe transparent mkPixelColor $ getTerrainEntityColor aMap c
  where
-  terrainFallback =
-    maybe transparent mkPixelColor $
-      M.lookup (TerrainAttr $ T.unpack $ getTerrainWord terr) terrainAttributes
-
   transparent = PixelRGBA8 0 0 0 0
-  facadeColor (EntityFacade _ d) = maybe transparent mkPixelColor $ case d ^. displayAttr of
-    AWorld n -> M.lookup (WorldAttr $ T.unpack n) aMap
-    _ -> Nothing
 
 mkPixelColor :: PreservableColor -> PixelRGBA8
 mkPixelColor h = PixelRGBA8 r g b 255
