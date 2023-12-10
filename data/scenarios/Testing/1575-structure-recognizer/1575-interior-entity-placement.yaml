@@ -76,7 +76,7 @@ solution: |
   place x;
 structures:
   - name: pigpen
-    recognize: true
+    recognize: [north]
     structure:
       palette:
         'b': [stone, board]

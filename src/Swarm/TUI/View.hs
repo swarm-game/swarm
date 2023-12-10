@@ -931,7 +931,7 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
 
   -- Hides this key if the recognizable structure list is empty
   structuresKey =
-    if null $ s ^. gameState . discovery . structureRecognition . automatons . definitions
+    if null $ s ^. gameState . discovery . structureRecognition . automatons . originalStructureDefinitions
       then Nothing
       else Just (NoHighlight, "F6", "Structures")
 

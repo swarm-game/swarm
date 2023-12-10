@@ -511,7 +511,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Floorplan -> case vs of
       [VText name] -> do
-        structureTemplates <- use $ discovery . structureRecognition . automatons . definitions
+        structureTemplates <- use $ discovery . structureRecognition . automatons . originalStructureDefinitions
         let maybeStructure = M.lookup (StructureName name) structureTemplates
         structureDef <-
           maybeStructure

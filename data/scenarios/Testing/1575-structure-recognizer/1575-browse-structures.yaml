@@ -4,7 +4,7 @@ description: |
   Hit *F6* to view the recognizable structures.
 
   Only the subset of the structures marked with
-  *recognize: true* are browseable.
+  *recognize: [north]* are browseable.
   In particular, the `donut`{=structure} structure is placed
   in the map but not displayed in the *F6* dialog.
 creative: false
@@ -53,7 +53,7 @@ structures:
         @@@@@
         .@@@.
   - name: diamond
-    recognize: true
+    recognize: [north]
     description: "A diamond pattern of flowers"
     structure:
       mask: '.'
@@ -68,7 +68,7 @@ structures:
         ..xxx..
         ...x...
   - name: contraption
-    recognize: true
+    recognize: [north]
     description: "A device for assembling useful widgets"
     structure:
       mask: '.'
@@ -83,7 +83,7 @@ structures:
        lIIIgg
        rlllgg
   - name: precious
-    recognize: true
+    recognize: [north]
     structure:
       mask: '.'
       palette:
@@ -96,7 +96,7 @@ structures:
        gsq
        qqm
   - name: smallish
-    recognize: true
+    recognize: [north]
     structure:
       mask: '.'
       palette:

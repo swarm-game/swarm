@@ -37,7 +37,7 @@ solution: |
   );
 structures:
   - name: green_jewel
-    recognize: true
+    recognize: [north]
     structure:
       palette:
         'g': [stone, pixel (G)]

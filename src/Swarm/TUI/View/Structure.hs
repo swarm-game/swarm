@@ -9,13 +9,15 @@ module Swarm.TUI.View.Structure (
   makeListWidget,
 ) where
 
-import Brick hiding (Direction, Location)
+import Brick hiding (Direction, Location, on)
 import Brick.Focus
 import Brick.Widgets.Center
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
+import Data.Function (on)
 import Data.Map.NonEmpty qualified as NEM
 import Data.Map.Strict qualified as M
+import Data.Set qualified as Set
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Swarm.Game.Entity (entityDisplay)
@@ -28,11 +30,13 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByNam
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
 import Swarm.Game.State.Substate
+import Swarm.Language.Direction (AbsoluteDir (DNorth), directionJsonModifier)
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Structure
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Util
+import Swarm.Util (commaList, listEnums)
 
 -- | Render a two-pane widget with structure selection on the left
 -- and single-structure details on the right.
@@ -50,6 +54,7 @@ structureWidget gs s =
             $ withGrid s
         , occurrenceCountSuffix
         ]
+    , maybeReorientabilityWidget
     , maybeDescriptionWidget
     , padTop (Pad 1) $
         hBox
@@ -64,7 +69,21 @@ structureWidget gs s =
       , withAttr boldAttr $ txt content
       ]
 
-  maybeDescriptionWidget = maybe emptyWidget txtWrap $ Structure.description . originalDefinition . withGrid $ s
+  supportedOrientations = Set.toList . Structure.recognize . originalDefinition . withGrid $ s
+  maybeReorientabilityWidget
+    | supportedOrientations == [DNorth] = txt "Fixed orientation."
+    | ((==) `on` length) supportedOrientations listEnums = txt "Reorientable."
+    | otherwise =
+        txt $
+          T.unwords
+            [ "Supports orientations:"
+            , commaList $ map (T.pack . directionJsonModifier . show) supportedOrientations
+            ]
+
+  maybeDescriptionWidget =
+    maybe emptyWidget (padTop (Pad 1) . withAttr italicAttr . txtWrap) $
+      Structure.description . originalDefinition . withGrid $
+        s
 
   registry = gs ^. discovery . structureRecognition . foundStructures
   occurrenceCountSuffix = case M.lookup sName $ foundByName registry of
@@ -97,8 +116,8 @@ structureWidget gs s =
   renderOneCell = maybe (txt " ") (renderDisplay . view entityDisplay)
 
 makeListWidget :: [StructureInfo] -> BL.List Name StructureInfo
-makeListWidget structureDefs =
-  BL.listMoveTo 0 $ BL.list (StructureWidgets StructuresList) (V.fromList structureDefs) 1
+makeListWidget structureDefinitions =
+  BL.listMoveTo 0 $ BL.list (StructureWidgets StructuresList) (V.fromList structureDefinitions) 1
 
 renderStructuresDisplay :: GameState -> StructureDisplay -> Widget Name
 renderStructuresDisplay gs structureDisplay =

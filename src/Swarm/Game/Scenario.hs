@@ -227,7 +227,7 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
 
       let mergedNavigation = Navigation mergedWaypoints mergedPortals
           structureInfo =
-            StaticStructureInfo (filter Structure.recognize namedGrids)
+            StaticStructureInfo (filter Structure.isRecognizable namedGrids)
               . M.fromList
               . NE.toList
               $ NE.map (worldName &&& placedStructures) allWorlds

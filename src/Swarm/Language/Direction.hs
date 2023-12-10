@@ -16,6 +16,7 @@ module Swarm.Language.Direction (
   directionSyntax,
   isCardinal,
   allDirs,
+  directionJsonModifier,
 ) where
 
 import Data.Aeson.Types hiding (Key)

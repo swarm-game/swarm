@@ -17,6 +17,8 @@ import Data.Either.Extra (maybeToEither)
 import Data.Foldable (foldrM)
 import Data.Map qualified as M
 import Data.Maybe (catMaybes)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml as Y
@@ -28,7 +30,8 @@ import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.WorldPalette
-import Swarm.Util (failT, quote, showT)
+import Swarm.Language.Direction (AbsoluteDir, directionJsonModifier)
+import Swarm.Util (commaList, failT, quote, showT)
 import Swarm.Util.Yaml
 import Witch (into)
 
@@ -39,13 +42,20 @@ newtype Grid c = Grid
 
 data NamedArea a = NamedArea
   { name :: StructureName
-  , recognize :: Bool
+  , recognize :: Set AbsoluteDir
   -- ^ whether this structure should be registered for automatic recognition
+  -- and which orientations shall be recognized.
+  -- The supplied direction indicates which cardinal direction the
+  -- original map's "North" has been re-oriented to.
+  -- E.g., 'DWest' represents a rotation of 90 degrees counter-clockwise.
   , description :: Maybe Text
   -- ^ will be UI-facing only if this is a recognizable structure
   , structure :: a
   }
   deriving (Eq, Show, Functor)
+
+isRecognizable :: NamedArea a -> Bool
+isRecognizable = not . null . recognize
 
 type NamedGrid c = NamedArea (Grid c)
 
@@ -57,7 +67,7 @@ instance FromJSONE (EntityMap, RobotMap) (NamedArea (PStructure (Maybe Cell))) w
   parseJSONE = withObjectE "named structure" $ \v -> do
     NamedArea
       <$> liftE (v .: "name")
-      <*> liftE (v .:? "recognize" .!= False)
+      <*> liftE (v .:? "recognize" .!= mempty)
       <*> liftE (v .:? "description")
       <*> v
         ..: "structure"
@@ -78,13 +88,14 @@ data Placed c = Placed Placement (NamedStructure c)
 -- | For use in registering recognizable pre-placed structures
 data LocatedStructure = LocatedStructure
   { placedName :: StructureName
+  , upDirection :: AbsoluteDir
   , cornerLoc :: Location
   }
   deriving (Show)
 
 instance HasLocation LocatedStructure where
-  modifyLoc f (LocatedStructure x originalLoc) =
-    LocatedStructure x $ f originalLoc
+  modifyLoc f (LocatedStructure x y originalLoc) =
+    LocatedStructure x y $ f originalLoc
 
 data MergedStructure c = MergedStructure [[c]] [LocatedStructure] [Originated Waypoint]
 
@@ -159,8 +170,8 @@ mergeStructures ::
   Either Text (MergedStructure (Maybe a))
 mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStructures subPlacements subWaypoints) = do
   overlays <- elaboratePlacement parentPlacement $ mapM g subPlacements
-  let wrapPlacement (Placed z ns) = LocatedStructure (name ns) $ offset z
-      wrappedOverlays = map wrapPlacement $ filter (\(Placed _ ns) -> recognize ns) overlays
+  let wrapPlacement (Placed z ns) = LocatedStructure (name ns) (up $ orient z) $ offset z
+      wrappedOverlays = map wrapPlacement $ filter (\(Placed _ ns) -> isRecognizable ns) overlays
   foldrM
     (overlaySingleStructure structureMap)
     (MergedStructure origArea wrappedOverlays originatedWaypoints)
@@ -176,14 +187,31 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
       maybeToEither
         (T.unwords ["Could not look up structure", quote n])
         $ sequenceA (placement, M.lookup sName structureMap)
-    when (recognize ns && orientation /= defaultOrientation) $
-      Left $
-        T.unwords
-          [ "Recognizable structure"
-          , quote n
-          , "must use default orientation."
-          ]
+    let placementDirection = up orientation
+        recognizedOrientations = recognize ns
+    when (isRecognizable ns) $ do
+      when (flipped orientation) $
+        Left $
+          T.unwords
+            [ "Placing recognizable structure"
+            , quote n
+            , "with flipped orientation is not supported."
+            ]
+      when (Set.notMember placementDirection recognizedOrientations) $
+        Left $
+          T.unwords
+            [ "Placing recognizable structure"
+            , quote n
+            , "with"
+            , renderDir placementDirection
+            , "orientation is not supported."
+            , "Try"
+            , commaList $ map renderDir $ Set.toList recognizedOrientations
+            , "instead."
+            ]
     return $ uncurry Placed t
+   where
+    renderDir = quote . T.pack . directionJsonModifier . show
 
 instance FromJSONE (EntityMap, RobotMap) (PStructure (Maybe Cell)) where
   parseJSONE = withObjectE "structure definition" $ \v -> do

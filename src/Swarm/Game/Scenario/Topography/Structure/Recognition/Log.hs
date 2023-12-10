@@ -46,12 +46,19 @@ data ParticipatingEntity = ParticipatingEntity
   }
   deriving (Generic, ToJSON)
 
+data IntactPlacementLog = IntactPlacementLog
+  { isIntact :: Bool
+  , sName :: StructureName
+  , locUpperLeft :: Cosmic Location
+  }
+  deriving (Generic, ToJSON)
+
 data SearchLog
   = FoundParticipatingEntity ParticipatingEntity
   | StructureRemoved StructureName
   | FoundRowCandidates [FoundRowCandidate]
   | FoundCompleteStructureCandidates [StructureName]
-  | IntactStaticPlacement [(Bool, StructureName, Cosmic Location)]
+  | IntactStaticPlacement [IntactPlacementLog]
   deriving (Generic)
 
 instance ToJSON SearchLog where

@@ -235,6 +235,7 @@ testScenarioSolutions rs ui =
         , testSolution (Sec 3) "Challenges/lights-out"
         , testSolution (Sec 10) "Challenges/Sliding Puzzles/3x3"
         , testSolution Default "Challenges/friend"
+        , testSolution Default "Challenges/pack-tetrominoes"
         , testGroup
             "Mazes"
             [ testSolution Default "Challenges/Mazes/easy_cave_maze"
@@ -426,6 +427,8 @@ testScenarioSolutions rs ui =
             , testSolution Default "Testing/1575-structure-recognizer/1575-interior-entity-placement"
             , testSolution Default "Testing/1575-structure-recognizer/1575-floorplan-command"
             , testSolution Default "Testing/1575-structure-recognizer/1575-bounding-box-overlap"
+            , testSolution Default "Testing/1575-structure-recognizer/1644-rotated-recognition"
+            , testSolution Default "Testing/1575-structure-recognizer/1644-rotated-preplacement-recognition"
             ]
         ]
     , testSolution' Default "Testing/1430-built-robot-ownership" CheckForBadErrors $ \g -> do

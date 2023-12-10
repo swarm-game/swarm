@@ -10,7 +10,7 @@ robots:
       - treads
 structures:
   - name: red_jewel
-    recognize: true
+    recognize: [east]
     structure:
       mask: '.'
       palette:
