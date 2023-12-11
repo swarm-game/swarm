@@ -14,7 +14,6 @@ import Brick.Focus
 import Brick.Widgets.Center
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
-import Data.Function (on)
 import Data.Map.NonEmpty qualified as NEM
 import Data.Map.Strict qualified as M
 import Data.Set qualified as Set
@@ -30,13 +29,13 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByNam
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
 import Swarm.Game.State.Substate
-import Swarm.Language.Direction (AbsoluteDir (DNorth), directionJsonModifier)
+import Swarm.Language.Direction (directionJsonModifier)
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Structure
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Util
-import Swarm.Util (commaList, listEnums)
+import Swarm.Util (commaList)
 
 -- | Render a two-pane widget with structure selection on the left
 -- and single-structure details on the right.
@@ -50,11 +49,10 @@ structureWidget gs s =
             . T.pack
             . renderRectDimensions
             . getAreaDimensions
-            . entityGrid
-            $ withGrid s
+            $ entityProcessedGrid s
         , occurrenceCountSuffix
         ]
-    , maybeReorientabilityWidget
+    , reorientabilityWidget
     , maybeDescriptionWidget
     , padTop (Pad 1) $
         hBox
@@ -69,20 +67,28 @@ structureWidget gs s =
       , withAttr boldAttr $ txt content
       ]
 
-  supportedOrientations = Set.toList . Structure.recognize . originalDefinition . withGrid $ s
-  maybeReorientabilityWidget
-    | supportedOrientations == [DNorth] = txt "Fixed orientation."
-    | ((==) `on` length) supportedOrientations listEnums = txt "Reorientable."
-    | otherwise =
-        txt $
-          T.unwords
-            [ "Supports orientations:"
-            , commaList $ map (T.pack . directionJsonModifier . show) supportedOrientations
-            ]
+  annotatedStructureGrid = annotatedGrid s
+
+  supportedOrientations = Set.toList . Structure.recognize . namedGrid $ annotatedStructureGrid
+
+  renderSymmetry = \case
+    Structure.NoSymmetry -> "no"
+    Structure.TwoFold -> "2-fold"
+    Structure.FourFold -> "4-fold"
+
+  reorientabilityWidget =
+    txt $
+      T.unwords
+        [ "Orientable:"
+        , commaList $ map (T.pack . directionJsonModifier . show) supportedOrientations
+        , "with"
+        , renderSymmetry $ symmetry annotatedStructureGrid
+        , "symmetry."
+        ]
 
   maybeDescriptionWidget =
     maybe emptyWidget (padTop (Pad 1) . withAttr italicAttr . txtWrap) $
-      Structure.description . originalDefinition . withGrid $
+      Structure.description . namedGrid . annotatedGrid $
         s
 
   registry = gs ^. discovery . structureRecognition . foundStructures
@@ -91,7 +97,7 @@ structureWidget gs s =
     Just inner -> padLeft (Pad 2) . headerItem "Count" . T.pack . show $ NEM.size inner
 
   structureIllustration = vBox $ map (hBox . map renderOneCell) cells
-  d = originalDefinition $ withGrid s
+  d = namedGrid $ annotatedGrid s
 
   ingredientsBox =
     vBox
@@ -159,5 +165,5 @@ drawSidebarListItem ::
   Bool ->
   StructureInfo ->
   Widget Name
-drawSidebarListItem _isSelected (StructureInfo swg _) =
-  txt . getStructureName . Structure.name $ originalDefinition swg
+drawSidebarListItem _isSelected (StructureInfo annotated _ _) =
+  txt . getStructureName . Structure.name $ namedGrid annotated

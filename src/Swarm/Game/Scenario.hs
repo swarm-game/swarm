@@ -57,7 +57,7 @@ import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw
 import Control.Lens hiding (from, (.=), (<.>))
-import Control.Monad (filterM, unless, (<=<))
+import Control.Monad (filterM, unless, when, (<=<))
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
@@ -83,16 +83,19 @@ import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (Parentage (..))
+import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform)
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (SymmetryAnnotatedGrid (..))
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Universe
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (WorldMap)
+import Swarm.Language.Direction (getCoordinateOrientation)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pretty (prettyText)
-import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Syntax (AbsoluteDir (DSouth, DWest), Syntax)
 import Swarm.Language.Text.Markdown (Document)
-import Swarm.Util (binTuples, failT)
+import Swarm.Util (binTuples, commaList, failT, histogram, showT)
 import Swarm.Util.Effect (ignoreWarnings, throwToMaybe, withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
@@ -100,7 +103,7 @@ import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 
 data StaticStructureInfo = StaticStructureInfo
-  { _structureDefs :: [Structure.NamedGrid (Maybe Cell)]
+  { _structureDefs :: [SymmetryAnnotatedGrid (Maybe Cell)]
   , _staticPlacements :: M.Map SubworldName [Structure.LocatedStructure]
   }
   deriving (Show)
@@ -109,7 +112,7 @@ makeLensesNoSigs ''StaticStructureInfo
 
 -- | Structure templates that may be auto-recognized when constructed
 -- by a robot
-structureDefs :: Lens' StaticStructureInfo [Structure.NamedGrid (Maybe Cell)]
+structureDefs :: Lens' StaticStructureInfo [SymmetryAnnotatedGrid (Maybe Cell)]
 
 -- | A record of the static placements of structures, so that they can be
 -- added to the "recognized" list upon scenario initialization
@@ -226,8 +229,12 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
           $ NE.toList allWorlds
 
       let mergedNavigation = Navigation mergedWaypoints mergedPortals
-          structureInfo =
-            StaticStructureInfo (filter Structure.isRecognizable namedGrids)
+          recognizableGrids = filter Structure.isRecognizable namedGrids
+
+      symmetryAnnotatedGrids <- mapM checkSymmetry recognizableGrids
+
+      let structureInfo =
+            StaticStructureInfo symmetryAnnotatedGrids
               . M.fromList
               . NE.toList
               $ NE.map (worldName &&& placedStructures) allWorlds
@@ -251,6 +258,60 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
         <*> (liftE (v .:? "objectives" .!= []) >>= validateObjectives)
         <*> liftE (v .:? "solution")
         <*> liftE (v .:? "stepsPerTick")
+
+--------------------------------------------------
+
+-- | Warns if any recognition orientations are redundant
+-- by rotational symmetry.
+-- We can accomplish this by testing only two rotations:
+--
+-- 1. Rotate 90 degrees. If identical to the original
+--    orientation, then has 4-fold symmetry and we don't
+--    need to check any other orientations.
+--    Warn if more than one recognition orientation was supplied.
+-- 2. Rotate 180 degrees.  At best, we may now have
+--    2-fold symmetry.
+--    Warn if two opposite orientations were supplied.
+checkSymmetry ::
+  (MonadFail m, Eq a) => Structure.NamedGrid a -> m (SymmetryAnnotatedGrid a)
+checkSymmetry ng = do
+  case symmetryType of
+    Structure.FourFold ->
+      when (Set.size suppliedOrientations > 1)
+        . failT
+        . pure
+        $ T.unwords ["Redundant orientations supplied; with four-fold symmetry, just supply 'north'."]
+    Structure.TwoFold ->
+      unless (null redundantOrientations)
+        . failT
+        . pure
+        $ T.unwords
+          [ "Redundant"
+          , commaList $ map showT redundantOrientations
+          , "orientations supplied with two-fold symmetry."
+          ]
+     where
+      redundantOrientations =
+        map fst
+          . filter ((> 1) . snd)
+          . M.toList
+          . histogram
+          . map getCoordinateOrientation
+          $ Set.toList suppliedOrientations
+    _ -> return ()
+
+  return $ SymmetryAnnotatedGrid ng symmetryType
+ where
+  symmetryType
+    | quarterTurnRows == originalRows = Structure.FourFold
+    | halfTurnRows == originalRows = Structure.TwoFold
+    | otherwise = Structure.NoSymmetry
+
+  quarterTurnRows = applyOrientationTransform (Orientation DWest False) originalRows
+  halfTurnRows = applyOrientationTransform (Orientation DSouth False) originalRows
+
+  suppliedOrientations = Structure.recognize ng
+  Structure.Grid originalRows = Structure.structure ng
 
 --------------------------------------------------
 -- Lenses

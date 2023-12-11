@@ -1,0 +1,33 @@
+version: 1
+name: Structure recognizer - redundant symmetries
+description: |
+  Prevent orientations from being supplied
+  for recognition when they are redundant by
+  rotational symmetry
+creative: false
+robots:
+  - name: base
+    dir: [1, 0]
+structures:
+  - name: domino
+    recognize: [east, north, west]
+    structure:
+      mask: '.'
+      palette:
+        'r': [stone, pixel (R)]
+      map: |
+       r
+       r
+known: [pixel (R)]
+world:
+  name: root
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass]
+    'B': [grass, null, base]
+  upperleft: [0, 0]
+
+  map: |
+    ..
+    B.

@@ -36,7 +36,7 @@ import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Placement (StructureName)
-import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
+import Swarm.Game.Scenario.Topography.Structure (NamedGrid, RotationalSymmetry)
 import Swarm.Game.Universe (Cosmic, offsetBy)
 import Swarm.Language.Syntax (AbsoluteDir)
 import Text.AhoCorasick (StateMachine)
@@ -135,9 +135,16 @@ data StructureWithGrid = StructureWithGrid
   }
   deriving (Eq)
 
+data SymmetryAnnotatedGrid a = SymmetryAnnotatedGrid
+  { namedGrid :: NamedGrid a
+  , symmetry :: RotationalSymmetry
+  }
+  deriving (Show)
+
 -- | Structure definitions with precomputed metadata for consumption by the UI
 data StructureInfo = StructureInfo
-  { withGrid :: StructureWithGrid
+  { annotatedGrid :: SymmetryAnnotatedGrid (Maybe Cell)
+  , entityProcessedGrid :: [SymbolSequence]
   , entityCounts :: Map Entity Int
   }
 

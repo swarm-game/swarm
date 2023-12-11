@@ -172,16 +172,16 @@ mkEntityLookup grids =
 
 -- | Create Aho-Corasick matchers that will recognize all of the
 -- provided structure definitions
-mkAutomatons :: [NamedGrid (Maybe Cell)] -> RecognizerAutomatons
+mkAutomatons :: [SymmetryAnnotatedGrid (Maybe Cell)] -> RecognizerAutomatons
 mkAutomatons xs =
   RecognizerAutomatons
     infos
-    (mkEntityLookup grids)
+    (mkEntityLookup rotatedGrids)
  where
-  grids = concatMap extractGrids xs
+  rotatedGrids = concatMap (extractGrids . namedGrid) xs
 
-  process g = StructureInfo g . histogram . concatMap catMaybes $ entityGrid g
-  infos = M.fromList $ map (name . originalDefinition &&& process) grids
+  process g = StructureInfo g (getEntityGrid $ structure $ namedGrid g) . histogram . concatMap catMaybes . getEntityGrid . structure $ namedGrid g
+  infos = M.fromList $ map (name . namedGrid &&& process) xs
 
 extractOrientedGrid :: NamedGrid (Maybe Cell) -> AbsoluteDir -> StructureWithGrid
 extractOrientedGrid x d = StructureWithGrid x d $ getEntityGrid g'
@@ -189,6 +189,9 @@ extractOrientedGrid x d = StructureWithGrid x d $ getEntityGrid g'
   Grid rows = structure x
   g' = Grid $ applyOrientationTransform (Orientation d False) rows
 
+-- | At this point, we have already ensured that orientations
+-- redundant by rotational symmetry have been excluded
+-- (i.e. at Scenario validation time).
 extractGrids :: NamedGrid (Maybe Cell) -> [StructureWithGrid]
 extractGrids x = map (extractOrientedGrid x) $ Set.toList $ recognize x
 
@@ -199,7 +202,7 @@ lookupStaticPlacements :: StaticStructureInfo -> [FoundStructure]
 lookupStaticPlacements (StaticStructureInfo structDefs thePlacements) =
   concatMap f $ M.toList thePlacements
  where
-  definitionMap = M.fromList $ map (name &&& id) structDefs
+  definitionMap = M.fromList $ map ((name &&& id) . namedGrid) structDefs
 
   f (subworldName, locatedList) = mapMaybe g locatedList
    where

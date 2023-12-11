@@ -40,6 +40,15 @@ newtype Grid c = Grid
   }
   deriving (Show, Eq)
 
+data RotationalSymmetry
+  = -- | Aka 1-fold symmetry
+    NoSymmetry
+  | -- | Equivalent under rotation by 180 degrees
+    TwoFold
+  | -- | Equivalent under rotation by 90 degrees
+    FourFold
+  deriving (Show, Eq)
+
 data NamedArea a = NamedArea
   { name :: StructureName
   , recognize :: Set AbsoluteDir

@@ -516,7 +516,7 @@ execConst runChildProg c vs s k = do
         structureDef <-
           maybeStructure
             `isJustOr` cmdExn Floorplan (pure $ T.unwords ["Unknown structure", quote name])
-        return . mkReturn . getAreaDimensions . entityGrid $ withGrid structureDef
+        return . mkReturn . getAreaDimensions $ entityProcessedGrid structureDef
       _ -> badConst
     HasTag -> case vs of
       [VText eName, VText tName] -> do
