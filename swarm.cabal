@@ -192,6 +192,7 @@ library
                       Swarm.Game.Scenario.Topography.Structure.Recognition.Log
                       Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
                       Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
+                      Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
                       Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking
                       Swarm.Game.Scenario.Topography.Structure.Recognition.Type
                       Swarm.Game.Scenario.Topography.WorldDescription

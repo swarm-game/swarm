@@ -1,4 +1,3 @@
-
 move;
 place "j-tile";
 move;

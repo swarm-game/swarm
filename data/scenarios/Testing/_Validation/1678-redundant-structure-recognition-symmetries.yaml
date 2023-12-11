@@ -14,20 +14,16 @@ structures:
     structure:
       mask: '.'
       palette:
-        'r': [stone, pixel (R)]
+        'r': [stone, tree]
       map: |
        r
        r
-known: [pixel (R)]
+known: [tree]
 world:
   name: root
-  dsl: |
-    {blank}
   palette:
     '.': [grass]
     'B': [grass, null, base]
   upperleft: [0, 0]
-
   map: |
-    ..
-    B.
+    B

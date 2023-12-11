@@ -40,15 +40,6 @@ newtype Grid c = Grid
   }
   deriving (Show, Eq)
 
-data RotationalSymmetry
-  = -- | Aka 1-fold symmetry
-    NoSymmetry
-  | -- | Equivalent under rotation by 180 degrees
-    TwoFold
-  | -- | Equivalent under rotation by 90 degrees
-    FourFold
-  deriving (Show, Eq)
-
 data NamedArea a = NamedArea
   { name :: StructureName
   , recognize :: Set AbsoluteDir
@@ -206,6 +197,9 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
             , quote n
             , "with flipped orientation is not supported."
             ]
+
+      -- Redundant orientations by rotational symmetry are accounted
+      -- for at scenario parse time
       when (Set.notMember placementDirection recognizedOrientations) $
         Left $
           T.unwords

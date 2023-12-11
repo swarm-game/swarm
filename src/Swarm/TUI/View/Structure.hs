@@ -9,7 +9,7 @@ module Swarm.TUI.View.Structure (
   makeListWidget,
 ) where
 
-import Brick hiding (Direction, Location, on)
+import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Widgets.Center
 import Brick.Widgets.List qualified as BL
@@ -72,9 +72,9 @@ structureWidget gs s =
   supportedOrientations = Set.toList . Structure.recognize . namedGrid $ annotatedStructureGrid
 
   renderSymmetry = \case
-    Structure.NoSymmetry -> "no"
-    Structure.TwoFold -> "2-fold"
-    Structure.FourFold -> "4-fold"
+    NoSymmetry -> "no"
+    TwoFold -> "2-fold"
+    FourFold -> "4-fold"
 
   reorientabilityWidget =
     txt $
