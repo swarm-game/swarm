@@ -124,8 +124,7 @@ appMain opts = do
       let cm = V.outputColorMode $ V.outputIface vty
       let s2 =
             s1
-              & runtimeState
-                %~ (eventLog %~ logEvent SystemLog Info "Graphics" ("Color mode: " <> T.pack (show cm)))
+              & runtimeState . eventLog %~ logEvent SystemLog Info "Graphics" ("Color mode: " <> T.pack (show cm))
 
       -- Run the app.
       void $ customMain vty buildVty (Just chan) (app eventHandler) s2
