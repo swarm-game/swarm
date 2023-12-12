@@ -6,13 +6,21 @@ def ifM = \p.\t.\e. b <- p; if b t e end;
 def DFSn : int -> cmd bool = \n.
   // say $ "DFSn at level " ++ format n;
   ifM (ishere "goal") {swap "path"; selfdestruct} {};
-  if (n == 0) {} {
-    ifM (ishere "path") {} {
-      place "path";
-      tL; b <- blocked; bL <- if b {return true} {move; DFSn (n-1)};
-      tR; b <- blocked; bF <- if b {return true} {move; DFSn (n-1)};
-      tR; b <- blocked; bR <- if b {return true} {move; DFSn (n-1)};
-      tL; if (bL && bF && bR) {swap "rock"} {grab}; return ()
+  ifM (ishere "rock") {} {
+    if (n == 0) {} {
+      ifM (ishere "path") {} {
+        place "path";
+        // Weird stuff with let bindings is a workaround for
+        // https://github.com/swarm-game/swarm/issues/681
+        // (see https://github.com/swarm-game/swarm/issues/1032#issuecomment-1402465755)
+        tL; b <- blocked; dead <- if b {return true} {move; DFSn (n-1)};
+        let deadL = dead in
+        tR; b <- blocked; dead <- if b {return true} {move; DFSn (n-1)};
+        let deadF = dead in
+        tR; b <- blocked; dead <- if b {return true} {move; DFSn (n-1)};
+        let deadR = dead in
+        tL; if (deadL && deadF && deadR) {swap "rock"} {grab}; return ()
+      }
     }
   };
   rockhere <- ishere "rock";
