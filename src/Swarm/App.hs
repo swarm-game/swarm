@@ -97,7 +97,7 @@ appMain opts = do
 
       let logP p = logEvent SystemLog Info "Web API" ("started on :" <> T.pack (show p))
       let logE e = logEvent SystemLog Error "Web API" (T.pack e)
-      let s' =
+      let s1 =
             s
               & runtimeState
                 %~ case eport of
@@ -121,8 +121,13 @@ appMain opts = do
 
       V.setMode (V.outputIface vty) V.Mouse True
 
+      let cm = V.outputColorMode $ V.outputIface vty
+      let s2 =
+            s1
+              & runtimeState . eventLog %~ logEvent SystemLog Info "Graphics" ("Color mode: " <> T.pack (show cm))
+
       -- Run the app.
-      void $ customMain vty buildVty (Just chan) (app eventHandler) s'
+      void $ customMain vty buildVty (Just chan) (app eventHandler) s2
 
 -- | A demo program to run the web service directly, without the terminal application.
 --   This is useful to live update the code using @ghcid -W --test "Swarm.App.demoWeb"@.
