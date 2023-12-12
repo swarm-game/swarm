@@ -14,7 +14,7 @@ import Data.Text qualified as T
 import Swarm.Game.Entity (EntityMap (entitiesByCap), entityName)
 import Swarm.Game.Recipe (recipeOutputs)
 import Swarm.TUI.Model (RuntimeState, stdEntityMap, stdRecipes)
-import Swarm.Util (binTuples, commaList, quote)
+import Swarm.Util (commaList, quote)
 import Test.Tasty
 import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit
@@ -43,6 +43,6 @@ testDeviceRecipeCoverage rs =
     -- Only include entities that grant a capability:
     entityNames = Set.fromList . map (^. entityName) . concat . M.elems . entitiesByCap $ rs ^. stdEntityMap
 
-    recipesByOutputEntity = binTuples $ concatMap (\r -> map (,r) $ getOutputsForRecipe r) $ rs ^. stdRecipes
     getOutputsForRecipe r = map ((^. entityName) . snd) $ r ^. recipeOutputs
-    nonCoveredEntities = Set.difference entityNames $ M.keysSet recipesByOutputEntity
+    recipeOutputEntities = Set.fromList . concatMap getOutputsForRecipe $ rs ^. stdRecipes
+    nonCoveredEntities = Set.difference entityNames recipeOutputEntities
