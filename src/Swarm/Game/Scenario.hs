@@ -84,6 +84,8 @@ import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (Parentage (..))
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (SymmetryAnnotatedGrid (..))
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Universe
 import Swarm.Game.World.Load (loadWorlds)
@@ -100,7 +102,7 @@ import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 
 data StaticStructureInfo = StaticStructureInfo
-  { _structureDefs :: [Structure.NamedGrid (Maybe Cell)]
+  { _structureDefs :: [SymmetryAnnotatedGrid (Maybe Cell)]
   , _staticPlacements :: M.Map SubworldName [Structure.LocatedStructure]
   }
   deriving (Show)
@@ -109,7 +111,7 @@ makeLensesNoSigs ''StaticStructureInfo
 
 -- | Structure templates that may be auto-recognized when constructed
 -- by a robot
-structureDefs :: Lens' StaticStructureInfo [Structure.NamedGrid (Maybe Cell)]
+structureDefs :: Lens' StaticStructureInfo [SymmetryAnnotatedGrid (Maybe Cell)]
 
 -- | A record of the static placements of structures, so that they can be
 -- added to the "recognized" list upon scenario initialization
@@ -226,8 +228,12 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
           $ NE.toList allWorlds
 
       let mergedNavigation = Navigation mergedWaypoints mergedPortals
-          structureInfo =
-            StaticStructureInfo (filter Structure.recognize namedGrids)
+          recognizableGrids = filter Structure.isRecognizable namedGrids
+
+      symmetryAnnotatedGrids <- mapM checkSymmetry recognizableGrids
+
+      let structureInfo =
+            StaticStructureInfo symmetryAnnotatedGrids
               . M.fromList
               . NE.toList
               $ NE.map (worldName &&& placedStructures) allWorlds

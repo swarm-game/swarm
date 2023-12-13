@@ -38,6 +38,7 @@ import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Placement (StructureName)
 import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Swarm.Game.Universe (Cosmic, offsetBy)
+import Swarm.Language.Syntax (AbsoluteDir)
 import Text.AhoCorasick (StateMachine)
 
 -- | A "needle" consisting of a single cell within
@@ -129,13 +130,30 @@ data StructureRow = StructureRow
 -- with its grid of cells having been extracted for convenience.
 data StructureWithGrid = StructureWithGrid
   { originalDefinition :: NamedGrid (Maybe Cell)
+  , rotatedTo :: AbsoluteDir
   , entityGrid :: [SymbolSequence]
   }
   deriving (Eq)
 
+data RotationalSymmetry
+  = -- | Aka 1-fold symmetry
+    NoSymmetry
+  | -- | Equivalent under rotation by 180 degrees
+    TwoFold
+  | -- | Equivalent under rotation by 90 degrees
+    FourFold
+  deriving (Show, Eq)
+
+data SymmetryAnnotatedGrid a = SymmetryAnnotatedGrid
+  { namedGrid :: NamedGrid a
+  , symmetry :: RotationalSymmetry
+  }
+  deriving (Show)
+
 -- | Structure definitions with precomputed metadata for consumption by the UI
 data StructureInfo = StructureInfo
-  { withGrid :: StructureWithGrid
+  { annotatedGrid :: SymmetryAnnotatedGrid (Maybe Cell)
+  , entityProcessedGrid :: [SymbolSequence]
   , entityCounts :: Map Entity Int
   }
 
@@ -181,9 +199,9 @@ makeLenses ''AutomatonInfo
 -- | The complete set of data needed to identify applicable
 -- structures, based on a just-placed entity.
 data RecognizerAutomatons = RecognizerAutomatons
-  { _definitions :: Map StructureName StructureInfo
+  { _originalStructureDefinitions :: Map StructureName StructureInfo
   -- ^ all of the structures that shall participate in automatic recognition.
-  -- This list is used only by the UI.
+  -- This list is used only by the UI and by the 'Floorplan' command.
   , _automatonsByEntity :: Map Entity (AutomatonInfo AtomicKeySymbol StructureSearcher)
   }
   deriving (Generic)

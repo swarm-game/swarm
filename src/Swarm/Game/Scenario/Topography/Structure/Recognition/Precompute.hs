@@ -37,7 +37,7 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (
   -- * Helper functions
   populateStaticFoundStructures,
   getEntityGrid,
-  extractGrid,
+  extractGrids,
   lookupStaticPlacements,
 ) where
 
@@ -49,14 +49,17 @@ import Data.Map qualified as M
 import Data.Maybe (catMaybes, mapMaybe)
 import Data.Semigroup (sconcat)
 import Data.Set qualified as S
+import Data.Set qualified as Set
 import Data.Tuple (swap)
 import Swarm.Game.Entity (Entity, entityName)
 import Swarm.Game.Scenario (StaticStructureInfo (..))
 import Swarm.Game.Scenario.Topography.Cell
+import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform)
 import Swarm.Game.Scenario.Topography.Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic (..))
+import Swarm.Language.Direction (AbsoluteDir)
 import Swarm.Util (binTuples, histogram)
 import Swarm.Util.Erasable (erasableToMaybe)
 import Text.AhoCorasick
@@ -96,7 +99,7 @@ mkRowLookup neList =
         concatMap (concatMap catMaybes . fst) tuples
 
   deriveRowOffsets :: StructureRow -> InspectionOffsets
-  deriveRowOffsets (StructureRow (StructureWithGrid _ g) rwIdx _) =
+  deriveRowOffsets (StructureRow (StructureWithGrid _ _ g) rwIdx _) =
     mkOffsets rwIdx g
 
   bounds = sconcat $ NE.map deriveRowOffsets neList
@@ -167,28 +170,42 @@ mkEntityLookup grids =
         catMaybes $
           zipWith (\idx -> fmap (PositionWithinRow idx r,)) [0 ..] rowMembers
 
-mkAutomatons :: [NamedGrid (Maybe Cell)] -> RecognizerAutomatons
+-- | Create Aho-Corasick matchers that will recognize all of the
+-- provided structure definitions
+mkAutomatons :: [SymmetryAnnotatedGrid (Maybe Cell)] -> RecognizerAutomatons
 mkAutomatons xs =
   RecognizerAutomatons
     infos
-    (mkEntityLookup grids)
+    (mkEntityLookup rotatedGrids)
  where
-  grids = map extractGrid xs
+  rotatedGrids = concatMap (extractGrids . namedGrid) xs
 
-  process g = StructureInfo g . histogram . concatMap catMaybes $ entityGrid g
-  infos = M.fromList $ map (name . originalDefinition &&& process) grids
+  process g = StructureInfo g (getEntityGrid $ structure $ namedGrid g) . histogram . concatMap catMaybes . getEntityGrid . structure $ namedGrid g
+  infos = M.fromList $ map (name . namedGrid &&& process) xs
 
-extractGrid :: NamedGrid (Maybe Cell) -> StructureWithGrid
-extractGrid x = StructureWithGrid x $ getEntityGrid $ structure x
+extractOrientedGrid :: NamedGrid (Maybe Cell) -> AbsoluteDir -> StructureWithGrid
+extractOrientedGrid x d = StructureWithGrid x d $ getEntityGrid g'
+ where
+  Grid rows = structure x
+  g' = Grid $ applyOrientationTransform (Orientation d False) rows
 
+-- | At this point, we have already ensured that orientations
+-- redundant by rotational symmetry have been excluded
+-- (i.e. at Scenario validation time).
+extractGrids :: NamedGrid (Maybe Cell) -> [StructureWithGrid]
+extractGrids x = map (extractOrientedGrid x) $ Set.toList $ recognize x
+
+-- | The output list of 'FoundStructure' records is not yet
+-- vetted; the 'ensureStructureIntact' function will subsequently
+-- filter this list.
 lookupStaticPlacements :: StaticStructureInfo -> [FoundStructure]
 lookupStaticPlacements (StaticStructureInfo structDefs thePlacements) =
   concatMap f $ M.toList thePlacements
  where
-  definitionMap = M.fromList $ map (name &&& id) structDefs
+  definitionMap = M.fromList $ map ((name &&& id) . namedGrid) structDefs
 
   f (subworldName, locatedList) = mapMaybe g locatedList
    where
-    g (LocatedStructure theName loc) = do
+    g (LocatedStructure theName d loc) = do
       sGrid <- M.lookup theName definitionMap
-      return $ FoundStructure (extractGrid sGrid) $ Cosmic subworldName loc
+      return $ FoundStructure (extractOrientedGrid sGrid d) $ Cosmic subworldName loc

@@ -51,7 +51,7 @@ solution: |
    place "gold";
 structures:
   - name: chessboard
-    recognize: true
+    recognize: [north]
     structure:
       mask: '.'
       palette:

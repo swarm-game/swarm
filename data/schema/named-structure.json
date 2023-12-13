@@ -15,8 +15,11 @@
             "description": "Description of this substructure"
         },
         "recognize": {
-            "type": "boolean",
-            "description": "Whether this structure participates in automatic recognition when constructed"
+            "type": "array",
+            "items": {
+                "$ref": "directions.json"
+            },
+            "description": "Orientations for which this structure participates in automatic recognition when constructed"
         },
         "structure": {
             "$ref": "structure.json"

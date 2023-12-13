@@ -46,7 +46,7 @@ robots:
       - treads
 structures:
   - name: double ring
-    recognize: true
+    recognize: [north]
     structure:
       palette:
         's': [ice, tree]
@@ -68,7 +68,7 @@ structures:
         .s.
         ...
   - name: flowerbox
-    recognize: true
+    recognize: [north]
     structure:
       palette:
         'f': [ice, flower]

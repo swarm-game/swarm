@@ -53,7 +53,7 @@ solution: |
   doN 3 (place "boulder"; move;);
 structures:
   - name: chevron
-    recognize: true
+    recognize: [north]
     structure:
       palette:
         'g': [stone, boulder]
