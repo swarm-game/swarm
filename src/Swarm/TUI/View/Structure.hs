@@ -16,6 +16,7 @@ import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
 import Data.Map.NonEmpty qualified as NEM
 import Data.Map.Strict qualified as M
+import Data.Set qualified as Set
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Swarm.Game.Entity (entityDisplay)
@@ -28,11 +29,13 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByNam
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
 import Swarm.Game.State.Substate
+import Swarm.Language.Direction (directionJsonModifier)
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Structure
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Util
+import Swarm.Util (commaList)
 
 -- | Render a two-pane widget with structure selection on the left
 -- and single-structure details on the right.
@@ -46,10 +49,10 @@ structureWidget gs s =
             . T.pack
             . renderRectDimensions
             . getAreaDimensions
-            . entityGrid
-            $ withGrid s
+            $ entityProcessedGrid s
         , occurrenceCountSuffix
         ]
+    , reorientabilityWidget
     , maybeDescriptionWidget
     , padTop (Pad 1) $
         hBox
@@ -64,7 +67,29 @@ structureWidget gs s =
       , withAttr boldAttr $ txt content
       ]
 
-  maybeDescriptionWidget = maybe emptyWidget txtWrap $ Structure.description . originalDefinition . withGrid $ s
+  annotatedStructureGrid = annotatedGrid s
+
+  supportedOrientations = Set.toList . Structure.recognize . namedGrid $ annotatedStructureGrid
+
+  renderSymmetry = \case
+    NoSymmetry -> "no"
+    TwoFold -> "2-fold"
+    FourFold -> "4-fold"
+
+  reorientabilityWidget =
+    txt $
+      T.unwords
+        [ "Orientable:"
+        , commaList $ map (T.pack . directionJsonModifier . show) supportedOrientations
+        , "with"
+        , renderSymmetry $ symmetry annotatedStructureGrid
+        , "symmetry."
+        ]
+
+  maybeDescriptionWidget =
+    maybe emptyWidget (padTop (Pad 1) . withAttr italicAttr . txtWrap) $
+      Structure.description . namedGrid . annotatedGrid $
+        s
 
   registry = gs ^. discovery . structureRecognition . foundStructures
   occurrenceCountSuffix = case M.lookup sName $ foundByName registry of
@@ -72,7 +97,7 @@ structureWidget gs s =
     Just inner -> padLeft (Pad 2) . headerItem "Count" . T.pack . show $ NEM.size inner
 
   structureIllustration = vBox $ map (hBox . map renderOneCell) cells
-  d = originalDefinition $ withGrid s
+  d = namedGrid $ annotatedGrid s
 
   ingredientsBox =
     vBox
@@ -97,8 +122,8 @@ structureWidget gs s =
   renderOneCell = maybe (txt " ") (renderDisplay . view entityDisplay)
 
 makeListWidget :: [StructureInfo] -> BL.List Name StructureInfo
-makeListWidget structureDefs =
-  BL.listMoveTo 0 $ BL.list (StructureWidgets StructuresList) (V.fromList structureDefs) 1
+makeListWidget structureDefinitions =
+  BL.listMoveTo 0 $ BL.list (StructureWidgets StructuresList) (V.fromList structureDefinitions) 1
 
 renderStructuresDisplay :: GameState -> StructureDisplay -> Widget Name
 renderStructuresDisplay gs structureDisplay =
@@ -140,5 +165,5 @@ drawSidebarListItem ::
   Bool ->
   StructureInfo ->
   Widget Name
-drawSidebarListItem _isSelected (StructureInfo swg _) =
-  txt . getStructureName . Structure.name $ originalDefinition swg
+drawSidebarListItem _isSelected (StructureInfo annotated _ _) =
+  txt . getStructureName . Structure.name $ namedGrid annotated

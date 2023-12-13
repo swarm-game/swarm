@@ -33,7 +33,7 @@ solution: |
    place "mithril";
 structures:
   - name: precious
-    recognize: true
+    recognize: [north]
     structure:
       mask: '.'
       palette:
@@ -46,7 +46,7 @@ structures:
        gsq
        qqm
   - name: smallish
-    recognize: true
+    recognize: [north]
     structure:
       mask: '.'
       palette:

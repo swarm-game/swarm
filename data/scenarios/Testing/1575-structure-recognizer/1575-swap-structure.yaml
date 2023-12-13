@@ -54,7 +54,7 @@ solution: |
    swap "pixel (B)";
 structures:
   - name: red_jewel
-    recognize: true
+    recognize: [north]
     structure:
       mask: '.'
       palette:
@@ -68,7 +68,7 @@ structures:
        gsssg
        ggggg
   - name: green_jewel
-    recognize: true
+    recognize: [north]
     structure:
       mask: '.'
       palette:
@@ -82,7 +82,7 @@ structures:
        gsssg
        ggggg
   - name: blue_jewel
-    recognize: true
+    recognize: [north]
     structure:
       mask: '.'
       palette:

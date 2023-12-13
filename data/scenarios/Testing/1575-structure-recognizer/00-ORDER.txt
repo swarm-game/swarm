@@ -12,3 +12,5 @@
 1575-interior-entity-placement.yaml
 1575-floorplan-command.yaml
 1575-bounding-box-overlap.yaml
+1644-rotated-recognition.yaml
+1644-rotated-preplacement-recognition.yaml

@@ -36,7 +36,7 @@ solution: |
    place "gold";
 structures:
   - name: large
-    recognize: true
+    recognize: [north]
     structure:
       mask: '.'
       palette:
@@ -47,7 +47,7 @@ structures:
        ggs
        ggs
   - name: small
-    recognize: true
+    recognize: [north]
     structure:
       mask: '.'
       palette:

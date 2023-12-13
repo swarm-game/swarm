@@ -16,6 +16,8 @@ module Swarm.Language.Direction (
   directionSyntax,
   isCardinal,
   allDirs,
+  directionJsonModifier,
+  getCoordinateOrientation,
 ) where
 
 import Data.Aeson.Types hiding (Key)
@@ -50,6 +52,18 @@ data AbsoluteDir = DEast | DNorth | DWest | DSouth
 
 directionJsonModifier :: String -> String
 directionJsonModifier = map C.toLower . L.tail
+
+data CoordinateOrientation
+  = Latitudinal
+  | Longitudinal
+  deriving (Show, Eq, Ord)
+
+getCoordinateOrientation :: AbsoluteDir -> CoordinateOrientation
+getCoordinateOrientation = \case
+  DEast -> Longitudinal
+  DWest -> Longitudinal
+  DNorth -> Latitudinal
+  DSouth -> Latitudinal
 
 directionJsonOptions :: Options
 directionJsonOptions =

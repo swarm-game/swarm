@@ -577,7 +577,7 @@ ensureStructureIntact ::
   (Has (State GameState) sig m) =>
   FoundStructure ->
   m Bool
-ensureStructureIntact (FoundStructure (StructureWithGrid _ grid) upperLeft) =
+ensureStructureIntact (FoundStructure (StructureWithGrid _ _ grid) upperLeft) =
   allM outer $ zip [0 ..] grid
  where
   outer (y, row) = allM (inner y) $ zip [0 ..] row
@@ -595,12 +595,18 @@ mkRecognizer ::
 mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
   foundIntact <- mapM (sequenceA . (id &&& ensureStructureIntact)) allPlaced
   let fs = populateStaticFoundStructures . map fst . filter snd $ foundIntact
-      foundIntactLog =
-        IntactStaticPlacement $
-          map (\(x, isIntact) -> (isIntact, (Structure.name . originalDefinition . structureWithGrid) x, upperLeftCorner x)) foundIntact
-  return $ StructureRecognizer (mkAutomatons structDefs) fs [foundIntactLog]
+  return $
+    StructureRecognizer
+      (mkAutomatons structDefs)
+      fs
+      [IntactStaticPlacement $ map mkLogEntry foundIntact]
  where
   allPlaced = lookupStaticPlacements structInfo
+  mkLogEntry (x, isIntact) =
+    IntactPlacementLog
+      isIntact
+      ((Structure.name . originalDefinition . structureWithGrid) x)
+      (upperLeftCorner x)
 
 buildTagMap :: EntityMap -> Map Text (NonEmpty EntityName)
 buildTagMap em =

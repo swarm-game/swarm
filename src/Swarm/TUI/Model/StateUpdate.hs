@@ -51,7 +51,7 @@ import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons)
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (definitions)
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (originalStructureDefinitions)
 import Swarm.Game.ScenarioInfo (
   loadScenarioInfo,
   normalizeScenarioPath,
@@ -268,7 +268,7 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
       & uiWorldEditor . EM.editingBounds . EM.boundsRect %~ setNewBounds
       & uiStructure
         .~ StructureDisplay
-          (SR.makeListWidget . M.elems $ gs ^. discovery . structureRecognition . automatons . definitions)
+          (SR.makeListWidget . M.elems $ gs ^. discovery . structureRecognition . automatons . originalStructureDefinitions)
           (focusSetCurrent (StructureWidgets StructuresList) $ focusRing $ map StructureWidgets listEnums)
  where
   entityList = EU.getEntitiesForList $ gs ^. landscape . entityMap

@@ -7,7 +7,7 @@
     "additionalProperties": false,
     "properties": {
         "up": {
-            "type": "string"
+            "$ref": "directions.json"
         },
         "flip": {
             "type": "boolean"
