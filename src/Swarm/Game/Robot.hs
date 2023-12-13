@@ -81,6 +81,7 @@ module Swarm.Game.Robot (
   hearingDistance,
 ) where
 
+import Control.Applicative ((<|>))
 import Control.Lens hiding (Const, contains)
 import Data.Aeson qualified as Ae (FromJSON, Key, KeyValue, ToJSON (..), object, (.=))
 import Data.Hashable (hashWithSalt)
@@ -91,7 +92,7 @@ import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Text (Text)
-import Data.Yaml ((.!=), (.:), (.:?))
+import Data.Yaml (FromJSON (parseJSON), (.!=), (.:), (.:?))
 import GHC.Generics (Generic)
 import Linear
 import Servant.Docs (ToSample)
@@ -99,7 +100,7 @@ import Servant.Docs qualified as SD
 import Swarm.Game.CESK
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
-import Swarm.Game.Location (Heading, Location, toDirection)
+import Swarm.Game.Location (Heading, Location, toDirection, toHeading)
 import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
@@ -579,6 +580,13 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
  where
   inst = fromList devs
 
+newtype HeadingSpec = HeadingSpec
+  { getHeading :: Heading
+  }
+
+instance FromJSON HeadingSpec where
+  parseJSON x = fmap HeadingSpec $ (toHeading <$> parseJSON x) <|> parseJSON x
+
 -- | We can parse a robot from a YAML file if we have access to an
 --   'EntityMap' in which we can look up the names of entities.
 instance FromJSONE EntityMap TRobot where
@@ -593,7 +601,7 @@ instance FromJSONE EntityMap TRobot where
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= mempty)
       <*> liftE (v .:? "loc")
-      <*> liftE (v .:? "dir" .!= zero)
+      <*> liftE (fmap getHeading $ v .:? "dir" .!= HeadingSpec zero)
       <*> localE (const defDisplay) (v ..:? "display" ..!= defDisplay)
       <*> liftE (mkMachine <$> (v .:? "program"))
       <*> v ..:? "devices" ..!= []
