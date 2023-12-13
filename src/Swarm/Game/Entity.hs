@@ -141,6 +141,8 @@ data EntityProperty
     Unwalkable
   | -- | Robots can pick this up (via 'Swarm.Language.Syntax.Grab' or 'Swarm.Language.Syntax.Harvest').
     Portable
+  | -- | Robots can 'Swarm.Language.Syntax.Push' this
+    Pushable
   | -- | Obstructs the view of robots that attempt to "scout"
     Opaque
   | -- | Regrows from a seed after it is harvested.

@@ -53,3 +53,4 @@ Achievements
 1575-structure-recognizer
 1631-tags.yaml
 1634-message-colors.yaml
+1681-pushable-entity.yaml
