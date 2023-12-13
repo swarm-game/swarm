@@ -187,7 +187,7 @@ execConst runChildProg c vs s k = do
           let verbed = verbedGrabbingCmd Push'
           -- Ensure it can be pushed.
           omni <- isPrivilegedBot
-          (omni || e `hasProperty` Portable && not (e `hasProperty` Liquid))
+          (omni || e `hasProperty` Pushable || e `hasProperty` Portable && not (e `hasProperty` Liquid))
             `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
 
           -- Place the entity and remove it from previous loc
