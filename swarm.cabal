@@ -440,6 +440,7 @@ test-suite swarm-unit
                       TestInventory
                       TestModel
                       TestPedagogy
+                      TestRecipeCoverage
                       TestNotification
                       TestLanguagePipeline
                       TestOrdering
@@ -452,6 +453,7 @@ test-suite swarm-unit
 
     build-depends:    tasty                         >= 0.10 && < 1.6,
                       tasty-hunit                   >= 0.10 && < 0.11,
+                      tasty-expected-failure        >= 0.12 && < 0.13,
                       tasty-quickcheck              >= 0.10 && < 0.11,
                       QuickCheck                    >= 2.14 && < 2.15,
                       -- Imports shared with the library don't need bounds
@@ -479,6 +481,7 @@ test-suite swarm-integration
 
     build-depends:    tasty                         >= 0.10 && < 1.6,
                       tasty-hunit                   >= 0.10 && < 0.11,
+                      tasty-expected-failure        >= 0.12 && < 0.13,
                       -- Imports shared with the library don't need bounds
                       base,
                       containers,

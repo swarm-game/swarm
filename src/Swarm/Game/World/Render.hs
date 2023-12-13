@@ -15,7 +15,6 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Data.Tuple.Extra (both)
 import Data.Vector qualified as V
-import Graphics.Vty.Attributes.Color240
 import Linear (V2 (..))
 import Swarm.Game.Display (Attribute (AWorld), defaultChar, displayAttr)
 import Swarm.Game.Entity.Cosmetic
@@ -69,16 +68,6 @@ getDisplayColor aMap (Cell terr cellEnt _) =
     AWorld n -> M.lookup (WorldAttr $ T.unpack n) aMap
     _ -> Nothing
 
--- | Round-trip conversion to fit into the terminal color space
-roundTripVty :: RGBColor -> RGBColor
-roundTripVty c@(RGB r g b) =
-  maybe
-    c
-    (\(r', g', b') -> fromIntegral <$> RGB r' g' b')
-    converted
- where
-  converted = color240CodeToRGB $ rgbColorToColor240 r g b
-
 mkPixelColor :: PreservableColor -> PixelRGBA8
 mkPixelColor h = PixelRGBA8 r g b 255
  where
@@ -102,7 +91,7 @@ namedToTriple = \case
 
 fromHiFi :: PreservableColor -> ColorLayers RGBColor
 fromHiFi = fmap $ \case
-  Triple x -> roundTripVty x
+  Triple x -> x
   -- The triples we've manually assigned for named
   -- ANSI colors do not need to be round-tripped, since
   -- those triples are not inputs to the VTY attribute creation.

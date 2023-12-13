@@ -177,9 +177,9 @@ hidden = (defaultChar .~ '?') . (curOrientation .~ Nothing)
 
 -- | The default way to display some terrain using the given character
 --   and attribute, with priority 0.
-defaultTerrainDisplay :: Char -> Attribute -> Display
-defaultTerrainDisplay c attr =
-  defaultEntityDisplay c
+defaultTerrainDisplay :: Attribute -> Display
+defaultTerrainDisplay attr =
+  defaultEntityDisplay ' '
     & displayPriority .~ 0
     & displayAttr .~ attr
 
