@@ -32,7 +32,7 @@ entities:
     properties: [known, portable]
 robots:
   - name: base
-    dir: [1,0]
+    dir: east
     devices:
       - ADT calculator
       - antenna
@@ -48,7 +48,7 @@ robots:
     inventory:
       - [1, map piece]
   - name: buddy
-    dir: [-1, 0]
+    dir: west
     system: true
     display:
       invisible: false

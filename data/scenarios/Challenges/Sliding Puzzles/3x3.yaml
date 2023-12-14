@@ -31,7 +31,7 @@ objectives:
       as j {run "scenarios/Challenges/Sliding Puzzles/_sliding-puzzle/validate-board.sw"};
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - ADT calculator
       - branch predictor
@@ -84,7 +84,7 @@ robots:
       - [25, y-tile-ordinal]
   - name: maintainer
     system: true
-    dir: [1, 0]
+    dir: east
     display:
       invisible: true
       attr: 'gold'
@@ -118,7 +118,7 @@ robots:
       run "scenarios/Challenges/Sliding Puzzles/_sliding-puzzle/maintainer.sw";
   - name: setup
     system: true
-    dir: [1, 0]
+    dir: east
     display:
       invisible: true
       attr: 'iron'

@@ -64,7 +64,7 @@ robots:
       char: 'Ω'
       attr: robot
     loc: [0,0]
-    dir: [0,1]
+    dir: north
     devices:
       - 3D printer
       - dictionary

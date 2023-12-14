@@ -39,7 +39,7 @@ solution: |
 robots:
   - name: base
     loc: [0,0]
-    dir: [1,0]
+    dir: east
     devices:
       - logger
       - harvester
@@ -47,7 +47,7 @@ robots:
       - [1, lambda]
   - name: planter
     loc: [0,0]
-    dir: [1,0]
+    dir: east
     devices:
       - logger
       - grabber

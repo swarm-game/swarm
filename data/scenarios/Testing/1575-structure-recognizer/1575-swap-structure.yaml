@@ -41,7 +41,7 @@ objectives:
       return $ isRight foundRed;
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - fast grabber
       - treads

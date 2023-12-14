@@ -30,7 +30,7 @@ solution: |
   turn south; move; grab; equip "3D printer"; build {};
 robots:
   - name: base
-    dir: [1,0]
+    dir: east
     devices:
       - logger
       - treads

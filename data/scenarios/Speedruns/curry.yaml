@@ -10,7 +10,7 @@ objectives:
 robots:
   - name: base
     loc: [0,0]
-    dir: [0,1]
+    dir: north
     heavy: true
     display:
       char: Ω

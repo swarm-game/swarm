@@ -31,7 +31,7 @@ robots:
     display:
       char: 'Ω'
       attr: robot
-    dir: [0,1]
+    dir: north
     devices:
       - 3D printer
       - life support system

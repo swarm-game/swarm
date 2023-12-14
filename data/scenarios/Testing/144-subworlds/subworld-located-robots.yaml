@@ -35,7 +35,7 @@ entities:
     properties: [known]
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     loc:
       subworld: root
       loc: [2, 0]
@@ -54,7 +54,7 @@ robots:
       - strange loop
       - treads
   - name: judge
-    dir: [1, 0]
+    dir: east
     loc:
       subworld: underground
       loc: [4, 0]

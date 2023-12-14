@@ -26,7 +26,7 @@ solution: |
     };
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - treads
       - grabber
@@ -36,7 +36,7 @@ robots:
       - hourglass
       - branch predictor
   - name: idler1
-    dir: [1, 0]
+    dir: east
     system: true
     devices:
       - dictionary
@@ -49,7 +49,7 @@ robots:
           end;
       go;
   - name: idler2
-    dir: [1, 0]
+    dir: east
     system: true
     devices:
       - dictionary
@@ -62,7 +62,7 @@ robots:
           end;
       go;
   - name: idler3
-    dir: [1, 0]
+    dir: east
     system: true
     devices:
       - dictionary
@@ -75,7 +75,7 @@ robots:
           end;
       go;
   - name: idler4
-    dir: [1, 0]
+    dir: east
     system: true
     devices:
       - dictionary

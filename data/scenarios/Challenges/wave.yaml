@@ -24,7 +24,7 @@ objectives:
       as base {x <- meet; return $ case x (\_. false) (\_. true)};
 robots:
   - name: base
-    dir: [0, 1]
+    dir: north
     devices:
       - branch predictor
       - comparator
@@ -40,7 +40,7 @@ robots:
       - treads
   - name: wavebot
     system: true
-    dir: [0, 1]
+    dir: north
     display:
       invisible: false
       attr: 'plant'

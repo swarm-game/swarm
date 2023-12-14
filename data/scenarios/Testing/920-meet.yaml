@@ -18,7 +18,7 @@ solution: |
 robots:
   - name: base
     loc: [0,0]
-    dir: [1,0]
+    dir: east
     devices:
       - logger
       - antenna
@@ -28,9 +28,9 @@ robots:
       - [7, boat]
   - name: other0
     loc: [0,0]
-    dir: [1,0]
+    dir: east
   - name: other
-    dir: [1,0]
+    dir: east
 world:
   palette:
     '.': [grass]

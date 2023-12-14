@@ -40,7 +40,7 @@ solution: |
   ignite right;
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - branch predictor
       - calculator
@@ -50,7 +50,7 @@ robots:
       - treads
       - torch
   - name: judge
-    dir: [1, 0]
+    dir: east
     system: true
     display:
       invisible: true

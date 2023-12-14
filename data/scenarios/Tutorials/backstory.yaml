@@ -62,7 +62,7 @@ robots:
     display:
       char: 'Ω'
       attr: robot
-    dir: [1,0]
+    dir: east
     loc: [0,0]
     inventory:
       - [1, READY]

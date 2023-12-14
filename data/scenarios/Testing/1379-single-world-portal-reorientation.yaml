@@ -29,7 +29,7 @@ entities:
     properties: [known]
 robots:
   - name: base
-    dir: [0, 1]
+    dir: north
     devices:
       - branch predictor
       - calculator
@@ -41,7 +41,7 @@ robots:
       - strange loop
       - treads
   - name: judge
-    dir: [1, 0]
+    dir: east
     system: true
     display:
       char: 'J'

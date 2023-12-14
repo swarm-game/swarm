@@ -31,7 +31,7 @@ robots:
     display:
       attr: robot
       char: 'Ω'
-    dir: [1,0]
+    dir: east
     devices:
       - workbench
       - logger

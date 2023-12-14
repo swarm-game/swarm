@@ -8,7 +8,7 @@ robots:
     display:
       char: Ω
       attr: robot
-    dir: [1, 0]
+    dir: east
     loc: [10, 3]
     devices:
       - logger
@@ -18,7 +18,7 @@ robots:
     system: true
     display:
       invisible: false
-    dir: [1, 0]
+    dir: east
     devices:
       - lodestone
     inventory:
@@ -29,7 +29,7 @@ robots:
     system: true
     display:
       invisible: true
-    dir: [0, 1]
+    dir: north
     loc: [24, 9]
     devices:
       - lodestone

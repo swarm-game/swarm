@@ -21,7 +21,7 @@ solution: |
   run "scenarios/Challenges/Mazes/loopy_maze_sol.sw"
 robots:
   - name: base
-    dir: [0,1]
+    dir: north
     display:
       char: 'Ω'
       attr: robot

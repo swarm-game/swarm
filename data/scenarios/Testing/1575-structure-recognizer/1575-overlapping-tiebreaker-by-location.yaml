@@ -25,7 +25,7 @@ objectives:
       return $ case foundStructure (\_. false) (\_. true);
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - grabber
       - treads

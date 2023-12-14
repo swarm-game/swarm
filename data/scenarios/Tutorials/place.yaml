@@ -67,7 +67,7 @@ solution: |
   turn back; h; h; h; h; h; h;
 robots:
   - name: base
-    dir: [1,0]
+    dir: east
     devices:
       - treads
       - grabber

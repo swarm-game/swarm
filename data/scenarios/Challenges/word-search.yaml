@@ -204,7 +204,7 @@ robots:
   - name: base
     display:
       attr: flower
-    dir: [-1, 0]
+    dir: west
     devices:
       - treads
       - ADT calculator
@@ -226,7 +226,7 @@ robots:
       - [3, ink]
   - name: lettersetter
     system: true
-    dir: [1, 0]
+    dir: east
     display:
       invisible: true
     inventory:

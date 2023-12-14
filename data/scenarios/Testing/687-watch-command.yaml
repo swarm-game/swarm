@@ -22,7 +22,7 @@ solution: |
   grab;
 robots:
   - name: base
-    dir: [0,1]
+    dir: north
     display:
       char: Ω
       attr: robot
@@ -32,7 +32,7 @@ robots:
       - grabber
       - treads
   - name: competitor
-    dir: [0, -1]
+    dir: south
     display:
       char: b
       attr: robot
@@ -48,7 +48,7 @@ robots:
       turn back;
       move;
   - name: planter
-    dir: [1, 0]
+    dir: east
     display:
       char: p
       attr: robot

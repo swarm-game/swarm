@@ -13,7 +13,7 @@ solution: |
   case mr (\_. return ()) (\r. halt r; turn west; move; salvage )
 robots:
   - name: base
-    dir: [0,-1]
+    dir: south
     display:
       char: Ω
       attr: robot
@@ -28,7 +28,7 @@ robots:
       - ADT calculator
       - halting oracle
   - name: infinitebot
-    dir: [0,1]
+    dir: north
     display:
       invisible: false
     devices:

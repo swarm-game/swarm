@@ -52,7 +52,7 @@ solution: |
   grab;
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     display:
       char: Ω
       attr: robot

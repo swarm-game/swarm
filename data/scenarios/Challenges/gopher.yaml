@@ -41,7 +41,7 @@ robots:
     loc: [-1, 1]
     display:
       attr: blue
-    dir: [1, 0]
+    dir: east
     devices:
       - ADT calculator
       - 3D printer
@@ -77,7 +77,7 @@ robots:
       - [120, flower]
   - name: gopher
     system: true
-    dir: [0, 1]
+    dir: north
     display:
       char: 'G'
       invisible: false

@@ -72,7 +72,7 @@ objectives:
       };
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - 3D printer
       - branch predictor
@@ -114,7 +114,7 @@ robots:
       - [6, welder]
   - name: opponent
     system: true
-    dir: [0, 1]
+    dir: north
     display:
       char: P
       attr: pig

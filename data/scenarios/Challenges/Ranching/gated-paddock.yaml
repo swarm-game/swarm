@@ -191,7 +191,7 @@ objectives:
     prerequisite: feed_sheep
 robots:
   - name: base
-    dir: [0, 1]
+    dir: north
     devices:
       - treads
       - scanner
@@ -221,7 +221,7 @@ robots:
       invisible: false
       char: '@'
     system: true
-    dir: [0, 1]
+    dir: north
     inventory:
       - [4, wool]
     unwalkable:

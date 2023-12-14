@@ -57,7 +57,7 @@ attrs:
     bg: '#000000'
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - ADT calculator
       - antenna

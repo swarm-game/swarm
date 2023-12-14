@@ -24,7 +24,7 @@ entities:
     capabilities: [move]
 robots:
   - name: base
-    dir: [0,1]
+    dir: north
     devices:
       - 3D printer
       - logger

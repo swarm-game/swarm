@@ -63,7 +63,7 @@ objectives:
       anyHasMetBase 1;
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - ADT calculator
       - binoculars
@@ -87,7 +87,7 @@ robots:
       - welder
   - name: cw_robot
     system: true
-    dir: [0, 1]
+    dir: north
     display:
       invisible: false
       char: 'X'
@@ -96,7 +96,7 @@ robots:
       run "scenarios/Challenges/_blender/patrol-clockwise.sw"
   - name: cw_robot_down
     system: true
-    dir: [0, -1]
+    dir: south
     display:
       invisible: false
       char: 'X'
@@ -105,7 +105,7 @@ robots:
       run "scenarios/Challenges/_blender/patrol-clockwise.sw"
   - name: ccw_robot
     system: true
-    dir: [0, 1]
+    dir: north
     display:
       invisible: false
       char: 'X'
@@ -114,7 +114,7 @@ robots:
       run "scenarios/Challenges/_blender/patrol-counter-clockwise.sw"
   - name: ccw_robot_down
     system: true
-    dir: [0, -1]
+    dir: south
     display:
       invisible: false
       char: 'X'

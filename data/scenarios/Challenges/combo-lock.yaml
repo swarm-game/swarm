@@ -22,7 +22,7 @@ objectives:
       as base {has "bitcoin"};
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     display:
       invisible: false
     devices:
@@ -44,7 +44,7 @@ robots:
       - treads
   - name: lockbot
     system: true
-    dir: [1, 0]
+    dir: east
     display:
       invisible: true
     program: |

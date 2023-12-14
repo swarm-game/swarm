@@ -19,7 +19,7 @@ robots:
     display:
       char: 'ω'
       attr: robot
-    dir: [0, 1]
+    dir: north
     devices:
       - treads
       - 3D printer
@@ -43,7 +43,7 @@ robots:
       - [1, treads]
   - name: gate
     system: true
-    dir: [0, 1]
+    dir: north
     display:
       invisible: true
     inventory:
