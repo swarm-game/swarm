@@ -16,7 +16,7 @@ solution: |
   move;
 robots:
   - name: base
-    dir: [1,0]
+    dir: east
     devices:
       - treads
       - logger

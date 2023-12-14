@@ -50,7 +50,7 @@ objectives:
       as r {has "bit (0)"};
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - ADT calculator
       - branch predictor
@@ -75,7 +75,7 @@ robots:
       - treads
   - name: setup
     system: true
-    dir: [1, 0]
+    dir: east
     display:
       invisible: true
     inventory:

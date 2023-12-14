@@ -31,7 +31,7 @@ solution: |
   homeIn item initialDistance;
 robots:
   - name: base
-    dir: [0,-1]
+    dir: south
     display:
       char: Ω
       attr: robot

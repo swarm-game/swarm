@@ -127,7 +127,7 @@ robots:
         south: 'n'
       char: 'U'
       attr: gold
-    dir: [1, 0]
+    dir: east
     devices:
       - ADT calculator
       - antenna
@@ -150,7 +150,7 @@ robots:
       - treads
       - workbench
   - name: teleport_monitor
-    dir: [0, 1]
+    dir: north
     system: true
     display:
       invisible: true
@@ -158,7 +158,7 @@ robots:
     program: |
       run "scenarios/Challenges/_hackman/teleport_monitor.sw"
   - name: ghost1
-    dir: [0, 1]
+    dir: north
     system: true
     display:
       invisible: false
@@ -167,7 +167,7 @@ robots:
     program: |
       run "scenarios/Challenges/_hackman/ghost.sw"
   - name: ghost2
-    dir: [0, 1]
+    dir: north
     system: true
     display:
       invisible: false
@@ -176,7 +176,7 @@ robots:
     program: |
       run "scenarios/Challenges/_hackman/ghost.sw"
   - name: ghost3
-    dir: [0, 1]
+    dir: north
     system: true
     display:
       invisible: false
@@ -185,7 +185,7 @@ robots:
     program: |
       run "scenarios/Challenges/_hackman/ghost.sw"
   - name: ghost4
-    dir: [0, 1]
+    dir: north
     system: true
     display:
       invisible: false
@@ -194,7 +194,7 @@ robots:
     program: |
       run "scenarios/Challenges/_hackman/ghost.sw"
   - name: fruit_maker
-    dir: [0, 1]
+    dir: north
     system: true
     display:
       invisible: true

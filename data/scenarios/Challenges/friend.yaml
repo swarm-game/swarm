@@ -10,7 +10,7 @@ robots:
       char: 'Ω'
       attr: robot
     heavy: true
-    dir: [0, 1]
+    dir: north
     devices:
       - 3D printer
       - ADT calculator
@@ -47,7 +47,7 @@ robots:
       - [10, calculator]
   - name: cat
     system: true
-    dir: [-1, 0]
+    dir: west
     display:
       invisible: false
       char: 'c'

@@ -12,7 +12,7 @@ solution: |
     backup; backup; grab;
 robots:
   - name: base
-    dir: [0, 1]
+    dir: north
     devices:
       - tape drive
       - grabber

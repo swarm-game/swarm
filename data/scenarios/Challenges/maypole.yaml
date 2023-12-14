@@ -25,7 +25,7 @@ objectives:
       as monitor {has "dizzy"};
 robots:
   - name: base
-    dir: [0, 1]
+    dir: north
     devices:
       - branch predictor
       - treads
@@ -44,7 +44,7 @@ robots:
       - strange loop
   - name: monitor
     system: true
-    dir: [0, 1]
+    dir: north
     display:
       invisible: true
     inventory:

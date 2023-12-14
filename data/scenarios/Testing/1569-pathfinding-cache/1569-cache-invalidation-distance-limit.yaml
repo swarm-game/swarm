@@ -97,7 +97,7 @@ recipes:
       - [1, lemonade]
 robots:
   - name: base
-    dir: [0, 1]
+    dir: north
     devices:
       - ADT calculator
       - antenna

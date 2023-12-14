@@ -10,7 +10,7 @@ robots:
   - name: base
     display:
       invisible: true
-    dir: [1, 0]
+    dir: east
     devices:
       - logger
       - hearing aid
@@ -18,35 +18,35 @@ robots:
     system: true
     display:
       invisible: false
-    dir: [1, 0]
+    dir: east
     program: |
       run "scenarios/Fun/_logo-burst/drone.sw"
   - name: botUp
     system: true
     display:
       invisible: false
-    dir: [0, 1]
+    dir: north
     program: |
       run "scenarios/Fun/_logo-burst/drone.sw"
   - name: botLeft
     system: true
     display:
       invisible: false
-    dir: [-1, 0]
+    dir: west
     program: |
       run "scenarios/Fun/_logo-burst/drone.sw"
   - name: botDown
     system: true
     display:
       invisible: false
-    dir: [0, -1]
+    dir: south
     program: |
       run "scenarios/Fun/_logo-burst/drone.sw"
   - name: stoplight
     system: true
     display:
       invisible: false
-    dir: [0, 1]
+    dir: north
     devices:
       - lodestone
     inventory:

@@ -10,7 +10,7 @@ robots:
       char: 'Ω'
       attr: robot
     heavy: true
-    dir: [0, 1]
+    dir: north
     devices:
       - 3D printer
       - ADT calculator
@@ -35,7 +35,7 @@ robots:
       - [1, treads]
   - name: hauler
     system: true
-    dir: [-1, 0]
+    dir: west
     devices:
       - furnace
     display:
@@ -46,7 +46,7 @@ robots:
       run "scenarios/Challenges/_bucket-brigade/hauler.sw"
   - name: powerplant
     system: true
-    dir: [1, 0]
+    dir: east
     display:
       invisible: false
       char: '▒'

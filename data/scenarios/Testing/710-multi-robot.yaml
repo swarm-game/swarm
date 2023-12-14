@@ -51,7 +51,7 @@ world:
 
 robots:
   - name: base
-    dir: [1,0]
+    dir: east
     loc: [0,0]
     devices:
       - treads

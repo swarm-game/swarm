@@ -6,7 +6,7 @@ description: |
 robots:
   - name: base
     loc: [11, 0]
-    dir: [1, 0]
+    dir: east
 world:
   palette:
     '.': [grass]

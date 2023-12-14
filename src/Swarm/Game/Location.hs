@@ -35,6 +35,7 @@ module Swarm.Game.Location (
   Affine (..),
   Point (..),
   origin,
+  toHeading,
 ) where
 
 import Control.Arrow ((&&&))

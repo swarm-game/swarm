@@ -19,9 +19,9 @@ solution: |
   noop;
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
   - name: queenbee
-    dir: [1, 0]
+    dir: east
     system: true
     display:
       invisible: false

@@ -38,7 +38,7 @@ objectives:
       };
 robots:
   - name: base
-    dir: [0, 1]
+    dir: north
     devices:
       - branch predictor
       - treads
@@ -61,7 +61,7 @@ robots:
       - [5000, vanilla]
   - name: customer
     system: true
-    dir: [0, -1]
+    dir: south
     display:
       invisible: false
       attr: 'iron'

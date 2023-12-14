@@ -16,7 +16,7 @@ solution: |
   doN 7 (place "tree"; move)
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     display:
       char: Ω
       attr: robot
@@ -30,7 +30,7 @@ robots:
     inventory:
       - [7, "tree"]
   - name: judge
-    dir: [1, 0]
+    dir: east
     system: true
     display:
       invisible: false

@@ -22,14 +22,14 @@ solution: |
 robots:
   - name: base
     loc: [0,0]
-    dir: [1,0]
+    dir: east
     devices:
       - treads
       - logger
     program: "move"
   - name: bot
     loc: [0,-1]
-    dir: [1,0]
+    dir: east
     devices:
       - treads
     program: "move"

@@ -16,7 +16,7 @@ objectives:
       }
 robots:
   - name: Horton
-    dir: [0, 1]
+    dir: north
     devices:
       - ADT calculator
       - branch predictor

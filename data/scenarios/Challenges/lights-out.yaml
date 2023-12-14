@@ -66,7 +66,7 @@ objectives:
       };
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - ADT calculator
       - antenna
@@ -90,7 +90,7 @@ robots:
       - workbench
   - name: judge
     system: true
-    dir: [1, 0]
+    dir: east
     display:
       invisible: true
     program: |

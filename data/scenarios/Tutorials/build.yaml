@@ -35,7 +35,7 @@ solution: |
   build {turn right; move; move; harvest; turn right; move; place "flower"}
 robots:
   - name: base
-    dir: [0,1]
+    dir: north
     heavy: true
     display:
       char: Ω

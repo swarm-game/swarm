@@ -81,7 +81,7 @@ robots:
   - name: base
     display:
       attr: mybase
-    dir: [1, 0]
+    dir: east
     devices:
       - 3D printer
       - blueprint
@@ -113,7 +113,7 @@ robots:
       - [20, iron plate]
       - [4, botkit]
   - name: queenbee
-    dir: [1, 0]
+    dir: east
     system: true
     display:
       invisible: true

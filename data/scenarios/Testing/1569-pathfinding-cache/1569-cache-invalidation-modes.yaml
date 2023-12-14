@@ -139,7 +139,7 @@ recipes:
       - [1, lemonade]
 robots:
   - name: base
-    dir: [1,0]
+    dir: east
     devices:
       - 3D printer
       - ADT calculator

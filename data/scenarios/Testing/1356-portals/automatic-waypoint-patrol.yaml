@@ -6,10 +6,10 @@ creative: true
 robots:
   - name: base
     loc: [0, 0]
-    dir: [1, 0]
+    dir: east
   - name: patroller
     loc: [5, -4]
-    dir: [1, 0]
+    dir: east
     display:
       invisible: false
       attr: robot    

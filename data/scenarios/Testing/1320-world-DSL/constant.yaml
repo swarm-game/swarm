@@ -13,7 +13,7 @@ solution: |
 robots:
   - name: base
     loc: [0,0]
-    dir: [1,0]
+    dir: east
     devices:
       - logger
       - treads

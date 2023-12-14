@@ -145,7 +145,7 @@ objectives:
       };
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - ADT calculator
       - branch predictor
@@ -181,7 +181,7 @@ robots:
       - [0, jungle]
   - name: flowercheck
     system: true
-    dir: [0, 1]
+    dir: north
     display:
       invisible: true
     devices:
@@ -192,7 +192,7 @@ robots:
       run "scenarios/Challenges/_bridge-building/flower-ring-check.sw"
   - name: platecheck
     system: true
-    dir: [0, 1]
+    dir: north
     display:
       invisible: true
 solution: |

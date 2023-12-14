@@ -32,7 +32,7 @@ robots:
   - name: base
     display:
       attr: bluish
-    dir: [0, 1]
+    dir: north
     devices:
       - branch predictor
       - ADT calculator

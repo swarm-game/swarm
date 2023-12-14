@@ -12,7 +12,7 @@ solution: |
   h <- heading; turn east; move; move; turn right; move; move; turn h
 robots:
   - name: base
-    dir: [0,1]
+    dir: north
     devices:
       - treads
       - compass

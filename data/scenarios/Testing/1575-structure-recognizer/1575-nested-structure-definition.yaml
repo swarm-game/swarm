@@ -40,7 +40,7 @@ solution: |
   place t;
 robots:
   - name: base
-    dir: [0, -1]
+    dir: south
     devices:
       - grabber
       - treads

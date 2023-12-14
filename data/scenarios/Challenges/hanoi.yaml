@@ -20,7 +20,7 @@ solution: |
   run "scenarios/Challenges/_hanoi/hanoi-solution.sw"
 robots:
   - name: base
-    dir: [0,-1]
+    dir: south
     devices:
       - net
       - treads
