@@ -1289,7 +1289,7 @@
     `watch : dir -> cmd unit` will mark an adjacent (in the specified direction) location of interest to monitor for placement or removal of items.
     A subsequent call to `wait` will be interrupted upon a change to the location.
   properties: [portable]
-  capabilities: [wakeself]
+  capabilities: [timerel, wakeself]
 
 - name: comparator
   display:
