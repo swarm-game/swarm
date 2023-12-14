@@ -381,6 +381,7 @@ execConst runChildProg c vs s k = do
       [VText name] -> do
         inv <- use robotInventory
         ins <- use equippedDevices
+        sys <- use systemRobot
         em <- use $ landscape . entityMap
         e <-
           lookupEntityName name em
@@ -422,6 +423,9 @@ execConst runChildProg c vs s k = do
         -- take recipe inputs from inventory and add outputs after recipeTime
         robotInventory .= invTaken
         traverse_ (updateDiscoveredEntities . snd) (recipe ^. recipeOutputs)
+        -- Grant CraftedBitcoin achievement
+        when (name == "bitcoin" && not creative && not sys) $ grantAchievement CraftedBitcoin
+
         finishCookingRecipe recipe VUnit [] (map (uncurry AddEntity) changeInv)
       _ -> badConst
     Has -> case vs of
