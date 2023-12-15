@@ -6,7 +6,7 @@ objectives:
   - goal:
       - It is the grand opening of Sigma (Σ), the hot new
         dim sum restaurant in town.
-        You are the one and only wait staff.
+        You are the solitary wait staff.
       - It seems that the manager went a bit overboard on furniture;
         there are dozens of `table`{=entity}s,
         but hardly any room to walk!
@@ -31,9 +31,11 @@ robots:
       - comparator
       - dictionary
       - grabber
+      - lambda
       - logger
       - net
       - scanner
+      - strange loop
       - treads
       - dozer blade
   - name: cook
@@ -47,6 +49,7 @@ robots:
       - branch predictor
       - comparator
       - dictionary
+      - lambda
       - logger
       - rolex
       - scanner
@@ -64,9 +67,11 @@ robots:
       - branch predictor
       - comparator
       - dictionary
+      - lambda
       - logger
       - rolex
       - scanner
+      - strange loop
       - fork
     inventory:
       - [2, bitcoin]
@@ -139,18 +144,19 @@ world:
     'k': [grass, table, cook]
     'p': [grass, table, patron]
     's': [grass, empty cart]
+    'x': [stone, erase]
   upperleft: [0, 0]
   map: |
     .@@@.........
-    .@k@@@@@@@@@@
+    .@k@@@@@@@@x@
     .@Bddddddddd@
-    .@d@@@@@@@d@@
-    .@d@SSSSS@d@.
-    .@d@.S...@d@.
-    .@d@..S..@d@.
-    .@d@.S...@d@.
-    .@d@SSSSS@d@.
-    @@d@@@@@@@d@.
+    .@dxxxxxxxd@@
+    .@dxSSSSSxd@.
+    .@dxxSxxxxd@.
+    .@dxxxSxxxd@.
+    .@dxxSxxxxd@.
+    .@dxSSSSSxd@.
+    @@dxxxxxxxd@.
     @ddddddddds@.
-    @@@@@@@@@@p@.
+    @x@@@@@@@@p@.
     .........@@@.
