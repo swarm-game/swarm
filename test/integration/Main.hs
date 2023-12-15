@@ -237,6 +237,7 @@ testScenarioSolutions rs ui =
         , testSolution (Sec 10) "Challenges/Sliding Puzzles/3x3"
         , testSolution Default "Challenges/friend"
         , testSolution Default "Challenges/pack-tetrominoes"
+        , testSolution (Sec 10) "Challenges/dimsum"
         , testGroup
             "Mazes"
             [ testSolution Default "Challenges/Mazes/easy_cave_maze"
