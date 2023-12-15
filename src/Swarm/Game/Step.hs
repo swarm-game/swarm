@@ -5,11 +5,12 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: Stepping robot CESK machines
 --
 -- Facilities for stepping the robot CESK machines, /i.e./ the actual
 -- interpreter for the Swarm language.
 --
--- ** Note on the IO:
+-- == Note on the IO:
 --
 -- The only reason we need @IO@ is so that robots can run programs
 -- loaded from files, via the 'Swarm.Language.Syntax.Run' command.

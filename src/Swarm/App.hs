@@ -3,6 +3,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: Application entry point
 --
 -- Main entry point for the Swarm application.
 module Swarm.App where

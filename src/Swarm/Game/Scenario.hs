@@ -7,6 +7,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: Standalone worlds
 --
 -- Scenarios are standalone worlds with specific starting and winning
 -- conditions, which can be used both for building interactive

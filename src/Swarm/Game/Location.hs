@@ -5,6 +5,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: Locations and headings
 --
 -- Locations and headings.
 module Swarm.Game.Location (

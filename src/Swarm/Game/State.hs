@@ -5,6 +5,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: Game-related state and utilities
 --
 -- Definition of the record holding all the game-related state, and various related
 -- utility functions.

@@ -5,6 +5,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: Grid on which the game takes place
 --
 -- A /world/ refers to the grid on which the game takes place, and the
 -- things in it (besides robots). A world has a base, immutable
