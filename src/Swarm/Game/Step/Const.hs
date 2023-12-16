@@ -1371,7 +1371,7 @@ execConst runChildProg c vs s k = do
   ensureEquipped itemName = do
     inst <- use equippedDevices
     listToMaybe (lookupByName itemName inst)
-      `isJustOrFail` ["You don't have a", indefinite itemName, "equipped."]
+      `isJustOrFail` ["You don't have", indefinite itemName, "equipped."]
 
   ensureItem :: HasRobotStepState sig m => Text -> Text -> m Entity
   ensureItem itemName action = do
