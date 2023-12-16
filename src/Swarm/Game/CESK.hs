@@ -4,6 +4,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: State machine of Swarm's interpreter
 --
 -- The Swarm interpreter uses a technique known as a
 -- <https://matt.might.net/articles/cesk-machines/ CESK machine> (if

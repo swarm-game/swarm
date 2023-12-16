@@ -2,6 +2,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: Achievements player obtained
 --
 -- Metadata about achievements that the player has obtained.
 module Swarm.Game.Achievement.Attainment (

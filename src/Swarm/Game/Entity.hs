@@ -3,6 +3,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: Object that exists in the world
 --
 -- An 'Entity' represents an object that exists in the world.  Each
 -- entity has a way to be displayed, some metadata such as a name and

@@ -2,6 +2,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: Achievements load/save
 --
 -- Load/save logic for achievements.
 -- Each achievement is saved to its own file to better

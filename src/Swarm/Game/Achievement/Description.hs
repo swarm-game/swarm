@@ -2,6 +2,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: Flavor text
 --
 -- Flavor text about all defined achievements.
 module Swarm.Game.Achievement.Description where

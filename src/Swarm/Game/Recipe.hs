@@ -3,6 +3,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: Entity transformations, not limited to "crafting"
 --
 -- A recipe represents some kind of process for transforming
 -- some input entities into some output entities.

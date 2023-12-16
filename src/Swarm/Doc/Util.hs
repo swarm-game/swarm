@@ -2,6 +2,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: Doc markup utilities
 --
 -- Utilities for generating doc markup
 module Swarm.Doc.Util where

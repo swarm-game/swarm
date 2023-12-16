@@ -6,6 +6,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: TUI rendering of entities
 --
 -- Utilities for describing how to display in-game entities in the TUI.
 module Swarm.Game.Display (

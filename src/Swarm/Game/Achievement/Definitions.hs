@@ -1,5 +1,6 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: All achievements enumerated
 --
 -- Definitions of all possible achievements.
 module Swarm.Game.Achievement.Definitions (
