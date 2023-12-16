@@ -2,6 +2,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: Constants used throughout the UI and game
 --
 -- Constants used throughout the UI and game.
 module Swarm.Constant where

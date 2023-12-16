@@ -4,6 +4,9 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+-- Description: Time effects
 module Swarm.Effect.Time where
 
 import Control.Algebra

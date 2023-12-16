@@ -2,6 +2,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: Pedagogical soundness of tutorials
 --
 -- Assess pedagogical soundness of the tutorials.
 --

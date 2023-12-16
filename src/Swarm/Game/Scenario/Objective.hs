@@ -4,6 +4,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: Goals of scenario
 module Swarm.Game.Scenario.Objective where
 
 import Control.Applicative ((<|>))

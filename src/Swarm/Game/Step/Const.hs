@@ -6,6 +6,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: Robot command logic
 --
 -- Implementation of robot commands
 module Swarm.Game.Step.Const where
