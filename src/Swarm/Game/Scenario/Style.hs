@@ -39,7 +39,7 @@ instance ToJSON StyleFlag where
 -- | Hexadecimal color notation.
 -- May include a leading hash symbol (see 'Data.Colour.SRGB.sRGB24read').
 newtype HexColor = HexColor Text
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
 
 data CustomAttr = CustomAttr
   { name :: String

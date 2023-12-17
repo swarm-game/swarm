@@ -35,11 +35,6 @@ import Swarm.Util (commaList, failT, quote, showT)
 import Swarm.Util.Yaml
 import Witch (into)
 
-newtype Grid c = Grid
-  { unGrid :: [[c]]
-  }
-  deriving (Show, Eq)
-
 data NamedArea a = NamedArea
   { name :: StructureName
   , recognize :: Set AbsoluteDir

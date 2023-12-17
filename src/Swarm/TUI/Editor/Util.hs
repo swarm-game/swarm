@@ -106,8 +106,8 @@ getEditedMapRectangle ::
   WorldOverdraw ->
   Maybe (Cosmic W.BoundsRectangle) ->
   W.MultiWorld Int Entity ->
-  [[CellPaintDisplay]]
-getEditedMapRectangle _ Nothing _ = []
+  EA.Grid CellPaintDisplay
+getEditedMapRectangle _ Nothing _ = EA.Grid []
 getEditedMapRectangle worldEditor (Just (Cosmic subworldName coords)) w =
   getMapRectangle toFacade getContent coords
  where
@@ -117,9 +117,9 @@ getMapRectangle ::
   (d -> e) ->
   (W.Coords -> (TerrainType, Maybe d)) ->
   W.BoundsRectangle ->
-  [[PCell e]]
+  EA.Grid (PCell e)
 getMapRectangle paintTransform contentFunc coords =
-  map renderRow [yTop .. yBottom]
+  EA.Grid $ map renderRow [yTop .. yBottom]
  where
   (W.Coords (yTop, xLeft), W.Coords (yBottom, xRight)) = coords
 

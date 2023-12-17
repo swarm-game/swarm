@@ -21,7 +21,7 @@ import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (initNameGenerator, readAppData)
 import Swarm.Game.Scenario (Scenario, area, loadStandaloneScenario, scenarioCosmetics, scenarioWorlds, ul, worldName)
 import Swarm.Game.Scenario.Status (seedLaunchParams)
-import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..), getAreaDimensions, isEmpty, upperLeftToBottomRight)
+import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Center
 import Swarm.Game.Scenario.Topography.EntityFacade (EntityFacade (..), mkFacade)
@@ -62,10 +62,7 @@ getDisplayColor aMap c =
 mkPixelColor :: PreservableColor -> PixelRGBA8
 mkPixelColor h = PixelRGBA8 r g b 255
  where
-  RGB r g b = case fromHiFi h of
-    FgOnly c -> c
-    BgOnly c -> c
-    FgAndBg _ c -> c
+  RGB r g b = flattenBg $ fromHiFi h
 
 -- | Since terminals can customize these named
 -- colors using themes or explicit user overrides,
@@ -94,7 +91,7 @@ getDisplayGrid ::
   Scenario ->
   GameState ->
   Maybe AreaDimensions ->
-  [[PCell EntityFacade]]
+  Grid (PCell EntityFacade)
 getDisplayGrid myScenario gs maybeSize =
   getMapRectangle
     mkFacade
@@ -129,7 +126,7 @@ getDisplayGrid myScenario gs maybeSize =
 getRenderableGrid ::
   RenderOpts ->
   FilePath ->
-  IO ([[PCell EntityFacade]], M.Map WorldAttr PreservableColor)
+  IO (Grid (PCell EntityFacade), M.Map WorldAttr PreservableColor)
 getRenderableGrid (RenderOpts maybeSeed _ _ maybeSize) fp = simpleErrorHandle $ do
   (myScenario, (worldDefs, entities, recipes)) <- loadStandaloneScenario fp
   appDataMap <- readAppData
@@ -152,12 +149,12 @@ doRenderCmd opts@(RenderOpts _ asPng _ _) mapPath =
 renderScenarioMap :: RenderOpts -> FilePath -> IO [String]
 renderScenarioMap opts fp = do
   (grid, _) <- getRenderableGrid opts fp
-  return $ map (map getDisplayChar) grid
+  return $ unGrid $ getDisplayChar <$> grid
 
 -- | Converts linked lists to vectors to facilitate
 -- random access when assembling the image
-gridToVec :: [[a]] -> V.Vector (V.Vector a)
-gridToVec = V.fromList . map V.fromList
+gridToVec :: Grid a -> V.Vector (V.Vector a)
+gridToVec (Grid g) = V.fromList . map V.fromList $ g
 
 renderScenarioPng :: RenderOpts -> FilePath -> IO ()
 renderScenarioPng opts fp = do
@@ -167,7 +164,7 @@ renderScenarioPng opts fp = do
   mkImg aMap g = generateImage (pixelRenderer vecGrid) (fromIntegral w) (fromIntegral h)
    where
     vecGrid = gridToVec g
-    AreaDimensions w h = getAreaDimensions g
+    AreaDimensions w h = getGridDimensions g
     pixelRenderer vg x y = getDisplayColor aMap $ (vg V.! y) V.! x
 
 printScenarioMap :: [String] -> IO ()

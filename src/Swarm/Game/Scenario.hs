@@ -81,6 +81,7 @@ import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Style
+import Swarm.Game.Scenario.Topography.Area (Grid (Grid))
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (Parentage (..))
@@ -201,7 +202,7 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
             (sequenceA . (id &&& (Structure.mergeStructures mempty Root . Structure.structure)))
             rootLevelSharedStructures
 
-      let namedGrids = map (\(ns, Structure.MergedStructure s _ _) -> Structure.Grid s <$ ns) mergedStructures
+      let namedGrids = map (\(ns, Structure.MergedStructure s _ _) -> Grid s <$ ns) mergedStructures
 
       allWorlds <- localE (worldMap,rootLevelSharedStructures,,rsMap) $ do
         rootWorld <- v ..: "world"

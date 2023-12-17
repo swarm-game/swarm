@@ -10,6 +10,7 @@ import Control.Monad (unless, when)
 import Data.Map qualified as M
 import Data.Set qualified as Set
 import Data.Text qualified as T
+import Swarm.Game.Scenario.Topography.Area (Grid (Grid))
 import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform)
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (RotationalSymmetry (..), SymmetryAnnotatedGrid (..))
@@ -66,4 +67,4 @@ checkSymmetry ng = do
   halfTurnRows = applyOrientationTransform (Orientation DSouth False) originalRows
 
   suppliedOrientations = Structure.recognize ng
-  Structure.Grid originalRows = Structure.structure ng
+  Grid originalRows = Structure.structure ng

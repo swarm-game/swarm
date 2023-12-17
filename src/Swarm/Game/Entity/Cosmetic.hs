@@ -61,6 +61,12 @@ getBackground = \case
   BgOnly x -> Just x
   FgAndBg _ x -> Just x
 
+flattenBg :: ColorLayers a -> a
+flattenBg = \case
+  FgOnly x -> x
+  BgOnly x -> x
+  FgAndBg _ x -> x
+
 newtype WorldAttr = WorldAttr String
   deriving (Eq, Ord, Show)
 

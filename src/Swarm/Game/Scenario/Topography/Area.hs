@@ -4,11 +4,23 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Topography.Area where
 
+import Data.Aeson (ToJSON (..))
 import Data.Int (Int32)
 import Data.List qualified as L
 import Data.Maybe (listToMaybe)
 import Linear (V2 (..))
 import Swarm.Game.Location
+
+newtype Grid c = Grid
+  { unGrid :: [[c]]
+  }
+  deriving (Show, Eq, Functor, Foldable, Traversable)
+
+instance (ToJSON a) => ToJSON (Grid a) where
+  toJSON (Grid g) = toJSON g
+
+getGridDimensions :: Grid a -> AreaDimensions
+getGridDimensions (Grid g) = getAreaDimensions g
 
 -- | Height and width of a 2D map region
 data AreaDimensions = AreaDimensions

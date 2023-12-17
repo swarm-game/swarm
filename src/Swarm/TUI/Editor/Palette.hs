@@ -22,7 +22,7 @@ import Swarm.Game.Display (Display, defaultChar)
 import Swarm.Game.Entity (EntityName, entitiesByName)
 import Swarm.Game.Location
 import Swarm.Game.Scenario
-import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..), getAreaDimensions)
+import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
@@ -112,8 +112,8 @@ makeSuggestedPalette maybeOriginalScenario cellGrid =
     f x = ((x, ENothing), (T.singleton $ getTerrainDefaultPaletteChar x, Cell x ENothing []))
 
 -- | Generate a \"skeleton\" scenario with placeholders for certain required fields
-constructScenario :: Maybe Scenario -> [[CellPaintDisplay]] -> SkeletonScenario
-constructScenario maybeOriginalScenario cellGrid =
+constructScenario :: Maybe Scenario -> Grid CellPaintDisplay -> SkeletonScenario
+constructScenario maybeOriginalScenario (Grid cellGrid) =
   SkeletonScenario
     (maybe 1 (^. scenarioVersion) maybeOriginalScenario)
     (maybe "My Scenario" (^. scenarioName) maybeOriginalScenario)
