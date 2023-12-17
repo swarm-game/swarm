@@ -19,7 +19,7 @@ import Swarm.Game.Display (defaultChar)
 import Swarm.Game.Entity.Cosmetic
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (initNameGenerator, readAppData)
-import Swarm.Game.Scenario (Scenario, area, loadStandaloneScenario, scenarioCosmetics, scenarioWorlds, ul, worldName)
+import Swarm.Game.Scenario (PWorldDescription, Scenario, area, loadStandaloneScenario, scenarioCosmetics, scenarioWorlds, ul, worldName)
 import Swarm.Game.Scenario.Status (seedLaunchParams)
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
@@ -85,43 +85,49 @@ fromHiFi = fmap $ \case
   -- those triples are not inputs to the VTY attribute creation.
   AnsiColor x -> namedToTriple x
 
--- | When output size is not explicitly provided on command line,
+-- | When output size is not explicitly provided,
 -- uses natural map bounds (if a map exists).
-getDisplayGrid ::
-  Scenario ->
-  GameState ->
+getBoundingBox ::
+  Location ->
+  PWorldDescription e ->
   Maybe AreaDimensions ->
-  Grid (PCell EntityFacade)
-getDisplayGrid myScenario gs maybeSize =
-  getMapRectangle
-    mkFacade
-    (getContentAt worlds . mkCosmic)
-    (mkBoundingBox areaDims upperLeftLocation)
+  W.BoundsRectangle
+getBoundingBox vc scenarioWorld maybeSize =
+  mkBoundingBox areaDims upperLeftLocation
  where
-  mkCosmic = Cosmic $ worldName firstScenarioWorld
-
-  worlds = view (landscape . multiWorld) gs
-
-  worldTuples = buildWorldTuples myScenario
-  vc = determineViewCenter myScenario worldTuples
-
-  firstScenarioWorld = NE.head $ view scenarioWorlds myScenario
-  worldArea = area firstScenarioWorld
-  mapAreaDims = getAreaDimensions worldArea
-  areaDims@(AreaDimensions w h) =
-    fromMaybe (AreaDimensions 20 10) $
-      maybeSize <|> surfaceEmpty isEmpty mapAreaDims
-
   upperLeftLocation =
     if null maybeSize && not (isEmpty mapAreaDims)
-      then ul firstScenarioWorld
-      else view planar vc .+^ ((`div` 2) <$> V2 (negate w) h)
+      then ul scenarioWorld
+      else vc .+^ ((`div` 2) <$> V2 (negate w) h)
 
   mkBoundingBox areaDimens upperLeftLoc =
     both W.locToCoords locationBounds
    where
     lowerRightLocation = upperLeftToBottomRight areaDimens upperLeftLoc
     locationBounds = (upperLeftLoc, lowerRightLocation)
+
+  worldArea = area scenarioWorld
+  mapAreaDims = getAreaDimensions worldArea
+  areaDims@(AreaDimensions w h) =
+    fromMaybe (AreaDimensions 20 10) $
+      maybeSize <|> surfaceEmpty isEmpty mapAreaDims
+
+getDisplayGrid ::
+  Location ->
+  Scenario ->
+  GameState ->
+  Maybe AreaDimensions ->
+  Grid CellPaintDisplay
+getDisplayGrid vc myScenario gs maybeSize =
+  getMapRectangle
+    mkFacade
+    (getContentAt worlds . mkCosmic)
+    (getBoundingBox vc firstScenarioWorld maybeSize)
+ where
+  mkCosmic = Cosmic $ worldName firstScenarioWorld
+  worlds = view (landscape . multiWorld) gs
+
+  firstScenarioWorld = NE.head $ view scenarioWorlds myScenario
 
 getRenderableGrid ::
   RenderOpts ->
@@ -138,7 +144,11 @@ getRenderableGrid (RenderOpts maybeSeed _ _ maybeSize) fp = simpleErrorHandle $ 
         myScenario
         (seedLaunchParams maybeSeed)
         gsc
-  return (getDisplayGrid myScenario gs maybeSize, myScenario ^. scenarioCosmetics)
+  let vc =
+        view planar $
+          determineStaticViewCenter myScenario $
+            buildWorldTuples myScenario
+  return (getDisplayGrid vc myScenario gs maybeSize, myScenario ^. scenarioCosmetics)
 
 doRenderCmd :: RenderOpts -> FilePath -> IO ()
 doRenderCmd opts@(RenderOpts _ asPng _ _) mapPath =

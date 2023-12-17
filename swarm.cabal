@@ -103,6 +103,7 @@ library swarm-util
                       Swarm.Util
                       Swarm.Util.Erasable
                       Swarm.Util.Lens
+                      Swarm.Util.OccurrenceEncoder
                       Swarm.Util.Parse
                       Swarm.Util.RingBuffer
                       Swarm.Util.UnitInterval
@@ -288,12 +289,14 @@ library
                       Swarm.Util.Effect
                       Swarm.Version
                       Swarm.Web
+                      Swarm.Web.Worldview
 
     reexported-modules: Control.Carrier.Accum.FixedStrict
                       , Data.BoolExpr.Simplify
                       , Swarm.Util
                       , Swarm.Util.Erasable
                       , Swarm.Util.Lens
+                      , Swarm.Util.OccurrenceEncoder
                       , Swarm.Util.Parse
                       , Swarm.Util.RingBuffer
                       , Swarm.Util.UnitInterval

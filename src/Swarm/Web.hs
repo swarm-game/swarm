@@ -67,6 +67,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
 import Swarm.Game.Scenario.Objective.WinCheck
+import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..))
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
@@ -83,6 +84,7 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.UI
 import Swarm.Util.RingBuffer
+import Swarm.Web.Worldview
 import System.Timeout (timeout)
 import Text.Read (readEither)
 import WaiAppStatic.Types (unsafeToPiece)
@@ -108,6 +110,7 @@ type SwarmAPI =
     :<|> "code" :> "run" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
     :<|> "paths" :> "log" :> Get '[JSON] (RingBuffer CacheLogEntry)
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [REPLHistItem]
+    :<|> "map" :> Capture "size" AreaDimensions :> Get '[JSON] GridResponse
 
 swarmApi :: Proxy SwarmAPI
 swarmApi = Proxy
@@ -162,6 +165,7 @@ mkApp state events =
     :<|> codeRunHandler events
     :<|> pathsLogHandler state
     :<|> replHandler state
+    :<|> mapViewHandler state
 
 robotsHandler :: ReadableIORef AppState -> Handler [Robot]
 robotsHandler appStateRef = do
@@ -243,6 +247,18 @@ replHandler appStateRef = do
   let replHistorySeq = appState ^. uiState . uiREPL . replHistory . replSeq
       items = toList replHistorySeq
   pure items
+
+mapViewHandler :: ReadableIORef AppState -> AreaDimensions -> Handler GridResponse
+mapViewHandler appStateRef areaSize = do
+  appState <- liftIO (readIORef appStateRef)
+  let maybeScenario = fst <$> appState ^. uiState . scenarioRef
+  pure $ case maybeScenario of
+    Just s ->
+      GridResponse True
+        . Just
+        . getCellGrid s (appState ^. gameState)
+        $ areaSize
+    Nothing -> GridResponse False Nothing
 
 -- ------------------------------------------------------------------
 -- Main app (used by service and for development)
@@ -338,3 +354,19 @@ instance ToCapture (Capture "id" RobotID) where
     SD.DocCapture
       "id" -- name
       "(integer) robot ID" -- description
+
+instance FromHttpApiData AreaDimensions where
+  parseUrlPiece x = left T.pack $ do
+    pieces <- mapM (readEither . T.unpack) $ T.splitOn "x" x
+    case pieces of
+      [w, h] -> return $ AreaDimensions w h
+      _ -> Left "Need two dimensions"
+
+instance SD.ToSample AreaDimensions where
+  toSamples _ = SD.samples [AreaDimensions 20 30]
+
+instance ToCapture (Capture "size" AreaDimensions) where
+  toCapture _ =
+    SD.DocCapture
+      "size" -- name
+      "(integer, integer) dimensions of area" -- description
