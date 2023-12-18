@@ -53,6 +53,7 @@ import Data.Set qualified as Set
 import Data.Tuple (swap)
 import Swarm.Game.Entity (Entity, entityName)
 import Swarm.Game.Scenario (StaticStructureInfo (..))
+import Swarm.Game.Scenario.Topography.Area (Grid (Grid))
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform)
 import Swarm.Game.Scenario.Topography.Structure
