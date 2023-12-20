@@ -243,7 +243,7 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
       , padTop (Pad 1) table
       ]
    where
-    vc = determineViewCenter s worldTuples
+    vc = determineStaticViewCenter s worldTuples
 
     worldTuples = buildWorldTuples s
     theWorlds = genMultiWorld worldTuples $ fromMaybe 0 $ s ^. scenarioSeed
