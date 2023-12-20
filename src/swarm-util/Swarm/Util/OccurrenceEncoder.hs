@@ -2,15 +2,11 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 -- Description: Compress representation of traversable
 --
--- For structures with many repeating elements,
--- will store the expanded element representation
--- in an array so that the structure can be transmitted
--- with array indices as elements.
+-- Useful for compressing the representation of a
+-- structure that has many repeating elements
+-- for transmission (e.g. over the network).
 module Swarm.Util.OccurrenceEncoder (
-  Encoder,
-  encodeOccurrence,
-  getIndices,
-  emptyEncoder,
+  runEncoder,
 ) where
 
 import Control.Monad.Trans.State
@@ -21,6 +17,21 @@ import Data.Map qualified as M
 type OccurrenceEncoder a = State (Encoder a)
 
 newtype Encoder a = Encoder (Map a Int)
+
+-- |
+-- Given a data structure that may have many repeating "complex" elements,
+-- will store the "complex" element representation
+-- in an array so that the structure's elements can be replaced
+-- with simple indices into that array.
+--
+-- The first encountered element is assigned index 0, and the next
+-- novel element encountered gets index 1, and so on.
+runEncoder ::
+  (Traversable t, Ord b) =>
+  t b ->
+  (t Int, [b])
+runEncoder structure =
+  getIndices <$> runState (mapM encodeOccurrence structure) emptyEncoder
 
 emptyEncoder :: Ord a => Encoder a
 emptyEncoder = Encoder mempty

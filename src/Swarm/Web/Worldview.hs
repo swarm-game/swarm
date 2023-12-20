@@ -4,7 +4,6 @@
 module Swarm.Web.Worldview where
 
 import Control.Lens ((^.))
-import Control.Monad.Trans.State
 import Data.Aeson (ToJSON)
 import Data.Colour.Palette.BrewerSet (Kolor)
 import Data.Colour.SRGB (RGB (..), sRGB24, sRGB24show)
@@ -35,7 +34,7 @@ getCellGrid ::
   AreaDimensions ->
   CellGrid
 getCellGrid myScenario gs requestedSize =
-  CellGrid indexGrid $ getIndices encoding
+  CellGrid indexGrid encoding
  where
   vc = gs ^. robotInfo . viewCenter
   dg = getDisplayGrid (vc ^. planar) myScenario gs (Just requestedSize)
@@ -46,7 +45,7 @@ getCellGrid myScenario gs requestedSize =
   asHex = HexColor . T.pack . sRGB24show . asColour
 
   f = asHex . maybe (RGB 0 0 0) (flattenBg . fromHiFi) . getTerrainEntityColor aMap
-  (indexGrid, encoding) = runState (mapM (encodeOccurrence . f) dg) emptyEncoder
+  (indexGrid, encoding) = runEncoder $ f <$> dg
 
 data CellGrid = CellGrid
   { coords :: Grid IM.Key
