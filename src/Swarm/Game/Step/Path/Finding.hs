@@ -64,7 +64,7 @@ import Swarm.Util (hoistMaybe)
 pathCommand ::
   HasRobotStepState sig m =>
   PathfindingParameters (Cosmic Location) ->
-  m (Maybe Direction)
+  m (Maybe (Direction, Int))
 pathCommand parms = do
   currentWalkabilityContext <- use walkabilityContext
 
@@ -72,7 +72,7 @@ pathCommand parms = do
   eitherCachedPath <- retrieveCachedPath currentWalkabilityContext parms
 
   case eitherCachedPath of
-    Right foundCachedPath -> return $ Just $ nextDir foundCachedPath
+    Right foundCachedPath -> return $ Just $ mkResult foundCachedPath
     Left _ -> do
       -- This is a short-circuiting optimization; if the goal location itself
       -- is not a walkable cell, then no amount of searching will reach it.
@@ -86,8 +86,9 @@ pathCommand parms = do
         foundPath <- hoistMaybe maybeFoundPath
         -- NOTE: This will not cache the fact that a path was not found.
         lift $ recordCache (fmap (^. subworld) parms) currentWalkabilityContext $ robotLoc :| foundPath
-        return $ nextDir foundPath
+        return $ mkResult foundPath
  where
+  mkResult p = (nextDir p, length p)
   PathfindingParameters maybeDistanceLimit (Cosmic currentSubworld robotLoc) target = parms
 
   computePath =

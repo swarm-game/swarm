@@ -15,7 +15,8 @@ objectives:
         return $ fCount >= 4;
       };
 solution: |
-  def goDir = \f. \d.
+  def goDir = \f. \result.
+    let d = fst result in
     if (d == down) {grab; f;} {turn d; move; f;}
     end;
 
