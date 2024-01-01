@@ -1,5 +1,9 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
+
+{- HLINT ignore "Use underscore" -}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
