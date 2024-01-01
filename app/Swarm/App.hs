@@ -34,7 +34,7 @@ import Graphics.Vty.Platform.Unix qualified as VS
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
-import Swarm.ReadableIORef (mkReadonly)
+import Swarm.Util.ReadableIORef (mkReadonly)
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
 import Swarm.TUI.Model.StateUpdate

@@ -3,7 +3,7 @@
 --
 -- Ensures that access to an 'IORef' is read-only
 -- by hiding behind a newtype.
-module Swarm.ReadableIORef (mkReadonly, ReadableIORef, readIORef) where
+module Swarm.Util.ReadableIORef (mkReadonly, ReadableIORef, readIORef) where
 
 import Data.IORef (IORef)
 import Data.IORef qualified as R (readIORef)

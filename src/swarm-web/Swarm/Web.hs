@@ -79,7 +79,7 @@ import Swarm.Language.Module
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (prettyTextLine)
 import Swarm.Language.Syntax
-import Swarm.ReadableIORef
+import Swarm.Util.ReadableIORef
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.UI
