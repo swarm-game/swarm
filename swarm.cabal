@@ -137,6 +137,7 @@ library swarm-util
                       Swarm.Util.Lens
                       Swarm.Util.OccurrenceEncoder
                       Swarm.Util.Parse
+                      Swarm.Util.ReadableIORef
                       Swarm.Util.RingBuffer
                       Swarm.Util.UnitInterval
                       Swarm.Util.WindowedCounter
@@ -284,7 +285,6 @@ library
                       Swarm.Language.Typed
                       Swarm.Language.Types
                       Swarm.Language.Value
-                      Swarm.ReadableIORef
                       Swarm.TUI.View
                       Swarm.TUI.View.Achievement
                       Swarm.TUI.View.Attribute.Attr
@@ -424,6 +424,7 @@ executable swarm
                       vty,
                       swarm,
                       swarm-web,
+                      swarm-util,
     if os(windows)
       build-depends:  vty-windows                   >= 0.1.0.3 && < 0.2,
     else

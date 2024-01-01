@@ -79,10 +79,10 @@ import Swarm.Language.Module
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (prettyTextLine)
 import Swarm.Language.Syntax
-import Swarm.ReadableIORef
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.UI
+import Swarm.Util.ReadableIORef
 import Swarm.Util.RingBuffer
 import Swarm.Web.Worldview
 import System.Timeout (timeout)
