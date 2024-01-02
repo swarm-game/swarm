@@ -1,0 +1,66 @@
+version: 1
+name: Caterpillar
+author: Karl Ostmo
+seed: 1
+description: |
+  Crawl along
+creative: true
+objectives:
+  - goal:
+      - |
+        Eat 30 apples
+    condition: |
+      return false
+robots:
+  - name: base
+    dir: north
+    devices:
+      - ADT calculator
+      - branch predictor
+      - clock
+      - comparator
+      - compass
+      - dictionary
+      - GPS receiver
+      - grabber
+      - hourglass
+      - hearing aid
+      - lambda
+      - logger
+      - net
+      - scanner
+      - strange loop
+      - string
+      - treads
+    inventory:
+      - [5, tail]
+solution: |
+  run "scenarios/Fun/_caterpillar/solution.sw"
+entities:
+  - name: tail
+    display:
+      char: '@'
+      attr: green
+    description:
+      - |
+        Segment of snake's tail
+    properties: [known]
+known: [water, boulder, flower]
+world:
+  dsl: |
+    {grass}
+  upperleft: [-4, 4]
+  palette:
+    'B': [grass, erase, base]
+    '.': [grass, erase]
+    's': [stone, erase]
+  map: |
+    ..sssss..
+    .sssssss.
+    sssssssss
+    sssssssss
+    ssssBssss
+    sssssssss
+    sssssssss
+    .sssssss.
+    ..sssss..
