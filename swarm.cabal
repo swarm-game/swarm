@@ -1,4 +1,4 @@
-cabal-version:      2.4
+cabal-version:      3.8
 name:               swarm
 version:            0.5.0.0
 synopsis:           2D resource gathering game with programmable robots
@@ -11,17 +11,17 @@ description:        Swarm is a 2D programming and resource gathering
                     <https://github.com/swarm-game/swarm/blob/main/README.md README>
                     for more information and instructions on how to
                     play or contribute!
-                    .
+
                     == Module organization
                     For developers getting oriented, Swarm's modules are organized into
                     roughly the following layers, from inner to outer:
-                    .
+
                     * utilities
                     * swarm language
                     * swarm game
                     * swarm TUI
                     * swarm app
-                    .
+
                     To maintain this separation, inner layers should avoid introducing
                     dependencies on layers above them.
 
@@ -97,6 +97,7 @@ common ghc2021-extensions
 
 library swarm-web
     import:           stan-config, common, ghc2021-extensions
+    visibility:       public
     exposed-modules:  Swarm.Web
                       Swarm.Web.Worldview
     other-modules:    Paths_swarm
@@ -119,7 +120,7 @@ library swarm-web
                       wai                           >= 3.2 && < 3.3,
                       wai-app-static                >= 3.1.8 && < 3.1.9,
                       warp,
-    build-depends:    swarm-util,
+    build-depends:    swarm:swarm-util,
                       swarm,
     hs-source-dirs:   src/swarm-web
     default-language: Haskell2010
@@ -130,6 +131,7 @@ library swarm-web
 
 library swarm-util
     import:           stan-config, common, ghc2021-extensions
+    visibility:       public
     exposed-modules:  Control.Carrier.Accum.FixedStrict
                       Data.BoolExpr.Simplify
                       Swarm.Util
@@ -397,7 +399,7 @@ library
                       witherable                    >= 0.4 && < 0.5,
                       word-wrap                     >= 0.5 && < 0.6,
                       yaml                          >= 0.11 && < 0.11.12.0,
-    build-depends:    swarm-util
+    build-depends:    swarm:swarm-util
     hs-source-dirs:   src
     default-language: Haskell2010
     default-extensions:
@@ -423,8 +425,8 @@ executable swarm
                       text,
                       vty,
                       swarm,
-                      swarm-web,
-                      swarm-util,
+                      swarm:swarm-web,
+                      swarm:swarm-util,
     if os(windows)
       build-depends:  vty-windows                   >= 0.1.0.3 && < 0.2,
     else
@@ -463,7 +465,7 @@ executable swarm-docs
                       text,
                       transformers,
                       vector,
-                      swarm-web,
+                      swarm:swarm-web,
     hs-source-dirs:   app/doc
     default-language: Haskell2010
     ghc-options:      -threaded
