@@ -1,0 +1,122 @@
+version: 1
+name: Snake
+author: Karl Ostmo
+seed: 1
+description: |
+  Watch the snake eat the apples
+creative: false
+objectives:
+  - goal:
+      - |
+        Eat and "digest" many apples
+    condition: |
+      r <- robotnamed "snake";
+      as r {
+        appleCoreCount <- count "apple core";
+        return $ appleCoreCount >= 40;
+      }
+robots:
+  - name: base
+    dir: north
+    devices:
+      - ADT calculator
+      - branch predictor
+      - clock
+      - comparator
+      - compass
+      - dictionary
+      - grabber
+      - hourglass
+      - hearing aid
+      - keyboard
+      - lambda
+      - logger
+      - net
+      - scanner
+      - strange loop
+      - string
+      - treads
+      - wayfinder
+  - name: snake
+    dir: north
+    system: true
+    display:
+      attr: green
+      invisible: false
+    devices:
+      - rattle
+    program: |
+      run "scenarios/Fun/_snake/snake.sw"
+  - name: spawn
+    dir: north
+    system: true
+    display:
+      invisible: true
+    inventory:
+      - [100, apple]
+    program: |
+      run "scenarios/Fun/_snake/spawn.sw"
+solution: |
+  noop
+entities:
+  - name: wayfinder
+    display:
+      char: 'w'
+    description:
+      - |
+        Enables the `path` command
+    properties: [known, portable]
+    capabilities: [path]
+  - name: apple
+    display:
+      char: 'a'
+      attr: red
+    description:
+      - |
+        Tasty snack
+    properties: [known, portable]
+  - name: apple core
+    display:
+      char: 'I'
+      attr: wood
+    description:
+      - |
+        Remains of an eaten apple
+    properties: [known, portable]
+  - name: rattle
+    display:
+      char: 'r'
+      attr: green
+    description:
+      - |
+        Device unique to a snake
+    properties: [known]
+  - name: tail
+    display:
+      char: '@'
+      attr: green
+    description:
+      - |
+        Segment of snake's tail
+    properties: [known, unwalkable]
+recipes:
+  - in:
+      - [3, apple]
+    out:
+      - [1, tail]
+      - [3, apple core]
+    required:
+      - [1, rattle]
+known: []
+world:
+  dsl: |
+    {grass}
+  upperleft: [0, 0]
+  palette:
+    'B': [grass, erase, base]
+    'S': [grass, erase, snake]
+    's': [grass, erase, spawn]
+    '.': [grass, erase]
+  map: |
+    B..
+    s.S

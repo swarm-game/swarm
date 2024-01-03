@@ -218,6 +218,10 @@ testScenarioSolutions rs ui =
         , testTutorialSolution (Sec 5) "Tutorials/farming"
         ]
     , testGroup
+        "Fun"
+        [ testSolution (Sec 10) "Fun/snake"
+        ]
+    , testGroup
         "Challenges"
         [ testSolution Default "Challenges/chess_horse"
         , testSolution Default "Challenges/teleport"
