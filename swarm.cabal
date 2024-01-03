@@ -240,6 +240,9 @@ library
                       Swarm.Doc.Keyword
                       Swarm.Doc.Pedagogy
                       Swarm.Doc.Util
+                      Swarm.Effect
+                      Swarm.Effect.Time
+                      Swarm.Log
                       Swarm.Game.Failure
                       Swarm.Game.Achievement.Attainment
                       Swarm.Game.Achievement.Definitions
@@ -257,13 +260,6 @@ library
                       Swarm.Game.Robot
                       Swarm.Game.Scenario
                       Swarm.Game.Universe
-                      Swarm.Effect
-                      Swarm.Effect.Time
-                      Swarm.Log
-                      Swarm.TUI.Launch.Controller
-                      Swarm.TUI.Launch.Model
-                      Swarm.TUI.Launch.Prep
-                      Swarm.TUI.Launch.View
                       Swarm.Game.Scenario.Objective
                       Swarm.Game.Scenario.Objective.Graph
                       Swarm.Game.Scenario.Objective.Logic
@@ -276,6 +272,7 @@ library
                       Swarm.Game.Scenario.Scoring.GenericMetrics
                       Swarm.Game.Scenario.Status
                       Swarm.Game.Scenario.Style
+                      Swarm.Game.Scenario.Topography.Area
                       Swarm.Game.Scenario.Topography.Cell
                       Swarm.Game.Scenario.Topography.Center
                       Swarm.Game.Scenario.Topography.EntityFacade
@@ -326,18 +323,7 @@ library
                       Swarm.Game.World.Render
                       Swarm.Game.World.Syntax
                       Swarm.Game.World.Typecheck
-                      Swarm.TUI.View
-                      Swarm.TUI.View.Achievement
-                      Swarm.TUI.View.Attribute.Attr
-                      Swarm.TUI.View.Attribute.CustomStyling
-                      Swarm.TUI.View.Attribute.Util
-                      Swarm.TUI.View.CellDisplay
-                      Swarm.TUI.View.Logo
-                      Swarm.TUI.View.Objective
-                      Swarm.TUI.View.Structure
-                      Swarm.TUI.View.Util
                       Swarm.TUI.Border
-                      Swarm.Game.Scenario.Topography.Area
                       Swarm.TUI.Editor.Controller
                       Swarm.TUI.Editor.Json
                       Swarm.TUI.Editor.Masking
@@ -358,6 +344,20 @@ library
                       Swarm.TUI.Model.Structure
                       Swarm.TUI.Model.UI
                       Swarm.TUI.Panel
+                      Swarm.TUI.Launch.Controller
+                      Swarm.TUI.Launch.Model
+                      Swarm.TUI.Launch.Prep
+                      Swarm.TUI.Launch.View
+                      Swarm.TUI.View
+                      Swarm.TUI.View.Achievement
+                      Swarm.TUI.View.Attribute.Attr
+                      Swarm.TUI.View.Attribute.CustomStyling
+                      Swarm.TUI.View.Attribute.Util
+                      Swarm.TUI.View.CellDisplay
+                      Swarm.TUI.View.Logo
+                      Swarm.TUI.View.Objective
+                      Swarm.TUI.View.Structure
+                      Swarm.TUI.View.Util
                       Swarm.Util.Effect
                       Swarm.Version
 
