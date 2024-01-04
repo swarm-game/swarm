@@ -188,7 +188,7 @@ execConst runChildProg c vs s k = do
           let verbed = verbedGrabbingCmd Push'
           -- Ensure it can be pushed.
           omni <- isPrivilegedBot
-          (omni || e `hasProperty` Pushable || e `hasProperty` Portable && not (e `hasProperty` Liquid))
+          (omni || e `hasProperty` Pushable || e `hasProperty` Pickable && not (e `hasProperty` Liquid))
             `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
 
           -- Place the entity and remove it from previous loc
@@ -1238,7 +1238,7 @@ execConst runChildProg c vs s k = do
       chosenRecipe
         `isJustOrFail` ["You don't have the ingredients to", verbPhrase, indefinite (nextE ^. entityName) <> "."]
 
-    let (out, down) = L.partition ((`hasProperty` Portable) . snd) outs
+    let (out, down) = L.partition ((`hasProperty` Pickable) . snd) outs
         learn = map (LearnEntity . snd) down
         gain = map (uncurry AddEntity) out
 
@@ -1659,7 +1659,7 @@ execConst runChildProg c vs s k = do
 
     -- Ensure it can be picked up.
     omni <- isPrivilegedBot
-    (omni || e `hasProperty` Portable)
+    (omni || e `hasProperty` Pickable)
       `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
 
     -- Remove the entity from the world.

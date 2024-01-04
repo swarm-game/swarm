@@ -141,7 +141,7 @@ data EntityProperty
   = -- | Robots can't move onto a cell containing this entity.
     Unwalkable
   | -- | Robots can pick this up (via 'Swarm.Language.Syntax.Grab' or 'Swarm.Language.Syntax.Harvest').
-    Portable
+    Pickable
   | -- | Robots can 'Swarm.Language.Syntax.Push' this
     Pushable
   | -- | Obstructs the view of robots that attempt to "scout"
