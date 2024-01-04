@@ -12,7 +12,7 @@ robots:
     dir: east
     display:
       invisible: false
-      attr: robot    
+      attr: robot
     program: |
       run "scenarios/Testing/1356-portals/_automatic-waypoint-patrol/program.sw"
 known: [flower, boulder]

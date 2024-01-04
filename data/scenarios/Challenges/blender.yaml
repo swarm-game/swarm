@@ -45,7 +45,7 @@ objectives:
       Returns true if a bot has "met" the base.
       */
       def anyHasMetBase : int -> cmd bool = \idx.
-          
+
           try {
               bot <- robotnumbered idx;
               intermediate <- hasMetBase bot;

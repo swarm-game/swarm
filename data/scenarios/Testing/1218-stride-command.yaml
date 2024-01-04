@@ -32,7 +32,7 @@ solution: |
   };
 
   turn west;
-  try {    
+  try {
     stride 1;
   } {
     log "Could not stride west";
@@ -46,7 +46,7 @@ solution: |
   } {
     log "Could not grab southern flower";
   };
-  
+
   turn east;
   stride 5;
   grab;
