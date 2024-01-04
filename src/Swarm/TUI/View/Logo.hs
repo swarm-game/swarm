@@ -36,7 +36,7 @@ drawLogo = centerLayer . vBox . map (hBox . T.foldr (\c ws -> drawThing c : ws) 
   rockAttr = getWorldAttrName $ fst rock
 
   plantAttr :: AttrName
-  plantAttr = getWorldAttrName $ fst rock
+  plantAttr = getWorldAttrName $ fst plant
 
   dirtAttr :: AttrName
   dirtAttr = getTerrainAttrName $ fst dirt

@@ -95,6 +95,66 @@ common ghc2021-extensions
       -- Not GHC2021, but until we get \cases we use \case a lot
       LambdaCase
 
+library swarm-lang
+    import:           stan-config, common, ghc2021-extensions
+    visibility:       public
+    exposed-modules:  Swarm.Language.Capability
+                      Swarm.Language.Context
+                      Swarm.Language.Direction
+                      Swarm.Language.Elaborate
+                      Swarm.Language.Key
+                      Swarm.Language.LSP
+                      Swarm.Language.LSP.Hover
+                      Swarm.Language.LSP.VarUsage
+                      Swarm.Language.Module
+                      Swarm.Language.Parse
+                      Swarm.Language.Parse.QQ
+                      Swarm.Language.Pipeline
+                      Swarm.Language.Pipeline.QQ
+                      Swarm.Language.Pretty
+                      Swarm.Language.Requirement
+                      Swarm.Language.Syntax
+                      Swarm.Language.Text.Markdown
+                      Swarm.Language.Typecheck
+                      Swarm.Language.Typecheck.Unify
+                      Swarm.Language.Typed
+                      Swarm.Language.Types
+                      Swarm.Language.Value
+    other-modules:    Paths_swarm
+    autogen-modules:  Paths_swarm
+    build-depends:    aeson,
+                      base,
+                      commonmark                    >= 0.2 && < 0.3,
+                      commonmark-extensions         >= 0.2 && < 0.3,
+                      containers,
+                      extra,
+                      lens,
+                      lsp                           >= 1.6 && < 1.7,
+                      hashable,
+                      megaparsec,
+                      mtl,                      
+                      parser-combinators,
+                      prettyprinter,
+                      split,
+                      syb                           >= 0.7 && < 0.8,
+                      template-haskell,
+                      text,
+                      text-rope                     >= 0.2 && < 0.3,
+                      transformers,
+                      unification-fd                >= 0.11  && < 0.12,
+                      vector,
+                      vty,
+                      witch,
+                      yaml,
+
+    build-depends:    swarm:swarm-util
+    hs-source-dirs:   src/swarm-lang
+    default-language: Haskell2010
+    default-extensions:
+      -- Avoid unexpected unevaluated thunk buildup
+      -- See discussion in #415
+      StrictData
+
 library swarm-web
     import:           stan-config, common, ghc2021-extensions
     visibility:       public
@@ -121,6 +181,7 @@ library swarm-web
                       wai-app-static                >= 3.1.8 && < 3.1.9,
                       warp,
     build-depends:    swarm:swarm-util,
+                      swarm:swarm-lang,
                       swarm,
     hs-source-dirs:   src/swarm-web
     default-language: Haskell2010
@@ -179,6 +240,9 @@ library
                       Swarm.Doc.Keyword
                       Swarm.Doc.Pedagogy
                       Swarm.Doc.Util
+                      Swarm.Effect
+                      Swarm.Effect.Time
+                      Swarm.Log
                       Swarm.Game.Failure
                       Swarm.Game.Achievement.Attainment
                       Swarm.Game.Achievement.Definitions
@@ -196,13 +260,6 @@ library
                       Swarm.Game.Robot
                       Swarm.Game.Scenario
                       Swarm.Game.Universe
-                      Swarm.Effect
-                      Swarm.Effect.Time
-                      Swarm.Log
-                      Swarm.TUI.Launch.Controller
-                      Swarm.TUI.Launch.Model
-                      Swarm.TUI.Launch.Prep
-                      Swarm.TUI.Launch.View
                       Swarm.Game.Scenario.Objective
                       Swarm.Game.Scenario.Objective.Graph
                       Swarm.Game.Scenario.Objective.Logic
@@ -215,6 +272,7 @@ library
                       Swarm.Game.Scenario.Scoring.GenericMetrics
                       Swarm.Game.Scenario.Status
                       Swarm.Game.Scenario.Style
+                      Swarm.Game.Scenario.Topography.Area
                       Swarm.Game.Scenario.Topography.Cell
                       Swarm.Game.Scenario.Topography.Center
                       Swarm.Game.Scenario.Topography.EntityFacade
@@ -265,40 +323,7 @@ library
                       Swarm.Game.World.Render
                       Swarm.Game.World.Syntax
                       Swarm.Game.World.Typecheck
-                      Swarm.Language.Capability
-                      Swarm.Language.Context
-                      Swarm.Language.Direction
-                      Swarm.Language.Elaborate
-                      Swarm.Language.Key
-                      Swarm.Language.LSP
-                      Swarm.Language.LSP.Hover
-                      Swarm.Language.LSP.VarUsage
-                      Swarm.Language.Module
-                      Swarm.Language.Parse
-                      Swarm.Language.Parse.QQ
-                      Swarm.Language.Pipeline
-                      Swarm.Language.Pipeline.QQ
-                      Swarm.Language.Pretty
-                      Swarm.Language.Requirement
-                      Swarm.Language.Syntax
-                      Swarm.Language.Text.Markdown
-                      Swarm.Language.Typecheck
-                      Swarm.Language.Typecheck.Unify
-                      Swarm.Language.Typed
-                      Swarm.Language.Types
-                      Swarm.Language.Value
-                      Swarm.TUI.View
-                      Swarm.TUI.View.Achievement
-                      Swarm.TUI.View.Attribute.Attr
-                      Swarm.TUI.View.Attribute.CustomStyling
-                      Swarm.TUI.View.Attribute.Util
-                      Swarm.TUI.View.CellDisplay
-                      Swarm.TUI.View.Logo
-                      Swarm.TUI.View.Objective
-                      Swarm.TUI.View.Structure
-                      Swarm.TUI.View.Util
                       Swarm.TUI.Border
-                      Swarm.Game.Scenario.Topography.Area
                       Swarm.TUI.Editor.Controller
                       Swarm.TUI.Editor.Json
                       Swarm.TUI.Editor.Masking
@@ -319,11 +344,46 @@ library
                       Swarm.TUI.Model.Structure
                       Swarm.TUI.Model.UI
                       Swarm.TUI.Panel
+                      Swarm.TUI.Launch.Controller
+                      Swarm.TUI.Launch.Model
+                      Swarm.TUI.Launch.Prep
+                      Swarm.TUI.Launch.View
+                      Swarm.TUI.View
+                      Swarm.TUI.View.Achievement
+                      Swarm.TUI.View.Attribute.Attr
+                      Swarm.TUI.View.Attribute.CustomStyling
+                      Swarm.TUI.View.Attribute.Util
+                      Swarm.TUI.View.CellDisplay
+                      Swarm.TUI.View.Logo
+                      Swarm.TUI.View.Objective
+                      Swarm.TUI.View.Structure
+                      Swarm.TUI.View.Util
                       Swarm.Util.Effect
                       Swarm.Version
 
     reexported-modules: Control.Carrier.Accum.FixedStrict
                       , Data.BoolExpr.Simplify
+                      , Swarm.Language.Context
+                      , Swarm.Language.Direction
+                      , Swarm.Language.Elaborate
+                      , Swarm.Language.Key
+                      , Swarm.Language.LSP
+                      , Swarm.Language.LSP.Hover
+                      , Swarm.Language.LSP.VarUsage
+                      , Swarm.Language.Module
+                      , Swarm.Language.Parse
+                      , Swarm.Language.Parse.QQ
+                      , Swarm.Language.Pipeline
+                      , Swarm.Language.Pipeline.QQ
+                      , Swarm.Language.Pretty
+                      , Swarm.Language.Requirement
+                      , Swarm.Language.Syntax
+                      , Swarm.Language.Text.Markdown
+                      , Swarm.Language.Typecheck
+                      , Swarm.Language.Typecheck.Unify
+                      , Swarm.Language.Typed
+                      , Swarm.Language.Types
+                      , Swarm.Language.Value
                       , Swarm.Util
                       , Swarm.Util.Erasable
                       , Swarm.Util.Lens
@@ -333,6 +393,7 @@ library
                       , Swarm.Util.UnitInterval
                       , Swarm.Util.WindowedCounter
                       , Swarm.Util.Yaml
+                      , Swarm.Language.Capability
 
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
@@ -348,8 +409,6 @@ library
                       bytestring                    >= 0.10 && < 0.12,
                       clock                         >= 0.8.2 && < 0.9,
                       colour                        >= 2.3.6 && < 2.4,
-                      commonmark                    >= 0.2 && < 0.3,
-                      commonmark-extensions         >= 0.2 && < 0.3,
                       containers                    >= 0.6.2 && < 0.7,
                       directory                     >= 1.3 && < 1.4,
                       either                        >= 5.0 && < 5.1,
@@ -367,7 +426,6 @@ library
                       JuicyPixels                   >= 3.3 && < 3.4,
                       lens                          >= 4.19 && < 5.3,
                       linear                        >= 1.21.6 && < 1.23,
-                      lsp                           >= 1.6 && < 1.7,
                       megaparsec                    >= 9.6.1 && < 9.7,
                       transformers                  >= 0.5 && < 0.7,
                       mtl                           >= 2.2.2 && < 2.4,
@@ -382,15 +440,11 @@ library
                       SHA                           >= 1.6.4 && < 1.6.5,
                       simple-enumeration            >= 0.2 && < 0.3,
                       split                         >= 0.2.3 && < 0.3,
-                      syb                           >= 0.7 && < 0.8,
                       tagged                        >= 0.8 && < 0.9,
-                      template-haskell              >= 2.16 && < 2.21,
                       text                          >= 1.2.4 && < 2.1,
-                      text-rope                     >= 0.2 && < 0.3,
                       text-zipper                   >= 0.10 && < 0.14,
                       time                          >= 1.9 && < 1.14,
                       transformers                  >= 0.5.6.2 && < 0.6.2.0,
-                      unification-fd                >= 0.11  && < 0.12,
                       unordered-containers          >= 0.2.14 && < 0.3,
                       vector                        >= 0.12 && < 0.14,
                       vty                           >= 6.0 && < 6.1,
@@ -399,7 +453,8 @@ library
                       witherable                    >= 0.4 && < 0.5,
                       word-wrap                     >= 0.5 && < 0.6,
                       yaml                          >= 0.11 && < 0.11.12.0,
-    build-depends:    swarm:swarm-util
+    build-depends:    swarm:swarm-util,
+                      swarm:swarm-lang,
     hs-source-dirs:   src
     default-language: Haskell2010
     default-extensions:
@@ -425,6 +480,7 @@ executable swarm
                       text,
                       vty,
                       swarm,
+                      swarm:swarm-lang,
                       swarm:swarm-web,
                       swarm:swarm-util,
     if os(windows)
@@ -465,6 +521,7 @@ executable swarm-docs
                       text,
                       transformers,
                       vector,
+                      swarm:swarm-lang,
                       swarm:swarm-web,
     hs-source-dirs:   app/doc
     default-language: Haskell2010
