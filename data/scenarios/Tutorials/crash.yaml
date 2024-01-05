@@ -34,7 +34,7 @@ entities:
       char: 'W'
     description:
       - If you have this, you win!
-    properties: [known, portable]
+    properties: [known, pickable]
 solution: |
   crasher <- build {
       turn east; move; move; move; log "bye"; move

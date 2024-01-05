@@ -41,7 +41,7 @@ entities:
       char: 'k'
     description:
       - Can open a closed gate
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: closed gate
     display:
       attr: wood

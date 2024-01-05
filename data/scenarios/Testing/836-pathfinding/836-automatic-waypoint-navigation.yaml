@@ -23,14 +23,14 @@ entities:
       char: 'w'
     description:
       - Enables `path` command
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [path]
   - name: atlas
     display:
       char: 'a'
     description:
       - Enables `waypoint` command
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [waypoint]
   - name: kudzu
     display:
@@ -46,7 +46,7 @@ entities:
       attr: easter_egg
     description:
       - A colorful egg laid by the rabbit
-    properties: [known, portable]
+    properties: [known, pickable]
     growth: [5, 10]
 robots:
   - name: base

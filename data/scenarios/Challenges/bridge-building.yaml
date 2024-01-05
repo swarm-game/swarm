@@ -190,21 +190,21 @@ entities:
       attr: 'magenta'
     description:
       - The map describes local points of interest, relative to your cabin.
-    properties: [portable, known]
+    properties: [pickable, known]
   - name: peat furnace
     display:
       char: 'F'
       attr: tan
     description:
       - Fueled by peat.
-    properties: [portable, known]
+    properties: [pickable, known]
   - name: clay
     display:
       char: 'c'
       attr: tan
     description:
       - Can be fired in a peat furnace into a vessel.
-    properties: [portable, known]
+    properties: [pickable, known]
   - name: lava
     display:
       char: 'w'
@@ -218,21 +218,21 @@ entities:
       attr: tan
     description:
       - A tiny, inconsequential rock.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: machete
     display:
       char: '/'
       attr: cyan
     description:
       - Easily cuts through jungle overgrowth.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: painted plate
     display:
       char: 'o'
       attr: obsidian
     description:
       - Limited edition 1978 collectible Helix the Cat ornamental hand-painted dinner plate.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: oven mitts
     display:
       char: 'm'
@@ -272,7 +272,7 @@ entities:
       attr: silver
     description:
       - Can break hard objects
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: granite mountain
     display:
       char: 'A'
@@ -298,35 +298,35 @@ entities:
       char: 'L'
     description:
       - Can be used to traverse down a cliff.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: hemp
     display:
       char: 'h'
       attr: plant
     description:
       - Can be used to make rope
-    properties: [known, portable, growable]
+    properties: [known, pickable, growable]
   - name: flimsy board
     display:
       char: 'b'
       attr: wood
     description:
       - Board made from a soft log. Has poor rigidity.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: soft log
     display:
       char: 'l'
       attr: wood
     description:
       - Log made from a palm tree. A bit flexible.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: coconut
     display:
       char: 'c'
       attr: wood
     description:
       - Spherical, buoyant husk
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: floating boardwalk
     display:
       char: '▒'
@@ -340,7 +340,7 @@ entities:
       attr: wood
     description:
       - Burnable plant material
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: peat bog
     display:
       char: 'b'
@@ -374,14 +374,14 @@ entities:
       char: 'c'
     description:
       - An empty crucible. Can carry lava.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: lava-filled crucible
     display:
       char: 'C'
       attr: lavaBG
     description:
       - Crucible filled with lava
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: quarry
     display:
       char: 'Q'
@@ -436,13 +436,13 @@ entities:
       char: 'r'
     description:
       - An empty container for rubble.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: rubble-filled skip
     display:
       char: 'R'
     description:
       - An full container of rubble. Can be dumped in the water as fill to form a causeway.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: causeway
     display:
       char: '▒'
@@ -454,14 +454,14 @@ entities:
       char: 'k'
     description:
       - Tank with nothing in it
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: water-filled tank
     display:
       char: 'K'
       attr: blueBG
     description:
       - Tank filled with water
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: obsidian path
     display:
       char: '`'
@@ -475,14 +475,14 @@ entities:
       attr: obsidian
     description:
       - Dislodged fragment of obsidian
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: palm tree
     display:
       char: 'P'
       attr: beach
     description:
       - Palm tree.
-    properties: [known, portable, growable]
+    properties: [known, pickable, growable]
 recipes:
   - in:
       - [8, clay]

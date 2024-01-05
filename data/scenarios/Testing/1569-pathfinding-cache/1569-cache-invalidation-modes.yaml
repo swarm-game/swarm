@@ -109,7 +109,7 @@ entities:
       char: 'w'
     description:
       - Enables `path` command
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [path]
   - name: monolith
     display:
@@ -117,21 +117,21 @@ entities:
       attr: rock
     description:
       - Pushable rock
-    properties: [known, unwalkable, portable]
+    properties: [known, unwalkable, pickable]
   - name: lemon
     display:
       char: 'o'
       attr: gold
     description:
       - Sour fruit
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: lemonade
     display:
       char: 'c'
       attr: gold
     description:
       - Sweet drink
-    properties: [known, portable]
+    properties: [known, pickable]
 recipes:
   - in:
       - [1, lemon]

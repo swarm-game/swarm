@@ -78,14 +78,14 @@ entities:
       attr: gold
     description:
       - Pushable rock
-    properties: [known, unwalkable, portable]
+    properties: [known, unwalkable, pickable]
   - name: crate
     display:
       attr: wood
       char: '▪'
     description:
       - Pushable crate
-    properties: [known, portable, unwalkable]
+    properties: [known, pickable, unwalkable]
   - name: wall
     display:
       attr: barrier

@@ -85,19 +85,19 @@ entities:
       char: 's'
     description:
       - Serving utensil for the cart
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: fork
     display:
       char: 'k'
     description:
       - Eating utensil for patron
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: food
     display:
       char: 'f'
     description:
       - Food from the cart
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: empty cart
     display:
       attr: copper

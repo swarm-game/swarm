@@ -20,7 +20,7 @@ entities:
       char: 'o'
     description:
       - A non-traditional means of locomotion.
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [move]
 robots:
   - name: base

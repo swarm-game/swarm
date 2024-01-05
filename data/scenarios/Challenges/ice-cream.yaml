@@ -77,19 +77,19 @@ entities:
       char: '@'
     description:
       - A single scoop of vanilla ice cream
-    properties: [portable]
+    properties: [pickable]
   - name: cherry
     display:
       char: '6'
       attr: 'red'
-    properties: [portable]
+    properties: [pickable]
     description:
       - A traditional ice cream garnish
   - name: Counter
     display:
       char: '▒'
       attr: 'sand'
-    properties: [portable, known]
+    properties: [pickable, known]
     capabilities: [count]
     description:
       - Where customers are served.
@@ -98,42 +98,42 @@ entities:
     display:
       char: 'V'
       attr: 'sand'
-    properties: [portable]
+    properties: [pickable]
     description:
       - A conical, edible container for ice cream
   - name: egg
     display:
       char: 'e'
       attr: 'gold'
-    properties: [portable]
+    properties: [pickable]
     description:
       - Organic from local, free-range, meticulously pampered chickens.
   - name: milk
     display:
       char: 'm'
       attr: 'silver'
-    properties: [portable]
+    properties: [pickable]
     description:
       - Pasteurized, homogenized, commoditized, metabolized.
   - name: ice
     display:
       char: 'i'
       attr: 'snow'
-    properties: [portable]
+    properties: [pickable]
     description:
       - Ice cream is better cold, don't you think?
   - name: sugar
     display:
       char: 's'
       attr: 'snow'
-    properties: [portable]
+    properties: [pickable]
     description:
       - Basis of most desserts
   - name: vanilla
     display:
       char: 'v'
       attr: 'wood'
-    properties: [portable]
+    properties: [pickable]
     description:
       - Traditional ice cream flavoring
   - name: briefcase
@@ -141,7 +141,7 @@ entities:
       char: 'B'
       attr: rubber
     capabilities: [sum, prod]
-    properties: [portable]
+    properties: [pickable]
     description:
       - Standard business accoutrement.
       - Particularly useful for `meet`-ings.

@@ -62,7 +62,7 @@ entities:
       char: 't'
     description:
       - Can set things on fire
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [ignite]
   - name: fuse
     display:
@@ -74,7 +74,7 @@ entities:
       ignition: 1
       duration: [8, 8]
       product: null
-    properties: [known, portable, combustible]
+    properties: [known, pickable, combustible]
   - name: dynamite
     display:
       attr: red
@@ -85,7 +85,7 @@ entities:
       ignition: 1
       duration: [2, 2]
       product: crater
-    properties: [known, portable, combustible]
+    properties: [known, pickable, combustible]
   - name: crater
     display:
       attr: rock

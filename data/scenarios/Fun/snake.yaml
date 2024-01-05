@@ -65,7 +65,7 @@ entities:
     description:
       - |
         Enables the `path` command
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [path]
   - name: apple
     display:
@@ -74,7 +74,7 @@ entities:
     description:
       - |
         Tasty snack
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: apple core
     display:
       char: 'I'
@@ -82,7 +82,7 @@ entities:
     description:
       - |
         Remains of an eaten apple
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: rattle
     display:
       char: 'r'

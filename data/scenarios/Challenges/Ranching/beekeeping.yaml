@@ -171,28 +171,28 @@ entities:
       char: 'k'
     description:
       - All the essentials to equip your own "worker bee"
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: reed
     display:
       attr: plant
       char: 'r'
     description:
       - Reeds, grow near water
-    properties: [known, portable, growable]
+    properties: [known, pickable, growable]
   - name: honeycomb
     display:
       char: 'x'
       attr: gold
     description:
       - Product of bees that have consumed nectar
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: proboscis
     display:
       char: 'p'
       attr: device
     description:
       - Senses direction to nectar-producing flowers
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [detectdirection, structure]
   - name: honey
     display:
@@ -200,26 +200,26 @@ entities:
       attr: gold
     description:
       - Pure liquid honey
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: mead
     display:
       char: 'm'
     description:
       - Honey-based alcoholic beverage
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: honey extractor
     display:
       char: 'e'
       attr: device
     description:
       - Device for extracting honey from the comb
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: buzz
     display:
       char: 'z'
     description:
       - Result of discarding surplus honeycomb
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: wax gland
     display:
       char: 'g'
@@ -232,35 +232,35 @@ entities:
       attr: gold
     description:
       - Obtained from wildflowers
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: honey frame
     display:
       char: '-'
       attr: iceblue
     description:
       - Internal component of a beehive
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: stave
     display:
       char: 'l'
       attr: wood
     description:
       - Wooden plank comprising the sides of a cask
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: cask
     display:
       char: 'c'
       attr: wood
     description:
       - Wooden barrel for liquids
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: water cask
     display:
       char: 'c'
       attr: water_cask
     description:
       - Water-filled cask
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: lakewater
     display:
       attr: water
@@ -274,14 +274,14 @@ entities:
       attr: device
     description:
       - Used to fill a cask with water
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: steel hoop
     display:
       char: 'o'
       attr: iron
     description:
       - Binds staves into a cask
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: wall
     display:
       char: 'w'
@@ -295,7 +295,7 @@ entities:
       attr: wood
     description:
       - A segment of banquet table
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: hearth
     display:
       char: 'h'
@@ -309,14 +309,14 @@ entities:
       attr: rock
     description:
       - Grand entrance
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: stone tile
     display:
       char: '.'
       attr: rock
     description:
       - Refined flooring
-    properties: [known, portable]
+    properties: [known, pickable]
 recipes:
   - in:
       - [1, botkit]

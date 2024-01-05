@@ -151,7 +151,7 @@ entities:
       attr: gold
     description:
       - used to unlock a door
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [drill]
   - name: bind gt
     display:
@@ -173,7 +173,7 @@ entities:
       attr: snow
     description:
       - The figurative jewel of category theory
-    properties: [known, portable]
+    properties: [known, pickable]
 recipes:
   - in:
       - [1, locked door]

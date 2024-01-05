@@ -46,7 +46,7 @@ entities:
       char: 'o'
     description:
       - Dispensed from a gumball machine
-    properties: [portable]
+    properties: [pickable]
 recipes:
   - in:
       - [1, gumball machine]

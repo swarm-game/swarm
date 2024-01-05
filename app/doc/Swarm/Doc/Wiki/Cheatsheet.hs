@@ -184,7 +184,7 @@ capabilityPage a em = capabilityTable a em listEnums
 -- ** Entities
 
 entityHeader :: [Text]
-entityHeader = ["?", "Name", "Capabilities", "Properties*", "Portable"]
+entityHeader = ["?", "Name", "Capabilities", "Properties*", "Pickable"]
 
 entityToList :: Entity -> [Text]
 entityToList e =
@@ -193,8 +193,8 @@ entityToList e =
     [ codeQuote . T.singleton $ e ^. entityDisplay . to displayChar
     , addLink ("#" <> linkID) $ view entityName e
     , T.intercalate ", " $ Capability.capabilityName <$> Set.toList (view E.entityCapabilities e)
-    , T.intercalate ", " . map tshow . filter (/= E.Portable) $ toList props
-    , if E.Portable `elem` props
+    , T.intercalate ", " . map tshow . filter (/= E.Pickable) $ toList props
+    , if E.Pickable `elem` props
         then ":heavy_check_mark:"
         else ":negative_squared_cross_mark:"
     ]
@@ -229,7 +229,7 @@ entitiesPage _a es =
   T.intercalate "\n\n" $
     [ "# Entities"
     , "This is a quick-overview table of entities - click the name for detailed description."
-    , "*) As a note, most entities have the Portable property, so we show it in a separate column."
+    , "*) As a note, most entities have the Pickable property, so we show it in a separate column."
     , entityTable es
     ]
       <> map entityToSection es

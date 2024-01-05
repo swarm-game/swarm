@@ -22,14 +22,14 @@ entities:
       char: 'x'
     description:
       - Enables `ping` command
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [ping]
   - name: map piece
     display:
       char: 'm'
     description:
       - Half of a treasure map
-    properties: [known, portable]
+    properties: [known, pickable]
 robots:
   - name: base
     dir: east

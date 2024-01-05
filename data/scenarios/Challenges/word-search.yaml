@@ -293,14 +293,14 @@ entities:
     capabilities: [drill]
     description:
       - Instrument for marking found words
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: ink
     display:
       char: 'K'
       attr: gold
     description:
       - Ink for marking found words
-    properties: [known, portable]
+    properties: [known, pickable]
 recipes:
   - in:
       - [1, capital C]

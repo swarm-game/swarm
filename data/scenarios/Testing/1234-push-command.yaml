@@ -48,7 +48,7 @@ entities:
       char: '▪'
     description:
       - Pushable crate
-    properties: [known, portable, unwalkable]
+    properties: [known, pickable, unwalkable]
 known: [tree, flower, boulder, water]
 world:
   palette:
