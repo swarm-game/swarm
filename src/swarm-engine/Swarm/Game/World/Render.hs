@@ -29,9 +29,8 @@ import Swarm.Game.State
 import Swarm.Game.State.Substate
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
-import Swarm.TUI.Editor.Util (getContentAt, getMapRectangle)
-import Swarm.TUI.View.CellDisplay (getTerrainEntityColor)
 import Swarm.Util (surfaceEmpty)
+import Swarm.Util.Content
 import Swarm.Util.Effect (simpleErrorHandle)
 import Swarm.Util.Erasable (erasableToMaybe)
 
