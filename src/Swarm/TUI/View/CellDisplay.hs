@@ -7,7 +7,6 @@
 module Swarm.TUI.View.CellDisplay where
 
 import Brick
-import Control.Applicative ((<|>))
 import Control.Lens (to, view, (&), (.~), (^.))
 import Data.ByteString (ByteString)
 import Data.Hash.Murmur
@@ -18,13 +17,12 @@ import Data.Semigroup (sconcat)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Tagged (unTagged)
-import Data.Text qualified as T
 import Data.Word (Word32)
 import Graphics.Vty qualified as V
 import Linear.Affine ((.-.))
 import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Display (
-  Attribute (AEntity, AWorld),
+  Attribute (AEntity),
   Display,
   defaultEntityDisplay,
   displayAttr,
@@ -33,10 +31,7 @@ import Swarm.Game.Display (
   hidden,
  )
 import Swarm.Game.Entity
-import Swarm.Game.Entity.Cosmetic
-import Swarm.Game.Entity.Cosmetic.Assignment (terrainAttributes)
 import Swarm.Game.Robot
-import Swarm.Game.Scenario.Topography.Cell (PCell (..))
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByLocation)
@@ -53,25 +48,12 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.Util (applyWhen)
-import Swarm.Util.Erasable (erasableToMaybe)
 import Witch (from)
 import Witch.Encoding qualified as Encoding
 
 -- | Render a display as a UI widget.
 renderDisplay :: Display -> Widget n
 renderDisplay disp = withAttr (disp ^. displayAttr . to toAttrName) $ str [displayChar disp]
-
-getTerrainEntityColor ::
-  M.Map WorldAttr PreservableColor ->
-  PCell EntityFacade ->
-  Maybe PreservableColor
-getTerrainEntityColor aMap (Cell terr cellEnt _) =
-  (entityColor =<< erasableToMaybe cellEnt) <|> terrainFallback
- where
-  terrainFallback = M.lookup (TerrainAttr $ T.unpack $ getTerrainWord terr) terrainAttributes
-  entityColor (EntityFacade _ d) = case d ^. displayAttr of
-    AWorld n -> M.lookup (WorldAttr $ T.unpack n) aMap
-    _ -> Nothing
 
 -- | Render the 'Display' for a specific location.
 drawLoc :: UIState -> GameState -> Cosmic W.Coords -> Widget Name

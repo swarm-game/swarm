@@ -19,7 +19,7 @@ import Swarm.Game.State (GameState, robotInfo)
 import Swarm.Game.State.Robot (viewCenter)
 import Swarm.Game.Universe (planar)
 import Swarm.Game.World.Render
-import Swarm.TUI.View.CellDisplay (getTerrainEntityColor)
+import Swarm.Util.Content (getTerrainEntityColor)
 import Swarm.Util.OccurrenceEncoder
 
 data GridResponse = GridResponse
