@@ -56,7 +56,7 @@ solution: |
     // Invocation #10: Expect SUCCESS
     // The cache is still valid from the previous success.
     path (inR 4) (inR "flower");
-  
+
     make "lemonade";
     end;
 

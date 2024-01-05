@@ -23,7 +23,7 @@ solution: |
     p <- path (inL ()) (inR "flower");
     log $ format p;
     end;
-  
+
   def waitUntilSalvaged =
     salvage;
     gotPanel <- has "solar panel";

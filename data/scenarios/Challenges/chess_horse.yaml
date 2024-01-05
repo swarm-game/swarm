@@ -6,7 +6,7 @@ objectives:
   - goal:
       - Robots can use the `move` command to move.
         But they only `turn` in cardinal directions.
-      - You are special. You are a knight. 
+      - You are special. You are a knight.
       - Go forth and capture the King!
     condition: |
       try {
