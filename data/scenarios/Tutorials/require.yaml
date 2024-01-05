@@ -19,7 +19,7 @@ entities:
       char: '*'
     description:
       - A flower.
-    properties: [known, infinite, portable]
+    properties: [known, infinite, pickable]
 solution: |
   def m5 = move; move; move; move; move end;
   build {

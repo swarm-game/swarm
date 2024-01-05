@@ -80,7 +80,7 @@ entities:
       char: 'H'
     description:
       - The Unspeakable One
-    properties: [portable]
+    properties: [pickable]
 robots:
   - name: base
     dir: north

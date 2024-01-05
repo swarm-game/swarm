@@ -45,7 +45,7 @@ entities:
         in making many different devices.
       - |
         This one seems to grow a little faster.
-    properties: [portable, growable]
+    properties: [pickable, growable]
     growth: [100, 120]
 solution: |
   def t = move; place "spruce"; harvest; end;

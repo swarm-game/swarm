@@ -101,21 +101,21 @@ entities:
       attr: gold
     description:
       - A disk of radius 3.
-    properties: [portable]
+    properties: [pickable]
   - name: two
     display:
       char: '2'
       attr: gold
     description:
       - A disk of radius 2.
-    properties: [portable]
+    properties: [pickable]
   - name: one
     display:
       char: '1'
       attr: gold
     description:
       - A disk of radius 1.
-    properties: [portable]
+    properties: [pickable]
   - name: blocked one
     display:
       char: '1'

@@ -56,7 +56,7 @@ entities:
       char: 'W'
     description:
       - A fast-growing weed.
-    properties: [known, portable, growable]
+    properties: [known, pickable, growable]
     growth: [1, 2]
 world:
   palette:

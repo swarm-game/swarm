@@ -37,7 +37,7 @@ entities:
       char: 'Y'
     description:
       - A thing that everyone needs!
-    properties: [portable]
+    properties: [pickable]
 world:
   palette:
     '.': [grass]

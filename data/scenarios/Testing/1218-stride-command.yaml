@@ -74,7 +74,7 @@ entities:
       char: 't'
     description:
       - Allows one to "stride" across multiple cells
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [movemultiple]
 known: [tree, flower, boulder, water]
 world:

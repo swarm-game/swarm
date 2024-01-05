@@ -129,7 +129,7 @@ entities:
       char: '@'
     description:
       - Pushable rock
-    properties: [known, unwalkable, portable]
+    properties: [known, unwalkable, pickable]
     capabilities: [push]
   - name: bacon
     display:

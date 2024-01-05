@@ -21,7 +21,7 @@ entities:
       char: 'x'
     description:
       - Enables `ping` command
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [ping]
 robots:
   - name: base

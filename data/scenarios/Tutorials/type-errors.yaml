@@ -30,7 +30,7 @@ entities:
       char: 'W'
     description:
       - Do `place "Win"` once you are done with this challenge.
-    properties: [known, portable]
+    properties: [known, pickable]
 solution: |
   place "Win"
 robots:

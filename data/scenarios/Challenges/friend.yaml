@@ -72,7 +72,7 @@ entities:
       char: 'f'
     description:
       - A smelly fish. Rather unappetizing to a robot.
-    properties: [known, portable]
+    properties: [known, pickable]
 known: [fish]
 seed: 0
 world:

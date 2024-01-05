@@ -58,7 +58,7 @@ entities:
       attr: device
     description:
       - The place you're trying to reach!  You win by executing `grab` on this item.
-    properties: [known, portable]
+    properties: [known, pickable]
 world:
   dsl: |
     {grass}

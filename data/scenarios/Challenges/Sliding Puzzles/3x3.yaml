@@ -185,7 +185,7 @@ entities:
       char: '/'
     description:
       - Facilitates pushing
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [push]
   - name: sliding-tile
     display:
@@ -199,175 +199,175 @@ entities:
       attr: oddtile
     description:
       - One
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: b-tile
     display:
       char: 'b'
       attr: eventile
     description:
       - Two
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: c-tile
     display:
       char: 'c'
       attr: oddtile
     description:
       - Three
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: d-tile
     display:
       char: 'd'
       attr: eventile
     description:
       - Four
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: e-tile
     display:
       char: 'e'
       attr: oddtile
     description:
       - Five
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: f-tile
     display:
       char: 'f'
       attr: eventile
     description:
       - Six
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: g-tile
     display:
       char: 'g'
       attr: oddtile
     description:
       - Seven
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: h-tile
     display:
       char: 'h'
       attr: eventile
     description:
       - Eight
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: i-tile
     display:
       char: 'i'
       attr: oddtile
     description:
       - Nine
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: j-tile
     display:
       char: 'j'
       attr: eventile
     description:
       - Ten
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: k-tile
     display:
       char: 'k'
       attr: oddtile
     description:
       - Eleven
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: l-tile
     display:
       char: 'l'
       attr: eventile
     description:
       - Twelve
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: m-tile
     display:
       char: 'm'
       attr: oddtile
     description:
       - Thirteen
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: n-tile
     display:
       char: 'n'
       attr: eventile
     description:
       - Fourteen
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: o-tile
     display:
       char: 'o'
       attr: oddtile
     description:
       - Fifteen
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: p-tile
     display:
       char: 'p'
       attr: eventile
     description:
       - Sixteen
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: q-tile
     display:
       char: 'q'
       attr: oddtile
     description:
       - Seventeen
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: r-tile
     display:
       char: 'r'
       attr: eventile
     description:
       - Eighteen
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: s-tile
     display:
       char: 's'
       attr: oddtile
     description:
       - Nineteen
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: t-tile
     display:
       char: 't'
       attr: eventile
     description:
       - Twenty
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: u-tile
     display:
       char: 'u'
       attr: oddtile
     description:
       - Twenty-one
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: v-tile
     display:
       char: 'v'
       attr: eventile
     description:
       - Twenty-two
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: w-tile
     display:
       char: 'w'
       attr: oddtile
     description:
       - Twenty-three
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: x-tile
     display:
       char: 'x'
       attr: eventile
     description:
       - Twenty-four
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: y-tile
     display:
       char: 'y'
       attr: oddtile
     description:
       - Twenty-five
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: a-tile-ordinal
     display:
       char: 'a'

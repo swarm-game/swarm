@@ -87,95 +87,95 @@ entities:
     description:
       - An ubiquitous office accoutrement.
       - Practically worthless as a single unit.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: pinwheel
     display:
       char: 'P'
       attr: gold
     description:
       - Watch it spin. Wheee!
-    properties: [portable]
+    properties: [pickable]
   - name: stapler
     display:
       char: 'S'
       attr: red
     description:
       - A shiny red stapler
-    properties: [portable]
+    properties: [pickable]
   - name: toothbrush
     display:
       char: 'b'
       attr: blue
     description:
       - Brushy brushy
-    properties: [portable]
+    properties: [pickable]
   - name: Pez dispenser
     display:
       char: 'P'
     description:
       - Classic collectible toy. Absent its chalky candy.
-    properties: [portable]
+    properties: [pickable]
   - name: shoehorn
     display:
       char: 'h'
     description:
       - Handheld apparatus for donning snug footwear
-    properties: [portable]
+    properties: [pickable]
   - name: trivet
     display:
       char: 'v'
     description:
       - Protective silicone mat for hot cookware
-    properties: [portable]
+    properties: [pickable]
   - name: coffee mug
     display:
       char: 'c'
     description:
       - Caffeine conveyance
-    properties: [portable]
+    properties: [pickable]
   - name: toaster
     display:
       char: 'A'
     description:
       - Bread warmer-upper
-    properties: [portable]
+    properties: [pickable]
   - name: blender
     display:
       char: 'B'
     description:
       - Essential for smoothie preparation
-    properties: [portable]
+    properties: [pickable]
   - name: electric can opener
     display:
       char: 'B'
     description:
       - |
         For when you can't be bothered to manually open a can
-    properties: [portable]
+    properties: [pickable]
   - name: wok
     display:
       char: 'w'
     description:
       - One must wok before one can run.
-    properties: [portable]
+    properties: [pickable]
   - name: sous vide cooker
     display:
       char: 's'
     description:
       - trendy gourmet cooking appliance
-    properties: [portable]
+    properties: [pickable]
   - name: french press
     display:
       char: 'f'
     description:
       - plunger-based coffee maker
-    properties: [portable]
+    properties: [pickable]
   - name: stand mixer
     display:
       char: 'm'
     description:
       - whips, kneads, and mixes
-    properties: [portable]
+    properties: [pickable]
   - name: shopA
     display:
       char: 'A'

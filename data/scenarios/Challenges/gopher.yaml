@@ -110,14 +110,14 @@ entities:
     capabilities: [turn]
     description:
       - Allows a robot to "turn" but not "move".
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: uranium
     display:
       char: 'U'
       attr: silver
     description:
       - Unearthed by industrious gophers.
-    properties: [known, portable]
+    properties: [known, pickable]
 recipes:
   - in:
       - [1, mound]

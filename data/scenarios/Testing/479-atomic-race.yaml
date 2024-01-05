@@ -67,7 +67,7 @@ entities:
       char: 'W'
     description:
       - A fast-growing weed.
-    properties: [known, portable, growable]
+    properties: [known, pickable, growable]
     growth: [1, 2]
   - name: Win
     display:
@@ -75,7 +75,7 @@ entities:
       char: 'W'
     description:
       - You win!
-    properties: [known, portable]
+    properties: [known, pickable]
 world:
   palette:
     '.': [grass]

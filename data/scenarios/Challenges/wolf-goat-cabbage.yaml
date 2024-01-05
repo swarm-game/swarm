@@ -80,21 +80,21 @@ entities:
       attr: silver
     description:
       - A wolf. Likes to eat goats.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: goat
     display:
       char: 'g'
       attr: sand
     description:
       - A goat. Likes to eat cabbage.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: cabbage
     display:
       char: 'c'
       attr: green
     description:
       - A cabbage.
-    properties: [known, portable]
+    properties: [known, pickable]
 known: [water, boulder]
 seed: 0
 world:

@@ -25,84 +25,84 @@ entities:
       char: "#"
     description:
       - This is a one.  Maybe you can combine it with other ones somehow.
-    properties: [growable, portable, infinite]
+    properties: [growable, pickable, infinite]
   - name: "2"
     display:
       attr: gold
       char: "#"
     description:
       - This is a two.  Maybe you can combine it with other twos somehow.
-    properties: [portable]
+    properties: [pickable]
   - name: "4"
     display:
       attr: gold
       char: "#"
     description:
       - This is a four.  You get the idea.
-    properties: [portable]
+    properties: [pickable]
   - name: "8"
     display:
       attr: gold
       char: "#"
     description:
       - An eight.
-    properties: [portable]
+    properties: [pickable]
   - name: "16"
     display:
       attr: gold
       char: "#"
     description:
       - A 16.
-    properties: [portable]
+    properties: [pickable]
   - name: "32"
     display:
       attr: gold
       char: "#"
     description:
       - A 32.
-    properties: [portable]
+    properties: [pickable]
   - name: "64"
     display:
       attr: gold
       char: "#"
     description:
       - A 64.
-    properties: [portable]
+    properties: [pickable]
   - name: "128"
     display:
       attr: gold
       char: "#"
     description:
       - A 128.
-    properties: [portable]
+    properties: [pickable]
   - name: "256"
     display:
       attr: gold
       char: "#"
     description:
       - A 256.
-    properties: [portable]
+    properties: [pickable]
   - name: "512"
     display:
       attr: gold
       char: "#"
     description:
       - A 512.
-    properties: [portable]
+    properties: [pickable]
   - name: "1024"
     display:
       attr: gold
       char: "#"
     description:
       - A 1024.
-    properties: [portable]
+    properties: [pickable]
   - name: "2048"
     display:
       attr: gold
       char: "#"
     description:
       - A 2048.
-    properties: [portable]
+    properties: [pickable]
 recipes:
   - in:
       - [2, "1"]

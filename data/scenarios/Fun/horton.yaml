@@ -62,7 +62,7 @@ entities:
       - |
         `path (inL ()) (inR "tree");`
       - If a path exists, returns the direction to proceed along.
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [path]
 known: [water, boulder, flower]
 world:

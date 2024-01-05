@@ -211,7 +211,7 @@ entities:
     description:
       - A caffeine pellet.
       - Helps Hackman produce more code.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: donut
     display:
       char: 'o'
@@ -219,14 +219,14 @@ entities:
     description:
       - Breakfast of champions.
       - Fancied by ghosts. Will you share?
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: den key
     display:
       char: 'k'
       attr: gold
     description:
       - Opens a gate
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: strawberry
     display:
       char: 'v'
@@ -234,7 +234,7 @@ entities:
     description:
       - A tart berry
       - Possessing this fruit gives you great satisfaction.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: gate
     display:
       char: '='

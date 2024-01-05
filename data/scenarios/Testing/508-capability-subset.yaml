@@ -60,7 +60,7 @@ entities:
       char: 'G'
     description:
       - A satellite navigation device.
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [senseloc]
   - name: Tardis
     display:
@@ -68,5 +68,5 @@ entities:
       char: '█'
     description:
       - Bigger on the inside.
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [senseloc, teleport]

@@ -63,7 +63,7 @@ entities:
       char: '@'
     description:
       - A disorienting vestibular affliction
-    properties: [portable]
+    properties: [pickable]
   - name: maypole
     display:
       char: 'M'

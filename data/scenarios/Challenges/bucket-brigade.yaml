@@ -84,7 +84,7 @@ entities:
       char: 'x'
     description:
       - A powerful machine designed to remove overburden in mining operations.
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [drill]
   - name: lignite mine
     display:
@@ -98,31 +98,31 @@ entities:
       char: 'c'
     description:
       - Primitive, sooty fuel.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: coal briquette
     display:
       char: 'q'
     description:
       - A compressed, convenient form of coal for consumption and transport.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: briquette press
     display:
       char: 'P'
     description:
       - A device to compress coal lumps into briquettes.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: energy
     display:
       char: 'E'
     description:
       - The result of burning a coal briquettte.
-    properties: [portable]
+    properties: [pickable]
   - name: repro kit
     display:
       char: 'k'
     description:
       - Kit that can be unpacked into everything a robot needs to reproduce.
-    properties: [known, portable]
+    properties: [known, pickable]
 recipes:
   - in:
       - [1, repro kit]

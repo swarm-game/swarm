@@ -46,7 +46,7 @@ entities:
       char: '@'
     description:
       - Pushable rock
-    properties: [known, unwalkable, portable]
+    properties: [known, unwalkable, pickable]
 known: [mountain, water, flower]
 world:
   dsl: |

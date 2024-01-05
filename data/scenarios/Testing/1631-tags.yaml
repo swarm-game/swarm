@@ -79,7 +79,7 @@ entities:
       char: 'S'
     description:
       - Reads the 'tag' of an item
-    properties: [portable]
+    properties: [pickable]
     capabilities: [hastag, tagmembers]
   - name: canteloupe
     display:
@@ -87,20 +87,20 @@ entities:
     description:
       - Melon
     tags: [edible, fruit]
-    properties: [portable]
+    properties: [pickable]
   - name: mushroom
     display:
       char: 'm'
     description:
       - Nature's tiny umbrella.
     tags: [edible, fungus]
-    properties: [portable]
+    properties: [pickable]
   - name: gravel
     display:
       char: 'g'
     description:
       - Crushed rock
-    properties: [portable]
+    properties: [pickable]
   - name: strawberry
     display:
       char: 's'
@@ -113,7 +113,7 @@ entities:
     description:
       - Just ripe
     tags: [edible, fruit]
-    properties: [portable]
+    properties: [pickable]
 world:
   palette:
     '.': [grass]
