@@ -19,7 +19,7 @@ solution: |
   try {teleport self (3,0)} {teleport self (5,0)}
 robots:
   - name: base
-    dir: [0,0]
+    dir: [0, 0]
   - name: one
     dir: east
   - name: two

@@ -4,8 +4,8 @@ description: |
   Validate proper flip/rotate of portal waypoints
 objectives:
   - goal:
-    - |
-      `grab` the "bitcoin"
+      - |
+        `grab` the "bitcoin"
     condition: |
       as base {has "bitcoin"}
 solution: |
@@ -23,14 +23,14 @@ entities:
       attr: portal_in
       char: "o"
     description:
-    - Portal entrance
+      - Portal entrance
     properties: [known]
   - name: telepad exit
     display:
       attr: portal_out
       char: "o"
     description:
-    - Portal exit
+      - Portal exit
     properties: [known]
 robots:
   - name: base

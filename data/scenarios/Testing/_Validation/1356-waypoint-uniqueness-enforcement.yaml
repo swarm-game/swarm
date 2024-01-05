@@ -12,7 +12,7 @@ entities:
       attr: portal_out
       char: "o"
     description:
-    - Portal exit
+      - Portal exit
     properties: [known]
 robots:
   - name: base

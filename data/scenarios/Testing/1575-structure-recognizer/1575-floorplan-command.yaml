@@ -52,11 +52,11 @@ structures:
       palette:
         'b': [stone, board]
       map: |
-       bbbbbbb
-       bbbbbbb
-       bbbbbbb
-       bbbbbbb
-       bbbbbbb
+        bbbbbbb
+        bbbbbbb
+        bbbbbbb
+        bbbbbbb
+        bbbbbbb
 known: [board]
 world:
   dsl: |

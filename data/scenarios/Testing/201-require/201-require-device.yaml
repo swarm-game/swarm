@@ -17,7 +17,7 @@ solution: |
   build {require "boat"; move; require "boat"; move}
 robots:
   - name: base
-    loc: [0,0]
+    loc: [0, 0]
     dir: east
     devices:
       - 3D printer

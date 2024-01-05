@@ -1,9 +1,6 @@
 version: 1
 name: Custom unwalkability
-description: The base robot cannot walk through trees.
-  The scenario shall be failed if the robot
-  manages to walk through the tree by moving
-  three cells to the east.
+description: The base robot cannot walk through trees. The scenario shall be failed if the robot manages to walk through the tree by moving three cells to the east.
 objectives:
   - goal:
       - Get the flower
@@ -35,7 +32,7 @@ robots:
       - dictionary
       - net
     unwalkable:
-       - tree
+      - tree
 known: [tree, flower, bitcoin]
 world:
   palette:
@@ -47,4 +44,3 @@ world:
   upperleft: [0, 0]
   map: |
     BfTb
-

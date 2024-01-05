@@ -33,8 +33,8 @@ robots:
       - [1, gold]
       - [1, silver]
 solution: |
-   move; move; move;
-   place "gold";
+  move; move; move;
+  place "gold";
 structures:
   - name: topleft
     recognize: [north]
@@ -44,9 +44,9 @@ structures:
         'g': [stone, gold]
         's': [stone, silver]
       map: |
-       ss
-       gg
-       gg
+        ss
+        gg
+        gg
   - name: bottomright
     recognize: [north]
     structure:
@@ -55,9 +55,9 @@ structures:
         'g': [stone, gold]
         's': [stone, silver]
       map: |
-       gg
-       gg
-       ss
+        gg
+        gg
+        ss
 world:
   name: root
   dsl: |
@@ -69,8 +69,8 @@ world:
     'B': [grass, null, base]
   upperleft: [0, 0]
   map: |
-       ..ss.
-       ..gg.
-       B.g.g
-       ...gg
-       ...ss
+    ..ss.
+    ..gg.
+    B.g.g
+    ...gg
+    ...ss

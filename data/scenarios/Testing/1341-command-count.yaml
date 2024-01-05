@@ -8,22 +8,22 @@ description: |
   of ticks that they `wait`.
 objectives:
   - goal:
-    - |
-      `grab` the "tree".
+      - |
+        `grab` the "tree".
     condition: |
       as base {has "tree"}
 solution: |
+  move;
+  move;
+  wait 10;
+  x <- harvest;
+  if (x == "flower") {
+    turn right;
     move;
-    move;
-    wait 10;
-    x <- harvest;
-    if (x == "flower") {
-      turn right;
-      move;
-      grab;
-    } {
-      return "";
-    };
+    grab;
+  } {
+    return "";
+  };
 robots:
   - name: base
     dir: east

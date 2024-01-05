@@ -17,7 +17,7 @@ solution: |
   meetAll (\_. \r. give r "boat") ()
 robots:
   - name: base
-    loc: [0,0]
+    loc: [0, 0]
     dir: east
     devices:
       - logger
@@ -27,7 +27,7 @@ robots:
     inventory:
       - [7, boat]
   - name: other0
-    loc: [0,0]
+    loc: [0, 0]
     dir: east
   - name: other
     dir: east

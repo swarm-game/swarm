@@ -15,7 +15,7 @@ robots:
   - name: base
     dir: east
 solution: |
-   noop;
+  noop;
 structures:
   - name: tee
     recognize: [north, south, east, west]

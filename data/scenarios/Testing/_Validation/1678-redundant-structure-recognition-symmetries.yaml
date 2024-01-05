@@ -16,8 +16,8 @@ structures:
       palette:
         'r': [stone, tree]
       map: |
-       r
-       r
+        r
+        r
 known: [tree]
 world:
   name: root

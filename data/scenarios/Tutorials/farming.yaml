@@ -38,19 +38,11 @@ objectives:
         }
       } { return false }
   - goal:
-      - Congratulations!  You have completed the most difficult simulated exercise and
-        are ready to begin exploring the new planet in earnest.  Of course there
-        is much more remaining to explore in the world, and many additional programming
-        language features to unlock.
+      - Congratulations!  You have completed the most difficult simulated exercise and are ready to begin exploring the new planet in earnest.  Of course there is much more remaining to explore in the world, and many additional programming language features to unlock.
       - |
         To finally complete this tutorial, there is only one thing left for you to do:
         use one of your lambdas to make some delicious `curry`{=entity}.
-      - Afterwards, you will return to the menu where you can select
-        "Classic game" for the complete game experience.  Or, play a
-        "Creative game" if you just want to play around with
-        programming robots, without any constraints or need to collect
-        resources.  You could also choose to redo some tutorial scenarios, or
-        explore the other challenge scenarios listed in the menu.
+      - Afterwards, you will return to the menu where you can select "Classic game" for the complete game experience.  Or, play a "Creative game" if you just want to play around with programming robots, without any constraints or need to collect resources.  You could also choose to redo some tutorial scenarios, or explore the other challenge scenarios listed in the menu.
       - Now go forth and build your swarm!
     condition: |
       try {as base {has "curry"}} {return false}
@@ -63,7 +55,7 @@ robots:
     display:
       char: 'Ω'
       attr: robot
-    loc: [0,0]
+    loc: [0, 0]
     dir: north
     devices:
       - 3D printer

@@ -20,10 +20,10 @@ robots:
     inventory:
       - [4, flower]
 solution: |
-   move; move;
-   turn right;
-   move; move;
-   place "flower";
+  move; move;
+  turn right;
+  move; move;
+  place "flower";
 structures:
   - name: tee
     recognize: [north, south, east, west]

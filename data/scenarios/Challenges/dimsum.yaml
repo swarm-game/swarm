@@ -4,15 +4,10 @@ creative: false
 description: Serve restaurant patrons with the dim sum cart.
 objectives:
   - goal:
-      - It is the grand opening of Sigma (Σ), the hot new
-        dim sum restaurant in town.
-        You are the solitary wait staff.
-      - It seems that the manager went a bit overboard on furniture;
-        there are dozens of `table`{=entity}s,
-        but hardly any room to walk!
+      - It is the grand opening of Sigma (Σ), the hot new dim sum restaurant in town. You are the solitary wait staff.
+      - It seems that the manager went a bit overboard on furniture; there are dozens of `table`{=entity}s, but hardly any room to walk!
       - Serve the blue patron with a `full cart`{=entity} (f) of food, twice.
-      - The `empty cart`{=entity} (e) must be `push`ed to the
-        northwest corner for the cook to load it with food.
+      - The `empty cart`{=entity} (e) must be `push`ed to the northwest corner for the cook to load it with food.
     condition: |
       p <- robotnamed "patron";
       as p {
@@ -78,59 +73,59 @@ robots:
     program: |
       run "scenarios/Challenges/_dimsum/patron.sw"
 entities:
-- name: table
-  display:
-    attr: wood
-    char: 't'
-  description:
-  - Pushable table
-  properties: [known, pushable]
-- name: spatula
-  display:
-    char: 's'
-  description:
-  - Serving utensil for the cart
-  properties: [known, portable]
-- name: fork
-  display:
-    char: 'k'
-  description:
-  - Eating utensil for patron
-  properties: [known, portable]
-- name: food
-  display:
-    char: 'f'
-  description:
-  - Food from the cart
-  properties: [known, portable]
-- name: empty cart
-  display:
-    attr: copper
-    char: 'e'
-  description:
-  - Food cart
-  properties: [known, pushable]
-- name: full cart
-  display:
-    attr: gold
-    char: 'f'
-  description:
-  - Food cart
-  properties: [known, pushable]
+  - name: table
+    display:
+      attr: wood
+      char: 't'
+    description:
+      - Pushable table
+    properties: [known, pushable]
+  - name: spatula
+    display:
+      char: 's'
+    description:
+      - Serving utensil for the cart
+    properties: [known, portable]
+  - name: fork
+    display:
+      char: 'k'
+    description:
+      - Eating utensil for patron
+    properties: [known, portable]
+  - name: food
+    display:
+      char: 'f'
+    description:
+      - Food from the cart
+    properties: [known, portable]
+  - name: empty cart
+    display:
+      attr: copper
+      char: 'e'
+    description:
+      - Food cart
+    properties: [known, pushable]
+  - name: full cart
+    display:
+      attr: gold
+      char: 'f'
+    description:
+      - Food cart
+    properties: [known, pushable]
 recipes:
   - in:
-    - [1, empty cart]
+      - [1, empty cart]
     out:
-    - [1, full cart]
+      - [1, full cart]
     required:
-    - [1, spatula]
+      - [1, spatula]
   - in:
-    - [1, full cart]
+      - [1, full cart]
     out:
-    - [1, empty cart]
-    - [1, food]
+      - [1, empty cart]
+      - [1, food]
     required:
-    - [1, fork]
+      - [1, fork]
 known: [boulder, bitcoin]
 world:
   dsl: |

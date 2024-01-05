@@ -70,10 +70,8 @@ objectives:
       as base {has "coal lump"}
   - goal:
       - Your base got some coal!
-      - Now fashion more of it into a "coal briquette", and place it
-        so that the hauler (=) can pick it up.
-      - The hauler will periodically stop at the base
-        to check if a load is available.
+      - Now fashion more of it into a "coal briquette", and place it so that the hauler (=) can pick it up.
+      - The hauler will periodically stop at the base to check if a load is available.
     condition: |
       hauler <- robotnamed "hauler";
       as hauler {has "coal briquette"}
@@ -174,8 +172,6 @@ recipes:
       - [1, energy]
     required:
       - [1, furnace]
-
-
 known: [boulder, lignite mine]
 seed: 0
 world:

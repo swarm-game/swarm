@@ -34,12 +34,12 @@ robots:
       - [50, mithril]
       - [50, cotton]
 solution: |
-   move;
-   place "quartz";
-   move;
-   place "quartz";
-   move;
-   place "mithril";
+  move;
+  place "quartz";
+  move;
+  place "quartz";
+  move;
+  place "mithril";
 structures:
   - name: donut
     structure:
@@ -78,10 +78,10 @@ structures:
         'l': [stone, copper pipe]
         'g': [stone, iron gear]
       map: |
-       rllllr
-       lIIIIl
-       lIIIgg
-       rlllgg
+        rllllr
+        lIIIIl
+        lIIIgg
+        rlllgg
   - name: precious
     recognize: [north]
     structure:
@@ -92,9 +92,9 @@ structures:
         's': [stone, silver]
         'm': [stone, mithril]
       map: |
-       qgs
-       gsq
-       qqm
+        qgs
+        gsq
+        qqm
   - name: smallish
     recognize: [north]
     structure:
@@ -104,8 +104,8 @@ structures:
         'm': [stone, mithril]
         'c': [stone, cotton]
       map: |
-       qqm
-       cqq
+        qqm
+        cqq
 known: [flower, log, rock, copper pipe, iron plate]
 world:
   name: root

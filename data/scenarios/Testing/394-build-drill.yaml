@@ -30,7 +30,7 @@ solution: |
   place "detonator";
 robots:
   - name: base
-    loc: [0,0]
+    loc: [0, 0]
     dir: east
     devices:
       - treads

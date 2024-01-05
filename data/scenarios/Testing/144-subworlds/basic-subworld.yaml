@@ -4,8 +4,8 @@ description: |
   Surface and underground with portals.
 objectives:
   - goal:
-    - |
-      `place` the "flower" on the white cell.
+      - |
+        `place` the "flower" on the white cell.
     condition: |
       j <- robotnamed "judge";
       as j {ishere "flower"}
@@ -24,14 +24,14 @@ entities:
       attr: portal_in
       char: "o"
     description:
-    - Portal entrance
+      - Portal entrance
     properties: [known]
   - name: telepad exit
     display:
       attr: portal_out
       char: "o"
     description:
-    - Portal exit
+      - Portal exit
     properties: [known]
 robots:
   - name: base

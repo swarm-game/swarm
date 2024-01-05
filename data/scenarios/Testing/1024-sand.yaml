@@ -40,6 +40,6 @@ world:
   palette:
     '>': [grass, null, base]
     'Å': [stone, copper mine]
-  upperleft: [0,0]
+  upperleft: [0, 0]
   map: |
     >Å

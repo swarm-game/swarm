@@ -16,8 +16,8 @@ structures:
       palette:
         'r': [stone, pixel (R)]
       map: |
-       rrrr
-       rrrr
+        rrrr
+        rrrr
 known: [pixel (R), pixel (G)]
 world:
   name: root

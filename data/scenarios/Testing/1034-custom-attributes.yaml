@@ -8,7 +8,6 @@ creative: false
 attrs:
   - name: robotWithBackground
     bg: "#880088"
-
   - name: rainbow1
     fg: "#ffadad"
   - name: rainbow2
@@ -23,7 +22,6 @@ attrs:
     fg: "#a0c4ff"
   - name: rainbow7
     fg: "#bdb2ff"
-
   - name: rainbow1bg
     bg: "#ffadad"
   - name: rainbow2bg
@@ -38,7 +36,6 @@ attrs:
     bg: "#a0c4ff"
   - name: rainbow7bg
     bg: "#bdb2ff"
-
   - name: redOnYellow
     fg: "#ff0000"
     bg: "#ffff00"
@@ -115,7 +112,6 @@ entities:
     description:
       - c7
     properties: [known]
-
   - name: color1bg
     display:
       char: ' '
@@ -165,7 +161,6 @@ entities:
     description:
       - c7bg
     properties: [known]
-
   - name: color1f
     display:
       char: '█'
@@ -286,7 +281,6 @@ world:
     'Ω': [blank, null, base]
     'α': [blank, null, companion]
     'β': [blank, null, companion2]
-
     '.': [blank]
     '1': [blank, color1]
     '2': [blank, color2]
@@ -295,7 +289,6 @@ world:
     '5': [blank, color5]
     '6': [blank, color6]
     '7': [blank, color7]
-
     'T': [blank, color1bg]
     'U': [blank, color2bg]
     'V': [blank, color3bg]
@@ -303,7 +296,6 @@ world:
     'X': [blank, color5bg]
     'Y': [blank, color6bg]
     'Z': [blank, color7bg]
-
     'a': [blank, color1f]
     'b': [blank, color2f]
     'c': [blank, color3f]
@@ -311,7 +303,6 @@ world:
     'e': [blank, color5f]
     'f': [blank, color6f]
     'g': [blank, color7f]
-
     'y': [blank, blueBackround]
     'z': [blank, greenForeground]
     'R': [blank, redYellow]

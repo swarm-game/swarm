@@ -151,7 +151,7 @@ robots:
     program: |
       run "scenarios/Challenges/Sliding Puzzles/_sliding-puzzle/setup.sw";
 solution: |
-   run "scenarios/Challenges/Sliding Puzzles/_sliding-puzzle/solution.sw"
+  run "scenarios/Challenges/Sliding Puzzles/_sliding-puzzle/solution.sw"
 entities:
   - name: gradiator
     display:
@@ -184,7 +184,7 @@ entities:
       attr: silver
       char: '/'
     description:
-    - Facilitates pushing
+      - Facilitates pushing
     properties: [known, portable]
     capabilities: [push]
   - name: sliding-tile

@@ -6,12 +6,12 @@ objectives:
   - condition: |
       as base { n <- count "tree"; return (n == 1) }
     goal:
-    - Get a tree.
+      - Get a tree.
 solution: |
   grab
 robots:
   - name: base
-    loc: [0,0]
+    loc: [0, 0]
     dir: east
     devices:
       - logger

@@ -8,24 +8,24 @@ attrs:
     bg: "#ff5d00"
 objectives:
   - goal:
-    - |
-      `place` the "flower" on the white cell.
+      - |
+        `place` the "flower" on the white cell.
     condition: |
       j <- robotnamed "judge";
       as j {ishere "flower"}
 solution: |
-    def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-    doN 23 move;
-    f <- grab;
-    doN 23 move;
-    place f;
+  def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+  doN 23 move;
+  f <- grab;
+  doN 23 move;
+  place f;
 entities:
   - name: telepad entrance
     display:
       attr: portal_in
       char: "o"
     description:
-    - Portal entrance
+      - Portal entrance
     properties: [known]
 robots:
   - name: base

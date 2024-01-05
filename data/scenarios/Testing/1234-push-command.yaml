@@ -42,13 +42,13 @@ robots:
       attr: robot
       invisible: true
 entities:
-- name: crate
-  display:
-    attr: wood
-    char: '▪'
-  description:
-  - Pushable crate
-  properties: [known, portable, unwalkable]
+  - name: crate
+    display:
+      attr: wood
+      char: '▪'
+    description:
+      - Pushable crate
+    properties: [known, portable, unwalkable]
 known: [tree, flower, boulder, water]
 world:
   palette:
@@ -61,8 +61,8 @@ world:
     'x': [grass, crate]
   upperleft: [0, 0]
   map: |
-   ..............
-   ......w.......
-   .....@Ωx.x....
-   ......*..j....
-   ......*.......
+    ..............
+    ......w.......
+    .....@Ωx.x....
+    ......*..j....
+    ......*.......

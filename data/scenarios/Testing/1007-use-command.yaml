@@ -28,34 +28,34 @@ robots:
       - treads
       - welder
 entities:
-- name: fence
-  display:
-    attr: wood
-    char: '#'
-  description:
-  - Impassable barrier
-  properties: [known, unwalkable]
-- name: gate key
-  display:
-    attr: iron
-    char: 'k'
-  description:
-  - Can open a closed gate
-  properties: [known, portable]
-- name: closed gate
-  display:
-    attr: wood
-    char: '|'
-  description:
-  - Cannot pass through this
-  properties: [known, unwalkable]
-- name: open gate
-  display:
-    attr: wood
-    char: '/'
-  description:
-  - Can pass through this
-  properties: [known]
+  - name: fence
+    display:
+      attr: wood
+      char: '#'
+    description:
+      - Impassable barrier
+    properties: [known, unwalkable]
+  - name: gate key
+    display:
+      attr: iron
+      char: 'k'
+    description:
+      - Can open a closed gate
+    properties: [known, portable]
+  - name: closed gate
+    display:
+      attr: wood
+      char: '|'
+    description:
+      - Cannot pass through this
+    properties: [known, unwalkable]
+  - name: open gate
+    display:
+      attr: wood
+      char: '/'
+    description:
+      - Can pass through this
+    properties: [known]
 recipes:
   - in:
       - [1, closed gate]
@@ -74,8 +74,8 @@ world:
     'k': [grass, gate key]
   upperleft: [0, 0]
   map: |
-   ......
-   ..###.
-   Ωk|*#.
-   ..###.
-   ......
+    ......
+    ..###.
+    Ωk|*#.
+    ..###.
+    ......

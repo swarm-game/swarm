@@ -4,12 +4,12 @@ description: |
   Locomote backwards without access to the turn command
 objectives:
   - goal:
-    - |
-      `grab` the "flower".
+      - |
+        `grab` the "flower".
     condition: |
       as base {has "flower"}
 solution: |
-    backup; backup; grab;
+  backup; backup; grab;
 robots:
   - name: base
     dir: north

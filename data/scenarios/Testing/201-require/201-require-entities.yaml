@@ -15,7 +15,7 @@ solution: |
   build { require 5 "rock"; move; place "rock"; move; place "rock" }
 robots:
   - name: base
-    loc: [0,0]
+    loc: [0, 0]
     dir: east
     devices:
       - 3D printer

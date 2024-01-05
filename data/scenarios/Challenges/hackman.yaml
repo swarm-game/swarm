@@ -249,16 +249,16 @@ entities:
     properties: [known, unwalkable]
 recipes:
   - in:
-    - [181, "pellet"]
+      - [181, "pellet"]
     out:
-    - [1, "den key"]
+      - [1, "den key"]
   - in:
-    - [1, "den key"]
-    - [1, "gate"]
+      - [1, "den key"]
+      - [1, "gate"]
     out:
-    - [1, "den key"]
+      - [1, "den key"]
     required:
-    - [1, drill]
+      - [1, drill]
 solution: |
   run "scenarios/Challenges/_hackman/solution.sw"
 known: []

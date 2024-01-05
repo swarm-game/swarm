@@ -7,10 +7,10 @@ description: |
   on subworld.
 objectives:
   - goal:
-    - |
-      `give` the "bitcoin" to the robot in the "root" world.
-    - |
-      First obtain it from the robot living underground.
+      - |
+        `give` the "bitcoin" to the robot in the "root" world.
+      - |
+        First obtain it from the robot living underground.
     condition: |
       j <- robotnumbered 1;
       as j {has "bitcoin"}
@@ -29,14 +29,14 @@ entities:
       attr: portal_in
       char: "o"
     description:
-    - Portal entrance
+      - Portal entrance
     properties: [known]
   - name: telepad exit
     display:
       attr: portal_out
       char: "o"
     description:
-    - Portal exit
+      - Portal exit
     properties: [known]
 robots:
   - name: base
