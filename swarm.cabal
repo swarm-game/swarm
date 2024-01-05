@@ -14,7 +14,7 @@ description:        Swarm is a 2D programming and resource gathering
 
                     == Module organization
                     For developers getting oriented, Swarm's modules are organized into
-                    roughly the following layers, from inner to outer:
+                    sublibraries, from inner to outer:
 
                     * utilities
                     * swarm language

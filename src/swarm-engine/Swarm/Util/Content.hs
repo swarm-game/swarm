@@ -1,5 +1,8 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Utilities for accessing content of the world,
+-- by single cells or in bulk for rendering.
 module Swarm.Util.Content where
 
 import Control.Applicative ((<|>))
@@ -17,6 +20,16 @@ import Swarm.Game.Universe
 import Swarm.Game.World
 import Swarm.Util.Erasable (erasableToMaybe, maybeToErasable)
 
+-- | Get the terrain and entity at a single cell
+getContentAt :: MultiWorld Int e -> Cosmic Coords -> (TerrainType, Maybe e)
+getContentAt w coords = (underlyingCellTerrain, underlyingCellEntity)
+ where
+  underlyingCellEntity = lookupCosmicEntity coords w
+  underlyingCellTerrain = lookupCosmicTerrain coords w
+
+-- * Rendering
+
+-- | Get a rectangle of cells for rendering
 getMapRectangle ::
   (d -> e) ->
   (Coords -> (TerrainType, Maybe d)) ->
@@ -37,12 +50,7 @@ getMapRectangle paintTransform contentFunc coords =
 
   renderRow rowIndex = map (drawCell paintTransform rowIndex) [xLeft .. xRight]
 
-getContentAt :: MultiWorld Int e -> Cosmic Coords -> (TerrainType, Maybe e)
-getContentAt w coords = (underlyingCellTerrain, underlyingCellEntity)
- where
-  underlyingCellEntity = lookupCosmicEntity coords w
-  underlyingCellTerrain = lookupCosmicTerrain coords w
-
+-- | Get the color used to render a single cell
 getTerrainEntityColor ::
   M.Map WorldAttr PreservableColor ->
   PCell EntityFacade ->
