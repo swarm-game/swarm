@@ -59,9 +59,9 @@ structures:
         'g': [stone, boulder]
       mask: '.'
       map: |
-       ..g
-       ..g
-       ggg
+        ..g
+        ..g
+        ggg
 known: [boulder, mountain, water]
 world:
   name: root

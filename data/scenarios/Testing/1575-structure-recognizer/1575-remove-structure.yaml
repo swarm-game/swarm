@@ -31,9 +31,9 @@ robots:
       - [1, gold]
       - [1, silver]
 solution: |
-   move;
-   place "silver";
-   grab;
+  move;
+  place "silver";
+  grab;
 structures:
   - name: chessboard
     recognize: [north]
@@ -43,10 +43,10 @@ structures:
         'g': [stone, gold]
         's': [stone, silver]
       map: |
-       gsgs
-       sgsg
-       gsgs
-       sgsg
+        gsgs
+        sgsg
+        gsgs
+        sgsg
 world:
   name: root
   dsl: |

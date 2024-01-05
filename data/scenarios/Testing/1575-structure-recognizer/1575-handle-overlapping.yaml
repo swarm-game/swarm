@@ -25,12 +25,12 @@ robots:
       - [50, mithril]
       - [50, cotton]
 solution: |
-   move;
-   place "quartz";
-   move;
-   place "quartz";
-   move;
-   place "mithril";
+  move;
+  place "quartz";
+  move;
+  place "quartz";
+  move;
+  place "mithril";
 structures:
   - name: precious
     recognize: [north]
@@ -42,9 +42,9 @@ structures:
         's': [stone, silver]
         'm': [stone, mithril]
       map: |
-       qgs
-       gsq
-       qqm
+        qgs
+        gsq
+        qqm
   - name: smallish
     recognize: [north]
     structure:
@@ -54,8 +54,8 @@ structures:
         'm': [stone, mithril]
         'c': [stone, cotton]
       map: |
-       qqm
-       cqq
+        qqm
+        cqq
 world:
   name: root
   dsl: |

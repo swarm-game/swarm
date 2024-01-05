@@ -119,10 +119,10 @@ robots:
       invisible: true
       char: 'Q'
       attr: bee
-    program:
+    program: |
       run "scenarios/Challenges/Ranching/_beekeeping/queenbee.sw"
 solution: |
-   run "scenarios/Challenges/Ranching/_beekeeping/solution.sw"
+  run "scenarios/Challenges/Ranching/_beekeeping/solution.sw"
 structures:
   - name: beehive
     recognize: [north]
@@ -161,8 +161,7 @@ entities:
       attr: flower
       char: '*'
     description:
-    - A delicate flower that grows wild in local meadows.
-      Produces `nectar`{=entity} when `harvest`ed.
+      - A delicate flower that grows wild in local meadows. Produces `nectar`{=entity} when `harvest`ed.
     properties: [known, growable]
     yields: nectar
     growth: [80, 120]
@@ -171,28 +170,28 @@ entities:
       attr: device
       char: 'k'
     description:
-    - All the essentials to equip your own "worker bee"
+      - All the essentials to equip your own "worker bee"
     properties: [known, portable]
   - name: reed
     display:
       attr: plant
       char: 'r'
     description:
-    - Reeds, grow near water
+      - Reeds, grow near water
     properties: [known, portable, growable]
   - name: honeycomb
     display:
       char: 'x'
       attr: gold
     description:
-    - Product of bees that have consumed nectar
+      - Product of bees that have consumed nectar
     properties: [known, portable]
   - name: proboscis
     display:
       char: 'p'
       attr: device
     description:
-    - Senses direction to nectar-producing flowers
+      - Senses direction to nectar-producing flowers
     properties: [known, portable]
     capabilities: [detectdirection, structure]
   - name: honey
@@ -200,123 +199,123 @@ entities:
       char: 'h'
       attr: gold
     description:
-    - Pure liquid honey
+      - Pure liquid honey
     properties: [known, portable]
   - name: mead
     display:
       char: 'm'
     description:
-    - Honey-based alcoholic beverage
+      - Honey-based alcoholic beverage
     properties: [known, portable]
   - name: honey extractor
     display:
       char: 'e'
       attr: device
     description:
-    - Device for extracting honey from the comb
+      - Device for extracting honey from the comb
     properties: [known, portable]
   - name: buzz
     display:
       char: 'z'
     description:
-    - Result of discarding surplus honeycomb
+      - Result of discarding surplus honeycomb
     properties: [known, portable]
   - name: wax gland
     display:
       char: 'g'
     description:
-    - Required to make honeycomb
+      - Required to make honeycomb
     properties: [known]
   - name: nectar
     display:
       char: 'n'
       attr: gold
     description:
-    - Obtained from wildflowers
+      - Obtained from wildflowers
     properties: [known, portable]
   - name: honey frame
     display:
       char: '-'
       attr: iceblue
     description:
-    - Internal component of a beehive
+      - Internal component of a beehive
     properties: [known, portable]
   - name: stave
     display:
       char: 'l'
       attr: wood
     description:
-    - Wooden plank comprising the sides of a cask
+      - Wooden plank comprising the sides of a cask
     properties: [known, portable]
   - name: cask
     display:
       char: 'c'
       attr: wood
     description:
-    - Wooden barrel for liquids
+      - Wooden barrel for liquids
     properties: [known, portable]
   - name: water cask
     display:
       char: 'c'
       attr: water_cask
     description:
-    - Water-filled cask
+      - Water-filled cask
     properties: [known, portable]
   - name: lakewater
     display:
       attr: water
       char: ' '
     description:
-    - Potable water from a lake
+      - Potable water from a lake
     properties: [known, infinite, liquid]
   - name: siphon
     display:
       char: 's'
       attr: device
     description:
-    - Used to fill a cask with water
+      - Used to fill a cask with water
     properties: [known, portable]
   - name: steel hoop
     display:
       char: 'o'
       attr: iron
     description:
-    - Binds staves into a cask
+      - Binds staves into a cask
     properties: [known, portable]
   - name: wall
     display:
       char: 'w'
       attr: wood
     description:
-    - Outer walls of the building
+      - Outer walls of the building
     properties: [known, unwalkable]
   - name: table
     display:
       char: 't'
       attr: wood
     description:
-    - A segment of banquet table
+      - A segment of banquet table
     properties: [known, portable]
   - name: hearth
     display:
       char: 'h'
       attr: rock
     description:
-    - Encloses a fire to warm the hall
+      - Encloses a fire to warm the hall
     properties: [known, unwalkable]
   - name: archway
     display:
       char: 'a'
       attr: rock
     description:
-    - Grand entrance
+      - Grand entrance
     properties: [known, portable]
   - name: stone tile
     display:
       char: '.'
       attr: rock
     description:
-    - Refined flooring
+      - Refined flooring
     properties: [known, portable]
 recipes:
   - in:

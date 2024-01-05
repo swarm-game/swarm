@@ -35,7 +35,7 @@ objectives:
         After you have done this, `place` the `bell`{=entity} anywhere, and then Bill will inspect
         your work.
     prerequisite:
-        not: wrong_anwser
+      not: wrong_anwser
     condition: |
       r <- robotnamed "setup";
       as r {has "bit (1)"};
@@ -90,14 +90,14 @@ robots:
     program: |
       run "scenarios/Challenges/Ranching/_powerset/setup.sw"
 solution: |
-   run "scenarios/Challenges/Ranching/_powerset/solution.sw"
+  run "scenarios/Challenges/Ranching/_powerset/solution.sw"
 entities:
   - name: rocket skates
     display:
       attr: silver
       char: 's'
     description:
-    - Allows one to `stride` across multiple cells
+      - Allows one to `stride` across multiple cells
     properties: [known, portable]
     capabilities: [movemultiple]
   - name: bell

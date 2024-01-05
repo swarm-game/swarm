@@ -37,7 +37,7 @@ robots:
     inventory:
       - [1, pixel (R)]
 solution: |
-   noop;
+  noop;
 structures:
   - name: red_jewel
     recognize: [north]
@@ -45,18 +45,18 @@ structures:
       palette:
         'r': [stone, pixel (R)]
       map: |
-       rrr
-       rrr
-       rrr
+        rrr
+        rrr
+        rrr
   - name: green_jewel
     recognize: [north]
     structure:
       palette:
         'g': [stone, pixel (G)]
       map: |
-       ggg
-       ggg
-       ggg
+        ggg
+        ggg
+        ggg
 known: [pixel (R), pixel (G)]
 world:
   name: root

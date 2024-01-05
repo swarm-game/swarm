@@ -61,7 +61,7 @@ robots:
           end;
       start;
 solution: |
-   run "scenarios/Challenges/_wave/solution.sw"
+  run "scenarios/Challenges/_wave/solution.sw"
 entities: []
 known: [wavy water, water, bitcoin]
 world:

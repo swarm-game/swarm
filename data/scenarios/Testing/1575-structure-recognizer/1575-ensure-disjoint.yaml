@@ -45,13 +45,13 @@ robots:
     inventory:
       - [3, silver]
 solution: |
-   move;
-   turn left;
-   place "silver";
-   move; move;
-   place "silver";
-   move; move;
-   place "silver";
+  move;
+  turn left;
+  place "silver";
+  move; move;
+  place "silver";
+  move; move;
+  place "silver";
 structures:
   - name: chessboard
     recognize: [north]
@@ -61,10 +61,10 @@ structures:
         'g': [stone, gold]
         's': [stone, silver]
       map: |
-       gsgs
-       sgsg
-       gsgs
-       sgsg
+        gsgs
+        sgsg
+        gsgs
+        sgsg
 known: [water, gold, silver]
 world:
   name: root

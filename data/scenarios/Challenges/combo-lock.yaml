@@ -50,7 +50,7 @@ robots:
     program: |
       run "scenarios/Challenges/_combo-lock/setup.sw"
 solution: |
-   run "scenarios/Challenges/_combo-lock/solution.sw"
+  run "scenarios/Challenges/_combo-lock/solution.sw"
 entities:
   - name: gate
     display:
@@ -81,25 +81,25 @@ entities:
     properties: [known]
 recipes:
   - in:
-    - [1, "dial (R)"]
+      - [1, "dial (R)"]
     out:
-    - [1, "dial (G)"]
+      - [1, "dial (G)"]
     required:
-    - [1, drill]
+      - [1, drill]
     time: 0
   - in:
-    - [1, "dial (G)"]
+      - [1, "dial (G)"]
     out:
-    - [1, "dial (B)"]
+      - [1, "dial (B)"]
     required:
-    - [1, drill]
+      - [1, drill]
     time: 0
   - in:
-    - [1, "dial (B)"]
+      - [1, "dial (B)"]
     out:
-    - [1, "dial (R)"]
+      - [1, "dial (R)"]
     required:
-    - [1, drill]
+      - [1, drill]
     time: 0
 known: [boulder, water, bitcoin]
 world:

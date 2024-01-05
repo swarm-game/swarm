@@ -82,10 +82,10 @@ structures:
         'b': [stone, board]
       mask: '.'
       map: |
-       bbbb
-       b..b
-       b..b
-       bbbb
+        bbbb
+        b..b
+        b..b
+        bbbb
 known: [board, rock]
 world:
   dsl: |
@@ -107,5 +107,3 @@ world:
     B.r...
     ......
     ......
-
-

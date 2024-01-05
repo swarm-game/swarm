@@ -116,21 +116,21 @@ entities:
       char: '@'
       attr: rock
     description:
-    - Pushable rock
+      - Pushable rock
     properties: [known, unwalkable, portable]
   - name: lemon
     display:
       char: 'o'
       attr: gold
     description:
-    - Sour fruit
+      - Sour fruit
     properties: [known, portable]
   - name: lemonade
     display:
       char: 'c'
       attr: gold
     description:
-    - Sweet drink
+      - Sweet drink
     properties: [known, portable]
 recipes:
   - in:

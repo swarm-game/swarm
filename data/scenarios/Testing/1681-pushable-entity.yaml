@@ -36,13 +36,13 @@ robots:
       attr: robot
       invisible: true
 entities:
-- name: crate
-  display:
-    attr: wood
-    char: 'c'
-  description:
-  - Pushable crate
-  properties: [known, pushable]
+  - name: crate
+    display:
+      attr: wood
+      char: 'c'
+    description:
+      - Pushable crate
+    properties: [known, pushable]
 known: [water]
 world:
   dsl: |
@@ -54,4 +54,4 @@ world:
     'x': [grass, crate]
   upperleft: [0, 0]
   map: |
-   Ωxxj
+    Ωxxj

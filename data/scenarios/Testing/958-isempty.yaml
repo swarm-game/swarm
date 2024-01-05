@@ -36,7 +36,7 @@ entities:
       attr: gold
       char: 'Y'
     description:
-    - A thing that everyone needs!
+      - A thing that everyone needs!
     properties: [portable]
 world:
   palette:

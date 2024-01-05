@@ -56,43 +56,43 @@ robots:
       invisible: true
       char: J
 entities:
-- name: torch
-  display:
-    attr: wood
-    char: 't'
-  description:
-    - Can set things on fire
-  properties: [known, portable]
-  capabilities: [ignite]
-- name: fuse
-  display:
-    attr: wood
-    char: '~'
-  description:
-    - Reliably combustible
-  combustion:
-    ignition: 1
-    duration: [8, 8]
-    product: null
-  properties: [known, portable, combustible]
-- name: dynamite
-  display:
-    attr: red
-    char: '!'
-  description:
-    - Explosive material
-  combustion:
-    ignition: 1
-    duration: [2, 2]
-    product: crater
-  properties: [known, portable, combustible]
-- name: crater
-  display:
-    attr: rock
-    char: '@'
-  description:
-    - Result of explosive excavation
-  properties: [known]
+  - name: torch
+    display:
+      attr: wood
+      char: 't'
+    description:
+      - Can set things on fire
+    properties: [known, portable]
+    capabilities: [ignite]
+  - name: fuse
+    display:
+      attr: wood
+      char: '~'
+    description:
+      - Reliably combustible
+    combustion:
+      ignition: 1
+      duration: [8, 8]
+      product: null
+    properties: [known, portable, combustible]
+  - name: dynamite
+    display:
+      attr: red
+      char: '!'
+    description:
+      - Explosive material
+    combustion:
+      ignition: 1
+      duration: [2, 2]
+      product: crater
+    properties: [known, portable, combustible]
+  - name: crater
+    display:
+      attr: rock
+      char: '@'
+    description:
+      - Result of explosive excavation
+    properties: [known]
 known: [ash, tree, log, board, paper, cotton]
 world:
   palette:
@@ -107,27 +107,27 @@ world:
     '.': [grass]
   upperleft: [0, 0]
   map: |
-   ..iiii....bbbb..TT..llll....iiii.....
-   ..iiii....bbbb..TT..llll....iiii.....
-   ..iiii....bbbb..TT..llll....iiii.....
-   ..iiii....bbbb..TT..llll....iiii.....
-   ..iiii....bbbb..TT..llll....iiii.....
-   ..iiii....bbbb..TT..llll....iiii.....
-   ..TTTT....TTTT..TT..TTTT....TTTT.....
-   ..TTTT....TTTT..TT..TTTT....TTTT.....
-   ................TT...................
-   ................TT...................
-   iiiiiiiiiii.....TT....FFFFF...FFFFF..
-   ......iiiiii....TT....F...F...F...F..
-   iiiiiiiiiiiii...TT....F...F...F...F..
-   ......iiiiiiii........F...F...F...F..
-   iiiiiiiiiiiiiii..Ω.FFFF...FFFFF...d..
-   ......iiiiiiii.......................
-   iiiiiiiiiiiii.....qqqqqqqqqqqqqqqq...
-   ......iiiiii......qqqqqqqqqqqqqqqq...
-   iiiiiiiiiii.......qqqqqqqqqqqqqqqq...
-   ..................qqqqqqqqqqqqqqqq...
-   ..................qqqqqqqqqqqqqqqq...
-   ..................qqqqqqqqqqqqqqqq...
-   ..................qqqqqqqqqqqqqqqq...
-   ..................qqqqqqqqqqqqqqqq...
+    ..iiii....bbbb..TT..llll....iiii.....
+    ..iiii....bbbb..TT..llll....iiii.....
+    ..iiii....bbbb..TT..llll....iiii.....
+    ..iiii....bbbb..TT..llll....iiii.....
+    ..iiii....bbbb..TT..llll....iiii.....
+    ..iiii....bbbb..TT..llll....iiii.....
+    ..TTTT....TTTT..TT..TTTT....TTTT.....
+    ..TTTT....TTTT..TT..TTTT....TTTT.....
+    ................TT...................
+    ................TT...................
+    iiiiiiiiiii.....TT....FFFFF...FFFFF..
+    ......iiiiii....TT....F...F...F...F..
+    iiiiiiiiiiiii...TT....F...F...F...F..
+    ......iiiiiiii........F...F...F...F..
+    iiiiiiiiiiiiiii..Ω.FFFF...FFFFF...d..
+    ......iiiiiiii.......................
+    iiiiiiiiiiiii.....qqqqqqqqqqqqqqqq...
+    ......iiiiii......qqqqqqqqqqqqqqqq...
+    iiiiiiiiiii.......qqqqqqqqqqqqqqqq...
+    ..................qqqqqqqqqqqqqqqq...
+    ..................qqqqqqqqqqqqqqqq...
+    ..................qqqqqqqqqqqqqqqq...
+    ..................qqqqqqqqqqqqqqqq...
+    ..................qqqqqqqqqqqqqqqq...

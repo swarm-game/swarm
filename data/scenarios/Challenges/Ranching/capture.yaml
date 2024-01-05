@@ -122,13 +122,13 @@ robots:
     program: |
       run "scenarios/Challenges/Ranching/_capture/opponent.sw"
 solution: |
-   run "scenarios/Challenges/Ranching/_capture/solution.sw"
+  run "scenarios/Challenges/Ranching/_capture/solution.sw"
 entities:
   - name: monolith
     display:
       char: '@'
     description:
-    - Pushable rock
+      - Pushable rock
     properties: [known, unwalkable, portable]
     capabilities: [push]
   - name: bacon
@@ -136,7 +136,7 @@ entities:
       attr: bacon
       char: 'Z'
     description:
-    - Odiferous constitution of pig
+      - Odiferous constitution of pig
     properties: [known]
 known: [flower, tree]
 world:

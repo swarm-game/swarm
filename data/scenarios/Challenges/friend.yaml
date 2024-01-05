@@ -58,9 +58,7 @@ robots:
       run "scenarios/Challenges/_friend/cat.sw"
 objectives:
   - goal:
-      - There's a cat wandering around in the field.  Bring it back to
-        your base.  If you give it something it likes, perhaps you can
-        get it to follow you.
+      - There's a cat wandering around in the field.  Bring it back to your base.  If you give it something it likes, perhaps you can get it to follow you.
     condition: |
       c <- robotNamed "cat";
       catLoc <- as c {whereami};
@@ -75,7 +73,6 @@ entities:
     description:
       - A smelly fish. Rather unappetizing to a robot.
     properties: [known, portable]
-
 known: [fish]
 seed: 0
 world:

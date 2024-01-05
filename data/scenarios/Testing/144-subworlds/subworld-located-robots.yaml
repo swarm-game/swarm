@@ -4,8 +4,8 @@ description: |
   Demonstrate that system robots can be placed in any subworld.
 objectives:
   - goal:
-    - |
-      `give` the "flower" to the robot underground.
+      - |
+        `give` the "flower" to the robot underground.
     condition: |
       j <- robotnamed "judge";
       as j {has "flower"}
@@ -24,14 +24,14 @@ entities:
       attr: portal_in
       char: "o"
     description:
-    - Portal entrance
+      - Portal entrance
     properties: [known]
   - name: telepad exit
     display:
       attr: portal_out
       char: "o"
     description:
-    - Portal exit
+      - Portal exit
     properties: [known]
 robots:
   - name: base

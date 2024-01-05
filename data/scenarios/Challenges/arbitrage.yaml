@@ -78,7 +78,7 @@ robots:
     inventory:
       - [5, paperclip]
 solution: |
-   run "scenarios/Challenges/_arbitrage/solution.sw"
+  run "scenarios/Challenges/_arbitrage/solution.sw"
 entities:
   - name: paperclip
     display:

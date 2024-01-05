@@ -70,28 +70,28 @@ robots:
       - [5, strange loop]
       - [5, treads]
 solution: |
-   run "scenarios/Challenges/Sokoban/_foresight/solution.sw"
+  run "scenarios/Challenges/Sokoban/_foresight/solution.sw"
 entities:
   - name: monolith
     display:
       char: '@'
       attr: gold
     description:
-    - Pushable rock
+      - Pushable rock
     properties: [known, unwalkable, portable]
   - name: crate
     display:
       attr: wood
       char: '▪'
     description:
-    - Pushable crate
+      - Pushable crate
     properties: [known, portable, unwalkable]
   - name: wall
     display:
       attr: barrier
       char: '#'
     description:
-    - Unmovable barrier
+      - Unmovable barrier
     properties: [known, unwalkable]
 known: [mountain, water, 3D printer, flower]
 world:

@@ -47,7 +47,7 @@ robots:
       - transponder
     inventory:
       - [1, treads]
-    program:
+    program: |
       give base "treads";
 known: []
 world:

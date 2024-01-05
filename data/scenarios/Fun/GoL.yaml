@@ -7,7 +7,7 @@ robots:
     display:
       attr: robot
       char: 'Ω'
-    loc: [0,0]
+    loc: [0, 0]
     dir: east
     devices:
       - treads
@@ -63,7 +63,7 @@ world:
   palette:
     'o': [ice, rock, cell]
     '.': [ice, null, cell]
-  upperleft: [1,-1]
+  upperleft: [1, -1]
   map: |
     ..............................
     ..............................

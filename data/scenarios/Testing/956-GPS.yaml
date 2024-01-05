@@ -23,7 +23,7 @@ solution: |
 robots:
   - name: base
     dir: north
-    loc: [-5,5]
+    loc: [-5, 5]
     devices:
       - clock
       - dictionary
@@ -38,7 +38,7 @@ robots:
       - logger
   - name: teleporter
     dir: north
-    loc: [0,0]
+    loc: [0, 0]
     system: true
     display:
       invisible: true
@@ -62,4 +62,3 @@ world:
     ...........
     ...........
     ...........
-

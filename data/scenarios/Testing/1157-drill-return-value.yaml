@@ -28,31 +28,31 @@ world:
     'x': [grass, gumball machine]
   upperleft: [-1, 2]
   map: |
-   ...
-   .x.
-   .Ω.
-   ...
+    ...
+    .x.
+    .Ω.
+    ...
 entities:
   - name: gumball machine
     display:
       attr: red
       char: 'G'
     description:
-    - Yields a gumball when drilled
+      - Yields a gumball when drilled
     properties: [unwalkable, known]
   - name: gumball
     display:
       attr: blue
       char: 'o'
     description:
-    - Dispensed from a gumball machine
+      - Dispensed from a gumball machine
     properties: [portable]
 recipes:
   - in:
-    - [1, gumball machine]
+      - [1, gumball machine]
     out:
-    - [1, gumball machine]
-    - [1, gumball]
+      - [1, gumball machine]
+      - [1, gumball]
     required:
-    - [1, drill]
+      - [1, drill]
     time: 1
