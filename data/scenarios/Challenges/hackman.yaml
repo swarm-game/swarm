@@ -259,7 +259,7 @@ recipes:
     - [1, "den key"]
     required:
     - [1, drill]
-solution:
+solution: |
   run "scenarios/Challenges/_hackman/solution.sw"
 known: []
 seed: 0

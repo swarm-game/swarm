@@ -119,7 +119,7 @@ robots:
       invisible: true
       char: 'Q'
       attr: bee
-    program:
+    program: |
       run "scenarios/Challenges/Ranching/_beekeeping/queenbee.sw"
 solution: |
    run "scenarios/Challenges/Ranching/_beekeeping/solution.sw"

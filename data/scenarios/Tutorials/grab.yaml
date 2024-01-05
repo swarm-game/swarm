@@ -16,7 +16,7 @@ objectives:
         t <- as base {count "tree"};
         return (t >= 6);
       } { return false }
-solution:
+solution: |
   move;
   move; grab;
   move; grab;
