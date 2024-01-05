@@ -21,6 +21,7 @@ module Swarm.Game.Display (
   curOrientation,
   displayAttr,
   displayPriority,
+  displayObscured,
   invisible,
 
   -- ** Rendering
@@ -85,6 +86,7 @@ data Display = Display
   , _curOrientation :: Maybe Direction
   , _displayAttr :: Attribute
   , _displayPriority :: Priority
+  , _displayObscured :: Bool
   , _invisible :: Bool
   }
   deriving (Eq, Ord, Show, Generic, Hashable)
@@ -117,6 +119,11 @@ displayAttr :: Lens' Display Attribute
 --   on top of lower.
 displayPriority :: Lens' Display Priority
 
+-- | True for static "fog of war" overlay. This field is a workaround to allow
+-- robot-occupied cells to take on ambient background; it distinguishes
+-- displays that have an adoptable background from displays that do not.
+displayObscured :: Lens' Display Bool
+
 -- | Whether the entity is currently invisible.
 invisible :: Lens' Display Bool
 
@@ -140,6 +147,7 @@ instance FromJSONE Display Display where
         <*> v .:? "curOrientation" .!= (defD ^. curOrientation)
         <*> (v .:? "attr") .!= (defD ^. displayAttr)
         <*> v .:? "priority" .!= (defD ^. displayPriority)
+        <*> pure False
         <*> v .:? "invisible" .!= (defD ^. invisible)
    where
     validateChar c =
@@ -194,6 +202,7 @@ defaultEntityDisplay c =
     , _curOrientation = Nothing
     , _displayAttr = AEntity
     , _displayPriority = 1
+    , _displayObscured = False
     , _invisible = False
     }
 
@@ -217,6 +226,7 @@ defaultRobotDisplay =
     , _curOrientation = Nothing
     , _displayAttr = ARobot
     , _displayPriority = 10
+    , _displayObscured = False
     , _invisible = False
     }
 
