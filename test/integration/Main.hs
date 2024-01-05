@@ -336,6 +336,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/958-isempty"
         , testSolution Default "Testing/1007-use-command"
         , testSolution Default "Testing/1024-sand"
+        , testSolution Default "Testing/1034-custom-attributes"
         , testSolution Default "Testing/1140-detect-command"
         , testSolution Default "Testing/1157-drill-return-value"
         , testSolution Default "Testing/1171-sniff-command"
