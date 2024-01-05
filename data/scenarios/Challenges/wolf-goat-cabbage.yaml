@@ -51,7 +51,7 @@ objectives:
       previewable: true
       logic:
         not:
-          or: 
+          or:
             - id: unattended_disaster
             - id: carrying_two_items
   - goal:
@@ -70,7 +70,7 @@ objectives:
     condition: |
       run "data/scenarios/Challenges/_wolf-goat-cabbage/unattended-together.sw";
     optional: true
-    hidden: true    
+    hidden: true
 solution: |
   run "scenarios/Challenges/_wolf-goat-cabbage/cross.sw"
 entities:

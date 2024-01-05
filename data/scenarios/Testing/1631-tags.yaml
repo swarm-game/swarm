@@ -54,7 +54,7 @@ solution: |
       findTarget;
     }
     end;
-  
+
   findTarget;
 robots:
   - name: base

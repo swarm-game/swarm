@@ -17,7 +17,7 @@ objectives:
         Build 2 of the same structure
     condition: |
       foundStructure <- structure "chessboard" 0;
-      return $ case foundStructure (\_. false) (\fs. 
+      return $ case foundStructure (\_. false) (\fs.
         let boardCount = fst fs in
         boardCount >= 2;
       );
@@ -32,7 +32,7 @@ objectives:
       robotHasSilver <- as base {has "silver"};
 
       foundStructure <- structure "chessboard" 0;
-      return $ case foundStructure (\_. false) (\fs. 
+      return $ case foundStructure (\_. false) (\fs.
         let boardCount = fst fs in
         boardCount >= 2 && robotHasSilver;
       );

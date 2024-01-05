@@ -53,7 +53,7 @@ robots:
       - [1, bit (0)]
     program: |
       run "scenarios/Fun/_logo-burst/coordinator.sw"
-  
+
 known: [boulder, tree, water, wavy water]
 world:
   upperleft: [0, 0]
@@ -73,11 +73,11 @@ world:
     'v': [blank, null, botDown]
   map: |
     s                   v                                     .
-    .                                                         . 
+    .                                                         .
     . v<^vv<<@   ^^     vv    >^v^T    ^^^v<     <><      v   >
     T  ^<        >^  <  >>   v>   v<   >T   <v>  <<▒^  @><>   .
-    .   <@v^^>>   @v  >  <T  <v<T<Ω^>   v><v<     << <<T^ v<  . 
+    .   <@v^^>>   @v  >  <T  <v<T<Ω^>   v><v<     << <<T^ v<  .
     . >     >>   v@ @@> <<   ~v   <    >~  ^~    >>  @^  >v   .
-    .   >>^v^^^    < ~ T~v    v<   <~   >>T  <v   vv      ▒>  . 
-    .                             ▒                           . 
+    .   >>^v^^^    < ~ T~v    v<   <~   >>T  <v   vv      ▒>  .
+    .                             ▒                           .
     .                   ^      ^     v       >      >         .

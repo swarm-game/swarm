@@ -24,7 +24,7 @@ objectives:
       - Make a "furnace".
     condition: |
       as base {has "furnace"};
-    
+
     optional: true
   - id: have_gear
     goal:

@@ -420,7 +420,7 @@ world:
       stoneNoise = perlin (seed + 1) 1 0.05 0.0,
       lakeNoise = perlin seed 1 0.02 0.0,
       forestNoise = perlin seed 2 0.04 1.0,
-      
+
       flowers = flowerNoise > 0.65,
       rubble = stoneNoise > 0.8,
       rock = stoneNoise > 0.9,
