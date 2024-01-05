@@ -1,9 +1,14 @@
 version: 1
 name: Rainbow color custom attributes
 description: |
-  Custom attributes with rainbow colors
+  Custom attributes with rainbow colors.
+
+  Participates as a do-nothing integration test to ensure parseability.
 creative: false
 attrs:
+  - name: robotWithBackground
+    bg: "#880088"
+
   - name: rainbow1
     fg: "#ffadad"
   - name: rainbow2
@@ -18,11 +23,27 @@ attrs:
     fg: "#a0c4ff"
   - name: rainbow7
     fg: "#bdb2ff"
+
+  - name: rainbow1bg
+    bg: "#ffadad"
+  - name: rainbow2bg
+    bg: "#ffd6a5"
+  - name: rainbow3bg
+    bg: "#ffff96"
+  - name: rainbow4bg
+    bg: "#caffbf"
+  - name: rainbow5bg
+    bg: "#9bf6ff"
+  - name: rainbow6bg
+    bg: "#a0c4ff"
+  - name: rainbow7bg
+    bg: "#bdb2ff"
+
   - name: redOnYellow
     fg: "#ff0000"
-    bg: ffff00
+    bg: "#ffff00"
   - name: cyanOnMagenta
-    fg: "#00ffff
+    fg: "#00ffff"
     bg: "#ff00ff"
   - name: greenForeground
     fg: "#00ff00"
@@ -38,6 +59,12 @@ attrs:
     style:
       - Bold
       - Strikethrough
+objectives:
+  - goal:
+      - Do nothing
+    condition: |
+      pos <- as base {whereami};
+      return $ fst pos > 7;
 entities:
   - name: color1
     display:
@@ -88,6 +115,57 @@ entities:
     description:
       - c7
     properties: [known]
+
+  - name: color1bg
+    display:
+      char: ' '
+      attr: rainbow1bg
+    description:
+      - c1bg
+    properties: [known]
+  - name: color2bg
+    display:
+      char: ' '
+      attr: rainbow2bg
+    description:
+      - c2bg
+    properties: [known]
+  - name: color3bg
+    display:
+      char: ' '
+      attr: rainbow3bg
+    description:
+      - c3bg
+    properties: [known]
+  - name: color4bg
+    display:
+      char: ' '
+      attr: rainbow4bg
+    description:
+      - c4bg
+    properties: [known]
+  - name: color5bg
+    display:
+      char: ' '
+      attr: rainbow5bg
+    description:
+      - c5bg
+    properties: [known]
+  - name: color6bg
+    display:
+      char: ' '
+      attr: rainbow6bg
+    description:
+      - c6bg
+    properties: [known]
+  - name: color7bg
+    display:
+      char: ' '
+      attr: rainbow7bg
+    description:
+      - c7bg
+    properties: [known]
+
   - name: color1f
     display:
       char: '█'
@@ -179,9 +257,36 @@ entities:
     description:
       - Bold and Strikethrough
     properties: [known]
-robots: []
+robots:
+  - name: base
+    dir: east
+    devices:
+      - treads
+  - name: companion
+    dir: east
+    devices:
+      - treads
+    program: |
+      move; move; move; move;
+      move; move; move; move;
+  - name: companion2
+    dir: east
+    display:
+      attr: robotWithBackground
+    devices:
+      - treads
+    program: |
+      move; move; move; move;
+      move; move; move; move;
+solution: |
+  move; move; move; move;
+  move; move; move; move;
 world:
   palette:
+    'Ω': [blank, null, base]
+    'α': [blank, null, companion]
+    'β': [blank, null, companion2]
+
     '.': [blank]
     '1': [blank, color1]
     '2': [blank, color2]
@@ -190,6 +295,15 @@ world:
     '5': [blank, color5]
     '6': [blank, color6]
     '7': [blank, color7]
+
+    'T': [blank, color1bg]
+    'U': [blank, color2bg]
+    'V': [blank, color3bg]
+    'W': [blank, color4bg]
+    'X': [blank, color5bg]
+    'Y': [blank, color6bg]
+    'Z': [blank, color7bg]
+
     'a': [blank, color1f]
     'b': [blank, color2f]
     'c': [blank, color3f]
@@ -197,6 +311,7 @@ world:
     'e': [blank, color5f]
     'f': [blank, color6f]
     'g': [blank, color7f]
+
     'y': [blank, blueBackround]
     'z': [blank, greenForeground]
     'R': [blank, redYellow]
@@ -205,7 +320,7 @@ world:
     'B': [blank, boldStrikethrough]
   upperleft: [0, 0]
   map: |-
-    .1234567..Rzzy...IIy
-    .1234567y.R.z.......
-    .abcdefg......C..BBz
-    .abcdefgyy.yy..Cz.z.
+    α.1234567..Rzzy...IIy
+    Ω.TUVWXYZy.R.z.......
+    β.TUVWXYZ......C..BBz
+    α.abcdefgyy.yy..Cz.z.
