@@ -22,8 +22,7 @@ description:        Swarm is a 2D programming and resource gathering
                     * swarm TUI
                     * swarm app
 
-                    To maintain this separation, inner layers should avoid introducing
-                    dependencies on layers above them.
+                    <<docs/image/sublibrary-graph.svg>>
 
 license:            BSD-3-Clause
 license-file:       LICENSE
@@ -39,6 +38,7 @@ extra-source-files: CHANGELOG.md
                     editors/vscode/syntaxes/*.json
                     editors/vim/*.vim
                     editors/vim/*.lua
+extra-doc-files:    docs/image/sublibrary-graph.svg
 data-dir:           data/
 data-files:         *.yaml, worlds/*.world, scenarios/**/*.yaml, scenarios/**/*.txt, scenarios/**/*.sw, *.txt, test/language-snippets/**/*.sw
 
