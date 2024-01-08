@@ -38,6 +38,7 @@ import Swarm.Game.Exception
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..), destination, reorientation)
 import Swarm.Game.State
 import Swarm.Game.State.Robot
@@ -391,7 +392,7 @@ addSeedBot e (minT, maxT) loc ts =
       [(1, e)]
       True
       False
-      mempty
+      emptyExceptions
       ts
 
 -- | A system program for a "seed robot", to regrow a growable entity

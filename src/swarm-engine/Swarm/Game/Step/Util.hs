@@ -169,6 +169,7 @@ checkMoveFailureUnprivileged nextLoc = do
   wc <- use walkabilityContext
   return $ do
     e <- me
+    -- TODO: Check for Whitelist case
     checkUnwalkable wc e
 
 -- | Make sure nothing is in the way. Note that system robots implicitly ignore

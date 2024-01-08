@@ -56,6 +56,7 @@ import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Scenario.Topography.Area (getAreaDimensions)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.Navigation.Util
@@ -1080,7 +1081,7 @@ execConst runChildProg c vs s k = do
               []
               isSystemRobot
               False
-              mempty
+              emptyExceptions
               createdAt
 
         -- Provision the new robot with the necessary devices and inventory.

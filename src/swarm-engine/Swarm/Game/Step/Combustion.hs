@@ -30,6 +30,7 @@ import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Location
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.State
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
@@ -114,7 +115,7 @@ addCombustionBot inputEntity combustibility ts loc = do
       botInventory
       True
       False
-      mempty
+      emptyExceptions
       ts
   return combustionDurationRand
  where
@@ -228,5 +229,5 @@ addIgnitionBot ignitionDelay inputEntity ts loc =
       []
       True
       False
-      mempty
+      emptyExceptions
       ts

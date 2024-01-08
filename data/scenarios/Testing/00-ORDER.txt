@@ -49,6 +49,7 @@ Achievements
 1399-backup-command.yaml
 1430-built-robot-ownership.yaml
 1536-custom-unwalkable-entities.yaml
+1721-custom-walkable-entities.yaml
 1535-ping
 1575-structure-recognizer
 1631-tags.yaml

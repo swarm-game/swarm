@@ -30,7 +30,6 @@ module Swarm.Game.Robot (
   defVals,
   defStore,
   emptyRobotContext,
-  WalkabilityContext (..),
 
   -- ** Lenses
   robotEntity,
@@ -100,6 +99,7 @@ import Swarm.Game.CESK qualified as C
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location (Heading, Location, toDirection, toHeading)
+import Swarm.Game.Robot.Walk
 import Swarm.Game.Robot.Context
 import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
@@ -245,7 +245,7 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _selfDestruct :: Bool
   , _activityCounts :: ActivityCounts
   , _runningAtomic :: Bool
-  , _unwalkableEntities :: Set EntityName
+  , _unwalkableEntities :: WalkabilityExceptions EntityName
   , _robotCreatedAt :: TimeSpec
   }
   deriving (Generic)
@@ -284,7 +284,7 @@ instance ToSample Robot where
         []
         False
         False
-        mempty
+        emptyExceptions
         0
 
 -- In theory we could make all these lenses over (RobotR phase), but
@@ -304,7 +304,7 @@ instance ToSample Robot where
 robotEntity :: Lens' (RobotR phase) Entity
 
 -- | Entities that the robot cannot move onto
-unwalkableEntities :: Lens' Robot (Set EntityName)
+unwalkableEntities :: Lens' Robot (WalkabilityExceptions EntityName)
 
 -- | The creation date of the robot.
 robotCreatedAt :: Lens' Robot TimeSpec
@@ -470,15 +470,6 @@ activityCounts :: Lens' Robot ActivityCounts
 
 -- | Is the robot currently running an atomic block?
 runningAtomic :: Lens' Robot Bool
-
--- | Properties of a robot used to determine whether an entity is walkable
-data WalkabilityContext
-  = WalkabilityContext
-      (Set Capability)
-      -- | which entities are unwalkable by this robot
-      (Set EntityName)
-  deriving (Show, Eq, Generic, Ae.ToJSON)
-
 walkabilityContext :: Getter Robot WalkabilityContext
 walkabilityContext = to $
   \x -> WalkabilityContext (_robotCapabilities x) (_unwalkableEntities x)
@@ -516,7 +507,7 @@ mkRobot ::
   -- | Is this robot heavy?
   Bool ->
   -- | Unwalkable entities
-  Set EntityName ->
+  WalkabilityExceptions EntityName ->
   -- | Creation date
   TimeSpec ->
   RobotR phase
@@ -574,7 +565,7 @@ instance FromJSONE EntityMap TRobot where
       <*> v ..:? "inventory" ..!= []
       <*> pure sys
       <*> liftE (v .:? "heavy" .!= False)
-      <*> liftE (v .:? "unwalkable" ..!= mempty)
+      <*> liftE (v .:? "walkable" ..!= emptyExceptions)
       <*> pure 0
 
 (.=?) :: (Ae.KeyValue a, Ae.ToJSON v, Eq v) => Ae.Key -> v -> v -> Maybe a

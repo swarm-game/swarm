@@ -41,6 +41,7 @@ import Data.Map qualified as M
 import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Walk
 import Swarm.Game.State
 import Swarm.Game.Step.Path.Cache.DistanceLimit
 import Swarm.Game.Step.Path.Type
@@ -171,6 +172,8 @@ perhapsInvalidateForRobot
     PathfindingParameters _distLimit pathSubworld tgt = parms
     CachedPath origPath (TailMap locmap) = p
 
+    -- TODO: If using an entity Whitelist,
+    -- cache invalidation logic is backwards
     isUnwalkable = not . null . checkUnwalkable walkInfo
     isOnPath = entityLoc `M.member` locmap
 

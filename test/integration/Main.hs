@@ -356,6 +356,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/1379-single-world-portal-reorientation"
         , testSolution Default "Testing/1399-backup-command"
         , testSolution Default "Testing/1536-custom-unwalkable-entities"
+        , testSolution Default "Testing/1721-custom-walkable-entities.yaml"
         , testSolution Default "Testing/1631-tags"
         , testGroup
             -- Note that the description of the classic world in
