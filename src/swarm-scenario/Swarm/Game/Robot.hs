@@ -33,7 +33,6 @@ module Swarm.Game.Robot (
   TRobot,
 
   -- * Robot context
-  WalkabilityContext (..),
 
   -- ** Lenses
   robotEntity,
@@ -70,7 +69,6 @@ module Swarm.Game.Robot (
 
 import Control.Applicative ((<|>))
 import Control.Lens hiding (Const, contains)
-import Data.Aeson qualified as Ae (ToJSON (..))
 import Data.Hashable (hashWithSalt)
 import Data.Kind qualified
 import Data.Set (Set)
@@ -82,6 +80,7 @@ import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisib
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Land
 import Swarm.Game.Location (Heading, Location, toDirection, toHeading)
+import Swarm.Game.Robot.Walk
 import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Pipeline (ProcessedTerm)
@@ -150,7 +149,7 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _selfDestruct :: Bool
   , _activityCounts :: RobotActivity phase
   , _runningAtomic :: Bool
-  , _unwalkableEntities :: Set EntityName
+  , _unwalkableEntities :: WalkabilityExceptions EntityName
   , _robotCreatedAt :: TimeSpec
   }
   deriving (Generic)
@@ -187,7 +186,7 @@ type Robot = RobotR 'ConcreteRobot
 robotEntity :: Lens' (RobotR phase) Entity
 
 -- | Entities that the robot cannot move onto
-unwalkableEntities :: Lens' Robot (Set EntityName)
+unwalkableEntities :: Lens' Robot (WalkabilityExceptions EntityName)
 
 -- | The creation date of the robot.
 robotCreatedAt :: Lens' Robot TimeSpec
@@ -302,15 +301,6 @@ selfDestruct :: Lens' Robot Bool
 
 -- | Is the robot currently running an atomic block?
 runningAtomic :: Lens' Robot Bool
-
--- | Properties of a robot used to determine whether an entity is walkable
-data WalkabilityContext
-  = WalkabilityContext
-      (Set Capability)
-      -- | which entities are unwalkable by this robot
-      (Set EntityName)
-  deriving (Show, Eq, Generic, Ae.ToJSON)
-
 walkabilityContext :: Getter Robot WalkabilityContext
 walkabilityContext = to $
   \x -> WalkabilityContext (_robotCapabilities x) (_unwalkableEntities x)
@@ -339,7 +329,7 @@ mkRobot ::
   -- | Is this robot heavy?
   Bool ->
   -- | Unwalkable entities
-  Set EntityName ->
+  WalkabilityExceptions EntityName ->
   -- | Creation date
   TimeSpec ->
   TRobot
@@ -397,7 +387,7 @@ instance FromJSONE TerrainEntityMaps TRobot where
       <*> localE (view entityMap) (v ..:? "inventory" ..!= [])
       <*> pure sys
       <*> liftE (v .:? "heavy" .!= False)
-      <*> liftE (v .:? "unwalkable" ..!= mempty)
+      <*> liftE (v .:? "walkable" ..!= emptyExceptions)
       <*> pure 0
 
 hearingDistance :: (Num i) => i

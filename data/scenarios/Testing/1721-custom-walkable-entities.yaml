@@ -1,0 +1,79 @@
+version: 1
+name: Custom walkability
+description: The monkey can only walk on `tree`{=entity}s (and `banana`{=entity}s). The `path` command must fail until the path of `tree`{=entity}s is completed.
+objectives:
+  - id: placed_tree
+    prerequisite:
+      not: banana_access
+    goal:
+      - Tree must be placed
+    condition: |
+      x <- as base {has "tree"};
+      return $ not x;
+  - id: banana_access
+    teaser: Banana access
+    goal:
+      - Give monkey access to `banana`{=entity}
+    condition: |
+      m <- robotnamed "monkey";
+      as m {
+        p <- path (inR 10) (inR "banana");
+        return $ case p (\_. false) (\_. true);
+      };
+solution: |
+  move;
+  move;
+  place "tree"
+entities:
+  - name: banana
+    display:
+      char: ')'
+      attr: gold
+    description:
+      - Tasty treat for a monkey
+    properties: [known, pickable]
+robots:
+  - name: base
+    dir: east
+    display:
+      attr: robot
+    devices:
+      - logger
+      - grabber
+      - treads
+      - dictionary
+      - net
+    inventory:
+      - [1, tree]
+  - name: monkey
+    dir: south
+    display:
+      char: M
+      attr: robot
+    devices:
+      - logger
+      - grabber
+      - treads
+      - dictionary
+      - net
+    walkable:
+      only:
+        - tree
+        - banana
+known: [tree]
+world:
+  dsl: |
+    {grass}
+  palette:
+    'B': [grass, null, base]
+    'M': [grass, null, monkey]
+    '.': [grass]
+    'T': [grass, tree]
+    'b': [grass, banana]
+  upperleft: [0, 0]
+  map: |
+    ..M.
+    ..T.
+    B...
+    ..T.
+    ..b.

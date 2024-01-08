@@ -42,6 +42,7 @@ import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Context
+import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Tick
 import Swarm.Game.Universe
 import Swarm.Language.Pipeline (ProcessedTerm)
@@ -109,7 +110,7 @@ instance ToSample Robot where
           []
           False
           False
-          mempty
+          emptyExceptions
           0
 
 mkMachine :: Maybe ProcessedTerm -> C.CESK
