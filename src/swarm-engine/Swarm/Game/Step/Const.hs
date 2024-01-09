@@ -90,8 +90,8 @@ import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Value
 import Swarm.Log
 import Swarm.Util hiding (both)
-import Swarm.Util.Lens (inherit)
 import Swarm.Util.Effect (throwToMaybe)
+import Swarm.Util.Lens (inherit)
 import Witch (From (from), into)
 import Prelude hiding (Applicative (..), lookup)
 
