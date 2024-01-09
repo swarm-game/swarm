@@ -90,6 +90,7 @@ import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Value
 import Swarm.Log
 import Swarm.Util hiding (both)
+import Swarm.Util.Lens (inherit)
 import Swarm.Util.Effect (throwToMaybe)
 import Witch (From (from), into)
 import Prelude hiding (Applicative (..), lookup)
@@ -1048,7 +1049,9 @@ execConst runChildProg c vs s k = do
               ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
                   ? north
               )
-              ((r ^. robotDisplay) & invisible .~ False)
+              ( defaultRobotDisplay
+                  & inherit displayAttr (r ^. robotDisplay)
+              )
               (In cmd e s [FExec])
               []
               []
