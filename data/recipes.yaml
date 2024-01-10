@@ -727,3 +727,24 @@
     - [1, toolkit]
   out:
     - [1, halting oracle]
+- in:
+    - [1, tea leaves]
+    - [1, water]
+  required:
+    - [1, furnace]
+  out:
+    - [1, cup of tea]
+- in:
+    - [1, rubber band]
+    - [1, typewriter]
+    - [1, compass]
+    - [1, counter]
+  out:
+    - [1, atomic vector plotter]
+- in:
+    - [1, cup of tea]
+    - [5, bitcoin]
+    - [3, PhD thesis]
+    - [1, atomic vector plotter]
+  out:
+    - [1, infinite improbability drive]

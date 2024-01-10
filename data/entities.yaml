@@ -295,6 +295,29 @@
     - A beautiful flower that grows wild in local meadows.  It is not clear what it might be useful for, but it looks nice.
   properties: [pickable, growable]
   growth: [30, 50]
+- name: tea plant
+  display:
+    attr: plant
+    char: 't'
+  description:
+    - Camellia sinensis.
+  properties: [pickable, growable]
+  growth: [5000, 6000]
+  yields: tea leaves
+- name: cup of tea
+  display:
+    attr: sand
+    char: 'u'
+  description:
+    - A nice hot cup of tea.
+  properties: [pickable]
+- name: tea leaves
+  display:
+    attr: plant
+    char: 'l'
+  description:
+    - Leaves picked from a tea plant.  They give off a nice smell when crushed.
+  properties: [pickable]
 - name: cotton
   display:
     attr: silver
@@ -1229,3 +1252,22 @@
       there is no distance limitation.
   properties: [pickable]
   capabilities: [halt]
+- name: atomic vector plotter
+  display:
+    attr: device
+    char: 'A'
+  description:
+    - A plot device for plotting interstellar and intermolecular atomic vector gradients.
+  properties: [pickable]
+- name: infinite improbability drive
+  display:
+    attr: device
+    char: 'I'
+  description:
+    - |
+      Enables the `teleport` command, which takes as arguments an
+      `actor`{=type} and a location in the form of a pair of
+      coordinates, and teleports the given actor to the specified
+      coordinates (and may also have some improbable side effects).
+  properties: [pickable]
+  capabilities: [teleport]
