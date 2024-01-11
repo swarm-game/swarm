@@ -216,7 +216,7 @@ euclidean p1 p2 = norm (fromIntegral <$> (p2 .-. p1))
 -- [1,5,13,25,41,61,85,113,145]
 getLocsInArea :: Location -> Int32 -> [Location]
 getLocsInArea loc r =
-  [loc .+^ V2 dx dy | x <- [0 .. 5], y <- [0 .. r-x], dx <- nub [x,-x], dy <- nub [y,-y]]
+  [loc .+^ V2 dx dy | x <- [0 .. 5], y <- [0 .. r - x], dx <- nub [x, -x], dy <- nub [y, -y]]
 
 -- | Get elements that are within a certain manhattan distance from location.
 --
