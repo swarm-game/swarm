@@ -49,6 +49,7 @@ module Swarm.Game.Entity (
   buildEntityMap,
   validateAttrRefs,
   loadEntities,
+  allEntities,
   lookupEntityName,
   deviceForCap,
 
@@ -368,6 +369,10 @@ instance Semigroup EntityMap where
 instance Monoid EntityMap where
   mempty = EntityMap M.empty M.empty
   mappend = (<>)
+
+-- | Get a list of all the entities in the entity map.
+allEntities :: EntityMap -> [Entity]
+allEntities (EntityMap nm _) = M.elems nm
 
 -- | Find an entity with the given name.
 lookupEntityName :: Text -> EntityMap -> Maybe Entity
