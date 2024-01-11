@@ -260,7 +260,7 @@ execConst runChildProg c vs s k = do
         -- infinite improbability drive, which can cause a random entity
         -- to spawn near the target location.
         omni <- isPrivilegedBot
-        when (not omni) $ do
+        unless omni $ do
           w <- use (landscape . multiWorld)
           let area = map (<$ nextLoc) $ getLocsInArea (nextLoc ^. planar) 5
               emptyLocs = filter (\cl -> isNothing . snd $ getContentAt w (locToCoords <$> cl)) area
