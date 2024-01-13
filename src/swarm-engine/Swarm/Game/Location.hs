@@ -214,6 +214,8 @@ euclidean p1 p2 = norm (fromIntegral <$> (p2 .-. p1))
 -- [P (V2 0 0), P (V2 0 1), P (V2 0 (-1)), P (V2 1 0), P (V2 1 1), P (V2 1 (-1))]
 -- >>> map (\i -> length (getLocsInArea origin i)) [0..8]
 -- [1,5,13,25,41,61,85,113,145]
+--
+--   See also @Swarm.Game.Step.Const.genDiamondSides@.
 getLocsInArea :: Location -> Int32 -> [Location]
 getLocsInArea loc r =
   [loc .+^ V2 dx dy | x <- [0 .. r], y <- [0 .. r - x], dx <- nub [x, -x], dy <- nub [y, -y]]
