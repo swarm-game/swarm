@@ -1,4 +1,5 @@
-def goDir = \f. \d.
+def goDir = \f. \r.
+  let d = fst r in
   if (d == down) {
     grab; return ()
   } {

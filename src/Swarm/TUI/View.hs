@@ -243,7 +243,7 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
       , padTop (Pad 1) table
       ]
    where
-    vc = determineViewCenter s worldTuples
+    vc = determineStaticViewCenter s worldTuples
 
     worldTuples = buildWorldTuples s
     theWorlds = genMultiWorld worldTuples $ fromMaybe 0 $ s ^. scenarioSeed
@@ -1194,8 +1194,8 @@ displayProperties = displayList . mapMaybe showProperty
   showProperty Liquid = Just "liquid"
   showProperty Unwalkable = Just "blocking"
   showProperty Opaque = Just "opaque"
-  -- Most things are portable so we don't show that.
-  showProperty Portable = Nothing
+  -- Most things are pickable so we don't show that.
+  showProperty Pickable = Nothing
   -- 'Known' is just a technical detail of how we handle some entities
   -- in challenge scenarios and not really something the player needs
   -- to know.

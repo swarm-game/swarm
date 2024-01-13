@@ -15,15 +15,15 @@ solution: |
   move; say "Fatal error: base was able to move into a boulder and not fail!"
 robots:
   - name: base
-    dir: [1,0]
+    dir: east
     devices: ["treads", "logger"]
   - name: one
-    dir: [1,0]
+    dir: east
     devices: ["treads", "logger"]
     program: |
       move; say "Fatal error: one was able to move into a boulder and not fail!"
   - name: two
-    dir: [1,0]
+    dir: east
     system: true
     devices: ["logger"]
     program: |

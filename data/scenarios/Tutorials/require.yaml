@@ -4,23 +4,10 @@ description: |
   Learn how to require additional devices that would otherwise not be equipped.
 objectives:
   - goal:
-      - The `build` command automatically equips devices on the newly
-        built robot that it knows
-        will be required.  For example, if you `build {move}`, some `treads`{=entity}
-        will automatically be equipped on the new robot since it needs
-        them to `move`.  (To see what the `build` command will equip,
-        you can type `requirements <e>`{=snippet} where `<e>`{=snippet} is any expression.)
-      - However, sometimes you need a device but `build` can't tell that
-        you need it. In this case, you can use the special `require`{=snippet}
-        command to require a particular device.  For example, if you
-        `build {require "3D printer"; move}`, a `3D printer`{=entity} will be
-        equipped on the new robot (in addition to `treads`{=entity}) even though it does not execute any
-        commands that use one.
-      - Your goal is to pick a flower on the other side of the river and
-        bring it back to your base.  You win when the base has a
-        `periwinkle`{=entity} flower in its inventory.
-      - "Hint: robots will drown in the `water`{=entity} unless they have a `boat`{=entity} device
-        equipped!"
+      - The `build` command automatically equips devices on the newly built robot that it knows will be required.  For example, if you `build {move}`, some `treads`{=entity} will automatically be equipped on the new robot since it needs them to `move`.  (To see what the `build` command will equip, you can type `requirements <e>`{=snippet} where `<e>`{=snippet} is any expression.)
+      - However, sometimes you need a device but `build` can't tell that you need it. In this case, you can use the special `require`{=snippet} command to require a particular device.  For example, if you `build {require "3D printer"; move}`, a `3D printer`{=entity} will be equipped on the new robot (in addition to `treads`{=entity}) even though it does not execute any commands that use one.
+      - Your goal is to pick a flower on the other side of the river and bring it back to your base.  You win when the base has a `periwinkle`{=entity} flower in its inventory.
+      - "Hint: robots will drown in the `water`{=entity} unless they have a `boat`{=entity} device equipped!"
     condition: |
       try {
         as base {has "periwinkle"}
@@ -31,8 +18,8 @@ entities:
       attr: flower
       char: '*'
     description:
-    - A flower.
-    properties: [known, infinite, portable]
+      - A flower.
+    properties: [known, infinite, pickable]
 solution: |
   def m5 = move; move; move; move; move end;
   build {
@@ -42,7 +29,7 @@ solution: |
 robots:
   - name: base
     heavy: true
-    dir: [0,1]
+    dir: north
     display:
       char: Ω
       attr: robot

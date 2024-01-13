@@ -16,7 +16,7 @@ objectives:
       }
 robots:
   - name: Horton
-    dir: [0, 1]
+    dir: north
     devices:
       - ADT calculator
       - branch predictor
@@ -34,7 +34,8 @@ robots:
       - treads
       - wayfinder
 solution: |
-  def goDir = \f. \d.
+  def goDir = \f. \result.
+    let d = fst result in
     if (d == down) {grab; f;} {turn d; move; f;}
     end;
 
@@ -52,7 +53,7 @@ entities:
       - |
         Enables the `path` command:
       - |
-        `path : (unit + int) -> ((int * int) + text) -> cmd (unit + dir)`
+        `path : (unit + int) -> ((int * int) + text) -> cmd (unit + (dir * int))`
       - |
         Optionally supply a distance limit as the first argument, and
         supply either a location (`inL`) or an entity (`inR`) as the second argument.
@@ -61,7 +62,7 @@ entities:
       - |
         `path (inL ()) (inR "tree");`
       - If a path exists, returns the direction to proceed along.
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [path]
 known: [water, boulder, flower]
 world:

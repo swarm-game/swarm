@@ -71,7 +71,7 @@ solution: |
 robots:
   - name: base
     heavy: true
-    dir: [0,1]
+    dir: north
     display:
       char: Ω
       attr: robot
@@ -96,7 +96,7 @@ entities:
       invisible: true
     description:
       - A small rock.  It is so small, it is practically invisible.
-    properties: [portable]
+    properties: [pickable]
 world:
   palette:
     'Ω': [grass, null, base]

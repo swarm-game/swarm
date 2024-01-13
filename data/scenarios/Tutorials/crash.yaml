@@ -4,8 +4,7 @@ description: |
   Learn how to view built robots and debug them.
 objectives:
   - goal:
-      - Before you send your robots far away from the `base` you need to learn how
-        to figure out what went wrong with them if they crash.
+      - Before you send your robots far away from the `base` you need to learn how to figure out what went wrong with them if they crash.
       - |
         In this challenge, you should start by
         sending a robot to walk four steps straight east into the mountain,
@@ -35,7 +34,7 @@ entities:
       char: 'W'
     description:
       - If you have this, you win!
-    properties: [known, portable]
+    properties: [known, pickable]
 solution: |
   crasher <- build {
       turn east; move; move; move; log "bye"; move
@@ -47,7 +46,7 @@ solution: |
   };
 robots:
   - name: base
-    dir: [0,1]
+    dir: north
     heavy: true
     display:
       char: Ω

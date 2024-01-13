@@ -1,4 +1,5 @@
-def goDir = \goalItem. \f. \d.
+def goDir = \goalItem. \f. \r.
+  let d = fst r in
   if (d == down) {
     grab; return ()
   } {

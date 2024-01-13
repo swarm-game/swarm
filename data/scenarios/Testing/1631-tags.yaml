@@ -54,11 +54,11 @@ solution: |
       findTarget;
     }
     end;
-  
+
   findTarget;
 robots:
   - name: base
-    dir: [1,0]
+    dir: east
     devices:
       - ADT calculator
       - branch predictor
@@ -78,42 +78,42 @@ entities:
       attr: red
       char: 'S'
     description:
-    - Reads the 'tag' of an item
-    properties: [portable]
+      - Reads the 'tag' of an item
+    properties: [pickable]
     capabilities: [hastag, tagmembers]
   - name: canteloupe
     display:
       char: 'c'
     description:
-    - Melon
+      - Melon
     tags: [edible, fruit]
-    properties: [portable]
+    properties: [pickable]
   - name: mushroom
     display:
       char: 'm'
     description:
-    - Nature's tiny umbrella.
+      - Nature's tiny umbrella.
     tags: [edible, fungus]
-    properties: [portable]
+    properties: [pickable]
   - name: gravel
     display:
       char: 'g'
     description:
-    - Crushed rock
-    properties: [portable]
+      - Crushed rock
+    properties: [pickable]
   - name: strawberry
     display:
       char: 's'
     description:
-    - Just ripe
+      - Just ripe
     tags: [edible, fruit]
   - name: peach
     display:
       char: 'g'
     description:
-    - Just ripe
+      - Just ripe
     tags: [edible, fruit]
-    properties: [portable]
+    properties: [pickable]
 world:
   palette:
     '.': [grass]

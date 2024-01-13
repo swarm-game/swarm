@@ -7,9 +7,7 @@ seed: 2
 creative: false
 objectives:
   - goal:
-      - Use the `drill` command (e.g. `drill down` when on top of the
-        intended letter) to mark the sequence of letters that
-        spells `C`{=entity}`O`{=entity}`W`{=entity} within the designated playfield.
+      - Use the `drill` command (e.g. `drill down` when on top of the intended letter) to mark the sequence of letters that spells `C`{=entity}`O`{=entity}`W`{=entity} within the designated playfield.
       - |
         The sequence may appear horizontally in either the
         leftward or rightward direction,
@@ -199,12 +197,11 @@ objectives:
           end;
 
       as base {checkSoln};
-
 robots:
   - name: base
     display:
       attr: flower
-    dir: [-1, 0]
+    dir: west
     devices:
       - treads
       - ADT calculator
@@ -226,7 +223,7 @@ robots:
       - [3, ink]
   - name: lettersetter
     system: true
-    dir: [1, 0]
+    dir: east
     display:
       invisible: true
     inventory:
@@ -296,14 +293,14 @@ entities:
     capabilities: [drill]
     description:
       - Instrument for marking found words
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: ink
     display:
       char: 'K'
       attr: gold
     description:
       - Ink for marking found words
-    properties: [known, portable]
+    properties: [known, pickable]
 recipes:
   - in:
       - [1, capital C]

@@ -22,8 +22,8 @@ solution: |
   turn (if (snd loc < 0) {north} {south}); x (abs (snd loc)) move;
 robots:
   - name: base
-    dir: [0,1]
-    loc: [-5,5]
+    dir: north
+    loc: [-5, 5]
     devices:
       - clock
       - dictionary
@@ -37,8 +37,8 @@ robots:
       - branch predictor
       - logger
   - name: teleporter
-    dir: [0,1]
-    loc: [0,0]
+    dir: north
+    loc: [0, 0]
     system: true
     display:
       invisible: true
@@ -62,4 +62,3 @@ world:
     ...........
     ...........
     ...........
-

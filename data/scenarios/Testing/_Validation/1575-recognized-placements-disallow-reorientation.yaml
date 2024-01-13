@@ -5,7 +5,7 @@ description: |
 creative: false
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - treads
 structures:
@@ -16,8 +16,8 @@ structures:
       palette:
         'r': [stone, pixel (R)]
       map: |
-       rrrr
-       rrrr
+        rrrr
+        rrrr
 known: [pixel (R), pixel (G)]
 world:
   name: root

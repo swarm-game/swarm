@@ -56,7 +56,7 @@ solution: |
     // Invocation #10: Expect SUCCESS
     // The cache is still valid from the previous success.
     path (inR 4) (inR "flower");
-  
+
     make "lemonade";
     end;
 
@@ -67,29 +67,29 @@ entities:
       char: 'w'
     description:
       - Enables `path` command
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [path]
   - name: monolith
     display:
       char: '@'
       attr: rock
     description:
-    - Pushable rock
-    properties: [known, unwalkable, portable]
+      - Pushable rock
+    properties: [known, unwalkable, pickable]
   - name: lemon
     display:
       char: 'o'
       attr: gold
     description:
-    - Sour fruit
-    properties: [known, portable]
+      - Sour fruit
+    properties: [known, pickable]
   - name: lemonade
     display:
       char: 'c'
       attr: gold
     description:
-    - Sweet drink
-    properties: [known, portable]
+      - Sweet drink
+    properties: [known, pickable]
 recipes:
   - in:
       - [1, lemon]
@@ -97,7 +97,7 @@ recipes:
       - [1, lemonade]
 robots:
   - name: base
-    dir: [0, 1]
+    dir: north
     devices:
       - ADT calculator
       - antenna

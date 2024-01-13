@@ -41,7 +41,7 @@ robots:
     loc: [-1, 1]
     display:
       attr: blue
-    dir: [1, 0]
+    dir: east
     devices:
       - ADT calculator
       - 3D printer
@@ -77,7 +77,7 @@ robots:
       - [120, flower]
   - name: gopher
     system: true
-    dir: [0, 1]
+    dir: north
     display:
       char: 'G'
       invisible: false
@@ -110,14 +110,14 @@ entities:
     capabilities: [turn]
     description:
       - Allows a robot to "turn" but not "move".
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: uranium
     display:
       char: 'U'
       attr: silver
     description:
       - Unearthed by industrious gophers.
-    properties: [known, portable]
+    properties: [known, pickable]
 recipes:
   - in:
       - [1, mound]
@@ -126,7 +126,7 @@ recipes:
     required:
       - [1, drill]
 solution: |
-   run "scenarios/Challenges/_gopher/solution.sw"
+  run "scenarios/Challenges/_gopher/solution.sw"
 known: []
 world:
   dsl: |

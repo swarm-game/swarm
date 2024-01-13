@@ -19,7 +19,7 @@ solution: |
   push;
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     display:
       char: Ω
       attr: robot
@@ -35,20 +35,20 @@ robots:
       - treads
       - dozer blade
   - name: judge
-    dir: [0, 1]
+    dir: north
     system: true
     display:
       char: j
       attr: robot
       invisible: true
 entities:
-- name: crate
-  display:
-    attr: wood
-    char: '▪'
-  description:
-  - Pushable crate
-  properties: [known, portable, unwalkable]
+  - name: crate
+    display:
+      attr: wood
+      char: '▪'
+    description:
+      - Pushable crate
+    properties: [known, pickable, unwalkable]
 known: [tree, flower, boulder, water]
 world:
   palette:
@@ -61,8 +61,8 @@ world:
     'x': [grass, crate]
   upperleft: [0, 0]
   map: |
-   ..............
-   ......w.......
-   .....@Ωx.x....
-   ......*..j....
-   ......*.......
+    ..............
+    ......w.......
+    .....@Ωx.x....
+    ......*..j....
+    ......*.......

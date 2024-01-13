@@ -33,7 +33,7 @@ objectives:
       return $ foundT && foundJ && foundI && foundZ && foundQ;
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - grabber
       - treads
@@ -50,35 +50,35 @@ entities:
       attr: q-tile
     description:
       - q-tile
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: j-tile
     display:
       char: 'j'
       attr: j-tile
     description:
       - j-tile
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: i-tile
     display:
       char: 'i'
       attr: i-tile
     description:
       - i-tile
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: t-tile
     display:
       char: 't'
       attr: t-tile
     description:
       - t-tile
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: z-tile
     display:
       char: 'z'
       attr: z-tile
     description:
       - z-tile
-    properties: [known, portable]
+    properties: [known, pickable]
 solution: |
   run "scenarios/Challenges/_pack-tetrominoes/solution.sw"
 structures:

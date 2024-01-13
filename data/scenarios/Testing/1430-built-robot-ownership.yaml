@@ -4,7 +4,7 @@ creative: true
 description: Demo of system robot construction
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     display:
       char: Ω
       attr: robot
@@ -21,7 +21,7 @@ robots:
       - grabber
       - hearing aid
   - name: sysbot
-    dir: [-1, 0]
+    dir: west
     system: true
     display:
       char: j
@@ -40,11 +40,11 @@ robots:
     program: |
       build {move; say (format parent)}
 solution: |
-    listen; build {move; say (format parent)}
+  listen; build {move; say (format parent)}
 objectives:
   - goal:
-    - Check that system robots build system robots and normal robots do not.
-    - This check is performed in integration tests.
+      - Check that system robots build system robots and normal robots do not.
+      - This check is performed in integration tests.
     condition: |
       r2 <- robotNumbered 2;
       r3 <- robotNumbered 3;
@@ -57,8 +57,8 @@ world:
     '.': [grass]
   upperleft: [0, 0]
   map: |
-   .........
-   .........
-   ...Ω..r..
-   .........
-   .........
+    .........
+    .........
+    ...Ω..r..
+    .........
+    .........

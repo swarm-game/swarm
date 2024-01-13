@@ -18,7 +18,7 @@ objectives:
       return $ case foundStructure (\_. false) (\x. fst x >= 3);
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - ADT calculator
       - branch predictor
@@ -59,9 +59,9 @@ structures:
         'g': [stone, boulder]
       mask: '.'
       map: |
-       ..g
-       ..g
-       ggg
+        ..g
+        ..g
+        ggg
 known: [boulder, mountain, water]
 world:
   name: root

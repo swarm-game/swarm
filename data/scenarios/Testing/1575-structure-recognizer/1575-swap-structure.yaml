@@ -41,7 +41,7 @@ objectives:
       return $ isRight foundRed;
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - fast grabber
       - treads
@@ -49,9 +49,9 @@ robots:
       - [1, pixel (G)]
       - [1, pixel (B)]
 solution: |
-   move; move; move;
-   swap "pixel (G)";
-   swap "pixel (B)";
+  move; move; move;
+  swap "pixel (G)";
+  swap "pixel (B)";
 structures:
   - name: red_jewel
     recognize: [north]
@@ -62,11 +62,11 @@ structures:
         's': [stone, silver]
         'j': [stone, pixel (R)]
       map: |
-       ggggg
-       gsssg
-       gsjsg
-       gsssg
-       ggggg
+        ggggg
+        gsssg
+        gsjsg
+        gsssg
+        ggggg
   - name: green_jewel
     recognize: [north]
     structure:
@@ -76,11 +76,11 @@ structures:
         's': [stone, silver]
         'j': [stone, pixel (G)]
       map: |
-       ggggg
-       gsssg
-       gsjsg
-       gsssg
-       ggggg
+        ggggg
+        gsssg
+        gsjsg
+        gsssg
+        ggggg
   - name: blue_jewel
     recognize: [north]
     structure:
@@ -90,11 +90,11 @@ structures:
         's': [stone, silver]
         'j': [stone, pixel (B)]
       map: |
-       ggggg
-       gsssg
-       gsjsg
-       gsssg
-       ggggg
+        ggggg
+        gsssg
+        gsjsg
+        gsssg
+        ggggg
 known: [gold, silver, pixel (R), pixel (G), pixel (B)]
 world:
   name: root

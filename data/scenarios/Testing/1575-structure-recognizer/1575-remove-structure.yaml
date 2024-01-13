@@ -23,7 +23,7 @@ objectives:
       return $ case foundStructure (\_. false) (\_. true);
 robots:
   - name: base
-    dir: [0, -1]
+    dir: south
     devices:
       - grabber
       - treads
@@ -31,9 +31,9 @@ robots:
       - [1, gold]
       - [1, silver]
 solution: |
-   move;
-   place "silver";
-   grab;
+  move;
+  place "silver";
+  grab;
 structures:
   - name: chessboard
     recognize: [north]
@@ -43,10 +43,10 @@ structures:
         'g': [stone, gold]
         's': [stone, silver]
       map: |
-       gsgs
-       sgsg
-       gsgs
-       sgsg
+        gsgs
+        sgsg
+        gsgs
+        sgsg
 world:
   name: root
   dsl: |

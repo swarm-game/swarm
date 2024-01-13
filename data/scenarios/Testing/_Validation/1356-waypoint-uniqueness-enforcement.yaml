@@ -12,11 +12,11 @@ entities:
       attr: portal_out
       char: "o"
     description:
-    - Portal exit
+      - Portal exit
     properties: [known]
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
 known: [tree]
 world:
   upperleft: [1, -1]

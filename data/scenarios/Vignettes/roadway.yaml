@@ -8,7 +8,7 @@ robots:
     display:
       char: Ω
       attr: robot
-    dir: [1, 0]
+    dir: east
     loc: [10, 3]
     devices:
       - logger
@@ -18,7 +18,7 @@ robots:
     system: true
     display:
       invisible: false
-    dir: [1, 0]
+    dir: east
     devices:
       - lodestone
     inventory:
@@ -29,7 +29,7 @@ robots:
     system: true
     display:
       invisible: true
-    dir: [0, 1]
+    dir: north
     loc: [24, 9]
     devices:
       - lodestone
@@ -43,51 +43,51 @@ world:
     '.': [grass]
     'd': [grass, null, drone]
   structures:
-  - name: road segment
-    structure:
-      palette:
-        'S':
-        - stone
-        'w':
-        - ice
-        '█':
-        - stone
-        - sand
-      map: |
-        SSSSSS
-        SSSSSS
-        ███SSS
-        SSSSSS
-        SSSSSS
-        wwwwww
-  - name: tunnel
-    structure:
-      mask: '.'
-      palette:
-        '@': [stone, boulder]
-        'b': [blank]
-      map: |
-        ..@@@@..
-        .@bbbb@.
-        @@bbbb@@
-        @bbbbbb@
-  - name: intersection
-    structure:
-      palette:
-        'S':
-        - stone
-        'w':
-        - ice
-        '█':
-        - stone
-        - sand
-      map: |
-        SSSSSS
-        SSSSSS
-        SSSSSS
-        SSSSSS
-        SSSSSS
-        SSSSSS
+    - name: road segment
+      structure:
+        palette:
+          'S':
+            - stone
+          'w':
+            - ice
+          '█':
+            - stone
+            - sand
+        map: |
+          SSSSSS
+          SSSSSS
+          ███SSS
+          SSSSSS
+          SSSSSS
+          wwwwww
+    - name: tunnel
+      structure:
+        mask: '.'
+        palette:
+          '@': [stone, boulder]
+          'b': [blank]
+        map: |
+          ..@@@@..
+          .@bbbb@.
+          @@bbbb@@
+          @bbbbbb@
+    - name: intersection
+      structure:
+        palette:
+          'S':
+            - stone
+          'w':
+            - ice
+          '█':
+            - stone
+            - sand
+        map: |
+          SSSSSS
+          SSSSSS
+          SSSSSS
+          SSSSSS
+          SSSSSS
+          SSSSSS
   placements:
     - src: tunnel
       offset: [3, -21]
@@ -162,8 +162,8 @@ world:
         up: west
         flip: true
   upperleft:
-  - -18
-  - 30
+    - -18
+    - 30
   map: |
     dddddddddd....................................................................
     dddddddd......................................................................

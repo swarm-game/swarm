@@ -15,7 +15,7 @@ objectives:
       return $ isRight foundBox;
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - ADT calculator
       - blueprint
@@ -52,11 +52,11 @@ structures:
       palette:
         'b': [stone, board]
       map: |
-       bbbbbbb
-       bbbbbbb
-       bbbbbbb
-       bbbbbbb
-       bbbbbbb
+        bbbbbbb
+        bbbbbbb
+        bbbbbbb
+        bbbbbbb
+        bbbbbbb
 known: [board]
 world:
   dsl: |

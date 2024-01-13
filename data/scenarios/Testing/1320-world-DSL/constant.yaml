@@ -7,13 +7,13 @@ objectives:
   - condition: |
       as base { n <- count "tree"; return (n >= 4) }
     goal:
-    - Get 4 trees
+      - Get 4 trees
 solution: |
   grab; move; grab; move; grab; move; grab
 robots:
   - name: base
-    loc: [0,0]
-    dir: [1,0]
+    loc: [0, 0]
+    dir: east
     devices:
       - logger
       - treads

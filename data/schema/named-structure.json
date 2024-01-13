@@ -17,7 +17,7 @@
         "recognize": {
             "type": "array",
             "items": {
-                "$ref": "directions.json"
+                "$ref": "direction.json"
             },
             "description": "Orientations for which this structure participates in automatic recognition when constructed"
         },

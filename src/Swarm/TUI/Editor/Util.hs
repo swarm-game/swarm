@@ -18,6 +18,7 @@ import Swarm.Game.Terrain (TerrainType)
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Editor.Model
+import Swarm.Util.Content
 import Swarm.Util.Erasable
 
 getEntitiesForList :: EntityMap -> V.Vector EntityFacade
@@ -34,12 +35,6 @@ getEditingBounds myWorld =
   upperLeftLoc = ul myWorld
   a = EA.getAreaDimensions $ area myWorld
   lowerRightLoc = EA.upperLeftToBottomRight a upperLeftLoc
-
-getContentAt :: W.MultiWorld Int e -> Cosmic W.Coords -> (TerrainType, Maybe e)
-getContentAt w coords = (underlyingCellTerrain, underlyingCellEntity)
- where
-  underlyingCellEntity = W.lookupCosmicEntity coords w
-  underlyingCellTerrain = W.lookupCosmicTerrain coords w
 
 getEditorContentAt ::
   WorldOverdraw ->
@@ -106,29 +101,9 @@ getEditedMapRectangle ::
   WorldOverdraw ->
   Maybe (Cosmic W.BoundsRectangle) ->
   W.MultiWorld Int Entity ->
-  [[CellPaintDisplay]]
-getEditedMapRectangle _ Nothing _ = []
+  EA.Grid CellPaintDisplay
+getEditedMapRectangle _ Nothing _ = EA.Grid []
 getEditedMapRectangle worldEditor (Just (Cosmic subworldName coords)) w =
   getMapRectangle toFacade getContent coords
  where
   getContent = getEditorContentAt worldEditor w . Cosmic subworldName
-
-getMapRectangle ::
-  (d -> e) ->
-  (W.Coords -> (TerrainType, Maybe d)) ->
-  W.BoundsRectangle ->
-  [[PCell e]]
-getMapRectangle paintTransform contentFunc coords =
-  map renderRow [yTop .. yBottom]
- where
-  (W.Coords (yTop, xLeft), W.Coords (yBottom, xRight)) = coords
-
-  drawCell f rowIndex colIndex =
-    Cell
-      terrain
-      (f <$> maybeToErasable erasableEntity)
-      []
-   where
-    (terrain, erasableEntity) = contentFunc $ W.Coords (rowIndex, colIndex)
-
-  renderRow rowIndex = map (drawCell paintTransform rowIndex) [xLeft .. xRight]

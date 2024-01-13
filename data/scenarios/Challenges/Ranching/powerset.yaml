@@ -35,7 +35,7 @@ objectives:
         After you have done this, `place` the `bell`{=entity} anywhere, and then Bill will inspect
         your work.
     prerequisite:
-        not: wrong_anwser
+      not: wrong_anwser
     condition: |
       r <- robotnamed "setup";
       as r {has "bit (1)"};
@@ -50,7 +50,7 @@ objectives:
       as r {has "bit (0)"};
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - ADT calculator
       - branch predictor
@@ -75,7 +75,7 @@ robots:
       - treads
   - name: setup
     system: true
-    dir: [1, 0]
+    dir: east
     display:
       invisible: true
     inventory:
@@ -90,15 +90,15 @@ robots:
     program: |
       run "scenarios/Challenges/Ranching/_powerset/setup.sw"
 solution: |
-   run "scenarios/Challenges/Ranching/_powerset/solution.sw"
+  run "scenarios/Challenges/Ranching/_powerset/solution.sw"
 entities:
   - name: rocket skates
     display:
       attr: silver
       char: 's'
     description:
-    - Allows one to `stride` across multiple cells
-    properties: [known, portable]
+      - Allows one to `stride` across multiple cells
+    properties: [known, pickable]
     capabilities: [movemultiple]
   - name: bell
     display:
@@ -106,7 +106,7 @@ entities:
       attr: gold
     description:
       - A bell for Bill
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: fruit picker
     display:
       char: 'P'
@@ -127,7 +127,7 @@ entities:
       attr: fruit0
     description:
       - Dragonfruits
-    properties: [known, growable, portable]
+    properties: [known, growable, pickable]
     growth: [10, 10]
   - name: grape
     display:
@@ -136,7 +136,7 @@ entities:
     description:
       - Grapes
     growth: [10, 10]
-    properties: [known, growable, portable]
+    properties: [known, growable, pickable]
   - name: lemon
     display:
       char: 'Y'
@@ -144,7 +144,7 @@ entities:
     description:
       - Lemons
     growth: [10, 10]
-    properties: [known, growable, portable]
+    properties: [known, growable, pickable]
   - name: apple
     display:
       char: 'Y'
@@ -152,7 +152,7 @@ entities:
     description:
       - Apple
     growth: [10, 10]
-    properties: [known, growable, portable]
+    properties: [known, growable, pickable]
   - name: blueberry
     display:
       char: 'Y'
@@ -160,7 +160,7 @@ entities:
     description:
       - Blueberries
     growth: [10, 10]
-    properties: [known, growable, portable]
+    properties: [known, growable, pickable]
   - name: watermelon
     display:
       char: 'Y'
@@ -168,7 +168,7 @@ entities:
     description:
       - Watermelons
     growth: [10, 10]
-    properties: [known, growable, portable]
+    properties: [known, growable, pickable]
   - name: orange
     display:
       char: 'Y'
@@ -176,7 +176,7 @@ entities:
     description:
       - Oranges
     growth: [10, 10]
-    properties: [known, growable, portable]
+    properties: [known, growable, pickable]
 known: [sand]
 world:
   dsl: |

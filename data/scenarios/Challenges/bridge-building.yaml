@@ -87,13 +87,8 @@ objectives:
   - id: get_map
     teaser: Get the map
     goal:
-      - As a humble `peat`{=entity} farmer, you subsist in a simple cabin by the `bog`{=entity}.
-        Though long content with this ascetic lifestyle, recently the barren walls have
-        left you restless. Something is missing...
-      - "The majestic landscape that is your back yard is insufficient to distract you---not
-        even the ferocious, `lava`{=entity}-spewing volcano little more than a stone's throw from
-        your porch.
-        You are preoccupied by one task: to find the perfect household decoration."
+      - As a humble `peat`{=entity} farmer, you subsist in a simple cabin by the `bog`{=entity}. Though long content with this ascetic lifestyle, recently the barren walls have left you restless. Something is missing...
+      - "The majestic landscape that is your back yard is insufficient to distract you---not even the ferocious, `lava`{=entity}-spewing volcano little more than a stone's throw from your porch. You are preoccupied by one task: to find the perfect household decoration."
       - First, grab a `map`{=entity} to orient yourself.
     condition: |
       as base {
@@ -104,19 +99,11 @@ objectives:
     prerequisite: get_map
     goal:
       - You study the `map`{=entity}.
-      - Glacier-bound mountains tower in the `east`,
-        a volcano oozes a river of `lava`{=entity} to the `north`, and beyond that lies a mountain lake, punctuated with islands
-        in the northwest.
-        Iron mines penetrate the base of the volcano. They could be useful, but how will you get there?
-      - A `jungle`{=entity} abuts the volcano, ensconcing an ancient ruin.
-        The map notes that bygone travelers have stashed tools among the northeasterly mountains to
-        blaze a path through the jungle.
+      - Glacier-bound mountains tower in the `east`, a volcano oozes a river of `lava`{=entity} to the `north`, and beyond that lies a mountain lake, punctuated with islands in the northwest. Iron mines penetrate the base of the volcano. They could be useful, but how will you get there?
+      - A `jungle`{=entity} abuts the volcano, ensconcing an ancient ruin. The map notes that bygone travelers have stashed tools among the northeasterly mountains to blaze a path through the jungle.
       - Your only neighbor, a `hemp`{=entity} farmer to the northwest, has evacuated since the sudden volcanic eruption.
-      - A disused quarry and clay pit flanks your cabin to the `west`, as does the familiar, swampy `bog`{=entity} to the `east`.
-        A highly-prized `flower`{=entity} is said to grow in the caves beyond the bog.
-      - Your mind is made up. You will pillage the ruins for treasure! Head to the ruins and `scan` them.
-        Ingenuity and endurance are your allies as you forge paths through varied obstacles.
-        Study your "recipes" for clues!
+      - A disused quarry and clay pit flanks your cabin to the `west`, as does the familiar, swampy `bog`{=entity} to the `east`. A highly-prized `flower`{=entity} is said to grow in the caves beyond the bog.
+      - Your mind is made up. You will pillage the ruins for treasure! Head to the ruins and `scan` them. Ingenuity and endurance are your allies as you forge paths through varied obstacles. Study your "recipes" for clues!
     condition: |
       as base {
         knows "temple";
@@ -126,8 +113,7 @@ objectives:
     prerequisite: find_temple
     goal:
       - "A note on the door says:"
-      - '"Greetings, intrepid traveler. Encircle this temple with the rare `flower`{=entity} of the southeastern
-        caves, and the treasure of this `temple`{=entity} shall be revealed."'
+      - '"Greetings, intrepid traveler. Encircle this temple with the rare `flower`{=entity} of the southeastern caves, and the treasure of this `temple`{=entity} shall be revealed."'
       - Plant a ring of flowers around the jungle temple.
     condition: |
       as base {
@@ -145,7 +131,7 @@ objectives:
       };
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - ADT calculator
       - branch predictor
@@ -181,7 +167,7 @@ robots:
       - [0, jungle]
   - name: flowercheck
     system: true
-    dir: [0, 1]
+    dir: north
     display:
       invisible: true
     devices:
@@ -192,7 +178,7 @@ robots:
       run "scenarios/Challenges/_bridge-building/flower-ring-check.sw"
   - name: platecheck
     system: true
-    dir: [0, 1]
+    dir: north
     display:
       invisible: true
 solution: |
@@ -204,21 +190,21 @@ entities:
       attr: 'magenta'
     description:
       - The map describes local points of interest, relative to your cabin.
-    properties: [portable, known]
+    properties: [pickable, known]
   - name: peat furnace
     display:
       char: 'F'
       attr: tan
     description:
       - Fueled by peat.
-    properties: [portable, known]
+    properties: [pickable, known]
   - name: clay
     display:
       char: 'c'
       attr: tan
     description:
       - Can be fired in a peat furnace into a vessel.
-    properties: [portable, known]
+    properties: [pickable, known]
   - name: lava
     display:
       char: 'w'
@@ -232,21 +218,21 @@ entities:
       attr: tan
     description:
       - A tiny, inconsequential rock.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: machete
     display:
       char: '/'
       attr: cyan
     description:
       - Easily cuts through jungle overgrowth.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: painted plate
     display:
       char: 'o'
       attr: obsidian
     description:
       - Limited edition 1978 collectible Helix the Cat ornamental hand-painted dinner plate.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: oven mitts
     display:
       char: 'm'
@@ -286,7 +272,7 @@ entities:
       attr: silver
     description:
       - Can break hard objects
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: granite mountain
     display:
       char: 'A'
@@ -312,35 +298,35 @@ entities:
       char: 'L'
     description:
       - Can be used to traverse down a cliff.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: hemp
     display:
       char: 'h'
       attr: plant
     description:
       - Can be used to make rope
-    properties: [known, portable, growable]
+    properties: [known, pickable, growable]
   - name: flimsy board
     display:
       char: 'b'
       attr: wood
     description:
       - Board made from a soft log. Has poor rigidity.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: soft log
     display:
       char: 'l'
       attr: wood
     description:
       - Log made from a palm tree. A bit flexible.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: coconut
     display:
       char: 'c'
       attr: wood
     description:
       - Spherical, buoyant husk
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: floating boardwalk
     display:
       char: '▒'
@@ -354,7 +340,7 @@ entities:
       attr: wood
     description:
       - Burnable plant material
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: peat bog
     display:
       char: 'b'
@@ -388,14 +374,14 @@ entities:
       char: 'c'
     description:
       - An empty crucible. Can carry lava.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: lava-filled crucible
     display:
       char: 'C'
       attr: lavaBG
     description:
       - Crucible filled with lava
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: quarry
     display:
       char: 'Q'
@@ -450,13 +436,13 @@ entities:
       char: 'r'
     description:
       - An empty container for rubble.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: rubble-filled skip
     display:
       char: 'R'
     description:
       - An full container of rubble. Can be dumped in the water as fill to form a causeway.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: causeway
     display:
       char: '▒'
@@ -468,14 +454,14 @@ entities:
       char: 'k'
     description:
       - Tank with nothing in it
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: water-filled tank
     display:
       char: 'K'
       attr: blueBG
     description:
       - Tank filled with water
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: obsidian path
     display:
       char: '`'
@@ -489,14 +475,14 @@ entities:
       attr: obsidian
     description:
       - Dislodged fragment of obsidian
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: palm tree
     display:
       char: 'P'
       attr: beach
     description:
       - Palm tree.
-    properties: [known, portable, growable]
+    properties: [known, pickable, growable]
 recipes:
   - in:
       - [8, clay]

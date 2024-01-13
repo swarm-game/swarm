@@ -23,14 +23,14 @@ entities:
       char: 'w'
     description:
       - Enables `path` command
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [path]
   - name: atlas
     display:
       char: 'a'
     description:
       - Enables `waypoint` command
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [waypoint]
   - name: kudzu
     display:
@@ -46,12 +46,12 @@ entities:
       attr: easter_egg
     description:
       - A colorful egg laid by the rabbit
-    properties: [known, portable]
+    properties: [known, pickable]
     growth: [5, 10]
 robots:
   - name: base
     loc: [0, 0]
-    dir: [1, 0]
+    dir: east
     devices:
       - ADT calculator
       - atlas
@@ -67,7 +67,7 @@ robots:
       - wayfinder
   - name: gardener
     description: Periodically chops down the kudzu plant
-    dir: [1, 0]
+    dir: east
     system: true
     devices:
       - ADT calculator
@@ -83,7 +83,7 @@ robots:
     program: |
       run "scenarios/Testing/836-pathfinding/_836-automatic-waypoint-navigation/gardener.sw"
   - name: rabbit
-    dir: [1, 0]
+    dir: east
     loc: [2, -2]
     system: true
     devices:

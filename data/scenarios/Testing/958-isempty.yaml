@@ -19,7 +19,7 @@ solution: |
   grab
 robots:
   - name: base
-    dir: [1,0]
+    dir: east
     devices:
       - scanner
       - branch predictor
@@ -36,8 +36,8 @@ entities:
       attr: gold
       char: 'Y'
     description:
-    - A thing that everyone needs!
-    properties: [portable]
+      - A thing that everyone needs!
+    properties: [pickable]
 world:
   palette:
     '.': [grass]

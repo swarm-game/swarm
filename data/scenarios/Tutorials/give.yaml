@@ -9,9 +9,7 @@ objectives:
         command. This command takes two arguments: the target
         robot, and the name of the item to give.  The target robot
         is often the special `base` robot, but could be any robot.
-      - In this scenario, you will need to collect the items scattered
-        around your `base`, by `build`ing one or more robots to
-        collect them and then `give` them to you.
+      - In this scenario, you will need to collect the items scattered around your `base`, by `build`ing one or more robots to collect them and then `give` them to you.
     condition: |
       as base {
           bd <- has "board";
@@ -34,7 +32,7 @@ solution: |
   }
 robots:
   - name: base
-    dir: [0,1]
+    dir: north
     heavy: true
     display:
       char: Ω

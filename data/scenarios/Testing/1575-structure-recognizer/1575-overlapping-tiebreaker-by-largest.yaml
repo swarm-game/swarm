@@ -24,7 +24,7 @@ objectives:
       return $ case foundStructure (\_. false) (\_. true);
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - grabber
       - treads
@@ -32,8 +32,8 @@ robots:
       - [1, gold]
       - [1, silver]
 solution: |
-   move;
-   place "gold";
+  move;
+  place "gold";
 structures:
   - name: large
     recognize: [north]
@@ -43,9 +43,9 @@ structures:
         'g': [stone, gold]
         's': [stone, silver]
       map: |
-       sss
-       ggs
-       ggs
+        sss
+        ggs
+        ggs
   - name: small
     recognize: [north]
     structure:
@@ -53,8 +53,8 @@ structures:
       palette:
         'g': [stone, gold]
       map: |
-       gg
-       gg
+        gg
+        gg
 world:
   name: root
   dsl: |
@@ -66,6 +66,6 @@ world:
     'B': [grass, null, base]
   upperleft: [0, 0]
   map: |
-       .sss
-       .ggs
-       B.gs
+    .sss
+    .ggs
+    B.gs

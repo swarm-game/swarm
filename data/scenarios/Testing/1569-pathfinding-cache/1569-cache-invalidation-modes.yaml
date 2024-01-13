@@ -23,7 +23,7 @@ solution: |
     p <- path (inL ()) (inR "flower");
     log $ format p;
     end;
-  
+
   def waitUntilSalvaged =
     salvage;
     gotPanel <- has "solar panel";
@@ -109,29 +109,29 @@ entities:
       char: 'w'
     description:
       - Enables `path` command
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [path]
   - name: monolith
     display:
       char: '@'
       attr: rock
     description:
-    - Pushable rock
-    properties: [known, unwalkable, portable]
+      - Pushable rock
+    properties: [known, unwalkable, pickable]
   - name: lemon
     display:
       char: 'o'
       attr: gold
     description:
-    - Sour fruit
-    properties: [known, portable]
+      - Sour fruit
+    properties: [known, pickable]
   - name: lemonade
     display:
       char: 'c'
       attr: gold
     description:
-    - Sweet drink
-    properties: [known, portable]
+      - Sweet drink
+    properties: [known, pickable]
 recipes:
   - in:
       - [1, lemon]
@@ -139,7 +139,7 @@ recipes:
       - [1, lemonade]
 robots:
   - name: base
-    dir: [1,0]
+    dir: east
     devices:
       - 3D printer
       - ADT calculator

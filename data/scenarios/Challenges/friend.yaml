@@ -10,7 +10,7 @@ robots:
       char: 'Ω'
       attr: robot
     heavy: true
-    dir: [0, 1]
+    dir: north
     devices:
       - 3D printer
       - ADT calculator
@@ -47,7 +47,7 @@ robots:
       - [10, calculator]
   - name: cat
     system: true
-    dir: [-1, 0]
+    dir: west
     display:
       invisible: false
       char: 'c'
@@ -58,9 +58,7 @@ robots:
       run "scenarios/Challenges/_friend/cat.sw"
 objectives:
   - goal:
-      - There's a cat wandering around in the field.  Bring it back to
-        your base.  If you give it something it likes, perhaps you can
-        get it to follow you.
+      - There's a cat wandering around in the field.  Bring it back to your base.  If you give it something it likes, perhaps you can get it to follow you.
     condition: |
       c <- robotNamed "cat";
       catLoc <- as c {whereami};
@@ -74,8 +72,7 @@ entities:
       char: 'f'
     description:
       - A smelly fish. Rather unappetizing to a robot.
-    properties: [known, portable]
-
+    properties: [known, pickable]
 known: [fish]
 seed: 0
 world:

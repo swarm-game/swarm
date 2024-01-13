@@ -22,17 +22,17 @@ entities:
       char: 'x'
     description:
       - Enables `ping` command
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [ping]
   - name: map piece
     display:
       char: 'm'
     description:
       - Half of a treasure map
-    properties: [known, portable]
+    properties: [known, pickable]
 robots:
   - name: base
-    dir: [1,0]
+    dir: east
     devices:
       - ADT calculator
       - antenna
@@ -48,7 +48,7 @@ robots:
     inventory:
       - [1, map piece]
   - name: buddy
-    dir: [-1, 0]
+    dir: west
     system: true
     display:
       invisible: false

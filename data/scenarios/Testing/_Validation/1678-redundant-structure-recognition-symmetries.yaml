@@ -7,7 +7,7 @@ description: |
 creative: false
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
 structures:
   - name: domino
     recognize: [east, north, west]
@@ -16,8 +16,8 @@ structures:
       palette:
         'r': [stone, tree]
       map: |
-       r
-       r
+        r
+        r
 known: [tree]
 world:
   name: root

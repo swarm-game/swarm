@@ -45,7 +45,7 @@ objectives:
           hasPowerup <- as ghost {
               has "donut";
           };
-          
+
           if hasPowerup {
               return true;
           } {
@@ -104,7 +104,7 @@ objectives:
           hasPowerup <- as ghost {
               has "donut";
           };
-          
+
           if hasPowerup {
               if (n > 1) {
                   allHasPowerup $ n - 1;
@@ -127,7 +127,7 @@ robots:
         south: 'n'
       char: 'U'
       attr: gold
-    dir: [1, 0]
+    dir: east
     devices:
       - ADT calculator
       - antenna
@@ -150,7 +150,7 @@ robots:
       - treads
       - workbench
   - name: teleport_monitor
-    dir: [0, 1]
+    dir: north
     system: true
     display:
       invisible: true
@@ -158,7 +158,7 @@ robots:
     program: |
       run "scenarios/Challenges/_hackman/teleport_monitor.sw"
   - name: ghost1
-    dir: [0, 1]
+    dir: north
     system: true
     display:
       invisible: false
@@ -167,7 +167,7 @@ robots:
     program: |
       run "scenarios/Challenges/_hackman/ghost.sw"
   - name: ghost2
-    dir: [0, 1]
+    dir: north
     system: true
     display:
       invisible: false
@@ -176,7 +176,7 @@ robots:
     program: |
       run "scenarios/Challenges/_hackman/ghost.sw"
   - name: ghost3
-    dir: [0, 1]
+    dir: north
     system: true
     display:
       invisible: false
@@ -185,7 +185,7 @@ robots:
     program: |
       run "scenarios/Challenges/_hackman/ghost.sw"
   - name: ghost4
-    dir: [0, 1]
+    dir: north
     system: true
     display:
       invisible: false
@@ -194,7 +194,7 @@ robots:
     program: |
       run "scenarios/Challenges/_hackman/ghost.sw"
   - name: fruit_maker
-    dir: [0, 1]
+    dir: north
     system: true
     display:
       invisible: true
@@ -211,7 +211,7 @@ entities:
     description:
       - A caffeine pellet.
       - Helps Hackman produce more code.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: donut
     display:
       char: 'o'
@@ -219,14 +219,14 @@ entities:
     description:
       - Breakfast of champions.
       - Fancied by ghosts. Will you share?
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: den key
     display:
       char: 'k'
       attr: gold
     description:
       - Opens a gate
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: strawberry
     display:
       char: 'v'
@@ -234,7 +234,7 @@ entities:
     description:
       - A tart berry
       - Possessing this fruit gives you great satisfaction.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: gate
     display:
       char: '='
@@ -249,17 +249,17 @@ entities:
     properties: [known, unwalkable]
 recipes:
   - in:
-    - [181, "pellet"]
+      - [181, "pellet"]
     out:
-    - [1, "den key"]
+      - [1, "den key"]
   - in:
-    - [1, "den key"]
-    - [1, "gate"]
+      - [1, "den key"]
+      - [1, "gate"]
     out:
-    - [1, "den key"]
+      - [1, "den key"]
     required:
-    - [1, drill]
-solution:
+      - [1, drill]
+solution: |
   run "scenarios/Challenges/_hackman/solution.sw"
 known: []
 seed: 0

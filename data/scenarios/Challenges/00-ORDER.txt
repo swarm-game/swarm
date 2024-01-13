@@ -17,6 +17,7 @@ wolf-goat-cabbage.yaml
 blender.yaml
 friend.yaml
 pack-tetrominoes.yaml
+dimsum.yaml
 Mazes
 Ranching
 Sokoban

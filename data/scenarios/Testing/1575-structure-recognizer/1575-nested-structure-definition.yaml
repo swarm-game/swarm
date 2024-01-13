@@ -40,7 +40,7 @@ solution: |
   place t;
 robots:
   - name: base
-    dir: [0, -1]
+    dir: south
     devices:
       - grabber
       - treads
@@ -52,7 +52,7 @@ structures:
         's': [ice, tree]
       mask: '.'
       structures:
-        - name: treering 
+        - name: treering
           structure:
             palette:
               'p': [dirt, tree]
@@ -60,9 +60,9 @@ structures:
               p
               p
       placements:
-        - src: treering 
+        - src: treering
           offset: [0, 0]
-        - src: treering 
+        - src: treering
           offset: [2, 0]
       map: |
         .s.
@@ -98,4 +98,3 @@ world:
     ........
     ........
     ........
-    

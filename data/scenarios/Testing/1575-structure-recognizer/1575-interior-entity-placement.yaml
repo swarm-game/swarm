@@ -57,7 +57,7 @@ objectives:
       return $ isRight foundBox;
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - ADT calculator
       - blueprint
@@ -65,7 +65,7 @@ robots:
       - logger
       - treads
   - name: judge
-    dir: [1, 0]
+    dir: east
     system: true
     display:
       invisible: true
@@ -82,10 +82,10 @@ structures:
         'b': [stone, board]
       mask: '.'
       map: |
-       bbbb
-       b..b
-       b..b
-       bbbb
+        bbbb
+        b..b
+        b..b
+        bbbb
 known: [board, rock]
 world:
   dsl: |
@@ -107,5 +107,3 @@ world:
     B.r...
     ......
     ......
-
-

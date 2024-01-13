@@ -13,17 +13,17 @@ objectives:
       return $ case foundStructure (\_. false) (\_. true);
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - grabber
       - treads
     inventory:
       - [4, flower]
 solution: |
-   move; move;
-   turn right;
-   move; move;
-   place "flower";
+  move; move;
+  turn right;
+  move; move;
+  place "flower";
 structures:
   - name: tee
     recognize: [north, south, east, west]

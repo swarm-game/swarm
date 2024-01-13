@@ -218,6 +218,10 @@ testScenarioSolutions rs ui =
         , testTutorialSolution (Sec 5) "Tutorials/farming"
         ]
     , testGroup
+        "Fun"
+        [ testSolution (Sec 10) "Fun/snake"
+        ]
+    , testGroup
         "Challenges"
         [ testSolution Default "Challenges/chess_horse"
         , testSolution Default "Challenges/teleport"
@@ -237,6 +241,7 @@ testScenarioSolutions rs ui =
         , testSolution (Sec 10) "Challenges/Sliding Puzzles/3x3"
         , testSolution Default "Challenges/friend"
         , testSolution Default "Challenges/pack-tetrominoes"
+        , testSolution (Sec 10) "Challenges/dimsum"
         , testGroup
             "Mazes"
             [ testSolution Default "Challenges/Mazes/easy_cave_maze"
@@ -331,6 +336,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/958-isempty"
         , testSolution Default "Testing/1007-use-command"
         , testSolution Default "Testing/1024-sand"
+        , testSolution Default "Testing/1034-custom-attributes"
         , testSolution Default "Testing/1140-detect-command"
         , testSolution Default "Testing/1157-drill-return-value"
         , testSolution Default "Testing/1171-sniff-command"

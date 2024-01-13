@@ -16,7 +16,7 @@ objectives:
       };
 robots:
   - name: base
-    dir: [0, 1]
+    dir: north
     devices:
       - treads
       - scanner

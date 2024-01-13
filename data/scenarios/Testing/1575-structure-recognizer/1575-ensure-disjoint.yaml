@@ -17,7 +17,7 @@ objectives:
         Build 2 of the same structure
     condition: |
       foundStructure <- structure "chessboard" 0;
-      return $ case foundStructure (\_. false) (\fs. 
+      return $ case foundStructure (\_. false) (\fs.
         let boardCount = fst fs in
         boardCount >= 2;
       );
@@ -32,26 +32,26 @@ objectives:
       robotHasSilver <- as base {has "silver"};
 
       foundStructure <- structure "chessboard" 0;
-      return $ case foundStructure (\_. false) (\fs. 
+      return $ case foundStructure (\_. false) (\fs.
         let boardCount = fst fs in
         boardCount >= 2 && robotHasSilver;
       );
 robots:
   - name: base
-    dir: [0, -1]
+    dir: south
     devices:
       - grabber
       - treads
     inventory:
       - [3, silver]
 solution: |
-   move;
-   turn left;
-   place "silver";
-   move; move;
-   place "silver";
-   move; move;
-   place "silver";
+  move;
+  turn left;
+  place "silver";
+  move; move;
+  place "silver";
+  move; move;
+  place "silver";
 structures:
   - name: chessboard
     recognize: [north]
@@ -61,10 +61,10 @@ structures:
         'g': [stone, gold]
         's': [stone, silver]
       map: |
-       gsgs
-       sgsg
-       gsgs
-       sgsg
+        gsgs
+        sgsg
+        gsgs
+        sgsg
 known: [water, gold, silver]
 world:
   name: root

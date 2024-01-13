@@ -1,3 +1,4 @@
 GoL.yaml
 logo-burst.yaml
 horton.yaml
+snake.yaml

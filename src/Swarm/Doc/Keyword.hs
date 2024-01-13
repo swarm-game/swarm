@@ -3,6 +3,7 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+-- Description: keywords for doc gen and testing
 --
 -- Collect keywords for documentation generation and testing.
 module Swarm.Doc.Keyword (

@@ -17,8 +17,8 @@ solution: |
   meetAll (\_. \r. give r "boat") ()
 robots:
   - name: base
-    loc: [0,0]
-    dir: [1,0]
+    loc: [0, 0]
+    dir: east
     devices:
       - logger
       - antenna
@@ -27,10 +27,10 @@ robots:
     inventory:
       - [7, boat]
   - name: other0
-    loc: [0,0]
-    dir: [1,0]
+    loc: [0, 0]
+    dir: east
   - name: other
-    dir: [1,0]
+    dir: east
 world:
   palette:
     '.': [grass]
