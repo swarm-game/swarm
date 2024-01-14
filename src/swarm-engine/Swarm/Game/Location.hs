@@ -211,7 +211,7 @@ euclidean p1 p2 = norm (fromIntegral <$> (p2 .-. p1))
 --   distance from a given location.
 --
 -- >>> getLocsInArea (P (V2 0 0)) 1
--- [P (V2 0 0), P (V2 0 1), P (V2 0 (-1)), P (V2 1 0), P (V2 1 1), P (V2 1 (-1))]
+-- [P (V2 0 0),P (V2 0 1),P (V2 0 (-1)),P (V2 1 0),P (V2 (-1) 0)]
 -- >>> map (\i -> length (getLocsInArea origin i)) [0..8]
 -- [1,5,13,25,41,61,85,113,145]
 --
