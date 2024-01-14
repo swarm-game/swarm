@@ -5,9 +5,11 @@
 module Swarm.Util.Lens (
   makeLensesNoSigs,
   makeLensesExcluding,
+  inherit,
 ) where
 
 import Control.Lens (
+  Lens',
   generateSignatures,
   lensField,
   lensRules,
@@ -16,6 +18,7 @@ import Control.Lens (
   (%~),
   (&),
   (.~),
+  (^.),
  )
 import Language.Haskell.TH (DecsQ)
 import Language.Haskell.TH.Syntax (Name)
@@ -40,3 +43,7 @@ makeLensesExcluding exclude =
         & lensField . mapped . mapped %~ \fn n ->
           if n `elem` exclude then [] else fn n
     )
+
+-- | Copy a given field from one record to another.
+inherit :: Lens' s a -> s -> (s -> s)
+inherit field parent child = child & field .~ (parent ^. field)
