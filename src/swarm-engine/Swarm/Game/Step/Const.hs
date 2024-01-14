@@ -93,6 +93,7 @@ import Swarm.Log
 import Swarm.Util hiding (both)
 import Swarm.Util.Content (getContentAt)
 import Swarm.Util.Effect (throwToMaybe)
+import Swarm.Util.Lens (inherit)
 import Witch (From (from), into)
 import Prelude hiding (Applicative (..), lookup)
 
@@ -400,6 +401,7 @@ execConst runChildProg c vs s k = do
       [VText name] -> do
         inv <- use robotInventory
         ins <- use equippedDevices
+        sys <- use systemRobot
         em <- use $ landscape . entityMap
         e <-
           lookupEntityName name em
@@ -441,6 +443,9 @@ execConst runChildProg c vs s k = do
         -- take recipe inputs from inventory and add outputs after recipeTime
         robotInventory .= invTaken
         traverse_ (updateDiscoveredEntities . snd) (recipe ^. recipeOutputs)
+        -- Grant CraftedBitcoin achievement
+        when (name == "bitcoin" && not creative && not sys) $ grantAchievement CraftedBitcoin
+
         finishCookingRecipe recipe VUnit [] (map (uncurry AddEntity) changeInv)
       _ -> badConst
     Has -> case vs of
@@ -1066,7 +1071,9 @@ execConst runChildProg c vs s k = do
               ( ((r ^. robotOrientation) >>= \dir -> guard (dir /= zero) >> return dir)
                   ? north
               )
-              ((r ^. robotDisplay) & invisible .~ False)
+              ( defaultRobotDisplay
+                  & inherit displayAttr (r ^. robotDisplay)
+              )
               (In cmd e s [FExec])
               []
               []

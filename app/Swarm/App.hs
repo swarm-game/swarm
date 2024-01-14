@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
@@ -24,13 +23,7 @@ import Data.IORef (newIORef, writeIORef)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
-#if defined(mingw32_HOST_OS) || defined(__MINGW32__)
-import Graphics.Vty.Platform.Windows.Settings qualified as VS
-import Graphics.Vty.Platform.Windows qualified as VS
-#else
-import Graphics.Vty.Platform.Unix.Settings qualified as VS
-import Graphics.Vty.Platform.Unix qualified as VS
-#endif
+import Graphics.Vty.CrossPlatform qualified as V
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
@@ -116,12 +109,7 @@ appMain opts = do
             handleEvent e
 
       -- Setup virtual terminal
-      let buildVty =
-            case colorMode opts of
-              Nothing -> VS.mkVty V.defaultConfig
-              Just cMode -> do
-                platformSettings <- VS.defaultSettings
-                VS.mkVtyWithSettings V.defaultConfig $ platformSettings {VS.settingColorMode = cMode}
+      let buildVty = V.mkVty V.defaultConfig {V.configPreferredColorMode = colorMode opts}
       vty <- buildVty
 
       V.setMode (V.outputIface vty) V.Mouse True
