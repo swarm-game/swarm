@@ -113,16 +113,16 @@ waveProgram manualInline =
 
 -- | Initializes a robot with program prog at location loc facing north.
 initRobot :: ProcessedTerm -> Location -> TRobot
-initRobot prog loc = mkRobot () Nothing "" mempty (Just $ Cosmic DefaultRootSubworld loc) north defaultRobotDisplay (initMachine prog Context.empty emptyStore) [] [] False False mempty 0
+initRobot prog loc = mkRobot () Nothing "" mempty (Just $ Cosmic DefaultRootSubworld loc) north defaultRobotDisplay (Just prog) [] [] False False mempty 0
 
 -- | Creates a GameState with numRobot copies of robot on a blank map, aligned
 --   in a row starting at (0,0) and spreading east.
-mkGameState :: (Location -> TRobot) -> Int -> IO GameState
-mkGameState robotMaker numRobots = do
+mkGameState :: ProcessedTerm -> (Location -> TRobot) -> Int -> IO GameState
+mkGameState prog robotMaker numRobots = do
   let robots = [robotMaker (Location (fromIntegral x) 0) | x <- [0 .. numRobots - 1]]
   Right initAppState <- runExceptT classicGame0
   execStateT
-    (zoomRobots $ mapM addTRobot robots)
+    (zoomRobots $ mapM (addTRobot $ initMachine prog Context.empty emptyStore) robots)
     ( (initAppState ^. gameState)
         & creativeMode .~ True
         & landscape . multiWorld .~ M.singleton DefaultRootSubworld (newWorld (WF $ const (fromEnum DirtT, ENothing)))
@@ -162,7 +162,7 @@ main = do
   robotNumbers = [10, 20 .. 40]
 
   mkGameStates :: ProcessedTerm -> IO [(Int, GameState)]
-  mkGameStates prog = zip robotNumbers <$> mapM (mkGameState (initRobot prog)) robotNumbers
+  mkGameStates prog = zip robotNumbers <$> mapM (mkGameState prog $ initRobot prog) robotNumbers
 
   toBenchmarks :: [(Int, GameState)] -> [Benchmark]
   toBenchmarks gameStates =

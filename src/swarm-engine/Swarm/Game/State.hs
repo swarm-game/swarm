@@ -677,8 +677,11 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
 
   initialCodeToRun = getCodeToRun <$> toRun
 
+  robotListRaw =
+    zipWith (instantiateRobot Nothing) [baseID ..] robotsByBasePrecedence
+
   robotList =
-    zipWith instantiateRobot [baseID ..] robotsByBasePrecedence
+    robotListRaw
       -- If the  --run flag was used, use it to replace the CESK machine of the
       -- robot whose id is 0, i.e. the first robot listed in the scenario.
       -- Note that this *replaces* any program the base robot otherwise
