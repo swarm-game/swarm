@@ -231,10 +231,10 @@ viewCenterRule = lens getter setter
 --   First, generate a unique ID number for it.  Then, add it to the
 --   main robot map, the active robot set, and to to the index of
 --   robots by location. Return the updated robot.
-addTRobot :: (Has (State Robots) sig m) => TRobot -> m Robot
-addTRobot r = do
+addTRobot :: (Has (State Robots) sig m) => CESK -> TRobot -> m Robot
+addTRobot initialMachine r = do
   rid <- robotNaming . gensym <+= 1
-  let r' = instantiateRobot rid r
+  let r' = instantiateRobot (Just initialMachine) rid r
   addRobot r'
   return r'
 

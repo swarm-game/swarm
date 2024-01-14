@@ -375,7 +375,7 @@ addSeedBot ::
 addSeedBot e (minT, maxT) loc ts =
   void
     . zoomRobots
-    . addTRobot
+    . addTRobot (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty emptyStore)
     $ mkRobot
       ()
       Nothing
@@ -387,7 +387,7 @@ addSeedBot e (minT, maxT) loc ts =
           & displayAttr .~ (e ^. entityDisplay . displayAttr)
           & displayPriority .~ 0
       )
-      (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty emptyStore)
+      Nothing
       []
       [(1, e)]
       True

@@ -21,7 +21,7 @@ module Swarm.Game.Robot (
   TRobot,
 
   -- ** Runtime robot update
-  RobotUpdate (..),
+  C.RobotUpdate (..),
 
   -- * Robot context
   RobotContext,
@@ -97,13 +97,14 @@ import GHC.Generics (Generic)
 import Linear
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
-import Swarm.Game.CESK
+import Swarm.Game.CESK qualified as C
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location (Heading, Location, toDirection, toHeading)
 import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Context qualified as Ctx
+import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax (Const, Syntax)
@@ -129,7 +130,7 @@ data RobotContext = RobotContext
   -- ^ Map definition names to their values. Note that since
   --   definitions are delayed, the values will just consist of
   --   'VRef's pointing into the store.
-  , _defStore :: Store
+  , _defStore :: C.Store
   -- ^ A store containing memory cells allocated to hold
   --   definitions.
   }
@@ -138,7 +139,7 @@ data RobotContext = RobotContext
 makeLenses ''RobotContext
 
 emptyRobotContext :: RobotContext
-emptyRobotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty emptyStore
+emptyRobotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty C.emptyStore
 
 type instance Index RobotContext = Ctx.Var
 type instance IxValue RobotContext = Typed Value
@@ -181,7 +182,7 @@ data ActivityCounts = ActivityCounts
   , _tangibleCommandCount :: Int
   , _commandsHistogram :: Map Const Int
   , _lifetimeStepCount :: Int
-  , _activityWindow :: WindowedCounter TickNumber
+  , _activityWindow :: WindowedCounter C.TickNumber
   }
   deriving (Eq, Show, Generic, Ae.FromJSON, Ae.ToJSON)
 
@@ -253,7 +254,7 @@ commandsHistogram :: Lens' ActivityCounts (Map Const Int)
 lifetimeStepCount :: Lens' ActivityCounts Int
 
 -- | Sliding window over a span of ticks indicating ratio of activity
-activityWindow :: Lens' ActivityCounts (WindowedCounter TickNumber)
+activityWindow :: Lens' ActivityCounts (WindowedCounter C.TickNumber)
 
 -- | With a robot template, we may or may not have a location.  With a
 --   concrete robot we must have a location.
@@ -265,6 +266,10 @@ type family RobotLocation (phase :: RobotPhase) :: Data.Kind.Type where
 type family RobotID (phase :: RobotPhase) :: Data.Kind.Type where
   RobotID 'TemplateRobot = ()
   RobotID 'ConcreteRobot = RID
+
+type family RobotMachine (phase :: RobotPhase) :: Data.Kind.Type
+type instance RobotMachine 'TemplateRobot = Maybe ProcessedTerm
+type instance RobotMachine 'ConcreteRobot = C.CESK
 
 -- | A value of type 'RobotR' is a record representing the state of a
 --   single robot.  The @f@ parameter is for tracking whether or not
@@ -282,7 +287,7 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _robotID :: RobotID phase
   , _robotParentID :: Maybe RID
   , _robotHeavy :: Bool
-  , _machine :: CESK
+  , _machine :: RobotMachine phase
   , _systemRobot :: Bool
   , _selfDestruct :: Bool
   , _activityCounts :: ActivityCounts
@@ -292,8 +297,8 @@ data RobotR (phase :: RobotPhase) = RobotR
   }
   deriving (Generic)
 
-deriving instance (Show (RobotLocation phase), Show (RobotID phase)) => Show (RobotR phase)
-deriving instance (Eq (RobotLocation phase), Eq (RobotID phase)) => Eq (RobotR phase)
+deriving instance (Show (RobotLocation phase), Show (RobotID phase), Show (RobotMachine phase)) => Show (RobotR phase)
+deriving instance (Eq (RobotLocation phase), Eq (RobotID phase), Eq (RobotMachine phase)) => Eq (RobotR phase)
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
@@ -320,7 +325,7 @@ instance ToSample Robot where
         defaultCosmicLocation
         zero
         defaultRobotDisplay
-        (initMachine [tmQ| move |] mempty emptyStore)
+        (C.initMachine [tmQ| move |] mempty C.emptyStore)
         []
         []
         False
@@ -421,11 +426,15 @@ robotID :: Getter Robot RID
 --    if the robot template didn't have a location already, just set
 --    the location to (0,0) by default.  If you want a different location,
 --    set it via 'trobotLocation' before calling 'instantiateRobot'.
-instantiateRobot :: RID -> TRobot -> Robot
-instantiateRobot i r =
+--
+-- If a machine is not supplied (i.e. 'Nothing'), will fallback to any
+-- program specified in the template robot.
+instantiateRobot :: Maybe C.CESK -> RID -> TRobot -> Robot
+instantiateRobot maybeMachine i r =
   r
     { _robotID = i
     , _robotLocation = fromMaybe defaultCosmicLocation $ _robotLocation r
+    , _machine = fromMaybe (mkMachine $ _machine r) maybeMachine
     }
 
 -- | The ID number of the robot's parent, that is, the robot that
@@ -495,7 +504,7 @@ robotCapabilities :: Getter Robot (Set Capability)
 robotCapabilities = to _robotCapabilities
 
 -- | The robot's current CEK machine state.
-machine :: Lens' Robot CESK
+machine :: Lens' Robot C.CESK
 
 -- | Is this robot a "system robot"?  System robots are generated by
 --   the system (as opposed to created by the user) and are not
@@ -523,6 +532,10 @@ walkabilityContext :: Getter Robot WalkabilityContext
 walkabilityContext = to $
   \x -> WalkabilityContext (_robotCapabilities x) (_unwalkableEntities x)
 
+mkMachine :: Maybe ProcessedTerm -> C.CESK
+mkMachine Nothing = C.Out VUnit C.emptyStore []
+mkMachine (Just pt) = C.initMachine pt mempty C.emptyStore
+
 -- | A general function for creating robots.
 mkRobot ::
   -- | ID number of the robot.
@@ -540,7 +553,7 @@ mkRobot ::
   -- | Robot display.
   Display ->
   -- | Initial CESK machine.
-  CESK ->
+  RobotMachine phase ->
   -- | Equipped devices.
   [Entity] ->
   -- | Initial inventory.
@@ -603,16 +616,13 @@ instance FromJSONE EntityMap TRobot where
       <*> liftE (v .:? "loc")
       <*> liftE (fmap getHeading $ v .:? "dir" .!= HeadingSpec zero)
       <*> localE (const defDisplay) (v ..:? "display" ..!= defDisplay)
-      <*> liftE (mkMachine <$> (v .:? "program"))
+      <*> liftE (v .:? "program")
       <*> v ..:? "devices" ..!= []
       <*> v ..:? "inventory" ..!= []
       <*> pure sys
       <*> liftE (v .:? "heavy" .!= False)
       <*> liftE (v .:? "unwalkable" ..!= mempty)
       <*> pure 0
-   where
-    mkMachine Nothing = Out VUnit emptyStore []
-    mkMachine (Just pt) = initMachine pt mempty emptyStore
 
 (.=?) :: (Ae.KeyValue a, Ae.ToJSON v, Eq v) => Ae.Key -> v -> v -> Maybe a
 (.=?) n v defaultVal = if defaultVal /= v then Just $ n Ae..= v else Nothing
@@ -657,22 +667,22 @@ isActive = isNothing . getResult
 -- | "Active" robots include robots that are waiting; 'wantsToStep' is
 --   true if the robot actually wants to take another step right now
 --   (this is a /subset/ of active robots).
-wantsToStep :: TickNumber -> Robot -> Bool
+wantsToStep :: C.TickNumber -> Robot -> Bool
 wantsToStep now robot
   | not (isActive robot) = False
   | otherwise = maybe True (now >=) (waitingUntil robot)
 
 -- | The time until which the robot is waiting, if any.
-waitingUntil :: Robot -> Maybe TickNumber
+waitingUntil :: Robot -> Maybe C.TickNumber
 waitingUntil robot =
   case _machine robot of
-    Waiting time _ -> Just time
+    C.Waiting time _ -> Just time
     _ -> Nothing
 
 -- | Get the result of the robot's computation if it is finished.
-getResult :: Robot -> Maybe (Value, Store)
+getResult :: Robot -> Maybe (Value, C.Store)
 {-# INLINE getResult #-}
-getResult = finalValue . view machine
+getResult = C.finalValue . view machine
 
 hearingDistance :: (Num i) => i
 hearingDistance = 32

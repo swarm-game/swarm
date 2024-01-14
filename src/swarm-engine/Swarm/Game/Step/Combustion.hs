@@ -97,7 +97,7 @@ addCombustionBot inputEntity combustibility ts loc = do
   let combustionProg = combustionProgram combustionDurationRand combustibility
   void
     . zoomRobots
-    . addTRobot
+    . addTRobot (initMachine combustionProg empty emptyStore)
     $ mkRobot
       ()
       Nothing
@@ -109,7 +109,7 @@ addCombustionBot inputEntity combustibility ts loc = do
           & displayAttr .~ AWorld "fire"
           & displayPriority .~ 0
       )
-      (initMachine combustionProg empty emptyStore)
+      Nothing
       []
       botInventory
       True
@@ -212,7 +212,7 @@ addIgnitionBot ::
   m ()
 addIgnitionBot ignitionDelay inputEntity ts loc =
   void $
-    addTRobot $
+    addTRobot (initMachine (ignitionProgram ignitionDelay) empty emptyStore) $
       mkRobot
         ()
         Nothing
@@ -223,7 +223,7 @@ addIgnitionBot ignitionDelay inputEntity ts loc =
         ( defaultEntityDisplay '*'
             & invisible .~ True
         )
-        (initMachine (ignitionProgram ignitionDelay) empty emptyStore)
+        Nothing
         []
         []
         True

@@ -48,7 +48,7 @@ commands = filter Syntax.isCmd Syntax.allConst
 constSyntax :: Const -> Text
 constSyntax = Syntax.syntax . Syntax.constInfo
 
-getBaseRobot :: Has (Throw SystemFailure) sig m => Scenario -> m Robot
-getBaseRobot s = case listToMaybe $ view scenarioRobots s of
-  Just r -> pure $ instantiateRobot 0 r
+instantiateBaseRobot :: Has (Throw SystemFailure) sig m => Scenario -> m Robot
+instantiateBaseRobot s = case listToMaybe $ view scenarioRobots s of
+  Just r -> pure $ instantiateRobot Nothing 0 r
   Nothing -> throwError $ CustomFailure "Scenario contains no robots"
