@@ -30,6 +30,7 @@ module Swarm.Game.Location (
   -- ** Utility functions
   manhattan,
   euclidean,
+  getLocsInArea,
   getElemsInArea,
 
   -- ** Re-exports for convenience
@@ -43,6 +44,7 @@ import Control.Arrow ((&&&))
 import Data.Aeson (FromJSONKey, ToJSONKey)
 import Data.Function (on, (&))
 import Data.Int (Int32)
+import Data.List (nub)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Yaml (FromJSON (parseJSON), ToJSON (toJSON))
@@ -63,7 +65,7 @@ import Swarm.Util qualified as Util
 --   See also the 'Swarm.Game.World.Coords' type defined in "Swarm.Game.World", which
 --   use a (row, column) format instead, which is more convenient for
 --   internal use.  The "Swarm.Game.World" module also defines
---   conversions between t'Location' and 'Swarm.Game.World.Coords'.
+--   conversions between 'Location' and 'Swarm.Game.World.Coords'.
 type Location = Point V2 Int32
 
 -- | A convenient way to pattern-match on t'Location' values.
@@ -204,6 +206,19 @@ manhattan (Location x1 y1) (Location x2 y2) = abs (x1 - x2) + abs (y1 - y2)
 -- | Euclidean distance between world locations.
 euclidean :: Location -> Location -> Double
 euclidean p1 p2 = norm (fromIntegral <$> (p2 .-. p1))
+
+-- | Get all the locations that are within a certain manhattan
+--   distance from a given location.
+--
+-- >>> getLocsInArea (P (V2 0 0)) 1
+-- [P (V2 0 0),P (V2 0 1),P (V2 0 (-1)),P (V2 1 0),P (V2 (-1) 0)]
+-- >>> map (\i -> length (getLocsInArea origin i)) [0..8]
+-- [1,5,13,25,41,61,85,113,145]
+--
+--   See also @Swarm.Game.Step.Const.genDiamondSides@.
+getLocsInArea :: Location -> Int32 -> [Location]
+getLocsInArea loc r =
+  [loc .+^ V2 dx dy | x <- [0 .. r], y <- [0 .. r - x], dx <- nub [x, -x], dy <- nub [y, -y]]
 
 -- | Get elements that are within a certain manhattan distance from location.
 --

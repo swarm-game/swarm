@@ -78,6 +78,7 @@ import Swarm.Game.Step.Util.Command
 import Swarm.Game.Step.Util.Inspect
 import Swarm.Game.Universe
 import Swarm.Game.Value
+import Swarm.Game.World (locToCoords)
 import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Key (parseKeyComboFull)
@@ -90,6 +91,7 @@ import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Value
 import Swarm.Log
 import Swarm.Util hiding (both)
+import Swarm.Util.Content (getContentAt)
 import Swarm.Util.Effect (throwToMaybe)
 import Swarm.Util.Lens (inherit)
 import Witch (From (from), into)
@@ -253,6 +255,22 @@ execConst runChildProg c vs s k = do
             PathBlocked -> Destroy
             PathLiquid -> Destroy
           updateRobotLocation oldLoc nextLoc
+
+        -- Privileged robots can teleport without causing any
+        -- improbable effects.  Unprivileged robots must be using an
+        -- infinite improbability drive, which can cause a random entity
+        -- to spawn near the target location.
+        omni <- isPrivilegedBot
+        unless omni $ do
+          w <- use (landscape . multiWorld)
+          let area = map (<$ nextLoc) $ getLocsInArea (nextLoc ^. planar) 5
+              emptyLocs = filter (\cl -> isNothing . snd $ getContentAt w (locToCoords <$> cl)) area
+          randomLoc <- weightedChoice (const 1) emptyLocs
+          es <- uses (landscape . entityMap) allEntities
+          randomEntity <- weightedChoice (const 1) es
+          case (randomLoc, randomEntity) of
+            (Just loc, Just e) -> updateEntityAt loc (const (Just e))
+            _ -> return ()
 
         return $ mkReturn ()
       _ -> badConst
