@@ -1061,7 +1061,7 @@ execConst runChildProg c vs s k = do
         -- Construct the new robot and add it to the world.
         parentCtx <- use robotContext
         newRobot <-
-          zoomRobots . addTRobot (In cmd e s [FExec]) . (trobotContext .~ parentCtx) $
+          zoomRobots . fmap (robotContext .~ parentCtx) . addTRobot (In cmd e s [FExec]) $
             mkRobot
               ()
               (Just pid)
