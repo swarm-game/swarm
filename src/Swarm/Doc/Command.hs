@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -54,7 +52,7 @@ mkEntry c =
   rawArgs = getArgs $ inferConst c
 
   inputArgs = NE.init rawArgs
-  outputType = NE.last rawArgs
+  -- outputType = NE.last rawArgs -- FIXME
 
   operatesOnActor = elem TyActor
 
