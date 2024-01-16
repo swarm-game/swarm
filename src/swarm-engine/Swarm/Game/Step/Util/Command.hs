@@ -20,7 +20,6 @@ import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (forM_, unless)
-import Data.Functor (void)
 import Data.Map qualified as M
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
@@ -373,8 +372,7 @@ addSeedBot ::
   TimeSpec ->
   m ()
 addSeedBot e (minT, maxT) loc ts =
-  void
-    . zoomRobots
+  zoomRobots
     . addTRobot (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty emptyStore)
     $ mkRobot
       ()
