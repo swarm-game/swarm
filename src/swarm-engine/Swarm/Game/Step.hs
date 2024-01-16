@@ -358,16 +358,17 @@ evalPT t = evaluateCESK (initMachine t empty emptyStore)
 --
 -- Use ID (-1) so it won't conflict with any robots currently in the robot map.
 hypotheticalRobot :: CESK -> TimeSpec -> Robot
-hypotheticalRobot c =
+hypotheticalRobot m =
   mkRobot
     (-1)
+    emptyRobotContext
     Nothing
     "hypothesis"
     mempty
     defaultCosmicLocation
     zero
     defaultRobotDisplay
-    c
+    m
     []
     []
     True

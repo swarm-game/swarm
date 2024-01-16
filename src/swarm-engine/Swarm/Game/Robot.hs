@@ -220,6 +220,10 @@ type family RobotMachine (phase :: RobotPhase) :: Data.Kind.Type
 type instance RobotMachine 'TemplateRobot = Maybe ProcessedTerm
 type instance RobotMachine 'ConcreteRobot = C.CESK
 
+type family RobotContextMember (phase :: RobotPhase) :: Data.Kind.Type
+type instance RobotContextMember 'TemplateRobot = ()
+type instance RobotContextMember 'ConcreteRobot = RobotContext
+
 -- | A value of type 'RobotR' is a record representing the state of a
 --   single robot.  The @f@ parameter is for tracking whether or not
 --   the robot has been assigned a unique ID.
@@ -232,7 +236,7 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _robotLog :: Seq LogEntry
   , _robotLogUpdated :: Bool
   , _robotLocation :: RobotLocation phase
-  , _robotContext :: RobotContext
+  , _robotContext :: RobotContextMember phase
   , _robotID :: RobotID phase
   , _robotParentID :: Maybe RID
   , _robotHeavy :: Bool
@@ -246,8 +250,8 @@ data RobotR (phase :: RobotPhase) = RobotR
   }
   deriving (Generic)
 
-deriving instance (Show (RobotLocation phase), Show (RobotID phase), Show (RobotMachine phase)) => Show (RobotR phase)
-deriving instance (Eq (RobotLocation phase), Eq (RobotID phase), Eq (RobotMachine phase)) => Eq (RobotR phase)
+deriving instance (Show (RobotLocation phase), Show (RobotID phase), Show (RobotMachine phase), Show (RobotContextMember phase)) => Show (RobotR phase)
+deriving instance (Eq (RobotLocation phase), Eq (RobotID phase), Eq (RobotMachine phase), Eq (RobotContextMember phase)) => Eq (RobotR phase)
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
@@ -268,6 +272,7 @@ instance ToSample Robot where
     sampleBase =
       mkRobot
         0
+        emptyRobotContext
         Nothing
         "base"
         "The starting robot."
@@ -380,6 +385,7 @@ instantiateRobot maybeMachine i r =
     { _robotID = i
     , _robotLocation = fromMaybe defaultCosmicLocation $ _robotLocation r
     , _machine = fromMaybe (mkMachine $ _machine r) maybeMachine
+    , _robotContext = emptyRobotContext
     }
 
 -- | The ID number of the robot's parent, that is, the robot that
@@ -485,6 +491,8 @@ mkMachine (Just pt) = C.initMachine pt mempty C.emptyStore
 mkRobot ::
   -- | ID number of the robot.
   RobotID phase ->
+  -- | Initial context.
+  RobotContextMember phase ->
   -- | ID number of the robot's parent, if it has one.
   Maybe Int ->
   -- | Name of the robot.
@@ -512,7 +520,7 @@ mkRobot ::
   -- | Creation date
   TimeSpec ->
   RobotR phase
-mkRobot rid pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
+mkRobot rid ctx pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
   RobotR
     { _robotEntity =
         mkEntity disp name descr [] []
@@ -523,7 +531,7 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
     , _robotLog = Seq.empty
     , _robotLogUpdated = False
     , _robotLocation = loc
-    , _robotContext = emptyRobotContext
+    , _robotContext = ctx
     , _robotID = rid
     , _robotParentID = pid
     , _robotHeavy = heavy
@@ -555,7 +563,7 @@ instance FromJSONE EntityMap TRobot where
     sys <- liftE $ v .:? "system" .!= False
     let defDisplay = defaultRobotDisplay & invisible .~ sys
 
-    mkRobot () Nothing
+    mkRobot () () Nothing
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= mempty)
       <*> liftE (v .:? "loc")
