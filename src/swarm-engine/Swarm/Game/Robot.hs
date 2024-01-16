@@ -100,69 +100,19 @@ import Swarm.Game.CESK qualified as C
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location (Heading, Location, toDirection, toHeading)
+import Swarm.Game.Robot.Context
 import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
-import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax (Const, Syntax)
 import Swarm.Language.Text.Markdown (Document)
-import Swarm.Language.Typed (Typed (..))
-import Swarm.Language.Types (TCtx)
 import Swarm.Language.Value as V
 import Swarm.Log
 import Swarm.Util.Lens (makeLensesExcluding, makeLensesNoSigs)
 import Swarm.Util.WindowedCounter
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
-
--- | A record that stores the information
---   for all definitions stored in a 'Robot'
-data RobotContext = RobotContext
-  { _defTypes :: TCtx
-  -- ^ Map definition names to their types.
-  , _defReqs :: ReqCtx
-  -- ^ Map definition names to the capabilities
-  --   required to evaluate/execute them.
-  , _defVals :: Env
-  -- ^ Map definition names to their values. Note that since
-  --   definitions are delayed, the values will just consist of
-  --   'VRef's pointing into the store.
-  , _defStore :: C.Store
-  -- ^ A store containing memory cells allocated to hold
-  --   definitions.
-  }
-  deriving (Eq, Show, Generic, Ae.FromJSON, Ae.ToJSON)
-
-makeLenses ''RobotContext
-
-emptyRobotContext :: RobotContext
-emptyRobotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty C.emptyStore
-
-type instance Index RobotContext = Ctx.Var
-type instance IxValue RobotContext = Typed Value
-
-instance Ixed RobotContext
-instance At RobotContext where
-  at name = lens getter setter
-   where
-    getter ctx =
-      do
-        typ <- Ctx.lookup name (ctx ^. defTypes)
-        val <- Ctx.lookup name (ctx ^. defVals)
-        req <- Ctx.lookup name (ctx ^. defReqs)
-        return $ Typed val typ req
-    setter ctx Nothing =
-      ctx
-        & defTypes %~ Ctx.delete name
-        & defVals %~ Ctx.delete name
-        & defReqs %~ Ctx.delete name
-    setter ctx (Just (Typed val typ req)) =
-      ctx
-        & defTypes %~ Ctx.addBinding name typ
-        & defVals %~ Ctx.addBinding name val
-        & defReqs %~ Ctx.addBinding name req
 
 -- | A unique identifier for a robot.
 type RID = Int
