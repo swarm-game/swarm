@@ -166,6 +166,7 @@ library swarm-engine
                       Swarm.Game.Achievement.Description
                       Swarm.Game.Achievement.Persistence
                       Swarm.Game.CESK
+                      Swarm.Game.CESK.Store
                       Swarm.Game.Display
                       Swarm.Game.Entity
                       Swarm.Game.Entity.Cosmetic
@@ -431,6 +432,7 @@ library
                       , Swarm.Game.Achievement.Description
                       , Swarm.Game.Achievement.Persistence
                       , Swarm.Game.CESK
+                      , Swarm.Game.CESK.Store
                       , Swarm.Game.Display
                       , Swarm.Game.Entity
                       , Swarm.Game.Entity.Cosmetic
