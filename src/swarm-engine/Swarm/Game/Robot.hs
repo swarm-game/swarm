@@ -100,69 +100,19 @@ import Swarm.Game.CESK qualified as C
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location (Heading, Location, toDirection, toHeading)
+import Swarm.Game.Robot.Context
 import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
-import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax (Const, Syntax)
 import Swarm.Language.Text.Markdown (Document)
-import Swarm.Language.Typed (Typed (..))
-import Swarm.Language.Types (TCtx)
 import Swarm.Language.Value as V
 import Swarm.Log
 import Swarm.Util.Lens (makeLensesExcluding, makeLensesNoSigs)
 import Swarm.Util.WindowedCounter
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
-
--- | A record that stores the information
---   for all definitions stored in a 'Robot'
-data RobotContext = RobotContext
-  { _defTypes :: TCtx
-  -- ^ Map definition names to their types.
-  , _defReqs :: ReqCtx
-  -- ^ Map definition names to the capabilities
-  --   required to evaluate/execute them.
-  , _defVals :: Env
-  -- ^ Map definition names to their values. Note that since
-  --   definitions are delayed, the values will just consist of
-  --   'VRef's pointing into the store.
-  , _defStore :: C.Store
-  -- ^ A store containing memory cells allocated to hold
-  --   definitions.
-  }
-  deriving (Eq, Show, Generic, Ae.FromJSON, Ae.ToJSON)
-
-makeLenses ''RobotContext
-
-emptyRobotContext :: RobotContext
-emptyRobotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty C.emptyStore
-
-type instance Index RobotContext = Ctx.Var
-type instance IxValue RobotContext = Typed Value
-
-instance Ixed RobotContext
-instance At RobotContext where
-  at name = lens getter setter
-   where
-    getter ctx =
-      do
-        typ <- Ctx.lookup name (ctx ^. defTypes)
-        val <- Ctx.lookup name (ctx ^. defVals)
-        req <- Ctx.lookup name (ctx ^. defReqs)
-        return $ Typed val typ req
-    setter ctx Nothing =
-      ctx
-        & defTypes %~ Ctx.delete name
-        & defVals %~ Ctx.delete name
-        & defReqs %~ Ctx.delete name
-    setter ctx (Just (Typed val typ req)) =
-      ctx
-        & defTypes %~ Ctx.addBinding name typ
-        & defVals %~ Ctx.addBinding name val
-        & defReqs %~ Ctx.addBinding name req
 
 -- | A unique identifier for a robot.
 type RID = Int
@@ -270,6 +220,10 @@ type family RobotMachine (phase :: RobotPhase) :: Data.Kind.Type
 type instance RobotMachine 'TemplateRobot = Maybe ProcessedTerm
 type instance RobotMachine 'ConcreteRobot = C.CESK
 
+type family RobotContextMember (phase :: RobotPhase) :: Data.Kind.Type
+type instance RobotContextMember 'TemplateRobot = ()
+type instance RobotContextMember 'ConcreteRobot = RobotContext
+
 -- | A value of type 'RobotR' is a record representing the state of a
 --   single robot.  The @f@ parameter is for tracking whether or not
 --   the robot has been assigned a unique ID.
@@ -282,7 +236,7 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _robotLog :: Seq LogEntry
   , _robotLogUpdated :: Bool
   , _robotLocation :: RobotLocation phase
-  , _robotContext :: RobotContext
+  , _robotContext :: RobotContextMember phase
   , _robotID :: RobotID phase
   , _robotParentID :: Maybe RID
   , _robotHeavy :: Bool
@@ -296,8 +250,8 @@ data RobotR (phase :: RobotPhase) = RobotR
   }
   deriving (Generic)
 
-deriving instance (Show (RobotLocation phase), Show (RobotID phase), Show (RobotMachine phase)) => Show (RobotR phase)
-deriving instance (Eq (RobotLocation phase), Eq (RobotID phase), Eq (RobotMachine phase)) => Eq (RobotR phase)
+deriving instance (Show (RobotLocation phase), Show (RobotID phase), Show (RobotMachine phase), Show (RobotContextMember phase)) => Show (RobotR phase)
+deriving instance (Eq (RobotLocation phase), Eq (RobotID phase), Eq (RobotMachine phase), Eq (RobotContextMember phase)) => Eq (RobotR phase)
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
@@ -318,6 +272,7 @@ instance ToSample Robot where
     sampleBase =
       mkRobot
         0
+        emptyRobotContext
         Nothing
         "base"
         "The starting robot."
@@ -430,6 +385,7 @@ instantiateRobot maybeMachine i r =
     { _robotID = i
     , _robotLocation = fromMaybe defaultCosmicLocation $ _robotLocation r
     , _machine = fromMaybe (mkMachine $ _machine r) maybeMachine
+    , _robotContext = emptyRobotContext
     }
 
 -- | The ID number of the robot's parent, that is, the robot that
@@ -535,6 +491,8 @@ mkMachine (Just pt) = C.initMachine pt mempty C.emptyStore
 mkRobot ::
   -- | ID number of the robot.
   RobotID phase ->
+  -- | Initial context.
+  RobotContextMember phase ->
   -- | ID number of the robot's parent, if it has one.
   Maybe Int ->
   -- | Name of the robot.
@@ -562,7 +520,7 @@ mkRobot ::
   -- | Creation date
   TimeSpec ->
   RobotR phase
-mkRobot rid pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
+mkRobot rid ctx pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
   RobotR
     { _robotEntity =
         mkEntity disp name descr [] []
@@ -573,7 +531,7 @@ mkRobot rid pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
     , _robotLog = Seq.empty
     , _robotLogUpdated = False
     , _robotLocation = loc
-    , _robotContext = emptyRobotContext
+    , _robotContext = ctx
     , _robotID = rid
     , _robotParentID = pid
     , _robotHeavy = heavy
@@ -605,7 +563,7 @@ instance FromJSONE EntityMap TRobot where
     sys <- liftE $ v .:? "system" .!= False
     let defDisplay = defaultRobotDisplay & invisible .~ sys
 
-    mkRobot () Nothing
+    mkRobot () () Nothing
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= mempty)
       <*> liftE (v .:? "loc")

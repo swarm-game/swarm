@@ -175,6 +175,7 @@ library swarm-engine
                       Swarm.Game.Recipe
                       Swarm.Game.ResourceLoading
                       Swarm.Game.Robot
+                      Swarm.Game.Robot.Context
                       Swarm.Game.Scenario
                       Swarm.Game.Universe
                       Swarm.Game.Scenario.Objective
@@ -440,6 +441,7 @@ library
                       , Swarm.Game.Recipe
                       , Swarm.Game.ResourceLoading
                       , Swarm.Game.Robot
+                      , Swarm.Game.Robot.Context
                       , Swarm.Game.Scenario
                       , Swarm.Game.Universe
                       , Swarm.Game.Scenario.Objective
