@@ -7,6 +7,7 @@
 module Swarm.Game.Scenario.Objective.Graph where
 
 import Control.Arrow ((&&&))
+import Control.Lens ((^..))
 import Data.Aeson
 import Data.BoolExpr (Signed (Positive))
 import Data.BoolExpr qualified as BE
@@ -149,4 +150,4 @@ makeGraphInfo oc =
  where
   edges = makeGraphEdges objs
   connectedComponents = stronglyConnComp edges
-  objs = listAllObjectives $ completionBuckets oc
+  objs = oc ^.. allObjectives

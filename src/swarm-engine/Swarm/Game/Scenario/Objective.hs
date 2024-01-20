@@ -5,7 +5,33 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 -- Description: Goals of scenario
-module Swarm.Game.Scenario.Objective where
+module Swarm.Game.Scenario.Objective
+  ( -- * Scenario objectives
+    PrerequisiteConfig(..)
+  , Objective
+  , objectiveGoal
+  , objectiveTeaser
+  , objectiveCondition
+  , objectiveId
+  , objectiveOptional
+  , objectivePrerequisite
+  , objectiveHidden
+  , objectiveAchievement
+  , Announcement(..)
+    -- * Objective completion tracking
+
+  , ObjectiveCompletion
+  , completedIDs
+  , incompleteObjectives
+  , completedObjectives
+  , unwinnableObjectives
+  , allObjectives
+  , addCompleted
+  , addUnwinnable
+  , addIncomplete
+  , extractIncomplete
+  )
+  where
 
 import Control.Applicative ((<|>))
 import Control.Lens hiding (from, (<.>))
@@ -20,7 +46,7 @@ import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown qualified as Markdown
-import Swarm.Util.Lens (makeLensesNoSigs)
+import Swarm.Util.Lens (makeLensesNoSigs, makeLensesExcluding)
 
 ------------------------------------------------------------
 -- Scenario objectives
@@ -132,20 +158,35 @@ instance FromJSON Objective where
       <*> (v .:? "hidden" .!= False)
       <*> (v .:? "achievement")
 
-data CompletionBuckets = CompletionBuckets
-  { incomplete :: [Objective]
-  , completed :: [Objective]
-  , unwinnable :: [Objective]
-  }
-  deriving (Show, Generic, FromJSON, ToJSON)
-
 -- | TODO: #1044 Could also add an "ObjectiveFailed" constructor...
 newtype Announcement
   = ObjectiveCompleted Objective
   deriving (Show, Generic, ToJSON)
 
+------------------------------------------------------------
+-- Completion tracking
+------------------------------------------------------------
+
+data CompletionBuckets = CompletionBuckets
+  { _incomplete :: [Objective]
+  , _completed :: [Objective]
+  , _unwinnable :: [Objective]
+  }
+  deriving (Show, Generic, FromJSON, ToJSON)
+
+makeLensesNoSigs ''CompletionBuckets
+
+-- | XXX
+incomplete :: Lens' CompletionBuckets [Objective]
+
+-- | XXX
+completed :: Lens' CompletionBuckets [Objective]
+
+-- | XXX
+unwinnable :: Lens' CompletionBuckets [Objective]
+
 data ObjectiveCompletion = ObjectiveCompletion
-  { completionBuckets :: CompletionBuckets
+  { _completionBuckets :: CompletionBuckets
   -- ^ This is the authoritative "completion status"
   -- for all objectives.
   -- Note that there is a separate Set to store the
@@ -155,49 +196,49 @@ data ObjectiveCompletion = ObjectiveCompletion
   -- labels, but other objectives are not.
   -- Therefore only prerequisites exist in the completion
   -- map keyed by label.
-  , completedIDs :: Set.Set ObjectiveLabel
+  , _completedIDs :: Set.Set ObjectiveLabel
   }
   deriving (Show, Generic, FromJSON, ToJSON)
 
+makeLensesFor [ ("_completedIDs", "internalCompletedIDs") ] ''ObjectiveCompletion
+makeLensesExcluding ['_completedIDs] ''ObjectiveCompletion
+
+-- | XXX
+completionBuckets :: Lens' ObjectiveCompletion CompletionBuckets
+
+-- | XXX  don't export
+completedIDs :: Getter ObjectiveCompletion (Set.Set ObjectiveLabel)
+completedIDs = to _completedIDs
+
+incompleteObjectives :: Fold ObjectiveCompletion Objective
+incompleteObjectives = completionBuckets . folding _incomplete
+
+completedObjectives :: Fold ObjectiveCompletion Objective
+completedObjectives = completionBuckets . folding _completed
+
+unwinnableObjectives :: Fold ObjectiveCompletion Objective
+unwinnableObjectives = completionBuckets . folding _unwinnable
+
 -- | Concatenates all incomplete and completed objectives.
-listAllObjectives :: CompletionBuckets -> [Objective]
-listAllObjectives (CompletionBuckets x y z) = x <> y <> z
+allObjectives :: Fold ObjectiveCompletion Objective
+allObjectives = incompleteObjectives *> completedObjectives *> unwinnableObjectives
+  -- https://stackoverflow.com/questions/69329888/composing-two-folds
 
 addCompleted :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
-addCompleted obj (ObjectiveCompletion buckets cmplIds) =
-  ObjectiveCompletion newBuckets newCmplById
- where
-  newBuckets =
-    buckets
-      { completed = obj : completed buckets
-      }
-  newCmplById = case _objectiveId obj of
-    Nothing -> cmplIds
-    Just lbl -> Set.insert lbl cmplIds
+addCompleted obj =
+  (completionBuckets . completed %~ (obj :))
+  .
+  (internalCompletedIDs %~ maybe id Set.insert (obj ^. objectiveId))
 
+-- XXX get rid of this?
+-- | XXX
 addUnwinnable :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
-addUnwinnable obj (ObjectiveCompletion buckets cmplIds) =
-  ObjectiveCompletion newBuckets cmplIds
- where
-  newBuckets =
-    buckets
-      { unwinnable = obj : unwinnable buckets
-      }
+addUnwinnable obj = completionBuckets . unwinnable %~ (obj :)
 
-setIncomplete ::
-  ([Objective] -> [Objective]) ->
-  ObjectiveCompletion ->
-  ObjectiveCompletion
-setIncomplete f (ObjectiveCompletion buckets cmplIds) =
-  ObjectiveCompletion newBuckets cmplIds
- where
-  newBuckets =
-    buckets
-      { incomplete = f $ incomplete buckets
-      }
-
+-- XXX get rid of this?
+-- | XXX 
 addIncomplete :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
-addIncomplete obj = setIncomplete (obj :)
+addIncomplete obj = completionBuckets . incomplete %~ (obj :)
 
 -- | Returns the "ObjectiveCompletion" with the "incomplete" goals
 -- extracted to a separate tuple member.
@@ -206,5 +247,5 @@ extractIncomplete :: ObjectiveCompletion -> (ObjectiveCompletion, [Objective])
 extractIncomplete oc =
   (withoutIncomplete, incompleteGoals)
  where
-  incompleteGoals = incomplete $ completionBuckets oc
-  withoutIncomplete = setIncomplete (const []) oc
+  incompleteGoals = oc ^. completionBuckets . incomplete
+  withoutIncomplete = oc & completionBuckets . incomplete .~ []
