@@ -77,20 +77,18 @@ module Swarm.Game.CESK (
 
   -- ** Extracting information
   finalValue,
-  TickNumber (..),
-  addTicks,
 ) where
 
 import Control.Lens ((^.))
 import Control.Lens.Combinators (pattern Empty)
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Int (Int64)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..), encloseSep, hsep, (<+>))
 import Swarm.Game.Entity (Count, Entity)
 import Swarm.Game.Exception
+import Swarm.Game.Tick
 import Swarm.Game.World (WorldUpdate (..))
 import Swarm.Language.Context
 import Swarm.Language.Module
@@ -100,22 +98,6 @@ import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.Language.Value as V
-import Swarm.Util.WindowedCounter (Offsettable (..))
-
--- | A newtype representing a count of ticks (typically since the
---   start of a game).
-newtype TickNumber = TickNumber {getTickNumber :: Int64}
-  deriving (Eq, Ord, Show, Read, Generic, FromJSON, ToJSON)
-
--- | Add an offset to a 'TickNumber'.
-addTicks :: Int -> TickNumber -> TickNumber
-addTicks i (TickNumber n) = TickNumber $ n + fromIntegral i
-
-instance Offsettable TickNumber where
-  offsetBy = addTicks
-
-instance Pretty TickNumber where
-  pretty (TickNumber i) = pretty i
 
 ------------------------------------------------------------
 -- Frames and continuations

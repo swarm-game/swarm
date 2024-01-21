@@ -17,6 +17,7 @@ import Swarm.Effect
 import Swarm.Game.CESK
 import Swarm.Game.Exception
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Concrete (isActive)
 import Swarm.Game.State
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate

@@ -10,34 +10,47 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A data type to represent robot context.
-module Swarm.Game.Robot.Concrete where
+module Swarm.Game.Robot.Concrete (
+  -- * Lenses
+  robotContext,
+  machine,
+
+  -- * Query
+  waitingUntil,
+  getResult,
+  isActive,
+  wantsToStep,
+
+  -- * Utilities
+  instantiateRobot,
+) where
 
 import Control.Lens hiding (Const, contains)
 import Data.Aeson qualified as Ae (Key, KeyValue, ToJSON (..), object, (.=))
-import Data.Maybe (catMaybes, fromMaybe)
-import Data.Set (Set)
-import Data.Text (Text)
+import Data.Maybe (catMaybes, fromMaybe, isNothing)
 import Linear
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.CESK qualified as C
-import Swarm.Game.Display (Display, defaultRobotDisplay, invisible)
+import Swarm.Game.Display (defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
-import Swarm.Game.Location (Heading, Location)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Context
+import Swarm.Game.Tick
 import Swarm.Game.Universe
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Syntax (Syntax)
-import Swarm.Language.Text.Markdown (Document)
 import Swarm.Language.Value as V
-import System.Clock (TimeSpec)
 
 type instance RobotContextMember 'ConcreteRobot = RobotContext
 
+type instance RobotMachine 'ConcreteRobot = C.CESK
+
 robotContext :: Lens' Robot RobotContext
 robotContext = lens _robotContext (\r x -> r {_robotContext = x})
+
+machine :: Lens' Robot C.CESK
+machine = lens _machine (\r x -> r {_machine = x})
 
 instance ToSample Robot where
   toSamples _ = SD.singleSample sampleBase
@@ -116,3 +129,28 @@ instance Ae.ToJSON Robot where
         ]
    where
     sys = r ^. systemRobot
+
+-- | The time until which the robot is waiting, if any.
+waitingUntil :: Robot -> Maybe TickNumber
+waitingUntil robot =
+  case _machine robot of
+    C.Waiting time _ -> Just time
+    _ -> Nothing
+
+-- | Get the result of the robot's computation if it is finished.
+getResult :: Robot -> Maybe (Value, C.Store)
+{-# INLINE getResult #-}
+getResult = C.finalValue . view machine
+
+-- | Is the robot actively in the middle of a computation?
+isActive :: Robot -> Bool
+{-# INLINE isActive #-}
+isActive = isNothing . getResult
+
+-- | "Active" robots include robots that are waiting; 'wantsToStep' is
+--   true if the robot actually wants to take another step right now
+--   (this is a /subset/ of active robots).
+wantsToStep :: TickNumber -> Robot -> Bool
+wantsToStep now robot
+  | not (isActive robot) = False
+  | otherwise = maybe True (now >=) (waitingUntil robot)

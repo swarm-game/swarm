@@ -102,7 +102,6 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
-import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Recipe (
@@ -118,6 +117,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (emptyFoundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (RecognizerAutomatons (..))
 import Swarm.Game.State.Config
+import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.Universe as U
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Gen (Seed)

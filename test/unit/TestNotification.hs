@@ -9,11 +9,11 @@ module TestNotification where
 import Control.Lens (Getter, Ixed (ix), view, (&), (.~), (^.), (^?!))
 import Data.Text (Text)
 import Data.Text qualified as T
-import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Robot
 import Swarm.Game.State
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
+import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Log
 import Test.Tasty
 import Test.Tasty.HUnit
