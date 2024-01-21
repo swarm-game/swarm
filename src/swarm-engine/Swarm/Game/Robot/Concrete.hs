@@ -9,7 +9,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- A data type to represent robot context.
+-- Support for instantiated robots.
 module Swarm.Game.Robot.Concrete (
   -- * Lenses
   robotContext,
