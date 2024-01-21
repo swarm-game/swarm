@@ -174,7 +174,6 @@ library swarm-scenario
                       Swarm.Game.Recipe
                       Swarm.Game.ResourceLoading
                       Swarm.Game.Robot
-                      Swarm.Game.Robot.Context
                       Swarm.Game.Scenario
                       Swarm.Game.Universe
                       Swarm.Game.Scenario.Objective
@@ -273,6 +272,8 @@ library swarm-engine
     visibility:       public
     exposed-modules:  Swarm.Effect
                       Swarm.Effect.Time
+                      Swarm.Game.Robot.Concrete
+                      Swarm.Game.Robot.Context
                       Swarm.Game.Scenario.Topography.Center
                       Swarm.Game.Scenario.Topography.Navigation.Util
                       Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking
@@ -476,6 +477,7 @@ library
                       , Swarm.Game.Recipe
                       , Swarm.Game.ResourceLoading
                       , Swarm.Game.Robot
+                      , Swarm.Game.Robot.Concrete
                       , Swarm.Game.Robot.Context
                       , Swarm.Game.Scenario
                       , Swarm.Game.Universe

@@ -78,6 +78,8 @@ import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Concrete
+import Swarm.Game.Robot.Context
 import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (originalStructureDefinitions)
 import Swarm.Game.ScenarioInfo

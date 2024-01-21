@@ -142,6 +142,8 @@ import Swarm.Game.Failure
 import Swarm.Game.Recipe (Recipe, loadRecipes)
 import Swarm.Game.ResourceLoading (NameGenerator, initNameGenerator, readAppData)
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Concrete
+import Swarm.Game.Robot.Context
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios, _SISingle)
 import Swarm.Game.State

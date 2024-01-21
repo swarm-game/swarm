@@ -56,6 +56,8 @@ import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Concrete
+import Swarm.Game.Robot.Context
 import Swarm.Game.Scenario.Topography.Area (getAreaDimensions)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.Navigation.Util
