@@ -78,6 +78,7 @@ import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
 import Swarm.Game.Step.Util.Inspect
+import Swarm.Game.Tick
 import Swarm.Game.Universe
 import Swarm.Game.Value
 import Swarm.Game.World (locToCoords)

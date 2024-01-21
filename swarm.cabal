@@ -163,12 +163,10 @@ library swarm-scenario
                       Swarm.Game.Achievement.Definitions
                       Swarm.Game.Achievement.Description
                       Swarm.Game.Achievement.Persistence
-                      Swarm.Game.CESK
                       Swarm.Game.Display
                       Swarm.Game.Entity
                       Swarm.Game.Entity.Cosmetic
                       Swarm.Game.Entity.Cosmetic.Assignment
-                      Swarm.Game.Exception
                       Swarm.Game.Failure
                       Swarm.Game.Location
                       Swarm.Game.Recipe
@@ -204,7 +202,8 @@ library swarm-scenario
                       Swarm.Game.Scenario.Topography.WorldDescription
                       Swarm.Game.Scenario.Topography.WorldPalette
                       Swarm.Game.ScenarioInfo
-                      Swarm.Game.Terrain                      
+                      Swarm.Game.Terrain
+                      Swarm.Game.Tick
                       Swarm.Game.World
                       Swarm.Game.World.Abstract
                       Swarm.Game.World.Compile
@@ -272,6 +271,8 @@ library swarm-engine
     visibility:       public
     exposed-modules:  Swarm.Effect
                       Swarm.Effect.Time
+                      Swarm.Game.CESK
+                      Swarm.Game.Exception
                       Swarm.Game.Robot.Concrete
                       Swarm.Game.Robot.Context
                       Swarm.Game.Scenario.Topography.Center
@@ -530,6 +531,7 @@ library
                       , Swarm.Game.Step.Util.Command
                       , Swarm.Game.Step.Util.Inspect
                       , Swarm.Game.Terrain
+                      , Swarm.Game.Tick
                       , Swarm.Game.Value
                       , Swarm.Game.World
                       , Swarm.Game.World.Abstract

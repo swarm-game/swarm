@@ -60,6 +60,7 @@ import Swarm.Game.Step.Const
 import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
+import Swarm.Game.Tick
 import Swarm.Game.Universe
 import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)

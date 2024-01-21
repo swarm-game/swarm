@@ -67,13 +67,14 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as S
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
-import Swarm.Game.CESK (CESK (Waiting), TickNumber (..), addTicks)
+import Swarm.Game.CESK (CESK (Waiting))
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (NameGenerator)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Robot.Context
 import Swarm.Game.State.Config
+import Swarm.Game.Tick
 import Swarm.Game.Universe as U
 import Swarm.Util (binTuples, surfaceEmpty, (<+=), (<<.=))
 import Swarm.Util.Lens (makeLensesExcluding)

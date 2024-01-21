@@ -101,7 +101,7 @@ import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import Linear (V2 (..))
-import Swarm.Game.CESK (addTicks, emptyStore, finalValue, initMachine)
+import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
 import Swarm.Game.Failure (SystemFailure (..))
 import Swarm.Game.Location
@@ -118,6 +118,7 @@ import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
+import Swarm.Game.Tick (addTicks)
 
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.ScenarioInfo
