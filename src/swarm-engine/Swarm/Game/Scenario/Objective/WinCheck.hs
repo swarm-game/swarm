@@ -17,6 +17,7 @@ import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Scenario.Objective
+import Swarm.Game.Scenario.Objective.Graph (getDistinctConstants)
 import Swarm.Game.Scenario.Objective.Logic as L
 
 -- | We have "won" if all of the "unwinnable" or remaining "incomplete" objectives are "optional".
@@ -65,9 +66,6 @@ getActiveObjectives :: ObjectiveCompletion -> [Objective]
 getActiveObjectives =
   fst . partitionActiveObjectives
 
-deriving instance Generic (BE.Signed ObjectiveLabel)
-deriving instance ToJSON (BE.Signed ObjectiveLabel)
-
 -- | For debugging only (via Web API)
 data PrereqSatisfaction = PrereqSatisfaction
   { objective :: Objective
@@ -91,6 +89,3 @@ getSatisfaction oc =
       y
       (maybe mempty (getDistinctConstants . logic) $ _objectivePrerequisite y)
       (isPrereqsSatisfied oc y)
-
-getDistinctConstants :: (Ord a) => Prerequisite a -> Set (BE.Signed a)
-getDistinctConstants = Set.fromList . BE.constants . toBoolExpr

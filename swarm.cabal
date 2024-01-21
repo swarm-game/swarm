@@ -175,7 +175,6 @@ library swarm-scenario
                       Swarm.Game.Scenario.Objective.Graph
                       Swarm.Game.Scenario.Objective.Logic
                       Swarm.Game.Scenario.Objective.Validation
-                      Swarm.Game.Scenario.Objective.WinCheck
                       Swarm.Game.Scenario.RobotLookup
                       Swarm.Game.Scenario.Scoring.Best
                       Swarm.Game.Scenario.Scoring.CodeSize
@@ -275,6 +274,7 @@ library swarm-engine
                       Swarm.Game.Exception
                       Swarm.Game.Robot.Concrete
                       Swarm.Game.Robot.Context
+                      Swarm.Game.Scenario.Objective.WinCheck
                       Swarm.Game.Scenario.Topography.Center
                       Swarm.Game.Scenario.Topography.Navigation.Util
                       Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking
@@ -304,6 +304,7 @@ library swarm-engine
                       aeson                         >= 2 && < 2.2,
                       array                         >= 0.5.4 && < 0.6,
                       astar                         >= 0.3 && < 0.3.1,
+                      boolexpr                      >= 0.2 && < 0.3,
                       clock                         >= 0.8.2 && < 0.9,
                       colour                        >= 2.3.6 && < 2.4,
                       containers                    >= 0.6.2 && < 0.7,
