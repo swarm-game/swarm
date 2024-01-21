@@ -119,7 +119,6 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
 import Swarm.Game.Tick (addTicks)
-
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State.Robot
