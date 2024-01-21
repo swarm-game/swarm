@@ -33,7 +33,9 @@ import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
 import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
 import Swarm.Game.Entity (EntityMap, lookupByName)
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Robot (activityCounts, commandsHistogram, defReqs, equippedDevices, lifetimeStepCount, machine, robotContext, robotLog, systemRobot, tangibleCommandCount, waitingUntil)
+import Swarm.Game.Robot (activityCounts, commandsHistogram, equippedDevices, lifetimeStepCount, machine, robotLog, systemRobot, tangibleCommandCount, waitingUntil)
+import Swarm.Game.Robot.Concrete (robotContext)
+import Swarm.Game.Robot.Context (defReqs)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,

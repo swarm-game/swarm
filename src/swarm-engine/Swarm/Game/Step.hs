@@ -49,6 +49,8 @@ import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Exception
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Concrete
+import Swarm.Game.Robot.Context
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
 import Swarm.Game.State

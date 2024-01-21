@@ -71,6 +71,8 @@ import Swarm.Game.CESK (CESK (Waiting), TickNumber (..), addTicks)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (NameGenerator)
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Concrete
+import Swarm.Game.Robot.Context
 import Swarm.Game.State.Config
 import Swarm.Game.Universe as U
 import Swarm.Util (binTuples, surfaceEmpty, (<+=), (<<.=))

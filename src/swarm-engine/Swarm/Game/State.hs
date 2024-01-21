@@ -111,6 +111,7 @@ import Swarm.Game.Recipe (
   outRecipeMap,
  )
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure

@@ -26,7 +26,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Prettyprinter
 import Swarm.Game.Entity (Entity, entityName)
-import Swarm.Game.Robot (Robot, robotName)
+import Swarm.Game.Robot (TRobot, trobotName)
 import Swarm.Game.Terrain
 import Swarm.Game.World.Coords
 import Swarm.Language.Pretty
@@ -53,7 +53,7 @@ prettyRawCellItem :: (Maybe CellTag, Text) -> Doc ann
 prettyRawCellItem (Nothing, t) = pretty t
 prettyRawCellItem (Just tag, t) = pretty (T.toLower . T.drop 4 . showT $ tag) <> ":" <> pretty t
 
-data CellVal = CellVal TerrainType (Erasable (Last Entity)) [Robot]
+data CellVal = CellVal TerrainType (Erasable (Last Entity)) [TRobot]
   deriving (Eq, Show)
 
 instance PrettyPrec CellVal where
@@ -63,7 +63,7 @@ instance PrettyPrec CellVal where
     items =
       [(Just CellTerrain, getTerrainWord terr) | terr /= BlankT]
         ++ [(Just CellEntity, e ^. entityName) | EJust (Last e) <- [ent]]
-        ++ map ((Just CellRobot,) . view robotName) rs
+        ++ map ((Just CellRobot,) . view trobotName) rs
 
 data Rot = Rot0 | Rot90 | Rot180 | Rot270
   deriving (Eq, Ord, Show, Bounded, Enum)
