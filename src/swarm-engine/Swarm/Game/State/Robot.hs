@@ -23,6 +23,7 @@ module Swarm.Game.State.Robot (
   robotMap,
   robotsByLocation,
   robotsWatching,
+  wakeLog,
   activeRobots,
   waitingRobots,
   viewCenterRule,
@@ -72,6 +73,7 @@ import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (NameGenerator)
 import Swarm.Game.Robot
 import Swarm.Game.State.Config
+import Swarm.Game.Step.WakeLog
 import Swarm.Game.Universe as U
 import Swarm.Util (binTuples, surfaceEmpty, (<+=), (<<.=))
 import Swarm.Util.Lens (makeLensesExcluding)
@@ -122,6 +124,7 @@ data Robots = Robots
     -- that we do not have to iterate over all "waiting" robots,
     -- since there may be many.
     _robotsWatching :: Map (Cosmic Location) (S.Set RID)
+  , _wakeLog :: [WakeLogEvent]
   , _robotNaming :: RobotNaming
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter :: Cosmic Location
@@ -164,6 +167,7 @@ robotsByLocation :: Lens' Robots (Map SubworldName (Map Location IntSet))
 
 -- | Get a list of all the robots that are \"watching\" by location.
 robotsWatching :: Lens' Robots (Map (Cosmic Location) (S.Set RID))
+wakeLog :: Lens' Robots [WakeLogEvent]
 
 -- | State and data for assigning identifiers to robots
 robotNaming :: Lens' Robots RobotNaming
@@ -195,6 +199,7 @@ initRobots gsc =
     , _waitingRobots = M.empty
     , _robotsByLocation = M.empty
     , _robotsWatching = mempty
+    , _wakeLog = mempty
     , _robotNaming =
         RobotNaming
           { _nameGenerator = initNameParts gsc
@@ -301,6 +306,9 @@ wakeUpRobotsDoneSleeping time = do
       let aliveRids = filter (`IM.member` robots) rids
       internalActiveRobots %= IS.union (IS.fromList aliveRids)
 
+      forM_ aliveRids $ \rid ->
+        wakeLog %= (WakeLogEvent rid time DoneSleeping :)
+
       -- These robots' wake times may have been moved "forward"
       -- by 'wakeWatchingRobots'.
       clearWatchingRobots rids
@@ -311,7 +319,7 @@ clearWatchingRobots ::
   (Has (State Robots) sig m) =>
   [RID] ->
   m ()
-clearWatchingRobots rids = do
+clearWatchingRobots rids =
   robotsWatching %= M.map (`S.difference` S.fromList rids)
 
 -- | Iterates through all of the currently @wait@-ing robots,
@@ -357,6 +365,9 @@ wakeWatchingRobots currentTick loc = do
       wakeableBotIds = map fst wakeTimes
       newWakeTime = addTicks 1 currentTick
       newInsertions = M.singleton newWakeTime wakeableBotIds
+
+  forM_ wakeableBotIds $ \rid ->
+    wakeLog %= (WakeLogEvent rid newWakeTime ScheduledWakeup :)
 
   -- NOTE: There are two "sources of truth" for the waiting state of robots:
   -- 1. In the GameState via "internalWaitingRobots"

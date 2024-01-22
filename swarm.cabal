@@ -226,6 +226,7 @@ library swarm-engine
                       Swarm.Game.Step.Util
                       Swarm.Game.Step.Util.Command
                       Swarm.Game.Step.Util.Inspect
+                      Swarm.Game.Step.WakeLog
                       Swarm.Game.Terrain
                       Swarm.Game.Value
                       Swarm.Game.World
@@ -492,6 +493,7 @@ library
                       , Swarm.Game.Step.Util
                       , Swarm.Game.Step.Util.Command
                       , Swarm.Game.Step.Util.Inspect
+                      , Swarm.Game.Step.WakeLog
                       , Swarm.Game.Terrain
                       , Swarm.Game.Value
                       , Swarm.Game.World

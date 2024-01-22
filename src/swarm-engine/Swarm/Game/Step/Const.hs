@@ -76,6 +76,7 @@ import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
 import Swarm.Game.Step.Util.Inspect
+import Swarm.Game.Step.WakeLog
 import Swarm.Game.Universe
 import Swarm.Game.Value
 import Swarm.Game.World (locToCoords)
@@ -136,6 +137,10 @@ execConst runChildProg c vs s k = do
       [VInt d] -> do
         time <- use $ temporal . ticks
         purgeFarAwayWatches
+
+        rid <- use robotID
+        robotInfo . wakeLog %= (WakeLogEvent rid time CalledWaitCommand :)
+
         return $ Waiting (addTicks (fromIntegral d) time) (mkReturn ())
       _ -> badConst
     Selfdestruct -> do
@@ -283,6 +288,10 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Swap -> case vs of
       [VText name] -> do
+        time <- use $ temporal . ticks
+        rid <- use robotID
+        robotInfo . wakeLog %= (WakeLogEvent rid time CalledSwapCommand :)
+
         loc <- use robotLocation
         -- Make sure the robot has the thing in its inventory
         e <- hasInInventoryOrFail name
