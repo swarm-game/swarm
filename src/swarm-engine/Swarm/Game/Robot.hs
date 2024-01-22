@@ -99,8 +99,8 @@ import Swarm.Game.CESK qualified as C
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location (Heading, Location, toDirection, toHeading)
-import Swarm.Game.Robot.Walk
 import Swarm.Game.Robot.Context
+import Swarm.Game.Robot.Walk
 import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Pipeline (ProcessedTerm)
