@@ -9,13 +9,29 @@ function insertTableRows(myTableBody, entries) {
     for (const entry of entries) {
         const rowItem = document.createElement("tr");
 
-        const vals = [
+        const fieldVals = [
+            entry.derivedAttrs.hasActorTarget,
+            entry.derivedAttrs.pureComputation,
+            entry.derivedAttrs.modifiesEnvironment,
+            entry.derivedAttrs.modifiesRobot,
+            entry.derivedAttrs.movesRobot,
+            entry.derivedAttrs.returnsValue,
+        ]
+
+        const cellVals = [
             mkLink(entry.cmd, "https://github.com/swarm-game/swarm/wiki/Commands-Cheat-Sheet#" + entry.cmd),
-            document.createTextNode(entry.derivedAttrs.hasActorTarget),
-            document.createTextNode(entry.derivedAttrs.pureComputation),
         ];
 
-        for (const val of vals) {
+        for (const val of fieldVals) {
+            const span = document.createElement("span");
+            span.className = val ? "trueValue" : "falseValue";
+            span.appendChild(document.createTextNode(val));
+            cellVals.push(span);
+        }
+
+        // cellVals.push(document.createTextNode(entry.derivedAttrs.outputType));
+
+        for (const val of cellVals) {
             const cellElement = document.createElement("td");
             cellElement.appendChild(val);
             rowItem.append(cellElement);

@@ -5,18 +5,19 @@
 module Swarm.Language.Syntax.CommandMetadata where
 
 import Data.Aeson (ToJSON)
-import Data.Set (Set)
 import GHC.Generics (Generic)
 
 data SensingType
   = RobotSensing
   | EntitySensing
   | WorldCondition
-  deriving (Eq, Ord, Show, Generic, ToJSON)
+  deriving (Eq, Ord, Enum, Bounded, Show, Generic, ToJSON)
 
 data QueryType
   = -- | empirical knowledge
     Sensing SensingType
+  | -- | The random number generator
+    PRNG
   | -- | a priori knowledge
     APriori
   deriving (Eq, Ord, Show, Generic, ToJSON)
@@ -26,17 +27,17 @@ data RobotChangeType
   | InventoryChange
   | ExistenceChange
   | BehaviorChange
-  deriving (Eq, Ord, Show, Generic, ToJSON)
+  deriving (Eq, Ord, Enum, Bounded, Show, Generic, ToJSON)
 
 data MutationType
   = Cosmetic
+  | LogEmission
   | EntityChange
   | RobotChange RobotChangeType
   deriving (Eq, Ord, Show, Generic, ToJSON)
 
 data CommandEffect
-  = Computation
-  | Query QueryType
+  = Query QueryType
   | MetaEffect
-  | Mutation (Set MutationType)
+  | Mutation MutationType
   deriving (Eq, Ord, Show, Generic, ToJSON)

@@ -6,7 +6,6 @@
     <link rel="stylesheet" href="style/tablesort.css"/>
     <link rel="stylesheet" href="style/command-matrix.css"/>
 
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tablesort/5.1.0/tablesort.min.js"></script>
     <script src="script/command-matrix.js"></script>
 
@@ -21,9 +20,14 @@
     <table id="my-table">
         <thead>
           <tr data-sort-method="none">
-            <th>Command</th>
-            <th>Actor target</th>
+            <th style="color: gray">Command</th>
+            <th>Explicit robot target</th>
             <th>Pure computation</th>
+            <th>Modifies environment</th>
+            <th>Modifies robot</th>
+            <th>Moves robot</th>
+            <th>Returns value</th>
+            <!-- <th>Output type</th> -->
           </tr>
         </thead>
         <tbody id="my-table-body">

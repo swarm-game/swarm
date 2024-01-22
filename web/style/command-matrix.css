@@ -2,6 +2,14 @@ body {
   font-family: sans-serif;
 }
 
+.trueValue {
+  color: #00a000;
+}
+
+.falseValue {
+  color: #a00000;
+}
+
 a:link {
   color: lavender;
   text-decoration: none;
