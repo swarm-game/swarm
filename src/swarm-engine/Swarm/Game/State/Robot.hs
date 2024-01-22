@@ -67,7 +67,7 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as S
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
-import Swarm.Game.CESK (CESK (Waiting), TickNumber (..), addTicks)
+import Swarm.Game.CESK (CESK (Waiting), TickNumber (..))
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (NameGenerator)
 import Swarm.Game.Robot
@@ -291,19 +291,42 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 -- | Removes robots whose wake up time matches the current game ticks count
 --   from the 'waitingRobots' queue and put them back in the 'activeRobots' set
 --   if they still exist in the keys of 'robotMap'.
-wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m ()
+--
+-- = Mutations
+--
+-- This function modifies:
+--
+-- * 'wakeLog'
+-- * 'robotsWatching' (by way of 'clearWatchingRobots')
+-- * 'internalWaitingRobots'
+-- * 'internalActiveRobots' (aka 'activeRobots')
+--
+-- = Efficiency (excluding 'wakeLog')
+--
+-- * O(log N) where N is the number of keys in 'waitingMap'
+-- * O(M) where M is the number of robots to wake
+-- * O(M + A) where A is the number of active robots
+wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m IntSet
 wakeUpRobotsDoneSleeping time = do
-  mrids <- internalWaitingRobots . at time <<.= Nothing
-  case mrids of
-    Nothing -> return ()
-    Just rids -> do
-      robots <- use robotMap
-      let aliveRids = filter (`IM.member` robots) rids
-      internalActiveRobots %= IS.union (IS.fromList aliveRids)
+  waitingMap <- use waitingRobots
 
-      -- These robots' wake times may have been moved "forward"
-      -- by 'wakeWatchingRobots'.
-      clearWatchingRobots rids
+  let (beforeMap, maybeAt, futureMap) = M.splitLookup time waitingMap
+      currentTickMap = maybe mempty (M.singleton time) maybeAt
+      -- Note: 'union' is safe because currentTickMap and beforeMap are disjoint
+      wakeableRIDs = concat $ M.elems $ M.union currentTickMap beforeMap
+
+  -- These robots' wake times may have been moved "forward"
+  -- by 'wakeWatchingRobots'.
+  clearWatchingRobots wakeableRIDs
+
+  robots <- use robotMap
+  -- Limit ourselves to the robots that have not expired in their sleep
+  let newlyAlive = filter (`IM.member` robots) wakeableRIDs
+
+  internalWaitingRobots .= futureMap
+
+  internalActiveRobots %= IS.union (IS.fromList newlyAlive)
+  use activeRobots
 
 -- | Clear the "watch" state of all of the
 -- awakened robots
@@ -353,9 +376,9 @@ wakeWatchingRobots currentTick loc = do
         -- when their tick comes up in "wakeUpRobotsDoneSleeping".
         f (k, botsToRemove) = M.adjust (filter (`S.notMember` botsToRemove)) k
 
-      -- Step 4: Re-add the watching bots to be awakened at the next tick:
+      -- Step 4: Re-add the watching bots to be awakened ASAP:
       wakeableBotIds = map fst wakeTimes
-      newWakeTime = addTicks 1 currentTick
+      newWakeTime = currentTick
       newInsertions = M.singleton newWakeTime wakeableBotIds
 
   -- NOTE: There are two "sources of truth" for the waiting state of robots:
