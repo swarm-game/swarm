@@ -9,7 +9,7 @@ module Swarm.TUI.Model.Goal where
 
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
-import Control.Lens (makeLenses)
+import Control.Lens (makeLenses, (^..), view)
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -102,24 +102,24 @@ hasMultipleGoals gt =
   goalCount = sum . M.elems . M.map NE.length . goals $ gt
 
 constructGoalMap :: Bool -> ObjectiveCompletion -> CategorizedGoals
-constructGoalMap isCheating objectiveCompletion@(ObjectiveCompletion buckets _) =
+constructGoalMap isCheating oc =
   M.fromList $
     mapMaybe (traverse nonEmpty) categoryList
  where
   categoryList =
     [ (Upcoming, displayableInactives)
     , (Active, suppressHidden activeGoals)
-    , (Completed, completed buckets)
-    , (Failed, unwinnable buckets)
+    , (Completed, oc ^.. completedObjectives)
+    , (Failed, oc ^.. unwinnableObjectives)
     ]
 
   displayableInactives =
     suppressHidden $
-      filter (maybe False previewable . _objectivePrerequisite) inactiveGoals
+      filter (maybe False previewable . view objectivePrerequisite) inactiveGoals
 
   suppressHidden =
     if isCheating
       then id
-      else filter $ not . _objectiveHidden
+      else filter $ not . view objectiveHidden
 
-  (activeGoals, inactiveGoals) = partitionActiveObjectives objectiveCompletion
+  (activeGoals, inactiveGoals) = partitionActiveObjectives oc

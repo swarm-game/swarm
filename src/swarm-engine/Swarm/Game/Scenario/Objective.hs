@@ -21,6 +21,7 @@ module Swarm.Game.Scenario.Objective
     -- * Objective completion tracking
 
   , ObjectiveCompletion
+  , initCompletion
   , completedIDs
   , incompleteObjectives
   , completedObjectives
@@ -202,6 +203,11 @@ data ObjectiveCompletion = ObjectiveCompletion
 
 makeLensesFor [ ("_completedIDs", "internalCompletedIDs") ] ''ObjectiveCompletion
 makeLensesExcluding ['_completedIDs] ''ObjectiveCompletion
+
+-- | Initialize an objective completion tracking record from a list of
+--   (initially incomplete) objectives.
+initCompletion :: [Objective] -> ObjectiveCompletion
+initCompletion objs = ObjectiveCompletion (CompletionBuckets objs [] []) mempty
 
 -- | XXX
 completionBuckets :: Lens' ObjectiveCompletion CompletionBuckets

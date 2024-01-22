@@ -6,6 +6,7 @@
 -- Validity checking for 'Objective' prerequisites
 module Swarm.Game.Scenario.Objective.Validation where
 
+import Control.Lens ((^.), view)
 import Control.Monad (unless)
 import Data.Foldable (for_, toList)
 import Data.Graph (stronglyConnComp)
@@ -28,7 +29,7 @@ validateObjectives ::
   [Objective] ->
   m [Objective]
 validateObjectives objectives = do
-  for_ objectives $ \x -> case _objectivePrerequisite x of
+  for_ objectives $ \x -> case x ^. objectivePrerequisite of
     Just p ->
       unless (null remaining) $
         failT
@@ -48,4 +49,4 @@ validateObjectives objectives = do
   return objectives
  where
   connectedComponents = stronglyConnComp $ makeGraphEdges objectives
-  allIds = Set.fromList $ mapMaybe _objectiveId objectives
+  allIds = Set.fromList $ mapMaybe (view objectiveId) objectives
