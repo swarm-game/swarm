@@ -302,12 +302,11 @@ wakeUpRobotsDoneSleeping time = do
   let (beforeMap, maybeAt, futureMap) = M.splitLookup time waitingMap
       mrids = NE.nonEmpty $ concat $ fromMaybe [] maybeAt : M.elems beforeMap
 
-  case mrids of
-    Nothing -> return ()
+  newlyAlive <- case mrids of
+    Nothing -> return []
     Just rids -> do
       robots <- use robotMap
       let aliveRids = filter (`IM.member` robots) $ NE.toList rids
-      internalActiveRobots %= IS.union (IS.fromList aliveRids)
 
       forM_ aliveRids $ \rid ->
         wakeLog %= (WakeLogEvent rid time DoneSleeping :)
@@ -316,7 +315,11 @@ wakeUpRobotsDoneSleeping time = do
       -- by 'wakeWatchingRobots'.
       clearWatchingRobots $ NE.toList rids
 
+      return aliveRids
+
   internalWaitingRobots .= futureMap
+
+  internalActiveRobots %= IS.union (IS.fromList newlyAlive)
 
 -- | Clear the "watch" state of all of the
 -- awakened robots
