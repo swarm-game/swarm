@@ -104,6 +104,11 @@ data RobotFailure = ThrowExn | Destroy | IgnoreFail
 --   to a location.
 type MoveFailureHandler = MoveFailureMode -> RobotFailure
 
+-- | Whether to remove the entity in the world inside the 'doGrab' function
+-- or leave it to be done by other code.
+data GrabRemoval = DeferRemoval | PerformRemoval
+  deriving (Eq)
+
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
 execConst ::
@@ -274,8 +279,8 @@ execConst runChildProg c vs s k = do
 
         return $ mkReturn ()
       _ -> badConst
-    Grab -> mkReturn <$> doGrab Grab'
-    Harvest -> mkReturn <$> doGrab Harvest'
+    Grab -> mkReturn <$> doGrab Grab' PerformRemoval
+    Harvest -> mkReturn <$> doGrab Harvest' PerformRemoval
     Ignite -> case vs of
       [VDir d] -> do
         Combustion.igniteCommand c d
@@ -286,8 +291,8 @@ execConst runChildProg c vs s k = do
         loc <- use robotLocation
         -- Make sure the robot has the thing in its inventory
         e <- hasInInventoryOrFail name
-        -- Grab
-        newE <- doGrab Swap'
+        -- Grab without removing from the world
+        newE <- doGrab Swap' DeferRemoval
 
         -- Place the entity and remove it from the inventory
         updateEntityAt loc (const (Just e))
@@ -1672,8 +1677,9 @@ execConst runChildProg c vs s k = do
 
   -- The code for grab and harvest is almost identical, hence factored
   -- out here.
-  doGrab :: (HasRobotStepState sig m, Has Effect.Time sig m) => GrabbingCmd -> m Entity
-  doGrab cmd = do
+  -- Optionally defer removal from the world, for the case of the Swap command.
+  doGrab :: (HasRobotStepState sig m, Has Effect.Time sig m) => GrabbingCmd -> GrabRemoval -> m Entity
+  doGrab cmd removalDeferral = do
     let verb = verbGrabbingCmd cmd
         verbed = verbedGrabbingCmd cmd
 
@@ -1689,7 +1695,7 @@ execConst runChildProg c vs s k = do
       `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
 
     -- Entities with 'infinite' property are not removed
-    unless (e `hasProperty` Infinite) $ do
+    unless (removalDeferral == DeferRemoval || e `hasProperty` Infinite) $ do
       -- Remove the entity from the world.
       updateEntityAt loc (const Nothing)
       flagRedraw
