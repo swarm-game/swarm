@@ -294,7 +294,7 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 -- | Removes robots whose wake up time matches the current game ticks count
 --   from the 'waitingRobots' queue and put them back in the 'activeRobots' set
 --   if they still exist in the keys of 'robotMap'.
-wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m ()
+wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m IntSet
 wakeUpRobotsDoneSleeping time = do
   waitingMap <- use waitingRobots
   let (beforeMap, maybeAt, futureMap) = M.splitLookup time waitingMap
@@ -314,7 +314,9 @@ wakeUpRobotsDoneSleeping time = do
 
   internalWaitingRobots .= futureMap
 
+
   internalActiveRobots %= IS.union (IS.fromList newlyAlive)
+  use activeRobots
 
 -- | Clear the "watch" state of all of the
 -- awakened robots

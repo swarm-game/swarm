@@ -87,8 +87,7 @@ import Prelude hiding (Applicative (..), lookup)
 gameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => m Bool
 gameTick = do
   time <- use $ temporal . ticks
-  zoomRobots $ wakeUpRobotsDoneSleeping time
-  active <- use $ robotInfo . activeRobots
+  active <- zoomRobots $ wakeUpRobotsDoneSleeping time
   focusedRob <- use $ robotInfo . focusedRobotID
 
   ticked <-
