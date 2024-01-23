@@ -159,6 +159,21 @@ insertBackRobot rn rob = do
 -- | GameState with support for IO and Time effect
 type HasGameStepState sig m = (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m)
 
+-- |
+-- Runs the given robots in increasing order of 'RID'.
+--
+-- Running a given robot _may_ cause another robot
+-- with a higher 'RID' to be inserted into the runnable set.
+--
+-- Tail-recursive.
+iterateRobots :: HasGameStepState sig m => (RID -> m ()) -> IS.IntSet -> m ()
+iterateRobots f runnableBots =
+  unless (IS.null runnableBots) $ do
+    f thisRobotId
+    iterateRobots f remainingBotIDs
+ where
+  (thisRobotId, remainingBotIDs) = IS.deleteFindMin runnableBots
+
 -- | Run a set of robots - this is used to run robots before/after the focused one.
 --
 -- Note that during the iteration over the supplied robot IDs, it is possible
@@ -173,7 +188,7 @@ type HasGameStepState sig m = (Has (State GameState) sig m, Has (Lift IO) sig m,
 -- * Every tick, every active robot shall have exactly one opportunity to run.
 -- * The sequence in which robots are chosen to run is by increasing order of 'RID'.
 runRobotIDs :: HasGameStepState sig m => IS.IntSet -> m ()
-runRobotIDs robotNames = forM_ (IS.toList robotNames) $ \rn -> do
+runRobotIDs robotNames = flip iterateRobots robotNames $ \rn -> do
   mr <- uses (robotInfo . robotMap) (IM.lookup rn)
   forM_ mr (stepOneRobot rn)
  where
