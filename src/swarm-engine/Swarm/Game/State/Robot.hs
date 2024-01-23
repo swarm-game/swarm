@@ -296,26 +296,40 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 -- | Removes robots whose wake up time matches the current game ticks count
 --   from the 'waitingRobots' queue and put them back in the 'activeRobots' set
 --   if they still exist in the keys of 'robotMap'.
+--
+-- = Mutations
+--
+-- This function modifies:
+--
+-- * 'wakeLog'
+-- * 'robotsWatching' (by way of 'clearWatchingRobots')
+-- * 'internalWaitingRobots'
+-- * 'internalActiveRobots' (aka 'activeRobots')
+--
+-- = Efficiency (excluding 'wakeLog')
+--
+-- * O(log N) where N is the number of keys in 'waitingMap'
+-- * O(M) where M is the number of robots to wake
+-- * O(M + A) where A is the number of active robots
 wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m IntSet
 wakeUpRobotsDoneSleeping time = do
   waitingMap <- use waitingRobots
+
   let (beforeMap, maybeAt, futureMap) = M.splitLookup time waitingMap
-      mrids = NE.nonEmpty $ concat $ fromMaybe [] maybeAt : M.elems beforeMap
+      currentTickMap = maybe mempty (M.singleton time) maybeAt
+      -- Note: 'union' is safe because currentTickMap and beforeMap are disjoint
+      wakeableRIDs = concat $ M.elems $ M.union currentTickMap beforeMap
 
-  newlyAlive <- case mrids of
-    Nothing -> return []
-    Just rids -> do
-      robots <- use robotMap
-      let aliveRids = filter (`IM.member` robots) $ NE.toList rids
+  -- These robots' wake times may have been moved "forward"
+  -- by 'wakeWatchingRobots'.
+  clearWatchingRobots wakeableRIDs
 
-      forM_ aliveRids $ \rid ->
-        wakeLog %= (WakeLogEvent rid time DoneSleeping :)
+  robots <- use robotMap
+  -- Limit ourselves to the robots that have not expired in their sleep
+  let newlyAlive = filter (`IM.member` robots) wakeableRIDs
 
-      -- These robots' wake times may have been moved "forward"
-      -- by 'wakeWatchingRobots'.
-      clearWatchingRobots $ NE.toList rids
-
-      return aliveRids
+  forM_ newlyAlive $ \rid ->
+    wakeLog %= (WakeLogEvent rid time DoneSleeping :)
 
   internalWaitingRobots .= futureMap
 
