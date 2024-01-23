@@ -1697,13 +1697,11 @@ execConst runChildProg c vs s k = do
     (omni || e `hasProperty` Pickable)
       `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
 
-    -- Remove the entity from the world.
-    updateEntityAt loc (const Nothing)
-    flagRedraw
-
-    -- Immediately regenerate entities with 'infinite' property.
-    when (e `hasProperty` Infinite) $
-      updateEntityAt loc (const (Just e))
+    -- Entities with 'infinite' property are not removed
+    unless (e `hasProperty` Infinite) $ do
+      -- Remove the entity from the world.
+      updateEntityAt loc (const Nothing)
+      flagRedraw
 
     -- Possibly regrow the entity, if it is growable and the 'harvest'
     -- command was used.
