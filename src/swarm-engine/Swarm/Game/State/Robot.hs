@@ -314,7 +314,6 @@ wakeUpRobotsDoneSleeping time = do
 
   internalWaitingRobots .= futureMap
 
-
   internalActiveRobots %= IS.union (IS.fromList newlyAlive)
   use activeRobots
 
