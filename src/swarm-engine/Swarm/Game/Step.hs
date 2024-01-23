@@ -138,7 +138,7 @@ finishGameTick =
     RobotStep SBefore -> temporal . gameStep .= WorldTick
     RobotStep _ -> void gameTick >> finishGameTick
 
--- Insert the robot back to robot map.
+-- | Insert the robot back to robot map.
 -- Will selfdestruct or put the robot to sleep if it has that set.
 insertBackRobot :: Has (State GameState) sig m => RID -> Robot -> m ()
 insertBackRobot rn rob = do
@@ -156,7 +156,19 @@ insertBackRobot rn rob = do
           Nothing ->
             unless (isActive rob) (sleepForever rn)
 
--- Run a set of robots - this is used to run robots before/after the focused one.
+-- | Run a set of robots - this is used to run robots before/after the focused one.
+--
+-- Note that during the iteration over the supplied robot IDs, it is possible
+-- that a robot that may have been present in 'robotMap' at the outset
+-- of the iteration to be removed before the iteration comes upon it.
+-- This is why we must perform a 'robotMap' lookup at each iteration, rather
+-- than looking up elements from 'robotMap' in bulk up front with something like
+-- 'restrictKeys'.
+--
+-- = Invariants
+--
+-- * Every tick, every active robot shall have exactly one opportunity to run.
+-- * The sequence in which robots are chosen to run is by increasing order of 'RID'.
 runRobotIDs :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => IS.IntSet -> m ()
 runRobotIDs robotNames = forM_ (IS.toList robotNames) $ \rn -> do
   mr <- uses (robotInfo . robotMap) (IM.lookup rn)
@@ -164,7 +176,7 @@ runRobotIDs robotNames = forM_ (IS.toList robotNames) $ \rn -> do
  where
   stepOneRobot rn rob = tickRobot rob >>= insertBackRobot rn
 
--- This is a helper function to do one robot step or run robots before/after.
+-- | This is a helper function to do one robot step or run robots before/after.
 singleStep :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => SingleStep -> RID -> IS.IntSet -> m Bool
 singleStep ss focRID robotSet = do
   let (preFoc, focusedActive, postFoc) = IS.splitMember focRID robotSet
