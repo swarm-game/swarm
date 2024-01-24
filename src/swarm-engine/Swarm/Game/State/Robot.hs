@@ -64,6 +64,8 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.SortedList (SortedList)
+import Data.SortedList qualified as SL
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
 import Swarm.Game.CESK (CESK (Waiting), TickNumber (..))
@@ -307,7 +309,7 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 -- * O(log N) where N is the number of keys in 'waitingMap'
 -- * O(M) where M is the number of robots to wake
 -- * O(M + A) where A is the number of active robots
-wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m IntSet
+wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m (SortedList RID)
 wakeUpRobotsDoneSleeping time = do
   maybeWakeableRIDs <- internalWaitingRobots . at time <<.= Nothing
   case maybeWakeableRIDs of
@@ -327,7 +329,7 @@ wakeUpRobotsDoneSleeping time = do
 
       internalActiveRobots %= IS.union newlyAlive
 
-      return newlyAlive
+      return $ SL.toSortedList $ IS.toList newlyAlive
 
 -- | Iterates through all of the currently @wait@-ing robots,
 -- and moves forward the wake time of the ones that are @watch@-ing this location.
