@@ -81,7 +81,8 @@ import Prelude hiding (Applicative (..), lookup)
 gameTick :: HasGameStepState sig m => m Bool
 gameTick = do
   time <- use $ temporal . ticks
-  active <- zoomRobots $ wakeUpRobotsDoneSleeping time
+  void $ zoomRobots $ wakeUpRobotsDoneSleeping time
+  active <- use $ robotInfo . activeRobots
   focusedRob <- use $ robotInfo . focusedRobotID
 
   ticked <-
@@ -168,8 +169,8 @@ iterateRobots time f runnableBots =
 
     -- We may have awakened new robots in the current robot's iteration,
     -- so we add them to the list
-    activeRIDs <- zoomRobots $ wakeUpRobotsDoneSleeping time
-    let (_, robotsToAdd) = IS.split thisRobotId activeRIDs
+    robotsJustAwakened <- zoomRobots $ wakeUpRobotsDoneSleeping time
+    let (_, robotsToAdd) = IS.split thisRobotId robotsJustAwakened
 
     iterateRobots time f $ IS.union robotsToAdd remainingBotIDs
  where

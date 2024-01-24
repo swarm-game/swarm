@@ -292,6 +292,8 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 --   from the 'waitingRobots' queue and put them back in the 'activeRobots' set
 --   if they still exist in the keys of 'robotMap'.
 --
+-- TODO: Only return those robots that were awakened exactly at this tick.
+--
 -- = Mutations
 --
 -- This function modifies:
@@ -310,23 +312,25 @@ wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m IntSet
 wakeUpRobotsDoneSleeping time = do
   waitingMap <- use waitingRobots
 
-  let (beforeMap, maybeAt, futureMap) = M.splitLookup time waitingMap
-      currentTickMap = maybe mempty (M.singleton time) maybeAt
-      -- Note: 'union' is safe because currentTickMap and beforeMap are disjoint
-      wakeableRIDs = concat $ M.elems $ M.union currentTickMap beforeMap
+  maybeWakeableRIDs <- internalWaitingRobots . at time <<.= Nothing
+  case maybeWakeableRIDs of
+    Nothing -> return mempty
+    Just wakeableRIDs -> do
 
-  -- These robots' wake times may have been moved "forward"
-  -- by 'wakeWatchingRobots'.
-  clearWatchingRobots wakeableRIDs
+      -- These robots' wake times may have been moved "forward"
+      -- by 'wakeWatchingRobots'.
+      clearWatchingRobots wakeableRIDs
 
-  robots <- use robotMap
-  -- Limit ourselves to the robots that have not expired in their sleep
-  let newlyAlive = filter (`IM.member` robots) wakeableRIDs
+      robots <- use robotMap
+      let robotIdSet = IM.keysSet robots
+      
+      -- Limit ourselves to the robots that have not expired in their sleep
+      let newlyAlive = IS.fromList $ filter (`IM.member` robots) wakeableRIDs
 
-  internalWaitingRobots .= futureMap
 
-  internalActiveRobots %= IS.union (IS.fromList newlyAlive)
-  use activeRobots
+      internalActiveRobots %= IS.union newlyAlive
+
+      return newlyAlive
 
 -- | Clear the "watch" state of all of the
 -- awakened robots
