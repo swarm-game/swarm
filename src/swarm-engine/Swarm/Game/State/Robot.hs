@@ -68,7 +68,7 @@ import Data.SortedList (SortedList)
 import Data.SortedList qualified as SL
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
-import Swarm.Game.CESK (CESK (Waiting), TickNumber (..))
+import Swarm.Game.CESK (CESK (Waiting), TickNumber (..), addTicks)
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (NameGenerator)
 import Swarm.Game.Robot
@@ -372,7 +372,7 @@ wakeWatchingRobots currentTick loc = do
 
       -- Step 4: Re-add the watching bots to be awakened ASAP:
       wakeableBotIds = map fst wakeTimes
-      newWakeTime = currentTick
+      newWakeTime = addTicks 1 currentTick
       newInsertions = M.singleton newWakeTime wakeableBotIds
 
   -- NOTE: There are two "sources of truth" for the waiting state of robots:

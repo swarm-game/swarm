@@ -173,10 +173,11 @@ iterateRobots time f runnableBots =
 
       -- We may have awakened new robots in the current robot's iteration,
       -- so we add them to the list
-      robotsJustAwakened <- zoomRobots $ wakeUpRobotsDoneSleeping time
-      let robotsToAdd = SL.filterGE thisRobotId robotsJustAwakened
+      -- robotsJustAwakened <- zoomRobots $ wakeUpRobotsDoneSleeping time
+      -- let robotsToAdd = SL.filterGE thisRobotId robotsJustAwakened
 
-      iterateRobots time f $ remainingBotIDs `SL.union` robotsToAdd
+      -- iterateRobots time f $ remainingBotIDs `SL.union` robotsToAdd
+      iterateRobots time f remainingBotIDs
 
 -- | Run a set of robots - this is used to run robots before/after the focused one.
 --
