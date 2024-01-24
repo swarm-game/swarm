@@ -65,7 +65,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
-import Data.Set qualified as S
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
 import Swarm.Game.CESK (CESK (Waiting))
@@ -312,8 +311,10 @@ wakeUpRobotsDoneSleeping time = do
   case maybeWakeableRIDs of
     Nothing -> return mempty
     Just wakeableRIDs -> do
+
       robots <- use robotMap
       let robotIdSet = IM.keysSet robots
+
           wakeableRIDsSet = IS.fromList wakeableRIDs
 
           -- Limit ourselves to the robots that have not expired in their sleep
@@ -361,8 +362,8 @@ wakeWatchingRobots myID currentTick loc = do
       wakeTimes :: [(RID, TickNumber)]
       wakeTimes = mapMaybe (sequenceA . (view robotID &&& waitingUntil)) botsWatchingThisLoc
 
-      wakeTimesToPurge :: Map TickNumber (S.Set RID)
-      wakeTimesToPurge = M.fromListWith (<>) $ map (fmap S.singleton . swap) wakeTimes
+      wakeTimesToPurge :: Map TickNumber IntSet
+      wakeTimesToPurge = M.fromListWith (<>) $ map (fmap IS.singleton . swap) wakeTimes
 
       -- Step 3: Take these robots out of their time-indexed slot in "waitingRobots".
       -- To preserve performance, this should be done without iterating over the
@@ -373,7 +374,7 @@ wakeWatchingRobots myID currentTick loc = do
         -- But we shall not worry about cleaning those up here;
         -- they will be "garbage collected" as a matter of course
         -- when their tick comes up in "wakeUpRobotsDoneSleeping".
-        f (k, botsToRemove) = M.adjust (filter (`S.notMember` botsToRemove)) k
+        f (k, botsToRemove) = M.adjust (filter (`IS.notMember` botsToRemove)) k
 
       -- Step 4: Re-add the watching bots to be awakened ASAP:
       wakeableBotIds = map fst wakeTimes
