@@ -317,19 +317,14 @@ wakeUpRobotsDoneSleeping time = do
     Just wakeableRIDs -> do
       let wakeableRIDsSet = IS.fromList wakeableRIDs
 
+      robots <- use robotMap
+      let aliveRids = filter (`IM.member` robots) wakeableRIDs
+      internalActiveRobots %= IS.union (IS.fromList aliveRids)
+
       -- Clear the "watch" state of all of the
       -- awakened robots
       robotsWatching %= M.map (`IS.difference` wakeableRIDsSet)
-
-      robots <- use robotMap
-      let robotIdSet = IM.keysSet robots
-
-          -- Limit ourselves to the robots that have not expired in their sleep
-          newlyAlive = IS.intersection robotIdSet wakeableRIDsSet
-
-      internalActiveRobots %= IS.union newlyAlive
-
-      return $ SL.toSortedList $ IS.toList newlyAlive
+      return mempty
 
 -- | Iterates through all of the currently @wait@-ing robots,
 -- and moves forward the wake time of the ones that are @watch@-ing this location.
