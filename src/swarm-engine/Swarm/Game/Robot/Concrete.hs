@@ -63,23 +63,21 @@ instance ToSample Robot where
    where
     sampleBase :: Robot
     sampleBase =
-      mkRobot
-        0
-        emptyRobotContext
-        emptyActivityCount
-        Nothing
-        "base"
-        "The starting robot."
-        defaultCosmicLocation
-        zero
-        defaultRobotDisplay
-        (C.initMachine [tmQ| move |] mempty C.emptyStore)
-        []
-        []
-        False
-        False
-        mempty
-        0
+      instantiateRobot (Just $ C.initMachine [tmQ| move |] mempty C.emptyStore) 0 $
+        mkRobot
+          Nothing
+          "base"
+          "The starting robot."
+          Nothing
+          zero
+          defaultRobotDisplay
+          Nothing
+          []
+          []
+          False
+          False
+          mempty
+          0
 
 mkMachine :: Maybe ProcessedTerm -> C.CESK
 mkMachine Nothing = C.Out VUnit C.emptyStore []

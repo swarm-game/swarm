@@ -336,26 +336,19 @@ walkabilityContext = to $
 
 -- | A general function for creating robots.
 mkRobot ::
-  -- | ID number of the robot.
-  RobotID phase ->
-  -- | Initial context.
-  RobotContextMember phase ->
-  -- | Initial activity counts.
-  RobotActivity phase ->
-  -- | ID number of the robot's parent, if it has one.
   Maybe Int ->
   -- | Name of the robot.
   Text ->
   -- | Description of the robot.
   Document Syntax ->
   -- | Initial location.
-  RobotLocation phase ->
+  Maybe (Cosmic Location) ->
   -- | Initial heading/direction.
   Heading ->
   -- | Robot display.
   Display ->
   -- | Initial CESK machine.
-  RobotMachine phase ->
+  Maybe ProcessedTerm ->
   -- | Equipped devices.
   [Entity] ->
   -- | Initial inventory.
@@ -368,8 +361,8 @@ mkRobot ::
   Set EntityName ->
   -- | Creation date
   TimeSpec ->
-  RobotR phase
-mkRobot rid ctx act pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
+  TRobot
+mkRobot pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
   RobotR
     { _robotEntity =
         mkEntity disp name descr [] []
@@ -380,15 +373,15 @@ mkRobot rid ctx act pid name descr loc dir disp m devs inv sys heavy unwalkables
     , _robotLog = Seq.empty
     , _robotLogUpdated = False
     , _robotLocation = loc
-    , _robotContext = ctx
-    , _robotID = rid
+    , _robotContext = ()
+    , _robotID = ()
     , _robotParentID = pid
     , _robotHeavy = heavy
     , _robotCreatedAt = ts
     , _machine = m
     , _systemRobot = sys
     , _selfDestruct = False
-    , _activityCounts = act
+    , _activityCounts = ()
     , _runningAtomic = False
     , _unwalkableEntities = unwalkables
     }
@@ -412,7 +405,7 @@ instance FromJSONE EntityMap TRobot where
     sys <- liftE $ v .:? "system" .!= False
     let defDisplay = defaultRobotDisplay & invisible .~ sys
 
-    mkRobot () () () Nothing
+    mkRobot Nothing
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= mempty)
       <*> liftE (v .:? "loc")

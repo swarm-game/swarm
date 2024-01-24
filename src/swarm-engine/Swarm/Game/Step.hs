@@ -62,7 +62,6 @@ import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
 import Swarm.Game.Tick
-import Swarm.Game.Universe
 import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Pipeline
@@ -363,22 +362,20 @@ evalPT t = evaluateCESK (initMachine t empty emptyStore)
 -- Use ID (-1) so it won't conflict with any robots currently in the robot map.
 hypotheticalRobot :: CESK -> TimeSpec -> Robot
 hypotheticalRobot m =
-  mkRobot
-    (-1)
-    emptyRobotContext
-    emptyActivityCount
-    Nothing
-    "hypothesis"
-    mempty
-    defaultCosmicLocation
-    zero
-    defaultRobotDisplay
-    m
-    []
-    []
-    True
-    False
-    mempty
+  instantiateRobot (Just m) (-1)
+    . mkRobot
+      Nothing
+      "hypothesis"
+      mempty
+      Nothing
+      zero
+      defaultRobotDisplay
+      Nothing
+      []
+      []
+      True
+      False
+      mempty
 
 evaluateCESK ::
   ( Has Effect.Time sig m

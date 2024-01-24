@@ -375,9 +375,6 @@ addSeedBot e (minT, maxT) loc ts =
   zoomRobots
     . addTRobot (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty emptyStore)
     $ mkRobot
-      ()
-      ()
-      ()
       Nothing
       "seed"
       (Markdown.fromText $ T.unwords ["A growing", e ^. entityName, "seed."])

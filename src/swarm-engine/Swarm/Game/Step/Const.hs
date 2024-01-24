@@ -1072,9 +1072,6 @@ execConst runChildProg c vs s k = do
         newRobot <-
           zoomRobots . addTRobotWithContext parentCtx (In cmd e s [FExec]) $
             mkRobot
-              ()
-              ()
-              ()
               (Just pid)
               displayName
               (Markdown.fromText $ "A robot built by the robot named " <> (r ^. robotName) <> ".")
