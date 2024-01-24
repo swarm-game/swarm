@@ -377,6 +377,7 @@ addSeedBot e (minT, maxT) loc ts =
     $ mkRobot
       ()
       ()
+      ()
       Nothing
       "seed"
       (Markdown.fromText $ T.unwords ["A growing", e ^. entityName, "seed."])

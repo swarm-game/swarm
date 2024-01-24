@@ -49,6 +49,7 @@ import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Exception
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Robot.Context
 import Swarm.Game.Scenario.Objective qualified as OB
@@ -365,6 +366,7 @@ hypotheticalRobot m =
   mkRobot
     (-1)
     emptyRobotContext
+    emptyActivityCount
     Nothing
     "hypothesis"
     mempty

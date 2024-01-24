@@ -117,6 +117,7 @@ initRobot prog loc =
   mkRobot
     ()
     ()
+    ()
     Nothing
     ""
     mempty

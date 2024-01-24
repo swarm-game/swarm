@@ -56,6 +56,7 @@ import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Robot.Context
 import Swarm.Game.Scenario.Topography.Area (getAreaDimensions)
@@ -1071,6 +1072,7 @@ execConst runChildProg c vs s k = do
         newRobot <-
           zoomRobots . addTRobotWithContext parentCtx (In cmd e s [FExec]) $
             mkRobot
+              ()
               ()
               ()
               (Just pid)

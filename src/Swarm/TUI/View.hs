@@ -78,6 +78,7 @@ import Swarm.Game.Entity as E
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario (
   scenarioAuthor,

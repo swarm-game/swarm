@@ -14,6 +14,7 @@ module Swarm.Game.Robot.Concrete (
   -- * Lenses
   robotContext,
   machine,
+  activityCounts,
 
   -- * Query
   waitingUntil,
@@ -35,6 +36,7 @@ import Swarm.Game.CESK qualified as C
 import Swarm.Game.Display (defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Context
 import Swarm.Game.Tick
 import Swarm.Game.Universe
@@ -43,14 +45,18 @@ import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Value as V
 
 type instance RobotContextMember 'ConcreteRobot = RobotContext
-
 type instance RobotMachine 'ConcreteRobot = C.CESK
+type instance RobotActivity 'ConcreteRobot = ActivityCounts
 
 robotContext :: Lens' Robot RobotContext
 robotContext = lens _robotContext (\r x -> r {_robotContext = x})
 
 machine :: Lens' Robot C.CESK
 machine = lens _machine (\r x -> r {_machine = x})
+
+-- | Diagnostic and operational tracking of CESK steps or other activity
+activityCounts :: Lens' Robot ActivityCounts
+activityCounts = lens _activityCounts (\r x -> r {_activityCounts = x})
 
 instance ToSample Robot where
   toSamples _ = SD.singleSample sampleBase
@@ -60,6 +66,7 @@ instance ToSample Robot where
       mkRobot
         0
         emptyRobotContext
+        emptyActivityCount
         Nothing
         "base"
         "The starting robot."
@@ -91,6 +98,7 @@ instantiateRobot maybeMachine i r =
   r
     { _robotID = i
     , _robotLocation = fromMaybe defaultCosmicLocation $ _robotLocation r
+    , _activityCounts = emptyActivityCount
     , _machine = fromMaybe (mkMachine $ _machine r) maybeMachine
     , _robotContext = emptyRobotContext
     }
