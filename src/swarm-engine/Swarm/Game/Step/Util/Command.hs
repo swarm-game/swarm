@@ -18,9 +18,9 @@ import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
-import Data.IntSet qualified as IS
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (forM_, unless, when)
+import Data.IntSet qualified as IS
 import Data.Map qualified as M
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
