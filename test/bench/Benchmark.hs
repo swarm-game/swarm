@@ -115,8 +115,6 @@ waveProgram manualInline =
 initRobot :: ProcessedTerm -> Location -> TRobot
 initRobot prog loc =
   mkRobot
-    ()
-    ()
     Nothing
     ""
     mempty

@@ -272,6 +272,7 @@ library swarm-engine
                       Swarm.Game.Achievement.Persistence
                       Swarm.Game.CESK
                       Swarm.Game.Exception
+                      Swarm.Game.Robot.Activity
                       Swarm.Game.Robot.Concrete
                       Swarm.Game.Robot.Context
                       Swarm.Game.Scenario.Objective.WinCheck
@@ -482,6 +483,7 @@ library
                       , Swarm.Game.Recipe
                       , Swarm.Game.ResourceLoading
                       , Swarm.Game.Robot
+                      , Swarm.Game.Robot.Activity
                       , Swarm.Game.Robot.Concrete
                       , Swarm.Game.Robot.Context
                       , Swarm.Game.Scenario

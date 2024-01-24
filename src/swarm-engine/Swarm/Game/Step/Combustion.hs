@@ -98,8 +98,6 @@ addCombustionBot inputEntity combustibility ts loc = do
   zoomRobots
     . addTRobot (initMachine combustionProg empty emptyStore)
     $ mkRobot
-      ()
-      ()
       Nothing
       "fire"
       (Markdown.fromText $ T.unwords ["A burning", (inputEntity ^. entityName) <> "."])
@@ -213,8 +211,6 @@ addIgnitionBot ::
 addIgnitionBot ignitionDelay inputEntity ts loc =
   addTRobot (initMachine (ignitionProgram ignitionDelay) empty emptyStore) $
     mkRobot
-      ()
-      ()
       Nothing
       "firestarter"
       (Markdown.fromText $ T.unwords ["Delayed ignition of", (inputEntity ^. entityName) <> "."])
