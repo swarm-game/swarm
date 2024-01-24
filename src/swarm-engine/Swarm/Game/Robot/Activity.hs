@@ -3,7 +3,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Support for instantiated robots.
+-- Live activity monitoring for instantiated robots.
 module Swarm.Game.Robot.Activity (
   ActivityCounts,
   tickStepBudget,
@@ -82,10 +82,6 @@ makeLensesNoSigs ''ActivityCounts
 --   can't tell whether that happened because the robot ran out of
 --   steps, or because it executed a command and set it to zero
 --   manually.
---
---   Perhaps instead, each robot should keep a counter saying how
---   many commands it has executed.  The loop stepping the robot
---   can tell when the counter increments.
 tickStepBudget :: Lens' ActivityCounts Int
 
 -- | Total number of tangible commands executed over robot's lifetime

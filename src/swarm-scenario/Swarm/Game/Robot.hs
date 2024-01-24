@@ -388,7 +388,7 @@ mkRobot rid ctx act pid name descr loc dir disp m devs inv sys heavy unwalkables
     , _machine = m
     , _systemRobot = sys
     , _selfDestruct = False
-    , _activityCounts = act -- emptyActivityCount
+    , _activityCounts = act
     , _runningAtomic = False
     , _unwalkableEntities = unwalkables
     }
