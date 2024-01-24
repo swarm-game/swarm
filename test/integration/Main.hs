@@ -30,10 +30,12 @@ import Swarm.Doc.Keyword (EditorType (..))
 import Swarm.Doc.Keyword qualified as Keyword
 import Swarm.Effect (runTimeIO)
 import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
-import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
+import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, lookupByName)
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Robot (activityCounts, commandsHistogram, defReqs, equippedDevices, lifetimeStepCount, machine, robotContext, robotLog, systemRobot, tangibleCommandCount, waitingUntil)
+import Swarm.Game.Robot (activityCounts, commandsHistogram, equippedDevices, lifetimeStepCount, robotLog, systemRobot, tangibleCommandCount)
+import Swarm.Game.Robot.Concrete (machine, robotContext, waitingUntil)
+import Swarm.Game.Robot.Context (defReqs)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
@@ -61,6 +63,7 @@ import Swarm.Game.State.Substate (
  )
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Step.Path.Type
+import Swarm.Game.Tick (getTickNumber)
 import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)

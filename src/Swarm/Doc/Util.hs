@@ -13,7 +13,8 @@ import Data.Maybe (listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Failure (SystemFailure (CustomFailure))
-import Swarm.Game.Robot (Robot, instantiateRobot)
+import Swarm.Game.Robot (Robot)
+import Swarm.Game.Robot.Concrete (instantiateRobot)
 import Swarm.Game.Scenario (Scenario, scenarioRobots)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax

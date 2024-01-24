@@ -15,7 +15,7 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
-import Swarm.Game.Achievement.Definitions
+import Swarm.Game.Achievement.Definitions qualified as AD
 import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Syntax (Syntax)
@@ -74,7 +74,7 @@ data Objective = Objective
   , _objectiveOptional :: Bool
   , _objectivePrerequisite :: Maybe PrerequisiteConfig
   , _objectiveHidden :: Bool
-  , _objectiveAchievement :: Maybe AchievementInfo
+  , _objectiveAchievement :: Maybe AD.AchievementInfo
   }
   deriving (Eq, Show, Generic, ToJSON)
 
@@ -118,7 +118,7 @@ objectiveHidden :: Lens' Objective Bool
 
 -- | An optional achievement that is to be registered globally
 -- when this objective is completed.
-objectiveAchievement :: Lens' Objective (Maybe AchievementInfo)
+objectiveAchievement :: Lens' Objective (Maybe AD.AchievementInfo)
 
 instance FromJSON Objective where
   parseJSON = withObject "objective" $ \v ->

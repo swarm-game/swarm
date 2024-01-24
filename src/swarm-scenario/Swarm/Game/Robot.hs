@@ -12,6 +12,13 @@
 -- A data type to represent robots.
 module Swarm.Game.Robot (
   -- * Robots data
+  RobotContextMember,
+  _robotID,
+  _robotLocation,
+  _robotContext,
+  RobotMachine,
+  _machine,
+  emptyActivityCount,
 
   -- * Robots
   RobotPhase (..),
@@ -20,16 +27,7 @@ module Swarm.Game.Robot (
   Robot,
   TRobot,
 
-  -- ** Runtime robot update
-  C.RobotUpdate (..),
-
   -- * Robot context
-  RobotContext,
-  defTypes,
-  defReqs,
-  defVals,
-  defStore,
-  emptyRobotContext,
   WalkabilityContext (..),
 
   -- ** Lenses
@@ -50,11 +48,9 @@ module Swarm.Game.Robot (
   inventoryHash,
   robotCapabilities,
   walkabilityContext,
-  robotContext,
   robotID,
   robotParentID,
   robotHeavy,
-  machine,
   systemRobot,
   selfDestruct,
   runningAtomic,
@@ -67,14 +63,9 @@ module Swarm.Game.Robot (
 
   -- ** Creation & instantiation
   mkRobot,
-  instantiateRobot,
 
   -- ** Query
   robotKnows,
-  isActive,
-  wantsToStep,
-  waitingUntil,
-  getResult,
 
   -- ** Constants
   hearingDistance,
@@ -82,11 +73,10 @@ module Swarm.Game.Robot (
 
 import Control.Applicative ((<|>))
 import Control.Lens hiding (Const, contains)
-import Data.Aeson qualified as Ae (FromJSON, Key, KeyValue, ToJSON (..), object, (.=))
+import Data.Aeson qualified as Ae (FromJSON, ToJSON (..))
 import Data.Hashable (hashWithSalt)
 import Data.Kind qualified
 import Data.Map (Map)
-import Data.Maybe (catMaybes, fromMaybe, isNothing)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
@@ -94,20 +84,15 @@ import Data.Text (Text)
 import Data.Yaml (FromJSON (parseJSON), (.!=), (.:), (.:?))
 import GHC.Generics (Generic)
 import Linear
-import Servant.Docs (ToSample)
-import Servant.Docs qualified as SD
-import Swarm.Game.CESK qualified as C
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location (Heading, Location, toDirection, toHeading)
-import Swarm.Game.Robot.Context
+import Swarm.Game.Tick
 import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax (Const, Syntax)
 import Swarm.Language.Text.Markdown (Document)
-import Swarm.Language.Value as V
 import Swarm.Log
 import Swarm.Util.Lens (makeLensesExcluding, makeLensesNoSigs)
 import Swarm.Util.WindowedCounter
@@ -131,7 +116,7 @@ data ActivityCounts = ActivityCounts
   , _tangibleCommandCount :: Int
   , _commandsHistogram :: Map Const Int
   , _lifetimeStepCount :: Int
-  , _activityWindow :: WindowedCounter C.TickNumber
+  , _activityWindow :: WindowedCounter TickNumber
   }
   deriving (Eq, Show, Generic, Ae.FromJSON, Ae.ToJSON)
 
@@ -203,7 +188,7 @@ commandsHistogram :: Lens' ActivityCounts (Map Const Int)
 lifetimeStepCount :: Lens' ActivityCounts Int
 
 -- | Sliding window over a span of ticks indicating ratio of activity
-activityWindow :: Lens' ActivityCounts (WindowedCounter C.TickNumber)
+activityWindow :: Lens' ActivityCounts (WindowedCounter TickNumber)
 
 -- | With a robot template, we may or may not have a location.  With a
 --   concrete robot we must have a location.
@@ -218,11 +203,9 @@ type family RobotID (phase :: RobotPhase) :: Data.Kind.Type where
 
 type family RobotMachine (phase :: RobotPhase) :: Data.Kind.Type
 type instance RobotMachine 'TemplateRobot = Maybe ProcessedTerm
-type instance RobotMachine 'ConcreteRobot = C.CESK
 
 type family RobotContextMember (phase :: RobotPhase) :: Data.Kind.Type
 type instance RobotContextMember 'TemplateRobot = ()
-type instance RobotContextMember 'ConcreteRobot = RobotContext
 
 -- | A value of type 'RobotR' is a record representing the state of a
 --   single robot.  The @f@ parameter is for tracking whether or not
@@ -256,7 +239,7 @@ deriving instance (Eq (RobotLocation phase), Eq (RobotID phase), Eq (RobotMachin
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-makeLensesExcluding ['_robotCapabilities, '_equippedDevices, '_robotLog] ''RobotR
+makeLensesExcluding ['_robotCapabilities, '_equippedDevices, '_robotLog, '_robotContext, '_machine] ''RobotR
 
 -- | A template robot, i.e. a template robot record without a unique ID number,
 --   and possibly without a location.
@@ -264,28 +247,6 @@ type TRobot = RobotR 'TemplateRobot
 
 -- | A concrete robot, with a unique ID number and a specific location.
 type Robot = RobotR 'ConcreteRobot
-
-instance ToSample Robot where
-  toSamples _ = SD.singleSample sampleBase
-   where
-    sampleBase :: Robot
-    sampleBase =
-      mkRobot
-        0
-        emptyRobotContext
-        Nothing
-        "base"
-        "The starting robot."
-        defaultCosmicLocation
-        zero
-        defaultRobotDisplay
-        (C.initMachine [tmQ| move |] mempty C.emptyStore)
-        []
-        []
-        False
-        False
-        mempty
-        0
 
 -- In theory we could make all these lenses over (RobotR phase), but
 -- that leads to lots of type ambiguity problems later.  In practice
@@ -364,29 +325,9 @@ robotOrientation = robotEntity . entityOrientation
 robotInventory :: Lens' Robot Inventory
 robotInventory = robotEntity . entityInventory
 
--- | The robot's context.
-robotContext :: Lens' Robot RobotContext
-
 -- | The (unique) ID number of the robot.  This is only a Getter since
 --   the robot ID is immutable.
 robotID :: Getter Robot RID
-
--- | Instantiate a robot template to make it into a concrete robot, by
---    providing a robot ID. Concrete robots also require a location;
---    if the robot template didn't have a location already, just set
---    the location to (0,0) by default.  If you want a different location,
---    set it via 'trobotLocation' before calling 'instantiateRobot'.
---
--- If a machine is not supplied (i.e. 'Nothing'), will fallback to any
--- program specified in the template robot.
-instantiateRobot :: Maybe C.CESK -> RID -> TRobot -> Robot
-instantiateRobot maybeMachine i r =
-  r
-    { _robotID = i
-    , _robotLocation = fromMaybe defaultCosmicLocation $ _robotLocation r
-    , _machine = fromMaybe (mkMachine $ _machine r) maybeMachine
-    , _robotContext = emptyRobotContext
-    }
 
 -- | The ID number of the robot's parent, that is, the robot that
 --   built (or most recently reprogrammed) this robot, if there is
@@ -454,9 +395,6 @@ robotKnows r e = contains0plus e (r ^. robotInventory) || contains0plus e (r ^. 
 robotCapabilities :: Getter Robot (Set Capability)
 robotCapabilities = to _robotCapabilities
 
--- | The robot's current CEK machine state.
-machine :: Lens' Robot C.CESK
-
 -- | Is this robot a "system robot"?  System robots are generated by
 --   the system (as opposed to created by the user) and are not
 --   subject to the usual capability restrictions.
@@ -482,10 +420,6 @@ data WalkabilityContext
 walkabilityContext :: Getter Robot WalkabilityContext
 walkabilityContext = to $
   \x -> WalkabilityContext (_robotCapabilities x) (_unwalkableEntities x)
-
-mkMachine :: Maybe ProcessedTerm -> C.CESK
-mkMachine Nothing = C.Out VUnit C.emptyStore []
-mkMachine (Just pt) = C.initMachine pt mempty C.emptyStore
 
 -- | A general function for creating robots.
 mkRobot ::
@@ -576,66 +510,6 @@ instance FromJSONE EntityMap TRobot where
       <*> liftE (v .:? "heavy" .!= False)
       <*> liftE (v .:? "unwalkable" ..!= mempty)
       <*> pure 0
-
-(.=?) :: (Ae.KeyValue a, Ae.ToJSON v, Eq v) => Ae.Key -> v -> v -> Maybe a
-(.=?) n v defaultVal = if defaultVal /= v then Just $ n Ae..= v else Nothing
-
-(.==) :: (Ae.KeyValue a, Ae.ToJSON v) => Ae.Key -> v -> Maybe a
-(.==) n v = Just $ n Ae..= v
-
-instance Ae.ToJSON Robot where
-  toJSON r =
-    Ae.object $
-      catMaybes
-        [ "id" .== (r ^. robotID)
-        , "name" .== (r ^. robotEntity . entityDisplay)
-        , "description" .=? (r ^. robotEntity . entityDescription) $ mempty
-        , "loc" .== (r ^. robotLocation)
-        , "dir" .=? (r ^. robotEntity . entityOrientation) $ zero
-        , "display" .=? (r ^. robotDisplay) $ (defaultRobotDisplay & invisible .~ sys)
-        , "program" .== (r ^. machine)
-        , "devices" .=? (map (^. _2 . entityName) . elems $ r ^. equippedDevices) $ []
-        , "inventory" .=? (map (_2 %~ view entityName) . elems $ r ^. robotInventory) $ []
-        , "system" .=? sys $ False
-        , "heavy" .=? (r ^. robotHeavy) $ False
-        , "log" .=? (r ^. robotLog) $ mempty
-        , -- debug
-          "capabilities" .=? (r ^. robotCapabilities) $ mempty
-        , "logUpdated" .=? (r ^. robotLogUpdated) $ False
-        , "context" .=? (r ^. robotContext) $ emptyRobotContext
-        , "parent" .=? (r ^. robotParentID) $ Nothing
-        , "createdAt" .=? (r ^. robotCreatedAt) $ 0
-        , "selfDestruct" .=? (r ^. selfDestruct) $ False
-        , "activity" .=? (r ^. activityCounts) $ emptyActivityCount
-        , "runningAtomic" .=? (r ^. runningAtomic) $ False
-        ]
-   where
-    sys = r ^. systemRobot
-
--- | Is the robot actively in the middle of a computation?
-isActive :: Robot -> Bool
-{-# INLINE isActive #-}
-isActive = isNothing . getResult
-
--- | "Active" robots include robots that are waiting; 'wantsToStep' is
---   true if the robot actually wants to take another step right now
---   (this is a /subset/ of active robots).
-wantsToStep :: C.TickNumber -> Robot -> Bool
-wantsToStep now robot
-  | not (isActive robot) = False
-  | otherwise = maybe True (now >=) (waitingUntil robot)
-
--- | The time until which the robot is waiting, if any.
-waitingUntil :: Robot -> Maybe C.TickNumber
-waitingUntil robot =
-  case _machine robot of
-    C.Waiting time _ -> Just time
-    _ -> Nothing
-
--- | Get the result of the robot's computation if it is finished.
-getResult :: Robot -> Maybe (Value, C.Store)
-{-# INLINE getResult #-}
-getResult = C.finalValue . view machine
 
 hearingDistance :: (Num i) => i
 hearingDistance = 32

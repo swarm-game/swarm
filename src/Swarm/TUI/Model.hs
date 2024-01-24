@@ -136,16 +136,18 @@ import Data.Vector qualified as V
 import GitHash (GitInfo)
 import Graphics.Vty (ColorMode (..))
 import Network.Wai.Handler.Warp (Port)
-import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Entity as E
 import Swarm.Game.Failure
 import Swarm.Game.Recipe (Recipe, loadRecipes)
 import Swarm.Game.ResourceLoading (NameGenerator, initNameGenerator, readAppData)
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Concrete
+import Swarm.Game.Robot.Context
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios, _SISingle)
 import Swarm.Game.State
 import Swarm.Game.State.Substate
+import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Log
