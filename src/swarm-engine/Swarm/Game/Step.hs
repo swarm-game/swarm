@@ -161,11 +161,17 @@ type HasGameStepState sig m = (Has (State GameState) sig m, Has (Lift IO) sig m,
 -- with a higher 'RID' to be inserted into the runnable set.
 --
 -- Tail-recursive.
-iterateRobots :: HasGameStepState sig m => (RID -> m ()) -> IS.IntSet -> m ()
-iterateRobots f runnableBots =
+iterateRobots :: HasGameStepState sig m => TickNumber -> (RID -> m ()) -> IS.IntSet -> m ()
+iterateRobots time f runnableBots =
   unless (IS.null runnableBots) $ do
     f thisRobotId
-    iterateRobots f remainingBotIDs
+
+    -- We may have awakened new robots in the current robot's iteration,
+    -- so we add them to the list
+    activeRIDs <- zoomRobots $ wakeUpRobotsDoneSleeping time
+    let (_, robotsToAdd) = IS.split thisRobotId activeRIDs
+
+    iterateRobots time f $ IS.union robotsToAdd remainingBotIDs
  where
   (thisRobotId, remainingBotIDs) = IS.deleteFindMin runnableBots
 
@@ -183,9 +189,11 @@ iterateRobots f runnableBots =
 -- * Every tick, every active robot shall have exactly one opportunity to run.
 -- * The sequence in which robots are chosen to run is by increasing order of 'RID'.
 runRobotIDs :: HasGameStepState sig m => IS.IntSet -> m ()
-runRobotIDs robotNames = flip iterateRobots robotNames $ \rn -> do
-  mr <- uses (robotInfo . robotMap) (IM.lookup rn)
-  forM_ mr (stepOneRobot rn)
+runRobotIDs robotNames = do
+  time <- use $ temporal . ticks
+  flip (iterateRobots time) robotNames $ \rn -> do
+    mr <- uses (robotInfo . robotMap) (IM.lookup rn)
+    forM_ mr (stepOneRobot rn)
  where
   stepOneRobot :: HasGameStepState sig m => RID -> Robot -> m ()
   stepOneRobot rn rob = tickRobot rob >>= insertBackRobot rn
