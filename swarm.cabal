@@ -176,11 +176,6 @@ library swarm-scenario
                       Swarm.Game.Scenario.Objective.Logic
                       Swarm.Game.Scenario.Objective.Validation
                       Swarm.Game.Scenario.RobotLookup
-                      Swarm.Game.Scenario.Scoring.Best
-                      Swarm.Game.Scenario.Scoring.CodeSize
-                      Swarm.Game.Scenario.Scoring.ConcreteMetrics
-                      Swarm.Game.Scenario.Scoring.GenericMetrics
-                      Swarm.Game.Scenario.Status
                       Swarm.Game.Scenario.Style
                       Swarm.Game.Scenario.Topography.Area
                       Swarm.Game.Scenario.Topography.Cell
@@ -197,9 +192,7 @@ library swarm-scenario
                       Swarm.Game.Scenario.Topography.Structure.Recognition.Type
                       Swarm.Game.Scenario.Topography.WorldDescription
                       Swarm.Game.Scenario.Topography.WorldPalette
-                      Swarm.Game.ScenarioInfo
                       Swarm.Game.Terrain
-                      Swarm.Game.Tick
                       Swarm.Game.World
                       Swarm.Game.World.Abstract
                       Swarm.Game.World.Compile
@@ -212,7 +205,6 @@ library swarm-scenario
                       Swarm.Game.World.Parse
                       Swarm.Game.World.Syntax
                       Swarm.Game.World.Typecheck
-                      Swarm.Log
                       Swarm.Util.Content
                       Swarm.Util.Effect
     other-modules:    Paths_swarm
@@ -246,7 +238,6 @@ library swarm-scenario
                       simple-enumeration            >= 0.2 && < 0.3,
                       tagged                        >= 0.8 && < 0.9,
                       text                          >= 1.2.4 && < 2.1,
-                      time                          >= 1.9 && < 1.14,
                       transformers                  >= 0.5.6.2 && < 0.6.2.0,
                       vector                        >= 0.12 && < 0.14,
                       vty                           >= 6.1 && < 6.2,
@@ -275,7 +266,13 @@ library swarm-engine
                       Swarm.Game.Robot.Activity
                       Swarm.Game.Robot.Concrete
                       Swarm.Game.Robot.Context
+                      Swarm.Game.ScenarioInfo
                       Swarm.Game.Scenario.Objective.WinCheck
+                      Swarm.Game.Scenario.Scoring.Best
+                      Swarm.Game.Scenario.Scoring.CodeSize
+                      Swarm.Game.Scenario.Scoring.ConcreteMetrics
+                      Swarm.Game.Scenario.Scoring.GenericMetrics
+                      Swarm.Game.Scenario.Status
                       Swarm.Game.Scenario.Topography.Center
                       Swarm.Game.Scenario.Topography.Navigation.Util
                       Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking
@@ -296,8 +293,10 @@ library swarm-engine
                       Swarm.Game.Step.Util
                       Swarm.Game.Step.Util.Command
                       Swarm.Game.Step.Util.Inspect
+                      Swarm.Game.Tick
                       Swarm.Game.Value
                       Swarm.Game.World.Render
+                      Swarm.Log
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
     build-depends:    base                          >= 4.14 && < 4.19,
