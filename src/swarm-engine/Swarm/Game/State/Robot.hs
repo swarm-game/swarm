@@ -121,7 +121,7 @@ data Robots = Robots
   , -- This member exists as an optimization so
     -- that we do not have to iterate over all "waiting" robots,
     -- since there may be many.
-    _robotsWatching :: Map (Cosmic Location) (S.Set RID)
+    _robotsWatching :: Map (Cosmic Location) IntSet
   , _robotNaming :: RobotNaming
   , _viewCenterRule :: ViewCenterRule
   , _viewCenter :: Cosmic Location
@@ -163,7 +163,7 @@ waitingRobots = internalWaitingRobots
 robotsByLocation :: Lens' Robots (Map SubworldName (Map Location IntSet))
 
 -- | Get a list of all the robots that are \"watching\" by location.
-robotsWatching :: Lens' Robots (Map (Cosmic Location) (S.Set RID))
+robotsWatching :: Lens' Robots (Map (Cosmic Location) IntSet)
 
 -- | State and data for assigning identifiers to robots
 robotNaming :: Lens' Robots RobotNaming
@@ -299,7 +299,7 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 -- This function modifies:
 --
 -- * 'wakeLog'
--- * 'robotsWatching' (by way of 'clearWatchingRobots')
+-- * 'robotsWatching'
 -- * 'internalWaitingRobots'
 -- * 'internalActiveRobots' (aka 'activeRobots')
 --
@@ -310,36 +310,26 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 -- * O(M + A) where A is the number of active robots
 wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m IntSet
 wakeUpRobotsDoneSleeping time = do
-  waitingMap <- use waitingRobots
-
   maybeWakeableRIDs <- internalWaitingRobots . at time <<.= Nothing
   case maybeWakeableRIDs of
     Nothing -> return mempty
     Just wakeableRIDs -> do
 
-      -- These robots' wake times may have been moved "forward"
-      -- by 'wakeWatchingRobots'.
-      clearWatchingRobots wakeableRIDs
+      let wakeableRIDsSet = IS.fromList wakeableRIDs
+
+      -- Clear the "watch" state of all of the
+      -- awakened robots
+      robotsWatching %= M.map (`IS.difference` wakeableRIDsSet)
 
       robots <- use robotMap
       let robotIdSet = IM.keysSet robots
       
-      -- Limit ourselves to the robots that have not expired in their sleep
-      let newlyAlive = IS.fromList $ filter (`IM.member` robots) wakeableRIDs
-
+          -- Limit ourselves to the robots that have not expired in their sleep
+          newlyAlive = IS.intersection robotIdSet wakeableRIDsSet
 
       internalActiveRobots %= IS.union newlyAlive
 
       return newlyAlive
-
--- | Clear the "watch" state of all of the
--- awakened robots
-clearWatchingRobots ::
-  (Has (State Robots) sig m) =>
-  [RID] ->
-  m ()
-clearWatchingRobots rids = do
-  robotsWatching %= M.map (`S.difference` S.fromList rids)
 
 -- | Iterates through all of the currently @wait@-ing robots,
 -- and moves forward the wake time of the ones that are @watch@-ing this location.
@@ -359,7 +349,7 @@ wakeWatchingRobots currentTick loc = do
       botsWatchingThisLoc :: [Robot]
       botsWatchingThisLoc =
         mapMaybe (`IM.lookup` rMap) $
-          S.toList $
+          IS.toList $
             M.findWithDefault mempty loc watchingMap
 
       -- Step 2: Get the target wake time for each of these robots
