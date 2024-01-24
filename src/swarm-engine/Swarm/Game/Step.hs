@@ -38,8 +38,6 @@ import Data.Sequence ((><))
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as S
-import Data.SortedList (SortedList)
-import Data.SortedList qualified as SL
 import Data.Text (Text)
 import Data.Text qualified as T
 import Linear (zero)
@@ -164,19 +162,19 @@ type HasGameStepState sig m = (Has (State GameState) sig m, Has (Lift IO) sig m,
 -- with a higher 'RID' to be inserted into the runnable set.
 --
 -- Tail-recursive.
-iterateRobots :: HasGameStepState sig m => TickNumber -> (RID -> m ()) -> SortedList RID -> m ()
+iterateRobots :: HasGameStepState sig m => TickNumber -> (RID -> m ()) -> IS.IntSet -> m ()
 iterateRobots time f runnableBots =
-  case SL.uncons runnableBots of
-    Nothing -> return ()
-    Just (thisRobotId, remainingBotIDs) -> do
-      f thisRobotId
+  unless (IS.null runnableBots) $ do
+    f thisRobotId
 
-      -- We may have awakened new robots in the current robot's iteration,
-      -- so we add them to the list
-      robotsJustAwakened <- zoomRobots $ wakeUpRobotsDoneSleeping time
-      let robotsToAdd = SL.filterGE thisRobotId robotsJustAwakened
+    -- We may have awakened new robots in the current robot's iteration,
+    -- so we add them to the list
+    robotsJustAwakened <- zoomRobots $ wakeUpRobotsDoneSleeping time
+    let (_, robotsToAdd) = IS.split thisRobotId robotsJustAwakened
 
-      iterateRobots time f $ remainingBotIDs `SL.union` robotsToAdd
+    iterateRobots time f $ IS.union robotsToAdd remainingBotIDs
+ where
+  (thisRobotId, remainingBotIDs) = IS.deleteFindMin runnableBots
 
 -- | Run a set of robots - this is used to run robots before/after the focused one.
 --
@@ -194,7 +192,7 @@ iterateRobots time f runnableBots =
 runRobotIDs :: HasGameStepState sig m => IS.IntSet -> m ()
 runRobotIDs robotNames = do
   time <- use $ temporal . ticks
-  flip (iterateRobots time) (SL.toSortedList $ IS.toList robotNames) $ \rn -> do
+  flip (iterateRobots time) robotNames $ \rn -> do
     mr <- uses (robotInfo . robotMap) (IM.lookup rn)
     forM_ mr (stepOneRobot rn)
  where
