@@ -313,7 +313,6 @@ wakeUpRobotsDoneSleeping time = do
   case maybeWakeableRIDs of
     Nothing -> return mempty
     Just wakeableRIDs -> do
-
       let wakeableRIDsSet = IS.fromList wakeableRIDs
 
       -- Clear the "watch" state of all of the
@@ -322,7 +321,7 @@ wakeUpRobotsDoneSleeping time = do
 
       robots <- use robotMap
       let robotIdSet = IM.keysSet robots
-      
+
           -- Limit ourselves to the robots that have not expired in their sleep
           newlyAlive = IS.intersection robotIdSet wakeableRIDsSet
 
