@@ -30,7 +30,7 @@ import System.IO (hPrint, stderr)
 import Text.Read (readMaybe)
 
 gitInfo :: Maybe GitInfo
-gitInfo = either (const Nothing) Just ($$tGitInfoCwdTry)
+gitInfo = either (const Nothing) Just $$tGitInfoCwdTry
 
 commitInfo :: String
 commitInfo = case gitInfo of

@@ -133,10 +133,8 @@ mkEntityLookup grids =
   mkValues neList = AutomatonInfo participatingEnts bounds sm
    where
     participatingEnts =
-      S.fromList
-        . map (view entityName)
-        . catMaybes
-        $ concatMap fst tuples
+      (S.fromList . map (view entityName))
+        (concatMap (catMaybes . fst) tuples)
 
     tuples = M.toList $ M.mapWithKey mkSmValue groupedByUniqueRow
 
