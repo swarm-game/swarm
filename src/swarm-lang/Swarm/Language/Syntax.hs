@@ -156,6 +156,8 @@ data Const
     Move
   | -- | Move backward one step.
     Backup
+  | -- | Measure the size of the enclosed volume
+    Volume
   | -- | Describe a path to the destination.
     Path
   | -- | Push an entity forward one step.
@@ -541,6 +543,11 @@ constInfo c = case c of
       ]
   Move -> command 0 short "Move forward one step."
   Backup -> command 0 short "Move backward one step."
+  Volume ->
+    command 1 short . doc "Measure enclosed volume." $
+      [ "Specify the max volume before terminating search."
+      , "There is also an implicit hard-coded maximum of XXXX."
+      ]
   Path ->
     command 2 short . doc "Obtain shortest path to the destination." $
       [ "Optionally supply a distance limit as the first argument."

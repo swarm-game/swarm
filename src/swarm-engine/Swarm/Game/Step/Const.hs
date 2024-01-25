@@ -11,6 +11,7 @@
 -- Implementation of robot commands
 module Swarm.Game.Step.Const where
 
+import Swarm.Game.Step.Flood
 import Control.Applicative (Applicative (..))
 import Control.Arrow ((&&&))
 import Control.Carrier.State.Lazy
@@ -157,6 +158,24 @@ execConst runChildProg c vs s k = do
     Backup -> do
       orientation <- use robotOrientation
       moveInDirection $ applyTurn (DRelative $ DPlanar DBack) $ orientation ? zero
+    Volume -> case vs of
+      [VInt limit] -> do
+        when (limit > globalMaxVolume) $
+          throwError $
+            CmdFailed
+              Volume
+              ( T.unwords
+                  [ "Can only measure up to"
+                  , T.pack $ show globalMaxVolume
+                  , "cells."
+                  ]
+              )
+              Nothing
+
+        robotLoc <- use robotLocation
+        maybeResult <- floodFill robotLoc $ fromIntegral limit
+        return $ mkReturn maybeResult
+      _ -> badConst
     Path -> case vs of
       [VInj hasLimit limitVal, VInj findEntity goalVal] -> do
         maybeLimit <-

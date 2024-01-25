@@ -36,6 +36,8 @@ data Capability
     CMove
   | -- | Execute the 'Backup' command
     CBackup
+  | -- | Execute the 'Volume' command
+    CVolume
   | -- | Execute the 'Path' command
     CPath
   | -- | Execute the 'Push' command
@@ -224,6 +226,7 @@ constCaps = \case
   Selfdestruct -> Just CSelfdestruct
   Move -> Just CMove
   Backup -> Just CBackup
+  Volume -> Just CVolume
   Path -> Just CPath
   Push -> Just CPush
   Stride -> Just CMovemultiple
