@@ -38,6 +38,7 @@ import Swarm.Game.Exception
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..), destination, reorientation)
 import Swarm.Game.State
 import Swarm.Game.State.Robot

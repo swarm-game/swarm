@@ -20,6 +20,10 @@ module Swarm.Game.Robot (
   _machine,
   RobotActivity,
   _activityCounts,
+  RobotLogMember,
+  _robotLog,
+  RobotLogUpdatedMember,
+  _robotLogUpdated,
 
   -- * Robots
   RobotPhase (..),
@@ -44,8 +48,6 @@ module Swarm.Game.Robot (
   robotOrientation,
   robotInventory,
   equippedDevices,
-  robotLog,
-  robotLogUpdated,
   inventoryHash,
   robotCapabilities,
   walkabilityContext,
@@ -71,8 +73,6 @@ import Control.Lens hiding (Const, contains)
 import Data.Aeson qualified as Ae (ToJSON (..))
 import Data.Hashable (hashWithSalt)
 import Data.Kind qualified
-import Data.Sequence (Seq)
-import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Yaml (FromJSON (parseJSON), (.!=), (.:), (.:?))
@@ -86,7 +86,6 @@ import Swarm.Language.Capability (Capability)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document)
-import Swarm.Log
 import Swarm.Util.Lens (makeLensesExcluding)
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
@@ -123,6 +122,12 @@ type instance RobotContextMember 'TemplateRobot = ()
 type family RobotActivity (phase :: RobotPhase) :: Data.Kind.Type
 type instance RobotActivity 'TemplateRobot = ()
 
+type family RobotLogMember (phase :: RobotPhase) :: Data.Kind.Type
+type instance RobotLogMember 'TemplateRobot = ()
+
+type family RobotLogUpdatedMember (phase :: RobotPhase) :: Data.Kind.Type
+type instance RobotLogUpdatedMember 'TemplateRobot = ()
+
 -- | A value of type 'RobotR' is a record representing the state of a
 --   single robot.  The @f@ parameter is for tracking whether or not
 --   the robot has been assigned a unique ID.
@@ -132,8 +137,8 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _robotCapabilities :: Set Capability
   -- ^ A cached view of the capabilities this robot has.
   --   Automatically generated from '_equippedDevices'.
-  , _robotLog :: Seq LogEntry
-  , _robotLogUpdated :: Bool
+  , _robotLog :: RobotLogMember phase
+  , _robotLogUpdated :: RobotLogUpdatedMember phase
   , _robotLocation :: RobotLocation phase
   , _robotContext :: RobotContextMember phase
   , _robotID :: RobotID phase
@@ -149,13 +154,13 @@ data RobotR (phase :: RobotPhase) = RobotR
   }
   deriving (Generic)
 
-deriving instance (Show (RobotLocation phase), Show (RobotID phase), Show (RobotMachine phase), Show (RobotContextMember phase), Show (RobotActivity phase)) => Show (RobotR phase)
-deriving instance (Eq (RobotLocation phase), Eq (RobotID phase), Eq (RobotMachine phase), Eq (RobotContextMember phase), Eq (RobotActivity phase)) => Eq (RobotR phase)
+deriving instance (Show (RobotLocation phase), Show (RobotID phase), Show (RobotMachine phase), Show (RobotContextMember phase), Show (RobotActivity phase), Show (RobotLogMember phase), Show (RobotLogUpdatedMember phase)) => Show (RobotR phase)
+deriving instance (Eq (RobotLocation phase), Eq (RobotID phase), Eq (RobotMachine phase), Eq (RobotContextMember phase), Eq (RobotActivity phase), Eq (RobotLogMember phase), Eq (RobotLogUpdatedMember phase)) => Eq (RobotR phase)
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-makeLensesExcluding ['_robotCapabilities, '_equippedDevices, '_robotLog, '_robotContext, '_machine, '_activityCounts] ''RobotR
+makeLensesExcluding ['_robotCapabilities, '_equippedDevices, '_robotLog, '_robotLogUpdated, '_robotContext, '_machine, '_activityCounts] ''RobotR
 
 -- | A template robot, i.e. a template robot record without a unique ID number,
 --   and possibly without a location.
@@ -269,31 +274,6 @@ equippedDevices = lens _equippedDevices setEquipped
       , _robotCapabilities = inventoryCapabilities inst
       }
 
--- | The robot's own private message log, most recent message last.
---   Messages can be added both by explicit use of the 'Swarm.Language.Syntax.Log' command,
---   and by uncaught exceptions.  Stored as a 'Seq' so that
---   we can efficiently add to the end and also process from beginning
---   to end.  Note that updating via this lens will also set the
---   'robotLogUpdated'.
-robotLog :: Lens' Robot (Seq LogEntry)
-robotLog = lens _robotLog setLog
- where
-  setLog r newLog =
-    r
-      { _robotLog = newLog
-      , -- Flag the log as updated if (1) if already was, or (2) the new
-        -- log is a different length than the old.  (This would not
-        -- catch updates that merely modify an entry, but we don't want
-        -- to have to compare the entire logs, and we only ever append
-        -- to logs anyway.)
-        _robotLogUpdated =
-          _robotLogUpdated r || Seq.length (_robotLog r) /= Seq.length newLog
-      }
-
--- | Has the 'robotLog' been updated since the last time it was
---   viewed?
-robotLogUpdated :: Lens' Robot Bool
-
 -- | A hash of a robot's entity record and equipped devices, to
 --   facilitate quickly deciding whether we need to redraw the robot
 --   info panel.
@@ -370,8 +350,8 @@ mkRobot pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
           & entityInventory .~ fromElems inv
     , _equippedDevices = inst
     , _robotCapabilities = inventoryCapabilities inst
-    , _robotLog = Seq.empty
-    , _robotLogUpdated = False
+    , _robotLog = ()
+    , _robotLogUpdated = ()
     , _robotLocation = loc
     , _robotContext = ()
     , _robotID = ()
