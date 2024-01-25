@@ -280,6 +280,7 @@ library swarm-engine
                       Swarm.Game.State
                       Swarm.Game.State.Config
                       Swarm.Game.State.Robot
+                      Swarm.Game.State.Runtime
                       Swarm.Game.State.Substate
                       Swarm.Game.Step
                       Swarm.Game.Step.Arithmetic
@@ -298,6 +299,7 @@ library swarm-engine
                       Swarm.Game.Value
                       Swarm.Game.World.Render
                       Swarm.Log
+                      Swarm.Version
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
     build-depends:    base                          >= 4.14 && < 4.19,
@@ -332,6 +334,12 @@ library swarm-engine
                       vector                        >= 0.12 && < 0.14,
                       witch                         >= 1.1.1.0 && < 1.3,
                       yaml                          >= 0.11 && < 0.11.12.0,
+                      warp,
+                      http-client                   >= 0.7 && < 0.8,
+                      http-client-tls               >= 0.3 && < 0.4,
+                      http-types                    >= 0.12 && < 0.13,
+                      bytestring,
+                      githash,
     build-depends:    swarm:swarm-util,
                       swarm:swarm-lang,
                       swarm:swarm-scenario,
@@ -462,8 +470,7 @@ library
                       Swarm.TUI.View.Objective
                       Swarm.TUI.View.Structure
                       Swarm.TUI.View.Util
-                      Swarm.Version
-
+                      
     reexported-modules: Control.Carrier.Accum.FixedStrict
                       , Data.BoolExpr.Simplify
                       , Swarm.Constant
@@ -523,6 +530,7 @@ library
                       , Swarm.Game.State
                       , Swarm.Game.State.Config
                       , Swarm.Game.State.Robot
+                      , Swarm.Game.State.Runtime
                       , Swarm.Game.State.Substate
                       , Swarm.Game.Step
                       , Swarm.Game.Step.Arithmetic
@@ -588,6 +596,7 @@ library
                       , Swarm.Util.WindowedCounter
                       , Swarm.Util.Yaml
                       , Swarm.Language.Capability
+                      , Swarm.Version
 
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
@@ -606,9 +615,6 @@ library
                       fused-effects                 >= 1.1.1.1 && < 1.2,
                       fuzzy                         >= 0.1 && < 0.2,
                       githash                       >= 0.1.6 && < 0.2,
-                      http-client                   >= 0.7 && < 0.8,
-                      http-client-tls               >= 0.3 && < 0.4,
-                      http-types                    >= 0.12 && < 0.13,
                       lens                          >= 4.19 && < 5.3,
                       linear                        >= 1.21.6 && < 1.23,
                       transformers                  >= 0.5 && < 0.7,
@@ -780,7 +786,10 @@ benchmark benchmark
                   base,
                   lens,
                   mtl,
-                  swarm,
+                  swarm:swarm-engine,
+                  swarm:swarm-util,
+                  swarm:swarm-lang,
+                  swarm:swarm-scenario,
                   containers,
   default-language: Haskell2010
   ghc-options:      -threaded

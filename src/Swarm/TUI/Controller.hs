@@ -85,6 +85,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (originalStruct
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.State.Robot
+import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Step (finishGameTick, gameTick)
 import Swarm.Language.Capability (Capability (CDebug, CGod, CMake), constCaps)
