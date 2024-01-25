@@ -10,11 +10,12 @@ extra-deps:
 - brick-2.1.1
 - brick-list-skip-0.1.1.8
 - astar-0.3.0.0
+- unification-fd-0.11.2@sha256:b2e11811b703b63682076ae326bd856fd47caf7db881e9e5b896a6342bceb51f,3736
 # We should update to lsp-2.0 and lsp-types-2.0 but it involves some
 # breaking changes; see https://github.com/swarm-game/swarm/issues/1350
 - lsp-1.6.0.0
 - lsp-types-1.6.0.0
 - megaparsec-9.6.1
 - AhoCorasick-0.0.4
-resolver: lts-21.25
+resolver: lts-22.6
 
