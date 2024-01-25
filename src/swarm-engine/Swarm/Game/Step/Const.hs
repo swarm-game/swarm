@@ -11,7 +11,6 @@
 -- Implementation of robot commands
 module Swarm.Game.Step.Const where
 
-import Swarm.Game.Step.Flood
 import Control.Applicative (Applicative (..))
 import Control.Arrow ((&&&))
 import Control.Carrier.State.Lazy
@@ -73,6 +72,7 @@ import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Arithmetic
 import Swarm.Game.Step.Combustion qualified as Combustion
+import Swarm.Game.Step.Flood
 import Swarm.Game.Step.Path.Finding
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Path.Walkability
