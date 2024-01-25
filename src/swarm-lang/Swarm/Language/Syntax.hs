@@ -37,10 +37,13 @@ module Swarm.Language.Syntax (
   isBuiltinFunction,
   isTangible,
   isLong,
+
+  -- * Size limits
   maxSniffRange,
   maxScoutRange,
   maxStrideRange,
   maxPathRange,
+  globalMaxVolume,
 
   -- * Syntax
   Syntax' (..),
@@ -124,6 +127,15 @@ maxStrideRange = 64
 maxPathRange :: Integer
 maxPathRange = 128
 
+-- | Checked upon invocation of the command,
+-- before flood fill computation, to ensure
+-- the search has a reasonable bound.
+--
+-- The user is warned in the failure message
+-- that there exists a global limit.
+globalMaxVolume :: Integer
+globalMaxVolume = 64 * 64
+
 ------------------------------------------------------------
 -- Constants
 ------------------------------------------------------------
@@ -158,6 +170,8 @@ data Const
     Move
   | -- | Move backward one step.
     Backup
+  | -- | Measure the size of the enclosed volume
+    Volume
   | -- | Describe a path to the destination.
     Path
   | -- | Push an entity forward one step.
@@ -564,6 +578,19 @@ constInfo c = case c of
       shortDoc
         (Set.singleton $ Mutation $ RobotChange PositionChange)
         "Move backward one step."
+  Volume ->
+    command 1 short
+      . doc
+        (Set.singleton $ Query $ Sensing EntitySensing)
+        "Measure enclosed volume."
+      $ [ "Specify the max volume to check for."
+        , "Returns either the measured volume bounded by \"unwalkable\" cells,"
+        , "or `unit` if the search exceeds the limit."
+        , T.unwords
+            [ "There is also an implicit hard-coded maximum of"
+            , T.pack $ show globalMaxVolume
+            ]
+        ]
   Path ->
     command 2 short
       . doc

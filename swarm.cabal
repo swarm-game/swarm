@@ -286,6 +286,7 @@ library swarm-engine
                       Swarm.Game.Step.Arithmetic
                       Swarm.Game.Step.Combustion
                       Swarm.Game.Step.Const
+                      Swarm.Game.Step.Flood
                       Swarm.Game.Step.Path.Cache
                       Swarm.Game.Step.Path.Cache.DistanceLimit
                       Swarm.Game.Step.Path.Finding
@@ -536,6 +537,7 @@ library
                       , Swarm.Game.Step.Arithmetic
                       , Swarm.Game.Step.Combustion
                       , Swarm.Game.Step.Const
+                      , Swarm.Game.Step.Flood
                       , Swarm.Game.Step.Path.Cache
                       , Swarm.Game.Step.Path.Cache.DistanceLimit
                       , Swarm.Game.Step.Path.Finding
