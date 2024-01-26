@@ -115,6 +115,7 @@ library swarm-lang
                       Swarm.Language.Pretty
                       Swarm.Language.Requirement
                       Swarm.Language.Syntax
+                      Swarm.Language.Syntax.CommandMetadata
                       Swarm.Language.Text.Markdown
                       Swarm.Language.Typecheck
                       Swarm.Language.Typecheck.Unify
@@ -422,7 +423,8 @@ library swarm-util
 
 library
     import:           stan-config, common, ghc2021-extensions
-    exposed-modules:  Swarm.Doc.Keyword
+    exposed-modules:  Swarm.Doc.Command
+                      Swarm.Doc.Keyword
                       Swarm.Doc.Pedagogy
                       Swarm.Doc.Util
                       Swarm.TUI.Border
@@ -566,6 +568,7 @@ library
                       , Swarm.Language.Pretty
                       , Swarm.Language.Requirement
                       , Swarm.Language.Syntax
+                      , Swarm.Language.Syntax.CommandMetadata
                       , Swarm.Language.Text.Markdown
                       , Swarm.Language.Typecheck
                       , Swarm.Language.Typecheck.Unify
@@ -675,6 +678,8 @@ executable swarm-docs
                       Swarm.Doc.Schema.Render
                       Swarm.Doc.Schema.SchemaType
                       Swarm.Doc.Wiki.Cheatsheet
+                      Swarm.Doc.Wiki.Matrix
+                      Swarm.Doc.Wiki.Util
     build-depends:    optparse-applicative          >= 0.16 && < 0.19,
                       dotgen                        >= 0.4 && < 0.5,
                       pandoc                        >= 3.0 && < 3.2,

@@ -97,13 +97,15 @@ import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict (Map)
+import Data.Set (Set)
 import Data.Set qualified as S
-import Data.String (IsString (fromString))
+import Data.Set qualified as Set
 import Data.Text hiding (filter, length, map)
 import Data.Text qualified as T
 import Data.Tree
 import GHC.Generics (Generic)
 import Swarm.Language.Direction
+import Swarm.Language.Syntax.CommandMetadata
 import Swarm.Language.Types
 import Swarm.Util qualified as Util
 import Witch.From (from)
@@ -402,15 +404,21 @@ data ConstInfo = ConstInfo
   }
   deriving (Eq, Ord, Show)
 
-data ConstDoc = ConstDoc {briefDoc :: Text, longDoc :: Text}
+data ConstDoc = ConstDoc
+  { effectInfo :: Set CommandEffect
+  -- ^ NOTE: The absence of effects implies a "pure computation".
+  , briefDoc :: Text
+  , longDoc :: Text
+  }
   deriving (Eq, Ord, Show)
-
-instance IsString ConstDoc where
-  fromString = flip ConstDoc "" . T.pack
 
 data ConstMeta
   = -- | Function with arity of which some are commands
-    ConstMFunc Int Bool
+    ConstMFunc
+      -- | Arity
+      Int
+      -- | Is a command?
+      Bool
   | -- | Unary operator with fixity and associativity.
     ConstMUnOp MUnAssoc
   | -- | Binary operator with fixity and associativity.
@@ -527,88 +535,163 @@ isLong c = case tangibility (constInfo c) of
 -- matching gives us warning if we add more constants.
 constInfo :: Const -> ConstInfo
 constInfo c = case c of
-  Wait -> command 0 long "Wait for a number of time steps."
+  Wait ->
+    command 0 long $
+      shortDoc
+        (Set.singleton $ Mutation $ RobotChange BehaviorChange)
+        "Wait for a number of time steps."
   Noop ->
-    command 0 Intangible . doc "Do nothing." $
+    command 0 Intangible . doc Set.empty "Do nothing." $
       [ "This is different than `Wait` in that it does not take up a time step."
       , "It is useful for commands like if, which requires you to provide both branches."
       , "Usually it is automatically inserted where needed, so you do not have to worry about it."
       ]
   Selfdestruct ->
-    command 0 short . doc "Self-destruct a robot." $
-      [ "Useful to not clutter the world."
-      , "This destroys the robot's inventory, so consider `salvage` as an alternative."
-      ]
-  Move -> command 0 short "Move forward one step."
-  Backup -> command 0 short "Move backward one step."
+    command 0 short
+      . doc
+        (Set.singleton $ Mutation $ RobotChange ExistenceChange)
+        "Self-destruct a robot."
+      $ [ "Useful to not clutter the world."
+        , "This destroys the robot's inventory, so consider `salvage` as an alternative."
+        ]
+  Move ->
+    command 0 short $
+      shortDoc
+        (Set.singleton $ Mutation $ RobotChange PositionChange)
+        "Move forward one step."
+  Backup ->
+    command 0 short $
+      shortDoc
+        (Set.singleton $ Mutation $ RobotChange PositionChange)
+        "Move backward one step."
   Path ->
-    command 2 short . doc "Obtain shortest path to the destination." $
-      [ "Optionally supply a distance limit as the first argument."
-      , "Supply either a location (`inL`) or an entity (`inR`) as the second argument."
-      , "If a path exists, returns the direction to proceed along and the remaining distance."
-      ]
+    command 2 short
+      . doc
+        (Set.singleton $ Query $ Sensing EntitySensing)
+        "Obtain shortest path to the destination."
+      $ [ "Optionally supply a distance limit as the first argument."
+        , "Supply either a location (`inL`) or an entity (`inR`) as the second argument."
+        , "If a path exists, returns the direction to proceed along and the remaining distance."
+        ]
   Push ->
-    command 1 short . doc "Push an entity forward one step." $
-      [ "Both entity and robot moves forward one step."
-      , "Destination must not contain an entity."
-      ]
+    command 1 short
+      . doc
+        (Set.fromList [Mutation EntityChange, Mutation $ RobotChange PositionChange])
+        "Push an entity forward one step."
+      $ [ "Both entity and robot moves forward one step."
+        , "Destination must not contain an entity."
+        ]
   Stride ->
-    command 1 short . doc "Move forward multiple steps." $
-      [ T.unwords ["Has a max range of", T.pack $ show maxStrideRange, "units."]
-      ]
-  Turn -> command 1 short "Turn in some direction."
-  Grab -> command 0 short "Grab an item from the current location."
+    command 1 short
+      . doc
+        (Set.singleton $ Mutation $ RobotChange PositionChange)
+        "Move forward multiple steps."
+      $ [ T.unwords ["Has a max range of", T.pack $ show maxStrideRange, "units."]
+        ]
+  Turn ->
+    command 1 short $
+      shortDoc
+        (Set.singleton $ Mutation $ RobotChange PositionChange)
+        "Turn in some direction."
+  Grab ->
+    command 0 short $
+      shortDoc
+        (Set.fromList [Mutation EntityChange, Mutation $ RobotChange InventoryChange])
+        "Grab an item from the current location."
   Harvest ->
-    command 0 short . doc "Harvest an item from the current location." $
+    command 0 short . doc (Set.fromList [Mutation EntityChange, Mutation $ RobotChange InventoryChange]) "Harvest an item from the current location." $
       [ "Leaves behind a growing seed if the harvested item is growable."
       , "Otherwise it works exactly like `grab`."
       ]
   Ignite ->
-    command 1 short . doc "Ignite a combustible item in the specified direction." $
-      [ "Combustion persists for a random duration and may spread."
-      ]
+    command 1 short
+      . doc
+        (Set.singleton $ Mutation EntityChange)
+        "Ignite a combustible item in the specified direction."
+      $ [ "Combustion persists for a random duration and may spread."
+        ]
   Place ->
-    command 1 short . doc "Place an item at the current location." $
-      ["The current location has to be empty for this to work."]
+    command 1 short
+      . doc
+        (Set.fromList [Mutation EntityChange, Mutation $ RobotChange InventoryChange])
+        "Place an item at the current location."
+      $ ["The current location has to be empty for this to work."]
   Ping ->
-    command 1 short . doc "Obtain the relative location of another robot." $
-      [ "The other robot must be within transmission range, accounting for antennas installed on either end, and the invoking robot must be oriented in a cardinal direction."
-      , "The location (x, y) is given relative to one's current orientation:"
-      , "Positive x value is to the right, negative left. Likewise, positive y value is forward, negative back."
-      ]
-  Give -> command 2 short "Give an item to another actor nearby."
-  Equip -> command 1 short "Equip a device on oneself."
-  Unequip -> command 1 short "Unequip an equipped device, returning to inventory."
-  Make -> command 1 long "Make an item using a recipe."
-  Has -> command 1 Intangible "Sense whether the robot has a given item in its inventory."
-  Equipped -> command 1 Intangible "Sense whether the robot has a specific device equipped."
-  Count -> command 1 Intangible "Get the count of a given item in a robot's inventory."
+    command 1 short
+      . doc
+        (Set.singleton $ Query $ Sensing RobotSensing)
+        "Obtain the relative location of another robot."
+      $ [ "The other robot must be within transmission range, accounting for antennas installed on either end, and the invoking robot must be oriented in a cardinal direction."
+        , "The location (x, y) is given relative to one's current orientation:"
+        , "Positive x value is to the right, negative left. Likewise, positive y value is forward, negative back."
+        ]
+  Give ->
+    command 2 short $
+      shortDoc
+        (Set.singleton $ Mutation $ RobotChange InventoryChange)
+        "Give an item to another actor nearby."
+  Equip ->
+    command 1 short $
+      shortDoc
+        (Set.fromList [Mutation $ RobotChange InventoryChange, Mutation $ RobotChange BehaviorChange])
+        "Equip a device on oneself."
+  Unequip ->
+    command 1 short $
+      shortDoc
+        (Set.fromList [Mutation $ RobotChange InventoryChange, Mutation $ RobotChange BehaviorChange])
+        "Unequip an equipped device, returning to inventory."
+  Make ->
+    command 1 long $
+      shortDoc
+        (Set.singleton $ Mutation $ RobotChange InventoryChange)
+        "Make an item using a recipe."
+  Has ->
+    command 1 Intangible $
+      shortDoc
+        (Set.singleton $ Query $ Sensing RobotSensing)
+        "Sense whether the robot has a given item in its inventory."
+  Equipped ->
+    command 1 Intangible $
+      shortDoc
+        (Set.singleton $ Query $ Sensing RobotSensing)
+        "Sense whether the robot has a specific device equipped."
+  Count ->
+    command 1 Intangible $
+      shortDoc
+        (Set.singleton $ Query $ Sensing RobotSensing)
+        "Get the count of a given item in a robot's inventory."
   Reprogram ->
-    command 2 long . doc "Reprogram another robot with a new command." $
-      ["The other robot has to be nearby and idle."]
+    command 2 long
+      . doc
+        (Set.singleton $ Mutation $ RobotChange BehaviorChange)
+        "Reprogram another robot with a new command."
+      $ ["The other robot has to be nearby and idle."]
   Drill ->
-    command 1 long . doc "Drill through an entity." $
-      [ "Usually you want to `drill forward` when exploring to clear out obstacles."
-      , "When you have found a source to drill, you can stand on it and `drill down`."
-      , "See what recipes with drill you have available."
-      , "The `drill` command may return the name of an entity added to your inventory."
-      ]
+    command 1 long
+      . doc
+        (Set.fromList [Mutation EntityChange, Mutation $ RobotChange InventoryChange])
+        "Drill through an entity."
+      $ [ "Usually you want to `drill forward` when exploring to clear out obstacles."
+        , "When you have found a source to drill, you can stand on it and `drill down`."
+        , "See what recipes with drill you have available."
+        , "The `drill` command may return the name of an entity added to your inventory."
+        ]
   Use ->
-    command 2 long . doc "Use one entity upon another." $
+    command 2 long . doc (Set.singleton $ Mutation EntityChange) "Use one entity upon another." $
       [ "Which entities you can `use` with others depends on the available recipes."
       , "The object being used must be a 'required' entity in a recipe."
       ]
   Build ->
-    command 1 long . doc "Construct a new robot." $
+    command 1 long . doc (Set.singleton $ Mutation $ RobotChange ExistenceChange) "Construct a new robot." $
       [ "You can specify a command for the robot to execute."
       , "If the command requires devices they will be taken from your inventory and "
           <> "equipped on the new robot."
       ]
   Salvage ->
-    command 0 long . doc "Deconstruct an old robot." $
+    command 0 long . doc (Set.singleton $ Mutation $ RobotChange ExistenceChange) "Deconstruct an old robot." $
       ["Salvaging a robot will give you its inventory, equipped devices and log."]
   Say ->
-    command 1 short . doc "Emit a message." $
+    command 1 short . doc (Set.singleton $ Mutation $ RobotChange BehaviorChange) "Emit a message." $
       [ "The message will be in the robot's log (if it has one) and the global log."
       , "You can view the message that would be picked by `listen` from the global log "
           <> "in the messages panel, along with your own messages and logs."
@@ -617,208 +700,217 @@ constInfo c = case c of
       , "In creative mode, there is of course no such limitation."
       ]
   Listen ->
-    command 1 long . doc "Listen for a message from other actors." $
+    command 1 long . doc (Set.singleton $ Query $ Sensing RobotSensing) "Listen for a message from other actors." $
       [ "It will take the first message said by the closest actor."
       , "You do not need to actively listen for the message to be logged though, "
           <> "that is done automatically once you have a listening device equipped."
       , "Note that you can see the messages either in your logger device or the message panel."
       ]
-  Log -> command 1 short "Log the string in the robot's logger."
+  Log -> command 1 short $ shortDoc (Set.singleton $ Mutation LogEmission) "Log the string in the robot's logger."
   View ->
-    command 1 short . doc "View the given actor." $
+    command 1 short . doc (Set.singleton $ Query $ Sensing RobotSensing) "View the given actor." $
       [ "This will recenter the map on the target robot and allow its inventory and logs to be inspected."
       ]
   Appear ->
-    command 1 short . doc "Set how the robot is displayed." $
+    command 1 short . doc (Set.singleton $ Mutation Cosmetic) "Set how the robot is displayed." $
       [ "You can either specify one character or five (for each direction)."
       , "The default is \"X^>v<\"."
       ]
   Create ->
-    command 1 short . doc "Create an item out of thin air." $
+    command 1 short . doc (Set.fromList [Mutation EntityChange, Mutation $ RobotChange InventoryChange]) "Create an item out of thin air." $
       ["Only available in creative mode."]
-  Halt -> command 1 short "Tell a robot to halt."
-  Time -> command 0 Intangible "Get the current time."
+  Halt -> command 1 short $ shortDoc (Set.singleton $ Mutation $ RobotChange BehaviorChange) "Tell a robot to halt."
+  Time ->
+    command 0 Intangible $
+      shortDoc
+        (Set.singleton $ Query $ Sensing WorldCondition)
+        "Get the current time."
   Scout ->
-    command 1 short . doc "Detect whether a robot is within line-of-sight in a direction." $
+    command 1 short . doc (Set.singleton $ Query $ Sensing RobotSensing) "Detect whether a robot is within line-of-sight in a direction." $
       [ "Perception is blocked by 'Opaque' entities."
       , T.unwords ["Has a max range of", T.pack $ show maxScoutRange, "units."]
       ]
-  Whereami -> command 0 Intangible "Get the current x and y coordinates."
+  Whereami ->
+    command 0 Intangible $
+      shortDoc
+        (Set.singleton $ Query $ Sensing RobotSensing)
+        "Get the current x and y coordinates."
   Waypoint ->
-    command 2 Intangible . doc "Get the x, y coordinates of a named waypoint, by index" $
+    command 2 Intangible . doc (Set.singleton $ Query APriori) "Get the x, y coordinates of a named waypoint, by index" $
       [ "Return only the waypoints in the same subworld as the calling robot."
       , "Since waypoint names can have plural multiplicity, returns a tuple of (count, (x, y))."
       , "The supplied index will be wrapped automatically, modulo the waypoint count."
       , "A robot can use the count to know whether they have iterated over the full waypoint circuit."
       ]
   Structure ->
-    command 2 Intangible . doc "Get the x, y coordinates of the southwest corner of a constructed structure, by name and index" $
+    command 2 Intangible . doc (Set.singleton $ Query $ Sensing EntitySensing) "Get the x, y coordinates of the southwest corner of a constructed structure, by name and index" $
       [ "The outermost type of the return value indicates whether any structure of such name exists."
       , "Since structures can have multiple occurrences, returns a tuple of (count, (x, y))."
       , "The supplied index will be wrapped automatically, modulo the structure count."
       , "A robot can use the count to know whether they have iterated over the full structure list."
       ]
   Floorplan ->
-    command 1 Intangible . doc "Get the dimensions of a structure template" $
+    command 1 Intangible . doc (Set.singleton $ Query APriori) "Get the dimensions of a structure template" $
       [ "Returns a tuple of (width, height) for the structure of the requested name."
       , "Yields an error if the supplied string is not the name of a structure."
       ]
   HasTag ->
-    command 2 Intangible . doc "Check whether the given entity has the given tag" $
+    command 2 Intangible . doc (Set.singleton $ Query APriori) "Check whether the given entity has the given tag" $
       [ "Returns true if the first argument is an entity that is labeled by the tag in the second argument."
       , "Yields an error if the first argument is not a valid entity."
       ]
   TagMembers ->
-    command 2 Intangible . doc "Get the entities labeled by a tag, by alphabetical index" $
+    command 2 Intangible . doc (Set.singleton $ Query APriori) "Get the entities labeled by a tag, by alphabetical index" $
       [ "Returns a tuple of (member count, entity)."
       , "The supplied index will be wrapped automatically, modulo the member count."
       , "A robot can use the count to know whether they have iterated over the full list."
       ]
   Detect ->
-    command 2 Intangible . doc "Detect an entity within a rectangle." $
+    command 2 Intangible . doc (Set.singleton $ Query $ Sensing EntitySensing) "Detect an entity within a rectangle." $
       ["Locate the closest instance of a given entity within the rectangle specified by opposite corners, relative to the current location."]
   Resonate ->
-    command 2 Intangible . doc "Count specific entities within a rectangle." $
+    command 2 Intangible . doc (Set.singleton $ Query $ Sensing EntitySensing) "Count specific entities within a rectangle." $
       [ "Applies a strong magnetic field over a given area and stimulates the matter within, generating a non-directional radio signal. A receiver tuned to the resonant frequency of the target entity is able to measure its quantity."
       , "Counts the entities within the rectangle specified by opposite corners, relative to the current location."
       ]
   Density ->
-    command 1 Intangible . doc "Count all entities within a rectangle." $
+    command 1 Intangible . doc (Set.singleton $ Query $ Sensing EntitySensing) "Count all entities within a rectangle." $
       [ "Applies a strong magnetic field over a given area and stimulates the matter within, generating a non-directional radio signal. A receiver measured the signal intensity to measure the quantity."
       , "Counts the entities within the rectangle specified by opposite corners, relative to the current location."
       ]
   Sniff ->
-    command 1 short . doc "Determine distance to entity." $
+    command 1 short . doc (Set.singleton $ Query $ Sensing EntitySensing) "Determine distance to entity." $
       [ "Measures concentration of airborne particles to infer distance to a certain kind of entity."
       , "If none is detected, returns (-1)."
       , T.unwords ["Has a max range of", T.pack $ show maxSniffRange, "units."]
       ]
   Chirp ->
-    command 1 short . doc "Determine direction to entity." $
+    command 1 short . doc (Set.singleton $ Query $ Sensing EntitySensing) "Determine direction to entity." $
       [ "Uses a directional sonic emitter and microphone tuned to the acoustic signature of a specific entity to determine its direction."
       , "Returns 'down' if out of range or the direction is indeterminate."
       , "Provides absolute directions if \"compass\" equipped, relative directions otherwise."
       , T.unwords ["Has a max range of", T.pack $ show maxSniffRange, "units."]
       ]
   Watch ->
-    command 1 short . doc "Interrupt `wait` upon location changes." $
+    command 1 short . doc (Set.singleton $ Query $ Sensing EntitySensing) "Interrupt `wait` upon location changes." $
       [ "Place seismic detectors to alert upon entity changes to the specified location."
       , "Supply a direction, as with the `scan` command, to specify a nearby location."
       , "Can be invoked more than once until the next `wait` command, at which time the only the registered locations that are currently nearby are preserved."
       , "Any change to entities at the monitored locations will cause the robot to wake up before the `wait` timeout."
       ]
   Surveil ->
-    command 1 short . doc "Interrupt `wait` upon (remote) location changes." $
+    command 1 short . doc (Set.singleton $ Query $ Sensing EntitySensing) "Interrupt `wait` upon (remote) location changes." $
       [ "Like `watch`, but with no restriction on distance."
       ]
-  Heading -> command 0 Intangible "Get the current heading."
-  Blocked -> command 0 Intangible "See if the robot can move forward."
+  Heading -> command 0 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Get the current heading."
+  Blocked -> command 0 Intangible $ shortDoc (Set.singleton $ Query $ Sensing EntitySensing) "See if the robot can move forward."
   Scan ->
-    command 1 Intangible . doc "Scan a nearby location for entities." $
+    command 1 Intangible . doc (Set.singleton $ Query $ Sensing EntitySensing) "Scan a nearby location for entities." $
       [ "Adds the entity (not actor) to your inventory with count 0 if there is any."
       , "If you can use sum types, you can also inspect the result directly."
       ]
-  Upload -> command 1 short "Upload a robot's known entities and log to another robot."
-  Ishere -> command 1 Intangible "See if a specific entity is in the current location."
+  Upload -> command 1 short $ shortDoc (Set.singleton $ Mutation $ RobotChange BehaviorChange) "Upload a robot's known entities and log to another robot."
+  Ishere -> command 1 Intangible $ shortDoc (Set.singleton $ Query $ Sensing EntitySensing) "See if a specific entity is in the current location."
   Isempty ->
-    command 0 Intangible . doc "Check if the current location is empty." $
+    command 0 Intangible . doc (Set.singleton $ Query $ Sensing EntitySensing) "Check if the current location is empty." $
       [ "Detects whether or not the current location contains an entity."
       , "Does not detect robots or other actors."
       ]
-  Self -> function 0 "Get a reference to the current robot."
-  Parent -> function 0 "Get a reference to the robot's parent."
-  Base -> function 0 "Get a reference to the base."
-  Meet -> command 0 Intangible "Get a reference to a nearby actor, if there is one."
-  MeetAll -> command 0 long "Run a command for each nearby actor."
-  Whoami -> command 0 Intangible "Get the robot's display name."
-  Setname -> command 1 short "Set the robot's display name."
+  Self -> function 0 $ shortDoc (Set.singleton $ Query APriori) "Get a reference to the current robot."
+  Parent -> function 0 $ shortDoc (Set.singleton $ Query APriori) "Get a reference to the robot's parent."
+  Base -> function 0 $ shortDoc (Set.singleton $ Query APriori) "Get a reference to the base."
+  Meet -> command 0 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Get a reference to a nearby actor, if there is one."
+  MeetAll -> command 0 long $ shortDoc (Set.fromList [Mutation $ RobotChange BehaviorChange, Query $ Sensing RobotSensing]) "Run a command for each nearby actor."
+  Whoami -> command 0 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Get the robot's display name."
+  Setname -> command 1 short $ shortDoc (Set.singleton $ Mutation $ RobotChange BehaviorChange) "Set the robot's display name."
   Random ->
-    command 1 Intangible . doc "Get a uniformly random integer." $
+    command 1 Intangible . doc (Set.singleton $ Query PRNG) "Get a uniformly random integer." $
       ["The random integer will be chosen from the range 0 to n-1, exclusive of the argument."]
-  Run -> command 1 long "Run a program loaded from a file."
-  Return -> command 1 Intangible "Make the value a result in `cmd`."
-  Try -> command 2 Intangible "Execute a command, catching errors."
-  Undefined -> function 0 "A value of any type, that is evaluated as error."
-  Fail -> function 1 "A value of any type, that is evaluated as error with message."
+  Run -> command 1 long $ shortDoc (Set.singleton $ Mutation $ RobotChange BehaviorChange) "Run a program loaded from a file."
+  Return -> command 1 Intangible $ shortDoc Set.empty "Make the value a result in `cmd`."
+  Try -> command 2 Intangible $ shortDoc Set.empty "Execute a command, catching errors."
+  Undefined -> function 0 $ shortDoc Set.empty "A value of any type, that is evaluated as error."
+  Fail -> function 1 $ shortDoc Set.empty "A value of any type, that is evaluated as error with message."
   If ->
-    function 3 . doc "If-Then-Else function." $
+    function 3 . doc Set.empty "If-Then-Else function." $
       ["If the bool predicate is true then evaluate the first expression, otherwise the second."]
-  Inl -> function 1 "Put the value into the left component of a sum type."
-  Inr -> function 1 "Put the value into the right component of a sum type."
-  Case -> function 3 "Evaluate one of the given functions on a value of sum type."
-  Fst -> function 1 "Get the first value of a pair."
-  Snd -> function 1 "Get the second value of a pair."
-  Force -> function 1 "Force the evaluation of a delayed value."
-  Not -> function 1 "Negate the boolean value."
-  Neg -> unaryOp "-" 7 P "Negate the given integer value."
-  Add -> binaryOp "+" 6 L "Add the given integer values."
-  And -> binaryOp "&&" 3 R "Logical and (true if both values are true)."
-  Or -> binaryOp "||" 2 R "Logical or (true if either value is true)."
-  Sub -> binaryOp "-" 6 L "Subtract the given integer values."
-  Mul -> binaryOp "*" 7 L "Multiply the given integer values."
-  Div -> binaryOp "/" 7 L "Divide the left integer value by the right one, rounding down."
-  Exp -> binaryOp "^" 8 R "Raise the left integer value to the power of the right one."
-  Eq -> binaryOp "==" 4 N "Check that the left value is equal to the right one."
-  Neq -> binaryOp "!=" 4 N "Check that the left value is not equal to the right one."
-  Lt -> binaryOp "<" 4 N "Check that the left value is lesser than the right one."
-  Gt -> binaryOp ">" 4 N "Check that the left value is greater than the right one."
-  Leq -> binaryOp "<=" 4 N "Check that the left value is lesser or equal to the right one."
-  Geq -> binaryOp ">=" 4 N "Check that the left value is greater or equal to the right one."
-  Format -> function 1 "Turn an arbitrary value into a string."
-  Concat -> binaryOp "++" 6 R "Concatenate the given strings."
-  Chars -> function 1 "Counts the number of characters in the text."
+  Inl -> function 1 $ shortDoc Set.empty "Put the value into the left component of a sum type."
+  Inr -> function 1 $ shortDoc Set.empty "Put the value into the right component of a sum type."
+  Case -> function 3 $ shortDoc Set.empty "Evaluate one of the given functions on a value of sum type."
+  Fst -> function 1 $ shortDoc Set.empty "Get the first value of a pair."
+  Snd -> function 1 $ shortDoc Set.empty "Get the second value of a pair."
+  Force -> function 1 $ shortDoc Set.empty "Force the evaluation of a delayed value."
+  Not -> function 1 $ shortDoc Set.empty "Negate the boolean value."
+  Neg -> unaryOp "-" 7 P $ shortDoc Set.empty "Negate the given integer value."
+  Add -> binaryOp "+" 6 L $ shortDoc Set.empty "Add the given integer values."
+  And -> binaryOp "&&" 3 R $ shortDoc Set.empty "Logical and (true if both values are true)."
+  Or -> binaryOp "||" 2 R $ shortDoc Set.empty "Logical or (true if either value is true)."
+  Sub -> binaryOp "-" 6 L $ shortDoc Set.empty "Subtract the given integer values."
+  Mul -> binaryOp "*" 7 L $ shortDoc Set.empty "Multiply the given integer values."
+  Div -> binaryOp "/" 7 L $ shortDoc Set.empty "Divide the left integer value by the right one, rounding down."
+  Exp -> binaryOp "^" 8 R $ shortDoc Set.empty "Raise the left integer value to the power of the right one."
+  Eq -> binaryOp "==" 4 N $ shortDoc Set.empty "Check that the left value is equal to the right one."
+  Neq -> binaryOp "!=" 4 N $ shortDoc Set.empty "Check that the left value is not equal to the right one."
+  Lt -> binaryOp "<" 4 N $ shortDoc Set.empty "Check that the left value is lesser than the right one."
+  Gt -> binaryOp ">" 4 N $ shortDoc Set.empty "Check that the left value is greater than the right one."
+  Leq -> binaryOp "<=" 4 N $ shortDoc Set.empty "Check that the left value is lesser or equal to the right one."
+  Geq -> binaryOp ">=" 4 N $ shortDoc Set.empty "Check that the left value is greater or equal to the right one."
+  Format -> function 1 $ shortDoc Set.empty "Turn an arbitrary value into a string."
+  Concat -> binaryOp "++" 6 R $ shortDoc Set.empty "Concatenate the given strings."
+  Chars -> function 1 $ shortDoc Set.empty "Counts the number of characters in the text."
   Split ->
-    function 2 . doc "Split the text into two at given position." $
+    function 2 . doc Set.empty "Split the text into two at given position." $
       [ "To be more specific, the following holds for all `text` values `s1` and `s2`:"
       , "`(s1,s2) == split (chars s1) (s1 ++ s2)`"
       , "So split can be used to undo concatenation if you know the length of the original string."
       ]
   CharAt ->
-    function 2 . doc "Get the character at a given index." $
+    function 2 . doc Set.empty "Get the character at a given index." $
       [ "Gets the character (as an `int` representing a Unicode codepoint) at a specific index in a `text` value.  Valid indices are 0 through `chars t - 1`."
       , "Throws an exception if given an out-of-bounds index."
       ]
   ToChar ->
-    function 1 . doc "Create a singleton `text` value from the given character code." $
+    function 1 . doc Set.empty "Create a singleton `text` value from the given character code." $
       [ "That is, `chars (toChar c) == 1` and `charAt 0 (toChar c) == c`."
       ]
   AppF ->
-    binaryOp "$" 0 R . doc "Apply the function on the left to the value on the right." $
+    binaryOp "$" 0 R . doc Set.empty "Apply the function on the left to the value on the right." $
       [ "This operator is useful to avoid nesting parentheses."
       , "For exaple:"
       , "`f $ g $ h x = f (g (h x))`"
       ]
   Swap ->
-    command 1 short . doc "Swap placed entity with one in inventory." $
+    command 1 short . doc (Set.fromList [Mutation EntityChange, Mutation $ RobotChange InventoryChange]) "Swap placed entity with one in inventory." $
       [ "This essentially works like atomic grab and place."
       , "Use this to avoid race conditions where more robots grab, scan or place in one location."
       ]
   Atomic ->
-    command 1 Intangible . doc "Execute a block of commands atomically." $
+    command 1 Intangible . doc (Set.singleton MetaEffect) "Execute a block of commands atomically." $
       [ "When executing `atomic c`, a robot will not be interrupted, that is, no other robots will execute any commands while the robot is executing @c@."
       ]
   Instant ->
-    command 1 Intangible . doc "Execute a block of commands instantly." $
+    command 1 Intangible . doc (Set.singleton MetaEffect) "Execute a block of commands instantly." $
       [ "Like `atomic`, but with no restriction on program size."
       ]
   Key ->
-    function 1 . doc "Create a key value from a text description." $
+    function 1 . doc Set.empty "Create a key value from a text description." $
       [ "The key description can optionally start with modifiers like 'C-', 'M-', 'A-', or 'S-', followed by either a regular key, or a special key name like 'Down' or 'End'"
       , "For example, 'M-C-x', 'Down', or 'S-4'."
       , "Which key combinations are actually possible to type may vary by keyboard and terminal program."
       ]
   InstallKeyHandler ->
-    command 2 Intangible . doc "Install a keyboard input handler." $
+    command 2 Intangible . doc (Set.singleton $ Mutation $ RobotChange BehaviorChange) "Install a keyboard input handler." $
       [ "The first argument is a hint line that will be displayed when the input handler is active."
       , "The second argument is a function to handle keyboard inputs."
       ]
-  Teleport -> command 2 short "Teleport a robot to the given location."
-  As -> command 2 Intangible "Hypothetically run a command as if you were another robot."
-  RobotNamed -> command 1 Intangible "Find an actor by name."
-  RobotNumbered -> command 1 Intangible "Find an actor by number."
-  Knows -> command 1 Intangible "Check if the robot knows about an entity."
+  Teleport -> command 2 short $ shortDoc (Set.singleton $ Mutation $ RobotChange PositionChange) "Teleport a robot to the given location."
+  As -> command 2 Intangible $ shortDoc (Set.singleton $ Mutation $ RobotChange BehaviorChange) "Hypothetically run a command as if you were another robot."
+  RobotNamed -> command 1 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Find an actor by name."
+  RobotNumbered -> command 1 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Find an actor by number."
+  Knows -> command 1 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Check if the robot knows about an entity."
  where
-  doc b ls = ConstDoc b (T.unlines ls)
+  doc e b ls = ConstDoc e b (T.unlines ls)
+  shortDoc e b = ConstDoc e b ""
   unaryOp s p side d =
     ConstInfo
       { syntax = s
