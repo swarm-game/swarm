@@ -175,6 +175,7 @@ data CompletionBuckets = CompletionBuckets
   }
   deriving (Show, Generic, FromJSON, ToJSON)
 
+-- XXX note we derive lenses but DON'T export them
 makeLensesNoSigs ''CompletionBuckets
 
 -- | XXX
@@ -236,13 +237,11 @@ addCompleted obj =
   .
   (internalCompletedIDs %~ maybe id Set.insert (obj ^. objectiveId))
 
--- XXX get rid of this?
 -- | XXX
 addUnwinnable :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
 addUnwinnable obj = completionBuckets . unwinnable %~ (obj :)
 
--- XXX get rid of this?
--- | XXX 
+-- | XXX
 addIncomplete :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
 addIncomplete obj = completionBuckets . incomplete %~ (obj :)
 
