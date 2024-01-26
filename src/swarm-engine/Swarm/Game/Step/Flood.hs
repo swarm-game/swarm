@@ -54,7 +54,7 @@ makeLenses ''FloodPartition
 --
 -- 1. Mark the popped cell as visited, regardless of walkability.
 -- 2. Check popped cell for walkability
--- 3. Add all neighbors that aren't already visited, regardless of walkability, to the queue.
+-- 3. Add all neighbors that aren't already visited, regardless of walkability, to the stack.
 --    But unwalkable cells shall not produce neighbors and shall be marked with a boundary/interior distinction.
 floodRecursive ::
   HasRobotStepState sig m =>
@@ -80,7 +80,7 @@ floodRecursive tracking pending params =
         visitableNeighbors = filter (not . (`HashSet.member` visited tracking)) candidateNeighbors
 
         -- It's cheaper to prepend the "visitableNeighbors" list because
-        -- it should in general be a shorter list than the pending queue.
+        -- it should in general be a shorter list than the "pending" list.
         newPending = visitableNeighbors <> otherLocs
 
         partitionMutator =
