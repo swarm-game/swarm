@@ -10,6 +10,7 @@ import Control.Lens (Getter, Ixed (ix), view, (&), (.~), (^.), (^?!))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Concrete (robotLog)
 import Swarm.Game.State
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
