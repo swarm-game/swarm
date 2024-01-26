@@ -60,8 +60,8 @@ cycleSortDirection (InventorySortOptions direction order) =
 -- | All non-alphabetic sort criteria perform alphabetic tie-breaking.
 -- "Reverse ordering" only applies to the *primary* sort criteria; the secondary
 -- alphabetic sort is always in ascending order.
-getSortCompartor :: Ord a => InventorySortOptions -> (a, Entity) -> (a, Entity) -> Ordering
-getSortCompartor (InventorySortOptions direction order) = case order of
+getSortComparator :: Ord a => InventorySortOptions -> (a, Entity) -> (a, Entity) -> Ordering
+getSortComparator (InventorySortOptions direction order) = case order of
   ByNaturalAlphabetic -> compReversible (alphabetic . snd)
   ByQuantity -> compReversible fst <> secondary
   ByType -> compReversible (view entityProperties . snd) <> secondary
@@ -76,4 +76,4 @@ getSortCompartor (InventorySortOptions direction order) = case order of
 
 sortInventory :: Ord a => InventorySortOptions -> [(a, Entity)] -> [(a, Entity)]
 sortInventory opts =
-  sortBy $ getSortCompartor opts
+  sortBy $ getSortComparator opts

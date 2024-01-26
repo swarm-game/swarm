@@ -18,7 +18,12 @@ module Swarm.Game.Robot (
   _robotContext,
   RobotMachine,
   _machine,
-  emptyActivityCount,
+  RobotActivity,
+  _activityCounts,
+  RobotLogMember,
+  _robotLog,
+  RobotLogUpdatedMember,
+  _robotLogUpdated,
 
   -- * Robots
   RobotPhase (..),
@@ -43,8 +48,6 @@ module Swarm.Game.Robot (
   robotOrientation,
   robotInventory,
   equippedDevices,
-  robotLog,
-  robotLogUpdated,
   inventoryHash,
   robotCapabilities,
   walkabilityContext,
@@ -54,12 +57,6 @@ module Swarm.Game.Robot (
   systemRobot,
   selfDestruct,
   runningAtomic,
-  activityCounts,
-  tickStepBudget,
-  tangibleCommandCount,
-  commandsHistogram,
-  lifetimeStepCount,
-  activityWindow,
 
   -- ** Creation & instantiation
   mkRobot,
@@ -73,12 +70,9 @@ module Swarm.Game.Robot (
 
 import Control.Applicative ((<|>))
 import Control.Lens hiding (Const, contains)
-import Data.Aeson qualified as Ae (FromJSON, ToJSON (..))
+import Data.Aeson qualified as Ae (ToJSON (..))
 import Data.Hashable (hashWithSalt)
 import Data.Kind qualified
-import Data.Map (Map)
-import Data.Sequence (Seq)
-import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Yaml (FromJSON (parseJSON), (.!=), (.:), (.:?))
@@ -87,15 +81,12 @@ import Linear
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Location (Heading, Location, toDirection, toHeading)
-import Swarm.Game.Tick
 import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Language.Syntax (Const, Syntax)
+import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document)
-import Swarm.Log
-import Swarm.Util.Lens (makeLensesExcluding, makeLensesNoSigs)
-import Swarm.Util.WindowedCounter
+import Swarm.Util.Lens (makeLensesExcluding)
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
 
@@ -110,85 +101,6 @@ data RobotPhase
     TemplateRobot
   | -- | The robot record represents a concrete robot in the world.
     ConcreteRobot
-
-data ActivityCounts = ActivityCounts
-  { _tickStepBudget :: Int
-  , _tangibleCommandCount :: Int
-  , _commandsHistogram :: Map Const Int
-  , _lifetimeStepCount :: Int
-  , _activityWindow :: WindowedCounter TickNumber
-  }
-  deriving (Eq, Show, Generic, Ae.FromJSON, Ae.ToJSON)
-
-emptyActivityCount :: ActivityCounts
-emptyActivityCount =
-  ActivityCounts
-    { _tickStepBudget = 0
-    , _tangibleCommandCount = 0
-    , _commandsHistogram = mempty
-    , _lifetimeStepCount = 0
-    , -- NOTE: This value was chosen experimentally.
-      -- TODO(#1341): Make this dynamic based on game speed.
-      _activityWindow = mkWindow 64
-    }
-
-makeLensesNoSigs ''ActivityCounts
-
--- | A counter that is decremented upon each step of the robot within the
---   CESK machine. Initially set to 'Swarm.Game.State.robotStepsPerTick'
---   at each new tick.
---
---   The need for 'tickStepBudget' is a bit technical, and I hope I can
---   eventually find a different, better way to accomplish it.
---   Ideally, we would want each robot to execute a single
---   /command/ at every game tick, so that /e.g./ two robots
---   executing @move;move;move@ and @repeat 3 move@ (given a
---   suitable definition of @repeat@) will move in lockstep.
---   However, the second robot actually has to do more computation
---   than the first (it has to look up the definition of @repeat@,
---   reduce its application to the number 3, etc.), so its CESK
---   machine will take more steps.  It won't do to simply let each
---   robot run until executing a command---because robot programs
---   can involve arbitrary recursion, it is very easy to write a
---   program that evaluates forever without ever executing a
---   command, which in this scenario would completely freeze the
---   UI. (It also wouldn't help to ensure all programs are
---   terminating---it would still be possible to effectively do
---   the same thing by making a program that takes a very, very
---   long time to terminate.)  So instead, we allocate each robot
---   a certain maximum number of computation steps per tick
---   (defined in 'Swarm.Game.Step.evalStepsPerTick'), and it
---   suspends computation when it either executes a command or
---   reaches the maximum number of steps, whichever comes first.
---
---   It seems like this really isn't something the robot should be
---   keeping track of itself, but that seemed the most technically
---   convenient way to do it at the time.  The robot needs some
---   way to signal when it has executed a command, which it
---   currently does by setting tickStepBudget to zero.  However, that
---   has the disadvantage that when tickStepBudget becomes zero, we
---   can't tell whether that happened because the robot ran out of
---   steps, or because it executed a command and set it to zero
---   manually.
---
---   Perhaps instead, each robot should keep a counter saying how
---   many commands it has executed.  The loop stepping the robot
---   can tell when the counter increments.
-tickStepBudget :: Lens' ActivityCounts Int
-
--- | Total number of tangible commands executed over robot's lifetime
-tangibleCommandCount :: Lens' ActivityCounts Int
-
--- | Histogram of commands executed over robot's lifetime
-commandsHistogram :: Lens' ActivityCounts (Map Const Int)
-
--- | Total number of CESK steps executed over robot's lifetime.
--- This could be thought of as "CPU cycles" consumed, and is labeled
--- as "cycles" in the F2 dialog in the UI.
-lifetimeStepCount :: Lens' ActivityCounts Int
-
--- | Sliding window over a span of ticks indicating ratio of activity
-activityWindow :: Lens' ActivityCounts (WindowedCounter TickNumber)
 
 -- | With a robot template, we may or may not have a location.  With a
 --   concrete robot we must have a location.
@@ -207,6 +119,15 @@ type instance RobotMachine 'TemplateRobot = Maybe ProcessedTerm
 type family RobotContextMember (phase :: RobotPhase) :: Data.Kind.Type
 type instance RobotContextMember 'TemplateRobot = ()
 
+type family RobotActivity (phase :: RobotPhase) :: Data.Kind.Type
+type instance RobotActivity 'TemplateRobot = ()
+
+type family RobotLogMember (phase :: RobotPhase) :: Data.Kind.Type
+type instance RobotLogMember 'TemplateRobot = ()
+
+type family RobotLogUpdatedMember (phase :: RobotPhase) :: Data.Kind.Type
+type instance RobotLogUpdatedMember 'TemplateRobot = ()
+
 -- | A value of type 'RobotR' is a record representing the state of a
 --   single robot.  The @f@ parameter is for tracking whether or not
 --   the robot has been assigned a unique ID.
@@ -216,8 +137,8 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _robotCapabilities :: Set Capability
   -- ^ A cached view of the capabilities this robot has.
   --   Automatically generated from '_equippedDevices'.
-  , _robotLog :: Seq LogEntry
-  , _robotLogUpdated :: Bool
+  , _robotLog :: RobotLogMember phase
+  , _robotLogUpdated :: RobotLogUpdatedMember phase
   , _robotLocation :: RobotLocation phase
   , _robotContext :: RobotContextMember phase
   , _robotID :: RobotID phase
@@ -226,20 +147,20 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _machine :: RobotMachine phase
   , _systemRobot :: Bool
   , _selfDestruct :: Bool
-  , _activityCounts :: ActivityCounts
+  , _activityCounts :: RobotActivity phase
   , _runningAtomic :: Bool
   , _unwalkableEntities :: Set EntityName
   , _robotCreatedAt :: TimeSpec
   }
   deriving (Generic)
 
-deriving instance (Show (RobotLocation phase), Show (RobotID phase), Show (RobotMachine phase), Show (RobotContextMember phase)) => Show (RobotR phase)
-deriving instance (Eq (RobotLocation phase), Eq (RobotID phase), Eq (RobotMachine phase), Eq (RobotContextMember phase)) => Eq (RobotR phase)
+deriving instance (Show (RobotLocation phase), Show (RobotID phase), Show (RobotMachine phase), Show (RobotContextMember phase), Show (RobotActivity phase), Show (RobotLogMember phase), Show (RobotLogUpdatedMember phase)) => Show (RobotR phase)
+deriving instance (Eq (RobotLocation phase), Eq (RobotID phase), Eq (RobotMachine phase), Eq (RobotContextMember phase), Eq (RobotActivity phase), Eq (RobotLogMember phase), Eq (RobotLogUpdatedMember phase)) => Eq (RobotR phase)
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-makeLensesExcluding ['_robotCapabilities, '_equippedDevices, '_robotLog, '_robotContext, '_machine] ''RobotR
+makeLensesExcluding ['_robotCapabilities, '_equippedDevices, '_robotLog, '_robotLogUpdated, '_robotContext, '_machine, '_activityCounts] ''RobotR
 
 -- | A template robot, i.e. a template robot record without a unique ID number,
 --   and possibly without a location.
@@ -353,31 +274,6 @@ equippedDevices = lens _equippedDevices setEquipped
       , _robotCapabilities = inventoryCapabilities inst
       }
 
--- | The robot's own private message log, most recent message last.
---   Messages can be added both by explicit use of the 'Swarm.Language.Syntax.Log' command,
---   and by uncaught exceptions.  Stored as a 'Seq' so that
---   we can efficiently add to the end and also process from beginning
---   to end.  Note that updating via this lens will also set the
---   'robotLogUpdated'.
-robotLog :: Lens' Robot (Seq LogEntry)
-robotLog = lens _robotLog setLog
- where
-  setLog r newLog =
-    r
-      { _robotLog = newLog
-      , -- Flag the log as updated if (1) if already was, or (2) the new
-        -- log is a different length than the old.  (This would not
-        -- catch updates that merely modify an entry, but we don't want
-        -- to have to compare the entire logs, and we only ever append
-        -- to logs anyway.)
-        _robotLogUpdated =
-          _robotLogUpdated r || Seq.length (_robotLog r) /= Seq.length newLog
-      }
-
--- | Has the 'robotLog' been updated since the last time it was
---   viewed?
-robotLogUpdated :: Lens' Robot Bool
-
 -- | A hash of a robot's entity record and equipped devices, to
 --   facilitate quickly deciding whether we need to redraw the robot
 --   info panel.
@@ -403,9 +299,6 @@ systemRobot :: Lens' Robot Bool
 -- | Does this robot wish to self destruct?
 selfDestruct :: Lens' Robot Bool
 
--- | Diagnostic and operational tracking of CESK steps or other activity
-activityCounts :: Lens' Robot ActivityCounts
-
 -- | Is the robot currently running an atomic block?
 runningAtomic :: Lens' Robot Bool
 
@@ -423,24 +316,19 @@ walkabilityContext = to $
 
 -- | A general function for creating robots.
 mkRobot ::
-  -- | ID number of the robot.
-  RobotID phase ->
-  -- | Initial context.
-  RobotContextMember phase ->
-  -- | ID number of the robot's parent, if it has one.
   Maybe Int ->
   -- | Name of the robot.
   Text ->
   -- | Description of the robot.
   Document Syntax ->
   -- | Initial location.
-  RobotLocation phase ->
+  Maybe (Cosmic Location) ->
   -- | Initial heading/direction.
   Heading ->
   -- | Robot display.
   Display ->
   -- | Initial CESK machine.
-  RobotMachine phase ->
+  Maybe ProcessedTerm ->
   -- | Equipped devices.
   [Entity] ->
   -- | Initial inventory.
@@ -453,8 +341,8 @@ mkRobot ::
   Set EntityName ->
   -- | Creation date
   TimeSpec ->
-  RobotR phase
-mkRobot rid ctx pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
+  TRobot
+mkRobot pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
   RobotR
     { _robotEntity =
         mkEntity disp name descr [] []
@@ -462,18 +350,18 @@ mkRobot rid ctx pid name descr loc dir disp m devs inv sys heavy unwalkables ts 
           & entityInventory .~ fromElems inv
     , _equippedDevices = inst
     , _robotCapabilities = inventoryCapabilities inst
-    , _robotLog = Seq.empty
-    , _robotLogUpdated = False
+    , _robotLog = ()
+    , _robotLogUpdated = ()
     , _robotLocation = loc
-    , _robotContext = ctx
-    , _robotID = rid
+    , _robotContext = ()
+    , _robotID = ()
     , _robotParentID = pid
     , _robotHeavy = heavy
     , _robotCreatedAt = ts
     , _machine = m
     , _systemRobot = sys
     , _selfDestruct = False
-    , _activityCounts = emptyActivityCount
+    , _activityCounts = ()
     , _runningAtomic = False
     , _unwalkableEntities = unwalkables
     }
@@ -497,7 +385,7 @@ instance FromJSONE EntityMap TRobot where
     sys <- liftE $ v .:? "system" .!= False
     let defDisplay = defaultRobotDisplay & invisible .~ sys
 
-    mkRobot () () Nothing
+    mkRobot Nothing
       <$> liftE (v .: "name")
       <*> liftE (v .:? "description" .!= mempty)
       <*> liftE (v .:? "loc")

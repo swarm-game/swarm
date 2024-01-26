@@ -317,7 +317,7 @@ data Const
 
     -- | Logical equality comparison
     Eq
-  | -- | Logical unequality comparison
+  | -- | Logical inequality comparison
     Neq
   | -- | Logical lesser-then comparison
     Lt
