@@ -138,6 +138,7 @@ mkGameState :: ProcessedTerm -> (Location -> TRobot) -> Int -> IO GameState
 mkGameState prog robotMaker numRobots = do
   let robots = [robotMaker (Location (fromIntegral x) 0) | x <- [0 .. numRobots - 1]]
 
+  -- NOTE: This replaces "classicGame0", which is still used by unit tests.
   gs <- simpleErrorHandle $ do
     (_ :: Seq SystemFailure, initRS) <- runAccum mempty initRuntimeState
     (scenario, _) <- loadStandaloneScenario "classic"

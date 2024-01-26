@@ -16,7 +16,7 @@ fi
 BASELINE_OUTPUT=baseline.csv
 
 git checkout HEAD~
-stack bench --benchmark-arguments "--csv $BASELINE_OUTPUT --color always"
+STACK_WORK=.stack-work-bench stack bench swarm:benchmark --benchmark-arguments "--csv $BASELINE_OUTPUT --color always"
 
 git switch -
-stack bench --benchmark-arguments "--baseline $BASELINE_OUTPUT --fail-if-slower 3 --color always"
+STACK_WORK=.stack-work-bench stack bench swarm:benchmark --benchmark-arguments "--baseline $BASELINE_OUTPUT --fail-if-slower 3 --color always"
