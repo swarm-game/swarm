@@ -54,6 +54,12 @@ import Swarm.Game.State.Robot (
   robotMap,
   waitingRobots,
  )
+import Swarm.Game.State.Runtime (
+  RuntimeState,
+  eventLog,
+  stdEntityMap,
+  worlds,
+ )
 import Swarm.Game.State.Substate (
   WinCondition (WinConditions),
   WinStatus (Won),
@@ -71,14 +77,10 @@ import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty (prettyString)
 import Swarm.Log
 import Swarm.TUI.Model (
-  RuntimeState,
   defaultAppOpts,
-  eventLog,
   gameState,
   runtimeState,
-  stdEntityMap,
   userScenario,
-  worlds,
  )
 import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
 import Swarm.TUI.Model.UI (UIState)

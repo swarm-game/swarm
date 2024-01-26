@@ -5,18 +5,22 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Main where
 
-import Control.Lens ((&), (.~), (^.))
+import Control.Carrier.Accum.FixedStrict (runAccum)
+import Control.Lens ((&), (.~))
 import Control.Monad (replicateM_)
-import Control.Monad.Except (runExceptT)
 import Control.Monad.State (evalStateT, execStateT)
 import Data.Map qualified as M
+import Data.Sequence (Seq)
 import Swarm.Effect (runTimeIO)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display (defaultRobotDisplay)
+import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, mkRobot)
-import Swarm.Game.State (GameState, creativeMode, landscape, zoomRobots)
+import Swarm.Game.Scenario (loadStandaloneScenario)
+import Swarm.Game.State (GameState, creativeMode, landscape, pureScenarioToGameState, zoomRobots)
 import Swarm.Game.State.Robot (addTRobot)
+import Swarm.Game.State.Runtime (initRuntimeState, mkGameStateConfig)
 import Swarm.Game.State.Substate (multiWorld)
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Terrain (TerrainType (DirtT))
@@ -26,8 +30,7 @@ import Swarm.Language.Context qualified as Context
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax
-import Swarm.TUI.Model (gameState)
-import Swarm.TUI.Model.StateUpdate (classicGame0)
+import Swarm.Util.Effect (simpleErrorHandle)
 import Swarm.Util.Erasable
 import Test.Tasty.Bench (Benchmark, bcompare, bench, bgroup, defaultMain, whnfAppIO)
 
@@ -134,10 +137,16 @@ initRobot prog loc =
 mkGameState :: ProcessedTerm -> (Location -> TRobot) -> Int -> IO GameState
 mkGameState prog robotMaker numRobots = do
   let robots = [robotMaker (Location (fromIntegral x) 0) | x <- [0 .. numRobots - 1]]
-  Right initAppState <- runExceptT classicGame0
+
+  -- NOTE: This replaces "classicGame0", which is still used by unit tests.
+  gs <- simpleErrorHandle $ do
+    (_ :: Seq SystemFailure, initRS) <- runAccum mempty initRuntimeState
+    (scenario, _) <- loadStandaloneScenario "classic"
+    return $ pureScenarioToGameState scenario 0 0 Nothing $ mkGameStateConfig initRS
+
   execStateT
     (zoomRobots $ mapM_ (addTRobot $ initMachine prog Context.empty emptyStore) robots)
-    ( (initAppState ^. gameState)
+    ( gs
         & creativeMode .~ True
         & landscape . multiWorld .~ M.singleton DefaultRootSubworld (newWorld (WF $ const (fromEnum DirtT, ENothing)))
     )

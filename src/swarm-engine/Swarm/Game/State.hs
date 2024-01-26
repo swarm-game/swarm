@@ -35,6 +35,7 @@ module Swarm.Game.State (
   -- ** GameState initialization
   initGameState,
   scenarioToGameState,
+  pureScenarioToGameState,
   CodeToRun (..),
   Sha1 (..),
   SolutionSource (..),
