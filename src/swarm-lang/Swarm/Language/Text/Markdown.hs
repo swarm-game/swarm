@@ -43,7 +43,7 @@ import Control.Lens ((%~), (&), _head, _last)
 import Data.Char (isSpace)
 import Data.Functor.Identity (Identity (..))
 import Data.List.Split (chop)
-import Data.Maybe (catMaybes)
+import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -178,7 +178,7 @@ parseSyntax t = case readTerm t of
     Right _ -> Right s
 
 findCode :: Document Syntax -> [Syntax]
-findCode = catMaybes . concatMap (map codeOnly . nodes) . paragraphs
+findCode = concatMap (mapMaybe codeOnly . nodes) . paragraphs
  where
   codeOnly = \case
     LeafCode s -> Just s
