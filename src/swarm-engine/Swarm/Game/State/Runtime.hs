@@ -36,6 +36,7 @@ import Swarm.Game.Entity (Entity, EntityMap, loadEntities)
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Recipe (Recipe, loadRecipes)
 import Swarm.Game.ResourceLoading (NameGenerator, initNameGenerator, readAppData)
+import Swarm.Game.Scenario (GameStateInputs (..))
 import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios)
 import Swarm.Game.State.Substate
 import Swarm.Game.World.Load (loadWorlds)
@@ -126,7 +127,10 @@ mkGameStateConfig :: RuntimeState -> GameStateConfig
 mkGameStateConfig rs =
   GameStateConfig
     { initNameParts = rs ^. nameParts
-    , initEntities = rs ^. stdEntityMap
-    , initRecipes = rs ^. stdRecipes
-    , initWorldMap = rs ^. worlds
+    , initState =
+        GameStateInputs
+          { initEntities = rs ^. stdEntityMap
+          , initRecipes = rs ^. stdRecipes
+          , initWorldMap = rs ^. worlds
+          }
     }
