@@ -4,8 +4,8 @@
   --package split
 -}
 
-import Data.List.Split (splitOn)
 import Data.List.Ordered (nubSort)
+import Data.List.Split (splitOn)
 
 -- |
 -- Extracts all "conids" from a list of "modids".
