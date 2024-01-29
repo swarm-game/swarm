@@ -45,7 +45,7 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Scenario (loadScenario, scenarioAttrs, scenarioWorlds)
+import Swarm.Game.Scenario (loadScenario, scenarioAttrs, scenarioSolution, scenarioWorlds)
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
@@ -56,12 +56,13 @@ import Swarm.Game.ScenarioInfo (
   loadScenarioInfo,
   normalizeScenarioPath,
   scenarioItemByPath,
-  scenarioSolution,
   _SISingle,
  )
 import Swarm.Game.State
+import Swarm.Game.State.Landscape
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
+import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
 import Swarm.TUI.Editor.Model qualified as EM

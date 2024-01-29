@@ -102,12 +102,14 @@ import Swarm.Game.ScenarioInfo (
   scenarioItemName,
  )
 import Swarm.Game.State
+import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (TickNumber (..), addTicks)
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
+import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Pretty (prettyText, prettyTextLine)
 import Swarm.Language.Syntax
@@ -1073,6 +1075,7 @@ drawKeyCmd (h, key, cmd) =
 -- World panel
 ------------------------------------------------------------
 
+-- | Compare to: 'Swarm.Util.Content.getMapRectangle'
 worldWidget ::
   (Cosmic W.Coords -> Widget n) ->
   -- | view center

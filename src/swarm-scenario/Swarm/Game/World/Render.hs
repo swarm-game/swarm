@@ -1,13 +1,14 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- TUI-independent world rendering.
+-- GameState- and TUI-independent world rendering.
 module Swarm.Game.World.Render where
 
 import Codec.Picture
 import Control.Applicative ((<|>))
 import Control.Effect.Lift (sendIO)
 import Control.Lens (view, (^.))
+import Control.Monad.IO.Class (liftIO)
 import Data.Colour.SRGB (RGB (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
@@ -18,17 +19,15 @@ import Linear (V2 (..))
 import Swarm.Game.Display (defaultChar)
 import Swarm.Game.Entity.Cosmetic
 import Swarm.Game.Location
-import Swarm.Game.ResourceLoading (initNameGenerator, readAppData)
-import Swarm.Game.Scenario (PWorldDescription, Scenario, area, loadStandaloneScenario, scenarioCosmetics, scenarioWorlds, ul, worldName)
-import Swarm.Game.Scenario.Status (seedLaunchParams)
+import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Center
 import Swarm.Game.Scenario.Topography.EntityFacade (EntityFacade (..), mkFacade)
-import Swarm.Game.State
-import Swarm.Game.State.Substate
+import Swarm.Game.State.Landscape
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
+import Swarm.Game.World.Gen (Seed)
 import Swarm.Util (surfaceEmpty)
 import Swarm.Util.Content
 import Swarm.Util.Effect (simpleErrorHandle)
@@ -114,17 +113,17 @@ getBoundingBox vc scenarioWorld maybeSize =
 getDisplayGrid ::
   Location ->
   Scenario ->
-  GameState ->
+  Landscape ->
   Maybe AreaDimensions ->
   Grid CellPaintDisplay
-getDisplayGrid vc myScenario gs maybeSize =
+getDisplayGrid vc myScenario ls maybeSize =
   getMapRectangle
     mkFacade
     (getContentAt worlds . mkCosmic)
     (getBoundingBox vc firstScenarioWorld maybeSize)
  where
   mkCosmic = Cosmic $ worldName firstScenarioWorld
-  worlds = view (landscape . multiWorld) gs
+  worlds = view multiWorld ls
 
   firstScenarioWorld = NE.head $ view scenarioWorlds myScenario
 
@@ -133,21 +132,19 @@ getRenderableGrid ::
   FilePath ->
   IO (Grid (PCell EntityFacade), M.Map WorldAttr PreservableColor)
 getRenderableGrid (RenderOpts maybeSeed _ _ maybeSize) fp = simpleErrorHandle $ do
-  (myScenario, (worldDefs, entities, recipes)) <- loadStandaloneScenario fp
-  appDataMap <- readAppData
-  nameGen <- initNameGenerator appDataMap
-  let gsc = GameStateConfig nameGen entities recipes worldDefs
-  gs <-
-    sendIO $
-      scenarioToGameState
-        myScenario
-        (seedLaunchParams maybeSeed)
-        gsc
-  let vc =
+  (myScenario, gsi) <- loadStandaloneScenario fp
+  theSeed <- liftIO $ arbitrateSeed maybeSeed myScenario
+
+  let em = integrateScenarioEntities gsi myScenario
+      worldTuples = buildWorldTuples myScenario
+      myLandscape = mkLandscape myScenario em worldTuples theSeed
+
+      vc =
         view planar $
           determineStaticViewCenter myScenario $
             buildWorldTuples myScenario
-  return (getDisplayGrid vc myScenario gs maybeSize, myScenario ^. scenarioCosmetics)
+
+  return (getDisplayGrid vc myScenario myLandscape maybeSize, myScenario ^. scenarioCosmetics)
 
 doRenderCmd :: RenderOpts -> FilePath -> IO ()
 doRenderCmd opts@(RenderOpts _ asPng _ _) mapPath =

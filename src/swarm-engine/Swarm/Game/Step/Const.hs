@@ -68,6 +68,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons, foundSt
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
+import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Arithmetic
@@ -322,7 +323,7 @@ execConst runChildProg c vs s k = do
         robotInventory %= delete e
 
         when (e == newE) $
-          grantAchievement SwapSame
+          grantAchievementForRobot SwapSame
 
         return $ mkReturn newE
       _ -> badConst
@@ -334,7 +335,7 @@ execConst runChildProg c vs s k = do
 
         inst <- use equippedDevices
         when (d == DRelative DDown && countByName "compass" inst == 0) $ do
-          grantAchievement GetDisoriented
+          grantAchievementForRobot GetDisoriented
 
         return $ mkReturn ()
       _ -> badConst
@@ -394,7 +395,7 @@ execConst runChildProg c vs s k = do
 
             -- Flag the UI for a redraw if we are currently showing either robot's inventory
             when (focusedID == myID || focusedID == otherID) flagRedraw
-          else grantAchievement GaveToSelf
+          else grantAchievementForRobot GaveToSelf
 
         return $ mkReturn ()
       _ -> badConst
@@ -429,7 +430,6 @@ execConst runChildProg c vs s k = do
       [VText name] -> do
         inv <- use robotInventory
         ins <- use equippedDevices
-        sys <- use systemRobot
         em <- use $ landscape . entityMap
         e <-
           lookupEntityName name em
@@ -472,7 +472,8 @@ execConst runChildProg c vs s k = do
         robotInventory .= invTaken
         traverse_ (updateDiscoveredEntities . snd) (recipe ^. recipeOutputs)
         -- Grant CraftedBitcoin achievement
-        when (name == "bitcoin" && not creative && not sys) $ grantAchievement CraftedBitcoin
+        when (name == "bitcoin") $
+          grantAchievementForRobot CraftedBitcoin
 
         finishCookingRecipe recipe VUnit [] (map (uncurry AddEntity) changeInv)
       _ -> badConst
@@ -1604,7 +1605,7 @@ execConst runChildProg c vs s k = do
       (mAch False)
 
     selfDestruct .= True
-    maybe (return ()) grantAchievement (mAch True)
+    maybe (return ()) grantAchievementForRobot (mAch True)
 
   moveInDirection :: (HasRobotStepState sig m, Has (Lift IO) sig m) => Heading -> m CESK
   moveInDirection orientation = do
