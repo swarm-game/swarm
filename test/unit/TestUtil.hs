@@ -19,8 +19,8 @@ import Swarm.Game.Exception
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete (isActive)
 import Swarm.Game.State
+import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
-import Swarm.Game.State.Substate
 import Swarm.Game.Step (gameTick, hypotheticalRobot, stepCESK)
 import Swarm.Language.Context
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)

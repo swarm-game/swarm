@@ -68,10 +68,12 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons, foundSt
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
+import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Arithmetic
 import Swarm.Game.Step.Combustion qualified as Combustion
+import Swarm.Game.Step.Flood
 import Swarm.Game.Step.Path.Finding
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Path.Walkability
@@ -157,6 +159,24 @@ execConst runChildProg c vs s k = do
     Backup -> do
       orientation <- use robotOrientation
       moveInDirection $ applyTurn (DRelative $ DPlanar DBack) $ orientation ? zero
+    Volume -> case vs of
+      [VInt limit] -> do
+        when (limit > globalMaxVolume) $
+          throwError $
+            CmdFailed
+              Volume
+              ( T.unwords
+                  [ "Can only measure up to"
+                  , T.pack $ show globalMaxVolume
+                  , "cells."
+                  ]
+              )
+              Nothing
+
+        robotLoc <- use robotLocation
+        maybeResult <- floodFill robotLoc $ fromIntegral limit
+        return $ mkReturn maybeResult
+      _ -> badConst
     Path -> case vs of
       [VInj hasLimit limitVal, VInj findEntity goalVal] -> do
         maybeLimit <-

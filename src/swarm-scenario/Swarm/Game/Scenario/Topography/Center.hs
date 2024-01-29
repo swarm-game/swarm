@@ -12,7 +12,7 @@ import Data.Maybe (fromMaybe, listToMaybe)
 import Swarm.Game.Location (Location, origin)
 import Swarm.Game.Robot (trobotLocation)
 import Swarm.Game.Scenario (Scenario)
-import Swarm.Game.State (SubworldDescription, genRobotTemplates)
+import Swarm.Game.State.Landscape (SubworldDescription, genRobotTemplates)
 import Swarm.Game.Universe (Cosmic (..), SubworldName (DefaultRootSubworld))
 
 -- | Determine view center for a static map
