@@ -92,7 +92,6 @@ module Swarm.TUI.Model (
   -- ** Initialization
   AppOpts (..),
   defaultAppOpts,
-  Seed,
 
   -- *** Re-exported types used in options
   ColorMode (..),
@@ -127,6 +126,7 @@ import Swarm.Game.State
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (TickNumber (..))
+import Swarm.Game.World.Gen (Seed)
 import Swarm.Log
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Menu

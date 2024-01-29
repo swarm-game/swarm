@@ -103,3 +103,16 @@ describe = \case
       "`give` something to your`self`."
       Easy
       True
+
+-- | Validity conditions are required if-and-only-if the achievement
+-- category is 'GameplayAchievement'.
+getValidityRequirements :: GameplayAchievement -> ValidityConditions
+getValidityRequirements = \case
+  CraftedBitcoin -> ValidityConditions OnlyPlayerRobot ExcludesCreativeMode
+  RobotIntoWater -> ValidityConditions OnlyPlayerRobot ValidInCreativeMode
+  AttemptSelfDestructBase -> ValidityConditions OnlyPlayerRobot ExcludesCreativeMode
+  DestroyedBase -> ValidityConditions OnlyPlayerRobot ValidInCreativeMode
+  LoseScenario -> ValidityConditions OnlyPlayerRobot ExcludesCreativeMode
+  GetDisoriented -> ValidityConditions OnlyPlayerRobot ExcludesCreativeMode
+  SwapSame -> ValidityConditions OnlyPlayerRobot ExcludesCreativeMode
+  GaveToSelf -> ValidityConditions OnlyPlayerRobot ExcludesCreativeMode

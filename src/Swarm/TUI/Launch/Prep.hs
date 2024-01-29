@@ -21,7 +21,7 @@ import Data.Text qualified as T
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (..), ScenarioInfoPair, getLaunchParams, scenarioStatus)
 import Swarm.Game.State (ValidatedLaunchParams, getRunCodePath, parseCodeFile)
-import Swarm.Game.State.Substate (Seed)
+import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Model.Name

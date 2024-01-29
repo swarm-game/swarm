@@ -51,8 +51,14 @@ module Swarm.Game.Scenario (
   loadScenarioFile,
   getScenarioPath,
   loadStandaloneScenario,
+  GameStateInputs (..),
+
+  -- * Utilities
+  integrateScenarioEntities,
+  arbitrateSeed,
 ) where
 
+import Control.Applicative ((<|>))
 import Control.Arrow ((&&&))
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Lift (Lift, sendIO)
@@ -90,6 +96,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (SymmetryAnnotatedGrid (..))
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Universe
+import Swarm.Game.World.Gen (Seed)
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Pipeline (ProcessedTerm)
@@ -102,6 +109,7 @@ import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
+import System.Random (randomRIO)
 
 data StaticStructureInfo = StaticStructureInfo
   { _structureDefs :: [SymmetryAnnotatedGrid (Maybe Cell)]
@@ -371,10 +379,31 @@ loadScenarioFile em worldMap fileName =
 loadStandaloneScenario ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   FilePath ->
-  m (Scenario, (WorldMap, EntityMap, [Recipe Entity]))
+  m (Scenario, GameStateInputs)
 loadStandaloneScenario fp = do
   entities <- loadEntities
   recipes <- loadRecipes entities
   worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds entities
   scene <- fst <$> loadScenario fp entities worlds
-  return (scene, (worlds, entities, recipes))
+  return (scene, GameStateInputs worlds entities recipes)
+
+data GameStateInputs = GameStateInputs
+  { initWorldMap :: WorldMap
+  , initEntities :: EntityMap
+  , initRecipes :: [Recipe Entity]
+  }
+
+integrateScenarioEntities :: GameStateInputs -> Scenario -> EntityMap
+integrateScenarioEntities gsi scenario =
+  initEntities gsi <> scenario ^. scenarioEntities
+
+-- |
+-- Decide on a seed.  In order of preference, we will use:
+--   1. seed value provided by the user
+--   2. seed value specified in the scenario description
+--   3. randomly chosen seed value
+arbitrateSeed :: Maybe Seed -> Scenario -> IO Seed
+arbitrateSeed userSeed scenario =
+  case userSeed <|> scenario ^. scenarioSeed of
+    Just s -> return s
+    Nothing -> randomRIO (0, maxBound :: Int)

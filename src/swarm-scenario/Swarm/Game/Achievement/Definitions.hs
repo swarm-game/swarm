@@ -15,6 +15,9 @@ module Swarm.Game.Achievement.Definitions (
   Quotation (..),
   FlavorText (..),
   AchievementInfo (..),
+  ValidityConditions (..),
+  SystemTypeValidity (..),
+  GameplayModeValidity (..),
 ) where
 
 import Data.Aeson
@@ -44,6 +47,19 @@ data Quotation = Quotation
 data FlavorText
   = Freeform (Document Syntax)
   | FTQuotation Quotation
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+
+data SystemTypeValidity
+  = ValidForSystemRobot
+  | OnlyPlayerRobot
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+
+data GameplayModeValidity
+  = ValidInCreativeMode
+  | ExcludesCreativeMode
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+
+data ValidityConditions = ValidityConditions SystemTypeValidity GameplayModeValidity
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | Information about an achievement.  See
