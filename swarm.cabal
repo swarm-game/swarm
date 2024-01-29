@@ -798,8 +798,10 @@ benchmark benchmark
   type:           exitcode-stdio-1.0
   build-depends:  tasty-bench >= 0.3.1 && < 0.4,
                   base,
+                  extra,
                   lens,
                   mtl,
+                  text,
                   swarm:swarm-engine,
                   swarm:swarm-util,
                   swarm:swarm-lang,
