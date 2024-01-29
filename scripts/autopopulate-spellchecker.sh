@@ -1,9 +1,9 @@
 #!/bin/bash -e
 
-# This script lives 2 levels deep in the directory structure.
+# This script lives 1 level deep in the directory structure.
 # Ensure its commands get run at the toplevel.
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-cd $SCRIPT_DIR/../..
+cd $SCRIPT_DIR/..
 
 
 # First, install hiedb:
@@ -27,7 +27,19 @@ sqlite3 $DBNAME "SELECT substr(sym, 3) FROM (SELECT DISTINCT occ AS sym FROM ref
 # Next, append the individual "conids" extracted from all "modids" that originate from external packages.
 # See definition of "conid" and "monid" here:
 # https://www.haskell.org/onlinereport/haskell2010/haskellch5.html
-sqlite3 $DBNAME "SELECT DISTINCT mod FROM refs WHERE unit NOT IN (SELECT DISTINCT unit FROM mods)" | scripts/spellcheck/split-module-names.hs >> $WORDS_TMPFILE_UNSORTED
+#
+# E.g., takes lines of the following form:
+#
+#    Data.Text
+#    Control.Arrow
+#
+# and produces a flattened list of words:
+#
+#   Arrow
+#   Control
+#   Data
+#   Text
+sqlite3 $DBNAME "SELECT DISTINCT mod FROM refs WHERE unit NOT IN (SELECT DISTINCT unit FROM mods)" | tr '.' '\n' >> $WORDS_TMPFILE_UNSORTED
 
 WORDS_TMPFILE=$(mktemp --suffix .words)
 sort -u $WORDS_TMPFILE_UNSORTED > $WORDS_TMPFILE
