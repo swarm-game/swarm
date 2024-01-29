@@ -23,7 +23,7 @@ objectives:
       turn d;
       b <- blocked;
       if b
-        {return false}
+        {turn (inverse d); return false}
         { move;
           res <- followPath;
           if res {return true} {turn back; move; turn back; turn (inverse d); return false}
