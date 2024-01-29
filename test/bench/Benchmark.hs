@@ -11,6 +11,8 @@ import Control.Monad (replicateM_)
 import Control.Monad.State (evalStateT, execStateT)
 import Data.Map qualified as M
 import Data.Sequence (Seq)
+import Data.Text qualified as T
+import Data.Tuple.Extra (dupe)
 import Swarm.Effect (runTimeIO)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display (defaultRobotDisplay)
@@ -30,6 +32,7 @@ import Swarm.Language.Context qualified as Context
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax
+import Swarm.Util (parens, showT)
 import Swarm.Util.Effect (simpleErrorHandle)
 import Swarm.Util.Erasable
 import Test.Tasty.Bench (Benchmark, bcompare, bench, bgroup, defaultMain, whnfAppIO)
@@ -157,38 +160,56 @@ runGame numGameTicks = evalStateT (replicateM_ numGameTicks $ runTimeIO gameTick
 
 main :: IO ()
 main = do
-  idlers <- mkGameStates idleProgram
-  trees <- mkGameStates treeProgram
-  circlers <- mkGameStates circlerProgram
-  movers <- mkGameStates moverProgram
-  wavesInlined <- mkGameStates (waveProgram True)
-  wavesWithDef <- mkGameStates (waveProgram False)
+  idlers <- mkGameStates largeRobotNumbers idleProgram
+  trees <- mkGameStates robotNumbers treeProgram
+  circlers <- mkGameStates robotNumbers circlerProgram
+  movers <- mkGameStates robotNumbers moverProgram
+  wavesInlined <- mkGameStates robotNumbers $ waveProgram True
+  wavesWithDef <- mkGameStates robotNumbers $ waveProgram False
   -- In theory we should force the evaluation of these game states to normal
   -- form before running the benchmarks. In practice, the first of the many
   -- criterion runs for each of these benchmarks doesn't look like an outlier.
   defaultMain
     [ bgroup
         "run 1000 game ticks"
-        [ bgroup "idlers" (toBenchmarks idlers)
-        , bgroup "trees" (toBenchmarks trees)
-        , bgroup "circlers" (toBenchmarks circlers)
-        , bgroup "movers" (toBenchmarks movers)
-        , bgroup "wavesInlined" (toBenchmarks wavesInlined)
+        [ bgroupTicks "idlers" 10000 idlers
+        , bgroupTicks "trees" 1000 trees
+        , bgroupTicks "circlers" 1000 circlers
+        , bgroupTicks "movers" 1000 movers
         , bgroup
-            "wavesWithDef"
-            ( zipWith (\i -> bcompare ("wavesInlined." <> show i)) robotNumbers $
-                toBenchmarks wavesWithDef
-            )
+            "waves comparison"
+            [ bgroup "wavesInlined" (toBenchmarks 1000 wavesInlined)
+            , bgroup
+                "wavesWithDef"
+                ( zipWith (\i -> bcompare ("wavesInlined." <> show i)) robotNumbers $
+                    toBenchmarks 1000 wavesWithDef
+                )
+            ]
         ]
     ]
  where
+  bgroupTicks label ticks bots =
+    bgroup newLabel $ toBenchmarks ticks bots
+   where
+    newLabel =
+      unwords
+        [ label
+        , T.unpack $
+            parens $
+              T.unwords
+                [ showT ticks
+                , "ticks"
+                ]
+        ]
+
   robotNumbers = [10, 20 .. 40]
+  largeRobotNumbers = take 4 $ iterate (* 2) 100
 
-  mkGameStates :: ProcessedTerm -> IO [(Int, GameState)]
-  mkGameStates prog = zip robotNumbers <$> mapM (mkGameState prog $ initRobot prog) robotNumbers
+  mkGameStates :: [Int] -> ProcessedTerm -> IO [(Int, GameState)]
+  mkGameStates botCounts prog = mapM (traverse (mkGameState prog $ initRobot prog) . dupe) botCounts
 
-  toBenchmarks :: [(Int, GameState)] -> [Benchmark]
-  toBenchmarks gameStates =
-    [ bench (show n) $ whnfAppIO (runGame 1000) gs
+  toBenchmarks :: Int -> [(Int, GameState)] -> [Benchmark]
+  toBenchmarks tickCount gameStates =
+    [ bench (show n) $ whnfAppIO (runGame tickCount) gs
     | (n, gs) <- gameStates
     ]
