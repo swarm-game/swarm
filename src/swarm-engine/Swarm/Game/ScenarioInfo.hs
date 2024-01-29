@@ -32,9 +32,6 @@ module Swarm.Game.ScenarioInfo (
   loadScenarios,
   loadScenarioInfo,
   saveScenarioInfo,
-
-  -- * Re-exports
-  module Swarm.Game.Scenario,
 ) where
 
 import Control.Algebra (Has)
