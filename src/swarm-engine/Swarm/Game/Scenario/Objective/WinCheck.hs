@@ -22,7 +22,8 @@ import Swarm.Game.Scenario.Objective.Logic as L
 
 -- | We have "won" if all of the "unwinnable" or remaining "incomplete" objectives are "optional".
 didWin :: ObjectiveCompletion -> Bool
-didWin = andOf ((incompleteObjectives *> unwinnableObjectives) . objectiveOptional)
+didWin oc = and (oc ^.. incompleteObjectives . objectiveOptional)
+  && and (oc ^.. unwinnableObjectives . objectiveOptional)
 
 -- | We have "lost" if any of the "unwinnable" objectives are not "optional".
 didLose :: ObjectiveCompletion -> Bool
