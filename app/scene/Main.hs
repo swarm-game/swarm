@@ -6,7 +6,7 @@ module Main where
 
 import Options.Applicative
 import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..))
-import Swarm.Game.World.Render (OuputFormat (..), RenderOpts (..), doRenderCmd)
+import Swarm.Game.World.Render (FailureMode (..), OuputFormat (..), RenderOpts (..), doRenderCmd)
 
 data CLI
   = RenderMap FilePath RenderOpts
@@ -26,6 +26,7 @@ cliParser =
       <*> flag ConsoleText PngImage (long "png" <> help "Render to PNG")
       <*> option str (long "dest" <> short 'd' <> value "output.png" <> help "Output filepath")
       <*> optional sizeOpts
+      <*> flag Terminate RenderBlankImage (long "fail-blank" <> short 'b' <> help "Render blank image upon failure")
 
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
