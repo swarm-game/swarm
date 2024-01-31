@@ -168,6 +168,9 @@ newtype Announcement
 -- Completion tracking
 ------------------------------------------------------------
 
+-- | Gather together lists of objectives that are incomplete,
+--   complete, or unwinnable.  This type is not exported from this
+--   module.
 data CompletionBuckets = CompletionBuckets
   { _incomplete :: [Objective]
   , _completed :: [Objective]
@@ -175,18 +178,24 @@ data CompletionBuckets = CompletionBuckets
   }
   deriving (Show, Generic, FromJSON, ToJSON)
 
--- XXX note we derive lenses but DON'T export them
+-- Note we derive these lenses for `CompletionBuckets` but we do NOT
+-- export them; they are used only internally to this module.  In
+-- fact, the `CompletionBuckets` type itself is not exported.
 makeLensesNoSigs ''CompletionBuckets
 
--- | XXX
+-- | The incomplete objectives in a 'CompletionBuckets' record.
 incomplete :: Lens' CompletionBuckets [Objective]
 
--- | XXX
+-- | The completed objectives in a 'CompletionBuckets' record.
 completed :: Lens' CompletionBuckets [Objective]
 
--- | XXX
+-- | The unwinnable objectives in a 'CompletionBuckets' record.
 unwinnable :: Lens' CompletionBuckets [Objective]
 
+-- | A record to keep track of the completion status of all a
+--   scenario's objectives.  We do not export the constructor or
+--   record field labels of this type in order to ensure that its
+--   internal invariants cannot be violated.
 data ObjectiveCompletion = ObjectiveCompletion
   { _completionBuckets :: CompletionBuckets
   -- ^ This is the authoritative "completion status"
@@ -210,43 +219,68 @@ makeLensesExcluding ['_completedIDs] ''ObjectiveCompletion
 initCompletion :: [Objective] -> ObjectiveCompletion
 initCompletion objs = ObjectiveCompletion (CompletionBuckets objs [] []) mempty
 
--- | XXX
+-- | A lens onto the 'CompletionBuckets' member of an
+--   'ObjectiveCompletion' record.  This lens is not exported.
 completionBuckets :: Lens' ObjectiveCompletion CompletionBuckets
 
--- | XXX  don't export
+-- | A 'Getter' allowing one to read the set of completed objective
+--   IDs for a given scenario.  Note that this is a 'Getter', not a
+--   'Lens', to allow for read-only access without the possibility of
+--   violating the internal invariants of 'ObjectiveCompletion'.
 completedIDs :: Getter ObjectiveCompletion (Set.Set ObjectiveLabel)
 completedIDs = to _completedIDs
 
+-- | A 'Fold' giving read-only access to all the incomplete objectives
+--   tracked by an 'ObjectiveCompletion' record.  Note that 'Fold' is
+--   like a read-only 'Traversal', that is, it has multiple targets
+--   but allows only reading them, not updating.  In other words
+--   'Fold' is to 'Traversal' as 'Getter' is to 'Lens'.
+--
+--   To get an actual list of objectives, use the '(^..)' operator, as
+--   in @objCompl ^.. incompleteObjectives@, where @objCompl ::
+--   ObjectiveCompletion@.
 incompleteObjectives :: Fold ObjectiveCompletion Objective
 incompleteObjectives = completionBuckets . folding _incomplete
 
+-- | A 'Fold' giving read-only access to all the completed objectives
+--   tracked by an 'ObjectiveCompletion' record.  See the
+--   documentation for 'incompleteObjectives' for more about 'Fold'.
 completedObjectives :: Fold ObjectiveCompletion Objective
 completedObjectives = completionBuckets . folding _completed
 
+-- | A 'Fold' giving read-only access to all the unwinnable objectives
+--   tracked by an 'ObjectiveCompletion' record.  See the
+--   documentation for 'incompleteObjectives' for more about 'Fold'.
 unwinnableObjectives :: Fold ObjectiveCompletion Objective
 unwinnableObjectives = completionBuckets . folding _unwinnable
 
--- | Concatenates all incomplete and completed objectives.
+-- | A 'Fold' over /all/ objectives (whether incomplete, complete, or
+--   unwinnable) tracked by an 'ObjectiveCompletion' record. See the
+--   documentation for 'incompleteObjectives' for more about 'Fold'.
 allObjectives :: Fold ObjectiveCompletion Objective
 allObjectives = incompleteObjectives `concatFold` completedObjectives `concatFold` unwinnableObjectives
 
+-- | Add a completed objective to an 'ObjectiveCompletion' record,
+--   being careful to maintain its internal invariants.
 addCompleted :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
 addCompleted obj =
   (completionBuckets . completed %~ (obj :))
   .
   (internalCompletedIDs %~ maybe id Set.insert (obj ^. objectiveId))
 
--- | XXX
+-- | Add an unwinnable objective to an 'ObjectiveCompletion' record,
+--   being careful to maintain its internal invariants.
 addUnwinnable :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
 addUnwinnable obj = completionBuckets . unwinnable %~ (obj :)
 
--- | XXX
+-- | Add an incomplete objective to an 'ObjectiveCompletion' record,
+--   being careful to maintain its internal invariants.
 addIncomplete :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
 addIncomplete obj = completionBuckets . incomplete %~ (obj :)
 
--- | Returns the "ObjectiveCompletion" with the "incomplete" goals
--- extracted to a separate tuple member.
--- This is intended as input to a "fold".
+-- | Returns the 'ObjectiveCompletion' with the incomplete goals
+--   extracted to a separate tuple member.  This is intended to be
+--   used as input to a fold.
 extractIncomplete :: ObjectiveCompletion -> (ObjectiveCompletion, [Objective])
 extractIncomplete oc =
   (withoutIncomplete, incompleteGoals)
