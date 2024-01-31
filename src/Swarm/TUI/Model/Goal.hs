@@ -9,7 +9,7 @@ module Swarm.TUI.Model.Goal where
 
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
-import Control.Lens (makeLenses, (^..), view)
+import Control.Lens (makeLenses, view, (^..))
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.List.NonEmpty qualified as NE
