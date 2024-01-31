@@ -22,8 +22,8 @@ import Control.Lens (makeLenses)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Swarm.Game.CESK (TickNumber)
 import Swarm.Game.Location (Location)
+import Swarm.Game.Tick (TickNumber)
 import Swarm.Game.Universe (Cosmic)
 
 -- | Severity of the error - critical errors are bugs

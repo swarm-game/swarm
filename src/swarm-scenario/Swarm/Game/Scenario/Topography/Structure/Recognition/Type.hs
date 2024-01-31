@@ -237,7 +237,7 @@ instance Ord FoundStructure where
 -- are not included.
 genOccupiedCoords :: FoundStructure -> [Cosmic Location]
 genOccupiedCoords (FoundStructure swg loc) =
-  catMaybes . concat . zipWith mkRow [0 ..] $ entityGrid swg
+  concatMap catMaybes . zipWith mkRow [0 ..] $ entityGrid swg
  where
   mkCol y x ent = loc `offsetBy` V2 x (negate y) <$ ent
   mkRow rowIdx = zipWith (mkCol rowIdx) [0 ..]

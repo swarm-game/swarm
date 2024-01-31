@@ -19,7 +19,7 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (forM_, unless)
+import Control.Monad (forM_, unless, when)
 import Data.Map qualified as M
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
@@ -30,6 +30,7 @@ import Data.Time (getZonedTime)
 import Linear (zero)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
+import Swarm.Game.Achievement.Description (getValidityRequirements)
 import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
@@ -38,8 +39,10 @@ import Swarm.Game.Exception
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..), destination, reorientation)
 import Swarm.Game.State
+import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.RobotStepState
@@ -149,18 +152,42 @@ onTarget rid act = do
               then deleteRobot rid
               else robotMap . ix rid .= tgt'
 
+grantAchievementForRobot ::
+  (HasRobotStepState sig m, Has (Lift IO) sig m) =>
+  GameplayAchievement ->
+  m ()
+grantAchievementForRobot a = do
+  sys <- use systemRobot
+  let isValidRobotType = not sys || robotTypeRequired == ValidForSystemRobot
+  when isValidRobotType $
+    grantAchievement a
+ where
+  ValidityConditions robotTypeRequired _ = getValidityRequirements a
+
+checkGameModeAchievementValidity ::
+  Has (State GameState) sig m =>
+  GameplayAchievement ->
+  m Bool
+checkGameModeAchievementValidity a = do
+  creative <- use creativeMode
+  return $ not creative || gameplayModeRequired == ValidInCreativeMode
+ where
+  ValidityConditions _ gameplayModeRequired = getValidityRequirements a
+
 grantAchievement ::
   (Has (State GameState) sig m, Has (Lift IO) sig m) =>
   GameplayAchievement ->
   m ()
 grantAchievement a = do
-  currentTime <- sendIO getZonedTime
-  scenarioPath <- use currentScenarioPath
-  discovery . gameAchievements
-    %= M.insertWith
-      (<>)
-      a
-      (Attainment (GameplayAchievement a) scenarioPath currentTime)
+  isGameModeValid <- checkGameModeAchievementValidity a
+  when isGameModeValid $ do
+    currentTime <- sendIO getZonedTime
+    scenarioPath <- use currentScenarioPath
+    discovery . gameAchievements
+      %= M.insertWith
+        (<>)
+        a
+        (Attainment (GameplayAchievement a) scenarioPath currentTime)
 
 -- | Capabilities needed for a specific robot to evaluate or execute a
 --   constant.  Right now, the only difference is whether the robot is
@@ -375,7 +402,6 @@ addSeedBot e (minT, maxT) loc ts =
   zoomRobots
     . addTRobot (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty emptyStore)
     $ mkRobot
-      ()
       Nothing
       "seed"
       (Markdown.fromText $ T.unwords ["A growing", e ^. entityName, "seed."])

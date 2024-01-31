@@ -30,10 +30,13 @@ import Swarm.Doc.Keyword (EditorType (..))
 import Swarm.Doc.Keyword qualified as Keyword
 import Swarm.Effect (runTimeIO)
 import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
-import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
+import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (EntityMap, lookupByName)
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Robot (activityCounts, commandsHistogram, defReqs, equippedDevices, lifetimeStepCount, machine, robotContext, robotLog, systemRobot, tangibleCommandCount, waitingUntil)
+import Swarm.Game.Robot (equippedDevices, systemRobot)
+import Swarm.Game.Robot.Activity (commandsHistogram, lifetimeStepCount, tangibleCommandCount)
+import Swarm.Game.Robot.Concrete (activityCounts, machine, robotContext, robotLog, waitingUntil)
+import Swarm.Game.Robot.Context (defReqs)
 import Swarm.Game.Scenario (Scenario)
 import Swarm.Game.State (
   GameState,
@@ -51,6 +54,12 @@ import Swarm.Game.State.Robot (
   robotMap,
   waitingRobots,
  )
+import Swarm.Game.State.Runtime (
+  RuntimeState,
+  eventLog,
+  stdEntityMap,
+  worlds,
+ )
 import Swarm.Game.State.Substate (
   WinCondition (WinConditions),
   WinStatus (Won),
@@ -61,20 +70,17 @@ import Swarm.Game.State.Substate (
  )
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Step.Path.Type
+import Swarm.Game.Tick (getTickNumber)
 import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty (prettyString)
 import Swarm.Log
 import Swarm.TUI.Model (
-  RuntimeState,
   defaultAppOpts,
-  eventLog,
   gameState,
   runtimeState,
-  stdEntityMap,
   userScenario,
-  worlds,
  )
 import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
 import Swarm.TUI.Model.UI (UIState)
@@ -357,6 +363,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/1399-backup-command"
         , testSolution Default "Testing/1536-custom-unwalkable-entities"
         , testSolution Default "Testing/1631-tags"
+        , testSolution Default "Testing/1747-volume-command"
         , testGroup
             -- Note that the description of the classic world in
             -- data/worlds/classic.yaml (automatically tested to some

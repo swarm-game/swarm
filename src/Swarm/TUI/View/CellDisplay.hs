@@ -20,7 +20,6 @@ import Data.Tagged (unTagged)
 import Data.Word (Word32)
 import Graphics.Vty qualified as V
 import Linear.Affine ((.-.))
-import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Display (
   Attribute (AEntity),
   Display,
@@ -36,9 +35,11 @@ import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByLocation)
 import Swarm.Game.State
+import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Terrain
+import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Editor.Masking

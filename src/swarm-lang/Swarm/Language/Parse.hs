@@ -188,8 +188,9 @@ brackets = between (symbol "[") (symbol "]")
 parsePolytype :: Parser Polytype
 parsePolytype =
   join $
-    quantify
-      <$> (fromMaybe [] <$> optional (reserved "forall" *> some identifier <* symbol "."))
+    ( quantify . fromMaybe []
+        <$> optional (reserved "forall" *> some identifier <* symbol ".")
+    )
       <*> parseType
  where
   quantify :: [Var] -> Type -> Parser Polytype
@@ -288,8 +289,7 @@ parseTermAtom2 =
           *> ( ( TRequireDevice
                   <$> (textLiteral <?> "device name in double quotes")
                )
-                <|> ( TRequire
-                        <$> (fromIntegral <$> integer)
+                <|> ( (TRequire . fromIntegral <$> integer)
                         <*> (textLiteral <?> "entity name in double quotes")
                     )
              )

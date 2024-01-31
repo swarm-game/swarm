@@ -11,8 +11,8 @@ import Data.Aeson
 import Data.Char (toLower)
 import Data.Time (NominalDiffTime)
 import GHC.Generics (Generic)
-import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Scenario.Scoring.CodeSize
+import Swarm.Game.Tick (TickNumber (..))
 
 scenarioOptions :: Options
 scenarioOptions =

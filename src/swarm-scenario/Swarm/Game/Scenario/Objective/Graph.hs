@@ -15,6 +15,7 @@ import Data.Graph (Graph, SCC (AcyclicSCC), graphFromEdges, stronglyConnComp)
 import Data.Map (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (mapMaybe)
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text qualified as T
 import Data.Tuple (swap)
@@ -23,7 +24,6 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Logic as L
-import Swarm.Game.Scenario.Objective.WinCheck
 
 -- | This is only needed for constructing a Graph,
 -- which requires all nodes to have a key.
@@ -50,10 +50,16 @@ instance ToJSON Graph where
 instance ToSample GraphInfo where
   toSamples _ = SD.noSamples
 
+deriving instance Generic (BE.Signed ObjectiveLabel)
+deriving instance ToJSON (BE.Signed ObjectiveLabel)
+
 getConstFromSigned :: BE.Signed a -> a
 getConstFromSigned = \case
   BE.Positive x -> x
   BE.Negative x -> x
+
+getDistinctConstants :: (Ord a) => Prerequisite a -> Set (BE.Signed a)
+getDistinctConstants = Set.fromList . BE.constants . toBoolExpr
 
 -- | Collect all of the constants that have a negation.
 -- This is necessary for enumerating all of the distinct

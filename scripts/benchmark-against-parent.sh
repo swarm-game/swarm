@@ -16,7 +16,8 @@ fi
 BASELINE_OUTPUT=baseline.csv
 
 git checkout HEAD~
-stack bench --benchmark-arguments "--csv $BASELINE_OUTPUT --color always"
+
+scripts/run-benchmarks.sh "--csv $BASELINE_OUTPUT"
 
 git switch -
-stack bench --benchmark-arguments "--baseline $BASELINE_OUTPUT --fail-if-slower 3 --color always"
+scripts/run-benchmarks.sh "--baseline $BASELINE_OUTPUT --fail-if-slower 3"

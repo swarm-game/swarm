@@ -63,6 +63,7 @@ import Servant
 import Servant.Docs (ToCapture)
 import Servant.Docs qualified as SD
 import Servant.Docs.Internal qualified as SD (renderCurlBasePath)
+import Swarm.Doc.Command
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
@@ -109,6 +110,7 @@ type SwarmAPI =
     :<|> "code" :> "render" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
     :<|> "code" :> "run" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
     :<|> "paths" :> "log" :> Get '[JSON] (RingBuffer CacheLogEntry)
+    :<|> "commands" :> Get '[JSON] CommandCatalog
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [REPLHistItem]
     :<|> "map" :> Capture "size" AreaDimensions :> Get '[JSON] GridResponse
 
@@ -164,6 +166,7 @@ mkApp state events =
     :<|> codeRenderHandler
     :<|> codeRunHandler events
     :<|> pathsLogHandler state
+    :<|> cmdMatrixHandler state
     :<|> replHandler state
     :<|> mapViewHandler state
 
@@ -240,6 +243,9 @@ pathsLogHandler :: ReadableIORef AppState -> Handler (RingBuffer CacheLogEntry)
 pathsLogHandler appStateRef = do
   appState <- liftIO (readIORef appStateRef)
   pure $ appState ^. gameState . pathCaching . pathCachingLog
+
+cmdMatrixHandler :: ReadableIORef AppState -> Handler CommandCatalog
+cmdMatrixHandler _ = pure getCatalog
 
 replHandler :: ReadableIORef AppState -> Handler [REPLHistItem]
 replHandler appStateRef = do

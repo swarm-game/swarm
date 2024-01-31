@@ -56,6 +56,9 @@ import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Activity
+import Swarm.Game.Robot.Concrete
+import Swarm.Game.Robot.Context
 import Swarm.Game.Scenario.Topography.Area (getAreaDimensions)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.Navigation.Util
@@ -65,10 +68,12 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons, foundSt
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
+import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Arithmetic
 import Swarm.Game.Step.Combustion qualified as Combustion
+import Swarm.Game.Step.Flood
 import Swarm.Game.Step.Path.Finding
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Path.Walkability
@@ -76,6 +81,7 @@ import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
 import Swarm.Game.Step.Util.Inspect
+import Swarm.Game.Tick
 import Swarm.Game.Universe
 import Swarm.Game.Value
 import Swarm.Game.World (locToCoords)
@@ -103,6 +109,11 @@ data RobotFailure = ThrowExn | Destroy | IgnoreFail
 -- | How to handle different types of failure when moving/teleporting
 --   to a location.
 type MoveFailureHandler = MoveFailureMode -> RobotFailure
+
+-- | Whether to remove the entity in the world inside the 'doGrab' function
+-- or leave it to be done by other code.
+data GrabRemoval = DeferRemoval | PerformRemoval
+  deriving (Eq)
 
 -- | Interpret the execution (or evaluation) of a constant application
 --   to some values.
@@ -148,6 +159,24 @@ execConst runChildProg c vs s k = do
     Backup -> do
       orientation <- use robotOrientation
       moveInDirection $ applyTurn (DRelative $ DPlanar DBack) $ orientation ? zero
+    Volume -> case vs of
+      [VInt limit] -> do
+        when (limit > globalMaxVolume) $
+          throwError $
+            CmdFailed
+              Volume
+              ( T.unwords
+                  [ "Can only measure up to"
+                  , T.pack $ show globalMaxVolume
+                  , "cells."
+                  ]
+              )
+              Nothing
+
+        robotLoc <- use robotLocation
+        maybeResult <- floodFill robotLoc $ fromIntegral limit
+        return $ mkReturn maybeResult
+      _ -> badConst
     Path -> case vs of
       [VInj hasLimit limitVal, VInj findEntity goalVal] -> do
         maybeLimit <-
@@ -274,8 +303,8 @@ execConst runChildProg c vs s k = do
 
         return $ mkReturn ()
       _ -> badConst
-    Grab -> mkReturn <$> doGrab Grab'
-    Harvest -> mkReturn <$> doGrab Harvest'
+    Grab -> mkReturn <$> doGrab Grab' PerformRemoval
+    Harvest -> mkReturn <$> doGrab Harvest' PerformRemoval
     Ignite -> case vs of
       [VDir d] -> do
         Combustion.igniteCommand c d
@@ -286,15 +315,15 @@ execConst runChildProg c vs s k = do
         loc <- use robotLocation
         -- Make sure the robot has the thing in its inventory
         e <- hasInInventoryOrFail name
-        -- Grab
-        newE <- doGrab Swap'
+        -- Grab without removing from the world
+        newE <- doGrab Swap' DeferRemoval
 
         -- Place the entity and remove it from the inventory
         updateEntityAt loc (const (Just e))
         robotInventory %= delete e
 
         when (e == newE) $
-          grantAchievement SwapSame
+          grantAchievementForRobot SwapSame
 
         return $ mkReturn newE
       _ -> badConst
@@ -306,7 +335,7 @@ execConst runChildProg c vs s k = do
 
         inst <- use equippedDevices
         when (d == DRelative DDown && countByName "compass" inst == 0) $ do
-          grantAchievement GetDisoriented
+          grantAchievementForRobot GetDisoriented
 
         return $ mkReturn ()
       _ -> badConst
@@ -366,7 +395,7 @@ execConst runChildProg c vs s k = do
 
             -- Flag the UI for a redraw if we are currently showing either robot's inventory
             when (focusedID == myID || focusedID == otherID) flagRedraw
-          else grantAchievement GaveToSelf
+          else grantAchievementForRobot GaveToSelf
 
         return $ mkReturn ()
       _ -> badConst
@@ -401,7 +430,6 @@ execConst runChildProg c vs s k = do
       [VText name] -> do
         inv <- use robotInventory
         ins <- use equippedDevices
-        sys <- use systemRobot
         em <- use $ landscape . entityMap
         e <-
           lookupEntityName name em
@@ -444,7 +472,8 @@ execConst runChildProg c vs s k = do
         robotInventory .= invTaken
         traverse_ (updateDiscoveredEntities . snd) (recipe ^. recipeOutputs)
         -- Grant CraftedBitcoin achievement
-        when (name == "bitcoin" && not creative && not sys) $ grantAchievement CraftedBitcoin
+        when (name == "bitcoin") $
+          grantAchievementForRobot CraftedBitcoin
 
         finishCookingRecipe recipe VUnit [] (map (uncurry AddEntity) changeInv)
       _ -> badConst
@@ -1063,7 +1092,6 @@ execConst runChildProg c vs s k = do
         newRobot <-
           zoomRobots . addTRobotWithContext parentCtx (In cmd e s [FExec]) $
             mkRobot
-              ()
               (Just pid)
               displayName
               (Markdown.fromText $ "A robot built by the robot named " <> (r ^. robotName) <> ".")
@@ -1577,7 +1605,7 @@ execConst runChildProg c vs s k = do
       (mAch False)
 
     selfDestruct .= True
-    maybe (return ()) grantAchievement (mAch True)
+    maybe (return ()) grantAchievementForRobot (mAch True)
 
   moveInDirection :: (HasRobotStepState sig m, Has (Lift IO) sig m) => Heading -> m CESK
   moveInDirection orientation = do
@@ -1671,8 +1699,9 @@ execConst runChildProg c vs s k = do
 
   -- The code for grab and harvest is almost identical, hence factored
   -- out here.
-  doGrab :: (HasRobotStepState sig m, Has Effect.Time sig m) => GrabbingCmd -> m Entity
-  doGrab cmd = do
+  -- Optionally defer removal from the world, for the case of the Swap command.
+  doGrab :: (HasRobotStepState sig m, Has Effect.Time sig m) => GrabbingCmd -> GrabRemoval -> m Entity
+  doGrab cmd removalDeferral = do
     let verb = verbGrabbingCmd cmd
         verbed = verbedGrabbingCmd cmd
 
@@ -1687,13 +1716,11 @@ execConst runChildProg c vs s k = do
     (omni || e `hasProperty` Pickable)
       `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
 
-    -- Remove the entity from the world.
-    updateEntityAt loc (const Nothing)
-    flagRedraw
-
-    -- Immediately regenerate entities with 'infinite' property.
-    when (e `hasProperty` Infinite) $
-      updateEntityAt loc (const (Just e))
+    -- Entities with 'infinite' property are not removed
+    unless (removalDeferral == DeferRemoval || e `hasProperty` Infinite) $ do
+      -- Remove the entity from the world.
+      updateEntityAt loc (const Nothing)
+      flagRedraw
 
     -- Possibly regrow the entity, if it is growable and the 'harvest'
     -- command was used.
