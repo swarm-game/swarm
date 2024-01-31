@@ -47,7 +47,7 @@ import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown qualified as Markdown
-import Swarm.Util.Lens (makeLensesNoSigs, makeLensesExcluding)
+import Swarm.Util.Lens (makeLensesNoSigs, makeLensesExcluding, concatFold)
 
 ------------------------------------------------------------
 -- Scenario objectives
@@ -228,8 +228,7 @@ unwinnableObjectives = completionBuckets . folding _unwinnable
 
 -- | Concatenates all incomplete and completed objectives.
 allObjectives :: Fold ObjectiveCompletion Objective
-allObjectives = incompleteObjectives *> completedObjectives *> unwinnableObjectives
-  -- https://stackoverflow.com/questions/69329888/composing-two-folds
+allObjectives = incompleteObjectives `concatFold` completedObjectives `concatFold` unwinnableObjectives
 
 addCompleted :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
 addCompleted obj =

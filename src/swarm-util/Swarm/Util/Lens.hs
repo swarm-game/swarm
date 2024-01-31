@@ -6,10 +6,13 @@ module Swarm.Util.Lens (
   makeLensesNoSigs,
   makeLensesExcluding,
   inherit,
+  concatFold,
 ) where
 
 import Control.Lens (
+  Fold,
   Lens',
+  folding,
   generateSignatures,
   lensField,
   lensRules,
@@ -19,6 +22,7 @@ import Control.Lens (
   (&),
   (.~),
   (^.),
+  (^..),
  )
 import Language.Haskell.TH (DecsQ)
 import Language.Haskell.TH.Syntax (Name)
@@ -47,3 +51,8 @@ makeLensesExcluding exclude =
 -- | Copy a given field from one record to another.
 inherit :: Lens' s a -> s -> (s -> s)
 inherit field parent child = child & field .~ (parent ^. field)
+
+-- | Concatenate two folds into a single fold which encompasses all
+--   elements from both.
+concatFold :: Fold s a -> Fold s a -> Fold s a
+concatFold f1 f2 = folding (\s -> (s ^.. f1) ++ (s ^.. f2))
