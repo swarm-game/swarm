@@ -5,34 +5,34 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 -- Description: Goals of scenario
-module Swarm.Game.Scenario.Objective
-  ( -- * Scenario objectives
-    PrerequisiteConfig(..)
-  , Objective
-  , objectiveGoal
-  , objectiveTeaser
-  , objectiveCondition
-  , objectiveId
-  , objectiveOptional
-  , objectivePrerequisite
-  , objectiveHidden
-  , objectiveAchievement
-  , Announcement(..)
-    -- * Objective completion tracking
+module Swarm.Game.Scenario.Objective (
+  -- * Scenario objectives
+  PrerequisiteConfig (..),
+  Objective,
+  objectiveGoal,
+  objectiveTeaser,
+  objectiveCondition,
+  objectiveId,
+  objectiveOptional,
+  objectivePrerequisite,
+  objectiveHidden,
+  objectiveAchievement,
+  Announcement (..),
 
-  , ObjectiveCompletion
-  , initCompletion
-  , completedIDs
-  , incompleteObjectives
-  , completedObjectives
-  , unwinnableObjectives
-  , allObjectives
-  , addCompleted
-  , addUnwinnable
-  , addIncomplete
-  , extractIncomplete
-  )
-  where
+  -- * Objective completion tracking
+  ObjectiveCompletion,
+  initCompletion,
+  completedIDs,
+  incompleteObjectives,
+  completedObjectives,
+  unwinnableObjectives,
+  allObjectives,
+  addCompleted,
+  addUnwinnable,
+  addIncomplete,
+  extractIncomplete,
+)
+where
 
 import Control.Applicative ((<|>))
 import Control.Lens hiding (from, (<.>))
@@ -47,7 +47,7 @@ import Swarm.Game.Scenario.Objective.Logic as L
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown qualified as Markdown
-import Swarm.Util.Lens (makeLensesNoSigs, makeLensesExcluding, concatFold)
+import Swarm.Util.Lens (concatFold, makeLensesExcluding, makeLensesNoSigs)
 
 ------------------------------------------------------------
 -- Scenario objectives
@@ -202,7 +202,7 @@ data ObjectiveCompletion = ObjectiveCompletion
   }
   deriving (Show, Generic, FromJSON, ToJSON)
 
-makeLensesFor [ ("_completedIDs", "internalCompletedIDs") ] ''ObjectiveCompletion
+makeLensesFor [("_completedIDs", "internalCompletedIDs")] ''ObjectiveCompletion
 makeLensesExcluding ['_completedIDs] ''ObjectiveCompletion
 
 -- | Initialize an objective completion tracking record from a list of
@@ -233,8 +233,7 @@ allObjectives = incompleteObjectives `concatFold` completedObjectives `concatFol
 addCompleted :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
 addCompleted obj =
   (completionBuckets . completed %~ (obj :))
-  .
-  (internalCompletedIDs %~ maybe id Set.insert (obj ^. objectiveId))
+    . (internalCompletedIDs %~ maybe id Set.insert (obj ^. objectiveId))
 
 -- | XXX
 addUnwinnable :: Objective -> ObjectiveCompletion -> ObjectiveCompletion
