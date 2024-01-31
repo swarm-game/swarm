@@ -649,7 +649,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
   theWinCondition =
     maybe
       NoWinCondition
-      (\x -> WinConditions Ongoing (initCompletion (NE.toList x)))
+      (WinConditions Ongoing . initCompletion . NE.toList)
       (NE.nonEmpty (scenario ^. scenarioObjectives))
 
   addRecipesWith f = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes)
