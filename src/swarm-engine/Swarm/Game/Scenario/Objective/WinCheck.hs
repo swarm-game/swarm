@@ -6,7 +6,7 @@
 -- Utilities to check whether conditions are met for a game win/loss.
 module Swarm.Game.Scenario.Objective.WinCheck where
 
-import Control.Lens ((^.), (^..), view, andOf)
+import Control.Lens (andOf, view, (^.), (^..))
 import Data.Aeson (ToJSON)
 import Data.BoolExpr qualified as BE
 import Data.BoolExpr.Simplify qualified as Simplify
@@ -23,8 +23,9 @@ import Swarm.Game.Scenario.Objective.Logic as L
 
 -- | We have "won" if all of the "unwinnable" or remaining "incomplete" objectives are "optional".
 didWin :: ObjectiveCompletion -> Bool
-didWin oc = and (oc ^.. incompleteObjectives . objectiveOptional)
-  && and (oc ^.. unwinnableObjectives . objectiveOptional)
+didWin oc =
+  and (oc ^.. incompleteObjectives . objectiveOptional)
+    && and (oc ^.. unwinnableObjectives . objectiveOptional)
 
 -- | We have "lost" if any of the "unwinnable" objectives are not "optional".
 didLose :: ObjectiveCompletion -> Bool

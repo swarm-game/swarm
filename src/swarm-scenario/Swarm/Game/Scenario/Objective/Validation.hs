@@ -6,7 +6,7 @@
 -- Validity checking for 'Objective' prerequisites
 module Swarm.Game.Scenario.Objective.Validation where
 
-import Control.Lens ((^.), view)
+import Control.Lens (view, (^.))
 import Control.Monad (unless)
 import Data.Foldable (for_, toList)
 import Data.Graph (stronglyConnComp)
