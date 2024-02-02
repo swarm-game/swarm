@@ -357,22 +357,41 @@ mkEntity disp nm descr props caps =
 -- | An 'EntityMap' is a data structure containing all the loaded
 --   entities, allowing them to be looked up either by name or by what
 --   capabilities they provide (if any).
+--
+--   Also preserves the original definition order from the scenario
+--   file and canonical definition list.
+--   This enables scenario authors to specify iteration order of
+--   the 'Swarm.Language.Syntax.TagMembers' command.
 data EntityMap = EntityMap
   { entitiesByName :: Map Text Entity
   , entitiesByCap :: Map Capability [Entity]
+  , entityDefinitionOrder :: [Entity]
   }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
+-- |
+-- Note that duplicates in a single 'EntityMap' are precluded by the
+-- 'buildEntityMap' function.
+-- But it is possible for the latter 'EntityMap' to override
+-- members of the former with the same name.
+-- This replacement happens automatically with 'Map', but needs
+-- to be explicitly handled for the list concatenation
+-- of 'entityDefinitionOrder' (overridden entries are removed
+-- from the former 'EntityMap').
 instance Semigroup EntityMap where
-  EntityMap n1 c1 <> EntityMap n2 c2 = EntityMap (n1 <> n2) (M.unionWith (<>) c1 c2)
+  EntityMap n1 c1 d1 <> EntityMap n2 c2 d2 =
+    EntityMap
+      (n1 <> n2)
+      (M.unionWith (<>) c1 c2)
+      (filter ((`M.notMember` n2) . view entityName) d1 <> d2)
 
 instance Monoid EntityMap where
-  mempty = EntityMap M.empty M.empty
+  mempty = EntityMap M.empty M.empty []
   mappend = (<>)
 
 -- | Get a list of all the entities in the entity map.
 allEntities :: EntityMap -> [Entity]
-allEntities (EntityMap nm _) = M.elems nm
+allEntities (EntityMap _ _ x) = x
 
 -- | Find an entity with the given name.
 lookupEntityName :: Text -> EntityMap -> Maybe Entity
@@ -414,6 +433,7 @@ buildEntityMap es = do
     EntityMap
       { entitiesByName = M.fromList namedEntities
       , entitiesByCap = M.fromListWith (<>) . concatMap (\e -> map (,[e]) (Set.toList $ e ^. entityCapabilities)) $ es
+      , entityDefinitionOrder = es
       }
  where
   namedEntities = map (view entityName &&& id) es

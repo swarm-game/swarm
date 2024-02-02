@@ -13,6 +13,7 @@ hackman.yaml
 lights-out.yaml
 bucket-brigade.yaml
 wave.yaml
+gallery.yaml
 wolf-goat-cabbage.yaml
 blender.yaml
 friend.yaml
