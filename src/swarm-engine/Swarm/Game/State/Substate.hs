@@ -9,7 +9,7 @@ module Swarm.Game.State.Substate (
   REPLStatus (..),
   WinStatus (..),
   WinCondition (..),
-  ObjectiveCompletion (..),
+  ObjectiveCompletion,
   _NoWinCondition,
   _WinConditions,
   Announcement (..),

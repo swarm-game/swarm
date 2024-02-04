@@ -282,8 +282,7 @@ hypotheticalWinCheck em g ws oc = do
   winCondition .= WinConditions newWinState (completions finalAccumulator)
 
   case newWinState of
-    Unwinnable _ -> do
-      grantAchievement LoseScenario
+    Unwinnable _ -> grantAchievement LoseScenario
     _ -> return ()
 
   messageInfo . announcementQueue %= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
