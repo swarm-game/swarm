@@ -28,6 +28,9 @@ data AreaDimensions = AreaDimensions
   , rectHeight :: Int32
   }
 
+asTuple :: AreaDimensions -> (Int32, Int32)
+asTuple (AreaDimensions x y) = (x, y)
+
 renderRectDimensions :: AreaDimensions -> String
 renderRectDimensions (AreaDimensions w h) =
   L.intercalate "x" $ map show [w, h]

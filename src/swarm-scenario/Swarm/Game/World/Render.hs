@@ -6,9 +6,10 @@ module Swarm.Game.World.Render where
 
 import Codec.Picture
 import Control.Applicative ((<|>))
-import Control.Effect.Lift (sendIO)
+import Control.Carrier.Throw.Either (runThrow)
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Throw
 import Control.Lens (view, (^.))
-import Control.Monad.IO.Class (liftIO)
 import Data.Colour.SRGB (RGB (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
@@ -18,6 +19,7 @@ import Data.Vector qualified as V
 import Linear (V2 (..))
 import Swarm.Game.Display (defaultChar)
 import Swarm.Game.Entity.Cosmetic
+import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Location
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Topography.Area
@@ -28,14 +30,20 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Gen (Seed)
+import Swarm.Language.Pretty (prettyString)
 import Swarm.Util (surfaceEmpty)
 import Swarm.Util.Content
 import Swarm.Util.Effect (simpleErrorHandle)
 import Swarm.Util.Erasable (erasableToMaybe)
+import System.IO (hPutStrLn, stderr)
 
 data OuputFormat
   = ConsoleText
   | PngImage
+
+data FailureMode
+  = Terminate
+  | RenderBlankImage
 
 -- | Command-line options for configuring the app.
 data RenderOpts = RenderOpts
@@ -44,6 +52,7 @@ data RenderOpts = RenderOpts
   , outputFormat :: OuputFormat
   , outputFilepath :: FilePath
   , gridSize :: Maybe AreaDimensions
+  , failureMode :: FailureMode
   }
 
 getDisplayChar :: PCell EntityFacade -> Char
@@ -128,12 +137,13 @@ getDisplayGrid vc myScenario ls maybeSize =
   firstScenarioWorld = NE.head $ view scenarioWorlds myScenario
 
 getRenderableGrid ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   RenderOpts ->
   FilePath ->
-  IO (Grid (PCell EntityFacade), M.Map WorldAttr PreservableColor)
-getRenderableGrid (RenderOpts maybeSeed _ _ maybeSize) fp = simpleErrorHandle $ do
+  m (Grid (PCell EntityFacade), M.Map WorldAttr PreservableColor)
+getRenderableGrid (RenderOpts maybeSeed _ _ maybeSize _) fp = do
   (myScenario, gsi) <- loadStandaloneScenario fp
-  theSeed <- liftIO $ arbitrateSeed maybeSeed myScenario
+  theSeed <- sendIO $ arbitrateSeed maybeSeed myScenario
 
   let em = integrateScenarioEntities gsi myScenario
       worldTuples = buildWorldTuples myScenario
@@ -147,13 +157,13 @@ getRenderableGrid (RenderOpts maybeSeed _ _ maybeSize) fp = simpleErrorHandle $ 
   return (getDisplayGrid vc myScenario myLandscape maybeSize, myScenario ^. scenarioCosmetics)
 
 doRenderCmd :: RenderOpts -> FilePath -> IO ()
-doRenderCmd opts@(RenderOpts _ asPng _ _) mapPath =
+doRenderCmd opts@(RenderOpts _ asPng _ _ _) mapPath =
   case asPng of
     ConsoleText -> printScenarioMap =<< renderScenarioMap opts mapPath
     PngImage -> renderScenarioPng opts mapPath
 
 renderScenarioMap :: RenderOpts -> FilePath -> IO [String]
-renderScenarioMap opts fp = do
+renderScenarioMap opts fp = simpleErrorHandle $ do
   (grid, _) <- getRenderableGrid opts fp
   return $ unGrid $ getDisplayChar <$> grid
 
@@ -164,8 +174,19 @@ gridToVec (Grid g) = V.fromList . map V.fromList $ g
 
 renderScenarioPng :: RenderOpts -> FilePath -> IO ()
 renderScenarioPng opts fp = do
-  (grid, aMap) <- getRenderableGrid opts fp
-  writePng (outputFilepath opts) $ mkImg aMap grid
+  result <- runThrow $ getRenderableGrid opts fp
+  img <- case result of
+    Left (err :: SystemFailure) -> case failureMode opts of
+      Terminate -> fail errorMsg
+      RenderBlankImage -> do
+        hPutStrLn stderr errorMsg
+        let s = maybe (1, 1) (both fromIntegral . asTuple) $ gridSize opts
+        return $ uncurry (generateImage $ \_x _y -> PixelRGBA8 0 0 0 255) s
+     where
+      errorMsg :: String
+      errorMsg = prettyString err
+    Right (grid, aMap) -> return $ mkImg aMap grid
+  writePng (outputFilepath opts) img
  where
   mkImg aMap g = generateImage (pixelRenderer vecGrid) (fromIntegral w) (fromIntegral h)
    where
