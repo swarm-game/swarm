@@ -20,12 +20,11 @@ import Servant.Docs qualified as SD
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph (getDistinctConstants)
 import Swarm.Game.Scenario.Objective.Logic as L
+import Swarm.Util.Lens (concatFold)
 
 -- | We have "won" if all of the "unwinnable" or remaining "incomplete" objectives are "optional".
 didWin :: ObjectiveCompletion -> Bool
-didWin oc =
-  and (oc ^.. incompleteObjectives . objectiveOptional)
-    && and (oc ^.. unwinnableObjectives . objectiveOptional)
+didWin = andOf ((incompleteObjectives `concatFold` unwinnableObjectives) . objectiveOptional)
 
 -- | We have "lost" if any of the "unwinnable" objectives are not "optional".
 didLose :: ObjectiveCompletion -> Bool
