@@ -543,8 +543,8 @@ buildTagMap :: EntityMap -> Map Text (NonEmpty EntityName)
 buildTagMap em =
   binTuples expanded
  where
-  expanded = concatMap (\(k, vs) -> [(v, k) | v <- S.toList vs]) $ M.toList tagsByEntity
-  tagsByEntity = M.map (view entityTags) $ entitiesByName em
+  expanded = concatMap (\(k, vs) -> [(v, k) | v <- S.toList vs]) tagsByEntity
+  tagsByEntity = map (view entityName &&& view entityTags) $ entityDefinitionOrder em
 
 pureScenarioToGameState ::
   Scenario ->

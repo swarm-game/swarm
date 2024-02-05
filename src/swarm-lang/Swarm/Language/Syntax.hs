@@ -787,10 +787,11 @@ constInfo c = case c of
       , "Yields an error if the first argument is not a valid entity."
       ]
   TagMembers ->
-    command 2 Intangible . doc (Set.singleton $ Query APriori) "Get the entities labeled by a tag, by alphabetical index" $
+    command 2 Intangible . doc (Set.singleton $ Query APriori) "Get the entities labeled by a tag." $
       [ "Returns a tuple of (member count, entity)."
       , "The supplied index will be wrapped automatically, modulo the member count."
       , "A robot can use the count to know whether they have iterated over the full list."
+      , "Item order is determined by definition sequence in the scenario file."
       ]
   Detect ->
     command 2 Intangible . doc (Set.singleton $ Query $ Sensing EntitySensing) "Detect an entity within a rectangle." $
