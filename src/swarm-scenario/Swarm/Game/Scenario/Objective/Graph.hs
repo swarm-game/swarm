@@ -7,6 +7,7 @@
 module Swarm.Game.Scenario.Objective.Graph where
 
 import Control.Arrow ((&&&))
+import Control.Lens (view, (^.), (^..))
 import Data.Aeson
 import Data.BoolExpr (Signed (Positive))
 import Data.BoolExpr qualified as BE
@@ -70,7 +71,7 @@ getNegatedIds objs =
  where
   objectivesById = getObjectivesById objs
 
-  allPrereqExpressions = mapMaybe _objectivePrerequisite objs
+  allPrereqExpressions = mapMaybe (view objectivePrerequisite) objs
   allConstants =
     mapMaybe onlyNegative
       . Set.toList
@@ -88,7 +89,7 @@ getObjectivesById :: [Objective] -> Map ObjectiveLabel Objective
 getObjectivesById objs =
   M.fromList $
     map swap $
-      mapMaybe (sequenceA . (id &&& _objectiveId)) objs
+      mapMaybe (sequenceA . (id &&& view objectiveId)) objs
 
 -- | Uses the textual labels for those objectives that
 -- have them, and assigns arbitrary integer IDs for
@@ -103,7 +104,7 @@ assignIds objs =
 
   labeledObjsMap = M.mapKeys (Label . Positive) objectivesById
 
-  unlabeledObjs = filter (null . _objectiveId) objs
+  unlabeledObjs = filter (null . view objectiveId) objs
   unlabeledObjsMap = M.fromList $ zipWith (\x y -> (Ordinal x, y)) [0 ..] unlabeledObjs
 
 type Edges = [(Objective, ObjectiveId, [ObjectiveId])]
@@ -134,7 +135,7 @@ makeGraphEdges objectives =
   negatedTuples = map gg $ M.toList $ getNegatedIds objectives
   gg (k, v) = (v, Label $ BE.Negative k, [])
 
-  f (k, v) = (v, k, maybe [] (map Label . g) $ _objectivePrerequisite v)
+  f (k, v) = (v, k, maybe [] (map Label . g) $ v ^. objectivePrerequisite)
   g = Set.toList . getDistinctConstants . logic
 
 isAcyclicGraph :: [SCC Objective] -> Bool
@@ -155,4 +156,4 @@ makeGraphInfo oc =
  where
   edges = makeGraphEdges objs
   connectedComponents = stronglyConnComp edges
-  objs = listAllObjectives $ completionBuckets oc
+  objs = oc ^.. allObjectives
