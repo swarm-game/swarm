@@ -32,7 +32,7 @@ maintainer:         byorgey@gmail.com
 bug-reports:        https://github.com/swarm-game/swarm/issues
 copyright:          Brent Yorgey 2021
 category:           Game
-tested-with:        GHC ==9.0.2 || ==9.2.7 || ==9.4.5 || ==9.6.2
+tested-with:        GHC ==9.0.2 || ==9.2.7 || ==9.4.5 || ==9.6.2 || ==9.8.1
 extra-source-files: CHANGELOG.md
                     example/*.sw
                     editors/emacs/*.el
@@ -214,12 +214,12 @@ library swarm-scenario
                       Swarm.Util.Effect
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
-    build-depends:    base                          >= 4.14 && < 4.19,
+    build-depends:    base                          >= 4.14 && < 4.20,
                       AhoCorasick                   >= 0.0.4 && < 0.0.5,
-                      aeson                         >= 2 && < 2.2,
+                      aeson                         >= 2 && < 2.3,
                       array                         >= 0.5.4 && < 0.6,
                       boolexpr                      >= 0.2 && < 0.3,
-                      bytestring                    >= 0.10 && < 0.12,
+                      bytestring                    >= 0.10 && < 0.13,
                       clock                         >= 0.8.2 && < 0.9,
                       colour                        >= 2.3.6 && < 2.4,
                       containers                    >= 0.6.2 && < 0.7,
@@ -244,7 +244,7 @@ library swarm-scenario
                       servant-docs                  >= 0.12 && < 0.14,
                       simple-enumeration            >= 0.2 && < 0.3,
                       tagged                        >= 0.8 && < 0.9,
-                      text                          >= 1.2.4 && < 2.1,
+                      text                          >= 1.2.4 && < 2.2,
                       transformers                  >= 0.5.6.2 && < 0.6.2.0,
                       vector                        >= 0.12 && < 0.14,
                       vty                           >= 6.1 && < 6.2,
@@ -306,9 +306,9 @@ library swarm-engine
                       Swarm.Version
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
-    build-depends:    base                          >= 4.14 && < 4.19,
+    build-depends:    base                          >= 4.14 && < 4.20,
                       AhoCorasick                   >= 0.0.4 && < 0.0.5,
-                      aeson                         >= 2 && < 2.2,
+                      aeson                         >= 2 && < 2.3,
                       array                         >= 0.5.4 && < 0.6,
                       astar                         >= 0.3 && < 0.3.1,
                       boolexpr                      >= 0.2 && < 0.3,
@@ -329,7 +329,7 @@ library swarm-engine
                       random                        >= 1.2.0 && < 1.3,
                       servant-docs                  >= 0.12 && < 0.14,
                       SHA                           >= 1.6.4 && < 1.6.5,
-                      text                          >= 1.2.4 && < 2.1,
+                      text                          >= 1.2.4 && < 2.2,
                       time                          >= 1.9 && < 1.14,
                       transformers                  >= 0.5.6.2 && < 0.6.2.0,
                       unordered-containers          >= 0.2.14 && < 0.3,
@@ -403,8 +403,8 @@ library swarm-util
                       Swarm.Util.Yaml
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
-    build-depends:    base                          >= 4.14 && < 4.19,
-                      aeson                         >= 2 && < 2.2,
+    build-depends:    base                          >= 4.14 && < 4.20,
+                      aeson                         >= 2 && < 2.3,
                       boolexpr                      >= 0.2 && < 0.3,
                       clock                         >= 0.8.2 && < 0.9,
                       containers                    >= 0.6.2 && < 0.7,
@@ -417,8 +417,8 @@ library swarm-util
                       minimorph                     >= 0.3 && < 0.4,
                       mtl                           >= 2.2.2 && < 2.4,
                       servant-docs                  >= 0.12 && < 0.14,
-                      template-haskell              >= 2.16 && < 2.21,
-                      text                          >= 1.2.4 && < 2.1,
+                      template-haskell              >= 2.16 && < 2.22,
+                      text                          >= 1.2.4 && < 2.2,
                       transformers                  >= 0.5 && < 0.7,
                       vector                        >= 0.12 && < 0.14,
                       witch                         >= 1.1.1.0 && < 1.3,
@@ -604,12 +604,12 @@ library
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
 
-    build-depends:    base                          >= 4.14 && < 4.19,
+    build-depends:    base                          >= 4.14 && < 4.20,
                       brick-list-skip               >= 0.1.1.2 && < 0.2,
-                      aeson                         >= 2 && < 2.2,
+                      aeson                         >= 2 && < 2.3,
                       array                         >= 0.5.4 && < 0.6,
                       brick                         >= 2.1.1 && < 2.2,
-                      bytestring                    >= 0.10 && < 0.12,
+                      bytestring                    >= 0.10 && < 0.13,
                       clock                         >= 0.8.2 && < 0.9,
                       colour                        >= 2.3.6 && < 2.4,
                       containers                    >= 0.6.2 && < 0.7,
@@ -629,7 +629,7 @@ library
                       servant-docs                  >= 0.12 && < 0.14,
                       split                         >= 0.2.3 && < 0.3,
                       tagged                        >= 0.8 && < 0.9,
-                      text                          >= 1.2.4 && < 2.1,
+                      text                          >= 1.2.4 && < 2.2,
                       text-zipper                   >= 0.10 && < 0.14,
                       time                          >= 1.9 && < 1.14,
                       transformers                  >= 0.5.6.2 && < 0.6.2.0,
