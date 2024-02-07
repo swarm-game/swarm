@@ -7,6 +7,7 @@
 -- See the docs/EDITORS.md to learn how to use it.
 module Swarm.Language.LSP where
 
+import Data.Int (Int32)
 import Control.Lens (to, (^.))
 import Control.Monad (void)
 import Control.Monad.IO.Class
@@ -15,9 +16,9 @@ import Data.Text (Text)
 import Data.Text.IO qualified as Text
 import Language.LSP.Diagnostics
 import Language.LSP.Server
-import Language.LSP.Types (Hover (Hover))
-import Language.LSP.Types qualified as J
-import Language.LSP.Types.Lens qualified as J
+import Language.LSP.Protocol.Types (Hover (Hover))
+import Language.LSP.Protocol.Types qualified as J
+import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.VFS (VirtualFile (..), virtualFileText)
 import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.LSP.VarUsage qualified as VU
@@ -34,7 +35,7 @@ lspMain =
   void $
     runServer $
       ServerDefinition
-        { onConfigurationChange = const $ const $ Right ()
+        { onConfigChange = const $ const $ Right ()
         , defaultConfig = ()
         , doInitialize = \env _req -> pure $ Right env
         , staticHandlers = handlers
@@ -42,7 +43,7 @@ lspMain =
         , options =
             defaultOptions
               { -- set sync options to get DidSave event, as well as Open and Close events.
-                textDocumentSync =
+                optTextDocumentSync =
                   Just
                     ( J.TextDocumentSyncOptions
                         (Just True)
@@ -57,7 +58,7 @@ lspMain =
   -- Using SyncFull seems to handle the debounce for us.
   -- The alternative is to use SyncIncremental, but then then
   -- handler is called for each key-stroke.
-  syncKind = J.TdSyncFull
+  syncKind = J.TextDocumentSyncKind_Full
 
 diagnosticSourcePrefix :: Text
 diagnosticSourcePrefix = "swarm-lsp"
@@ -65,7 +66,9 @@ diagnosticSourcePrefix = "swarm-lsp"
 debug :: (MonadIO m) => Text -> m ()
 debug msg = liftIO $ Text.hPutStrLn stderr $ "[swarm-lsp] " <> msg
 
-validateSwarmCode :: J.NormalizedUri -> J.TextDocumentVersion -> Text -> LspM () ()
+type TextDocumentVersion = Int32
+
+validateSwarmCode :: J.NormalizedUri -> TextDocumentVersion -> Text -> LspM () ()
 validateSwarmCode doc version content = do
   -- debug $ "Validating: " <> from (show doc) <> " ( " <> content <> ")"
 

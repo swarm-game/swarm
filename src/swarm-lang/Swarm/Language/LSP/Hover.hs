@@ -27,7 +27,7 @@ import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Utf16.Rope qualified as R
-import Language.LSP.Types qualified as J
+import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.VFS
 import Swarm.Language.Context as Ctx
 import Swarm.Language.Module (Module (..))
@@ -53,11 +53,10 @@ lspToRopePosition (J.Position myLine myCol) =
 
 showHoverInfo ::
   J.NormalizedUri ->
-  J.TextDocumentVersion ->
   J.Position ->
   VirtualFile ->
   Maybe (Text, Maybe J.Range)
-showHoverInfo _ _ p vf@(VirtualFile _ _ myRope) =
+showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
   case readTerm' content of
     Left _ -> Nothing
     Right Nothing -> Nothing
