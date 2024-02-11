@@ -7,18 +7,18 @@
 -- See the docs/EDITORS.md to learn how to use it.
 module Swarm.Language.LSP where
 
-import Data.Int (Int32)
 import Control.Lens (to, (^.))
 import Control.Monad (void)
 import Control.Monad.IO.Class
+import Data.Int (Int32)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text.IO qualified as Text
 import Language.LSP.Diagnostics
-import Language.LSP.Server
-import Language.LSP.Protocol.Types qualified as LSP
-import Language.LSP.Protocol.Message qualified as LSP
 import Language.LSP.Protocol.Lens qualified as LSP
+import Language.LSP.Protocol.Message qualified as LSP
+import Language.LSP.Protocol.Types qualified as LSP
+import Language.LSP.Server
 import Language.LSP.VFS (VirtualFile (..), virtualFileText)
 import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.LSP.VarUsage qualified as VU
