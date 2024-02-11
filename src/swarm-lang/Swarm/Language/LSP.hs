@@ -36,8 +36,8 @@ lspMain =
     runServer $
       ServerDefinition
         { defaultConfig = ()
-        , configSection = undefined
-        , parseConfig = undefined
+        , configSection = "swarm"
+        , parseConfig = const $ const $ Right ()
         , onConfigChange = const $ return ()
         , doInitialize = \env _req -> pure $ Right env
         , staticHandlers = const handlers
@@ -58,8 +58,8 @@ lspMain =
         }
  where
   -- Using SyncFull seems to handle the debounce for us.
-  -- The alternative is to use SyncIncremental, but then then
-  -- handler is called for each key-stroke.
+  -- The alternative is to use SyncIncremental, but then the
+  -- handler is called for each keystroke.
   syncKind = LSP.TextDocumentSyncKind_Full
 
 diagnosticSourcePrefix :: Text
@@ -113,12 +113,12 @@ validateSwarmCode doc version content = do
   makeUnusedVarDiagnostic (range, msg) =
     LSP.Diagnostic
       range
-      (Just undefined {- LSP.DsWarning -}) -- severity
+      (Just LSP.DiagnosticSeverity_Warning) -- severity
       Nothing -- code
       Nothing -- code description
       (Just diagnosticSourcePrefix) -- source
       msg
-      (Just (undefined {- LSP.List -} [undefined {- LSP.DtUnnecessary -}])) -- tags
+      (Just [LSP.DiagnosticTag_Unnecessary]) -- tags
       Nothing -- related source code info
       Nothing -- data
   makeParseErrorDiagnostic :: ((Int, Int), (Int, Int), Text) -> LSP.Diagnostic
@@ -128,13 +128,13 @@ validateSwarmCode doc version content = do
           (LSP.Position (fromIntegral startLine) (fromIntegral startCol))
           (LSP.Position (fromIntegral endLine) (fromIntegral endCol))
       )
-      (Just undefined {- LSP.DsError -}) -- severity
+      (Just LSP.DiagnosticSeverity_Error) -- severity
       Nothing -- code
       Nothing -- code description
       (Just diagnosticSourcePrefix) -- source
       msg
       Nothing -- tags
-      (Just (undefined {- LSP.List -} [])) -- related info
+      (Just []) -- related info
       Nothing -- data
 
 showTypeErrorPos :: Text -> ContextualTypeErr -> ((Int, Int), (Int, Int), Text)
