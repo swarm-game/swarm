@@ -33,7 +33,7 @@ import Swarm.Language.Context as Ctx
 import Swarm.Language.Module (Module (..))
 import Swarm.Language.Parse (readTerm', unTuple)
 import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Pretty (prettyText, prettyTextLine)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types
@@ -169,7 +169,7 @@ instance ExplainableType () where
   eq _ _ = False
 
 instance ExplainableType Polytype where
-  prettyType = prettyText
+  prettyType = prettyTextLine
   getInnerType = fmap $ \case
     (l :->: _r) -> l
     (TyCmd t) -> t
