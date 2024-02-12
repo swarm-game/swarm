@@ -14,10 +14,9 @@ queue_rules:
           - or:
             - check-success=Enforce issue references
             - -files~=\.hs$
-          - check-success=Haskell-CI - Linux - ghc-9.6.2
-          - check-success=Haskell-CI - Linux - ghc-9.4.5
-          - check-success=Haskell-CI - Linux - ghc-9.2.7
-          - check-success=Haskell-CI - Linux - ghc-9.0.2
+          - check-success=Haskell-CI - Linux - ghc-9.6.4
+          - check-success=Haskell-CI - Linux - ghc-9.4.8
+          - check-success=Haskell-CI - Linux - ghc-9.2.8
 
 pull_request_rules:
 - actions:
@@ -44,10 +43,9 @@ pull_request_rules:
       - or:
         - check-success=Enforce issue references
         - -files~=\.hs$
-      - check-success=Haskell-CI - Linux - ghc-9.6.2
-      - check-success=Haskell-CI - Linux - ghc-9.4.5
-      - check-success=Haskell-CI - Linux - ghc-9.2.7
-      - check-success=Haskell-CI - Linux - ghc-9.0.2
+      - check-success=Haskell-CI - Linux - ghc-9.6.4
+      - check-success=Haskell-CI - Linux - ghc-9.4.8
+      - check-success=Haskell-CI - Linux - ghc-9.2.8
   - label=merge me
   - ! '#approved-reviews-by>=1'
   - ! '#changes-requested-reviews-by=0'

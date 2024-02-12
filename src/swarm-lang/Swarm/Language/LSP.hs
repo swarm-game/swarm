@@ -10,14 +10,15 @@ module Swarm.Language.LSP where
 import Control.Lens (to, (^.))
 import Control.Monad (void)
 import Control.Monad.IO.Class
+import Data.Int (Int32)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text.IO qualified as Text
 import Language.LSP.Diagnostics
+import Language.LSP.Protocol.Lens qualified as LSP
+import Language.LSP.Protocol.Message qualified as LSP
+import Language.LSP.Protocol.Types qualified as LSP
 import Language.LSP.Server
-import Language.LSP.Types (Hover (Hover))
-import Language.LSP.Types qualified as J
-import Language.LSP.Types.Lens qualified as J
 import Language.LSP.VFS (VirtualFile (..), virtualFileText)
 import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.LSP.VarUsage qualified as VU
@@ -34,30 +35,32 @@ lspMain =
   void $
     runServer $
       ServerDefinition
-        { onConfigurationChange = const $ const $ Right ()
-        , defaultConfig = ()
+        { defaultConfig = ()
+        , configSection = "swarm"
+        , parseConfig = const $ const $ Right ()
+        , onConfigChange = const $ return ()
         , doInitialize = \env _req -> pure $ Right env
-        , staticHandlers = handlers
+        , staticHandlers = const handlers
         , interpretHandler = \env -> Iso (runLspT env) liftIO
         , options =
             defaultOptions
               { -- set sync options to get DidSave event, as well as Open and Close events.
-                textDocumentSync =
+                optTextDocumentSync =
                   Just
-                    ( J.TextDocumentSyncOptions
+                    ( LSP.TextDocumentSyncOptions
                         (Just True)
                         (Just syncKind)
                         (Just False)
                         (Just False)
-                        (Just . J.InR . J.SaveOptions $ Just True)
+                        (Just . LSP.InR . LSP.SaveOptions $ Just True)
                     )
               }
         }
  where
   -- Using SyncFull seems to handle the debounce for us.
-  -- The alternative is to use SyncIncremental, but then then
-  -- handler is called for each key-stroke.
-  syncKind = J.TdSyncFull
+  -- The alternative is to use SyncIncremental, but then the
+  -- handler is called for each keystroke.
+  syncKind = LSP.TextDocumentSyncKind_Full
 
 diagnosticSourcePrefix :: Text
 diagnosticSourcePrefix = "swarm-lsp"
@@ -65,7 +68,9 @@ diagnosticSourcePrefix = "swarm-lsp"
 debug :: (MonadIO m) => Text -> m ()
 debug msg = liftIO $ Text.hPutStrLn stderr $ "[swarm-lsp] " <> msg
 
-validateSwarmCode :: J.NormalizedUri -> J.TextDocumentVersion -> Text -> LspM () ()
+type TextDocumentVersion = Int32
+
+validateSwarmCode :: LSP.NormalizedUri -> Maybe TextDocumentVersion -> Text -> LspM () ()
 validateSwarmCode doc version content = do
   -- debug $ "Validating: " <> from (show doc) <> " ( " <> content <> ")"
 
@@ -101,32 +106,36 @@ validateSwarmCode doc version content = do
   publishDiags $
     map makeParseErrorDiagnostic parsingErrs
  where
-  publishDiags :: [J.Diagnostic] -> LspM () ()
+  publishDiags :: [LSP.Diagnostic] -> LspM () ()
   publishDiags = publishDiagnostics 1 doc version . partitionBySource
 
-  makeUnusedVarDiagnostic :: (J.Range, Text) -> J.Diagnostic
+  makeUnusedVarDiagnostic :: (LSP.Range, Text) -> LSP.Diagnostic
   makeUnusedVarDiagnostic (range, msg) =
-    J.Diagnostic
+    LSP.Diagnostic
       range
-      (Just J.DsWarning) -- severity
+      (Just LSP.DiagnosticSeverity_Warning) -- severity
       Nothing -- code
+      Nothing -- code description
       (Just diagnosticSourcePrefix) -- source
       msg
-      (Just (J.List [J.DtUnnecessary])) -- tags
+      (Just [LSP.DiagnosticTag_Unnecessary]) -- tags
       Nothing -- related source code info
-  makeParseErrorDiagnostic :: ((Int, Int), (Int, Int), Text) -> J.Diagnostic
+      Nothing -- data
+  makeParseErrorDiagnostic :: ((Int, Int), (Int, Int), Text) -> LSP.Diagnostic
   makeParseErrorDiagnostic ((startLine, startCol), (endLine, endCol), msg) =
-    J.Diagnostic
-      ( J.Range
-          (J.Position (fromIntegral startLine) (fromIntegral startCol))
-          (J.Position (fromIntegral endLine) (fromIntegral endCol))
+    LSP.Diagnostic
+      ( LSP.Range
+          (LSP.Position (fromIntegral startLine) (fromIntegral startCol))
+          (LSP.Position (fromIntegral endLine) (fromIntegral endCol))
       )
-      (Just J.DsError) -- severity
+      (Just LSP.DiagnosticSeverity_Error) -- severity
       Nothing -- code
+      Nothing -- code description
       (Just diagnosticSourcePrefix) -- source
       msg
       Nothing -- tags
-      (Just (J.List []))
+      (Just []) -- related info
+      Nothing -- data
 
 showTypeErrorPos :: Text -> ContextualTypeErr -> ((Int, Int), (Int, Int), Text)
 showTypeErrorPos code (CTE l _ te) = (minusOne start, minusOne end, msg)
@@ -141,30 +150,30 @@ showTypeErrorPos code (CTE l _ te) = (minusOne start, minusOne end, msg)
 handlers :: Handlers (LspM ())
 handlers =
   mconcat
-    [ notificationHandler J.SInitialized $ \_not -> do
+    [ notificationHandler LSP.SMethod_Initialized $ \_not -> do
         debug "Initialized"
-    , notificationHandler J.STextDocumentDidSave $ \msg -> do
-        let doc = msg ^. J.params . J.textDocument . J.uri
-            content = fromMaybe "?" $ msg ^. J.params . J.text
-        validateSwarmCode (J.toNormalizedUri doc) Nothing content
-    , notificationHandler J.STextDocumentDidOpen $ \msg -> do
-        let doc = msg ^. J.params . J.textDocument . J.uri
-            content = msg ^. J.params . J.textDocument . J.text
-        validateSwarmCode (J.toNormalizedUri doc) Nothing content
-    , notificationHandler J.STextDocumentDidChange $ \msg -> do
-        let doc = msg ^. J.params . J.textDocument . J.uri . to J.toNormalizedUri
+    , notificationHandler LSP.SMethod_TextDocumentDidSave $ \msg -> do
+        let doc = msg ^. LSP.params . LSP.textDocument . LSP.uri
+            content = fromMaybe "?" $ msg ^. LSP.params . LSP.text
+        validateSwarmCode (LSP.toNormalizedUri doc) Nothing content
+    , notificationHandler LSP.SMethod_TextDocumentDidOpen $ \msg -> do
+        let doc = msg ^. LSP.params . LSP.textDocument . LSP.uri
+            content = msg ^. LSP.params . LSP.textDocument . LSP.text
+        validateSwarmCode (LSP.toNormalizedUri doc) Nothing content
+    , notificationHandler LSP.SMethod_TextDocumentDidChange $ \msg -> do
+        let doc = msg ^. LSP.params . LSP.textDocument . LSP.uri . to LSP.toNormalizedUri
         mdoc <- getVirtualFile doc
         case mdoc of
           Just vf@(VirtualFile _ version _rope) -> do
-            validateSwarmCode doc (Just $ fromIntegral version) (virtualFileText vf)
+            validateSwarmCode doc (Just (fromIntegral version)) (virtualFileText vf)
           _ -> debug $ "No virtual file found for: " <> from (show msg)
-    , requestHandler J.STextDocumentHover $ \req responder -> do
-        let doc = req ^. J.params . J.textDocument . J.uri . to J.toNormalizedUri
-            pos = req ^. J.params . J.position
+    , requestHandler LSP.SMethod_TextDocumentHover $ \req responder -> do
+        let doc = req ^. LSP.params . LSP.textDocument . LSP.uri . to LSP.toNormalizedUri
+            pos = req ^. LSP.params . LSP.position
         mdoc <- getVirtualFile doc
         let maybeHover = do
               vf <- mdoc
-              (markdownText, maybeRange) <- H.showHoverInfo doc Nothing pos vf
-              return $ Hover (J.HoverContents $ J.MarkupContent J.MkMarkdown markdownText) maybeRange
-        responder $ Right maybeHover
+              (markdownText, maybeRange) <- H.showHoverInfo doc pos vf
+              return $ LSP.Hover (LSP.InL $ LSP.MarkupContent LSP.MarkupKind_Markdown markdownText) maybeRange
+        responder . Right . LSP.maybeToNull $ maybeHover
     ]
