@@ -3,6 +3,9 @@ extra-deps:
 - hsnoise-0.0.3@sha256:260b39175b8a3e3b1719ad3987b7d72a3fd7a0fa99be8639b91cf4dc3f1c8796,1476
 - simple-enumeration-0.2.1@sha256:8625b269c1650d3dd0e3887351c153049f4369853e0d525219e07480ea004b9f,1178
 - boolexpr-0.2@sha256:07f38a0206ad63c2c893e3c6271a2e45ea25ab4ef3a9e973edc746876f0ab9e8,853
+- unification-fd-0.11.2@sha256:b2e11811b703b63682076ae326bd856fd47caf7db881e9e5b896a6342bceb51f,3736
+- logict-0.8.0.0@sha256:3d5d87a1d892a4732351c9a0b022d2d07bbb14e60582967c3c703c6ed69de88a,1800
+- lsp-2.4.0.0
 - vty-6.1@sha256:524d124223c02373260ebc409ddd622fbe97cacd1ea0ee98476b5992bddbc4f3,3661
 - vty-crossplatform-0.4.0.0@sha256:50593f91ad16777d921138475a8d2784d538fd206addd30664c620278d6c8544,3172
 - vty-unix-0.2.0.0@sha256:2af3d0bdae3c4b7b7e567ee374efe32c7439fabdf9096465ce011a6c6736e9ae,2932
@@ -10,11 +13,7 @@ extra-deps:
 - brick-2.1.1
 - brick-list-skip-0.1.1.8
 - astar-0.3.0.0
-# We should update to lsp-2.0 and lsp-types-2.0 but it involves some
-# breaking changes; see https://github.com/swarm-game/swarm/issues/1350
-- lsp-1.6.0.0
-- lsp-types-1.6.0.0
 - megaparsec-9.6.1
 - AhoCorasick-0.0.4
-resolver: lts-21.25
+resolver: lts-22.10
 
