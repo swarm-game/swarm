@@ -26,7 +26,8 @@ import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.Utf16.Rope qualified as R
+import Data.Text.Lines qualified as R
+import Data.Text.Utf16.Rope.Mixed qualified as R
 import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.VFS
 import Swarm.Language.Context as Ctx
@@ -72,20 +73,19 @@ showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
  where
   content = virtualFileText vf
   absolutePos =
-    maybe 0 (R.length . fst) $
-      R.splitAtPosition (lspToRopePosition p) myRope
+    R.charLength . fst $ R.charSplitAtPosition (lspToRopePosition p) myRope
 
 posToRange :: R.Rope -> SrcLoc -> Maybe J.Range
 posToRange myRope foundSloc = do
   (s, e) <- case foundSloc of
     SrcLoc s e -> Just (s, e)
     _ -> Nothing
-  (startRope, _) <- R.splitAt (fromIntegral s) myRope
-  (endRope, _) <- R.splitAt (fromIntegral e) myRope
+  let (startRope, _) = R.charSplitAt (fromIntegral s) myRope
+      (endRope, _) = R.charSplitAt (fromIntegral e) myRope
   return $
     J.Range
-      (ropeToLspPosition $ R.lengthAsPosition startRope)
-      (ropeToLspPosition $ R.lengthAsPosition endRope)
+      (ropeToLspPosition $ R.charLengthAsPosition startRope)
+      (ropeToLspPosition $ R.charLengthAsPosition endRope)
 
 descend ::
   ExplainableType ty =>
