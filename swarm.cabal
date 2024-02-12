@@ -216,7 +216,7 @@ library swarm-scenario
     autogen-modules:  Paths_swarm
     build-depends:    base                          >= 4.14 && < 4.20,
                       AhoCorasick                   >= 0.0.4 && < 0.0.5,
-                      aeson                         >= 2 && < 2.3,
+                      aeson                         >= 2 && < 2.2,
                       array                         >= 0.5.4 && < 0.6,
                       boolexpr                      >= 0.2 && < 0.3,
                       bytestring                    >= 0.10 && < 0.13,
@@ -308,7 +308,7 @@ library swarm-engine
     autogen-modules:  Paths_swarm
     build-depends:    base                          >= 4.14 && < 4.20,
                       AhoCorasick                   >= 0.0.4 && < 0.0.5,
-                      aeson                         >= 2 && < 2.3,
+                      aeson                         >= 2 && < 2.2,
                       array                         >= 0.5.4 && < 0.6,
                       astar                         >= 0.3 && < 0.3.1,
                       boolexpr                      >= 0.2 && < 0.3,
@@ -404,7 +404,7 @@ library swarm-util
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
     build-depends:    base                          >= 4.14 && < 4.20,
-                      aeson                         >= 2 && < 2.3,
+                      aeson                         >= 2 && < 2.2,
                       boolexpr                      >= 0.2 && < 0.3,
                       clock                         >= 0.8.2 && < 0.9,
                       containers                    >= 0.6.2 && < 0.7,
@@ -471,7 +471,7 @@ library
                       Swarm.TUI.View.Objective
                       Swarm.TUI.View.Structure
                       Swarm.TUI.View.Util
-                      
+
     reexported-modules: Control.Carrier.Accum.FixedStrict
                       , Data.BoolExpr.Simplify
                       , Swarm.Constant
@@ -606,7 +606,7 @@ library
 
     build-depends:    base                          >= 4.14 && < 4.20,
                       brick-list-skip               >= 0.1.1.2 && < 0.2,
-                      aeson                         >= 2 && < 2.3,
+                      aeson                         >= 2 && < 2.2,
                       array                         >= 0.5.4 && < 0.6,
                       brick                         >= 2.1.1 && < 2.4,
                       bytestring                    >= 0.10 && < 0.13,
