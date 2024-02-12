@@ -248,7 +248,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Challenges/friend"
         , testSolution Default "Challenges/pack-tetrominoes"
         , testSolution (Sec 10) "Challenges/dimsum"
-        , testSolution (Sec 10) "Challenges/gallery"
+        , testSolution (Sec 15) "Challenges/gallery"
         , testGroup
             "Mazes"
             [ testSolution Default "Challenges/Mazes/easy_cave_maze"
