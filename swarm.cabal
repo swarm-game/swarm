@@ -214,7 +214,7 @@ library swarm-scenario
                       Swarm.Util.Effect
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
-    build-depends:    base                          >= 4.14 && < 4.20,
+    build-depends:    base                          >= 4.14 && < 4.19,
                       AhoCorasick                   >= 0.0.4 && < 0.0.5,
                       aeson                         >= 2 && < 2.2,
                       array                         >= 0.5.4 && < 0.6,
@@ -306,7 +306,7 @@ library swarm-engine
                       Swarm.Version
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
-    build-depends:    base                          >= 4.14 && < 4.20,
+    build-depends:    base                          >= 4.14 && < 4.19,
                       AhoCorasick                   >= 0.0.4 && < 0.0.5,
                       aeson                         >= 2 && < 2.2,
                       array                         >= 0.5.4 && < 0.6,
@@ -403,7 +403,7 @@ library swarm-util
                       Swarm.Util.Yaml
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
-    build-depends:    base                          >= 4.14 && < 4.20,
+    build-depends:    base                          >= 4.14 && < 4.19,
                       aeson                         >= 2 && < 2.2,
                       boolexpr                      >= 0.2 && < 0.3,
                       clock                         >= 0.8.2 && < 0.9,
@@ -417,7 +417,7 @@ library swarm-util
                       minimorph                     >= 0.3 && < 0.4,
                       mtl                           >= 2.2.2 && < 2.4,
                       servant-docs                  >= 0.12 && < 0.14,
-                      template-haskell              >= 2.16 && < 2.22,
+                      template-haskell              >= 2.16 && < 2.21,
                       text                          >= 1.2.4 && < 2.2,
                       transformers                  >= 0.5 && < 0.7,
                       vector                        >= 0.12 && < 0.14,
@@ -604,7 +604,7 @@ library
     other-modules:    Paths_swarm
     autogen-modules:  Paths_swarm
 
-    build-depends:    base                          >= 4.14 && < 4.20,
+    build-depends:    base                          >= 4.14 && < 4.19,
                       brick-list-skip               >= 0.1.1.2 && < 0.2,
                       aeson                         >= 2 && < 2.2,
                       array                         >= 0.5.4 && < 0.6,
