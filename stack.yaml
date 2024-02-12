@@ -6,12 +6,12 @@ extra-deps:
 - unification-fd-0.11.2@sha256:b2e11811b703b63682076ae326bd856fd47caf7db881e9e5b896a6342bceb51f,3736
 - logict-0.8.0.0@sha256:3d5d87a1d892a4732351c9a0b022d2d07bbb14e60582967c3c703c6ed69de88a,1800
 - lsp-2.4.0.0
-- vty-6.1@sha256:524d124223c02373260ebc409ddd622fbe97cacd1ea0ee98476b5992bddbc4f3,3661
+- vty-6.2
 - vty-crossplatform-0.4.0.0@sha256:50593f91ad16777d921138475a8d2784d538fd206addd30664c620278d6c8544,3172
 - vty-unix-0.2.0.0@sha256:2af3d0bdae3c4b7b7e567ee374efe32c7439fabdf9096465ce011a6c6736e9ae,2932
 - vty-windows-0.2.0.1
-- brick-2.1.1
-- brick-list-skip-0.1.1.8
+- brick-2.3
+- brick-list-skip-0.1.1.11
 - astar-0.3.0.0
 - megaparsec-9.6.1
 - AhoCorasick-0.0.4

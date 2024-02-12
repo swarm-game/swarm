@@ -219,7 +219,7 @@ library swarm-scenario
                       aeson                         >= 2 && < 2.2,
                       array                         >= 0.5.4 && < 0.6,
                       boolexpr                      >= 0.2 && < 0.3,
-                      bytestring                    >= 0.10 && < 0.12,
+                      bytestring                    >= 0.10 && < 0.13,
                       clock                         >= 0.8.2 && < 0.9,
                       colour                        >= 2.3.6 && < 2.4,
                       containers                    >= 0.6.2 && < 0.7,
@@ -244,10 +244,10 @@ library swarm-scenario
                       servant-docs                  >= 0.12 && < 0.14,
                       simple-enumeration            >= 0.2 && < 0.3,
                       tagged                        >= 0.8 && < 0.9,
-                      text                          >= 1.2.4 && < 2.1,
+                      text                          >= 1.2.4 && < 2.2,
                       transformers                  >= 0.5.6.2 && < 0.6.2.0,
                       vector                        >= 0.12 && < 0.14,
-                      vty                           >= 6.1 && < 6.2,
+                      vty                           >= 6.1 && < 6.3,
                       witch                         >= 1.1.1.0 && < 1.3,
                       witherable                    >= 0.4 && < 0.5,
                       yaml                          >= 0.11 && < 0.11.12.0,
@@ -329,7 +329,7 @@ library swarm-engine
                       random                        >= 1.2.0 && < 1.3,
                       servant-docs                  >= 0.12 && < 0.14,
                       SHA                           >= 1.6.4 && < 1.6.5,
-                      text                          >= 1.2.4 && < 2.1,
+                      text                          >= 1.2.4 && < 2.2,
                       time                          >= 1.9 && < 1.14,
                       transformers                  >= 0.5.6.2 && < 0.6.2.0,
                       unordered-containers          >= 0.2.14 && < 0.3,
@@ -418,7 +418,7 @@ library swarm-util
                       mtl                           >= 2.2.2 && < 2.4,
                       servant-docs                  >= 0.12 && < 0.14,
                       template-haskell              >= 2.16 && < 2.21,
-                      text                          >= 1.2.4 && < 2.1,
+                      text                          >= 1.2.4 && < 2.2,
                       transformers                  >= 0.5 && < 0.7,
                       vector                        >= 0.12 && < 0.14,
                       witch                         >= 1.1.1.0 && < 1.3,
@@ -471,7 +471,7 @@ library
                       Swarm.TUI.View.Objective
                       Swarm.TUI.View.Structure
                       Swarm.TUI.View.Util
-                      
+
     reexported-modules: Control.Carrier.Accum.FixedStrict
                       , Data.BoolExpr.Simplify
                       , Swarm.Constant
@@ -608,8 +608,8 @@ library
                       brick-list-skip               >= 0.1.1.2 && < 0.2,
                       aeson                         >= 2 && < 2.2,
                       array                         >= 0.5.4 && < 0.6,
-                      brick                         >= 2.1.1 && < 2.2,
-                      bytestring                    >= 0.10 && < 0.12,
+                      brick                         >= 2.1.1 && < 2.4,
+                      bytestring                    >= 0.10 && < 0.13,
                       clock                         >= 0.8.2 && < 0.9,
                       colour                        >= 2.3.6 && < 2.4,
                       containers                    >= 0.6.2 && < 0.7,
@@ -629,13 +629,13 @@ library
                       servant-docs                  >= 0.12 && < 0.14,
                       split                         >= 0.2.3 && < 0.3,
                       tagged                        >= 0.8 && < 0.9,
-                      text                          >= 1.2.4 && < 2.1,
+                      text                          >= 1.2.4 && < 2.2,
                       text-zipper                   >= 0.10 && < 0.14,
                       time                          >= 1.9 && < 1.14,
                       transformers                  >= 0.5.6.2 && < 0.6.2.0,
                       vector                        >= 0.12 && < 0.14,
-                      vty                           >= 6.1 && < 6.2,
-                      warp                          >= 3.2 && < 3.4,
+                      vty                           >= 6.1 && < 6.3,
+                      warp                          >= 3.2 && < 3.5,
                       witch                         >= 1.1.1.0 && < 1.3,
                       word-wrap                     >= 0.5 && < 0.6,
                       yaml                          >= 0.11 && < 0.11.12.0,
