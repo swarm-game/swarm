@@ -17,6 +17,8 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Objective
+import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown (Document)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
@@ -31,19 +33,25 @@ makeListWidget (GoalTracking _announcements categorizedObjs) =
   objList = intercalate [Spacer] $ map f $ M.toList categorizedObjs
   f (h, xs) = Header h : map (Goal h) (NE.toList xs)
 
-renderGoalsDisplay :: GoalDisplay -> Widget Name
-renderGoalsDisplay gd =
-  if hasMultiple
-    then
-      vBox
-        [ hBox
-            [ leftSide
-            , padLeft (Pad 2) goalElaboration
-            ]
-        , footer
-        ]
-    else goalElaboration
+renderGoalsDisplay :: GoalDisplay -> Maybe (Document Syntax) -> Widget Name
+renderGoalsDisplay gd desc =
+  vBox
+    [ maybe emptyWidget (hCenter . padTop (Pad 1) . withAttr boldAttr . drawMarkdown) desc
+    , goalsWidget
+    ]
  where
+  goalsWidget =
+    if hasMultiple
+      then
+        vBox
+          [ hBox
+              [ leftSide
+              , padLeft (Pad 2) goalElaboration
+              ]
+          , footer
+          ]
+      else goalElaboration
+
   footer = hCenter $ withAttr italicAttr $ txt "NOTE: [Tab] toggles focus between panes"
   hasMultiple = hasMultipleGoals $ gd ^. goalsContent
   lw = _listWidget gd
