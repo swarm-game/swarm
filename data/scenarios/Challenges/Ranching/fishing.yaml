@@ -1,11 +1,11 @@
 version: 1
-name: Fishing trip
+name: Responsible Fishing
 author: Karl Ostmo
 description: |
-  Catch a the appropriate seafood to make lunch.
+  Catch the appropriate seafood to make lunch.
 
   If you haul any trash out of the lake, you
-  must throw it away in the enclosure to the southeast.
+  must throw it away in the enclosures to the southeast.
   No littering!
 creative: false
 seed: 0
