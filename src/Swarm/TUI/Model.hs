@@ -213,7 +213,7 @@ runtimeState :: Lens' AppState RuntimeState
 --   info panel (if any).
 focusedItem :: AppState -> Maybe InventoryListEntry
 focusedItem s = do
-  list <- s ^? uiState . uiInventory . _Just . _2
+  list <- s ^? uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
   (_, entry) <- BL.listSelectedElement list
   return entry
 
@@ -233,10 +233,10 @@ focusedEntity =
 
 -- | Given the focused robot, populate the UI inventory list in the info
 --   panel with information about its inventory.
-populateInventoryList :: (MonadState UIState m) => Maybe Robot -> m ()
-populateInventoryList Nothing = uiInventory .= Nothing
+populateInventoryList :: (MonadState UIInventory m) => Maybe Robot -> m ()
+populateInventoryList Nothing = uiInventoryList .= Nothing
 populateInventoryList (Just r) = do
-  mList <- preuse (uiInventory . _Just . _2)
+  mList <- preuse $ uiInventoryList . _Just . _2
   showZero <- use uiShowZero
   sortOptions <- use uiInventorySort
   search <- use uiInventorySearch
@@ -285,7 +285,7 @@ populateInventoryList (Just r) = do
 
   -- Finally, populate the newly created list in the UI, and remember
   -- the hash of the current robot.
-  uiInventory .= Just (r ^. inventoryHash, lst)
+  uiInventoryList .= Just (r ^. inventoryHash, lst)
 
 ------------------------------------------------------------
 -- App state (= UI state + game state) initialization

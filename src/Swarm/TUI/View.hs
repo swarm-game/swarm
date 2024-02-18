@@ -422,7 +422,7 @@ drawGameUI s =
                         & bottomLabels . centerLabel
                           .~ fmap
                             (txt . (" Search: " <>) . (<> " "))
-                            (s ^. uiState . uiInventorySearch)
+                            (s ^. uiState . uiGameplay . uiInventory . uiInventorySearch)
                     )
                   $ drawRobotPanel s
               , panel
@@ -442,14 +442,14 @@ drawGameUI s =
  where
   addCursorPos = bottomLabels . leftLabel ?~ padLeftRight 1 widg
    where
-    widg = case s ^. uiState . uiWorldCursor of
+    widg = case s ^. uiState . uiGameplay . uiWorldCursor of
       Nothing -> str $ renderCoordsString $ s ^. gameState . robotInfo . viewCenter
-      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (s ^. uiState . uiWorldEditor . worldOverdraw) (s ^. gameState) coord
+      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (s ^. uiState . uiGameplay . uiWorldEditor . worldOverdraw) (s ^. gameState) coord
   -- Add clock display in top right of the world view if focused robot
   -- has a clock equipped
-  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (s ^. uiState . lgTicksPerSecond) $ s ^. gameState)
-  fr = s ^. uiState . uiFocusRing
-  showREPL = s ^. uiState . uiShowREPL
+  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (s ^. uiState . uiGameplay . uiTiming . lgTicksPerSecond) $ s ^. gameState)
+  fr = s ^. uiState . uiGameplay . uiFocusRing
+  showREPL = s ^. uiState . uiGameplay . uiShowREPL
   rightPanel = if showREPL then worldPanel ++ replPanel else worldPanel ++ minimizedREPL
   minimizedREPL = case focusGetCurrent fr of
     (Just (FocusablePanel REPLPanel)) -> [separateBorders $ clickable (FocusablePanel REPLPanel) (forceAttr highlightAttr hBorder)]
@@ -465,7 +465,7 @@ drawGameUI s =
             & addCursorPos
             & addClock
         )
-        (drawWorldPane (s ^. uiState) (s ^. gameState))
+        (drawWorldPane (s ^. uiState . uiGameplay) (s ^. gameState))
     , drawKeyMenu s
     ]
   replPanel =
@@ -475,7 +475,7 @@ drawGameUI s =
           fr
           (FocusablePanel REPLPanel)
           ( plainBorder
-              & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiREPL . replType))
+              & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiGameplay . uiREPL . replType))
           )
           ( vLimit replHeight
               . padBottom Max
@@ -564,18 +564,18 @@ drawTPS s = hBox (tpsInfo : rateInfo)
     | otherwise = hBox [txt "1 tick / ", str (show n), txt " s"]
 
   rateInfo
-    | s ^. uiState . uiShowFPS =
+    | s ^. uiState . uiGameplay . uiTiming . uiShowFPS =
         [ txt " ("
-        , let tpf = s ^. uiState . uiTPF
+        , let tpf = s ^. uiState . uiGameplay . uiTiming . uiTPF
            in (if tpf >= fromIntegral ticksPerFrameCap then withAttr redAttr else id)
                 (str (printf "%0.1f" tpf))
         , txt " tpf, "
-        , str (printf "%0.1f" (s ^. uiState . uiFPS))
+        , str (printf "%0.1f" (s ^. uiState . uiGameplay . uiTiming . uiFPS))
         , txt " fps)"
         ]
     | otherwise = []
 
-  l = s ^. uiState . lgTicksPerSecond
+  l = s ^. uiState . uiGameplay . uiTiming . lgTicksPerSecond
   n = 2 ^ abs l
 
 -- | The height of the REPL box.  Perhaps in the future this should be
@@ -585,13 +585,13 @@ replHeight = 10
 
 -- | Hide the cursor when a modal is set
 chooseCursor :: AppState -> [CursorLocation n] -> Maybe (CursorLocation n)
-chooseCursor s locs = case s ^. uiState . uiModal of
+chooseCursor s locs = case s ^. uiState . uiGameplay . uiModal of
   Nothing -> showFirstCursor s locs
   Just _ -> Nothing
 
 -- | Draw a dialog window, if one should be displayed right now.
 drawDialog :: AppState -> Widget Name
-drawDialog s = case s ^. uiState . uiModal of
+drawDialog s = case s ^. uiState . uiGameplay . uiModal of
   Just (Modal mt d) -> renderDialog d $ case mt of
     GoalModal -> drawModal s mt
     _ -> maybeScroll ModalViewport $ drawModal s mt
@@ -605,7 +605,7 @@ drawModal s = \case
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList
-  StructuresModal -> SR.renderStructuresDisplay (s ^. gameState) (s ^. uiState . uiStructure)
+  StructuresModal -> SR.renderStructuresDisplay (s ^. gameState) (s ^. uiState . uiGameplay . uiStructure)
   ScenarioEndModal outcome ->
     padBottom (Pad 1) $
       vBox $
@@ -621,7 +621,7 @@ drawModal s = \case
         ]
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
-  GoalModal -> GR.renderGoalsDisplay (s ^. uiState . uiGoal)
+  GoalModal -> GR.renderGoalsDisplay (s ^. uiState . uiGameplay . uiGoal)
   KeepPlayingModal ->
     padLeftRight 1 $
       displayParagraphs $
@@ -716,7 +716,7 @@ robotsListWidget s = hCenter table
       | otherwise = show (age `div` 3600 * 24) <> "day"
      where
       TimeSpec createdAtSec _ = robot ^. robotCreatedAt
-      TimeSpec nowSec _ = s ^. uiState . lastFrameTime
+      TimeSpec nowSec _ = s ^. uiState . uiGameplay . uiTiming . lastFrameTime
       age = nowSec - createdAtSec
 
     rInvCount = sum $ map fst . E.elems $ robot ^. robotEntity . entityInventory
@@ -730,7 +730,7 @@ robotsListWidget s = hCenter table
       rLoc = robot ^. robotLocation
       worldCell =
         drawLoc
-          (s ^. uiState)
+          (s ^. uiState . uiGameplay)
           g
           rCoords
       locStr = renderCoordsString rLoc
@@ -977,7 +977,7 @@ drawKeyMenu s =
     map highlightKeyCmds
       . keyCmdsFor
       . focusGetCurrent
-      . view (uiState . uiFocusRing)
+      . view (uiState . uiGameplay . uiFocusRing)
       $ s
 
   isReplWorking = s ^. gameState . gameControls . replWorking
@@ -986,11 +986,11 @@ drawKeyMenu s =
   viewingBase = (s ^. gameState . robotInfo . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
   cheat = s ^. uiState . uiCheatMode
-  goal = hasAnythingToShow $ s ^. uiState . uiGoal . goalsContent
-  showZero = s ^. uiState . uiShowZero
-  inventorySort = s ^. uiState . uiInventorySort
-  inventorySearch = s ^. uiState . uiInventorySearch
-  ctrlMode = s ^. uiState . uiREPL . replControlMode
+  goal = hasAnythingToShow $ s ^. uiState . uiGameplay . uiGoal . goalsContent
+  showZero = s ^. uiState . uiGameplay . uiInventory . uiShowZero
+  inventorySort = s ^. uiState . uiGameplay . uiInventory . uiInventorySort
+  inventorySearch = s ^. uiState . uiGameplay . uiInventory . uiInventorySearch
+  ctrlMode = s ^. uiState . uiGameplay . uiREPL . replControlMode
   canScroll = creative || (s ^. gameState . landscape . worldScrollable)
   handlerInstalled = isJust (s ^. gameState . gameControls . inputHandler)
 
@@ -1019,10 +1019,10 @@ drawKeyMenu s =
       , may cheat (NoHighlight, "^e", "editor")
       , Just (NoHighlight, "^p", if isPaused then "unpause" else "pause")
       , may isPaused (NoHighlight, "^o", "step")
-      , may (isPaused && hasDebug) (if s ^. uiState . uiShowDebug then Alert else NoHighlight, "M-d", "debug")
+      , may (isPaused && hasDebug) (if s ^. uiState . uiGameplay . uiShowDebug then Alert else NoHighlight, "M-d", "debug")
       , Just (NoHighlight, "^zx", "speed")
-      , Just (NoHighlight, "M-,", if s ^. uiState . uiShowREPL then "hide REPL" else "show REPL")
-      , Just (if s ^. uiState . uiShowRobots then NoHighlight else Alert, "M-h", "hide robots")
+      , Just (NoHighlight, "M-,", if s ^. uiState . uiGameplay . uiShowREPL then "hide REPL" else "show REPL")
+      , Just (if s ^. uiState . uiGameplay . uiShowRobots then NoHighlight else Alert, "M-h", "hide robots")
       ]
   may b = if b then Just else const Nothing
 
@@ -1091,7 +1091,7 @@ worldWidget renderCoord gameViewCenter = Widget Fixed Fixed $
     render . vBox . map hBox . chunksOf w . map (renderCoord . Cosmic (vr ^. subworld)) $ ixs
 
 -- | Draw the current world view.
-drawWorldPane :: UIState -> GameState -> Widget Name
+drawWorldPane :: UIGameplay -> GameState -> Widget Name
 drawWorldPane ui g =
   center
     . cached WorldCache
@@ -1115,7 +1115,7 @@ drawRobotPanel s
   -- There should be no way to tell the difference between a robot that is too far
   -- away and a robot that does not exist.
   | Just r <- s ^. gameState . to focusedRobot
-  , Just (_, lst) <- s ^. uiState . uiInventory =
+  , Just (_, lst) <- s ^. uiState . uiGameplay . uiInventory . uiInventoryList =
       let drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
           row =
             [ txt (r ^. robotName)
@@ -1367,7 +1367,7 @@ drawRobotLog s =
     _ -> False
 
   drawEntry i e =
-    (if i == n - 1 && s ^. uiState . uiScrollToEnd then visible else id) $
+    (if i == n - 1 && s ^. uiState . uiGameplay . uiScrollToEnd then visible else id) $
       drawLogEntry (not allMe) e
 
 -- | Show the 'CESK' machine of focused robot. Puts a separator above.
@@ -1443,9 +1443,9 @@ drawREPL s =
   currentPrompt :: Widget Name
   currentPrompt = case (isActive <$> base, theRepl ^. replControlMode) of
     (_, Handling) -> padRight Max $ txt "[key handler running, M-k to toggle]"
-    (Just False, _) -> renderREPLPrompt (s ^. uiState . uiFocusRing) theRepl
+    (Just False, _) -> renderREPLPrompt (s ^. uiState . uiGameplay . uiFocusRing) theRepl
     _running -> padRight Max $ txt "..."
-  theRepl = s ^. uiState . uiREPL
+  theRepl = s ^. uiState . uiGameplay . uiREPL
 
   -- NOTE: there exists a lens named 'baseRobot' that uses "unsafe"
   -- indexing that may be an alternative to this:
@@ -1454,7 +1454,7 @@ drawREPL s =
   fmt (REPLEntry e) = txt $ "> " <> e
   fmt (REPLOutput t) = txt t
   fmt (REPLError t) = txtWrapWith indent2 {preserveIndentation = True} t
-  mayDebug = [drawRobotMachine s True | s ^. uiState . uiShowDebug]
+  mayDebug = [drawRobotMachine s True | s ^. uiState . uiGameplay . uiShowDebug]
 
 ------------------------------------------------------------
 -- Utility

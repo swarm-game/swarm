@@ -204,7 +204,7 @@ goalsGraphHandler appStateRef = do
 uiGoalHandler :: ReadableIORef AppState -> Handler GoalTracking
 uiGoalHandler appStateRef = do
   appState <- liftIO (readIORef appStateRef)
-  return $ appState ^. uiState . uiGoal . goalsContent
+  return $ appState ^. uiState . uiGameplay . uiGoal . goalsContent
 
 goalsHandler :: ReadableIORef AppState -> Handler WinCondition
 goalsHandler appStateRef = do
@@ -250,14 +250,14 @@ cmdMatrixHandler _ = pure getCatalog
 replHandler :: ReadableIORef AppState -> Handler [REPLHistItem]
 replHandler appStateRef = do
   appState <- liftIO (readIORef appStateRef)
-  let replHistorySeq = appState ^. uiState . uiREPL . replHistory . replSeq
+  let replHistorySeq = appState ^. uiState . uiGameplay . uiREPL . replHistory . replSeq
       items = toList replHistorySeq
   pure items
 
 mapViewHandler :: ReadableIORef AppState -> AreaDimensions -> Handler GridResponse
 mapViewHandler appStateRef areaSize = do
   appState <- liftIO (readIORef appStateRef)
-  let maybeScenario = fst <$> appState ^. uiState . scenarioRef
+  let maybeScenario = fst <$> appState ^. uiState . uiGameplay . scenarioRef
   pure $ case maybeScenario of
     Just s ->
       GridResponse True
