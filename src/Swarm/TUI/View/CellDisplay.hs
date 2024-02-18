@@ -57,7 +57,7 @@ renderDisplay :: Display -> Widget n
 renderDisplay disp = withAttr (disp ^. displayAttr . to toAttrName) $ str [displayChar disp]
 
 -- | Render the 'Display' for a specific location.
-drawLoc :: UIState -> GameState -> Cosmic W.Coords -> Widget Name
+drawLoc :: UIGameplay -> GameState -> Cosmic W.Coords -> Widget Name
 drawLoc ui g cCoords@(Cosmic _ coords) =
   if shouldHideWorldCell ui coords
     then str " "

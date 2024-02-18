@@ -132,7 +132,7 @@ constructAppState ::
 constructAppState rs ui opts@(AppOpts {..}) = do
   let gs = initGameState (mkGameStateConfig rs)
   case skipMenu opts of
-    False -> return $ AppState gs (ui & lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
+    False -> return $ AppState gs (ui & uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
     True -> do
       (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. landscape . entityMap) (rs ^. worlds)
       maybeRunScript <- traverse parseCodeFile scriptToRun
@@ -253,22 +253,22 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
   return $
     u
       & uiPlaying .~ True
-      & uiGoal .~ emptyGoalDisplay
+      & uiGameplay . uiGoal .~ emptyGoalDisplay
       & uiCheatMode ||~ isAutoplaying
-      & uiHideGoals .~ (isAutoplaying && not (u ^. uiCheatMode))
-      & uiFocusRing .~ initFocusRing
-      & uiInventory .~ Nothing
-      & uiInventorySort .~ defaultSortOptions
-      & uiShowFPS .~ False
-      & uiShowZero .~ True
-      & uiREPL .~ initREPLState (u ^. uiREPL . replHistory)
-      & uiREPL . replHistory %~ restartREPLHistory
+      & uiGameplay . uiHideGoals .~ (isAutoplaying && not (u ^. uiCheatMode))
+      & uiGameplay . uiFocusRing .~ initFocusRing
+      & uiGameplay . uiInventory . uiInventoryList .~ Nothing
+      & uiGameplay . uiInventory . uiInventorySort .~ defaultSortOptions
+      & uiGameplay . uiInventory . uiShowZero .~ True
+      & uiGameplay . uiTiming . uiShowFPS .~ False
+      & uiGameplay . uiREPL .~ initREPLState (u ^. uiGameplay . uiREPL . replHistory)
+      & uiGameplay . uiREPL . replHistory %~ restartREPLHistory
       & uiAttrMap .~ applyAttrMappings (map (first getWorldAttrName . toAttrPair) $ fst siPair ^. scenarioAttrs) swarmAttrMap
-      & scenarioRef ?~ siPair
-      & lastFrameTime .~ curTime
-      & uiWorldEditor . EM.entityPaintList %~ BL.listReplace entityList Nothing
-      & uiWorldEditor . EM.editingBounds . EM.boundsRect %~ setNewBounds
-      & uiStructure
+      & uiGameplay . scenarioRef ?~ siPair
+      & uiGameplay . uiTiming . lastFrameTime .~ curTime
+      & uiGameplay . uiWorldEditor . EM.entityPaintList %~ BL.listReplace entityList Nothing
+      & uiGameplay . uiWorldEditor . EM.editingBounds . EM.boundsRect %~ setNewBounds
+      & uiGameplay . uiStructure
         .~ StructureDisplay
           (SR.makeListWidget . M.elems $ gs ^. discovery . structureRecognition . automatons . originalStructureDefinitions)
           (focusSetCurrent (StructureWidgets StructuresList) $ focusRing $ map StructureWidgets listEnums)

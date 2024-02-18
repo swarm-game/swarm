@@ -46,7 +46,7 @@ openModal :: ModalType -> EventM Name AppState ()
 openModal mt = do
   newModal <- gets $ flip generateModal mt
   ensurePause
-  uiState . uiModal ?= newModal
+  uiState . uiGameplay . uiModal ?= newModal
   -- Beep
   case mt of
     ScenarioEndModal _ -> do
@@ -68,7 +68,7 @@ isRunningModal = \case
   _ -> False
 
 setFocus :: FocusablePanel -> EventM Name AppState ()
-setFocus name = uiState . uiFocusRing %= focusSetCurrent (FocusablePanel name)
+setFocus name = uiState . uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)
 
 immediatelyRedrawWorld :: EventM Name AppState ()
 immediatelyRedrawWorld = do
