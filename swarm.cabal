@@ -117,6 +117,7 @@ library swarm-lang
                       Swarm.Language.Text.Markdown
                       Swarm.Language.Typecheck
                       Swarm.Language.Typecheck.Unify
+                      Swarm.Language.Typecheck.Unify.Subst
                       Swarm.Language.Typed
                       Swarm.Language.Types
                       Swarm.Language.Value
@@ -128,6 +129,7 @@ library swarm-lang
                       commonmark-extensions         >= 0.2 && < 0.3,
                       containers,
                       extra,
+                      free                          >= 5.0 && < 5.3,
                       lens,
                       lsp                           >= 1.6 && < 1.7,
                       hashable,
