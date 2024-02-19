@@ -45,7 +45,7 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Scenario (loadScenario, scenarioAttrs, scenarioSolution, scenarioWorlds)
+import Swarm.Game.Scenario (loadScenario, scenarioAttrs, scenarioPlay, scenarioSolution, scenarioWorlds)
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
@@ -139,7 +139,7 @@ constructAppState rs ui opts@(AppOpts {..}) = do
 
       let maybeAutoplay = do
             guard autoPlay
-            soln <- scenario ^. scenarioSolution
+            soln <- scenario ^. scenarioPlay . scenarioSolution
             return $ CodeToRun ScenarioSuggested soln
           codeToRun = maybeAutoplay <|> maybeRunScript
 

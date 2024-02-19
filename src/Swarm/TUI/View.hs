@@ -85,8 +85,10 @@ import Swarm.Game.Scenario (
   scenarioCreative,
   scenarioDescription,
   scenarioKnown,
+  scenarioMetadata,
   scenarioName,
   scenarioObjectives,
+  scenarioPlay,
   scenarioSeed,
  )
 import Swarm.Game.Scenario.Scoring.Best
@@ -219,11 +221,11 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
     (Nothing, Just (SISingle _)) -> hCenter $ txt "Press 'o' for launch options, or 'Enter' to launch with defaults"
     _ -> txt " "
 
-  drawScenarioItem (SISingle (s, si)) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioName)
+  drawScenarioItem (SISingle (s, si)) = padRight (Pad 1) (drawStatusInfo s si) <+> txt (s ^. scenarioMetadata . scenarioName)
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
   drawStatusInfo s si = case si ^. scenarioStatus of
     NotStarted -> txt " ○ "
-    Played _initialScript (Metric Attempted _) _ -> case s ^. scenarioObjectives of
+    Played _initialScript (Metric Attempted _) _ -> case s ^. scenarioPlay . scenarioObjectives of
       [] -> withAttr cyanAttr $ txt " ◉ "
       _ -> withAttr yellowAttr $ txt " ◎ "
     Played _initialScript (Metric Completed _) _ -> withAttr greenAttr $ txt " ● "
@@ -244,7 +246,7 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
   drawDescription (SICollection _ _) = txtWrap " "
   drawDescription (SISingle (s, si)) =
     vBox
-      [ drawMarkdown (nonBlank (s ^. scenarioDescription))
+      [ drawMarkdown (nonBlank (s ^. scenarioPlay . scenarioDescription))
       , hCenter . padTop (Pad 1) . vLimit 6 $ hLimitPercent 60 worldPeek
       , padTop (Pad 1) table
       ]
@@ -258,7 +260,7 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
       RenderingInput theWorlds $
         getEntityIsKnown $
           EntityKnowledgeDependencies
-            { isCreativeMode = s ^. scenarioCreative
+            { isCreativeMode = s ^. scenarioPlay . scenarioCreative
             , globallyKnownEntities = s ^. scenarioKnown
             , theFocusedRobot = Nothing
             }
@@ -267,7 +269,7 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
 
     firstRow =
       ( withAttr dimAttr $ txt "Author:"
-      , withAttr dimAttr . txt <$> s ^. scenarioAuthor
+      , withAttr dimAttr . txt <$> s ^. scenarioMetadata . scenarioAuthor
       )
     secondRow =
       ( txt "last:"
@@ -623,7 +625,7 @@ drawModal s = \case
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal ->
     GR.renderGoalsDisplay (s ^. uiState . uiGameplay . uiGoal) $
-      view scenarioDescription . fst <$> s ^. uiState . uiGameplay . scenarioRef
+      view (scenarioPlay . scenarioDescription) . fst <$> s ^. uiState . uiGameplay . scenarioRef
   KeepPlayingModal ->
     padLeftRight 1 $
       displayParagraphs $

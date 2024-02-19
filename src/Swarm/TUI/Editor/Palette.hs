@@ -115,9 +115,9 @@ makeSuggestedPalette maybeOriginalScenario cellGrid =
 constructScenario :: Maybe Scenario -> Grid CellPaintDisplay -> SkeletonScenario
 constructScenario maybeOriginalScenario (Grid cellGrid) =
   SkeletonScenario
-    (maybe 1 (^. scenarioVersion) maybeOriginalScenario)
-    (maybe "My Scenario" (^. scenarioName) maybeOriginalScenario)
-    (maybe (fromText "The scenario description...") (^. scenarioDescription) maybeOriginalScenario)
+    (maybe 1 (^. scenarioMetadata . scenarioVersion) maybeOriginalScenario)
+    (maybe "My Scenario" (^. scenarioMetadata . scenarioName) maybeOriginalScenario)
+    (maybe (fromText "The scenario description...") (^. scenarioPlay . scenarioDescription) maybeOriginalScenario)
     -- (maybe True (^. scenarioCreative) maybeOriginalScenario)
     True
     (M.elems $ entitiesByName customEntities)
