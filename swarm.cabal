@@ -99,6 +99,7 @@ common ghc2021-extensions
 library swarm-lang
     import:           stan-config, common, ghc2021-extensions
     visibility:       public
+    -- cabal-gild: discover src/swarm-lang
     exposed-modules:  Swarm.Language.Capability
                       Swarm.Language.Context
                       Swarm.Language.Direction
@@ -159,6 +160,7 @@ library swarm-lang
 library swarm-scenario
     import:           stan-config, common, ghc2021-extensions
     visibility:       public
+    -- cabal-gild: discover src/swarm-scenario
     exposed-modules:  Swarm.Constant
                       Swarm.Game.Achievement.Definitions
                       Swarm.Game.Display
@@ -263,6 +265,7 @@ library swarm-scenario
 library swarm-engine
     import:           stan-config, common, ghc2021-extensions
     visibility:       public
+    -- cabal-gild: discover src/swarm-engine
     exposed-modules:  Swarm.Effect
                       Swarm.Effect.Time
                       Swarm.Game.Achievement.Attainment
@@ -354,6 +357,7 @@ library swarm-engine
 library swarm-web
     import:           stan-config, common, ghc2021-extensions
     visibility:       public
+    -- cabal-gild: discover src/swarm-web
     exposed-modules:  Swarm.Web
                       Swarm.Web.Worldview
     other-modules:    Paths_swarm
@@ -389,6 +393,7 @@ library swarm-web
 library swarm-util
     import:           stan-config, common, ghc2021-extensions
     visibility:       public
+    -- cabal-gild: discover src/swarm-util
     exposed-modules:  Control.Carrier.Accum.FixedStrict
                       Data.BoolExpr.Simplify
                       Swarm.Util
