@@ -1,818 +1,879 @@
-cabal-version:      3.8
-name:               swarm
-version:            0.5.0.0
-synopsis:           2D resource gathering game with programmable robots
+cabal-version: 3.8
+name: swarm
+version: 0.5.0.0
+synopsis: 2D resource gathering game with programmable robots
+description:
+  Swarm is a 2D programming and resource gathering
+  game. Program your robots to explore the world and
+  collect resources, which in turn allows you to
+  build upgraded robots that can run more
+  interesting and complex programs. See the
+  <https://github.com/swarm-game/swarm/blob/main/README.md README>
+  for more information and instructions on how to
+  play or contribute!
 
-description:        Swarm is a 2D programming and resource gathering
-                    game. Program your robots to explore the world and
-                    collect resources, which in turn allows you to
-                    build upgraded robots that can run more
-                    interesting and complex programs. See the
-                    <https://github.com/swarm-game/swarm/blob/main/README.md README>
-                    for more information and instructions on how to
-                    play or contribute!
+  == Module organization
+  For developers getting oriented, Swarm's modules are organized into
+  sublibraries, from inner to outer:
 
-                    == Module organization
-                    For developers getting oriented, Swarm's modules are organized into
-                    sublibraries, from inner to outer:
+  * utilities
+  * swarm language
+  * swarm scenario
+  * swarm game engine
+  * swarm TUI
+  * swarm app
 
-                    * utilities
-                    * swarm language
-                    * swarm scenario
-                    * swarm game engine
-                    * swarm TUI
-                    * swarm app
+  <<docs/image/sublibrary-graph.svg>>
 
-                    <<docs/image/sublibrary-graph.svg>>
+license: BSD-3-Clause
+license-file: LICENSE
+author: Brent Yorgey
+maintainer: byorgey@gmail.com
+bug-reports: https://github.com/swarm-game/swarm/issues
+copyright: Brent Yorgey 2021
+category: Game
+tested-with: ghc ==9.2.8 || ==9.4.8 || ==9.6.4
+extra-source-files:
+  CHANGELOG.md
+  editors/emacs/*.el
+  editors/vim/*.lua
+  editors/vim/*.vim
+  editors/vscode/syntaxes/*.json
+  example/*.sw
 
-license:            BSD-3-Clause
-license-file:       LICENSE
-author:             Brent Yorgey
-maintainer:         byorgey@gmail.com
-bug-reports:        https://github.com/swarm-game/swarm/issues
-copyright:          Brent Yorgey 2021
-category:           Game
-tested-with:        GHC ==9.2.8 || ==9.4.8 || ==9.6.4
-extra-source-files: CHANGELOG.md
-                    example/*.sw
-                    editors/emacs/*.el
-                    editors/vscode/syntaxes/*.json
-                    editors/vim/*.vim
-                    editors/vim/*.lua
-extra-doc-files:    docs/image/sublibrary-graph.svg
-data-dir:           data/
-data-files:         *.yaml, worlds/*.world, scenarios/**/*.yaml, scenarios/**/*.txt, scenarios/**/*.sw, *.txt, test/language-snippets/**/*.sw
+extra-doc-files: docs/image/sublibrary-graph.svg
+data-dir: data/
+data-files:
+  *.txt
+  *.yaml
+  scenarios/**/*.sw
+  scenarios/**/*.txt
+  scenarios/**/*.yaml
+  test/language-snippets/**/*.sw
+  worlds/*.world
 
 source-repository head
-    type:     git
-    location: git://github.com/swarm-game/swarm.git
+  type: git
+  location: git://github.com/swarm-game/swarm.git
 
 flag ci
   description: Make warnings error
-  default:     False
-  manual:      True
+  default: False
+  manual: True
 
 common common
   if flag(ci)
-    ghc-options:    -Werror
-  ghc-options:      -Wall
-                    -Wcompat
-                    -Widentities
-                    -Wincomplete-uni-patterns
-                    -Wincomplete-record-updates
-                    -Wno-star-is-type
-                    -Wpartial-fields
+    ghc-options: -Werror
+
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Widentities
+    -Wincomplete-uni-patterns
+    -Wincomplete-record-updates
+    -Wno-star-is-type
+    -Wpartial-fields
+
   default-language: Haskell2010
 
 common stan-config
-    ghc-options:      -fwrite-ide-info
-                      -hiedir=.hie
+  ghc-options:
+    -fwrite-ide-info
+    -hiedir=.hie
 
 -- Harmless extensions from GHC2021
 common ghc2021-extensions
-    ghc-options:  -Wprepositive-qualified-module
-                  -Wunused-packages
-    default-extensions:
-      BangPatterns
-      DeriveAnyClass
-      DeriveDataTypeable
-      DeriveFunctor
-      DeriveGeneric
-      DeriveTraversable
-      ExplicitForAll
-      FlexibleContexts
-      FlexibleInstances
-      GADTSyntax
-      MultiParamTypeClasses
-      NumericUnderscores
-      RankNTypes
-      ScopedTypeVariables
-      StandaloneDeriving
-      TupleSections
-      TypeApplications
-      TypeOperators
-      -- Note we warn on prequalified
-      ImportQualifiedPost
-      -- Not GHC2021, but until we get \cases we use \case a lot
-      LambdaCase
+  ghc-options:
+    -Wprepositive-qualified-module
+    -Wunused-packages
+
+  default-extensions:
+    -- Note we warn on prequalified
+    -- Not GHC2021, but until we get \cases we use \case a lot
+    MultiParamTypeClasses
+    RankNTypes
+    ScopedTypeVariables
+    FlexibleContexts
+    FlexibleInstances
+    BangPatterns
+    StandaloneDeriving
+    TypeOperators
+    GADTSyntax
+    DeriveDataTypeable
+    DeriveGeneric
+    TupleSections
+    LambdaCase
+    ExplicitForAll
+    DeriveFunctor
+    DeriveTraversable
+    DeriveAnyClass
+    TypeApplications
+    NumericUnderscores
+    ImportQualifiedPost
 
 library swarm-lang
-    import:           stan-config, common, ghc2021-extensions
-    visibility:       public
-    -- cabal-gild: discover src/swarm-lang
-    exposed-modules:  Swarm.Language.Capability
-                      Swarm.Language.Context
-                      Swarm.Language.Direction
-                      Swarm.Language.Elaborate
-                      Swarm.Language.Key
-                      Swarm.Language.LSP
-                      Swarm.Language.LSP.Hover
-                      Swarm.Language.LSP.VarUsage
-                      Swarm.Language.Module
-                      Swarm.Language.Parse
-                      Swarm.Language.Parse.QQ
-                      Swarm.Language.Pipeline
-                      Swarm.Language.Pipeline.QQ
-                      Swarm.Language.Pretty
-                      Swarm.Language.Requirement
-                      Swarm.Language.Syntax
-                      Swarm.Language.Syntax.CommandMetadata
-                      Swarm.Language.Text.Markdown
-                      Swarm.Language.Typecheck
-                      Swarm.Language.Typecheck.Unify
-                      Swarm.Language.Typed
-                      Swarm.Language.Types
-                      Swarm.Language.Value
-    other-modules:    Paths_swarm
-    autogen-modules:  Paths_swarm
-    build-depends:    aeson,
-                      base,
-                      commonmark                    >= 0.2 && < 0.3,
-                      commonmark-extensions         >= 0.2 && < 0.3,
-                      containers,
-                      extra,
-                      lens,
-                      lsp                           >= 2.4 && < 2.5,
-                      hashable,
-                      megaparsec,
-                      mtl,
-                      parser-combinators,
-                      prettyprinter,
-                      split,
-                      syb                           >= 0.7 && < 0.8,
-                      template-haskell,
-                      text,
-                      text-rope                     >= 0.2 && < 0.3,
-                      transformers,
-                      unification-fd                >= 0.11  && < 0.12,
-                      vector,
-                      vty,
-                      witch,
-                      yaml,
-    build-depends:    swarm:swarm-util
-    hs-source-dirs:   src/swarm-lang
-    default-language: Haskell2010
-    default-extensions:
-      -- Avoid unexpected unevaluated thunk buildup
-      -- See discussion in #415
-      StrictData
+  import: stan-config, common, ghc2021-extensions
+  visibility: public
+  -- cabal-gild: discover src/swarm-lang
+  exposed-modules:
+    Swarm.Language.Capability
+    Swarm.Language.Context
+    Swarm.Language.Direction
+    Swarm.Language.Elaborate
+    Swarm.Language.Key
+    Swarm.Language.LSP
+    Swarm.Language.LSP.Hover
+    Swarm.Language.LSP.VarUsage
+    Swarm.Language.Module
+    Swarm.Language.Parse
+    Swarm.Language.Parse.QQ
+    Swarm.Language.Pipeline
+    Swarm.Language.Pipeline.QQ
+    Swarm.Language.Pretty
+    Swarm.Language.Requirement
+    Swarm.Language.Syntax
+    Swarm.Language.Syntax.CommandMetadata
+    Swarm.Language.Text.Markdown
+    Swarm.Language.Typecheck
+    Swarm.Language.Typecheck.Unify
+    Swarm.Language.Typed
+    Swarm.Language.Types
+    Swarm.Language.Value
+
+  other-modules: Paths_swarm
+  autogen-modules: Paths_swarm
+  build-depends:
+    aeson,
+    base,
+    commonmark >=0.2 && <0.3,
+    commonmark-extensions >=0.2 && <0.3,
+    containers,
+    extra,
+    hashable,
+    lens,
+    lsp >=2.4 && <2.5,
+    megaparsec,
+    mtl,
+    parser-combinators,
+    prettyprinter,
+    split,
+    syb >=0.7 && <0.8,
+    template-haskell,
+    text,
+    text-rope >=0.2 && <0.3,
+    transformers,
+    unification-fd >=0.11 && <0.12,
+    vector,
+    vty,
+    witch,
+    yaml,
+
+  build-depends: swarm:swarm-util
+  hs-source-dirs: src/swarm-lang
+  default-language: Haskell2010
+  default-extensions:
+    -- Avoid unexpected unevaluated thunk buildup
+    -- See discussion in #415
+    StrictData
 
 library swarm-scenario
-    import:           stan-config, common, ghc2021-extensions
-    visibility:       public
-    -- cabal-gild: discover src/swarm-scenario
-    exposed-modules:  Swarm.Constant
-                      Swarm.Game.Achievement.Definitions
-                      Swarm.Game.Display
-                      Swarm.Game.Entity
-                      Swarm.Game.Entity.Cosmetic
-                      Swarm.Game.Entity.Cosmetic.Assignment
-                      Swarm.Game.Failure
-                      Swarm.Game.Location
-                      Swarm.Game.Recipe
-                      Swarm.Game.ResourceLoading
-                      Swarm.Game.Robot
-                      Swarm.Game.Scenario
-                      Swarm.Game.State.Config
-                      Swarm.Game.State.Landscape
-                      Swarm.Game.Universe
-                      Swarm.Game.Scenario.Objective
-                      Swarm.Game.Scenario.Objective.Graph
-                      Swarm.Game.Scenario.Objective.Logic
-                      Swarm.Game.Scenario.Objective.Validation
-                      Swarm.Game.Scenario.RobotLookup
-                      Swarm.Game.Scenario.Style
-                      Swarm.Game.Scenario.Topography.Area
-                      Swarm.Game.Scenario.Topography.Cell
-                      Swarm.Game.Scenario.Topography.Center
-                      Swarm.Game.Scenario.Topography.EntityFacade
-                      Swarm.Game.Scenario.Topography.Navigation.Portal
-                      Swarm.Game.Scenario.Topography.Navigation.Waypoint
-                      Swarm.Game.Scenario.Topography.Placement
-                      Swarm.Game.Scenario.Topography.Structure
-                      Swarm.Game.Scenario.Topography.Structure.Recognition
-                      Swarm.Game.Scenario.Topography.Structure.Recognition.Log
-                      Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
-                      Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
-                      Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
-                      Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-                      Swarm.Game.Scenario.Topography.WorldDescription
-                      Swarm.Game.Scenario.Topography.WorldPalette
-                      Swarm.Game.Terrain
-                      Swarm.Game.World
-                      Swarm.Game.World.Abstract
-                      Swarm.Game.World.Compile
-                      Swarm.Game.World.Coords
-                      Swarm.Game.World.Eval
-                      Swarm.Game.World.Gen
-                      Swarm.Game.World.Interpret
-                      Swarm.Game.World.Load
-                      Swarm.Game.World.Modify
-                      Swarm.Game.World.Parse
-                      Swarm.Game.World.Render
-                      Swarm.Game.World.Syntax
-                      Swarm.Game.World.Typecheck
-                      Swarm.Util.Content
-                      Swarm.Util.Effect
-    other-modules:    Paths_swarm
-    autogen-modules:  Paths_swarm
-    build-depends:    base                          >= 4.14 && < 4.19,
-                      AhoCorasick                   >= 0.0.4 && < 0.0.5,
-                      aeson                         >= 2 && < 2.2,
-                      array                         >= 0.5.4 && < 0.6,
-                      boolexpr                      >= 0.2 && < 0.3,
-                      bytestring                    >= 0.10 && < 0.13,
-                      clock                         >= 0.8.2 && < 0.9,
-                      colour                        >= 2.3.6 && < 2.4,
-                      containers                    >= 0.6.2 && < 0.7,
-                      directory                     >= 1.3 && < 1.4,
-                      either                        >= 5.0 && < 5.1,
-                      extra                         >= 1.7 && < 1.8,
-                      filepath                      >= 1.4 && < 1.5,
-                      fused-effects                 >= 1.1.1.1 && < 1.2,
-                      hashable                      >= 1.3.4 && < 1.5,
-                      hsnoise                       >= 0.0.3 && < 0.1,
-                      JuicyPixels                   >= 3.3 && < 3.4,
-                      lens                          >= 4.19 && < 5.3,
-                      linear                        >= 1.21.6 && < 1.23,
-                      megaparsec                    >= 9.6.1 && < 9.7,
-                      transformers                  >= 0.5 && < 0.7,
-                      murmur3                       >= 1.0.4 && < 1.1,
-                      nonempty-containers           >= 0.3.4 && < 0.3.5,
-                      palette                       >= 0.3 && < 0.4,
-                      parser-combinators            >= 1.2 && < 1.4,
-                      prettyprinter                 >= 1.7.0 && < 1.8,
-                      random                        >= 1.2.0 && < 1.3,
-                      servant-docs                  >= 0.12 && < 0.14,
-                      simple-enumeration            >= 0.2 && < 0.3,
-                      tagged                        >= 0.8 && < 0.9,
-                      text                          >= 1.2.4 && < 2.2,
-                      transformers                  >= 0.5.6.2 && < 0.6.2.0,
-                      vector                        >= 0.12 && < 0.14,
-                      vty                           >= 6.1 && < 6.3,
-                      witch                         >= 1.1.1.0 && < 1.3,
-                      witherable                    >= 0.4 && < 0.5,
-                      yaml                          >= 0.11 && < 0.11.12.0,
-    build-depends:    swarm:swarm-util,
-                      swarm:swarm-lang,
-    hs-source-dirs:   src/swarm-scenario
-    default-language: Haskell2010
-    default-extensions:
-      -- Avoid unexpected unevaluated thunk buildup
-      -- See discussion in #415
-      StrictData
+  import: stan-config, common, ghc2021-extensions
+  visibility: public
+  -- cabal-gild: discover src/swarm-scenario
+  exposed-modules:
+    Swarm.Constant
+    Swarm.Game.Achievement.Definitions
+    Swarm.Game.Display
+    Swarm.Game.Entity
+    Swarm.Game.Entity.Cosmetic
+    Swarm.Game.Entity.Cosmetic.Assignment
+    Swarm.Game.Failure
+    Swarm.Game.Location
+    Swarm.Game.Recipe
+    Swarm.Game.ResourceLoading
+    Swarm.Game.Robot
+    Swarm.Game.Scenario
+    Swarm.Game.Scenario.Objective
+    Swarm.Game.Scenario.Objective.Graph
+    Swarm.Game.Scenario.Objective.Logic
+    Swarm.Game.Scenario.Objective.Validation
+    Swarm.Game.Scenario.RobotLookup
+    Swarm.Game.Scenario.Style
+    Swarm.Game.Scenario.Topography.Area
+    Swarm.Game.Scenario.Topography.Cell
+    Swarm.Game.Scenario.Topography.Center
+    Swarm.Game.Scenario.Topography.EntityFacade
+    Swarm.Game.Scenario.Topography.Navigation.Portal
+    Swarm.Game.Scenario.Topography.Navigation.Waypoint
+    Swarm.Game.Scenario.Topography.Placement
+    Swarm.Game.Scenario.Topography.Structure
+    Swarm.Game.Scenario.Topography.Structure.Recognition
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Log
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Type
+    Swarm.Game.Scenario.Topography.WorldDescription
+    Swarm.Game.Scenario.Topography.WorldPalette
+    Swarm.Game.State.Config
+    Swarm.Game.State.Landscape
+    Swarm.Game.Terrain
+    Swarm.Game.Universe
+    Swarm.Game.World
+    Swarm.Game.World.Abstract
+    Swarm.Game.World.Compile
+    Swarm.Game.World.Coords
+    Swarm.Game.World.Eval
+    Swarm.Game.World.Gen
+    Swarm.Game.World.Interpret
+    Swarm.Game.World.Load
+    Swarm.Game.World.Modify
+    Swarm.Game.World.Parse
+    Swarm.Game.World.Render
+    Swarm.Game.World.Syntax
+    Swarm.Game.World.Typecheck
+    Swarm.Util.Content
+    Swarm.Util.Effect
+
+  other-modules: Paths_swarm
+  autogen-modules: Paths_swarm
+  build-depends:
+    AhoCorasick >=0.0.4 && <0.0.5,
+    JuicyPixels >=3.3 && <3.4,
+    aeson >=2 && <2.2,
+    array >=0.5.4 && <0.6,
+    base >=4.14 && <4.19,
+    boolexpr >=0.2 && <0.3,
+    bytestring >=0.10 && <0.13,
+    clock >=0.8.2 && <0.9,
+    colour >=2.3.6 && <2.4,
+    containers >=0.6.2 && <0.7,
+    directory >=1.3 && <1.4,
+    either >=5.0 && <5.1,
+    extra >=1.7 && <1.8,
+    filepath >=1.4 && <1.5,
+    fused-effects >=1.1.1.1 && <1.2,
+    hashable >=1.3.4 && <1.5,
+    hsnoise >=0.0.3 && <0.1,
+    lens >=4.19 && <5.3,
+    linear >=1.21.6 && <1.23,
+    megaparsec >=9.6.1 && <9.7,
+    murmur3 >=1.0.4 && <1.1,
+    nonempty-containers >=0.3.4 && <0.3.5,
+    palette >=0.3 && <0.4,
+    parser-combinators >=1.2 && <1.4,
+    prettyprinter >=1.7.0 && <1.8,
+    random >=1.2.0 && <1.3,
+    servant-docs >=0.12 && <0.14,
+    simple-enumeration >=0.2 && <0.3,
+    tagged >=0.8 && <0.9,
+    text >=1.2.4 && <2.2,
+    transformers >=0.5 && <0.7,
+    transformers >=0.5.6.2 && <0.6.2.0,
+    vector >=0.12 && <0.14,
+    vty >=6.1 && <6.3,
+    witch >=1.1.1.0 && <1.3,
+    witherable >=0.4 && <0.5,
+    yaml >=0.11 && <0.11.12.0,
+
+  build-depends:
+    swarm:swarm-lang,
+    swarm:swarm-util,
+
+  hs-source-dirs: src/swarm-scenario
+  default-language: Haskell2010
+  default-extensions:
+    -- Avoid unexpected unevaluated thunk buildup
+    -- See discussion in #415
+    StrictData
 
 library swarm-engine
-    import:           stan-config, common, ghc2021-extensions
-    visibility:       public
-    -- cabal-gild: discover src/swarm-engine
-    exposed-modules:  Swarm.Effect
-                      Swarm.Effect.Time
-                      Swarm.Game.Achievement.Attainment
-                      Swarm.Game.Achievement.Description
-                      Swarm.Game.Achievement.Persistence
-                      Swarm.Game.CESK
-                      Swarm.Game.Exception
-                      Swarm.Game.Robot.Activity
-                      Swarm.Game.Robot.Concrete
-                      Swarm.Game.Robot.Context
-                      Swarm.Game.ScenarioInfo
-                      Swarm.Game.Scenario.Objective.WinCheck
-                      Swarm.Game.Scenario.Scoring.Best
-                      Swarm.Game.Scenario.Scoring.CodeSize
-                      Swarm.Game.Scenario.Scoring.ConcreteMetrics
-                      Swarm.Game.Scenario.Scoring.GenericMetrics
-                      Swarm.Game.Scenario.Status
-                      Swarm.Game.Scenario.Topography.Navigation.Util
-                      Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking
-                      Swarm.Game.State
-                      Swarm.Game.State.Robot
-                      Swarm.Game.State.Runtime
-                      Swarm.Game.State.Substate
-                      Swarm.Game.Step
-                      Swarm.Game.Step.Arithmetic
-                      Swarm.Game.Step.Combustion
-                      Swarm.Game.Step.Const
-                      Swarm.Game.Step.Flood
-                      Swarm.Game.Step.Path.Cache
-                      Swarm.Game.Step.Path.Cache.DistanceLimit
-                      Swarm.Game.Step.Path.Finding
-                      Swarm.Game.Step.Path.Type
-                      Swarm.Game.Step.Path.Walkability
-                      Swarm.Game.Step.RobotStepState
-                      Swarm.Game.Step.Util
-                      Swarm.Game.Step.Util.Command
-                      Swarm.Game.Step.Util.Inspect
-                      Swarm.Game.Tick
-                      Swarm.Game.Value
-                      Swarm.Log
-                      Swarm.Version
-    other-modules:    Paths_swarm
-    autogen-modules:  Paths_swarm
-    build-depends:    base                          >= 4.14 && < 4.19,
-                      AhoCorasick                   >= 0.0.4 && < 0.0.5,
-                      aeson                         >= 2 && < 2.2,
-                      array                         >= 0.5.4 && < 0.6,
-                      astar                         >= 0.3 && < 0.3.1,
-                      boolexpr                      >= 0.2 && < 0.3,
-                      clock                         >= 0.8.2 && < 0.9,
-                      containers                    >= 0.6.2 && < 0.7,
-                      directory                     >= 1.3 && < 1.4,
-                      extra                         >= 1.7 && < 1.8,
-                      filepath                      >= 1.4 && < 1.5,
-                      fused-effects                 >= 1.1.1.1 && < 1.2,
-                      fused-effects-lens            >= 1.2.0.1 && < 1.3,
-                      hashable                      >= 1.3.4 && < 1.5,
-                      lens                          >= 4.19 && < 5.3,
-                      linear                        >= 1.21.6 && < 1.23,
-                      transformers                  >= 0.5 && < 0.7,
-                      mtl                           >= 2.2.2 && < 2.4,
-                      nonempty-containers           >= 0.3.4 && < 0.3.5,
-                      prettyprinter                 >= 1.7.0 && < 1.8,
-                      random                        >= 1.2.0 && < 1.3,
-                      servant-docs                  >= 0.12 && < 0.14,
-                      SHA                           >= 1.6.4 && < 1.6.5,
-                      text                          >= 1.2.4 && < 2.2,
-                      time                          >= 1.9 && < 1.14,
-                      transformers                  >= 0.5.6.2 && < 0.6.2.0,
-                      unordered-containers          >= 0.2.14 && < 0.3,
-                      witch                         >= 1.1.1.0 && < 1.3,
-                      yaml                          >= 0.11 && < 0.11.12.0,
-                      warp,
-                      http-client                   >= 0.7 && < 0.8,
-                      http-client-tls               >= 0.3 && < 0.4,
-                      http-types                    >= 0.12 && < 0.13,
-                      bytestring,
-                      githash,
-    build-depends:    swarm:swarm-util,
-                      swarm:swarm-lang,
-                      swarm:swarm-scenario,
-    hs-source-dirs:   src/swarm-engine
-    default-language: Haskell2010
-    default-extensions:
-      -- Avoid unexpected unevaluated thunk buildup
-      -- See discussion in #415
-      StrictData
+  import: stan-config, common, ghc2021-extensions
+  visibility: public
+  -- cabal-gild: discover src/swarm-engine
+  exposed-modules:
+    Swarm.Effect
+    Swarm.Effect.Time
+    Swarm.Game.Achievement.Attainment
+    Swarm.Game.Achievement.Description
+    Swarm.Game.Achievement.Persistence
+    Swarm.Game.CESK
+    Swarm.Game.Exception
+    Swarm.Game.Robot.Activity
+    Swarm.Game.Robot.Concrete
+    Swarm.Game.Robot.Context
+    Swarm.Game.Scenario.Objective.WinCheck
+    Swarm.Game.Scenario.Scoring.Best
+    Swarm.Game.Scenario.Scoring.CodeSize
+    Swarm.Game.Scenario.Scoring.ConcreteMetrics
+    Swarm.Game.Scenario.Scoring.GenericMetrics
+    Swarm.Game.Scenario.Status
+    Swarm.Game.Scenario.Topography.Navigation.Util
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking
+    Swarm.Game.ScenarioInfo
+    Swarm.Game.State
+    Swarm.Game.State.Robot
+    Swarm.Game.State.Runtime
+    Swarm.Game.State.Substate
+    Swarm.Game.Step
+    Swarm.Game.Step.Arithmetic
+    Swarm.Game.Step.Combustion
+    Swarm.Game.Step.Const
+    Swarm.Game.Step.Flood
+    Swarm.Game.Step.Path.Cache
+    Swarm.Game.Step.Path.Cache.DistanceLimit
+    Swarm.Game.Step.Path.Finding
+    Swarm.Game.Step.Path.Type
+    Swarm.Game.Step.Path.Walkability
+    Swarm.Game.Step.RobotStepState
+    Swarm.Game.Step.Util
+    Swarm.Game.Step.Util.Command
+    Swarm.Game.Step.Util.Inspect
+    Swarm.Game.Tick
+    Swarm.Game.Value
+    Swarm.Log
+    Swarm.Version
+
+  other-modules: Paths_swarm
+  autogen-modules: Paths_swarm
+  build-depends:
+    AhoCorasick >=0.0.4 && <0.0.5,
+    SHA >=1.6.4 && <1.6.5,
+    aeson >=2 && <2.2,
+    array >=0.5.4 && <0.6,
+    astar >=0.3 && <0.3.1,
+    base >=4.14 && <4.19,
+    boolexpr >=0.2 && <0.3,
+    bytestring,
+    clock >=0.8.2 && <0.9,
+    containers >=0.6.2 && <0.7,
+    directory >=1.3 && <1.4,
+    extra >=1.7 && <1.8,
+    filepath >=1.4 && <1.5,
+    fused-effects >=1.1.1.1 && <1.2,
+    fused-effects-lens >=1.2.0.1 && <1.3,
+    githash,
+    hashable >=1.3.4 && <1.5,
+    http-client >=0.7 && <0.8,
+    http-client-tls >=0.3 && <0.4,
+    http-types >=0.12 && <0.13,
+    lens >=4.19 && <5.3,
+    linear >=1.21.6 && <1.23,
+    mtl >=2.2.2 && <2.4,
+    nonempty-containers >=0.3.4 && <0.3.5,
+    prettyprinter >=1.7.0 && <1.8,
+    random >=1.2.0 && <1.3,
+    servant-docs >=0.12 && <0.14,
+    text >=1.2.4 && <2.2,
+    time >=1.9 && <1.14,
+    transformers >=0.5 && <0.7,
+    transformers >=0.5.6.2 && <0.6.2.0,
+    unordered-containers >=0.2.14 && <0.3,
+    warp,
+    witch >=1.1.1.0 && <1.3,
+    yaml >=0.11 && <0.11.12.0,
+
+  build-depends:
+    swarm:swarm-lang,
+    swarm:swarm-scenario,
+    swarm:swarm-util,
+
+  hs-source-dirs: src/swarm-engine
+  default-language: Haskell2010
+  default-extensions:
+    -- Avoid unexpected unevaluated thunk buildup
+    -- See discussion in #415
+    StrictData
 
 library swarm-web
-    import:           stan-config, common, ghc2021-extensions
-    visibility:       public
-    -- cabal-gild: discover src/swarm-web
-    exposed-modules:  Swarm.Web
-                      Swarm.Web.Worldview
-    other-modules:    Paths_swarm
-    autogen-modules:  Paths_swarm
-    build-depends:    aeson,
-                      base,
-                      brick,
-                      bytestring,
-                      commonmark,
-                      colour,
-                      containers,
-                      lens,
-                      http-types,
-                      nonempty-containers,
-                      palette,
-                      servant-docs,
-                      servant-server                >= 0.19 && < 0.21,
-                      text,
-                      witch,
-                      wai                           >= 3.2 && < 3.3,
-                      wai-app-static                >= 3.1.8 && < 3.1.9,
-                      warp,
-    build-depends:    swarm:swarm-util,
-                      swarm:swarm-lang,
-                      swarm,
-    hs-source-dirs:   src/swarm-web
-    default-language: Haskell2010
-    default-extensions:
-      -- Avoid unexpected unevaluated thunk buildup
-      -- See discussion in #415
-      StrictData
+  import: stan-config, common, ghc2021-extensions
+  visibility: public
+  -- cabal-gild: discover src/swarm-web
+  exposed-modules:
+    Swarm.Web
+    Swarm.Web.Worldview
+
+  other-modules: Paths_swarm
+  autogen-modules: Paths_swarm
+  build-depends:
+    aeson,
+    base,
+    brick,
+    bytestring,
+    colour,
+    commonmark,
+    containers,
+    http-types,
+    lens,
+    nonempty-containers,
+    palette,
+    servant-docs,
+    servant-server >=0.19 && <0.21,
+    text,
+    wai >=3.2 && <3.3,
+    wai-app-static >=3.1.8 && <3.1.9,
+    warp,
+    witch,
+
+  build-depends:
+    swarm,
+    swarm:swarm-lang,
+    swarm:swarm-util,
+
+  hs-source-dirs: src/swarm-web
+  default-language: Haskell2010
+  default-extensions:
+    -- Avoid unexpected unevaluated thunk buildup
+    -- See discussion in #415
+    StrictData
 
 library swarm-util
-    import:           stan-config, common, ghc2021-extensions
-    visibility:       public
-    -- cabal-gild: discover src/swarm-util
-    exposed-modules:  Control.Carrier.Accum.FixedStrict
-                      Data.BoolExpr.Simplify
-                      Swarm.Util
-                      Swarm.Util.Erasable
-                      Swarm.Util.Lens
-                      Swarm.Util.OccurrenceEncoder
-                      Swarm.Util.Parse
-                      Swarm.Util.ReadableIORef
-                      Swarm.Util.RingBuffer
-                      Swarm.Util.UnitInterval
-                      Swarm.Util.WindowedCounter
-                      Swarm.Util.Yaml
-    other-modules:    Paths_swarm
-    autogen-modules:  Paths_swarm
-    build-depends:    base                          >= 4.14 && < 4.19,
-                      aeson                         >= 2 && < 2.2,
-                      boolexpr                      >= 0.2 && < 0.3,
-                      clock                         >= 0.8.2 && < 0.9,
-                      containers                    >= 0.6.2 && < 0.7,
-                      directory                     >= 1.3 && < 1.4,
-                      either                        >= 5.0 && < 5.1,
-                      filepath                      >= 1.4 && < 1.5,
-                      fused-effects                 >= 1.1.1.1 && < 1.2,
-                      lens                          >= 4.19 && < 5.3,
-                      megaparsec                    >= 9.6.1 && < 9.7,
-                      minimorph                     >= 0.3 && < 0.4,
-                      mtl                           >= 2.2.2 && < 2.4,
-                      servant-docs                  >= 0.12 && < 0.14,
-                      template-haskell              >= 2.16 && < 2.21,
-                      text                          >= 1.2.4 && < 2.2,
-                      transformers                  >= 0.5 && < 0.7,
-                      vector                        >= 0.12 && < 0.14,
-                      witch                         >= 1.1.1.0 && < 1.3,
-                      yaml                          >= 0.11 && < 0.11.12.0,
-    hs-source-dirs:   src/swarm-util
-    default-language: Haskell2010
-    default-extensions:
-      -- Avoid unexpected unevaluated thunk buildup
-      -- See discussion in #415
-      StrictData
+  import: stan-config, common, ghc2021-extensions
+  visibility: public
+  -- cabal-gild: discover src/swarm-util
+  exposed-modules:
+    Control.Carrier.Accum.FixedStrict
+    Data.BoolExpr.Simplify
+    Swarm.Util
+    Swarm.Util.Erasable
+    Swarm.Util.Lens
+    Swarm.Util.OccurrenceEncoder
+    Swarm.Util.Parse
+    Swarm.Util.ReadableIORef
+    Swarm.Util.RingBuffer
+    Swarm.Util.UnitInterval
+    Swarm.Util.WindowedCounter
+    Swarm.Util.Yaml
+
+  other-modules: Paths_swarm
+  autogen-modules: Paths_swarm
+  build-depends:
+    aeson >=2 && <2.2,
+    base >=4.14 && <4.19,
+    boolexpr >=0.2 && <0.3,
+    clock >=0.8.2 && <0.9,
+    containers >=0.6.2 && <0.7,
+    directory >=1.3 && <1.4,
+    either >=5.0 && <5.1,
+    filepath >=1.4 && <1.5,
+    fused-effects >=1.1.1.1 && <1.2,
+    lens >=4.19 && <5.3,
+    megaparsec >=9.6.1 && <9.7,
+    minimorph >=0.3 && <0.4,
+    mtl >=2.2.2 && <2.4,
+    servant-docs >=0.12 && <0.14,
+    template-haskell >=2.16 && <2.21,
+    text >=1.2.4 && <2.2,
+    transformers >=0.5 && <0.7,
+    vector >=0.12 && <0.14,
+    witch >=1.1.1.0 && <1.3,
+    yaml >=0.11 && <0.11.12.0,
+
+  hs-source-dirs: src/swarm-util
+  default-language: Haskell2010
+  default-extensions:
+    -- Avoid unexpected unevaluated thunk buildup
+    -- See discussion in #415
+    StrictData
 
 library
-    import:           stan-config, common, ghc2021-extensions
-    exposed-modules:  Swarm.Doc.Command
-                      Swarm.Doc.Keyword
-                      Swarm.Doc.Pedagogy
-                      Swarm.Doc.Util
-                      Swarm.TUI.Border
-                      Swarm.TUI.Editor.Controller
-                      Swarm.TUI.Editor.Json
-                      Swarm.TUI.Editor.Masking
-                      Swarm.TUI.Editor.Model
-                      Swarm.TUI.Editor.Palette
-                      Swarm.TUI.Editor.Util
-                      Swarm.TUI.Editor.View
-                      Swarm.TUI.Controller
-                      Swarm.TUI.Controller.Util
-                      Swarm.TUI.Inventory.Sorting
-                      Swarm.TUI.List
-                      Swarm.TUI.Model
-                      Swarm.TUI.Model.Goal
-                      Swarm.TUI.Model.Menu
-                      Swarm.TUI.Model.Name
-                      Swarm.TUI.Model.Repl
-                      Swarm.TUI.Model.StateUpdate
-                      Swarm.TUI.Model.Structure
-                      Swarm.TUI.Model.UI
-                      Swarm.TUI.Panel
-                      Swarm.TUI.Launch.Controller
-                      Swarm.TUI.Launch.Model
-                      Swarm.TUI.Launch.Prep
-                      Swarm.TUI.Launch.View
-                      Swarm.TUI.View
-                      Swarm.TUI.View.Achievement
-                      Swarm.TUI.View.Attribute.Attr
-                      Swarm.TUI.View.Attribute.CustomStyling
-                      Swarm.TUI.View.Attribute.Util
-                      Swarm.TUI.View.CellDisplay
-                      Swarm.TUI.View.Logo
-                      Swarm.TUI.View.Objective
-                      Swarm.TUI.View.Structure
-                      Swarm.TUI.View.Util
+  import: stan-config, common, ghc2021-extensions
+  exposed-modules:
+    Swarm.Doc.Command
+    Swarm.Doc.Keyword
+    Swarm.Doc.Pedagogy
+    Swarm.Doc.Util
+    Swarm.TUI.Border
+    Swarm.TUI.Controller
+    Swarm.TUI.Controller.Util
+    Swarm.TUI.Editor.Controller
+    Swarm.TUI.Editor.Json
+    Swarm.TUI.Editor.Masking
+    Swarm.TUI.Editor.Model
+    Swarm.TUI.Editor.Palette
+    Swarm.TUI.Editor.Util
+    Swarm.TUI.Editor.View
+    Swarm.TUI.Inventory.Sorting
+    Swarm.TUI.Launch.Controller
+    Swarm.TUI.Launch.Model
+    Swarm.TUI.Launch.Prep
+    Swarm.TUI.Launch.View
+    Swarm.TUI.List
+    Swarm.TUI.Model
+    Swarm.TUI.Model.Goal
+    Swarm.TUI.Model.Menu
+    Swarm.TUI.Model.Name
+    Swarm.TUI.Model.Repl
+    Swarm.TUI.Model.StateUpdate
+    Swarm.TUI.Model.Structure
+    Swarm.TUI.Model.UI
+    Swarm.TUI.Panel
+    Swarm.TUI.View
+    Swarm.TUI.View.Achievement
+    Swarm.TUI.View.Attribute.Attr
+    Swarm.TUI.View.Attribute.CustomStyling
+    Swarm.TUI.View.Attribute.Util
+    Swarm.TUI.View.CellDisplay
+    Swarm.TUI.View.Logo
+    Swarm.TUI.View.Objective
+    Swarm.TUI.View.Structure
+    Swarm.TUI.View.Util
 
-    reexported-modules: Control.Carrier.Accum.FixedStrict
-                      , Data.BoolExpr.Simplify
-                      , Swarm.Constant
-                      , Swarm.Effect
-                      , Swarm.Effect.Time
-                      , Swarm.Game.Failure
-                      , Swarm.Game.Achievement.Attainment
-                      , Swarm.Game.Achievement.Definitions
-                      , Swarm.Game.Achievement.Description
-                      , Swarm.Game.Achievement.Persistence
-                      , Swarm.Game.CESK
-                      , Swarm.Game.Display
-                      , Swarm.Game.Entity
-                      , Swarm.Game.Entity.Cosmetic
-                      , Swarm.Game.Entity.Cosmetic.Assignment
-                      , Swarm.Game.Exception
-                      , Swarm.Game.Location
-                      , Swarm.Game.Recipe
-                      , Swarm.Game.ResourceLoading
-                      , Swarm.Game.Robot
-                      , Swarm.Game.Robot.Activity
-                      , Swarm.Game.Robot.Concrete
-                      , Swarm.Game.Robot.Context
-                      , Swarm.Game.Scenario
-                      , Swarm.Game.Universe
-                      , Swarm.Game.Scenario.Objective
-                      , Swarm.Game.Scenario.Objective.Graph
-                      , Swarm.Game.Scenario.Objective.Logic
-                      , Swarm.Game.Scenario.Objective.Validation
-                      , Swarm.Game.Scenario.Objective.WinCheck
-                      , Swarm.Game.Scenario.RobotLookup
-                      , Swarm.Game.Scenario.Scoring.Best
-                      , Swarm.Game.Scenario.Scoring.CodeSize
-                      , Swarm.Game.Scenario.Scoring.ConcreteMetrics
-                      , Swarm.Game.Scenario.Scoring.GenericMetrics
-                      , Swarm.Game.Scenario.Status
-                      , Swarm.Game.Scenario.Style
-                      , Swarm.Game.Scenario.Topography.Area
-                      , Swarm.Game.Scenario.Topography.Cell
-                      , Swarm.Game.Scenario.Topography.Center
-                      , Swarm.Game.Scenario.Topography.EntityFacade
-                      , Swarm.Game.Scenario.Topography.Navigation.Portal
-                      , Swarm.Game.Scenario.Topography.Navigation.Util
-                      , Swarm.Game.Scenario.Topography.Navigation.Waypoint
-                      , Swarm.Game.Scenario.Topography.Placement
-                      , Swarm.Game.Scenario.Topography.Structure
-                      , Swarm.Game.Scenario.Topography.Structure.Recognition
-                      , Swarm.Game.Scenario.Topography.Structure.Recognition.Log
-                      , Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
-                      , Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
-                      , Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
-                      , Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking
-                      , Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-                      , Swarm.Game.Scenario.Topography.WorldDescription
-                      , Swarm.Game.Scenario.Topography.WorldPalette
-                      , Swarm.Game.ScenarioInfo
-                      , Swarm.Game.State
-                      , Swarm.Game.State.Config
-                      , Swarm.Game.State.Landscape
-                      , Swarm.Game.State.Robot
-                      , Swarm.Game.State.Runtime
-                      , Swarm.Game.State.Substate
-                      , Swarm.Game.Step
-                      , Swarm.Game.Step.Arithmetic
-                      , Swarm.Game.Step.Combustion
-                      , Swarm.Game.Step.Const
-                      , Swarm.Game.Step.Flood
-                      , Swarm.Game.Step.Path.Cache
-                      , Swarm.Game.Step.Path.Cache.DistanceLimit
-                      , Swarm.Game.Step.Path.Finding
-                      , Swarm.Game.Step.Path.Type
-                      , Swarm.Game.Step.Path.Walkability
-                      , Swarm.Game.Step.RobotStepState
-                      , Swarm.Game.Step.Util
-                      , Swarm.Game.Step.Util.Command
-                      , Swarm.Game.Step.Util.Inspect
-                      , Swarm.Game.Terrain
-                      , Swarm.Game.Tick
-                      , Swarm.Game.Value
-                      , Swarm.Game.World
-                      , Swarm.Game.World.Abstract
-                      , Swarm.Game.World.Compile
-                      , Swarm.Game.World.Coords
-                      , Swarm.Game.World.Eval
-                      , Swarm.Game.World.Gen
-                      , Swarm.Game.World.Interpret
-                      , Swarm.Game.World.Load
-                      , Swarm.Game.World.Modify
-                      , Swarm.Game.World.Parse
-                      , Swarm.Game.World.Render
-                      , Swarm.Game.World.Syntax
-                      , Swarm.Game.World.Typecheck
-                      , Swarm.Language.Context
-                      , Swarm.Language.Direction
-                      , Swarm.Language.Elaborate
-                      , Swarm.Language.Key
-                      , Swarm.Language.LSP
-                      , Swarm.Language.LSP.Hover
-                      , Swarm.Language.LSP.VarUsage
-                      , Swarm.Language.Module
-                      , Swarm.Language.Parse
-                      , Swarm.Language.Parse.QQ
-                      , Swarm.Language.Pipeline
-                      , Swarm.Language.Pipeline.QQ
-                      , Swarm.Language.Pretty
-                      , Swarm.Language.Requirement
-                      , Swarm.Language.Syntax
-                      , Swarm.Language.Syntax.CommandMetadata
-                      , Swarm.Language.Text.Markdown
-                      , Swarm.Language.Typecheck
-                      , Swarm.Language.Typecheck.Unify
-                      , Swarm.Language.Typed
-                      , Swarm.Language.Types
-                      , Swarm.Language.Value
-                      , Swarm.Log
-                      , Swarm.Util
-                      , Swarm.Util.Content
-                      , Swarm.Util.Effect
-                      , Swarm.Util.Erasable
-                      , Swarm.Util.Lens
-                      , Swarm.Util.OccurrenceEncoder
-                      , Swarm.Util.Parse
-                      , Swarm.Util.RingBuffer
-                      , Swarm.Util.UnitInterval
-                      , Swarm.Util.WindowedCounter
-                      , Swarm.Util.Yaml
-                      , Swarm.Language.Capability
-                      , Swarm.Version
+  reexported-modules:
+    Control.Carrier.Accum.FixedStrict,
+    Data.BoolExpr.Simplify,
+    Swarm.Constant,
+    Swarm.Effect,
+    Swarm.Effect.Time,
+    Swarm.Game.Achievement.Attainment,
+    Swarm.Game.Achievement.Definitions,
+    Swarm.Game.Achievement.Description,
+    Swarm.Game.Achievement.Persistence,
+    Swarm.Game.CESK,
+    Swarm.Game.Display,
+    Swarm.Game.Entity,
+    Swarm.Game.Entity.Cosmetic,
+    Swarm.Game.Entity.Cosmetic.Assignment,
+    Swarm.Game.Exception,
+    Swarm.Game.Failure,
+    Swarm.Game.Location,
+    Swarm.Game.Recipe,
+    Swarm.Game.ResourceLoading,
+    Swarm.Game.Robot,
+    Swarm.Game.Robot.Activity,
+    Swarm.Game.Robot.Concrete,
+    Swarm.Game.Robot.Context,
+    Swarm.Game.Scenario,
+    Swarm.Game.Scenario.Objective,
+    Swarm.Game.Scenario.Objective.Graph,
+    Swarm.Game.Scenario.Objective.Logic,
+    Swarm.Game.Scenario.Objective.Validation,
+    Swarm.Game.Scenario.Objective.WinCheck,
+    Swarm.Game.Scenario.RobotLookup,
+    Swarm.Game.Scenario.Scoring.Best,
+    Swarm.Game.Scenario.Scoring.CodeSize,
+    Swarm.Game.Scenario.Scoring.ConcreteMetrics,
+    Swarm.Game.Scenario.Scoring.GenericMetrics,
+    Swarm.Game.Scenario.Status,
+    Swarm.Game.Scenario.Style,
+    Swarm.Game.Scenario.Topography.Area,
+    Swarm.Game.Scenario.Topography.Cell,
+    Swarm.Game.Scenario.Topography.Center,
+    Swarm.Game.Scenario.Topography.EntityFacade,
+    Swarm.Game.Scenario.Topography.Navigation.Portal,
+    Swarm.Game.Scenario.Topography.Navigation.Util,
+    Swarm.Game.Scenario.Topography.Navigation.Waypoint,
+    Swarm.Game.Scenario.Topography.Placement,
+    Swarm.Game.Scenario.Topography.Structure,
+    Swarm.Game.Scenario.Topography.Structure.Recognition,
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Log,
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute,
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Registry,
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry,
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking,
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Type,
+    Swarm.Game.Scenario.Topography.WorldDescription,
+    Swarm.Game.Scenario.Topography.WorldPalette,
+    Swarm.Game.ScenarioInfo,
+    Swarm.Game.State,
+    Swarm.Game.State.Config,
+    Swarm.Game.State.Landscape,
+    Swarm.Game.State.Robot,
+    Swarm.Game.State.Runtime,
+    Swarm.Game.State.Substate,
+    Swarm.Game.Step,
+    Swarm.Game.Step.Arithmetic,
+    Swarm.Game.Step.Combustion,
+    Swarm.Game.Step.Const,
+    Swarm.Game.Step.Flood,
+    Swarm.Game.Step.Path.Cache,
+    Swarm.Game.Step.Path.Cache.DistanceLimit,
+    Swarm.Game.Step.Path.Finding,
+    Swarm.Game.Step.Path.Type,
+    Swarm.Game.Step.Path.Walkability,
+    Swarm.Game.Step.RobotStepState,
+    Swarm.Game.Step.Util,
+    Swarm.Game.Step.Util.Command,
+    Swarm.Game.Step.Util.Inspect,
+    Swarm.Game.Terrain,
+    Swarm.Game.Tick,
+    Swarm.Game.Universe,
+    Swarm.Game.Value,
+    Swarm.Game.World,
+    Swarm.Game.World.Abstract,
+    Swarm.Game.World.Compile,
+    Swarm.Game.World.Coords,
+    Swarm.Game.World.Eval,
+    Swarm.Game.World.Gen,
+    Swarm.Game.World.Interpret,
+    Swarm.Game.World.Load,
+    Swarm.Game.World.Modify,
+    Swarm.Game.World.Parse,
+    Swarm.Game.World.Render,
+    Swarm.Game.World.Syntax,
+    Swarm.Game.World.Typecheck,
+    Swarm.Language.Capability,
+    Swarm.Language.Context,
+    Swarm.Language.Direction,
+    Swarm.Language.Elaborate,
+    Swarm.Language.Key,
+    Swarm.Language.LSP,
+    Swarm.Language.LSP.Hover,
+    Swarm.Language.LSP.VarUsage,
+    Swarm.Language.Module,
+    Swarm.Language.Parse,
+    Swarm.Language.Parse.QQ,
+    Swarm.Language.Pipeline,
+    Swarm.Language.Pipeline.QQ,
+    Swarm.Language.Pretty,
+    Swarm.Language.Requirement,
+    Swarm.Language.Syntax,
+    Swarm.Language.Syntax.CommandMetadata,
+    Swarm.Language.Text.Markdown,
+    Swarm.Language.Typecheck,
+    Swarm.Language.Typecheck.Unify,
+    Swarm.Language.Typed,
+    Swarm.Language.Types,
+    Swarm.Language.Value,
+    Swarm.Log,
+    Swarm.Util,
+    Swarm.Util.Content,
+    Swarm.Util.Effect,
+    Swarm.Util.Erasable,
+    Swarm.Util.Lens,
+    Swarm.Util.OccurrenceEncoder,
+    Swarm.Util.Parse,
+    Swarm.Util.RingBuffer,
+    Swarm.Util.UnitInterval,
+    Swarm.Util.WindowedCounter,
+    Swarm.Util.Yaml,
+    Swarm.Version,
 
-    other-modules:    Paths_swarm
-    autogen-modules:  Paths_swarm
+  other-modules: Paths_swarm
+  autogen-modules: Paths_swarm
+  build-depends:
+    aeson >=2 && <2.2,
+    array >=0.5.4 && <0.6,
+    base >=4.14 && <4.19,
+    brick >=2.1.1 && <2.4,
+    brick-list-skip >=0.1.1.2 && <0.2,
+    bytestring >=0.10 && <0.13,
+    clock >=0.8.2 && <0.9,
+    colour >=2.3.6 && <2.4,
+    containers >=0.6.2 && <0.7,
+    extra >=1.7 && <1.8,
+    filepath >=1.4 && <1.5,
+    fused-effects >=1.1.1.1 && <1.2,
+    fuzzy >=0.1 && <0.2,
+    githash >=0.1.6 && <0.2,
+    lens >=4.19 && <5.3,
+    linear >=1.21.6 && <1.23,
+    mtl >=2.2.2 && <2.4,
+    murmur3 >=1.0.4 && <1.1,
+    natural-sort >=0.1.2 && <0.2,
+    nonempty-containers >=0.3.4 && <0.3.5,
+    palette >=0.3 && <0.4,
+    servant-docs >=0.12 && <0.14,
+    split >=0.2.3 && <0.3,
+    tagged >=0.8 && <0.9,
+    text >=1.2.4 && <2.2,
+    text-zipper >=0.10 && <0.14,
+    time >=1.9 && <1.14,
+    transformers >=0.5 && <0.7,
+    transformers >=0.5.6.2 && <0.6.2.0,
+    vector >=0.12 && <0.14,
+    vty >=6.1 && <6.3,
+    warp >=3.2 && <3.5,
+    witch >=1.1.1.0 && <1.3,
+    word-wrap >=0.5 && <0.6,
+    yaml >=0.11 && <0.11.12.0,
 
-    build-depends:    base                          >= 4.14 && < 4.19,
-                      brick-list-skip               >= 0.1.1.2 && < 0.2,
-                      aeson                         >= 2 && < 2.2,
-                      array                         >= 0.5.4 && < 0.6,
-                      brick                         >= 2.1.1 && < 2.4,
-                      bytestring                    >= 0.10 && < 0.13,
-                      clock                         >= 0.8.2 && < 0.9,
-                      colour                        >= 2.3.6 && < 2.4,
-                      containers                    >= 0.6.2 && < 0.7,
-                      extra                         >= 1.7 && < 1.8,
-                      filepath                      >= 1.4 && < 1.5,
-                      fused-effects                 >= 1.1.1.1 && < 1.2,
-                      fuzzy                         >= 0.1 && < 0.2,
-                      githash                       >= 0.1.6 && < 0.2,
-                      lens                          >= 4.19 && < 5.3,
-                      linear                        >= 1.21.6 && < 1.23,
-                      transformers                  >= 0.5 && < 0.7,
-                      mtl                           >= 2.2.2 && < 2.4,
-                      murmur3                       >= 1.0.4 && < 1.1,
-                      natural-sort                  >= 0.1.2 && < 0.2,
-                      nonempty-containers           >= 0.3.4 && < 0.3.5,
-                      palette                       >= 0.3 && < 0.4,
-                      servant-docs                  >= 0.12 && < 0.14,
-                      split                         >= 0.2.3 && < 0.3,
-                      tagged                        >= 0.8 && < 0.9,
-                      text                          >= 1.2.4 && < 2.2,
-                      text-zipper                   >= 0.10 && < 0.14,
-                      time                          >= 1.9 && < 1.14,
-                      transformers                  >= 0.5.6.2 && < 0.6.2.0,
-                      vector                        >= 0.12 && < 0.14,
-                      vty                           >= 6.1 && < 6.3,
-                      warp                          >= 3.2 && < 3.5,
-                      witch                         >= 1.1.1.0 && < 1.3,
-                      word-wrap                     >= 0.5 && < 0.6,
-                      yaml                          >= 0.11 && < 0.11.12.0,
-    build-depends:    swarm:swarm-util,
-                      swarm:swarm-lang,
-                      swarm:swarm-engine,
-                      swarm:swarm-scenario,
-    hs-source-dirs:   src
-    default-language: Haskell2010
-    default-extensions:
-      -- Avoid unexpected unevaluated thunk buildup
-      -- See discussion in #415
-      StrictData
+  build-depends:
+    swarm:swarm-engine,
+    swarm:swarm-lang,
+    swarm:swarm-scenario,
+    swarm:swarm-util,
+
+  hs-source-dirs: src
+  default-language: Haskell2010
+  default-extensions:
+    -- Avoid unexpected unevaluated thunk buildup
+    -- See discussion in #415
+    StrictData
 
 executable swarm
-    import:           stan-config, common
-    main-is:          Main.hs
-    other-modules:    Swarm.App
-    build-depends:    optparse-applicative          >= 0.16 && < 0.19,
-                      githash                       >= 0.1.6 && < 0.2,
-                      terminal-size                 >= 0.3 && < 1.0,
-                      blaze-html                    >= 0.9.1 && < 0.9.2,
-                      servant                       >= 0.19 && < 0.21,
-                      -- Imports shared with the library don't need bounds
-                      base,
-                      brick,
-                      fused-effects,
-                      lens,
-                      prettyprinter,
-                      text,
-                      vty,
-                      vty-crossplatform >= 0.4 && < 0.5,
-                      swarm,
-                      swarm:swarm-lang,
-                      swarm:swarm-web,
-                      swarm:swarm-util,
-    hs-source-dirs:   app
-    default-language: Haskell2010
-    ghc-options:      -threaded
-    default-extensions: ImportQualifiedPost
+  import: stan-config, common
+  main-is: Main.hs
+  other-modules: Swarm.App
+  build-depends:
+    -- Imports shared with the library don't need bounds
+    base,
+    blaze-html >=0.9.1 && <0.9.2,
+    brick,
+    fused-effects,
+    githash >=0.1.6 && <0.2,
+    lens,
+    optparse-applicative >=0.16 && <0.19,
+    prettyprinter,
+    servant >=0.19 && <0.21,
+    swarm,
+    swarm:swarm-lang,
+    swarm:swarm-util,
+    swarm:swarm-web,
+    terminal-size >=0.3 && <1.0,
+    text,
+    vty,
+    vty-crossplatform >=0.4 && <0.5,
+
+  hs-source-dirs: app
+  default-language: Haskell2010
+  ghc-options: -threaded
+  default-extensions: ImportQualifiedPost
 
 executable swarm-scene
-    import:           stan-config, common, ghc2021-extensions
-    main-is:          Main.hs
-    build-depends:    optparse-applicative          >= 0.16 && < 0.19,
-                      base,
-                      swarm:swarm-scenario,
-    hs-source-dirs:   app/scene
-    default-language: Haskell2010
-    ghc-options:      -threaded
-    default-extensions: ImportQualifiedPost
+  import: stan-config, common, ghc2021-extensions
+  main-is: Main.hs
+  build-depends:
+    base,
+    optparse-applicative >=0.16 && <0.19,
+    swarm:swarm-scenario,
+
+  hs-source-dirs: app/scene
+  default-language: Haskell2010
+  ghc-options: -threaded
+  default-extensions: ImportQualifiedPost
 
 executable swarm-docs
-    import:           stan-config, common, ghc2021-extensions
-    main-is:          Main.hs
-    other-modules:    Swarm.Doc.Gen
-                      Swarm.Doc.Schema.Arrangement
-                      Swarm.Doc.Schema.Parse
-                      Swarm.Doc.Schema.Refined
-                      Swarm.Doc.Schema.Render
-                      Swarm.Doc.Schema.SchemaType
-                      Swarm.Doc.Wiki.Cheatsheet
-                      Swarm.Doc.Wiki.Matrix
-                      Swarm.Doc.Wiki.Util
-    build-depends:    optparse-applicative          >= 0.16 && < 0.19,
-                      dotgen                        >= 0.4 && < 0.5,
-                      pandoc                        >= 3.0 && < 3.2,
-                      pandoc-types                  >= 1.23 && < 1.24,
-                      scientific                    >= 0.3.6 && < 0.3.8,
-                      -- Imports shared with the library don't need bounds
-                      base,
-                      aeson,
-                      containers,
-                      directory,
-                      extra,
-                      filepath,
-                      fused-effects,
-                      lens,
-                      mtl,
-                      swarm,
-                      text,
-                      transformers,
-                      vector,
-                      swarm:swarm-lang,
-                      swarm:swarm-web,
-    hs-source-dirs:   app/doc
-    default-language: Haskell2010
-    ghc-options:      -threaded
-    default-extensions: ImportQualifiedPost
+  import: stan-config, common, ghc2021-extensions
+  main-is: Main.hs
+  other-modules:
+    Swarm.Doc.Gen
+    Swarm.Doc.Schema.Arrangement
+    Swarm.Doc.Schema.Parse
+    Swarm.Doc.Schema.Refined
+    Swarm.Doc.Schema.Render
+    Swarm.Doc.Schema.SchemaType
+    Swarm.Doc.Wiki.Cheatsheet
+    Swarm.Doc.Wiki.Matrix
+    Swarm.Doc.Wiki.Util
+
+  build-depends:
+    -- Imports shared with the library don't need bounds
+    aeson,
+    base,
+    containers,
+    directory,
+    dotgen >=0.4 && <0.5,
+    extra,
+    filepath,
+    fused-effects,
+    lens,
+    mtl,
+    optparse-applicative >=0.16 && <0.19,
+    pandoc >=3.0 && <3.2,
+    pandoc-types >=1.23 && <1.24,
+    scientific >=0.3.6 && <0.3.8,
+    swarm,
+    swarm:swarm-lang,
+    swarm:swarm-web,
+    text,
+    transformers,
+    vector,
+
+  hs-source-dirs: app/doc
+  default-language: Haskell2010
+  ghc-options: -threaded
+  default-extensions: ImportQualifiedPost
 
 test-suite swarm-unit
-    import:           stan-config, common, ghc2021-extensions
-    main-is:          Main.hs
-    type:             exitcode-stdio-1.0
-    other-modules:    TestEval
-                      TestInventory
-                      TestModel
-                      TestPedagogy
-                      TestRecipeCoverage
-                      TestNotification
-                      TestLanguagePipeline
-                      TestOrdering
-                      TestPretty
-                      TestBoolExpr
-                      TestCommand
-                      TestLSP
-                      TestScoring
-                      TestUtil
+  import: stan-config, common, ghc2021-extensions
+  main-is: Main.hs
+  type: exitcode-stdio-1.0
+  other-modules:
+    TestBoolExpr
+    TestCommand
+    TestEval
+    TestInventory
+    TestLSP
+    TestLanguagePipeline
+    TestModel
+    TestNotification
+    TestOrdering
+    TestPedagogy
+    TestPretty
+    TestRecipeCoverage
+    TestScoring
+    TestUtil
 
-    build-depends:    tasty                         >= 0.10 && < 1.6,
-                      tasty-hunit                   >= 0.10 && < 0.11,
-                      tasty-expected-failure        >= 0.12 && < 0.13,
-                      tasty-quickcheck              >= 0.10 && < 0.11,
-                      QuickCheck                    >= 2.14 && < 2.15,
-                      -- Imports shared with the library don't need bounds
-                      aeson,
-                      base,
-                      boolexpr,
-                      containers,
-                      filepath,
-                      hashable,
-                      lens,
-                      mtl,
-                      swarm,
-                      text,
-                      time,
-                      witch,
-                      vty,
-    hs-source-dirs:   test/unit
-    default-language: Haskell2010
-    ghc-options:      -threaded
+  build-depends:
+    -- Imports shared with the library don't need bounds
+    QuickCheck >=2.14 && <2.15,
+    aeson,
+    base,
+    boolexpr,
+    containers,
+    filepath,
+    hashable,
+    lens,
+    mtl,
+    swarm,
+    tasty >=0.10 && <1.6,
+    tasty-expected-failure >=0.12 && <0.13,
+    tasty-hunit >=0.10 && <0.11,
+    tasty-quickcheck >=0.10 && <0.11,
+    text,
+    time,
+    vty,
+    witch,
+
+  hs-source-dirs: test/unit
+  default-language: Haskell2010
+  ghc-options: -threaded
 
 test-suite swarm-integration
-    import:           stan-config, common, ghc2021-extensions
-    main-is:          Main.hs
-    type:             exitcode-stdio-1.0
+  import: stan-config, common, ghc2021-extensions
+  main-is: Main.hs
+  type: exitcode-stdio-1.0
+  build-depends:
+    -- Imports shared with the library don't need bounds
+    base,
+    containers,
+    filepath,
+    fused-effects,
+    lens,
+    mtl,
+    swarm,
+    tasty >=0.10 && <1.6,
+    tasty-expected-failure >=0.12 && <0.13,
+    tasty-hunit >=0.10 && <0.11,
+    text,
+    witch,
+    yaml,
 
-    build-depends:    tasty                         >= 0.10 && < 1.6,
-                      tasty-hunit                   >= 0.10 && < 0.11,
-                      tasty-expected-failure        >= 0.12 && < 0.13,
-                      -- Imports shared with the library don't need bounds
-                      base,
-                      containers,
-                      filepath,
-                      fused-effects,
-                      lens,
-                      mtl,
-                      swarm,
-                      text,
-                      witch,
-                      yaml,
-    hs-source-dirs:   test/integration
-    default-language: Haskell2010
-    ghc-options:      -threaded
+  hs-source-dirs: test/integration
+  default-language: Haskell2010
+  ghc-options: -threaded
 
 benchmark benchmark
-  import:         stan-config, common, ghc2021-extensions
-  main-is:        Benchmark.hs
+  import: stan-config, common, ghc2021-extensions
+  main-is: Benchmark.hs
   hs-source-dirs: test/bench
-  type:           exitcode-stdio-1.0
-  build-depends:  tasty-bench >= 0.3.1 && < 0.4,
-                  base,
-                  extra,
-                  lens,
-                  mtl,
-                  text,
-                  swarm:swarm-engine,
-                  swarm:swarm-util,
-                  swarm:swarm-lang,
-                  swarm:swarm-scenario,
-                  containers,
+  type: exitcode-stdio-1.0
+  build-depends:
+    base,
+    containers,
+    extra,
+    lens,
+    mtl,
+    swarm:swarm-engine,
+    swarm:swarm-lang,
+    swarm:swarm-scenario,
+    swarm:swarm-util,
+    tasty-bench >=0.3.1 && <0.4,
+    text,
+
   default-language: Haskell2010
-  ghc-options:      -threaded
-                    "-with-rtsopts=-A32m"
-                    -fproc-alignment=64
+  ghc-options:
+    -threaded
+    -with-rtsopts=-A32m
+    -fproc-alignment=64
