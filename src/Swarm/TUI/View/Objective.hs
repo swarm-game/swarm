@@ -42,7 +42,7 @@ renderGoalsDisplay gd desc =
  where
   goalsWidget
     | hasMultiple =
-          vBox
+        vBox
           [ hBox
               [ leftSide
               , padLeft (Pad 2) goalElaboration
