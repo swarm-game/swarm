@@ -25,7 +25,7 @@ import Swarm.Game.State.Landscape (multiWorld)
 import Swarm.Game.State.Robot (addTRobot)
 import Swarm.Game.State.Runtime (initRuntimeState, mkGameStateConfig)
 import Swarm.Game.Step (gameTick)
-import Swarm.Game.Terrain (TerrainType (DirtT))
+import Swarm.Game.Terrain (blankTerrainIndex)
 import Swarm.Game.Universe (Cosmic (..), SubworldName (DefaultRootSubworld))
 import Swarm.Game.World (WorldFun (..), newWorld)
 import Swarm.Language.Context qualified as Context
@@ -151,7 +151,7 @@ mkGameState prog robotMaker numRobots = do
     (zoomRobots $ mapM_ (addTRobot $ initMachine prog Context.empty emptyStore) robots)
     ( gs
         & creativeMode .~ True
-        & landscape . multiWorld .~ M.singleton DefaultRootSubworld (newWorld (WF $ const (fromEnum DirtT, ENothing)))
+        & landscape . multiWorld .~ M.singleton DefaultRootSubworld (newWorld (WF $ const (blankTerrainIndex, ENothing)))
     )
 
 -- | Runs numGameTicks ticks of the game.

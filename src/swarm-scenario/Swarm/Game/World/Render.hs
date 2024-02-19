@@ -20,6 +20,7 @@ import Linear (V2 (..))
 import Swarm.Game.Display (defaultChar)
 import Swarm.Game.Entity.Cosmetic
 import Swarm.Game.Failure (SystemFailure)
+import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Topography.Area
@@ -128,7 +129,7 @@ getDisplayGrid ::
 getDisplayGrid vc sLandscape ls maybeSize =
   getMapRectangle
     mkFacade
-    (getContentAt worlds . mkCosmic)
+    (getContentAt (sLandscape ^. scenarioTerrainAndEntities . terrainMap) worlds . mkCosmic)
     (getBoundingBox vc firstScenarioWorld maybeSize)
  where
   mkCosmic = Cosmic $ worldName firstScenarioWorld
@@ -142,13 +143,12 @@ getRenderableGrid ::
   FilePath ->
   m (Grid (PCell EntityFacade), M.Map WorldAttr PreservableColor)
 getRenderableGrid (RenderOpts maybeSeed _ _ maybeSize _) fp = do
-  (myScenario, gsi) <- loadStandaloneScenario fp
+  (myScenario, _gsi) <- loadStandaloneScenario fp
   let sLandscape = myScenario ^. scenarioLandscape
   theSeed <- sendIO $ arbitrateSeed maybeSeed sLandscape
 
-  let em = integrateScenarioEntities gsi sLandscape
-      worldTuples = buildWorldTuples sLandscape
-      myLandscape = mkLandscape sLandscape em worldTuples theSeed
+  let worldTuples = buildWorldTuples sLandscape
+      myLandscape = mkLandscape sLandscape worldTuples theSeed
 
       vc =
         view planar $

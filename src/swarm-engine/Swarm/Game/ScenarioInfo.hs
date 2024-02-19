@@ -55,8 +55,8 @@ import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Yaml as Y
-import Swarm.Game.Entity
 import Swarm.Game.Failure
+import Swarm.Game.Land
 import Swarm.Game.ResourceLoading (getDataDirSafe, getSwarmSavePath)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize
@@ -137,16 +137,16 @@ flatten (SICollection _ c) = concatMap flatten $ scenarioCollectionToList c
 -- | Load all the scenarios from the scenarios data directory.
 loadScenarios ::
   (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
-  EntityMap ->
+  TerrainEntityMaps ->
   WorldMap ->
   m ScenarioCollection
-loadScenarios em worldMap = do
+loadScenarios tem worldMap = do
   res <- runThrow @SystemFailure $ getDataDirSafe Scenarios "scenarios"
   case res of
     Left err -> do
       warn err
       return $ SC mempty mempty
-    Right dataDir -> loadScenarioDir em worldMap dataDir
+    Right dataDir -> loadScenarioDir tem worldMap dataDir
 
 -- | The name of the special file which indicates the order of
 --   scenarios in a folder.
@@ -161,11 +161,11 @@ readOrderFile orderFile =
 --   the 00-ORDER file (if any) giving the order for the scenarios.
 loadScenarioDir ::
   (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
-  EntityMap ->
+  TerrainEntityMaps ->
   WorldMap ->
   FilePath ->
   m ScenarioCollection
-loadScenarioDir em worldMap dir = do
+loadScenarioDir tem worldMap dir = do
   let orderFile = dir </> orderFileName
       dirName = takeBaseName dir
   orderExists <- sendIO $ doesFileExist orderFile
@@ -196,7 +196,7 @@ loadScenarioDir em worldMap dir = do
   -- Only keep the files from 00-ORDER.txt that actually exist.
   let morder' = filter (`elem` itemPaths) <$> morder
       loadItem filepath = do
-        item <- loadScenarioItem em worldMap (dir </> filepath)
+        item <- loadScenarioItem tem worldMap (dir </> filepath)
         return (filepath, item)
   scenarios <- mapM (runThrow @SystemFailure . loadItem) itemPaths
   let (failures, successes) = partitionEithers scenarios
@@ -257,17 +257,17 @@ loadScenarioItem ::
   , Has (Accum (Seq SystemFailure)) sig m
   , Has (Lift IO) sig m
   ) =>
-  EntityMap ->
+  TerrainEntityMaps ->
   WorldMap ->
   FilePath ->
   m ScenarioItem
-loadScenarioItem em worldMap path = do
+loadScenarioItem tem worldMap path = do
   isDir <- sendIO $ doesDirectoryExist path
   let collectionName = into @Text . dropWhile isSpace . takeBaseName $ path
   case isDir of
-    True -> SICollection collectionName <$> loadScenarioDir em worldMap path
+    True -> SICollection collectionName <$> loadScenarioDir tem worldMap path
     False -> do
-      s <- loadScenarioFile em worldMap path
+      s <- loadScenarioFile tem worldMap path
       eitherSi <- runThrow @SystemFailure (loadScenarioInfo path)
       case eitherSi of
         Right si -> return $ SISingle (s, si)

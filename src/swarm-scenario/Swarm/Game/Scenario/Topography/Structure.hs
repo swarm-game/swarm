@@ -22,7 +22,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml as Y
-import Swarm.Game.Entity
+import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Topography.Area
@@ -58,7 +58,7 @@ type NamedStructure c = NamedArea (PStructure c)
 
 type InheritedStructureDefs = [NamedStructure (Maybe Cell)]
 
-instance FromJSONE (EntityMap, RobotMap) (NamedArea (PStructure (Maybe Cell))) where
+instance FromJSONE (TerrainEntityMaps, RobotMap) (NamedArea (PStructure (Maybe Cell))) where
   parseJSONE = withObjectE "named structure" $ \v -> do
     NamedArea
       <$> liftE (v .: "name")
@@ -211,15 +211,17 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
    where
     renderDir = quote . T.pack . directionJsonModifier . show
 
-instance FromJSONE (EntityMap, RobotMap) (PStructure (Maybe Cell)) where
+instance FromJSONE (TerrainEntityMaps, RobotMap) (PStructure (Maybe Cell)) where
   parseJSONE = withObjectE "structure definition" $ \v -> do
     pal <- v ..:? "palette" ..!= WorldPalette mempty
     localStructureDefs <- v ..:? "structures" ..!= []
-    placementDefs <- liftE $ v .:? "placements" .!= []
-    waypointDefs <- liftE $ v .:? "waypoints" .!= []
-    maybeMaskChar <- liftE $ v .:? "mask"
-    (maskedArea, mapWaypoints) <- liftE $ (v .:? "map" .!= "") >>= paintMap maybeMaskChar pal
-    return $ Structure maskedArea localStructureDefs placementDefs $ waypointDefs <> mapWaypoints
+
+    liftE $ do
+      placementDefs <- v .:? "placements" .!= []
+      waypointDefs <- v .:? "waypoints" .!= []
+      maybeMaskChar <- v .:? "mask"
+      (maskedArea, mapWaypoints) <- (v .:? "map" .!= "") >>= paintMap maybeMaskChar pal
+      return $ Structure maskedArea localStructureDefs placementDefs $ waypointDefs <> mapWaypoints
 
 -- | \"Paint\" a world map using a 'WorldPalette', turning it from a raw
 --   string into a nested list of 'PCell' values by looking up each

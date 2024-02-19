@@ -16,8 +16,8 @@ import Data.Map qualified as M
 import Data.Maybe (catMaybes)
 import Data.Sequence (Seq)
 import Data.Text (Text)
-import Swarm.Game.Entity (EntityMap)
 import Swarm.Game.Failure (Asset (..), AssetData (..), LoadingFailure (..), SystemFailure (..))
+import Swarm.Game.Land
 import Swarm.Game.ResourceLoading (getDataDirSafe)
 import Swarm.Game.World.Parse (parseWExp, runParser)
 import Swarm.Game.World.Typecheck
@@ -31,15 +31,15 @@ import Witch (into)
 --   Emit a warning for each one which fails to parse or typecheck.
 loadWorlds ::
   (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
-  EntityMap ->
+  TerrainEntityMaps ->
   m WorldMap
-loadWorlds em = do
+loadWorlds tem = do
   res <- throwToWarning @SystemFailure $ getDataDirSafe Worlds "worlds"
   case res of
     Nothing -> return M.empty
     Just dir -> do
       worldFiles <- sendIO $ acquireAllWithExt dir "world"
-      ws <- mapM (throwToWarning @SystemFailure . loadWorld dir em) worldFiles
+      ws <- mapM (throwToWarning @SystemFailure . loadWorld dir tem) worldFiles
       return . M.fromList . catMaybes $ ws
 
 -- | Load a file containing a world DSL term, throwing an exception if
@@ -47,16 +47,16 @@ loadWorlds em = do
 loadWorld ::
   (Has (Throw SystemFailure) sig m) =>
   FilePath ->
-  EntityMap ->
+  TerrainEntityMaps ->
   (FilePath, String) ->
   m (Text, Some (TTerm '[]))
-loadWorld dir em (fp, src) = do
+loadWorld dir tem (fp, src) = do
   wexp <-
     liftEither . left (AssetNotLoaded (Data Worlds) fp . CanNotParseMegaparsec) $
       runParser parseWExp (into @Text src)
   t <-
     withThrow (AssetNotLoaded (Data Worlds) fp . DoesNotTypecheck . prettyText @CheckErr) $
-      runReader em . runReader @WorldMap M.empty $
+      runReader tem . runReader @WorldMap M.empty $
         infer CNil wexp
   return (into @Text (dropExtension (stripDir dir fp)), t)
 

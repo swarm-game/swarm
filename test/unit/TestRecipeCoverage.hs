@@ -13,7 +13,7 @@ import Data.Set qualified as Set
 import Data.Text qualified as T
 import Swarm.Game.Entity (EntityMap (entitiesByCap), entityName)
 import Swarm.Game.Recipe (recipeOutputs)
-import Swarm.Game.State.Runtime (RuntimeState, stdEntityMap, stdRecipes)
+import Swarm.Game.State.Runtime (RuntimeState, stdEntityTerrainMap, stdRecipes)
 import Swarm.Util (commaList, quote)
 import Test.Tasty
 import Test.Tasty.ExpectedFailure (expectFailBecause)
@@ -41,7 +41,7 @@ testDeviceRecipeCoverage rs =
           ]
 
     -- Only include entities that grant a capability:
-    entityNames = Set.fromList . map (^. entityName) . concat . M.elems . entitiesByCap $ rs ^. stdEntityMap
+    entityNames = Set.fromList . map (^. entityName) . concat . M.elems . entitiesByCap $ rs ^. stdEntityTerrainMap . entityMap
 
     getOutputsForRecipe r = map ((^. entityName) . snd) $ r ^. recipeOutputs
     recipeOutputEntities = Set.fromList . concatMap getOutputsForRecipe $ rs ^. stdRecipes

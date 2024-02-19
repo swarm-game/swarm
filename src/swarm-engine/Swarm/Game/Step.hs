@@ -48,6 +48,7 @@ import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Exception
+import Swarm.Game.Land
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
@@ -123,7 +124,7 @@ gameTick = do
     case wc of
       WinConditions winState oc -> do
         g <- get @GameState
-        em <- use $ landscape . entityMap
+        em <- use $ landscape . terrainAndEntities . entityMap
         hypotheticalWinCheck em g winState oc
       _ -> pure ()
   return ticked
@@ -620,7 +621,7 @@ stepCESK cesk = case cesk of
   -- listing the requirements of the given expression.
   Out (VRequirements src t _) s (FExec : k) -> do
     currentContext <- use $ robotContext . defReqs
-    em <- use $ landscape . entityMap
+    em <- use $ landscape . terrainAndEntities . entityMap
     let (R.Requirements caps devs inv, _) = R.requirements currentContext t
 
         devicesForCaps, requiredDevices :: Set (Set Text)
@@ -780,7 +781,7 @@ stepCESK cesk = case cesk of
     -- cells which were in the middle of being evaluated will be reset.
     let s' = resetBlackholes s
     h <- hasCapability CLog
-    em <- use $ landscape . entityMap
+    em <- use $ landscape . terrainAndEntities . entityMap
     if h
       then do
         void $ traceLog RobotError Error (formatExn em exn)
