@@ -207,6 +207,9 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
                 , txt " "
                 , vLimit 20
                     . hLimit 35
+                    . withLeftPaddedVScrollBars
+                    . padLeft (Pad 1)
+                    . padTop (Pad 1)
                     . BL.renderList (const $ padRight Max . drawScenarioItem) True
                     $ l
                 ]
