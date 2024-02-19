@@ -90,18 +90,18 @@ mkLandscape :: Scenario -> EntityMap -> NonEmpty SubworldDescription -> Seed -> 
 mkLandscape scenario em worldTuples theSeed =
   Landscape
     { _entityMap = em
-    , _worldNavigation = scenario ^. scenarioNavigation
+    , _worldNavigation = scenario ^. scenarioLandscape . scenarioNavigation
     , _multiWorld = genMultiWorld worldTuples theSeed
     , -- TODO (#1370): Should we allow subworlds to have their own scrollability?
       -- Leaning toward no, but for now just adopt the root world scrollability
       -- as being universal.
-      _worldScrollable = NE.head (scenario ^. scenarioWorlds) ^. to scrollable
+      _worldScrollable = NE.head (scenario ^. scenarioLandscape . scenarioWorlds) ^. to scrollable
     }
 
 buildWorldTuples :: Scenario -> NonEmpty SubworldDescription
 buildWorldTuples s =
   NE.map (worldName &&& buildWorld) $
-    s ^. scenarioWorlds
+    s ^. scenarioLandscape . scenarioWorlds
 
 genMultiWorld :: NonEmpty SubworldDescription -> Seed -> MultiWorld Int Entity
 genMultiWorld worldTuples s =
@@ -186,7 +186,7 @@ genRobotTemplates scenario worldTuples =
   -- Keep only robots from the robot list with a concrete location;
   -- the others existed only to serve as a template for robots drawn
   -- in the world map
-  locatedRobots = filter (isJust . view trobotLocation) $ scenario ^. scenarioRobots
+  locatedRobots = filter (isJust . view trobotLocation) $ scenario ^. scenarioLandscape . scenarioRobots
 
   -- Subworld order as encountered in the scenario YAML file is preserved for
   -- the purpose of numbering robots, other than the "root" subworld

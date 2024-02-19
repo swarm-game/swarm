@@ -12,7 +12,7 @@ import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Servant.Docs qualified as SD
 import Swarm.Game.Entity.Cosmetic (RGBColor, flattenBg)
-import Swarm.Game.Scenario (Scenario, scenarioCosmetics)
+import Swarm.Game.Scenario (Scenario, scenarioCosmetics, scenarioLandscape)
 import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..), Grid)
 import Swarm.Game.State (GameState, landscape, robotInfo)
@@ -38,7 +38,7 @@ getCellGrid myScenario gs requestedSize =
  where
   vc = gs ^. robotInfo . viewCenter
   dg = getDisplayGrid (vc ^. planar) myScenario (gs ^. landscape) (Just requestedSize)
-  aMap = myScenario ^. scenarioCosmetics
+  aMap = myScenario ^. scenarioLandscape . scenarioCosmetics
 
   asColour :: RGBColor -> Kolor
   asColour (RGB r g b) = sRGB24 r g b

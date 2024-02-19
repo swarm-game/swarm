@@ -560,17 +560,17 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
   recognizer =
     runIdentity $
       Fused.evalState preliminaryGameState $
-        mkRecognizer (scenario ^. scenarioStructures)
+        mkRecognizer (scenario ^. scenarioLandscape . scenarioStructures)
 
   gs = initGameState gsc
   preliminaryGameState =
     gs
       & robotInfo %~ setRobotInfo baseID robotList'
-      & creativeMode .~ scenario ^. scenarioPlay . scenarioCreative
+      & creativeMode .~ scenario ^. scenarioOperation . scenarioCreative
       & winCondition .~ theWinCondition
-      & winSolution .~ scenario ^. scenarioPlay . scenarioSolution
+      & winSolution .~ scenario ^. scenarioOperation . scenarioSolution
       & discovery . availableCommands .~ Notifications 0 initialCommands
-      & discovery . knownEntities .~ scenario ^. scenarioKnown
+      & discovery . knownEntities .~ scenario ^. scenarioLandscape . scenarioKnown
       & discovery . tagMembers .~ buildTagMap em
       & randomness . seed .~ theSeed
       & randomness . randGen .~ mkStdGen theSeed
@@ -581,7 +581,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       -- otherwise the store of definition cells is not saved (see #333, #838)
         False -> REPLDone Nothing
         True -> REPLWorking (Typed Nothing PolyUnit mempty)
-      & temporal . robotStepsPerTick .~ ((scenario ^. scenarioPlay . scenarioStepsPerTick) ? defaultRobotStepsPerTick)
+      & temporal . robotStepsPerTick .~ ((scenario ^. scenarioOperation . scenarioStepsPerTick) ? defaultRobotStepsPerTick)
 
   robotList' = (robotCreatedAt .~ now) <$> robotList
 
@@ -619,12 +619,12 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       -- If we are in creative mode, give base all the things
       & ix baseID
         . robotInventory
-        %~ case scenario ^. scenarioPlay . scenarioCreative of
+        %~ case scenario ^. scenarioOperation . scenarioCreative of
           False -> id
           True -> union (fromElems (map (0,) things))
       & ix baseID
         . equippedDevices
-        %~ case scenario ^. scenarioPlay . scenarioCreative of
+        %~ case scenario ^. scenarioOperation . scenarioCreative of
           False -> id
           True -> const (fromList devices)
 
@@ -650,9 +650,9 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
     maybe
       NoWinCondition
       (WinConditions Ongoing . initCompletion . NE.toList)
-      (NE.nonEmpty (scenario ^. scenarioPlay . scenarioObjectives))
+      (NE.nonEmpty (scenario ^. scenarioOperation . scenarioObjectives))
 
-  addRecipesWith f = IM.unionWith (<>) (f $ scenario ^. scenarioPlay . scenarioRecipes)
+  addRecipesWith f = IM.unionWith (<>) (f $ scenario ^. scenarioOperation . scenarioRecipes)
 
 -- | Create an initial game state corresponding to the given scenario.
 scenarioToGameState ::

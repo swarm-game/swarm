@@ -39,7 +39,7 @@ import Swarm.Game.Scenario (
   scenarioMetadata,
   scenarioName,
   scenarioObjectives,
-  scenarioPlay,
+  scenarioOperation,
   scenarioSolution,
  )
 import Swarm.Game.Scenario.Objective (objectiveGoal)
@@ -100,14 +100,14 @@ extractCommandUsages idx siPair@(s, _si) =
   TutorialInfo siPair idx solnCommands $ getDescCommands s
  where
   solnCommands = getCommands maybeSoln
-  maybeSoln = view (scenarioPlay . scenarioSolution) s
+  maybeSoln = view (scenarioOperation . scenarioSolution) s
 
 -- | Obtain the set of all commands mentioned by
 -- name in the tutorial's goal descriptions.
 getDescCommands :: Scenario -> Set Const
 getDescCommands s = S.fromList $ concatMap filterConst allCode
  where
-  goalTextParagraphs = view objectiveGoal <$> view (scenarioPlay . scenarioObjectives) s
+  goalTextParagraphs = view objectiveGoal <$> view (scenarioOperation . scenarioObjectives) s
   allCode = concatMap findCode goalTextParagraphs
   filterConst :: Syntax -> [Const]
   filterConst sx = mapMaybe toConst $ universe (sx ^. sTerm)
@@ -191,7 +191,7 @@ renderUsagesMarkdown (CoverageInfo (TutorialInfo (s, si) idx _sCmds dCmds) novel
     intercalate
       [""]
       [ pure . surround "`" . T.pack $ view scenarioPath si
-      , pure . surround "*" . T.strip . docToText $ view (scenarioPlay . scenarioDescription) s
+      , pure . surround "*" . T.strip . docToText $ view (scenarioOperation . scenarioDescription) s
       , renderSection "Introduced in solution" . renderCmdList $ M.keysSet novelCmds
       , renderSection "Referenced in description" $ renderCmdList dCmds
       ]

@@ -28,7 +28,8 @@ module Swarm.Game.Scenario (
 
   -- ** Fields
   scenarioMetadata,
-  scenarioPlay,
+  scenarioOperation,
+  scenarioLandscape,
   scenarioVersion,
   scenarioName,
   scenarioAuthor,
@@ -129,9 +130,7 @@ structureDefs :: Lens' StaticStructureInfo [SymmetryAnnotatedGrid (Maybe Cell)]
 -- added to the "recognized" list upon scenario initialization
 staticPlacements :: Lens' StaticStructureInfo (M.Map SubworldName [Structure.LocatedStructure])
 
-------------------------------------------------------------
--- Scenario
-------------------------------------------------------------
+-- * Scenario records
 
 -- | Authorship information about scenario not used at play-time
 data ScenarioMetadata = ScenarioMetadata
@@ -157,11 +156,11 @@ scenarioAuthor :: Lens' ScenarioMetadata (Maybe Text)
 
 -- | Non-structural gameplay content of the scenario;
 -- how it is to be played.
-data ScenarioPlay = ScenarioPlay
+data ScenarioOperation = ScenarioOperation
   { _scenarioCreative :: Bool
   , _scenarioDescription :: Document Syntax
   -- ^ Note: the description is in this record instead of
-  -- ScenarioMetadata because it relates to the goals.
+  -- 'ScenarioMetadata' because it relates to the goals.
   , _scenarioObjectives :: [Objective]
   , _scenarioSolution :: Maybe ProcessedTerm
   , _scenarioRecipes :: [Recipe Entity]
@@ -169,36 +168,33 @@ data ScenarioPlay = ScenarioPlay
   }
   deriving (Show)
 
-makeLensesNoSigs ''ScenarioPlay
+makeLensesNoSigs ''ScenarioOperation
 
 -- | A high-level description of the scenario, shown /e.g./ in the
 --   menu.
-scenarioDescription :: Lens' ScenarioPlay (Document Syntax)
+scenarioDescription :: Lens' ScenarioOperation (Document Syntax)
 
 -- | Whether the scenario should start in creative mode.
-scenarioCreative :: Lens' ScenarioPlay Bool
+scenarioCreative :: Lens' ScenarioOperation Bool
 
 -- | Any custom recipes used in this scenario.
-scenarioRecipes :: Lens' ScenarioPlay [Recipe Entity]
+scenarioRecipes :: Lens' ScenarioOperation [Recipe Entity]
 
 -- | A sequence of objectives for the scenario (if any).
-scenarioObjectives :: Lens' ScenarioPlay [Objective]
+scenarioObjectives :: Lens' ScenarioOperation [Objective]
 
 -- | An optional solution of the scenario, expressed as a
 --   program of type @cmd a@. This is useful for automated
 --   testing of the win condition.
-scenarioSolution :: Lens' ScenarioPlay (Maybe ProcessedTerm)
+scenarioSolution :: Lens' ScenarioOperation (Maybe ProcessedTerm)
 
 -- | Optionally, specify the maximum number of steps each robot may
 --   take during a single tick.
-scenarioStepsPerTick :: Lens' ScenarioPlay (Maybe Int)
+scenarioStepsPerTick :: Lens' ScenarioOperation (Maybe Int)
 
--- | A 'Scenario' contains all the information to describe a
---   scenario.
-data Scenario = Scenario
-  { _scenarioMetadata :: ScenarioMetadata
-  , _scenarioPlay :: ScenarioPlay
-  , _scenarioSeed :: Maybe Int
+-- | All cosmetic and structural content of the scenario.
+data ScenarioLandscape = ScenarioLandscape
+  { _scenarioSeed :: Maybe Int
   , _scenarioAttrs :: [CustomAttr]
   , _scenarioEntities :: EntityMap
   , _scenarioCosmetics :: M.Map WorldAttr PreservableColor
@@ -210,7 +206,61 @@ data Scenario = Scenario
   }
   deriving (Show)
 
+makeLensesNoSigs ''ScenarioLandscape
+
+-- | The seed used for the random number generator.  If @Nothing@, use
+--   a random seed / prompt the user for the seed.
+scenarioSeed :: Lens' ScenarioLandscape (Maybe Int)
+
+-- | Custom attributes defined in the scenario.
+scenarioAttrs :: Lens' ScenarioLandscape [CustomAttr]
+
+-- | Any custom entities used for this scenario.
+scenarioEntities :: Lens' ScenarioLandscape EntityMap
+
+-- | High-fidelity color map for entities
+scenarioCosmetics :: Lens' ScenarioLandscape (M.Map WorldAttr PreservableColor)
+
+-- | List of entities that should be considered "known", so robots do
+--   not have to scan them.
+scenarioKnown :: Lens' ScenarioLandscape (Set EntityName)
+
+-- | The subworlds of the scenario.
+-- The "root" subworld shall always be at the head of the list, by construction.
+scenarioWorlds :: Lens' ScenarioLandscape (NonEmpty WorldDescription)
+
+-- | Information required for structure recognition
+scenarioStructures :: Lens' ScenarioLandscape StaticStructureInfo
+
+-- | Waypoints and inter-world portals
+scenarioNavigation :: Lens' ScenarioLandscape (Navigation (M.Map SubworldName) Location)
+
+-- | The starting robots for the scenario.  Note this should
+--   include the base.
+scenarioRobots :: Lens' ScenarioLandscape [TRobot]
+
+-- | A 'Scenario' contains all the information to describe a
+--   scenario.
+data Scenario = Scenario
+  { _scenarioMetadata :: ScenarioMetadata
+  , _scenarioOperation :: ScenarioOperation
+  , _scenarioLandscape :: ScenarioLandscape
+  }
+  deriving (Show)
+
 makeLensesNoSigs ''Scenario
+
+-- | Authorship information about scenario not used at play-time
+scenarioMetadata :: Lens' Scenario ScenarioMetadata
+
+-- | Non-structural gameplay content of the scenario;
+-- how it is to be played.
+scenarioOperation :: Lens' Scenario ScenarioOperation
+
+-- | All cosmetic and structural content of the scenario.
+scenarioLandscape :: Lens' Scenario ScenarioLandscape
+
+-- * Parsing
 
 instance FromJSONE (EntityMap, WorldMap) Scenario where
   parseJSONE = withObjectE "scenario" $ \v -> do
@@ -310,7 +360,7 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
           <*> liftE (v .:? "author")
 
       playInfo <-
-        ScenarioPlay
+        ScenarioOperation
           <$> liftE (v .:? "creative" .!= False)
           <*> liftE (v .:? "description" .!= "")
           <*> (liftE (v .:? "objectives" .!= []) >>= validateObjectives)
@@ -318,60 +368,21 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
           <*> v ..:? "recipes" ..!= []
           <*> liftE (v .:? "stepsPerTick")
 
-      Scenario metadata playInfo
-        <$> liftE (v .:? "seed")
-        <*> pure parsedAttrs
-        <*> pure em
-        <*> pure mergedCosmetics
-        <*> pure (Set.fromList known)
-        <*> pure allWorlds
-        <*> pure mergedNavigation
-        <*> pure structureInfo
-        <*> pure rs
+      landscape <-
+        ScenarioLandscape
+          <$> liftE (v .:? "seed")
+          <*> pure parsedAttrs
+          <*> pure em
+          <*> pure mergedCosmetics
+          <*> pure (Set.fromList known)
+          <*> pure allWorlds
+          <*> pure mergedNavigation
+          <*> pure structureInfo
+          <*> pure rs
 
---------------------------------------------------
--- Lenses
+      return $ Scenario metadata playInfo landscape
 
--- | Authorship information about scenario not used at play-time
-scenarioMetadata :: Lens' Scenario ScenarioMetadata
-
--- | Non-structural gameplay content of the scenario;
--- how it is to be played.
-scenarioPlay :: Lens' Scenario ScenarioPlay
-
--- | The seed used for the random number generator.  If @Nothing@, use
---   a random seed / prompt the user for the seed.
-scenarioSeed :: Lens' Scenario (Maybe Int)
-
--- | Custom attributes defined in the scenario.
-scenarioAttrs :: Lens' Scenario [CustomAttr]
-
--- | Any custom entities used for this scenario.
-scenarioEntities :: Lens' Scenario EntityMap
-
--- | High-fidelity color map for entities
-scenarioCosmetics :: Lens' Scenario (M.Map WorldAttr PreservableColor)
-
--- | List of entities that should be considered "known", so robots do
---   not have to scan them.
-scenarioKnown :: Lens' Scenario (Set EntityName)
-
--- | The subworlds of the scenario.
--- The "root" subworld shall always be at the head of the list, by construction.
-scenarioWorlds :: Lens' Scenario (NonEmpty WorldDescription)
-
--- | Information required for structure recognition
-scenarioStructures :: Lens' Scenario StaticStructureInfo
-
--- | Waypoints and inter-world portals
-scenarioNavigation :: Lens' Scenario (Navigation (M.Map SubworldName) Location)
-
--- | The starting robots for the scenario.  Note this should
---   include the base.
-scenarioRobots :: Lens' Scenario [TRobot]
-------------------------------------------------------------
--- Loading scenarios
-------------------------------------------------------------
+-- * Loading scenarios
 
 getScenarioPath ::
   (Has (Lift IO) sig m) =>
@@ -429,7 +440,7 @@ data GameStateInputs = GameStateInputs
 
 integrateScenarioEntities :: GameStateInputs -> Scenario -> EntityMap
 integrateScenarioEntities gsi scenario =
-  initEntities gsi <> scenario ^. scenarioEntities
+  initEntities gsi <> scenario ^. scenarioLandscape . scenarioEntities
 
 -- |
 -- Decide on a seed.  In order of preference, we will use:
@@ -438,6 +449,6 @@ integrateScenarioEntities gsi scenario =
 --   3. randomly chosen seed value
 arbitrateSeed :: Maybe Seed -> Scenario -> IO Seed
 arbitrateSeed userSeed scenario =
-  case userSeed <|> scenario ^. scenarioSeed of
+  case userSeed <|> scenario ^. scenarioLandscape . scenarioSeed of
     Just s -> return s
     Nothing -> randomRIO (0, maxBound :: Int)

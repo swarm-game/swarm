@@ -19,7 +19,7 @@ import Control.Lens
 import Data.Either (isRight)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Swarm.Game.Scenario (scenarioSeed)
+import Swarm.Game.Scenario (scenarioLandscape, scenarioSeed)
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (..))
 import Swarm.Game.State (getRunCodePath)
 import Swarm.TUI.Launch.Model
@@ -104,7 +104,10 @@ drawLaunchConfigPanel (LaunchOptions lc launchParams) =
     Left _ -> mkSeedEditorWidget
     Right x -> mkSeedEntryWidget x
 
-  scenarioSeedText = maybe "random" show $ view scenarioSeed . fst =<< displayedFor
+  scenarioSeedText =
+    maybe "random" show $
+      view (scenarioLandscape . scenarioSeed) . fst =<< displayedFor
+
   mkSeedEntryWidget seedEntryContent =
     if isFocused SeedSelector
       then mkSeedEditorWidget

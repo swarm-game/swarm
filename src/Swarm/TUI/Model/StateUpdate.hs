@@ -45,7 +45,14 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Scenario (loadScenario, scenarioAttrs, scenarioPlay, scenarioSolution, scenarioWorlds)
+import Swarm.Game.Scenario (
+  loadScenario,
+  scenarioAttrs,
+  scenarioLandscape,
+  scenarioOperation,
+  scenarioSolution,
+  scenarioWorlds,
+ )
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
@@ -139,7 +146,7 @@ constructAppState rs ui opts@(AppOpts {..}) = do
 
       let maybeAutoplay = do
             guard autoPlay
-            soln <- scenario ^. scenarioPlay . scenarioSolution
+            soln <- scenario ^. scenarioOperation . scenarioSolution
             return $ CodeToRun ScenarioSuggested soln
           codeToRun = maybeAutoplay <|> maybeRunScript
 
@@ -263,7 +270,12 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
       & uiGameplay . uiTiming . uiShowFPS .~ False
       & uiGameplay . uiREPL .~ initREPLState (u ^. uiGameplay . uiREPL . replHistory)
       & uiGameplay . uiREPL . replHistory %~ restartREPLHistory
-      & uiAttrMap .~ applyAttrMappings (map (first getWorldAttrName . toAttrPair) $ fst siPair ^. scenarioAttrs) swarmAttrMap
+      & uiAttrMap
+        .~ applyAttrMappings
+          ( map (first getWorldAttrName . toAttrPair) $
+              fst siPair ^. scenarioLandscape . scenarioAttrs
+          )
+          swarmAttrMap
       & uiGameplay . scenarioRef ?~ siPair
       & uiGameplay . uiTiming . lastFrameTime .~ curTime
       & uiGameplay . uiWorldEditor . EM.entityPaintList %~ BL.listReplace entityList Nothing
@@ -275,7 +287,11 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
  where
   entityList = EU.getEntitiesForList $ gs ^. landscape . entityMap
 
-  (isEmptyArea, newBounds) = EU.getEditingBounds $ NE.head $ scenario ^. scenarioWorlds
+  (isEmptyArea, newBounds) =
+    EU.getEditingBounds $
+      NE.head $
+        scenario ^. scenarioLandscape . scenarioWorlds
+
   setNewBounds maybeOldBounds =
     if isEmptyArea
       then maybeOldBounds

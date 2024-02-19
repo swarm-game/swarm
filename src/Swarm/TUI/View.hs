@@ -85,10 +85,11 @@ import Swarm.Game.Scenario (
   scenarioCreative,
   scenarioDescription,
   scenarioKnown,
+  scenarioLandscape,
   scenarioMetadata,
   scenarioName,
   scenarioObjectives,
-  scenarioPlay,
+  scenarioOperation,
   scenarioSeed,
  )
 import Swarm.Game.Scenario.Scoring.Best
@@ -225,7 +226,7 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
   drawScenarioItem (SICollection nm _) = padRight (Pad 1) (withAttr boldAttr $ txt " > ") <+> txt nm
   drawStatusInfo s si = case si ^. scenarioStatus of
     NotStarted -> txt " ○ "
-    Played _initialScript (Metric Attempted _) _ -> case s ^. scenarioPlay . scenarioObjectives of
+    Played _initialScript (Metric Attempted _) _ -> case s ^. scenarioOperation . scenarioObjectives of
       [] -> withAttr cyanAttr $ txt " ◉ "
       _ -> withAttr yellowAttr $ txt " ◎ "
     Played _initialScript (Metric Completed _) _ -> withAttr greenAttr $ txt " ● "
@@ -246,7 +247,7 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
   drawDescription (SICollection _ _) = txtWrap " "
   drawDescription (SISingle (s, si)) =
     vBox
-      [ drawMarkdown (nonBlank (s ^. scenarioPlay . scenarioDescription))
+      [ drawMarkdown (nonBlank (s ^. scenarioOperation . scenarioDescription))
       , hCenter . padTop (Pad 1) . vLimit 6 $ hLimitPercent 60 worldPeek
       , padTop (Pad 1) table
       ]
@@ -254,14 +255,17 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
     vc = determineStaticViewCenter s worldTuples
 
     worldTuples = buildWorldTuples s
-    theWorlds = genMultiWorld worldTuples $ fromMaybe 0 $ s ^. scenarioSeed
+    theWorlds =
+      genMultiWorld worldTuples $
+        fromMaybe 0 $
+          s ^. scenarioLandscape . scenarioSeed
 
     ri =
       RenderingInput theWorlds $
         getEntityIsKnown $
           EntityKnowledgeDependencies
-            { isCreativeMode = s ^. scenarioPlay . scenarioCreative
-            , globallyKnownEntities = s ^. scenarioKnown
+            { isCreativeMode = s ^. scenarioOperation . scenarioCreative
+            , globallyKnownEntities = s ^. scenarioLandscape . scenarioKnown
             , theFocusedRobot = Nothing
             }
     renderCoord = renderDisplay . displayLocRaw (WorldOverdraw False mempty) ri []
@@ -625,7 +629,7 @@ drawModal s = \case
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal ->
     GR.renderGoalsDisplay (s ^. uiState . uiGameplay . uiGoal) $
-      view (scenarioPlay . scenarioDescription) . fst <$> s ^. uiState . uiGameplay . scenarioRef
+      view (scenarioOperation . scenarioDescription) . fst <$> s ^. uiState . uiGameplay . scenarioRef
   KeepPlayingModal ->
     padLeftRight 1 $
       displayParagraphs $

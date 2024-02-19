@@ -92,7 +92,7 @@ makeSuggestedPalette maybeOriginalScenario cellGrid =
   originalPalette :: KM.KeyMap CellPaintDisplay
   originalPalette =
     KM.map (toCellPaintDisplay . standardCell) $
-      maybe mempty (unPalette . palette . NE.head . (^. scenarioWorlds)) maybeOriginalScenario
+      maybe mempty (unPalette . palette . NE.head . (^. scenarioLandscape . scenarioWorlds)) maybeOriginalScenario
 
   pairsWithDisplays :: Map (TerrainWith EntityName) (T.Text, CellPaintDisplay)
   pairsWithDisplays = M.fromList $ mapMaybe g entitiesWithModalTerrain
@@ -117,14 +117,14 @@ constructScenario maybeOriginalScenario (Grid cellGrid) =
   SkeletonScenario
     (maybe 1 (^. scenarioMetadata . scenarioVersion) maybeOriginalScenario)
     (maybe "My Scenario" (^. scenarioMetadata . scenarioName) maybeOriginalScenario)
-    (maybe (fromText "The scenario description...") (^. scenarioPlay . scenarioDescription) maybeOriginalScenario)
+    (maybe (fromText "The scenario description...") (^. scenarioOperation . scenarioDescription) maybeOriginalScenario)
     -- (maybe True (^. scenarioCreative) maybeOriginalScenario)
     True
     (M.elems $ entitiesByName customEntities)
     wd
     [] -- robots
  where
-  customEntities = maybe mempty (^. scenarioEntities) maybeOriginalScenario
+  customEntities = maybe mempty (^. scenarioLandscape . scenarioEntities) maybeOriginalScenario
   wd =
     WorldDescription
       { offsetOrigin = False

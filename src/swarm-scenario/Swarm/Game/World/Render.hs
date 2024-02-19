@@ -134,7 +134,7 @@ getDisplayGrid vc myScenario ls maybeSize =
   mkCosmic = Cosmic $ worldName firstScenarioWorld
   worlds = view multiWorld ls
 
-  firstScenarioWorld = NE.head $ view scenarioWorlds myScenario
+  firstScenarioWorld = NE.head $ view (scenarioLandscape . scenarioWorlds) myScenario
 
 getRenderableGrid ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
@@ -154,7 +154,7 @@ getRenderableGrid (RenderOpts maybeSeed _ _ maybeSize _) fp = do
           determineStaticViewCenter myScenario $
             buildWorldTuples myScenario
 
-  return (getDisplayGrid vc myScenario myLandscape maybeSize, myScenario ^. scenarioCosmetics)
+  return (getDisplayGrid vc myScenario myLandscape maybeSize, myScenario ^. scenarioLandscape . scenarioCosmetics)
 
 doRenderCmd :: RenderOpts -> FilePath -> IO ()
 doRenderCmd opts@(RenderOpts _ asPng _ _ _) mapPath =
