@@ -15,7 +15,7 @@ import Data.Text qualified as T
 import Swarm.Game.Failure (SystemFailure (CustomFailure))
 import Swarm.Game.Robot (Robot)
 import Swarm.Game.Robot.Concrete (instantiateRobot)
-import Swarm.Game.Scenario (Scenario, scenarioLandscape, scenarioRobots)
+import Swarm.Game.Scenario (ScenarioLandscape, scenarioRobots)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 
@@ -49,7 +49,7 @@ commands = filter Syntax.isCmd Syntax.allConst
 constSyntax :: Const -> Text
 constSyntax = Syntax.syntax . Syntax.constInfo
 
-instantiateBaseRobot :: Has (Throw SystemFailure) sig m => Scenario -> m Robot
-instantiateBaseRobot s = case listToMaybe $ view (scenarioLandscape . scenarioRobots) s of
+instantiateBaseRobot :: Has (Throw SystemFailure) sig m => ScenarioLandscape -> m Robot
+instantiateBaseRobot sLandscape = case listToMaybe $ view scenarioRobots sLandscape of
   Just r -> pure $ instantiateRobot Nothing 0 r
   Nothing -> throwError $ CustomFailure "Scenario contains no robots"

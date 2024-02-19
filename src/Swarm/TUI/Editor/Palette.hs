@@ -19,7 +19,7 @@ import Data.Set qualified as Set
 import Data.Text qualified as T
 import Data.Tuple (swap)
 import Swarm.Game.Display (Display, defaultChar)
-import Swarm.Game.Entity (EntityName, entitiesByName)
+import Swarm.Game.Entity (Entity, EntityName, entitiesByName)
 import Swarm.Game.Location
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Topography.Area
@@ -35,8 +35,11 @@ import Swarm.Util (binTuples, histogram)
 import Swarm.Util qualified as U
 import Swarm.Util.Erasable
 
-makeSuggestedPalette :: Maybe Scenario -> [[CellPaintDisplay]] -> KM.KeyMap (AugmentedCell EntityFacade)
-makeSuggestedPalette maybeOriginalScenario cellGrid =
+makeSuggestedPalette ::
+  KM.KeyMap (AugmentedCell Entity) ->
+  [[CellPaintDisplay]] ->
+  KM.KeyMap (AugmentedCell EntityFacade)
+makeSuggestedPalette originalScenarioPalette cellGrid =
   KM.fromMapText
     . M.map (AugmentedCell Nothing)
     . M.fromList
@@ -91,8 +94,7 @@ makeSuggestedPalette maybeOriginalScenario cellGrid =
 
   originalPalette :: KM.KeyMap CellPaintDisplay
   originalPalette =
-    KM.map (toCellPaintDisplay . standardCell) $
-      maybe mempty (unPalette . palette . NE.head . (^. scenarioLandscape . scenarioWorlds)) maybeOriginalScenario
+    KM.map (toCellPaintDisplay . standardCell) originalScenarioPalette
 
   pairsWithDisplays :: Map (TerrainWith EntityName) (T.Text, CellPaintDisplay)
   pairsWithDisplays = M.fromList $ mapMaybe g entitiesWithModalTerrain
@@ -138,7 +140,9 @@ constructScenario maybeOriginalScenario (Grid cellGrid) =
       , worldProg = Nothing
       }
 
-  suggestedPalette = makeSuggestedPalette maybeOriginalScenario cellGrid
+  extractPalette = unPalette . palette . NE.head . (^. scenarioLandscape . scenarioWorlds)
+  originalPalette = maybe mempty extractPalette maybeOriginalScenario
+  suggestedPalette = makeSuggestedPalette originalPalette cellGrid
 
   upperLeftCoord =
     Location

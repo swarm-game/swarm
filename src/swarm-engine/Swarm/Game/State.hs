@@ -557,10 +557,12 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
   preliminaryGameState
     & discovery . structureRecognition .~ recognizer
  where
+  sLandscape = scenario ^. scenarioLandscape
+
   recognizer =
     runIdentity $
       Fused.evalState preliminaryGameState $
-        mkRecognizer (scenario ^. scenarioLandscape . scenarioStructures)
+        mkRecognizer (sLandscape ^. scenarioStructures)
 
   gs = initGameState gsc
   preliminaryGameState =
@@ -570,12 +572,12 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       & winCondition .~ theWinCondition
       & winSolution .~ scenario ^. scenarioOperation . scenarioSolution
       & discovery . availableCommands .~ Notifications 0 initialCommands
-      & discovery . knownEntities .~ scenario ^. scenarioLandscape . scenarioKnown
+      & discovery . knownEntities .~ sLandscape ^. scenarioKnown
       & discovery . tagMembers .~ buildTagMap em
       & randomness . seed .~ theSeed
       & randomness . randGen .~ mkStdGen theSeed
       & recipesInfo %~ modifyRecipesInfo
-      & landscape .~ mkLandscape scenario em worldTuples theSeed
+      & landscape .~ mkLandscape sLandscape em worldTuples theSeed
       & gameControls . initiallyRunCode .~ initialCodeToRun
       & gameControls . replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
       -- otherwise the store of definition cells is not saved (see #333, #838)
@@ -591,13 +593,13 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       & recipesIn %~ addRecipesWith inRecipeMap
       & recipesCat %~ addRecipesWith catRecipeMap
 
-  em = integrateScenarioEntities (initState gsc) scenario
+  em = integrateScenarioEntities (initState gsc) sLandscape
   baseID = 0
   (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
 
   getCodeToRun (CodeToRun _ s) = s
 
-  robotsByBasePrecedence = genRobotTemplates scenario worldTuples
+  robotsByBasePrecedence = genRobotTemplates sLandscape worldTuples
 
   initialCodeToRun = getCodeToRun <$> toRun
 
@@ -644,7 +646,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       (maybe True (`S.member` initialCaps) . constCaps)
       allConst
 
-  worldTuples = buildWorldTuples scenario
+  worldTuples = buildWorldTuples sLandscape
 
   theWinCondition =
     maybe
@@ -661,6 +663,6 @@ scenarioToGameState ::
   GameStateConfig ->
   IO GameState
 scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun)) gsc = do
-  theSeed <- arbitrateSeed userSeed scenario
+  theSeed <- arbitrateSeed userSeed $ scenario ^. scenarioLandscape
   now <- Clock.getTime Clock.Monotonic
   return $ pureScenarioToGameState scenario theSeed now toRun gsc

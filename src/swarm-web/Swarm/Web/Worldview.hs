@@ -37,8 +37,9 @@ getCellGrid myScenario gs requestedSize =
   CellGrid indexGrid encoding
  where
   vc = gs ^. robotInfo . viewCenter
-  dg = getDisplayGrid (vc ^. planar) myScenario (gs ^. landscape) (Just requestedSize)
-  aMap = myScenario ^. scenarioLandscape . scenarioCosmetics
+  sLandscape = myScenario ^. scenarioLandscape
+  dg = getDisplayGrid (vc ^. planar) sLandscape (gs ^. landscape) (Just requestedSize)
+  aMap = sLandscape ^. scenarioCosmetics
 
   asColour :: RGBColor -> Kolor
   asColour (RGB r g b) = sRGB24 r g b

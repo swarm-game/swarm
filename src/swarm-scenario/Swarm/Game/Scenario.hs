@@ -22,6 +22,7 @@ module Swarm.Game.Scenario (
 
   -- * Scenario
   Scenario (..),
+  ScenarioLandscape (..),
   StaticStructureInfo (..),
   staticPlacements,
   structureDefs,
@@ -271,13 +272,9 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
     let mergedCosmetics = worldAttributes <> M.fromList (mapMaybe toHifiPair parsedAttrs)
         attrsUnion = M.keysSet mergedCosmetics
 
-    case run . runThrow $ validateAttrRefs attrsUnion emRaw of
-      Right x -> return x
-      Left x -> failT [prettyText @LoadingFailure x]
+    runValidation $ validateAttrRefs attrsUnion emRaw
 
-    em <- case run . runThrow $ buildEntityMap emRaw of
-      Right x -> return x
-      Left x -> failT [prettyText @LoadingFailure x]
+    em <- runValidation $ buildEntityMap emRaw
 
     -- Save the passed in WorldMap for later
     worldMap <- snd <$> getE
@@ -353,6 +350,19 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
               . NE.toList
               $ NE.map (worldName &&& placedStructures) allWorlds
 
+      seed <- liftE (v .:? "seed")
+      let landscape =
+            ScenarioLandscape
+              seed
+              parsedAttrs
+              em
+              mergedCosmetics
+              (Set.fromList known)
+              allWorlds
+              mergedNavigation
+              structureInfo
+              rs
+
       metadata <-
         ScenarioMetadata
           <$> liftE (v .: "version")
@@ -368,19 +378,11 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
           <*> v ..:? "recipes" ..!= []
           <*> liftE (v .:? "stepsPerTick")
 
-      landscape <-
-        ScenarioLandscape
-          <$> liftE (v .:? "seed")
-          <*> pure parsedAttrs
-          <*> pure em
-          <*> pure mergedCosmetics
-          <*> pure (Set.fromList known)
-          <*> pure allWorlds
-          <*> pure mergedNavigation
-          <*> pure structureInfo
-          <*> pure rs
-
       return $ Scenario metadata playInfo landscape
+   where
+    runValidation f = case run . runThrow $ f of
+      Right x -> return x
+      Left x -> failT [prettyText @LoadingFailure x]
 
 -- * Loading scenarios
 
@@ -438,17 +440,17 @@ data GameStateInputs = GameStateInputs
   , initRecipes :: [Recipe Entity]
   }
 
-integrateScenarioEntities :: GameStateInputs -> Scenario -> EntityMap
-integrateScenarioEntities gsi scenario =
-  initEntities gsi <> scenario ^. scenarioLandscape . scenarioEntities
+integrateScenarioEntities :: GameStateInputs -> ScenarioLandscape -> EntityMap
+integrateScenarioEntities gsi sLandscape =
+  initEntities gsi <> sLandscape ^. scenarioEntities
 
 -- |
 -- Decide on a seed.  In order of preference, we will use:
 --   1. seed value provided by the user
 --   2. seed value specified in the scenario description
 --   3. randomly chosen seed value
-arbitrateSeed :: Maybe Seed -> Scenario -> IO Seed
-arbitrateSeed userSeed scenario =
-  case userSeed <|> scenario ^. scenarioLandscape . scenarioSeed of
+arbitrateSeed :: Maybe Seed -> ScenarioLandscape -> IO Seed
+arbitrateSeed userSeed sLandscape =
+  case userSeed <|> sLandscape ^. scenarioSeed of
     Just s -> return s
     Nothing -> randomRIO (0, maxBound :: Int)
