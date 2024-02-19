@@ -623,7 +623,7 @@ drawModal s = \case
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal ->
     GR.renderGoalsDisplay (s ^. uiState . uiGameplay . uiGoal) $
-      view scenarioDescription . fst <$> s ^. uiState . scenarioRef
+      view scenarioDescription . fst <$> s ^. uiState . uiGameplay . scenarioRef
   KeepPlayingModal ->
     padLeftRight 1 $
       displayParagraphs $

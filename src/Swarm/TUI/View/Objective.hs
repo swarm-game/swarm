@@ -40,9 +40,8 @@ renderGoalsDisplay gd desc =
     , goalsWidget
     ]
  where
-  goalsWidget =
-    if hasMultiple
-      then
+  goalsWidget
+    | hasMultiple =
         vBox
           [ hBox
               [ leftSide
@@ -50,7 +49,7 @@ renderGoalsDisplay gd desc =
               ]
           , footer
           ]
-      else goalElaboration
+    | otherwise = goalElaboration
 
   footer = hCenter $ withAttr italicAttr $ txt "NOTE: [Tab] toggles focus between panes"
   hasMultiple = hasMultipleGoals $ gd ^. goalsContent
