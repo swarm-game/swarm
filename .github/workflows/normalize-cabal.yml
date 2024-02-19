@@ -1,0 +1,24 @@
+name: Normalize cabal file formatting
+on:
+  push:
+    paths:
+      - '**.hs'
+      - '**.cabal'
+    branches:
+      - main
+  pull_request:
+    paths:
+      - '**.hs'
+      - '**.cabal'
+    branches:
+      - main
+jobs:
+  gild:
+    name: Normalize cabal
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: tfausak/cabal-gild-setup-action@v1
+        with:
+          version: 0.3.0.1
+      - run: cabal-gild --input swarm.cabal --mode check
