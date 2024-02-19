@@ -33,9 +33,24 @@ import Data.Text qualified as T
 import Swarm.Constant
 import Swarm.Game.Entity (loadEntities)
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Scenario (Scenario, scenarioDescription, scenarioName, scenarioObjectives, scenarioSolution)
+import Swarm.Game.Scenario (
+  Scenario,
+  scenarioDescription,
+  scenarioMetadata,
+  scenarioName,
+  scenarioObjectives,
+  scenarioOperation,
+  scenarioSolution,
+ )
 import Swarm.Game.Scenario.Objective (objectiveGoal)
-import Swarm.Game.ScenarioInfo (ScenarioCollection, ScenarioInfoPair, flatten, loadScenarios, scenarioCollectionToList, scenarioPath)
+import Swarm.Game.ScenarioInfo (
+  ScenarioCollection,
+  ScenarioInfoPair,
+  flatten,
+  loadScenarios,
+  scenarioCollectionToList,
+  scenarioPath,
+ )
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Language.Module (Module (..))
 import Swarm.Language.Pipeline (ProcessedTerm (..))
@@ -85,14 +100,14 @@ extractCommandUsages idx siPair@(s, _si) =
   TutorialInfo siPair idx solnCommands $ getDescCommands s
  where
   solnCommands = getCommands maybeSoln
-  maybeSoln = view scenarioSolution s
+  maybeSoln = view (scenarioOperation . scenarioSolution) s
 
 -- | Obtain the set of all commands mentioned by
 -- name in the tutorial's goal descriptions.
 getDescCommands :: Scenario -> Set Const
 getDescCommands s = S.fromList $ concatMap filterConst allCode
  where
-  goalTextParagraphs = view objectiveGoal <$> view scenarioObjectives s
+  goalTextParagraphs = view objectiveGoal <$> view (scenarioOperation . scenarioObjectives) s
   allCode = concatMap findCode goalTextParagraphs
   filterConst :: Syntax -> [Const]
   filterConst sx = mapMaybe toConst $ universe (sx ^. sTerm)
@@ -176,7 +191,7 @@ renderUsagesMarkdown (CoverageInfo (TutorialInfo (s, si) idx _sCmds dCmds) novel
     intercalate
       [""]
       [ pure . surround "`" . T.pack $ view scenarioPath si
-      , pure . surround "*" . T.strip . docToText $ view scenarioDescription s
+      , pure . surround "*" . T.strip . docToText $ view (scenarioOperation . scenarioDescription) s
       , renderSection "Introduced in solution" . renderCmdList $ M.keysSet novelCmds
       , renderSection "Referenced in description" $ renderCmdList dCmds
       ]
@@ -195,7 +210,7 @@ renderTutorialTitle :: (Show a) => a -> Scenario -> Text
 renderTutorialTitle idx s =
   T.unwords
     [ T.pack $ show idx <> ":"
-    , view scenarioName s
+    , view (scenarioMetadata . scenarioName) s
     ]
 
 linkifyCommand :: Text -> Text

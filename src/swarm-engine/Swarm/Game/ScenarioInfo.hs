@@ -78,7 +78,7 @@ data ScenarioItem = SISingle ScenarioInfoPair | SICollection Text ScenarioCollec
 
 -- | Retrieve the name of a scenario item.
 scenarioItemName :: ScenarioItem -> Text
-scenarioItemName (SISingle (s, _ss)) = s ^. scenarioName
+scenarioItemName (SISingle (s, _ss)) = s ^. scenarioMetadata . scenarioName
 scenarioItemName (SICollection name _) = name
 
 -- | A scenario collection is a tree of scenarios, keyed by name,

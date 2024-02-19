@@ -121,11 +121,11 @@ getBoundingBox vc scenarioWorld maybeSize =
 
 getDisplayGrid ::
   Location ->
-  Scenario ->
+  ScenarioLandscape ->
   Landscape ->
   Maybe AreaDimensions ->
   Grid CellPaintDisplay
-getDisplayGrid vc myScenario ls maybeSize =
+getDisplayGrid vc sLandscape ls maybeSize =
   getMapRectangle
     mkFacade
     (getContentAt worlds . mkCosmic)
@@ -134,7 +134,7 @@ getDisplayGrid vc myScenario ls maybeSize =
   mkCosmic = Cosmic $ worldName firstScenarioWorld
   worlds = view multiWorld ls
 
-  firstScenarioWorld = NE.head $ view scenarioWorlds myScenario
+  firstScenarioWorld = NE.head $ view scenarioWorlds sLandscape
 
 getRenderableGrid ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
@@ -143,18 +143,18 @@ getRenderableGrid ::
   m (Grid (PCell EntityFacade), M.Map WorldAttr PreservableColor)
 getRenderableGrid (RenderOpts maybeSeed _ _ maybeSize _) fp = do
   (myScenario, gsi) <- loadStandaloneScenario fp
-  theSeed <- sendIO $ arbitrateSeed maybeSeed myScenario
+  let sLandscape = myScenario ^. scenarioLandscape
+  theSeed <- sendIO $ arbitrateSeed maybeSeed sLandscape
 
-  let em = integrateScenarioEntities gsi myScenario
-      worldTuples = buildWorldTuples myScenario
-      myLandscape = mkLandscape myScenario em worldTuples theSeed
+  let em = integrateScenarioEntities gsi sLandscape
+      worldTuples = buildWorldTuples sLandscape
+      myLandscape = mkLandscape sLandscape em worldTuples theSeed
 
       vc =
         view planar $
-          determineStaticViewCenter myScenario $
-            buildWorldTuples myScenario
+          determineStaticViewCenter sLandscape worldTuples
 
-  return (getDisplayGrid vc myScenario myLandscape maybeSize, myScenario ^. scenarioCosmetics)
+  return (getDisplayGrid vc sLandscape myLandscape maybeSize, sLandscape ^. scenarioCosmetics)
 
 doRenderCmd :: RenderOpts -> FilePath -> IO ()
 doRenderCmd opts@(RenderOpts _ asPng _ _ _) mapPath =

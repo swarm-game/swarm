@@ -557,31 +557,33 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
   preliminaryGameState
     & discovery . structureRecognition .~ recognizer
  where
+  sLandscape = scenario ^. scenarioLandscape
+
   recognizer =
     runIdentity $
       Fused.evalState preliminaryGameState $
-        mkRecognizer (scenario ^. scenarioStructures)
+        mkRecognizer (sLandscape ^. scenarioStructures)
 
   gs = initGameState gsc
   preliminaryGameState =
     gs
       & robotInfo %~ setRobotInfo baseID robotList'
-      & creativeMode .~ scenario ^. scenarioCreative
+      & creativeMode .~ scenario ^. scenarioOperation . scenarioCreative
       & winCondition .~ theWinCondition
-      & winSolution .~ scenario ^. scenarioSolution
+      & winSolution .~ scenario ^. scenarioOperation . scenarioSolution
       & discovery . availableCommands .~ Notifications 0 initialCommands
-      & discovery . knownEntities .~ scenario ^. scenarioKnown
+      & discovery . knownEntities .~ sLandscape ^. scenarioKnown
       & discovery . tagMembers .~ buildTagMap em
       & randomness . seed .~ theSeed
       & randomness . randGen .~ mkStdGen theSeed
       & recipesInfo %~ modifyRecipesInfo
-      & landscape .~ mkLandscape scenario em worldTuples theSeed
+      & landscape .~ mkLandscape sLandscape em worldTuples theSeed
       & gameControls . initiallyRunCode .~ initialCodeToRun
       & gameControls . replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
       -- otherwise the store of definition cells is not saved (see #333, #838)
         False -> REPLDone Nothing
         True -> REPLWorking (Typed Nothing PolyUnit mempty)
-      & temporal . robotStepsPerTick .~ ((scenario ^. scenarioStepsPerTick) ? defaultRobotStepsPerTick)
+      & temporal . robotStepsPerTick .~ ((scenario ^. scenarioOperation . scenarioStepsPerTick) ? defaultRobotStepsPerTick)
 
   robotList' = (robotCreatedAt .~ now) <$> robotList
 
@@ -591,13 +593,13 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       & recipesIn %~ addRecipesWith inRecipeMap
       & recipesCat %~ addRecipesWith catRecipeMap
 
-  em = integrateScenarioEntities (initState gsc) scenario
+  em = integrateScenarioEntities (initState gsc) sLandscape
   baseID = 0
   (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
 
   getCodeToRun (CodeToRun _ s) = s
 
-  robotsByBasePrecedence = genRobotTemplates scenario worldTuples
+  robotsByBasePrecedence = genRobotTemplates sLandscape worldTuples
 
   initialCodeToRun = getCodeToRun <$> toRun
 
@@ -619,12 +621,12 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       -- If we are in creative mode, give base all the things
       & ix baseID
         . robotInventory
-        %~ case scenario ^. scenarioCreative of
+        %~ case scenario ^. scenarioOperation . scenarioCreative of
           False -> id
           True -> union (fromElems (map (0,) things))
       & ix baseID
         . equippedDevices
-        %~ case scenario ^. scenarioCreative of
+        %~ case scenario ^. scenarioOperation . scenarioCreative of
           False -> id
           True -> const (fromList devices)
 
@@ -644,15 +646,15 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       (maybe True (`S.member` initialCaps) . constCaps)
       allConst
 
-  worldTuples = buildWorldTuples scenario
+  worldTuples = buildWorldTuples sLandscape
 
   theWinCondition =
     maybe
       NoWinCondition
       (WinConditions Ongoing . initCompletion . NE.toList)
-      (NE.nonEmpty (scenario ^. scenarioObjectives))
+      (NE.nonEmpty (scenario ^. scenarioOperation . scenarioObjectives))
 
-  addRecipesWith f = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes)
+  addRecipesWith f = IM.unionWith (<>) (f $ scenario ^. scenarioOperation . scenarioRecipes)
 
 -- | Create an initial game state corresponding to the given scenario.
 scenarioToGameState ::
@@ -661,6 +663,6 @@ scenarioToGameState ::
   GameStateConfig ->
   IO GameState
 scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun)) gsc = do
-  theSeed <- arbitrateSeed userSeed scenario
+  theSeed <- arbitrateSeed userSeed $ scenario ^. scenarioLandscape
   now <- Clock.getTime Clock.Monotonic
   return $ pureScenarioToGameState scenario theSeed now toRun gsc
