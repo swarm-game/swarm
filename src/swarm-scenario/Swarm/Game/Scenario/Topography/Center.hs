@@ -11,7 +11,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (fromMaybe, listToMaybe)
 import Swarm.Game.Location (Location, origin)
 import Swarm.Game.Robot (trobotLocation)
-import Swarm.Game.Scenario (Scenario)
+import Swarm.Game.Scenario (ScenarioLandscape)
 import Swarm.Game.State.Landscape (SubworldDescription, genRobotTemplates)
 import Swarm.Game.Universe (Cosmic (..), SubworldName (DefaultRootSubworld))
 
@@ -19,13 +19,13 @@ import Swarm.Game.Universe (Cosmic (..), SubworldName (DefaultRootSubworld))
 -- without reference to a 'GameState'
 -- (i.e. outside the context of an active game)
 determineStaticViewCenter ::
-  Scenario ->
+  ScenarioLandscape ->
   NonEmpty SubworldDescription ->
   Cosmic Location
-determineStaticViewCenter s worldTuples =
+determineStaticViewCenter sLandscape worldTuples =
   fromMaybe defaultVC baseRobotLoc
  where
-  theRobots = genRobotTemplates s worldTuples
+  theRobots = genRobotTemplates sLandscape worldTuples
   defaultVC = Cosmic DefaultRootSubworld origin
 
   -- The first robot is guaranteed to be the base.
