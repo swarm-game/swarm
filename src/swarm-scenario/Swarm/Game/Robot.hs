@@ -80,6 +80,7 @@ import GHC.Generics (Generic)
 import Linear
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Land
 import Swarm.Game.Location (Heading, Location, toDirection, toHeading)
 import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
@@ -377,7 +378,7 @@ instance FromJSON HeadingSpec where
 
 -- | We can parse a robot from a YAML file if we have access to an
 --   'EntityMap' in which we can look up the names of entities.
-instance FromJSONE EntityMap TRobot where
+instance FromJSONE TerrainEntityMaps TRobot where
   parseJSONE = withObjectE "robot" $ \v -> do
     -- Note we can't generate a unique ID here since we don't have
     -- access to a 'State GameState' effect; a unique ID will be
@@ -392,8 +393,8 @@ instance FromJSONE EntityMap TRobot where
       <*> liftE (fmap getHeading $ v .:? "dir" .!= HeadingSpec zero)
       <*> localE (const defDisplay) (v ..:? "display" ..!= defDisplay)
       <*> liftE (v .:? "program")
-      <*> v ..:? "devices" ..!= []
-      <*> v ..:? "inventory" ..!= []
+      <*> localE (view entityMap) (v ..:? "devices" ..!= [])
+      <*> localE (view entityMap) (v ..:? "inventory" ..!= [])
       <*> pure sys
       <*> liftE (v .:? "heavy" .!= False)
       <*> liftE (v .:? "unwalkable" ..!= mempty)

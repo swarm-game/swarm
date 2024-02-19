@@ -15,6 +15,7 @@ import Data.Maybe (catMaybes)
 import Data.Text qualified as T
 import Data.Yaml as Y
 import Swarm.Game.Entity
+import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Topography.Cell
@@ -61,10 +62,18 @@ data PWorldDescription e = WorldDescription
 
 type WorldDescription = PWorldDescription Entity
 
-instance FromJSONE (WorldMap, InheritedStructureDefs, EntityMap, RobotMap) WorldDescription where
+data WorldParseDependencies
+  = WorldParseDependencies
+      WorldMap
+      InheritedStructureDefs
+      RobotMap
+      -- | last for the benefit of partial application
+      TerrainEntityMaps
+
+instance FromJSONE WorldParseDependencies WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
-    (worldMap, scenarioLevelStructureDefs, em, rm) <- getE
-    (pal, rootWorldStructureDefs) <- localE (const (em, rm)) $ do
+    WorldParseDependencies worldMap scenarioLevelStructureDefs rm tem <- getE
+    (pal, rootWorldStructureDefs) <- localE (const (tem, rm)) $ do
       pal <- v ..:? "palette" ..!= WorldPalette mempty
       rootWorldStructs <- v ..:? "structures" ..!= []
       return (pal, rootWorldStructs)
@@ -97,7 +106,7 @@ instance FromJSONE (WorldMap, InheritedStructureDefs, EntityMap, RobotMap) World
     mwexp <- liftE (v .:? "dsl")
     dslTerm <- forM mwexp $ \wexp -> do
       let checkResult =
-            run . runThrow @CheckErr . runReader worldMap . runReader em $
+            run . runThrow @CheckErr . runReader worldMap . runReader tem $
               check CNil (TTyWorld TTyCell) wexp
       either (fail . prettyString) return checkResult
     WorldDescription

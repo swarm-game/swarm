@@ -61,14 +61,16 @@ import Data.Bifunctor (second)
 import Data.Bits
 import Data.Foldable (foldl')
 import Data.Int (Int32)
+import Data.IntMap qualified as IM
 import Data.Map (Map)
 import Data.Map.Strict qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Semigroup (Last (..))
 import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Swarm.Game.Entity (Entity)
 import Swarm.Game.Location
-import Swarm.Game.Terrain (TerrainType (BlankT))
+import Swarm.Game.Terrain (TerrainMap, TerrainType (BlankT), terrainByIndex, terrainName)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Modify
@@ -199,12 +201,16 @@ newWorld :: WorldFun t e -> World t e
 newWorld f = World f M.empty M.empty
 
 lookupCosmicTerrain ::
-  IArray U.UArray Int =>
+  IArray U.UArray Int => -- TODO Why do we need this constraint?
+  TerrainMap ->
   Cosmic Coords ->
   MultiWorld Int e ->
   TerrainType
-lookupCosmicTerrain (Cosmic subworldName i) multiWorld =
-  maybe BlankT (toEnum . lookupTerrain i) $ M.lookup subworldName multiWorld
+lookupCosmicTerrain tm (Cosmic subworldName i) multiWorld =
+  fromMaybe BlankT $ do
+    x <- M.lookup subworldName multiWorld
+    y <- (`IM.lookup` terrainByIndex tm) . lookupTerrain i $ x
+    return $ terrainName y
 
 -- | Look up the terrain value at certain coordinates: try looking it
 --   up in the tile cache first, and fall back to running the 'WorldFun'

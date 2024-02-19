@@ -135,7 +135,7 @@ generateSpecialKeyNames =
 
 generateRecipe :: IO String
 generateRecipe = simpleErrorHandle $ do
-  (classic, GameStateInputs worlds entities recipes) <- loadStandaloneScenario "data/scenarios/classic.yaml"
+  (classic, GameStateInputs worlds _ entities recipes) <- loadStandaloneScenario "data/scenarios/classic.yaml"
   baseRobot <- instantiateBaseRobot $ classic ^. scenarioLandscape
   return . Dot.showDot $ recipesToDot baseRobot (worlds ! "classic") entities recipes
 

@@ -49,6 +49,7 @@ import Brick.Widgets.List qualified as BL
 import Control.Applicative (liftA2, pure)
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
+import Swarm.Game.Land
 import Control.Lens as Lens
 import Control.Lens.Extras as Lens (is)
 import Control.Monad (forM_, unless, void, when)
@@ -1191,7 +1192,7 @@ handleREPLEventTyping = \case
       CharKey '\t' -> do
         s <- get
         let names = s ^.. gameState . baseRobot . robotContext . defTypes . to assocs . traverse . _1
-        uiState . uiGameplay . uiREPL %= tabComplete (CompletionContext (s ^. gameState . creativeMode)) names (s ^. gameState . landscape . entityMap)
+        uiState . uiGameplay . uiREPL %= tabComplete (CompletionContext (s ^. gameState . creativeMode)) names (s ^. gameState . landscape . terrainAndEntities . entityMap)
         modify validateREPLForm
       EscapeKey -> do
         formSt <- use $ uiState . uiGameplay . uiREPL . replPromptType

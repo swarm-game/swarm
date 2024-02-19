@@ -188,6 +188,7 @@ library swarm-scenario
     Swarm.Game.Entity.Cosmetic
     Swarm.Game.Entity.Cosmetic.Assignment
     Swarm.Game.Failure
+    Swarm.Game.Land
     Swarm.Game.Location
     Swarm.Game.Recipe
     Swarm.Game.ResourceLoading
@@ -536,6 +537,7 @@ library
     Swarm.Game.Entity.Cosmetic.Assignment,
     Swarm.Game.Exception,
     Swarm.Game.Failure,
+    Swarm.Game.Land,
     Swarm.Game.Location,
     Swarm.Game.Recipe,
     Swarm.Game.ResourceLoading,

@@ -11,6 +11,7 @@
 -- Implementation of robot commands
 module Swarm.Game.Step.Const where
 
+import Swarm.Game.Land
 import Control.Applicative (Applicative (..))
 import Control.Arrow ((&&&))
 import Control.Carrier.State.Lazy
@@ -292,7 +293,7 @@ execConst runChildProg c vs s k = do
           let area = map (<$ nextLoc) $ getLocsInArea (nextLoc ^. planar) 5
           emptyLocs <- filterM (fmap isNothing . entityAt) area
           randomLoc <- weightedChoice (const 1) emptyLocs
-          es <- uses (landscape . entityMap) allEntities
+          es <- uses (landscape . terrainAndEntities . entityMap) allEntities
           randomEntity <- weightedChoice (const 1) es
           case (randomLoc, randomEntity) of
             (Just loc, Just e) -> updateEntityAt loc (const (Just e))
@@ -427,7 +428,7 @@ execConst runChildProg c vs s k = do
       [VText name] -> do
         inv <- use robotInventory
         ins <- use equippedDevices
-        em <- use $ landscape . entityMap
+        em <- use $ landscape . terrainAndEntities . entityMap
         e <-
           lookupEntityName name em
             `isJustOrFail` ["I've never heard of", indefiniteQ name <> "."]
@@ -570,7 +571,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     HasTag -> case vs of
       [VText eName, VText tName] -> do
-        em <- use $ landscape . entityMap
+        em <- use $ landscape . terrainAndEntities . entityMap
         e <-
           lookupEntityName eName em
             `isJustOrFail` ["I've never heard of", indefiniteQ eName <> "."]
@@ -845,7 +846,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Create -> case vs of
       [VText name] -> do
-        em <- use $ landscape . entityMap
+        em <- use $ landscape . terrainAndEntities . entityMap
         e <-
           lookupEntityName name em
             `isJustOrFail` ["I've never heard of", indefiniteQ name <> "."]
@@ -1132,7 +1133,7 @@ execConst runChildProg c vs s k = do
 
             -- Copy over the salvaged robot's log, if we have one
             inst <- use equippedDevices
-            em <- use $ landscape . entityMap
+            em <- use $ landscape . terrainAndEntities . entityMap
             isPrivileged <- isPrivilegedBot
             logger <-
               lookupEntityName "logger" em
@@ -1467,7 +1468,7 @@ execConst runChildProg c vs s k = do
     m (Set Entity, Inventory)
   checkRequirements parentInventory childInventory childDevices cmd subject fixI = do
     currentContext <- use $ robotContext . defReqs
-    em <- use $ landscape . entityMap
+    em <- use $ landscape . terrainAndEntities . entityMap
     creative <- use creativeMode
     let -- Note that _capCtx must be empty: at least at the
         -- moment, definitions are only allowed at the top level,
@@ -1734,7 +1735,7 @@ execConst runChildProg c vs s k = do
     let yieldName = e ^. entityYields
     e' <- case yieldName of
       Nothing -> return e
-      Just n -> fromMaybe e <$> uses (landscape . entityMap) (lookupEntityName n)
+      Just n -> fromMaybe e <$> uses (landscape . terrainAndEntities . entityMap) (lookupEntityName n)
 
     robotInventory %= insert e'
     updateDiscoveredEntities e'

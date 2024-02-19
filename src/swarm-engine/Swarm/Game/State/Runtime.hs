@@ -14,6 +14,7 @@ module Swarm.Game.State.Runtime (
   worlds,
   scenarios,
   stdEntityMap,
+  stdTerrainMap,
   stdRecipes,
   appData,
   nameParts,
@@ -34,11 +35,13 @@ import Data.Text (Text)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity (Entity, EntityMap, loadEntities)
 import Swarm.Game.Failure (SystemFailure)
+import Swarm.Game.Land
 import Swarm.Game.Recipe (Recipe, loadRecipes)
 import Swarm.Game.ResourceLoading (NameGenerator, initNameGenerator, readAppData)
 import Swarm.Game.Scenario (GameStateInputs (..))
 import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios)
 import Swarm.Game.State.Substate
+import Swarm.Game.Terrain
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Log
@@ -51,6 +54,7 @@ data RuntimeState = RuntimeState
   , _eventLog :: Notifications LogEntry
   , _worlds :: WorldMap
   , _scenarios :: ScenarioCollection
+  , _stdTerrainMap :: TerrainMap
   , _stdEntityMap :: EntityMap
   , _stdRecipes :: [Recipe Entity]
   , _appData :: Map Text Text
@@ -64,10 +68,12 @@ initRuntimeState ::
   ) =>
   m RuntimeState
 initRuntimeState = do
+  terrains <- loadTerrain
   entities <- loadEntities
+  let tem = TerrainEntityMaps terrains entities
   recipes <- loadRecipes entities
-  worlds <- loadWorlds entities
-  scenarios <- loadScenarios entities worlds
+  worlds <- loadWorlds tem
+  scenarios <- loadScenarios tem worlds
   appDataMap <- readAppData
   nameGen <- initNameGenerator appDataMap
   return $
@@ -77,6 +83,7 @@ initRuntimeState = do
       , _eventLog = mempty
       , _worlds = worlds
       , _scenarios = scenarios
+      , _stdTerrainMap = terrains
       , _stdEntityMap = entities
       , _stdRecipes = recipes
       , _appData = appDataMap
@@ -105,6 +112,11 @@ worlds :: Lens' RuntimeState WorldMap
 -- | The collection of scenarios that comes with the game.
 scenarios :: Lens' RuntimeState ScenarioCollection
 
+-- | The standard terrain map loaded from disk.  Individual scenarios
+--   may define additional terrain which will get added to this map
+--   when loading the scenario.
+stdTerrainMap :: Lens' RuntimeState TerrainMap
+
 -- | The standard entity map loaded from disk.  Individual scenarios
 --   may define additional entities which will get added to this map
 --   when loading the scenario.
@@ -129,7 +141,8 @@ mkGameStateConfig rs =
     { initNameParts = rs ^. nameParts
     , initState =
         GameStateInputs
-          { initEntities = rs ^. stdEntityMap
+          { initTerrain = rs ^. stdTerrainMap
+          , initEntities = rs ^. stdEntityMap
           , initRecipes = rs ^. stdRecipes
           , initWorldMap = rs ^. worlds
           }

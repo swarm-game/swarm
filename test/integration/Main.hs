@@ -31,8 +31,9 @@ import Swarm.Doc.Keyword qualified as Keyword
 import Swarm.Effect (runTimeIO)
 import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
 import Swarm.Game.CESK (emptyStore, initMachine)
-import Swarm.Game.Entity (EntityMap, lookupByName)
+import Swarm.Game.Entity (lookupByName)
 import Swarm.Game.Failure (SystemFailure)
+import Swarm.Game.Land
 import Swarm.Game.Robot (equippedDevices, systemRobot)
 import Swarm.Game.Robot.Activity (commandsHistogram, lifetimeStepCount, tangibleCommandCount)
 import Swarm.Game.Robot.Concrete (activityCounts, machine, robotContext, robotLog, waitingUntil)
@@ -58,6 +59,7 @@ import Swarm.Game.State.Runtime (
   RuntimeState,
   eventLog,
   stdEntityMap,
+  stdTerrainMap,
   worlds,
  )
 import Swarm.Game.State.Substate (
@@ -107,15 +109,17 @@ main = do
     out <- runM . runThrow @SystemFailure $ initPersistentState defaultAppOpts
     either (assertFailure . prettyString) return out
   let em = rs ^. stdEntityMap
-  let rs' = rs & eventLog .~ mempty
+      tm = rs ^. stdTerrainMap
+      tem = TerrainEntityMaps tm em
+      rs' = rs & eventLog .~ mempty
   defaultMain $
     testGroup
       "Tests"
       [ testNoLoadingErrors rs
       , exampleTests examplePaths
       , exampleTests scenarioPrograms
-      , scenarioParseTests em (rs ^. worlds) parseableScenarios
-      , scenarioParseInvalidTests em (rs ^. worlds) unparseableScenarios
+      , scenarioParseTests tem (rs ^. worlds) parseableScenarios
+      , scenarioParseInvalidTests tem (rs ^. worlds) unparseableScenarios
       , testScenarioSolutions rs' ui
       , testEditorFiles
       ]
@@ -144,27 +148,27 @@ exampleTest (path, fileContent) =
  where
   value = processTerm $ into @Text fileContent
 
-scenarioParseTests :: EntityMap -> WorldMap -> [(FilePath, String)] -> TestTree
-scenarioParseTests em worldMap inputs =
+scenarioParseTests :: TerrainEntityMaps -> WorldMap -> [(FilePath, String)] -> TestTree
+scenarioParseTests tem worldMap inputs =
   testGroup
     "Test scenarios parse"
-    (map (scenarioTest Parsed em worldMap) inputs)
+    (map (scenarioTest Parsed tem worldMap) inputs)
 
-scenarioParseInvalidTests :: EntityMap -> WorldMap -> [(FilePath, String)] -> TestTree
-scenarioParseInvalidTests em worldMap inputs =
+scenarioParseInvalidTests :: TerrainEntityMaps -> WorldMap -> [(FilePath, String)] -> TestTree
+scenarioParseInvalidTests tem worldMap inputs =
   testGroup
     "Test invalid scenarios fail to parse"
-    (map (scenarioTest Failed em worldMap) inputs)
+    (map (scenarioTest Failed tem worldMap) inputs)
 
 data ParseResult = Parsed | Failed
 
-scenarioTest :: ParseResult -> EntityMap -> WorldMap -> (FilePath, String) -> TestTree
-scenarioTest expRes em worldMap (path, _) =
-  testCase ("parse scenario " ++ show path) (getScenario expRes em worldMap path)
+scenarioTest :: ParseResult -> TerrainEntityMaps -> WorldMap -> (FilePath, String) -> TestTree
+scenarioTest expRes tem worldMap (path, _) =
+  testCase ("parse scenario " ++ show path) (getScenario expRes tem worldMap path)
 
-getScenario :: ParseResult -> EntityMap -> WorldMap -> FilePath -> IO ()
-getScenario expRes em worldMap p = do
-  res <- decodeFileEitherE (em, worldMap) p :: IO (Either ParseException Scenario)
+getScenario :: ParseResult -> TerrainEntityMaps -> WorldMap -> FilePath -> IO ()
+getScenario expRes tem worldMap p = do
+  res <- decodeFileEitherE (tem, worldMap) p :: IO (Either ParseException Scenario)
   case expRes of
     Parsed -> case res of
       Left err -> assertFailure (prettyPrintParseException err)

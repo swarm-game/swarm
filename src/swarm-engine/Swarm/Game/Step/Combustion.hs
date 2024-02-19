@@ -16,6 +16,7 @@
 -- well as to initiate the delayed combustion of its neighbors.
 module Swarm.Game.Step.Combustion where
 
+import Swarm.Game.Land
 import Control.Applicative (Applicative (..))
 import Control.Carrier.State.Lazy
 import Control.Effect.Lens
@@ -91,7 +92,7 @@ addCombustionBot inputEntity combustibility ts loc = do
   botInventory <- case maybeCombustionProduct of
     Nothing -> return []
     Just n -> do
-      maybeE <- uses (landscape . entityMap) (lookupEntityName n)
+      maybeE <- uses (landscape . terrainAndEntities . entityMap) (lookupEntityName n)
       return $ maybe [] (pure . (1,)) maybeE
   combustionDurationRand <- uniform durationRange
   let combustionProg = combustionProgram combustionDurationRand combustibility

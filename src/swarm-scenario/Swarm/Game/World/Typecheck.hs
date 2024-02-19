@@ -34,8 +34,9 @@ import Data.Semigroup (Last (..))
 import Data.Text (Text)
 import Data.Type.Equality (TestEquality (..), type (:~:) (Refl))
 import Prettyprinter
-import Swarm.Game.Entity (EntityMap, lookupEntityName)
-import Swarm.Game.Terrain (readTerrain)
+import Swarm.Game.Entity (lookupEntityName)
+import Swarm.Game.Land
+import Swarm.Game.Terrain
 import Swarm.Game.World.Syntax
 import Swarm.Language.Pretty
 import Swarm.Util (showT)
@@ -448,7 +449,7 @@ lookup x (CCons y ty ctx)
 --   value (/i.e./ @const 3@).
 check ::
   ( Has (Throw CheckErr) sig m
-  , Has (Reader EntityMap) sig m
+  , Has (Reader TerrainEntityMaps) sig m
   , Has (Reader WorldMap) sig m
   ) =>
   Ctx g ->
@@ -562,7 +563,7 @@ typeArgsFor _ _ = []
 --   a typed, elaborated version of the application.
 applyOp ::
   ( Has (Throw CheckErr) sig m
-  , Has (Reader EntityMap) sig m
+  , Has (Reader TerrainEntityMaps) sig m
   , Has (Reader WorldMap) sig m
   ) =>
   Ctx g ->
@@ -577,7 +578,7 @@ applyOp ctx op ts = do
 infer ::
   forall sig m g.
   ( Has (Throw CheckErr) sig m
-  , Has (Reader EntityMap) sig m
+  , Has (Reader TerrainEntityMaps) sig m
   , Has (Reader WorldMap) sig m
   ) =>
   Ctx g ->
@@ -606,7 +607,9 @@ infer _ctx (WImport key) = do
 --   terrain, entities, and robots---into a real 'CellVal' with
 --   references to actual terrain, entities, and robots.
 resolveCell ::
-  (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
+  ( Has (Throw CheckErr) sig m
+  , Has (Reader TerrainEntityMaps) sig m
+  ) =>
   RawCellVal ->
   m CellVal
 resolveCell items = do
@@ -617,7 +620,9 @@ resolveCell items = do
 -- entity, robot, etc.).
 resolveCellItem ::
   forall sig m.
-  (Has (Throw CheckErr) sig m, Has (Reader EntityMap) sig m) =>
+  ( Has (Throw CheckErr) sig m
+  , Has (Reader TerrainEntityMaps) sig m
+  ) =>
   (Maybe CellTag, Text) ->
   m CellVal
 resolveCellItem (mCellTag, item) = case mCellTag of
@@ -635,14 +640,17 @@ resolveCellItem (mCellTag, item) = case mCellTag of
  where
   mkTerrain t = CellVal t mempty mempty
   mkEntity e = CellVal mempty (EJust (Last e)) mempty
+
   resolverByTag :: CellTag -> Text -> m (Maybe CellVal)
   resolverByTag = \case
-    CellTerrain -> return . fmap mkTerrain . readTerrain
+    CellTerrain -> \tName -> do
+      TerrainEntityMaps tm _em <- ask @TerrainEntityMaps
+      return . fmap (mkTerrain . terrainName) . (`M.lookup` terrainByName tm) $ terrainFromText tName
     CellEntity -> \eName ->
       case eName of
         "erase" -> return $ Just (CellVal mempty EErase mempty)
         _ -> do
-          em <- ask @EntityMap
+          TerrainEntityMaps _tm em <- ask @TerrainEntityMaps
           return . fmap mkEntity $ lookupEntityName eName em
     CellRobot -> \_ -> return Nothing -- TODO (#1396): support robots
 
@@ -650,7 +658,7 @@ resolveCellItem (mCellTag, item) = case mCellTag of
 --   of lambda applications.
 inferLet ::
   ( Has (Throw CheckErr) sig m
-  , Has (Reader EntityMap) sig m
+  , Has (Reader TerrainEntityMaps) sig m
   , Has (Reader WorldMap) sig m
   ) =>
   Ctx g ->
@@ -667,7 +675,7 @@ inferLet ctx ((x, e) : xs) body = do
 --   chain of @<>@ (over) operations.
 inferOverlay ::
   ( Has (Throw CheckErr) sig m
-  , Has (Reader EntityMap) sig m
+  , Has (Reader TerrainEntityMaps) sig m
   , Has (Reader WorldMap) sig m
   ) =>
   Ctx g ->

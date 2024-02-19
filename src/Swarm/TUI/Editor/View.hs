@@ -8,9 +8,11 @@ import Brick.Widgets.Center (hCenter)
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
 import Data.List qualified as L
+import Swarm.Game.Land
+import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Topography.Area qualified as EA
 import Swarm.Game.Scenario.Topography.EntityFacade
-import Swarm.Game.Terrain (TerrainType)
+import Swarm.Game.Terrain (TerrainMap, TerrainType)
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Border
@@ -22,7 +24,6 @@ import Swarm.TUI.Panel
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay (renderDisplay)
 import Swarm.TUI.View.Util qualified as VU
-import Swarm.Util (listEnums)
 
 drawWorldEditor :: FocusRing Name -> UIState -> Widget Name
 drawWorldEditor toplevelFocusRing uis =
@@ -73,10 +74,14 @@ drawWorldEditor toplevelFocusRing uis =
    where
     selectedThing = snd <$> BL.listSelectedElement list
 
+  tm =
+    maybe mempty (view (scenarioLandscape . scenarioTerrainAndEntities . terrainMap) . fst) $
+      uis ^. uiGameplay . scenarioRef
+
   brushWidget =
     mkFormControl (WorldEditorPanelControl BrushSelector) $
       padRight (Pad 1) (str "Brush:")
-        <+> swatchContent (worldEditor ^. terrainList) VU.drawLabeledTerrainSwatch
+        <+> swatchContent (worldEditor ^. terrainList) (VU.drawLabeledTerrainSwatch tm)
 
   entityWidget =
     mkFormControl (WorldEditorPanelControl EntitySelector) $
@@ -141,13 +146,17 @@ drawTerrainSelector :: AppState -> Widget Name
 drawTerrainSelector s =
   padAll 1
     . hCenter
-    . vLimit (length (listEnums :: [TerrainType]))
-    . BL.renderListWithIndex listDrawTerrainElement True
+    . vLimit 8
+    . BL.renderListWithIndex (listDrawTerrainElement tm) True
     $ s ^. uiState . uiGameplay . uiWorldEditor . terrainList
+ where
+  tm =
+    maybe mempty (view (scenarioLandscape . scenarioTerrainAndEntities . terrainMap) . fst) $
+      s ^. uiState . uiGameplay . scenarioRef
 
-listDrawTerrainElement :: Int -> Bool -> TerrainType -> Widget Name
-listDrawTerrainElement pos _isSelected a =
-  clickable (TerrainListItem pos) $ VU.drawLabeledTerrainSwatch a
+listDrawTerrainElement :: TerrainMap -> Int -> Bool -> TerrainType -> Widget Name
+listDrawTerrainElement tm pos _isSelected a =
+  clickable (TerrainListItem pos) $ VU.drawLabeledTerrainSwatch tm a
 
 drawEntityPaintSelector :: AppState -> Widget Name
 drawEntityPaintSelector s =
