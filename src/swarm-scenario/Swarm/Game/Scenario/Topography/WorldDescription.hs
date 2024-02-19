@@ -61,11 +61,13 @@ data PWorldDescription e = WorldDescription
 
 type WorldDescription = PWorldDescription Entity
 
-data WorldParseDependencies = WorldParseDependencies
-  WorldMap
-  InheritedStructureDefs
-  RobotMap
-  EntityMap -- ^ last for the benefit of partial application
+data WorldParseDependencies
+  = -- | last for the benefit of partial application
+    WorldParseDependencies
+      WorldMap
+      InheritedStructureDefs
+      RobotMap
+      EntityMap
 
 instance FromJSONE WorldParseDependencies WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
