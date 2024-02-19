@@ -17,7 +17,7 @@ import Data.Text qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Game.Entity as E
 import Swarm.Game.Location
-import Swarm.Game.Scenario (scenarioName)
+import Swarm.Game.Scenario (scenarioMetadata, scenarioName)
 import Swarm.Game.ScenarioInfo (scenarioItemName)
 import Swarm.Game.State
 import Swarm.Game.State.Substate
@@ -105,7 +105,7 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
       GoalModal ->
         let goalModalTitle = case currentScenario of
               Nothing -> "Goal"
-              Just (scenario, _) -> scenario ^. scenarioName
+              Just (scenario, _) -> scenario ^. scenarioMetadata . scenarioName
          in (" " <> T.unpack goalModalTitle <> " ", Nothing, descriptionWidth)
       KeepPlayingModal -> ("", Just (Button CancelButton, [("OK", Button CancelButton, Cancel)]), 80)
       TerrainPaletteModal -> ("Terrain", Nothing, w)
