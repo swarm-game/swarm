@@ -61,9 +61,15 @@ data PWorldDescription e = WorldDescription
 
 type WorldDescription = PWorldDescription Entity
 
-instance FromJSONE (WorldMap, InheritedStructureDefs, EntityMap, RobotMap) WorldDescription where
+data WorldParseDependencies = WorldParseDependencies
+  WorldMap
+  InheritedStructureDefs
+  RobotMap
+  EntityMap -- ^ last for the benefit of partial application
+
+instance FromJSONE WorldParseDependencies WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
-    (worldMap, scenarioLevelStructureDefs, em, rm) <- getE
+    WorldParseDependencies worldMap scenarioLevelStructureDefs rm em <- getE
     (pal, rootWorldStructureDefs) <- localE (const (em, rm)) $ do
       pal <- v ..:? "palette" ..!= WorldPalette mempty
       rootWorldStructs <- v ..:? "structures" ..!= []

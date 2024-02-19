@@ -212,7 +212,7 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
 
       let namedGrids = map (\(ns, Structure.MergedStructure s _ _) -> Grid s <$ ns) mergedStructures
 
-      allWorlds <- localE (worldMap,rootLevelSharedStructures,,rsMap) $ do
+      allWorlds <- localE (WorldParseDependencies worldMap rootLevelSharedStructures rsMap) $ do
         rootWorld <- v ..: "world"
         subworlds <- v ..:? "subworlds" ..!= []
         return $ rootWorld :| subworlds
