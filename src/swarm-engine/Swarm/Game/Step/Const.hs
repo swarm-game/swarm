@@ -18,7 +18,7 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (forM, forM_, guard, msum, unless, when)
+import Control.Monad (filterM, forM, forM_, guard, msum, unless, when)
 import Data.Bifunctor (second)
 import Data.Bool (bool)
 import Data.Char (chr, ord)
@@ -84,7 +84,6 @@ import Swarm.Game.Step.Util.Inspect
 import Swarm.Game.Tick
 import Swarm.Game.Universe
 import Swarm.Game.Value
-import Swarm.Game.World (locToCoords)
 import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Key (parseKeyComboFull)
@@ -97,7 +96,6 @@ import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Value
 import Swarm.Log
 import Swarm.Util hiding (both)
-import Swarm.Util.Content (getContentAt)
 import Swarm.Util.Effect (throwToMaybe)
 import Swarm.Util.Lens (inherit)
 import Witch (From (from), into)
@@ -291,9 +289,8 @@ execConst runChildProg c vs s k = do
         -- to spawn near the target location.
         omni <- isPrivilegedBot
         unless omni $ do
-          w <- use (landscape . multiWorld)
           let area = map (<$ nextLoc) $ getLocsInArea (nextLoc ^. planar) 5
-              emptyLocs = filter (\cl -> isNothing . snd $ getContentAt w (locToCoords <$> cl)) area
+          emptyLocs <- filterM (fmap isNothing . entityAt) area
           randomLoc <- weightedChoice (const 1) emptyLocs
           es <- uses (landscape . entityMap) allEntities
           randomEntity <- weightedChoice (const 1) es
