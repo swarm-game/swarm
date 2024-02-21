@@ -255,7 +255,7 @@ class WithU t where
 instance WithU Type where
   type U Type = UType
   toU = foldFix Free
-  fromU = ucata (const Nothing) (fmap Fix . sequence)
+  fromU = ucata (const Nothing) (fmap wrapFix . sequence)
 
 -- | A 'WithU' instance can be lifted through any functor (including,
 --   in particular, 'Ctx' and 'Poly').
