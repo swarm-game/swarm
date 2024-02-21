@@ -68,13 +68,11 @@ module Swarm.Language.Types (
   WithU (..),
 ) where
 
-import Control.Monad (guard)
 import Control.Monad.Free
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Data (Data)
 import Data.Fix
 import Data.Foldable (fold)
-import Data.Function (on)
 import Data.Kind qualified
 import Data.Map.Merge.Strict qualified as M
 import Data.Map.Strict (Map)
@@ -159,7 +157,7 @@ type Type = Fix TypeF
 
 -- | Get all the type variables contained in a 'Type'.
 tyVars :: Type -> Set Var
-tyVars = cata (\case TyVarF x -> S.singleton x; f -> fold f)
+tyVars = foldFix (\case TyVarF x -> S.singleton x; f -> fold f)
 
 newtype IntVar = IntVar Int
   deriving (Show, Data)
