@@ -7,7 +7,7 @@
 --
 -- Simple Markdown AST and related utilities.
 --
--- Parametrising 'Document' with the type of
+-- Parameterising 'Document' with the type of
 -- inline code and code blocks allows us to
 -- inspect and validate Swarm code in descriptions.
 --
@@ -43,7 +43,7 @@ import Control.Lens ((%~), (&), _head, _last)
 import Data.Char (isSpace)
 import Data.Functor.Identity (Identity (..))
 import Data.List.Split (chop)
-import Data.Maybe (catMaybes)
+import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -178,7 +178,7 @@ parseSyntax t = case readTerm t of
     Right _ -> Right s
 
 findCode :: Document Syntax -> [Syntax]
-findCode = catMaybes . concatMap (map codeOnly . nodes) . paragraphs
+findCode = concatMap (mapMaybe codeOnly . nodes) . paragraphs
  where
   codeOnly = \case
     LeafCode s -> Just s

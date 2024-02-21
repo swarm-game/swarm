@@ -29,7 +29,7 @@ import Swarm.Game.ScenarioInfo (
   scMap,
   scenarioCollectionToList,
  )
-import Swarm.Game.State.Substate (Seed)
+import Swarm.Game.World.Gen (Seed)
 import Swarm.TUI.Model.Name
 import Swarm.Util
 import System.FilePath (dropTrailingPathSeparator, splitPath, takeFileName)

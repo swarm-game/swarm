@@ -49,16 +49,20 @@ import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Exception
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Activity
+import Swarm.Game.Robot.Concrete
+import Swarm.Game.Robot.Context
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
 import Swarm.Game.State
+import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Const
 import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
-import Swarm.Game.Universe
+import Swarm.Game.Tick
 import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Pipeline
@@ -278,8 +282,7 @@ hypotheticalWinCheck em g ws oc = do
   winCondition .= WinConditions newWinState (completions finalAccumulator)
 
   case newWinState of
-    Unwinnable _ -> do
-      grantAchievement LoseScenario
+    Unwinnable _ -> grantAchievement LoseScenario
     _ -> return ()
 
   messageInfo . announcementQueue %= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
@@ -358,21 +361,21 @@ evalPT t = evaluateCESK (initMachine t empty emptyStore)
 --
 -- Use ID (-1) so it won't conflict with any robots currently in the robot map.
 hypotheticalRobot :: CESK -> TimeSpec -> Robot
-hypotheticalRobot c =
-  mkRobot
-    (-1)
-    Nothing
-    "hypothesis"
-    mempty
-    defaultCosmicLocation
-    zero
-    defaultRobotDisplay
-    c
-    []
-    []
-    True
-    False
-    mempty
+hypotheticalRobot m =
+  instantiateRobot (Just m) (-1)
+    . mkRobot
+      Nothing
+      "hypothesis"
+      mempty
+      Nothing
+      zero
+      defaultRobotDisplay
+      Nothing
+      []
+      []
+      True
+      False
+      mempty
 
 evaluateCESK ::
   ( Has Effect.Time sig m

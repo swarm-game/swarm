@@ -35,6 +35,7 @@ module Swarm.Game.State (
   -- ** GameState initialization
   initGameState,
   scenarioToGameState,
+  pureScenarioToGameState,
   CodeToRun (..),
   Sha1 (..),
   SolutionSource (..),
@@ -65,10 +66,8 @@ module Swarm.Game.State (
   entityAt,
   zoomWorld,
   zoomRobots,
-  SubworldDescription,
 ) where
 
-import Control.Applicative ((<|>))
 import Control.Arrow (Arrow ((&&&)))
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Effect.Lens
@@ -77,8 +76,6 @@ import Control.Effect.State (State)
 import Control.Effect.Throw
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad (forM, join)
-import Data.Array (Array, listArray)
-import Data.Bifunctor (first)
 import Data.Digest.Pure.SHA (sha1, showDigest)
 import Data.Foldable (toList)
 import Data.Foldable.Extra (allM)
@@ -86,12 +83,12 @@ import Data.Function (on)
 import Data.Int (Int32)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
-import Data.List (partition, sortOn)
+import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isNothing, mapMaybe)
 import Data.Sequence (Seq ((:<|)))
 import Data.Sequence qualified as Seq
 import Data.Set qualified as S
@@ -101,7 +98,7 @@ import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import Linear (V2 (..))
-import Swarm.Game.CESK (addTicks, emptyStore, finalValue, initMachine)
+import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
 import Swarm.Game.Failure (SystemFailure (..))
 import Swarm.Game.Location
@@ -111,24 +108,23 @@ import Swarm.Game.Recipe (
   outRecipeMap,
  )
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Concrete
+import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
-
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Swarm.Game.ScenarioInfo
+import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Type
-import Swarm.Game.Terrain (TerrainType (..))
+import Swarm.Game.Tick (addTicks)
 import Swarm.Game.Universe as U
-import Swarm.Game.World (Coords (..), WorldFun (..), locToCoords, worldFunFromArray)
 import Swarm.Game.World qualified as W
-import Swarm.Game.World.Eval (runWorld)
-import Swarm.Game.World.Gen (findGoodOrigin)
+import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Module (Module (Module))
@@ -137,11 +133,10 @@ import Swarm.Language.Syntax (SrcLoc (..), Syntax' (..), allConst)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Log
-import Swarm.Util (applyWhen, binTuples, uniq, (?))
-import Swarm.Util.Erasable
+import Swarm.Util (binTuples, uniq, (?))
 import Swarm.Util.Lens (makeLensesNoSigs)
 import System.Clock qualified as Clock
-import System.Random (mkStdGen, randomRIO)
+import System.Random (mkStdGen)
 
 newtype Sha1 = Sha1 String
 
@@ -474,71 +469,6 @@ initGameState gsc =
     , _messageInfo = initMessages
     }
 
-type SubworldDescription = (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int Entity))
-
-buildWorldTuples :: Scenario -> NonEmpty SubworldDescription
-buildWorldTuples s =
-  NE.map (worldName &&& buildWorld) $
-    s ^. scenarioWorlds
-
-genMultiWorld :: NonEmpty SubworldDescription -> Seed -> W.MultiWorld Int Entity
-genMultiWorld worldTuples s =
-  M.map genWorld
-    . M.fromList
-    . NE.toList
-    $ worldTuples
- where
-  genWorld x = W.newWorld $ snd x s
-
--- |
--- Returns a list of robots, ordered by decreasing preference
--- to serve as the "base".
---
--- = Rules for selecting the "base" robot:
---
--- What follows is a thorough description of how the base
--- choice is made as of the most recent study of the code.
--- This level of detail is not meant to be public-facing.
---
--- For an abbreviated explanation, see the "Base robot" section of the
--- <https://github.com/swarm-game/swarm/tree/main/data/scenarios#base-robot Scenario Authoring Guide>.
---
--- == Precedence rules
---
--- 1. Prefer those robots defined with a @loc@ ('robotLocation') in the scenario file
---
---     1. If multiple robots define a @loc@, use the robot that is defined
---        first within the scenario file.
---     2. Note that if a robot is both given a @loc@ AND is specified in the
---        world map, then two instances of the robot shall be created. The
---        instance with the @loc@ shall be preferred as the base.
---
--- 2. Fall back to robots generated from templates via the map and palette.
---
---     1. If multiple robots are specified in the map, prefer the one that
---        is defined first within the scenario file.
---     2. If multiple robots are instantiated from the same template, then
---        prefer the one with a lower-indexed subworld. Note that the root
---        subworld is always first.
---     3. If multiple robots instantiated from the same template are in the
---        same subworld, then
---        prefer the one closest to the upper-left of the screen, with higher
---        rows given precedence over columns (i.e. first in row-major order).
-genRobotTemplates :: Scenario -> NonEmpty (a, ([(Int, TRobot)], b)) -> [TRobot]
-genRobotTemplates scenario worldTuples =
-  locatedRobots ++ map snd (sortOn fst genRobots)
- where
-  -- Keep only robots from the robot list with a concrete location;
-  -- the others existed only to serve as a template for robots drawn
-  -- in the world map
-  locatedRobots = filter (isJust . view trobotLocation) $ scenario ^. scenarioRobots
-
-  -- Subworld order as encountered in the scenario YAML file is preserved for
-  -- the purpose of numbering robots, other than the "root" subworld
-  -- guaranteed to be first.
-  genRobots :: [(Int, TRobot)]
-  genRobots = concat $ NE.toList $ NE.map (fst . snd) worldTuples
-
 -- | Get the entity (if any) at a given location.
 entityAt :: (Has (State GameState) sig m) => Cosmic Location -> m (Maybe Entity)
 entityAt (Cosmic subworldName loc) =
@@ -613,8 +543,8 @@ buildTagMap :: EntityMap -> Map Text (NonEmpty EntityName)
 buildTagMap em =
   binTuples expanded
  where
-  expanded = concatMap (\(k, vs) -> [(v, k) | v <- S.toList vs]) $ M.toList tagsByEntity
-  tagsByEntity = M.map (view entityTags) $ entitiesByName em
+  expanded = concatMap (\(k, vs) -> [(v, k) | v <- S.toList vs]) tagsByEntity
+  tagsByEntity = map (view entityName &&& view entityTags) $ entityDefinitionOrder em
 
 pureScenarioToGameState ::
   Scenario ->
@@ -627,37 +557,33 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
   preliminaryGameState
     & discovery . structureRecognition .~ recognizer
  where
+  sLandscape = scenario ^. scenarioLandscape
+
   recognizer =
     runIdentity $
       Fused.evalState preliminaryGameState $
-        mkRecognizer (scenario ^. scenarioStructures)
+        mkRecognizer (sLandscape ^. scenarioStructures)
 
   gs = initGameState gsc
   preliminaryGameState =
     gs
       & robotInfo %~ setRobotInfo baseID robotList'
-      & creativeMode .~ scenario ^. scenarioCreative
+      & creativeMode .~ scenario ^. scenarioOperation . scenarioCreative
       & winCondition .~ theWinCondition
-      & winSolution .~ scenario ^. scenarioSolution
+      & winSolution .~ scenario ^. scenarioOperation . scenarioSolution
       & discovery . availableCommands .~ Notifications 0 initialCommands
-      & discovery . knownEntities .~ scenario ^. scenarioKnown
+      & discovery . knownEntities .~ sLandscape ^. scenarioKnown
       & discovery . tagMembers .~ buildTagMap em
       & randomness . seed .~ theSeed
       & randomness . randGen .~ mkStdGen theSeed
       & recipesInfo %~ modifyRecipesInfo
-      & landscape . entityMap .~ em
-      & landscape . worldNavigation .~ scenario ^. scenarioNavigation
-      & landscape . multiWorld .~ genMultiWorld worldTuples theSeed
-      -- TODO (#1370): Should we allow subworlds to have their own scrollability?
-      -- Leaning toward no , but for now just adopt the root world scrollability
-      -- as being universal.
-      & landscape . worldScrollable .~ NE.head (scenario ^. scenarioWorlds) ^. to scrollable
+      & landscape .~ mkLandscape sLandscape em worldTuples theSeed
       & gameControls . initiallyRunCode .~ initialCodeToRun
       & gameControls . replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
       -- otherwise the store of definition cells is not saved (see #333, #838)
         False -> REPLDone Nothing
         True -> REPLWorking (Typed Nothing PolyUnit mempty)
-      & temporal . robotStepsPerTick .~ ((scenario ^. scenarioStepsPerTick) ? defaultRobotStepsPerTick)
+      & temporal . robotStepsPerTick .~ ((scenario ^. scenarioOperation . scenarioStepsPerTick) ? defaultRobotStepsPerTick)
 
   robotList' = (robotCreatedAt .~ now) <$> robotList
 
@@ -667,13 +593,13 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       & recipesIn %~ addRecipesWith inRecipeMap
       & recipesCat %~ addRecipesWith catRecipeMap
 
-  em = initEntities gsc <> scenario ^. scenarioEntities
+  em = integrateScenarioEntities (initState gsc) sLandscape
   baseID = 0
   (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
 
   getCodeToRun (CodeToRun _ s) = s
 
-  robotsByBasePrecedence = genRobotTemplates scenario worldTuples
+  robotsByBasePrecedence = genRobotTemplates sLandscape worldTuples
 
   initialCodeToRun = getCodeToRun <$> toRun
 
@@ -695,12 +621,12 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       -- If we are in creative mode, give base all the things
       & ix baseID
         . robotInventory
-        %~ case scenario ^. scenarioCreative of
+        %~ case scenario ^. scenarioOperation . scenarioCreative of
           False -> id
           True -> union (fromElems (map (0,) things))
       & ix baseID
         . equippedDevices
-        %~ case scenario ^. scenarioCreative of
+        %~ case scenario ^. scenarioOperation . scenarioCreative of
           False -> id
           True -> const (fromList devices)
 
@@ -720,15 +646,15 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       (maybe True (`S.member` initialCaps) . constCaps)
       allConst
 
-  worldTuples = buildWorldTuples scenario
+  worldTuples = buildWorldTuples sLandscape
 
   theWinCondition =
     maybe
       NoWinCondition
-      (\x -> WinConditions Ongoing (ObjectiveCompletion (CompletionBuckets (NE.toList x) mempty mempty) mempty))
-      (NE.nonEmpty (scenario ^. scenarioObjectives))
+      (WinConditions Ongoing . initCompletion . NE.toList)
+      (NE.nonEmpty (scenario ^. scenarioOperation . scenarioObjectives))
 
-  addRecipesWith f = IM.unionWith (<>) (f $ scenario ^. scenarioRecipes)
+  addRecipesWith f = IM.unionWith (<>) (f $ scenario ^. scenarioOperation . scenarioRecipes)
 
 -- | Create an initial game state corresponding to the given scenario.
 scenarioToGameState ::
@@ -737,46 +663,6 @@ scenarioToGameState ::
   GameStateConfig ->
   IO GameState
 scenarioToGameState scenario (LaunchParams (Identity userSeed) (Identity toRun)) gsc = do
-  -- Decide on a seed.  In order of preference, we will use:
-  --   1. seed value provided by the user
-  --   2. seed value specified in the scenario description
-  --   3. randomly chosen seed value
-  theSeed <- case userSeed <|> scenario ^. scenarioSeed of
-    Just s -> return s
-    Nothing -> randomRIO (0, maxBound :: Int)
-
+  theSeed <- arbitrateSeed userSeed $ scenario ^. scenarioLandscape
   now <- Clock.getTime Clock.Monotonic
   return $ pureScenarioToGameState scenario theSeed now toRun gsc
-
--- | Take a world description, parsed from a scenario file, and turn
---   it into a list of located robots and a world function.
-buildWorld :: WorldDescription -> ([IndexedTRobot], Seed -> WorldFun Int Entity)
-buildWorld WorldDescription {..} = (robots worldName, first fromEnum . wf)
- where
-  rs = fromIntegral $ length area
-  cs = fromIntegral $ maybe 0 length $ listToMaybe area
-  Coords (ulr, ulc) = locToCoords ul
-
-  worldGrid :: [[(TerrainType, Erasable Entity)]]
-  worldGrid = (map . map) (cellTerrain &&& cellEntity) area
-
-  worldArray :: Array (Int32, Int32) (TerrainType, Erasable Entity)
-  worldArray = listArray ((ulr, ulc), (ulr + rs - 1, ulc + cs - 1)) (concat worldGrid)
-
-  dslWF, arrayWF :: Seed -> WorldFun TerrainType Entity
-  dslWF = maybe mempty ((applyWhen offsetOrigin findGoodOrigin .) . runWorld) worldProg
-  arrayWF = const (worldFunFromArray worldArray)
-
-  wf = dslWF <> arrayWF
-
-  -- Get all the robots described in cells and set their locations appropriately
-  robots :: SubworldName -> [IndexedTRobot]
-  robots swName =
-    area
-      & traversed Control.Lens.<.> traversed %@~ (,) -- add (r,c) indices
-      & concat
-      & concatMap
-        ( \((fromIntegral -> r, fromIntegral -> c), Cell _ _ robotList) ->
-            let robotWithLoc = trobotLocation ?~ Cosmic swName (W.coordsToLoc (Coords (ulr + r, ulc + c)))
-             in map (fmap robotWithLoc) robotList
-        )

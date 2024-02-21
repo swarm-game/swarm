@@ -5,19 +5,25 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Main where
 
-import Control.Lens ((&), (.~), (^.))
+import Control.Carrier.Accum.FixedStrict (runAccum)
+import Control.Lens ((&), (.~))
 import Control.Monad (replicateM_)
-import Control.Monad.Except (runExceptT)
 import Control.Monad.State (evalStateT, execStateT)
 import Data.Map qualified as M
+import Data.Sequence (Seq)
+import Data.Text qualified as T
+import Data.Tuple.Extra (dupe)
 import Swarm.Effect (runTimeIO)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display (defaultRobotDisplay)
+import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, mkRobot)
-import Swarm.Game.State (GameState, creativeMode, landscape, zoomRobots)
+import Swarm.Game.Scenario (loadStandaloneScenario)
+import Swarm.Game.State (GameState, creativeMode, landscape, pureScenarioToGameState, zoomRobots)
+import Swarm.Game.State.Landscape (multiWorld)
 import Swarm.Game.State.Robot (addTRobot)
-import Swarm.Game.State.Substate (multiWorld)
+import Swarm.Game.State.Runtime (initRuntimeState, mkGameStateConfig)
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Terrain (TerrainType (DirtT))
 import Swarm.Game.Universe (Cosmic (..), SubworldName (DefaultRootSubworld))
@@ -26,8 +32,8 @@ import Swarm.Language.Context qualified as Context
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax
-import Swarm.TUI.Model (gameState)
-import Swarm.TUI.Model.StateUpdate (classicGame0)
+import Swarm.Util (parens, showT)
+import Swarm.Util.Effect (simpleErrorHandle)
 import Swarm.Util.Erasable
 import Test.Tasty.Bench (Benchmark, bcompare, bench, bgroup, defaultMain, whnfAppIO)
 
@@ -113,17 +119,37 @@ waveProgram manualInline =
 
 -- | Initializes a robot with program prog at location loc facing north.
 initRobot :: ProcessedTerm -> Location -> TRobot
-initRobot prog loc = mkRobot () Nothing "" mempty (Just $ Cosmic DefaultRootSubworld loc) north defaultRobotDisplay (Just prog) [] [] False False mempty 0
+initRobot prog loc =
+  mkRobot
+    Nothing
+    ""
+    mempty
+    (Just $ Cosmic DefaultRootSubworld loc)
+    north
+    defaultRobotDisplay
+    (Just prog)
+    []
+    []
+    False
+    False
+    mempty
+    0
 
 -- | Creates a GameState with numRobot copies of robot on a blank map, aligned
 --   in a row starting at (0,0) and spreading east.
 mkGameState :: ProcessedTerm -> (Location -> TRobot) -> Int -> IO GameState
 mkGameState prog robotMaker numRobots = do
   let robots = [robotMaker (Location (fromIntegral x) 0) | x <- [0 .. numRobots - 1]]
-  Right initAppState <- runExceptT classicGame0
+
+  -- NOTE: This replaces "classicGame0", which is still used by unit tests.
+  gs <- simpleErrorHandle $ do
+    (_ :: Seq SystemFailure, initRS) <- runAccum mempty initRuntimeState
+    (scenario, _) <- loadStandaloneScenario "classic"
+    return $ pureScenarioToGameState scenario 0 0 Nothing $ mkGameStateConfig initRS
+
   execStateT
-    (zoomRobots $ mapM (addTRobot $ initMachine prog Context.empty emptyStore) robots)
-    ( (initAppState ^. gameState)
+    (zoomRobots $ mapM_ (addTRobot $ initMachine prog Context.empty emptyStore) robots)
+    ( gs
         & creativeMode .~ True
         & landscape . multiWorld .~ M.singleton DefaultRootSubworld (newWorld (WF $ const (fromEnum DirtT, ENothing)))
     )
@@ -134,38 +160,56 @@ runGame numGameTicks = evalStateT (replicateM_ numGameTicks $ runTimeIO gameTick
 
 main :: IO ()
 main = do
-  idlers <- mkGameStates idleProgram
-  trees <- mkGameStates treeProgram
-  circlers <- mkGameStates circlerProgram
-  movers <- mkGameStates moverProgram
-  wavesInlined <- mkGameStates (waveProgram True)
-  wavesWithDef <- mkGameStates (waveProgram False)
+  idlers <- mkGameStates largeRobotNumbers idleProgram
+  trees <- mkGameStates robotNumbers treeProgram
+  circlers <- mkGameStates robotNumbers circlerProgram
+  movers <- mkGameStates robotNumbers moverProgram
+  wavesInlined <- mkGameStates robotNumbers $ waveProgram True
+  wavesWithDef <- mkGameStates robotNumbers $ waveProgram False
   -- In theory we should force the evaluation of these game states to normal
   -- form before running the benchmarks. In practice, the first of the many
   -- criterion runs for each of these benchmarks doesn't look like an outlier.
   defaultMain
     [ bgroup
         "run 1000 game ticks"
-        [ bgroup "idlers" (toBenchmarks idlers)
-        , bgroup "trees" (toBenchmarks trees)
-        , bgroup "circlers" (toBenchmarks circlers)
-        , bgroup "movers" (toBenchmarks movers)
-        , bgroup "wavesInlined" (toBenchmarks wavesInlined)
+        [ bgroupTicks "idlers" 10000 idlers
+        , bgroupTicks "trees" 1000 trees
+        , bgroupTicks "circlers" 1000 circlers
+        , bgroupTicks "movers" 1000 movers
         , bgroup
-            "wavesWithDef"
-            ( zipWith (\i -> bcompare ("wavesInlined." <> show i)) robotNumbers $
-                toBenchmarks wavesWithDef
-            )
+            "waves comparison"
+            [ bgroup "wavesInlined" (toBenchmarks 1000 wavesInlined)
+            , bgroup
+                "wavesWithDef"
+                ( zipWith (\i -> bcompare ("wavesInlined." <> show i)) robotNumbers $
+                    toBenchmarks 1000 wavesWithDef
+                )
+            ]
         ]
     ]
  where
+  bgroupTicks label ticks bots =
+    bgroup newLabel $ toBenchmarks ticks bots
+   where
+    newLabel =
+      unwords
+        [ label
+        , T.unpack $
+            parens $
+              T.unwords
+                [ showT ticks
+                , "ticks"
+                ]
+        ]
+
   robotNumbers = [10, 20 .. 40]
+  largeRobotNumbers = take 4 $ iterate (* 2) 100
 
-  mkGameStates :: ProcessedTerm -> IO [(Int, GameState)]
-  mkGameStates prog = zip robotNumbers <$> mapM (mkGameState prog $ initRobot prog) robotNumbers
+  mkGameStates :: [Int] -> ProcessedTerm -> IO [(Int, GameState)]
+  mkGameStates botCounts prog = mapM (traverse (mkGameState prog $ initRobot prog) . dupe) botCounts
 
-  toBenchmarks :: [(Int, GameState)] -> [Benchmark]
-  toBenchmarks gameStates =
-    [ bench (show n) $ whnfAppIO (runGame 1000) gs
+  toBenchmarks :: Int -> [(Int, GameState)] -> [Benchmark]
+  toBenchmarks tickCount gameStates =
+    [ bench (show n) $ whnfAppIO (runGame tickCount) gs
     | (n, gs) <- gameStates
     ]

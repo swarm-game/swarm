@@ -12,6 +12,7 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Map qualified as M
 import Graphics.Vty qualified as V
 import Swarm.Game.State
+import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Universe
@@ -45,7 +46,7 @@ openModal :: ModalType -> EventM Name AppState ()
 openModal mt = do
   newModal <- gets $ flip generateModal mt
   ensurePause
-  uiState . uiModal ?= newModal
+  uiState . uiGameplay . uiModal ?= newModal
   -- Beep
   case mt of
     ScenarioEndModal _ -> do
@@ -67,7 +68,7 @@ isRunningModal = \case
   _ -> False
 
 setFocus :: FocusablePanel -> EventM Name AppState ()
-setFocus name = uiState . uiFocusRing %= focusSetCurrent (FocusablePanel name)
+setFocus name = uiState . uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)
 
 immediatelyRedrawWorld :: EventM Name AppState ()
 immediatelyRedrawWorld = do

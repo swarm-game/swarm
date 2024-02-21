@@ -19,12 +19,12 @@ import Data.Function (on)
 import Data.Time (ZonedTime, diffUTCTime, zonedTimeToUTC)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
-import Swarm.Game.CESK (TickNumber)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
+import Swarm.Game.Tick (TickNumber)
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Util.Lens (makeLensesNoSigs)
 

@@ -1,0 +1,56 @@
+version: 1
+name: Demo volume command
+description: |
+  Measure volume of enclosed space
+creative: true
+objectives:
+  - goal:
+      - |
+        Make an enclosed volume of 14 cells
+    condition: |
+      as base {
+        let targetVolume = 14 in
+        vol <- volume targetVolume;
+        return $case vol (\_. false) (\x. x == targetVolume);
+      }
+solution: |
+  move;
+  push;
+  turn left;
+  move;
+  turn right;
+  move;
+  turn right;
+  push;
+robots:
+  - name: base
+    dir: east
+    devices:
+      - ADT calculator
+      - treads
+      - dozer blade
+      - logger
+      - branch predictor
+      - comparator
+entities:
+  - name: monolith
+    display:
+      char: '@'
+    description:
+      - Pushable rock
+    properties: [known, unwalkable, pickable]
+known: [mountain]
+world:
+  dsl: |
+    {grass}
+  palette:
+    'B': [grass, null, base]
+    '.': [grass]
+    'A': [stone, mountain]
+    '@': [grass, monolith]
+  upperleft: [-1, 1]
+  map: |
+    AAAAAAAAA
+    A.......A
+    AB.@....A
+    AAAA.AAAA

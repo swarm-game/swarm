@@ -202,7 +202,7 @@ truncatePath origPath entityLoc oldCache =
   oldCache {cachedPath = CachedPath truncPath $ mkTailMap truncPath}
  where
   truncPath = prependList truncPathExcludingEntityLoc $ pure entityLoc
-  truncPathExcludingEntityLoc = fst $ NE.break (/= entityLoc) origPath
+  truncPathExcludingEntityLoc = takeWhile (== entityLoc) $ NE.toList origPath
 
 -- | Given an event that entails the modification of some cell,
 -- check whether a shortest-path previously computed for a

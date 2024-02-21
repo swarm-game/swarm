@@ -45,7 +45,14 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Scenario (loadScenario, scenarioAttrs, scenarioWorlds)
+import Swarm.Game.Scenario (
+  loadScenario,
+  scenarioAttrs,
+  scenarioLandscape,
+  scenarioOperation,
+  scenarioSolution,
+  scenarioWorlds,
+ )
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
@@ -56,11 +63,13 @@ import Swarm.Game.ScenarioInfo (
   loadScenarioInfo,
   normalizeScenarioPath,
   scenarioItemByPath,
-  scenarioSolution,
   _SISingle,
  )
 import Swarm.Game.State
+import Swarm.Game.State.Landscape
+import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
+import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
 import Swarm.TUI.Editor.Model qualified as EM
@@ -130,14 +139,14 @@ constructAppState ::
 constructAppState rs ui opts@(AppOpts {..}) = do
   let gs = initGameState (mkGameStateConfig rs)
   case skipMenu opts of
-    False -> return $ AppState gs (ui & lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
+    False -> return $ AppState gs (ui & uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
     True -> do
       (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. landscape . entityMap) (rs ^. worlds)
       maybeRunScript <- traverse parseCodeFile scriptToRun
 
       let maybeAutoplay = do
             guard autoPlay
-            soln <- scenario ^. scenarioSolution
+            soln <- scenario ^. scenarioOperation . scenarioSolution
             return $ CodeToRun ScenarioSuggested soln
           codeToRun = maybeAutoplay <|> maybeRunScript
 
@@ -251,29 +260,38 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
   return $
     u
       & uiPlaying .~ True
-      & uiGoal .~ emptyGoalDisplay
+      & uiGameplay . uiGoal .~ emptyGoalDisplay
       & uiCheatMode ||~ isAutoplaying
-      & uiHideGoals .~ (isAutoplaying && not (u ^. uiCheatMode))
-      & uiFocusRing .~ initFocusRing
-      & uiInventory .~ Nothing
-      & uiInventorySort .~ defaultSortOptions
-      & uiShowFPS .~ False
-      & uiShowZero .~ True
-      & uiREPL .~ initREPLState (u ^. uiREPL . replHistory)
-      & uiREPL . replHistory %~ restartREPLHistory
-      & uiAttrMap .~ applyAttrMappings (map (first getWorldAttrName . toAttrPair) $ fst siPair ^. scenarioAttrs) swarmAttrMap
-      & scenarioRef ?~ siPair
-      & lastFrameTime .~ curTime
-      & uiWorldEditor . EM.entityPaintList %~ BL.listReplace entityList Nothing
-      & uiWorldEditor . EM.editingBounds . EM.boundsRect %~ setNewBounds
-      & uiStructure
+      & uiGameplay . uiHideGoals .~ (isAutoplaying && not (u ^. uiCheatMode))
+      & uiGameplay . uiFocusRing .~ initFocusRing
+      & uiGameplay . uiInventory . uiInventoryList .~ Nothing
+      & uiGameplay . uiInventory . uiInventorySort .~ defaultSortOptions
+      & uiGameplay . uiInventory . uiShowZero .~ True
+      & uiGameplay . uiTiming . uiShowFPS .~ False
+      & uiGameplay . uiREPL .~ initREPLState (u ^. uiGameplay . uiREPL . replHistory)
+      & uiGameplay . uiREPL . replHistory %~ restartREPLHistory
+      & uiAttrMap
+        .~ applyAttrMappings
+          ( map (first getWorldAttrName . toAttrPair) $
+              fst siPair ^. scenarioLandscape . scenarioAttrs
+          )
+          swarmAttrMap
+      & uiGameplay . scenarioRef ?~ siPair
+      & uiGameplay . uiTiming . lastFrameTime .~ curTime
+      & uiGameplay . uiWorldEditor . EM.entityPaintList %~ BL.listReplace entityList Nothing
+      & uiGameplay . uiWorldEditor . EM.editingBounds . EM.boundsRect %~ setNewBounds
+      & uiGameplay . uiStructure
         .~ StructureDisplay
           (SR.makeListWidget . M.elems $ gs ^. discovery . structureRecognition . automatons . originalStructureDefinitions)
           (focusSetCurrent (StructureWidgets StructuresList) $ focusRing $ map StructureWidgets listEnums)
  where
   entityList = EU.getEntitiesForList $ gs ^. landscape . entityMap
 
-  (isEmptyArea, newBounds) = EU.getEditingBounds $ NE.head $ scenario ^. scenarioWorlds
+  (isEmptyArea, newBounds) =
+    EU.getEditingBounds $
+      NE.head $
+        scenario ^. scenarioLandscape . scenarioWorlds
+
   setNewBounds maybeOldBounds =
     if isEmptyArea
       then maybeOldBounds

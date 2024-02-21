@@ -63,6 +63,7 @@ import Servant
 import Servant.Docs (ToCapture)
 import Servant.Docs qualified as SD
 import Servant.Docs.Internal qualified as SD (renderCurlBasePath)
+import Swarm.Doc.Command
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
@@ -109,6 +110,7 @@ type SwarmAPI =
     :<|> "code" :> "render" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
     :<|> "code" :> "run" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
     :<|> "paths" :> "log" :> Get '[JSON] (RingBuffer CacheLogEntry)
+    :<|> "commands" :> Get '[JSON] CommandCatalog
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [REPLHistItem]
     :<|> "map" :> Capture "size" AreaDimensions :> Get '[JSON] GridResponse
 
@@ -164,6 +166,7 @@ mkApp state events =
     :<|> codeRenderHandler
     :<|> codeRunHandler events
     :<|> pathsLogHandler state
+    :<|> cmdMatrixHandler state
     :<|> replHandler state
     :<|> mapViewHandler state
 
@@ -201,7 +204,7 @@ goalsGraphHandler appStateRef = do
 uiGoalHandler :: ReadableIORef AppState -> Handler GoalTracking
 uiGoalHandler appStateRef = do
   appState <- liftIO (readIORef appStateRef)
-  return $ appState ^. uiState . uiGoal . goalsContent
+  return $ appState ^. uiState . uiGameplay . uiGoal . goalsContent
 
 goalsHandler :: ReadableIORef AppState -> Handler WinCondition
 goalsHandler appStateRef = do
@@ -241,17 +244,20 @@ pathsLogHandler appStateRef = do
   appState <- liftIO (readIORef appStateRef)
   pure $ appState ^. gameState . pathCaching . pathCachingLog
 
+cmdMatrixHandler :: ReadableIORef AppState -> Handler CommandCatalog
+cmdMatrixHandler _ = pure getCatalog
+
 replHandler :: ReadableIORef AppState -> Handler [REPLHistItem]
 replHandler appStateRef = do
   appState <- liftIO (readIORef appStateRef)
-  let replHistorySeq = appState ^. uiState . uiREPL . replHistory . replSeq
+  let replHistorySeq = appState ^. uiState . uiGameplay . uiREPL . replHistory . replSeq
       items = toList replHistorySeq
   pure items
 
 mapViewHandler :: ReadableIORef AppState -> AreaDimensions -> Handler GridResponse
 mapViewHandler appStateRef areaSize = do
   appState <- liftIO (readIORef appStateRef)
-  let maybeScenario = fst <$> appState ^. uiState . scenarioRef
+  let maybeScenario = fst <$> appState ^. uiState . uiGameplay . scenarioRef
   pure $ case maybeScenario of
     Just s ->
       GridResponse True

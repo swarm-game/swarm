@@ -26,6 +26,7 @@ import Swarm.Doc.Schema.Parse
 import Swarm.Doc.Schema.Refined
 import Swarm.Doc.Schema.SchemaType
 import Swarm.Doc.Util
+import Swarm.Doc.Wiki.Util
 import Swarm.Util (applyWhen, brackets, quote, showT)
 import System.Directory (listDirectory)
 import System.FilePath (splitExtension, (<.>), (</>))
@@ -112,9 +113,7 @@ recombineExtension (filenameStem, fileExtension) =
 
 genMarkdown :: [SchemaData] -> Either T.Text T.Text
 genMarkdown schemaThings =
-  left renderError $
-    runPure $
-      writeMarkdown (def {writerExtensions = extensionsFromList [Ext_pipe_tables]}) pd
+  pandocToText pd
  where
   titleMap = makeTitleMap schemaThings
   pd =

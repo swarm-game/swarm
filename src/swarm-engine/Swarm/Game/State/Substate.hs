@@ -9,12 +9,11 @@ module Swarm.Game.State.Substate (
   REPLStatus (..),
   WinStatus (..),
   WinCondition (..),
-  ObjectiveCompletion (..),
+  ObjectiveCompletion,
   _NoWinCondition,
   _WinConditions,
   Announcement (..),
   RunStatus (..),
-  Seed,
   Step (..),
   SingleStep (..),
 
@@ -68,14 +67,6 @@ module Swarm.Game.State.Substate (
   structureRecognition,
   tagMembers,
 
-  -- *** Landscape
-  Landscape,
-  initLandscape,
-  worldNavigation,
-  multiWorld,
-  worldScrollable,
-  entityMap,
-
   -- ** Notifications
   Notifications (..),
   notificationsCount,
@@ -93,7 +84,6 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.IntMap (IntMap)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
-import Data.Map qualified as M
 import Data.Sequence (Seq)
 import Data.Set qualified as S
 import Data.Text (Text)
@@ -102,9 +92,7 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
-import Swarm.Game.CESK (TickNumber (..))
 import Swarm.Game.Entity
-import Swarm.Game.Location
 import Swarm.Game.Recipe (
   Recipe,
   catRecipeMap,
@@ -112,14 +100,13 @@ import Swarm.Game.Recipe (
   outRecipeMap,
  )
 import Swarm.Game.Robot
+import Swarm.Game.Scenario (GameStateInputs (..))
 import Swarm.Game.Scenario.Objective
-import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (emptyFoundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (RecognizerAutomatons (..))
 import Swarm.Game.State.Config
-import Swarm.Game.Universe as U
-import Swarm.Game.World qualified as W
+import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Syntax (Const)
@@ -368,31 +355,6 @@ structureRecognition :: Lens' Discovery StructureRecognizer
 -- | Map from tags to entities that possess that tag
 tagMembers :: Lens' Discovery (Map Text (NonEmpty EntityName))
 
-data Landscape = Landscape
-  { _worldNavigation :: Navigation (M.Map SubworldName) Location
-  , _multiWorld :: W.MultiWorld Int Entity
-  , _entityMap :: EntityMap
-  , _worldScrollable :: Bool
-  }
-
-makeLensesNoSigs ''Landscape
-
--- | Includes a 'Map' of named locations and an
--- "edge list" (graph) that maps portal entrances to exits
-worldNavigation :: Lens' Landscape (Navigation (M.Map SubworldName) Location)
-
--- | The current state of the world (terrain and entities only; robots
---   are stored in the 'robotMap').  'Int' is used instead of
---   'TerrainType' because we need to be able to store terrain values in
---   unboxed tile arrays.
-multiWorld :: Lens' Landscape (W.MultiWorld Int Entity)
-
--- | The catalog of all entities that the game knows about.
-entityMap :: Lens' Landscape EntityMap
-
--- | Whether the world map is supposed to be scrollable or not.
-worldScrollable :: Lens' Landscape Bool
-
 data Randomness = Randomness
   { _seed :: Seed
   , _randGen :: StdGen
@@ -457,15 +419,6 @@ initMessages =
     , _announcementQueue = mempty
     }
 
-initLandscape :: GameStateConfig -> Landscape
-initLandscape gsc =
-  Landscape
-    { _worldNavigation = Navigation mempty mempty
-    , _multiWorld = mempty
-    , _entityMap = initEntities gsc
-    , _worldScrollable = True
-    }
-
 initDiscovery :: Discovery
 initDiscovery =
   Discovery
@@ -490,7 +443,9 @@ initRandomness =
 initRecipeMaps :: GameStateConfig -> Recipes
 initRecipeMaps gsc =
   Recipes
-    { _recipesOut = outRecipeMap (initRecipes gsc)
-    , _recipesIn = inRecipeMap (initRecipes gsc)
-    , _recipesCat = catRecipeMap (initRecipes gsc)
+    { _recipesOut = outRecipeMap recipeList
+    , _recipesIn = inRecipeMap recipeList
+    , _recipesCat = catRecipeMap recipeList
     }
+ where
+  recipeList = initRecipes $ initState gsc

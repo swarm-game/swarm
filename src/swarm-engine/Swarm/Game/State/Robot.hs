@@ -40,6 +40,7 @@ module Swarm.Game.State.Robot (
   addRobot,
   addRobotToLocation,
   addTRobot,
+  addTRobotWithContext,
 
   -- ** View
   modifyViewCenter,
@@ -66,11 +67,14 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as S
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
-import Swarm.Game.CESK (CESK (Waiting), TickNumber (..), addTicks)
+import Swarm.Game.CESK (CESK (Waiting))
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (NameGenerator)
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Concrete
+import Swarm.Game.Robot.Context
 import Swarm.Game.State.Config
+import Swarm.Game.Tick
 import Swarm.Game.Universe as U
 import Swarm.Util (binTuples, surfaceEmpty, (<+=), (<<.=))
 import Swarm.Util.Lens (makeLensesExcluding)
@@ -230,13 +234,27 @@ viewCenterRule = lens getter setter
 -- | Add a concrete instance of a robot template to the game state:
 --   First, generate a unique ID number for it.  Then, add it to the
 --   main robot map, the active robot set, and to to the index of
---   robots by location. Return the updated robot.
-addTRobot :: (Has (State Robots) sig m) => CESK -> TRobot -> m Robot
+--   robots by location.
+addTRobot :: (Has (State Robots) sig m) => CESK -> TRobot -> m ()
 addTRobot initialMachine r = do
-  rid <- robotNaming . gensym <+= 1
-  let r' = instantiateRobot (Just initialMachine) rid r
+  r' <- addTRobotCommon initialMachine r
+  addRobot r'
+
+-- | Just like 'addTRobot', but also updates the 'RobotContext',
+-- and returns the updated robot.
+addTRobotWithContext :: (Has (State Robots) sig m) => RobotContext -> CESK -> TRobot -> m Robot
+addTRobotWithContext ctx initialMachine r = do
+  concreteRobot <- addTRobotCommon initialMachine r
+  let r' = concreteRobot & robotContext .~ ctx
   addRobot r'
   return r'
+
+-- | Instantiate a template robot with a machine and
+-- a unique ID.
+addTRobotCommon :: (Has (State Robots) sig m) => CESK -> TRobot -> m Robot
+addTRobotCommon initialMachine r = do
+  rid <- robotNaming . gensym <+= 1
+  return $ instantiateRobot (Just initialMachine) rid r
 
 -- | Add a robot to the game state, adding it to the main robot map,
 --   the active robot set, and to to the index of robots by

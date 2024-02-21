@@ -56,7 +56,7 @@ drawWorldEditor toplevelFocusRing uis =
       hLimit 30 $
         controlsBox <=> statusBox
 
-  worldEditor = uis ^. uiWorldEditor
+  worldEditor = uis ^. uiGameplay . uiWorldEditor
   maybeAreaBounds = worldEditor ^. editingBounds . boundsRect
 
   -- TODO (#1150): Use withFocusRing?
@@ -143,7 +143,7 @@ drawTerrainSelector s =
     . hCenter
     . vLimit (length (listEnums :: [TerrainType]))
     . BL.renderListWithIndex listDrawTerrainElement True
-    $ s ^. uiState . uiWorldEditor . terrainList
+    $ s ^. uiState . uiGameplay . uiWorldEditor . terrainList
 
 listDrawTerrainElement :: Int -> Bool -> TerrainType -> Widget Name
 listDrawTerrainElement pos _isSelected a =
@@ -155,7 +155,7 @@ drawEntityPaintSelector s =
     . hCenter
     . vLimit 10
     . BL.renderListWithIndex listDrawEntityPaintElement True
-    $ s ^. uiState . uiWorldEditor . entityPaintList
+    $ s ^. uiState . uiGameplay . uiWorldEditor . entityPaintList
 
 listDrawEntityPaintElement :: Int -> Bool -> EntityFacade -> Widget Name
 listDrawEntityPaintElement pos _isSelected a =
