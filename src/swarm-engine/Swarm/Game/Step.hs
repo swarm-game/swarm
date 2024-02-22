@@ -19,7 +19,6 @@
 -- See <https://github.com/swarm-game/swarm/issues/495>.
 module Swarm.Game.Step where
 
-import Swarm.Game.Land
 import Control.Applicative (Applicative (..))
 import Control.Carrier.Error.Either (ErrorC, runError)
 import Control.Carrier.State.Lazy
@@ -49,6 +48,7 @@ import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Exception
+import Swarm.Game.Land
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete

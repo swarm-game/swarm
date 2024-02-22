@@ -11,7 +11,6 @@
 -- Implementation of robot commands
 module Swarm.Game.Step.Const where
 
-import Swarm.Game.Land
 import Control.Applicative (Applicative (..))
 import Control.Arrow ((&&&))
 import Control.Carrier.State.Lazy
@@ -53,6 +52,7 @@ import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Failure
+import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)

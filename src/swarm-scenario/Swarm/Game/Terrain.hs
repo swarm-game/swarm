@@ -126,7 +126,6 @@ mkTerrainMap items =
  where
   byIndex = enumeratedMap blankTerrainIndex items
 
-
 -- TODO make a combo function that loads both entities and terrain?
 
 -- | Load terrain from a data file called @terrains.yaml@, producing

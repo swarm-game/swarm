@@ -16,7 +16,6 @@
 -- well as to initiate the delayed combustion of its neighbors.
 module Swarm.Game.Step.Combustion where
 
-import Swarm.Game.Land
 import Control.Applicative (Applicative (..))
 import Control.Carrier.State.Lazy
 import Control.Effect.Lens
@@ -29,6 +28,7 @@ import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
+import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.State

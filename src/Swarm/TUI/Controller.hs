@@ -49,7 +49,6 @@ import Brick.Widgets.List qualified as BL
 import Control.Applicative (liftA2, pure)
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
-import Swarm.Game.Land
 import Control.Lens as Lens
 import Control.Lens.Extras as Lens (is)
 import Control.Monad (forM_, unless, void, when)
@@ -76,6 +75,7 @@ import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec), cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Game.Robot

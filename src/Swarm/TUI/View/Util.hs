@@ -4,7 +4,6 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.View.Util where
 
-import Swarm.Game.Land
 import Brick hiding (Direction, Location)
 import Brick.Widgets.Dialog
 import Brick.Widgets.List qualified as BL
@@ -17,6 +16,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Game.Entity as E
+import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Scenario (scenarioMetadata, scenarioName)
 import Swarm.Game.ScenarioInfo (scenarioItemName)

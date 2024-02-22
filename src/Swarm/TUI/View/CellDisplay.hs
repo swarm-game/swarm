@@ -6,7 +6,6 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.View.CellDisplay where
 
-import Swarm.Game.Land
 import Brick
 import Control.Lens (to, view, (&), (.~), (^.))
 import Data.ByteString (ByteString)
@@ -31,6 +30,7 @@ import Swarm.Game.Display (
   hidden,
  )
 import Swarm.Game.Entity
+import Swarm.Game.Land
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)

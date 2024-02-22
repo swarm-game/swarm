@@ -7,7 +7,6 @@
 -- Utility functions
 module TestUtil where
 
-import Swarm.Game.Land
 import Control.Lens (Ixed (ix), to, use, (&), (.~), (^.), (^?))
 import Control.Monad (void)
 import Control.Monad.State (StateT (..), execState)
@@ -17,6 +16,7 @@ import Data.Text qualified as T
 import Swarm.Effect
 import Swarm.Game.CESK
 import Swarm.Game.Exception
+import Swarm.Game.Land
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete (isActive)
 import Swarm.Game.State
