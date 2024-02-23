@@ -277,9 +277,11 @@ instance FromJSONE (TerrainEntityMaps, WorldMap) Scenario where
     let mergedCosmetics = worldAttributes <> M.fromList (mapMaybe toHifiPair parsedAttrs)
         attrsUnion = M.keysSet mergedCosmetics
 
-    let tm = mkTerrainMap $ promoteTerrainObjects tmRaw
+    validatedTerrainObjects <- runValidation $ validateTerrainAttrRefs attrsUnion tmRaw
 
-    runValidation $ validateAttrRefs attrsUnion emRaw
+    let tm = mkTerrainMap validatedTerrainObjects
+
+    runValidation $ validateEntityAttrRefs attrsUnion emRaw
 
     em <- runValidation $ buildEntityMap emRaw
 

@@ -13,28 +13,32 @@ module Swarm.Game.Terrain (
   getTerrainWord,
   terrainFromText,
   loadTerrain,
-  promoteTerrainObjects,
   mkTerrainMap,
+  validateTerrainAttrRefs,
 ) where
 
 import Control.Algebra (Has)
 import Control.Arrow (first, (&&&))
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Effect.Throw (Throw, liftEither)
-import Control.Monad ((<=<))
+import Control.Effect.Throw (Throw, liftEither, throwError)
+import Control.Monad (forM, unless, (<=<))
 import Data.Char (toUpper)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Tuple (swap)
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Game.Display
+import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
 import Swarm.Game.Failure
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
+import Swarm.Util (quote)
 import Swarm.Util.Effect (withThrow)
 
 data TerrainType = BlankT | TerrainType Text
@@ -83,7 +87,7 @@ data TerrainObj = TerrainObj
 
 promoteTerrainObjects :: [TerrainItem] -> [TerrainObj]
 promoteTerrainObjects =
-  map (\(TerrainItem n a d) -> TerrainObj n d $ defaultTerrainDisplay (ATerrain a))
+  map (\(TerrainItem n a d) -> TerrainObj n d $ defaultTerrainDisplay (AWorld a))
 
 enumeratedMap :: Int -> [a] -> IntMap a
 enumeratedMap startIdx = IM.fromList . zip [startIdx ..]
@@ -126,7 +130,21 @@ mkTerrainMap items =
  where
   byIndex = enumeratedMap blankTerrainIndex items
 
--- TODO make a combo function that loads both entities and terrain?
+-- | Validates references to 'Display' attributes
+validateTerrainAttrRefs :: Has (Throw LoadingFailure) sig m => Set WorldAttr -> [TerrainItem] -> m [TerrainObj]
+validateTerrainAttrRefs validAttrs rawTerrains =
+  forM rawTerrains $ \(TerrainItem n a d) -> do
+    unless (Set.member (WorldAttr $ T.unpack a) validAttrs)
+      . throwError
+      . CustomMessage
+      $ T.unwords
+        [ "Nonexistent attribute"
+        , quote a
+        , "referenced by terrain"
+        , quote $ getTerrainWord n
+        ]
+
+    return $ TerrainObj n d $ defaultTerrainDisplay (AWorld a)
 
 -- | Load terrain from a data file called @terrains.yaml@, producing
 --   either an 'TerrainMap' or a parse error.

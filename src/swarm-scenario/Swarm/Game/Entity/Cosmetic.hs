@@ -69,6 +69,3 @@ flattenBg = \case
 
 newtype WorldAttr = WorldAttr String
   deriving (Eq, Ord, Show)
-
-newtype TerrainAttr = TerrainAttr String
-  deriving (Eq, Ord, Show)

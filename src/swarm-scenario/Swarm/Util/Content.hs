@@ -11,7 +11,6 @@ import Data.Map qualified as M
 import Data.Text qualified as T
 import Swarm.Game.Display
 import Swarm.Game.Entity.Cosmetic
-import Swarm.Game.Entity.Cosmetic.Assignment (terrainAttributes)
 import Swarm.Game.Scenario.Topography.Area qualified as EA
 import Swarm.Game.Scenario.Topography.Cell (PCell (..))
 import Swarm.Game.Scenario.Topography.EntityFacade
@@ -60,7 +59,7 @@ getTerrainEntityColor ::
 getTerrainEntityColor aMap (Cell terr cellEnt _) =
   (entityColor =<< erasableToMaybe cellEnt) <|> terrainFallback
  where
-  terrainFallback = M.lookup (TerrainAttr $ T.unpack $ getTerrainWord terr) terrainAttributes
+  terrainFallback = M.lookup (WorldAttr $ T.unpack $ getTerrainWord terr) aMap
   entityColor (EntityFacade _ d) = case d ^. displayAttr of
     AWorld n -> M.lookup (WorldAttr $ T.unpack n) aMap
     _ -> Nothing
