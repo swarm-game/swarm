@@ -7,11 +7,11 @@
 -- grant capabilities (aka "devices").
 module TestRecipeCoverage where
 
-import Swarm.Game.Device
 import Control.Lens ((^.))
 import Data.Map qualified as M
 import Data.Set qualified as Set
 import Data.Text qualified as T
+import Swarm.Game.Device
 import Swarm.Game.Entity (EntityMap (entitiesByCap), entityName)
 import Swarm.Game.Recipe (recipeOutputs)
 import Swarm.Game.State.Runtime (RuntimeState, stdEntityMap, stdRecipes)
