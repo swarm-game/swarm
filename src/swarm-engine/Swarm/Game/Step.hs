@@ -157,7 +157,13 @@ insertBackRobot rn rob = do
             unless (isActive rob) (sleepForever rn)
 
 -- Run a set of robots - this is used to run robots before/after the focused one.
-runRobotIDs :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => IS.IntSet -> m ()
+runRobotIDs ::
+  ( Has (State GameState) sig m
+  , Has (Lift IO) sig m
+  , Has Effect.Time sig m
+  ) =>
+  IS.IntSet ->
+  m ()
 runRobotIDs robotNames = forM_ (IS.toList robotNames) $ \rn -> do
   mr <- uses (robotInfo . robotMap) (IM.lookup rn)
   forM_ mr (stepOneRobot rn)
@@ -165,7 +171,15 @@ runRobotIDs robotNames = forM_ (IS.toList robotNames) $ \rn -> do
   stepOneRobot rn rob = tickRobot rob >>= insertBackRobot rn
 
 -- This is a helper function to do one robot step or run robots before/after.
-singleStep :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => SingleStep -> RID -> IS.IntSet -> m Bool
+singleStep ::
+  ( Has (State GameState) sig m
+  , Has (Lift IO) sig m
+  , Has Effect.Time sig m
+  ) =>
+  SingleStep ->
+  RID ->
+  IS.IntSet ->
+  m Bool
 singleStep ss focRID robotSet = do
   let (preFoc, focusedActive, postFoc) = IS.splitMember focRID robotSet
   case ss of
@@ -625,7 +639,7 @@ stepCESK cesk = case cesk of
 
         devicesForCaps, requiredDevices :: Set (Set Text)
         -- possible devices to provide each required capability
-        devicesForCaps = S.map (S.fromList . map (^. entityName) . (`deviceForCap` em)) caps
+        devicesForCaps = S.map (S.fromList . map (^. entityName) . (`devicesForCap` em)) caps
         -- outright required devices
         requiredDevices = S.map S.singleton devs
 

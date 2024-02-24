@@ -99,6 +99,7 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import Linear (V2 (..))
 import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
+import Swarm.Game.Device (getCapabilitySet, getMap)
 import Swarm.Game.Entity
 import Swarm.Game.Failure (SystemFailure (..))
 import Swarm.Game.Location
@@ -595,7 +596,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
 
   em = integrateScenarioEntities (initState gsc) sLandscape
   baseID = 0
-  (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
+  (things, devices) = partition (M.null . getMap . view entityCapabilities) (M.elems (entitiesByName em))
 
   getCodeToRun (CodeToRun _ s) = s
 
@@ -640,7 +641,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
   allCapabilities r =
     inventoryCapabilities (r ^. equippedDevices)
       <> inventoryCapabilities (r ^. robotInventory)
-  initialCaps = mconcat $ map allCapabilities robotList
+  initialCaps = getCapabilitySet $ mconcat $ map allCapabilities robotList
   initialCommands =
     filter
       (maybe True (`S.member` initialCaps) . constCaps)

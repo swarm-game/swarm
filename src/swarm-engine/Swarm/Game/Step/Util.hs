@@ -22,6 +22,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Linear (zero)
+import Swarm.Game.Device
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Exception
 import Swarm.Game.Location
@@ -91,7 +92,7 @@ hasCapability :: (Has (State Robot) sig m, Has (State GameState) sig m) => Capab
 hasCapability cap = do
   isPrivileged <- isPrivilegedBot
   caps <- use robotCapabilities
-  return (isPrivileged || cap `S.member` caps)
+  return (isPrivileged || cap `S.member` getCapabilitySet caps)
 
 -- | Ensure that either a robot has a given capability, OR we are in creative
 --   mode.

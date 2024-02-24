@@ -21,6 +21,7 @@ import Data.Text (Text)
 import Data.Vector qualified as V
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Entity as E
+import Swarm.Game.Ingredients
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
   ScenarioInfo (..),

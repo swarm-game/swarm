@@ -47,6 +47,7 @@ module Swarm.Game.Recipe (
   recipesFor,
   make,
   make',
+  findLacking,
 ) where
 
 import Control.Algebra (Has)
@@ -67,17 +68,12 @@ import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Game.Entity as E
 import Swarm.Game.Failure
+import Swarm.Game.Ingredients
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import Witch
-
--- | An ingredient list is a list of entities with multiplicity.  It
---   is polymorphic in the entity type so that we can use either
---   entity names when serializing, or actual entity objects while the
---   game is running.
-type IngredientList e = [(Count, e)]
 
 -- | A recipe represents some kind of process where inputs are
 --   transformed into outputs.
@@ -220,6 +216,13 @@ data MissingIngredient = MissingIngredient MissingType Count Entity
 data MissingType = MissingInput | MissingCatalyst
   deriving (Show, Eq)
 
+-- | Determines whether recipe inputs are satisfied by a
+-- robot's inventory.
+findLacking :: Inventory -> [(Count, Entity)] -> [(Count, Entity)]
+findLacking robotInventory = filter ((> 0) . fst) . map countNeeded
+ where
+  countNeeded (need, entity) = (need - E.lookup entity robotInventory, entity)
+
 -- | Figure out which ingredients (if any) are lacking from an
 --   inventory to be able to carry out the recipe.  Catalysts are not
 --   consumed and so can be used even when equipped.
@@ -229,8 +232,6 @@ missingIngredientsFor (inv, ins) (Recipe inps _ cats _ _) =
     <> mkMissing MissingCatalyst (findLacking ins (findLacking inv cats))
  where
   mkMissing k = map (uncurry (MissingIngredient k))
-  findLacking inven = filter ((> 0) . fst) . map (countNeeded inven)
-  countNeeded inven (need, entity) = (need - E.lookup entity inven, entity)
 
 -- | Figure out if a recipe is available, /i.e./ if we at least know
 --   about all the ingredients.  Note it does not matter whether we have
@@ -259,7 +260,12 @@ make invs r = finish <$> make' invs r
   finish (invTaken, out) = (invTaken, out, r)
 
 -- | Try to make a recipe, but do not insert it yet.
-make' :: (Inventory, Inventory) -> Recipe Entity -> Either [MissingIngredient] (Inventory, IngredientList Entity)
+make' ::
+  (Inventory, Inventory) ->
+  Recipe Entity ->
+  Either
+    [MissingIngredient]
+    (Inventory, IngredientList Entity)
 make' invs@(inv, _) r =
   case missingIngredientsFor invs r of
     [] ->
