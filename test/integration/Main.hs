@@ -370,6 +370,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/1631-tags"
         , testSolution Default "Testing/1747-volume-command"
         , testSolution Default "Testing/1775-custom-terrain"
+        , testSolution (Sec 3) "Testing/1777-capability-cost"
         , testGroup
             -- Note that the description of the classic world in
             -- data/worlds/classic.yaml (automatically tested to some

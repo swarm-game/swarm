@@ -1,0 +1,86 @@
+version: 1
+name: Capability cost
+description: |
+  Consume inventory by exercising device capabilities
+creative: false
+seed: 0
+objectives:
+  - goal:
+      - |
+        Eliminate the `packing peanut`{=entity}s
+    condition: |
+      judge <- robotnamed "judge";
+      as judge {
+        dist <- sniff "packing peanut";
+        return $ dist < 0;
+      }
+solution: |
+  move;
+  turn right;
+  move;
+  place "packing peanut";
+  ignite down;
+  move;
+  move;
+  ignite forward;
+robots:
+  - name: base
+    dir: east
+    devices:
+      - treads
+      - logger
+      - Zippo
+      - grabber
+    inventory:
+      - [2, lighter fluid]
+      - [1, packing peanut]
+  - name: judge
+    dir: east
+    system: true
+entities:
+  - name: lighter fluid
+    display:
+      char: 'f'
+    description:
+      - Fuel for a Zippo
+    properties: [known, pickable]
+  - name: Zippo
+    display:
+      char: 'z'
+    description:
+      - Ignites things
+    properties: [known, pickable]
+    capabilities:
+      - capability: ignite
+        cost:
+          - [1, "lighter fluid"]
+  - name: packing peanut
+    display:
+      attr: snow
+      char: 's'
+    description:
+      - Easy to drop, but impossible to pick up.
+      - Highly combustible.
+    properties: [known, combustible]
+    combustion:
+      ignition: 0.5
+      duration: [10, 20]
+      product: ash
+known: [water, ash]
+world:
+  dsl: |
+    {water}
+  palette:
+    'B': [grass, erase, base]
+    'j': [grass, erase, judge]
+    '.': [grass, erase]
+    'c': [grass, packing peanut]
+  upperleft: [-1, 1]
+  map: |
+    ......
+    Bcccc.
+    .j....
+    .cccc.
+    ......
+    .cccc.
+    ......
