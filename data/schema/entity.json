@@ -94,10 +94,30 @@
             "description": "A list of properties of this entity."
         },
         "capabilities": {
+
             "default": [],
             "type": "array",
             "items": {
-                "type": "string"
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "capability": {
+                                "description": "Capability name",
+                                "type": "string"
+                            },
+                            "cost": {
+                                "$ref": "inventory.json",
+                                "description": "A list of ingredients consumed by the command."
+                            }
+                        }
+                    }
+                ]
+
             },
             "description": "A list of capabilities provided by entity, when it is equipped as a device. See [Capabilities](https://github.com/swarm-game/swarm/wiki/Capabilities-cheat-sheet)."
         }

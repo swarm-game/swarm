@@ -32,6 +32,7 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Description (getValidityRequirements)
 import Swarm.Game.CESK
+import Swarm.Game.Device (getMap)
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
@@ -61,12 +62,39 @@ import Swarm.Util hiding (both)
 import System.Clock (TimeSpec)
 import Prelude hiding (Applicative (..), lookup)
 
-data GrabbingCmd = Grab' | Harvest' | Swap' | Push' deriving (Eq, Show)
+data GrabbingCmd
+  = Grab'
+  | Harvest'
+  | Swap'
+  | Push'
+  deriving (Eq, Show)
 
 -- | Ensure that a robot is capable of executing a certain constant
 --   (either because it has a device which gives it that capability,
 --   or it is a system robot, or we are in creative mode).
-ensureCanExecute :: (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Const -> m ()
+--
+-- For certain capabilities that require payment of inventory
+-- items in order to be exercised, we pay the toll up front, regardless of
+-- other conditions that may preclude the capability from eventually
+-- being exercised (e.g. an obstacle that ultimately prevents a "move").
+--
+-- Note that there exist some code paths where the "toll"
+-- is bypassed, e.g. see 'hasCapabilityFor'.
+-- We should just try to avoid authoring scenarios that
+-- include toll-gated devices for those particular capabilities.
+--
+-- Since this function has the side-effect of removing items from the
+-- robot's inventory, we must be careful that it is executed exactly
+-- once per command.
+--
+-- TODO: Finish this
+ensureCanExecute ::
+  ( Has (State Robot) sig m
+  , Has (State GameState) sig m
+  , Has (Throw Exn) sig m
+  ) =>
+  Const ->
+  m ()
 ensureCanExecute c =
   gets @Robot (constCapsFor c) >>= \case
     Nothing -> pure ()
@@ -247,9 +275,9 @@ updateAvailableRecipes invs e = do
 
 updateAvailableCommands :: Has (State GameState) sig m => Entity -> m ()
 updateAvailableCommands e = do
-  let newCaps = e ^. entityCapabilities
+  let newCaps = getMap $ e ^. entityCapabilities
       keepConsts = \case
-        Just cap -> cap `S.member` newCaps
+        Just cap -> cap `M.member` newCaps
         Nothing -> False
       entityConsts = filter (keepConsts . constCaps) allConst
   knownCommands <- use $ discovery . availableCommands . notificationsContent

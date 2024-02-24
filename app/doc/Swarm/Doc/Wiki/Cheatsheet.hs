@@ -18,8 +18,7 @@ import Control.Lens.Combinators (to)
 import Data.Foldable (find, toList)
 import Data.List (transpose)
 import Data.Map.Lazy qualified as Map
-import Data.Maybe (fromMaybe, isJust)
-import Data.Set qualified as Set
+import Data.Maybe (isJust)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
@@ -27,6 +26,7 @@ import Swarm.Doc.Schema.Render
 import Swarm.Doc.Util
 import Swarm.Doc.Wiki.Matrix
 import Swarm.Doc.Wiki.Util
+import Swarm.Game.Device qualified as D
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
@@ -38,7 +38,7 @@ import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Text.Markdown as Markdown (docToMark)
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Util (listEnums)
+import Swarm.Util (listEnums, showT)
 import Swarm.Util.Effect (simpleErrorHandle)
 
 -- * Types
@@ -106,7 +106,7 @@ commandToList :: Const -> [Text]
 commandToList c =
   map
     escapeTable
-    [ addLink ("#" <> tshow c) . codeQuote $ constSyntax c
+    [ addLink ("#" <> showT c) . codeQuote $ constSyntax c
     , codeQuote . prettyTextLine $ inferConst c
     , maybe "" Capability.capabilityName $ Capability.constCaps c
     , Syntax.briefDoc . Syntax.constDoc $ Syntax.constInfo c
@@ -168,13 +168,13 @@ capabilityRow PageAddress {..} em cap =
   linkCommand c =
     ( if T.null commandsAddress
         then id
-        else addLink (commandsAddress <> "#" <> tshow c)
+        else addLink (commandsAddress <> "#" <> showT c)
     )
       . codeQuote
       $ constSyntax c
 
   cs = [c | c <- Syntax.allConst, let mcap = Capability.constCaps c, isJust $ find (== cap) mcap]
-  es = fromMaybe [] $ E.entitiesByCap em Map.!? cap
+  es = maybe [] (map D.device) $ E.entitiesByCap em Map.!? cap
 
 capabilityTable :: PageAddress -> EntityMap -> [Capability] -> Text
 capabilityTable a em cs = T.unlines $ header <> map (listToRow mw) capabilityRows
@@ -197,8 +197,8 @@ entityToList e =
     escapeTable
     [ codeQuote . T.singleton $ e ^. entityDisplay . to displayChar
     , addLink ("#" <> linkID) $ view entityName e
-    , T.intercalate ", " $ Capability.capabilityName <$> Set.toList (view E.entityCapabilities e)
-    , T.intercalate ", " . map tshow . filter (/= E.Pickable) $ toList props
+    , T.intercalate ", " $ Capability.capabilityName <$> Map.keys (D.getMap $ view E.entityCapabilities e)
+    , T.intercalate ", " . map showT . filter (/= E.Pickable) $ toList props
     , if E.Pickable `elem` props
         then ":heavy_check_mark:"
         else ":negative_squared_cross_mark:"
@@ -221,13 +221,13 @@ entityToSection e =
     , ""
     , " - Char: " <> (codeQuote . T.singleton $ e ^. entityDisplay . to displayChar)
     ]
-      <> [" - Properties: " <> T.intercalate ", " (map tshow $ toList props) | not $ null props]
+      <> [" - Properties: " <> T.intercalate ", " (map showT $ toList props) | not $ null props]
       <> [" - Capabilities: " <> T.intercalate ", " (Capability.capabilityName <$> caps) | not $ null caps]
       <> ["\n"]
       <> [Markdown.docToMark $ view E.entityDescription e]
  where
   props = view E.entityProperties e
-  caps = Set.toList $ view E.entityCapabilities e
+  caps = Map.keys $ D.getMap $ view E.entityCapabilities e
 
 entitiesPage :: PageAddress -> [Entity] -> Text
 entitiesPage _a es =
@@ -251,11 +251,11 @@ recipeRow PageAddress {..} r =
     [ T.intercalate ", " (map formatCE $ view recipeInputs r)
     , T.intercalate ", " (map formatCE $ view recipeOutputs r)
     , T.intercalate ", " (map formatCE $ view recipeCatalysts r)
-    , tshow $ view recipeTime r
-    , tshow $ view recipeWeight r
+    , showT $ view recipeTime r
+    , showT $ view recipeWeight r
     ]
  where
-  formatCE (c, e) = T.unwords [tshow c, linkEntity $ view entityName e]
+  formatCE (c, e) = T.unwords [showT c, linkEntity $ view entityName e]
   linkEntity t =
     if T.null entityAddress
       then t

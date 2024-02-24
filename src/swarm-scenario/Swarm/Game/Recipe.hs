@@ -67,17 +67,12 @@ import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Game.Entity as E
 import Swarm.Game.Failure
+import Swarm.Game.Ingredients
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import Witch
-
--- | An ingredient list is a list of entities with multiplicity.  It
---   is polymorphic in the entity type so that we can use either
---   entity names when serializing, or actual entity objects while the
---   game is running.
-type IngredientList e = [(Count, e)]
 
 -- | A recipe represents some kind of process where inputs are
 --   transformed into outputs.

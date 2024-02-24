@@ -73,8 +73,10 @@ import Network.Wai.Handler.Warp (Port)
 import Numeric (showFFloat)
 import Swarm.Constant
 import Swarm.Game.CESK (CESK (..))
+import Swarm.Game.Device (getMap)
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
+import Swarm.Game.Ingredients
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
@@ -1199,8 +1201,8 @@ explainEntry s e =
     , drawMarkdown (e ^. entityDescription)
     , explainRecipes s e
     ]
-      <> [drawRobotMachine s False | e ^. entityCapabilities . Lens.contains CDebug]
-      <> [drawRobotLog s | e ^. entityCapabilities . Lens.contains CLog]
+      <> [drawRobotMachine s False | CDebug `M.member` getMap (e ^. entityCapabilities)]
+      <> [drawRobotLog s | CLog `M.member` getMap (e ^. entityCapabilities)]
 
 displayProperties :: [EntityProperty] -> Widget Name
 displayProperties = displayList . mapMaybe showProperty
@@ -1349,7 +1351,7 @@ drawRecipe me inv (Recipe ins outs reqs time _weight) =
 
 -- | Ad-hoc entity to represent time - only used in recipe drawing
 timeE :: Entity
-timeE = mkEntity (defaultEntityDisplay '.') "ticks" mempty [] []
+timeE = mkEntity (defaultEntityDisplay '.') "ticks" mempty [] mempty
 
 drawReqs :: IngredientList Entity -> Widget Name
 drawReqs = vBox . map (hCenter . drawReq)

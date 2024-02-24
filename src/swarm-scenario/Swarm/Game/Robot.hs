@@ -80,6 +80,7 @@ import GHC.Generics (Generic)
 import Linear
 import Swarm.Game.Display (Display, curOrientation, defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Ingredients
 import Swarm.Game.Location (Heading, Location, toDirection, toHeading)
 import Swarm.Game.Universe
 import Swarm.Language.Capability (Capability)
@@ -345,7 +346,7 @@ mkRobot ::
 mkRobot pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
   RobotR
     { _robotEntity =
-        mkEntity disp name descr [] []
+        mkEntity disp name descr [] mempty
           & entityOrientation ?~ dir
           & entityInventory .~ fromElems inv
     , _equippedDevices = inst

@@ -1,0 +1,61 @@
+version: 1
+name: Capability cost
+description: |
+  Consume inventory by exercising device capabilities
+creative: false
+objectives:
+  - goal:
+      - |
+        Eliminate the paper
+    condition: |
+      judge <- robotnamed "judge";
+      as judge {
+        dist <- sniff "paper";
+        return $ dist < 0;
+      }
+solution: |
+  ignite forward;
+robots:
+  - name: base
+    dir: east
+    devices:
+      - treads
+      - Zippo
+    inventory:
+      - [1, lighter fluid]
+  - name: judge
+    dir: east
+    system: true
+entities:
+  - name: lighter fluid
+    display:
+      char: 'f'
+    description:
+      - Fuel for a Zippo
+    properties: [known, pickable]
+  - name: Zippo
+    display:
+      char: 'z'
+    description:
+      - Ignites things
+    properties: [known, pickable]
+    capabilities:
+      - capability: ignite
+        cost:
+          - [1, "lighter fluid"]
+known: [ash]
+world:
+  dsl: |
+    {grass}
+  palette:
+    'B': [grass, null, base]
+    'j': [grass, null, judge]
+    '.': [grass]
+    'c': [grass, paper]
+  upperleft: [-1, 1]
+  map: |
+    ......
+    Bcccc.
+    .j..c.
+    .cccc.
+    ......

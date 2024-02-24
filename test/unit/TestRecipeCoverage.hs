@@ -7,6 +7,7 @@
 -- grant capabilities (aka "devices").
 module TestRecipeCoverage where
 
+import Swarm.Game.Device
 import Control.Lens ((^.))
 import Data.Map qualified as M
 import Data.Set qualified as Set
@@ -41,7 +42,7 @@ testDeviceRecipeCoverage rs =
           ]
 
     -- Only include entities that grant a capability:
-    entityNames = Set.fromList . map (^. entityName) . concat . M.elems . entitiesByCap $ rs ^. stdEntityMap
+    entityNames = Set.fromList . map ((^. entityName) . device) . concat . M.elems . entitiesByCap $ rs ^. stdEntityMap
 
     getOutputsForRecipe r = map ((^. entityName) . snd) $ r ^. recipeOutputs
     recipeOutputEntities = Set.fromList . concatMap getOutputsForRecipe $ rs ^. stdRecipes

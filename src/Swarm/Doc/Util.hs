@@ -30,9 +30,6 @@ codeQuote = wrap '`'
 addLink :: Text -> Text -> Text
 addLink l t = T.concat ["[", t, "](", l, ")"]
 
-tshow :: (Show a) => a -> Text
-tshow = T.pack . show
-
 -- * Common symbols
 
 operators :: [Const]
