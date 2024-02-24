@@ -183,11 +183,13 @@ library swarm-scenario
   exposed-modules:
     Swarm.Constant
     Swarm.Game.Achievement.Definitions
+    Swarm.Game.Device
     Swarm.Game.Display
     Swarm.Game.Entity
     Swarm.Game.Entity.Cosmetic
     Swarm.Game.Entity.Cosmetic.Assignment
     Swarm.Game.Failure
+    Swarm.Game.Ingredients
     Swarm.Game.Land
     Swarm.Game.Location
     Swarm.Game.Recipe
@@ -532,12 +534,14 @@ library
     Swarm.Game.Achievement.Description,
     Swarm.Game.Achievement.Persistence,
     Swarm.Game.CESK,
+    Swarm.Game.Device,
     Swarm.Game.Display,
     Swarm.Game.Entity,
     Swarm.Game.Entity.Cosmetic,
     Swarm.Game.Entity.Cosmetic.Assignment,
     Swarm.Game.Exception,
     Swarm.Game.Failure,
+    Swarm.Game.Ingredients,
     Swarm.Game.Land,
     Swarm.Game.Location,
     Swarm.Game.Recipe,

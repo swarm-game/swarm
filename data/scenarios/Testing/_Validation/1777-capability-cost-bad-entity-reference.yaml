@@ -1,0 +1,39 @@
+version: 1
+name: Capability cost - bad entity reference
+description: |
+  Capability cost recipe for 'ignite' in `Zippo`{=entity}
+  references a non-existent entity
+creative: false
+robots:
+  - name: base
+    dir: east
+    devices:
+      - Zippo
+entities:
+  - name: heavier fluid
+    display:
+      char: 'f'
+    description:
+      - Fuel for a Zippo
+    properties: [known, pickable]
+  - name: Zippo
+    display:
+      char: 'z'
+    description:
+      - Ignites things
+    properties: [known, pickable]
+    capabilities:
+      - capability: ignite
+        cost:
+          - [1, "lighter fluid"]
+known: []
+world:
+  dsl: |
+    {grass}
+  palette:
+    'B': [grass, null, base]
+    '.': [grass]
+  upperleft: [-1, 1]
+  map: |
+    ..
+    B.
