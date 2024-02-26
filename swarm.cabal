@@ -150,6 +150,7 @@ library swarm-lang
     commonmark-extensions >=0.2 && <0.3,
     containers,
     data-fix >= 0.3 && < 0.4,
+    deriving-compat >= 0.6 && < 0.7,
     extra,
     free >= 5.2 && < 5.3,
     hashable,

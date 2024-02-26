@@ -1,5 +1,6 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -70,7 +71,9 @@ module Swarm.Language.Types (
 
 import Control.Monad.Free
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson.TH (deriveFromJSON1, deriveToJSON1, defaultOptions)
 import Data.Data (Data)
+import Data.Eq.Deriving (deriveEq1)
 import Data.Fix
 import Data.Foldable (fold)
 import Data.Kind qualified
@@ -84,6 +87,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic, Generic1)
 import Swarm.Language.Context
+import Text.Show.Deriving (deriveShow1)
 import Witch
 
 ------------------------------------------------------------
@@ -138,6 +142,11 @@ data TypeF t
     TyRcdF (Map Var t)
   deriving (Show, Eq, Functor, Foldable, Traversable, Generic, Generic1, Data, FromJSON, ToJSON)
 
+deriveEq1 ''TypeF
+deriveShow1 ''TypeF
+deriveFromJSON1 defaultOptions ''TypeF
+deriveToJSON1 defaultOptions ''TypeF
+
 -- -- | Unify two Maps by insisting they must have exactly the same keys,
 -- --   and if so, simply matching up corresponding values to be
 -- --   recursively unified.  There could be other reasonable
@@ -160,7 +169,7 @@ tyVars :: Type -> Set Var
 tyVars = foldFix (\case TyVarF x -> S.singleton x; f -> fold f)
 
 newtype IntVar = IntVar Int
-  deriving (Show, Data)
+  deriving (Show, Data, Eq, Ord)
 
 -- | 'UType's are like 'Type's, but also contain unification
 --   variables.  'UType' is defined via 'Free', which is also a kind

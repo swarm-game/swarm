@@ -7,7 +7,7 @@ module Swarm.Language.Typecheck.Unify (
   unifyCheck,
 ) where
 
-import Control.Unification
+import Control.Monad.Free
 import Data.Foldable qualified as F
 import Data.Function (on)
 import Data.Map qualified as M
@@ -56,12 +56,12 @@ instance Monoid UnifyStatus where
 --   know for sure whether they will unify, return 'MightUnify'.
 unifyCheck :: UType -> UType -> UnifyStatus
 unifyCheck ty1 ty2 = case (ty1, ty2) of
-  (UVar x, UVar y)
+  (Pure x, Pure y)
     | x == y -> Equal
     | otherwise -> MightUnify
-  (UVar _, _) -> MightUnify
-  (_, UVar _) -> MightUnify
-  (UTerm t1, UTerm t2) -> unifyCheckF t1 t2
+  (Pure _, _) -> MightUnify
+  (_, Pure _) -> MightUnify
+  (Free t1, Free t2) -> unifyCheckF t1 t2
 
 unifyCheckF :: TypeF UType -> TypeF UType -> UnifyStatus
 unifyCheckF t1 t2 = case (t1, t2) of
