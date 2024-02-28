@@ -153,6 +153,7 @@ library swarm-lang
     deriving-compat >= 0.6 && < 0.7,
     extra,
     free >= 5.2 && < 5.3,
+    fused-effects,
     hashable,
     lens,
     lsp >=2.4 && <2.5,

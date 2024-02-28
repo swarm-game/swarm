@@ -33,6 +33,7 @@ module Swarm.Language.Types (
   pattern TyDelay,
 
   -- * @UType@
+  IntVar,
   UType,
   pattern UTyBase,
   pattern UTyVar,
