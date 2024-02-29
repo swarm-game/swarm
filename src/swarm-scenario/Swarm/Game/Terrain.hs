@@ -38,7 +38,7 @@ import Swarm.Game.Display
 import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
 import Swarm.Game.Failure
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
-import Swarm.Util (quote)
+import Swarm.Util (enumeratedMap, quote)
 import Swarm.Util.Effect (withThrow)
 
 data TerrainType = BlankT | TerrainType Text
@@ -88,9 +88,6 @@ data TerrainObj = TerrainObj
 promoteTerrainObjects :: [TerrainItem] -> [TerrainObj]
 promoteTerrainObjects =
   map (\(TerrainItem n a d) -> TerrainObj n d $ defaultTerrainDisplay (AWorld a))
-
-enumeratedMap :: Int -> [a] -> IntMap a
-enumeratedMap startIdx = IM.fromList . zip [startIdx ..]
 
 invertedIndexMap :: IntMap TerrainObj -> Map TerrainType Int
 invertedIndexMap = M.fromList . map (first terrainName . swap) . IM.toList

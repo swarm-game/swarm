@@ -25,6 +25,11 @@ import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay (renderDisplay)
 import Swarm.TUI.View.Util qualified as VU
 
+extractTerrainMap :: UIState -> TerrainMap
+extractTerrainMap uis =
+  maybe mempty (view (scenarioLandscape . scenarioTerrainAndEntities . terrainMap) . fst) $
+    uis ^. uiGameplay . scenarioRef
+
 drawWorldEditor :: FocusRing Name -> UIState -> Widget Name
 drawWorldEditor toplevelFocusRing uis =
   if worldEditor ^. worldOverdraw . isWorldEditorEnabled
@@ -74,9 +79,7 @@ drawWorldEditor toplevelFocusRing uis =
    where
     selectedThing = snd <$> BL.listSelectedElement list
 
-  tm =
-    maybe mempty (view (scenarioLandscape . scenarioTerrainAndEntities . terrainMap) . fst) $
-      uis ^. uiGameplay . scenarioRef
+  tm = extractTerrainMap uis
 
   brushWidget =
     mkFormControl (WorldEditorPanelControl BrushSelector) $
@@ -147,12 +150,8 @@ drawTerrainSelector s =
   padAll 1
     . hCenter
     . vLimit 8
-    . BL.renderListWithIndex (listDrawTerrainElement tm) True
+    . BL.renderListWithIndex (listDrawTerrainElement $ extractTerrainMap $ s ^. uiState) True
     $ s ^. uiState . uiGameplay . uiWorldEditor . terrainList
- where
-  tm =
-    maybe mempty (view (scenarioLandscape . scenarioTerrainAndEntities . terrainMap) . fst) $
-      s ^. uiState . uiGameplay . scenarioRef
 
 listDrawTerrainElement :: TerrainMap -> Int -> Bool -> TerrainType -> Widget Name
 listDrawTerrainElement tm pos _isSelected a =

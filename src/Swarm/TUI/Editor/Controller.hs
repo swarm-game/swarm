@@ -84,11 +84,11 @@ handleMiddleClick mouseLoc = do
   worldEditor <- use $ uiState . uiGameplay . uiWorldEditor
   when (worldEditor ^. worldOverdraw . isWorldEditorEnabled) $ do
     w <- use $ gameState . landscape . multiWorld
-    tem <- use $ gameState . landscape . terrainAndEntities . terrainMap
+    tm <- use $ gameState . landscape . terrainAndEntities . terrainMap
     let setTerrainPaint coords = do
           let (terrain, maybeElementPaint) =
                 EU.getEditorContentAt
-                  tem
+                  tm
                   (worldEditor ^. worldOverdraw)
                   w
                   coords
