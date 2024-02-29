@@ -15,11 +15,11 @@ module Swarm.Doc.Wiki.Cheatsheet (
 import Control.Effect.Lift
 import Control.Lens (view, (^.))
 import Control.Lens.Combinators (to)
-import Data.Set qualified as S
 import Data.Foldable (find, toList)
 import Data.List (transpose)
 import Data.Map.Lazy qualified as Map
 import Data.Maybe (isJust)
+import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
