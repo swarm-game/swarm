@@ -14,8 +14,6 @@ module Swarm.Game.Device (
   ExerciseCost (..),
   getCapabilitySet,
   zeroCostCapabilities,
-  transformIngredients,
-  promoteDeviceUseCost,
 )
 where
 
@@ -37,7 +35,7 @@ import Swarm.Language.Capability (Capability)
 newtype Capabilities e = Capabilities
   { getMap :: Map Capability e
   }
-  deriving (Show, Eq, Generic, ToJSON, Hashable, Functor)
+  deriving (Show, Eq, Generic, ToJSON, Hashable, Functor, Foldable, Traversable)
 
 getCapabilitySet :: Capabilities e -> Set Capability
 getCapabilitySet (Capabilities m) = M.keysSet m
@@ -77,7 +75,7 @@ instance (Ord e, Semigroup e) => Monoid (Capabilities e) where
 newtype ExerciseCost e = ExerciseCost
   { ingredients :: IngredientList e
   }
-  deriving (Eq, Show, Generic, FromJSON, ToJSON, Hashable, Functor)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON, Hashable, Functor, Foldable, Traversable)
 
 instance (Eq e) => Ord (ExerciseCost e) where
   compare = compare `on` (getCost . ingredients)
@@ -86,22 +84,4 @@ data DeviceUseCost e en = DeviceUseCost
   { device :: e
   , useCost :: ExerciseCost en
   }
-  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON, Functor)
-
--- TODO Should this derive from an Applicative instance?
-promoteDeviceUseCost ::
-  Monad m =>
-  (e -> m e') ->
-  DeviceUseCost x e ->
-  m (DeviceUseCost x e')
-promoteDeviceUseCost f (DeviceUseCost d ex) =
-  DeviceUseCost d <$> transformIngredients f ex
-
--- TODO Should this derive from an Applicative instance?
-transformIngredients ::
-  Monad m =>
-  (e -> m e') ->
-  ExerciseCost e ->
-  m (ExerciseCost e')
-transformIngredients f (ExerciseCost ings) =
-  ExerciseCost <$> mapM (traverse f) ings
+  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON, Functor, Foldable, Traversable)

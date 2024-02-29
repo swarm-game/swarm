@@ -9,11 +9,19 @@ objectives:
       - |
         Eliminate the `packing peanut`{=entity}s
     condition: |
-      judge <- robotnamed "judge";
-      as judge {
-        dist <- sniff "packing peanut";
-        return $ dist < 0;
-      }
+      hasLighterFluid <- as base {
+        has "lighter fluid";
+      };
+
+      if (not hasLighterFluid) {
+        judge <- robotnamed "judge";
+        as judge {
+          maybePath <- path (inL ()) (inR "packing peanut");
+          return $ case maybePath (\_. true) (\d. false);
+        }
+      } {
+        return false;
+      };
 solution: |
   move;
   turn right;
