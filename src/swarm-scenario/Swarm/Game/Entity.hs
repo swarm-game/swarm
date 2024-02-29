@@ -468,12 +468,10 @@ combineEntityCapsM ::
 combineEntityCapsM em =
   fmap mconcat . mapM mkForEntity
  where
-  transformCaps (Capabilities m) = do
-    Capabilities <$> mapM (transformIngredients $ lookupEntityE em) m
+  transformCaps = (traverse . traverse) (lookupEntityE em)
 
-  mkForEntity e = do
-    betterCaps <- transformCaps $ e ^. entityCapabilities
-    return $ f <$> betterCaps
+  mkForEntity e =
+    fmap f <$> transformCaps (e ^. entityCapabilities)
    where
     f = pure . DeviceUseCost e
 

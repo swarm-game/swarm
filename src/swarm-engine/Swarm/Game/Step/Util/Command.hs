@@ -123,7 +123,7 @@ payExerciseCost ::
   m ()
 payExerciseCost c rawCosts = do
   em <- use $ landscape . terrainAndEntities . entityMap
-  let eitherCosts = mapM (promoteDeviceUseCost $ lookupEntityE $ entitiesByName em) rawCosts
+  let eitherCosts = (traverse . traverse) (lookupEntityE $ entitiesByName em) rawCosts
   costs <- case eitherCosts of
     -- NOTE: Entity references have been validated already at scenario load time,
     -- so we should never encounter this error.
