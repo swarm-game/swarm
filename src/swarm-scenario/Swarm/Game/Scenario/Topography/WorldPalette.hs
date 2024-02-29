@@ -14,6 +14,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Tuple (swap)
 import Swarm.Game.Entity
+import Swarm.Game.Land
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
@@ -26,7 +27,7 @@ newtype WorldPalette e = WorldPalette
   {unPalette :: KeyMap (AugmentedCell e)}
   deriving (Eq, Show)
 
-instance FromJSONE (EntityMap, RobotMap) (WorldPalette Entity) where
+instance FromJSONE (TerrainEntityMaps, RobotMap) (WorldPalette Entity) where
   parseJSONE = withObjectE "palette" $ fmap WorldPalette . mapM parseJSONE
 
 type TerrainWith a = (TerrainType, Erasable a)

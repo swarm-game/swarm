@@ -75,6 +75,7 @@ import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec), cancel, emptyStore, initMachine)
 import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Game.Robot
@@ -1191,7 +1192,7 @@ handleREPLEventTyping = \case
       CharKey '\t' -> do
         s <- get
         let names = s ^.. gameState . baseRobot . robotContext . defTypes . to assocs . traverse . _1
-        uiState . uiGameplay . uiREPL %= tabComplete (CompletionContext (s ^. gameState . creativeMode)) names (s ^. gameState . landscape . entityMap)
+        uiState . uiGameplay . uiREPL %= tabComplete (CompletionContext (s ^. gameState . creativeMode)) names (s ^. gameState . landscape . terrainAndEntities . entityMap)
         modify validateREPLForm
       EscapeKey -> do
         formSt <- use $ uiState . uiGameplay . uiREPL . replPromptType

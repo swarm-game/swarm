@@ -1,0 +1,58 @@
+version: 1
+name: Demo custom terrain
+description: |
+  Colorful new terrain
+creative: false
+attrs:
+  - name: beachsand
+    bg: "#c2b280"
+  - name: lava
+    bg: "#dd7733"
+  - name: lilac
+    bg: "#a4a4bb"
+terrains:
+  - name: beach
+    attr: beachsand
+    description: |
+      Shoreline covering, laborious to cross
+  - name: lava
+    attr: lava
+    description: |
+      Scorching, liquid rock
+  - name: heather
+    attr: lilac
+    description: |
+      Flowery ground cover
+objectives:
+  - goal:
+      - |
+        No entities should be here
+    condition: |
+      as base {
+        isEmpty
+      }
+solution: |
+  noop
+robots:
+  - name: base
+    dir: east
+known: []
+world:
+  dsl: |
+    {grass}
+  palette:
+    'B': [heather, null, base]
+    '.': [heather]
+    'i': [ice]
+    'b': [beach]
+    'v': [lava]
+  upperleft: [0, 0]
+  map: |
+    vvvvvvvv
+    vvvvvvvv
+    B.......
+    ........
+    iiiiiiii
+    iiiiiiii
+    bbbbbbbb
+    bbbbbbbb

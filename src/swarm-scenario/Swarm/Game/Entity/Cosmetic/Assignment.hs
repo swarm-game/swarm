@@ -15,7 +15,7 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Swarm.Game.Entity.Cosmetic
 
--- * Entities
+-- * Entities and Terrain
 
 entity :: (WorldAttr, PreservableColor)
 entity = (WorldAttr "entity", FgOnly $ AnsiColor White)
@@ -29,13 +29,33 @@ rock = (WorldAttr "rock", FgOnly $ Triple $ RGB 80 80 80)
 plant :: (WorldAttr, PreservableColor)
 plant = (WorldAttr "plant", FgOnly $ AnsiColor Green)
 
+dirt :: (WorldAttr, PreservableColor)
+dirt = (WorldAttr "dirt", BgOnly $ Triple $ RGB 87 47 47)
+
+grass :: (WorldAttr, PreservableColor)
+grass = (WorldAttr "grass", BgOnly $ Triple $ RGB 0 47 0) -- dark green
+
+stone :: (WorldAttr, PreservableColor)
+stone = (WorldAttr "stone", BgOnly $ Triple $ RGB 47 47 47)
+
+ice :: (WorldAttr, PreservableColor)
+ice = (WorldAttr "ice", BgOnly $ AnsiColor White)
+
 -- | Colors of entities in the world.
 worldAttributes :: Map WorldAttr PreservableColor
 worldAttributes =
   M.fromList $
-    -- these four are referenced elsewhere,
+    -- these few are referenced elsewhere,
     -- so they have their own toplevel definition
-    [entity, water, rock, plant]
+    [ entity
+    , water
+    , rock
+    , plant
+    , dirt
+    , grass
+    , stone
+    , ice
+    ]
       <> map
         (bimap WorldAttr FgOnly)
         [ ("device", AnsiColor BrightYellow)
@@ -56,26 +76,3 @@ worldAttributes =
         , ("green", AnsiColor Green)
         , ("blue", AnsiColor Blue)
         ]
-
--- * Terrain
-
-dirt :: (TerrainAttr, PreservableColor)
-dirt = (TerrainAttr "dirt", BgOnly $ Triple $ RGB 87 47 47)
-
-grass :: (TerrainAttr, PreservableColor)
-grass = (TerrainAttr "grass", BgOnly $ Triple $ RGB 0 47 0) -- dark green
-
-stone :: (TerrainAttr, PreservableColor)
-stone = (TerrainAttr "stone", BgOnly $ Triple $ RGB 47 47 47)
-
-ice :: (TerrainAttr, PreservableColor)
-ice = (TerrainAttr "ice", BgOnly $ AnsiColor White)
-
-terrainAttributes :: M.Map TerrainAttr PreservableColor
-terrainAttributes =
-  M.fromList
-    [ dirt
-    , grass
-    , stone
-    , ice
-    ]

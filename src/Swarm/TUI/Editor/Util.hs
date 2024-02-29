@@ -14,7 +14,7 @@ import Swarm.Game.Scenario.Topography.Area qualified as EA
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.WorldDescription
-import Swarm.Game.Terrain (TerrainType)
+import Swarm.Game.Terrain (TerrainMap, TerrainType)
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.TUI.Editor.Model
@@ -37,11 +37,12 @@ getEditingBounds myWorld =
   lowerRightLoc = EA.upperLeftToBottomRight a upperLeftLoc
 
 getEditorContentAt ::
+  TerrainMap ->
   WorldOverdraw ->
   W.MultiWorld Int Entity ->
   Cosmic W.Coords ->
   (TerrainType, Maybe EntityPaint)
-getEditorContentAt editorOverdraw w coords =
+getEditorContentAt tm editorOverdraw w coords =
   (terrainWithOverride, entityWithOverride)
  where
   terrainWithOverride = Maybe.fromMaybe underlyingCellTerrain $ do
@@ -60,15 +61,16 @@ getEditorContentAt editorOverdraw w coords =
   pm = editorOverdraw ^. paintedTerrain
 
   entityWithOverride = (Ref <$> underlyingCellEntity) <|> maybeEntityOverride
-  (underlyingCellTerrain, underlyingCellEntity) = getContentAt w coords
+  (underlyingCellTerrain, underlyingCellEntity) = getContentAt tm w coords
 
 getEditorTerrainAt ::
+  TerrainMap ->
   WorldOverdraw ->
   W.MultiWorld Int Entity ->
   Cosmic W.Coords ->
   TerrainType
-getEditorTerrainAt editor w coords =
-  fst $ getEditorContentAt editor w coords
+getEditorTerrainAt tm editor w coords =
+  fst $ getEditorContentAt tm editor w coords
 
 isOutsideTopLeftCorner ::
   -- | top left corner coords
@@ -98,12 +100,13 @@ isOutsideRegion (tl, br) coord =
   isOutsideTopLeftCorner tl coord || isOutsideBottomRightCorner br coord
 
 getEditedMapRectangle ::
+  TerrainMap ->
   WorldOverdraw ->
   Maybe (Cosmic W.BoundsRectangle) ->
   W.MultiWorld Int Entity ->
   EA.Grid CellPaintDisplay
-getEditedMapRectangle _ Nothing _ = EA.Grid []
-getEditedMapRectangle worldEditor (Just (Cosmic subworldName coords)) w =
+getEditedMapRectangle _ _ Nothing _ = EA.Grid []
+getEditedMapRectangle tm worldEditor (Just (Cosmic subworldName coords)) w =
   getMapRectangle toFacade getContent coords
  where
-  getContent = getEditorContentAt worldEditor w . Cosmic subworldName
+  getContent = getEditorContentAt tm worldEditor w . Cosmic subworldName

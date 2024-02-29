@@ -54,11 +54,8 @@ import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
 type Priority = Int
 
 -- | An internal attribute name.
-data Attribute = ADefault | ARobot | AEntity | AWorld Text | ATerrain Text
+data Attribute = ADefault | ARobot | AEntity | AWorld Text
   deriving (Eq, Ord, Show, Generic, Hashable)
-
-terrainPrefix :: Text
-terrainPrefix = "terrain_"
 
 instance FromJSON Attribute where
   parseJSON =
@@ -67,7 +64,6 @@ instance FromJSON Attribute where
         "robot" -> ARobot
         "entity" -> AEntity
         "default" -> ADefault
-        t | terrainPrefix `T.isPrefixOf` t -> ATerrain $ T.drop (T.length terrainPrefix) t
         w -> AWorld w
 
 instance ToJSON Attribute where
@@ -76,7 +72,6 @@ instance ToJSON Attribute where
     ARobot -> String "robot"
     AEntity -> String "entity"
     AWorld w -> String w
-    ATerrain t -> String $ terrainPrefix <> t
 
 -- | A record explaining how to display an entity in the TUI.
 data Display = Display
