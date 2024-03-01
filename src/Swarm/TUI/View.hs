@@ -73,7 +73,7 @@ import Network.Wai.Handler.Warp (Port)
 import Numeric (showFFloat)
 import Swarm.Constant
 import Swarm.Game.CESK (CESK (..))
-import Swarm.Game.Device (getMap)
+import Swarm.Game.Device (commandCost, commandsForDeviceCaps, enabledCommands, getMap, ingredients)
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Ingredients
@@ -1210,6 +1210,7 @@ explainEntry s e =
   vBox $
     [ displayProperties $ Set.toList (e ^. entityProperties)
     , drawMarkdown (e ^. entityDescription)
+    , explainCapabilities (s ^. gameState) e
     , explainRecipes s e
     ]
       <> [drawRobotMachine s False | CDebug `M.member` getMap (e ^. entityCapabilities)]
@@ -1238,6 +1239,66 @@ displayProperties = displayList . mapMaybe showProperty
       [ hBox . L.intersperse (txt ", ") . map (withAttr robotAttr . txt) $ ps
       , txt " "
       ]
+
+-- | This widget can have potentially multiple "headings"
+-- (one per capability), each with multiple commands underneath.
+-- Directly below each heading there will be a "exercise cost"
+-- description, unless the capability is free-to-exercise.
+explainCapabilities :: GameState -> Entity -> Widget Name
+explainCapabilities gs e
+  | null capabilitiesAndCommands = emptyWidget
+  | otherwise =
+      padBottom (Pad 1) $
+        vBox
+          [ hBorderWithLabel (txt "Enabled commands")
+          , hCenter
+              . vBox
+              . L.intersperse (padTop (Pad 1) . hCenter . txt $ T.replicate 10 "*")
+              $ map drawSingleCapabilityWidget capabilitiesAndCommands
+          ]
+ where
+  eLookup = lookupEntityE $ entitiesByName $ gs ^. landscape . terrainAndEntities . entityMap
+  eitherCosts = (traverse . traverse) eLookup $ e ^. entityCapabilities
+  capabilitiesAndCommands = case eitherCosts of
+    Right eCaps -> M.elems . getMap . commandsForDeviceCaps $ eCaps
+    Left x ->
+      error $
+        unwords
+          [ "Error: somehow an invalid entity reference escaped the parse-time check"
+          , T.unpack x
+          ]
+
+  drawSingleCapabilityWidget cmdsAndCost =
+    vBox
+      [ costWidget cmdsAndCost
+      , padLeft (Pad 1) . vBox . map renderCmdInfo . NE.toList $ enabledCommands cmdsAndCost
+      ]
+
+  renderCmdInfo c =
+    padTop (Pad 1) $
+      vBox
+        [ hBox
+            [ padRight (Pad 1) (txt . syntax $ constInfo c)
+            , padRight (Pad 1) (txt ":")
+            , withAttr magentaAttr . txt . prettyText $ inferConst c
+            ]
+        , padTop (Pad 1) . padLeft (Pad 1) . txtWrap . briefDoc . constDoc $ constInfo c
+        ]
+
+  costWidget cmdsAndCost =
+    if null ings
+      then emptyWidget
+      else padTop (Pad 1) $ vBox $ withAttr boldAttr (txt "Cost:") : map drawCost ings
+   where
+    ings = ingredients $ commandCost cmdsAndCost
+
+  drawCost (n, ingr) =
+    padRight (Pad 1) (str (show n)) <+> eName
+   where
+    eName = applyEntityNameAttr Nothing missing ingr $ txt $ ingr ^. entityName
+    missing = E.lookup ingr robotInv < n
+
+  robotInv = fromMaybe E.empty $ gs ^? to focusedRobot . _Just . robotInventory
 
 explainRecipes :: AppState -> Entity -> Widget Name
 explainRecipes s e
@@ -1350,15 +1411,20 @@ drawRecipe me inv (Recipe ins outs reqs time _weight) =
 
   -- If it's the focused entity, draw it highlighted.
   -- If the robot doesn't have any, draw it in red.
-  fmtEntityName missing ingr
-    | Just ingr == me = withAttr highlightAttr $ txtLines nm
-    | ingr == timeE = withAttr yellowAttr $ txtLines nm
-    | missing = withAttr invalidFormInputAttr $ txtLines nm
-    | otherwise = txtLines nm
+  fmtEntityName :: Bool -> Entity -> Widget n
+  fmtEntityName missing ingr =
+    applyEntityNameAttr me missing ingr $ txtLines nm
    where
     -- Split up multi-word names, one line per word
     nm = ingr ^. entityName
     txtLines = vBox . map txt . T.words
+
+applyEntityNameAttr :: Maybe Entity -> Bool -> Entity -> (Widget n -> Widget n)
+applyEntityNameAttr me missing ingr
+  | Just ingr == me = withAttr highlightAttr
+  | ingr == timeE = withAttr yellowAttr
+  | missing = withAttr invalidFormInputAttr
+  | otherwise = id
 
 -- | Ad-hoc entity to represent time - only used in recipe drawing
 timeE :: Entity

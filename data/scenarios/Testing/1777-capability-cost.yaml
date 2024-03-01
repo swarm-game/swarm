@@ -50,7 +50,7 @@ entities:
     display:
       char: 'f'
     description:
-      - Fuel for a Zippo
+      - Fuel for a `Zippo`{=entity}
     properties: [known, pickable]
   - name: Zippo
     display:

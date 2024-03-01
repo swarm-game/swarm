@@ -20,9 +20,9 @@ import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (forM_, unless, when)
+import Data.IntSet qualified as IS
 import Data.List (find)
 import Data.List.NonEmpty qualified as NE
-import Data.IntSet qualified as IS
 import Data.Map qualified as M
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
