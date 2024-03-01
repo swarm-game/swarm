@@ -71,7 +71,6 @@ import Control.Applicative ((<|>))
 import Control.Lens hiding (Const, contains)
 import Data.Hashable (hashWithSalt)
 import Data.Kind qualified
-import Data.Set (Set)
 import Data.Text (Text)
 import Data.Yaml (FromJSON (parseJSON), (.!=), (.:), (.:?))
 import GHC.Generics (Generic)
@@ -84,7 +83,6 @@ import Swarm.Game.Land
 import Swarm.Game.Location (Heading, Location, toDirection, toHeading)
 import Swarm.Game.Robot.Walk
 import Swarm.Game.Universe
-import Swarm.Language.Capability (Capability)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document)

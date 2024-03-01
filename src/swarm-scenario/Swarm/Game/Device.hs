@@ -12,8 +12,10 @@ module Swarm.Game.Device (
   Capabilities (..),
   DeviceUseCost (..),
   ExerciseCost (..),
+  CommandsAndCost (..),
   getCapabilitySet,
   zeroCostCapabilities,
+  commandsForDeviceCaps,
 )
 where
 
@@ -28,7 +30,8 @@ import Data.Vector qualified as V
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Game.Ingredients
-import Swarm.Language.Capability (Capability)
+import Swarm.Language.Capability (Capability, constByCaps)
+import Swarm.Language.Syntax (Const)
 
 -- This wrapper exists so that YAML can be parsed
 -- either as a list of 'Capability' or as a Map.
@@ -40,12 +43,12 @@ newtype Capabilities e = Capabilities
 getCapabilitySet :: Capabilities e -> Set Capability
 getCapabilitySet (Capabilities m) = M.keysSet m
 
-zeroCostCapabilities :: Set Capability -> Capabilities (ExerciseCost e)
-zeroCostCapabilities = Capabilities . M.fromSet (const $ ExerciseCost [])
-
 type SingleEntityCapabilities e = Capabilities (ExerciseCost e)
 
 type MultiEntityCapabilities e en = Capabilities (NonEmpty (DeviceUseCost e en))
+
+zeroCostCapabilities :: Set Capability -> SingleEntityCapabilities e
+zeroCostCapabilities = Capabilities . M.fromSet (const $ ExerciseCost [])
 
 -- | For JSON parsing only
 data CapabilityCost e = CapabilityCost
@@ -85,3 +88,21 @@ data DeviceUseCost e en = DeviceUseCost
   , useCost :: ExerciseCost en
   }
   deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON, Functor, Foldable, Traversable)
+
+-- * Utils
+
+data CommandsAndCost e = CommandsAndCost
+  { commandCost :: ExerciseCost e
+  , enabledCommands :: NonEmpty Const
+  }
+
+-- | NOTE: Because each 'Const' is mapped to at most one
+-- 'Capability' by the 'constCaps' function, we know that
+-- a given 'Const' will not appear more than once as a value in the 'Map' produced by
+-- this function, i.e. for the  capabilities provided by a single 'Entity`
+-- ('SingleEntityCapabilities').
+commandsForDeviceCaps :: SingleEntityCapabilities e -> Capabilities (CommandsAndCost e)
+commandsForDeviceCaps = Capabilities . M.mapMaybeWithKey f . getMap
+ where
+  f cap xc =
+    CommandsAndCost xc <$> M.lookup cap constByCaps
