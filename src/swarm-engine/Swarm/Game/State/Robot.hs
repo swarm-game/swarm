@@ -25,6 +25,7 @@ module Swarm.Game.State.Robot (
   robotsWatching,
   activeRobots,
   waitingRobots,
+  currentTickWakeableBots,
   viewCenterRule,
   viewCenter,
   focusedRobotID,
@@ -121,6 +122,7 @@ data Robots = Robots
     -- Waiting robots for a given time are a list because it is cheaper to
     -- prepend to a list than insert into a 'Set'.
     _waitingRobots :: Map TickNumber [RID]
+  , _currentTickWakeableBots :: [RID]
   , _robotsByLocation :: Map SubworldName (Map Location IntSet)
   , -- This member exists as an optimization so
     -- that we do not have to iterate over all "waiting" robots,
@@ -154,6 +156,9 @@ activeRobots = internalActiveRobots
 --   those that are only taking a short nap (e.g. @wait 1@).
 waitingRobots :: Getter Robots (Map TickNumber [RID])
 waitingRobots = internalWaitingRobots
+
+-- | Get a list of all the robots that are \"watching\" by location.
+currentTickWakeableBots :: Lens' Robots [RID]
 
 -- | The names of all robots that currently exist in the game, indexed by
 --   location (which we need both for /e.g./ the @salvage@ command as
@@ -197,6 +202,7 @@ initRobots gsc =
     { _robotMap = IM.empty
     , _activeRobots = IS.empty
     , _waitingRobots = M.empty
+    , _currentTickWakeableBots = mempty
     , _robotsByLocation = M.empty
     , _robotsWatching = mempty
     , _robotNaming =
@@ -306,11 +312,11 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 -- * 'robotsWatching'
 -- * 'internalWaitingRobots'
 -- * 'internalActiveRobots' (aka 'activeRobots')
-wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m IntSet
+wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m ()
 wakeUpRobotsDoneSleeping time = do
   maybeWakeableRIDs <- internalWaitingRobots . at time <<.= Nothing
   case maybeWakeableRIDs of
-    Nothing -> return mempty
+    Nothing -> return ()
     Just wakeableRIDs -> do
       robots <- use robotMap
       let robotIdSet = IM.keysSet robots
@@ -324,8 +330,6 @@ wakeUpRobotsDoneSleeping time = do
       -- These robots' wake times may have been moved "forward"
       -- by 'wakeWatchingRobots'.
       clearWatchingRobots wakeableRIDsSet
-
-      return newlyAlive
 
 -- | Clear the "watch" state of all of the
 -- awakened robots
@@ -388,6 +392,10 @@ wakeWatchingRobots myID currentTick loc = do
         , (addTicks 1 currentTick, nextTickWakeable)
         ]
       newInsertions = M.filter (not . null) $ M.fromList wakeTimeGroups
+
+  -- Contract: This must be emptied immediately
+  -- in 'iterateRobots'
+  currentTickWakeableBots .= currTickWakeable
 
   -- NOTE: There are two "sources of truth" for the waiting state of robots:
   -- 1. In the GameState via "internalWaitingRobots"

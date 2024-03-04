@@ -87,7 +87,7 @@ import Prelude hiding (Applicative (..), lookup)
 gameTick :: HasGameStepState sig m => m Bool
 gameTick = do
   time <- use $ temporal . ticks
-  void $ zoomRobots $ wakeUpRobotsDoneSleeping time
+  zoomRobots $ wakeUpRobotsDoneSleeping time
   active <- use $ robotInfo . activeRobots
   focusedRob <- use $ robotInfo . focusedRobotID
 
@@ -205,16 +205,22 @@ iterateRobots time f runnableBots =
 
     -- We may have awakened new robots in the current robot's iteration,
     -- so we add them to the list
-    robotsToAdd <- zoomRobots $ wakeUpRobotsDoneSleeping time
+    poolAugmentation <- do
+      -- NOTE: We could use 'IS.split thisRobotId activeRIDsThisTick'
+      -- to ensure that we only insert RIDs greater than 'thisRobotId'
+      -- into the queue.
+      -- However, we already ensure in 'wakeWatchingRobots' that only
+      -- robots with a larger RID are scheduled for the current tick;
+      -- robots with smaller RIDs will be scheduled for the next tick.
+      robotsToAdd <- use $ robotInfo . currentTickWakeableBots
+      if null robotsToAdd
+        then return id
+        else do
+          zoomRobots $ wakeUpRobotsDoneSleeping time
+          robotInfo . currentTickWakeableBots .= []
+          return $ IS.union $ IS.fromList robotsToAdd
 
-    -- NOTE: We could use 'IS.split thisRobotId activeRIDsThisTick'
-    -- to ensure that we only insert RIDs greater than 'thisRobotId'
-    -- into the queue.
-    -- However, we already ensure in 'wakeWatchingRobots' that only
-    -- robots with a larger RID are scheduled for the current tick;
-    -- robots with smaller RIDs will be scheduled for the next tick.
-
-    iterateRobots time f $ IS.union robotsToAdd remainingBotIDs
+    iterateRobots time f $ poolAugmentation remainingBotIDs
 
 -- | This is a helper function to do one robot step or run robots before/after.
 singleStep :: HasGameStepState sig m => SingleStep -> RID -> IS.IntSet -> m Bool
