@@ -67,7 +67,7 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as S
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
-import Swarm.Game.CESK (CESK (Waiting), TickNumber (..))
+import Swarm.Game.CESK (CESK (Waiting))
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (NameGenerator)
 import Swarm.Game.Robot
