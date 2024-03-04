@@ -311,7 +311,6 @@ wakeUpRobotsDoneSleeping time = do
   case maybeWakeableRIDs of
     Nothing -> return mempty
     Just wakeableRIDs -> do
-
       robots <- use robotMap
       let robotIdSet = IM.keysSet robots
 
