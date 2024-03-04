@@ -60,6 +60,7 @@ import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
 import Data.IntSet.Lens (setOf)
+import Data.List (partition)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -295,6 +296,8 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 --   from the 'waitingRobots' queue and put them back in the 'activeRobots' set
 --   if they still exist in the keys of 'robotMap'.
 --
+-- Returns the set of robots that were awakened at THIS TICK.
+--
 -- = Mutations
 --
 -- This function modifies:
@@ -303,33 +306,21 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 -- * 'robotsWatching' (by way of 'clearWatchingRobots')
 -- * 'internalWaitingRobots'
 -- * 'internalActiveRobots' (aka 'activeRobots')
---
--- = Efficiency (excluding 'wakeLog')
---
--- * O(log N) where N is the number of keys in 'waitingMap'
--- * O(M) where M is the number of robots to wake
--- * O(M + A) where A is the number of active robots
 wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m IntSet
 wakeUpRobotsDoneSleeping time = do
-  waitingMap <- use waitingRobots
+  mrids <- internalWaitingRobots . at time <<.= Nothing
+  case mrids of
+    Nothing -> return mempty
+    Just rids -> do
+      robots <- use robotMap
+      let aliveRids = IS.fromList $ filter (`IM.member` robots) rids
+      internalActiveRobots %= IS.union aliveRids
 
-  let (beforeMap, maybeAt, futureMap) = M.splitLookup time waitingMap
-      currentTickMap = maybe mempty (M.singleton time) maybeAt
-      -- Note: 'union' is safe because currentTickMap and beforeMap are disjoint
-      wakeableRIDs = concat $ M.elems $ M.union currentTickMap beforeMap
+      -- These robots' wake times may have been moved "forward"
+      -- by 'wakeWatchingRobots'.
+      clearWatchingRobots rids
 
-  -- These robots' wake times may have been moved "forward"
-  -- by 'wakeWatchingRobots'.
-  clearWatchingRobots wakeableRIDs
-
-  robots <- use robotMap
-  -- Limit ourselves to the robots that have not expired in their sleep
-  let newlyAlive = filter (`IM.member` robots) wakeableRIDs
-
-  internalWaitingRobots .= futureMap
-
-  internalActiveRobots %= IS.union (IS.fromList newlyAlive)
-  use activeRobots
+      return aliveRids
 
 -- | Clear the "watch" state of all of the
 -- awakened robots
@@ -345,8 +336,8 @@ clearWatchingRobots rids = do
 --
 -- NOTE: Clearing 'TickNumber' map entries from 'internalWaitingRobots'
 -- upon wakeup is handled by 'wakeUpRobotsDoneSleeping'
-wakeWatchingRobots :: (Has (State Robots) sig m) => TickNumber -> Cosmic Location -> m ()
-wakeWatchingRobots currentTick loc = do
+wakeWatchingRobots :: (Has (State Robots) sig m) => RID -> TickNumber -> Cosmic Location -> m ()
+wakeWatchingRobots myID currentTick loc = do
   waitingMap <- use waitingRobots
   rMap <- use robotMap
   watchingMap <- use robotsWatching
@@ -381,8 +372,13 @@ wakeWatchingRobots currentTick loc = do
 
       -- Step 4: Re-add the watching bots to be awakened ASAP:
       wakeableBotIds = map fst wakeTimes
-      newWakeTime = currentTick
-      newInsertions = M.singleton newWakeTime wakeableBotIds
+      (currTickWakeable, nextTickWakeable) = partition (> myID) wakeableBotIds
+
+      wakeTimeGroups =
+        [ (currentTick, currTickWakeable)
+        , (addTicks 1 currentTick, nextTickWakeable)
+        ]
+      newInsertions = M.filter (not . null) $ M.fromList wakeTimeGroups
 
   -- NOTE: There are two "sources of truth" for the waiting state of robots:
   -- 1. In the GameState via "internalWaitingRobots"
@@ -392,10 +388,11 @@ wakeWatchingRobots currentTick loc = do
   internalWaitingRobots .= M.unionWith (<>) filteredWaiting newInsertions
 
   -- 2. Update the machine of each robot
-  forM_ wakeableBotIds $ \rid ->
-    robotMap . at rid . _Just . machine %= \case
-      Waiting _ c -> Waiting newWakeTime c
-      x -> x
+  forM_ wakeTimeGroups $ \(newWakeTime, wakeableBots) ->
+    forM_ wakeableBots $ \rid ->
+      robotMap . at rid . _Just . machine %= \case
+        Waiting _ c -> Waiting newWakeTime c
+        x -> x
 
 deleteRobot :: (Has (State Robots) sig m) => RID -> m ()
 deleteRobot rn = do
