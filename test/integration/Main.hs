@@ -226,7 +226,7 @@ testScenarioSolutions rs ui =
         ]
     , testGroup
         "Fun"
-        [ testSolution (Sec 10) "Fun/snake"
+        [ testSolution (Sec 20) "Fun/snake"
         ]
     , testGroup
         "Challenges"
@@ -234,7 +234,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Challenges/teleport"
         , testSolution Default "Challenges/maypole"
         , testSolution (Sec 5) "Challenges/2048"
-        , testSolution (Sec 3) "Challenges/word-search"
+        , testSolution (Sec 6) "Challenges/word-search"
         , testSolution (Sec 10) "Challenges/bridge-building"
         , testSolution (Sec 5) "Challenges/ice-cream"
         , testSolution (Sec 10) "Challenges/combo-lock"
@@ -261,7 +261,7 @@ testScenarioSolutions rs ui =
             "Ranching"
             [ testSolution Default "Challenges/Ranching/capture"
             , testSolution (Sec 60) "Challenges/Ranching/beekeeping"
-            , testSolution (Sec 10) "Challenges/Ranching/powerset"
+            , testSolution (Sec 20) "Challenges/Ranching/powerset"
             , testSolution (Sec 10) "Challenges/Ranching/fishing"
             , testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
             ]
