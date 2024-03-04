@@ -377,8 +377,12 @@ wakeWatchingRobots myID currentTick loc = do
 
       -- Step 4: Re-add the watching bots to be awakened ASAP:
       wakeableBotIds = map fst wakeTimes
-      (currTickWakeable, nextTickWakeable) = partition (> myID) wakeableBotIds
 
+      -- It is crucial that only robots with a larger RID thatn the current robot
+      -- be scheduled for the *same* tick, since within a given tick we iterate over
+      -- robots in increasing order of RID.
+      -- See note in 'iterateRobots'.
+      (currTickWakeable, nextTickWakeable) = partition (> myID) wakeableBotIds
       wakeTimeGroups =
         [ (currentTick, currTickWakeable)
         , (addTicks 1 currentTick, nextTickWakeable)
