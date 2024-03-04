@@ -87,10 +87,8 @@ import Prelude hiding (Applicative (..), lookup)
 gameTick :: HasGameStepState sig m => m Bool
 gameTick = do
   time <- use $ temporal . ticks
-
   void $ zoomRobots $ wakeUpRobotsDoneSleeping time
   active <- use $ robotInfo . activeRobots
-
   focusedRob <- use $ robotInfo . focusedRobotID
 
   ticked <-
@@ -169,20 +167,31 @@ type HasGameStepState sig m = (Has (State GameState) sig m, Has (Lift IO) sig m,
 -- Running a given robot _may_ cause another robot
 -- with a higher 'RID' to be inserted into the runnable set.
 --
+-- Note that the behavior we desire is described precisely by a
+-- <Monotone_priority_queue https://en.wikipedia.org/wiki/Monotone_priority_queue>.
+--
+-- A priority queue allows O(1) access to the lowest priority item. However,
+-- /splitting/ the min item from rest of the queue is still an O(log N) operation,
+-- and therefore is not any better than the 'minView' function from 'IntSet'.
+--
 -- Tail-recursive.
 iterateRobots :: HasGameStepState sig m => TickNumber -> (RID -> m ()) -> IS.IntSet -> m ()
 iterateRobots time f runnableBots =
-  unless (IS.null runnableBots) $ do
+  forM_ (IS.minView runnableBots) $ \(thisRobotId, remainingBotIDs) -> do
     f thisRobotId
 
     -- We may have awakened new robots in the current robot's iteration,
     -- so we add them to the list
     robotsToAdd <- zoomRobots $ wakeUpRobotsDoneSleeping time
-    -- let (_, robotsToAdd) = IS.split thisRobotId activeRIDsThisTick
+
+    -- NOTE: We could use 'IS.split thisRobotId activeRIDsThisTick'
+    -- to ensure that we only insert RIDs greater than 'thisRobotId'
+    -- into the queue.
+    -- However, we already ensure in 'wakeWatchingRobots' that only
+    -- robots with a larger RID are scheduled for the current tick;
+    -- robots with smaller RIDs will be scheduled for the next tick.
 
     iterateRobots time f $ IS.union robotsToAdd remainingBotIDs
- where
-  (thisRobotId, remainingBotIDs) = IS.deleteFindMin runnableBots
 
 -- | Run a set of robots - this is used to run robots before/after the focused one.
 --
