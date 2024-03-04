@@ -161,6 +161,29 @@ insertBackRobot rn rob = do
 -- | GameState with support for IO and Time effect
 type HasGameStepState sig m = (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m)
 
+-- | Run a set of robots - this is used to run robots before/after the focused one.
+--
+-- Note that during the iteration over the supplied robot IDs, it is possible
+-- that a robot that may have been present in 'robotMap' at the outset
+-- of the iteration to be removed before the iteration comes upon it.
+-- This is why we must perform a 'robotMap' lookup at each iteration, rather
+-- than looking up elements from 'robotMap' in bulk up front with something like
+-- 'restrictKeys'.
+--
+-- = Invariants
+--
+-- * Every tick, every active robot shall have exactly one opportunity to run.
+-- * The sequence in which robots are chosen to run is by increasing order of 'RID'.
+runRobotIDs :: HasGameStepState sig m => IS.IntSet -> m ()
+runRobotIDs robotNames = do
+  time <- use $ temporal . ticks
+  flip (iterateRobots time) robotNames $ \rn -> do
+    mr <- uses (robotInfo . robotMap) (IM.lookup rn)
+    forM_ mr (stepOneRobot rn)
+ where
+  stepOneRobot :: HasGameStepState sig m => RID -> Robot -> m ()
+  stepOneRobot rn rob = tickRobot rob >>= insertBackRobot rn
+
 -- |
 -- Runs the given robots in increasing order of 'RID'.
 --
@@ -192,29 +215,6 @@ iterateRobots time f runnableBots =
     -- robots with smaller RIDs will be scheduled for the next tick.
 
     iterateRobots time f $ IS.union robotsToAdd remainingBotIDs
-
--- | Run a set of robots - this is used to run robots before/after the focused one.
---
--- Note that during the iteration over the supplied robot IDs, it is possible
--- that a robot that may have been present in 'robotMap' at the outset
--- of the iteration to be removed before the iteration comes upon it.
--- This is why we must perform a 'robotMap' lookup at each iteration, rather
--- than looking up elements from 'robotMap' in bulk up front with something like
--- 'restrictKeys'.
---
--- = Invariants
---
--- * Every tick, every active robot shall have exactly one opportunity to run.
--- * The sequence in which robots are chosen to run is by increasing order of 'RID'.
-runRobotIDs :: HasGameStepState sig m => IS.IntSet -> m ()
-runRobotIDs robotNames = do
-  time <- use $ temporal . ticks
-  flip (iterateRobots time) robotNames $ \rn -> do
-    mr <- uses (robotInfo . robotMap) (IM.lookup rn)
-    forM_ mr (stepOneRobot rn)
- where
-  stepOneRobot :: HasGameStepState sig m => RID -> Robot -> m ()
-  stepOneRobot rn rob = tickRobot rob >>= insertBackRobot rn
 
 -- | This is a helper function to do one robot step or run robots before/after.
 singleStep :: HasGameStepState sig m => SingleStep -> RID -> IS.IntSet -> m Bool
