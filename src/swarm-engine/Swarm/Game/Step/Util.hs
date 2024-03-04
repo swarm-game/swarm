@@ -60,7 +60,7 @@ lookInDirection d = do
 
 -- | Modify the entity (if any) at a given location.
 updateEntityAt ::
-  (Has (State GameState) sig m) =>
+  (Has (State Robot) sig m, Has (State GameState) sig m) =>
   Cosmic Location ->
   (Maybe Entity -> Maybe Entity) ->
   m ()
@@ -71,7 +71,8 @@ updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
 
   forM_ (WM.getModification =<< someChange) $ \modType -> do
     currentTick <- use $ temporal . ticks
-    zoomRobots $ wakeWatchingRobots currentTick cLoc
+    myID <- use robotID
+    zoomRobots $ wakeWatchingRobots myID currentTick cLoc
     SRT.entityModified modType cLoc
 
     pcr <- use $ pathCaching . pathCachingRobots

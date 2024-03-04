@@ -371,7 +371,7 @@ createLogEntry source sev msg = do
 
 -- | replace some entity in the world with another entity
 updateWorld ::
-  (Has (State GameState) sig m, Has (Throw Exn) sig m) =>
+  (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) =>
   Const ->
   WorldUpdate Entity ->
   m ()
