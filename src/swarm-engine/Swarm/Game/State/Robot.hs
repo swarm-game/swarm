@@ -302,8 +302,6 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 --   from the 'waitingRobots' queue and put them back in the 'activeRobots' set
 --   if they still exist in the keys of 'robotMap'.
 --
--- Returns the set of robots that were awakened at THIS TICK.
---
 -- = Mutations
 --
 -- This function modifies:
@@ -314,13 +312,13 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 -- * 'internalActiveRobots' (aka 'activeRobots')
 wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m ()
 wakeUpRobotsDoneSleeping time = do
-  maybeWakeableRIDs <- internalWaitingRobots . at time <<.= Nothing
-  case maybeWakeableRIDs of
+  mrids <- internalWaitingRobots . at time <<.= Nothing
+  case mrids of
     Nothing -> return ()
-    Just wakeableRIDs -> do
+    Just rids -> do
       robots <- use robotMap
       let robotIdSet = IM.keysSet robots
-          wakeableRIDsSet = IS.fromList wakeableRIDs
+          wakeableRIDsSet = IS.fromList rids
 
           -- Limit ourselves to the robots that have not expired in their sleep
           newlyAlive = IS.intersection robotIdSet wakeableRIDsSet
