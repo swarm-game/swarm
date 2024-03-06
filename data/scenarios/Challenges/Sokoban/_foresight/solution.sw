@@ -139,7 +139,7 @@ def firstLeg =
     pushUntilBarrier;
 
     wait 4;
-    move;
+    moveUntilBlocked;
     doN 5 (turn left; moveUntilBlocked);
 
     turn right;

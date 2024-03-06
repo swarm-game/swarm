@@ -4,7 +4,6 @@ def moveToLock =
     end;
 
 def cycleCombos = \n.
-    wait 1;
     entityNorth <- scan north;
     let hasGate = case entityNorth (\_. false) (\x. x == "gate") in
     if hasGate {
