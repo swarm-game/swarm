@@ -152,6 +152,8 @@ onTarget rid act = do
               then deleteRobot rid
               else robotMap . ix rid .= tgt'
 
+-- | Enforces validity of the robot's privileged status to receive
+-- an achievement.
 grantAchievementForRobot ::
   (HasRobotStepState sig m, Has (Lift IO) sig m) =>
   GameplayAchievement ->
@@ -174,6 +176,8 @@ checkGameModeAchievementValidity a = do
  where
   ValidityConditions _ gameplayModeRequired = getValidityRequirements a
 
+-- | NOTE: When possible, one should use the
+-- 'grantAchievementForRobot' function instead of this one.
 grantAchievement ::
   (Has (State GameState) sig m, Has (Lift IO) sig m) =>
   GameplayAchievement ->
