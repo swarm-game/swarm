@@ -127,12 +127,14 @@ mkTailMap pathLocs = TailMap locsMap
 -- |
 -- Returns either a 'Left' which mandates cache invalidation (with a reason),
 -- or a 'Right' containing a 'Maybe'; 'Nothing' indicates the cache should
--- remain unchanged, while 'Just' supplies a modified cache.
+-- remain unchanged, while 'Just' supplies a modified cache entry.
 --
 -- Cache is affected by modification of:
 --
--- * "unwalkable" entities (an entity is placed or removed that is "unwalkable" with respect to the invoking robot)
--- * "target" entities (if the `path` command had been invoked with the modified entity as a target)
+-- * "unwalkable" entities (an entity is placed or removed
+--   that is "unwalkable" with respect to the invoking robot)
+-- * "target" entities (if the `path` command had been invoked
+--   with the modified entity as a target)
 --
 -- === Removed entity
 --
@@ -144,7 +146,8 @@ mkTailMap pathLocs = TailMap locsMap
 --
 -- === Added entity
 --
--- * If an __unwalkable__ entity is added to the map, the computed path shall only be invalidated /if the new entity lies on the path/.
+-- * If an __unwalkable__ entity is added to the map, the computed path shall
+--   only be invalidated /if the new entity lies on the path/.
 -- * If a __target__ entity is added...
 --
 --     * ...that lies on the computed path, the computed path is truncated to that entity's location
