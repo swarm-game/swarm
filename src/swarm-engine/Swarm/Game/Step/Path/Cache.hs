@@ -124,6 +124,16 @@ mkTailMap pathLocs = TailMap locsMap
  where
   locsMap = M.fromList . NE.toList . NE.map (NE.head &&& NE.tail) $ tails1 pathLocs
 
+
+-- | A higher-level abstraction than Entity removal/addition;
+-- Depending on whether a robot has a Whitelist or Blacklist,
+-- addition of an entity may be treated as removal or addition
+-- of a barrier, respectively.
+data PathCellModification =
+    BarrierRemoved
+  | BarrierAdded
+
+
 -- |
 -- Returns either a 'Left' which mandates cache invalidation (with a reason),
 -- or a 'Right' containing a 'Maybe'; 'Nothing' indicates the cache should

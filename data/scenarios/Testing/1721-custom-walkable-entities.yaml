@@ -1,15 +1,13 @@
 version: 1
 name: Custom walkability
-description: The monkey can only walk on `tree`{=entity}s (and `banana`{=entity}s). The `path` command must fail until the path of `tree`{=entity}s is completed.
+description: |
+  The monkey can only walk on `tree`{=entity}s (and `banana`{=entity}s).
+  The `path` command must fail until the path of `tree`{=entity}s is completed.
+
+  NOTE: In order for the objectives to be evaluated properly for a "Win", they must be
+  ordered strictly with "banana_access" coming before "placed_tree" in the
+  list below.
 objectives:
-  - id: placed_tree
-    prerequisite:
-      not: banana_access
-    goal:
-      - Tree must be placed
-    condition: |
-      x <- as base {has "tree"};
-      return $ not x;
   - id: banana_access
     teaser: Banana access
     goal:
@@ -20,6 +18,15 @@ objectives:
         p <- path (inR 10) (inR "banana");
         return $ case p (\_. false) (\_. true);
       };
+  - id: placed_tree
+    teaser: Tree placed
+    prerequisite:
+      not: banana_access
+    goal:
+      - Tree must be placed
+    condition: |
+      x <- as base {has "tree"};
+      return $ not x;
 solution: |
   move;
   move;

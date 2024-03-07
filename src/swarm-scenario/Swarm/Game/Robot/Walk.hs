@@ -15,6 +15,12 @@ import GHC.Generics (Generic)
 import Swarm.Game.Entity (EntityName)
 import Swarm.Language.Capability (Capability)
 
+-- | A 'Blacklist' that is empty is the typical behavior,
+-- in which walkability is
+-- fully determined by an entity's 'Unwalkable' or 'Liquid' property.
+-- A 'Whitelist' ignores those properties, and even blank terrain
+-- is considered unwalkable.
+-- A 'Whitelist' that is empty would allow no movement whatsoever.
 data Inclusions a
   = Whitelist a
   | Blacklist a
@@ -35,7 +41,7 @@ instance (FromJSON a, Ord a) => FromJSON (WalkabilityExceptions a) where
 
     let exceptionList =
           maybe
-            (Blacklist blacklist)
+            (Blacklist blacklist) -- empty blacklist is the typical case
             (Whitelist . NE.toList)
             (NE.nonEmpty whitelist)
 

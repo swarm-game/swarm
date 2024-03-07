@@ -1,0 +1,60 @@
+version: 1
+name: Custom walkability - whitelist
+description: |
+  Exercise various scenarios of path cache invalidation.
+objectives:
+  - goal:
+      - Get somewhere
+    condition: |
+      return false
+solution: |
+  move;
+  move;
+  place "tree"
+entities:
+  - name: platform
+    display:
+      char: 'P'
+      attr: ice
+    description:
+      - Goal at the end of the trees
+    properties: [known]
+robots:
+  - name: base
+    dir: east
+    display:
+      attr: robot
+    devices:
+      - logger
+      - grabber
+      - treads
+      - dictionary
+      - net
+    walkable:
+      only:
+        - tree
+        - platform
+  - name: sysbot
+    dir: east
+    system: true
+    display:
+      attr: robot
+      invisible: false
+known: [tree]
+world:
+  dsl: |
+    {grass}
+  palette:
+    'B': [grass, null, base]
+    'S': [grass, null, sysbot]
+    '.': [grass]
+    'T': [grass, tree]
+    'P': [grass, platform]
+  upperleft: [0, 0]
+  map: |
+    ..............
+    ..............
+    BTTTTTTTTTP...
+    ..............
+    ......S.......
+
