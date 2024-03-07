@@ -177,7 +177,7 @@ perhapsInvalidateForRobot
 
     -- TODO: If using an entity Whitelist,
     -- cache invalidation logic is backwards
-    isUnwalkable = not . null . checkUnwalkable walkInfo
+    isUnwalkable = not . null . checkUnwalkable walkInfo . Just
     isOnPath = entityLoc `M.member` locmap
 
     handleRemovedEntity oldEntity

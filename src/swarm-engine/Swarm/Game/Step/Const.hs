@@ -260,8 +260,8 @@ execConst runChildProg c vs s k = do
         let maybeFirstFailure = asum failureMaybes
 
         applyMoveFailureEffect maybeFirstFailure $ \case
-          PathBlocked -> ThrowExn
-          PathLiquid -> Destroy
+          PathBlockedBy _ -> ThrowExn
+          PathLiquid _ -> Destroy
 
         let maybeLastLoc = do
               guard $ null maybeFirstFailure
@@ -281,8 +281,8 @@ execConst runChildProg c vs s k = do
 
         onTarget rid $ do
           checkMoveAhead nextLoc $ \case
-            PathBlocked -> Destroy
-            PathLiquid -> Destroy
+            PathBlockedBy _ -> Destroy
+            PathLiquid _ -> Destroy
           updateRobotLocation oldLoc nextLoc
 
         -- Privileged robots can teleport without causing any
@@ -1612,28 +1612,30 @@ execConst runChildProg c vs s k = do
     loc <- use robotLocation
     let nextLoc = loc `offsetBy` orientation
     checkMoveAhead nextLoc $ \case
-      PathBlocked -> ThrowExn
-      PathLiquid -> Destroy
+      PathBlockedBy _ -> ThrowExn
+      PathLiquid _ -> Destroy
     updateRobotLocation loc nextLoc
     return $ mkReturn ()
 
   applyMoveFailureEffect ::
     (HasRobotStepState sig m, Has (Lift IO) sig m) =>
-    Maybe MoveFailureDetails ->
+    Maybe MoveFailureMode ->
     MoveFailureHandler ->
     m ()
   applyMoveFailureEffect maybeFailure failureHandler =
     case maybeFailure of
       Nothing -> return ()
-      Just (MoveFailureDetails e failureMode) -> case failureHandler failureMode of
+      Just failureMode -> case failureHandler failureMode of
         IgnoreFail -> return ()
         Destroy -> destroyIfNotBase $ \b -> case (b, failureMode) of
-          (True, PathLiquid) -> Just RobotIntoWater -- achievement for drowning
+          (True, PathLiquid _) -> Just RobotIntoWater -- achievement for drowning
           _ -> Nothing
         ThrowExn -> throwError . cmdExn c $
           case failureMode of
-            PathBlocked -> ["There is a", e ^. entityName, "in the way!"]
-            PathLiquid -> ["There is a dangerous liquid", e ^. entityName, "in the way!"]
+            PathBlockedBy ent -> case ent of
+              Just e -> ["There is a", e ^. entityName, "in the way!"]
+              Nothing -> ["There is nothing to travel on!"]
+            PathLiquid e -> ["There is a dangerous liquid", e ^. entityName, "in the way!"]
 
   -- Determine the move failure mode and apply the corresponding effect.
   checkMoveAhead ::
