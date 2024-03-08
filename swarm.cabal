@@ -710,7 +710,7 @@ executable swarm
   build-depends:
     -- Imports shared with the library don't need bounds
     base,
-    blaze-html >=0.9.1 && <0.9.2,
+    blaze-html >=0.9.1 && <0.10,
     brick,
     fused-effects,
     githash >=0.1.6 && <0.2,
