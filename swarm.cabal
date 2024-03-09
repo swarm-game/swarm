@@ -193,6 +193,7 @@ library swarm-scenario
     Swarm.Game.Recipe
     Swarm.Game.ResourceLoading
     Swarm.Game.Robot
+    Swarm.Game.Robot.Walk
     Swarm.Game.Scenario
     Swarm.Game.Scenario.Objective
     Swarm.Game.Scenario.Objective.Graph
@@ -545,6 +546,7 @@ library
     Swarm.Game.Robot.Activity,
     Swarm.Game.Robot.Concrete,
     Swarm.Game.Robot.Context,
+    Swarm.Game.Robot.Walk,
     Swarm.Game.Scenario,
     Swarm.Game.Scenario.Objective,
     Swarm.Game.Scenario.Objective.Graph,

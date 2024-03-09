@@ -25,7 +25,8 @@ import Data.Map qualified as M
 import GHC.Generics (Generic)
 import Swarm.Game.Entity
 import Swarm.Game.Location
-import Swarm.Game.Robot (RID, WalkabilityContext)
+import Swarm.Game.Robot (RID)
+import Swarm.Game.Robot.Walk (WalkabilityContext)
 import Swarm.Game.Universe (SubworldName)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.RingBuffer

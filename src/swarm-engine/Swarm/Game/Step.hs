@@ -53,6 +53,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Robot.Context
+import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
 import Swarm.Game.State
@@ -376,7 +377,7 @@ hypotheticalRobot m =
       []
       True
       False
-      mempty
+      emptyExceptions
 
 evaluateCESK ::
   ( Has Effect.Time sig m

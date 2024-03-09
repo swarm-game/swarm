@@ -163,17 +163,15 @@ randomName = do
 checkMoveFailureUnprivileged ::
   HasRobotStepState sig m =>
   Cosmic Location ->
-  m (Maybe MoveFailureDetails)
+  m (Maybe MoveFailureMode)
 checkMoveFailureUnprivileged nextLoc = do
   me <- entityAt nextLoc
   wc <- use walkabilityContext
-  return $ do
-    e <- me
-    checkUnwalkable wc e
+  return $ checkUnwalkable wc me
 
 -- | Make sure nothing is in the way. Note that system robots implicitly ignore
 -- and base throws on failure.
-checkMoveFailure :: HasRobotStepState sig m => Cosmic Location -> m (Maybe MoveFailureDetails)
+checkMoveFailure :: HasRobotStepState sig m => Cosmic Location -> m (Maybe MoveFailureMode)
 checkMoveFailure nextLoc = do
   systemRob <- use systemRobot
   runMaybeT $ do

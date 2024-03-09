@@ -31,8 +31,9 @@ robots:
       - treads
       - dictionary
       - net
-    unwalkable:
-      - tree
+    walkable:
+      never:
+        - tree
 known: [tree, flower, bitcoin]
 world:
   palette:

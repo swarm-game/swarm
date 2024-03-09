@@ -32,15 +32,18 @@ module Swarm.Game.Step.Path.Cache (
 import Control.Arrow (left, (&&&))
 import Control.Carrier.State.Lazy
 import Control.Effect.Lens
+import Control.Lens ((^.))
 import Control.Monad (unless)
 import Data.Either.Extra (maybeToEither)
 import Data.IntMap qualified as IM
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
+import Data.Tuple.Extra (both)
 import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Walk
 import Swarm.Game.State
 import Swarm.Game.Step.Path.Cache.DistanceLimit
 import Swarm.Game.Step.Path.Type
@@ -126,28 +129,17 @@ mkTailMap pathLocs = TailMap locsMap
 -- |
 -- Returns either a 'Left' which mandates cache invalidation (with a reason),
 -- or a 'Right' containing a 'Maybe'; 'Nothing' indicates the cache should
--- remain unchanged, while 'Just' supplies a modified cache.
+-- remain unchanged, while 'Just' supplies a modified cache entry.
 --
 -- Cache is affected by modification of:
 --
--- * "unwalkable" entities (an entity is placed or removed that is "unwalkable" with respect to the invoking robot)
--- * "target" entities (if the `path` command had been invoked with the modified entity as a target)
---
--- === Removed entity
---
--- * If an __unwalkable__ entity is removed from the map, the computed path shall be invalidated.
--- * If a __target__ entity is removed...
---
---     * ...that is the destination of the computed path, invalidate the cache
---     * ...that is /not/ the destination of the computed path, the cache is unaffected
---
--- === Added entity
---
--- * If an __unwalkable__ entity is added to the map, the computed path shall only be invalidated /if the new entity lies on the path/.
--- * If a __target__ entity is added...
---
---     * ...that lies on the computed path, the computed path is truncated to that entity's location
---     * ...that does /not/ lie on the computed path, invalidate the cache
+-- * cell walkability (i.e., an entity is placed or removed
+--   that is "unwalkable" (blacklist) or "exclusively walkable" (whitelist)
+--   with respect to the invoking robot
+-- * "target" entities (if the `path` command had been invoked
+--   with the modified entity as a target). Note that it is impossible
+--   to find a path to an "unwalkable" target, so this nonsensical case
+--   is ignored for the purpose of cache invalidation.
 perhapsInvalidateForRobot ::
   WalkabilityContext ->
   -- | location of modified cell
@@ -163,33 +155,43 @@ perhapsInvalidateForRobot
   oldCache@(PathfindingCache parms _previousWalkabilityInfo destLoc p)
     | swn /= pathSubworld = Right Nothing
     | otherwise = case entityModification of
-        Swap oldEntity newEntity ->
-          handleRemovedEntity oldEntity >> handleNewEntity newEntity
-        Remove oldEntity -> handleRemovedEntity oldEntity
-        Add newEntity -> handleNewEntity newEntity
+        Swap oldEntity newEntity -> deriveBarrierModification $ both Just (oldEntity, newEntity)
+        Remove oldEntity -> deriveBarrierModification (Just oldEntity, Nothing)
+        Add newEntity -> deriveBarrierModification (Nothing, Just newEntity)
    where
     PathfindingParameters _distLimit pathSubworld tgt = parms
     CachedPath origPath (TailMap locmap) = p
 
-    isUnwalkable = not . null . checkUnwalkable walkInfo
+    isWalkable = null . checkUnwalkable walkInfo
     isOnPath = entityLoc `M.member` locmap
 
-    handleRemovedEntity oldEntity
-      | destLoc == entityLoc = Left TargetEntityRemoved
-      | isUnwalkable oldEntity = Left UnwalkableRemoved
-      | otherwise = Right Nothing
+    -- NOTE: oldContent and newContent are guaranteed to be different,
+    -- because the 'Swap' constructor enforces such.
+    deriveBarrierModification change@(_oldContent, newContent) =
+      case tgt of
+        LocationTarget _locTarget -> barrierChange
+        -- If the location of the changed entity was the terminus
+        -- of the path, and the path search is "by entity", then
+        -- we know that the path must be invalidated due to removal
+        -- of the goal.
+        -- Also, we know that a "target entity" on the path will
+        -- only ever exist the path's terminus; otherwise the
+        -- terminus would have been earlier!
+        EntityTarget targetEntityName -> handleEntityTarget targetEntityName
+     where
+      handleEntityTarget targetEntityName
+        | destLoc == entityLoc = Left TargetEntityRemoved
+        | maybe True ((/= targetEntityName) . (^. entityName)) newContent = barrierChange
+        | isOnPath = Right $ Just $ truncatePath origPath entityLoc oldCache
+        | otherwise = Left TargetEntityAddedOutsidePath
 
-    handleNewEntity newEntity
-      | isUnwalkable newEntity && isOnPath = Left UnwalkableOntoPath
-      | otherwise = case tgt of
-          LocationTarget _locTarget -> Right Nothing
-          EntityTarget targetEntityName -> handleNewEntityWithEntityTarget newEntity targetEntityName
-
-    -- If the pathfinding target is an Entity rather than a specific location
-    handleNewEntityWithEntityTarget newEntity targetEntityName
-      | view entityName newEntity /= targetEntityName = Right Nothing
-      | isOnPath = Right $ Just $ truncatePath origPath entityLoc oldCache
-      | otherwise = Left TargetEntityAddedOutsidePath
+      walkabilityPair = both isWalkable change
+      barrierChange
+        | uncurry (==) walkabilityPair = Right Nothing
+        | snd walkabilityPair = Left UnwalkableRemoved
+        | isOnPath = Left UnwalkableOntoPath
+        -- addition of a barrier outside of the path is irrelevant.
+        | otherwise = Right Nothing
 
 -- | If the newly-added target entity lies on the existing path,
 -- truncate the path to set it as the goal.
