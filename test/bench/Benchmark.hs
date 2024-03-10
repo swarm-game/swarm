@@ -19,6 +19,7 @@ import Swarm.Game.Display (defaultRobotDisplay)
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, mkRobot)
+import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Scenario (loadStandaloneScenario)
 import Swarm.Game.State (GameState, creativeMode, landscape, pureScenarioToGameState, zoomRobots)
 import Swarm.Game.State.Landscape (multiWorld)
@@ -132,7 +133,7 @@ initRobot prog loc =
     []
     False
     False
-    mempty
+    emptyExceptions
     0
 
 -- | Creates a GameState with numRobot copies of robot on a blank map, aligned

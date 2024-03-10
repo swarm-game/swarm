@@ -31,6 +31,7 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
@@ -113,7 +114,7 @@ addCombustionBot inputEntity combustibility ts loc = do
       botInventory
       True
       False
-      mempty
+      emptyExceptions
       ts
   return combustionDurationRand
  where
@@ -225,5 +226,5 @@ addIgnitionBot ignitionDelay inputEntity ts loc =
       []
       True
       False
-      mempty
+      emptyExceptions
       ts

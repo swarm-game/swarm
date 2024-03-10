@@ -598,7 +598,7 @@ constInfo c = case c of
         "Obtain shortest path to the destination."
       $ [ "Optionally supply a distance limit as the first argument."
         , "Supply either a location (`inL`) or an entity (`inR`) as the second argument."
-        , "If a path exists, returns the direction to proceed along and the remaining distance."
+        , "If a path exists, returns the immediate direction to proceed along and the remaining distance."
         ]
   Push ->
     command 1 short

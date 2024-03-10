@@ -224,8 +224,9 @@ robots:
     dir: north
     inventory:
       - [4, wool]
-    unwalkable:
-      - gate
+    walkable:
+      never:
+        - gate
     program: |
       run "scenarios/Challenges/Ranching/_gated-paddock/meandering-sheep.sw";
 entities:

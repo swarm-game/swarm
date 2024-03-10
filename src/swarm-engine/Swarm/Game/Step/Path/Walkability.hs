@@ -7,28 +7,35 @@ module Swarm.Game.Step.Path.Walkability where
 import Control.Lens
 import Data.Set qualified as S
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
-import Swarm.Game.Robot
+import Swarm.Game.Robot.Walk
 import Swarm.Language.Capability
 
-data MoveFailureMode = PathBlocked | PathLiquid
-
-data MoveFailureDetails
-  = MoveFailureDetails
-      -- | Occupies the destination cell
-      Entity
-      MoveFailureMode
+data MoveFailureMode
+  = -- | If the robot has a path Whitelist,
+    -- then the absence of an entity could prevent walkability (represented by `PathBlockedBy Nothing`).
+    PathBlockedBy (Maybe Entity)
+  | PathLiquid Entity
 
 -- | Pure logic used inside of
 -- 'Swarm.Game.Step.Util.checkMoveFailureUnprivileged'
 checkUnwalkable ::
   WalkabilityContext ->
-  Entity ->
-  Maybe MoveFailureDetails
-checkUnwalkable (WalkabilityContext caps unwalkables) e
+  Maybe Entity ->
+  Maybe MoveFailureMode
+checkUnwalkable (WalkabilityContext _ walkExceptions) Nothing =
+  case walkExceptions of
+    Whitelist _ -> Just $ PathBlockedBy Nothing
+    Blacklist _ -> Nothing
+checkUnwalkable (WalkabilityContext caps walkExceptions) (Just e)
   -- robots can not walk through walls
-  | e `hasProperty` Unwalkable || (e ^. entityName) `S.member` unwalkables =
-      Just $ MoveFailureDetails e PathBlocked
+  | isUnwalkableEntity =
+      Just $ PathBlockedBy $ Just e
   -- robots drown if they walk over liquid without boat
   | e `hasProperty` Liquid && CFloat `S.notMember` caps =
-      Just $ MoveFailureDetails e PathLiquid
+      Just $ PathLiquid e
   | otherwise = Nothing
+ where
+  eName = e ^. entityName
+  isUnwalkableEntity = case walkExceptions of
+    Whitelist onlyWalkables -> eName `S.notMember` onlyWalkables
+    Blacklist unwalkables -> e `hasProperty` Unwalkable || eName `S.member` unwalkables
