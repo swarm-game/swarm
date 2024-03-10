@@ -140,10 +140,10 @@ finishGameTick =
     RobotStep SBefore -> temporal . gameStep .= WorldTick
     RobotStep _ -> void gameTick >> finishGameTick
 
--- | Insert the robot back to robot map.
+-- | Update the state of the robot as known by the 'robotMap'.
 -- Will selfdestruct or put the robot to sleep if it has that set.
-insertBackRobot :: Has (State GameState) sig m => RID -> Robot -> m ()
-insertBackRobot rn rob = do
+registerUpdatedRobotState :: Has (State GameState) sig m => RID -> Robot -> m ()
+registerUpdatedRobotState rn rob = do
   time <- use $ temporal . ticks
   zoomRobots $
     if rob ^. selfDestruct
@@ -164,8 +164,8 @@ type HasGameStepState sig m = (Has (State GameState) sig m, Has (Lift IO) sig m,
 -- | Run a set of robots - this is used to run robots before/after the focused one.
 --
 -- Note that during the iteration over the supplied robot IDs, it is possible
--- that a robot that may have been present in 'robotMap' at the outset
--- of the iteration to be removed before the iteration comes upon it.
+-- that a robot /that may have been present in 'robotMap' at the outset
+-- of the iteration/ to be removed before the iteration comes upon it.
 -- This is why we must perform a 'robotMap' lookup at each iteration, rather
 -- than looking up elements from 'robotMap' in bulk up front with something like
 -- 'restrictKeys'.
@@ -182,7 +182,7 @@ runRobotIDs robotNames = do
     forM_ mr (stepOneRobot rn)
  where
   stepOneRobot :: HasGameStepState sig m => RID -> Robot -> m ()
-  stepOneRobot rn rob = tickRobot rob >>= insertBackRobot rn
+  stepOneRobot rn rob = tickRobot rob >>= registerUpdatedRobotState rn
 
 -- |
 -- Runs the given robots in increasing order of 'RID'.
@@ -223,9 +223,18 @@ iterateRobots time f runnableBots =
     iterateRobots time f $ poolAugmentation remainingBotIDs
 
 -- | This is a helper function to do one robot step or run robots before/after.
+--
+-- The debugger behavior is determined by which robot is "focused", requiring consideration
+-- of certain edge cases:
+--
+-- * The player switches focus to a different robot in the middle of a tick
+-- * The originally focused robot is destroyed earlier in the tick (before
+--   it gets a chance to run)
+--
+-- Returns True if the tick is complete; that is, all of the robots
+-- have had an opportunity to run.
 singleStep :: HasGameStepState sig m => SingleStep -> RID -> IS.IntSet -> m Bool
-singleStep ss focRID robotSet = do
-  let (preFoc, focusedActive, postFoc) = IS.splitMember focRID robotSet
+singleStep ss focRID robotSet =
   case ss of
     ----------------------------------------------------------------------------
     -- run robots from the beginning until focused robot
@@ -245,24 +254,28 @@ singleStep ss focRID robotSet = do
     SSingle rid | not focusedActive -> do
       singleStep (SAfter rid) rid postFoc -- skip inactive focused robot
     SSingle rid -> do
+      let focusUnchanged = rid == focRID
       mOldR <- uses (robotInfo . robotMap) (IM.lookup focRID)
       case mOldR of
-        Nothing | rid == focRID -> do
+        Nothing | focusUnchanged -> do
           debugLog "The debugged robot does not exist! Exiting single step mode."
-          runRobotIDs postFoc
-          temporal . gameStep .= WorldTick
-          temporal . ticks %= addTicks 1
-          return True
+          finishTickWith WorldTick
         Nothing | otherwise -> do
+          -- The original target of debugging is gone, but it's OK because
+          -- the player changed focus.
+          -- QUESTION: What if the focus got changed to a robot that
+          -- has already run in this tick??
           debugLog "The previously debugged robot does not exist!"
           singleStep SBefore focRID postFoc
         Just oldR -> do
           -- if focus changed we need to finish the previous robot
-          newR <- (if rid == focRID then stepRobot else tickRobotRec) oldR
-          insertBackRobot focRID newR
-          if rid == focRID
+          newR <- (if focusUnchanged then stepRobot else tickRobotRec) oldR
+          registerUpdatedRobotState focRID newR
+          if focusUnchanged
             then do
               when (newR ^. activityCounts . tickStepBudget == 0) $
+                -- Our robot ran out of its step budget for this tick,
+                -- so we will have to continue on to the other robots.
                 temporal . gameStep .= RobotStep (SAfter focRID)
               return False
             else do
@@ -272,18 +285,23 @@ singleStep ss focRID robotSet = do
     -- run robots after the focused robot
     SAfter rid | focRID <= rid -> do
       -- This state takes care of two possibilities:
-      -- 1. normal - rid == focRID and we finish the tick
+      -- 1. normal: rid == focRID and we finish the tick
       -- 2. changed focus and the newly focused robot has previously run
       --    so we just finish the tick the same way
-      runRobotIDs postFoc
-      temporal . gameStep .= RobotStep SBefore
-      temporal . ticks %= addTicks 1
-      return True
+      finishTickWith $ RobotStep SBefore
     SAfter rid | otherwise -> do
       -- go to single step if new robot is focused
       let (_pre, postRID) = IS.split rid robotSet
       singleStep SBefore focRID postRID
  where
+  (preFoc, focusedActive, postFoc) = IS.splitMember focRID robotSet
+
+  finishTickWith stepMode = do
+    runRobotIDs postFoc
+    temporal . gameStep .= stepMode
+    temporal . ticks %= addTicks 1
+    return True
+
   h = hypotheticalRobot (Out VUnit emptyStore []) 0
   debugLog txt = do
     m <- evalState @Robot h $ createLogEntry RobotError Debug txt
