@@ -12,7 +12,7 @@ import Swarm.Language.Capability
 
 data MoveFailureMode
   = -- | If the robot has a path Whitelist,
-    -- then the absence of an entity prevents walkability.
+    -- then the absence of an entity could prevent walkability (represented by `PathBlockedBy Nothing`).
     PathBlockedBy (Maybe Entity)
   | PathLiquid Entity
 
