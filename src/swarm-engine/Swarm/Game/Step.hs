@@ -94,7 +94,7 @@ gameTick = do
   ticked <-
     use (temporal . gameStep) >>= \case
       WorldTick -> do
-        runRobotIDs active
+        void $ runRobotIDs Nothing active
         temporal . ticks %= addTicks 1
         pure True
       RobotStep ss -> singleStep ss focusedRob active
@@ -174,10 +174,15 @@ type HasGameStepState sig m = (Has (State GameState) sig m, Has (Lift IO) sig m,
 --
 -- * Every tick, every active robot shall have exactly one opportunity to run.
 -- * The sequence in which robots are chosen to run is by increasing order of 'RID'.
-runRobotIDs :: HasGameStepState sig m => IS.IntSet -> m ()
-runRobotIDs robotNames = do
+runRobotIDs ::
+  HasGameStepState sig m =>
+  -- Optional RID to stop before
+  Maybe RID ->
+  IS.IntSet ->
+  m IS.IntSet
+runRobotIDs maybeStopBeforeRID robotNames = do
   time <- use $ temporal . ticks
-  flip (iterateRobots time) robotNames $ \rn -> do
+  flip (iterateRobots maybeStopBeforeRID time) robotNames $ \rn -> do
     mr <- uses (robotInfo . robotMap) (IM.lookup rn)
     forM_ mr (stepOneRobot rn)
  where
@@ -217,13 +222,29 @@ getExtraRunnableRobots time = do
 -- /splitting/ the min item from rest of the queue is still an O(log N) operation,
 -- and therefore is not any better than the 'minView' function from 'IntSet'.
 --
--- Tail-recursive.
-iterateRobots :: HasGameStepState sig m => TickNumber -> (RID -> m ()) -> IS.IntSet -> m ()
-iterateRobots time f runnableBots =
-  forM_ (IS.minView runnableBots) $ \(thisRobotId, remainingBotIDs) -> do
+-- To support the interactive debugger, we also support the capability to
+-- stop before reaching a certain 'RID', in which case we return the
+-- remaining 'RID's we didn't get to yet.
+iterateRobots ::
+  HasGameStepState sig m =>
+  -- Optional RID to stop before
+  Maybe RID ->
+  TickNumber ->
+  (RID -> m ()) ->
+  IS.IntSet ->
+  m IS.IntSet
+iterateRobots maybeStopBeforeRID time f runnableBots =
+  case IS.minView runnableBots of
+    Nothing -> return runnableBots
+    Just (thisRobotId, remainingBotIDs) ->
+      if maybe True (< thisRobotId) maybeStopBeforeRID
+        then doRecurse thisRobotId remainingBotIDs
+        else return runnableBots
+ where
+  doRecurse thisRobotId remainingBotIDs = do
     f thisRobotId
     augmentRunPool <- getExtraRunnableRobots time
-    iterateRobots time f $ augmentRunPool remainingBotIDs
+    iterateRobots maybeStopBeforeRID time f $ augmentRunPool remainingBotIDs
 
 -- | This is a helper function to do one robot step or run robots before/after.
 --
@@ -242,7 +263,8 @@ singleStep ss focRID robotSet =
     ----------------------------------------------------------------------------
     -- run robots from the beginning until focused robot
     SBefore -> do
-      runRobotIDs preFoc
+      remainingBotsForAfterward <- runRobotIDs (Just focRID) preFoc
+
       temporal . gameStep .= RobotStep (SSingle focRID)
       -- also set ticks of focused robot
       steps <- use $ temporal . robotStepsPerTick
@@ -250,7 +272,7 @@ singleStep ss focRID robotSet =
       -- continue to focused robot if there were no previous robots
       -- DO NOT SKIP THE ROBOT SETUP above
       if IS.null preFoc
-        then singleStep (SSingle focRID) focRID robotSet
+        then singleStep (SSingle focRID) focRID $ IS.union remainingBotsForAfterward robotSet
         else return False
     ----------------------------------------------------------------------------
     -- run single step of the focused robot (may skip if inactive)
@@ -275,6 +297,8 @@ singleStep ss focRID robotSet =
           newR <- (if focusUnchanged then stepRobot else tickRobotRec) oldR
           registerUpdatedRobotState focRID newR
 
+          -- This may have introduced more robots to run!
+          -- Need to check 'currentTickWakeableBots' and empty it.
           time <- use $ temporal . ticks
           augmentRunPool <- getExtraRunnableRobots time
 
@@ -304,7 +328,7 @@ singleStep ss focRID robotSet =
   (preFoc, focusedActive, postFoc) = IS.splitMember focRID robotSet
 
   finishTickWith stepMode = do
-    runRobotIDs postFoc
+    void $ runRobotIDs Nothing postFoc
     temporal . gameStep .= stepMode
     temporal . ticks %= addTicks 1
     return True
