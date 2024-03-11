@@ -226,7 +226,7 @@ testScenarioSolutions rs ui =
         ]
     , testGroup
         "Fun"
-        [ testSolution (Sec 10) "Fun/snake"
+        [ testSolution (Sec 20) "Fun/snake"
         ]
     , testGroup
         "Challenges"
@@ -234,7 +234,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Challenges/teleport"
         , testSolution Default "Challenges/maypole"
         , testSolution (Sec 5) "Challenges/2048"
-        , testSolution (Sec 3) "Challenges/word-search"
+        , testSolution (Sec 6) "Challenges/word-search"
         , testSolution (Sec 10) "Challenges/bridge-building"
         , testSolution (Sec 5) "Challenges/ice-cream"
         , testSolution (Sec 10) "Challenges/combo-lock"
@@ -261,7 +261,7 @@ testScenarioSolutions rs ui =
             "Ranching"
             [ testSolution Default "Challenges/Ranching/capture"
             , testSolution (Sec 60) "Challenges/Ranching/beekeeping"
-            , testSolution (Sec 10) "Challenges/Ranching/powerset"
+            , testSolution (Sec 20) "Challenges/Ranching/powerset"
             , testSolution (Sec 10) "Challenges/Ranching/fishing"
             , testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
             ]
@@ -363,6 +363,8 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/144-subworlds/subworld-located-robots"
         , testSolution Default "Testing/1355-combustion"
         , testSolution Default "Testing/1379-single-world-portal-reorientation"
+        , testSolution Default "Testing/1322-wait-with-instant"
+        , testSolution Default "Testing/1598-detect-entity-change"
         , testSolution Default "Testing/1399-backup-command"
         , testSolution Default "Testing/1536-custom-unwalkable-entities"
         , testSolution Default "Testing/1721-custom-walkable-entities"

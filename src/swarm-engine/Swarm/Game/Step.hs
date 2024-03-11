@@ -84,7 +84,7 @@ import Prelude hiding (Applicative (..), lookup)
 --
 --   Note that the game may be in 'RobotStep' mode and not finish
 --   the tick. Use the return value to check whether a full tick happened.
-gameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => m Bool
+gameTick :: HasGameStepState sig m => m Bool
 gameTick = do
   time <- use $ temporal . ticks
   zoomRobots $ wakeUpRobotsDoneSleeping time
@@ -133,14 +133,14 @@ gameTick = do
 -- | Finish a game tick in progress and set the game to 'WorldTick' mode afterwards.
 --
 -- Use this function if you need to unpause the game.
-finishGameTick :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => m ()
+finishGameTick :: HasGameStepState sig m => m ()
 finishGameTick =
   use (temporal . gameStep) >>= \case
     WorldTick -> pure ()
     RobotStep SBefore -> temporal . gameStep .= WorldTick
     RobotStep _ -> void gameTick >> finishGameTick
 
--- Insert the robot back to robot map.
+-- | Insert the robot back to robot map.
 -- Will selfdestruct or put the robot to sleep if it has that set.
 insertBackRobot :: Has (State GameState) sig m => RID -> Robot -> m ()
 insertBackRobot rn rob = do
@@ -158,16 +158,72 @@ insertBackRobot rn rob = do
           Nothing ->
             unless (isActive rob) (sleepForever rn)
 
--- Run a set of robots - this is used to run robots before/after the focused one.
-runRobotIDs :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => IS.IntSet -> m ()
-runRobotIDs robotNames = forM_ (IS.toList robotNames) $ \rn -> do
-  mr <- uses (robotInfo . robotMap) (IM.lookup rn)
-  forM_ mr (stepOneRobot rn)
+-- | GameState with support for IO and Time effect
+type HasGameStepState sig m = (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m)
+
+-- | Run a set of robots - this is used to run robots before/after the focused one.
+--
+-- Note that during the iteration over the supplied robot IDs, it is possible
+-- that a robot that may have been present in 'robotMap' at the outset
+-- of the iteration to be removed before the iteration comes upon it.
+-- This is why we must perform a 'robotMap' lookup at each iteration, rather
+-- than looking up elements from 'robotMap' in bulk up front with something like
+-- 'restrictKeys'.
+--
+-- = Invariants
+--
+-- * Every tick, every active robot shall have exactly one opportunity to run.
+-- * The sequence in which robots are chosen to run is by increasing order of 'RID'.
+runRobotIDs :: HasGameStepState sig m => IS.IntSet -> m ()
+runRobotIDs robotNames = do
+  time <- use $ temporal . ticks
+  flip (iterateRobots time) robotNames $ \rn -> do
+    mr <- uses (robotInfo . robotMap) (IM.lookup rn)
+    forM_ mr (stepOneRobot rn)
  where
+  stepOneRobot :: HasGameStepState sig m => RID -> Robot -> m ()
   stepOneRobot rn rob = tickRobot rob >>= insertBackRobot rn
 
--- This is a helper function to do one robot step or run robots before/after.
-singleStep :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => SingleStep -> RID -> IS.IntSet -> m Bool
+-- |
+-- Runs the given robots in increasing order of 'RID'.
+--
+-- Running a given robot _may_ cause another robot
+-- with a higher 'RID' to be inserted into the runnable set.
+--
+-- Note that the behavior we desire is described precisely by a
+-- <Monotone_priority_queue https://en.wikipedia.org/wiki/Monotone_priority_queue>.
+--
+-- A priority queue allows O(1) access to the lowest priority item. However,
+-- /splitting/ the min item from rest of the queue is still an O(log N) operation,
+-- and therefore is not any better than the 'minView' function from 'IntSet'.
+--
+-- Tail-recursive.
+iterateRobots :: HasGameStepState sig m => TickNumber -> (RID -> m ()) -> IS.IntSet -> m ()
+iterateRobots time f runnableBots =
+  forM_ (IS.minView runnableBots) $ \(thisRobotId, remainingBotIDs) -> do
+    f thisRobotId
+
+    -- We may have awakened new robots in the current robot's iteration,
+    -- so we add them to the list
+    poolAugmentation <- do
+      -- NOTE: We could use 'IS.split thisRobotId activeRIDsThisTick'
+      -- to ensure that we only insert RIDs greater than 'thisRobotId'
+      -- into the queue.
+      -- However, we already ensure in 'wakeWatchingRobots' that only
+      -- robots with a larger RID are scheduled for the current tick;
+      -- robots with smaller RIDs will be scheduled for the next tick.
+      robotsToAdd <- use $ robotInfo . currentTickWakeableBots
+      if null robotsToAdd
+        then return id
+        else do
+          zoomRobots $ wakeUpRobotsDoneSleeping time
+          robotInfo . currentTickWakeableBots .= []
+          return $ IS.union $ IS.fromList robotsToAdd
+
+    iterateRobots time f $ poolAugmentation remainingBotIDs
+
+-- | This is a helper function to do one robot step or run robots before/after.
+singleStep :: HasGameStepState sig m => SingleStep -> RID -> IS.IntSet -> m Bool
 singleStep ss focRID robotSet = do
   let (preFoc, focusedActive, postFoc) = IS.splitMember focRID robotSet
   case ss of
@@ -424,7 +480,7 @@ traceLogShow = void . traceLog Logged Info . from . show
 -- | Run a robot for one tick, which may consist of up to
 --   'robotStepsPerTick' CESK machine steps and at most one tangible
 --   command execution, whichever comes first.
-tickRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => Robot -> m Robot
+tickRobot :: HasGameStepState sig m => Robot -> m Robot
 tickRobot r = do
   steps <- use $ temporal . robotStepsPerTick
   tickRobotRec (r & activityCounts . tickStepBudget .~ steps)
@@ -433,7 +489,7 @@ tickRobot r = do
 --   robot is actively running and still has steps left, and if so
 --   runs it for one step, then calls itself recursively to continue
 --   stepping the robot.
-tickRobotRec :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => Robot -> m Robot
+tickRobotRec :: HasGameStepState sig m => Robot -> m Robot
 tickRobotRec r = do
   time <- use $ temporal . ticks
   case wantsToStep time r && (r ^. runningAtomic || r ^. activityCounts . tickStepBudget > 0) of
@@ -442,7 +498,7 @@ tickRobotRec r = do
 
 -- | Single-step a robot by decrementing its 'tickStepBudget' counter and
 --   running its CESK machine for one step.
-stepRobot :: (Has (State GameState) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => Robot -> m Robot
+stepRobot :: HasGameStepState sig m => Robot -> m Robot
 stepRobot r = do
   (r', cesk') <- runState (r & activityCounts . tickStepBudget -~ 1) (stepCESK (r ^. machine))
   -- sendIO $ appendFile "out.txt" (prettyString cesk' ++ "\n")
