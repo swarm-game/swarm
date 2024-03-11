@@ -184,6 +184,26 @@ runRobotIDs robotNames = do
   stepOneRobot :: HasGameStepState sig m => RID -> Robot -> m ()
   stepOneRobot rn rob = tickRobot rob >>= registerUpdatedRobotState rn
 
+-- | This function must be utilized in every loop that iterates over
+-- robots and invokes 'stepRobot' (i.e. steps a robot's CESK machine).
+getExtraRunnableRobots :: Has (State GameState) sig m => TickNumber -> m (IS.IntSet -> IS.IntSet)
+getExtraRunnableRobots time = do
+  -- NOTE: We could use 'IS.split thisRobotId activeRIDsThisTick'
+  -- to ensure that we only insert RIDs greater than 'thisRobotId'
+  -- into the queue.
+  -- However, we already ensure in 'wakeWatchingRobots' that only
+  -- robots with a larger RID are scheduled for the current tick;
+  -- robots with smaller RIDs will be scheduled for the next tick.
+  robotsToAdd <- use $ robotInfo . currentTickWakeableBots
+  if null robotsToAdd
+    then return id
+    else do
+      -- We have awakened new robots in the current robot's iteration,
+      -- so obtain a function to add them to the remaining iteration pool.
+      zoomRobots $ wakeUpRobotsDoneSleeping time
+      robotInfo . currentTickWakeableBots .= []
+      return $ IS.union $ IS.fromList robotsToAdd
+
 -- |
 -- Runs the given robots in increasing order of 'RID'.
 --
@@ -202,25 +222,8 @@ iterateRobots :: HasGameStepState sig m => TickNumber -> (RID -> m ()) -> IS.Int
 iterateRobots time f runnableBots =
   forM_ (IS.minView runnableBots) $ \(thisRobotId, remainingBotIDs) -> do
     f thisRobotId
-
-    -- We may have awakened new robots in the current robot's iteration,
-    -- so we add them to the list
-    poolAugmentation <- do
-      -- NOTE: We could use 'IS.split thisRobotId activeRIDsThisTick'
-      -- to ensure that we only insert RIDs greater than 'thisRobotId'
-      -- into the queue.
-      -- However, we already ensure in 'wakeWatchingRobots' that only
-      -- robots with a larger RID are scheduled for the current tick;
-      -- robots with smaller RIDs will be scheduled for the next tick.
-      robotsToAdd <- use $ robotInfo . currentTickWakeableBots
-      if null robotsToAdd
-        then return id
-        else do
-          zoomRobots $ wakeUpRobotsDoneSleeping time
-          robotInfo . currentTickWakeableBots .= []
-          return $ IS.union $ IS.fromList robotsToAdd
-
-    iterateRobots time f $ poolAugmentation remainingBotIDs
+    augmentRunPool <- getExtraRunnableRobots time
+    iterateRobots time f $ augmentRunPool remainingBotIDs
 
 -- | This is a helper function to do one robot step or run robots before/after.
 --
@@ -271,6 +274,10 @@ singleStep ss focRID robotSet =
           -- if focus changed we need to finish the previous robot
           newR <- (if focusUnchanged then stepRobot else tickRobotRec) oldR
           registerUpdatedRobotState focRID newR
+
+          time <- use $ temporal . ticks
+          augmentRunPool <- getExtraRunnableRobots time
+
           if focusUnchanged
             then do
               when (newR ^. activityCounts . tickStepBudget == 0) $
@@ -280,7 +287,7 @@ singleStep ss focRID robotSet =
               return False
             else do
               -- continue to newly focused
-              singleStep SBefore focRID postFoc
+              singleStep SBefore focRID $ augmentRunPool postFoc
     ----------------------------------------------------------------------------
     -- run robots after the focused robot
     SAfter rid | focRID <= rid -> do
