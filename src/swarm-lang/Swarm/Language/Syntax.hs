@@ -827,9 +827,13 @@ constInfo c = case c of
       , "Any change to entities at the monitored locations will cause the robot to wake up before the `wait` timeout."
       ]
   Surveil ->
-    command 1 short . doc (Set.singleton $ Query $ Sensing EntitySensing) "Interrupt `wait` upon (remote) location changes." $
-      [ "Like `watch`, but with no restriction on distance."
-      ]
+    command 1 Intangible $
+      doc
+        (Set.singleton $ Query $ Sensing EntitySensing)
+        "Interrupt `wait` upon (remote) location changes."
+        [ "Like `watch`, but instantaneous and with no restriction on distance."
+        , "Supply absolute coordinates."
+        ]
   Heading -> command 0 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Get the current heading."
   Blocked -> command 0 Intangible $ shortDoc (Set.singleton $ Query $ Sensing EntitySensing) "See if the robot can move forward."
   Scan ->
