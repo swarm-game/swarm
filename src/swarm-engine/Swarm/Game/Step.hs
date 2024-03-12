@@ -191,6 +191,37 @@ runRobotIDs maybeStopBeforeRID robotNames = do
 
 -- | This function must be utilized in every loop that iterates over
 -- robots and invokes 'stepRobot' (i.e. steps a robot's CESK machine).
+--
+-- = Performance notes
+--
+-- == Guarding the 'Map' lookup in 'wakeUpRobotsDoneSleeping'
+--
+-- We use the extra 'currentTickWakeableBots' collection
+-- to supplement the 'internalWaitingRobots' Map
+-- so that we can avoid a 'Map' lookup in the common case.
+--
+-- See comment in the body of 'wakeWatchingRobots'.
+--
+-- == Avoiding a linear 'union' operation?
+--
+-- Note that although this:
+-- @
+--   IS.union somePopulatedSet usuallyEmptySet
+-- @
+--
+-- produces the same output as this:
+-- @
+--   if null usuallyEmptySet
+--   then somePopulatedSet
+--   else IS.union somePopulatedSet usuallyEmptySet
+-- @
+--
+-- It may be the case that the shorter code would end up doing an O(N) operation every time,
+-- rather than only when the "usuallyEmptySet" is empty.
+-- Therefore, aside from the primary motivation of 'currentTickWakeableBots' described above,
+-- it is also useful for us to "guard" the 'union' operation with an O(1) 'null' check.
+--
+-- TODO: Actually verify this claim with benchmarks?
 getExtraRunnableRobots :: Has (State GameState) sig m => TickNumber -> m (IS.IntSet -> IS.IntSet)
 getExtraRunnableRobots time = do
   -- NOTE: We could use 'IS.split thisRobotId activeRIDsThisTick'
