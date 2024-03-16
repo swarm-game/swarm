@@ -153,7 +153,7 @@ def singleTile = \expectedFwdOrdinal. \expectedBkwdOrdinal.
     return letterIndex;
     end;
 
-def crossBack = \n.
+def crossBack = \_n.
     currentLoc <- whereami;
     teleport self (0, snd currentLoc - 1);
     end;
