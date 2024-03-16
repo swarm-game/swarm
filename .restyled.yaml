@@ -4,3 +4,5 @@ restylers:
       image: 'restyled/restyler-fourmolu:v0.13.0.0'
       arguments:
         []
+      include:
+        - "!gen-scenario/**"
