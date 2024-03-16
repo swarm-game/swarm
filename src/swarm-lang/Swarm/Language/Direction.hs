@@ -26,7 +26,6 @@ import Data.Data (Data)
 import Data.Hashable (Hashable)
 import Data.List qualified as L (tail)
 import Data.Text hiding (filter, length, map)
-import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Swarm.Util qualified as Util
 import Witch.From (from)
@@ -114,7 +113,7 @@ data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
 -- | Direction name is generated from the deepest nested data constructor
 -- e.g. 'DLeft' becomes "left"
 directionSyntax :: Direction -> Text
-directionSyntax d = toLower . T.tail . from $ case d of
+directionSyntax d = from $ directionJsonModifier $ case d of
   DAbsolute x -> show x
   DRelative x -> case x of
     DPlanar y -> show y
