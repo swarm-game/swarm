@@ -1032,7 +1032,7 @@ execConst runChildProg c vs s k = do
             (childRobot ^. equippedDevices)
             cmd
             "The target robot"
-            FixByObtain
+            FixByObtainDevice
 
         -- update other robot's CESK machine, environment and context
         -- the childRobot inherits the parent robot's environment
@@ -1079,7 +1079,7 @@ execConst runChildProg c vs s k = do
         pid <- use robotID
 
         (toEquip, toGive) <-
-          checkRequirements (r ^. robotInventory) E.empty E.empty cmd "You" FixByObtain
+          checkRequirements (r ^. robotInventory) E.empty E.empty cmd "You" FixByObtainDevice
 
         -- Pick a random display name.
         displayName <- randomName
@@ -1499,7 +1499,7 @@ execConst runChildProg c vs s k = do
         -- help with later error message generation.
         possibleDevices :: [(Maybe Capability, [Entity])]
         possibleDevices =
-          map (Just &&& (`deviceForCap` em)) caps -- Possible devices for capabilities
+          map (Just &&& (`devicesForCap` em)) caps -- Possible devices for capabilities
             ++ map ((Nothing,) . (: [])) devs -- Outright required devices
 
         -- A device is OK if it is available in the inventory of the
@@ -1550,10 +1550,11 @@ execConst runChildProg c vs s k = do
         -- Now, ensure there is at least one device available to be
         -- equipped for each requirement.
         let missingDevices = map snd . filter (null . fst) $ partitionedDevices
+        let IncapableFixWords fVerb fNoun = formatIncapableFix fixI
         null missingDevices
           `holdsOrFail` ( singularSubjectVerb subject "do"
-                            : "not have required devices, please"
-                            : formatIncapableFix fixI <> ":"
+                            : "not have required " <> fNoun <> ", please"
+                            : fVerb <> ":"
                             : (("\n  - " <>) . formatDevices <$> missingDevices)
                         )
 

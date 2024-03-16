@@ -47,15 +47,15 @@ module Swarm.Game.Entity (
   -- ** Entity map
   EntityMap (..),
   buildEntityMap,
+  lookupEntityE,
   validateEntityAttrRefs,
   loadEntities,
   allEntities,
   lookupEntityName,
-  deviceForCap,
+  devicesForCap,
 
   -- * Inventories
   Inventory,
-  Count,
 
   -- ** Construction
   empty,
@@ -95,6 +95,7 @@ import Control.Lens (Getter, Lens', lens, to, view, (^.))
 import Control.Monad (forM_, unless, (<=<))
 import Data.Bifunctor (first)
 import Data.Char (toLower)
+import Data.Either.Extra (maybeToEither)
 import Data.Function (on)
 import Data.Hashable
 import Data.IntMap (IntMap)
@@ -105,17 +106,19 @@ import Data.List (foldl')
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isJust, listToMaybe)
+import Data.Maybe (isJust, listToMaybe)
 import Data.Set (Set)
-import Data.Set qualified as Set (fromList, member, toList, unions)
+import Data.Set qualified as Set (fromList, member)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
+import Swarm.Game.Device
 import Swarm.Game.Display
 import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
 import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Failure
+import Swarm.Game.Ingredients
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Language.Capability
@@ -277,7 +280,7 @@ data Entity = Entity
   -- grabbed.
   , _entityProperties :: Set EntityProperty
   -- ^ Properties of the entity.
-  , _entityCapabilities :: Set Capability
+  , _entityCapabilities :: SingleEntityCapabilities EntityName
   -- ^ Capabilities provided by this entity.
   , _entityInventory :: Inventory
   -- ^ Inventory of other entities held by this entity.
@@ -331,7 +334,7 @@ mkEntity ::
   -- | Properties
   [EntityProperty] ->
   -- | Capabilities
-  [Capability] ->
+  Set Capability ->
   Entity
 mkEntity disp nm descr props caps =
   rehashEntity $
@@ -347,7 +350,7 @@ mkEntity disp nm descr props caps =
       Nothing
       Nothing
       (Set.fromList props)
-      (Set.fromList caps)
+      (zeroCostCapabilities caps)
       empty
 
 ------------------------------------------------------------
@@ -363,11 +366,11 @@ mkEntity disp nm descr props caps =
 --   This enables scenario authors to specify iteration order of
 --   the 'Swarm.Language.Syntax.TagMembers' command.
 data EntityMap = EntityMap
-  { entitiesByName :: Map Text Entity
-  , entitiesByCap :: Map Capability [Entity]
+  { entitiesByName :: Map EntityName Entity
+  , entitiesByCap :: MultiEntityCapabilities Entity Entity
   , entityDefinitionOrder :: [Entity]
   }
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic, ToJSON)
 
 -- |
 -- Note that duplicates in a single 'EntityMap' are precluded by the
@@ -382,11 +385,11 @@ instance Semigroup EntityMap where
   EntityMap n1 c1 d1 <> EntityMap n2 c2 d2 =
     EntityMap
       (n1 <> n2)
-      (M.unionWith (<>) c1 c2)
+      (c1 <> c2)
       (filter ((`M.notMember` n2) . view entityName) d1 <> d2)
 
 instance Monoid EntityMap where
-  mempty = EntityMap M.empty M.empty []
+  mempty = EntityMap M.empty mempty []
   mappend = (<>)
 
 -- | Get a list of all the entities in the entity map.
@@ -399,8 +402,8 @@ lookupEntityName nm = M.lookup nm . entitiesByName
 
 -- | Find all entities which are devices that provide the given
 --   capability.
-deviceForCap :: Capability -> EntityMap -> [Entity]
-deviceForCap cap = fromMaybe [] . M.lookup cap . entitiesByCap
+devicesForCap :: Capability -> EntityMap -> [Entity]
+devicesForCap cap = maybe [] (NE.toList . NE.map device) . M.lookup cap . getMap . entitiesByCap
 
 -- | Validates references to 'Display' attributes
 validateEntityAttrRefs :: Has (Throw LoadingFailure) sig m => Set WorldAttr -> [Entity] -> m ()
@@ -429,14 +432,48 @@ buildEntityMap es = do
   case findDup (map fst namedEntities) of
     Nothing -> return ()
     Just duped -> throwError $ Duplicate Entities duped
-  return $
-    EntityMap
-      { entitiesByName = M.fromList namedEntities
-      , entitiesByCap = M.fromListWith (<>) . concatMap (\e -> map (,[e]) (Set.toList $ e ^. entityCapabilities)) $ es
-      , entityDefinitionOrder = es
-      }
+  case combineEntityCapsM entsByName es of
+    Left x -> throwError $ CustomMessage x
+    Right ebc ->
+      return $
+        EntityMap
+          { entitiesByName = entsByName
+          , entitiesByCap = ebc
+          , entityDefinitionOrder = es
+          }
  where
   namedEntities = map (view entityName &&& id) es
+  entsByName = M.fromList namedEntities
+
+-- Compare to 'combineEntityCapsM'
+combineEntityCaps ::
+  [Entity] ->
+  MultiEntityCapabilities Entity EntityName
+combineEntityCaps = mconcat . map mkForEntity
+ where
+  mkForEntity e = f <$> e ^. entityCapabilities
+   where
+    f = pure . DeviceUseCost e
+
+lookupEntityE :: Map Text b -> Text -> Either Text b
+lookupEntityE em en =
+  maybeToEither err $ M.lookup en em
+ where
+  err = T.unwords [quote en, "is not a valid entity name"]
+
+combineEntityCapsM ::
+  Map EntityName Entity ->
+  [Entity] ->
+  Either Text (MultiEntityCapabilities Entity Entity)
+combineEntityCapsM em =
+  fmap mconcat . mapM mkForEntity
+ where
+  transformCaps = (traverse . traverse) (lookupEntityE em)
+
+  mkForEntity e =
+    fmap f <$> transformCaps (e ^. entityCapabilities)
+   where
+    f = pure . DeviceUseCost e
 
 ------------------------------------------------------------
 -- Serialization
@@ -456,7 +493,7 @@ instance FromJSON Entity where
               <*> v .:? "combustion"
               <*> v .:? "yields"
               <*> v .:? "properties" .!= mempty
-              <*> v .:? "capabilities" .!= mempty
+              <*> v .:? "capabilities" .!= Capabilities mempty
               <*> pure empty
           )
 
@@ -481,7 +518,7 @@ instance ToJSON Entity where
         ++ ["growth" .= (e ^. entityGrowth) | isJust (e ^. entityGrowth)]
         ++ ["yields" .= (e ^. entityYields) | isJust (e ^. entityYields)]
         ++ ["properties" .= (e ^. entityProperties) | not . null $ e ^. entityProperties]
-        ++ ["capabilities" .= (e ^. entityCapabilities) | not . null $ e ^. entityCapabilities]
+        ++ ["capabilities" .= (e ^. entityCapabilities) | not . M.null . getMap $ e ^. entityCapabilities]
 
 -- | Load entities from a data file called @entities.yaml@, producing
 --   either an 'EntityMap' or a parse error.
@@ -579,7 +616,7 @@ hasProperty :: Entity -> EntityProperty -> Bool
 hasProperty e p = p `elem` (e ^. entityProperties)
 
 -- | The capabilities this entity provides when equipped.
-entityCapabilities :: Lens' Entity (Set Capability)
+entityCapabilities :: Lens' Entity (SingleEntityCapabilities EntityName)
 entityCapabilities = hashedLens _entityCapabilities (\e x -> e {_entityCapabilities = x})
 
 -- | The inventory of other entities carried by this entity.
@@ -589,10 +626,6 @@ entityInventory = hashedLens _entityInventory (\e x -> e {_entityInventory = x})
 ------------------------------------------------------------
 -- Inventory
 ------------------------------------------------------------
-
--- | A convenient synonym to remind us when an 'Int' is supposed to
---   represent /how many/ of something we have.
-type Count = Int
 
 -- | An inventory is really just a bag/multiset of entities.  That is,
 --   it contains some entities, along with the number of times each
@@ -707,8 +740,8 @@ isEmpty :: Inventory -> Bool
 isEmpty = all ((== 0) . fst) . elems
 
 -- | Compute the set of capabilities provided by the devices in an inventory.
-inventoryCapabilities :: Inventory -> Set Capability
-inventoryCapabilities = Set.unions . map (^. entityCapabilities) . nonzeroEntities
+inventoryCapabilities :: Inventory -> MultiEntityCapabilities Entity EntityName
+inventoryCapabilities = combineEntityCaps . nonzeroEntities
 
 -- | List elements that have at least one copy in the inventory.
 nonzeroEntities :: Inventory -> [Entity]
@@ -718,14 +751,14 @@ nonzeroEntities = map snd . filter ((> 0) . fst) . elems
 -- exist with nonzero count in the inventory.
 extantElemsWithCapability :: Capability -> Inventory -> [Entity]
 extantElemsWithCapability cap =
-  filter (Set.member cap . (^. entityCapabilities)) . nonzeroEntities
+  filter (M.member cap . getMap . (^. entityCapabilities)) . nonzeroEntities
 
 -- | Groups entities by the capabilities they offer.
 entitiesByCapability :: Inventory -> Map Capability (NE.NonEmpty Entity)
 entitiesByCapability inv =
   binTuples entityCapabilityPairs
  where
-  getCaps = Set.toList . (^. entityCapabilities)
+  getCaps = M.keys . getMap . (^. entityCapabilities)
   entityCapabilityPairs = concatMap ((\e -> map (,e) $ getCaps e) . snd) $ elems inv
 
 -- | Delete a single copy of a certain entity from an inventory.

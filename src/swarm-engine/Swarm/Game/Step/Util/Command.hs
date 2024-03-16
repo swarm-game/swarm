@@ -21,6 +21,8 @@ import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (forM_, unless, when)
 import Data.IntSet qualified as IS
+import Data.List (find)
+import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
@@ -28,15 +30,18 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (getZonedTime)
+import Data.Tuple (swap)
 import Linear (zero)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Description (getValidityRequirements)
 import Swarm.Game.CESK
+import Swarm.Game.Device
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
+import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
@@ -59,25 +64,88 @@ import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Log
-import Swarm.Util hiding (both)
 import System.Clock (TimeSpec)
 import Prelude hiding (Applicative (..), lookup)
 
-data GrabbingCmd = Grab' | Harvest' | Swap' | Push' deriving (Eq, Show)
+data GrabbingCmd
+  = Grab'
+  | Harvest'
+  | Swap'
+  | Push'
+  deriving (Eq, Show)
 
 -- | Ensure that a robot is capable of executing a certain constant
 --   (either because it has a device which gives it that capability,
 --   or it is a system robot, or we are in creative mode).
-ensureCanExecute :: (Has (State Robot) sig m, Has (State GameState) sig m, Has (Throw Exn) sig m) => Const -> m ()
+--
+-- For certain capabilities that require payment of inventory
+-- items in order to be exercised, we pay the toll up front, regardless of
+-- other conditions that may preclude the capability from eventually
+-- being exercised (e.g. an obstacle that ultimately prevents a "move").
+--
+-- Note that there exist some code paths where the "toll"
+-- is bypassed, e.g. see 'hasCapabilityFor'.
+-- We should just try to avoid authoring scenarios that
+-- include toll-gated devices for those particular capabilities.
+--
+-- Since this function has the side-effect of removing items from the
+-- robot's inventory, we must be careful that it is executed exactly
+-- once per command.
+ensureCanExecute ::
+  ( Has (State Robot) sig m
+  , Has (State GameState) sig m
+  , Has (Throw Exn) sig m
+  ) =>
+  Const ->
+  m ()
 ensureCanExecute c =
   gets @Robot (constCapsFor c) >>= \case
     Nothing -> pure ()
     Just cap -> do
       isPrivileged <- isPrivilegedBot
-      robotCaps <- use robotCapabilities
-      let hasCaps = cap `S.member` robotCaps
-      (isPrivileged || hasCaps)
-        `holdsOr` Incapable FixByEquip (R.singletonCap cap) (TConst c)
+      -- Privileged robots can execute commands regardless
+      -- of equipped devices, and without expending
+      -- a capability's exercise cost.
+      unless isPrivileged $ do
+        robotCaps <- use robotCapabilities
+        let capProviders = M.lookup cap $ getMap robotCaps
+        case capProviders of
+          Nothing -> throwError $ Incapable FixByEquip (R.singletonCap cap) (TConst c)
+          Just rawCosts -> payExerciseCost c rawCosts
+
+payExerciseCost ::
+  ( Has (State Robot) sig m
+  , Has (State GameState) sig m
+  , Has (Throw Exn) sig m
+  ) =>
+  Const ->
+  NE.NonEmpty (DeviceUseCost Entity EntityName) ->
+  m ()
+payExerciseCost c rawCosts = do
+  em <- use $ landscape . terrainAndEntities . entityMap
+  let eitherCosts = (traverse . traverse) (lookupEntityE $ entitiesByName em) rawCosts
+  costs <- case eitherCosts of
+    -- NOTE: Entity references have been validated already at scenario load time,
+    -- so we should never encounter this error.
+    Left e -> throwError $ Fatal e
+    Right cs -> return cs
+  inv <- use robotInventory
+  let getMissingIngredients = findLacking inv . ingredients . useCost
+      maybeFeasibleRecipe = find (null . getMissingIngredients) $ NE.sort costs
+  case maybeFeasibleRecipe of
+    Nothing ->
+      throwError $
+        Incapable FixByObtainConsumables (expenseToRequirement $ NE.head costs) (TConst c)
+    -- Consume the inventory
+    Just feasibleRecipe ->
+      forM_ (ingredients . useCost $ feasibleRecipe) $ \(cnt, e) ->
+        robotInventory %= deleteCount cnt e
+ where
+  expenseToRequirement :: DeviceUseCost Entity Entity -> R.Requirements
+  expenseToRequirement (DeviceUseCost d (ExerciseCost ingdts)) =
+    R.Requirements S.empty (S.singleton $ d ^. entityName) ingdtsMap
+   where
+    ingdtsMap = M.fromListWith (+) $ map (swap . fmap (view entityName)) ingdts
 
 -- | Clear watches that are out of range
 purgeFarAwayWatches ::
@@ -253,9 +321,9 @@ updateAvailableRecipes invs e = do
 
 updateAvailableCommands :: Has (State GameState) sig m => Entity -> m ()
 updateAvailableCommands e = do
-  let newCaps = e ^. entityCapabilities
+  let newCaps = getMap $ e ^. entityCapabilities
       keepConsts = \case
-        Just cap -> cap `S.member` newCaps
+        Just cap -> cap `M.member` newCaps
         Nothing -> False
       entityConsts = filter (keepConsts . constCaps) allConst
   knownCommands <- use $ discovery . availableCommands . notificationsContent

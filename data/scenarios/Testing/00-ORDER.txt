@@ -36,6 +36,7 @@ Achievements
 1218-stride-command.yaml
 1234-push-command.yaml
 1256-halt-command.yaml
+1262-display-device-commands.yaml
 1295-density-command.yaml
 1138-structures
 1320-world-DSL
@@ -59,4 +60,5 @@ Achievements
 1634-message-colors.yaml
 1681-pushable-entity.yaml
 1747-volume-command.yaml
+1777-capability-cost.yaml
 1775-custom-terrain.yaml

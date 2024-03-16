@@ -10,13 +10,17 @@ import Control.Lens
 import Control.Monad (forM_, unless)
 import Control.Monad.IO.Class (liftIO)
 import Data.Map qualified as M
+import Data.Set qualified as S
 import Graphics.Vty qualified as V
+import Swarm.Game.Device
+import Swarm.Game.Robot (robotCapabilities)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
+import Swarm.Language.Capability (Capability (CDebug))
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Util (generateModal)
@@ -97,3 +101,8 @@ mouseLocToWorldCoords (Brick.Location mouseLoc) = do
           mx = snd mouseLoc' + fst regionStart
           my = fst mouseLoc' + snd regionStart
        in pure . Just $ Cosmic (region ^. subworld) $ W.Coords (mx, my)
+
+hasDebugCapability :: Bool -> AppState -> Bool
+hasDebugCapability isCreative s =
+  maybe isCreative (S.member CDebug . getCapabilitySet) $
+    s ^? gameState . to focusedRobot . _Just . robotCapabilities

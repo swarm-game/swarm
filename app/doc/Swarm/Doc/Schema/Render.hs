@@ -25,7 +25,6 @@ import Swarm.Doc.Schema.Arrangement
 import Swarm.Doc.Schema.Parse
 import Swarm.Doc.Schema.Refined
 import Swarm.Doc.Schema.SchemaType
-import Swarm.Doc.Util
 import Swarm.Doc.Wiki.Util
 import Swarm.Util (applyWhen, brackets, quote, showT)
 import System.Directory (listDirectory)
@@ -77,7 +76,7 @@ makePandocTable titleMap (SchemaData _ (ToplevelSchema theTitle theDescription _
     ItemList xs ->
       makePropsTable False listColumnHeadings titleMap
         . M.fromList
-        $ zip (map tshow [0 :: Int ..]) xs
+        $ zip (map showT [0 :: Int ..]) xs
 
   mkTable x = doc $ case x of
     ObjectProperties props -> makePropsTable True propertyColumnHeadings titleMap props

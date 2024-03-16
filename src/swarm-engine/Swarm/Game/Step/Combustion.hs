@@ -21,6 +21,7 @@ import Control.Carrier.State.Lazy
 import Control.Effect.Lens
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (forM_, when)
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Linear (zero)
 import Swarm.Effect as Effect (Time, getNow)
@@ -90,11 +91,10 @@ addCombustionBot ::
   Cosmic Location ->
   m Integer
 addCombustionBot inputEntity combustibility ts loc = do
-  botInventory <- case maybeCombustionProduct of
-    Nothing -> return []
-    Just n -> do
-      maybeE <- uses (landscape . terrainAndEntities . entityMap) (lookupEntityName n)
-      return $ maybe [] (pure . (1,)) maybeE
+  em <- use $ landscape . terrainAndEntities . entityMap
+  let botInventory = fromMaybe [] $ do
+        e <- (`lookupEntityName` em) =<< maybeCombustionProduct
+        return $ pure (1, e)
   combustionDurationRand <- uniform durationRange
   let combustionProg = combustionProgram combustionDurationRand combustibility
   zoomRobots
