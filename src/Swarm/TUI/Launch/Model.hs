@@ -47,7 +47,8 @@ makeLenses ''FileBrowserControl
 
 -- | UI elements to configure scenario launch options
 data LaunchControls = LaunchControls
-  { _fileBrowser :: FileBrowserControl
+  { _autoPlayCheck :: Bool
+  , _fileBrowser :: FileBrowserControl
   , _seedValueEditor :: Editor Text Name
   , _scenarioConfigFocusRing :: Focus.FocusRing Name
   , _isDisplayedFor :: Maybe ScenarioInfoPair

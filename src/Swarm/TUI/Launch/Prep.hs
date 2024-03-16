@@ -53,7 +53,7 @@ parseSeedInput seedEditor =
   seedFieldText = mconcat $ getEditContents seedEditor
 
 parseWidgetParams :: LaunchControls -> IO EditingLaunchParams
-parseWidgetParams (LaunchControls (FileBrowserControl _fb maybeSelectedScript _) seedEditor _ _) = do
+parseWidgetParams (LaunchControls _autoPlay (FileBrowserControl _fb maybeSelectedScript _) seedEditor _ _) = do
   eitherParsedCode <-
     runThrow . withThrow (prettyText @SystemFailure) $
       traverse parseCodeFile maybeSelectedScript
@@ -83,7 +83,7 @@ initConfigPanel = do
       Nothing -- Initial working directory to display
   return $
     LaunchOptions
-      (LaunchControls (FileBrowserControl fb Nothing False) myForm ring Nothing)
+      (LaunchControls False (FileBrowserControl fb Nothing False) myForm ring Nothing)
       (LaunchParams (Right Nothing) (Right Nothing))
  where
   myForm = initEditorWidget ""
