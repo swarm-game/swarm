@@ -33,8 +33,8 @@ import Swarm.Game.Ingredients
 import Swarm.Language.Capability (Capability, constByCaps)
 import Swarm.Language.Syntax (Const)
 
--- This wrapper exists so that YAML can be parsed
--- either as a list of 'Capability' or as a Map.
+-- | The 'Capabilities e' wrapper type stores information of type @e@ for each of some set of capabilities.
+-- For example, @e@ could be a list of ingredients needed to exercise a capability, or a set of devices capable of providing a capability.
 newtype Capabilities e = Capabilities
   { getMap :: Map Capability e
   }
