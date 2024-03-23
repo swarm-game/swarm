@@ -7,12 +7,18 @@ module Swarm.Language.Typecheck.Unify (
   unifyCheck,
 ) where
 
+import Data.Set (Set)
+import Data.Set qualified as S
 import Control.Monad.Free
 import Data.Foldable qualified as F
 import Data.Function (on)
 import Data.Map qualified as M
 import Data.Map.Merge.Lazy qualified as M
 import Swarm.Language.Types
+import Swarm.Language.Typecheck.Unify.Subst
+
+-- Do we need this "unification check" stuff anymore?  Should we return something like
+-- this from unify?
 
 -- | The result of doing a unification check on two types.
 data UnifyStatus
@@ -88,3 +94,55 @@ unifyCheckF t1 t2 = case (t1, t2) of
   (TyDelayF {}, _) -> Apart
   (TyFunF t11 t12, TyFunF t21 t22) -> unifyCheck t11 t21 <> unifyCheck t12 t22
   (TyFunF {}, _) -> Apart
+
+fvs :: UType -> Set IntVar
+fvs = ucata S.singleton F.fold
+
+-- XXX more informative result than Maybe
+unify :: UType -> UType -> Maybe (Subst IntVar UType)
+unify ty1 ty2 = case (ty1, ty2) of
+  (Pure x, Pure y)
+    | x == y -> Just idS
+    | otherwise -> Just (x |-> Pure y)
+  (Pure x, y)
+    | x `S.member` fvs y -> Nothing   -- occurs check
+    | otherwise -> Just (x |-> y)
+  (y, Pure x)
+    | x `S.member` fvs y -> Nothing
+    | otherwise -> Just (x |-> y)
+  (Free t1, Free t2) -> unifyF t1 t2
+
+unifyF :: TypeF UType -> TypeF UType -> Maybe (Subst IntVar UType)
+unifyF t1 t2 = case (t1, t2) of
+  (TyBaseF b1, TyBaseF b2) -> case b1 == b2 of
+    True -> Just idS
+    False -> Nothing
+  (TyBaseF {}, _) -> Nothing
+  (TyVarF v1, TyVarF v2) -> case v1 == v2 of
+    True -> Just idS
+    False -> Nothing
+  (TyVarF {}, _) -> Nothing
+  (TySumF t11 t12, TySumF t21 t22) -> do
+    s1 <- unify t11 t21
+    s2 <- unify t12 t22
+    return $ s1 @@ s2
+  (TySumF {}, _) -> Nothing
+  (TyProdF t11 t12, TyProdF t21 t22) -> do
+    s1 <- unify t11 t21
+    s2 <- unify t12 t22
+    return $ s1 @@ s2
+  (TyProdF {}, _) -> Nothing
+  (TyRcdF m1, TyRcdF m2) ->
+    case ((==) `on` M.keysSet) m1 m2 of
+      False -> Nothing
+      _ -> (fmap compose . sequence) (M.merge M.dropMissing M.dropMissing (M.zipWithMatched (const unify)) m1 m2)
+  (TyRcdF {}, _) -> Nothing
+  (TyCmdF c1, TyCmdF c2) -> unify c1 c2
+  (TyCmdF {}, _) -> Nothing
+  (TyDelayF c1, TyDelayF c2) -> unify c1 c2
+  (TyDelayF {}, _) -> Nothing
+  (TyFunF t11 t12, TyFunF t21 t22) -> do
+    s1 <- unify t11 t21
+    s2 <- unify t12 t22
+    return $ s1 @@ s2
+  (TyFunF {}, _) -> Nothing
