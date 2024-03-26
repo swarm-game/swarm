@@ -50,6 +50,8 @@ module Swarm.Language.Typecheck (
   -- isSimpleUType,
 ) where
 
+import Control.Monad.Free (Free(..))
+import Control.Effect.Catch (Catch, catchError)
 import Control.Effect.Throw
 import Control.Effect.Reader
 import Control.Arrow ((***))
@@ -142,6 +144,7 @@ getJoin (Join j) = (j Expected, j Actual)
 ------------------------------------------------------------
 -- Type checking monad
 
+-- XXX get rid of this
 -- | The concrete monad used for type checking.  'IntBindingT' is a
 --   monad transformer provided by the @unification-fd@ library which
 --   supports various operations such as generating fresh variables
@@ -199,12 +202,16 @@ lookup loc x = do
 
 -- | Catch any thrown type errors and re-throw them with an added source
 --   location.
-
--- addLocToTypeErr :: SrcLoc -> TC a -> TC a
--- addLocToTypeErr l m =
---   m `catchError` \case
---     CTE NoLoc _ te -> throwTypeErr l te
---     te -> throwError te
+addLocToTypeErr ::
+  ( Has (Throw ContextualTypeErr) sig m
+  , Has (Catch ContextualTypeErr) sig m
+  , Has (Reader TCStack) sig m
+  )
+  => SrcLoc -> m a -> m a
+addLocToTypeErr l m =
+  m `catchError` \case
+    CTE NoLoc _ te -> throwTypeErr l te
+    te -> throwError te
 
 ------------------------------------------------------------
 -- Dealing with variables: free variables, fresh variables,
@@ -230,18 +237,18 @@ lookup loc x = do
 -- fresh :: TC UType
 -- fresh = UVar <$> (lift . lift . lift $ freeVar)
 
--- -- | Perform a substitution over a 'UType', substituting for both type
--- --   and unification variables.  Note that since 'UType's do not have
--- --   any binding constructs, we don't have to worry about ignoring
--- --   bound variables; all variables in a 'UType' are free.
--- substU :: Map (Either Var IntVar) UType -> UType -> UType
--- substU m =
---   ucata
---     (\v -> fromMaybe (UVar v) (M.lookup (Right v) m))
---     ( \case
---         TyVarF v -> fromMaybe (UTyVar v) (M.lookup (Left v) m)
---         f -> UTerm f
---     )
+-- | Perform a substitution over a 'UType', substituting for both type
+--   and unification variables.  Note that since 'UType's do not have
+--   any binding constructs, we don't have to worry about ignoring
+--   bound variables; all variables in a 'UType' are free.
+substU :: Map (Either Var IntVar) UType -> UType -> UType
+substU m =
+  ucata
+    (\v -> fromMaybe (Pure v) (M.lookup (Right v) m))
+    ( \case
+        TyVarF v -> fromMaybe (UTyVar v) (M.lookup (Left v) m)
+        f -> Free f
+    )
 
 -- -- | Make sure no skolem variables escape.
 -- noSkolems :: SrcLoc -> UPolytype -> TC ()

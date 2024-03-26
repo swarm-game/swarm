@@ -29,6 +29,7 @@ import Swarm.Language.Context
 import Swarm.Language.Parse (getLocRange)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
+import Swarm.Language.Typecheck.Unify (UnificationError(..))
 import Swarm.Language.Types
 import Swarm.Util (showEnum, showLowT, unsnocNE)
 import Witch
@@ -330,8 +331,7 @@ prettyTypeErr code (CTE l tcStack te) =
 
 instance PrettyPrec TypeErr where
   prettyPrec _ = \case
-    UnifyErr ty1 ty2 ->
-      "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
+    UnificationErr ue -> ppr ue
     Mismatch Nothing (getJoin -> (ty1, ty2)) ->
       "Type mismatch: expected" <+> ppr ty1 <> ", but got" <+> ppr ty2
     Mismatch (Just t) (getJoin -> (ty1, ty2)) ->
@@ -348,8 +348,6 @@ instance PrettyPrec TypeErr where
       "Skolem variable" <+> pretty x <+> "would escape its scope"
     UnboundVar x ->
       "Unbound variable" <+> pretty x
-    Infinite x uty ->
-      "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
     DefNotTopLevel t ->
       "Definitions may only be at the top level:" <+> pprCode t
     CantInfer t ->
@@ -365,6 +363,13 @@ instance PrettyPrec TypeErr where
    where
     pprCode :: PrettyPrec a => a -> Doc ann
     pprCode = bquote . ppr
+
+instance PrettyPrec UnificationError where
+  prettyPrec _ = \case
+    Infinite x uty ->
+      "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
+    UnifyErr ty1 ty2 ->
+      "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
 
 -- | Given a type and its source, construct an appropriate description
 --   of it to go in a type mismatch error message.

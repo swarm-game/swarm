@@ -25,7 +25,7 @@ data Unification (m :: Type -> Type) k where
 (=:=) :: Has Unification sig m => UType -> UType -> m UType
 t1 =:= t2 = send (Unify t1 t2)
 
-newtype Unifier m a = Unifier {runUnifier :: m a}
+newtype Unifier m a = Unifier {runUnification :: m a}
   deriving newtype (Functor, Applicative, Alternative, Monad, MonadIO)
 
 instance
@@ -43,4 +43,4 @@ instance
       s2 <- unify t1' t2'
       modify (@@ s2)
       return $ (subst s2 t1' <$ ctx)
-    R other -> Unifier (alg (runUnifier . hdl) other ctx)
+    R other -> Unifier (alg (runUnification . hdl) other ctx)
