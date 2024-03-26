@@ -11,30 +11,36 @@ module Swarm.Effect.Unify where
 
 import Control.Algebra
 import Control.Applicative (Alternative)
-import Control.Effect.State (State)
-import Control.Monad.Free (Free)
+import Control.Effect.State (State, get, modify)
+import Control.Effect.Throw (Throw)
 import Control.Monad.Trans (MonadIO)
 import Data.Kind (Type)
-import Swarm.Language.Typecheck.Unify.Subst (Subst)
+import Swarm.Language.Typecheck.Unify (UnificationError, unify)
+import Swarm.Language.Typecheck.Unify.Subst (Subst, subst, (@@))
+import Swarm.Language.Types (IntVar, UType)
 
-class Unifiable t where
-  zipMatch :: t a -> t a -> Maybe (t (Either a (a, a)))
+data Unification (m :: Type -> Type) k where
+  Unify :: UType -> UType -> Unification m UType
 
-data Unification t v (m :: Type -> Type) k where
-  Unify :: Unifiable t => Free t v -> Free t v -> Unification t v m (Free t v)
+(=:=) :: Has Unification sig m => UType -> UType -> m UType
+t1 =:= t2 = send (Unify t1 t2)
 
-unify :: (Has (Unification t v) sig m, Unifiable t) => Free t v -> Free t v -> m (Free t v)
-unify t1 t2 = send (Unify t1 t2)
-
-newtype Unifier (t :: Type -> Type) v m a = Unifier {runUnifier :: m a}
+newtype Unifier m a = Unifier {runUnifier :: m a}
   deriving newtype (Functor, Applicative, Alternative, Monad, MonadIO)
 
 instance
-  ( Has (State (Subst v (Free t v))) sig m
+  ( Has (State (Subst IntVar UType)) sig m
+  , Has (Throw UnificationError) sig m
   , Algebra sig m
   ) =>
-  Algebra (Unification t v :+: sig) (Unifier t v m)
+  Algebra (Unification :+: sig) (Unifier m)
   where
   alg hdl sig ctx = case sig of
-    L (Unify t1 t2) -> undefined
+    L (Unify t1 t2) -> Unifier $ do
+      s1 <- get @(Subst IntVar UType)
+      let t1' = subst s1 t1
+          t2' = subst s1 t2
+      s2 <- unify t1' t2'
+      modify (@@ s2)
+      return $ (subst s2 t1' <$ ctx)
     R other -> Unifier (alg (runUnifier . hdl) other ctx)

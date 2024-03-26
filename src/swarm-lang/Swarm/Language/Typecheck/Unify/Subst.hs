@@ -36,7 +36,7 @@ import Prelude hiding (lookup)
 -- | A value of type @Subst n a@ is a substitution which maps
 --   names of type @n@ (the /domain/, see 'dom') to values of type
 --   @a@.  Substitutions can be /applied/ to certain terms (see
---   'applySubst'), replacing any free occurrences of names in the
+--   'subst'), replacing any free occurrences of names in the
 --   domain with their corresponding values.  Thus, substitutions can
 --   be thought of as functions of type @Term -> Term@ (for suitable
 --   @Term@s that contain names and values of the right type).
