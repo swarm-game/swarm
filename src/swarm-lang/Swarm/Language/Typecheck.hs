@@ -69,6 +69,7 @@ import Data.Maybe
 import Data.Set (Set, (\\))
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Swarm.Effect.Unify
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Module
@@ -194,6 +195,7 @@ lookup ::
   ( Has (Throw ContextualTypeErr) sig m
   , Has (Reader TCStack) sig m
   , Has (Reader UCtx) sig m
+  , Has Unification sig m
   )
   => SrcLoc -> Var -> m UType
 lookup loc x = do
@@ -233,9 +235,9 @@ addLocToTypeErr l m =
 -- instance FreeVars UCtx where
 --   freeVars = fmap S.unions . mapM freeVars . M.elems . unCtx
 
--- -- | Generate a fresh unification variable.
--- fresh :: TC UType
--- fresh = UVar <$> (lift . lift . lift $ freeVar)
+-- | Generate a fresh unification variable.
+fresh :: Has Unification sig m => m UType
+fresh = Pure <$> freshIntVar
 
 -- | Perform a substitution over a 'UType', substituting for both type
 --   and unification variables.  Note that since 'UType's do not have
@@ -250,27 +252,32 @@ substU m =
         f -> Free f
     )
 
--- -- | Make sure no skolem variables escape.
--- noSkolems :: SrcLoc -> UPolytype -> TC ()
--- noSkolems l (Forall xs upty) = do
---   upty' <- applyBindings upty
---   let tyvs =
---         ucata
---           (const S.empty)
---           (\case TyVarF v -> S.singleton v; f -> fold f)
---           upty'
---       ftyvs = tyvs `S.difference` S.fromList xs
---   forM_ (S.lookupMin ftyvs) $ throwTypeErr l . EscapedSkolem
+-- | Make sure no skolem variables escape.
+noSkolems
+  :: ( Has Unification sig m
+     , Has (Reader TCStack) sig m
+     , Has (Throw ContextualTypeErr) sig m
+     )
+  => SrcLoc -> Poly UType -> m ()
+noSkolems l (Forall xs upty) = do
+  upty' <- applyBindings upty
+  let tyvs =
+        ucata
+          (const S.empty)
+          (\case TyVarF v -> S.singleton v; f -> fold f)
+          upty'
+      ftyvs = tyvs `S.difference` S.fromList xs
+  forM_ (S.lookupMin ftyvs) $ throwTypeErr l . EscapedSkolem
 
--- -- ~~~~ Note [lookupMin to get an arbitrary element]
--- --
--- -- `S.lookupMin :: Set a -> Maybe a` returns the smallest
--- -- element of a set, or Nothing if the set is empty. We don't
--- -- actually care about getting the *smallest* type variable, but
--- -- lookupMin is a convenient way to say "just get one element if
--- -- any exist". The forM_ is actually over the Maybe so it represents
--- -- doing the throwTypeErr either zero or one time, depending on
--- -- whether lookupMin returns Nothing or Just.
+-- ~~~~ Note [lookupMin to get an arbitrary element]
+--
+-- `S.lookupMin :: Set a -> Maybe a` returns the smallest
+-- element of a set, or Nothing if the set is empty. We don't
+-- actually care about getting the *smallest* type variable, but
+-- lookupMin is a convenient way to say "just get one element if
+-- any exist". The forM_ is actually over the Maybe so it represents
+-- doing the throwTypeErr either zero or one time, depending on
+-- whether lookupMin returns Nothing or Just.
 
 -- ------------------------------------------------------------
 -- -- Lifted stuff from unification-fd
@@ -329,34 +336,30 @@ substU m =
 -- | To 'instantiate' a 'UPolytype', we generate a fresh unification
 --   variable for each variable bound by the `Forall`, and then
 --   substitute them throughout the type.
+instantiate :: Has Unification sig m => UPolytype -> m UType
+instantiate (Forall xs uty) = do
+  xs' <- mapM (const fresh) xs
+  return $ substU (M.fromList (zip (map Left xs) xs')) uty
 
--- instantiate :: UPolytype -> TC UType
-
-instantiate (Forall xs uty) = undefined
-
--- do
---   xs' <- mapM (const fresh) xs
---   return $ substU (M.fromList (zip (map Left xs) xs')) uty
-
--- -- | 'skolemize' is like 'instantiate', except we substitute fresh
--- --   /type/ variables instead of unification variables.  Such
--- --   variables cannot unify with anything other than themselves.  This
--- --   is used when checking something with a polytype explicitly
--- --   specified by the user.
--- skolemize :: UPolytype -> TC UType
--- skolemize (Forall xs uty) = do
---   xs' <- mapM (const fresh) xs
---   return $ substU (M.fromList (zip (map Left xs) (map toSkolem xs'))) uty
---  where
---   toSkolem (UVar v) = UTyVar (mkVarName "s" v)
---   toSkolem x = error $ "Impossible! Non-UVar in skolemize.toSkolem: " ++ show x
+-- | 'skolemize' is like 'instantiate', except we substitute fresh
+--   /type/ variables instead of unification variables.  Such
+--   variables cannot unify with anything other than themselves.  This
+--   is used when checking something with a polytype explicitly
+--   specified by the user.
+skolemize :: Has Unification sig m => UPolytype -> m UType
+skolemize (Forall xs uty) = do
+  xs' <- mapM (const fresh) xs
+  return $ substU (M.fromList (zip (map Left xs) (map toSkolem xs'))) uty
+ where
+  toSkolem (Pure v) = UTyVar (mkVarName "s" v)
+  toSkolem x = error $ "Impossible! Non-UVar in skolemize.toSkolem: " ++ show x
 
 -- -- | 'generalize' is the opposite of 'instantiate': add a 'Forall'
 -- --   which closes over all free type and unification variables.
 -- --
 -- --   Pick nice type variable names instead of reusing whatever fresh
 -- --   names happened to be used for the free variables.
--- generalize :: UType -> TC UPolytype
+-- generalize :: Has Unification sig m => UType -> m UPolytype
 -- generalize uty = do
 --   uty' <- applyBindings uty
 --   ctx <- getCtx
@@ -373,8 +376,8 @@ instantiate (Forall xs uty) = undefined
 --       (map snd renaming)
 --       (substU (M.fromList . map (Right *** UTyVar) $ renaming) uty')
 
--- ------------------------------------------------------------
--- -- Type errors
+------------------------------------------------------------
+-- Type errors
 
 -- | A type error along with various contextual information to help us
 --   generate better error messages.
