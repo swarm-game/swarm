@@ -69,13 +69,15 @@ import Data.Maybe
 import Data.Set (Set, (\\))
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Swarm.Effect.Unify
+import Swarm.Effect.Unify (Unification, (=:=))
+import Swarm.Effect.Unify qualified as U
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Module
 import Swarm.Language.Parse.QQ (tyQ)
 import Swarm.Language.Syntax
-import Swarm.Language.Typecheck.Unify
+import Swarm.Language.Typecheck.Unify (UnificationError)
+import Swarm.Language.Typecheck.Unify qualified as U
 import Swarm.Language.Types
 import Prelude hiding (lookup)
 
@@ -100,6 +102,10 @@ data LocatedTCFrame = LocatedTCFrame SrcLoc TCFrame
 -- | A typechecking stack keeps track of what we are currently in the
 --   middle of doing during typechecking.
 type TCStack = [LocatedTCFrame]
+
+-- | Push a frame on the typechecking stack.
+withFrame :: Has (Reader TCStack) sig m => SrcLoc -> TCFrame -> m a -> m a
+withFrame l f = local (LocatedTCFrame l f :)
 
 ------------------------------------------------------------
 -- Type source
@@ -143,25 +149,8 @@ getJoin :: Join a -> (a, a)
 getJoin (Join j) = (j Expected, j Actual)
 
 ------------------------------------------------------------
--- Type checking monad
+-- Type checking
 
--- XXX get rid of this
--- | The concrete monad used for type checking.  'IntBindingT' is a
---   monad transformer provided by the @unification-fd@ library which
---   supports various operations such as generating fresh variables
---   and unifying things.
---
---   Note that we are sort of constrained to use a concrete monad stack by
---   @unification-fd@, which has some strange types on some of its exported
---   functions that actually require various monad transformers to be stacked
---   in certain ways.  For example, see <https://hackage.haskell.org/package/unification-fd-0.11.2/docs/Control-Unification.html#v:unify>.  I don't really see a way
---   to use "capability style" like we do elsewhere in the codebase.
-
--- type TC = ReaderT UCtx (ReaderT TCStack (ExceptT ContextualTypeErr (IntBindingT TypeF Identity)))
-
--- | Push a frame on the typechecking stack.
-withFrame :: Has (Reader TCStack) sig m => SrcLoc -> TCFrame -> m a -> m a
-withFrame l f = local (LocatedTCFrame l f :)
 
 ------------------------------------------------------------
 
@@ -219,25 +208,25 @@ addLocToTypeErr l m =
 -- Dealing with variables: free variables, fresh variables,
 -- substitution
 
--- -- | A class for getting the free unification variables of a thing.
--- class FreeVars a where
---   freeVars :: a -> TC (Set IntVar)
+-- | A class for getting the free unification variables of a thing.
+class FreeUVars a where
+  freeUVars :: Has Unification sig m => a -> m (Set IntVar)
 
--- -- | We can get the free unification variables of a 'UType'.
--- instance FreeVars UType where
---   freeVars ut = fmap S.fromList . lift . lift . lift $ getFreeVars ut
+-- | We can get the free unification variables of a 'UType'.
+instance FreeUVars UType where
+  freeUVars = U.freeUVars
 
--- -- | We can also get the free variables of a polytype.
--- instance (FreeVars t) => FreeVars (Poly t) where
---   freeVars (Forall _ t) = freeVars t
+-- | We can also get the free variables of a polytype.
+instance (FreeUVars t) => FreeUVars (Poly t) where
+  freeUVars (Forall _ t) = freeUVars t
 
--- -- | We can get the free variables in any polytype in a context.
--- instance FreeVars UCtx where
---   freeVars = fmap S.unions . mapM freeVars . M.elems . unCtx
+-- | We can get the free variables in any polytype in a context.
+instance FreeUVars UCtx where
+  freeUVars = fmap S.unions . mapM freeUVars . M.elems . unCtx
 
 -- | Generate a fresh unification variable.
 fresh :: Has Unification sig m => m UType
-fresh = Pure <$> freshIntVar
+fresh = Pure <$> U.freshIntVar
 
 -- | Perform a substitution over a 'UType', substituting for both type
 --   and unification variables.  Note that since 'UType's do not have
@@ -279,56 +268,49 @@ noSkolems l (Forall xs upty) = do
 -- doing the throwTypeErr either zero or one time, depending on
 -- whether lookupMin returns Nothing or Just.
 
--- ------------------------------------------------------------
--- -- Lifted stuff from unification-fd
+-- | @unify t expTy actTy@ ensures that the given two types are equal.
+--   If we know the actual term @t@ which is supposed to have these
+--   types, we can use it to generate better error messages.
+--
+--   We first do a quick-and-dirty check to see whether we know for
+--   sure the types either are or cannot be equal, generating an
+--   equality constraint for the unifier as a last resort.
+unify ::
+  ( Has Unification sig m
+  , Has (Throw ContextualTypeErr) sig m
+  , Has (Reader TCStack) sig m
+  )
+  => Maybe Syntax -> TypeJoin -> m UType
+unify ms j = case U.unifyCheck expected actual of
+  U.Apart -> throwTypeErr NoLoc $ Mismatch ms j
+  U.Equal -> return expected
+  U.MightUnify -> expected =:= actual
+ where
+  (expected, actual) = getJoin j
 
--- infix 4 =:=
+-- | The 'HasBindings' class is for anything which has
+--   unification variables in it and to which we can usefully apply
+--   'applyBindings'.
+class HasBindings u where
+  applyBindings :: Has Unification sig m => u -> m u
 
--- -- | @unify t expTy actTy@ ensures that the given two types are equal.
--- --   If we know the actual term @t@ which is supposed to have these
--- --   types, we can use it to generate better error messages.
--- --
--- --   We first do a quick-and-dirty check to see whether we know for
--- --   sure the types either are or cannot be equal, generating an
--- --   equality constraint for the unifier as a last resort.
--- unify :: Maybe Syntax -> TypeJoin -> TC UType
--- unify ms j = case unifyCheck expected actual of
---   Apart -> throwTypeErr NoLoc $ Mismatch ms j
---   Equal -> return expected
---   MightUnify -> lift . lift $ expected U.=:= actual
---  where
---   (expected, actual) = getJoin j
+instance HasBindings UType where
+  applyBindings = U.applyBindings
 
--- -- | Ensure two types are the same.
--- (=:=) :: UType -> UType -> TC UType
--- ty1 =:= ty2 = unify Nothing (joined ty1 ty2)
+instance HasBindings UPolytype where
+  applyBindings (Forall xs u) = Forall xs <$> applyBindings u
 
--- -- | @unification-fd@ provides a function 'U.applyBindings' which
--- --   fully substitutes for any bound unification variables (for
--- --   efficiency, it does not perform such substitution as it goes
--- --   along).  The 'HasBindings' class is for anything which has
--- --   unification variables in it and to which we can usefully apply
--- --   'U.applyBindings'.
--- class HasBindings u where
---   applyBindings :: u -> TC u
+instance HasBindings UCtx where
+  applyBindings = mapM applyBindings
 
--- instance HasBindings UType where
---   applyBindings = lift . lift . U.applyBindings
+instance (HasBindings u, Data u) => HasBindings (Term' u) where
+  applyBindings = gmapM (mkM (applyBindings @(Syntax' u)))
 
--- instance HasBindings UPolytype where
---   applyBindings (Forall xs u) = Forall xs <$> applyBindings u
+instance (HasBindings u, Data u) => HasBindings (Syntax' u) where
+  applyBindings (Syntax' l t u) = Syntax' l <$> applyBindings t <*> applyBindings u
 
--- instance HasBindings UCtx where
---   applyBindings = mapM applyBindings
-
--- instance (HasBindings u, Data u) => HasBindings (Term' u) where
---   applyBindings = gmapM (mkM (applyBindings @(Syntax' u)))
-
--- instance (HasBindings u, Data u) => HasBindings (Syntax' u) where
---   applyBindings (Syntax' l t u) = Syntax' l <$> applyBindings t <*> applyBindings u
-
--- instance HasBindings UModule where
---   applyBindings (Module u uctx) = Module <$> applyBindings u <*> applyBindings uctx
+instance HasBindings UModule where
+  applyBindings (Module u uctx) = Module <$> applyBindings u <*> applyBindings uctx
 
 -- ------------------------------------------------------------
 -- -- Converting between mono- and polytypes
@@ -354,27 +336,27 @@ skolemize (Forall xs uty) = do
   toSkolem (Pure v) = UTyVar (mkVarName "s" v)
   toSkolem x = error $ "Impossible! Non-UVar in skolemize.toSkolem: " ++ show x
 
--- -- | 'generalize' is the opposite of 'instantiate': add a 'Forall'
--- --   which closes over all free type and unification variables.
--- --
--- --   Pick nice type variable names instead of reusing whatever fresh
--- --   names happened to be used for the free variables.
--- generalize :: Has Unification sig m => UType -> m UPolytype
--- generalize uty = do
---   uty' <- applyBindings uty
---   ctx <- getCtx
---   tmfvs <- freeVars uty'
---   ctxfvs <- freeVars ctx
---   let fvs = S.toList $ tmfvs \\ ctxfvs
---       alphabet = ['a' .. 'z']
---       -- Infinite supply of pretty names a, b, ..., z, a0, ... z0, a1, ... z1, ...
---       prettyNames = map T.pack (map (: []) alphabet ++ [x : show n | n <- [0 :: Int ..], x <- alphabet])
---       -- Associate each free variable with a new pretty name
---       renaming = zip fvs prettyNames
---   return $
---     Forall
---       (map snd renaming)
---       (substU (M.fromList . map (Right *** UTyVar) $ renaming) uty')
+-- | 'generalize' is the opposite of 'instantiate': add a 'Forall'
+--   which closes over all free type and unification variables.
+--
+--   Pick nice type variable names instead of reusing whatever fresh
+--   names happened to be used for the free variables.
+generalize :: (Has Unification sig m, Has (Reader UCtx) sig m) => UType -> m UPolytype
+generalize uty = do
+  uty' <- applyBindings uty
+  ctx <- ask @UCtx
+  tmfvs <- freeUVars uty'
+  ctxfvs <- freeUVars ctx
+  let fvs = S.toList $ tmfvs \\ ctxfvs
+      alphabet = ['a' .. 'z']
+      -- Infinite supply of pretty names a, b, ..., z, a0, ... z0, a1, ... z1, ...
+      prettyNames = map T.pack (map (: []) alphabet ++ [x : show n | n <- [0 :: Int ..], x <- alphabet])
+      -- Associate each free variable with a new pretty name
+      renaming = zip fvs prettyNames
+  return $
+    Forall
+      (map snd renaming)
+      (substU (M.fromList . map (Right *** UTyVar) $ renaming) uty')
 
 ------------------------------------------------------------
 -- Type errors
@@ -454,50 +436,70 @@ data InvalidAtomicReason
     LongConst
   deriving (Show)
 
--- ------------------------------------------------------------
--- -- Type decomposition
+------------------------------------------------------------
+-- Type decomposition
 
--- -- | Decompose a type that is supposed to be a delay type.  Also take
--- --   the term which is supposed to have that type, for use in error
--- --   messages.
--- decomposeDelayTy :: Syntax -> Sourced UType -> TC UType
--- decomposeDelayTy _ (_, UTyDelay a) = return a
--- decomposeDelayTy t ty = do
---   a <- fresh
---   _ <- unify (Just t) (mkJoin ty (UTyDelay a))
---   return a
+-- | Decompose a type that is supposed to be a delay type.  Also take
+--   the term which is supposed to have that type, for use in error
+--   messages.
+decomposeDelayTy ::
+  ( Has Unification sig m
+  , Has (Throw ContextualTypeErr) sig m
+  , Has (Reader TCStack) sig m
+  )
+  => Syntax -> Sourced UType -> m UType
+decomposeDelayTy _ (_, UTyDelay a) = return a
+decomposeDelayTy t ty = do
+  a <- fresh
+  _ <- unify (Just t) (mkJoin ty (UTyDelay a))
+  return a
 
--- -- | Decompose a type that is supposed to be a command type. Also take
--- --   the term which is supposed to have that type, for use in error
--- --   messages.
--- decomposeCmdTy :: Syntax -> Sourced UType -> TC UType
--- decomposeCmdTy _ (_, UTyCmd a) = return a
--- decomposeCmdTy t ty = do
---   a <- fresh
---   _ <- unify (Just t) (mkJoin ty (UTyCmd a))
---   return a
+-- | Decompose a type that is supposed to be a command type. Also take
+--   the term which is supposed to have that type, for use in error
+--   messages.
+decomposeCmdTy ::
+  ( Has Unification sig m
+  , Has (Throw ContextualTypeErr) sig m
+  , Has (Reader TCStack) sig m
+  )
+  => Syntax -> Sourced UType -> m UType
+decomposeCmdTy _ (_, UTyCmd a) = return a
+decomposeCmdTy t ty = do
+  a <- fresh
+  _ <- unify (Just t) (mkJoin ty (UTyCmd a))
+  return a
 
--- -- | Decompose a type that is supposed to be a function type. Also take
--- --   the term which is supposed to have that type, for use in error
--- --   messages.
--- decomposeFunTy :: Syntax -> Sourced UType -> TC (UType, UType)
--- decomposeFunTy _ (_, UTyFun ty1 ty2) = return (ty1, ty2)
--- decomposeFunTy t ty = do
---   ty1 <- fresh
---   ty2 <- fresh
---   _ <- unify (Just t) (mkJoin ty (UTyFun ty1 ty2))
---   return (ty1, ty2)
+-- | Decompose a type that is supposed to be a function type. Also take
+--   the term which is supposed to have that type, for use in error
+--   messages.
+decomposeFunTy ::
+  ( Has Unification sig m
+  , Has (Throw ContextualTypeErr) sig m
+  , Has (Reader TCStack) sig m
+  )
+  => Syntax -> Sourced UType -> m (UType, UType)
+decomposeFunTy _ (_, UTyFun ty1 ty2) = return (ty1, ty2)
+decomposeFunTy t ty = do
+  ty1 <- fresh
+  ty2 <- fresh
+  _ <- unify (Just t) (mkJoin ty (UTyFun ty1 ty2))
+  return (ty1, ty2)
 
--- -- | Decompose a type that is supposed to be a product type. Also take
--- --   the term which is supposed to have that type, for use in error
--- --   messages.
--- decomposeProdTy :: Syntax -> Sourced UType -> TC (UType, UType)
--- decomposeProdTy _ (_, UTyProd ty1 ty2) = return (ty1, ty2)
--- decomposeProdTy t ty = do
---   ty1 <- fresh
---   ty2 <- fresh
---   _ <- unify (Just t) (mkJoin ty (UTyProd ty1 ty2))
---   return (ty1, ty2)
+-- | Decompose a type that is supposed to be a product type. Also take
+--   the term which is supposed to have that type, for use in error
+--   messages.
+decomposeProdTy ::
+  ( Has Unification sig m
+  , Has (Throw ContextualTypeErr) sig m
+  , Has (Reader TCStack) sig m
+  )
+  => Syntax -> Sourced UType -> m (UType, UType)
+decomposeProdTy _ (_, UTyProd ty1 ty2) = return (ty1, ty2)
+decomposeProdTy t ty = do
+  ty1 <- fresh
+  ty2 <- fresh
+  _ <- unify (Just t) (mkJoin ty (UTyProd ty1 ty2))
+  return (ty1, ty2)
 
 -- ------------------------------------------------------------
 -- -- Type inference / checking

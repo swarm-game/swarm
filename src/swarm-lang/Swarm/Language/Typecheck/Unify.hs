@@ -7,7 +7,8 @@ module Swarm.Language.Typecheck.Unify (
   unifyCheck,
 
   UnificationError(..),
-  unify
+  unify,
+  fvs
 ) where
 
 import Control.Algebra (Has)
@@ -109,7 +110,6 @@ data UnificationError
   | UnifyErr (TypeF UType) (TypeF UType) -- ^ Mismatch
   deriving (Show)
 
--- XXX more informative result than Maybe
 unify
   :: Has (Throw UnificationError) sig m
   => UType -> UType -> m (Subst IntVar UType)
