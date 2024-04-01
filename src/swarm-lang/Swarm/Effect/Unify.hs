@@ -11,14 +11,15 @@ module Swarm.Effect.Unify where
 
 import Control.Algebra
 import Control.Applicative (Alternative)
-import Control.Effect.State (State, get, gets, modify)
-import Control.Effect.Throw (Throw)
+import Control.Carrier.State.Strict (StateC, evalState)
+import Control.Carrier.Throw.Either (ThrowC, runThrow)
+import Control.Category ((>>>))
+import Control.Effect.State (get, gets, modify)
 import Control.Monad.Trans (MonadIO)
 import Data.Kind (Type)
 import Data.Set (Set)
-import Data.Set qualified as S
-import Swarm.Language.Typecheck.Unify (UnificationError, unify, fvs)
-import Swarm.Language.Typecheck.Unify.Subst (Subst, subst, (@@))
+import Swarm.Language.Typecheck.Unify (UnificationError, fvs, unify)
+import Swarm.Language.Typecheck.Unify.Subst (Subst, idS, subst, (@@))
 import Swarm.Language.Types (IntVar (..), UType)
 
 data Unification (m :: Type -> Type) k where
@@ -43,20 +44,14 @@ freeUVars = send . FreeUVars
 freshIntVar :: Has Unification sig m => m IntVar
 freshIntVar = send FreshIntVar
 
-newtype UnificationC m a = UnificationC {runUnification :: m a}
+newtype UnificationC m a = UnificationC
+  {unUnificationC :: StateC (Subst IntVar UType) (StateC FreshVarCounter (ThrowC UnificationError m)) a}
   deriving newtype (Functor, Applicative, Alternative, Monad, MonadIO)
 
 newtype FreshVarCounter = FreshVarCounter {getFreshVarCounter :: Int}
   deriving (Eq, Ord, Enum)
 
-instance
-  ( Has (State (Subst IntVar UType)) sig m
-  , Has (State FreshVarCounter) sig m
-  , Has (Throw UnificationError) sig m
-  , Algebra sig m
-  ) =>
-  Algebra (Unification :+: sig) (UnificationC m)
-  where
+instance Algebra sig m => Algebra (Unification :+: sig) (UnificationC m) where
   alg hdl sig ctx = UnificationC $ case sig of
     L (Unify t1 t2) -> do
       s1 <- get @(Subst IntVar UType)
@@ -75,5 +70,7 @@ instance
     L (FreeUVars t) -> do
       s <- get @(Subst IntVar UType)
       return $ fvs (subst s t) <$ ctx
+    R other -> alg (unUnificationC . hdl) (R (R (R other))) ctx
 
-    R other -> alg (runUnification . hdl) other ctx
+runUnification :: Algebra sig m => UnificationC m a -> m (Either UnificationError a)
+runUnification = unUnificationC >>> evalState idS >>> evalState (FreshVarCounter 0) >>> runThrow
