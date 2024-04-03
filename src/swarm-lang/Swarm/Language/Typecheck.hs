@@ -31,29 +31,26 @@ module Swarm.Language.Typecheck (
   withFrame,
 
   -- * Typechecking monad
-  -- fresh,
+  fresh,
 
   -- * Unification
-  -- substU,
-  -- unify,
-  -- HasBindings (..),
   instantiate,
   skolemize,
   generalize,
 
   -- * Type inference
-  -- inferTop,
+  inferTop,
   inferModule,
-  -- infer,
-  -- inferConst,
-  -- check,
-  -- isSimpleUType,
+  infer,
+  inferConst,
+  check,
+  isSimpleUType,
 ) where
 
 import Control.Carrier.Error.Either (runError, ErrorC)
 import Control.Carrier.Reader (runReader, ReaderC)
 import Control.Monad.Free (Free(..))
-import Control.Monad.Identity (Identity(..))
+import Control.Effect.Error (Error)
 import Control.Effect.Catch (Catch, catchError)
 import Control.Effect.Throw
 import Control.Effect.Reader
@@ -525,7 +522,13 @@ inferTop ctx = runTC ctx . inferModule
 
 -- | Infer the signature of a top-level expression which might
 --   contain definitions.
-inferModule :: Syntax -> m UModule
+inferModule ::
+  ( Has Unification sig m
+  , Has (Reader UCtx) sig m
+  , Has (Reader TCStack) sig m
+  , Has (Error ContextualTypeErr) sig m
+  )
+  => Syntax -> m UModule
 inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
   -- For definitions with no type signature, make up a fresh type
   -- variable for the body, infer the body under an extended context,
@@ -610,7 +613,13 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
 --
 --   For most everything else we prefer 'check' because it can often
 --   result in better and more localized type error messages.
-infer :: Syntax -> m (Syntax' UType)
+infer ::
+  ( Has (Reader UCtx) sig m
+  , Has (Reader TCStack) sig m
+  , Has Unification sig m
+  , Has (Error ContextualTypeErr) sig m
+  ) =>
+  Syntax -> m (Syntax' UType)
 infer s@(Syntax l t) = addLocToTypeErr l $ case t of
   -- Primitives, i.e. things for which we immediately know the only
   -- possible correct type, and knowing an expected type would provide
@@ -725,7 +734,7 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
     uty <- skolemize upty
     _ <- check c uty
     -- Make sure no skolem variables have escaped.
-    getCtx >>= mapM_ (noSkolems l)
+    ask @UCtx >>= mapM_ (noSkolems l)
     -- If check against skolemized polytype is successful,
     -- instantiate polytype with unification variables.
     -- Free variables should be able to unify with anything in
@@ -859,7 +868,13 @@ inferConst c = case c of
 --
 --   We try to stay in checking mode as far as possible, decomposing
 --   the expected type as we go and pushing it through the recursion.
-check :: Syntax -> UType -> m (Syntax' UType)
+check ::
+  ( Has (Reader UCtx) sig m
+  , Has (Reader TCStack) sig m
+  , Has Unification sig m
+  , Has (Error ContextualTypeErr) sig m
+  ) =>
+  Syntax -> UType -> m (Syntax' UType)
 check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
   -- if t : ty, then  {t} : {ty}.
   -- Note that in theory, if the @Maybe Var@ component of the @SDelay@
@@ -887,7 +902,7 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
   SLam x mxTy body -> do
     (argTy, resTy) <- decomposeFunTy s (Expected, expected)
     case toU mxTy of
-      Just xTy -> case unifyCheck argTy xTy of
+      Just xTy -> case U.unifyCheck argTy xTy of
         -- Generate a special error when the explicit type annotation
         -- on a lambda doesn't match the expected type,
         -- e.g. (\x:int. x + 2) : text -> int, since the usual
@@ -945,7 +960,7 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
     t2' <- withBinding (lvVar x) upty $ check t2 expected
 
     -- Make sure no skolem variables have escaped.
-    getCtx >>= mapM_ (noSkolems l)
+    ask @UCtx >>= mapM_ (noSkolems l)
 
     -- Return the annotated let.
     return $ Syntax' l (SLet r x mxTy t1' t2') expected
@@ -1021,7 +1036,13 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
 --   i.e. contains at most one tangible command. For example, @atomic
 --   (move; move)@ is invalid, since that would allow robots to move
 --   twice as fast as usual by doing both actions in one tick.
-validAtomic :: Syntax -> m ()
+validAtomic ::
+  ( Has (Reader UCtx) sig m
+  , Has (Reader TCStack) sig m
+  , Has Unification sig m
+  , Has (Throw ContextualTypeErr) sig m
+  ) =>
+  Syntax -> m ()
 validAtomic s@(Syntax l t) = do
   n <- analyzeAtomic S.empty s
   when (n > 1) $ throwTypeErr l $ InvalidAtomic (TooManyTicks n) t
@@ -1029,7 +1050,13 @@ validAtomic s@(Syntax l t) = do
 -- | Analyze an argument to @atomic@: ensure it contains no nested
 --   atomic blocks and no references to external variables, and count
 --   how many tangible commands it will execute.
-analyzeAtomic :: Set Var -> Syntax -> m Int
+analyzeAtomic
+  :: ( Has (Reader UCtx) sig m
+     , Has (Reader TCStack) sig m
+     , Has Unification sig m
+     , Has (Throw ContextualTypeErr) sig m
+     ) =>
+     Set Var -> Syntax -> m Int
 analyzeAtomic locals (Syntax l t) = case t of
   -- Literals, primitives, etc. that are fine and don't require a tick
   -- to evaluate
@@ -1068,7 +1095,12 @@ analyzeAtomic locals (Syntax l t) = case t of
   SBind mx s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2
   SRcd m -> sum <$> mapM analyzeField (M.assocs m)
    where
-    analyzeField :: (Var, Maybe Syntax) -> m Int
+    analyzeField ::
+      ( Has (Reader UCtx) sig m
+      , Has (Reader TCStack) sig m
+      , Has Unification sig m
+      , Has (Throw ContextualTypeErr) sig m
+      ) => (Var, Maybe Syntax) -> m Int
     analyzeField (x, Nothing) = analyzeAtomic locals (STerm (TVar x))
     analyzeField (_, Just s) = analyzeAtomic locals s
   SProj {} -> return 0
@@ -1076,7 +1108,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   TVar x
     | x `S.member` locals -> return 0
     | otherwise -> do
-        mxTy <- Ctx.lookup x <$> getCtx
+        mxTy <- Ctx.lookup x <$> ask @UCtx
         case mxTy of
           -- If the variable is undefined, return 0 to indicate the
           -- atomic block is valid, because we'd rather have the error
