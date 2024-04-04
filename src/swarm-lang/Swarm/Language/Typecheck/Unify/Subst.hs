@@ -27,8 +27,9 @@ module Swarm.Language.Typecheck.Unify.Subst (
 )
 where
 
+import Data.Maybe (fromMaybe)
 import Control.Monad.Free
-import Data.Map (Map, (!))
+import Data.Map (Map, (!?))
 import Data.Map qualified as M
 import Data.Set (Set)
 import Prelude hiding (lookup)
@@ -82,8 +83,8 @@ class Substitutes n b a where
 
 -- | We can perform substitution on terms built up as the free monad
 --   over a structure functor @f@.
-instance (Ord n, Functor f) => Substitutes n (Free f n) (Free f n) where
-  subst = (=<<) . (!) . getSubst
+instance (Show n, Ord n, Functor f) => Substitutes n (Free f n) (Free f n) where
+  subst s f = f >>= \n -> fromMaybe (Pure n) (getSubst s !? n)
 
 -- | Compose two substitutions.  Applying @s1 \@\@ s2@ is the same as
 --   applying first @s2@, then @s1@; that is, semantically,
