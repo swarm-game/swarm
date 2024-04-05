@@ -27,10 +27,10 @@ module Swarm.Language.Typecheck.Unify.Subst (
 )
 where
 
-import Data.Maybe (fromMaybe)
 import Control.Monad.Free
 import Data.Map (Map, (!?))
 import Data.Map qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Prelude hiding (lookup)
 

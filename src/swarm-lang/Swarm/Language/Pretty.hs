@@ -9,10 +9,10 @@
 -- Pretty-printing for the Swarm language.
 module Swarm.Language.Pretty where
 
-import Control.Monad.Free (Free(..))
-import Data.Fix
 import Control.Lens.Combinators (pattern Empty)
+import Control.Monad.Free (Free (..))
 import Data.Bool (bool)
+import Data.Fix
 import Data.List.NonEmpty ((<|))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
@@ -29,7 +29,7 @@ import Swarm.Language.Context
 import Swarm.Language.Parse (getLocRange)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
-import Swarm.Language.Typecheck.Unify (UnificationError(..))
+import Swarm.Language.Typecheck.Unify (UnificationError (..))
 import Swarm.Language.Types
 import Swarm.Util (showEnum, showLowT, unsnocNE)
 import Witch

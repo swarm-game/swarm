@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -33,7 +33,7 @@ module Swarm.Language.Types (
   pattern TyDelay,
 
   -- * @UType@
-  IntVar(..),
+  IntVar (..),
   UType,
   pattern UTyBase,
   pattern UTyVar,
@@ -72,7 +72,7 @@ module Swarm.Language.Types (
 
 import Control.Monad.Free
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Aeson.TH (deriveFromJSON1, deriveToJSON1, defaultOptions)
+import Data.Aeson.TH (defaultOptions, deriveFromJSON1, deriveToJSON1)
 import Data.Data (Data)
 import Data.Eq.Deriving (deriveEq1)
 import Data.Fix

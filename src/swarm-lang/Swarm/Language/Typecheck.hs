@@ -47,18 +47,18 @@ module Swarm.Language.Typecheck (
   isSimpleUType,
 ) where
 
-import Control.Carrier.Error.Either (runError, ErrorC)
-import Control.Carrier.Reader (runReader, ReaderC)
-import Control.Monad.Free (Free(..))
-import Control.Effect.Error (Error)
-import Control.Effect.Catch (Catch, catchError)
-import Control.Effect.Throw
-import Control.Effect.Reader
 import Control.Arrow ((***))
+import Control.Carrier.Error.Either (ErrorC, runError)
+import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Category ((>>>))
+import Control.Effect.Catch (Catch, catchError)
+import Control.Effect.Error (Error)
+import Control.Effect.Reader
+import Control.Effect.Throw
 import Control.Lens ((^.))
 import Control.Lens.Indexed (itraverse)
-import Control.Monad (forM_, void, when, (<=<))
+import Control.Monad (forM_, void, when, (<=<), (>=>))
+import Control.Monad.Free (Free (..))
 import Data.Data (Data, gmapM)
 import Data.Foldable (fold)
 import Data.Functor.Identity
@@ -151,6 +151,27 @@ getJoin (Join j) = (j Expected, j Actual)
 ------------------------------------------------------------
 -- Type checking
 
+finalizeModule ::
+  ( Has Unification sig m
+  , Has (Reader UCtx) sig m
+  , Has (Throw ContextualTypeErr) sig m
+  ) =>
+  UModule ->
+  m TModule
+finalizeModule (Module u uctx) =
+  Module
+    <$> mapM (checkPredicative <=< (fmap fromU . generalize)) u
+    <*> checkPredicative (fromU uctx)
+
+finalizeU ::
+  ( Has Unification sig m
+  , Has (Reader UCtx) sig m
+  , Has (Throw ContextualTypeErr) sig m
+  ) =>
+  UModule ->
+  m TModule
+finalizeU = applyBindings >=> finalizeModule
+
 -- | Version of 'runTC' which is generic in the base monad.
 runTC' ::
   Algebra sig m =>
@@ -158,13 +179,7 @@ runTC' ::
   ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC m))) UModule ->
   m (Either ContextualTypeErr TModule)
 runTC' ctx =
-  (>>= applyBindings)
-    >>> ( >>=
-            \(Module u uctx) ->
-              Module
-                <$> mapM (checkPredicative <=< (fmap fromU . generalize)) u
-                <*> checkPredicative (fromU uctx)
-        )
+  (>>= finalizeU)
     >>> runReader (toU ctx)
     >>> runReader []
     >>> runError
@@ -189,14 +204,15 @@ reportUnificationError = either (Left . mkRawTypeErr . UnificationErr) id
 --   an 'UnboundVar' error if it is not found, or opening its
 --   associated 'UPolytype' with fresh unification variables via
 --   'instantiate'.
-
 lookup ::
   ( Has (Throw ContextualTypeErr) sig m
   , Has (Reader TCStack) sig m
   , Has (Reader UCtx) sig m
   , Has Unification sig m
-  )
-  => SrcLoc -> Var -> m UType
+  ) =>
+  SrcLoc ->
+  Var ->
+  m UType
 lookup loc x = do
   ctx <- ask @UCtx
   maybe (throwTypeErr loc $ UnboundVar x) instantiate (Ctx.lookup x ctx)
@@ -207,8 +223,10 @@ addLocToTypeErr ::
   ( Has (Throw ContextualTypeErr) sig m
   , Has (Catch ContextualTypeErr) sig m
   , Has (Reader TCStack) sig m
-  )
-  => SrcLoc -> m a -> m a
+  ) =>
+  SrcLoc ->
+  m a ->
+  m a
 addLocToTypeErr l m =
   m `catchError` \case
     CTE NoLoc _ te -> throwTypeErr l te
@@ -252,12 +270,14 @@ substU m =
     )
 
 -- | Make sure no skolem variables escape.
-noSkolems
-  :: ( Has Unification sig m
-     , Has (Reader TCStack) sig m
-     , Has (Throw ContextualTypeErr) sig m
-     )
-  => SrcLoc -> Poly UType -> m ()
+noSkolems ::
+  ( Has Unification sig m
+  , Has (Reader TCStack) sig m
+  , Has (Throw ContextualTypeErr) sig m
+  ) =>
+  SrcLoc ->
+  Poly UType ->
+  m ()
 noSkolems l (Forall xs upty) = do
   upty' <- applyBindings upty
   let tyvs =
@@ -289,8 +309,10 @@ unify ::
   ( Has Unification sig m
   , Has (Throw ContextualTypeErr) sig m
   , Has (Reader TCStack) sig m
-  )
-  => Maybe Syntax -> TypeJoin -> m UType
+  ) =>
+  Maybe Syntax ->
+  TypeJoin ->
+  m UType
 unify ms j = case U.unifyCheck expected actual of
   U.Apart -> throwTypeErr NoLoc $ Mismatch ms j
   U.Equal -> return expected
@@ -388,7 +410,10 @@ mkTypeErr = CTE
 throwTypeErr ::
   ( Has (Throw ContextualTypeErr) sig m
   , Has (Reader TCStack) sig m
-  ) => SrcLoc -> TypeErr -> m a
+  ) =>
+  SrcLoc ->
+  TypeErr ->
+  m a
 throwTypeErr l te = do
   stk <- ask @TCStack
   throwError $ mkTypeErr l stk te
@@ -456,8 +481,10 @@ decomposeDelayTy ::
   ( Has Unification sig m
   , Has (Throw ContextualTypeErr) sig m
   , Has (Reader TCStack) sig m
-  )
-  => Syntax -> Sourced UType -> m UType
+  ) =>
+  Syntax ->
+  Sourced UType ->
+  m UType
 decomposeDelayTy _ (_, UTyDelay a) = return a
 decomposeDelayTy t ty = do
   a <- fresh
@@ -471,8 +498,10 @@ decomposeCmdTy ::
   ( Has Unification sig m
   , Has (Throw ContextualTypeErr) sig m
   , Has (Reader TCStack) sig m
-  )
-  => Syntax -> Sourced UType -> m UType
+  ) =>
+  Syntax ->
+  Sourced UType ->
+  m UType
 decomposeCmdTy _ (_, UTyCmd a) = return a
 decomposeCmdTy t ty = do
   a <- fresh
@@ -486,8 +515,10 @@ decomposeFunTy ::
   ( Has Unification sig m
   , Has (Throw ContextualTypeErr) sig m
   , Has (Reader TCStack) sig m
-  )
-  => Syntax -> Sourced UType -> m (UType, UType)
+  ) =>
+  Syntax ->
+  Sourced UType ->
+  m (UType, UType)
 decomposeFunTy _ (_, UTyFun ty1 ty2) = return (ty1, ty2)
 decomposeFunTy t ty = do
   ty1 <- fresh
@@ -502,8 +533,10 @@ decomposeProdTy ::
   ( Has Unification sig m
   , Has (Throw ContextualTypeErr) sig m
   , Has (Reader TCStack) sig m
-  )
-  => Syntax -> Sourced UType -> m (UType, UType)
+  ) =>
+  Syntax ->
+  Sourced UType ->
+  m (UType, UType)
 decomposeProdTy _ (_, UTyProd ty1 ty2) = return (ty1, ty2)
 decomposeProdTy t ty = do
   ty1 <- fresh
@@ -527,8 +560,9 @@ inferModule ::
   , Has (Reader UCtx) sig m
   , Has (Reader TCStack) sig m
   , Has (Error ContextualTypeErr) sig m
-  )
-  => Syntax -> m UModule
+  ) =>
+  Syntax ->
+  m UModule
 inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
   -- For definitions with no type signature, make up a fresh type
   -- variable for the body, infer the body under an extended context,
@@ -619,7 +653,8 @@ infer ::
   , Has Unification sig m
   , Has (Error ContextualTypeErr) sig m
   ) =>
-  Syntax -> m (Syntax' UType)
+  Syntax ->
+  m (Syntax' UType)
 infer s@(Syntax l t) = addLocToTypeErr l $ case t of
   -- Primitives, i.e. things for which we immediately know the only
   -- possible correct type, and knowing an expected type would provide
@@ -874,7 +909,9 @@ check ::
   , Has Unification sig m
   , Has (Error ContextualTypeErr) sig m
   ) =>
-  Syntax -> UType -> m (Syntax' UType)
+  Syntax ->
+  UType ->
+  m (Syntax' UType)
 check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
   -- if t : ty, then  {t} : {ty}.
   -- Note that in theory, if the @Maybe Var@ component of the @SDelay@
@@ -1042,7 +1079,8 @@ validAtomic ::
   , Has Unification sig m
   , Has (Throw ContextualTypeErr) sig m
   ) =>
-  Syntax -> m ()
+  Syntax ->
+  m ()
 validAtomic s@(Syntax l t) = do
   n <- analyzeAtomic S.empty s
   when (n > 1) $ throwTypeErr l $ InvalidAtomic (TooManyTicks n) t
@@ -1050,13 +1088,15 @@ validAtomic s@(Syntax l t) = do
 -- | Analyze an argument to @atomic@: ensure it contains no nested
 --   atomic blocks and no references to external variables, and count
 --   how many tangible commands it will execute.
-analyzeAtomic
-  :: ( Has (Reader UCtx) sig m
-     , Has (Reader TCStack) sig m
-     , Has Unification sig m
-     , Has (Throw ContextualTypeErr) sig m
-     ) =>
-     Set Var -> Syntax -> m Int
+analyzeAtomic ::
+  ( Has (Reader UCtx) sig m
+  , Has (Reader TCStack) sig m
+  , Has Unification sig m
+  , Has (Throw ContextualTypeErr) sig m
+  ) =>
+  Set Var ->
+  Syntax ->
+  m Int
 analyzeAtomic locals (Syntax l t) = case t of
   -- Literals, primitives, etc. that are fine and don't require a tick
   -- to evaluate
@@ -1100,7 +1140,9 @@ analyzeAtomic locals (Syntax l t) = case t of
       , Has (Reader TCStack) sig m
       , Has Unification sig m
       , Has (Throw ContextualTypeErr) sig m
-      ) => (Var, Maybe Syntax) -> m Int
+      ) =>
+      (Var, Maybe Syntax) ->
+      m Int
     analyzeField (x, Nothing) = analyzeAtomic locals (STerm (TVar x))
     analyzeField (_, Just s) = analyzeAtomic locals s
   SProj {} -> return 0

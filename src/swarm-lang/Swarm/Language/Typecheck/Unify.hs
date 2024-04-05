@@ -5,23 +5,22 @@
 module Swarm.Language.Typecheck.Unify (
   UnifyStatus (..),
   unifyCheck,
-
-  UnificationError(..),
+  UnificationError (..),
   unify,
-  fvs
+  fvs,
 ) where
 
 import Control.Algebra (Has)
 import Control.Effect.Throw (Throw, throwError)
-import Data.Set (Set)
-import Data.Set qualified as S
 import Control.Monad.Free
 import Data.Foldable qualified as F
 import Data.Function (on)
 import Data.Map qualified as M
 import Data.Map.Merge.Lazy qualified as M
-import Swarm.Language.Types
+import Data.Set (Set)
+import Data.Set qualified as S
 import Swarm.Language.Typecheck.Unify.Subst
+import Swarm.Language.Types
 
 -- Do we need this "unification check" stuff anymore?  Should we return something like
 -- this from unify?
@@ -106,13 +105,19 @@ fvs = ucata S.singleton F.fold
 
 -- | XXX
 data UnificationError
-  = Infinite IntVar UType  -- | ^ Occurs check failure
-  | UnifyErr (TypeF UType) (TypeF UType) -- ^ Mismatch
+  = Infinite IntVar UType
+  | -- | ^ Occurs check failure
+    UnifyErr
+      (TypeF UType)
+      -- | Mismatch
+      (TypeF UType)
   deriving (Show)
 
-unify
-  :: Has (Throw UnificationError) sig m
-  => UType -> UType -> m (Subst IntVar UType)
+unify ::
+  Has (Throw UnificationError) sig m =>
+  UType ->
+  UType ->
+  m (Subst IntVar UType)
 unify ty1 ty2 = case (ty1, ty2) of
   (Pure x, Pure y)
     | x == y -> return idS
@@ -125,9 +130,11 @@ unify ty1 ty2 = case (ty1, ty2) of
     | otherwise -> return $ x |-> y
   (Free t1, Free t2) -> unifyF t1 t2
 
-unifyF
-  :: Has (Throw UnificationError) sig m
-  => TypeF UType -> TypeF UType -> m (Subst IntVar UType)
+unifyF ::
+  Has (Throw UnificationError) sig m =>
+  TypeF UType ->
+  TypeF UType ->
+  m (Subst IntVar UType)
 unifyF t1 t2 = case (t1, t2) of
   (TyBaseF b1, TyBaseF b2) -> case b1 == b2 of
     True -> return idS
@@ -161,6 +168,5 @@ unifyF t1 t2 = case (t1, t2) of
     s2 <- unify t12 t22
     return $ s1 @@ s2
   (TyFunF {}, _) -> unifyErr
-
-  where
-    unifyErr = throwError $ UnifyErr t1 t2
+ where
+  unifyErr = throwError $ UnifyErr t1 t2
