@@ -121,8 +121,8 @@ data BaseTy
 -- | A "structure functor" encoding the shape of type expressions.
 --   Actual types are then represented by taking a fixed point of this
 --   functor.  We represent types in this way, via a "two-level type",
---   so that we can work with the @unification-fd@ package (see
---   https://byorgey.wordpress.com/2021/09/08/implementing-hindley-milner-with-the-unification-fd-library/).
+--   so that we can easily use generic recursion schemes to implement
+--   things like substitution.
 data TypeF t
   = -- | A base type.
     TyBaseF BaseTy
@@ -191,7 +191,7 @@ ucata f g (Free t) = g (fmap (ucata f g) t)
 --   as a unification variable) into a unique variable name, by
 --   appending a number to the given name.
 mkVarName :: Text -> IntVar -> Var
-mkVarName nm (IntVar v) = T.append nm (from @String (show (v + (maxBound :: Int) + 1)))
+mkVarName nm (IntVar v) = T.append nm (from @String (show v))
 
 -- | For convenience, so we can write /e.g./ @"a"@ instead of @TyVar "a"@.
 instance IsString Type where

@@ -2,9 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-
--- For 'Ord IntVar' instance
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -81,6 +78,8 @@ import Swarm.Language.Typecheck.Unify qualified as U
 import Swarm.Language.Types
 import Prelude hiding (lookup)
 
+import Debug.Trace
+
 ------------------------------------------------------------
 -- Typechecking stack
 
@@ -151,26 +150,29 @@ getJoin (Join j) = (j Expected, j Actual)
 ------------------------------------------------------------
 -- Type checking
 
-finalizeModule ::
+fromUModule ::
   ( Has Unification sig m
   , Has (Reader UCtx) sig m
   , Has (Throw ContextualTypeErr) sig m
   ) =>
   UModule ->
   m TModule
-finalizeModule (Module u uctx) =
+fromUModule (Module u uctx) =
   Module
     <$> mapM (checkPredicative <=< (fmap fromU . generalize)) u
     <*> checkPredicative (fromU uctx)
 
-finalizeU ::
+finalizeUModule ::
   ( Has Unification sig m
   , Has (Reader UCtx) sig m
   , Has (Throw ContextualTypeErr) sig m
   ) =>
   UModule ->
   m TModule
-finalizeU = applyBindings >=> finalizeModule
+finalizeUModule = applyBindings >=> fromUModule
+
+-- traceShowIdM :: (Show a, Applicative f) => a -> f a
+-- traceShowIdM a = traceShowM a *> pure a
 
 -- | Version of 'runTC' which is generic in the base monad.
 runTC' ::
@@ -179,7 +181,7 @@ runTC' ::
   ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC m))) UModule ->
   m (Either ContextualTypeErr TModule)
 runTC' ctx =
-  (>>= finalizeU)
+  (>>= finalizeUModule)
     >>> runReader (toU ctx)
     >>> runReader []
     >>> runError
