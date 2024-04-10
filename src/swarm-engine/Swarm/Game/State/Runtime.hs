@@ -11,16 +11,14 @@ module Swarm.Game.State.Runtime (
   webPort,
   upstreamRelease,
   eventLog,
-  worlds,
   scenarios,
-  stdEntityTerrainMap,
-  stdRecipes,
   appData,
-  nameParts,
+  stdGameConfigInputs,
 
   -- ** Utility
+  initScenarioInputs,
   initRuntimeState,
-  mkGameStateConfig,
+  initGameStateConfig,
 )
 where
 
@@ -32,16 +30,14 @@ import Data.Map (Map)
 import Data.Sequence (Seq)
 import Data.Text (Text)
 import Network.Wai.Handler.Warp (Port)
-import Swarm.Game.Entity (Entity)
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Land
-import Swarm.Game.Recipe (Recipe, loadRecipes)
-import Swarm.Game.ResourceLoading (NameGenerator, initNameGenerator, readAppData)
-import Swarm.Game.Scenario (GameStateInputs (..))
+import Swarm.Game.Recipe (loadRecipes)
+import Swarm.Game.ResourceLoading (initNameGenerator, readAppData)
+import Swarm.Game.Scenario (GameStateInputs (..), ScenarioInputs (..))
 import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios)
 import Swarm.Game.State.Substate
 import Swarm.Game.World.Load (loadWorlds)
-import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Log
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Version (NewReleaseFailure (..))
@@ -50,13 +46,44 @@ data RuntimeState = RuntimeState
   { _webPort :: Maybe Port
   , _upstreamRelease :: Either NewReleaseFailure String
   , _eventLog :: Notifications LogEntry
-  , _worlds :: WorldMap
   , _scenarios :: ScenarioCollection
-  , _stdEntityTerrainMap :: TerrainEntityMaps
-  , _stdRecipes :: [Recipe Entity]
+  , _stdGameConfigInputs :: GameStateConfig
   , _appData :: Map Text Text
-  , _nameParts :: NameGenerator
   }
+
+initScenarioInputs ::
+  ( Has (Throw SystemFailure) sig m
+  , Has (Accum (Seq SystemFailure)) sig m
+  , Has (Lift IO) sig m
+  ) =>
+  m ScenarioInputs
+initScenarioInputs = do
+  tem <- loadEntitiesAndTerrain
+  worlds <- loadWorlds tem
+  return $ ScenarioInputs worlds tem
+
+initGameStateInputs ::
+  ( Has (Throw SystemFailure) sig m
+  , Has (Accum (Seq SystemFailure)) sig m
+  , Has (Lift IO) sig m
+  ) =>
+  m GameStateInputs
+initGameStateInputs = do
+  scenarioInputs <- initScenarioInputs
+  recipes <- loadRecipes $ initEntityTerrain scenarioInputs ^. entityMap
+  return $ GameStateInputs scenarioInputs recipes
+
+initGameStateConfig ::
+  ( Has (Throw SystemFailure) sig m
+  , Has (Accum (Seq SystemFailure)) sig m
+  , Has (Lift IO) sig m
+  ) =>
+  m GameStateConfig
+initGameStateConfig = do
+  gsi <- initGameStateInputs
+  appDataMap <- readAppData
+  nameGen <- initNameGenerator appDataMap
+  return $ GameStateConfig appDataMap nameGen gsi
 
 initRuntimeState ::
   ( Has (Throw SystemFailure) sig m
@@ -65,23 +92,17 @@ initRuntimeState ::
   ) =>
   m RuntimeState
 initRuntimeState = do
-  tem <- loadEntitiesAndTerrain
-  recipes <- loadRecipes $ tem ^. entityMap
-  worlds <- loadWorlds tem
-  scenarios <- loadScenarios tem worlds
-  appDataMap <- readAppData
-  nameGen <- initNameGenerator appDataMap
+  gsc <- initGameStateConfig
+  scenarios <- loadScenarios $ gsiScenarioInputs $ initState gsc
+
   return $
     RuntimeState
       { _webPort = Nothing
       , _upstreamRelease = Left (NoMainUpstreamRelease [])
       , _eventLog = mempty
-      , _worlds = worlds
       , _scenarios = scenarios
-      , _stdEntityTerrainMap = tem
-      , _stdRecipes = recipes
-      , _appData = appDataMap
-      , _nameParts = nameGen
+      , _appData = initAppDataMap gsc
+      , _stdGameConfigInputs = gsc
       }
 
 makeLensesNoSigs ''RuntimeState
@@ -99,39 +120,12 @@ upstreamRelease :: Lens' RuntimeState (Either NewReleaseFailure String)
 -- place to log it.
 eventLog :: Lens' RuntimeState (Notifications LogEntry)
 
--- | A collection of typechecked world DSL terms that are available to
---   be used in scenario definitions.
-worlds :: Lens' RuntimeState WorldMap
-
 -- | The collection of scenarios that comes with the game.
 scenarios :: Lens' RuntimeState ScenarioCollection
 
--- | The standard terrain/entity maps loaded from disk.  Individual scenarios
---   may define additional terrain/entities which will get added to this map
---   when loading the scenario.
-stdEntityTerrainMap :: Lens' RuntimeState TerrainEntityMaps
-
--- | The standard list of recipes loaded from disk.  Individual scenarios
---   may define additional recipes which will get added to this list
---   when loading the scenario.
-stdRecipes :: Lens' RuntimeState [Recipe Entity]
+-- | Built-in resources for loading games
+stdGameConfigInputs :: Lens' RuntimeState GameStateConfig
 
 -- | Free-form data loaded from the @data@ directory, for things like
 --   the logo, about page, tutorial story, etc.
 appData :: Lens' RuntimeState (Map Text Text)
-
--- | Lists of words/adjectives for use in building random robot names.
-nameParts :: Lens' RuntimeState NameGenerator
-
--- | Create a 'GameStateConfig' record from the 'RuntimeState'.
-mkGameStateConfig :: RuntimeState -> GameStateConfig
-mkGameStateConfig rs =
-  GameStateConfig
-    { initNameParts = rs ^. nameParts
-    , initState =
-        GameStateInputs
-          { initEntityTerrain = rs ^. stdEntityTerrainMap
-          , initRecipes = rs ^. stdRecipes
-          , initWorldMap = rs ^. worlds
-          }
-    }

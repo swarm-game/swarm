@@ -207,7 +207,7 @@ initRobots gsc =
     , _robotsWatching = mempty
     , _robotNaming =
         RobotNaming
-          { _nameGenerator = initNameParts gsc
+          { _nameGenerator = nameParts gsc
           , _gensym = 0
           }
     , _viewCenterRule = VCRobot 0

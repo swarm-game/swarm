@@ -14,14 +14,14 @@ import Data.Text qualified as T
 import Swarm.Game.Entity (EntityMap (entitiesByCap), entityName)
 import Swarm.Game.Land
 import Swarm.Game.Recipe (recipeOutputs)
-import Swarm.Game.State.Runtime (RuntimeState, stdEntityTerrainMap, stdRecipes)
+import Swarm.Game.Scenario (GameStateInputs (..), initEntityTerrain)
 import Swarm.Util (commaList, quote)
 import Test.Tasty
 import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit
 
-testDeviceRecipeCoverage :: RuntimeState -> TestTree
-testDeviceRecipeCoverage rs =
+testDeviceRecipeCoverage :: GameStateInputs -> TestTree
+testDeviceRecipeCoverage gsi =
   testGroup
     "Recipe coverage"
     [ expectFailBecause "Need to come up with more recipes" checkCoverage
@@ -44,8 +44,8 @@ testDeviceRecipeCoverage rs =
     -- Only include entities that grant a capability:
     entityNames =
       Set.fromList . map (^. entityName) . concat . M.elems . entitiesByCap $
-        rs ^. stdEntityTerrainMap . entityMap
+        initEntityTerrain (gsiScenarioInputs gsi) ^. entityMap
 
     getOutputsForRecipe r = map ((^. entityName) . snd) $ r ^. recipeOutputs
-    recipeOutputEntities = Set.fromList . concatMap getOutputsForRecipe $ rs ^. stdRecipes
+    recipeOutputEntities = Set.fromList . concatMap getOutputsForRecipe $ gsiRecipes gsi
     nonCoveredEntities = Set.difference entityNames recipeOutputEntities

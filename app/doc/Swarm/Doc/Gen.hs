@@ -38,7 +38,7 @@ import Swarm.Game.Entity qualified as E
 import Swarm.Game.Land
 import Swarm.Game.Recipe (Recipe, recipeCatalysts, recipeInputs, recipeOutputs)
 import Swarm.Game.Robot (Robot, equippedDevices, robotInventory)
-import Swarm.Game.Scenario (GameStateInputs (..), loadStandaloneScenario, scenarioLandscape)
+import Swarm.Game.Scenario (GameStateInputs (..), ScenarioInputs (..), loadStandaloneScenario, scenarioLandscape)
 import Swarm.Game.World.Gen (extractEntities)
 import Swarm.Game.World.Typecheck (Some (..), TTerm)
 import Swarm.Language.Key (specialKeyNames)
@@ -136,7 +136,7 @@ generateSpecialKeyNames =
 
 generateRecipe :: IO String
 generateRecipe = simpleErrorHandle $ do
-  (classic, GameStateInputs worlds (TerrainEntityMaps _ entities) recipes) <- loadStandaloneScenario "data/scenarios/classic.yaml"
+  (classic, GameStateInputs (ScenarioInputs worlds (TerrainEntityMaps _ entities)) recipes) <- loadStandaloneScenario "data/scenarios/classic.yaml"
   baseRobot <- instantiateBaseRobot $ classic ^. scenarioLandscape
   return . Dot.showDot $ recipesToDot baseRobot (worlds ! "classic") entities recipes
 
