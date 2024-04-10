@@ -6,7 +6,7 @@
 module Main where
 
 import Control.Carrier.Accum.FixedStrict (runAccum)
-import Control.Lens ((&), (.~))
+import Control.Lens (view, (&), (.~))
 import Control.Monad (replicateM_)
 import Control.Monad.State (evalStateT, execStateT)
 import Data.Map qualified as M
@@ -24,7 +24,7 @@ import Swarm.Game.Scenario (loadStandaloneScenario)
 import Swarm.Game.State (GameState, creativeMode, landscape, pureScenarioToGameState, zoomRobots)
 import Swarm.Game.State.Landscape (multiWorld)
 import Swarm.Game.State.Robot (addTRobot)
-import Swarm.Game.State.Runtime (initRuntimeState, mkGameStateConfig)
+import Swarm.Game.State.Runtime (initRuntimeState, stdGameConfigInputs)
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Terrain (blankTerrainIndex)
 import Swarm.Game.Universe (Cosmic (..), SubworldName (DefaultRootSubworld))
@@ -146,7 +146,7 @@ mkGameState prog robotMaker numRobots = do
   gs <- simpleErrorHandle $ do
     (_ :: Seq SystemFailure, initRS) <- runAccum mempty initRuntimeState
     (scenario, _) <- loadStandaloneScenario "classic"
-    return $ pureScenarioToGameState scenario 0 0 Nothing $ mkGameStateConfig initRS
+    return $ pureScenarioToGameState scenario 0 0 Nothing $ view stdGameConfigInputs initRS
 
   execStateT
     (zoomRobots $ mapM_ (addTRobot $ initMachine prog Context.empty emptyStore) robots)

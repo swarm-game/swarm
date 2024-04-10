@@ -35,6 +35,7 @@ import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Land
 import Swarm.Game.Scenario (
   Scenario,
+  ScenarioInputs (..),
   scenarioDescription,
   scenarioMetadata,
   scenarioName,
@@ -181,7 +182,7 @@ loadScenarioCollection = simpleErrorHandle $ do
   -- all the scenarios via the usual code path; we do not need to do
   -- anything with them here while simply rendering pedagogy info.
   worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds tem
-  ignoreWarnings @(Seq SystemFailure) $ loadScenarios tem worlds
+  ignoreWarnings @(Seq SystemFailure) $ loadScenarios $ ScenarioInputs worlds tem
 
 renderUsagesMarkdown :: CoverageInfo -> Text
 renderUsagesMarkdown (CoverageInfo (TutorialInfo (s, si) idx _sCmds dCmds) novelCmds) =

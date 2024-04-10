@@ -448,4 +448,4 @@ initRecipeMaps gsc =
     , _recipesCat = catRecipeMap recipeList
     }
  where
-  recipeList = initRecipes $ initState gsc
+  recipeList = gsiRecipes $ initState gsc

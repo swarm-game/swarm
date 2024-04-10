@@ -56,6 +56,7 @@ module Swarm.Game.Scenario (
   getScenarioPath,
   loadStandaloneScenario,
   GameStateInputs (..),
+  ScenarioInputs (..),
 
   -- * Utilities
   arbitrateSeed,
@@ -265,7 +266,7 @@ scenarioLandscape :: Lens' Scenario ScenarioLandscape
 
 -- * Parsing
 
-instance FromJSONE (TerrainEntityMaps, WorldMap) Scenario where
+instance FromJSONE ScenarioInputs Scenario where
   parseJSONE = withObjectE "scenario" $ \v -> do
     -- parse custom terrain
     tmRaw <- liftE (v .:? "terrains" .!= [])
@@ -288,12 +289,12 @@ instance FromJSONE (TerrainEntityMaps, WorldMap) Scenario where
     let scenarioSpecificTerrainEntities = TerrainEntityMaps tm em
 
     -- Save the passed in WorldMap for later
-    worldMap <- snd <$> getE
+    worldMap <- initWorldMap <$> getE
 
     -- Get rid of WorldMap from context locally, and combine
     -- the default system TerrainMap and EntityMap
     -- with any custom terrain/entities parsed above
-    localE fst $ withE scenarioSpecificTerrainEntities $ do
+    localE initEntityTerrain $ withE scenarioSpecificTerrainEntities $ do
       -- parse 'known' entity names and make sure they exist
       known <- liftE (v .:? "known" .!= mempty)
       combinedTEM <- getE
@@ -416,24 +417,22 @@ getScenarioPath scenario = do
 loadScenario ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   FilePath ->
-  TerrainEntityMaps ->
-  WorldMap ->
+  ScenarioInputs ->
   m (Scenario, FilePath)
-loadScenario scenario tem worldMap = do
+loadScenario scenario scenarioInputs = do
   mfileName <- getScenarioPath scenario
   fileName <- maybe (throwError $ ScenarioNotFound scenario) return mfileName
-  (,fileName) <$> loadScenarioFile tem worldMap fileName
+  (,fileName) <$> loadScenarioFile scenarioInputs fileName
 
 -- | Load a scenario from a file.
 loadScenarioFile ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  TerrainEntityMaps ->
-  WorldMap ->
+  ScenarioInputs ->
   FilePath ->
   m Scenario
-loadScenarioFile tem worldMap fileName =
+loadScenarioFile scenarioInputs fileName =
   (withThrow adaptError . (liftEither <=< sendIO)) $
-    decodeFileEitherE (tem, worldMap) fileName
+    decodeFileEitherE scenarioInputs fileName
  where
   adaptError = AssetNotLoaded (Data Scenarios) fileName . CanNotParseYaml
 
@@ -443,15 +442,28 @@ loadStandaloneScenario ::
   m (Scenario, GameStateInputs)
 loadStandaloneScenario fp = do
   tem <- loadEntitiesAndTerrain
-  recipes <- loadRecipes $ tem ^. entityMap
   worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds tem
-  scene <- fst <$> loadScenario fp tem worlds
-  return (scene, GameStateInputs worlds tem recipes)
+  let scenarioInputs = ScenarioInputs worlds tem
+  recipes <- loadRecipes $ tem ^. entityMap
+  scene <- fst <$> loadScenario fp scenarioInputs
+  return (scene, GameStateInputs scenarioInputs recipes)
+
+data ScenarioInputs = ScenarioInputs
+  { initWorldMap :: WorldMap
+  -- ^ A collection of typechecked world DSL terms that are available to
+  --   be used in scenario definitions.
+  , initEntityTerrain :: TerrainEntityMaps
+  -- ^ The standard terrain/entity maps loaded from disk.  Individual scenarios
+  --   may define additional terrain/entities which will get added to this map
+  --   when loading the scenario.
+  }
 
 data GameStateInputs = GameStateInputs
-  { initWorldMap :: WorldMap
-  , initEntityTerrain :: TerrainEntityMaps
-  , initRecipes :: [Recipe Entity]
+  { gsiScenarioInputs :: ScenarioInputs
+  , gsiRecipes :: [Recipe Entity]
+  -- ^ The standard list of recipes loaded from disk.  Individual scenarios
+  --   may define additional recipes which will get added to this list
+  --   when loading the scenario.
   }
 
 -- |

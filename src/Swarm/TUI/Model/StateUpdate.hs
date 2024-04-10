@@ -47,6 +47,8 @@ import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Land
 import Swarm.Game.Scenario (
+  ScenarioInputs (..),
+  gsiScenarioInputs,
   loadScenario,
   scenarioAttrs,
   scenarioLandscape,
@@ -138,7 +140,7 @@ constructAppState ::
   AppOpts ->
   m AppState
 constructAppState rs ui opts@(AppOpts {..}) = do
-  let gs = initGameState (mkGameStateConfig rs)
+  let gs = initGameState $ rs ^. stdGameConfigInputs
   case skipMenu opts of
     False -> return $ AppState gs (ui & uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
     True -> do
@@ -146,8 +148,7 @@ constructAppState rs ui opts@(AppOpts {..}) = do
       (scenario, path) <-
         loadScenario
           (fromMaybe "classic" userScenario)
-          tem
-          (rs ^. worlds)
+          (ScenarioInputs (initWorldMap . gsiScenarioInputs . initState $ rs ^. stdGameConfigInputs) tem)
       maybeRunScript <- traverse parseCodeFile scriptToRun
 
       let maybeAutoplay = do
@@ -219,7 +220,7 @@ scenarioToAppState ::
   m ()
 scenarioToAppState siPair@(scene, _) lp = do
   rs <- use runtimeState
-  gs <- liftIO $ scenarioToGameState scene lp $ mkGameStateConfig rs
+  gs <- liftIO $ scenarioToGameState scene lp $ rs ^. stdGameConfigInputs
   gameState .= gs
   void $ withLensIO uiState $ scenarioToUIState isAutoplaying siPair gs
  where

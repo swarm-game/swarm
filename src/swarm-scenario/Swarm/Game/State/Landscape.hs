@@ -83,7 +83,7 @@ initLandscape gsc =
   Landscape
     { _worldNavigation = Navigation mempty mempty
     , _multiWorld = mempty
-    , _terrainAndEntities = initEntityTerrain $ initState gsc
+    , _terrainAndEntities = initEntityTerrain $ gsiScenarioInputs $ initState gsc
     , _worldScrollable = True
     }
 
