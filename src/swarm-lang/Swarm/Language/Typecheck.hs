@@ -78,8 +78,6 @@ import Swarm.Language.Typecheck.Unify qualified as U
 import Swarm.Language.Types
 import Prelude hiding (lookup)
 
-import Debug.Trace
-
 ------------------------------------------------------------
 -- Typechecking stack
 
@@ -170,9 +168,6 @@ finalizeUModule ::
   UModule ->
   m TModule
 finalizeUModule = applyBindings >=> fromUModule
-
--- traceShowIdM :: (Show a, Applicative f) => a -> f a
--- traceShowIdM a = traceShowM a *> pure a
 
 -- | Version of 'runTC' which is generic in the base monad.
 runTC' ::
