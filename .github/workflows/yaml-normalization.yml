@@ -23,5 +23,5 @@ jobs:
       - uses: actions/checkout@v3
       - name: Normalize
         run: |
-          scripts/normalize-all-yaml.sh
+          scripts/normalize/yaml.sh
           git diff --name-only --exit-code

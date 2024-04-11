@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-cd $SCRIPT_DIR/..
+cd $SCRIPT_DIR/../..
 
 
 if grep --line-number --include \*.hs -riP '(TODO|FIXME|XXX)\b' src app 2>&1 | grep -vP '#\d+'; then
