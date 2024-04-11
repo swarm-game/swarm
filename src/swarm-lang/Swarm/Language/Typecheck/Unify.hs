@@ -113,6 +113,10 @@ data UnificationError
       (TypeF UType)
   deriving (Show)
 
+-- XXX rewrite using Montelli & Montanari approach,
+-- https://en.wikipedia.org/wiki/Unification_(computer_science)#Unification_algorithms
+-- Probably faster and will also be important for dealing with unifying recursive types.
+
 unify ::
   Has (Throw UnificationError) sig m =>
   UType ->
