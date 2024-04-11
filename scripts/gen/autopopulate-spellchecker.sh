@@ -3,7 +3,7 @@
 # This script lives 1 level deep in the directory structure.
 # Ensure its commands get run at the toplevel.
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-cd $SCRIPT_DIR/..
+cd $SCRIPT_DIR/../..
 
 
 # First, install hiedb:
