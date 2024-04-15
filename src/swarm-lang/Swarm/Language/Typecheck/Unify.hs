@@ -5,25 +5,17 @@
 module Swarm.Language.Typecheck.Unify (
   UnifyStatus (..),
   unifyCheck,
-  UnificationError (..),
-  unify,
-  fvs,
 ) where
 
-import Control.Algebra (Has)
-import Control.Effect.Throw (Throw, throwError)
 import Control.Monad.Free
 import Data.Foldable qualified as F
 import Data.Function (on)
 import Data.Map qualified as M
 import Data.Map.Merge.Lazy qualified as M
-import Data.Set (Set)
-import Data.Set qualified as S
-import Swarm.Language.Typecheck.Unify.Subst
 import Swarm.Language.Types
 
--- Do we need this "unification check" stuff anymore?  Should we return something like
--- this from unify?
+-- XXX get rid of this "unification check" stuff, return something like
+-- this from unify
 
 -- | The result of doing a unification check on two types.
 data UnifyStatus
@@ -100,77 +92,3 @@ unifyCheckF t1 t2 = case (t1, t2) of
   (TyFunF t11 t12, TyFunF t21 t22) -> unifyCheck t11 t21 <> unifyCheck t12 t22
   (TyFunF {}, _) -> Apart
 
-fvs :: UType -> Set IntVar
-fvs = ucata S.singleton F.fold
-
--- | XXX
-data UnificationError
-  = Infinite IntVar UType
-  | -- | ^ Occurs check failure
-    UnifyErr
-      (TypeF UType)
-      -- | Mismatch
-      (TypeF UType)
-  deriving (Show)
-
--- XXX rewrite using Montelli & Montanari approach,
--- https://en.wikipedia.org/wiki/Unification_(computer_science)#Unification_algorithms
--- Probably faster and will also be important for dealing with unifying recursive types.
-
-unify ::
-  Has (Throw UnificationError) sig m =>
-  UType ->
-  UType ->
-  m (Subst IntVar UType)
-unify ty1 ty2 = case (ty1, ty2) of
-  (Pure x, Pure y)
-    | x == y -> return idS
-    | otherwise -> return $ x |-> Pure y
-  (Pure x, y)
-    | x `S.member` fvs y -> throwError $ Infinite x y
-    | otherwise -> return $ x |-> y
-  (y, Pure x)
-    | x `S.member` fvs y -> throwError $ Infinite x y
-    | otherwise -> return $ x |-> y
-  (Free t1, Free t2) -> unifyF t1 t2
-
-unifyF ::
-  Has (Throw UnificationError) sig m =>
-  TypeF UType ->
-  TypeF UType ->
-  m (Subst IntVar UType)
-unifyF t1 t2 = case (t1, t2) of
-  (TyBaseF b1, TyBaseF b2) -> case b1 == b2 of
-    True -> return idS
-    False -> unifyErr
-  (TyBaseF {}, _) -> unifyErr
-  (TyVarF v1, TyVarF v2) -> case v1 == v2 of
-    True -> return idS
-    False -> unifyErr
-  (TyVarF {}, _) -> unifyErr
-  (TySumF t11 t12, TySumF t21 t22) -> do
-    s1 <- unify t11 t21
-    s2 <- unify t12 t22
-    return $ s1 @@ s2
-  (TySumF {}, _) -> unifyErr
-  (TyProdF t11 t12, TyProdF t21 t22) -> do
-    s1 <- unify t11 t21
-    s2 <- unify t12 t22
-    return $ s1 @@ s2
-  (TyProdF {}, _) -> unifyErr
-  (TyRcdF m1, TyRcdF m2) ->
-    case ((==) `on` M.keysSet) m1 m2 of
-      False -> unifyErr
-      _ -> (fmap compose . sequence) (M.merge M.dropMissing M.dropMissing (M.zipWithMatched (const unify)) m1 m2)
-  (TyRcdF {}, _) -> unifyErr
-  (TyCmdF c1, TyCmdF c2) -> unify c1 c2
-  (TyCmdF {}, _) -> unifyErr
-  (TyDelayF c1, TyDelayF c2) -> unify c1 c2
-  (TyDelayF {}, _) -> unifyErr
-  (TyFunF t11 t12, TyFunF t21 t22) -> do
-    s1 <- unify t11 t21
-    s2 <- unify t12 t22
-    return $ s1 @@ s2
-  (TyFunF {}, _) -> unifyErr
- where
-  unifyErr = throwError $ UnifyErr t1 t2

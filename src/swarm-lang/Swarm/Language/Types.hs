@@ -55,6 +55,7 @@ module Swarm.Language.Types (
   -- ** Utilities
   ucata,
   mkVarName,
+  fuvs,
 
   -- * Polytypes
   Poly (..),
@@ -78,9 +79,7 @@ import Data.Eq.Deriving (deriveEq1)
 import Data.Fix
 import Data.Foldable (fold)
 import Data.Kind qualified
-import Data.Map.Merge.Strict qualified as M
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.String (IsString (..))
@@ -192,6 +191,10 @@ ucata f g (Free t) = g (fmap (ucata f g) t)
 --   appending a number to the given name.
 mkVarName :: Text -> IntVar -> Var
 mkVarName nm (IntVar v) = T.append nm (from @String (show v))
+
+-- | Get all the free unification variables in a 'UType'.
+fuvs :: UType -> Set IntVar
+fuvs = ucata S.singleton fold
 
 -- | For convenience, so we can write /e.g./ @"a"@ instead of @TyVar "a"@.
 instance IsString Type where

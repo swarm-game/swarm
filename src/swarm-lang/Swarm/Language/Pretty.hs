@@ -29,7 +29,7 @@ import Swarm.Language.Context
 import Swarm.Language.Parse (getLocRange)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
-import Swarm.Language.Typecheck.Unify (UnificationError (..))
+import Swarm.Effect.Unify (UnificationError (..))
 import Swarm.Language.Types
 import Swarm.Util (showEnum, showLowT, unsnocNE)
 import Witch
