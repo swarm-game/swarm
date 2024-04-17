@@ -117,6 +117,7 @@ library swarm-lang
   -- cabal-gild: discover src/swarm-lang
   exposed-modules:
     Swarm.Effect.Unify
+    Swarm.Effect.Unify.Naive
     Swarm.Language.Capability
     Swarm.Language.Context
     Swarm.Language.Direction

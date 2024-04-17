@@ -24,12 +24,12 @@ import Data.Text qualified as T
 import Prettyprinter
 import Prettyprinter.Render.String qualified as RS
 import Prettyprinter.Render.Text qualified as RT
+import Swarm.Effect.Unify (UnificationError (..))
 import Swarm.Language.Capability
 import Swarm.Language.Context
 import Swarm.Language.Parse (getLocRange)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
-import Swarm.Effect.Unify (UnificationError (..))
 import Swarm.Language.Types
 import Swarm.Util (showEnum, showLowT, unsnocNE)
 import Witch

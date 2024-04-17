@@ -91,4 +91,3 @@ unifyCheckF t1 t2 = case (t1, t2) of
   (TyDelayF {}, _) -> Apart
   (TyFunF t11 t12, TyFunF t21 t22) -> unifyCheck t11 t21 <> unifyCheck t12 t22
   (TyFunF {}, _) -> Apart
-

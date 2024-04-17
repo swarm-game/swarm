@@ -66,8 +66,9 @@ import Data.Maybe
 import Data.Set (Set, (\\))
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Swarm.Effect.Unify (Unification, (=:=), UnificationError)
+import Swarm.Effect.Unify (Unification, UnificationError, (=:=))
 import Swarm.Effect.Unify qualified as U
+import Swarm.Effect.Unify.Naive qualified as U
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Module
