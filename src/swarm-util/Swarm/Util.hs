@@ -588,4 +588,4 @@ smallHittingSet ss = go fixed (filter (S.null . S.intersection fixed) choices)
   -- Given a nonempty collection of sets, find an element which is shared among
   -- as many of them as possible.
   mostCommon :: Ord a => [Set a] -> a
-  mostCommon = fst . maximumBy (comparing snd) . M.assocs . M.fromListWith (+) . map (,1 :: Int) . concatMap S.toList
+  mostCommon = fst . maximumBy (comparing snd) . M.assocs . histogram . concatMap S.toList
