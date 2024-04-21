@@ -81,6 +81,7 @@ import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Robot.Context
+import Swarm.Game.Scenario.Status (updateScenarioInfoOnFinish)
 import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (originalStructureDefinitions)
 import Swarm.Game.ScenarioInfo
@@ -319,7 +320,7 @@ handleMainEvent ev = do
     -- ctrl-q works everywhere
     ControlChar 'q' ->
       case s ^. gameState . winCondition of
-        WinConditions (Won _) _ -> toggleModal $ ScenarioEndModal WinModal
+        WinConditions (Won _ _) _ -> toggleModal $ ScenarioEndModal WinModal
         WinConditions (Unwinnable _) _ -> toggleModal $ ScenarioEndModal LoseModal
         _ -> toggleModal QuitModal
     VtyEvent (V.EvResize _ _) -> invalidateCache
@@ -547,7 +548,7 @@ saveScenarioInfoOnFinish p = do
   t <- liftIO getZonedTime
   wc <- use $ gameState . winCondition
   let won = case wc of
-        WinConditions (Won _) _ -> True
+        WinConditions (Won _ _) _ -> True
         _ -> False
   ts <- use $ gameState . temporal . ticks
 
@@ -640,7 +641,7 @@ quitGame = do
   -- player has won the current one.
   wc <- use $ gameState . winCondition
   case wc of
-    WinConditions (Won _) _ -> uiState . uiMenu %= advanceMenu
+    WinConditions (Won _ _) _ -> uiState . uiMenu %= advanceMenu
     _ -> return ()
 
   -- Either quit the entire app (if the scenario was chosen directly
@@ -932,9 +933,9 @@ doGoalUpdates = do
       openModal $ ScenarioEndModal LoseModal
       saveScenarioInfoOnFinishNocheat
       return True
-    WinConditions (Won False) x -> do
+    WinConditions (Won False ts) x -> do
       -- This clears the "flag" that the Win dialog needs to pop up
-      gameState . winCondition .= WinConditions (Won True) x
+      gameState . winCondition .= WinConditions (Won True ts) x
       openModal $ ScenarioEndModal WinModal
       saveScenarioInfoOnFinishNocheat
       -- We do NOT advance the New Game menu to the next item here (we
