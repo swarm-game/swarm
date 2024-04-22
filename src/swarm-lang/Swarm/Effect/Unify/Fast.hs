@@ -7,7 +7,15 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Description: Fast yet purely functional implementation of
--- unification, storing indirections via a manual map rather than XXX
+-- unification, using a map as a lazy substitution, i.e. a
+-- manually-mainted "functional shared memory".
+--
+-- See Dijkstra, Middelkoop, & Swierstra, "Efficient Functional
+-- Unification and Substitution", Utrecht University tech report
+-- UU-CS-2008-027 (section 5) for the basic idea, and Peyton Jones et
+-- al, "Practical type inference for arbitrary-rank types"
+-- (pp. 74--75) for a correct implementation of unification via
+-- references.
 module Swarm.Effect.Unify.Fast where
 
 import Control.Algebra
@@ -33,32 +41,36 @@ import Swarm.Language.Types hiding (Type)
 ------------------------------------------------------------
 -- Carrier
 
+-- | Carrier type for unification: we maintain a lazy substitution, a counter for
+--   generating fresh unification variables, and can throw unification errors.
 newtype UnificationC m a = UnificationC
-  {unUnificationC :: StateC (Subst IntVar UType) (StateC FreshVarCounter (ThrowC UnificationError m)) a}
+  { unUnificationC ::
+      StateC (Subst IntVar UType) (StateC FreshVarCounter (ThrowC UnificationError m)) a
+  }
   deriving newtype (Functor, Applicative, Alternative, Monad, MonadIO)
 
+-- | Counter for generating fresh unification variables.
 newtype FreshVarCounter = FreshVarCounter {getFreshVarCounter :: Int}
   deriving (Eq, Ord, Enum)
 
+-- | Implementation of the 'Unification' effect in terms of the
+--   'UnificationC' carrier.
 instance Algebra sig m => Algebra (Unification :+: sig) (UnificationC m) where
   alg hdl sig ctx = UnificationC $ case sig of
-    L (Unify t1 t2) -> do
-      t1' <- unify t1 t2
-      return $ (t1' <$ ctx)
+    L (Unify t1 t2) -> (<$ ctx) <$> unify t1 t2
     L (ApplyBindings t) -> do
       s <- get @(Subst IntVar UType)
-      t' <- subst s t
-      return $ t' <$ ctx
+      (<$ ctx) <$> subst s t
     L FreshIntVar -> do
       v <- IntVar <$> gets getFreshVarCounter
       modify @FreshVarCounter succ
       return $ v <$ ctx
     L (FreeUVars t) -> do
       s <- get @(Subst IntVar UType)
-      t' <- subst s t
-      return $ fuvs t' <$ ctx
+      (<$ ctx) . fuvs <$> subst s t
     R other -> alg (unUnificationC . hdl) (R (R (R other))) ctx
 
+-- | Run a 'Unification' effect via the 'UnificationC' carrier
 runUnification :: Algebra sig m => UnificationC m a -> m (Either UnificationError a)
 runUnification = unUnificationC >>> evalState idS >>> evalState (FreshVarCounter 0) >>> runThrow
 
@@ -179,6 +191,24 @@ lookup x (Subst m) = M.lookup x m
 lookupS :: (Ord n, Has (State (Subst n a)) sig m) => n -> m (Maybe a)
 lookupS x = lookup x <$> get
 
+-- The idea here (using an explicit substitution as a sort of
+-- "functional shared memory", instead of directly using IORefs), is
+-- based on Dijkstra et al. Unfortunately, their implementation of
+-- unification is subtly wrong; fortunately, a single integration test
+-- in the Swarm test suite failed, leading to discovering the bug.
+-- The basic issue is that when unifying an equation between two
+-- variables @x = y@, we must look up *both* to see whether they are
+-- already mapped by the substitution (and if so, replace them by
+-- their referent and keep recursing).  Dijkstra et al. only look up
+-- @x@ and simply map @x |-> y@ if x is not in the substitution, but
+-- this can lead to cycles where e.g. x is mapped to y, and later we
+-- unify @y = x@ resulting in both @x |-> y@ and @y |-> x@ in the
+-- substitution, which at best leads to a spurious infinite type
+-- error, and at worst leads to infinite recursion in the unify function.
+--
+-- Peyton Jones et al. show how to do it correctly: when unifying x = y and
+-- x is not mapped in the substitution, we must also look up y.
+
 -- | XXX note we don't do occurs check here
 unify ::
   ( Has (Throw UnificationError) sig m
@@ -190,12 +220,24 @@ unify ::
 unify ty1 ty2 = case (ty1, ty2) of
   (Pure x, Pure y) | x == y -> pure (Pure x)
   (Pure x, y) -> do
-    mv <- lookupS x
-    case mv of
-      Nothing -> modify ((x |-> y) @@) >> pure y
-      Just v -> unify v y
+    mxv <- lookupS x
+    case mxv of
+      Nothing -> unifyVar x y
+      Just xv -> unify xv y
   (x, Pure y) -> unify (Pure y) x
   (Free t1, Free t2) -> Free <$> unifyF t1 t2
+
+unifyVar ::
+  ( Has (Throw UnificationError) sig m
+  , Has (State (Subst IntVar UType)) sig m
+  ) =>
+  IntVar -> UType -> m UType
+unifyVar x (Pure y) = do
+  myv <- lookupS y
+  case myv of
+    Nothing -> modify @(Subst IntVar UType) ((x |-> Pure y) @@) >> pure (Pure y)
+    Just yv -> unify (Pure x) yv
+unifyVar x y = modify ((x |-> y) @@) >> pure y
 
 -- | XXX
 unifyF ::
