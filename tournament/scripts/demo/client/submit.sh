@@ -10,7 +10,9 @@ SCENARIO_FILEPATH=$2
 SOLUTION_FILEPATH=$3
 
 # Example:
-# tournament/scripts/demo/client/submit.sh localhost:8008 data/scenarios/Challenges/dimsum.yaml data/scenarios/Challenges/_arbitrage/solution.sw
+#   tournament/scripts/demo/client/submit.sh localhost:8008 data/scenarios/Challenges/dimsum.yaml data/scenarios/Challenges/_dimsum/solution.sw
+# or
+#   tournament/scripts/demo/client/submit.sh swarmgame.net data/scenarios/Challenges/arbitrage.yaml data/scenarios/Challenges/_arbitrage/solution.sw
 #
 # This exercises the tournament API by:
 #
@@ -22,9 +24,6 @@ SOLUTION_FILEPATH=$3
 
 cd $(git rev-parse --show-toplevel)
 
-PORT=8080
-HOST=localhost:$PORT
-# HOST=swarmgame.net
 BASE_UPLOAD_URL=http://$HOST/upload
 
 SCENARIO_UPLOAD_URL=$BASE_UPLOAD_URL/scenario
