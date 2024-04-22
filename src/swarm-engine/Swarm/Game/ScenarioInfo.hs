@@ -15,7 +15,6 @@ module Swarm.Game.ScenarioInfo (
   scenarioPath,
   scenarioStatus,
   CodeSizeDeterminators (CodeSizeDeterminators),
-  updateScenarioInfoOnFinish,
   ScenarioInfoPair,
 
   -- * Scenario collection

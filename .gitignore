@@ -16,6 +16,7 @@ stan.html
 
 .swarm_history
 
+*.db
 *.orig
 *.aux
 *.log

@@ -140,7 +140,7 @@ data WinStatus
   | -- | The player has won.
     -- The boolean indicates whether they have
     -- already been congratulated.
-    Won Bool
+    Won Bool TickNumber
   | -- | The player has completed certain "goals" that preclude
     -- (via negative prerequisites) the completion of all of the
     -- required goals.

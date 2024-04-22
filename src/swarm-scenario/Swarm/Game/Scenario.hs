@@ -24,6 +24,7 @@ module Swarm.Game.Scenario (
   Scenario (..),
   ScenarioLandscape (..),
   StaticStructureInfo (..),
+  ScenarioMetadata (ScenarioMetadata),
   staticPlacements,
   structureDefs,
 
@@ -79,6 +80,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import GHC.Generics (Generic)
 import Swarm.Game.Entity
 import Swarm.Game.Entity.Cosmetic
 import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
@@ -141,7 +143,14 @@ data ScenarioMetadata = ScenarioMetadata
   , _scenarioName :: Text
   , _scenarioAuthor :: Maybe Text
   }
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance ToJSON ScenarioMetadata where
+  toEncoding =
+    genericToEncoding
+      defaultOptions
+        { fieldLabelModifier = drop 1 -- drops leading underscore
+        }
 
 makeLensesNoSigs ''ScenarioMetadata
 

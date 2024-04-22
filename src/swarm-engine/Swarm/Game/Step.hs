@@ -333,8 +333,9 @@ hypotheticalWinCheck em g ws oc = do
     foldM foldFunc initialAccumulator $
       reverse incompleteGoals
 
+  ts <- use $ temporal . ticks
   let newWinState = case ws of
-        Ongoing -> getNextWinState $ completions finalAccumulator
+        Ongoing -> getNextWinState ts $ completions finalAccumulator
         _ -> ws
 
   winCondition .= WinConditions newWinState (completions finalAccumulator)
@@ -347,8 +348,8 @@ hypotheticalWinCheck em g ws oc = do
 
   mapM_ handleException $ exceptions finalAccumulator
  where
-  getNextWinState completedObjs
-    | WC.didWin completedObjs = Won False
+  getNextWinState ts completedObjs
+    | WC.didWin completedObjs = Won False ts
     | WC.didLose completedObjs = Unwinnable False
     | otherwise = Ongoing
 

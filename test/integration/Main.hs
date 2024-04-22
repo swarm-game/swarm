@@ -517,7 +517,7 @@ testScenarioSolutions rs ui =
     w <- use winCondition
     b <- gets badErrorsInLogs
     when (null b) $ case w of
-      WinConditions (Won _) _ -> return ()
+      WinConditions (Won _ _) _ -> return ()
       _ -> runTimeIO gameTick >> playUntilWin
 
 noBadErrors :: GameState -> Assertion
