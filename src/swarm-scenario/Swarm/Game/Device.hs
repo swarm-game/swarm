@@ -33,8 +33,10 @@ import Swarm.Game.Ingredients
 import Swarm.Language.Capability (Capability, constByCaps)
 import Swarm.Language.Syntax (Const)
 
--- | The 'Capabilities e' wrapper type stores information of type @e@ for each of some set of capabilities.
--- For example, @e@ could be a list of ingredients needed to exercise a capability, or a set of devices capable of providing a capability.
+-- | The 'Capabilities e' wrapper type stores information of type @e@ for each
+-- of some set of capabilities.
+-- For example, @e@ could be a list of ingredients needed to exercise a
+-- capability, or a set of devices capable of providing a capability.
 newtype Capabilities e = Capabilities
   { getMap :: Map Capability e
   }
@@ -47,7 +49,11 @@ getCapabilitySet (Capabilities m) = M.keysSet m
 -- | Records an 'ExerciseCost', i.e. list of consumed ingredients, per capability that can be exercised.  This represents information about a single entity/device, which can provide multiple capabilities (with a different exercise cost for each).
 type SingleEntityCapabilities e = Capabilities (ExerciseCost e)
 
--- | Records a list of devices capable of providing each capability; along with each device is recorded the 'ExerciseCost' needed to use that device to achieve the given capability.
+-- | Records a list of devices capable of providing each capability;
+-- along with each device is recorded the 'ExerciseCost' needed to use
+-- that device to achieve the given capability.
+--
+-- See 'DeviceUseCost' for explanation of type parameters.
 type MultiEntityCapabilities e en = Capabilities (NonEmpty (DeviceUseCost e en))
 
 -- | Create a default 'SingleEntityCapabilities' map for a device which provides capabilities with no associated costs.
@@ -89,6 +95,17 @@ instance (Eq e) => Ord (ExerciseCost e) where
   compare = compare `on` (getCost . ingredients)
 
 -- | A device paired with a cost to use it.
+--
+-- At scenario parse time, the type parameters @e@ and @en@ will stand for
+-- 'Entity' and 'EntityName'.
+-- This is because `ExerciseCost` is a member of the 'Entity' datatype, and
+-- therefore can only refer to another 'Entity' by name before all 'Entity's
+-- are parsed.
+--
+-- However, after parse time, we are able to look up actual 'Entity' objects
+-- by name, and therefore can instantiate 'ExerciseCost' with 'Entity' as
+-- the type parameter.
+-- Then the two type parameters of 'DeviceUseCost' are both of 'Entity' type.
 data DeviceUseCost e en = DeviceUseCost
   { device :: e
   , useCost :: ExerciseCost en
