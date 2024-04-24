@@ -96,17 +96,10 @@ runUnification = unUnificationC >>> evalState idS >>> evalState (FreshVarCounter
 newtype Subst n a = Subst {getSubst :: Map n a}
   deriving (Eq, Ord, Show)
 
+  -- Note, tried using an IntMap instead of a Map but it was actually slower.
+
 instance Functor (Subst n) where
   fmap f (Subst m) = Subst (M.map f $ m)
-
--- instance Pretty a => Pretty (Subst a) where
---   pretty (Subst s) = do
---     let es = map (uncurry prettyMapping) (M.assocs s)
---     ds <- punctuate "," es
---     braces (hsep ds)
-
--- prettyMapping :: (Pretty a, Members '[Reader PA, LFresh] r) => Name a -> a -> Sem r (Doc ann)
--- prettyMapping x a = pretty x <+> "->" <+> pretty a
 
 -- | The domain of a substitution is the set of names for which the
 --   substitution is defined.
@@ -187,7 +180,7 @@ toList = M.assocs . getSubst
 lookup :: Ord n => n -> Subst n a -> Maybe a
 lookup x (Subst m) = M.lookup x m
 
--- | XXX
+-- | Look up a name in a substitution stored in a state effect.
 lookupS :: (Ord n, Has (State (Subst n a)) sig m) => n -> m (Maybe a)
 lookupS x = lookup x <$> get
 

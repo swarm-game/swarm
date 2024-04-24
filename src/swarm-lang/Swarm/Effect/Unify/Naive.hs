@@ -82,15 +82,6 @@ newtype Subst n a = Subst {getSubst :: Map n a}
 instance Functor (Subst n) where
   fmap f (Subst m) = Subst (M.map f $ m)
 
--- instance Pretty a => Pretty (Subst a) where
---   pretty (Subst s) = do
---     let es = map (uncurry prettyMapping) (M.assocs s)
---     ds <- punctuate "," es
---     braces (hsep ds)
-
--- prettyMapping :: (Pretty a, Members '[Reader PA, LFresh] r) => Name a -> a -> Sem r (Doc ann)
--- prettyMapping x a = pretty x <+> "->" <+> pretty a
-
 -- | The domain of a substitution is the set of names for which the
 --   substitution is defined.
 dom :: Subst n a -> Set n
