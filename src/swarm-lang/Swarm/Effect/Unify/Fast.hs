@@ -28,89 +28,16 @@ import Control.Effect.Throw (Throw, throwError)
 import Control.Monad.Free
 import Control.Monad.Trans (MonadIO)
 import Data.Function (on)
-import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Map.Merge.Lazy qualified as M
-import Data.Set (Set)
 import Data.Set qualified as S
 import Prelude hiding (lookup)
 import Swarm.Effect.Unify
+import Swarm.Effect.Unify.Common
 import Swarm.Language.Types hiding (Type)
 
 ------------------------------------------------------------
--- Carrier
-
--- | Carrier type for unification: we maintain a lazy substitution, a counter for
---   generating fresh unification variables, and can throw unification errors.
-newtype UnificationC m a = UnificationC
-  { unUnificationC ::
-      StateC (Subst IntVar UType) (StateC FreshVarCounter (ThrowC UnificationError m)) a
-  }
-  deriving newtype (Functor, Applicative, Alternative, Monad, MonadIO)
-
--- | Counter for generating fresh unification variables.
-newtype FreshVarCounter = FreshVarCounter {getFreshVarCounter :: Int}
-  deriving (Eq, Ord, Enum)
-
--- | Implementation of the 'Unification' effect in terms of the
---   'UnificationC' carrier.
-instance Algebra sig m => Algebra (Unification :+: sig) (UnificationC m) where
-  alg hdl sig ctx = UnificationC $ case sig of
-    L (Unify t1 t2) -> (<$ ctx) <$> unify t1 t2
-    L (ApplyBindings t) -> do
-      s <- get @(Subst IntVar UType)
-      (<$ ctx) <$> subst s t
-    L FreshIntVar -> do
-      v <- IntVar <$> gets getFreshVarCounter
-      modify @FreshVarCounter succ
-      return $ v <$ ctx
-    L (FreeUVars t) -> do
-      s <- get @(Subst IntVar UType)
-      (<$ ctx) . fuvs <$> subst s t
-    R other -> alg (unUnificationC . hdl) (R (R (R other))) ctx
-
--- | Run a 'Unification' effect via the 'UnificationC' carrier.
-runUnification :: Algebra sig m => UnificationC m a -> m (Either UnificationError a)
-runUnification = unUnificationC >>> evalState idS >>> evalState (FreshVarCounter 0) >>> runThrow
-
-------------------------------------------------------------
 -- Substitutions
-
--- | A value of type @Subst n a@ is a substitution which maps
---   names of type @n@ (the /domain/, see 'dom') to values of type
---   @a@.  Substitutions can be /applied/ to certain terms (see
---   'subst'), replacing any free occurrences of names in the
---   domain with their corresponding values.  Thus, substitutions can
---   be thought of as functions of type @Term -> Term@ (for suitable
---   @Term@s that contain names and values of the right type).
---
---   Concretely, substitutions are stored using a @Map@.
---
---   NOTE, in this version (as compared to 'Swarm.Effect.Unify.Naive')
---   a substitution is represented lazily, that is, if we look up a
---   variable name in the map, the value we get might still contain
---   variables which are keys in the substitution, which we might have
---   to look up recursively.  This makes applying the substitution
---   more complex but is generally much faster because we don't have
---   to spend time traversing terms looking for variables to
---   substitute away --- we just leave them be, and look them up
---   lazily as needed.
-newtype Subst n a = Subst {getSubst :: Map n a}
-  deriving (Eq, Ord, Show, Functor)
-
-  -- Note, tried using an IntMap instead of a Map to store a Subst but
-  -- it was actually slower.
-
--- | The domain of a substitution is the set of names for which the
---   substitution is defined.
-dom :: Subst n a -> Set n
-dom = M.keysSet . getSubst
-
--- | The identity substitution, /i.e./ the unique substitution with an
---   empty domain, which acts as the identity function on terms, and
---   is an identity element for substitution composition.
-idS :: Subst n a
-idS = Subst M.empty
 
 -- | Compose two substitutions.  Applying @s1 \@\@ s2@ is the same as
 --   applying first @s2@, then @s1@; that is, semantically,
@@ -127,11 +54,6 @@ idS = Subst M.empty
 --   making application more complex.
 (@@) :: (Ord n, Substitutes n a a) => Subst n a -> Subst n a -> Subst n a
 (Subst s1) @@ (Subst s2) = Subst (s2 `M.union` s1)
-
--- | Construct a singleton substitution, which maps the given name to
---   the given value.
-(|->) :: n -> a -> Subst n a
-x |-> t = Subst (M.singleton x t)
 
 -- | Class of things supporting substitution.  @Substitutes n b a@ means
 --   that we can apply a substitution of type @Subst n b@ to a
@@ -165,29 +87,34 @@ instance Substitutes IntVar UType UType where
       goF seen (TyDelayF c) = TyDelayF <$> go seen c
       goF seen (TyFunF t1 t2) = TyFunF <$> go seen t1 <*> go seen t2
 
--- | Compose a whole container of substitutions.  For example,
---   @compose [s1, s2, s3] = s1 \@\@ s2 \@\@ s3@.
-compose :: (Ord n, Substitutes n a a, Foldable t) => t (Subst n a) -> Subst n a
-compose = foldr (@@) idS
+------------------------------------------------------------
+-- Carrier type
 
--- | Create a substitution from an association list of names and
---   values.
-fromList :: Ord n => [(n, a)] -> Subst n a
-fromList = Subst . M.fromList
+-- Note: this carrier type and the runUnification function are
+-- identical between this module and Swarm.Effect.Unify.Naive, but it
+-- seemed best to duplicate it, so we can modify the carriers
+-- independently in the future if we want.
 
--- | Convert a substitution into an association list.
-toList :: Subst n a -> [(n, a)]
-toList = M.assocs . getSubst
+-- | Carrier type for unification: we maintain a current substitution,
+--   a counter for generating fresh unification variables, and can
+--   throw unification errors.
+newtype UnificationC m a = UnificationC
+  { unUnificationC ::
+      StateC (Subst IntVar UType) (StateC FreshVarCounter (ThrowC UnificationError m)) a
+  }
+  deriving newtype (Functor, Applicative, Alternative, Monad, MonadIO)
 
--- | Look up the value a particular name maps to under the given
---   substitution; or return @Nothing@ if the name being looked up is
---   not in the domain.
-lookup :: Ord n => n -> Subst n a -> Maybe a
-lookup x (Subst m) = M.lookup x m
+-- | Counter for generating fresh unification variables.
+newtype FreshVarCounter = FreshVarCounter {getFreshVarCounter :: Int}
+  deriving (Eq, Ord, Enum)
 
--- | Look up a name in a substitution stored in a state effect.
-lookupS :: (Ord n, Has (State (Subst n a)) sig m) => n -> m (Maybe a)
-lookupS x = lookup x <$> get
+-- | Run a 'Unification' effect via the 'UnificationC' carrier.
+runUnification :: Algebra sig m => UnificationC m a -> m (Either UnificationError a)
+runUnification =
+  unUnificationC >>> evalState idS >>> evalState (FreshVarCounter 0) >>> runThrow
+
+------------------------------------------------------------
+-- Unification
 
 -- The idea here (using an explicit substitution as a sort of
 -- "functional shared memory", instead of directly using IORefs), is
@@ -206,6 +133,23 @@ lookupS x = lookup x <$> get
 --
 -- Peyton Jones et al. show how to do it correctly: when unifying x = y and
 -- x is not mapped in the substitution, we must also look up y.
+
+-- | Implementation of the 'Unification' effect in terms of the
+--   'UnificationC' carrier.
+instance Algebra sig m => Algebra (Unification :+: sig) (UnificationC m) where
+  alg hdl sig ctx = UnificationC $ case sig of
+    L (Unify t1 t2) -> (<$ ctx) <$> unify t1 t2
+    L (ApplyBindings t) -> do
+      s <- get @(Subst IntVar UType)
+      (<$ ctx) <$> subst s t
+    L FreshIntVar -> do
+      v <- IntVar <$> gets getFreshVarCounter
+      modify @FreshVarCounter succ
+      return $ v <$ ctx
+    L (FreeUVars t) -> do
+      s <- get @(Subst IntVar UType)
+      (<$ ctx) . fuvs <$> subst s t
+    R other -> alg (unUnificationC . hdl) (R (R (R other))) ctx
 
 -- | Unify two types, returning a unified type equal to both.  Note
 --   that for efficiency we /don't/ do an occurs check here, but

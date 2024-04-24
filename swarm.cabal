@@ -117,6 +117,7 @@ library swarm-lang
   -- cabal-gild: discover src/swarm-lang
   exposed-modules:
     Swarm.Effect.Unify
+    Swarm.Effect.Unify.Common
     Swarm.Effect.Unify.Fast
     Swarm.Effect.Unify.Naive
     Swarm.Language.Capability
@@ -168,7 +169,6 @@ library swarm-lang
     template-haskell,
     text,
     text-rope >=0.2 && <0.3,
-    transformers,
     vector,
     vty,
     witch,
