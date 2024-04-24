@@ -17,28 +17,30 @@ data Unification (m :: Type -> Type) k where
   FreshIntVar :: Unification m IntVar
   FreeUVars :: UType -> Unification m (Set IntVar)
 
--- | XXX
+-- | Unify two types, returning a type equal to both.
 (=:=) :: Has Unification sig m => UType -> UType -> m UType
 t1 =:= t2 = send (Unify t1 t2)
 
--- | XXX
+-- | Substitute for as many unification variables as are currently
+--   bound.  It is guaranteed that we currently have no information
+--   about any unification variables remaining in the result.
 applyBindings :: Has Unification sig m => UType -> m UType
 applyBindings = send . ApplyBindings
 
--- | XXX
+-- | Compute the set of free unification variables of a type (after
+--   substituting away any which are already bound).
 freeUVars :: Has Unification sig m => UType -> m (Set IntVar)
 freeUVars = send . FreeUVars
 
--- | XXX
+-- | Generate a fresh unification variable.
 freshIntVar :: Has Unification sig m => m IntVar
 freshIntVar = send FreshIntVar
 
--- | XXX
-data UnificationError
-  = Infinite IntVar UType
-  | -- | ^ Occurs check failure
-    UnifyErr
-      (TypeF UType)
-      -- | Mismatch
-      (TypeF UType)
+-- | An error that occurred while running the unifier.
+data UnificationError where
+  -- | Occurs check failure, i.e. the solution to some unification
+  --   equations was an infinite term.
+  Infinite :: IntVar -> UType -> UnificationError
+  -- | Mismatch error between the given terms.
+  UnifyErr :: TypeF UType -> TypeF UType -> UnificationError
   deriving (Show)

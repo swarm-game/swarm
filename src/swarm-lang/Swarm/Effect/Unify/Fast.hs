@@ -28,10 +28,9 @@ import Control.Effect.Throw (Throw, throwError)
 import Control.Monad.Free
 import Control.Monad.Trans (MonadIO)
 import Data.Function (on)
-import Data.Map (Map, (!?))
+import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Map.Merge.Lazy qualified as M
-import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Prelude hiding (lookup)
@@ -70,9 +69,12 @@ instance Algebra sig m => Algebra (Unification :+: sig) (UnificationC m) where
       (<$ ctx) . fuvs <$> subst s t
     R other -> alg (unUnificationC . hdl) (R (R (R other))) ctx
 
--- | Run a 'Unification' effect via the 'UnificationC' carrier
+-- | Run a 'Unification' effect via the 'UnificationC' carrier.
 runUnification :: Algebra sig m => UnificationC m a -> m (Either UnificationError a)
 runUnification = unUnificationC >>> evalState idS >>> evalState (FreshVarCounter 0) >>> runThrow
+
+------------------------------------------------------------
+-- Substitutions
 
 -- | A value of type @Subst n a@ is a substitution which maps
 --   names of type @n@ (the /domain/, see 'dom') to values of type
@@ -94,12 +96,10 @@ runUnification = unUnificationC >>> evalState idS >>> evalState (FreshVarCounter
 --   substitute away --- we just leave them be, and look them up
 --   lazily as needed.
 newtype Subst n a = Subst {getSubst :: Map n a}
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Functor)
 
-  -- Note, tried using an IntMap instead of a Map but it was actually slower.
-
-instance Functor (Subst n) where
-  fmap f (Subst m) = Subst (M.map f $ m)
+  -- Note, tried using an IntMap instead of a Map to store a Subst but
+  -- it was actually slower.
 
 -- | The domain of a substitution is the set of names for which the
 --   substitution is defined.
@@ -107,9 +107,26 @@ dom :: Subst n a -> Set n
 dom = M.keysSet . getSubst
 
 -- | The identity substitution, /i.e./ the unique substitution with an
---   empty domain, which acts as the identity function on terms.
+--   empty domain, which acts as the identity function on terms, and
+--   is an identity element for substitution composition.
 idS :: Subst n a
 idS = Subst M.empty
+
+-- | Compose two substitutions.  Applying @s1 \@\@ s2@ is the same as
+--   applying first @s2@, then @s1@; that is, semantically,
+--   composition of substitutions corresponds exactly to function
+--   composition when they are considered as functions on terms.
+--
+--   As one would expect, composition is associative and has 'idS' as
+--   its identity.
+--
+--   Note that we do /not/ apply @s1@ to all the values in @s2@, since
+--   the substitution is maintained lazily; we do not need to maintain
+--   the invariant that values in the mapping do not contain any of
+--   the keys.  This makes composition much faster, at the cost of
+--   making application more complex.
+(@@) :: (Ord n, Substitutes n a a) => Subst n a -> Subst n a -> Subst n a
+(Subst s1) @@ (Subst s2) = Subst (s2 `M.union` s1)
 
 -- | Construct a singleton substitution, which maps the given name to
 --   the given value.
@@ -121,13 +138,14 @@ x |-> t = Subst (M.singleton x t)
 --   value of type @a@, replacing all the free names of type @n@
 --   inside the @a@ with values of type @b@, resulting in a new value
 --   of type @a@.
+--
+--   We also do a lazy occurs-check during substitution application,
+--   so we need the ability to throw a unification error.
 class Substitutes n b a where
   subst :: Has (Throw UnificationError) sig m => Subst n b -> a -> m a
 
 -- | We can perform substitution on terms built up as the free monad
 --   over a structure functor @f@.
---
--- XXX explain the extra complication here.
 instance Substitutes IntVar UType UType where
   subst s f = go S.empty f
     where
@@ -146,19 +164,6 @@ instance Substitutes IntVar UType UType where
       goF seen (TyCmdF c) = TyCmdF <$> go seen c
       goF seen (TyDelayF c) = TyDelayF <$> go seen c
       goF seen (TyFunF t1 t2) = TyFunF <$> go seen t1 <*> go seen t2
-
--- | Compose two substitutions.  Applying @s1 \@\@ s2@ is the same as
---   applying first @s2@, then @s1@; that is, semantically,
---   composition of substitutions corresponds exactly to function
---   composition when they are considered as functions on terms.
---
---   As one would expect, composition is associative and has 'idS' as
---   its identity.
-(@@) :: (Ord n, Substitutes n a a) => Subst n a -> Subst n a -> Subst n a
-(Subst s1) @@ (Subst s2) = Subst (s2 `M.union` s1)
-  -- In this version, we do not apply s1 to all the values in s2, since
-  -- we do not need to maintain the invariant that values in the mapping
-  -- do not contain any of the keys!
 
 -- | Compose a whole container of substitutions.  For example,
 --   @compose [s1, s2, s3] = s1 \@\@ s2 \@\@ s3@.
@@ -202,7 +207,9 @@ lookupS x = lookup x <$> get
 -- Peyton Jones et al. show how to do it correctly: when unifying x = y and
 -- x is not mapped in the substitution, we must also look up y.
 
--- | XXX note we don't do occurs check here
+-- | Unify two types, returning a unified type equal to both.  Note
+--   that for efficiency we /don't/ do an occurs check here, but
+--   instead lazily during substitution.
 unify ::
   ( Has (Throw UnificationError) sig m
   , Has (State (Subst IntVar UType)) sig m
@@ -220,6 +227,9 @@ unify ty1 ty2 = case (ty1, ty2) of
   (x, Pure y) -> unify (Pure y) x
   (Free t1, Free t2) -> Free <$> unifyF t1 t2
 
+-- | Unify a unification variable which /is not/ bound by the current
+--   substitution with another term.  If the other term is also a
+--   variable, we must look it up as well to see if it is bound.
 unifyVar ::
   ( Has (Throw UnificationError) sig m
   , Has (State (Subst IntVar UType)) sig m
@@ -228,11 +238,17 @@ unifyVar ::
 unifyVar x (Pure y) = do
   myv <- lookupS y
   case myv of
+    -- x = y  but the variable y is not bound: just add (x |-> y) to the current Subst
     Nothing -> modify @(Subst IntVar UType) ((x |-> Pure y) @@) >> pure (Pure y)
+    -- x = y  and y is bound to v: recurse on x = v.
     Just yv -> unify (Pure x) yv
-unifyVar x y = modify ((x |-> y) @@) >> pure y
 
--- | XXX
+-- x = t for a non-variable t: just add (x |-> t) to the Subst.
+unifyVar x t = modify ((x |-> t) @@) >> pure t
+
+-- | Perform unification on two non-variable terms: check that they
+--   have the same top-level constructor and recurse on their
+--   contents.
 unifyF ::
   ( Has (Throw UnificationError) sig m
   , Has (State (Subst IntVar UType)) sig m
@@ -245,6 +261,8 @@ unifyF t1 t2 = case (t1, t2) of
     True -> pure t1
     False -> unifyErr
   (TyBaseF {}, _) -> unifyErr
+  -- Note that *type variables* are not the same as *unification variables*.
+  -- Type variables must match exactly.
   (TyVarF v1, TyVarF v2) -> case v1 == v2 of
     True -> pure t1
     False -> unifyErr
