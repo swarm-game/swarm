@@ -45,7 +45,10 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Failure (SystemFailure)
+import Swarm.Game.Land
 import Swarm.Game.Scenario (
+  ScenarioInputs (..),
+  gsiScenarioInputs,
   loadScenario,
   scenarioAttrs,
   scenarioLandscape,
@@ -137,11 +140,15 @@ constructAppState ::
   AppOpts ->
   m AppState
 constructAppState rs ui opts@(AppOpts {..}) = do
-  let gs = initGameState (mkGameStateConfig rs)
+  let gs = initGameState $ rs ^. stdGameConfigInputs
   case skipMenu opts of
     False -> return $ AppState gs (ui & uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
     True -> do
-      (scenario, path) <- loadScenario (fromMaybe "classic" userScenario) (gs ^. landscape . entityMap) (rs ^. worlds)
+      let tem = gs ^. landscape . terrainAndEntities
+      (scenario, path) <-
+        loadScenario
+          (fromMaybe "classic" userScenario)
+          (ScenarioInputs (initWorldMap . gsiScenarioInputs . initState $ rs ^. stdGameConfigInputs) tem)
       maybeRunScript <- traverse parseCodeFile scriptToRun
 
       let maybeAutoplay = do
@@ -213,7 +220,7 @@ scenarioToAppState ::
   m ()
 scenarioToAppState siPair@(scene, _) lp = do
   rs <- use runtimeState
-  gs <- liftIO $ scenarioToGameState scene lp $ mkGameStateConfig rs
+  gs <- liftIO $ scenarioToGameState scene lp $ rs ^. stdGameConfigInputs
   gameState .= gs
   void $ withLensIO uiState $ scenarioToUIState isAutoplaying siPair gs
  where
@@ -260,8 +267,14 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
   return $
     u
       & uiPlaying .~ True
-      & uiGameplay . uiGoal .~ emptyGoalDisplay
       & uiCheatMode ||~ isAutoplaying
+      & uiAttrMap
+        .~ applyAttrMappings
+          ( map (first getWorldAttrName . toAttrPair) $
+              fst siPair ^. scenarioLandscape . scenarioAttrs
+          )
+          swarmAttrMap
+      & uiGameplay . uiGoal .~ emptyGoalDisplay
       & uiGameplay . uiHideGoals .~ (isAutoplaying && not (u ^. uiCheatMode))
       & uiGameplay . uiFocusRing .~ initFocusRing
       & uiGameplay . uiInventory . uiInventoryList .~ Nothing
@@ -270,12 +283,6 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
       & uiGameplay . uiTiming . uiShowFPS .~ False
       & uiGameplay . uiREPL .~ initREPLState (u ^. uiGameplay . uiREPL . replHistory)
       & uiGameplay . uiREPL . replHistory %~ restartREPLHistory
-      & uiAttrMap
-        .~ applyAttrMappings
-          ( map (first getWorldAttrName . toAttrPair) $
-              fst siPair ^. scenarioLandscape . scenarioAttrs
-          )
-          swarmAttrMap
       & uiGameplay . scenarioRef ?~ siPair
       & uiGameplay . uiTiming . lastFrameTime .~ curTime
       & uiGameplay . uiWorldEditor . EM.entityPaintList %~ BL.listReplace entityList Nothing
@@ -285,7 +292,7 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
           (SR.makeListWidget . M.elems $ gs ^. discovery . structureRecognition . automatons . originalStructureDefinitions)
           (focusSetCurrent (StructureWidgets StructuresList) $ focusRing $ map StructureWidgets listEnums)
  where
-  entityList = EU.getEntitiesForList $ gs ^. landscape . entityMap
+  entityList = EU.getEntitiesForList $ gs ^. landscape . terrainAndEntities . entityMap
 
   (isEmptyArea, newBounds) =
     EU.getEditingBounds $

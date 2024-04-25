@@ -18,7 +18,7 @@ import Control.Effect.Error
 import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
-import Control.Monad (forM, forM_, guard, msum, unless, when)
+import Control.Monad (filterM, forM, forM_, guard, msum, unless, when)
 import Data.Bifunctor (second)
 import Data.Bool (bool)
 import Data.Char (chr, ord)
@@ -52,6 +52,7 @@ import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
 import Swarm.Game.Failure
+import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
@@ -59,6 +60,7 @@ import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Robot.Context
+import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Scenario.Topography.Area (getAreaDimensions)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.Navigation.Util
@@ -84,7 +86,6 @@ import Swarm.Game.Step.Util.Inspect
 import Swarm.Game.Tick
 import Swarm.Game.Universe
 import Swarm.Game.Value
-import Swarm.Game.World (locToCoords)
 import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Key (parseKeyComboFull)
@@ -97,7 +98,6 @@ import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Value
 import Swarm.Log
 import Swarm.Util hiding (both)
-import Swarm.Util.Content (getContentAt)
 import Swarm.Util.Effect (throwToMaybe)
 import Swarm.Util.Lens (inherit)
 import Witch (From (from), into)
@@ -260,8 +260,8 @@ execConst runChildProg c vs s k = do
         let maybeFirstFailure = asum failureMaybes
 
         applyMoveFailureEffect maybeFirstFailure $ \case
-          PathBlocked -> ThrowExn
-          PathLiquid -> Destroy
+          PathBlockedBy _ -> ThrowExn
+          PathLiquid _ -> Destroy
 
         let maybeLastLoc = do
               guard $ null maybeFirstFailure
@@ -281,8 +281,8 @@ execConst runChildProg c vs s k = do
 
         onTarget rid $ do
           checkMoveAhead nextLoc $ \case
-            PathBlocked -> Destroy
-            PathLiquid -> Destroy
+            PathBlockedBy _ -> Destroy
+            PathLiquid _ -> Destroy
           updateRobotLocation oldLoc nextLoc
 
         -- Privileged robots can teleport without causing any
@@ -291,11 +291,10 @@ execConst runChildProg c vs s k = do
         -- to spawn near the target location.
         omni <- isPrivilegedBot
         unless omni $ do
-          w <- use (landscape . multiWorld)
           let area = map (<$ nextLoc) $ getLocsInArea (nextLoc ^. planar) 5
-              emptyLocs = filter (\cl -> isNothing . snd $ getContentAt w (locToCoords <$> cl)) area
+          emptyLocs <- filterM (fmap isNothing . entityAt) area
           randomLoc <- weightedChoice (const 1) emptyLocs
-          es <- uses (landscape . entityMap) allEntities
+          es <- uses (landscape . terrainAndEntities . entityMap) allEntities
           randomEntity <- weightedChoice (const 1) es
           case (randomLoc, randomEntity) of
             (Just loc, Just e) -> updateEntityAt loc (const (Just e))
@@ -430,7 +429,7 @@ execConst runChildProg c vs s k = do
       [VText name] -> do
         inv <- use robotInventory
         ins <- use equippedDevices
-        em <- use $ landscape . entityMap
+        em <- use $ landscape . terrainAndEntities . entityMap
         e <-
           lookupEntityName name em
             `isJustOrFail` ["I've never heard of", indefiniteQ name <> "."]
@@ -573,7 +572,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     HasTag -> case vs of
       [VText eName, VText tName] -> do
-        em <- use $ landscape . entityMap
+        em <- use $ landscape . terrainAndEntities . entityMap
         e <-
           lookupEntityName eName em
             `isJustOrFail` ["I've never heard of", indefiniteQ eName <> "."]
@@ -848,7 +847,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Create -> case vs of
       [VText name] -> do
-        em <- use $ landscape . entityMap
+        em <- use $ landscape . terrainAndEntities . entityMap
         e <-
           lookupEntityName name em
             `isJustOrFail` ["I've never heard of", indefiniteQ name <> "."]
@@ -1107,7 +1106,7 @@ execConst runChildProg c vs s k = do
               []
               isSystemRobot
               False
-              mempty
+              emptyExceptions
               createdAt
 
         -- Provision the new robot with the necessary devices and inventory.
@@ -1135,7 +1134,7 @@ execConst runChildProg c vs s k = do
 
             -- Copy over the salvaged robot's log, if we have one
             inst <- use equippedDevices
-            em <- use $ landscape . entityMap
+            em <- use $ landscape . terrainAndEntities . entityMap
             isPrivileged <- isPrivilegedBot
             logger <-
               lookupEntityName "logger" em
@@ -1470,7 +1469,7 @@ execConst runChildProg c vs s k = do
     m (Set Entity, Inventory)
   checkRequirements parentInventory childInventory childDevices cmd subject fixI = do
     currentContext <- use $ robotContext . defReqs
-    em <- use $ landscape . entityMap
+    em <- use $ landscape . terrainAndEntities . entityMap
     creative <- use creativeMode
     let -- Note that _capCtx must be empty: at least at the
         -- moment, definitions are only allowed at the top level,
@@ -1613,28 +1612,30 @@ execConst runChildProg c vs s k = do
     loc <- use robotLocation
     let nextLoc = loc `offsetBy` orientation
     checkMoveAhead nextLoc $ \case
-      PathBlocked -> ThrowExn
-      PathLiquid -> Destroy
+      PathBlockedBy _ -> ThrowExn
+      PathLiquid _ -> Destroy
     updateRobotLocation loc nextLoc
     return $ mkReturn ()
 
   applyMoveFailureEffect ::
     (HasRobotStepState sig m, Has (Lift IO) sig m) =>
-    Maybe MoveFailureDetails ->
+    Maybe MoveFailureMode ->
     MoveFailureHandler ->
     m ()
   applyMoveFailureEffect maybeFailure failureHandler =
     case maybeFailure of
       Nothing -> return ()
-      Just (MoveFailureDetails e failureMode) -> case failureHandler failureMode of
+      Just failureMode -> case failureHandler failureMode of
         IgnoreFail -> return ()
         Destroy -> destroyIfNotBase $ \b -> case (b, failureMode) of
-          (True, PathLiquid) -> Just RobotIntoWater -- achievement for drowning
+          (True, PathLiquid _) -> Just RobotIntoWater -- achievement for drowning
           _ -> Nothing
         ThrowExn -> throwError . cmdExn c $
           case failureMode of
-            PathBlocked -> ["There is a", e ^. entityName, "in the way!"]
-            PathLiquid -> ["There is a dangerous liquid", e ^. entityName, "in the way!"]
+            PathBlockedBy ent -> case ent of
+              Just e -> ["There is a", e ^. entityName, "in the way!"]
+              Nothing -> ["There is nothing to travel on!"]
+            PathLiquid e -> ["There is a dangerous liquid", e ^. entityName, "in the way!"]
 
   -- Determine the move failure mode and apply the corresponding effect.
   checkMoveAhead ::
@@ -1737,7 +1738,7 @@ execConst runChildProg c vs s k = do
     let yieldName = e ^. entityYields
     e' <- case yieldName of
       Nothing -> return e
-      Just n -> fromMaybe e <$> uses (landscape . entityMap) (lookupEntityName n)
+      Just n -> fromMaybe e <$> uses (landscape . terrainAndEntities . entityMap) (lookupEntityName n)
 
     robotInventory %= insert e'
     updateDiscoveredEntities e'

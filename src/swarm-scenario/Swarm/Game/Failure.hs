@@ -33,7 +33,7 @@ import Witch (into)
 -- Failure descriptions
 
 -- | Enumeration of various assets we can attempt to load.
-data AssetData = AppAsset | NameGeneration | Entities | Recipes | Worlds | Scenarios | Script
+data AssetData = AppAsset | NameGeneration | Entities | Terrain | Recipes | Worlds | Scenarios | Script
   deriving (Eq, Show)
 
 -- | Overarching enumeration of various assets we can attempt to load.

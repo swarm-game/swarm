@@ -598,7 +598,7 @@ constInfo c = case c of
         "Obtain shortest path to the destination."
       $ [ "Optionally supply a distance limit as the first argument."
         , "Supply either a location (`inL`) or an entity (`inR`) as the second argument."
-        , "If a path exists, returns the direction to proceed along and the remaining distance."
+        , "If a path exists, returns the immediate direction to proceed along and the remaining distance."
         ]
   Push ->
     command 1 short
@@ -827,9 +827,13 @@ constInfo c = case c of
       , "Any change to entities at the monitored locations will cause the robot to wake up before the `wait` timeout."
       ]
   Surveil ->
-    command 1 short . doc (Set.singleton $ Query $ Sensing EntitySensing) "Interrupt `wait` upon (remote) location changes." $
-      [ "Like `watch`, but with no restriction on distance."
-      ]
+    command 1 Intangible $
+      doc
+        (Set.singleton $ Query $ Sensing EntitySensing)
+        "Interrupt `wait` upon (remote) location changes."
+        [ "Like `watch`, but instantaneous and with no restriction on distance."
+        , "Supply absolute coordinates."
+        ]
   Heading -> command 0 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Get the current heading."
   Blocked -> command 0 Intangible $ shortDoc (Set.singleton $ Query $ Sensing EntitySensing) "See if the robot can move forward."
   Scan ->

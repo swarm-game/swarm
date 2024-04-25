@@ -24,6 +24,7 @@ module Swarm.Game.Scenario (
   Scenario (..),
   ScenarioLandscape (..),
   StaticStructureInfo (..),
+  ScenarioMetadata (ScenarioMetadata),
   staticPlacements,
   structureDefs,
 
@@ -38,7 +39,7 @@ module Swarm.Game.Scenario (
   scenarioCreative,
   scenarioSeed,
   scenarioAttrs,
-  scenarioEntities,
+  scenarioTerrainAndEntities,
   scenarioCosmetics,
   scenarioRecipes,
   scenarioKnown,
@@ -56,9 +57,9 @@ module Swarm.Game.Scenario (
   getScenarioPath,
   loadStandaloneScenario,
   GameStateInputs (..),
+  ScenarioInputs (..),
 
   -- * Utilities
-  integrateScenarioEntities,
   arbitrateSeed,
 ) where
 
@@ -79,10 +80,12 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import GHC.Generics (Generic)
 import Swarm.Game.Entity
 import Swarm.Game.Entity.Cosmetic
 import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Failure
+import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
@@ -99,6 +102,7 @@ import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (SymmetryAnnotatedGrid (..))
 import Swarm.Game.Scenario.Topography.WorldDescription
+import Swarm.Game.Terrain
 import Swarm.Game.Universe
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Game.World.Load (loadWorlds)
@@ -139,7 +143,14 @@ data ScenarioMetadata = ScenarioMetadata
   , _scenarioName :: Text
   , _scenarioAuthor :: Maybe Text
   }
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance ToJSON ScenarioMetadata where
+  toEncoding =
+    genericToEncoding
+      defaultOptions
+        { fieldLabelModifier = drop 1 -- drops leading underscore
+        }
 
 makeLensesNoSigs ''ScenarioMetadata
 
@@ -197,7 +208,7 @@ scenarioStepsPerTick :: Lens' ScenarioOperation (Maybe Int)
 data ScenarioLandscape = ScenarioLandscape
   { _scenarioSeed :: Maybe Int
   , _scenarioAttrs :: [CustomAttr]
-  , _scenarioEntities :: EntityMap
+  , _scenarioTerrainAndEntities :: TerrainEntityMaps
   , _scenarioCosmetics :: M.Map WorldAttr PreservableColor
   , _scenarioKnown :: Set EntityName
   , _scenarioWorlds :: NonEmpty WorldDescription
@@ -216,8 +227,9 @@ scenarioSeed :: Lens' ScenarioLandscape (Maybe Int)
 -- | Custom attributes defined in the scenario.
 scenarioAttrs :: Lens' ScenarioLandscape [CustomAttr]
 
--- | Any custom entities used for this scenario.
-scenarioEntities :: Lens' ScenarioLandscape EntityMap
+-- | Any custom terrain and entities used for this scenario,
+-- combined with the default system terrain and entities.
+scenarioTerrainAndEntities :: Lens' ScenarioLandscape TerrainEntityMaps
 
 -- | High-fidelity color map for entities
 scenarioCosmetics :: Lens' ScenarioLandscape (M.Map WorldAttr PreservableColor)
@@ -263,8 +275,11 @@ scenarioLandscape :: Lens' Scenario ScenarioLandscape
 
 -- * Parsing
 
-instance FromJSONE (EntityMap, WorldMap) Scenario where
+instance FromJSONE ScenarioInputs Scenario where
   parseJSONE = withObjectE "scenario" $ \v -> do
+    -- parse custom terrain
+    tmRaw <- liftE (v .:? "terrains" .!= [])
+
     -- parse custom entities
     emRaw <- liftE (v .:? "entities" .!= [])
 
@@ -272,20 +287,29 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
     let mergedCosmetics = worldAttributes <> M.fromList (mapMaybe toHifiPair parsedAttrs)
         attrsUnion = M.keysSet mergedCosmetics
 
-    runValidation $ validateAttrRefs attrsUnion emRaw
+    validatedTerrainObjects <- runValidation $ validateTerrainAttrRefs attrsUnion tmRaw
+
+    let tm = mkTerrainMap validatedTerrainObjects
+
+    runValidation $ validateEntityAttrRefs attrsUnion emRaw
 
     em <- runValidation $ buildEntityMap emRaw
 
-    -- Save the passed in WorldMap for later
-    worldMap <- snd <$> getE
+    let scenarioSpecificTerrainEntities = TerrainEntityMaps tm em
 
-    -- Get rid of WorldMap from context locally, and combine EntityMap
-    -- with any custom entities parsed above
-    localE fst $ withE em $ do
+    -- Save the passed in WorldMap for later
+    worldMap <- initWorldMap <$> getE
+
+    -- Get rid of WorldMap from context locally, and combine
+    -- the default system TerrainMap and EntityMap
+    -- with any custom terrain/entities parsed above
+    localE initEntityTerrain $ withE scenarioSpecificTerrainEntities $ do
       -- parse 'known' entity names and make sure they exist
       known <- liftE (v .:? "known" .!= mempty)
-      em' <- getE
-      case filter (isNothing . (`lookupEntityName` em')) known of
+      combinedTEM <- getE
+
+      let TerrainEntityMaps _tm emCombined = combinedTEM
+      case filter (isNothing . (`lookupEntityName` emCombined)) known of
         [] -> return ()
         unk -> failT ["Unknown entities in 'known' list:", T.intercalate ", " unk]
 
@@ -314,7 +338,7 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
 
       let namedGrids = map (\(ns, Structure.MergedStructure s _ _) -> Grid s <$ ns) mergedStructures
 
-      allWorlds <- localE (worldMap,rootLevelSharedStructures,,rsMap) $ do
+      allWorlds <- localE (WorldParseDependencies worldMap rootLevelSharedStructures rsMap) $ do
         rootWorld <- v ..: "world"
         subworlds <- v ..:? "subworlds" ..!= []
         return $ rootWorld :| subworlds
@@ -355,7 +379,7 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
             ScenarioLandscape
               seed
               parsedAttrs
-              em
+              combinedTEM
               mergedCosmetics
               (Set.fromList known)
               allWorlds
@@ -375,7 +399,7 @@ instance FromJSONE (EntityMap, WorldMap) Scenario where
           <*> liftE (v .:? "description" .!= "")
           <*> (liftE (v .:? "objectives" .!= []) >>= validateObjectives)
           <*> liftE (v .:? "solution")
-          <*> v ..:? "recipes" ..!= []
+          <*> localE (view entityMap) (v ..:? "recipes" ..!= [])
           <*> liftE (v .:? "stepsPerTick")
 
       return $ Scenario metadata playInfo landscape
@@ -402,24 +426,22 @@ getScenarioPath scenario = do
 loadScenario ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   FilePath ->
-  EntityMap ->
-  WorldMap ->
+  ScenarioInputs ->
   m (Scenario, FilePath)
-loadScenario scenario em worldMap = do
+loadScenario scenario scenarioInputs = do
   mfileName <- getScenarioPath scenario
   fileName <- maybe (throwError $ ScenarioNotFound scenario) return mfileName
-  (,fileName) <$> loadScenarioFile em worldMap fileName
+  (,fileName) <$> loadScenarioFile scenarioInputs fileName
 
 -- | Load a scenario from a file.
 loadScenarioFile ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  EntityMap ->
-  WorldMap ->
+  ScenarioInputs ->
   FilePath ->
   m Scenario
-loadScenarioFile em worldMap fileName =
+loadScenarioFile scenarioInputs fileName =
   (withThrow adaptError . (liftEither <=< sendIO)) $
-    decodeFileEitherE (em, worldMap) fileName
+    decodeFileEitherE scenarioInputs fileName
  where
   adaptError = AssetNotLoaded (Data Scenarios) fileName . CanNotParseYaml
 
@@ -428,21 +450,30 @@ loadStandaloneScenario ::
   FilePath ->
   m (Scenario, GameStateInputs)
 loadStandaloneScenario fp = do
-  entities <- loadEntities
-  recipes <- loadRecipes entities
-  worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds entities
-  scene <- fst <$> loadScenario fp entities worlds
-  return (scene, GameStateInputs worlds entities recipes)
+  tem <- loadEntitiesAndTerrain
+  worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds tem
+  let scenarioInputs = ScenarioInputs worlds tem
+  recipes <- loadRecipes $ tem ^. entityMap
+  scene <- fst <$> loadScenario fp scenarioInputs
+  return (scene, GameStateInputs scenarioInputs recipes)
 
-data GameStateInputs = GameStateInputs
+data ScenarioInputs = ScenarioInputs
   { initWorldMap :: WorldMap
-  , initEntities :: EntityMap
-  , initRecipes :: [Recipe Entity]
+  -- ^ A collection of typechecked world DSL terms that are available to
+  --   be used in scenario definitions.
+  , initEntityTerrain :: TerrainEntityMaps
+  -- ^ The standard terrain/entity maps loaded from disk.  Individual scenarios
+  --   may define additional terrain/entities which will get added to this map
+  --   when loading the scenario.
   }
 
-integrateScenarioEntities :: GameStateInputs -> ScenarioLandscape -> EntityMap
-integrateScenarioEntities gsi sLandscape =
-  initEntities gsi <> sLandscape ^. scenarioEntities
+data GameStateInputs = GameStateInputs
+  { gsiScenarioInputs :: ScenarioInputs
+  , gsiRecipes :: [Recipe Entity]
+  -- ^ The standard list of recipes loaded from disk.  Individual scenarios
+  --   may define additional recipes which will get added to this list
+  --   when loading the scenario.
+  }
 
 -- |
 -- Decide on a seed.  In order of preference, we will use:

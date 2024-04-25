@@ -6,7 +6,7 @@
 module Main where
 
 import Control.Carrier.Accum.FixedStrict (runAccum)
-import Control.Lens ((&), (.~))
+import Control.Lens (view, (&), (.~))
 import Control.Monad (replicateM_)
 import Control.Monad.State (evalStateT, execStateT)
 import Data.Map qualified as M
@@ -19,13 +19,14 @@ import Swarm.Game.Display (defaultRobotDisplay)
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, mkRobot)
+import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Scenario (loadStandaloneScenario)
 import Swarm.Game.State (GameState, creativeMode, landscape, pureScenarioToGameState, zoomRobots)
 import Swarm.Game.State.Landscape (multiWorld)
 import Swarm.Game.State.Robot (addTRobot)
-import Swarm.Game.State.Runtime (initRuntimeState, mkGameStateConfig)
+import Swarm.Game.State.Runtime (initRuntimeState, stdGameConfigInputs)
 import Swarm.Game.Step (gameTick)
-import Swarm.Game.Terrain (TerrainType (DirtT))
+import Swarm.Game.Terrain (blankTerrainIndex)
 import Swarm.Game.Universe (Cosmic (..), SubworldName (DefaultRootSubworld))
 import Swarm.Game.World (WorldFun (..), newWorld)
 import Swarm.Language.Context qualified as Context
@@ -132,7 +133,7 @@ initRobot prog loc =
     []
     False
     False
-    mempty
+    emptyExceptions
     0
 
 -- | Creates a GameState with numRobot copies of robot on a blank map, aligned
@@ -145,13 +146,13 @@ mkGameState prog robotMaker numRobots = do
   gs <- simpleErrorHandle $ do
     (_ :: Seq SystemFailure, initRS) <- runAccum mempty initRuntimeState
     (scenario, _) <- loadStandaloneScenario "classic"
-    return $ pureScenarioToGameState scenario 0 0 Nothing $ mkGameStateConfig initRS
+    return $ pureScenarioToGameState scenario 0 0 Nothing $ view stdGameConfigInputs initRS
 
   execStateT
     (zoomRobots $ mapM_ (addTRobot $ initMachine prog Context.empty emptyStore) robots)
     ( gs
         & creativeMode .~ True
-        & landscape . multiWorld .~ M.singleton DefaultRootSubworld (newWorld (WF $ const (fromEnum DirtT, ENothing)))
+        & landscape . multiWorld .~ M.singleton DefaultRootSubworld (newWorld (WF $ const (blankTerrainIndex, ENothing)))
     )
 
 -- | Runs numGameTicks ticks of the game.

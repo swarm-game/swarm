@@ -75,6 +75,7 @@ import Swarm.Constant
 import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
+import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
@@ -91,6 +92,7 @@ import Swarm.Game.Scenario (
   scenarioObjectives,
   scenarioOperation,
   scenarioSeed,
+  scenarioTerrainAndEntities,
  )
 import Swarm.Game.Scenario.Scoring.Best
 import Swarm.Game.Scenario.Scoring.CodeSize
@@ -263,14 +265,17 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
         fromMaybe 0 $
           s ^. scenarioLandscape . scenarioSeed
 
-    ri =
-      RenderingInput theWorlds $
-        getEntityIsKnown $
-          EntityKnowledgeDependencies
-            { isCreativeMode = s ^. scenarioOperation . scenarioCreative
-            , globallyKnownEntities = s ^. scenarioLandscape . scenarioKnown
-            , theFocusedRobot = Nothing
-            }
+    entIsKnown =
+      getEntityIsKnown $
+        EntityKnowledgeDependencies
+          { isCreativeMode = s ^. scenarioOperation . scenarioCreative
+          , globallyKnownEntities = s ^. scenarioLandscape . scenarioKnown
+          , theFocusedRobot = Nothing
+          }
+
+    tm = s ^. scenarioLandscape . scenarioTerrainAndEntities . terrainMap
+    ri = RenderingInput theWorlds entIsKnown tm
+
     renderCoord = renderDisplay . displayLocRaw (WorldOverdraw False mempty) ri []
     worldPeek = worldWidget renderCoord vc
 
@@ -520,7 +525,12 @@ drawWorldCursorInfo worldEditor g cCoords =
    where
     f cell preposition = [renderDisplay cell, txt preposition]
 
-  ri = RenderingInput (g ^. landscape . multiWorld) (getEntityIsKnown $ mkEntityKnowledge g)
+  ri =
+    RenderingInput
+      (g ^. landscape . multiWorld)
+      (getEntityIsKnown $ mkEntityKnowledge g)
+      (g ^. landscape . terrainAndEntities . terrainMap)
+
   terrain = displayTerrainCell worldEditor ri cCoords
   entity = displayEntityCell worldEditor ri cCoords
   robot = displayRobotCell g cCoords

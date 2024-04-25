@@ -12,7 +12,7 @@ module Swarm.Game.State.Landscape (
   worldNavigation,
   multiWorld,
   worldScrollable,
-  entityMap,
+  terrainAndEntities,
 
   -- ** Utilities
   initLandscape,
@@ -34,12 +34,13 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (isJust, listToMaybe)
 import Swarm.Game.Entity
+import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, trobotLocation)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.State.Config
-import Swarm.Game.Terrain (TerrainType (..))
+import Swarm.Game.Terrain (TerrainType (..), terrainIndexByName)
 import Swarm.Game.Universe as U
 import Swarm.Game.World
 import Swarm.Game.World.Eval (runWorld)
@@ -53,7 +54,7 @@ type SubworldDescription = (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int
 data Landscape = Landscape
   { _worldNavigation :: Navigation (M.Map SubworldName) Location
   , _multiWorld :: MultiWorld Int Entity
-  , _entityMap :: EntityMap
+  , _terrainAndEntities :: TerrainEntityMaps
   , _worldScrollable :: Bool
   }
 
@@ -69,8 +70,8 @@ worldNavigation :: Lens' Landscape (Navigation (M.Map SubworldName) Location)
 --   unboxed tile arrays.
 multiWorld :: Lens' Landscape (MultiWorld Int Entity)
 
--- | The catalog of all entities that the game knows about.
-entityMap :: Lens' Landscape EntityMap
+-- | The catalogs of all terrain and entities that the game knows about.
+terrainAndEntities :: Lens' Landscape TerrainEntityMaps
 
 -- | Whether the world map is supposed to be scrollable or not.
 worldScrollable :: Lens' Landscape Bool
@@ -82,16 +83,16 @@ initLandscape gsc =
   Landscape
     { _worldNavigation = Navigation mempty mempty
     , _multiWorld = mempty
-    , _entityMap = initEntities $ initState gsc
+    , _terrainAndEntities = initEntityTerrain $ gsiScenarioInputs $ initState gsc
     , _worldScrollable = True
     }
 
-mkLandscape :: ScenarioLandscape -> EntityMap -> NonEmpty SubworldDescription -> Seed -> Landscape
-mkLandscape sLandscape em worldTuples theSeed =
+mkLandscape :: ScenarioLandscape -> NonEmpty SubworldDescription -> Seed -> Landscape
+mkLandscape sLandscape worldTuples theSeed =
   Landscape
-    { _entityMap = em
-    , _worldNavigation = sLandscape ^. scenarioNavigation
+    { _worldNavigation = sLandscape ^. scenarioNavigation
     , _multiWorld = genMultiWorld worldTuples theSeed
+    , _terrainAndEntities = sLandscape ^. scenarioTerrainAndEntities
     , -- TODO (#1370): Should we allow subworlds to have their own scrollability?
       -- Leaning toward no, but for now just adopt the root world scrollability
       -- as being universal.
@@ -100,7 +101,7 @@ mkLandscape sLandscape em worldTuples theSeed =
 
 buildWorldTuples :: ScenarioLandscape -> NonEmpty SubworldDescription
 buildWorldTuples sLandscape =
-  NE.map (worldName &&& buildWorld) $
+  NE.map (worldName &&& buildWorld (sLandscape ^. scenarioTerrainAndEntities)) $
     sLandscape ^. scenarioWorlds
 
 genMultiWorld :: NonEmpty SubworldDescription -> Seed -> MultiWorld Int Entity
@@ -114,9 +115,11 @@ genMultiWorld worldTuples s =
 
 -- | Take a world description, parsed from a scenario file, and turn
 --   it into a list of located robots and a world function.
-buildWorld :: WorldDescription -> ([IndexedTRobot], Seed -> WorldFun Int Entity)
-buildWorld WorldDescription {..} = (robots worldName, first fromEnum . wf)
+buildWorld :: TerrainEntityMaps -> WorldDescription -> ([IndexedTRobot], Seed -> WorldFun Int Entity)
+buildWorld tem WorldDescription {..} =
+  (robots worldName, first getTerrainIndex . wf)
  where
+  getTerrainIndex t = M.findWithDefault 0 t $ terrainIndexByName $ tem ^. terrainMap
   rs = fromIntegral $ length area
   cs = fromIntegral $ maybe 0 length $ listToMaybe area
   Coords (ulr, ulc) = locToCoords ul

@@ -13,6 +13,7 @@ module Swarm.Util (
   sortPair,
   maxOn,
   maximum0,
+  enumeratedMap,
   cycleEnum,
   listEnums,
   listEnumsNonempty,
@@ -90,6 +91,8 @@ import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum, toLower)
 import Data.Either.Validation
 import Data.Foldable qualified as Foldable
+import Data.IntMap.Strict (IntMap)
+import Data.IntMap.Strict qualified as IM
 import Data.List (foldl', maximumBy, partition)
 import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty ((:|)))
@@ -141,6 +144,9 @@ maxOn f x y
 maximum0 :: (Num a, Ord a) => [a] -> a
 maximum0 [] = 0
 maximum0 xs = maximum xs
+
+enumeratedMap :: Int -> [a] -> IntMap a
+enumeratedMap startIdx = IM.fromList . zip [startIdx ..]
 
 -- | Take the successor of an 'Enum' type, wrapping around when it
 --   reaches the end.

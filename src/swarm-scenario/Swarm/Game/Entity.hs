@@ -47,7 +47,7 @@ module Swarm.Game.Entity (
   -- ** Entity map
   EntityMap (..),
   buildEntityMap,
-  validateAttrRefs,
+  validateEntityAttrRefs,
   loadEntities,
   allEntities,
   lookupEntityName,
@@ -403,8 +403,8 @@ deviceForCap :: Capability -> EntityMap -> [Entity]
 deviceForCap cap = fromMaybe [] . M.lookup cap . entitiesByCap
 
 -- | Validates references to 'Display' attributes
-validateAttrRefs :: Has (Throw LoadingFailure) sig m => Set WorldAttr -> [Entity] -> m ()
-validateAttrRefs validAttrs es =
+validateEntityAttrRefs :: Has (Throw LoadingFailure) sig m => Set WorldAttr -> [Entity] -> m ()
+validateEntityAttrRefs validAttrs es =
   forM_ namedEntities $ \(eName, ent) ->
     case ent ^. entityDisplay . displayAttr of
       AWorld n ->
@@ -496,7 +496,7 @@ loadEntities = do
     withThrow (entityFailure . CanNotParseYaml) . (liftEither <=< sendIO) $
       decodeFileEither fileName
 
-  withThrow entityFailure $ validateAttrRefs (M.keysSet worldAttributes) decoded
+  withThrow entityFailure $ validateEntityAttrRefs (M.keysSet worldAttributes) decoded
   withThrow entityFailure $ buildEntityMap decoded
 
 ------------------------------------------------------------

@@ -11,17 +11,21 @@ module Swarm.Game.Scenario.Topography.Cell (
 ) where
 
 import Control.Lens hiding (from, (.=), (<.>))
-import Control.Monad.Extra (mapMaybeM)
+import Control.Monad.Extra (mapMaybeM, unless)
 import Data.List.NonEmpty qualified as NE
+import Data.Map.Strict qualified as M
 import Data.Maybe (catMaybes, listToMaybe)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Vector qualified as V
 import Data.Yaml as Y
 import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Land
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointConfig)
 import Swarm.Game.Terrain
+import Swarm.Util (quote, showT)
 import Swarm.Util.Erasable (Erasable (..))
 import Swarm.Util.Yaml
 
@@ -67,14 +71,24 @@ instance ToJSON Cell where
     ENothing -> Nothing
     EJust e -> Just (e ^. entityName)
 
-instance FromJSONE (EntityMap, RobotMap) Cell where
+instance FromJSONE (TerrainEntityMaps, RobotMap) Cell where
   parseJSONE = withArrayE "tuple" $ \v -> do
     let tupRaw = V.toList v
     tup <- case NE.nonEmpty tupRaw of
       Nothing -> fail "palette entry must have nonzero length (terrain, optional entity and then robots if any)"
       Just x -> return x
 
+    (TerrainEntityMaps tm _, _) <- getE
     terr <- liftE $ parseJSON (NE.head tup)
+    unless (M.member terr $ terrainByName tm)
+      . fail
+      . T.unpack
+      $ T.unwords
+        [ "Unrecognized terrain type"
+        , quote $ getTerrainWord terr
+        , "Avaliable:"
+        , showT $ M.keys $ terrainByName tm
+        ]
 
     ent <- case tup ^? ix 1 of
       Nothing -> return ENothing
@@ -83,7 +97,7 @@ instance FromJSONE (EntityMap, RobotMap) Cell where
         case meName of
           Nothing -> return ENothing
           Just "erase" -> return EErase
-          Just name -> fmap EJust . localE fst $ getEntity name
+          Just name -> fmap EJust . localE (view entityMap . fst) $ getEntity name
 
     let name2rob r = do
           mrName <- liftE $ parseJSON @(Maybe RobotName) r
@@ -97,7 +111,7 @@ instance FromJSONE (EntityMap, RobotMap) Cell where
 --   entity and robot, if present, are immediately looked up and
 --   converted into 'Entity' and 'TRobot' values.  If they are not
 --   found, a parse error results.
-instance FromJSONE (EntityMap, RobotMap) (AugmentedCell Entity) where
+instance FromJSONE (TerrainEntityMaps, RobotMap) (AugmentedCell Entity) where
   parseJSONE x = case x of
     Object v -> objParse v
     z -> AugmentedCell Nothing <$> parseJSONE z

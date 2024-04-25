@@ -31,6 +31,7 @@ import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeCatalysts, recipeInputs, recipeOutputs, recipeTime, recipeWeight)
+import Swarm.Game.Terrain (loadTerrain, terrainByName)
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Capability qualified as Capability
 import Swarm.Language.Pretty (prettyText, prettyTextLine)
@@ -38,7 +39,7 @@ import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Text.Markdown as Markdown (docToMark)
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Util (listEnums)
+import Swarm.Util (listEnums, showT)
 import Swarm.Util.Effect (simpleErrorHandle)
 
 -- * Types
@@ -54,7 +55,7 @@ data PageAddress = PageAddress
   deriving (Eq, Show)
 
 -- | An enumeration of the kinds of cheat sheets we can produce.
-data SheetType = Entities | Commands | CommandMatrix | Capabilities | Recipes | Scenario
+data SheetType = Entities | Terrain | Commands | CommandMatrix | Capabilities | Recipes | Scenario
   deriving (Eq, Show, Enum, Bounded)
 
 -- * Functions
@@ -73,6 +74,9 @@ makeWikiPage address s = case s of
     Entities -> simpleErrorHandle $ do
       entities <- loadEntities
       sendIO $ T.putStrLn $ entitiesPage address (Map.elems $ entitiesByName entities)
+    Terrain -> simpleErrorHandle $ do
+      terrains <- loadTerrain
+      sendIO . T.putStrLn . T.unlines . map showT . Map.elems $ terrainByName terrains
     Recipes -> simpleErrorHandle $ do
       entities <- loadEntities
       recipes <- loadRecipes entities

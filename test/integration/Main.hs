@@ -13,7 +13,7 @@ import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens (Ixed (ix), at, to, use, view, (&), (.~), (<>~), (^.), (^..), (^?), (^?!))
 import Control.Monad (forM_, unless, when)
-import Control.Monad.State (StateT (runStateT), gets)
+import Control.Monad.State (StateT, execStateT, gets)
 import Data.Char (isSpace)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (Foldable (toList), find)
@@ -31,13 +31,13 @@ import Swarm.Doc.Keyword qualified as Keyword
 import Swarm.Effect (runTimeIO)
 import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
 import Swarm.Game.CESK (emptyStore, initMachine)
-import Swarm.Game.Entity (EntityMap, lookupByName)
+import Swarm.Game.Entity (lookupByName)
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Robot (equippedDevices, systemRobot)
 import Swarm.Game.Robot.Activity (commandsHistogram, lifetimeStepCount, tangibleCommandCount)
 import Swarm.Game.Robot.Concrete (activityCounts, machine, robotContext, robotLog, waitingUntil)
 import Swarm.Game.Robot.Context (defReqs)
-import Swarm.Game.Scenario (Scenario)
+import Swarm.Game.Scenario (Scenario, ScenarioInputs (..), gsiScenarioInputs)
 import Swarm.Game.State (
   GameState,
   baseRobot,
@@ -57,13 +57,13 @@ import Swarm.Game.State.Robot (
 import Swarm.Game.State.Runtime (
   RuntimeState,
   eventLog,
-  stdEntityMap,
-  worlds,
+  stdGameConfigInputs,
  )
 import Swarm.Game.State.Substate (
   WinCondition (WinConditions),
   WinStatus (Won),
   gameAchievements,
+  initState,
   messageQueue,
   notificationsContent,
   ticks,
@@ -71,7 +71,6 @@ import Swarm.Game.State.Substate (
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Tick (getTickNumber)
-import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty (prettyString)
@@ -106,16 +105,16 @@ main = do
   (rs, ui) <- do
     out <- runM . runThrow @SystemFailure $ initPersistentState defaultAppOpts
     either (assertFailure . prettyString) return out
-  let em = rs ^. stdEntityMap
-  let rs' = rs & eventLog .~ mempty
+  let scenarioInputs = gsiScenarioInputs $ initState $ rs ^. stdGameConfigInputs
+      rs' = rs & eventLog .~ mempty
   defaultMain $
     testGroup
       "Tests"
       [ testNoLoadingErrors rs
       , exampleTests examplePaths
       , exampleTests scenarioPrograms
-      , scenarioParseTests em (rs ^. worlds) parseableScenarios
-      , scenarioParseInvalidTests em (rs ^. worlds) unparseableScenarios
+      , scenarioParseTests scenarioInputs parseableScenarios
+      , scenarioParseInvalidTests scenarioInputs unparseableScenarios
       , testScenarioSolutions rs' ui
       , testEditorFiles
       ]
@@ -144,27 +143,27 @@ exampleTest (path, fileContent) =
  where
   value = processTerm $ into @Text fileContent
 
-scenarioParseTests :: EntityMap -> WorldMap -> [(FilePath, String)] -> TestTree
-scenarioParseTests em worldMap inputs =
+scenarioParseTests :: ScenarioInputs -> [(FilePath, String)] -> TestTree
+scenarioParseTests scenarioInputs inputs =
   testGroup
     "Test scenarios parse"
-    (map (scenarioTest Parsed em worldMap) inputs)
+    (map (scenarioTest Parsed scenarioInputs) inputs)
 
-scenarioParseInvalidTests :: EntityMap -> WorldMap -> [(FilePath, String)] -> TestTree
-scenarioParseInvalidTests em worldMap inputs =
+scenarioParseInvalidTests :: ScenarioInputs -> [(FilePath, String)] -> TestTree
+scenarioParseInvalidTests scenarioInputs inputs =
   testGroup
     "Test invalid scenarios fail to parse"
-    (map (scenarioTest Failed em worldMap) inputs)
+    (map (scenarioTest Failed scenarioInputs) inputs)
 
 data ParseResult = Parsed | Failed
 
-scenarioTest :: ParseResult -> EntityMap -> WorldMap -> (FilePath, String) -> TestTree
-scenarioTest expRes em worldMap (path, _) =
-  testCase ("parse scenario " ++ show path) (getScenario expRes em worldMap path)
+scenarioTest :: ParseResult -> ScenarioInputs -> (FilePath, String) -> TestTree
+scenarioTest expRes scenarioInputs (path, _) =
+  testCase ("parse scenario " ++ show path) (getScenario expRes scenarioInputs path)
 
-getScenario :: ParseResult -> EntityMap -> WorldMap -> FilePath -> IO ()
-getScenario expRes em worldMap p = do
-  res <- decodeFileEitherE (em, worldMap) p :: IO (Either ParseException Scenario)
+getScenario :: ParseResult -> ScenarioInputs -> FilePath -> IO ()
+getScenario expRes scenarioInputs p = do
+  res <- decodeFileEitherE scenarioInputs p :: IO (Either ParseException Scenario)
   case expRes of
     Parsed -> case res of
       Left err -> assertFailure (prettyPrintParseException err)
@@ -225,7 +224,7 @@ testScenarioSolutions rs ui =
         ]
     , testGroup
         "Fun"
-        [ testSolution (Sec 10) "Fun/snake"
+        [ testSolution (Sec 20) "Fun/snake"
         ]
     , testGroup
         "Challenges"
@@ -233,7 +232,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Challenges/teleport"
         , testSolution Default "Challenges/maypole"
         , testSolution (Sec 5) "Challenges/2048"
-        , testSolution (Sec 3) "Challenges/word-search"
+        , testSolution (Sec 6) "Challenges/word-search"
         , testSolution (Sec 10) "Challenges/bridge-building"
         , testSolution (Sec 5) "Challenges/ice-cream"
         , testSolution (Sec 10) "Challenges/combo-lock"
@@ -260,7 +259,7 @@ testScenarioSolutions rs ui =
             "Ranching"
             [ testSolution Default "Challenges/Ranching/capture"
             , testSolution (Sec 60) "Challenges/Ranching/beekeeping"
-            , testSolution (Sec 10) "Challenges/Ranching/powerset"
+            , testSolution (Sec 20) "Challenges/Ranching/powerset"
             , testSolution (Sec 10) "Challenges/Ranching/fishing"
             , testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
             ]
@@ -362,10 +361,15 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/144-subworlds/subworld-located-robots"
         , testSolution Default "Testing/1355-combustion"
         , testSolution Default "Testing/1379-single-world-portal-reorientation"
+        , testSolution Default "Testing/1322-wait-with-instant"
+        , testSolution Default "Testing/1598-detect-entity-change"
         , testSolution Default "Testing/1399-backup-command"
         , testSolution Default "Testing/1536-custom-unwalkable-entities"
+        , testSolution Default "Testing/1721-custom-walkable-entities"
+        , testSolution Default "Testing/1721-walkability-whitelist-path-cache"
         , testSolution Default "Testing/1631-tags"
         , testSolution Default "Testing/1747-volume-command"
+        , testSolution Default "Testing/1775-custom-terrain"
         , testGroup
             -- Note that the description of the classic world in
             -- data/worlds/classic.yaml (automatically tested to some
@@ -491,7 +495,7 @@ testScenarioSolutions rs ui =
                   -- hopefully, eventually, go away).
                   & baseRobot . robotContext . defReqs <>~ reqCtx
                   & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
-          m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
+          m <- timeout (time s) (execStateT playUntilWin gs')
           case m of
             Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
             Just g -> do
@@ -513,7 +517,7 @@ testScenarioSolutions rs ui =
     w <- use winCondition
     b <- gets badErrorsInLogs
     when (null b) $ case w of
-      WinConditions (Won _) _ -> return ()
+      WinConditions (Won _ _) _ -> return ()
       _ -> runTimeIO gameTick >> playUntilWin
 
 noBadErrors :: GameState -> Assertion

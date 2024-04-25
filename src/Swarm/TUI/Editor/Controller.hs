@@ -16,6 +16,7 @@ import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.Map qualified as M
 import Data.Yaml qualified as Y
 import Graphics.Vty qualified as V
+import Swarm.Game.Land
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
@@ -83,9 +84,11 @@ handleMiddleClick mouseLoc = do
   worldEditor <- use $ uiState . uiGameplay . uiWorldEditor
   when (worldEditor ^. worldOverdraw . isWorldEditorEnabled) $ do
     w <- use $ gameState . landscape . multiWorld
+    tm <- use $ gameState . landscape . terrainAndEntities . terrainMap
     let setTerrainPaint coords = do
           let (terrain, maybeElementPaint) =
                 EU.getEditorContentAt
+                  tm
                   (worldEditor ^. worldOverdraw)
                   w
                   coords
@@ -142,7 +145,8 @@ saveMapFile = do
   worldEditor <- use $ uiState . uiGameplay . uiWorldEditor
   maybeBounds <- use $ uiState . uiGameplay . uiWorldEditor . editingBounds . boundsRect
   w <- use $ gameState . landscape . multiWorld
-  let mapCellGrid = EU.getEditedMapRectangle (worldEditor ^. worldOverdraw) maybeBounds w
+  tm <- use $ gameState . landscape . terrainAndEntities . terrainMap
+  let mapCellGrid = EU.getEditedMapRectangle tm (worldEditor ^. worldOverdraw) maybeBounds w
 
   let fp = worldEditor ^. outputFilePath
   maybeScenarioPair <- use $ uiState . uiGameplay . scenarioRef

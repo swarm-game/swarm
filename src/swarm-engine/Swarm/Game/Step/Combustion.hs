@@ -28,8 +28,10 @@ import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
+import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
@@ -91,7 +93,7 @@ addCombustionBot inputEntity combustibility ts loc = do
   botInventory <- case maybeCombustionProduct of
     Nothing -> return []
     Just n -> do
-      maybeE <- uses (landscape . entityMap) (lookupEntityName n)
+      maybeE <- uses (landscape . terrainAndEntities . entityMap) (lookupEntityName n)
       return $ maybe [] (pure . (1,)) maybeE
   combustionDurationRand <- uniform durationRange
   let combustionProg = combustionProgram combustionDurationRand combustibility
@@ -112,7 +114,7 @@ addCombustionBot inputEntity combustibility ts loc = do
       botInventory
       True
       False
-      mempty
+      emptyExceptions
       ts
   return combustionDurationRand
  where
@@ -224,5 +226,5 @@ addIgnitionBot ignitionDelay inputEntity ts loc =
       []
       True
       False
-      mempty
+      emptyExceptions
       ts

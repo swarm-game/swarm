@@ -16,6 +16,7 @@ import Data.Text qualified as T
 import Swarm.Effect
 import Swarm.Game.CESK
 import Swarm.Game.Exception
+import Swarm.Game.Land
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete (isActive)
 import Swarm.Game.State
@@ -48,7 +49,7 @@ evalCESK g cesk =
   orderResult ((res, rr), rg) = (rg, rr, res)
 
 runCESK :: Int -> CESK -> StateT Robot (StateT GameState IO) (Either Text (Value, Int))
-runCESK _ (Up exn _ []) = Left . flip formatExn exn <$> lift (use $ landscape . entityMap)
+runCESK _ (Up exn _ []) = Left . flip formatExn exn <$> lift (use $ landscape . terrainAndEntities . entityMap)
 runCESK !steps cesk = case finalValue cesk of
   Just (v, _) -> return (Right (v, steps))
   Nothing -> runTimeIO (stepCESK cesk) >>= runCESK (steps + 1)

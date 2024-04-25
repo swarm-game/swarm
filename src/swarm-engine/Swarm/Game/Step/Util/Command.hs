@@ -20,6 +20,7 @@ import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (forM_, unless, when)
+import Data.IntSet qualified as IS
 import Data.Map qualified as M
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
@@ -40,6 +41,7 @@ import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
+import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..), destination, reorientation)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
@@ -88,10 +90,10 @@ purgeFarAwayWatches = do
   let isNearby = isNearbyOrExempt privileged myLoc
       f loc =
         if not $ isNearby loc
-          then S.delete rid
+          then IS.delete rid
           else id
 
-  robotInfo . robotsWatching %= M.filter (not . null) . M.mapWithKey f
+  robotInfo . robotsWatching %= M.filter (not . IS.null) . M.mapWithKey f
 
 verbedGrabbingCmd :: GrabbingCmd -> Text
 verbedGrabbingCmd = \case
@@ -152,6 +154,8 @@ onTarget rid act = do
               then deleteRobot rid
               else robotMap . ix rid .= tgt'
 
+-- | Enforces validity of the robot's privileged status to receive
+-- an achievement.
 grantAchievementForRobot ::
   (HasRobotStepState sig m, Has (Lift IO) sig m) =>
   GameplayAchievement ->
@@ -174,6 +178,8 @@ checkGameModeAchievementValidity a = do
  where
   ValidityConditions _ gameplayModeRequired = getValidityRequirements a
 
+-- | NOTE: When possible, one should use the
+-- 'grantAchievementForRobot' function instead of this one.
 grantAchievement ::
   (Has (State GameState) sig m, Has (Lift IO) sig m) =>
   GameplayAchievement ->
@@ -267,7 +273,7 @@ addWatchedLocation ::
   m ()
 addWatchedLocation loc = do
   rid <- use robotID
-  robotInfo . robotsWatching %= M.insertWith (<>) loc (S.singleton rid)
+  robotInfo . robotsWatching %= M.insertWith (<>) loc (IS.singleton rid)
 
 -- | Give some entities from a parent robot (the robot represented by
 --   the ambient @State Robot@ effect) to a child robot (represented
@@ -366,7 +372,7 @@ createLogEntry source sev msg = do
 
 -- | replace some entity in the world with another entity
 updateWorld ::
-  (Has (State GameState) sig m, Has (Throw Exn) sig m) =>
+  HasRobotStepState sig m =>
   Const ->
   WorldUpdate Entity ->
   m ()
@@ -416,7 +422,7 @@ addSeedBot e (minT, maxT) loc ts =
       [(1, e)]
       True
       False
-      mempty
+      emptyExceptions
       ts
 
 -- | A system program for a "seed robot", to regrow a growable entity

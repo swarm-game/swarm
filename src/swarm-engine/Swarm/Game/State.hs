@@ -76,6 +76,7 @@ import Control.Effect.State (State)
 import Control.Effect.Throw
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad (forM, join)
+import Data.Aeson (ToJSON)
 import Data.Digest.Pure.SHA (sha1, showDigest)
 import Data.Foldable (toList)
 import Data.Foldable.Extra (allM)
@@ -97,10 +98,12 @@ import Data.Text qualified as T (drop, take)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
+import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
 import Swarm.Game.Entity
 import Swarm.Game.Failure (SystemFailure (..))
+import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Recipe (
   catRecipeMap,
@@ -139,6 +142,7 @@ import System.Clock qualified as Clock
 import System.Random (mkStdGen)
 
 newtype Sha1 = Sha1 String
+  deriving (Show, Eq, Ord, Generic, ToJSON)
 
 data SolutionSource
   = ScenarioSuggested
@@ -577,7 +581,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       & randomness . seed .~ theSeed
       & randomness . randGen .~ mkStdGen theSeed
       & recipesInfo %~ modifyRecipesInfo
-      & landscape .~ mkLandscape sLandscape em worldTuples theSeed
+      & landscape .~ mkLandscape sLandscape worldTuples theSeed
       & gameControls . initiallyRunCode .~ initialCodeToRun
       & gameControls . replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
       -- otherwise the store of definition cells is not saved (see #333, #838)
@@ -593,7 +597,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       & recipesIn %~ addRecipesWith inRecipeMap
       & recipesCat %~ addRecipesWith catRecipeMap
 
-  em = integrateScenarioEntities (initState gsc) sLandscape
+  TerrainEntityMaps _ em = sLandscape ^. scenarioTerrainAndEntities
   baseID = 0
   (things, devices) = partition (null . view entityCapabilities) (M.elems (entitiesByName em))
 

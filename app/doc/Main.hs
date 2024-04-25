@@ -47,6 +47,7 @@ cliParser =
     Data.Foldable.asum
       [ pure Nothing
       , Just Entities <$ switch (long "entities" <> help "Generate entities page (uses data from entities.yaml)")
+      , Just Terrain <$ switch (long "terrain" <> help "Generate terrain page (uses data from terrains.yaml)")
       , Just Recipes <$ switch (long "recipes" <> help "Generate recipes page (uses data from recipes.yaml)")
       , Just Capabilities <$ switch (long "capabilities" <> help "Generate capabilities page (uses entity map)")
       , Just Commands <$ switch (long "commands" <> help "Generate commands page (uses constInfo, constCaps and inferConst)")

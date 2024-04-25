@@ -13,6 +13,8 @@ import Control.Monad.Except (runExceptT)
 import Data.List (subsequences)
 import Data.Set (Set)
 import Data.Set qualified as S
+import Swarm.Game.State.Runtime (stdGameConfigInputs)
+import Swarm.Game.State.Substate (initState)
 import Swarm.TUI.Model (AppState, gameState, runtimeState)
 import Swarm.TUI.Model.StateUpdate (classicGame0)
 import Swarm.Util (removeSupersets, smallHittingSet)
@@ -56,7 +58,7 @@ tests s =
     , testPrettyConst
     , testBoolExpr
     , testCommands
-    , testDeviceRecipeCoverage (s ^. runtimeState)
+    , testDeviceRecipeCoverage (initState $ s ^. runtimeState . stdGameConfigInputs)
     , testHighScores
     , testEval (s ^. gameState)
     , testModel

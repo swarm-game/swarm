@@ -16,10 +16,12 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Game.Entity as E
+import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Scenario (scenarioMetadata, scenarioName)
 import Swarm.Game.ScenarioInfo (scenarioItemName)
 import Swarm.Game.State
+import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
 import Swarm.Game.Terrain
 import Swarm.Language.Pretty (prettyTextLine)
@@ -30,7 +32,6 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
-import Swarm.Util (listEnums)
 import Witch (from, into)
 
 -- | Generate a fresh modal window of the requested type.
@@ -110,7 +111,8 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
       KeepPlayingModal -> ("", Just (Button CancelButton, [("OK", Button CancelButton, Cancel)]), 80)
       TerrainPaletteModal -> ("Terrain", Nothing, w)
        where
-        wordLength = maximum $ map (length . show) (listEnums :: [TerrainType])
+        tm = s ^. gameState . landscape . terrainAndEntities . terrainMap
+        wordLength = maximum $ map (T.length . getTerrainWord) (M.keys $ terrainByName tm)
         w = wordLength + 6
       EntityPaletteModal -> ("Entity", Nothing, 30)
 
@@ -150,11 +152,16 @@ drawMarkdown d = do
     "type" -> magentaAttr
     _snippet -> highlightAttr -- same as plain code
 
-drawLabeledTerrainSwatch :: TerrainType -> Widget Name
-drawLabeledTerrainSwatch a =
+drawLabeledTerrainSwatch :: TerrainMap -> TerrainType -> Widget Name
+drawLabeledTerrainSwatch tm a =
   tile <+> str materialName
  where
-  tile = padRight (Pad 1) $ renderDisplay $ terrainMap M.! a
+  tile =
+    padRight (Pad 1)
+      . renderDisplay
+      . maybe mempty terrainDisplay
+      $ M.lookup a (terrainByName tm)
+
   materialName = init $ show a
 
 descriptionTitle :: Entity -> String
