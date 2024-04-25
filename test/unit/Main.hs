@@ -34,7 +34,7 @@ import TestEval (testEval)
 import TestInventory (testInventory)
 import TestLSP (testLSP)
 import TestLanguagePipeline (testLanguagePipeline)
-import TestModel (testModel)
+import TestRepl (testRepl)
 import TestNotification (testNotification)
 import TestOrdering (testOrdering)
 import TestPedagogy (testPedagogy)
@@ -61,7 +61,7 @@ tests s =
     , testDeviceRecipeCoverage (initState $ s ^. runtimeState . stdGameConfigInputs)
     , testHighScores
     , testEval (s ^. gameState)
-    , testModel
+    , testRepl
     , testPedagogy (s ^. runtimeState)
     , testInventory
     , testNotification (s ^. gameState)
