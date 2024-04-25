@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Swarm tournament games</title>
+
+    <link rel="stylesheet" href="style/tablesort.css"/>
+    <link rel="stylesheet" href="style/list-games.css"/>
+    <link rel="stylesheet" href="style/spinner.css"/>
+
+    <style type="text/css">
+      #spinner-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tablesort/5.1.0/tablesort.min.js"></script>
+    <script src="script/list-games.js"></script>
+
+    <script>
+      window.onload=()=>{
+        const tableElement = document.querySelector("table");
+        doFetch(tableElement);
+      }
+    </script>
+  </head>
+  <body>
+    <table id="my-table">
+        <thead>
+          <tr data-sort-method="none">
+            <th>Filename</th>
+            <th>Uploader</th>
+            <th>Soln. submissions</th>
+            <th>Swarm version</th>
+          </tr>
+        </thead>
+        <tbody id="my-table-body">
+        </tbody>
+      </table>
+
+      <div id="spinner-container">
+        <span id="spinner" class="lds-dual-ring"></span>
+      </div>
+  </body>
+</html>
