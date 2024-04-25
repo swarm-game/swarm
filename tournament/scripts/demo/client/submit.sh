@@ -2,8 +2,10 @@
 
 # Parameters:
 # $1 = hostname (and optional port)
-# $2 = path to scenario file
-# $3 = path to solution file
+# $2 = path to scenario file*
+# $3 = path to solution file*
+#
+# *Paths are relative to the git repository root.
 
 HOST=$1
 SCENARIO_FILEPATH=$2
