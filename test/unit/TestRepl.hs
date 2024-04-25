@@ -3,19 +3,19 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Swarm unit tests
-module TestModel where
+-- Swarm REPL unit tests
+module TestRepl where
 
 import Data.String (fromString)
 import Data.Text (Text)
-import Swarm.TUI.Model
+import Swarm.TUI.Model.Repl
 import Test.Tasty
 import Test.Tasty.HUnit
 
-testModel :: TestTree
-testModel =
+testRepl :: TestTree
+testRepl =
   testGroup
-    "TUI Model"
+    "TUI REPL"
     [ testCase
         "latest repl lines at start"
         ( assertEqual
