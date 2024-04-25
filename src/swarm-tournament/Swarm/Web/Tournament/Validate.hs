@@ -200,8 +200,6 @@ gamestateFromScenarioText content = do
   scenarioObject <- initScenarioObject scenarioInputs content
   liftIO $ scenarioToGameState scenarioObject emptyLaunchParams gsc
 
--- |
--- NOTE: Borrowed from @testSolution'@ in @tests/integration/Main.hs@
 verifySolution ::
   SolutionTimeout ->
   ProcessedTerm ->
