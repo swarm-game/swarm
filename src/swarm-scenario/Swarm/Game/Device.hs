@@ -71,9 +71,9 @@ data CapabilityCost e = CapabilityCost
 -- Otherwise, parse as a Map from capabilities to ingredients.
 instance (FromJSON e) => FromJSON (SingleEntityCapabilities e) where
   parseJSON x =
-    Capabilities <$> (simpleList <|> costMap)
+    simpleList <|> (Capabilities <$> costMap)
    where
-    simpleList = M.fromSet (const $ ExerciseCost []) <$> parseJSON x
+    simpleList = zeroCostCapabilities <$> parseJSON x
     costMap = withArray "Capabilities" (fmap (M.fromList . map toMapEntry) . mapM parseJSON . V.toList) x
     toMapEntry (CapabilityCost a b) = (a, ExerciseCost b)
 
