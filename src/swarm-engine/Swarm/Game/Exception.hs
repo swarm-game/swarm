@@ -107,7 +107,8 @@ data IncapableFixWords = IncapableFixWords
   , fixNoun :: Text
   }
 
--- | Pretty-print an 'IncapableFix': either "equip" or "obtain".
+-- | Pretty-print an 'IncapableFix': either "equip device",
+-- "obtain device", or "obtain consumables".
 formatIncapableFix :: IncapableFix -> IncapableFixWords
 formatIncapableFix = \case
   FixByEquip -> IncapableFixWords "equip" "device"
