@@ -17,13 +17,14 @@ import Swarm.Language.Types hiding (Type)
 
 -- | Data type representing available unification operations.
 data Unification (m :: Type -> Type) k where
-  Unify :: UType -> UType -> Unification m UType
+  Unify :: UType -> UType -> Unification m (Either UnificationError UType)
   ApplyBindings :: UType -> Unification m UType
   FreshIntVar :: Unification m IntVar
   FreeUVars :: UType -> Unification m (Set IntVar)
 
--- | Unify two types, returning a type equal to both.
-(=:=) :: Has Unification sig m => UType -> UType -> m UType
+-- | Unify two types, returning a type equal to both, or a 'UnificationError' if
+--   the types definitely do not unify.
+(=:=) :: Has Unification sig m => UType -> UType -> m (Either UnificationError UType)
 t1 =:= t2 = send (Unify t1 t2)
 
 -- | Substitute for all the unification variables that are currently

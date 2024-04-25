@@ -139,7 +139,6 @@ library swarm-lang
     Swarm.Language.Syntax.CommandMetadata
     Swarm.Language.Text.Markdown
     Swarm.Language.Typecheck
-    Swarm.Language.Typecheck.Unify
     Swarm.Language.Typed
     Swarm.Language.Types
     Swarm.Language.Value
@@ -637,7 +636,6 @@ library
     Swarm.Language.Syntax.CommandMetadata,
     Swarm.Language.Text.Markdown,
     Swarm.Language.Typecheck,
-    Swarm.Language.Typecheck.Unify,
     Swarm.Language.Typed,
     Swarm.Language.Types,
     Swarm.Language.Value,

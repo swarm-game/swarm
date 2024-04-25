@@ -54,7 +54,7 @@ import Control.Effect.Reader
 import Control.Effect.Throw
 import Control.Lens ((^.))
 import Control.Lens.Indexed (itraverse)
-import Control.Monad (forM_, void, when, (<=<), (>=>))
+import Control.Monad (forM_, when, (<=<), (>=>))
 import Control.Monad.Free (Free (..))
 import Data.Data (Data, gmapM)
 import Data.Foldable (fold)
@@ -74,7 +74,6 @@ import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Module
 import Swarm.Language.Parse.QQ (tyQ)
 import Swarm.Language.Syntax
-import Swarm.Language.Typecheck.Unify qualified as U
 import Swarm.Language.Types
 import Prelude hiding (lookup)
 
@@ -298,10 +297,6 @@ noSkolems l (Forall xs upty) = do
 -- | @unify t expTy actTy@ ensures that the given two types are equal.
 --   If we know the actual term @t@ which is supposed to have these
 --   types, we can use it to generate better error messages.
---
---   We first do a quick-and-dirty check to see whether we know for
---   sure the types either are or cannot be equal, generating an
---   equality constraint for the unifier as a last resort.
 unify ::
   ( Has Unification sig m
   , Has (Throw ContextualTypeErr) sig m
@@ -310,10 +305,11 @@ unify ::
   Maybe Syntax ->
   TypeJoin ->
   m UType
-unify ms j = case U.unifyCheck expected actual of
-  U.Apart -> throwTypeErr NoLoc $ Mismatch ms j
-  U.Equal -> return expected
-  U.MightUnify -> expected =:= actual
+unify ms j = do
+  res <- expected =:= actual
+  case res of
+    Left _ -> throwTypeErr NoLoc $ Mismatch ms j
+    Right ty -> return ty
  where
   (expected, actual) = getJoin j
 
@@ -427,7 +423,7 @@ data TypeErr
     EscapedSkolem Var
   | -- | Occurs check failure, i.e. infinite type.
     UnificationErr UnificationError
-  | -- | Type mismatch caught by 'unifyCheck'.  The given term was
+  | -- | Type mismatch caught by 'unify'.  The given term was
     --   expected to have a certain type, but has a different type
     --   instead.
     Mismatch (Maybe Syntax) TypeJoin
@@ -936,15 +932,15 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
   SLam x mxTy body -> do
     (argTy, resTy) <- decomposeFunTy s (Expected, expected)
     case toU mxTy of
-      Just xTy -> case U.unifyCheck argTy xTy of
-        -- Generate a special error when the explicit type annotation
-        -- on a lambda doesn't match the expected type,
-        -- e.g. (\x:int. x + 2) : text -> int, since the usual
-        -- "expected/but got" language would probably be confusing.
-        U.Apart -> throwTypeErr l $ LambdaArgMismatch (joined argTy xTy)
-        -- Otherwise, make sure to unify the annotation with the
-        -- expected argument type.
-        _ -> void $ argTy =:= xTy
+      Just xTy -> do
+        res <- argTy =:= xTy
+        case res of
+          -- Generate a special error when the explicit type annotation
+          -- on a lambda doesn't match the expected type,
+          -- e.g. (\x:int. x + 2) : text -> int, since the usual
+          -- "expected/but got" language would probably be confusing.
+          Left _ -> throwTypeErr l $ LambdaArgMismatch (joined argTy xTy)
+          Right _ -> return ()
       Nothing -> return ()
     body' <- withBinding (lvVar x) (Forall [] argTy) $ check body resTy
     return $ Syntax' l (SLam x mxTy body') (UTyFun argTy resTy)

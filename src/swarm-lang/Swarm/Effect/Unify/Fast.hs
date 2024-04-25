@@ -138,7 +138,7 @@ runUnification =
 --   'UnificationC' carrier.
 instance Algebra sig m => Algebra (Unification :+: sig) (UnificationC m) where
   alg hdl sig ctx = UnificationC $ case sig of
-    L (Unify t1 t2) -> (<$ ctx) <$> unify t1 t2
+    L (Unify t1 t2) -> (<$ ctx) <$> runThrow (unify t1 t2)
     L (ApplyBindings t) -> do
       s <- get @(Subst IntVar UType)
       (<$ ctx) <$> subst s t

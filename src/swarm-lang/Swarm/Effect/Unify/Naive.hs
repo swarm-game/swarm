@@ -107,7 +107,7 @@ instance Algebra sig m => Algebra (Unification :+: sig) (UnificationC m) where
           t2' = subst s1 t2
       s2 <- unify t1' t2'
       modify (s2 @@)
-      return $ (subst s2 t1' <$ ctx)
+      return $ (Right (subst s2 t1') <$ ctx)
     L (ApplyBindings t) -> do
       s <- get @(Subst IntVar UType)
       return $ subst s t <$ ctx
