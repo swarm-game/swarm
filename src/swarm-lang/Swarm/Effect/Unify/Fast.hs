@@ -31,10 +31,10 @@ import Data.Function (on)
 import Data.Map qualified as M
 import Data.Map.Merge.Lazy qualified as M
 import Data.Set qualified as S
-import Prelude hiding (lookup)
 import Swarm.Effect.Unify
 import Swarm.Effect.Unify.Common
 import Swarm.Language.Types hiding (Type)
+import Prelude hiding (lookup)
 
 ------------------------------------------------------------
 -- Substitutions
@@ -70,22 +70,22 @@ class Substitutes n b a where
 --   over a structure functor @f@.
 instance Substitutes IntVar UType UType where
   subst s f = go S.empty f
-    where
-      go seen (Pure x) = case lookup x s of
-        Nothing -> pure $ Pure x
-        Just t
-          | S.member x seen -> throwError $ Infinite x t
-          | otherwise -> go (S.insert x seen) t
-      go seen (Free t) = Free <$> goF seen t
+   where
+    go seen (Pure x) = case lookup x s of
+      Nothing -> pure $ Pure x
+      Just t
+        | S.member x seen -> throwError $ Infinite x t
+        | otherwise -> go (S.insert x seen) t
+    go seen (Free t) = Free <$> goF seen t
 
-      goF _ t@(TyBaseF {}) = pure t
-      goF _ t@(TyVarF {}) = pure t
-      goF seen (TySumF t1 t2) = TySumF <$> go seen t1 <*> go seen t2
-      goF seen (TyProdF t1 t2) = TyProdF <$> go seen t1 <*> go seen t2
-      goF seen (TyRcdF m) = TyRcdF <$> mapM (go seen) m
-      goF seen (TyCmdF c) = TyCmdF <$> go seen c
-      goF seen (TyDelayF c) = TyDelayF <$> go seen c
-      goF seen (TyFunF t1 t2) = TyFunF <$> go seen t1 <*> go seen t2
+    goF _ t@(TyBaseF {}) = pure t
+    goF _ t@(TyVarF {}) = pure t
+    goF seen (TySumF t1 t2) = TySumF <$> go seen t1 <*> go seen t2
+    goF seen (TyProdF t1 t2) = TyProdF <$> go seen t1 <*> go seen t2
+    goF seen (TyRcdF m) = TyRcdF <$> mapM (go seen) m
+    goF seen (TyCmdF c) = TyCmdF <$> go seen c
+    goF seen (TyDelayF c) = TyDelayF <$> go seen c
+    goF seen (TyFunF t1 t2) = TyFunF <$> go seen t1 <*> go seen t2
 
 ------------------------------------------------------------
 -- Carrier type
@@ -178,7 +178,9 @@ unifyVar ::
   ( Has (Throw UnificationError) sig m
   , Has (State (Subst IntVar UType)) sig m
   ) =>
-  IntVar -> UType -> m UType
+  IntVar ->
+  UType ->
+  m UType
 unifyVar x (Pure y) = do
   myv <- lookupS y
   case myv of
