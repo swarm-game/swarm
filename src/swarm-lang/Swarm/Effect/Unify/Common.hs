@@ -1,10 +1,6 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 
--- # LANGUAGE GADTs #
-
--- # LANGUAGE UndecidableInstances #
-
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -32,10 +28,7 @@ import Prelude hiding (lookup)
 --
 --   Concretely, substitutions are stored using a @Map@.
 newtype Subst n a = Subst {getSubst :: Map n a}
-  deriving (Eq, Ord, Show)
-
-instance Functor (Subst n) where
-  fmap f (Subst m) = Subst (M.map f $ m)
+  deriving (Eq, Ord, Show, Functor)
 
 -- | The domain of a substitution is the set of names for which the
 --   substitution is defined.
@@ -51,15 +44,6 @@ idS = Subst M.empty
 --   the given value.
 (|->) :: n -> a -> Subst n a
 x |-> t = Subst (M.singleton x t)
-
--- | Create a substitution from an association list of names and
---   values.
-fromList :: Ord n => [(n, a)] -> Subst n a
-fromList = Subst . M.fromList
-
--- | Convert a substitution into an association list.
-toList :: Subst n a -> [(n, a)]
-toList = M.assocs . getSubst
 
 -- | Look up the value a particular name maps to under the given
 --   substitution; or return @Nothing@ if the name being looked up is

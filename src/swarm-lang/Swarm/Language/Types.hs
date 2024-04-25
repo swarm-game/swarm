@@ -147,17 +147,6 @@ deriveShow1 ''TypeF
 deriveFromJSON1 defaultOptions ''TypeF
 deriveToJSON1 defaultOptions ''TypeF
 
--- -- | Unify two Maps by insisting they must have exactly the same keys,
--- --   and if so, simply matching up corresponding values to be
--- --   recursively unified.  There could be other reasonable
--- --   implementations, but in our case we will use this for unifying
--- --   record types, and we do not have any subtyping, so record types
--- --   will only unify if they have exactly the same keys.
--- instance Ord k => Unifiable (Map k) where
---   zipMatch m1 m2 = do
---     guard $ ((==) `on` M.keysSet) m1 m2
---     pure $ M.merge M.dropMissing M.dropMissing (M.zipWithMatched (\_ a1 a2 -> Right (a1, a2))) m1 m2
-
 -- | @Type@ is now defined as the fixed point of 'TypeF'.  It would be
 --   annoying to manually apply and match against 'Fix' constructors
 --   everywhere, so we provide pattern synonyms that allow us to work

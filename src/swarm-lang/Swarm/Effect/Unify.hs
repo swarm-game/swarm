@@ -3,7 +3,11 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
--- Description: Unification effects
+-- Description: This module defines an effect signature for
+-- computations that support doing unification.  The intention is for
+-- code needing unification to use the operations defined in this
+-- module, and then import 'Swarm.Effect.Unify.Fast' to dispatch the
+-- 'Unification' effects.
 module Swarm.Effect.Unify where
 
 import Control.Algebra
@@ -11,6 +15,7 @@ import Data.Kind (Type)
 import Data.Set (Set)
 import Swarm.Language.Types hiding (Type)
 
+-- | Data type representing available unification operations.
 data Unification (m :: Type -> Type) k where
   Unify :: UType -> UType -> Unification m UType
   ApplyBindings :: UType -> Unification m UType
@@ -21,9 +26,10 @@ data Unification (m :: Type -> Type) k where
 (=:=) :: Has Unification sig m => UType -> UType -> m UType
 t1 =:= t2 = send (Unify t1 t2)
 
--- | Substitute for as many unification variables as are currently
---   bound.  It is guaranteed that we currently have no information
---   about any unification variables remaining in the result.
+-- | Substitute for all the unification variables that are currently
+--   bound.  It is guaranteed that any unification variables remaining
+--   in the result are not currently bound, /i.e./ we have learned no
+--   information about them.
 applyBindings :: Has Unification sig m => UType -> m UType
 applyBindings = send . ApplyBindings
 
