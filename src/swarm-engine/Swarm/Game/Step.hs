@@ -684,7 +684,7 @@ stepCESK cesk = case cesk of
 
         devicesForCaps, requiredDevices :: Set (Set Text)
         -- possible devices to provide each required capability
-        devicesForCaps = S.map (S.fromList . map (^. entityName) . (`deviceForCap` em)) caps
+        devicesForCaps = S.map (S.fromList . map (^. entityName) . (`devicesForCap` em)) caps
         -- outright required devices
         requiredDevices = S.map S.singleton devs
 

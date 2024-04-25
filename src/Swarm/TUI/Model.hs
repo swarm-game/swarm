@@ -117,6 +117,7 @@ import GitHash (GitInfo)
 import Graphics.Vty (ColorMode (..))
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity as E
+import Swarm.Game.Ingredients
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Robot.Context
