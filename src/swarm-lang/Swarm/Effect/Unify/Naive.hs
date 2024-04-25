@@ -57,7 +57,7 @@ instance (Show n, Ord n, Functor f) => Substitutes n (Free f n) (Free f n) where
 --   As one would expect, composition is associative and has 'idS' as
 --   its identity.
 (@@) :: (Ord n, Substitutes n a a) => Subst n a -> Subst n a -> Subst n a
-(Subst s1) @@ (Subst s2) = Subst ((M.map (subst (Subst s1))) s2 `M.union` s1)
+(Subst s1) @@ (Subst s2) = Subst (M.map (subst (Subst s1)) s2 `M.union` s1)
 
 -- | Compose a whole container of substitutions.  For example,
 --   @compose [s1, s2, s3] = s1 \@\@ s2 \@\@ s3@.
@@ -107,7 +107,7 @@ instance Algebra sig m => Algebra (Unification :+: sig) (UnificationC m) where
           t2' = subst s1 t2
       s2 <- unify t1' t2'
       modify (s2 @@)
-      return $ (Right (subst s2 t1') <$ ctx)
+      return $ Right (subst s2 t1') <$ ctx
     L (ApplyBindings t) -> do
       s <- get @(Subst IntVar UType)
       return $ subst s t <$ ctx

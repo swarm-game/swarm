@@ -69,7 +69,7 @@ class Substitutes n b a where
 -- | We can perform substitution on terms built up as the free monad
 --   over a structure functor @f@.
 instance Substitutes IntVar UType UType where
-  subst s f = go S.empty f
+  subst s = go S.empty
    where
     go seen (Pure x) = case lookup x s of
       Nothing -> pure $ Pure x
