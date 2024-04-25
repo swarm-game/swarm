@@ -804,12 +804,12 @@ test-suite swarm-unit
     TestInventory
     TestLSP
     TestLanguagePipeline
-    TestModel
     TestNotification
     TestOrdering
     TestPedagogy
     TestPretty
     TestRecipeCoverage
+    TestRepl
     TestScoring
     TestUtil
 
@@ -824,7 +824,6 @@ test-suite swarm-unit
     hashable,
     lens,
     mtl,
-    swarm,
     tasty >=0.10 && <1.6,
     tasty-expected-failure >=0.12 && <0.13,
     tasty-hunit >=0.10 && <0.11,
@@ -833,6 +832,13 @@ test-suite swarm-unit
     time,
     vty,
     witch,
+
+  build-depends:
+    swarm,
+    swarm:swarm-engine,
+    swarm:swarm-lang,
+    swarm:swarm-scenario,
+    swarm:swarm-util,
 
   hs-source-dirs: test/unit
   default-language: Haskell2010

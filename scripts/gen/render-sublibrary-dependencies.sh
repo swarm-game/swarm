@@ -14,6 +14,6 @@ cd $SCRIPT_DIR/../..
 # Note that "rm -f dist-newstyle/cache/plan.json" is insufficient;
 # we need remove the whole cache:
 rm -r dist-newstyle/cache
-cabal build
+cabal build --dry-run
 
 cabal-plan --hide-global --hide-builtin dot --tred --root swarm | twopi -Tsvg -o docs/image/sublibrary-graph.svg
