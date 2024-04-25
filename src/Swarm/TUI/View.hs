@@ -1253,7 +1253,7 @@ explainCapabilities gs e
           [ hBorderWithLabel (txt "Enabled commands")
           , hCenter
               . vBox
-              . L.intersperse (padTop (Pad 1) . hCenter . txt $ T.replicate 10 "*")
+              . L.intersperse (txt " ") -- Inserts an extra blank line between major "Cost" sections
               $ map drawSingleCapabilityWidget capabilitiesAndCommands
           ]
  where
