@@ -8,7 +8,7 @@
 --
 -- Description: Fast yet purely functional implementation of
 -- unification, using a map as a lazy substitution, i.e. a
--- manually-mainted "functional shared memory".
+-- manually-maintained "functional shared memory".
 --
 -- See Dijkstra, Middelkoop, & Swierstra, "Efficient Functional
 -- Unification and Substitution", Utrecht University tech report
