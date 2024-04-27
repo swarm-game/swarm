@@ -184,13 +184,19 @@ unifyVar ::
 unifyVar x (Pure y) = do
   myv <- lookupS y
   case myv of
-    -- x = y  but the variable y is not bound: just add (x |-> y) to the current Subst
-    Nothing -> modify @(Subst IntVar UType) ((x |-> Pure y) @@) >> pure (Pure y)
+    -- x = y but the variable y is not bound: just add (x |-> y) to
+    -- the current Subst
+    --
+    -- Note, as an optimization we just call e.g. insert x (Pure y)
+    -- instead of building a singleton Subst with @(|->)@ and then
+    -- composing, since composition doesn't need to apply the newly
+    -- created binding to all the other values bound in the Subst.
+    Nothing -> modify @(Subst IntVar UType) (insert x (Pure y)) >> pure (Pure y)
     -- x = y  and y is bound to v: recurse on x = v.
     Just yv -> unify (Pure x) yv
 
 -- x = t for a non-variable t: just add (x |-> t) to the Subst.
-unifyVar x t = modify ((x |-> t) @@) >> pure t
+unifyVar x t = modify (insert x t) >> pure t
 
 -- | Perform unification on two non-variable terms: check that they
 --   have the same top-level constructor and recurse on their

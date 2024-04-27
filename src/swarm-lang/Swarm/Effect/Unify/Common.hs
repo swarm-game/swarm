@@ -45,6 +45,10 @@ idS = Subst M.empty
 (|->) :: n -> a -> Subst n a
 x |-> t = Subst (M.singleton x t)
 
+-- | Insert a new name/value binding into the substitution.
+insert :: Ord n => n -> a -> Subst n a -> Subst n a
+insert n a (Subst m) = Subst (M.insert n a m)
+
 -- | Look up the value a particular name maps to under the given
 --   substitution; or return @Nothing@ if the name being looked up is
 --   not in the domain.
