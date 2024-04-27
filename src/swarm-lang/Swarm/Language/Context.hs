@@ -7,9 +7,10 @@
 -- types, values, or capability sets) used throughout the codebase.
 module Swarm.Language.Context where
 
+import Control.Algebra (Has)
+import Control.Effect.Reader (Reader, local)
 import Control.Lens.Empty (AsEmpty (..))
 import Control.Lens.Prism (prism)
-import Control.Monad.Reader (MonadReader, local)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Data (Data)
 import Data.Map (Map)
@@ -70,10 +71,10 @@ union :: Ctx t -> Ctx t -> Ctx t
 union (Ctx c1) (Ctx c2) = Ctx (c2 `M.union` c1)
 
 -- | Locally extend the context with an additional binding.
-withBinding :: MonadReader (Ctx t) m => Var -> t -> m a -> m a
+withBinding :: Has (Reader (Ctx t)) sig m => Var -> t -> m a -> m a
 withBinding x ty = local (addBinding x ty)
 
 -- | Locally extend the context with an additional context of
 --   bindings.
-withBindings :: MonadReader (Ctx t) m => Ctx t -> m a -> m a
+withBindings :: Has (Reader (Ctx t)) sig m => Ctx t -> m a -> m a
 withBindings ctx = local (`union` ctx)

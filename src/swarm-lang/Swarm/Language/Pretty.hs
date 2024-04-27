@@ -10,10 +10,9 @@
 module Swarm.Language.Pretty where
 
 import Control.Lens.Combinators (pattern Empty)
-import Control.Unification
-import Control.Unification.IntVar
+import Control.Monad.Free (Free (..))
 import Data.Bool (bool)
-import Data.Functor.Fixedpoint (Fix, unFix)
+import Data.Fix
 import Data.List.NonEmpty ((<|))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
@@ -25,6 +24,7 @@ import Data.Text qualified as T
 import Prettyprinter
 import Prettyprinter.Render.String qualified as RS
 import Prettyprinter.Render.Text qualified as RT
+import Swarm.Effect.Unify (UnificationError (..))
 import Swarm.Language.Capability
 import Swarm.Language.Context
 import Swarm.Language.Parse (getLocRange)
@@ -136,16 +136,16 @@ instance UnchainableFun Type where
   unchainFun (a :->: ty) = a <| unchainFun ty
   unchainFun ty = pure ty
 
-instance UnchainableFun (UTerm TypeF ty) where
-  unchainFun (UTerm (TyFunF ty1 ty2)) = ty1 <| unchainFun ty2
+instance UnchainableFun (Free TypeF ty) where
+  unchainFun (Free (TyFunF ty1 ty2)) = ty1 <| unchainFun ty2
   unchainFun ty = pure ty
 
 instance (PrettyPrec (t (Fix t))) => PrettyPrec (Fix t) where
   prettyPrec p = prettyPrec p . unFix
 
-instance (PrettyPrec (t (UTerm t v)), PrettyPrec v) => PrettyPrec (UTerm t v) where
-  prettyPrec p (UTerm t) = prettyPrec p t
-  prettyPrec p (UVar v) = prettyPrec p v
+instance (PrettyPrec (t (Free t v)), PrettyPrec v) => PrettyPrec (Free t v) where
+  prettyPrec p (Free t) = prettyPrec p t
+  prettyPrec p (Pure v) = prettyPrec p v
 
 instance ((UnchainableFun t), (PrettyPrec t)) => PrettyPrec (TypeF t) where
   prettyPrec _ (TyBaseF b) = ppr b
@@ -331,8 +331,7 @@ prettyTypeErr code (CTE l tcStack te) =
 
 instance PrettyPrec TypeErr where
   prettyPrec _ = \case
-    UnifyErr ty1 ty2 ->
-      "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
+    UnificationErr ue -> ppr ue
     Mismatch Nothing (getJoin -> (ty1, ty2)) ->
       "Type mismatch: expected" <+> ppr ty1 <> ", but got" <+> ppr ty2
     Mismatch (Just t) (getJoin -> (ty1, ty2)) ->
@@ -349,8 +348,6 @@ instance PrettyPrec TypeErr where
       "Skolem variable" <+> pretty x <+> "would escape its scope"
     UnboundVar x ->
       "Unbound variable" <+> pretty x
-    Infinite x uty ->
-      "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
     DefNotTopLevel t ->
       "Definitions may only be at the top level:" <+> pprCode t
     CantInfer t ->
@@ -366,6 +363,13 @@ instance PrettyPrec TypeErr where
    where
     pprCode :: PrettyPrec a => a -> Doc ann
     pprCode = bquote . ppr
+
+instance PrettyPrec UnificationError where
+  prettyPrec _ = \case
+    Infinite x uty ->
+      "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
+    UnifyErr ty1 ty2 ->
+      "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
 
 -- | Given a type and its source, construct an appropriate description
 --   of it to go in a type mismatch error message.
@@ -385,11 +389,11 @@ hasAnyUVars = ucata (const True) or
 -- | Check whether a type consists of a top-level type constructor
 --   immediately applied to unification variables.
 isTopLevelConstructor :: UType -> Maybe (TypeF ())
-isTopLevelConstructor (UTyCmd (UVar {})) = Just $ TyCmdF ()
-isTopLevelConstructor (UTyDelay (UVar {})) = Just $ TyDelayF ()
-isTopLevelConstructor (UTySum (UVar {}) (UVar {})) = Just $ TySumF () ()
-isTopLevelConstructor (UTyProd (UVar {}) (UVar {})) = Just $ TyProdF () ()
-isTopLevelConstructor (UTyFun (UVar {}) (UVar {})) = Just $ TyFunF () ()
+isTopLevelConstructor (UTyCmd (Pure {})) = Just $ TyCmdF ()
+isTopLevelConstructor (UTyDelay (Pure {})) = Just $ TyDelayF ()
+isTopLevelConstructor (UTySum (Pure {}) (Pure {})) = Just $ TySumF () ()
+isTopLevelConstructor (UTyProd (Pure {}) (Pure {})) = Just $ TyProdF () ()
+isTopLevelConstructor (UTyFun (Pure {}) (Pure {})) = Just $ TyFunF () ()
 isTopLevelConstructor _ = Nothing
 
 -- | Return an English noun phrase describing things with the given

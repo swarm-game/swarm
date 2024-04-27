@@ -64,7 +64,6 @@ flag ci
 common common
   if flag(ci)
     ghc-options: -Werror
-
   ghc-options:
     -Wall
     -Wcompat
@@ -90,32 +89,36 @@ common ghc2021-extensions
   default-extensions:
     -- Note we warn on prequalified
     -- Not GHC2021, but until we get \cases we use \case a lot
-    MultiParamTypeClasses
-    RankNTypes
-    ScopedTypeVariables
+    BangPatterns
+    DeriveAnyClass
+    DeriveDataTypeable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    ExplicitForAll
     FlexibleContexts
     FlexibleInstances
-    BangPatterns
-    StandaloneDeriving
-    TypeOperators
     GADTSyntax
-    DeriveDataTypeable
-    DeriveGeneric
-    TupleSections
-    LambdaCase
-    ExplicitForAll
-    DeriveFunctor
-    DeriveTraversable
-    DeriveAnyClass
-    TypeApplications
-    NumericUnderscores
     ImportQualifiedPost
+    LambdaCase
+    MultiParamTypeClasses
+    NumericUnderscores
+    RankNTypes
+    ScopedTypeVariables
+    StandaloneDeriving
+    TupleSections
+    TypeApplications
+    TypeOperators
 
 library swarm-lang
   import: stan-config, common, ghc2021-extensions
   visibility: public
   -- cabal-gild: discover src/swarm-lang
   exposed-modules:
+    Swarm.Effect.Unify
+    Swarm.Effect.Unify.Common
+    Swarm.Effect.Unify.Fast
+    Swarm.Effect.Unify.Naive
     Swarm.Language.Capability
     Swarm.Language.Context
     Swarm.Language.Direction
@@ -135,7 +138,6 @@ library swarm-lang
     Swarm.Language.Syntax.CommandMetadata
     Swarm.Language.Text.Markdown
     Swarm.Language.Typecheck
-    Swarm.Language.Typecheck.Unify
     Swarm.Language.Typed
     Swarm.Language.Types
     Swarm.Language.Value
@@ -148,7 +150,11 @@ library swarm-lang
     commonmark >=0.2 && <0.3,
     commonmark-extensions >=0.2 && <0.3,
     containers,
+    data-fix >=0.3 && <0.4,
+    deriving-compat >=0.6 && <0.7,
     extra,
+    free >=5.2 && <5.3,
+    fused-effects,
     hashable,
     lens,
     lsp >=2.4 && <2.5,
@@ -161,8 +167,6 @@ library swarm-lang
     template-haskell,
     text,
     text-rope >=0.2 && <0.3,
-    transformers,
-    unification-fd >=0.11 && <0.12,
     vector,
     vty,
     witch,
@@ -689,7 +693,6 @@ library
     Swarm.Language.Syntax.CommandMetadata,
     Swarm.Language.Text.Markdown,
     Swarm.Language.Typecheck,
-    Swarm.Language.Typecheck.Unify,
     Swarm.Language.Typed,
     Swarm.Language.Types,
     Swarm.Language.Value,
