@@ -8,9 +8,11 @@
 module TestRecipeCoverage where
 
 import Control.Lens ((^.))
+import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Set qualified as Set
 import Data.Text qualified as T
+import Swarm.Game.Device
 import Swarm.Game.Entity (EntityMap (entitiesByCap), entityName)
 import Swarm.Game.Land
 import Swarm.Game.Recipe (recipeOutputs)
@@ -43,7 +45,7 @@ testDeviceRecipeCoverage gsi =
 
     -- Only include entities that grant a capability:
     entityNames =
-      Set.fromList . map (^. entityName) . concat . M.elems . entitiesByCap $
+      Set.fromList . map ((^. entityName) . device) . concatMap NE.toList . M.elems . getMap . entitiesByCap $
         initEntityTerrain (gsiScenarioInputs gsi) ^. entityMap
 
     getOutputsForRecipe r = map ((^. entityName) . snd) $ r ^. recipeOutputs

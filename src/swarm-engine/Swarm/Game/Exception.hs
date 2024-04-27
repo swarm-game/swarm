@@ -9,6 +9,7 @@ module Swarm.Game.Exception (
   Exn (..),
   IncapableFix (..),
   formatExn,
+  IncapableFixWords (..),
 
   -- * Helper functions
   formatIncapable,
@@ -25,7 +26,7 @@ import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Swarm.Constant
 import Swarm.Game.Achievement.Definitions
-import Swarm.Game.Entity (EntityMap, deviceForCap, entityName)
+import Swarm.Game.Entity (EntityMap, devicesForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Requirement (Requirements (..))
@@ -54,7 +55,9 @@ data IncapableFix
   = -- | 'Swarm.Language.Syntax.Equip' the missing device on yourself/target
     FixByEquip
   | -- | Add the missing device to your inventory
-    FixByObtain
+    FixByObtainDevice
+  | -- | Add the missing consumables to your inventory
+    FixByObtainConsumables
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 -- | The type of exceptions that can be thrown by robot programs.
@@ -99,11 +102,18 @@ formatExn em = \case
 -- INCAPABLE HELPERS
 -- ------------------------------------------------------------------
 
--- | Pretty-print an 'IncapableFix': either "equip" or "obtain".
-formatIncapableFix :: IncapableFix -> Text
+data IncapableFixWords = IncapableFixWords
+  { fixVerb :: Text
+  , fixNoun :: Text
+  }
+
+-- | Pretty-print an 'IncapableFix': either "equip device",
+-- "obtain device", or "obtain consumables".
+formatIncapableFix :: IncapableFix -> IncapableFixWords
 formatIncapableFix = \case
-  FixByEquip -> "equip"
-  FixByObtain -> "obtain"
+  FixByEquip -> IncapableFixWords "equip" "device"
+  FixByObtainDevice -> IncapableFixWords "obtain" "device"
+  FixByObtainConsumables -> IncapableFixWords "obtain" "consumables"
 
 -- | Pretty print the incapable exception with an actionable suggestion
 --   on how to fix it.
@@ -156,12 +166,13 @@ formatIncapable em f (Requirements caps _ inv) tm
              , swarmRepoUrl <> "issues/26"
              ]
   | not (S.null caps) =
-      unlinesExText
-        ( "You do not have the devices required for:"
-            :| squote (prettyText tm)
-            : "Please " <> formatIncapableFix f <> ":"
-            : (("- " <>) . formatDevices <$> filter (not . null) deviceSets)
-        )
+      let IncapableFixWords fVerb fNoun = formatIncapableFix f
+       in unlinesExText
+            ( T.unwords ["You do not have the", fNoun, "required for:"]
+                :| squote (prettyText tm)
+                : "Please " <> fVerb <> ":"
+                : (("- " <>) . formatDevices <$> filter (not . null) deviceSets)
+            )
   | otherwise =
       unlinesExText
         ( "You are missing required inventory for:"
@@ -171,7 +182,7 @@ formatIncapable em f (Requirements caps _ inv) tm
         )
  where
   capList = S.toList caps
-  deviceSets = map (`deviceForCap` em) capList
+  deviceSets = map (`devicesForCap` em) capList
   devicePerCap = zip capList deviceSets
   -- capabilities not provided by any device
   capsNone = map (capabilityName . fst) $ filter (null . snd) devicePerCap

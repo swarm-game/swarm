@@ -109,6 +109,6 @@ testInventory =
         )
     ]
  where
-  x = E.mkEntity (defaultEntityDisplay 'X') "fooX" mempty [] []
-  y = E.mkEntity (defaultEntityDisplay 'Y') "fooY" mempty [] []
-  z = E.mkEntity (defaultEntityDisplay 'Z') "fooZ" mempty [] []
+  x = E.mkEntity (defaultEntityDisplay 'X') "fooX" mempty [] mempty
+  y = E.mkEntity (defaultEntityDisplay 'Y') "fooY" mempty [] mempty
+  z = E.mkEntity (defaultEntityDisplay 'Z') "fooZ" mempty [] mempty

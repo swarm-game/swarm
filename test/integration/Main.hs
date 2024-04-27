@@ -11,9 +11,9 @@ module Main where
 
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
-import Control.Lens (Ixed (ix), at, to, use, view, (&), (.~), (<>~), (^.), (^..), (^?), (^?!))
+import Control.Lens (Ixed (ix), at, to, view, (&), (.~), (<>~), (^.), (^..), (^?), (^?!))
 import Control.Monad (forM_, unless, when)
-import Control.Monad.State (StateT, execStateT, gets)
+import Control.Monad.State (execStateT)
 import Data.Char (isSpace)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (Foldable (toList), find)
@@ -21,14 +21,12 @@ import Data.IntSet qualified as IS
 import Data.List (partition)
 import Data.Map qualified as M
 import Data.Maybe (isJust)
-import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Doc.Keyword (EditorType (..))
 import Swarm.Doc.Keyword qualified as Keyword
-import Swarm.Effect (runTimeIO)
 import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Entity (lookupByName)
@@ -46,7 +44,6 @@ import Swarm.Game.State (
   pathCaching,
   robotInfo,
   temporal,
-  winCondition,
   winSolution,
  )
 import Swarm.Game.State.Robot (
@@ -60,15 +57,12 @@ import Swarm.Game.State.Runtime (
   stdGameConfigInputs,
  )
 import Swarm.Game.State.Substate (
-  WinCondition (WinConditions),
-  WinStatus (Won),
   gameAchievements,
   initState,
   messageQueue,
   notificationsContent,
   ticks,
  )
-import Swarm.Game.Step (gameTick)
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Tick (getTickNumber)
 import Swarm.Language.Context qualified as Ctx
@@ -86,6 +80,7 @@ import Swarm.TUI.Model.UI (UIState)
 import Swarm.Util (acquireAllWithExt)
 import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
+import Swarm.Web.Tournament.Validate
 import System.FilePath.Posix (splitDirectories)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
@@ -370,6 +365,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/1631-tags"
         , testSolution Default "Testing/1747-volume-command"
         , testSolution Default "Testing/1775-custom-terrain"
+        , testSolution Default "Testing/1777-capability-cost"
         , testGroup
             -- Note that the description of the classic world in
             -- data/worlds/classic.yaml (automatically tested to some
@@ -501,7 +497,9 @@ testScenarioSolutions rs ui =
             Just g -> do
               -- When debugging, try logging all robot messages.
               -- printAllLogs
-              when (shouldCheckBadErrors == CheckForBadErrors) $ noBadErrors g
+              when (shouldCheckBadErrors == CheckForBadErrors) $ case noBadErrors g of
+                Left x -> assertFailure $ T.unpack x
+                _ -> return ()
               verify g
 
   tutorialHasLog :: GameState -> Assertion
@@ -512,30 +510,11 @@ testScenarioSolutions rs ui =
   testTutorialSolution t f = testSolution' t f CheckForBadErrors tutorialHasLog
   testTutorialSolution' t f s v = testSolution' t f s $ \g -> tutorialHasLog g >> v g
 
-  playUntilWin :: StateT GameState IO ()
-  playUntilWin = do
-    w <- use winCondition
-    b <- gets badErrorsInLogs
-    when (null b) $ case w of
-      WinConditions (Won _ _) _ -> return ()
-      _ -> runTimeIO gameTick >> playUntilWin
-
-noBadErrors :: GameState -> Assertion
-noBadErrors g = do
-  let bad = badErrorsInLogs g
-  unless (null bad) (assertFailure . T.unpack . T.unlines . take 5 $ nubOrd bad)
-
-badErrorsInLogs :: GameState -> [Text]
-badErrorsInLogs g =
-  concatMap
-    (\r -> filter isBad (seqToTexts $ r ^. robotLog))
-    (g ^. robotInfo . robotMap)
-    <> filter isBad (seqToTexts $ g ^. messageInfo . messageQueue)
+noBadErrors :: GameState -> Either T.Text ()
+noBadErrors g =
+  unless (null bad) (Left . T.unlines . take 5 $ nubOrd bad)
  where
-  isBad m = "Fatal error:" `T.isInfixOf` m || "swarm/issues" `T.isInfixOf` m
-
-seqToTexts :: Seq LogEntry -> [Text]
-seqToTexts = map (view leText) . toList
+  bad = badErrorsInLogs g
 
 printAllLogs :: GameState -> IO ()
 printAllLogs g =

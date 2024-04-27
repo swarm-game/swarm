@@ -187,11 +187,13 @@ library swarm-scenario
   exposed-modules:
     Swarm.Constant
     Swarm.Game.Achievement.Definitions
+    Swarm.Game.Device
     Swarm.Game.Display
     Swarm.Game.Entity
     Swarm.Game.Entity.Cosmetic
     Swarm.Game.Entity.Cosmetic.Assignment
     Swarm.Game.Failure
+    Swarm.Game.Ingredients
     Swarm.Game.Land
     Swarm.Game.Location
     Swarm.Game.Recipe
@@ -433,6 +435,56 @@ library swarm-web
     -- See discussion in #415
     StrictData
 
+library swarm-tournament
+  import: stan-config, common, ghc2021-extensions
+  visibility: public
+  -- cabal-gild: discover src/swarm-tournament
+  exposed-modules:
+    Swarm.Web.Tournament
+    Swarm.Web.Tournament.Database.Query
+    Swarm.Web.Tournament.Type
+    Swarm.Web.Tournament.Validate
+    Swarm.Web.Tournament.Validate.FailureMode
+    Swarm.Web.Tournament.Validate.Upload
+
+  other-modules: Paths_swarm
+  autogen-modules: Paths_swarm
+  build-depends:
+    MissingH,
+    SHA,
+    aeson,
+    base,
+    bytestring,
+    commonmark,
+    containers,
+    extra,
+    fused-effects,
+    http-types,
+    lens,
+    mtl,
+    postgresql-simple >=0.7 && <0.7.1,
+    process,
+    servant-docs,
+    servant-multipart,
+    servant-server >=0.19 && <0.21,
+    text,
+    time,
+    transformers,
+    wai >=3.2 && <3.3,
+    wai-app-static >=3.1.8 && <3.1.9,
+    wai-extra,
+    warp,
+    yaml,
+
+  build-depends:
+    swarm:swarm-engine,
+    swarm:swarm-lang,
+    swarm:swarm-scenario,
+    swarm:swarm-util,
+
+  hs-source-dirs: src/swarm-tournament
+  default-language: Haskell2010
+
 library swarm-util
   import: stan-config, common, ghc2021-extensions
   visibility: public
@@ -536,12 +588,14 @@ library
     Swarm.Game.Achievement.Description,
     Swarm.Game.Achievement.Persistence,
     Swarm.Game.CESK,
+    Swarm.Game.Device,
     Swarm.Game.Display,
     Swarm.Game.Entity,
     Swarm.Game.Entity.Cosmetic,
     Swarm.Game.Entity.Cosmetic.Assignment,
     Swarm.Game.Exception,
     Swarm.Game.Failure,
+    Swarm.Game.Ingredients,
     Swarm.Game.Land,
     Swarm.Game.Location,
     Swarm.Game.Recipe,
@@ -792,6 +846,25 @@ executable swarm-docs
   ghc-options: -threaded
   default-extensions: ImportQualifiedPost
 
+executable swarm-host-tournament
+  import: stan-config, common, ghc2021-extensions
+  main-is: Main.hs
+  build-depends:
+    base,
+    optparse-applicative >=0.16 && <0.19,
+    transformers,
+    unix,
+    warp,
+
+  build-depends:
+    swarm:swarm-engine,
+    swarm:swarm-tournament,
+
+  hs-source-dirs: app/tournament
+  default-language: Haskell2010
+  ghc-options: -threaded
+  default-extensions: ImportQualifiedPost
+
 test-suite swarm-unit
   import: stan-config, common, ghc2021-extensions
   main-is: Main.hs
@@ -803,12 +876,12 @@ test-suite swarm-unit
     TestInventory
     TestLSP
     TestLanguagePipeline
-    TestModel
     TestNotification
     TestOrdering
     TestPedagogy
     TestPretty
     TestRecipeCoverage
+    TestRepl
     TestScoring
     TestUtil
 
@@ -823,7 +896,6 @@ test-suite swarm-unit
     hashable,
     lens,
     mtl,
-    swarm,
     tasty >=0.10 && <1.6,
     tasty-expected-failure >=0.12 && <0.13,
     tasty-hunit >=0.10 && <0.11,
@@ -832,6 +904,13 @@ test-suite swarm-unit
     time,
     vty,
     witch,
+
+  build-depends:
+    swarm,
+    swarm:swarm-engine,
+    swarm:swarm-lang,
+    swarm:swarm-scenario,
+    swarm:swarm-util,
 
   hs-source-dirs: test/unit
   default-language: Haskell2010
@@ -849,7 +928,6 @@ test-suite swarm-integration
     fused-effects,
     lens,
     mtl,
-    swarm,
     tasty >=0.10 && <1.6,
     tasty-expected-failure >=0.12 && <0.13,
     tasty-hunit >=0.10 && <0.11,
@@ -857,7 +935,34 @@ test-suite swarm-integration
     witch,
     yaml,
 
+  build-depends:
+    swarm,
+    swarm:swarm-tournament,
+
   hs-source-dirs: test/integration
+  default-language: Haskell2010
+  ghc-options: -threaded
+
+test-suite tournament-host
+  import: stan-config, common, ghc2021-extensions
+  main-is: Main.hs
+  type: exitcode-stdio-1.0
+  build-depends:
+    SHA,
+    base,
+    bytestring,
+    http-client,
+    http-types,
+    nonempty-containers,
+    tasty,
+    tasty-hunit,
+    warp,
+
+  build-depends:
+    swarm:swarm-engine,
+    swarm:swarm-tournament,
+
+  hs-source-dirs: test/tournament-host
   default-language: Haskell2010
   ghc-options: -threaded
 

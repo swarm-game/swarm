@@ -91,7 +91,7 @@ import Swarm.Game.State.Robot
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Step (finishGameTick, gameTick)
-import Swarm.Language.Capability (Capability (CDebug, CGod, CMake), constCaps)
+import Swarm.Language.Capability (Capability (CGod, CMake), constCaps)
 import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
 import Swarm.Language.Module
@@ -309,7 +309,7 @@ handleMainEvent ev = do
   let isRunning = maybe True isRunningModal mt
   let isPaused = s ^. gameState . temporal . paused
   let isCreative = s ^. gameState . creativeMode
-  let hasDebug = fromMaybe isCreative $ s ^? gameState . to focusedRobot . _Just . robotCapabilities . Lens.contains CDebug
+  let hasDebug = hasDebugCapability isCreative s
   case ev of
     AppEvent ae -> case ae of
       Frame
