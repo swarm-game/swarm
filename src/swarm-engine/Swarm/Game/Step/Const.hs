@@ -1363,7 +1363,7 @@ execConst runChildProg c vs s k = do
     T.unlines
       [ "Bad application of execConst:"
       , T.pack (show c)
-      , T.pack (show (reverse vs))
+      , T.pack (show vs)
       , prettyText (Out (VCApp c (reverse vs)) s k)
       ]
 
