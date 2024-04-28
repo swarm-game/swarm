@@ -938,7 +938,6 @@ test-suite swarm-integration
     yaml,
 
   build-depends: swarm
-
   hs-source-dirs: test/integration
   default-language: Haskell2010
   ghc-options: -threaded
