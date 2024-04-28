@@ -826,7 +826,7 @@ helpWidget theSeed mport =
     , ("Ctrl-o", "single step")
     , ("Ctrl-z", "decrease speed")
     , ("Ctrl-w", "increase speed")
-    , ("Ctrl-q", "quit the current scenario")
+    , ("Ctrl-q", "quit or restart the current scenario")
     , ("Ctrl-s", "collapse/expand REPL")
     , ("Meta-h", "hide robots for 2s")
     , ("Meta-w", "focus on the world map")

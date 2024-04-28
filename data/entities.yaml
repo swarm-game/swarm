@@ -356,7 +356,10 @@
       The infix operator `++ : text -> text -> text`{=snippet}
       can be used to concatenate two text values.  For example,
     - |
-      "Number of widgets: " ++ format numWidgets
+      ```
+      let numWidgets = 42
+      in "Number of widgets: " ++ format numWidgets
+      ```
   properties: [pickable]
   capabilities: [concat]
 - name: caliper
