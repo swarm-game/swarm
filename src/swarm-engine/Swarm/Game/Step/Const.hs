@@ -829,7 +829,7 @@ execConst runChildProg c vs s k = do
         return $ mkReturn ()
       _ -> badConst
     Appear -> case vs of
-      [VText app, VInj hasAttr (VText attr)] -> do
+      [VText app, VInj hasAttr mattr] -> do
         -- Set the robot's display character(s)
         case into @String app of
           [dc] -> do
@@ -853,7 +853,9 @@ execConst runChildProg c vs s k = do
               ]
 
         -- Possibly set the display attribute
-        when hasAttr $ robotDisplay . displayAttr .= readAttribute attr
+        case (hasAttr, mattr) of
+          (True, VText attr) -> robotDisplay . displayAttr .= readAttribute attr
+          _ -> return ()
 
         flagRedraw
         return $ mkReturn ()
