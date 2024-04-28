@@ -2,9 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-
--- For 'Ord IntVar' instance
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -29,17 +26,11 @@ module Swarm.Language.Typecheck (
   LocatedTCFrame (..),
   TCStack,
   withFrame,
-  getTCStack,
 
   -- * Typechecking monad
-  TC,
-  runTC,
   fresh,
 
   -- * Unification
-  substU,
-  unify,
-  HasBindings (..),
   instantiate,
   skolemize,
   generalize,
@@ -54,24 +45,17 @@ module Swarm.Language.Typecheck (
 ) where
 
 import Control.Arrow ((***))
+import Control.Carrier.Error.Either (ErrorC, runError)
+import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Category ((>>>))
+import Control.Effect.Catch (Catch, catchError)
+import Control.Effect.Error (Error)
+import Control.Effect.Reader
+import Control.Effect.Throw
 import Control.Lens ((^.))
 import Control.Lens.Indexed (itraverse)
-import Control.Monad (forM_, void, when, (<=<))
-import Control.Monad.Except (
-  ExceptT,
-  MonadError (catchError, throwError),
-  runExceptT,
- )
-import Control.Monad.Reader (
-  MonadReader (ask, local),
-  ReaderT (runReaderT),
-  mapReaderT,
- )
-import Control.Monad.Trans.Class (MonadTrans (lift))
-import Control.Unification hiding (applyBindings, unify, (=:=))
-import Control.Unification qualified as U
-import Control.Unification.IntVar
+import Control.Monad (forM_, when, (<=<), (>=>))
+import Control.Monad.Free (Free (..))
 import Data.Data (Data, gmapM)
 import Data.Foldable (fold)
 import Data.Functor.Identity
@@ -82,12 +66,14 @@ import Data.Maybe
 import Data.Set (Set, (\\))
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Swarm.Effect.Unify (Unification, UnificationError, (=:=))
+import Swarm.Effect.Unify qualified as U
+import Swarm.Effect.Unify.Fast qualified as U
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Module
 import Swarm.Language.Parse.QQ (tyQ)
 import Swarm.Language.Syntax
-import Swarm.Language.Typecheck.Unify
 import Swarm.Language.Types
 import Prelude hiding (lookup)
 
@@ -112,6 +98,10 @@ data LocatedTCFrame = LocatedTCFrame SrcLoc TCFrame
 -- | A typechecking stack keeps track of what we are currently in the
 --   middle of doing during typechecking.
 type TCStack = [LocatedTCFrame]
+
+-- | Push a frame on the typechecking stack.
+withFrame :: Has (Reader TCStack) sig m => SrcLoc -> TCFrame -> m a -> m a
+withFrame l f = local (LocatedTCFrame l f :)
 
 ------------------------------------------------------------
 -- Type source
@@ -155,67 +145,84 @@ getJoin :: Join a -> (a, a)
 getJoin (Join j) = (j Expected, j Actual)
 
 ------------------------------------------------------------
--- Type checking monad
+-- Type checking
 
--- | The concrete monad used for type checking.  'IntBindingT' is a
---   monad transformer provided by the @unification-fd@ library which
---   supports various operations such as generating fresh variables
---   and unifying things.
---
---   Note that we are sort of constrained to use a concrete monad stack by
---   @unification-fd@, which has some strange types on some of its exported
---   functions that actually require various monad transformers to be stacked
---   in certain ways.  For example, see <https://hackage.haskell.org/package/unification-fd-0.11.2/docs/Control-Unification.html#v:unify>.  I don't really see a way
---   to use "capability style" like we do elsewhere in the codebase.
-type TC = ReaderT UCtx (ReaderT TCStack (ExceptT ContextualTypeErr (IntBindingT TypeF Identity)))
+fromUModule ::
+  ( Has Unification sig m
+  , Has (Reader UCtx) sig m
+  , Has (Throw ContextualTypeErr) sig m
+  ) =>
+  UModule ->
+  m TModule
+fromUModule (Module u uctx) =
+  Module
+    <$> mapM (checkPredicative <=< (fmap fromU . generalize)) u
+    <*> checkPredicative (fromU uctx)
 
--- | Push a frame on the typechecking stack within a local 'TC'
---   computation.
-withFrame :: SrcLoc -> TCFrame -> TC a -> TC a
-withFrame l f = mapReaderT (local (LocatedTCFrame l f :))
+finalizeUModule ::
+  ( Has Unification sig m
+  , Has (Reader UCtx) sig m
+  , Has (Throw ContextualTypeErr) sig m
+  ) =>
+  UModule ->
+  m TModule
+finalizeUModule = applyBindings >=> fromUModule
 
--- | Get the current typechecking stack.
-getTCStack :: TC TCStack
-getTCStack = lift ask
-
-------------------------------------------------------------
+-- | Version of 'runTC' which is generic in the base monad.
+runTC' ::
+  Algebra sig m =>
+  TCtx ->
+  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC m))) UModule ->
+  m (Either ContextualTypeErr TModule)
+runTC' ctx =
+  (>>= finalizeUModule)
+    >>> runReader (toU ctx)
+    >>> runReader []
+    >>> runError
+    >>> U.runUnification
+    >>> fmap reportUnificationError
 
 -- | Run a top-level inference computation, returning either a
---   'TypeErr' or a fully resolved 'TModule'.
-runTC :: TCtx -> TC UModule -> Either ContextualTypeErr TModule
-runTC ctx =
-  (>>= applyBindings)
-    >>> ( >>=
-            \(Module u uctx) ->
-              Module
-                <$> mapM (checkPredicative <=< (fmap fromU . generalize)) u
-                <*> checkPredicative (fromU uctx)
-        )
-    >>> flip runReaderT (toU ctx)
-    >>> flip runReaderT []
-    >>> runExceptT
-    >>> evalIntBindingT
-    >>> runIdentity
+--   'ContextualTypeErr' or a fully resolved 'TModule'.
+runTC ::
+  TCtx ->
+  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC Identity))) UModule ->
+  Either ContextualTypeErr TModule
+runTC tctx = runTC' tctx >>> runIdentity
 
-checkPredicative :: Maybe a -> TC a
+checkPredicative :: Has (Throw ContextualTypeErr) sig m => Maybe a -> m a
 checkPredicative = maybe (throwError (mkRawTypeErr Impredicative)) pure
+
+reportUnificationError :: Either UnificationError (Either ContextualTypeErr a) -> Either ContextualTypeErr a
+reportUnificationError = either (Left . mkRawTypeErr . UnificationErr) id
 
 -- | Look up a variable in the ambient type context, either throwing
 --   an 'UnboundVar' error if it is not found, or opening its
 --   associated 'UPolytype' with fresh unification variables via
 --   'instantiate'.
-lookup :: SrcLoc -> Var -> TC UType
+lookup ::
+  ( Has (Throw ContextualTypeErr) sig m
+  , Has (Reader TCStack) sig m
+  , Has (Reader UCtx) sig m
+  , Has Unification sig m
+  ) =>
+  SrcLoc ->
+  Var ->
+  m UType
 lookup loc x = do
-  ctx <- getCtx
+  ctx <- ask @UCtx
   maybe (throwTypeErr loc $ UnboundVar x) instantiate (Ctx.lookup x ctx)
-
--- | Get the current type context.
-getCtx :: TC UCtx
-getCtx = ask
 
 -- | Catch any thrown type errors and re-throw them with an added source
 --   location.
-addLocToTypeErr :: SrcLoc -> TC a -> TC a
+addLocToTypeErr ::
+  ( Has (Throw ContextualTypeErr) sig m
+  , Has (Catch ContextualTypeErr) sig m
+  , Has (Reader TCStack) sig m
+  ) =>
+  SrcLoc ->
+  m a ->
+  m a
 addLocToTypeErr l m =
   m `catchError` \case
     CTE NoLoc _ te -> throwTypeErr l te
@@ -225,30 +232,25 @@ addLocToTypeErr l m =
 -- Dealing with variables: free variables, fresh variables,
 -- substitution
 
--- | @unification-fd@ does not provide an 'Ord' instance for 'IntVar',
---   so we must provide our own, in order to be able to store
---   'IntVar's in a 'Set'.
-deriving instance Ord IntVar
-
 -- | A class for getting the free unification variables of a thing.
-class FreeVars a where
-  freeVars :: a -> TC (Set IntVar)
+class FreeUVars a where
+  freeUVars :: Has Unification sig m => a -> m (Set IntVar)
 
 -- | We can get the free unification variables of a 'UType'.
-instance FreeVars UType where
-  freeVars ut = fmap S.fromList . lift . lift . lift $ getFreeVars ut
+instance FreeUVars UType where
+  freeUVars = U.freeUVars
 
 -- | We can also get the free variables of a polytype.
-instance (FreeVars t) => FreeVars (Poly t) where
-  freeVars (Forall _ t) = freeVars t
+instance (FreeUVars t) => FreeUVars (Poly t) where
+  freeUVars (Forall _ t) = freeUVars t
 
 -- | We can get the free variables in any polytype in a context.
-instance FreeVars UCtx where
-  freeVars = fmap S.unions . mapM freeVars . M.elems . unCtx
+instance FreeUVars UCtx where
+  freeUVars = fmap S.unions . mapM freeUVars . M.elems . unCtx
 
 -- | Generate a fresh unification variable.
-fresh :: TC UType
-fresh = UVar <$> (lift . lift . lift $ freeVar)
+fresh :: Has Unification sig m => m UType
+fresh = Pure <$> U.freshIntVar
 
 -- | Perform a substitution over a 'UType', substituting for both type
 --   and unification variables.  Note that since 'UType's do not have
@@ -257,14 +259,21 @@ fresh = UVar <$> (lift . lift . lift $ freeVar)
 substU :: Map (Either Var IntVar) UType -> UType -> UType
 substU m =
   ucata
-    (\v -> fromMaybe (UVar v) (M.lookup (Right v) m))
+    (\v -> fromMaybe (Pure v) (M.lookup (Right v) m))
     ( \case
         TyVarF v -> fromMaybe (UTyVar v) (M.lookup (Left v) m)
-        f -> UTerm f
+        f -> Free f
     )
 
 -- | Make sure no skolem variables escape.
-noSkolems :: SrcLoc -> UPolytype -> TC ()
+noSkolems ::
+  ( Has Unification sig m
+  , Has (Reader TCStack) sig m
+  , Has (Throw ContextualTypeErr) sig m
+  ) =>
+  SrcLoc ->
+  Poly UType ->
+  m ()
 noSkolems l (Forall xs upty) = do
   upty' <- applyBindings upty
   let tyvs =
@@ -285,41 +294,33 @@ noSkolems l (Forall xs upty) = do
 -- doing the throwTypeErr either zero or one time, depending on
 -- whether lookupMin returns Nothing or Just.
 
-------------------------------------------------------------
--- Lifted stuff from unification-fd
-
-infix 4 =:=
-
 -- | @unify t expTy actTy@ ensures that the given two types are equal.
 --   If we know the actual term @t@ which is supposed to have these
 --   types, we can use it to generate better error messages.
---
---   We first do a quick-and-dirty check to see whether we know for
---   sure the types either are or cannot be equal, generating an
---   equality constraint for the unifier as a last resort.
-unify :: Maybe Syntax -> TypeJoin -> TC UType
-unify ms j = case unifyCheck expected actual of
-  Apart -> throwTypeErr NoLoc $ Mismatch ms j
-  Equal -> return expected
-  MightUnify -> lift . lift $ expected U.=:= actual
+unify ::
+  ( Has Unification sig m
+  , Has (Throw ContextualTypeErr) sig m
+  , Has (Reader TCStack) sig m
+  ) =>
+  Maybe Syntax ->
+  TypeJoin ->
+  m UType
+unify ms j = do
+  res <- expected =:= actual
+  case res of
+    Left _ -> throwTypeErr NoLoc $ Mismatch ms j
+    Right ty -> return ty
  where
   (expected, actual) = getJoin j
 
--- | Ensure two types are the same.
-(=:=) :: UType -> UType -> TC UType
-ty1 =:= ty2 = unify Nothing (joined ty1 ty2)
-
--- | @unification-fd@ provides a function 'U.applyBindings' which
---   fully substitutes for any bound unification variables (for
---   efficiency, it does not perform such substitution as it goes
---   along).  The 'HasBindings' class is for anything which has
+-- | The 'HasBindings' class is for anything which has
 --   unification variables in it and to which we can usefully apply
---   'U.applyBindings'.
+--   'applyBindings'.
 class HasBindings u where
-  applyBindings :: u -> TC u
+  applyBindings :: Has Unification sig m => u -> m u
 
 instance HasBindings UType where
-  applyBindings = lift . lift . U.applyBindings
+  applyBindings = U.applyBindings
 
 instance HasBindings UPolytype where
   applyBindings (Forall xs u) = Forall xs <$> applyBindings u
@@ -336,13 +337,13 @@ instance (HasBindings u, Data u) => HasBindings (Syntax' u) where
 instance HasBindings UModule where
   applyBindings (Module u uctx) = Module <$> applyBindings u <*> applyBindings uctx
 
-------------------------------------------------------------
--- Converting between mono- and polytypes
+-- ------------------------------------------------------------
+-- -- Converting between mono- and polytypes
 
 -- | To 'instantiate' a 'UPolytype', we generate a fresh unification
 --   variable for each variable bound by the `Forall`, and then
 --   substitute them throughout the type.
-instantiate :: UPolytype -> TC UType
+instantiate :: Has Unification sig m => UPolytype -> m UType
 instantiate (Forall xs uty) = do
   xs' <- mapM (const fresh) xs
   return $ substU (M.fromList (zip (map Left xs) xs')) uty
@@ -352,12 +353,12 @@ instantiate (Forall xs uty) = do
 --   variables cannot unify with anything other than themselves.  This
 --   is used when checking something with a polytype explicitly
 --   specified by the user.
-skolemize :: UPolytype -> TC UType
+skolemize :: Has Unification sig m => UPolytype -> m UType
 skolemize (Forall xs uty) = do
   xs' <- mapM (const fresh) xs
   return $ substU (M.fromList (zip (map Left xs) (map toSkolem xs'))) uty
  where
-  toSkolem (UVar v) = UTyVar (mkVarName "s" v)
+  toSkolem (Pure v) = UTyVar (mkVarName "s" v)
   toSkolem x = error $ "Impossible! Non-UVar in skolemize.toSkolem: " ++ show x
 
 -- | 'generalize' is the opposite of 'instantiate': add a 'Forall'
@@ -365,12 +366,12 @@ skolemize (Forall xs uty) = do
 --
 --   Pick nice type variable names instead of reusing whatever fresh
 --   names happened to be used for the free variables.
-generalize :: UType -> TC UPolytype
+generalize :: (Has Unification sig m, Has (Reader UCtx) sig m) => UType -> m UPolytype
 generalize uty = do
   uty' <- applyBindings uty
-  ctx <- getCtx
-  tmfvs <- freeVars uty'
-  ctxfvs <- freeVars ctx
+  ctx <- ask @UCtx
+  tmfvs <- freeUVars uty'
+  ctxfvs <- freeUVars ctx
   let fvs = S.toList $ tmfvs \\ ctxfvs
       alphabet = ['a' .. 'z']
       -- Infinite supply of pretty names a, b, ..., z, a0, ... z0, a1, ... z1, ...
@@ -399,9 +400,15 @@ mkTypeErr :: SrcLoc -> TCStack -> TypeErr -> ContextualTypeErr
 mkTypeErr = CTE
 
 -- | Throw a 'ContextualTypeErr'.
-throwTypeErr :: SrcLoc -> TypeErr -> TC a
+throwTypeErr ::
+  ( Has (Throw ContextualTypeErr) sig m
+  , Has (Reader TCStack) sig m
+  ) =>
+  SrcLoc ->
+  TypeErr ->
+  m a
 throwTypeErr l te = do
-  stk <- getTCStack
+  stk <- ask @TCStack
   throwError $ mkTypeErr l stk te
 
 -- | Errors that can occur during type checking.  The idea is that
@@ -415,10 +422,8 @@ data TypeErr
   | -- | A Skolem variable escaped its local context.
     EscapedSkolem Var
   | -- | Occurs check failure, i.e. infinite type.
-    Infinite IntVar UType
-  | -- | Error generated by the unifier.
-    UnifyErr (TypeF UType) (TypeF UType)
-  | -- | Type mismatch caught by 'unifyCheck'.  The given term was
+    UnificationErr UnificationError
+  | -- | Type mismatch caught by 'unify'.  The given term was
     --   expected to have a certain type, but has a different type
     --   instead.
     Mismatch (Maybe Syntax) TypeJoin
@@ -459,17 +464,20 @@ data InvalidAtomicReason
     LongConst
   deriving (Show)
 
-instance Fallible TypeF IntVar ContextualTypeErr where
-  occursFailure v t = mkRawTypeErr (Infinite v t)
-  mismatchFailure t1 t2 = mkRawTypeErr (UnifyErr t1 t2)
-
 ------------------------------------------------------------
 -- Type decomposition
 
 -- | Decompose a type that is supposed to be a delay type.  Also take
 --   the term which is supposed to have that type, for use in error
 --   messages.
-decomposeDelayTy :: Syntax -> Sourced UType -> TC UType
+decomposeDelayTy ::
+  ( Has Unification sig m
+  , Has (Throw ContextualTypeErr) sig m
+  , Has (Reader TCStack) sig m
+  ) =>
+  Syntax ->
+  Sourced UType ->
+  m UType
 decomposeDelayTy _ (_, UTyDelay a) = return a
 decomposeDelayTy t ty = do
   a <- fresh
@@ -479,7 +487,14 @@ decomposeDelayTy t ty = do
 -- | Decompose a type that is supposed to be a command type. Also take
 --   the term which is supposed to have that type, for use in error
 --   messages.
-decomposeCmdTy :: Syntax -> Sourced UType -> TC UType
+decomposeCmdTy ::
+  ( Has Unification sig m
+  , Has (Throw ContextualTypeErr) sig m
+  , Has (Reader TCStack) sig m
+  ) =>
+  Syntax ->
+  Sourced UType ->
+  m UType
 decomposeCmdTy _ (_, UTyCmd a) = return a
 decomposeCmdTy t ty = do
   a <- fresh
@@ -489,7 +504,14 @@ decomposeCmdTy t ty = do
 -- | Decompose a type that is supposed to be a function type. Also take
 --   the term which is supposed to have that type, for use in error
 --   messages.
-decomposeFunTy :: Syntax -> Sourced UType -> TC (UType, UType)
+decomposeFunTy ::
+  ( Has Unification sig m
+  , Has (Throw ContextualTypeErr) sig m
+  , Has (Reader TCStack) sig m
+  ) =>
+  Syntax ->
+  Sourced UType ->
+  m (UType, UType)
 decomposeFunTy _ (_, UTyFun ty1 ty2) = return (ty1, ty2)
 decomposeFunTy t ty = do
   ty1 <- fresh
@@ -500,7 +522,14 @@ decomposeFunTy t ty = do
 -- | Decompose a type that is supposed to be a product type. Also take
 --   the term which is supposed to have that type, for use in error
 --   messages.
-decomposeProdTy :: Syntax -> Sourced UType -> TC (UType, UType)
+decomposeProdTy ::
+  ( Has Unification sig m
+  , Has (Throw ContextualTypeErr) sig m
+  , Has (Reader TCStack) sig m
+  ) =>
+  Syntax ->
+  Sourced UType ->
+  m (UType, UType)
 decomposeProdTy _ (_, UTyProd ty1 ty2) = return (ty1, ty2)
 decomposeProdTy t ty = do
   ty1 <- fresh
@@ -508,8 +537,8 @@ decomposeProdTy t ty = do
   _ <- unify (Just t) (mkJoin ty (UTyProd ty1 ty2))
   return (ty1, ty2)
 
-------------------------------------------------------------
--- Type inference / checking
+-- ------------------------------------------------------------
+-- -- Type inference / checking
 
 -- | Top-level type inference function: given a context of definition
 --   types and a top-level term, either return a type error or its
@@ -519,7 +548,14 @@ inferTop ctx = runTC ctx . inferModule
 
 -- | Infer the signature of a top-level expression which might
 --   contain definitions.
-inferModule :: Syntax -> TC UModule
+inferModule ::
+  ( Has Unification sig m
+  , Has (Reader UCtx) sig m
+  , Has (Reader TCStack) sig m
+  , Has (Error ContextualTypeErr) sig m
+  ) =>
+  Syntax ->
+  m UModule
 inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
   -- For definitions with no type signature, make up a fresh type
   -- variable for the body, infer the body under an extended context,
@@ -604,7 +640,14 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
 --
 --   For most everything else we prefer 'check' because it can often
 --   result in better and more localized type error messages.
-infer :: Syntax -> TC (Syntax' UType)
+infer ::
+  ( Has (Reader UCtx) sig m
+  , Has (Reader TCStack) sig m
+  , Has Unification sig m
+  , Has (Error ContextualTypeErr) sig m
+  ) =>
+  Syntax ->
+  m (Syntax' UType)
 infer s@(Syntax l t) = addLocToTypeErr l $ case t of
   -- Primitives, i.e. things for which we immediately know the only
   -- possible correct type, and knowing an expected type would provide
@@ -719,7 +762,7 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
     uty <- skolemize upty
     _ <- check c uty
     -- Make sure no skolem variables have escaped.
-    getCtx >>= mapM_ (noSkolems l)
+    ask @UCtx >>= mapM_ (noSkolems l)
     -- If check against skolemized polytype is successful,
     -- instantiate polytype with unification variables.
     -- Free variables should be able to unify with anything in
@@ -853,7 +896,15 @@ inferConst c = case c of
 --
 --   We try to stay in checking mode as far as possible, decomposing
 --   the expected type as we go and pushing it through the recursion.
-check :: Syntax -> UType -> TC (Syntax' UType)
+check ::
+  ( Has (Reader UCtx) sig m
+  , Has (Reader TCStack) sig m
+  , Has Unification sig m
+  , Has (Error ContextualTypeErr) sig m
+  ) =>
+  Syntax ->
+  UType ->
+  m (Syntax' UType)
 check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
   -- if t : ty, then  {t} : {ty}.
   -- Note that in theory, if the @Maybe Var@ component of the @SDelay@
@@ -881,15 +932,15 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
   SLam x mxTy body -> do
     (argTy, resTy) <- decomposeFunTy s (Expected, expected)
     case toU mxTy of
-      Just xTy -> case unifyCheck argTy xTy of
-        -- Generate a special error when the explicit type annotation
-        -- on a lambda doesn't match the expected type,
-        -- e.g. (\x:int. x + 2) : text -> int, since the usual
-        -- "expected/but got" language would probably be confusing.
-        Apart -> throwTypeErr l $ LambdaArgMismatch (joined argTy xTy)
-        -- Otherwise, make sure to unify the annotation with the
-        -- expected argument type.
-        _ -> void $ argTy =:= xTy
+      Just xTy -> do
+        res <- argTy =:= xTy
+        case res of
+          -- Generate a special error when the explicit type annotation
+          -- on a lambda doesn't match the expected type,
+          -- e.g. (\x:int. x + 2) : text -> int, since the usual
+          -- "expected/but got" language would probably be confusing.
+          Left _ -> throwTypeErr l $ LambdaArgMismatch (joined argTy xTy)
+          Right _ -> return ()
       Nothing -> return ()
     body' <- withBinding (lvVar x) (Forall [] argTy) $ check body resTy
     return $ Syntax' l (SLam x mxTy body') (UTyFun argTy resTy)
@@ -939,7 +990,7 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
     t2' <- withBinding (lvVar x) upty $ check t2 expected
 
     -- Make sure no skolem variables have escaped.
-    getCtx >>= mapM_ (noSkolems l)
+    ask @UCtx >>= mapM_ (noSkolems l)
 
     -- Return the annotated let.
     return $ Syntax' l (SLet r x mxTy t1' t2') expected
@@ -1015,7 +1066,14 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
 --   i.e. contains at most one tangible command. For example, @atomic
 --   (move; move)@ is invalid, since that would allow robots to move
 --   twice as fast as usual by doing both actions in one tick.
-validAtomic :: Syntax -> TC ()
+validAtomic ::
+  ( Has (Reader UCtx) sig m
+  , Has (Reader TCStack) sig m
+  , Has Unification sig m
+  , Has (Throw ContextualTypeErr) sig m
+  ) =>
+  Syntax ->
+  m ()
 validAtomic s@(Syntax l t) = do
   n <- analyzeAtomic S.empty s
   when (n > 1) $ throwTypeErr l $ InvalidAtomic (TooManyTicks n) t
@@ -1023,7 +1081,15 @@ validAtomic s@(Syntax l t) = do
 -- | Analyze an argument to @atomic@: ensure it contains no nested
 --   atomic blocks and no references to external variables, and count
 --   how many tangible commands it will execute.
-analyzeAtomic :: Set Var -> Syntax -> TC Int
+analyzeAtomic ::
+  ( Has (Reader UCtx) sig m
+  , Has (Reader TCStack) sig m
+  , Has Unification sig m
+  , Has (Throw ContextualTypeErr) sig m
+  ) =>
+  Set Var ->
+  Syntax ->
+  m Int
 analyzeAtomic locals (Syntax l t) = case t of
   -- Literals, primitives, etc. that are fine and don't require a tick
   -- to evaluate
@@ -1062,7 +1128,14 @@ analyzeAtomic locals (Syntax l t) = case t of
   SBind mx s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2
   SRcd m -> sum <$> mapM analyzeField (M.assocs m)
    where
-    analyzeField :: (Var, Maybe Syntax) -> TC Int
+    analyzeField ::
+      ( Has (Reader UCtx) sig m
+      , Has (Reader TCStack) sig m
+      , Has Unification sig m
+      , Has (Throw ContextualTypeErr) sig m
+      ) =>
+      (Var, Maybe Syntax) ->
+      m Int
     analyzeField (x, Nothing) = analyzeAtomic locals (STerm (TVar x))
     analyzeField (_, Just s) = analyzeAtomic locals s
   SProj {} -> return 0
@@ -1070,7 +1143,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   TVar x
     | x `S.member` locals -> return 0
     | otherwise -> do
-        mxTy <- Ctx.lookup x <$> getCtx
+        mxTy <- Ctx.lookup x <$> ask @UCtx
         case mxTy of
           -- If the variable is undefined, return 0 to indicate the
           -- atomic block is valid, because we'd rather have the error
@@ -1123,5 +1196,5 @@ isSimpleUType = \case
   UTyCmd {} -> False
   UTyDelay {} -> False
   -- Make the pattern-match coverage checker happy
-  UVar {} -> False
-  UTerm {} -> False
+  Pure {} -> False
+  Free {} -> False

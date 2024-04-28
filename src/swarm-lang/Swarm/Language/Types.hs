@@ -1,8 +1,6 @@
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-
--- for the Data IntVar instance
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -35,6 +33,7 @@ module Swarm.Language.Types (
   pattern TyDelay,
 
   -- * @UType@
+  IntVar (..),
   UType,
   pattern UTyBase,
   pattern UTyVar,
@@ -56,6 +55,7 @@ module Swarm.Language.Types (
   -- ** Utilities
   ucata,
   mkVarName,
+  fuvs,
 
   -- * Polytypes
   Poly (..),
@@ -71,18 +71,15 @@ module Swarm.Language.Types (
   WithU (..),
 ) where
 
-import Control.Monad (guard)
-import Control.Unification
-import Control.Unification.IntVar
+import Control.Monad.Free
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson.TH (defaultOptions, deriveFromJSON1, deriveToJSON1)
 import Data.Data (Data)
+import Data.Eq.Deriving (deriveEq1)
+import Data.Fix
 import Data.Foldable (fold)
-import Data.Function (on)
-import Data.Functor.Fixedpoint
 import Data.Kind qualified
-import Data.Map.Merge.Strict qualified as M
 import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.String (IsString (..))
@@ -90,6 +87,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic, Generic1)
 import Swarm.Language.Context
+import Text.Show.Deriving (deriveShow1)
 import Witch
 
 ------------------------------------------------------------
@@ -122,8 +120,8 @@ data BaseTy
 -- | A "structure functor" encoding the shape of type expressions.
 --   Actual types are then represented by taking a fixed point of this
 --   functor.  We represent types in this way, via a "two-level type",
---   so that we can work with the @unification-fd@ package (see
---   https://byorgey.wordpress.com/2021/09/08/implementing-hindley-milner-with-the-unification-fd-library/).
+--   so that we can easily use generic recursion schemes to implement
+--   things like substitution.
 data TypeF t
   = -- | A base type.
     TyBaseF BaseTy
@@ -142,18 +140,12 @@ data TypeF t
     TyFunF t t
   | -- | Record type.
     TyRcdF (Map Var t)
-  deriving (Show, Eq, Functor, Foldable, Traversable, Generic, Generic1, Unifiable, Data, FromJSON, ToJSON)
+  deriving (Show, Eq, Functor, Foldable, Traversable, Generic, Generic1, Data, FromJSON, ToJSON)
 
--- | Unify two Maps by insisting they must have exactly the same keys,
---   and if so, simply matching up corresponding values to be
---   recursively unified.  There could be other reasonable
---   implementations, but in our case we will use this for unifying
---   record types, and we do not have any subtyping, so record types
---   will only unify if they have exactly the same keys.
-instance Ord k => Unifiable (Map k) where
-  zipMatch m1 m2 = do
-    guard $ ((==) `on` M.keysSet) m1 m2
-    pure $ M.merge M.dropMissing M.dropMissing (M.zipWithMatched (\_ a1 a2 -> Right (a1, a2))) m1 m2
+deriveEq1 ''TypeF
+deriveShow1 ''TypeF
+deriveFromJSON1 defaultOptions ''TypeF
+deriveToJSON1 defaultOptions ''TypeF
 
 -- | @Type@ is now defined as the fixed point of 'TypeF'.  It would be
 --   annoying to manually apply and match against 'Fix' constructors
@@ -163,37 +155,35 @@ type Type = Fix TypeF
 
 -- | Get all the type variables contained in a 'Type'.
 tyVars :: Type -> Set Var
-tyVars = cata (\case TyVarF x -> S.singleton x; f -> fold f)
+tyVars = foldFix (\case TyVarF x -> S.singleton x; f -> fold f)
 
--- The derived Data instance is so we can make a quasiquoter for types.
-deriving instance Data Type
+newtype IntVar = IntVar Int
+  deriving (Show, Data, Eq, Ord)
 
 -- | 'UType's are like 'Type's, but also contain unification
---   variables.  'UType' is defined via 'UTerm', which is also a kind
---   of fixed point (in fact, 'UType' is the /free monad/ over 'TypeF').
+--   variables.  'UType' is defined via 'Free', which is also a kind
+--   of fixed point (in fact, @Free TypeF@ is the /free monad/ over
+--   'TypeF').
 --
 --   Just as with 'Type', we provide a bunch of pattern synonyms for
 --   working with 'UType' as if it were defined directly.
-type UType = UTerm TypeF IntVar
+type UType = Free TypeF IntVar
 
--- The derived Data instances are so we can make a quasiquoter for
--- types.
-deriving instance Data UType
-deriving instance Data IntVar
-
--- | A generic /fold/ for things defined via 'UTerm' (including, in
---   particular, 'UType').  This probably belongs in the
---   @unification-fd@ package, but since it doesn't provide one, we
---   define it here.
-ucata :: Functor t => (v -> a) -> (t a -> a) -> UTerm t v -> a
-ucata f _ (UVar v) = f v
-ucata f g (UTerm t) = g (fmap (ucata f g) t)
+-- | A generic /fold/ for things defined via 'Free' (including, in
+--   particular, 'UType').
+ucata :: Functor t => (v -> a) -> (t a -> a) -> Free t v -> a
+ucata f _ (Pure v) = f v
+ucata f g (Free t) = g (fmap (ucata f g) t)
 
 -- | A quick-and-dirty method for turning an 'IntVar' (used internally
 --   as a unification variable) into a unique variable name, by
 --   appending a number to the given name.
 mkVarName :: Text -> IntVar -> Var
-mkVarName nm (IntVar v) = T.append nm (from @String (show (v + (maxBound :: Int) + 1)))
+mkVarName nm (IntVar v) = T.append nm (from @String (show v))
+
+-- | Get all the free unification variables in a 'UType'.
+fuvs :: UType -> Set IntVar
+fuvs = ucata S.singleton fold
 
 -- | For convenience, so we can write /e.g./ @"a"@ instead of @TyVar "a"@.
 instance IsString Type where
@@ -264,8 +254,8 @@ class WithU t where
 -- | 'Type' is an instance of 'WithU', with associated type 'UType'.
 instance WithU Type where
   type U Type = UType
-  toU = unfreeze
-  fromU = freeze
+  toU = foldFix Free
+  fromU = ucata (const Nothing) (fmap wrapFix . sequence)
 
 -- | A 'WithU' instance can be lifted through any functor (including,
 --   in particular, 'Ctx' and 'Poly').
@@ -333,57 +323,52 @@ pattern TyDelay :: Type -> Type
 pattern TyDelay ty1 = Fix (TyDelayF ty1)
 
 pattern UTyBase :: BaseTy -> UType
-pattern UTyBase b = UTerm (TyBaseF b)
+pattern UTyBase b = Free (TyBaseF b)
 
 pattern UTyVar :: Var -> UType
-pattern UTyVar v = UTerm (TyVarF v)
+pattern UTyVar v = Free (TyVarF v)
 
 pattern UTyVoid :: UType
-pattern UTyVoid = UTerm (TyBaseF BVoid)
+pattern UTyVoid = Free (TyBaseF BVoid)
 
 pattern UTyUnit :: UType
-pattern UTyUnit = UTerm (TyBaseF BUnit)
+pattern UTyUnit = Free (TyBaseF BUnit)
 
 pattern UTyInt :: UType
-pattern UTyInt = UTerm (TyBaseF BInt)
+pattern UTyInt = Free (TyBaseF BInt)
 
 pattern UTyText :: UType
-pattern UTyText = UTerm (TyBaseF BText)
+pattern UTyText = Free (TyBaseF BText)
 
 pattern UTyDir :: UType
-pattern UTyDir = UTerm (TyBaseF BDir)
+pattern UTyDir = Free (TyBaseF BDir)
 
 pattern UTyBool :: UType
-pattern UTyBool = UTerm (TyBaseF BBool)
+pattern UTyBool = Free (TyBaseF BBool)
 
 pattern UTyActor :: UType
-pattern UTyActor = UTerm (TyBaseF BActor)
+pattern UTyActor = Free (TyBaseF BActor)
 
 pattern UTyKey :: UType
-pattern UTyKey = UTerm (TyBaseF BKey)
+pattern UTyKey = Free (TyBaseF BKey)
 
 pattern UTySum :: UType -> UType -> UType
-pattern UTySum ty1 ty2 = UTerm (TySumF ty1 ty2)
+pattern UTySum ty1 ty2 = Free (TySumF ty1 ty2)
 
 pattern UTyProd :: UType -> UType -> UType
-pattern UTyProd ty1 ty2 = UTerm (TyProdF ty1 ty2)
+pattern UTyProd ty1 ty2 = Free (TyProdF ty1 ty2)
 
 pattern UTyFun :: UType -> UType -> UType
-pattern UTyFun ty1 ty2 = UTerm (TyFunF ty1 ty2)
+pattern UTyFun ty1 ty2 = Free (TyFunF ty1 ty2)
 
 pattern UTyRcd :: Map Var UType -> UType
-pattern UTyRcd m = UTerm (TyRcdF m)
+pattern UTyRcd m = Free (TyRcdF m)
 
 pattern UTyCmd :: UType -> UType
-pattern UTyCmd ty1 = UTerm (TyCmdF ty1)
+pattern UTyCmd ty1 = Free (TyCmdF ty1)
 
 pattern UTyDelay :: UType -> UType
-pattern UTyDelay ty1 = UTerm (TyDelayF ty1)
+pattern UTyDelay ty1 = Free (TyDelayF ty1)
 
 pattern PolyUnit :: Polytype
 pattern PolyUnit = Forall [] (TyCmd TyUnit)
-
--- Derive aeson instances for type serialization
-deriving instance Generic Type
-deriving instance ToJSON Type
-deriving instance FromJSON Type
