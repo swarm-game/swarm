@@ -811,7 +811,7 @@ inferConst c = case c of
   Listen -> [tyQ| cmd text |]
   Log -> [tyQ| text -> cmd unit |]
   View -> [tyQ| actor -> cmd unit |]
-  Appear -> [tyQ| text -> cmd unit |]
+  Appear -> [tyQ| text -> (unit + text) -> cmd unit |]
   Create -> [tyQ| text -> cmd unit |]
   Halt -> [tyQ| actor -> cmd unit |]
   Time -> [tyQ| cmd int |]

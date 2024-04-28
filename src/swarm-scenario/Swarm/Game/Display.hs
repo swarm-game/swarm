@@ -13,6 +13,7 @@ module Swarm.Game.Display (
   -- * The display record
   Priority,
   Attribute (..),
+  readAttribute,
   Display,
 
   -- ** Fields
@@ -57,14 +58,15 @@ type Priority = Int
 data Attribute = ADefault | ARobot | AEntity | AWorld Text
   deriving (Eq, Ord, Show, Generic, Hashable)
 
+readAttribute :: Text -> Attribute
+readAttribute = \case
+  "robot" -> ARobot
+  "entity" -> AEntity
+  "default" -> ADefault
+  w -> AWorld w
+
 instance FromJSON Attribute where
-  parseJSON =
-    withText "attribute" $
-      pure . \case
-        "robot" -> ARobot
-        "entity" -> AEntity
-        "default" -> ADefault
-        w -> AWorld w
+  parseJSON = withText "attribute" $ pure . readAttribute
 
 instance ToJSON Attribute where
   toJSON = \case
