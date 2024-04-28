@@ -64,7 +64,7 @@ import Swarm.Game.State.Substate (
   ticks,
  )
 import Swarm.Game.Step.Path.Type
-import Swarm.Game.Step.Validate (playUntilWin, badErrorsInLogs)
+import Swarm.Game.Step.Validate (badErrorsInLogs, playUntilWin)
 import Swarm.Game.Tick (getTickNumber)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)

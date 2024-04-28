@@ -9,18 +9,18 @@
 -- can be used by /e.g./ integration tests.
 module Swarm.Game.Step.Validate where
 
-import Swarm.Log (logToText)
-import Control.Lens ((^.), use)
-import Data.Text qualified as T
+import Control.Lens (use, (^.))
+import Control.Monad.State (StateT, gets)
 import Data.List.NonEmpty qualified as NE
-import Swarm.Game.Tick (TickNumber)
+import Data.Text qualified as T
+import Swarm.Effect.Time (runTimeIO)
+import Swarm.Game.Robot.Concrete (robotLog)
 import Swarm.Game.State (GameState, messageInfo, robotInfo, winCondition)
 import Swarm.Game.State.Robot (robotMap)
-import Swarm.Game.Robot.Concrete (robotLog)
-import Swarm.Game.State.Substate (WinStatus(..), WinCondition(..), messageQueue)
-import Control.Monad.State (StateT, gets)
+import Swarm.Game.State.Substate (WinCondition (..), WinStatus (..), messageQueue)
 import Swarm.Game.Step (gameTick)
-import Swarm.Effect.Time (runTimeIO)
+import Swarm.Game.Tick (TickNumber)
+import Swarm.Log (logToText)
 
 -- | Keep stepping a 'GameState' until completion, returning the
 --   number of ticks taken if successful, or any bad error messages
