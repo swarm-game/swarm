@@ -223,7 +223,7 @@ data Const
     Log
   | -- | View a certain robot.
     View
-  | -- | Set what characters are used for display.
+  | -- | Set color and what characters are used for display.
     Appear
   | -- | Create an entity out of thin air. Only
     --   available in creative mode.
@@ -739,9 +739,10 @@ constInfo c = case c of
       [ "This will recenter the map on the target robot and allow its inventory and logs to be inspected."
       ]
   Appear ->
-    command 1 short . doc (Set.singleton $ Mutation Cosmetic) "Set how the robot is displayed." $
-      [ "You can either specify one character or five (for each direction)."
+    command 2 short . doc (Set.singleton $ Mutation Cosmetic) "Set how the robot is displayed." $
+      [ "You can either specify one character or five (one for each direction: down, north, east, south, west)."
       , "The default is \"X^>v<\"."
+      , "The second argument is for optionally setting a display attribute (i.e. color)."
       ]
   Create ->
     command 1 short . doc (Set.fromList [Mutation EntityChange, Mutation $ RobotChange InventoryChange]) "Create an item out of thin air." $

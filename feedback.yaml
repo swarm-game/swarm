@@ -1,3 +1,3 @@
 loops:
-  test: stack test --fast
+  test: stack test swarm:swarm-integration swarm:swarm-unit --fast
   unit: stack test swarm:swarm-unit --fast

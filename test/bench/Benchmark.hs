@@ -51,7 +51,7 @@ treeProgram =
   {
     r <- random 100;
     wait (r + 300);
-    appear "|";
+    appear "|" (inl ());
     r <- random 100;
     wait (r + 300);
     place "tree";
