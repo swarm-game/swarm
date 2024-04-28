@@ -830,7 +830,6 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Appear -> case vs of
       [VText app, VInj hasAttr (VText attr)] -> do
-
         -- Set the robot's display character(s)
         case into @String app of
           [dc] -> do
@@ -838,24 +837,26 @@ execConst runChildProg c vs s k = do
             robotDisplay . orientationMap .= M.empty
           [dc, nc, ec, sc, wc] -> do
             robotDisplay . defaultChar .= dc
-            robotDisplay . orientationMap .= M.fromList
-              [ (DNorth, nc)
-              , (DEast, ec)
-              , (DSouth, sc)
-              , (DWest, wc)
+            robotDisplay . orientationMap
+              .= M.fromList
+                [ (DNorth, nc)
+                , (DEast, ec)
+                , (DSouth, sc)
+                , (DWest, wc)
+                ]
+          _other ->
+            raise
+              Appear
+              [ quote app
+              , "is not a valid appearance string."
+              , "'appear' must be given a string with exactly 1 or 5 characters."
               ]
-          _other -> raise Appear
-            [ quote app
-            , "is not a valid appearance string."
-            , "'appear' must be given a string with exactly 1 or 5 characters."
-            ]
 
         -- Possibly set the display attribute
         when hasAttr $ robotDisplay . displayAttr .= readAttribute attr
 
         flagRedraw
         return $ mkReturn ()
-
       _ -> badConst
     Create -> case vs of
       [VText name] -> do
