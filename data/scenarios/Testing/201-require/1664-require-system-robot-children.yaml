@@ -33,7 +33,7 @@ robots:
       def createWorker =
           build {
               setname "childbot";
-              appear "B";
+              appear "B" (inl ());
           };
           end;
 

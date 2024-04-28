@@ -99,11 +99,11 @@ def go = \width. \height. \lastTauntIndex. \startingAmount. \dropping.
             say $ snd tauntStage;
         } {};
 
-        appear "o";
+        appear "o" (inl ());
         arrive width height;
 
         place dropping;
-        appear "G";
+        appear "G" (inl ());
         waitWhileHere dropping 150;
         go width height tauntIndex startingAmount dropping;
     } {

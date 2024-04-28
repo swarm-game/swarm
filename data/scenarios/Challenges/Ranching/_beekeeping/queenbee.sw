@@ -206,7 +206,7 @@ def mkBeeName = \structureLoc.
 
 def workerProgramInit = \beename. \hiveIdx. \structureLoc.
     setname beename;
-    appear "B";
+    appear "B" (inl ());
     workerProgram hiveIdx structureLoc;
     end;
 
