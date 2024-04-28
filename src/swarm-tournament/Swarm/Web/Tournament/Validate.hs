@@ -231,27 +231,3 @@ verifySolution (SolutionTimeout timeoutSeconds) sol gs = do
       -- hopefully, eventually, go away).
       & baseRobot . robotContext . defReqs <>~ reqCtx
       & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
-
--- ** Utils shared with integration tests
-
-playUntilWin :: StateT GameState IO (Either (NE.NonEmpty T.Text) TickNumber)
-playUntilWin = do
-  w <- use winCondition
-  b <- gets badErrorsInLogs
-  case NE.nonEmpty b of
-    Just badErrs -> return $ Left badErrs
-    Nothing -> case w of
-      WinConditions (Won _ ts) _ -> return $ Right ts
-      _ -> runTimeIO gameTick >> playUntilWin
-
-badErrorsInLogs :: GameState -> [T.Text]
-badErrorsInLogs g =
-  concatMap
-    (\r -> filter isBad (seqToTexts $ r ^. robotLog))
-    (g ^. robotInfo . robotMap)
-    <> filter isBad (seqToTexts $ g ^. messageInfo . messageQueue)
- where
-  isBad m = "Fatal error:" `T.isInfixOf` m || "swarm/issues" `T.isInfixOf` m
-
-seqToTexts :: Seq LogEntry -> [T.Text]
-seqToTexts = map (view leText) . toList
