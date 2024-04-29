@@ -108,8 +108,8 @@ mergeStructures ::
 mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStructures subPlacements subWaypoints) = do
   overlays <- elaboratePlacement parentPlacement $ mapM g subPlacements
   let wrapPlacement (Placed z ns) = LocatedStructure (name ns) (up $ orient structPose) $ offset structPose
-        where
-          structPose = structurePose z
+       where
+        structPose = structurePose z
       wrappedOverlays = map wrapPlacement $ filter (\(Placed _ ns) -> isRecognizable ns) overlays
   foldrM
     (overlaySingleStructure structureMap)
