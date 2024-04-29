@@ -5,7 +5,10 @@
 --
 -- Definitions of "structures" for use within a map
 -- as well as logic for combining them.
-module Swarm.Game.Scenario.Topography.Structure.Assembly where
+module Swarm.Game.Scenario.Topography.Structure.Assembly (
+  mergeStructures,
+)
+where
 
 import Control.Applicative ((<|>))
 import Control.Arrow (left, (&&&))
@@ -25,6 +28,32 @@ import Swarm.Game.Scenario.Topography.Structure
 import Swarm.Language.Direction (directionJsonModifier)
 import Swarm.Util (commaList, quote, showT)
 
+overlayGrid ::
+  [[Maybe a]] ->
+  Pose ->
+  [[Maybe a]] ->
+  [[Maybe a]]
+overlayGrid inputArea (Pose (Location colOffset rowOffset) orientation) overlayArea =
+  zipWithPad mergeSingleRow inputArea $ paddedOverlayRows overlayArea
+ where
+  zipWithPad f a b = zipWith f a $ b <> repeat Nothing
+
+  mergeSingleRow inputRow maybeOverlayRow =
+    zipWithPad (flip (<|>)) inputRow paddedSingleOverlayRow
+   where
+    paddedSingleOverlayRow = maybe [] (applyOffset colOffset) maybeOverlayRow
+
+  affineTransformedOverlay = applyOrientationTransform orientation
+
+  paddedOverlayRows = applyOffset (negate rowOffset) . map Just . affineTransformedOverlay
+  applyOffset offsetNum = modifyFront
+   where
+    integralOffset = fromIntegral offsetNum
+    modifyFront =
+      if integralOffset >= 0
+        then (replicate integralOffset Nothing <>)
+        else drop $ abs integralOffset
+
 -- | Destructively overlays one direct child structure
 -- upon the input structure.
 -- However, the child structure is assembled recursively.
@@ -35,14 +64,14 @@ overlaySingleStructure ::
   Either Text (MergedStructure (Maybe a))
 overlaySingleStructure
   inheritedStrucDefs
-  (Placed p@(Placement _ loc@(Location colOffset rowOffset) orientation) ns)
+  (Placed p@(Placement _ pose@(Pose loc orientation)) ns)
   (MergedStructure inputArea inputPlacements inputWaypoints) = do
     MergedStructure overlayArea overlayPlacements overlayWaypoints <-
       mergeStructures inheritedStrucDefs (WithParent p) $ structure ns
 
     let mergedWaypoints = inputWaypoints <> map (fmap $ placeOnArea overlayArea) overlayWaypoints
         mergedPlacements = inputPlacements <> map (placeOnArea overlayArea) overlayPlacements
-        mergedArea = zipWithPad mergeSingleRow inputArea $ paddedOverlayRows overlayArea
+        mergedArea = overlayGrid inputArea pose overlayArea
 
     return $ MergedStructure mergedArea mergedPlacements mergedWaypoints
    where
@@ -50,30 +79,12 @@ overlaySingleStructure
       offsetLoc (coerce loc)
         . modifyLoc (reorientLandmark orientation $ getAreaDimensions overArea)
 
-    zipWithPad f a b = zipWith f a $ b <> repeat Nothing
-
-    affineTransformedOverlay = applyOrientationTransform orientation
-
-    mergeSingleRow inputRow maybeOverlayRow =
-      zipWithPad (flip (<|>)) inputRow paddedSingleOverlayRow
-     where
-      paddedSingleOverlayRow = maybe [] (applyOffset colOffset) maybeOverlayRow
-
-    paddedOverlayRows = applyOffset (negate rowOffset) . map Just . affineTransformedOverlay
-    applyOffset offsetNum = modifyFront
-     where
-      integralOffset = fromIntegral offsetNum
-      modifyFront =
-        if integralOffset >= 0
-          then (replicate integralOffset Nothing <>)
-          else drop $ abs integralOffset
-
 elaboratePlacement :: Parentage Placement -> Either Text a -> Either Text a
 elaboratePlacement p = left (elaboration <>)
  where
   pTxt = case p of
     Root -> "root placement"
-    WithParent (Placement (StructureName sn) loc _) ->
+    WithParent (Placement (StructureName sn) (Pose loc _)) ->
       T.unwords
         [ "placement of"
         , quote sn
@@ -96,7 +107,9 @@ mergeStructures ::
   Either Text (MergedStructure (Maybe a))
 mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStructures subPlacements subWaypoints) = do
   overlays <- elaboratePlacement parentPlacement $ mapM g subPlacements
-  let wrapPlacement (Placed z ns) = LocatedStructure (name ns) (up $ orient z) $ offset z
+  let wrapPlacement (Placed z ns) = LocatedStructure (name ns) (up $ orient structPose) $ offset structPose
+        where
+          structPose = structurePose z
       wrappedOverlays = map wrapPlacement $ filter (\(Placed _ ns) -> isRecognizable ns) overlays
   foldrM
     (overlaySingleStructure structureMap)
@@ -108,7 +121,7 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
   -- deeper definitions override the outer (toplevel) ones
   structureMap = M.union (M.fromList $ map (name &&& id) subStructures) inheritedStrucDefs
 
-  g placement@(Placement sName@(StructureName n) _ orientation) = do
+  g placement@(Placement sName@(StructureName n) (Pose _ orientation)) = do
     t@(_, ns) <-
       maybeToEither
         (T.unwords ["Could not look up structure", quote n])
