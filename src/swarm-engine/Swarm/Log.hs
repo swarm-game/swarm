@@ -7,6 +7,7 @@
 -- A data type to represent log messages, both for robot logs and
 -- the system log.
 module Swarm.Log (
+  -- * Log entries
   Severity (..),
   RobotLogSource (..),
   LogSource (..),
@@ -16,10 +17,14 @@ module Swarm.Log (
   leSeverity,
   leName,
   leText,
+
+  -- * Utilities
+  logToText,
 ) where
 
-import Control.Lens (makeLenses)
+import Control.Lens (makeLenses, view)
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Foldable (toList)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Swarm.Game.Location (Location)
@@ -68,3 +73,7 @@ data LogEntry = LogEntry
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
 makeLenses ''LogEntry
+
+-- | Extract the text from a container of log entries.
+logToText :: Foldable t => t LogEntry -> [Text]
+logToText = map (view leText) . toList
