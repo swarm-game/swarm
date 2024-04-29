@@ -64,7 +64,6 @@ flag ci
 common common
   if flag(ci)
     ghc-options: -Werror
-
   ghc-options:
     -Wall
     -Wcompat
@@ -90,26 +89,26 @@ common ghc2021-extensions
   default-extensions:
     -- Note we warn on prequalified
     -- Not GHC2021, but until we get \cases we use \case a lot
-    MultiParamTypeClasses
-    RankNTypes
-    ScopedTypeVariables
+    BangPatterns
+    DeriveAnyClass
+    DeriveDataTypeable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    ExplicitForAll
     FlexibleContexts
     FlexibleInstances
-    BangPatterns
-    StandaloneDeriving
-    TypeOperators
     GADTSyntax
-    DeriveDataTypeable
-    DeriveGeneric
-    TupleSections
-    LambdaCase
-    ExplicitForAll
-    DeriveFunctor
-    DeriveTraversable
-    DeriveAnyClass
-    TypeApplications
-    NumericUnderscores
     ImportQualifiedPost
+    LambdaCase
+    MultiParamTypeClasses
+    NumericUnderscores
+    RankNTypes
+    ScopedTypeVariables
+    StandaloneDeriving
+    TupleSections
+    TypeApplications
+    TypeOperators
 
 library swarm-lang
   import: stan-config, common, ghc2021-extensions
