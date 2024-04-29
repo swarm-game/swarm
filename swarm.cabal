@@ -64,6 +64,7 @@ flag ci
 common common
   if flag(ci)
     ghc-options: -Werror
+
   ghc-options:
     -Wall
     -Wcompat
@@ -89,26 +90,26 @@ common ghc2021-extensions
   default-extensions:
     -- Note we warn on prequalified
     -- Not GHC2021, but until we get \cases we use \case a lot
-    BangPatterns
-    DeriveAnyClass
-    DeriveDataTypeable
-    DeriveFunctor
-    DeriveGeneric
-    DeriveTraversable
-    ExplicitForAll
-    FlexibleContexts
-    FlexibleInstances
-    GADTSyntax
-    ImportQualifiedPost
-    LambdaCase
     MultiParamTypeClasses
-    NumericUnderscores
     RankNTypes
     ScopedTypeVariables
+    FlexibleContexts
+    FlexibleInstances
+    BangPatterns
     StandaloneDeriving
-    TupleSections
-    TypeApplications
     TypeOperators
+    GADTSyntax
+    DeriveDataTypeable
+    DeriveGeneric
+    TupleSections
+    LambdaCase
+    ExplicitForAll
+    DeriveFunctor
+    DeriveTraversable
+    DeriveAnyClass
+    TypeApplications
+    NumericUnderscores
+    ImportQualifiedPost
 
 library swarm-lang
   import: stan-config, common, ghc2021-extensions
@@ -215,6 +216,7 @@ library swarm-scenario
     Swarm.Game.Scenario.Topography.Navigation.Waypoint
     Swarm.Game.Scenario.Topography.Placement
     Swarm.Game.Scenario.Topography.Structure
+    Swarm.Game.Scenario.Topography.Structure.Assembly
     Swarm.Game.Scenario.Topography.Structure.Recognition
     Swarm.Game.Scenario.Topography.Structure.Recognition.Log
     Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
