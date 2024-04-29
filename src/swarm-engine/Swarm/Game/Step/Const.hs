@@ -829,21 +829,36 @@ execConst runChildProg c vs s k = do
         return $ mkReturn ()
       _ -> badConst
     Appear -> case vs of
-      [VText app] -> do
-        flagRedraw
+      [VText app, VInj hasAttr mattr] -> do
+        -- Set the robot's display character(s)
         case into @String app of
           [dc] -> do
             robotDisplay . defaultChar .= dc
             robotDisplay . orientationMap .= M.empty
-            return $ mkReturn ()
           [dc, nc, ec, sc, wc] -> do
             robotDisplay . defaultChar .= dc
-            robotDisplay . orientationMap . ix DNorth .= nc
-            robotDisplay . orientationMap . ix DEast .= ec
-            robotDisplay . orientationMap . ix DSouth .= sc
-            robotDisplay . orientationMap . ix DWest .= wc
-            return $ mkReturn ()
-          _other -> raise Appear [quote app, "is not a valid appearance string. 'appear' must be given a string with exactly 1 or 5 characters."]
+            robotDisplay . orientationMap
+              .= M.fromList
+                [ (DNorth, nc)
+                , (DEast, ec)
+                , (DSouth, sc)
+                , (DWest, wc)
+                ]
+          _other ->
+            raise
+              Appear
+              [ quote app
+              , "is not a valid appearance string."
+              , "'appear' must be given a string with exactly 1 or 5 characters."
+              ]
+
+        -- Possibly set the display attribute
+        case (hasAttr, mattr) of
+          (True, VText attr) -> robotDisplay . displayAttr .= readAttribute attr
+          _ -> return ()
+
+        flagRedraw
+        return $ mkReturn ()
       _ -> badConst
     Create -> case vs of
       [VText name] -> do
@@ -1348,7 +1363,7 @@ execConst runChildProg c vs s k = do
     T.unlines
       [ "Bad application of execConst:"
       , T.pack (show c)
-      , T.pack (show (reverse vs))
+      , T.pack (show vs)
       , prettyText (Out (VCApp c (reverse vs)) s k)
       ]
 

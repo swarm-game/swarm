@@ -501,7 +501,7 @@ seedProgram minTime randTime thing =
     try {
       r <- random (1 + $int:randTime);
       wait (r + $int:minTime);
-      appear "|";
+      appear "|" (inl ());
       r <- random (1 + $int:randTime);
       wait (r + $int:minTime);
       place $str:thing;
