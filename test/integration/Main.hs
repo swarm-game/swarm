@@ -64,6 +64,7 @@ import Swarm.Game.State.Substate (
   ticks,
  )
 import Swarm.Game.Step.Path.Type
+import Swarm.Game.Step.Validate (badErrorsInLogs, playUntilWin)
 import Swarm.Game.Tick (getTickNumber)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
@@ -80,7 +81,6 @@ import Swarm.TUI.Model.UI (UIState)
 import Swarm.Util (acquireAllWithExt)
 import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
-import Swarm.Web.Tournament.Validate
 import System.FilePath.Posix (splitDirectories)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
@@ -325,8 +325,8 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/955-heading"
         , testSolution' Default "Testing/397-wrong-missing" CheckForBadErrors $ \g -> do
             let msgs =
-                  (g ^. messageInfo . messageQueue . to seqToTexts)
-                    <> (g ^.. robotInfo . robotMap . traverse . robotLog . to seqToTexts . traverse)
+                  (g ^. messageInfo . messageQueue . to logToText)
+                    <> (g ^.. robotInfo . robotMap . traverse . robotLog . to logToText . traverse)
 
             assertBool "Should be some messages" (not (null msgs))
             assertBool "Error messages should not mention treads" $

@@ -338,6 +338,7 @@ library swarm-engine
     Swarm.Game.Step.Util
     Swarm.Game.Step.Util.Command
     Swarm.Game.Step.Util.Inspect
+    Swarm.Game.Step.Validate
     Swarm.Game.Tick
     Swarm.Game.Value
     Swarm.Log
@@ -658,6 +659,7 @@ library
     Swarm.Game.Step.Util,
     Swarm.Game.Step.Util.Command,
     Swarm.Game.Step.Util.Inspect,
+    Swarm.Game.Step.Validate,
     Swarm.Game.Terrain,
     Swarm.Game.Tick,
     Swarm.Game.Universe,
@@ -936,10 +938,7 @@ test-suite swarm-integration
     witch,
     yaml,
 
-  build-depends:
-    swarm,
-    swarm:swarm-tournament,
-
+  build-depends: swarm
   hs-source-dirs: test/integration
   default-language: Haskell2010
   ghc-options: -threaded

@@ -13,41 +13,29 @@ import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens
 import Control.Monad (unless)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.State (StateT, evalStateT, gets)
+import Control.Monad.State (evalStateT)
 import Control.Monad.Trans.Except
 import Data.ByteString.Lazy qualified as LBS
 import Data.Either.Extra (maybeToEither)
-import Data.Foldable (Foldable (toList))
-import Data.List.NonEmpty qualified as NE
 import Data.Sequence (Seq)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8')
 import Data.Yaml (decodeEither', parseEither)
 import Servant.Multipart
-import Swarm.Effect (runTimeIO)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Robot.Concrete (machine, robotContext, robotLog)
+import Swarm.Game.Robot.Concrete (machine, robotContext)
 import Swarm.Game.Robot.Context (defReqs)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize (codeMetricsFromSyntax)
 import Swarm.Game.Scenario.Status (emptyLaunchParams)
 import Swarm.Game.State
-import Swarm.Game.State.Robot (robotMap)
 import Swarm.Game.State.Runtime (initGameStateConfig, initScenarioInputs)
-import Swarm.Game.State.Substate (
-  WinCondition (WinConditions),
-  WinStatus (Won),
-  initState,
-  messageQueue,
-  seed,
- )
-import Swarm.Game.Step (gameTick)
-import Swarm.Game.Tick (TickNumber)
+import Swarm.Game.State.Substate (initState, seed)
+import Swarm.Game.Step.Validate (playUntilWin)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Module (Module (..))
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTermEither)
-import Swarm.Log
 import Swarm.Util.Yaml
 import Swarm.Web.Tournament.Database.Query
 import Swarm.Web.Tournament.Type
@@ -231,27 +219,3 @@ verifySolution (SolutionTimeout timeoutSeconds) sol gs = do
       -- hopefully, eventually, go away).
       & baseRobot . robotContext . defReqs <>~ reqCtx
       & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
-
--- ** Utils shared with integration tests
-
-playUntilWin :: StateT GameState IO (Either (NE.NonEmpty T.Text) TickNumber)
-playUntilWin = do
-  w <- use winCondition
-  b <- gets badErrorsInLogs
-  case NE.nonEmpty b of
-    Just badErrs -> return $ Left badErrs
-    Nothing -> case w of
-      WinConditions (Won _ ts) _ -> return $ Right ts
-      _ -> runTimeIO gameTick >> playUntilWin
-
-badErrorsInLogs :: GameState -> [T.Text]
-badErrorsInLogs g =
-  concatMap
-    (\r -> filter isBad (seqToTexts $ r ^. robotLog))
-    (g ^. robotInfo . robotMap)
-    <> filter isBad (seqToTexts $ g ^. messageInfo . messageQueue)
- where
-  isBad m = "Fatal error:" `T.isInfixOf` m || "swarm/issues" `T.isInfixOf` m
-
-seqToTexts :: Seq LogEntry -> [T.Text]
-seqToTexts = map (view leText) . toList
