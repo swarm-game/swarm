@@ -67,16 +67,23 @@ applyOrientationTransform (Orientation upDir shouldFlip) =
     DEast -> transpose . flipV
     DWest -> flipV . transpose
 
+data Pose = Pose
+  { offset :: Location
+  , orient :: Orientation
+  }
+  deriving (Eq, Show)
+
 data Placement = Placement
   { src :: StructureName
-  , offset :: Location
-  , orient :: Orientation
+  , structurePose :: Pose
   }
   deriving (Eq, Show)
 
 instance FromJSON Placement where
   parseJSON = withObject "structure placement" $ \v -> do
     sName <- v .: "src"
-    Placement sName
-      <$> v .:? "offset" .!= origin
-      <*> v .:? "orient" .!= defaultOrientation
+    p <-
+      Pose
+        <$> v .:? "offset" .!= origin
+        <*> v .:? "orient" .!= defaultOrientation
+    return $ Placement sName p

@@ -32,6 +32,7 @@ import Swarm.Game.Scenario.Topography.Structure (
   PStructure (Structure),
  )
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
+import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Universe
 import Swarm.Game.World.Parse ()
@@ -91,7 +92,7 @@ instance FromJSONE WorldParseDependencies WorldDescription where
 
     MergedStructure mergedArea staticStructurePlacements unmergedWaypoints <-
       either (fail . T.unpack) return $
-        Structure.mergeStructures mempty Root struc
+        Assembly.mergeStructures mempty Root struc
 
     let absoluteStructurePlacements =
           map (offsetLoc $ coerce upperLeft) staticStructurePlacements

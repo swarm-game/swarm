@@ -82,6 +82,7 @@ import Swarm.Language.Pretty (prettyTextLine)
 import Swarm.Language.Syntax
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal
+import Swarm.TUI.Model.Repl (REPLHistItem, replHistory, replSeq)
 import Swarm.TUI.Model.UI
 import Swarm.Util.ReadableIORef
 import Swarm.Util.RingBuffer
