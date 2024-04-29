@@ -33,46 +33,11 @@ module Swarm.TUI.Model (
 
   -- * UI state
 
-  -- ** REPL
-  REPLHistItem (..),
-  replItemText,
-  isREPLEntry,
-  getREPLEntry,
-  REPLHistory,
-  replIndex,
-  replLength,
-  replSeq,
-  newREPLHistory,
-  addREPLItem,
-  restartREPLHistory,
-  getLatestREPLHistoryItems,
-  moveReplHistIndex,
-  getCurrentItemText,
-  replIndexIsAtInput,
-  TimeDir (..),
-
-  -- ** Prompt utils
-  REPLPrompt (..),
-  removeEntry,
-
   -- ** Inventory
   InventoryListEntry (..),
   _Separator,
   _InventoryEntry,
   _EquippedEntry,
-
-  -- *** REPL Panel Model
-  REPLState,
-  ReplControlMode (..),
-  replPromptType,
-  replPromptEditor,
-  replPromptText,
-  replValid,
-  replLast,
-  replType,
-  replControlMode,
-  replHistory,
-  newREPLEditor,
 
   -- ** Updating
   populateInventoryList,
@@ -132,7 +97,6 @@ import Swarm.Log
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
-import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Version (NewReleaseFailure)
