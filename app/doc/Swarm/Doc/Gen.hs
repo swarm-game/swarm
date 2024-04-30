@@ -22,7 +22,7 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (toList)
 import Data.Map.Lazy (Map, (!))
 import Data.Map.Lazy qualified as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text, unpack)
@@ -33,7 +33,7 @@ import Swarm.Doc.Keyword
 import Swarm.Doc.Pedagogy
 import Swarm.Doc.Util
 import Swarm.Doc.Wiki.Cheatsheet
-import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityName)
+import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityName, entityYields)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Land
 import Swarm.Game.Recipe (Recipe, recipeCatalysts, recipeInputs, recipeOutputs)
@@ -222,6 +222,10 @@ recipesToDot baseRobot classicTerm emap recipes = do
       recipesToPairs f rs = both nid <$> nubOrd (concatMap f rs)
   mapM_ (uncurry (.->.)) (recipesToPairs recipeInOut recipes)
   mapM_ (uncurry (---<>)) (recipesToPairs recipeReqOut recipes)
+  -- --------------------------------------------------------------------------
+  -- also draw an edge for each entity that "yields" another entity
+  let yieldPairs = mapMaybe (\e -> (e ^. entityName,) <$> (e ^. entityYields)) . Map.elems $ entitiesByName emap
+  mapM_ (uncurry (.->.)) (both getE <$> yieldPairs)
 
 -- ----------------------------------------------------------------------------
 -- RECIPE LEVELS
