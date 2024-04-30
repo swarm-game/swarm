@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://raw.githubusercontent.com/swarm-game/swarm/main/data/schema/structure.json",
     "title": "Structure",
-    "description": "Structure properties",
+    "description": "Structure properties.  Structures may opt-in to \"automatic recognition\" for when they are constructed by a robot. There are certain limitations on the shape and placement of such \"recognizable\" structures.",
     "type": "object",
     "additionalProperties": false,
     "properties": {
@@ -26,7 +26,7 @@
             }
         },
         "placements": {
-            "description": "Structure placements",
+            "description": "Structure placements. Earlier members may occlude later members of the list.",
             "type": "array",
             "items": {
                 "$ref": "placement.json"

@@ -10,10 +10,17 @@ import Control.Lens
 import Control.Monad (forM_, unless)
 import Control.Monad.IO.Class (liftIO)
 import Data.Map qualified as M
+import Data.Set qualified as S
 import Graphics.Vty qualified as V
+import Swarm.Game.Device
+import Swarm.Game.Robot (robotCapabilities)
 import Swarm.Game.State
+import Swarm.Game.State.Landscape
+import Swarm.Game.State.Robot
+import Swarm.Game.State.Substate
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
+import Swarm.Language.Capability (Capability (CDebug))
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Util (generateModal)
@@ -43,7 +50,7 @@ openModal :: ModalType -> EventM Name AppState ()
 openModal mt = do
   newModal <- gets $ flip generateModal mt
   ensurePause
-  uiState . uiModal ?= newModal
+  uiState . uiGameplay . uiModal ?= newModal
   -- Beep
   case mt of
     ScenarioEndModal _ -> do
@@ -65,7 +72,7 @@ isRunningModal = \case
   _ -> False
 
 setFocus :: FocusablePanel -> EventM Name AppState ()
-setFocus name = uiState . uiFocusRing %= focusSetCurrent (FocusablePanel name)
+setFocus name = uiState . uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)
 
 immediatelyRedrawWorld :: EventM Name AppState ()
 immediatelyRedrawWorld = do
@@ -79,7 +86,7 @@ loadVisibleRegion = do
   mext <- lookupExtent WorldExtent
   forM_ mext $ \(Extent _ _ size) -> do
     gs <- use gameState
-    let vr = viewingRegion (gs ^. viewCenter) (over both fromIntegral size)
+    let vr = viewingRegion (gs ^. robotInfo . viewCenter) (over both fromIntegral size)
     gameState . landscape . multiWorld %= M.adjust (W.loadRegion (vr ^. planar)) (vr ^. subworld)
 
 mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe (Cosmic W.Coords))
@@ -88,9 +95,14 @@ mouseLocToWorldCoords (Brick.Location mouseLoc) = do
   case mext of
     Nothing -> pure Nothing
     Just ext -> do
-      region <- gets $ flip viewingRegion (bimap fromIntegral fromIntegral (extentSize ext)) . view viewCenter
+      region <- gets $ flip viewingRegion (bimap fromIntegral fromIntegral (extentSize ext)) . view (robotInfo . viewCenter)
       let regionStart = W.unCoords (fst $ region ^. planar)
           mouseLoc' = bimap fromIntegral fromIntegral mouseLoc
           mx = snd mouseLoc' + fst regionStart
           my = fst mouseLoc' + snd regionStart
        in pure . Just $ Cosmic (region ^. subworld) $ W.Coords (mx, my)
+
+hasDebugCapability :: Bool -> AppState -> Bool
+hasDebugCapability isCreative s =
+  maybe isCreative (S.member CDebug . getCapabilitySet) $
+    s ^? gameState . to focusedRobot . _Just . robotCapabilities

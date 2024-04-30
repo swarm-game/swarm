@@ -10,6 +10,17 @@
             "type": "string",
             "description": "Name of this substructure"
         },
+        "description": {
+            "type": "string",
+            "description": "Description of this substructure"
+        },
+        "recognize": {
+            "type": "array",
+            "items": {
+                "$ref": "direction.json"
+            },
+            "description": "Orientations for which this structure participates in automatic recognition when constructed"
+        },
         "structure": {
             "$ref": "structure.json"
         }

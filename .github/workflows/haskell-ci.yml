@@ -17,9 +17,9 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.16.3
+# version: 0.17.20240109
 #
-# REGENDATA ("0.16.3",["github","--config=cabal.haskell-ci","--copy-fields=all","swarm.cabal"])
+# REGENDATA ("0.17.20240109",["github","--config=cabal.haskell-ci","--copy-fields=all","swarm.cabal"])
 #
 name: Haskell-CI
 on:
@@ -57,29 +57,19 @@ jobs:
     strategy:
       matrix:
         include:
-          - compiler: ghc-9.6.2
+          - compiler: ghc-9.6.4
             compilerKind: ghc
-            compilerVersion: 9.6.2
+            compilerVersion: 9.6.4
             setup-method: ghcup
             allow-failure: false
-          - compiler: ghc-9.4.5
+          - compiler: ghc-9.4.8
             compilerKind: ghc
-            compilerVersion: 9.4.5
+            compilerVersion: 9.4.8
             setup-method: ghcup
             allow-failure: false
-          - compiler: ghc-9.2.7
+          - compiler: ghc-9.2.8
             compilerKind: ghc
-            compilerVersion: 9.2.7
-            setup-method: ghcup
-            allow-failure: false
-          - compiler: ghc-9.0.2
-            compilerKind: ghc
-            compilerVersion: 9.0.2
-            setup-method: ghcup
-            allow-failure: false
-          - compiler: ghc-8.10.7
-            compilerKind: ghc
-            compilerVersion: 8.10.7
+            compilerVersion: 9.2.8
             setup-method: ghcup
             allow-failure: false
       fail-fast: false
@@ -89,10 +79,10 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends gnupg ca-certificates dirmngr curl git software-properties-common libtinfo5
           mkdir -p "$HOME/.ghcup/bin"
-          curl -sL https://downloads.haskell.org/ghcup/0.1.19.2/x86_64-linux-ghcup-0.1.19.2 > "$HOME/.ghcup/bin/ghcup"
+          curl -sL https://downloads.haskell.org/ghcup/0.1.20.0/x86_64-linux-ghcup-0.1.20.0 > "$HOME/.ghcup/bin/ghcup"
           chmod a+x "$HOME/.ghcup/bin/ghcup"
           "$HOME/.ghcup/bin/ghcup" install ghc "$HCVER" || (cat "$HOME"/.ghcup/logs/*.* && false)
-          "$HOME/.ghcup/bin/ghcup" install cabal 3.10.1.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
+          "$HOME/.ghcup/bin/ghcup" install cabal 3.10.2.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
         env:
           HCKIND: ${{ matrix.compilerKind }}
           HCNAME: ${{ matrix.compiler }}
@@ -104,11 +94,13 @@ jobs:
           echo "CABAL_DIR=$HOME/.cabal" >> "$GITHUB_ENV"
           echo "CABAL_CONFIG=$HOME/.cabal/config" >> "$GITHUB_ENV"
           HCDIR=/opt/$HCKIND/$HCVER
-          HC=$HOME/.ghcup/bin/$HCKIND-$HCVER
+          HC=$("$HOME/.ghcup/bin/ghcup" whereis ghc "$HCVER")
+          HCPKG=$(echo "$HC" | sed 's#ghc$#ghc-pkg#')
+          HADDOCK=$(echo "$HC" | sed 's#ghc$#haddock#')
           echo "HC=$HC" >> "$GITHUB_ENV"
-          echo "HCPKG=$HOME/.ghcup/bin/$HCKIND-pkg-$HCVER" >> "$GITHUB_ENV"
-          echo "HADDOCK=$HOME/.ghcup/bin/haddock-$HCVER" >> "$GITHUB_ENV"
-          echo "CABAL=$HOME/.ghcup/bin/cabal-3.10.1.0 -vnormal+nowrap" >> "$GITHUB_ENV"
+          echo "HCPKG=$HCPKG" >> "$GITHUB_ENV"
+          echo "HADDOCK=$HADDOCK" >> "$GITHUB_ENV"
+          echo "CABAL=$HOME/.ghcup/bin/cabal-3.10.2.0 -vnormal+nowrap" >> "$GITHUB_ENV"
           HCNUMVER=$(${HC} --numeric-version|perl -ne '/^(\d+)\.(\d+)\.(\d+)(\.(\d+))?$/; print(10000 * $1 + 100 * $2 + ($3 == 0 ? $5 != 1 : $3))')
           echo "HCNUMVER=$HCNUMVER" >> "$GITHUB_ENV"
           echo "ARG_TESTS=--enable-tests" >> "$GITHUB_ENV"
@@ -158,7 +150,7 @@ jobs:
       - name: cache (tools)
         uses: actions/cache/restore@v3
         with:
-          key: ${{ runner.os }}-${{ matrix.compiler }}-tools-1d2d1963
+          key: ${{ runner.os }}-${{ matrix.compiler }}-tools-fda4bbd7
           path: ~/.haskell-ci-tools
       - name: install cabal-plan
         run: |
@@ -172,8 +164,8 @@ jobs:
       - name: install cabal-docspec
         run: |
           mkdir -p $HOME/.cabal/bin
-          curl -sL https://github.com/phadej/cabal-extras/releases/download/cabal-docspec-0.0.0.20230517/cabal-docspec-0.0.0.20230517-x86_64-linux.xz > cabal-docspec.xz
-          echo '3b31bbe463ad4d671abbc103db49628562ec48a6604cab278207b5b6acd21ed7  cabal-docspec.xz' | sha256sum -c -
+          curl -sL https://github.com/phadej/cabal-extras/releases/download/cabal-docspec-0.0.0.20231219/cabal-docspec-0.0.0.20231219-x86_64-linux.xz > cabal-docspec.xz
+          echo '8b60448275466bbe2b9409741b5dd07a41c541283017b95b44efe6e31379d067  cabal-docspec.xz' | sha256sum -c -
           xz -d < cabal-docspec.xz > $HOME/.cabal/bin/cabal-docspec
           rm -f cabal-docspec.xz
           chmod a+x $HOME/.cabal/bin/cabal-docspec
@@ -188,7 +180,7 @@ jobs:
         uses: actions/cache/save@v3
         if: always()
         with:
-          key: ${{ runner.os }}-${{ matrix.compiler }}-tools-1d2d1963
+          key: ${{ runner.os }}-${{ matrix.compiler }}-tools-fda4bbd7
           path: ~/.haskell-ci-tools
       - name: checkout
         uses: actions/checkout@v3
@@ -250,6 +242,13 @@ jobs:
       - name: hlint
         run: |
           if [ $((HCNUMVER >= 90400 && HCNUMVER < 90600)) -ne 0 ] ; then (cd ${PKGDIR_swarm} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 -XBangPatterns -XDeriveAnyClass -XDeriveDataTypeable -XDeriveFunctor -XDeriveGeneric -XDeriveTraversable -XExplicitForAll -XFlexibleContexts -XFlexibleInstances -XGADTSyntax -XMultiParamTypeClasses -XNumericUnderscores -XRankNTypes -XScopedTypeVariables -XStandaloneDeriving -XTupleSections -XTypeApplications -XTypeOperators -XImportQualifiedPost -XLambdaCase -XStrictData src) ; fi
+          if [ $((HCNUMVER >= 90400 && HCNUMVER < 90600)) -ne 0 ] ; then (cd ${PKGDIR_swarm} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 -XBangPatterns -XDeriveAnyClass -XDeriveDataTypeable -XDeriveFunctor -XDeriveGeneric -XDeriveTraversable -XExplicitForAll -XFlexibleContexts -XFlexibleInstances -XGADTSyntax -XMultiParamTypeClasses -XNumericUnderscores -XRankNTypes -XScopedTypeVariables -XStandaloneDeriving -XTupleSections -XTypeApplications -XTypeOperators -XImportQualifiedPost -XLambdaCase -XStrictData src/swarm-util) ; fi
+          if [ $((HCNUMVER >= 90400 && HCNUMVER < 90600)) -ne 0 ] ; then (cd ${PKGDIR_swarm} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 -XBangPatterns -XDeriveAnyClass -XDeriveDataTypeable -XDeriveFunctor -XDeriveGeneric -XDeriveTraversable -XExplicitForAll -XFlexibleContexts -XFlexibleInstances -XGADTSyntax -XMultiParamTypeClasses -XNumericUnderscores -XRankNTypes -XScopedTypeVariables -XStandaloneDeriving -XTupleSections -XTypeApplications -XTypeOperators -XImportQualifiedPost -XLambdaCase -XStrictData src/swarm-web) ; fi
+          if [ $((HCNUMVER >= 90400 && HCNUMVER < 90600)) -ne 0 ] ; then (cd ${PKGDIR_swarm} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 -XBangPatterns -XDeriveAnyClass -XDeriveDataTypeable -XDeriveFunctor -XDeriveGeneric -XDeriveTraversable -XExplicitForAll -XFlexibleContexts -XFlexibleInstances -XGADTSyntax -XMultiParamTypeClasses -XNumericUnderscores -XRankNTypes -XScopedTypeVariables -XStandaloneDeriving -XTupleSections -XTypeApplications -XTypeOperators -XImportQualifiedPost -XLambdaCase -XStrictData src/swarm-engine) ; fi
+          if [ $((HCNUMVER >= 90400 && HCNUMVER < 90600)) -ne 0 ] ; then (cd ${PKGDIR_swarm} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 -XBangPatterns -XDeriveAnyClass -XDeriveDataTypeable -XDeriveFunctor -XDeriveGeneric -XDeriveTraversable -XExplicitForAll -XFlexibleContexts -XFlexibleInstances -XGADTSyntax -XMultiParamTypeClasses -XNumericUnderscores -XRankNTypes -XScopedTypeVariables -XStandaloneDeriving -XTupleSections -XTypeApplications -XTypeOperators -XImportQualifiedPost -XLambdaCase -XStrictData src/swarm-scenario) ; fi
+          if [ $((HCNUMVER >= 90400 && HCNUMVER < 90600)) -ne 0 ] ; then (cd ${PKGDIR_swarm} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 -XBangPatterns -XDeriveAnyClass -XDeriveDataTypeable -XDeriveFunctor -XDeriveGeneric -XDeriveTraversable -XExplicitForAll -XFlexibleContexts -XFlexibleInstances -XGADTSyntax -XMultiParamTypeClasses -XNumericUnderscores -XRankNTypes -XScopedTypeVariables -XStandaloneDeriving -XTupleSections -XTypeApplications -XTypeOperators -XImportQualifiedPost -XLambdaCase -XStrictData src/swarm-lang) ; fi
+          if [ $((HCNUMVER >= 90400 && HCNUMVER < 90600)) -ne 0 ] ; then (cd ${PKGDIR_swarm} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 -XBangPatterns -XDeriveAnyClass -XDeriveDataTypeable -XDeriveFunctor -XDeriveGeneric -XDeriveTraversable -XExplicitForAll -XFlexibleContexts -XFlexibleInstances -XGADTSyntax -XMultiParamTypeClasses -XNumericUnderscores -XRankNTypes -XScopedTypeVariables -XStandaloneDeriving -XTupleSections -XTypeApplications -XTypeOperators -XImportQualifiedPost -XLambdaCase app/doc) ; fi
+          if [ $((HCNUMVER >= 90400 && HCNUMVER < 90600)) -ne 0 ] ; then (cd ${PKGDIR_swarm} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 -XBangPatterns -XDeriveAnyClass -XDeriveDataTypeable -XDeriveFunctor -XDeriveGeneric -XDeriveTraversable -XExplicitForAll -XFlexibleContexts -XFlexibleInstances -XGADTSyntax -XMultiParamTypeClasses -XNumericUnderscores -XRankNTypes -XScopedTypeVariables -XStandaloneDeriving -XTupleSections -XTypeApplications -XTypeOperators -XImportQualifiedPost -XLambdaCase app/scene) ; fi
           if [ $((HCNUMVER >= 90400 && HCNUMVER < 90600)) -ne 0 ] ; then (cd ${PKGDIR_swarm} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 -XImportQualifiedPost app) ; fi
       - name: cabal check
         run: |

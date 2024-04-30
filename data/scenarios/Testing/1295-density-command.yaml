@@ -16,7 +16,7 @@ solution: |
   doN 3 (move; grab);
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     display:
       char: Ω
       attr: robot
@@ -28,7 +28,7 @@ robots:
       - treads
       - ADT calculator
   - name: judge
-    dir: [1, 0]
+    dir: east
     system: true
     display:
       invisible: false
@@ -44,7 +44,7 @@ world:
     '*': [grass, flower]
   upperleft: [76, -89]
   map: |
-   *.*.
-   Ω*.*
-   *.*.
-   J*.*
+    *.*.
+    Ω*.*
+    *.*.
+    J*.*

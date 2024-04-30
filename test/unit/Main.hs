@@ -13,6 +13,8 @@ import Control.Monad.Except (runExceptT)
 import Data.List (subsequences)
 import Data.Set (Set)
 import Data.Set qualified as S
+import Swarm.Game.State.Runtime (stdGameConfigInputs)
+import Swarm.Game.State.Substate (initState)
 import Swarm.TUI.Model (AppState, gameState, runtimeState)
 import Swarm.TUI.Model.StateUpdate (classicGame0)
 import Swarm.Util (removeSupersets, smallHittingSet)
@@ -32,10 +34,12 @@ import TestEval (testEval)
 import TestInventory (testInventory)
 import TestLSP (testLSP)
 import TestLanguagePipeline (testLanguagePipeline)
-import TestModel (testModel)
 import TestNotification (testNotification)
+import TestOrdering (testOrdering)
 import TestPedagogy (testPedagogy)
 import TestPretty (testPrettyConst)
+import TestRecipeCoverage (testDeviceRecipeCoverage)
+import TestRepl (testRepl)
 import TestScoring (testHighScores)
 import Witch (from)
 
@@ -54,12 +58,14 @@ tests s =
     , testPrettyConst
     , testBoolExpr
     , testCommands
+    , testDeviceRecipeCoverage (initState $ s ^. runtimeState . stdGameConfigInputs)
     , testHighScores
     , testEval (s ^. gameState)
-    , testModel
+    , testRepl
     , testPedagogy (s ^. runtimeState)
     , testInventory
     , testNotification (s ^. gameState)
+    , testOrdering
     , testMisc
     , testLSP
     ]

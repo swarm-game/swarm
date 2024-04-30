@@ -79,7 +79,7 @@ initialWorldEditor :: TimeSpec -> WorldEditor Name
 initialWorldEditor ts =
   WorldEditor
     (WorldOverdraw False mempty)
-    (BL.list TerrainList (V.fromList listEnums) 1)
+    (BL.list TerrainList (V.fromList []) 1)
     (BL.list EntityPaintList (V.fromList []) 1)
     bounds
     (focusRing $ map WorldEditorPanelControl listEnums)

@@ -16,12 +16,15 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Game.Entity as E
+import Swarm.Game.Land
 import Swarm.Game.Location
-import Swarm.Game.Scenario (scenarioName)
+import Swarm.Game.Scenario (scenarioMetadata, scenarioName)
 import Swarm.Game.ScenarioInfo (scenarioItemName)
 import Swarm.Game.State
+import Swarm.Game.State.Landscape
+import Swarm.Game.State.Substate
 import Swarm.Game.Terrain
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Pretty (prettyTextLine)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Types (Polytype)
@@ -29,15 +32,14 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
-import Swarm.Util (listEnums)
 import Witch (from, into)
 
 -- | Generate a fresh modal window of the requested type.
 generateModal :: AppState -> ModalType -> Modal
 generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth))
  where
-  currentScenario = s ^. uiState . scenarioRef
-  currentSeed = s ^. gameState . seed
+  currentScenario = s ^. uiState . uiGameplay . scenarioRef
+  currentSeed = s ^. gameState . randomness . seed
   haltingMessage = case s ^. uiState . uiMenu of
     NoMenu -> Just "Quit"
     _ -> Nothing
@@ -50,6 +52,7 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
       RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
       CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
       MessagesModal -> ("Messages", Nothing, descriptionWidth)
+      StructuresModal -> ("Buildable Structures", Nothing, descriptionWidth)
       ScenarioEndModal WinModal ->
         let nextMsg = "Next challenge!"
             stopMsg = fromMaybe "Return to the menu" haltingMessage
@@ -103,18 +106,26 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
       GoalModal ->
         let goalModalTitle = case currentScenario of
               Nothing -> "Goal"
-              Just (scenario, _) -> scenario ^. scenarioName
+              Just (scenario, _) -> scenario ^. scenarioMetadata . scenarioName
          in (" " <> T.unpack goalModalTitle <> " ", Nothing, descriptionWidth)
       KeepPlayingModal -> ("", Just (Button CancelButton, [("OK", Button CancelButton, Cancel)]), 80)
       TerrainPaletteModal -> ("Terrain", Nothing, w)
        where
-        wordLength = maximum $ map (length . show) (listEnums :: [TerrainType])
+        tm = s ^. gameState . landscape . terrainAndEntities . terrainMap
+        wordLength = maximum $ map (T.length . getTerrainWord) (M.keys $ terrainByName tm)
         w = wordLength + 6
       EntityPaletteModal -> ("Entity", Nothing, 30)
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
-drawType = withAttr infoAttr . padLeftRight 1 . txt . prettyText
+drawType ty = Widget Fixed Fixed $ do
+  ctx <- getContext
+  let w = ctx ^. availWidthL
+      renderedTy = prettyTextLine ty
+      displayedTy
+        | T.length renderedTy <= w `div` 2 - 2 = renderedTy
+        | otherwise = T.take (w `div` 2 - 2 - 3) renderedTy <> "..."
+  render . withAttr infoAttr . padLeftRight 1 . txt $ displayedTy
 
 -- | Draw markdown document with simple code/bold/italic attributes.
 --
@@ -136,14 +147,21 @@ drawMarkdown d = do
     Markdown.Emphasis -> italicAttr
   rawAttr = \case
     "entity" -> greenAttr
+    "structure" -> redAttr
+    "tag" -> yellowAttr
     "type" -> magentaAttr
     _snippet -> highlightAttr -- same as plain code
 
-drawLabeledTerrainSwatch :: TerrainType -> Widget Name
-drawLabeledTerrainSwatch a =
+drawLabeledTerrainSwatch :: TerrainMap -> TerrainType -> Widget Name
+drawLabeledTerrainSwatch tm a =
   tile <+> str materialName
  where
-  tile = padRight (Pad 1) $ renderDisplay $ terrainMap M.! a
+  tile =
+    padRight (Pad 1)
+      . renderDisplay
+      . maybe mempty terrainDisplay
+      $ M.lookup a (terrainByName tm)
+
   materialName = init $ show a
 
 descriptionTitle :: Entity -> String
@@ -214,3 +232,12 @@ maybeScroll vpName contents =
           . viewport vpName Vertical
           . Widget Fixed Fixed
           $ return result
+
+-- | Draw the name of an entity, labelled with its visual
+--   representation as a cell in the world.
+drawLabelledEntityName :: Entity -> Widget n
+drawLabelledEntityName e =
+  hBox
+    [ padRight (Pad 2) (renderDisplay (e ^. entityDisplay))
+    , txt (e ^. entityName)
+    ]

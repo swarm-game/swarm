@@ -1,0 +1,65 @@
+version: 1
+name: Structure recognizer - removal
+description: |
+  Remove a structure from the registry
+  when one of its cells are removed.
+creative: false
+objectives:
+  - teaser: Destroy structure
+    prerequisite: complete_structure
+    goal:
+      - |
+        Remove a piece of the structure to destroy it
+    condition: |
+      foundStructure <- structure "chessboard" 0;
+      return $ case foundStructure (\_. true) (\_. false);
+  - id: complete_structure
+    teaser: Complete structure
+    goal:
+      - |
+        Build a `chessboard`{=structure} structure
+    condition: |
+      foundStructure <- structure "chessboard" 0;
+      return $ case foundStructure (\_. false) (\_. true);
+robots:
+  - name: base
+    dir: south
+    devices:
+      - grabber
+      - treads
+    inventory:
+      - [1, gold]
+      - [1, silver]
+solution: |
+  move;
+  place "silver";
+  grab;
+structures:
+  - name: chessboard
+    recognize: [north]
+    structure:
+      mask: '.'
+      palette:
+        'g': [stone, gold]
+        's': [stone, silver]
+      map: |
+        gsgs
+        sgsg
+        gsgs
+        sgsg
+world:
+  name: root
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass]
+    'g': [grass, gold]
+    's': [grass, silver]
+    'B': [grass, null, base]
+  upperleft: [0, 0]
+  map: |
+    ...B.
+    gsg.g
+    sgsgs
+    gsgsg
+    sgsgs

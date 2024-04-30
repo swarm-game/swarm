@@ -1,0 +1,47 @@
+version: 1
+name: Rotated pre-placed structure recognition
+description: |
+  Pre-placed structure recognition with rotation
+creative: false
+objectives:
+  - teaser: Have structure
+    goal:
+      - |
+        Have a `tee`{=structure} structure
+    condition: |
+      foundStructure <- structure "tee" 0;
+      return $ case foundStructure (\_. false) (\_. true);
+robots:
+  - name: base
+    dir: east
+solution: |
+  noop;
+structures:
+  - name: tee
+    recognize: [north, south, east, west]
+    description: "A tee pattern of flowers"
+    structure:
+      mask: '.'
+      palette:
+        'x': [stone, flower]
+      map: |
+        .x.
+        xxx
+known: [flower]
+world:
+  name: root
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass]
+    'B': [grass, null, base]
+  upperleft: [0, 0]
+  placements:
+    - src: tee
+      offset: [2, 0]
+      orient:
+        up: east
+  map: |
+    B....
+    .....
+    .....

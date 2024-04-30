@@ -1,5 +1,42 @@
 # Revision history for swarm
 
+## **0.5.0.0** - 2023-11-01
+
+### Bugfixes
+
+* Fix bug where some pretty-printed terms contained extra elaborated
+  terms inserted by @byorgey ([#1497](https://github.com/swarm-game/swarm/pull/1497))
+
+### New Features
+
+#### Language
+
+* New `path` command for pathfinding by @kostmo ([#1523](https://github.com/swarm-game/swarm/pull/1523))
+
+#### New scenarios
+
+* "Robot wave" scenario by @kostmo ([#1556](https://github.com/swarm-game/swarm/pull/1556))
+* Combination locks scenario by @kostmo ([#1591](https://github.com/swarm-game/swarm/pull/1591))
+
+#### New achievements
+
+* Grant `RobotIntoWater` achievement by @byorgey ([#1504](https://github.com/swarm-game/swarm/pull/1504))
+* Achievement for pointless swapping by @kostmo ([#1588](https://github.com/swarm-game/swarm/pull/1588))
+
+#### UI enhancements
+
+* Support Markdown in achievement descriptions by @kostmo ([#1508](https://github.com/swarm-game/swarm/pull/1508))
+* Render map preview on scenario selection screen by @kostmo ([#1515](https://github.com/swarm-game/swarm/pull/1515))
+* Robot activity counts in F2 menu by @kostmo ([#1484](https://github.com/swarm-game/swarm/pull/1484))
+* Show robot IDs in F2 menu by @kostmo ([#1482](https://github.com/swarm-game/swarm/pull/1482))
+* Print REPL errors inline and get rid of error popup by @byorgey ([#1487](https://github.com/swarm-game/swarm/pull/1487))
+* Improvements to scrolling by @byorgey ([#1481](https://github.com/swarm-game/swarm/pull/1481))
+
+#### Command line options
+
+* Improvements to term pretty-printing by @xsebek ([#1464](https://github.com/swarm-game/swarm/pull/1464))
+* `swarm format` now actually formats by @xsebek ([#1459](https://github.com/swarm-game/swarm/pull/1459))
+
 ## **0.4.0.0** - 2023-08-18
 
 ### Bugfixes

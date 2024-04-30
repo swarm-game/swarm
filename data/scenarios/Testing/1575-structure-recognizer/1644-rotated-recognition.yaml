@@ -1,0 +1,51 @@
+version: 1
+name: Rotated structure recognition
+description: |
+  Structure recognition with rotation
+creative: false
+objectives:
+  - teaser: Build structure
+    goal:
+      - |
+        Build a `tee`{=structure} structure
+    condition: |
+      foundStructure <- structure "tee" 0;
+      return $ case foundStructure (\_. false) (\_. true);
+robots:
+  - name: base
+    dir: east
+    devices:
+      - grabber
+      - treads
+    inventory:
+      - [4, flower]
+solution: |
+  move; move;
+  turn right;
+  move; move;
+  place "flower";
+structures:
+  - name: tee
+    recognize: [north, south, east, west]
+    description: "A tee pattern of flowers"
+    structure:
+      mask: '.'
+      palette:
+        'x': [stone, flower]
+      map: |
+        .x.
+        xxx
+known: [flower]
+world:
+  name: root
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass]
+    'x': [stone, flower]
+    'B': [grass, null, base]
+  upperleft: [0, 0]
+  map: |
+    B.x..
+    ..xx.
+    .....

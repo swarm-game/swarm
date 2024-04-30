@@ -1,0 +1,27 @@
+version: 1
+name: Custom terrain - invalid attribute
+description: |
+  Colorful new terrain
+creative: false
+attrs:
+  - name: lava
+    bg: "#dd7733"
+terrains:
+  - name: lava
+    attr: baklava
+    description: |
+      Scorching, liquid rock
+robots:
+  - name: base
+    dir: east
+known: []
+world:
+  dsl: |
+    {grass}
+  palette:
+    'B': [grass, null, base]
+    '.': [lava]
+  upperleft: [0, 0]
+  map: |
+    B.
+    ..

@@ -26,11 +26,11 @@ entities:
       char: 'w'
     description:
       - Enables `path` command
-    properties: [known, portable]
+    properties: [known, pickable]
     capabilities: [path]
 robots:
   - name: base
-    dir: [1,0]
+    dir: east
     devices:
       - treads
       - logger

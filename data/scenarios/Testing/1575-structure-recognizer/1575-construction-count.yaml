@@ -1,0 +1,69 @@
+version: 1
+name: Structure recognizer - counting
+description: |
+  Count the construction of several adjacent copies
+creative: false
+objectives:
+  - teaser: Build 12 structures
+    goal:
+      - |
+        Build 12 copies of the `green_jewel`{=structure} structure
+    condition: |
+      foundGreen <- structure "green_jewel" 0;
+      return $ case foundGreen (\_. false) (\x. fst x >= 12);
+robots:
+  - name: base
+    dir: east
+    devices:
+      - ADT calculator
+      - branch predictor
+      - comparator
+      - dictionary
+      - grabber
+      - lambda
+      - logger
+      - strange loop
+      - treads
+    inventory:
+      - [108, pixel (G)]
+solution: |
+  def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+
+  doN 6 (
+    doN 9 (place "pixel (G)"; move;);
+    doN 2 (turn right; move;);
+    doN 9 (place "pixel (G)"; move;);
+    doN 2 (turn left; move;);
+  );
+structures:
+  - name: green_jewel
+    recognize: [north]
+    structure:
+      palette:
+        'g': [stone, pixel (G)]
+      map: |
+        ggg
+        ggg
+        ggg
+known: [pixel (G)]
+world:
+  name: root
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass]
+    'B': [grass, null, base]
+  upperleft: [0, 0]
+  map: |
+    B........
+    .........
+    .........
+    .........
+    .........
+    .........
+    .........
+    .........
+    .........
+    .........
+    .........
+    .........

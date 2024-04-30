@@ -67,7 +67,7 @@ You can also check the files from the command line:
 # install latest check-jsonschema executable version
 pip install check-jsonschema
 # try it on provided scenarios
-scripts/validate-json-schemas.sh
+scripts/validate/json-schemas.sh
 ```
 
 ### YAML schema

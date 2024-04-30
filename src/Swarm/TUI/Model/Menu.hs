@@ -21,6 +21,7 @@ import Data.Text (Text)
 import Data.Vector qualified as V
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Entity as E
+import Swarm.Game.Ingredients
 import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
   ScenarioInfo (..),
@@ -29,7 +30,7 @@ import Swarm.Game.ScenarioInfo (
   scMap,
   scenarioCollectionToList,
  )
-import Swarm.Game.State
+import Swarm.Game.World.Gen (Seed)
 import Swarm.TUI.Model.Name
 import Swarm.Util
 import System.FilePath (dropTrailingPathSeparator, splitPath, takeFileName)
@@ -47,6 +48,7 @@ data ModalType
   | RecipesModal
   | CommandsModal
   | MessagesModal
+  | StructuresModal
   | EntityPaletteModal
   | TerrainPaletteModal
   | RobotsModal

@@ -3,692 +3,631 @@
     attr: plant
     char: 'T'
   description:
-  - |
-    A tall, living entity made of a tough cellular material called "wood".
-    They regrow after being harvested and are an important raw ingredient used
-    in making many different devices.
-  properties: [portable, growable, opaque, combustible]
+    - |
+      A tall, living entity made of a tough cellular material called "wood".
+      They regrow after being harvested and are an important raw ingredient used
+      in making many different devices.
+  properties: [pickable, growable, opaque, combustible]
   growth: [500, 600]
   combustion:
     ignition: 0.01
     duration: [80, 120]
     product: ash
-
 - name: ash
   display:
     attr: rock
     char: '#'
   description:
-  - |
-    Burned-out remnants of combustion.
-  properties: [portable]
-
+    - |
+      Burned-out remnants of combustion.
+  properties: [pickable]
 - name: branch
   display:
     attr: wood
     char: 'y'
   description:
-  - A branch cut from a tree.  It's as if the tree had to make a decision
-    and was exploring two options.
-  properties: [portable]
-
+    - A branch cut from a tree.  It's as if the tree had to make a decision and was exploring two options.
+  properties: [pickable]
 - name: log
   display:
     attr: wood
     char: 'l'
   description:
-  - A wooden log, obtained by harvesting a tree and cutting off its branches.
-  properties: [portable, combustible]
+    - A wooden log, obtained by harvesting a tree and cutting off its branches.
+  properties: [pickable, combustible]
   combustion:
     ignition: 0.05
     duration: [40, 80]
     product: ash
-
 - name: board
   display:
     attr: wood
     char: 'w'
   description:
-  - A wooden board, made by cutting a log into pieces.
-  properties: [portable, combustible]
+    - A wooden board, made by cutting a log into pieces.
+  properties: [pickable, combustible]
   combustion:
     ignition: 0.2
     duration: [20, 40]
     product: ash
-
 - name: workbench
   display:
     attr: wood
     char: 'π'
   description:
-  - A plain wooden workbench, providing space to make other
-    things using the `make` command.
-  - |
-    Example:
-    ```
-    make "log"
-    ```
-  properties: [portable]
+    - A plain wooden workbench, providing space to make other things using the `make` command.
+    - |
+      Example:
+      ```
+      make "log"
+      ```
+  properties: [pickable]
   capabilities: [make]
-
 - name: paper
   display:
     attr: snow
     char: '■'
   description:
-  - A flat material made of pressed and dried wood fibers,
-    used as a surface on which to inscribe symbols.
-  properties: [portable, combustible]
+    - A flat material made of pressed and dried wood fibers, used as a surface on which to inscribe symbols.
+  properties: [pickable, combustible]
   combustion:
     ignition: 0.5
     duration: [10, 20]
     product: ash
-
 - name: PhD thesis
   display:
     attr: snow
     char: 'P'
   description:
-  - Perhaps writing one of these will help gain the trust and respect of
-    the native inhabitants.
-  properties: [portable]
-
+    - Perhaps writing one of these will help gain the trust and respect of the native inhabitants.
+  properties: [pickable]
 - name: rock
   display:
     attr: rock
     char: 'o'
   description:
-  - A medium-sized rock, picked up from the ground or created by drilling.
-    Can be ground into sand or used to build a simple furnace, among other things.
-  properties: [portable]
-
+    - A medium-sized rock, picked up from the ground or created by drilling. Can be ground into sand or used to build a simple furnace, among other things.
+  properties: [pickable]
 - name: handle
   display:
     attr: device
     char: 'h'
   description:
-  - Ergonomic affordance for manipulating objects. Also grants the "setname" capability, allowing one
-    to assign a "handle" to robots.
-  properties: [portable]
+    - Ergonomic affordance for manipulating objects. Also grants the "setname" capability, allowing one to assign a "handle" to robots.
+  properties: [pickable]
   capabilities: [setname]
-
 - name: lodestone
   display:
     attr: iron
     char: 'o'
   description:
-  - A medium-sized rock... that looks a little different.
-    It seems to react to iron and surprisingly also to naturally growing bits.
-  properties: [portable]
+    - A medium-sized rock... that looks a little different. It seems to react to iron and surprisingly also to naturally growing bits.
+  properties: [pickable]
   capabilities: [negation]
-
 - name: beaglepuss
   display:
     attr: rubber
     char: 'B'
   description:
-  - Iconic novelty disguise. Renders one either completely inconspicuous, or the opposite.
-  properties: [portable]
+    - Iconic novelty disguise. Renders one either completely inconspicuous, or the opposite.
+  properties: [pickable]
   capabilities: [appear]
-
 - name: boulder
   display:
     attr: rock
     char: '@'
   description:
-  - A very large, impassable rock. A drill can be used to get rid of it and turn it into smaller rocks.
+    - A very large, impassable rock. A drill can be used to get rid of it and turn it into smaller rocks.
   properties: [unwalkable]
-
 - name: mountain
   display:
     attr: snow
     char: 'A'
   description:
-  - A mountain. Can be tunneled through with a drill, but it takes time.
+    - A mountain. Can be tunneled through with a drill, but it takes time.
   properties: [unwalkable, opaque]
-
 - name: mountain tunnel
   display:
     attr: snow
     char: 'Å'
     priority: 11
   description:
-  - A tunnel in a mountain through which anything can freely move.
+    - A tunnel in a mountain through which anything can freely move.
   properties: []
-
 - name: copper ore
   display:
     attr: copper
     char: 'C'
   description:
-  - Raw copper ore, useful for making wires, pipes, and other metal things.
-    Patches of copper ore can be found on the surface, but are quickly exhausted.
-  - Scanners seem to indicate larger quantities of copper could be found beneath some of the
-    mountains, but those would require a drill to access and mine.
-  properties: [portable]
-
+    - Raw copper ore, useful for making wires, pipes, and other metal things. Patches of copper ore can be found on the surface, but are quickly exhausted.
+    - Scanners seem to indicate larger quantities of copper could be found beneath some of the mountains, but those would require a drill to access and mine.
+  properties: [pickable]
 - name: copper mine
   display:
     attr: copper'
     char: 'Å'
     priority: 11
   description:
-  - A copper vein that can be actively mined to produce copper ore.
+    - A copper vein that can be actively mined to produce copper ore.
   properties: []
-
 - name: copper wire
   display:
     attr: copper
     char: '|'
   description:
-  - Copper wire is very good at conducting electricity and useful for
-    making various types of circuits and machines.
-  properties: [portable]
-
+    - Copper wire is very good at conducting electricity and useful for making various types of circuits and machines.
+  properties: [pickable]
 - name: strange loop
   display:
     attr: copper
     char: '8'
   description:
-  - Two copper wires twisted together in a strange shape that loops
-    back on itself. It must be useful for something...
-  properties: [portable]
+    - Two copper wires twisted together in a strange shape that loops back on itself. It must be useful for something...
+  properties: [pickable]
   capabilities: [recursion]
-
 - name: copper pipe
   display:
     attr: copper
     char: 'I'
   description:
-  - A pipe made out of a thin sheet of copper.  Great for transmitting
-    water or steam.
-  properties: [portable]
-
+    - A pipe made out of a thin sheet of copper.  Great for transmitting water or steam.
+  properties: [pickable]
 - name: iron plate
   display:
     attr: iron
     char: '■'
   description:
-  - Worked iron suitable for crafting resilient tools.
-  - It also possess some electro-magnetic properties.
-  properties: [portable]
-
+    - Worked iron suitable for crafting resilient tools.
+    - It also possess some electro-magnetic properties.
+  properties: [pickable]
 - name: iron gear
   display:
     attr: iron
     char: '*'
   description:
-  - An iron gear, suitable for constructing larger, more powerful
-    machinery than a wooden gear.
-  properties: [portable]
-
+    - An iron gear, suitable for constructing larger, more powerful machinery than a wooden gear.
+  properties: [pickable]
 - name: iron ore
   display:
     attr: iron
     char: 'F'
   description:
-  - Raw iron ore. Used to create more resilient tools than copper.
-  - It can only be mined by drilling in the mountains.
-  properties: [portable]
-
+    - Raw iron ore. Used to create more resilient tools than copper.
+    - It can only be mined by drilling in the mountains.
+  properties: [pickable]
 - name: iron mine
   display:
     attr: iron'
     char: 'Å'
     priority: 11
   description:
-  - An iron vein that can be actively mined to produce iron ore.
+    - An iron vein that can be actively mined to produce iron ore.
   properties: []
-
 - name: quartz
   display:
     attr: quartz
     char: 'Q'
   description:
-  - Raw quartz crystals.  Useful for creating devices like clocks, and
-    can be processed to extract silicon.
-  - It can only be mined by drilling in the mountains.
-  properties: [portable]
-
+    - Raw quartz crystals.  Useful for creating devices like clocks, and can be processed to extract silicon.
+    - It can only be mined by drilling in the mountains.
+  properties: [pickable]
 - name: quartz mine
   display:
     attr: quartz
     char: 'Å'
     priority: 11
   description:
-  - A quartz vein that can be actively mined to produce quartz.
+    - A quartz vein that can be actively mined to produce quartz.
   properties: []
-
 - name: silicon
   display:
     attr: quartz
     char: 'S'
   description:
-  - Extracted by processing quartz at high temperatures, silicon can
-    be used to construct integrated circuits.
-  properties: [portable]
-
+    - Extracted by processing quartz at high temperatures, silicon can be used to construct integrated circuits.
+  properties: [pickable]
 - name: deep mine
   display:
     attr: rock
     char: 'Å'
     priority: 11
   description:
-  - A deep mine that yields rare and wonderful treasures to those who are patient.
-  - But be careful lest you delve too greedily and too deep.
+    - A deep mine that yields rare and wonderful treasures to those who are patient.
+    - But be careful lest you delve too greedily and too deep.
   properties: []
-
 - name: silver
   display:
     attr: silver
     char: '•'
   description:
-  - A shiny, metallic substance, noted for its high reflectivity when polished.
-  properties: [portable]
-
+    - A shiny, metallic substance, noted for its high reflectivity when polished.
+  properties: [pickable]
 - name: gold
   display:
     attr: gold
     char: '•'
   description:
-  - A shiny, metallic substance, with applications in specialized electronics.
-  - It also seems to be highly valued by local aliens.
-  properties: [portable]
-
+    - A shiny, metallic substance, with applications in specialized electronics.
+    - It also seems to be highly valued by local aliens.
+  properties: [pickable]
 - name: mithril
   display:
     attr: silver
     char: 'M'
   description:
-  - Mithril can be beaten like copper, and polished like glass.  One
-    can also make of it a metal, light and yet harder than tempered
-    steel. Its beauty is like to that of common silver, but the beauty
-    of mithril does not tarnish or grow dim.
-  properties: [portable]
-
+    - Mithril can be beaten like copper, and polished like glass.  One can also make of it a metal, light and yet harder than tempered steel. Its beauty is like to that of common silver, but the beauty of mithril does not tarnish or grow dim.
+  properties: [pickable]
 - name: furnace
   display:
     attr: fire
     char: '#'
   description:
-  - A furnace can be used to turn metal ore into various useful products.
-  properties: [portable]
-
+    - A furnace can be used to turn metal ore into various useful products.
+  properties: [pickable]
 - name: big furnace
   display:
     attr: fire
     char: '#'
   description:
-  - A big furnace can get even hotter than a normal furnace, and can be used
-    to process quartz into silicon.
-  properties: [portable]
-
+    - A big furnace can get even hotter than a normal furnace, and can be used to process quartz into silicon.
+  properties: [pickable]
 - name: small motor
   display:
     attr: entity
     char: 'm'
   description:
-  - A motor is useful for making devices that can turn when electric
-    current is applied.
-  - This one is rather small, but surprisingly efficient.
-  properties: [portable]
-
+    - A motor is useful for making devices that can turn when electric current is applied.
+    - This one is rather small, but surprisingly efficient.
+  properties: [pickable]
 - name: big motor
   display:
     attr: entity
     char: 'M'
   description:
-  - A motor is useful for making devices that can turn when electric
-    current is applied.
-  - This one is huge and could be used to construct powerful machinery.
-  properties: [portable]
-
+    - A motor is useful for making devices that can turn when electric current is applied.
+    - This one is huge and could be used to construct powerful machinery.
+  properties: [pickable]
 - name: flower
   display:
     attr: flower
     char: '*'
   description:
-  - A beautiful flower that grows wild in local meadows.  It is not clear
-    what it might be useful for, but it looks nice.
-  properties: [portable, growable]
+    - A beautiful flower that grows wild in local meadows.  It is not clear what it might be useful for, but it looks nice.
+  properties: [pickable, growable]
   growth: [30, 50]
-
+- name: tea plant
+  display:
+    attr: plant
+    char: 't'
+  description:
+    - Camellia sinensis.
+  properties: [pickable, growable]
+  growth: [5000, 6000]
+  yields: tea leaves
+- name: cup of tea
+  display:
+    attr: sand
+    char: 'u'
+  description:
+    - A nice hot cup of tea.
+  properties: [pickable]
+- name: tea leaves
+  display:
+    attr: plant
+    char: 'l'
+  description:
+    - Leaves picked from a tea plant.  They give off a nice smell when crushed.
+  properties: [pickable]
 - name: cotton
   display:
     attr: silver
     char: 'i'
   description:
-  - A plant with tufts of soft fibers that can be harvested and used
-    to make things, including sheets of material that the local
-    aliens like to drape over their bodies.
-  properties: [portable, growable, combustible]
+    - A plant with tufts of soft fibers that can be harvested and used to make things, including sheets of material that the local aliens like to drape over their bodies.
+  properties: [pickable, growable, combustible]
   growth: [100, 800]
   combustion:
     ignition: 0.1
     duration: [20, 40]
     product: ash
-
 - name: linotype
   display:
     attr: silver
     char: 't'
   description:
-  - Employs hot lead typesetting to arrange glyphs into a mold for printing.
-  - |
-    An equipped `linotype`{=entity} device enables the `format` command:
-    ```
-    format : a -> text
-    ```
-    which can turn any value into a suitable text representation.
-  properties: [portable]
+    - Employs hot lead typesetting to arrange glyphs into a mold for printing.
+    - |
+      An equipped `linotype`{=entity} device enables the `format` command:
+      ```
+      format : a -> text
+      ```
+      which can turn any value into a suitable text representation.
+  properties: [pickable]
   capabilities: [format]
-
 - name: Elmer's glue
   display:
     attr: snow
     char: 'g'
   description:
-  - Polyvinyl acetate. Popular adhesive for crafting. Of dubious nutritional value.
-  - |
-    Facilitates the concatenation of text values.
-  - |
-    The infix operator `++ : text -> text -> text`{=snippet}
-    can be used to concatenate two text values.  For example,
-  - |
-    "Number of widgets: " ++ format numWidgets
-  properties: [portable]
+    - Polyvinyl acetate. Popular adhesive for crafting. Of dubious nutritional value.
+    - |
+      Facilitates the concatenation of text values.
+    - |
+      The infix operator `++ : text -> text -> text`{=snippet}
+      can be used to concatenate two text values.  For example,
+    - |
+      ```
+      let numWidgets = 42
+      in "Number of widgets: " ++ format numWidgets
+      ```
+  properties: [pickable]
   capabilities: [concat]
-
 - name: caliper
   display:
     attr: silver
     char: 'C'
   description:
-  - Simple, yet accurate measuring device. Can determine the length of a text value.
-  - |
-    ```
-    chars : text -> int
-    ```
-    computes the number of characters in a `text`{=type} value.
-  properties: [portable]
+    - Simple, yet accurate measuring device. Can determine the length of a text value.
+    - |
+      ```
+      chars : text -> int
+      ```
+      computes the number of characters in a `text`{=type} value.
+  properties: [pickable]
   capabilities: [charcount]
-
 - name: wedge
   display:
     attr: silver
     char: 'v'
   description:
-  - A simple machine for the textually-inclined; plain but effective.
-  - |
-    An equipped `wedge`{=entity} enables the `split` command:
-    ```
-    split : int -> text -> text * text
-    ```
-    splits a `text`{=type} value into two pieces, one before the given index and one after.
-  properties: [portable]
+    - A simple machine for the textually-inclined; plain but effective.
+    - |
+      An equipped `wedge`{=entity} enables the `split` command:
+      ```
+      split : int -> text -> text * text
+      ```
+      splits a `text`{=type} value into two pieces, one before the given index and one after.
+  properties: [pickable]
   capabilities: [split]
-
 - name: string
   display:
     attr: silver
     char: '~'
   description:
-  - A long, flexible device for transferring either force or
-    information, made of twisted cotton fibers.  Multiple strings can
-    also be woven into larger configurations such as cloth or nets.
-  - |
-    An equipped `string`{=entity} device enables several commands for working with
-    `text`{=type} values:
-  - |
-    `format : a -> text` can turn any value into a suitable text
-    representation.
-  - |
-    The infix operator `++ : text -> text -> text`{=snippet}
-    can be used to concatenate two text values.  For example,
-  - |
-    ```
-    let numWidgets = 42
-    in "Number of widgets: " ++ format numWidgets
-    ```
-  - |
-    `chars : text -> int` computes the number of characters in a
-    `text`{=type} value.
-  - |
-    `split : int -> text -> text * text` splits a `text`{=type} value into
-    two pieces, one before the given index and one after.
-  properties: [portable]
+    - A long, flexible device for transferring either force or information, made of twisted cotton fibers.  Multiple strings can also be woven into larger configurations such as cloth or nets.
+    - |
+      An equipped `string`{=entity} device enables several commands for working with
+      `text`{=type} values:
+    - |
+      `format : a -> text` can turn any value into a suitable text
+      representation.
+    - |
+      The infix operator `++ : text -> text -> text`{=snippet}
+      can be used to concatenate two text values.  For example,
+    - |
+      ```
+      let numWidgets = 42
+      in "Number of widgets: " ++ format numWidgets
+      ```
+    - |
+      `chars : text -> int` computes the number of characters in a
+      `text`{=type} value.
+    - |
+      `split : int -> text -> text * text` splits a `text`{=type} value into
+      two pieces, one before the given index and one after.
+  properties: [pickable]
   capabilities: [format, concat, charcount, split]
-
 - name: decoder ring
   display:
     attr: silver
     char: 'O'
   description:
-  - |
-    A handy lookup table for converting from characters to numeric codes and
-    back, shaped for some reason into a ring.  When equipped, it
-    enables two functions:
-  - |
-    `charAt : int -> text -> int` returns the numeric code of the
-    character at a specific index in a (0-indexed) `text`{=type} value.
-  - |
-    `toChar : int -> text` creates a singleton (length-1) `text`{=type}
-    value containing a character with the given numeric code.
-  properties: [portable]
+    - |
+      A handy lookup table for converting from characters to numeric codes and
+      back, shaped for some reason into a ring.  When equipped, it
+      enables two functions:
+    - |
+      `charAt : int -> text -> int` returns the numeric code of the
+      character at a specific index in a (0-indexed) `text`{=type} value.
+    - |
+      `toChar : int -> text` creates a singleton (length-1) `text`{=type}
+      value containing a character with the given numeric code.
+  properties: [pickable]
   capabilities: [code]
-
 - name: lambda
   display:
     attr: flower
     char: 'λ'
   description:
-  - A wild lambda.  They are somewhat rare, but regrow when picked.  Lambdas
-    are delicious when cooked into curry.
-  - Lambdas can also be used to create functions. For example,
-  - |
-    ```
-    def thrice : cmd unit -> cmd unit = \c. c;c;c end
-    ```
-  - defines the function `thrice`{=snippet} which repeats a command three times.
-  properties: [portable, growable]
+    - A wild lambda.  They are somewhat rare, but regrow when picked.  Lambdas are delicious when cooked into curry.
+    - Lambdas can also be used to create functions. For example,
+    - |
+      ```
+      def thrice : cmd unit -> cmd unit = \c. c;c;c end
+      ```
+    - defines the function `thrice`{=snippet} which repeats a command three times.
+  properties: [pickable, growable]
   growth: [100, 200]
   capabilities: [lambda]
-
 - name: curry
   display:
     attr: flower
     char: 'C'
   description:
-  - Delicious curry cooked from wild lambdas.
-  properties: [portable]
-
+    - Delicious curry cooked from wild lambdas.
+  properties: [pickable]
 - name: water
   display:
     attr: water
     char: ' '
   description:
-  - Liquid dihydrogen monoxide, which seems to be plentiful on this planet.
-  properties: [portable, infinite, liquid]
-
+    - Liquid dihydrogen monoxide, which seems to be plentiful on this planet.
+  properties: [pickable, infinite, liquid]
 - name: wavy water
   display:
     attr: water
     char: '~'
   description:
-  - A wavy section of water.  The same as normal water, but with more waves.
-  properties: [portable, infinite, liquid]
+    - A wavy section of water.  The same as normal water, but with more waves.
+  properties: [pickable, infinite, liquid]
   yields: water
-
 - name: boat
   display:
     attr: wood
     char: 'B'
   description:
-  - A robot with a boat equipped can float on top of water without drowning.
-  - |
-    **NOTE:** most devices are automatically equipped on robots that
-    will require them; but this doesn't work in the case of boats since floating is not
-    associated with any particular command.  To manually ensure a boat is equipped on
-    a robot, just add the special command `require "boat"` to the robot's program.
-  properties: [portable]
+    - A robot with a boat equipped can float on top of water without drowning.
+    - |
+      **NOTE:** most devices are automatically equipped on robots that
+      will require them; but this doesn't work in the case of boats since floating is not
+      associated with any particular command.  To manually ensure a boat is equipped on
+      a robot, just add the special command `require "boat"` to the robot's program.
+  properties: [pickable]
   capabilities: [float]
-
 - name: sand
   display:
     attr: sand
     char: '█'
   description:
-  - A substance composed mostly of tiny rocks and mineral particles that can be
-    used in a furnace to make glass.  You can often find it near water, or
-    make it yourself by grinding up rocks.
-  properties: [portable]
-
+    - A substance composed mostly of tiny rocks and mineral particles that can be used in a furnace to make glass.  You can often find it near water, or make it yourself by grinding up rocks.
+  properties: [pickable]
 - name: glass
   display:
     attr: entity
     char: '□'
   description:
-  - A pane of a brittle, clear substance, made from melting sand in a furnace.
-  properties: [portable]
-
+    - A pane of a brittle, clear substance, made from melting sand in a furnace.
+  properties: [pickable]
 - name: LaTeX
   display:
     attr: flower
     char: '$'
   description:
-  - A naturally occurring substance derived from trees, useful for producing
-    rubber and for typesetting mathematical documents.
-  properties: [portable, growable]
+    - A naturally occurring substance derived from trees, useful for producing rubber and for typesetting mathematical documents.
+  properties: [pickable, growable]
   growth: [2000, 3000]
-
 - name: rubber
   display:
     attr: rubber
     char: '%'
   description:
-  - A flexible, durable material made from LaTeX.
-  properties: [portable]
-
+    - A flexible, durable material made from LaTeX.
+  properties: [pickable]
 - name: bit (0)
   display:
     attr: entity
     char: '0'
   description:
-  - A bit is used to represent the smallest possible amount of information.
-    Useful for constructing various information-processing devices, as well as drills.
-  properties: [portable, growable]
+    - A bit is used to represent the smallest possible amount of information. Useful for constructing various information-processing devices, as well as drills.
+  properties: [pickable, growable]
   growth: [200, 400]
-
 - name: bit (1)
   display:
     attr: entity
     char: '1'
   description:
-  - A bit is used to represent the smallest possible amount of information.
-    Useful for constructing various information-processing devices, as well as drills.
-  properties: [portable, growable]
+    - A bit is used to represent the smallest possible amount of information. Useful for constructing various information-processing devices, as well as drills.
+  properties: [pickable, growable]
   growth: [200, 400]
-
 - name: pixel (R)
   display:
     attr: red
     char: '.'
   description:
-  - A tiny picture element, used either to emit or detect red light.
-  properties: [portable, growable]
+    - A tiny picture element, used either to emit or detect red light.
+  properties: [pickable, growable]
   growth: [1000, 1500]
-
 - name: pixel (G)
   display:
     attr: green
     char: '.'
   description:
-  - A tiny picture element, used either to emit or detect green light.
-  properties: [portable, growable]
+    - A tiny picture element, used either to emit or detect green light.
+  properties: [pickable, growable]
   growth: [1000, 1500]
-
 - name: pixel (B)
   display:
     attr: blue
     char: '.'
   description:
-  - A tiny picture element, used either to emit or detect blue light.
-  properties: [portable, growable]
+    - A tiny picture element, used either to emit or detect blue light.
+  properties: [pickable, growable]
   growth: [1000, 1500]
-
 - name: camera
   display:
     attr: device
     char: '@'
   description:
-  - A camera is a device for capturing images.
-  properties: [portable]
-
+    - A camera is a device for capturing images.
+  properties: [pickable]
 - name: circuit
   display:
     attr: plant
     char: '#'
   description:
-  - |
-    A circuit is needed for constructing various "smart" devices.
-  properties: [portable]
-
+    - |
+      A circuit is needed for constructing various "smart" devices.
+  properties: [pickable]
+- name: blueprint
+  display:
+    attr: blue
+    char: 'B'
+  description:
+    - This enables the `structure` and `floorplan` commands to locate and analyze structures placed in the world.
+    - |
+      `structure : text -> int -> cmd (unit + (int * (int * int)))`
+    - Gets the x, y coordinates of the southwest corner of a constructed structure, by name and index.
+    - |
+      `floorplan : text -> cmd (int * int)`
+    - Gets the dimensions of a structure template.
+  properties: [pickable]
+  capabilities: [structure]
 - name: drill bit
   display:
     attr: entity
     char: '!'
   description:
-  - A drill bit is the most important component of a drill, and must be made
-    out of two bits of opposite parity, for strength.
-  properties: [portable]
-
+    - A drill bit is the most important component of a drill, and must be made out of two bits of opposite parity, for strength.
+  properties: [pickable]
 - name: box
   display:
     attr: wood
     char: '□'
   description:
-  - A wooden box.  It can hold things or be used as housing for other devices.
-  properties: [portable]
-
+    - A wooden box.  It can hold things or be used as housing for other devices.
+  properties: [pickable]
 - name: wooden gear
   display:
     attr: wood
     char: '*'
   description:
-  - A wooden gear.  Not quite as strong or versatile as an iron gear, but easy to produce.
-  properties: [portable]
-
+    - A wooden gear.  Not quite as strong or versatile as an iron gear, but easy to produce.
+  properties: [pickable]
 - name: teeter-totter
   display:
     attr: wood
     char: '/'
   description:
-  - A rotating board apparently popular with young aliens.  Perhaps it
-    could also be used as a primitive balance scale.
-  properties: [portable]
-
+    - A rotating board apparently popular with young aliens.  Perhaps it could also be used as a primitive balance scale.
+  properties: [pickable]
 - name: Linux
   display:
     attr: entity
     char: 'L'
   description:
-  - A copy of the Linux operating system.
-  properties: [portable]
-
+    - A copy of the Linux operating system.
+  properties: [pickable]
 - name: gold coin
   display:
     char: '©'
     attr: gold
   description:
-    - A small round shaped piece of gold metal that the aliens pass between
-      each other occasionaly.
+    - A small round shaped piece of gold metal that the aliens pass between each other occasionaly.
     - Besides staying shiny it does not appear to have practical use.
-  properties: [portable]
-
+  properties: [pickable]
 ############################################################
 ### Utility ################################################
 ############################################################
-
 - name: upper left corner
   display:
     attr: entity
@@ -696,7 +635,6 @@
   description:
     - Upper left corner.
   properties: [unwalkable, known]
-
 - name: upper right corner
   display:
     attr: entity
@@ -704,7 +642,6 @@
   description:
     - An upper right corner wall.
   properties: [unwalkable, known]
-
 - name: lower left corner
   display:
     attr: entity
@@ -712,7 +649,6 @@
   description:
     - A lower left corner wall.
   properties: [unwalkable, known]
-
 - name: lower right corner
   display:
     attr: entity
@@ -720,7 +656,6 @@
   description:
     - A lower right corner wall.
   properties: [unwalkable, known]
-
 - name: down and horizontal wall
   display:
     attr: entity
@@ -728,7 +663,6 @@
   description:
     - A down and horizontal wall.
   properties: [unwalkable, known]
-
 - name: up and horizontal wall
   display:
     attr: entity
@@ -736,7 +670,6 @@
   description:
     - A up and horizontal wall.
   properties: [unwalkable, known]
-
 - name: left and vertical wall
   display:
     attr: entity
@@ -744,7 +677,6 @@
   description:
     - A left and vertical wall.
   properties: [unwalkable, known]
-
 - name: right and vertical wall
   display:
     attr: entity
@@ -752,7 +684,6 @@
   description:
     - A right and vertical wall.
   properties: [unwalkable, known]
-
 - name: horizontal wall
   display:
     attr: entity
@@ -760,7 +691,6 @@
   description:
     - A horizontal wall.
   properties: [unwalkable, known]
-
 - name: vertical wall
   display:
     attr: entity
@@ -768,692 +698,579 @@
   description:
     - A vertical wall.
   properties: [unwalkable, known]
-
 ############################################################
 ### Devices ################################################
 ############################################################
-
 - name: bitcoin
   display:
     char: '₿'
     attr: gold
   description:
-    - A beautiful round shaped piece of metal that seems to be of great value
-      to the aliens on this planet.
-    - Just like the bit it has two sides and when you flip it, it lands perfectly
-      randomly on one of the sides.
-  properties: [portable]
+    - A beautiful round shaped piece of metal that seems to be of great value to the aliens on this planet.
+    - Just like the bit it has two sides and when you flip it, it lands perfectly randomly on one of the sides.
+  properties: [pickable]
   capabilities: [random]
-
 - name: treads
   plural: treads
   display:
     attr: device
     char: '%'
   description:
-  - Equipping treads on a robot allows it to move and turn.
-  - The `move` command moves the robot forward one unit.
-  - |
-    For example to move two units:
-  - |
-    `move; move;`
-  - The `turn` command takes a direction as an argument, which
-    can be either absolute (north, west, east, south) or relative
-    (left, right, forward, back, down).
-  - |
-    Example:
-  - |
-    `move; turn left; move; turn right`
+    - Equipping treads on a robot allows it to move and turn.
+    - The `move` command moves the robot forward one unit.
+    - |
+      For example to move two units:
+    - |
+      `move; move;`
+    - The `turn` command takes a direction as an argument, which can be either absolute (north, west, east, south) or relative (left, right, forward, back, down).
+    - |
+      Example:
+    - |
+      `move; turn left; move; turn right`
   capabilities: [move, turn]
-  properties: [portable]
-
+  properties: [pickable]
 - name: tank treads
   plural: tank treads
   display:
     attr: device
     char: '%'
   description:
-  - Tank treads work like treads, but are large enough to move even heavy robots around.
+    - Tank treads work like treads, but are large enough to move even heavy robots around.
   capabilities: [move, turn, moveheavy]
-  properties: [portable]
-
+  properties: [pickable]
 - name: tape drive
   display:
     attr: device
     char: '%'
   description:
-  - A `tape drive`{=entity} allows you to `backup`; that is, to drive in reverse.
+    - A `tape drive`{=entity} allows you to `backup`; that is, to drive in reverse.
   capabilities: [backup]
-  properties: [portable]
-
+  properties: [pickable]
 - name: dozer blade
   display:
     attr: silver
     char: '/'
   description:
-  - A broad, sturdy surface that can be attached to a robot and used to `push` objects.
-  - |
-    `push : cmd unit` will advance the robot and the entity in front of it forward by one step.
-  properties: [portable]
+    - A broad, sturdy surface that can be attached to a robot and used to `push` objects.
+    - |
+      `push : cmd unit` will advance the robot and the entity in front of it forward by one step.
+  properties: [pickable]
   capabilities: [push]
-
 - name: grabber
   display:
     attr: device
     char: '<'
   description:
-  - A grabber arm is an all-purpose, hydraulically controlled device that can
-    manipulate other items and robots via the `grab`, `place`, and `give`
-    commands.
-  - The `grab` command takes no arguments; it simply grabs whatever is
-    available, and also returns the name of the grabbed thing as a string.
-    It raises an exception if run in a cell that does not contain an item.
-  - The `place` command takes one argument, the name of the item to
-    place.  The item is removed from the robot's inventory and placed
-    in the robot's current cell (which must be empty).  Raises an
-    exception if the operation fails.
-  - "The `give` command takes two arguments: the actor to
-    give an item to (which can be at most 1 cell away), and the name
-    of the item to give. Raises an exception if the operation fails."
+    - A grabber arm is an all-purpose, hydraulically controlled device that can manipulate other items and robots via the `grab`, `place`, and `give` commands.
+    - The `grab` command takes no arguments; it simply grabs whatever is available, and also returns the name of the grabbed thing as a string. It raises an exception if run in a cell that does not contain an item.
+    - The `place` command takes one argument, the name of the item to place.  The item is removed from the robot's inventory and placed in the robot's current cell (which must be empty).  Raises an exception if the operation fails.
+    - "The `give` command takes two arguments: the actor to give an item to (which can be at most 1 cell away), and the name of the item to give. Raises an exception if the operation fails."
   capabilities: [grab, give, place]
-  properties: [portable]
-
+  properties: [pickable]
 - name: fast grabber
   display:
     attr: device
     char: '≪'
   description:
-  - A fast grabber is an improved version of the basic grabber - not only
-    can it `grab`, `place`, and `give`, it can also `swap`.
-  - The `swap` command allows the robot to execute grab and place at the
-    same time so that the location where the robot is standing does not
-    become empty.
-  - You can use this to prevent failures where multiple robots
-    are trying to grab, place or scan a given location.
-  - In addition you retain the capability to use the `atomic` command,
-    with which you can implement other commands that are safe when
-    run in parallel.
+    - A fast grabber is an improved version of the basic grabber - not only can it `grab`, `place`, and `give`, it can also `swap`.
+    - The `swap` command allows the robot to execute grab and place at the same time so that the location where the robot is standing does not become empty.
+    - You can use this to prevent failures where multiple robots are trying to grab, place or scan a given location.
+    - In addition you retain the capability to use the `atomic` command, with which you can implement other commands that are safe when run in parallel.
   capabilities: [grab, swap, give, place, atomic]
-  properties: [portable]
-
+  properties: [pickable]
 - name: binoculars
   display:
     attr: device
     char: 'B'
   description:
-  - Allows one to `scout` for other robots
+    - Allows one to `scout` for other robots
   capabilities: [recondir]
-  properties: [portable]
-
+  properties: [pickable]
 - name: welder
   display:
     attr: device
     char: 'f'
   description:
-  - |
-    A welder can be used to affix other gadgets to one's robot, providing
-    the `equip` and `unequip` commands.
-  - |
-    The `equip` command takes one argument: the name of the device to equip.
-    Raises an exception if the device is not in your inventory.
-  - |
-    The `unequip` command takes one argument: the name of the device to unequip.
-    Raises an exception if the device is not equipped.
+    - |
+      A welder can be used to affix other gadgets to one's robot, providing
+      the `equip` and `unequip` commands.
+    - |
+      The `equip` command takes one argument: the name of the device to equip.
+      Raises an exception if the device is not in your inventory.
+    - |
+      The `unequip` command takes one argument: the name of the device to unequip.
+      Raises an exception if the device is not equipped.
   capabilities: [equip, unequip]
-  properties: [portable]
-
+  properties: [pickable]
 - name: harvester
   display:
     attr: device
     char: '≤'
   description:
-  - A harvester can be used via the `harvest` command, which is
-    almost identical to the `grab` command.  The big difference
-    is that some entities, when harvested instead of grabbed,
-    leave behind a seed which will eventually grow into another copy
-    of the original entity.
-  - For entities which do not grow, `harvest` behaves exactly the same
-    as `grab`.
+    - A harvester can be used via the `harvest` command, which is almost identical to the `grab` command.  The big difference is that some entities, when harvested instead of grabbed, leave behind a seed which will eventually grow into another copy of the original entity.
+    - For entities which do not grow, `harvest` behaves exactly the same as `grab`.
   capabilities: [grab, harvest, place]
-  properties: [portable]
-
+  properties: [pickable]
 - name: toolkit
   display:
     attr: device
     char: 'Ѣ'
   description:
-  - "A toolkit can be used, via the `salvage` command, to take apart old robots."
-  - "`salvage` takes no arguments. It looks for an inactive
-    robot (one which is not currently running a program) in the
-    current cell. If an inactive robot is found, its log (if any) is
-    downloaded and it is dismantled, transferring its knowledge, devices, and inventory to the
-    robot running `salvage`.  If no inactive robots are found in the
-    current cell, `salvage` does nothing."
+    - "A toolkit can be used, via the `salvage` command, to take apart old robots."
+    - "`salvage` takes no arguments. It looks for an inactive robot (one which is not currently running a program) in the current cell. If an inactive robot is found, its log (if any) is downloaded and it is dismantled, transferring its knowledge, devices, and inventory to the robot running `salvage`.  If no inactive robots are found in the current cell, `salvage` does nothing."
   capabilities: [salvage]
-  properties: [portable]
-
+  properties: [pickable]
 - name: solar panel
   display:
     attr: device
     char: '#'
   description:
-  - An extremely efficient solar panel, capable of generating sufficient power
-    from ambient starlight alone. A robot powered by one of these can operate any time,
-    including on cloudy days and at night.
+    - An extremely efficient solar panel, capable of generating sufficient power from ambient starlight alone. A robot powered by one of these can operate any time, including on cloudy days and at night.
   capabilities: [power]
-  properties: [portable]
-
+  properties: [pickable]
 - name: drill
   display:
     attr: device
     char: '!'
   description:
-  - A drill allows robots to `drill` through rocks and mountains (with
-    e.g. `drill forward`), and extract resources from mines (with
-    `drill down`).
+    - A drill allows robots to `drill` through rocks and mountains (with e.g. `drill forward`), and extract resources from mines (with `drill down`).
   capabilities: [drill]
-  properties: [portable]
-
+  properties: [pickable]
 - name: metal drill
   display:
     attr: iron
     char: '!'
   description:
-  - A metal drill allows robots to drill through rocks and mountains,
-     and extract resources from mines, faster than a regular drill.
-  - A metal drill is also able to drill deeper than a regular drill.  Thus, some resources
-    are only reachable using a metal drill.
+    - A metal drill allows robots to drill through rocks and mountains, and extract resources from mines, faster than a regular drill.
+    - A metal drill is also able to drill deeper than a regular drill.  Thus, some resources are only reachable using a metal drill.
   capabilities: [drill]
-  properties: [portable]
-
+  properties: [pickable]
 - name: typewriter
   display:
     attr: device
     char: 'Д'
   description:
-  - A typewriter is used to inscribe symbols on paper, thus reifying pure, platonic
-    information into a physical form.
-  properties: [portable]
-
+    - A typewriter is used to inscribe symbols on paper, thus reifying pure, platonic information into a physical form.
+  properties: [pickable]
 - name: 3D printer
   display:
     attr: device
     char: '3'
   description:
-  - A 3D printer gives you the capability of printing more robots! You
-    can access the 3D printer via the `build` command.
-  - 'Example:'
-  - |
-    ```
-    build {move; grab; turn back; move; give base "tree"}
-    ```
-  - |
-    builds a robot to get the tree on the cell to the
-    north (if there is one) and bring it back to the base. The `build` command
-    always returns a reference to the newly constructed robot. For example,
-  - |
-    ```
-    r <- build {move}; view r
-    ```
-  - |
-    builds a robot and then views it.
-
-  properties: [portable]
+    - A 3D printer gives you the capability of printing more robots! You can access the 3D printer via the `build` command.
+    - 'Example:'
+    - |
+      ```
+      build {move; grab; turn back; move; give base "tree"}
+      ```
+    - |
+      builds a robot to get the tree on the cell to the
+      north (if there is one) and bring it back to the base. The `build` command
+      always returns a reference to the newly constructed robot. For example,
+    - |
+      ```
+      r <- build {move}; view r
+      ```
+    - |
+      builds a robot and then views it.
+  properties: [pickable]
   capabilities: [build]
-
 - name: dictionary
   display:
     attr: device
     char: 'D'
-
   description:
-  - |
-    A dictionary allows a robot to remember definitions and reuse them
-    later.  You can access this ability with either a `def`{=snippet} command,
-    which creates a name for an expression or command that is
-    available from then on, or with a `let`{=snippet} expression, which names an
-    expression or command locally within another expression.
-  - |
-    ```
-    def m2 : cmd unit = move; move end
-    ```
-  - |
-    ```
-    let x : int = 3 in x^2 + 2*x + 1
-    ```
-  - The type annotations in `def`{=snippet} are optional.
-
-  properties: [portable]
+    - |
+      A dictionary allows a robot to remember definitions and reuse them
+      later.  You can access this ability with either a `def`{=snippet} command,
+      which creates a name for an expression or command that is
+      available from then on, or with a `let`{=snippet} expression, which names an
+      expression or command locally within another expression.
+    - |
+      ```
+      def m2 : cmd unit = move; move end
+      ```
+    - |
+      ```
+      let x : int = 3 in x^2 + 2*x + 1
+      ```
+    - The type annotations in `def`{=snippet} are optional.
+  properties: [pickable]
   capabilities: [env]
-
 - name: branch predictor
   display:
     attr: device
     char: 'y'
   description:
-  - |
-    A branch predictor is a device which allows a robot to interpret
-    conditional expressions.  The syntax for a conditional expression
-    is `if` followed by three arguments: a boolean test and then
-    two delayed expressions (i.e. expressions in curly braces) of the same type.
-  - 'Example:'
-  - |
-    ```
-    let x = 2 in
-    if (x > 3) {move} {turn right; move}
-    ```
-  properties: [portable]
+    - |
+      A branch predictor is a device which allows a robot to interpret
+      conditional expressions.  The syntax for a conditional expression
+      is `if` followed by three arguments: a boolean test and then
+      two delayed expressions (i.e. expressions in curly braces) of the same type.
+    - 'Example:'
+    - |
+      ```
+      let x = 2 in
+      if (x > 3) {move} {turn right; move}
+      ```
+  properties: [pickable]
   capabilities: [cond]
-
 - name: detonator
   display:
     attr: fire
     char: '*'
   description:
-  - An explosive device which can be used to self-destruct, via the
-    `selfdestruct` command.  Immediately vaporizes the robot and any
-    inventory it is carrying.  Can be useful, say, if you are sending
-    out some exploratory robots and don't want them cluttering up the
-    world once they are done.
-  properties: [portable]
+    - An explosive device which can be used to self-destruct, via the `selfdestruct` command.  Immediately vaporizes the robot and any inventory it is carrying.  Can be useful, say, if you are sending out some exploratory robots and don't want them cluttering up the world once they are done.
+  properties: [pickable]
   capabilities: [selfdestruct]
-
 - name: life support system
   display:
     attr: device
     char: 'Ж'
   description:
-  - A state-of-the-art life support system which maintains the
-    particular temperature and mixture of gases you need to survive.
-    It uses a sophisticated recirculating system and can run pretty
-    much indefinitely.  Unfortunately, the atmosphere outside is
-    severely toxic (why do the inhabitants of this planet need so much
-    nitrogen!?), so you'll have to stay inside for now.
-  properties: [portable]
-
+    - A state-of-the-art life support system which maintains the particular temperature and mixture of gases you need to survive. It uses a sophisticated recirculating system and can run pretty much indefinitely.  Unfortunately, the atmosphere outside is severely toxic (why do the inhabitants of this planet need so much nitrogen!?), so you'll have to stay inside for now.
+  properties: [pickable]
 - name: scanner
   display:
     attr: device
     char: '$'
   description:
-  - "With a scanner device, robots can use the `scan` command to learn
-    about their surroundings.  Simply give `scan` a direction in which to scan,
-    and information about the scanned item (if any) will be added to the robot's
-    inventory."
-  - "A scanner also enables `blocked : cmd bool`, which returns a
-     boolean value indicating whether the robot's path is blocked
-     (i.e. whether executing a `move` command would fail);
-     `ishere : text -> cmd bool` for checking whether the current
-     cell contains a particular entity; and `isempty : cmd bool` for
-     checking whether the current cell is empty of entities. Note that
-     `ishere` and `isempty` do not detect robots, only entities."
-  - "Finally, robots can use the `upload` command to copy their accumulated
-    knowledge to another nearby robot; for example, `upload base`."
-  properties: [portable]
+    - "With a scanner device, robots can use the `scan` command to learn about their surroundings.  Simply give `scan` a direction in which to scan, and information about the scanned item (if any) will be added to the robot's inventory."
+    - "A scanner also enables `blocked : cmd bool`, which returns a boolean value indicating whether the robot's path is blocked (i.e. whether executing a `move` command would fail); `ishere : text -> cmd bool` for checking whether the current cell contains a particular entity; and `isempty : cmd bool` for checking whether the current cell is empty of entities. Note that `ishere` and `isempty` do not detect robots, only entities."
+    - "Finally, robots can use the `upload` command to copy their accumulated knowledge to another nearby robot; for example, `upload base`."
+  properties: [pickable]
   capabilities: [scan, sensefront, sensehere]
-
 - name: olfactometer
   display:
     char: 'N'
   description:
-  - An electronic "nose" that can tell how far away something is.
-  - |
-    `sniff : text -> cmd int` returns the distance to the nearest specified entity.
-  properties: [portable]
+    - An electronic "nose" that can tell how far away something is.
+    - |
+      `sniff : text -> cmd int` returns the distance to the nearest specified entity.
+  properties: [pickable]
   capabilities: [detectdistance]
-
 - name: flash memory
   display:
     attr: device
     char: '§'
   description:
-  - "A compact, non-volatile memory device, capable of storing
-    up to 8 pZ of data."
-  - "Flash memory can be used as a component of other devices.  In addition,
-     a flash memory device can be used to reprogram other robots using the
-     `reprogram` command."
-  - "The robot being reprogrammed must be idle, and must possess enough capabilities to run the new command;
-     otherwise reprogramming will fail."
-  properties: [portable]
+    - "A compact, non-volatile memory device, capable of storing up to 8 pZ of data."
+    - "Flash memory can be used as a component of other devices.  In addition, a flash memory device can be used to reprogram other robots using the `reprogram` command."
+    - "The robot being reprogrammed must be idle, and must possess enough capabilities to run the new command; otherwise reprogramming will fail."
+  properties: [pickable]
   capabilities: [reprogram]
-
 - name: mirror
   display:
     attr: device
     char: 'U'
   description:
-  - "With a mirror, robots can reflect on themselves and see their own name."
-  - "A mirror enables the `whoami` command, which returns the robot's
-     name as a string."
-  - "It also enables the special `self` variable, which gives a robot
-    a reference to itself."
-  properties: [portable]
+    - "With a mirror, robots can reflect on themselves and see their own name."
+    - "A mirror enables the `whoami` command, which returns the robot's name as a string."
+    - "It also enables the special `self` variable, which gives a robot a reference to itself."
+  properties: [pickable]
   capabilities: [whoami]
-
 - name: logger
   display:
     attr: device
     char: 'l'
   description:
-  - "Allows a robot to generate and store messages for later viewing,
-    using the `log` command, which takes a string.  Log messages are
-    also automatically generated by uncaught exceptions."
-  properties: [portable]
+    - "Allows a robot to generate and store messages for later viewing, using the `log` command, which takes a string.  Log messages are also automatically generated by uncaught exceptions."
+  properties: [pickable]
   capabilities: [log]
-
 - name: hearing aid
   display:
     attr: device
     char: '@'
   description:
-  - "Allows a robot to hear anything being said nearby."
-  - "Simply having this device equipped will automatically
-     add messages said by nearby actors to this robot's log,
-     assuming it has a logger equipped."
-  - "That way you can view any heard message later either in
-     the logger or the message window."
-  - "To wait for a message and get the string value, use:"
-  - |
-    ```
-    l <- listen; log $ "I have waited for someone to say " ++ l
-    ```
-  properties: [portable]
+    - "Allows a robot to hear anything being said nearby."
+    - "Simply having this device equipped will automatically add messages said by nearby actors to this robot's log, assuming it has a logger equipped."
+    - "That way you can view any heard message later either in the logger or the message window."
+    - "To wait for a message and get the string value, use:"
+    - |
+      ```
+      l <- listen; log $ "I have waited for someone to say " ++ l
+      ```
+  properties: [pickable]
   capabilities: [listen]
-
 - name: counter
   display:
     attr: device
     char: 'C'
   description:
-  - |
-    A counter enables the command `count : text -> cmd int`,
-    which counts how many occurrences of an entity are currently
-    in the inventory.  This is an upgraded version of the `has`
-    command, which returns a bool instead of an int and does
-    not require any special device.
-  properties: [portable]
+    - |
+      A counter enables the command `count : text -> cmd int`,
+      which counts how many occurrences of an entity are currently
+      in the inventory.  This is an upgraded version of the `has`
+      command, which returns a bool instead of an int and does
+      not require any special device.
+  properties: [pickable]
   capabilities: [count]
-
 - name: calculator
   display:
     attr: device
     char: '+'
   description:
-  - "A calculator allows a robot to do basic arithmetic calculations:
-    addition, subtraction, multiplication, division, and
-    exponentiation."
-  properties: [portable]
+    - "A calculator allows a robot to do basic arithmetic calculations: addition, subtraction, multiplication, division, and exponentiation."
+  properties: [pickable]
   capabilities: [arith]
-
 - name: ADT calculator
   display:
     attr: device
     char: '±'
   description:
-  - |
-    A calculator with Advanced Display Technology (an attached
-    typewriter that can print out the results).  For some reason, in
-    addition to the usual arithmetic on numbers, an ADT calculator can
-    also do arithmetic on types!  After all, the helpful typewritten manual
-    explains, a type is just a collection of values, and a finite collection
-    of values is just a fancy number.  For example, the type `bool`{=type} is
-    just a fancy version of the number 2, where the two things happen to be
-    labelled `false` and `true`.  There are also types `unit`{=type} and
-    `void`{=type} that correspond to 1 and 0, respectively.
-  - |
-    The product of two types is a type of pairs, since, for example,
-    if `t`{=type} is a type with three elements, then there are 2 * 3 = 6
-    different pairs containing a `bool`{=type} and a `t`{=type}, that is, 6 elements
-    of type `bool * t`{=type}.  For working with products of types, the ADT
-    calculator enables pair syntax `(1, "Hi!")` as well as the projection
-    functions `fst : a * b -> a` and `snd : a * b -> b`.
-  - |
-    The sum of two types is a type with two options; for example, a
-    value of type `bool + t`{=type} is either a `bool`{=type} value or a `t`{=type} value,
-    and there are `2 + 3 == 5` such values.  For working with sums of
-    types, the ADT calculator provides the injection functions `inl :
-    a -> a + b` and `inr : b -> a + b`, as well as the case analysis
-    function `case : (a + b) -> (a -> c) -> (b -> c) -> c`.  For
-    example, `case (inl 3) (\x. 2*x) (\y. 3*y) == 6`, and `case (inr
-    3) (\x. 2*x) (\y. 3*y) == 9`.
-
-  properties: [portable]
+    - |
+      A calculator with Advanced Display Technology (an attached
+      typewriter that can print out the results).  For some reason, in
+      addition to the usual arithmetic on numbers, an ADT calculator can
+      also do arithmetic on types!  After all, the helpful typewritten manual
+      explains, a type is just a collection of values, and a finite collection
+      of values is just a fancy number.  For example, the type `bool`{=type} is
+      just a fancy version of the number 2, where the two things happen to be
+      labelled `false` and `true`.  There are also types `unit`{=type} and
+      `void`{=type} that correspond to 1 and 0, respectively.
+    - |
+      The product of two types is a type of pairs, since, for example,
+      if `t`{=type} is a type with three elements, then there are 2 * 3 = 6
+      different pairs containing a `bool`{=type} and a `t`{=type}, that is, 6 elements
+      of type `bool * t`{=type}.  For working with products of types, the ADT
+      calculator enables pair syntax `(1, "Hi!")` as well as the projection
+      functions `fst : a * b -> a` and `snd : a * b -> b`.
+    - |
+      The sum of two types is a type with two options; for example, a
+      value of type `bool + t`{=type} is either a `bool`{=type} value or a `t`{=type} value,
+      and there are `2 + 3 == 5` such values.  For working with sums of
+      types, the ADT calculator provides the injection functions `inl :
+      a -> a + b` and `inr : b -> a + b`, as well as the case analysis
+      function `case : (a + b) -> (a -> c) -> (b -> c) -> c`.  For
+      example, `case (inl 3) (\x. 2*x) (\y. 3*y) == 6`, and `case (inr
+      3) (\x. 2*x) (\y. 3*y) == 9`.
+  properties: [pickable]
   capabilities: [arith, sum, prod]
-
 - name: compass
   display:
     attr: device
     char: 'N'
   description:
-  - |
-    A compass gives a robot the ability to orient using the cardinal
-    directions north, south, west, and east. For example:
-  - |
-    `turn west; move; turn north`
-  - |
-    It also enables the `heading : cmd dir` command, which returns the
-    robot's current heading. For example, the following code moves
-    east and then restores the same heading as before:
-  - |
-    `d <- heading; turn east; move; turn d`
-  properties: [portable]
+    - |
+      A compass gives a robot the ability to orient using the cardinal
+      directions north, south, west, and east. For example:
+    - |
+      `turn west; move; turn north`
+    - |
+      It also enables the `heading : cmd dir` command, which returns the
+      robot's current heading. For example, the following code moves
+      east and then restores the same heading as before:
+    - |
+      `d <- heading; turn east; move; turn d`
+  properties: [pickable]
   capabilities: [orient]
-
 - name: clock
   display:
     attr: device
     char: '0'
   description:
-  - A clock is a device for keeping track of time.  It enables the `wait` and `time` commands.
-  - |
-    `time : cmd int` returns the current time, measured in game ticks since the beginning of the game.
-  - |
-    `wait : int -> cmd unit` causes a robot to sleep for a specified amount of time (measured in game ticks).
-  properties: [portable]
+    - A clock is a device for keeping track of time.  It enables the `wait` and `time` commands.
+    - |
+      `time : cmd int` returns the current time, measured in game ticks since the beginning of the game.
+    - |
+      `wait : int -> cmd unit` causes a robot to sleep for a specified amount of time (measured in game ticks).
+  properties: [pickable]
   capabilities: [timeabs, timerel]
-
 - name: hourglass
   display:
     attr: device
     char: '8'
   description:
-  - An hourglass can measure the relative passage of time.  It enables the `wait` command.
-  - |
-    `wait : int -> cmd unit` causes a robot to sleep for a specified amount of time (measured in game ticks).
-  properties: [portable]
+    - An hourglass can measure the relative passage of time.  It enables the `wait` command.
+    - |
+      `wait : int -> cmd unit` causes a robot to sleep for a specified amount of time (measured in game ticks).
+  properties: [pickable]
   capabilities: [timerel]
-
 - name: rolex
   display:
     char: R
     attr: silver
   description:
-  - Enables robots to use the `watch` command.
-  - |
-    `watch : dir -> cmd unit` will mark an adjacent (in the specified direction) location of interest to monitor for placement or removal of items.
-    A subsequent call to `wait` will be interrupted upon a change to the location.
-  properties: [portable]
-  capabilities: [wakeself]
-
+    - Enables robots to use the `watch` and `wait` commands.
+    - |
+      `watch : dir -> cmd unit` will mark an adjacent (in the specified direction) location of interest to monitor for placement or removal of items.
+      A subsequent call to `wait` will be interrupted upon a change to the location.
+  properties: [pickable]
+  capabilities: [timerel, wakeself]
 - name: comparator
   display:
     attr: device
     char: '>'
   description:
-  - "A comparator allows comparing two values to see whether the first
-    is less, equal, or greater than the second."
-  - "Valid comparison operators are <, <=, >, >=, ==, and !=."
-  properties: [portable]
+    - "A comparator allows comparing two values to see whether the first is less, equal, or greater than the second."
+    - "Valid comparison operators are <, <=, >, >=, ==, and !=."
+  properties: [pickable]
   capabilities: [compare]
-
 - name: I/O cable
   display:
     attr: device
     char: 'Ю'
   description:
-  - An I/O cable can be used to communicate with adjacent actors.
-  properties: [portable]
-
+    - An I/O cable can be used to communicate with adjacent actors.
+  properties: [pickable]
 - name: rubber band
   display:
     attr: device
     char: 'O'
   description:
-  - "A rubber band can tie multiple commands together so that other robots can't execute
-    commands in between them.  It can be used via the `atomic` command. For example, suppose
-    robot A executes the following code:"
-  - |
-    ```
-    b <- ishere "rock"; if b {grab; return ()} {}
-    ```
-  - "This seems like a safe way to execute `grab` only when there is a
-    rock to grab.  However, it is actually possible for the `grab` to
-    fail, if some other robot B snatches the rock right after robot A sensed
-    it and before robot A got around to grabbing it on the next game tick."
-  - "This will make robot A very sad and it will crash."
-  - "To prevent this situation, robot A can wrap the commands in `atomic`, like so:"
-  - |
-    ```
-    atomic (b <- ishere "rock"; if b {grab; return ()} {})
-    ```
-
-  properties: [portable]
+    - "A rubber band can tie multiple commands together so that other robots can't execute commands in between them.  It can be used via the `atomic` command. For example, suppose robot A executes the following code:"
+    - |
+      ```
+      b <- ishere "rock"; if b {grab; return ()} {}
+      ```
+    - "This seems like a safe way to execute `grab` only when there is a rock to grab.  However, it is actually possible for the `grab` to fail, if some other robot B snatches the rock right after robot A sensed it and before robot A got around to grabbing it on the next game tick."
+    - "This will make robot A very sad and it will crash."
+    - "To prevent this situation, robot A can wrap the commands in `atomic`, like so:"
+    - |
+      ```
+      atomic (b <- ishere "rock"; if b {grab; return ()} {})
+      ```
+  properties: [pickable]
   capabilities: [atomic]
-
 - name: net
   display:
     attr: silver
     char: '#'
   description:
-  - A net is a device woven out of many strings.  With a net
-    equipped, you can use the `try` command to catch errors. For example
-  - |
-    ```
-    try {move} {turn left}
-    ```
-  - will attempt to move, but if that fails, turn left instead.
-  properties: [portable]
+    - A net is a device woven out of many strings.  With a net equipped, you can use the `try` command to catch errors. For example
+    - |
+      ```
+      try {move} {turn left}
+      ```
+    - will attempt to move, but if that fails, turn left instead.
+  properties: [pickable]
   capabilities: [try]
-
 - name: antenna
   display:
     attr: silver
     char: 'Y'
   description:
-  - A device for transforming electric current into radio waves, and
-    vice versa.  Antennas can be used to increase the viable range
-    over which you can communicate with your robots.
-  - |
-    Antennas can also be used to locate nearby actors, by bouncing radio
-    waves off them and listening for the echo.  This capability can be
-    accessed via two commands:
-  - |
-    `meet : cmd (unit + actor)` tries to locate a
-    nearby actor (a robot, or... something else?) up to one cell away.
-    It returns a reference to the nearest actor, or a unit value if
-    none are found.
-  - |
-    `meetAll : (b -> actor -> cmd b) -> b -> cmd b` runs a command on
-    every nearby actor (other than oneself), folding over the results
-    to compute a final result of type `b`{=type}.  For example, if
-    `x`{=snippet}, `y`{=snippet}, and `z`{=snippet}
-    are nearby actors, then `meetAll f b0`{=snippet} is equivalent to
-    `b1 <- f b0 x; b2 <- f b1 y; f b2 z`{=snippet}.
-  properties: [portable]
+    - A device for transforming electric current into radio waves, and vice versa.  Antennas can be used to increase the viable range over which you can communicate with your robots.
+    - |
+      Antennas can also be used to locate nearby actors, by bouncing radio
+      waves off them and listening for the echo.  This capability can be
+      accessed via two commands:
+    - |
+      `meet : cmd (unit + actor)` tries to locate a
+      nearby actor (a robot, or... something else?) up to one cell away.
+      It returns a reference to the nearest actor, or a unit value if
+      none are found.
+    - |
+      `meetAll : (b -> actor -> cmd b) -> b -> cmd b` runs a command on
+      every nearby actor (other than oneself), folding over the results
+      to compute a final result of type `b`{=type}.  For example, if
+      `x`{=snippet}, `y`{=snippet}, and `z`{=snippet}
+      are nearby actors, then `meetAll f b0`{=snippet} is equivalent to
+      `b1 <- f b0 x; b2 <- f b1 y; f b2 z`{=snippet}.
+  properties: [pickable]
   capabilities: [meet]
-
 - name: GPS receiver
   display:
     attr: device
     char: 'G'
   description:
-  - |
-    A GPS receiver triangulates your current (x,y) coordinates from
-    some convenient satellite signals,
-    enabling the command `whereami : cmd (int * int)`.
-  properties: [portable]
+    - |
+      A GPS receiver triangulates your current (x,y) coordinates from
+      some convenient satellite signals,
+      enabling the command `whereami : cmd (int * int)`.
+  properties: [pickable]
   capabilities: [senseloc]
-
 - name: tweezers
   display:
     attr: device
     char: 'V'
   description:
-  - |
-    Sometimes small, self-reproducing creatures get stuck inside a robot's
-    relays, preventing it from executing properly.  Tweezers are
-    useful for removing such pests, and for inspecting robots' detailed
-    inner workings.
-  properties: [portable]
+    - |
+      Sometimes small, self-reproducing creatures get stuck inside a robot's
+      relays, preventing it from executing properly.  Tweezers are
+      useful for removing such pests, and for inspecting robots' detailed
+      inner workings.
+  properties: [pickable]
   capabilities: [debug]
-
 - name: victrola
   display:
     attr: device
     char: 'Q'
   description:
-  - |
-    A device for reading and writing data on circular platters made of
-    a soft plastic material.  The stylus must be made of a
-    hard and durable material, with a special tip that relies on
-    quantum effects to extract high-density information.
-  - |
-    Also allows manipulating composite values consisting of a
-    collection of named fields.  For example, `[x = 2, y = "hi"]`
-    is a value of type `[x : int, y : text]`{=type}.  Individual fields
-    can be projected using dot notation.  For example,
-    `let r = [y="hi", x=2] in r.x` has the value `2`.  The order
-    of the fields does not matter.
-  properties: [portable]
+    - |
+      A device for reading and writing data on circular platters made of
+      a soft plastic material.  The stylus must be made of a
+      hard and durable material, with a special tip that relies on
+      quantum effects to extract high-density information.
+    - |
+      Also allows manipulating composite values consisting of a
+      collection of named fields.  For example, `[x = 2, y = "hi"]`
+      is a value of type `[x : int, y : text]`{=type}.  Individual fields
+      can be projected using dot notation.  For example,
+      `let r = [y="hi", x=2] in r.x` has the value `2`.  The order
+      of the fields does not matter.
+  properties: [pickable]
   capabilities: [record]
-
 - name: quantum dot
   display:
     attr: gold
     char: '.'
   description:
-  - |
-    A nanoscale semiconductor particle with a wide range of
-    applications.
-  properties: [portable]
-
+    - |
+      A nanoscale semiconductor particle with a wide range of
+      applications.
+  properties: [pickable]
 - name: 'key'
   display:
     attr: gold
     char: 'k'
   description:
-  - A versatile item, with uses such as opening
-    locked doors, entering input, and retrieving stored values.
-  properties: [portable]
-
+    - A versatile item, with uses such as opening locked doors, entering input, and retrieving stored values.
+  properties: [pickable]
 - name: keyboard
   display:
     attr: device
     char: 'K'
   description:
-  - A small device with multiple keys, adapted for your unique anatomy.
-  - |
-    `installKeyHandler : text -> (key -> cmd unit) -> cmd unit`
-    installs a custom handler function that can be activated to
-    respond to keyboard inputs typed at the REPL.
-  - |
-    `key : text -> key` constructs values of type `key`{=type}, for
-    example `key "Down"` or `key "C-S-x"`.
-  properties: [portable]
+    - A small device with multiple keys, adapted for your unique anatomy.
+    - |
+      `installKeyHandler : text -> (key -> cmd unit) -> cmd unit`
+      installs a custom handler function that can be activated to
+      respond to keyboard inputs typed at the REPL.
+    - |
+      `key : text -> key` constructs values of type `key`{=type}, for
+      example `key "Down"` or `key "C-S-x"`.
+  properties: [pickable]
   capabilities: [handleinput]
-
 - name: halting oracle
   display:
     attr: device
     char: '?'
   description:
-  - A device to solve the halting problem. When asked if a
-    particular robot program will halt, it always answers YES.
-    And it is always correct... or else!
-  - |
-    Enables the command `halt : actor -> cmd unit` which takes
-    a robot as an argument and, if it is up to one cell away,
-    cancels its currently running program (if any).  In creative mode,
-    there is no distance limitation.
-  properties: [portable]
+    - A device to solve the halting problem. When asked if a particular robot program will halt, it always answers YES. And it is always correct... or else!
+    - |
+      Enables the command `halt : actor -> cmd unit` which takes
+      a robot as an argument and, if it is up to one cell away,
+      cancels its currently running program (if any).  In creative mode,
+      there is no distance limitation.
+  properties: [pickable]
   capabilities: [halt]
+- name: atomic vector plotter
+  display:
+    attr: device
+    char: 'A'
+  description:
+    - A plot device for plotting interstellar and intermolecular atomic vector gradients.
+  properties: [pickable]
+- name: infinite improbability drive
+  display:
+    attr: device
+    char: 'I'
+  description:
+    - |
+      Enables the `teleport` command, which takes as arguments an
+      `actor`{=type} and a location in the form of a pair of
+      coordinates, and teleports the given actor to the specified
+      coordinates (and may also have some improbable side effects).
+  properties: [pickable]
+  capabilities: [teleport]

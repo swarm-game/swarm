@@ -17,11 +17,14 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Objective
+import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Text.Markdown (Document)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.Util
+import Swarm.Util (applyWhen)
 
 makeListWidget :: GoalTracking -> BL.List Name GoalEntry
 makeListWidget (GoalTracking _announcements categorizedObjs) =
@@ -30,19 +33,24 @@ makeListWidget (GoalTracking _announcements categorizedObjs) =
   objList = intercalate [Spacer] $ map f $ M.toList categorizedObjs
   f (h, xs) = Header h : map (Goal h) (NE.toList xs)
 
-renderGoalsDisplay :: GoalDisplay -> Widget Name
-renderGoalsDisplay gd =
-  if hasMultiple
-    then
-      vBox
-        [ hBox
-            [ leftSide
-            , hLimitPercent 70 $ padLeft (Pad 2) goalElaboration
-            ]
-        , footer
-        ]
-    else goalElaboration
+renderGoalsDisplay :: GoalDisplay -> Maybe (Document Syntax) -> Widget Name
+renderGoalsDisplay gd desc =
+  vBox
+    [ maybe emptyWidget (hCenter . padTop (Pad 1) . withAttr boldAttr . drawMarkdown) desc
+    , goalsWidget
+    ]
  where
+  goalsWidget
+    | hasMultiple =
+        vBox
+          [ hBox
+              [ leftSide
+              , padLeft (Pad 2) goalElaboration
+              ]
+          , footer
+          ]
+    | otherwise = goalElaboration
+
   footer = hCenter $ withAttr italicAttr $ txt "NOTE: [Tab] toggles focus between panes"
   hasMultiple = hasMultipleGoals $ gd ^. goalsContent
   lw = _listWidget gd
@@ -92,10 +100,20 @@ drawGoalListItem _isSelected e = case e of
   Goal gs obj -> getCompletionIcon obj gs <+> titleWidget
    where
     textSource = obj ^. objectiveTeaser <|> obj ^. objectiveId <|> Just (Markdown.docToText $ obj ^. objectiveGoal)
-    titleWidget = maybe (txt "?") (withEllipsis End) textSource
+    titleWidget = maybe (txt "?") (titleColor . withEllipsis End) textSource
+    titleColor = applyWhen (obj ^. objectiveOptional) $ withAttr grayAttr
 
 singleGoalDetails :: GoalEntry -> Widget Name
 singleGoalDetails = \case
-  Goal _gs obj -> drawMarkdown $ obj ^. objectiveGoal
+  Goal _gs obj ->
+    vBox
+      [ optionalIndicator
+      , drawMarkdown $ obj ^. objectiveGoal
+      ]
+   where
+    optionalIndicator =
+      if obj ^. objectiveOptional
+        then withAttr grayAttr $ txt "[Optional]"
+        else emptyWidget
   -- Only Goal entries are selectable, so we should never see this:
   _ -> emptyWidget

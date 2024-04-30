@@ -8,7 +8,13 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Model.UI (
   UIState (..),
+  UIGameplay (..),
+  UITiming (..),
+  UIInventory (..),
   GoalDisplay (..),
+  uiGameplay,
+  uiTiming,
+  uiInventory,
   uiMenu,
   uiPlaying,
   uiCheatMode,
@@ -17,12 +23,13 @@ module Swarm.TUI.Model.UI (
   uiWorldCursor,
   uiWorldEditor,
   uiREPL,
-  uiInventory,
+  uiInventoryList,
   uiInventorySort,
   uiInventorySearch,
   uiScrollToEnd,
   uiModal,
   uiGoal,
+  uiStructure,
   uiHideGoals,
   uiAchievements,
   lgTicksPerSecond,
@@ -81,40 +88,14 @@ import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
+import Swarm.TUI.Model.Structure
 import Swarm.TUI.View.Attribute.Attr (swarmAttrMap)
 import Swarm.Util
-import Swarm.Util.Lens (makeLensesExcluding)
+import Swarm.Util.Lens (makeLensesExcluding, makeLensesNoSigs)
 import System.Clock
 
-------------------------------------------------------------
--- UI state
-------------------------------------------------------------
-
--- | The main record holding the UI state.  For access to the fields,
--- see the lenses below.
-data UIState = UIState
-  { _uiMenu :: Menu
-  , _uiPlaying :: Bool
-  , _uiCheatMode :: Bool
-  , _uiFocusRing :: FocusRing Name
-  , _uiLaunchConfig :: LaunchOptions
-  , _uiWorldCursor :: Maybe (Cosmic W.Coords)
-  , _uiWorldEditor :: WorldEditor Name
-  , _uiREPL :: REPLState
-  , _uiInventory :: Maybe (Int, BL.List Name InventoryListEntry)
-  , _uiInventorySort :: InventorySortOptions
-  , _uiInventorySearch :: Maybe Text
-  , _uiScrollToEnd :: Bool
-  , _uiModal :: Maybe Modal
-  , _uiGoal :: GoalDisplay
-  , _uiHideGoals :: Bool
-  , _uiAchievements :: Map CategorizedAchievement Attainment
-  , _uiShowFPS :: Bool
-  , _uiShowREPL :: Bool
-  , _uiShowZero :: Bool
-  , _uiShowDebug :: Bool
-  , _uiHideRobotsUntil :: TimeSpec
-  , _uiInventoryShouldUpdate :: Bool
+data UITiming = UITiming
+  { _uiShowFPS :: Bool
   , _uiTPF :: Double
   , _uiFPS :: Double
   , _lgTicksPerSecond :: Int
@@ -124,14 +105,186 @@ data UIState = UIState
   , _lastFrameTime :: TimeSpec
   , _accumulatedTime :: TimeSpec
   , _lastInfoTime :: TimeSpec
-  , _uiAttrMap :: AttrMap
+  }
+
+-- * Lenses for UITiming
+
+makeLensesExcluding ['_lgTicksPerSecond] ''UITiming
+
+-- | A toggle to show the FPS by pressing @f@
+uiShowFPS :: Lens' UITiming Bool
+
+-- | Computed ticks per milliseconds
+uiTPF :: Lens' UITiming Double
+
+-- | Computed frames per milliseconds
+uiFPS :: Lens' UITiming Double
+
+-- | The base-2 logarithm of the current game speed in ticks/second.
+--   Note that we cap this value to the range of +/- log2 INTMAX.
+lgTicksPerSecond :: Lens' UITiming Int
+lgTicksPerSecond = lens _lgTicksPerSecond safeSetLgTicks
+ where
+  maxLog = finiteBitSize (maxBound :: Int)
+  maxTicks = maxLog - 2
+  minTicks = 2 - maxLog
+  safeSetLgTicks ui lTicks
+    | lTicks < minTicks = setLgTicks ui minTicks
+    | lTicks > maxTicks = setLgTicks ui maxTicks
+    | otherwise = setLgTicks ui lTicks
+  setLgTicks ui lTicks = ui {_lgTicksPerSecond = lTicks}
+
+-- | A counter used to track how many ticks have happened since the
+--   last time we updated the ticks/frame statistics.
+tickCount :: Lens' UITiming Int
+
+-- | A counter used to track how many frames have been rendered since the
+--   last time we updated the ticks/frame statistics.
+frameCount :: Lens' UITiming Int
+
+-- | A counter used to track how many ticks have happened in the
+--   current frame, so we can stop when we get to the tick cap.
+frameTickCount :: Lens' UITiming Int
+
+-- | The time of the last info widget update
+lastInfoTime :: Lens' UITiming TimeSpec
+
+-- | The time of the last 'Swarm.TUI.Model.Frame' event.
+lastFrameTime :: Lens' UITiming TimeSpec
+
+-- | The amount of accumulated real time.  Every time we get a 'Swarm.TUI.Model.Frame'
+--   event, we accumulate the amount of real time that happened since
+--   the last frame, then attempt to take an appropriate number of
+--   ticks to "catch up", based on the target tick rate.
+--
+--   See https://gafferongames.com/post/fix_your_timestep/ .
+accumulatedTime :: Lens' UITiming TimeSpec
+
+data UIInventory = UIInventory
+  { _uiInventoryList :: Maybe (Int, BL.List Name InventoryListEntry)
+  , _uiInventorySort :: InventorySortOptions
+  , _uiInventorySearch :: Maybe Text
+  , _uiShowZero :: Bool
+  , _uiInventoryShouldUpdate :: Bool
+  }
+
+-- * Lenses for UIInventory
+
+makeLensesNoSigs ''UIInventory
+
+-- | The order and direction of sorting inventory list.
+uiInventorySort :: Lens' UIInventory InventorySortOptions
+
+-- | The current search string used to narrow the inventory view.
+uiInventorySearch :: Lens' UIInventory (Maybe Text)
+
+-- | The hash value of the focused robot entity (so we can tell if its
+--   inventory changed) along with a list of the items in the
+--   focused robot's inventory.
+uiInventoryList :: Lens' UIInventory (Maybe (Int, BL.List Name InventoryListEntry))
+
+-- | A toggle to show or hide inventory items with count 0 by pressing @0@
+uiShowZero :: Lens' UIInventory Bool
+
+-- | Whether the Inventory ui panel should update
+uiInventoryShouldUpdate :: Lens' UIInventory Bool
+
+-- | The main record holding the gameplay UI state.  For access to the fields,
+-- see the lenses below.
+data UIGameplay = UIGameplay
+  { _uiFocusRing :: FocusRing Name
+  , _uiWorldCursor :: Maybe (Cosmic W.Coords)
+  , _uiWorldEditor :: WorldEditor Name
+  , _uiREPL :: REPLState
+  , _uiInventory :: UIInventory
+  , _uiScrollToEnd :: Bool
+  , _uiModal :: Maybe Modal
+  , _uiGoal :: GoalDisplay
+  , _uiStructure :: StructureDisplay
+  , _uiHideGoals :: Bool
+  , _uiShowREPL :: Bool
+  , _uiShowDebug :: Bool
+  , _uiHideRobotsUntil :: TimeSpec
+  , _uiTiming :: UITiming
   , _scenarioRef :: Maybe ScenarioInfoPair
   }
 
---------------------------------------------------
--- Lenses for UIState
+-- * Lenses for UIGameplay
 
-makeLensesExcluding ['_lgTicksPerSecond] ''UIState
+makeLensesNoSigs ''UIGameplay
+
+-- | Temporal information for gameplay UI
+uiTiming :: Lens' UIGameplay UITiming
+
+-- | Inventory information for gameplay UI
+uiInventory :: Lens' UIGameplay UIInventory
+
+-- | The focus ring is the set of UI panels we can cycle among using
+--   the @Tab@ key.
+uiFocusRing :: Lens' UIGameplay (FocusRing Name)
+
+-- | The last clicked position on the world view.
+uiWorldCursor :: Lens' UIGameplay (Maybe (Cosmic W.Coords))
+
+-- | State of all World Editor widgets
+uiWorldEditor :: Lens' UIGameplay (WorldEditor Name)
+
+-- | The state of REPL panel.
+uiREPL :: Lens' UIGameplay REPLState
+
+-- | A flag telling the UI to scroll the info panel to the very end
+--   (used when a new log message is appended).
+uiScrollToEnd :: Lens' UIGameplay Bool
+
+-- | When this is 'Just', it represents a modal to be displayed on
+--   top of the UI, e.g. for the Help screen.
+uiModal :: Lens' UIGameplay (Maybe Modal)
+
+-- | Status of the scenario goal: whether there is one, and whether it
+--   has been displayed to the user initially.
+uiGoal :: Lens' UIGameplay GoalDisplay
+
+-- | Definition and status of a recognizable structure
+uiStructure :: Lens' UIGameplay StructureDisplay
+
+-- | When running with @--autoplay@, suppress the goal dialogs.
+--
+-- For development, the @--cheat@ flag shows goals again.
+uiHideGoals :: Lens' UIGameplay Bool
+
+-- | A toggle to expand or collapse the REPL by pressing @Ctrl-k@
+uiShowREPL :: Lens' UIGameplay Bool
+
+-- | A toggle to show debug.
+--
+-- TODO: #1112 use record for selection of debug features?
+uiShowDebug :: Lens' UIGameplay Bool
+
+-- | Hide robots on the world map.
+uiHideRobotsUntil :: Lens' UIGameplay TimeSpec
+
+-- | Whether to show or hide robots on the world map.
+uiShowRobots :: Getter UIGameplay Bool
+uiShowRobots = to (\ui -> ui ^. uiTiming . lastFrameTime > ui ^. uiHideRobotsUntil)
+
+-- | The currently active Scenario description, useful for starting over.
+scenarioRef :: Lens' UIGameplay (Maybe ScenarioInfoPair)
+
+-- * Toplevel UIState definition
+
+data UIState = UIState
+  { _uiMenu :: Menu
+  , _uiPlaying :: Bool
+  , _uiCheatMode :: Bool
+  , _uiLaunchConfig :: LaunchOptions
+  , _uiAchievements :: Map CategorizedAchievement Attainment
+  , _uiAttrMap :: AttrMap
+  , _uiGameplay :: UIGameplay
+  }
+
+-- * Lenses for UIState
+
+makeLensesNoSigs ''UIState
 
 -- | The current menu state.
 uiMenu :: Lens' UIState Menu
@@ -150,128 +303,16 @@ uiCheatMode :: Lens' UIState Bool
 -- | Configuration modal when launching a scenario
 uiLaunchConfig :: Lens' UIState LaunchOptions
 
--- | The focus ring is the set of UI panels we can cycle among using
---   the @Tab@ key.
-uiFocusRing :: Lens' UIState (FocusRing Name)
-
--- | The last clicked position on the world view.
-uiWorldCursor :: Lens' UIState (Maybe (Cosmic W.Coords))
-
--- | State of all World Editor widgets
-uiWorldEditor :: Lens' UIState (WorldEditor Name)
-
--- | The state of REPL panel.
-uiREPL :: Lens' UIState REPLState
-
--- | The order and direction of sorting inventory list.
-uiInventorySort :: Lens' UIState InventorySortOptions
-
--- | The current search string used to narrow the inventory view.
-uiInventorySearch :: Lens' UIState (Maybe Text)
-
--- | The hash value of the focused robot entity (so we can tell if its
---   inventory changed) along with a list of the items in the
---   focused robot's inventory.
-uiInventory :: Lens' UIState (Maybe (Int, BL.List Name InventoryListEntry))
-
--- | A flag telling the UI to scroll the info panel to the very end
---   (used when a new log message is appended).
-uiScrollToEnd :: Lens' UIState Bool
-
--- | When this is 'Just', it represents a modal to be displayed on
---   top of the UI, e.g. for the Help screen.
-uiModal :: Lens' UIState (Maybe Modal)
-
--- | Status of the scenario goal: whether there is one, and whether it
---   has been displayed to the user initially.
-uiGoal :: Lens' UIState GoalDisplay
-
--- | When running with @--autoplay@, suppress the goal dialogs.
---
--- For development, the @--cheat@ flag shows goals again.
-uiHideGoals :: Lens' UIState Bool
-
 -- | Map of achievements that were attained
 uiAchievements :: Lens' UIState (Map CategorizedAchievement Attainment)
-
--- | A toggle to show the FPS by pressing @f@
-uiShowFPS :: Lens' UIState Bool
-
--- | A toggle to expand or collapse the REPL by pressing @Ctrl-k@
-uiShowREPL :: Lens' UIState Bool
-
--- | A toggle to show or hide inventory items with count 0 by pressing @0@
-uiShowZero :: Lens' UIState Bool
-
--- | A toggle to show debug.
---
--- TODO: #1112 use record for selection of debug features?
-uiShowDebug :: Lens' UIState Bool
-
--- | Hide robots on the world map.
-uiHideRobotsUntil :: Lens' UIState TimeSpec
-
--- | Whether to show or hide robots on the world map.
-uiShowRobots :: Getter UIState Bool
-uiShowRobots = to (\ui -> ui ^. lastFrameTime > ui ^. uiHideRobotsUntil)
-
--- | Whether the Inventory ui panel should update
-uiInventoryShouldUpdate :: Lens' UIState Bool
-
--- | Computed ticks per milliseconds
-uiTPF :: Lens' UIState Double
-
--- | Computed frames per milliseconds
-uiFPS :: Lens' UIState Double
 
 -- | Attribute map
 uiAttrMap :: Lens' UIState AttrMap
 
--- | The currently active Scenario description, useful for starting over.
-scenarioRef :: Lens' UIState (Maybe ScenarioInfoPair)
+-- | UI active during live gameplay
+uiGameplay :: Lens' UIState UIGameplay
 
--- | The base-2 logarithm of the current game speed in ticks/second.
---   Note that we cap this value to the range of +/- log2 INTMAX.
-lgTicksPerSecond :: Lens' UIState Int
-lgTicksPerSecond = lens _lgTicksPerSecond safeSetLgTicks
- where
-  maxLog = finiteBitSize (maxBound :: Int)
-  maxTicks = maxLog - 2
-  minTicks = 2 - maxLog
-  safeSetLgTicks ui lTicks
-    | lTicks < minTicks = setLgTicks ui minTicks
-    | lTicks > maxTicks = setLgTicks ui maxTicks
-    | otherwise = setLgTicks ui lTicks
-  setLgTicks ui lTicks = ui {_lgTicksPerSecond = lTicks}
-
--- | A counter used to track how many ticks have happened since the
---   last time we updated the ticks/frame statistics.
-tickCount :: Lens' UIState Int
-
--- | A counter used to track how many frames have been rendered since the
---   last time we updated the ticks/frame statistics.
-frameCount :: Lens' UIState Int
-
--- | A counter used to track how many ticks have happened in the
---   current frame, so we can stop when we get to the tick cap.
-frameTickCount :: Lens' UIState Int
-
--- | The time of the last info widget update
-lastInfoTime :: Lens' UIState TimeSpec
-
--- | The time of the last 'Swarm.TUI.Model.Frame' event.
-lastFrameTime :: Lens' UIState TimeSpec
-
--- | The amount of accumulated real time.  Every time we get a 'Swarm.TUI.Model.Frame'
---   event, we accumulate the amount of real time that happened since
---   the last frame, then attempt to take an appropriate number of
---   ticks to "catch up", based on the target tick rate.
---
---   See https://gafferongames.com/post/fix_your_timestep/ .
-accumulatedTime :: Lens' UIState TimeSpec
-
---------------------------------------------------
--- UIState initialization
+-- * UIState initialization
 
 -- | The initial state of the focus ring.
 -- NOTE: Normally, the Tab key might cycle through the members of the
@@ -309,34 +350,44 @@ initUIState speedFactor showMainMenu cheatMode = do
           , _uiPlaying = not showMainMenu
           , _uiCheatMode = cheatMode
           , _uiLaunchConfig = launchConfigPanel
-          , _uiFocusRing = initFocusRing
-          , _uiWorldCursor = Nothing
-          , _uiWorldEditor = initialWorldEditor startTime
-          , _uiREPL = initREPLState $ newREPLHistory history
-          , _uiInventory = Nothing
-          , _uiInventorySort = defaultSortOptions
-          , _uiInventorySearch = Nothing
-          , _uiScrollToEnd = False
-          , _uiModal = Nothing
-          , _uiGoal = emptyGoalDisplay
-          , _uiHideGoals = False
           , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
-          , _uiShowFPS = False
-          , _uiShowREPL = True
-          , _uiShowZero = True
-          , _uiShowDebug = False
-          , _uiHideRobotsUntil = startTime - 1
-          , _uiInventoryShouldUpdate = False
-          , _uiTPF = 0
-          , _uiFPS = 0
-          , _lgTicksPerSecond = speedFactor
-          , _lastFrameTime = startTime
-          , _accumulatedTime = 0
-          , _lastInfoTime = 0
-          , _tickCount = 0
-          , _frameCount = 0
-          , _frameTickCount = 0
           , _uiAttrMap = swarmAttrMap
-          , _scenarioRef = Nothing
+          , _uiGameplay =
+              UIGameplay
+                { _uiFocusRing = initFocusRing
+                , _uiWorldCursor = Nothing
+                , _uiWorldEditor = initialWorldEditor startTime
+                , _uiREPL = initREPLState $ newREPLHistory history
+                , _uiInventory =
+                    UIInventory
+                      { _uiInventoryList = Nothing
+                      , _uiInventorySort = defaultSortOptions
+                      , _uiInventorySearch = Nothing
+                      , _uiShowZero = True
+                      , _uiInventoryShouldUpdate = False
+                      }
+                , _uiScrollToEnd = False
+                , _uiModal = Nothing
+                , _uiGoal = emptyGoalDisplay
+                , _uiStructure = emptyStructureDisplay
+                , _uiHideGoals = False
+                , _uiTiming =
+                    UITiming
+                      { _uiShowFPS = False
+                      , _uiTPF = 0
+                      , _uiFPS = 0
+                      , _lgTicksPerSecond = speedFactor
+                      , _lastFrameTime = startTime
+                      , _accumulatedTime = 0
+                      , _lastInfoTime = 0
+                      , _tickCount = 0
+                      , _frameCount = 0
+                      , _frameTickCount = 0
+                      }
+                , _uiShowREPL = True
+                , _uiShowDebug = False
+                , _uiHideRobotsUntil = startTime - 1
+                , _scenarioRef = Nothing
+                }
           }
   return out

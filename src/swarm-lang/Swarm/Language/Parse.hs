@@ -1,0 +1,599 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ViewPatterns #-}
+
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Parser for the Swarm language.  Note, you probably don't want to
+-- use this directly, unless there is a good reason to parse a term
+-- without also type checking it; use
+-- 'Swarm.Language.Pipeline.processTerm' instead, which parses,
+-- typechecks, elaborates, and capability checks a term all at once.
+module Swarm.Language.Parse (
+  -- * Reserved words
+  reservedWords,
+
+  -- * Parsers
+  Parser,
+  parsePolytype,
+  parseType,
+  parseTerm,
+  binOps,
+  unOps,
+
+  -- * Utility functions
+  runParser,
+  runParserTH,
+  readTerm,
+  readTerm',
+  showShortError,
+  showErrorPos,
+  getLocRange,
+  unTuple,
+) where
+
+import Control.Arrow (right)
+import Control.Lens (view, (^.))
+import Control.Monad (guard, join, void)
+import Control.Monad.Combinators.Expr
+import Control.Monad.Reader (
+  MonadReader (ask),
+  ReaderT (runReaderT),
+ )
+import Control.Monad.State (StateT, lift, modify, runStateT)
+import Data.Bifunctor
+import Data.Foldable (asum)
+import Data.List (foldl', nub)
+import Data.List.NonEmpty qualified (head)
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
+import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Sequence (Seq)
+import Data.Sequence qualified as Seq
+import Data.Set qualified as S
+import Data.Set.Lens (setOf)
+import Data.String (fromString)
+import Data.Text (Text, index, toLower)
+import Data.Text qualified as T
+import Data.Void
+import Swarm.Language.Syntax
+import Swarm.Language.Types
+import Swarm.Util (failT, findDup, squote)
+import Swarm.Util.Parse (fully, fullyMaybe)
+import Text.Megaparsec hiding (runParser)
+import Text.Megaparsec.Char
+import Text.Megaparsec.Char.Lexer qualified as L
+import Text.Megaparsec.Pos qualified as Pos
+import Text.Megaparsec.State (initialPosState, initialState)
+import Witch
+
+-- Imports for doctests (cabal-docspec needs this)
+
+-- $setup
+-- >>> import qualified Data.Map.Strict as Map
+
+-- | When parsing a term using a quasiquoter (i.e. something in the
+--   Swarm source code that will be parsed at compile time), we want
+--   to allow antiquoting, i.e. writing something like $x to refer to
+--   an existing Haskell variable.  But when parsing a term entered by
+--   the user at the REPL, we do not want to allow this syntax.
+data Antiquoting = AllowAntiquoting | DisallowAntiquoting
+  deriving (Eq, Ord, Show)
+
+type Parser = ReaderT Antiquoting (StateT (Seq Comment) (Parsec Void Text))
+
+type ParserError = ParseErrorBundle Text Void
+
+--------------------------------------------------
+-- Lexer
+
+-- | List of reserved words that cannot be used as variable names.
+reservedWords :: [Text]
+reservedWords =
+  map (syntax . constInfo) (filter isUserFunc allConst)
+    ++ map directionSyntax allDirs
+    ++ [ "void"
+       , "unit"
+       , "int"
+       , "text"
+       , "dir"
+       , "bool"
+       , "actor"
+       , "key"
+       , "cmd"
+       , "delay"
+       , "let"
+       , "def"
+       , "end"
+       , "in"
+       , "true"
+       , "false"
+       , "forall"
+       , "require"
+       , "requirements"
+       ]
+
+-- Approach for preserving comments taken from https://www.reddit.com/r/haskell/comments/ni4gpm/comment/gz0ipmp/
+
+-- | Parse a line comment, while appending it out-of-band to the list of
+--   comments saved in the custom state.
+lineComment :: Text -> Parser ()
+lineComment start = do
+  (loc, t) <- parseLocG $ do
+    string start *> takeWhileP (Just "character") (/= '\n')
+  lift . modify $ (Seq.|> Comment loc LineComment t)
+
+-- | Parse a block comment, while appending it out-of-band to the list of
+--   comments saved in the custom state.
+blockComment :: Text -> Text -> Parser ()
+blockComment start end = do
+  (loc, t) <- parseLocG $ do
+    void $ string start
+    manyTill anySingle (string end)
+  lift . modify $ (Seq.|> Comment loc BlockComment (fromString t))
+
+-- | Skip spaces and comments.
+sc :: Parser ()
+sc =
+  L.space
+    space1
+    (lineComment "//")
+    (blockComment "/*" "*/")
+
+-- | In general, we follow the convention that every token parser
+--   assumes no leading whitespace and consumes all trailing
+--   whitespace.  Concretely, we achieve this by wrapping every token
+--   parser using 'lexeme'.
+lexeme :: Parser a -> Parser a
+lexeme = L.lexeme sc
+
+-- | A lexeme consisting of a literal string.
+symbol :: Text -> Parser Text
+symbol = L.symbol sc
+
+-- | Parse a case-insensitive reserved word, making sure it is not a
+--   prefix of a longer variable name, and allowing the parser to
+--   backtrack if it fails.
+reserved :: Text -> Parser ()
+reserved w = (lexeme . try) $ string' w *> notFollowedBy (alphaNumChar <|> char '_')
+
+-- | Parse an identifier, i.e. any non-reserved string containing
+--   alphanumeric characters and underscores and not starting with a
+--   number.
+identifier :: Parser Var
+identifier = lvVar <$> locIdentifier
+
+-- | Parse an identifier together with its source location info.
+locIdentifier :: Parser LocVar
+locIdentifier = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
+ where
+  p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
+  check (into @Text -> t)
+    | toLower t `elem` reservedWords =
+        failT ["reserved word", squote t, "cannot be used as variable name"]
+    | otherwise = return t
+
+-- | Parse a text literal (including escape sequences) in double quotes.
+textLiteral :: Parser Text
+textLiteral = into <$> lexeme (char '"' >> manyTill L.charLiteral (char '"'))
+
+-- | Parse a positive integer literal token, in decimal, binary,
+--   octal, or hexadecimal notation.  Note that negation is handled as
+--   a separate operator.
+integer :: Parser Integer
+integer =
+  label "integer literal" $
+    lexeme $ do
+      n <-
+        string "0b" *> L.binary
+          <|> string "0o" *> L.octal
+          <|> string "0x" *> L.hexadecimal
+          <|> L.decimal
+      notFollowedBy alphaNumChar
+      return n
+
+braces :: Parser a -> Parser a
+braces = between (symbol "{") (symbol "}")
+
+parens :: Parser a -> Parser a
+parens = between (symbol "(") (symbol ")")
+
+brackets :: Parser a -> Parser a
+brackets = between (symbol "[") (symbol "]")
+
+--------------------------------------------------
+-- Parser
+
+-- | Parse a Swarm language polytype, which starts with an optional
+--   quanitifation (@forall@ followed by one or more variables and a
+--   period) followed by a type.  Note that anything accepted by
+--   'parseType' is also accepted by 'parsePolytype'.
+parsePolytype :: Parser Polytype
+parsePolytype =
+  join $
+    ( quantify . fromMaybe []
+        <$> optional (reserved "forall" *> some identifier <* symbol ".")
+    )
+      <*> parseType
+ where
+  quantify :: [Var] -> Type -> Parser Polytype
+  quantify xs ty
+    -- Iplicitly quantify over free type variables if the user didn't write a forall
+    | null xs = return $ Forall (S.toList free) ty
+    -- Otherwise, require all variables to be explicitly quantified
+    | S.null free = return $ Forall xs ty
+    | otherwise =
+        fail $
+          unlines
+            [ "  Type contains free variable(s): " ++ unwords (map from (S.toList free))
+            , "  Try adding them to the 'forall'."
+            ]
+   where
+    free = tyVars ty `S.difference` S.fromList xs
+
+-- | Parse a Swarm language (mono)type.
+parseType :: Parser Type
+parseType = makeExprParser parseTypeAtom table
+ where
+  table =
+    [ [InfixR ((:*:) <$ symbol "*")]
+    , [InfixR ((:+:) <$ symbol "+")]
+    , [InfixR ((:->:) <$ symbol "->")]
+    ]
+
+parseTypeAtom :: Parser Type
+parseTypeAtom =
+  TyVoid <$ reserved "void"
+    <|> TyUnit <$ reserved "unit"
+    <|> TyVar <$> identifier
+    <|> TyInt <$ reserved "int"
+    <|> TyText <$ reserved "text"
+    <|> TyDir <$ reserved "dir"
+    <|> TyBool <$ reserved "bool"
+    <|> TyActor <$ reserved "actor"
+    <|> TyKey <$ reserved "key"
+    <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
+    <|> TyDelay <$> braces parseType
+    <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))
+    <|> parens parseType
+
+parseRecord :: Parser a -> Parser (Map Var a)
+parseRecord p = (parseBinding `sepBy` symbol ",") >>= fromListUnique
+ where
+  parseBinding = (,) <$> identifier <*> p
+  fromListUnique kvs = case findDup (map fst kvs) of
+    Nothing -> return $ Map.fromList kvs
+    Just x -> failT ["duplicate field name", squote x, "in record literal"]
+
+parseDirection :: Parser Direction
+parseDirection = asum (map alternative allDirs) <?> "direction constant"
+ where
+  alternative d = d <$ (reserved . directionSyntax) d
+
+-- | Parse Const as reserved words (e.g. @Fail <$ reserved "fail"@)
+parseConst :: Parser Const
+parseConst = asum (map alternative consts) <?> "built-in user function"
+ where
+  consts = filter isUserFunc allConst
+  alternative c = c <$ reserved (syntax $ constInfo c)
+
+-- | Add 'SrcLoc' to a parser
+parseLocG :: Parser a -> Parser (SrcLoc, a)
+parseLocG pa = do
+  start <- getOffset
+  a <- pa
+  end <- getOffset
+  pure (SrcLoc start end, a)
+
+-- | Add 'SrcLoc' to a 'Term' parser
+parseLoc :: Parser Term -> Parser Syntax
+parseLoc pterm = uncurry Syntax <$> parseLocG pterm
+
+-- | Parse an atomic term, optionally trailed by record projections like @t.x.y.z@.
+--   Record projection binds more tightly than function application.
+parseTermAtom :: Parser Syntax
+parseTermAtom = do
+  s1 <- parseTermAtom2
+  ps <- many (symbol "." *> parseLocG identifier)
+  return $ foldl' (\(Syntax l1 t) (l2, x) -> Syntax (l1 <> l2) (TProj t x)) s1 ps
+
+-- | Parse an atomic term.
+parseTermAtom2 :: Parser Syntax
+parseTermAtom2 =
+  parseLoc
+    ( TUnit <$ symbol "()"
+        <|> TConst <$> parseConst
+        <|> TVar <$> identifier
+        <|> TDir <$> parseDirection
+        <|> TInt <$> integer
+        <|> TText <$> textLiteral
+        <|> TBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
+        <|> reserved "require"
+          *> ( ( TRequireDevice
+                  <$> (textLiteral <?> "device name in double quotes")
+               )
+                <|> ( (TRequire . fromIntegral <$> integer)
+                        <*> (textLiteral <?> "entity name in double quotes")
+                    )
+             )
+        <|> uncurry SRequirements <$> (reserved "requirements" *> match parseTerm)
+        <|> SLam
+          <$> (symbol "\\" *> locIdentifier)
+          <*> optional (symbol ":" *> parseType)
+          <*> (symbol "." *> parseTerm)
+        <|> sLet
+          <$> (reserved "let" *> locIdentifier)
+          <*> optional (symbol ":" *> parsePolytype)
+          <*> (symbol "=" *> parseTerm)
+          <*> (reserved "in" *> parseTerm)
+        <|> sDef
+          <$> (reserved "def" *> locIdentifier)
+          <*> optional (symbol ":" *> parsePolytype)
+          <*> (symbol "=" *> parseTerm <* reserved "end")
+        <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
+        <|> parens (view sTerm . mkTuple <$> (parseTerm `sepBy` symbol ","))
+    )
+    -- Potential syntax for explicitly requesting memoized delay.
+    -- Perhaps we will not need this in the end; see the discussion at
+    -- https://github.com/swarm-game/swarm/issues/150 .
+    -- <|> parseLoc (TDelay SimpleDelay (TConst Noop) <$ try (symbol "{{" *> symbol "}}"))
+    -- <|> parseLoc (SDelay MemoizedDelay <$> dbraces parseTerm)
+
+    <|> parseLoc (TDelay SimpleDelay (TConst Noop) <$ try (symbol "{" *> symbol "}"))
+    <|> parseLoc (SDelay SimpleDelay <$> braces parseTerm)
+    <|> parseLoc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
+
+mkTuple :: [Syntax] -> Syntax
+mkTuple [] = Syntax NoLoc TUnit -- should never happen
+mkTuple [x] = x
+mkTuple (x : xs) = let r = mkTuple xs in loc x r $ SPair x r
+ where
+  loc a b = Syntax $ (a ^. sLoc) <> (b ^. sLoc)
+
+unTuple :: Syntax' ty -> [Syntax' ty]
+unTuple = \case
+  Syntax' _ (SPair s1 s2) _ -> s1 : unTuple s2
+  s -> [s]
+
+-- | Construct an 'SLet', automatically filling in the Boolean field
+--   indicating whether it is recursive.
+sLet :: LocVar -> Maybe Polytype -> Syntax -> Syntax -> Term
+sLet x ty t1 = SLet (lvVar x `S.member` setOf freeVarsV t1) x ty t1
+
+-- | Construct an 'SDef', automatically filling in the Boolean field
+--   indicating whether it is recursive.
+sDef :: LocVar -> Maybe Polytype -> Syntax -> Term
+sDef x ty t = SDef (lvVar x `S.member` setOf freeVarsV t) x ty t
+
+parseAntiquotation :: Parser Term
+parseAntiquotation =
+  TAntiText <$> (lexeme . try) (symbol "$str:" *> identifier)
+    <|> TAntiInt <$> (lexeme . try) (symbol "$int:" *> identifier)
+
+-- | Parse a Swarm language term.
+parseTerm :: Parser Syntax
+parseTerm = sepEndBy1 parseStmt (symbol ";") >>= mkBindChain
+
+mkBindChain :: [Stmt] -> Parser Syntax
+mkBindChain stmts = case last stmts of
+  Binder x _ -> return $ foldr mkBind (STerm (TApp (TConst Return) (TVar (lvVar x)))) stmts
+  BareTerm t -> return $ foldr mkBind t (init stmts)
+ where
+  mkBind (BareTerm t1) t2 = loc Nothing t1 t2 $ SBind Nothing t1 t2
+  mkBind (Binder x t1) t2 = loc (Just x) t1 t2 $ SBind (Just x) t1 t2
+  loc mx a b = Syntax $ maybe NoLoc lvSrcLoc mx <> (a ^. sLoc) <> (b ^. sLoc)
+
+data Stmt
+  = BareTerm Syntax
+  | Binder LocVar Syntax
+  deriving (Show)
+
+parseStmt :: Parser Stmt
+parseStmt =
+  mkStmt <$> optional (try (locIdentifier <* symbol "<-")) <*> parseExpr
+
+mkStmt :: Maybe LocVar -> Syntax -> Stmt
+mkStmt Nothing = BareTerm
+mkStmt (Just x) = Binder x
+
+-- | When semicolons are missing between definitions, for example:
+--     def a = 1 end def b = 2 end def c = 3 end
+--   The makeExprParser produces:
+--     App (App (TDef a) (TDef b)) (TDef x)
+--   This function fix that by converting the Apps into Binds, so that it results in:
+--     Bind a (Bind b (Bind c))
+fixDefMissingSemis :: Syntax -> Syntax
+fixDefMissingSemis term =
+  case nestedDefs term [] of
+    [] -> term
+    defs -> foldr1 mkBind defs
+ where
+  mkBind t1 t2 = Syntax ((t1 ^. sLoc) <> (t2 ^. sLoc)) $ SBind Nothing t1 t2
+  nestedDefs term' acc = case term' of
+    def@(Syntax _ SDef {}) -> def : acc
+    (Syntax _ (SApp nestedTerm def@(Syntax _ SDef {}))) -> nestedDefs nestedTerm (def : acc)
+    -- Otherwise returns an empty list to keep the term unchanged
+    _ -> []
+
+parseExpr :: Parser Syntax
+parseExpr =
+  parseLoc $ ascribe <$> parseExpr' <*> optional (symbol ":" *> parsePolytype)
+ where
+  ascribe :: Syntax -> Maybe Polytype -> Term
+  ascribe s Nothing = s ^. sTerm
+  ascribe s (Just ty) = SAnnotate s ty
+
+parseExpr' :: Parser Syntax
+parseExpr' = fixDefMissingSemis <$> makeExprParser parseTermAtom table
+ where
+  table = snd <$> Map.toDescList tableMap
+  tableMap =
+    Map.unionsWith
+      (++)
+      [ Map.singleton 9 [InfixL (exprLoc2 $ SApp <$ string "")]
+      , binOps
+      , unOps
+      ]
+
+  -- add location for ExprParser by combining all
+  exprLoc2 :: Parser (Syntax -> Syntax -> Term) -> Parser (Syntax -> Syntax -> Syntax)
+  exprLoc2 p = do
+    (l, f) <- parseLocG p
+    pure $ \s1 s2 -> Syntax (l <> (s1 ^. sLoc) <> (s2 ^. sLoc)) $ f s1 s2
+
+-- | Precedences and parsers of binary operators.
+--
+-- >>> Map.map length binOps
+-- fromList [(0,1),(2,1),(3,1),(4,6),(6,3),(7,2),(8,1)]
+binOps :: Map.Map Int [Operator Parser Syntax]
+binOps = Map.unionsWith (++) $ mapMaybe binOpToTuple allConst
+ where
+  binOpToTuple c = do
+    let ci = constInfo c
+    ConstMBinOp assoc <- pure (constMeta ci)
+    let assI = case assoc of
+          L -> InfixL
+          N -> InfixN
+          R -> InfixR
+    pure $
+      Map.singleton
+        (fixity ci)
+        [assI (mkOp c <$ operatorString (syntax ci))]
+
+-- | Precedences and parsers of unary operators (currently only 'Neg').
+--
+-- >>> Map.map length unOps
+-- fromList [(7,1)]
+unOps :: Map.Map Int [Operator Parser Syntax]
+unOps = Map.unionsWith (++) $ mapMaybe unOpToTuple allConst
+ where
+  unOpToTuple c = do
+    let ci = constInfo c
+    ConstMUnOp assoc <- pure (constMeta ci)
+    let assI = case assoc of
+          P -> Prefix
+          S -> Postfix
+    pure $
+      Map.singleton
+        (fixity ci)
+        [assI (exprLoc1 $ SApp (noLoc $ TConst c) <$ operatorString (syntax ci))]
+
+  -- combine location for ExprParser
+  exprLoc1 :: Parser (Syntax -> Term) -> Parser (Syntax -> Syntax)
+  exprLoc1 p = do
+    (l, f) <- parseLocG p
+    pure $ \s -> Syntax (l <> s ^. sLoc) $ f s
+
+operatorString :: Text -> Parser Text
+operatorString n = (lexeme . try) (string n <* notFollowedBy operatorSymbol)
+
+operatorSymbol :: Parser Text
+operatorSymbol = T.singleton <$> oneOf opChars
+ where
+  isOp = \case { ConstMFunc {} -> False; _ -> True } . constMeta
+  opChars = nub . concatMap (from . syntax) . filter isOp $ map constInfo allConst
+
+--------------------------------------------------
+-- Utilities
+
+-- | Run a parser on some input text, returning either the result +
+--   all collected comments, or a pretty-printed parse error message.
+runParser :: Parser a -> Text -> Either Text (a, Seq Comment)
+runParser p t = first (from . errorBundlePretty) (parse (runStateT (runReaderT p DisallowAntiquoting) Seq.empty) "" t)
+
+-- | A utility for running a parser in an arbitrary 'MonadFail' (which
+--   is going to be the TemplateHaskell 'Language.Haskell.TH.Q' monad --- see
+--   "Swarm.Language.Parse.QQ"), with a specified source position.
+runParserTH :: (Monad m, MonadFail m) => (String, Int, Int) -> Parser a -> String -> m a
+runParserTH (file, line, col) p s =
+  case snd (runParser' (runStateT (runReaderT (fully sc p) AllowAntiquoting) Seq.empty) initState) of
+    Left err -> fail $ errorBundlePretty err
+    Right e -> return (fst e)
+ where
+  initState :: State Text Void
+  initState =
+    (initialState file (from s))
+      { statePosState =
+          (initialPosState file (from s))
+            { pstateSourcePos = SourcePos file (mkPos line) (mkPos col)
+            }
+      }
+
+-- | Parse some input 'Text' completely as a 'Term', consuming leading
+--   whitespace and ensuring the parsing extends all the way to the
+--   end of the input 'Text'.  Returns either the resulting 'Term' (or
+--   'Nothing' if the input was only whitespace) or a pretty-printed
+--   parse error message.
+readTerm :: Text -> Either Text (Maybe Syntax)
+readTerm = right fst . runParser (fullyMaybe sc parseTerm)
+
+-- | A lower-level `readTerm` which returns the megaparsec bundle error
+--   for precise error reporting, as well as the parsed comments.
+readTerm' :: Text -> Either ParserError (Maybe Syntax, Seq Comment)
+readTerm' = parse (runStateT (runReaderT (fullyMaybe sc parseTerm) DisallowAntiquoting) Seq.empty) ""
+
+-- | A utility for converting a ParserError into a one line message:
+--   @<line-nr>: <error-msg>@
+showShortError :: ParserError -> String
+showShortError pe = show (line + 1) <> ": " <> from msg
+ where
+  ((line, _), _, msg) = showErrorPos pe
+
+-- | A utility for converting a ParseError into a range and error message.
+showErrorPos :: ParserError -> ((Int, Int), (Int, Int), Text)
+showErrorPos (ParseErrorBundle errs sourcePS) = (minusOne start, minusOne end, from msg)
+ where
+  -- convert megaparsec source pos to starts at 0
+  minusOne (x, y) = (x - 1, y - 1)
+
+  -- get the first error position (ps) and line content (str)
+  err = Data.List.NonEmpty.head errs
+  offset = case err of
+    TrivialError x _ _ -> x
+    FancyError x _ -> x
+  (str, ps) = reachOffset offset sourcePS
+  msg = parseErrorTextPretty err
+
+  -- extract the error starting position
+  start@(line, col) = getLineCol ps
+
+  -- compute the ending position based on the word at starting position
+  wordlength = case break (== ' ') . drop col <$> str of
+    Just (word, _) -> length word + 1
+    _ -> 0
+  end = (line, col + wordlength)
+
+getLineCol :: PosState a -> (Int, Int)
+getLineCol ps = (line, col)
+ where
+  line = unPos $ sourceLine $ pstateSourcePos ps
+  col = unPos $ sourceColumn $ pstateSourcePos ps
+
+-- | A utility for converting a SrcLoc into a range
+getLocRange :: Text -> (Int, Int) -> ((Int, Int), (Int, Int))
+getLocRange code (locStart, locEnd) = (start, end)
+ where
+  start = getLocPos locStart
+  end = getLocPos (dropWhiteSpace locEnd)
+
+  -- remove trailing whitespace that got included by the lexer
+  dropWhiteSpace offset
+    | isWhiteSpace offset = dropWhiteSpace (offset - 1)
+    | otherwise = offset
+  isWhiteSpace offset =
+    -- Megaparsec offset needs to be (-1) to start at 0
+    Data.Text.index code (offset - 1) `elem` [' ', '\n', '\r', '\t']
+
+  -- using megaparsec offset facility, compute the line/col
+  getLocPos offset =
+    let sourcePS =
+          PosState
+            { pstateInput = code
+            , pstateOffset = 0
+            , pstateSourcePos = Pos.initialPos ""
+            , pstateTabWidth = Pos.defaultTabWidth
+            , pstateLinePrefix = ""
+            }
+        (_, ps) = reachOffset offset sourcePS
+     in getLineCol ps

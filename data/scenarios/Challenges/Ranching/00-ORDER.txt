@@ -1,3 +1,5 @@
+beekeeping.yaml
 capture.yaml
 powerset.yaml
+fishing.yaml
 gated-paddock.yaml

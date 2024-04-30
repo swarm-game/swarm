@@ -9,7 +9,7 @@ module Swarm.TUI.Model.Goal where
 
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
-import Control.Lens (makeLenses)
+import Control.Lens (makeLenses, view, (^..))
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.List.NonEmpty qualified as NE
@@ -29,11 +29,11 @@ import Swarm.Util (listEnums)
 data GoalStatus
   = -- | Goals in this category have other goals as prerequisites.
     -- However, they are only displayed if the "previewable" attribute
-    -- is `true`.
+    -- is @true@.
     Upcoming
   | -- | Goals in this category may be pursued in parallel.
     -- However, they are only displayed if the "hidden" attribute
-    -- is `false`.
+    -- is @false@.
     Active
   | -- | A goal's programmatic condition, as well as all its prerequisites, were completed.
     -- This is a "latch" mechanism; at some point the conditions required to meet the goal may
@@ -102,24 +102,24 @@ hasMultipleGoals gt =
   goalCount = sum . M.elems . M.map NE.length . goals $ gt
 
 constructGoalMap :: Bool -> ObjectiveCompletion -> CategorizedGoals
-constructGoalMap isCheating objectiveCompletion@(ObjectiveCompletion buckets _) =
+constructGoalMap isCheating oc =
   M.fromList $
     mapMaybe (traverse nonEmpty) categoryList
  where
   categoryList =
     [ (Upcoming, displayableInactives)
     , (Active, suppressHidden activeGoals)
-    , (Completed, completed buckets)
-    , (Failed, unwinnable buckets)
+    , (Completed, oc ^.. completedObjectives)
+    , (Failed, oc ^.. unwinnableObjectives)
     ]
 
   displayableInactives =
     suppressHidden $
-      filter (maybe False previewable . _objectivePrerequisite) inactiveGoals
+      filter (maybe False previewable . view objectivePrerequisite) inactiveGoals
 
   suppressHidden =
     if isCheating
       then id
-      else filter $ not . _objectiveHidden
+      else filter $ not . view objectiveHidden
 
-  (activeGoals, inactiveGoals) = partitionActiveObjectives objectiveCompletion
+  (activeGoals, inactiveGoals) = partitionActiveObjectives oc

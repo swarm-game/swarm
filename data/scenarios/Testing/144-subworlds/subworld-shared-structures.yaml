@@ -15,18 +15,18 @@ entities:
       attr: portal_in
       char: "o"
     description:
-    - Portal entrance
+      - Portal entrance
     properties: [known]
   - name: telepad exit
     display:
       attr: portal_out
       char: "o"
     description:
-    - Portal exit
+      - Portal exit
     properties: [known]
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     loc: [0, 0]
     devices:
       - ADT calculator

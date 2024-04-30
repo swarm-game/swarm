@@ -126,7 +126,7 @@ def returnToCenter =
     end;
 
 def invadeDen =
-    doN 14 move;
+    doN 13 move;
     turn right;
     doN 2 move;
     turn left;

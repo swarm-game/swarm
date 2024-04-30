@@ -8,13 +8,9 @@ description: |
 #
 objectives:
   - goal:
-      - Robots can use the `make` command to make things, as long as
-        they have a `workbench`{=entity} and the proper ingredients.  For
-        example, `make "circuit"` will make a `circuit`{=entity}.
-      - Your base has a few `tree`{=entity}s in its inventory. Select them to see the
-        available recipes.
-      - Your goal is to make a `branch predictor`{=entity}, so you will have to make
-        some `branch`{=entity}es first.
+      - Robots can use the `make` command to make things, as long as they have a `workbench`{=entity} and the proper ingredients.  For example, `make "circuit"` will make a `circuit`{=entity}.
+      - Your base has a few `tree`{=entity}s in its inventory. Select them to see the available recipes.
+      - Your goal is to make a `branch predictor`{=entity}, so you will have to make some `branch`{=entity}es first.
       - |
         **NOTE:** when used after opening quotes in the REPL, the Tab key can cycle through
         possible completions of a name. E.g., type:
@@ -31,7 +27,7 @@ robots:
     display:
       attr: robot
       char: 'Ω'
-    dir: [1,0]
+    dir: east
     devices:
       - workbench
       - logger

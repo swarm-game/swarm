@@ -19,24 +19,28 @@ import Data.Set qualified as Set
 import Data.Text qualified as T
 import Data.Tuple (swap)
 import Swarm.Game.Display (Display, defaultChar)
-import Swarm.Game.Entity (EntityName, entitiesByName)
+import Swarm.Game.Entity (Entity, EntityName, entitiesByName)
+import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Scenario
-import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..), getAreaDimensions)
+import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.WorldPalette
-import Swarm.Game.Terrain (TerrainType, getTerrainDefaultPaletteChar)
+import Swarm.Game.Terrain (TerrainMap, TerrainType, getTerrainDefaultPaletteChar, terrainByName)
 import Swarm.Game.Universe
 import Swarm.Language.Text.Markdown (fromText)
 import Swarm.TUI.Editor.Json (SkeletonScenario (SkeletonScenario))
 import Swarm.Util (binTuples, histogram)
-import Swarm.Util qualified as U
 import Swarm.Util.Erasable
 
-makeSuggestedPalette :: Maybe Scenario -> [[CellPaintDisplay]] -> KM.KeyMap (AugmentedCell EntityFacade)
-makeSuggestedPalette maybeOriginalScenario cellGrid =
+makeSuggestedPalette ::
+  TerrainMap ->
+  KM.KeyMap (AugmentedCell Entity) ->
+  [[CellPaintDisplay]] ->
+  KM.KeyMap (AugmentedCell EntityFacade)
+makeSuggestedPalette tm originalScenarioPalette cellGrid =
   KM.fromMapText
     . M.map (AugmentedCell Nothing)
     . M.fromList
@@ -91,8 +95,7 @@ makeSuggestedPalette maybeOriginalScenario cellGrid =
 
   originalPalette :: KM.KeyMap CellPaintDisplay
   originalPalette =
-    KM.map (toCellPaintDisplay . standardCell) $
-      maybe mempty (unPalette . palette . NE.head . (^. scenarioWorlds)) maybeOriginalScenario
+    KM.map (toCellPaintDisplay . standardCell) originalScenarioPalette
 
   pairsWithDisplays :: Map (TerrainWith EntityName) (T.Text, CellPaintDisplay)
   pairsWithDisplays = M.fromList $ mapMaybe g entitiesWithModalTerrain
@@ -107,24 +110,25 @@ makeSuggestedPalette maybeOriginalScenario cellGrid =
   -- TODO (#1153): Filter out terrain-only palette entries that aren't actually
   -- used in the map.
   terrainOnlyPalette :: Map (TerrainWith EntityName) (T.Text, CellPaintDisplay)
-  terrainOnlyPalette = M.fromList $ map f U.listEnums
+  terrainOnlyPalette = M.fromList . map f . M.keys $ terrainByName tm
    where
     f x = ((x, ENothing), (T.singleton $ getTerrainDefaultPaletteChar x, Cell x ENothing []))
 
 -- | Generate a \"skeleton\" scenario with placeholders for certain required fields
-constructScenario :: Maybe Scenario -> [[CellPaintDisplay]] -> SkeletonScenario
-constructScenario maybeOriginalScenario cellGrid =
+constructScenario :: Maybe Scenario -> Grid CellPaintDisplay -> SkeletonScenario
+constructScenario maybeOriginalScenario (Grid cellGrid) =
   SkeletonScenario
-    (maybe 1 (^. scenarioVersion) maybeOriginalScenario)
-    (maybe "My Scenario" (^. scenarioName) maybeOriginalScenario)
-    (maybe (fromText "The scenario description...") (^. scenarioDescription) maybeOriginalScenario)
+    (maybe 1 (^. scenarioMetadata . scenarioVersion) maybeOriginalScenario)
+    (maybe "My Scenario" (^. scenarioMetadata . scenarioName) maybeOriginalScenario)
+    (maybe (fromText "The scenario description...") (^. scenarioOperation . scenarioDescription) maybeOriginalScenario)
     -- (maybe True (^. scenarioCreative) maybeOriginalScenario)
     True
     (M.elems $ entitiesByName customEntities)
     wd
     [] -- robots
  where
-  customEntities = maybe mempty (^. scenarioEntities) maybeOriginalScenario
+  tem = maybe mempty (^. scenarioLandscape . scenarioTerrainAndEntities) maybeOriginalScenario
+  customEntities = tem ^. entityMap
   wd =
     WorldDescription
       { offsetOrigin = False
@@ -133,11 +137,14 @@ constructScenario maybeOriginalScenario cellGrid =
       , ul = upperLeftCoord
       , area = cellGrid
       , navigation = Navigation mempty mempty
+      , placedStructures = mempty
       , worldName = DefaultRootSubworld
       , worldProg = Nothing
       }
 
-  suggestedPalette = makeSuggestedPalette maybeOriginalScenario cellGrid
+  extractPalette = unPalette . palette . NE.head . (^. scenarioLandscape . scenarioWorlds)
+  originalPalette = maybe mempty extractPalette maybeOriginalScenario
+  suggestedPalette = makeSuggestedPalette (tem ^. terrainMap) originalPalette cellGrid
 
   upperLeftCoord =
     Location

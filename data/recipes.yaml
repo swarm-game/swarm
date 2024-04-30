@@ -3,847 +3,748 @@
 #########################################
 
 - in:
-  - [1, tree]
+    - [1, tree]
   out:
-  - [2, branch]
-  - [1, log]
-
+    - [2, branch]
+    - [1, log]
 - in:
-  - [1, log]
+    - [1, log]
   out:
-  - [4, board]
-
+    - [4, board]
 - in:
-  - [1, log]
-  - [8, water]
+    - [1, log]
+    - [8, water]
   out:
-  - [8, paper]
-
+    - [8, paper]
 - in:
-  - [32, paper]
-  - [1, flash memory]
+    - [32, paper]
+    - [1, flash memory]
   out:
-  - [1, dictionary]
-
+    - [1, dictionary]
 - in:
-  - [256, paper]
-  - [1, LaTeX]
+    - [256, paper]
+    - [1, LaTeX]
   required:
-  - [1, big furnace]
+    - [1, big furnace]
   out:
-  - [1, PhD thesis]
+    - [1, PhD thesis]
   time: 65536
-
 - in:
-  - [1, log]
+    - [1, log]
   out:
-  - [1, logger]
-
+    - [1, logger]
 - in:
-  - [1, board]
-  - [2, branch]
+    - [1, board]
+    - [2, branch]
   out:
-  - [1, workbench]
-
+    - [1, workbench]
 - in:
-  - [2, branch]
+    - [2, branch]
   out:
-  - [1, branch predictor]
-
+    - [1, branch predictor]
 - in:
-  - [6, board]
+    - [6, board]
   out:
-  - [1, box]
-
+    - [1, box]
 - in:
-  - [5, board]
+    - [5, board]
   out:
-  - [1, boat]
-
+    - [1, boat]
 - in:
-  - [2, board]
+    - [2, board]
   out:
-  - [1, wooden gear]
-
+    - [1, wooden gear]
 - in:
-  - [1, board]
-  - [2, wooden gear]
+    - [1, board]
+    - [2, wooden gear]
   out:
-  - [1, teeter-totter]
-
+    - [1, teeter-totter]
 - in:
-  - [1, teeter-totter]
-  - [2, copper wire]
+    - [1, teeter-totter]
+    - [2, copper wire]
   out:
-  - [1, comparator]
-
+    - [1, comparator]
 - in:
-  - [2, board]
-  - [2, wooden gear]
-  - [1, box]
+    - [2, board]
+    - [2, wooden gear]
+    - [1, box]
   out:
-  - [1, harvester]
-
+    - [1, harvester]
 - in:
-  - [1, circuit]
-  - [1, board]
-  - [8, wooden gear]
+    - [1, circuit]
+    - [1, board]
+    - [8, wooden gear]
   out:
-  - [1, typewriter]
-
+    - [1, typewriter]
 #########################################
 ##                BITS                 ##
 #########################################
-
 - in:
-  - [1, bit (0)]
-  - [1, bit (1)]
+    - [1, bit (0)]
+    - [1, bit (1)]
   out:
-  - [1, drill bit]
-
+    - [1, drill bit]
 - in:
-  - [1, bit (0)]
+    - [1, bit (0)]
   out:
-  - [1, bit (1)]
+    - [1, bit (1)]
   required:
-  - [1, lodestone]
-
+    - [1, lodestone]
 - in:
-  - [1, bit (1)]
+    - [1, bit (1)]
   out:
-  - [1, bit (0)]
+    - [1, bit (0)]
   required:
-  - [1, lodestone]
-
+    - [1, lodestone]
 - in:
-  - [8, bit (0)]
-  - [8, bit (1)]
+    - [8, bit (0)]
+    - [8, bit (1)]
   out:
-  - [1, flash memory]
-
+    - [1, flash memory]
 - in:
-  - [1, flash memory]
-  - [8, wooden gear]
+    - [1, flash memory]
+    - [8, wooden gear]
   out:
-  - [1, counter]
-
+    - [1, counter]
 #########################################
 ##                STONE                ##
 #########################################
-
 - in:
-  - [1, boulder]
+    - [1, boulder]
   out:
-  - [3, rock]
+    - [3, rock]
   required:
-  - [1, drill]
+    - [1, drill]
   time: 9
   weight: 3
-
 - in:
-  - [1, boulder]
+    - [1, boulder]
   out:
-  - [4, rock]
+    - [4, rock]
   required:
-  - [1, drill]
+    - [1, drill]
   time: 9
   weight: 1
-
 - in:
-  - [1, boulder]
+    - [1, boulder]
   out:
-  - [3, rock]
+    - [3, rock]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   time: 3
   weight: 3
-
 - in:
-  - [1, boulder]
+    - [1, boulder]
   out:
-  - [4, rock]
+    - [4, rock]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   time: 3
   weight: 3
-
 - in:
-  - [1, rock]
+    - [1, rock]
   out:
-  - [4, sand]
+    - [4, sand]
   required:
-  - [1, drill]
+    - [1, drill]
   time: 9
-
 - in:
-  - [1, rock]
+    - [1, rock]
   out:
-  - [4, sand]
+    - [4, sand]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   time: 3
-
 - in:
-  - [1, mountain]
+    - [1, mountain]
   out:
-  - [8, rock]
-  - [1, mountain tunnel]
+    - [8, rock]
+    - [1, mountain tunnel]
   required:
-  - [1, drill]
+    - [1, drill]
   time: 90
   weight: 16
-
 - in:
-  - [1, mountain]
+    - [1, mountain]
   out:
-  - [8, lodestone]
-  - [4, iron ore]
-  - [1, mountain tunnel]
+    - [8, lodestone]
+    - [4, iron ore]
+    - [1, mountain tunnel]
   required:
-  - [1, drill]
+    - [1, drill]
   time: 90
   weight: 1
-
 - in:
-  - [1, mountain]
+    - [1, mountain]
   out:
-  - [16, rock]
-  - [1, mountain tunnel]
+    - [16, rock]
+    - [1, mountain tunnel]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   time: 9
   weight: 160
-
 - in:
-  - [1, mountain]
+    - [1, mountain]
   out:
-  - [16, lodestone]
-  - [8, iron ore]
-  - [1, mountain tunnel]
+    - [16, lodestone]
+    - [8, iron ore]
+    - [1, mountain tunnel]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   time: 9
   weight: 10
-
 - in:
-  - [5, rock]
+    - [5, rock]
   out:
-  - [1, furnace]
-
+    - [1, furnace]
 - in:
-  - [10, rock]
-  - [10, solar panel]
+    - [10, rock]
+    - [10, solar panel]
   out:
-  - [1, big furnace]
-
+    - [1, big furnace]
 #########################################
 ##                 METAL               ##
 #########################################
-
 ## VEINS
-
 - in:
-  - [1, mountain]
+    - [1, mountain]
   out:
-  - [1, copper mine]
-  - [1, copper ore]
+    - [1, copper mine]
+    - [1, copper ore]
   required:
-  - [1, drill]
+    - [1, drill]
   time: 42
   weight: 2
-
 - in:
-  - [1, mountain]
+    - [1, mountain]
   out:
-  - [1, iron mine]
-  - [1, iron ore]
+    - [1, iron mine]
+    - [1, iron ore]
   required:
-  - [1, drill]
+    - [1, drill]
   time: 64
   weight: 2
-
 - in:
-  - [1, mountain]
+    - [1, mountain]
   out:
-  - [1, quartz mine]
-  - [1, quartz]
+    - [1, quartz mine]
+    - [1, quartz]
   required:
-  - [1, drill]
+    - [1, drill]
   time: 64
   weight: 1
-
 - in:
-  - [1, mountain]
+    - [1, mountain]
   out:
-  - [1, copper mine]
-  - [1, copper ore]
+    - [1, copper mine]
+    - [1, copper ore]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   time: 6
   weight: 10
-
 - in:
-  - [1, mountain]
+    - [1, mountain]
   out:
-  - [1, iron mine]
-  - [1, iron ore]
+    - [1, iron mine]
+    - [1, iron ore]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   time: 7
   weight: 10
-
 - in:
-  - [1, mountain]
+    - [1, mountain]
   out:
-  - [1, quartz mine]
-  - [1, quartz]
+    - [1, quartz mine]
+    - [1, quartz]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   time: 7
   weight: 10
-
 ## MINES
-
 - in:
-  - [1, copper mine]
+    - [1, copper mine]
   out:
-  - [1, copper ore]
-  - [1, copper mine]
+    - [1, copper ore]
+    - [1, copper mine]
   required:
-  - [1, drill]
+    - [1, drill]
   time: 42
   weight: 9
-
 - in:
-  - [1, copper mine]
+    - [1, copper mine]
   out:
-  - [2, rock]
-  - [1, copper mine]
+    - [2, rock]
+    - [1, copper mine]
   required:
-  - [1, drill]
+    - [1, drill]
   time: 42
-
 - in:
-  - [1, iron mine]
+    - [1, iron mine]
   out:
-  - [1, iron ore]
-  - [1, iron mine]
+    - [1, iron ore]
+    - [1, iron mine]
   required:
-  - [1, drill]
+    - [1, drill]
   time: 64
   weight: 9
-
 - in:
-  - [1, iron mine]
+    - [1, iron mine]
   out:
-  - [2, rock]
-  - [1, iron mine]
+    - [2, rock]
+    - [1, iron mine]
   required:
-  - [1, drill]
+    - [1, drill]
   time: 64
-
 - in:
-  - [1, quartz mine]
+    - [1, quartz mine]
   out:
-  - [1, quartz]
-  - [1, quartz mine]
+    - [1, quartz]
+    - [1, quartz mine]
   required:
-  - [1, drill]
+    - [1, drill]
   time: 64
   weight: 9
-
 - in:
-  - [1, quartz mine]
+    - [1, quartz mine]
   out:
-  - [2, rock]
-  - [1, quartz mine]
+    - [2, rock]
+    - [1, quartz mine]
   required:
-  - [1, drill]
+    - [1, drill]
   time: 64
-
 - in:
-  - [1, copper mine]
+    - [1, copper mine]
   out:
-  - [1, copper ore]
-  - [1, copper mine]
+    - [1, copper ore]
+    - [1, copper mine]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   time: 6
-
 - in:
-  - [1, iron mine]
+    - [1, iron mine]
   out:
-  - [1, iron ore]
-  - [1, iron mine]
+    - [1, iron ore]
+    - [1, iron mine]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   time: 7
-
 - in:
-  - [1, quartz mine]
+    - [1, quartz mine]
   out:
-  - [1, quartz]
-  - [1, quartz mine]
+    - [1, quartz]
+    - [1, quartz mine]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   time: 7
-
 ## SMELTING
-
 - in:
-  - [1, copper ore]
-  - [1, log]
+    - [1, copper ore]
+    - [1, log]
   out:
-  - [10, copper wire]
+    - [10, copper wire]
   required:
-  - [1, furnace]
-
+    - [1, furnace]
 - in:
-  - [1, copper ore]
-  - [1, log]
+    - [1, copper ore]
+    - [1, log]
   out:
-  - [2, copper pipe]
+    - [2, copper pipe]
   required:
-  - [1, furnace]
-
+    - [1, furnace]
 - in:
-  - [1, iron ore]
-  - [2, log]
+    - [1, iron ore]
+    - [2, log]
   out:
-  - [2, iron plate]
+    - [2, iron plate]
   required:
-  - [1, furnace]
-
+    - [1, furnace]
 - in:
-  - [1, copper ore]
+    - [1, copper ore]
   out:
-  - [10, copper wire]
+    - [10, copper wire]
   required:
-  - [1, big furnace]
-
+    - [1, big furnace]
 - in:
-  - [1, copper ore]
+    - [1, copper ore]
   out:
-  - [2, copper pipe]
+    - [2, copper pipe]
   required:
-  - [1, big furnace]
-
+    - [1, big furnace]
 - in:
-  - [1, iron ore]
+    - [1, iron ore]
   out:
-  - [2, iron plate]
+    - [2, iron plate]
   required:
-  - [1, big furnace]
-
+    - [1, big furnace]
 - in:
-  - [1, iron plate]
+    - [1, iron plate]
   out:
-  - [1, lodestone]
+    - [1, lodestone]
   required:
-  - [2, lodestone]
+    - [2, lodestone]
   time: 64
-
 ## TOOLS
-
 - in:
-  - [1, iron plate]
+    - [1, iron plate]
   out:
-  - [2, iron gear]
-
+    - [2, iron gear]
 - in:
-  - [1, iron plate]
-  - [1, water]
-  - [1, box]
+    - [1, iron plate]
+    - [1, water]
+    - [1, box]
   out:
-  - [1, compass]
+    - [1, compass]
   required:
-  - [1, lodestone]
-
+    - [1, lodestone]
 - in:
-  - [32, wooden gear]
-  - [6, copper wire]
+    - [32, wooden gear]
+    - [6, copper wire]
   out:
-  - [1, small motor]
-
+    - [1, small motor]
 - in:
-  - [16, iron gear]
-  - [6, copper wire]
+    - [16, iron gear]
+    - [6, copper wire]
   out:
-  - [1, big motor]
-
+    - [1, big motor]
 - in:
-  - [1, box]
-  - [1, drill bit]
-  - [1, small motor]
+    - [1, box]
+    - [1, drill bit]
+    - [1, small motor]
   out:
-  - [1, drill]
-
+    - [1, drill]
 - in:
-  - [1, box]
-  - [3, drill bit]
-  - [1, big motor]
+    - [1, box]
+    - [3, drill bit]
+    - [1, big motor]
   out:
-  - [1, metal drill]
-
+    - [1, metal drill]
 - in:
-  - [1, box]
-  - [2, board]
-  - [4, copper pipe]
-  - [2, iron plate]
-  - [2, rubber]
+    - [1, box]
+    - [2, board]
+    - [4, copper pipe]
+    - [2, iron plate]
+    - [2, rubber]
   out:
-  - [1, toolkit]
-
+    - [1, toolkit]
 - in:
-  - [2, small motor]
-  - [8, iron plate]
-  - [2, rubber]
+    - [2, small motor]
+    - [8, iron plate]
+    - [2, rubber]
   out:
-  - [1, treads]
-
+    - [1, treads]
 - in:
-  - [4, big motor]
-  - [64, iron plate]
-  - [16, rubber]
+    - [4, big motor]
+    - [64, iron plate]
+    - [16, rubber]
   required:
-  - [1, welder]
+    - [1, welder]
   out:
-  - [1, tank treads]
-
+    - [1, tank treads]
 - in:
-  - [2, copper pipe]
-  - [2, iron gear]
-  - [1, iron plate]
-  - [1, water]
-  - [1, small motor]
+    - [2, copper pipe]
+    - [2, iron gear]
+    - [1, iron plate]
+    - [1, water]
+    - [1, small motor]
   out:
-  - [1, grabber]
-
+    - [1, grabber]
 - in:
-  - [2, grabber]
-  - [1, rubber band]
+    - [2, grabber]
+    - [1, rubber band]
   out:
-  - [1, fast grabber]
-
+    - [1, fast grabber]
 - in:
-  - [2, copper wire]
-  - [1, copper pipe]
-  - [1, iron plate]
-  - [1, I/O cable]
+    - [2, copper wire]
+    - [1, copper pipe]
+    - [1, iron plate]
+    - [1, I/O cable]
   out:
-  - [1, welder]
-
+    - [1, welder]
 - in:
-  - [1, copper pipe]
+    - [1, copper pipe]
   out:
-  - [1, handle]
+    - [1, handle]
   required:
-  - [1, welder]
-
+    - [1, welder]
 - in:
-  - [4, circuit]
-  - [1, iron plate]
-  - [3, copper pipe]
-  - [16, iron gear]
+    - [4, circuit]
+    - [1, iron plate]
+    - [3, copper pipe]
+    - [16, iron gear]
   out:
-  - [1, 3D printer]
-
+    - [1, 3D printer]
 - in:
-  - [1, gold]
+    - [1, gold]
   out:
-  - [8, gold coin]
+    - [8, gold coin]
   required:
-  - [1, furnace]
-
+    - [1, furnace]
 - in:
-  - [1, gold]
+    - [1, gold]
   out:
-  - [8, gold coin]
+    - [8, gold coin]
   required:
-  - [1, big furnace]
-
+    - [1, big furnace]
 - in:
-  - [1, gold coin]
-  - [1, bit (1)]
-  - [1, bit (0)]
+    - [1, gold coin]
+    - [1, bit (1)]
+    - [1, bit (0)]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   out:
-  - [1, bitcoin]
-
+    - [1, bitcoin]
 - in:
-  - [2, silver]
-  - [2, copper wire]
+    - [2, silver]
+    - [2, copper wire]
   out:
-  - [1, antenna]
-
+    - [1, antenna]
 - in:
-  - [1, antenna]
-  - [1, clock]
-  - [1, circuit]
-  - [1, compass]
+    - [1, antenna]
+    - [1, clock]
+    - [1, circuit]
+    - [1, compass]
   out:
-  - [1, GPS receiver]
-
+    - [1, GPS receiver]
 - in:
-  - [1, iron plate]
+    - [1, iron plate]
   out:
-  - [1, tweezers]
-
+    - [1, tweezers]
 ## MAGIC
-
 - in:
-  - [2, copper wire]
+    - [2, copper wire]
   out:
-  - [1, strange loop]
-
+    - [1, strange loop]
 - in:
-  - [2, copper pipe]
-  - [4, copper wire]
-  - [1, paper]
-  - [1, lodestone]
+    - [2, copper pipe]
+    - [4, copper wire]
+    - [1, paper]
+    - [1, lodestone]
   out:
-  - [2, hearing aid]
-
-
+    - [2, hearing aid]
 #########################################
 ##           QUARTZ + SILICON          ##
 #########################################
-
 - in:
-  - [4, quartz]
+    - [4, quartz]
   out:
-  - [1, silicon]
+    - [1, silicon]
   required:
-  - [1, big furnace]
-
+    - [1, big furnace]
 - in:
-  - [1, quartz]
-  - [32, iron gear]
-  - [1, glass]
+    - [1, quartz]
+    - [32, iron gear]
+    - [1, glass]
   out:
-  - [1, clock]
-
+    - [1, clock]
 - in:
-  - [4, silicon]
-  - [1, strange loop]
-  - [16, copper wire]
-  - [8, bit (0)]
-  - [8, bit (1)]
+    - [4, silicon]
+    - [1, strange loop]
+    - [16, copper wire]
+    - [8, bit (0)]
+    - [8, bit (1)]
   out:
-  - [1, circuit]
-
+    - [1, circuit]
 #########################################
 ##             DEEP MINES              ##
 #########################################
-
 - in:
-  - [1, mountain]
+    - [1, mountain]
   out:
-  - [1, deep mine]
+    - [1, deep mine]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   time: 512
   weight: 1
-
 - in:
-  - [1, deep mine]
+    - [1, deep mine]
   out:
-  - [1, copper ore]
-  - [1, deep mine]
+    - [1, copper ore]
+    - [1, deep mine]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   time: 64
   weight: 1000
-
 - in:
-  - [1, deep mine]
+    - [1, deep mine]
   out:
-  - [1, iron ore]
-  - [1, deep mine]
+    - [1, iron ore]
+    - [1, deep mine]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   time: 64
   weight: 500
-
 - in:
-  - [1, deep mine]
+    - [1, deep mine]
   out:
-  - [1, silver]
-  - [1, deep mine]
+    - [1, silver]
+    - [1, deep mine]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   time: 64
   weight: 50
-
 - in:
-  - [1, deep mine]
+    - [1, deep mine]
   out:
-  - [1, gold]
-  - [1, deep mine]
+    - [1, gold]
+    - [1, deep mine]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   time: 64
   weight: 20
-
 - in:
-  - [1, deep mine]
+    - [1, deep mine]
   out:
-  - [1, mithril]
-  - [1, deep mine]
+    - [1, mithril]
+    - [1, deep mine]
   required:
-  - [1, metal drill]
+    - [1, metal drill]
   time: 64
   weight: 1
-
 #########################################
 ##               PIXELS                ##
 #########################################
-
 - in:
-  - [1, glass]
-  - [10, pixel (R)]
-  - [10, pixel (G)]
-  - [10, pixel (B)]
+    - [1, glass]
+    - [10, pixel (R)]
+    - [10, pixel (G)]
+    - [10, pixel (B)]
   out:
-  - [1, camera]
-
+    - [1, camera]
 - in:
-  - [1, camera]
-  - [1, circuit]
+    - [1, camera]
+    - [1, circuit]
   out:
-  - [1, scanner]
-
+    - [1, scanner]
 #########################################
 ##                  SAND               ##
 #########################################
-
 - in:
-  - [1, sand]
+    - [1, sand]
   out:
-  - [1, glass]
+    - [1, glass]
   required:
-  - [1, furnace]
-
+    - [1, furnace]
 - in:
-  - [1, glass]
-  - [8, copper wire]
+    - [1, glass]
+    - [8, copper wire]
   out:
-  - [1, solar panel]
+    - [1, solar panel]
   required:
-  - [1, 3D printer]
-
+    - [1, 3D printer]
 - in:
-  - [1, counter]
-  - [1, solar panel]
+    - [1, counter]
+    - [1, solar panel]
   out:
-  - [1, calculator]
-
+    - [1, calculator]
 - in:
-  - [1, calculator]
-  - [1, typewriter]
-  - [1, I/O cable]
+    - [1, calculator]
+    - [1, typewriter]
+    - [1, I/O cable]
   out:
-  - [1, ADT calculator]
-
+    - [1, ADT calculator]
 - in:
-  - [1, glass]
-  - [1, silver]
+    - [1, glass]
+    - [1, silver]
   out:
-  - [1, mirror]
-
+    - [1, mirror]
 #########################################
 ##                 LAMBDA              ##
 #########################################
-
 - in:
-  - [5, lambda]
-  - [1, water]
+    - [5, lambda]
+    - [1, water]
   out:
-  - [1, curry]
-
+    - [1, curry]
 #########################################
 ##                 LATEX               ##
 #########################################
-
 - in:
-  - [1, LaTeX]
-  - [1, log]
+    - [1, LaTeX]
+    - [1, log]
   out:
-  - [1, rubber]
+    - [1, rubber]
   required:
-  - [1, furnace]
-
+    - [1, furnace]
 - in:
-  - [8, copper wire]
-  - [1, rubber]
+    - [8, copper wire]
+    - [1, rubber]
   out:
-  - [1, I/O cable]
-
+    - [1, I/O cable]
 - in:
-  - [1, rubber]
-  - [1, strange loop]
+    - [1, rubber]
+    - [1, strange loop]
   out:
-  - [1, rubber band]
-
+    - [1, rubber band]
 - in:
-  - [1, rubber]
-  - [1, glass]
-  - [1, string]
+    - [1, rubber]
+    - [1, glass]
+    - [1, string]
   out:
-  - [1, beaglepuss]
-
+    - [1, beaglepuss]
 #########################################
 ##                COTTON               ##
 #########################################
-
 - in:
-  - [4, cotton]
+    - [4, cotton]
   out:
-  - [1, string]
+    - [1, string]
   required:
-  - [1, small motor]
-
+    - [1, small motor]
 - in:
-  - [256, string]
+    - [256, string]
   out:
-  - [1, net]
-
+    - [1, net]
 #########################################
 ##                 MISC                ##
 #########################################
-
 - in:
-  - [1, water]
-  - [1, silicon]
+    - [1, water]
+    - [1, silicon]
   required:
-  - [50, solar panel]
+    - [50, solar panel]
   out:
-  - [1, quantum dot]
-
+    - [1, quantum dot]
 - in:
-  - [1, small motor]
-  - [1, copper pipe]
-  - [1, mithril]
-  - [1, quantum dot]
-  - [1, iron plate]
+    - [1, small motor]
+    - [1, copper pipe]
+    - [1, mithril]
+    - [1, quantum dot]
+    - [1, iron plate]
   out:
-  - [1, victrola]
-
+    - [1, victrola]
 - in:
-  - [1, iron plate]
+    - [1, iron plate]
   out:
-  - [4, key]
-
+    - [4, key]
 - in:
-  - [1, board]
-  - [16, key]
+    - [1, board]
+    - [16, key]
   out:
-  - [1, keyboard]
-
+    - [1, keyboard]
 - in:
-  - [1, branch predictor]
-  - [1, grabber]
-  - [1, toolkit]
+    - [1, branch predictor]
+    - [1, grabber]
+    - [1, toolkit]
   out:
-  - [1, halting oracle]
+    - [1, halting oracle]
+- in:
+    - [1, tea leaves]
+    - [1, water]
+  required:
+    - [1, furnace]
+  out:
+    - [1, cup of tea]
+- in:
+    - [1, rubber band]
+    - [1, typewriter]
+    - [1, compass]
+    - [1, counter]
+  out:
+    - [1, atomic vector plotter]
+- in:
+    - [1, cup of tea]
+    - [5, bitcoin]
+    - [3, PhD thesis]
+    - [1, atomic vector plotter]
+  out:
+    - [1, infinite improbability drive]

@@ -1,0 +1,176 @@
+version: 1
+name: Pathfinding cache - invalidation modes
+description: |
+  The following sequence is performed:
+
+  1. An unwalkable entity is added to the path.
+  2. An unwalkable entity is removed from the path.
+  3. The target entity is added somewhere outside of the path
+  4. The target entity is added somewhere on the path
+
+  These events are recorded in the caching log and inspected in the
+  integration test.
+creative: false
+objectives:
+  - goal:
+      - Make lemonade
+    condition: |
+      as base {
+        has "lemonade";
+      };
+solution: |
+  def queryFlowerPath =
+    p <- path (inL ()) (inR "flower");
+    log $ format p;
+    end;
+
+  def waitUntilSalvaged =
+    salvage;
+    gotPanel <- has "solar panel";
+    if gotPanel {} {waitUntilSalvaged};
+    end;
+
+  def forceBlockageInvalidation =
+    build {
+      require 1 "monolith";
+      move;
+      place "monolith";
+      turn back;
+      move;
+    };
+
+    waitUntilSalvaged;
+    end;
+
+  def forceRemovedUnwalkableInvalidation =
+    build {
+      turn back;
+      push;
+      turn back;
+      move;
+    };
+
+    waitUntilSalvaged;
+    end;
+
+  def forceCompetingTargetInvalidation =
+    build {
+      require 1 "flower";
+      turn right;
+      move;
+      place "flower";
+      turn back;
+      move;
+    };
+
+    waitUntilSalvaged;
+    end;
+
+  def go =
+    // Invocation #1: Expect RECOMPUTATION
+    queryFlowerPath;
+    forceBlockageInvalidation;
+
+    // Invocation #2: Expect RECOMPUTATION
+    queryFlowerPath;
+
+    turn right;
+    move;
+    turn left;
+    move; move;
+    turn left;
+    move;
+    turn right;
+
+    // Invocation #3: Expect SUCCESS
+    queryFlowerPath;
+    forceRemovedUnwalkableInvalidation;
+
+    // Invocation #4: Expect RECOMPUTATION
+    queryFlowerPath;
+
+    forceCompetingTargetInvalidation;
+
+    // Invocation #5: Expect RECOMPUTATION
+    queryFlowerPath;
+
+    place "flower";
+
+    // Invocation #6: Expect SUCCESS
+    queryFlowerPath;
+
+    make "lemonade";
+    end;
+
+  go;
+entities:
+  - name: wayfinder
+    display:
+      char: 'w'
+    description:
+      - Enables `path` command
+    properties: [known, pickable]
+    capabilities: [path]
+  - name: monolith
+    display:
+      char: '@'
+      attr: rock
+    description:
+      - Pushable rock
+    properties: [known, unwalkable, pickable]
+  - name: lemon
+    display:
+      char: 'o'
+      attr: gold
+    description:
+      - Sour fruit
+    properties: [known, pickable]
+  - name: lemonade
+    display:
+      char: 'c'
+      attr: gold
+    description:
+      - Sweet drink
+    properties: [known, pickable]
+recipes:
+  - in:
+      - [1, lemon]
+    out:
+      - [1, lemonade]
+robots:
+  - name: base
+    dir: east
+    devices:
+      - 3D printer
+      - ADT calculator
+      - antenna
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - linotype
+      - logger
+      - grabber
+      - toolkit
+      - treads
+      - wayfinder
+      - workbench
+    inventory:
+      - [1, solar panel]
+      - [1, treads]
+      - [1, dozer blade]
+      - [1, grabber]
+      - [1, monolith]
+      - [2, flower]
+      - [1, lemon]
+known: [flower]
+world:
+  palette:
+    'B': [grass, erase, base]
+    '.': [grass]
+    'f': [grass, flower]
+  upperleft: [0, 0]
+  map: |
+    .....
+    B...f
+    .....

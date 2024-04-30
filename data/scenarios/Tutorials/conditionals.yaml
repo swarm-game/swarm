@@ -40,7 +40,7 @@ objectives:
         of type, say, `{int}`{=type}, we just surround a value of type `int`{=type}
         in curly braces, like `{3}`.  This is why arguments to `build`
         must also be in curly braces: the type of `build`
-        is `{cmd a} -> cmd robot`{=type}.
+        is `{cmd a} -> cmd actor`{=type}.
       - |
         **TIP:** Note that `if` requires a `bool`{=type}, not a `cmd bool`{=type}!  So you cannot directly say
         `if (ishere "very small rock") {...} {...}`{=snippet}.
@@ -50,7 +50,7 @@ objectives:
       - |
         **TIP:** the two branches of an `if` must have the same type. In particular,
         `if ... {grab} {}`{=snippet} is not
-        allowed, because `{grab}` has type `{cmd text}`{=type} whereas `{}` has type `{cmd unit}`{=type}.
+        allowed, because `{grab}` has type `{cmd text}`{=type} whereas `{}`{=snippet} has type `{cmd unit}`{=type}.
         In this case `{grab; return ()}` has the right type.
     condition: |
       try {
@@ -71,7 +71,7 @@ solution: |
 robots:
   - name: base
     heavy: true
-    dir: [0,1]
+    dir: north
     display:
       char: Ω
       attr: robot
@@ -96,7 +96,7 @@ entities:
       invisible: true
     description:
       - A small rock.  It is so small, it is practically invisible.
-    properties: [portable]
+    properties: [pickable]
 world:
   palette:
     'Ω': [grass, null, base]

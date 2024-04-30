@@ -22,7 +22,7 @@ robots:
     display:
       char: 'Ω'
       attr: robot
-    dir: [0, 1]
+    dir: north
     devices:
       - workbench
       - grabber

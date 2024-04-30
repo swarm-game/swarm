@@ -10,12 +10,12 @@ import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model.UI
 
-shouldHideWorldCell :: UIState -> W.Coords -> Bool
+shouldHideWorldCell :: UIGameplay -> W.Coords -> Bool
 shouldHideWorldCell ui coords =
   isOutsideSingleSelectedCorner || isOutsideMapSaveBounds
  where
   we = ui ^. uiWorldEditor
-  withinTimeout = ui ^. lastFrameTime < we ^. editingBounds . boundsPersistDisplayUntil
+  withinTimeout = ui ^. uiTiming . lastFrameTime < we ^. editingBounds . boundsPersistDisplayUntil
 
   isOutsideMapSaveBounds =
     withinTimeout

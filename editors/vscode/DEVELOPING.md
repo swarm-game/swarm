@@ -28,11 +28,11 @@
 
 ### Updating the syntax highlighting
 
-Whenever swarm language adds new features, the highlighing needs to be updated.
+Whenever swarm language adds new features, the highlighting needs to be updated.
 
-To save some time, get the current reserved words by running `swarm generate`:
+To save some time, get the current reserved words by running `swarm-docs`:
 ```bash
-cabal run swarm:swarm -- generate editors
+cabal run swarm:swarm-docs -- editors
 ```
 
 You still have to add for example types manually.

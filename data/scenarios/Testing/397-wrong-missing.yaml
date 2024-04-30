@@ -10,17 +10,17 @@ objectives:
   - condition: |
       t <- time; return (t == 2)
     goal:
-    - |
-      This is a dummy condition that just ensures the base has had
-      time to run the problematic `build` command.  The scenario
-      *should* generate an error message; what we really care about is
-      whether the generated error message is correct, which is checked
-      in test/integration/Main.hs .
+      - |
+        This is a dummy condition that just ensures the base has had
+        time to run the problematic `build` command.  The scenario
+        *should* generate an error message; what we really care about is
+        whether the generated error message is correct, which is checked
+        in test/integration/Main.hs .
 solution: |
   build {move; turn right; loc <- whereami}
 robots:
   - name: base
-    dir: [0,1]
+    dir: north
     devices:
       - 3D printer
       - logger
@@ -31,7 +31,7 @@ world:
   palette:
     'Ω': [grass, null, base]
     '.': [grass]
-  upperleft: [0,1]
+  upperleft: [0, 1]
   map: |
     .
     Ω
