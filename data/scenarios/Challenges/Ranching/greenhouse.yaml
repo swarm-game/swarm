@@ -1,0 +1,1419 @@
+attrs:
+  - bg: '#000000'
+    fg: '#b88cfa'
+    name: asterColorAttr
+  - bg: '#000000'
+    fg: '#78ffd0'
+    name: azaleaColorAttr
+  - bg: '#000000'
+    fg: '#f788df'
+    name: begoniaColorAttr
+  - bg: '#000000'
+    fg: '#dcf086'
+    name: buttercupColorAttr
+  - bg: '#000000'
+    fg: '#8eb4ed'
+    name: chrysanthemumColorAttr
+  - bg: '#000000'
+    fg: '#7bb7e3'
+    name: clematisColorAttr
+  - bg: '#000000'
+    fg: '#f5a895'
+    name: coneflowerColorAttr
+  - bg: '#000000'
+    fg: '#b372e8'
+    name: crocusColorAttr
+  - bg: '#000000'
+    fg: '#FAFA33'
+    name: daffodilColorAttr
+  - bg: '#000000'
+    fg: '#440022'
+    name: dahliaColorAttr
+  - bg: '#000000'
+    fg: '#FFFFFF'
+    name: daisyColorAttr
+  - bg: '#000000'
+    fg: '#f7cc94'
+    name: forget-me-notColorAttr
+  - bg: '#000000'
+    fg: '#96faf7'
+    name: forsythiaColorAttr
+  - bg: '#000000'
+    fg: '#edb67b'
+    name: freesiaColorAttr
+  - bg: '#000000'
+    fg: '#78fab2'
+    name: gardeniaColorAttr
+  - bg: '#000000'
+    fg: '#c8befa'
+    name: geraniumColorAttr
+  - bg: '#000000'
+    fg: '#def59a'
+    name: gladiolusColorAttr
+  - bg: '#000000'
+    fg: '#7177e3'
+    name: helleboreColorAttr
+  - bg: '#000000'
+    fg: '#f589dd'
+    name: hibiscusColorAttr
+  - bg: '#000000'
+    fg: '#f5b39d'
+    name: hydrangeaColorAttr
+  - bg: '#000000'
+    fg: '#ffc9da'
+    name: irisColorAttr
+  - bg: '#000000'
+    fg: '#fcada9'
+    name: jasmineColorAttr
+  - bg: '#000000'
+    fg: '#E6E6FA'
+    name: lavenderColorAttr
+  - bg: '#000000'
+    fg: '#C8A2C8'
+    name: lilacColorAttr
+  - bg: '#000000'
+    fg: '#ecaaf2'
+    name: lilyColorAttr
+  - bg: '#000000'
+    fg: '#f7c7b7'
+    name: lupineColorAttr
+  - bg: '#000000'
+    fg: '#eaa221'
+    name: marigoldColorAttr
+  - bg: '#000000'
+    fg: '#87CEEB'
+    name: morning gloryColorAttr
+  - bg: '#000000'
+    fg: '#df7df5'
+    name: orchidColorAttr
+  - bg: '#000000'
+    fg: '#220044'
+    name: pansyColorAttr
+  - bg: '#000000'
+    fg: '#82bae8'
+    name: peonyColorAttr
+  - bg: '#000000'
+    fg: '#ff5238'
+    name: poppyColorAttr
+  - bg: '#000000'
+    fg: '#ffebad'
+    name: primroseColorAttr
+  - bg: '#000000'
+    fg: '#ff0000'
+    name: rhododendronColorAttr
+  - bg: '#000000'
+    fg: '#ff0000'
+    name: roseColorAttr
+  - bg: '#000000'
+    fg: '#72a6e0'
+    name: snapdragonColorAttr
+  - bg: '#000000'
+    fg: '#E8DE2A'
+    name: sunflowerColorAttr
+  - bg: '#000000'
+    fg: '#D8BFD8'
+    name: thistleColorAttr
+  - bg: '#000000'
+    fg: '#d16ceb'
+    name: tulipColorAttr
+  - bg: '#000000'
+    fg: '#faacce'
+    name: zinniaColorAttr
+  - name: soil
+    fg: "#eab64f"
+    bg: "#27221c"
+  - name: planterbox
+    fg: "#964B00"
+    bg: "#5C4033"
+  - name: greenhouseTop
+    fg: "#ffffff"
+    bg: "#002000"
+  - name: greenhouse
+    fg: "#ffffff"
+  - name: decoy
+    fg: "#00ff00"
+    bg: "#000000"
+  - name: frontFace
+    fg: "#BBBBBB"
+  - name: frontFaceFloor
+    fg: "#888888"
+    bg: "#BBBBBB"
+entities:
+  - description:
+      - A pouch that holds every type of flower. Allows converting one planted flower to the next flower in order.
+    display:
+      attr: entity
+      char: p
+      priority: 1
+    name: flower pouch
+    properties:
+      - portable
+  - description:
+      - Aster amellus
+    display:
+      attr: asterColorAttr
+      char: '*'
+      priority: 1
+    name: aster
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Rhododendron indicum
+    display:
+      attr: azaleaColorAttr
+      char: '*'
+      priority: 1
+    name: azalea
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Begonia obliqua
+    display:
+      attr: begoniaColorAttr
+      char: '*'
+      priority: 1
+    name: begonia
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Ranunculus repens
+    display:
+      attr: buttercupColorAttr
+      char: '*'
+      priority: 1
+    name: buttercup
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Chrysanthemum indicum
+    display:
+      attr: chrysanthemumColorAttr
+      char: '*'
+      priority: 1
+    name: chrysanthemum
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Clematis ligusticifolia
+    display:
+      attr: clematisColorAttr
+      char: '*'
+      priority: 1
+    name: clematis
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Rudbeckia hirta
+    display:
+      attr: coneflowerColorAttr
+      char: '*'
+      priority: 1
+    name: coneflower
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Crocus sativus
+    display:
+      attr: crocusColorAttr
+      char: '*'
+      priority: 1
+    name: crocus
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Narcissus poeticus
+    display:
+      attr: daffodilColorAttr
+      char: '*'
+      priority: 1
+    name: daffodil
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Dahlia pinnata
+    display:
+      attr: dahliaColorAttr
+      char: '*'
+      priority: 1
+    name: dahlia
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Bellis perennis
+    display:
+      attr: daisyColorAttr
+      char: '*'
+      priority: 1
+    name: daisy
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Myosotis sylvatica
+    display:
+      attr: forget-me-notColorAttr
+      char: '*'
+      priority: 1
+    name: forget-me-not
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Forsythia suspensa
+    display:
+      attr: forsythiaColorAttr
+      char: '*'
+      priority: 1
+    name: forsythia
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Freesia refracta
+    display:
+      attr: freesiaColorAttr
+      char: '*'
+      priority: 1
+    name: freesia
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Gardenia jasminoides
+    display:
+      attr: gardeniaColorAttr
+      char: '*'
+      priority: 1
+    name: gardenia
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Geranium himalayense
+    display:
+      attr: geraniumColorAttr
+      char: '*'
+      priority: 1
+    name: geranium
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Gladiolus communis
+    display:
+      attr: gladiolusColorAttr
+      char: '*'
+      priority: 1
+    name: gladiolus
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Helleborus orientalis
+    display:
+      attr: helleboreColorAttr
+      char: '*'
+      priority: 1
+    name: hellebore
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Hibiscus syriacus
+    display:
+      attr: hibiscusColorAttr
+      char: '*'
+      priority: 1
+    name: hibiscus
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Hydrangea macrophylla
+    display:
+      attr: hydrangeaColorAttr
+      char: '*'
+      priority: 1
+    name: hydrangea
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Iris germanica
+    display:
+      attr: irisColorAttr
+      char: '*'
+      priority: 1
+    name: iris
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Jasminum officinale
+    display:
+      attr: jasmineColorAttr
+      char: '*'
+      priority: 1
+    name: jasmine
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Lavandula spica
+    display:
+      attr: lavenderColorAttr
+      char: '*'
+      priority: 1
+    name: lavender
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Syringa vulgaris
+    display:
+      attr: lilacColorAttr
+      char: '*'
+      priority: 1
+    name: lilac
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Lilium candidum
+    display:
+      attr: lilyColorAttr
+      char: '*'
+      priority: 1
+    name: lily
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Lupinus albus
+    display:
+      attr: lupineColorAttr
+      char: '*'
+      priority: 1
+    name: lupine
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Calendula officinalis
+    display:
+      attr: marigoldColorAttr
+      char: '*'
+      priority: 1
+    name: marigold
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - ''
+    display:
+      attr: morning gloryColorAttr
+      char: '*'
+      priority: 1
+    name: morning glory
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Phalaenopsis amabilis
+    display:
+      attr: orchidColorAttr
+      char: '*'
+      priority: 1
+    name: orchid
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Viola × wittrockiana
+    display:
+      attr: pansyColorAttr
+      char: '*'
+      priority: 1
+    name: pansy
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Paeonia officinalis
+    display:
+      attr: peonyColorAttr
+      char: '*'
+      priority: 1
+    name: peony
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Papaver somniferum
+    display:
+      attr: poppyColorAttr
+      char: '*'
+      priority: 1
+    name: poppy
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Primula vulgaris
+    display:
+      attr: primroseColorAttr
+      char: '*'
+      priority: 1
+    name: primrose
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Rhododendron ferrugineum
+    display:
+      attr: rhododendronColorAttr
+      char: '*'
+      priority: 1
+    name: rhododendron
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Rosa chinensis
+    display:
+      attr: roseColorAttr
+      char: '*'
+      priority: 1
+    name: rose
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Antirrhinum majus
+    display:
+      attr: snapdragonColorAttr
+      char: '*'
+      priority: 1
+    name: snapdragon
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Helianthus annuus
+    display:
+      attr: sunflowerColorAttr
+      char: '*'
+      priority: 1
+    name: sunflower
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Cirsium vulgare
+    display:
+      attr: thistleColorAttr
+      char: '*'
+      priority: 1
+    name: thistle
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Tulipa gesneriana
+    display:
+      attr: tulipColorAttr
+      char: '*'
+      priority: 1
+    name: tulip
+    properties:
+      - portable
+      - growable
+      - known
+  - description:
+      - Chrysogonum peruvianum
+    display:
+      attr: zinniaColorAttr
+      char: '*'
+      priority: 1
+    name: zinnia
+    properties:
+      - portable
+      - growable
+      - known
+  - name: decoy
+    display:
+      char: '*'
+      attr: decoy
+    description:
+      - An artificial flower to fill an empty garden slot.
+  - name: truffle
+    display:
+      char: m
+      attr: silver
+    description:
+      - A mushroom
+    properties: [known, portable]
+  - name: portobello
+    display:
+      char: m
+      attr: silver
+    description:
+      - A mushroom
+    properties: [known, portable]
+  - name: chanterelle
+    display:
+      char: m
+      attr: silver
+    description:
+      - A mushroom
+    properties: [known, portable]
+  - name: shiitake
+    display:
+      char: m
+      attr: silver
+    description:
+      - A mushroom
+    properties: [known, portable]
+  - name: planter box receptacle
+    display:
+      char: '_'
+      attr: 'soil'
+    description:
+      - Plant flowers here.
+    properties: [known, portable]
+  - name: planter box wall
+    display:
+      char: '|'
+      attr: 'planterBox'
+    description:
+      - Structure.
+    properties: [known]
+  - name: planter box edge
+    display:
+      char: '\'
+      attr: 'planterBox'
+    description:
+      - Structure.
+    properties: [known]
+  - name: planter box lip
+    display:
+      char: '_'
+      attr: 'planterBox'
+    description:
+      - Structure.
+    properties: [known]
+  - name: planter box column
+    display:
+      char: '|'
+      attr: 'planterBox'
+    description:
+      - Structure.
+    properties: [known]
+  - name: greenhouse vertical wall
+    display:
+      char: '|'
+      attr: 'greenhouse'
+    description:
+      - Structure.
+    properties: [known]
+  - name: greenhouse horizontal wall
+    display:
+      char: '_'
+      attr: 'greenhouse'
+    description:
+      - Structure.
+    properties: [known]
+  - name: greenhouse top ridge
+    display:
+      char: '_'
+      attr: 'greenhouseTop'
+    description:
+      - Structure.
+    properties: [known]
+  - name: greenhouse front face
+    display:
+      char: '█'
+      attr: 'frontFace'
+    description:
+      - Structure.
+    properties: [known]
+  - name: greenhouse front face floor
+    display:
+      char: '_'
+      attr: 'frontFaceFloor'
+    description:
+      - Structure.
+    properties: [known]
+  - name: greenhouse left slope
+    display:
+      char: '/'
+      attr: 'greenhouse'
+    description:
+      - Structure.
+    properties: [known]
+  - name: greenhouse right slope
+    display:
+      char: '\'
+      attr: 'greenhouse'
+    description:
+      - Structure.
+    properties: [known]
+recipes:
+  - in:
+      - - 1
+        - aster
+      - - 1
+        - azalea
+      - - 1
+        - begonia
+      - - 1
+        - buttercup
+      - - 1
+        - chrysanthemum
+      - - 1
+        - clematis
+      - - 1
+        - coneflower
+      - - 1
+        - crocus
+      - - 1
+        - daffodil
+      - - 1
+        - dahlia
+      - - 1
+        - daisy
+      - - 1
+        - forget-me-not
+      - - 1
+        - forsythia
+      - - 1
+        - freesia
+      - - 1
+        - gardenia
+      - - 1
+        - geranium
+      - - 1
+        - gladiolus
+      - - 1
+        - hellebore
+      - - 1
+        - hibiscus
+      - - 1
+        - hydrangea
+      - - 1
+        - iris
+      - - 1
+        - jasmine
+      - - 1
+        - lavender
+      - - 1
+        - lilac
+      - - 1
+        - lily
+      - - 1
+        - lupine
+      - - 1
+        - marigold
+      - - 1
+        - morning glory
+      - - 1
+        - orchid
+      - - 1
+        - pansy
+      - - 1
+        - peony
+      - - 1
+        - poppy
+      - - 1
+        - primrose
+      - - 1
+        - rhododendron
+      - - 1
+        - rose
+      - - 1
+        - snapdragon
+      - - 1
+        - sunflower
+      - - 1
+        - thistle
+      - - 1
+        - tulip
+      - - 1
+        - zinnia
+    out:
+      - - 1
+        - flower pouch
+  - in:
+      - - 1
+        - aster
+    out:
+      - - 1
+        - azalea
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - azalea
+    out:
+      - - 1
+        - begonia
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - begonia
+    out:
+      - - 1
+        - buttercup
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - buttercup
+    out:
+      - - 1
+        - chrysanthemum
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - chrysanthemum
+    out:
+      - - 1
+        - clematis
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - clematis
+    out:
+      - - 1
+        - coneflower
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - coneflower
+    out:
+      - - 1
+        - crocus
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - crocus
+    out:
+      - - 1
+        - daffodil
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - daffodil
+    out:
+      - - 1
+        - dahlia
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - dahlia
+    out:
+      - - 1
+        - daisy
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - daisy
+    out:
+      - - 1
+        - forget-me-not
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - forget-me-not
+    out:
+      - - 1
+        - forsythia
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - forsythia
+    out:
+      - - 1
+        - freesia
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - freesia
+    out:
+      - - 1
+        - gardenia
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - gardenia
+    out:
+      - - 1
+        - geranium
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - geranium
+    out:
+      - - 1
+        - gladiolus
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - gladiolus
+    out:
+      - - 1
+        - hellebore
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - hellebore
+    out:
+      - - 1
+        - hibiscus
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - hibiscus
+    out:
+      - - 1
+        - hydrangea
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - hydrangea
+    out:
+      - - 1
+        - iris
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - iris
+    out:
+      - - 1
+        - jasmine
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - jasmine
+    out:
+      - - 1
+        - lavender
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - lavender
+    out:
+      - - 1
+        - lilac
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - lilac
+    out:
+      - - 1
+        - lily
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - lily
+    out:
+      - - 1
+        - lupine
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - lupine
+    out:
+      - - 1
+        - marigold
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - marigold
+    out:
+      - - 1
+        - morning glory
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - morning glory
+    out:
+      - - 1
+        - orchid
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - orchid
+    out:
+      - - 1
+        - pansy
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - pansy
+    out:
+      - - 1
+        - peony
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - peony
+    out:
+      - - 1
+        - poppy
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - poppy
+    out:
+      - - 1
+        - primrose
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - primrose
+    out:
+      - - 1
+        - rhododendron
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - rhododendron
+    out:
+      - - 1
+        - rose
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - rose
+    out:
+      - - 1
+        - snapdragon
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - snapdragon
+    out:
+      - - 1
+        - sunflower
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - sunflower
+    out:
+      - - 1
+        - thistle
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - thistle
+    out:
+      - - 1
+        - tulip
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - tulip
+    out:
+      - - 1
+        - zinnia
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+  - in:
+      - - 1
+        - zinnia
+    out:
+      - - 1
+        - aster
+    required:
+      - - 1
+        - flower pouch
+      - - 1
+        - drill
+version: 1
+name: Greenhouse
+author: Karl Ostmo
+description: |
+  Curate flower varieties
+creative: false
+seed: 0
+objectives:
+  - teaser: Flower curation
+    goal:
+      - Distribute every type of flower into the planter boxes in the greenhouse. There are just enough "planter box receptacles" to accommodate each variety.
+      - Do not pick any mushrooms!
+      - "Hint: examine your recipes for a way to simplify bookkeeping..."
+    condition: |-
+      def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+
+      def pillagePlanters =
+          doN 20 (grab; move);
+
+          turn left;
+          doN 2 move;
+          turn left;
+          doN 4 move;
+
+          doN 20 (grab; move);
+          end;
+
+      bot <- robotnamed "solutionchecker";
+      as bot {
+          isUndisturbed <- ishere "planter box receptacle";
+          if isUndisturbed {return false} {
+              try {
+                  pillagePlanters;
+                  // This will fail if we do not possess
+                  // every variety of flower:
+                  make "flower pouch";
+                  return true;
+              } {
+                  return false;
+              };
+          };
+      };
+    prerequisite:
+      previewable: true
+      logic:
+        and:
+          - populate_garden
+          - not: pick_mushroom
+          - not: blank_garden_cell
+  - id: populate_garden
+    teaser: Wait patiently
+    goal:
+      - Wait patiently until the garden is populated. Then you will be able to `grab` treads and go to work!
+    condition: |
+      as base {
+        ishere "treads";
+      }
+  - id: pick_mushroom
+    teaser: Forbidden mushrooms
+    goal:
+      - The mushrooms are not ready for harvesting yet. You must leave them in the field!
+    condition: |
+      as base {
+        x1 <- has "truffle";
+        x2 <- has "portobello";
+        x3 <- has "chanterelle";
+        x4 <- has "shiitake";
+        return $ x1 || x2 || x3 || x4;
+      }
+    optional: true
+  - id: blank_garden_cell
+    teaser: Leave no trace
+    goal:
+      - Do not allow a garden cell to become blank.
+    condition: |
+      as base {
+        loc <- whereami;
+        let x = fst loc in
+        let y = snd loc in
+        if (x >= 0 && x < 40 && y <= 0 && y > -8) {
+          isempty;
+        } {
+          return false;
+        }
+      }
+    optional: true
+robots:
+  - name: base
+    dir: [0, 1]
+    devices:
+      - ADT calculator
+      - antenna
+      - branch predictor
+      - comparator
+      - clock
+      - dictionary
+      - drill
+      - fast grabber
+      - harvester
+      - hearing aid
+      - lambda
+      - logger
+      - scanner
+      - strange loop
+      - welder
+      - workbench
+    inventory:
+      - [41, decoy]
+  - name: planter
+    system: true
+    dir: [0, 1]
+    display:
+      invisible: true
+    devices:
+      - logger
+    inventory:
+      - [1, bit (0)]
+    program: |
+      run "scenarios/Challenges/Ranching/_greenhouse/planter.sw"
+  - name: prepchecker
+    system: true
+    dir: [1, 0]
+    display:
+      invisible: true
+    devices:
+      - logger
+    inventory:
+      - [1, treads]
+    program: |
+      run "scenarios/Challenges/Ranching/_greenhouse/prepchecker.sw"
+  - name: solutionchecker
+    system: true
+    dir: [-1, 0]
+    display:
+      invisible: true
+    devices:
+      - logger
+solution: |
+  run "scenarios/Challenges/Ranching/_greenhouse/solution.sw"
+known: []
+world:
+  default: [grass]
+  upperleft: [-9, 2]
+  offset: false
+  palette:
+    ".": [grass]
+    "d": [dirt]
+    "i": [blank]
+    "j": [blank, greenhouse front face]
+    "f": [blank, greenhouse front face floor]
+    Ω: [grass, null, base]
+    p: [dirt, null, planter]
+    k: [grass, null, prepchecker]
+    "/": [blank, greenhouse left slope]
+    "\\": [blank, greenhouse right slope]
+    "|": [blank, greenhouse vertical wall]
+    "_": [blank, greenhouse horizontal wall]
+    "g": [blank, greenhouse top ridge]
+    e: [blank, planter box edge]
+    c: [blank, planter box column]
+    r: [blank, planter box receptacle]
+    R: [blank, planter box receptacle, solutionchecker]
+    q: [blank, planter box lip]
+  map: |
+    .....................................................
+    .........k...........................................
+    .........dddddddddddddddddddddddddddddddddddddddd....
+    .........dddddddddddddddddddddddddddddddddddddddd....
+    .........dddddddddddddddddddddddddddddddddddddddd....
+    .........dddddddddddddddddddddddddddddddddddddddd....
+    .........dddddddddddddddddddddddddddddddddddddddd....
+    .........dddddddddddddddddddddddddddddddddddddddd....
+    .........dddddddddddddddddddddddddddddddddddddddd....
+    .........pppppppppppppppppppppppppppppppppppppppp....
+    .....................................................
+    .....................................................
+    .............gggggggggggggggggggggggggggggggggg......
+    .........Ω../\iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii\.....
+    .........../jj\iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii\....
+    ........../jjjj\iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii|...
+    .........|jjffjj|iiiiqqqqqqqqqqqqqqqqqqqqqiiiiiii|...
+    .........|j|ii|j|iiicerrrrrrrrrrrrrrrrrrrReiiiiii|...
+    .........|j|ii|j|iiiiiiiqqqqqqqqqqqqqqqqqqqqqiiii|...
+    .........|j|ii|j|iiiiiicerrrrrrrrrrrrrrrrrrrreiii|...
+    .........|f|/i|f|________________________________|...
+    .....................................................
