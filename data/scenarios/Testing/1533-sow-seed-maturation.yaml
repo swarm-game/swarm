@@ -1,0 +1,101 @@
+version: 1
+name: Seed maturation
+description: |
+  A seed grows into a different entity, which again
+  yields the original seed when harvested.
+
+  The 'mature' sub-property of the 'growth' property
+  facilitates the distinction between seeds and the
+  entities those seeds produce. For example, it doesn't make much sense
+  to plant an `acorn`{=entity} and call the resulting,
+  fully-grown plant also an `acorn`{=entity}.
+
+  In combination with 'yields', it
+  effectively precludes the grown entity (as it exists in the world)
+  from entering into the player's inventory.
+creative: false
+objectives:
+  - id: plant_acorn
+    goal:
+      - |
+        Plant an `acorn`{=entity}
+    condition: |
+      as base {
+        x <- has "acorn";
+        return $ not x;
+      }
+  - goal:
+      - |
+        Go to the `oak`{=entity}
+    condition: |
+      as base {
+        ishere "oak";
+      }
+  - goal:
+      - |
+        Pick another `acorn`{=entity}
+    prerequisite: plant_acorn
+    condition: |
+      as base {
+        has "acorn";
+      }
+solution: |
+  sow "acorn";
+  move;
+  watch back;
+  turn back;
+  wait 1000;
+  move;
+  harvest;
+robots:
+  - name: base
+    dir: east
+    devices:
+      - branch predictor
+      - calculator
+      - comparator
+      - dictionary
+      - harvester
+      - logger
+      - rolex
+      - scanner
+      - seed spreader
+      - treads
+    inventory:
+      - [1, acorn]
+entities:
+  - name: acorn
+    display:
+      char: 'a'
+    description:
+      - Seed of an `oak`{=entity}
+    properties: [known, growable]
+    growth:
+      duration: [200, 300]
+      mature: oak
+  - name: oak
+    display:
+      char: 'k'
+    description:
+      - Grows from an `acorn`{=entity}
+    properties: [known, pickable, growable]
+    growth:
+      duration: [200, 300]
+    yields: acorn
+  - name: seed spreader
+    display:
+      char: 's'
+    description:
+      - A handheld pouch with a manual crank to broadcast seeds evenly within a small radius
+    properties: [known]
+    capabilities: [sow]
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+    'B': [grass, null, base]
+  upperleft: [-2, 2]
+  map: |
+    .....
+    ..B..
+    .....

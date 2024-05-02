@@ -120,18 +120,6 @@ addCombustionBot inputEntity combustibility ts loc = do
  where
   Combustibility _ durationRange maybeCombustionProduct = combustibility
 
--- Triggers the ignition of the entity underfoot with some delay.
-ignitionProgram :: Integer -> ProcessedTerm
-ignitionProgram waitTime =
-  [tmQ|
-    wait $int:waitTime;
-    try {
-      ignite down;
-      noop;
-    } {};
-    selfdestruct
-  |]
-
 -- | A system program for a "combustion robot", to burn an entity
 --   after it is ignited.
 --
@@ -228,3 +216,15 @@ addIgnitionBot ignitionDelay inputEntity ts loc =
       False
       emptyExceptions
       ts
+
+-- Triggers the ignition of the entity underfoot with some delay.
+ignitionProgram :: Integer -> ProcessedTerm
+ignitionProgram waitTime =
+  [tmQ|
+    wait $int:waitTime;
+    try {
+      ignite down;
+      noop;
+    } {};
+    selfdestruct
+  |]
