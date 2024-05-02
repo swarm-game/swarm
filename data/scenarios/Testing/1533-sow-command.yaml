@@ -1,0 +1,73 @@
+version: 1
+name: Demo sow command
+description: |
+  Demonstrate growth restrictions.
+creative: true
+attrs:
+  - name: clay
+    bg: "#c2b280"
+terrains:
+  - name: clay
+    attr: clay
+    description: |
+      Sandy soil
+objectives:
+  - id: harvested
+    goal:
+      - |
+        `harvest` both `wheat`{=entity}.
+        Only one should grow back.
+    condition: |
+      as base {
+        c <- count "wheat";
+        return $ c == 2;
+      }
+solution: |
+  move; harvest;
+  move; harvest;
+  move;
+  move; move; move; move; move;
+robots:
+  - name: base
+    dir: east
+    devices:
+      - treads
+      - harvester
+  - name: observer
+    dir: east
+    system: true
+entities:
+  - name: wheat
+    display:
+      char: 'w'
+      attr: gold
+    description:
+      - Grain
+    properties: [known, pickable, growable]
+    growth:
+      duration: [2, 4]
+      spread:
+        radius: 2
+        density: 0.6
+    biomes: [dirt, clay]
+  - name: seed spreader
+    display:
+      char: 's'
+    description:
+      - A handheld pouch with a manual crank to broadcast seeds evenly within a small radius
+    properties: [known]
+known: [flower]
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+    'd': [dirt]
+    'c': [clay]
+    'w': [grass, wheat, observer]
+    'W': [dirt, wheat]
+    'B': [grass, null, base]
+  upperleft: [-1, 1]
+  map: |
+    ..dddccc......
+    BwWddccc......
+    ..dddccc......

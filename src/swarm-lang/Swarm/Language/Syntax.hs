@@ -184,6 +184,8 @@ data Const
     Grab
   | -- | Harvest an item from the current location.
     Harvest
+  | -- | Scatter seeds of a plant
+    Sow
   | -- | Ignite a combustible item
     Ignite
   | -- | Try to place an item at the current location.
@@ -629,6 +631,11 @@ constInfo c = case c of
     command 0 short . doc (Set.fromList [Mutation EntityChange, Mutation $ RobotChange InventoryChange]) "Harvest an item from the current location." $
       [ "Leaves behind a growing seed if the harvested item is growable."
       , "Otherwise it works exactly like `grab`."
+      ]
+  Sow ->
+    command 1 short . doc (Set.singleton $ Mutation EntityChange) "Distribute seeds for a plant at current location" $
+      [ "Spread plant seeds nearby."
+      , "The success, range, and density of child growth depends on the 'spread' attributes."
       ]
   Ignite ->
     command 1 short

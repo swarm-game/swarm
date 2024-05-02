@@ -469,12 +469,14 @@ addSeedBot ::
   Has (State GameState) sig m =>
   Entity ->
   (Integer, Integer) ->
+  Integer ->
+  Integer ->
   Cosmic Location ->
   TimeSpec ->
   m ()
-addSeedBot e (minT, maxT) loc ts =
+addSeedBot e (minT, maxT) seedlingCount seedlingRadius loc ts =
   zoomRobots
-    . addTRobot (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty emptyStore)
+    . addTRobot (initMachine seedProg empty emptyStore)
     $ mkRobot
       Nothing
       "seed"
@@ -492,12 +494,32 @@ addSeedBot e (minT, maxT) loc ts =
       False
       emptyExceptions
       ts
+  where
+    seedProg = seedProgram
+      minT
+      (maxT - minT)
+      seedlingCount
+      seedlingRadius
+      (e ^. entityName)
 
 -- | A system program for a "seed robot", to regrow a growable entity
 --   after it is harvested.
-seedProgram :: Integer -> Integer -> Text -> ProcessedTerm
-seedProgram minTime randTime thing =
+seedProgram ::
+  Integer ->
+  -- ^ min time
+  Integer ->
+  -- ^ rand time
+  Integer ->
+  -- ^ seedling count
+  Integer ->
+  -- ^ seedling radius
+  EntityName ->
+  -- ^ entity to place
+  ProcessedTerm
+seedProgram minTime randTime seedlingCount seedlingRadius thing =
   [tmQ|
+    def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+
     try {
       r <- random (1 + $int:randTime);
       wait (r + $int:minTime);
@@ -505,6 +527,16 @@ seedProgram minTime randTime thing =
       r <- random (1 + $int:randTime);
       wait (r + $int:minTime);
       place $str:thing;
+
+      doN $int:seedlingCount (
+        _robo <- build {
+          x <- random (1 + $int:seedlingRadius);
+          y <- random (1 + $int:seedlingRadius);
+          teleport self (x, y);
+          sow $str:thing;
+          selfdestruct;
+        };
+      );
     } {};
     selfdestruct
   |]

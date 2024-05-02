@@ -83,6 +83,7 @@ import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
 import Swarm.Game.Step.Util.Inspect
+import Swarm.Game.Terrain (TerrainType)
 import Swarm.Game.Tick
 import Swarm.Game.Universe
 import Swarm.Game.Value
@@ -304,6 +305,22 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Grab -> mkReturn <$> doGrab Grab' PerformRemoval
     Harvest -> mkReturn <$> doGrab Harvest' PerformRemoval
+    Sow -> case vs of
+      [VText name] -> do
+        loc <- use robotLocation
+
+        -- Make sure there's nothing already here
+        nothingHere <- isNothing <$> entityAt loc
+        nothingHere `holdsOrFail` ["There is already an entity here."]
+
+        -- Make sure the robot has the thing in its inventory
+        e <- hasInInventoryOrFail name
+
+        (terrainHere, _) <- contentAt loc
+        doPlantSeed terrainHere loc e
+
+        return $ mkReturn ()
+      _ -> badConst
     Ignite -> case vs of
       [VDir d] -> do
         Combustion.igniteCommand c d
@@ -1714,6 +1731,42 @@ execConst runChildProg c vs s k = do
   mkReturn :: Valuable a => a -> CESK
   mkReturn x = Out (asValue x) s k
 
+  doPlantSeed ::
+    (HasRobotStepState sig m, Has Effect.Time sig m) =>
+    TerrainType ->
+    Cosmic Location ->
+    Entity ->
+    m ()
+  doPlantSeed terrainHere loc e = do
+    when ((e `hasProperty` Growable) && isAllowedInBiome terrainHere e) $ do
+      let Growth maybeMaturesTo maybeSpread (GrowthTime (minT, maxT)) =
+            (e ^. entityGrowth) ? defaultGrowth
+
+      em <- use $ landscape . terrainAndEntities . entityMap
+      let seedEntity = fromMaybe e $ (`lookupEntityName` em) =<< maybeMaturesTo
+
+      createdAt <- getNow
+      let radius = maybe 1 spreadRadius maybeSpread
+      let seedlingDensity = maybe 0 spreadDensity maybeSpread
+
+      let seedlingArea = 1 + 2 * (radius * (radius + 1))
+      let seedlingCount = floor $ seedlingDensity * fromIntegral seedlingArea
+
+      -- Grow a new entity from a seed.
+      addSeedBot
+        seedEntity
+        (minT, maxT)
+        seedlingCount
+        (fromIntegral radius)
+        loc
+        createdAt
+   where
+    isAllowedInBiome terr ent =
+      null biomeRestrictions
+        || terr `S.member` biomeRestrictions
+     where
+      biomeRestrictions = ent ^. entityBiomes
+
   -- The code for grab and harvest is almost identical, hence factored
   -- out here.
   -- Optionally defer removal from the world, for the case of the Swap command.
@@ -1740,18 +1793,8 @@ execConst runChildProg c vs s k = do
 
     -- Possibly regrow the entity, if it is growable and the 'harvest'
     -- command was used.
-    let biomeRestrictions = e ^. entityBiomes
-        isAllowedInBiome =
-          null biomeRestrictions
-            || terrainHere `S.member` biomeRestrictions
-
-    when ((e `hasProperty` Growable) && cmd == Harvest' && isAllowedInBiome) $ do
-      let GrowthTime (minT, maxT) = (e ^. entityGrowth) ? defaultGrowthTime
-
-      createdAt <- getNow
-
-      -- Grow a new entity from a seed.
-      addSeedBot e (minT, maxT) loc createdAt
+    when (cmd == Harvest') $
+      doPlantSeed terrainHere loc e
 
     -- Add the picked up item to the robot's inventory.  If the
     -- entity yields something different, add that instead.

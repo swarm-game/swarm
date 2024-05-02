@@ -367,6 +367,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/1775-custom-terrain"
         , testSolution Default "Testing/1777-capability-cost"
         , testSolution Default "Testing/1642-biomes"
+        , testSolution Default "Testing/1533-sow-command"
         , testGroup
             -- Note that the description of the classic world in
             -- data/worlds/classic.yaml (automatically tested to some

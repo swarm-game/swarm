@@ -63,3 +63,4 @@ Achievements
 1777-capability-cost.yaml
 1775-custom-terrain.yaml
 1642-biomes.yaml
+1533-sow-command.yaml
