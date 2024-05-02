@@ -44,6 +44,7 @@ module Swarm.Game.World (
   -- ** Monadic variants
   lookupTerrainM,
   lookupEntityM,
+  lookupContentM,
   updateM,
 
   -- ** Runtime updates
@@ -233,6 +234,16 @@ lookupTerrainM ::
 lookupTerrainM c = do
   modify @(World t e) $ loadCell c
   lookupTerrain c <$> get @(World t e)
+
+lookupContentM ::
+  forall t e sig m.
+  (Has (State (World t e)) sig m, IArray U.UArray t) =>
+  Coords ->
+  m (t, Maybe e)
+lookupContentM c = do
+  modify @(World t e) $ loadCell c
+  w <- get @(World t e)
+  return (lookupTerrain c w, lookupEntity c w)
 
 lookupCosmicEntity :: Cosmic Coords -> MultiWorld t e -> Maybe e
 lookupCosmicEntity (Cosmic subworldName i) multiWorld =

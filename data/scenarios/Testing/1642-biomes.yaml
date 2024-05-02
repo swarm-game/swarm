@@ -1,0 +1,102 @@
+version: 1
+name: Demo sow command
+description: |
+  Demonstrate growth restrictions.
+
+  `move`-ing to the distant goal cell gives the
+  `wheat`{=entity} enough time to grow back.
+objectives:
+  - id: harvested
+    goal:
+      - |
+        `harvest` both `wheat`{=entity},
+        from west to east.
+        Only the eastern wheat should grow back.
+    condition: |
+      as base {
+        c <- count "wheat";
+        return $ c == 2;
+      }
+  - id: western_wheat_regrew
+    optional: true
+    goal:
+      - |
+        Wheat in grass must not regrow
+    condition: |
+      observer <- robotnamed "observer";
+      as observer {
+        ishere "wheat";
+      }
+    prerequisite: harvested
+  - goal:
+      - |
+        Go to the stone patch.
+        This takes at least 10 ticks,
+        by which time the
+        `wheat`{=entity} would have grown back.
+        Fails if the western wheat does grow back.
+    condition: |
+      goalbot <- robotnamed "goalbot";
+      baseLoc <- as base {whereami};
+      as goalbot {
+        goalLoc <- whereami;
+        return $ baseLoc == goalLoc;
+      }
+    prerequisite:
+      logic:
+        and:
+          - harvested
+          - not: western_wheat_regrew
+solution: |
+  move; harvest;
+  move; harvest;
+  move;
+  move; move; move; move; move;
+  move; move; move; move; move;
+robots:
+  - name: base
+    dir: east
+    devices:
+      - logger
+      - scythe
+      - treads
+  - name: observer
+    dir: east
+    system: true
+  - name: goalbot
+    dir: east
+    system: true
+entities:
+  - name: wheat
+    display:
+      char: 'w'
+      attr: gold
+    description:
+      - Grain
+    properties: [known, pickable, growable]
+    growth: [2, 4]
+    biomes: [dirt]
+  - name: scythe
+    display:
+      char: 'y'
+    description:
+      - Curved blade on a long handle
+    properties: [known]
+    capabilities:
+      - harvest
+    biomes: [dirt]
+known: [flower]
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+    'd': [dirt]
+    's': [stone, null, goalbot]
+    'w': [grass, wheat, observer]
+    'W': [dirt, wheat]
+    'B': [grass, null, base]
+  upperleft: [-1, 1]
+  map: |
+    ..dd..........
+    BwWd.........s
+    ..............
