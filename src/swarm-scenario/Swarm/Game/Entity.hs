@@ -41,6 +41,7 @@ module Swarm.Game.Entity (
   entityProperties,
   hasProperty,
   entityCapabilities,
+  entityBiomes,
   entityInventory,
   entityHash,
 
@@ -91,6 +92,7 @@ import Control.Arrow ((&&&))
 import Control.Carrier.Throw.Either (liftEither)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw (Throw, throwError)
+import Swarm.Game.Terrain (TerrainType)
 import Control.Lens (Getter, Lens', lens, to, view, (^.))
 import Control.Monad (forM_, unless, (<=<))
 import Data.Bifunctor (first)
@@ -280,6 +282,8 @@ data Entity = Entity
   -- grabbed.
   , _entityProperties :: Set EntityProperty
   -- ^ Properties of the entity.
+  , _entityBiomes :: Set TerrainType
+  -- ^ Terrain in which growth may occur. Empty means no restrictions.
   , _entityCapabilities :: SingleEntityCapabilities EntityName
   -- ^ Capabilities provided by this entity.
   , _entityInventory :: Inventory
@@ -294,7 +298,7 @@ data Entity = Entity
 -- | The @Hashable@ instance for @Entity@ ignores the cached hash
 --   value and simply combines the other fields.
 instance Hashable Entity where
-  hashWithSalt s (Entity _ disp nm pl descr tags orient grow combust yld props caps inv) =
+  hashWithSalt s (Entity _ disp nm pl descr tags orient grow combust yld props biomes caps inv) =
     s
       `hashWithSalt` disp
       `hashWithSalt` nm
@@ -306,6 +310,7 @@ instance Hashable Entity where
       `hashWithSalt` combust
       `hashWithSalt` yld
       `hashWithSalt` props
+      `hashWithSalt` biomes
       `hashWithSalt` caps
       `hashWithSalt` inv
 
@@ -350,6 +355,7 @@ mkEntity disp nm descr props caps =
       Nothing
       Nothing
       (Set.fromList props)
+      mempty
       (zeroCostCapabilities caps)
       empty
 
@@ -493,6 +499,7 @@ instance FromJSON Entity where
               <*> v .:? "combustion"
               <*> v .:? "yields"
               <*> v .:? "properties" .!= mempty
+              <*> v .:? "biomes" .!= mempty
               <*> v .:? "capabilities" .!= Capabilities mempty
               <*> pure empty
           )
@@ -618,6 +625,10 @@ hasProperty e p = p `elem` (e ^. entityProperties)
 -- | The capabilities this entity provides when equipped.
 entityCapabilities :: Lens' Entity (SingleEntityCapabilities EntityName)
 entityCapabilities = hashedLens _entityCapabilities (\e x -> e {_entityCapabilities = x})
+
+-- | The inventory of other entities carried by this entity.
+entityBiomes :: Lens' Entity (Set TerrainType)
+entityBiomes = hashedLens _entityBiomes (\e x -> e {_entityBiomes = x})
 
 -- | The inventory of other entities carried by this entity.
 entityInventory :: Lens' Entity Inventory

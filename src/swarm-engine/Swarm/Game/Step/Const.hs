@@ -1724,9 +1724,8 @@ execConst runChildProg c vs s k = do
 
     -- Ensure there is an entity here.
     loc <- use robotLocation
-    e <-
-      entityAt loc
-        >>= (`isJustOrFail` ["There is nothing here to", verb <> "."])
+    (terrainHere, maybeEntityHere) <- contentAt loc
+    e <- return maybeEntityHere >>= (`isJustOrFail` ["There is nothing here to", verb <> "."])
 
     -- Ensure it can be picked up.
     omni <- isPrivilegedBot
@@ -1741,7 +1740,11 @@ execConst runChildProg c vs s k = do
 
     -- Possibly regrow the entity, if it is growable and the 'harvest'
     -- command was used.
-    when ((e `hasProperty` Growable) && cmd == Harvest') $ do
+    let biomeRestrictions = e ^. entityBiomes
+        isAllowedInBiome = null biomeRestrictions
+          || terrainHere `S.member` biomeRestrictions
+
+    when ((e `hasProperty` Growable) && cmd == Harvest' && isAllowedInBiome) $ do
       let GrowthTime (minT, maxT) = (e ^. entityGrowth) ? defaultGrowthTime
 
       createdAt <- getNow
@@ -1751,10 +1754,13 @@ execConst runChildProg c vs s k = do
 
     -- Add the picked up item to the robot's inventory.  If the
     -- entity yields something different, add that instead.
-    let yieldName = e ^. entityYields
-    e' <- case yieldName of
+    e' <- case e ^. entityYields of
       Nothing -> return e
-      Just n -> fromMaybe e <$> uses (landscape . terrainAndEntities . entityMap) (lookupEntityName n)
+      Just yielded ->
+        -- NOTE: Using 'fromMaybe' here is a consequence of the inability
+        -- to validate the lookup at parse time. Compare to 'entityCapabilities'
+        -- (see summary of #1777).
+        fromMaybe e <$> uses (landscape . terrainAndEntities . entityMap) (lookupEntityName yielded)
 
     robotInventory %= insert e'
     updateDiscoveredEntities e'

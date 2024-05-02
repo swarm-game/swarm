@@ -40,9 +40,10 @@ import Swarm.Game.Failure
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util (enumeratedMap, quote)
 import Swarm.Util.Effect (withThrow)
+import Data.Hashable (Hashable)
 
 data TerrainType = BlankT | TerrainType Text
-  deriving (Eq, Ord, Show, Generic, ToJSON)
+  deriving (Eq, Ord, Show, Generic, ToJSON, Hashable)
 
 blankTerrainIndex :: Int
 blankTerrainIndex = 0
