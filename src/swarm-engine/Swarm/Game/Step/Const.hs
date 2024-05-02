@@ -1741,8 +1741,9 @@ execConst runChildProg c vs s k = do
     -- Possibly regrow the entity, if it is growable and the 'harvest'
     -- command was used.
     let biomeRestrictions = e ^. entityBiomes
-        isAllowedInBiome = null biomeRestrictions
-          || terrainHere `S.member` biomeRestrictions
+        isAllowedInBiome =
+          null biomeRestrictions
+            || terrainHere `S.member` biomeRestrictions
 
     when ((e `hasProperty` Growable) && cmd == Harvest' && isAllowedInBiome) $ do
       let GrowthTime (minT, maxT) = (e ^. entityGrowth) ? defaultGrowthTime

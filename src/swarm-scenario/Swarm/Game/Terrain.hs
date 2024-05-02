@@ -23,6 +23,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw (Throw, liftEither, throwError)
 import Control.Monad (forM, unless, (<=<))
 import Data.Char (toUpper)
+import Data.Hashable (Hashable)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
 import Data.Map (Map)
@@ -40,7 +41,6 @@ import Swarm.Game.Failure
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util (enumeratedMap, quote)
 import Swarm.Util.Effect (withThrow)
-import Data.Hashable (Hashable)
 
 data TerrainType = BlankT | TerrainType Text
   deriving (Eq, Ord, Show, Generic, ToJSON, Hashable)

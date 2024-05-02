@@ -69,7 +69,6 @@ module Swarm.Game.State (
   zoomRobots,
 ) where
 
-import Swarm.Game.Terrain
 import Control.Arrow (Arrow ((&&&)))
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Effect.Lens
@@ -127,6 +126,7 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Type
+import Swarm.Game.Terrain
 import Swarm.Game.Tick (addTicks)
 import Swarm.Game.Universe as U
 import Swarm.Game.World qualified as W

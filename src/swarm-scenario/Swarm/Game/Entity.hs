@@ -92,7 +92,6 @@ import Control.Arrow ((&&&))
 import Control.Carrier.Throw.Either (liftEither)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw (Throw, throwError)
-import Swarm.Game.Terrain (TerrainType)
 import Control.Lens (Getter, Lens', lens, to, view, (^.))
 import Control.Monad (forM_, unless, (<=<))
 import Data.Bifunctor (first)
@@ -123,6 +122,7 @@ import Swarm.Game.Failure
 import Swarm.Game.Ingredients
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
+import Swarm.Game.Terrain (TerrainType)
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document, docToText)
