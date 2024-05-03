@@ -494,8 +494,9 @@ addSeedBot e (minT, maxT) seedlingCount seedlingRadius loc ts =
       False
       emptyExceptions
       ts
-  where
-    seedProg = seedProgram
+ where
+  seedProg =
+    seedProgram
       minT
       (maxT - minT)
       seedlingCount
@@ -505,16 +506,16 @@ addSeedBot e (minT, maxT) seedlingCount seedlingRadius loc ts =
 -- | A system program for a "seed robot", to regrow a growable entity
 --   after it is harvested.
 seedProgram ::
+  -- | min time
   Integer ->
-  -- ^ min time
+  -- | rand time
   Integer ->
-  -- ^ rand time
+  -- | seedling count
   Integer ->
-  -- ^ seedling count
+  -- | seedling radius
   Integer ->
-  -- ^ seedling radius
+  -- | entity to place
   EntityName ->
-  -- ^ entity to place
   ProcessedTerm
 seedProgram minTime randTime seedlingCount seedlingRadius thing =
   [tmQ|
