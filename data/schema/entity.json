@@ -82,7 +82,7 @@
                     "dirt"
                 ]
             },
-            "description": "A list of properties of this entity."
+            "description": "A list of terrains that support growth by this entity. Empty list means no growth restrictions."
         },
         "yields": {
             "default": null,
