@@ -64,6 +64,7 @@ module Swarm.Game.State (
   genMultiWorld,
   genRobotTemplates,
   entityAt,
+  contentAt,
   zoomWorld,
   zoomRobots,
 ) where
@@ -125,6 +126,7 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Type
+import Swarm.Game.Terrain
 import Swarm.Game.Tick (addTicks)
 import Swarm.Game.Universe as U
 import Swarm.Game.World qualified as W
@@ -478,6 +480,18 @@ initGameState gsc =
 entityAt :: (Has (State GameState) sig m) => Cosmic Location -> m (Maybe Entity)
 entityAt (Cosmic subworldName loc) =
   join <$> zoomWorld subworldName (W.lookupEntityM @Int (W.locToCoords loc))
+
+contentAt ::
+  (Has (State GameState) sig m) =>
+  Cosmic Location ->
+  m (TerrainType, Maybe Entity)
+contentAt (Cosmic subworldName loc) = do
+  tm <- use $ landscape . terrainAndEntities . terrainMap
+  val <- zoomWorld subworldName $ do
+    (terrIdx, maybeEnt) <- W.lookupContentM (W.locToCoords loc)
+    let terrObj = terrIdx `IM.lookup` terrainByIndex tm
+    return (maybe BlankT terrainName terrObj, maybeEnt)
+  return $ fromMaybe (BlankT, Nothing) val
 
 -- | Perform an action requiring a 'Robots' state component in a
 --   larger context with a 'GameState'.

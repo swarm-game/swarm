@@ -62,3 +62,4 @@ Achievements
 1747-volume-command.yaml
 1777-capability-cost.yaml
 1775-custom-terrain.yaml
+1642-biomes.yaml

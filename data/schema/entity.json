@@ -73,6 +73,17 @@
             "$ref": "combustion.json",
             "description": "Properties of combustion."
         },
+        "biomes": {
+            "default": [],
+            "type": "array",
+            "items": {
+                "type": "string",
+                "examples": [
+                    "dirt"
+                ]
+            },
+            "description": "A list of terrains that support growth by this entity. Empty list means no growth restrictions."
+        },
         "yields": {
             "default": null,
             "type": "string",
