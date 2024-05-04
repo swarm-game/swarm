@@ -1485,7 +1485,7 @@ execConst runChildProg c vs s k = do
   checkRequirements parentInventory childInventory childDevices cmd subject fixI = do
     currentContext <- use $ robotContext . defReqs
     em <- use $ landscape . terrainAndEntities . entityMap
-    creative <- use creativeMode
+    privileged <- isPrivilegedBot
     let -- Note that _capCtx must be empty: at least at the
         -- moment, definitions are only allowed at the top level,
         -- so there can't be any inside the argument to build.
@@ -1542,10 +1542,10 @@ execConst runChildProg c vs s k = do
         -- already has.
         missingChildInv = reqInv `E.difference` childInventory
 
-    if creative
+    if privileged
       then
         return
-          ( -- In creative mode, just equip ALL the devices
+          ( -- When 'privileged', just equip ALL the devices
             -- providing each required capability (because, why
             -- not?). But don't re-equip any that are already
             -- equipped.
