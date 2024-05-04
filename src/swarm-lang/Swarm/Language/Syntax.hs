@@ -70,8 +70,9 @@ module Swarm.Language.Syntax (
   pattern TAnnotate,
 
   -- * Comments
-  CommentType(..),
-  Comment(..),
+  CommentType (..),
+  CommentSituation (..),
+  Comment (..),
 
   -- * Terms
   Var,
@@ -1142,13 +1143,24 @@ instance Monoid SrcLoc where
 -- Comments
 ------------------------------------------------------------
 
+-- | Line vs block comments.
 data CommentType = LineComment | BlockComment
+  deriving (Eq, Ord, Read, Show, Enum, Bounded)
+
+-- | Was a comment all by itself on a line, or did it occur after some
+--   other tokens on a line?
+data CommentSituation = StandaloneComment | SuffixComment
   deriving (Eq, Ord, Read, Show, Enum, Bounded)
 
 -- | A comment is retained as some text + its original 'SrcLoc'.
 --   While parsing we record all comments out-of-band, for later
 --   re-insertion when formatting code.
-data Comment = Comment {commentSrcLoc :: SrcLoc, commentType :: CommentType, commentText :: Text}
+data Comment = Comment
+  { commentSrcLoc :: SrcLoc
+  , commentType :: CommentType
+  , commentSituation :: CommentSituation
+  , commentText :: Text
+  }
   deriving (Eq, Show)
 
 ------------------------------------------------------------
