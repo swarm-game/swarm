@@ -4,8 +4,8 @@
     "title": "Entity",
     "description": "Description of an entity in the Swarm game",
     "footers": [
-        "doc-fragments/entity-properties.md",
-        "doc-fragments/capabilities.md"
+        "_doc-fragments/entity-properties.md",
+        "_doc-fragments/capabilities.md"
     ],
     "type": "object",
     "additionalProperties": false,

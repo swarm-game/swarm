@@ -37,7 +37,7 @@ scenariosDir :: FilePath
 scenariosDir = "data/scenarios"
 
 docFragmentsDir :: FilePath
-docFragmentsDir = scenariosDir </> "doc-fragments"
+docFragmentsDir = scenariosDir </> "_doc-fragments"
 
 schemasDir :: FilePath
 schemasDir = "data/schema"
@@ -148,7 +148,7 @@ genScenarioSchemaDocs = do
     schemaTuples <- except $ traverse sequenceA xs
     things <- liftIO $ mapM loadFooterContent schemaTuples
     myMarkdown <- except $ genMarkdown things
-    docHeader <- liftIO $ TIO.readFile "data/scenarios/doc-fragments/header.md"
+    docHeader <- liftIO $ TIO.readFile "data/scenarios/_doc-fragments/header.md"
     liftIO . writeFile (docFragmentsDir </> "SCHEMA.md") . T.unpack $ docHeader <> myMarkdown
 
   case result of
