@@ -4,7 +4,7 @@
     "title": "Robot",
     "description": "Description of a robot in the Swarm game",
     "footers": [
-        "doc-fragments/base-robot.md"
+        "_doc-fragments/base-robot.md"
     ],
     "type": "object",
     "additionalProperties": false,
