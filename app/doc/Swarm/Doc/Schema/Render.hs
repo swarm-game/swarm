@@ -14,6 +14,7 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Except (except)
 import Data.Aeson
 import Data.List (intersperse)
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
@@ -81,6 +82,10 @@ makePandocTable titleMap (SchemaData _ (ToplevelSchema theTitle theDescription _
   mkTable x = doc $ case x of
     ObjectProperties props -> makePropsTable True propertyColumnHeadings titleMap props
     ListMembers someStuff -> renderItems someStuff
+    EnumMembers enumMembers ->
+      simpleTable [plain $ text "Member"] $
+        map (\m -> [plain $ code m]) $
+          NE.toList enumMembers
 
 genPropsRow :: Bool -> Map SchemaIdReference T.Text -> (T.Text, SwarmSchema) -> [Blocks]
 genPropsRow includeDefaultColumn titleMap (k, x) =
@@ -176,6 +181,7 @@ listToText titleMap = \case
   Alternatives xs -> renderAlternatives $ map (listToText titleMap) xs
   Reference r@(SchemaIdReference x) -> schemaLink r x
   ListOf x -> listToText titleMap x <> text " list"
+  EnumList xs -> renderAlternatives $ NE.toList $ text <$> xs
  where
   renderAlternatives = mconcat . intersperse (text " or ")
   schemaLink r = link (fragmentHref titleMap r) "Link to object properties" . text

@@ -35,6 +35,7 @@ by the following table.
 | `stepsPerTick` |          | `number`                                                             | When present, this specifies the maximum number of CESK machine steps each robot is allowed to take per game tick. It is rather obscure and technical and only used in a few automated tests; most scenario authors should not need this.                                                                                                                  |
 | `structures`   |          | [named-structure](#named-structure "Link to object properties") list | Structure definitions                                                                                                                                                                                                                                                                                                                                      |
 | `subworlds`    |          | [world](#world "Link to object properties") list                     | A list of subworld definitions                                                                                                                                                                                                                                                                                                                             |
+| `terrains`     | `[]`     | [terrain](#terrain "Link to object properties") list                 | An optional list of custom terrain, to be used in addition to the built-in terrain.                                                                                                                                                                                                                                                                        |
 | `version`      |          | `number`                                                             | The version number of the scenario schema. Currently, this should always be `1`.                                                                                                                                                                                                                                                                           |
 | `world`        |          | [world](#world "Link to object properties")                          |                                                                                                                                                                                                                                                                                                                                                            |
 
@@ -55,7 +56,8 @@ Description of an entity in the Swarm game
 
 | Key            | Default? | Type                                                  | Description                                                                                                                                                                                                                                                                     |
 |----------------|----------|-------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `capabilities` | `[]`     | `string` list                                         | A list of capabilities provided by entity, when it is equipped as a device. See [Capabilities](https://github.com/swarm-game/swarm/wiki/Capabilities-cheat-sheet).                                                                                                              |
+| `biomes`       | `[]`     | `string` list                                         | A list of terrains that support growth by this entity. Empty list means no growth restrictions.                                                                                                                                                                                 |
+| `capabilities` | `[]`     | `string` or `object` list                             | A list of capabilities provided by entity, when it is equipped as a device. See [Capabilities](https://github.com/swarm-game/swarm/wiki/Capabilities-cheat-sheet).                                                                                                              |
 | `combustion`   |          | [combustion](#combustion "Link to object properties") | Properties of combustion.                                                                                                                                                                                                                                                       |
 | `description`  |          | `string` list                                         | A description of the entity, as a list of paragraphs.                                                                                                                                                                                                                           |
 | `display`      |          | [display](#display "Link to object properties")       | Display information for the entity.                                                                                                                                                                                                                                             |
@@ -64,6 +66,7 @@ Description of an entity in the Swarm game
 | `orientation`  |          | `array`                                               | A 2-tuple of integers specifying an orientation vector for the entity. Currently unused.                                                                                                                                                                                        |
 | `plural`       |          | `string`                                              | An explicit plural form of the name of the entity. If omitted, standard heuristics will be used for forming the English plural of its name.                                                                                                                                     |
 | `properties`   | `[]`     | `string` list                                         | A list of properties of this entity.                                                                                                                                                                                                                                            |
+| `tags`         |          | `string` list                                         | A list of categories this entity belongs to.                                                                                                                                                                                                                                    |
 | `yields`       |          | `string`                                              | The name of the entity which will be added to a robot's inventory when it executes grab or harvest on this entity. If omitted, the entity will simply yield itself.                                                                                                             |
 
 #### Entity properties
@@ -109,19 +112,19 @@ Properties of entity combustion
 
 Description of a robot in the Swarm game
 
-| Key           | Default?    | Type                                                                                                                     | Description                                                                                                                                                                                                                                                                                                                                                                                 |
-|---------------|-------------|--------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `description` |             | `string`                                                                                                                 | A description of the robot. This is currently not used for much, other than scenario documentation.                                                                                                                                                                                                                                                                                         |
-| `devices`     | `[]`        | `string` list                                                                                                            | A list of entity names which should be equipped as the robot's devices, i.e. entities providing capabilities to run commands and interpret language constructs.                                                                                                                                                                                                                             |
-| `dir`         | `[0, 0]`    | `array`                                                                                                                  | An optional starting orientation of the robot, expressed as a vector. Every time the robot executes a `move` command, this vector will be added to its position. Typically, this is a unit vector in one of the four cardinal directions, although there is no particular reason that it has to be. When omitted, the robot's direction will be the zero vector.                            |
-| `display`     | `"default"` | [display](#display "Link to object properties")                                                                          | Display information for the robot. If this field is omitted, the default robot display will be used.                                                                                                                                                                                                                                                                                        |
-| `heavy`       | `False`     | `boolean`                                                                                                                | Whether the robot is heavy. Heavy robots require `tank treads` to `move` (rather than just `treads` for other robots).                                                                                                                                                                                                                                                                      |
-| `inventory`   | `[]`        | [inventory](#inventory "Link to object properties")                                                                      | A list of `[count, entity name]` pairs, specifying the entities in the robot's starting inventory, and the number of each.                                                                                                                                                                                                                                                                  |
-| `loc`         |             | [cosmic-loc](#cosmic-location "Link to object properties") or [planar-loc](#planar-location "Link to object properties") | An optional starting location for the robot. If the `loc` field is specified, then a concrete robot will be created at the given location. If this field is omitted, then this robot record exists only as a template which can be referenced from a cell in the world palette. Concrete robots will then be created wherever the corresponding palette character is used in the world map. |
-| `name`        |             | `string`                                                                                                                 | The name of the robot. This shows up in the list of robots in the game (`F2`), and is also how the robot will be referred to in the world palette.                                                                                                                                                                                                                                          |
-| `program`     |             | `string`                                                                                                                 | This is the text of a Swarm program which the robot should initially run, and must be syntax- and type-error-free. If omitted, the robot will simply be idle.                                                                                                                                                                                                                               |
-| `system`      | `False`     | `boolean`                                                                                                                | Whether the robot is a "system" robot. System robots can do anything, without regard for devices and capabilities. System robots are invisible by default.                                                                                                                                                                                                                                  |
-| `unwalkable`  | `[]`        | `string` list                                                                                                            | A list of entities that this robot cannot walk across.                                                                                                                                                                                                                                                                                                                                      |
+| Key           | Default?    | Type                                                                                                                     | Description                                                                                                                                                                                                                                                                                                                                                                                                         |
+|---------------|-------------|--------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `description` |             | `string`                                                                                                                 | A description of the robot. This is currently not used for much, other than scenario documentation.                                                                                                                                                                                                                                                                                                                 |
+| `devices`     | `[]`        | `string` list                                                                                                            | A list of entity names which should be equipped as the robot's devices, i.e. entities providing capabilities to run commands and interpret language constructs.                                                                                                                                                                                                                                                     |
+| `dir`         |             | `array` or [direction](#directions "Link to object properties")                                                          | An optional starting orientation of the robot, expressed as either (1) the name of a cardinal direction or (2) a vector. Every time the robot executes a `move` command, this vector will be added to its position. Typically, this is a unit vector in one of the four cardinal directions, although there is no particular reason that it has to be. When omitted, the robot's direction will be the zero vector. |
+| `display`     | `"default"` | [display](#display "Link to object properties")                                                                          | Display information for the robot. If this field is omitted, the default robot display will be used.                                                                                                                                                                                                                                                                                                                |
+| `heavy`       | `False`     | `boolean`                                                                                                                | Whether the robot is heavy. Heavy robots require `tank treads` to `move` (rather than just `treads` for other robots).                                                                                                                                                                                                                                                                                              |
+| `inventory`   | `[]`        | [inventory](#inventory "Link to object properties")                                                                      | A list of `[count, entity name]` pairs, specifying the entities in the robot's starting inventory, and the number of each.                                                                                                                                                                                                                                                                                          |
+| `loc`         |             | [cosmic-loc](#cosmic-location "Link to object properties") or [planar-loc](#planar-location "Link to object properties") | An optional starting location for the robot. If the `loc` field is specified, then a concrete robot will be created at the given location. If this field is omitted, then this robot record exists only as a template which can be referenced from a cell in the world palette. Concrete robots will then be created wherever the corresponding palette character is used in the world map.                         |
+| `name`        |             | `string`                                                                                                                 | The name of the robot. This shows up in the list of robots in the game (`F2`), and is also how the robot will be referred to in the world palette.                                                                                                                                                                                                                                                                  |
+| `program`     |             | `string`                                                                                                                 | This is the text of a Swarm program which the robot should initially run, and must be syntax- and type-error-free. If omitted, the robot will simply be idle.                                                                                                                                                                                                                                                       |
+| `system`      | `False`     | `boolean`                                                                                                                | Whether the robot is a "system" robot. System robots can do anything, without regard for devices and capabilities. System robots are invisible by default.                                                                                                                                                                                                                                                          |
+| `walkable`    |             | `object`                                                                                                                 | Blacklist/whitelist of walkable entities                                                                                                                                                                                                                                                                                                                                                                            |
 
 #### Base robot
 
@@ -148,6 +151,105 @@ Planar location plus subworld
 |------------|----------|------------------------------------------------------------|------------------|
 | `loc`      |          | [planar-loc](#planar-location "Link to object properties") |                  |
 | `subworld` |          | `string`                                                   | Name of subworld |
+
+### World
+
+Description of the world in the Swarm game
+
+| Key          | Default? | Type                                                                 | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+|--------------|----------|----------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `default`    |          | `string` list                                                        | Default world cell content                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `dsl`        |          | `string`                                                             | A term in the Swarm world description DSL. The world it describes will be layered underneath the world described by the rest of the fields.                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `map`        | `""`     | `string`                                                             | A rectangular string, using characters from the palette, exactly specifying the contents of a rectangular portion of the world. Leading spaces are ignored. The rest of the world is either filled by the default cell, or by procedural generation otherwise. Note that this is optional; if omitted, the world will simply be filled with the default cell or procedurally generated.                                                                                                                                                                   |
+| `name`       |          | `string`                                                             | Name of this subworld                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `offset`     | `False`  | `boolean`                                                            | Whether the base robot's position should be moved to the nearest "good" location, currently defined as a location near a `tree`, in a 16x16 patch which contains at least one each of `tree`, `copper ore`, `bit (0)`, `bit (1)`, `rock`, `lambda`, `water`, and `sand`. The classic scenario uses `offset: True` to make sure that the it is not unreasonably difficult to obtain necessary resources in the early game (see [code](https://github.com/swarm-game/swarm/blob/e06e04f622a3762a10e7c942c1cbd2c1e396144f/src/Swarm/Game/World/Gen.hs#L79)). |
+| `palette`    |          | `object`                                                             | The palette maps single character keys to tuples representing contents of cells in the world, so that a world containing entities and robots can be drawn graphically. See [Cells](#cells) for the contents of the tuples representing a cell.                                                                                                                                                                                                                                                                                                            |
+| `placements` |          | [placement](#placement "Link to object properties") list             | Structure placements. Earlier members may occlude later members of the list.                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `portals`    |          | [portal](#portal "Link to object properties") list                   | A list of portal definitions that reference waypoints.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `scrollable` | `True`   | `boolean`                                                            | Whether players are allowed to scroll the world map.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `structures` |          | [named-structure](#named-structure "Link to object properties") list | Structure definitions                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `upperleft`  | `[0, 0]` | `array`                                                              | A 2-tuple of `int` values specifying the `(x,y)` coordinates of the upper left corner of the map.                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `waypoints`  |          | [explicit-waypoint](#waypoint "Link to object properties") list      | Single-location waypoint definitions                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+
+#### Cells
+
+Each cell of the world is specified by a list of terrain, optional
+entity and robots present (if any). For example, `[grass]`,
+`[grass, tree]`, or `[grass, null, base]`.
+
+-   The first (required) item specifies the terrain. Currently, valid
+    terrain values are `stone`, `dirt`, `grass`, `ice`, or `blank`.
+
+-   The second item (if present) specifies the name of an entity which
+    should be present in the cell. This may be a built-in entity, or a
+    custom entity specified in the `entities` section. `null` may be
+    used to explicitly specify no entity in the cell.
+
+-   The third item and later (if present) specifies the names of the
+    robots which should be present in the cell. These must be names of
+    robots specified in the `robots` section. A copy of each robot will
+    be created at each location in the `map` where it is drawn.
+
+    Although multiple robots may be in a single location in general,
+    there is currently no way to specify more than one robot for a cell
+    in the world description.
+
+If a 1-tuple is used, it specifies a terrain value with no entity or
+robot. A 2-tuple specifies a terrain value and entity, but no robot.
+
+### Named structure
+
+Structure definitions
+
+| Key           | Default? | Type                                                      | Description                                                                                  |
+|---------------|----------|-----------------------------------------------------------|----------------------------------------------------------------------------------------------|
+| `description` |          | `string`                                                  | Description of this substructure                                                             |
+| `name`        |          | `string`                                                  | Name of this substructure                                                                    |
+| `recognize`   |          | [direction](#directions "Link to object properties") list | Orientations for which this structure participates in automatic recognition when constructed |
+| `structure`   |          | [structure](#structure "Link to object properties")       |                                                                                              |
+
+### Structure
+
+Structure properties. Structures may opt-in to "automatic recognition"
+for when they are constructed by a robot. There are certain limitations
+on the shape and placement of such "recognizable" structures.
+
+| Key          | Default? | Type                                                                 | Description                                                                    |
+|--------------|----------|----------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| `map`        |          | `string`                                                             | Cell-based representation of the structure using palette entries               |
+| `mask`       |          | `string`                                                             | A special palette character that indicates that map cell should be transparent |
+| `palette`    |          | `object`                                                             | Structure properties                                                           |
+| `placements` |          | [placement](#placement "Link to object properties") list             | Structure placements. Earlier members may occlude later members of the list.   |
+| `structures` |          | [named-structure](#named-structure "Link to object properties") list | Nested structure definitions                                                   |
+| `waypoints`  |          | [explicit-waypoint](#waypoint "Link to object properties") list      | Single-location waypoint definitions                                           |
+
+### Placement
+
+Structure placement
+
+| Key      | Default? | Type                                                                   | Description                  |
+|----------|----------|------------------------------------------------------------------------|------------------------------|
+| `offset` |          | [planar-loc](#planar-location "Link to object properties")             |                              |
+| `orient` |          | [structure-orient](#structure-orientation "Link to object properties") |                              |
+| `src`    |          | `string`                                                               | Name of structure definition |
+
+### Structure orientation
+
+Structure orientation properties
+
+| Key    | Default? | Type                                                 | Description |
+|--------|----------|------------------------------------------------------|-------------|
+| `flip` |          | `boolean`                                            |             |
+| `up`   |          | [direction](#directions "Link to object properties") |             |
+
+### Directions
+
+| Member  |
+|---------|
+| `north` |
+| `west`  |
+| `south` |
+| `east`  |
 
 ### Display
 
@@ -191,73 +293,6 @@ One row in an inventory list
 | `0`   | `number` | Quantity    |
 | `1`   | `string` | Entity name |
 
-### World
-
-Description of the world in the Swarm game
-
-| Key          | Default? | Type                                                                 | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-|--------------|----------|----------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `default`    |          | `string` list                                                        | Default world cell content                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `dsl`        |          | `string`                                                             | A term in the Swarm world description DSL. The world it describes will be layered underneath the world described by the rest of the fields.                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `map`        | `""`     | `string`                                                             | A rectangular string, using characters from the palette, exactly specifying the contents of a rectangular portion of the world. Leading spaces are ignored. The rest of the world is either filled by the default cell, or by procedural generation otherwise. Note that this is optional; if omitted, the world will simply be filled with the default cell or procedurally generated.                                                                                                                                                                   |
-| `name`       |          | `string`                                                             | Name of this subworld                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `offset`     | `False`  | `boolean`                                                            | Whether the base robot's position should be moved to the nearest "good" location, currently defined as a location near a `tree`, in a 16x16 patch which contains at least one each of `tree`, `copper ore`, `bit (0)`, `bit (1)`, `rock`, `lambda`, `water`, and `sand`. The classic scenario uses `offset: True` to make sure that the it is not unreasonably difficult to obtain necessary resources in the early game (see [code](https://github.com/swarm-game/swarm/blob/e06e04f622a3762a10e7c942c1cbd2c1e396144f/src/Swarm/Game/World/Gen.hs#L79)). |
-| `palette`    |          | `object`                                                             | The palette maps single character keys to tuples representing contents of cells in the world, so that a world containing entities and robots can be drawn graphically. See [Cells](#cells) for the contents of the tuples representing a cell.                                                                                                                                                                                                                                                                                                            |
-| `placements` |          | [placement](#placement "Link to object properties") list             | Structure placements                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `portals`    |          | [portal](#portal "Link to object properties") list                   | A list of portal definitions that reference waypoints.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `scrollable` | `True`   | `boolean`                                                            | Whether players are allowed to scroll the world map.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `structures` |          | [named-structure](#named-structure "Link to object properties") list | Structure definitions                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `upperleft`  | `[0, 0]` | `array`                                                              | A 2-tuple of `int` values specifying the `(x,y)` coordinates of the upper left corner of the map.                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `waypoints`  |          | [explicit-waypoint](#waypoint "Link to object properties") list      | Single-location waypoint definitions                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-
-#### Cells
-
-Each cell of the world is specified by a list of terrain, optional
-entity and robots present (if any). For example, `[grass]`,
-`[grass, tree]`, or `[grass, null, base]`.
-
--   The first (required) item specifies the terrain. Currently, valid
-    terrain values are `stone`, `dirt`, `grass`, `ice`, or `blank`.
-
--   The second item (if present) specifies the name of an entity which
-    should be present in the cell. This may be a built-in entity, or a
-    custom entity specified in the `entities` section. `null` may be
-    used to explicitly specify no entity in the cell.
-
--   The third item and later (if present) specifies the names of the
-    robots which should be present in the cell. These must be names of
-    robots specified in the `robots` section. A copy of each robot will
-    be created at each location in the `map` where it is drawn.
-
-    Although multiple robots may be in a single location in general,
-    there is currently no way to specify more than one robot for a cell
-    in the world description.
-
-If a 1-tuple is used, it specifies a terrain value with no entity or
-robot. A 2-tuple specifies a terrain value and entity, but no robot.
-
-### Named structure
-
-Structure definitions
-
-| Key         | Default? | Type                                                | Description               |
-|-------------|----------|-----------------------------------------------------|---------------------------|
-| `name`      |          | `string`                                            | Name of this substructure |
-| `structure` |          | [structure](#structure "Link to object properties") |                           |
-
-### Structure
-
-Structure properties
-
-| Key          | Default? | Type                                                                 | Description                                                                    |
-|--------------|----------|----------------------------------------------------------------------|--------------------------------------------------------------------------------|
-| `map`        |          | `string`                                                             | Cell-based representation of the structure using palette entries               |
-| `mask`       |          | `string`                                                             | A special palette character that indicates that map cell should be transparent |
-| `palette`    |          | `object`                                                             | Structure properties                                                           |
-| `placements` |          | [placement](#placement "Link to object properties") list             | Structure placements                                                           |
-| `structures` |          | [named-structure](#named-structure "Link to object properties") list | Nested structure definitions                                                   |
-| `waypoints`  |          | [explicit-waypoint](#waypoint "Link to object properties") list      | Single-location waypoint definitions                                           |
-
 ### Waypoint
 
 Explicit waypoint definition
@@ -293,16 +328,6 @@ Mapping from cardinal directions to display characters
 | `north` |          | `string` |             |
 | `south` |          | `string` |             |
 | `west`  |          | `string` |             |
-
-### Placement
-
-Structure placement
-
-| Key      | Default? | Type                                                                   | Description                  |
-|----------|----------|------------------------------------------------------------------------|------------------------------|
-| `offset` |          | [planar-loc](#planar-location "Link to object properties")             |                              |
-| `orient` |          | [structure-orient](#structure-orientation "Link to object properties") |                              |
-| `src`    |          | `string`                                                               | Name of structure definition |
 
 ### Planar location
 
@@ -346,11 +371,12 @@ Min/max range of a value
 | `0`   | `number` | minimum     |
 | `1`   | `number` | maximum     |
 
-### Structure orientation
+### Terrain
 
-Structure orientation properties
+Description of a terrain in the Swarm game
 
-| Key    | Default? | Type      | Description |
-|--------|----------|-----------|-------------|
-| `flip` |          | `boolean` |             |
-| `up`   |          | `string`  |             |
+| Key           | Default? | Type     | Description                                                                                                                                                                                                               |
+|---------------|----------|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `attr`        |          | `string` | The name of the attribute that should be used to style the robot or entity. A list of currently valid attributes can be found [here](https://github.com/swarm-game/swarm/blob/main/src/Swarm/TUI/View/Attribute/Attr.hs). |
+| `description` |          | `string` | A description of the terrain.                                                                                                                                                                                             |
+| `name`        |          | `string` | The name of the terrain.                                                                                                                                                                                                  |
