@@ -31,6 +31,7 @@ import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, prettyKeyCombo)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.Direction
 
 -- | A /value/ is a term that cannot (or does not) take any more
 --   evaluation steps on its own.

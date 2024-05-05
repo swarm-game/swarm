@@ -32,6 +32,7 @@ import Swarm.Language.Context
 import Swarm.Language.Kindcheck (KindError (..))
 import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.Direction
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
 import Swarm.Util (number, showEnum, showLowT, unsnocNE)

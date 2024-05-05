@@ -9,14 +9,13 @@ import Data.Int (Int32)
 import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
-import Swarm.Game.Entity (EntityName)
 import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario.Topography.Placement (StructureName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic)
 
-type StructureRowContent = [Maybe EntityName]
-type WorldRowContent = [Maybe EntityName]
+type StructureRowContent en = [Maybe en]
+type WorldRowContent en = [Maybe en]
 
 data MatchingRowFrom = MatchingRowFrom
   { rowIdx :: Int32
@@ -27,21 +26,21 @@ data MatchingRowFrom = MatchingRowFrom
 newtype HaystackPosition = HaystackPosition Int
   deriving (Generic, ToJSON)
 
-data HaystackContext = HaystackContext
-  { worldRow :: WorldRowContent
+data HaystackContext en = HaystackContext
+  { worldRow :: WorldRowContent en
   , haystackPosition :: HaystackPosition
   }
   deriving (Generic, ToJSON)
 
-data FoundRowCandidate = FoundRowCandidate
-  { haystackContext :: HaystackContext
-  , structureContent :: StructureRowContent
+data FoundRowCandidate en = FoundRowCandidate
+  { haystackContext :: HaystackContext en
+  , structureContent :: StructureRowContent en
   , rowCandidates :: [MatchingRowFrom]
   }
   deriving (Generic, ToJSON)
 
-data ParticipatingEntity = ParticipatingEntity
-  { entity :: EntityName
+data ParticipatingEntity en = ParticipatingEntity
+  { entity :: en
   , searchOffsets :: InspectionOffsets
   }
   deriving (Generic, ToJSON)
@@ -53,15 +52,15 @@ data IntactPlacementLog = IntactPlacementLog
   }
   deriving (Generic, ToJSON)
 
-data SearchLog
-  = FoundParticipatingEntity ParticipatingEntity
+data SearchLog en
+  = FoundParticipatingEntity (ParticipatingEntity en)
   | StructureRemoved StructureName
-  | FoundRowCandidates [FoundRowCandidate]
+  | FoundRowCandidates [FoundRowCandidate en]
   | FoundCompleteStructureCandidates [StructureName]
   | IntactStaticPlacement [IntactPlacementLog]
   deriving (Generic)
 
-instance ToJSON SearchLog where
+instance (ToJSON en) => ToJSON (SearchLog en) where
   toJSON = genericToJSON searchLogOptions
 
 searchLogOptions :: Options
@@ -70,7 +69,7 @@ searchLogOptions =
     { sumEncoding = ObjectWithSingleField
     }
 
-instance ToSample SearchLog where
+instance ToSample (SearchLog en) where
   toSamples _ = SD.noSamples
 
 data StructureLocation = StructureLocation StructureName (Cosmic Location)

@@ -12,7 +12,7 @@ import Data.Text (Text)
 import Graphics.Vty.Input.Events qualified as V
 import Swarm.Game.Location
 import Swarm.Language.Key
-import Swarm.Language.Syntax
+import Swarm.Language.Syntax.Direction
 import Test.QuickCheck qualified as QC
 import Test.Tasty
 import Test.Tasty.HUnit

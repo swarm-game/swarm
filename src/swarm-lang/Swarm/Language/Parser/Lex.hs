@@ -56,6 +56,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Language.Parser.Core
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.Direction
 import Swarm.Language.Types (baseTyName)
 import Swarm.Util (failT, listEnums, squote)
 import Text.Megaparsec

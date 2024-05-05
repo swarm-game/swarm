@@ -19,7 +19,7 @@ module Swarm.Doc.Keyword (
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Doc.Util
-import Swarm.Language.Syntax qualified as Syntax
+import Swarm.Language.Syntax.Direction
 import Swarm.Util (quote)
 
 -- | An enumeration of the editors supported by Swarm (currently,
@@ -42,7 +42,7 @@ keywordsCommands e = editorList e $ map constSyntax commands
 
 -- | Get formatted list of directions.
 keywordsDirections :: EditorType -> Text
-keywordsDirections e = editorList e $ map Syntax.directionSyntax Syntax.allDirs
+keywordsDirections e = editorList e $ map directionSyntax allDirs
 
 -- | A list of the names of all the operators in the language.
 operatorNames :: Text

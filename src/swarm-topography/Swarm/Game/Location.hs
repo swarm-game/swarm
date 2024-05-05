@@ -50,7 +50,7 @@ import Data.Map qualified as M
 import Data.Yaml (FromJSON (parseJSON), ToJSON (toJSON))
 import Linear (Additive (..), V2 (..), negated, norm, perp, unangle)
 import Linear.Affine (Affine (..), Point (..), origin)
-import Swarm.Language.Syntax (AbsoluteDir (..), Direction (..), PlanarRelativeDir (..), RelativeDir (..), isCardinal)
+import Swarm.Language.Syntax.Direction (AbsoluteDir (..), Direction (..), PlanarRelativeDir (..), RelativeDir (..), isCardinal)
 import Swarm.Util qualified as Util
 
 -- $setup

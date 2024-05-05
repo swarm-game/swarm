@@ -27,13 +27,15 @@ import Swarm.Game.Scenario.Topography.Navigation.Waypoint (
  )
 import Swarm.Game.Scenario.Topography.Structure (
   InheritedStructureDefs,
-  LocatedStructure,
-  MergedStructure (MergedStructure),
-  PStructure (Structure),
  )
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
 import Swarm.Game.Scenario.Topography.Structure.Overlay
+import Swarm.Game.Scenario.Topography.Structure.Type (
+  LocatedStructure,
+  MergedStructure (MergedStructure),
+  PStructure (Structure),
+ )
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Universe
 import Swarm.Game.World.Parse ()
