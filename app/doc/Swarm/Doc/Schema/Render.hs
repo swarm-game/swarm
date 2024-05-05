@@ -22,6 +22,7 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 import Data.Vector qualified as V
 import Swarm.Doc.Schema.Arrangement
+import Data.List.NonEmpty qualified as NE
 import Swarm.Doc.Schema.Parse
 import Swarm.Doc.Schema.Refined
 import Swarm.Doc.Schema.SchemaType
@@ -176,6 +177,7 @@ listToText titleMap = \case
   Alternatives xs -> renderAlternatives $ map (listToText titleMap) xs
   Reference r@(SchemaIdReference x) -> schemaLink r x
   ListOf x -> listToText titleMap x <> text " list"
+  EnumList xs -> renderAlternatives $ NE.toList $ text <$> xs
  where
   renderAlternatives = mconcat . intersperse (text " or ")
   schemaLink r = link (fragmentHref titleMap r) "Link to object properties" . text

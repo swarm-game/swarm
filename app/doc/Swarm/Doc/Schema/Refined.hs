@@ -87,6 +87,7 @@ getSchemaReferences = \case
   Alternatives xs -> concatMap getSchemaReferences xs
   Reference x -> pure x
   ListOf x -> getSchemaReferences x
+  EnumList _ -> []
 
 -- | A subset of all JSON schemas, conforming to internal Swarm conventions.
 --
