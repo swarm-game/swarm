@@ -1,0 +1,111 @@
+version: 1
+name: Various structure merging arrangements
+description: |
+  Define two structures and place them on the map.
+robots:
+  - name: base
+    loc: [11, 0]
+    dir: east
+known: [water, sand]
+world:
+  palette:
+    '.': [grass]
+  upperleft: [-1, 1]
+  structures:
+    - name: vertical rectangle
+      structure:
+        palette:
+          'x': [blank, water]
+        map: |
+          xx
+          xx
+          xx
+          xx
+    - name: horizontal rectangle
+      structure:
+        palette:
+          'x': [blank, sand]
+        map: |
+          xxxx
+          xxxx
+    - name: combined rectangles blank base
+      structure:
+        palette:
+          'x': [blank]
+        map: |
+          xxxx
+          xxxx
+          xxxx
+          xxxx
+        placements:
+          - src: vertical rectangle
+          - src: horizontal rectangle
+    - name: combined rectangles empty base
+      structure:
+        palette:
+          'x': [blank]
+        map: ""
+        placements:
+          - src: vertical rectangle
+            truncate: false
+          - src: horizontal rectangle
+            truncate: false
+    - name: combined rectangles single cell base
+      structure:
+        palette:
+          'x': [blank]
+        map: |
+          x
+        placements:
+          - src: vertical rectangle
+            truncate: false
+          - src: horizontal rectangle
+            truncate: false
+    - name: multi overlap
+      structure:
+        palette:
+          'x': [blank]
+        map: |
+          xxxx
+        placements:
+          - src: vertical rectangle
+            offset: [1, 0]
+            truncate: false
+          - src: horizontal rectangle
+            truncate: false
+            offset: [0, -2]
+          - src: vertical rectangle
+            offset: [3, -2]
+            truncate: false
+          - src: horizontal rectangle
+            truncate: false
+            offset: [3, -4]
+          - src: vertical rectangle
+            offset: [5, -4]
+            truncate: false
+  placements:
+    - src: vertical rectangle
+      offset: [1, -1]
+    - src: horizontal rectangle
+      offset: [1, -1]
+    - src: multi overlap
+      offset: [1, -6]
+      truncate: false
+    - src: combined rectangles blank base
+      offset: [6, -1]
+    - src: combined rectangles empty base
+      offset: [11, -1]
+    - src: combined rectangles single cell base
+      offset: [11, -6]
+  map: |
+    ................
+    ................
+    ................
+    ................
+    ................
+    ................
+    ................
+    ................
+    ................
+    ................
+    ................

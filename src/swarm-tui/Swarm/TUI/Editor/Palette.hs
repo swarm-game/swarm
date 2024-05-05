@@ -12,7 +12,7 @@ import Data.List (sortOn)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (mapMaybe)
+import Data.Maybe (catMaybes, mapMaybe)
 import Data.Ord (Down (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -27,6 +27,7 @@ import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
+import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainMap, TerrainType, getTerrainDefaultPaletteChar, terrainByName)
 import Swarm.Game.Universe
@@ -38,7 +39,7 @@ import Swarm.Util.Erasable
 makeSuggestedPalette ::
   TerrainMap ->
   KM.KeyMap (AugmentedCell Entity) ->
-  [[CellPaintDisplay]] ->
+  Grid (Maybe CellPaintDisplay) ->
   KM.KeyMap (AugmentedCell EntityFacade)
 makeSuggestedPalette tm originalScenarioPalette cellGrid =
   KM.fromMapText
@@ -48,6 +49,8 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
     -- NOTE: the left-most maps take precedence!
     $ paletteCellsByKey <> pairsWithDisplays <> terrainOnlyPalette
  where
+  cellList = concatMap catMaybes $ unGrid cellGrid
+
   getMaybeEntityDisplay :: PCell EntityFacade -> Maybe (EntityName, Display)
   getMaybeEntityDisplay (Cell _terrain (erasableToMaybe -> maybeEntity) _) = do
     EntityFacade eName d <- maybeEntity
@@ -60,11 +63,11 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
 
   getEntityTerrainMultiplicity :: Map EntityName (Map TerrainType Int)
   getEntityTerrainMultiplicity =
-    M.map histogram $ binTuples $ concatMap (mapMaybe getMaybeEntityNameTerrainPair) cellGrid
+    M.map histogram $ binTuples $ mapMaybe getMaybeEntityNameTerrainPair cellList
 
   usedEntityDisplays :: Map EntityName Display
   usedEntityDisplays =
-    M.fromList $ concatMap (mapMaybe getMaybeEntityDisplay) cellGrid
+    M.fromList $ mapMaybe getMaybeEntityDisplay cellList
 
   -- Finds the most-used terrain type (the "mode" in the statistical sense)
   -- paired with each entity
@@ -115,8 +118,8 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
     f x = ((x, ENothing), (T.singleton $ getTerrainDefaultPaletteChar x, Cell x ENothing []))
 
 -- | Generate a \"skeleton\" scenario with placeholders for certain required fields
-constructScenario :: Maybe Scenario -> Grid CellPaintDisplay -> SkeletonScenario
-constructScenario maybeOriginalScenario (Grid cellGrid) =
+constructScenario :: Maybe Scenario -> Grid (Maybe CellPaintDisplay) -> SkeletonScenario
+constructScenario maybeOriginalScenario cellGrid =
   SkeletonScenario
     (maybe 1 (^. scenarioMetadata . scenarioVersion) maybeOriginalScenario)
     (maybe "My Scenario" (^. scenarioMetadata . scenarioName) maybeOriginalScenario)
@@ -135,7 +138,7 @@ constructScenario maybeOriginalScenario (Grid cellGrid) =
       , scrollable = True
       , palette = WorldPalette suggestedPalette
       , ul = upperLeftCoord
-      , area = cellGrid
+      , area = PositionedGrid upperLeftCoord cellGrid
       , navigation = Navigation mempty mempty
       , placedStructures = mempty
       , worldName = DefaultRootSubworld
@@ -151,4 +154,4 @@ constructScenario maybeOriginalScenario (Grid cellGrid) =
       (negate $ w `div` 2)
       (h `div` 2)
    where
-    AreaDimensions w h = getAreaDimensions cellGrid
+    AreaDimensions w h = getGridDimensions cellGrid

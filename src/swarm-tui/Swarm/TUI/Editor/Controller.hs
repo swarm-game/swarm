@@ -17,6 +17,7 @@ import Data.Map qualified as M
 import Data.Yaml qualified as Y
 import Graphics.Vty qualified as V
 import Swarm.Game.Land
+import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
@@ -146,7 +147,9 @@ saveMapFile = do
   maybeBounds <- use $ uiState . uiGameplay . uiWorldEditor . editingBounds . boundsRect
   w <- use $ gameState . landscape . multiWorld
   tm <- use $ gameState . landscape . terrainAndEntities . terrainMap
-  let mapCellGrid = EU.getEditedMapRectangle tm (worldEditor ^. worldOverdraw) maybeBounds w
+  let mapCellGrid =
+        mapRows (map (map Just)) $
+          EU.getEditedMapRectangle tm (worldEditor ^. worldOverdraw) maybeBounds w
 
   let fp = worldEditor ^. outputFilePath
   maybeScenarioPair <- use $ uiState . uiGameplay . scenarioRef

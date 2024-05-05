@@ -11,7 +11,6 @@ import Control.Carrier.Throw.Either
 import Control.Monad (forM)
 import Data.Coerce
 import Data.Functor.Identity
-import Data.Maybe (catMaybes)
 import Data.Text qualified as T
 import Data.Yaml as Y
 import Swarm.Game.Entity
@@ -34,6 +33,7 @@ import Swarm.Game.Scenario.Topography.Structure (
  )
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
+import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Universe
 import Swarm.Game.World.Parse ()
@@ -54,7 +54,7 @@ data PWorldDescription e = WorldDescription
   , scrollable :: Bool
   , palette :: WorldPalette e
   , ul :: Location
-  , area :: [[PCell e]]
+  , area :: PositionedGrid (Maybe (PCell e))
   , navigation :: Navigation Identity WaypointName
   , placedStructures :: [LocatedStructure]
   , worldName :: SubworldName
@@ -91,7 +91,7 @@ instance FromJSONE WorldParseDependencies WorldDescription where
     let initialStructureDefs = scenarioLevelStructureDefs <> rootWorldStructureDefs
         struc =
           Structure
-            (Grid initialArea)
+            (PositionedGrid origin $ Grid initialArea)
             initialStructureDefs
             placementDefs
             (waypointDefs <> mapWaypoints)
@@ -121,7 +121,7 @@ instance FromJSONE WorldParseDependencies WorldDescription where
       <*> liftE (v .:? "scrollable" .!= True)
       <*> pure pal
       <*> pure upperLeft
-      <*> pure (map catMaybes $ unGrid mergedArea) -- Root-level map has no transparent cells.
+      <*> pure mergedArea
       <*> pure validatedNavigation
       <*> pure absoluteStructurePlacements
       <*> pure subWorldName
@@ -144,6 +144,6 @@ instance ToJSON WorldDescriptionPaint where
       , "map" .= Y.toJSON mapText
       ]
    where
-    cellGrid = area w
-    suggestedPalette = palette w
+    cellGrid = gridContent $ area w
+    suggestedPalette = PaletteAndMaskChar (palette w) Nothing
     (mapText, paletteKeymap) = prepForJson suggestedPalette cellGrid

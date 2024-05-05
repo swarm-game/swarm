@@ -16,6 +16,12 @@ newtype Grid c = Grid
   }
   deriving (Show, Eq, Functor, Foldable, Traversable)
 
+-- | Since the derived 'Functor' instance applies to the
+-- type parameter that is nested within lists, we define
+-- an explicit function for mapping over the enclosing lists.
+mapRows :: ([[a]] -> [[b]]) -> Grid a -> Grid b
+mapRows f (Grid rows) = Grid $ f rows
+
 instance (ToJSON a) => ToJSON (Grid a) where
   toJSON (Grid g) = toJSON g
 
@@ -41,21 +47,25 @@ invertY (V2 x y) = V2 x (-y)
 -- | Incorporates an offset by @-1@, since the area is
 -- "inclusive" of the lower-right coordinate.
 -- Inverse of 'cornersToArea'.
-upperLeftToBottomRight :: AreaDimensions -> Location -> Location
-upperLeftToBottomRight (AreaDimensions w h) upperLeft =
+computeBottomRightFromUpperLeft :: AreaDimensions -> Location -> Location
+computeBottomRightFromUpperLeft a upperLeft =
   upperLeft .+^ displacement
  where
-  displacement = invertY $ subtract 1 <$> V2 w h
+  displacement = invertY $ computeAbsoluteCornerDisplacement a
+
+computeAbsoluteCornerDisplacement :: AreaDimensions -> V2 Int32
+computeAbsoluteCornerDisplacement (AreaDimensions w h) =
+  subtract 1 <$> V2 w h
 
 -- | Converts the displacement vector between the two
 -- diagonal corners of the rectangle into an 'AreaDimensions' record.
 -- Adds one to both dimensions since the corner coordinates are "inclusive".
--- Inverse of 'upperLeftToBottomRight'.
+-- Inverse of 'computeBottomRightFromUpperLeft'.
 cornersToArea :: Location -> Location -> AreaDimensions
-cornersToArea upperLeft lowerRight =
+cornersToArea upperLeft bottomRight =
   AreaDimensions x y
  where
-  V2 x y = (+ 1) <$> invertY (lowerRight .-. upperLeft)
+  V2 x y = (+ 1) <$> invertY (bottomRight .-. upperLeft)
 
 -- | Has zero width or height.
 isEmpty :: AreaDimensions -> Bool
@@ -71,3 +81,9 @@ getAreaDimensions cellGrid =
 
 computeArea :: AreaDimensions -> Int32
 computeArea (AreaDimensions w h) = w * h
+
+fillGrid :: AreaDimensions -> a -> Grid a
+fillGrid (AreaDimensions w h) =
+  Grid
+    . replicate (fromIntegral h)
+    . replicate (fromIntegral w)

@@ -1,0 +1,34 @@
+version: 1
+name: Non-overlapping merging with expansion
+description: |
+  Define two structures and place them on the map.
+
+  Demonstrates automatic expansion of the root map grid.
+robots:
+  - name: base
+    loc: [8, 0]
+    dir: east
+known: [tree, sand, water]
+world:
+  palette:
+    '.': [grass]
+    'i': [ice]
+    'j': [dirt]
+    'k': [stone]
+    'l': [stone, sand]
+    'm': [stone, water]
+  upperleft: [3, 3]
+  structures:
+    - name: single tree
+      structure:
+        palette:
+          'x': [blank, tree]
+        map: |
+          x
+  placements:
+    - src: single tree
+      truncate: false
+      offset: [-2, -4]
+  map: |
+    i.
+    .j

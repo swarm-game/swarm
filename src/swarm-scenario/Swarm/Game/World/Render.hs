@@ -27,6 +27,7 @@ import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Center
 import Swarm.Game.Scenario.Topography.EntityFacade (EntityFacade (..), mkFacade)
+import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.State.Landscape
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
@@ -111,11 +112,11 @@ getBoundingBox vc scenarioWorld maybeSize =
   mkBoundingBox areaDimens upperLeftLoc =
     both W.locToCoords locationBounds
    where
-    lowerRightLocation = upperLeftToBottomRight areaDimens upperLeftLoc
+    lowerRightLocation = computeBottomRightFromUpperLeft areaDimens upperLeftLoc
     locationBounds = (upperLeftLoc, lowerRightLocation)
 
-  worldArea = area scenarioWorld
-  mapAreaDims = getAreaDimensions worldArea
+  worldArea = gridContent $ area scenarioWorld
+  mapAreaDims = getGridDimensions worldArea
   areaDims@(AreaDimensions w h) =
     fromMaybe (AreaDimensions 20 10) $
       maybeSize <|> surfaceEmpty isEmpty mapAreaDims
