@@ -6,7 +6,7 @@
 -- = Search process overview
 --
 -- 2D structures may be defined at the
--- <https://github.com/swarm-game/swarm/blob/main/data/scenarios/doc-fragments/SCHEMA.md#top-level toplevel of a scenario file>.
+-- <https://github.com/swarm-game/swarm/blob/main/data/scenarios/_doc-fragments/SCHEMA.md#top-level toplevel of a scenario file>.
 -- Upon scenario load, all of the predefined structures that are marked
 -- as @"recognize"@ are compiled into searcher state machines.
 --
