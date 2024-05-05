@@ -68,8 +68,8 @@ unreleased features), read on.
    resulting executable, but they make a big difference in compilation
    time.)
 
-1. Go get a snack while `cabal` downloads a Haskell compiler and
-   all of Swarm's dependencies.
+1. Go get a snack while `cabal` downloads and builds all of Swarm's
+   dependencies.
 
 1. You might also want to check out the `scripts` directory, which
    contains an assortment of useful scripts for developers.
