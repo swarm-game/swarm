@@ -60,7 +60,7 @@ instance FromJSONE (TerrainEntityMaps, RobotMap) (NamedArea (PStructure (Maybe C
         ..: "structure"
 
 data PStructure c = Structure
-  { area :: [[c]]
+  { area :: Grid c
   , structures :: [NamedStructure c]
   -- ^ structure definitions from parents shall be accessible by children
   , placements :: [Placement]
@@ -84,7 +84,7 @@ instance HasLocation LocatedStructure where
   modifyLoc f (LocatedStructure x y originalLoc) =
     LocatedStructure x y $ f originalLoc
 
-data MergedStructure c = MergedStructure [[c]] [LocatedStructure] [Originated Waypoint]
+data MergedStructure c = MergedStructure (Grid c) [LocatedStructure] [Originated Waypoint]
 
 instance FromJSONE (TerrainEntityMaps, RobotMap) (PStructure (Maybe Cell)) where
   parseJSONE = withObjectE "structure definition" $ \v -> do
@@ -96,7 +96,12 @@ instance FromJSONE (TerrainEntityMaps, RobotMap) (PStructure (Maybe Cell)) where
       waypointDefs <- v .:? "waypoints" .!= []
       maybeMaskChar <- v .:? "mask"
       (maskedArea, mapWaypoints) <- (v .:? "map" .!= "") >>= paintMap maybeMaskChar pal
-      return $ Structure maskedArea localStructureDefs placementDefs $ waypointDefs <> mapWaypoints
+      return $
+        Structure
+          (Grid maskedArea)
+          localStructureDefs
+          placementDefs
+          (waypointDefs <> mapWaypoints)
 
 -- | \"Paint\" a world map using a 'WorldPalette', turning it from a raw
 --   string into a nested list of 'PCell' values by looking up each
