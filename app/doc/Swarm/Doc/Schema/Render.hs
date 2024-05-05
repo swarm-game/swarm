@@ -14,6 +14,7 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Except (except)
 import Data.Aeson
 import Data.List (intersperse)
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
@@ -22,7 +23,6 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 import Data.Vector qualified as V
 import Swarm.Doc.Schema.Arrangement
-import Data.List.NonEmpty qualified as NE
 import Swarm.Doc.Schema.Parse
 import Swarm.Doc.Schema.Refined
 import Swarm.Doc.Schema.SchemaType

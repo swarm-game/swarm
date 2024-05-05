@@ -6,10 +6,10 @@ module Swarm.Doc.Schema.SchemaType where
 
 import Control.Applicative ((<|>))
 import Data.Aeson
+import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
 import Data.Text qualified as T
 import System.FilePath (takeBaseName)
-import Data.List.NonEmpty (NonEmpty)
 
 newtype SingleOrList a = SingleOrList
   { getList :: [a]
