@@ -9,6 +9,7 @@ import Control.Lens hiding (from, (.=), (<.>))
 import Data.Aeson.KeyMap (KeyMap)
 import Data.Aeson.KeyMap qualified as KM
 import Data.Map qualified as M
+import Data.Maybe (catMaybes)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -16,6 +17,7 @@ import Data.Tuple (swap)
 import Swarm.Game.Entity
 import Swarm.Game.Land
 import Swarm.Game.Scenario.RobotLookup
+import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Terrain (TerrainType)
@@ -28,7 +30,9 @@ newtype WorldPalette e = WorldPalette
   deriving (Eq, Show)
 
 instance FromJSONE (TerrainEntityMaps, RobotMap) (WorldPalette Entity) where
-  parseJSONE = withObjectE "palette" $ fmap WorldPalette . mapM parseJSONE
+  parseJSONE =
+    withObjectE "palette" $
+      fmap WorldPalette . mapM parseJSONE
 
 type TerrainWith a = (TerrainType, Erasable a)
 
@@ -70,19 +74,23 @@ constructPalette mappedPairs =
 
 constructWorldMap ::
   [(Char, TerrainWith EntityFacade)] ->
-  [[CellPaintDisplay]] ->
+  -- | Mask char
+  Char ->
+  Grid (Maybe CellPaintDisplay) ->
   Text
-constructWorldMap mappedPairs =
-  T.unlines . map (T.pack . map renderMapCell)
+constructWorldMap mappedPairs maskChar =
+  T.unlines . map (T.pack . map renderMapCell) . unGrid
  where
   invertedMappedPairs = map (swap . fmap toKey) mappedPairs
 
-  renderMapCell c =
-    -- NOTE: This lookup should never fail
-    M.findWithDefault (error "Palette lookup failed!") k $
-      M.fromList invertedMappedPairs
-   where
-    k = toKey $ cellToTerrainPair c
+  renderMapCell maybeC = case maybeC of
+    Nothing -> maskChar
+    Just c ->
+      -- NOTE: This lookup should never fail
+      M.findWithDefault (error "Palette lookup failed!") k $
+        M.fromList invertedMappedPairs
+     where
+      k = toKey $ cellToTerrainPair c
 
 -- | All alphanumeric characters. These are used as supplemental
 -- map placeholders in case a pre-existing display character is
@@ -90,15 +98,21 @@ constructWorldMap mappedPairs =
 genericCharacterPool :: Set.Set Char
 genericCharacterPool = Set.fromList $ ['A' .. 'Z'] <> ['a' .. 'z'] <> ['0' .. '9']
 
+data PaletteAndMaskChar = PaletteAndMaskChar
+  { paletteEntries :: WorldPalette EntityFacade
+  , reservedMaskChar :: Maybe Char
+  -- ^ represents a transparent cell
+  }
+
 -- | Note that display characters are not unique
 -- across different entities! However, the palette KeyMap
 -- as a conveyance serves to dedupe them.
 prepForJson ::
-  WorldPalette EntityFacade ->
-  [[CellPaintDisplay]] ->
+  PaletteAndMaskChar ->
+  Grid (Maybe CellPaintDisplay) ->
   (Text, KM.KeyMap CellPaintDisplay)
-prepForJson (WorldPalette suggestedPalette) cellGrid =
-  (constructWorldMap mappedPairs cellGrid, constructPalette mappedPairs)
+prepForJson (PaletteAndMaskChar (WorldPalette suggestedPalette) maybeMaskChar) cellGrid =
+  (constructWorldMap mappedPairs maskCharacter cellGrid, constructPalette mappedPairs)
  where
   preassignments :: [(Char, TerrainWith EntityFacade)]
   preassignments =
@@ -107,7 +121,7 @@ prepForJson (WorldPalette suggestedPalette) cellGrid =
         KM.toMapText suggestedPalette
 
   entityCells :: M.Map (TerrainWith EntityName) (TerrainWith EntityFacade)
-  entityCells = getUniqueTerrainFacadePairs cellGrid
+  entityCells = getUniqueTerrainFacadePairs $ map catMaybes $ unGrid cellGrid
 
   unassignedCells :: M.Map (TerrainWith EntityName) (TerrainWith EntityFacade)
   unassignedCells =
@@ -115,11 +129,17 @@ prepForJson (WorldPalette suggestedPalette) cellGrid =
       Set.fromList $
         map (toKey . snd) preassignments
 
+  (maskCharacter, availableCharacterPool) = case maybeMaskChar of
+    Just c -> (c, genericCharacterPool)
+    Nothing -> Set.deleteFindMin genericCharacterPool
+
   unassignedCharacters :: Set.Set Char
   unassignedCharacters =
     -- TODO (#1149): How can we efficiently use the Unicode categories (in "Data.Char")
     -- to generate this pool?
-    Set.difference genericCharacterPool $
+    Set.difference availableCharacterPool usedCharacters
+   where
+    usedCharacters =
       Set.fromList $
         map fst preassignments
 

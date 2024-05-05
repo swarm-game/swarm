@@ -99,6 +99,7 @@ import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (Parentage (..))
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
+import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (SymmetryAnnotatedGrid (..))
 import Swarm.Game.Scenario.Topography.WorldDescription
@@ -336,7 +337,7 @@ instance FromJSONE ScenarioInputs Scenario where
             (sequenceA . (id &&& (Assembly.mergeStructures mempty Root . Structure.structure)))
             rootLevelSharedStructures
 
-      let namedGrids = map (\(ns, Structure.MergedStructure s _ _) -> s <$ ns) mergedStructures
+      let namedGrids = map (\(ns, Structure.MergedStructure (PositionedGrid _ s) _ _) -> s <$ ns) mergedStructures
 
       allWorlds <- localE (WorldParseDependencies worldMap rootLevelSharedStructures rsMap) $ do
         rootWorld <- v ..: "world"

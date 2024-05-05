@@ -36,6 +36,7 @@ import TestLSP (testLSP)
 import TestLanguagePipeline (testLanguagePipeline)
 import TestNotification (testNotification)
 import TestOrdering (testOrdering)
+import TestOverlay (testOverlay)
 import TestParse (testParse)
 import TestPedagogy (testPedagogy)
 import TestPretty (testPrettyConst)
@@ -68,6 +69,7 @@ tests s =
     , testInventory
     , testNotification (s ^. gameState)
     , testOrdering
+    , testOverlay
     , testMisc
     , testLSP
     ]

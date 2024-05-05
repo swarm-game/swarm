@@ -13,6 +13,7 @@ import Swarm.Game.Entity
 import Swarm.Game.Scenario.Topography.Area qualified as EA
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
+import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Terrain (TerrainMap, TerrainType)
 import Swarm.Game.Universe
@@ -33,8 +34,8 @@ getEditingBounds myWorld =
  where
   newBounds = Cosmic DefaultRootSubworld (W.locToCoords upperLeftLoc, W.locToCoords lowerRightLoc)
   upperLeftLoc = ul myWorld
-  a = EA.getAreaDimensions $ area myWorld
-  lowerRightLoc = EA.upperLeftToBottomRight a upperLeftLoc
+  a = EA.getGridDimensions $ gridContent $ area myWorld
+  lowerRightLoc = EA.computeBottomRightFromUpperLeft a upperLeftLoc
 
 getEditorContentAt ::
   TerrainMap ->
