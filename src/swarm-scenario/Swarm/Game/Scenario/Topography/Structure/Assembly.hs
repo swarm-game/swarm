@@ -28,6 +28,69 @@ import Swarm.Game.Scenario.Topography.Structure
 import Swarm.Language.Direction (directionJsonModifier)
 import Swarm.Util (commaList, quote, showT)
 
+-- | Destructively overlays one direct child structure
+-- upon the input structure.
+-- However, the child structure is assembled recursively.
+overlaySingleStructure ::
+  M.Map StructureName (NamedStructure (Maybe a)) ->
+  Placed (Maybe a) ->
+  MergedStructure (Maybe a) ->
+  Either Text (MergedStructure (Maybe a))
+overlaySingleStructure
+  inheritedStrucDefs
+  (Placed p@(Placement _ _shouldTruncate pose@(Pose loc orientation)) ns)
+  (MergedStructure inputArea inputPlacements inputWaypoints) = do
+
+    MergedStructure overlayArea overlayPlacements overlayWaypoints <-
+      mergeStructures inheritedStrucDefs (WithParent p) $ structure ns
+
+    let mergedWaypoints = inputWaypoints <> map (fmap $ placeOnArea overlayArea) overlayWaypoints
+        mergedPlacements = inputPlacements <> map (placeOnArea overlayArea) overlayPlacements
+        mergedArea = overlayGrid inputArea pose overlayArea
+
+    return $ MergedStructure mergedArea mergedPlacements mergedWaypoints
+   where
+    placeOnArea overArea =
+      offsetLoc (coerce loc)
+        . modifyLoc (reorientLandmark orientation $ getAreaDimensions overArea)
+
+-- | Overlays all of the "child placements", such that the children encountered earlier
+-- in the YAML file supersede the later ones (due to use of 'foldr' instead of 'foldl').
+mergeStructures ::
+  M.Map StructureName (NamedStructure (Maybe a)) ->
+  Parentage Placement ->
+  PStructure (Maybe a) ->
+  Either Text (MergedStructure (Maybe a))
+mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStructures subPlacements subWaypoints) = do
+  overlays <-
+    left (elaboratePlacement parentPlacement <>) $
+      mapM (validatePlacement structureMap) subPlacements
+
+  let wrapPlacement (Placed z ns) = LocatedStructure
+        (name ns)
+        (up $ orient structPose)
+        (offset structPose)
+       where
+        structPose = structurePose z
+
+      wrappedOverlays = map wrapPlacement $
+        filter (\(Placed _ ns) -> isRecognizable ns) overlays
+
+  foldrM
+    (overlaySingleStructure structureMap)
+    (MergedStructure origArea wrappedOverlays originatedWaypoints)
+    overlays
+ where
+  originatedWaypoints = map (Originated parentPlacement) subWaypoints
+
+  -- deeper definitions override the outer (toplevel) ones
+  structureMap =
+    M.union
+      (M.fromList $ map (name &&& id) subStructures)
+      inheritedStrucDefs
+
+-- * Grid manipulation
+
 overlayGrid ::
   [[Maybe a]] ->
   Pose ->
@@ -54,80 +117,41 @@ overlayGrid inputArea (Pose (Location colOffset rowOffset) orientation) overlayA
         then (replicate integralOffset Nothing <>)
         else drop $ abs integralOffset
 
--- | Destructively overlays one direct child structure
--- upon the input structure.
--- However, the child structure is assembled recursively.
-overlaySingleStructure ::
-  M.Map StructureName (NamedStructure (Maybe a)) ->
-  Placed (Maybe a) ->
-  MergedStructure (Maybe a) ->
-  Either Text (MergedStructure (Maybe a))
-overlaySingleStructure
-  inheritedStrucDefs
-  (Placed p@(Placement _ pose@(Pose loc orientation)) ns)
-  (MergedStructure inputArea inputPlacements inputWaypoints) = do
-    MergedStructure overlayArea overlayPlacements overlayWaypoints <-
-      mergeStructures inheritedStrucDefs (WithParent p) $ structure ns
+-- * Validation
 
-    let mergedWaypoints = inputWaypoints <> map (fmap $ placeOnArea overlayArea) overlayWaypoints
-        mergedPlacements = inputPlacements <> map (placeOnArea overlayArea) overlayPlacements
-        mergedArea = overlayGrid inputArea pose overlayArea
-
-    return $ MergedStructure mergedArea mergedPlacements mergedWaypoints
-   where
-    placeOnArea overArea =
-      offsetLoc (coerce loc)
-        . modifyLoc (reorientLandmark orientation $ getAreaDimensions overArea)
-
-elaboratePlacement :: Parentage Placement -> Either Text a -> Either Text a
-elaboratePlacement p = left (elaboration <>)
+elaboratePlacement :: Parentage Placement -> Text
+elaboratePlacement p =
+  T.unwords
+    [ "Within"
+    , pTxt <> ":"
+    , ""
+    ]
  where
   pTxt = case p of
     Root -> "root placement"
-    WithParent (Placement (StructureName sn) (Pose loc _)) ->
+    WithParent (Placement (StructureName sn) _shouldTruncate (Pose loc _)) ->
       T.unwords
         [ "placement of"
         , quote sn
         , "at"
         , showT loc
         ]
-  elaboration =
-    T.unwords
-      [ "Within"
-      , pTxt <> ":"
-      , ""
-      ]
 
--- | Overlays all of the "child placements", such that the children encountered earlier
--- in the YAML file supersede the later ones (due to use of 'foldr' instead of 'foldl').
-mergeStructures ::
+validatePlacement ::
   M.Map StructureName (NamedStructure (Maybe a)) ->
-  Parentage Placement ->
-  PStructure (Maybe a) ->
-  Either Text (MergedStructure (Maybe a))
-mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStructures subPlacements subWaypoints) = do
-  overlays <- elaboratePlacement parentPlacement $ mapM g subPlacements
-  let wrapPlacement (Placed z ns) = LocatedStructure (name ns) (up $ orient structPose) $ offset structPose
-       where
-        structPose = structurePose z
-      wrappedOverlays = map wrapPlacement $ filter (\(Placed _ ns) -> isRecognizable ns) overlays
-  foldrM
-    (overlaySingleStructure structureMap)
-    (MergedStructure origArea wrappedOverlays originatedWaypoints)
-    overlays
- where
-  originatedWaypoints = map (Originated parentPlacement) subWaypoints
-
-  -- deeper definitions override the outer (toplevel) ones
-  structureMap = M.union (M.fromList $ map (name &&& id) subStructures) inheritedStrucDefs
-
-  g placement@(Placement sName@(StructureName n) (Pose _ orientation)) = do
+  Placement ->
+  Either Text (Placed (Maybe a))
+validatePlacement
+  structureMap
+  placement@(Placement sName@(StructureName n) _shouldTruncate (Pose _ orientation)) = do
     t@(_, ns) <-
       maybeToEither
         (T.unwords ["Could not look up structure", quote n])
         $ sequenceA (placement, M.lookup sName structureMap)
+
     let placementDirection = up orientation
         recognizedOrientations = recognize ns
+
     when (isRecognizable ns) $ do
       when (flipped orientation) $
         Left $

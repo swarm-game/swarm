@@ -10,6 +10,10 @@
             "type": "string",
             "description": "Name of structure definition"
         },
+        "truncate": {
+            "type": "boolean",
+            "description": "Overlay should be truncated if it exceeds bounds of target structure"
+        },
         "offset": {
             "$ref": "planar-loc.json"
         },
