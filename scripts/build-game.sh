@@ -7,4 +7,4 @@ cd $(git rev-parse --show-toplevel)
 # target 'swarm:exe:swarm' to the 'stack' command, to avoid building
 # extra dependencies.
 
-cabal build -j -O0 swarm:swarm
+cabal build -j -O0 swarm:exe:swarm
