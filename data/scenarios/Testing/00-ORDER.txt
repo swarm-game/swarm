@@ -66,3 +66,5 @@ Achievements
 1780-structure-merge-expansion
 1533-sow-command.yaml
 1533-sow-seed-maturation.yaml
+
+1780-structure-merge-expansion

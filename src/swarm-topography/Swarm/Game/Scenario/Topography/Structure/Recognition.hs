@@ -12,11 +12,11 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 
-data StructureRecognizer = StructureRecognizer
-  { _automatons :: RecognizerAutomatons
-  , _foundStructures :: FoundRegistry
+data StructureRecognizer b en a = StructureRecognizer
+  { _automatons :: RecognizerAutomatons b en a
+  , _foundStructures :: FoundRegistry b a
   -- ^ Records the top-left corner of the found structure
-  , _recognitionLog :: [SearchLog]
+  , _recognitionLog :: [SearchLog en]
   }
   deriving (Generic)
 

@@ -31,12 +31,10 @@ import Data.Semigroup (Max, Min)
 import Data.Set (Set)
 import GHC.Generics (Generic)
 import Linear (V2 (..))
-import Swarm.Game.Entity (Entity, EntityName)
 import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario.Topography.Area
-import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Placement (StructureName)
-import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
+import Swarm.Game.Scenario.Topography.Structure.Type (NamedGrid)
 import Swarm.Game.Universe (Cosmic, offsetBy)
 import Swarm.Language.Syntax (AbsoluteDir)
 import Text.AhoCorasick (StateMachine)
@@ -50,7 +48,7 @@ import Text.AhoCorasick (StateMachine)
 -- @
 -- aab
 -- @
-type AtomicKeySymbol = Maybe Entity
+type AtomicKeySymbol a = Maybe a
 
 -- | A "needle" consisting row of cells within the haystack
 -- (a sequence of rows) to be searched.
@@ -61,15 +59,15 @@ type AtomicKeySymbol = Maybe Entity
 -- @
 -- aab
 -- @
-type SymbolSequence = [AtomicKeySymbol]
+type SymbolSequence a = [AtomicKeySymbol a]
 
 -- | This is returned as a value of the 1-D searcher.
 -- It contains search automatons customized to the 2-D structures
 -- that may possibly contain the row found by the 1-D searcher.
-data StructureSearcher = StructureSearcher
-  { automaton2D :: AutomatonInfo SymbolSequence StructureWithGrid
-  , needleContent :: SymbolSequence
-  , singleRowItems :: NE.NonEmpty SingleRowEntityOccurrences
+data StructureSearcher b en a = StructureSearcher
+  { automaton2D :: AutomatonInfo en (SymbolSequence a) (StructureWithGrid b a)
+  , needleContent :: SymbolSequence a
+  , singleRowItems :: NE.NonEmpty (SingleRowEntityOccurrences b a)
   }
 
 -- |
@@ -83,10 +81,10 @@ data StructureSearcher = StructureSearcher
 -- @
 --
 -- Its '_position' is @2@.
-data PositionWithinRow = PositionWithinRow
+data PositionWithinRow b a = PositionWithinRow
   { _position :: Int32
   -- ^ horizontal index of the entity within the row
-  , structureRow :: StructureRow
+  , structureRow :: StructureRow b a
   }
 
 -- Represents all of the locations that particular entity
@@ -100,10 +98,10 @@ data PositionWithinRow = PositionWithinRow
 -- @
 --
 -- this record will contain two entries in its 'entityOccurrences' field.
-data SingleRowEntityOccurrences = SingleRowEntityOccurrences
-  { myRow :: StructureRow
-  , myEntity :: Entity
-  , entityOccurrences :: NE.NonEmpty PositionWithinRow
+data SingleRowEntityOccurrences b a = SingleRowEntityOccurrences
+  { myRow :: StructureRow b a
+  , myEntity :: a
+  , entityOccurrences :: NE.NonEmpty (PositionWithinRow b a)
   , expandedOffsets :: InspectionOffsets
   }
 
@@ -119,19 +117,19 @@ data SingleRowEntityOccurrences = SingleRowEntityOccurrences
 -- @
 --
 -- it's 'rowIndex' is @2@.
-data StructureRow = StructureRow
-  { wholeStructure :: StructureWithGrid
+data StructureRow b a = StructureRow
+  { wholeStructure :: StructureWithGrid b a
   , rowIndex :: Int32
   -- ^ vertical index of the row within the structure
-  , rowContent :: SymbolSequence
+  , rowContent :: SymbolSequence a
   }
 
 -- | The original definition of a structure, bundled
 -- with its grid of cells having been extracted for convenience.
-data StructureWithGrid = StructureWithGrid
-  { originalDefinition :: NamedGrid (Maybe Cell)
+data StructureWithGrid b a = StructureWithGrid
+  { originalDefinition :: NamedGrid (Maybe b)
   , rotatedTo :: AbsoluteDir
-  , entityGrid :: [SymbolSequence]
+  , entityGrid :: [SymbolSequence a]
   }
   deriving (Eq)
 
@@ -151,10 +149,10 @@ data SymmetryAnnotatedGrid a = SymmetryAnnotatedGrid
   deriving (Show)
 
 -- | Structure definitions with precomputed metadata for consumption by the UI
-data StructureInfo = StructureInfo
-  { annotatedGrid :: SymmetryAnnotatedGrid (Maybe Cell)
-  , entityProcessedGrid :: [SymbolSequence]
-  , entityCounts :: Map Entity Int
+data StructureInfo b a = StructureInfo
+  { annotatedGrid :: SymmetryAnnotatedGrid (Maybe b)
+  , entityProcessedGrid :: [SymbolSequence a]
+  , entityCounts :: Map a Int
   }
 
 -- | For all of the rows that contain a given entity
@@ -187,8 +185,8 @@ instance Semigroup InspectionOffsets where
 -- | Each automaton shall be initialized to recognize
 -- a certain subset of structure rows, that may either
 -- all be within one structure, or span multiple structures.
-data AutomatonInfo k v = AutomatonInfo
-  { _participatingEntities :: Set EntityName
+data AutomatonInfo en k v = AutomatonInfo
+  { _participatingEntities :: Set en
   , _inspectionOffsets :: InspectionOffsets
   , _automaton :: StateMachine k v
   }
@@ -198,11 +196,11 @@ makeLenses ''AutomatonInfo
 
 -- | The complete set of data needed to identify applicable
 -- structures, based on a just-placed entity.
-data RecognizerAutomatons = RecognizerAutomatons
-  { _originalStructureDefinitions :: Map StructureName StructureInfo
+data RecognizerAutomatons b en a = RecognizerAutomatons
+  { _originalStructureDefinitions :: Map StructureName (StructureInfo b a)
   -- ^ all of the structures that shall participate in automatic recognition.
   -- This list is used only by the UI and by the 'Floorplan' command.
-  , _automatonsByEntity :: Map Entity (AutomatonInfo AtomicKeySymbol StructureSearcher)
+  , _automatonsByEntity :: Map a (AutomatonInfo en (AtomicKeySymbol a) (StructureSearcher b en a))
   }
   deriving (Generic)
 
@@ -210,8 +208,8 @@ makeLenses ''RecognizerAutomatons
 
 -- | Final output of the search process.
 -- These are the elements that are stored in the 'FoundRegistry'.
-data FoundStructure = FoundStructure
-  { structureWithGrid :: StructureWithGrid
+data FoundStructure b a = FoundStructure
+  { structureWithGrid :: StructureWithGrid b a
   , upperLeftCorner :: Cosmic Location
   }
   deriving (Eq)
@@ -226,7 +224,7 @@ data FoundStructure = FoundStructure
 -- Since the natural order of coordinates increases as described,
 -- we need to invert it with 'Down' so that this ordering is by
 -- increasing preference.
-instance Ord FoundStructure where
+instance (Eq b, Eq a) => Ord (FoundStructure b a) where
   compare = compare `on` (f1 &&& f2)
    where
     f1 = computeArea . getAreaDimensions . entityGrid . structureWithGrid
@@ -235,7 +233,7 @@ instance Ord FoundStructure where
 -- | Yields coordinates that are occupied by an entity of a placed structure.
 -- Cells within the rectangular bounds of the structure that are unoccupied
 -- are not included.
-genOccupiedCoords :: FoundStructure -> [Cosmic Location]
+genOccupiedCoords :: FoundStructure b a -> [Cosmic Location]
 genOccupiedCoords (FoundStructure swg loc) =
   concatMap catMaybes . zipWith mkRow [0 ..] $ entityGrid swg
  where

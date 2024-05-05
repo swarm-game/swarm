@@ -201,6 +201,51 @@ library swarm-lang
     -- See discussion in #415
     StrictData
 
+library swarm-topography
+  import: stan-config, common, ghc2021-extensions
+  visibility: public
+  -- cabal-gild: discover src/swarm-topography
+  exposed-modules:
+    Swarm.Game.Location
+    Swarm.Game.Scenario.Topography.Area
+    Swarm.Game.Scenario.Topography.Navigation.Waypoint
+    Swarm.Game.Scenario.Topography.Placement
+    Swarm.Game.Scenario.Topography.Structure.Assembly
+    Swarm.Game.Scenario.Topography.Structure.Overlay
+    Swarm.Game.Scenario.Topography.Structure.Recognition
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Log
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Type
+    Swarm.Game.Scenario.Topography.Structure.Type
+    Swarm.Game.Universe
+
+  other-modules: Paths_swarm
+  autogen-modules: Paths_swarm
+  build-depends:
+    AhoCorasick >=0.0.4 && <0.0.5,
+    aeson >=2.2 && <2.3,
+    base >=4.14 && <4.20,
+    containers >=0.6.2 && <0.8,
+    extra >=1.7 && <1.8,
+    lens,
+    linear >=1.21.6 && <1.24,
+    nonempty-containers >=0.3.4 && <0.3.5,
+    servant-docs >=0.12 && <0.14,
+    text >=1.2.4 && <2.2,
+    yaml >=0.11 && <0.11.12.0,
+
+  build-depends:
+    swarm:swarm-lang,
+    swarm:swarm-util,
+
+  hs-source-dirs: src/swarm-topography
+  default-language: Haskell2010
+  default-extensions:
+    -- Avoid unexpected unevaluated thunk buildup
+    -- See discussion in #415
+    StrictData
+
 library swarm-scenario
   import: stan-config, common, ghc2021-extensions
   visibility: public
@@ -216,7 +261,6 @@ library swarm-scenario
     Swarm.Game.Failure
     Swarm.Game.Ingredients
     Swarm.Game.Land
-    Swarm.Game.Location
     Swarm.Game.Recipe
     Swarm.Game.ResourceLoading
     Swarm.Game.Robot
@@ -228,28 +272,17 @@ library swarm-scenario
     Swarm.Game.Scenario.Objective.Validation
     Swarm.Game.Scenario.RobotLookup
     Swarm.Game.Scenario.Style
-    Swarm.Game.Scenario.Topography.Area
     Swarm.Game.Scenario.Topography.Cell
     Swarm.Game.Scenario.Topography.Center
     Swarm.Game.Scenario.Topography.EntityFacade
     Swarm.Game.Scenario.Topography.Navigation.Portal
-    Swarm.Game.Scenario.Topography.Navigation.Waypoint
-    Swarm.Game.Scenario.Topography.Placement
     Swarm.Game.Scenario.Topography.Structure
-    Swarm.Game.Scenario.Topography.Structure.Assembly
-    Swarm.Game.Scenario.Topography.Structure.Overlay
-    Swarm.Game.Scenario.Topography.Structure.Recognition
-    Swarm.Game.Scenario.Topography.Structure.Recognition.Log
     Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
-    Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
-    Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
-    Swarm.Game.Scenario.Topography.Structure.Recognition.Type
     Swarm.Game.Scenario.Topography.WorldDescription
     Swarm.Game.Scenario.Topography.WorldPalette
     Swarm.Game.State.Config
     Swarm.Game.State.Landscape
     Swarm.Game.Terrain
-    Swarm.Game.Universe
     Swarm.Game.World
     Swarm.Game.World.Abstract
     Swarm.Game.World.Compile
@@ -289,7 +322,6 @@ library swarm-scenario
     linear >=1.21.6 && <1.24,
     megaparsec >=9.6.1 && <9.7,
     murmur3 >=1.0.4 && <1.1,
-    nonempty-containers >=0.3.4 && <0.3.5,
     palette >=0.3 && <0.4,
     parser-combinators >=1.2 && <1.4,
     prettyprinter >=1.7.0 && <1.8,
@@ -305,6 +337,7 @@ library swarm-scenario
 
   build-depends:
     swarm:swarm-lang,
+    swarm:swarm-topography,
     swarm:swarm-util,
 
   hs-source-dirs: src/swarm-scenario
@@ -405,6 +438,7 @@ library swarm-engine
   build-depends:
     swarm:swarm-lang,
     swarm:swarm-scenario,
+    swarm:swarm-topography,
     swarm:swarm-util,
 
   hs-source-dirs: src/swarm-engine
@@ -449,6 +483,7 @@ library swarm-web
     swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,
+    swarm:swarm-topography,
     swarm:swarm-tui,
     swarm:swarm-util,
 
@@ -699,6 +734,7 @@ library swarm-tui
     swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,
+    swarm:swarm-topography,
     swarm:swarm-util,
 
   hs-source-dirs: src/swarm-tui
@@ -836,6 +872,7 @@ test-suite swarm-unit
     swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,
+    swarm:swarm-topography,
     swarm:swarm-tui,
     swarm:swarm-util,
 

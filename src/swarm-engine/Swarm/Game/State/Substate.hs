@@ -100,7 +100,7 @@ import Swarm.Game.Recipe (
   outRecipeMap,
  )
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (GameStateInputs (..))
+import Swarm.Game.Scenario (Cell, GameStateInputs (..))
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (emptyFoundStructures)
@@ -327,7 +327,7 @@ data Discovery = Discovery
   , _availableCommands :: Notifications Const
   , _knownEntities :: S.Set EntityName
   , _gameAchievements :: Map GameplayAchievement Attainment
-  , _structureRecognition :: StructureRecognizer
+  , _structureRecognition :: StructureRecognizer Cell EntityName Entity
   , _tagMembers :: Map Text (NonEmpty EntityName)
   }
 
@@ -350,7 +350,7 @@ knownEntities :: Lens' Discovery (S.Set EntityName)
 gameAchievements :: Lens' Discovery (Map GameplayAchievement Attainment)
 
 -- | Recognizer for robot-constructed structures
-structureRecognition :: Lens' Discovery StructureRecognizer
+structureRecognition :: Lens' Discovery (StructureRecognizer Cell EntityName Entity)
 
 -- | Map from tags to entities that possess that tag
 tagMembers :: Lens' Discovery (Map Text (NonEmpty EntityName))
