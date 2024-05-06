@@ -11,6 +11,7 @@ module Swarm.Doc.Schema.Parse where
 
 import Control.Applicative ((<|>))
 import Data.Aeson
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
@@ -28,6 +29,7 @@ data SchemaData = SchemaData
 data Members
   = ObjectProperties (Map Text SwarmSchema)
   | ListMembers (ItemDescription SwarmSchema)
+  | EnumMembers (NonEmpty Text)
   deriving (Eq, Ord, Show)
 
 data ToplevelSchema = ToplevelSchema
@@ -49,4 +51,5 @@ instance FromJSON ToplevelSchema where
         maybeMembers =
           ObjectProperties <$> properties swarmSchema
             <|> ListMembers <$> itemsDescription swarmSchema
+            <|> EnumMembers <$> _enum rawSchema
     return $ ToplevelSchema theTitle (objectDescription swarmSchema) swarmSchema maybeMembers theFooters
