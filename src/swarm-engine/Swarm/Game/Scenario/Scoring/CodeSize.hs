@@ -29,7 +29,7 @@ codeMetricsFromSyntax ::
   Data a =>
   Syntax' a ->
   ScenarioCodeMetrics
-codeMetricsFromSyntax s@(Syntax' srcLoc _ _) =
+codeMetricsFromSyntax s@(Syntax' srcLoc _ _ _) =
   ScenarioCodeMetrics (charCount srcLoc) (measureAstSize s)
  where
   charCount :: SrcLoc -> Int

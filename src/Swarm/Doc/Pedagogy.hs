@@ -136,7 +136,7 @@ getCommands (Just (ProcessedTerm (Module stx _) _ _)) =
  where
   nodelist :: [Syntax' Polytype]
   nodelist = universe stx
-  isCommand (Syntax' sloc t _) = case t of
+  isCommand (Syntax' sloc t _ _) = case t of
     TConst c -> guard (isConsidered c) >> Just (c, [sloc])
     _ -> Nothing
 

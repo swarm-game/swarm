@@ -379,7 +379,7 @@ mkTuple (x : xs) = let r = mkTuple xs in loc x r $ SPair x r
 
 unTuple :: Syntax' ty -> [Syntax' ty]
 unTuple = \case
-  Syntax' _ (SPair s1 s2) _ -> s1 : unTuple s2
+  Syntax' _ (SPair s1 s2) _ _ -> s1 : unTuple s2
   s -> [s]
 
 -- | Construct an 'SLet', automatically filling in the Boolean field

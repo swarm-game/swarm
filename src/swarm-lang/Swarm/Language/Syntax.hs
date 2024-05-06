@@ -50,8 +50,10 @@ module Swarm.Language.Syntax (
   sLoc,
   sTerm,
   sType,
+  sComments,
   Syntax,
   pattern Syntax,
+  pattern CSyntax,
   LocVar (..),
   SrcLoc (..),
   noLoc,
@@ -105,6 +107,7 @@ import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict (Map)
+import Data.Sequence (Seq)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Set qualified as Set
@@ -1013,7 +1016,7 @@ data LocVar = LV {lvSrcLoc :: SrcLoc, lvVar :: Var}
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
 locVarToSyntax' :: LocVar -> ty -> Syntax' ty
-locVarToSyntax' (LV s v) = Syntax' s (TVar v)
+locVarToSyntax' (LV s v) = Syntax' s (TVar v) Nothing
 
 -- | Terms of the Swarm language.
 data Term' ty
@@ -1118,6 +1121,7 @@ instance Data ty => Plated (Term' ty) where
 data Syntax' ty = Syntax'
   { _sLoc :: SrcLoc
   , _sTerm :: Term' ty
+  , _sComments :: Maybe (Seq Comment)
   , _sType :: ty
   }
   deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
@@ -1145,12 +1149,12 @@ instance Monoid SrcLoc where
 
 -- | Line vs block comments.
 data CommentType = LineComment | BlockComment
-  deriving (Eq, Ord, Read, Show, Enum, Bounded)
+  deriving (Eq, Ord, Read, Show, Enum, Bounded, Generic, Data, ToJSON, FromJSON)
 
 -- | Was a comment all by itself on a line, or did it occur after some
 --   other tokens on a line?
 data CommentSituation = StandaloneComment | SuffixComment
-  deriving (Eq, Ord, Read, Show, Enum, Bounded)
+  deriving (Eq, Ord, Read, Show, Enum, Bounded, Generic, Data, ToJSON, FromJSON)
 
 -- | A comment is retained as some text + its original 'SrcLoc'.
 --   While parsing we record all comments out-of-band, for later
@@ -1161,7 +1165,7 @@ data Comment = Comment
   , commentSituation :: CommentSituation
   , commentText :: Text
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, Data, ToJSON, FromJSON)
 
 ------------------------------------------------------------
 -- Pattern synonyms for untyped terms
@@ -1170,7 +1174,10 @@ data Comment = Comment
 type Syntax = Syntax' ()
 
 pattern Syntax :: SrcLoc -> Term -> Syntax
-pattern Syntax l t = Syntax' l t ()
+pattern Syntax l t = Syntax' l t Nothing ()
+
+pattern CSyntax :: SrcLoc -> Term -> Maybe (Seq Comment) -> Syntax
+pattern CSyntax l t cs = Syntax' l t cs ()
 
 {-# COMPLETE Syntax #-}
 
@@ -1273,7 +1280,7 @@ mkOp' c t1 = TApp (TApp (TConst c) t1)
 -- TConst Mul :| [TInt 1,TInt 2]
 unfoldApps :: Syntax' ty -> NonEmpty (Syntax' ty)
 unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
-  Syntax' _ (SApp s1 s2) _ -> (s2, Just s1)
+  Syntax' _ (SApp s1 s2) _ _ -> (s2, Just s1)
   s -> (s, Nothing)
 
 --------------------------------------------------
@@ -1282,7 +1289,7 @@ unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
 -- | Erase a 'Syntax' tree annotated with type
 --   information to a bare unannotated 'Term'.
 eraseS :: Syntax' ty -> Term
-eraseS (Syntax' _ t _) = void t
+eraseS (Syntax' _ t _ _) = void t
 
 ------------------------------------------------------------
 -- Free variable traversals
@@ -1299,7 +1306,7 @@ freeVarsS :: forall ty. Traversal' (Syntax' ty) (Syntax' ty)
 freeVarsS f = go S.empty
  where
   -- go :: Applicative f => Set Var -> Syntax' ty -> f (Syntax' ty)
-  go bound s@(Syntax' l t ty) = case t of
+  go bound s@(Syntax' l t ty cmts) = case t of
     TUnit -> pure s
     TConst {} -> pure s
     TDir {} -> pure s
@@ -1329,7 +1336,7 @@ freeVarsS f = go S.empty
     SProj s1 x -> rewrap $ SProj <$> go bound s1 <*> pure x
     SAnnotate s1 pty -> rewrap $ SAnnotate <$> go bound s1 <*> pure pty
    where
-    rewrap s' = Syntax' l <$> s' <*> pure ty
+    rewrap s' = Syntax' l <$> s' <*> pure ty <*> pure cmts
 
 -- | Like 'freeVarsS', but traverse over the 'Term's containing free
 --   variables.  More direct if you don't need to know the types or
