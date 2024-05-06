@@ -13,7 +13,7 @@ cd $SCRIPT_DIR/../..
 # Then, generate *.hie files:
 #
 #    cp hie.yaml.stack hie.yaml
-#    stack build --fast
+#    cabal build -j -O0
 
 DBNAME=hie.sqlite
 hiedb --database $DBNAME index .hie
