@@ -157,6 +157,9 @@ blockComment start end = do
 -- | Skip spaces and comments.
 sc :: Parser ()
 sc =
+  -- Typically we would use L.space here, but we have to inline its
+  -- definition and use our own slight variant, since we need to treat
+  -- end-of-line specially.
   skipMany . choice . map hidden $
     [ hspace1
     , eol *> (freshLine .= True)
@@ -530,8 +533,6 @@ runParser p t =
     . flip runStateT initCommentState
     . flip runReaderT DisallowAntiquoting
     $ p
-
--- first (from . errorBundlePretty) (parse (runStateT (runReaderT p DisallowAntiquoting) Seq.empty) "" t)
 
 -- | A utility for running a parser in an arbitrary 'MonadFail' (which
 --   is going to be the TemplateHaskell 'Language.Haskell.TH.Q' monad --- see
