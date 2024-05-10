@@ -40,7 +40,6 @@ overlaySingleStructure
   inheritedStrucDefs
   (Placed p@(Placement _ _shouldTruncate pose@(Pose loc orientation)) ns)
   (MergedStructure inputArea inputPlacements inputWaypoints) = do
-
     MergedStructure overlayArea overlayPlacements overlayWaypoints <-
       mergeStructures inheritedStrucDefs (WithParent p) $ structure ns
 
@@ -66,15 +65,17 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
     left (elaboratePlacement parentPlacement <>) $
       mapM (validatePlacement structureMap) subPlacements
 
-  let wrapPlacement (Placed z ns) = LocatedStructure
-        (name ns)
-        (up $ orient structPose)
-        (offset structPose)
+  let wrapPlacement (Placed z ns) =
+        LocatedStructure
+          (name ns)
+          (up $ orient structPose)
+          (offset structPose)
        where
         structPose = structurePose z
 
-      wrappedOverlays = map wrapPlacement $
-        filter (\(Placed _ ns) -> isRecognizable ns) overlays
+      wrappedOverlays =
+        map wrapPlacement $
+          filter (\(Placed _ ns) -> isRecognizable ns) overlays
 
   foldrM
     (overlaySingleStructure structureMap)
