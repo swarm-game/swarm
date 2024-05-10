@@ -536,13 +536,52 @@ library swarm-util
     -- See discussion in #415
     StrictData
 
+library swarm-doc
+  import: stan-config, common, ghc2021-extensions
+  visibility: public
+  -- cabal-gild: discover src/swarm-doc
+  exposed-modules:
+    Swarm.Doc.Command
+    Swarm.Doc.Gen
+    Swarm.Doc.Keyword
+    Swarm.Doc.Pedagogy
+    Swarm.Doc.Schema.Arrangement
+    Swarm.Doc.Schema.Parse
+    Swarm.Doc.Schema.Refined
+    Swarm.Doc.Schema.Render
+    Swarm.Doc.Schema.SchemaType
+    Swarm.Doc.Util
+    Swarm.Doc.Wiki.Cheatsheet
+    Swarm.Doc.Wiki.Matrix
+    Swarm.Doc.Wiki.Util
+
+  build-depends:
+    aeson >=2.2 && <2.3,
+    base >=4.14 && <4.20,
+    containers >=0.6.2 && <0.8,
+    filepath >=1.4 && <1.5,
+    fused-effects >=1.1.1.1 && <1.2,
+    lens >=4.19 && <5.4,
+    pandoc >=3.0 && <3.2,
+    servant-docs >=0.12 && <0.14,
+    text >=1.2.4 && <2.2,
+
+  build-depends:
+    swarm:swarm-util,
+    swarm:swarm-lang,
+    swarm:swarm-scenario,
+    swarm:swarm-engine,
+
+  hs-source-dirs: src/swarm-doc
+  default-language: Haskell2010
+  default-extensions:
+    -- Avoid unexpected unevaluated thunk buildup
+    -- See discussion in #415
+    StrictData
+
 library
   import: stan-config, common, ghc2021-extensions
   exposed-modules:
-    Swarm.Doc.Command
-    Swarm.Doc.Keyword
-    Swarm.Doc.Pedagogy
-    Swarm.Doc.Util
     Swarm.TUI.Border
     Swarm.TUI.Controller
     Swarm.TUI.Controller.Util
@@ -757,6 +796,7 @@ library
     swarm:swarm-lang,
     swarm:swarm-scenario,
     swarm:swarm-util,
+    swarm:swarm-doc,
 
   hs-source-dirs: src
   default-language: Haskell2010
@@ -811,15 +851,6 @@ executable swarm-docs
   import: stan-config, common, ghc2021-extensions
   main-is: Main.hs
   other-modules:
-    Swarm.Doc.Gen
-    Swarm.Doc.Schema.Arrangement
-    Swarm.Doc.Schema.Parse
-    Swarm.Doc.Schema.Refined
-    Swarm.Doc.Schema.Render
-    Swarm.Doc.Schema.SchemaType
-    Swarm.Doc.Wiki.Cheatsheet
-    Swarm.Doc.Wiki.Matrix
-    Swarm.Doc.Wiki.Util
 
   build-depends:
     -- Imports shared with the library don't need bounds
