@@ -137,10 +137,10 @@ instantiateRobot maybeMachine i r =
     , _robotLogUpdated = False
     }
 
-(.=?) :: (Ae.KeyValue a, Ae.ToJSON v, Eq v) => Ae.Key -> v -> v -> Maybe a
+(.=?) :: (Ae.KeyValue e a, Ae.ToJSON v, Eq v) => Ae.Key -> v -> v -> Maybe a
 (.=?) n v defaultVal = if defaultVal /= v then Just $ n Ae..= v else Nothing
 
-(.==) :: (Ae.KeyValue a, Ae.ToJSON v) => Ae.Key -> v -> Maybe a
+(.==) :: (Ae.KeyValue e a, Ae.ToJSON v) => Ae.Key -> v -> Maybe a
 (.==) n v = Just $ n Ae..= v
 
 instance Ae.ToJSON Robot where
