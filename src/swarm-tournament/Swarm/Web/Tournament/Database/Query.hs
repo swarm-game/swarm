@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+{-# HLINT ignore "Functor law" #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
