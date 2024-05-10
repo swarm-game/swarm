@@ -67,8 +67,6 @@ world:
     'B': [grass, null, base]
   upperleft: [-97, 17]
   placements:
-    - src: green_jewel
-      offset: [3, -3]
     - src: red_jewel
       offset: [1, -1]
     - src: red_jewel
@@ -77,6 +75,8 @@ world:
       offset: [5, -1]
     - src: red_jewel
       offset: [5, -5]
+    - src: green_jewel
+      offset: [3, -3]
   map: |
     .........
     .........

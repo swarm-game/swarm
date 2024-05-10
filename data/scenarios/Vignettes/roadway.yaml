@@ -89,14 +89,6 @@ world:
           SSSSSS
           SSSSSS
   placements:
-    - src: tunnel
-      offset: [3, -21]
-      orient:
-        up: west
-    - src: tunnel
-      offset: [71, -21]
-      orient:
-        up: east
     - src: road segment
       offset: [6, -22]
       orient:
@@ -161,6 +153,14 @@ world:
       orient:
         up: west
         flip: true
+    - src: tunnel
+      offset: [3, -21]
+      orient:
+        up: west
+    - src: tunnel
+      offset: [71, -21]
+      orient:
+        up: east
   upperleft:
     - -18
     - 30

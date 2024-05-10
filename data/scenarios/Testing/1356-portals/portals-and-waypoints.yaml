@@ -10,6 +10,7 @@ attrs:
   - name: portal_out
     fg: "#00a2ff"
     bg: "#0065ff"
+solution: turn left; move; move; turn left; move; move; move; turn left; move; move; move; move; move;
 entities:
   - name: telepad entrance
     display:
