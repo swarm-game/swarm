@@ -51,7 +51,7 @@ overlaySingleStructure
    where
     placeOnArea overArea =
       offsetLoc (coerce loc)
-        . modifyLoc (reorientLandmark orientation $ getAreaDimensions overArea)
+        . modifyLoc (reorientLandmark orientation $ getGridDimensions overArea)
 
 -- | Overlays all of the "child placements", such that the children encountered later
 -- in the YAML file supersede the earlier ones (dictated by using 'foldl' instead of 'foldr').
@@ -93,30 +93,35 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
 -- * Grid manipulation
 
 overlayGrid ::
-  [[Maybe a]] ->
+  Grid (Maybe a) ->
   Pose ->
-  [[Maybe a]] ->
-  [[Maybe a]]
-overlayGrid inputArea (Pose (Location colOffset rowOffset) orientation) overlayArea =
-  zipWithPad mergeSingleRow inputArea $ paddedOverlayRows overlayArea
- where
-  zipWithPad f a b = zipWith f a $ b <> repeat Nothing
-
-  mergeSingleRow inputRow maybeOverlayRow =
-    zipWithPad (flip (<|>)) inputRow paddedSingleOverlayRow
+  Grid (Maybe a) ->
+  Grid (Maybe a)
+overlayGrid
+  (Grid inputArea)
+  (Pose (Location colOffset rowOffset) orientation)
+  (Grid overlayArea) =
+    Grid $
+      zipWithPad mergeSingleRow inputArea $
+        paddedOverlayRows overlayArea
    where
-    paddedSingleOverlayRow = maybe [] (applyOffset colOffset) maybeOverlayRow
+    zipWithPad f a b = zipWith f a $ b <> repeat Nothing
 
-  affineTransformedOverlay = applyOrientationTransform orientation
+    mergeSingleRow inputRow maybeOverlayRow =
+      zipWithPad (flip (<|>)) inputRow paddedSingleOverlayRow
+     where
+      paddedSingleOverlayRow = maybe [] (applyOffset colOffset) maybeOverlayRow
 
-  paddedOverlayRows = applyOffset (negate rowOffset) . map Just . affineTransformedOverlay
-  applyOffset offsetNum = modifyFront
-   where
-    integralOffset = fromIntegral offsetNum
-    modifyFront =
-      if integralOffset >= 0
-        then (replicate integralOffset Nothing <>)
-        else drop $ abs integralOffset
+    affineTransformedOverlay = applyOrientationTransform orientation
+
+    paddedOverlayRows = applyOffset (negate rowOffset) . map Just . affineTransformedOverlay
+    applyOffset offsetNum = modifyFront
+     where
+      integralOffset = fromIntegral offsetNum
+      modifyFront =
+        if integralOffset >= 0
+          then (replicate integralOffset Nothing <>)
+          else drop $ abs integralOffset
 
 -- * Validation
 
