@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_GHC -fno-warn-unrecognised-pragmas #-}
-{-# OPTIONS_GHC -fno-warn-x-partial #-}
 
 {-# HLINT ignore "Functor law" #-}
 
@@ -211,8 +210,12 @@ getUserId conn userAlias = do
       <$> query conn "SELECT id FROM users WHERE alias = ?;" (Only userAlias)
   maybe insertNew return maybeId
  where
+  -- Avoid GHC warning re: partiality of head
+  queryHead = \case
+    [] -> error "Query result in getUserId should never be empty!"
+    hd : _ -> hd
   insertNew =
-    fmap (UserId . fromOnly . head)
+    fmap (UserId . fromOnly . queryHead)
       $ query
         conn
         "INSERT INTO users (alias) VALUES (?) RETURNING id;"
