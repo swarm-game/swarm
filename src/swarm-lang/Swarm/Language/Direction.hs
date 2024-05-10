@@ -24,7 +24,7 @@ import Data.Aeson.Types hiding (Key)
 import Data.Char qualified as C (toLower)
 import Data.Data (Data)
 import Data.Hashable (Hashable)
-import Data.List qualified as L (tail)
+import Data.List qualified as L (drop)
 import Data.Text hiding (filter, length, map)
 import GHC.Generics (Generic)
 import Swarm.Util qualified as Util
@@ -50,7 +50,7 @@ data AbsoluteDir = DEast | DNorth | DWest | DSouth
   deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, Enum, Bounded)
 
 directionJsonModifier :: String -> String
-directionJsonModifier = map C.toLower . L.tail
+directionJsonModifier = map C.toLower . L.drop 1
 
 data CoordinateOrientation
   = Latitudinal
