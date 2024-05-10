@@ -18,7 +18,7 @@ queue_rules:
             - check-success=Normalize cabal
             - -files~=\.cabal$
           - or:
-            - check-success=Run HLint
+            - check-success=HLint
             - -files~=\.hs$
           - check-success=Haskell-CI - Linux - ghc-9.8.2
           - check-success=Haskell-CI - Linux - ghc-9.6.5
@@ -54,7 +54,7 @@ pull_request_rules:
         - check-success=Normalize cabal
         - -files~=\.cabal$
       - or:
-        - check-success=Run HLint
+        - check-success=HLint
         - -files~=\.hs$
       - check-success=Haskell-CI - Linux - ghc-9.8.2
       - check-success=Haskell-CI - Linux - ghc-9.6.5

@@ -4,6 +4,7 @@ on:
   - pull_request
 jobs:
   hlint:
+    name: HLint
     runs-on: ubuntu-latest
 
     steps:
