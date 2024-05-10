@@ -426,12 +426,12 @@ library swarm-web
     witch,
 
   build-depends:
-    swarm:swarm-util,
+    swarm:swarm-doc,
+    swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,
-    swarm:swarm-engine,
     swarm:swarm-tui,
-    swarm:swarm-doc,
+    swarm:swarm-util,
 
   hs-source-dirs: src/swarm-web
   default-language: Haskell2010
@@ -578,10 +578,10 @@ library swarm-doc
     vector >=0.12 && <0.14,
 
   build-depends:
-    swarm:swarm-util,
+    swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,
-    swarm:swarm-engine,
+    swarm:swarm-util,
 
   hs-source-dirs: src/swarm-doc
   default-language: Haskell2010
@@ -696,11 +696,11 @@ executable swarm
     optparse-applicative >=0.16 && <0.19,
     prettyprinter,
     servant >=0.19 && <0.21,
-    swarm:swarm-tui,
-    swarm:swarm-lang,
-    swarm:swarm-util,
-    swarm:swarm-scenario,
     swarm:swarm-engine,
+    swarm:swarm-lang,
+    swarm:swarm-scenario,
+    swarm:swarm-tui,
+    swarm:swarm-util,
     swarm:swarm-web,
     terminal-size >=0.3 && <1.0,
     text,
@@ -729,7 +729,6 @@ executable swarm-docs
   import: stan-config, common, ghc2021-extensions
   main-is: Main.hs
   other-modules:
-
   build-depends:
     -- Imports shared with the library don't need bounds
     base,
@@ -802,10 +801,10 @@ test-suite swarm-unit
     witch,
 
   build-depends:
-    swarm:swarm-tui,
     swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,
+    swarm:swarm-tui,
     swarm:swarm-util,
 
   hs-source-dirs: test/unit
