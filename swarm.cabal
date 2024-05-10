@@ -249,7 +249,7 @@ library swarm-scenario
   build-depends:
     AhoCorasick >=0.0.4 && <0.0.5,
     JuicyPixels >=3.3 && <3.4,
-    aeson >= 2.2 && <2.3,
+    aeson >=2.2 && <2.3,
     array >=0.5.4 && <0.6,
     base >=4.14 && <4.20,
     boolexpr >=0.2 && <0.3,
