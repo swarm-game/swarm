@@ -429,6 +429,7 @@ library swarm-web
     swarm,
     swarm:swarm-lang,
     swarm:swarm-util,
+    swarm:swarm-doc,
 
   hs-source-dirs: src/swarm-web
   default-language: Haskell2010
@@ -559,12 +560,20 @@ library swarm-doc
     aeson >=2.2 && <2.3,
     base >=4.14 && <4.20,
     containers >=0.6.2 && <0.8,
+    directory >=1.3 && <1.4,
+    dotgen >=0.4 && <0.5,
+    extra >=1.7 && <1.8,
     filepath >=1.4 && <1.5,
     fused-effects >=1.1.1.1 && <1.2,
     lens >=4.19 && <5.4,
+    mtl >=2.2.2 && <2.4,
     pandoc >=3.0 && <3.2,
+    pandoc-types >=1.23 && <1.24,
+    scientific >=0.3.6 && <0.3.8,
     servant-docs >=0.12 && <0.14,
     text >=1.2.4 && <2.2,
+    transformers >=0.5 && <0.7,
+    vector >=0.12 && <0.14,
 
   build-depends:
     swarm:swarm-util,
@@ -796,7 +805,6 @@ library
     swarm:swarm-lang,
     swarm:swarm-scenario,
     swarm:swarm-util,
-    swarm:swarm-doc,
 
   hs-source-dirs: src
   default-language: Haskell2010
@@ -854,26 +862,10 @@ executable swarm-docs
 
   build-depends:
     -- Imports shared with the library don't need bounds
-    aeson,
     base,
-    containers,
-    directory,
-    dotgen >=0.4 && <0.5,
-    extra,
-    filepath,
-    fused-effects,
-    lens,
-    mtl,
     optparse-applicative >=0.16 && <0.19,
-    pandoc >=3.0 && <3.2,
-    pandoc-types >=1.23 && <1.24,
-    scientific >=0.3.6 && <0.3.8,
-    swarm,
-    swarm:swarm-lang,
-    swarm:swarm-web,
+    swarm:swarm-doc,
     text,
-    transformers,
-    vector,
 
   hs-source-dirs: app/doc
   default-language: Haskell2010

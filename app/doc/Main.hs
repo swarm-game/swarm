@@ -20,7 +20,7 @@ cliParser =
       , command "keys" (info (pure SpecialKeyNames) $ progDesc "Output list of recognized special key names")
       , command "cheatsheet" (info (CheatSheet <$> address <*> cheatsheet <**> helper) $ progDesc "Output nice Wiki tables")
       , command "pedagogy" (info (pure TutorialCoverage) $ progDesc "Output tutorial coverage")
-      , command "endpoints" (info (pure WebAPIEndpoints) $ progDesc "Generate markdown Web API documentation.")
+--      , command "endpoints" (info (pure WebAPIEndpoints) $ progDesc "Generate markdown Web API documentation.")
       ]
  where
   editor :: Parser (Maybe EditorType)
