@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_GHC -fno-warn-unrecognised-pragmas #-}
+{-# OPTIONS_GHC -fno-warn-x-partial #-}
 
 {-# HLINT ignore "Functor law" #-}
 
