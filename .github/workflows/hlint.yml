@@ -1,15 +1,15 @@
 name: HLint
 on:
-  - push:
-      paths:
-        - '**.hs'
-      branches:
-        - main
-  - pull_request
-      paths:
-        - '**.hs'
-      branches:
-        - main
+  push:
+    paths:
+      - '**.hs'
+    branches:
+      - main
+  pull_request:
+    paths:
+      - '**.hs'
+    branches:
+      - main
 jobs:
   hlint:
     name: HLint
