@@ -15,7 +15,7 @@ import Control.Arrow (left, (&&&))
 import Control.Monad (when)
 import Data.Coerce
 import Data.Either.Extra (maybeToEither)
-import Data.Foldable (foldrM)
+import Data.Foldable (foldlM)
 import Data.Map qualified as M
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -53,8 +53,8 @@ overlaySingleStructure
       offsetLoc (coerce loc)
         . modifyLoc (reorientLandmark orientation $ getAreaDimensions overArea)
 
--- | Overlays all of the "child placements", such that the children encountered earlier
--- in the YAML file supersede the later ones (due to use of 'foldr' instead of 'foldl').
+-- | Overlays all of the "child placements", such that the children encountered later
+-- in the YAML file supersede the earlier ones (dictated by using 'foldl' instead of 'foldr').
 mergeStructures ::
   M.Map StructureName (NamedStructure (Maybe a)) ->
   Parentage Placement ->
@@ -77,8 +77,8 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
         map wrapPlacement $
           filter (\(Placed _ ns) -> isRecognizable ns) overlays
 
-  foldrM
-    (overlaySingleStructure structureMap)
+  foldlM
+    (flip $ overlaySingleStructure structureMap)
     (MergedStructure origArea wrappedOverlays originatedWaypoints)
     overlays
  where
