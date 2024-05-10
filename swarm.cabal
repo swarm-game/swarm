@@ -806,6 +806,7 @@ test-suite swarm-unit
     swarm:swarm-scenario,
     swarm:swarm-tui,
     swarm:swarm-util,
+    swarm:swarm-doc,
 
   hs-source-dirs: test/unit
   default-language: Haskell2010
@@ -829,7 +830,13 @@ test-suite swarm-integration
     witch,
     yaml,
 
-  build-depends: swarm
+  build-depends:
+    swarm:swarm-engine,
+    swarm:swarm-util,
+    swarm:swarm-tui,
+    swarm:swarm-lang,
+    swarm:swarm-scenario,
+
   hs-source-dirs: test/integration
   default-language: Haskell2010
   ghc-options: -threaded
