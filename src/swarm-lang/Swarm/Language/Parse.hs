@@ -12,8 +12,6 @@
 -- 'Swarm.Language.Pipeline.processTerm' instead, which parses,
 -- typechecks, elaborates, and capability checks a term all at once.
 module Swarm.Language.Parse (
-  reservedWords,
-  sc,
   parsePolytype,
   parseType,
   parseTerm,
@@ -21,8 +19,6 @@ module Swarm.Language.Parse (
   unOps,
 
   -- * Utility functions
-  runParser,
-  runParserTH,
   readTerm,
   readTerm',
   showShortError,

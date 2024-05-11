@@ -92,7 +92,7 @@ import Swarm.Language.Capability (Capability (CGod, CMake), constCaps)
 import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
 import Swarm.Language.Module
-import Swarm.Language.Parse (reservedWords)
+import Swarm.Language.Parser.Lex (reservedWords)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty

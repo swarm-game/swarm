@@ -7,7 +7,9 @@ module Swarm.Language.Pipeline.QQ (tmQ) where
 import Data.Generics
 import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
-import Swarm.Language.Parse
+import Swarm.Language.Parse (parseTerm)
+import Swarm.Language.Parser.Core (runParserTH)
+import Swarm.Language.Parser.Lex (sc)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax
