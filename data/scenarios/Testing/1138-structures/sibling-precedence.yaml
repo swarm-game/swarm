@@ -68,11 +68,11 @@ world:
           xx
           xx
   placements:
-    - src: tiny rectangle
-    - src: small rectangle
-    - src: medium rectangle
-    - src: big rectangle
     - src: huge rectangle
+    - src: big rectangle
+    - src: medium rectangle
+    - src: small rectangle
+    - src: tiny rectangle
   map: |
     ............
     ............
