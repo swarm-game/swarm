@@ -10,7 +10,7 @@ module Swarm.Web.Tournament.Type where
 import Data.Aeson
 import Data.ByteString.Lazy qualified as LBS
 import Data.Text qualified as T
-import Database.PostgreSQL.Simple.ToField
+import Database.SQLite.Simple.ToField
 import GHC.Generics (Generic)
 import Servant
 import Servant.Docs (ToCapture)

@@ -6,8 +6,7 @@ cd $(git rev-parse --show-toplevel)
 
 GIT_HASH=$(git rev-parse HEAD)
 
-stack build --fast swarm:swarm-host-tournament && \
-  stack exec swarm-host-tournament -- \
+cabal run -j -O0 swarm:swarm-host-tournament -- \
     --native-dev \
     --port 8080 \
     --version $GIT_HASH \

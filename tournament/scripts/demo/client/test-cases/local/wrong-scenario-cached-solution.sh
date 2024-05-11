@@ -5,9 +5,11 @@
 
 cd $(git rev-parse --show-toplevel)
 
-tournament/scripts/demo/client/test-cases/local/good-submit.sh
+HOST=${1:-localhost:8080}
+
+tournament/scripts/demo/client/test-cases/local/good-submit.sh $HOST
 
 tournament/scripts/demo/client/submit.sh \
-    localhost:8008 \
+    $HOST \
     data/scenarios/Challenges/dimsum.yaml \
     data/scenarios/Challenges/_arbitrage/solution.sw

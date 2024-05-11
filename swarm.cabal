@@ -455,7 +455,6 @@ library swarm-tournament
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm
   build-depends:
-    MissingH,
     SHA,
     aeson,
     base,
@@ -467,11 +466,10 @@ library swarm-tournament
     http-types,
     lens,
     mtl,
-    postgresql-simple >=0.7 && <0.7.1,
-    process,
     servant-docs,
     servant-multipart,
     servant-server >=0.19 && <0.21,
+    sqlite-simple >=0.4.19.0 && <0.4.20,
     text,
     time,
     transformers,
@@ -750,7 +748,6 @@ executable swarm-host-tournament
     base,
     optparse-applicative >=0.16 && <0.19,
     transformers,
-    unix,
     warp,
 
   build-depends:
