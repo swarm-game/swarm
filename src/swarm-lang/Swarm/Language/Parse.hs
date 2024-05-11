@@ -22,7 +22,6 @@ module Swarm.Language.Parse (
   showShortError,
   showErrorPos,
   getLocRange,
-  unTuple,
 ) where
 
 import Control.Lens (view, (^.))
