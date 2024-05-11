@@ -369,7 +369,7 @@ library swarm-engine
     http-types >=0.12 && <0.13,
     lens >=4.19 && <5.4,
     linear >=1.21.6 && <1.24,
-    megaparsec >= 9.6 && < 9.7,
+    megaparsec >=9.6 && <9.7,
     mtl >=2.2.2 && <2.4,
     nonempty-containers >=0.3.4 && <0.3.5,
     prettyprinter >=1.7.0 && <1.8,
