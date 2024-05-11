@@ -84,8 +84,10 @@ data Antiquoting = AllowAntiquoting | DisallowAntiquoting
 
 data CommentState = CS
   { _freshLine :: Bool
-  -- ^ Are we currently on a (so far) blank line, i.e. have there
-  --   been no nontrivial tokens since the most recent newline?
+  -- ^ Are we currently on a (so far) blank line, i.e. have there been
+  --   no nontrivial tokens since the most recent newline?  This field
+  --   is updated every time we parse a lexeme or symbol (set to
+  --   false), or a newline (set to true).
   , _comments :: Seq Comment
   -- ^ The actual sequence of comments, in the order they were encountered
   }
@@ -130,6 +132,9 @@ reservedWords =
 
 -- Approach for preserving comments taken from https://www.reddit.com/r/haskell/comments/ni4gpm/comment/gz0ipmp/
 
+-- | If we see a comment starting now, is it the first non-whitespace
+--   thing on the current line so far, or were there other
+--   non-whitespace tokens previously?
 getCommentSituation :: Parser CommentSituation
 getCommentSituation = do
   fl <- use freshLine
@@ -162,7 +167,7 @@ sc =
   -- end-of-line specially.
   skipMany . choice . map hidden $
     [ hspace1
-    , eol *> (freshLine .= True)
+    , eol *> (freshLine .= True) -- If we see a newline, reset freshLine to True.
     , lineComment "//"
     , blockComment "/*" "*/"
     ]
@@ -171,6 +176,9 @@ sc =
 --   assumes no leading whitespace and consumes all trailing
 --   whitespace.  Concretely, we achieve this by wrapping every token
 --   parser using 'lexeme'.
+--
+--   Also sets freshLine to False every time we see a non-whitespace
+--   token.
 lexeme :: Parser a -> Parser a
 lexeme p = (freshLine .= False) *> L.lexeme sc p
 
