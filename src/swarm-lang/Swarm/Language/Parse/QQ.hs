@@ -7,9 +7,9 @@ module Swarm.Language.Parse.QQ (tyQ) where
 import Data.Generics
 import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
-import Swarm.Language.Parse (parsePolytype)
 import Swarm.Language.Parser.Core (runParserTH)
 import Swarm.Language.Parser.Lex (sc)
+import Swarm.Language.Parser.Types (parsePolytype)
 import Swarm.Util (liftText)
 import Swarm.Util.Parse (fully)
 
