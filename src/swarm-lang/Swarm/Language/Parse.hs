@@ -31,8 +31,8 @@ module Swarm.Language.Parse (
   unTuple,
 ) where
 
-import Control.Lens (use, view, (%=), (.=), (^.))
-import Control.Monad (guard, join, void)
+import Control.Lens (view, (^.))
+import Control.Monad (guard, join)
 import Control.Monad.Combinators.Expr
 import Control.Monad.Reader (ask)
 import Data.Bifunctor
@@ -43,11 +43,9 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Sequence (Seq)
-import Data.Sequence qualified as Seq
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
-import Data.String (fromString)
-import Data.Text (Text, index, toLower)
+import Data.Text (Text, index)
 import Data.Text qualified as T
 import Swarm.Language.Parser.Core
 import Swarm.Language.Parser.Lex
@@ -57,7 +55,6 @@ import Swarm.Util (failT, findDup, squote)
 import Swarm.Util.Parse (fullyMaybe)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
-import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Megaparsec.Pos qualified as Pos
 import Witch
 
@@ -141,18 +138,6 @@ parseConst = asum (map alternative consts) <?> "built-in user function"
  where
   consts = filter isUserFunc allConst
   alternative c = c <$ reserved (syntax $ constInfo c)
-
--- | Add 'SrcLoc' to a parser
-parseLocG :: Parser a -> Parser (SrcLoc, a)
-parseLocG pa = do
-  start <- getOffset
-  a <- pa
-  end <- getOffset
-  pure (SrcLoc start end, a)
-
--- | Add 'SrcLoc' to a 'Term' parser
-parseLoc :: Parser Term -> Parser Syntax
-parseLoc pterm = uncurry Syntax <$> parseLocG pterm
 
 -- | Parse an atomic term, optionally trailed by record projections like @t.x.y.z@.
 --   Record projection binds more tightly than function application.

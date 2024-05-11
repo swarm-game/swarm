@@ -1,46 +1,71 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Token lexing and comment preservation for the Swarm language.
 module Swarm.Language.Parser.Lex (
-  reservedWords,
+  -- * Parsing with source locations
+  parseLoc,
+  parseLocG,
+
+  -- * Whitespace + comments
+  getCommentSituation,
+  lineComment,
+  blockComment,
   sc,
+
+  -- * Tokens
+
+  -- ** Lexemes
   lexeme,
+
+  -- ** Specific token types
   symbol,
+  reservedWords,
   reserved,
   identifier,
   locIdentifier,
   textLiteral,
   integer,
+
+  -- ** Combinators
   braces,
   parens,
+  brackets,
 ) where
 
--- | List of reserved words that cannot be used as variable names.
-reservedWords :: [Text]
-reservedWords =
-  map (syntax . constInfo) (filter isUserFunc allConst)
-    ++ map directionSyntax allDirs
-    ++ [ "void"
-       , "unit"
-       , "int"
-       , "text"
-       , "dir"
-       , "bool"
-       , "actor"
-       , "key"
-       , "cmd"
-       , "delay"
-       , "let"
-       , "def"
-       , "end"
-       , "in"
-       , "true"
-       , "false"
-       , "forall"
-       , "require"
-       , "requirements"
-       ]
+import Control.Lens (use, (%=), (.=))
+import Control.Monad (void)
+import Data.Sequence qualified as Seq
+import Data.Text (Text, toLower)
+import Swarm.Language.Parser.Core
+import Swarm.Language.Syntax
+import Swarm.Util (failT, squote)
+import Text.Megaparsec
+import Text.Megaparsec.Char
+import Text.Megaparsec.Char.Lexer qualified as L
+import Witch (into)
+
+------------------------------------------------------------
+-- Parsing with source locations
+
+-- | Add 'SrcLoc' to a parser
+parseLocG :: Parser a -> Parser (SrcLoc, a)
+parseLocG pa = do
+  start <- getOffset
+  a <- pa
+  end <- getOffset
+  pure (SrcLoc start end, a)
+
+-- | Add 'SrcLoc' to a 'Term' parser
+parseLoc :: Parser Term -> Parser Syntax
+parseLoc pterm = uncurry Syntax <$> parseLocG pterm
+
+------------------------------------------------------------
+-- Whitespace
 
 -- Approach for preserving comments taken from https://www.reddit.com/r/haskell/comments/ni4gpm/comment/gz0ipmp/
 
@@ -69,7 +94,7 @@ blockComment start end = do
   (loc, t) <- parseLocG $ do
     void $ string start
     manyTill anySingle (string end)
-  comments %= (Seq.|> Comment loc BlockComment cs (fromString t))
+  comments %= (Seq.|> Comment loc BlockComment cs (into @Text t))
 
 -- | Skip spaces and comments.
 sc :: Parser ()
@@ -84,6 +109,9 @@ sc =
     , blockComment "/*" "*/"
     ]
 
+------------------------------------------------------------
+-- Tokens
+
 -- | In general, we follow the convention that every token parser
 --   assumes no leading whitespace and consumes all trailing
 --   whitespace.  Concretely, we achieve this by wrapping every token
@@ -97,6 +125,32 @@ lexeme p = (freshLine .= False) *> L.lexeme sc p
 -- | A lexeme consisting of a literal string.
 symbol :: Text -> Parser Text
 symbol s = (freshLine .= False) *> L.symbol sc s
+
+-- | List of reserved words that cannot be used as variable names.
+reservedWords :: [Text]
+reservedWords =
+  map (syntax . constInfo) (filter isUserFunc allConst)
+    ++ map directionSyntax allDirs
+    ++ [ "void"
+       , "unit"
+       , "int"
+       , "text"
+       , "dir"
+       , "bool"
+       , "actor"
+       , "key"
+       , "cmd"
+       , "delay"
+       , "let"
+       , "def"
+       , "end"
+       , "in"
+       , "true"
+       , "false"
+       , "forall"
+       , "require"
+       , "requirements"
+       ]
 
 -- | Parse a case-insensitive reserved word, making sure it is not a
 --   prefix of a longer variable name, and allowing the parser to
@@ -132,12 +186,18 @@ integer =
   label "integer literal" $
     lexeme $ do
       n <-
-        string "0b" *> L.binary
-          <|> string "0o" *> L.octal
-          <|> string "0x" *> L.hexadecimal
+        string "0b"
+          *> L.binary
+          <|> string "0o"
+            *> L.octal
+          <|> string "0x"
+            *> L.hexadecimal
           <|> L.decimal
       notFollowedBy alphaNumChar
       return n
+
+------------------------------------------------------------
+-- Combinators
 
 braces :: Parser a -> Parser a
 braces = between (symbol "{") (symbol "}")
@@ -147,4 +207,3 @@ parens = between (symbol "(") (symbol ")")
 
 brackets :: Parser a -> Parser a
 brackets = between (symbol "[") (symbol "]")
-
