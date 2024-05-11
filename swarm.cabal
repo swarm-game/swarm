@@ -831,6 +831,7 @@ test-suite swarm-integration
     yaml,
 
   build-depends:
+    swarm:swarm-doc,
     swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,
