@@ -674,7 +674,7 @@ library swarm-tui
     swarm:swarm-scenario,
     swarm:swarm-util,
 
-  hs-source-dirs: src
+  hs-source-dirs: src/swarm-tui
   default-language: Haskell2010
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
