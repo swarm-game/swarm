@@ -9,6 +9,7 @@ import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
 import Swarm.Language.Parse
 import Swarm.Util (liftText)
+import Swarm.Util.Parse (fully)
 
 ------------------------------------------------------------
 -- Quasiquoters
@@ -35,5 +36,5 @@ quoteTypeExp s = do
         , fst (TH.loc_start loc)
         , snd (TH.loc_start loc)
         )
-  parsed <- runParserTH pos parsePolytype s
+  parsed <- runParserTH pos (fully sc parsePolytype) s
   dataToExpQ (fmap liftText . cast) parsed

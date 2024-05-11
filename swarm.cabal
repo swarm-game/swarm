@@ -130,6 +130,7 @@ library swarm-lang
     Swarm.Language.Module
     Swarm.Language.Parse
     Swarm.Language.Parse.QQ
+    Swarm.Language.Parser.Core
     Swarm.Language.Pipeline
     Swarm.Language.Pipeline.QQ
     Swarm.Language.Pretty

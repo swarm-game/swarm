@@ -13,6 +13,7 @@ import Swarm.Language.Pretty
 import Swarm.Language.Syntax
 import Swarm.Language.Types (Polytype)
 import Swarm.Util (failT, liftText)
+import Swarm.Util.Parse (fully)
 import Witch (from)
 
 -- | A quasiquoter for Swarm language terms, so we can conveniently
@@ -40,7 +41,7 @@ quoteTermExp s = do
         , fst (TH.loc_start loc)
         , snd (TH.loc_start loc)
         )
-  parsed <- runParserTH pos parseTerm s
+  parsed <- runParserTH pos (fully sc parseTerm) s
   case processParsedTerm parsed of
     Left err -> failT [prettyTypeErrText (from s) err]
     Right ptm -> dataToExpQ ((fmap liftText . cast) `extQ` antiTermExp) ptm

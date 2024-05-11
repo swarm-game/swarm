@@ -12,11 +12,8 @@
 -- 'Swarm.Language.Pipeline.processTerm' instead, which parses,
 -- typechecks, elaborates, and capability checks a term all at once.
 module Swarm.Language.Parse (
-  -- * Reserved words
   reservedWords,
-
-  -- * Parsers
-  Parser,
+  sc,
   parsePolytype,
   parseType,
   parseTerm,
@@ -34,15 +31,10 @@ module Swarm.Language.Parse (
   unTuple,
 ) where
 
-import Control.Arrow (right)
-import Control.Lens (makeLenses, use, view, (%=), (.=), (^.))
+import Control.Lens (use, view, (%=), (.=), (^.))
 import Control.Monad (guard, join, void)
 import Control.Monad.Combinators.Expr
-import Control.Monad.Reader (
-  MonadReader (ask),
-  ReaderT (runReaderT),
- )
-import Control.Monad.State (StateT, runStateT)
+import Control.Monad.Reader (ask)
 import Data.Bifunctor
 import Data.Foldable (asum)
 import Data.List (foldl', nub)
@@ -57,49 +49,21 @@ import Data.Set.Lens (setOf)
 import Data.String (fromString)
 import Data.Text (Text, index, toLower)
 import Data.Text qualified as T
-import Data.Void
+import Swarm.Language.Parser.Core
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.Util (failT, findDup, squote)
-import Swarm.Util.Parse (fully, fullyMaybe)
+import Swarm.Util.Parse (fullyMaybe)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Megaparsec.Pos qualified as Pos
-import Text.Megaparsec.State (initialPosState, initialState)
 import Witch
 
 -- Imports for doctests (cabal-docspec needs this)
 
 -- $setup
 -- >>> import qualified Data.Map.Strict as Map
-
--- | When parsing a term using a quasiquoter (i.e. something in the
---   Swarm source code that will be parsed at compile time), we want
---   to allow antiquoting, i.e. writing something like $x to refer to
---   an existing Haskell variable.  But when parsing a term entered by
---   the user at the REPL, we do not want to allow this syntax.
-data Antiquoting = AllowAntiquoting | DisallowAntiquoting
-  deriving (Eq, Ord, Show)
-
-data CommentState = CS
-  { _freshLine :: Bool
-  -- ^ Are we currently on a (so far) blank line, i.e. have there been
-  --   no nontrivial tokens since the most recent newline?  This field
-  --   is updated every time we parse a lexeme or symbol (set to
-  --   false), or a newline (set to true).
-  , _comments :: Seq Comment
-  -- ^ The actual sequence of comments, in the order they were encountered
-  }
-
-makeLenses ''CommentState
-
-initCommentState :: CommentState
-initCommentState = CS {_freshLine = True, _comments = Seq.empty}
-
-type Parser = ReaderT Antiquoting (StateT CommentState (Parsec Void Text))
-
-type ParserError = ParseErrorBundle Text Void
 
 --------------------------------------------------
 -- Lexer
@@ -531,58 +495,18 @@ operatorSymbol = T.singleton <$> oneOf opChars
 --------------------------------------------------
 -- Utilities
 
--- | Run a parser on some input text, returning either the result +
---   all collected comments, or a pretty-printed parse error message.
-runParser :: Parser a -> Text -> Either Text (a, Seq Comment)
-runParser p t =
-  first (from . errorBundlePretty)
-    . (\pt -> parse pt "" t)
-    . fmap (second (^. comments))
-    . flip runStateT initCommentState
-    . flip runReaderT DisallowAntiquoting
-    $ p
-
--- | A utility for running a parser in an arbitrary 'MonadFail' (which
---   is going to be the TemplateHaskell 'Language.Haskell.TH.Q' monad --- see
---   "Swarm.Language.Parse.QQ"), with a specified source position.
-runParserTH :: (Monad m, MonadFail m) => (String, Int, Int) -> Parser a -> String -> m a
-runParserTH (file, line, col) p s =
-  let (_, res) =
-        flip runParser' initState
-          . flip runStateT initCommentState
-          . flip runReaderT AllowAntiquoting
-          . fully sc
-          $ p
-   in case res of
-        Left err -> fail $ errorBundlePretty err
-        Right e -> return (fst e)
- where
-  initState :: State Text Void
-  initState =
-    (initialState file (from s))
-      { statePosState =
-          (initialPosState file (from s))
-            { pstateSourcePos = SourcePos file (mkPos line) (mkPos col)
-            }
-      }
-
 -- | Parse some input 'Text' completely as a 'Term', consuming leading
 --   whitespace and ensuring the parsing extends all the way to the
 --   end of the input 'Text'.  Returns either the resulting 'Term' (or
 --   'Nothing' if the input was only whitespace) or a pretty-printed
 --   parse error message.
 readTerm :: Text -> Either Text (Maybe Syntax)
-readTerm = right fst . runParser (fullyMaybe sc parseTerm)
+readTerm = bimap (from . errorBundlePretty) fst . runParser (fullyMaybe sc parseTerm)
 
 -- | A lower-level `readTerm` which returns the megaparsec bundle error
 --   for precise error reporting, as well as the parsed comments.
 readTerm' :: Text -> Either ParserError (Maybe Syntax, Seq Comment)
-readTerm' t =
-  (\pt -> parse pt "" t)
-    . fmap (second (^. comments))
-    . flip runStateT initCommentState
-    . flip runReaderT DisallowAntiquoting
-    $ fullyMaybe sc parseTerm
+readTerm' = runParser (fullyMaybe sc parseTerm)
 
 -- | A utility for converting a ParserError into a one line message:
 --   @<line-nr>: <error-msg>@
