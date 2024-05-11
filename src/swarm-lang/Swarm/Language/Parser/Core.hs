@@ -26,7 +26,7 @@ module Swarm.Language.Parser.Core (
 import Control.Lens (makeLenses, (^.))
 import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.State (StateT, runStateT)
-import Data.Bifunctor (first, second)
+import Data.Bifunctor (second)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
