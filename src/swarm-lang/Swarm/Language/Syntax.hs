@@ -84,6 +84,8 @@ module Swarm.Language.Syntax (
   mkOp,
   mkOp',
   unfoldApps,
+  mkTuple,
+  unTuple,
 
   -- * Erasure
   eraseS,
@@ -1289,6 +1291,20 @@ unfoldApps :: Syntax' ty -> NonEmpty (Syntax' ty)
 unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
   Syntax' _ (SApp s1 s2) _ _ -> (s2, Just s1)
   s -> (s, Nothing)
+
+-- | Create a nested tuple out of a list of syntax nodes.
+mkTuple :: [Syntax] -> Syntax
+mkTuple [] = Syntax NoLoc TUnit -- should never happen
+mkTuple [x] = x
+mkTuple (x : xs) = let r = mkTuple xs in loc x r $ SPair x r
+ where
+  loc a b = Syntax $ (a ^. sLoc) <> (b ^. sLoc)
+
+-- | Decompose a nested tuple into a list of components.
+unTuple :: Syntax' ty -> [Syntax' ty]
+unTuple = \case
+  Syntax' _ (SPair s1 s2) _ _ -> s1 : unTuple s2
+  s -> [s]
 
 --------------------------------------------------
 -- Erasure

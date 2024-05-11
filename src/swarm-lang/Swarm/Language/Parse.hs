@@ -126,18 +126,6 @@ parseTermAtom2 =
     <|> parseLoc (SDelay SimpleDelay <$> braces parseTerm)
     <|> parseLoc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
 
-mkTuple :: [Syntax] -> Syntax
-mkTuple [] = Syntax NoLoc TUnit -- should never happen
-mkTuple [x] = x
-mkTuple (x : xs) = let r = mkTuple xs in loc x r $ SPair x r
- where
-  loc a b = Syntax $ (a ^. sLoc) <> (b ^. sLoc)
-
-unTuple :: Syntax' ty -> [Syntax' ty]
-unTuple = \case
-  Syntax' _ (SPair s1 s2) _ _ -> s1 : unTuple s2
-  s -> [s]
-
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
 sLet :: LocVar -> Maybe Polytype -> Syntax -> Syntax -> Term

@@ -32,7 +32,7 @@ import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.VFS
 import Swarm.Language.Context as Ctx
 import Swarm.Language.Module (Module (..))
-import Swarm.Language.Parse (readTerm', unTuple)
+import Swarm.Language.Parse (readTerm')
 import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
 import Swarm.Language.Pretty (prettyText, prettyTextLine)
 import Swarm.Language.Syntax
