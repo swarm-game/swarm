@@ -44,7 +44,6 @@ import Swarm.Game.World.Typecheck (Some (..), TTerm)
 import Swarm.Language.Key (specialKeyNames)
 import Swarm.Util (both, listEnums)
 import Swarm.Util.Effect (simpleErrorHandle)
-import Swarm.Web (swarmApiMarkdown)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 
@@ -68,8 +67,6 @@ data GenerateDocs where
   CheatSheet :: PageAddress -> Maybe SheetType -> GenerateDocs
   -- | List command introductions by tutorial
   TutorialCoverage :: GenerateDocs
-  -- | Web API endpoints
-  WebAPIEndpoints :: GenerateDocs
   deriving (Eq, Show)
 
 -- | Generate the requested kind of documentation to stdout.
@@ -90,7 +87,6 @@ generateDocs = \case
   SpecialKeyNames -> generateSpecialKeyNames
   CheatSheet address s -> makeWikiPage address s
   TutorialCoverage -> renderTutorialProgression >>= putStrLn . T.unpack
-  WebAPIEndpoints -> putStrLn swarmApiMarkdown
 
 -- ----------------------------------------------------------------------------
 -- GENERATE KEYWORDS: LIST OF WORDS TO BE HIGHLIGHTED
