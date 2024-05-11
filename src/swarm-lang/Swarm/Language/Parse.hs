@@ -28,16 +28,15 @@ module Swarm.Language.Parse (
 ) where
 
 import Control.Lens (view, (^.))
-import Control.Monad (guard, join)
+import Control.Monad (guard)
 import Control.Monad.Combinators.Expr
 import Control.Monad.Reader (ask)
 import Data.Bifunctor
 import Data.Foldable (asum)
 import Data.List (foldl', nub)
 import Data.List.NonEmpty qualified (head)
-import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Data.Sequence (Seq)
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
@@ -45,9 +44,10 @@ import Data.Text (Text, index)
 import Data.Text qualified as T
 import Swarm.Language.Parser.Core
 import Swarm.Language.Parser.Lex
+import Swarm.Language.Parser.Record (parseRecord)
+import Swarm.Language.Parser.Types
 import Swarm.Language.Syntax
 import Swarm.Language.Types
-import Swarm.Util (failT, findDup, squote)
 import Swarm.Util.Parse (fullyMaybe)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
@@ -61,67 +61,6 @@ import Witch
 
 --------------------------------------------------
 -- Parser
-
--- | Parse a Swarm language polytype, which starts with an optional
---   quanitifation (@forall@ followed by one or more variables and a
---   period) followed by a type.  Note that anything accepted by
---   'parseType' is also accepted by 'parsePolytype'.
-parsePolytype :: Parser Polytype
-parsePolytype =
-  join $
-    ( quantify . fromMaybe []
-        <$> optional (reserved "forall" *> some identifier <* symbol ".")
-    )
-      <*> parseType
- where
-  quantify :: [Var] -> Type -> Parser Polytype
-  quantify xs ty
-    -- Iplicitly quantify over free type variables if the user didn't write a forall
-    | null xs = return $ Forall (S.toList free) ty
-    -- Otherwise, require all variables to be explicitly quantified
-    | S.null free = return $ Forall xs ty
-    | otherwise =
-        fail $
-          unlines
-            [ "  Type contains free variable(s): " ++ unwords (map from (S.toList free))
-            , "  Try adding them to the 'forall'."
-            ]
-   where
-    free = tyVars ty `S.difference` S.fromList xs
-
--- | Parse a Swarm language (mono)type.
-parseType :: Parser Type
-parseType = makeExprParser parseTypeAtom table
- where
-  table =
-    [ [InfixR ((:*:) <$ symbol "*")]
-    , [InfixR ((:+:) <$ symbol "+")]
-    , [InfixR ((:->:) <$ symbol "->")]
-    ]
-
-parseTypeAtom :: Parser Type
-parseTypeAtom =
-  TyVoid <$ reserved "void"
-    <|> TyUnit <$ reserved "unit"
-    <|> TyVar <$> identifier
-    <|> TyInt <$ reserved "int"
-    <|> TyText <$ reserved "text"
-    <|> TyDir <$ reserved "dir"
-    <|> TyBool <$ reserved "bool"
-    <|> TyActor <$ reserved "actor"
-    <|> TyKey <$ reserved "key"
-    <|> TyCmd <$> (reserved "cmd" *> parseTypeAtom)
-    <|> TyDelay <$> braces parseType
-    <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))
-    <|> parens parseType
-
-parseRecord :: Parser a -> Parser (Map Var a)
-parseRecord p = (parseBinding `sepBy` symbol ",") >>= fromListUnique
- where
-  parseBinding = (,) <$> identifier <*> p
-  fromListUnique kvs = case findDup (map fst kvs) of
-    Nothing -> return $ Map.fromList kvs
-    Just x -> failT ["duplicate field name", squote x, "in record literal"]
 
 parseDirection :: Parser Direction
 parseDirection = asum (map alternative allDirs) <?> "direction constant"
