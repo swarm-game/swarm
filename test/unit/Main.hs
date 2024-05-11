@@ -36,6 +36,7 @@ import TestLSP (testLSP)
 import TestLanguagePipeline (testLanguagePipeline)
 import TestNotification (testNotification)
 import TestOrdering (testOrdering)
+import TestParse (testParse)
 import TestPedagogy (testPedagogy)
 import TestPretty (testPrettyConst)
 import TestRecipeCoverage (testDeviceRecipeCoverage)
@@ -55,6 +56,7 @@ tests s =
   testGroup
     "Tests"
     [ testLanguagePipeline
+    , testParse
     , testPrettyConst
     , testBoolExpr
     , testCommands
