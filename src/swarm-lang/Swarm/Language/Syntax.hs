@@ -1171,13 +1171,16 @@ data Comment = Comment
 -- Pattern synonyms for untyped terms
 ------------------------------------------------------------
 
+-- | Syntax without type annotations.
 type Syntax = Syntax' ()
 
+-- | Raw parsed syntax, without comments or type annotations.
 pattern Syntax :: SrcLoc -> Term -> Syntax
 pattern Syntax l t = Syntax' l t Nothing ()
 
 {-# COMPLETE Syntax #-}
 
+-- | Untyped syntax with assocated comments.
 pattern CSyntax :: SrcLoc -> Term -> Maybe (Seq Comment) -> Syntax
 pattern CSyntax l t cs = Syntax' l t cs ()
 
@@ -1198,17 +1201,17 @@ pattern STerm t <-
 pattern TRequirements :: Text -> Term -> Term
 pattern TRequirements x t = SRequirements x (STerm t)
 
--- | Match a TPair without syntax
+-- | Match a TPair without annotations.
 pattern TPair :: Term -> Term -> Term
 pattern TPair t1 t2 = SPair (STerm t1) (STerm t2)
 
--- | Match a TLam without syntax
+-- | Match a TLam without annotations.
 pattern TLam :: Var -> Maybe Type -> Term -> Term
 pattern TLam v ty t <- SLam (lvVar -> v) ty (STerm t)
   where
     TLam v ty t = SLam (LV NoLoc v) ty (STerm t)
 
--- | Match a TApp without syntax
+-- | Match a TApp without annotations.
 pattern TApp :: Term -> Term -> Term
 pattern TApp t1 t2 = SApp (STerm t1) (STerm t2)
 
@@ -1218,29 +1221,29 @@ infixl 0 :$:
 pattern (:$:) :: Term -> Syntax -> Term
 pattern (:$:) t1 s2 = SApp (STerm t1) s2
 
--- | Match a TLet without syntax
+-- | Match a TLet without annotations.
 pattern TLet :: Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
 pattern TLet r v pt t1 t2 <- SLet r (lvVar -> v) pt (STerm t1) (STerm t2)
   where
     TLet r v pt t1 t2 = SLet r (LV NoLoc v) pt (STerm t1) (STerm t2)
 
--- | Match a TDef without syntax
+-- | Match a TDef without annotations.
 pattern TDef :: Bool -> Var -> Maybe Polytype -> Term -> Term
 pattern TDef r v pt t <- SDef r (lvVar -> v) pt (STerm t)
   where
     TDef r v pt t = SDef r (LV NoLoc v) pt (STerm t)
 
--- | Match a TBind without syntax
+-- | Match a TBind without annotations.
 pattern TBind :: Maybe Var -> Term -> Term -> Term
 pattern TBind mv t1 t2 <- SBind (fmap lvVar -> mv) (STerm t1) (STerm t2)
   where
     TBind mv t1 t2 = SBind (LV NoLoc <$> mv) (STerm t1) (STerm t2)
 
--- | Match a TDelay without syntax
+-- | Match a TDelay without annotations.
 pattern TDelay :: DelayType -> Term -> Term
 pattern TDelay m t = SDelay m (STerm t)
 
--- | Match a TRcd without syntax
+-- | Match a TRcd without annotations.
 pattern TRcd :: Map Var (Maybe Term) -> Term
 pattern TRcd m <- SRcd ((fmap . fmap) _sTerm -> m)
   where
@@ -1249,15 +1252,16 @@ pattern TRcd m <- SRcd ((fmap . fmap) _sTerm -> m)
 pattern TProj :: Term -> Var -> Term
 pattern TProj t x = SProj (STerm t) x
 
--- | Match a TAnnotate without syntax
+-- | Match a TAnnotate without annotations.
 pattern TAnnotate :: Term -> Polytype -> Term
 pattern TAnnotate t pt = SAnnotate (STerm t) pt
 
--- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
+-- COMPLETE pragma tells GHC using this set of patterns is complete for Term
+
 {-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TRequirements, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TRcd, TProj, TAnnotate #-}
 
--- | Make infix operation (e.g. @2 + 3@) a curried function
---   application (@((+) 2) 3@).
+-- | Make an infix operation (e.g. @2 + 3@) a curried function
+--   application (e.g. @((+) 2) 3@).
 mkOp :: Const -> Syntax -> Syntax -> Syntax
 mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
  where
@@ -1268,7 +1272,7 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
   sop = noLoc (TConst c)
   newTerm = SApp (Syntax l1 $ SApp sop s1) s2
 
--- | Make infix operation, discarding any syntax related location
+-- | Make an infix operation, discarding any location information
 mkOp' :: Const -> Term -> Term -> Term
 mkOp' c t1 = TApp (TApp (TConst c) t1)
 
@@ -1288,8 +1292,8 @@ unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
 --------------------------------------------------
 -- Erasure
 
--- | Erase a 'Syntax' tree annotated with type
---   information to a bare unannotated 'Term'.
+-- | Erase a 'Syntax' tree annotated with type and comment information
+--   to a bare unannotated 'Term'.
 eraseS :: Syntax' ty -> Term
 eraseS (Syntax' _ t _ _) = void t
 
@@ -1343,29 +1347,29 @@ freeVarsS f = go S.empty
 -- | Like 'freeVarsS', but traverse over the 'Term's containing free
 --   variables.  More direct if you don't need to know the types or
 --   source locations of the variables.  Note that if you want to get
---   the list of all `Term`s representing free variables, you can do so via
---   @'toListOf' 'freeVarsT'@.
+--   the list of all `Term`s representing free variables, you can do
+--   so via @'toListOf' 'freeVarsT'@.
 freeVarsT :: forall ty. Traversal' (Syntax' ty) (Term' ty)
 freeVarsT = freeVarsS . sTerm
 
 -- | Traversal over the free variables of a term.  Like 'freeVarsS'
---   and 'freeVarsT', but traverse over the variable names
---   themselves.  Note that if you want to get the set of all free
---   variable names, you can do so via @'Data.Set.Lens.setOf'
---   'freeVarsV'@.
+--   and 'freeVarsT', but traverse over the variable names themselves.
+--   Note that if you want to get the set of all free variable names,
+--   you can do so via @'Data.Set.Lens.setOf' 'freeVarsV'@.
 freeVarsV :: Traversal' (Syntax' ty) Var
 freeVarsV = freeVarsT . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
 
--- | Apply a function to all free occurrences of a particular variable.
+-- | Apply a function to all free occurrences of a particular
+--   variable.
 mapFreeS :: Var -> (Syntax' ty -> Syntax' ty) -> Syntax' ty -> Syntax' ty
 mapFreeS x f = freeVarsS %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ -> t)
 
--- | Transform the AST into a Tree datatype.
--- Useful for pretty-printing (e.g. via "Data.Tree.drawTree").
+-- | Transform the AST into a Tree datatype.  Useful for
+--   pretty-printing (e.g. via "Data.Tree.drawTree").
 asTree :: Data a => Syntax' a -> Tree (Syntax' a)
 asTree = para Node
 
 -- | Each constructor is a assigned a value of 1, plus
--- any recursive syntax it entails.
+--   any recursive syntax it entails.
 measureAstSize :: Data a => Syntax' a -> Int
 measureAstSize = length . universe
