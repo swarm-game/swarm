@@ -1156,9 +1156,10 @@ data CommentType = LineComment | BlockComment
 data CommentSituation = StandaloneComment | SuffixComment
   deriving (Eq, Ord, Read, Show, Enum, Bounded, Generic, Data, ToJSON, FromJSON)
 
--- | A comment is retained as some text + its original 'SrcLoc'.
---   While parsing we record all comments out-of-band, for later
---   re-insertion when formatting code.
+-- | A comment is retained as some text plus metadata (source
+--   location, comment type, + comment situation).  While parsing we
+--   record all comments out-of-band, for later re-insertion into the
+--   AST.
 data Comment = Comment
   { commentSrcLoc :: SrcLoc
   , commentType :: CommentType
@@ -1191,7 +1192,7 @@ makeLenses ''Syntax'
 noLoc :: Term -> Syntax
 noLoc = Syntax mempty
 
--- | Match an untyped term without its 'SrcLoc'.
+-- | Match an untyped term without annotations.
 pattern STerm :: Term -> Syntax
 pattern STerm t <-
   Syntax _ t
