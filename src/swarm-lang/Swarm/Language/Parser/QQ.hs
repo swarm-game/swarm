@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A quasiquoter for Swarm polytypes.
-module Swarm.Language.Parse.QQ (tyQ) where
+module Swarm.Language.Parser.QQ (tyQ) where
 
 import Data.Generics
 import Language.Haskell.TH qualified as TH

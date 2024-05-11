@@ -84,7 +84,7 @@ runParser p t =
 
 -- | A utility for running a parser in an arbitrary 'MonadFail' (which
 --   is going to be the TemplateHaskell 'Language.Haskell.TH.Q' monad --- see
---   "Swarm.Language.Parse.QQ"), with a specified source position.
+--   "Swarm.Language.Parser.QQ"), with a specified source position.
 runParserTH :: (Monad m, MonadFail m) => (String, Int, Int) -> Parser a -> String -> m a
 runParserTH (file, line, col) p s =
   let (_, res) =
