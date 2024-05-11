@@ -24,6 +24,7 @@ module Swarm.Language.Parser.Lex (
 
   -- ** Specific token types
   symbol,
+  operator,
   reservedWords,
   reserved,
   identifier,
@@ -39,15 +40,17 @@ module Swarm.Language.Parser.Lex (
 
 import Control.Lens (use, (%=), (.=))
 import Control.Monad (void)
+import Data.Containers.ListUtils (nubOrd)
 import Data.Sequence qualified as Seq
 import Data.Text (Text, toLower)
+import Data.Text qualified as T
 import Swarm.Language.Parser.Core
 import Swarm.Language.Syntax
 import Swarm.Util (failT, squote)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
-import Witch (into)
+import Witch (from, into)
 
 ------------------------------------------------------------
 -- Parsing with source locations
@@ -125,6 +128,19 @@ lexeme p = (freshLine .= False) *> L.lexeme sc p
 -- | A lexeme consisting of a literal string.
 symbol :: Text -> Parser Text
 symbol s = (freshLine .= False) *> L.symbol sc s
+
+-- | A lexeme consisting of a specific string, not followed by any other
+--   operator character.
+operator :: Text -> Parser Text
+operator n = (lexeme . try) (string n <* notFollowedBy operatorChar)
+
+-- | Recognize a single character which is one of the characters used
+--   by a built-in operator.
+operatorChar :: Parser Text
+operatorChar = T.singleton <$> oneOf opChars
+ where
+  isOp = \case { ConstMFunc {} -> False; _ -> True } . constMeta
+  opChars = nubOrd . concatMap (from . syntax) . filter isOp $ map constInfo allConst
 
 -- | List of reserved words that cannot be used as variable names.
 reservedWords :: [Text]

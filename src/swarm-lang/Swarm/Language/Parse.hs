@@ -30,7 +30,7 @@ import Control.Monad.Combinators.Expr
 import Control.Monad.Reader (ask)
 import Data.Bifunctor
 import Data.Foldable (asum)
-import Data.List (foldl', nub)
+import Data.List (foldl')
 import Data.List.NonEmpty qualified (head)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
@@ -38,7 +38,6 @@ import Data.Sequence (Seq)
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
 import Data.Text (Text, index)
-import Data.Text qualified as T
 import Swarm.Language.Parser.Core
 import Swarm.Language.Parser.Lex
 import Swarm.Language.Parser.Record (parseRecord)
@@ -228,7 +227,7 @@ binOps = Map.unionsWith (++) $ mapMaybe binOpToTuple allConst
     pure $
       Map.singleton
         (fixity ci)
-        [assI (mkOp c <$ operatorString (syntax ci))]
+        [assI (mkOp c <$ operator (syntax ci))]
 
 -- | Precedences and parsers of unary operators (currently only 'Neg').
 --
@@ -246,22 +245,13 @@ unOps = Map.unionsWith (++) $ mapMaybe unOpToTuple allConst
     pure $
       Map.singleton
         (fixity ci)
-        [assI (exprLoc1 $ SApp (noLoc $ TConst c) <$ operatorString (syntax ci))]
+        [assI (exprLoc1 $ SApp (noLoc $ TConst c) <$ operator (syntax ci))]
 
   -- combine location for ExprParser
   exprLoc1 :: Parser (Syntax -> Term) -> Parser (Syntax -> Syntax)
   exprLoc1 p = do
     (l, f) <- parseLocG p
     pure $ \s -> Syntax (l <> s ^. sLoc) $ f s
-
-operatorString :: Text -> Parser Text
-operatorString n = (lexeme . try) (string n <* notFollowedBy operatorSymbol)
-
-operatorSymbol :: Parser Text
-operatorSymbol = T.singleton <$> oneOf opChars
- where
-  isOp = \case { ConstMFunc {} -> False; _ -> True } . constMeta
-  opChars = nub . concatMap (from . syntax) . filter isOp $ map constInfo allConst
 
 --------------------------------------------------
 -- Utilities
