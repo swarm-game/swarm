@@ -1176,10 +1176,12 @@ type Syntax = Syntax' ()
 pattern Syntax :: SrcLoc -> Term -> Syntax
 pattern Syntax l t = Syntax' l t Nothing ()
 
+{-# COMPLETE Syntax #-}
+
 pattern CSyntax :: SrcLoc -> Term -> Maybe (Seq Comment) -> Syntax
 pattern CSyntax l t cs = Syntax' l t cs ()
 
-{-# COMPLETE Syntax #-}
+{-# COMPLETE CSyntax #-}
 
 makeLenses ''Syntax'
 

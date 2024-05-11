@@ -1020,7 +1020,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- Fallback: switch into inference mode, and check that the type we
   -- get is what we expected.
   _ -> do
-    Syntax' l' t' cs actual <- infer s
+    Syntax' l' t' _ actual <- infer s
     Syntax' l' t' cs <$> unify (Just s) (joined expected actual)
 
 -- ~~~~ Note [Checking and inference for record literals]
