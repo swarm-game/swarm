@@ -4,7 +4,7 @@
     "title": "World",
     "description": "Description of the world in the Swarm game",
     "footers": [
-        "doc-fragments/cells.md"
+        "_doc-fragments/cells.md"
     ],
     "type": "object",
     "additionalProperties": false,

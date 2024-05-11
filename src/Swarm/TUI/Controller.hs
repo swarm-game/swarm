@@ -35,9 +35,6 @@ module Swarm.TUI.Controller (
 
   -- ** Info panel
   handleInfoPanelEvent,
-
-  -- ** Utils
-  getTutorials,
 ) where
 
 import Brick hiding (Direction, Location)
@@ -140,9 +137,6 @@ import Prelude hiding (Applicative (..)) -- See Note [liftA2 re-export from Prel
 -- we could get rid of both explicit imports and just get liftA2 and
 -- pure implicitly from Prelude.
 
-tutorialsDirname :: FilePath
-tutorialsDirname = "Tutorials"
-
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleEvent = \case
@@ -225,11 +219,6 @@ handleMainMenuEvent menu = \case
     menu' <- nestEventM' menu (handleListEvent ev)
     uiState . uiMenu .= MainMenu menu'
   _ -> continueWithoutRedraw
-
-getTutorials :: ScenarioCollection -> ScenarioCollection
-getTutorials sc = case M.lookup tutorialsDirname (scMap sc) of
-  Just (SICollection _ c) -> c
-  _ -> error $ "No tutorials exist: " ++ show sc
 
 -- | If we are in a New Game menu, advance the menu to the next item in order.
 --

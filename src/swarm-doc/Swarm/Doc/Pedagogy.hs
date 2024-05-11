@@ -48,6 +48,7 @@ import Swarm.Game.ScenarioInfo (
   ScenarioCollection,
   ScenarioInfoPair,
   flatten,
+  getTutorials,
   loadScenarios,
   scenarioCollectionToList,
   scenarioPath,
@@ -58,7 +59,6 @@ import Swarm.Language.Pipeline (ProcessedTerm (..))
 import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown (docToText, findCode)
 import Swarm.Language.Types (Polytype)
-import Swarm.TUI.Controller (getTutorials)
 import Swarm.Util.Effect (ignoreWarnings, simpleErrorHandle)
 
 -- * Constants

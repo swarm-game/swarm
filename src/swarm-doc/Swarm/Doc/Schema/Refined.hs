@@ -11,6 +11,7 @@ module Swarm.Doc.Schema.Refined where
 import Control.Applicative ((<|>))
 import Data.Aeson
 import Data.List.Extra (replace)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
@@ -47,6 +48,7 @@ data SchemaRaw = SchemaRaw
   , _oneOf :: Maybe [SchemaRaw]
   , _footers :: Maybe [FilePath]
   , _additionalProperties :: Maybe Bool
+  , _enum :: Maybe (NonEmpty Text)
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -59,6 +61,7 @@ extractSchemaType rawSchema =
     <|> getTypeFromItems
     <|> Simple <$> _type rawSchema
     <|> Alternatives . mapMaybe extractSchemaType <$> _oneOf rawSchema
+    <|> EnumList <$> _enum rawSchema
  where
   mkReference = Reference . SchemaIdReference . T.pack . takeBaseName . T.unpack
 
@@ -87,6 +90,7 @@ getSchemaReferences = \case
   Alternatives xs -> concatMap getSchemaReferences xs
   Reference x -> pure x
   ListOf x -> getSchemaReferences x
+  EnumList _ -> []
 
 -- | A subset of all JSON schemas, conforming to internal Swarm conventions.
 --

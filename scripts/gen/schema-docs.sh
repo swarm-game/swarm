@@ -3,4 +3,4 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 cd $SCRIPT_DIR/../..
 
-stack build --fast && stack exec -- swarm generate cheatsheet --scenario
+cabal run -j -O0 -- swarm-docs cheatsheet --scenario

@@ -17,11 +17,5 @@ haddock: True
 -- Swarm has benchmarks so at least build them :)
 benchmarks: True
 
--- Run HLint
-hlint: True
-hlint-job: 9.4.8
-hlint-yaml: .hlint.yaml
-hlint-download-binary: True
-
 raw-project
   flags: +ci

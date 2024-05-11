@@ -1,3 +1,3 @@
 loops:
-  test: cabal test -O0 --test-show-details=direct swarm:swarm-integration swarm:swarm-unit
-  unit: stack test -O0 swarm:swarm-unit
+  test: cabal test -j -O0 --test-show-details=direct swarm:swarm-integration swarm:swarm-unit
+  unit: cabal test -j -O0 --test-show-details=direct swarm:swarm-unit

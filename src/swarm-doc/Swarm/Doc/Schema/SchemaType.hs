@@ -6,6 +6,7 @@ module Swarm.Doc.Schema.SchemaType where
 
 import Control.Applicative ((<|>))
 import Data.Aeson
+import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
 import Data.Text qualified as T
 import System.FilePath (takeBaseName)
@@ -29,6 +30,7 @@ data SchemaType
     Reference SchemaIdReference
   | -- | Members of a list, all of the given schema type
     ListOf SchemaType
+  | EnumList (NonEmpty Text)
   deriving (Eq, Ord, Show)
 
 newtype SchemaIdReference = SchemaIdReference Text

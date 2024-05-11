@@ -1,7 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
 
--- -Wno-orphans is for the Eq/Ord Time instances
-
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -26,6 +24,10 @@ module Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
   scenarioItemName,
   _SISingle,
+
+  -- ** Tutorials
+  tutorialsDirname,
+  getTutorials,
 
   -- * Loading and saving scenarios
   loadScenarios,
@@ -102,6 +104,17 @@ scenarioItemByPath path = ixp ps
     inner si = case si of
       SISingle {} -> pure si
       SICollection n' col -> SICollection n' <$> ixp xs f col
+
+-- | Subdirectory of the scenarios directory where tutorials are stored.
+tutorialsDirname :: FilePath
+tutorialsDirname = "Tutorials"
+
+-- | Extract just the collection of tutorial scenarios from the entire
+--   scenario collection.
+getTutorials :: ScenarioCollection -> ScenarioCollection
+getTutorials sc = case M.lookup tutorialsDirname (scMap sc) of
+  Just (SICollection _ c) -> c
+  _ -> error $ "No tutorials exist: " ++ show sc
 
 -- | Canonicalize a scenario path, making it usable as a unique key.
 normalizeScenarioPath ::

@@ -84,7 +84,6 @@ import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath.Posix (splitDirectories)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
-import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
 import Witch (into)
 
@@ -309,7 +308,7 @@ testScenarioSolutions rs ui =
             , testSolution Default "Testing/201-require/201-require-entities-def"
             , testSolution Default "Testing/201-require/533-reprogram-simple"
             , testSolution Default "Testing/201-require/533-reprogram"
-            , expectFailBecause "Fix #1664" $ testSolution Default "Testing/201-require/1664-require-system-robot-children"
+            , testSolution Default "Testing/201-require/1664-require-system-robot-children"
             ]
         , testSolution Default "Testing/479-atomic-race"
         , testSolution (Sec 5) "Testing/479-atomic"
@@ -366,6 +365,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/1747-volume-command"
         , testSolution Default "Testing/1775-custom-terrain"
         , testSolution Default "Testing/1777-capability-cost"
+        , testSolution Default "Testing/1642-biomes"
         , testGroup
             -- Note that the description of the classic world in
             -- data/worlds/classic.yaml (automatically tested to some

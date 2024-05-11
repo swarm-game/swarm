@@ -18,6 +18,7 @@ import Swarm.Game.Entity
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Scenario.RobotLookup
+import Swarm.Game.Scenario.Topography.Area (Grid (..))
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Navigation.Portal
@@ -88,7 +89,12 @@ instance FromJSONE WorldParseDependencies WorldDescription where
     subWorldName <- liftE (v .:? "name" .!= DefaultRootSubworld)
 
     let initialStructureDefs = scenarioLevelStructureDefs <> rootWorldStructureDefs
-        struc = Structure initialArea initialStructureDefs placementDefs $ waypointDefs <> mapWaypoints
+        struc =
+          Structure
+            (Grid initialArea)
+            initialStructureDefs
+            placementDefs
+            (waypointDefs <> mapWaypoints)
 
     MergedStructure mergedArea staticStructurePlacements unmergedWaypoints <-
       either (fail . T.unpack) return $
@@ -115,7 +121,7 @@ instance FromJSONE WorldParseDependencies WorldDescription where
       <*> liftE (v .:? "scrollable" .!= True)
       <*> pure pal
       <*> pure upperLeft
-      <*> pure (map catMaybes mergedArea) -- Root-level map has no transparent cells.
+      <*> pure (map catMaybes $ unGrid mergedArea) -- Root-level map has no transparent cells.
       <*> pure validatedNavigation
       <*> pure absoluteStructurePlacements
       <*> pure subWorldName
