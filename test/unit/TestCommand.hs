@@ -12,12 +12,12 @@ import Data.Text (Text)
 import Graphics.Vty.Input.Events qualified as V
 import Swarm.Game.Location
 import Swarm.Language.Key
-import Text.Megaparsec (runParser)
 import Swarm.Language.Syntax
 import Test.QuickCheck qualified as QC
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck (testProperty)
+import Text.Megaparsec (runParser)
 import Witch
 
 testCommands :: TestTree
