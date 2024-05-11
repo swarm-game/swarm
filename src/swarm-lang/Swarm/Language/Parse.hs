@@ -555,7 +555,7 @@ runParserTH (file, line, col) p s =
           $ p
    in case res of
         Left err -> fail $ errorBundlePretty err
-        Right e -> return (fst e)
+        Right e -> return $ fst e
  where
   initState :: State Text Void
   initState =
