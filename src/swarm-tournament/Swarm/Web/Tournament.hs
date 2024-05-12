@@ -71,7 +71,6 @@ defaultSolutionTimeout = SolutionTimeout 15
 data AppData = AppData
   { swarmGameGitVersion :: Sha1
   , persistence :: PersistenceLayer
-  , dbConnType :: DbConnType
   }
 
 type TournamentAPI =
@@ -126,10 +125,10 @@ mkApp appData =
     :<|> uploadSolution appData
     :<|> getScenarioMetadata appData
     :<|> downloadRedactedScenario appData
-    :<|> listScenarios appData
+    :<|> listScenarios
 
 uploadScenario :: AppData -> MultipartData Mem -> Handler ScenarioCharacterization
-uploadScenario (AppData gameVersion persistenceLayer _) multipartData =
+uploadScenario (AppData gameVersion persistenceLayer) multipartData =
   Handler . withExceptT toServantError . ExceptT $
     validateScenarioUpload
       args
@@ -144,7 +143,7 @@ uploadScenario (AppData gameVersion persistenceLayer _) multipartData =
         (scenarioStorage persistenceLayer)
 
 uploadSolution :: AppData -> MultipartData Mem -> Handler SolutionFileCharacterization
-uploadSolution (AppData _ persistenceLayer _) multipartData =
+uploadSolution (AppData _ persistenceLayer) multipartData =
   Handler . withExceptT toServantError . ExceptT $
     validateSubmittedSolution
       args
@@ -159,7 +158,7 @@ uploadSolution (AppData _ persistenceLayer _) multipartData =
         (solutionStorage persistenceLayer)
 
 getScenarioMetadata :: AppData -> Sha1 -> Handler ScenarioMetadata
-getScenarioMetadata (AppData _ persistenceLayer _) scenarioSha1 =
+getScenarioMetadata (AppData _ persistenceLayer) scenarioSha1 =
   Handler . withExceptT toServantError $ do
     doc <-
       ExceptT $
@@ -170,7 +169,7 @@ getScenarioMetadata (AppData _ persistenceLayer _) scenarioSha1 =
     return $ view scenarioMetadata s
 
 downloadRedactedScenario :: AppData -> Sha1 -> Handler TL.Text
-downloadRedactedScenario (AppData _ persistenceLayer _) scenarioSha1 = do
+downloadRedactedScenario (AppData _ persistenceLayer) scenarioSha1 = do
   Handler . withExceptT toServantError $ do
     doc <-
       ExceptT $
@@ -183,12 +182,12 @@ downloadRedactedScenario (AppData _ persistenceLayer _) scenarioSha1 = do
       encodeWith defaultEncodeOptions redactedDict
 
 -- NOTE: This is currently the only API endpoint that invokes
--- 'mkConnectInfo' directly
-listScenarios :: AppData -> Handler [TournamentGame]
-listScenarios (AppData _ _ connMode) =
-  Handler $ liftIO $ do
-    connInfo <- mkConnectInfo connMode
-    runReaderT listGames connInfo
+-- 'runReaderT' directly
+listScenarios :: Handler [TournamentGame]
+listScenarios =
+  Handler $
+    liftIO $
+      runReaderT listGames databaseFilename
 
 -- * Web app declaration
 

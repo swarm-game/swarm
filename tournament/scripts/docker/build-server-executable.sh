@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/sh -ex
 
 # Usage:
 # Intended to be invoked in Dockerfile.
@@ -8,9 +8,8 @@
 # Note that we use 'cabal' instead of 'stack' becuase
 # 'stack' fails to compile the 'vty' package within the Amazon Linux docker image.
 
-# For faster development iteration, disable optimizations:
-CABAL_ARGS="--disable-optimization swarm:swarm-host-tournament"
-#CABAL_ARGS="swarm:swarm-host-tournament"
+BUILD_TARGET=swarm:swarm-host-tournament
+CABAL_ARGS="-j -O0 --enable-executable-static $BUILD_TARGET"
 
-cabal build -j $CABAL_ARGS
+cabal build $CABAL_ARGS
 cp $(cabal list-bin $CABAL_ARGS) $1

@@ -50,8 +50,6 @@ main = do
     Tournament.AppData
       { Tournament.swarmGameGitVersion = Sha1 "abcdef"
       , Tournament.persistence = mkPersistenceLayer scenariosMap
-      , -- NOTE: This is not actually used/exercised by the tests:
-        Tournament.dbConnType = LocalDBOverSocket $ Username ""
       }
 
 type LocalFileLookup = NEMap Sha1 FilePathAndContent

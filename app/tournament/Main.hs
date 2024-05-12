@@ -3,15 +3,12 @@
 module Main where
 
 import Control.Monad.Trans.Reader (runReaderT)
-import Data.IORef (newIORef)
 import Data.Maybe (fromMaybe)
 import Network.Wai.Handler.Warp (Port)
 import Options.Applicative
 import Swarm.Game.State (Sha1 (..))
 import Swarm.Web.Tournament
 import Swarm.Web.Tournament.Database.Query
-import System.Environment (lookupEnv)
-import System.Posix.User (getEffectiveUserName)
 
 data AppOpts = AppOpts
   { userWebPort :: Maybe Port
@@ -57,25 +54,14 @@ cliInfo =
         <> fullDesc
     )
 
-deduceConnType :: Bool -> IO DbConnType
-deduceConnType isLocalSocketConn =
-  if isLocalSocketConn
-    then LocalDBOverSocket . Username <$> getEffectiveUserName
-    else do
-      maybeDbPassword <- lookupEnv envarPostgresPasswordKey
-      case maybeDbPassword of
-        Just dbPasswordEnvar -> return $ LocalDBFromDockerOverNetwork $ Password dbPasswordEnvar
-        Nothing -> RemoteDB <$> newIORef Nothing
-
 main :: IO ()
 main = do
   opts <- execParser cliInfo
-  connType <- deduceConnType $ isLocalSocketConnection opts
   webMain
-    (AppData (gameGitVersion opts) (persistenceFunctions connType) connType)
+    (AppData (gameGitVersion opts) persistenceFunctions)
     (fromMaybe defaultPort $ userWebPort opts)
  where
-  persistenceFunctions connMode =
+  persistenceFunctions =
     PersistenceLayer
       { lookupScenarioFileContent = withConnInfo lookupScenarioContent
       , scenarioStorage =
@@ -90,10 +76,5 @@ main = do
             }
       }
    where
-    withConnInfo f x = do
-      -- This gets deferred and re-executed upon each invocation
-      -- of a DB interaction function.
-      -- We need this behavior because the password fetched via API
-      -- expires after 15 min.
-      connInfo <- mkConnectInfo connMode
-      runReaderT (f x) connInfo
+    withConnInfo f x =
+      runReaderT (f x) databaseFilename
