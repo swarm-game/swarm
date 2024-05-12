@@ -19,9 +19,6 @@ module Swarm.Language.Parse (
   -- * Utility functions
   readTerm,
   readTerm',
-  showShortError,
-  showErrorPos,
-  getLocRange,
 ) where
 
 import Control.Lens (view, (^.))
@@ -31,13 +28,13 @@ import Control.Monad.Reader (ask)
 import Data.Bifunctor
 import Data.Foldable (asum)
 import Data.List (foldl')
-import Data.List.NonEmpty qualified (head)
-import Data.Map.Strict qualified as Map
+import Data.Map (Map)
+import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Sequence (Seq)
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
-import Data.Text (Text, index)
+import Data.Text (Text)
 import Swarm.Language.Parser.Core
 import Swarm.Language.Parser.Lex
 import Swarm.Language.Parser.Record (parseRecord)
@@ -47,13 +44,12 @@ import Swarm.Language.Types
 import Swarm.Util.Parse (fullyMaybe)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
-import Text.Megaparsec.Pos qualified as Pos
 import Witch
 
 -- Imports for doctests (cabal-docspec needs this)
 
 -- $setup
--- >>> import qualified Data.Map.Strict as Map
+-- >>> import qualified Data.Map.Strict as M
 
 --------------------------------------------------
 -- Parser
@@ -195,11 +191,11 @@ parseExpr =
 parseExpr' :: Parser Syntax
 parseExpr' = fixDefMissingSemis <$> makeExprParser parseTermAtom table
  where
-  table = snd <$> Map.toDescList tableMap
+  table = snd <$> M.toDescList tableMap
   tableMap =
-    Map.unionsWith
+    M.unionsWith
       (++)
-      [ Map.singleton 9 [InfixL (exprLoc2 $ SApp <$ string "")]
+      [ M.singleton 9 [InfixL (exprLoc2 $ SApp <$ string "")]
       , binOps
       , unOps
       ]
@@ -212,10 +208,10 @@ parseExpr' = fixDefMissingSemis <$> makeExprParser parseTermAtom table
 
 -- | Precedences and parsers of binary operators.
 --
--- >>> Map.map length binOps
+-- >>> M.map length binOps
 -- fromList [(0,1),(2,1),(3,1),(4,6),(6,3),(7,2),(8,1)]
-binOps :: Map.Map Int [Operator Parser Syntax]
-binOps = Map.unionsWith (++) $ mapMaybe binOpToTuple allConst
+binOps :: Map Int [Operator Parser Syntax]
+binOps = M.unionsWith (++) $ mapMaybe binOpToTuple allConst
  where
   binOpToTuple c = do
     let ci = constInfo c
@@ -225,16 +221,16 @@ binOps = Map.unionsWith (++) $ mapMaybe binOpToTuple allConst
           N -> InfixN
           R -> InfixR
     pure $
-      Map.singleton
+      M.singleton
         (fixity ci)
         [assI (mkOp c <$ operator (syntax ci))]
 
 -- | Precedences and parsers of unary operators (currently only 'Neg').
 --
--- >>> Map.map length unOps
+-- >>> M.map length unOps
 -- fromList [(7,1)]
-unOps :: Map.Map Int [Operator Parser Syntax]
-unOps = Map.unionsWith (++) $ mapMaybe unOpToTuple allConst
+unOps :: Map Int [Operator Parser Syntax]
+unOps = M.unionsWith (++) $ mapMaybe unOpToTuple allConst
  where
   unOpToTuple c = do
     let ci = constInfo c
@@ -243,7 +239,7 @@ unOps = Map.unionsWith (++) $ mapMaybe unOpToTuple allConst
           P -> Prefix
           S -> Postfix
     pure $
-      Map.singleton
+      M.singleton
         (fixity ci)
         [assI (exprLoc1 $ SApp (noLoc $ TConst c) <$ operator (syntax ci))]
 
@@ -268,68 +264,3 @@ readTerm = bimap (from . errorBundlePretty) fst . runParser (fullyMaybe sc parse
 --   for precise error reporting, as well as the parsed comments.
 readTerm' :: Text -> Either ParserError (Maybe Syntax, Seq Comment)
 readTerm' = runParser (fullyMaybe sc parseTerm)
-
--- | A utility for converting a ParserError into a one line message:
---   @<line-nr>: <error-msg>@
-showShortError :: ParserError -> String
-showShortError pe = show (line + 1) <> ": " <> from msg
- where
-  ((line, _), _, msg) = showErrorPos pe
-
--- | A utility for converting a ParseError into a range and error message.
-showErrorPos :: ParserError -> ((Int, Int), (Int, Int), Text)
-showErrorPos (ParseErrorBundle errs sourcePS) = (minusOne start, minusOne end, from msg)
- where
-  -- convert megaparsec source pos to starts at 0
-  minusOne (x, y) = (x - 1, y - 1)
-
-  -- get the first error position (ps) and line content (str)
-  err = Data.List.NonEmpty.head errs
-  offset = case err of
-    TrivialError x _ _ -> x
-    FancyError x _ -> x
-  (str, ps) = reachOffset offset sourcePS
-  msg = parseErrorTextPretty err
-
-  -- extract the error starting position
-  start@(line, col) = getLineCol ps
-
-  -- compute the ending position based on the word at starting position
-  wordlength = case break (== ' ') . drop col <$> str of
-    Just (word, _) -> length word + 1
-    _ -> 0
-  end = (line, col + wordlength)
-
-getLineCol :: PosState a -> (Int, Int)
-getLineCol ps = (line, col)
- where
-  line = unPos $ sourceLine $ pstateSourcePos ps
-  col = unPos $ sourceColumn $ pstateSourcePos ps
-
--- | A utility for converting a SrcLoc into a range
-getLocRange :: Text -> (Int, Int) -> ((Int, Int), (Int, Int))
-getLocRange code (locStart, locEnd) = (start, end)
- where
-  start = getLocPos locStart
-  end = getLocPos (dropWhiteSpace locEnd)
-
-  -- remove trailing whitespace that got included by the lexer
-  dropWhiteSpace offset
-    | isWhiteSpace offset = dropWhiteSpace (offset - 1)
-    | otherwise = offset
-  isWhiteSpace offset =
-    -- Megaparsec offset needs to be (-1) to start at 0
-    Data.Text.index code (offset - 1) `elem` [' ', '\n', '\r', '\t']
-
-  -- using megaparsec offset facility, compute the line/col
-  getLocPos offset =
-    let sourcePS =
-          PosState
-            { pstateInput = code
-            , pstateOffset = 0
-            , pstateSourcePos = Pos.initialPos ""
-            , pstateTabWidth = Pos.defaultTabWidth
-            , pstateLinePrefix = ""
-            }
-        (_, ps) = reachOffset offset sourcePS
-     in getLineCol ps

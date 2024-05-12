@@ -27,7 +27,7 @@ import Prettyprinter.Render.Text qualified as RT
 import Swarm.Effect.Unify (UnificationError (..))
 import Swarm.Language.Capability
 import Swarm.Language.Context
-import Swarm.Language.Parse (getLocRange)
+import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types

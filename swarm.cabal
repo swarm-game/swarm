@@ -134,6 +134,7 @@ library swarm-lang
     Swarm.Language.Parser.QQ
     Swarm.Language.Parser.Record
     Swarm.Language.Parser.Types
+    Swarm.Language.Parser.Util
     Swarm.Language.Pipeline
     Swarm.Language.Pipeline.QQ
     Swarm.Language.Pretty
