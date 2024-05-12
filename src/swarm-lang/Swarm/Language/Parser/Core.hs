@@ -87,14 +87,12 @@ runParser p t =
 --   "Swarm.Language.Parser.QQ"), with a specified source position.
 runParserTH :: (Monad m, MonadFail m) => (String, Int, Int) -> Parser a -> String -> m a
 runParserTH (file, line, col) p s =
-  let (_, res) =
-        flip runParser' initState
-          . flip runStateT initCommentState
-          . flip runReaderT AllowAntiquoting
-          $ p
-   in case res of
-        Left err -> fail $ errorBundlePretty err
-        Right e -> return (fst e)
+  either (fail . errorBundlePretty) (return . fst)
+    . snd
+    . flip runParser' initState
+    . flip runStateT initCommentState
+    . flip runReaderT AllowAntiquoting
+    $ p
  where
   initState :: State Text Void
   initState =
