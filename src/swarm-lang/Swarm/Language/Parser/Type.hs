@@ -4,7 +4,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Parsing types in the Swarm language.
-module Swarm.Language.Parser.Types (
+module Swarm.Language.Parser.Type (
   parsePolytype,
   parseType,
 ) where

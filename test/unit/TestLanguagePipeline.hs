@@ -16,7 +16,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Swarm.Language.Module (Module (..))
-import Swarm.Language.Parse (readTerm)
+import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)

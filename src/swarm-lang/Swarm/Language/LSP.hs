@@ -22,7 +22,7 @@ import Language.LSP.Server
 import Language.LSP.VFS (VirtualFile (..), virtualFileText)
 import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.LSP.VarUsage qualified as VU
-import Swarm.Language.Parse (readTerm')
+import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Util (getLocRange, showErrorPos)
 import Swarm.Language.Pipeline (processParsedTerm')
 import Swarm.Language.Pretty (prettyText)

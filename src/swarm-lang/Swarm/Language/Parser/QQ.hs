@@ -9,7 +9,7 @@ import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
 import Swarm.Language.Parser.Core (runParserTH)
 import Swarm.Language.Parser.Lex (sc)
-import Swarm.Language.Parser.Types (parsePolytype)
+import Swarm.Language.Parser.Type (parsePolytype)
 import Swarm.Util (liftText)
 import Swarm.Util.Parse (fully)
 
