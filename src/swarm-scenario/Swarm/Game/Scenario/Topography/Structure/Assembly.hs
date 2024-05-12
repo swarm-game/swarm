@@ -51,9 +51,10 @@ overlaySingleStructure
 
     return $ MergedStructure mergedArea mergedPlacements mergedWaypoints
    where
-    mergeFunc = if shouldTruncate
-      then overlayGridTruncated
-      else overlayGridExpanded
+    mergeFunc =
+      if shouldTruncate
+        then overlayGridTruncated
+        else overlayGridExpanded
 
     placeOnArea (PositionedGrid _ overArea) =
       offsetLoc (coerce loc)
