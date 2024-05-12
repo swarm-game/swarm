@@ -599,6 +599,8 @@ library swarm-doc
 
 library swarm-tui
   import: stan-config, common, ghc2021-extensions
+  visibility: public
+  -- cabal-gild: discover src/swarm-tui
   exposed-modules:
     Swarm.TUI.Border
     Swarm.TUI.Controller
