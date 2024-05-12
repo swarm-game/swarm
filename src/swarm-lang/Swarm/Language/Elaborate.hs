@@ -22,12 +22,12 @@ elaborate =
   -- Wrap all *free* variables in 'Force'.  Free variables must be
   -- referring to a previous definition, which are all wrapped in
   -- 'TDelay'.
-  (freeVarsS %~ \s -> Syntax' (s ^. sLoc) (SApp sForce s) (s ^. sType))
+  (freeVarsS %~ \s -> Syntax' (s ^. sLoc) (SApp sForce s) (s ^. sComments) (s ^. sType))
     -- Now do additional rewriting on all subterms.
     . transform rewrite
  where
   rewrite :: Syntax' Polytype -> Syntax' Polytype
-  rewrite (Syntax' l t ty) = Syntax' l (rewriteTerm t) ty
+  rewrite (Syntax' l t ty cs) = Syntax' l (rewriteTerm t) ty cs
 
   rewriteTerm :: Term' Polytype -> Term' Polytype
   rewriteTerm = \case
@@ -43,14 +43,14 @@ elaborate =
     -- bound by 'def'.
     SDef True x ty t1 -> SDef True x ty (wrapForce (lvVar x) t1)
     -- Rewrite @f $ x@ to @f x@.
-    SApp (Syntax' _ (SApp (Syntax' _ (TConst AppF) _) l) _) r -> SApp l r
+    SApp (Syntax' _ (SApp (Syntax' _ (TConst AppF) _ _) l) _ _) r -> SApp l r
     -- Leave any other subterms alone.
     t -> t
 
 wrapForce :: Var -> Syntax' Polytype -> Syntax' Polytype
-wrapForce x = mapFreeS x (\s@(Syntax' l _ ty) -> Syntax' l (SApp sForce s) ty)
+wrapForce x = mapFreeS x (\s@(Syntax' l _ ty cs) -> Syntax' l (SApp sForce s) ty cs)
 
 -- Note, TyUnit is not the right type, but I don't want to bother
 
 sForce :: Syntax' Polytype
-sForce = Syntax' NoLoc (TConst Force) (Forall ["a"] (TyDelay (TyVar "a") :->: TyVar "a"))
+sForce = Syntax' NoLoc (TConst Force) Nothing (Forall ["a"] (TyDelay (TyVar "a") :->: TyVar "a"))

@@ -26,9 +26,9 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Void
 import GHC.Generics hiding (from)
 import Graphics.Vty.Input.Events qualified as V
-import Swarm.Language.Parse
 import Text.Megaparsec
 import Text.Megaparsec.Char (char, string)
 import Text.Megaparsec.Char.Lexer (decimal)
@@ -47,27 +47,29 @@ deriving instance FromJSON V.Modifier
 deriving instance ToJSON V.Key
 deriving instance ToJSON V.Modifier
 
+type SParser = Parsec Void Text
+
 -- | Smart constructor for 'KeyCombo'.
 mkKeyCombo :: [V.Modifier] -> V.Key -> KeyCombo
 mkKeyCombo mods k = KeyCombo k (sort mods)
 
 -- | Parse a key combo with nothing after it.
-parseKeyComboFull :: Parser KeyCombo
+parseKeyComboFull :: SParser KeyCombo
 parseKeyComboFull = parseKeyCombo <* eof
 
 -- | Parse a key combo like @\"M-C-F5\"@, @\"Down\"@, or @\"C-x\"@.
-parseKeyCombo :: Parser KeyCombo
+parseKeyCombo :: SParser KeyCombo
 parseKeyCombo =
   mkKeyCombo <$> many (try (parseModifier <* char '-')) <*> parseKey
 
-parseModifier :: Parser V.Modifier
+parseModifier :: SParser V.Modifier
 parseModifier =
   V.MShift <$ string "S"
     <|> V.MCtrl <$ string "C"
     <|> V.MMeta <$ string "M"
     <|> V.MAlt <$ string "A"
 
-parseKey :: Parser V.Key
+parseKey :: SParser V.Key
 parseKey =
   -- For an explanation of the 'reverse', see Note [Key names are not prefix-free]
   (asum . map specialKeyParser . reverse . S.toList $ specialKeyNames)
@@ -90,13 +92,13 @@ parseKey =
 -- of key names (which are sorted alphabetically), it guarantees that
 -- longer names will come before names which are prefixes of them.
 
-parseFunctionKey :: Parser V.Key
+parseFunctionKey :: SParser V.Key
 parseFunctionKey = V.KFun <$> try (char 'F' *> decimal)
 
-parseCharKey :: Parser V.Key
+parseCharKey :: SParser V.Key
 parseCharKey = V.KChar <$> anySingle
 
-specialKeyParser :: Text -> Parser V.Key
+specialKeyParser :: Text -> SParser V.Key
 specialKeyParser t = read . ('K' :) . from @Text <$> string t
 
 -- https://stackoverflow.com/questions/51848587/list-constructor-names-using-generics-in-haskell

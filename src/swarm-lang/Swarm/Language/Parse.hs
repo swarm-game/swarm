@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -33,13 +34,15 @@ module Swarm.Language.Parse (
   unTuple,
 ) where
 
-import Control.Lens (view, (^.))
-import Control.Monad (guard, join)
+import Control.Arrow (right)
+import Control.Lens (makeLenses, use, view, (%=), (.=), (^.))
+import Control.Monad (guard, join, void)
 import Control.Monad.Combinators.Expr
 import Control.Monad.Reader (
   MonadReader (ask),
   ReaderT (runReaderT),
  )
+import Control.Monad.State (StateT, runStateT)
 import Data.Bifunctor
 import Data.Foldable (asum)
 import Data.List (foldl', nub)
@@ -47,8 +50,11 @@ import Data.List.NonEmpty qualified (head)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Sequence (Seq)
+import Data.Sequence qualified as Seq
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
+import Data.String (fromString)
 import Data.Text (Text, index, toLower)
 import Data.Text qualified as T
 import Data.Void
@@ -76,7 +82,22 @@ import Witch
 data Antiquoting = AllowAntiquoting | DisallowAntiquoting
   deriving (Eq, Ord, Show)
 
-type Parser = ReaderT Antiquoting (Parsec Void Text)
+data CommentState = CS
+  { _freshLine :: Bool
+  -- ^ Are we currently on a (so far) blank line, i.e. have there been
+  --   no nontrivial tokens since the most recent newline?  This field
+  --   is updated every time we parse a lexeme or symbol (set to
+  --   false), or a newline (set to true).
+  , _comments :: Seq Comment
+  -- ^ The actual sequence of comments, in the order they were encountered
+  }
+
+makeLenses ''CommentState
+
+initCommentState :: CommentState
+initCommentState = CS {_freshLine = True, _comments = Seq.empty}
+
+type Parser = ReaderT Antiquoting (StateT CommentState (Parsec Void Text))
 
 type ParserError = ParseErrorBundle Text Void
 
@@ -109,24 +130,61 @@ reservedWords =
        , "requirements"
        ]
 
+-- Approach for preserving comments taken from https://www.reddit.com/r/haskell/comments/ni4gpm/comment/gz0ipmp/
+
+-- | If we see a comment starting now, is it the first non-whitespace
+--   thing on the current line so far, or were there other
+--   non-whitespace tokens previously?
+getCommentSituation :: Parser CommentSituation
+getCommentSituation = do
+  fl <- use freshLine
+  return $ if fl then StandaloneComment else SuffixComment
+
+-- | Parse a line comment, while appending it out-of-band to the list of
+--   comments saved in the custom state.
+lineComment :: Text -> Parser ()
+lineComment start = do
+  cs <- getCommentSituation
+  (loc, t) <- parseLocG $ do
+    string start *> takeWhileP (Just "character") (/= '\n')
+  comments %= (Seq.|> Comment loc LineComment cs t)
+
+-- | Parse a block comment, while appending it out-of-band to the list of
+--   comments saved in the custom state.
+blockComment :: Text -> Text -> Parser ()
+blockComment start end = do
+  cs <- getCommentSituation
+  (loc, t) <- parseLocG $ do
+    void $ string start
+    manyTill anySingle (string end)
+  comments %= (Seq.|> Comment loc BlockComment cs (fromString t))
+
 -- | Skip spaces and comments.
 sc :: Parser ()
 sc =
-  L.space
-    space1
-    (L.skipLineComment "//")
-    (L.skipBlockComment "/*" "*/")
+  -- Typically we would use L.space here, but we have to inline its
+  -- definition and use our own slight variant, since we need to treat
+  -- end-of-line specially.
+  skipMany . choice . map hidden $
+    [ hspace1
+    , eol *> (freshLine .= True) -- If we see a newline, reset freshLine to True.
+    , lineComment "//"
+    , blockComment "/*" "*/"
+    ]
 
 -- | In general, we follow the convention that every token parser
 --   assumes no leading whitespace and consumes all trailing
 --   whitespace.  Concretely, we achieve this by wrapping every token
 --   parser using 'lexeme'.
+--
+--   Also sets freshLine to False every time we see a non-whitespace
+--   token.
 lexeme :: Parser a -> Parser a
-lexeme = L.lexeme sc
+lexeme p = (freshLine .= False) *> L.lexeme sc p
 
 -- | A lexeme consisting of a literal string.
 symbol :: Text -> Parser Text
-symbol = L.symbol sc
+symbol s = (freshLine .= False) *> L.symbol sc s
 
 -- | Parse a case-insensitive reserved word, making sure it is not a
 --   prefix of a longer variable name, and allowing the parser to
@@ -329,7 +387,7 @@ mkTuple (x : xs) = let r = mkTuple xs in loc x r $ SPair x r
 
 unTuple :: Syntax' ty -> [Syntax' ty]
 unTuple = \case
-  Syntax' _ (SPair s1 s2) _ -> s1 : unTuple s2
+  Syntax' _ (SPair s1 s2) _ _ -> s1 : unTuple s2
   s -> [s]
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
@@ -473,19 +531,31 @@ operatorSymbol = T.singleton <$> oneOf opChars
 --------------------------------------------------
 -- Utilities
 
--- | Run a parser on some input text, returning either the result or a
---   pretty-printed parse error message.
-runParser :: Parser a -> Text -> Either Text a
-runParser p t = first (from . errorBundlePretty) (parse (runReaderT p DisallowAntiquoting) "" t)
+-- | Run a parser on some input text, returning either the result +
+--   all collected comments, or a pretty-printed parse error message.
+runParser :: Parser a -> Text -> Either Text (a, Seq Comment)
+runParser p t =
+  first (from . errorBundlePretty)
+    . (\pt -> parse pt "" t)
+    . fmap (second (^. comments))
+    . flip runStateT initCommentState
+    . flip runReaderT DisallowAntiquoting
+    $ p
 
 -- | A utility for running a parser in an arbitrary 'MonadFail' (which
 --   is going to be the TemplateHaskell 'Language.Haskell.TH.Q' monad --- see
 --   "Swarm.Language.Parse.QQ"), with a specified source position.
 runParserTH :: (Monad m, MonadFail m) => (String, Int, Int) -> Parser a -> String -> m a
 runParserTH (file, line, col) p s =
-  case snd (runParser' (runReaderT (fully sc p) AllowAntiquoting) initState) of
-    Left err -> fail $ errorBundlePretty err
-    Right e -> return e
+  let (_, res) =
+        flip runParser' initState
+          . flip runStateT initCommentState
+          . flip runReaderT AllowAntiquoting
+          . fully sc
+          $ p
+   in case res of
+        Left err -> fail $ errorBundlePretty err
+        Right e -> return $ fst e
  where
   initState :: State Text Void
   initState =
@@ -502,12 +572,17 @@ runParserTH (file, line, col) p s =
 --   'Nothing' if the input was only whitespace) or a pretty-printed
 --   parse error message.
 readTerm :: Text -> Either Text (Maybe Syntax)
-readTerm = runParser (fullyMaybe sc parseTerm)
+readTerm = right fst . runParser (fullyMaybe sc parseTerm)
 
 -- | A lower-level `readTerm` which returns the megaparsec bundle error
---   for precise error reporting.
-readTerm' :: Text -> Either ParserError (Maybe Syntax)
-readTerm' = parse (runReaderT (fullyMaybe sc parseTerm) DisallowAntiquoting) ""
+--   for precise error reporting, as well as the parsed comments.
+readTerm' :: Text -> Either ParserError (Maybe Syntax, Seq Comment)
+readTerm' t =
+  (\pt -> parse pt "" t)
+    . fmap (second (^. comments))
+    . flip runStateT initCommentState
+    . flip runReaderT DisallowAntiquoting
+    $ fullyMaybe sc parseTerm
 
 -- | A utility for converting a ParserError into a one line message:
 --   @<line-nr>: <error-msg>@

@@ -60,14 +60,14 @@ showHoverInfo ::
 showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
   case readTerm' content of
     Left _ -> Nothing
-    Right Nothing -> Nothing
-    Right (Just stx) -> Just $ case processParsedTerm stx of
+    Right (Nothing, _) -> Nothing
+    Right (Just stx, _) -> Just $ case processParsedTerm stx of
       Left _e ->
         let found@(Syntax foundSloc _) = narrowToPosition stx $ fromIntegral absolutePos
             finalPos = posToRange myRope foundSloc
          in (,finalPos) . treeToMarkdown 0 $ explain found
       Right (ProcessedTerm modul _req _reqCtx) ->
-        let found@(Syntax' foundSloc _ _) = narrowToPosition (moduleAST modul) $ fromIntegral absolutePos
+        let found@(Syntax' foundSloc _ _ _) = narrowToPosition (moduleAST modul) $ fromIntegral absolutePos
             finalPos = posToRange myRope foundSloc
          in (,finalPos) . treeToMarkdown 0 $ explain found
  where
@@ -94,7 +94,7 @@ descend ::
   -- | next element to inspect
   Syntax' ty ->
   Maybe (Syntax' ty)
-descend pos s1@(Syntax' l1 _ _) = do
+descend pos s1@(Syntax' l1 _ _ _) = do
   guard $ withinBound pos l1
   return $ narrowToPosition s1 pos
 
@@ -107,12 +107,12 @@ narrowToPosition ::
   -- | absolute offset within the file
   Int ->
   Syntax' ty
-narrowToPosition s0@(Syntax' _ t ty) pos = fromMaybe s0 $ case t of
+narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   SLam lv _ s -> d (locVarToSyntax' lv $ getInnerType ty) <|> d s
   SApp s1 s2 -> d s1 <|> d s2
-  SLet _ lv _ s1@(Syntax' _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
-  SDef _ lv _ s@(Syntax' _ _ lty) -> d (locVarToSyntax' lv lty) <|> d s
-  SBind mlv s1@(Syntax' _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
+  SLet _ lv _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
+  SDef _ lv _ s@(Syntax' _ _ _ lty) -> d (locVarToSyntax' lv lty) <|> d s
+  SBind mlv s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
   SPair s1 s2 -> d s1 <|> d s2
   SDelay _ s -> d s
   SRcd m -> asum . map d . catMaybes . M.elems $ m
@@ -244,8 +244,8 @@ explain trm = case trm ^. sTerm of
 explainFunction :: ExplainableType ty => Syntax' ty -> Tree Text
 explainFunction s =
   case unfoldApps s of
-    (Syntax' _ (TConst Force) _ :| [innerT]) -> explain innerT
-    (Syntax' _ (TConst Force) _ :| f : params) -> explainF f params
+    (Syntax' _ (TConst Force) _ _ :| [innerT]) -> explain innerT
+    (Syntax' _ (TConst Force) _ _ :| f : params) -> explainF f params
     (f :| params) -> explainF f params
  where
   explainF f params =

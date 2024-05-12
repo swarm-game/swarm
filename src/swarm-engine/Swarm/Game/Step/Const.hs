@@ -89,7 +89,6 @@ import Swarm.Game.Value
 import Swarm.Language.Capability
 import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Key (parseKeyComboFull)
-import Swarm.Language.Parse (runParser)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Requirement qualified as R
@@ -100,6 +99,7 @@ import Swarm.Log
 import Swarm.Util hiding (both)
 import Swarm.Util.Effect (throwToMaybe)
 import Swarm.Util.Lens (inherit)
+import Text.Megaparsec (runParser)
 import Witch (From (from), into)
 import Prelude hiding (Applicative (..), lookup)
 
@@ -1001,7 +1001,7 @@ execConst runChildProg c vs s k = do
       [VText msg] -> return $ Up (User msg) s k
       _ -> badConst
     Key -> case vs of
-      [VText ktxt] -> case runParser parseKeyComboFull ktxt of
+      [VText ktxt] -> case runParser parseKeyComboFull "" ktxt of
         Right kc -> return $ Out (VKey kc) s k
         Left _ -> return $ Up (CmdFailed Key (T.unwords ["Unknown key", quote ktxt]) Nothing) s k
       _ -> badConst

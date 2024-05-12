@@ -332,7 +332,7 @@ instance (HasBindings u, Data u) => HasBindings (Term' u) where
   applyBindings = gmapM (mkM (applyBindings @(Syntax' u)))
 
 instance (HasBindings u, Data u) => HasBindings (Syntax' u) where
-  applyBindings (Syntax' l t u) = Syntax' l <$> applyBindings t <*> applyBindings u
+  applyBindings (Syntax' l t cs u) = Syntax' l <$> applyBindings t <*> pure cs <*> applyBindings u
 
 instance HasBindings UModule where
   applyBindings (Module u uctx) = Module <$> applyBindings u <*> applyBindings uctx
@@ -556,7 +556,7 @@ inferModule ::
   ) =>
   Syntax ->
   m UModule
-inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
+inferModule s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- For definitions with no type signature, make up a fresh type
   -- variable for the body, infer the body under an extended context,
   -- and unify the two.  Then generalize the type and return an
@@ -566,7 +566,7 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
     t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
     _ <- unify (Just t1) (joined xTy (t1' ^. sType))
     pty <- generalize (t1' ^. sType)
-    return $ Module (Syntax' l (SDef r x Nothing t1') (UTyCmd UTyUnit)) (singleton (lvVar x) pty)
+    return $ Module (Syntax' l (SDef r x Nothing t1') cs (UTyCmd UTyUnit)) (singleton (lvVar x) pty)
 
   -- If a (poly)type signature has been provided, skolemize it and
   -- check the definition.
@@ -574,7 +574,7 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
     let upty = toU pty
     uty <- skolemize upty
     t1' <- withBinding (lvVar x) upty $ check t1 uty
-    return $ Module (Syntax' l (SDef r x (Just pty) t1') (UTyCmd UTyUnit)) (singleton (lvVar x) upty)
+    return $ Module (Syntax' l (SDef r x (Just pty) t1') cs (UTyCmd UTyUnit)) (singleton (lvVar x) upty)
 
   -- To handle a 'TBind', infer the types of both sides, combining the
   -- returned modules appropriately.  Have to be careful to use the
@@ -624,7 +624,7 @@ inferModule s@(Syntax l t) = addLocToTypeErr l $ case t of
         let ctxX = maybe Ctx.empty ((`Ctx.singleton` genA) . lvVar) mx
         return $
           Module
-            (Syntax' l (SBind mx c1' c2') (c2' ^. sType))
+            (Syntax' l (SBind mx c1' c2') cs (c2' ^. sType))
             (ctx1 `Ctx.union` ctxX `Ctx.union` ctx2)
 
   -- In all other cases, there can no longer be any definitions in the
@@ -648,31 +648,31 @@ infer ::
   ) =>
   Syntax ->
   m (Syntax' UType)
-infer s@(Syntax l t) = addLocToTypeErr l $ case t of
+infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- Primitives, i.e. things for which we immediately know the only
   -- possible correct type, and knowing an expected type would provide
   -- no extra information.
-  TUnit -> return $ Syntax' l TUnit UTyUnit
-  TConst c -> Syntax' l (TConst c) <$> (instantiate . toU $ inferConst c)
-  TDir d -> return $ Syntax' l (TDir d) UTyDir
-  TInt n -> return $ Syntax' l (TInt n) UTyInt
-  TAntiInt x -> return $ Syntax' l (TAntiInt x) UTyInt
-  TText x -> return $ Syntax' l (TText x) UTyText
-  TAntiText x -> return $ Syntax' l (TAntiText x) UTyText
-  TBool b -> return $ Syntax' l (TBool b) UTyBool
-  TRobot r -> return $ Syntax' l (TRobot r) UTyActor
-  TRequireDevice d -> return $ Syntax' l (TRequireDevice d) (UTyCmd UTyUnit)
-  TRequire n d -> return $ Syntax' l (TRequire n d) (UTyCmd UTyUnit)
+  TUnit -> return $ Syntax' l TUnit cs UTyUnit
+  TConst c -> Syntax' l (TConst c) cs <$> (instantiate . toU $ inferConst c)
+  TDir d -> return $ Syntax' l (TDir d) cs UTyDir
+  TInt n -> return $ Syntax' l (TInt n) cs UTyInt
+  TAntiInt x -> return $ Syntax' l (TAntiInt x) cs UTyInt
+  TText x -> return $ Syntax' l (TText x) cs UTyText
+  TAntiText x -> return $ Syntax' l (TAntiText x) cs UTyText
+  TBool b -> return $ Syntax' l (TBool b) cs UTyBool
+  TRobot r -> return $ Syntax' l (TRobot r) cs UTyActor
+  TRequireDevice d -> return $ Syntax' l (TRequireDevice d) cs (UTyCmd UTyUnit)
+  TRequire n d -> return $ Syntax' l (TRequire n d) cs (UTyCmd UTyUnit)
   SRequirements x t1 -> do
     t1' <- infer t1
-    return $ Syntax' l (SRequirements x t1') (UTyCmd UTyUnit)
+    return $ Syntax' l (SRequirements x t1') cs (UTyCmd UTyUnit)
 
   -- We should never encounter a TRef since they do not show up in
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).
   TRef _ -> throwTypeErr l $ CantInfer t
   -- Just look up variables in the context.
-  TVar x -> Syntax' l (TVar x) <$> lookup l x
+  TVar x -> Syntax' l (TVar x) cs <$> lookup l x
   -- It is helpful to handle lambdas in inference mode as well as
   -- checking mode; in particular, we can handle lambdas with an
   -- explicit type annotation on the argument.  Just infer the body
@@ -681,7 +681,7 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
   SLam x (Just argTy) body -> do
     let uargTy = toU argTy
     body' <- withBinding (lvVar x) (Forall [] uargTy) $ infer body
-    return $ Syntax' l (SLam x (Just argTy) body') (UTyFun uargTy (body' ^. sType))
+    return $ Syntax' l (SLam x (Just argTy) body') cs (UTyFun uargTy (body' ^. sType))
 
   -- Need special case here for applying 'atomic' or 'instant' so we
   -- don't handle it with the case for generic type application.
@@ -722,7 +722,7 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
     -- unit`).
     resTy' <- applyBindings resTy
 
-    return $ Syntax' l (SApp f' x') resTy'
+    return $ Syntax' l (SApp f' x') cs resTy'
 
   -- We handle binds in inference mode for a similar reason to
   -- application.
@@ -735,7 +735,7 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
         . withFrame l TCBindR
         $ infer c2
     _ <- decomposeCmdTy c2 (Actual, c2' ^. sType)
-    return $ Syntax' l (SBind mx c1' c2') (c2' ^. sType)
+    return $ Syntax' l (SBind mx c1' c2') cs (c2' ^. sType)
 
   -- Handle record projection in inference mode.  Knowing the expected
   -- type of r.x doesn't really help since we must infer the type of r
@@ -744,14 +744,14 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
     t1' <- infer t1
     case t1' ^. sType of
       UTyRcd m -> case M.lookup x m of
-        Just xTy -> return $ Syntax' l (SProj t1' x) xTy
+        Just xTy -> return $ Syntax' l (SProj t1' x) cs xTy
         Nothing -> throwTypeErr l $ UnknownProj x (SProj t1 x)
       _ -> throwTypeErr l $ CantInferProj (SProj t1 x)
 
   -- See Note [Checking and inference for record literals]
   SRcd m -> do
     m' <- itraverse (\x -> infer . fromMaybe (STerm (TVar x))) m
-    return $ Syntax' l (SRcd (Just <$> m')) (UTyRcd (fmap (^. sType) m'))
+    return $ Syntax' l (SRcd (Just <$> m')) cs (UTyRcd (fmap (^. sType) m'))
 
   -- To infer a type-annotated term, switch into checking mode.
   -- However, we must be careful to deal properly with polymorphic
@@ -769,7 +769,7 @@ infer s@(Syntax l t) = addLocToTypeErr l $ case t of
     -- following typechecking steps.
     iuty <- instantiate upty
     c' <- check c iuty
-    return $ Syntax' l (SAnnotate c' pty) (c' ^. sType)
+    return $ Syntax' l (SAnnotate c' pty) cs (c' ^. sType)
 
   -- Fallback: to infer the type of anything else, make up a fresh unification
   -- variable for its type and check against it.
@@ -905,7 +905,7 @@ check ::
   Syntax ->
   UType ->
   m (Syntax' UType)
-check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
+check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- if t : ty, then  {t} : {ty}.
   -- Note that in theory, if the @Maybe Var@ component of the @SDelay@
   -- is @Just@, we should typecheck the body under a context extended
@@ -918,7 +918,7 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
   SDelay d s1 -> do
     ty1 <- decomposeDelayTy s (Expected, expected)
     s1' <- check s1 ty1
-    return $ Syntax' l (SDelay d s1') (UTyDelay ty1)
+    return $ Syntax' l (SDelay d s1') cs (UTyDelay ty1)
 
   -- To check the type of a pair, make sure the expected type is a
   -- product type, and push the two types down into the left and right.
@@ -926,7 +926,7 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
     (ty1, ty2) <- decomposeProdTy s (Expected, expected)
     s1' <- check s1 ty1
     s2' <- check s2 ty2
-    return $ Syntax' l (SPair s1' s2') (UTyProd ty1 ty2)
+    return $ Syntax' l (SPair s1' s2') cs (UTyProd ty1 ty2)
 
   -- To check a lambda, make sure the expected type is a function type.
   SLam x mxTy body -> do
@@ -943,7 +943,7 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
           Right _ -> return ()
       Nothing -> return ()
     body' <- withBinding (lvVar x) (Forall [] argTy) $ check body resTy
-    return $ Syntax' l (SLam x mxTy body') (UTyFun argTy resTy)
+    return $ Syntax' l (SLam x mxTy body') cs (UTyFun argTy resTy)
 
   -- Special case for checking the argument to 'atomic' (or
   -- 'instant').  'atomic t' has the same type as 't', which must have
@@ -963,7 +963,7 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
         -- guaranteed to operate within a single tick.  When c is Instant
         -- we skip this check.
         when (c == Atomic) $ validAtomic at
-        return $ Syntax' l (SApp atomic' at') (UTyCmd argTy)
+        return $ Syntax' l (SApp atomic' at') cs (UTyCmd argTy)
   -- Checking the type of a let-expression.
   SLet r x mxTy t1 t2 -> do
     (upty, t1') <- case mxTy of
@@ -993,7 +993,7 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
     ask @UCtx >>= mapM_ (noSkolems l)
 
     -- Return the annotated let.
-    return $ Syntax' l (SLet r x mxTy t1' t2') expected
+    return $ Syntax' l (SLet r x mxTy t1' t2') cs expected
 
   -- Definitions can only occur at the top level.
   SDef {} -> throwTypeErr l $ DefNotTopLevel t
@@ -1015,13 +1015,13 @@ check s@(Syntax l t) expected = addLocToTypeErr l $ case t of
           throwTypeErr l $
             FieldsMismatch (joined expectedFields actualFields)
         m' <- itraverse (\x ms -> check (fromMaybe (STerm (TVar x)) ms) (tyMap ! x)) fields
-        return $ Syntax' l (SRcd (Just <$> m')) expected
+        return $ Syntax' l (SRcd (Just <$> m')) cs expected
 
   -- Fallback: switch into inference mode, and check that the type we
   -- get is what we expected.
   _ -> do
-    Syntax' l' t' actual <- infer s
-    Syntax' l' t' <$> unify (Just s) (joined expected actual)
+    Syntax' l' t' _ actual <- infer s
+    Syntax' l' t' cs <$> unify (Just s) (joined expected actual)
 
 -- ~~~~ Note [Checking and inference for record literals]
 --
