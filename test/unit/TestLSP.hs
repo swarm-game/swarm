@@ -9,7 +9,7 @@ module TestLSP (testLSP) where
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Swarm.Language.LSP.VarUsage qualified as VU
-import Swarm.Language.Parse (readTerm')
+import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Syntax qualified as S
 import System.FilePath ((</>))
 import Test.Tasty
@@ -85,7 +85,7 @@ testLSP =
   getWarnings :: Text -> [UnusedVar]
   getWarnings content =
     case readTerm' content of
-      Right (Just term) -> map simplifyWarning problems
+      Right (Just term, _) -> map simplifyWarning problems
        where
         VU.Usage _ problems = VU.getUsage mempty term
       _ -> []

@@ -7,12 +7,15 @@ module Swarm.Language.Pipeline.QQ (tmQ) where
 import Data.Generics
 import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
-import Swarm.Language.Parse
+import Swarm.Language.Parser.Core (runParserTH)
+import Swarm.Language.Parser.Lex (sc)
+import Swarm.Language.Parser.Term (parseTerm)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax
 import Swarm.Language.Types (Polytype)
 import Swarm.Util (failT, liftText)
+import Swarm.Util.Parse (fully)
 import Witch (from)
 
 -- | A quasiquoter for Swarm language terms, so we can conveniently
@@ -40,7 +43,7 @@ quoteTermExp s = do
         , fst (TH.loc_start loc)
         , snd (TH.loc_start loc)
         )
-  parsed <- runParserTH pos parseTerm s
+  parsed <- runParserTH pos (fully sc parseTerm) s
   case processParsedTerm parsed of
     Left err -> failT [prettyTypeErrText (from s) err]
     Right ptm -> dataToExpQ ((fmap liftText . cast) `extQ` antiTermExp) ptm

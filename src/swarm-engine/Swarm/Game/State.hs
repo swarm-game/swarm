@@ -167,7 +167,7 @@ parseCodeFile ::
   m CodeToRun
 parseCodeFile filepath = do
   contents <- sendIO $ TIO.readFile filepath
-  pt@(ProcessedTerm (Module (Syntax' srcLoc _ _) _) _ _) <-
+  pt@(ProcessedTerm (Module (Syntax' srcLoc _ _ _) _) _ _) <-
     either (throwError . CustomFailure) return (processTermEither contents)
   let strippedText = stripSrc srcLoc contents
       programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText

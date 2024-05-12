@@ -128,8 +128,14 @@ library swarm-lang
     Swarm.Language.LSP.Hover
     Swarm.Language.LSP.VarUsage
     Swarm.Language.Module
-    Swarm.Language.Parse
-    Swarm.Language.Parse.QQ
+    Swarm.Language.Parser
+    Swarm.Language.Parser.Core
+    Swarm.Language.Parser.Lex
+    Swarm.Language.Parser.QQ
+    Swarm.Language.Parser.Record
+    Swarm.Language.Parser.Term
+    Swarm.Language.Parser.Type
+    Swarm.Language.Parser.Util
     Swarm.Language.Pipeline
     Swarm.Language.Pipeline.QQ
     Swarm.Language.Pretty
@@ -369,6 +375,7 @@ library swarm-engine
     http-types >=0.12 && <0.13,
     lens >=4.19 && <5.4,
     linear >=1.21.6 && <1.24,
+    megaparsec >=9.6 && <9.7,
     mtl >=2.2.2 && <2.4,
     nonempty-containers >=0.3.4 && <0.3.5,
     prettyprinter >=1.7.0 && <1.8,
@@ -772,6 +779,7 @@ test-suite swarm-unit
     TestLanguagePipeline
     TestNotification
     TestOrdering
+    TestParse
     TestPedagogy
     TestPretty
     TestRecipeCoverage
@@ -789,6 +797,7 @@ test-suite swarm-unit
     filepath,
     hashable,
     lens,
+    megaparsec,
     mtl,
     tasty >=0.10 && <1.6,
     tasty-expected-failure >=0.12 && <0.13,

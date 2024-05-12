@@ -22,8 +22,9 @@ import Language.LSP.Server
 import Language.LSP.VFS (VirtualFile (..), virtualFileText)
 import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.LSP.VarUsage qualified as VU
-import Swarm.Language.Parse
-import Swarm.Language.Pipeline
+import Swarm.Language.Parser (readTerm')
+import Swarm.Language.Parser.Util (getLocRange, showErrorPos)
+import Swarm.Language.Pipeline (processParsedTerm')
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (SrcLoc (..))
 import Swarm.Language.Typecheck (ContextualTypeErr (..))
@@ -81,8 +82,8 @@ validateSwarmCode doc version content = do
   flushDiagnosticsBySource 0 (Just diagnosticSourcePrefix)
 
   let (parsingErrs, unusedVarWarnings) = case readTerm' content of
-        Right Nothing -> ([], [])
-        Right (Just term) -> (parsingErrors, unusedWarnings)
+        Right (Nothing, _) -> ([], [])
+        Right (Just term, _) -> (parsingErrors, unusedWarnings)
          where
           VU.Usage _ problems = VU.getUsage mempty term
           unusedWarnings = mapMaybe (VU.toErrPos content) problems

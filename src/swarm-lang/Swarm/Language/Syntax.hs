@@ -50,8 +50,10 @@ module Swarm.Language.Syntax (
   sLoc,
   sTerm,
   sType,
+  sComments,
   Syntax,
   pattern Syntax,
+  pattern CSyntax,
   LocVar (..),
   SrcLoc (..),
   noLoc,
@@ -69,6 +71,11 @@ module Swarm.Language.Syntax (
   pattern TProj,
   pattern TAnnotate,
 
+  -- * Comments
+  CommentType (..),
+  CommentSituation (..),
+  Comment (..),
+
   -- * Terms
   Var,
   DelayType (..),
@@ -77,6 +84,8 @@ module Swarm.Language.Syntax (
   mkOp,
   mkOp',
   unfoldApps,
+  mkTuple,
+  unTuple,
 
   -- * Erasure
   eraseS,
@@ -100,6 +109,7 @@ import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict (Map)
+import Data.Sequence (Seq)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Set qualified as Set
@@ -1008,7 +1018,7 @@ data LocVar = LV {lvSrcLoc :: SrcLoc, lvVar :: Var}
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
 locVarToSyntax' :: LocVar -> ty -> Syntax' ty
-locVarToSyntax' (LV s v) = Syntax' s (TVar v)
+locVarToSyntax' (LV s v) = Syntax' s (TVar v) Nothing
 
 -- | Terms of the Swarm language.
 data Term' ty
@@ -1113,6 +1123,7 @@ instance Data ty => Plated (Term' ty) where
 data Syntax' ty = Syntax'
   { _sLoc :: SrcLoc
   , _sTerm :: Term' ty
+  , _sComments :: Maybe (Seq Comment)
   , _sType :: ty
   }
   deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
@@ -1135,22 +1146,55 @@ instance Monoid SrcLoc where
   mempty = NoLoc
 
 ------------------------------------------------------------
+-- Comments
+------------------------------------------------------------
+
+-- | Line vs block comments.
+data CommentType = LineComment | BlockComment
+  deriving (Eq, Ord, Read, Show, Enum, Bounded, Generic, Data, ToJSON, FromJSON)
+
+-- | Was a comment all by itself on a line, or did it occur after some
+--   other tokens on a line?
+data CommentSituation = StandaloneComment | SuffixComment
+  deriving (Eq, Ord, Read, Show, Enum, Bounded, Generic, Data, ToJSON, FromJSON)
+
+-- | A comment is retained as some text plus metadata (source
+--   location, comment type, + comment situation).  While parsing we
+--   record all comments out-of-band, for later re-insertion into the
+--   AST.
+data Comment = Comment
+  { commentSrcLoc :: SrcLoc
+  , commentType :: CommentType
+  , commentSituation :: CommentSituation
+  , commentText :: Text
+  }
+  deriving (Eq, Show, Generic, Data, ToJSON, FromJSON)
+
+------------------------------------------------------------
 -- Pattern synonyms for untyped terms
 ------------------------------------------------------------
 
+-- | Syntax without type annotations.
 type Syntax = Syntax' ()
 
+-- | Raw parsed syntax, without comments or type annotations.
 pattern Syntax :: SrcLoc -> Term -> Syntax
-pattern Syntax l t = Syntax' l t ()
+pattern Syntax l t = Syntax' l t Nothing ()
 
 {-# COMPLETE Syntax #-}
+
+-- | Untyped syntax with assocated comments.
+pattern CSyntax :: SrcLoc -> Term -> Maybe (Seq Comment) -> Syntax
+pattern CSyntax l t cs = Syntax' l t cs ()
+
+{-# COMPLETE CSyntax #-}
 
 makeLenses ''Syntax'
 
 noLoc :: Term -> Syntax
 noLoc = Syntax mempty
 
--- | Match an untyped term without its 'SrcLoc'.
+-- | Match an untyped term without annotations.
 pattern STerm :: Term -> Syntax
 pattern STerm t <-
   Syntax _ t
@@ -1160,17 +1204,17 @@ pattern STerm t <-
 pattern TRequirements :: Text -> Term -> Term
 pattern TRequirements x t = SRequirements x (STerm t)
 
--- | Match a TPair without syntax
+-- | Match a TPair without annotations.
 pattern TPair :: Term -> Term -> Term
 pattern TPair t1 t2 = SPair (STerm t1) (STerm t2)
 
--- | Match a TLam without syntax
+-- | Match a TLam without annotations.
 pattern TLam :: Var -> Maybe Type -> Term -> Term
 pattern TLam v ty t <- SLam (lvVar -> v) ty (STerm t)
   where
     TLam v ty t = SLam (LV NoLoc v) ty (STerm t)
 
--- | Match a TApp without syntax
+-- | Match a TApp without annotations.
 pattern TApp :: Term -> Term -> Term
 pattern TApp t1 t2 = SApp (STerm t1) (STerm t2)
 
@@ -1180,29 +1224,29 @@ infixl 0 :$:
 pattern (:$:) :: Term -> Syntax -> Term
 pattern (:$:) t1 s2 = SApp (STerm t1) s2
 
--- | Match a TLet without syntax
+-- | Match a TLet without annotations.
 pattern TLet :: Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
 pattern TLet r v pt t1 t2 <- SLet r (lvVar -> v) pt (STerm t1) (STerm t2)
   where
     TLet r v pt t1 t2 = SLet r (LV NoLoc v) pt (STerm t1) (STerm t2)
 
--- | Match a TDef without syntax
+-- | Match a TDef without annotations.
 pattern TDef :: Bool -> Var -> Maybe Polytype -> Term -> Term
 pattern TDef r v pt t <- SDef r (lvVar -> v) pt (STerm t)
   where
     TDef r v pt t = SDef r (LV NoLoc v) pt (STerm t)
 
--- | Match a TBind without syntax
+-- | Match a TBind without annotations.
 pattern TBind :: Maybe Var -> Term -> Term -> Term
 pattern TBind mv t1 t2 <- SBind (fmap lvVar -> mv) (STerm t1) (STerm t2)
   where
     TBind mv t1 t2 = SBind (LV NoLoc <$> mv) (STerm t1) (STerm t2)
 
--- | Match a TDelay without syntax
+-- | Match a TDelay without annotations.
 pattern TDelay :: DelayType -> Term -> Term
 pattern TDelay m t = SDelay m (STerm t)
 
--- | Match a TRcd without syntax
+-- | Match a TRcd without annotations.
 pattern TRcd :: Map Var (Maybe Term) -> Term
 pattern TRcd m <- SRcd ((fmap . fmap) _sTerm -> m)
   where
@@ -1211,15 +1255,16 @@ pattern TRcd m <- SRcd ((fmap . fmap) _sTerm -> m)
 pattern TProj :: Term -> Var -> Term
 pattern TProj t x = SProj (STerm t) x
 
--- | Match a TAnnotate without syntax
+-- | Match a TAnnotate without annotations.
 pattern TAnnotate :: Term -> Polytype -> Term
 pattern TAnnotate t pt = SAnnotate (STerm t) pt
 
--- | COMPLETE pragma tells GHC using this set of pattern is complete for Term
+-- COMPLETE pragma tells GHC using this set of patterns is complete for Term
+
 {-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TRequirements, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TRcd, TProj, TAnnotate #-}
 
--- | Make infix operation (e.g. @2 + 3@) a curried function
---   application (@((+) 2) 3@).
+-- | Make an infix operation (e.g. @2 + 3@) a curried function
+--   application (e.g. @((+) 2) 3@).
 mkOp :: Const -> Syntax -> Syntax -> Syntax
 mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
  where
@@ -1230,7 +1275,7 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
   sop = noLoc (TConst c)
   newTerm = SApp (Syntax l1 $ SApp sop s1) s2
 
--- | Make infix operation, discarding any syntax related location
+-- | Make an infix operation, discarding any location information
 mkOp' :: Const -> Term -> Term -> Term
 mkOp' c t1 = TApp (TApp (TConst c) t1)
 
@@ -1244,16 +1289,30 @@ mkOp' c t1 = TApp (TApp (TConst c) t1)
 -- TConst Mul :| [TInt 1,TInt 2]
 unfoldApps :: Syntax' ty -> NonEmpty (Syntax' ty)
 unfoldApps trm = NonEmpty.reverse . flip NonEmpty.unfoldr trm $ \case
-  Syntax' _ (SApp s1 s2) _ -> (s2, Just s1)
+  Syntax' _ (SApp s1 s2) _ _ -> (s2, Just s1)
   s -> (s, Nothing)
+
+-- | Create a nested tuple out of a list of syntax nodes.
+mkTuple :: [Syntax] -> Syntax
+mkTuple [] = Syntax NoLoc TUnit -- should never happen
+mkTuple [x] = x
+mkTuple (x : xs) = let r = mkTuple xs in loc x r $ SPair x r
+ where
+  loc a b = Syntax $ (a ^. sLoc) <> (b ^. sLoc)
+
+-- | Decompose a nested tuple into a list of components.
+unTuple :: Syntax' ty -> [Syntax' ty]
+unTuple = \case
+  Syntax' _ (SPair s1 s2) _ _ -> s1 : unTuple s2
+  s -> [s]
 
 --------------------------------------------------
 -- Erasure
 
--- | Erase a 'Syntax' tree annotated with type
---   information to a bare unannotated 'Term'.
+-- | Erase a 'Syntax' tree annotated with type and comment information
+--   to a bare unannotated 'Term'.
 eraseS :: Syntax' ty -> Term
-eraseS (Syntax' _ t _) = void t
+eraseS (Syntax' _ t _ _) = void t
 
 ------------------------------------------------------------
 -- Free variable traversals
@@ -1270,7 +1329,7 @@ freeVarsS :: forall ty. Traversal' (Syntax' ty) (Syntax' ty)
 freeVarsS f = go S.empty
  where
   -- go :: Applicative f => Set Var -> Syntax' ty -> f (Syntax' ty)
-  go bound s@(Syntax' l t ty) = case t of
+  go bound s@(Syntax' l t ty cmts) = case t of
     TUnit -> pure s
     TConst {} -> pure s
     TDir {} -> pure s
@@ -1300,34 +1359,34 @@ freeVarsS f = go S.empty
     SProj s1 x -> rewrap $ SProj <$> go bound s1 <*> pure x
     SAnnotate s1 pty -> rewrap $ SAnnotate <$> go bound s1 <*> pure pty
    where
-    rewrap s' = Syntax' l <$> s' <*> pure ty
+    rewrap s' = Syntax' l <$> s' <*> pure ty <*> pure cmts
 
 -- | Like 'freeVarsS', but traverse over the 'Term's containing free
 --   variables.  More direct if you don't need to know the types or
 --   source locations of the variables.  Note that if you want to get
---   the list of all `Term`s representing free variables, you can do so via
---   @'toListOf' 'freeVarsT'@.
+--   the list of all `Term`s representing free variables, you can do
+--   so via @'toListOf' 'freeVarsT'@.
 freeVarsT :: forall ty. Traversal' (Syntax' ty) (Term' ty)
 freeVarsT = freeVarsS . sTerm
 
 -- | Traversal over the free variables of a term.  Like 'freeVarsS'
---   and 'freeVarsT', but traverse over the variable names
---   themselves.  Note that if you want to get the set of all free
---   variable names, you can do so via @'Data.Set.Lens.setOf'
---   'freeVarsV'@.
+--   and 'freeVarsT', but traverse over the variable names themselves.
+--   Note that if you want to get the set of all free variable names,
+--   you can do so via @'Data.Set.Lens.setOf' 'freeVarsV'@.
 freeVarsV :: Traversal' (Syntax' ty) Var
 freeVarsV = freeVarsT . (\f -> \case TVar x -> TVar <$> f x; t -> pure t)
 
--- | Apply a function to all free occurrences of a particular variable.
+-- | Apply a function to all free occurrences of a particular
+--   variable.
 mapFreeS :: Var -> (Syntax' ty -> Syntax' ty) -> Syntax' ty -> Syntax' ty
 mapFreeS x f = freeVarsS %~ (\t -> case t ^. sTerm of TVar y | y == x -> f t; _ -> t)
 
--- | Transform the AST into a Tree datatype.
--- Useful for pretty-printing (e.g. via "Data.Tree.drawTree").
+-- | Transform the AST into a Tree datatype.  Useful for
+--   pretty-printing (e.g. via "Data.Tree.drawTree").
 asTree :: Data a => Syntax' a -> Tree (Syntax' a)
 asTree = para Node
 
 -- | Each constructor is a assigned a value of 1, plus
--- any recursive syntax it entails.
+--   any recursive syntax it entails.
 measureAstSize :: Data a => Syntax' a -> Int
 measureAstSize = length . universe

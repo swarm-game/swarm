@@ -15,7 +15,7 @@ import Prettyprinter
 import Prettyprinter.Render.Text qualified as RT
 import Swarm.App (appMain)
 import Swarm.Language.LSP (lspMain)
-import Swarm.Language.Parse (readTerm)
+import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Pretty (ppr)
 import Swarm.TUI.Model (AppOpts (..), ColorMode (..))
 import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond)

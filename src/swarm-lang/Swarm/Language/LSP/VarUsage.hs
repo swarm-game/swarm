@@ -13,7 +13,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Language.LSP.Protocol.Types qualified as J
-import Swarm.Language.Parse qualified as P
+import Swarm.Language.Parser.Util qualified as P
 import Swarm.Language.Syntax
 import Swarm.Util qualified as U
 

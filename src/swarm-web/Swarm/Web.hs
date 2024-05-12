@@ -231,7 +231,7 @@ recogFoundHandler appStateRef = do
 codeRenderHandler :: Text -> Handler Text
 codeRenderHandler contents = do
   return $ case processTermEither contents of
-    Right (ProcessedTerm (Module stx@(Syntax' _srcLoc _term _) _) _ _) ->
+    Right (ProcessedTerm (Module stx@(Syntax' _srcLoc _term _ _) _) _ _) ->
       into @Text . drawTree . fmap (T.unpack . prettyTextLine) . para Node $ stx
     Left x -> x
 

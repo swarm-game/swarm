@@ -113,7 +113,7 @@ valueToTerm (VClo x t e) =
   M.foldrWithKey
     (\y v -> TLet False y Nothing (valueToTerm v))
     (TLam x Nothing t)
-    (M.restrictKeys (unCtx e) (S.delete x (setOf freeVarsV (Syntax' NoLoc t ()))))
+    (M.restrictKeys (unCtx e) (S.delete x (setOf freeVarsV (Syntax' NoLoc t Nothing ()))))
 valueToTerm (VCApp c vs) = foldl' TApp (TConst c) (reverse (map valueToTerm vs))
 valueToTerm (VDef r x t _) = TDef r x Nothing t
 valueToTerm (VResult v _) = valueToTerm v

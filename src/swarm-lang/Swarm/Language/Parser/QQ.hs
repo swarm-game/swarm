@@ -2,13 +2,16 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A quasiquoter for Swarm polytypes.
-module Swarm.Language.Parse.QQ (tyQ) where
+module Swarm.Language.Parser.QQ (tyQ) where
 
 import Data.Generics
 import Language.Haskell.TH qualified as TH
 import Language.Haskell.TH.Quote
-import Swarm.Language.Parse
+import Swarm.Language.Parser.Core (runParserTH)
+import Swarm.Language.Parser.Lex (sc)
+import Swarm.Language.Parser.Type (parsePolytype)
 import Swarm.Util (liftText)
+import Swarm.Util.Parse (fully)
 
 ------------------------------------------------------------
 -- Quasiquoters
@@ -35,5 +38,5 @@ quoteTypeExp s = do
         , fst (TH.loc_start loc)
         , snd (TH.loc_start loc)
         )
-  parsed <- runParserTH pos parsePolytype s
+  parsed <- runParserTH pos (fully sc parsePolytype) s
   dataToExpQ (fmap liftText . cast) parsed
