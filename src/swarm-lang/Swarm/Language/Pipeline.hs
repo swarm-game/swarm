@@ -27,7 +27,7 @@ import GHC.Generics (Generic)
 import Swarm.Language.Context
 import Swarm.Language.Elaborate
 import Swarm.Language.Module
-import Swarm.Language.Parse
+import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement
 import Swarm.Language.Syntax

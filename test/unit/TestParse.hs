@@ -9,7 +9,7 @@ module TestParse where
 
 import Data.Foldable qualified as F
 import Data.Text (Text)
-import Swarm.Language.Parse
+import Swarm.Language.Parser
 import Swarm.Language.Syntax
 import Test.Tasty
 import Test.Tasty.HUnit (Assertion, assertEqual, assertFailure, testCase)

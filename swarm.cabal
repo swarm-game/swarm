@@ -128,8 +128,14 @@ library swarm-lang
     Swarm.Language.LSP.Hover
     Swarm.Language.LSP.VarUsage
     Swarm.Language.Module
-    Swarm.Language.Parse
-    Swarm.Language.Parse.QQ
+    Swarm.Language.Parser
+    Swarm.Language.Parser.Core
+    Swarm.Language.Parser.Lex
+    Swarm.Language.Parser.QQ
+    Swarm.Language.Parser.Record
+    Swarm.Language.Parser.Term
+    Swarm.Language.Parser.Type
+    Swarm.Language.Parser.Util
     Swarm.Language.Pipeline
     Swarm.Language.Pipeline.QQ
     Swarm.Language.Pretty
