@@ -17,6 +17,7 @@ import Data.Foldable qualified as F
 import Data.List.NonEmpty ((<|))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
+import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.String (fromString)
@@ -192,10 +193,12 @@ instance PrettyPrec Capability where
 instance PrettyPrec Const where
   prettyPrec p c = pparens (p > fixity (constInfo c)) $ pretty . syntax . constInfo $ c
 
+-- | Pretty-print a syntax node with comments.
 instance PrettyPrec (Syntax' ty) where
   prettyPrec p (Syntax' _ t (Comments before after) _) = case before of
     Empty -> t'
     _ ->
+      -- Print out any comments before the node, with a blank line before
       mconcat
         [ hardline
         , vsep (map ppr (F.toList before))
@@ -203,11 +206,16 @@ instance PrettyPrec (Syntax' ty) where
         , t'
         ]
    where
-    t' = case after of
-      Empty -> prettyPrec p t
-      _ -> prettyPrec p t <+> hsep (map ppr (F.toList after)) <> hardline
-
--- XXX don't use hardline above if last after comment is block comment
+    -- Print the node itself, possibly with suffix comments on the same line
+    t' = case Seq.viewr after of
+      Seq.EmptyR -> prettyPrec p t
+      _ Seq.:> lst -> case commentType lst of
+        -- Output a newline after a line comment, but not after a block comment
+        BlockComment -> tWithComments
+        LineComment -> tWithComments <> hardline
+     where
+      -- The pretty-printed node with suffix comments
+      tWithComments = prettyPrec p t <+> hsep (map ppr (F.toList after))
 
 instance PrettyPrec Comment where
   prettyPrec _ (Comment _ LineComment _ txt) = "//" <> pretty txt
