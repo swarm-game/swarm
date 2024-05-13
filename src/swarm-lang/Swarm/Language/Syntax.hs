@@ -95,6 +95,7 @@ module Swarm.Language.Syntax (
   unTuple,
 
   -- * Erasure
+  erase,
   eraseS,
 
   -- * Term traversal
@@ -1345,12 +1346,16 @@ unTuple = \case
   s -> [s]
 
 --------------------------------------------------
--- Erasure
+-- Type erasure
 
--- | Erase a 'Syntax' tree annotated with type and comment information
---   to a bare unannotated 'Term'.
+-- | Erase the type annotations from a 'Syntax' or 'Term' tree.
+erase :: Functor t => t ty -> t ()
+erase = void
+
+-- | Erase all annotations from a 'Syntax' node, turning it into a
+--   bare 'Term'.
 eraseS :: Syntax' ty -> Term
-eraseS (Syntax' _ t _ _) = void t
+eraseS (Syntax' _ t _ _) = erase t
 
 ------------------------------------------------------------
 -- Free variable traversals
