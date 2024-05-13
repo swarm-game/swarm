@@ -17,7 +17,7 @@ module Swarm.Language.Parser.Comment (
 import Control.Lens (backwards, mapMOf, (%~))
 import Control.Lens.Plated (Plated, plate)
 import Control.Monad ((>=>))
-import Control.Monad.State
+import Control.Monad.State (MonadState (..), State, evalState)
 import Data.Foldable qualified as F
 import Data.List (partition)
 import Data.Sequence (Seq, (<|), (|>))
