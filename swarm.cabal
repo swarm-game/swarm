@@ -14,7 +14,7 @@ description:
 
   == Module organization
   For developers getting oriented, Swarm's modules are organized into
-  sublibraries, from inner to outer:
+  sublibraries.  Roughly in order from inner to outer, they are:
 
   * swarm-util: miscellaneous utilities
   * swarm-lang: parsing, typechecking, etc. for the Swarm language
@@ -26,6 +26,9 @@ description:
   * swarm: the swarm executable
 
   <<docs/image/sublibrary-graph.svg>>
+
+  See the [Swarm module guide](https://github.com/swarm-game/swarm/wiki/Module-guide)
+  for a more in-depth guide to the codebase.
 
 license: BSD-3-Clause
 license-file: LICENSE
