@@ -123,6 +123,7 @@ library swarm-lang
     Swarm.Language.Context
     Swarm.Language.Direction
     Swarm.Language.Elaborate
+    Swarm.Language.Format
     Swarm.Language.Key
     Swarm.Language.LSP
     Swarm.Language.LSP.Hover
@@ -172,6 +173,7 @@ library swarm-lang
     split,
     syb >=0.7 && <0.8,
     template-haskell,
+    terminal-size >=0.3 && <1.0,
     text,
     text-rope >=0.2 && <0.3,
     vector,
