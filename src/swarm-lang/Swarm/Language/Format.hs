@@ -9,7 +9,7 @@ module Swarm.Language.Format where
 import Control.Applicative ((<|>))
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.IO.Utf8 qualified as T
+import Data.Text.IO qualified as T
 import Prettyprinter
 import Prettyprinter.Render.Text qualified as RT
 import Swarm.Language.Parser (readTerm)
