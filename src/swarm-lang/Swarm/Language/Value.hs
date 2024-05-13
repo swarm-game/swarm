@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -16,6 +17,7 @@ module Swarm.Language.Value (
   Env,
 ) where
 
+import Control.Lens (pattern Empty)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Bool (bool)
 import Data.List (foldl')
@@ -113,7 +115,7 @@ valueToTerm (VClo x t e) =
   M.foldrWithKey
     (\y v -> TLet False y Nothing (valueToTerm v))
     (TLam x Nothing t)
-    (M.restrictKeys (unCtx e) (S.delete x (setOf freeVarsV (Syntax' NoLoc t Nothing ()))))
+    (M.restrictKeys (unCtx e) (S.delete x (setOf freeVarsV (Syntax' NoLoc t Empty ()))))
 valueToTerm (VCApp c vs) = foldl' TApp (TConst c) (reverse (map valueToTerm vs))
 valueToTerm (VDef r x t _) = TDef r x Nothing t
 valueToTerm (VResult v _) = valueToTerm v

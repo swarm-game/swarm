@@ -60,8 +60,8 @@ showHoverInfo ::
 showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
   case readTerm' content of
     Left _ -> Nothing
-    Right (Nothing, _) -> Nothing
-    Right (Just stx, _) -> Just $ case processParsedTerm stx of
+    Right Nothing -> Nothing
+    Right (Just stx) -> Just $ case processParsedTerm stx of
       Left _e ->
         let found@(Syntax foundSloc _) = narrowToPosition stx $ fromIntegral absolutePos
             finalPos = posToRange myRope foundSloc

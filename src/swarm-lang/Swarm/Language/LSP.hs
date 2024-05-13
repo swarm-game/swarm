@@ -82,8 +82,8 @@ validateSwarmCode doc version content = do
   flushDiagnosticsBySource 0 (Just diagnosticSourcePrefix)
 
   let (parsingErrs, unusedVarWarnings) = case readTerm' content of
-        Right (Nothing, _) -> ([], [])
-        Right (Just term, _) -> (parsingErrors, unusedWarnings)
+        Right Nothing -> ([], [])
+        Right (Just term) -> (parsingErrors, unusedWarnings)
          where
           VU.Usage _ problems = VU.getUsage mempty term
           unusedWarnings = mapMaybe (VU.toErrPos content) problems

@@ -45,6 +45,20 @@ module Swarm.Language.Syntax (
   maxPathRange,
   globalMaxVolume,
 
+  -- * SrcLoc
+  SrcLoc (..),
+  srcLocBefore,
+  noLoc,
+
+  -- * Comments
+  CommentType (..),
+  CommentSituation (..),
+  isStandalone,
+  Comment (..),
+  Comments (..),
+  beforeComments,
+  afterComments,
+
   -- * Syntax
   Syntax' (..),
   sLoc,
@@ -55,8 +69,6 @@ module Swarm.Language.Syntax (
   pattern Syntax,
   pattern CSyntax,
   LocVar (..),
-  SrcLoc (..),
-  noLoc,
   pattern STerm,
   pattern TRequirements,
   pattern TPair,
@@ -70,11 +82,6 @@ module Swarm.Language.Syntax (
   pattern TRcd,
   pattern TProj,
   pattern TAnnotate,
-
-  -- * Comments
-  CommentType (..),
-  CommentSituation (..),
-  Comment (..),
 
   -- * Terms
   Var,
@@ -100,7 +107,7 @@ module Swarm.Language.Syntax (
   measureAstSize,
 ) where
 
-import Control.Lens (Plated (..), Traversal', makeLenses, para, universe, (%~), (^.))
+import Control.Lens (AsEmpty, Plated (..), Traversal', makeLenses, para, universe, (%~), (^.), pattern Empty)
 import Control.Monad (void)
 import Data.Aeson.Types hiding (Key)
 import Data.Data (Data)
@@ -991,6 +998,76 @@ constInfo c = case c of
   lowShow a = toLower (from (show a))
 
 ------------------------------------------------------------
+-- SrcLoc
+------------------------------------------------------------
+
+data SrcLoc
+  = NoLoc
+  | -- | Half-open interval from start (inclusive) to end (exclusive)
+    SrcLoc Int Int
+  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
+
+instance Semigroup SrcLoc where
+  NoLoc <> l = l
+  l <> NoLoc = l
+  SrcLoc s1 e1 <> SrcLoc s2 e2 = SrcLoc (min s1 s2) (max e1 e2)
+
+instance Monoid SrcLoc where
+  mempty = NoLoc
+
+-- | Check whether one SrcLoc starts before another one.
+srcLocBefore :: SrcLoc -> SrcLoc -> Bool
+srcLocBefore (SrcLoc a _) (SrcLoc b _) = a <= b
+srcLocBefore _ _ = False
+
+------------------------------------------------------------
+-- Comments
+------------------------------------------------------------
+
+-- | Line vs block comments.
+data CommentType = LineComment | BlockComment
+  deriving (Eq, Ord, Read, Show, Enum, Bounded, Generic, Data, ToJSON, FromJSON)
+
+-- | Was a comment all by itself on a line, or did it occur after some
+--   other tokens on a line?
+data CommentSituation = StandaloneComment | SuffixComment
+  deriving (Eq, Ord, Read, Show, Enum, Bounded, Generic, Data, ToJSON, FromJSON)
+
+-- | Test whether a comment is a standalone comment or not.
+isStandalone :: Comment -> Bool
+isStandalone = (== StandaloneComment) . commentSituation
+
+-- | A comment is retained as some text plus metadata (source
+--   location, comment type, + comment situation).  While parsing we
+--   record all comments out-of-band, for later re-insertion into the
+--   AST.
+data Comment = Comment
+  { commentSrcLoc :: SrcLoc
+  , commentType :: CommentType
+  , commentSituation :: CommentSituation
+  , commentText :: Text
+  }
+  deriving (Eq, Show, Generic, Data, ToJSON, FromJSON)
+
+-- | Comments which can be attached to a particular AST node.  Some
+--   comments come textually before the node and some come after.
+data Comments = Comments
+  { _beforeComments :: Seq Comment
+  , _afterComments :: Seq Comment
+  }
+  deriving (Eq, Show, Generic, Data, ToJSON, FromJSON)
+
+makeLenses ''Comments
+
+instance Semigroup Comments where
+  Comments b1 a1 <> Comments b2 a2 = Comments (b1 <> b2) (a1 <> a2)
+
+instance Monoid Comments where
+  mempty = Comments mempty mempty
+
+instance AsEmpty Comments
+
+------------------------------------------------------------
 -- Basic terms
 ------------------------------------------------------------
 
@@ -1018,7 +1095,7 @@ data LocVar = LV {lvSrcLoc :: SrcLoc, lvVar :: Var}
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
 locVarToSyntax' :: LocVar -> ty -> Syntax' ty
-locVarToSyntax' (LV s v) = Syntax' s (TVar v) Nothing
+locVarToSyntax' (LV s v) = Syntax' s (TVar v) Empty
 
 -- | Terms of the Swarm language.
 data Term' ty
@@ -1116,59 +1193,20 @@ instance Data ty => Plated (Term' ty) where
   plate = uniplate
 
 ------------------------------------------------------------
--- Syntax: annotation on top of Terms with SrcLoc and type
+-- Syntax: annotation on top of Terms with SrcLoc, comments, + type
 ------------------------------------------------------------
 
 -- | The surface syntax for the language, with location and type annotations.
 data Syntax' ty = Syntax'
   { _sLoc :: SrcLoc
   , _sTerm :: Term' ty
-  , _sComments :: Maybe (Seq Comment)
+  , _sComments :: Comments
   , _sType :: ty
   }
   deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
 instance Data ty => Plated (Syntax' ty) where
   plate = uniplate
-
-data SrcLoc
-  = NoLoc
-  | -- | Half-open interval from start (inclusive) to end (exclusive)
-    SrcLoc Int Int
-  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
-
-instance Semigroup SrcLoc where
-  NoLoc <> l = l
-  l <> NoLoc = l
-  SrcLoc s1 e1 <> SrcLoc s2 e2 = SrcLoc (min s1 s2) (max e1 e2)
-
-instance Monoid SrcLoc where
-  mempty = NoLoc
-
-------------------------------------------------------------
--- Comments
-------------------------------------------------------------
-
--- | Line vs block comments.
-data CommentType = LineComment | BlockComment
-  deriving (Eq, Ord, Read, Show, Enum, Bounded, Generic, Data, ToJSON, FromJSON)
-
--- | Was a comment all by itself on a line, or did it occur after some
---   other tokens on a line?
-data CommentSituation = StandaloneComment | SuffixComment
-  deriving (Eq, Ord, Read, Show, Enum, Bounded, Generic, Data, ToJSON, FromJSON)
-
--- | A comment is retained as some text plus metadata (source
---   location, comment type, + comment situation).  While parsing we
---   record all comments out-of-band, for later re-insertion into the
---   AST.
-data Comment = Comment
-  { commentSrcLoc :: SrcLoc
-  , commentType :: CommentType
-  , commentSituation :: CommentSituation
-  , commentText :: Text
-  }
-  deriving (Eq, Show, Generic, Data, ToJSON, FromJSON)
 
 ------------------------------------------------------------
 -- Pattern synonyms for untyped terms
@@ -1179,12 +1217,12 @@ type Syntax = Syntax' ()
 
 -- | Raw parsed syntax, without comments or type annotations.
 pattern Syntax :: SrcLoc -> Term -> Syntax
-pattern Syntax l t = Syntax' l t Nothing ()
+pattern Syntax l t = Syntax' l t Empty ()
 
 {-# COMPLETE Syntax #-}
 
 -- | Untyped syntax with assocated comments.
-pattern CSyntax :: SrcLoc -> Term -> Maybe (Seq Comment) -> Syntax
+pattern CSyntax :: SrcLoc -> Term -> Comments -> Syntax
 pattern CSyntax l t cs = Syntax' l t cs ()
 
 {-# COMPLETE CSyntax #-}

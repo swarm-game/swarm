@@ -129,6 +129,7 @@ library swarm-lang
     Swarm.Language.LSP.VarUsage
     Swarm.Language.Module
     Swarm.Language.Parser
+    Swarm.Language.Parser.Comment
     Swarm.Language.Parser.Core
     Swarm.Language.Parser.Lex
     Swarm.Language.Parser.QQ
