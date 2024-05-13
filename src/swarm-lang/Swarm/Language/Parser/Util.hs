@@ -3,6 +3,8 @@
 --
 -- A few utilities for use in conjunction with the parser.
 module Swarm.Language.Parser.Util (
+  fully,
+  fullyMaybe,
   showShortError,
   showErrorPos,
   getLocRange,
@@ -15,6 +17,17 @@ import Swarm.Language.Parser.Core (ParserError)
 import Text.Megaparsec
 import Text.Megaparsec.Pos qualified as Pos
 import Witch (from)
+
+-- | Run a parser "fully", consuming leading whitespace and ensuring
+--   that the parser extends all the way to eof.
+fully :: (MonadParsec e s f) => f () -> f a -> f a
+fully sc p = sc *> p <* eof
+
+-- | Run a parser "fully", consuming leading whitespace (including the
+--   possibility that the input is nothing but whitespace) and
+--   ensuring that the parser extends all the way to eof.
+fullyMaybe :: (MonadParsec e s f) => f () -> f a -> f (Maybe a)
+fullyMaybe sc = fully sc . optional
 
 -- | A utility for converting a 'ParserError' into a one line message:
 --   @<line-nr>: <error-msg>@

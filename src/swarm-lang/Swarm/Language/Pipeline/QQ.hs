@@ -10,12 +10,12 @@ import Language.Haskell.TH.Quote
 import Swarm.Language.Parser.Core (runParserTH)
 import Swarm.Language.Parser.Lex (sc)
 import Swarm.Language.Parser.Term (parseTerm)
+import Swarm.Language.Parser.Util (fully)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax
 import Swarm.Language.Types (Polytype)
 import Swarm.Util (failT, liftText)
-import Swarm.Util.Parse (fully)
 import Witch (from)
 
 -- | A quasiquoter for Swarm language terms, so we can conveniently

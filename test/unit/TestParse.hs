@@ -12,7 +12,7 @@ import Data.Text (Text)
 import Swarm.Language.Parser.Core (runParser)
 import Swarm.Language.Parser.Lex (sc)
 import Swarm.Language.Parser.Term (parseTerm)
-import Swarm.Util.Parse (fullyMaybe)
+import Swarm.Language.Parser.Util (fullyMaybe)
 import Swarm.Language.Syntax
 import Test.Tasty
 import Test.Tasty.HUnit (Assertion, assertEqual, assertFailure, testCase)

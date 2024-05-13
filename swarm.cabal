@@ -509,7 +509,6 @@ library swarm-util
     Swarm.Util.Erasable
     Swarm.Util.Lens
     Swarm.Util.OccurrenceEncoder
-    Swarm.Util.Parse
     Swarm.Util.ReadableIORef
     Swarm.Util.RingBuffer
     Swarm.Util.UnitInterval
@@ -529,7 +528,6 @@ library swarm-util
     filepath >=1.4 && <1.5,
     fused-effects >=1.1.1.1 && <1.2,
     lens >=4.19 && <5.4,
-    megaparsec >=9.6.1 && <9.7,
     minimorph >=0.3 && <0.4,
     mtl >=2.2.2 && <2.4,
     servant-docs >=0.12 && <0.14,

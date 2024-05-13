@@ -11,7 +11,7 @@ import Swarm.Language.Parser.Core (runParserTH)
 import Swarm.Language.Parser.Lex (sc)
 import Swarm.Language.Parser.Type (parsePolytype)
 import Swarm.Util (liftText)
-import Swarm.Util.Parse (fully)
+import Swarm.Language.Parser.Util (fully)
 
 ------------------------------------------------------------
 -- Quasiquoters
