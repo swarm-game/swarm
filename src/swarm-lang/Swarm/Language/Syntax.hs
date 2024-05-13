@@ -1235,7 +1235,7 @@ noLoc = Syntax mempty
 -- | Match an untyped term without annotations.
 pattern STerm :: Term -> Syntax
 pattern STerm t <-
-  Syntax _ t
+  CSyntax _ t _
   where
     STerm t = Syntax mempty t
 
