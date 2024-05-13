@@ -16,12 +16,14 @@ description:
   For developers getting oriented, Swarm's modules are organized into
   sublibraries, from inner to outer:
 
-  * utilities
-  * swarm language
-  * swarm scenario
-  * swarm game engine
-  * swarm TUI
-  * swarm app
+  * swarm-util: miscellaneous utilities
+  * swarm-lang: parsing, typechecking, etc. for the Swarm language
+  * swarm-scenario: scenario descriptions, parsing, & processing
+  * swarm-engine: game simulation
+  * swarm-doc: generating documentation
+  * swarm-tui: textual user interface
+  * swarm-web: web interface
+  * swarm: the swarm executable
 
   <<docs/image/sublibrary-graph.svg>>
 

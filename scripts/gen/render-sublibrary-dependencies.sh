@@ -16,4 +16,4 @@ cd $SCRIPT_DIR/../..
 rm -r dist-newstyle/cache
 cabal build --dry-run
 
-cabal-plan --hide-global --hide-builtin dot --tred --root swarm | twopi -Tsvg -o docs/image/sublibrary-graph.svg
+cabal-plan --hide-global --hide-builtin dot --tred --root swarm | sed 's/"swarm-[^:]*:\(lib\|exe\):/"/g' | sed 's/LR/BT/' | dot -Tsvg -o docs/image/sublibrary-graph.svg
