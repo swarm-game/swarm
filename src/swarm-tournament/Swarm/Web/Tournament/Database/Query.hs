@@ -10,28 +10,24 @@
 -- SQL Queries for Swarm tournaments.
 module Swarm.Web.Tournament.Database.Query where
 
-import Control.Monad (guard)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Control.Monad.Trans.Reader (ReaderT, ask)
 import Data.ByteString.Lazy qualified as LBS
 import Data.IORef
 import Data.Maybe (listToMaybe)
-import Data.String.Utils (strip)
 import Data.Time.Clock
-import Database.PostgreSQL.Simple
-import Database.PostgreSQL.Simple.FromRow
-import Database.PostgreSQL.Simple.ToField
+import Database.SQLite.Simple
+import Database.SQLite.Simple.ToField
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.State (Sha1 (..))
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Web.Tournament.Type
-import System.Exit (ExitCode (..))
-import System.Process
 
--- | Used for local development only
-envarPostgresPasswordKey :: String
-envarPostgresPasswordKey = "LOCAL_PGPASS"
+type ConnectInfo = String
+
+databaseFilename :: ConnectInfo
+databaseFilename = "swarm-games.db"
 
 newtype UserId = UserId Int
 
@@ -117,90 +113,6 @@ data DbConnType
 tokenRefreshInterval :: NominalDiffTime
 tokenRefreshInterval = 10 * 60
 
-genNewToken :: ConnectInfo -> IO (Either String String)
-genNewToken ci = do
-  (exitCode, stdoutString, stderrString) <-
-    readProcessWithExitCode
-      "aws"
-      [ "rds"
-      , "generate-db-auth-token"
-      , "--hostname"
-      , connectHost ci
-      , "--port"
-      , show $ connectPort ci
-      , "--region"
-      , region
-      , "--username"
-      , connectUser ci
-      ]
-      ""
-  return $ case exitCode of
-    ExitSuccess -> Right $ strip stdoutString
-    ExitFailure _ -> Left stderrString
- where
-  region = "us-east-1"
-
-getAwsCredentials :: TokenRef -> ConnectInfo -> IO ConnectInfo
-getAwsCredentials tokRef ci = do
-  currTime <- getCurrentTime
-  maybePreviousTok <- readIORef tokRef
-  let maybeStillValidTok = case maybePreviousTok of
-        Nothing -> Nothing
-        Just (TokenWithExpiration exprTime tok) ->
-          guard (currTime < exprTime) >> Just tok
-
-  case maybeStillValidTok of
-    Just (Password tok) ->
-      return $
-        ci
-          { connectPassword = tok
-          }
-    Nothing -> do
-      eitherNewTok <- genNewToken ci
-      case eitherNewTok of
-        Right newTok -> do
-          let nextExpirationTime = addUTCTime tokenRefreshInterval currTime
-          atomicWriteIORef tokRef
-            . Just
-            . TokenWithExpiration nextExpirationTime
-            $ Password newTok
-          return $
-            ci
-              { connectPassword = newTok
-              }
-        -- NOTE: This is not exactly valid behavior:
-        Left _errMsg -> return ci
-
-mkConnectInfo :: DbConnType -> IO ConnectInfo
-mkConnectInfo connType = do
-  let swarmDbConnect =
-        defaultConnectInfo
-          { connectDatabase = "swarm"
-          }
-
-  case connType of
-    LocalDBFromDockerOverNetwork (Password dbPasswd) ->
-      return $
-        swarmDbConnect
-          { connectHost = "host.docker.internal"
-          , connectUser = "swarm-app"
-          , connectPassword = dbPasswd
-          }
-    LocalDBOverSocket (Username username) ->
-      return
-        swarmDbConnect
-          { connectHost = "/var/run/postgresql"
-          , connectUser = username
-          }
-    RemoteDB tokRef -> getAwsCredentials tokRef rdsConnectionInfo
- where
-  rdsConnectionInfo =
-    defaultConnectInfo
-      { connectHost = "swarm-tournaments.cv6iymakujnb.us-east-1.rds.amazonaws.com"
-      , connectUser = "swarm-app"
-      , connectDatabase = "swarm"
-      }
-
 -- * Authentication
 
 getUserId :: Connection -> UserAlias -> IO UserId
@@ -226,13 +138,13 @@ getUserId conn userAlias = do
 lookupScenarioContent :: Sha1 -> ReaderT ConnectInfo IO (Maybe LBS.ByteString)
 lookupScenarioContent sha1 = do
   connInfo <- ask
-  liftIO . fmap (fmap fromOnly . listToMaybe) . withConnect connInfo $ \conn ->
+  liftIO . fmap (fmap fromOnly . listToMaybe) . withConnection connInfo $ \conn ->
     query conn "SELECT content FROM scenarios WHERE content_sha1 = ?;" (Only sha1)
 
 lookupSolutionSubmission :: Sha1 -> ReaderT ConnectInfo IO (Maybe AssociatedSolutionSolutionCharacterization)
 lookupSolutionSubmission contentSha1 = do
   connInfo <- ask
-  liftIO $ withConnect connInfo $ \conn -> runMaybeT $ do
+  liftIO $ withConnection connInfo $ \conn -> runMaybeT $ do
     evaluationId :: Int <-
       MaybeT $
         fmap fromOnly . listToMaybe
@@ -246,14 +158,14 @@ lookupSolutionSubmission contentSha1 = do
 lookupScenarioSolution :: Sha1 -> ReaderT ConnectInfo IO (Maybe AssociatedSolutionSolutionCharacterization)
 lookupScenarioSolution scenarioSha1 = do
   connInfo <- ask
-  solnChar <- liftIO . fmap listToMaybe . withConnect connInfo $ \conn ->
+  solnChar <- liftIO . fmap listToMaybe . withConnection connInfo $ \conn ->
     query conn "SELECT wall_time_seconds, ticks, seed, char_count, ast_size FROM evaluated_solution WHERE builtin AND scenario = ? LIMIT 1;" (Only scenarioSha1)
   return $ AssociatedSolutionSolutionCharacterization scenarioSha1 <$> solnChar
 
 listGames :: ReaderT ConnectInfo IO [TournamentGame]
 listGames = do
   connInfo <- ask
-  liftIO $ withConnect connInfo $ \conn ->
+  liftIO $ withConnection connInfo $ \conn ->
     query_ conn "SELECT original_filename, scenario_uploader, scenario, submission_count, swarm_git_sha1 FROM submissions;"
 
 -- * Insertion
@@ -263,7 +175,7 @@ insertScenario ::
   ReaderT ConnectInfo IO Sha1
 insertScenario s = do
   connInfo <- ask
-  h <- liftIO $ withConnect connInfo $ \conn -> do
+  h <- liftIO $ withConnection connInfo $ \conn -> do
     uid <- getUserId conn $ uploader $ upload s
     [Only resultList] <-
       query
@@ -287,7 +199,7 @@ insertSolutionSubmission ::
   ReaderT ConnectInfo IO Sha1
 insertSolutionSubmission (CharacterizationResponse solutionUpload s (SolutionUploadResponsePayload scenarioSha)) = do
   connInfo <- ask
-  liftIO $ withConnect connInfo $ \conn -> do
+  liftIO $ withConnection connInfo $ \conn -> do
     uid <- getUserId conn $ uploader solutionUpload
 
     solutionEvalId <- insertSolution conn False scenarioSha $ characterization s

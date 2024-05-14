@@ -14,16 +14,21 @@ description:
 
   == Module organization
   For developers getting oriented, Swarm's modules are organized into
-  sublibraries, from inner to outer:
+  sublibraries.  Roughly in order from inner to outer, they are:
 
-  * utilities
-  * swarm language
-  * swarm scenario
-  * swarm game engine
-  * swarm TUI
-  * swarm app
+  * swarm-util: miscellaneous utilities
+  * swarm-lang: parsing, typechecking, etc. for the Swarm language
+  * swarm-scenario: scenario descriptions, parsing, & processing
+  * swarm-engine: game simulation
+  * swarm-doc: generating documentation
+  * swarm-tui: textual user interface
+  * swarm-web: web interface
+  * swarm: the swarm executable
 
   <<docs/image/sublibrary-graph.svg>>
+
+  See the [Swarm module guide](https://github.com/swarm-game/swarm/wiki/Module-guide)
+  for a more in-depth guide to the codebase.
 
 license: BSD-3-Clause
 license-file: LICENSE
@@ -465,7 +470,6 @@ library swarm-tournament
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm
   build-depends:
-    MissingH,
     SHA,
     aeson,
     base,
@@ -477,11 +481,10 @@ library swarm-tournament
     http-types,
     lens,
     mtl,
-    postgresql-simple >=0.7 && <0.7.1,
-    process,
     servant-docs,
     servant-multipart,
     servant-server >=0.19 && <0.21,
+    sqlite-simple >=0.4.19.0 && <0.4.20,
     text,
     time,
     transformers,
@@ -758,7 +761,6 @@ executable swarm-host-tournament
     base,
     optparse-applicative >=0.16 && <0.19,
     transformers,
-    unix,
     warp,
 
   build-depends:

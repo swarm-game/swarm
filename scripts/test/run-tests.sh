@@ -1,7 +1,5 @@
 #!/bin/bash -ex
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-cd $SCRIPT_DIR/..
+cd $(git rev-parse --show-toplevel)
 
-# See https://github.com/swarm-game/swarm/issues/936
-STACK_WORK=.stack-work-test stack test --fast "$@"
+cabal test --test-show-details=direct -O0 -j "$@"
