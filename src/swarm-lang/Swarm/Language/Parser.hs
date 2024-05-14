@@ -13,14 +13,15 @@ module Swarm.Language.Parser (
   readTerm',
 ) where
 
-import Data.Bifunctor (bimap)
+import Data.Bifunctor (first, second)
 import Data.Sequence (Seq)
 import Data.Text (Text)
+import Swarm.Language.Parser.Comment (populateComments)
 import Swarm.Language.Parser.Core (ParserError, runParser)
 import Swarm.Language.Parser.Lex (sc)
 import Swarm.Language.Parser.Term (parseTerm)
+import Swarm.Language.Parser.Util (fullyMaybe)
 import Swarm.Language.Syntax (Comment, Syntax)
-import Swarm.Util.Parse (fullyMaybe)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Witch (from)
 
@@ -30,9 +31,12 @@ import Witch (from)
 --   'Nothing' if the input was only whitespace) or a pretty-printed
 --   parse error message.
 readTerm :: Text -> Either Text (Maybe Syntax)
-readTerm = bimap (from . errorBundlePretty) fst . runParser (fullyMaybe sc parseTerm)
+readTerm = first (from . errorBundlePretty) . readTerm'
 
 -- | A lower-level `readTerm` which returns the megaparsec bundle error
---   for precise error reporting, as well as the parsed comments.
-readTerm' :: Text -> Either ParserError (Maybe Syntax, Seq Comment)
-readTerm' = runParser (fullyMaybe sc parseTerm)
+--   for precise error reporting.
+readTerm' :: Text -> Either ParserError (Maybe Syntax)
+readTerm' = second handleComments . runParser (fullyMaybe sc parseTerm)
+ where
+  handleComments :: (Maybe Syntax, Seq Comment) -> Maybe Syntax
+  handleComments (s, cs) = populateComments cs <$> s

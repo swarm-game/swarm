@@ -13,9 +13,11 @@ import Control.Lens.Combinators (pattern Empty)
 import Control.Monad.Free (Free (..))
 import Data.Bool (bool)
 import Data.Fix
+import Data.Foldable qualified as F
 import Data.List.NonEmpty ((<|))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
+import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.String (fromString)
@@ -191,10 +193,35 @@ instance PrettyPrec Capability where
 instance PrettyPrec Const where
   prettyPrec p c = pparens (p > fixity (constInfo c)) $ pretty . syntax . constInfo $ c
 
+-- | Pretty-print a syntax node with comments.
 instance PrettyPrec (Syntax' ty) where
-  prettyPrec p = prettyPrec p . eraseS
+  prettyPrec p (Syntax' _ t (Comments before after) _) = case before of
+    Empty -> t'
+    _ ->
+      -- Print out any comments before the node, with a blank line before
+      mconcat
+        [ hardline
+        , vsep (map ppr (F.toList before))
+        , hardline
+        , t'
+        ]
+   where
+    -- Print the node itself, possibly with suffix comments on the same line
+    t' = case Seq.viewr after of
+      Seq.EmptyR -> prettyPrec p t
+      _ Seq.:> lst -> case commentType lst of
+        -- Output a newline after a line comment, but not after a block comment
+        BlockComment -> tWithComments
+        LineComment -> tWithComments <> hardline
+     where
+      -- The pretty-printed node with suffix comments
+      tWithComments = prettyPrec p t <+> hsep (map ppr (F.toList after))
 
-instance PrettyPrec Term where
+instance PrettyPrec Comment where
+  prettyPrec _ (Comment _ LineComment _ txt) = "//" <> pretty txt
+  prettyPrec _ (Comment _ BlockComment _ txt) = "/*" <> pretty txt <> "*/"
+
+instance PrettyPrec (Term' ty) where
   prettyPrec _ TUnit = "()"
   prettyPrec p (TConst c) = prettyPrec p c
   prettyPrec _ (TDir d) = ppr d
@@ -207,15 +234,15 @@ instance PrettyPrec Term where
   prettyPrec _ (TRef r) = "@" <> pretty r
   prettyPrec p (TRequireDevice d) = pparens (p > 10) $ "require" <+> ppr @Term (TText d)
   prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr @Term (TText e)
-  prettyPrec p (TRequirements _ e) = pparens (p > 10) $ "requirements" <+> ppr e
+  prettyPrec p (SRequirements _ e) = pparens (p > 10) $ "requirements" <+> ppr e
   prettyPrec _ (TVar s) = pretty s
-  prettyPrec _ (TDelay _ t) = group . encloseWithIndent 2 lbrace rbrace $ ppr t
-  prettyPrec _ t@TPair {} = prettyTuple t
-  prettyPrec p t@(TLam {}) =
+  prettyPrec _ (SDelay _ t) = group . encloseWithIndent 2 lbrace rbrace $ ppr t
+  prettyPrec _ t@SPair {} = prettyTuple t
+  prettyPrec p t@(SLam {}) =
     pparens (p > 9) $
       prettyLambdas t
   -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3
-  prettyPrec p (TApp t@(TApp (TConst c) l) r) =
+  prettyPrec p (SApp t@(Syntax' _ (SApp (Syntax' _ (TConst c) _ _) l) _ _) r) =
     let ci = constInfo c
         pC = fixity ci
      in case constMeta ci of
@@ -227,8 +254,8 @@ instance PrettyPrec Term where
                 , prettyPrec (pC + fromEnum (assoc == L)) r
                 ]
           _ -> prettyPrecApp p t r
-  prettyPrec p (TApp t1 t2) = case t1 of
-    TConst c ->
+  prettyPrec p (SApp t1 t2) = case t1 of
+    Syntax' _ (TConst c) _ _ ->
       let ci = constInfo c
           pC = fixity ci
        in case constMeta ci of
@@ -236,25 +263,25 @@ instance PrettyPrec Term where
             ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
             _ -> prettyPrecApp p t1 t2
     _ -> prettyPrecApp p t1 t2
-  prettyPrec _ (TLet _ x mty t1 t2) =
+  prettyPrec _ (SLet _ (LV _ x) mty t1 t2) =
     sep
       [ prettyDefinition "let" x mty t1 <+> "in"
       , ppr t2
       ]
-  prettyPrec _ (TDef _ x mty t1) =
+  prettyPrec _ (SDef _ (LV _ x) mty t1) =
     sep
       [ prettyDefinition "def" x mty t1
       , "end"
       ]
-  prettyPrec p (TBind Nothing t1 t2) =
+  prettyPrec p (SBind Nothing t1 t2) =
     pparens (p > 0) $
       prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
-  prettyPrec p (TBind (Just x) t1 t2) =
+  prettyPrec p (SBind (Just (LV _ x)) t1 t2) =
     pparens (p > 0) $
       pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
-  prettyPrec _ (TRcd m) = brackets $ hsep (punctuate "," (map prettyEquality (M.assocs m)))
-  prettyPrec _ (TProj t x) = prettyPrec 11 t <> "." <> pretty x
-  prettyPrec p (TAnnotate t pt) =
+  prettyPrec _ (SRcd m) = brackets $ hsep (punctuate "," (map prettyEquality (M.assocs m)))
+  prettyPrec _ (SProj t x) = prettyPrec 11 t <> "." <> pretty x
+  prettyPrec p (SAnnotate t pt) =
     pparens (p > 0) $
       prettyPrec 1 t <+> ":" <+> ppr pt
 
@@ -262,13 +289,7 @@ prettyEquality :: (Pretty a, PrettyPrec b) => (a, Maybe b) -> Doc ann
 prettyEquality (x, Nothing) = pretty x
 prettyEquality (x, Just t) = pretty x <+> "=" <+> ppr t
 
-prettyTuple :: Term -> Doc a
-prettyTuple = tupled . map ppr . unnestTuple
- where
-  unnestTuple (TPair t1 t2) = t1 : unnestTuple t2
-  unnestTuple t = [t]
-
-prettyDefinition :: Doc ann -> Var -> Maybe Polytype -> Term -> Doc ann
+prettyDefinition :: Doc ann -> Var -> Maybe Polytype -> Syntax' ty -> Doc ann
 prettyDefinition defName x mty t1 =
   nest 2 . sep $
     [ flatAlt
@@ -284,7 +305,7 @@ prettyDefinition defName x mty t1 =
   defEqLambdas = hsep ("=" : map prettyLambda defLambdaList)
   eqAndLambdaLine = if null defLambdaList then "=" else line <> defEqLambdas
 
-prettyPrecApp :: Int -> Term -> Term -> Doc a
+prettyPrecApp :: Int -> Syntax' ty -> Syntax' ty -> Doc a
 prettyPrecApp p t1 t2 =
   pparens (p > 10) $
     prettyPrec 10 t1 <+> prettyPrec 11 t2
@@ -295,14 +316,17 @@ appliedTermPrec (TApp f _) = case f of
   _ -> appliedTermPrec f
 appliedTermPrec _ = 10
 
-prettyLambdas :: Term -> Doc a
+prettyTuple :: Term' ty -> Doc a
+prettyTuple = tupled . map ppr . unTuple . STerm . erase
+
+prettyLambdas :: Term' ty -> Doc a
 prettyLambdas t = hsep (prettyLambda <$> lms) <> softline <> ppr rest
  where
-  (rest, lms) = unchainLambdas t
+  (rest, lms) = unchainLambdas (STerm (erase t))
 
-unchainLambdas :: Term -> (Term, [(Var, Maybe Type)])
+unchainLambdas :: Syntax' ty -> (Syntax' ty, [(Var, Maybe Type)])
 unchainLambdas = \case
-  TLam x mty body -> ((x, mty) :) <$> unchainLambdas body
+  Syntax' _ (SLam (LV _ x) mty body) _ _ -> ((x, mty) :) <$> unchainLambdas body
   body -> (body, [])
 
 prettyLambda :: (Pretty a1, PrettyPrec a2) => (a1, Maybe a2) -> Doc ann

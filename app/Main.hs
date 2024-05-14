@@ -7,23 +7,15 @@
 module Main where
 
 import Data.Foldable qualified
-import Data.Text (Text, pack)
-import Data.Text.IO qualified as Text
 import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
-import Prettyprinter
-import Prettyprinter.Render.Text qualified as RT
 import Swarm.App (appMain)
+import Swarm.Language.Format
 import Swarm.Language.LSP (lspMain)
-import Swarm.Language.Parser (readTerm)
-import Swarm.Language.Pretty (ppr)
 import Swarm.TUI.Model (AppOpts (..), ColorMode (..))
 import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond)
-import Swarm.Util ((?))
 import Swarm.Version
 import Swarm.Web (defaultPort)
-import System.Console.Terminal.Size qualified as Term
-import System.Exit (exitFailure)
 import System.IO (hPrint, stderr)
 import Text.Read (readMaybe)
 
@@ -35,11 +27,9 @@ commitInfo = case gitInfo of
   Nothing -> ""
   Just git -> " (" <> giBranch git <> "@" <> take 10 (giHash git) <> ")"
 
-type Width = Int
-
 data CLI
   = Run AppOpts
-  | Format Input (Maybe Width)
+  | Format FormatInput FormatOutput (Maybe FormatWidth)
   | LSP
   | Version
 
@@ -47,7 +37,7 @@ cliParser :: Parser CLI
 cliParser =
   subparser
     ( mconcat
-        [ command "format" (info (Format <$> format <*> optional widthOpt <**> helper) (progDesc "Format a file"))
+        [ command "format" (info (Format <$> input <*> output <*> optional widthOpt <**> helper) (progDesc "Format a file"))
         , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
         ]
@@ -65,12 +55,18 @@ cliParser =
               <*> pure gitInfo
           )
  where
-  format :: Parser Input
-  format =
+  input :: Parser FormatInput
+  input =
     flag' Stdin (long "stdin" <> help "Read code from stdin")
-      <|> (File <$> strArgument (metavar "FILE"))
+      <|> (InputFile <$> strArgument (metavar "FILE"))
 
-  widthOpt :: Parser Width
+  output :: Parser FormatOutput
+  output =
+    flag Stdout Stdout (long "stdout" <> help "Write formatted code to stdout (default)")
+      <|> (OutputFile <$> strOption (long "output" <> short 'o' <> metavar "FILE" <> help "Write formatted code to an output file"))
+      <|> flag' Inplace (long "inplace" <> short 'i' <> help "Format file in place")
+
+  widthOpt :: Parser FormatWidth
   widthOpt = option auto (long "width" <> metavar "COLUMNS" <> help "Use layout with maximum width")
 
   seed :: Parser (Maybe Int)
@@ -116,34 +112,6 @@ cliInfo =
         <> fullDesc
     )
 
-data Input = Stdin | File FilePath
-
-getInput :: Input -> IO Text
-getInput Stdin = Text.getContents
-getInput (File fp) = Text.readFile fp
-
-showInput :: Input -> Text
-showInput Stdin = "(input)"
-showInput (File fp) = pack fp
-
--- | Utility function to validate and format swarm-lang code
-formatFile :: Input -> Maybe Width -> IO ()
-formatFile input mWidth = do
-  content <- getInput input
-  case readTerm content of
-    Right Nothing -> Text.putStrLn ""
-    Right (Just ast) -> do
-      mWindow <- Term.size
-      let mkOpt w = LayoutOptions (AvailablePerLine w 1.0)
-      let opt =
-            fmap mkOpt mWidth
-              ? fmap (\(Term.Window _h w) -> mkOpt w) mWindow
-              ? defaultLayoutOptions
-      Text.putStrLn . RT.renderStrict . layoutPretty opt $ ppr ast
-    Left e -> do
-      Text.hPutStrLn stderr $ showInput input <> ":" <> e
-      exitFailure
-
 showVersion :: IO ()
 showVersion = do
   putStrLn $ "Swarm game - " <> version <> commitInfo
@@ -155,6 +123,6 @@ main = do
   cli <- execParser cliInfo
   case cli of
     Run opts -> appMain opts
-    Format fo w -> formatFile fo w
+    Format fi fo w -> formatSwarmIO fi fo w
     LSP -> lspMain
     Version -> showVersion

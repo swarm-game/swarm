@@ -28,7 +28,7 @@ parsePolytype :: Parser Polytype
 parsePolytype =
   join $
     ( quantify . fromMaybe []
-        <$> optional (reserved "forall" *> some identifier <* symbol ".")
+        <$> optional ((reserved "forall" <|> reserved "∀") *> some identifier <* symbol ".")
     )
       <*> parseType
  where

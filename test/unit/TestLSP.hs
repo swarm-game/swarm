@@ -85,7 +85,7 @@ testLSP =
   getWarnings :: Text -> [UnusedVar]
   getWarnings content =
     case readTerm' content of
-      Right (Just term, _) -> map simplifyWarning problems
+      Right (Just term) -> map simplifyWarning problems
        where
         VU.Usage _ problems = VU.getUsage mempty term
       _ -> []

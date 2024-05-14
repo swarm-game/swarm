@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -6,7 +7,7 @@
 -- Term elaboration which happens after type checking.
 module Swarm.Language.Elaborate where
 
-import Control.Lens (transform, (%~), (^.))
+import Control.Lens (transform, (%~), (^.), pattern Empty)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 
@@ -53,4 +54,4 @@ wrapForce x = mapFreeS x (\s@(Syntax' l _ ty cs) -> Syntax' l (SApp sForce s) ty
 -- Note, TyUnit is not the right type, but I don't want to bother
 
 sForce :: Syntax' Polytype
-sForce = Syntax' NoLoc (TConst Force) Nothing (Forall ["a"] (TyDelay (TyVar "a") :->: TyVar "a"))
+sForce = Syntax' NoLoc (TConst Force) Empty (Forall ["a"] (TyDelay (TyVar "a") :->: TyVar "a"))

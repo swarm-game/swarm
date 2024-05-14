@@ -128,12 +128,14 @@ library swarm-lang
     Swarm.Language.Context
     Swarm.Language.Direction
     Swarm.Language.Elaborate
+    Swarm.Language.Format
     Swarm.Language.Key
     Swarm.Language.LSP
     Swarm.Language.LSP.Hover
     Swarm.Language.LSP.VarUsage
     Swarm.Language.Module
     Swarm.Language.Parser
+    Swarm.Language.Parser.Comment
     Swarm.Language.Parser.Core
     Swarm.Language.Parser.Lex
     Swarm.Language.Parser.QQ
@@ -176,6 +178,7 @@ library swarm-lang
     split,
     syb >=0.7 && <0.8,
     template-haskell,
+    terminal-size >=0.3 && <1.0,
     text,
     text-rope >=0.2 && <0.3,
     vector,
@@ -511,7 +514,6 @@ library swarm-util
     Swarm.Util.Erasable
     Swarm.Util.Lens
     Swarm.Util.OccurrenceEncoder
-    Swarm.Util.Parse
     Swarm.Util.ReadableIORef
     Swarm.Util.RingBuffer
     Swarm.Util.UnitInterval
@@ -531,7 +533,6 @@ library swarm-util
     filepath >=1.4 && <1.5,
     fused-effects >=1.1.1.1 && <1.2,
     lens >=4.19 && <5.4,
-    megaparsec >=9.6.1 && <9.7,
     minimorph >=0.3 && <0.4,
     mtl >=2.2.2 && <2.4,
     servant-docs >=0.12 && <0.14,

@@ -58,10 +58,14 @@ showHoverInfo ::
   VirtualFile ->
   Maybe (Text, Maybe J.Range)
 showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
-  case readTerm' content of
-    Left _ -> Nothing
-    Right (Nothing, _) -> Nothing
-    Right (Just stx, _) -> Just $ case processParsedTerm stx of
+  either (const Nothing) (fmap genHoverInfo) (readTerm' content)
+ where
+  content = virtualFileText vf
+  absolutePos =
+    R.charLength . fst $ R.charSplitAtPosition (lspToRopePosition p) myRope
+
+  genHoverInfo stx =
+    case processParsedTerm stx of
       Left _e ->
         let found@(Syntax foundSloc _) = narrowToPosition stx $ fromIntegral absolutePos
             finalPos = posToRange myRope foundSloc
@@ -70,10 +74,6 @@ showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
         let found@(Syntax' foundSloc _ _ _) = narrowToPosition (moduleAST modul) $ fromIntegral absolutePos
             finalPos = posToRange myRope foundSloc
          in (,finalPos) . treeToMarkdown 0 $ explain found
- where
-  content = virtualFileText vf
-  absolutePos =
-    R.charLength . fst $ R.charSplitAtPosition (lspToRopePosition p) myRope
 
 posToRange :: R.Rope -> SrcLoc -> Maybe J.Range
 posToRange myRope foundSloc = do

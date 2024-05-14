@@ -18,8 +18,8 @@ import Data.Text qualified as T
 import Data.Void (Void)
 import Data.Yaml (FromJSON (parseJSON), withText)
 import Swarm.Game.World.Syntax
+import Swarm.Language.Parser.Util (fully)
 import Swarm.Util (failT, showT, squote)
-import Swarm.Util.Parse (fully)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L

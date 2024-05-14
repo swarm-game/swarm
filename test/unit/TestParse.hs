@@ -9,7 +9,10 @@ module TestParse where
 
 import Data.Foldable qualified as F
 import Data.Text (Text)
-import Swarm.Language.Parser
+import Swarm.Language.Parser.Core (runParser)
+import Swarm.Language.Parser.Lex (sc)
+import Swarm.Language.Parser.Term (parseTerm)
+import Swarm.Language.Parser.Util (fullyMaybe)
 import Swarm.Language.Syntax
 import Test.Tasty
 import Test.Tasty.HUnit (Assertion, assertEqual, assertFailure, testCase)
@@ -61,6 +64,6 @@ testParse =
     ]
 
 expectParsedComments :: Text -> [Comment] -> Assertion
-expectParsedComments input ex = case readTerm' input of
+expectParsedComments input ex = case runParser (fullyMaybe sc parseTerm) input of
   Left err -> assertFailure (into @String $ errorBundlePretty err)
   Right (_, res) -> assertEqual "Expected parsed comments" ex (F.toList res)
