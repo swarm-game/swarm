@@ -1,0 +1,34 @@
+body {
+  font-family: sans-serif;
+}
+
+.trueValue {
+  color: #00a000;
+}
+
+.falseValue {
+  color: #a00000;
+}
+
+a:link {
+  color: lavender;
+  text-decoration: none;
+}
+
+/* visited link */
+a:visited {
+  color: lightblue;
+  text-decoration: none;
+}
+
+/* mouse over link */
+a:hover {
+  color: hotpink;
+  text-decoration: underline;
+}
+
+/* selected link */
+a:active {
+  color: blue;
+  text-decoration: underline;
+}

@@ -32,6 +32,13 @@
             "default": null,
             "type": "number"
         },
+        "terrains": {
+            "description": "An optional list of custom terrain, to be used in addition to the built-in terrain.",
+            "default": [],
+            "items": {
+                "$ref": "terrain.json"
+            }
+        },
         "entities": {
             "description": "An optional list of custom entities, to be used in addition to the built-in entities.",
             "default": [],

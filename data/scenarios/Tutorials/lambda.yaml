@@ -4,8 +4,7 @@ description: |
   Learn how to define functions.
 objectives:
   - goal:
-      - Your goal in this challenge is to send a robot to grab the
-        `flower`{=entity} in the lower right (you don't need to bring it back).
+      - Your goal in this challenge is to send a robot to grab the `flower`{=entity} in the lower right (you don't need to bring it back).
       - |
         The path looks complex, but if you study it, you will see that it
         has a lot of structure.  In particular, there are many parts of
@@ -19,9 +18,7 @@ objectives:
         ```
         def x4 : Cmd Unit -> Cmd Unit = \c. c; c; c; c end
         ```
-      - That is, `x4`{=snippet} is defined as the function which takes a command,
-        called `c`{=snippet}, as input, and returns the command
-        `c; c; c; c`{=snippet} which consists of executing `c`{=snippet} four times.
+      - That is, `x4`{=snippet} is defined as the function which takes a command, called `c`{=snippet}, as input, and returns the command `c; c; c; c`{=snippet} which consists of executing `c`{=snippet} four times.
     condition: |
       try {
         teleport self (32,-16);
@@ -42,7 +39,7 @@ solution: |
   }
 robots:
   - name: base
-    dir: [0,1]
+    dir: north
     display:
       char: Ω
       attr: robot
@@ -71,7 +68,7 @@ world:
     '┘': [stone, lower right corner]
     '─': [stone, horizontal wall]
     '│': [stone, vertical wall]
-  upperleft: [-1,1]
+  upperleft: [-1, 1]
   map: |
     ┌─────────────────────────────────┐
     │.......@.......@.......@.......@@│
@@ -92,5 +89,3 @@ world:
     │@@@@.@.@@@@@.@.@@@@@.@.@@@@@.@.@@│
     │Ω....@.......@.......@.......@..*│
     └─────────────────────────────────┘
-
-

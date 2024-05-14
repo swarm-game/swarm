@@ -66,7 +66,7 @@ objectives:
       };
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     devices:
       - ADT calculator
       - antenna
@@ -90,13 +90,13 @@ robots:
       - workbench
   - name: judge
     system: true
-    dir: [1, 0]
+    dir: east
     display:
       invisible: true
     program: |
       run "scenarios/Challenges/_lights-out/assistant.sw";
 solution: |
-   run "scenarios/Challenges/_lights-out/solution.sw"
+  run "scenarios/Challenges/_lights-out/solution.sw"
 entities:
   - name: pending-off
     display:
@@ -159,4 +159,3 @@ world:
     .xxxxx.
     .xxxxx.
     z......
-    

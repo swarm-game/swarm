@@ -25,16 +25,16 @@ solution: |
   forever {tryharvest}
 robots:
   - name: base
-    loc: [0,0]
-    dir: [1,0]
+    loc: [0, 0]
+    dir: east
     devices:
       - logger
       - harvester
     inventory:
       - [1, lambda]
   - name: planter
-    loc: [0,0]
-    dir: [1,0]
+    loc: [0, 0]
+    dir: east
     devices:
       - logger
       - grabber
@@ -55,12 +55,12 @@ entities:
       attr: plant
       char: 'W'
     description:
-    - A fast-growing weed.
-    properties: [known, portable, growable]
-    growth: [1,2]
+      - A fast-growing weed.
+    properties: [known, pickable, growable]
+    growth: [1, 2]
 world:
   palette:
     '.': [grass]
-  upperleft: [0,0]
+  upperleft: [0, 0]
   map: |
     .

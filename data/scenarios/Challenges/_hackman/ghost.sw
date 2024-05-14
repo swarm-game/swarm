@@ -117,19 +117,6 @@ def chooseDirection : Cmd Dir =
     }
     end;
 
-// Ghosts must implement teleporting logic themselves.
-// Hard-codes location of the teleporter.
-def checkNeedsTeleport = \offset.
-    currentLoc <- whereami;
-    if (fst currentLoc < -offset) {
-        teleport self (offset, snd currentLoc)
-    } {
-        if (fst currentLoc > offset) {
-            teleport self (-offset, snd currentLoc)
-        } {}
-    }
-    end;
-
 startPos <- whereami;
 
 def go =
@@ -138,7 +125,6 @@ def go =
         teleport self startPos;
     } {
         move;
-        checkNeedsTeleport 11;
         newDirection <- chooseDirection;
         turn newDirection;
         go;

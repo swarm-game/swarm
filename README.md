@@ -46,21 +46,30 @@ unreleased features), read on.
 
        git clone https://github.com/swarm-game/swarm.git
 
-1. If you don't already have the `stack` tool:
+1. If you don't already have the `cabal` tool:
     1. Get the [`ghcup` tool](https://www.haskell.org/ghcup/), a handy
        one-stop utility for managing all the different pieces of a
        Haskell toolchain.
-    1. Use `ghcup` to install `stack`:
+    1. Use `ghcup` to install a supported version of GHC:
 
-           ghcup install stack
+           ghcup install ghc 9.6.4
 
-1. Now use `stack` to build and run Swarm:
+    1. Use `ghcup` to install `cabal`:
+
+           ghcup install cabal
+
+1. Now use `cabal` to build and run Swarm:
 
        cd /path/to/the/swarm/repo
-       stack run
+       cabal run -O0 swarm:exe:swarm
 
-1. Go get a snack while `stack` downloads a Haskell compiler and
-   all of Swarm's dependencies.
+   (Note that we recommend turning off optimizations with `-O0` since
+   they don't seem to make much difference to the speed of the
+   resulting executable, but they make a big difference in compilation
+   time.)
+
+1. Go get a snack while `cabal` downloads and builds all of Swarm's
+   dependencies.
 
 1. You might also want to check out the `scripts` directory, which
    contains an assortment of useful scripts for developers.

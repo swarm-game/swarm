@@ -4,8 +4,8 @@
     "title": "Entity",
     "description": "Description of an entity in the Swarm game",
     "footers": [
-        "doc-fragments/entity-properties.md",
-        "doc-fragments/capabilities.md"
+        "_doc-fragments/entity-properties.md",
+        "_doc-fragments/capabilities.md"
     ],
     "type": "object",
     "additionalProperties": false,
@@ -30,6 +30,13 @@
                 "type": "string"
             },
             "description": "A description of the entity, as a list of paragraphs."
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "A list of categories this entity belongs to."
         },
         "orientation": {
             "default": null,
@@ -66,6 +73,17 @@
             "$ref": "combustion.json",
             "description": "Properties of combustion."
         },
+        "biomes": {
+            "default": [],
+            "type": "array",
+            "items": {
+                "type": "string",
+                "examples": [
+                    "dirt"
+                ]
+            },
+            "description": "A list of terrains that support growth by this entity. Empty list means no growth restrictions."
+        },
         "yields": {
             "default": null,
             "type": "string",
@@ -90,7 +108,25 @@
             "default": [],
             "type": "array",
             "items": {
-                "type": "string"
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "capability": {
+                                "description": "Capability name",
+                                "type": "string"
+                            },
+                            "cost": {
+                                "$ref": "inventory.json",
+                                "description": "A list of ingredients consumed by the command."
+                            }
+                        }
+                    }
+                ]
             },
             "description": "A list of capabilities provided by entity, when it is equipped as a device. See [Capabilities](https://github.com/swarm-game/swarm/wiki/Capabilities-cheat-sheet)."
         }

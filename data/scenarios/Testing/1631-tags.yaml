@@ -1,0 +1,130 @@
+version: 1
+name: Test tag commands
+description: |
+  Test the `hastag` and `tagmembers` command.
+objectives:
+  - condition: |
+      as base {has "mushroom"}
+    prerequisite:
+      not: got_fruit
+    goal:
+      - |
+        Pick up something `edible`{=tag} that is not a `fruit`{=tag}.
+  - teaser: "No fruit!"
+    id: got_fruit
+    optional: true
+    condition: |
+      // Returns true if prohibited item is in inventory.
+      def checkFruit = \idx.
+        result <- tagmembers "fruit" idx;
+        let totalCount = fst result in
+        let member = snd result in
+        let nextIdx = idx + 1 in
+
+        hasProhibited <- as base {has member};
+        if hasProhibited {
+          return true;
+        } {
+          if (nextIdx < totalCount) {
+            checkFruit nextIdx;
+          } {
+            return false;
+          }
+        }
+        end;
+
+      checkFruit 0;
+    goal:
+      - |
+        Do not pick up any fruit.
+solution: |
+  def findTarget =
+    result <- scan down;
+    isTarget <- case result (\_. return false) (\item.
+      isEdible <- hastag item "edible";
+      isFruit <- hastag item "fruit";
+      return $ isEdible && not isFruit;
+    );
+
+    if isTarget {
+      grab;
+      return ();
+    } {
+      move;
+      findTarget;
+    }
+    end;
+
+  findTarget;
+robots:
+  - name: base
+    dir: east
+    devices:
+      - ADT calculator
+      - branch predictor
+      - barcode scanner
+      - dictionary
+      - grabber
+      - lambda
+      - lodestone
+      - logger
+      - scanner
+      - solar panel
+      - strange loop
+      - treads
+entities:
+  - name: barcode scanner
+    display:
+      attr: red
+      char: 'S'
+    description:
+      - Reads the 'tag' of an item
+    properties: [pickable]
+    capabilities: [hastag, tagmembers]
+  - name: canteloupe
+    display:
+      char: 'c'
+    description:
+      - Melon
+    tags: [edible, fruit]
+    properties: [pickable]
+  - name: mushroom
+    display:
+      char: 'm'
+    description:
+      - Nature's tiny umbrella.
+    tags: [edible, fungus]
+    properties: [pickable]
+  - name: gravel
+    display:
+      char: 'g'
+    description:
+      - Crushed rock
+    properties: [pickable]
+  - name: strawberry
+    display:
+      char: 's'
+    description:
+      - Just ripe
+    tags: [edible, fruit]
+  - name: peach
+    display:
+      char: 'g'
+    description:
+      - Just ripe
+    tags: [edible, fruit]
+    properties: [pickable]
+world:
+  palette:
+    '.': [grass]
+    'B': [grass, null, base]
+    'a': [grass, canteloupe]
+    'b': [grass, gravel]
+    'c': [grass, strawberry]
+    'd': [grass, mushroom]
+    'e': [grass, peach]
+  upperleft: [-5, 5]
+  map: |
+    .......
+    B.abcde
+    .......

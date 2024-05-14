@@ -26,7 +26,7 @@
 (setq swarm-font-lock-keywords
       (let* (
              ;; Generate the current keywords with:
-             ;; cabal run swarm:swarm -- generate editors --emacs
+             ;; cabal run swarm:swarm-docs -- editors --emacs
              (x-keywords '("def" "end" "let" "in" "require"))
              (x-builtins '(
                "self"
@@ -55,6 +55,7 @@
                "selfdestruct"
                "move"
                "backup"
+               "volume"
                "path"
                "push"
                "stride"
@@ -87,6 +88,10 @@
                "scout"
                "whereami"
                "waypoint"
+               "structure"
+               "floorplan"
+               "hastag"
+               "tagmembers"
                "detect"
                "resonate"
                "density"

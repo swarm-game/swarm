@@ -32,7 +32,7 @@ solution: |
   grabFlower
 robots:
   - name: base
-    dir: [0,-1]
+    dir: south
     display:
       char: Ω
       attr: robot
@@ -47,21 +47,21 @@ robots:
       - string
       - treads
   - name: bot
-    dir: [0,1]
+    dir: north
     system: true
     display:
       invisible: false
       char: b
       attr: robot
   - name: obscuredbot
-    dir: [0,1]
+    dir: north
     system: true
     display:
       invisible: false
       char: o
       attr: robot
   - name: invisiblebot
-    dir: [0,1]
+    dir: north
     system: true
     display:
       invisible: true
@@ -80,10 +80,10 @@ world:
     'T': [grass, tree]
   upperleft: [0, 0]
   map: |
-   .........
-   ..o.i.b..
-   .........
-   ..T...*..
-   .........
-   Ω.......@
-   .........
+    .........
+    ..o.i.b..
+    .........
+    ..T...*..
+    .........
+    Ω.......@
+    .........

@@ -1,0 +1,57 @@
+version: 1
+name: Push test
+creative: false
+description: Push item
+objectives:
+  - goal:
+      - Push a crate onto the stone pad
+    condition: |
+      j <- robotnamed "judge";
+      as j {ishere "crate"}
+solution: |
+  move;
+  push;
+robots:
+  - name: base
+    dir: east
+    display:
+      char: Ω
+      attr: robot
+    devices:
+      - branch predictor
+      - calculator
+      - compass
+      - dictionary
+      - grabber
+      - logger
+      - net
+      - scanner
+      - treads
+      - dozer blade
+  - name: judge
+    dir: north
+    system: true
+    display:
+      char: j
+      attr: robot
+      invisible: true
+entities:
+  - name: crate
+    display:
+      attr: wood
+      char: 'c'
+    description:
+      - Pushable crate
+    properties: [known, pushable]
+known: [water]
+world:
+  dsl: |
+    {water}
+  palette:
+    'Ω': [grass, erase, base]
+    'j': [stone, erase, judge]
+    '.': [grass, erase]
+    'x': [grass, crate]
+  upperleft: [0, 0]
+  map: |
+    Ωxxj

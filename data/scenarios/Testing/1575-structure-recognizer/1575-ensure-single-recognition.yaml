@@ -1,0 +1,80 @@
+version: 1
+name: Structure recognizer - single recognition
+description: |
+  Ensure that only a single structure is recognized
+  when placing an entity would complete more than one
+  structure template.
+creative: false
+objectives:
+  - teaser: Build 2 `chessboard`{=structure}s
+    prerequisite:
+      not: premature_win
+    goal:
+      - |
+        Build 2 of the same structure
+    condition: |
+      foundStructure <- structure "chessboard" 0;
+      return $ case foundStructure (\_. false) (\fs.
+        let boardCount = fst fs in
+        boardCount >= 2;
+      );
+  - id: premature_win
+    teaser: Don't count win early
+    optional: true
+    goal:
+      - |
+        Two structures shouldn't be recognized
+        while the bases still possesses `gold`{=entity}
+    condition: |
+      robotHasGold <- as base {has "gold"};
+
+      foundStructure <- structure "chessboard" 0;
+      return $ case foundStructure (\_. false) (\fs.
+        let boardCount = fst fs in
+        boardCount >= 2 && robotHasGold;
+      );
+robots:
+  - name: base
+    dir: south
+    devices:
+      - grabber
+      - treads
+    inventory:
+      - [1, gold]
+      - [1, silver]
+solution: |
+  move;
+  place "silver";
+  move; move; move;
+  turn left;
+  move; move; move; move;
+  place "gold";
+structures:
+  - name: chessboard
+    recognize: [north]
+    structure:
+      mask: '.'
+      palette:
+        'g': [stone, gold]
+        's': [stone, silver]
+      map: |
+        gsgs
+        sgsg
+        gsgs
+        sgsg
+world:
+  name: root
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass]
+    'g': [grass, gold]
+    's': [grass, silver]
+    'B': [grass, null, base]
+  upperleft: [0, 0]
+  map: |
+    ...B....
+    gsg.gsgs
+    sgsgsgsg
+    gsgsgsgs
+    sgsgsgs.

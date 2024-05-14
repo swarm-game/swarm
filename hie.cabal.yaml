@@ -1,0 +1,10 @@
+-- If you want to use HLS with Cabal (recommended), simply do
+--
+--   cp hie.cabal.yaml hie.yaml
+--
+-- the file hie.yaml is ignored, so it will not
+-- show in git status ;)
+--
+-- If you are using Stack, you can ignore this file.
+cradle:
+  cabal:

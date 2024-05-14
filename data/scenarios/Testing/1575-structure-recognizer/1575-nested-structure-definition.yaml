@@ -1,0 +1,100 @@
+version: 1
+name: Structure recognizer - nested structure
+description: |
+  Ensure nested structures are assembled correctly.
+  Demonstrate structure recognition both before
+  a member is removed and after replacing it.
+creative: false
+objectives:
+  - teaser: Re-recognized
+    prerequisite: grab_tree
+    goal:
+      - |
+        Replace `tree`{=entity} after grabbing.
+        The `double ring`{=structure} structure should be recognized again.
+    condition: |
+      foundStructure <- structure "double ring" 0;
+      return $ case foundStructure (\_. false) (\_. true);
+  - teaser: Pre-recognized
+    id: pre_recognized
+    prerequisite:
+      not: grab_tree
+    goal:
+      - |
+        Pre-placed structure must be recognized
+    condition: |
+      foundStructure <- structure "double ring" 0;
+      return $ case foundStructure (\_. false) (\_. true);
+  - teaser: Grab tree
+    id: grab_tree
+    goal:
+      - |
+        Grab a `tree`{=entity}
+    condition: |
+      as base {
+        has "tree";
+      }
+solution: |
+  move; move;
+  t <- grab;
+  place t;
+robots:
+  - name: base
+    dir: south
+    devices:
+      - grabber
+      - treads
+structures:
+  - name: double ring
+    recognize: [north]
+    structure:
+      palette:
+        's': [ice, tree]
+      mask: '.'
+      structures:
+        - name: treering
+          structure:
+            palette:
+              'p': [dirt, tree]
+            map: |
+              p
+              p
+      placements:
+        - src: treering
+          offset: [0, 0]
+        - src: treering
+          offset: [2, 0]
+      map: |
+        .s.
+        ...
+  - name: flowerbox
+    recognize: [north]
+    structure:
+      palette:
+        'f': [ice, flower]
+      mask: '.'
+      map: |
+        fff
+        f.f
+        f.f
+        fff
+known: [tree, flower]
+world:
+  name: root
+  dsl: |
+    {blank}
+  placements:
+    - src: double ring
+      offset: [4, -2]
+    - src: flowerbox
+      offset: [1, 0]
+  palette:
+    '.': [grass]
+    'B': [grass, null, base]
+  upperleft: [-4, 7]
+  map: |
+    ....B...
+    ........
+    ........
+    ........
+    ........

@@ -8,9 +8,9 @@ objectives:
     condition: |
       as base {has "tree"}
     prerequisite:
-        logic:
-          not:
-            id: grab_flower
+      logic:
+        not:
+          id: grab_flower
   - id: grab_flower
     teaser: Grab flower
     goal:
@@ -32,7 +32,7 @@ solution: |
   };
 
   turn west;
-  try {    
+  try {
     stride 1;
   } {
     log "Could not stride west";
@@ -46,13 +46,13 @@ solution: |
   } {
     log "Could not grab southern flower";
   };
-  
+
   turn east;
   stride 5;
   grab;
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     display:
       char: Ω
       attr: robot
@@ -68,14 +68,14 @@ robots:
       - treads
       - turbocharger
 entities:
-- name: turbocharger
-  display:
-    attr: silver
-    char: 't'
-  description:
-  - Allows one to "stride" across multiple cells
-  properties: [known, portable]
-  capabilities: [movemultiple]
+  - name: turbocharger
+    display:
+      attr: silver
+      char: 't'
+    description:
+      - Allows one to "stride" across multiple cells
+    properties: [known, pickable]
+    capabilities: [movemultiple]
 known: [tree, flower, boulder, water]
 world:
   palette:
@@ -87,16 +87,16 @@ world:
     'w': [grass, water]
   upperleft: [0, 0]
   map: |
-   ..............
-   ......*.......
-   ..............
-   ......w.......
-   ..............
-   ...www........
-   .*.wwwΩ....T..
-   ...www@.......
-   ..............
-   ..............
-   ..............
-   ......*.......
-   ..............
+    ..............
+    ......*.......
+    ..............
+    ......w.......
+    ..............
+    ...www........
+    .*.wwwΩ....T..
+    ...www@.......
+    ..............
+    ..............
+    ..............
+    ......*.......
+    ..............

@@ -7,7 +7,7 @@ cd $SCRIPT_DIR/..
 if command -v stack &> /dev/null; then
     SWARM="stack exec swarm --"
 else
-    SWARM="cabal run swarm -O0 --"
+    SWARM="cabal run -j -O0 swarm --"
 fi
 
 for tutorial in $(cat scenarios/Tutorials/00-ORDER.txt | xargs); do

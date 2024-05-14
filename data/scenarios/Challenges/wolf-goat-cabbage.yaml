@@ -9,7 +9,7 @@ robots:
     display:
       char: 'U'
       attr: wood
-    dir: [0, 1]
+    dir: north
     devices:
       - ADT calculator
       - branch predictor
@@ -29,12 +29,12 @@ robots:
       - boat
   - name: east_detector
     system: true
-    dir: [0, 1]
+    dir: north
     display:
       invisible: true
   - name: west_detector
     system: true
-    dir: [0, 1]
+    dir: north
     display:
       invisible: true
 objectives:
@@ -51,7 +51,7 @@ objectives:
       previewable: true
       logic:
         not:
-          or: 
+          or:
             - id: unattended_disaster
             - id: carrying_two_items
   - goal:
@@ -70,7 +70,7 @@ objectives:
     condition: |
       run "data/scenarios/Challenges/_wolf-goat-cabbage/unattended-together.sw";
     optional: true
-    hidden: true    
+    hidden: true
 solution: |
   run "scenarios/Challenges/_wolf-goat-cabbage/cross.sw"
 entities:
@@ -80,21 +80,21 @@ entities:
       attr: silver
     description:
       - A wolf. Likes to eat goats.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: goat
     display:
       char: 'g'
       attr: sand
     description:
       - A goat. Likes to eat cabbage.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: cabbage
     display:
       char: 'c'
       attr: green
     description:
       - A cabbage.
-    properties: [known, portable]
+    properties: [known, pickable]
 known: [water, boulder]
 seed: 0
 world:

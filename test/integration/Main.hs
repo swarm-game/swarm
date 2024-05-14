@@ -11,9 +11,9 @@ module Main where
 
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
-import Control.Lens (Ixed (ix), at, to, use, view, (&), (.~), (<>~), (^.), (^..), (^?), (^?!))
+import Control.Lens (Ixed (ix), at, to, view, (&), (.~), (<>~), (^.), (^..), (^?), (^?!))
 import Control.Monad (forM_, unless, when)
-import Control.Monad.State (StateT (runStateT), gets)
+import Control.Monad.State (execStateT)
 import Data.Char (isSpace)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (Foldable (toList), find)
@@ -21,56 +21,65 @@ import Data.IntSet qualified as IS
 import Data.List (partition)
 import Data.Map qualified as M
 import Data.Maybe (isJust)
-import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
-import Swarm.Doc.Gen (EditorType (..))
-import Swarm.Doc.Gen qualified as DocGen
+import Swarm.Doc.Keyword (EditorType (..))
+import Swarm.Doc.Keyword qualified as Keyword
 import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
-import Swarm.Game.CESK (emptyStore, getTickNumber, initMachine)
-import Swarm.Game.Entity (EntityMap, lookupByName)
+import Swarm.Game.CESK (emptyStore, initMachine)
+import Swarm.Game.Entity (lookupByName)
 import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Robot (activityCounts, commandsHistogram, defReqs, equippedDevices, lifetimeStepCount, machine, robotContext, robotLog, systemRobot, tangibleCommandCount, waitingUntil)
-import Swarm.Game.Scenario (Scenario)
+import Swarm.Game.Robot (equippedDevices, systemRobot)
+import Swarm.Game.Robot.Activity (commandsHistogram, lifetimeStepCount, tangibleCommandCount)
+import Swarm.Game.Robot.Concrete (activityCounts, machine, robotContext, robotLog, waitingUntil)
+import Swarm.Game.Robot.Context (defReqs)
+import Swarm.Game.Scenario (Scenario, ScenarioInputs (..), gsiScenarioInputs)
 import Swarm.Game.State (
   GameState,
-  WinCondition (WinConditions),
-  WinStatus (Won),
-  activeRobots,
   baseRobot,
   discovery,
-  gameAchievements,
   messageInfo,
-  messageQueue,
-  notificationsContent,
-  robotMap,
+  pathCaching,
+  robotInfo,
   temporal,
-  ticks,
-  waitingRobots,
-  winCondition,
   winSolution,
  )
-import Swarm.Game.Step (gameTick)
-import Swarm.Game.World.Typecheck (WorldMap)
+import Swarm.Game.State.Robot (
+  activeRobots,
+  robotMap,
+  waitingRobots,
+ )
+import Swarm.Game.State.Runtime (
+  RuntimeState,
+  eventLog,
+  stdGameConfigInputs,
+ )
+import Swarm.Game.State.Substate (
+  gameAchievements,
+  initState,
+  messageQueue,
+  notificationsContent,
+  ticks,
+ )
+import Swarm.Game.Step.Path.Type
+import Swarm.Game.Step.Validate (badErrorsInLogs, playUntilWin)
+import Swarm.Game.Tick (getTickNumber)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Pretty (prettyString)
 import Swarm.Log
 import Swarm.TUI.Model (
-  RuntimeState,
   defaultAppOpts,
-  eventLog,
   gameState,
   runtimeState,
-  stdEntityMap,
   userScenario,
-  worlds,
  )
 import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
 import Swarm.TUI.Model.UI (UIState)
 import Swarm.Util (acquireAllWithExt)
+import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath.Posix (splitDirectories)
 import System.Timeout (timeout)
@@ -90,16 +99,16 @@ main = do
   (rs, ui) <- do
     out <- runM . runThrow @SystemFailure $ initPersistentState defaultAppOpts
     either (assertFailure . prettyString) return out
-  let em = rs ^. stdEntityMap
-  let rs' = rs & eventLog .~ mempty
+  let scenarioInputs = gsiScenarioInputs $ initState $ rs ^. stdGameConfigInputs
+      rs' = rs & eventLog .~ mempty
   defaultMain $
     testGroup
       "Tests"
       [ testNoLoadingErrors rs
       , exampleTests examplePaths
       , exampleTests scenarioPrograms
-      , scenarioParseTests em (rs ^. worlds) parseableScenarios
-      , scenarioParseInvalidTests em (rs ^. worlds) unparseableScenarios
+      , scenarioParseTests scenarioInputs parseableScenarios
+      , scenarioParseInvalidTests scenarioInputs unparseableScenarios
       , testScenarioSolutions rs' ui
       , testEditorFiles
       ]
@@ -128,27 +137,27 @@ exampleTest (path, fileContent) =
  where
   value = processTerm $ into @Text fileContent
 
-scenarioParseTests :: EntityMap -> WorldMap -> [(FilePath, String)] -> TestTree
-scenarioParseTests em worldMap inputs =
+scenarioParseTests :: ScenarioInputs -> [(FilePath, String)] -> TestTree
+scenarioParseTests scenarioInputs inputs =
   testGroup
     "Test scenarios parse"
-    (map (scenarioTest Parsed em worldMap) inputs)
+    (map (scenarioTest Parsed scenarioInputs) inputs)
 
-scenarioParseInvalidTests :: EntityMap -> WorldMap -> [(FilePath, String)] -> TestTree
-scenarioParseInvalidTests em worldMap inputs =
+scenarioParseInvalidTests :: ScenarioInputs -> [(FilePath, String)] -> TestTree
+scenarioParseInvalidTests scenarioInputs inputs =
   testGroup
     "Test invalid scenarios fail to parse"
-    (map (scenarioTest Failed em worldMap) inputs)
+    (map (scenarioTest Failed scenarioInputs) inputs)
 
 data ParseResult = Parsed | Failed
 
-scenarioTest :: ParseResult -> EntityMap -> WorldMap -> (FilePath, String) -> TestTree
-scenarioTest expRes em worldMap (path, _) =
-  testCase ("parse scenario " ++ show path) (getScenario expRes em worldMap path)
+scenarioTest :: ParseResult -> ScenarioInputs -> (FilePath, String) -> TestTree
+scenarioTest expRes scenarioInputs (path, _) =
+  testCase ("parse scenario " ++ show path) (getScenario expRes scenarioInputs path)
 
-getScenario :: ParseResult -> EntityMap -> WorldMap -> FilePath -> IO ()
-getScenario expRes em worldMap p = do
-  res <- decodeFileEitherE (em, worldMap) p :: IO (Either ParseException Scenario)
+getScenario :: ParseResult -> ScenarioInputs -> FilePath -> IO ()
+getScenario expRes scenarioInputs p = do
+  res <- decodeFileEitherE scenarioInputs p :: IO (Either ParseException Scenario)
   case expRes of
     Parsed -> case res of
       Left err -> assertFailure (prettyPrintParseException err)
@@ -193,7 +202,7 @@ testScenarioSolutions rs ui =
         , testTutorialSolution Default "Tutorials/build"
         , testTutorialSolution Default "Tutorials/bind2"
         , testTutorialSolution' Default "Tutorials/crash" CheckForBadErrors $ \g -> do
-            let robots = toList $ g ^. robotMap
+            let robots = toList $ g ^. robotInfo . robotMap
             let hints = any (T.isInfixOf "you will win" . view leText) . toList . view robotLog
             let win = isJust $ find hints robots
             assertBool "Could not find a robot with winning instructions!" win
@@ -208,12 +217,16 @@ testScenarioSolutions rs ui =
         , testTutorialSolution (Sec 5) "Tutorials/farming"
         ]
     , testGroup
+        "Fun"
+        [ testSolution (Sec 20) "Fun/snake"
+        ]
+    , testGroup
         "Challenges"
         [ testSolution Default "Challenges/chess_horse"
         , testSolution Default "Challenges/teleport"
         , testSolution Default "Challenges/maypole"
         , testSolution (Sec 5) "Challenges/2048"
-        , testSolution (Sec 3) "Challenges/word-search"
+        , testSolution (Sec 6) "Challenges/word-search"
         , testSolution (Sec 10) "Challenges/bridge-building"
         , testSolution (Sec 5) "Challenges/ice-cream"
         , testSolution (Sec 10) "Challenges/combo-lock"
@@ -226,6 +239,9 @@ testScenarioSolutions rs ui =
         , testSolution (Sec 3) "Challenges/lights-out"
         , testSolution (Sec 10) "Challenges/Sliding Puzzles/3x3"
         , testSolution Default "Challenges/friend"
+        , testSolution Default "Challenges/pack-tetrominoes"
+        , testSolution (Sec 10) "Challenges/dimsum"
+        , testSolution (Sec 15) "Challenges/gallery"
         , testGroup
             "Mazes"
             [ testSolution Default "Challenges/Mazes/easy_cave_maze"
@@ -236,7 +252,9 @@ testScenarioSolutions rs ui =
         , testGroup
             "Ranching"
             [ testSolution Default "Challenges/Ranching/capture"
-            , testSolution (Sec 10) "Challenges/Ranching/powerset"
+            , testSolution (Sec 60) "Challenges/Ranching/beekeeping"
+            , testSolution (Sec 20) "Challenges/Ranching/powerset"
+            , testSolution (Sec 10) "Challenges/Ranching/fishing"
             , testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
             ]
         , testGroup
@@ -265,9 +283,9 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/428-drowning-destroy"
         , testSolution' Default "Testing/475-wait-one" CheckForBadErrors $ \g -> do
             let t = g ^. temporal . ticks
-                r1Waits = g ^?! robotMap . ix 1 . to waitingUntil
-                active = IS.member 1 $ g ^. activeRobots
-                waiting = elem 1 . concat . M.elems $ g ^. waitingRobots
+                r1Waits = g ^?! robotInfo . robotMap . ix 1 . to waitingUntil
+                active = IS.member 1 $ g ^. robotInfo . activeRobots
+                waiting = elem 1 . concat . M.elems $ g ^. robotInfo . waitingRobots
             assertBool "The game should only take two ticks" $ getTickNumber t == 2
             assertBool "Robot 1 should have waiting machine" $ isJust r1Waits
             assertBool "Robot 1 should be still active" active
@@ -290,6 +308,7 @@ testScenarioSolutions rs ui =
             , testSolution Default "Testing/201-require/201-require-entities-def"
             , testSolution Default "Testing/201-require/533-reprogram-simple"
             , testSolution Default "Testing/201-require/533-reprogram"
+            , testSolution Default "Testing/201-require/1664-require-system-robot-children"
             ]
         , testSolution Default "Testing/479-atomic-race"
         , testSolution (Sec 5) "Testing/479-atomic"
@@ -305,8 +324,8 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/955-heading"
         , testSolution' Default "Testing/397-wrong-missing" CheckForBadErrors $ \g -> do
             let msgs =
-                  (g ^. messageInfo . messageQueue . to seqToTexts)
-                    <> (g ^.. robotMap . traverse . robotLog . to seqToTexts . traverse)
+                  (g ^. messageInfo . messageQueue . to logToText)
+                    <> (g ^.. robotInfo . robotMap . traverse . robotLog . to logToText . traverse)
 
             assertBool "Should be some messages" (not (null msgs))
             assertBool "Error messages should not mention treads" $
@@ -318,6 +337,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/958-isempty"
         , testSolution Default "Testing/1007-use-command"
         , testSolution Default "Testing/1024-sand"
+        , testSolution Default "Testing/1034-custom-attributes"
         , testSolution Default "Testing/1140-detect-command"
         , testSolution Default "Testing/1157-drill-return-value"
         , testSolution Default "Testing/1171-sniff-command"
@@ -326,6 +346,7 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/1207-scout-command"
         , testSolution Default "Testing/1218-stride-command"
         , testSolution Default "Testing/1234-push-command"
+        , testSolution Default "Testing/1681-pushable-entity"
         , testSolution Default "Testing/1256-halt-command"
         , testSolution Default "Testing/1295-density-command"
         , testSolution Default "Testing/1356-portals/portals-flip-and-rotate"
@@ -334,8 +355,17 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/144-subworlds/subworld-located-robots"
         , testSolution Default "Testing/1355-combustion"
         , testSolution Default "Testing/1379-single-world-portal-reorientation"
+        , testSolution Default "Testing/1322-wait-with-instant"
+        , testSolution Default "Testing/1598-detect-entity-change"
         , testSolution Default "Testing/1399-backup-command"
         , testSolution Default "Testing/1536-custom-unwalkable-entities"
+        , testSolution Default "Testing/1721-custom-walkable-entities"
+        , testSolution Default "Testing/1721-walkability-whitelist-path-cache"
+        , testSolution Default "Testing/1631-tags"
+        , testSolution Default "Testing/1747-volume-command"
+        , testSolution Default "Testing/1775-custom-terrain"
+        , testSolution Default "Testing/1777-capability-cost"
+        , testSolution Default "Testing/1642-biomes"
         , testGroup
             -- Note that the description of the classic world in
             -- data/worlds/classic.yaml (automatically tested to some
@@ -356,22 +386,77 @@ testScenarioSolutions rs ui =
             , testSolution Default "Testing/836-pathfinding/836-path-exists-distance-limit-unreachable"
             , testSolution Default "Testing/836-pathfinding/836-no-path-exists1"
             , testSolution (Sec 10) "Testing/836-pathfinding/836-no-path-exists2"
-            , testSolution (Sec 3) "Testing/836-pathfinding/836-automatic-waypoint-navigation.yaml"
+            , testSolution (Sec 3) "Testing/836-pathfinding/836-automatic-waypoint-navigation"
+            ]
+        , testGroup
+            "Pathfinding cache (#1569)"
+            [ testSolution Default "Testing/1569-pathfinding-cache/1569-harvest-batch"
+            , testTutorialSolution' Default "Testing/1569-pathfinding-cache/1569-cache-invalidation-modes" CheckForBadErrors $ \g -> do
+                let cachingLog = g ^. pathCaching . pathCachingLog
+                    actualEntries = map (\(CacheLogEntry _ x) -> x) $ toList $ RB.getValues cachingLog
+                    expectedEntries =
+                      [ RetrievalAttempt (RecomputationRequired NotCached)
+                      , Invalidate UnwalkableOntoPath
+                      , RetrievalAttempt (RecomputationRequired NotCached)
+                      , RetrievalAttempt Success
+                      , Invalidate UnwalkableRemoved
+                      , RetrievalAttempt (RecomputationRequired NotCached)
+                      , Invalidate TargetEntityAddedOutsidePath
+                      , RetrievalAttempt (RecomputationRequired NotCached)
+                      , Preserve PathTruncated
+                      , RetrievalAttempt Success
+                      ]
+                assertEqual "Incorrect sequence of invalidations!" expectedEntries actualEntries
+            , testTutorialSolution' Default "Testing/1569-pathfinding-cache/1569-cache-invalidation-distance-limit" CheckForBadErrors $ \g -> do
+                let cachingLog = g ^. pathCaching . pathCachingLog
+                    actualEntries = map (\(CacheLogEntry _ x) -> x) $ toList $ RB.getValues cachingLog
+                    expectedEntries =
+                      [ RetrievalAttempt (RecomputationRequired NotCached)
+                      , RetrievalAttempt Success
+                      , RetrievalAttempt Success
+                      , RetrievalAttempt Success
+                      , RetrievalAttempt (RecomputationRequired PositionOutsidePath)
+                      , RetrievalAttempt Success
+                      , RetrievalAttempt (RecomputationRequired (DifferentArg (NewDistanceLimit LimitIncreased)))
+                      , RetrievalAttempt Success
+                      , RetrievalAttempt (RecomputationRequired (DifferentArg (NewDistanceLimit PathExceededLimit)))
+                      , RetrievalAttempt Success
+                      ]
+                assertEqual "Incorrect sequence of invalidations!" expectedEntries actualEntries
             ]
         , testGroup
             "Ping (#1535)"
             [ testSolution Default "Testing/1535-ping/1535-in-range"
             , testSolution Default "Testing/1535-ping/1535-out-of-range"
             ]
+        , testGroup
+            "Structure recognition (#1575)"
+            [ testSolution Default "Testing/1575-structure-recognizer/1575-browse-structures"
+            , testSolution Default "Testing/1575-structure-recognizer/1575-nested-structure-definition"
+            , testSolution Default "Testing/1575-structure-recognizer/1575-construction-count"
+            , testSolution Default "Testing/1575-structure-recognizer/1575-handle-overlapping"
+            , testSolution Default "Testing/1575-structure-recognizer/1575-ensure-single-recognition"
+            , testSolution Default "Testing/1575-structure-recognizer/1575-ensure-disjoint"
+            , testSolution Default "Testing/1575-structure-recognizer/1575-overlapping-tiebreaker-by-largest"
+            , testSolution Default "Testing/1575-structure-recognizer/1575-overlapping-tiebreaker-by-location"
+            , testSolution Default "Testing/1575-structure-recognizer/1575-remove-structure"
+            , testSolution Default "Testing/1575-structure-recognizer/1575-swap-structure"
+            , testSolution Default "Testing/1575-structure-recognizer/1575-placement-occlusion"
+            , testSolution Default "Testing/1575-structure-recognizer/1575-interior-entity-placement"
+            , testSolution Default "Testing/1575-structure-recognizer/1575-floorplan-command"
+            , testSolution Default "Testing/1575-structure-recognizer/1575-bounding-box-overlap"
+            , testSolution Default "Testing/1575-structure-recognizer/1644-rotated-recognition"
+            , testSolution Default "Testing/1575-structure-recognizer/1644-rotated-preplacement-recognition"
+            ]
         ]
     , testSolution' Default "Testing/1430-built-robot-ownership" CheckForBadErrors $ \g -> do
-        let r2 = g ^. robotMap . at 2
-        let r3 = g ^. robotMap . at 3
+        let r2 = g ^. robotInfo . robotMap . at 2
+        let r3 = g ^. robotInfo . robotMap . at 3
         assertBool "The second built robot should be a system robot like it's parent." $
           maybe False (view systemRobot) r2
         assertBool "The third built robot should be a normal robot like base." $
           maybe False (not . view systemRobot) r3
-    , testSolution' Default "Testing/1341-command-count" CheckForBadErrors $ \g -> case g ^. robotMap . at 0 of
+    , testSolution' Default "Testing/1341-command-count" CheckForBadErrors $ \g -> case g ^. robotInfo . robotMap . at 0 of
         Nothing -> assertFailure "No base bot!"
         Just base -> do
           let counters = base ^. activityCounts
@@ -406,13 +491,15 @@ testScenarioSolutions rs ui =
                   -- hopefully, eventually, go away).
                   & baseRobot . robotContext . defReqs <>~ reqCtx
                   & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
-          m <- timeout (time s) (snd <$> runStateT playUntilWin gs')
+          m <- timeout (time s) (execStateT playUntilWin gs')
           case m of
             Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
             Just g -> do
               -- When debugging, try logging all robot messages.
               -- printAllLogs
-              when (shouldCheckBadErrors == CheckForBadErrors) $ noBadErrors g
+              when (shouldCheckBadErrors == CheckForBadErrors) $ case noBadErrors g of
+                Left x -> assertFailure $ T.unpack x
+                _ -> return ()
               verify g
 
   tutorialHasLog :: GameState -> Assertion
@@ -423,36 +510,17 @@ testScenarioSolutions rs ui =
   testTutorialSolution t f = testSolution' t f CheckForBadErrors tutorialHasLog
   testTutorialSolution' t f s v = testSolution' t f s $ \g -> tutorialHasLog g >> v g
 
-  playUntilWin :: StateT GameState IO ()
-  playUntilWin = do
-    w <- use winCondition
-    b <- gets badErrorsInLogs
-    when (null b) $ case w of
-      WinConditions (Won _) _ -> return ()
-      _ -> gameTick >> playUntilWin
-
-noBadErrors :: GameState -> Assertion
-noBadErrors g = do
-  let bad = badErrorsInLogs g
-  unless (null bad) (assertFailure . T.unpack . T.unlines . take 5 $ nubOrd bad)
-
-badErrorsInLogs :: GameState -> [Text]
-badErrorsInLogs g =
-  concatMap
-    (\r -> filter isBad (seqToTexts $ r ^. robotLog))
-    (g ^. robotMap)
-    <> filter isBad (seqToTexts $ g ^. messageInfo . messageQueue)
+noBadErrors :: GameState -> Either T.Text ()
+noBadErrors g =
+  unless (null bad) (Left . T.unlines . take 5 $ nubOrd bad)
  where
-  isBad m = "Fatal error:" `T.isInfixOf` m || "swarm/issues" `T.isInfixOf` m
-
-seqToTexts :: Seq LogEntry -> [Text]
-seqToTexts = map (view leText) . toList
+  bad = badErrorsInLogs g
 
 printAllLogs :: GameState -> IO ()
 printAllLogs g =
   mapM_
     (\r -> forM_ (r ^. robotLog) (putStrLn . T.unpack . view leText))
-    (g ^. robotMap)
+    (g ^. robotInfo . robotMap)
 
 -- | Test that editor files are up-to-date.
 testEditorFiles :: TestTree
@@ -461,22 +529,22 @@ testEditorFiles =
     "editors"
     [ testGroup
         "VS Code"
-        [ testTextInVSCode "operators" (const DocGen.operatorNames)
-        , testTextInVSCode "builtin" DocGen.builtinFunctionList
-        , testTextInVSCode "commands" DocGen.keywordsCommands
-        , testTextInVSCode "directions" DocGen.keywordsDirections
+        [ testTextInVSCode "operators" (const Keyword.operatorNames)
+        , testTextInVSCode "builtin" Keyword.builtinFunctionList
+        , testTextInVSCode "commands" Keyword.keywordsCommands
+        , testTextInVSCode "directions" Keyword.keywordsDirections
         ]
     , testGroup
         "Emacs"
-        [ testTextInEmacs "builtin" DocGen.builtinFunctionList
-        , testTextInEmacs "commands" DocGen.keywordsCommands
-        , testTextInEmacs "directions" DocGen.keywordsDirections
+        [ testTextInEmacs "builtin" Keyword.builtinFunctionList
+        , testTextInEmacs "commands" Keyword.keywordsCommands
+        , testTextInEmacs "directions" Keyword.keywordsDirections
         ]
     , testGroup
         "Vim"
-        [ testTextInVim "builtin" DocGen.builtinFunctionList
-        , testTextInVim "commands" DocGen.keywordsCommands
-        , testTextInVim "directions" DocGen.keywordsDirections
+        [ testTextInVim "builtin" Keyword.builtinFunctionList
+        , testTextInVim "commands" Keyword.keywordsCommands
+        , testTextInVim "directions" Keyword.keywordsDirections
         ]
     ]
  where

@@ -1,0 +1,54 @@
+version: 1
+name: Device commands
+description: |
+  Demo display of commands offered by each device, along with their cost.
+creative: false
+robots:
+  - name: base
+    dir: east
+    devices:
+      - treads
+      - logger
+      - Fresnel lens
+      - string
+    inventory:
+      - [1, flash bulb]
+      - [1, photographic plate]
+entities:
+  - name: flash bulb
+    display:
+      char: 'f'
+    description:
+      - Consumables for a `Fresnel lens`{=entity} that enable `ignite`ing
+    properties: [known, pickable]
+  - name: photographic plate
+    display:
+      char: 'p'
+    description:
+      - Consumables for a `Fresnel lens`{=entity} that enable `scan`ning
+    properties: [known, pickable]
+  - name: Fresnel lens
+    display:
+      char: 'z'
+    description:
+      - Ignites things with sufficiently powerful light source
+    properties: [known, pickable]
+    capabilities:
+      - capability: ignite
+        cost:
+          - [1, "flash bulb"]
+      - capability: scan
+        cost:
+          - [2, "photographic plate"]
+known: [water]
+world:
+  dsl: |
+    {water}
+  palette:
+    'B': [grass, erase, base]
+    '.': [grass, erase]
+  upperleft: [-1, 1]
+  map: |
+    ...
+    .B.
+    ...

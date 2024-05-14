@@ -1,0 +1,101 @@
+version: 1
+name: Custom walkability - whitelist
+description: |
+  Exercise various scenarios of path cache invalidation.
+objectives:
+  - goal:
+      - Get somewhere
+    condition: |
+      as base {ishere "platform"}
+solution: |
+  def goDir = \f. \result.
+    let d = fst result in
+    if (d == down) {return ()} {turn d; move; f;}
+    end;
+
+  def followRoute =
+      nextDir <- path (inL ()) (inR "platform");
+      case nextDir return $ goDir followRoute;
+      end;
+
+  followRoute;
+entities:
+  - name: platform
+    display:
+      char: 'P'
+      attr: ice
+    description:
+      - Goal at the end of the trees
+    properties: [known]
+  - name: wayfinder
+    display:
+      char: 'w'
+    description:
+      - |
+        Enables the `path` command:
+      - |
+        `path : (unit + int) -> ((int * int) + text) -> cmd (unit + (dir * int))`
+      - |
+        Optionally supply a distance limit as the first argument, and
+        supply either a location (`inL`) or an entity (`inR`) as the second argument.
+      - |
+        Example:
+      - |
+        `path (inL ()) (inR "tree");`
+      - If a path exists, returns the direction to proceed along.
+    properties: [known, pickable]
+    capabilities: [path]
+robots:
+  - name: base
+    dir: east
+    display:
+      attr: robot
+    devices:
+      - ADT calculator
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - grabber
+      - logger
+      - net
+      - treads
+      - wayfinder
+    walkable:
+      only:
+        - tree
+        - platform
+  - name: sysbot
+    dir: east
+    system: true
+    display:
+      attr: robot
+      invisible: false
+    program: |
+      move;
+      t <- grab;
+      move;
+      place t;
+      turn left;
+      move;
+      move;
+      t2 <- grab;
+      turn back;
+      move;
+known: [tree]
+world:
+  dsl: |
+    {grass}
+  palette:
+    'B': [grass, null, base]
+    'S': [grass, null, sysbot]
+    '.': [grass]
+    'T': [grass, tree]
+    'P': [grass, platform]
+  upperleft: [0, 0]
+  map: |
+    ............
+    ......TTT...
+    BTTTTTTTTP..
+    ............
+    .....ST.....

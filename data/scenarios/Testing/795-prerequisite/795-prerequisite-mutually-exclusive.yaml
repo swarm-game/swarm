@@ -13,18 +13,17 @@ objectives:
       logic:
         or:
           - and:
-            - id: have_furnace
-            - not:
-                id: have_flower
+              - id: have_furnace
+              - not:
+                  id: have_flower
           - and:
-            - id: have_gear
-            - id: have_flower
+              - id: have_gear
+              - id: have_flower
   - id: have_furnace
     goal:
       - Make a "furnace".
     condition: |
       as base {has "furnace"};
-    
     optional: true
   - id: have_gear
     goal:
@@ -45,7 +44,7 @@ robots:
     display:
       char: 'Ω'
       attr: robot
-    dir: [0, 1]
+    dir: north
     devices:
       - workbench
       - grabber

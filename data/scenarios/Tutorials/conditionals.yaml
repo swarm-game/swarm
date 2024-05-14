@@ -50,7 +50,7 @@ objectives:
       - |
         **TIP:** the two branches of an `if` must have the same type. In particular,
         `if ... {grab} {}`{=snippet} is not
-        allowed, because `{grab}` has type `{Cmd Text}`{=type} whereas `{}` has type `{Cmd Unit}`{=type}.
+        allowed, because `{grab}` has type `{Cmd Text}`{=type} whereas `{}`{=snippet} has type `{Cmd Unit}`{=type}.
         In this case `{grab; return ()}` has the right type.
     condition: |
       try {
@@ -71,7 +71,7 @@ solution: |
 robots:
   - name: base
     heavy: true
-    dir: [0,1]
+    dir: north
     display:
       char: Ω
       attr: robot
@@ -96,7 +96,7 @@ entities:
       invisible: true
     description:
       - A small rock.  It is so small, it is practically invisible.
-    properties: [portable]
+    properties: [pickable]
 world:
   palette:
     'Ω': [grass, null, base]

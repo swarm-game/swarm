@@ -191,7 +191,7 @@ objectives:
     prerequisite: feed_sheep
 robots:
   - name: base
-    dir: [0, 1]
+    dir: north
     devices:
       - treads
       - scanner
@@ -221,11 +221,12 @@ robots:
       invisible: false
       char: '@'
     system: true
-    dir: [0, 1]
+    dir: north
     inventory:
       - [4, wool]
-    unwalkable:
-      - gate
+    walkable:
+      never:
+        - gate
     program: |
       run "scenarios/Challenges/Ranching/_gated-paddock/meandering-sheep.sw";
 entities:
@@ -234,7 +235,7 @@ entities:
       char: '#'
     description:
       - Keeps sheep in. And some other things out.
-    properties: [known, portable, unwalkable]
+    properties: [known, pickable, unwalkable]
   - name: post puller
     display:
       char: 'P'
@@ -242,27 +243,27 @@ entities:
     capabilities: [drill]
     description:
       - Good for dismantling fences.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: scrap wood
     display:
       char: '\'
     description:
       - Scrap wood. Can be reconditioned into boards.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: sweater
     display:
       attr: gold
       char: 'S'
     description:
       - A warm wool sweater. Just in time for winter!
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: clover
     display:
       attr: flower
       char: '%'
     description:
       - A tasty stack for fluffy ruminants.
-    properties: [portable, growable]
+    properties: [pickable, growable]
     growth: [80, 100]
   - name: gate
     display:
@@ -277,7 +278,7 @@ entities:
       attr: rock
     description:
       - Facilitates swinging action.
-    properties: [known, portable]
+    properties: [known, pickable]
   - name: cabin
     display:
       char: Π
@@ -287,7 +288,7 @@ entities:
     properties: [known, unwalkable]
   - name: pier
     display:
-      char: 且
+      char: H
       attr: rock
     description:
       - Docking area for ships
@@ -297,19 +298,19 @@ entities:
       char: '.'
     description:
       - A marker that can be put down and found again. Used only by judge robot.
-    properties: [portable]
+    properties: [pickable]
   - name: treaded breadcrumb
     display:
       char: 'x'
     description:
       - A marker that can be put down and found again (for a second time). Used only by judge robot.
-    properties: [portable]
+    properties: [pickable]
   - name: evaporator
     display:
       char: 'E'
     description:
       - A tool that allows clearing a water tile. Used only by judge robot.
-    properties: [portable]
+    properties: [pickable]
     capabilities: [drill]
   - name: wool
     display:
@@ -317,13 +318,13 @@ entities:
       attr: gold
     description:
       - A bundle of raw animal fiber.
-    properties: [portable]
+    properties: [pickable]
   - name: steam
     display:
       char: 'Z'
     description:
       - What's left after evaporating water. Used only by judge robot.
-    properties: [portable]
+    properties: [pickable]
 recipes:
   - in:
       - [2, board]

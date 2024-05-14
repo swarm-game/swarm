@@ -9,8 +9,8 @@ objectives:
       mover <- robotNumbered 1;
       as mover { loc <- whereami; return $ loc == (0,1) }
     goal:
-    - |
-      Get a robot to (0,1)!
+      - |
+        Get a robot to (0,1)!
 solution: |
   build {move}
 entities:
@@ -19,12 +19,12 @@ entities:
       attr: device
       char: 'o'
     description:
-    - A non-traditional means of locomotion.
-    properties: [known, portable]
+      - A non-traditional means of locomotion.
+    properties: [known, pickable]
     capabilities: [move]
 robots:
   - name: base
-    dir: [0,1]
+    dir: north
     devices:
       - 3D printer
       - logger
@@ -35,7 +35,7 @@ world:
   palette:
     'Ω': [grass, null, base]
     '.': [grass]
-  upperleft: [0,1]
+  upperleft: [0, 1]
   map: |
     .
     Ω

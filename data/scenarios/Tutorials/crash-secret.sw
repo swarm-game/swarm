@@ -56,8 +56,12 @@ end;
 
 log "Hi, I am secret";
 iterate allOK (tryGive
-  $ "Send a robot to `salvage` me and come back to `give base \"Win\"`.\n"
-  ++ "When the rescue robot stands where I am and executes `salvage`,\n"
-  ++ "all my inventory and logs will go to it, including the \"Win\".\n"
-  ++ "Once you have brought the \"Win\" to your base, you will win!"
+  $ "Send a robot to `salvage` me and come back to\n"
+  ++ "`give base \"Win\".  When the rescue robot stands\n"
+  ++ "where I am and executes `salvage`, all my inventory\n"
+  ++ "and logs will go to it, including the \"Win\". Once you\n"
+  ++ "have brought the \"Win\" to your base, you will win!\n\n"
+  ++ "NOTE: if you are still viewing me when I am salvaged,\n"
+  ++ "you will be in for a surprise!  If this happens just\n"
+  ++ "type `view base` to return to viewing your base."
 )

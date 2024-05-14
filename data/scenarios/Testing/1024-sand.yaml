@@ -27,7 +27,7 @@ solution: |
   forever drill_for_sand
 robots:
   - name: base
-    dir: [1,0]
+    dir: east
     devices:
       - dictionary
       - logger
@@ -40,6 +40,6 @@ world:
   palette:
     '>': [grass, null, base]
     'Å': [stone, copper mine]
-  upperleft: [0,0]
+  upperleft: [0, 0]
   map: |
     >Å

@@ -9,12 +9,14 @@ hie.yaml
 
 .stack-work/
 .stack-work-test/
+.stack-work-bench/
 stack.yaml.lock
 .hie/
 stan.html
 
 .swarm_history
 
+*.db
 *.orig
 *.aux
 *.log

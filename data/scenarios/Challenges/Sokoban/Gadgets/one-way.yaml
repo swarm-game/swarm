@@ -14,7 +14,7 @@ objectives:
       };
 robots:
   - name: base
-    dir: [1, 0]
+    dir: east
     display:
       attr: gold
     devices:
@@ -45,8 +45,8 @@ entities:
     display:
       char: '@'
     description:
-    - Pushable rock
-    properties: [known, unwalkable, portable]
+      - Pushable rock
+    properties: [known, unwalkable, pickable]
 known: [mountain, water, flower]
 world:
   dsl: |

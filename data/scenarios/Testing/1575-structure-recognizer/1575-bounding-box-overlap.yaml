@@ -1,0 +1,83 @@
+version: 1
+name: Structure recognizer - overlapping bounding boxes
+description: |
+  Recognize non-rectangular structures even when
+  bounding boxes overlap with each other,
+  or when non-participating entities encroach within
+  the candidate bounding box.
+
+  In this scenario, there is only one possible arrangement.
+creative: false
+objectives:
+  - teaser: Build structures
+    goal:
+      - |
+        Build 3 `chevron`{=structure} structures
+    condition: |
+      foundStructure <- structure "chevron" 0;
+      return $ case foundStructure (\_. false) (\x. fst x >= 3);
+robots:
+  - name: base
+    dir: east
+    devices:
+      - ADT calculator
+      - branch predictor
+      - comparator
+      - dictionary
+      - fast grabber
+      - lambda
+      - logger
+      - strange loop
+      - treads
+    inventory:
+      - [10, boulder]
+solution: |
+  def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+
+  doN 2 move;
+  turn right;
+
+  doN 2 (place "boulder"; move;);
+  turn right;
+  doN 2 (place "boulder"; move;);
+  place "boulder";
+
+  turn left;
+  doN 2 move;
+
+  turn left;
+  doN 2 move;
+
+  doN 2 (place "boulder"; move;);
+  turn left;
+  doN 3 (place "boulder"; move;);
+structures:
+  - name: chevron
+    recognize: [north]
+    structure:
+      palette:
+        'g': [stone, boulder]
+      mask: '.'
+      map: |
+        ..g
+        ..g
+        ggg
+known: [boulder, mountain, water]
+world:
+  name: root
+  dsl: |
+    {water}
+  palette:
+    '.': [grass, erase]
+    'B': [grass, erase, base]
+    'M': [grass, mountain]
+  placements:
+    - src: chevron
+      offset: [1, -1]
+  upperleft: [0, 0]
+  map: |
+    B....
+    .M...
+    .....
+    .....
+    .....

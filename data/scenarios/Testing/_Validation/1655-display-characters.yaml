@@ -1,0 +1,18 @@
+version: 1
+name: |
+  Display character width
+description: |
+  Characters that are too wide mess up the world rendering.
+entities:
+  - name: ladder
+    display:
+      char: '且'
+    description:
+      - My ladder
+robots: []
+world:
+  palette:
+    'x': [grass, null, base]
+  upperleft: [0, 0]
+  map: |
+    x
