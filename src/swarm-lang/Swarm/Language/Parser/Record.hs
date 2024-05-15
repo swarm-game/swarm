@@ -16,9 +16,9 @@ import Swarm.Language.Parser.Lex (symbol, tmVar)
 import Swarm.Util (failT, findDup, squote)
 import Text.Megaparsec (sepBy)
 
--- | Parse something using record syntax of the form @{x1 = v1, x2 =
---   v2, ...}@.  The same parser is used both in parsing record types
---   and record values, so it is factored out into its own module.
+-- | Parse something using record syntax of the form @{x1 v1, x2 v2,
+--   ...}@.  The same parser is used both in parsing record types and
+--   record values, so it is factored out into its own module.
 --
 --   The @Parser a@ argument is the parser to use for the RHS of each
 --   binding in the record.
