@@ -46,7 +46,7 @@ import Control.Monad (void)
 import Data.Char (isUpper)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Sequence qualified as Seq
-import Data.Text (Text, toLower)
+import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Language.Parser.Core
 import Swarm.Language.Syntax
@@ -213,7 +213,7 @@ locIdentifier isTV = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> 
     | t `elem` reservedWords || T.toLower t `elem` reservedWords =
         failT ["Reserved word", squote t, "cannot be used as a variable name"]
     | isTV && T.toTitle t `elem` reservedWords =
-        failT ["Reserved type name", squote (T.toTitle t), "cannot be used as a type variable name; perhaps you should make the first letter uppercase?"]
+        failT ["Reserved type name", squote t, "cannot be used as a type variable name; perhaps you meant", squote (T.toTitle t) <> "?"]
     | isTV && isUpper (T.head t) =
         failT ["Type variable names must start with a lowercase letter"]
     | otherwise = return t

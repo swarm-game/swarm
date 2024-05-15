@@ -123,7 +123,7 @@ testLanguagePipeline =
                     , "  |"
                     , "1 | def id : int -> int = \\x. x end"
                     , "  |             ^"
-                    , "Reserved type name 'Int' cannot be used as a type variable name"
+                    , "Reserved type name 'int' cannot be used as a type variable name; perhaps you meant 'Int'?"
                     ]
                 )
             )
