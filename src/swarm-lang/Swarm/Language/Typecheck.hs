@@ -786,7 +786,7 @@ inferConst c = case c of
   Move -> [tyQ| Cmd Unit |]
   Backup -> [tyQ| Cmd Unit |]
   Volume -> [tyQ| Int -> Cmd (Unit + Int) |]
-  Path -> [tyQ| (Unit + Int) -> ((Int * Int) + Text) -> Cmd (Unit + Dir) |]
+  Path -> [tyQ| (Unit + Int) -> ((Int * Int) + Text) -> Cmd (Unit + (Dir * Int)) |]
   Push -> [tyQ| Cmd Unit |]
   Stride -> [tyQ| Int -> Cmd Unit |]
   Turn -> [tyQ| Dir -> Cmd Unit |]
