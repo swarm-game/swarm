@@ -43,7 +43,7 @@ module Swarm.Language.Parser.Lex (
   brackets,
 ) where
 
-import Control.Lens (use, (%=), (.=))
+import Control.Lens (use, view, (%=), (.=))
 import Control.Monad (void)
 import Data.Char (isUpper)
 import Data.Containers.ListUtils (nubOrd)
@@ -172,6 +172,12 @@ reservedWords =
       ++ primitiveTypeNames
       ++ keywords
 
+-- | Cached version of the reserved words list with everything
+--   lowercase, for use in parsing version 0.5 of the language, where
+--   types were lowercase instead of uppercase.
+lowerReservedWords :: Set Text
+lowerReservedWords = S.map T.toLower reservedWords
+
 -- | Parse a reserved word, given a string recognizer (which can
 --   /e.g./ be case sensitive or not), making sure it is not a prefix
 --   of a longer variable name, and allowing the parser to backtrack
@@ -193,19 +199,26 @@ data IdentifierType = IDTyVar | IDTmVar
 
 -- | Parse an identifier together with its source location info.
 locIdentifier :: IdentifierType -> Parser LocVar
-locIdentifier idTy = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
+locIdentifier idTy = do
+  ver <- view languageVersion
+  uncurry LV <$> parseLocG ((lexeme . try) (p >>= check ver) <?> "variable name")
  where
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
-  check (into @Text -> t)
-    | t `S.member` reservedWords || T.toLower t `S.member` reservedWords =
-        failT ["Reserved word", squote t, "cannot be used as a variable name"]
-    | IDTyVar <- idTy
-    , T.toTitle t `S.member` reservedWords =
-        failT ["Reserved type name", squote t, "cannot be used as a type variable name; perhaps you meant", squote (T.toTitle t) <> "?"]
-    | IDTyVar <- idTy
-    , isUpper (T.head t) =
-        failT ["Type variable names must start with a lowercase letter"]
-    | otherwise = return t
+  check ver (into @Text -> t) = case ver of
+    SwarmLang0_5
+      | T.toLower t `S.member` lowerReservedWords ->
+          failT ["reserved word", squote t, "cannot be used as variable name"]
+      | otherwise -> return t
+    SwarmLangLatest
+      | t `S.member` reservedWords || T.toLower t `S.member` reservedWords ->
+          failT ["Reserved word", squote t, "cannot be used as a variable name"]
+      | IDTyVar <- idTy
+      , T.toTitle t `S.member` reservedWords ->
+          failT ["Reserved type name", squote t, "cannot be used as a type variable name; perhaps you meant", squote (T.toTitle t) <> "?"]
+      | IDTyVar <- idTy
+      , isUpper (T.head t) ->
+          failT ["Type variable names must start with a lowercase letter"]
+      | otherwise -> return t
 
 -- | Parse a term variable together with its source location info.
 locTmVar :: Parser LocVar

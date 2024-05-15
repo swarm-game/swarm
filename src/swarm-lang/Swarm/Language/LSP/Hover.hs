@@ -33,6 +33,7 @@ import Language.LSP.VFS
 import Swarm.Language.Context as Ctx
 import Swarm.Language.Module (Module (..))
 import Swarm.Language.Parser (readTerm')
+import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
 import Swarm.Language.Pretty (prettyText, prettyTextLine)
 import Swarm.Language.Syntax
@@ -58,7 +59,7 @@ showHoverInfo ::
   VirtualFile ->
   Maybe (Text, Maybe J.Range)
 showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
-  either (const Nothing) (fmap genHoverInfo) (readTerm' content)
+  either (const Nothing) (fmap genHoverInfo) (readTerm' defaultParserConfig content)
  where
   content = virtualFileText vf
   absolutePos =

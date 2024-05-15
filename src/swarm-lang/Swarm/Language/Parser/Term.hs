@@ -9,7 +9,6 @@ module Swarm.Language.Parser.Term where
 import Control.Lens (view, (^.))
 import Control.Monad (guard)
 import Control.Monad.Combinators.Expr
-import Control.Monad.Reader (ask)
 import Data.Foldable (asum)
 import Data.List (foldl')
 import Data.Map (Map)
@@ -98,7 +97,7 @@ parseTermAtom2 =
 
     <|> parseLoc (TDelay SimpleDelay (TConst Noop) <$ try (symbol "{" *> symbol "}"))
     <|> parseLoc (SDelay SimpleDelay <$> braces parseTerm)
-    <|> parseLoc (ask >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
+    <|> parseLoc (view antiquoting >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
