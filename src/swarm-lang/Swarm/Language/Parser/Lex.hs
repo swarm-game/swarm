@@ -184,6 +184,22 @@ reservedCS = reservedGen string
 reserved :: Text -> Parser ()
 reserved = reservedGen string'
 
+-- | Parse an identifier together with its source location info. The
+--   Bool indicates whether we are parsing a type variable (which are
+--   not allowed to start with an uppercase letter).
+locIdentifier :: Bool -> Parser LocVar
+locIdentifier isTV = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
+ where
+  p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
+  check (into @Text -> t)
+    | t `elem` reservedWords || T.toLower t `elem` reservedWords =
+        failT ["Reserved word", squote t, "cannot be used as a variable name"]
+    | isTV && T.toTitle t `elem` reservedWords =
+        failT ["Reserved type name", squote t, "cannot be used as a type variable name; perhaps you meant", squote (T.toTitle t) <> "?"]
+    | isTV && isUpper (T.head t) =
+        failT ["Type variable names must start with a lowercase letter"]
+    | otherwise = return t
+
 -- | Parse an identifier, i.e. any non-reserved string containing
 --   alphanumeric characters and underscores, not starting with a
 --   digit. The Bool indicates whether we are parsing a type variable.
@@ -201,22 +217,6 @@ tyVar = identifier True
 --   word.
 tmVar :: Parser Var
 tmVar = identifier False
-
--- | Parse an identifier together with its source location info. The
---   Bool indicates whether we are parsing a type variable (which are
---   not allowed to start with an uppercase letter).
-locIdentifier :: Bool -> Parser LocVar
-locIdentifier isTV = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
- where
-  p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
-  check (into @Text -> t)
-    | t `elem` reservedWords || T.toLower t `elem` reservedWords =
-        failT ["Reserved word", squote t, "cannot be used as a variable name"]
-    | isTV && T.toTitle t `elem` reservedWords =
-        failT ["Reserved type name", squote t, "cannot be used as a type variable name; perhaps you meant", squote (T.toTitle t) <> "?"]
-    | isTV && isUpper (T.head t) =
-        failT ["Type variable names must start with a lowercase letter"]
-    | otherwise = return t
 
 -- | Parse a text literal (including escape sequences) in double quotes.
 textLiteral :: Parser Text
