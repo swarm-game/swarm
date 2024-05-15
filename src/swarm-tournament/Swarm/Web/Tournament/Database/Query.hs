@@ -14,14 +14,16 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Control.Monad.Trans.Reader (ReaderT, ask)
 import Data.ByteString.Lazy qualified as LBS
-import Data.IORef
 import Data.Maybe (listToMaybe)
+import Data.Text qualified as T
+import Data.Text.Lazy qualified as TL
 import Data.Time.Clock
 import Database.SQLite.Simple
 import Database.SQLite.Simple.ToField
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.State (Sha1 (..))
 import Swarm.Game.Tick (TickNumber (..))
+import Swarm.Web.Auth
 import Swarm.Web.Tournament.Type
 
 type ConnectInfo = String
@@ -34,18 +36,18 @@ newtype UserId = UserId Int
 instance ToField UserId where
   toField (UserId x) = toField x
 
-data PersistenceLayer = PersistenceLayer
-  { lookupScenarioFileContent :: Sha1 -> IO (Maybe LBS.ByteString)
-  -- ^ Dump scenario file
-  , scenarioStorage :: ScenarioPersistence ScenarioUploadResponsePayload
-  , solutionStorage :: ScenarioPersistence SolutionUploadResponsePayload
+data PersistenceLayer m = PersistenceLayer
+  { scenarioStorage :: ScenarioPersistence m ScenarioUploadResponsePayload
+  , solutionStorage :: ScenarioPersistence m SolutionUploadResponsePayload
   }
 
-data ScenarioPersistence b = ScenarioPersistence
-  { lookupCache :: Sha1 -> IO (Maybe AssociatedSolutionSolutionCharacterization)
+data ScenarioPersistence m a = ScenarioPersistence
+  { lookupCache :: Sha1 -> m (Maybe AssociatedSolutionCharacterization)
   -- ^ Looks up by key
-  , storeCache :: CharacterizationResponse b -> IO Sha1
+  , storeCache :: CharacterizationResponse a -> m Sha1
   -- ^ Stores and returns key
+  , getContent :: Sha1 -> m (Maybe LBS.ByteString)
+  -- ^ Dump file contents
   }
 
 data UserAttributedUpload = UserAttributedUpload
@@ -55,21 +57,22 @@ data UserAttributedUpload = UserAttributedUpload
 
 data CharacterizationResponse a = CharacterizationResponse
   { upload :: UserAttributedUpload
-  , associatedCharacterization :: AssociatedSolutionSolutionCharacterization
+  , associatedCharacterization :: AssociatedSolutionCharacterization
   , payload :: a
   }
 
-newtype ScenarioUploadResponsePayload = ScenarioUploadResponsePayload
+data ScenarioUploadResponsePayload = ScenarioUploadResponsePayload
   { swarmGameVersion :: Sha1
+  , sTitle :: T.Text
   }
 
 newtype SolutionUploadResponsePayload = SolutionUploadResponsePayload
   { scenariohash :: Sha1
   }
 
-instance FromRow AssociatedSolutionSolutionCharacterization where
+instance FromRow AssociatedSolutionCharacterization where
   fromRow =
-    AssociatedSolutionSolutionCharacterization
+    AssociatedSolutionCharacterization
       <$> (Sha1 <$> field)
       <*> fromRow
 
@@ -89,49 +92,55 @@ instance FromRow TournamentGame where
       <*> (Sha1 <$> field)
       <*> field
       <*> (Sha1 <$> field)
+      <*> field
 
-data TokenWithExpiration = TokenWithExpiration
-  { expirationTime :: UTCTime
-  , loginToken :: Password
-  }
+instance FromRow TournamentSolution where
+  fromRow =
+    TournamentSolution
+      <$> field
+      <*> field
+      <*> fromRow
 
-type TokenRef = IORef (Maybe TokenWithExpiration)
-
-newtype Username = Username String
-newtype Password = Password String
-
-data DbConnType
-  = -- | application running directly on host connects to database running on same host
-    LocalDBOverSocket Username
-  | -- | application running inside docker connects to database running on the docker's host
-    LocalDBFromDockerOverNetwork Password
-  | -- | application deployed to EC2 inside Docker, accessing RDS database
-    RemoteDB TokenRef
-
--- | Tokens expire after 15 minutes.
--- We shall refresh after 10 minutes.
-tokenRefreshInterval :: NominalDiffTime
-tokenRefreshInterval = 10 * 60
+instance FromRow SolutionFileCharacterization where
+  fromRow =
+    SolutionFileCharacterization
+      <$> (Sha1 <$> field)
+      <*> fromRow
 
 -- * Authentication
 
-getUserId :: Connection -> UserAlias -> IO UserId
-getUserId conn userAlias = do
-  maybeId <-
-    listToMaybe . fmap (UserId . fromOnly)
-      <$> query conn "SELECT id FROM users WHERE alias = ?;" (Only userAlias)
-  maybe insertNew return maybeId
- where
-  -- Avoid GHC warning re: partiality of head
-  queryHead = \case
-    [] -> error "Query result in getUserId should never be empty!"
-    hd : _ -> hd
-  insertNew =
-    fmap (UserId . fromOnly . queryHead)
-      $ query
+-- | If the username already exists, overwrite it.
+insertGitHubAuth ::
+  UserAlias ->
+  ReceivedTokens ->
+  ReaderT ConnectInfo IO TL.Text
+insertGitHubAuth gitHubUsername gitHubTokens = do
+  connInfo <- ask
+  currentTime <- liftIO getCurrentTime
+  let expirationOf = mkExpirationTime currentTime
+  liftIO $ withConnection connInfo $ \conn -> do
+    [Only cookieString] <-
+      query
         conn
-        "INSERT INTO users (alias) VALUES (?) RETURNING id;"
-      $ Only userAlias
+        "REPLACE INTO users (alias, github_access_token, github_access_token_expires_at, github_refresh_token, github_refresh_token_expires_at) VALUES (?, ?, ?, ?, ?) RETURNING cookie;"
+        ( gitHubUsername
+        , token $ accessToken gitHubTokens
+        , expirationOf accessToken
+        , token $ refreshToken gitHubTokens
+        , expirationOf refreshToken
+        )
+    return cookieString
+ where
+  mkExpirationTime currTime accessor =
+    addUTCTime (fromIntegral $ expirationSeconds $ accessor gitHubTokens) currTime
+
+getUsernameFromCookie ::
+  TL.Text ->
+  ReaderT ConnectInfo IO (Maybe UserAlias)
+getUsernameFromCookie cookieText = do
+  connInfo <- ask
+  liftIO . fmap (fmap (UserAlias . fromOnly) . listToMaybe) . withConnection connInfo $ \conn ->
+    query conn "SELECT alias FROM users WHERE cookie = ?;" (Only cookieText)
 
 -- * Retrieval
 
@@ -141,7 +150,13 @@ lookupScenarioContent sha1 = do
   liftIO . fmap (fmap fromOnly . listToMaybe) . withConnection connInfo $ \conn ->
     query conn "SELECT content FROM scenarios WHERE content_sha1 = ?;" (Only sha1)
 
-lookupSolutionSubmission :: Sha1 -> ReaderT ConnectInfo IO (Maybe AssociatedSolutionSolutionCharacterization)
+lookupSolutionContent :: Sha1 -> ReaderT ConnectInfo IO (Maybe LBS.ByteString)
+lookupSolutionContent sha1 = do
+  connInfo <- ask
+  liftIO . fmap (fmap fromOnly . listToMaybe) . withConnection connInfo $ \conn ->
+    query conn "SELECT content FROM solution_submission WHERE content_sha1 = ?;" (Only sha1)
+
+lookupSolutionSubmission :: Sha1 -> ReaderT ConnectInfo IO (Maybe AssociatedSolutionCharacterization)
 lookupSolutionSubmission contentSha1 = do
   connInfo <- ask
   liftIO $ withConnection connInfo $ \conn -> runMaybeT $ do
@@ -155,18 +170,26 @@ lookupSolutionSubmission contentSha1 = do
         <$> query conn "SELECT scenario, wall_time_seconds, ticks, seed, char_count, ast_size FROM evaluated_solution WHERE id = ?;" (Only evaluationId)
 
 -- | There should only be one builtin solution for the scenario.
-lookupScenarioSolution :: Sha1 -> ReaderT ConnectInfo IO (Maybe AssociatedSolutionSolutionCharacterization)
+lookupScenarioSolution :: Sha1 -> ReaderT ConnectInfo IO (Maybe AssociatedSolutionCharacterization)
 lookupScenarioSolution scenarioSha1 = do
   connInfo <- ask
   solnChar <- liftIO . fmap listToMaybe . withConnection connInfo $ \conn ->
     query conn "SELECT wall_time_seconds, ticks, seed, char_count, ast_size FROM evaluated_solution WHERE builtin AND scenario = ? LIMIT 1;" (Only scenarioSha1)
-  return $ AssociatedSolutionSolutionCharacterization scenarioSha1 <$> solnChar
+  return $ AssociatedSolutionCharacterization scenarioSha1 <$> solnChar
 
 listGames :: ReaderT ConnectInfo IO [TournamentGame]
 listGames = do
   connInfo <- ask
   liftIO $ withConnection connInfo $ \conn ->
-    query_ conn "SELECT original_filename, scenario_uploader, scenario, submission_count, swarm_git_sha1 FROM submissions;"
+    query_ conn "SELECT original_filename, scenario_uploader, scenario, submission_count, swarm_git_sha1, title FROM agg_scenario_submissions;"
+
+listSubmissions :: Sha1 -> ReaderT ConnectInfo IO GameWithSolutions
+listSubmissions scenarioSha1 = do
+  connInfo <- ask
+  liftIO $ withConnection connInfo $ \conn -> do
+    [game] <- query conn "SELECT original_filename, scenario_uploader, scenario, submission_count, swarm_git_sha1, title FROM agg_scenario_submissions WHERE scenario = ?;" (Only scenarioSha1)
+    solns <- query conn "SELECT uploaded_at, solution_submitter, solution_sha1, wall_time_seconds, ticks, seed, char_count, ast_size FROM all_solution_submissions WHERE scenario = ?;" (Only scenarioSha1)
+    return $ GameWithSolutions game solns
 
 -- * Insertion
 
@@ -176,15 +199,15 @@ insertScenario ::
 insertScenario s = do
   connInfo <- ask
   h <- liftIO $ withConnection connInfo $ \conn -> do
-    uid <- getUserId conn $ uploader $ upload s
     [Only resultList] <-
       query
         conn
-        "INSERT INTO scenarios (content_sha1, content, original_filename, uploader, swarm_git_sha1) VALUES (?, ?, ?, ?, ?) RETURNING content_sha1;"
+        "INSERT INTO scenarios (content_sha1, content, original_filename, title, uploader, swarm_git_sha1) VALUES (?, ?, ?, ?, ?, ?) RETURNING content_sha1;"
         ( scenarioSha
         , fileContent $ fileUpload $ upload s
         , filename . fileMetadata . fileUpload $ upload s
-        , uid
+        , sTitle $ payload s
+        , uploader $ upload s
         , swarmGameVersion $ payload s
         )
     _ <- insertSolution conn True scenarioSha $ characterization $ associatedCharacterization s
@@ -200,15 +223,16 @@ insertSolutionSubmission ::
 insertSolutionSubmission (CharacterizationResponse solutionUpload s (SolutionUploadResponsePayload scenarioSha)) = do
   connInfo <- ask
   liftIO $ withConnection connInfo $ \conn -> do
-    uid <- getUserId conn $ uploader solutionUpload
-
     solutionEvalId <- insertSolution conn False scenarioSha $ characterization s
-
     [Only echoedSha1] <-
       query
         conn
-        "INSERT INTO solution_submission (uploader, content_sha1, solution_evaluation) VALUES (?, ?, ?) RETURNING content_sha1;"
-        (uid, fileHash $ fileMetadata $ fileUpload solutionUpload, solutionEvalId)
+        "INSERT INTO solution_submission (uploader, content_sha1, solution_evaluation, content) VALUES (?, ?, ?, ?) RETURNING content_sha1;"
+        ( uploader solutionUpload
+        , fileHash $ fileMetadata $ fileUpload solutionUpload
+        , solutionEvalId
+        , fileContent $ fileUpload solutionUpload
+        )
     return $ Sha1 echoedSha1
 
 insertSolution ::

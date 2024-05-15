@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -10,6 +11,8 @@
 module Swarm.Web.Tournament (
   defaultPort,
   AppData (..),
+  GitHubCredentials (..),
+  DeploymentEnvironment (..),
 
   -- ** Development
   webMain,
@@ -17,23 +20,27 @@ module Swarm.Web.Tournament (
 ) where
 
 import Commonmark qualified as Mark (commonmark, renderHtml)
-import Control.Lens
+import Control.Lens hiding (Context)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.Reader (runReaderT)
 import Data.Aeson
-import Data.ByteString.Lazy (ByteString)
+import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
 import Data.Either.Extra (maybeToEither)
 import Data.Int (Int64)
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
-import Data.Text.Lazy.Encoding (decodeUtf8', encodeUtf8)
+import Data.Text.Lazy.Encoding (decodeUtf8, decodeUtf8', encodeUtf8)
 import Data.Yaml (decodeEither', defaultEncodeOptions, encodeWith)
-import Network.HTTP.Types (ok200)
-import Network.Wai (responseLBS)
+import GHC.Generics (Generic)
+import Network.HTTP.Client qualified as HC
+import Network.HTTP.Client.TLS (tlsManagerSettings)
+import Network.HTTP.Types (hCookie, ok200, renderSimpleQuery)
+import Network.Wai (Request, requestHeaders, responseLBS)
 import Network.Wai.Application.Static (defaultFileServerSettings, ssIndices)
 import Network.Wai.Handler.Warp qualified as Warp
 import Network.Wai.Parse (
@@ -43,22 +50,18 @@ import Network.Wai.Parse (
   setMaxRequestNumFiles,
  )
 import Servant
-import Servant.Docs qualified as SD
-import Servant.Docs.Internal qualified as SD (renderCurlBasePath)
 import Servant.Multipart
-import Swarm.Game.Scenario (ScenarioMetadata (ScenarioMetadata), scenarioMetadata)
-import Swarm.Game.Scenario.Scoring.CodeSize (ScenarioCodeMetrics (..))
+import Servant.Server.Experimental.Auth (AuthHandler, AuthServerData, mkAuthHandler)
+import Swarm.Game.Scenario (ScenarioMetadata, scenarioMetadata)
 import Swarm.Game.State (Sha1 (..))
-import Swarm.Game.Tick (TickNumber (..))
+import Swarm.Web.Auth
 import Swarm.Web.Tournament.Database.Query
 import Swarm.Web.Tournament.Type
 import Swarm.Web.Tournament.Validate
 import Swarm.Web.Tournament.Validate.FailureMode
 import Swarm.Web.Tournament.Validate.Upload
 import WaiAppStatic.Types (unsafeToPiece)
-
-placeholderAlias :: UserAlias
-placeholderAlias = UserAlias "Karl"
+import Web.Cookie
 
 defaultPort :: Warp.Port
 defaultPort = 5500
@@ -66,58 +69,34 @@ defaultPort = 5500
 -- | NOTE: The default Servant server timeout is 30 sec;
 -- see https://hackage.haskell.org/package/http-client-0.7.17/docs/Network-HTTP-Client-Internal.html#t:ResponseTimeout
 defaultSolutionTimeout :: SolutionTimeout
-defaultSolutionTimeout = SolutionTimeout 15
+defaultSolutionTimeout = SolutionTimeout 20
+
+data DeploymentEnvironment
+  = LocalDevelopment UserAlias
+  | ProdDeployment
 
 data AppData = AppData
   { swarmGameGitVersion :: Sha1
-  , persistence :: PersistenceLayer
+  , gitHubCredentials :: GitHubCredentials
+  , persistence :: PersistenceLayer IO
+  , developmentMode :: DeploymentEnvironment
   }
 
+type LoginType = Headers '[Header "Location" TL.Text, Header "Set-Cookie" SetCookie] NoContent
+type LoginHandler = Handler LoginType
+
 type TournamentAPI =
-  "upload" :> "scenario" :> MultipartForm Mem (MultipartData Mem) :> Post '[JSON] ScenarioCharacterization
-    :<|> "upload" :> "solution" :> MultipartForm Mem (MultipartData Mem) :> Post '[JSON] SolutionFileCharacterization
+  "api" :> "private" :> "upload" :> "scenario" :> Header "Referer" TL.Text :> AuthProtect "cookie-auth" :> MultipartForm Mem (MultipartData Mem) :> Verb 'POST 303 '[JSON] (Headers '[Header "Location" TL.Text] ScenarioCharacterization)
+    :<|> "api" :> "private" :> "upload" :> "solution" :> Header "Referer" TL.Text :> AuthProtect "cookie-auth" :> MultipartForm Mem (MultipartData Mem) :> Verb 'POST 303 '[JSON] (Headers '[Header "Location" TL.Text] SolutionFileCharacterization)
     :<|> "scenario" :> Capture "sha1" Sha1 :> "metadata" :> Get '[JSON] ScenarioMetadata
     :<|> "scenario" :> Capture "sha1" Sha1 :> "fetch" :> Get '[PlainText] TL.Text
-    :<|> "games" :> Get '[JSON] [TournamentGame]
-
-swarmApi :: Proxy TournamentAPI
-swarmApi = Proxy
-
-type ToplevelAPI =
-  TournamentAPI
-    :<|> "api" :> Raw
-    :<|> Raw
-
-api :: Proxy ToplevelAPI
-api = Proxy
-
-swarmApiHtml :: ByteString
-swarmApiHtml =
-  encodeUtf8
-    . either (error . show) (Mark.renderHtml @())
-    . Mark.commonmark ""
-    $ T.pack swarmApiMarkdown
-
-swarmApiMarkdown :: String
-swarmApiMarkdown =
-  SD.markdownWith
-    ( SD.defRenderingOptions
-        & SD.requestExamples .~ SD.FirstContentType
-        & SD.responseExamples .~ SD.FirstContentType
-        & SD.renderCurlBasePath ?~ "http://localhost:" <> show defaultPort
-    )
-    $ SD.docsWithIntros [intro] swarmApi
- where
-  intro =
-    SD.DocIntro
-      "Swarm tournament hosting API"
-      [ "All of the valid endpoints are documented below."
-      ]
-
-toServantError :: Describable a => a -> ServerError
-toServantError x = err500 {errBody = encodeUtf8 $ TL.fromStrict $ describeText x}
-
--- * Handlers
+    :<|> "solution" :> Capture "sha1" Sha1 :> "fetch" :> Get '[PlainText] TL.Text
+    :<|> "list" :> "games" :> Get '[JSON] [TournamentGame]
+    :<|> "list" :> "game" :> Capture "sha1" Sha1 :> Get '[JSON] GameWithSolutions
+    :<|> "api" :> "private" :> "login" :> "status" :> AuthProtect "cookie-auth" :> Get '[JSON] UserAlias
+    :<|> "github-auth-callback" :> QueryParam "code" TokenExchangeCode :> Verb 'GET 303 '[JSON] LoginType
+    :<|> "api" :> "private" :> "login" :> "local" :> Header "Referer" TL.Text :> Verb 'GET 303 '[JSON] LoginType
+    :<|> "api" :> "private" :> "login" :> "logout" :> Header "Referer" TL.Text :> Verb 'GET 303 '[JSON] LoginType
 
 mkApp :: AppData -> Servant.Server TournamentAPI
 mkApp appData =
@@ -125,74 +104,224 @@ mkApp appData =
     :<|> uploadSolution appData
     :<|> getScenarioMetadata appData
     :<|> downloadRedactedScenario appData
+    :<|> downloadSolution appData
     :<|> listScenarios
+    :<|> listSolutions
+    :<|> echoUsername
+    :<|> doGithubCallback (gitHubCredentials appData)
+    :<|> doLocalDevelopmentLogin (developmentMode appData)
+    :<|> doLogout
+ where
+  echoUsername = return
 
-uploadScenario :: AppData -> MultipartData Mem -> Handler ScenarioCharacterization
-uploadScenario (AppData gameVersion persistenceLayer) multipartData =
-  Handler . withExceptT toServantError . ExceptT $
+type ToplevelAPI =
+  TournamentAPI
+    :<|> "api" :> Raw
+    :<|> Raw
+
+tournamentsApiHtml :: LBS.ByteString
+tournamentsApiHtml =
+  encodeUtf8
+    . either (error . show) (Mark.renderHtml @())
+    . Mark.commonmark ""
+    $ T.pack "No documentation at this time."
+
+toServantError :: Describable a => a -> ServerError
+toServantError x = err500 {errBody = encodeUtf8 $ TL.fromStrict $ describeText x}
+
+-- | We need to specify the data returned after authentication
+type instance AuthServerData (AuthProtect "cookie-auth") = UserAlias
+
+myAppCookieName :: BS.ByteString
+myAppCookieName = "servant-auth-cookie"
+
+data LoginProblem = LoginProblem
+  { problemMessage :: TL.Text
+  , loginLink :: TL.Text
+  }
+  deriving (Generic, ToJSON)
+
+--- | The auth handler wraps a function from Request -> Handler UserAlias.
+--- We look for a token in the request headers that we expect to be in the cookie.
+--- The token is then passed to our `lookupAccount` function.
+authHandler :: GitHubCredentials -> DeploymentEnvironment -> AuthHandler Request UserAlias
+authHandler creds deployMode = mkAuthHandler handler
+ where
+  url = case deployMode of
+    LocalDevelopment _ -> "api/private/login/local"
+    ProdDeployment -> decodeUtf8 . LBS.fromStrict $ genLoginUrl creds
+
+  throw401 msg = throwError $ err401 {errBody = encode $ LoginProblem msg url}
+  handler req = either throw401 lookupAccount $ do
+    cookie <- maybeToEither "Missing cookie header" $ lookup hCookie $ requestHeaders req
+    maybeToEither "Missing token in cookie"
+      . fmap (decodeUtf8 . LBS.fromStrict)
+      . lookup myAppCookieName
+      $ parseCookies cookie
+
+  userLookup cookieText = runReaderT (getUsernameFromCookie cookieText) databaseFilename
+
+  -- \| A method that, when given a cookie/password, will return a UserAlias.
+  lookupAccount :: TL.Text -> Handler UserAlias
+  lookupAccount cookieText = do
+    maybeUser <- liftIO $ userLookup cookieText
+    case maybeUser of
+      Nothing -> throwError (err403 {errBody = encode $ LoginProblem "Invalid cookie password" url})
+      Just usr -> return usr
+
+-- * Handlers
+
+uploadScenario ::
+  AppData ->
+  Maybe TL.Text ->
+  UserAlias ->
+  MultipartData Mem ->
+  Handler (Headers '[Header "Location" TL.Text] ScenarioCharacterization)
+uploadScenario (AppData gameVersion _ persistenceLayer _) maybeRefererUrl userName multipartData =
+  Handler . fmap addH . withExceptT toServantError . ExceptT $
     validateScenarioUpload
       args
       gameVersion
  where
+  addH = addHeader (fromMaybe "/list-games.html" maybeRefererUrl)
   args =
     CommonValidationArgs
       defaultSolutionTimeout
       $ PersistenceArgs
-        placeholderAlias
+        userName
         multipartData
         (scenarioStorage persistenceLayer)
 
-uploadSolution :: AppData -> MultipartData Mem -> Handler SolutionFileCharacterization
-uploadSolution (AppData _ persistenceLayer) multipartData =
-  Handler . withExceptT toServantError . ExceptT $
+uploadSolution ::
+  AppData ->
+  Maybe TL.Text ->
+  UserAlias ->
+  MultipartData Mem ->
+  Handler (Headers '[Header "Location" TL.Text] SolutionFileCharacterization)
+uploadSolution (AppData _ _ persistenceLayer _) maybeRefererUrl userName multipartData =
+  Handler . fmap addH . withExceptT toServantError . ExceptT $
     validateSubmittedSolution
       args
-      (lookupScenarioFileContent persistenceLayer)
+      ((getContent . scenarioStorage) persistenceLayer)
  where
+  addH = addHeader (fromMaybe "/list-solutions.html" maybeRefererUrl)
   args =
     CommonValidationArgs
       defaultSolutionTimeout
       $ PersistenceArgs
-        placeholderAlias
+        userName
         multipartData
         (solutionStorage persistenceLayer)
 
 getScenarioMetadata :: AppData -> Sha1 -> Handler ScenarioMetadata
-getScenarioMetadata (AppData _ persistenceLayer) scenarioSha1 =
+getScenarioMetadata (AppData _ _ persistenceLayer _) scenarioSha1 =
   Handler . withExceptT toServantError $ do
     doc <-
       ExceptT $
         maybeToEither (DatabaseRetrievalFailure scenarioSha1)
-          <$> lookupScenarioFileContent persistenceLayer scenarioSha1
+          <$> (getContent . scenarioStorage) persistenceLayer scenarioSha1
 
     s <- withExceptT RetrievedInstantiationFailure $ initScenarioObjectWithEnv doc
     return $ view scenarioMetadata s
 
+genLoginUrl :: GitHubCredentials -> BS.ByteString
+genLoginUrl creds =
+  "https://github.com/login/oauth/authorize"
+    <> renderSimpleQuery
+      True
+      [ ("client_id", clientId creds)
+      ]
+
+downloadSolution :: AppData -> Sha1 -> Handler TL.Text
+downloadSolution (AppData _ _ persistenceLayer _) solutionSha1 = do
+  Handler . withExceptT toServantError $ do
+    ExceptT $
+      maybeToEither (DatabaseRetrievalFailure solutionSha1)
+        <$> (fmap $ fmap decodeUtf8) ((getContent . solutionStorage) persistenceLayer solutionSha1)
+
 downloadRedactedScenario :: AppData -> Sha1 -> Handler TL.Text
-downloadRedactedScenario (AppData _ persistenceLayer) scenarioSha1 = do
+downloadRedactedScenario (AppData _ _ persistenceLayer _) scenarioSha1 = do
   Handler . withExceptT toServantError $ do
     doc <-
       ExceptT $
         maybeToEither (DatabaseRetrievalFailure scenarioSha1)
-          <$> lookupScenarioFileContent persistenceLayer scenarioSha1
+          <$> (getContent . scenarioStorage) persistenceLayer scenarioSha1
 
     rawYamlDict :: Map Key Value <- withExceptT YamlParseFailure . except . decodeEither' $ LBS.toStrict doc
     let redactedDict = M.delete "solution" rawYamlDict
     withExceptT DecodingFailure . except . decodeUtf8' . LBS.fromStrict $
       encodeWith defaultEncodeOptions redactedDict
 
--- NOTE: This is currently the only API endpoint that invokes
--- 'runReaderT' directly
 listScenarios :: Handler [TournamentGame]
 listScenarios =
-  Handler $
+  Handler $ liftIO $ runReaderT listGames databaseFilename
+
+listSolutions :: Sha1 -> Handler GameWithSolutions
+listSolutions sha1 =
+  Handler $ liftIO $ runReaderT (listSubmissions sha1) databaseFilename
+
+doGithubCallback ::
+  GitHubCredentials ->
+  Maybe TokenExchangeCode ->
+  LoginHandler
+doGithubCallback creds maybeCode = do
+  c <- maybe (fail "Missing 'code' parameter") return maybeCode
+
+  manager <- liftIO $ HC.newManager tlsManagerSettings
+  receivedTokens <- exchangeCode manager creds c
+
+  let aToken = token $ accessToken receivedTokens
+  userInfo <- fetchAuthenticatedUser manager aToken
+
+  doLoginResponse refererUrl (UserAlias $ login userInfo) receivedTokens
+ where
+  refererUrl = "/list-games.html"
+
+doLocalDevelopmentLogin :: DeploymentEnvironment -> Maybe TL.Text -> LoginHandler
+doLocalDevelopmentLogin envType maybeRefererUrl =
+  case envType of
+    ProdDeployment -> error "Login bypass not available in production"
+    LocalDevelopment user ->
+      doLoginResponse refererUrl user $
+        ReceivedTokens
+          (Expirable (AccessToken "abcd") 100)
+          (Expirable (RefreshToken "efgh") 10000)
+ where
+  refererUrl = fromMaybe "foo" maybeRefererUrl
+
+makeCookieHeader :: BS.ByteString -> SetCookie
+makeCookieHeader val =
+  defaultSetCookie
+    { setCookieName = myAppCookieName
+    , setCookieValue = val
+    , setCookiePath = Just "/api/private"
+    }
+
+doLogout :: Maybe TL.Text -> LoginHandler
+doLogout maybeRefererUrl =
+  return $
+    addHeader (fromMaybe "/list-games.html" maybeRefererUrl) $
+      addHeader ((makeCookieHeader "") {setCookieMaxAge = Just 0}) NoContent
+
+doLoginResponse ::
+  TL.Text ->
+  UserAlias ->
+  ReceivedTokens ->
+  LoginHandler
+doLoginResponse refererUrl userAlias receivedTokens = do
+  cookieString <-
     liftIO $
-      runReaderT listGames databaseFilename
+      flip runReaderT databaseFilename $
+        insertGitHubAuth userAlias receivedTokens
+
+  return $
+    addHeader refererUrl $
+      addHeader (makeCookieHeader $ LBS.toStrict $ encodeUtf8 cookieString) NoContent
 
 -- * Web app declaration
 
 app :: AppData -> Application
-app appData = Servant.serveWithContext api context server
+app appData = Servant.serveWithContext (Proxy :: Proxy ToplevelAPI) context server
  where
   size100kB = 100_000 :: Int64
 
@@ -206,7 +335,8 @@ app appData = Servant.serveWithContext api context server
             $ defaultParseRequestBodyOptions
       }
 
-  context = multipartOpts :. EmptyContext
+  thisAuthHandler = authHandler (gitHubCredentials appData) (developmentMode appData)
+  context = thisAuthHandler :. multipartOpts :. EmptyContext
 
   server :: Server ToplevelAPI
   server =
@@ -218,8 +348,8 @@ app appData = Servant.serveWithContext api context server
           }
    where
     serveDocs _ resp =
-      resp $ responseLBS ok200 [plain] swarmApiHtml
-    plain = ("Content-Type", "text/html")
+      resp $ responseLBS ok200 [htmlType] tournamentsApiHtml
+    htmlType = ("Content-Type", "text/html")
 
 webMain ::
   AppData ->
@@ -228,46 +358,3 @@ webMain ::
 webMain appData port = Warp.runSettings settings $ app appData
  where
   settings = Warp.setPort port Warp.defaultSettings
-
--- * Instances for documentation
-
-instance SD.ToSample T.Text where
-  toSamples _ = SD.samples ["foo"]
-
-instance SD.ToSample TL.Text where
-  toSamples _ = SD.samples ["foo"]
-
-instance SD.ToSample TournamentGame where
-  toSamples _ = SD.samples [TournamentGame "foo" "bar" (Sha1 "abc") 10 (Sha1 "def")]
-
-fakeSolnCharacterization :: SolutionCharacterization
-fakeSolnCharacterization =
-  SolutionCharacterization
-    10
-    (TickNumber 100)
-    0
-    (ScenarioCodeMetrics 10 5)
-
-instance SD.ToSample ScenarioMetadata where
-  toSamples _ = SD.samples [ScenarioMetadata 1 "foo" $ Just "bar"]
-
-instance SD.ToSample SolutionFileCharacterization where
-  toSamples _ = SD.samples [SolutionFileCharacterization (Sha1 "abcdef") fakeSolnCharacterization]
-
-instance SD.ToSample ScenarioCharacterization where
-  toSamples _ = SD.samples [ScenarioCharacterization (FileMetadata "foo.yaml" (Sha1 "abcdef")) fakeSolnCharacterization]
-
-instance ToMultipartSample Mem (MultipartData Mem) where
-  toMultipartSamples _proxy =
-    [
-      ( "sample 1"
-      , MultipartData
-          [Input "username" "Elvis Presley"]
-          [ FileData
-              "scenario-file"
-              "my-scenario.yaml"
-              "application/yaml"
-              "tmpservant-multipart000.buf"
-          ]
-      )
-    ]
