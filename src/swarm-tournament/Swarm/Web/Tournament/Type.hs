@@ -10,6 +10,8 @@ module Swarm.Web.Tournament.Type where
 import Data.Aeson
 import Data.ByteString.Lazy qualified as LBS
 import Data.Text qualified as T
+import Data.Text.Lazy qualified as TL
+import Data.Time (UTCTime)
 import Database.SQLite.Simple.ToField
 import GHC.Generics (Generic)
 import Servant
@@ -21,7 +23,8 @@ import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World.Gen (Seed)
 import System.Time.Extra
 
-newtype UserAlias = UserAlias T.Text
+newtype UserAlias = UserAlias TL.Text
+  deriving (Generic, ToJSON)
 
 instance ToField UserAlias where
   toField (UserAlias x) = toField x
@@ -46,10 +49,24 @@ data TournamentGame = TournamentGame
   , scenarioHash :: Sha1
   , submissionCount :: Int
   , swarmGitSha1 :: Sha1
+  , scenarioTitle :: T.Text
   }
   deriving (Generic, ToJSON)
 
-data AssociatedSolutionSolutionCharacterization = AssociatedSolutionSolutionCharacterization
+data TournamentSolution = TournamentSolution
+  { submissionTime :: UTCTime
+  , solutionSubmitter :: T.Text
+  , submissionScore :: SolutionFileCharacterization
+  }
+  deriving (Generic, ToJSON)
+
+data GameWithSolutions = GameWithSolutions
+  { theGame :: TournamentGame
+  , theSolutions :: [TournamentSolution]
+  }
+  deriving (Generic, ToJSON)
+
+data AssociatedSolutionCharacterization = AssociatedSolutionCharacterization
   { forScenario :: Sha1
   , characterization :: SolutionCharacterization
   }
