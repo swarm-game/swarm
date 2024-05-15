@@ -25,7 +25,8 @@ import Swarm.Language.Parser.Lex (
  )
 import Swarm.Language.Parser.Record (parseRecord)
 import Swarm.Language.Types
-import Text.Megaparsec (optional, some, (<|>))
+import Swarm.Util (listEnums)
+import Text.Megaparsec (choice, optional, some, (<|>))
 import Witch (from)
 
 -- | Parse a Swarm language polytype, which starts with an optional
@@ -67,28 +68,9 @@ parseType = makeExprParser parseTypeAtom table
 
 parseTypeAtom :: Parser Type
 parseTypeAtom =
-  TyVoid
-    <$ reservedCS "Void"
-    <|> TyUnit
-      <$ reservedCS "Unit"
-    <|> TyInt
-      <$ reservedCS "Int"
-    <|> TyText
-      <$ reservedCS "Text"
-    <|> TyDir
-      <$ reservedCS "Dir"
-    <|> TyBool
-      <$ reservedCS "Bool"
-    <|> TyActor
-      <$ reservedCS "Actor"
-    <|> TyKey
-      <$ reservedCS "Key"
-    <|> TyCmd
-      <$> (reservedCS "Cmd" *> parseTypeAtom)
-    <|> TyVar
-      <$> tyVar
-    <|> TyDelay
-      <$> braces parseType
-    <|> TyRcd
-      <$> brackets (parseRecord (symbol ":" *> parseType))
+  choice (map (\b -> TyBase b <$ reservedCS (baseTyName b)) listEnums)
+    <|> TyCmd <$> (reservedCS "Cmd" *> parseTypeAtom)
+    <|> TyVar <$> tyVar
+    <|> TyDelay <$> braces parseType
+    <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))
     <|> parens parseType

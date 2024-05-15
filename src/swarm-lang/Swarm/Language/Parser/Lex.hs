@@ -50,8 +50,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Language.Parser.Core
 import Swarm.Language.Syntax
-import Swarm.Language.Types (BaseTy)
-import Swarm.Util (failT, squote)
+import Swarm.Language.Types (baseTyName)
+import Swarm.Util (failT, listEnums, squote)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
@@ -149,7 +149,7 @@ operatorChar = T.singleton <$> oneOf opChars
 
 -- | Names of base types built into the language.
 baseTypeNames :: [Text]
-baseTypeNames = map (into @Text . drop 1 . show) [minBound @BaseTy .. maxBound]
+baseTypeNames = map baseTyName listEnums
 
 -- | Names of types built into the language.
 primitiveTypeNames :: [Text]
