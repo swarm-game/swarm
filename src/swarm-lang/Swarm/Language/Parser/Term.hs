@@ -75,16 +75,16 @@ parseTermAtom2 =
              )
         <|> uncurry SRequirements <$> (reserved "requirements" *> match parseTerm)
         <|> SLam
-          <$> (symbol "\\" *> locIdentifier False)
+          <$> (symbol "\\" *> locTmVar)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)
         <|> sLet
-          <$> (reserved "let" *> locIdentifier False)
+          <$> (reserved "let" *> locTmVar)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
         <|> sDef
-          <$> (reserved "def" *> locIdentifier False)
+          <$> (reserved "def" *> locTmVar)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
         <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
@@ -135,7 +135,7 @@ data Stmt
 
 parseStmt :: Parser Stmt
 parseStmt =
-  mkStmt <$> optional (try (locIdentifier False <* symbol "<-")) <*> parseExpr
+  mkStmt <$> optional (try (locTmVar <* symbol "<-")) <*> parseExpr
 
 mkStmt :: Maybe LocVar -> Syntax -> Stmt
 mkStmt Nothing = BareTerm
