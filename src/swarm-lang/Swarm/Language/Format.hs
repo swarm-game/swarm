@@ -13,7 +13,7 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Prettyprinter
 import Prettyprinter.Render.Text qualified as RT
-import Swarm.Language.Parser (readTerm, readTerm')
+import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (LanguageVersion, defaultParserConfig, languageVersion)
 import Swarm.Language.Pretty
 import Swarm.Util ((?))
