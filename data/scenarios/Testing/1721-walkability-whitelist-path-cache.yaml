@@ -34,7 +34,7 @@ entities:
       - |
         Enables the `path` command:
       - |
-        `path : (unit + int) -> ((int * int) + text) -> cmd (unit + (dir * int))`
+        `path : (Unit + Int) -> ((Int * Int) + Text) -> Cmd (Unit + (Dir * Int))`
       - |
         Optionally supply a distance limit as the first argument, and
         supply either a location (`inL`) or an entity (`inR`) as the second argument.

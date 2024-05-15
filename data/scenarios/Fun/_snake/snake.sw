@@ -2,11 +2,11 @@
 Uses a string to maintain a queue of coordinates.
 */
 
-def coordsToString : (int * int) -> text = \coords.
+def coordsToString : (Int * Int) -> Text = \coords.
   format (fst coords) ++ "," ++ format (snd coords)
   end
 
-def indexOfRec : int -> text -> text -> (unit + int) = \pos. \inputString. \targetChar.
+def indexOfRec : Int -> Text -> Text -> (Unit + Int) = \pos. \inputString. \targetChar.
   if (pos >= chars inputString) {
     inL ()
   } {
@@ -18,16 +18,16 @@ def indexOfRec : int -> text -> text -> (unit + int) = \pos. \inputString. \targ
   }
   end
 
-def indexOf : text -> text -> (unit + int) =
+def indexOf : Text -> Text -> (Unit + Int) =
   indexOfRec 0
   end
 
 // Drops the first character of a string
-def strTail : text -> text = \inputString.
+def strTail : Text -> Text = \inputString.
   snd $ split 1 inputString
   end
 
-def splitOnFirstChar : text -> text -> (text * text) = \inputString. \splitChar.
+def splitOnFirstChar : Text -> Text -> (Text * Text) = \inputString. \splitChar.
   case (indexOf inputString splitChar) (\_.
     // Did not find the split character, so return the original string
     (inputString, "")
@@ -42,13 +42,13 @@ def getDecimalCharValue = \inputString. \idx.
   end
 
 // Works from right to left
-def parseDecimalRec : int -> text -> int = \charsRemaining. \inputString.
+def parseDecimalRec : Int -> Text -> Int = \charsRemaining. \inputString.
   if (charsRemaining > 0) {
     getDecimalCharValue inputString (charsRemaining - 1) + 10 * parseDecimalRec (charsRemaining - 1) inputString
   } {0}
   end
 
-def parseDecimal : text -> int = \inputString.
+def parseDecimal : Text -> Int = \inputString.
   let isNegative = toChar (charAt 0 inputString) == "-" in
   let negationMultiplier = if isNegative {-1} {1} in
   let modifiedString = if isNegative {strTail inputString} {inputString} in
@@ -57,19 +57,19 @@ def parseDecimal : text -> int = \inputString.
   end
 
 // Comma (",") is the separator between abscissa and ordinate
-def stringToCoords : text -> (int * int) = \coordsString.
+def stringToCoords : Text -> (Int * Int) = \coordsString.
   let pair = splitOnFirstChar coordsString "," in
   (parseDecimal $ fst pair, parseDecimal $ snd pair)
   end
 
 // APPEND to string representation of a coordinate list
-def snoc : (int * int) -> text -> text = \coords. \strList.
+def snoc : (Int * Int) -> Text -> Text = \coords. \strList.
   let delimiter = if (chars strList > 0) {";"} {""} in
   strList ++ delimiter ++ coordsToString coords;
   end
 
 // Extracts the first element and returns the shortened list
-def pop : text -> (unit + ((int * int) * text)) = \strList.
+def pop : Text -> (Unit + ((Int * Int) * Text)) = \strList.
   if (chars strList > 0) {
     let pair = splitOnFirstChar strList ";" in
     inR (stringToCoords $ fst pair, snd pair)
