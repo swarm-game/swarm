@@ -28,8 +28,10 @@ module Swarm.Language.Parser.Lex (
   reservedWords,
   reservedCS,
   reserved,
-  identifier,
+  IdentifierType (..),
   locIdentifier,
+  locTmVar,
+  identifier,
   tyVar,
   tmVar,
   textLiteral,
@@ -179,44 +181,50 @@ reservedCS :: Text -> Parser ()
 reservedCS = reservedGen string
 
 -- | Parse a case-insensitive reserved word.
-
--- | Parse a case-insensitive reserved word.
 reserved :: Text -> Parser ()
 reserved = reservedGen string'
 
--- | Parse an identifier together with its source location info. The
---   Bool indicates whether we are parsing a type variable (which are
---   not allowed to start with an uppercase letter).
-locIdentifier :: Bool -> Parser LocVar
-locIdentifier isTV = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
+-- | What kind of identifier are we parsing?
+data IdentifierType = IDTyVar | IDTmVar
+  deriving (Eq, Ord, Show)
+
+-- | Parse an identifier together with its source location info.
+locIdentifier :: IdentifierType -> Parser LocVar
+locIdentifier idTy = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
  where
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
   check (into @Text -> t)
     | t `elem` reservedWords || T.toLower t `elem` reservedWords =
         failT ["Reserved word", squote t, "cannot be used as a variable name"]
-    | isTV && T.toTitle t `elem` reservedWords =
+    | IDTyVar <- idTy
+    , T.toTitle t `elem` reservedWords =
         failT ["Reserved type name", squote t, "cannot be used as a type variable name; perhaps you meant", squote (T.toTitle t) <> "?"]
-    | isTV && isUpper (T.head t) =
+    | IDTyVar <- idTy
+    , isUpper (T.head t) =
         failT ["Type variable names must start with a lowercase letter"]
     | otherwise = return t
+
+-- | Parse a term variable together with its source location info.
+locTmVar :: Parser LocVar
+locTmVar = locIdentifier IDTmVar
 
 -- | Parse an identifier, i.e. any non-reserved string containing
 --   alphanumeric characters and underscores, not starting with a
 --   digit. The Bool indicates whether we are parsing a type variable.
-identifier :: Bool -> Parser Var
+identifier :: IdentifierType -> Parser Var
 identifier = fmap lvVar . locIdentifier
 
 -- | Parse a type variable, which must start with an underscore or
 --   lowercase letter and cannot be the lowercase version of a type
 --   name.
 tyVar :: Parser Var
-tyVar = identifier True
+tyVar = identifier IDTyVar
 
 -- | Parse a term variable, which can start in any case and just
 --   cannot be the same (case-insensitively) as a lowercase reserved
 --   word.
 tmVar :: Parser Var
-tmVar = identifier False
+tmVar = identifier IDTmVar
 
 -- | Parse a text literal (including escape sequences) in double quotes.
 textLiteral :: Parser Text
