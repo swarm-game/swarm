@@ -37,19 +37,24 @@ main = do
     ScenarioPersistence
       { lookupCache = const $ return Nothing
       , storeCache = const $ return $ Sha1 "bogus"
+      , getContent = const $ return Nothing
       }
 
   mkPersistenceLayer scenariosMap =
     PersistenceLayer
-      { lookupScenarioFileContent = \x -> return $ content <$> NEM.lookup x scenariosMap
-      , scenarioStorage = noPersistence
+      { scenarioStorage =
+          noPersistence
+            { getContent = return . fmap content . (`NEM.lookup` scenariosMap)
+            }
       , solutionStorage = noPersistence
       }
 
   mkAppData scenariosMap =
     Tournament.AppData
       { Tournament.swarmGameGitVersion = Sha1 "abcdef"
+      , Tournament.gitHubCredentials = Tournament.GitHubCredentials "" ""
       , Tournament.persistence = mkPersistenceLayer scenariosMap
+      , Tournament.developmentMode = Tournament.LocalDevelopment
       }
 
 type LocalFileLookup = NEMap Sha1 FilePathAndContent
@@ -72,12 +77,12 @@ testScenarioUpload :: LocalFileLookup -> Tournament.AppData -> Assertion
 testScenarioUpload fileLookup appData =
   mapM_ f testScenarioPaths
  where
-  f x = uploadForm appData "/upload/scenario" [partFileSource "file" x]
+  f x = uploadForm appData "/api/private/upload/scenario" [partFileSource "file" x]
   testScenarioPaths = map filePath $ NE.toList $ NEM.elems fileLookup
 
 testSolutionUpload :: LocalFileLookup -> Tournament.AppData -> Assertion
 testSolutionUpload fileLookup appData =
-  uploadForm appData "/upload/solution" form
+  uploadForm appData "/api/private/upload/solution" form
  where
   solutionFilePath = "data/scenarios/Challenges/_arbitrage/solution.sw"
   Sha1 scenarioSha1 = NE.head $ NEM.keys fileLookup
@@ -92,10 +97,16 @@ uploadForm :: Tournament.AppData -> String -> [PartM IO] -> Assertion
 uploadForm appData urlPath form =
   testWithApplication (pure tournamentApp) $ \p -> do
     manager <- newManager defaultManagerSettings
-    req <- parseRequest $ "http://localhost:" ++ show p ++ urlPath
-    resp <- flip httpLbs manager =<< formDataBody form req
 
-    print $ responseBody resp
+    let baseUrl = "http://localhost:" ++ show p
+    reqLogin <- parseRequest $ baseUrl ++ "/api/private/login/local"
+    respLogin <- httpLbs reqLogin manager
+
+    req <- parseRequest $ baseUrl ++ urlPath
+    resp <-
+      flip httpLbs manager
+        =<< formDataBody form (req {cookieJar = Just $ responseCookieJar respLogin})
+
     assertEqual "Server response should be 200" ok200 $ responseStatus resp
  where
   tournamentApp = Tournament.app appData

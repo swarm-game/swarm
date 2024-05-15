@@ -18,11 +18,11 @@ import Swarm.Web.Tournament.Database.Query
 import Swarm.Web.Tournament.Type
 import Swarm.Web.Tournament.Validate.FailureMode
 
-data PersistenceArgs a
+data PersistenceArgs m a
   = PersistenceArgs
       UserAlias
       (MultipartData Mem)
-      (ScenarioPersistence a)
+      (ScenarioPersistence m a)
 
 obtainFileUpload ::
   MultipartData Mem ->
@@ -45,10 +45,10 @@ obtainFileUpload multipartData =
   maybeNonemptyFiles = NE.nonEmpty $ files multipartData
 
 withFileCache ::
-  PersistenceArgs a ->
+  PersistenceArgs IO a ->
   (GenericUploadFailure -> e) ->
-  (FileUpload -> ExceptT e IO (AssociatedSolutionSolutionCharacterization, a)) ->
-  ExceptT e IO (FileMetadata, AssociatedSolutionSolutionCharacterization)
+  (FileUpload -> ExceptT e IO (AssociatedSolutionCharacterization, a)) ->
+  ExceptT e IO (FileMetadata, AssociatedSolutionCharacterization)
 withFileCache (PersistenceArgs userAlias multipartData persistenceFunctions) errorWrapper cacheStoreFunction = do
   file <- withExceptT errorWrapper $ obtainFileUpload multipartData
   maybePreexisting <-
