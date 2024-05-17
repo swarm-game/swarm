@@ -149,6 +149,7 @@ library swarm-lang
     Swarm.Language.Requirement
     Swarm.Language.Syntax
     Swarm.Language.Syntax.CommandMetadata
+    Swarm.Language.Syntax.Constants
     Swarm.Language.Text.Markdown
     Swarm.Language.Typecheck
     Swarm.Language.Typed
