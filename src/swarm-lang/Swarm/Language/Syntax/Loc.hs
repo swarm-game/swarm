@@ -1,0 +1,54 @@
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UndecidableInstances #-}
+
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Types for working with locations of something in source code.
+module Swarm.Language.Syntax.Loc (
+  SrcLoc (..),
+  LocVar (..),
+  srcLocBefore,
+) where
+
+import Data.Aeson.Types hiding (Key)
+import Data.Data (Data)
+import GHC.Generics (Generic)
+import Swarm.Language.Context (Var)
+
+------------------------------------------------------------
+-- SrcLoc
+------------------------------------------------------------
+
+-- | The location of something in the textual source code (recorded as
+--   an interval measured in terms of indices into the input stream).
+data SrcLoc
+  = NoLoc
+  | -- | Half-open interval from start (inclusive) to end (exclusive)
+    SrcLoc Int Int
+  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
+
+-- | @x <> y@ is the smallest 'SrcLoc' that subsumes both @x@ and @y@.
+instance Semigroup SrcLoc where
+  NoLoc <> l = l
+  l <> NoLoc = l
+  SrcLoc s1 e1 <> SrcLoc s2 e2 = SrcLoc (min s1 s2) (max e1 e2)
+
+-- | @mempty@ is a special value which means we have no location
+--   information.
+instance Monoid SrcLoc where
+  mempty = NoLoc
+
+-- | Check whether one @SrcLoc@ starts at or before another one,
+--   /i.e./ compare their starting indices to see if the first is @<=@
+--   the second.
+srcLocBefore :: SrcLoc -> SrcLoc -> Bool
+srcLocBefore (SrcLoc a _) (SrcLoc b _) = a <= b
+srcLocBefore _ _ = False
+
+-- | A variable with associated source location, used for variable
+--   binding sites. (Variable occurrences are a bare TVar which gets
+--   wrapped in a Syntax node, so we don't need LocVar for those.)
+data LocVar = LV {lvSrcLoc :: SrcLoc, lvVar :: Var}
+  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)

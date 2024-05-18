@@ -150,6 +150,11 @@ library swarm-lang
     Swarm.Language.Syntax
     Swarm.Language.Syntax.CommandMetadata
     Swarm.Language.Syntax.Constants
+    Swarm.Language.Syntax.Comments
+    Swarm.Language.Syntax.Loc
+    Swarm.Language.Syntax.Pattern
+    Swarm.Language.Syntax.Type
+    Swarm.Language.Syntax.Util
     Swarm.Language.Text.Markdown
     Swarm.Language.Typecheck
     Swarm.Language.Typed

@@ -1,5 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Module provides Types representing built-in functions and commands.
 module Swarm.Language.Syntax.Constants (
   Const (..),
   allConst,
@@ -20,12 +24,12 @@ module Swarm.Language.Syntax.Constants (
   maxScoutRange,
   maxStrideRange,
   maxPathRange,
-  globalMaxVolume
+  globalMaxVolume,
 ) where
 
-import Data.Int (Int32)
 import Data.Aeson.Types hiding (Key)
 import Data.Data (Data)
+import Data.Int (Int32)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text hiding (filter, length, map)
@@ -878,7 +882,6 @@ constInfo c = case c of
 
   lowShow :: Show a => a -> Text
   lowShow a = toLower (from (show a))
-
 
 -- | Maximum perception distance for
 -- 'Chirp' and 'Sniff' commands
