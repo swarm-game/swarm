@@ -9,7 +9,7 @@ import Linear (V2)
 import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.Universe (Cosmic, planar)
-import Swarm.Language.Direction
+import Swarm.Language.Syntax.Direction
 
 -- |
 -- Computes the relative offset vector between a 'Robot' and a 'Location'

@@ -7,7 +7,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Types and helper functions for working with directions
-module Swarm.Language.Direction (
+module Swarm.Language.Syntax.Direction (
   -- * Directions
   Direction (..),
   AbsoluteDir (..),

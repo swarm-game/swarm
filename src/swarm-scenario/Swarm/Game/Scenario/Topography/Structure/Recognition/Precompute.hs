@@ -60,7 +60,7 @@ import Swarm.Game.Scenario.Topography.Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic (..))
-import Swarm.Language.Direction (AbsoluteDir)
+import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Util (binTuples, histogram)
 import Swarm.Util.Erasable (erasableToMaybe)
 import Text.AhoCorasick
