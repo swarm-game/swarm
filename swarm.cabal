@@ -126,7 +126,6 @@ library swarm-lang
     Swarm.Effect.Unify.Naive
     Swarm.Language.Capability
     Swarm.Language.Context
-    Swarm.Language.Direction
     Swarm.Language.Elaborate
     Swarm.Language.Format
     Swarm.Language.Key
@@ -148,7 +147,14 @@ library swarm-lang
     Swarm.Language.Pretty
     Swarm.Language.Requirement
     Swarm.Language.Syntax
+    Swarm.Language.Syntax.AST
     Swarm.Language.Syntax.CommandMetadata
+    Swarm.Language.Syntax.Comments
+    Swarm.Language.Syntax.Constants
+    Swarm.Language.Syntax.Direction
+    Swarm.Language.Syntax.Loc
+    Swarm.Language.Syntax.Pattern
+    Swarm.Language.Syntax.Util
     Swarm.Language.Text.Markdown
     Swarm.Language.Typecheck
     Swarm.Language.Typed

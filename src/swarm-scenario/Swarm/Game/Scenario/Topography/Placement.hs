@@ -13,7 +13,7 @@ import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
-import Swarm.Language.Direction (AbsoluteDir (..))
+import Swarm.Language.Syntax.Direction (AbsoluteDir (..))
 
 newtype StructureName = StructureName Text
   deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
