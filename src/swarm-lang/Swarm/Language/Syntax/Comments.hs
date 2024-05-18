@@ -10,7 +10,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Types for working with comments in Swarm prgramming language.
+-- Types for working with comments in Swarm programming language.
 module Swarm.Language.Syntax.Comments (
   CommentType (..),
   CommentSituation (..),

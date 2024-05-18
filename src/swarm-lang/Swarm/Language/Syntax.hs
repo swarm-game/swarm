@@ -101,11 +101,11 @@ module Swarm.Language.Syntax (
   measureAstSize,
 ) where
 
-import Swarm.Language.Direction
+import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
+import Swarm.Language.Syntax.Direction
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern
-import Swarm.Language.Syntax.Type
 import Swarm.Language.Syntax.Util
 import Swarm.Language.Types

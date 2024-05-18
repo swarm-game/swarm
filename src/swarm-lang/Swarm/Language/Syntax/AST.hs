@@ -6,7 +6,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Types represeting the surface syntax and terms for Swarm programming language.
-module Swarm.Language.Syntax.Type (
+module Swarm.Language.Syntax.AST (
   Syntax' (..),
   Term' (..),
   DelayType (..),
@@ -19,9 +19,9 @@ import Data.Data.Lens (uniplate)
 import Data.Map.Strict (Map)
 import Data.Text hiding (filter, length, map)
 import GHC.Generics (Generic)
-import Swarm.Language.Direction
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
+import Swarm.Language.Syntax.Direction
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Types
 

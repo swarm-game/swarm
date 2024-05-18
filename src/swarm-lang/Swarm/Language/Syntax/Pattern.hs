@@ -34,9 +34,9 @@ module Swarm.Language.Syntax.Pattern (
 import Control.Lens (makeLenses, pattern Empty)
 import Data.Map.Strict (Map)
 import Data.Text hiding (filter, length, map)
+import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Loc
-import Swarm.Language.Syntax.Type
 import Swarm.Language.Types
 
 -- | Syntax without type annotations.
