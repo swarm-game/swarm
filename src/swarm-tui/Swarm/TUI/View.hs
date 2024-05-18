@@ -827,7 +827,7 @@ helpWidget theSeed mport =
     , ("Ctrl-z", "decrease speed")
     , ("Ctrl-w", "increase speed")
     , ("Ctrl-q", "quit or restart the current scenario")
-    , ("Ctrl-s", "collapse/expand REPL")
+    , ("Meta-,", "collapse/expand REPL")
     , ("Meta-h", "hide robots for 2s")
     , ("Meta-w", "focus on the world map")
     , ("Meta-e", "focus on the robot inventory")
