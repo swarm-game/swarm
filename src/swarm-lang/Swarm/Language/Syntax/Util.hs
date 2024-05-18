@@ -38,6 +38,15 @@ import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern
 import Swarm.Language.Syntax.Type
 
+-- Setup for doctests
+
+-- $setup
+-- >>> import Control.Lens ((^.))
+-- >>> import Swarm.Language.Syntax.Constants
+-- >>> import Swarm.Language.Syntax.Loc
+-- >>> import Swarm.Language.Syntax.Pattern
+-- >>> import Swarm.Language.Syntax.Type
+
 -- | Make an infix operation (e.g. @2 + 3@) a curried function
 --   application (e.g. @((+) 2) 3@).
 mkOp :: Const -> Syntax -> Syntax -> Syntax
@@ -53,9 +62,6 @@ mkOp c s1@(Syntax l1 _) s2@(Syntax l2 _) = Syntax newLoc newTerm
 -- | Make an infix operation, discarding any location information
 mkOp' :: Const -> Term -> Term -> Term
 mkOp' c t1 = TApp (TApp (TConst c) t1)
-
--- $setup
--- >>> import Control.Lens ((^.))
 
 -- | Turn function application chain into a list.
 --
