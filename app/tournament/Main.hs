@@ -10,10 +10,10 @@ import Data.Yaml (decodeFileThrow)
 import Network.Wai.Handler.Warp (Port)
 import Options.Applicative
 
-import Swarm.Web.Tournament.Type (UserAlias (..))
 import Swarm.Game.State (Sha1 (..))
 import Swarm.Web.Tournament
 import Swarm.Web.Tournament.Database.Query
+import Swarm.Web.Tournament.Type (UserAlias (..))
 
 data AppOpts = AppOpts
   { userWebPort :: Maybe Port
