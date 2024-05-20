@@ -36,6 +36,7 @@ import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding (decodeUtf8, decodeUtf8', encodeUtf8)
 import Data.Yaml (decodeEither', defaultEncodeOptions, encodeWith)
+import Database.SQLite.Simple (withConnection)
 import GHC.Generics (Generic)
 import Network.HTTP.Client qualified as HC
 import Network.HTTP.Client.TLS (tlsManagerSettings)
@@ -108,8 +109,8 @@ mkApp appData =
     :<|> listScenarios
     :<|> listSolutions
     :<|> echoUsername
-    :<|> doGithubCallback (gitHubCredentials appData)
-    :<|> doLocalDevelopmentLogin (developmentMode appData)
+    :<|> doGithubCallback (authenticationStorage $ persistence appData) (gitHubCredentials appData)
+    :<|> doLocalDevelopmentLogin (authenticationStorage $ persistence appData) (developmentMode appData)
     :<|> doLogout
  where
   echoUsername = return
@@ -144,8 +145,12 @@ data LoginProblem = LoginProblem
 --- | The auth handler wraps a function from Request -> Handler UserAlias.
 --- We look for a token in the request headers that we expect to be in the cookie.
 --- The token is then passed to our `lookupAccount` function.
-authHandler :: GitHubCredentials -> DeploymentEnvironment -> AuthHandler Request UserAlias
-authHandler creds deployMode = mkAuthHandler handler
+authHandler ::
+  AuthenticationStorage IO ->
+  GitHubCredentials ->
+  DeploymentEnvironment ->
+  AuthHandler Request UserAlias
+authHandler authStorage creds deployMode = mkAuthHandler handler
  where
   url = case deployMode of
     LocalDevelopment _ -> "api/private/login/local"
@@ -159,12 +164,10 @@ authHandler creds deployMode = mkAuthHandler handler
       . lookup myAppCookieName
       $ parseCookies cookie
 
-  userLookup cookieText = runReaderT (getUsernameFromCookie cookieText) databaseFilename
-
-  -- \| A method that, when given a cookie/password, will return a UserAlias.
+  -- A method that, when given a cookie/password, will return a 'UserAlias'.
   lookupAccount :: TL.Text -> Handler UserAlias
   lookupAccount cookieText = do
-    maybeUser <- liftIO $ userLookup cookieText
+    maybeUser <- liftIO $ usernameFromCookie authStorage cookieText
     case maybeUser of
       Nothing -> throwError (err403 {errBody = encode $ LoginProblem "Invalid cookie password" url})
       Just usr -> return usr
@@ -254,17 +257,18 @@ downloadRedactedScenario (AppData _ _ persistenceLayer _) scenarioSha1 = do
 
 listScenarios :: Handler [TournamentGame]
 listScenarios =
-  Handler $ liftIO $ runReaderT listGames databaseFilename
+  Handler . liftIO . withConnection databaseFilename $ runReaderT listGames
 
 listSolutions :: Sha1 -> Handler GameWithSolutions
 listSolutions sha1 =
-  Handler $ liftIO $ runReaderT (listSubmissions sha1) databaseFilename
+  Handler . liftIO . withConnection databaseFilename . runReaderT $ listSubmissions sha1
 
 doGithubCallback ::
+  AuthenticationStorage IO ->
   GitHubCredentials ->
   Maybe TokenExchangeCode ->
   LoginHandler
-doGithubCallback creds maybeCode = do
+doGithubCallback authStorage creds maybeCode = do
   c <- maybe (fail "Missing 'code' parameter") return maybeCode
 
   manager <- liftIO $ HC.newManager tlsManagerSettings
@@ -272,20 +276,24 @@ doGithubCallback creds maybeCode = do
 
   let aToken = token $ accessToken receivedTokens
   userInfo <- fetchAuthenticatedUser manager aToken
-
-  doLoginResponse refererUrl (UserAlias $ login userInfo) receivedTokens
+  let user = UserAlias $ login userInfo
+  x <- doLoginResponse authStorage refererUrl user
+  liftIO . withConnection databaseFilename . runReaderT $ do
+    insertGitHubTokens user receivedTokens
+  return x
  where
   refererUrl = "/list-games.html"
 
-doLocalDevelopmentLogin :: DeploymentEnvironment -> Maybe TL.Text -> LoginHandler
-doLocalDevelopmentLogin envType maybeRefererUrl =
+doLocalDevelopmentLogin ::
+  AuthenticationStorage IO ->
+  DeploymentEnvironment ->
+  Maybe TL.Text ->
+  LoginHandler
+doLocalDevelopmentLogin authStorage envType maybeRefererUrl =
   case envType of
     ProdDeployment -> error "Login bypass not available in production"
     LocalDevelopment user ->
-      doLoginResponse refererUrl user $
-        ReceivedTokens
-          (Expirable (AccessToken "abcd") 100)
-          (Expirable (RefreshToken "efgh") 10000)
+      doLoginResponse authStorage refererUrl user
  where
   refererUrl = fromMaybe "foo" maybeRefererUrl
 
@@ -304,16 +312,13 @@ doLogout maybeRefererUrl =
       addHeader ((makeCookieHeader "") {setCookieMaxAge = Just 0}) NoContent
 
 doLoginResponse ::
+  AuthenticationStorage IO ->
   TL.Text ->
   UserAlias ->
-  ReceivedTokens ->
   LoginHandler
-doLoginResponse refererUrl userAlias receivedTokens = do
+doLoginResponse authStorage refererUrl userAlias = do
   cookieString <-
-    liftIO $
-      flip runReaderT databaseFilename $
-        insertGitHubAuth userAlias receivedTokens
-
+    liftIO $ cookieFromUsername authStorage userAlias
   return $
     addHeader refererUrl $
       addHeader (makeCookieHeader $ LBS.toStrict $ encodeUtf8 cookieString) NoContent
@@ -335,7 +340,11 @@ app appData = Servant.serveWithContext (Proxy :: Proxy ToplevelAPI) context serv
             $ defaultParseRequestBodyOptions
       }
 
-  thisAuthHandler = authHandler (gitHubCredentials appData) (developmentMode appData)
+  thisAuthHandler =
+    authHandler
+      (authenticationStorage $ persistence appData)
+      (gitHubCredentials appData)
+      (developmentMode appData)
   context = thisAuthHandler :. multipartOpts :. EmptyContext
 
   server :: Server ToplevelAPI

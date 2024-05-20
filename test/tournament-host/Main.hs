@@ -48,14 +48,21 @@ main = do
             { getContent = return . fmap content . (`NEM.lookup` scenariosMap)
             }
       , solutionStorage = noPersistence
+      , authenticationStorage =
+          AuthenticationStorage
+            { usernameFromCookie = const $ return $ Just fakeUser
+            , cookieFromUsername = const $ return "fake-cookie-value"
+            }
       }
+
+  fakeUser = UserAlias "test-user"
 
   mkAppData scenariosMap =
     Tournament.AppData
       { Tournament.swarmGameGitVersion = Sha1 "abcdef"
       , Tournament.gitHubCredentials = Tournament.GitHubCredentials "" ""
       , Tournament.persistence = mkPersistenceLayer scenariosMap
-      , Tournament.developmentMode = Tournament.LocalDevelopment $ UserAlias "test-user"
+      , Tournament.developmentMode = Tournament.LocalDevelopment fakeUser
       }
 
 type LocalFileLookup = NEMap Sha1 FilePathAndContent

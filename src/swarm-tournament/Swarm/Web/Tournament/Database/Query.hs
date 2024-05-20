@@ -36,9 +36,15 @@ newtype UserId = UserId Int
 instance ToField UserId where
   toField (UserId x) = toField x
 
+data AuthenticationStorage m = AuthenticationStorage
+  { usernameFromCookie :: TL.Text -> m (Maybe UserAlias)
+  , cookieFromUsername :: UserAlias -> m TL.Text
+  }
+
 data PersistenceLayer m = PersistenceLayer
   { scenarioStorage :: ScenarioPersistence m ScenarioUploadResponsePayload
   , solutionStorage :: ScenarioPersistence m SolutionUploadResponsePayload
+  , authenticationStorage :: AuthenticationStorage m
   }
 
 data ScenarioPersistence m a = ScenarioPersistence
@@ -109,57 +115,70 @@ instance FromRow SolutionFileCharacterization where
 
 -- * Authentication
 
--- | If the username already exists, overwrite it.
-insertGitHubAuth ::
+-- | If the username already exists, overwrite the row.
+insertCookie ::
   UserAlias ->
-  ReceivedTokens ->
-  ReaderT ConnectInfo IO TL.Text
-insertGitHubAuth gitHubUsername gitHubTokens = do
-  connInfo <- ask
-  currentTime <- liftIO getCurrentTime
-  let expirationOf = mkExpirationTime currentTime
-  liftIO $ withConnection connInfo $ \conn -> do
+  ReaderT Connection IO TL.Text
+insertCookie gitHubUsername = do
+  conn <- ask
+  liftIO $ do
     [Only cookieString] <-
       query
         conn
-        "REPLACE INTO users (alias, github_access_token, github_access_token_expires_at, github_refresh_token, github_refresh_token_expires_at) VALUES (?, ?, ?, ?, ?) RETURNING cookie;"
-        ( gitHubUsername
-        , token $ accessToken gitHubTokens
-        , expirationOf accessToken
-        , token $ refreshToken gitHubTokens
-        , expirationOf refreshToken
-        )
+        "REPLACE INTO users (alias) VALUES (?) RETURNING cookie;"
+        (Only gitHubUsername)
     return cookieString
+
+-- | If the username already exists, overwrite the row.
+insertGitHubTokens ::
+  UserAlias ->
+  ReceivedTokens ->
+  ReaderT Connection IO ()
+insertGitHubTokens gitHubUsername gitHubTokens = do
+  conn <- ask
+  currentTime <- liftIO getCurrentTime
+  let expirationOf = mkExpirationTime currentTime
+  liftIO $ do
+    execute
+      conn
+      "REPLACE INTO github_tokens (alias, github_access_token, github_access_token_expires_at, github_refresh_token, github_refresh_token_expires_at) VALUES (?, ?, ?, ?, ?);"
+      ( gitHubUsername
+      , token $ accessToken gitHubTokens
+      , expirationOf accessToken
+      , token $ refreshToken gitHubTokens
+      , expirationOf refreshToken
+      )
+    return ()
  where
   mkExpirationTime currTime accessor =
     addUTCTime (fromIntegral $ expirationSeconds $ accessor gitHubTokens) currTime
 
 getUsernameFromCookie ::
   TL.Text ->
-  ReaderT ConnectInfo IO (Maybe UserAlias)
+  ReaderT Connection IO (Maybe UserAlias)
 getUsernameFromCookie cookieText = do
-  connInfo <- ask
-  liftIO . fmap (fmap (UserAlias . fromOnly) . listToMaybe) . withConnection connInfo $ \conn ->
+  conn <- ask
+  liftIO . fmap (fmap (UserAlias . fromOnly) . listToMaybe) $
     query conn "SELECT alias FROM users WHERE cookie = ?;" (Only cookieText)
 
 -- * Retrieval
 
-lookupScenarioContent :: Sha1 -> ReaderT ConnectInfo IO (Maybe LBS.ByteString)
+lookupScenarioContent :: Sha1 -> ReaderT Connection IO (Maybe LBS.ByteString)
 lookupScenarioContent sha1 = do
-  connInfo <- ask
-  liftIO . fmap (fmap fromOnly . listToMaybe) . withConnection connInfo $ \conn ->
+  conn <- ask
+  liftIO . fmap (fmap fromOnly . listToMaybe) $
     query conn "SELECT content FROM scenarios WHERE content_sha1 = ?;" (Only sha1)
 
-lookupSolutionContent :: Sha1 -> ReaderT ConnectInfo IO (Maybe LBS.ByteString)
+lookupSolutionContent :: Sha1 -> ReaderT Connection IO (Maybe LBS.ByteString)
 lookupSolutionContent sha1 = do
-  connInfo <- ask
-  liftIO . fmap (fmap fromOnly . listToMaybe) . withConnection connInfo $ \conn ->
+  conn <- ask
+  liftIO . fmap (fmap fromOnly . listToMaybe) $
     query conn "SELECT content FROM solution_submission WHERE content_sha1 = ?;" (Only sha1)
 
-lookupSolutionSubmission :: Sha1 -> ReaderT ConnectInfo IO (Maybe AssociatedSolutionCharacterization)
+lookupSolutionSubmission :: Sha1 -> ReaderT Connection IO (Maybe AssociatedSolutionCharacterization)
 lookupSolutionSubmission contentSha1 = do
-  connInfo <- ask
-  liftIO $ withConnection connInfo $ \conn -> runMaybeT $ do
+  conn <- ask
+  liftIO $ runMaybeT $ do
     evaluationId :: Int <-
       MaybeT $
         fmap fromOnly . listToMaybe
@@ -170,23 +189,24 @@ lookupSolutionSubmission contentSha1 = do
         <$> query conn "SELECT scenario, wall_time_seconds, ticks, seed, char_count, ast_size FROM evaluated_solution WHERE id = ?;" (Only evaluationId)
 
 -- | There should only be one builtin solution for the scenario.
-lookupScenarioSolution :: Sha1 -> ReaderT ConnectInfo IO (Maybe AssociatedSolutionCharacterization)
+lookupScenarioSolution :: Sha1 -> ReaderT Connection IO (Maybe AssociatedSolutionCharacterization)
 lookupScenarioSolution scenarioSha1 = do
-  connInfo <- ask
-  solnChar <- liftIO . fmap listToMaybe . withConnection connInfo $ \conn ->
-    query conn "SELECT wall_time_seconds, ticks, seed, char_count, ast_size FROM evaluated_solution WHERE builtin AND scenario = ? LIMIT 1;" (Only scenarioSha1)
+  conn <- ask
+  solnChar <-
+    liftIO . fmap listToMaybe $
+      query conn "SELECT wall_time_seconds, ticks, seed, char_count, ast_size FROM evaluated_solution WHERE builtin AND scenario = ? LIMIT 1;" (Only scenarioSha1)
   return $ AssociatedSolutionCharacterization scenarioSha1 <$> solnChar
 
-listGames :: ReaderT ConnectInfo IO [TournamentGame]
+listGames :: ReaderT Connection IO [TournamentGame]
 listGames = do
-  connInfo <- ask
-  liftIO $ withConnection connInfo $ \conn ->
+  conn <- ask
+  liftIO $
     query_ conn "SELECT original_filename, scenario_uploader, scenario, submission_count, swarm_git_sha1, title FROM agg_scenario_submissions;"
 
-listSubmissions :: Sha1 -> ReaderT ConnectInfo IO GameWithSolutions
+listSubmissions :: Sha1 -> ReaderT Connection IO GameWithSolutions
 listSubmissions scenarioSha1 = do
-  connInfo <- ask
-  liftIO $ withConnection connInfo $ \conn -> do
+  conn <- ask
+  liftIO $ do
     [game] <- query conn "SELECT original_filename, scenario_uploader, scenario, submission_count, swarm_git_sha1, title FROM agg_scenario_submissions WHERE scenario = ?;" (Only scenarioSha1)
     solns <- query conn "SELECT uploaded_at, solution_submitter, solution_sha1, wall_time_seconds, ticks, seed, char_count, ast_size FROM all_solution_submissions WHERE scenario = ?;" (Only scenarioSha1)
     return $ GameWithSolutions game solns
@@ -195,10 +215,10 @@ listSubmissions scenarioSha1 = do
 
 insertScenario ::
   CharacterizationResponse ScenarioUploadResponsePayload ->
-  ReaderT ConnectInfo IO Sha1
+  ReaderT Connection IO Sha1
 insertScenario s = do
-  connInfo <- ask
-  h <- liftIO $ withConnection connInfo $ \conn -> do
+  conn <- ask
+  h <- liftIO $ do
     [Only resultList] <-
       query
         conn
@@ -219,10 +239,10 @@ insertScenario s = do
 
 insertSolutionSubmission ::
   CharacterizationResponse SolutionUploadResponsePayload ->
-  ReaderT ConnectInfo IO Sha1
+  ReaderT Connection IO Sha1
 insertSolutionSubmission (CharacterizationResponse solutionUpload s (SolutionUploadResponsePayload scenarioSha)) = do
-  connInfo <- ask
-  liftIO $ withConnection connInfo $ \conn -> do
+  conn <- ask
+  liftIO $ do
     solutionEvalId <- insertSolution conn False scenarioSha $ characterization s
     [Only echoedSha1] <-
       query
