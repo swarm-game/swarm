@@ -67,22 +67,9 @@ function doFetch(myTable, gameSha1) {
             });
 
         } else {
-            if (response.status == 401) {
-
-                response.text().then(login_url => {
-                    const login_message = "Please log in";
-                    const a = document.createElement("a");
-                    a.setAttribute('href', login_url);
-
-                    a.appendChild(document.createTextNode(login_message));
-                    document.body.insertBefore(a, myTable);
-                });
-
-            } else {
-                const p = document.createElement("p");
-                p.appendChild(document.createTextNode(`Error: HTTP error, status = ${response.status}`));
-                document.body.insertBefore(p, myTable);
-            }
+            const p = document.createElement("p");
+            p.appendChild(document.createTextNode(`Error: HTTP error, status = ${response.status}`));
+            document.body.insertBefore(p, myTable);
         }
 
         document.getElementById("spinner-container").style.display = 'none';

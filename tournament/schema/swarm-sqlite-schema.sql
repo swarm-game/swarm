@@ -5,11 +5,17 @@ BEGIN TRANSACTION;
 CREATE TABLE IF NOT EXISTS "users" (
 	"alias"	TEXT NOT NULL,
 	"cookie" TEXT NOT NULL UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+	PRIMARY KEY("alias")
+);
+
+CREATE TABLE IF NOT EXISTS "github_tokens" (
+	"alias"	TEXT NOT NULL,
 	"github_access_token"	TEXT NOT NULL,
 	"github_access_token_expires_at"	DATETIME NOT NULL,
 	"github_refresh_token"	TEXT NOT NULL,
 	"github_refresh_token_expires_at"	DATETIME NOT NULL,
-	PRIMARY KEY("alias")
+	PRIMARY KEY("alias"),
+	FOREIGN KEY(alias) REFERENCES users(alias)
 );
 
 CREATE TABLE IF NOT EXISTS "scenarios" (

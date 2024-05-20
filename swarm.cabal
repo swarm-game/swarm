@@ -772,6 +772,7 @@ executable swarm-host-tournament
   build-depends:
     base,
     optparse-applicative >=0.16 && <0.19,
+    sqlite-simple,
     transformers,
     warp,
     yaml,

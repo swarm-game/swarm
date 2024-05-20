@@ -7,6 +7,7 @@ module Main where
 import Control.Monad.Trans.Reader (runReaderT)
 import Data.Maybe (fromMaybe)
 import Data.Yaml (decodeFileThrow)
+import Database.SQLite.Simple (withConnection)
 import Network.Wai.Handler.Warp (Port)
 import Options.Applicative
 import Swarm.Game.State (Sha1 (..))
@@ -76,17 +77,22 @@ main = do
     PersistenceLayer
       { scenarioStorage =
           ScenarioPersistence
-            { lookupCache = withConnInfo lookupScenarioSolution
-            , storeCache = withConnInfo insertScenario
-            , getContent = withConnInfo lookupScenarioContent
+            { lookupCache = withConn lookupScenarioSolution
+            , storeCache = withConn insertScenario
+            , getContent = withConn lookupScenarioContent
             }
       , solutionStorage =
           ScenarioPersistence
-            { lookupCache = withConnInfo lookupSolutionSubmission
-            , storeCache = withConnInfo insertSolutionSubmission
-            , getContent = withConnInfo lookupSolutionContent
+            { lookupCache = withConn lookupSolutionSubmission
+            , storeCache = withConn insertSolutionSubmission
+            , getContent = withConn lookupSolutionContent
+            }
+      , authenticationStorage =
+          AuthenticationStorage
+            { usernameFromCookie = withConn getUsernameFromCookie
+            , cookieFromUsername = withConn insertCookie
             }
       }
    where
-    withConnInfo f x =
-      runReaderT (f x) databaseFilename
+    withConn f x =
+      withConnection databaseFilename $ runReaderT $ f x
