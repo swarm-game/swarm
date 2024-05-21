@@ -42,7 +42,7 @@ import Network.HTTP.Client qualified as HC
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Network.HTTP.Types (hCookie, ok200, renderSimpleQuery)
 import Network.Wai (Request, requestHeaders, responseLBS)
-import Network.Wai.Application.Static (defaultFileServerSettings, ssIndices)
+import Network.Wai.Application.Static (defaultFileServerSettings)
 import Network.Wai.Handler.Warp qualified as Warp
 import Network.Wai.Parse (
   defaultParseRequestBodyOptions,
@@ -61,7 +61,6 @@ import Swarm.Web.Tournament.Type
 import Swarm.Web.Tournament.Validate
 import Swarm.Web.Tournament.Validate.FailureMode
 import Swarm.Web.Tournament.Validate.Upload
-import WaiAppStatic.Types (unsafeToPiece)
 import Web.Cookie
 
 defaultPort :: Warp.Port
@@ -353,8 +352,6 @@ app appData = Servant.serveWithContext (Proxy :: Proxy ToplevelAPI) context serv
       :<|> Tagged serveDocs
       :<|> serveDirectoryWith
         (defaultFileServerSettings "tournament/web")
-          { ssIndices = [unsafeToPiece "index.html"]
-          }
    where
     serveDocs _ resp =
       resp $ responseLBS ok200 [htmlType] tournamentsApiHtml

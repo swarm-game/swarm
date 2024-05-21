@@ -20,11 +20,18 @@ import Swarm.Game.State (Sha1 (..))
 import Swarm.Web.Tournament qualified as Tournament
 import Swarm.Web.Tournament.Database.Query
 import Swarm.Web.Tournament.Type (UserAlias (..))
+import System.Directory
 import Test.Tasty (defaultMain, testGroup)
 import Test.Tasty.HUnit (Assertion, assertEqual, testCase)
 
 main :: IO ()
 main = do
+  currDir <- getCurrentDirectory
+
+  dirContents <- listDirectory currDir
+  putStrLn $ unwords ["DEBUG:", "CWD is:", currDir]
+  putStrLn $ unwords ["DEBUG:", "Contents of CWD:", show dirContents]
+
   scenariosMap <- buildScenariosMap $ pure "data/scenarios/Challenges/arbitrage.yaml"
   let appData = mkAppData scenariosMap
   defaultMain $
@@ -116,15 +123,16 @@ uploadForm appData urlPath form =
       flip httpLbs manager
         =<< formDataBody form (req {cookieJar = Just $ responseCookieJar respLogin})
 
-    let assertionMsg = unwords [
-            "Server response from"
-          , apiUrl
-          , "should be 200;"
-          , "'respLogin' was:"
-          , show respLogin
-          , "and 'resp' was:"
-          , show resp
-          ]
+    let assertionMsg =
+          unwords
+            [ "Server response from"
+            , apiUrl
+            , "should be 200;"
+            , "'respLogin' was:"
+            , show respLogin
+            , "and 'resp' was:"
+            , show resp
+            ]
     assertEqual assertionMsg ok200 $ responseStatus resp
  where
   tournamentApp = Tournament.app appData
