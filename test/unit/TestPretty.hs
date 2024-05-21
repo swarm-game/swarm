@@ -87,12 +87,12 @@ testPrettyConst =
             TPair (TInt 1) (TPair (TInt 2) (TInt 3))
         )
     , testCase
-        "void type"
-        ( assertEqual "" "void" . show $ ppr TyVoid
+        "Void type"
+        ( assertEqual "" "Void" . show $ ppr TyVoid
         )
     , testCase
         "type ascription"
-        ( equalPretty "1 : int" $
+        ( equalPretty "1 : Int" $
             TAnnotate (TInt 1) (Forall [] TyInt)
         )
     , testCase

@@ -60,6 +60,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
+import Data.Set qualified as S
 import Data.String (fromString)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
@@ -1264,8 +1265,8 @@ tabComplete CompletionContext {..} names em theRepl = case theRepl ^. replPrompt
 
   possibleWords =
     names <> case ctxCreativeMode of
-      True -> reservedWords
-      False -> filter (`notElem` creativeWords) reservedWords
+      True -> S.toList reservedWords
+      False -> filter (`notElem` creativeWords) (S.toList reservedWords)
 
   entityNames = M.keys $ entitiesByName em
 

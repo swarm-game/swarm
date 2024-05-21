@@ -63,7 +63,7 @@ treeProgram =
 moverProgram :: ProcessedTerm
 moverProgram =
   [tmQ|
-    let forever : cmd unit -> cmd unit = \c. c; forever c
+    let forever : Cmd Unit -> Cmd Unit = \c. c; forever c
     in forever move
   |]
 
@@ -71,7 +71,7 @@ moverProgram =
 circlerProgram :: ProcessedTerm
 circlerProgram =
   [tmQ|
-    let forever : cmd unit -> cmd unit = \c. c; forever c
+    let forever : Cmd Unit -> Cmd Unit = \c. c; forever c
     in forever (
       move;
       turn right;

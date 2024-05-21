@@ -36,7 +36,7 @@ def turnCloverDirection =
 
 def decideDirection =
 
-  let randdir : cmd dir =
+  let randdir : Cmd Dir =
     d <- random 4;
     return $ if (d == 0) {
         north
@@ -62,8 +62,8 @@ def decideDirection =
   }
   end;
 
-let forever : cmd unit -> cmd unit = \c. c ; forever c in
-let repeat : int -> cmd unit -> cmd unit =
+let forever : Cmd Unit -> Cmd Unit = \c. c ; forever c in
+let repeat : Int -> Cmd Unit -> Cmd Unit =
   \n. \c. if (n == 0) {} {c ; repeat (n-1) c} in
 
 

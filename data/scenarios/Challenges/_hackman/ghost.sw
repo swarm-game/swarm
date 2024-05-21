@@ -37,7 +37,7 @@ def checkRightBlocked =
     return isBlocked;
     end;
 
-def chooseDirection : cmd dir =
+def chooseDirection : Cmd Dir =
     leftBlocked <- checkLeftBlocked;
     rightBlocked <- checkRightBlocked;
     forwardBlocked <- isBlockedAhead;

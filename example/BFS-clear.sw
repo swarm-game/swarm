@@ -2,24 +2,24 @@
 // search, with robots spawning more robots.  Fun, though not very practical
 // in classic mode.
 
-def repeat : int -> cmd unit -> cmd unit = \n.\c.
+def repeat : Int -> Cmd Unit -> Cmd Unit = \n.\c.
   if (n == 0)
     {}
     {c ; repeat (n-1) c}
 end;
-def while : cmd bool -> cmd unit -> cmd unit = \test.\c.
+def while : Cmd Bool -> Cmd Unit -> Cmd Unit = \test.\c.
   b <- test;
   if b {c ; while test c} {}
 end;
-def getX : cmd int =
+def getX : Cmd Int =
   pos <- whereami;
   return (fst pos);
 end;
-def getY : cmd int =
+def getY : Cmd Int =
   pos <- whereami;
   return (snd pos);
 end;
-def gotoX : int -> cmd unit = \tgt.
+def gotoX : Int -> Cmd Unit = \tgt.
   cur <- getX;
   if (cur == tgt)
     {}
@@ -30,7 +30,7 @@ def gotoX : int -> cmd unit = \tgt.
      gotoX tgt
     }
 end;
-def gotoY : int -> cmd unit = \tgt.
+def gotoY : Int -> Cmd Unit = \tgt.
   cur <- getY;
   if (cur == tgt)
     {}
@@ -41,8 +41,8 @@ def gotoY : int -> cmd unit = \tgt.
      gotoY tgt
     }
 end;
-def goto : int -> int -> cmd unit = \x. \y. gotoX x; gotoY y; gotoX x; gotoY y end;
-def spawnfwd : {cmd unit} -> cmd unit = \c.
+def goto : Int -> Int -> Cmd Unit = \x. \y. gotoX x; gotoY y; gotoX x; gotoY y end;
+def spawnfwd : {Cmd Unit} -> Cmd Unit = \c.
    try {
      move;
      b <- isHere "tree";
@@ -53,7 +53,7 @@ def spawnfwd : {cmd unit} -> cmd unit = \c.
      move
    } { turn back }
 end;
-def clear : cmd unit =
+def clear : Cmd Unit =
   grab;
   repeat 4 (
     spawnfwd {clear};
@@ -63,4 +63,4 @@ def clear : cmd unit =
   give base "tree";
   selfdestruct;
 end;
-def start : cmd actor = build {turn west; repeat 7 move; clear} end
+def start : Cmd Actor = build {turn west; repeat 7 move; clear} end

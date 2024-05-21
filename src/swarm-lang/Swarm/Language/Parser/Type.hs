@@ -14,10 +14,19 @@ import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Swarm.Language.Parser.Core (Parser)
-import Swarm.Language.Parser.Lex (braces, brackets, identifier, parens, reserved, symbol)
+import Swarm.Language.Parser.Lex (
+  braces,
+  brackets,
+  parens,
+  reserved,
+  reservedCS,
+  symbol,
+  tyVar,
+ )
 import Swarm.Language.Parser.Record (parseRecord)
 import Swarm.Language.Types
-import Text.Megaparsec (optional, some, (<|>))
+import Swarm.Util (listEnums)
+import Text.Megaparsec (choice, optional, some, (<|>))
 import Witch (from)
 
 -- | Parse a Swarm language polytype, which starts with an optional
@@ -28,7 +37,7 @@ parsePolytype :: Parser Polytype
 parsePolytype =
   join $
     ( quantify . fromMaybe []
-        <$> optional ((reserved "forall" <|> reserved "∀") *> some identifier <* symbol ".")
+        <$> optional ((reserved "forall" <|> reserved "∀") *> some tyVar <* symbol ".")
     )
       <*> parseType
  where
@@ -59,28 +68,9 @@ parseType = makeExprParser parseTypeAtom table
 
 parseTypeAtom :: Parser Type
 parseTypeAtom =
-  TyVoid
-    <$ reserved "void"
-    <|> TyUnit
-      <$ reserved "unit"
-    <|> TyVar
-      <$> identifier
-    <|> TyInt
-      <$ reserved "int"
-    <|> TyText
-      <$ reserved "text"
-    <|> TyDir
-      <$ reserved "dir"
-    <|> TyBool
-      <$ reserved "bool"
-    <|> TyActor
-      <$ reserved "actor"
-    <|> TyKey
-      <$ reserved "key"
-    <|> TyCmd
-      <$> (reserved "cmd" *> parseTypeAtom)
-    <|> TyDelay
-      <$> braces parseType
-    <|> TyRcd
-      <$> brackets (parseRecord (symbol ":" *> parseType))
+  choice (map (\b -> TyBase b <$ reservedCS (baseTyName b)) listEnums)
+    <|> TyCmd <$> (reservedCS "Cmd" *> parseTypeAtom)
+    <|> TyVar <$> tyVar
+    <|> TyDelay <$> braces parseType
+    <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))
     <|> parens parseType

@@ -8,7 +8,7 @@ def else = id end
 
 def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 
-def mod : int -> int -> int = \i.\m.
+def mod : Int -> Int -> Int = \i.\m.
   i - m * (i / m)
 end
 
@@ -23,7 +23,7 @@ def getLetterEntityByIndex = \idx.
     letter ++ "-tile";
     end;
 
-def getOrdinal : text -> cmd int = \item.
+def getOrdinal : Text -> Cmd Int = \item.
     count $ item ++ "-ordinal";
     end;
 
@@ -112,7 +112,7 @@ def countInversions = \n. \i.
 Left is a Boolean indicating whether the tile has been drilled.
 Right is a valid tile entity name.
 */
-def scanValid : dir -> cmd (bool + text) = \d.
+def scanValid : Dir -> Cmd (Bool + Text) = \d.
     maybeTileForward <- scan d;
     case maybeTileForward
         (\_. return $ inL false)

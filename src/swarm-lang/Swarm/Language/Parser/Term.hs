@@ -51,7 +51,7 @@ parseConst = asum (map alternative consts) <?> "built-in user function"
 parseTermAtom :: Parser Syntax
 parseTermAtom = do
   s1 <- parseTermAtom2
-  ps <- many (symbol "." *> parseLocG identifier)
+  ps <- many (symbol "." *> parseLocG tmVar)
   return $ foldl' (\(Syntax l1 t) (l2, x) -> Syntax (l1 <> l2) (TProj t x)) s1 ps
 
 -- | Parse an atomic term.
@@ -60,7 +60,7 @@ parseTermAtom2 =
   parseLoc
     ( TUnit <$ symbol "()"
         <|> TConst <$> parseConst
-        <|> TVar <$> identifier
+        <|> TVar <$> tmVar
         <|> TDir <$> parseDirection
         <|> TInt <$> integer
         <|> TText <$> textLiteral
@@ -75,16 +75,16 @@ parseTermAtom2 =
              )
         <|> uncurry SRequirements <$> (reserved "requirements" *> match parseTerm)
         <|> SLam
-          <$> (symbol "\\" *> locIdentifier)
+          <$> (symbol "\\" *> locTmVar)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)
         <|> sLet
-          <$> (reserved "let" *> locIdentifier)
+          <$> (reserved "let" *> locTmVar)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
         <|> sDef
-          <$> (reserved "def" *> locIdentifier)
+          <$> (reserved "def" *> locTmVar)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
         <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
@@ -112,8 +112,8 @@ sDef x ty t = SDef (lvVar x `S.member` setOf freeVarsV t) x ty t
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =
-  TAntiText <$> (lexeme . try) (symbol "$str:" *> identifier)
-    <|> TAntiInt <$> (lexeme . try) (symbol "$int:" *> identifier)
+  TAntiText <$> (lexeme . try) (symbol "$str:" *> tmVar)
+    <|> TAntiInt <$> (lexeme . try) (symbol "$int:" *> tmVar)
 
 -- | Parse a Swarm language term.
 parseTerm :: Parser Syntax
@@ -135,7 +135,7 @@ data Stmt
 
 parseStmt :: Parser Stmt
 parseStmt =
-  mkStmt <$> optional (try (locIdentifier <* symbol "<-")) <*> parseExpr
+  mkStmt <$> optional (try (locTmVar <* symbol "<-")) <*> parseExpr
 
 mkStmt :: Maybe LocVar -> Syntax -> Stmt
 mkStmt Nothing = BareTerm

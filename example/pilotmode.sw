@@ -2,11 +2,11 @@ def cons : a * b -> (a -> b) -> (a -> b) = \p. \k. \a.
   if (a == fst p) {snd p} {k a}
 end
 
-def nil : a -> cmd unit = \a. return () end
+def nil : a -> Cmd Unit = \a. return () end
 
 // Suitable to use as e.g.
 //   installKeyHandler "(S-)←↓↑→ [Del] [g]rab [h]arvest [d]rill [s]can [b]locked [u]pload" pilot
-def pilot : key -> cmd unit =
+def pilot : Key -> Cmd Unit =
   cons (key "Up",      move) $
   cons (key "Down",    turn back) $
   cons (key "Left",    turn left) $
