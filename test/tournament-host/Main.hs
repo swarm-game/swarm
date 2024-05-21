@@ -20,18 +20,11 @@ import Swarm.Game.State (Sha1 (..))
 import Swarm.Web.Tournament qualified as Tournament
 import Swarm.Web.Tournament.Database.Query
 import Swarm.Web.Tournament.Type (UserAlias (..))
-import System.Directory
 import Test.Tasty (defaultMain, testGroup)
 import Test.Tasty.HUnit (Assertion, assertEqual, testCase)
 
 main :: IO ()
 main = do
-  currDir <- getCurrentDirectory
-
-  dirContents <- listDirectory currDir
-  putStrLn $ unwords ["DEBUG:", "CWD is:", currDir]
-  putStrLn $ unwords ["DEBUG:", "Contents of CWD:", show dirContents]
-
   scenariosMap <- buildScenariosMap $ pure "data/scenarios/Challenges/arbitrage.yaml"
   let appData = mkAppData scenariosMap
   defaultMain $
@@ -135,4 +128,4 @@ uploadForm appData urlPath form =
             ]
     assertEqual assertionMsg ok200 $ responseStatus resp
  where
-  tournamentApp = Tournament.app appData
+  tournamentApp = Tournament.app True appData

@@ -173,6 +173,12 @@ authHandler authStorage creds deployMode = mkAuthHandler handler
 
 -- * Handlers
 
+defaultRedirectPage :: TL.Text
+defaultRedirectPage = "/list-games.html"
+
+defaultSolutionSubmissionRedirectPage :: TL.Text
+defaultSolutionSubmissionRedirectPage = "/list-solutions.html"
+
 uploadScenario ::
   AppData ->
   Maybe TL.Text ->
@@ -185,7 +191,7 @@ uploadScenario (AppData gameVersion _ persistenceLayer _) maybeRefererUrl userNa
       args
       gameVersion
  where
-  addH = addHeader (fromMaybe "/list-games.html" maybeRefererUrl)
+  addH = addHeader (fromMaybe defaultRedirectPage maybeRefererUrl)
   args =
     CommonValidationArgs
       defaultSolutionTimeout
@@ -206,7 +212,7 @@ uploadSolution (AppData _ _ persistenceLayer _) maybeRefererUrl userName multipa
       args
       ((getContent . scenarioStorage) persistenceLayer)
  where
-  addH = addHeader (fromMaybe "/list-solutions.html" maybeRefererUrl)
+  addH = addHeader (fromMaybe defaultSolutionSubmissionRedirectPage maybeRefererUrl)
   args =
     CommonValidationArgs
       defaultSolutionTimeout
@@ -276,12 +282,10 @@ doGithubCallback authStorage creds maybeCode = do
   let aToken = token $ accessToken receivedTokens
   userInfo <- fetchAuthenticatedUser manager aToken
   let user = UserAlias $ login userInfo
-  x <- doLoginResponse authStorage refererUrl user
+  x <- doLoginResponse authStorage defaultRedirectPage user
   liftIO . withConnection databaseFilename . runReaderT $ do
     insertGitHubTokens user receivedTokens
   return x
- where
-  refererUrl = "/list-games.html"
 
 doLocalDevelopmentLogin ::
   AuthenticationStorage IO ->
@@ -294,7 +298,7 @@ doLocalDevelopmentLogin authStorage envType maybeRefererUrl =
     LocalDevelopment user ->
       doLoginResponse authStorage refererUrl user
  where
-  refererUrl = fromMaybe "/list-games.html" maybeRefererUrl
+  refererUrl = fromMaybe defaultRedirectPage maybeRefererUrl
 
 makeCookieHeader :: BS.ByteString -> SetCookie
 makeCookieHeader val =
@@ -307,7 +311,7 @@ makeCookieHeader val =
 doLogout :: Maybe TL.Text -> LoginHandler
 doLogout maybeRefererUrl =
   return $
-    addHeader (fromMaybe "/list-games.html" maybeRefererUrl) $
+    addHeader (fromMaybe defaultRedirectPage maybeRefererUrl) $
       addHeader ((makeCookieHeader "") {setCookieMaxAge = Just 0}) NoContent
 
 doLoginResponse ::
@@ -324,8 +328,10 @@ doLoginResponse authStorage refererUrl userAlias = do
 
 -- * Web app declaration
 
-app :: AppData -> Application
-app appData = Servant.serveWithContext (Proxy :: Proxy ToplevelAPI) context server
+app :: Bool -> AppData -> Application
+app unitTestFileserver appData =
+  Servant.serveWithContext (Proxy :: Proxy ToplevelAPI) context $
+    server unitTestFileserver
  where
   size100kB = 100_000 :: Int64
 
@@ -346,13 +352,31 @@ app appData = Servant.serveWithContext (Proxy :: Proxy ToplevelAPI) context serv
       (developmentMode appData)
   context = thisAuthHandler :. multipartOpts :. EmptyContext
 
-  server :: Server ToplevelAPI
-  server =
+  server :: Bool -> Server ToplevelAPI
+  server fakeFileserverForUnitTest =
     mkApp appData
       :<|> Tagged serveDocs
-      :<|> serveDirectoryWith
-        (defaultFileServerSettings "tournament/web")
+      :<|> fileserver
    where
+    fileserver =
+      if fakeFileserverForUnitTest
+        then -- This is required because the data only files available to
+        -- the testing environment are included in the cabal file
+        -- in the "data-files" clause.
+        -- However, since that clause is global to the package,
+        -- we choose not to include the tournament server's web
+        -- files there.
+        -- Instead, we manually stub the paths that are used as redirects
+        -- so that the web API invocation does not 404 when looking for them.
+
+          serveDirectoryEmbedded
+            [ (TL.unpack defaultRedirectPage, "Hello World!")
+            , (TL.unpack defaultSolutionSubmissionRedirectPage, "Hello World!")
+            ]
+        else
+          serveDirectoryWith
+            (defaultFileServerSettings "tournament/web")
+
     serveDocs _ resp =
       resp $ responseLBS ok200 [htmlType] tournamentsApiHtml
     htmlType = ("Content-Type", "text/html")
@@ -361,6 +385,6 @@ webMain ::
   AppData ->
   Warp.Port ->
   IO ()
-webMain appData port = Warp.runSettings settings $ app appData
+webMain appData port = Warp.runSettings settings $ app False appData
  where
   settings = Warp.setPort port Warp.defaultSettings

@@ -1,5 +1,3 @@
-PRAGMA foreign_keys = ON;
-
 BEGIN TRANSACTION;
 
 CREATE TABLE IF NOT EXISTS "users" (
@@ -71,9 +69,8 @@ CREATE VIEW agg_scenario_submissions AS
           GROUP BY evaluated_solution.scenario) foo ON (scenarios.content_sha1 = foo.scenario))
      );
 
-
 CREATE VIEW all_solution_submissions AS
-SELECT
+ SELECT
 	evaluated_solution.scenario,
     solution_submission.uploaded_at,
 	evaluated_solution.seed,

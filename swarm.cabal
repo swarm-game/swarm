@@ -878,7 +878,6 @@ test-suite tournament-host
     SHA,
     base,
     bytestring,
-    directory,
     http-client,
     http-types,
     nonempty-containers,

@@ -7,7 +7,7 @@ module Main where
 import Control.Monad.Trans.Reader (runReaderT)
 import Data.Maybe (fromMaybe)
 import Data.Yaml (decodeFileThrow)
-import Database.SQLite.Simple (withConnection)
+import Database.SQLite.Simple (execute_, withConnection)
 import Network.Wai.Handler.Warp (Port)
 import Options.Applicative
 import Swarm.Game.State (Sha1 (..))
@@ -95,4 +95,6 @@ main = do
       }
    where
     withConn f x =
-      withConnection databaseFilename $ runReaderT $ f x
+      withConnection databaseFilename $ \conn -> do
+        execute_ conn "PRAGMA foreign_keys = ON;"
+        runReaderT (f x) conn
