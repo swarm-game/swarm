@@ -16,7 +16,7 @@ import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..))
-import Swarm.Language.Direction
+import Swarm.Language.Syntax.Direction
 import Swarm.Language.Value
 
 -- * Patterns

@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Zip data directory
         run: |
@@ -130,7 +130,7 @@ jobs:
           path: ~/.haskell-ci-tools
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: cache
         uses: actions/cache@v2
@@ -171,9 +171,9 @@ jobs:
           asset_name: swarm-${{ runner.os }}
           asset_content_type: application/octet-stream
 
-      - name: Generate tarball for Hackage 
+      - name: Generate tarball for Hackage
         run: $CABAL v2-sdist
-      
+
       # - name: Generate documentation for Hackage
       #   # The hackage-server attempts to build documentation for library packages, but this can fail.
       #   # If it does we can do it ourselves

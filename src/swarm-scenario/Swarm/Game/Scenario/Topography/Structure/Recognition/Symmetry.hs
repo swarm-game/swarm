@@ -14,7 +14,7 @@ import Swarm.Game.Scenario.Topography.Area (Grid (Grid))
 import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform)
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (RotationalSymmetry (..), SymmetryAnnotatedGrid (..))
-import Swarm.Language.Direction (AbsoluteDir (DSouth, DWest), getCoordinateOrientation)
+import Swarm.Language.Syntax.Direction (AbsoluteDir (DSouth, DWest), getCoordinateOrientation)
 import Swarm.Util (commaList, failT, histogram, showT)
 
 -- | Warns if any recognition orientations are redundant

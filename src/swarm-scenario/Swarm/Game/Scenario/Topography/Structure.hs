@@ -22,7 +22,7 @@ import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.WorldPalette
-import Swarm.Language.Direction (AbsoluteDir)
+import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Util (failT, showT)
 import Swarm.Util.Yaml
 import Witch (into)

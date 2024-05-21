@@ -20,7 +20,7 @@ jobs:
         with:
           version: "v4.35.1"
           download-compressed: true
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Normalize
         run: |
           scripts/normalize/yaml.sh
