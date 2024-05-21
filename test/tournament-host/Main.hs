@@ -116,15 +116,16 @@ uploadForm appData urlPath form =
       flip httpLbs manager
         =<< formDataBody form (req {cookieJar = Just $ responseCookieJar respLogin})
 
-    let assertionMsg = unwords [
-            "Server response from"
-          , apiUrl
-          , "should be 200;"
-          , "'respLogin' was:"
-          , show respLogin
-          , "and 'resp' was:"
-          , show resp
-          ]
+    let assertionMsg =
+          unwords
+            [ "Server response from"
+            , apiUrl
+            , "should be 200;"
+            , "'respLogin' was:"
+            , show respLogin
+            , "and 'resp' was:"
+            , show resp
+            ]
     assertEqual assertionMsg ok200 $ responseStatus resp
  where
   tournamentApp = Tournament.app appData
