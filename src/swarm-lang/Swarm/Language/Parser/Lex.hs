@@ -48,6 +48,8 @@ import Control.Monad (void)
 import Data.Char (isUpper)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Sequence qualified as Seq
+import Data.Set (Set)
+import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Language.Parser.Core
@@ -162,12 +164,13 @@ keywords :: [Text]
 keywords = T.words "let in def end true false forall require requirements"
 
 -- | List of reserved words that cannot be used as variable names.
-reservedWords :: [Text]
+reservedWords :: Set Text
 reservedWords =
-  map (syntax . constInfo) (filter isUserFunc allConst)
-    ++ map directionSyntax allDirs
-    ++ primitiveTypeNames
-    ++ keywords
+  S.fromList $
+    map (syntax . constInfo) (filter isUserFunc allConst)
+      ++ map directionSyntax allDirs
+      ++ primitiveTypeNames
+      ++ keywords
 
 -- | Parse a reserved word, given a string recognizer (which can
 --   /e.g./ be case sensitive or not), making sure it is not a prefix
@@ -194,10 +197,10 @@ locIdentifier idTy = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> 
  where
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
   check (into @Text -> t)
-    | t `elem` reservedWords || T.toLower t `elem` reservedWords =
+    | t `S.member` reservedWords || T.toLower t `S.member` reservedWords =
         failT ["Reserved word", squote t, "cannot be used as a variable name"]
     | IDTyVar <- idTy
-    , T.toTitle t `elem` reservedWords =
+    , T.toTitle t `S.member` reservedWords =
         failT ["Reserved type name", squote t, "cannot be used as a type variable name; perhaps you meant", squote (T.toTitle t) <> "?"]
     | IDTyVar <- idTy
     , isUpper (T.head t) =
