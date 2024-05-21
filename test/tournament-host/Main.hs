@@ -110,11 +110,21 @@ uploadForm appData urlPath form =
     reqLogin <- parseRequest $ baseUrl ++ "/api/private/login/local"
     respLogin <- httpLbs reqLogin manager
 
-    req <- parseRequest $ baseUrl ++ urlPath
+    let apiUrl = baseUrl ++ urlPath
+    req <- parseRequest apiUrl
     resp <-
       flip httpLbs manager
         =<< formDataBody form (req {cookieJar = Just $ responseCookieJar respLogin})
 
-    assertEqual "Server response should be 200" ok200 $ responseStatus resp
+    let assertionMsg = unwords [
+            "Server response from"
+          , apiUrl
+          , "should be 200;"
+          , "'respLogin' was:"
+          , show respLogin
+          , "and 'resp' was:"
+          , show resp
+          ]
+    assertEqual assertionMsg ok200 $ responseStatus resp
  where
   tournamentApp = Tournament.app appData
