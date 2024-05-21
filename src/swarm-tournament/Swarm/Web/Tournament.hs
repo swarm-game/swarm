@@ -295,7 +295,7 @@ doLocalDevelopmentLogin authStorage envType maybeRefererUrl =
     LocalDevelopment user ->
       doLoginResponse authStorage refererUrl user
  where
-  refererUrl = fromMaybe "foo" maybeRefererUrl
+  refererUrl = fromMaybe "/list-games.html" maybeRefererUrl
 
 makeCookieHeader :: BS.ByteString -> SetCookie
 makeCookieHeader val =
