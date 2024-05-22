@@ -244,7 +244,7 @@ fourmolu --mode=inplace src app test
 
 For convenience, one may alternatively execute this script:
 ```
-scripts/reformat-code.sh
+scripts/normalize/code-format.sh
 ```
 
 There is probably a way to configure your favorite editor to have `fourmolu`
