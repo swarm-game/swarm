@@ -40,7 +40,7 @@ module Swarm.TUI.Controller (
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Widgets.Dialog
-import Brick.Widgets.Edit (handleEditorEvent)
+import Brick.Widgets.Edit (applyEdit, handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
 import Brick.Widgets.List qualified as BL
 import Control.Applicative (liftA2, pure)
@@ -66,6 +66,7 @@ import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Data.Text.Zipper.Generic.Words qualified as TZ
 import Data.Time (getZonedTime)
 import Data.Vector qualified as V
 import Graphics.Vty qualified as V
@@ -1198,6 +1199,8 @@ handleREPLEventTyping = \case
         if text == T.empty
           then toggleModal QuitModal
           else continueWithoutRedraw
+      MetaKey V.KBS ->
+        uiState . uiGameplay . uiREPL . replPromptEditor %= applyEdit TZ.deletePrevWord
       -- finally if none match pass the event to the editor
       ev -> do
         Brick.zoom (uiState . uiGameplay . uiREPL . replPromptEditor) (handleEditorEvent ev)

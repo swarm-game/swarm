@@ -37,6 +37,9 @@ pattern MetaChar c = VtyEvent (V.EvKey (V.KChar c) [V.MMeta])
 pattern ShiftKey :: V.Key -> BrickEvent n e
 pattern ShiftKey k = VtyEvent (V.EvKey k [V.MShift])
 
+pattern MetaKey :: V.Key -> BrickEvent n e
+pattern MetaKey k = VtyEvent (V.EvKey k [V.MMeta])
+
 pattern EscapeKey :: BrickEvent n e
 pattern EscapeKey = VtyEvent (V.EvKey V.KEsc [])
 
