@@ -229,6 +229,7 @@ instance PrettyPrec (Term' ty) where
   prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr @Term (TText e)
   prettyPrec p (SRequirements _ e) = pparens (p > 10) $ "requirements" <+> ppr e
   prettyPrec _ (TVar s) = pretty s
+  prettyPrec _ (SDelay _ (Syntax' _ (TConst Noop) _ _)) = "{}"
   prettyPrec _ (SDelay _ t) = group . encloseWithIndent 2 lbrace rbrace $ ppr t
   prettyPrec _ t@SPair {} = prettyTuple t
   prettyPrec p t@(SLam {}) =
@@ -266,6 +267,11 @@ instance PrettyPrec (Term' ty) where
       [ prettyDefinition "def" x mty t1
       , "end"
       ]
+  -- Special case for printing consecutive defs: don't worry about
+  -- precedence, and print a blank line with no semicolon
+  prettyPrec _ (SBind Nothing t1@(Syntax' _ (SDef {}) _ _) t2) =
+    prettyPrec 0 t1 <> hardline <> hardline <> prettyPrec 0 t2
+  -- General case for bind
   prettyPrec p (SBind Nothing t1 t2) =
     pparens (p > 0) $
       prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2

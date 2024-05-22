@@ -6,8 +6,13 @@
 -- Core data type definitions and utilities for the Swarm language
 -- parser.
 module Swarm.Language.Parser.Core (
-  -- * Antiquoting
+  -- * Parser configuration
   Antiquoting (..),
+  LanguageVersion (..),
+  ParserConfig,
+  defaultParserConfig,
+  antiquoting,
+  languageVersion,
 
   -- * Comment parsing state
   CommentState (..),
@@ -20,6 +25,7 @@ module Swarm.Language.Parser.Core (
 
   -- ** Running
   runParser,
+  runParser',
   runParserTH,
 ) where
 
@@ -32,7 +38,8 @@ import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Void (Void)
 import Swarm.Language.Syntax (Comment)
-import Text.Megaparsec hiding (runParser)
+import Text.Megaparsec hiding (runParser, runParser')
+import Text.Megaparsec qualified as MP
 import Text.Megaparsec.State (initialPosState, initialState)
 import Witch (from)
 
@@ -46,6 +53,27 @@ import Witch (from)
 --   the user at the REPL, we do not want to allow this syntax.
 data Antiquoting = AllowAntiquoting | DisallowAntiquoting
   deriving (Eq, Ord, Show)
+
+-- | Which version of the Swarm language are we parsing?  As a general
+--   rule, we want to support one older version in addition to the
+--   current version, to allow for upgrading code via @swarm format@.
+data LanguageVersion = SwarmLang0_5 | SwarmLangLatest
+  deriving (Eq, Ord, Show, Enum, Bounded)
+
+-- | Read-only parser configuration.
+data ParserConfig = ParserConfig
+  { _antiquoting :: Antiquoting
+  , _languageVersion :: LanguageVersion
+  }
+
+makeLenses ''ParserConfig
+
+defaultParserConfig :: ParserConfig
+defaultParserConfig =
+  ParserConfig
+    { _antiquoting = DisallowAntiquoting
+    , _languageVersion = SwarmLangLatest
+    }
 
 data CommentState = CS
   { _freshLine :: Bool
@@ -65,7 +93,7 @@ initCommentState = CS {_freshLine = True, _comments = Seq.empty}
 ------------------------------------------------------------
 -- Parser types
 
-type Parser = ReaderT Antiquoting (StateT CommentState (Parsec Void Text))
+type Parser = ReaderT ParserConfig (StateT CommentState (Parsec Void Text))
 
 type ParserError = ParseErrorBundle Text Void
 
@@ -75,11 +103,16 @@ type ParserError = ParseErrorBundle Text Void
 -- | Run a parser on some input text, returning either the result +
 --   all collected comments, or a parse error message.
 runParser :: Parser a -> Text -> Either ParserError (a, Seq Comment)
-runParser p t =
+runParser = runParser' defaultParserConfig
+
+-- | Like 'runParser', but allow configuring with an arbitrary
+--   'ParserConfig'.
+runParser' :: ParserConfig -> Parser a -> Text -> Either ParserError (a, Seq Comment)
+runParser' cfg p t =
   (\pt -> parse pt "" t)
     . fmap (second (^. comments))
     . flip runStateT initCommentState
-    . flip runReaderT DisallowAntiquoting
+    . flip runReaderT cfg
     $ p
 
 -- | A utility for running a parser in an arbitrary 'MonadFail' (which
@@ -89,9 +122,9 @@ runParserTH :: (Monad m, MonadFail m) => (String, Int, Int) -> Parser a -> Strin
 runParserTH (file, line, col) p s =
   either (fail . errorBundlePretty) (return . fst)
     . snd
-    . flip runParser' initState
+    . flip MP.runParser' initState
     . flip runStateT initCommentState
-    . flip runReaderT AllowAntiquoting
+    . flip runReaderT defaultParserConfig {_antiquoting = AllowAntiquoting}
     $ p
  where
   initState :: State Text Void
