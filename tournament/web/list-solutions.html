@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
   <head>
-    <title>Uploaded scenarios</title>
+    <title>Solution submissions</title>
 
     <link rel="stylesheet" href="style/tablesort.css"/>
     <link rel="stylesheet" href="style/list-games.css"/>
@@ -17,29 +17,40 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tablesort/5.1.0/tablesort.min.js"></script>
     <script src="script/common.js"></script>
-    <script src="script/list-games.js"></script>
+    <script src="script/list-solutions.js"></script>
 
     <script>
       window.onload=()=>{
 
         getLoginStatus();
 
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+        const scenarioHash = urlParams.get('scenario')
+        document.getElementById('scenario-field').value=scenarioHash;
+
         const tableElement = document.querySelector("table");
-        doFetch(tableElement);
+        doFetch(tableElement, scenarioHash);
       }
     </script>
   </head>
   <body>
     <div id="login-info-container"></div>
-    <h1>Uploaded scenarios</h1>
+    [<a href="/list-games.html">Back to scenarios</a>]
+    <h1 id="main-header">Scenario info</h1>
+    
+    <h2>Solution submissions</h2>
     <table id="my-table">
         <thead>
           <tr data-sort-method="none">
-            <th>Title</th>
-            <th>File</th>
             <th>Uploader</th>
-            <th>Soln. submissions</th>
-            <th>Swarm version</th>
+            <th>Submitted at</th>
+            <th>Seed</th>
+            <th>Source length</th>
+            <th>AST Size</th>
+            <th>Ticks elapsed</th>
+            <th>Evaluation time</th>
+            <th>Download</th>
           </tr>
         </thead>
         <tbody id="my-table-body">
@@ -51,9 +62,10 @@
       </div>
 
       <br/>
-      <h2>Upload new scenario</h2>
-      <form action="/api/private/upload/scenario" method="POST" enctype="multipart/form-data">
-        <input type="file" name="scenario-filename"/>
+      <h2>Upload solution</h2>
+      <form action="/api/private/upload/solution" method="POST" enctype="multipart/form-data">
+        <input type="file" name="solution-filename"/>
+        <input type="hidden" name="scenario" id="scenario-field"/>
         <input type="submit"/>
       </form>
   </body>

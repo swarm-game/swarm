@@ -1,30 +1,14 @@
-
-function mkLink(text, url) {
-    const anchor = document.createElement("a");
-    anchor.href = url
-    anchor.textContent = text;
-    return anchor;
-}
-
 function insertTableRows(myTableBody, entries) {
     for (const entry of entries) {
         const rowItem = document.createElement("tr");
 
-        const fieldVals = [
-            entry.scenarioUploader,
-            entry.submissionCount,
-            entry.swarmGitSha1,
-        ];
-
         const cellVals = [
+            regularSpan(entry.scenarioTitle),
             mkLink(entry.originalFilename, "scenario/" + entry.scenarioHash + "/fetch"),
+            mkLink(entry.scenarioUploader, "https://github.com/" + entry.scenarioUploader),
+            mkLink("View (" + entry.submissionCount + ")", "list-solutions.html?scenario=" + entry.scenarioHash),
+            renderGitHash(entry.swarmGitSha1),
         ];
-
-        for (const val of fieldVals) {
-            const span = document.createElement("span");
-            span.appendChild(document.createTextNode(val));
-            cellVals.push(span);
-        }
 
         for (const val of cellVals) {
             const cellElement = document.createElement("td");
@@ -39,24 +23,24 @@ function insertTableRows(myTableBody, entries) {
 function doFetch(myTable) {
     document.getElementById("spinner-container").style.display = 'flex';
     
-    fetch("games")
+    fetch("list/games")
     .then((response) => {
-        if (!response.ok) {
-            throw new Error(`HTTP error, status = ${response.status}`);
+        if (response.ok) {
+
+            const data = response.json().then(data => {
+
+                const myTableBody = myTable.querySelector("tbody");
+                insertTableRows(myTableBody, data);
+                // Documentation: http://tristen.ca/tablesort/demo/
+                new Tablesort(document.getElementById('my-table'));
+            });
+
+        } else {
+            const p = document.createElement("p");
+            p.appendChild(document.createTextNode(`Error: HTTP error, status = ${response.status}`));
+            document.body.insertBefore(p, myTable);
         }
-        return response.json();
-    })
-    .then((data) => {
-        const myTableBody = myTable.querySelector("tbody");
-        insertTableRows(myTableBody, data);
-        // Documentation: http://tristen.ca/tablesort/demo/
-        new Tablesort(document.getElementById('my-table'));
-        document.getElementById("spinner-container").style.display = 'none';
-    })
-    .catch((error) => {
-        const p = document.createElement("p");
-        p.appendChild(document.createTextNode(`Error: ${error.message}`));
-        document.body.insertBefore(p, myTable);
+
         document.getElementById("spinner-container").style.display = 'none';
     });
 }

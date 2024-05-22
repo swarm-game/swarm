@@ -466,6 +466,7 @@ library swarm-tournament
   visibility: public
   -- cabal-gild: discover src/swarm-tournament
   exposed-modules:
+    Swarm.Web.Auth
     Swarm.Web.Tournament
     Swarm.Web.Tournament.Database.Query
     Swarm.Web.Tournament.Type
@@ -482,8 +483,12 @@ library swarm-tournament
     bytestring,
     commonmark,
     containers,
+    cookie,
+    exceptions,
     extra,
     fused-effects,
+    http-client,
+    http-client-tls >=0.3.6.3 && <0.3.7,
     http-types,
     lens,
     mtl,
@@ -494,6 +499,7 @@ library swarm-tournament
     text,
     time,
     transformers,
+    utf8-string,
     wai >=3.2 && <3.3,
     wai-app-static >=3.1.8 && <3.2,
     wai-extra,
@@ -766,8 +772,10 @@ executable swarm-host-tournament
   build-depends:
     base,
     optparse-applicative >=0.16 && <0.19,
+    sqlite-simple,
     transformers,
     warp,
+    yaml,
 
   build-depends:
     swarm:swarm-engine,

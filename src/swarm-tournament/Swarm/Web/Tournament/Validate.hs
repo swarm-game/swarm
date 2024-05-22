@@ -45,13 +45,13 @@ import System.Time.Extra
 
 newtype SolutionTimeout = SolutionTimeout Seconds
 
-data CommonValidationArgs a
+data CommonValidationArgs m a
   = CommonValidationArgs
       SolutionTimeout
-      (PersistenceArgs a)
+      (PersistenceArgs m a)
 
 validateScenarioUpload ::
-  CommonValidationArgs ScenarioUploadResponsePayload ->
+  CommonValidationArgs IO ScenarioUploadResponsePayload ->
   -- | Game version
   Sha1 ->
   IO (Either ScenarioUploadValidationFailure ScenarioCharacterization)
@@ -69,7 +69,7 @@ validateScenarioUpload (CommonValidationArgs solnTimeout persistenceArgs) gameVe
         (characterization solnMetrics)
  where
   computeMetrics file = do
-    gs <-
+    (gs, scenarioObject) <-
       withExceptT ScenarioUploadInstantiationFailure $
         gamestateFromScenarioText $
           fileContent file
@@ -81,12 +81,13 @@ validateScenarioUpload (CommonValidationArgs solnTimeout persistenceArgs) gameVe
         verifySolution solnTimeout soln gs
 
     return
-      ( AssociatedSolutionSolutionCharacterization (fileHash $ fileMetadata file) solnMetrics
-      , ScenarioUploadResponsePayload gameVersion
+      ( AssociatedSolutionCharacterization (fileHash $ fileMetadata file) solnMetrics
+      , ScenarioUploadResponsePayload gameVersion $
+          scenarioObject ^. scenarioMetadata . scenarioName
       )
 
 validateSubmittedSolution ::
-  CommonValidationArgs SolutionUploadResponsePayload ->
+  CommonValidationArgs IO SolutionUploadResponsePayload ->
   -- | Scenario lookup function
   (Sha1 -> IO (Maybe LBS.ByteString)) ->
   IO (Either SolutionSubmissionFailure SolutionFileCharacterization)
@@ -138,15 +139,16 @@ validateSubmittedSolution (CommonValidationArgs solnTimeout persistenceArgs) sce
                 <$> scenarioLookupFunc scenarioSha1
             )
 
-      withExceptT RetrievedInstantiationFailure $
-        gamestateFromScenarioText scenarioContent
+      fmap fst $
+        withExceptT RetrievedInstantiationFailure $
+          gamestateFromScenarioText scenarioContent
 
     solnMetrics <-
       withExceptT SubmittedSolutionEvaluationFailure $
         verifySolution solnTimeout soln gs
 
     return
-      ( AssociatedSolutionSolutionCharacterization scenarioSha1 solnMetrics
+      ( AssociatedSolutionCharacterization scenarioSha1 solnMetrics
       , SolutionUploadResponsePayload scenarioSha1
       )
 
@@ -176,7 +178,7 @@ initScenarioObject scenarioInputs content = do
 
 gamestateFromScenarioText ::
   LBS.ByteString ->
-  ExceptT ScenarioInstantiationFailure IO GameState
+  ExceptT ScenarioInstantiationFailure IO (GameState, Scenario)
 gamestateFromScenarioText content = do
   gsc <-
     withExceptT (ScenarioEnvironmentFailure . ContextInitializationFailure)
@@ -186,7 +188,8 @@ gamestateFromScenarioText content = do
 
   let scenarioInputs = gsiScenarioInputs $ initState gsc
   scenarioObject <- initScenarioObject scenarioInputs content
-  liftIO $ scenarioToGameState scenarioObject emptyLaunchParams gsc
+  gs <- liftIO $ scenarioToGameState scenarioObject emptyLaunchParams gsc
+  return (gs, scenarioObject)
 
 verifySolution ::
   SolutionTimeout ->
