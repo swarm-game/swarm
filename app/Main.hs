@@ -12,6 +12,7 @@ import Options.Applicative
 import Swarm.App (appMain)
 import Swarm.Language.Format
 import Swarm.Language.LSP (lspMain)
+import Swarm.Language.Parser.Core (LanguageVersion (..))
 import Swarm.TUI.Model (AppOpts (..), ColorMode (..))
 import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond)
 import Swarm.Version
@@ -29,7 +30,7 @@ commitInfo = case gitInfo of
 
 data CLI
   = Run AppOpts
-  | Format FormatInput FormatOutput (Maybe FormatWidth)
+  | Format FormatConfig
   | LSP
   | Version
 
@@ -37,7 +38,7 @@ cliParser :: Parser CLI
 cliParser =
   subparser
     ( mconcat
-        [ command "format" (info (Format <$> input <*> output <*> optional widthOpt <**> helper) (progDesc "Format a file"))
+        [ command "format" (info (Format <$> parseFormat) (progDesc "Format a file"))
         , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
         ]
@@ -68,6 +69,12 @@ cliParser =
 
   widthOpt :: Parser FormatWidth
   widthOpt = option auto (long "width" <> metavar "COLUMNS" <> help "Use layout with maximum width")
+
+  langVer :: Parser LanguageVersion
+  langVer = flag SwarmLangLatest SwarmLang0_5 (long "v0.5" <> help "Read (& convert) code from Swarm version 0.5")
+
+  parseFormat :: Parser FormatConfig
+  parseFormat = FormatConfig <$> input <*> output <*> optional widthOpt <*> langVer <**> helper
 
   seed :: Parser (Maybe Int)
   seed = optional $ option auto (long "seed" <> short 's' <> metavar "INT" <> help "Seed to use for world generation")
@@ -123,6 +130,6 @@ main = do
   cli <- execParser cliInfo
   case cli of
     Run opts -> appMain opts
-    Format fi fo w -> formatSwarmIO fi fo w
+    Format cfg -> formatSwarmIO cfg
     LSP -> lspMain
     Version -> showVersion

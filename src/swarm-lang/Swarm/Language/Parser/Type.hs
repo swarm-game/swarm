@@ -9,11 +9,12 @@ module Swarm.Language.Parser.Type (
   parseType,
 ) where
 
+import Control.Lens (view)
 import Control.Monad (join)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
-import Swarm.Language.Parser.Core (Parser)
+import Swarm.Language.Parser.Core (LanguageVersion (..), Parser, languageVersion)
 import Swarm.Language.Parser.Lex (
   braces,
   brackets,
@@ -68,9 +69,19 @@ parseType = makeExprParser parseTypeAtom table
 
 parseTypeAtom :: Parser Type
 parseTypeAtom =
-  choice (map (\b -> TyBase b <$ reservedCS (baseTyName b)) listEnums)
-    <|> TyCmd <$> (reservedCS "Cmd" *> parseTypeAtom)
+  parseTyCon
     <|> TyVar <$> tyVar
     <|> TyDelay <$> braces parseType
     <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))
     <|> parens parseType
+
+parseTyCon :: Parser Type
+parseTyCon = do
+  ver <- view languageVersion
+  let reservedCase = case ver of
+        -- Version 0.5 of the language accepted type names in any case
+        SwarmLang0_5 -> reserved
+        -- The latest version requires them to be uppercase
+        SwarmLangLatest -> reservedCS
+  choice (map (\b -> TyBase b <$ reservedCase (baseTyName b)) listEnums)
+    <|> TyCmd <$> (reservedCase "Cmd" *> parseTypeAtom)
