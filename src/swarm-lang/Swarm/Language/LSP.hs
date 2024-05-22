@@ -23,6 +23,7 @@ import Language.LSP.VFS (VirtualFile (..), virtualFileText)
 import Swarm.Language.LSP.Hover qualified as H
 import Swarm.Language.LSP.VarUsage qualified as VU
 import Swarm.Language.Parser (readTerm')
+import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Util (getLocRange, showErrorPos)
 import Swarm.Language.Pipeline (processParsedTerm')
 import Swarm.Language.Pretty (prettyText)
@@ -81,7 +82,7 @@ validateSwarmCode doc version content = do
   -- However, getting rid of this seems to break error highlighting.
   flushDiagnosticsBySource 0 (Just diagnosticSourcePrefix)
 
-  let (parsingErrs, unusedVarWarnings) = case readTerm' content of
+  let (parsingErrs, unusedVarWarnings) = case readTerm' defaultParserConfig content of
         Right Nothing -> ([], [])
         Right (Just term) -> (parsingErrors, unusedWarnings)
          where

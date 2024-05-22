@@ -26,9 +26,14 @@ module Swarm.Language.Parser.Lex (
   symbol,
   operator,
   reservedWords,
+  reservedCS,
   reserved,
-  identifier,
+  IdentifierType (..),
   locIdentifier,
+  locTmVar,
+  identifier,
+  tyVar,
+  tmVar,
   textLiteral,
   integer,
 
@@ -38,15 +43,19 @@ module Swarm.Language.Parser.Lex (
   brackets,
 ) where
 
-import Control.Lens (use, (%=), (.=))
+import Control.Lens (use, view, (%=), (.=))
 import Control.Monad (void)
+import Data.Char (isUpper)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Sequence qualified as Seq
-import Data.Text (Text, toLower)
+import Data.Set (Set)
+import Data.Set qualified as S
+import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Language.Parser.Core
 import Swarm.Language.Syntax
-import Swarm.Util (failT, squote)
+import Swarm.Language.Types (baseTyName)
+import Swarm.Util (failT, listEnums, squote)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
@@ -142,53 +151,96 @@ operatorChar = T.singleton <$> oneOf opChars
   isOp = \case { ConstMFunc {} -> False; _ -> True } . constMeta
   opChars = nubOrd . concatMap (from . syntax) . filter isOp $ map constInfo allConst
 
+-- | Names of base types built into the language.
+baseTypeNames :: [Text]
+baseTypeNames = map baseTyName listEnums
+
+-- | Names of types built into the language.
+primitiveTypeNames :: [Text]
+primitiveTypeNames = "Cmd" : baseTypeNames
+
+-- | List of keywords built into the language.
+keywords :: [Text]
+keywords = T.words "let in def end true false forall require requirements"
+
 -- | List of reserved words that cannot be used as variable names.
-reservedWords :: [Text]
+reservedWords :: Set Text
 reservedWords =
-  map (syntax . constInfo) (filter isUserFunc allConst)
-    ++ map directionSyntax allDirs
-    ++ [ "void"
-       , "unit"
-       , "int"
-       , "text"
-       , "dir"
-       , "bool"
-       , "actor"
-       , "key"
-       , "cmd"
-       , "delay"
-       , "let"
-       , "def"
-       , "end"
-       , "in"
-       , "true"
-       , "false"
-       , "forall"
-       , "require"
-       , "requirements"
-       ]
+  S.fromList $
+    map (syntax . constInfo) (filter isUserFunc allConst)
+      ++ map directionSyntax allDirs
+      ++ primitiveTypeNames
+      ++ keywords
 
--- | Parse a case-insensitive reserved word, making sure it is not a
---   prefix of a longer variable name, and allowing the parser to
---   backtrack if it fails.
+-- | Cached version of the reserved words list with everything
+--   lowercase, for use in parsing version 0.5 of the language, where
+--   types were lowercase instead of uppercase.
+lowerReservedWords :: Set Text
+lowerReservedWords = S.map T.toLower reservedWords
+
+-- | Parse a reserved word, given a string recognizer (which can
+--   /e.g./ be case sensitive or not), making sure it is not a prefix
+--   of a longer variable name, and allowing the parser to backtrack
+--   if it fails.
+reservedGen :: (Text -> Parser a) -> Text -> Parser ()
+reservedGen str w = (lexeme . try) $ str w *> notFollowedBy (alphaNumChar <|> char '_')
+
+-- | Parse a case-sensitive reserved word.
+reservedCS :: Text -> Parser ()
+reservedCS = reservedGen string
+
+-- | Parse a case-insensitive reserved word.
 reserved :: Text -> Parser ()
-reserved w = (lexeme . try) $ string' w *> notFollowedBy (alphaNumChar <|> char '_')
+reserved = reservedGen string'
 
--- | Parse an identifier, i.e. any non-reserved string containing
---   alphanumeric characters and underscores and not starting with a
---   number.
-identifier :: Parser Var
-identifier = lvVar <$> locIdentifier
+-- | What kind of identifier are we parsing?
+data IdentifierType = IDTyVar | IDTmVar
+  deriving (Eq, Ord, Show)
 
 -- | Parse an identifier together with its source location info.
-locIdentifier :: Parser LocVar
-locIdentifier = uncurry LV <$> parseLocG ((lexeme . try) (p >>= check) <?> "variable name")
+locIdentifier :: IdentifierType -> Parser LocVar
+locIdentifier idTy = do
+  ver <- view languageVersion
+  uncurry LV <$> parseLocG ((lexeme . try) (p >>= check ver) <?> "variable name")
  where
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
-  check (into @Text -> t)
-    | toLower t `elem` reservedWords =
-        failT ["reserved word", squote t, "cannot be used as variable name"]
-    | otherwise = return t
+  check ver (into @Text -> t) = case ver of
+    SwarmLang0_5
+      | T.toLower t `S.member` lowerReservedWords ->
+          failT ["reserved word", squote t, "cannot be used as variable name"]
+      | otherwise -> return t
+    SwarmLangLatest
+      | t `S.member` reservedWords || T.toLower t `S.member` reservedWords ->
+          failT ["Reserved word", squote t, "cannot be used as a variable name"]
+      | IDTyVar <- idTy
+      , T.toTitle t `S.member` reservedWords ->
+          failT ["Reserved type name", squote t, "cannot be used as a type variable name; perhaps you meant", squote (T.toTitle t) <> "?"]
+      | IDTyVar <- idTy
+      , isUpper (T.head t) ->
+          failT ["Type variable names must start with a lowercase letter"]
+      | otherwise -> return t
+
+-- | Parse a term variable together with its source location info.
+locTmVar :: Parser LocVar
+locTmVar = locIdentifier IDTmVar
+
+-- | Parse an identifier, i.e. any non-reserved string containing
+--   alphanumeric characters and underscores, not starting with a
+--   digit. The Bool indicates whether we are parsing a type variable.
+identifier :: IdentifierType -> Parser Var
+identifier = fmap lvVar . locIdentifier
+
+-- | Parse a type variable, which must start with an underscore or
+--   lowercase letter and cannot be the lowercase version of a type
+--   name.
+tyVar :: Parser Var
+tyVar = identifier IDTyVar
+
+-- | Parse a term variable, which can start in any case and just
+--   cannot be the same (case-insensitively) as a lowercase reserved
+--   word.
+tmVar :: Parser Var
+tmVar = identifier IDTmVar
 
 -- | Parse a text literal (including escape sequences) in double quotes.
 textLiteral :: Parser Text

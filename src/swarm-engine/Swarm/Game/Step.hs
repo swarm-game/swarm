@@ -725,7 +725,7 @@ stepCESK cesk = case cesk of
     return $ In (TDelay (MemoizedDelay $ bool Nothing (Just x) r) t) e s (FDef x : k)
   -- Once we have finished evaluating the (memoized, delayed) body of
   -- a definition, we return a special VResult value, which packages
-  -- up the return value from the @def@ command itself (@unit@)
+  -- up the return value from the @def@ command itself (the unit value)
   -- together with the resulting environment (the variable bound to
   -- the delayed value).
   Out v s (FDef x : k) ->

@@ -1,20 +1,25 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 module Main where
 
 import Control.Monad.Trans.Reader (runReaderT)
 import Data.Maybe (fromMaybe)
+import Data.Yaml (decodeFileThrow)
+import Database.SQLite.Simple (execute_, withConnection)
 import Network.Wai.Handler.Warp (Port)
 import Options.Applicative
 import Swarm.Game.State (Sha1 (..))
 import Swarm.Web.Tournament
 import Swarm.Web.Tournament.Database.Query
+import Swarm.Web.Tournament.Type (UserAlias (..))
 
 data AppOpts = AppOpts
   { userWebPort :: Maybe Port
   -- ^ Explicit port on which to run the web API
   , gameGitVersion :: Sha1
-  , isLocalSocketConnection :: Bool
+  , deploymentEnv :: DeploymentEnvironment
   }
 
 webPort :: Parser (Maybe Int)
@@ -37,13 +42,15 @@ gameVersion =
           <> help "Set the git version of the game"
       )
 
-parseNativeDev :: Parser Bool
-parseNativeDev =
-  switch
-    (long "native-dev" <> help "Running locally outside of a Docker container for development")
+parseRunningLocally :: Parser DeploymentEnvironment
+parseRunningLocally =
+  flag
+    ProdDeployment
+    (LocalDevelopment $ UserAlias "local-user")
+    (long "local" <> help "Running locally for development")
 
 cliParser :: Parser AppOpts
-cliParser = AppOpts <$> webPort <*> gameVersion <*> parseNativeDev
+cliParser = AppOpts <$> webPort <*> gameVersion <*> parseRunningLocally
 
 cliInfo :: ParserInfo AppOpts
 cliInfo =
@@ -57,24 +64,37 @@ cliInfo =
 main :: IO ()
 main = do
   opts <- execParser cliInfo
+
+  creds <- case deploymentEnv opts of
+    LocalDevelopment _ -> return $ GitHubCredentials "" ""
+    ProdDeployment -> decodeFileThrow "swarm-github-app-credentials.yaml"
+
   webMain
-    (AppData (gameGitVersion opts) persistenceFunctions)
+    (AppData (gameGitVersion opts) creds persistenceFunctions (deploymentEnv opts))
     (fromMaybe defaultPort $ userWebPort opts)
  where
   persistenceFunctions =
     PersistenceLayer
-      { lookupScenarioFileContent = withConnInfo lookupScenarioContent
-      , scenarioStorage =
+      { scenarioStorage =
           ScenarioPersistence
-            { lookupCache = withConnInfo lookupScenarioSolution
-            , storeCache = withConnInfo insertScenario
+            { lookupCache = withConn lookupScenarioSolution
+            , storeCache = withConn insertScenario
+            , getContent = withConn lookupScenarioContent
             }
       , solutionStorage =
           ScenarioPersistence
-            { lookupCache = withConnInfo lookupSolutionSubmission
-            , storeCache = withConnInfo insertSolutionSubmission
+            { lookupCache = withConn lookupSolutionSubmission
+            , storeCache = withConn insertSolutionSubmission
+            , getContent = withConn lookupSolutionContent
+            }
+      , authenticationStorage =
+          AuthenticationStorage
+            { usernameFromCookie = withConn getUsernameFromCookie
+            , cookieFromUsername = withConn insertCookie
             }
       }
    where
-    withConnInfo f x =
-      runReaderT (f x) databaseFilename
+    withConn f x =
+      withConnection databaseFilename $ \conn -> do
+        execute_ conn "PRAGMA foreign_keys = ON;"
+        runReaderT (f x) conn

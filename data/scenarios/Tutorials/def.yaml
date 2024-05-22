@@ -11,9 +11,9 @@ objectives:
         that can be used to define new commands.  For example:
       - |
         ```
-        def m4 : cmd unit = move; move; move; move end
+        def m4 : Cmd Unit = move; move; move; move end
         ```
-      - defines a new command `m4`{=snippet}, with type `cmd unit`{=type}, as four consecutive `move` commands. With judicious use of new definitions, it should be possible to complete this challenge in just a few lines of code.
+      - defines a new command `m4`{=snippet}, with type `Cmd Unit`{=type}, as four consecutive `move` commands. With judicious use of new definitions, it should be possible to complete this challenge in just a few lines of code.
       - |
         **TIP:** your base is at coordinates `(0,0)`, and the `flower`{=entity} is at `(16,4)`, which
         you can confirm by clicking in the world map panel. When you click on a cell,

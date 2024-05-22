@@ -1,7 +1,7 @@
 // Spawns worker bees when structures are detected
 
 def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
-def mod : int -> int -> int = \a. \b. a - (a/b)*b end;
+def mod : Int -> Int -> Int = \a. \b. a - (a/b)*b end;
 def abs = \n. if (n < 0) {-n} {n} end;
 def min = \x. \y. if (x < y) {x} {y} end;
 

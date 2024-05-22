@@ -60,7 +60,10 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
+import Data.Set (Set)
+import Data.Set qualified as S
 import Data.String (fromString)
+import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Text.Zipper.Generic.Words qualified as TZ
@@ -1214,6 +1217,15 @@ data CompletionType
 newtype CompletionContext = CompletionContext {ctxCreativeMode :: Bool}
   deriving (Eq)
 
+-- | Reserved words corresponding to commands that can only be used in
+--   creative mode.  We only autocomplete to these when in creative mode.
+creativeWords :: Set Text
+creativeWords =
+  S.fromList
+    . map (syntax . constInfo)
+    . filter (\w -> constCaps w == Just CGod)
+    $ allConst
+
 -- | Try to complete the last word in a partially-entered REPL prompt using
 --   reserved words and names in scope (in the case of function names) or
 --   entity names (in the case of string literals).
@@ -1263,12 +1275,10 @@ tabComplete CompletionContext {..} names em theRepl = case theRepl ^. replPrompt
     EntityName -> (entityNames, (/= '"'))
     FunctionName -> (possibleWords, isIdentChar)
 
-  creativeWords = map (syntax . constInfo) $ filter (\w -> constCaps w == Just CGod) allConst
-
   possibleWords =
     names <> case ctxCreativeMode of
-      True -> reservedWords
-      False -> filter (`notElem` creativeWords) reservedWords
+      True -> S.toList reservedWords
+      False -> S.toList $ reservedWords `S.difference` creativeWords
 
   entityNames = M.keys $ entitiesByName em
 

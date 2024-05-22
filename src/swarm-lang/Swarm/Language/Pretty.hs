@@ -108,14 +108,7 @@ instance PrettyPrec Text where
   prettyPrec _ = pretty
 
 instance PrettyPrec BaseTy where
-  prettyPrec _ BVoid = "void"
-  prettyPrec _ BUnit = "unit"
-  prettyPrec _ BInt = "int"
-  prettyPrec _ BDir = "dir"
-  prettyPrec _ BText = "text"
-  prettyPrec _ BBool = "bool"
-  prettyPrec _ BActor = "actor"
-  prettyPrec _ BKey = "key"
+  prettyPrec _ = pretty . drop 1 . show
 
 instance PrettyPrec IntVar where
   prettyPrec _ = pretty . mkVarName "u"
@@ -158,7 +151,7 @@ instance ((UnchainableFun t), (PrettyPrec t)) => PrettyPrec (TypeF t) where
   prettyPrec p (TyProdF ty1 ty2) =
     pparens (p > 2) $
       prettyPrec 3 ty1 <+> "*" <+> prettyPrec 2 ty2
-  prettyPrec p (TyCmdF ty) = pparens (p > 9) $ "cmd" <+> prettyPrec 10 ty
+  prettyPrec p (TyCmdF ty) = pparens (p > 9) $ "Cmd" <+> prettyPrec 10 ty
   prettyPrec _ (TyDelayF ty) = braces $ ppr ty
   prettyPrec p (TyFunF ty1 ty2) =
     let (iniF, lastF) = unsnocNE $ ty1 <| unchainFun ty2
@@ -236,6 +229,7 @@ instance PrettyPrec (Term' ty) where
   prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr @Term (TText e)
   prettyPrec p (SRequirements _ e) = pparens (p > 10) $ "requirements" <+> ppr e
   prettyPrec _ (TVar s) = pretty s
+  prettyPrec _ (SDelay _ (Syntax' _ (TConst Noop) _ _)) = "{}"
   prettyPrec _ (SDelay _ t) = group . encloseWithIndent 2 lbrace rbrace $ ppr t
   prettyPrec _ t@SPair {} = prettyTuple t
   prettyPrec p t@(SLam {}) =
@@ -273,6 +267,11 @@ instance PrettyPrec (Term' ty) where
       [ prettyDefinition "def" x mty t1
       , "end"
       ]
+  -- Special case for printing consecutive defs: don't worry about
+  -- precedence, and print a blank line with no semicolon
+  prettyPrec _ (SBind Nothing t1@(Syntax' _ (SDef {}) _ _) t2) =
+    prettyPrec 0 t1 <> hardline <> hardline <> prettyPrec 0 t2
+  -- General case for bind
   prettyPrec p (SBind Nothing t1 t2) =
     pparens (p > 0) $
       prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2

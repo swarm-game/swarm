@@ -29,7 +29,7 @@
 // 
 // TODO: once #153 is resolved, add types to definitions
 //
-// type listI = int
+// type ListI = Int
 
 /*******************************************************************/
 /*                             LAYOUT                              */
@@ -56,31 +56,31 @@ vvvvvvvvvvvv       vvvvvvvvvvvvvvvvvvvvvvvvv     vvv
 /*******************************************************************/
 
 // bitlength of a number (shifting by one)
-def naive_len : int -> int = \i.
+def naive_len : Int -> Int = \i.
   if (i == 0) {0} {1 + naive_len (i/2)}
 end
 
 // modulus function (%)
-def mod : int -> int -> int = \i.\m.
+def mod : Int -> Int -> Int = \i.\m.
   i - m * (i / m)
 end
 
 // f X Y = Y * 2^(-X)
-def shiftL : int -> int -> int = \s.\i.
+def shiftL : Int -> Int -> Int = \s.\i.
   i / 2^s
 end
 
 // f X Y = Y * 2^(X)
-def shiftR : int -> int -> int = \s.\i.
+def shiftR : Int -> Int -> Int = \s.\i.
   i * 2^s
 end
 
 // shift by (8bit) bytes
-def shiftLH : int -> int -> int = \s. shiftL (s*8) end
-def shiftRH : int -> int -> int = \s. shiftR (s*8) end
+def shiftLH : Int -> Int -> Int = \s. shiftL (s*8) end
+def shiftRH : Int -> Int -> Int = \s. shiftR (s*8) end
 
 // bitlength of a number (shifting by 64)
-def len : int -> int = \i.
+def len : Int -> Int = \i.
   let next = i / 2^64 in
   if (next == 0) {naive_len i} {64 + len next}
 end
@@ -89,11 +89,11 @@ end
 /*                       helper functions                          */
 /*******************************************************************/
 
-def getLenPart : int -> int = \i. mod (i/2) (2^7) end
-def setLenPart : int -> int = \i. 2 * (mod i (2^7)) end
+def getLenPart : Int -> Int = \i. mod (i/2) (2^7) end
+def setLenPart : Int -> Int = \i. 2 * (mod i (2^7)) end
 
 // Split length into 7-bit parts and prefix all but last with 1
-def to1numA : int -> int * int = \i.
+def to1numA : Int -> Int * Int = \i.
   let nextPart = shiftL 7 i in
   if (nextPart == 0)
     { ((2 * i), 1) } /* last part */
@@ -107,7 +107,7 @@ end
 // Get bitlength of the first number in the list
 // and also the list starting at the number itself
 //
-// getLenA : listI -> int * int
+// getLenA : ListI -> Int * Int
 def getLenA = \xs.
   let isEnd = 0 == mod xs 2 in
   let l = getLenPart xs in
@@ -123,7 +123,7 @@ end
 /*                         LIST FUNCTIONS                          */
 /*******************************************************************/
 
-// headTail : listI -> {int} * {listI} 
+// headTail : ListI -> {Int} * {ListI} 
 def headTail = \xs.
   let sign = mod xs 2 in
   let ns = xs / 2 in
@@ -135,21 +135,21 @@ def headTail = \xs.
   )
 end
 
-// head : listI -> int
-def head : int -> int = \xs.
+// head : ListI -> Int
+def head : Int -> Int = \xs.
   force $ fst $ headTail xs
 end
 
-// tail : listI -> listI 
+// tail : ListI -> ListI 
 def tail = \xs.
   force $ snd $ headTail xs
 end
 
-// nil : listI
+// nil : ListI
 def nil = 0 end
 
 // Add non-negative number to beginning of list (cons adds the sign)
-// consP : nat -> listI -> int
+// consP : nat -> ListI -> Int
 def consP = \x.\xs.
   if (x == 0)
     { 2 /* header says one bit length */ + shiftR (8+1) xs}
@@ -160,7 +160,7 @@ def consP = \x.\xs.
 end
 
 // Add integer to the beginning of the list
-// consP : int -> listI -> listI
+// consP : Int -> ListI -> ListI
 def cons = \x.\xs.
   if (x >= 0)
     {     2 * consP   x  xs }
@@ -172,19 +172,19 @@ end
 /*                       MORE LIST FUNCTIONS                       */
 /*******************************************************************/
 
-// index : int -> listI -> int
+// index : Int -> ListI -> Int
 def index = \i.\xs.
   if (i <= 0)
     {head xs}
     {index (i-1) (tail xs)}
 end
 
-def for : int -> int -> (int -> cmd a) -> cmd unit = \s.\e.\act.
+def for : Int -> Int -> (Int -> Cmd a) -> Cmd Unit = \s.\e.\act.
   if (s == e) {}
   {act s; for (s+1) e act}
 end
 
-// for_each_i : int -> listI int -> (int * int -> cmd a) -> cmd unit
+// for_each_i : Int -> ListI Int -> (Int * Int -> Cmd a) -> Cmd Unit
 def for_each_i = \i.\xs.\act.
   if (xs == nil) {}
   { let ht = headTail xs
@@ -192,7 +192,7 @@ def for_each_i = \i.\xs.\act.
   }
 end
 
-// for_each : listI int -> (int -> cmd a) -> cmd unit
+// for_each : ListI Int -> (Int -> Cmd a) -> Cmd Unit
 def for_each = \xs.\act.
   for_each_i 0 xs (\i. act)
 end

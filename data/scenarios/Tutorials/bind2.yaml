@@ -29,13 +29,13 @@ objectives:
       - |
         Every command returns a value.  However, some simple commands, like
         `move`, do not have any meaningful
-        value to return.  Swarm has a special type, `unit`{=type}, with only one value,
+        value to return.  Swarm has a special type, `Unit`{=type}, with only one value,
         called `()`. Since there is only one possible value of type
-        `unit`{=type}, returning it does not convey any information.
-        Thus, the type of `move` is `cmd unit`{=type}.
+        `Unit`{=type}, returning it does not convey any information.
+        Thus, the type of `move` is `Cmd Unit`{=type}.
       - |
         Other commands do return a nontrivial value after executing.
-        For example, `grab` has type `cmd text`{=type}, and returns the name of the
+        For example, `grab` has type `Cmd Text`{=type}, and returns the name of the
         grabbed entity as a text value.
       - |
         To use the result of a command later, you need _bind notation_, which

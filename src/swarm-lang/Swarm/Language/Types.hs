@@ -9,6 +9,7 @@
 module Swarm.Language.Types (
   -- * Basic definitions
   BaseTy (..),
+  baseTyName,
   Var,
   TypeF (..),
 
@@ -115,7 +116,10 @@ data BaseTy
     BActor
   | -- | Keys, i.e. things that can be pressed on the keyboard
     BKey
-  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Bounded, Enum, Data, Generic, FromJSON, ToJSON)
+
+baseTyName :: BaseTy -> Text
+baseTyName = into @Text . drop 1 . show
 
 -- | A "structure functor" encoding the shape of type expressions.
 --   Actual types are then represented by taking a fixed point of this

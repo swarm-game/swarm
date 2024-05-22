@@ -2,7 +2,7 @@ def elif = \t. \then. \else. {if t then else} end
 def else = \t. t end
 def abs = \n. if (n < 0) {-n} {n} end
 // modulus function (%)
-def mod : int -> int -> int = \i.\m.
+def mod : Int -> Int -> Int = \i.\m.
   i - m * (i / m)
 end
 
@@ -17,7 +17,7 @@ Quadrants are numbered counter-clockwise, staring in the northeast:
 This is same as the standard graph quadrants in mathematics, except
 for 0-based numbering rather than 1-based.
 */
-def getQuadrant : (int * int) -> (int * int) -> int = \baseLoc. \myLoc.
+def getQuadrant : (Int * Int) -> (Int * Int) -> Int = \baseLoc. \myLoc.
     let baseX = fst baseLoc in
     let baseY = snd baseLoc in
 
@@ -53,7 +53,7 @@ def getQuadrantIncrement = \oldQuadrant. \newQuadrant.
     $ else {0}
     end;
 
-def getCurrentQuadrant : (int * int) -> cmd int = \myLoc.
+def getCurrentQuadrant : (Int * Int) -> Cmd Int = \myLoc.
   baseLoc <- as base {whereami};
   return $ getQuadrant baseLoc myLoc;
   end;
@@ -80,7 +80,7 @@ Also, the edge case for disregarding "diagonal" teleportation
 means that the traversal number could get out of sync
 with the absolute quadrant index.
 */
-def monitorAngle : (int * int) -> int -> int -> int -> cmd unit =
+def monitorAngle : (Int * Int) -> Int -> Int -> Int -> Cmd Unit =
     \myLoc. \targetQuadrantCount. \prevQuadrant. \quadrantTraversalCount.
   result <- instant $ checkNewQuadrant myLoc prevQuadrant quadrantTraversalCount;
   let currentQuadrant = fst result in
