@@ -42,9 +42,9 @@ module Swarm.Game.Location (
 
 import Control.Arrow ((&&&))
 import Data.Aeson (FromJSONKey, ToJSONKey)
+import Data.Containers.ListUtils (nubOrd)
 import Data.Function (on, (&))
 import Data.Int (Int32)
-import Data.List (nub)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Yaml (FromJSON (parseJSON), ToJSON (toJSON))
@@ -128,10 +128,10 @@ down = zero
 --   turning relative to the given heading or by turning to an absolute
 --   heading.
 --
---   >>> applyTurn (DRelative (DPlanar DLeft)) (V2 5 3)
---   V2 (-3) 5
---   >>> applyTurn (DAbsolute DWest) (V2 5 3)
---   V2 (-1) 0
+-- >>> applyTurn (DRelative (DPlanar DLeft)) (V2 5 3)
+-- V2 (-3) 5
+-- >>> applyTurn (DAbsolute DWest) (V2 5 3)
+-- V2 (-1) 0
 applyTurn :: Direction -> Heading -> Heading
 applyTurn d = case d of
   DRelative e -> case e of
@@ -152,10 +152,10 @@ cardinalDirs =
 --   vector happens to be a unit vector in one of the cardinal
 --   directions.
 --
---   >>> toDirection (V2 0 (-1))
---   Just (DAbsolute DSouth)
---   >>> toDirection (V2 3 7)
---   Nothing
+-- >>> toDirection (V2 0 (-1))
+-- Just (DAbsolute DSouth)
+-- >>> toDirection (V2 3 7)
+-- Nothing
 toDirection :: Heading -> Maybe Direction
 toDirection = fmap DAbsolute . toAbsDirection
 
@@ -166,10 +166,10 @@ toAbsDirection v = M.lookup v cardinalDirs
 -- | Return the 'PlanarRelativeDir' which would result in turning to
 --   the first (target) direction from the second (reference) direction.
 --
---   >>> DWest `relativeTo` DSouth
---   DRight
---   >>> DWest `relativeTo` DWest
---   DForward
+-- >>> DWest `relativeTo` DSouth
+-- DRight
+-- >>> DWest `relativeTo` DWest
+-- DForward
 relativeTo :: AbsoluteDir -> AbsoluteDir -> PlanarRelativeDir
 relativeTo targetDir referenceDir =
   toEnum indexDiff
@@ -218,7 +218,7 @@ euclidean p1 p2 = norm (fromIntegral <$> (p2 .-. p1))
 --   See also @Swarm.Game.Step.Const.genDiamondSides@.
 getLocsInArea :: Location -> Int32 -> [Location]
 getLocsInArea loc r =
-  [loc .+^ V2 dx dy | x <- [0 .. r], y <- [0 .. r - x], dx <- nub [x, -x], dy <- nub [y, -y]]
+  [loc .+^ V2 dx dy | x <- [0 .. r], y <- [0 .. r - x], dx <- nubOrd [x, -x], dy <- nubOrd [y, -y]]
 
 -- | Get elements that are within a certain manhattan distance from location.
 --
