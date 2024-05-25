@@ -125,13 +125,12 @@ padSouthwest ::
 padSouthwest (V2 deltaX deltaY) (OverlayPair baseGrid overlayGrid) =
   OverlayPair paddedBaseGrid paddedOverlayGrid
  where
-  prefixPadRows = mapRows (padRows <>)
+  prefixPadDimension delta f = mapRows $ f (padding <>)
    where
-    padRows = replicate (abs $ fromIntegral deltaY) []
+    padding = replicate (abs $ fromIntegral delta) empty
 
-  prefixPadColumns = mapRows $ map (padding <>)
-   where
-    padding = replicate (abs $ fromIntegral deltaX) empty
+  prefixPadRows = prefixPadDimension deltaY id
+  prefixPadColumns = prefixPadDimension deltaX map
 
   -- Assume only the *overlay* requires vertical (top-)padding.
   -- However, if the conditional is true, then
