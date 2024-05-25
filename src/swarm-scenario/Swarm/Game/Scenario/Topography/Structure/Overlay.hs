@@ -37,30 +37,33 @@ data OverlayPair a = OverlayPair
   , _overlay :: a
   }
 
-getBottomRightCorner :: PositionedGrid a -> Location
-getBottomRightCorner (PositionedGrid loc g) =
-  computeBottomRightFromUpperLeft (getGridDimensions g) loc
+-- | Has a 'Semigroup' instance to determine the smallest
+-- bounds that enclose two rectangles
+data SubsumingRect = SubsumingRect
+  { _northwestCorner :: Location
+  , _southeastCorner :: Location
+  }
 
-getNorthwesternExtent :: Location -> Location -> Location
-getNorthwesternExtent (Location ulx1 uly1) (Location ulx2 uly2) =
-  Location westernMostX northernMostY
- where
-  westernMostX = min ulx1 ulx2
-  northernMostY = max uly1 uly2
+-- | @r1 <> r2@ is the smallest rectangle that contains both @r1@ and @r2@.
+instance Semigroup SubsumingRect where
+  SubsumingRect (Location ulx1 uly1) (Location brx1 bry1)
+    <> SubsumingRect (Location ulx2 uly2) (Location brx2 bry2) =
+      SubsumingRect (Location westernMostX northernMostY) (Location easternMostX southernMostY)
+     where
+      westernMostX = min ulx1 ulx2
+      northernMostY = max uly1 uly2
+      easternMostX = max brx1 brx2
+      southernMostY = min bry1 bry2
 
-getSoutheasternExtent :: Location -> Location -> Location
-getSoutheasternExtent (Location brx1 bry1) (Location brx2 bry2) =
-  Location easternMostX southernMostY
- where
-  easternMostX = max brx1 brx2
-  southernMostY = min bry1 bry2
+getSubsumingRect :: PositionedGrid a -> SubsumingRect
+getSubsumingRect (PositionedGrid loc g) =
+  SubsumingRect loc $ computeBottomRightFromUpperLeft (getGridDimensions g) loc
 
 computeMergedArea :: OverlayPair (PositionedGrid a) -> AreaDimensions
 computeMergedArea (OverlayPair pg1 pg2) =
   cornersToArea ul br
  where
-  ul = (getNorthwesternExtent `on` gridPosition) pg1 pg2
-  br = (getSoutheasternExtent `on` getBottomRightCorner) pg1 pg2
+  SubsumingRect ul br = ((<>) `on` getSubsumingRect) pg1 pg2
 
 zipGridRows ::
   Alternative f =>
