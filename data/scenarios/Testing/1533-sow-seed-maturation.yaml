@@ -69,7 +69,7 @@ entities:
       char: 'a'
     description:
       - Seed of an `oak`{=entity}
-    properties: [known, growable]
+    properties: [known, pickable, growable]
     growth:
       duration: [200, 300]
       mature: oak
