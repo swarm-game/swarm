@@ -21,6 +21,7 @@ import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
+import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Util (failT, showT)
@@ -60,7 +61,7 @@ instance FromJSONE (TerrainEntityMaps, RobotMap) (NamedArea (PStructure (Maybe C
         ..: "structure"
 
 data PStructure c = Structure
-  { area :: Grid c
+  { area :: PositionedGrid c
   , structures :: [NamedStructure c]
   -- ^ structure definitions from parents shall be accessible by children
   , placements :: [Placement]
@@ -84,7 +85,7 @@ instance HasLocation LocatedStructure where
   modifyLoc f (LocatedStructure x y originalLoc) =
     LocatedStructure x y $ f originalLoc
 
-data MergedStructure c = MergedStructure (Grid c) [LocatedStructure] [Originated Waypoint]
+data MergedStructure c = MergedStructure (PositionedGrid c) [LocatedStructure] [Originated Waypoint]
 
 instance FromJSONE (TerrainEntityMaps, RobotMap) (PStructure (Maybe Cell)) where
   parseJSONE = withObjectE "structure definition" $ \v -> do
@@ -98,7 +99,7 @@ instance FromJSONE (TerrainEntityMaps, RobotMap) (PStructure (Maybe Cell)) where
       (maskedArea, mapWaypoints) <- (v .:? "map" .!= "") >>= paintMap maybeMaskChar pal
       return $
         Structure
-          (Grid maskedArea)
+          (PositionedGrid origin $ Grid maskedArea)
           localStructureDefs
           placementDefs
           (waypointDefs <> mapWaypoints)

@@ -1,0 +1,61 @@
+version: 1
+name: Expansion of a substructure to fit its placements
+description: |
+  Define two structures and place them on the map.
+robots:
+  - name: base
+    loc: [4, -4]
+    dir: east
+known: [water, sand, tree]
+world:
+  palette:
+    '.': [grass]
+  upperleft: [-1, 1]
+  structures:
+    - name: vertical rectangle
+      structure:
+        palette:
+          'x': [blank, tree]
+        map: |
+          xx
+          xx
+          xx
+          xx
+    - name: horizontal rectangle
+      structure:
+        palette:
+          'x': [blank, sand]
+        map: |
+          xxxx
+          xxxx
+    - name: disjoint rectangles
+      structure:
+        palette:
+          'x': [blank, water]
+        map: |
+          xx
+          xx
+        placements:
+          - src: vertical rectangle
+            truncate: false
+            offset: [-7, 7]
+          - src: horizontal rectangle
+            truncate: false
+            offset: [7, -7]
+  placements:
+    - src: disjoint rectangles
+      offset: [2, -2]
+  map: |
+    ...............
+    ...............
+    ...............
+    ...............
+    ...............
+    ...............
+    ...............
+    ...............
+    ...............
+    ...............
+    ...............
+    ...............
+    ...............

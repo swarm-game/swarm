@@ -20,11 +20,13 @@ import Data.Map qualified as M
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import Linear.Affine
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.Structure
+import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Language.Syntax.Direction (directionJsonModifier)
 import Swarm.Util (commaList, quote, showT)
 
@@ -38,18 +40,23 @@ overlaySingleStructure ::
   Either Text (MergedStructure (Maybe a))
 overlaySingleStructure
   inheritedStrucDefs
-  (Placed p@(Placement _ _shouldTruncate pose@(Pose loc orientation)) ns)
+  (Placed p@(Placement _ shouldTruncate pose@(Pose loc orientation)) ns)
   (MergedStructure inputArea inputPlacements inputWaypoints) = do
     MergedStructure overlayArea overlayPlacements overlayWaypoints <-
       mergeStructures inheritedStrucDefs (WithParent p) $ structure ns
 
     let mergedWaypoints = inputWaypoints <> map (fmap $ placeOnArea overlayArea) overlayWaypoints
         mergedPlacements = inputPlacements <> map (placeOnArea overlayArea) overlayPlacements
-        mergedArea = overlayGrid inputArea pose overlayArea
+        mergedArea = mergeFunc (gridContent inputArea) pose overlayArea
 
     return $ MergedStructure mergedArea mergedPlacements mergedWaypoints
    where
-    placeOnArea overArea =
+    mergeFunc =
+      if shouldTruncate
+        then overlayGridTruncated
+        else overlayGridExpanded
+
+    placeOnArea (PositionedGrid _ overArea) =
       offsetLoc (coerce loc)
         . modifyLoc (reorientLandmark orientation $ getGridDimensions overArea)
 
@@ -92,18 +99,34 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
 
 -- * Grid manipulation
 
-overlayGrid ::
+overlayGridExpanded ::
   Grid (Maybe a) ->
   Pose ->
+  PositionedGrid (Maybe a) ->
+  PositionedGrid (Maybe a)
+overlayGridExpanded
+  inputGrid
+  (Pose loc orientation)
+  (PositionedGrid _ (Grid overlayArea)) =
+    PositionedGrid origin inputGrid <> positionedOverlay
+   where
+    reorientedOverlayCells = Grid $ applyOrientationTransform orientation overlayArea
+    positionedOverlay = PositionedGrid loc reorientedOverlayCells
+
+-- | NOTE: This ignores the 'loc' parameter of 'PositionedGrid'.
+overlayGridTruncated ::
   Grid (Maybe a) ->
-  Grid (Maybe a)
-overlayGrid
+  Pose ->
+  PositionedGrid (Maybe a) ->
+  PositionedGrid (Maybe a)
+overlayGridTruncated
   (Grid inputArea)
   (Pose (Location colOffset rowOffset) orientation)
-  (Grid overlayArea) =
-    Grid $
-      zipWithPad mergeSingleRow inputArea $
-        paddedOverlayRows overlayArea
+  (PositionedGrid _ (Grid overlayArea)) =
+    PositionedGrid origin
+      . Grid
+      . zipWithPad mergeSingleRow inputArea
+      $ paddedOverlayRows overlayArea
    where
     zipWithPad f a b = zipWith f a $ b <> repeat Nothing
 

@@ -8,6 +8,7 @@ module Swarm.Game.World.Coords (
   Coords (..),
   locToCoords,
   coordsToLoc,
+  addTuple,
   BoundsRectangle,
 )
 where
@@ -42,6 +43,9 @@ locToCoords (Location x y) = Coords (-y, x)
 -- | Convert an internal 'Coords' value to an external @(x,y)@ location.
 coordsToLoc :: Coords -> Location
 coordsToLoc (Coords (r, c)) = Location c (-r)
+
+addTuple :: Coords -> (Int32, Int32) -> Coords
+addTuple (Coords (r, c)) (addR, addC) = Coords (r + addR, c + addC)
 
 -- | Represents the top-left and bottom-right coordinates
 -- of a bounding rectangle of cells in the world map

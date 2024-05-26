@@ -24,7 +24,7 @@ module Swarm.Game.State.Landscape (
 ) where
 
 import Control.Arrow (Arrow ((&&&)))
-import Control.Lens hiding (Const, use, uses, (%=), (+=), (.=), (<+=), (<<.=))
+import Control.Lens hiding (Const, both, use, uses, (%=), (+=), (.=), (<+=), (<<.=))
 import Data.Array (Array, listArray)
 import Data.Bifunctor (first)
 import Data.Int (Int32)
@@ -32,17 +32,21 @@ import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (isJust, listToMaybe)
+import Data.Maybe (isJust)
+import Data.Tuple.Extra (both, swap)
 import Swarm.Game.Entity
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, trobotLocation)
 import Swarm.Game.Scenario
+import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
+import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.State.Config
 import Swarm.Game.Terrain (TerrainType (..), terrainIndexByName)
 import Swarm.Game.Universe as U
 import Swarm.Game.World
+import Swarm.Game.World.Coords (addTuple)
 import Swarm.Game.World.Eval (runWorld)
 import Swarm.Game.World.Gen (Seed, findGoodOrigin)
 import Swarm.Util (applyWhen)
@@ -115,37 +119,59 @@ genMultiWorld worldTuples s =
 
 -- | Take a world description, parsed from a scenario file, and turn
 --   it into a list of located robots and a world function.
-buildWorld :: TerrainEntityMaps -> WorldDescription -> ([IndexedTRobot], Seed -> WorldFun Int Entity)
+buildWorld ::
+  TerrainEntityMaps ->
+  WorldDescription ->
+  ([IndexedTRobot], Seed -> WorldFun Int Entity)
 buildWorld tem WorldDescription {..} =
   (robots worldName, first getTerrainIndex . wf)
  where
-  getTerrainIndex t = M.findWithDefault 0 t $ terrainIndexByName $ tem ^. terrainMap
-  rs = fromIntegral $ length area
-  cs = fromIntegral $ maybe 0 length $ listToMaybe area
-  Coords (ulr, ulc) = locToCoords ul
+  getTerrainIndex t =
+    M.findWithDefault 0 t $
+      terrainIndexByName $
+        tem ^. terrainMap
 
-  worldGrid :: [[(TerrainType, Erasable Entity)]]
-  worldGrid = (map . map) (cellTerrain &&& cellEntity) area
+  g = gridContent area
+
+  ulOffset = origin .-. gridPosition area
+  ulModified = ul .+^ ulOffset
+
+  worldGrid :: Grid (TerrainType, Erasable Entity)
+  worldGrid = maybe (BlankT, ENothing) (cellTerrain &&& cellEntity) <$> g
+
+  offsetCoordsByArea :: Coords -> AreaDimensions -> Coords
+  offsetCoordsByArea x a =
+    x `addTuple` swap (asTuple a)
+
+  coords = locToCoords ulModified
+
+  arrayMaxBound =
+    both (subtract 1)
+      . unCoords
+      . offsetCoordsByArea coords
+      $ getGridDimensions g
+
+  arrayBoundsTuple = (unCoords coords, arrayMaxBound)
 
   worldArray :: Array (Int32, Int32) (TerrainType, Erasable Entity)
-  worldArray = listArray ((ulr, ulc), (ulr + rs - 1, ulc + cs - 1)) (concat worldGrid)
+  worldArray = listArray arrayBoundsTuple $ concat $ unGrid worldGrid
 
   dslWF, arrayWF :: Seed -> WorldFun TerrainType Entity
   dslWF = maybe mempty ((applyWhen offsetOrigin findGoodOrigin .) . runWorld) worldProg
-  arrayWF = const (worldFunFromArray worldArray)
+  arrayWF = const $ worldFunFromArray worldArray
 
   wf = dslWF <> arrayWF
 
   -- Get all the robots described in cells and set their locations appropriately
   robots :: SubworldName -> [IndexedTRobot]
   robots swName =
-    area
+    unGrid g
       & traversed Control.Lens.<.> traversed %@~ (,) -- add (r,c) indices
       & concat
       & concatMap
-        ( \((fromIntegral -> r, fromIntegral -> c), Cell _ _ robotList) ->
-            let robotWithLoc = trobotLocation ?~ Cosmic swName (coordsToLoc (Coords (ulr + r, ulc + c)))
-             in map (fmap robotWithLoc) robotList
+        ( \((fromIntegral -> r, fromIntegral -> c), maybeCell) ->
+            let robotWithLoc = trobotLocation ?~ Cosmic swName (coordsToLoc (coords `addTuple` (r, c)))
+             in map (fmap robotWithLoc) (maybe [] cellRobots maybeCell)
         )
 
 -- |

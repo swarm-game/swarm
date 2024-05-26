@@ -236,6 +236,7 @@ library swarm-scenario
     Swarm.Game.Scenario.Topography.Placement
     Swarm.Game.Scenario.Topography.Structure
     Swarm.Game.Scenario.Topography.Structure.Assembly
+    Swarm.Game.Scenario.Topography.Structure.Overlay
     Swarm.Game.Scenario.Topography.Structure.Recognition
     Swarm.Game.Scenario.Topography.Structure.Recognition.Log
     Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
@@ -799,6 +800,7 @@ test-suite swarm-unit
     TestLanguagePipeline
     TestNotification
     TestOrdering
+    TestOverlay
     TestParse
     TestPedagogy
     TestPretty
