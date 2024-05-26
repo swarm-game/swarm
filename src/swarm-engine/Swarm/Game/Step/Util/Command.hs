@@ -469,12 +469,14 @@ addSeedBot ::
   Has (State GameState) sig m =>
   Entity ->
   (Integer, Integer) ->
+  Integer ->
+  Integer ->
   Cosmic Location ->
   TimeSpec ->
   m ()
-addSeedBot e (minT, maxT) loc ts =
+addSeedBot e (minT, maxT) seedlingCount seedlingRadius loc ts =
   zoomRobots
-    . addTRobot (initMachine (seedProgram minT (maxT - minT) (e ^. entityName)) empty emptyStore)
+    . addTRobot (initMachine seedProg empty emptyStore)
     $ mkRobot
       Nothing
       "seed"
@@ -484,6 +486,7 @@ addSeedBot e (minT, maxT) loc ts =
       ( defaultEntityDisplay '.'
           & displayAttr .~ (e ^. entityDisplay . displayAttr)
           & displayPriority .~ 0
+          & childInheritance .~ Invisible
       )
       Nothing
       []
@@ -492,12 +495,36 @@ addSeedBot e (minT, maxT) loc ts =
       False
       emptyExceptions
       ts
+ where
+  seedProg =
+    seedProgram
+      minT
+      (maxT - minT)
+      seedlingCount
+      seedlingRadius
+      (e ^. entityName)
 
 -- | A system program for a "seed robot", to regrow a growable entity
 --   after it is harvested.
-seedProgram :: Integer -> Integer -> Text -> ProcessedTerm
-seedProgram minTime randTime thing =
+--
+-- NOTE: Seedling propagation delay (spreadable growth)
+-- re-uses the growth timing parameters.
+seedProgram ::
+  -- | min time
+  Integer ->
+  -- | rand time
+  Integer ->
+  -- | seedling count
+  Integer ->
+  -- | seedling radius
+  Integer ->
+  -- | entity to place
+  EntityName ->
+  ProcessedTerm
+seedProgram minTime randTime seedlingCount seedlingRadius thing =
   [tmQ|
+    def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+
     try {
       r <- random (1 + $int:randTime);
       wait (r + $int:minTime);
@@ -505,6 +532,36 @@ seedProgram minTime randTime thing =
       r <- random (1 + $int:randTime);
       wait (r + $int:minTime);
       place $str:thing;
+
+      doN $int:seedlingCount (
+        _robo <- build {
+          propagationDelay <- random (1 + $int:randTime);
+          wait (propagationDelay + $int:minTime);
+
+          totalDist <- random (1 + $int:seedlingRadius);
+          horizontalDist <- random (1 + totalDist);
+          let verticalDist = totalDist - horizontalDist in
+
+          shouldReverse <- random 2;
+          if (shouldReverse == 0) {
+            turn back;
+          } {};
+          stride horizontalDist;
+          turn left;
+          shouldReverse2 <- random 2;
+          if (shouldReverse2 == 0) {
+            turn back;
+          } {};
+          stride verticalDist;
+
+          create $str:thing;
+          try {
+            sow $str:thing;
+          } {};
+
+          selfdestruct
+        };
+      );
     } {};
     selfdestruct
   |]

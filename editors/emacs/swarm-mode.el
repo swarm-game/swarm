@@ -62,6 +62,7 @@
                "turn"
                "grab"
                "harvest"
+               "sow"
                "ignite"
                "place"
                "ping"

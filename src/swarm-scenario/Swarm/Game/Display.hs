@@ -15,6 +15,7 @@ module Swarm.Game.Display (
   Attribute (..),
   readAttribute,
   Display,
+  ChildInheritance (..),
 
   -- ** Fields
   defaultChar,
@@ -23,6 +24,7 @@ module Swarm.Game.Display (
   displayAttr,
   displayPriority,
   invisible,
+  childInheritance,
 
   -- ** Rendering
   displayChar,
@@ -75,6 +77,12 @@ instance ToJSON Attribute where
     AEntity -> String "entity"
     AWorld w -> String w
 
+data ChildInheritance
+  = Invisible
+  | Inherit
+  | DefaultDisplay
+  deriving (Eq, Ord, Show, Generic, Hashable)
+
 -- | A record explaining how to display an entity in the TUI.
 data Display = Display
   { _defaultChar :: Char
@@ -83,6 +91,7 @@ data Display = Display
   , _displayAttr :: Attribute
   , _displayPriority :: Priority
   , _invisible :: Bool
+  , _childInheritance :: ChildInheritance
   }
   deriving (Eq, Ord, Show, Generic, Hashable)
 
@@ -117,6 +126,9 @@ displayPriority :: Lens' Display Priority
 -- | Whether the entity is currently invisible.
 invisible :: Lens' Display Bool
 
+-- | For robots, whether children of this inherit the parent's display
+childInheritance :: Lens' Display ChildInheritance
+
 instance FromJSON Display where
   parseJSON v = runE (parseJSONE v) (defaultEntityDisplay ' ')
 
@@ -138,6 +150,7 @@ instance FromJSONE Display Display where
         <*> (v .:? "attr") .!= (defD ^. displayAttr)
         <*> v .:? "priority" .!= (defD ^. displayPriority)
         <*> v .:? "invisible" .!= (defD ^. invisible)
+        <*> pure Inherit
    where
     validateChar c =
       when (charWidth > 1)
@@ -192,6 +205,7 @@ defaultEntityDisplay c =
     , _displayAttr = AEntity
     , _displayPriority = 1
     , _invisible = False
+    , _childInheritance = Inherit
     }
 
 -- | Construct a default robot display for a given orientation, with
@@ -215,6 +229,7 @@ defaultRobotDisplay =
     , _displayAttr = ARobot
     , _displayPriority = 10
     , _invisible = False
+    , _childInheritance = Inherit
     }
 
 instance Monoid Display where

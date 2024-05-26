@@ -57,6 +57,11 @@
             "default": false,
             "type": "boolean",
             "description": "Whether the entity or robot should be invisible. Invisible entities and robots are not drawn, but can still be interacted with in otherwise normal ways. System robots are by default invisible."
+        },
+        "inheritable": {
+            "default": true,
+            "type": "boolean",
+            "description": "Whether robot children inherit this display."
         }
     }
 }
