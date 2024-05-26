@@ -3,6 +3,7 @@
 -- | High score records
 module TestScoring where
 
+import Control.Lens ((^.))
 import Data.Text.IO qualified as TIO
 import Data.Time.Calendar.OrdinalDate
 import Data.Time.LocalTime
@@ -11,7 +12,6 @@ import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Tick (TickNumber (..))
-import Swarm.Language.Module
 import Swarm.Language.Pipeline
 import Swarm.Language.Syntax
 import System.FilePath ((</>))
@@ -61,10 +61,10 @@ testHighScores =
 compareAstSize :: Int -> FilePath -> TestTree
 compareAstSize expectedSize path = testCase (unwords ["size of", path]) $ do
   contents <- TIO.readFile $ baseTestPath </> path
-  ProcessedTerm (Module stx _) _ _ <- case processTermEither contents of
+  pt <- case processTermEither contents of
     Right x -> return x
     Left y -> assertFailure (into @String y)
-  let actualSize = measureAstSize stx
+  let actualSize = measureAstSize (pt ^. processedSyntax)
   assertEqual "incorrect size" expectedSize actualSize
 
 betterReplTimeAfterCodeSizeRecord :: TestTree

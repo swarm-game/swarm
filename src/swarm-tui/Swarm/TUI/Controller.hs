@@ -95,7 +95,7 @@ import Swarm.Game.Step (finishGameTick, gameTick)
 import Swarm.Language.Capability (Capability (CGod, CMake), constCaps)
 import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
-import Swarm.Language.Module (Module (..))
+import Swarm.Language.Module (moduleSyntax)
 import Swarm.Language.Parser.Lex (reservedWords)
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm', processedSyntax)
 import Swarm.Language.Pipeline.QQ (tmQ)
@@ -351,9 +351,9 @@ handleMainEvent ev = do
         then -- ignore repeated keypresses
           continueWithoutRedraw
         else -- hide for two seconds
-        do
-          uiState . uiGameplay . uiHideRobotsUntil .= t + TimeSpec 2 0
-          invalidateCacheEntry WorldCache
+          do
+            uiState . uiGameplay . uiHideRobotsUntil .= t + TimeSpec 2 0
+            invalidateCacheEntry WorldCache
     -- debug focused robot
     MetaChar 'd' | isPaused && hasDebug -> do
       debug <- uiState . uiGameplay . uiShowDebug Lens.<%= not
@@ -1122,9 +1122,9 @@ runBaseTerm topCtx =
   -- The player typed something at the REPL and hit Enter; this
   -- function takes the resulting ProcessedTerm (if the REPL
   -- input is valid) and sets up the base robot to run it.
-  startBaseProgram t@(ProcessedTerm (Module tm _) reqs reqCtx) =
+  startBaseProgram t@(ProcessedTerm m reqs reqCtx) =
     -- Set the REPL status to Working
-    (gameState . gameControls . replStatus .~ REPLWorking (Typed Nothing (tm ^. sType) reqs))
+    (gameState . gameControls . replStatus .~ REPLWorking (Typed Nothing (m ^. moduleSyntax . sType) reqs))
       -- The `reqCtx` maps names of variables defined in the
       -- term (by `def` statements) to their requirements.
       -- E.g. if we had `def m = move end`, the reqCtx would

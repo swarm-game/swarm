@@ -290,7 +290,7 @@ initMachine t e s = initMachine' t e s []
 
 -- | Like 'initMachine', but also take an explicit starting continuation.
 initMachine' :: ProcessedTerm -> Env -> Store -> Cont -> CESK
-initMachine' (ProcessedTerm (Module t' ctx) _ reqCtx) e s k =
+initMachine' (ProcessedTerm (Module t' ctx _tydefs) _ reqCtx) e s k =
   case t' ^. sType of
     -- If the starting term has a command type...
     Forall _ (TyCmd _) ->
@@ -298,6 +298,7 @@ initMachine' (ProcessedTerm (Module t' ctx) _ reqCtx) e s k =
         -- ...but doesn't contain any definitions, just create a machine
         -- that will evaluate it and then execute it.
         Empty -> In t e s (FExec : k)
+        -- XXX do we also need to load tydefs?
         -- Or, if it does contain definitions, then load the resulting
         -- context after executing it.
         _ -> In t e s (FExec : FLoadEnv ctx reqCtx : k)

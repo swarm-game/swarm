@@ -8,17 +8,16 @@
 module TestLanguagePipeline where
 
 import Control.Arrow ((&&&))
-import Control.Lens (toListOf)
+import Control.Lens (toListOf, view)
 import Control.Lens.Plated (universe)
 import Data.Aeson (eitherDecode, encode)
 import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import Swarm.Language.Module (Module (..))
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ (tyQ)
-import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
+import Swarm.Language.Pipeline (processTerm, processedSyntax)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
@@ -338,13 +337,14 @@ testLanguagePipeline =
             "annotate 1 + 1"
             ( assertEqual
                 "type annotations"
-                (toListOf traverse (getSyntax [tmQ| 1 + 1 |]))
+                (toListOf traverse (view processedSyntax [tmQ| 1 + 1 |]))
                 [[tyQ| Int -> Int -> Int|], [tyQ|Int|], [tyQ|Int -> Int|], [tyQ|Int|], [tyQ|Int|]]
             )
         , testCase
             "get all annotated variable types"
             ( let s =
-                    getSyntax
+                    view
+                      processedSyntax
                       [tmQ| def f : (Int -> Int) -> Int -> Text = \g. \x. format (g x) end |]
 
                   isVar (TVar {}) = True
@@ -550,9 +550,6 @@ testLanguagePipeline =
     Right _
       | expect == "" -> pure ()
       | otherwise -> error "Unexpected success"
-
-  getSyntax :: ProcessedTerm -> Syntax' Polytype
-  getSyntax (ProcessedTerm (Module s _) _ _) = s
 
 -- | Check round tripping of term from and to text, then test ToJSON/FromJSON.
 roundTripTerm :: Text -> Assertion

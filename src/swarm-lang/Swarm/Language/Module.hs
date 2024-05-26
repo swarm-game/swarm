@@ -10,6 +10,7 @@ module Swarm.Language.Module (
   Module (..),
   moduleSyntax,
   moduleCtx,
+  moduleTydefs,
   TModule,
   UModule,
   trivMod,
@@ -31,8 +32,13 @@ import Swarm.Language.Types (Polytype, UPolytype, UType)
 --   inference on a top-level expression, which in particular can
 --   contain definitions ('Swarm.Language.Syntax.TDef').  A module
 --   contains the type-annotated AST of the expression itself, as well
---   as the context giving the types of any defined variables.
-data Module s t = Module {_moduleSyntax :: Syntax' s, _moduleCtx :: Ctx t}
+--   as a context which maps term variable names to their types, and
+--   another context which maps type synonym names to their definitions.
+data Module s t = Module
+  { _moduleSyntax :: Syntax' s
+  , _moduleCtx :: Ctx t
+  , _moduleTydefs :: Ctx Polytype
+  }
   deriving (Show, Eq, Functor, Data, Generic, FromJSON, ToJSON)
 
 makeLenses ''Module
@@ -51,4 +57,4 @@ type UModule = Module UType UPolytype
 
 -- | The trivial module for a given AST, with the empty context.
 trivMod :: Syntax' s -> Module s t
-trivMod t = Module t empty
+trivMod t = Module t empty empty

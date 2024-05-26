@@ -130,6 +130,7 @@ narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   TVar {} -> Nothing
   TRequire {} -> Nothing
   TRequireDevice {} -> Nothing
+  TTydef {} -> Nothing
   -- these should not show up in surface language
   TRef {} -> Nothing
   TRobot {} -> Nothing
@@ -188,6 +189,7 @@ explain trm = case trm ^. sTerm of
   TVar v -> pure $ typeSignature v ty ""
   SRcd {} -> literal "A record literal."
   SProj {} -> literal "A record projection."
+  TTydef {} -> literal "A type synonym definition."
   -- type ascription
   SAnnotate lhs typeAnn ->
     Node

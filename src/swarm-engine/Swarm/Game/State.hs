@@ -133,9 +133,8 @@ import Swarm.Game.World qualified as W
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Module (Module (Module))
-import Swarm.Language.Pipeline (ProcessedTerm (ProcessedTerm), processTermEither)
-import Swarm.Language.Syntax (SrcLoc (..), Syntax' (..), allConst)
+import Swarm.Language.Pipeline (ProcessedTerm, processTermEither, processedSyntax)
+import Swarm.Language.Syntax (SrcLoc (..), allConst, sLoc)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Log
@@ -167,9 +166,10 @@ parseCodeFile ::
   m CodeToRun
 parseCodeFile filepath = do
   contents <- sendIO $ TIO.readFile filepath
-  pt@(ProcessedTerm (Module (Syntax' srcLoc _ _ _) _) _ _) <-
-    either (throwError . CustomFailure) return (processTermEither contents)
-  let strippedText = stripSrc srcLoc contents
+  pt <- either (throwError . CustomFailure) return (processTermEither contents)
+
+  let srcLoc = pt ^. processedSyntax . sLoc
+      strippedText = stripSrc srcLoc contents
       programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
       sha1Hash = showDigest $ sha1 programBytestring
   return $ CodeToRun (PlayerAuthored filepath $ Sha1 sha1Hash) pt

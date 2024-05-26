@@ -128,4 +128,4 @@ pattern TAnnotate t pt = SAnnotate (STerm t) pt
 
 -- COMPLETE pragma tells GHC using this set of patterns is complete for Term
 
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TRequirements, TVar, TPair, TLam, TApp, TLet, TDef, TBind, TDelay, TRcd, TProj, TAnnotate #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TRequirements, TVar, TPair, TLam, TApp, TLet, TDef, TTydef, TBind, TDelay, TRcd, TProj, TAnnotate #-}

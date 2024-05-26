@@ -110,4 +110,4 @@ processParsedTerm' ctx capCtx t = do
   return $ ProcessedTerm (elaborateModule m) caps capCtx'
 
 elaborateModule :: TModule -> TModule
-elaborateModule (Module ast ctx) = Module (elaborate ast) ctx
+elaborateModule (Module ast ctx tydefs) = Module (elaborate ast) ctx tydefs

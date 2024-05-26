@@ -156,10 +156,11 @@ fromUModule ::
   ) =>
   UModule ->
   m TModule
-fromUModule (Module u uctx) =
+fromUModule (Module u uctx tydefctx) =
   Module
     <$> mapM (checkPredicative <=< (fmap fromU . generalize)) u
     <*> checkPredicative (fromU uctx)
+    <*> pure tydefctx
 
 finalizeUModule ::
   ( Has Unification sig m
@@ -337,7 +338,7 @@ instance (HasBindings u, Data u) => HasBindings (Syntax' u) where
   applyBindings (Syntax' l t cs u) = Syntax' l <$> applyBindings t <*> pure cs <*> applyBindings u
 
 instance HasBindings UModule where
-  applyBindings (Module u uctx) = Module <$> applyBindings u <*> applyBindings uctx
+  applyBindings (Module u uctx tydefs) = Module <$> applyBindings u <*> applyBindings uctx <*> pure tydefs
 
 -- ------------------------------------------------------------
 -- -- Converting between mono- and polytypes
@@ -589,7 +590,7 @@ inferModule s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
     _ <- unify (Just t1) (joined xTy (t1' ^. sType))
     pty <- generalize (t1' ^. sType)
-    return $ Module (Syntax' l (SDef r x Nothing t1') cs (UTyCmd UTyUnit)) (singleton (lvVar x) pty)
+    return $ Module (Syntax' l (SDef r x Nothing t1') cs (UTyCmd UTyUnit)) (singleton (lvVar x) pty) empty
 
   -- If a (poly)type signature has been provided, skolemize it and
   -- check the definition.
@@ -598,14 +599,17 @@ inferModule s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     let upty = toU pty
     uty <- skolemize upty
     t1' <- withBinding (lvVar x) upty $ check t1 uty
-    return $ Module (Syntax' l (SDef r x (Just pty) t1') cs (UTyCmd UTyUnit)) (singleton (lvVar x) upty)
+    return $ Module (Syntax' l (SDef r x (Just pty) t1') cs (UTyCmd UTyUnit)) (singleton (lvVar x) upty) empty
 
+  -- Simply record a type synonym definition in the context.
+  TTydef x pty ->
+    return $ Module (Syntax' l (TTydef x pty) cs (UTyCmd UTyUnit)) empty (singleton (lvVar x) pty)
   -- To handle a 'TBind', infer the types of both sides, combining the
   -- returned modules appropriately.  Have to be careful to use the
   -- correct context when checking the right-hand side in particular.
   SBind mx c1 c2 -> do
     -- First, infer the left side.
-    Module c1' ctx1 <- withFrame l TCBindL $ inferModule c1
+    Module c1' ctx1 tydefs1 <- withFrame l TCBindL $ inferModule c1
     a <- decomposeCmdTy c1 (Actual, c1' ^. sType)
 
     -- Note we generalize here, similar to how we generalize at let
@@ -631,8 +635,9 @@ inferModule s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     -- case the bound x should shadow the defined one; hence, we apply
     -- that binding /after/ (i.e. /within/) the application of @ctx1@.
     withBindings ctx1 $
+      -- XXX need to use tydefs1
       maybe id ((`withBinding` genA) . lvVar) mx $ do
-        Module c2' ctx2 <- withFrame l TCBindR $ inferModule c2
+        Module c2' ctx2 tydefs2 <- withFrame l TCBindR $ inferModule c2
 
         -- We don't actually need the result type since we're just
         -- going to return the entire type, but it's important to
@@ -650,6 +655,7 @@ inferModule s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
           Module
             (Syntax' l (SBind mx c1' c2') cs (c2' ^. sType))
             (ctx1 `Ctx.union` ctxX `Ctx.union` ctx2)
+            (tydefs1 `Ctx.union` tydefs2)
 
   -- In all other cases, there can no longer be any definitions in the
   -- term, so delegate to 'infer'.
@@ -1134,6 +1140,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   TRequireDevice {} -> return 0
   TRequire {} -> return 0
   SRequirements {} -> return 0
+  TTydef {} -> return 0
   -- Constants.
   TConst c
     -- Nested 'atomic' is not allowed.

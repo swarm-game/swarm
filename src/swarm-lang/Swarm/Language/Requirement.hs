@@ -144,6 +144,8 @@ requirements ctx tm = first (insert (ReqCap CPower)) $ case tm of
   TDef r x _ t ->
     let bodyReqs = (if r then insert (ReqCap CRecursion) else id) (requirements' ctx t)
      in (singletonCap CEnv, Ctx.singleton x bodyReqs)
+  -- Making a type synonym also requires CEnv.
+  TTydef {} -> (singletonCap CEnv, Ctx.empty)
   TBind _ t1 t2 ->
     -- First, see what the requirements are to execute the
     -- first command.  It may also define some names, so we get a
@@ -237,10 +239,6 @@ requirements' = go
     -- Everything else is straightforward.
     TPair t1 t2 -> insert (ReqCap CProd) $ go ctx t1 <> go ctx t2
     TDelay _ t -> go ctx t
-    -- This case should never happen if the term has been
-    -- typechecked; Def commands are only allowed at the top level,
-    -- so simply returning mempty is safe.
-    TDef {} -> mempty
     TRcd m -> insert (ReqCap CRecord) $ foldMap (go ctx . expandEq) (M.assocs m)
      where
       expandEq (x, Nothing) = TVar x
@@ -248,3 +246,8 @@ requirements' = go
     TProj t _ -> insert (ReqCap CRecord) $ go ctx t
     -- A type ascription doesn't change requirements
     TAnnotate t _ -> go ctx t
+    -- These cases should never happen if the term has been
+    -- typechecked; Def commands are only allowed at the top level,
+    -- so simply returning mempty is safe.
+    TDef {} -> mempty
+    TTydef {} -> mempty

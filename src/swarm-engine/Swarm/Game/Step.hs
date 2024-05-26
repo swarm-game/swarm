@@ -650,7 +650,8 @@ stepCESK cesk = case cesk of
   In tm@(TDef r x _ t) e s k -> withExceptions s k $ do
     hasCapabilityFor CEnv tm
     return $ Out (VDef r x t e) s k
-
+  -- Type definitions just turn into a no-op.
+  In (TTydef {}) e s k -> return $ In (TConst Noop) e s k
   -- Bind expressions don't evaluate: just package it up as a value
   -- until such time as it is to be executed.
   In (TBind mx t1 t2) e s k -> return $ Out (VBind mx t1 t2 e) s k

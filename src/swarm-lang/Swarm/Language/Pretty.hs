@@ -282,6 +282,7 @@ instance PrettyPrec (Term' ty) where
       [ prettyDefinition "def" x mty t1
       , "end"
       ]
+  prettyPrec _ (TTydef (LV _ x) pty) = prettyTydef x pty
   -- Special case for printing consecutive defs: don't worry about
   -- precedence, and print a blank line with no semicolon
   prettyPrec _ (SBind Nothing t1@(Syntax' _ (SDef {}) _ _) t2) =
@@ -318,6 +319,9 @@ prettyDefinition defName x mty t1 =
   defType' = maybe "" (\ty -> ":" <+> ppr ty) mty
   defEqLambdas = hsep ("=" : map prettyLambda defLambdaList)
   eqAndLambdaLine = if null defLambdaList then "=" else line <> defEqLambdas
+
+prettyTydef :: Var -> Polytype -> Doc ann
+prettyTydef _x _pty = "tydef" -- XXX to do
 
 prettyPrecApp :: Int -> Syntax' ty -> Syntax' ty -> Doc a
 prettyPrecApp p t1 t2 =
