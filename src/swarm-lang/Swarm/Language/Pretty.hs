@@ -122,6 +122,15 @@ data Wildcard = Wildcard
 instance PrettyPrec Wildcard where
   prettyPrec _ _ = "_"
 
+instance PrettyPrec TyCon where
+  prettyPrec _ = \case
+    TCBase b -> ppr b
+    TCCmd -> "Cmd"
+    TCDelay -> "Delay"
+    TCSum -> "Sum"
+    TCProd -> "Prod"
+    TCFun -> "Fun"
+
 -- | Split a function type chain, so that we can pretty print
 --   the type parameters aligned on each line when they don't fit.
 class UnchainableFun t where
@@ -132,7 +141,7 @@ instance UnchainableFun Type where
   unchainFun ty = pure ty
 
 instance UnchainableFun (Free TypeF ty) where
-  unchainFun (Free (TyFunF ty1 ty2)) = ty1 <| unchainFun ty2
+  unchainFun (Free (TyConF TCFun [ty1, ty2])) = ty1 <| unchainFun ty2
   unchainFun ty = pure ty
 
 instance (PrettyPrec (t (Fix t))) => PrettyPrec (Fix t) where
@@ -143,24 +152,28 @@ instance (PrettyPrec (t (Free t v)), PrettyPrec v) => PrettyPrec (Free t v) wher
   prettyPrec p (Pure v) = prettyPrec p v
 
 instance ((UnchainableFun t), (PrettyPrec t)) => PrettyPrec (TypeF t) where
-  prettyPrec _ (TyBaseF b) = ppr b
   prettyPrec _ (TyVarF v) = pretty v
-  prettyPrec p (TySumF ty1 ty2) =
+  prettyPrec _ (TyRcdF m) = brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
+  -- Special cases for type constructors with special syntax.
+  prettyPrec p (TyConF TCSum [ty1, ty2]) =
     pparens (p > 1) $
       prettyPrec 2 ty1 <+> "+" <+> prettyPrec 1 ty2
-  prettyPrec p (TyProdF ty1 ty2) =
+  prettyPrec p (TyConF TCProd [ty1, ty2]) =
     pparens (p > 2) $
       prettyPrec 3 ty1 <+> "*" <+> prettyPrec 2 ty2
-  prettyPrec p (TyCmdF ty) = pparens (p > 9) $ "Cmd" <+> prettyPrec 10 ty
-  prettyPrec _ (TyDelayF ty) = braces $ ppr ty
-  prettyPrec p (TyFunF ty1 ty2) =
+  prettyPrec _ (TyConF TCDelay [ty]) = braces $ ppr ty
+  prettyPrec p (TyConF TCFun [ty1, ty2]) =
     let (iniF, lastF) = unsnocNE $ ty1 <| unchainFun ty2
         funs = (prettyPrec 1 <$> iniF) <> [ppr lastF]
         inLine l r = l <+> "->" <+> r
         multiLine l r = l <+> "->" <> hardline <> r
      in pparens (p > 0) . align $
           flatAlt (concatWith multiLine funs) (concatWith inLine funs)
-  prettyPrec _ (TyRcdF m) = brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
+  -- Fallthrough cases for type constructor application.  Handles base
+  -- types, Cmd, user-defined types, or ill-kinded things like 'Int
+  -- Bool'.
+  prettyPrec _ (TyConF c []) = ppr c
+  prettyPrec p (TyConF c tys) = pparens (p > 9) $ ppr c <+> hsep (map (prettyPrec 10) tys)
 
 instance PrettyPrec Polytype where
   prettyPrec _ (Forall [] t) = ppr t
@@ -412,25 +425,32 @@ hasAnyUVars = ucata (const True) or
 -- | Check whether a type consists of a top-level type constructor
 --   immediately applied to unification variables.
 isTopLevelConstructor :: UType -> Maybe (TypeF ())
-isTopLevelConstructor (UTyCmd (Pure {})) = Just $ TyCmdF ()
-isTopLevelConstructor (UTyDelay (Pure {})) = Just $ TyDelayF ()
-isTopLevelConstructor (UTySum (Pure {}) (Pure {})) = Just $ TySumF () ()
-isTopLevelConstructor (UTyProd (Pure {}) (Pure {})) = Just $ TyProdF () ()
-isTopLevelConstructor (UTyFun (Pure {}) (Pure {})) = Just $ TyFunF () ()
+isTopLevelConstructor (Free (TyRcdF m))
+  | all isPure m = Just (TyRcdF M.empty)
+isTopLevelConstructor (UTyConApp c ts)
+  | all isPure ts = Just (TyConF c [])
 isTopLevelConstructor _ = Nothing
+
+isPure :: Free f a -> Bool
+isPure (Pure {}) = True
+isPure _ = False
 
 -- | Return an English noun phrase describing things with the given
 --   top-level type constructor.
 tyNounPhrase :: TypeF () -> Doc a
 tyNounPhrase = \case
-  TyBaseF b -> baseTyNounPhrase b
+  TyConF c _ -> tyConNounPhrase c
   TyVarF {} -> "a type variable"
-  TyCmdF {} -> "a command"
-  TyDelayF {} -> "a delayed expression"
-  TySumF {} -> "a sum"
-  TyProdF {} -> "a pair"
-  TyFunF {} -> "a function"
   TyRcdF {} -> "a record"
+
+tyConNounPhrase :: TyCon -> Doc a
+tyConNounPhrase = \case
+  TCBase b -> baseTyNounPhrase b
+  TCCmd -> "a command"
+  TCDelay -> "a delayed expression"
+  TCSum -> "a sum"
+  TCProd -> "a pair"
+  TCFun -> "a function"
 
 -- | Return an English noun phrase describing things with the given
 --   base type.

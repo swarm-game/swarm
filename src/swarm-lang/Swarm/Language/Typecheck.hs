@@ -467,75 +467,69 @@ data InvalidAtomicReason
 ------------------------------------------------------------
 -- Type decomposition
 
--- | Decompose a type that is supposed to be a delay type.  Also take
---   the term which is supposed to have that type, for use in error
+-- | Decompose a type that is supposed to be the application of a
+--   given type constructor to a single type argument. Also take the
+--   term which is supposed to have that type, for use in error
 --   messages.
-decomposeDelayTy ::
+decomposeTyConApp1 ::
   ( Has Unification sig m
   , Has (Throw ContextualTypeErr) sig m
   , Has (Reader TCStack) sig m
   ) =>
+  TyCon ->
   Syntax ->
   Sourced UType ->
   m UType
-decomposeDelayTy _ (_, UTyDelay a) = return a
-decomposeDelayTy t ty = do
+decomposeTyConApp1 c _ (_, UTyConApp c' [a])
+  | c == c' = return a
+decomposeTyConApp1 c t ty = do
   a <- fresh
-  _ <- unify (Just t) (mkJoin ty (UTyDelay a))
+  _ <- unify (Just t) (mkJoin ty (UTyConApp c [a]))
   return a
 
--- | Decompose a type that is supposed to be a command type. Also take
---   the term which is supposed to have that type, for use in error
---   messages.
-decomposeCmdTy ::
+decomposeCmdTy
+  , decomposeDelayTy ::
+    ( Has Unification sig m
+    , Has (Throw ContextualTypeErr) sig m
+    , Has (Reader TCStack) sig m
+    ) =>
+    Syntax ->
+    Sourced UType ->
+    m UType
+decomposeCmdTy = decomposeTyConApp1 TCCmd
+decomposeDelayTy = decomposeTyConApp1 TCDelay
+
+-- | Decompose a type that is supposed to be the application of a
+--   given type constructor to two type arguments.  Also take the term
+--   which is supposed to have that type, for use in error messages.
+decomposeTyConApp2 ::
   ( Has Unification sig m
   , Has (Throw ContextualTypeErr) sig m
   , Has (Reader TCStack) sig m
   ) =>
-  Syntax ->
-  Sourced UType ->
-  m UType
-decomposeCmdTy _ (_, UTyCmd a) = return a
-decomposeCmdTy t ty = do
-  a <- fresh
-  _ <- unify (Just t) (mkJoin ty (UTyCmd a))
-  return a
-
--- | Decompose a type that is supposed to be a function type. Also take
---   the term which is supposed to have that type, for use in error
---   messages.
-decomposeFunTy ::
-  ( Has Unification sig m
-  , Has (Throw ContextualTypeErr) sig m
-  , Has (Reader TCStack) sig m
-  ) =>
+  TyCon ->
   Syntax ->
   Sourced UType ->
   m (UType, UType)
-decomposeFunTy _ (_, UTyFun ty1 ty2) = return (ty1, ty2)
-decomposeFunTy t ty = do
-  ty1 <- fresh
-  ty2 <- fresh
-  _ <- unify (Just t) (mkJoin ty (UTyFun ty1 ty2))
-  return (ty1, ty2)
+decomposeTyConApp2 c _ (_, UTyConApp c' [ty1, ty2])
+  | c == c' = return (ty1, ty2)
+decomposeTyConApp2 c t ty = do
+  a1 <- fresh
+  a2 <- fresh
+  _ <- unify (Just t) (mkJoin ty (UTyConApp c [a1, a2]))
+  return (a1, a2)
 
--- | Decompose a type that is supposed to be a product type. Also take
---   the term which is supposed to have that type, for use in error
---   messages.
-decomposeProdTy ::
-  ( Has Unification sig m
-  , Has (Throw ContextualTypeErr) sig m
-  , Has (Reader TCStack) sig m
-  ) =>
-  Syntax ->
-  Sourced UType ->
-  m (UType, UType)
-decomposeProdTy _ (_, UTyProd ty1 ty2) = return (ty1, ty2)
-decomposeProdTy t ty = do
-  ty1 <- fresh
-  ty2 <- fresh
-  _ <- unify (Just t) (mkJoin ty (UTyProd ty1 ty2))
-  return (ty1, ty2)
+decomposeFunTy
+  , decomposeProdTy ::
+    ( Has Unification sig m
+    , Has (Throw ContextualTypeErr) sig m
+    , Has (Reader TCStack) sig m
+    ) =>
+    Syntax ->
+    Sourced UType ->
+    m (UType, UType)
+decomposeFunTy = decomposeTyConApp2 TCFun
+decomposeProdTy = decomposeTyConApp2 TCProd
 
 -- ------------------------------------------------------------
 -- -- Type inference / checking
