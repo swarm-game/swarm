@@ -13,6 +13,7 @@ module Swarm.Language.Types (
   BaseTy (..),
   baseTyName,
   TyCon (..),
+  Arity (..),
   tcArity,
   Var,
 

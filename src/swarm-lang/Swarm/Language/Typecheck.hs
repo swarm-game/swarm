@@ -47,6 +47,7 @@ module Swarm.Language.Typecheck (
 import Control.Arrow ((***))
 import Control.Carrier.Error.Either (ErrorC, runError)
 import Control.Carrier.Reader (ReaderC, runReader)
+import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Category ((>>>))
 import Control.Effect.Catch (Catch, catchError)
 import Control.Effect.Error (Error)
@@ -57,7 +58,7 @@ import Control.Lens.Indexed (itraverse)
 import Control.Monad (forM_, when, (<=<), (>=>))
 import Control.Monad.Free (Free (..))
 import Data.Data (Data, gmapM)
-import Data.Foldable (fold)
+import Data.Foldable (fold, traverse_)
 import Data.Functor.Identity
 import Data.Generics (mkM)
 import Data.Map (Map, (!))
@@ -71,6 +72,7 @@ import Swarm.Effect.Unify qualified as U
 import Swarm.Effect.Unify.Fast qualified as U
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
+import Swarm.Language.Kindcheck (KindError, checkKind, checkPolytypeKind)
 import Swarm.Language.Module
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Syntax
@@ -411,6 +413,21 @@ throwTypeErr l te = do
   stk <- ask @TCStack
   throwError $ mkTypeErr l stk te
 
+-- | Adapt some other error type to a 'ContextualTypeErr'.
+adaptToTypeErr ::
+  ( Has (Throw ContextualTypeErr) sig m
+  , Has (Reader TCStack) sig m
+  ) =>
+  SrcLoc ->
+  (e -> TypeErr) ->
+  ThrowC e m a ->
+  m a
+adaptToTypeErr l adapt m = do
+  res <- runThrow m
+  case res of
+    Left e -> throwTypeErr l (adapt e)
+    Right a -> return a
+
 -- | Errors that can occur during type checking.  The idea is that
 --   each error carries information that can be used to help explain
 --   what went wrong (though the amount of information carried can and
@@ -419,6 +436,8 @@ throwTypeErr l te = do
 data TypeErr
   = -- | An undefined variable was encountered.
     UnboundVar Var
+  | -- | A kind error was encountered.
+    KindErr KindError
   | -- | A Skolem variable escaped its local context.
     EscapedSkolem Var
   | -- | Occurs check failure, i.e. infinite type.
@@ -531,14 +550,24 @@ decomposeFunTy
 decomposeFunTy = decomposeTyConApp2 TCFun
 decomposeProdTy = decomposeTyConApp2 TCProd
 
--- ------------------------------------------------------------
--- -- Type inference / checking
+------------------------------------------------------------
+-- Type inference / checking
 
 -- | Top-level type inference function: given a context of definition
 --   types and a top-level term, either return a type error or its
 --   type as a 'TModule'.
 inferTop :: TCtx -> Syntax -> Either ContextualTypeErr TModule
 inferTop ctx = runTC ctx . inferModule
+
+-- Note that we choose to do kind checking inline as we go during
+-- typechecking.  This has pros and cons.  The benefit is that we get
+-- to piggyback on the existing source location tracking and
+-- typechecking stack, so we can generate better error messages.  The
+-- downside is that we have to be really careful not to miss any types
+-- along the way; there is no difference, at the Haskell type level,
+-- between ill- and well-kinded Swarm types, so we just have to make
+-- sure that we call checkKind on every type embedded in the term
+-- being checked.
 
 -- | Infer the signature of a top-level expression which might
 --   contain definitions.
@@ -565,6 +594,7 @@ inferModule s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- If a (poly)type signature has been provided, skolemize it and
   -- check the definition.
   SDef r x (Just pty) t1 -> withFrame l (TCDef (lvVar x)) $ do
+    adaptToTypeErr l KindErr $ checkPolytypeKind pty
     let upty = toU pty
     uty <- skolemize upty
     t1' <- withBinding (lvVar x) upty $ check t1 uty
@@ -673,6 +703,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- under an extended context and return the appropriate function
   -- type.
   SLam x (Just argTy) body -> do
+    adaptToTypeErr l KindErr $ checkKind argTy
     let uargTy = toU argTy
     body' <- withBinding (lvVar x) (Forall [] uargTy) $ infer body
     return $ Syntax' l (SLam x (Just argTy) body') cs (UTyFun uargTy (body' ^. sType))
@@ -751,6 +782,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- However, we must be careful to deal properly with polymorphic
   -- type annotations.
   SAnnotate c pty -> do
+    adaptToTypeErr l KindErr $ checkPolytypeKind pty
     let upty = toU pty
     -- Typecheck against skolemized polytype.
     uty <- skolemize upty
@@ -926,6 +958,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- To check a lambda, make sure the expected type is a function type.
   SLam x mxTy body -> do
     (argTy, resTy) <- decomposeFunTy s (Expected, expected)
+    traverse_ (adaptToTypeErr l KindErr . checkKind) mxTy
     case toU mxTy of
       Just xTy -> do
         res <- argTy =:= xTy
@@ -959,8 +992,10 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         -- we skip this check.
         when (c == Atomic) $ validAtomic at
         return $ Syntax' l (SApp atomic' at') cs (UTyCmd argTy)
+
   -- Checking the type of a let-expression.
   SLet r x mxTy t1 t2 -> do
+    traverse_ (adaptToTypeErr l KindErr . checkPolytypeKind) mxTy
     (upty, t1') <- case mxTy of
       -- No type annotation was provided for the let binding, so infer its type.
       Nothing -> do

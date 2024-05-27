@@ -29,11 +29,12 @@ import Prettyprinter.Render.Text qualified as RT
 import Swarm.Effect.Unify (UnificationError (..))
 import Swarm.Language.Capability
 import Swarm.Language.Context
+import Swarm.Language.Kindcheck (KindError (..))
 import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
-import Swarm.Util (showEnum, showLowT, unsnocNE)
+import Swarm.Util (showEnum, showLowT, unsnocNE, number)
 import Witch
 
 ------------------------------------------------------------
@@ -368,6 +369,7 @@ prettyTypeErr code (CTE l tcStack te) =
 instance PrettyPrec TypeErr where
   prettyPrec _ = \case
     UnificationErr ue -> ppr ue
+    KindErr ke -> ppr ke
     Mismatch Nothing (getJoin -> (ty1, ty2)) ->
       "Type mismatch: expected" <+> ppr ty1 <> ", but got" <+> ppr ty2
     Mismatch (Just t) (getJoin -> (ty1, ty2)) ->
@@ -406,6 +408,25 @@ instance PrettyPrec UnificationError where
       "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
     UnifyErr ty1 ty2 ->
       "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
+
+instance PrettyPrec Arity where
+  prettyPrec _ (Arity a) = pretty a
+
+instance PrettyPrec KindError where
+  prettyPrec _ (ArityMismatch c tys) = nest 2 . vsep $
+    [ "Kind error:"
+    , hsep
+      [ ppr c
+      , "requires"
+      , ppr (tcArity c)
+      , "type"
+      , pretty (number (getArity (tcArity c)) "argument" <> ",")
+      , "but was given"
+      , pretty (length tys)
+      ]
+    ]
+    ++
+    [ "in the type:" <+> ppr (TyConApp c tys) | not (null tys) ]
 
 -- | Given a type and its source, construct an appropriate description
 --   of it to go in a type mismatch error message.

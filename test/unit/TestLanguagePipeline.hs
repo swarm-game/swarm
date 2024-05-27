@@ -386,6 +386,100 @@ testLanguagePipeline =
             )
         ]
     , testGroup
+        "kind checking"
+        [ testCase
+            "Cmd with no arguments"
+            ( process
+                "def x : Cmd = move end"
+                ( T.init $
+                    T.unlines
+                      [ "1:1: Kind error:"
+                      , "  Cmd requires 1 type argument, but was given 0"
+                      , ""
+                      , "  - While checking the definition of x"
+                      ]
+                )
+            )
+        , testCase
+            "Cmd with too many arguments"
+            ( process
+                "def x : Cmd Int Unit = move end"
+                ( T.init $
+                    T.unlines
+                      [ "1:1: Kind error:"
+                      , "  Cmd requires 1 type argument, but was given 2"
+                      , "  in the type: Cmd Int Unit"
+                      , ""
+                      , "  - While checking the definition of x"
+                      ]
+                )
+            )
+        , testCase
+            "Base type applied to one argument"
+            ( process
+                "def isZero : Int Bool = \\n. n == 0 end"
+                ( T.init $
+                    T.unlines
+                      [ "1:1: Kind error:"
+                      , "  Int requires 0 type arguments, but was given 1"
+                      , "  in the type: Int Bool"
+                      , ""
+                      , "  - While checking the definition of isZero"
+                      ]
+                )
+            )
+        , testCase
+            "Base type applied to several arguments"
+            ( process
+                "def isZero : Int (Bool -> Bool) Text (Unit * Unit) = \\n. n == 0 end"
+                ( T.init $
+                    T.unlines
+                      [ "1:1: Kind error:"
+                      , "  Int requires 0 type arguments, but was given 3"
+                      , "  in the type: Int (Bool -> Bool) Text (Unit * Unit)"
+                      , ""
+                      , "  - While checking the definition of isZero"
+                      ]
+                )
+            )
+        , testCase
+            "Kind error in lambda type annotation"
+            ( process
+                "\\x : Int Int. x + 1"
+                ( T.init $
+                    T.unlines
+                      [ "1:1: Kind error:"
+                      , "  Int requires 0 type arguments, but was given 1"
+                      , "  in the type: Int Int"
+                      ]
+                )
+            )
+        , testCase
+            "Kind error in type annotation"
+            ( process
+                "(\\x. x) : Int Int"
+                ( T.init $
+                    T.unlines
+                      [ "1:1: Kind error:"
+                      , "  Int requires 0 type arguments, but was given 1"
+                      , "  in the type: Int Int"
+                      ]
+                )
+            )
+        , testCase
+            "Kind error in let expression"
+            ( process
+                "let x : Int Int = 3 in x + 5"
+                ( T.init $
+                    T.unlines
+                      [ "1:1: Kind error:"
+                      , "  Int requires 0 type arguments, but was given 1"
+                      , "  in the type: Int Int"
+                      ]
+                )
+            )
+        ]
+    , testGroup
         "typechecking errors"
         [ testCase
             "applying a pair"
