@@ -16,7 +16,7 @@ import Data.Tuple.Extra (dupe)
 import Swarm.Effect (runTimeIO)
 import Swarm.Game.CESK (emptyStore, initMachine)
 import Swarm.Game.Display (defaultRobotDisplay)
-import Swarm.Game.Failure (SystemFailure)
+import Swarm.Game.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, mkRobot)
 import Swarm.Game.Robot.Walk (emptyExceptions)
@@ -34,7 +34,6 @@ import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax
 import Swarm.Util (parens, showT)
-import Swarm.Util.Effect (simpleErrorHandle)
 import Swarm.Util.Erasable
 import Test.Tasty.Bench (Benchmark, bcompare, bench, bgroup, defaultMain, whnfAppIO)
 

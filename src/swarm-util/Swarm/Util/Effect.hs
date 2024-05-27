@@ -9,13 +9,11 @@ import Control.Carrier.Accum.FixedStrict
 import Control.Carrier.Error.Either (ErrorC (..))
 import Control.Carrier.Throw.Either (ThrowC (..), runThrow)
 import Control.Effect.Throw
-import Control.Monad ((<=<), (>=>))
+import Control.Monad ((>=>))
 import Control.Monad.Trans.Except (ExceptT)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
-import Swarm.Game.Failure (SystemFailure)
-import Swarm.Language.Pretty (prettyString)
 import Witherable
 
 -- | Transform a @Throw e1@ constraint into a @Throw e2@ constraint,
@@ -76,6 +74,3 @@ forMW ::
   (a -> m (Either w b)) ->
   m (t b)
 forMW = flip traverseW
-
-simpleErrorHandle :: ThrowC SystemFailure IO a -> IO a
-simpleErrorHandle = either (fail . prettyString) pure <=< runThrow
