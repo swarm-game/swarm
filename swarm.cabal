@@ -525,6 +525,7 @@ library swarm-util
     Data.BoolExpr.Simplify
     Swarm.Util
     Swarm.Util.Erasable
+    Swarm.Util.JSON
     Swarm.Util.Lens
     Swarm.Util.OccurrenceEncoder
     Swarm.Util.ReadableIORef
