@@ -17,7 +17,7 @@
 module Swarm.Game.Step.Path.Type where
 
 import Control.Lens
-import Data.Aeson (Options (..), SumEncoding (ObjectWithSingleField), ToJSON (..), defaultOptions, genericToJSON)
+import Data.Aeson (ToJSON (..), genericToJSON)
 import Data.IntMap.Strict (IntMap)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
@@ -28,6 +28,7 @@ import Swarm.Game.Location
 import Swarm.Game.Robot (RID)
 import Swarm.Game.Robot.Walk (WalkabilityContext)
 import Swarm.Game.Universe (SubworldName)
+import Swarm.Util.JSON (optionsObjectSingleField)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.RingBuffer
 
@@ -67,19 +68,13 @@ data CacheLogEntry = CacheLogEntry
   }
   deriving (Show, Eq, Generic, ToJSON)
 
-objectSingleFieldEncoding :: Options
-objectSingleFieldEncoding =
-  defaultOptions
-    { sumEncoding = ObjectWithSingleField
-    }
-
 data CacheRetrievalAttempt
   = Success
   | RecomputationRequired CacheRetreivalInapplicability
   deriving (Show, Eq, Generic)
 
 instance ToJSON CacheRetrievalAttempt where
-  toJSON = genericToJSON objectSingleFieldEncoding
+  toJSON = genericToJSON optionsObjectSingleField
 
 -- | Certain events can obligate the cache to be
 -- completely invalidated, or partially or fully preserved.
@@ -90,7 +85,7 @@ data CacheEvent
   deriving (Show, Eq, Generic)
 
 instance ToJSON CacheEvent where
-  toJSON = genericToJSON objectSingleFieldEncoding
+  toJSON = genericToJSON optionsObjectSingleField
 
 data DistanceLimitChange
   = LimitIncreased
@@ -113,7 +108,7 @@ data CacheRetreivalInapplicability
   deriving (Show, Eq, Generic)
 
 instance ToJSON CacheRetreivalInapplicability where
-  toJSON = genericToJSON objectSingleFieldEncoding
+  toJSON = genericToJSON optionsObjectSingleField
 
 -- | Reasons for cache being invalidated
 data InvalidationReason

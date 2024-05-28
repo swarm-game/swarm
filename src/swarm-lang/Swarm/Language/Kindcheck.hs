@@ -9,19 +9,21 @@ module Swarm.Language.Kindcheck (
 ) where
 
 import Control.Algebra (Has)
+import Control.Effect.Reader (Reader, ask)
 import Control.Effect.Throw (Throw, throwError)
 import Data.Fix (Fix (..))
-import Swarm.Language.Types (Poly (..), Polytype, TyCon, Type, TypeF (..), getArity, tcArity)
+import Swarm.Language.Types
 
 -- | Kind checking errors that can occur.  For now, the only possible
 --   error is an arity mismatch error.
 data KindError
-  = ArityMismatch TyCon [Type]
+  = ArityMismatch TyCon Int [Type]
+  | UndefinedTyCon TyCon Type
   deriving (Eq, Show)
 
 -- | Check that a polytype is well-kinded.
-checkPolytypeKind :: Has (Throw KindError) sig m => Polytype -> m ()
-checkPolytypeKind (Forall _ t) = checkKind t
+checkPolytypeKind :: (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) => Polytype -> m TydefInfo
+checkPolytypeKind pty@(Forall xs t) = TydefInfo pty (Arity $ length xs) <$ checkKind t
 
 -- | Check that a type is well-kinded. For now, we don't allow
 --   higher-kinded types, *i.e.* all kinds will be of the form @Type
@@ -32,9 +34,13 @@ checkPolytypeKind (Forall _ t) = checkKind t
 --   well want to generalize to arbitrary higher kinds (e.g. @(Type ->
 --   Type) -> Type@ etc.) which would require generalizing this
 --   checking code a bit.
-checkKind :: Has (Throw KindError) sig m => Type -> m ()
-checkKind (Fix (TyConF c tys)) = case compare (length tys) (getArity (tcArity c)) of
-  EQ -> mapM_ checkKind tys
-  _ -> throwError $ ArityMismatch c tys
+checkKind :: (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) => Type -> m ()
+checkKind ty@(Fix (TyConF c tys)) = do
+  tdCtx <- ask
+  case getArity <$> tcArity tdCtx c of
+    Nothing -> throwError $ UndefinedTyCon c ty
+    Just a -> case compare (length tys) a of
+      EQ -> mapM_ checkKind tys
+      _ -> throwError $ ArityMismatch c a tys
 checkKind (Fix (TyVarF _)) = return ()
 checkKind (Fix (TyRcdF m)) = mapM_ checkKind m

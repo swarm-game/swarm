@@ -34,6 +34,7 @@ module Swarm.Language.Parser.Lex (
   locTyName,
   identifier,
   tyVar,
+  tyName,
   tmVar,
   textLiteral,
   integer,
@@ -211,14 +212,14 @@ locIdentifier idTy = do
           failT ["reserved word", squote t, "cannot be used as variable name"]
       | otherwise -> return t
     SwarmLangLatest
-      | t `S.member` reservedWords || T.toLower t `S.member` reservedWords ->
-          failT ["Reserved word", squote t, "cannot be used as a variable name"]
       | IDTyVar <- idTy
       , T.toTitle t `S.member` reservedWords ->
           failT ["Reserved type name", squote t, "cannot be used as a type variable name; perhaps you meant", squote (T.toTitle t) <> "?"]
       | IDTyName <- idTy
-      , T.toTitle t `S.member` reservedWords ->
+      , t `S.member` reservedWords ->
           failT ["Reserved type name", squote t, "cannot be redefined."]
+      | t `S.member` reservedWords || T.toLower t `S.member` reservedWords ->
+          failT ["Reserved word", squote t, "cannot be used as a variable name"]
       | IDTyName <- idTy
       , isLower (T.head t) ->
           failT ["Type synonym names must start with an uppercase letter"]
@@ -247,6 +248,11 @@ identifier = fmap lvVar . locIdentifier
 --   name.
 tyVar :: Parser Var
 tyVar = identifier IDTyVar
+
+-- | Parse a (user-defined) type constructor name, which must start
+--   with an uppercase letter.
+tyName :: Parser Var
+tyName = identifier IDTyName
 
 -- | Parse a term variable, which can start in any case and just
 --   cannot be the same (case-insensitively) as a lowercase reserved

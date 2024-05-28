@@ -50,4 +50,6 @@ data UnificationError where
   Infinite :: IntVar -> UType -> UnificationError
   -- | Mismatch error between the given terms.
   UnifyErr :: TypeF UType -> TypeF UType -> UnificationError
+  -- | Encountered an undefined/unknown type constructor.
+  UndefinedUserType :: UType -> UnificationError
   deriving (Show)

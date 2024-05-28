@@ -95,7 +95,6 @@ import Swarm.Language.Context
 import Swarm.Language.Module
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
-import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.Language.Value as V
@@ -143,7 +142,7 @@ data Frame
     --   we should take the resulting 'Env' and add it to the robot's
     --   'Swarm.Game.Robot.robotEnv', along with adding this accompanying 'Ctx' and
     --   'ReqCtx' to the robot's 'Swarm.Game.Robot.robotCtx'.
-    FLoadEnv TCtx ReqCtx
+    FLoadEnv Contexts
   | -- | We were executing a definition; next we should take the resulting value
     --   and return a context binding the variable to the value.
     FDef Var
@@ -290,18 +289,17 @@ initMachine t e s = initMachine' t e s []
 
 -- | Like 'initMachine', but also take an explicit starting continuation.
 initMachine' :: ProcessedTerm -> Env -> Store -> Cont -> CESK
-initMachine' (ProcessedTerm (Module t' ctx _tydefs) _ reqCtx) e s k =
+initMachine' (ProcessedTerm (Module t' ctx tydefs) _ reqCtx) e s k =
   case t' ^. sType of
     -- If the starting term has a command type...
     Forall _ (TyCmd _) ->
-      case ctx of
+      case (ctx, tydefs) of
         -- ...but doesn't contain any definitions, just create a machine
         -- that will evaluate it and then execute it.
-        Empty -> In t e s (FExec : k)
-        -- XXX do we also need to load tydefs?
+        (Empty, Empty) -> In t e s (FExec : k)
         -- Or, if it does contain definitions, then load the resulting
         -- context after executing it.
-        _ -> In t e s (FExec : FLoadEnv ctx reqCtx : k)
+        _ -> In t e s (FExec : FLoadEnv (Contexts ctx reqCtx tydefs) : k)
     -- Otherwise, for a term with a non-command type, just
     -- create a machine to evaluate it.
     _ -> In t e s k
@@ -368,7 +366,7 @@ prettyFrame (FApp v) (p, inner) = (10, prettyPrec 10 (valueToTerm v) <+> pparens
 prettyFrame (FLet x t _) (_, inner) = (11, hsep ["let", pretty x, "=", inner, "in", ppr t])
 prettyFrame (FTry v) (p, inner) = (10, "try" <+> pparens (p < 11) inner <+> prettyPrec 11 (valueToTerm v))
 prettyFrame (FUnionEnv _) inner = prettyPrefix "∪·" inner
-prettyFrame (FLoadEnv _ _) inner = prettyPrefix "L·" inner
+prettyFrame (FLoadEnv {}) inner = prettyPrefix "L·" inner
 prettyFrame (FDef x) (_, inner) = (11, "def" <+> pretty x <+> "=" <+> inner <+> "end")
 prettyFrame FExec inner = prettyPrefix "E·" inner
 prettyFrame (FBind Nothing t _) (p, inner) = (0, pparens (p < 1) inner <+> ";" <+> ppr t)

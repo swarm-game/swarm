@@ -26,6 +26,7 @@ import Swarm.Language.Parser.Lex (
   reserved,
   reservedCS,
   symbol,
+  tyName,
   tyVar,
  )
 import Swarm.Language.Parser.Record (parseRecord)
@@ -102,3 +103,4 @@ parseTyCon = do
         SwarmLangLatest -> reservedCS
   choice (map (\b -> TCBase b <$ reservedCase (baseTyName b)) listEnums)
     <|> TCCmd <$ reservedCase "Cmd"
+    <|> TCUser <$> tyName
