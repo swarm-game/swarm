@@ -175,7 +175,9 @@ fixDefMissingSemis term =
   mkBind t1 t2 = Syntax ((t1 ^. sLoc) <> (t2 ^. sLoc)) $ SBind Nothing t1 t2
   nestedDefs term' acc = case term' of
     def@(Syntax _ SDef {}) -> def : acc
+    def@(Syntax _ TTydef {}) -> def : acc
     (Syntax _ (SApp nestedTerm def@(Syntax _ SDef {}))) -> nestedDefs nestedTerm (def : acc)
+    (Syntax _ (SApp nestedTerm def@(Syntax _ TTydef {}))) -> nestedDefs nestedTerm (def : acc)
     -- Otherwise returns an empty list to keep the term unchanged
     _ -> []
 

@@ -180,6 +180,23 @@ testPrettyConst =
                 ((TyInt :*: TyInt) :*: (TyInt :*: TyInt)) :->: TyCmd TyInt
             )
         ]
+    , testGroup
+        "tydef"
+        [ testCase "tydef alias" $
+            equalPretty "tydef X = Int end" $
+              TTydef (LV NoLoc "X") (Forall [] TyInt)
+        , testCase "tydef Maybe" $
+            equalPretty "tydef Maybe a = Unit + a end" $
+              TTydef (LV NoLoc "Maybe") (Forall ["a"] (TyUnit :+: TyVar "a"))
+        , testCase "tydef multi-arg" $
+            equalPretty "tydef Foo a b c d = Unit + ((a * b) + ((c -> d) * a)) end" $
+              TTydef
+                (LV NoLoc "Foo")
+                ( Forall
+                    ["a", "b", "c", "d"]
+                    (TyUnit :+: (TyVar "a" :*: TyVar "b") :+: ((TyVar "c" :->: TyVar "d") :*: TyVar "a"))
+                )
+        ]
     ]
  where
   equalPretty :: PrettyPrec a => String -> a -> Assertion

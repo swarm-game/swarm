@@ -9,6 +9,7 @@ import Data.Aeson
 import Data.Ord (Down (Down))
 import GHC.Generics (Generic)
 import Swarm.Util (maxOn)
+import Swarm.Util.JSON (optionsUntagged)
 
 -- | This is a subset of the "ScenarioStatus" type
 -- that excludes the "NotStarted" case.
@@ -17,17 +18,11 @@ data Progress
   | Completed
   deriving (Eq, Ord, Show, Read, Generic)
 
-untaggedJsonOptions :: Options
-untaggedJsonOptions =
-  defaultOptions
-    { sumEncoding = UntaggedValue
-    }
-
 instance FromJSON Progress where
-  parseJSON = genericParseJSON untaggedJsonOptions
+  parseJSON = genericParseJSON optionsUntagged
 
 instance ToJSON Progress where
-  toJSON = genericToJSON untaggedJsonOptions
+  toJSON = genericToJSON optionsUntagged
 
 data Metric a = Metric Progress a
   deriving (Eq, Ord, Show, Read, Generic, FromJSON, ToJSON)

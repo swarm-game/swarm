@@ -22,7 +22,7 @@ import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Swarm.Language.Context (Ctx, empty)
 import Swarm.Language.Syntax (Syntax')
-import Swarm.Language.Types (Polytype, UPolytype, UType)
+import Swarm.Language.Types (Polytype, TDCtx, UPolytype, UType)
 
 ------------------------------------------------------------
 -- Modules
@@ -37,7 +37,7 @@ import Swarm.Language.Types (Polytype, UPolytype, UType)
 data Module s t = Module
   { _moduleSyntax :: Syntax' s
   , _moduleCtx :: Ctx t
-  , _moduleTydefs :: Ctx Polytype
+  , _moduleTydefs :: TDCtx
   }
   deriving (Show, Eq, Functor, Data, Generic, FromJSON, ToJSON)
 

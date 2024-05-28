@@ -97,7 +97,7 @@ import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
 import Swarm.Language.Module (moduleSyntax)
 import Swarm.Language.Parser.Lex (reservedWords)
-import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm', processedSyntax)
+import Swarm.Language.Pipeline (Contexts (..), ProcessedTerm (..), processTerm', processedSyntax)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement qualified as R
@@ -351,9 +351,9 @@ handleMainEvent ev = do
         then -- ignore repeated keypresses
           continueWithoutRedraw
         else -- hide for two seconds
-          do
-            uiState . uiGameplay . uiHideRobotsUntil .= t + TimeSpec 2 0
-            invalidateCacheEntry WorldCache
+        do
+          uiState . uiGameplay . uiHideRobotsUntil .= t + TimeSpec 2 0
+          invalidateCacheEntry WorldCache
     -- debug focused robot
     MetaChar 'd' | isPaused && hasDebug -> do
       debug <- uiState . uiGameplay . uiShowDebug Lens.<%= not
@@ -1108,7 +1108,8 @@ runBaseCode :: (MonadState AppState m) => RobotContext -> T.Text -> m ()
 runBaseCode topCtx uinput = do
   uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLEntry uinput)
   uiState . uiGameplay . uiREPL %= resetREPL "" (CmdPrompt [])
-  case processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput of
+  let ctxs = Contexts (topCtx ^. defTypes) (topCtx ^. defReqs) (topCtx ^. tydefVals)
+  case processTerm' ctxs uinput of
     Right mt -> do
       uiState . uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True
       runBaseTerm topCtx mt
@@ -1299,7 +1300,8 @@ validateREPLForm s =
            in s & uiState . uiGameplay . uiREPL . replType .~ theType
     CmdPrompt _
       | otherwise ->
-          let result = processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput
+          let ctxs = Contexts (topCtx ^. defTypes) (topCtx ^. defReqs) (topCtx ^. tydefVals)
+              result = processTerm' ctxs uinput
               theType = case result of
                 Right (Just pt) -> Just (pt ^. processedSyntax . sType)
                 _ -> Nothing

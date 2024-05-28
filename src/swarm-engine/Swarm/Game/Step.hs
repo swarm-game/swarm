@@ -791,12 +791,17 @@ stepCESK cesk = case cesk of
   -- environment, store, and type and capability contexts into the robot's
   -- top-level environment and contexts, so they will be available to
   -- future programs.
-  Out (VResult v e) s (FLoadEnv ctx rctx : k) -> do
+  Out (VResult v e) s (FLoadEnv (Contexts ctx rctx tdctx) : k) -> do
     robotContext . defVals %= (`union` e)
     robotContext . defTypes %= (`union` ctx)
     robotContext . defReqs %= (`union` rctx)
+    robotContext . tydefVals %= (`union` tdctx)
     return $ Out v s k
-  Out v s (FLoadEnv {} : k) -> return $ Out v s k
+  Out v s (FLoadEnv (Contexts ctx rctx tdctx) : k) -> do
+    robotContext . defTypes %= (`union` ctx)
+    robotContext . defReqs %= (`union` rctx)
+    robotContext . tydefVals %= (`union` tdctx)
+    return $ Out v s k
   -- Any other type of value wiwth an FExec frame is an error (should
   -- never happen).
   Out _ s (FExec : _) -> badMachineState s "FExec frame with non-executable value"

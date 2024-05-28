@@ -8,7 +8,7 @@
 module Swarm.Language.Context where
 
 import Control.Algebra (Has)
-import Control.Effect.Reader (Reader, local)
+import Control.Effect.Reader (Reader, ask, local)
 import Control.Lens.Empty (AsEmpty (..))
 import Control.Lens.Prism (prism)
 import Data.Aeson (FromJSON, ToJSON)
@@ -52,6 +52,10 @@ singleton x t = Ctx (M.singleton x t)
 -- | Look up a variable in a context.
 lookup :: Var -> Ctx t -> Maybe t
 lookup x (Ctx c) = M.lookup x c
+
+-- | Look up a variable in a context in an ambient Reader effect.
+lookupR :: Has (Reader (Ctx t)) sig m => Var -> m (Maybe t)
+lookupR x = lookup x <$> ask
 
 -- | Delete a variable from a context.
 delete :: Var -> Ctx t -> Ctx t
