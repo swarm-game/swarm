@@ -1,0 +1,195 @@
+version: 1
+name: Sow command and spread
+seed: 0
+description: |
+  Demonstrate `sow` command and spreading growth with biome restrictions.
+
+  Illustrates different rates of spread for different crops.
+creative: false
+attrs:
+  - name: clay
+    fg: "#444444"
+    bg: "#c2b280"
+  - name: wheat
+    fg: "#444444"
+    bg: "#F5DEB3"
+  - name: barley
+    fg: "#444444"
+    bg: "#F6E9B1"
+  - name: maize
+    fg: "#444444"
+    bg: "#FBEC5D"
+  - name: mint
+    bg: "#3EB489"
+terrains:
+  - name: clay
+    attr: clay
+    description: |
+      Sandy soil
+objectives:
+  - goal:
+      - |
+        Observe `kudzu`{=entity} spread
+    condition: |
+      r <- robotnamed "kudzubot";
+      as r {
+        kCount <- resonate "kudzu" ((0, 0), (10, 4));
+        return $ kCount >= 45;
+      }
+solution: |
+  def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+
+  doN 6 move;
+  harvest;
+
+  doN 13 move;
+  turn right;
+  harvest;
+  doN 6 move;
+
+  sow "mint";
+  turn right;
+  doN 13 move;
+
+  sow "barley";
+  turn left;
+  doN 7 move;
+  sow "barley";
+  turn left;
+
+  doN 13 move;
+  sow "kudzu";
+  doN 6 move;
+robots:
+  - name: base
+    dir: east
+    devices:
+      - branch predictor
+      - calculator
+      - comparator
+      - dictionary
+      - harvester
+      - logger
+      - seed spreader
+      - treads
+    inventory:
+      - [2, barley]
+      - [1, kudzu]
+      - [1, mint]
+  - name: kudzubot
+    dir: east
+    system: true
+entities:
+  - name: wheat
+    display:
+      char: 'w'
+      attr: wheat
+    description:
+      - Grain
+    properties: [known, pickable, growable]
+    growth:
+      duration: [20, 30]
+      spread:
+        radius: 2
+        density: 0.3
+    biomes: [dirt, clay]
+  - name: barley
+    display:
+      char: 'b'
+      attr: barley
+    description:
+      - Grain
+    properties: [known, pickable, growable]
+    growth:
+      duration: [30, 50]
+      spread:
+        radius: 2
+        density: 0.3
+    biomes: [dirt, clay]
+  - name: corn
+    display:
+      char: 'c'
+      attr: maize
+    description:
+      - Animal feed
+    properties: [known, pickable, growable]
+    growth:
+      duration: [30, 60]
+      spread:
+        radius: 3
+        density: 0.1
+    biomes: [dirt, clay]
+  - name: kudzu
+    display:
+      char: 'k'
+      attr: plant
+    description:
+      - Dense, impassable plant.
+    properties: [known, unwalkable, growable]
+    growth:
+      duration: [30, 50]
+      spread:
+        radius: 1
+        density: 3
+    biomes: [dirt, clay]
+  - name: mint
+    display:
+      char: 'm'
+      attr: mint
+    description:
+      - Invasive
+    properties: [known, pickable, growable]
+    growth:
+      duration: [10, 50]
+      spread:
+        radius: 2
+        density: 0.6
+    biomes: [dirt, clay]
+  - name: seed spreader
+    display:
+      char: 's'
+    description:
+      - A handheld pouch with a manual crank to broadcast seeds evenly within a small radius
+    properties: [known]
+    capabilities: [sow]
+known: [flower]
+world:
+  default: [blank]
+  palette:
+    '.': [grass]
+    'B': [grass, null, base]
+    'd': [dirt]
+    'c': [clay]
+    'K': [clay, null, kudzubot]
+    'C': [dirt, corn]
+    'W': [clay, wheat]
+  upperleft: [-1, 1]
+  map: |
+    ..........................
+    .ddddddddddd..ccccccccccc.
+    .ddddddddddd..ccccccccccc.
+    BdddddCddddd..cccccWccccc.
+    .ddddddddddd..ccccccccccc.
+    .ddddddddddd..ccccccccccc.
+    ..........................
+    .ccccccccccc..ddddddddddd.
+    .ccccccccccc..ddddddddddd.
+    .ccccccccccc..ddddddddddd.
+    .ccccccccccc..ddddddddddd.
+    .ccccccccccc..ddddddddddd.
+    ..........................
+    ..........................
+    .ddddddddddd..ccccccccccc.
+    .ddddddddddd..ccccccccccc.
+    .ddddddddddd..ccccccccccc.
+    .ddddddddddd..ccccccccccc.
+    .ddddddddddd..Kcccccccccc.
+    ..........................
+    ..........................
+    ..........................
+    .ccccccccccc..ddddddddddd.
+    .ccccccccccc..ddddddddddd.
+    .ccccccccccc..ddddddddddd.
+    .ccccccccccc..ddddddddddd.
+    .ccccccccccc..ddddddddddd.
+    ..........................
