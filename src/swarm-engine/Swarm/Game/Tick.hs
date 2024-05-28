@@ -12,8 +12,8 @@ import Data.Aeson qualified as A
 import Data.Int (Int64)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
-import Swarm.Util.WindowedCounter (Offsettable (..))
 import Swarm.Util.JSON (optionsUnwrapUnary)
+import Swarm.Util.WindowedCounter (Offsettable (..))
 
 -- | A newtype representing a count of ticks (typically since the
 --   start of a game).
