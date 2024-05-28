@@ -54,8 +54,7 @@ import Swarm.Game.ScenarioInfo (
   scenarioPath,
  )
 import Swarm.Game.World.Load (loadWorlds)
-import Swarm.Language.Module (Module (..))
-import Swarm.Language.Pipeline (ProcessedTerm (..))
+import Swarm.Language.Pipeline (ProcessedTerm, processedSyntax)
 import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown (docToText, findCode)
 import Swarm.Language.Types (Polytype)
@@ -131,11 +130,11 @@ isConsidered c = isUserFunc c && c `S.notMember` ignoredCommands
 -- Also, the code from `run` is not parsed transitively yet.
 getCommands :: Maybe ProcessedTerm -> Map Const [SrcLoc]
 getCommands Nothing = mempty
-getCommands (Just (ProcessedTerm (Module stx _) _ _)) =
+getCommands (Just pt) =
   M.fromListWith (<>) $ mapMaybe isCommand nodelist
  where
   nodelist :: [Syntax' Polytype]
-  nodelist = universe stx
+  nodelist = universe (pt ^. processedSyntax)
   isCommand (Syntax' sloc t _ _) = case t of
     TConst c -> guard (isConsidered c) >> Just (c, [sloc])
     _ -> Nothing

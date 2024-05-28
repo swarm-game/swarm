@@ -1228,13 +1228,13 @@ execConst runChildProg c vs s k = do
 
         case mt of
           Nothing -> return $ mkReturn ()
-          Just t@(ProcessedTerm _ _ reqCtx) -> do
+          Just pt -> do
             -- Add the reqCtx from the ProcessedTerm to the current robot's defReqs.
             -- See #827 for an explanation of (1) why this is needed, (2) why
             -- it's slightly technically incorrect, and (3) why it is still way
             -- better than what we had before.
-            robotContext . defReqs <>= reqCtx
-            return $ initMachine' t empty s k
+            robotContext . defReqs <>= (pt ^. processedReqCtx)
+            return $ initMachine' pt empty s k
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k
