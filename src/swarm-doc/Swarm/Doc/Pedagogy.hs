@@ -31,7 +31,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Constant
-import Swarm.Game.Failure (SystemFailure)
+import Swarm.Game.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.Land
 import Swarm.Game.Scenario (
   Scenario,
@@ -58,7 +58,7 @@ import Swarm.Language.Pipeline (ProcessedTerm, processedSyntax)
 import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown (docToText, findCode)
 import Swarm.Language.Types (Polytype)
-import Swarm.Util.Effect (ignoreWarnings, simpleErrorHandle)
+import Swarm.Util.Effect (ignoreWarnings)
 
 -- * Constants
 

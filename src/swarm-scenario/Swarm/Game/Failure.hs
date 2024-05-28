@@ -10,6 +10,7 @@
 -- to create common infrastructure for logging.
 module Swarm.Game.Failure (
   SystemFailure (..),
+  simpleErrorHandle,
   AssetData (..),
   Asset (..),
   Entry (..),
@@ -17,6 +18,8 @@ module Swarm.Game.Failure (
   OrderFileWarning (..),
 ) where
 
+import Control.Carrier.Throw.Either (ThrowC (..), runThrow)
+import Control.Monad ((<=<))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
@@ -78,6 +81,12 @@ data SystemFailure
   | OrderFileWarning FilePath OrderFileWarning
   | CustomFailure Text
   deriving (Show)
+
+------------------------------------------------------------
+-- Basic error handling
+
+simpleErrorHandle :: ThrowC SystemFailure IO a -> IO a
+simpleErrorHandle = either (fail . prettyString) pure <=< runThrow
 
 ------------------------------------------------------------
 -- Pretty-printing

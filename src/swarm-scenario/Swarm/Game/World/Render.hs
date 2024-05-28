@@ -19,7 +19,7 @@ import Data.Vector qualified as V
 import Linear (V2 (..))
 import Swarm.Game.Display (defaultChar)
 import Swarm.Game.Entity.Cosmetic
-import Swarm.Game.Failure (SystemFailure)
+import Swarm.Game.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Scenario
@@ -35,7 +35,6 @@ import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Pretty (prettyString)
 import Swarm.Util (surfaceEmpty)
 import Swarm.Util.Content
-import Swarm.Util.Effect (simpleErrorHandle)
 import Swarm.Util.Erasable (erasableToMaybe)
 import System.IO (hPutStrLn, stderr)
 
