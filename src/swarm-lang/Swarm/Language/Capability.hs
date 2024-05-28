@@ -62,6 +62,8 @@ data Capability
     CGrab
   | -- | Execute the 'Harvest' command
     CHarvest
+  | -- | Execute the 'Sow' command
+    CSow
   | -- | Execute the 'Ignite' command
     CIgnite
   | -- | Execute the 'Place' command
@@ -239,6 +241,7 @@ constCaps = \case
   Turn -> Just CTurn
   Grab -> Just CGrab
   Harvest -> Just CHarvest
+  Sow -> Just CSow
   Ignite -> Just CIgnite
   Place -> Just CPlace
   Ping -> Just CPing

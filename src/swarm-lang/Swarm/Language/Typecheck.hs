@@ -792,6 +792,7 @@ inferConst c = case c of
   Turn -> [tyQ| Dir -> Cmd Unit |]
   Grab -> [tyQ| Cmd Text |]
   Harvest -> [tyQ| Cmd Text |]
+  Sow -> [tyQ| Text -> Cmd Unit |]
   Ignite -> [tyQ| Dir -> Cmd Unit |]
   Place -> [tyQ| Text -> Cmd Unit |]
   Ping -> [tyQ| Actor -> Cmd (Unit + (Int * Int)) |]

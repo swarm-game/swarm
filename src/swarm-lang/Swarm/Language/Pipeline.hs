@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -9,7 +10,14 @@
 -- text representing a Swarm program into something useful, this is
 -- probably the module you want.
 module Swarm.Language.Pipeline (
+  -- * ProcessedTerm
   ProcessedTerm (..),
+  processedModule,
+  processedSyntax,
+  processedRequirements,
+  processedReqCtx,
+
+  -- * Pipeline functions for producing ProcessedTerm
   processTerm,
   processParsedTerm,
   processTerm',
@@ -17,7 +25,7 @@ module Swarm.Language.Pipeline (
   processTermEither,
 ) where
 
-import Control.Lens ((^.))
+import Control.Lens (Lens', makeLenses, view, (^.))
 import Data.Bifunctor (first)
 import Data.Data (Data)
 import Data.Text (Text)
@@ -46,8 +54,19 @@ import Witch (into)
 --
 --   * The requirements context for any definitions embedded in the
 --     term ('ReqCtx')
-data ProcessedTerm = ProcessedTerm TModule Requirements ReqCtx
+data ProcessedTerm = ProcessedTerm
+  { _processedModule :: TModule
+  , _processedRequirements :: Requirements
+  , _processedReqCtx :: ReqCtx
+  }
   deriving (Data, Show, Eq, Generic)
+
+makeLenses ''ProcessedTerm
+
+-- | A convenient lens directly targeting the AST stored in a
+--   ProcessedTerm.
+processedSyntax :: Lens' ProcessedTerm (Syntax' Polytype)
+processedSyntax = processedModule . moduleSyntax
 
 processTermEither :: Text -> Either Text ProcessedTerm
 processTermEither t = case processTerm t of
@@ -59,7 +78,7 @@ instance FromJSON ProcessedTerm where
   parseJSON = withText "Term" $ either (fail . into @String) return . processTermEither
 
 instance ToJSON ProcessedTerm where
-  toJSON (ProcessedTerm t _ _) = String $ prettyText (moduleAST t)
+  toJSON = String . prettyText . view processedSyntax
 
 -- | Given a 'Text' value representing a Swarm program,
 --

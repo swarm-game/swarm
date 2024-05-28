@@ -34,8 +34,7 @@ import Swarm.Game.State.Runtime (initGameStateConfig, initScenarioInputs)
 import Swarm.Game.State.Substate (initState, seed)
 import Swarm.Game.Step.Validate (playUntilWin)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Module (Module (..))
-import Swarm.Language.Pipeline (ProcessedTerm (..), processTermEither)
+import Swarm.Language.Pipeline
 import Swarm.Util.Yaml
 import Swarm.Web.Tournament.Database.Query
 import Swarm.Web.Tournament.Type
@@ -213,12 +212,11 @@ verifySolution (SolutionTimeout timeoutSeconds) sol gs = do
       (gs ^. randomness . seed)
       codeMetrics
  where
-  ProcessedTerm (Module s _) _ reqCtx = sol
-  codeMetrics = codeMetricsFromSyntax s
+  codeMetrics = codeMetricsFromSyntax (sol ^. processedSyntax)
   gs' =
     gs
       -- See #827 for an explanation of why it's important to add to
       -- the robotContext defReqs here (and also why this will,
       -- hopefully, eventually, go away).
-      & baseRobot . robotContext . defReqs <>~ reqCtx
+      & baseRobot . robotContext . defReqs <>~ (sol ^. processedReqCtx)
       & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore

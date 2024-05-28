@@ -18,7 +18,9 @@ module Swarm.Game.Entity (
   EntityName,
   EntityProperty (..),
   GrowthTime (..),
-  defaultGrowthTime,
+  GrowthSpread (..),
+  Growth (..),
+  defaultGrowth,
   Combustibility (..),
   defaultCombustibility,
 
@@ -88,6 +90,7 @@ module Swarm.Game.Entity (
 ) where
 
 import Control.Algebra (Has)
+import Control.Applicative ((<|>))
 import Control.Arrow ((&&&))
 import Control.Carrier.Throw.Either (liftEither)
 import Control.Effect.Lift (Lift, sendIO)
@@ -176,6 +179,42 @@ instance FromJSON EntityProperty where
       Just c -> return c
       Nothing -> failT ["Unknown entity property", t]
 
+data GrowthSpread = GrowthSpread
+  { spreadRadius :: Int
+  -- ^ in terms of manhattan distance
+  , spreadDensity :: Float
+  -- ^ average number of tiles within the
+  -- radius that will be seeded per
+  -- growth cycle
+  }
+  deriving (Eq, Ord, Show, Read, Generic, Hashable, ToJSON)
+
+instance FromJSON GrowthSpread where
+  parseJSON = withObject "Growth" $ \v ->
+    GrowthSpread
+      <$> v .: "radius"
+      <*> v .: "density"
+
+data Growth = Growth
+  { maturesTo :: Maybe EntityName
+  -- ^ Entity this turns into after growth is complete,
+  -- if something different than self
+  , growthSpread :: Maybe GrowthSpread
+  , growthTime :: GrowthTime
+  }
+  deriving (Eq, Ord, Show, Read, Generic, Hashable, ToJSON)
+
+instance FromJSON Growth where
+  parseJSON x =
+    (Growth Nothing Nothing <$> parseJSON x)
+      <|> parseFullGrowth x
+   where
+    parseFullGrowth = withObject "Growth" $ \v ->
+      Growth
+        <$> v .:? "mature"
+        <*> v .:? "spread"
+        <*> v .: "duration"
+
 -- | How long an entity takes to regrow.  This represents the minimum
 --   and maximum amount of time taken by one growth stage (there are
 --   two stages).  The actual time for each stage will be chosen
@@ -187,6 +226,9 @@ newtype GrowthTime = GrowthTime (Integer, Integer)
 --   growth time specification.
 defaultGrowthTime :: GrowthTime
 defaultGrowthTime = GrowthTime (100, 200)
+
+defaultGrowth :: Growth
+defaultGrowth = Growth Nothing Nothing defaultGrowthTime
 
 -- | Properties of combustion.
 data Combustibility = Combustibility
@@ -273,7 +315,7 @@ data Entity = Entity
   , _entityOrientation :: Maybe Heading
   -- ^ The entity's orientation (if it has one).  For example, when
   --   a robot moves, it moves in the direction of its orientation.
-  , _entityGrowth :: Maybe GrowthTime
+  , _entityGrowth :: Maybe Growth
   -- ^ If this entity grows, how long does it take?
   , _entityCombustion :: Maybe Combustibility
   -- ^ If this entity is combustible, how spreadable is it?
@@ -602,7 +644,7 @@ entityOrientation :: Lens' Entity (Maybe Heading)
 entityOrientation = hashedLens _entityOrientation (\e x -> e {_entityOrientation = x})
 
 -- | How long this entity takes to grow, if it regrows.
-entityGrowth :: Lens' Entity (Maybe GrowthTime)
+entityGrowth :: Lens' Entity (Maybe Growth)
 entityGrowth = hashedLens _entityGrowth (\e x -> e {_entityGrowth = x})
 
 -- | Susceptibility to and duration of combustion
