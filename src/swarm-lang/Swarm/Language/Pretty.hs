@@ -34,7 +34,7 @@ import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
-import Swarm.Util (showEnum, showLowT, unsnocNE, number)
+import Swarm.Util (number, showEnum, showLowT, unsnocNE)
 import Witch
 
 ------------------------------------------------------------
@@ -413,20 +413,20 @@ instance PrettyPrec Arity where
   prettyPrec _ (Arity a) = pretty a
 
 instance PrettyPrec KindError where
-  prettyPrec _ (ArityMismatch c tys) = nest 2 . vsep $
-    [ "Kind error:"
-    , hsep
-      [ ppr c
-      , "requires"
-      , ppr (tcArity c)
-      , "type"
-      , pretty (number (getArity (tcArity c)) "argument" <> ",")
-      , "but was given"
-      , pretty (length tys)
+  prettyPrec _ (ArityMismatch c tys) =
+    nest 2 . vsep $
+      [ "Kind error:"
+      , hsep
+          [ ppr c
+          , "requires"
+          , ppr (tcArity c)
+          , "type"
+          , pretty (number (getArity (tcArity c)) "argument" <> ",")
+          , "but was given"
+          , pretty (length tys)
+          ]
       ]
-    ]
-    ++
-    [ "in the type:" <+> ppr (TyConApp c tys) | not (null tys) ]
+        ++ ["in the type:" <+> ppr (TyConApp c tys) | not (null tys)]
 
 -- | Given a type and its source, construct an appropriate description
 --   of it to go in a type mismatch error message.
