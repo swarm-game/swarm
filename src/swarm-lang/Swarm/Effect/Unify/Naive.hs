@@ -21,6 +21,7 @@ import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Category ((>>>))
 import Control.Effect.State (get, gets, modify)
 import Control.Effect.Throw (Throw, throwError)
+import Control.Monad (zipWithM)
 import Control.Monad.Free
 import Control.Monad.Trans (MonadIO)
 import Data.Function (on)
@@ -147,37 +148,18 @@ unifyF ::
   TypeF UType ->
   m (Subst IntVar UType)
 unifyF t1 t2 = case (t1, t2) of
-  (TyBaseF b1, TyBaseF b2) -> case b1 == b2 of
-    True -> return idS
+  (TyConF c1 ts1, TyConF c2 ts2) -> case c1 == c2 of
+    True -> compose <$> zipWithM unify ts1 ts2
     False -> unifyErr
-  (TyBaseF {}, _) -> unifyErr
+  (TyConF {}, _) -> unifyErr
   (TyVarF v1, TyVarF v2) -> case v1 == v2 of
     True -> return idS
     False -> unifyErr
   (TyVarF {}, _) -> unifyErr
-  (TySumF t11 t12, TySumF t21 t22) -> do
-    s1 <- unify t11 t21
-    s2 <- unify t12 t22
-    return $ s1 @@ s2
-  (TySumF {}, _) -> unifyErr
-  (TyProdF t11 t12, TyProdF t21 t22) -> do
-    s1 <- unify t11 t21
-    s2 <- unify t12 t22
-    return $ s1 @@ s2
-  (TyProdF {}, _) -> unifyErr
   (TyRcdF m1, TyRcdF m2) ->
     case ((==) `on` M.keysSet) m1 m2 of
       False -> unifyErr
       _ -> (fmap compose . sequence) (M.merge M.dropMissing M.dropMissing (M.zipWithMatched (const unify)) m1 m2)
   (TyRcdF {}, _) -> unifyErr
-  (TyCmdF c1, TyCmdF c2) -> unify c1 c2
-  (TyCmdF {}, _) -> unifyErr
-  (TyDelayF c1, TyDelayF c2) -> unify c1 c2
-  (TyDelayF {}, _) -> unifyErr
-  (TyFunF t11 t12, TyFunF t21 t22) -> do
-    s1 <- unify t11 t21
-    s2 <- unify t12 t22
-    return $ s1 @@ s2
-  (TyFunF {}, _) -> unifyErr
  where
   unifyErr = throwError $ UnifyErr t1 t2
