@@ -44,6 +44,8 @@ data RobotLogSource
     Logged
   | -- | Produced as the result of an error.
     RobotError
+  | -- | Produced as a status message from a command.
+    CmdStatus
   deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
 -- | Source of a log entry.
