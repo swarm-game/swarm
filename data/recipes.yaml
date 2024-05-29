@@ -626,6 +626,13 @@
     - [1, furnace]
 - in:
     - [1, glass]
+    - [1, mithril]
+  out:
+    - [1, lens]
+  required:
+    - [1, drill]
+- in:
+    - [1, glass]
     - [8, copper wire]
   out:
     - [1, solar panel]
@@ -697,6 +704,12 @@
 #########################################
 ##                 MISC                ##
 #########################################
+- in:
+    - [1, lens]
+    - [1, string]
+    - [10, curry]
+  out:
+    - [1, detonator]
 - in:
     - [1, water]
     - [1, silicon]

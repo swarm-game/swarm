@@ -498,6 +498,13 @@
   description:
     - A pane of a brittle, clear substance, made from melting sand in a furnace.
   properties: [pickable]
+- name: lens
+  display:
+    attr: entity
+    char: 'O'
+  description:
+    - A polished, rounded piece of glass, capable of focusing rays of light.
+  properties: [pickable]
 - name: LaTeX
   display:
     attr: flower
