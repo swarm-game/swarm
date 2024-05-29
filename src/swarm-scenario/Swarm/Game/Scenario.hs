@@ -69,7 +69,7 @@ import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw
 import Control.Lens hiding (from, (.=), (<.>))
-import Control.Monad (filterM, unless, (<=<))
+import Control.Monad (filterM, forM_, unless, (<=<))
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
@@ -89,7 +89,7 @@ import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
-import Swarm.Game.Robot (TRobot)
+import Swarm.Game.Robot (TRobot, trobotLocation, trobotName)
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
@@ -112,7 +112,7 @@ import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document)
-import Swarm.Util (binTuples, failT)
+import Swarm.Util (binTuples, commaList, failT, quote)
 import Swarm.Util.Effect (ignoreWarnings, throwToMaybe, withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
@@ -351,6 +351,18 @@ instance FromJSONE ScenarioInputs Scenario where
           [ "Subworld names are not unique:"
           , T.intercalate ", " $ map renderWorldName dupedNames
           ]
+
+      -- Validate robot locations
+      forM_ rs $ \r -> forM_ (r ^. trobotLocation) $ \rLoc ->
+        unless ((rLoc ^. subworld) `M.member` worldsByName)
+          . failT
+          $ [ "Robot"
+            , quote $ r ^. trobotName
+            , "specifies location in nonexistent subworld"
+            , renderQuotedWorldName (rLoc ^. subworld) <> "."
+            , "Valid subworlds are:"
+            , commaList $ map renderQuotedWorldName $ M.keys worldsByName
+            ]
 
       let mergedWaypoints =
             M.fromList $
