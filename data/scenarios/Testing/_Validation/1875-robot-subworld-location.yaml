@@ -1,0 +1,16 @@
+version: 1
+name: Robot location in nonexistent named subworld
+description: |
+  Robot specifies an explicit "planar" location, which uses
+  the "default" subworld name. However, since the root subworld
+  has been given a name, we object that the subworld specified by
+  the robot doesn't exist.
+robots:
+  - name: base
+    loc: [0, 0]
+world:
+  name: mySubworld
+  palette:
+    '.': [grass]
+  map: |-
+    .
