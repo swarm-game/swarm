@@ -156,19 +156,20 @@ instance ((UnchainableFun t), (PrettyPrec t)) => PrettyPrec (TypeF t) where
   prettyPrec _ (TyVarF v) = pretty v
   prettyPrec _ (TyRcdF m) = brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
   -- Special cases for type constructors with special syntax.
+  -- Always use parentheses around sum and product types, see #1625
   prettyPrec p (TyConF TCSum [ty1, ty2]) =
-    pparens (p > 1) $
-      prettyPrec 2 ty1 <+> "+" <+> prettyPrec 1 ty2
+    pparens (p > 0) $
+      prettyPrec 2 ty1 <+> "+" <+> prettyPrec 2 ty2
   prettyPrec p (TyConF TCProd [ty1, ty2]) =
-    pparens (p > 2) $
-      prettyPrec 3 ty1 <+> "*" <+> prettyPrec 2 ty2
+    pparens (p > 0) $
+      prettyPrec 2 ty1 <+> "*" <+> prettyPrec 2 ty2
   prettyPrec _ (TyConF TCDelay [ty]) = braces $ ppr ty
   prettyPrec p (TyConF TCFun [ty1, ty2]) =
     let (iniF, lastF) = unsnocNE $ ty1 <| unchainFun ty2
-        funs = (prettyPrec 1 <$> iniF) <> [ppr lastF]
+        funs = (prettyPrec 2 <$> iniF) <> [prettyPrec 1 lastF]
         inLine l r = l <+> "->" <+> r
         multiLine l r = l <+> "->" <> hardline <> r
-     in pparens (p > 0) . align $
+     in pparens (p > 1) . align $
           flatAlt (concatWith multiLine funs) (concatWith inLine funs)
   -- Fallthrough cases for type constructor application.  Handles base
   -- types, Cmd, user-defined types, or ill-kinded things like 'Int

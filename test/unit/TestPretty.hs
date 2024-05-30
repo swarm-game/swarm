@@ -11,6 +11,7 @@ import Swarm.Language.Syntax hiding (mkOp)
 import Swarm.Language.Types
 import Test.Tasty
 import Test.Tasty.HUnit
+import Witch (into)
 
 testPrettyConst :: TestTree
 testPrettyConst =
@@ -87,10 +88,6 @@ testPrettyConst =
             TPair (TInt 1) (TPair (TInt 2) (TInt 3))
         )
     , testCase
-        "Void type"
-        ( assertEqual "" "Void" . show $ ppr TyVoid
-        )
-    , testCase
         "type ascription"
         ( equalPretty "1 : Int" $
             TAnnotate (TInt 1) (Forall [] TyInt)
@@ -107,7 +104,83 @@ testPrettyConst =
                   :$: STerm (TLam "y" Nothing (mkOp' Mul (TVar "y") (TInt 2)))
               )
         )
+    , testGroup
+        "types"
+        [ testCase
+            "Void type"
+            ( equalPretty "Void" TyVoid
+            )
+        , testCase
+            "Unit type"
+            ( equalPretty "Unit" TyUnit
+            )
+        , testCase
+            "Function type"
+            ( equalPretty "Int -> Cmd Unit" $ TyInt :->: TyCmd TyUnit
+            )
+        , testCase
+            "Cmd type"
+            ( equalPretty "Cmd (Int -> Int)" $ TyCmd (TyInt :->: TyInt)
+            )
+        , testCase
+            "Cmd type"
+            ( equalPretty "Cmd (Int -> Int)" $ TyCmd (TyInt :->: TyInt)
+            )
+        , testCase
+            "Product type"
+            ( equalPretty "Int * Int" $ TyInt :*: TyInt
+            )
+        , testCase
+            "Sum type"
+            ( equalPretty "Int + Int" $ TyInt :+: TyInt
+            )
+        , testCase
+            "Sum of sum right"
+            ( equalPretty "Int + (Unit + Bool)" $ TyInt :+: (TyUnit :+: TyBool)
+            )
+        , testCase
+            "Sum of sum left"
+            ( equalPretty "(Int + Unit) + Bool" $ (TyInt :+: TyUnit) :+: TyBool
+            )
+        , testCase
+            "Product of product right"
+            ( equalPretty "Int * (Unit * Bool)" $ TyInt :*: (TyUnit :*: TyBool)
+            )
+        , testCase
+            "Product of product left"
+            ( equalPretty "(Int * Unit) * Bool" $ (TyInt :*: TyUnit) :*: TyBool
+            )
+        , testCase
+            "Product of sum"
+            ( equalPretty "Int * (Unit + Bool)" $ TyInt :*: (TyUnit :+: TyBool)
+            )
+        , testCase
+            "Sum of product"
+            ( equalPretty "Int + (Unit * Bool)" $ TyInt :+: (TyUnit :*: TyBool)
+            )
+        , testCase
+            "Product of function"
+            ( equalPretty "Int * (Unit -> Bool)" $ TyInt :*: (TyUnit :->: TyBool)
+            )
+        , testCase
+            "Function of product"
+            ( equalPretty "Int -> (Unit * Bool)" $ TyInt :->: (TyUnit :*: TyBool)
+            )
+        , testCase
+            "Function of function right"
+            ( equalPretty "Int -> Unit -> Bool" $ TyInt :->: (TyUnit :->: TyBool)
+            )
+        , testCase
+            "Function of function left"
+            ( equalPretty "(Int -> Unit) -> Bool" $ (TyInt :->: TyUnit) :->: TyBool
+            )
+        , testCase
+            "density (two nested products)"
+            ( equalPretty "((Int * Int) * (Int * Int)) -> Cmd Int" $
+                ((TyInt :*: TyInt) :*: (TyInt :*: TyInt)) :->: TyCmd TyInt
+            )
+        ]
     ]
  where
-  equalPretty :: String -> Term -> Assertion
-  equalPretty expected term = assertEqual "" expected . show $ ppr term
+  equalPretty :: PrettyPrec a => String -> a -> Assertion
+  equalPretty expected = assertEqual "" expected . into @String . prettyTextLine
