@@ -530,23 +530,22 @@ combineEntityCapsM em =
 ------------------------------------------------------------
 
 instance FromJSON Entity where
-  parseJSON = withObject "Entity" $ \v ->
-    rehashEntity
-      <$> ( Entity 0
-              <$> v .: "display"
-              <*> v .: "name"
-              <*> v .:? "plural"
-              <*> v .: "description"
-              <*> v .:? "tags" .!= mempty
-              <*> v .:? "orientation"
-              <*> v .:? "growth"
-              <*> v .:? "combustion"
-              <*> v .:? "yields"
-              <*> v .:? "properties" .!= mempty
-              <*> v .:? "biomes" .!= mempty
-              <*> v .:? "capabilities" .!= Capabilities mempty
-              <*> pure empty
-          )
+  parseJSON = withObject "Entity" $ \v -> do
+    let _entityHash = 0
+    _entityDisplay <- v .: "display"
+    _entityName <- v .: "name"
+    _entityPlural <- v .:? "plural"
+    _entityDescription <- v .: "description"
+    _entityTags <- v .:? "tags" .!= mempty
+    _entityOrientation <- v .:? "orientation"
+    _entityGrowth <- v .:? "growth"
+    _entityCombustion <- v .:? "combustion"
+    _entityYields <- v .:? "yields"
+    _entityProperties <- v .:? "properties" .!= mempty
+    _entityBiomes <- v .:? "biomes" .!= mempty
+    _entityCapabilities <- v .:? "capabilities" .!= Capabilities mempty
+    let _entityInventory = empty
+    pure $ rehashEntity Entity {..}
 
 -- | If we have access to an 'EntityMap', we can parse the name of an
 --   'Entity' as a string and look it up in the map.

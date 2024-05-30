@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -31,12 +32,10 @@ data GitHubCredentials = GitHubCredentials
   }
 
 instance FromJSON GitHubCredentials where
-  parseJSON = withObject "GitHubCredentials" $ \v ->
-    let theID = BSU.fromString <$> v .: "CLIENT_ID"
-        theSecret = BSU.fromString <$> v .: "CLIENT_SECRET"
-     in GitHubCredentials
-          <$> theID
-          <*> theSecret
+  parseJSON = withObject "GitHubCredentials" $ \v -> do
+    clientId <- BSU.fromString <$> v .: "CLIENT_ID"
+    clientSecret <- BSU.fromString <$> v .: "CLIENT_SECRET"
+    pure GitHubCredentials {..}
 
 newtype TokenExchangeCode = TokenExchangeCode BS.ByteString
 
