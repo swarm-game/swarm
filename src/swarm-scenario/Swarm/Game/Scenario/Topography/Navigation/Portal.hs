@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
@@ -90,14 +91,12 @@ data Portal = Portal
   deriving (Show, Eq)
 
 instance FromJSON Portal where
-  parseJSON = withObject "Portal" $ \v ->
-    Portal
-      <$> v
-        .: "entrance"
-      <*> v
-        .: "exitInfo"
-      <*> v .:? "consistent" .!= False
-      <*> v .:? "reorient" .!= DForward
+  parseJSON = withObject "Portal" $ \v -> do
+    entrance <- v .: "entrance"
+    exitInfo <- v .: "exitInfo"
+    consistent <- v .:? "consistent" .!= False
+    reorient <- v .:? "reorient" .!= DForward
+    pure Portal {..}
 
 failUponDuplication ::
   (MonadFail m, Show a, Show b) =>

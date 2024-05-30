@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -85,10 +86,10 @@ instance FromJSON PrerequisiteConfig where
   -- as a bare string without needing the "id" key.
   parseJSON val = preLogic val <|> preObject val
    where
-    preObject = withObject "prerequisite" $ \v ->
-      PrerequisiteConfig
-        <$> (v .:? "previewable" .!= False)
-        <*> v .: "logic"
+    preObject = withObject "prerequisite" $ \v -> do
+      previewable <- v .:? "previewable" .!= False
+      logic <- v .: "logic"
+      pure PrerequisiteConfig {..}
     preLogic = fmap (PrerequisiteConfig False) . parseJSON
 
 -- | An objective is a condition to be achieved by a player in a
@@ -148,16 +149,16 @@ objectiveHidden :: Lens' Objective Bool
 objectiveAchievement :: Lens' Objective (Maybe AD.AchievementInfo)
 
 instance FromJSON Objective where
-  parseJSON = withObject "objective" $ \v ->
-    Objective
-      <$> (v .:? "goal" .!= mempty)
-      <*> (v .:? "teaser")
-      <*> (v .: "condition")
-      <*> (v .:? "id")
-      <*> (v .:? "optional" .!= False)
-      <*> (v .:? "prerequisite")
-      <*> (v .:? "hidden" .!= False)
-      <*> (v .:? "achievement")
+  parseJSON = withObject "objective" $ \v -> do
+    _objectiveGoal <- v .:? "goal" .!= mempty
+    _objectiveTeaser <- v .:? "teaser"
+    _objectiveCondition <- v .: "condition"
+    _objectiveId <- v .:? "id"
+    _objectiveOptional <- v .:? "optional" .!= False
+    _objectivePrerequisite <- v .:? "prerequisite"
+    _objectiveHidden <- v .:? "hidden" .!= False
+    _objectiveAchievement <- v .:? "achievement"
+    pure Objective {..}
 
 -- | TODO: #1044 Could also add an "ObjectiveFailed" constructor...
 newtype Announcement

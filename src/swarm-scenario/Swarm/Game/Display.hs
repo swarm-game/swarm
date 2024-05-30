@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -143,14 +144,15 @@ instance FromJSONE Display Display where
     let dOM = if isJust mc then mempty else defD ^. orientationMap
     mapM_ validateChar $ M.elems dOM
 
-    liftE $
-      Display c
-        <$> v .:? "orientationMap" .!= dOM
-        <*> v .:? "curOrientation" .!= (defD ^. curOrientation)
-        <*> (v .:? "attr") .!= (defD ^. displayAttr)
-        <*> v .:? "priority" .!= (defD ^. displayPriority)
-        <*> v .:? "invisible" .!= (defD ^. invisible)
-        <*> pure Inherit
+    liftE $ do
+      let _defaultChar = c
+      _orientationMap <- v .:? "orientationMap" .!= dOM
+      _curOrientation <- v .:? "curOrientation" .!= (defD ^. curOrientation)
+      _displayAttr <- (v .:? "attr") .!= (defD ^. displayAttr)
+      _displayPriority <- v .:? "priority" .!= (defD ^. displayPriority)
+      _invisible <- v .:? "invisible" .!= (defD ^. invisible)
+      let _childInheritance = Inherit
+      pure Display {..}
    where
     validateChar c =
       when (charWidth > 1)

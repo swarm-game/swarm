@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -52,10 +53,10 @@ data WaypointConfig = WaypointConfig
   deriving (Show, Eq)
 
 parseWaypointConfig :: Object -> Parser WaypointConfig
-parseWaypointConfig v =
-  WaypointConfig
-    <$> v .: "name"
-    <*> v .:? "unique" .!= False
+parseWaypointConfig v = do
+  wpName <- v .: "name"
+  wpUnique <- v .:? "unique" .!= False
+  pure WaypointConfig {..}
 
 instance FromJSON WaypointConfig where
   parseJSON = withObject "Waypoint Config" parseWaypointConfig
@@ -74,10 +75,10 @@ data Waypoint = Waypoint
 -- | JSON representation is flattened; all keys are at the same level,
 -- in contrast with the underlying record.
 instance FromJSON Waypoint where
-  parseJSON = withObject "Waypoint" $ \v ->
-    Waypoint
-      <$> parseWaypointConfig v
-      <*> v .: "loc"
+  parseJSON = withObject "Waypoint" $ \v -> do
+    wpConfig <- parseWaypointConfig v
+    wpLoc <- v .: "loc"
+    pure Waypoint {..}
 
 instance HasLocation Waypoint where
   modifyLoc f (Waypoint cfg originalLoc) = Waypoint cfg $ f originalLoc

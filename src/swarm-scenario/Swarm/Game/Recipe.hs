@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
@@ -125,21 +126,13 @@ instance ToJSON (Recipe Text) where
         ++ ["weight" .= weight | weight /= 1]
 
 instance FromJSON (Recipe Text) where
-  parseJSON = withObject "Recipe" $ \v ->
-    Recipe
-      <$> v
-        .: "in"
-      <*> v
-        .: "out"
-      <*> v
-        .:? "required"
-        .!= []
-      <*> v
-        .:? "time"
-        .!= 1
-      <*> v
-        .:? "weight"
-        .!= 1
+  parseJSON = withObject "Recipe" $ \v -> do
+    _recipeInputs <- v .: "in"
+    _recipeOutputs <- v .: "out"
+    _recipeCatalysts <- v .:? "required" .!= []
+    _recipeTime <- v .:? "time" .!= 1
+    _recipeWeight <- v .:? "weight" .!= 1
+    pure Recipe {..}
 
 -- | Given an 'EntityMap', turn a list of recipes containing /names/
 --   of entities into a list of recipes containing actual 'Entity'
