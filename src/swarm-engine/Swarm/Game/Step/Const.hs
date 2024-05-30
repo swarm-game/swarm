@@ -1234,6 +1234,8 @@ execConst runChildProg c vs s k = do
             -- it's slightly technically incorrect, and (3) why it is still way
             -- better than what we had before.
             robotContext . defReqs <>= (pt ^. processedReqCtx)
+            void $ traceLog CmdStatus Info "run: OK."
+
             return $ initMachine' pt empty s k
       _ -> badConst
     Not -> case vs of
