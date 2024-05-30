@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -90,19 +91,16 @@ data MergedStructure c = MergedStructure (PositionedGrid c) [LocatedStructure] [
 instance FromJSONE (TerrainEntityMaps, RobotMap) (PStructure (Maybe Cell)) where
   parseJSONE = withObjectE "structure definition" $ \v -> do
     pal <- v ..:? "palette" ..!= WorldPalette mempty
-    localStructureDefs <- v ..:? "structures" ..!= []
+    structures <- v ..:? "structures" ..!= []
 
     liftE $ do
-      placementDefs <- v .:? "placements" .!= []
+      placements <- v .:? "placements" .!= []
       waypointDefs <- v .:? "waypoints" .!= []
       maybeMaskChar <- v .:? "mask"
       (maskedArea, mapWaypoints) <- (v .:? "map" .!= "") >>= paintMap maybeMaskChar pal
-      return $
-        Structure
-          (PositionedGrid origin $ Grid maskedArea)
-          localStructureDefs
-          placementDefs
-          (waypointDefs <> mapWaypoints)
+      let area = PositionedGrid origin $ Grid maskedArea
+          waypoints = waypointDefs <> mapWaypoints
+      return Structure {..}
 
 -- | \"Paint\" a world map using a 'WorldPalette', turning it from a raw
 --   string into a nested list of 'PCell' values by looking up each

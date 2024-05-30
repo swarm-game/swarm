@@ -86,10 +86,10 @@ instance FromJSON PrerequisiteConfig where
   -- as a bare string without needing the "id" key.
   parseJSON val = preLogic val <|> preObject val
    where
-    preObject = withObject "prerequisite" $ \v ->
-      PrerequisiteConfig
-        <$> (v .:? "previewable" .!= False)
-        <*> v .: "logic"
+    preObject = withObject "prerequisite" $ \v -> do
+      previewable <- v .:? "previewable" .!= False
+      logic <- v .: "logic"
+      pure PrerequisiteConfig {..}
     preLogic = fmap (PrerequisiteConfig False) . parseJSON
 
 -- | An objective is a condition to be achieved by a player in a

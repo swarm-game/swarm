@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
@@ -46,13 +47,11 @@ makeLenses ''Cosmic
 
 instance (FromJSON a) => FromJSON (Cosmic a) where
   parseJSON x = case x of
-    Object v -> objParse v
+    Object v -> do
+      _subworld <- v .: "subworld"
+      _planar <- v .: "loc"
+      pure Cosmic {..}
     _ -> Cosmic DefaultRootSubworld <$> parseJSON x
-   where
-    objParse v =
-      Cosmic
-        <$> v .: "subworld"
-        <*> v .: "loc"
 
 -- * Measurement
 
