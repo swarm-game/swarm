@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -148,16 +149,16 @@ objectiveHidden :: Lens' Objective Bool
 objectiveAchievement :: Lens' Objective (Maybe AD.AchievementInfo)
 
 instance FromJSON Objective where
-  parseJSON = withObject "objective" $ \v ->
-    Objective
-      <$> (v .:? "goal" .!= mempty)
-      <*> (v .:? "teaser")
-      <*> (v .: "condition")
-      <*> (v .:? "id")
-      <*> (v .:? "optional" .!= False)
-      <*> (v .:? "prerequisite")
-      <*> (v .:? "hidden" .!= False)
-      <*> (v .:? "achievement")
+  parseJSON = withObject "objective" $ \v -> do
+    _objectiveGoal <- v .:? "goal" .!= mempty
+    _objectiveTeaser <- v .:? "teaser"
+    _objectiveCondition <- v .: "condition"
+    _objectiveId <- v .:? "id"
+    _objectiveOptional <- v .:? "optional" .!= False
+    _objectivePrerequisite <- v .:? "prerequisite"
+    _objectiveHidden <- v .:? "hidden" .!= False
+    _objectiveAchievement <- v .:? "achievement"
+    pure Objective {..}
 
 -- | TODO: #1044 Could also add an "ObjectiveFailed" constructor...
 newtype Announcement

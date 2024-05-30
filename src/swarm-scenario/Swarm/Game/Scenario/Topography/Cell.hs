@@ -119,8 +119,7 @@ instance FromJSONE (TerrainEntityMaps, RobotMap) (AugmentedCell Entity) where
     objParse v =
       AugmentedCell
         <$> liftE (v .:? "waypoint")
-        <*> v
-          ..: "cell"
+        <*> v ..: "cell"
 
 ------------------------------------------------------------
 -- World editor

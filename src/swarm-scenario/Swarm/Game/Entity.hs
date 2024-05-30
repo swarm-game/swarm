@@ -1,4 +1,6 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -190,10 +192,10 @@ data GrowthSpread = GrowthSpread
   deriving (Eq, Ord, Show, Read, Generic, Hashable, ToJSON)
 
 instance FromJSON GrowthSpread where
-  parseJSON = withObject "Growth" $ \v ->
-    GrowthSpread
-      <$> v .: "radius"
-      <*> v .: "density"
+  parseJSON = withObject "Growth" $ \v -> do
+    spreadRadius <- v .: "radius"
+    spreadDensity <- v .: "density"
+    pure GrowthSpread {..}
 
 data Growth = Growth
   { maturesTo :: Maybe EntityName
@@ -209,11 +211,11 @@ instance FromJSON Growth where
     (Growth Nothing Nothing <$> parseJSON x)
       <|> parseFullGrowth x
    where
-    parseFullGrowth = withObject "Growth" $ \v ->
-      Growth
-        <$> v .:? "mature"
-        <*> v .:? "spread"
-        <*> v .: "duration"
+    parseFullGrowth = withObject "Growth" $ \v -> do
+      maturesTo <- v .:? "mature"
+      growthSpread <- v .:? "spread"
+      growthTime <- v .: "duration"
+      pure Growth {..}
 
 -- | How long an entity takes to regrow.  This represents the minimum
 --   and maximum amount of time taken by one growth stage (there are

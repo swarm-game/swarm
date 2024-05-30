@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -32,9 +33,9 @@ data Orientation = Orientation
 
 instance FromJSON Orientation where
   parseJSON = withObject "structure orientation" $ \v -> do
-    Orientation
-      <$> v .:? "up" .!= DNorth
-      <*> v .:? "flip" .!= False
+    up <- v .:? "up" .!= DNorth
+    flipped <- v .:? "flip" .!= False
+    pure Orientation {..}
 
 defaultOrientation :: Orientation
 defaultOrientation = Orientation DNorth False
@@ -82,10 +83,9 @@ data Placement = Placement
 
 instance FromJSON Placement where
   parseJSON = withObject "structure placement" $ \v -> do
-    sName <- v .: "src"
-    shouldTruncate <- v .:? "truncate" .!= True
-    p <-
-      Pose
-        <$> v .:? "offset" .!= origin
-        <*> v .:? "orient" .!= defaultOrientation
-    return $ Placement sName shouldTruncate p
+    src <- v .: "src"
+    truncateOverlay <- v .:? "truncate" .!= True
+    offset <- v .:? "offset" .!= origin
+    orient <- v .:? "orient" .!= defaultOrientation
+    let structurePose = Pose offset orient
+    pure Placement {..}
