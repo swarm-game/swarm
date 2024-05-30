@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -6,11 +8,14 @@
 module Swarm.Language.Module (
   -- * Modules
   Module (..),
+  moduleSyntax,
+  moduleCtx,
   TModule,
   UModule,
   trivMod,
 ) where
 
+import Control.Lens (makeLenses)
 import Data.Data (Data)
 import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
@@ -27,8 +32,10 @@ import Swarm.Language.Types (Polytype, UPolytype, UType)
 --   contain definitions ('Swarm.Language.Syntax.TDef').  A module
 --   contains the type-annotated AST of the expression itself, as well
 --   as the context giving the types of any defined variables.
-data Module s t = Module {moduleAST :: Syntax' s, moduleCtx :: Ctx t}
+data Module s t = Module {_moduleSyntax :: Syntax' s, _moduleCtx :: Ctx t}
   deriving (Show, Eq, Functor, Data, Generic, FromJSON, ToJSON)
+
+makeLenses ''Module
 
 -- | A 'TModule' is the final result of the type inference process on
 --   an expression: we get a polytype for the expression, and a

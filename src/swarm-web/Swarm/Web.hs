@@ -76,10 +76,8 @@ import Swarm.Game.State
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Type
-import Swarm.Language.Module
-import Swarm.Language.Pipeline
+import Swarm.Language.Pipeline (processTermEither, processedSyntax)
 import Swarm.Language.Pretty (prettyTextLine)
-import Swarm.Language.Syntax
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Repl (REPLHistItem, replHistory, replSeq)
@@ -231,8 +229,8 @@ recogFoundHandler appStateRef = do
 codeRenderHandler :: Text -> Handler Text
 codeRenderHandler contents = do
   return $ case processTermEither contents of
-    Right (ProcessedTerm (Module stx@(Syntax' _srcLoc _term _ _) _) _ _) ->
-      into @Text . drawTree . fmap (T.unpack . prettyTextLine) . para Node $ stx
+    Right pt ->
+      into @Text . drawTree . fmap (T.unpack . prettyTextLine) . para Node $ pt ^. processedSyntax
     Left x -> x
 
 codeRunHandler :: BChan AppEvent -> Text -> Handler Text

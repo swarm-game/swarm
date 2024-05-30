@@ -8,14 +8,22 @@
 -- Types for the Swarm programming language and related utilities.
 module Swarm.Language.Types (
   -- * Basic definitions
+
+  -- ** Base types and type constructors
   BaseTy (..),
   baseTyName,
+  TyCon (..),
+  Arity (..),
+  tcArity,
   Var,
+
+  -- ** Type structure functor
   TypeF (..),
 
   -- * @Type@
   Type,
   tyVars,
+  pattern TyConApp,
   pattern TyBase,
   pattern TyVar,
   pattern TyVoid,
@@ -36,6 +44,7 @@ module Swarm.Language.Types (
   -- * @UType@
   IntVar (..),
   UType,
+  pattern UTyConApp,
   pattern UTyBase,
   pattern UTyVar,
   pattern UTyVoid,
@@ -92,7 +101,7 @@ import Text.Show.Deriving (deriveShow1)
 import Witch
 
 ------------------------------------------------------------
--- Types
+-- Base types
 ------------------------------------------------------------
 
 -- | Base types.
@@ -121,27 +130,61 @@ data BaseTy
 baseTyName :: BaseTy -> Text
 baseTyName = into @Text . drop 1 . show
 
+------------------------------------------------------------
+-- Type constructors
+------------------------------------------------------------
+
+-- | Type constructors.
+data TyCon
+  = -- | Base types are (nullary) type constructors.
+    TCBase BaseTy
+  | -- | Command types.
+    TCCmd
+  | -- | Delayed computations.
+    TCDelay
+  | -- | Sum types.
+    TCSum
+  | -- | Product types.
+    TCProd
+  | -- | Function types.
+    TCFun
+  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
+
+newtype Arity = Arity {getArity :: Int}
+  deriving (Eq, Ord, Show)
+
+-- | The arity, /i.e./ number of type arguments, of each type
+--   constructor.  Eventually, if we generalize to higher-kinded
+--   types, we'll need to upgrade this to return a full-fledged kind
+--   instead of just an arity.
+tcArity :: TyCon -> Arity
+tcArity =
+  Arity . \case
+    TCBase _ -> 0
+    TCCmd -> 1
+    TCDelay -> 1
+    TCSum -> 2
+    TCProd -> 2
+    TCFun -> 2
+
+------------------------------------------------------------
+-- Types
+------------------------------------------------------------
+
 -- | A "structure functor" encoding the shape of type expressions.
 --   Actual types are then represented by taking a fixed point of this
 --   functor.  We represent types in this way, via a "two-level type",
 --   so that we can easily use generic recursion schemes to implement
 --   things like substitution.
 data TypeF t
-  = -- | A base type.
-    TyBaseF BaseTy
+  = -- | A type constructor applied to some type arguments. For now,
+    --   all type constructor applications are required to be fully
+    --   saturated (higher kinds are not supported), so we just
+    --   directly store a list of all arguments (as opposed to
+    --   iterating binary application).
+    TyConF TyCon [t]
   | -- | A type variable.
     TyVarF Var
-  | -- | Commands, with return type.  Note that
-    --   commands form a monad.
-    TyCmdF t
-  | -- | Type of delayed computations.
-    TyDelayF t
-  | -- | Sum type.
-    TySumF t t
-  | -- | Product type.
-    TyProdF t t
-  | -- | Function type.
-    TyFunF t t
   | -- | Record type.
     TyRcdF (Map Var t)
   deriving (Show, Eq, Functor, Foldable, Traversable, Generic, Generic1, Data, FromJSON, ToJSON)
@@ -272,107 +315,119 @@ instance (WithU t, Traversable f) => WithU (f t) where
 -- Pattern synonyms
 ------------------------------------------------------------
 
+--------------------------------------------------
+-- Type
+
+pattern TyConApp :: TyCon -> [Type] -> Type
+pattern TyConApp c tys = Fix (TyConF c tys)
+
 pattern TyBase :: BaseTy -> Type
-pattern TyBase b = Fix (TyBaseF b)
+pattern TyBase b = TyConApp (TCBase b) []
 
 pattern TyVar :: Var -> Type
 pattern TyVar v = Fix (TyVarF v)
 
 pattern TyVoid :: Type
-pattern TyVoid = Fix (TyBaseF BVoid)
+pattern TyVoid = TyBase BVoid
 
 pattern TyUnit :: Type
-pattern TyUnit = Fix (TyBaseF BUnit)
+pattern TyUnit = TyBase BUnit
 
 pattern TyInt :: Type
-pattern TyInt = Fix (TyBaseF BInt)
+pattern TyInt = TyBase BInt
 
 pattern TyText :: Type
-pattern TyText = Fix (TyBaseF BText)
+pattern TyText = TyBase BText
 
 pattern TyDir :: Type
-pattern TyDir = Fix (TyBaseF BDir)
+pattern TyDir = TyBase BDir
 
 pattern TyBool :: Type
-pattern TyBool = Fix (TyBaseF BBool)
+pattern TyBool = TyBase BBool
 
 pattern TyActor :: Type
-pattern TyActor = Fix (TyBaseF BActor)
+pattern TyActor = TyBase BActor
 
 pattern TyKey :: Type
-pattern TyKey = Fix (TyBaseF BKey)
+pattern TyKey = TyBase BKey
 
 infixr 5 :+:
 
 pattern (:+:) :: Type -> Type -> Type
-pattern ty1 :+: ty2 = Fix (TySumF ty1 ty2)
+pattern ty1 :+: ty2 = TyConApp TCSum [ty1, ty2]
 
 infixr 6 :*:
 
 pattern (:*:) :: Type -> Type -> Type
-pattern ty1 :*: ty2 = Fix (TyProdF ty1 ty2)
+pattern ty1 :*: ty2 = TyConApp TCProd [ty1, ty2]
 
 infixr 1 :->:
 
 pattern (:->:) :: Type -> Type -> Type
-pattern ty1 :->: ty2 = Fix (TyFunF ty1 ty2)
+pattern ty1 :->: ty2 = TyConApp TCFun [ty1, ty2]
 
 pattern TyRcd :: Map Var Type -> Type
 pattern TyRcd m = Fix (TyRcdF m)
 
 pattern TyCmd :: Type -> Type
-pattern TyCmd ty1 = Fix (TyCmdF ty1)
+pattern TyCmd ty = TyConApp TCCmd [ty]
 
 pattern TyDelay :: Type -> Type
-pattern TyDelay ty1 = Fix (TyDelayF ty1)
+pattern TyDelay ty = TyConApp TCDelay [ty]
+
+--------------------------------------------------
+-- UType
+
+pattern UTyConApp :: TyCon -> [UType] -> UType
+pattern UTyConApp c tys = Free (TyConF c tys)
 
 pattern UTyBase :: BaseTy -> UType
-pattern UTyBase b = Free (TyBaseF b)
+pattern UTyBase b = UTyConApp (TCBase b) []
 
 pattern UTyVar :: Var -> UType
 pattern UTyVar v = Free (TyVarF v)
 
 pattern UTyVoid :: UType
-pattern UTyVoid = Free (TyBaseF BVoid)
+pattern UTyVoid = UTyBase BVoid
 
 pattern UTyUnit :: UType
-pattern UTyUnit = Free (TyBaseF BUnit)
+pattern UTyUnit = UTyBase BUnit
 
 pattern UTyInt :: UType
-pattern UTyInt = Free (TyBaseF BInt)
+pattern UTyInt = UTyBase BInt
 
 pattern UTyText :: UType
-pattern UTyText = Free (TyBaseF BText)
+pattern UTyText = UTyBase BText
 
 pattern UTyDir :: UType
-pattern UTyDir = Free (TyBaseF BDir)
+pattern UTyDir = UTyBase BDir
 
 pattern UTyBool :: UType
-pattern UTyBool = Free (TyBaseF BBool)
+pattern UTyBool = UTyBase BBool
 
 pattern UTyActor :: UType
-pattern UTyActor = Free (TyBaseF BActor)
+pattern UTyActor = UTyBase BActor
 
 pattern UTyKey :: UType
-pattern UTyKey = Free (TyBaseF BKey)
+pattern UTyKey = UTyBase BKey
 
 pattern UTySum :: UType -> UType -> UType
-pattern UTySum ty1 ty2 = Free (TySumF ty1 ty2)
+pattern UTySum ty1 ty2 = UTyConApp TCSum [ty1, ty2]
 
 pattern UTyProd :: UType -> UType -> UType
-pattern UTyProd ty1 ty2 = Free (TyProdF ty1 ty2)
+pattern UTyProd ty1 ty2 = UTyConApp TCProd [ty1, ty2]
 
 pattern UTyFun :: UType -> UType -> UType
-pattern UTyFun ty1 ty2 = Free (TyFunF ty1 ty2)
+pattern UTyFun ty1 ty2 = UTyConApp TCFun [ty1, ty2]
 
 pattern UTyRcd :: Map Var UType -> UType
 pattern UTyRcd m = Free (TyRcdF m)
 
 pattern UTyCmd :: UType -> UType
-pattern UTyCmd ty1 = Free (TyCmdF ty1)
+pattern UTyCmd ty = UTyConApp TCCmd [ty]
 
 pattern UTyDelay :: UType -> UType
-pattern UTyDelay ty1 = Free (TyDelayF ty1)
+pattern UTyDelay ty = UTyConApp TCDelay [ty]
 
 pattern PolyUnit :: Polytype
 pattern PolyUnit = Forall [] (TyCmd TyUnit)

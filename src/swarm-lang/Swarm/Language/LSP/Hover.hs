@@ -31,10 +31,9 @@ import Data.Text.Utf16.Rope.Mixed qualified as R
 import Language.LSP.Protocol.Types qualified as J
 import Language.LSP.VFS
 import Swarm.Language.Context as Ctx
-import Swarm.Language.Module (Module (..))
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
-import Swarm.Language.Pipeline (ProcessedTerm (..), processParsedTerm)
+import Swarm.Language.Pipeline (processParsedTerm, processedSyntax)
 import Swarm.Language.Pretty (prettyText, prettyTextLine)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
@@ -68,12 +67,13 @@ showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
   genHoverInfo stx =
     case processParsedTerm stx of
       Left _e ->
-        let found@(Syntax foundSloc _) = narrowToPosition stx $ fromIntegral absolutePos
-            finalPos = posToRange myRope foundSloc
+        let found = narrowToPosition stx $ fromIntegral absolutePos
+            finalPos = posToRange myRope (found ^. sLoc)
          in (,finalPos) . treeToMarkdown 0 $ explain found
-      Right (ProcessedTerm modul _req _reqCtx) ->
-        let found@(Syntax' foundSloc _ _ _) = narrowToPosition (moduleAST modul) $ fromIntegral absolutePos
-            finalPos = posToRange myRope foundSloc
+      Right pt ->
+        let found =
+              narrowToPosition (pt ^. processedSyntax) $ fromIntegral absolutePos
+            finalPos = posToRange myRope (found ^. sLoc)
          in (,finalPos) . treeToMarkdown 0 $ explain found
 
 posToRange :: R.Rope -> SrcLoc -> Maybe J.Range

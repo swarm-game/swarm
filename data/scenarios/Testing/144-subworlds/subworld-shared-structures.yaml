@@ -1,7 +1,7 @@
 version: 1
 name: Subworld shared structures
 description: |
-  Traverse floors of the tower
+  Traverse the floors of the tower, then grab the flower in the middle
 attrs:
   - name: portal_in
     fg: "#ff9a00"
@@ -9,6 +9,12 @@ attrs:
   - name: portal_out
     fg: "#00a2ff"
     bg: "#0065ff"
+objectives:
+  - goal:
+      - |
+        Visit all of the floors
+    condition: |
+      as base {has "flower"}
 entities:
   - name: telepad entrance
     display:
@@ -27,7 +33,9 @@ entities:
 robots:
   - name: base
     dir: east
-    loc: [0, 0]
+    loc:
+      subworld: root
+      loc: [0, 0]
     devices:
       - ADT calculator
       - branch predictor
@@ -41,6 +49,20 @@ robots:
       - logger
       - strange loop
       - treads
+solution: |
+  def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
+
+  doN 4 (
+    doN 4 move;
+    turn right;
+    doN 4 move;
+  );
+
+  doN 2 move;
+  turn right;
+  doN 2 move;
+
+  grab;
 known: [flower]
 structures:
   - name: minibox
@@ -87,17 +109,18 @@ subworlds:
         waypoint:
           name: portal_in
     placements:
-      - src: flowers
-        offset: [1, 1]
       - src: minibox
         offset: [0, 0]
         orient:
           up: west
+      - src: flowers
+        offset: [1, 1]
     portals:
       - entrance: portal_in
         exitInfo:
           exit: portal_out
           subworldName: floor2
+        reorient: back
     upperleft: [0, 0]
     map: |
       .....
@@ -119,17 +142,18 @@ subworlds:
         waypoint:
           name: portal_in
     placements:
-      - src: flowers
-        offset: [1, 0]
       - src: minibox
         offset: [0, 0]
         orient:
           up: south
+      - src: flowers
+        offset: [1, 0]
     portals:
       - entrance: portal_in
         exitInfo:
           exit: portal_out
           subworldName: floor3
+        reorient: back
     upperleft: [0, 0]
     map: |
       .....
@@ -151,17 +175,18 @@ subworlds:
         waypoint:
           name: portal_in
     placements:
-      - src: flowers
-        offset: [1, -2]
       - src: minibox
         offset: [0, 0]
         orient:
           up: east
+      - src: flowers
+        offset: [1, -2]
     portals:
       - entrance: portal_in
         exitInfo:
           exit: portal_out
           subworldName: root
+        reorient: back
     upperleft: [0, 0]
     map: |
       .....
@@ -171,20 +196,21 @@ subworlds:
       .....
 world:
   name: root
-  default: [blank]
   palette:
     '.': [grass]
+    'B': [grass, null, base]
   upperleft: [0, 0]
   placements:
-    - src: flowers
-      offset: [0, -2]
     - src: minibox
       offset: [0, 0]
+    - src: flowers
+      offset: [0, -2]
   portals:
     - entrance: portal_in
       exitInfo:
         exit: portal_out
         subworldName: floor1
+      reorient: back
   map: |
     .....
     .....

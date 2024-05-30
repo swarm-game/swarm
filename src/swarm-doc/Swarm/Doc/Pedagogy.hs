@@ -31,7 +31,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Constant
-import Swarm.Game.Failure (SystemFailure)
+import Swarm.Game.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.Land
 import Swarm.Game.Scenario (
   Scenario,
@@ -54,12 +54,11 @@ import Swarm.Game.ScenarioInfo (
   scenarioPath,
  )
 import Swarm.Game.World.Load (loadWorlds)
-import Swarm.Language.Module (Module (..))
-import Swarm.Language.Pipeline (ProcessedTerm (..))
+import Swarm.Language.Pipeline (ProcessedTerm, processedSyntax)
 import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown (docToText, findCode)
 import Swarm.Language.Types (Polytype)
-import Swarm.Util.Effect (ignoreWarnings, simpleErrorHandle)
+import Swarm.Util.Effect (ignoreWarnings)
 
 -- * Constants
 
@@ -131,11 +130,11 @@ isConsidered c = isUserFunc c && c `S.notMember` ignoredCommands
 -- Also, the code from `run` is not parsed transitively yet.
 getCommands :: Maybe ProcessedTerm -> Map Const [SrcLoc]
 getCommands Nothing = mempty
-getCommands (Just (ProcessedTerm (Module stx _) _ _)) =
+getCommands (Just pt) =
   M.fromListWith (<>) $ mapMaybe isCommand nodelist
  where
   nodelist :: [Syntax' Polytype]
-  nodelist = universe stx
+  nodelist = universe (pt ^. processedSyntax)
   isCommand (Syntax' sloc t _ _) = case t of
     TConst c -> guard (isConsidered c) >> Just (c, [sloc])
     _ -> Nothing

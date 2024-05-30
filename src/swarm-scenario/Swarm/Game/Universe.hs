@@ -17,6 +17,7 @@ import Data.Yaml (FromJSON, ToJSON, Value (Object), parseJSON, withText, (.:))
 import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Game.Location
+import Swarm.Util (quote)
 
 -- * Referring to subworlds
 
@@ -29,6 +30,11 @@ instance FromJSON SubworldName where
 renderWorldName :: SubworldName -> Text
 renderWorldName = \case
   SubworldName s -> s
+  DefaultRootSubworld -> "<default>"
+
+renderQuotedWorldName :: SubworldName -> Text
+renderQuotedWorldName = \case
+  SubworldName s -> quote s
   DefaultRootSubworld -> "<default>"
 
 -- * Universal location

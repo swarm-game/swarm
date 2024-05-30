@@ -7,10 +7,14 @@
 module Swarm.Language.Parser.Type (
   parsePolytype,
   parseType,
+  parseTypeMolecule,
+  parseTypeAtom,
+  parseTyCon,
 ) where
 
 import Control.Lens (view)
 import Control.Monad (join)
+import Control.Monad.Combinators (many)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
@@ -59,7 +63,7 @@ parsePolytype =
 
 -- | Parse a Swarm language (mono)type.
 parseType :: Parser Type
-parseType = makeExprParser parseTypeAtom table
+parseType = makeExprParser parseTypeMolecule table
  where
   table =
     [ [InfixR ((:*:) <$ symbol "*")]
@@ -67,15 +71,28 @@ parseType = makeExprParser parseTypeAtom table
     , [InfixR ((:->:) <$ symbol "->")]
     ]
 
+-- | A "type molecule" consists of either a type constructor applied
+--   to a chain of type atoms, or just a type atom by itself.  We have
+--   to separate this out from parseTypeAtom to deal with the left
+--   recursion.
+parseTypeMolecule :: Parser Type
+parseTypeMolecule =
+  TyConApp <$> parseTyCon <*> many parseTypeAtom
+    <|> parseTypeAtom
+
+-- | A "type atom" consists of some atomic type snytax --- type
+--   variables, things in brackets of some kind, or a lone type
+--   constructor.
 parseTypeAtom :: Parser Type
 parseTypeAtom =
-  parseTyCon
-    <|> TyVar <$> tyVar
+  TyVar <$> tyVar
+    <|> TyConApp <$> parseTyCon <*> pure []
     <|> TyDelay <$> braces parseType
     <|> TyRcd <$> brackets (parseRecord (symbol ":" *> parseType))
     <|> parens parseType
 
-parseTyCon :: Parser Type
+-- | A type constructor.
+parseTyCon :: Parser TyCon
 parseTyCon = do
   ver <- view languageVersion
   let reservedCase = case ver of
@@ -83,5 +100,5 @@ parseTyCon = do
         SwarmLang0_5 -> reserved
         -- The latest version requires them to be uppercase
         SwarmLangLatest -> reservedCS
-  choice (map (\b -> TyBase b <$ reservedCase (baseTyName b)) listEnums)
-    <|> TyCmd <$> (reservedCase "Cmd" *> parseTypeAtom)
+  choice (map (\b -> TCBase b <$ reservedCase (baseTyName b)) listEnums)
+    <|> TCCmd <$ reservedCase "Cmd"

@@ -95,9 +95,9 @@ import Swarm.Game.Step (finishGameTick, gameTick)
 import Swarm.Language.Capability (Capability (CGod, CMake), constCaps)
 import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
-import Swarm.Language.Module
+import Swarm.Language.Module (Module (..))
 import Swarm.Language.Parser.Lex (reservedWords)
-import Swarm.Language.Pipeline
+import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm', processedSyntax)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement qualified as R
@@ -1301,7 +1301,7 @@ validateREPLForm s =
       | otherwise ->
           let result = processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput
               theType = case result of
-                Right (Just (ProcessedTerm (Module tm _) _ _)) -> Just (tm ^. sType)
+                Right (Just pt) -> Just (pt ^. processedSyntax . sType)
                 _ -> Nothing
            in s
                 & uiState . uiGameplay . uiREPL . replValid .~ isRight result
