@@ -934,6 +934,7 @@ colorLogs e = case e ^. leSource of
     Said -> robotColor rid
     Logged -> notifAttr
     RobotError -> colorSeverity (e ^. leSeverity)
+    CmdStatus -> notifAttr
  where
   -- color each robot message with different color of the world
   robotColor = indexWrapNonEmpty messageAttributeNames
@@ -1439,26 +1440,41 @@ drawReqs = vBox . map (hCenter . drawReq)
 indent2 :: WrapSettings
 indent2 = defaultWrapSettings {fillStrategy = FillIndent 2}
 
+-- | Only show the most recent entry, and any entries which were
+--   produced by "say" or "log" commands.  Other entries (i.e. errors
+--   or command status reports) are thus ephemeral, i.e. they are only
+--   shown when they are the most recent log entry, but hidden once
+--   something else is logged.
+getLogEntriesToShow :: AppState -> [LogEntry]
+getLogEntriesToShow s = logEntries ^.. traversed . ifiltered shouldShow
+ where
+  logEntries = s ^. gameState . to focusedRobot . _Just . robotLog
+  n = Seq.length logEntries
+
+  shouldShow i le =
+    (i == n - 1) || case le ^. leSource of
+      RobotLog src _ _ -> src `elem` [Said, Logged]
+      SystemLog -> False
+
 drawRobotLog :: AppState -> Widget Name
 drawRobotLog s =
   vBox
     [ padBottom (Pad 1) (hBorderWithLabel (txt "Log"))
-    , vBox . F.toList . imap drawEntry $ logEntries
+    , vBox . F.toList . imap drawEntry $ logEntriesToShow
     ]
  where
-  logEntries = s ^. gameState . to focusedRobot . _Just . robotLog
-
-  rid = s ^? gameState . to focusedRobot . _Just . robotID
-  n = Seq.length logEntries
-
-  allMe = all me logEntries
-  me le = case le ^. leSource of
-    RobotLog _ i _ -> Just i == rid
-    _ -> False
-
+  logEntriesToShow = getLogEntriesToShow s
+  n = length logEntriesToShow
   drawEntry i e =
     (if i == n - 1 && s ^. uiState . uiGameplay . uiScrollToEnd then visible else id) $
       drawLogEntry (not allMe) e
+
+  rid = s ^? gameState . to focusedRobot . _Just . robotID
+
+  allMe = all me logEntriesToShow
+  me le = case le ^. leSource of
+    RobotLog _ i _ -> Just i == rid
+    _ -> False
 
 -- | Show the 'CESK' machine of focused robot. Puts a separator above.
 drawRobotMachine :: AppState -> Bool -> Widget Name
