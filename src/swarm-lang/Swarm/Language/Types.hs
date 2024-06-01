@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -113,6 +114,7 @@ import Data.Text qualified as T
 import GHC.Generics (Generic, Generic1)
 import Swarm.Language.Context (Ctx, Var)
 import Swarm.Language.Context qualified as Ctx
+import Swarm.Util (parens, showT)
 import Swarm.Util.JSON (optionsUnwrapUnary)
 import Text.Show.Deriving (deriveShow1)
 import Witch
@@ -480,7 +482,15 @@ expandTydef userTyCon tys = do
   tdCtx <- ask @TDCtx
   -- In theory, if everything has kind checked, we should never encounter an undefined
   -- type constructor here.
-  let tydefInfo = fromMaybe (error $ "Encountered undefined type constructor " ++ into @String userTyCon ++ " in expandTyDef (tdCtx = " ++ show tdCtx ++ ")") mtydefInfo
+  let errMsg =
+        into @String $
+          T.unwords
+            [ "Encountered undefined type constructor"
+            , userTyCon
+            , "in expandTyDef"
+            , parens ("tdCtx = " <> showT tdCtx)
+            ]
+      tydefInfo = fromMaybe (error errMsg) mtydefInfo
   return $ substTydef tydefInfo tys
 
 -- | Substitute the given types into the body of the given type

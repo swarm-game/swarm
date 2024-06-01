@@ -22,10 +22,9 @@ import Swarm.Language.Parser.Record (parseRecord)
 import Swarm.Language.Parser.Type
 import Swarm.Language.Syntax
 import Swarm.Language.Types
-import Swarm.Util (findDup)
+import Swarm.Util (failT, findDup)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
-import Witch (into)
 
 -- Imports for doctests (cabal-docspec needs this)
 
@@ -120,11 +119,11 @@ sDef x ty t = SDef (lvVar x `S.member` setOf freeVarsV t) x ty t
 --   no free type variables).
 bindTydef :: [Var] -> Type -> Parser Polytype
 bindTydef xs ty
-  | Just repeated <- findDup xs = fail $ "Duplicate variable on left-hand side of tydef: " ++ into @String repeated
+  | Just repeated <- findDup xs =
+      failT ["Duplicate variable on left-hand side of tydef:", repeated]
   | not (S.null free) =
-      fail $
-        "Undefined type variable(s) on right-hand side of tydef: "
-          ++ unwords (map (into @String) (S.toList free))
+      failT $
+        "Undefined type variable(s) on right-hand side of tydef:" : S.toList free
   | otherwise = return $ Forall xs ty
  where
   free = tyVars ty `S.difference` S.fromList xs
