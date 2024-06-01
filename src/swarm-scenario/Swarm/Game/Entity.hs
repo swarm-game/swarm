@@ -192,7 +192,7 @@ data GrowthSpread = GrowthSpread
   deriving (Eq, Ord, Show, Read, Generic, Hashable, ToJSON)
 
 instance FromJSON GrowthSpread where
-  parseJSON = withObject "Growth" $ \v -> do
+  parseJSON = withObject "GrowthSpread" $ \v -> do
     spreadRadius <- v .: "radius"
     spreadDensity <- v .: "density"
     pure GrowthSpread {..}
