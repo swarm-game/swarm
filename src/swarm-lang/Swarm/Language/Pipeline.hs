@@ -10,6 +10,9 @@
 -- text representing a Swarm program into something useful, this is
 -- probably the module you want.
 module Swarm.Language.Pipeline (
+  -- * Contexts
+  Contexts (..),
+
   -- * ProcessedTerm
   ProcessedTerm (..),
   processedModule,
@@ -32,7 +35,6 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml as Y
 import GHC.Generics (Generic)
-import Swarm.Language.Context
 import Swarm.Language.Elaborate
 import Swarm.Language.Module
 import Swarm.Language.Parser (readTerm)
@@ -42,6 +44,21 @@ import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
 import Witch (into)
+
+data Contexts = Contexts
+  { _tCtx :: TCtx
+  , _reqCtx :: ReqCtx
+  , _tydefCtx :: TDCtx
+  }
+  deriving (Eq, Show, Generic, Data, ToJSON, FromJSON)
+
+makeLenses ''Contexts
+
+instance Semigroup Contexts where
+  Contexts t1 r1 y1 <> Contexts t2 r2 y2 = Contexts (t1 <> t2) (r1 <> r2) (y1 <> y2)
+
+instance Monoid Contexts where
+  mempty = Contexts mempty mempty mempty
 
 -- | A record containing the results of the language processing
 --   pipeline.  Put a 'Term' in, and get one of these out.  A
@@ -90,24 +107,24 @@ instance ToJSON ProcessedTerm where
 --   Return either the end result (or @Nothing@ if the input was only
 --   whitespace) or a pretty-printed error message.
 processTerm :: Text -> Either Text (Maybe ProcessedTerm)
-processTerm = processTerm' empty empty
+processTerm = processTerm' mempty
 
 -- | Like 'processTerm', but use a term that has already been parsed.
 processParsedTerm :: Syntax -> Either ContextualTypeErr ProcessedTerm
-processParsedTerm = processParsedTerm' empty empty
+processParsedTerm = processParsedTerm' mempty
 
 -- | Like 'processTerm', but use explicit starting contexts.
-processTerm' :: TCtx -> ReqCtx -> Text -> Either Text (Maybe ProcessedTerm)
-processTerm' ctx capCtx txt = do
+processTerm' :: Contexts -> Text -> Either Text (Maybe ProcessedTerm)
+processTerm' ctxs txt = do
   mt <- readTerm txt
-  first (prettyTypeErrText txt) $ traverse (processParsedTerm' ctx capCtx) mt
+  first (prettyTypeErrText txt) $ traverse (processParsedTerm' ctxs) mt
 
 -- | Like 'processTerm'', but use a term that has already been parsed.
-processParsedTerm' :: TCtx -> ReqCtx -> Syntax -> Either ContextualTypeErr ProcessedTerm
-processParsedTerm' ctx capCtx t = do
-  m <- inferTop ctx t
-  let (caps, capCtx') = requirements capCtx (t ^. sTerm)
-  return $ ProcessedTerm (elaborateModule m) caps capCtx'
+processParsedTerm' :: Contexts -> Syntax -> Either ContextualTypeErr ProcessedTerm
+processParsedTerm' ctxs t = do
+  m <- inferTop (ctxs ^. tCtx) (ctxs ^. tydefCtx) t
+  let (caps, reqCtx') = requirements (ctxs ^. reqCtx) (t ^. sTerm)
+  return $ ProcessedTerm (elaborateModule m) caps reqCtx'
 
 elaborateModule :: TModule -> TModule
-elaborateModule (Module ast ctx) = Module (elaborate ast) ctx
+elaborateModule (Module ast ctx tydefs) = Module (elaborate ast) ctx tydefs

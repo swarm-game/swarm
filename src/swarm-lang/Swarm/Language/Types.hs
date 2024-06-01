@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -40,6 +41,7 @@ module Swarm.Language.Types (
   pattern TyRcd,
   pattern TyCmd,
   pattern TyDelay,
+  pattern TyUser,
 
   -- * @UType@
   IntVar (..),
@@ -61,6 +63,7 @@ module Swarm.Language.Types (
   pattern UTyRcd,
   pattern UTyCmd,
   pattern UTyDelay,
+  pattern UTyUser,
 
   -- ** Utilities
   ucata,
@@ -77,12 +80,23 @@ module Swarm.Language.Types (
   TCtx,
   UCtx,
 
+  -- * User type definitions
+  TydefInfo (..),
+  tydefType,
+  tydefArity,
+  substTydef,
+  expandTydef,
+  TDCtx,
+
   -- * The 'WithU' class
   WithU (..),
 ) where
 
+import Control.Algebra (Has)
+import Control.Effect.Reader (Reader, ask)
+import Control.Lens (makeLenses, view)
 import Control.Monad.Free
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Aeson.TH (defaultOptions, deriveFromJSON1, deriveToJSON1)
 import Data.Data (Data)
 import Data.Eq.Deriving (deriveEq1)
@@ -90,13 +104,18 @@ import Data.Fix
 import Data.Foldable (fold)
 import Data.Kind qualified
 import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.String (IsString (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic, Generic1)
-import Swarm.Language.Context
+import Swarm.Language.Context (Ctx, Var)
+import Swarm.Language.Context qualified as Ctx
+import Swarm.Util (parens, showT)
+import Swarm.Util.JSON (optionsUnwrapUnary)
 import Text.Show.Deriving (deriveShow1)
 import Witch
 
@@ -148,24 +167,20 @@ data TyCon
     TCProd
   | -- | Function types.
     TCFun
+  | -- | User-defined type constructor.
+    TCUser Var
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
 
+-- | The arity of a type, /i.e./ the number of type parameters it
+--   expects.
 newtype Arity = Arity {getArity :: Int}
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic, Data)
 
--- | The arity, /i.e./ number of type arguments, of each type
---   constructor.  Eventually, if we generalize to higher-kinded
---   types, we'll need to upgrade this to return a full-fledged kind
---   instead of just an arity.
-tcArity :: TyCon -> Arity
-tcArity =
-  Arity . \case
-    TCBase _ -> 0
-    TCCmd -> 1
-    TCDelay -> 1
-    TCSum -> 2
-    TCProd -> 2
-    TCFun -> 2
+instance ToJSON Arity where
+  toJSON = genericToJSON optionsUnwrapUnary
+
+instance FromJSON Arity where
+  parseJSON = genericParseJSON optionsUnwrapUnary
 
 ------------------------------------------------------------
 -- Types
@@ -238,19 +253,6 @@ instance IsString Type where
 
 instance IsString UType where
   fromString x = UTyVar (from @String x)
-
-------------------------------------------------------------
--- Contexts
-------------------------------------------------------------
-
--- | A @TCtx@ is a mapping from variables to polytypes.  We generally
---   get one of these at the end of the type inference process.
-type TCtx = Ctx Polytype
-
--- | A @UCtx@ is a mapping from variables to polytypes with
---   unification variables.  We generally have one of these while we
---   are in the midst of the type inference process.
-type UCtx = Ctx UPolytype
 
 ------------------------------------------------------------
 -- Polytypes
@@ -375,6 +377,9 @@ pattern TyCmd ty = TyConApp TCCmd [ty]
 pattern TyDelay :: Type -> Type
 pattern TyDelay ty = TyConApp TCDelay [ty]
 
+pattern TyUser :: Var -> [Type] -> Type
+pattern TyUser v tys = TyConApp (TCUser v) tys
+
 --------------------------------------------------
 -- UType
 
@@ -429,5 +434,92 @@ pattern UTyCmd ty = UTyConApp TCCmd [ty]
 pattern UTyDelay :: UType -> UType
 pattern UTyDelay ty = UTyConApp TCDelay [ty]
 
+pattern UTyUser :: Var -> [UType] -> UType
+pattern UTyUser v tys = UTyConApp (TCUser v) tys
+
 pattern PolyUnit :: Polytype
 pattern PolyUnit = Forall [] (TyCmd TyUnit)
+
+------------------------------------------------------------
+-- Contexts
+------------------------------------------------------------
+
+-- | A @TCtx@ is a mapping from variables to polytypes.  We generally
+--   get one of these at the end of the type inference process.
+type TCtx = Ctx Polytype
+
+-- | A @UCtx@ is a mapping from variables to polytypes with
+--   unification variables.  We generally have one of these while we
+--   are in the midst of the type inference process.
+type UCtx = Ctx UPolytype
+
+------------------------------------------------------------
+-- Type definitions
+------------------------------------------------------------
+
+data TydefInfo = TydefInfo
+  { _tydefType :: Polytype
+  , _tydefArity :: Arity
+  }
+  deriving (Eq, Show, Generic, Data, FromJSON, ToJSON)
+
+makeLenses ''TydefInfo
+
+-- | A @TDCtx@ is a mapping from user-defined type constructor names
+--   to their definitions and arities/kinds.
+type TDCtx = Ctx TydefInfo
+
+-- | Expand an application "T ty1 ty2 ... tyn" by looking up the
+--   definition of T and substituting ty1 .. tyn for its arguments.
+--
+--   Note that this has already been kind-checked so we know the
+--   number of arguments must match up; we don't worry about what
+--   happens if the lists have different lengths since in theory that
+--   can never happen.
+expandTydef :: Has (Reader TDCtx) sig m => Var -> [UType] -> m UType
+expandTydef userTyCon tys = do
+  mtydefInfo <- Ctx.lookupR userTyCon
+  tdCtx <- ask @TDCtx
+  -- In theory, if everything has kind checked, we should never encounter an undefined
+  -- type constructor here.
+  let errMsg =
+        into @String $
+          T.unwords
+            [ "Encountered undefined type constructor"
+            , userTyCon
+            , "in expandTyDef"
+            , parens ("tdCtx = " <> showT tdCtx)
+            ]
+      tydefInfo = fromMaybe (error errMsg) mtydefInfo
+  return $ substTydef tydefInfo tys
+
+-- | Substitute the given types into the body of the given type
+--   synonym definition.
+substTydef :: TydefInfo -> [UType] -> UType
+substTydef (TydefInfo (Forall as ty) _) tys = ucata Pure substF (toU ty)
+ where
+  tyMap = M.fromList $ zip as tys
+
+  substF tyF@(TyVarF x) = case M.lookup x tyMap of
+    Nothing -> Free tyF
+    Just uty -> uty
+  substF tyF = Free tyF
+
+------------------------------------------------------------
+-- Arity
+------------------------------------------------------------
+
+-- | The arity, /i.e./ number of type arguments, of each type
+--   constructor.  Eventually, if we generalize to higher-kinded
+--   types, we'll need to upgrade this to return a full-fledged kind
+--   instead of just an arity.
+tcArity :: TDCtx -> TyCon -> Maybe Arity
+tcArity tydefs =
+  fmap Arity . \case
+    TCBase _ -> Just 0
+    TCCmd -> Just 1
+    TCDelay -> Just 1
+    TCSum -> Just 2
+    TCProd -> Just 2
+    TCFun -> Just 2
+    TCUser t -> getArity . view tydefArity <$> Ctx.lookup t tydefs

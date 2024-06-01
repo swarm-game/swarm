@@ -11,7 +11,10 @@
 -- substitutions, and returns a substitution from unification which
 -- must then be composed with the substitution being tracked.
 --
--- Not used in Swarm, but useful for testing/comparison.
+-- Not used in Swarm, and also unmaintained
+-- (e.g. "Swarm.Effect.Unify.Fast" now supports expanding type
+-- aliases; this module does not). It's still here just for
+-- testing/comparison.
 module Swarm.Effect.Unify.Naive where
 
 import Control.Algebra

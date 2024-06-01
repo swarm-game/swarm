@@ -95,9 +95,9 @@ import Swarm.Game.Step (finishGameTick, gameTick)
 import Swarm.Language.Capability (Capability (CGod, CMake), constCaps)
 import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
-import Swarm.Language.Module (Module (..))
+import Swarm.Language.Module (moduleSyntax)
 import Swarm.Language.Parser.Lex (reservedWords)
-import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm', processedSyntax)
+import Swarm.Language.Pipeline (Contexts (..), ProcessedTerm (..), processTerm', processedSyntax)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement qualified as R
@@ -1108,7 +1108,8 @@ runBaseCode :: (MonadState AppState m) => RobotContext -> T.Text -> m ()
 runBaseCode topCtx uinput = do
   uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLEntry uinput)
   uiState . uiGameplay . uiREPL %= resetREPL "" (CmdPrompt [])
-  case processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput of
+  let ctxs = Contexts (topCtx ^. defTypes) (topCtx ^. defReqs) (topCtx ^. tydefVals)
+  case processTerm' ctxs uinput of
     Right mt -> do
       uiState . uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True
       runBaseTerm topCtx mt
@@ -1122,9 +1123,9 @@ runBaseTerm topCtx =
   -- The player typed something at the REPL and hit Enter; this
   -- function takes the resulting ProcessedTerm (if the REPL
   -- input is valid) and sets up the base robot to run it.
-  startBaseProgram t@(ProcessedTerm (Module tm _) reqs reqCtx) =
+  startBaseProgram t@(ProcessedTerm m reqs reqCtx) =
     -- Set the REPL status to Working
-    (gameState . gameControls . replStatus .~ REPLWorking (Typed Nothing (tm ^. sType) reqs))
+    (gameState . gameControls . replStatus .~ REPLWorking (Typed Nothing (m ^. moduleSyntax . sType) reqs))
       -- The `reqCtx` maps names of variables defined in the
       -- term (by `def` statements) to their requirements.
       -- E.g. if we had `def m = move end`, the reqCtx would
@@ -1299,7 +1300,8 @@ validateREPLForm s =
            in s & uiState . uiGameplay . uiREPL . replType .~ theType
     CmdPrompt _
       | otherwise ->
-          let result = processTerm' (topCtx ^. defTypes) (topCtx ^. defReqs) uinput
+          let ctxs = Contexts (topCtx ^. defTypes) (topCtx ^. defReqs) (topCtx ^. tydefVals)
+              result = processTerm' ctxs uinput
               theType = case result of
                 Right (Just pt) -> Just (pt ^. processedSyntax . sType)
                 _ -> Nothing

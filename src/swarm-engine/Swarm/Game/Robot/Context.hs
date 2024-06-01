@@ -19,7 +19,7 @@ import Swarm.Game.CESK qualified as C
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Typed (Typed (..))
-import Swarm.Language.Types (TCtx)
+import Swarm.Language.Types (TCtx, TDCtx)
 import Swarm.Language.Value as V
 
 -- | A record that stores the information
@@ -37,13 +37,15 @@ data RobotContext = RobotContext
   , _defStore :: C.Store
   -- ^ A store containing memory cells allocated to hold
   --   definitions.
+  , _tydefVals :: TDCtx
+  -- ^ Type synonym definitions.
   }
   deriving (Eq, Show, Generic, Ae.FromJSON, Ae.ToJSON)
 
 makeLenses ''RobotContext
 
 emptyRobotContext :: RobotContext
-emptyRobotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty C.emptyStore
+emptyRobotContext = RobotContext Ctx.empty Ctx.empty Ctx.empty C.emptyStore Ctx.empty
 
 type instance Index RobotContext = Ctx.Var
 type instance IxValue RobotContext = Typed Value

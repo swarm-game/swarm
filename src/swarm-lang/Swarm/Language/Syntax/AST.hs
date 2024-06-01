@@ -93,6 +93,8 @@ data Term' ty
     --   value in subsequent commands. The @Bool@ indicates whether the
     --   definition is known to be recursive.
     SDef Bool LocVar (Maybe Polytype) (Syntax' ty)
+  | -- | A type synonym definition.
+    TTydef LocVar Polytype
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
     SBind (Maybe LocVar) (Syntax' ty) (Syntax' ty)
   | -- | Delay evaluation of a term, written @{...}@.  Swarm is an

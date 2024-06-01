@@ -89,7 +89,7 @@ validateSwarmCode doc version content = do
           VU.Usage _ problems = VU.getUsage mempty term
           unusedWarnings = mapMaybe (VU.toErrPos content) problems
 
-          parsingErrors = case processParsedTerm' mempty mempty term of
+          parsingErrors = case processParsedTerm' mempty term of
             Right _ -> []
             Left e -> pure $ showTypeErrorPos content e
         Left e -> (pure $ showErrorPos e, [])

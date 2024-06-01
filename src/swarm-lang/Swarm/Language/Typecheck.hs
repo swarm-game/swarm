@@ -156,10 +156,11 @@ fromUModule ::
   ) =>
   UModule ->
   m TModule
-fromUModule (Module u uctx) =
+fromUModule (Module u uctx tydefctx) =
   Module
     <$> mapM (checkPredicative <=< (fmap fromU . generalize)) u
     <*> checkPredicative (fromU uctx)
+    <*> pure tydefctx
 
 finalizeUModule ::
   ( Has Unification sig m
@@ -174,23 +175,26 @@ finalizeUModule = applyBindings >=> fromUModule
 runTC' ::
   Algebra sig m =>
   TCtx ->
-  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC m))) UModule ->
+  TDCtx ->
+  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC (ReaderC TDCtx m)))) UModule ->
   m (Either ContextualTypeErr TModule)
-runTC' ctx =
+runTC' ctx tdctx =
   (>>= finalizeUModule)
     >>> runReader (toU ctx)
     >>> runReader []
     >>> runError
     >>> U.runUnification
+    >>> runReader tdctx
     >>> fmap reportUnificationError
 
 -- | Run a top-level inference computation, returning either a
 --   'ContextualTypeErr' or a fully resolved 'TModule'.
 runTC ::
   TCtx ->
-  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC Identity))) UModule ->
+  TDCtx ->
+  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC (ReaderC TDCtx Identity)))) UModule ->
   Either ContextualTypeErr TModule
-runTC tctx = runTC' tctx >>> runIdentity
+runTC tctx tdctx = runTC' tctx tdctx >>> runIdentity
 
 checkPredicative :: Has (Throw ContextualTypeErr) sig m => Maybe a -> m a
 checkPredicative = maybe (throwError (mkRawTypeErr Impredicative)) pure
@@ -337,7 +341,7 @@ instance (HasBindings u, Data u) => HasBindings (Syntax' u) where
   applyBindings (Syntax' l t cs u) = Syntax' l <$> applyBindings t <*> pure cs <*> applyBindings u
 
 instance HasBindings UModule where
-  applyBindings (Module u uctx) = Module <$> applyBindings u <*> applyBindings uctx
+  applyBindings (Module u uctx tydefs) = Module <$> applyBindings u <*> applyBindings uctx <*> pure tydefs
 
 -- ------------------------------------------------------------
 -- -- Converting between mono- and polytypes
@@ -493,12 +497,16 @@ data InvalidAtomicReason
 decomposeTyConApp1 ::
   ( Has Unification sig m
   , Has (Throw ContextualTypeErr) sig m
+  , Has (Reader TDCtx) sig m
   , Has (Reader TCStack) sig m
   ) =>
   TyCon ->
   Syntax ->
   Sourced UType ->
   m UType
+decomposeTyConApp1 c t (src, UTyConApp (TCUser u) as) = do
+  ty2 <- expandTydef u as
+  decomposeTyConApp1 c t (src, ty2)
 decomposeTyConApp1 c _ (_, UTyConApp c' [a])
   | c == c' = return a
 decomposeTyConApp1 c t ty = do
@@ -510,6 +518,7 @@ decomposeCmdTy
   , decomposeDelayTy ::
     ( Has Unification sig m
     , Has (Throw ContextualTypeErr) sig m
+    , Has (Reader TDCtx) sig m
     , Has (Reader TCStack) sig m
     ) =>
     Syntax ->
@@ -524,12 +533,16 @@ decomposeDelayTy = decomposeTyConApp1 TCDelay
 decomposeTyConApp2 ::
   ( Has Unification sig m
   , Has (Throw ContextualTypeErr) sig m
+  , Has (Reader TDCtx) sig m
   , Has (Reader TCStack) sig m
   ) =>
   TyCon ->
   Syntax ->
   Sourced UType ->
   m (UType, UType)
+decomposeTyConApp2 c t (src, UTyConApp (TCUser u) as) = do
+  ty2 <- expandTydef u as
+  decomposeTyConApp2 c t (src, ty2)
 decomposeTyConApp2 c _ (_, UTyConApp c' [ty1, ty2])
   | c == c' = return (ty1, ty2)
 decomposeTyConApp2 c t ty = do
@@ -542,6 +555,7 @@ decomposeFunTy
   , decomposeProdTy ::
     ( Has Unification sig m
     , Has (Throw ContextualTypeErr) sig m
+    , Has (Reader TDCtx) sig m
     , Has (Reader TCStack) sig m
     ) =>
     Syntax ->
@@ -556,8 +570,8 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 -- | Top-level type inference function: given a context of definition
 --   types and a top-level term, either return a type error or its
 --   type as a 'TModule'.
-inferTop :: TCtx -> Syntax -> Either ContextualTypeErr TModule
-inferTop ctx = runTC ctx . inferModule
+inferTop :: TCtx -> TDCtx -> Syntax -> Either ContextualTypeErr TModule
+inferTop ctx tdCtx = runTC ctx tdCtx . inferModule
 
 -- | Infer the signature of a top-level expression which might
 --   contain definitions.
@@ -575,6 +589,7 @@ inferModule ::
   ( Has Unification sig m
   , Has (Reader UCtx) sig m
   , Has (Reader TCStack) sig m
+  , Has (Reader TDCtx) sig m
   , Has (Error ContextualTypeErr) sig m
   ) =>
   Syntax ->
@@ -589,23 +604,27 @@ inferModule s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
     _ <- unify (Just t1) (joined xTy (t1' ^. sType))
     pty <- generalize (t1' ^. sType)
-    return $ Module (Syntax' l (SDef r x Nothing t1') cs (UTyCmd UTyUnit)) (singleton (lvVar x) pty)
+    return $ Module (Syntax' l (SDef r x Nothing t1') cs (UTyCmd UTyUnit)) (singleton (lvVar x) pty) empty
 
   -- If a (poly)type signature has been provided, skolemize it and
   -- check the definition.
   SDef r x (Just pty) t1 -> withFrame l (TCDef (lvVar x)) $ do
-    adaptToTypeErr l KindErr $ checkPolytypeKind pty
+    _ <- adaptToTypeErr l KindErr $ checkPolytypeKind pty
     let upty = toU pty
     uty <- skolemize upty
     t1' <- withBinding (lvVar x) upty $ check t1 uty
-    return $ Module (Syntax' l (SDef r x (Just pty) t1') cs (UTyCmd UTyUnit)) (singleton (lvVar x) upty)
+    return $ Module (Syntax' l (SDef r x (Just pty) t1') cs (UTyCmd UTyUnit)) (singleton (lvVar x) upty) empty
 
+  -- Simply record a type synonym definition in the context.
+  TTydef x pty -> do
+    tydef <- adaptToTypeErr l KindErr $ checkPolytypeKind pty
+    return $ Module (Syntax' l (TTydef x pty) cs (UTyCmd UTyUnit)) empty (singleton (lvVar x) tydef)
   -- To handle a 'TBind', infer the types of both sides, combining the
   -- returned modules appropriately.  Have to be careful to use the
   -- correct context when checking the right-hand side in particular.
   SBind mx c1 c2 -> do
     -- First, infer the left side.
-    Module c1' ctx1 <- withFrame l TCBindL $ inferModule c1
+    Module c1' ctx1 tydefs1 <- withFrame l TCBindL $ inferModule c1
     a <- decomposeCmdTy c1 (Actual, c1' ^. sType)
 
     -- Note we generalize here, similar to how we generalize at let
@@ -630,9 +649,11 @@ inferModule s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     -- c1 could define something with the same name as x, in which
     -- case the bound x should shadow the defined one; hence, we apply
     -- that binding /after/ (i.e. /within/) the application of @ctx1@.
-    withBindings ctx1 $
-      maybe id ((`withBinding` genA) . lvVar) mx $ do
-        Module c2' ctx2 <- withFrame l TCBindR $ inferModule c2
+    withBindings ctx1
+      . withBindings tydefs1
+      . maybe id ((`withBinding` genA) . lvVar) mx
+      $ do
+        Module c2' ctx2 tydefs2 <- withFrame l TCBindR $ inferModule c2
 
         -- We don't actually need the result type since we're just
         -- going to return the entire type, but it's important to
@@ -650,6 +671,7 @@ inferModule s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
           Module
             (Syntax' l (SBind mx c1' c2') cs (c2' ^. sType))
             (ctx1 `Ctx.union` ctxX `Ctx.union` ctx2)
+            (tydefs1 `Ctx.union` tydefs2)
 
   -- In all other cases, there can no longer be any definitions in the
   -- term, so delegate to 'infer'.
@@ -667,6 +689,7 @@ inferModule s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
 infer ::
   ( Has (Reader UCtx) sig m
   , Has (Reader TCStack) sig m
+  , Has (Reader TDCtx) sig m
   , Has Unification sig m
   , Has (Error ContextualTypeErr) sig m
   ) =>
@@ -782,7 +805,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- However, we must be careful to deal properly with polymorphic
   -- type annotations.
   SAnnotate c pty -> do
-    adaptToTypeErr l KindErr $ checkPolytypeKind pty
+    _ <- adaptToTypeErr l KindErr $ checkPolytypeKind pty
     let upty = toU pty
     -- Typecheck against skolemized polytype.
     uty <- skolemize upty
@@ -925,6 +948,7 @@ inferConst c = case c of
 --   the expected type as we go and pushing it through the recursion.
 check ::
   ( Has (Reader UCtx) sig m
+  , Has (Reader TDCtx) sig m
   , Has (Reader TCStack) sig m
   , Has Unification sig m
   , Has (Error ContextualTypeErr) sig m
@@ -1027,6 +1051,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
 
   -- Definitions can only occur at the top level.
   SDef {} -> throwTypeErr l $ DefNotTopLevel t
+  TTydef {} -> throwTypeErr l $ DefNotTopLevel t
   -- To check a record, ensure the expected type is a record type,
   -- ensure all the right fields are present, and push the expected
   -- types of all the fields down into recursive checks.
@@ -1134,6 +1159,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   TRequireDevice {} -> return 0
   TRequire {} -> return 0
   SRequirements {} -> return 0
+  TTydef {} -> return 0
   -- Constants.
   TConst c
     -- Nested 'atomic' is not allowed.

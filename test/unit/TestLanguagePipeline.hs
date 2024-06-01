@@ -8,17 +8,16 @@
 module TestLanguagePipeline where
 
 import Control.Arrow ((&&&))
-import Control.Lens (toListOf)
+import Control.Lens (toListOf, view)
 import Control.Lens.Plated (universe)
 import Data.Aeson (eitherDecode, encode)
 import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
-import Swarm.Language.Module (Module (..))
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ (tyQ)
-import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
+import Swarm.Language.Pipeline (processTerm, processedSyntax)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
@@ -102,13 +101,12 @@ testLanguagePipeline =
             "Disallow uppercase type variable names"
             ( process
                 "def id : A -> A = \\x. x end"
-                ( T.unlines
-                    [ "1:11:"
-                    , "  |"
-                    , "1 | def id : A -> A = \\x. x end"
-                    , "  |           ^"
-                    , "Type variable names must start with a lowercase letter"
-                    ]
+                ( T.init $
+                    T.unlines
+                      [ "1:1: Undefined type A"
+                      , ""
+                      , "  - While checking the definition of id"
+                      ]
                 )
             )
         , testCase
@@ -338,13 +336,14 @@ testLanguagePipeline =
             "annotate 1 + 1"
             ( assertEqual
                 "type annotations"
-                (toListOf traverse (getSyntax [tmQ| 1 + 1 |]))
+                (toListOf traverse (view processedSyntax [tmQ| 1 + 1 |]))
                 [[tyQ| Int -> Int -> Int|], [tyQ|Int|], [tyQ|Int -> Int|], [tyQ|Int|], [tyQ|Int|]]
             )
         , testCase
             "get all annotated variable types"
             ( let s =
-                    getSyntax
+                    view
+                      processedSyntax
                       [tmQ| def f : (Int -> Int) -> Int -> Text = \g. \x. format (g x) end |]
 
                   isVar (TVar {}) = True
@@ -536,6 +535,59 @@ testLanguagePipeline =
             "local bind is polymorphic"
             (valid "def foo : Cmd (Int * Text) = f <- return (\\x.x); return (f 3, f \"hi\") end")
         ]
+    , testGroup
+        "type synonyms"
+        [ testCase
+            "X"
+            (valid "tydef X = Int end; let n : X = 3 in log (format n)")
+        , testCase
+            "Maybe"
+            (valid "tydef Maybe a = Unit + a end; let x : Maybe Int = inr 3 in case x (\\_. move) (\\n. log (format (n+2)))")
+        , testCase
+            "multi-args"
+            ( valid $
+                T.unlines
+                  [ "tydef Foo a b c = a + (b * Int) + Cmd c end;"
+                  , "let f1 : Foo (Cmd Unit) Int Text = inl move in"
+                  , "  let f2 : Foo Int (Cmd Unit) Unit = inr (inl (move, 3)) in"
+                  , "  let f3 : Foo Int Int Text = inr (inr grab) in"
+                  , "  move"
+                  ]
+            )
+        , testCase
+            "multiple tydefs"
+            (valid "tydef X = Int end; tydef Y = Unit end; def f : X -> Y = \\n. () end")
+        , testCase
+            "sequential tydefs don't need semicolon"
+            (valid "tydef X = Int end tydef Y = Unit end")
+        , testCase
+            "sequential tydef + def don't need semicolon"
+            (valid "tydef X = Int end def x : X = 5 end")
+        , testCase
+            "recursive tydef not allowed"
+            ( process
+                "tydef X = Unit + X end"
+                "1:1: Undefined type X"
+            )
+        , testCase
+            "nested tydef not allowed"
+            ( process
+                "def f : Cmd Unit = tydef X = Int end; move end"
+                "1:20: Definitions may only be at the top level: `tydef X = Int end`\n\n  - While checking the left-hand side of a semicolon\n  - While checking the definition of f"
+            )
+        , testCase
+            "tydef with repeated variables"
+            ( process
+                "tydef Repeated a b a = a + b end"
+                "1:33:\n  |\n1 | tydef Repeated a b a = a + b end\n  |                                 ^\nDuplicate variable on left-hand side of tydef: a\n"
+            )
+        , testCase
+            "tydef with unbound variables"
+            ( process
+                "tydef Unbound a b = a + b + c end"
+                "1:34:\n  |\n1 | tydef Unbound a b = a + b + c end\n  |                                  ^\nUndefined type variable(s) on right-hand side of tydef: c\n"
+            )
+        ]
     ]
  where
   valid = flip process ""
@@ -550,9 +602,6 @@ testLanguagePipeline =
     Right _
       | expect == "" -> pure ()
       | otherwise -> error "Unexpected success"
-
-  getSyntax :: ProcessedTerm -> Syntax' Polytype
-  getSyntax (ProcessedTerm (Module s _) _ _) = s
 
 -- | Check round tripping of term from and to text, then test ToJSON/FromJSON.
 roundTripTerm :: Text -> Assertion

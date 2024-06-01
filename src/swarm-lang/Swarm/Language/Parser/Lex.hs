@@ -31,8 +31,10 @@ module Swarm.Language.Parser.Lex (
   IdentifierType (..),
   locIdentifier,
   locTmVar,
+  locTyName,
   identifier,
   tyVar,
+  tyName,
   tmVar,
   textLiteral,
   integer,
@@ -45,7 +47,7 @@ module Swarm.Language.Parser.Lex (
 
 import Control.Lens (use, view, (%=), (.=))
 import Control.Monad (void)
-import Data.Char (isUpper)
+import Data.Char (isLower, isUpper)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
@@ -161,7 +163,7 @@ primitiveTypeNames = "Cmd" : baseTypeNames
 
 -- | List of keywords built into the language.
 keywords :: [Text]
-keywords = T.words "let in def end true false forall require requirements"
+keywords = T.words "let in def tydef end true false forall require requirements"
 
 -- | List of reserved words that cannot be used as variable names.
 reservedWords :: Set Text
@@ -194,7 +196,7 @@ reserved :: Text -> Parser ()
 reserved = reservedGen string'
 
 -- | What kind of identifier are we parsing?
-data IdentifierType = IDTyVar | IDTmVar
+data IdentifierType = IDTyVar | IDTyName | IDTmVar
   deriving (Eq, Ord, Show)
 
 -- | Parse an identifier together with its source location info.
@@ -210,11 +212,17 @@ locIdentifier idTy = do
           failT ["reserved word", squote t, "cannot be used as variable name"]
       | otherwise -> return t
     SwarmLangLatest
-      | t `S.member` reservedWords || T.toLower t `S.member` reservedWords ->
-          failT ["Reserved word", squote t, "cannot be used as a variable name"]
       | IDTyVar <- idTy
       , T.toTitle t `S.member` reservedWords ->
           failT ["Reserved type name", squote t, "cannot be used as a type variable name; perhaps you meant", squote (T.toTitle t) <> "?"]
+      | IDTyName <- idTy
+      , t `S.member` reservedWords ->
+          failT ["Reserved type name", squote t, "cannot be redefined."]
+      | t `S.member` reservedWords || T.toLower t `S.member` reservedWords ->
+          failT ["Reserved word", squote t, "cannot be used as a variable name"]
+      | IDTyName <- idTy
+      , isLower (T.head t) ->
+          failT ["Type synonym names must start with an uppercase letter"]
       | IDTyVar <- idTy
       , isUpper (T.head t) ->
           failT ["Type variable names must start with a lowercase letter"]
@@ -223,6 +231,11 @@ locIdentifier idTy = do
 -- | Parse a term variable together with its source location info.
 locTmVar :: Parser LocVar
 locTmVar = locIdentifier IDTmVar
+
+-- | Parse a user-defined type name together with its source location
+--   info.
+locTyName :: Parser LocVar
+locTyName = locIdentifier IDTyName
 
 -- | Parse an identifier, i.e. any non-reserved string containing
 --   alphanumeric characters and underscores, not starting with a
@@ -235,6 +248,11 @@ identifier = fmap lvVar . locIdentifier
 --   name.
 tyVar :: Parser Var
 tyVar = identifier IDTyVar
+
+-- | Parse a (user-defined) type constructor name, which must start
+--   with an uppercase letter.
+tyName :: Parser Var
+tyName = identifier IDTyName
 
 -- | Parse a term variable, which can start in any case and just
 --   cannot be the same (case-insensitively) as a lowercase reserved

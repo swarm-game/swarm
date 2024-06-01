@@ -131,6 +131,7 @@ instance PrettyPrec TyCon where
     TCSum -> "Sum"
     TCProd -> "Prod"
     TCFun -> "Fun"
+    TCUser t -> pretty t
 
 -- | Split a function type chain, so that we can pretty print
 --   the type parameters aligned on each line when they don't fit.
@@ -282,6 +283,7 @@ instance PrettyPrec (Term' ty) where
       [ prettyDefinition "def" x mty t1
       , "end"
       ]
+  prettyPrec _ (TTydef (LV _ x) pty) = prettyTydef x pty
   -- Special case for printing consecutive defs: don't worry about
   -- precedence, and print a blank line with no semicolon
   prettyPrec _ (SBind Nothing t1@(Syntax' _ (SDef {}) _ _) t2) =
@@ -318,6 +320,10 @@ prettyDefinition defName x mty t1 =
   defType' = maybe "" (\ty -> ":" <+> ppr ty) mty
   defEqLambdas = hsep ("=" : map prettyLambda defLambdaList)
   eqAndLambdaLine = if null defLambdaList then "=" else line <> defEqLambdas
+
+prettyTydef :: Var -> Polytype -> Doc ann
+prettyTydef x (Forall [] ty) = "tydef" <+> pretty x <+> "=" <+> ppr ty <+> "end"
+prettyTydef x (Forall xs ty) = "tydef" <+> pretty x <+> hsep (map pretty xs) <+> "=" <+> ppr ty <+> "end"
 
 prettyPrecApp :: Int -> Syntax' ty -> Syntax' ty -> Doc a
 prettyPrecApp p t1 t2 =
@@ -409,25 +415,28 @@ instance PrettyPrec UnificationError where
       "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
     UnifyErr ty1 ty2 ->
       "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
+    UndefinedUserType ty ->
+      "Undefined user type" <+> ppr ty
 
 instance PrettyPrec Arity where
   prettyPrec _ (Arity a) = pretty a
 
 instance PrettyPrec KindError where
-  prettyPrec _ (ArityMismatch c tys) =
+  prettyPrec _ (ArityMismatch c a tys) =
     nest 2 . vsep $
       [ "Kind error:"
       , hsep
           [ ppr c
           , "requires"
-          , ppr (tcArity c)
+          , pretty a
           , "type"
-          , pretty (number (getArity (tcArity c)) "argument" <> ",")
+          , pretty (number a "argument" <> ",")
           , "but was given"
           , pretty (length tys)
           ]
       ]
         ++ ["in the type:" <+> ppr (TyConApp c tys) | not (null tys)]
+  prettyPrec _ (UndefinedTyCon tc _ty) = "Undefined type" <+> ppr tc
 
 -- | Given a type and its source, construct an appropriate description
 --   of it to go in a type mismatch error message.
@@ -473,6 +482,7 @@ tyConNounPhrase = \case
   TCSum -> "a sum"
   TCProd -> "a pair"
   TCFun -> "a function"
+  TCUser t -> pretty t
 
 -- | Return an English noun phrase describing things with the given
 --   base type.

@@ -23,6 +23,7 @@ import Control.Applicative (Alternative)
 import Control.Carrier.State.Strict (StateC, evalState)
 import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Category ((>>>))
+import Control.Effect.Reader (Reader)
 import Control.Effect.State (State, get, gets, modify)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Monad (zipWithM)
@@ -86,11 +87,6 @@ instance Substitutes IntVar UType UType where
 ------------------------------------------------------------
 -- Carrier type
 
--- Note: this carrier type and the runUnification function are
--- identical between this module and Swarm.Effect.Unify.Naive, but it
--- seemed best to duplicate it, so we can modify the carriers
--- independently in the future if we want.
-
 -- | Carrier type for unification: we maintain a current substitution,
 --   a counter for generating fresh unification variables, and can
 --   throw unification errors.
@@ -104,8 +100,13 @@ newtype UnificationC m a = UnificationC
 newtype FreshVarCounter = FreshVarCounter {getFreshVarCounter :: Int}
   deriving (Eq, Ord, Enum)
 
--- | Run a 'Unification' effect via the 'UnificationC' carrier.
-runUnification :: Algebra sig m => UnificationC m a -> m (Either UnificationError a)
+-- | Run a 'Unification' effect via the 'UnificationC' carrier.  Note
+--   that we also require an ambient @Reader 'TDCtx'@ effect, so unification
+--   will be sure to pick up whatever type aliases happen to be in scope.
+runUnification ::
+  (Algebra sig m, Has (Reader TDCtx) sig m) =>
+  UnificationC m a ->
+  m (Either UnificationError a)
 runUnification =
   unUnificationC >>> evalState idS >>> evalState (FreshVarCounter 0) >>> runThrow
 
@@ -132,7 +133,10 @@ runUnification =
 
 -- | Implementation of the 'Unification' effect in terms of the
 --   'UnificationC' carrier.
-instance Algebra sig m => Algebra (Unification :+: sig) (UnificationC m) where
+instance
+  (Algebra sig m, Has (Reader TDCtx) sig m) =>
+  Algebra (Unification :+: sig) (UnificationC m)
+  where
   alg hdl sig ctx = UnificationC $ case sig of
     L (Unify t1 t2) -> (<$ ctx) <$> runThrow (unify t1 t2)
     L (ApplyBindings t) -> do
@@ -152,6 +156,7 @@ instance Algebra sig m => Algebra (Unification :+: sig) (UnificationC m) where
 --   instead lazily during substitution.
 unify ::
   ( Has (Throw UnificationError) sig m
+  , Has (Reader TDCtx) sig m
   , Has (State (Subst IntVar UType)) sig m
   ) =>
   UType ->
@@ -165,6 +170,10 @@ unify ty1 ty2 = case (ty1, ty2) of
       Nothing -> unifyVar x y
       Just xv -> unify xv y
   (x, Pure y) -> unify (Pure y) x
+  (UTyUser x1 tys, _) -> do
+    ty1' <- expandTydef x1 tys
+    unify ty1' ty2
+  (_, UTyUser {}) -> unify ty2 ty1
   (Free t1, Free t2) -> Free <$> unifyF t1 t2
 
 -- | Unify a unification variable which /is not/ bound by the current
@@ -172,6 +181,7 @@ unify ty1 ty2 = case (ty1, ty2) of
 --   variable, we must look it up as well to see if it is bound.
 unifyVar ::
   ( Has (Throw UnificationError) sig m
+  , Has (Reader TDCtx) sig m
   , Has (State (Subst IntVar UType)) sig m
   ) =>
   IntVar ->
@@ -199,6 +209,7 @@ unifyVar x t = modify (insert x t) >> pure t
 --   contents.
 unifyF ::
   ( Has (Throw UnificationError) sig m
+  , Has (Reader TDCtx) sig m
   , Has (State (Subst IntVar UType)) sig m
   ) =>
   TypeF UType ->

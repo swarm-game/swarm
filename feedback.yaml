@@ -1,3 +1,4 @@
 loops:
+  build: cabal build -j -O0 all
   test: cabal test -j -O0 --test-show-details=direct swarm:swarm-integration swarm:swarm-unit
   unit: cabal test -j -O0 --test-show-details=direct swarm:swarm-unit

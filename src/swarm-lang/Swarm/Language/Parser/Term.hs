@@ -7,7 +7,7 @@
 module Swarm.Language.Parser.Term where
 
 import Control.Lens (view, (^.))
-import Control.Monad (guard)
+import Control.Monad (guard, join)
 import Control.Monad.Combinators.Expr
 import Data.Foldable (asum)
 import Data.List (foldl')
@@ -22,6 +22,7 @@ import Swarm.Language.Parser.Record (parseRecord)
 import Swarm.Language.Parser.Type
 import Swarm.Language.Syntax
 import Swarm.Language.Types
+import Swarm.Util (failT, findDup)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
 
@@ -86,6 +87,9 @@ parseTermAtom2 =
           <$> (reserved "def" *> locTmVar)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
+        <|> TTydef
+          <$> (reserved "tydef" *> locTyName)
+          <*> join (bindTydef <$> many tyVar <*> (symbol "=" *> parseType <* reserved "end"))
         <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
         <|> parens (view sTerm . mkTuple <$> (parseTerm `sepBy` symbol ","))
     )
@@ -108,6 +112,21 @@ sLet x ty t1 = SLet (lvVar x `S.member` setOf freeVarsV t1) x ty t1
 --   indicating whether it is recursive.
 sDef :: LocVar -> Maybe Polytype -> Syntax -> Term
 sDef x ty t = SDef (lvVar x `S.member` setOf freeVarsV t) x ty t
+
+-- | Create a polytype from a list of variable binders and a type.
+--   Ensure that no binder is repeated, and all type variables in the
+--   type are present in the list of binders (/i.e./ the type contains
+--   no free type variables).
+bindTydef :: [Var] -> Type -> Parser Polytype
+bindTydef xs ty
+  | Just repeated <- findDup xs =
+      failT ["Duplicate variable on left-hand side of tydef:", repeated]
+  | not (S.null free) =
+      failT $
+        "Undefined type variable(s) on right-hand side of tydef:" : S.toList free
+  | otherwise = return $ Forall xs ty
+ where
+  free = tyVars ty `S.difference` S.fromList xs
 
 parseAntiquotation :: Parser Term
 parseAntiquotation =
@@ -155,7 +174,9 @@ fixDefMissingSemis term =
   mkBind t1 t2 = Syntax ((t1 ^. sLoc) <> (t2 ^. sLoc)) $ SBind Nothing t1 t2
   nestedDefs term' acc = case term' of
     def@(Syntax _ SDef {}) -> def : acc
+    def@(Syntax _ TTydef {}) -> def : acc
     (Syntax _ (SApp nestedTerm def@(Syntax _ SDef {}))) -> nestedDefs nestedTerm (def : acc)
+    (Syntax _ (SApp nestedTerm def@(Syntax _ TTydef {}))) -> nestedDefs nestedTerm (def : acc)
     -- Otherwise returns an empty list to keep the term unchanged
     _ -> []
 
