@@ -42,6 +42,7 @@ import Swarm.Game.World.Modify qualified as WM
 import Swarm.Language.Capability
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.Direction (Direction)
 import Swarm.Util hiding (both)
 import System.Random (UniformRange, uniformR)
 import Prelude hiding (Applicative (..), lookup)

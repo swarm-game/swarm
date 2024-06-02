@@ -48,6 +48,7 @@ import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Inspect
 import Swarm.Game.Universe
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.Direction
 import Swarm.Util (hoistMaybe)
 
 -- | Swarm command arguments are converted to idiomatic Haskell

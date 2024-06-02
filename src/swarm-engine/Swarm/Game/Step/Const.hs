@@ -94,6 +94,7 @@ import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.Direction
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Value
 import Swarm.Log

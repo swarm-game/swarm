@@ -48,7 +48,7 @@ import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Graphics.Text.Width
-import Swarm.Language.Syntax (AbsoluteDir (..), Direction (..))
+import Swarm.Language.Syntax.Direction (AbsoluteDir (..), Direction (..))
 import Swarm.Util (maxOn, quote)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
