@@ -53,7 +53,6 @@ npm install
 
 If you want to include the LSP client then after the previous install do:
 ```sh
-cd client
 tsc --build
 ```
 
