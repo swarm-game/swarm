@@ -21,6 +21,10 @@ module Swarm.Language.Types (
   -- ** Type structure functor
   TypeF (..),
 
+  -- ** Recursive types
+  Nat (..),
+  natToInt,
+
   -- * @Type@
   Type,
   tyVars,
@@ -42,6 +46,7 @@ module Swarm.Language.Types (
   pattern TyCmd,
   pattern TyDelay,
   pattern TyUser,
+  pattern TyRec,
 
   -- * @UType@
   IntVar (..),
@@ -64,6 +69,7 @@ module Swarm.Language.Types (
   pattern UTyCmd,
   pattern UTyDelay,
   pattern UTyUser,
+  pattern UTyRec,
 
   -- ** Utilities
   ucata,
@@ -150,6 +156,19 @@ baseTyName :: BaseTy -> Text
 baseTyName = into @Text . drop 1 . show
 
 ------------------------------------------------------------
+-- Recursive type utilities
+------------------------------------------------------------
+
+data Nat where
+  NZ :: Nat
+  NS :: Nat -> Nat
+  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
+
+natToInt :: Nat -> Int
+natToInt NZ = 0
+natToInt (NS n) = 1 + natToInt n
+
+------------------------------------------------------------
 -- Type constructors
 ------------------------------------------------------------
 
@@ -202,6 +221,13 @@ data TypeF t
     TyVarF Var
   | -- | Record type.
     TyRcdF (Map Var t)
+  | -- | A recursive type variable bound by an enclosing Rec,
+    --   represented by a de Bruijn index.
+    TyRecVarF Nat
+  | -- | Recursive type.  The variable is just a suggestion for a name to use
+    --   when pretty-printing; the actual bound variables are represented
+    --   via de Bruijn indices.
+    TyRecF Var t
   deriving (Show, Eq, Functor, Foldable, Traversable, Generic, Generic1, Data, FromJSON, ToJSON)
 
 deriveEq1 ''TypeF
@@ -380,6 +406,9 @@ pattern TyDelay ty = TyConApp TCDelay [ty]
 pattern TyUser :: Var -> [Type] -> Type
 pattern TyUser v tys = TyConApp (TCUser v) tys
 
+pattern TyRec :: Var -> Type -> Type
+pattern TyRec x ty = Fix (TyRecF x ty)
+
 --------------------------------------------------
 -- UType
 
@@ -436,6 +465,9 @@ pattern UTyDelay ty = UTyConApp TCDelay [ty]
 
 pattern UTyUser :: Var -> [UType] -> UType
 pattern UTyUser v tys = UTyConApp (TCUser v) tys
+
+pattern UTyRec :: Var -> UType -> UType
+pattern UTyRec x ty = Free (TyRecF x ty)
 
 pattern PolyUnit :: Polytype
 pattern PolyUnit = Forall [] (TyCmd TyUnit)

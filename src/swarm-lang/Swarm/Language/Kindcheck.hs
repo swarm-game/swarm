@@ -35,12 +35,15 @@ checkPolytypeKind pty@(Forall xs t) = TydefInfo pty (Arity $ length xs) <$ check
 --   Type) -> Type@ etc.) which would require generalizing this
 --   checking code a bit.
 checkKind :: (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) => Type -> m ()
-checkKind ty@(Fix (TyConF c tys)) = do
-  tdCtx <- ask
-  case getArity <$> tcArity tdCtx c of
-    Nothing -> throwError $ UndefinedTyCon c ty
-    Just a -> case compare (length tys) a of
-      EQ -> mapM_ checkKind tys
-      _ -> throwError $ ArityMismatch c a tys
-checkKind (Fix (TyVarF _)) = return ()
-checkKind (Fix (TyRcdF m)) = mapM_ checkKind m
+checkKind ty@(Fix tyF) = case tyF of
+  TyConF c tys -> do
+    tdCtx <- ask
+    case getArity <$> tcArity tdCtx c of
+      Nothing -> throwError $ UndefinedTyCon c ty
+      Just a -> case compare (length tys) a of
+        EQ -> mapM_ checkKind tys
+        _ -> throwError $ ArityMismatch c a tys
+  TyVarF _ -> return ()
+  TyRcdF m -> mapM_ checkKind m
+  TyRecF _ t -> checkKind t
+  TyRecVarF _ -> return ()

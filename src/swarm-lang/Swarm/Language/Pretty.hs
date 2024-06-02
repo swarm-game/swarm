@@ -154,6 +154,7 @@ instance (PrettyPrec (t (Free t v)), PrettyPrec v) => PrettyPrec (Free t v) wher
   prettyPrec p (Free t) = prettyPrec p t
   prettyPrec p (Pure v) = prettyPrec p v
 
+-- XXX use case!
 instance ((UnchainableFun t), (PrettyPrec t)) => PrettyPrec (TypeF t) where
   prettyPrec _ (TyVarF v) = pretty v
   prettyPrec _ (TyRcdF m) = brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
@@ -173,6 +174,9 @@ instance ((UnchainableFun t), (PrettyPrec t)) => PrettyPrec (TypeF t) where
         multiLine l r = l <+> "->" <> hardline <> r
      in pparens (p > 1) . align $
           flatAlt (concatWith multiLine funs) (concatWith inLine funs)
+  -- Recursive types XXX
+  prettyPrec _ (TyRecVarF i) = pretty (show (natToInt i))
+  prettyPrec p (TyRecF _ ty) = pparens (p > 0) $ "rec." <+> prettyPrec 0 ty
   -- Fallthrough cases for type constructor application.  Handles base
   -- types, Cmd, user-defined types, or ill-kinded things like 'Int
   -- Bool'.
@@ -474,6 +478,8 @@ tyNounPhrase = \case
   TyConF c _ -> tyConNounPhrase c
   TyVarF {} -> "a type variable"
   TyRcdF {} -> "a record"
+  TyRecF {} -> "a recursive type"
+  TyRecVarF {} -> "a recursive type variable"
 
 tyConNounPhrase :: TyCon -> Doc a
 tyConNounPhrase = \case
