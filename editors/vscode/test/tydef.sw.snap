@@ -1,0 +1,50 @@
+>// SYNTAX TEST "swarm" "type definition testcase"
+#^^ source.swarm comment.line.double-slash
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.swarm comment.line.double-slash
+>
+>tydef Maybe a = Unit + a end
+#^^^^^ source.swarm keyword.control.dictionary.tydef keyword.control.dictionary.tydef.start
+#     ^ source.swarm keyword.control.dictionary.tydef
+#      ^^^^^^^^ source.swarm keyword.control.dictionary.tydef entity.name.type
+#              ^ source.swarm keyword.control.dictionary.tydef
+#               ^^^^^^^^^^ source.swarm keyword.control.dictionary.tydef entity.name.type
+#                         ^^^ source.swarm keyword.control.dictionary.tydef keyword.control.dictionary.tydef.end
+>
+>def just : a -> Maybe a = inr end
+#^^^^ source.swarm keyword.control.dictionary.def
+#    ^^^^ source.swarm keyword.control.dictionary.def entity.name.function
+#        ^^ source.swarm keyword.control.dictionary.def
+#          ^^^^^^^^^^^^^^ source.swarm keyword.control.dictionary.def entity.name.type
+#                        ^ source.swarm keyword.control.dictionary.def
+#                         ^ source.swarm keyword.control.dictionary.def
+#                          ^^^ source.swarm keyword.control.dictionary.def keyword.other
+#                             ^ source.swarm keyword.control.dictionary.def
+#                              ^^^ source.swarm keyword.control.dictionary.def keyword.control.dictionary.def.end
+>
+>def nothing : Maybe a = inl () end
+#^^^^ source.swarm keyword.control.dictionary.def
+#    ^^^^^^^ source.swarm keyword.control.dictionary.def entity.name.function
+#           ^^ source.swarm keyword.control.dictionary.def
+#             ^^^^^^^^^ source.swarm keyword.control.dictionary.def entity.name.type
+#                      ^ source.swarm keyword.control.dictionary.def
+#                       ^ source.swarm keyword.control.dictionary.def
+#                        ^^^ source.swarm keyword.control.dictionary.def keyword.other
+#                           ^^^^^^^^ source.swarm
+>
+>def positive : Int -> Maybe Int = \x.
+#^^^^ source.swarm keyword.control.dictionary.def
+#    ^^^^^^^^ source.swarm keyword.control.dictionary.def entity.name.function
+#            ^^ source.swarm keyword.control.dictionary.def
+#              ^^^^^^^^^^^^^^^^^^ source.swarm keyword.control.dictionary.def entity.name.type
+#                                ^ source.swarm keyword.control.dictionary.def
+#                                 ^ source.swarm keyword.control.dictionary.def
+#                                  ^ source.swarm keyword.control.dictionary.def keyword.operator.lambda
+#                                   ^ source.swarm keyword.control.dictionary.def keyword.operator.lambda variable.other
+#                                    ^ source.swarm keyword.control.dictionary.def keyword.operator.lambda
+>  if (x > 0) {just x} {nothing}
+#^^ source.swarm keyword.control.dictionary.def
+#  ^^ source.swarm keyword.control.dictionary.def keyword.other
+#    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.swarm
+>end
+#^^^^ source.swarm
+>
