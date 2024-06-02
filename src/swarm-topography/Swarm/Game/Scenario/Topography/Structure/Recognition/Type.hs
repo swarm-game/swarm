@@ -117,6 +117,9 @@ data SingleRowEntityOccurrences b a = SingleRowEntityOccurrences
 -- @
 --
 -- it's 'rowIndex' is @2@.
+--
+-- The two type parameters, `b` and `a`, correspond
+-- to 'Cell' and 'Entity', respectively.
 data StructureRow b a = StructureRow
   { wholeStructure :: StructureWithGrid b a
   , rowIndex :: Int32
@@ -126,6 +129,9 @@ data StructureRow b a = StructureRow
 
 -- | The original definition of a structure, bundled
 -- with its grid of cells having been extracted for convenience.
+--
+-- The two type parameters, `b` and `a`, correspond
+-- to 'Cell' and 'Entity', respectively.
 data StructureWithGrid b a = StructureWithGrid
   { originalDefinition :: NamedGrid (Maybe b)
   , rotatedTo :: AbsoluteDir
@@ -208,6 +214,9 @@ makeLenses ''RecognizerAutomatons
 
 -- | Final output of the search process.
 -- These are the elements that are stored in the 'FoundRegistry'.
+--
+-- The two type parameters, `b` and `a`, correspond
+-- to 'Cell' and 'Entity', respectively.
 data FoundStructure b a = FoundStructure
   { structureWithGrid :: StructureWithGrid b a
   , upperLeftCorner :: Cosmic Location

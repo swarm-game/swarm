@@ -35,6 +35,9 @@ import Swarm.Game.Universe (Cosmic)
 import Swarm.Util (binTuples, deleteKeys)
 
 -- | The authoritative source of which built structures currently exist.
+--
+-- The two type parameters, `b` and `a`, correspond
+-- to 'Cell' and 'Entity', respectively.
 data FoundRegistry b a = FoundRegistry
   { _foundByName :: Map StructureName (NEMap (Cosmic Location) (StructureWithGrid b a))
   , _foundByLocation :: Map (Cosmic Location) (FoundStructure b a)
