@@ -1,7 +1,6 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
@@ -21,18 +20,23 @@ module Swarm.Effect.Unify.Fast where
 
 import Control.Algebra
 import Control.Applicative (Alternative)
+import Control.Carrier.Accum.FixedStrict (AccumC, runAccum)
+import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.State.Strict (StateC, evalState)
 import Control.Carrier.Throw.Either (ThrowC, runThrow)
 import Control.Category ((>>>))
-import Control.Effect.Reader (Reader)
+import Control.Effect.Accum (Accum, add)
+import Control.Effect.Reader (Reader, ask, local)
 import Control.Effect.State (State, get, gets, modify)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Monad (zipWithM)
 import Control.Monad.Free
 import Control.Monad.Trans (MonadIO)
 import Data.Function (on)
+import Data.Functor.Identity
 import Data.Map qualified as M
 import Data.Map.Merge.Lazy qualified as M
+import Data.Monoid (First (..))
 import Data.Set (Set)
 import Data.Set qualified as S
 import Swarm.Effect.Unify
@@ -73,20 +77,44 @@ class Substitutes n b a where
 -- | We can perform substitution on terms built up as the free monad
 --   over a structure functor @f@.
 instance Substitutes IntVar UType UType where
-  subst s = go S.empty
+  subst s u = case runSubst (go u) of
+    -- If the substitution completed without encountering a repeated
+    -- variable, just return the result.
+    (First Nothing, u') -> return u'
+    -- Otherwise, throw an error, but re-run substitution starting at
+    -- the repeated variable to generate an expanded cyclic equality
+    -- constraint of the form x = ... x ... .
+    (First (Just x), _) ->
+      throwError $
+        Infinite x (snd (runSubst (go $ Pure x)))
    where
-    go seen (Pure x) = case lookup x s of
-      Nothing -> pure $ Pure x
-      Just t
-        | S.member x seen -> throwError $ Infinite x t
-        | otherwise -> go (S.insert x seen) t
-    go seen (Free t) = Free <$> goF seen t
+    runSubst :: ReaderC (Set IntVar) (AccumC (First IntVar) Identity) a -> (First IntVar, a)
+    runSubst = run . runAccum (First Nothing) . runReader S.empty
 
-    goF seen (TyConF c ts) = TyConF c <$> mapM (go seen) ts
-    goF _ t@(TyVarF {}) = pure t
-    goF seen (TyRcdF m) = TyRcdF <$> mapM (go seen) m
-    goF seen (TyRecF x t) = TyRecF x <$> go seen t
-    goF _ t@(TyRecVarF _) = pure t
+    -- A version of substitution that recurses through the term,
+    -- keeping track of unification variables seen along the current
+    -- path.  When it encounters a previously-seen variable, it simply
+    -- returns it unchanged but notes the first such variable that was
+    -- encountered.
+    go ::
+      (Has (Reader (Set IntVar)) sig m, Has (Accum (First IntVar)) sig m) =>
+      UType ->
+      m UType
+    go (Pure x) = case lookup x s of
+      Nothing -> pure $ Pure x
+      Just t -> do
+        seen <- ask
+        case S.member x seen of
+          True -> add (First (Just x)) >> pure (Pure x)
+          False -> local (S.insert x) $ go t
+    go (Free t) = Free <$> goF t
+
+    goF :: (Has (Reader (Set IntVar)) sig m, Has (Accum (First IntVar)) sig m) => TypeF UType -> m (TypeF UType)
+    goF (TyConF c ts) = TyConF c <$> mapM go ts
+    goF t@(TyVarF {}) = pure t
+    goF (TyRcdF m) = TyRcdF <$> mapM go m
+    goF (TyRecF x t) = TyRecF x <$> go t
+    goF t@(TyRecVarF _) = pure t
 
 ------------------------------------------------------------
 -- Carrier type

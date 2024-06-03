@@ -421,7 +421,10 @@ instance PrettyPrec TypeErr where
 instance PrettyPrec UnificationError where
   prettyPrec _ = \case
     Infinite x uty ->
-      "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
+      vsep
+        [ "Encountered infinite type" <+> ppr x <+> "=" <+> ppr uty <> "."
+        , "Swarm will not infer recursive types; if you want a recursive type, add an explicit type annotation."
+        ]
     UnifyErr ty1 ty2 ->
       "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
     UndefinedUserType ty ->
