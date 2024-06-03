@@ -21,7 +21,9 @@
         { "include": "#keyword" },
         { "include": "#require" },
         { "include": "#operator" },
-        { "include": "#lambda" }
+        { "include": "#lambda" },
+        { "include": "#in" },
+        { "include": "#end" }
       ],
       "repository": {
         "keyword": {
@@ -37,7 +39,9 @@
         "operator": {
           "name": "keyword.operator",
           "match": "-|==|!=|<|>|<=|>=|\\|\\||&&|\\+|-|\\*|/(?![/|*])|\\^|\\+\\+|\\$"
-        }
+        },
+        "in": { "name": "keyword.control.dictionary.let.in", "match": "\\b(in)\\b" },
+        "end": { "name": "keyword.control.dictionary.def.end", "match": "\\b(end)\\b" }
       }
     },
     "parens": {
@@ -78,7 +82,12 @@
     "constants": { "patterns": [{ "name": "constant.numeric", "match": "([0-9]+|0b[01]+|0o[0-8]+|0x\\x+)" }] },
     "definitions": {
       "patterns": [
-        {
+        { "include": "#tydef" },
+        { "include": "#def" },
+        { "include": "#let" }
+      ],
+      "repository": {
+        "tydef": {
           "name": "keyword.control.dictionary.tydef",
           "match": "\\b(tydef)\\s+([^=]+)\\s*=((\\s*([A-Z][a-z]*|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+)\\s*(end)\\b",
           "captures": {
@@ -88,19 +97,17 @@
             "8": { "name": "keyword.control.dictionary.tydef.end" }
           }
         },
-        {
+        "def": {
           "name": "keyword.control.dictionary.def",
           "match": "\\bdef\\s+(\\w+)\\s*(:((\\s*([A-Z][a-zA-Z]*|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
           "captures": { "1": { "name": "entity.name.function" }, "3": { "name": "entity.name.type" } }
         },
-        {
+        "let": {
           "name": "keyword.control.dictionary.let",
           "match": "\\blet\\s+(\\w+)\\s*(:((\\s*([A-Z][a-zA-Z]*|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
           "captures": { "1": { "name": "entity.name.function" }, "3": { "name": "entity.name.type" } }
-        },
-        { "name": "keyword.control.dictionary.let.in", "match": "\\b(in)\\b" },
-        { "name": "keyword.control.dictionary.def.end", "match": "\\b(end)\\b" }
-      ]
+        }
+      }
     },
     "variables": {
       "patterns": [
