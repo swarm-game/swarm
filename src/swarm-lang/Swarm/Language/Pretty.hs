@@ -154,34 +154,38 @@ instance (PrettyPrec (t (Free t v)), PrettyPrec v) => PrettyPrec (Free t v) wher
   prettyPrec p (Free t) = prettyPrec p t
   prettyPrec p (Pure v) = prettyPrec p v
 
--- XXX use case!
-instance ((UnchainableFun t), (PrettyPrec t)) => PrettyPrec (TypeF t) where
-  prettyPrec _ (TyVarF v) = pretty v
-  prettyPrec _ (TyRcdF m) = brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
-  -- Special cases for type constructors with special syntax.
-  -- Always use parentheses around sum and product types, see #1625
-  prettyPrec p (TyConF TCSum [ty1, ty2]) =
-    pparens (p > 0) $
-      prettyPrec 2 ty1 <+> "+" <+> prettyPrec 2 ty2
-  prettyPrec p (TyConF TCProd [ty1, ty2]) =
-    pparens (p > 0) $
-      prettyPrec 2 ty1 <+> "*" <+> prettyPrec 2 ty2
-  prettyPrec _ (TyConF TCDelay [ty]) = braces $ ppr ty
-  prettyPrec p (TyConF TCFun [ty1, ty2]) =
-    let (iniF, lastF) = unsnocNE $ ty1 <| unchainFun ty2
-        funs = (prettyPrec 2 <$> iniF) <> [prettyPrec 1 lastF]
-        inLine l r = l <+> "->" <+> r
-        multiLine l r = l <+> "->" <> hardline <> r
-     in pparens (p > 1) . align $
-          flatAlt (concatWith multiLine funs) (concatWith inLine funs)
-  -- Recursive types XXX
-  prettyPrec _ (TyRecVarF i) = pretty (show (natToInt i))
-  prettyPrec p (TyRecF _ ty) = pparens (p > 0) $ "rec." <+> prettyPrec 0 ty
-  -- Fallthrough cases for type constructor application.  Handles base
-  -- types, Cmd, user-defined types, or ill-kinded things like 'Int
-  -- Bool'.
-  prettyPrec _ (TyConF c []) = ppr c
-  prettyPrec p (TyConF c tys) = pparens (p > 9) $ ppr c <+> hsep (map (prettyPrec 10) tys)
+instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) where
+  prettyPrec p = \case
+    TyVarF v -> pretty v
+    TyRcdF m -> brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
+    -- Special cases for type constructors with special syntax.
+    -- Always use parentheses around sum and product types, see #1625
+    TyConF TCSum [ty1, ty2] ->
+      pparens (p > 0) $
+        prettyPrec 2 ty1 <+> "+" <+> prettyPrec 2 ty2
+    TyConF TCProd [ty1, ty2] ->
+      pparens (p > 0) $
+        prettyPrec 2 ty1 <+> "*" <+> prettyPrec 2 ty2
+    TyConF TCDelay [ty] -> braces $ ppr ty
+    TyConF TCFun [ty1, ty2] ->
+      let (iniF, lastF) = unsnocNE $ ty1 <| unchainFun ty2
+          funs = (prettyPrec 2 <$> iniF) <> [prettyPrec 1 lastF]
+          inLine l r = l <+> "->" <+> r
+          multiLine l r = l <+> "->" <> hardline <> r
+       in pparens (p > 1) . align $
+            flatAlt (concatWith multiLine funs) (concatWith inLine funs)
+    TyRecF x ty ->
+      pparens (p > 0) $
+        "rec" <+> pretty x <> "." <+> prettyPrec 0 (substRec (TyVarF x) ty NZ)
+    -- This case shouldn't be possible, since TyRecVar should only occur inside a TyRec,
+    -- and pretty-printing the TyRec (above) will substitute a variable name for
+    -- any bound TyRecVars before recursing.
+    TyRecVarF i -> pretty (show (natToInt i))
+    -- Fallthrough cases for type constructor application.  Handles base
+    -- types, Cmd, user-defined types, or ill-kinded things like 'Int
+    -- Bool'.
+    TyConF c [] -> ppr c
+    TyConF c tys -> pparens (p > 9) $ ppr c <+> hsep (map (prettyPrec 10) tys)
 
 instance PrettyPrec Polytype where
   prettyPrec _ (Forall [] t) = ppr t
@@ -422,6 +426,8 @@ instance PrettyPrec UnificationError where
       "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
     UndefinedUserType ty ->
       "Undefined user type" <+> ppr ty
+    UnexpandedRecTy ty ->
+      "Unexpanded recursive type" <+> ppr ty <+> "encountered in unifyF.  This should never happen, please report this as a bug."
 
 instance PrettyPrec Arity where
   prettyPrec _ (Arity a) = pretty a

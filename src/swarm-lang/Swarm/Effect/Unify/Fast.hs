@@ -1,6 +1,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
@@ -32,6 +33,7 @@ import Control.Monad.Trans (MonadIO)
 import Data.Function (on)
 import Data.Map qualified as M
 import Data.Map.Merge.Lazy qualified as M
+import Data.Set (Set)
 import Data.Set qualified as S
 import Swarm.Effect.Unify
 import Swarm.Effect.Unify.Common
@@ -83,6 +85,8 @@ instance Substitutes IntVar UType UType where
     goF seen (TyConF c ts) = TyConF c <$> mapM (go seen) ts
     goF _ t@(TyVarF {}) = pure t
     goF seen (TyRcdF m) = TyRcdF <$> mapM (go seen) m
+    goF seen (TyRecF x t) = TyRecF x <$> go seen t
+    goF _ t@(TyRecVarF _) = pure t
 
 ------------------------------------------------------------
 -- Carrier type
@@ -92,7 +96,17 @@ instance Substitutes IntVar UType UType where
 --   throw unification errors.
 newtype UnificationC m a = UnificationC
   { unUnificationC ::
-      StateC (Subst IntVar UType) (StateC FreshVarCounter (ThrowC UnificationError m)) a
+      StateC
+        (Set (UType, UType))
+        ( StateC
+            (Subst IntVar UType)
+            ( StateC
+                FreshVarCounter
+                ( ThrowC UnificationError m
+                )
+            )
+        )
+        a
   }
   deriving newtype (Functor, Applicative, Alternative, Monad, MonadIO)
 
@@ -108,7 +122,11 @@ runUnification ::
   UnificationC m a ->
   m (Either UnificationError a)
 runUnification =
-  unUnificationC >>> evalState idS >>> evalState (FreshVarCounter 0) >>> runThrow
+  unUnificationC
+    >>> evalState S.empty
+    >>> evalState idS
+    >>> evalState (FreshVarCounter 0)
+    >>> runThrow
 
 ------------------------------------------------------------
 -- Unification
@@ -149,32 +167,68 @@ instance
     L (FreeUVars t) -> do
       s <- get @(Subst IntVar UType)
       (<$ ctx) . fuvs <$> subst s t
-    R other -> alg (unUnificationC . hdl) (R (R (R other))) ctx
+    R other -> alg (unUnificationC . hdl) (R (R (R (R other)))) ctx
 
 -- | Unify two types, returning a unified type equal to both.  Note
 --   that for efficiency we /don't/ do an occurs check here, but
 --   instead lazily during substitution.
+--
+--   We keep track of a set of pairs of types we have seen; if we ever
+--   see a pair a second time we simply assume they are equal without
+--   recursing further.  This constitutes a finite (coinductive)
+--   algorithm for doing unification on recursive types.
+--
+--   For example, suppose we wanted to unify @rec s. Unit + Unit + s@
+--   and @rec t. Unit + t@.  These types are actually equal since
+--   their infinite unfoldings are both @Unit + Unit + Unit + ...@ In
+--   practice we would proceed through the following recursive calls
+--   to unify:
+--
+--   @
+--     (rec s. Unit + Unit + s)                 =:= (rec t. Unit + t)
+--         { unfold the LHS }
+--     (Unit + Unit + (rec s. Unit + Unit + s)) =:= (rec t. Unit + t)
+--         { unfold the RHS }
+--     (Unit + Unit + (rec s. Unit + Unit + s)) =:= (Unit + (rec t. Unit + t)
+--         { unifyF matches the + and makes two calls to unify }
+--     Unit =:= Unit   { trivial}
+--     (Unit + (rec s. Unit + Unit + s))        =:= (rec t. Unit + t)
+--         { unfold the RHS }
+--     (Unit + (rec s. Unit + Unit + s))        =:= (Unit + (rec t. Unit + t))
+--         { unifyF on + }
+--     (rec s. Unit + Unit + s)                 =:= (rec t. Unit + t)
+--         { back to the starting pair, return success }
+--   @
 unify ::
   ( Has (Throw UnificationError) sig m
   , Has (Reader TDCtx) sig m
   , Has (State (Subst IntVar UType)) sig m
+  , Has (State (Set (UType, UType))) sig m
   ) =>
   UType ->
   UType ->
   m UType
-unify ty1 ty2 = case (ty1, ty2) of
-  (Pure x, Pure y) | x == y -> pure (Pure x)
-  (Pure x, y) -> do
-    mxv <- lookupS x
-    case mxv of
-      Nothing -> unifyVar x y
-      Just xv -> unify xv y
-  (x, Pure y) -> unify (Pure y) x
-  (UTyUser x1 tys, _) -> do
-    ty1' <- expandTydef x1 tys
-    unify ty1' ty2
-  (_, UTyUser {}) -> unify ty2 ty1
-  (Free t1, Free t2) -> Free <$> unifyF t1 t2
+unify ty1 ty2 = do
+  seen <- get @(Set (UType, UType))
+  case S.member (ty1, ty2) seen of
+    True -> return ty1
+    False -> do
+      modify (S.insert (ty1, ty2))
+      case (ty1, ty2) of
+        (Pure x, Pure y) | x == y -> pure (Pure x)
+        (Pure x, y) -> do
+          mxv <- lookupS x
+          case mxv of
+            Nothing -> unifyVar x y
+            Just xv -> unify xv y
+        (x, Pure y) -> unify (Pure y) x
+        (UTyRec x ty, _) -> unify (unfoldRec x ty) ty2
+        (_, UTyRec x ty) -> unify ty1 (unfoldRec x ty)
+        (UTyUser x1 tys, _) -> do
+          ty1' <- expandTydef x1 tys
+          unify ty1' ty2
+        (_, UTyUser {}) -> unify ty2 ty1
+        (Free t1, Free t2) -> Free <$> unifyF t1 t2
 
 -- | Unify a unification variable which /is not/ bound by the current
 --   substitution with another term.  If the other term is also a
@@ -183,6 +237,7 @@ unifyVar ::
   ( Has (Throw UnificationError) sig m
   , Has (Reader TDCtx) sig m
   , Has (State (Subst IntVar UType)) sig m
+  , Has (State (Set (UType, UType))) sig m
   ) =>
   IntVar ->
   UType ->
@@ -211,11 +266,18 @@ unifyF ::
   ( Has (Throw UnificationError) sig m
   , Has (Reader TDCtx) sig m
   , Has (State (Subst IntVar UType)) sig m
+  , Has (State (Set (UType, UType))) sig m
   ) =>
   TypeF UType ->
   TypeF UType ->
   m (TypeF UType)
 unifyF t1 t2 = case (t1, t2) of
+  -- Recursive types are always expanded in 'unify', these first four cases
+  -- should never happen.
+  (TyRecF {}, _) -> throwError $ UnexpandedRecTy t1
+  (_, TyRecF {}) -> throwError $ UnexpandedRecTy t2
+  (TyRecVarF {}, _) -> throwError $ UnexpandedRecTy t1
+  (_, TyRecVarF {}) -> throwError $ UnexpandedRecTy t2
   (TyConF c1 ts1, TyConF c2 ts2) -> case c1 == c2 of
     True -> TyConF c1 <$> zipWithM unify ts1 ts2
     False -> unifyErr
