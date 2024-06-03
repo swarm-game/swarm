@@ -673,6 +673,13 @@
   required:
     - [1, furnace]
 - in:
+    - [1, LaTeX]
+    - [1, log]
+  out:
+    - [1, rubber]
+  required:
+    - [1, big furnace]
+- in:
     - [8, copper wire]
     - [1, rubber]
   out:
