@@ -66,9 +66,13 @@
     },
     "comments": {
       "patterns": [
-        { "name": "comment.line.double-slash", "begin": "//", "end": "$\\n?" },
-        { "name": "comment.block", "begin": "/[*]", "end": "[*](/)" }
-      ]
+        { "include": "#line" },
+        { "include": "#block" }
+      ],
+      "repository": {
+        "line": { "name": "comment.line.double-slash", "begin": "//", "end": "$\\n?" },
+        "block": { "name": "comment.block", "begin": "/[*]", "end": "[*](/)" }
+      }
     },
     "strings": { "patterns": [{ "name": "string.quoted.double", "begin": "\"", "end": "\"" }] },
     "constants": { "patterns": [{ "name": "constant.numeric", "match": "([0-9]+|0b[01]+|0o[0-8]+|0x\\x+)" }] },
