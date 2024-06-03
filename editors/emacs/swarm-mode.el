@@ -155,7 +155,7 @@
 
 (defvar swarm-mode-keywords-regexp
   (concat "\\b" (regexp-opt '("def" "tydef" "end" "let" "in" "require") t) "\\b")
-  "Regexp that recognizes types in swarm language.")
+  "Regexp that recognizes keywords in swarm language.")
 
 (defvar swarm-font-lock-keywords
   `((,swarm-mode-types-regexp . 'font-lock-type-face)
