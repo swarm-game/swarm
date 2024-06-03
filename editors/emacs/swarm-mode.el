@@ -7,151 +7,170 @@
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
+;;; Commentary:
+;; This package provides major mode for the Swarm programming language.
+;;
+;;
 ;;; Code:
 
 (require 'lsp-mode)
 
-(defvar swarm-mode-syntax-table nil "Syntax table for `swarm-mode'.")
+(defvar swarm-mode-syntax-table
+  (let ((synTable (make-syntax-table)))
+    ;; C++ style comments ("// ..." and "/* ... */")
+    (modify-syntax-entry ?\/ ". 124b" synTable)
+    (modify-syntax-entry ?* ". 23" synTable)
+    (modify-syntax-entry ?\n "> b" synTable)
+    synTable)
+  "Syntax table for `swarm-mode'.")
 
-(setq swarm-mode-syntax-table
-      (let ( (synTable (make-syntax-table)))
+(defvar swarm-mode-operators-regexp
+  (regexp-opt '(":" "->" "=" "<-" "+" "*" "/" "-") t)
+  "Regexp that recognizes operators for swarm language.")
 
-        ;; C++ style comments ("// ..." and "/* ... */")
-        (modify-syntax-entry ?\/ ". 124" synTable)
-        (modify-syntax-entry ?* ". 23b" synTable)
-        (modify-syntax-entry ?\n "> " synTable)
+(defvar swarm-mode-commands-regexp
+  (concat
+   "\\b"
+   (regexp-opt
+    '(
+      "noop"
+      "wait"
+      "selfdestruct"
+      "move"
+      "backup"
+      "volume"
+      "path"
+      "push"
+      "stride"
+      "turn"
+      "grab"
+      "harvest"
+      "sow"
+      "ignite"
+      "place"
+      "ping"
+      "give"
+      "equip"
+      "unequip"
+      "make"
+      "has"
+      "equipped"
+      "count"
+      "drill"
+      "use"
+      "build"
+      "salvage"
+      "reprogram"
+      "say"
+      "listen"
+      "log"
+      "view"
+      "appear"
+      "create"
+      "halt"
+      "time"
+      "scout"
+      "whereami"
+      "waypoint"
+      "structure"
+      "floorplan"
+      "hastag"
+      "tagmembers"
+      "detect"
+      "resonate"
+      "density"
+      "sniff"
+      "chirp"
+      "watch"
+      "surveil"
+      "heading"
+      "blocked"
+      "scan"
+      "upload"
+      "ishere"
+      "isempty"
+      "meet"
+      "meetall"
+      "whoami"
+      "setname"
+      "random"
+      "run"
+      "return"
+      "try"
+      "swap"
+      "atomic"
+      "instant"
+      "installkeyhandler"
+      "teleport"
+      "as"
+      "robotnamed"
+      "robotnumbered"
+      "knows"
+      "east"
+      "north"
+      "west"
+      "south"
+      "down"
+      "forward"
+      "left"
+      "back"
+      "right"
+      )
+    t)
+   "\\b")
+  "Regexp that recognizes commands for swarm.")
 
-        synTable))
+(defvar swarm-mode-builtins-regexp
+  (concat
+   "\\b"
+   (regexp-opt
+    '(
+      "self"
+      "parent"
+      "base"
+      "if"
+      "inl"
+      "inr"
+      "case"
+      "fst"
+      "snd"
+      "force"
+      "undefined"
+      "fail"
+      "not"
+      "format"
+      "chars"
+      "split"
+      "charat"
+      "tochar"
+      "key"
+      )
+    t)
+   "\\b" )
+  "Regexp that recognizes builtin for swarm language.")
 
-(setq swarm-font-lock-keywords
-      (let* (
-             ;; Generate the current keywords with:
-             ;; cabal run swarm:swarm-docs -- editors --emacs
-             (x-keywords '("def" "tydef" "end" "let" "in" "require"))
-             (x-builtins '(
-               "self"
-               "parent"
-               "base"
-               "if"
-               "inl"
-               "inr"
-               "case"
-               "fst"
-               "snd"
-               "force"
-               "undefined"
-               "fail"
-               "not"
-               "format"
-               "chars"
-               "split"
-               "charat"
-               "tochar"
-               "key"
-             ))
-             (x-commands '(
-               "noop"
-               "wait"
-               "selfdestruct"
-               "move"
-               "backup"
-               "volume"
-               "path"
-               "push"
-               "stride"
-               "turn"
-               "grab"
-               "harvest"
-               "sow"
-               "ignite"
-               "place"
-               "ping"
-               "give"
-               "equip"
-               "unequip"
-               "make"
-               "has"
-               "equipped"
-               "count"
-               "drill"
-               "use"
-               "build"
-               "salvage"
-               "reprogram"
-               "say"
-               "listen"
-               "log"
-               "view"
-               "appear"
-               "create"
-               "halt"
-               "time"
-               "scout"
-               "whereami"
-               "waypoint"
-               "structure"
-               "floorplan"
-               "hastag"
-               "tagmembers"
-               "detect"
-               "resonate"
-               "density"
-               "sniff"
-               "chirp"
-               "watch"
-               "surveil"
-               "heading"
-               "blocked"
-               "scan"
-               "upload"
-               "ishere"
-               "isempty"
-               "meet"
-               "meetall"
-               "whoami"
-               "setname"
-               "random"
-               "run"
-               "return"
-               "try"
-               "swap"
-               "atomic"
-               "instant"
-               "installkeyhandler"
-               "teleport"
-               "as"
-               "robotnamed"
-               "robotnumbered"
-               "knows"
-               "east"
-               "north"
-               "west"
-               "south"
-               "down"
-               "forward"
-               "left"
-               "back"
-               "right"
-             ))
-             (x-types '("int" "text" "dir" "bool" "cmd" "void" "unit" "actor"))
+(defvar swarm-mode-types-regexp
+   "\\b[A-Z][a-zA-Z_]*\\b"
+  "Regexp that recognizes types (all uppercase strings are supposed to be types) in swarm language.")
 
-             (x-keywords-regexp (regexp-opt x-keywords 'words))
-             (x-builtins-regexp (regexp-opt x-builtins 'words))
-             (x-commands-regexp (regexp-opt x-commands 'words))
-             (x-types-regexp (regexp-opt x-types 'words)))
+(defvar swarm-mode-keywords-regexp
+  (concat "\\b" (regexp-opt '("def" "tydef" "end" "let" "in" "require") t) "\\b")
+  "Regexp that recognizes keywords in swarm language.")
 
-        `(
-          (,x-keywords-regexp . 'font-lock-keyword-face)
-          (,x-builtins-regexp . 'font-lock-builtin-face)
-          (,x-types-regexp . 'font-lock-type-face)
-          (,x-commands-regexp . 'font-lock-constant-face)
-          ("[a-z_][a-z0-9_]*" . 'font-lock-function-name-face)
-          )))
+(defvar swarm-font-lock-keywords
+  `((,swarm-mode-types-regexp . 'font-lock-type-face)
+    (,swarm-mode-keywords-regexp . 'font-lock-keyword-face)
+    (,swarm-mode-builtins-regexp . 'font-lock-builtin-face)
+    (,swarm-mode-commands-regexp . 'font-lock-constant-face)
+    (,swarm-mode-operators-regexp . 'font-lock-variable-name-face)))
 
+;;;###autoload
 (define-derived-mode swarm-mode prog-mode "Swarm Lang Mode"
-  (setq font-lock-defaults '((swarm-font-lock-keywords) nil t nil))
+  "Major mode for editing Swarm language files."
+  (setq font-lock-defaults '((swarm-font-lock-keywords)))
   (set-syntax-table swarm-mode-syntax-table))
 
+;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.sw\\'" . swarm-mode))
 
 (with-eval-after-load 'lsp-mode
