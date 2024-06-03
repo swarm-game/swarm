@@ -42,7 +42,11 @@
     },
     "parens": {
       "patterns": [
-        {
+        { "include": "#paren" },
+        { "include": "#brace" }
+      ],
+      "repository": {
+        "paren": {
           "begin": "\\(",
           "end": "\\)",
           "beginCaptures": { "0": { "name": "punctuation.paren.open" } },
@@ -50,7 +54,7 @@
           "name": "expression.group",
           "patterns": [{ "include": "#expression" }]
         },
-        {
+        "brace": {
           "begin": "\\{",
           "end": "\\}",
           "beginCaptures": { "0": { "name": "punctuation.braces.open" } },
@@ -58,7 +62,7 @@
           "name": "expression.group",
           "patterns": [{ "include": "#expression" }]
         }
-      ]
+      }
     },
     "comments": {
       "patterns": [
