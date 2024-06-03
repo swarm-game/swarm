@@ -37,6 +37,7 @@ import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.Direction
 
 -- | A /requirement/ is something a robot must have when it is
 --   built. There are three types:

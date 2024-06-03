@@ -26,11 +26,12 @@ import Data.Set qualified as S
 import Linear (V2 (..))
 import Swarm.Game.Entity
 import Swarm.Game.Location
-import Swarm.Game.Scenario.Topography.Structure qualified as Structure
+import Swarm.Game.Scenario (Cell)
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
+import Swarm.Game.Scenario.Topography.Structure.Type qualified as Structure
 import Swarm.Game.State
 import Swarm.Game.State.Substate
 import Swarm.Game.Universe
@@ -124,7 +125,7 @@ getWorldRow participatingEnts cLoc (InspectionOffsets (Min offsetLeft) (Max offs
 registerRowMatches ::
   (Has (State GameState) sig m) =>
   Cosmic Location ->
-  AutomatonInfo AtomicKeySymbol StructureSearcher ->
+  AutomatonInfo EntityName (AtomicKeySymbol Entity) (StructureSearcher Cell EntityName Entity) ->
   m ()
 registerRowMatches cLoc (AutomatonInfo participatingEnts horizontalOffsets sm) = do
   entitiesRow <- getWorldRow participatingEnts cLoc horizontalOffsets 0
@@ -150,8 +151,8 @@ checkVerticalMatch ::
   Cosmic Location ->
   -- | Horizontal search offsets
   InspectionOffsets ->
-  Position StructureSearcher ->
-  m [FoundStructure]
+  Position (StructureSearcher Cell EntityName Entity) ->
+  m [FoundStructure Cell Entity]
 checkVerticalMatch cLoc (InspectionOffsets (Min searchOffsetLeft) _) foundRow =
   getMatches2D cLoc horizontalFoundOffsets $ automaton2D $ pVal foundRow
  where
@@ -163,9 +164,9 @@ getFoundStructures ::
   Hashable keySymb =>
   (Int32, Int32) ->
   Cosmic Location ->
-  StateMachine keySymb StructureWithGrid ->
+  StateMachine keySymb (StructureWithGrid Cell Entity) ->
   [keySymb] ->
-  [FoundStructure]
+  [FoundStructure Cell Entity]
 getFoundStructures (offsetTop, offsetLeft) cLoc sm entityRows =
   map mkFound candidates
  where
@@ -181,8 +182,8 @@ getMatches2D ::
   Cosmic Location ->
   -- | Horizontal found offsets (inclusive indices)
   InspectionOffsets ->
-  AutomatonInfo SymbolSequence StructureWithGrid ->
-  m [FoundStructure]
+  AutomatonInfo EntityName (SymbolSequence Entity) (StructureWithGrid Cell Entity) ->
+  m [FoundStructure Cell Entity]
 getMatches2D
   cLoc
   horizontalFoundOffsets@(InspectionOffsets (Min offsetLeft) _)
@@ -199,7 +200,7 @@ getMatches2D
 -- The largest structure (by area) shall win.
 registerStructureMatches ::
   (Has (State GameState) sig m) =>
-  [FoundStructure] ->
+  [FoundStructure Cell Entity] ->
   m ()
 registerStructureMatches unrankedCandidates = do
   discovery . structureRecognition . recognitionLog %= (newMsg :)

@@ -29,24 +29,27 @@ import Data.Map.NonEmpty (NEMap)
 import Data.Map.NonEmpty qualified as NEM
 import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario.Topography.Placement (StructureName)
-import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
+import Swarm.Game.Scenario.Topography.Structure.Type qualified as Structure
 import Swarm.Game.Universe (Cosmic)
 import Swarm.Util (binTuples, deleteKeys)
 
 -- | The authoritative source of which built structures currently exist.
-data FoundRegistry = FoundRegistry
-  { _foundByName :: Map StructureName (NEMap (Cosmic Location) StructureWithGrid)
-  , _foundByLocation :: Map (Cosmic Location) FoundStructure
+--
+-- The two type parameters, `b` and `a`, correspond
+-- to 'Cell' and 'Entity', respectively.
+data FoundRegistry b a = FoundRegistry
+  { _foundByName :: Map StructureName (NEMap (Cosmic Location) (StructureWithGrid b a))
+  , _foundByLocation :: Map (Cosmic Location) (FoundStructure b a)
   }
 
-emptyFoundStructures :: FoundRegistry
+emptyFoundStructures :: FoundRegistry b a
 emptyFoundStructures = FoundRegistry mempty mempty
 
 -- | We use a 'NEMap' here so that we can use the
 -- safe-indexing function 'indexWrapNonEmpty' in the implementation
 -- of the @structure@ command.
-foundByName :: FoundRegistry -> Map StructureName (NEMap (Cosmic Location) StructureWithGrid)
+foundByName :: FoundRegistry b a -> Map StructureName (NEMap (Cosmic Location) (StructureWithGrid b a))
 foundByName = _foundByName
 
 -- | This is a worldwide "mask" that prevents members of placed
@@ -54,10 +57,10 @@ foundByName = _foundByName
 -- deletion of structures when their elements are removed from the world.
 --
 -- Each recognized structure instance will have @MxN@ entries in this map.
-foundByLocation :: FoundRegistry -> Map (Cosmic Location) FoundStructure
+foundByLocation :: FoundRegistry b a -> Map (Cosmic Location) (FoundStructure b a)
 foundByLocation = _foundByLocation
 
-removeStructure :: FoundStructure -> FoundRegistry -> FoundRegistry
+removeStructure :: FoundStructure b a -> FoundRegistry b a -> FoundRegistry b a
 removeStructure fs (FoundRegistry byName byLoc) =
   FoundRegistry
     (M.update tidyDelete structureName byName)
@@ -71,7 +74,7 @@ removeStructure fs (FoundRegistry byName byLoc) =
   -- Swarm.Game.State.removeRobotFromLocationMap
   tidyDelete = NEM.nonEmptyMap . NEM.delete upperLeft
 
-addFound :: FoundStructure -> FoundRegistry -> FoundRegistry
+addFound :: FoundStructure b a -> FoundRegistry b a -> FoundRegistry b a
 addFound fs@(FoundStructure swg loc) (FoundRegistry byName byLoc) =
   FoundRegistry
     (M.insertWith (<>) k (NEM.singleton loc swg) byName)
@@ -84,7 +87,7 @@ addFound fs@(FoundStructure swg loc) (FoundRegistry byName byLoc) =
 --
 -- Each of these shall have been re-checked in case
 -- a subsequent placement occludes them.
-populateStaticFoundStructures :: [FoundStructure] -> FoundRegistry
+populateStaticFoundStructures :: [FoundStructure b a] -> FoundRegistry b a
 populateStaticFoundStructures allFound =
   FoundRegistry byName byLocation
  where

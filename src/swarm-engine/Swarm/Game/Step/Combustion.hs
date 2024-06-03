@@ -44,6 +44,7 @@ import Swarm.Language.Context (empty)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.Direction (Direction)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Util hiding (both)
 import System.Clock (TimeSpec)

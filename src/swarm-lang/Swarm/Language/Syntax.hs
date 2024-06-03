@@ -5,15 +5,6 @@
 --
 -- Abstract syntax for terms of the Swarm programming language.
 module Swarm.Language.Syntax (
-  -- * Directions
-  Direction (..),
-  AbsoluteDir (..),
-  RelativeDir (..),
-  PlanarRelativeDir (..),
-  directionSyntax,
-  isCardinal,
-  allDirs,
-
   -- * Constants
   Const (..),
   allConst,
@@ -104,7 +95,6 @@ module Swarm.Language.Syntax (
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
-import Swarm.Language.Syntax.Direction
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern
 import Swarm.Language.Syntax.Util
