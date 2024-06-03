@@ -65,7 +65,7 @@
       "patterns": [
         {
           "name": "keyword.control.dictionary.tydef",
-          "match": "(tydef)\\s+([^=]+)\\s*=((\\s*([A-Z][a-z]*|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+)\\s*(end)\\b",
+          "match": "\\b(tydef)\\s+([^=]+)\\s*=((\\s*([A-Z][a-z]*|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+)\\s*(end)\\b",
           "captures": {
             "1": { "name": "keyword.control.dictionary.tydef.start" },
             "2": { "name": "entity.name.type" },
@@ -75,35 +75,17 @@
         },
         {
           "name": "keyword.control.dictionary.def",
-          "begin": "def\\s+(\\w+)\\s*(:((\\s*([A-Z][a-zA-Z]*|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
-          "end": "\\s*(end)\\b",
-          "beginCaptures": { "1": { "name": "entity.name.function" }, "3": { "name": "entity.name.type" } },
-          "endCaptures": { "1": { "name": "keyword.control.dictionary.def.end" } },
-          "patterns": [
-            { "include": "#keywords" },
-            { "include": "#comments" },
-            { "include": "#strings" },
-            { "include": "#variables" },
-            { "include": "#constants" },
-            { "include": "#expressions" }
-          ]
+          "match": "\\bdef\\s+(\\w+)\\s*(:((\\s*([A-Z][a-zA-Z]*|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
+          "captures": { "1": { "name": "entity.name.function" }, "3": { "name": "entity.name.type" } }
         },
         {
           "name": "keyword.control.dictionary.let",
-          "begin": "\\blet\\s+(\\w+)\\s*(:((\\s*([A-Z][a-zA-Z]*|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
-          "end": "\\b(in)\\b",
-          "beginCaptures": { "1": { "name": "entity.name.function" }, "3": { "name": "entity.name.type" } },
-          "endCaptures": { "1": { "name": "keyword.control.dictionary.let.in" } },
-          "patterns": [
-            { "include": "#keywords" },
-            { "include": "#comments" },
-            { "include": "#strings" },
-            { "include": "#variables" },
-            { "include": "#constants" },
-            { "include": "#expressions" }
-          ]
+          "match": "\\blet\\s+(\\w+)\\s*(:((\\s*([A-Z][a-zA-Z]*|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
+          "captures": { "1": { "name": "entity.name.function" }, "3": { "name": "entity.name.type" } }
         },
-        { "name": "keyword.control.require", "match": "require" },
+        { "name": "keyword.control.dictionary.let.in", "match": "\\b(in)\\b" },
+        { "name": "keyword.control.dictionary.def.end", "match": "\\b(end)\\b" },
+        { "name": "keyword.control.require", "match": "\\b(require)\\b" },
         {
           "name": "keyword.operator.lambda",
           "match": "\\\\(\\w+)\\.",

@@ -8,12 +8,12 @@
 #     ^ source.swarm keyword.control.dictionary.def
 #      ^^^^^^ source.swarm keyword.control.dictionary.def entity.name.type
 #            ^ source.swarm keyword.control.dictionary.def
-#             ^ source.swarm keyword.control.dictionary.def
-#              ^ source.swarm keyword.control.dictionary.def string.quoted.double
-#               ^^^^^^^^^^^ source.swarm keyword.control.dictionary.def string.quoted.double
-#                          ^ source.swarm keyword.control.dictionary.def string.quoted.double
-#                           ^ source.swarm keyword.control.dictionary.def
-#                            ^^^ source.swarm keyword.control.dictionary.def keyword.control.dictionary.def.end
+#             ^ source.swarm
+#              ^ source.swarm string.quoted.double
+#               ^^^^^^^^^^^ source.swarm string.quoted.double
+#                          ^ source.swarm string.quoted.double
+#                           ^ source.swarm
+#                            ^^^ source.swarm keyword.control.dictionary.def.end
 #                               ^^ source.swarm
 >
 >return "";
