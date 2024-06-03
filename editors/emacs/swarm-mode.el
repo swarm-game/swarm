@@ -32,7 +32,8 @@
   (concat
    "\\b"
    (regexp-opt
-    '("noop"
+    '(
+      "noop"
       "wait"
       "selfdestruct"
       "move"
@@ -113,7 +114,8 @@
       "forward"
       "left"
       "back"
-      "right")
+      "right"
+      )
     t)
    "\\b")
   "Regexp that recognizes commands for swarm.")
@@ -122,7 +124,8 @@
   (concat
    "\\b"
    (regexp-opt
-    '("self"
+    '(
+      "self"
       "parent"
       "base"
       "if"
@@ -140,17 +143,15 @@
       "split"
       "charat"
       "tochar"
-      "key")
+      "key"
+      )
     t)
    "\\b" )
   "Regexp that recognizes builtin for swarm language.")
 
 (defvar swarm-mode-types-regexp
-  (concat
-   "\\b"
-   (regexp-opt '("Int" "Text" "Dir" "Bool" "Cmd" "Void" "Unit" "Actor") t)
-   "\\b")
-  "Regexp that recognizes types in swarm language.")
+   "\\b[A-Z][a-zA-Z_]*\\b"
+  "Regexp that recognizes types (all uppercase strings are supposed to be types) in swarm language.")
 
 (defvar swarm-mode-keywords-regexp
   (concat "\\b" (regexp-opt '("def" "tydef" "end" "let" "in" "require") t) "\\b")
@@ -161,8 +162,7 @@
     (,swarm-mode-keywords-regexp . 'font-lock-keyword-face)
     (,swarm-mode-builtins-regexp . 'font-lock-builtin-face)
     (,swarm-mode-commands-regexp . 'font-lock-constant-face)
-    (,swarm-mode-operators-regexp . 'font-lock-variable-name-face)
-    ))
+    (,swarm-mode-operators-regexp . 'font-lock-variable-name-face)))
 
 ;;;###autoload
 (define-derived-mode swarm-mode prog-mode "Swarm Lang Mode"
