@@ -31,6 +31,7 @@ import Control.Monad (when)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (first)
 import Data.Data (Data)
+import Data.Fix (Fix (..))
 import Data.Foldable (forM_)
 import Data.Hashable (Hashable)
 import Data.Map (Map)
@@ -43,7 +44,8 @@ import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Syntax
-import Swarm.Language.Syntax.Direction
+import Swarm.Language.Syntax.Direction (isCardinal)
+import Swarm.Language.Types
 
 -- | A /requirement/ is something a robot must have when it is
 --   built. There are three types:
@@ -136,8 +138,8 @@ type ReqCtx = Ctx Requirements
 --   commands end up not being executed.  However, the analysis should
 --   be safe in the sense that a robot with the indicated capabilities
 --   will always be able to run the given program.
-requirements :: ReqCtx -> Term -> (Requirements, ReqCtx)
-requirements ctx tm = first (insert (ReqCap CPower)) $ case tm of
+requirements :: TDCtx -> ReqCtx -> Term -> (Requirements, ReqCtx)
+requirements tdCtx ctx tm = first (insert (ReqCap CPower)) $ case tm of
   -- First, at the top level, we have to keep track of the
   -- requirements for variables bound with the 'TDef' command.
 
@@ -147,27 +149,36 @@ requirements ctx tm = first (insert (ReqCap CPower)) $ case tm of
   -- recursion capability, if the definition is recursive).  However,
   -- we also return a map which associates the defined name to the
   -- capabilities it requires.
-  TDef r x _ t ->
-    let bodyReqs = (if r then insert (ReqCap CRecursion) else id) (termRequirements ctx t)
-     in (singletonCap CEnv, Ctx.singleton x bodyReqs)
+  TDef r x mty t ->
+    let tyReqs = maybe mempty (polytypeRequirements tdCtx) mty
+        bodyReqs =
+          (if r then insert (ReqCap CRecursion) else id)
+            (termRequirements tdCtx ctx t)
+     in (singletonCap CEnv <> tyReqs, Ctx.singleton x bodyReqs)
   -- Making a type synonym also requires CEnv.
-  TTydef {} -> (singletonCap CEnv, Ctx.empty)
+  TTydef _ ty -> (singletonCap CEnv <> polytypeRequirements tdCtx ty, Ctx.empty)
   TBind _ t1 t2 ->
     -- First, see what the requirements are to execute the
     -- first command.  It may also define some names, so we get a
     -- map of those names to their required capabilities.
-    let (reqs1, ctx1) = requirements ctx t1
+    let (reqs1, ctx1) = requirements tdCtx ctx t1
 
         -- Now see what capabilities are required for the second
         -- command; use an extended context since it may refer to
         -- things defined in the first command.
         ctx' = ctx `Ctx.union` ctx1
-        (reqs2, ctx2) = requirements ctx' t2
+        (reqs2, ctx2) = requirements tdCtx ctx' t2
      in -- Finally return the union of everything.
         (reqs1 <> reqs2, ctx' `Ctx.union` ctx2)
   -- Any other term can't bind variables with 'TDef', so we no longer
   -- need to worry about tracking a returned context.
-  _ -> (termRequirements ctx tm, Ctx.empty)
+  _ -> (termRequirements tdCtx ctx tm, Ctx.empty)
+
+-- In theory we could rewrite the requirements function above to use
+-- effects/capability style, like the ones below, but trying to figure
+-- out the right effects to use and how to manage the flow of
+-- information hurts my brain.  So I think it's simpler to just leave
+-- it implemented in a direct style.
 
 -- | Infer the requirements to execute/evaluate a term in a
 --   given context, where the term is guaranteed not to contain any
@@ -181,10 +192,16 @@ requirements ctx tm = first (insert (ReqCap CPower)) $ case tm of
 --   (since e.g. an unused let-binding would still incur the
 --   capabilities to *evaluate* it), which does not seem worth it at
 --   all.
-termRequirements :: ReqCtx -> Term -> Requirements
-termRequirements ctx = run . execAccum mempty . runReader ctx . go
+termRequirements :: TDCtx -> ReqCtx -> Term -> Requirements
+termRequirements tdCtx ctx = run . execAccum mempty . runReader tdCtx . runReader ctx . go
  where
-  go :: (Has (Accum Requirements) sig m, Has (Reader ReqCtx) sig m) => Term -> m ()
+  go ::
+    ( Has (Accum Requirements) sig m
+    , Has (Reader ReqCtx) sig m
+    , Has (Reader TDCtx) sig m
+    ) =>
+    Term ->
+    m ()
   go = \case
     -- Some primitive literals that don't require any special
     -- capability.
@@ -227,8 +244,9 @@ termRequirements ctx = run . execAccum mempty . runReader ctx . go
     -- with the same name: inside the lambda that definition will be
     -- shadowed, so we do not want the name to be associated to any
     -- capabilities.
-    TLam x _ t -> do
+    TLam x mty t -> do
       add (singletonCap CLambda)
+      mapM_ typeRequirements' mty
       local @ReqCtx (Ctx.delete x) $ go t
     -- An application simply requires the union of the capabilities
     -- from the left- and right-hand sides.  This assumes that the
@@ -238,9 +256,10 @@ termRequirements ctx = run . execAccum mempty . runReader ctx . go
     -- will be used at least once in the body. We delete the let-bound
     -- name from the context when recursing for the same reason as
     -- lambda.
-    TLet r x _ t1 t2 -> do
+    TLet r x mty t1 t2 -> do
       when r $ add (singletonCap CRecursion)
       add (singletonCap CEnv)
+      mapM_ polytypeRequirements' mty
       local @ReqCtx (Ctx.delete x) $ go t1 *> go t2
     -- We also delete the name in a TBind, if any, while recursing on
     -- the RHS.
@@ -256,8 +275,42 @@ termRequirements ctx = run . execAccum mempty . runReader ctx . go
       expandEq (_, Just t) = t
     TProj t _ -> add (singletonCap CRecord) *> go t
     -- A type ascription doesn't change requirements
-    TAnnotate t _ -> go t
+    TAnnotate t ty -> go t *> polytypeRequirements' ty
     -- These cases should never happen if the term has been
     -- typechecked; Def commands are only allowed at the top level.
     TDef {} -> pure ()
     TTydef {} -> pure ()
+
+-- | Infer the requirements to mention a given type.
+polytypeRequirements :: TDCtx -> Polytype -> Requirements
+polytypeRequirements tdCtx = run . execAccum mempty . runReader tdCtx . polytypeRequirements'
+
+polytypeRequirements' ::
+  (Has (Accum Requirements) sig m, Has (Reader TDCtx) sig m) =>
+  Polytype ->
+  m ()
+polytypeRequirements' (Forall _ ty) = typeRequirements' ty
+
+typeRequirements' ::
+  (Has (Accum Requirements) sig m, Has (Reader TDCtx) sig m) =>
+  Type ->
+  m ()
+typeRequirements' = go
+ where
+  go (Fix tyF) = goF tyF
+
+  goF = \case
+    TyVarF _ -> pure ()
+    TyConF (TCUser u) tys -> do
+      mapM_ go tys
+      ty' <- expandTydef u tys
+      go ty'
+    TyConF c tys -> do
+      case c of
+        TCSum -> add (singletonCap CSum)
+        TCProd -> add (singletonCap CProd)
+        _ -> pure ()
+      mapM_ go tys
+    TyRcdF m -> mapM_ go m
+    TyRecF _ ty' -> add (singletonCap CRectype) *> go ty'
+    TyRecVarF _ -> pure ()
