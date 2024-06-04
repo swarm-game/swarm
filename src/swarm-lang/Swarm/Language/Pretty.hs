@@ -170,7 +170,7 @@ instance ((UnchainableFun t), (PrettyPrec t)) => PrettyPrec (TypeF t) where
     let (iniF, lastF) = unsnocNE $ ty1 <| unchainFun ty2
         funs = (prettyPrec 2 <$> iniF) <> [prettyPrec 1 lastF]
         inLine l r = l <+> "->" <+> r
-        multiLine l r = l <+> "->" <> hardline <> r
+        multiLine l r = l <+> "-> " <> softline' <> r
      in pparens (p > 1) . align $
           flatAlt (concatWith multiLine funs) (concatWith inLine funs)
   -- Fallthrough cases for type constructor application.  Handles base
