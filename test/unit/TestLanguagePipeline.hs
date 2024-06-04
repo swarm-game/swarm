@@ -588,6 +588,18 @@ testLanguagePipeline =
                 "1:34:\n  |\n1 | tydef Unbound a b = a + b + c end\n  |                                  ^\nUndefined type variable(s) on right-hand side of tydef: c\n"
             )
         ]
+    , testGroup
+        "recursive types"
+        [ testCase
+            "occurs check"
+            ( process
+                "def sum = \\l. case l (\\_. 0) (\\c. fst c + sum (snd c)) end"
+                "Encountered infinite type u5 = Int * (u4 + u5).\nSwarm will not infer recursive types; if you want a recursive type, add an explicit type annotation."
+            )
+        , testCase
+            "no occurs check with type annotation"
+            (valid "def sum : (rec l. Unit + Int * l) -> Int = \\l. case l (\\_. 0) (\\c. fst c + sum (snd c)) end")
+        ]
     ]
  where
   valid = flip process ""
