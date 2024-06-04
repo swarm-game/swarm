@@ -436,21 +436,32 @@ instance PrettyPrec Arity where
   prettyPrec _ (Arity a) = pretty a
 
 instance PrettyPrec KindError where
-  prettyPrec _ (ArityMismatch c a tys) =
-    nest 2 . vsep $
-      [ "Kind error:"
-      , hsep
-          [ ppr c
-          , "requires"
-          , pretty a
-          , "type"
-          , pretty (number a "argument" <> ",")
-          , "but was given"
-          , pretty (length tys)
-          ]
-      ]
-        ++ ["in the type:" <+> ppr (TyConApp c tys) | not (null tys)]
-  prettyPrec _ (UndefinedTyCon tc _ty) = "Undefined type" <+> ppr tc
+  prettyPrec _ = \case
+    ArityMismatch c a tys ->
+      nest 2 . vsep $
+        [ "Kind error:"
+        , hsep
+            [ ppr c
+            , "requires"
+            , pretty a
+            , "type"
+            , pretty (number a "argument" <> ",")
+            , "but was given"
+            , pretty (length tys)
+            ]
+        ]
+          ++ ["in the type:" <+> ppr (TyConApp c tys) | not (null tys)]
+    UndefinedTyCon tc _ty -> "Undefined type" <+> ppr tc
+    TrivialRecTy x ty ->
+      nest 2 . vsep $
+        [ "Encountered trivial recursive type" <+> ppr (TyRec x ty)
+        , "Did you forget to use" <+> pretty x <+> "in the body of the type?"
+        ]
+    VacuousRecTy x ty ->
+      nest 2 . vsep $
+        [ "Encountered vacuous recursive type" <+> ppr (TyRec x ty)
+        , "Recursive types must be productive, i.e. must not expand to themselves."
+        ]
 
 -- | Given a type and its source, construct an appropriate description
 --   of it to go in a type mismatch error message.

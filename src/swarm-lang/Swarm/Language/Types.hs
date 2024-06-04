@@ -282,6 +282,25 @@ instance IsString UType where
   fromString x = UTyVar (from @String x)
 
 ------------------------------------------------------------
+-- Generic folding over type representations
+------------------------------------------------------------
+
+class Typical t where
+  foldT :: (TypeF t -> t) -> t -> t
+  rollT :: TypeF t -> t
+  fromType :: Type -> t
+
+instance Typical Type where
+  foldT = foldFix
+  rollT = Fix
+  fromType = id
+
+instance Typical UType where
+  foldT = ucata Pure
+  rollT = Free
+  fromType = toU
+
+------------------------------------------------------------
 -- Polytypes
 ------------------------------------------------------------
 
@@ -509,7 +528,7 @@ type TDCtx = Ctx TydefInfo
 --   number of arguments must match up; we don't worry about what
 --   happens if the lists have different lengths since in theory that
 --   can never happen.
-expandTydef :: Has (Reader TDCtx) sig m => Var -> [UType] -> m UType
+expandTydef :: (Has (Reader TDCtx) sig m, Typical t) => Var -> [t] -> m t
 expandTydef userTyCon tys = do
   mtydefInfo <- Ctx.lookupR userTyCon
   tdCtx <- ask @TDCtx
@@ -526,17 +545,17 @@ expandTydef userTyCon tys = do
       tydefInfo = fromMaybe (error errMsg) mtydefInfo
   return $ substTydef tydefInfo tys
 
--- | Substitute the given types into the body of the given type
---   synonym definition.
-substTydef :: TydefInfo -> [UType] -> UType
-substTydef (TydefInfo (Forall as ty) _) tys = ucata Pure substF (toU ty)
+-- | Given the definition of a type alias, substitute the given
+--   arguments into its body and return the resulting type.
+substTydef :: forall t. Typical t => TydefInfo -> [t] -> t
+substTydef (TydefInfo (Forall as ty) _) tys = foldT @t substF (fromType ty)
  where
-  tyMap = M.fromList $ zip as tys
+  argMap = M.fromList $ zip as tys
 
-  substF tyF@(TyVarF x) = case M.lookup x tyMap of
-    Nothing -> Free tyF
-    Just uty -> uty
-  substF tyF = Free tyF
+  substF tyF@(TyVarF x) = case M.lookup x argMap of
+    Nothing -> rollT tyF
+    Just ty' -> ty'
+  substF tyF = rollT tyF
 
 ------------------------------------------------------------
 -- Arity
@@ -563,7 +582,7 @@ tcArity tydefs =
 
 -- | @unfoldRec x t@ unfolds the recursive type @rec x. t@ one step,
 --   to @t [(rec x. t) / x]@.
-unfoldRec :: Var -> UType -> UType
+unfoldRec :: SubstRec t => Var -> t -> t
 unfoldRec x ty = substRec (TyRecF x ty) ty NZ
 
 -- | Class of type-like things where we can substitute for a bound de
