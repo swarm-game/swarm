@@ -1034,7 +1034,7 @@
       of values is just a fancy number.  For example, the type `Bool`{=type} is
       just a fancy version of the number 2, where the two things happen to be
       labelled `false` and `true`.  There are also types `Unit`{=type} and
-      `void`{=type} that correspond to 1 and 0, respectively.
+      `Void`{=type} that correspond to 1 and 0, respectively.
     - |
       The product of two types is a type of pairs, since, for example,
       if `t`{=type} is a type with three elements, then there are 2 * 3 = 6
@@ -1053,6 +1053,21 @@
       3) (\x. 2*x) (\y. 3*y) == 9`.
   properties: [pickable]
   capabilities: [arith, sum, prod]
+- name: hyperloop
+  display:
+    attr: device
+    char: '∞'
+  description:
+    - |
+      Is it a calculator with a strange antenna?  A strange loop with
+      a built-in calculator?  Who can say?  A `hyperloop`{=entity}
+      gives you the ability to create recursive types: the type `rec
+      t. T(t)`{=snippet} (where `T(t)`{=snippet} is some type
+      containing `t`{=type}) is the type `t`{=type} such that `t =
+      T(t)`{=snippet}. For exmple, `rec l. Unit + Int * l`{=type} is
+      the type of lists of integers.
+  properties: [pickable]
+  capabilities: [arith, sum, prod, rectype]
 - name: compass
   display:
     attr: device
