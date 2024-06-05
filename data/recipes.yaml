@@ -182,7 +182,7 @@
   required:
     - [1, metal drill]
   time: 9
-  weight: 160
+  weight: 34
 - in:
     - [1, mountain]
   out:
@@ -192,7 +192,7 @@
   required:
     - [1, metal drill]
   time: 9
-  weight: 10
+  weight: 2
 - in:
     - [5, rock]
   out:
@@ -241,7 +241,7 @@
   required:
     - [1, metal drill]
   time: 6
-  weight: 10
+  weight: 5
 - in:
     - [1, mountain]
   out:
@@ -250,7 +250,7 @@
   required:
     - [1, metal drill]
   time: 7
-  weight: 10
+  weight: 5
 - in:
     - [1, mountain]
   out:
@@ -259,7 +259,7 @@
   required:
     - [1, metal drill]
   time: 7
-  weight: 10
+  weight: 3
 ## MINES
 - in:
     - [1, copper mine]
