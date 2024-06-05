@@ -198,7 +198,7 @@
   out:
     - [1, furnace]
 - in:
-    - [10, rock]
+    - [100, rock]
     - [10, solar panel]
   out:
     - [1, big furnace]
@@ -625,6 +625,12 @@
   required:
     - [1, furnace]
 - in:
+    - [1, sand]
+  out:
+    - [1, glass]
+  required:
+    - [1, big furnace]
+- in:
     - [1, glass]
     - [1, mithril]
   out:
@@ -672,6 +678,12 @@
     - [1, rubber]
   required:
     - [1, furnace]
+- in:
+    - [1, LaTeX]
+  out:
+    - [1, rubber]
+  required:
+    - [1, big furnace]
 - in:
     - [8, copper wire]
     - [1, rubber]
