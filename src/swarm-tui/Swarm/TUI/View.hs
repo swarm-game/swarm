@@ -118,7 +118,7 @@ import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Capability (Capability (..), constCaps)
-import Swarm.Language.Pretty (prettyText, prettyTextLine)
+import Swarm.Language.Pretty (prettyText, prettyTextLine, prettyTextWidth)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Log
@@ -1276,15 +1276,19 @@ explainCapabilities gs e
       ]
 
   renderCmdInfo c =
-    padTop (Pad 1) $
-      vBox
-        [ hBox
-            [ padRight (Pad 1) (txt . syntax $ constInfo c)
-            , padRight (Pad 1) (txt ":")
-            , withAttr magentaAttr . txt . prettyText $ inferConst c
-            ]
-        , padTop (Pad 1) . padLeft (Pad 1) . txtWrap . briefDoc . constDoc $ constInfo c
-        ]
+    Widget Fixed Fixed $ do
+      ctx <- getContext
+      let w = ctx ^. availWidthL
+      render
+        . padTop (Pad 1)
+        $ vBox
+          [ hBox
+              [ padRight (Pad 1) (txt . syntax $ constInfo c)
+              , padRight (Pad 1) (txt ":")
+              , withAttr magentaAttr . txt $ prettyTextWidth (inferConst c) w
+              ]
+          , padTop (Pad 1) . padLeft (Pad 1) . txtWrap . briefDoc . constDoc $ constInfo c
+          ]
 
   costWidget cmdsAndCost =
     if null ings

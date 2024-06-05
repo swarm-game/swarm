@@ -54,9 +54,24 @@ ppr = prettyPrec 0
 docToText :: Doc a -> Text
 docToText = RT.renderStrict . layoutPretty defaultLayoutOptions
 
+-- | Render a pretty-printed document as @Text@.
+--   This function consumes number of allowed characters in a
+--   line before introducing a line break. In other words, it
+--   expects the space of the layouter to be supplied.
+docToTextWidth :: Doc a -> Int -> Text
+docToTextWidth doc layoutWidth =
+  RT.renderStrict $ layoutPretty (LayoutOptions (AvailablePerLine layoutWidth 1.0)) doc
+
 -- | Pretty-print something and render it as @Text@.
 prettyText :: (PrettyPrec a) => a -> Text
 prettyText = docToText . ppr
+
+-- | Pretty-print something and render it as @Text@.
+--   This is different than @prettyText@ in the sense that it also
+--   consumes number of allowed characters in a line before introducing
+--   a line break.
+prettyTextWidth :: (PrettyPrec a) => a -> Int -> Text
+prettyTextWidth = docToTextWidth . ppr
 
 -- | Pretty-print something and render it as (preferably) one line @Text@.
 prettyTextLine :: (PrettyPrec a) => a -> Text
