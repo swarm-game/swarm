@@ -356,9 +356,9 @@ handleMainEvent ev = do
         then -- ignore repeated keypresses
           continueWithoutRedraw
         else -- hide for two seconds
-          do
-            uiState . uiGameplay . uiHideRobotsUntil .= t + TimeSpec 2 0
-            invalidateCacheEntry WorldCache
+        do
+          uiState . uiGameplay . uiHideRobotsUntil .= t + TimeSpec 2 0
+          invalidateCacheEntry WorldCache
     -- debug focused robot
     MetaChar 'd' | isPaused && hasDebug -> do
       debug <- uiState . uiGameplay . uiShowDebug Lens.<%= not
