@@ -21,6 +21,12 @@ module Swarm.Language.Types (
   -- ** Type structure functor
   TypeF (..),
 
+  -- ** Recursive types
+  Nat (..),
+  natToInt,
+  unfoldRec,
+  SubstRec (..),
+
   -- * @Type@
   Type,
   tyVars,
@@ -42,6 +48,7 @@ module Swarm.Language.Types (
   pattern TyCmd,
   pattern TyDelay,
   pattern TyUser,
+  pattern TyRec,
 
   -- * @UType@
   IntVar (..),
@@ -64,6 +71,7 @@ module Swarm.Language.Types (
   pattern UTyCmd,
   pattern UTyDelay,
   pattern UTyUser,
+  pattern UTyRec,
 
   -- ** Utilities
   ucata,
@@ -106,6 +114,7 @@ import Data.Kind qualified
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
+import Data.Ord.Deriving (deriveOrd1)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.String (IsString (..))
@@ -186,6 +195,16 @@ instance FromJSON Arity where
 -- Types
 ------------------------------------------------------------
 
+-- | Peano naturals, for use as de Bruijn indices in recursive types.
+data Nat where
+  NZ :: Nat
+  NS :: Nat -> Nat
+  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
+
+natToInt :: Nat -> Int
+natToInt NZ = 0
+natToInt (NS n) = 1 + natToInt n
+
 -- | A "structure functor" encoding the shape of type expressions.
 --   Actual types are then represented by taking a fixed point of this
 --   functor.  We represent types in this way, via a "two-level type",
@@ -202,9 +221,17 @@ data TypeF t
     TyVarF Var
   | -- | Record type.
     TyRcdF (Map Var t)
-  deriving (Show, Eq, Functor, Foldable, Traversable, Generic, Generic1, Data, FromJSON, ToJSON)
+  | -- | A recursive type variable bound by an enclosing Rec,
+    --   represented by a de Bruijn index.
+    TyRecVarF Nat
+  | -- | Recursive type.  The variable is just a suggestion for a name to use
+    --   when pretty-printing; the actual bound variables are represented
+    --   via de Bruijn indices.
+    TyRecF Var t
+  deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic, Generic1, Data, FromJSON, ToJSON)
 
 deriveEq1 ''TypeF
+deriveOrd1 ''TypeF
 deriveShow1 ''TypeF
 deriveFromJSON1 defaultOptions ''TypeF
 deriveToJSON1 defaultOptions ''TypeF
@@ -253,6 +280,25 @@ instance IsString Type where
 
 instance IsString UType where
   fromString x = UTyVar (from @String x)
+
+------------------------------------------------------------
+-- Generic folding over type representations
+------------------------------------------------------------
+
+class Typical t where
+  foldT :: (TypeF t -> t) -> t -> t
+  rollT :: TypeF t -> t
+  fromType :: Type -> t
+
+instance Typical Type where
+  foldT = foldFix
+  rollT = Fix
+  fromType = id
+
+instance Typical UType where
+  foldT = ucata Pure
+  rollT = Free
+  fromType = toU
 
 ------------------------------------------------------------
 -- Polytypes
@@ -380,6 +426,9 @@ pattern TyDelay ty = TyConApp TCDelay [ty]
 pattern TyUser :: Var -> [Type] -> Type
 pattern TyUser v tys = TyConApp (TCUser v) tys
 
+pattern TyRec :: Var -> Type -> Type
+pattern TyRec x ty = Fix (TyRecF x ty)
+
 --------------------------------------------------
 -- UType
 
@@ -437,6 +486,9 @@ pattern UTyDelay ty = UTyConApp TCDelay [ty]
 pattern UTyUser :: Var -> [UType] -> UType
 pattern UTyUser v tys = UTyConApp (TCUser v) tys
 
+pattern UTyRec :: Var -> UType -> UType
+pattern UTyRec x ty = Free (TyRecF x ty)
+
 pattern PolyUnit :: Polytype
 pattern PolyUnit = Forall [] (TyCmd TyUnit)
 
@@ -476,7 +528,7 @@ type TDCtx = Ctx TydefInfo
 --   number of arguments must match up; we don't worry about what
 --   happens if the lists have different lengths since in theory that
 --   can never happen.
-expandTydef :: Has (Reader TDCtx) sig m => Var -> [UType] -> m UType
+expandTydef :: (Has (Reader TDCtx) sig m, Typical t) => Var -> [t] -> m t
 expandTydef userTyCon tys = do
   mtydefInfo <- Ctx.lookupR userTyCon
   tdCtx <- ask @TDCtx
@@ -493,17 +545,17 @@ expandTydef userTyCon tys = do
       tydefInfo = fromMaybe (error errMsg) mtydefInfo
   return $ substTydef tydefInfo tys
 
--- | Substitute the given types into the body of the given type
---   synonym definition.
-substTydef :: TydefInfo -> [UType] -> UType
-substTydef (TydefInfo (Forall as ty) _) tys = ucata Pure substF (toU ty)
+-- | Given the definition of a type alias, substitute the given
+--   arguments into its body and return the resulting type.
+substTydef :: forall t. Typical t => TydefInfo -> [t] -> t
+substTydef (TydefInfo (Forall as ty) _) tys = foldT @t substF (fromType ty)
  where
-  tyMap = M.fromList $ zip as tys
+  argMap = M.fromList $ zip as tys
 
-  substF tyF@(TyVarF x) = case M.lookup x tyMap of
-    Nothing -> Free tyF
-    Just uty -> uty
-  substF tyF = Free tyF
+  substF tyF@(TyVarF x) = case M.lookup x argMap of
+    Nothing -> rollT tyF
+    Just ty' -> ty'
+  substF tyF = rollT tyF
 
 ------------------------------------------------------------
 -- Arity
@@ -523,3 +575,35 @@ tcArity tydefs =
     TCProd -> Just 2
     TCFun -> Just 2
     TCUser t -> getArity . view tydefArity <$> Ctx.lookup t tydefs
+
+------------------------------------------------------------
+-- Recursive type utilities
+------------------------------------------------------------
+
+-- | @unfoldRec x t@ unfolds the recursive type @rec x. t@ one step,
+--   to @t [(rec x. t) / x]@.
+unfoldRec :: SubstRec t => Var -> t -> t
+unfoldRec x ty = substRec (TyRecF x ty) ty NZ
+
+-- | Class of type-like things where we can substitute for a bound de
+--   Bruijn variable.
+class SubstRec t where
+  -- | @substRec s t n@ substitutes @s@ for the bound de Bruijn variable
+  --   @n@ everywhere in @t@.
+  substRec :: TypeF t -> t -> Nat -> t
+
+instance SubstRec (Free TypeF v) where
+  substRec s = ucata (\i _ -> Pure i) $ \f i -> case f of
+    TyRecVarF j
+      | i == j -> Free s
+      | otherwise -> Free (TyRecVarF j)
+    TyRecF x g -> Free (TyRecF x (g (NS i)))
+    _ -> Free (fmap ($ i) f)
+
+instance SubstRec Type where
+  substRec s = foldFix $ \f i -> case f of
+    TyRecVarF j
+      | i == j -> Fix s
+      | otherwise -> Fix (TyRecVarF j)
+    TyRecF x g -> Fix (TyRecF x (g (NS i)))
+    _ -> Fix (fmap ($ i) f)

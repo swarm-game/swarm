@@ -13,7 +13,7 @@
 --
 -- Not used in Swarm, and also unmaintained
 -- (e.g. "Swarm.Effect.Unify.Fast" now supports expanding type
--- aliases; this module does not). It's still here just for
+-- aliases + recursive types; this module does not). It's still here just for
 -- testing/comparison.
 module Swarm.Effect.Unify.Naive where
 
@@ -164,5 +164,8 @@ unifyF t1 t2 = case (t1, t2) of
       False -> unifyErr
       _ -> (fmap compose . sequence) (M.merge M.dropMissing M.dropMissing (M.zipWithMatched (const unify)) m1 m2)
   (TyRcdF {}, _) -> unifyErr
+  -- Don't support any extra features (e.g. recursive types), so just
+  -- add a catch-all failure case
+  (_, _) -> unifyErr
  where
   unifyErr = throwError $ UnifyErr t1 t2

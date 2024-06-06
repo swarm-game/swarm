@@ -52,4 +52,7 @@ data UnificationError where
   UnifyErr :: TypeF UType -> TypeF UType -> UnificationError
   -- | Encountered an undefined/unknown type constructor.
   UndefinedUserType :: UType -> UnificationError
+  -- | Encountered an unexpanded recursive type in unifyF.  This
+  --   should never happen.
+  UnexpandedRecTy :: TypeF UType -> UnificationError
   deriving (Show)

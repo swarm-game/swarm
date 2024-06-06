@@ -856,6 +856,7 @@ test-suite swarm-unit
     base,
     boolexpr,
     containers,
+    data-fix,
     filepath,
     hashable,
     lens,
