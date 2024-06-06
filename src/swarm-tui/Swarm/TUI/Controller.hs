@@ -52,6 +52,7 @@ import Control.Monad (forM_, unless, void, when)
 import Control.Monad.Extra (whenJust)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execState)
+import Data.Aeson (encodeFile)
 import Data.Bits
 import Data.Either (isRight)
 import Data.Foldable (toList)
@@ -316,6 +317,10 @@ handleMainEvent ev = do
         WinConditions (Won _ _) _ -> toggleModal $ ScenarioEndModal WinModal
         WinConditions (Unwinnable _) _ -> toggleModal $ ScenarioEndModal LoseModal
         _ -> toggleModal QuitModal
+    ControlChar 'k' -> do
+      s <- get
+      let cesk = s ^? gameState . baseRobot . machine
+      liftIO (encodeFile "cesk.json" cesk)
     VtyEvent (V.EvResize _ _) -> invalidateCache
     Key V.KEsc
       | Just m <- s ^. uiState . uiGameplay . uiModal -> do
@@ -351,9 +356,9 @@ handleMainEvent ev = do
         then -- ignore repeated keypresses
           continueWithoutRedraw
         else -- hide for two seconds
-        do
-          uiState . uiGameplay . uiHideRobotsUntil .= t + TimeSpec 2 0
-          invalidateCacheEntry WorldCache
+          do
+            uiState . uiGameplay . uiHideRobotsUntil .= t + TimeSpec 2 0
+            invalidateCacheEntry WorldCache
     -- debug focused robot
     MetaChar 'd' | isPaused && hasDebug -> do
       debug <- uiState . uiGameplay . uiShowDebug Lens.<%= not

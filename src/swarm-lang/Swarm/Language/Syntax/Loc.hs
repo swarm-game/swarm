@@ -12,10 +12,11 @@ module Swarm.Language.Syntax.Loc (
   srcLocBefore,
 ) where
 
-import Data.Aeson.Types hiding (Key)
+import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Data (Data)
 import GHC.Generics (Generic)
 import Swarm.Language.Context (Var)
+import Swarm.Util.JSON (optionsUntagged)
 
 ------------------------------------------------------------
 -- SrcLoc
@@ -27,7 +28,13 @@ data SrcLoc
   = NoLoc
   | -- | Half-open interval from start (inclusive) to end (exclusive)
     SrcLoc Int Int
-  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Data, Generic)
+
+instance ToJSON SrcLoc where
+  toJSON = genericToJSON optionsUntagged
+
+instance FromJSON SrcLoc where
+  parseJSON = genericParseJSON optionsUntagged
 
 -- | @x <> y@ is the smallest 'SrcLoc' that subsumes both @x@ and @y@.
 instance Semigroup SrcLoc where
