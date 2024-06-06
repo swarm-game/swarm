@@ -28,6 +28,7 @@ import Data.List qualified as L (drop)
 import Data.Text hiding (filter, length, map)
 import GHC.Generics (Generic)
 import Swarm.Util qualified as Util
+import Swarm.Util.JSON (optionsMinimize)
 import Witch.From (from)
 
 ------------------------------------------------------------
@@ -92,7 +93,13 @@ instance FromJSONKey AbsoluteDir where
 --   robot's frame of reference; no special capability is needed to
 --   use them.
 data RelativeDir = DPlanar PlanarRelativeDir | DDown
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable)
+
+instance ToJSON RelativeDir where
+  toJSON = genericToJSON optionsMinimize
+
+instance FromJSON RelativeDir where
+  parseJSON = genericParseJSON optionsMinimize
 
 -- | Caution: Do not alter this ordering, as there exist functions that depend on it
 -- (e.g. 'Swarm.Game.Location.nearestDirection' and 'Swarm.Game.Location.relativeTo').
@@ -108,7 +115,13 @@ instance ToJSON PlanarRelativeDir where
 -- | The type of directions. Used /e.g./ to indicate which way a robot
 --   will turn.
 data Direction = DAbsolute AbsoluteDir | DRelative RelativeDir
-  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable, ToJSON, FromJSON)
+  deriving (Eq, Ord, Show, Read, Generic, Data, Hashable)
+
+instance FromJSON Direction where
+  parseJSON = genericParseJSON optionsMinimize
+
+instance ToJSON Direction where
+  toJSON = genericToJSON optionsMinimize
 
 -- | Direction name is generated from the deepest nested data constructor
 -- e.g. 'DLeft' becomes "left"

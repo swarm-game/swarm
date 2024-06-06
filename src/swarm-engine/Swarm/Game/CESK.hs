@@ -81,7 +81,7 @@ module Swarm.Game.CESK (
 
 import Control.Lens ((^.))
 import Control.Lens.Combinators (pattern Empty)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import GHC.Generics (Generic)
@@ -98,6 +98,7 @@ import Swarm.Language.Pretty
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.Language.Value as V
+import Swarm.Util.JSON (optionsMinimize)
 
 ------------------------------------------------------------
 -- Frames and continuations
@@ -175,7 +176,13 @@ data Frame
     FRcd Env [(Var, Value)] Var [(Var, Maybe Term)]
   | -- | We are in the middle of evaluating a record field projection.
     FProj Var
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic)
+
+instance ToJSON Frame where
+  toJSON = genericToJSON optionsMinimize
+
+instance FromJSON Frame where
+  parseJSON = genericParseJSON optionsMinimize
 
 -- | A continuation is just a stack of frames.
 type Cont = [Frame]
@@ -213,7 +220,13 @@ data MemCell
     --   the 'MemCell', so that subsequent lookups can just use it
     --   without recomputing anything.
     V Value
-  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+  deriving (Show, Eq, Generic)
+
+instance ToJSON MemCell where
+  toJSON = genericToJSON optionsMinimize
+
+instance FromJSON MemCell where
+  parseJSON = genericParseJSON optionsMinimize
 
 emptyStore :: Store
 emptyStore = Store 0 IM.empty
@@ -272,7 +285,13 @@ data CESK
   | -- | The machine is waiting for the game to reach a certain time
     --   to resume its execution.
     Waiting TickNumber CESK
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic)
+
+instance ToJSON CESK where
+  toJSON = genericToJSON optionsMinimize
+
+instance FromJSON CESK where
+  parseJSON = genericParseJSON optionsMinimize
 
 -- | Is the CESK machine in a final (finished) state?  If so, extract
 --   the final value and store.
@@ -409,4 +428,10 @@ data RobotUpdate
     AddEntity Count Entity
   | -- | Make the robot learn about an entity.
     LearnEntity Entity
-  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON RobotUpdate where
+  toJSON = genericToJSON optionsMinimize
+
+instance FromJSON RobotUpdate where
+  parseJSON = genericParseJSON optionsMinimize
