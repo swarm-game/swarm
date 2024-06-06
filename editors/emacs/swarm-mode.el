@@ -154,7 +154,7 @@
   "Regexp that recognizes types (all uppercase strings are supposed to be types) in swarm language.")
 
 (defvar swarm-mode-keywords-regexp
-  (concat "\\b" (regexp-opt '("def" "tydef" "end" "let" "in" "require") t) "\\b")
+  (concat "\\b" (regexp-opt '("def" "tydef" "rec" "end" "let" "in" "require") t) "\\b")
   "Regexp that recognizes keywords in swarm language.")
 
 (defvar swarm-font-lock-keywords
