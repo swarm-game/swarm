@@ -123,7 +123,7 @@ processTerm' ctxs txt = do
 processParsedTerm' :: Contexts -> Syntax -> Either ContextualTypeErr ProcessedTerm
 processParsedTerm' ctxs t = do
   m <- inferTop (ctxs ^. tCtx) (ctxs ^. tydefCtx) t
-  let (caps, reqCtx') = requirements (ctxs ^. reqCtx) (t ^. sTerm)
+  let (caps, reqCtx') = requirements (ctxs ^. tydefCtx) (ctxs ^. reqCtx) (t ^. sTerm)
   return $ ProcessedTerm (elaborateModule m) caps reqCtx'
 
 elaborateModule :: TModule -> TModule
