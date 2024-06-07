@@ -58,7 +58,6 @@ import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability
-import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Requirement qualified as R
@@ -258,7 +257,8 @@ grantAchievement a = do
   when isGameModeValid $ do
     currentTime <- sendIO getZonedTime
     scenarioPath <- use currentScenarioPath
-    discovery . gameAchievements
+    discovery
+      . gameAchievements
       %= M.insertWith
         (<>)
         a
@@ -477,7 +477,7 @@ addSeedBot ::
   m ()
 addSeedBot e (minT, maxT) seedlingCount seedlingRadius loc ts =
   zoomRobots
-    . addTRobot (initMachine seedProg empty emptyStore)
+    . addTRobot (initEmptyMachine seedProg)
     $ mkRobot
       Nothing
       "seed"

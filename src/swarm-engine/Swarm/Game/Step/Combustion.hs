@@ -25,7 +25,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Linear (zero)
 import Swarm.Effect as Effect (Time, getNow)
-import Swarm.Game.CESK (emptyStore, initMachine)
+import Swarm.Game.CESK (initEmptyMachine)
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
@@ -40,7 +40,6 @@ import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Inspect
 import Swarm.Game.Universe
-import Swarm.Language.Context (empty)
 import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax
@@ -99,7 +98,7 @@ addCombustionBot inputEntity combustibility ts loc = do
   combustionDurationRand <- uniform durationRange
   let combustionProg = combustionProgram combustionDurationRand combustibility
   zoomRobots
-    . addTRobot (initMachine combustionProg empty emptyStore)
+    . addTRobot (initEmptyMachine combustionProg)
     $ mkRobot
       Nothing
       "fire"
@@ -200,7 +199,7 @@ addIgnitionBot ::
   Cosmic Location ->
   m ()
 addIgnitionBot ignitionDelay inputEntity ts loc =
-  addTRobot (initMachine (ignitionProgram ignitionDelay) empty emptyStore) $
+  addTRobot (initEmptyMachine (ignitionProgram ignitionDelay)) $
     mkRobot
       Nothing
       "firestarter"
