@@ -1061,10 +1061,10 @@
     - |
       Is it a calculator with a strange antenna?  A strange loop with
       a built-in calculator?  Who can say?  A `hyperloop`{=entity}
-      gives you the ability to create recursive types: the type `rec
-      t. T(t)`{=snippet} (where `T(t)`{=snippet} is some type
-      containing `t`{=type}) is the type `t`{=type} such that `t =
-      T(t)`{=snippet}. For exmple, `rec l. Unit + Int * l`{=type} is
+      gives you the ability to create recursive types: the type
+      `rec t. T(t)`{=snippet} (where `T(t)`{=snippet} is some type
+      containing `t`{=type}) is the type `t`{=type} such that
+      `t = T(t)`{=snippet}. For exmple, `rec l. Unit + Int * l`{=type} is
       the type of lists of integers.
   properties: [pickable]
   capabilities: [arith, sum, prod, rectype]
