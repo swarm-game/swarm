@@ -42,6 +42,7 @@ import TestPedagogy (testPedagogy)
 import TestPretty (testPrettyConst)
 import TestRecipeCoverage (testDeviceRecipeCoverage)
 import TestRepl (testRepl)
+import TestRequirements (testRequirements)
 import TestScoring (testHighScores)
 import Witch (from)
 
@@ -65,6 +66,7 @@ tests s =
     , testHighScores
     , testEval (s ^. gameState)
     , testRepl
+    , testRequirements
     , testPedagogy (s ^. runtimeState)
     , testInventory
     , testNotification (s ^. gameState)
