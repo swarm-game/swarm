@@ -485,6 +485,8 @@ data InvalidAtomicReason
     NestedAtomic
   | -- | The argument contained a long command
     LongConst
+  | -- | The argument contained a suspend
+    AtomicSuspend
   deriving (Show)
 
 ------------------------------------------------------------
@@ -1072,6 +1074,12 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         m' <- itraverse (\x ms -> check (fromMaybe (STerm (TVar x)) ms) (tyMap ! x)) fields
         return $ Syntax' l (SRcd (Just <$> m')) cs expected
 
+  -- The type of @suspend t@ is @Cmd T@ where @t : T@.
+  SSuspend s1 -> do
+    argTy <- decomposeCmdTy s (Expected, expected)
+    s1' <- check s1 argTy
+    return $ Syntax' l (SSuspend s1') cs (UTyCmd argTy)
+
   -- Fallback: switch into inference mode, and check that the type we
   -- get is what we expected.
   _ -> do
@@ -1235,6 +1243,9 @@ analyzeAtomic locals (Syntax l t) = case t of
   TRef {} -> throwTypeErr l $ CantInfer t
   -- An explicit type annotation doesn't change atomicity
   SAnnotate s _ -> analyzeAtomic locals s
+  -- We should never encounter a suspend since it cannot be written
+  -- explicitly in the surface syntax.
+  SSuspend {} -> throwTypeErr l $ InvalidAtomic AtomicSuspend t
 
 -- | A simple polytype is a simple type with no quantifiers.
 isSimpleUPolytype :: UPolytype -> Bool

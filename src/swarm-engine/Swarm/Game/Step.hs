@@ -673,6 +673,11 @@ stepCESK cesk = case cesk of
   -- If we see an update frame, it means we're supposed to set the value
   -- of a particular cell to the value we just finished computing.
   Out v s (FUpdate loc : k) -> return $ Out v (setStore loc (V v) s) k
+  -- If we see a primitive application of suspend, evaluate
+  -- its argument and then suspend.
+  In (TSuspend t) e s k -> return $ In t e s (FSuspend e : k)
+  -- Once we've finished, enter the Suspended state.
+  Out v s (FSuspend e : k) -> return $ Suspended v e s k
   ------------------------------------------------------------
   -- Execution
 
@@ -862,8 +867,9 @@ stepCESK cesk = case cesk of
   -- Otherwise, keep popping from the continuation stack.
   Up exn s (_ : k) -> return $ Up exn s k
   -- Finally, if we're done evaluating and the continuation stack is
-  -- empty, return the machine unchanged.
+  -- empty, OR if we've hit a suspend, return the machine unchanged.
   done@(Out _ _ []) -> return done
+  suspended@(Suspended {}) -> return suspended
  where
   badMachineState s msg =
     let msg' =
