@@ -110,6 +110,10 @@ bquote = group . enclose "`" "`"
 prettyShowLow :: Show a => a -> Doc ann
 prettyShowLow = pretty . showLowT
 
+-- | An invitation to report an error as a bug.
+reportBug :: Doc ann
+reportBug = "This should never happen; please report this as a bug: https://github.com/swarm-game/swarm/issues/new"
+
 --------------------------------------------------
 -- Bullet lists
 
@@ -331,6 +335,9 @@ instance PrettyPrec (Term' ty) where
     SAnnotate t pt ->
       pparens (p > 0) $
         prettyPrec 1 t <+> ":" <+> ppr pt
+    SSuspend t ->
+      pparens (p > 10) $
+        "suspend" <+> prettyPrec 11 t
 
 prettyEquality :: (Pretty a, PrettyPrec b) => (a, Maybe b) -> Doc ann
 prettyEquality (x, Nothing) = pretty x
@@ -435,7 +442,10 @@ instance PrettyPrec TypeErr where
     DefNotTopLevel t ->
       "Definitions may only be at the top level:" <+> pprCode t
     CantInfer t ->
-      "Couldn't infer the type of term (this shouldn't happen; please report this as a bug!):" <+> pprCode t
+      vsep
+        [ "Couldn't infer the type of term:" <+> pprCode t
+        , reportBug
+        ]
     CantInferProj t ->
       "Can't infer the type of a record projection:" <+> pprCode t
     UnknownProj x t ->
@@ -460,7 +470,10 @@ instance PrettyPrec UnificationError where
     UndefinedUserType ty ->
       "Undefined user type" <+> ppr ty
     UnexpandedRecTy ty ->
-      "Unexpanded recursive type" <+> ppr ty <+> "encountered in unifyF.  This should never happen, please report this as a bug."
+      vsep
+        [ "Unexpanded recursive type" <+> ppr ty <+> "encountered in unifyF."
+        , reportBug
+        ]
 
 instance PrettyPrec Arity where
   prettyPrec _ (Arity a) = pretty a
@@ -575,6 +588,8 @@ instance PrettyPrec InvalidAtomicReason where
       "reference to variable with non-simple type" <+> ppr (prettyTextLine ty)
     NestedAtomic -> "nested atomic block"
     LongConst -> "commands that can take multiple ticks to execute are not allowed"
+    AtomicSuspend ->
+      "encountered a suspend command inside an atomic block" <> hardline <> reportBug
 
 instance PrettyPrec LocatedTCFrame where
   prettyPrec p (LocatedTCFrame _ f) = prettyPrec p f

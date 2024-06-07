@@ -136,6 +136,7 @@ narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   TRobot {} -> Nothing
   TAntiInt {} -> Nothing
   TAntiText {} -> Nothing
+  SSuspend {} -> Nothing
  where
   d = descend pos
 
@@ -232,6 +233,7 @@ explain trm = case trm ^. sTerm of
   TAntiInt {} -> internal "An antiquoted Haskell variable name of type Integer."
   TAntiText {} -> internal "An antiquoted Haskell variable name of type Text."
   TRobot {} -> internal "A robot reference."
+  SSuspend {} -> internal "A suspension."
  where
   ty = trm ^. sType
   literal = pure . typeSignature (prettyText . void $ trm ^. sTerm) ty

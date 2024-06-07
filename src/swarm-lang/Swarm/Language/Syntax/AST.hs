@@ -124,6 +124,9 @@ data Term' ty
     SProj (Syntax' ty) Var
   | -- | Annotate a term with a type
     SAnnotate (Syntax' ty) Polytype
+  | -- | Suspend computation, yielding the given value, and wait for a
+    --   new REPL input.
+    SSuspend (Syntax' ty)
   deriving
     ( Eq
     , Show
