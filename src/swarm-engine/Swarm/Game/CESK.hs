@@ -70,6 +70,7 @@ module Swarm.Game.CESK (
   CESK (..),
 
   -- ** Construction
+  initEmptyMachine,
   initMachine,
   initMachine',
   cancel,
@@ -310,6 +311,10 @@ finalValue :: CESK -> Maybe (Value, Store)
 finalValue (Out v s []) = Just (v, s)
 finalValue (Suspended v _ s _) = Just (v, s) -- XXX is this correct?
 finalValue _ = Nothing
+
+-- XXX comment me.  Better name?
+initEmptyMachine :: ProcessedTerm -> CESK
+initEmptyMachine pt = initMachine pt mempty emptyStore
 
 -- | Initialize a machine state with a starting term along with its
 --   type; the term will be executed or just evaluated depending on

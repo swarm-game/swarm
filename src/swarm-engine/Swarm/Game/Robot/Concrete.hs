@@ -12,7 +12,6 @@
 -- Support for instantiated robots.
 module Swarm.Game.Robot.Concrete (
   -- * Lenses
-  robotContext,
   machine,
   activityCounts,
   robotLog,
@@ -41,7 +40,6 @@ import Swarm.Game.Display (defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
-import Swarm.Game.Robot.Context
 import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Tick
 import Swarm.Game.Universe
@@ -50,14 +48,10 @@ import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Value as V
 import Swarm.Log
 
-type instance RobotContextMember 'ConcreteRobot = RobotContext
 type instance RobotMachine 'ConcreteRobot = C.CESK
 type instance RobotActivity 'ConcreteRobot = ActivityCounts
 type instance RobotLogMember 'ConcreteRobot = Seq LogEntry
 type instance RobotLogUpdatedMember 'ConcreteRobot = Bool
-
-robotContext :: Lens' Robot RobotContext
-robotContext = lens _robotContext (\r x -> r {_robotContext = x})
 
 machine :: Lens' Robot C.CESK
 machine = lens _machine (\r x -> r {_machine = x})
@@ -132,7 +126,6 @@ instantiateRobot maybeMachine i r =
     , _robotLocation = fromMaybe defaultCosmicLocation $ _robotLocation r
     , _activityCounts = emptyActivityCount
     , _machine = fromMaybe (mkMachine $ _machine r) maybeMachine
-    , _robotContext = emptyRobotContext
     , _robotLog = Seq.empty
     , _robotLogUpdated = False
     }
@@ -162,7 +155,6 @@ instance Ae.ToJSON Robot where
         , -- debug
           "capabilities" .=? (r ^. robotCapabilities) $ mempty
         , "logUpdated" .=? (r ^. robotLogUpdated) $ False
-        , "context" .=? (r ^. robotContext) $ emptyRobotContext
         , "parent" .=? (r ^. robotParentID) $ Nothing
         , "createdAt" .=? (r ^. robotCreatedAt) $ 0
         , "selfDestruct" .=? (r ^. selfDestruct) $ False

@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -15,9 +17,14 @@ module Swarm.Language.Value (
 
   -- * Environments
   Env,
+  emptyEnv,
+  envTypes,
+  envReqs,
+  envVals,
+  envTydefs,
 ) where
 
-import Control.Lens (pattern Empty)
+import Control.Lens hiding (Const)
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Bool (bool)
 import Data.List (foldl')
@@ -27,11 +34,15 @@ import Data.Set qualified as S
 import Data.Set.Lens (setOf)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Swarm.Language.Context
+import Swarm.Language.Context (Ctx)
+import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Key (KeyCombo, prettyKeyCombo)
 import Swarm.Language.Pretty (prettyText)
+import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
+import Swarm.Language.Typed
+import Swarm.Language.Types (TCtx, TDCtx)
 import Swarm.Util.JSON (optionsMinimize)
 
 -- | A /value/ is a term that cannot (or does not) take any more
@@ -108,6 +119,79 @@ stripVResult :: Value -> Value
 stripVResult (VResult v _) = stripVResult v
 stripVResult v = v
 
+-- | A value context is a mapping from variable names to their runtime
+--   values.
+type VCtx = Ctx Value
+
+--------------------------------------------------
+-- Environments
+--------------------------------------------------
+
+-- | An environment is a record that stores relevant information for
+--   all the names currently in scope.
+data Env = Env
+  { _envTypes :: TCtx
+  -- ^ Map definition names to their types.
+  , _envReqs :: ReqCtx
+  -- ^ Map definition names to the capabilities
+  --   required to evaluate/execute them.
+  , _envVals :: VCtx
+  -- ^ Map definition names to their values. Note that since
+  --   definitions are delayed, the values will just consist of
+  --   'VRef's pointing into the store.
+  , _envTydefs :: TDCtx
+  -- ^ Type synonym definitions.
+  }
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+
+makeLenses ''Env
+
+emptyEnv :: Env
+emptyEnv = Env Ctx.empty Ctx.empty Ctx.empty Ctx.empty
+
+instance Semigroup Env where
+  Env t1 r1 v1 td1 <> Env t2 r2 v2 td2 = Env (t1 <> t2) (r1 <> r2) (v1 <> v2) (td1 <> td2)
+
+instance Monoid Env where
+  mempty = Env mempty mempty mempty mempty
+
+instance AsEmpty Env
+
+type instance Index Env = Ctx.Var
+type instance IxValue Env = Typed Value
+
+-- XXX do we still want these instances?  is the Typed thing still useful?
+instance Ixed Env
+instance At Env where
+  at name = lens getter setter
+   where
+    getter ctx =
+      do
+        typ <- Ctx.lookup name (ctx ^. envTypes)
+        val <- Ctx.lookup name (ctx ^. envVals)
+        req <- Ctx.lookup name (ctx ^. envReqs)
+        return $ Typed val typ req
+    setter ctx Nothing =
+      ctx
+        & envTypes
+          %~ Ctx.delete name
+        & envVals
+          %~ Ctx.delete name
+        & envReqs
+          %~ Ctx.delete name
+    setter ctx (Just (Typed val typ req)) =
+      ctx
+        & envTypes
+          %~ Ctx.addBinding name typ
+        & envVals
+          %~ Ctx.addBinding name val
+        & envReqs
+          %~ Ctx.addBinding name req
+
+------------------------------------------------------------
+-- Pretty-printing for values
+------------------------------------------------------------
+
 -- | Pretty-print a value.
 prettyValue :: Value -> Text
 prettyValue = prettyText . valueToTerm
@@ -127,7 +211,7 @@ valueToTerm = \case
     M.foldrWithKey
       (\y v -> TLet False y Nothing (valueToTerm v))
       (TLam x Nothing t)
-      (M.restrictKeys (unCtx e) (S.delete x (setOf freeVarsV (Syntax' NoLoc t Empty ()))))
+      (M.restrictKeys (Ctx.unCtx (e ^. envVals)) (S.delete x (setOf freeVarsV (Syntax' NoLoc t Empty ()))))
   VCApp c vs -> foldl' TApp (TConst c) (reverse (map valueToTerm vs))
   VDef r x t _ -> TDef r x Nothing t
   VResult v _ -> valueToTerm v

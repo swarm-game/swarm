@@ -41,7 +41,7 @@ module Swarm.Game.State.Robot (
   addRobot,
   addRobotToLocation,
   addTRobot,
-  addTRobotWithContext,
+  addTRobot',
 
   -- ** View
   modifyViewCenter,
@@ -74,7 +74,6 @@ import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (NameGenerator)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
-import Swarm.Game.Robot.Context
 import Swarm.Game.State.Config
 import Swarm.Game.Tick
 import Swarm.Game.Universe as U
@@ -243,25 +242,15 @@ viewCenterRule = lens getter setter
 --   main robot map, the active robot set, and to to the index of
 --   robots by location.
 addTRobot :: (Has (State Robots) sig m) => CESK -> TRobot -> m ()
-addTRobot initialMachine r = do
-  r' <- addTRobotCommon initialMachine r
-  addRobot r'
+addTRobot m r = () <$ addTRobot' m r
 
--- | Just like 'addTRobot', but also updates the 'RobotContext',
--- and returns the updated robot.
-addTRobotWithContext :: (Has (State Robots) sig m) => RobotContext -> CESK -> TRobot -> m Robot
-addTRobotWithContext ctx initialMachine r = do
-  concreteRobot <- addTRobotCommon initialMachine r
-  let r' = concreteRobot & robotContext .~ ctx
-  addRobot r'
-  return r'
-
--- | Instantiate a template robot with a machine and
--- a unique ID.
-addTRobotCommon :: (Has (State Robots) sig m) => CESK -> TRobot -> m Robot
-addTRobotCommon initialMachine r = do
+-- | Like addTRobot, but return the newly instantiated robot.
+addTRobot' :: (Has (State Robots) sig m) => CESK -> TRobot -> m Robot
+addTRobot' initialMachine r = do
   rid <- robotNaming . gensym <+= 1
-  return $ instantiateRobot (Just initialMachine) rid r
+  let newRobot = instantiateRobot (Just initialMachine) rid r
+  addRobot newRobot
+  return newRobot
 
 -- | Add a robot to the game state, adding it to the main robot map,
 --   the active robot set, and to to the index of robots by
