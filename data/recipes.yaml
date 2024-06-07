@@ -656,6 +656,11 @@
   out:
     - [1, ADT calculator]
 - in:
+    - [1, ADT calculator]
+    - [1, strange loop]
+  out:
+    - [1, hyperloop]
+- in:
     - [1, glass]
     - [1, silver]
   out:

@@ -680,8 +680,9 @@ stepCESK cesk = case cesk of
   -- listing the requirements of the given expression.
   Out (VRequirements src t _) s (FExec : k) -> do
     currentContext <- use $ robotContext . defReqs
+    currentTydefs <- use $ robotContext . tydefVals
     em <- use $ landscape . terrainAndEntities . entityMap
-    let (R.Requirements caps devs inv, _) = R.requirements currentContext t
+    let (R.Requirements caps devs inv, _) = R.requirements currentTydefs currentContext t
 
         devicesForCaps, requiredDevices :: Set (Set Text)
         -- possible devices to provide each required capability
