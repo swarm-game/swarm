@@ -132,7 +132,6 @@ import Swarm.Game.Universe as U
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Capability (constCaps)
-import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (ProcessedTerm, processTermEither, processedSyntax)
 import Swarm.Language.Syntax (SrcLoc (..), allConst, sLoc)
 import Swarm.Language.Typed (Typed (Typed))
@@ -636,7 +635,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
         . machine
         %~ case initialCodeToRun of
           Nothing -> id
-          Just pt -> const $ initMachine pt Ctx.empty emptyStore
+          Just pt -> const $ initMachine pt mempty emptyStore
       -- If we are in creative mode, give base all the things
       & ix baseID
         . robotInventory

@@ -359,7 +359,6 @@ library swarm-engine
     Swarm.Game.Exception
     Swarm.Game.Robot.Activity
     Swarm.Game.Robot.Concrete
-    Swarm.Game.Robot.Context
     Swarm.Game.Scenario.Objective.WinCheck
     Swarm.Game.Scenario.Scoring.Best
     Swarm.Game.Scenario.Scoring.CodeSize

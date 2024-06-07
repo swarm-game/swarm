@@ -59,7 +59,6 @@ import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
-import Swarm.Game.Robot.Context
 import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Scenario.Topography.Area (getAreaDimensions)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
@@ -1071,13 +1070,10 @@ execConst runChildProg c vs s k = do
             "The target robot"
             FixByObtainDevice
 
-        -- update other robot's CESK machine, environment and context
-        -- the childRobot inherits the parent robot's environment
-        -- and context which collectively mean all the variables
-        -- declared in the parent robot
+        -- Update other robot's CESK machine.  The child robot
+        -- inherits the parent robot's environment + store.
         zoomRobots $ do
           robotMap . at childRobotID . _Just . machine .= In cmd e s [FExec]
-          robotMap . at childRobotID . _Just . robotContext .= r ^. robotContext
 
         -- Provision the target robot with any required devices and
         -- inventory that are lacking.
@@ -1124,13 +1120,12 @@ execConst runChildProg c vs s k = do
         isSystemRobot <- use systemRobot
 
         -- Construct the new robot and add it to the world.
-        parentCtx <- use robotContext
         let newDisplay = case r ^. robotDisplay . childInheritance of
               Invisible -> defaultRobotDisplay & invisible .~ True
               Inherit -> defaultRobotDisplay & inherit displayAttr (r ^. robotDisplay)
               DefaultDisplay -> defaultRobotDisplay
         newRobot <-
-          zoomRobots . addTRobotWithContext parentCtx (In cmd e s [FExec]) $
+          zoomRobots . addTRobot' (In cmd e s [FExec]) $
             mkRobot
               (Just pid)
               displayName
@@ -1235,7 +1230,8 @@ execConst runChildProg c vs s k = do
             -- See #827 for an explanation of (1) why this is needed, (2) why
             -- it's slightly technically incorrect, and (3) why it is still way
             -- better than what we had before.
-            robotContext . defReqs <>= (pt ^. processedReqCtx)
+            -- robotContext . defReqs <>= (pt ^. processedReqCtx)
+            -- XXX what to do here, env-wise?
             void $ traceLog CmdStatus Info "run: OK."
 
             return $ initMachine' pt empty s k
@@ -1509,8 +1505,9 @@ execConst runChildProg c vs s k = do
     IncapableFix ->
     m (Set Entity, Inventory)
   checkRequirements parentInventory childInventory childDevices cmd subject fixI = do
-    currentContext <- use $ robotContext . defReqs
-    currentTydefs <- use $ robotContext . tydefVals
+    -- XXX does checkRequirements need to take an Env as input?  Where does it come from?
+    -- currentContext <- use $ robotContext . defReqs
+    -- currentTydefs <- use $ robotContext . tydefVals
     em <- use $ landscape . terrainAndEntities . entityMap
     privileged <- isPrivilegedBot
     let -- Note that _capCtx must be empty: at least at the
