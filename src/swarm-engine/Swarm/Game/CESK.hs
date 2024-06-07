@@ -285,6 +285,14 @@ data CESK
   | -- | The machine is waiting for the game to reach a certain time
     --   to resume its execution.
     Waiting TickNumber CESK
+  | -- | The machine is suspended, i.e. waiting for another term to
+    --   evaluate.  This happens after we have evaluated whatever the
+    --   user entered at the REPL and we are waiting for them to type
+    --   something else.  Conceptually, this is like a combination of
+    --   'Out' and 'In': we store a 'Value' that was just yielded by
+    --   evaluation, and otherwise it is just like 'In' with a hole
+    --   for the 'Term' we are going to evaluate.
+    Suspended Value Env Store Cont
   deriving (Eq, Show, Generic)
 
 instance ToJSON CESK where
@@ -298,6 +306,7 @@ instance FromJSON CESK where
 finalValue :: CESK -> Maybe (Value, Store)
 {-# INLINE finalValue #-}
 finalValue (Out v s []) = Just (v, s)
+finalValue (Suspended v _ s _) = Just (v, s) -- XXX is this correct?
 finalValue _ = Nothing
 
 -- | Initialize a machine state with a starting term along with its
@@ -337,6 +346,7 @@ cancel cesk = Out VUnit s' []
   getStore (Out _ s _) = s
   getStore (Up _ s _) = s
   getStore (Waiting _ c) = getStore c
+  getStore (Suspended _ _ s _) = s
 
 -- | Reset any 'Blackhole's in the 'Store'.  We need to use this any
 --   time a running computation is interrupted, either by an exception
@@ -352,10 +362,12 @@ resetBlackholes (Store n m) = Store n (IM.map resetBlackhole m)
 ------------------------------------------------------------
 
 instance PrettyPrec CESK where
-  prettyPrec _ (In c _ _ k) = prettyCont k (11, "▶" <> ppr c <> "◀")
-  prettyPrec _ (Out v _ k) = prettyCont k (11, "◀" <> ppr (valueToTerm v) <> "▶")
-  prettyPrec _ (Up e _ k) = prettyCont k (11, "!" <> (pretty (formatExn mempty e) <> "!"))
-  prettyPrec _ (Waiting t cesk) = "🕑" <> pretty t <> "(" <> ppr cesk <> ")"
+  prettyPrec _ = \case
+    In c _ _ k -> prettyCont k (11, "▶" <> ppr c <> "◀")
+    Out v _ k -> prettyCont k (11, "◀" <> ppr (valueToTerm v) <> "▶")
+    Up e _ k -> prettyCont k (11, "!" <> (pretty (formatExn mempty e) <> "!"))
+    Waiting t cesk -> "🕑" <> pretty t <> "(" <> ppr cesk <> ")"
+    Suspended v _ _ k -> prettyCont k (11, "◀" <> ppr (valueToTerm v) <> "...▶")
 
 -- | Take a continuation, and the pretty-printed expression which is
 --   the focus of the continuation (i.e. the expression whose value
