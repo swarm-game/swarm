@@ -212,6 +212,7 @@ termRequirements tdCtx ctx = run . execAccum mempty . runReader tdCtx . runReade
     TText _ -> pure ()
     TAntiText _ -> pure ()
     TBool _ -> pure ()
+    TSuspend {} -> pure ()
     -- It doesn't require any special capability to *inquire* about
     -- the requirements of a term.
     TRequirements _ _ -> pure ()

@@ -176,6 +176,8 @@ data Frame
     FRcd Env [(Var, Value)] Var [(Var, Maybe Term)]
   | -- | We are in the middle of evaluating a record field projection.
     FProj Var
+  | -- | We should suspend once we finish the current evaluation.
+    FSuspend Env
   deriving (Eq, Show, Generic)
 
 instance ToJSON Frame where
@@ -416,6 +418,7 @@ prettyFrame f (p, inner) = case f of
     pprEq (x, Nothing) = pretty x
     pprEq (x, Just t) = pretty x <+> "=" <+> ppr t
   FProj x -> (11, pparens (p < 11) inner <> "." <> pretty x)
+  FSuspend _ -> (10, "suspend" <+> pparens (p < 11) inner)
 
 -- | Pretty-print a special "prefix application" frame, i.e. a frame
 --   formatted like @X· inner@.  Unlike typical applications, these
