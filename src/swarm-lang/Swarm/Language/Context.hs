@@ -11,12 +11,13 @@ import Control.Algebra (Has)
 import Control.Effect.Reader (Reader, ask, local)
 import Control.Lens.Empty (AsEmpty (..))
 import Control.Lens.Prism (prism)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Data (Data)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Swarm.Util.JSON (optionsUnwrapUnary)
 import Prelude hiding (lookup)
 
 -- | We use 'Text' values to represent variables.
@@ -24,7 +25,13 @@ type Var = Text
 
 -- | A context is a mapping from variable names to things.
 newtype Ctx t = Ctx {unCtx :: Map Var t}
-  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic)
+
+instance ToJSON t => ToJSON (Ctx t) where
+  toJSON = genericToJSON optionsUnwrapUnary
+
+instance FromJSON t => FromJSON (Ctx t) where
+  parseJSON = genericParseJSON optionsUnwrapUnary
 
 -- | The semigroup operation for contexts is /right/-biased union.
 instance Semigroup (Ctx t) where

@@ -104,8 +104,7 @@ import Control.Algebra (Has)
 import Control.Effect.Reader (Reader, ask)
 import Control.Lens (makeLenses, view)
 import Control.Monad.Free
-import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
-import Data.Aeson.TH (defaultOptions, deriveFromJSON1, deriveToJSON1)
+import Data.Aeson (FromJSON (..), FromJSON1 (..), ToJSON (..), ToJSON1 (..), genericLiftParseJSON, genericLiftToJSON, genericParseJSON, genericToJSON)
 import Data.Data (Data)
 import Data.Eq.Deriving (deriveEq1)
 import Data.Fix
@@ -124,7 +123,7 @@ import GHC.Generics (Generic, Generic1)
 import Swarm.Language.Context (Ctx, Var)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Util (parens, showT)
-import Swarm.Util.JSON (optionsUnwrapUnary)
+import Swarm.Util.JSON (optionsMinimize, optionsUnwrapUnary)
 import Text.Show.Deriving (deriveShow1)
 import Witch
 
@@ -178,7 +177,13 @@ data TyCon
     TCFun
   | -- | User-defined type constructor.
     TCUser Var
-  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Data, Generic)
+
+instance ToJSON TyCon where
+  toJSON = genericToJSON optionsMinimize
+
+instance FromJSON TyCon where
+  parseJSON = genericParseJSON optionsMinimize
 
 -- | The arity of a type, /i.e./ the number of type parameters it
 --   expects.
@@ -228,13 +233,17 @@ data TypeF t
     --   when pretty-printing; the actual bound variables are represented
     --   via de Bruijn indices.
     TyRecF Var t
-  deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic, Generic1, Data, FromJSON, ToJSON)
+  deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic, Generic1, Data)
 
 deriveEq1 ''TypeF
 deriveOrd1 ''TypeF
 deriveShow1 ''TypeF
-deriveFromJSON1 defaultOptions ''TypeF
-deriveToJSON1 defaultOptions ''TypeF
+
+instance ToJSON1 TypeF where
+  liftToJSON = genericLiftToJSON optionsMinimize
+
+instance FromJSON1 TypeF where
+  liftParseJSON = genericLiftParseJSON optionsMinimize
 
 -- | @Type@ is now defined as the fixed point of 'TypeF'.  It would be
 --   annoying to manually apply and match against 'Fix' constructors
