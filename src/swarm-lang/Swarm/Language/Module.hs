@@ -34,6 +34,8 @@ import Swarm.Language.Types (Polytype, TDCtx, UPolytype, UType)
 --   contains the type-annotated AST of the expression itself, as well
 --   as a context which maps term variable names to their types, and
 --   another context which maps type synonym names to their definitions.
+
+-- XXX do we really need the Ctx and Tydefs at this level anymore?
 data Module s t = Module
   { _moduleSyntax :: Syntax' s
   , _moduleCtx :: Ctx t

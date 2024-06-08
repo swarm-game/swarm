@@ -81,7 +81,6 @@ module Swarm.Game.CESK (
 ) where
 
 import Control.Lens ((^.))
-import Control.Lens.Combinators (pattern Empty)
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
@@ -93,7 +92,6 @@ import Swarm.Game.Ingredients (Count)
 import Swarm.Game.Tick
 import Swarm.Game.World (WorldUpdate (..))
 import Swarm.Language.Context
-import Swarm.Language.Module
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax
@@ -136,15 +134,6 @@ data Frame
   | -- | We are executing inside a 'Try' block.  If an exception is
     --   raised, we will execute the stored term (the "catch" block).
     FTry Value
-  | -- | We were executing a command; next we should take any
-    --   environment it returned and union it with this one to produce
-    --   the result of a bind expression.
-    FUnionEnv Env
-  | -- | We were executing a command that might have definitions; next
-    --   we should take the resulting 'Env' and add it to the robot's
-    --   'Swarm.Game.Robot.robotEnv', along with adding this accompanying 'Ctx' and
-    --   'ReqCtx' to the robot's 'Swarm.Game.Robot.robotCtx'.
-    FLoadEnv Contexts
   | -- | We were executing a definition; next we should take the resulting value
     --   and return a context binding the variable to the value.
     FDef Var
@@ -156,9 +145,6 @@ data Frame
     --   in the given environment (extended by binding the variable,
     --   if there is one, to the output of the first command).
     FBind (Maybe Var) Term Env
-  | -- | Discard any environment generated as the result of executing
-    --   a command.
-    FDiscardEnv
   | -- | Apply specific updates to the world and current robot.
     --
     -- The 'Const' is used to track the original command for error messages.
@@ -324,21 +310,17 @@ initMachine t e s = initMachine' t e s []
 
 -- | Like 'initMachine', but also take an explicit starting continuation.
 initMachine' :: ProcessedTerm -> Env -> Store -> Cont -> CESK
-initMachine' (ProcessedTerm (Module t' ctx tydefs) _ reqCtx) e s k =
+initMachine' pt e s k =
   case t' ^. sType of
-    -- If the starting term has a command type...
-    Forall _ (TyCmd _) ->
-      case (ctx, tydefs) of
-        -- ...but doesn't contain any definitions, just create a machine
-        -- that will evaluate it and then execute it.
-        (Empty, Empty) -> In t e s (FExec : k)
-        -- Or, if it does contain definitions, then load the resulting
-        -- context after executing it.
-        _ -> In t e s (FExec : FLoadEnv (Contexts ctx reqCtx tydefs) : k)
+    -- XXX need to look through type synonyms here?
+    -- If the starting term has a command type, create a machine that will
+    -- evaluate and then execute it.
+    Forall _ (TyCmd _) -> In t e s (FExec : k)
     -- Otherwise, for a term with a non-command type, just
     -- create a machine to evaluate it.
     _ -> In t e s k
  where
+  t' = pt ^. processedSyntax
   -- Erase all type and SrcLoc annotations from the term before
   -- putting it in the machine state, since those are irrelevant at
   -- runtime.
@@ -404,13 +386,10 @@ prettyFrame f (p, inner) = case f of
   FApp v -> (10, prettyPrec 10 (valueToTerm v) <+> pparens (p < 11) inner)
   FLet x t _ -> (11, hsep ["let", pretty x, "=", inner, "in", ppr t])
   FTry v -> (10, "try" <+> pparens (p < 11) inner <+> prettyPrec 11 (valueToTerm v))
-  FUnionEnv _ -> prettyPrefix "∪·" (p, inner)
-  FLoadEnv {} -> prettyPrefix "L·" (p, inner)
   FDef x -> (11, "def" <+> pretty x <+> "=" <+> inner <+> "end")
   FExec -> prettyPrefix "E·" (p, inner)
   FBind Nothing t _ -> (0, pparens (p < 1) inner <+> ";" <+> ppr t)
   FBind (Just x) t _ -> (0, hsep [pretty x, "<-", pparens (p < 1) inner, ";", ppr t])
-  FDiscardEnv -> prettyPrefix "D·" (p, inner)
   FImmediate c _worldUpds _robotUpds -> prettyPrefix ("I[" <> ppr c <> "]·") (p, inner)
   FUpdate addr -> prettyPrefix ("S@" <> pretty addr) (p, inner)
   FFinishAtomic -> prettyPrefix "A·" (p, inner)
