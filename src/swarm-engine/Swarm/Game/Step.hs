@@ -52,7 +52,6 @@ import Swarm.Game.Land
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
-import Swarm.Game.Robot.Context
 import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
@@ -366,8 +365,7 @@ hypotheticalWinCheck em g ws oc = do
       if WC.isPrereqsSatisfied currentCompletions obj
         then runThrow @Exn . evalState @GameState g $ evalPT $ obj ^. OB.objectiveCondition
         else return $ Right $ VBool False
-    let simplified = simplifyResult $ stripVResult <$> v
-    return $ case simplified of
+    return $ case simplifyResult v of
       Left exnText ->
         CompletionsWithExceptions
           (exnText : exnTexts)
@@ -730,6 +728,8 @@ stepCESK cesk = case cesk of
   -- since the point of a definition is that it may be used many times.
   Out (VDef r x t e) s (FExec : k) ->
     return $ In (TDelay (MemoizedDelay $ bool Nothing (Just x) r) t) e s (FDef x : k)
+  -- XXX need to turn Def into syntax sugar for let!
+
   -- Once we have finished evaluating the (memoized, delayed) body of
   -- a definition, we return a special VResult value, which packages
   -- up the return value from the @def@ command itself (the unit value)
@@ -757,75 +757,15 @@ stepCESK cesk = case cesk of
   -- execute, discard any generated environment, and then pass the
   -- result to continue meeting the rest of the robots.
   Out b s (FMeetAll f (rid : rids) : k) ->
-    return $ Out b s (FApp f : FArg (TRobot rid) empty : FExec : FDiscardEnv : FMeetAll f rids : k)
+    return $ Out b s (FApp f : FArg (TRobot rid) empty : FExec : FMeetAll f rids : k)
   -- To execute a bind expression, evaluate and execute the first
   -- command, and remember the second for execution later.
   Out (VBind mx c1 c2 e) s (FExec : k) -> return $ In c1 e s (FExec : FBind mx c2 e : k)
-  -- If first command completes with a value along with an environment
-  -- resulting from definition commands and/or binds, switch to
-  -- evaluating the second command of the bind.  Extend the
-  -- environment with both the environment resulting from the first
-  -- command, as well as a binding for the result (if the bind was of
-  -- the form @x <- c1; c2@).  Remember that we must execute the
-  -- second command once it has been evaluated, then union any
-  -- resulting definition environment with the definition environment
-  -- from the first command.
-  Out (VResult v ve) s (FBind mx t2 e : k) -> do
-    let ve' = maybe id (`addBinding` v) mx ve
-    return $ In t2 (e `union` ve') s (FExec : fUnionEnv ve' k)
-  -- If the first command completes with a simple value and there is no binder,
-  -- then we just continue without worrying about the environment.
   Out _ s (FBind Nothing t2 e : k) -> return $ In t2 e s (FExec : k)
-  -- If the first command completes with a simple value and there is a binder,
-  -- we promote it to the returned environment as well.
-  Out v s (FBind (Just x) t2 e : k) -> do
-    return $ In t2 (addBinding x v e) s (FExec : fUnionEnv (singleton x v) k)
-  -- If a command completes with a value and definition environment,
-  -- and the next continuation frame contains a previous environment
-  -- to union with, then pass the unioned environments along in
-  -- another VResult.
-
-  Out (VResult v e2) s (FUnionEnv e1 : k) -> return $ Out (VResult v (e1 `union` e2)) s k
-  -- Or, if a command completes with no environment, but there is a
-  -- previous environment to union with, just use that environment.
-  Out v s (FUnionEnv e : k) -> return $ Out (VResult v e) s k
-  -- If there's an explicit DiscardEnv frame, throw away any returned environment.
-  Out (VResult v _) s (FDiscardEnv : k) -> return $ Out v s k
-  Out v s (FDiscardEnv : k) -> return $ Out v s k
-  -- If the top of the continuation stack contains a 'FLoadEnv' frame,
-  -- it means we are supposed to load up the resulting definition
-  -- environment, store, and type and capability contexts into the robot's
-  -- top-level environment and contexts, so they will be available to
-  -- future programs.
-  Out (VResult v e) s (FLoadEnv (Contexts ctx rctx tdctx) : k) -> do
-    robotContext . defVals %= (`union` e)
-    robotContext . defTypes %= (`union` ctx)
-    robotContext . defReqs %= (`union` rctx)
-    robotContext . tydefVals %= (`union` tdctx)
-    return $ Out v s k
-  Out v s (FLoadEnv (Contexts ctx rctx tdctx) : k) -> do
-    robotContext . defTypes %= (`union` ctx)
-    robotContext . defReqs %= (`union` rctx)
-    robotContext . tydefVals %= (`union` tdctx)
-    return $ Out v s k
+  Out v s (FBind (Just x) t2 e : k) -> return $ In t2 (addBinding x v e) s (FExec : k)
   -- Any other type of value wiwth an FExec frame is an error (should
   -- never happen).
   Out _ s (FExec : _) -> badMachineState s "FExec frame with non-executable value"
-  -- If we see a VResult in any other context, simply discard it.  For
-  -- example, this is what happens when there are binders (i.e. a "do
-  -- block") nested inside another block instead of at the top level.
-  -- It used to be that (1) only 'def' could generate a VResult, and
-  -- (2) 'def' was guaranteed to only occur at the top level, hence
-  -- any VResult would be caught by a FLoadEnv frame, and seeing a
-  -- VResult anywhere else was an error.  But
-  -- https://github.com/swarm-game/swarm/commit/b62d27e566565aa9a3ff351d91b23d2589b068dc
-  -- made top-level binders export a variable binding, also via the
-  -- VResult mechanism, and unlike 'def', binders do not have to occur
-  -- at the top level only.  This led to
-  -- https://github.com/swarm-game/swarm/issues/327 , which was fixed
-  -- by changing this case from an error to simply ignoring the
-  -- VResult wrapper.
-  Out (VResult v _) s k -> return $ Out v s k
   ------------------------------------------------------------
   -- Exception handling
   ------------------------------------------------------------
@@ -878,24 +818,6 @@ stepCESK cesk = case cesk of
             , prettyText cesk
             ]
      in return $ Up (Fatal msg') s []
-
-  -- Note, the order of arguments to `union` is important in the below
-  -- definition of fUnionEnv.  I wish I knew how to add an automated
-  -- test for this.  But you can tell the difference in the following
-  -- REPL session:
-  --
-  -- > x <- return 1; x <- return 2
-  -- 2 : int
-  -- > x
-  -- 2 : int
-  --
-  -- If we switch the code to read 'e1 `union` e2' instead, then
-  -- the first expression above still correctly evaluates to 2, but
-  -- x ends up incorrectly bound to 1.
-
-  fUnionEnv e1 = \case
-    FUnionEnv e2 : k -> FUnionEnv (e2 `union` e1) : k
-    k -> FUnionEnv e1 : k
 
 -- | Execute the given program *hypothetically*: i.e. in a fresh
 -- CESK machine, using *copies* of the current store, robot
