@@ -36,6 +36,7 @@ import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Pipeline (processParsedTerm, processedSyntax)
 import Swarm.Language.Pretty (prettyText, prettyTextLine)
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.AST (LetSyntax (..))
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types
 import Swarm.Util qualified as U
@@ -111,8 +112,7 @@ narrowToPosition ::
 narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   SLam lv _ s -> d (locVarToSyntax' lv $ getInnerType ty) <|> d s
   SApp s1 s2 -> d s1 <|> d s2
-  SLet _ lv _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
-  SDef _ lv _ s@(Syntax' _ _ _ lty) -> d (locVarToSyntax' lv lty) <|> d s
+  SLet _ _ lv _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
   SBind mlv s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
   SPair s1 s2 -> d s1 <|> d s2
   SDelay _ s -> d s
@@ -202,8 +202,7 @@ explain trm = case trm ^. sTerm of
   TRequire {} -> pure "Require a certain number of an entity."
   SRequirements {} -> pure "Query the requirements of a term."
   -- definition or bindings
-  SLet isRecursive var mTypeAnn rhs _b -> pure $ explainDefinition False isRecursive var (rhs ^. sType) mTypeAnn
-  SDef isRecursive var mTypeAnn rhs -> pure $ explainDefinition True isRecursive var (rhs ^. sType) mTypeAnn
+  SLet ls isRecursive var mTypeAnn rhs _b -> pure $ explainDefinition ls isRecursive var (rhs ^. sType) mTypeAnn
   SLam (LV _s v) _mType _syn ->
     pure $
       typeSignature v ty $
@@ -262,13 +261,13 @@ explainFunction s =
           (map explain params)
       ]
 
-explainDefinition :: ExplainableType ty => Bool -> Bool -> LocVar -> ty -> Maybe Polytype -> Text
-explainDefinition isDef isRecursive (LV _s var) ty maybeTypeAnnotation =
+explainDefinition :: ExplainableType ty => LetSyntax -> Bool -> LocVar -> ty -> Maybe Polytype -> Text
+explainDefinition ls isRecursive (LV _s var) ty maybeTypeAnnotation =
   typeSignature var ty $
     T.unwords
       [ "A"
       , (if isRecursive then "" else "non-") <> "recursive"
-      , if isDef then "definition" else "let"
+      , if ls == LSDef then "definition" else "let"
       , "expression"
       , if null maybeTypeAnnotation then "without" else "with"
       , "a type annotation on the variable."

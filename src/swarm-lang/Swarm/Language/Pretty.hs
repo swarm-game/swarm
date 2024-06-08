@@ -32,6 +32,7 @@ import Swarm.Language.Context
 import Swarm.Language.Kindcheck (KindError (..))
 import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.AST (LetSyntax (..))
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
@@ -287,22 +288,18 @@ instance PrettyPrec (Term' ty) where
               ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
               _ -> prettyPrecApp p t1 t2
       _ -> prettyPrecApp p t1 t2
-    SLet _ (LV _ x) mty t1 t2 ->
+    SLet LSLet _ (LV _ x) mty t1 t2 ->
       sep
         [ prettyDefinition "let" x mty t1 <+> "in"
         , ppr t2
         ]
-    SDef _ (LV _ x) mty t1 ->
-      sep
-        [ prettyDefinition "def" x mty t1
-        , "end"
+    SLet LSDef _ (LV _ x) mty t1 t2 ->
+      mconcat
+        [ prettyDefinition "def" x mty t1 <+> "end"
+        , hardline
+        , ppr t2
         ]
     TTydef (LV _ x) pty -> prettyTydef x pty
-    -- Special case for printing consecutive defs: don't worry about
-    -- precedence, and print a blank line with no semicolon
-    SBind Nothing t1@(Syntax' _ (SDef {}) _ _) t2 ->
-      prettyPrec 0 t1 <> hardline <> hardline <> prettyPrec 0 t2
-    -- General case for bind
     SBind Nothing t1 t2 ->
       pparens (p > 0) $
         prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2

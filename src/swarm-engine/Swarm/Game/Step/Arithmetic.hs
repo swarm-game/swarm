@@ -69,7 +69,6 @@ compareValues v1 = case v1 of
     v2 -> incompatCmp v1 v2
   VClo {} -> incomparable v1
   VCApp {} -> incomparable v1
-  VDef {} -> incomparable v1
   VBind {} -> incomparable v1
   VDelay {} -> incomparable v1
   VRef {} -> incomparable v1

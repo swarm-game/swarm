@@ -129,7 +129,7 @@ processParsedTerm' ctxs t = do
       caps = requirements tydefs (ctxs ^. reqCtx) (t ^. sTerm)
   return $ ProcessedTerm (elaborateModule m) caps (ctxs ^. reqCtx)
 
--- XXX is this correct?  requirements no longer returns reqCtx
+-- XXX is this correct (above)?  requirements no longer returns reqCtx
 
 elaborateModule :: TModule -> TModule
 elaborateModule (Module ast ctx tydefs) = Module (elaborate ast) ctx tydefs
