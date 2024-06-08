@@ -11,7 +11,6 @@
 module Swarm.Language.Value (
   -- * Values
   Value (..),
-  stripVResult,
   prettyValue,
   valueToTerm,
 
@@ -80,10 +79,6 @@ data Value where
   -- | A definition, which does not take effect until executed.
   --   The @Bool@ indicates whether the definition is recursive.
   VDef :: Bool -> Var -> Term -> Env -> Value
-  -- | The result of a command, consisting of the result of the
-  --   command as well as an environment of bindings from 'TDef'
-  --   commands.
-  VResult :: Value -> Env -> Value
   -- | An unevaluated bind expression, waiting to be executed, of the
   --   form /i.e./ @c1 ; c2@ or @x <- c1; c2@.  We also store an 'Env'
   --   in which to interpret the commands.
@@ -113,11 +108,6 @@ instance ToJSON Value where
 
 instance FromJSON Value where
   parseJSON = genericParseJSON optionsMinimize
-
--- | Ensure that a value is not wrapped in 'VResult'.
-stripVResult :: Value -> Value
-stripVResult (VResult v _) = stripVResult v
-stripVResult v = v
 
 -- | A value context is a mapping from variable names to their runtime
 --   values.
@@ -214,7 +204,6 @@ valueToTerm = \case
       (M.restrictKeys (Ctx.unCtx (e ^. envVals)) (S.delete x (setOf freeVarsV (Syntax' NoLoc t Empty ()))))
   VCApp c vs -> foldl' TApp (TConst c) (reverse (map valueToTerm vs))
   VDef r x t _ -> TDef r x Nothing t
-  VResult v _ -> valueToTerm v
   VBind mx c1 c2 _ -> TBind mx c1 c2
   VDelay t _ -> TDelay SimpleDelay t
   VRef n -> TRef n
