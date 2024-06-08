@@ -100,9 +100,8 @@ getUsage bindings (CSyntax _pos t _comments) = case t of
       Just (loc :| _) -> S.singleton $ LV loc v
   SLam v _ s -> checkOccurrences bindings v Lambda [s]
   SApp s1 s2 -> getUsage bindings s1 <> getUsage bindings s2
-  SLet _ v _ s1 s2 -> getUsage bindings s1 <> checkOccurrences bindings v Let [s2]
+  SLet _ _ v _ s1 s2 -> getUsage bindings s1 <> checkOccurrences bindings v Let [s2]
   SPair s1 s2 -> getUsage bindings s1 <> getUsage bindings s2
-  SDef _ _v _ s -> getUsage bindings s
   SBind maybeVar s1 s2 -> case maybeVar of
     Just v -> checkOccurrences bindings v Bind [s1, s2]
     Nothing -> getUsage bindings s1 <> getUsage bindings s2

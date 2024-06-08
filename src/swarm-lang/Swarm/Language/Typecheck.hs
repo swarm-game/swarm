@@ -597,26 +597,6 @@ inferModule ::
   Syntax ->
   m UModule
 inferModule s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
-  -- For definitions with no type signature, make up a fresh type
-  -- variable for the body, infer the body under an extended context,
-  -- and unify the two.  Then generalize the type and return an
-  -- appropriate context.
-  SDef r x Nothing t1 -> withFrame l (TCDef (lvVar x)) $ do
-    xTy <- fresh
-    t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
-    _ <- unify (Just t1) (joined xTy (t1' ^. sType))
-    pty <- generalize (t1' ^. sType)
-    return $ Module (Syntax' l (SDef r x Nothing t1') cs (UTyCmd UTyUnit)) (singleton (lvVar x) pty) empty
-
-  -- If a (poly)type signature has been provided, skolemize it and
-  -- check the definition.
-  SDef r x (Just pty) t1 -> withFrame l (TCDef (lvVar x)) $ do
-    _ <- adaptToTypeErr l KindErr $ checkPolytypeKind pty
-    let upty = toU pty
-    uty <- skolemize upty
-    t1' <- withBinding (lvVar x) upty $ check t1 uty
-    return $ Module (Syntax' l (SDef r x (Just pty) t1') cs (UTyCmd UTyUnit)) (singleton (lvVar x) upty) empty
-
   -- Simply record a type synonym definition in the context.
   TTydef x pty -> do
     tydef <- adaptToTypeErr l KindErr $ checkPolytypeKind pty
@@ -1020,7 +1000,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         return $ Syntax' l (SApp atomic' at') cs (UTyCmd argTy)
 
   -- Checking the type of a let-expression.
-  SLet r x mxTy t1 t2 -> do
+  SLet ls r x mxTy t1 t2 -> do
     traverse_ (adaptToTypeErr l KindErr . checkPolytypeKind) mxTy
     (upty, t1') <- case mxTy of
       -- No type annotation was provided for the let binding, so infer its type.
@@ -1049,10 +1029,9 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     ask @UCtx >>= mapM_ (noSkolems l)
 
     -- Return the annotated let.
-    return $ Syntax' l (SLet r x mxTy t1' t2') cs expected
+    return $ Syntax' l (SLet ls r x mxTy t1' t2') cs expected
 
   -- Definitions can only occur at the top level.
-  SDef {} -> throwTypeErr l $ DefNotTopLevel t
   TTydef {} -> throwTypeErr l $ DefNotTopLevel t
   -- To check a record, ensure the expected type is a record type,
   -- ensure all the right fields are present, and push the expected
@@ -1236,7 +1215,6 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- No lambda, `let` or `def` allowed!
   SLam {} -> throwTypeErr l $ InvalidAtomic AtomicDupingThing t
   SLet {} -> throwTypeErr l $ InvalidAtomic AtomicDupingThing t
-  SDef {} -> throwTypeErr l $ InvalidAtomic AtomicDupingThing t
   -- We should never encounter a TRef since they do not show up in
   -- surface syntax, only as values while evaluating (*after*
   -- typechecking).

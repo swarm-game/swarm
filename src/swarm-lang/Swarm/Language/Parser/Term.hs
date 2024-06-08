@@ -21,6 +21,7 @@ import Swarm.Language.Parser.Lex
 import Swarm.Language.Parser.Record (parseRecord)
 import Swarm.Language.Parser.Type
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.AST (LetSyntax (..))
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Types
 import Swarm.Util (failT, findDup)
@@ -79,15 +80,16 @@ parseTermAtom2 =
           <$> (symbol "\\" *> locTmVar)
           <*> optional (symbol ":" *> parseType)
           <*> (symbol "." *> parseTerm)
-        <|> sLet
+        <|> sLet LSLet
           <$> (reserved "let" *> locTmVar)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm)
           <*> (reserved "in" *> parseTerm)
-        <|> sDef
+        <|> sLet LSDef
           <$> (reserved "def" *> locTmVar)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
+          <*> (optional (symbol ";") *> parseTerm)
         <|> TTydef
           <$> (reserved "tydef" *> locTyName)
           <*> join (bindTydef <$> many tyVar <*> (symbol "=" *> parseType <* reserved "end"))
@@ -106,13 +108,8 @@ parseTermAtom2 =
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
-sLet :: LocVar -> Maybe Polytype -> Syntax -> Syntax -> Term
-sLet x ty t1 = SLet (lvVar x `S.member` setOf freeVarsV t1) x ty t1
-
--- | Construct an 'SDef', automatically filling in the Boolean field
---   indicating whether it is recursive.
-sDef :: LocVar -> Maybe Polytype -> Syntax -> Term
-sDef x ty t = SDef (lvVar x `S.member` setOf freeVarsV t) x ty t
+sLet :: LetSyntax -> LocVar -> Maybe Polytype -> Syntax -> Syntax -> Term
+sLet ls x ty t1 = SLet ls (lvVar x `S.member` setOf freeVarsV t1) x ty t1
 
 -- | Create a polytype from a list of variable binders and a type.
 --   Ensure that no binder is repeated, and all type variables in the
@@ -160,27 +157,6 @@ mkStmt :: Maybe LocVar -> Syntax -> Stmt
 mkStmt Nothing = BareTerm
 mkStmt (Just x) = Binder x
 
--- | When semicolons are missing between definitions, for example:
---     def a = 1 end def b = 2 end def c = 3 end
---   The makeExprParser produces:
---     App (App (TDef a) (TDef b)) (TDef x)
---   This function fix that by converting the Apps into Binds, so that it results in:
---     Bind a (Bind b (Bind c))
-fixDefMissingSemis :: Syntax -> Syntax
-fixDefMissingSemis term =
-  case nestedDefs term [] of
-    [] -> term
-    defs -> foldr1 mkBind defs
- where
-  mkBind t1 t2 = Syntax ((t1 ^. sLoc) <> (t2 ^. sLoc)) $ SBind Nothing t1 t2
-  nestedDefs term' acc = case term' of
-    def@(Syntax _ SDef {}) -> def : acc
-    def@(Syntax _ TTydef {}) -> def : acc
-    (Syntax _ (SApp nestedTerm def@(Syntax _ SDef {}))) -> nestedDefs nestedTerm (def : acc)
-    (Syntax _ (SApp nestedTerm def@(Syntax _ TTydef {}))) -> nestedDefs nestedTerm (def : acc)
-    -- Otherwise returns an empty list to keep the term unchanged
-    _ -> []
-
 parseExpr :: Parser Syntax
 parseExpr =
   parseLoc $ ascribe <$> parseExpr' <*> optional (symbol ":" *> parsePolytype)
@@ -190,7 +166,7 @@ parseExpr =
   ascribe s (Just ty) = SAnnotate s ty
 
 parseExpr' :: Parser Syntax
-parseExpr' = fixDefMissingSemis <$> makeExprParser parseTermAtom table
+parseExpr' = makeExprParser parseTermAtom table
  where
   table = snd <$> M.toDescList tableMap
   tableMap =

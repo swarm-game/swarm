@@ -8,6 +8,7 @@
 -- Types represeting the surface syntax and terms for Swarm programming language.
 module Swarm.Language.Syntax.AST (
   Syntax' (..),
+  LetSyntax (..),
   Term' (..),
   DelayType (..),
 ) where
@@ -51,6 +52,14 @@ instance FromJSON ty => FromJSON (Syntax' ty) where
 
 instance Data ty => Plated (Syntax' ty) where
   plate = uniplate
+
+-- | A @let@ expression can be written either as @let x = e1 in e2@ or
+--   as @def x = e1 end; e2@. This enumeration simply records which it
+--   was so that we can pretty-print appropriatly.
+data LetSyntax = LSLet | LSDef
+  deriving (Eq, Ord, Show, Bounded, Enum, Generic, Data, ToJSON, FromJSON)
+
+-- XXX are the To/FromJSON instances OK?
 
 -- | Terms of the Swarm language.
 data Term' ty
@@ -96,14 +105,10 @@ data Term' ty
     SLam LocVar (Maybe Type) (Syntax' ty)
   | -- | Function application.
     SApp (Syntax' ty) (Syntax' ty)
-  | -- | A (recursive) let expression, with or without a type
+  | -- | A (recursive) let/def expression, with or without a type
     --   annotation on the variable. The @Bool@ indicates whether
     --   it is known to be recursive.
-    SLet Bool LocVar (Maybe Polytype) (Syntax' ty) (Syntax' ty)
-  | -- | A (recursive) definition command, which binds a variable to a
-    --   value in subsequent commands. The @Bool@ indicates whether the
-    --   definition is known to be recursive.
-    SDef Bool LocVar (Maybe Polytype) (Syntax' ty)
+    SLet LetSyntax Bool LocVar (Maybe Polytype) (Syntax' ty) (Syntax' ty)
   | -- | A type synonym definition.
     TTydef LocVar Polytype
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.

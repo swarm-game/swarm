@@ -39,6 +39,7 @@ import Swarm.Language.Key (KeyCombo, prettyKeyCombo)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Requirement (ReqCtx)
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.AST (LetSyntax (..))
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Typed
 import Swarm.Language.Types (TCtx, TDCtx)
@@ -76,9 +77,6 @@ data Value where
   --   which will cause it to execute.  Otherwise (e.g. 'If'), it is
   --   not a value, and will immediately reduce.
   VCApp :: Const -> [Value] -> Value
-  -- | A definition, which does not take effect until executed.
-  --   The @Bool@ indicates whether the definition is recursive.
-  VDef :: Bool -> Var -> Term -> Env -> Value
   -- | An unevaluated bind expression, waiting to be executed, of the
   --   form /i.e./ @c1 ; c2@ or @x <- c1; c2@.  We also store an 'Env'
   --   in which to interpret the commands.
@@ -199,11 +197,10 @@ valueToTerm = \case
   VPair v1 v2 -> TPair (valueToTerm v1) (valueToTerm v2)
   VClo x t e ->
     M.foldrWithKey
-      (\y v -> TLet False y Nothing (valueToTerm v))
+      (\y v -> TLet LSLet False y Nothing (valueToTerm v))
       (TLam x Nothing t)
       (M.restrictKeys (Ctx.unCtx (e ^. envVals)) (S.delete x (setOf freeVarsV (Syntax' NoLoc t Empty ()))))
   VCApp c vs -> foldl' TApp (TConst c) (reverse (map valueToTerm vs))
-  VDef r x t _ -> TDef r x Nothing t
   VBind mx c1 c2 _ -> TBind mx c1 c2
   VDelay t _ -> TDelay SimpleDelay t
   VRef n -> TRef n

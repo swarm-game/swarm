@@ -21,7 +21,6 @@ module Swarm.Language.Syntax.Pattern (
   pattern TApp,
   pattern (:$:),
   pattern TLet,
-  pattern TDef,
   pattern TBind,
   pattern TDelay,
   pattern TRcd,
@@ -93,16 +92,10 @@ pattern (:$:) :: Term -> Syntax -> Term
 pattern (:$:) t1 s2 = SApp (STerm t1) s2
 
 -- | Match a TLet without annotations.
-pattern TLet :: Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
-pattern TLet r v pt t1 t2 <- SLet r (lvVar -> v) pt (STerm t1) (STerm t2)
+pattern TLet :: LetSyntax -> Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
+pattern TLet ls r v pt t1 t2 <- SLet ls r (lvVar -> v) pt (STerm t1) (STerm t2)
   where
-    TLet r v pt t1 t2 = SLet r (LV NoLoc v) pt (STerm t1) (STerm t2)
-
--- | Match a TDef without annotations.
-pattern TDef :: Bool -> Var -> Maybe Polytype -> Term -> Term
-pattern TDef r v pt t <- SDef r (lvVar -> v) pt (STerm t)
-  where
-    TDef r v pt t = SDef r (LV NoLoc v) pt (STerm t)
+    TLet ls r v pt t1 t2 = SLet ls r (LV NoLoc v) pt (STerm t1) (STerm t2)
 
 -- | Match a TBind without annotations.
 pattern TBind :: Maybe Var -> Term -> Term -> Term
@@ -133,4 +126,4 @@ pattern TSuspend t = SSuspend (STerm t)
 
 -- COMPLETE pragma tells GHC using this set of patterns is complete for Term
 
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TRequirements, TVar, TPair, TLam, TApp, TLet, TDef, TTydef, TBind, TDelay, TRcd, TProj, TAnnotate, TSuspend #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TRequirements, TVar, TPair, TLam, TApp, TLet, TTydef, TBind, TDelay, TRcd, TProj, TAnnotate, TSuspend #-}
