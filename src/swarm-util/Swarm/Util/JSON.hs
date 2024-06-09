@@ -11,8 +11,15 @@ import Data.Aeson
 optionsUnwrapUnary :: Options
 optionsUnwrapUnary = defaultOptions {unwrapUnaryRecords = True}
 
-optionsObjectSingleField :: Options
-optionsObjectSingleField = defaultOptions {sumEncoding = ObjectWithSingleField}
+-- | @aeson@ options to try to minimize the size of the generated
+--   JSON.
+optionsMinimize :: Options
+optionsMinimize =
+  defaultOptions
+    { sumEncoding = ObjectWithSingleField
+    , omitNothingFields = True
+    , allowOmittedFields = True
+    }
 
 optionsUntagged :: Options
 optionsUntagged = defaultOptions {sumEncoding = UntaggedValue}

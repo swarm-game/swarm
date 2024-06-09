@@ -21,7 +21,8 @@ module Swarm.Language.Syntax.Comments (
   afterComments,
 ) where
 
-import Control.Lens (AsEmpty, makeLenses)
+import Control.Lens (AsEmpty, makeLenses, pattern Empty)
+import Data.Aeson qualified as A
 import Data.Aeson.Types hiding (Key)
 import Data.Data (Data)
 import Data.Sequence (Seq)
@@ -60,9 +61,19 @@ data Comments = Comments
   { _beforeComments :: Seq Comment
   , _afterComments :: Seq Comment
   }
-  deriving (Eq, Show, Generic, Data, ToJSON, FromJSON)
+  deriving (Eq, Show, Generic, Data)
 
 makeLenses ''Comments
+
+instance ToJSON Comments where
+  toJSON = A.genericToJSON A.defaultOptions
+  omitField = \case
+    Empty -> True
+    _ -> False
+
+instance FromJSON Comments where
+  parseJSON = A.genericParseJSON A.defaultOptions
+  omittedField = Just Empty
 
 instance Semigroup Comments where
   Comments b1 a1 <> Comments b2 a2 = Comments (b1 <> b2) (a1 <> a2)

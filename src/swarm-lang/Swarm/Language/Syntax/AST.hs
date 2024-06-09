@@ -13,17 +13,19 @@ module Swarm.Language.Syntax.AST (
 ) where
 
 import Control.Lens (Plated (..))
+import Data.Aeson qualified as A
 import Data.Aeson.Types hiding (Key)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
 import Data.Map.Strict (Map)
-import Data.Text hiding (filter, length, map)
+import Data.Text (Text)
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Types
+import Swarm.Util.JSON (optionsMinimize)
 
 ------------------------------------------------------------
 -- Syntax: annotation on top of Terms with SrcLoc, comments, + type
@@ -36,7 +38,16 @@ data Syntax' ty = Syntax'
   , _sComments :: Comments
   , _sType :: ty
   }
-  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic)
+
+syntaxJSONOpts :: A.Options
+syntaxJSONOpts = optionsMinimize {fieldLabelModifier = drop 2}
+
+instance ToJSON ty => ToJSON (Syntax' ty) where
+  toJSON = A.genericToJSON syntaxJSONOpts
+
+instance FromJSON ty => FromJSON (Syntax' ty) where
+  parseJSON = A.genericParseJSON syntaxJSONOpts
 
 instance Data ty => Plated (Syntax' ty) where
   plate = uniplate
@@ -120,8 +131,6 @@ data Term' ty
     , Foldable
     , Data
     , Generic
-    , FromJSON
-    , ToJSON
     , -- | The Traversable instance for Term (and for Syntax') is used during
       -- typechecking: during intermediate type inference, many of the type
       -- annotations placed on AST nodes will have unification variables in
@@ -132,6 +141,12 @@ data Term' ty
       -- Swarm.Language.Typecheck.runInfer.
       Traversable
     )
+
+instance ToJSON ty => ToJSON (Term' ty) where
+  toJSON = A.genericToJSON syntaxJSONOpts
+
+instance FromJSON ty => FromJSON (Term' ty) where
+  parseJSON = A.genericParseJSON syntaxJSONOpts
 
 instance Data ty => Plated (Term' ty) where
   plate = uniplate
