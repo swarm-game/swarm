@@ -36,6 +36,7 @@ module Swarm.Util (
   -- * Directory utilities
   readFileMay,
   readFileMayT,
+  findAllWithExt,
   acquireAllWithExt,
 
   -- * Text utilities
@@ -310,18 +311,25 @@ readFileMayT :: FilePath -> IO (Maybe Text)
 readFileMayT = catchIO . T.readFile
 
 -- | Recursively acquire all files in the given directory with the
---   given extension, and their contents.
-acquireAllWithExt :: FilePath -> String -> IO [(FilePath, String)]
-acquireAllWithExt dir ext = do
+--   given extension, but does not read or open the file like 'acquireAllWithExt'.
+findAllWithExt :: FilePath -> String -> IO [FilePath]
+findAllWithExt dir ext = do
   paths <- listDirectory dir <&> map (dir </>)
   filePaths <- filterM (\path -> doesFileExist path <&> (&&) (hasExt path)) paths
-  children <- mapM (\path -> (,) path <$> readFile path) filePaths
   -- recurse
   sub <- filterM doesDirectoryExist paths
-  transChildren <- concat <$> mapM (`acquireAllWithExt` ext) sub
-  return $ children <> transChildren
+  transChildren <- concat <$> mapM (`findAllWithExt` ext) sub
+  return $ filePaths <> transChildren
  where
   hasExt path = takeExtension path == ("." ++ ext)
+
+-- | Recursively acquire all files in the given directory with the
+--   given extension, and their contents.
+acquireAllWithExt :: FilePath -> String -> IO [(FilePath, String)]
+acquireAllWithExt dir ext = findAllWithExt dir ext >>= mapM addContent
+ where
+  addContent :: FilePath -> IO (FilePath, String)
+  addContent path = (,) path <$> readFile path
 
 -- | Turns any IO error into Nothing.
 catchIO :: IO a -> IO (Maybe a)
