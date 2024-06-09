@@ -551,7 +551,7 @@ testEditorFiles =
         ]
     ]
  where
-  testTextInVSCode name tf = testTextInFile False name (tf VSCode) "editors/vscode/syntaxes/swarm.tmLanguage.json"
+  testTextInVSCode name tf = testTextInFile False name (tf VSCode) "editors/vscode/syntaxes/swarm.tmLanguage.yaml"
   testTextInEmacs name tf = testTextInFile True name (tf Emacs) "editors/emacs/swarm-mode.el"
   testTextInVim name tf = testTextInFile True name (tf Vim) "editors/vim/swarm.vim"
   testTextInFile :: Bool -> String -> Text -> FilePath -> TestTree
