@@ -28,15 +28,14 @@
 
 ### Updating the syntax highlighting
 
-Whenever swarm language adds new features, the highlighting needs to be updated.
+Whenever swarm language adds new features, the highlighting might need to be updated.
 
 To save some time, get the current reserved words by running `swarm-docs`:
 ```bash
 cabal run swarm:swarm-docs -- editors
 ```
 
-You still have to add for example types manually.
-
+You still have to add for example type keywords (`rec`, `forall`) manually.
 
 ### Add more language features
 
@@ -53,7 +52,15 @@ npm install
 
 If you want to include the LSP client then after the previous install do:
 ```sh
+cd client
+npm update
+npm install
 tsc --build
+```
+
+To generate the JSON TextMate grammar do:
+```sh
+npm run gen-syntax
 ```
 
 To build the VSIX package do:
@@ -75,3 +82,6 @@ Then you may have to update the test snapshot as follows:
 ```
 npm test vscode-tmgrammar-snap -- --updateSnapshot
 ```
+
+**WARNING:** Always run the snapshot test to see if half of the
+syntax is not suddenly missing because of a typo.
