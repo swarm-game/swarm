@@ -1,15 +1,11 @@
-import * as path from 'path';
-import * as process from 'process';
-import { workspace, ExtensionContext, DebugAdapterExecutable } from 'vscode';
+import { ExtensionContext } from 'vscode';
 
 import {
 	Executable,
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
-	TextDocumentSyncKind,
-	TransportKind
-} from 'vscode-languageclient/node';
+	TextDocumentSyncKind} from 'vscode-languageclient/node';
 
 let client: LanguageClient;
 
