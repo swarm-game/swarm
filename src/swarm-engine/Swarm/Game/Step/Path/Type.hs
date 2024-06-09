@@ -28,7 +28,7 @@ import Swarm.Game.Location
 import Swarm.Game.Robot (RID)
 import Swarm.Game.Robot.Walk (WalkabilityContext)
 import Swarm.Game.Universe (SubworldName)
-import Swarm.Util.JSON (optionsObjectSingleField)
+import Swarm.Util.JSON (optionsMinimize)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.RingBuffer
 
@@ -74,7 +74,7 @@ data CacheRetrievalAttempt
   deriving (Show, Eq, Generic)
 
 instance ToJSON CacheRetrievalAttempt where
-  toJSON = genericToJSON optionsObjectSingleField
+  toJSON = genericToJSON optionsMinimize
 
 -- | Certain events can obligate the cache to be
 -- completely invalidated, or partially or fully preserved.
@@ -85,7 +85,7 @@ data CacheEvent
   deriving (Show, Eq, Generic)
 
 instance ToJSON CacheEvent where
-  toJSON = genericToJSON optionsObjectSingleField
+  toJSON = genericToJSON optionsMinimize
 
 data DistanceLimitChange
   = LimitIncreased
@@ -108,7 +108,7 @@ data CacheRetreivalInapplicability
   deriving (Show, Eq, Generic)
 
 instance ToJSON CacheRetreivalInapplicability where
-  toJSON = genericToJSON optionsObjectSingleField
+  toJSON = genericToJSON optionsMinimize
 
 -- | Reasons for cache being invalidated
 data InvalidationReason

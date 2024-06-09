@@ -18,7 +18,7 @@ module Swarm.Language.Value (
 ) where
 
 import Control.Lens (pattern Empty)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Bool (bool)
 import Data.List (foldl')
 import Data.Map (Map)
@@ -31,6 +31,8 @@ import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, prettyKeyCombo)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.Direction
+import Swarm.Util.JSON (optionsMinimize)
 
 -- | A /value/ is a term that cannot (or does not) take any more
 --   evaluation steps on its own.
@@ -90,7 +92,13 @@ data Value where
   VKey :: KeyCombo -> Value
   -- | A 'requirements' command awaiting execution.
   VRequirements :: Text -> Term -> Env -> Value
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic)
+
+instance ToJSON Value where
+  toJSON = genericToJSON optionsMinimize
+
+instance FromJSON Value where
+  parseJSON = genericParseJSON optionsMinimize
 
 -- | Ensure that a value is not wrapped in 'VResult'.
 stripVResult :: Value -> Value

@@ -56,6 +56,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Language.Parser.Core
 import Swarm.Language.Syntax
+import Swarm.Language.Syntax.Direction
 import Swarm.Language.Types (baseTyName)
 import Swarm.Util (failT, listEnums, squote)
 import Text.Megaparsec
@@ -163,7 +164,7 @@ primitiveTypeNames = "Cmd" : baseTypeNames
 
 -- | List of keywords built into the language.
 keywords :: [Text]
-keywords = T.words "let in def tydef end true false forall require requirements"
+keywords = T.words "let in def tydef end true false forall require requirements rec"
 
 -- | List of reserved words that cannot be used as variable names.
 reservedWords :: Set Text

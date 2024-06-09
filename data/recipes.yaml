@@ -182,7 +182,7 @@
   required:
     - [1, metal drill]
   time: 9
-  weight: 160
+  weight: 34
 - in:
     - [1, mountain]
   out:
@@ -192,13 +192,13 @@
   required:
     - [1, metal drill]
   time: 9
-  weight: 10
+  weight: 2
 - in:
     - [5, rock]
   out:
     - [1, furnace]
 - in:
-    - [10, rock]
+    - [100, rock]
     - [10, solar panel]
   out:
     - [1, big furnace]
@@ -241,7 +241,7 @@
   required:
     - [1, metal drill]
   time: 6
-  weight: 10
+  weight: 5
 - in:
     - [1, mountain]
   out:
@@ -250,7 +250,7 @@
   required:
     - [1, metal drill]
   time: 7
-  weight: 10
+  weight: 5
 - in:
     - [1, mountain]
   out:
@@ -259,7 +259,7 @@
   required:
     - [1, metal drill]
   time: 7
-  weight: 10
+  weight: 3
 ## MINES
 - in:
     - [1, copper mine]
@@ -625,6 +625,12 @@
   required:
     - [1, furnace]
 - in:
+    - [1, sand]
+  out:
+    - [1, glass]
+  required:
+    - [1, big furnace]
+- in:
     - [1, glass]
     - [1, mithril]
   out:
@@ -650,6 +656,11 @@
   out:
     - [1, ADT calculator]
 - in:
+    - [1, ADT calculator]
+    - [1, strange loop]
+  out:
+    - [1, hyperloop]
+- in:
     - [1, glass]
     - [1, silver]
   out:
@@ -672,6 +683,12 @@
     - [1, rubber]
   required:
     - [1, furnace]
+- in:
+    - [1, LaTeX]
+  out:
+    - [1, rubber]
+  required:
+    - [1, big furnace]
 - in:
     - [8, copper wire]
     - [1, rubber]

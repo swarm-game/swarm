@@ -588,6 +588,48 @@ testLanguagePipeline =
                 "1:34:\n  |\n1 | tydef Unbound a b = a + b + c end\n  |                                  ^\nUndefined type variable(s) on right-hand side of tydef: c\n"
             )
         ]
+    , testGroup
+        "recursive types"
+        [ testCase
+            "occurs check"
+            ( process
+                "def sum = \\l. case l (\\_. 0) (\\c. fst c + sum (snd c)) end"
+                "Encountered infinite type u5 = Int * (u4 + u5).\nSwarm will not infer recursive types; if you want a recursive type, add an explicit type annotation."
+            )
+        , testCase
+            "no occurs check with type annotation"
+            (valid "def sum : (rec l. Unit + Int * l) -> Int = \\l. case l (\\_. 0) (\\c. fst c + sum (snd c)) end")
+        , testCase
+            "vacuous"
+            ( process
+                "tydef X = rec x. x end"
+                "1:1: Encountered vacuous recursive type rec x. x"
+            )
+        , testCase
+            "nonobviously vacuous"
+            ( process
+                "tydef I a = a end; tydef M a b c = b end; tydef X = rec y. rec x. M x (I x) Int end"
+                "1:43: Encountered vacuous recursive type rec x. M x (I x) Int"
+            )
+        , testCase
+            "trivial"
+            ( process
+                "tydef X = rec x. Int end"
+                "1:1: Encountered trivial recursive type rec x. Int"
+            )
+        , testCase
+            "free rec vars"
+            ( process
+                "tydef X = rec y. rec x. y end"
+                "1:1: Encountered trivial recursive type rec x. y"
+            )
+        , testCase
+            "rec type with undefined tycon"
+            ( process
+                "tydef X = rec x. U + x end"
+                "1:1: Undefined type U"
+            )
+        ]
     ]
  where
   valid = flip process ""

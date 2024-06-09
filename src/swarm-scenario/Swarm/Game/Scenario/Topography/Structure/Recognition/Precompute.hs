@@ -43,6 +43,7 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (
 
 import Control.Arrow ((&&&))
 import Control.Lens (view)
+import Data.Hashable (Hashable)
 import Data.Int (Int32)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
@@ -51,28 +52,28 @@ import Data.Semigroup (sconcat)
 import Data.Set qualified as S
 import Data.Set qualified as Set
 import Data.Tuple (swap)
-import Swarm.Game.Entity (Entity, entityName)
+import Swarm.Game.Entity (Entity, EntityName, entityName)
 import Swarm.Game.Scenario (StaticStructureInfo (..))
 import Swarm.Game.Scenario.Topography.Area (Grid (Grid))
-import Swarm.Game.Scenario.Topography.Cell
+import Swarm.Game.Scenario.Topography.Cell (PCell, cellEntity)
 import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform)
-import Swarm.Game.Scenario.Topography.Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
+import Swarm.Game.Scenario.Topography.Structure.Type
 import Swarm.Game.Universe (Cosmic (..))
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Util (binTuples, histogram)
 import Swarm.Util.Erasable (erasableToMaybe)
 import Text.AhoCorasick
 
-getEntityGrid :: Grid (Maybe Cell) -> [SymbolSequence]
+getEntityGrid :: Grid (Maybe (PCell Entity)) -> [SymbolSequence Entity]
 getEntityGrid (Grid cells) = map (map ((erasableToMaybe . cellEntity) =<<)) cells
 
-allStructureRows :: [StructureWithGrid] -> [StructureRow]
+allStructureRows :: [StructureWithGrid b a] -> [StructureRow b a]
 allStructureRows =
   concatMap getRows
  where
-  getRows :: StructureWithGrid -> [StructureRow]
+  getRows :: StructureWithGrid b a -> [StructureRow b a]
   getRows g = zipWith (StructureRow g) [0 ..] $ entityGrid g
 
 mkOffsets :: Foldable f => Int32 -> f a -> InspectionOffsets
@@ -85,9 +86,11 @@ mkOffsets pos xs =
 -- yield a searcher that can determine whether adjacent
 -- rows constitute a complete structure.
 mkRowLookup ::
-  NE.NonEmpty StructureRow ->
-  AutomatonInfo SymbolSequence StructureWithGrid
-mkRowLookup neList =
+  (Hashable a, Ord en) =>
+  (a -> en) ->
+  NE.NonEmpty (StructureRow b a) ->
+  AutomatonInfo en (SymbolSequence a) (StructureWithGrid b a)
+mkRowLookup nameFunc neList =
   AutomatonInfo participatingEnts bounds sm
  where
   mkSmTuple = entityGrid &&& id
@@ -96,10 +99,10 @@ mkRowLookup neList =
   -- All of the unique entities across all of the full candidate structures
   participatingEnts =
     S.fromList $
-      map (view entityName) $
+      map nameFunc $
         concatMap (concatMap catMaybes . fst) tuples
 
-  deriveRowOffsets :: StructureRow -> InspectionOffsets
+  deriveRowOffsets :: StructureRow b a -> InspectionOffsets
   deriveRowOffsets (StructureRow (StructureWithGrid _ _ g) rwIdx _) =
     mkOffsets rwIdx g
 
@@ -113,27 +116,27 @@ mkRowLookup neList =
 -- underlying world row against all rows within all structures
 -- (so long as they contain the keyed entity).
 mkEntityLookup ::
-  [StructureWithGrid] ->
-  M.Map Entity (AutomatonInfo AtomicKeySymbol StructureSearcher)
-mkEntityLookup grids =
+  (Hashable a, Ord a, Ord en) =>
+  (a -> en) ->
+  [StructureWithGrid b a] ->
+  M.Map a (AutomatonInfo en (AtomicKeySymbol a) (StructureSearcher b en a))
+mkEntityLookup nameFunc grids =
   M.map mkValues rowsByEntityParticipation
  where
   rowsAcrossAllStructures = allStructureRows grids
 
   -- The input here are all rows across all structures
   -- that share the same entity sequence.
-  mkSmValue :: SymbolSequence -> NE.NonEmpty SingleRowEntityOccurrences -> StructureSearcher
   mkSmValue ksms singleRows =
     StructureSearcher sm2D ksms singleRows
    where
     structureRowsNE = NE.map myRow singleRows
-    sm2D = mkRowLookup structureRowsNE
+    sm2D = mkRowLookup nameFunc structureRowsNE
 
-  mkValues :: NE.NonEmpty SingleRowEntityOccurrences -> AutomatonInfo AtomicKeySymbol StructureSearcher
   mkValues neList = AutomatonInfo participatingEnts bounds sm
    where
     participatingEnts =
-      (S.fromList . map (view entityName))
+      (S.fromList . map nameFunc)
         (concatMap (catMaybes . fst) tuples)
 
     tuples = M.toList $ M.mapWithKey mkSmValue groupedByUniqueRow
@@ -144,19 +147,18 @@ mkEntityLookup grids =
 
   -- The values of this map are guaranteed to contain only one
   -- entry per row of a given structure.
-  rowsByEntityParticipation :: M.Map Entity (NE.NonEmpty SingleRowEntityOccurrences)
   rowsByEntityParticipation =
     binTuples $
       map (myEntity &&& id) $
         concatMap explodeRowEntities rowsAcrossAllStructures
 
-  deriveEntityOffsets :: PositionWithinRow -> InspectionOffsets
+  deriveEntityOffsets :: PositionWithinRow b a -> InspectionOffsets
   deriveEntityOffsets (PositionWithinRow pos r) =
     mkOffsets pos $ rowContent r
 
   -- The members of "rowMembers" are of 'Maybe' type; the 'Nothing's
   -- are dropped but accounted for when indexing the columns.
-  explodeRowEntities :: StructureRow -> [SingleRowEntityOccurrences]
+  explodeRowEntities :: Ord a => StructureRow b a -> [SingleRowEntityOccurrences b a]
   explodeRowEntities r@(StructureRow _ _ rowMembers) =
     map f $ M.toList $ binTuples unconsolidated
    where
@@ -171,18 +173,23 @@ mkEntityLookup grids =
 
 -- | Create Aho-Corasick matchers that will recognize all of the
 -- provided structure definitions
-mkAutomatons :: [SymmetryAnnotatedGrid (Maybe Cell)] -> RecognizerAutomatons
+mkAutomatons ::
+  [SymmetryAnnotatedGrid (Maybe (PCell Entity))] ->
+  RecognizerAutomatons (PCell Entity) EntityName Entity
 mkAutomatons xs =
   RecognizerAutomatons
     infos
-    (mkEntityLookup rotatedGrids)
+    (mkEntityLookup (view entityName) rotatedGrids)
  where
   rotatedGrids = concatMap (extractGrids . namedGrid) xs
 
   process g = StructureInfo g (getEntityGrid $ structure $ namedGrid g) . histogram . concatMap catMaybes . getEntityGrid . structure $ namedGrid g
   infos = M.fromList $ map (name . namedGrid &&& process) xs
 
-extractOrientedGrid :: NamedGrid (Maybe Cell) -> AbsoluteDir -> StructureWithGrid
+extractOrientedGrid ::
+  NamedGrid (Maybe (PCell Entity)) ->
+  AbsoluteDir ->
+  StructureWithGrid (PCell Entity) Entity
 extractOrientedGrid x d = StructureWithGrid x d $ getEntityGrid g'
  where
   Grid rows = structure x
@@ -191,13 +198,13 @@ extractOrientedGrid x d = StructureWithGrid x d $ getEntityGrid g'
 -- | At this point, we have already ensured that orientations
 -- redundant by rotational symmetry have been excluded
 -- (i.e. at Scenario validation time).
-extractGrids :: NamedGrid (Maybe Cell) -> [StructureWithGrid]
+extractGrids :: NamedGrid (Maybe (PCell Entity)) -> [StructureWithGrid (PCell Entity) Entity]
 extractGrids x = map (extractOrientedGrid x) $ Set.toList $ recognize x
 
 -- | The output list of 'FoundStructure' records is not yet
 -- vetted; the 'ensureStructureIntact' function will subsequently
 -- filter this list.
-lookupStaticPlacements :: StaticStructureInfo -> [FoundStructure]
+lookupStaticPlacements :: StaticStructureInfo -> [FoundStructure (PCell Entity) Entity]
 lookupStaticPlacements (StaticStructureInfo structDefs thePlacements) =
   concatMap f $ M.toList thePlacements
  where

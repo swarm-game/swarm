@@ -12,8 +12,8 @@ import Data.Set qualified as Set
 import Data.Text qualified as T
 import Swarm.Game.Scenario.Topography.Area (Grid (Grid))
 import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform)
-import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (RotationalSymmetry (..), SymmetryAnnotatedGrid (..))
+import Swarm.Game.Scenario.Topography.Structure.Type qualified as Structure
 import Swarm.Language.Syntax.Direction (AbsoluteDir (DSouth, DWest), getCoordinateOrientation)
 import Swarm.Util (commaList, failT, histogram, showT)
 
