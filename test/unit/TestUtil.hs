@@ -26,6 +26,8 @@ import Swarm.Game.Step (gameTick, hypotheticalRobot, stepCESK)
 import Swarm.Language.Context
 import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
 import Swarm.Language.Value
+import Test.Tasty.HUnit (Assertion, assertBool, assertFailure)
+import Witch (into)
 
 eval :: GameState -> Text -> IO (GameState, Robot, Either Text (Value, Int))
 eval g = either (return . (g,hypotheticalRobot undefined 0,) . Left) (evalPT g) . processTerm1
@@ -77,3 +79,8 @@ playUntilDone rid = do
       playUntilDone rid
     Just False -> return $ Right ()
     Nothing -> return $ Left . T.pack $ "The robot with ID " <> show rid <> " is nowhere to be found!"
+
+check :: Text -> (ProcessedTerm -> Bool) -> Assertion
+check code expect = case processTerm1 code of
+  Left err -> assertFailure $ "Term processing failed: " ++ into @String err
+  Right pt -> assertBool "Predicate was false!" (expect pt)

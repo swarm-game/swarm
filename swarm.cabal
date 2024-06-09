@@ -846,6 +846,7 @@ test-suite swarm-unit
     TestPretty
     TestRecipeCoverage
     TestRepl
+    TestRequirements
     TestScoring
     TestUtil
 
