@@ -312,7 +312,6 @@ readFileMayT = catchIO . T.readFile
 
 -- | Recursively acquire all files in the given directory with the
 --   given extension, but does not read or open the file like 'acquireAllWithExt'.
---   To prevent lazy IO problems, open the file using e.g. 'System.IO.withFile'.
 findAllWithExt :: FilePath -> String -> IO [FilePath]
 findAllWithExt dir ext = do
   paths <- listDirectory dir <&> map (dir </>)

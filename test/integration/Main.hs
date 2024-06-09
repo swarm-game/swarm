@@ -82,7 +82,6 @@ import Swarm.Util (findAllWithExt)
 import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath.Posix (splitDirectories)
-import System.IO (IOMode (ReadMode), withFile)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
@@ -133,11 +132,9 @@ exampleTests inputs = testGroup "Test example" (map exampleTest inputs)
 
 exampleTest :: FilePath -> TestTree
 exampleTest path =
-  testCase ("processTerm for contents of " ++ show path) $
-    withFile path ReadMode $ \hnd -> do
-      fileContent <- T.hGetContents hnd
-      let value = processTerm fileContent
-      either (assertFailure . into @String) (\_ -> return ()) value
+  testCase ("processTerm for contents of " ++ show path) $ do
+    value <- processTerm <$> T.readFile path
+    either (assertFailure . into @String) (\_ -> return ()) value
 
 scenarioParseTests :: ScenarioInputs -> [FilePath] -> TestTree
 scenarioParseTests scenarioInputs inputs =
