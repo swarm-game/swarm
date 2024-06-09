@@ -45,8 +45,7 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Definitions qualified as AD
 import Swarm.Game.Scenario.Objective.Logic as L
-import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Syntax (Syntax, TSyntax)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Util.Lens (concatFold, makeLensesExcluding, makeLensesNoSigs)
 
@@ -97,7 +96,7 @@ instance FromJSON PrerequisiteConfig where
 data Objective = Objective
   { _objectiveGoal :: Markdown.Document Syntax
   , _objectiveTeaser :: Maybe Text
-  , _objectiveCondition :: ProcessedTerm
+  , _objectiveCondition :: TSyntax
   , _objectiveId :: Maybe ObjectiveLabel
   , _objectiveOptional :: Bool
   , _objectivePrerequisite :: Maybe PrerequisiteConfig
@@ -123,7 +122,7 @@ objectiveTeaser :: Lens' Objective (Maybe Text)
 --   program of type @cmd bool@.  By default, this program will be
 --   run to completion every tick (the usual limits on the number
 --   of CESK steps per tick do not apply).
-objectiveCondition :: Lens' Objective ProcessedTerm
+objectiveCondition :: Lens' Objective TSyntax
 
 -- | Optional name by which this objective may be referenced
 -- as a prerequisite for other objectives.

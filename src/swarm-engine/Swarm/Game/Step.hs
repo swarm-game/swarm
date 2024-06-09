@@ -65,7 +65,6 @@ import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
 import Swarm.Game.Tick
 import Swarm.Language.Capability
-import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Language.Requirement qualified as R
@@ -107,10 +106,10 @@ gameTick = do
     Just r -> do
       res <- use $ gameControls . replStatus
       case res of
+        -- XXX what is Typed for in REPLWorking?  Do we still need it?
         REPLWorking (Typed Nothing ty req) -> case getResult r of
           Just (v, s) -> do
             gameControls . replStatus .= REPLWorking (Typed (Just v) ty req)
-            baseRobot . robotContext . defStore .= s
           Nothing -> pure ()
         _otherREPLStatus -> pure ()
     Nothing -> pure ()
@@ -363,7 +362,7 @@ hypotheticalWinCheck em g ws oc = do
   foldFunc (CompletionsWithExceptions exnTexts currentCompletions announcements) obj = do
     v <-
       if WC.isPrereqsSatisfied currentCompletions obj
-        then runThrow @Exn . evalState @GameState g $ evalPT $ obj ^. OB.objectiveCondition
+        then runThrow @Exn . evalState @GameState g $ evalT $ obj ^. OB.objectiveCondition
         else return $ Right $ VBool False
     return $ case simplifyResult v of
       Left exnText ->
@@ -404,15 +403,15 @@ hypotheticalWinCheck em g ws oc = do
    where
     h = hypotheticalRobot (Out VUnit emptyStore []) 0
 
-evalPT ::
+evalT ::
   ( Has Effect.Time sig m
   , Has (Throw Exn) sig m
   , Has (State GameState) sig m
   , Has (Lift IO) sig m
   ) =>
-  ProcessedTerm ->
+  TSyntax ->
   m Value
-evalPT t = evaluateCESK (initMachine t empty emptyStore)
+evalT = evaluateCESK . initEmptyMachine
 
 -- | Create a special robot to check some hypothetical, for example the win condition.
 --
@@ -584,7 +583,7 @@ stepCESK cesk = case cesk of
   -- To evaluate a variable, just look it up in the context.
   In (TVar x) e s k -> withExceptions s k $ do
     v <-
-      lookup x e
+      lookupV x e
         `isJustOr` Fatal (T.unwords ["Undefined variable", x, "encountered while running the interpreter."])
     return $ Out v s k
 
@@ -634,20 +633,16 @@ stepCESK cesk = case cesk of
     _ -> badMachineState s "FProj frame with non-record value"
   -- To evaluate non-recursive let expressions, we start by focusing on the
   -- let-bound expression.
-  In (TLet False x _ t1 t2) e s k -> return $ In t1 e s (FLet x t2 e : k)
+  In (TLet _ False x _ t1 t2) e s k -> return $ In t1 e s (FLet x t2 e : k)
   -- To evaluate recursive let expressions, we evaluate the memoized
   -- delay of the let-bound expression.  Every free occurrence of x
   -- in the let-bound expression and the body has already been
   -- rewritten by elaboration to 'force x'.
-  In (TLet True x _ t1 t2) e s k ->
+  In (TLet _ True x _ t1 t2) e s k ->
     return $ In (TDelay (MemoizedDelay $ Just x) t1) e s (FLet x t2 e : k)
   -- Once we've finished with the let-binding, we switch to evaluating
   -- the body in a suitably extended environment.
   Out v1 s (FLet x t2 e : k) -> return $ In t2 (addBinding x v1 e) s k
-  -- Definitions immediately turn into VDef values, awaiting execution.
-  In tm@(TDef r x _ t) e s k -> withExceptions s k $ do
-    hasCapabilityFor CEnv tm
-    return $ Out (VDef r x t e) s k
   -- Type definitions just turn into a no-op.
   In (TTydef {}) e s k -> return $ In (TConst Noop) e s k
   -- Bind expressions don't evaluate: just package it up as a value
@@ -681,11 +676,12 @@ stepCESK cesk = case cesk of
 
   -- Executing a 'requirements' command generates an appropriate log message
   -- listing the requirements of the given expression.
-  Out (VRequirements src t _) s (FExec : k) -> do
-    currentContext <- use $ robotContext . defReqs
-    currentTydefs <- use $ robotContext . tydefVals
+  Out (VRequirements src t e) s (FExec : k) -> do
     em <- use $ landscape . terrainAndEntities . entityMap
-    let (R.Requirements caps devs inv, _) = R.requirements currentTydefs currentContext t
+    let reqCtx = e ^. envReqs
+        tdCtx = e ^. envTydefs
+
+        R.Requirements caps devs inv = R.requirements tdCtx reqCtx t
 
         devicesForCaps, requiredDevices :: Set (Set Text)
         -- possible devices to provide each required capability
@@ -722,21 +718,6 @@ stepCESK cesk = case cesk of
     _ <- traceLog Logged Info reqLog
     return $ Out VUnit s k
 
-  -- To execute a definition, we immediately turn the body into a
-  -- delayed value, so it will not even be evaluated until it is
-  -- called.  We memoize both recursive and non-recursive definitions,
-  -- since the point of a definition is that it may be used many times.
-  Out (VDef r x t e) s (FExec : k) ->
-    return $ In (TDelay (MemoizedDelay $ bool Nothing (Just x) r) t) e s (FDef x : k)
-  -- XXX need to turn Def into syntax sugar for let!
-
-  -- Once we have finished evaluating the (memoized, delayed) body of
-  -- a definition, we return a special VResult value, which packages
-  -- up the return value from the @def@ command itself (the unit value)
-  -- together with the resulting environment (the variable bound to
-  -- the delayed value).
-  Out v s (FDef x : k) ->
-    return $ Out (VResult VUnit (singleton x v)) s k
   -- To execute a constant application, delegate to the 'evalConst'
   -- function.  Set tickStepBudget to 0 if the command is supposed to take
   -- a tick, so the robot won't take any more steps this tick.
@@ -757,7 +738,7 @@ stepCESK cesk = case cesk of
   -- execute, discard any generated environment, and then pass the
   -- result to continue meeting the rest of the robots.
   Out b s (FMeetAll f (rid : rids) : k) ->
-    return $ Out b s (FApp f : FArg (TRobot rid) empty : FExec : FMeetAll f rids : k)
+    return $ Out b s (FApp f : FArg (TRobot rid) mempty : FExec : FMeetAll f rids : k)
   -- To execute a bind expression, evaluate and execute the first
   -- command, and remember the second for execution later.
   Out (VBind mx c1 c2 e) s (FExec : k) -> return $ In c1 e s (FExec : FBind mx c2 e : k)

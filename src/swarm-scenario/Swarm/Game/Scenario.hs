@@ -108,9 +108,8 @@ import Swarm.Game.Universe
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (WorldMap)
-import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pretty (prettyText)
-import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Syntax (Syntax, TSyntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Util (binTuples, commaList, failT, quote)
 import Swarm.Util.Effect (ignoreWarnings, throwToMaybe, withThrow)
@@ -175,7 +174,7 @@ data ScenarioOperation = ScenarioOperation
   -- ^ Note: the description is in this record instead of
   -- 'ScenarioMetadata' because it relates to the goals.
   , _scenarioObjectives :: [Objective]
-  , _scenarioSolution :: Maybe ProcessedTerm
+  , _scenarioSolution :: Maybe TSyntax
   , _scenarioRecipes :: [Recipe Entity]
   , _scenarioStepsPerTick :: Maybe Int
   }
@@ -199,7 +198,7 @@ scenarioObjectives :: Lens' ScenarioOperation [Objective]
 -- | An optional solution of the scenario, expressed as a
 --   program of type @cmd a@. This is useful for automated
 --   testing of the win condition.
-scenarioSolution :: Lens' ScenarioOperation (Maybe ProcessedTerm)
+scenarioSolution :: Lens' ScenarioOperation (Maybe TSyntax)
 
 -- | Optionally, specify the maximum number of steps each robot may
 --   take during a single tick.
