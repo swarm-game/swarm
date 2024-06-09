@@ -32,7 +32,7 @@ Whenever swarm language adds new features, the highlighting might need to be upd
 
 To save some time, get the current reserved words by running `swarm-docs`:
 ```bash
-cabal run swarm:swarm-docs -- editors
+cabal run -O0 swarm:swarm-docs -- editors
 ```
 
 You still have to add for example type keywords (`rec`, `forall`) manually.
