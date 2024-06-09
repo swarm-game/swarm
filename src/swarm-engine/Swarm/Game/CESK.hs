@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -92,7 +91,6 @@ import Swarm.Game.Ingredients (Count)
 import Swarm.Game.Tick
 import Swarm.Game.World (WorldUpdate (..))
 import Swarm.Language.Context
-import Swarm.Language.Pipeline
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax
 import Swarm.Language.Types
@@ -299,19 +297,19 @@ finalValue (Suspended v _ s _) = Just (v, s) -- XXX is this correct?
 finalValue _ = Nothing
 
 -- XXX comment me.  Better name?
-initEmptyMachine :: ProcessedTerm -> CESK
+initEmptyMachine :: TSyntax -> CESK
 initEmptyMachine pt = initMachine pt mempty emptyStore
 
 -- | Initialize a machine state with a starting term along with its
 --   type; the term will be executed or just evaluated depending on
 --   whether it has a command type or not.
-initMachine :: ProcessedTerm -> Env -> Store -> CESK
+initMachine :: TSyntax -> Env -> Store -> CESK
 initMachine t e s = initMachine' t e s []
 
 -- | Like 'initMachine', but also take an explicit starting continuation.
-initMachine' :: ProcessedTerm -> Env -> Store -> Cont -> CESK
+initMachine' :: TSyntax -> Env -> Store -> Cont -> CESK
 initMachine' pt e s k =
-  case t' ^. sType of
+  case pt ^. sType of
     -- XXX need to look through type synonyms here?
     -- If the starting term has a command type, create a machine that will
     -- evaluate and then execute it.
@@ -320,11 +318,10 @@ initMachine' pt e s k =
     -- create a machine to evaluate it.
     _ -> In t e s k
  where
-  t' = pt ^. processedSyntax
   -- Erase all type and SrcLoc annotations from the term before
   -- putting it in the machine state, since those are irrelevant at
   -- runtime.
-  t = eraseS t'
+  t = eraseS pt
 
 -- | Cancel the currently running computation.
 cancel :: CESK -> CESK

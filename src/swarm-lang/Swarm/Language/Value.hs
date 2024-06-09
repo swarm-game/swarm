@@ -21,6 +21,8 @@ module Swarm.Language.Value (
   envReqs,
   envVals,
   envTydefs,
+  lookupV,
+  addBinding,
 ) where
 
 import Control.Lens hiding (Const)
@@ -137,6 +139,12 @@ makeLenses ''Env
 emptyEnv :: Env
 emptyEnv = Env Ctx.empty Ctx.empty Ctx.empty Ctx.empty
 
+lookupV :: Var -> Env -> Maybe Value
+lookupV x e = Ctx.lookup x (e ^. envVals)
+
+addBinding :: Var -> Typed Value -> Env -> Env
+addBinding x v = at x ?~ v
+
 instance Semigroup Env where
   Env t1 r1 v1 td1 <> Env t2 r2 v2 td2 = Env (t1 <> t2) (r1 <> r2) (v1 <> v2) (td1 <> td2)
 
@@ -148,7 +156,6 @@ instance AsEmpty Env
 type instance Index Env = Ctx.Var
 type instance IxValue Env = Typed Value
 
--- XXX do we still want these instances?  is the Typed thing still useful?
 instance Ixed Env
 instance At Env where
   at name = lens getter setter

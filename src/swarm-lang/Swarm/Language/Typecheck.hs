@@ -37,7 +37,6 @@ module Swarm.Language.Typecheck (
 
   -- * Type inference
   inferTop,
-  inferModule,
   infer,
   inferConst,
   check,
@@ -73,7 +72,6 @@ import Swarm.Effect.Unify.Fast qualified as U
 import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Kindcheck (KindError, checkKind, checkPolytypeKind)
-import Swarm.Language.Module
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
@@ -149,37 +147,33 @@ getJoin (Join j) = (j Expected, j Actual)
 ------------------------------------------------------------
 -- Type checking
 
-fromUModule ::
+fromUSyntax ::
   ( Has Unification sig m
   , Has (Reader UCtx) sig m
   , Has (Throw ContextualTypeErr) sig m
   ) =>
-  UModule ->
-  m TModule
-fromUModule (Module u uctx tydefctx) =
-  Module
-    <$> mapM (checkPredicative <=< (fmap fromU . generalize)) u
-    <*> checkPredicative (fromU uctx)
-    <*> pure tydefctx
+  USyntax ->
+  m TSyntax
+fromUSyntax = mapM (checkPredicative <=< (fmap fromU . generalize))
 
-finalizeUModule ::
+finalizeUSyntax ::
   ( Has Unification sig m
   , Has (Reader UCtx) sig m
   , Has (Throw ContextualTypeErr) sig m
   ) =>
-  UModule ->
-  m TModule
-finalizeUModule = applyBindings >=> fromUModule
+  USyntax ->
+  m TSyntax
+finalizeUSyntax = applyBindings >=> fromUSyntax
 
 -- | Version of 'runTC' which is generic in the base monad.
 runTC' ::
   Algebra sig m =>
   TCtx ->
   TDCtx ->
-  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC (ReaderC TDCtx m)))) UModule ->
-  m (Either ContextualTypeErr TModule)
+  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC (ReaderC TDCtx m)))) USyntax ->
+  m (Either ContextualTypeErr TSyntax)
 runTC' ctx tdctx =
-  (>>= finalizeUModule)
+  (>>= finalizeUSyntax)
     >>> runReader (toU ctx)
     >>> runReader []
     >>> runError
@@ -188,12 +182,12 @@ runTC' ctx tdctx =
     >>> fmap reportUnificationError
 
 -- | Run a top-level inference computation, returning either a
---   'ContextualTypeErr' or a fully resolved 'TModule'.
+--   'ContextualTypeErr' or a fully resolved 'TSyntax'.
 runTC ::
   TCtx ->
   TDCtx ->
-  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC (ReaderC TDCtx Identity)))) UModule ->
-  Either ContextualTypeErr TModule
+  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC (ReaderC TDCtx Identity)))) USyntax ->
+  Either ContextualTypeErr TSyntax
 runTC tctx tdctx = runTC' tctx tdctx >>> runIdentity
 
 checkPredicative :: Has (Throw ContextualTypeErr) sig m => Maybe a -> m a
@@ -340,11 +334,8 @@ instance (HasBindings u, Data u) => HasBindings (Term' u) where
 instance (HasBindings u, Data u) => HasBindings (Syntax' u) where
   applyBindings (Syntax' l t cs u) = Syntax' l <$> applyBindings t <*> pure cs <*> applyBindings u
 
-instance HasBindings UModule where
-  applyBindings (Module u uctx tydefs) = Module <$> applyBindings u <*> applyBindings uctx <*> pure tydefs
-
--- ------------------------------------------------------------
--- -- Converting between mono- and polytypes
+------------------------------------------------------------
+-- Converting between mono- and polytypes
 
 -- | To 'instantiate' a 'UPolytype', we generate a fresh unification
 --   variable for each variable bound by the `Forall`, and then
@@ -570,97 +561,12 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 -- Type inference / checking
 
 -- | Top-level type inference function: given a context of definition
---   types and a top-level term, either return a type error or its
---   type as a 'TModule'.
-inferTop :: TCtx -> TDCtx -> Syntax -> Either ContextualTypeErr TModule
-inferTop ctx tdCtx = runTC ctx tdCtx . inferModule
+--   types and a term, either return a type error or a fully
+--   type-annotated version of the term.
+inferTop :: TCtx -> TDCtx -> Syntax -> Either ContextualTypeErr TSyntax
+inferTop ctx tdCtx = runTC ctx tdCtx . infer
 
--- | Infer the signature of a top-level expression which might
---   contain definitions.
---
--- Note that we choose to do kind checking inline as we go during
--- typechecking.  This has pros and cons.  The benefit is that we get
--- to piggyback on the existing source location tracking and
--- typechecking stack, so we can generate better error messages.  The
--- downside is that we have to be really careful not to miss any types
--- along the way; there is no difference, at the Haskell type level,
--- between ill- and well-kinded Swarm types, so we just have to make
--- sure that we call checkKind on every type embedded in the term
--- being checked.
-inferModule ::
-  ( Has Unification sig m
-  , Has (Reader UCtx) sig m
-  , Has (Reader TCStack) sig m
-  , Has (Reader TDCtx) sig m
-  , Has (Error ContextualTypeErr) sig m
-  ) =>
-  Syntax ->
-  m UModule
-inferModule s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
-  -- Simply record a type synonym definition in the context.
-  TTydef x pty -> do
-    tydef <- adaptToTypeErr l KindErr $ checkPolytypeKind pty
-    return $ Module (Syntax' l (TTydef x pty) cs (UTyCmd UTyUnit)) empty (singleton (lvVar x) tydef)
-  -- To handle a 'TBind', infer the types of both sides, combining the
-  -- returned modules appropriately.  Have to be careful to use the
-  -- correct context when checking the right-hand side in particular.
-  SBind mx c1 c2 -> do
-    -- First, infer the left side.
-    Module c1' ctx1 tydefs1 <- withFrame l TCBindL $ inferModule c1
-    a <- decomposeCmdTy c1 (Actual, c1' ^. sType)
-
-    -- Note we generalize here, similar to how we generalize at let
-    -- bindings, since the result type of the LHS will be the type of
-    -- the variable (if there is one).  In many cases this doesn't
-    -- matter, but variables bound by top-level bind expressions can
-    -- end up in the top-level context (e.g. if someone writes `x <-
-    -- blah` at the REPL). We must generalize here, before adding the
-    -- variable to the context, since afterwards it will be too late:
-    -- we cannot generalize over any unification variables occurring
-    -- in the context.
-    --
-    -- This is safe since it is always safe to generalize at any point.
-    --
-    -- See #351, #1501.
-    genA <- generalize a
-
-    -- Now infer the right side under an extended context: things in
-    -- scope on the right-hand side include both any definitions
-    -- created by the left-hand side, as well as a variable as in @x
-    -- <- c1; c2@.  The order of extensions here matters: in theory,
-    -- c1 could define something with the same name as x, in which
-    -- case the bound x should shadow the defined one; hence, we apply
-    -- that binding /after/ (i.e. /within/) the application of @ctx1@.
-    withBindings ctx1
-      . withBindings tydefs1
-      . maybe id ((`withBinding` genA) . lvVar) mx
-      $ do
-        Module c2' ctx2 tydefs2 <- withFrame l TCBindR $ inferModule c2
-
-        -- We don't actually need the result type since we're just
-        -- going to return the entire type, but it's important to
-        -- ensure it's a command type anyway.  Otherwise something
-        -- like 'move; 3' would be accepted with type int.
-        _ <- decomposeCmdTy c2 (Actual, c2' ^. sType)
-
-        -- Ctx.union is right-biased, so ctx1 `union` ctx2 means later
-        -- definitions will shadow previous ones.  Include the binder
-        -- (if any) as well, since binders are made available at the top
-        -- level, just like definitions. e.g. if the user writes `r <- build {move}`,
-        -- then they will be able to refer to r again later.
-        let ctxX = maybe Ctx.empty ((`Ctx.singleton` genA) . lvVar) mx
-        return $
-          Module
-            (Syntax' l (SBind mx c1' c2') cs (c2' ^. sType))
-            (ctx1 `Ctx.union` ctxX `Ctx.union` ctx2)
-            (tydefs1 `Ctx.union` tydefs2)
-
-  -- In all other cases, there can no longer be any definitions in the
-  -- term, so delegate to 'infer'.
-  _anyOtherTerm -> trivMod <$> infer s
-
--- | Infer the type of a term which does not contain definitions,
---   returning a type-annotated term.
+-- | Infer the type of a term, returning a type-annotated term.
 --
 --   The only cases explicitly handled in 'infer' are those where
 --   pushing an expected type down into the term can't possibly help,
@@ -668,6 +574,16 @@ inferModule s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
 --
 --   For most everything else we prefer 'check' because it can often
 --   result in better and more localized type error messages.
+--
+--   Note that we choose to do kind checking inline as we go during
+--   typechecking.  This has pros and cons.  The benefit is that we get
+--   to piggyback on the existing source location tracking and
+--   typechecking stack, so we can generate better error messages.  The
+--   downside is that we have to be really careful not to miss any types
+--   along the way; there is no difference, at the Haskell type level,
+--   between ill- and well-kinded Swarm types, so we just have to make
+--   sure that we call checkKind on every type embedded in the term
+--   being checked.
 infer ::
   ( Has (Reader UCtx) sig m
   , Has (Reader TCStack) sig m
@@ -764,6 +680,11 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
       maybe id ((`withBinding` genA) . lvVar) mx
         . withFrame l TCBindR
         $ infer c2
+
+    -- We don't actually need the result type since we're just
+    -- going to return the entire type, but it's important to
+    -- ensure it's a command type anyway.  Otherwise something
+    -- like 'move; 3' would be accepted with type int.
     _ <- decomposeCmdTy c2 (Actual, c2' ^. sType)
     return $ Syntax' l (SBind mx c1' c2') cs (c2' ^. sType)
 
@@ -1031,8 +952,11 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     -- Return the annotated let.
     return $ Syntax' l (SLet ls r x mxTy t1' t2') cs expected
 
-  -- Definitions can only occur at the top level.
-  TTydef {} -> throwTypeErr l $ DefNotTopLevel t
+  -- XXX have to update this so it's more like a let.
+  TTydef _x pty -> do
+    _tydef <- adaptToTypeErr l KindErr $ checkPolytypeKind pty
+    return $ undefined
+
   -- To check a record, ensure the expected type is a record type,
   -- ensure all the right fields are present, and push the expected
   -- types of all the fields down into recursive checks.

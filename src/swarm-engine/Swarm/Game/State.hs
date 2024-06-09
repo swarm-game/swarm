@@ -132,8 +132,8 @@ import Swarm.Game.Universe as U
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Capability (constCaps)
-import Swarm.Language.Pipeline (ProcessedTerm, processTermEither, processedSyntax)
-import Swarm.Language.Syntax (SrcLoc (..), allConst, sLoc)
+import Swarm.Language.Pipeline (processTermEither)
+import Swarm.Language.Syntax (SrcLoc (..), TSyntax, allConst, sLoc)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Log
@@ -152,7 +152,7 @@ data SolutionSource
     -- on a leaderboard.
     PlayerAuthored FilePath Sha1
 
-data CodeToRun = CodeToRun SolutionSource ProcessedTerm
+data CodeToRun = CodeToRun SolutionSource TSyntax
 
 getRunCodePath :: CodeToRun -> Maybe FilePath
 getRunCodePath (CodeToRun solutionSource _) = case solutionSource of
@@ -167,7 +167,7 @@ parseCodeFile filepath = do
   contents <- sendIO $ TIO.readFile filepath
   pt <- either (throwError . CustomFailure) return (processTermEither contents)
 
-  let srcLoc = pt ^. processedSyntax . sLoc
+  let srcLoc = pt ^. sLoc
       strippedText = stripSrc srcLoc contents
       programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
       sha1Hash = showDigest $ sha1 programBytestring
@@ -188,7 +188,7 @@ data GameState = GameState
   { _creativeMode :: Bool
   , _temporal :: TemporalState
   , _winCondition :: WinCondition
-  , _winSolution :: Maybe ProcessedTerm
+  , _winSolution :: Maybe TSyntax
   , _robotInfo :: Robots
   , _pathCaching :: PathCaching
   , _discovery :: Discovery
@@ -218,7 +218,7 @@ winCondition :: Lens' GameState WinCondition
 
 -- | How to win (if possible). This is useful for automated testing
 --   and to show help to cheaters (or testers).
-winSolution :: Lens' GameState (Maybe ProcessedTerm)
+winSolution :: Lens' GameState (Maybe TSyntax)
 
 -- | Get a list of all the robots at a particular location.
 robotsAtLocation :: Cosmic Location -> GameState -> [Robot]
