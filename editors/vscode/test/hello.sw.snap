@@ -2,23 +2,25 @@
 #^^ source.swarm comment.line.double-slash
 #  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.swarm comment.line.double-slash
 >
->def h: Text = "Hello World" end;
+>def hello: Text = "Hello World" end;
 #^^^^ source.swarm keyword.control.dictionary.def
-#    ^ source.swarm keyword.control.dictionary.def entity.name.function
-#     ^ source.swarm keyword.control.dictionary.def keyword.control.dictionary.def.annotation
-#      ^ source.swarm keyword.control.dictionary.def
-#       ^^^^ source.swarm keyword.control.dictionary.def entity.name.type
-#           ^ source.swarm keyword.control.dictionary.def
-#            ^ source.swarm keyword.control.dictionary.def keyword.control.dictionary.def.assignment
-#             ^ source.swarm
-#              ^ source.swarm string.quoted.double
-#               ^^^^^^^^^^^ source.swarm string.quoted.double
-#                          ^ source.swarm string.quoted.double
-#                           ^ source.swarm
-#                            ^^^ source.swarm keyword.control.dictionary.def.end
-#                               ^ source.swarm keyword.operator.chain
+#    ^^^^^ source.swarm keyword.control.dictionary.def entity.name.function
+#         ^ source.swarm keyword.control.dictionary.def keyword.control.dictionary.def.annotation
+#          ^ source.swarm keyword.control.dictionary.def
+#           ^^^^ source.swarm keyword.control.dictionary.def entity.name.type
+#               ^ source.swarm keyword.control.dictionary.def
+#                ^ source.swarm keyword.control.dictionary.def keyword.control.dictionary.def.assignment
+#                 ^ source.swarm
+#                  ^ source.swarm string.quoted.double
+#                   ^^^^^^^^^^^ source.swarm string.quoted.double
+#                              ^ source.swarm string.quoted.double
+#                               ^ source.swarm
+#                                ^^^ source.swarm keyword.control.dictionary.def.end
+#                                   ^ source.swarm keyword.operator.chain
 >
->return h;
+>return hello;
 #^^^^^^ source.swarm keyword.other
-#      ^^^^ source.swarm
+#      ^ source.swarm
+#       ^^^^^ source.swarm variable.parameter
+#            ^ source.swarm keyword.operator.chain
 >

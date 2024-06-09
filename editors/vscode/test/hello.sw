@@ -1,5 +1,5 @@
 // SYNTAX TEST "swarm" "sample testcase"
 
-def h: Text = "Hello World" end;
+def hello: Text = "Hello World" end;
 
-return h;
+return hello;

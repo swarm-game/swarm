@@ -148,7 +148,7 @@
       "patterns": [
         {
           "name": "variable.language.dir",
-          "match": "\\b(east|north|west|south|down|forward|left|back|right|)\\b"
+          "match": "\\b(east|north|west|south|down|forward|left|back|right)\\b"
         },
         { "name": "variable.parameter", "match": "\\b([a-z]\\w*)\\b" }
       ]

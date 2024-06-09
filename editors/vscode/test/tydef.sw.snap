@@ -33,7 +33,8 @@
 #                        ^ source.swarm keyword.control.dictionary.def keyword.control.dictionary.def.assignment
 #                         ^ source.swarm
 #                          ^^^ source.swarm keyword.other
-#                             ^^^^^ source.swarm
+#                             ^ source.swarm
+#                              ^^^ source.swarm keyword.control.dictionary.def.end
 >
 >def nothing : Maybe a = inl () end
 #^^^^ source.swarm keyword.control.dictionary.def
@@ -48,7 +49,11 @@
 #                      ^ source.swarm keyword.control.dictionary.def keyword.control.dictionary.def.assignment
 #                       ^ source.swarm
 #                        ^^^ source.swarm keyword.other
-#                           ^^^^^^^^ source.swarm
+#                           ^ source.swarm
+#                            ^ source.swarm expression.group punctuation.paren.open
+#                             ^ source.swarm expression.group punctuation.paren.close
+#                              ^ source.swarm
+#                               ^^^ source.swarm keyword.control.dictionary.def.end
 >
 >def positive : Int -> Maybe Int = \x.
 #^^^^ source.swarm keyword.control.dictionary.def
@@ -72,7 +77,24 @@
 >  if (x > 0) {just x} {nothing}
 #^^ source.swarm
 #  ^^ source.swarm keyword.other
-#    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.swarm
+#    ^ source.swarm
+#     ^ source.swarm expression.group punctuation.paren.open
+#      ^ source.swarm expression.group variable.parameter
+#       ^ source.swarm expression.group
+#        ^ source.swarm expression.group keyword.operator
+#         ^ source.swarm expression.group
+#          ^ source.swarm expression.group constant.numeric
+#           ^ source.swarm expression.group punctuation.paren.close
+#            ^ source.swarm
+#             ^ source.swarm expression.group punctuation.braces.open
+#              ^^^^ source.swarm expression.group variable.parameter
+#                  ^ source.swarm expression.group
+#                   ^ source.swarm expression.group variable.parameter
+#                    ^ source.swarm expression.group punctuation.braces.close
+#                     ^ source.swarm
+#                      ^ source.swarm expression.group punctuation.braces.open
+#                       ^^^^^^^ source.swarm expression.group variable.parameter
+#                              ^ source.swarm expression.group punctuation.braces.close
 >end
 #^^^ source.swarm keyword.control.dictionary.def.end
 >
