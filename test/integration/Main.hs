@@ -82,11 +82,11 @@ import Swarm.Util (findAllWithExt)
 import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath.Posix (splitDirectories)
+import System.IO (IOMode (ReadMode), withFile)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
 import Witch (into)
-import System.IO (withFile, IOMode (ReadMode))
 
 isUnparseableTest :: FilePath -> Bool
 isUnparseableTest fp = "_Validation" `elem` splitDirectories fp
