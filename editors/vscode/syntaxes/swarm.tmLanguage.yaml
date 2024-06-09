@@ -77,7 +77,7 @@ repository:
   variables:
     patterns:
       # ---------------------------------------------
-      # GENERATED PATTERN: Operators
+      # GENERATED PATTERN: Directions
       # Get new version with:
       # cabal run swarm:swarm-docs -- editors --code
       # ---------------------------------------------
