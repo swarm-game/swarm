@@ -2,4 +2,4 @@
 
 def h: Text = "Hello World" end;
 
-return "";
+return h;

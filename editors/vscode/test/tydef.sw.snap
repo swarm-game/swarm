@@ -6,16 +6,31 @@
 #^^^^^ source.swarm keyword.control.dictionary.tydef keyword.control.dictionary.tydef.start
 #     ^ source.swarm keyword.control.dictionary.tydef
 #      ^^^^^^^^ source.swarm keyword.control.dictionary.tydef entity.name.type
-#              ^ source.swarm keyword.control.dictionary.tydef
-#               ^^^^^^^^^^ source.swarm keyword.control.dictionary.tydef entity.name.type
+#              ^ source.swarm keyword.control.dictionary.tydef keyword.control.dictionary.tydef.assignment
+#               ^ source.swarm keyword.control.dictionary.tydef
+#                ^^^^ source.swarm keyword.control.dictionary.tydef entity.name.type
+#                    ^ source.swarm keyword.control.dictionary.tydef
+#                     ^ source.swarm keyword.control.dictionary.tydef entity.name.type
+#                      ^ source.swarm keyword.control.dictionary.tydef
+#                       ^ source.swarm keyword.control.dictionary.tydef entity.name.type
+#                        ^ source.swarm keyword.control.dictionary.tydef
 #                         ^^^ source.swarm keyword.control.dictionary.tydef keyword.control.dictionary.tydef.end
 >
 >def just : a -> Maybe a = inr end
 #^^^^ source.swarm keyword.control.dictionary.def
 #    ^^^^ source.swarm keyword.control.dictionary.def entity.name.function
-#        ^^ source.swarm keyword.control.dictionary.def
-#          ^^^^^^^^^^^^^^ source.swarm keyword.control.dictionary.def entity.name.type
-#                        ^ source.swarm keyword.control.dictionary.def
+#        ^ source.swarm keyword.control.dictionary.def
+#         ^ source.swarm keyword.control.dictionary.def keyword.control.dictionary.def.annotation
+#          ^ source.swarm keyword.control.dictionary.def
+#           ^ source.swarm keyword.control.dictionary.def entity.name.type
+#            ^ source.swarm keyword.control.dictionary.def
+#             ^^ source.swarm keyword.control.dictionary.def entity.name.type
+#               ^ source.swarm keyword.control.dictionary.def
+#                ^^^^^ source.swarm keyword.control.dictionary.def entity.name.type
+#                     ^ source.swarm keyword.control.dictionary.def
+#                      ^ source.swarm keyword.control.dictionary.def entity.name.type
+#                       ^ source.swarm keyword.control.dictionary.def
+#                        ^ source.swarm keyword.control.dictionary.def keyword.control.dictionary.def.assignment
 #                         ^ source.swarm
 #                          ^^^ source.swarm keyword.other
 #                             ^^^^^ source.swarm
@@ -23,9 +38,14 @@
 >def nothing : Maybe a = inl () end
 #^^^^ source.swarm keyword.control.dictionary.def
 #    ^^^^^^^ source.swarm keyword.control.dictionary.def entity.name.function
-#           ^^ source.swarm keyword.control.dictionary.def
-#             ^^^^^^^^^ source.swarm keyword.control.dictionary.def entity.name.type
-#                      ^ source.swarm keyword.control.dictionary.def
+#           ^ source.swarm keyword.control.dictionary.def
+#            ^ source.swarm keyword.control.dictionary.def keyword.control.dictionary.def.annotation
+#             ^ source.swarm keyword.control.dictionary.def
+#              ^^^^^ source.swarm keyword.control.dictionary.def entity.name.type
+#                   ^ source.swarm keyword.control.dictionary.def
+#                    ^ source.swarm keyword.control.dictionary.def entity.name.type
+#                     ^ source.swarm keyword.control.dictionary.def
+#                      ^ source.swarm keyword.control.dictionary.def keyword.control.dictionary.def.assignment
 #                       ^ source.swarm
 #                        ^^^ source.swarm keyword.other
 #                           ^^^^^^^^ source.swarm
@@ -33,9 +53,18 @@
 >def positive : Int -> Maybe Int = \x.
 #^^^^ source.swarm keyword.control.dictionary.def
 #    ^^^^^^^^ source.swarm keyword.control.dictionary.def entity.name.function
-#            ^^ source.swarm keyword.control.dictionary.def
-#              ^^^^^^^^^^^^^^^^^^ source.swarm keyword.control.dictionary.def entity.name.type
-#                                ^ source.swarm keyword.control.dictionary.def
+#            ^ source.swarm keyword.control.dictionary.def
+#             ^ source.swarm keyword.control.dictionary.def keyword.control.dictionary.def.annotation
+#              ^ source.swarm keyword.control.dictionary.def
+#               ^^^ source.swarm keyword.control.dictionary.def entity.name.type
+#                  ^ source.swarm keyword.control.dictionary.def
+#                   ^^ source.swarm keyword.control.dictionary.def entity.name.type
+#                     ^ source.swarm keyword.control.dictionary.def
+#                      ^^^^^ source.swarm keyword.control.dictionary.def entity.name.type
+#                           ^ source.swarm keyword.control.dictionary.def
+#                            ^^^ source.swarm keyword.control.dictionary.def entity.name.type
+#                               ^ source.swarm keyword.control.dictionary.def
+#                                ^ source.swarm keyword.control.dictionary.def keyword.control.dictionary.def.assignment
 #                                 ^ source.swarm
 #                                  ^ source.swarm keyword.operator.lambda
 #                                   ^ source.swarm keyword.operator.lambda variable.other

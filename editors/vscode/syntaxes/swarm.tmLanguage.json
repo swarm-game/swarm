@@ -22,6 +22,7 @@
         { "include": "#require" },
         { "include": "#operator" },
         { "include": "#lambda" },
+        { "include": "#chain" },
         { "include": "#in" },
         { "include": "#end" }
       ],
@@ -35,6 +36,10 @@
           "name": "keyword.operator.lambda",
           "match": "\\\\(\\w+)\\.",
           "captures": { "1": { "name": "variable.other" } }
+        },
+        "chain": {
+          "name": "keyword.operator.chain",
+          "match": ";"
         },
         "operator": {
           "name": "keyword.operator",
@@ -83,31 +88,47 @@
     "definitions": {
       "patterns": [
         { "include": "#tydef" },
-        { "include": "#def" },
-        { "include": "#let" }
+        { "include": "#defeq" },
+        { "include": "#leteq" }
       ],
       "repository": {
         "tydef": {
           "name": "keyword.control.dictionary.tydef",
-          "match": "\\b(tydef)\\s+([^=]+)\\s*=((\\s*([A-Z][a-z]*|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+)\\s*(end)\\b",
-          "captures": {
+          "begin": "\\b(tydef)\\s+([^=]+)\\s*(=)",
+          "end": "\\b(end)\\b",
+          "beginCaptures": {
             "1": { "name": "keyword.control.dictionary.tydef.start" },
             "2": { "name": "entity.name.type" },
-            "3": { "name": "entity.name.type" },
-            "8": { "name": "keyword.control.dictionary.tydef.end" }
-          }
+            "3": { "name": "keyword.control.dictionary.tydef.assignment" }
+          },
+          "endCaptures": { "1": { "name": "keyword.control.dictionary.tydef.end" }},
+          "patterns": [{ "include": "#types" }]
         },
-        "def": {
+        "defeq": {
           "name": "keyword.control.dictionary.def",
-          "match": "\\bdef\\s+(\\w+)\\s*(:((\\s*([A-Z][a-zA-Z]*|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
-          "captures": { "1": { "name": "entity.name.function" }, "3": { "name": "entity.name.type" } }
+          "begin": "\\b(def)\\s+(\\w+)\\s*(:)?",
+          "end": "=",
+          "beginCaptures": { "2": { "name": "entity.name.function" }, "3": { "name": "keyword.control.dictionary.def.annotation" }},
+          "endCaptures": {"0": { "name": "keyword.control.dictionary.def.assignment" }},
+          "patterns": [{ "include": "#types" }]
         },
-        "let": {
+        "leteq": {
           "name": "keyword.control.dictionary.let",
-          "match": "\\blet\\s+(\\w+)\\s*(:((\\s*([A-Z][a-zA-Z]*|\\(|\\)|\\{|\\}|(\\*|\\+|->)|[a-z]\\w*|forall ([a-z]\\w*\\s*)+.)\\s*)+))?=",
-          "captures": { "1": { "name": "entity.name.function" }, "3": { "name": "entity.name.type" } }
+          "begin": "\\b(let)\\s+(\\w+)\\s*(:)?",
+          "end": "=",
+          "beginCaptures": { "2": { "name": "entity.name.function" }, "3": { "name": "keyword.control.dictionary.let.annotation" }},
+          "endCaptures": {"0": { "name": "keyword.control.dictionary.let.assignment" }},
+          "patterns": [{ "include": "#types" }]
         }
       }
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "entity.name.type",
+          "match": "\\b(forall|rec|[A-Z]\\w*|[a-z]\\w*)\\b|\\(|\\)|\\{|\\}|(\\*|\\+|->)|\\."
+        }
+      ]
     },
     "variables": {
       "patterns": [
