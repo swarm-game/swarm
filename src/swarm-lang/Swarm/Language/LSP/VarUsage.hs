@@ -92,7 +92,7 @@ getUsage ::
   BindingSites ->
   Syntax ->
   Usage
-getUsage bindings (Syntax _pos t) = case t of
+getUsage bindings (CSyntax _pos t _comments) = case t of
   TVar v -> Usage myUsages mempty
    where
     myUsages = case M.lookup v bindings of
