@@ -108,8 +108,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (RecognizerAuto
 import Swarm.Game.State.Config
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World.Gen (Seed)
-import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Language.Syntax (Const)
+import Swarm.Language.Syntax (Const, TSyntax)
 import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types (Polytype)
 import Swarm.Language.Value (Value)
@@ -303,7 +302,7 @@ data GameControls = GameControls
   { _replStatus :: REPLStatus
   , _replNextValueIndex :: Integer
   , _inputHandler :: Maybe (Text, Value)
-  , _initiallyRunCode :: Maybe ProcessedTerm
+  , _initiallyRunCode :: Maybe TSyntax
   }
 
 makeLensesNoSigs ''GameControls
@@ -319,7 +318,7 @@ inputHandler :: Lens' GameControls (Maybe (Text, Value))
 
 -- | Code that is run upon scenario start, before any
 -- REPL interaction.
-initiallyRunCode :: Lens' GameControls (Maybe ProcessedTerm)
+initiallyRunCode :: Lens' GameControls (Maybe TSyntax)
 
 data Discovery = Discovery
   { _allDiscoveredEntities :: Inventory

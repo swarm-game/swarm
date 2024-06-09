@@ -8,6 +8,8 @@
 -- Pattern synonyms for untyped terms
 module Swarm.Language.Syntax.Pattern (
   Syntax,
+  TSyntax,
+  USyntax,
   sLoc,
   sTerm,
   sType,
@@ -28,6 +30,8 @@ module Swarm.Language.Syntax.Pattern (
   pattern TAnnotate,
   pattern TSuspend,
   Term,
+  TTerm,
+  UTerm,
   noLoc,
 ) where
 
@@ -43,6 +47,12 @@ import Swarm.Language.Types
 type Syntax = Syntax' ()
 
 type Term = Term' ()
+
+type TSyntax = Syntax' Polytype
+type TTerm = Term' Polytype
+
+type USyntax = Syntax' UType
+type UTerm = Term' UType
 
 -- | Raw parsed syntax, without comments or type annotations.
 pattern Syntax :: SrcLoc -> Term -> Syntax

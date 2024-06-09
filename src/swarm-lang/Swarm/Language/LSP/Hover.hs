@@ -33,7 +33,7 @@ import Language.LSP.VFS
 import Swarm.Language.Context as Ctx
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
-import Swarm.Language.Pipeline (processParsedTerm, processedSyntax)
+import Swarm.Language.Pipeline (processParsedTerm)
 import Swarm.Language.Pretty (prettyText, prettyTextLine)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.AST (LetSyntax (..))
@@ -73,7 +73,7 @@ showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
          in (,finalPos) . treeToMarkdown 0 $ explain found
       Right pt ->
         let found =
-              narrowToPosition (pt ^. processedSyntax) $ fromIntegral absolutePos
+              narrowToPosition pt $ fromIntegral absolutePos
             finalPos = posToRange myRope (found ^. sLoc)
          in (,finalPos) . treeToMarkdown 0 $ explain found
 

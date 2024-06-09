@@ -58,7 +58,6 @@ import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability
-import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax
@@ -521,7 +520,7 @@ seedProgram ::
   Integer ->
   -- | entity to place
   EntityName ->
-  ProcessedTerm
+  TSyntax
 seedProgram minTime randTime seedlingCount seedlingRadius thing =
   [tmQ|
     def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;

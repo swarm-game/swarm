@@ -87,7 +87,6 @@ import Swarm.Game.Tick
 import Swarm.Game.Universe
 import Swarm.Game.Value
 import Swarm.Language.Capability
-import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (prettyText)
@@ -1063,6 +1062,7 @@ execConst runChildProg c vs s k = do
         -- and if so, what is needed.
         (toEquip, toGive) <-
           checkRequirements
+            undefined -- XXX where to get Env?
             (r ^. robotInventory)
             (childRobot ^. robotInventory)
             (childRobot ^. equippedDevices)
@@ -1112,7 +1112,7 @@ execConst runChildProg c vs s k = do
         pid <- use robotID
 
         (toEquip, toGive) <-
-          checkRequirements (r ^. robotInventory) E.empty E.empty cmd "You" FixByObtainDevice
+          checkRequirements e (r ^. robotInventory) E.empty E.empty cmd "You" FixByObtainDevice
 
         -- Pick a random display name.
         displayName <- randomName
@@ -1199,7 +1199,7 @@ execConst runChildProg c vs s k = do
                 . at (target ^. robotID)
                 . traverse
                 . machine
-                .= In giveInventory empty emptyStore [FExec]
+                .= In giveInventory mempty emptyStore [FExec]
 
               activateRobot $ target ^. robotID
 
@@ -1234,7 +1234,7 @@ execConst runChildProg c vs s k = do
             -- XXX what to do here, env-wise?
             void $ traceLog CmdStatus Info "run: OK."
 
-            return $ initMachine' pt empty s k
+            return $ initMachine' pt mempty s k
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k
@@ -1497,6 +1497,7 @@ execConst runChildProg c vs s k = do
   -- parent to child.
   checkRequirements ::
     HasRobotStepState sig m =>
+    Env ->
     Inventory ->
     Inventory ->
     Inventory ->
@@ -1504,19 +1505,13 @@ execConst runChildProg c vs s k = do
     Text ->
     IncapableFix ->
     m (Set Entity, Inventory)
-  checkRequirements parentInventory childInventory childDevices cmd subject fixI = do
-    -- XXX does checkRequirements need to take an Env as input?  Where does it come from?
-    -- currentContext <- use $ robotContext . defReqs
-    -- currentTydefs <- use $ robotContext . tydefVals
+  checkRequirements e parentInventory childInventory childDevices cmd subject fixI = do
+    let reqCtx = e ^. envReqs
+        tdCtx = e ^. envTydefs
     em <- use $ landscape . terrainAndEntities . entityMap
     privileged <- isPrivilegedBot
-    let -- Note that _capCtx must be empty: at least at the
-        -- moment, definitions are only allowed at the top level,
-        -- so there can't be any inside the argument to build.
-        -- (Though perhaps there is an argument that this ought to be
-        -- relaxed specifically in the cases of 'Build' and 'Reprogram'.)
-        -- See #349
-        (R.Requirements (S.toList -> caps) (S.toList -> devNames) reqInvNames, _capCtx) = R.requirements currentTydefs currentContext cmd
+    let R.Requirements (S.toList -> caps) (S.toList -> devNames) reqInvNames =
+          R.requirements tdCtx reqCtx cmd
 
     -- Check that all required device names exist (fail with
     -- an exception if not) and convert them to 'Entity' values.

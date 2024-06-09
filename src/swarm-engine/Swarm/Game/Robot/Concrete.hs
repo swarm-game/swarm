@@ -43,8 +43,8 @@ import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Tick
 import Swarm.Game.Universe
-import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Language.Syntax (TSyntax)
 import Swarm.Language.Value as V
 import Swarm.Log
 
@@ -107,7 +107,7 @@ instance ToSample Robot where
           emptyExceptions
           0
 
-mkMachine :: Maybe ProcessedTerm -> C.CESK
+mkMachine :: Maybe TSyntax -> C.CESK
 mkMachine Nothing = C.Out VUnit C.emptyStore []
 mkMachine (Just pt) = C.initMachine pt mempty C.emptyStore
 
