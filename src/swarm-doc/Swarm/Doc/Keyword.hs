@@ -53,4 +53,4 @@ operatorNames = T.intercalate "|" $ map (escape . constSyntax) operators
   slashNotComment = \case
     '/' -> "/(?![/|*])"
     c -> T.singleton c
-  escape = T.concatMap (\c -> if c `elem` special then T.snoc "\\\\" c else slashNotComment c)
+  escape = T.concatMap (\c -> if c `elem` special then T.snoc "\\" c else slashNotComment c)
