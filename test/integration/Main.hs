@@ -309,7 +309,7 @@ testScenarioSolutions rs ui =
             , testSolution Default "Testing/201-require/533-reprogram"
             , testSolution Default "Testing/201-require/1664-require-system-robot-children"
             ]
-        , testSolution Default "Testing/479-atomic-race"
+        , testSolution (Sec 2) "Testing/479-atomic-race"
         , testSolution (Sec 5) "Testing/479-atomic"
         , testSolution Default "Testing/555-teleport-location"
         , testSolution (Sec 2) "Testing/562-lodestone"
