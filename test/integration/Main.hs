@@ -78,7 +78,7 @@ import Swarm.TUI.Model (
  )
 import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
 import Swarm.TUI.Model.UI (UIState)
-import Swarm.Util (acquireAllWithExt)
+import Swarm.Util (findAllWithExt)
 import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath.Posix (splitDirectories)
@@ -87,15 +87,15 @@ import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
 import Witch (into)
 
-isUnparseableTest :: (FilePath, String) -> Bool
-isUnparseableTest (fp, _) = "_Validation" `elem` splitDirectories fp
+isUnparseableTest :: FilePath -> Bool
+isUnparseableTest fp = "_Validation" `elem` splitDirectories fp
 
 main :: IO ()
 main = do
-  examplePaths <- acquireAllWithExt "example" "sw"
-  scenarioPaths <- acquireAllWithExt "data/scenarios" "yaml"
+  examplePaths <- findAllWithExt "example" "sw"
+  scenarioPaths <- findAllWithExt "data/scenarios" "yaml"
   let (unparseableScenarios, parseableScenarios) = partition isUnparseableTest scenarioPaths
-  scenarioPrograms <- acquireAllWithExt "data/scenarios" "sw"
+  scenarioPrograms <- findAllWithExt "data/scenarios" "sw"
   (rs, ui) <- do
     out <- runM . runThrow @SystemFailure $ initPersistentState defaultAppOpts
     either (assertFailure . prettyString) return out
@@ -127,23 +127,22 @@ checkNoRuntimeErrors r =
 isError :: LogEntry -> Bool
 isError = (>= Warning) . view leSeverity
 
-exampleTests :: [(FilePath, String)] -> TestTree
+exampleTests :: [FilePath] -> TestTree
 exampleTests inputs = testGroup "Test example" (map exampleTest inputs)
 
-exampleTest :: (FilePath, String) -> TestTree
-exampleTest (path, fileContent) =
+exampleTest :: FilePath -> TestTree
+exampleTest path =
   testCase ("processTerm for contents of " ++ show path) $ do
-    either (assertFailure . into @String) (const . return $ ()) value
- where
-  value = processTerm $ into @Text fileContent
+    value <- processTerm <$> T.readFile path
+    either (assertFailure . into @String) (\_ -> return ()) value
 
-scenarioParseTests :: ScenarioInputs -> [(FilePath, String)] -> TestTree
+scenarioParseTests :: ScenarioInputs -> [FilePath] -> TestTree
 scenarioParseTests scenarioInputs inputs =
   testGroup
     "Test scenarios parse"
     (map (scenarioTest Parsed scenarioInputs) inputs)
 
-scenarioParseInvalidTests :: ScenarioInputs -> [(FilePath, String)] -> TestTree
+scenarioParseInvalidTests :: ScenarioInputs -> [FilePath] -> TestTree
 scenarioParseInvalidTests scenarioInputs inputs =
   testGroup
     "Test invalid scenarios fail to parse"
@@ -151,8 +150,8 @@ scenarioParseInvalidTests scenarioInputs inputs =
 
 data ParseResult = Parsed | Failed
 
-scenarioTest :: ParseResult -> ScenarioInputs -> (FilePath, String) -> TestTree
-scenarioTest expRes scenarioInputs (path, _) =
+scenarioTest :: ParseResult -> ScenarioInputs -> FilePath -> TestTree
+scenarioTest expRes scenarioInputs path =
   testCase ("parse scenario " ++ show path) (getScenario expRes scenarioInputs path)
 
 getScenario :: ParseResult -> ScenarioInputs -> FilePath -> IO ()
@@ -551,7 +550,7 @@ testEditorFiles =
         ]
     ]
  where
-  testTextInVSCode name tf = testTextInFile False name (tf VSCode) "editors/vscode/syntaxes/swarm.tmLanguage.json"
+  testTextInVSCode name tf = testTextInFile False name (tf VSCode) "editors/vscode/syntaxes/swarm.tmLanguage.yaml"
   testTextInEmacs name tf = testTextInFile True name (tf Emacs) "editors/emacs/swarm-mode.el"
   testTextInVim name tf = testTextInFile True name (tf Vim) "editors/vim/swarm.vim"
   testTextInFile :: Bool -> String -> Text -> FilePath -> TestTree

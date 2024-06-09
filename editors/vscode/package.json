@@ -2,20 +2,23 @@
     "name": "swarm-language",
     "displayName": "swarm-language",
     "description": "VSCode support for swarm (the game) programming language.",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "icon": "images/swarm-logo.png",
     "publisher": "swarm-game",
     "repository": {
         "url": "https://github.com/swarm-game/swarm"
     },
-    "engines": {
-        "vscode": "^1.61.0"
-    },
-    "categories": [
-        "Programming Languages"
+    "keywords": [
+        "multi-root ready"
     ],
+    "engines": {
+        "vscode": "^1.75.0"
+    },
     "activationEvents": [
         "onLanguage:swarm"
+    ],
+    "categories": [
+        "Programming Languages"
     ],
     "main": "./client/out/extension",
     "contributes": {
@@ -38,30 +41,7 @@
                 "scopeName": "source.swarm",
                 "path": "./syntaxes/swarm.tmLanguage.json"
             }
-        ],
-        "configuration": {
-            "type": "object",
-            "title": "Swarm language configuration",
-            "properties": {
-                "languageServerExample.maxNumberOfProblems": {
-                    "scope": "resource",
-                    "type": "number",
-                    "default": 100,
-                    "description": "Controls the maximum number of problems produced by the server."
-                },
-                "languageServerExample.trace.server": {
-                    "scope": "window",
-                    "type": "string",
-                    "enum": [
-                        "off",
-                        "messages",
-                        "verbose"
-                    ],
-                    "default": "off",
-                    "description": "Traces the communication between VS Code and the language server."
-                }
-            }
-        }
+        ]
     },
     "devDependencies": {
         "@types/mocha": "^8.2.2",
@@ -70,16 +50,18 @@
         "@typescript-eslint/parser": "^4.23.0",
         "esbuild": "^0.13.13",
         "eslint": "^7.26.0",
-        "mocha": "^8.3.2",
+        "js-yaml": "^4.1.0",
+        "mocha": "^10.4.0",
         "typescript": "^4.4.3",
         "vscode-tmgrammar-test": "^0.1.1"
     },
     "scripts": {
+        "gen-syntax": "npx js-yaml ./syntaxes/swarm.tmLanguage.yaml > ./syntaxes/swarm.tmLanguage.json",
         "vscode:prepublish": "npm run esbuild-base -- --minify",
         "esbuild-base": "esbuild ./client/src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
         "esbuild": "npm run esbuild-base -- --sourcemap",
         "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
         "test-compile": "tsc -p client",
-        "test": "vscode-tmgrammar-snap test/hello.sw"
+        "test": "vscode-tmgrammar-snap test/*.sw"
     }
 }

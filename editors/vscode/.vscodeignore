@@ -1,4 +1,5 @@
 .vscode/**
 .vscode-test/**
 .gitignore
+test/**
 DEVELOPING.md

@@ -26,7 +26,7 @@ import Control.Algebra (Has, run)
 import Control.Carrier.Accum.Strict (execAccum)
 import Control.Carrier.Reader (runReader)
 import Control.Effect.Accum (Accum, add)
-import Control.Effect.Reader (Reader, local)
+import Control.Effect.Reader (Reader, ask, local)
 import Control.Monad (when)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (first)
@@ -225,7 +225,9 @@ termRequirements tdCtx ctx = run . execAccum mempty . runReader tdCtx . runReade
     -- that's OK.  In particular, only variables bound by 'TDef' go
     -- in the context; variables bound by a lambda or let will not
     -- be there.
-    TVar x -> forM_ (Ctx.lookup x ctx) add
+    TVar x -> do
+      reqs <- ask @ReqCtx
+      forM_ (Ctx.lookup x reqs) add
     -- A lambda expression requires the 'CLambda' capability, and
     -- also all the capabilities of the body.  We assume that the
     -- lambda will eventually get applied, at which point it will
