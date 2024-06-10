@@ -847,11 +847,9 @@ stepCESK cesk = case cesk of
     let s' = resetBlackholes s
     h <- hasCapability CLog
     em <- use $ landscape . terrainAndEntities . entityMap
-    if h
-      then do
-        void $ traceLog RobotError Error (formatExn em exn)
-        return $ Out VUnit s []
-      else return $ Out VUnit s' []
+    when h $ void $ traceLog RobotError Error (formatExn em exn)
+    return $ Out VExc s' []
+
   -- Fatal errors, capability errors, and infinite loop errors can't
   -- be caught; just throw away the continuation stack.
   Up exn@Fatal {} s _ -> return $ Up exn s []

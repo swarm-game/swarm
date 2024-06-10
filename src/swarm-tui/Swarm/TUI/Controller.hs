@@ -104,7 +104,7 @@ import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
-import Swarm.Language.Value (Value (VKey, VUnit), prettyValue, stripVResult)
+import Swarm.Language.Value (Value (VExc, VKey, VUnit), prettyValue, stripVResult)
 import Swarm.Log
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Controller qualified as EC
@@ -351,9 +351,9 @@ handleMainEvent ev = do
         then -- ignore repeated keypresses
           continueWithoutRedraw
         else -- hide for two seconds
-        do
-          uiState . uiGameplay . uiHideRobotsUntil .= t + TimeSpec 2 0
-          invalidateCacheEntry WorldCache
+          do
+            uiState . uiGameplay . uiHideRobotsUntil .= t + TimeSpec 2 0
+            invalidateCacheEntry WorldCache
     -- debug focused robot
     MetaChar 'd' | isPaused && hasDebug -> do
       debug <- uiState . uiGameplay . uiShowDebug Lens.<%= not
@@ -829,26 +829,28 @@ updateUI = do
 
   -- Now check if the base finished running a program entered at the REPL.
   replUpdated <- case g ^. gameControls . replStatus of
-    -- It did, and the result was the unit value.  Just reset replStatus.
-    REPLWorking (Typed (Just VUnit) typ reqs) -> do
-      gameState . gameControls . replStatus .= REPLDone (Just $ Typed VUnit typ reqs)
-      pure True
+    REPLWorking (Typed (Just v) pty reqs)
+      -- It did, and the result was the unit value or an exception.  Just reset replStatus.
+      | v `elem` [VUnit, VExc] -> do
+          gameState . gameControls . replStatus .= REPLDone (Just $ Typed v pty reqs)
+          pure True
 
-    -- It did, and returned some other value.  Pretty-print the
-    -- result as a REPL output, with its type, and reset the replStatus.
-    REPLWorking (Typed (Just v) pty reqs) -> do
-      let finalType = stripCmd pty
-      let val = Typed (stripVResult v) finalType reqs
-      itIx <- use (gameState . gameControls . replNextValueIndex)
-      let itName = fromString $ "it" ++ show itIx
-      let out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
-      uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLOutput out)
-      invalidateCacheEntry REPLHistoryCache
-      vScrollToEnd replScroll
-      gameState . gameControls . replStatus .= REPLDone (Just val)
-      gameState . baseRobot . robotContext . at itName .= Just val
-      gameState . gameControls . replNextValueIndex %= (+ 1)
-      pure True
+      -- It did, and returned some other value.  Create a new 'it'
+      -- variable, pretty-print the result as a REPL output, with its
+      -- type, and reset the replStatus.
+      | otherwise -> do
+          itIx <- use (gameState . gameControls . replNextValueIndex)
+          let finalType = stripCmd pty
+              val = Typed (stripVResult v) finalType reqs
+              itName = fromString $ "it" ++ show itIx
+              out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
+          uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLOutput out)
+          invalidateCacheEntry REPLHistoryCache
+          vScrollToEnd replScroll
+          gameState . gameControls . replStatus .= REPLDone (Just val)
+          gameState . baseRobot . robotContext . at itName .= Just val
+          gameState . gameControls . replNextValueIndex %= (+ 1)
+          pure True
 
     -- Otherwise, do nothing.
     _ -> pure False
