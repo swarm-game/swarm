@@ -41,9 +41,6 @@ elaborate =
     -- delay t1) in the context.
     SLet ls True x mty t1 t2 -> SLet ls True x (Just $ fromMaybe ty mty) (wrapForce (lvVar x) t1) (wrapForce (lvVar x) t2)
     SLet ls r x mty t1 t2 -> SLet ls r x (Just $ fromMaybe ty mty) t1 t2
-    -- XXX ty must be a (polymorphic) function type, need to extract argument type
-    -- to use for annotating lambda?
-    -- SLam _x _mty _t -> undefined
     -- Rewrite @f $ x@ to @f x@.
     SApp (Syntax' _ (SApp (Syntax' _ (TConst AppF) _ _) l) _ _) r -> SApp l r
     -- Leave any other subterms alone.
