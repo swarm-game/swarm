@@ -6,7 +6,6 @@ module Swarm.Game.Scenario.Topography.WorldPalette where
 
 import Control.Arrow (first)
 import Control.Lens hiding (from, (.=), (<.>))
-import Data.Aeson.KeyMap (KeyMap)
 import Data.Aeson.KeyMap qualified as KM
 import Data.Map qualified as M
 import Data.Maybe (catMaybes)
@@ -15,24 +14,15 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Tuple (swap)
 import Swarm.Game.Entity
-import Swarm.Game.Land
-import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
+import Swarm.Game.Scenario.Topography.ProtoCell
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Util.Erasable
-import Swarm.Util.Yaml
 
 -- | A world palette maps characters to 'Cell' values.
-newtype WorldPalette e = WorldPalette
-  {unPalette :: KeyMap (AugmentedCell e)}
-  deriving (Eq, Show)
-
-instance FromJSONE (TerrainEntityMaps, RobotMap) (WorldPalette Entity) where
-  parseJSONE =
-    withObjectE "palette" $
-      fmap WorldPalette . mapM parseJSONE
+type WorldPalette e = StructurePalette (PCell e)
 
 type TerrainWith a = (TerrainType, Erasable a)
 
@@ -111,7 +101,7 @@ prepForJson ::
   PaletteAndMaskChar ->
   Grid (Maybe CellPaintDisplay) ->
   (Text, KM.KeyMap CellPaintDisplay)
-prepForJson (PaletteAndMaskChar (WorldPalette suggestedPalette) maybeMaskChar) cellGrid =
+prepForJson (PaletteAndMaskChar (StructurePalette suggestedPalette) maybeMaskChar) cellGrid =
   (constructWorldMap mappedPairs maskCharacter cellGrid, constructPalette mappedPairs)
  where
   preassignments :: [(Char, TerrainWith EntityFacade)]
