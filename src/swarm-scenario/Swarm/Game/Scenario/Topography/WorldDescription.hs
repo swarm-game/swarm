@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -34,6 +35,7 @@ import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.Structure.Type (
   LocatedStructure,
   MergedStructure (MergedStructure),
+  NamedStructure,
   PStructure (Structure),
  )
 import Swarm.Game.Scenario.Topography.WorldPalette
@@ -74,60 +76,63 @@ data WorldParseDependencies
       -- | last for the benefit of partial application
       TerrainEntityMaps
 
+integrateArea ::
+  WorldPalette e ->
+  [NamedStructure (Maybe (PCell e))] ->
+  Object ->
+  Parser (MergedStructure (Maybe (PCell e)))
+integrateArea palette initialStructureDefs v = do
+  placementDefs <- v .:? "placements" .!= []
+  waypointDefs <- v .:? "waypoints" .!= []
+  rawMap <- v .:? "map" .!= ""
+  (initialArea, mapWaypoints) <- Structure.paintMap Nothing palette rawMap
+  let unflattenedStructure =
+        Structure
+          (PositionedGrid origin $ Grid initialArea)
+          initialStructureDefs
+          placementDefs
+          (waypointDefs <> mapWaypoints)
+  either (fail . T.unpack) return $
+    Assembly.mergeStructures mempty Root unflattenedStructure
+
 instance FromJSONE WorldParseDependencies WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
     WorldParseDependencies worldMap scenarioLevelStructureDefs rm tem <- getE
-    (pal, rootWorldStructureDefs) <- localE (const (tem, rm)) $ do
-      pal <- v ..:? "palette" ..!= WorldPalette mempty
-      rootWorldStructs <- v ..:? "structures" ..!= []
-      return (pal, rootWorldStructs)
 
-    waypointDefs <- liftE $ v .:? "waypoints" .!= []
+    let withDeps = localE (const (tem, rm))
+    palette <-
+      withDeps $
+        v ..:? "palette" ..!= WorldPalette mempty
+    subworldLocalStructureDefs <-
+      withDeps $
+        v ..:? "structures" ..!= []
+
+    let structureDefs = scenarioLevelStructureDefs <> subworldLocalStructureDefs
+    MergedStructure area staticStructurePlacements unmergedWaypoints <-
+      liftE $ integrateArea palette structureDefs v
+
+    worldName <- liftE $ v .:? "name" .!= DefaultRootSubworld
+    ul <- liftE $ v .:? "upperleft" .!= origin
     portalDefs <- liftE $ v .:? "portals" .!= []
-    placementDefs <- liftE $ v .:? "placements" .!= []
-    (initialArea, mapWaypoints) <- liftE ((v .:? "map" .!= "") >>= Structure.paintMap Nothing pal)
-
-    upperLeft <- liftE (v .:? "upperleft" .!= origin)
-    subWorldName <- liftE (v .:? "name" .!= DefaultRootSubworld)
-
-    let initialStructureDefs = scenarioLevelStructureDefs <> rootWorldStructureDefs
-        struc =
-          Structure
-            (PositionedGrid origin $ Grid initialArea)
-            initialStructureDefs
-            placementDefs
-            (waypointDefs <> mapWaypoints)
-
-    MergedStructure mergedArea staticStructurePlacements unmergedWaypoints <-
-      either (fail . T.unpack) return $
-        Assembly.mergeStructures mempty Root struc
-
-    let absoluteStructurePlacements =
-          map (offsetLoc $ coerce upperLeft) staticStructurePlacements
-
-    validatedNavigation <-
+    navigation <-
       validatePartialNavigation
-        subWorldName
-        upperLeft
+        worldName
+        ul
         unmergedWaypoints
         portalDefs
 
-    mwexp <- liftE (v .:? "dsl")
-    dslTerm <- forM mwexp $ \wexp -> do
+    mwexp <- liftE $ v .:? "dsl"
+    worldProg <- forM mwexp $ \wexp -> do
       let checkResult =
             run . runThrow @CheckErr . runReader worldMap . runReader tem $
               check CNil (TTyWorld TTyCell) wexp
       either (fail . prettyString) return checkResult
-    WorldDescription
-      <$> liftE (v .:? "offset" .!= False)
-      <*> liftE (v .:? "scrollable" .!= True)
-      <*> pure pal
-      <*> pure upperLeft
-      <*> pure mergedArea
-      <*> pure validatedNavigation
-      <*> pure absoluteStructurePlacements
-      <*> pure subWorldName
-      <*> pure dslTerm
+
+    offsetOrigin <- liftE $ v .:? "offset" .!= False
+    scrollable <- liftE $ v .:? "scrollable" .!= True
+    let placedStructures =
+          map (offsetLoc $ coerce ul) staticStructurePlacements
+    return $ WorldDescription {..}
 
 ------------------------------------------------------------
 -- World editor
