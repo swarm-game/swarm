@@ -52,7 +52,7 @@ import Control.Effect.Catch (Catch, catchError)
 import Control.Effect.Error (Error)
 import Control.Effect.Reader
 import Control.Effect.Throw
-import Control.Lens ((^.))
+import Control.Lens ((^.), transform)
 import Control.Lens.Indexed (itraverse)
 import Control.Monad (forM_, when, (<=<), (>=>))
 import Control.Monad.Free (Free (..))
@@ -564,7 +564,32 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 --   types and a term, either return a type error or a fully
 --   type-annotated version of the term.
 inferTop :: TCtx -> TDCtx -> Syntax -> Either ContextualTypeErr TSyntax
-inferTop ctx tdCtx = runTC ctx tdCtx . infer
+inferTop ctx tdCtx = fmap fillAnnotations . runTC ctx tdCtx . infer
+
+-- | Recurse through a typechecked term and fill in type annotations
+--   on let binders so that later while interpreting the term we can
+--   put appropriate types into the context when bringing a variable
+--   into scope.
+--
+--   For now we only fill in polytypes on let binders.  In theory we
+--   could also fill in lambda binders, but that seems trickier
+--   (e.g. if a lambda has a polymorphic type like `forall a. a ->
+--   ...`, do we have to make up a Skolem type variable for the type
+--   of the argument??).  It is also only relevant if we were to allow
+--   `suspend` inside a lambda (since the only reason we need to keep
+--   track of types dynamically in the environment at runtime is in
+--   case we need to typecheck more code substituted for a `suspend`,
+--   e.g. code typed later at the REPL).y
+fillAnnotations :: TSyntax -> TSyntax
+fillAnnotations = transform annotate
+  where
+    annotate :: TSyntax -> TSyntax
+    annotate (Syntax' l s cs ty) = Syntax' l (annotateTerm s) cs ty
+
+    annotateTerm :: TTerm -> TTerm
+    annotateTerm = \case
+      SLet ls r x Nothing t1 t2 -> SLet ls r x (Just (t1 ^. sType)) t1 t2
+      t -> t
 
 -- | Infer the type of a term, returning a type-annotated term.
 --

@@ -215,6 +215,3 @@ valueToTerm = \case
   VKey kc -> TApp (TConst Key) (TText (prettyKeyCombo kc))
   VRequirements x t _ -> TRequirements x t
   VExc -> TConst Undefined
-
--- | An environment is a mapping from variable names to values.
-type Env = Ctx Value
