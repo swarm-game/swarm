@@ -92,6 +92,9 @@ data Value where
   VKey :: KeyCombo -> Value
   -- | A 'requirements' command awaiting execution.
   VRequirements :: Text -> Term -> Env -> Value
+  -- | A special value representing a program that terminated with
+  --   an exception.
+  VExc :: Value
   deriving (Eq, Show, Generic)
 
 instance ToJSON Value where
@@ -133,6 +136,7 @@ valueToTerm (VRef n) = TRef n
 valueToTerm (VRcd m) = TRcd (Just . valueToTerm <$> m)
 valueToTerm (VKey kc) = TApp (TConst Key) (TText (prettyKeyCombo kc))
 valueToTerm (VRequirements x t _) = TRequirements x t
+valueToTerm VExc = TConst Undefined
 
 -- | An environment is a mapping from variable names to values.
 type Env = Ctx Value
