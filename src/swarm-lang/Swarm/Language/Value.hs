@@ -21,8 +21,9 @@ module Swarm.Language.Value (
   envReqs,
   envVals,
   envTydefs,
-  lookupV,
+  lookupValue,
   addBinding,
+  addValueBinding,
 ) where
 
 import Control.Lens hiding (Const)
@@ -39,12 +40,12 @@ import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Key (KeyCombo, prettyKeyCombo)
 import Swarm.Language.Pretty (prettyText)
-import Swarm.Language.Requirements.Type (ReqCtx)
+import Swarm.Language.Requirements.Type (ReqCtx, Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.AST (LetSyntax (..))
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Typed
-import Swarm.Language.Types (TCtx, TDCtx)
+import Swarm.Language.Types (Polytype, TCtx, TDCtx)
 import Swarm.Util.JSON (optionsMinimize)
 
 -- | A /value/ is a term that cannot (or does not) take any more
@@ -82,7 +83,7 @@ data Value where
   -- | An unevaluated bind expression, waiting to be executed, of the
   --   form /i.e./ @c1 ; c2@ or @x <- c1; c2@.  We also store an 'Env'
   --   in which to interpret the commands.
-  VBind :: Maybe Var -> Term -> Term -> Env -> Value
+  VBind :: Maybe Var -> Maybe Polytype -> Maybe Requirements -> Term -> Term -> Env -> Value
   -- | A (non-recursive) delayed term, along with its environment. If
   --   a term would otherwise be evaluated but we don't want it to be
   --   (/e.g./ as in the case of arguments to an 'if', or a recursive
@@ -139,11 +140,18 @@ makeLenses ''Env
 emptyEnv :: Env
 emptyEnv = Env Ctx.empty Ctx.empty Ctx.empty Ctx.empty
 
-lookupV :: Var -> Env -> Maybe Value
-lookupV x e = Ctx.lookup x (e ^. envVals)
+lookupValue :: Var -> Env -> Maybe Value
+lookupValue x e = Ctx.lookup x (e ^. envVals)
 
 addBinding :: Var -> Typed Value -> Env -> Env
 addBinding x v = at x ?~ v
+
+-- | Add a binding of a variable to a value *only* (no type and
+--   requirements).  NOTE that if we then try to look up the variable
+--   name using the `At` instance for `Env`, it will report `Nothing`!
+--   `lookupValue` will work though.
+addValueBinding :: Var -> Value -> Env -> Env
+addValueBinding x v = envVals %~ Ctx.addBinding x v
 
 instance Semigroup Env where
   Env t1 r1 v1 td1 <> Env t2 r2 v2 td2 = Env (t1 <> t2) (r1 <> r2) (v1 <> v2) (td1 <> td2)
@@ -204,11 +212,11 @@ valueToTerm = \case
   VPair v1 v2 -> TPair (valueToTerm v1) (valueToTerm v2)
   VClo x t e ->
     M.foldrWithKey
-      (\y v -> TLet LSLet False y Nothing (valueToTerm v))
+      (\y v -> TLet LSLet False y Nothing Nothing (valueToTerm v))
       (TLam x Nothing t)
       (M.restrictKeys (Ctx.unCtx (e ^. envVals)) (S.delete x (setOf freeVarsV (Syntax' NoLoc t Empty ()))))
   VCApp c vs -> foldl' TApp (TConst c) (reverse (map valueToTerm vs))
-  VBind mx c1 c2 _ -> TBind mx c1 c2
+  VBind mx mty mreq c1 c2 _ -> TBind mx mty mreq c1 c2
   VDelay t _ -> TDelay SimpleDelay t
   VRef n -> TRef n
   VRcd m -> TRcd (Just . valueToTerm <$> m)

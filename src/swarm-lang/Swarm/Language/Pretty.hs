@@ -309,22 +309,22 @@ instance PrettyPrec (Term' ty) where
               ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
               _ -> prettyPrecApp p t1 t2
       _ -> prettyPrecApp p t1 t2
-    SLet LSLet _ (LV _ x) mty t1 t2 ->
+    SLet LSLet _ (LV _ x) mty _ t1 t2 ->
       sep
         [ prettyDefinition "let" x mty t1 <+> "in"
         , ppr t2
         ]
-    SLet LSDef _ (LV _ x) mty t1 t2 ->
+    SLet LSDef _ (LV _ x) mty _ t1 t2 ->
       mconcat
         [ prettyDefinition "def" x mty t1 <+> "end"
         , hardline
         , ppr t2
         ]
     TTydef (LV _ x) pty -> prettyTydef x pty
-    SBind Nothing t1 t2 ->
+    SBind Nothing _ _ _ t1 t2 ->
       pparens (p > 0) $
         prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
-    SBind (Just (LV _ x)) t1 t2 ->
+    SBind (Just (LV _ x)) _ _ _ t1 t2 ->
       pparens (p > 0) $
         pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
     SRcd m -> brackets $ hsep (punctuate "," (map prettyEquality (M.assocs m)))

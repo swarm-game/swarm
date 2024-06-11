@@ -72,14 +72,16 @@ module Swarm.Game.CESK (
   initEmptyMachine,
   initMachine,
   initMachine',
+  continue,
   cancel,
   resetBlackholes,
 
   -- ** Extracting information
   finalValue,
+  suspendedEnv,
 ) where
 
-import Control.Lens ((^.))
+import Control.Lens (Traversal', traversal, (^.))
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
@@ -92,6 +94,7 @@ import Swarm.Game.Tick
 import Swarm.Game.World (WorldUpdate (..))
 import Swarm.Language.Context
 import Swarm.Language.Pretty
+import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.Language.Value as V
@@ -123,18 +126,15 @@ data Frame
     -- an application; once we are done, we should pass the resulting
     -- value as an argument to @v@.
     FApp Value
-  | -- | @FLet x t2 e@ says that we were evaluating a term @t1@ in an
-    -- expression of the form @let x = t1 in t2@, that is, we were
-    -- evaluating the definition of @x@; the next thing we should do
-    -- is evaluate @t2@ in the environment @e@ extended with a binding
-    -- for @x@.
-    FLet Var Term Env
+  | -- | @FLet x ty t2 e@ says that we were evaluating a term @t1@ of
+    -- type @ty@ in an expression of the form @let x = t1 in t2@, that
+    -- is, we were evaluating the definition of @x@; the next thing we
+    -- should do is evaluate @t2@ in the environment @e@ extended with
+    -- a binding for @x@.
+    FLet Var (Maybe (Polytype, Requirements)) Term Env
   | -- | We are executing inside a 'Try' block.  If an exception is
     --   raised, we will execute the stored term (the "catch" block).
     FTry Value
-  | -- | We were executing a definition; next we should take the resulting value
-    --   and return a context binding the variable to the value.
-    FDef Var
   | -- | An @FExec@ frame means the focused value is a command, which
     -- we should now execute.
     FExec
@@ -142,7 +142,7 @@ data Frame
     --   bind; once done, we should also execute the second component
     --   in the given environment (extended by binding the variable,
     --   if there is one, to the output of the first command).
-    FBind (Maybe Var) Term Env
+    FBind (Maybe Var) (Maybe (Polytype, Requirements)) Term Env
   | -- | Apply specific updates to the world and current robot.
     --
     -- The 'Const' is used to track the original command for error messages.
@@ -296,6 +296,14 @@ finalValue (Out v s []) = Just (v, s)
 finalValue (Suspended v _ s _) = Just (v, s) -- XXX is this correct?
 finalValue _ = Nothing
 
+-- XXX comment me
+suspendedEnv :: Traversal' CESK Env
+suspendedEnv = traversal go
+ where
+  go :: Applicative f => (Env -> f Env) -> CESK -> f CESK
+  go f (Suspended v e s k) = Suspended v <$> f e <*> pure s <*> pure k
+  go _ cesk = pure cesk
+
 -- XXX comment me.  Better name?
 initEmptyMachine :: TSyntax -> CESK
 initEmptyMachine pt = initMachine pt mempty emptyStore
@@ -322,6 +330,15 @@ initMachine' pt e s k =
   -- putting it in the machine state, since those are irrelevant at
   -- runtime.
   t = eraseS pt
+
+-- | Load a program into an existing robot CESK machine: either continue from a
+--   suspended state, or start from scratch with an empty environment.
+continue :: TSyntax -> CESK -> CESK
+continue t = \case
+  Suspended _ e s k -> In (eraseS t) e s k -- XXX is this correct?  What about
+  -- cmd vs non-cmd?  Do we need to
+  -- add FExec frame?
+  _ -> initMachine t mempty emptyStore
 
 -- | Cancel the currently running computation.
 cancel :: CESK -> CESK
@@ -381,12 +398,11 @@ prettyFrame f (p, inner) = case f of
   FFst v -> (11, "(" <> ppr (valueToTerm v) <> "," <+> inner <> ")")
   FArg t _ -> (10, pparens (p < 10) inner <+> prettyPrec 11 t)
   FApp v -> (10, prettyPrec 10 (valueToTerm v) <+> pparens (p < 11) inner)
-  FLet x t _ -> (11, hsep ["let", pretty x, "=", inner, "in", ppr t])
+  FLet x _ t _ -> (11, hsep ["let", pretty x, "=", inner, "in", ppr t])
   FTry v -> (10, "try" <+> pparens (p < 11) inner <+> prettyPrec 11 (valueToTerm v))
-  FDef x -> (11, "def" <+> pretty x <+> "=" <+> inner <+> "end")
   FExec -> prettyPrefix "E·" (p, inner)
-  FBind Nothing t _ -> (0, pparens (p < 1) inner <+> ";" <+> ppr t)
-  FBind (Just x) t _ -> (0, hsep [pretty x, "<-", pparens (p < 1) inner, ";", ppr t])
+  FBind Nothing _ t _ -> (0, pparens (p < 1) inner <+> ";" <+> ppr t)
+  FBind (Just x) _ t _ -> (0, hsep [pretty x, "<-", pparens (p < 1) inner, ";", ppr t])
   FImmediate c _worldUpds _robotUpds -> prettyPrefix ("I[" <> ppr c <> "]·") (p, inner)
   FUpdate addr -> prettyPrefix ("S@" <> pretty addr) (p, inner)
   FFinishAtomic -> prettyPrefix "A·" (p, inner)
