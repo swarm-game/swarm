@@ -135,11 +135,11 @@ freeVarsS f = go S.empty
       | otherwise -> f s
     SLam x xty s1 -> rewrap $ SLam x xty <$> go (S.insert (lvVar x) bound) s1
     SApp s1 s2 -> rewrap $ SApp <$> go bound s1 <*> go bound s2
-    SLet ls r x xty s1 s2 ->
+    SLet ls r x xty xreq s1 s2 ->
       let bound' = S.insert (lvVar x) bound
-       in rewrap $ SLet ls r x xty <$> go bound' s1 <*> go bound' s2
+       in rewrap $ SLet ls r x xty xreq <$> go bound' s1 <*> go bound' s2
     SPair s1 s2 -> rewrap $ SPair <$> go bound s1 <*> go bound s2
-    SBind mx s1 s2 -> rewrap $ SBind mx <$> go bound s1 <*> go (maybe id (S.insert . lvVar) mx bound) s2
+    SBind mx mty mpty mreq s1 s2 -> rewrap $ SBind mx mty mpty mreq <$> go bound s1 <*> go (maybe id (S.insert . lvVar) mx bound) s2
     SDelay m s1 -> rewrap $ SDelay m <$> go bound s1
     SRcd m -> rewrap $ SRcd <$> (traverse . traverse) (go bound) m
     SProj s1 x -> rewrap $ SProj <$> go bound s1 <*> pure x

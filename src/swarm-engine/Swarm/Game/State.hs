@@ -135,7 +135,6 @@ import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Pipeline (processTermEither)
 import Swarm.Language.Syntax (SrcLoc (..), TSyntax, allConst, sLoc)
-import Swarm.Language.Typed (Typed (Typed))
 import Swarm.Language.Types
 import Swarm.Log
 import Swarm.Util (binTuples, uniq, (?))
@@ -601,7 +600,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       & gameControls . replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
       -- otherwise the store of definition cells is not saved (see #333, #838)
         False -> REPLDone Nothing
-        True -> REPLWorking (Typed Nothing PolyUnit mempty)
+        True -> REPLWorking PolyUnit Nothing
       & temporal . robotStepsPerTick .~ ((scenario ^. scenarioOperation . scenarioStepsPerTick) ? defaultRobotStepsPerTick)
 
   robotList' = (robotCreatedAt .~ now) <$> robotList

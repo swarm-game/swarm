@@ -109,7 +109,7 @@ parseTermAtom2 =
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
 sLet :: LetSyntax -> LocVar -> Maybe Polytype -> Syntax -> Syntax -> Term
-sLet ls x ty t1 = SLet ls (lvVar x `S.member` setOf freeVarsV t1) x ty t1
+sLet ls x ty t1 = SLet ls (lvVar x `S.member` setOf freeVarsV t1) x ty mempty t1
 
 -- | Create a polytype from a list of variable binders and a type.
 --   Ensure that no binder is repeated, and all type variables in the
@@ -140,8 +140,8 @@ mkBindChain stmts = case last stmts of
   Binder x _ -> return $ foldr mkBind (STerm (TApp (TConst Return) (TVar (lvVar x)))) stmts
   BareTerm t -> return $ foldr mkBind t (init stmts)
  where
-  mkBind (BareTerm t1) t2 = loc Nothing t1 t2 $ SBind Nothing t1 t2
-  mkBind (Binder x t1) t2 = loc (Just x) t1 t2 $ SBind (Just x) t1 t2
+  mkBind (BareTerm t1) t2 = loc Nothing t1 t2 $ SBind Nothing Nothing Nothing Nothing t1 t2
+  mkBind (Binder x t1) t2 = loc (Just x) t1 t2 $ SBind (Just x) Nothing Nothing Nothing t1 t2
   loc mx a b = Syntax $ maybe NoLoc lvSrcLoc mx <> (a ^. sLoc) <> (b ^. sLoc)
 
 data Stmt

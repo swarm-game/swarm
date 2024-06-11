@@ -171,6 +171,8 @@ waitingUntil robot =
     C.Waiting time _ -> Just time
     _ -> Nothing
 
+-- XXX don't need to return Store anymore?
+
 -- | Get the result of the robot's computation if it is finished.
 getResult :: Robot -> Maybe (Value, C.Store)
 {-# INLINE getResult #-}

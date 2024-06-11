@@ -28,7 +28,7 @@ import Data.Text qualified as T
 import Data.Tuple (swap)
 import Data.Yaml
 import GHC.Generics (Generic)
-import Swarm.Language.Syntax
+import Swarm.Language.Syntax.Constants (Const (..), allConst)
 import Swarm.Util (binTuples, failT)
 import Text.Read (readMaybe)
 import Witch (from)

@@ -7,18 +7,21 @@
 -- Term elaboration which happens after type checking.
 module Swarm.Language.Elaborate where
 
+import Control.Applicative ((<|>))
 import Control.Lens (transform, (%~), (^.), pattern Empty)
-import Data.Maybe (fromMaybe)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 
 -- | Perform some elaboration / rewriting on a fully type-annotated
 --   term.  This currently performs such operations as rewriting @if@
 --   expressions and recursive let expressions to use laziness
---   appropriately.  In theory it could also perform rewriting for
---   overloaded constants depending on the actual type they are used
---   at, but currently that sort of thing tends to make type inference
---   fall over.
+--   appropriately.  It also performs requirements analysis and
+--   inserts types and requirements on bound variables.
+--
+--   In theory it could also perform rewriting for overloaded
+--   constants depending on the actual type they are used at, but
+--   currently that sort of thing tends to make type inference fall
+--   over.
 elaborate :: TSyntax -> TSyntax
 elaborate =
   -- XXX Maybe pass the current environment into elaborate, so we can tell
@@ -32,15 +35,35 @@ elaborate =
     . transform rewrite
  where
   rewrite :: TSyntax -> TSyntax
-  rewrite (Syntax' l t cs ty) = Syntax' l (rewriteTerm ty t) cs ty
+  rewrite (Syntax' l t cs ty) = Syntax' l (rewriteTerm t) cs ty
 
-  rewriteTerm :: Polytype -> TTerm -> TTerm
-  rewriteTerm ty = \case
+  rewriteTerm :: TTerm -> TTerm
+  rewriteTerm = \case
     -- For recursive let bindings, rewrite any occurrences of x to
     -- (force x).  When interpreting t1, we will put a binding (x |->
     -- delay t1) in the context.
-    SLet ls True x mty t1 t2 -> SLet ls True x (Just $ fromMaybe ty mty) (wrapForce (lvVar x) t1) (wrapForce (lvVar x) t2)
-    SLet ls r x mty t1 t2 -> SLet ls r x (Just $ fromMaybe ty mty) t1 t2
+    --
+    -- Here we also take inferred types for variables bound by let or
+    -- bind and stuff them into the term itself, so that we will still
+    -- have access to them at runtime, after type annotations on the
+    -- AST are erased.  We need them at runtime so we can keep track
+    -- of the types of variables in scope, for use in typechecking
+    -- additional terms entered at the REPL.
+    --
+    -- We assume requirements for these variables have already been
+    -- filled in during typechecking.  The reason we need to wait
+    -- until now to fill in the types is that we have to wait until
+    -- solving, substitution, and generalization are complete.
+    --
+    -- Eventually, once requirements analysis is part of typechecking,
+    -- we'll infer them both at typechecking time then fill them in
+    -- during elaboration here.
+    SLet ls r x mty mreq t1 t2 ->
+      let wrap
+            | r = wrapForce (lvVar x) -- wrap in 'force' if recursive
+            | otherwise = id
+       in SLet ls r x (mty <|> Just (t1 ^. sType)) mreq (wrap t1) (wrap t2)
+    SBind x (Just ty) _ mreq c1 c2 -> SBind x Nothing (Just ty) mreq c1 c2
     -- Rewrite @f $ x@ to @f x@.
     SApp (Syntax' _ (SApp (Syntax' _ (TConst AppF) _ _) l) _ _) r -> SApp l r
     -- Leave any other subterms alone.
