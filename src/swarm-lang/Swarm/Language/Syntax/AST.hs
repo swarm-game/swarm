@@ -21,6 +21,7 @@ import Data.Data.Lens (uniplate)
 import Data.Map.Strict (Map)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Direction
@@ -58,8 +59,6 @@ instance Data ty => Plated (Syntax' ty) where
 --   was so that we can pretty-print appropriatly.
 data LetSyntax = LSLet | LSDef
   deriving (Eq, Ord, Show, Bounded, Enum, Generic, Data, ToJSON, FromJSON)
-
--- XXX are the To/FromJSON instances OK?
 
 -- | Terms of the Swarm language.
 data Term' ty
@@ -108,11 +107,26 @@ data Term' ty
   | -- | A (recursive) let/def expression, with or without a type
     --   annotation on the variable. The @Bool@ indicates whether
     --   it is known to be recursive.
-    SLet LetSyntax Bool LocVar (Maybe Polytype) (Syntax' ty) (Syntax' ty)
+    --
+    --   The @Maybe Requirements@ field is only for annotating the
+    --   requirements of a definition after typechecking; there is no
+    --   way to annotate requirements in the surface syntax.
+    SLet LetSyntax Bool LocVar (Maybe Polytype) (Maybe Requirements) (Syntax' ty) (Syntax' ty)
   | -- | A type synonym definition.
     TTydef LocVar Polytype
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
-    SBind (Maybe LocVar) (Syntax' ty) (Syntax' ty)
+    --
+    --   The @Maybe ty@ field is a place to stash the inferred type of
+    --   the variable (if any) during type inference.  Once type
+    --   inference is complete, during elaboration we will copy the
+    --   inferred type into the @Maybe Polytype@ field (since the
+    --   @Maybe ty@ field will be erased).
+    --
+    --   The @Maybe Polytype@ and @Maybe Requirements@ fields is only
+    --   for annotating the type of a bind after typechecking; there
+    --   is no surface syntax that allows directly annotating a bind
+    --   with either one.
+    SBind (Maybe LocVar) (Maybe ty) (Maybe Polytype) (Maybe Requirements) (Syntax' ty) (Syntax' ty)
   | -- | Delay evaluation of a term, written @{...}@.  Swarm is an
     --   eager language, but in some cases (e.g. for @if@ statements
     --   and recursive bindings) we need to delay evaluation.  The

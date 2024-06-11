@@ -28,7 +28,6 @@ import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (foldM, forM_, unless, when)
-import Data.Bool (bool)
 import Data.Functor (void)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
@@ -65,7 +64,6 @@ import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
 import Swarm.Game.Tick
 import Swarm.Language.Capability
-import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
@@ -106,10 +104,8 @@ gameTick = do
     Just r -> do
       res <- use $ gameControls . replStatus
       case res of
-        -- XXX what is Typed for in REPLWorking?  Do we still need it?
-        REPLWorking (Typed Nothing ty req) -> case getResult r of
-          Just (v, s) -> do
-            gameControls . replStatus .= REPLWorking (Typed (Just v) ty req)
+        REPLWorking ty Nothing -> case getResult r of
+          Just (v, _s) -> gameControls . replStatus .= REPLWorking ty (Just v)
           Nothing -> pure ()
         _otherREPLStatus -> pure ()
     Nothing -> pure ()
@@ -583,7 +579,7 @@ stepCESK cesk = case cesk of
   -- To evaluate a variable, just look it up in the context.
   In (TVar x) e s k -> withExceptions s k $ do
     v <-
-      lookupV x e
+      lookupValue x e
         `isJustOr` Fatal (T.unwords ["Undefined variable", x, "encountered while running the interpreter."])
     return $ Out v s k
 
@@ -601,7 +597,7 @@ stepCESK cesk = case cesk of
   -- Once that's done, switch to evaluating the argument.
   Out v1 s (FArg t2 e : k) -> return $ In t2 e s (FApp v1 : k)
   -- We can evaluate an application of a closure in the usual way.
-  Out v2 s (FApp (VClo x t e) : k) -> return $ In t (addBinding x v2 e) s k
+  Out v2 s (FApp (VClo x t e) : k) -> return $ In t (addValueBinding x v2 e) s k
   -- We can also evaluate an application of a constant by collecting
   -- arguments, eventually dispatching to evalConst for function
   -- constants.
@@ -633,21 +629,26 @@ stepCESK cesk = case cesk of
     _ -> badMachineState s "FProj frame with non-record value"
   -- To evaluate non-recursive let expressions, we start by focusing on the
   -- let-bound expression.
-  In (TLet _ False x _ t1 t2) e s k -> return $ In t1 e s (FLet x t2 e : k)
+  In (TLet _ False x mty mreq t1 t2) e s k ->
+    return $ In t1 e s (FLet x ((,) <$> mty <*> mreq) t2 e : k)
   -- To evaluate recursive let expressions, we evaluate the memoized
   -- delay of the let-bound expression.  Every free occurrence of x
   -- in the let-bound expression and the body has already been
   -- rewritten by elaboration to 'force x'.
-  In (TLet _ True x _ t1 t2) e s k ->
-    return $ In (TDelay (MemoizedDelay $ Just x) t1) e s (FLet x t2 e : k)
+  In (TLet _ True x mty mreq t1 t2) e s k ->
+    return $ In (TDelay (MemoizedDelay $ Just x) t1) e s (FLet x ((,) <$> mty <*> mreq) t2 e : k)
   -- Once we've finished with the let-binding, we switch to evaluating
   -- the body in a suitably extended environment.
-  Out v1 s (FLet x t2 e : k) -> return $ In t2 (addBinding x v1 e) s k
+  Out v1 s (FLet x mtr t2 e : k) -> do
+    let e' = case mtr of
+          Nothing -> addValueBinding x v1 e
+          Just (ty, req) -> addBinding x (Typed v1 ty req) e
+    return $ In t2 e' s k
   -- Type definitions just turn into a no-op.
   In (TTydef {}) e s k -> return $ In (TConst Noop) e s k
   -- Bind expressions don't evaluate: just package it up as a value
   -- until such time as it is to be executed.
-  In (TBind mx t1 t2) e s k -> return $ Out (VBind mx t1 t2 e) s k
+  In (TBind mx mty mreq t1 t2) e s k -> return $ Out (VBind mx mty mreq t1 t2 e) s k
   -- Simple (non-memoized) delay expressions immediately turn into
   -- VDelay values, awaiting application of 'Force'.
   In (TDelay SimpleDelay t) e s k -> return $ Out (VDelay t e) s k
@@ -661,7 +662,7 @@ stepCESK cesk = case cesk of
     -- notice how Haskell's recursion and laziness play a starring
     -- role: @loc@ is both an output from @allocate@ and used as part
     -- of an input! =D
-    let (loc, s') = allocate (maybe id (`addBinding` VRef loc) x e) t s
+    let (loc, s') = allocate (maybe id (`addValueBinding` VRef loc) x e) t s
     return $ Out (VRef loc) s' k
   -- If we see an update frame, it means we're supposed to set the value
   -- of a particular cell to the value we just finished computing.
@@ -711,7 +712,7 @@ stepCESK cesk = case cesk of
                       (T.intercalate " OR " . S.toList <$> S.toList deviceSets)
                   , BulletList
                       "Inventory:"
-                      ((\(e, n) -> e <> " " <> parens (showT n)) <$> M.assocs inv)
+                      ((\(item, n) -> item <> " " <> parens (showT n)) <$> M.assocs inv)
                   ]
               )
 
@@ -741,9 +742,13 @@ stepCESK cesk = case cesk of
     return $ Out b s (FApp f : FArg (TRobot rid) mempty : FExec : FMeetAll f rids : k)
   -- To execute a bind expression, evaluate and execute the first
   -- command, and remember the second for execution later.
-  Out (VBind mx c1 c2 e) s (FExec : k) -> return $ In c1 e s (FExec : FBind mx c2 e : k)
-  Out _ s (FBind Nothing t2 e : k) -> return $ In t2 e s (FExec : k)
-  Out v s (FBind (Just x) t2 e : k) -> return $ In t2 (addBinding x v e) s (FExec : k)
+  Out (VBind mx mty mreq c1 c2 e) s (FExec : k) -> return $ In c1 e s (FExec : FBind mx ((,) <$> mty <*> mreq) c2 e : k)
+  Out _ s (FBind Nothing _ t2 e : k) -> return $ In t2 e s (FExec : k)
+  Out v s (FBind (Just x) mtr t2 e : k) -> do
+    let e' = case mtr of
+          Nothing -> addValueBinding x v e
+          Just (ty, reqs) -> addBinding x (Typed v ty reqs) e
+    return $ In t2 e' s (FExec : k)
   -- Any other type of value wiwth an FExec frame is an error (should
   -- never happen).
   Out _ s (FExec : _) -> badMachineState s "FExec frame with non-executable value"

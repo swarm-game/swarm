@@ -27,7 +27,7 @@ import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
-import Swarm.Language.Value (Env, envTydefs, envTypes)
+import Swarm.Language.Value (Env, envReqs, envTydefs, envTypes)
 
 processTermEither :: Text -> Either Text TSyntax
 processTermEither t = case processTerm t of
@@ -59,5 +59,5 @@ processTerm' e txt = do
 -- | Like 'processTerm'', but use a term that has already been parsed.
 processParsedTerm' :: Env -> Syntax -> Either ContextualTypeErr TSyntax
 processParsedTerm' e t = do
-  tt <- inferTop (e ^. envTypes) (e ^. envTydefs) t
+  tt <- inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) t
   return $ elaborate tt

@@ -112,8 +112,8 @@ narrowToPosition ::
 narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   SLam lv _ s -> d (locVarToSyntax' lv $ getInnerType ty) <|> d s
   SApp s1 s2 -> d s1 <|> d s2
-  SLet _ _ lv _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
-  SBind mlv s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
+  SLet _ _ lv _ _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
+  SBind mlv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
   SPair s1 s2 -> d s1 <|> d s2
   SDelay _ s -> d s
   SRcd m -> asum . map d . catMaybes . M.elems $ m
@@ -202,12 +202,12 @@ explain trm = case trm ^. sTerm of
   TRequire {} -> pure "Require a certain number of an entity."
   SRequirements {} -> pure "Query the requirements of a term."
   -- definition or bindings
-  SLet ls isRecursive var mTypeAnn rhs _b -> pure $ explainDefinition ls isRecursive var (rhs ^. sType) mTypeAnn
+  SLet ls isRecursive var mTypeAnn _ rhs _b -> pure $ explainDefinition ls isRecursive var (rhs ^. sType) mTypeAnn
   SLam (LV _s v) _mType _syn ->
     pure $
       typeSignature v ty $
         "A lambda expression binding the variable " <> U.bquote v <> "."
-  SBind mv rhs _cmds ->
+  SBind mv _ _ _ rhs _cmds ->
     pure $
       typeSignature (maybe "__rhs" lvVar mv) (getInnerType $ rhs ^. sType) $
         "A monadic bind for commands" <> maybe "." (\(LV _s v) -> ", that binds variable " <> U.bquote v <> ".") mv

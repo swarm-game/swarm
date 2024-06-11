@@ -105,16 +105,17 @@ requirements tdCtx ctx = run . execAccum mempty . runReader tdCtx . runReader ct
     -- will be used at least once in the body. We delete the let-bound
     -- name from the context when recursing for the same reason as
     -- lambda.
-    TLet _ r x mty t1 t2 -> do
+    TLet _ r x mty _ t1 t2 -> do
       when r $ add (singletonCap CRecursion)
       add (singletonCap CEnv)
       mapM_ polytypeRequirements mty
       local @ReqCtx (Ctx.delete x) $ go t1 *> go t2
-    -- XXX comment me?
+    -- Using tydef requires CEnv, plus whatever the requirements are
+    -- for the type itself.
     TTydef _ ty -> add (singletonCap CEnv) *> polytypeRequirements ty
     -- We also delete the name in a TBind, if any, while recursing on
     -- the RHS.
-    TBind mx t1 t2 -> do
+    TBind mx _ _ t1 t2 -> do
       go t1
       local @ReqCtx (maybe id Ctx.delete mx) $ go t2
     -- Everything else is straightforward.

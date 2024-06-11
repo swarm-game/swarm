@@ -38,6 +38,7 @@ module Swarm.Language.Syntax.Pattern (
 import Control.Lens (makeLenses, pattern Empty)
 import Data.Map.Strict (Map)
 import Data.Text hiding (filter, length, map)
+import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Loc
@@ -102,16 +103,16 @@ pattern (:$:) :: Term -> Syntax -> Term
 pattern (:$:) t1 s2 = SApp (STerm t1) s2
 
 -- | Match a TLet without annotations.
-pattern TLet :: LetSyntax -> Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
-pattern TLet ls r v pt t1 t2 <- SLet ls r (lvVar -> v) pt (STerm t1) (STerm t2)
+pattern TLet :: LetSyntax -> Bool -> Var -> Maybe Polytype -> Maybe Requirements -> Term -> Term -> Term
+pattern TLet ls r v mty mreq t1 t2 <- SLet ls r (lvVar -> v) mty mreq (STerm t1) (STerm t2)
   where
-    TLet ls r v pt t1 t2 = SLet ls r (LV NoLoc v) pt (STerm t1) (STerm t2)
+    TLet ls r v mty mreq t1 t2 = SLet ls r (LV NoLoc v) mty mreq (STerm t1) (STerm t2)
 
 -- | Match a TBind without annotations.
-pattern TBind :: Maybe Var -> Term -> Term -> Term
-pattern TBind mv t1 t2 <- SBind (fmap lvVar -> mv) (STerm t1) (STerm t2)
+pattern TBind :: Maybe Var -> Maybe Polytype -> Maybe Requirements -> Term -> Term -> Term
+pattern TBind mv mty mreq t1 t2 <- SBind (fmap lvVar -> mv) _ mty mreq (STerm t1) (STerm t2)
   where
-    TBind mv t1 t2 = SBind (LV NoLoc <$> mv) (STerm t1) (STerm t2)
+    TBind mv mty mreq t1 t2 = SBind (LV NoLoc <$> mv) Nothing mty mreq (STerm t1) (STerm t2)
 
 -- | Match a TDelay without annotations.
 pattern TDelay :: DelayType -> Term -> Term

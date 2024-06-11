@@ -1190,7 +1190,7 @@ execConst runChildProg c vs s k = do
 
             -- The program for the salvaged robot to run
             let giveInventory =
-                  foldr (TBind Nothing . giveItem) (TConst Selfdestruct) salvageItems
+                  foldr (TBind Nothing Nothing Nothing . giveItem) (TConst Selfdestruct) salvageItems
                 giveItem item = TApp (TApp (TConst Give) (TRobot ourID)) (TText item)
 
             -- Reprogram and activate the salvaged robot
