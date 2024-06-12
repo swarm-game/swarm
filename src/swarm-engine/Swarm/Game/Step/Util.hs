@@ -40,7 +40,7 @@ import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Modify qualified as WM
 import Swarm.Language.Capability
-import Swarm.Language.Requirement qualified as R
+import Swarm.Language.Requirements.Type qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction (Direction)
 import Swarm.Util hiding (both)

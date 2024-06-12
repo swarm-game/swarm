@@ -90,7 +90,7 @@ import Swarm.Language.Capability
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (prettyText)
-import Swarm.Language.Requirement qualified as R
+import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Text.Markdown qualified as Markdown
