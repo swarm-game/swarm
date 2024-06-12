@@ -59,7 +59,7 @@ import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Requirement qualified as R
+import Swarm.Language.Requirements.Type qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Log

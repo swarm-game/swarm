@@ -29,7 +29,7 @@ import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Entity (EntityMap, devicesForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
 import Swarm.Language.Pretty (prettyText)
-import Swarm.Language.Requirement (Requirements (..))
+import Swarm.Language.Requirements.Type (Requirements (..))
 import Swarm.Language.Syntax (Const, Term)
 import Swarm.Util
 import Witch (from)
