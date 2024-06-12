@@ -147,7 +147,9 @@ library swarm-lang
     Swarm.Language.Pipeline
     Swarm.Language.Pipeline.QQ
     Swarm.Language.Pretty
-    Swarm.Language.Requirement
+    Swarm.Language.Requirements
+    Swarm.Language.Requirements.Analysis
+    Swarm.Language.Requirements.Type
     Swarm.Language.Syntax
     Swarm.Language.Syntax.AST
     Swarm.Language.Syntax.CommandMetadata

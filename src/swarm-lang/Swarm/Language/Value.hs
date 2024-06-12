@@ -39,7 +39,7 @@ import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Key (KeyCombo, prettyKeyCombo)
 import Swarm.Language.Pretty (prettyText)
-import Swarm.Language.Requirement (ReqCtx)
+import Swarm.Language.Requirements.Type (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.AST (LetSyntax (..))
 import Swarm.Language.Syntax.Direction

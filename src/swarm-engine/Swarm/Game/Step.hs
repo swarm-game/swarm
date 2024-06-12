@@ -67,7 +67,7 @@ import Swarm.Game.Tick
 import Swarm.Language.Capability
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (BulletList (BulletList, bulletListItems), prettyText)
-import Swarm.Language.Requirement qualified as R
+import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
