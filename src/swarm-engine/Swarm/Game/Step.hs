@@ -105,7 +105,7 @@ gameTick = do
       res <- use $ gameControls . replStatus
       case res of
         REPLWorking ty Nothing -> case getResult r of
-          Just (v, _s) -> gameControls . replStatus .= REPLWorking ty (Just v)
+          Just v -> gameControls . replStatus .= REPLWorking ty (Just v)
           Nothing -> pure ()
         _otherREPLStatus -> pure ()
     Nothing -> pure ()
@@ -407,7 +407,7 @@ evalT ::
   ) =>
   TSyntax ->
   m Value
-evalT = evaluateCESK . initEmptyMachine
+evalT = evaluateCESK . initMachine
 
 -- | Create a special robot to check some hypothetical, for example the win condition.
 --
@@ -454,7 +454,7 @@ runCESK ::
   m Value
 runCESK (Up exn _ []) = throwError exn
 runCESK cesk = case finalValue cesk of
-  Just (v, _) -> return v
+  Just v -> return v
   Nothing -> stepCESK cesk >>= runCESK
 
 ------------------------------------------------------------
@@ -667,11 +667,9 @@ stepCESK cesk = case cesk of
   -- If we see an update frame, it means we're supposed to set the value
   -- of a particular cell to the value we just finished computing.
   Out v s (FUpdate loc : k) -> return $ Out v (setStore loc (V v) s) k
-  -- If we see a primitive application of suspend, evaluate
-  -- its argument and then suspend.
-  In (TSuspend t) e s k -> return $ In t e s (FSuspend e : k)
-  -- Once we've finished, enter the Suspended state.
-  Out v s (FSuspend e : k) -> return $ Suspended v e s k
+  -- If we see a primitive application of suspend, package it up as
+  -- a value until it's time to execute.
+  In (TSuspend t) e s k -> return $ Out (VSuspend t e) s k
   ------------------------------------------------------------
   -- Execution
 
@@ -749,6 +747,11 @@ stepCESK cesk = case cesk of
           Nothing -> addValueBinding x v e
           Just (ty, reqs) -> addBinding x (Typed v ty reqs) e
     return $ In t2 e' s (FExec : k)
+  -- To execute a suspend instruction, evaluate its argument and then
+  -- suspend.
+  Out (VSuspend t e) s (FExec : k) -> return $ In t e s (FSuspend e : k)
+  -- Once we've finished, enter the Suspended state.
+  Out v s (FSuspend e : k) -> return $ Suspended v e s k
   -- Any other type of value wiwth an FExec frame is an error (should
   -- never happen).
   Out _ s (FExec : _) -> badMachineState s "FExec frame with non-executable value"

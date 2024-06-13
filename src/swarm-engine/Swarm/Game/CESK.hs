@@ -69,9 +69,7 @@ module Swarm.Game.CESK (
   CESK (..),
 
   -- ** Construction
-  initEmptyMachine,
   initMachine,
-  initMachine',
   continue,
   cancel,
   resetBlackholes,
@@ -93,6 +91,7 @@ import Swarm.Game.Ingredients (Count)
 import Swarm.Game.Tick
 import Swarm.Game.World (WorldUpdate (..))
 import Swarm.Language.Context
+import Swarm.Language.Elaborate (insertSuspend)
 import Swarm.Language.Pretty
 import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax
@@ -290,13 +289,14 @@ instance FromJSON CESK where
 
 -- | Is the CESK machine in a final (finished) state?  If so, extract
 --   the final value and store.
-finalValue :: CESK -> Maybe (Value, Store)
+finalValue :: CESK -> Maybe Value
 {-# INLINE finalValue #-}
-finalValue (Out v s []) = Just (v, s)
-finalValue (Suspended v _ s _) = Just (v, s) -- XXX is this correct?
+finalValue (Out v _ []) = Just v
+finalValue (Suspended v _ _ _) = Just v
 finalValue _ = Nothing
 
--- XXX comment me
+-- | Extract the environment from a suspended CESK machine (/e.g./ to
+--   use for typechecking).
 suspendedEnv :: Traversal' CESK Env
 suspendedEnv = traversal go
  where
@@ -304,41 +304,51 @@ suspendedEnv = traversal go
   go f (Suspended v e s k) = Suspended v <$> f e <*> pure s <*> pure k
   go _ cesk = pure cesk
 
--- XXX comment me.  Better name?
-initEmptyMachine :: TSyntax -> CESK
-initEmptyMachine pt = initMachine pt mempty emptyStore
-
--- | Initialize a machine state with a starting term along with its
---   type; the term will be executed or just evaluated depending on
---   whether it has a command type or not.
-initMachine :: TSyntax -> Env -> Store -> CESK
-initMachine t e s = initMachine' t e s []
-
--- | Like 'initMachine', but also take an explicit starting continuation.
-initMachine' :: TSyntax -> Env -> Store -> Cont -> CESK
-initMachine' pt e s k =
-  case pt ^. sType of
-    -- XXX need to look through type synonyms here?
-    -- If the starting term has a command type, create a machine that will
-    -- evaluate and then execute it.
-    Forall _ (TyCmd _) -> In t e s (FExec : k)
-    -- Otherwise, for a term with a non-command type, just
-    -- create a machine to evaluate it.
-    _ -> In t e s k
+-- | Initialize a CESK machine, with empty environment and store, to
+--   evaluate a given term.
+--   XXX explain cmd vs other types
+initMachine :: TSyntax -> CESK
+initMachine t = In t' mempty emptyStore [FExec]
  where
-  -- Erase all type and SrcLoc annotations from the term before
-  -- putting it in the machine state, since those are irrelevant at
-  -- runtime.
-  t = eraseS pt
+  t' = case t ^. sType of
+    Forall _ (TyCmd _) -> eraseS t -- XXX need to look through synonyms
+    _ -> TApp (TConst Return) (eraseS t)
+
+-- XXX abstract this and continue somehow
+
+-- -- | Initialize a machine state with a starting term along with its
+-- --   type; the term will be executed or just evaluated depending on
+-- --   whether it has a command type or not.
+-- initMachine :: TSyntax -> Env -> Store -> CESK
+-- initMachine t e s = initMachine' t e s []
+
+-- -- | Like 'initMachine', but also take an explicit starting continuation.
+-- initMachine' :: TSyntax -> Env -> Store -> Cont -> CESK
+-- initMachine' pt e s k =
+--   case pt ^. sType of
+--     -- XXX need to look through type synonyms here?
+--     -- If the starting term has a command type, create a machine that will
+--     -- evaluate and then execute it.
+--     Forall _ (TyCmd _) -> In t e s (FExec : k)
+--     -- Otherwise, for a term with a non-command type, just
+--     -- create a machine to evaluate it.
+--     _ -> In t e s k
+--  where
+--   -- Erase all type and SrcLoc annotations from the term before
+--   -- putting it in the machine state, since those are irrelevant at
+--   -- runtime.
+--   t = eraseS pt
 
 -- | Load a program into an existing robot CESK machine: either continue from a
 --   suspended state, or start from scratch with an empty environment.
 continue :: TSyntax -> CESK -> CESK
 continue t = \case
-  Suspended _ e s k -> In (eraseS t) e s k -- XXX is this correct?  What about
-  -- cmd vs non-cmd?  Do we need to
-  -- add FExec frame?
-  _ -> initMachine t mempty emptyStore
+  Suspended _ e s k -> In t' e s (FExec : k)
+  _ -> In t' mempty emptyStore [FExec]
+ where
+  t' = insertSuspend $ case t ^. sType of
+    Forall _ (TyCmd _) -> eraseS t -- XXX need to look through synonyms
+    _ -> TApp (TConst Return) (eraseS t)
 
 -- | Cancel the currently running computation.
 cancel :: CESK -> CESK

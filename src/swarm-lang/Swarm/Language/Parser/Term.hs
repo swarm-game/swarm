@@ -10,6 +10,7 @@ import Control.Lens (view, (^.))
 import Control.Monad (guard, join)
 import Control.Monad.Combinators.Expr
 import Data.Foldable (asum)
+import Data.Functor (($>))
 import Data.List (foldl')
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -89,7 +90,7 @@ parseTermAtom2 =
           <$> (reserved "def" *> locTmVar)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
-          <*> (optional (symbol ";") *> parseTerm)
+          <*> (optional (symbol ";") *> (parseTerm <|> (eof $> sRetUnit)))
         <|> TTydef
           <$> (reserved "tydef" *> locTyName)
           <*> join (bindTydef <$> many tyVar <*> (symbol "=" *> parseType <* reserved "end"))
@@ -110,6 +111,9 @@ parseTermAtom2 =
 --   indicating whether it is recursive.
 sLet :: LetSyntax -> LocVar -> Maybe Polytype -> Syntax -> Syntax -> Term
 sLet ls x ty t1 = SLet ls (lvVar x `S.member` setOf freeVarsV t1) x ty mempty t1
+
+sRetUnit :: Syntax
+sRetUnit = STerm (TApp (TConst Return) TUnit)
 
 -- | Create a polytype from a list of variable binders and a type.
 --   Ensure that no binder is repeated, and all type variables in the

@@ -101,7 +101,7 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import GHC.Generics (Generic)
 import Linear (V2 (..))
-import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
+import Swarm.Game.CESK (finalValue, initMachine)
 import Swarm.Game.Device (getCapabilitySet, getMap)
 import Swarm.Game.Entity
 import Swarm.Game.Failure (SystemFailure (..))
@@ -635,7 +635,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
         . machine
         %~ case initialCodeToRun of
           Nothing -> id
-          Just pt -> const $ initMachine pt mempty emptyStore
+          Just t -> const $ initMachine t
       -- If we are in creative mode, give base all the things
       & ix baseID
         . robotInventory
