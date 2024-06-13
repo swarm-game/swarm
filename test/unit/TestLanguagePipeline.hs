@@ -17,7 +17,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ (tyQ)
-import Swarm.Language.Pipeline (processTerm, processedSyntax)
+import Swarm.Language.Pipeline (processTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
@@ -336,15 +336,12 @@ testLanguagePipeline =
             "annotate 1 + 1"
             ( assertEqual
                 "type annotations"
-                (toListOf traverse (view processedSyntax [tmQ| 1 + 1 |]))
+                (toListOf traverse [tmQ| 1 + 1 |])
                 [[tyQ| Int -> Int -> Int|], [tyQ|Int|], [tyQ|Int -> Int|], [tyQ|Int|], [tyQ|Int|]]
             )
         , testCase
             "get all annotated variable types"
-            ( let s =
-                    view
-                      processedSyntax
-                      [tmQ| def f : (Int -> Int) -> Int -> Text = \g. \x. format (g x) end |]
+            ( let s = [tmQ| def f : (Int -> Int) -> Int -> Text = \g. \x. format (g x) end |]
 
                   isVar (TVar {}) = True
                   isVar _ = False

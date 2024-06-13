@@ -24,7 +24,7 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.Step (gameTick, hypotheticalRobot, stepCESK)
 import Swarm.Language.Context
-import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
+import Swarm.Language.Pipeline (processTerm)
 import Swarm.Language.Value
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure)
 import Witch (into)
@@ -32,13 +32,13 @@ import Witch (into)
 eval :: GameState -> Text -> IO (GameState, Robot, Either Text (Value, Int))
 eval g = either (return . (g,hypotheticalRobot undefined 0,) . Left) (evalPT g) . processTerm1
 
-processTerm1 :: Text -> Either Text ProcessedTerm
+processTerm1 :: Text -> Either Text TSyntax
 processTerm1 txt = processTerm txt >>= maybe wsErr Right
  where
   wsErr = Left "expecting a term, but got only whitespace"
 
-evalPT :: GameState -> ProcessedTerm -> IO (GameState, Robot, Either Text (Value, Int))
-evalPT g t = evalCESK g (initMachine t empty emptyStore)
+evalPT :: GameState -> TSyntax -> IO (GameState, Robot, Either Text (Value, Int))
+evalPT g t = evalCESK g (initMachine t)
 
 evalCESK :: GameState -> CESK -> IO (GameState, Robot, Either Text (Value, Int))
 evalCESK g cesk =
@@ -80,7 +80,7 @@ playUntilDone rid = do
     Just False -> return $ Right ()
     Nothing -> return $ Left . T.pack $ "The robot with ID " <> show rid <> " is nowhere to be found!"
 
-check :: Text -> (ProcessedTerm -> Bool) -> Assertion
+check :: Text -> (TSyntax -> Bool) -> Assertion
 check code expect = case processTerm1 code of
   Left err -> assertFailure $ "Term processing failed: " ++ into @String err
-  Right pt -> assertBool "Predicate was false!" (expect pt)
+  Right t -> assertBool "Predicate was false!" (expect t)
