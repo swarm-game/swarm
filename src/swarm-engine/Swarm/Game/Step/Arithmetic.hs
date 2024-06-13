@@ -73,6 +73,7 @@ compareValues v1 = case v1 of
   VDelay {} -> incomparable v1
   VRef {} -> incomparable v1
   VRequirements {} -> incomparable v1
+  VSuspend {} -> incomparable v1
   VExc {} -> incomparable v1
 
 -- | Values with different types were compared; this should not be

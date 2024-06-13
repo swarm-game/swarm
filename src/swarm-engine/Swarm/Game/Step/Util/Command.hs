@@ -475,7 +475,7 @@ addSeedBot ::
   m ()
 addSeedBot e (minT, maxT) seedlingCount seedlingRadius loc ts =
   zoomRobots
-    . addTRobot (initEmptyMachine seedProg)
+    . addTRobot (initMachine seedProg)
     $ mkRobot
       Nothing
       "seed"

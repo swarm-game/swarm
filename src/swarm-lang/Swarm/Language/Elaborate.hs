@@ -15,8 +15,8 @@ import Swarm.Language.Types
 -- | Perform some elaboration / rewriting on a fully type-annotated
 --   term.  This currently performs such operations as rewriting @if@
 --   expressions and recursive let expressions to use laziness
---   appropriately.  It also performs requirements analysis and
---   inserts types and requirements on bound variables.
+--   appropriately.  It also inserts types and requirements on bound
+--   variables so they will be available at runtime.
 --
 --   In theory it could also perform rewriting for overloaded
 --   constants depending on the actual type they are used at, but
@@ -76,3 +76,27 @@ wrapForce x = mapFreeS x (\s@(Syntax' l _ ty cs) -> Syntax' l (SApp sForce s) ty
 
 sForce :: TSyntax
 sForce = Syntax' NoLoc (TConst Force) Empty (Forall ["a"] (TyDelay (TyVar "a") :->: TyVar "a"))
+
+-- | Insert a special 'suspend' primitive at the very end of an erased
+--   term which must have a command type.
+insertSuspend :: Term -> Term
+insertSuspend t = case t of
+  -- Primitive things which have type Cmd Unit: p => (p ; suspend ())
+  TRequireDevice {} -> thenSuspend
+  TRequire {} -> thenSuspend
+  TRequirements {} -> thenSuspend
+  -- Recurse through let, bind, and annotate
+  TLet ls r x mty mreq t1 t2 -> TLet ls r x mty mreq t1 (insertSuspend t2)
+  TBind mx mty mreq c1 c2 -> TBind mx mty mreq c1 (insertSuspend c2)
+  TAnnotate t1 ty -> TAnnotate (insertSuspend t1) ty
+  -- Replace return with suspend
+  TApp (TConst Return) t1 -> TSuspend t1
+  -- Anything else: p => (__res__ <- p; suspend __res__)
+  --
+  -- Note that since we don't put type + reqs annotations on
+  -- __res__, it won't get added to the type environment and hence
+  -- won't be in scope for use after the suspend.  But we pick a
+  -- weird unlikely-to-be-used name just to be safe.
+  t' -> TBind (Just "__res__") Nothing Nothing t' (TSuspend (TVar "__res__"))
+ where
+  thenSuspend = TBind Nothing Nothing Nothing t (TSuspend TUnit)
