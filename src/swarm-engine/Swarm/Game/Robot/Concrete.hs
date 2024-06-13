@@ -91,7 +91,7 @@ instance ToSample Robot where
    where
     sampleBase :: Robot
     sampleBase =
-      instantiateRobot (Just $ C.initMachine [tmQ| move |] mempty C.emptyStore) 0 $
+      instantiateRobot (Just $ C.initMachine [tmQ| move |]) 0 $
         mkRobot
           Nothing
           "base"
@@ -109,7 +109,7 @@ instance ToSample Robot where
 
 mkMachine :: Maybe TSyntax -> C.CESK
 mkMachine Nothing = C.Out VUnit C.emptyStore []
-mkMachine (Just pt) = C.initMachine pt mempty C.emptyStore
+mkMachine (Just t) = C.initMachine t
 
 -- | Instantiate a robot template to make it into a concrete robot, by
 --    providing a robot ID. Concrete robots also require a location;
@@ -171,10 +171,8 @@ waitingUntil robot =
     C.Waiting time _ -> Just time
     _ -> Nothing
 
--- XXX don't need to return Store anymore?
-
 -- | Get the result of the robot's computation if it is finished.
-getResult :: Robot -> Maybe (Value, C.Store)
+getResult :: Robot -> Maybe Value
 {-# INLINE getResult #-}
 getResult = C.finalValue . view machine
 

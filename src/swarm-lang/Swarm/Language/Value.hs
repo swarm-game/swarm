@@ -99,6 +99,8 @@ data Value where
   VKey :: KeyCombo -> Value
   -- | A 'requirements' command awaiting execution.
   VRequirements :: Text -> Term -> Env -> Value
+  -- | A 'suspend' command awaiting execution.
+  VSuspend :: Term -> Env -> Value
   -- | A special value representing a program that terminated with
   --   an exception.
   VExc :: Value
@@ -222,4 +224,5 @@ valueToTerm = \case
   VRcd m -> TRcd (Just . valueToTerm <$> m)
   VKey kc -> TApp (TConst Key) (TText (prettyKeyCombo kc))
   VRequirements x t _ -> TRequirements x t
+  VSuspend t _ -> TSuspend t
   VExc -> TConst Undefined

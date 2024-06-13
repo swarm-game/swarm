@@ -1009,11 +1009,11 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         m' <- itraverse (\x ms -> check (fromMaybe (STerm (TVar x)) ms) (tyMap ! x)) fields
         return $ Syntax' l (SRcd (Just <$> m')) cs expected
 
-  -- The type of @suspend t@ is @Cmd T@ where @t : T@.
+  -- The type of @suspend t@ is @Cmd T@ if @t : T@.
   SSuspend s1 -> do
     argTy <- decomposeCmdTy s (Expected, expected)
     s1' <- check s1 argTy
-    return $ Syntax' l (SSuspend s1') cs (UTyCmd argTy)
+    return $ Syntax' l (SSuspend s1') cs expected
 
   -- Fallback: switch into inference mode, and check that the type we
   -- get is what we expected.
