@@ -114,29 +114,30 @@ prettyValue = prettyText . valueToTerm
 
 -- | Inject a value back into a term.
 valueToTerm :: Value -> Term
-valueToTerm VUnit = TUnit
-valueToTerm (VInt n) = TInt n
-valueToTerm (VText s) = TText s
-valueToTerm (VDir d) = TDir d
-valueToTerm (VBool b) = TBool b
-valueToTerm (VRobot r) = TRobot r
-valueToTerm (VInj s v) = TApp (TConst (bool Inl Inr s)) (valueToTerm v)
-valueToTerm (VPair v1 v2) = TPair (valueToTerm v1) (valueToTerm v2)
-valueToTerm (VClo x t e) =
-  M.foldrWithKey
-    (\y v -> TLet False y Nothing (valueToTerm v))
-    (TLam x Nothing t)
-    (M.restrictKeys (unCtx e) (S.delete x (setOf freeVarsV (Syntax' NoLoc t Empty ()))))
-valueToTerm (VCApp c vs) = foldl' TApp (TConst c) (reverse (map valueToTerm vs))
-valueToTerm (VDef r x t _) = TDef r x Nothing t
-valueToTerm (VResult v _) = valueToTerm v
-valueToTerm (VBind mx c1 c2 _) = TBind mx c1 c2
-valueToTerm (VDelay t _) = TDelay SimpleDelay t
-valueToTerm (VRef n) = TRef n
-valueToTerm (VRcd m) = TRcd (Just . valueToTerm <$> m)
-valueToTerm (VKey kc) = TApp (TConst Key) (TText (prettyKeyCombo kc))
-valueToTerm (VRequirements x t _) = TRequirements x t
-valueToTerm VExc = TConst Undefined
+valueToTerm = \case
+  VUnit -> TUnit
+  VInt n -> TInt n
+  VText s -> TText s
+  VDir d -> TDir d
+  VBool b -> TBool b
+  VRobot r -> TRobot r
+  VInj s v -> TApp (TConst (bool Inl Inr s)) (valueToTerm v)
+  VPair v1 v2 -> TPair (valueToTerm v1) (valueToTerm v2)
+  VClo x t e ->
+    M.foldrWithKey
+      (\y v -> TLet False y Nothing (valueToTerm v))
+      (TLam x Nothing t)
+      (M.restrictKeys (unCtx e) (S.delete x (setOf freeVarsV (Syntax' NoLoc t Empty ()))))
+  VCApp c vs -> foldl' TApp (TConst c) (reverse (map valueToTerm vs))
+  VDef r x t _ -> TDef r x Nothing t
+  VResult v _ -> valueToTerm v
+  VBind mx c1 c2 _ -> TBind mx c1 c2
+  VDelay t _ -> TDelay SimpleDelay t
+  VRef n -> TRef n
+  VRcd m -> TRcd (Just . valueToTerm <$> m)
+  VKey kc -> TApp (TConst Key) (TText (prettyKeyCombo kc))
+  VRequirements x t _ -> TRequirements x t
+  VExc -> TConst Undefined
 
 -- | An environment is a mapping from variable names to values.
 type Env = Ctx Value
