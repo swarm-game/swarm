@@ -61,11 +61,10 @@ testHighScores =
 compareAstSize :: Int -> FilePath -> TestTree
 compareAstSize expectedSize path = testCase (unwords ["size of", path]) $ do
   contents <- TIO.readFile $ baseTestPath </> path
-  pt <- case processTermEither contents of
+  t <- case processTermEither contents of
     Right x -> return x
     Left y -> assertFailure (into @String y)
-  let actualSize = measureAstSize (pt ^. processedSyntax)
-  assertEqual "incorrect size" expectedSize actualSize
+  assertEqual "incorrect size" expectedSize (measureAstSize t)
 
 betterReplTimeAfterCodeSizeRecord :: TestTree
 betterReplTimeAfterCodeSizeRecord =
