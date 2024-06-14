@@ -108,11 +108,23 @@ requirements tdCtx ctx =
     -- will be used at least once in the body. We delete the let-bound
     -- name from the context when recursing for the same reason as
     -- lambda.
-    TLet _ r x mty _ t1 t2 -> do
+    TLet LSLet r x mty _ t1 t2 -> do
       when r $ add (singletonCap CRecursion)
       add (singletonCap CEnv)
       mapM_ polytypeRequirements mty
       local @ReqCtx (Ctx.delete x) $ go t1 *> go t2
+    -- However, for def, we do NOT assume that the defined expression
+    -- will be used at least once in the body; it may not be executed
+    -- until later on, when the base robot has more capabilities.
+    TLet LSDef r x mty _ t1 t2 -> do
+      add (singletonCap CEnv)
+      mapM_ polytypeRequirements mty
+      localReqCtx <- ask @ReqCtx
+      localTDCtx <- ask @TDCtx
+      let bodyReqs =
+            (if r then (singletonCap CRecursion <>) else id)
+              (requirements localTDCtx localReqCtx t1)
+      local @ReqCtx (Ctx.addBinding x bodyReqs) $ go t2
     -- Using tydef requires CEnv, plus whatever the requirements are
     -- for the type itself.
     TTydef x ty tdInfo t2 -> do
