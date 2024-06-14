@@ -45,6 +45,7 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Achievement.Definitions qualified as AD
 import Swarm.Game.Scenario.Objective.Logic as L
+import Swarm.Language.JSON ()
 import Swarm.Language.Syntax (Syntax, TSyntax)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Util.Lens (concatFold, makeLensesExcluding, makeLensesNoSigs)

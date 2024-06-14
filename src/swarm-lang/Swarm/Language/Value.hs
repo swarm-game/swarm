@@ -27,7 +27,6 @@ module Swarm.Language.Value (
 ) where
 
 import Control.Lens hiding (Const)
-import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Bool (bool)
 import Data.List (foldl')
 import Data.Map (Map)
@@ -46,7 +45,6 @@ import Swarm.Language.Syntax.AST (LetSyntax (..))
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Typed
 import Swarm.Language.Types (Polytype, TCtx, TDCtx)
-import Swarm.Util.JSON (optionsMinimize)
 
 -- | A /value/ is a term that cannot (or does not) take any more
 --   evaluation steps on its own.
@@ -106,12 +104,6 @@ data Value where
   VExc :: Value
   deriving (Eq, Show, Generic)
 
-instance ToJSON Value where
-  toJSON = genericToJSON optionsMinimize
-
-instance FromJSON Value where
-  parseJSON = genericParseJSON optionsMinimize
-
 -- | A value context is a mapping from variable names to their runtime
 --   values.
 type VCtx = Ctx Value
@@ -135,7 +127,7 @@ data Env = Env
   , _envTydefs :: TDCtx
   -- ^ Type synonym definitions.
   }
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic)
 
 makeLenses ''Env
 
