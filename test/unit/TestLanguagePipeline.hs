@@ -592,7 +592,7 @@ testLanguagePipeline =
             "occurs check"
             ( process
                 "def sum = \\l. case l (\\_. 0) (\\c. fst c + sum (snd c)) end"
-                "Encountered infinite type u5 = Int * (u4 + u5).\nSwarm will not infer recursive types; if you want a recursive type, add an explicit type annotation."
+                "Encountered infinite type u6 = Int * (u5 + u6).\nSwarm will not infer recursive types; if you want a recursive type, add an explicit type annotation."
             )
         , testCase
             "no occurs check with type annotation"
