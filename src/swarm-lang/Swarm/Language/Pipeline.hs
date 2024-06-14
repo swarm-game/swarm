@@ -15,17 +15,24 @@ module Swarm.Language.Pipeline (
   processTerm',
   processParsedTerm',
   processTermEither,
+
+  -- * Utilities
+  extractTCtx,
+  extractReqCtx,
 ) where
 
 import Control.Lens ((^.))
 import Data.Bifunctor (first)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Elaborate
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Pretty
+import Swarm.Language.Requirements.Type (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
+import Swarm.Language.Types (TCtx)
 import Swarm.Language.Value (Env, envReqs, envTydefs, envTypes)
 
 processTermEither :: Text -> Either Text TSyntax
@@ -60,3 +67,37 @@ processParsedTerm' :: Env -> Syntax -> Either ContextualTypeErr TSyntax
 processParsedTerm' e t = do
   tt <- inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) t
   return $ elaborate tt
+
+------------------------------------------------------------
+-- Some utility functions
+------------------------------------------------------------
+
+-- XXX comment me
+extractTCtx :: Syntax' ty -> TCtx
+extractTCtx (Syntax' _ t _ _) = extractTCtxTerm t
+ where
+  extractTCtxTerm = \case
+    SLet _ _ (LV _ x) mty _ _ t2 -> maybe id (Ctx.addBinding x) mty (extractTCtx t2)
+    SBind mx _ mty _ c1 c2 ->
+      maybe
+        id
+        (uncurry Ctx.addBinding)
+        ((,) . lvVar <$> mx <*> mty)
+        (extractTCtx c1 <> extractTCtx c2)
+    SAnnotate t1 _ -> extractTCtx t1
+    _ -> mempty
+
+-- XXX comment me
+extractReqCtx :: Syntax' ty -> ReqCtx
+extractReqCtx (Syntax' _ t _ _) = extractReqCtxTerm t
+ where
+  extractReqCtxTerm = \case
+    SLet _ _ (LV _ x) _ mreq _ t2 -> maybe id (Ctx.addBinding x) mreq (extractReqCtx t2)
+    SBind mx _ _ mreq c1 c2 ->
+      maybe
+        id
+        (uncurry Ctx.addBinding)
+        ((,) . lvVar <$> mx <*> mreq)
+        (extractReqCtx c1 <> extractReqCtx c2)
+    SAnnotate t1 _ -> extractReqCtx t1
+    _ -> mempty
