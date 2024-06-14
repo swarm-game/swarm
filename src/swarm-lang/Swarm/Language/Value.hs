@@ -41,7 +41,6 @@ import Swarm.Language.Key (KeyCombo, prettyKeyCombo)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Requirements.Type (ReqCtx, Requirements)
 import Swarm.Language.Syntax
-import Swarm.Language.Syntax.AST (LetSyntax (..))
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Typed
 import Swarm.Language.Types (Polytype, TCtx, TDCtx)
