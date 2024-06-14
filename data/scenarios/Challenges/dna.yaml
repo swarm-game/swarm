@@ -1,0 +1,180 @@
+version: 1
+name: DNA
+author: Karl Ostmo
+description: |
+  Splice organisms
+creative: false
+seed: 1
+objectives:
+  - goal:
+      - |
+        Copy strands of DNA in the lab.
+    condition: |
+      return false;
+robots:
+  - name: base
+    dir: [1, 0]
+    devices:
+      - branch predictor
+      - treads
+      - antenna
+      - comparator
+      - workbench
+      - grabber
+      - ADT calculator
+      - dictionary
+      - lambda
+      - logger
+      - welder
+      - drill
+      - hearing aid
+      - scanner
+      - strange loop
+    inventory:
+      - [1, flower]
+      - [64, guanine]
+      - [64, cytosine]
+      - [64, adenine]
+      - [64, thymine]
+  - name: verifier
+    system: true
+    dir: [1, 0]
+    display:
+      invisible: true
+      attr: 'robot'
+    devices:
+      - drill
+    inventory:
+      - [128, guanine]
+      - [128, cytosine]
+      - [128, adenine]
+      - [128, thymine]
+      - [1, gold coin]
+      - [1, organic sludge]
+      - [1, branch predictor]
+      - [1, treads]
+      - [1, beaglepuss]
+      - [1, antenna]
+      - [1, comparator]
+      - [1, clock]
+      - [1, workbench]
+      - [1, grabber]
+      - [1, ADT calculator]
+      - [1, dictionary]
+      - [1, lambda]
+      - [1, logger]
+      - [1, welder]
+      - [1, hearing aid]
+      - [1, scanner]
+      - [1, strange loop]
+      - [1, solar panel]
+    program: |
+      run "data/scenarios/Challenges/_dna/verifier.sw"
+solution: |
+   run "data/scenarios/Challenges/_dna/solution.sw"
+entities:
+  - name: guanine
+    display:
+      char: 'G'
+      attr: red
+    description:
+      - One of the four nucleobases in DNA.
+      - Is paired with "cytosine".
+    properties: [portable, known]
+  - name: cytosine
+    display:
+      char: 'C'
+      attr: blue
+    description:
+      - One of the four nucleobases in DNA.
+      - Is paired with "guanine".
+    properties: [portable, known]
+  - name: adenine
+    display:
+      char: 'A'
+      attr: green
+    description:
+      - One of the four nucleobases in DNA.
+      - Is paired with "thymine".
+    properties: [portable, known]
+  - name: thymine
+    display:
+      char: 'T'
+      attr: gold
+    description:
+      - One of the four nucleobases in DNA.
+      - Is paired with "adenine".
+    properties: [portable, known]
+  - name: switch (off)
+    display:
+      attr: red
+      char: '•'
+    description:
+    - A control in the deactivated position.
+    properties: [known]
+  - name: switch (on)
+    display:
+      attr: green
+      char: '•'
+    description:
+    - A control in the activated position.
+    properties: [known]
+  - name: organic sludge
+    display:
+      attr: green
+      char: 'S'
+    description:
+    - A repulsive, shuddering mass of slime.
+    properties: [portable]
+recipes:
+  - in:
+    - [1, switch (off)]
+    out:
+    - [1, switch (on)]
+    required:
+    - [1, drill]
+  - in:
+    - [1, switch (on)]
+    out:
+    - [1, switch (off)]
+    required:
+    - [1, drill]
+known: [bit (0), bit (1)]
+world:
+  default: [grass]
+  upperleft: [0, 0]
+  offset: false
+  palette:
+    '┬': [stone, down and horizontal wall]
+    '┴': [stone, up and horizontal wall]
+    '─': [stone, horizontal wall]
+    '│': [stone, vertical wall]
+    '├': [stone, right and vertical wall]
+    '┐': [stone, upper right corner]
+    '┘': [stone, lower right corner]
+    '┤': [stone, left and vertical wall]
+    '┌': [stone, upper left corner]
+    '└': [stone, lower left corner]
+    '.': [stone]
+    ':': [blank]
+    'v': [blank, null, verifier]
+    'B': [stone, null, base]
+    '0': [blank, switch (off)]
+  map: |
+    ..................................................................
+    .....┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬.............................
+    .....::::::::::::::::::::::::::::::::.............................
+    .┌┐..::::::::::::::::::::::::::::::::.............................
+    Bv├──┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴.............................
+    .└┘...............................................................
+    ..................................................................
+    ..................................................................
+    ..................................................................
+    ..................................................................
+    ..┌─.┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬.............................
+    ..│0.::::::::::::::::::::::::::::::::.............................
+    ..└─.::::::::::::::::::::::::::::::::..┌┐.........................
+    .....┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴──┤:.........................
+    .......................................└┘.........................
+    ..................................................................
+    
