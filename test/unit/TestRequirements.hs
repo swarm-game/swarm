@@ -13,7 +13,7 @@ import Data.Text (Text)
 import Swarm.Language.Capability
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline
-import Swarm.Language.Requirement
+import Swarm.Language.Requirements.Type (ReqCtx, Requirements)
 import Test.Tasty
 import Test.Tasty.HUnit
 import TestUtil (check)
