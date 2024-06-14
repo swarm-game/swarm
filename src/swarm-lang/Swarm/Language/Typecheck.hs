@@ -986,9 +986,13 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
 
   -- Kind-check a type definition and then check the body under an
   -- extended context.
-  STydef x pty t1 -> do
+  STydef x pty _ t1 -> do
     tydef <- adaptToTypeErr l KindErr $ checkPolytypeKind pty
-    withBinding (lvVar x) tydef $ check t1 expected
+    t1' <- withBinding (lvVar x) tydef (check t1 expected)
+    -- Eliminate the type alias in the reported type, since it is not
+    -- in scope in the ambient context to which we report back the type.
+    expected' <- elimTydef (lvVar x) tydef <$> applyBindings expected
+    return $ Syntax' l (STydef x pty (Just tydef) t1') cs expected'
 
   -- To check a record, ensure the expected type is a record type,
   -- ensure all the right fields are present, and push the expected
@@ -1103,7 +1107,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   TRequireDevice {} -> return 0
   TRequire {} -> return 0
   SRequirements {} -> return 0
-  TTydef {} -> return 0
+  STydef {} -> return 0
   -- Constants.
   TConst c
     -- Nested 'atomic' is not allowed.
