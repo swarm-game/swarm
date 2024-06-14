@@ -842,8 +842,8 @@ updateUI = do
           gameState . gameControls . replStatus .= REPLDone (Just (pty, v))
           pure True
 
-      -- It did, and returned some other value.  Create a new 'it'
-      -- variable, pretty-print the result as a REPL output, with its
+      -- It did, and returned some other value.  Create new 'it'
+      -- variables, pretty-print the result as a REPL output, with its
       -- type, and reset the replStatus.
       | otherwise -> do
           itIx <- use (gameState . gameControls . replNextValueIndex)
@@ -855,6 +855,7 @@ updateUI = do
           vScrollToEnd replScroll
           gameState . gameControls . replStatus .= REPLDone (Just (finalType, v))
           gameState . baseEnv . at itName .= Just (Typed v finalType mempty)
+          gameState . baseEnv . at "it" .= Just (Typed v finalType mempty)
           gameState . gameControls . replNextValueIndex %= (+ 1)
           pure True
 
