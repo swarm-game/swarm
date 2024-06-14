@@ -319,7 +319,12 @@ instance PrettyPrec (Term' ty) where
           : case t2 of
             Syntax' _ (TConst Noop) _ _ -> []
             _ -> [hardline, hardline, ppr t2]
-    TTydef (LV _ x) pty -> prettyTydef x pty
+    STydef (LV _ x) pty t1 ->
+      mconcat $
+        prettyTydef x pty
+          : case t1 of
+            Syntax' _ (TConst Noop) _ _ -> []
+            _ -> [hardline, hardline, ppr t1]
     SBind Nothing _ _ _ t1 t2 ->
       pparens (p > 0) $
         prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2

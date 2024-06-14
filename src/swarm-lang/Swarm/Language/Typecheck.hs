@@ -984,10 +984,11 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     -- Return the annotated let.
     return $ Syntax' l (SLet ls r x mxTy (Just reqs) t1' t2') cs expected
 
-  -- XXX have to update this so it's more like a let.
-  TTydef _x pty -> do
-    _tydef <- adaptToTypeErr l KindErr $ checkPolytypeKind pty
-    return $ undefined
+  -- Kind-check a type definition and then check the body under an
+  -- extended context.
+  STydef x pty t1 -> do
+    tydef <- adaptToTypeErr l KindErr $ checkPolytypeKind pty
+    withBinding (lvVar x) tydef $ check t1 expected
 
   -- To check a record, ensure the expected type is a record type,
   -- ensure all the right fields are present, and push the expected
