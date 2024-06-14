@@ -77,9 +77,10 @@ module Swarm.Game.CESK (
   -- ** Extracting information
   finalValue,
   suspendedEnv,
+  store,
 ) where
 
-import Control.Lens (Traversal', traversal, (^.))
+import Control.Lens (Lens', Traversal', lens, traversal, (^.))
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
@@ -304,6 +305,23 @@ suspendedEnv = traversal go
   go f (Suspended v e s k) = Suspended v <$> f e <*> pure s <*> pure k
   go _ cesk = pure cesk
 
+-- | Lens focusing on the store of a CESK machine.
+store :: Lens' CESK Store
+store = lens get set
+ where
+  get = \case
+    In _ _ s _ -> s
+    Out _ s _ -> s
+    Up _ s _ -> s
+    Waiting _ c -> get c
+    Suspended _ _ s _ -> s
+  set cesk s = case cesk of
+    In t e _ k -> In t e s k
+    Out v _ k -> Out v s k
+    Up x _ k -> Up x s k
+    Waiting t c -> Waiting t (set c s)
+    Suspended v e _ k -> Suspended v e s k
+
 -- | Create a brand new CESK machine, with empty environment and
 --   store, to evaluate a given term.  We always initialize the
 --   machine with a single FExec frame as the continuation; if the
@@ -339,12 +357,7 @@ prepareTerm e t = case whnfType (e ^. envTydefs) (ptBody (t ^. sType)) of
 cancel :: CESK -> CESK
 cancel cesk = Out VUnit s' []
  where
-  s' = resetBlackholes $ getStore cesk
-  getStore (In _ _ s _) = s
-  getStore (Out _ s _) = s
-  getStore (Up _ s _) = s
-  getStore (Waiting _ c) = getStore c
-  getStore (Suspended _ _ s _) = s
+  s' = resetBlackholes $ cesk ^. store
 
 -- | Reset any 'Blackhole's in the 'Store'.  We need to use this any
 --   time a running computation is interrupted, either by an exception

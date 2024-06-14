@@ -45,6 +45,8 @@ module Swarm.Game.State (
   robotsAtLocation,
   robotsInArea,
   baseRobot,
+  baseEnv,
+  baseStore,
   messageNotifications,
   currentScenarioPath,
   needsRedraw,
@@ -101,7 +103,7 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import GHC.Generics (Generic)
 import Linear (V2 (..))
-import Swarm.Game.CESK (finalValue, initMachine)
+import Swarm.Game.CESK (Store, emptyStore, finalValue, initMachine, store, suspendedEnv)
 import Swarm.Game.Device (getCapabilitySet, getMap)
 import Swarm.Game.Entity
 import Swarm.Game.Failure (SystemFailure (..))
@@ -135,6 +137,7 @@ import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Pipeline (processTermEither)
 import Swarm.Language.Syntax (SrcLoc (..), TSyntax, allConst, sLoc)
 import Swarm.Language.Types
+import Swarm.Language.Value (Env)
 import Swarm.Log
 import Swarm.Util (binTuples, uniq, (?))
 import Swarm.Util.Lens (makeLensesNoSigs)
@@ -247,6 +250,16 @@ robotsInArea (Cosmic subworldName o) d rs = map (rm IM.!) rids
 -- | The base robot, if it exists.
 baseRobot :: Traversal' GameState Robot
 baseRobot = robotInfo . robotMap . ix 0
+
+-- | The base robot environment.
+baseEnv :: Traversal' GameState Env
+baseEnv = baseRobot . machine . suspendedEnv
+
+-- | The base robot store, or the empty store if there is no base robot.
+baseStore :: Getter GameState Store
+baseStore = to $ \g -> case g ^? baseRobot . machine of
+  Nothing -> emptyStore
+  Just m -> m ^. store
 
 -- | Inputs for randomness
 randomness :: Lens' GameState Randomness
