@@ -115,26 +115,12 @@ requirements tdCtx ctx =
       local @ReqCtx (Ctx.delete x) $ go t1 *> go t2
     -- Using tydef requires CEnv, plus whatever the requirements are
     -- for the type itself.
-    TTydef x ty t2 -> do
+    TTydef x ty tdInfo t2 -> do
       add (singletonCap CEnv)
       polytypeRequirements ty
       -- Now check the nested term with the new type definition added
       -- to the context.
-      --
-      -- Note, it's probably not ideal to be constructing a TydefInfo
-      -- here manually (when one is already returned by kind
-      -- checking).  If we eventually update to higher-kinded types,
-      -- we definitely won't want to redo the work of kind checking
-      -- here.  In that case we can probably do something similar to
-      -- what typechecking already does for let --- add a (Maybe
-      -- TydefInfo) field in TTydef and stuff the info there during
-      -- type/kindchecking so we can access it later.
-      --
-      -- On the other hand, if we end up doing #231 first, then
-      -- this will all be totally rewritten anyway.
-      let ar = case ty of
-            Forall as _ -> Arity (length as)
-      local @TDCtx (Ctx.addBinding x (TydefInfo ty ar)) (go t2)
+      local @TDCtx (maybe id (Ctx.addBinding x) tdInfo) (go t2)
     -- We also delete the name in a TBind, if any, while recursing on
     -- the RHS.
     TBind mx _ _ t1 t2 -> do

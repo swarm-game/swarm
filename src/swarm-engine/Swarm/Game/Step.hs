@@ -644,8 +644,9 @@ stepCESK cesk = case cesk of
           Nothing -> addValueBinding x v1 e
           Just (ty, req) -> addBinding x (Typed v1 ty req) e
     return $ In t2 e' s k
-  -- Type definitions just turn into a no-op.
-  In (TTydef {}) e s k -> return $ In (TConst Noop) e s k
+  -- To evaluate a tydef, insert it into the context and proceed to
+  -- evaluate the body.
+  In (TTydef x _ tdInfo t1) e s k -> return $ In t1 (maybe id (addTydef x) tdInfo e) s k
   -- Bind expressions don't evaluate: just package it up as a value
   -- until such time as it is to be executed.
   In (TBind mx mty mreq t1 t2) e s k -> return $ Out (VBind mx mty mreq t1 t2 e) s k

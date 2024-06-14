@@ -304,51 +304,36 @@ suspendedEnv = traversal go
   go f (Suspended v e s k) = Suspended v <$> f e <*> pure s <*> pure k
   go _ cesk = pure cesk
 
--- | Initialize a CESK machine, with empty environment and store, to
---   evaluate a given term.
---   XXX explain cmd vs other types
+-- | Create a brand new CESK machine, with empty environment and
+--   store, to evaluate a given term.  We always initialize the
+--   machine with a single FExec frame as the continuation; if the
+--   given term does not have a command type, we wrap it in @return@.
 initMachine :: TSyntax -> CESK
-initMachine t = In t' mempty emptyStore [FExec]
- where
-  t' = case t ^. sType of
-    Forall _ (TyCmd _) -> eraseS t -- XXX need to look through synonyms
-    _ -> TApp (TConst Return) (eraseS t)
+initMachine t = In (prepareTerm mempty t) mempty emptyStore [FExec]
 
--- XXX abstract this and continue somehow
-
--- -- | Initialize a machine state with a starting term along with its
--- --   type; the term will be executed or just evaluated depending on
--- --   whether it has a command type or not.
--- initMachine :: TSyntax -> Env -> Store -> CESK
--- initMachine t e s = initMachine' t e s []
-
--- -- | Like 'initMachine', but also take an explicit starting continuation.
--- initMachine' :: TSyntax -> Env -> Store -> Cont -> CESK
--- initMachine' pt e s k =
---   case pt ^. sType of
---     -- XXX need to look through type synonyms here?
---     -- If the starting term has a command type, create a machine that will
---     -- evaluate and then execute it.
---     Forall _ (TyCmd _) -> In t e s (FExec : k)
---     -- Otherwise, for a term with a non-command type, just
---     -- create a machine to evaluate it.
---     _ -> In t e s k
---  where
---   -- Erase all type and SrcLoc annotations from the term before
---   -- putting it in the machine state, since those are irrelevant at
---   -- runtime.
---   t = eraseS pt
-
--- | Load a program into an existing robot CESK machine: either continue from a
---   suspended state, or start from scratch with an empty environment.
+-- | Load a program into an existing robot CESK machine: either
+--   continue from a suspended state, or, as a fallback, start from
+--   scratch with an empty environment.
+--
+--   Also insert a @suspend@ primitive at the end, so the resulting
+--   term is suitable for execution by the base (REPL) robot.
 continue :: TSyntax -> CESK -> CESK
 continue t = \case
-  Suspended _ e s k -> In t' e s (FExec : k)
-  _ -> In t' mempty emptyStore [FExec]
+  Suspended _ e s k -> In (insertSuspend $ prepareTerm e t) e s (FExec : k)
+  _ -> In (insertSuspend $ prepareTerm mempty t) mempty emptyStore [FExec]
+
+-- | Prepare a term for evaluation by a CESK machine in the given
+--   environment: erase all type annotations, and optionally wrap it
+--   in @return@ if it does not have a command type.  Note that since
+--   the environment might contain type aliases, we have to be careful
+--   to expand them before concluding whether the term has a command
+--   type or not.
+prepareTerm :: Env -> TSyntax -> Term
+prepareTerm e t = case whnfType (e ^. envTydefs) (ptBody (t ^. sType)) of
+  TyCmd _ -> t'
+  _ -> TApp (TConst Return) t'
  where
-  t' = insertSuspend $ case t ^. sType of
-    Forall _ (TyCmd _) -> eraseS t -- XXX need to look through synonyms
-    _ -> TApp (TConst Return) (eraseS t)
+  t' = eraseS t
 
 -- | Cancel the currently running computation.
 cancel :: CESK -> CESK
