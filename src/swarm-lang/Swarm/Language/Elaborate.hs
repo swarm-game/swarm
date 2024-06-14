@@ -91,8 +91,9 @@ insertSuspend t = case t of
   TTydef x pty mtd t1 -> TTydef x pty mtd (insertSuspend t1)
   TBind mx mty mreq c1 c2 -> TBind mx mty mreq c1 (insertSuspend c2)
   TAnnotate t1 ty -> TAnnotate (insertSuspend t1) ty
-  -- Replace return with suspend
+  -- Replace return or noop with suspend
   TApp (TConst Return) t1 -> TSuspend t1
+  TConst Noop -> TSuspend TUnit
   -- Anything else: p => (__res__ <- p; suspend __res__)
   --
   -- Note that since we don't put type + reqs annotations on
