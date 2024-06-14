@@ -128,9 +128,9 @@ library swarm-lang
     Swarm.Language.Context
     Swarm.Language.Elaborate
     Swarm.Language.Format
+    Swarm.Language.JSON
     Swarm.Language.Key
     Swarm.Language.Kindcheck
-    Swarm.Language.JSON
     Swarm.Language.LSP
     Swarm.Language.LSP.Hover
     Swarm.Language.LSP.VarUsage
