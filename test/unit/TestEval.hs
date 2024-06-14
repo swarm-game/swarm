@@ -305,6 +305,24 @@ testEval g =
                 `evaluatesTo` VRcd (M.fromList [("x", VInt 2), ("y", VInt 1)])
             )
         ]
+    , testGroup
+        "scope - #681"
+        [ testCase
+            "binder in local scope"
+            ("def f = a <- scan down end; let a = 2 in f; return (a+1)" `evaluatesTo` VInt 3)
+        , testCase
+            "binder in local scope, no type change"
+            ("def f = a <- return 1 end; let a = 2 in f; return a" `evaluatesTo` VInt 2)
+        , testCase
+            "repeat with scan"
+            ("def x = \\n. \\c. if (n==0) {} {c; x (n-1) c} end; x 10 ( c <- scan down; case c (\\_. say \"Hi\") (\\_. return ()))" `evaluatesTo` VUnit)
+        , testCase
+            "nested recursion with binder - #1032"
+            ("def go = \\n. if (n > 0) {i <- return n; s <- go (n-1); return (s+i)} {return 0} end; go 4" `evaluatesTo` VInt 10)
+        , testCase
+            "binder in local scope - #1796"
+            ("def x = \\x.x end; def foo = x <- return 0 end; foo; return (x 42)" `evaluatesTo` VInt 42)
+        ]
     ]
  where
   tquote :: String -> Text
@@ -317,7 +335,7 @@ testEval g =
       Left err ->
         p err
           @? "Expected predicate did not hold on error message "
-            ++ from @Text @String err
+          ++ from @Text @String err
 
   evaluatesTo :: Text -> Value -> Assertion
   evaluatesTo tm val = do
