@@ -25,6 +25,7 @@ import Swarm.Game.State.Robot
 import Swarm.Game.Step (gameTick, hypotheticalRobot, stepCESK)
 import Swarm.Language.Context
 import Swarm.Language.Pipeline (processTerm)
+import Swarm.Language.Syntax.Pattern (TSyntax)
 import Swarm.Language.Value
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure)
 import Witch (into)
