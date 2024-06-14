@@ -303,22 +303,3 @@ nextScenario = \case
           then Nothing
           else BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
   _ -> Nothing
-
--- -- | Context for the REPL commands to execute in. Contains the base
--- --   robot environment plus the `it` variable that refers to the
--- --   previously computed value. (Note that `it{n}` variables are set
--- --   in the base robot environment directly; we only set `it` here
--- --   because it's so transient.)
--- replEnv :: AppState -> Env
--- replEnv s = envPossiblyWithIt
---  where
---   e = fromMaybe emptyRobotContext $ s ^? gameState . baseRobot . machine .
-
---   envPossiblyWithIt = case s ^. gameState . gameControls . replStatus of
---     REPLDone (Just p@(Typed v _ _)) | v /= VExc -> ctx & at "it" ?~ p
---     _ -> ctx
-
--- XXX started updating the above to return Env instead of
--- RobotContext, but I'm not sure we really still want this function
--- at all.  But I'm not yet sure where to put the code to create the 'it' variable,
--- so just commenting this out for now.

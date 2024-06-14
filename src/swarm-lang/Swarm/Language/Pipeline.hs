@@ -72,7 +72,8 @@ processParsedTerm' e t = do
 -- Some utility functions
 ------------------------------------------------------------
 
--- XXX comment me
+-- | Extract a type context from type annotations on definitions
+--   contained in a term.  Should probably only be used for testing.
 extractTCtx :: Syntax' ty -> TCtx
 extractTCtx (Syntax' _ t _ _) = extractTCtxTerm t
  where
@@ -87,7 +88,9 @@ extractTCtx (Syntax' _ t _ _) = extractTCtxTerm t
     SAnnotate t1 _ -> extractTCtx t1
     _ -> mempty
 
--- XXX comment me
+-- | Extract a requirements context from requirements annotations on
+--   definitions contained in a term.  Should probably only be used
+--   for testing.
 extractReqCtx :: Syntax' ty -> ReqCtx
 extractReqCtx (Syntax' _ t _ _) = extractReqCtxTerm t
  where
