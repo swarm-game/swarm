@@ -86,7 +86,7 @@ import Prelude hiding (lookup)
 --   during typechecking.
 data TCFrame where
   -- | Checking a definition.
-  TCDef :: Var -> TCFrame
+  TCLet :: Var -> TCFrame
   -- | Inferring the LHS of a bind.
   TCBindL :: TCFrame
   -- | Inferring the RHS of a bind.
@@ -946,8 +946,8 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         when (c == Atomic) $ validAtomic at
         return $ Syntax' l (SApp atomic' at') cs (UTyCmd argTy)
 
-  -- Checking the type of a let-expression.
-  SLet ls r x mxTy _ t1 t2 -> do
+  -- Checking the type of a let- or def-expression.
+  SLet ls r x mxTy _ t1 t2 -> withFrame l (TCLet (lvVar x)) $ do
     traverse_ (adaptToTypeErr l KindErr . checkPolytypeKind) mxTy
     (upty, t1') <- case mxTy of
       -- No type annotation was provided for the let binding, so infer its type.
