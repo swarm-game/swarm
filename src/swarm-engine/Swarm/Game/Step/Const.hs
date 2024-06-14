@@ -1031,7 +1031,7 @@ execConst runChildProg c vs s k = do
         return $ mkReturn ()
       _ -> badConst
     Reprogram -> case vs of
-      [VRobot childRobotID, VDelay cmd e] -> do
+      [VRobot childRobotID, VDelay cmd env] -> do
         r <- get
         isPrivileged <- isPrivilegedBot
 
@@ -1062,7 +1062,7 @@ execConst runChildProg c vs s k = do
         -- and if so, what is needed.
         (toEquip, toGive) <-
           checkRequirements
-            undefined -- XXX where to get Env?
+            env
             (r ^. robotInventory)
             (childRobot ^. robotInventory)
             (childRobot ^. equippedDevices)
@@ -1073,7 +1073,7 @@ execConst runChildProg c vs s k = do
         -- Update other robot's CESK machine.  The child robot
         -- inherits the parent robot's environment + store.
         zoomRobots $ do
-          robotMap . at childRobotID . _Just . machine .= In cmd e s [FExec]
+          robotMap . at childRobotID . _Just . machine .= In cmd env s [FExec]
 
         -- Provision the target robot with any required devices and
         -- inventory that are lacking.
