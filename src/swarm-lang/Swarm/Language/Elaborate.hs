@@ -85,8 +85,10 @@ insertSuspend t = case t of
   TRequireDevice {} -> thenSuspend
   TRequire {} -> thenSuspend
   TRequirements {} -> thenSuspend
-  -- Recurse through let, bind, and annotate
-  TLet ls r x mty mreq t1 t2 -> TLet ls r x mty mreq t1 (insertSuspend t2)
+  -- Recurse through let, tydef, bind, and annotate (but NOT through
+  -- let).
+  TLet LSDef r x mty mreq t1 t2 -> TLet LSDef r x mty mreq t1 (insertSuspend t2)
+  TTydef x pty mtd t1 -> TTydef x pty mtd (insertSuspend t1)
   TBind mx mty mreq c1 c2 -> TBind mx mty mreq c1 (insertSuspend c2)
   TAnnotate t1 ty -> TAnnotate (insertSuspend t1) ty
   -- Replace return with suspend

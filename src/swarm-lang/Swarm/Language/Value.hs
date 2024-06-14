@@ -24,6 +24,7 @@ module Swarm.Language.Value (
   lookupValue,
   addBinding,
   addValueBinding,
+  addTydef,
 ) where
 
 import Control.Lens hiding (Const)
@@ -43,7 +44,7 @@ import Swarm.Language.Requirements.Type (ReqCtx, Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Typed
-import Swarm.Language.Types (Polytype, TCtx, TDCtx)
+import Swarm.Language.Types (Polytype, TCtx, TDCtx, TydefInfo)
 
 -- | A /value/ is a term that cannot (or does not) take any more
 --   evaluation steps on its own.
@@ -145,6 +146,9 @@ addBinding x v = at x ?~ v
 --   `lookupValue` will work though.
 addValueBinding :: Var -> Value -> Env -> Env
 addValueBinding x v = envVals %~ Ctx.addBinding x v
+
+addTydef :: Var -> TydefInfo -> Env -> Env
+addTydef x pty = envTydefs %~ Ctx.addBinding x pty
 
 instance Semigroup Env where
   Env t1 r1 v1 td1 <> Env t2 r2 v2 td2 = Env (t1 <> t2) (r1 <> r2) (v1 <> v2) (td1 <> td2)

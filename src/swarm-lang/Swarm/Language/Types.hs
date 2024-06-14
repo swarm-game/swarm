@@ -94,13 +94,18 @@ module Swarm.Language.Types (
   tydefArity,
   substTydef,
   expandTydef,
+  elimTydef,
   TDCtx,
+
+  -- * WHNF
+  whnfType,
 
   -- * The 'WithU' class
   WithU (..),
 ) where
 
-import Control.Algebra (Has)
+import Control.Algebra (Has, run)
+import Control.Carrier.Reader (runReader)
 import Control.Effect.Reader (Reader, ask)
 import Control.Lens (makeLenses, view)
 import Control.Monad.Free
@@ -316,7 +321,7 @@ instance Typical UType where
 -- | A @Poly t@ is a universally quantified @t@.  The variables in the
 --   list are bound inside the @t@.  For example, the type @forall
 --   a. a -> a@ would be represented as @Forall ["a"] (TyFun "a" "a")@.
-data Poly t = Forall [Var] t
+data Poly t = Forall {ptVars :: [Var], ptBody :: t}
   deriving (Show, Eq, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
 -- | A polytype without unification variables.
@@ -566,6 +571,17 @@ substTydef (TydefInfo (Forall as ty) _) tys = foldT @t substF (fromType ty)
     Just ty' -> ty'
   substF tyF = rollT tyF
 
+-- | Replace a type alias with its definition everywhere it occurs
+--   inside a type.  Typically this is done when reporting the type of
+--   a term containing a local tydef: since the tydef is local we
+--   can't use it in the reported type.
+elimTydef :: forall t. Typical t => Var -> TydefInfo -> t -> t
+elimTydef x tdInfo = foldT substF
+ where
+  substF = \case
+    TyConF (TCUser u) tys | u == x -> substTydef tdInfo tys
+    tyF -> rollT tyF
+
 ------------------------------------------------------------
 -- Arity
 ------------------------------------------------------------
@@ -616,3 +632,19 @@ instance SubstRec Type where
       | otherwise -> Fix (TyRecVarF j)
     TyRecF x g -> Fix (TyRecF x (g (NS i)))
     _ -> Fix (fmap ($ i) f)
+
+------------------------------------------------------------
+-- Reducing types to WHNF
+------------------------------------------------------------
+
+-- | Reduce a type to weak head normal form, i.e. keep unfold type
+--   aliases and recursive types just until the top-level constructor
+--   of the type is neither @rec@ nor an application of a type alias.
+whnfType :: TDCtx -> Type -> Type
+whnfType tdCtx = run . runReader tdCtx . go
+ where
+  go :: Has (Reader TDCtx) sig m => Type -> m Type
+  go = \case
+    TyUser u tys -> expandTydef u tys >>= go
+    TyRec x ty -> go (unfoldRec x ty)
+    ty -> pure ty

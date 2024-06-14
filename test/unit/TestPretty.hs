@@ -185,10 +185,10 @@ testPrettyConst =
         "tydef"
         [ testCase "tydef alias" $
             equalPretty "tydef X = Int end" $
-              TTydef "X" (Forall [] TyInt) (TConst Noop)
+              TTydef "X" (Forall [] TyInt) Nothing (TConst Noop)
         , testCase "tydef Maybe" $
             equalPretty "tydef Maybe a = Unit + a end" $
-              TTydef "Maybe" (Forall ["a"] (TyUnit :+: TyVar "a")) (TConst Noop)
+              TTydef "Maybe" (Forall ["a"] (TyUnit :+: TyVar "a")) Nothing (TConst Noop)
         , testCase "tydef multi-arg" $
             equalPretty "tydef Foo a b c d = Unit + ((a * b) + ((c -> d) * a)) end" $
               TTydef
@@ -197,10 +197,11 @@ testPrettyConst =
                     ["a", "b", "c", "d"]
                     (TyUnit :+: (TyVar "a" :*: TyVar "b") :+: ((TyVar "c" :->: TyVar "d") :*: TyVar "a"))
                 )
+                Nothing
                 (TConst Noop)
         , testCase "consecutive tydef" $
             equalPretty "tydef X = Int end\n\ntydef Y = Bool end" $
-              TTydef "X" (Forall [] TyInt) (TTydef "Y" (Forall [] TyBool) (TConst Noop))
+              TTydef "X" (Forall [] TyInt) Nothing (TTydef "Y" (Forall [] TyBool) Nothing (TConst Noop))
         ]
     , testGroup
         "recursive types"
