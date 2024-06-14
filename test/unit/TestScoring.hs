@@ -3,7 +3,6 @@
 -- | High score records
 module TestScoring where
 
-import Control.Lens ((^.))
 import Data.Text.IO qualified as TIO
 import Data.Time.Calendar.OrdinalDate
 import Data.Time.LocalTime
