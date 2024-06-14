@@ -176,7 +176,14 @@ asTree = para Node
 -- | Each constructor is a assigned a value of 1, plus
 --   any recursive syntax it entails.
 measureAstSize :: Data a => Syntax' a -> Int
-measureAstSize = length . universe
+measureAstSize = length . filter (not . isNoop) . universe
+
+-- | Don't count "noop" nodes towards the code size.  They are usually
+--   inserted automatically, either in @{}@ or after a bare @def@.
+isNoop :: Syntax' a -> Bool
+isNoop = \case
+  Syntax' _ (TConst Noop) _ _ -> True
+  _ -> False
 
 locVarToSyntax' :: LocVar -> ty -> Syntax' ty
 locVarToSyntax' (LV s v) = Syntax' s (TVar v) Empty
