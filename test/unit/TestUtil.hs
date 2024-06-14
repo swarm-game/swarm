@@ -23,7 +23,6 @@ import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.Step (gameTick, hypotheticalRobot, stepCESK)
-import Swarm.Language.Context
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.Language.Syntax.Pattern (TSyntax)
 import Swarm.Language.Value
@@ -54,15 +53,15 @@ evalCESK g cesk =
 runCESK :: Int -> CESK -> StateT Robot (StateT GameState IO) (Either Text (Value, Int))
 runCESK _ (Up exn _ []) = Left . flip formatExn exn <$> lift (use $ landscape . terrainAndEntities . entityMap)
 runCESK !steps cesk = case finalValue cesk of
-  Just (v, _) -> return (Right (v, steps))
+  Just v -> return (Right (v, steps))
   Nothing -> runTimeIO (stepCESK cesk) >>= runCESK (steps + 1)
 
 play :: GameState -> Text -> IO (Either Text (), GameState)
 play g = either (return . (,g) . Left) playPT . processTerm1
  where
-  playPT pt = runStateT (playUntilDone (hr ^. robotID)) gs
+  playPT t = runStateT (playUntilDone (hr ^. robotID)) gs
    where
-    cesk = initMachine pt empty emptyStore
+    cesk = initMachine t
     hr = hypotheticalRobot cesk 0
     hid = hr ^. robotID
     gs =
