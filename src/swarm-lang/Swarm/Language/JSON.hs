@@ -4,7 +4,8 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- XXX comment me
+-- Some orphan @To/FromJSON@ instances for terms and values.  We have
+-- to put them all here to avoid circular module dependencies.
 module Swarm.Language.JSON where
 
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON, withText)
