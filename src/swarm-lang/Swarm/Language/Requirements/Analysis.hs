@@ -27,9 +27,8 @@ import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction (isCardinal)
 import Swarm.Language.Types
 
--- | Infer the requirements to execute/evaluate a term in a
---   given context, where the term is guaranteed not to contain any
---   'TDef'.
+-- | Infer the requirements to execute/evaluate a term in a given
+--   context.
 --
 --   For function application and let-expressions, we assume that the
 --   argument (respectively let-bound expression) is used at least
@@ -39,8 +38,12 @@ import Swarm.Language.Types
 --   (since e.g. an unused let-binding would still incur the
 --   capabilities to *evaluate* it), which does not seem worth it at
 --   all.
+--
+--   This is all a bit of a hack at the moment, to be honest; see #231
+--   for a description of a more correct approach.
 requirements :: TDCtx -> ReqCtx -> Term -> Requirements
-requirements tdCtx ctx = run . execAccum mempty . runReader tdCtx . runReader ctx . go
+requirements tdCtx ctx =
+  run . execAccum mempty . runReader tdCtx . runReader ctx . (add (singletonCap CPower) *>) . go
  where
   go ::
     ( Has (Accum Requirements) sig m
