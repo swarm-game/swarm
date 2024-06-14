@@ -36,7 +36,6 @@ import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Pipeline (processParsedTerm)
 import Swarm.Language.Pretty (prettyText, prettyTextLine)
 import Swarm.Language.Syntax
-import Swarm.Language.Syntax.AST (LetSyntax (..))
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types
 import Swarm.Util qualified as U

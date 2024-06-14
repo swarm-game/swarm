@@ -22,7 +22,6 @@ import Swarm.Language.Parser.Lex
 import Swarm.Language.Parser.Record (parseRecord)
 import Swarm.Language.Parser.Type
 import Swarm.Language.Syntax
-import Swarm.Language.Syntax.AST (LetSyntax (..))
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Types
 import Swarm.Util (failT, findDup)

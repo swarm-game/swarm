@@ -8,7 +8,7 @@
 module TestLanguagePipeline where
 
 import Control.Arrow ((&&&))
-import Control.Lens (toListOf, view)
+import Control.Lens (toListOf)
 import Control.Lens.Plated (universe)
 import Data.Aeson (eitherDecode, encode)
 import Data.Maybe
