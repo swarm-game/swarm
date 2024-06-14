@@ -90,9 +90,10 @@ parseTermAtom2 =
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
           <*> (optional (symbol ";") *> (parseTerm <|> (eof $> sNoop)))
-        <|> TTydef
+        <|> STydef
           <$> (reserved "tydef" *> locTyName)
           <*> join (bindTydef <$> many tyVar <*> (symbol "=" *> parseType <* reserved "end"))
+          <*> (optional (symbol ";") *> (parseTerm <|> (eof $> sNoop)))
         <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
         <|> parens (view sTerm . mkTuple <$> (parseTerm `sepBy` symbol ","))
     )

@@ -63,6 +63,7 @@ module Swarm.Language.Syntax (
   pattern TApp,
   pattern (:$:),
   pattern TLet,
+  pattern TTydef,
   pattern TBind,
   pattern TDelay,
   pattern TRcd,

@@ -128,7 +128,7 @@ freeVarsS f = go S.empty
     TRef {} -> pure s
     TRequireDevice {} -> pure s
     TRequire {} -> pure s
-    TTydef {} -> pure s
+    STydef {} -> pure s
     SRequirements x s1 -> rewrap $ SRequirements x <$> go bound s1
     TVar x
       | x `S.member` bound -> pure s
