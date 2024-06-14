@@ -23,6 +23,7 @@ module Swarm.Language.Syntax.Pattern (
   pattern TApp,
   pattern (:$:),
   pattern TLet,
+  pattern TTydef,
   pattern TBind,
   pattern TDelay,
   pattern TRcd,
@@ -107,6 +108,12 @@ pattern TLet :: LetSyntax -> Bool -> Var -> Maybe Polytype -> Maybe Requirements
 pattern TLet ls r v mty mreq t1 t2 <- SLet ls r (lvVar -> v) mty mreq (STerm t1) (STerm t2)
   where
     TLet ls r v mty mreq t1 t2 = SLet ls r (LV NoLoc v) mty mreq (STerm t1) (STerm t2)
+
+-- | Match a STydef without annotations.
+pattern TTydef :: Var -> Polytype -> Term -> Term
+pattern TTydef v ty t1 <- STydef (lvVar -> v) ty (STerm t1)
+  where
+    TTydef v ty t1 = STydef (LV NoLoc v) ty (STerm t1)
 
 -- | Match a TBind without annotations.
 pattern TBind :: Maybe Var -> Maybe Polytype -> Maybe Requirements -> Term -> Term -> Term

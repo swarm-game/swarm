@@ -568,11 +568,8 @@ testLanguagePipeline =
                 "1:1: Undefined type X"
             )
         , testCase
-            "nested tydef not allowed"
-            ( process
-                "def f : Cmd Unit = tydef X = Int end; move end"
-                "1:20: Definitions may only be at the top level: `tydef X = Int end`\n\n  - While checking the left-hand side of a semicolon\n  - While checking the definition of f"
-            )
+            "nested tydef is allowed"
+            (valid "def f : Cmd Unit = tydef X = Int end; move end")
         , testCase
             "tydef with repeated variables"
             ( process

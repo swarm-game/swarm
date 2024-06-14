@@ -14,7 +14,6 @@ module Swarm.Language.Syntax.AST (
 ) where
 
 import Control.Lens (Plated (..))
-import Data.Aeson qualified as A
 import Data.Aeson.Types hiding (Key)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
@@ -27,7 +26,6 @@ import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Types
-import Swarm.Util.JSON (optionsMinimize)
 
 ------------------------------------------------------------
 -- Syntax: annotation on top of Terms with SrcLoc, comments, + type
@@ -41,15 +39,6 @@ data Syntax' ty = Syntax'
   , _sType :: ty
   }
   deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic)
-
-syntaxJSONOpts :: A.Options
-syntaxJSONOpts = optionsMinimize {fieldLabelModifier = drop 2}
-
--- instance ToJSON ty => ToJSON (Syntax' ty) where
---   toJSON = A.genericToJSON syntaxJSONOpts
-
--- instance FromJSON ty => FromJSON (Syntax' ty) where
---   parseJSON = A.genericParseJSON syntaxJSONOpts
 
 instance Data ty => Plated (Syntax' ty) where
   plate = uniplate
@@ -112,8 +101,10 @@ data Term' ty
     --   requirements of a definition after typechecking; there is no
     --   way to annotate requirements in the surface syntax.
     SLet LetSyntax Bool LocVar (Maybe Polytype) (Maybe Requirements) (Syntax' ty) (Syntax' ty)
-  | -- | A type synonym definition.
-    TTydef LocVar Polytype
+  | -- | A type synonym definition.  Note that this acts like a @let@
+    --   (just like @def@), /i.e./ the @Syntax' ty@ field is the local
+    --   context over which the type definition is in scope.
+    STydef LocVar Polytype (Syntax' ty)
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
     --
     --   The @Maybe ty@ field is a place to stash the inferred type of
@@ -163,12 +154,6 @@ data Term' ty
       -- Swarm.Language.Typecheck.runInfer.
       Traversable
     )
-
--- instance ToJSON ty => ToJSON (Term' ty) where
---   toJSON = A.genericToJSON syntaxJSONOpts
-
--- instance FromJSON ty => FromJSON (Term' ty) where
---   parseJSON = A.genericParseJSON syntaxJSONOpts
 
 instance Data ty => Plated (Term' ty) where
   plate = uniplate
