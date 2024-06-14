@@ -55,6 +55,7 @@ module Swarm.Language.Syntax (
   pattern Syntax,
   pattern CSyntax,
   LocVar (..),
+  LetSyntax (..),
   pattern STerm,
   pattern TRequirements,
   pattern TPair,
