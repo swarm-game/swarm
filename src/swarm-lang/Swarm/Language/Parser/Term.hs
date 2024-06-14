@@ -89,7 +89,7 @@ parseTermAtom2 =
           <$> (reserved "def" *> locTmVar)
           <*> optional (symbol ":" *> parsePolytype)
           <*> (symbol "=" *> parseTerm <* reserved "end")
-          <*> (optional (symbol ";") *> (parseTerm <|> (eof $> sRetUnit)))
+          <*> (optional (symbol ";") *> (parseTerm <|> (eof $> sNoop)))
         <|> TTydef
           <$> (reserved "tydef" *> locTyName)
           <*> join (bindTydef <$> many tyVar <*> (symbol "=" *> parseType <* reserved "end"))
@@ -111,8 +111,8 @@ parseTermAtom2 =
 sLet :: LetSyntax -> LocVar -> Maybe Polytype -> Syntax -> Syntax -> Term
 sLet ls x ty t1 = SLet ls (lvVar x `S.member` setOf freeVarsV t1) x ty mempty t1
 
-sRetUnit :: Syntax
-sRetUnit = STerm (TApp (TConst Return) TUnit)
+sNoop :: Syntax
+sNoop = STerm (TConst Noop)
 
 -- | Create a polytype from a list of variable binders and a type.
 --   Ensure that no binder is repeated, and all type variables in the
