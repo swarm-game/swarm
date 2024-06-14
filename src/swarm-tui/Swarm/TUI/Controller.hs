@@ -344,13 +344,13 @@ handleMainEvent ev = do
     MetaChar 'h' -> do
       t <- liftIO $ getTime Monotonic
       h <- use $ uiState . uiGameplay . uiHideRobotsUntil
-      if h >= t
-        then -- ignore repeated keypresses
-          continueWithoutRedraw
-        else -- hide for two seconds
-          do
-            uiState . uiGameplay . uiHideRobotsUntil .= t + TimeSpec 2 0
-            invalidateCacheEntry WorldCache
+      case h >= t of
+        -- ignore repeated keypresses
+        True -> continueWithoutRedraw
+        -- hide for two seconds
+        False -> do
+          uiState . uiGameplay . uiHideRobotsUntil .= t + TimeSpec 2 0
+          invalidateCacheEntry WorldCache
     -- debug focused robot
     MetaChar 'd' | isPaused && hasDebug -> do
       debug <- uiState . uiGameplay . uiShowDebug Lens.<%= not
