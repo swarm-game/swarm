@@ -314,11 +314,11 @@ instance PrettyPrec (Term' ty) where
         , ppr t2
         ]
     SLet LSDef _ (LV _ x) mty _ t1 t2 ->
-      mconcat
-        [ prettyDefinition "def" x mty t1 <+> "end"
-        , hardline
-        , ppr t2
-        ]
+      mconcat $
+        prettyDefinition "def" x mty t1 <+> "end"
+          : case t2 of
+            Syntax' _ (TConst Noop) _ _ -> []
+            _ -> [hardline, hardline, ppr t2]
     TTydef (LV _ x) pty -> prettyTydef x pty
     SBind Nothing _ _ _ t1 t2 ->
       pparens (p > 0) $
