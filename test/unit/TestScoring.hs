@@ -31,10 +31,10 @@ testHighScores =
         , compareAstSize 2 "single-move-def.sw"
         , compareAstSize 3 "single-move-let-with-invocation.sw"
         , compareAstSize 5 "double-move-let-with-invocation.sw"
-        , compareAstSize 6 "single-move-def-with-invocation.sw"
-        , compareAstSize 8 "double-move-def-with-invocation.sw"
-        , compareAstSize 28 "single-def-two-args-recursive.sw"
-        , compareAstSize 36 "single-def-two-args-recursive-with-invocation.sw"
+        , compareAstSize 3 "single-move-def-with-invocation.sw"
+        , compareAstSize 5 "double-move-def-with-invocation.sw"
+        , compareAstSize 27 "single-def-two-args-recursive.sw"
+        , compareAstSize 34 "single-def-two-args-recursive-with-invocation.sw"
         ]
     , testGroup
         "Precedence"
