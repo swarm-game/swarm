@@ -74,7 +74,7 @@ import Linear
 import Swarm.Effect (TimeIOC (..))
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
-import Swarm.Game.CESK (cancel, continue, suspendedEnv)
+import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec, FSuspend), cancel, continue)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Land
 import Swarm.Game.Location
@@ -101,7 +101,7 @@ import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
-import Swarm.Language.Value (Value (VExc, VUnit), envTypes, prettyValue)
+import Swarm.Language.Value (Value (VExc, VKey, VUnit), envTypes, prettyValue)
 import Swarm.Log
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Controller qualified as EC
@@ -844,11 +844,9 @@ updateUI = do
           invalidateCacheEntry REPLHistoryCache
           vScrollToEnd replScroll
           gameState . gameControls . replStatus .= REPLDone (Just (finalType, v))
-          gameState . baseRobot . machine . suspendedEnv . at itName .= Just (Typed v finalType mempty)
+          gameState . baseEnv . at itName .= Just (Typed v finalType mempty)
           gameState . gameControls . replNextValueIndex %= (+ 1)
           pure True
-
-    -- XXX define shortcut for (baseRobot . machine . suspendedEnv) ?
 
     -- Otherwise, do nothing.
     _ -> pure False
@@ -1047,23 +1045,23 @@ handleREPLEvent x = do
 
 -- | Run the installed input handler on a key combo entered by the user.
 runInputHandler :: KeyCombo -> EventM Name AppState ()
-runInputHandler _kc = do
+runInputHandler kc = do
   mhandler <- use $ gameState . gameControls . inputHandler
   case mhandler of
     -- Shouldn't be possible to get here if there is no input handler, but
     -- if we do somehow, just do nothing.
     Nothing -> return ()
-    Just (_, _handler) -> do
+    Just (_, handler) -> do
       -- Make sure the base is currently idle; if so, apply the
       -- installed input handler function to a `key` value
       -- representing the typed input.
       working <- use $ gameState . gameControls . replWorking
       unless working $ do
-        _s <- get
-        -- XXX how to handle this?
-        -- let env = s ^. gameState . baseRobot . machine . suspendedEnv
-        --     handlerCESK = Out (VKey kc) (env ^. envStore) [FApp handler, FExec]
-        -- gameState . baseRobot . machine .= handlerCESK
+        s <- get
+        let env = s ^. gameState . baseEnv
+            store = s ^. gameState . baseStore
+            handlerCESK = Out (VKey kc) store [FApp handler, FExec, FSuspend env]
+        gameState . baseRobot . machine .= handlerCESK
         gameState %= execState (zoomRobots $ activateRobot 0)
 
 -- | Handle a user "piloting" input event for the REPL.
@@ -1108,7 +1106,7 @@ runBaseCode :: (MonadState AppState m) => T.Text -> m ()
 runBaseCode uinput = do
   uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLEntry uinput)
   uiState . uiGameplay . uiREPL %= resetREPL "" (CmdPrompt [])
-  env <- use $ gameState . baseRobot . machine . suspendedEnv
+  env <- use $ gameState . baseEnv
   case processTerm' env uinput of
     Right mt -> do
       uiState . uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True
@@ -1117,20 +1115,19 @@ runBaseCode uinput = do
       uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLError err)
 
 runBaseTerm :: (MonadState AppState m) => Maybe TSyntax -> m ()
-runBaseTerm =
-  modify . maybe id startBaseProgram
+runBaseTerm = maybe (pure ()) startBaseProgram
  where
   -- The player typed something at the REPL and hit Enter; this
   -- function takes the resulting ProcessedTerm (if the REPL
   -- input is valid) and sets up the base robot to run it.
-  startBaseProgram t =
+  startBaseProgram t = do
     -- Set the REPL status to Working
-    (gameState . gameControls . replStatus .~ REPLWorking (t ^. sType) Nothing)
-      -- Set up the robot's CESK machine to evaluate/execute the
-      -- given term.
-      . (gameState . baseRobot . machine %~ continue t)
-      -- Finally, be sure to activate the base robot.
-      . (gameState %~ execState (zoomRobots $ activateRobot 0))
+    gameState . gameControls . replStatus .= REPLWorking (t ^. sType) Nothing
+    -- Set up the robot's CESK machine to evaluate/execute the
+    -- given term.
+    gameState . baseRobot . machine %= continue t
+    -- Finally, be sure to activate the base robot.
+    gameState %= execState (zoomRobots $ activateRobot 0)
 
 -- | Handle a user input event for the REPL.
 handleREPLEventTyping :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -1173,7 +1170,7 @@ handleREPLEventTyping = \case
             Just found -> uiState . uiGameplay . uiREPL . replPromptType .= SearchPrompt (removeEntry found rh)
       CharKey '\t' -> do
         s <- get
-        let names = s ^.. gameState . baseRobot . machine . suspendedEnv . envTypes . to assocs . traverse . _1
+        let names = s ^.. gameState . baseEnv . envTypes . to assocs . traverse . _1
         uiState . uiGameplay . uiREPL %= tabComplete (CompletionContext (s ^. gameState . creativeMode)) names (s ^. gameState . landscape . terrainAndEntities . entityMap)
         modify validateREPLForm
       EscapeKey -> do
@@ -1287,7 +1284,7 @@ validateREPLForm s =
            in s & uiState . uiGameplay . uiREPL . replType .~ theType
     CmdPrompt _
       | otherwise ->
-          let env = s ^. gameState . baseRobot . machine . suspendedEnv
+          let env = s ^. gameState . baseEnv
               result = processTerm' env uinput
               theType = case result of
                 Right (Just t) -> Just (t ^. sType)
@@ -1478,11 +1475,7 @@ makeEntity e = do
       mkT = [tmQ| make $str:name |]
 
   case isActive <$> (s ^? gameState . baseRobot) of
-    Just False -> do
-      gameState . gameControls . replStatus .= REPLWorking PolyUnit Nothing
-      gameState . baseRobot . machine %= continue mkT
-      gameState %= execState (zoomRobots $ activateRobot 0)
-    -- XXX can we call some existing function to do the above?
+    Just False -> runBaseTerm (Just mkT)
     _ -> continueWithoutRedraw
 
 -- | Display a modal window with the description of an entity.
