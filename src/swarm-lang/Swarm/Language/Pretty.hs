@@ -584,6 +584,6 @@ instance PrettyPrec LocatedTCFrame where
 
 instance PrettyPrec TCFrame where
   prettyPrec _ = \case
-    TCDef x -> "While checking the definition of" <+> pretty x
+    TCLet x -> "While checking the definition of" <+> pretty x
     TCBindL -> "While checking the left-hand side of a semicolon"
     TCBindR -> "While checking the right-hand side of a semicolon"
