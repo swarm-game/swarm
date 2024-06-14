@@ -11,7 +11,7 @@ module Main where
 
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
-import Control.Lens (Ixed (ix), at, to, view, (&), (.~), (<>~), (^.), (^..), (^?), (^?!))
+import Control.Lens (Ixed (ix), at, to, view, (&), (.~), (^.), (^..), (^?), (^?!))
 import Control.Monad (forM_, unless, when)
 import Control.Monad.State (execStateT)
 import Data.Char (isSpace)
@@ -28,7 +28,7 @@ import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Doc.Keyword (EditorType (..))
 import Swarm.Doc.Keyword qualified as Keyword
 import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
-import Swarm.Game.CESK (emptyStore, initMachine)
+import Swarm.Game.CESK (initMachine)
 import Swarm.Game.Entity (lookupByName)
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Robot (equippedDevices, systemRobot)
@@ -65,7 +65,6 @@ import Swarm.Game.State.Substate (
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Validate (badErrorsInLogs, playUntilWin)
 import Swarm.Game.Tick (getTickNumber)
-import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.Language.Pretty (prettyString)
 import Swarm.Log

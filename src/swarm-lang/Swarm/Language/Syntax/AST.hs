@@ -45,11 +45,11 @@ data Syntax' ty = Syntax'
 syntaxJSONOpts :: A.Options
 syntaxJSONOpts = optionsMinimize {fieldLabelModifier = drop 2}
 
-instance ToJSON ty => ToJSON (Syntax' ty) where
-  toJSON = A.genericToJSON syntaxJSONOpts
+-- instance ToJSON ty => ToJSON (Syntax' ty) where
+--   toJSON = A.genericToJSON syntaxJSONOpts
 
-instance FromJSON ty => FromJSON (Syntax' ty) where
-  parseJSON = A.genericParseJSON syntaxJSONOpts
+-- instance FromJSON ty => FromJSON (Syntax' ty) where
+--   parseJSON = A.genericParseJSON syntaxJSONOpts
 
 instance Data ty => Plated (Syntax' ty) where
   plate = uniplate
@@ -164,11 +164,11 @@ data Term' ty
       Traversable
     )
 
-instance ToJSON ty => ToJSON (Term' ty) where
-  toJSON = A.genericToJSON syntaxJSONOpts
+-- instance ToJSON ty => ToJSON (Term' ty) where
+--   toJSON = A.genericToJSON syntaxJSONOpts
 
-instance FromJSON ty => FromJSON (Term' ty) where
-  parseJSON = A.genericParseJSON syntaxJSONOpts
+-- instance FromJSON ty => FromJSON (Term' ty) where
+--   parseJSON = A.genericParseJSON syntaxJSONOpts
 
 instance Data ty => Plated (Term' ty) where
   plate = uniplate
