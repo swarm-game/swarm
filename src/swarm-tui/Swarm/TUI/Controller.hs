@@ -111,7 +111,7 @@ import Swarm.Language.Typecheck (
  )
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
-import Swarm.Language.Value (Value (VExc, VKey, VUnit), envTypes, prettyValue)
+import Swarm.Language.Value (Value (VExc, VKey, VUnit), envTydefs, envTypes, prettyValue)
 import Swarm.Log
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Controller qualified as EC
@@ -847,7 +847,8 @@ updateUI = do
       -- type, and reset the replStatus.
       | otherwise -> do
           itIx <- use (gameState . gameControls . replNextValueIndex)
-          let finalType = stripCmd pty
+          env <- use (gameState . baseEnv)
+          let finalType = stripCmd (env ^. envTydefs) pty
               itName = fromString $ "it" ++ show itIx
               out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
           uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLOutput out)
@@ -992,11 +993,12 @@ doGoalUpdates = do
 
       return goalWasUpdated
 
--- | Strips top-level `cmd` from type (in case of REPL evaluation),
---   and returns a boolean to indicate if it happened
-stripCmd :: Polytype -> Polytype
-stripCmd (Forall xs (TyCmd ty)) = Forall xs ty
-stripCmd pty = pty
+-- | Strips the top-level @Cmd@ from a type, if any (to compute the
+--   result type of a REPL command evaluation).
+stripCmd :: TDCtx -> Polytype -> Polytype
+stripCmd tdCtx (Forall xs ty) = case whnfType tdCtx ty of
+  TyCmd resTy -> Forall xs resTy
+  _ -> Forall xs ty
 
 ------------------------------------------------------------
 -- REPL events
