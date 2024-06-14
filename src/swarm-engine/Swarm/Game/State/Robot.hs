@@ -54,7 +54,7 @@ import Control.Effect.Lens
 import Control.Effect.State (State)
 import Control.Effect.Throw (Has)
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
-import Control.Monad (forM_)
+import Control.Monad (forM_, void)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
@@ -242,7 +242,7 @@ viewCenterRule = lens getter setter
 --   main robot map, the active robot set, and to to the index of
 --   robots by location.
 addTRobot :: (Has (State Robots) sig m) => CESK -> TRobot -> m ()
-addTRobot m r = () <$ addTRobot' m r
+addTRobot m r = void $ addTRobot' m r
 
 -- | Like addTRobot, but return the newly instantiated robot.
 addTRobot' :: (Has (State Robots) sig m) => CESK -> TRobot -> m Robot
