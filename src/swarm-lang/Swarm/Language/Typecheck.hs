@@ -969,17 +969,21 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         t1' <- withBinding (lvVar x) upty $ check t1 uty
         return (upty, t1')
 
-    -- Now check the type of the body.
-    t2' <- withBinding (lvVar x) upty $ check t2 expected
-
-    -- Make sure no skolem variables have escaped.
-    ask @UCtx >>= mapM_ (noSkolems l)
-
     -- Check the requirements of t1.
     tdCtx <- ask @TDCtx
     reqCtx <- ask @ReqCtx
     let Syntax' _ tt1 _ _ = t1
         reqs = requirements tdCtx reqCtx tt1
+
+    -- Now check the type of the body, under a context extended with
+    -- the type and requirements of the bound variable.
+    t2' <-
+      withBinding (lvVar x) upty $
+        withBinding (lvVar x) reqs $
+          check t2 expected
+
+    -- Make sure no skolem variables have escaped.
+    ask @UCtx >>= mapM_ (noSkolems l)
 
     -- Return the annotated let.
     return $ Syntax' l (SLet ls r x mxTy (Just reqs) t1' t2') cs expected
