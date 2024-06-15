@@ -165,6 +165,9 @@ data Frame
     FProj Var
   | -- | We should suspend once we finish the current evaluation.
     FSuspend Env
+  | -- | If an exception bubbles all the way up to this frame, then
+    --   switch to Suspended mode with this saved top-level context.
+    FRestoreEnv Env
   deriving (Eq, Show, Generic)
 
 instance ToJSON Frame where
@@ -356,7 +359,7 @@ initMachine t = In (prepareTerm mempty t) mempty emptyStore [FExec]
 --   term is suitable for execution by the base (REPL) robot.
 continue :: TSyntax -> CESK -> CESK
 continue t = \case
-  Suspended _ e s k -> In (insertSuspend $ prepareTerm e t) e s (FExec : k)
+  Suspended _ e s k -> In (insertSuspend $ prepareTerm e t) e s (FExec : FRestoreEnv e : k)
   cesk -> In (insertSuspend $ prepareTerm mempty t) mempty (cesk ^. store) [FExec]
 
 -- | Prepare a term for evaluation by a CESK machine in the given
@@ -443,6 +446,7 @@ prettyFrame f (p, inner) = case f of
     pprEq (x, Just t) = pretty x <+> "=" <+> ppr t
   FProj x -> (11, pparens (p < 11) inner <> "." <> pretty x)
   FSuspend _ -> (10, "suspend" <+> pparens (p < 11) inner)
+  FRestoreEnv _ -> (10, "restore" <+> pparens (p < 11) inner)
 
 -- | Pretty-print a special "prefix application" frame, i.e. a frame
 --   formatted like @X· inner@.  Unlike typical applications, these
