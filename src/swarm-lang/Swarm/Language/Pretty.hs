@@ -383,7 +383,6 @@ prettyTypeErr code (CTE l tcStack te) =
     NoLoc -> emptyDoc
   showLoc (r, c) = pretty r <> ":" <> pretty c
 
--- | 
 filterTCStack :: TCStack -> TCStack
 filterTCStack tcStack = case tcStack of
   [] -> []
