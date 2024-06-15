@@ -7,12 +7,12 @@ module Swarm.Game.Scenario.Topography.Area where
 import Data.Aeson (ToJSON (..))
 import Data.Int (Int32)
 import Data.List qualified as L
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (listToMaybe)
+import Data.Semigroup
 import Linear (V2 (..))
 import Swarm.Game.Location
-import Data.List.NonEmpty qualified as NE
-import Data.List.NonEmpty (NonEmpty)
-import Data.Semigroup
 
 newtype Grid c = Grid
   { unGrid :: NonEmpty [c]
@@ -89,4 +89,5 @@ fillGrid :: AreaDimensions -> a -> Grid a
 fillGrid (AreaDimensions w h) =
   Grid
     . stimes (fromIntegral h)
-    . pure . replicate (fromIntegral w)
+    . pure
+    . replicate (fromIntegral w)
