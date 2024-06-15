@@ -323,6 +323,22 @@ testEval g =
             "binder in local scope - #1796"
             ("def x = \\x.x end; def foo = x <- return 0 end; foo; return (x 42)" `evaluatesTo` VInt 42)
         ]
+    , testGroup
+        "nesting"
+        [ testCase
+            "def nested in def"
+            ("def x : Int = def y : Int = 3 end; y + 2 end; x" `evaluatesTo` VInt 5)
+        , testCase
+            "nested def does not escape"
+            ( "def z = 1 end; def x = def z = 3 end; z + 2 end; x + z"
+                `evaluatesTo` VInt 6
+            )
+        , testCase
+            "nested tydef"
+            ( "def x = (tydef X = Int end; def z : X = 3 end; z + 2) end; x"
+                `evaluatesTo` VInt 5
+            )
+        ]
     ]
  where
   tquote :: String -> Text
