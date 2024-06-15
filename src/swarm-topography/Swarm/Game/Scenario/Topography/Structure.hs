@@ -9,6 +9,8 @@
 -- as well as logic for combining them.
 module Swarm.Game.Scenario.Topography.Structure where
 
+import Data.Map qualified as M
+import Data.Set qualified as Set
 import Control.Monad (unless)
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KeyMap
@@ -24,6 +26,7 @@ import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.ProtoCell
 import Swarm.Game.Scenario.Topography.Structure.Overlay
+import Swarm.Game.World.Coords
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Util (failT, showT)
 import Swarm.Util.Yaml
@@ -122,11 +125,21 @@ paintMap ::
   m (Grid (Maybe c), [Waypoint])
 paintMap maskChar pal g = do
   nestedLists <- mapM toCell g
+  let usedChars = Set.fromList $ map T.singleton $ allMembers g
+      unusedChars = filter (`Set.notMember` usedChars) $
+        M.keys $ KeyMap.toMapText $ unPalette pal
+
+  unless (null unusedChars) $
+    fail $ unwords [
+        "Unused characters in palette:"
+      , T.unpack $ T.intercalate ", " unusedChars
+      ]
+
   let cells = fmap standardCell <$> nestedLists
-      f i j maybeAugmentedCell = do
+      getWp coords maybeAugmentedCell = do
         wpCfg <- waypointCfg =<< maybeAugmentedCell
-        return . Waypoint wpCfg . Location j $ negate i
-      wps = concat $ zipWith (\i -> catMaybes . zipWith (f i) [0 ..]) [0 ..] $ unGrid nestedLists
+        return . Waypoint wpCfg . coordsToLoc $ coords
+      wps = catMaybes $ mapIndexedMembers getWp nestedLists
 
   return (cells, wps)
  where

@@ -18,6 +18,7 @@ import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Terrain (TerrainMap, TerrainType)
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
+import Swarm.Game.World.Coords
 import Swarm.TUI.Editor.Model
 import Swarm.Util.Content
 import Swarm.Util.Erasable
@@ -28,11 +29,11 @@ getEntitiesForList em =
  where
   entities = M.elems $ entitiesByName em
 
-getEditingBounds :: WorldDescription -> (Bool, Cosmic W.BoundsRectangle)
+getEditingBounds :: WorldDescription -> (Bool, Cosmic BoundsRectangle)
 getEditingBounds myWorld =
   (EA.isEmpty a, newBounds)
  where
-  newBounds = Cosmic DefaultRootSubworld (W.locToCoords upperLeftLoc, W.locToCoords lowerRightLoc)
+  newBounds = Cosmic DefaultRootSubworld (locToCoords upperLeftLoc, locToCoords lowerRightLoc)
   upperLeftLoc = ul myWorld
   a = EA.getGridDimensions $ gridContent $ area myWorld
   lowerRightLoc = EA.computeBottomRightFromUpperLeft a upperLeftLoc
@@ -41,7 +42,7 @@ getEditorContentAt ::
   TerrainMap ->
   WorldOverdraw ->
   W.MultiWorld Int Entity ->
-  Cosmic W.Coords ->
+  Cosmic Coords ->
   (TerrainType, Maybe EntityPaint)
 getEditorContentAt tm editorOverdraw w coords =
   (terrainWithOverride, entityWithOverride)
@@ -68,34 +69,34 @@ getEditorTerrainAt ::
   TerrainMap ->
   WorldOverdraw ->
   W.MultiWorld Int Entity ->
-  Cosmic W.Coords ->
+  Cosmic Coords ->
   TerrainType
 getEditorTerrainAt tm editor w coords =
   fst $ getEditorContentAt tm editor w coords
 
 isOutsideTopLeftCorner ::
   -- | top left corner coords
-  W.Coords ->
+  Coords ->
   -- | current coords
-  W.Coords ->
+  Coords ->
   Bool
-isOutsideTopLeftCorner (W.Coords (yTop, xLeft)) (W.Coords (y, x)) =
+isOutsideTopLeftCorner (Coords (yTop, xLeft)) (Coords (y, x)) =
   x < xLeft || y < yTop
 
 isOutsideBottomRightCorner ::
   -- | bottom right corner coords
-  W.Coords ->
+  Coords ->
   -- | current coords
-  W.Coords ->
+  Coords ->
   Bool
-isOutsideBottomRightCorner (W.Coords (yBottom, xRight)) (W.Coords (y, x)) =
+isOutsideBottomRightCorner (Coords (yBottom, xRight)) (Coords (y, x)) =
   x > xRight || y > yBottom
 
 isOutsideRegion ::
   -- | full bounds
-  W.BoundsRectangle ->
+  BoundsRectangle ->
   -- | current coords
-  W.Coords ->
+  Coords ->
   Bool
 isOutsideRegion (tl, br) coord =
   isOutsideTopLeftCorner tl coord || isOutsideBottomRightCorner br coord
@@ -103,7 +104,7 @@ isOutsideRegion (tl, br) coord =
 getEditedMapRectangle ::
   TerrainMap ->
   WorldOverdraw ->
-  Maybe (Cosmic W.BoundsRectangle) ->
+  Maybe (Cosmic BoundsRectangle) ->
   W.MultiWorld Int Entity ->
   EA.Grid CellPaintDisplay
 getEditedMapRectangle _ _ Nothing _ = EA.Grid []

@@ -17,6 +17,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Swarm.Game.Entity
 import Swarm.Game.World
+import Swarm.Game.World.Coords
 import Swarm.Game.World.Syntax (CellVal (..))
 import Swarm.Game.World.Typecheck (Const (CCell), TTerm (..))
 import Swarm.Util.Erasable

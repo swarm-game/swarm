@@ -36,7 +36,6 @@ world:
   palette:
     '.': [grass]
     '*': [stone, flower]
-    'P': [grass, telepad entrance]
     'p': [grass, telepad exit]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]

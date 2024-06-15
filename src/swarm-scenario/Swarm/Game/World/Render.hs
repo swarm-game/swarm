@@ -30,7 +30,7 @@ import Swarm.Game.Scenario.Topography.Rasterize
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.State.Landscape
 import Swarm.Game.Universe
-import Swarm.Game.World qualified as W
+import Swarm.Game.World.Coords
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Pretty (prettyString)
 import Swarm.Util (surfaceEmpty)
@@ -99,7 +99,7 @@ getBoundingBox ::
   Location ->
   PWorldDescription e ->
   Maybe AreaDimensions ->
-  W.BoundsRectangle
+  BoundsRectangle
 getBoundingBox vc scenarioWorld maybeSize =
   mkBoundingBox areaDims upperLeftLocation
  where
@@ -109,7 +109,7 @@ getBoundingBox vc scenarioWorld maybeSize =
       else vc .+^ ((`div` 2) <$> V2 (negate w) h)
 
   mkBoundingBox areaDimens upperLeftLoc =
-    both W.locToCoords locationBounds
+    both locToCoords locationBounds
    where
     lowerRightLocation = computeBottomRightFromUpperLeft areaDimens upperLeftLoc
     locationBounds = (upperLeftLoc, lowerRightLocation)

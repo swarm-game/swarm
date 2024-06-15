@@ -184,7 +184,6 @@ world:
   upperleft: [-1, -1]
   offset: false
   palette:
-    '.': [grass]
     'B': [grass, null, base]
     'S': [grass, null, setup]
   map: |

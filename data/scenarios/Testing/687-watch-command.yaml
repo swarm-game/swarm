@@ -69,7 +69,6 @@ world:
     p: [grass, null, planter]
     b: [grass, null, competitor]
     '.': [grass]
-    'T': [grass, tree]
   upperleft: [0, 0]
   map: |
     ......b...

@@ -38,7 +38,6 @@ world:
     '.': [grass]
     'x': [stone, mountain]
     'f': [grass, flower]
-    'T': [grass, tree]
   upperleft: [0, 0]
   map: |
     xxxxx......

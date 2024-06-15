@@ -38,6 +38,7 @@ import Swarm.Game.Step.Path.Walkability
 import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
+import Swarm.Game.World.Coords
 import Swarm.Game.World.Modify qualified as WM
 import Swarm.Language.Capability
 import Swarm.Language.Requirement qualified as R
@@ -69,7 +70,7 @@ updateEntityAt ::
 updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
   someChange <-
     zoomWorld subworldName $
-      W.updateM @Int (W.locToCoords loc) upd
+      W.updateM @Int (locToCoords loc) upd
 
   forM_ (WM.getModification =<< someChange) $ \modType -> do
     currentTick <- use $ temporal . ticks
