@@ -73,11 +73,13 @@ module Swarm.Game.CESK (
   continue,
   cancel,
   resetBlackholes,
+  prepareTerm,
 
   -- ** Extracting information
   finalValue,
   suspendedEnv,
   store,
+  cont,
 ) where
 
 import Control.Lens (Lens', Traversal', lens, traversal, (^.))
@@ -322,6 +324,23 @@ store = lens get set
     Waiting t c -> Waiting t (set c s)
     Suspended v e _ k -> Suspended v e s k
 
+-- | Lens focusing on the continuation of a CESK machine.
+cont :: Lens' CESK Cont
+cont = lens get set
+ where
+  get = \case
+    In _ _ _ k -> k
+    Out _ _ k -> k
+    Up _ _ k -> k
+    Waiting _ c -> get c
+    Suspended _ _ _ k -> k
+  set cesk k = case cesk of
+    In t e s _ -> In t e s k
+    Out v s _ -> Out v s k
+    Up x s _ -> Up x s k
+    Waiting t c -> Waiting t (set c k)
+    Suspended v e s _ -> Suspended v e s k
+
 -- | Create a brand new CESK machine, with empty environment and
 --   store, to evaluate a given term.  We always initialize the
 --   machine with a single FExec frame as the continuation; if the
@@ -331,14 +350,14 @@ initMachine t = In (prepareTerm mempty t) mempty emptyStore [FExec]
 
 -- | Load a program into an existing robot CESK machine: either
 --   continue from a suspended state, or, as a fallback, start from
---   scratch with an empty environment.
+--   scratch with an empty environment but the same store.
 --
 --   Also insert a @suspend@ primitive at the end, so the resulting
 --   term is suitable for execution by the base (REPL) robot.
 continue :: TSyntax -> CESK -> CESK
 continue t = \case
   Suspended _ e s k -> In (insertSuspend $ prepareTerm e t) e s (FExec : k)
-  _ -> In (insertSuspend $ prepareTerm mempty t) mempty emptyStore [FExec]
+  cesk -> In (insertSuspend $ prepareTerm mempty t) mempty (cesk ^. store) [FExec]
 
 -- | Prepare a term for evaluation by a CESK machine in the given
 --   environment: erase all type annotations, and optionally wrap it
