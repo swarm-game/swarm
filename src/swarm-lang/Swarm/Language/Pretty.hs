@@ -387,9 +387,9 @@ prettyTypeErr code (CTE l tcStack te) =
 filterTCStack :: TCStack -> TCStack
 filterTCStack tcStack = case tcStack of
   [] -> []
-  t@(LocatedTCFrame src (TCDef var)) : _ -> [t]
-  t@(LocatedTCFrame src TCBindR) : xs -> t : filterTCStack xs
-  t@(LocatedTCFrame src TCBindL) : xs -> t : filterTCStack xs
+  t@(LocatedTCFrame _ (TCDef var)) : _ -> [t]
+  t@(LocatedTCFrame _ TCBindR) : xs -> t : filterTCStack xs
+  t@(LocatedTCFrame _ TCBindL) : xs -> t : filterTCStack xs
 
 instance PrettyPrec TypeErr where
   prettyPrec _ = \case
