@@ -632,7 +632,7 @@ testLanguagePipeline =
         ]
     , testCase
         "Stop printing context after a definition. - #1336"
-        ( process
+        ( processCompare (==)
             "move; def x = move; say 3 end; move;"
             "1:25: Type mismatch:\n  From context, expected `3` to have type `Text`,\n  but it actually has type `Int`\n\n  - While checking the right-hand side of a semicolon\n  - While checking the definition of x"
         )
