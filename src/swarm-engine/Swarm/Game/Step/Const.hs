@@ -87,6 +87,7 @@ import Swarm.Game.Tick
 import Swarm.Game.Universe
 import Swarm.Game.Value
 import Swarm.Language.Capability
+import Swarm.Language.Elaborate (insertSuspend)
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (prettyText)
@@ -1227,8 +1228,11 @@ execConst runChildProg c vs s k = do
           Nothing -> return $ mkReturn ()
           Just pt -> do
             void $ traceLog CmdStatus Info "run: OK."
-            cesk <- use machine
-            return $ continue pt cesk
+            case k of
+              [] -> return $ In (insertSuspend (prepareTerm mempty pt)) mempty s [FExec]
+              _ -> return $ In (prepareTerm mempty pt) mempty s (FExec : k)
+      -- mempty above means we will wipe out all our current definitions every time
+      -- we execute 'run'...
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k
