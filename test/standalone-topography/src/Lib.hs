@@ -28,12 +28,11 @@ newtype CustomCell = CustomCell Bool
 
 instance FromJSONE e CustomCell
 
-parseStructures :: IO (PStructure (Maybe CustomCell))
-parseStructures = do
-  dataDir <- getDataDir
+parseStructures :: FilePath -> FilePath -> IO (PStructure (Maybe CustomCell))
+parseStructures dataDir baseFilename = do
   eitherResult <-
     decodeFileEitherE () $
-      dataDir </> "test/standalone-topography/demo-structures.yaml"
+      dataDir </> "test/standalone-topography" </> baseFilename
   return $ forceEither $ left prettyPrintParseException eitherResult
 
 getDisplayColor :: Maybe CustomCell -> PixelRGBA8
@@ -45,13 +44,18 @@ getDisplayColor = maybe transparent mkPixelColor
 
   transparent = PixelRGBA8 0 0 0 0
 
-compareToReferenceImage :: Assertion
-compareToReferenceImage = do
-  parentStruct <- parseStructures
+compareToReferenceImage :: String -> Assertion
+compareToReferenceImage fileStem = do
+  dataDir <- getDataDir
+  parentStruct <- parseStructures dataDir $ fileStem <.> "yaml"
   let MergedStructure overlayArea _ _ = forceEither $ mergeStructures mempty Root parentStruct
   let encodedImgBytestring = encodePng $ makeImage getDisplayColor $ gridContent overlayArea
 
-  dataDir <- getDataDir
-  let referenceFilepath = dataDir </> "test/standalone-topography/reference.png"
-  decodedImg <- LBS.readFile referenceFilepath
-  assertEqual "Generated image must equal reference image!" decodedImg encodedImgBytestring
+  let referenceFilepath = dataDir </> "test/standalone-topography" </> fileStem <.> "png"
+  if refreshReferenceImage
+    then LBS.writeFile referenceFilepath encodedImgBytestring
+    else do
+      decodedImg <- LBS.readFile referenceFilepath
+      assertEqual "Generated image must equal reference image!" decodedImg encodedImgBytestring
+ where
+  refreshReferenceImage = False

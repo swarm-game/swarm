@@ -11,8 +11,13 @@ import Lib
 
 main :: IO ()
 main = do
-  defaultMain $
-    testGroup
+  defaultMain
+    $ testGroup
       "Test structure assembly"
-      [ testCase "Image equality" compareToReferenceImage
+    $ map
+      doTest
+      [ "circle-and-crosses"
+      , "checkerboard"
       ]
+ where
+  doTest stem = testCase (unwords ["Image equality:", stem]) $ compareToReferenceImage stem
