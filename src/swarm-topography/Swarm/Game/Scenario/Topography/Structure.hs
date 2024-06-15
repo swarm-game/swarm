@@ -9,14 +9,14 @@
 -- as well as logic for combining them.
 module Swarm.Game.Scenario.Topography.Structure where
 
-import Data.Map qualified as M
-import Data.Set qualified as Set
 import Control.Monad (unless)
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KeyMap
 import Data.List.NonEmpty qualified as NE
+import Data.Map qualified as M
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml as Y
@@ -126,14 +126,18 @@ paintMap ::
 paintMap maskChar pal g = do
   nestedLists <- mapM toCell g
   let usedChars = Set.fromList $ map T.singleton $ allMembers g
-      unusedChars = filter (`Set.notMember` usedChars) $
-        M.keys $ KeyMap.toMapText $ unPalette pal
+      unusedChars =
+        filter (`Set.notMember` usedChars) $
+          M.keys $
+            KeyMap.toMapText $
+              unPalette pal
 
   unless (null unusedChars) $
-    fail $ unwords [
-        "Unused characters in palette:"
-      , T.unpack $ T.intercalate ", " unusedChars
-      ]
+    fail $
+      unwords
+        [ "Unused characters in palette:"
+        , T.unpack $ T.intercalate ", " unusedChars
+        ]
 
   let cells = fmap standardCell <$> nestedLists
       getWp coords maybeAugmentedCell = do
