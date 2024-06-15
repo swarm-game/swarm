@@ -298,7 +298,7 @@ instance FromJSON CESK where
 finalValue :: CESK -> Maybe Value
 {-# INLINE finalValue #-}
 finalValue (Out v _ []) = Just v
-finalValue (Suspended v _ _ _) = Just v
+finalValue (Suspended v _ _ []) = Just v
 finalValue _ = Nothing
 
 -- | Extract the environment from a suspended CESK machine (/e.g./ to
@@ -360,7 +360,7 @@ initMachine t = In (prepareTerm mempty t) mempty emptyStore [FExec]
 continue :: TSyntax -> CESK -> CESK
 continue t = \case
   Suspended _ e s k -> In (insertSuspend $ prepareTerm e t) e s (FExec : FRestoreEnv e : k)
-  cesk -> In (insertSuspend $ prepareTerm mempty t) mempty (cesk ^. store) [FExec]
+  cesk -> In (insertSuspend $ prepareTerm mempty t) mempty (cesk ^. store) (FExec : (cesk ^. cont))
 
 -- | Prepare a term for evaluation by a CESK machine in the given
 --   environment: erase all type annotations, and optionally wrap it

@@ -19,6 +19,8 @@
 -- See <https://github.com/swarm-game/swarm/issues/495>.
 module Swarm.Game.Step where
 
+import Debug.Trace
+
 import Control.Applicative (Applicative (..))
 import Control.Carrier.Error.Either (ErrorC, runError)
 import Control.Carrier.State.Lazy
@@ -757,6 +759,26 @@ stepCESK cesk = case cesk of
   -- never happen).
   Out _ s (FExec : _) -> badMachineState s "FExec frame with non-executable value"
   ------------------------------------------------------------
+  -- Suspension
+  ------------------------------------------------------------
+
+  -- If we're suspended and see the env restore frame, we can discard
+  -- it: it was only there in case an exception was thrown.
+  Suspended v e s (FRestoreEnv _ : k) -> return $ Suspended v e s k
+  -- We can also sometimes get a redundant FExec; discard it.
+  Suspended v e s (FExec : k) -> return $ Suspended v e s k
+  -- If we're suspended but we were on the LHS of a bind, switch to
+  -- evaluating that, except with the environment from the suspension
+  -- instead of the environment stored in the FBind frame, as if the
+  -- RHS of the bind had been grafted in right where the suspend was.
+  Suspended _ e s (FBind _ _ t2 _ : k) -> return $ In t2 e s (FExec : k)
+  -- Otherwise, if we're suspended with nothing else left to do,
+  -- return the machine unchanged (but throw away the rest of the
+  -- continuation stack).
+  Suspended v e s k -> do
+    traceM ("Suspended killing stack: " ++ show k)
+    return $ Suspended v e s []
+  ------------------------------------------------------------
   -- Exception handling
   ------------------------------------------------------------
 
@@ -780,9 +802,8 @@ stepCESK cesk = case cesk of
   -- Otherwise, keep popping from the continuation stack.
   Up exn s (_ : k) -> return $ Up exn s k
   -- Finally, if we're done evaluating and the continuation stack is
-  -- empty, OR if we've hit a suspend, return the machine unchanged.
+  -- empty, return the machine unchanged.
   done@(Out _ _ []) -> return done
-  suspended@(Suspended {}) -> return suspended
  where
   badMachineState s msg =
     let msg' =

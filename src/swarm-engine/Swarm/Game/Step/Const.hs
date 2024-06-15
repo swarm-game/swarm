@@ -1226,13 +1226,10 @@ execConst runChildProg c vs s k = do
 
         case mt of
           Nothing -> return $ mkReturn ()
-          Just pt -> do
+          Just t -> do
             void $ traceLog CmdStatus Info "run: OK."
-            case k of
-              [] -> return $ In (insertSuspend (prepareTerm mempty pt)) mempty s [FExec]
-              _ -> return $ In (prepareTerm mempty pt) mempty s (FExec : k)
-      -- mempty above means we will wipe out all our current definitions every time
-      -- we execute 'run'...
+            cesk <- use machine
+            return $ continue t cesk
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k
