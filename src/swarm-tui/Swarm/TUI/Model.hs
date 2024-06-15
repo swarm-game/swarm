@@ -93,6 +93,8 @@ import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World.Gen (Seed)
+import Swarm.Language.Typed (Typed (..))
+import Swarm.Language.Value (Value (VExc))
 import Swarm.Log
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Menu
@@ -317,5 +319,5 @@ topContext s = ctxPossiblyWithIt
   ctx = fromMaybe emptyRobotContext $ s ^? gameState . baseRobot . robotContext
 
   ctxPossiblyWithIt = case s ^. gameState . gameControls . replStatus of
-    REPLDone (Just p) -> ctx & at "it" ?~ p
+    REPLDone (Just p@(Typed v _ _)) | v /= VExc -> ctx & at "it" ?~ p
     _ -> ctx

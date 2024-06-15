@@ -6,6 +6,7 @@
 -- Swarm unit tests
 module TestPretty where
 
+import Data.Fix (Fix (..))
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (mkOp)
 import Swarm.Language.Types
@@ -196,6 +197,18 @@ testPrettyConst =
                     ["a", "b", "c", "d"]
                     (TyUnit :+: (TyVar "a" :*: TyVar "b") :+: ((TyVar "c" :->: TyVar "d") :*: TyVar "a"))
                 )
+        ]
+    , testGroup
+        "recursive types"
+        [ testCase "nat" $
+            equalPretty "rec n. Unit + n" $
+              TyRec "n" (TyUnit :+: Fix (TyRecVarF NZ))
+        , testCase "list" $
+            equalPretty "rec list. Unit + (a * list)" $
+              TyRec "list" (TyUnit :+: (TyVar "a" :*: Fix (TyRecVarF NZ)))
+        , testCase "rose" $
+            equalPretty "rec r. a * (rec l. Unit + (r * l))" $
+              TyRec "r" (TyVar "a" :*: TyRec "l" (TyUnit :+: (Fix (TyRecVarF (NS NZ)) :*: Fix (TyRecVarF NZ))))
         ]
     ]
  where

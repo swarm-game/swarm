@@ -169,30 +169,38 @@ instance (PrettyPrec (t (Free t v)), PrettyPrec v) => PrettyPrec (Free t v) wher
   prettyPrec p (Free t) = prettyPrec p t
   prettyPrec p (Pure v) = prettyPrec p v
 
-instance ((UnchainableFun t), (PrettyPrec t)) => PrettyPrec (TypeF t) where
-  prettyPrec _ (TyVarF v) = pretty v
-  prettyPrec _ (TyRcdF m) = brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
-  -- Special cases for type constructors with special syntax.
-  -- Always use parentheses around sum and product types, see #1625
-  prettyPrec p (TyConF TCSum [ty1, ty2]) =
-    pparens (p > 0) $
-      prettyPrec 2 ty1 <+> "+" <+> prettyPrec 2 ty2
-  prettyPrec p (TyConF TCProd [ty1, ty2]) =
-    pparens (p > 0) $
-      prettyPrec 2 ty1 <+> "*" <+> prettyPrec 2 ty2
-  prettyPrec _ (TyConF TCDelay [ty]) = braces $ ppr ty
-  prettyPrec p (TyConF TCFun [ty1, ty2]) =
-    let (iniF, lastF) = unsnocNE $ ty1 <| unchainFun ty2
-        funs = (prettyPrec 2 <$> iniF) <> [prettyPrec 1 lastF]
-        inLine l r = l <+> "->" <+> r
-        multiLine l r = l <+> "-> " <> softline' <> r
-     in pparens (p > 1) . align $
-          flatAlt (concatWith multiLine funs) (concatWith inLine funs)
-  -- Fallthrough cases for type constructor application.  Handles base
-  -- types, Cmd, user-defined types, or ill-kinded things like 'Int
-  -- Bool'.
-  prettyPrec _ (TyConF c []) = ppr c
-  prettyPrec p (TyConF c tys) = pparens (p > 9) $ ppr c <+> hsep (map (prettyPrec 10) tys)
+instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) where
+  prettyPrec p = \case
+    TyVarF v -> pretty v
+    TyRcdF m -> brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
+    -- Special cases for type constructors with special syntax.
+    -- Always use parentheses around sum and product types, see #1625
+    TyConF TCSum [ty1, ty2] ->
+      pparens (p > 0) $
+        prettyPrec 2 ty1 <+> "+" <+> prettyPrec 2 ty2
+    TyConF TCProd [ty1, ty2] ->
+      pparens (p > 0) $
+        prettyPrec 2 ty1 <+> "*" <+> prettyPrec 2 ty2
+    TyConF TCDelay [ty] -> braces $ ppr ty
+    TyConF TCFun [ty1, ty2] ->
+      let (iniF, lastF) = unsnocNE $ ty1 <| unchainFun ty2
+          funs = (prettyPrec 2 <$> iniF) <> [prettyPrec 1 lastF]
+          inLine l r = l <+> "->" <+> r
+          multiLine l r = l <+> "->" <> hardline <> r
+       in pparens (p > 1) . align $
+            flatAlt (concatWith multiLine funs) (concatWith inLine funs)
+    TyRecF x ty ->
+      pparens (p > 0) $
+        "rec" <+> pretty x <> "." <+> prettyPrec 0 (substRec (TyVarF x) ty NZ)
+    -- This case shouldn't be possible, since TyRecVar should only occur inside a TyRec,
+    -- and pretty-printing the TyRec (above) will substitute a variable name for
+    -- any bound TyRecVars before recursing.
+    TyRecVarF i -> pretty (show (natToInt i))
+    -- Fallthrough cases for type constructor application.  Handles base
+    -- types, Cmd, user-defined types, or ill-kinded things like 'Int
+    -- Bool'.
+    TyConF c [] -> ppr c
+    TyConF c tys -> pparens (p > 9) $ ppr c <+> hsep (map (prettyPrec 10) tys)
 
 instance PrettyPrec Polytype where
   prettyPrec _ (Forall [] t) = ppr t
@@ -247,75 +255,76 @@ instance PrettyPrec Comment where
   prettyPrec _ (Comment _ BlockComment _ txt) = "/*" <> pretty txt <> "*/"
 
 instance PrettyPrec (Term' ty) where
-  prettyPrec _ TUnit = "()"
-  prettyPrec p (TConst c) = prettyPrec p c
-  prettyPrec _ (TDir d) = ppr d
-  prettyPrec _ (TInt n) = pretty n
-  prettyPrec _ (TAntiInt v) = "$int:" <> pretty v
-  prettyPrec _ (TText s) = fromString (show s)
-  prettyPrec _ (TAntiText v) = "$str:" <> pretty v
-  prettyPrec _ (TBool b) = bool "false" "true" b
-  prettyPrec _ (TRobot r) = "<a" <> pretty r <> ">"
-  prettyPrec _ (TRef r) = "@" <> pretty r
-  prettyPrec p (TRequireDevice d) = pparens (p > 10) $ "require" <+> ppr @Term (TText d)
-  prettyPrec p (TRequire n e) = pparens (p > 10) $ "require" <+> pretty n <+> ppr @Term (TText e)
-  prettyPrec p (SRequirements _ e) = pparens (p > 10) $ "requirements" <+> ppr e
-  prettyPrec _ (TVar s) = pretty s
-  prettyPrec _ (SDelay _ (Syntax' _ (TConst Noop) _ _)) = "{}"
-  prettyPrec _ (SDelay _ t) = group . encloseWithIndent 2 lbrace rbrace $ ppr t
-  prettyPrec _ t@SPair {} = prettyTuple t
-  prettyPrec p t@(SLam {}) =
-    pparens (p > 9) $
-      prettyLambdas t
-  -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3
-  prettyPrec p (SApp t@(Syntax' _ (SApp (Syntax' _ (TConst c) _ _) l) _ _) r) =
-    let ci = constInfo c
-        pC = fixity ci
-     in case constMeta ci of
-          ConstMBinOp assoc ->
-            pparens (p > pC) $
-              hsep
-                [ prettyPrec (pC + fromEnum (assoc == R)) l
-                , ppr c
-                , prettyPrec (pC + fromEnum (assoc == L)) r
-                ]
-          _ -> prettyPrecApp p t r
-  prettyPrec p (SApp t1 t2) = case t1 of
-    Syntax' _ (TConst c) _ _ ->
+  prettyPrec p = \case
+    TUnit -> "()"
+    TConst c -> prettyPrec p c
+    TDir d -> ppr d
+    TInt n -> pretty n
+    TAntiInt v -> "$int:" <> pretty v
+    TText s -> fromString (show s)
+    TAntiText v -> "$str:" <> pretty v
+    TBool b -> bool "false" "true" b
+    TRobot r -> "<a" <> pretty r <> ">"
+    TRef r -> "@" <> pretty r
+    TRequireDevice d -> pparens (p > 10) $ "require" <+> ppr @Term (TText d)
+    TRequire n e -> pparens (p > 10) $ "require" <+> pretty n <+> ppr @Term (TText e)
+    SRequirements _ e -> pparens (p > 10) $ "requirements" <+> ppr e
+    TVar s -> pretty s
+    SDelay _ (Syntax' _ (TConst Noop) _ _) -> "{}"
+    SDelay _ t -> group . encloseWithIndent 2 lbrace rbrace $ ppr t
+    t@SPair {} -> prettyTuple t
+    t@SLam {} ->
+      pparens (p > 9) $
+        prettyLambdas t
+    -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3
+    SApp t@(Syntax' _ (SApp (Syntax' _ (TConst c) _ _) l) _ _) r ->
       let ci = constInfo c
           pC = fixity ci
        in case constMeta ci of
-            ConstMUnOp P -> pparens (p > pC) $ ppr t1 <> prettyPrec (succ pC) t2
-            ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
-            _ -> prettyPrecApp p t1 t2
-    _ -> prettyPrecApp p t1 t2
-  prettyPrec _ (SLet _ (LV _ x) mty t1 t2) =
-    sep
-      [ prettyDefinition "let" x mty t1 <+> "in"
-      , ppr t2
-      ]
-  prettyPrec _ (SDef _ (LV _ x) mty t1) =
-    sep
-      [ prettyDefinition "def" x mty t1
-      , "end"
-      ]
-  prettyPrec _ (TTydef (LV _ x) pty) = prettyTydef x pty
-  -- Special case for printing consecutive defs: don't worry about
-  -- precedence, and print a blank line with no semicolon
-  prettyPrec _ (SBind Nothing t1@(Syntax' _ (SDef {}) _ _) t2) =
-    prettyPrec 0 t1 <> hardline <> hardline <> prettyPrec 0 t2
-  -- General case for bind
-  prettyPrec p (SBind Nothing t1 t2) =
-    pparens (p > 0) $
-      prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
-  prettyPrec p (SBind (Just (LV _ x)) t1 t2) =
-    pparens (p > 0) $
-      pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
-  prettyPrec _ (SRcd m) = brackets $ hsep (punctuate "," (map prettyEquality (M.assocs m)))
-  prettyPrec _ (SProj t x) = prettyPrec 11 t <> "." <> pretty x
-  prettyPrec p (SAnnotate t pt) =
-    pparens (p > 0) $
-      prettyPrec 1 t <+> ":" <+> ppr pt
+            ConstMBinOp assoc ->
+              pparens (p > pC) $
+                hsep
+                  [ prettyPrec (pC + fromEnum (assoc == R)) l
+                  , ppr c
+                  , prettyPrec (pC + fromEnum (assoc == L)) r
+                  ]
+            _ -> prettyPrecApp p t r
+    SApp t1 t2 -> case t1 of
+      Syntax' _ (TConst c) _ _ ->
+        let ci = constInfo c
+            pC = fixity ci
+         in case constMeta ci of
+              ConstMUnOp P -> pparens (p > pC) $ ppr t1 <> prettyPrec (succ pC) t2
+              ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
+              _ -> prettyPrecApp p t1 t2
+      _ -> prettyPrecApp p t1 t2
+    SLet _ (LV _ x) mty t1 t2 ->
+      sep
+        [ prettyDefinition "let" x mty t1 <+> "in"
+        , ppr t2
+        ]
+    SDef _ (LV _ x) mty t1 ->
+      sep
+        [ prettyDefinition "def" x mty t1
+        , "end"
+        ]
+    TTydef (LV _ x) pty -> prettyTydef x pty
+    -- Special case for printing consecutive defs: don't worry about
+    -- precedence, and print a blank line with no semicolon
+    SBind Nothing t1@(Syntax' _ (SDef {}) _ _) t2 ->
+      prettyPrec 0 t1 <> hardline <> hardline <> prettyPrec 0 t2
+    -- General case for bind
+    SBind Nothing t1 t2 ->
+      pparens (p > 0) $
+        prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
+    SBind (Just (LV _ x)) t1 t2 ->
+      pparens (p > 0) $
+        pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
+    SRcd m -> brackets $ hsep (punctuate "," (map prettyEquality (M.assocs m)))
+    SProj t x -> prettyPrec 11 t <> "." <> pretty x
+    SAnnotate t pt ->
+      pparens (p > 0) $
+        prettyPrec 1 t <+> ":" <+> ppr pt
 
 prettyEquality :: (Pretty a, PrettyPrec b) => (a, Maybe b) -> Doc ann
 prettyEquality (x, Nothing) = pretty x
@@ -428,31 +437,47 @@ instance PrettyPrec TypeErr where
 instance PrettyPrec UnificationError where
   prettyPrec _ = \case
     Infinite x uty ->
-      "Infinite type:" <+> ppr x <+> "=" <+> ppr uty
+      vsep
+        [ "Encountered infinite type" <+> ppr x <+> "=" <+> ppr uty <> "."
+        , "Swarm will not infer recursive types; if you want a recursive type, add an explicit type annotation."
+        ]
     UnifyErr ty1 ty2 ->
       "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
     UndefinedUserType ty ->
       "Undefined user type" <+> ppr ty
+    UnexpandedRecTy ty ->
+      "Unexpanded recursive type" <+> ppr ty <+> "encountered in unifyF.  This should never happen, please report this as a bug."
 
 instance PrettyPrec Arity where
   prettyPrec _ (Arity a) = pretty a
 
 instance PrettyPrec KindError where
-  prettyPrec _ (ArityMismatch c a tys) =
-    nest 2 . vsep $
-      [ "Kind error:"
-      , hsep
-          [ ppr c
-          , "requires"
-          , pretty a
-          , "type"
-          , pretty (number a "argument" <> ",")
-          , "but was given"
-          , pretty (length tys)
-          ]
-      ]
-        ++ ["in the type:" <+> ppr (TyConApp c tys) | not (null tys)]
-  prettyPrec _ (UndefinedTyCon tc _ty) = "Undefined type" <+> ppr tc
+  prettyPrec _ = \case
+    ArityMismatch c a tys ->
+      nest 2 . vsep $
+        [ "Kind error:"
+        , hsep
+            [ ppr c
+            , "requires"
+            , pretty a
+            , "type"
+            , pretty (number a "argument" <> ",")
+            , "but was given"
+            , pretty (length tys)
+            ]
+        ]
+          ++ ["in the type:" <+> ppr (TyConApp c tys) | not (null tys)]
+    UndefinedTyCon tc _ty -> "Undefined type" <+> ppr tc
+    TrivialRecTy x ty ->
+      nest 2 . vsep $
+        [ "Encountered trivial recursive type" <+> ppr (TyRec x ty)
+        , "Did you forget to use" <+> pretty x <+> "in the body of the type?"
+        ]
+    VacuousRecTy x ty ->
+      nest 2 . vsep $
+        [ "Encountered vacuous recursive type" <+> ppr (TyRec x ty)
+        , "Recursive types must be productive, i.e. must not expand to themselves."
+        ]
 
 -- | Given a type and its source, construct an appropriate description
 --   of it to go in a type mismatch error message.
@@ -472,11 +497,10 @@ hasAnyUVars = ucata (const True) or
 -- | Check whether a type consists of a top-level type constructor
 --   immediately applied to unification variables.
 isTopLevelConstructor :: UType -> Maybe (TypeF ())
-isTopLevelConstructor (Free (TyRcdF m))
-  | all isPure m = Just (TyRcdF M.empty)
-isTopLevelConstructor (UTyConApp c ts)
-  | all isPure ts = Just (TyConF c [])
-isTopLevelConstructor _ = Nothing
+isTopLevelConstructor = \case
+  Free (TyRcdF m) | all isPure m -> Just (TyRcdF M.empty)
+  UTyConApp c ts | all isPure ts -> Just (TyConF c [])
+  _ -> Nothing
 
 isPure :: Free f a -> Bool
 isPure (Pure {}) = True
@@ -489,6 +513,8 @@ tyNounPhrase = \case
   TyConF c _ -> tyConNounPhrase c
   TyVarF {} -> "a type variable"
   TyRcdF {} -> "a record"
+  TyRecF {} -> "a recursive type"
+  TyRecVarF {} -> "a recursive type variable"
 
 tyConNounPhrase :: TyCon -> Doc a
 tyConNounPhrase = \case
@@ -528,16 +554,19 @@ fieldMismatchMsg expFs actFs =
   prettyFieldSet = hsep . punctuate "," . map (bquote . pretty) . S.toList
 
 instance PrettyPrec InvalidAtomicReason where
-  prettyPrec _ (TooManyTicks n) = "block could take too many ticks (" <> pretty n <> ")"
-  prettyPrec _ AtomicDupingThing = "def, let, and lambda are not allowed"
-  prettyPrec _ (NonSimpleVarType _ ty) = "reference to variable with non-simple type" <+> ppr (prettyTextLine ty)
-  prettyPrec _ NestedAtomic = "nested atomic block"
-  prettyPrec _ LongConst = "commands that can take multiple ticks to execute are not allowed"
+  prettyPrec _ = \case
+    TooManyTicks n -> "block could take too many ticks (" <> pretty n <> ")"
+    AtomicDupingThing -> "def, let, and lambda are not allowed"
+    NonSimpleVarType _ ty ->
+      "reference to variable with non-simple type" <+> ppr (prettyTextLine ty)
+    NestedAtomic -> "nested atomic block"
+    LongConst -> "commands that can take multiple ticks to execute are not allowed"
 
 instance PrettyPrec LocatedTCFrame where
   prettyPrec p (LocatedTCFrame _ f) = prettyPrec p f
 
 instance PrettyPrec TCFrame where
-  prettyPrec _ (TCDef x) = "While checking the definition of" <+> pretty x
-  prettyPrec _ TCBindL = "While checking the left-hand side of a semicolon"
-  prettyPrec _ TCBindR = "While checking the right-hand side of a semicolon"
+  prettyPrec _ = \case
+    TCDef x -> "While checking the definition of" <+> pretty x
+    TCBindL -> "While checking the left-hand side of a semicolon"
+    TCBindR -> "While checking the right-hand side of a semicolon"

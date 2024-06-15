@@ -1,0 +1,201 @@
+######################################################
+#                                                    #
+#   Syntax highlighting TextMate grammar for Swarm   #
+#                                                    #
+######################################################
+# Read the DEVELOPING.md file for how to test this.
+#
+# WARNING: A SINGLE TYPO CAN BREAK THE WHOLE THING!!!
+#
+# Always run the snapshot test to see if half of the
+# syntax is not suddenly missing and you should be OK.
+$schema: https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json
+name: swarm
+scopeName: source.swarm
+patterns:
+  - include: '#expression'
+repository:
+  # ============================================================================
+  # This group is recursively reused and is the root if Swarm language
+  expression:
+    # WARNING: patterns are ordered, but the named groups in repository are NOT
+    patterns:
+      - include: '#keywords'
+      - include: '#comments'
+      - include: '#definitions'
+      - include: '#strings'
+      - include: '#constants'
+      - include: '#variables' # must go AFTER keywords and definitions
+      - include: '#parens'
+  # ============================================================================
+  keywords:
+    patterns:
+      - include: '#keyword'
+      - include: '#require'
+      - include: '#operator'
+      - include: '#lambda'
+      - include: '#chain'
+      - include: '#in'
+      - include: '#end'
+    repository:
+      # ---------------------------------------------
+      # GENERATED PATTERN: Functions and commands
+      # Get new version with:
+      # cabal run swarm:swarm-docs -- editors --code
+      # ---------------------------------------------
+      keyword:
+        name: keyword.other
+        match: >-
+          \b(self|parent|base|if|inl|inr|case|fst|snd|force|undefined|fail|not|format|chars|split|charat|tochar|key|noop|wait|selfdestruct|move|backup|volume|path|push|stride|turn|grab|harvest|sow|ignite|place|ping|give|equip|unequip|make|has|equipped|count|drill|use|build|salvage|reprogram|say|listen|log|view|appear|create|halt|time|scout|whereami|waypoint|structure|floorplan|hastag|tagmembers|detect|resonate|density|sniff|chirp|watch|surveil|heading|blocked|scan|upload|ishere|isempty|meet|meetall|whoami|setname|random|run|return|try|swap|atomic|instant|installkeyhandler|teleport|as|robotnamed|robotnumbered|knows)\b
+      require:
+        name: keyword.control.require
+        match: \b(require)\b
+      lambda:
+        name: keyword.operator.lambda
+        match: \\(\w+)\.
+        captures:
+          '1':
+            name: variable.other
+      chain:
+        name: keyword.operator.chain
+        match: ;
+      # ---------------------------------------------
+      # GENERATED PATTERN: Operators
+      # Get new version with:
+      # cabal run swarm:swarm-docs -- editors --code
+      # ---------------------------------------------
+      operator:
+        name: keyword.operator
+        match: '-|==|!=|<|>|<=|>=|\|\||&&|\+|-|\*|/(?![/|*])|\^|\+\+|\$'
+      in:
+        name: keyword.control.dictionary.let.in
+        match: \b(in)\b
+      end:
+        name: keyword.control.dictionary.def.end
+        match: \b(end)\b
+  # ============================================================================
+  variables:
+    patterns:
+      # ---------------------------------------------
+      # GENERATED PATTERN: Directions
+      # Get new version with:
+      # cabal run swarm:swarm-docs -- editors --code
+      # ---------------------------------------------
+      - name: variable.language.dir
+        match: \b(east|north|west|south|down|forward|left|back|right)\b
+      - name: variable.parameter
+        match: \b([a-z]\w*)\b
+  parens:
+    patterns:
+      - include: '#paren'
+      - include: '#brace'
+    repository:
+      paren:
+        begin: \(
+        end: \)
+        beginCaptures:
+          '0':
+            name: punctuation.paren.open
+        endCaptures:
+          '0':
+            name: punctuation.paren.close
+        name: expression.group
+        patterns:
+          - include: '#expression'
+      brace:
+        begin: \{
+        end: \}
+        beginCaptures:
+          '0':
+            name: punctuation.braces.open
+        endCaptures:
+          '0':
+            name: punctuation.braces.close
+        name: expression.group
+        patterns:
+          - include: '#expression'
+  # ============================================================================
+  comments:
+    patterns:
+      - include: '#line'
+      - include: '#block'
+    repository:
+      line:
+        name: comment.line.double-slash
+        begin: //
+        end: $\n?
+      block:
+        name: comment.block
+        begin: /[*]
+        end: '[*](/)'
+  # ============================================================================
+  strings:
+    patterns:
+      - name: string.quoted.double
+        begin: '"'
+        end: '"'
+        patterns:
+          - name: constant.character.escape.sequence.swarm
+            match: \\(?:["$\\/bfnrt])
+  # ============================================================================
+  constants:
+    patterns:
+      - name: constant.numeric
+        match: ([0-9]+|0b[01]+|0o[0-8]+|0x\x+)
+  # ============================================================================
+  definitions:
+    patterns:
+      - include: '#tydef'
+      - include: '#defeq'
+      - include: '#leteq'
+    repository:
+      tydef:
+        name: keyword.control.dictionary.tydef
+        begin: \b(tydef)\s+([^=]+)\s*(=)
+        end: \b(end)\b
+        beginCaptures:
+          '1':
+            name: keyword.control.dictionary.tydef.start
+          '2':
+            name: entity.name.type
+          '3':
+            name: keyword.control.dictionary.tydef.assignment
+        endCaptures:
+          '1':
+            name: keyword.control.dictionary.tydef.end
+        patterns:
+          - include: '#types'
+      defeq:
+        name: keyword.control.dictionary.def
+        begin: \b(def)\s+(\w+)\s*(:)?
+        end: '='
+        beginCaptures:
+          '2':
+            name: entity.name.function
+          '3':
+            name: keyword.control.dictionary.def.annotation
+        endCaptures:
+          '0':
+            name: keyword.control.dictionary.def.assignment
+        patterns:
+          - include: '#types'
+      leteq:
+        name: keyword.control.dictionary.let
+        begin: \b(let)\s+(\w+)\s*(:)?
+        end: '='
+        beginCaptures:
+          '2':
+            name: entity.name.function
+          '3':
+            name: keyword.control.dictionary.let.annotation
+        endCaptures:
+          '0':
+            name: keyword.control.dictionary.let.assignment
+        patterns:
+          - include: '#types'
+  # ============================================================================
+  # Types are not part of #expression and are used only in #definition
+  types:
+    patterns:
+      - name: entity.name.type
+        match: \b(forall|rec|[A-Z]\w*|[a-z]\w*)\b|\(|\)|\{|\}|(\*|\+|->)|\.

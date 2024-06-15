@@ -81,7 +81,7 @@ module Swarm.Game.CESK (
 
 import Control.Lens ((^.))
 import Control.Lens.Combinators (pattern Empty)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import GHC.Generics (Generic)
@@ -98,6 +98,7 @@ import Swarm.Language.Pretty
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.Language.Value as V
+import Swarm.Util.JSON (optionsMinimize)
 
 ------------------------------------------------------------
 -- Frames and continuations
@@ -175,7 +176,13 @@ data Frame
     FRcd Env [(Var, Value)] Var [(Var, Maybe Term)]
   | -- | We are in the middle of evaluating a record field projection.
     FProj Var
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic)
+
+instance ToJSON Frame where
+  toJSON = genericToJSON optionsMinimize
+
+instance FromJSON Frame where
+  parseJSON = genericParseJSON optionsMinimize
 
 -- | A continuation is just a stack of frames.
 type Cont = [Frame]
@@ -213,7 +220,13 @@ data MemCell
     --   the 'MemCell', so that subsequent lookups can just use it
     --   without recomputing anything.
     V Value
-  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+  deriving (Show, Eq, Generic)
+
+instance ToJSON MemCell where
+  toJSON = genericToJSON optionsMinimize
+
+instance FromJSON MemCell where
+  parseJSON = genericParseJSON optionsMinimize
 
 emptyStore :: Store
 emptyStore = Store 0 IM.empty
@@ -272,7 +285,13 @@ data CESK
   | -- | The machine is waiting for the game to reach a certain time
     --   to resume its execution.
     Waiting TickNumber CESK
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic)
+
+instance ToJSON CESK where
+  toJSON = genericToJSON optionsMinimize
+
+instance FromJSON CESK where
+  parseJSON = genericParseJSON optionsMinimize
 
 -- | Is the CESK machine in a final (finished) state?  If so, extract
 --   the final value and store.
@@ -359,31 +378,32 @@ prettyCont (f : k) inner = prettyCont k (prettyFrame f inner)
 --   pretty-printed version of the entire frame along with its
 --   top-level precedence.
 prettyFrame :: Frame -> (Int, Doc ann) -> (Int, Doc ann)
-prettyFrame (FSnd t _) (_, inner) = (11, "(" <> inner <> "," <+> ppr t <> ")")
-prettyFrame (FFst v) (_, inner) = (11, "(" <> ppr (valueToTerm v) <> "," <+> inner <> ")")
-prettyFrame (FArg t _) (p, inner) = (10, pparens (p < 10) inner <+> prettyPrec 11 t)
-prettyFrame (FApp v) (p, inner) = (10, prettyPrec 10 (valueToTerm v) <+> pparens (p < 11) inner)
-prettyFrame (FLet x t _) (_, inner) = (11, hsep ["let", pretty x, "=", inner, "in", ppr t])
-prettyFrame (FTry v) (p, inner) = (10, "try" <+> pparens (p < 11) inner <+> prettyPrec 11 (valueToTerm v))
-prettyFrame (FUnionEnv _) inner = prettyPrefix "∪·" inner
-prettyFrame (FLoadEnv {}) inner = prettyPrefix "L·" inner
-prettyFrame (FDef x) (_, inner) = (11, "def" <+> pretty x <+> "=" <+> inner <+> "end")
-prettyFrame FExec inner = prettyPrefix "E·" inner
-prettyFrame (FBind Nothing t _) (p, inner) = (0, pparens (p < 1) inner <+> ";" <+> ppr t)
-prettyFrame (FBind (Just x) t _) (p, inner) = (0, hsep [pretty x, "<-", pparens (p < 1) inner, ";", ppr t])
-prettyFrame FDiscardEnv inner = prettyPrefix "D·" inner
-prettyFrame (FImmediate c _worldUpds _robotUpds) inner = prettyPrefix ("I[" <> ppr c <> "]·") inner
-prettyFrame (FUpdate addr) inner = prettyPrefix ("S@" <> pretty addr) inner
-prettyFrame FFinishAtomic inner = prettyPrefix "A·" inner
-prettyFrame (FMeetAll _ _) inner = prettyPrefix "M·" inner
-prettyFrame (FRcd _ done foc rest) (_, inner) = (11, encloseSep "[" "]" ", " (pDone ++ [pFoc] ++ pRest))
- where
-  pDone = map (\(x, v) -> pretty x <+> "=" <+> ppr (valueToTerm v)) (reverse done)
-  pFoc = pretty foc <+> "=" <+> inner
-  pRest = map pprEq rest
-  pprEq (x, Nothing) = pretty x
-  pprEq (x, Just t) = pretty x <+> "=" <+> ppr t
-prettyFrame (FProj x) (p, inner) = (11, pparens (p < 11) inner <> "." <> pretty x)
+prettyFrame f (p, inner) = case f of
+  FSnd t _ -> (11, "(" <> inner <> "," <+> ppr t <> ")")
+  FFst v -> (11, "(" <> ppr (valueToTerm v) <> "," <+> inner <> ")")
+  FArg t _ -> (10, pparens (p < 10) inner <+> prettyPrec 11 t)
+  FApp v -> (10, prettyPrec 10 (valueToTerm v) <+> pparens (p < 11) inner)
+  FLet x t _ -> (11, hsep ["let", pretty x, "=", inner, "in", ppr t])
+  FTry v -> (10, "try" <+> pparens (p < 11) inner <+> prettyPrec 11 (valueToTerm v))
+  FUnionEnv _ -> prettyPrefix "∪·" (p, inner)
+  FLoadEnv {} -> prettyPrefix "L·" (p, inner)
+  FDef x -> (11, "def" <+> pretty x <+> "=" <+> inner <+> "end")
+  FExec -> prettyPrefix "E·" (p, inner)
+  FBind Nothing t _ -> (0, pparens (p < 1) inner <+> ";" <+> ppr t)
+  FBind (Just x) t _ -> (0, hsep [pretty x, "<-", pparens (p < 1) inner, ";", ppr t])
+  FDiscardEnv -> prettyPrefix "D·" (p, inner)
+  FImmediate c _worldUpds _robotUpds -> prettyPrefix ("I[" <> ppr c <> "]·") (p, inner)
+  FUpdate addr -> prettyPrefix ("S@" <> pretty addr) (p, inner)
+  FFinishAtomic -> prettyPrefix "A·" (p, inner)
+  FMeetAll _ _ -> prettyPrefix "M·" (p, inner)
+  FRcd _ done foc rest -> (11, encloseSep "[" "]" ", " (pDone ++ [pFoc] ++ pRest))
+   where
+    pDone = map (\(x, v) -> pretty x <+> "=" <+> ppr (valueToTerm v)) (reverse done)
+    pFoc = pretty foc <+> "=" <+> inner
+    pRest = map pprEq rest
+    pprEq (x, Nothing) = pretty x
+    pprEq (x, Just t) = pretty x <+> "=" <+> ppr t
+  FProj x -> (11, pparens (p < 11) inner <> "." <> pretty x)
 
 -- | Pretty-print a special "prefix application" frame, i.e. a frame
 --   formatted like @X· inner@.  Unlike typical applications, these
@@ -409,4 +429,10 @@ data RobotUpdate
     AddEntity Count Entity
   | -- | Make the robot learn about an entity.
     LearnEntity Entity
-  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON RobotUpdate where
+  toJSON = genericToJSON optionsMinimize
+
+instance FromJSON RobotUpdate where
+  parseJSON = genericParseJSON optionsMinimize

@@ -680,8 +680,9 @@ stepCESK cesk = case cesk of
   -- listing the requirements of the given expression.
   Out (VRequirements src t _) s (FExec : k) -> do
     currentContext <- use $ robotContext . defReqs
+    currentTydefs <- use $ robotContext . tydefVals
     em <- use $ landscape . terrainAndEntities . entityMap
-    let (R.Requirements caps devs inv, _) = R.requirements currentContext t
+    let (R.Requirements caps devs inv, _) = R.requirements currentTydefs currentContext t
 
         devicesForCaps, requiredDevices :: Set (Set Text)
         -- possible devices to provide each required capability
@@ -846,11 +847,9 @@ stepCESK cesk = case cesk of
     let s' = resetBlackholes s
     h <- hasCapability CLog
     em <- use $ landscape . terrainAndEntities . entityMap
-    if h
-      then do
-        void $ traceLog RobotError Error (formatExn em exn)
-        return $ Out VUnit s []
-      else return $ Out VUnit s' []
+    when h $ void $ traceLog RobotError Error (formatExn em exn)
+    return $ Out VExc s' []
+
   -- Fatal errors, capability errors, and infinite loop errors can't
   -- be caught; just throw away the continuation stack.
   Up exn@Fatal {} s _ -> return $ Up exn s []

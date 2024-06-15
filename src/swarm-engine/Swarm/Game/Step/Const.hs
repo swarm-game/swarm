@@ -858,7 +858,8 @@ execConst runChildProg c vs s k = do
             robotDisplay . orientationMap .= M.empty
           [dc, nc, ec, sc, wc] -> do
             robotDisplay . defaultChar .= dc
-            robotDisplay . orientationMap
+            robotDisplay
+              . orientationMap
               .= M.fromList
                 [ (DNorth, nc)
                 , (DEast, ec)
@@ -1509,6 +1510,7 @@ execConst runChildProg c vs s k = do
     m (Set Entity, Inventory)
   checkRequirements parentInventory childInventory childDevices cmd subject fixI = do
     currentContext <- use $ robotContext . defReqs
+    currentTydefs <- use $ robotContext . tydefVals
     em <- use $ landscape . terrainAndEntities . entityMap
     privileged <- isPrivilegedBot
     let -- Note that _capCtx must be empty: at least at the
@@ -1517,7 +1519,7 @@ execConst runChildProg c vs s k = do
         -- (Though perhaps there is an argument that this ought to be
         -- relaxed specifically in the cases of 'Build' and 'Reprogram'.)
         -- See #349
-        (R.Requirements (S.toList -> caps) (S.toList -> devNames) reqInvNames, _capCtx) = R.requirements currentContext cmd
+        (R.Requirements (S.toList -> caps) (S.toList -> devNames) reqInvNames, _capCtx) = R.requirements currentTydefs currentContext cmd
 
     -- Check that all required device names exist (fail with
     -- an exception if not) and convert them to 'Entity' values.
