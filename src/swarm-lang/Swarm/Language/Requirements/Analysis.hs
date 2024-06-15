@@ -127,12 +127,20 @@ requirements tdCtx ctx =
       local @ReqCtx (Ctx.addBinding x bodyReqs) $ go t2
     -- Using tydef requires CEnv, plus whatever the requirements are
     -- for the type itself.
-    TTydef x ty tdInfo t2 -> do
+    TTydef x ty _ t2 -> do
       add (singletonCap CEnv)
       polytypeRequirements ty
       -- Now check the nested term with the new type definition added
       -- to the context.
-      local @TDCtx (maybe id (Ctx.addBinding x) tdInfo) (go t2)
+      --
+      -- Note, it's not ideal to be creating a TydefInfo from scratch
+      -- here; ideally we should get it from the kind checker.
+      -- Eventually we will put that into the third field of TTydef,
+      -- but it's not there yet at this point.  This is really just a
+      -- symptom of the fact that typechecking, kind checking, and
+      -- requirements checking really all need to be done at the same
+      -- time during a single traversal of the term (see #231).
+      local @TDCtx (Ctx.addBinding x (TydefInfo ty (Arity . length . ptVars $ ty))) (go t2)
     -- We also delete the name in a TBind, if any, while recursing on
     -- the RHS.
     TBind mx _ _ t1 t2 -> do
