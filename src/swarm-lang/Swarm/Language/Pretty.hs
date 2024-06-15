@@ -375,13 +375,21 @@ prettyTypeErr :: Text -> ContextualTypeErr -> Doc ann
 prettyTypeErr code (CTE l tcStack te) =
   vcat
     [ teLoc <> ppr te
-    , ppr (BulletList "" tcStack)
+    , ppr (BulletList "" (filterTCStack tcStack))
     ]
  where
   teLoc = case l of
     SrcLoc s e -> (showLoc . fst $ getLocRange code (s, e)) <> ": "
     NoLoc -> emptyDoc
   showLoc (r, c) = pretty r <> ":" <> pretty c
+
+-- | 
+filterTCStack :: TCStack -> TCStack
+filterTCStack tcStack = case tcStack of
+  [] -> []
+  t@(LocatedTCFrame src (TCDef var)) : _ -> [t]
+  t@(LocatedTCFrame src TCBindR) : xs -> t : filterTCStack xs
+  t@(LocatedTCFrame src TCBindL) : xs -> t : filterTCStack xs
 
 instance PrettyPrec TypeErr where
   prettyPrec _ = \case
