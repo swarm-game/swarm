@@ -108,7 +108,6 @@ world:
     '@': [grass, monolith]
     'c': [grass, crate]
     'A': [grass, wall]
-    'w': [dirt, water]
     'x': [stone, erase]
     'z': [dirt, erase]
   map: |

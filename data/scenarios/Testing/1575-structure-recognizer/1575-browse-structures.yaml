@@ -116,7 +116,6 @@ world:
     'q': [grass, quartz]
     'g': [grass, gold]
     's': [grass, silver]
-    'm': [grass, mithril]
     'c': [grass, cotton]
     'B': [grass, null, base]
   upperleft: [0, 0]

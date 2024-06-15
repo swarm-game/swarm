@@ -14,9 +14,6 @@ world:
     '.': [grass]
     'i': [ice]
     'j': [dirt]
-    'k': [stone]
-    'l': [stone, sand]
-    'm': [stone, water]
   upperleft: [3, 3]
   structures:
     - name: single tree

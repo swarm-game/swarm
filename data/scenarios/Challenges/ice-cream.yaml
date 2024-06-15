@@ -211,7 +211,6 @@ world:
   upperleft: [0, 0]
   offset: false
   palette:
-    '@': [stone, boulder]
     '.': [grass]
     ':': [stone]
     'B': [stone, briefcase]

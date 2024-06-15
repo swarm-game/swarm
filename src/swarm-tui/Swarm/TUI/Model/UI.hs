@@ -79,7 +79,7 @@ import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
 import Swarm.Game.Universe
-import Swarm.Game.World qualified as W
+import Swarm.Game.World.Coords
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Launch.Model
@@ -193,7 +193,7 @@ uiInventoryShouldUpdate :: Lens' UIInventory Bool
 -- see the lenses below.
 data UIGameplay = UIGameplay
   { _uiFocusRing :: FocusRing Name
-  , _uiWorldCursor :: Maybe (Cosmic W.Coords)
+  , _uiWorldCursor :: Maybe (Cosmic Coords)
   , _uiWorldEditor :: WorldEditor Name
   , _uiREPL :: REPLState
   , _uiInventory :: UIInventory
@@ -224,7 +224,7 @@ uiInventory :: Lens' UIGameplay UIInventory
 uiFocusRing :: Lens' UIGameplay (FocusRing Name)
 
 -- | The last clicked position on the world view.
-uiWorldCursor :: Lens' UIGameplay (Maybe (Cosmic W.Coords))
+uiWorldCursor :: Lens' UIGameplay (Maybe (Cosmic Coords))
 
 -- | State of all World Editor widgets
 uiWorldEditor :: Lens' UIGameplay (WorldEditor Name)

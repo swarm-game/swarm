@@ -42,8 +42,6 @@ world:
           - src: horizontal rectangle
     - name: combined rectangles empty base
       structure:
-        palette:
-          'x': [blank]
         map: ""
         placements:
           - src: vertical rectangle

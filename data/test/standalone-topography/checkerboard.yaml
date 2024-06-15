@@ -11,9 +11,6 @@ structures:
         ttttffff
   - name: checker quad
     structure:
-      palette:
-        't': true
-        'f': false
       map: ""
       placements:
         - src: checker pair
@@ -26,9 +23,6 @@ structures:
             up: south
   - name: checker octo
     structure:
-      palette:
-        't': true
-        'f': false
       map: ""
       placements:
         - src: checker quad

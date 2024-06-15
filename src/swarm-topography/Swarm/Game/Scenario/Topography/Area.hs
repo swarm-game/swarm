@@ -10,6 +10,7 @@ import Data.List qualified as L
 import Data.Maybe (listToMaybe)
 import Linear (V2 (..))
 import Swarm.Game.Location
+import Swarm.Game.World.Coords
 
 newtype Grid c = Grid
   { unGrid :: [[c]]
@@ -21,6 +22,13 @@ newtype Grid c = Grid
 -- an explicit function for mapping over the enclosing lists.
 mapRows :: ([[a]] -> [[b]]) -> Grid a -> Grid b
 mapRows f (Grid rows) = Grid $ f rows
+
+allMembers :: Grid a -> [a]
+allMembers (Grid g) = concat g
+
+mapIndexedMembers :: (Coords -> a -> b) -> Grid a -> [b]
+mapIndexedMembers f (Grid g) =
+  concat $ zipWith (\i -> zipWith (\j -> f (Coords (i, j))) [0 ..]) [0 ..] g
 
 instance (ToJSON a) => ToJSON (Grid a) where
   toJSON (Grid g) = toJSON g

@@ -50,7 +50,6 @@ world:
   palette:
     'Ω': [grass, erase, base]
     'j': [stone, erase, judge]
-    '.': [grass, erase]
     'x': [grass, crate]
   upperleft: [0, 0]
   map: |
