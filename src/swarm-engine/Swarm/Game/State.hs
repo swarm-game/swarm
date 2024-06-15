@@ -117,11 +117,11 @@ import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Status
+import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Swarm.Game.Scenario.Topography.Structure.Type qualified as Structure
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate

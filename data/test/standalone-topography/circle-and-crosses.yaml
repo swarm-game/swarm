@@ -1,0 +1,66 @@
+structures:
+  - name: cross
+    structure:
+      structures:
+        - name: beam
+          structure:
+            palette:
+              't': true
+              'f': false
+            map: |
+              ttt
+              ttt
+              ttt
+              ttt
+              ttt
+              ttt
+              fff
+              fff
+              fff
+      placements:
+        - src: beam
+          offset: [0, 3]
+          truncate: false
+        - src: beam
+          offset: [-3, -3]
+          truncate: false
+          orient:
+            up: east
+      map: ""
+  - name: disc
+    structure:
+      mask: '.'
+      palette:
+        't': true
+      map: |
+        ..tttt..
+        .tttttt.
+        ttt..ttt
+        tt....tt
+        tt....tt
+        ttt..ttt
+        .tttttt.
+        ..tttt..
+placements:
+  - src: cross
+    offset: [0, -15]
+    truncate: false
+  - src: cross
+    offset: [0, 0]
+    truncate: false
+    orient:
+      up: east
+  - src: cross
+    offset: [15, 0]
+    truncate: false
+    orient:
+      up: south
+  - src: cross
+    offset: [15, -15]
+    truncate: false
+    orient:
+      up: west
+  - src: disc
+    offset: [8, -8]
+    truncate: false
+map: ""

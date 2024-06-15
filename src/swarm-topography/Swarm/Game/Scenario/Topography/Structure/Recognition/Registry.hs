@@ -29,8 +29,8 @@ import Data.Map.NonEmpty (NEMap)
 import Data.Map.NonEmpty qualified as NEM
 import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario.Topography.Placement (StructureName)
+import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Swarm.Game.Scenario.Topography.Structure.Type qualified as Structure
 import Swarm.Game.Universe (Cosmic)
 import Swarm.Util (binTuples, deleteKeys)
 

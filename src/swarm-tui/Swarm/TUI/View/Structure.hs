@@ -23,11 +23,11 @@ import Swarm.Game.Entity (Entity, entityDisplay)
 import Swarm.Game.Scenario (Cell)
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Placement
+import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (getEntityGrid)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Swarm.Game.Scenario.Topography.Structure.Type qualified as Structure
 import Swarm.Game.State
 import Swarm.Game.State.Substate
 import Swarm.Language.Syntax.Direction (directionJsonModifier)

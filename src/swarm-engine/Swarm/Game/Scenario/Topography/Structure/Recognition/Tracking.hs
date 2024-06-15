@@ -27,11 +27,11 @@ import Linear (V2 (..))
 import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Scenario (Cell)
+import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Swarm.Game.Scenario.Topography.Structure.Type qualified as Structure
 import Swarm.Game.State
 import Swarm.Game.State.Substate
 import Swarm.Game.Universe

@@ -1,0 +1,59 @@
+structures:
+  - name: checker pair
+    structure:
+      palette:
+        't': true
+        'f': false
+      map: |
+        ttttffff
+        ttttffff
+        ttttffff
+        ttttffff
+  - name: checker quad
+    structure:
+      palette:
+        't': true
+        'f': false
+      map: ""
+      placements:
+        - src: checker pair
+          offset: [0, 0]
+          truncate: false
+        - src: checker pair
+          offset: [0, -4]
+          truncate: false
+          orient:
+            up: south
+  - name: checker octo
+    structure:
+      palette:
+        't': true
+        'f': false
+      map: ""
+      placements:
+        - src: checker quad
+          offset: [0, 0]
+          truncate: false
+        - src: checker quad
+          offset: [8, 0]
+          truncate: false
+        - src: checker quad
+          offset: [0, -8]
+          truncate: false
+        - src: checker quad
+          offset: [8, -8]
+          truncate: false
+placements:
+  - src: checker octo
+    offset: [0, 0]
+    truncate: false
+  - src: checker octo
+    offset: [16, 0]
+    truncate: false
+  - src: checker octo
+    offset: [0, -16]
+    truncate: false
+  - src: checker octo
+    offset: [16, -16]
+    truncate: false
+map: ""
