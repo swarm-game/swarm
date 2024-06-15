@@ -763,9 +763,42 @@ stepCESK cesk = case cesk of
   -- First, if we were running a try block but evaluation completed normally,
   -- just ignore the try block and continue.
   Out v s (FTry {} : k) -> return $ Out v s k
-  Up exn s [] -> do
-    -- Here, an exception has risen all the way to the top level without being
-    -- handled.
+  -- Also ignore restore frames when returning normally.
+  Out v s (FRestoreEnv {} : k) -> return $ Out v s k
+  -- If raising an exception up the stack and we reach the top, handle
+  -- it appropriately.
+  Up exn s [] -> handleException exn s Nothing
+  Up exn s (FRestoreEnv e : _) -> handleException exn s (Just e)
+  -- If we are raising a catchable exception up the continuation
+  -- stack and come to a Try frame, force and then execute the associated catch
+  -- block.
+  Up exn s (FTry c : k)
+    | isCatchable exn -> return $ Out c s (FApp (VCApp Force []) : FExec : k)
+  -- If we are raising an exception up the stack and we see an FRestoreEnv frame,
+  -- switch into a suspended state.
+
+  -- Otherwise, keep popping from the continuation stack.
+  Up exn s (_ : k) -> return $ Up exn s k
+  -- Finally, if we're done evaluating and the continuation stack is
+  -- empty, OR if we've hit a suspend, return the machine unchanged.
+  done@(Out _ _ []) -> return done
+  suspended@(Suspended {}) -> return suspended
+ where
+  badMachineState s msg =
+    let msg' =
+          T.unlines
+            [ T.append "Bad machine state in stepRobot: " msg
+            , prettyText cesk
+            ]
+     in return $ Up (Fatal msg') s []
+
+  isCatchable = \case
+    Fatal {} -> False
+    Incapable {} -> False
+    InfiniteLoop {} -> False
+    _ -> True
+
+  handleException exn s menv = do
     case exn of
       CmdFailed _ _ (Just a) -> do
         grantAchievement a
@@ -783,31 +816,9 @@ stepCESK cesk = case cesk of
     h <- hasCapability CLog
     em <- use $ landscape . terrainAndEntities . entityMap
     when h $ void $ traceLog RobotError Error (formatExn em exn)
-    return $ Out VExc s' []
-
-  -- Fatal errors, capability errors, and infinite loop errors can't
-  -- be caught; just throw away the continuation stack.
-  Up exn@Fatal {} s _ -> return $ Up exn s []
-  Up exn@Incapable {} s _ -> return $ Up exn s []
-  Up exn@InfiniteLoop {} s _ -> return $ Up exn s []
-  -- Otherwise, if we are raising an exception up the continuation
-  -- stack and come to a Try frame, force and then execute the associated catch
-  -- block.
-  Up _ s (FTry c : k) -> return $ Out c s (FApp (VCApp Force []) : FExec : k)
-  -- Otherwise, keep popping from the continuation stack.
-  Up exn s (_ : k) -> return $ Up exn s k
-  -- Finally, if we're done evaluating and the continuation stack is
-  -- empty, OR if we've hit a suspend, return the machine unchanged.
-  done@(Out _ _ []) -> return done
-  suspended@(Suspended {}) -> return suspended
- where
-  badMachineState s msg =
-    let msg' =
-          T.unlines
-            [ T.append "Bad machine state in stepRobot: " msg
-            , prettyText cesk
-            ]
-     in return $ Up (Fatal msg') s []
+    return $ case menv of
+      Nothing -> Out VExc s' []
+      Just env -> Suspended VExc env s' []
 
 -- | Execute the given program *hypothetically*: i.e. in a fresh
 -- CESK machine, using *copies* of the current store, robot
