@@ -10,23 +10,26 @@ import Data.List qualified as L
 import Data.Maybe (listToMaybe)
 import Linear (V2 (..))
 import Swarm.Game.Location
+import Data.List.NonEmpty qualified as NE
+import Data.List.NonEmpty (NonEmpty)
+import Data.Semigroup
 
 newtype Grid c = Grid
-  { unGrid :: [[c]]
+  { unGrid :: NonEmpty [c]
   }
   deriving (Show, Eq, Functor, Foldable, Traversable)
 
 -- | Since the derived 'Functor' instance applies to the
 -- type parameter that is nested within lists, we define
 -- an explicit function for mapping over the enclosing lists.
-mapRows :: ([[a]] -> [[b]]) -> Grid a -> Grid b
+mapRows :: (NonEmpty [a] -> NonEmpty [b]) -> Grid a -> Grid b
 mapRows f (Grid rows) = Grid $ f rows
 
 instance (ToJSON a) => ToJSON (Grid a) where
   toJSON (Grid g) = toJSON g
 
 getGridDimensions :: Grid a -> AreaDimensions
-getGridDimensions (Grid g) = getAreaDimensions g
+getGridDimensions (Grid g) = getAreaDimensions $ NE.toList g
 
 -- | Height and width of a 2D map region
 data AreaDimensions = AreaDimensions
@@ -85,5 +88,5 @@ computeArea (AreaDimensions w h) = w * h
 fillGrid :: AreaDimensions -> a -> Grid a
 fillGrid (AreaDimensions w h) =
   Grid
-    . replicate (fromIntegral h)
-    . replicate (fromIntegral w)
+    . stimes (fromIntegral h)
+    . pure . replicate (fromIntegral w)

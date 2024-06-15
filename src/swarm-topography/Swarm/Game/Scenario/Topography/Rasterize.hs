@@ -7,11 +7,12 @@ module Swarm.Game.Scenario.Topography.Rasterize where
 import Codec.Picture
 import Data.Vector qualified as V
 import Swarm.Game.Scenario.Topography.Area
+import Data.List.NonEmpty qualified as NE
 
 -- | Converts linked lists to vectors to facilitate
 -- random access when assembling the image
 gridToVec :: Grid a -> V.Vector (V.Vector a)
-gridToVec (Grid g) = V.fromList . map V.fromList $ g
+gridToVec (Grid g) = V.fromList . map V.fromList $ NE.toList g
 
 makeImage :: Pixel px => (a -> px) -> Grid a -> Image px
 makeImage computeColor g =
