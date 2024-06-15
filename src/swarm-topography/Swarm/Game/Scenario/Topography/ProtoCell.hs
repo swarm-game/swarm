@@ -1,5 +1,5 @@
-{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -35,7 +35,7 @@ instance (FromJSONE e a) => FromJSONE e (SignpostableCell a) where
     withObjectE "SignpostableCell" objParse x
       <|> (SignpostableCell Nothing <$> parseJSONE x)
    where
-    objParse v =
-      SignpostableCell
-        <$> liftE (v .:? "waypoint")
-        <*> v ..: "cell"
+    objParse v = do
+      waypointCfg <- liftE $ v .:? "waypoint"
+      standardCell <- v ..: "cell"
+      pure $ SignpostableCell {..}
