@@ -186,7 +186,7 @@ instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) wh
       let (iniF, lastF) = unsnocNE $ ty1 <| unchainFun ty2
           funs = (prettyPrec 2 <$> iniF) <> [prettyPrec 1 lastF]
           inLine l r = l <+> "->" <+> r
-          multiLine l r = l <+> "->" <+> softline' <> r
+          multiLine l r = l <+> "->" <+> softline <> r
        in pparens (p > 1) . align $
             flatAlt (concatWith multiLine funs) (concatWith inLine funs)
     TyRecF x ty ->
