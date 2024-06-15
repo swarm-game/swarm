@@ -24,9 +24,6 @@ import Swarm.Language.Types
 --   over.
 elaborate :: TSyntax -> TSyntax
 elaborate =
-  -- XXX Maybe pass the current environment into elaborate, so we can tell
-  -- _which_ free variables need to be wrapped in Force?
-
   -- Wrap all *free* variables in 'Force'.  Free variables must be
   -- referring to a previous definition, which are all wrapped in
   -- 'TDelay'.
