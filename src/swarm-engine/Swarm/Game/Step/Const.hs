@@ -87,7 +87,6 @@ import Swarm.Game.Tick
 import Swarm.Game.Universe
 import Swarm.Game.Value
 import Swarm.Language.Capability
-import Swarm.Language.Elaborate (insertSuspend)
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (prettyText)
