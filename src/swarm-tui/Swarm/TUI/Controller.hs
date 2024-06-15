@@ -101,7 +101,7 @@ import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
-import Swarm.Language.Value (Value (VExc, VKey, VUnit), envReqs, envTydefs, envTypes, prettyValue)
+import Swarm.Language.Value (Value (VExc, VKey, VUnit), envTydefs, envTypes, prettyValue)
 import Swarm.Log
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Controller qualified as EC
@@ -829,8 +829,6 @@ updateUI = do
     REPLWorking pty (Just v)
       -- It did, and the result was the unit value or an exception.  Just reset replStatus.
       | v `elem` [VUnit, VExc] -> do
-          env <- use (gameState . baseEnv)
-          liftIO $ writeFile "env.txt" (show (env ^. envReqs))
           gameState . gameControls . replStatus .= REPLDone (Just (pty, v))
           pure True
 
