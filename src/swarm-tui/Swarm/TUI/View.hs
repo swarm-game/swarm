@@ -1279,15 +1279,27 @@ explainCapabilities gs e
     Widget Fixed Fixed $ do
       ctx <- getContext
       let w = ctx ^. availWidthL
+          constType = inferConst c
+          info = constInfo c
+          requiredWidthForTypes = textWidth (syntax info <> " : " <> prettyTextLine constType)
       render
         . padTop (Pad 1)
         $ vBox
           [ hBox
-              [ padRight (Pad 1) (txt . syntax $ constInfo c)
+              [ padRight (Pad 1) (txt $ syntax info)
               , padRight (Pad 1) (txt ":")
-              , withAttr magentaAttr . txt $ prettyTextWidth (inferConst c) w
+              , if requiredWidthForTypes <= w
+                  then withAttr magentaAttr . txt $ prettyTextLine constType
+                  else emptyWidget
               ]
-          , padTop (Pad 1) . padLeft (Pad 1) . txtWrap . briefDoc . constDoc $ constInfo c
+          , hBox $
+              if requiredWidthForTypes > w
+                then
+                  [ padRight (Pad 1) (txt " ")
+                  , withAttr magentaAttr . txt $ prettyTextWidth constType (w - 2)
+                  ]
+                else [emptyWidget]
+          , padTop (Pad 1) . padLeft (Pad 1) . txtWrap . briefDoc $ constDoc info
           ]
 
   costWidget cmdsAndCost =
