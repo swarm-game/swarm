@@ -84,11 +84,11 @@ integrateArea ::
 integrateArea palette initialStructureDefs v = do
   placementDefs <- v .:? "placements" .!= []
   waypointDefs <- v .:? "waypoints" .!= []
-  rawMap <- v .:? "map" .!= ""
+  rawMap <- v .:? "map" .!= Grid []
   (initialArea, mapWaypoints) <- paintMap Nothing palette rawMap
   let unflattenedStructure =
         Structure
-          (PositionedGrid origin $ Grid initialArea)
+          (PositionedGrid origin initialArea)
           initialStructureDefs
           placementDefs
           (waypointDefs <> mapWaypoints)

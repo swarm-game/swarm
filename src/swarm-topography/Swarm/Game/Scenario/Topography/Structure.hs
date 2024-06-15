@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -8,8 +9,10 @@
 -- as well as logic for combining them.
 module Swarm.Game.Scenario.Topography.Structure where
 
+import Control.Monad (unless)
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KeyMap
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Text (Text)
@@ -24,7 +27,6 @@ import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Util (failT, showT)
 import Swarm.Util.Yaml
-import Witch (into)
 
 data NamedArea a = NamedArea
   { name :: StructureName
@@ -83,6 +85,17 @@ instance (FromJSONE e a) => FromJSONE e (NamedStructure (Maybe a)) where
       description <- v .:? "description"
       return $ NamedArea {..}
 
+instance FromJSON (Grid Char) where
+  parseJSON = withText "area" $ \t -> do
+    let textLines = map T.unpack $ T.lines t
+    case NE.nonEmpty textLines of
+      Nothing -> return $ Grid []
+      Just nonemptyRows -> do
+        let firstRowLength = length $ NE.head nonemptyRows
+        unless (all ((== firstRowLength) . length) $ NE.tail nonemptyRows) $
+          fail "Grid is not rectangular!"
+        return $ Grid textLines
+
 instance (FromJSONE e a) => FromJSONE e (PStructure (Maybe a)) where
   parseJSONE = withObjectE "structure definition" $ \v -> do
     pal <- v ..:? "palette" ..!= StructurePalette mempty
@@ -91,8 +104,9 @@ instance (FromJSONE e a) => FromJSONE e (PStructure (Maybe a)) where
       placements <- v .:? "placements" .!= []
       waypointDefs <- v .:? "waypoints" .!= []
       maybeMaskChar <- v .:? "mask"
-      (maskedArea, mapWaypoints) <- (v .:? "map" .!= "") >>= paintMap maybeMaskChar pal
-      let area = PositionedGrid origin $ Grid maskedArea
+      rawGrid <- v .:? "map" .!= Grid []
+      (maskedArea, mapWaypoints) <- paintMap maybeMaskChar pal rawGrid
+      let area = PositionedGrid origin maskedArea
           waypoints = waypointDefs <> mapWaypoints
       return Structure {..}
 
@@ -104,15 +118,15 @@ paintMap ::
   MonadFail m =>
   Maybe Char ->
   StructurePalette c ->
-  Text ->
-  m ([[Maybe c]], [Waypoint])
-paintMap maskChar pal a = do
-  nestedLists <- readMap toCell a
-  let cells = map (map $ fmap standardCell) nestedLists
+  Grid Char ->
+  m (Grid (Maybe c), [Waypoint])
+paintMap maskChar pal g = do
+  nestedLists <- mapM toCell g
+  let cells = fmap standardCell <$> nestedLists
       f i j maybeAugmentedCell = do
         wpCfg <- waypointCfg =<< maybeAugmentedCell
         return . Waypoint wpCfg . Location j $ negate i
-      wps = concat $ zipWith (\i -> catMaybes . zipWith (f i) [0 ..]) [0 ..] nestedLists
+      wps = concat $ zipWith (\i -> catMaybes . zipWith (f i) [0 ..]) [0 ..] $ unGrid nestedLists
 
   return (cells, wps)
  where
@@ -122,6 +136,3 @@ paintMap maskChar pal a = do
       else case KeyMap.lookup (Key.fromString [c]) (unPalette pal) of
         Nothing -> failT ["Char not in world palette:", showT c]
         Just cell -> return $ Just cell
-
-readMap :: Applicative f => (Char -> f b) -> Text -> f [[b]]
-readMap func = traverse (traverse func . into @String) . T.lines

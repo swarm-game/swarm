@@ -1,0 +1,12 @@
+version: 1
+name: Enforce rectangular maps
+description: |
+  Enforce map area is rectangular.
+robots: []
+world:
+  palette:
+    '.': [grass]
+  upperleft: [0, 0]
+  map: |
+    ..
+    ...
