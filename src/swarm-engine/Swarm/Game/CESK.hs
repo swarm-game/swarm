@@ -163,7 +163,8 @@ data Frame
     FRcd Env [(Var, Value)] Var [(Var, Maybe Term)]
   | -- | We are in the middle of evaluating a record field projection.
     FProj Var
-  | -- | We should suspend once we finish the current evaluation.
+  | -- | We should suspend with the given environment once we finish
+    --   the current evaluation.
     FSuspend Env
   | -- | If an exception bubbles all the way up to this frame, then
     --   switch to Suspended mode with this saved top-level context.
@@ -359,7 +360,23 @@ initMachine t = In (prepareTerm mempty t) mempty emptyStore [FExec]
 --   term is suitable for execution by the base (REPL) robot.
 continue :: TSyntax -> CESK -> CESK
 continue t = \case
+  -- The normal case is when we are continuing from a suspended state. We:
+  --
+  --   (1) insert a suspend call at the end of the term, so that in
+  --   the normal case after executing the entire term we will suspend
+  --   in the innermost scope, to continue executing another term
+  --   within that scope later.
+  --
+  --   (2) insert a failsafe FRestoreEnv frame into the continuation
+  --   stack, in case execution of the term throws an exception.  In
+  --   that case we will fall back to suspending with the original
+  --   environment e (any names brought into scope by executing the
+  --   term will be discarded).  If the term succeeds, the extra
+  --   FRestoreEnv frame will be discarded.
   Suspended _ e s k -> In (insertSuspend $ prepareTerm e t) e s (FExec : FRestoreEnv e : k)
+  -- In any other state, just start with an empty environment.  This
+  -- happens e.g. when running a program on the base robot for the
+  -- very first time.
   cesk -> In (insertSuspend $ prepareTerm mempty t) mempty (cesk ^. store) (FExec : (cesk ^. cont))
 
 -- | Prepare a term for evaluation by a CESK machine in the given
