@@ -327,15 +327,15 @@ testEval g =
         "nesting"
         [ testCase
             "def nested in def"
-            ("def x : Int = def y : Int = 3 end; y + 2 end; x" `evaluatesTo` VInt 5)
+            ("def x : Cmd Int = def y : Int = 3 end; return (y + 2) end; x" `evaluatesTo` VInt 5)
         , testCase
             "nested def does not escape"
-            ( "def z = 1 end; def x = def z = 3 end; z + 2 end; x + z"
+            ( "def z = 1 end; def x = def z = 3 end; return (z + 2) end; n <- x; return (n + z)"
                 `evaluatesTo` VInt 6
             )
         , testCase
             "nested tydef"
-            ( "def x = (tydef X = Int end; def z : X = 3 end; z + 2) end; x"
+            ( "def x = (tydef X = Int end; def z : X = 3 end; return (z + 2)) end; x"
                 `evaluatesTo` VInt 5
             )
         ]
@@ -351,7 +351,7 @@ testEval g =
       Left err ->
         p err
           @? "Expected predicate did not hold on error message "
-            ++ from @Text @String err
+          ++ from @Text @String err
 
   evaluatesTo :: Text -> Value -> Assertion
   evaluatesTo tm val = do

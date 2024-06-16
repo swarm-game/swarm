@@ -54,7 +54,7 @@ import Control.Effect.Reader
 import Control.Effect.Throw
 import Control.Lens ((^.))
 import Control.Lens.Indexed (itraverse)
-import Control.Monad (forM_, when, (<=<), (>=>))
+import Control.Monad (forM_, void, when, (<=<), (>=>))
 import Control.Monad.Free (Free (..))
 import Data.Data (Data, gmapM)
 import Data.Foldable (fold, traverse_)
@@ -975,6 +975,15 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     let Syntax' _ tt1 _ _ = t1
         reqs = requirements tdCtx reqCtx tt1
 
+    -- If we are checking a 'def', ensure t2 has a command type.  This ensures that
+    -- something like 'def ... end; x + 3' is not allowed, since this
+    -- would result in the whole thing being wrapped in return, like
+    -- 'return (def ... end; x + 3)', which means the def would be local and
+    -- not persist to the next REPL input, which could be surprising.
+    --
+    -- On the other hand, 'let x = y in x + 3' is perfectly fine.
+    when (ls == LSDef) $ void $ decomposeCmdTy t2 (Expected, expected)
+
     -- Now check the type of the body, under a context extended with
     -- the type and requirements of the bound variable.
     t2' <-
@@ -985,8 +994,33 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     -- Make sure no skolem variables have escaped.
     ask @UCtx >>= mapM_ (noSkolems l)
 
+    -- Annotate a 'def' with requirements, but not 'let'.  The reason
+    -- is so that let introduces truly "local" bindings which never
+    -- persist, but def introduces "global" bindings.  Variables bound
+    -- in the environment can only be used to typecheck future REPL
+    -- terms if the environment holds not only a value but also a type
+    -- + requirements for them.  For example:
+    --
+    -- > def x : Int = 3 end; return (x + 2)
+    -- 5
+    -- > x
+    -- 3
+    -- > let y : Int = 3 in y + 2
+    -- 5
+    -- > y
+    -- 1:1: Unbound variable y
+    -- > let y = 3 in def x = 5 end; return (x + y)
+    -- 8
+    -- > y
+    -- 1:1: Unbound variable y
+    -- > x
+    -- 5
+    let mreqs = case ls of
+          LSDef -> Just reqs
+          LSLet -> Nothing
+
     -- Return the annotated let.
-    return $ Syntax' l (SLet ls r x mxTy (Just reqs) t1' t2') cs expected
+    return $ Syntax' l (SLet ls r x mxTy mreqs t1' t2') cs expected
 
   -- Kind-check a type definition and then check the body under an
   -- extended context.
