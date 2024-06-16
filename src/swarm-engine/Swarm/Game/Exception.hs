@@ -46,7 +46,7 @@ import Witch (from)
 -- >>> import Swarm.Language.Capability
 -- >>> import Swarm.Game.Entity
 -- >>> import Swarm.Game.Display
--- >>> import qualified Swarm.Language.Requirement as R
+-- >>> import qualified Swarm.Language.Requirements.Type as R
 
 -- ------------------------------------------------------------------
 
