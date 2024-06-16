@@ -767,7 +767,15 @@ stepCESK cesk = case cesk of
   -- If we're suspended but we were on the LHS of a bind, switch to
   -- evaluating that, except with the environment from the suspension
   -- instead of the environment stored in the FBind frame, as if the
-  -- RHS of the bind had been grafted in right where the suspend was.
+  -- RHS of the bind had been grafted in right where the suspend was,
+  -- i.e. the binds were reassociated.  For example
+  --
+  -- (x; z <- y; suspend z); q; r
+  --
+  -- should be equivalent to
+  --
+  -- x; z <- y; q; r
+  --
   Suspended _ e s (FBind Nothing _ t2 _ : k) -> return $ In t2 e s (FExec : k)
   Suspended v e s (FBind (Just x) mtr t2 _ : k) -> do
     let e' = case mtr of
@@ -790,6 +798,9 @@ stepCESK cesk = case cesk of
   -- If raising an exception up the stack and we reach the top, handle
   -- it appropriately.
   Up exn s [] -> handleException exn s Nothing
+  -- If we are raising an exception up the stack and we see an
+  -- FRestoreEnv frame, log the exception, switch into a suspended state,
+  -- and discard the rest of the stack.
   Up exn s (FRestoreEnv e : _) -> handleException exn s (Just e)
   -- If an atomic block threw an exception, we should terminate it.
   Up exn s (FFinishAtomic : k) -> do
@@ -800,9 +811,6 @@ stepCESK cesk = case cesk of
   -- block.
   Up exn s (FTry c : k)
     | isCatchable exn -> return $ Out c s (FApp (VCApp Force []) : FExec : k)
-  -- If we are raising an exception up the stack and we see an FRestoreEnv frame,
-  -- switch into a suspended state.
-
   -- Otherwise, keep popping from the continuation stack.
   Up exn s (_ : k) -> return $ Up exn s k
   -- Finally, if we're done evaluating and the continuation stack is
