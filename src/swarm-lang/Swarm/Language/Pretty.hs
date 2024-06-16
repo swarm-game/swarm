@@ -54,9 +54,24 @@ ppr = prettyPrec 0
 docToText :: Doc a -> Text
 docToText = RT.renderStrict . layoutPretty defaultLayoutOptions
 
+-- | Render a pretty-printed document as @Text@.
+--   This function consumes number of allowed characters in a
+--   line before introducing a line break. In other words, it
+--   expects the space of the layouter to be supplied.
+docToTextWidth :: Doc a -> Int -> Text
+docToTextWidth doc layoutWidth =
+  RT.renderStrict $ layoutPretty (LayoutOptions (AvailablePerLine layoutWidth 1.0)) doc
+
 -- | Pretty-print something and render it as @Text@.
 prettyText :: (PrettyPrec a) => a -> Text
 prettyText = docToText . ppr
+
+-- | Pretty-print something and render it as @Text@.
+--   This is different than @prettyText@ in the sense that it also
+--   consumes number of allowed characters in a line before introducing
+--   a line break.
+prettyTextWidth :: (PrettyPrec a) => a -> Int -> Text
+prettyTextWidth = docToTextWidth . ppr
 
 -- | Pretty-print something and render it as (preferably) one line @Text@.
 prettyTextLine :: (PrettyPrec a) => a -> Text
@@ -76,6 +91,12 @@ prettyString = docToString . ppr
 pparens :: Bool -> Doc ann -> Doc ann
 pparens True = group . encloseWithIndent 2 lparen rparen
 pparens False = id
+
+-- | Same as pparens but does not indent the lines. Only encloses
+--   the document with parantheses.
+pparens' :: Bool -> Doc ann -> Doc ann
+pparens' True = group . enclose lparen rparen
+pparens' False = id
 
 encloseWithIndent :: Int -> Doc ann -> Doc ann -> Doc ann -> Doc ann
 encloseWithIndent i l r = nest i . enclose (l <> line') (nest (-2) $ line' <> r)
@@ -171,8 +192,8 @@ instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) wh
       let (iniF, lastF) = unsnocNE $ ty1 <| unchainFun ty2
           funs = (prettyPrec 2 <$> iniF) <> [prettyPrec 1 lastF]
           inLine l r = l <+> "->" <+> r
-          multiLine l r = l <+> "->" <> hardline <> r
-       in pparens (p > 1) . align $
+          multiLine l r = l <+> "->" <> softline <> r
+       in pparens' (p > 1) . align $
             flatAlt (concatWith multiLine funs) (concatWith inLine funs)
     TyRecF x ty ->
       pparens (p > 0) $
