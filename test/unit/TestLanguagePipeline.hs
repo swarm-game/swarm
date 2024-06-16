@@ -632,6 +632,24 @@ testLanguagePipeline =
             "move; def x = move; say 3 end; move;"
             "1:25: Type mismatch:\n  From context, expected `3` to have type `Text`,\n  but it actually has type `Int`\n\n  - While checking the right-hand side of a semicolon\n  - While checking the definition of x"
         )
+    , testGroup
+        "let and def types"
+        [ testCase
+            "let at non-cmd type"
+            (valid "let x = 3 in x + 2")
+        , testCase
+            "let at cmd type"
+            (valid "let x = 3 in move; return (x+2)")
+        , testCase
+            "def at non-cmd type"
+            ( process
+                "def x = 3 end; x + 2"
+                "1:16: Type mismatch:\n  From context, expected `x + 2` to have a type like"
+            )
+        , testCase
+            "def at cmd type"
+            (valid "def x = 3 end; move; return (x+2)")
+        ]
     ]
  where
   valid = flip process ""

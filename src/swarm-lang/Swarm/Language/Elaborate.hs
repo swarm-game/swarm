@@ -40,12 +40,15 @@ elaborate =
     -- (force x).  When interpreting t1, we will put a binding (x |->
     -- delay t1) in the context.
     --
-    -- Here we also take inferred types for variables bound by let or
-    -- bind and stuff them into the term itself, so that we will still
-    -- have access to them at runtime, after type annotations on the
-    -- AST are erased.  We need them at runtime so we can keep track
-    -- of the types of variables in scope, for use in typechecking
-    -- additional terms entered at the REPL.
+    -- Here we also take inferred types for variables bound by def or
+    -- bind (but NOT let) and stuff them into the term itself, so that
+    -- we will still have access to them at runtime, after type
+    -- annotations on the AST are erased.  We need them at runtime so
+    -- we can keep track of the types of variables in scope, for use
+    -- in typechecking additional terms entered at the REPL.  The
+    -- reason we do not do this for 'let' is so that 'let' introduces
+    -- truly local bindings which will not be available for use in
+    -- later REPL terms.
     --
     -- We assume requirements for these variables have already been
     -- filled in during typechecking.  The reason we need to wait
@@ -59,7 +62,10 @@ elaborate =
       let wrap
             | r = wrapForce (lvVar x) -- wrap in 'force' if recursive
             | otherwise = id
-       in SLet ls r x (mty <|> Just (t1 ^. sType)) mreq (wrap t1) (wrap t2)
+          mty' = case ls of
+            LSDef -> mty <|> Just (t1 ^. sType)
+            LSLet -> Nothing
+       in SLet ls r x mty' mreq (wrap t1) (wrap t2)
     SBind x (Just ty) _ mreq c1 c2 -> SBind x Nothing (Just ty) mreq c1 c2
     -- Rewrite @f $ x@ to @f x@.
     SApp (Syntax' _ (SApp (Syntax' _ (TConst AppF) _ _) l) _ _) r -> SApp l r
@@ -82,9 +88,8 @@ insertSuspend t = case t of
   TRequireDevice {} -> thenSuspend
   TRequire {} -> thenSuspend
   TRequirements {} -> thenSuspend
-  -- Recurse through let, tydef, bind, and annotate (but NOT through
-  -- let).
-  TLet LSDef r x mty mreq t1 t2 -> TLet LSDef r x mty mreq t1 (insertSuspend t2)
+  -- Recurse through def, tydef, bind, and annotate.
+  TLet ls r x mty mreq t1 t2 -> TLet ls r x mty mreq t1 (insertSuspend t2)
   TTydef x pty mtd t1 -> TTydef x pty mtd (insertSuspend t1)
   TBind mx mty mreq c1 c2 -> TBind mx mty mreq c1 (insertSuspend c2)
   TAnnotate t1 ty -> TAnnotate (insertSuspend t1) ty
