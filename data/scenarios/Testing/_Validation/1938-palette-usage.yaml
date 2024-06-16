@@ -1,0 +1,13 @@
+version: 1
+name: Enforce palette usage
+description: |
+  Every entry in the palette must be used by the world map.
+robots: []
+world:
+  palette:
+    '.': [grass]
+    'd': [dirt]
+  upperleft: [0, 0]
+  map: |
+    ..
+    ..

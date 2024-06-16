@@ -69,7 +69,6 @@ subworlds:
     palette:
       '.': [dirt]
       'b': [dirt, boulder]
-      't': [grass, null, judge]
       'p':
         cell: [dirt, telepad exit]
         waypoint:
@@ -94,8 +93,6 @@ world:
   palette:
     '.': [grass]
     'f': [grass, flower]
-    'B': [grass, null, base]
-    't': [grass, null, judge]
     'p':
       cell: [grass, telepad exit]
       waypoint:

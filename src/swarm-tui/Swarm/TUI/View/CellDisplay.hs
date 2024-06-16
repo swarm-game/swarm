@@ -43,6 +43,7 @@ import Swarm.Game.Terrain
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
+import Swarm.Game.World.Coords
 import Swarm.TUI.Editor.Masking
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Util qualified as EU
@@ -58,7 +59,7 @@ renderDisplay :: Display -> Widget n
 renderDisplay disp = withAttr (disp ^. displayAttr . to toAttrName) $ str [displayChar disp]
 
 -- | Render the 'Display' for a specific location.
-drawLoc :: UIGameplay -> GameState -> Cosmic W.Coords -> Widget Name
+drawLoc :: UIGameplay -> GameState -> Cosmic Coords -> Widget Name
 drawLoc ui g cCoords@(Cosmic _ coords) =
   if shouldHideWorldCell ui coords
     then str " "
@@ -71,7 +72,7 @@ drawLoc ui g cCoords@(Cosmic _ coords) =
   boldStructure = applyWhen isStructure $ modifyDefAttr (`V.withStyle` V.bold)
    where
     sMap = foundByLocation $ g ^. discovery . structureRecognition . foundStructures
-    isStructure = M.member (W.coordsToLoc <$> cCoords) sMap
+    isStructure = M.member (coordsToLoc <$> cCoords) sMap
 
 -- | Subset of the game state needed to render the world
 data RenderingInput = RenderingInput
@@ -83,7 +84,7 @@ data RenderingInput = RenderingInput
 displayTerrainCell ::
   WorldOverdraw ->
   RenderingInput ->
-  Cosmic W.Coords ->
+  Cosmic Coords ->
   Display
 displayTerrainCell worldEditor ri coords =
   maybe mempty terrainDisplay $ M.lookup t tm
@@ -93,11 +94,11 @@ displayTerrainCell worldEditor ri coords =
 
 displayRobotCell ::
   GameState ->
-  Cosmic W.Coords ->
+  Cosmic Coords ->
   [Display]
 displayRobotCell g coords =
   map (view robotDisplay) $
-    robotsAtLocation (fmap W.coordsToLoc coords) g
+    robotsAtLocation (fmap coordsToLoc coords) g
 
 -- | Extract the relevant subset of information from the 'GameState' to be able
 -- to compute whether an entity is "known".
@@ -136,7 +137,7 @@ getEntityIsKnown knowledge ep = case ep of
 displayEntityCell ::
   WorldOverdraw ->
   RenderingInput ->
-  Cosmic W.Coords ->
+  Cosmic Coords ->
   [Display]
 displayEntityCell worldEditor ri coords =
   maybeToList $ displayForEntity <$> maybeEntity
@@ -150,7 +151,7 @@ displayEntityCell worldEditor ri coords =
 --   'Display's for the terrain, entity, and robots at the location, and
 --   taking into account "static" based on the distance to the robot
 --   being @view@ed.
-displayLoc :: Bool -> WorldOverdraw -> GameState -> Cosmic W.Coords -> Display
+displayLoc :: Bool -> WorldOverdraw -> GameState -> Cosmic Coords -> Display
 displayLoc showRobots we g cCoords@(Cosmic _ coords) =
   staticDisplay g coords
     <> displayLocRaw we ri robots cCoords
@@ -173,7 +174,7 @@ displayLocRaw ::
   RenderingInput ->
   -- | Robot displays
   [Display] ->
-  Cosmic W.Coords ->
+  Cosmic Coords ->
   Display
 displayLocRaw worldEditor ri robotDisplays coords =
   sconcat $ terrain NE.:| entity <> robotDisplays
@@ -183,7 +184,7 @@ displayLocRaw worldEditor ri robotDisplays coords =
 
 -- | Random "static" based on the distance to the robot being
 --   @view@ed.
-staticDisplay :: GameState -> W.Coords -> Display
+staticDisplay :: GameState -> Coords -> Display
 staticDisplay g coords = maybe mempty displayStatic (getStatic g coords)
 
 -- | Draw static given a number from 0-15 representing the state of
@@ -220,14 +221,14 @@ staticChar = \case
 --   @view@ed.  A cell can either be static-free (represented by
 --   @Nothing@) or can have one of sixteen values (representing the
 --   state of the four quarter-pixels in one cell).
-getStatic :: GameState -> W.Coords -> Maybe Word32
+getStatic :: GameState -> Coords -> Maybe Word32
 getStatic g coords
   | isStatic = Just (h `mod` 16)
   | otherwise = Nothing
  where
   -- Offset from the location of the view center to the location under
   -- consideration for display.
-  offset = W.coordsToLoc coords .-. (g ^. robotInfo . viewCenter . planar)
+  offset = coordsToLoc coords .-. (g ^. robotInfo . viewCenter . planar)
 
   -- Hash.
   h =

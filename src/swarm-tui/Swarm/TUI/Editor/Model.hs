@@ -16,7 +16,7 @@ import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Game.Universe
-import Swarm.Game.World qualified as W
+import Swarm.Game.World.Coords
 import Swarm.TUI.Model.Name
 import Swarm.Util
 import System.Clock
@@ -24,7 +24,7 @@ import System.Clock
 data BoundsSelectionStep
   = UpperLeftPending
   | -- | Stores the *world coords* of the upper-left click
-    LowerRightPending (Cosmic W.Coords)
+    LowerRightPending (Cosmic Coords)
   | SelectionComplete
 
 data EntityPaint
@@ -45,7 +45,7 @@ getEntityName :: EntityFacade -> E.EntityName
 getEntityName (EntityFacade name _) = name
 
 data MapEditingBounds = MapEditingBounds
-  { _boundsRect :: Maybe (Cosmic W.BoundsRectangle)
+  { _boundsRect :: Maybe (Cosmic BoundsRectangle)
   -- ^ Upper-left and lower-right coordinates
   -- of the map to be saved.
   , _boundsPersistDisplayUntil :: TimeSpec
@@ -58,7 +58,7 @@ data WorldOverdraw = WorldOverdraw
   { _isWorldEditorEnabled :: Bool
   -- ^ This field has deferred initialization; it gets populated when a game
   -- is initialized.
-  , _paintedTerrain :: M.Map W.Coords (TerrainWith EntityFacade)
+  , _paintedTerrain :: M.Map Coords (TerrainWith EntityFacade)
   }
 
 makeLenses ''WorldOverdraw
@@ -90,6 +90,6 @@ initialWorldEditor ts =
     MapEditingBounds
       -- Note that these are in "world coordinates",
       -- not in player-facing "Location" coordinates
-      (Just $ Cosmic DefaultRootSubworld (W.Coords (-10, -20), W.Coords (10, 20)))
+      (Just $ Cosmic DefaultRootSubworld (Coords (-10, -20), Coords (10, 20)))
       (ts - 1)
       SelectionComplete

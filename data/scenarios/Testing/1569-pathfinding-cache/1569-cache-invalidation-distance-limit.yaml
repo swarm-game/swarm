@@ -120,7 +120,6 @@ world:
     'B': [grass, erase, base]
     '.': [grass]
     'f': [grass, flower]
-    '@': [grass, monolith]
   upperleft: [0, 0]
   map: |
     ....

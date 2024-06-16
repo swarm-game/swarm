@@ -22,7 +22,7 @@ import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.Universe
-import Swarm.Game.World qualified as W
+import Swarm.Game.World.Coords
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Palette
@@ -118,7 +118,7 @@ handleWorldEditorPanelEvent = \case
   _ -> return ()
 
 -- | Return value: whether the cursor position should be updated
-updateAreaBounds :: Maybe (Cosmic W.Coords) -> EventM Name AppState Bool
+updateAreaBounds :: Maybe (Cosmic Coords) -> EventM Name AppState Bool
 updateAreaBounds = \case
   Nothing -> return True
   Just mouseCoords -> do
