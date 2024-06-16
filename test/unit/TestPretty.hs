@@ -124,10 +124,6 @@ testPrettyConst =
             ( equalPrettyLine "Cmd (Int -> Int)" $ TyCmd (TyInt :->: TyInt)
             )
         , testCase
-            "Cmd type"
-            ( equalPrettyLine "Cmd (Int -> Int)" $ TyCmd (TyInt :->: TyInt)
-            )
-        , testCase
             "Product type"
             ( equalPrettyLine "Int * Int" $ TyInt :*: TyInt
             )
