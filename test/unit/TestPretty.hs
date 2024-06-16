@@ -204,7 +204,7 @@ testPrettyConst =
             ( equalPrettyWidth 20 "(Int -> Unit) ->\nBool" $ (TyInt :->: TyUnit) :->: TyBool
             )
         , testCase
-            "density (two nested products) with  neted indentation"
+            "density (two nested products) with  nested indentation"
             ( equalPrettyWidth 20 "(\n  (Int * Int) * (\n    Int * Int\n  )\n) -> Cmd Int" $
                 ((TyInt :*: TyInt) :*: (TyInt :*: TyInt)) :->: TyCmd TyInt
             )
