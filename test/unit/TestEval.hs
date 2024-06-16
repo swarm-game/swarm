@@ -339,6 +339,9 @@ testEval g =
                 `evaluatesTo` VInt 5
             )
         ]
+    , testCase
+        "tydef does not prevent forcing of recursive variables"
+        ("def forever = \\c. c; forever c end; tydef X = Int end; def go = forever move end" `evaluatesTo` VUnit)
     ]
  where
   tquote :: String -> Text

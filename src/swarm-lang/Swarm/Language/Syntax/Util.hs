@@ -128,7 +128,6 @@ freeVarsS f = go S.empty
     TRef {} -> pure s
     TRequireDevice {} -> pure s
     TRequire {} -> pure s
-    STydef {} -> pure s
     SRequirements x s1 -> rewrap $ SRequirements x <$> go bound s1
     TVar x
       | x `S.member` bound -> pure s
@@ -138,6 +137,7 @@ freeVarsS f = go S.empty
     SLet ls r x xty xreq s1 s2 ->
       let bound' = S.insert (lvVar x) bound
        in rewrap $ SLet ls r x xty xreq <$> go bound' s1 <*> go bound' s2
+    STydef x xdef tdInfo t1 -> rewrap $ STydef x xdef tdInfo <$> go bound t1
     SPair s1 s2 -> rewrap $ SPair <$> go bound s1 <*> go bound s2
     SBind mx mty mpty mreq s1 s2 -> rewrap $ SBind mx mty mpty mreq <$> go bound s1 <*> go (maybe id (S.insert . lvVar) mx bound) s2
     SDelay m s1 -> rewrap $ SDelay m <$> go bound s1
