@@ -26,18 +26,16 @@ import Swarm.Game.Scenario.Topography.Navigation.Waypoint (
   Parentage (Root),
   WaypointName,
  )
+import Swarm.Game.Scenario.Topography.ProtoCell
 import Swarm.Game.Scenario.Topography.Structure (
-  InheritedStructureDefs,
- )
-import Swarm.Game.Scenario.Topography.Structure qualified as Structure
-import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
-import Swarm.Game.Scenario.Topography.Structure.Overlay
-import Swarm.Game.Scenario.Topography.Structure.Type (
   LocatedStructure,
   MergedStructure (MergedStructure),
   NamedStructure,
   PStructure (Structure),
+  paintMap,
  )
+import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
+import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Universe
 import Swarm.Game.World.Parse ()
@@ -68,6 +66,8 @@ data PWorldDescription e = WorldDescription
 
 type WorldDescription = PWorldDescription Entity
 
+type InheritedStructureDefs = [NamedStructure (Maybe Cell)]
+
 data WorldParseDependencies
   = WorldParseDependencies
       WorldMap
@@ -84,11 +84,11 @@ integrateArea ::
 integrateArea palette initialStructureDefs v = do
   placementDefs <- v .:? "placements" .!= []
   waypointDefs <- v .:? "waypoints" .!= []
-  rawMap <- v .:? "map" .!= ""
-  (initialArea, mapWaypoints) <- Structure.paintMap Nothing palette rawMap
+  rawMap <- v .:? "map" .!= Grid []
+  (initialArea, mapWaypoints) <- paintMap Nothing palette rawMap
   let unflattenedStructure =
         Structure
-          (PositionedGrid origin $ Grid initialArea)
+          (PositionedGrid origin initialArea)
           initialStructureDefs
           placementDefs
           (waypointDefs <> mapWaypoints)
@@ -102,7 +102,7 @@ instance FromJSONE WorldParseDependencies WorldDescription where
     let withDeps = localE (const (tem, rm))
     palette <-
       withDeps $
-        v ..:? "palette" ..!= WorldPalette mempty
+        v ..:? "palette" ..!= StructurePalette mempty
     subworldLocalStructureDefs <-
       withDeps $
         v ..:? "structures" ..!= []

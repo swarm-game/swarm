@@ -15,7 +15,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Tuple.Extra (both)
-import Data.Vector qualified as V
 import Linear (V2 (..))
 import Swarm.Game.Display (defaultChar)
 import Swarm.Game.Entity.Cosmetic
@@ -27,10 +26,11 @@ import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Center
 import Swarm.Game.Scenario.Topography.EntityFacade (EntityFacade (..), mkFacade)
+import Swarm.Game.Scenario.Topography.Rasterize
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.State.Landscape
 import Swarm.Game.Universe
-import Swarm.Game.World qualified as W
+import Swarm.Game.World.Coords
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Pretty (prettyString)
 import Swarm.Util (surfaceEmpty)
@@ -99,7 +99,7 @@ getBoundingBox ::
   Location ->
   PWorldDescription e ->
   Maybe AreaDimensions ->
-  W.BoundsRectangle
+  BoundsRectangle
 getBoundingBox vc scenarioWorld maybeSize =
   mkBoundingBox areaDims upperLeftLocation
  where
@@ -109,7 +109,7 @@ getBoundingBox vc scenarioWorld maybeSize =
       else vc .+^ ((`div` 2) <$> V2 (negate w) h)
 
   mkBoundingBox areaDimens upperLeftLoc =
-    both W.locToCoords locationBounds
+    both locToCoords locationBounds
    where
     lowerRightLocation = computeBottomRightFromUpperLeft areaDimens upperLeftLoc
     locationBounds = (upperLeftLoc, lowerRightLocation)
@@ -167,11 +167,6 @@ renderScenarioMap opts fp = simpleErrorHandle $ do
   (grid, _) <- getRenderableGrid opts fp
   return $ unGrid $ getDisplayChar <$> grid
 
--- | Converts linked lists to vectors to facilitate
--- random access when assembling the image
-gridToVec :: Grid a -> V.Vector (V.Vector a)
-gridToVec (Grid g) = V.fromList . map V.fromList $ g
-
 renderScenarioPng :: RenderOpts -> FilePath -> IO ()
 renderScenarioPng opts fp = do
   result <- runThrow $ getRenderableGrid opts fp
@@ -185,14 +180,8 @@ renderScenarioPng opts fp = do
      where
       errorMsg :: String
       errorMsg = prettyString err
-    Right (grid, aMap) -> return $ mkImg aMap grid
+    Right (grid, aMap) -> return $ (makeImage . getDisplayColor) aMap grid
   writePng (outputFilepath opts) img
- where
-  mkImg aMap g = generateImage (pixelRenderer vecGrid) (fromIntegral w) (fromIntegral h)
-   where
-    vecGrid = gridToVec g
-    AreaDimensions w h = getGridDimensions g
-    pixelRenderer vg x y = getDisplayColor aMap $ (vg V.! y) V.! x
 
 printScenarioMap :: [String] -> IO ()
 printScenarioMap =

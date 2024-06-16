@@ -5,12 +5,12 @@ module Swarm.TUI.Editor.Masking where
 import Control.Lens hiding (Const, from)
 import Data.Maybe (fromMaybe)
 import Swarm.Game.Universe
-import Swarm.Game.World qualified as W
+import Swarm.Game.World.Coords
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model.UI
 
-shouldHideWorldCell :: UIGameplay -> W.Coords -> Bool
+shouldHideWorldCell :: UIGameplay -> Coords -> Bool
 shouldHideWorldCell ui coords =
   isOutsideSingleSelectedCorner || isOutsideMapSaveBounds
  where

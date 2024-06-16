@@ -6,7 +6,7 @@
 module Swarm.Game.Scenario.Topography.Cell (
   PCell (..),
   Cell,
-  AugmentedCell (..),
+  AugmentedCell,
   CellPaintDisplay,
 ) where
 
@@ -23,7 +23,7 @@ import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Land
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Topography.EntityFacade
-import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointConfig)
+import Swarm.Game.Scenario.Topography.ProtoCell
 import Swarm.Game.Terrain
 import Swarm.Util (quote, showT)
 import Swarm.Util.Erasable (Erasable (..))
@@ -49,11 +49,7 @@ data PCell e = Cell
 type Cell = PCell Entity
 
 -- | Supplements a cell with waypoint information
-data AugmentedCell e = AugmentedCell
-  { waypointCfg :: Maybe WaypointConfig
-  , standardCell :: PCell e
-  }
-  deriving (Eq, Show)
+type AugmentedCell e = SignpostableCell (PCell e)
 
 -- | Re-usable serialization for variants of 'PCell'
 mkPCellJson :: ToJSON b => (Erasable a -> Maybe b) -> PCell a -> Value
@@ -71,6 +67,10 @@ instance ToJSON Cell where
     ENothing -> Nothing
     EJust e -> Just (e ^. entityName)
 
+-- | Parse a tuple such as @[grass, rock, base]@ into a 'Cell'.  The
+--   entity and robot, if present, are immediately looked up and
+--   converted into 'Entity' and 'TRobot' values.  If they are not
+--   found, a parse error results.
 instance FromJSONE (TerrainEntityMaps, RobotMap) Cell where
   parseJSONE = withArrayE "tuple" $ \v -> do
     let tupRaw = V.toList v
@@ -106,20 +106,6 @@ instance FromJSONE (TerrainEntityMaps, RobotMap) Cell where
     robs <- mapMaybeM name2rob (drop 2 tupRaw)
 
     return $ Cell terr ent robs
-
--- | Parse a tuple such as @[grass, rock, base]@ into a 'Cell'.  The
---   entity and robot, if present, are immediately looked up and
---   converted into 'Entity' and 'TRobot' values.  If they are not
---   found, a parse error results.
-instance FromJSONE (TerrainEntityMaps, RobotMap) (AugmentedCell Entity) where
-  parseJSONE x = case x of
-    Object v -> objParse v
-    z -> AugmentedCell Nothing <$> parseJSONE z
-   where
-    objParse v =
-      AugmentedCell
-        <$> liftE (v .:? "waypoint")
-        <*> v ..: "cell"
 
 ------------------------------------------------------------
 -- World editor

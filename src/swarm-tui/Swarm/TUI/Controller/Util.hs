@@ -20,6 +20,7 @@ import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
+import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (CDebug))
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
@@ -92,18 +93,18 @@ loadVisibleRegion = do
     let vr = viewingRegion (gs ^. robotInfo . viewCenter) (over both fromIntegral size)
     gameState . landscape . multiWorld %= M.adjust (W.loadRegion (vr ^. planar)) (vr ^. subworld)
 
-mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe (Cosmic W.Coords))
+mouseLocToWorldCoords :: Brick.Location -> EventM Name GameState (Maybe (Cosmic Coords))
 mouseLocToWorldCoords (Brick.Location mouseLoc) = do
   mext <- lookupExtent WorldExtent
   case mext of
     Nothing -> pure Nothing
     Just ext -> do
       region <- gets $ flip viewingRegion (bimap fromIntegral fromIntegral (extentSize ext)) . view (robotInfo . viewCenter)
-      let regionStart = W.unCoords (fst $ region ^. planar)
+      let regionStart = unCoords (fst $ region ^. planar)
           mouseLoc' = bimap fromIntegral fromIntegral mouseLoc
           mx = snd mouseLoc' + fst regionStart
           my = fst mouseLoc' + snd regionStart
-       in pure . Just $ Cosmic (region ^. subworld) $ W.Coords (mx, my)
+       in pure . Just $ Cosmic (region ^. subworld) $ Coords (mx, my)
 
 hasDebugCapability :: Bool -> AppState -> Bool
 hasDebugCapability isCreative s =

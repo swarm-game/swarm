@@ -115,7 +115,7 @@ import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (TickNumber (..), addTicks)
 import Swarm.Game.Universe
-import Swarm.Game.World qualified as W
+import Swarm.Game.World.Coords
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Capability (Capability (..), constCaps)
 import Swarm.Language.Pretty (prettyText, prettyTextLine, prettyTextWidth)
@@ -509,14 +509,14 @@ renderCoordsString (Cosmic sw coords) =
     DefaultRootSubworld -> []
     SubworldName swName -> ["in", T.unpack swName]
 
-drawWorldCursorInfo :: WorldOverdraw -> GameState -> Cosmic W.Coords -> Widget Name
+drawWorldCursorInfo :: WorldOverdraw -> GameState -> Cosmic Coords -> Widget Name
 drawWorldCursorInfo worldEditor g cCoords =
   case getStatic g coords of
     Just s -> renderDisplay $ displayStatic s
     Nothing -> hBox $ tileMemberWidgets ++ [coordsWidget]
  where
   Cosmic _ coords = cCoords
-  coordsWidget = str $ renderCoordsString $ fmap W.coordsToLoc cCoords
+  coordsWidget = str $ renderCoordsString $ fmap coordsToLoc cCoords
 
   tileMembers = terrain : mapMaybe merge [entity, robot]
   tileMemberWidgets =
@@ -750,7 +750,7 @@ robotsListWidget s = hCenter table
 
     locWidget = hBox [worldCell, str $ " " <> locStr]
      where
-      rCoords = fmap W.locToCoords rLoc
+      rCoords = fmap locToCoords rLoc
       rLoc = robot ^. robotLocation
       worldCell =
         drawLoc
@@ -1102,7 +1102,7 @@ drawKeyCmd (h, key, cmd) =
 
 -- | Compare to: 'Swarm.Util.Content.getMapRectangle'
 worldWidget ::
-  (Cosmic W.Coords -> Widget n) ->
+  (Cosmic Coords -> Widget n) ->
   -- | view center
   Cosmic Location ->
   Widget n

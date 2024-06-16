@@ -102,7 +102,6 @@ import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (SymmetryAnnotatedGrid (..))
-import Swarm.Game.Scenario.Topography.Structure.Type qualified as Structure
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Terrain
 import Swarm.Game.Universe
@@ -320,7 +319,7 @@ instance FromJSONE ScenarioInputs Scenario where
       let rsMap = buildRobotMap rs
 
       -- NOTE: These have not been merged with their children yet.
-      rootLevelSharedStructures :: Structure.InheritedStructureDefs <-
+      rootLevelSharedStructures :: InheritedStructureDefs <-
         localE (,rsMap) $
           v ..:? "structures" ..!= []
 

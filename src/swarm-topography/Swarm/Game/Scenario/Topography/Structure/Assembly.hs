@@ -25,8 +25,8 @@ import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
+import Swarm.Game.Scenario.Topography.Structure
 import Swarm.Game.Scenario.Topography.Structure.Overlay
-import Swarm.Game.Scenario.Topography.Structure.Type
 import Swarm.Language.Syntax.Direction (directionJsonModifier)
 import Swarm.Util (commaList, quote, showT)
 

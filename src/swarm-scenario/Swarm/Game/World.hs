@@ -16,12 +16,6 @@
 -- indexed by 32-bit signed integers, so they correspond to a
 -- \( 2^{32} \times 2^{32} \) torus).
 module Swarm.Game.World (
-  -- * World coordinates
-  Coords (..),
-  locToCoords,
-  coordsToLoc,
-  BoundsRectangle,
-
   -- * Worlds
   WorldFun (..),
   runWF,

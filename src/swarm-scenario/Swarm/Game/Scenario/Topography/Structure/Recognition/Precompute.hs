@@ -57,9 +57,9 @@ import Swarm.Game.Scenario (StaticStructureInfo (..))
 import Swarm.Game.Scenario.Topography.Area (Grid (Grid))
 import Swarm.Game.Scenario.Topography.Cell (PCell, cellEntity)
 import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform)
+import Swarm.Game.Scenario.Topography.Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Swarm.Game.Scenario.Topography.Structure.Type
 import Swarm.Game.Universe (Cosmic (..))
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Util (binTuples, histogram)

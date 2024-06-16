@@ -27,6 +27,7 @@ import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
+import Swarm.Game.Scenario.Topography.ProtoCell
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainMap, TerrainType, getTerrainDefaultPaletteChar, terrainByName)
@@ -43,7 +44,7 @@ makeSuggestedPalette ::
   KM.KeyMap (AugmentedCell EntityFacade)
 makeSuggestedPalette tm originalScenarioPalette cellGrid =
   KM.fromMapText
-    . M.map (AugmentedCell Nothing)
+    . M.map (SignpostableCell Nothing)
     . M.fromList
     . M.elems
     -- NOTE: the left-most maps take precedence!
@@ -136,7 +137,7 @@ constructScenario maybeOriginalScenario cellGrid =
     WorldDescription
       { offsetOrigin = False
       , scrollable = True
-      , palette = WorldPalette suggestedPalette
+      , palette = StructurePalette suggestedPalette
       , ul = upperLeftCoord
       , area = PositionedGrid upperLeftCoord cellGrid
       , navigation = Navigation mempty mempty

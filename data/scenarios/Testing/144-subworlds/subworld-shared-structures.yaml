@@ -70,7 +70,6 @@ structures:
       palette:
         '.': [stone]
         'd': [dirt]
-        'f': [stone, flower]
         'p':
           cell: [grass, telepad exit]
           waypoint:
@@ -99,15 +98,6 @@ subworlds:
     default: [blank]
     palette:
       '.': [dirt]
-      'f': [dirt, flower]
-      'p':
-        cell: [dirt, telepad exit]
-        waypoint:
-          name: portal_out
-      'P':
-        cell: [dirt, telepad entrance]
-        waypoint:
-          name: portal_in
     placements:
       - src: minibox
         offset: [0, 0]
@@ -132,15 +122,6 @@ subworlds:
     default: [blank]
     palette:
       '.': [dirt]
-      'f': [dirt, flower]
-      'p':
-        cell: [dirt, telepad exit]
-        waypoint:
-          name: portal_out
-      'P':
-        cell: [dirt, telepad entrance]
-        waypoint:
-          name: portal_in
     placements:
       - src: minibox
         offset: [0, 0]
@@ -165,15 +146,6 @@ subworlds:
     default: [blank]
     palette:
       '.': [dirt]
-      'f': [dirt, flower]
-      'p':
-        cell: [dirt, telepad exit]
-        waypoint:
-          name: portal_out
-      'P':
-        cell: [dirt, telepad entrance]
-        waypoint:
-          name: portal_in
     placements:
       - src: minibox
         offset: [0, 0]
@@ -198,7 +170,6 @@ world:
   name: root
   palette:
     '.': [grass]
-    'B': [grass, null, base]
   upperleft: [0, 0]
   placements:
     - src: minibox

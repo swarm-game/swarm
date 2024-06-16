@@ -117,11 +117,11 @@ import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Status
+import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Swarm.Game.Scenario.Topography.Structure.Type qualified as Structure
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
@@ -130,6 +130,7 @@ import Swarm.Game.Terrain
 import Swarm.Game.Tick (addTicks)
 import Swarm.Game.Universe as U
 import Swarm.Game.World qualified as W
+import Swarm.Game.World.Coords
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Context qualified as Ctx
@@ -339,9 +340,9 @@ recalcViewCenterAndRedraw g =
 
 -- | Given a width and height, compute the region, centered on the
 --   'viewCenter', that should currently be in view.
-viewingRegion :: Cosmic Location -> (Int32, Int32) -> Cosmic W.BoundsRectangle
+viewingRegion :: Cosmic Location -> (Int32, Int32) -> Cosmic BoundsRectangle
 viewingRegion (Cosmic sw (Location cx cy)) (w, h) =
-  Cosmic sw (W.Coords (rmin, cmin), W.Coords (rmax, cmax))
+  Cosmic sw (Coords (rmin, cmin), Coords (rmax, cmax))
  where
   (rmin, rmax) = over both (+ (-cy - h `div` 2)) (0, h - 1)
   (cmin, cmax) = over both (+ (cx - w `div` 2)) (0, w - 1)
@@ -479,7 +480,7 @@ initGameState gsc =
 -- | Get the entity (if any) at a given location.
 entityAt :: (Has (State GameState) sig m) => Cosmic Location -> m (Maybe Entity)
 entityAt (Cosmic subworldName loc) =
-  join <$> zoomWorld subworldName (W.lookupEntityM @Int (W.locToCoords loc))
+  join <$> zoomWorld subworldName (W.lookupEntityM @Int (locToCoords loc))
 
 contentAt ::
   (Has (State GameState) sig m) =>
@@ -488,7 +489,7 @@ contentAt ::
 contentAt (Cosmic subworldName loc) = do
   tm <- use $ landscape . terrainAndEntities . terrainMap
   val <- zoomWorld subworldName $ do
-    (terrIdx, maybeEnt) <- W.lookupContentM (W.locToCoords loc)
+    (terrIdx, maybeEnt) <- W.lookupContentM (locToCoords loc)
     let terrObj = terrIdx `IM.lookup` terrainByIndex tm
     return (maybe BlankT terrainName terrObj, maybeEnt)
   return $ fromMaybe (BlankT, Nothing) val
