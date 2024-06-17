@@ -97,14 +97,13 @@ generateDocs = \case
 generateEditorKeywords :: EditorType -> IO ()
 generateEditorKeywords = \case
   Emacs -> do
-    putStrLn "(x-builtins '("
-    T.putStr $ builtinFunctionList Emacs
-    putStrLn "))\n(x-commands '("
+    putStrLn "(defvar swarm-mode-builtins '("
+    T.putStr $ builtinFunctionList Emacs <> "))"
+    putStrLn "\n(defvar swarm-mode-commands '("
     T.putStr $ keywordsCommands Emacs
-    T.putStr $ keywordsDirections Emacs
-    putStrLn "))\n(x-operators '("
-    T.putStr $ operatorNames Emacs
-    putStrLn "))"
+    T.putStr $ keywordsDirections Emacs <> "))"
+    putStrLn "\n (defvar swarm-mode-operators '("
+    T.putStr $ operatorNames Emacs <> "))"
   VSCode -> do
     putStrLn "Functions and commands:"
     T.putStrLn $ builtinFunctionList VSCode <> "|" <> keywordsCommands VSCode

@@ -531,7 +531,7 @@ testEditorFiles =
     "editors"
     [ testGroup
         "VS Code"
-        [ testTextInVSCode "operators" (const Keyword.operatorNames)
+        [ testTextInVSCode "operators" Keyword.operatorNames
         , testTextInVSCode "builtin" Keyword.builtinFunctionList
         , testTextInVSCode "commands" Keyword.keywordsCommands
         , testTextInVSCode "directions" Keyword.keywordsDirections
