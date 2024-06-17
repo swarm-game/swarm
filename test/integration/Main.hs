@@ -538,13 +538,15 @@ testEditorFiles =
         ]
     , testGroup
         "Emacs"
-        [ testTextInEmacs "builtin" Keyword.builtinFunctionList
+        [ testTextInEmacs "operators" Keyword.operatorNames
+        , testTextInEmacs "builtin" Keyword.builtinFunctionList
         , testTextInEmacs "commands" Keyword.keywordsCommands
         , testTextInEmacs "directions" Keyword.keywordsDirections
         ]
     , testGroup
         "Vim"
-        [ testTextInVim "builtin" Keyword.builtinFunctionList
+        [ testTextInVim "operators" Keyword.operatorNames
+        , testTextInVim "builtin" Keyword.builtinFunctionList
         , testTextInVim "commands" Keyword.keywordsCommands
         , testTextInVim "directions" Keyword.keywordsDirections
         ]

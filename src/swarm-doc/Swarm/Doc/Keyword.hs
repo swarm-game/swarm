@@ -46,11 +46,14 @@ keywordsDirections e = editorList e $ map directionSyntax allDirs
 
 -- | A list of the names of all the operators in the language.
 operatorNames :: EditorType -> Text
-operatorNames e = editorList e $ map (escape . constSyntax) operators
+operatorNames e = editorList e $ case e of
+  Emacs -> map constSyntax operators
+  Vim -> map constSyntax operators
+  VSCode -> map (escape . constSyntax) operators
  where
-  special :: String
-  special = "*+$[]|^"
   slashNotComment = \case
     '/' -> "/(?![/|*])"
     c -> T.singleton c
+  special :: String
+  special = "*+$[]|^"
   escape = T.concatMap (\c -> if c `elem` special then T.snoc "\\" c else slashNotComment c)

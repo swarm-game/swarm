@@ -40,14 +40,10 @@
      "-"
      "*"
      "/"
-     "\\"
-     ":"
      "^"
      "++"
      "$"
-     "->"
-     "<-"
-     "=")
+     )
    t)
   "Regexp that recognizes operators for swarm language.")
 
