@@ -383,7 +383,6 @@ prettyTypeErr code (CTE l tcStack te) =
     NoLoc -> emptyDoc
   showLoc (r, c) = pretty r <> ":" <> pretty c
 
-
 -- | Filter the TCStack of extravagant Binds.
 filterTCStack :: TCStack -> TCStack
 filterTCStack tcStack = case tcStack of
