@@ -102,6 +102,8 @@ generateEditorKeywords = \case
     putStrLn "))\n(x-commands '("
     T.putStr $ keywordsCommands Emacs
     T.putStr $ keywordsDirections Emacs
+    putStrLn "))\n(x-operators '("
+    T.putStr $ operatorNames Emacs
     putStrLn "))"
   VSCode -> do
     putStrLn "Functions and commands:"
@@ -109,14 +111,16 @@ generateEditorKeywords = \case
     putStrLn "\nDirections:"
     T.putStrLn $ keywordsDirections VSCode
     putStrLn "\nOperators:"
-    T.putStrLn operatorNames
+    T.putStrLn $ operatorNames VSCode
   Vim -> do
-    putStr "syn keyword Builtins "
+    putStrLn "syn keyword Builtins "
     T.putStr $ builtinFunctionList Vim
-    putStr "\nsyn keyword Command "
+    putStrLn "\nsyn keyword Command "
     T.putStr $ keywordsCommands Vim
-    putStr "\nsyn keyword Direction "
-    T.putStrLn $ keywordsDirections Vim
+    putStrLn "\nsyn keyword Direction "
+    T.putStr $ keywordsDirections Vim
+    putStrLn "\nsyn keyword Type "
+    T.putStr $ operatorNames Vim
 
 -- ----------------------------------------------------------------------------
 -- GENERATE SPECIAL KEY NAMES

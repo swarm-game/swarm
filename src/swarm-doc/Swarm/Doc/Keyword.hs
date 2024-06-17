@@ -23,7 +23,7 @@ import Swarm.Language.Syntax.Direction
 import Swarm.Util (quote)
 
 -- | An enumeration of the editors supported by Swarm (currently,
---   Emacs and VS Code).
+--   Emacs, VS Code and Vim).
 data EditorType = Emacs | VSCode | Vim
   deriving (Eq, Show, Enum, Bounded)
 
@@ -45,8 +45,8 @@ keywordsDirections :: EditorType -> Text
 keywordsDirections e = editorList e $ map directionSyntax allDirs
 
 -- | A list of the names of all the operators in the language.
-operatorNames :: Text
-operatorNames = T.intercalate "|" $ map (escape . constSyntax) operators
+operatorNames :: EditorType -> Text
+operatorNames e = editorList e $ map (escape . constSyntax) operators
  where
   special :: String
   special = "*+$[]|^"
