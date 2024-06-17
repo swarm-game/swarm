@@ -60,8 +60,8 @@ module Swarm.Game.CESK (
   Store,
   Addr,
   emptyStore,
-  MemCell (..),
   allocate,
+  resolveValue,
   lookupStore,
   setStore,
 
@@ -72,7 +72,6 @@ module Swarm.Game.CESK (
   initMachine,
   continue,
   cancel,
-  resetBlackholes,
   prepareTerm,
 
   -- ** Extracting information
@@ -149,7 +148,7 @@ data Frame
     --
     -- The 'Const' is used to track the original command for error messages.
     FImmediate Const [WorldUpdate Entity] [RobotUpdate]
-  | -- | Update the memory cell at a certain location with the computed value.
+  | -- | Update the cell at a certain location in the store with the computed value.
     FUpdate Addr
   | -- | Signal that we are done with an atomic computation.
     FFinishAtomic
@@ -187,55 +186,38 @@ type Cont = [Frame]
 type Addr = Int
 
 -- | 'Store' represents a store, /i.e./ memory, indexing integer
---   locations to 'MemCell's.
-data Store = Store {next :: Addr, mu :: IntMap MemCell}
+--   locations to 'Value's.
+data Store = Store {next :: Addr, mu :: IntMap Value}
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
-
--- | A memory cell can be in one of three states.
-data MemCell
-  = -- | A cell starts out life as an unevaluated term together with
-    --   its environment.
-    E Term Env
-  | -- | When the cell is 'Force'd, it is set to a 'Blackhole' while
-    --   being evaluated.  If it is ever referenced again while still
-    --   a 'Blackhole', that means it depends on itself in a way that
-    --   would trigger an infinite loop, and we can signal an error.
-    --   (Of course, we
-    --   <http://www.lel.ed.ac.uk/~gpullum/loopsnoop.html cannot
-    --   detect /all/ infinite loops this way>.)
-    --
-    --   A 'Blackhole' saves the original 'Term' and 'Env' that are
-    --   being evaluated; if Ctrl-C is used to cancel a computation
-    --   while we are in the middle of evaluating a cell, the
-    --   'Blackhole' can be reset to 'E'.
-    Blackhole Term Env
-  | -- | Once evaluation is complete, we cache the final 'Value' in
-    --   the 'MemCell', so that subsequent lookups can just use it
-    --   without recomputing anything.
-    V Value
-  deriving (Show, Eq, Generic)
-
-instance ToJSON MemCell where
-  toJSON = genericToJSON optionsMinimize
-
-instance FromJSON MemCell where
-  parseJSON = genericParseJSON optionsMinimize
 
 emptyStore :: Store
 emptyStore = Store 0 IM.empty
 
--- | Allocate a new memory cell containing an unevaluated expression
---   with the current environment.  Return the index of the allocated
---   cell.
-allocate :: Env -> Term -> Store -> (Addr, Store)
-allocate e t (Store n m) = (n, Store (n + 1) (IM.insert n (E t e) m))
+-- | Allocate a new memory cell containing a given value.  Return the
+--   index of the allocated cell.
+allocate :: Value -> Store -> (Addr, Store)
+allocate v (Store n m) = (n, Store (n + 1) (IM.insert n v m))
 
--- | Look up the cell at a given index.
-lookupStore :: Addr -> Store -> Maybe MemCell
-lookupStore n = IM.lookup n . mu
+-- | Resolve a value, recursively looking up any indirections in the
+--   store.
+resolveValue :: Store -> Value -> Either Addr Value
+resolveValue s = \case
+  VIndir loc -> lookupStore s loc
+  v -> Right v
 
--- | Set the cell at a given index.
-setStore :: Addr -> MemCell -> Store -> Store
+-- | Look up the value at a given index, but keep following
+--   indirections until encountering a value that is not a 'VIndir'.
+lookupStore :: Store -> Addr -> Either Addr Value
+lookupStore s = go
+ where
+  go loc = case IM.lookup loc (mu s) of
+    Nothing -> Left loc
+    Just v -> case v of
+      VIndir loc' -> go loc'
+      _ -> Right v
+
+-- | Set the value at a given index.
+setStore :: Addr -> Value -> Store -> Store
 setStore n c (Store nxt m) = Store nxt (IM.insert n c m)
 
 ------------------------------------------------------------
@@ -394,18 +376,7 @@ prepareTerm e t = case whnfType (e ^. envTydefs) (ptBody (t ^. sType)) of
 
 -- | Cancel the currently running computation.
 cancel :: CESK -> CESK
-cancel cesk = Up Cancel s' (cesk ^. cont)
- where
-  s' = resetBlackholes $ cesk ^. store
-
--- | Reset any 'Blackhole's in the 'Store'.  We need to use this any
---   time a running computation is interrupted, either by an exception
---   or by a Ctrl+C.
-resetBlackholes :: Store -> Store
-resetBlackholes (Store n m) = Store n (IM.map resetBlackhole m)
- where
-  resetBlackhole (Blackhole t e) = E t e
-  resetBlackhole c = c
+cancel cesk = Up Cancel (cesk ^. store) (cesk ^. cont)
 
 ------------------------------------------------------------
 -- Pretty printing CESK machine states
@@ -451,7 +422,7 @@ prettyFrame f (p, inner) = case f of
   FBind Nothing _ t _ -> (0, pparens (p < 1) inner <+> ";" <+> ppr t)
   FBind (Just x) _ t _ -> (0, hsep [pretty x, "<-", pparens (p < 1) inner, ";", ppr t])
   FImmediate c _worldUpds _robotUpds -> prettyPrefix ("I[" <> ppr c <> "]·") (p, inner)
-  FUpdate addr -> prettyPrefix ("S@" <> pretty addr) (p, inner)
+  FUpdate {} -> (p, inner)
   FFinishAtomic -> prettyPrefix "A·" (p, inner)
   FMeetAll _ _ -> prettyPrefix "M·" (p, inner)
   FRcd _ done foc rest -> (11, encloseSep "[" "]" ", " (pDone ++ [pFoc] ++ pRest))

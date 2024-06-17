@@ -148,7 +148,7 @@ requirements tdCtx ctx =
       local @ReqCtx (maybe id Ctx.delete mx) $ go t2
     -- Everything else is straightforward.
     TPair t1 t2 -> add (singletonCap CProd) *> go t1 *> go t2
-    TDelay _ t -> go t
+    TDelay t -> go t
     TRcd m -> add (singletonCap CRecord) *> forM_ (M.assocs m) (go . expandEq)
      where
       expandEq (x, Nothing) = TVar x

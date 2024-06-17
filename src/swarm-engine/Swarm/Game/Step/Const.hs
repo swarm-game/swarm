@@ -966,33 +966,6 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Force -> case vs of
       [VDelay t e] -> return $ In t e s k
-      [VRef loc] ->
-        -- To force a VRef, we look up the location in the store.
-        case lookupStore loc s of
-          -- If there's no cell at that location, it's a bug!  It
-          -- shouldn't be possible to get a VRef to a non-existent
-          -- location, since the only way VRefs get created is at the
-          -- time we allocate a new cell.
-          Nothing ->
-            return $
-              Up (Fatal $ T.append "Reference to unknown memory cell " (from (show loc))) s k
-          -- If the location contains an unevaluated expression, it's
-          -- time to evaluate it.  Set the cell to a 'Blackhole', push
-          -- an 'FUpdate' frame so we remember to update the location
-          -- to its value once we finish evaluating it, and focus on
-          -- the expression.
-          Just (E t e') -> return $ In t e' (setStore loc (Blackhole t e') s) (FUpdate loc : k)
-          -- If the location contains a Blackhole, that means we are
-          -- already currently in the middle of evaluating it, i.e. it
-          -- depends on itself, so throw an 'InfiniteLoop' error.
-          Just Blackhole {} -> return $ Up InfiniteLoop s k
-          -- If the location already contains a value, just return it.
-          Just (V v) -> return $ Out v s k
-      -- If a force is applied to any other kind of value, just ignore it.
-      -- This is needed because of the way we wrap all free variables in @force@
-      -- in case they come from a @def@ which are always wrapped in @delay@.
-      -- But binders (i.e. @x <- ...@) are also exported to the global context.
-      [v] -> return $ Out v s k
       _ -> badConst
     If -> case vs of
       -- Use the boolean to pick the correct branch, and apply @force@ to it.

@@ -886,19 +886,11 @@ check ::
   UType ->
   m (Syntax' UType)
 check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
-  -- if t : ty, then  {t} : {ty}.
-  -- Note that in theory, if the @Maybe Var@ component of the @SDelay@
-  -- is @Just@, we should typecheck the body under a context extended
-  -- with a type binding for the variable, and ensure that the type of
-  -- the variable is the same as the type inferred for the overall
-  -- @SDelay@.  However, we rely on the invariant that such recursive
-  -- @SDelay@ nodes are never generated from the surface syntax, only
-  -- dynamically at runtime when evaluating recursive let or def expressions,
-  -- so we don't have to worry about typechecking them here.
-  SDelay d s1 -> do
+  -- If t : ty, then  {t} : {ty}.
+  SDelay s1 -> do
     ty1 <- decomposeDelayTy s (Expected, expected)
     s1' <- check s1 ty1
-    return $ Syntax' l (SDelay d s1') cs (UTyDelay ty1)
+    return $ Syntax' l (SDelay s1') cs (UTyDelay ty1)
 
   -- To check the type of a pair, make sure the expected type is a
   -- product type, and push the two types down into the left and right.
@@ -1164,7 +1156,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   -- Pairs, application, and delay are simple: just recurse and sum the results.
   SPair s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic locals s2
   SApp s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic locals s2
-  SDelay _ s1 -> analyzeAtomic locals s1
+  SDelay s1 -> analyzeAtomic locals s1
   -- Bind is similarly simple except that we have to keep track of a local variable
   -- bound in the RHS.
   SBind mx _ _ _ s1 s2 -> (+) <$> analyzeAtomic locals s1 <*> analyzeAtomic (maybe id (S.insert . lvVar) mx locals) s2

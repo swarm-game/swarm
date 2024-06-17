@@ -72,9 +72,11 @@ compareValues v1 = case v1 of
   VBind {} -> incomparable v1
   VDelay {} -> incomparable v1
   VRef {} -> incomparable v1
+  VIndir {} -> incomparable v1
   VRequirements {} -> incomparable v1
   VSuspend {} -> incomparable v1
   VExc {} -> incomparable v1
+  VBlackhole {} -> incomparable v1
 
 -- | Values with different types were compared; this should not be
 --   possible since the type system should catch it.

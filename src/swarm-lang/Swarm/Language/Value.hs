@@ -91,6 +91,13 @@ data Value where
   VDelay :: Term -> Env -> Value
   -- | A reference to a memory cell in the store.
   VRef :: Int -> Value
+  -- | An indirection to a value stored in a memory cell.  The
+  --   difference between VRef and VIndir is that VRef is a "real"
+  --   value (of Ref type), whereas VIndir is just a placeholder.  If
+  --   a VRef is encountered during evaluation, it is the final
+  --   result; if VIndir is encountered during evaluation, the value
+  --   it points to should be looked up.
+  VIndir :: Int -> Value
   -- | A record value.
   VRcd :: Map Var Value -> Value
   -- | A keyboard input.
@@ -102,6 +109,15 @@ data Value where
   -- | A special value representing a program that terminated with
   --   an exception.
   VExc :: Value
+  -- | A special value used temporarily as the value for a variable
+  --   bound by a recursive let, while its definition is being
+  --   evaluated.  If the variable is ever referenced again while its
+  --   value is still 'VBlackhole', that means it depends on itself in
+  --   a way that would trigger an infinite loop, and we can signal an
+  --   error.  (Of course, we
+  --   <http://www.lel.ed.ac.uk/~gpullum/loopsnoop.html cannot detect
+  --   /all/ infinite loops this way>.)
+  VBlackhole :: Value
   deriving (Eq, Show, Generic)
 
 -- | A value context is a mapping from variable names to their runtime
@@ -113,17 +129,15 @@ type VCtx = Ctx Value
 --------------------------------------------------
 
 -- | An environment is a record that stores relevant information for
---   all the names currently in scope.
+--   all the variables currently in scope.
 data Env = Env
   { _envTypes :: TCtx
-  -- ^ Map definition names to their types.
+  -- ^ Map variables to their types.
   , _envReqs :: ReqCtx
-  -- ^ Map definition names to the capabilities
-  --   required to evaluate/execute them.
+  -- ^ Map variables to the capabilities required to evaluate/execute
+  --   them.
   , _envVals :: VCtx
-  -- ^ Map definition names to their values. Note that since
-  --   definitions are delayed, the values will just consist of
-  --   'VRef's pointing into the store.
+  -- ^ Map variables to their values.
   , _envTydefs :: TDCtx
   -- ^ Type synonym definitions.
   }
@@ -209,15 +223,20 @@ valueToTerm = \case
   VPair v1 v2 -> TPair (valueToTerm v1) (valueToTerm v2)
   VClo x t e ->
     M.foldrWithKey
-      (\y v -> TLet LSLet False y Nothing Nothing (valueToTerm v))
+      ( \y v -> case v of
+          VIndir {} -> id
+          _ -> TLet LSLet False y Nothing Nothing (valueToTerm v)
+      )
       (TLam x Nothing t)
       (M.restrictKeys (Ctx.unCtx (e ^. envVals)) (S.delete x (setOf freeVarsV (Syntax' NoLoc t Empty ()))))
   VCApp c vs -> foldl' TApp (TConst c) (reverse (map valueToTerm vs))
   VBind mx mty mreq c1 c2 _ -> TBind mx mty mreq c1 c2
-  VDelay t _ -> TDelay SimpleDelay t
+  VDelay t _ -> TDelay t
   VRef n -> TRef n
+  VIndir n -> TRef n
   VRcd m -> TRcd (Just . valueToTerm <$> m)
   VKey kc -> TApp (TConst Key) (TText (prettyKeyCombo kc))
   VRequirements x t _ -> TRequirements x t
   VSuspend t _ -> TSuspend t
   VExc -> TConst Undefined
+  VBlackhole -> TConst Undefined
