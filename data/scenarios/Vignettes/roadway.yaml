@@ -76,11 +76,6 @@ world:
         palette:
           'S':
             - stone
-          'w':
-            - ice
-          '█':
-            - stone
-            - sand
         map: |
           SSSSSS
           SSSSSS

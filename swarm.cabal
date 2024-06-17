@@ -222,6 +222,7 @@ library swarm-topography
     Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
     Swarm.Game.Scenario.Topography.Structure.Recognition.Type
     Swarm.Game.Universe
+    Swarm.Game.World.Coords
 
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm
@@ -229,6 +230,7 @@ library swarm-topography
     AhoCorasick >=0.0.4 && <0.0.5,
     JuicyPixels >=3.3 && <3.4,
     aeson >=2.2 && <2.3,
+    array,
     base >=4.14 && <4.20,
     containers >=0.6.2 && <0.8,
     extra >=1.7 && <1.8,
@@ -238,7 +240,6 @@ library swarm-topography
     servant-docs >=0.12 && <0.14,
     text >=1.2.4 && <2.2,
     vector >=0.12 && <0.14,
-    witch,
     yaml >=0.11 && <0.11.12.0,
 
   build-depends:
@@ -290,7 +291,6 @@ library swarm-scenario
     Swarm.Game.World
     Swarm.Game.World.Abstract
     Swarm.Game.World.Compile
-    Swarm.Game.World.Coords
     Swarm.Game.World.Eval
     Swarm.Game.World.Gen
     Swarm.Game.World.Interpret

@@ -102,8 +102,6 @@ world:
     {blank}
   palette:
     '.': [grass]
-    'g': [grass, gold]
-    's': [grass, silver]
     'B': [grass, null, base]
   upperleft: [0, 0]
   placements:

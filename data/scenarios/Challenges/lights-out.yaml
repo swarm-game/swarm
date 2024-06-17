@@ -150,7 +150,6 @@ world:
     z: [blank, null, judge]
     '.': [blank]
     'x': [blank, "off"]
-    'o': [blank, "on"]
   map: |
     B......
     .xxxxx.
