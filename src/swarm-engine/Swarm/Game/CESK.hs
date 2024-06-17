@@ -394,7 +394,7 @@ prepareTerm e t = case whnfType (e ^. envTydefs) (ptBody (t ^. sType)) of
 
 -- | Cancel the currently running computation.
 cancel :: CESK -> CESK
-cancel cesk = Out VUnit s' []
+cancel cesk = Up Cancel s' (cesk ^. cont)
  where
   s' = resetBlackholes $ cesk ^. store
 

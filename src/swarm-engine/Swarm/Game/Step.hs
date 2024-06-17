@@ -848,7 +848,7 @@ stepCESK cesk = case cesk of
     let s' = resetBlackholes s
     h <- hasCapability CLog
     em <- use $ landscape . terrainAndEntities . entityMap
-    when h $ void $ traceLog RobotError Error (formatExn em exn)
+    when h $ void $ traceLog RobotError (exnSeverity exn) (formatExn em exn)
     return $ case menv of
       Nothing -> Out VExc s' []
       Just env -> Suspended VExc env s' []
