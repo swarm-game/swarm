@@ -1,9 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use fewer imports" #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -94,7 +91,10 @@ import Swarm.Game.State.Robot
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Step (finishGameTick, gameTick)
-import Swarm.Language.Capability (Capability (CGod, CMake), constCaps)
+import Swarm.Language.Capability
+    ( Capability(CGod, CMake), constCaps, Capability(CGod), constCaps )
+import Swarm.Language.Typecheck
+    ( ContextualTypeErr(..), ContextualTypeErr(..) )
 import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
 import Swarm.Language.Module (moduleSyntax)
@@ -102,12 +102,16 @@ import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Lex (reservedWords)
 import Swarm.Language.Parser.Util (showErrorPos)
-import Swarm.Language.Pipeline (Contexts (..), ProcessedTerm (..), processParsedTerm', processTerm', processedSyntax)
+import Swarm.Language.Pipeline
+    ( Contexts(..),
+      ProcessedTerm(..),
+      processedSyntax,
+      processTerm',
+      processParsedTerm' )
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax hiding (Key)
-import Swarm.Language.Typecheck (ContextualTypeErr (..))
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value (VExc, VKey, VUnit), prettyValue, stripVResult)
