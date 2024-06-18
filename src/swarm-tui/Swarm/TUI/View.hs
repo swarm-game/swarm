@@ -1546,7 +1546,7 @@ renderREPLPrompt focus theRepl = ps1 <+> replE
       else case theRepl ^. replErrorSrcLoc of
         NoLoc -> withAttr redAttr (txt t)
         SrcLoc s e ->
-          let (validL, (invalid, validR)) = T.splitAt e <$> T.splitAt s t
+          let (validL, (invalid, validR)) = T.splitAt (e - s) <$> T.splitAt s t
            in hBox [txt validL, withAttr redAttr (txt invalid), txt validR]
   ps1 = replPromptAsWidget (T.concat $ getEditContents replEditor) prompt
   replE =
