@@ -1540,11 +1540,16 @@ renderREPLPrompt focus theRepl = ps1 <+> replE
  where
   prompt = theRepl ^. replPromptType
   replEditor = theRepl ^. replPromptEditor
-  color = if theRepl ^. replValid then id else withAttr redAttr
+  color t = if theRepl ^. replValid
+    then txt t
+    else case theRepl ^. replErrorSrcLoc of
+      NoLoc -> withAttr redAttr (txt t)
+      SrcLoc s e -> let (validL, (invalid, validR)) = T.splitAt e <$> T.splitAt s t
+                     in hBox [txt validL, withAttr redAttr (txt invalid), txt validR]
   ps1 = replPromptAsWidget (T.concat $ getEditContents replEditor) prompt
   replE =
     renderEditor
-      (color . vBox . map txt)
+      (vBox . map color)
       (focusGetCurrent focus `elem` [Nothing, Just (FocusablePanel REPLPanel), Just REPLInput])
       replEditor
 

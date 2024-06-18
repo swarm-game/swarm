@@ -38,6 +38,7 @@ module Swarm.TUI.Model.Repl (
   replPromptEditor,
   replPromptText,
   replValid,
+  replErrorSrcLoc,
   replLast,
   replType,
   replControlMode,
@@ -67,6 +68,8 @@ import Swarm.Language.Types
 import Swarm.TUI.Model.Name
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Prelude hiding (Applicative (..))
+import Swarm.Language.Syntax (SrcLoc)
+import Swarm.Language.Syntax (SrcLoc(..))
 
 ------------------------------------------------------------
 -- REPL History
@@ -275,6 +278,7 @@ data REPLState = REPLState
   { _replPromptType :: REPLPrompt
   , _replPromptEditor :: Editor Text Name
   , _replValid :: Bool
+  , _replErrorSrcLoc :: SrcLoc
   , _replLast :: Text
   , _replType :: Maybe Polytype
   , _replControlMode :: ReplControlMode
@@ -294,6 +298,7 @@ initREPLState hist =
     { _replPromptType = defaultPrompt
     , _replPromptEditor = newREPLEditor ""
     , _replValid = True
+    , _replErrorSrcLoc = NoLoc
     , _replLast = ""
     , _replType = Nothing
     , _replControlMode = Typing
@@ -318,6 +323,9 @@ replPromptText = lens g s
 
 -- | Whether the prompt text is a valid 'Swarm.Language.Syntax.Term'.
 replValid :: Lens' REPLState Bool
+
+-- | Where in the prompt text is an invalid 'Swarm.Language.Syntax.Term'.
+replErrorSrcLoc :: Lens' REPLState SrcLoc
 
 -- | The type of the current REPL input which should be displayed to
 --   the user (if any).
