@@ -2,6 +2,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
 {-# HLINT ignore "Use fewer imports" #-}
 
 -- |
@@ -41,9 +42,6 @@ module Swarm.TUI.Controller (
 
 import Brick hiding (Direction, Location)
 import Brick.Focus
-import Swarm.Language.Parser (readTerm')
-import Swarm.Language.Parser.Util (showErrorPos)
-import Swarm.Language.Parser.Core (defaultParserConfig)
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (applyEdit, handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
@@ -97,18 +95,19 @@ import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Step (finishGameTick, gameTick)
 import Swarm.Language.Capability (Capability (CGod, CMake), constCaps)
-import Swarm.Language.Typecheck (ContextualTypeErr(..))
-import Swarm.Language.Capability (Capability (CGod), constCaps)
 import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
 import Swarm.Language.Module (moduleSyntax)
+import Swarm.Language.Parser (readTerm')
+import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Lex (reservedWords)
-import Swarm.Language.Pipeline (Contexts (..), ProcessedTerm (..), processTerm', processedSyntax)
-import Swarm.Language.Pipeline (processTerm', processParsedTerm')
+import Swarm.Language.Parser.Util (showErrorPos)
+import Swarm.Language.Pipeline (Contexts (..), ProcessedTerm (..), processParsedTerm', processTerm', processedSyntax)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax hiding (Key)
+import Swarm.Language.Typecheck (ContextualTypeErr (..))
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value (VExc, VKey, VUnit), prettyValue, stripVResult)
@@ -1309,15 +1308,15 @@ validateREPLForm s =
            in s & uiState . uiGameplay . uiREPL . replType .~ theType
     CmdPrompt _
       | otherwise ->
-          let ctxs = Contexts (topCtx ^. defTypes) (topCtx ^. defReqs) (topCtx ^. tydefVals)              
+          let ctxs = Contexts (topCtx ^. defTypes) (topCtx ^. defReqs) (topCtx ^. tydefVals)
               (theType, errSrcLoc) = case readTerm' defaultParserConfig uinput of
-                Left err -> 
+                Left err ->
                   let ((x1, _y1), (x2, _y2), _msg) = showErrorPos err
                    in (Nothing, SrcLoc x1 x2)
                 Right Nothing -> (Nothing, NoLoc)
                 Right (Just theTerm) -> case processParsedTerm' ctxs theTerm of
                   Right t -> (Just (t ^. processedSyntax . sType), NoLoc)
-                  Left err -> (Nothing, cteSrcLoc err) 
+                  Left err -> (Nothing, cteSrcLoc err)
            in s
                 & uiState . uiGameplay . uiREPL . replValid .~ isJust theType
                 & uiState . uiGameplay . uiREPL . replType .~ theType

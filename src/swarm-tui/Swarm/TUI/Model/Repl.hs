@@ -64,12 +64,11 @@ import Data.Text qualified as T
 import Data.Text.Zipper qualified as TZ
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
+import Swarm.Language.Syntax (SrcLoc (..))
 import Swarm.Language.Types
 import Swarm.TUI.Model.Name
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Prelude hiding (Applicative (..))
-import Swarm.Language.Syntax (SrcLoc)
-import Swarm.Language.Syntax (SrcLoc(..))
 
 ------------------------------------------------------------
 -- REPL History
