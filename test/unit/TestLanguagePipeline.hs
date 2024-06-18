@@ -630,14 +630,24 @@ testLanguagePipeline =
                 "1:1: Undefined type U"
             )
         ]
+    , testCase
+        "Stop printing context after a definition. - #1336"
+        ( processCompare
+            (==)
+            "move; def x = move; say 3 end; move;"
+            "1:25: Type mismatch:\n  From context, expected `3` to have type `Text`,\n  but it actually has type `Int`\n\n  - While checking the right-hand side of a semicolon\n  - While checking the definition of x"
+        )
     ]
  where
   valid = flip process ""
 
   process :: Text -> Text -> Assertion
-  process code expect = case processTerm code of
+  process = processCompare T.isPrefixOf
+
+  processCompare :: (Text -> Text -> Bool) -> Text -> Text -> Assertion
+  processCompare cmp code expect = case processTerm code of
     Left e
-      | not (T.null expect) && expect `T.isPrefixOf` e -> pure ()
+      | not (T.null expect) && cmp expect e -> pure ()
       | otherwise ->
           error $
             "Unexpected failure:\n\n  " <> show e <> "\n\nExpected:\n\n  " <> show expect <> "\n"
