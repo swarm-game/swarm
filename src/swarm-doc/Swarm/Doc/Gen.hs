@@ -118,8 +118,8 @@ generateEditorKeywords = \case
     T.putStr $ keywordsCommands Vim
     putStrLn "\nsyn keyword Direction "
     T.putStr $ keywordsDirections Vim
-    putStrLn "\nsyn keyword Type "
-    T.putStr $ operatorNames Vim
+    putStrLn "\nsyn match Operators "
+    T.putStr $ "[" <> operatorNames Vim <> "]"
 
 -- ----------------------------------------------------------------------------
 -- GENERATE SPECIAL KEY NAMES

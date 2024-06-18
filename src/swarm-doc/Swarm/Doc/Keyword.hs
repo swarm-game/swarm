@@ -16,6 +16,7 @@ module Swarm.Doc.Keyword (
   builtinFunctionList,
 ) where
 
+import Data.List (nub)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Doc.Util
@@ -45,15 +46,26 @@ keywordsDirections :: EditorType -> Text
 keywordsDirections e = editorList e $ map directionSyntax allDirs
 
 -- | A list of the names of all the operators in the language.
+-- These are reflective of how the different editors treat operators,
+-- keywords, symbols etc differently.
+-- In order to get the list of operators supported by Swarm language
+-- irrespective of an editor, @map constSyntax operators@ should suffice.
 operatorNames :: EditorType -> Text
-operatorNames e = editorList e $ case e of
-  Emacs -> map constSyntax operators
-  Vim -> map constSyntax operators
-  VSCode -> map (escape . constSyntax) operators
+operatorNames e = case e of
+  Emacs -> editorList e $ map constSyntax operators <> extraOperators
+  -- Vim needs a list of unique characters that can be matched over using a regex
+  Vim -> T.pack . nub . T.unpack . T.concat $ map constSyntax operators <> extraOperators
+  VSCode -> editorList e $ map (escape . constSyntax) operators <> extraOperators
  where
   slashNotComment = \case
     '/' -> "/(?![/|*])"
     c -> T.singleton c
+
   special :: String
   special = "*+$[]|^"
+
+  -- Extra operators appearing in different places. Eg: Type signatures.
+  extraOperators :: [Text]
+  extraOperators = [":"]
+
   escape = T.concatMap (\c -> if c `elem` special then T.snoc "\\" c else slashNotComment c)

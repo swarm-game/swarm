@@ -554,7 +554,7 @@ testEditorFiles =
  where
   testTextInVSCode name tf = testTextInFile False name (tf VSCode) "editors/vscode/syntaxes/swarm.tmLanguage.yaml"
   testTextInEmacs name tf = testTextInFile True name (tf Emacs) "editors/emacs/swarm-mode.el"
-  testTextInVim name tf = testTextInFile True name (tf Vim) "editors/vim/swarm.vim"
+  testTextInVim name tf = testTextInFile False name (tf Vim) "editors/vim/swarm.vim"
   testTextInFile :: Bool -> String -> Text -> FilePath -> TestTree
   testTextInFile whitespace name t fp = testCase name $ do
     let removeLW' = T.unlines . map (T.dropWhile isSpace) . T.lines
