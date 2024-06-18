@@ -531,20 +531,22 @@ testEditorFiles =
     "editors"
     [ testGroup
         "VS Code"
-        [ testTextInVSCode "operators" (const Keyword.operatorNames)
+        [ testTextInVSCode "operators" Keyword.operatorNames
         , testTextInVSCode "builtin" Keyword.builtinFunctionList
         , testTextInVSCode "commands" Keyword.keywordsCommands
         , testTextInVSCode "directions" Keyword.keywordsDirections
         ]
     , testGroup
         "Emacs"
-        [ testTextInEmacs "builtin" Keyword.builtinFunctionList
+        [ testTextInEmacs "operators" Keyword.operatorNames
+        , testTextInEmacs "builtin" Keyword.builtinFunctionList
         , testTextInEmacs "commands" Keyword.keywordsCommands
         , testTextInEmacs "directions" Keyword.keywordsDirections
         ]
     , testGroup
         "Vim"
-        [ testTextInVim "builtin" Keyword.builtinFunctionList
+        [ testTextInVim "operators" Keyword.operatorNames
+        , testTextInVim "builtin" Keyword.builtinFunctionList
         , testTextInVim "commands" Keyword.keywordsCommands
         , testTextInVim "directions" Keyword.keywordsDirections
         ]
@@ -552,7 +554,7 @@ testEditorFiles =
  where
   testTextInVSCode name tf = testTextInFile False name (tf VSCode) "editors/vscode/syntaxes/swarm.tmLanguage.yaml"
   testTextInEmacs name tf = testTextInFile True name (tf Emacs) "editors/emacs/swarm-mode.el"
-  testTextInVim name tf = testTextInFile True name (tf Vim) "editors/vim/swarm.vim"
+  testTextInVim name tf = testTextInFile False name (tf Vim) "editors/vim/swarm.vim"
   testTextInFile :: Bool -> String -> Text -> FilePath -> TestTree
   testTextInFile whitespace name t fp = testCase name $ do
     let removeLW' = T.unlines . map (T.dropWhile isSpace) . T.lines

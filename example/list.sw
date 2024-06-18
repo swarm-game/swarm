@@ -26,7 +26,7 @@
 //
 // It is the callers responsibility to make sure a program using this
 // "type" is type safe. Notably 2 == [0] != [] == 0 but [] !! x == 0.
-// 
+//
 // TODO: once #153 is resolved, add types to definitions
 //
 // type ListI = Int
@@ -39,16 +39,16 @@
 // chunks each prefixed by 1bit that marks if the byte is last in
 // the header (0=YES).
 
-/* EXAMPLE - [short_x,long_y] - concretly e.g. [42, 2^(2^7)] 
+/* EXAMPLE - [short_x,long_y] - concretly e.g. [42, 2^(2^7)]
 
 0   < len short_x < 2^7
-2^7 < len long_y  < 2^14 
+2^7 < len long_y  < 2^14
 
 cons short_x   $          cons long_y          $ nil
 vvvvvvvvvvvv       vvvvvvvvvvvvvvvvvvvvvvvvv     vvv
   0|len x|x    |   1|len y%2^7|0|len y/2^7|y   |  0
 ^^^^^^^^^^^^       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  head                         tail            
+  head                         tail
 */
 
 /*******************************************************************/
@@ -123,7 +123,7 @@ end
 /*                         LIST FUNCTIONS                          */
 /*******************************************************************/
 
-// headTail : ListI -> {Int} * {ListI} 
+// headTail : ListI -> {Int} * {ListI}
 def headTail = \xs.
   let sign = mod xs 2 in
   let ns = xs / 2 in
@@ -140,7 +140,7 @@ def head : Int -> Int = \xs.
   force $ fst $ headTail xs
 end
 
-// tail : ListI -> ListI 
+// tail : ListI -> ListI
 def tail = \xs.
   force $ snd $ headTail xs
 end
@@ -226,19 +226,19 @@ def testLIST =
   assert (ln1 == 517)                "[-1] ~ 517";
   assert (head ln1 == -1)            "head [-1] == -1";
   assert (tail ln1 == nil)           "tail [-1] == []";
-  
+
   log "check [42]";
   let l42 = cons 42 nil in
   assert (l42 == 21528)              "[42] ~ 21528";
   assert (head l42 == 42)            "head [42] == 42";
   assert (tail l42 == nil)           "tail [42] == []";
-  
+
   log "check [499672]";
   let l499672 = cons 499672 nil in
   assert (l499672 == 255832140)      "[499672] ~ 255832140";
   assert (head l499672 == 499672)    "head [499672] == 499672";
   assert (tail l499672 == nil)       "tail [499672] == []";
-  
+
   log "check [1,0]";
   let l1_0 = cons 1 l0 in
   assert (l1_0 == 4612)              "[1,0] ~ 4612";
@@ -304,7 +304,7 @@ def testLIST_BIG =
   let lbiggest = cons bigger lbig in
   assert (head lbiggest == bigger)  "head [bigger,big] == bigger";
   assert (tail lbiggest == lbig)    "tail [bigger,big] == [big]";
-  
+
   log "OK - ALL TEST PASSED";
 end
 
