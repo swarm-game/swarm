@@ -1546,8 +1546,8 @@ renderREPLPrompt focus theRepl = ps1 <+> replE
       Left NoLoc -> withAttr redAttr (txt t)
       Left (SrcLoc s e) | s == e || s >= T.length t -> withAttr redAttr (txt t)
       Left (SrcLoc s e) ->
-          let (validL, (invalid, validR)) = T.splitAt (e - s) <$> T.splitAt s t
-           in hBox [txt validL, withAttr redAttr (txt invalid), txt validR]
+        let (validL, (invalid, validR)) = T.splitAt (e - s) <$> T.splitAt s t
+         in hBox [txt validL, withAttr redAttr (txt invalid), txt validR]
   ps1 = replPromptAsWidget (T.concat $ getEditContents replEditor) prompt
   replE =
     renderEditor
