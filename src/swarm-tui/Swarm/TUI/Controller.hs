@@ -1320,15 +1320,14 @@ validateREPLForm s =
               (theType, errSrcLoc) = case readTerm' defaultParserConfig uinput of
                 Left err ->
                   let ((_y1, x1), (_y2, x2), _msg) = showErrorPos err
-                   in (Nothing, SrcLoc x1 x2)
-                Right Nothing -> (Nothing, NoLoc)
+                   in (Nothing, Left (SrcLoc x1 x2))
+                Right Nothing -> (Nothing, Right ())
                 Right (Just theTerm) -> case processParsedTerm' ctxs theTerm of
-                  Right t -> (Just (t ^. processedSyntax . sType), NoLoc)
-                  Left err -> (Nothing, cteSrcLoc err)
+                  Right t -> (Just (t ^. processedSyntax . sType), Right ())
+                  Left err -> (Nothing, Left (cteSrcLoc err))
            in s
-                & uiState . uiGameplay . uiREPL . replValid .~ isJust theType
+                & uiState . uiGameplay . uiREPL . replValid .~ errSrcLoc
                 & uiState . uiGameplay . uiREPL . replType .~ theType
-                & uiState . uiGameplay . uiREPL . replErrorSrcLoc .~ errSrcLoc
     SearchPrompt _ -> s
  where
   uinput = s ^. uiState . uiGameplay . uiREPL . replPromptText
