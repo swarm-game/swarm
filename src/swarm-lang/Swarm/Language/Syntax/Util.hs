@@ -140,7 +140,7 @@ freeVarsS f = go S.empty
     STydef x xdef tdInfo t1 -> rewrap $ STydef x xdef tdInfo <$> go bound t1
     SPair s1 s2 -> rewrap $ SPair <$> go bound s1 <*> go bound s2
     SBind mx mty mpty mreq s1 s2 -> rewrap $ SBind mx mty mpty mreq <$> go bound s1 <*> go (maybe id (S.insert . lvVar) mx bound) s2
-    SDelay m s1 -> rewrap $ SDelay m <$> go bound s1
+    SDelay s1 -> rewrap $ SDelay <$> go bound s1
     SRcd m -> rewrap $ SRcd <$> (traverse . traverse) (go bound) m
     SProj s1 x -> rewrap $ SProj <$> go bound s1 <*> pure x
     SAnnotate s1 pty -> rewrap $ SAnnotate <$> go bound s1 <*> pure pty

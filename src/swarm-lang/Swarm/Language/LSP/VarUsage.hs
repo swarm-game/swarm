@@ -109,5 +109,5 @@ getUsage bindings (CSyntax _pos t _comments) = case t of
   SBind maybeVar _ _ _ s1 s2 -> case maybeVar of
     Just v -> checkOccurrences bindings v Bind [s1, s2]
     Nothing -> getUsage bindings s1 <> getUsage bindings s2
-  SDelay _ s -> getUsage bindings s
+  SDelay s -> getUsage bindings s
   _ -> mempty

@@ -114,7 +114,7 @@ narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   SLet _ _ lv _ _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
   SBind mlv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
   SPair s1 s2 -> d s1 <|> d s2
-  SDelay _ s -> d s
+  SDelay s -> d s
   SRcd m -> asum . map d . catMaybes . M.elems $ m
   SProj s1 _ -> d s1
   SAnnotate s _ -> d s

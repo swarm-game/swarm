@@ -580,7 +580,12 @@ stepCESK cesk = case cesk of
     v <-
       lookupValue x e
         `isJustOr` Fatal (T.unwords ["Undefined variable", x, "encountered while running the interpreter."])
-    return $ Out v s k
+
+    -- Now look up any indirections and make sure it's not a blackhole.
+    case resolveValue s v of
+      Left loc -> throwError $ Fatal $ T.append "Reference to unknown memory cell " (from (show loc))
+      Right VBlackhole -> throwError InfiniteLoop
+      Right v' -> return $ Out v' s k
 
   -- To evaluate a pair, start evaluating the first component.
   In (TPair t1 t2) e s k -> return $ In t1 e s (FSnd t2 e : k)
@@ -630,12 +635,16 @@ stepCESK cesk = case cesk of
   -- let-bound expression.
   In (TLet _ False x mty mreq t1 t2) e s k ->
     return $ In t1 e s (FLet x ((,) <$> mty <*> mreq) t2 e : k)
-  -- To evaluate recursive let expressions, we evaluate the memoized
-  -- delay of the let-bound expression.  Every free occurrence of x
-  -- in the let-bound expression and the body has already been
-  -- rewritten by elaboration to 'force x'.
-  In (TLet _ True x mty mreq t1 t2) e s k ->
-    return $ In (TDelay (MemoizedDelay $ Just x) t1) e s (FLet x ((,) <$> mty <*> mreq) t2 e : k)
+  -- To evaluate a recursive let binding:
+  In (TLet _ True x mty mreq t1 t2) e s k -> do
+    -- First, allocate a cell for it in the store with the initial
+    -- value of Blackhole.
+    let (loc, s') = allocate VBlackhole s
+    -- Now evaluate the definition with the variable bound to an
+    -- indirection to the new cell, and push an FUpdate stack frame to
+    -- update the cell with the value once we're done evaluating it,
+    -- followed by an FLet frame to evaluate the body of the let.
+    return $ In t1 (addValueBinding x (VIndir loc) e) s' (FUpdate loc : FLet x ((,) <$> mty <*> mreq) t2 e : k)
   -- Once we've finished with the let-binding, we switch to evaluating
   -- the body in a suitably extended environment.
   Out v1 s (FLet x mtr t2 e : k) -> do
@@ -651,22 +660,10 @@ stepCESK cesk = case cesk of
   In (TBind mx mty mreq t1 t2) e s k -> return $ Out (VBind mx mty mreq t1 t2 e) s k
   -- Simple (non-memoized) delay expressions immediately turn into
   -- VDelay values, awaiting application of 'Force'.
-  In (TDelay SimpleDelay t) e s k -> return $ Out (VDelay t e) s k
-  -- For memoized delay expressions, we allocate a new cell in the store and
-  -- return a reference to it.
-  In (TDelay (MemoizedDelay x) t) e s k -> do
-    -- Note that if the delay expression is recursive, we add a
-    -- binding to the environment that wil be used to evaluate the
-    -- body, binding the variable to a reference to the memory cell we
-    -- just allocated for the body expression itself.  As a fun aside,
-    -- notice how Haskell's recursion and laziness play a starring
-    -- role: @loc@ is both an output from @allocate@ and used as part
-    -- of an input! =D
-    let (loc, s') = allocate (maybe id (`addValueBinding` VRef loc) x e) t s
-    return $ Out (VRef loc) s' k
+  In (TDelay t) e s k -> return $ Out (VDelay t e) s k
   -- If we see an update frame, it means we're supposed to set the value
   -- of a particular cell to the value we just finished computing.
-  Out v s (FUpdate loc : k) -> return $ Out v (setStore loc (V v) s) k
+  Out v s (FUpdate loc : k) -> return $ Out v (setStore loc v s) k
   -- If we see a primitive application of suspend, package it up as
   -- a value until it's time to execute.
   In (TSuspend t) e s k -> return $ Out (VSuspend t e) s k
@@ -839,19 +836,15 @@ stepCESK cesk = case cesk of
 
     -- If an exception rises all the way to the top level without being
     -- handled, turn it into an error message.
-
+    --
     -- HOWEVER, we have to make sure to check that the robot has the
     -- 'log' capability which is required to collect and view logs.
-    --
-    -- Notice how we call resetBlackholes on the store, so that any
-    -- cells which were in the middle of being evaluated will be reset.
-    let s' = resetBlackholes s
     h <- hasCapability CLog
     em <- use $ landscape . terrainAndEntities . entityMap
     when h $ void $ traceLog RobotError (exnSeverity exn) (formatExn em exn)
     return $ case menv of
-      Nothing -> Out VExc s' []
-      Just env -> Suspended VExc env s' []
+      Nothing -> Out VExc s []
+      Just env -> Suspended VExc env s []
 
 -- | Execute the given program *hypothetically*: i.e. in a fresh
 -- CESK machine, using *copies* of the current store, robot

@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -8,9 +7,8 @@
 module Swarm.Language.Elaborate where
 
 import Control.Applicative ((<|>))
-import Control.Lens (transform, (%~), (^.), pattern Empty)
+import Control.Lens (transform, (^.))
 import Swarm.Language.Syntax
-import Swarm.Language.Types
 
 -- | Perform some elaboration / rewriting on a fully type-annotated
 --   term.  This currently performs such operations as rewriting @if@
@@ -23,24 +21,14 @@ import Swarm.Language.Types
 --   currently that sort of thing tends to make type inference fall
 --   over.
 elaborate :: TSyntax -> TSyntax
-elaborate =
-  -- Wrap all *free* variables in 'Force'.  Free variables must be
-  -- referring to a previous definition, which are all wrapped in
-  -- 'TDelay'.
-  (freeVarsS %~ \s -> Syntax' (s ^. sLoc) (SApp sForce s) (s ^. sComments) (s ^. sType))
-    -- Now do additional rewriting on all subterms.
-    . transform rewrite
+elaborate = transform rewrite
  where
   rewrite :: TSyntax -> TSyntax
   rewrite (Syntax' l t cs ty) = Syntax' l (rewriteTerm t) cs ty
 
   rewriteTerm :: TTerm -> TTerm
   rewriteTerm = \case
-    -- For recursive let bindings, rewrite any occurrences of x to
-    -- (force x).  When interpreting t1, we will put a binding (x |->
-    -- delay t1) in the context.
-    --
-    -- Here we also take inferred types for variables bound by def or
+    -- Here we take inferred types for variables bound by def or
     -- bind (but NOT let) and stuff them into the term itself, so that
     -- we will still have access to them at runtime, after type
     -- annotations on the AST are erased.  We need them at runtime so
@@ -59,26 +47,15 @@ elaborate =
     -- we'll infer them both at typechecking time then fill them in
     -- during elaboration here.
     SLet ls r x mty mreq t1 t2 ->
-      let wrap
-            | r = wrapForce (lvVar x) -- wrap in 'force' if recursive
-            | otherwise = id
-          mty' = case ls of
+      let mty' = case ls of
             LSDef -> mty <|> Just (t1 ^. sType)
             LSLet -> Nothing
-       in SLet ls r x mty' mreq (wrap t1) (wrap t2)
+       in SLet ls r x mty' mreq t1 t2
     SBind x (Just ty) _ mreq c1 c2 -> SBind x Nothing (Just ty) mreq c1 c2
     -- Rewrite @f $ x@ to @f x@.
     SApp (Syntax' _ (SApp (Syntax' _ (TConst AppF) _ _) l) _ _) r -> SApp l r
     -- Leave any other subterms alone.
     t -> t
-
-wrapForce :: Var -> TSyntax -> TSyntax
-wrapForce x = mapFreeS x (\s@(Syntax' l _ ty cs) -> Syntax' l (SApp sForce s) ty cs)
-
--- Note, TyUnit is not the right type, but I don't want to bother
-
-sForce :: TSyntax
-sForce = Syntax' NoLoc (TConst Force) Empty (Forall ["a"] (TyDelay (TyVar "a") :->: TyVar "a"))
 
 -- | Insert a special 'suspend' primitive at the very end of an erased
 --   term which must have a command type.

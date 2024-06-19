@@ -122,8 +122,8 @@ pattern TBind mv mty mreq t1 t2 <- SBind (fmap lvVar -> mv) _ mty mreq (STerm t1
     TBind mv mty mreq t1 t2 = SBind (LV NoLoc <$> mv) Nothing mty mreq (STerm t1) (STerm t2)
 
 -- | Match a TDelay without annotations.
-pattern TDelay :: DelayType -> Term -> Term
-pattern TDelay m t = SDelay m (STerm t)
+pattern TDelay :: Term -> Term
+pattern TDelay t = SDelay (STerm t)
 
 -- | Match a TRcd without annotations.
 pattern TRcd :: Map Var (Maybe Term) -> Term

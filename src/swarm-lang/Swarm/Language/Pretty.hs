@@ -280,8 +280,8 @@ instance PrettyPrec (Term' ty) where
     TRequire n e -> pparens (p > 10) $ "require" <+> pretty n <+> ppr @Term (TText e)
     SRequirements _ e -> pparens (p > 10) $ "requirements" <+> ppr e
     TVar s -> pretty s
-    SDelay _ (Syntax' _ (TConst Noop) _ _) -> "{}"
-    SDelay _ t -> group . encloseWithIndent 2 lbrace rbrace $ ppr t
+    SDelay (Syntax' _ (TConst Noop) _ _) -> "{}"
+    SDelay t -> group . encloseWithIndent 2 lbrace rbrace $ ppr t
     t@SPair {} -> prettyTuple t
     t@SLam {} ->
       pparens (p > 9) $

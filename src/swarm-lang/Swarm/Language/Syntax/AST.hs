@@ -125,7 +125,7 @@ data Term' ty
     --   Note that 'Force' is just a constant, whereas 'SDelay' has to
     --   be a special syntactic form so its argument can get special
     --   treatment during evaluation.
-    SDelay DelayType (Syntax' ty)
+    SDelay (Syntax' ty)
   | -- | Record literals @[x1 = e1, x2 = e2, x3, ...]@ Names @x@
     --   without an accompanying definition are sugar for writing
     --   @x=x@.
