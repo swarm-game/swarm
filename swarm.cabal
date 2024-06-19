@@ -117,6 +117,9 @@ common ghc2021-extensions
     TypeApplications
     TypeOperators
 
+-- Allow Cabal to recognize swarm as a library.
+library
+
 library swarm-lang
   import: stan-config, common, ghc2021-extensions
   visibility: public
