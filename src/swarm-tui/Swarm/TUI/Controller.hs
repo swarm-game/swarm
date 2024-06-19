@@ -1319,7 +1319,7 @@ validateREPLForm s =
           let ctxs = Contexts (topCtx ^. defTypes) (topCtx ^. defReqs) (topCtx ^. tydefVals)
               (theType, errSrcLoc) = case readTerm' defaultParserConfig uinput of
                 Left err ->
-                  let ((x1, _y1), (x2, _y2), _msg) = showErrorPos err
+                  let ((_y1, x1), (_y2, x2), _msg) = showErrorPos err
                    in (Nothing, SrcLoc x1 x2)
                 Right Nothing -> (Nothing, NoLoc)
                 Right (Just theTerm) -> case processParsedTerm' ctxs theTerm of
