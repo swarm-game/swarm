@@ -5,12 +5,10 @@ TAGS
 .vscode/
 
 cabal.project.local
-hie.yaml
 
 .stack-work/
 .stack-work-test/
 .stack-work-bench/
-stack.yaml.lock
 .hie/
 stan.html
 
