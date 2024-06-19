@@ -25,7 +25,27 @@
   "Syntax table for `swarm-mode'.")
 
 (defvar swarm-mode-operators-regexp
-  (regexp-opt '(":" "->" "=" "<-" "+" "*" "/" "-") t)
+  (regexp-opt
+   '(
+     "-"
+     "=="
+     "!="
+     "<"
+     ">"
+     "<="
+     ">="
+     "||"
+     "&&"
+     "+"
+     "-"
+     "*"
+     "/"
+     "^"
+     "++"
+     "$"
+     ":"
+     )
+   t)
   "Regexp that recognizes operators for swarm language.")
 
 (defvar swarm-mode-commands-regexp

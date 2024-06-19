@@ -28,6 +28,7 @@ cliParser =
       [ pure Nothing
       , Just VSCode <$ switch (long "code" <> help "Generate for the VS Code editor")
       , Just Emacs <$ switch (long "emacs" <> help "Generate for the Emacs editor")
+      , Just Vim <$ switch (long "vim" <> help "Generate for the Vim editor")
       ]
   address :: Parser PageAddress
   address =
