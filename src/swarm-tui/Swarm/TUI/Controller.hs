@@ -40,12 +40,13 @@ module Swarm.TUI.Controller (
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Widgets.Dialog
-import Brick.Widgets.Edit (applyEdit, handleEditorEvent)
+import Brick.Widgets.Edit (Editor, applyEdit, handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
 import Brick.Widgets.List qualified as BL
 import Control.Applicative (liftA2, pure)
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
+import Control.Category ((>>>))
 import Control.Lens as Lens
 import Control.Lens.Extras as Lens (is)
 import Control.Monad (forM_, unless, void, when)
@@ -65,6 +66,7 @@ import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Data.Text.Zipper qualified as TZ
 import Data.Text.Zipper.Generic.Words qualified as TZ
 import Data.Time (getZonedTime)
 import Data.Vector qualified as V
@@ -1220,11 +1222,22 @@ handleREPLEventTyping = \case
         uiState . uiGameplay . uiREPL . replPromptEditor %= applyEdit TZ.deletePrevWord
       -- finally if none match pass the event to the editor
       ev -> do
-        Brick.zoom (uiState . uiGameplay . uiREPL . replPromptEditor) (handleEditorEvent ev)
+        Brick.zoom (uiState . uiGameplay . uiREPL . replPromptEditor) $ case ev of
+          CharKey c | c `elem` ("([{" :: String) -> insertMatchingPair c
+          _ -> handleEditorEvent ev
         uiState . uiGameplay . uiREPL . replPromptType %= \case
           CmdPrompt _ -> CmdPrompt [] -- reset completions on any event passed to editor
           SearchPrompt a -> SearchPrompt a
         modify validateREPLForm
+
+insertMatchingPair :: Char -> EventM Name (Editor Text Name) ()
+insertMatchingPair c = modify . applyEdit $ TZ.insertChar c >>> TZ.insertChar (close c) >>> TZ.moveLeft
+ where
+  close = \case
+    '(' -> ')'
+    '[' -> ']'
+    '{' -> '}'
+    _ -> c
 
 data CompletionType
   = FunctionName
