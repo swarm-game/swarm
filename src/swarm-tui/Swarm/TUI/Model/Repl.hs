@@ -63,6 +63,7 @@ import Data.Text qualified as T
 import Data.Text.Zipper qualified as TZ
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
+import Swarm.Language.Syntax (SrcLoc (..))
 import Swarm.Language.Types
 import Swarm.TUI.Model.Name
 import Swarm.Util.Lens (makeLensesNoSigs)
@@ -274,7 +275,7 @@ data ReplControlMode
 data REPLState = REPLState
   { _replPromptType :: REPLPrompt
   , _replPromptEditor :: Editor Text Name
-  , _replValid :: Bool
+  , _replValid :: Either SrcLoc ()
   , _replLast :: Text
   , _replType :: Maybe Polytype
   , _replControlMode :: ReplControlMode
@@ -293,7 +294,7 @@ initREPLState hist =
   REPLState
     { _replPromptType = defaultPrompt
     , _replPromptEditor = newREPLEditor ""
-    , _replValid = True
+    , _replValid = Right ()
     , _replLast = ""
     , _replType = Nothing
     , _replControlMode = Typing
@@ -317,7 +318,9 @@ replPromptText = lens g s
   s r t = r & replPromptEditor .~ newREPLEditor t
 
 -- | Whether the prompt text is a valid 'Swarm.Language.Syntax.Term'.
-replValid :: Lens' REPLState Bool
+--   If it is invalid, the location of error. ('NoLoc' means the whole
+--   text causes the error.)
+replValid :: Lens' REPLState (Either SrcLoc ())
 
 -- | The type of the current REPL input which should be displayed to
 --   the user (if any).

@@ -54,7 +54,6 @@ import Control.Monad.Extra (whenJust)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execState)
 import Data.Bits
-import Data.Either (isRight)
 import Data.Foldable (toList)
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -94,16 +93,31 @@ import Swarm.Game.State.Robot
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Step (finishGameTick, gameTick)
-import Swarm.Language.Capability (Capability (CGod, CMake), constCaps)
+import Swarm.Language.Capability (
+  Capability (CGod, CMake),
+  constCaps,
+ )
 import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
 import Swarm.Language.Module (moduleSyntax)
+import Swarm.Language.Parser (readTerm')
+import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Lex (reservedWords)
-import Swarm.Language.Pipeline (Contexts (..), ProcessedTerm (..), processTerm', processedSyntax)
+import Swarm.Language.Parser.Util (showErrorPos)
+import Swarm.Language.Pipeline (
+  Contexts (..),
+  ProcessedTerm (..),
+  processParsedTerm',
+  processTerm',
+  processedSyntax,
+ )
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty
 import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax hiding (Key)
+import Swarm.Language.Typecheck (
+  ContextualTypeErr (..),
+ )
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value (VExc, VKey, VUnit), prettyValue, stripVResult)
@@ -1316,12 +1330,16 @@ validateREPLForm s =
     CmdPrompt _
       | otherwise ->
           let ctxs = Contexts (topCtx ^. defTypes) (topCtx ^. defReqs) (topCtx ^. tydefVals)
-              result = processTerm' ctxs uinput
-              theType = case result of
-                Right (Just pt) -> Just (pt ^. processedSyntax . sType)
-                _ -> Nothing
+              (theType, errSrcLoc) = case readTerm' defaultParserConfig uinput of
+                Left err ->
+                  let ((_y1, x1), (_y2, x2), _msg) = showErrorPos err
+                   in (Nothing, Left (SrcLoc x1 x2))
+                Right Nothing -> (Nothing, Right ())
+                Right (Just theTerm) -> case processParsedTerm' ctxs theTerm of
+                  Right t -> (Just (t ^. processedSyntax . sType), Right ())
+                  Left err -> (Nothing, Left (cteSrcLoc err))
            in s
-                & uiState . uiGameplay . uiREPL . replValid .~ isRight result
+                & uiState . uiGameplay . uiREPL . replValid .~ errSrcLoc
                 & uiState . uiGameplay . uiREPL . replType .~ theType
     SearchPrompt _ -> s
  where
