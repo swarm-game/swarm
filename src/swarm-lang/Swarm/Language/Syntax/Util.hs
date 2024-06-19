@@ -128,23 +128,23 @@ freeVarsS f = go S.empty
     TRef {} -> pure s
     TRequireDevice {} -> pure s
     TRequire {} -> pure s
-    TTydef {} -> pure s
     SRequirements x s1 -> rewrap $ SRequirements x <$> go bound s1
     TVar x
       | x `S.member` bound -> pure s
       | otherwise -> f s
     SLam x xty s1 -> rewrap $ SLam x xty <$> go (S.insert (lvVar x) bound) s1
     SApp s1 s2 -> rewrap $ SApp <$> go bound s1 <*> go bound s2
-    SLet r x xty s1 s2 ->
+    SLet ls r x xty xreq s1 s2 ->
       let bound' = S.insert (lvVar x) bound
-       in rewrap $ SLet r x xty <$> go bound' s1 <*> go bound' s2
+       in rewrap $ SLet ls r x xty xreq <$> go bound' s1 <*> go bound' s2
+    STydef x xdef tdInfo t1 -> rewrap $ STydef x xdef tdInfo <$> go bound t1
     SPair s1 s2 -> rewrap $ SPair <$> go bound s1 <*> go bound s2
-    SDef r x xty s1 -> rewrap $ SDef r x xty <$> go (S.insert (lvVar x) bound) s1
-    SBind mx s1 s2 -> rewrap $ SBind mx <$> go bound s1 <*> go (maybe id (S.insert . lvVar) mx bound) s2
+    SBind mx mty mpty mreq s1 s2 -> rewrap $ SBind mx mty mpty mreq <$> go bound s1 <*> go (maybe id (S.insert . lvVar) mx bound) s2
     SDelay m s1 -> rewrap $ SDelay m <$> go bound s1
     SRcd m -> rewrap $ SRcd <$> (traverse . traverse) (go bound) m
     SProj s1 x -> rewrap $ SProj <$> go bound s1 <*> pure x
     SAnnotate s1 pty -> rewrap $ SAnnotate <$> go bound s1 <*> pure pty
+    SSuspend s1 -> rewrap $ SSuspend <$> go bound s1
    where
     rewrap s' = Syntax' l <$> s' <*> pure ty <*> pure cmts
 
@@ -176,7 +176,14 @@ asTree = para Node
 -- | Each constructor is a assigned a value of 1, plus
 --   any recursive syntax it entails.
 measureAstSize :: Data a => Syntax' a -> Int
-measureAstSize = length . universe
+measureAstSize = length . filter (not . isNoop) . universe
+
+-- | Don't count "noop" nodes towards the code size.  They are usually
+--   inserted automatically, either in @{}@ or after a bare @def@.
+isNoop :: Syntax' a -> Bool
+isNoop = \case
+  Syntax' _ (TConst Noop) _ _ -> True
+  _ -> False
 
 locVarToSyntax' :: LocVar -> ty -> Syntax' ty
 locVarToSyntax' (LV s v) = Syntax' s (TVar v) Empty

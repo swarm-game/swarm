@@ -62,7 +62,6 @@ module Swarm.TUI.Model (
   ColorMode (..),
 
   -- ** Utility
-  topContext,
   focusedItem,
   focusedEntity,
   nextScenario,
@@ -84,8 +83,6 @@ import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity as E
 import Swarm.Game.Ingredients
 import Swarm.Game.Robot
-import Swarm.Game.Robot.Concrete
-import Swarm.Game.Robot.Context
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (_SISingle)
 import Swarm.Game.State
@@ -93,8 +90,6 @@ import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World.Gen (Seed)
-import Swarm.Language.Typed (Typed (..))
-import Swarm.Language.Value (Value (VExc))
 import Swarm.Log
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Model.Menu
@@ -308,16 +303,3 @@ nextScenario = \case
           then Nothing
           else BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
   _ -> Nothing
-
--- | Context for the REPL commands to execute in. Contains the base
---   robot context plus the `it` variable that refer to the previously
---   computed values. (Note that `it{n}` variables are set in the
---   base robot context; we only set `it` here because it's so transient)
-topContext :: AppState -> RobotContext
-topContext s = ctxPossiblyWithIt
- where
-  ctx = fromMaybe emptyRobotContext $ s ^? gameState . baseRobot . robotContext
-
-  ctxPossiblyWithIt = case s ^. gameState . gameControls . replStatus of
-    REPLDone (Just p@(Typed v _ _)) | v /= VExc -> ctx & at "it" ?~ p
-    _ -> ctx

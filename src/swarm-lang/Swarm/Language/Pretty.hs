@@ -110,6 +110,10 @@ bquote = group . enclose "`" "`"
 prettyShowLow :: Show a => a -> Doc ann
 prettyShowLow = pretty . showLowT
 
+-- | An invitation to report an error as a bug.
+reportBug :: Doc ann
+reportBug = "This should never happen; please report this as a bug: https://github.com/swarm-game/swarm/issues/new"
+
 --------------------------------------------------
 -- Bullet lists
 
@@ -304,26 +308,27 @@ instance PrettyPrec (Term' ty) where
               ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
               _ -> prettyPrecApp p t1 t2
       _ -> prettyPrecApp p t1 t2
-    SLet _ (LV _ x) mty t1 t2 ->
+    SLet LSLet _ (LV _ x) mty _ t1 t2 ->
       sep
         [ prettyDefinition "let" x mty t1 <+> "in"
         , ppr t2
         ]
-    SDef _ (LV _ x) mty t1 ->
-      sep
-        [ prettyDefinition "def" x mty t1
-        , "end"
-        ]
-    TTydef (LV _ x) pty -> prettyTydef x pty
-    -- Special case for printing consecutive defs: don't worry about
-    -- precedence, and print a blank line with no semicolon
-    SBind Nothing t1@(Syntax' _ (SDef {}) _ _) t2 ->
-      prettyPrec 0 t1 <> hardline <> hardline <> prettyPrec 0 t2
-    -- General case for bind
-    SBind Nothing t1 t2 ->
+    SLet LSDef _ (LV _ x) mty _ t1 t2 ->
+      mconcat $
+        prettyDefinition "def" x mty t1 <+> "end"
+          : case t2 of
+            Syntax' _ (TConst Noop) _ _ -> []
+            _ -> [hardline, hardline, ppr t2]
+    STydef (LV _ x) pty _ t1 ->
+      mconcat $
+        prettyTydef x pty
+          : case t1 of
+            Syntax' _ (TConst Noop) _ _ -> []
+            _ -> [hardline, hardline, ppr t1]
+    SBind Nothing _ _ _ t1 t2 ->
       pparens (p > 0) $
         prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
-    SBind (Just (LV _ x)) t1 t2 ->
+    SBind (Just (LV _ x)) _ _ _ t1 t2 ->
       pparens (p > 0) $
         pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
     SRcd m -> brackets $ hsep (punctuate "," (map prettyEquality (M.assocs m)))
@@ -331,6 +336,9 @@ instance PrettyPrec (Term' ty) where
     SAnnotate t pt ->
       pparens (p > 0) $
         prettyPrec 1 t <+> ":" <+> ppr pt
+    SSuspend t ->
+      pparens (p > 10) $
+        "suspend" <+> prettyPrec 11 t
 
 prettyEquality :: (Pretty a, PrettyPrec b) => (a, Maybe b) -> Doc ann
 prettyEquality (x, Nothing) = pretty x
@@ -408,7 +416,7 @@ prettyTypeErr code (CTE l tcStack te) =
 filterTCStack :: TCStack -> TCStack
 filterTCStack tcStack = case tcStack of
   [] -> []
-  t@(LocatedTCFrame _ (TCDef _)) : _ -> [t]
+  t@(LocatedTCFrame _ (TCLet _)) : _ -> [t]
   t@(LocatedTCFrame _ TCBindR) : xs -> t : filterTCStack xs
   t@(LocatedTCFrame _ TCBindL) : xs -> t : filterTCStack xs
 
@@ -435,7 +443,10 @@ instance PrettyPrec TypeErr where
     DefNotTopLevel t ->
       "Definitions may only be at the top level:" <+> pprCode t
     CantInfer t ->
-      "Couldn't infer the type of term (this shouldn't happen; please report this as a bug!):" <+> pprCode t
+      vsep
+        [ "Couldn't infer the type of term:" <+> pprCode t
+        , reportBug
+        ]
     CantInferProj t ->
       "Can't infer the type of a record projection:" <+> pprCode t
     UnknownProj x t ->
@@ -460,7 +471,10 @@ instance PrettyPrec UnificationError where
     UndefinedUserType ty ->
       "Undefined user type" <+> ppr ty
     UnexpandedRecTy ty ->
-      "Unexpanded recursive type" <+> ppr ty <+> "encountered in unifyF.  This should never happen, please report this as a bug."
+      vsep
+        [ "Unexpanded recursive type" <+> ppr ty <+> "encountered in unifyF."
+        , reportBug
+        ]
 
 instance PrettyPrec Arity where
   prettyPrec _ (Arity a) = pretty a
@@ -575,12 +589,14 @@ instance PrettyPrec InvalidAtomicReason where
       "reference to variable with non-simple type" <+> ppr (prettyTextLine ty)
     NestedAtomic -> "nested atomic block"
     LongConst -> "commands that can take multiple ticks to execute are not allowed"
+    AtomicSuspend ->
+      "encountered a suspend command inside an atomic block" <> hardline <> reportBug
 
 instance PrettyPrec LocatedTCFrame where
   prettyPrec p (LocatedTCFrame _ f) = prettyPrec p f
 
 instance PrettyPrec TCFrame where
   prettyPrec _ = \case
-    TCDef x -> "While checking the definition of" <+> pretty x
+    TCLet x -> "While checking the definition of" <+> pretty x
     TCBindL -> "While checking the left-hand side of a semicolon"
     TCBindR -> "While checking the right-hand side of a semicolon"

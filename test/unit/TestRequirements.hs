@@ -7,13 +7,14 @@
 -- Swarm requirements analysis tests
 module TestRequirements where
 
-import Control.Lens (view)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Swarm.Language.Capability
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline
-import Swarm.Language.Requirement
+import Swarm.Language.Requirements.Analysis (requirements)
+import Swarm.Language.Requirements.Type (ReqCtx, Requirements, capReqs)
+import Swarm.Language.Syntax.Util (eraseS)
 import Test.Tasty
 import Test.Tasty.HUnit
 import TestUtil (check)
@@ -40,10 +41,10 @@ testRequirements =
     ]
 
 checkReqCtx :: Text -> (ReqCtx -> Bool) -> Assertion
-checkReqCtx code expect = check code (expect . view processedReqCtx)
+checkReqCtx code expect = check code (expect . extractReqCtx)
 
 checkRequirements :: Text -> (Requirements -> Bool) -> Assertion
-checkRequirements code expect = check code (expect . view processedRequirements)
+checkRequirements code expect = check code (expect . requirements mempty mempty . eraseS)
 
 requiresCap :: Text -> Capability -> Assertion
 requiresCap code cap = checkRequirements code ((cap `S.member`) . capReqs)

@@ -8,7 +8,7 @@ import Control.Lens (makeLenses)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Types (FromJSON)
 import GHC.Generics (Generic)
-import Swarm.Language.Requirement (Requirements)
+import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Types (Polytype)
 
 -- | A value, or a hole, or something else that has its type & requirements fixed

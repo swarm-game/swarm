@@ -58,10 +58,8 @@ import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability
-import Swarm.Language.Context hiding (delete)
-import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Requirement qualified as R
+import Swarm.Language.Requirements.Type qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Log
@@ -258,7 +256,8 @@ grantAchievement a = do
   when isGameModeValid $ do
     currentTime <- sendIO getZonedTime
     scenarioPath <- use currentScenarioPath
-    discovery . gameAchievements
+    discovery
+      . gameAchievements
       %= M.insertWith
         (<>)
         a
@@ -477,7 +476,7 @@ addSeedBot ::
   m ()
 addSeedBot e (minT, maxT) seedlingCount seedlingRadius loc ts =
   zoomRobots
-    . addTRobot (initMachine seedProg empty emptyStore)
+    . addTRobot (initMachine seedProg)
     $ mkRobot
       Nothing
       "seed"
@@ -521,7 +520,7 @@ seedProgram ::
   Integer ->
   -- | entity to place
   EntityName ->
-  ProcessedTerm
+  TSyntax
 seedProgram minTime randTime seedlingCount seedlingRadius thing =
   [tmQ|
     def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;

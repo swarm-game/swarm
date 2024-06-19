@@ -8,24 +8,24 @@
 -- Types represeting the surface syntax and terms for Swarm programming language.
 module Swarm.Language.Syntax.AST (
   Syntax' (..),
+  LetSyntax (..),
   Term' (..),
   DelayType (..),
 ) where
 
 import Control.Lens (Plated (..))
-import Data.Aeson qualified as A
 import Data.Aeson.Types hiding (Key)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
 import Data.Map.Strict (Map)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Types
-import Swarm.Util.JSON (optionsMinimize)
 
 ------------------------------------------------------------
 -- Syntax: annotation on top of Terms with SrcLoc, comments, + type
@@ -40,17 +40,14 @@ data Syntax' ty = Syntax'
   }
   deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic)
 
-syntaxJSONOpts :: A.Options
-syntaxJSONOpts = optionsMinimize {fieldLabelModifier = drop 2}
-
-instance ToJSON ty => ToJSON (Syntax' ty) where
-  toJSON = A.genericToJSON syntaxJSONOpts
-
-instance FromJSON ty => FromJSON (Syntax' ty) where
-  parseJSON = A.genericParseJSON syntaxJSONOpts
-
 instance Data ty => Plated (Syntax' ty) where
   plate = uniplate
+
+-- | A @let@ expression can be written either as @let x = e1 in e2@ or
+--   as @def x = e1 end; e2@. This enumeration simply records which it
+--   was so that we can pretty-print appropriatly.
+data LetSyntax = LSLet | LSDef
+  deriving (Eq, Ord, Show, Bounded, Enum, Generic, Data, ToJSON, FromJSON)
 
 -- | Terms of the Swarm language.
 data Term' ty
@@ -96,18 +93,31 @@ data Term' ty
     SLam LocVar (Maybe Type) (Syntax' ty)
   | -- | Function application.
     SApp (Syntax' ty) (Syntax' ty)
-  | -- | A (recursive) let expression, with or without a type
+  | -- | A (recursive) let/def expression, with or without a type
     --   annotation on the variable. The @Bool@ indicates whether
     --   it is known to be recursive.
-    SLet Bool LocVar (Maybe Polytype) (Syntax' ty) (Syntax' ty)
-  | -- | A (recursive) definition command, which binds a variable to a
-    --   value in subsequent commands. The @Bool@ indicates whether the
-    --   definition is known to be recursive.
-    SDef Bool LocVar (Maybe Polytype) (Syntax' ty)
-  | -- | A type synonym definition.
-    TTydef LocVar Polytype
+    --
+    --   The @Maybe Requirements@ field is only for annotating the
+    --   requirements of a definition after typechecking; there is no
+    --   way to annotate requirements in the surface syntax.
+    SLet LetSyntax Bool LocVar (Maybe Polytype) (Maybe Requirements) (Syntax' ty) (Syntax' ty)
+  | -- | A type synonym definition.  Note that this acts like a @let@
+    --   (just like @def@), /i.e./ the @Syntax' ty@ field is the local
+    --   context over which the type definition is in scope.
+    STydef LocVar Polytype (Maybe TydefInfo) (Syntax' ty)
   | -- | A monadic bind for commands, of the form @c1 ; c2@ or @x <- c1; c2@.
-    SBind (Maybe LocVar) (Syntax' ty) (Syntax' ty)
+    --
+    --   The @Maybe ty@ field is a place to stash the inferred type of
+    --   the variable (if any) during type inference.  Once type
+    --   inference is complete, during elaboration we will copy the
+    --   inferred type into the @Maybe Polytype@ field (since the
+    --   @Maybe ty@ field will be erased).
+    --
+    --   The @Maybe Polytype@ and @Maybe Requirements@ fields is only
+    --   for annotating the type of a bind after typechecking; there
+    --   is no surface syntax that allows directly annotating a bind
+    --   with either one.
+    SBind (Maybe LocVar) (Maybe ty) (Maybe Polytype) (Maybe Requirements) (Syntax' ty) (Syntax' ty)
   | -- | Delay evaluation of a term, written @{...}@.  Swarm is an
     --   eager language, but in some cases (e.g. for @if@ statements
     --   and recursive bindings) we need to delay evaluation.  The
@@ -124,6 +134,9 @@ data Term' ty
     SProj (Syntax' ty) Var
   | -- | Annotate a term with a type
     SAnnotate (Syntax' ty) Polytype
+  | -- | Run the given command, then suspend and wait for a new REPL
+    --   input.
+    SSuspend (Syntax' ty)
   deriving
     ( Eq
     , Show
@@ -141,12 +154,6 @@ data Term' ty
       -- Swarm.Language.Typecheck.runInfer.
       Traversable
     )
-
-instance ToJSON ty => ToJSON (Term' ty) where
-  toJSON = A.genericToJSON syntaxJSONOpts
-
-instance FromJSON ty => FromJSON (Term' ty) where
-  parseJSON = A.genericParseJSON syntaxJSONOpts
 
 instance Data ty => Plated (Term' ty) where
   plate = uniplate

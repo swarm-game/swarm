@@ -8,16 +8,17 @@
 module TestLanguagePipeline where
 
 import Control.Arrow ((&&&))
-import Control.Lens (toListOf, view)
+import Control.Lens (toListOf)
 import Control.Lens.Plated (universe)
 import Data.Aeson (eitherDecode, encode)
 import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
+import Swarm.Language.JSON ()
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ (tyQ)
-import Swarm.Language.Pipeline (processTerm, processedSyntax)
+import Swarm.Language.Pipeline (processTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax
@@ -336,15 +337,12 @@ testLanguagePipeline =
             "annotate 1 + 1"
             ( assertEqual
                 "type annotations"
-                (toListOf traverse (view processedSyntax [tmQ| 1 + 1 |]))
+                (toListOf traverse [tmQ| 1 + 1 |])
                 [[tyQ| Int -> Int -> Int|], [tyQ|Int|], [tyQ|Int -> Int|], [tyQ|Int|], [tyQ|Int|]]
             )
         , testCase
             "get all annotated variable types"
-            ( let s =
-                    view
-                      processedSyntax
-                      [tmQ| def f : (Int -> Int) -> Int -> Text = \g. \x. format (g x) end |]
+            ( let s = [tmQ| def f : (Int -> Int) -> Int -> Text = \g. \x. format (g x) end |]
 
                   isVar (TVar {}) = True
                   isVar _ = False
@@ -570,11 +568,8 @@ testLanguagePipeline =
                 "1:1: Undefined type X"
             )
         , testCase
-            "nested tydef not allowed"
-            ( process
-                "def f : Cmd Unit = tydef X = Int end; move end"
-                "1:20: Definitions may only be at the top level: `tydef X = Int end`\n\n  - While checking the left-hand side of a semicolon\n  - While checking the definition of f"
-            )
+            "nested tydef is allowed"
+            (valid "def f : Cmd Unit = tydef X = Int end; move end")
         , testCase
             "tydef with repeated variables"
             ( process
@@ -594,7 +589,7 @@ testLanguagePipeline =
             "occurs check"
             ( process
                 "def sum = \\l. case l (\\_. 0) (\\c. fst c + sum (snd c)) end"
-                "Encountered infinite type u5 = Int * (u4 + u5).\nSwarm will not infer recursive types; if you want a recursive type, add an explicit type annotation."
+                "Encountered infinite type u6 = Int * (u5 + u6).\nSwarm will not infer recursive types; if you want a recursive type, add an explicit type annotation."
             )
         , testCase
             "no occurs check with type annotation"
@@ -637,6 +632,24 @@ testLanguagePipeline =
             "move; def x = move; say 3 end; move;"
             "1:25: Type mismatch:\n  From context, expected `3` to have type `Text`,\n  but it actually has type `Int`\n\n  - While checking the right-hand side of a semicolon\n  - While checking the definition of x"
         )
+    , testGroup
+        "let and def types"
+        [ testCase
+            "let at non-cmd type"
+            (valid "let x = 3 in x + 2")
+        , testCase
+            "let at cmd type"
+            (valid "let x = 3 in move; return (x+2)")
+        , testCase
+            "def at non-cmd type"
+            ( process
+                "def x = 3 end; x + 2"
+                "1:16: Type mismatch:\n  From context, expected `x + 2` to have a type like"
+            )
+        , testCase
+            "def at cmd type"
+            (valid "def x = 3 end; move; return (x+2)")
+        ]
     ]
  where
   valid = flip process ""

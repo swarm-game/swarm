@@ -108,9 +108,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (RecognizerAuto
 import Swarm.Game.State.Config
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World.Gen (Seed)
-import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Language.Syntax (Const)
-import Swarm.Language.Typed (Typed (Typed))
+import Swarm.Language.Syntax (Const, TSyntax)
 import Swarm.Language.Types (Polytype)
 import Swarm.Language.Value (Value)
 import Swarm.Log
@@ -123,14 +121,12 @@ import System.Random (StdGen, mkStdGen)
 data REPLStatus
   = -- | The REPL is not doing anything actively at the moment.
     --   We persist the last value and its type though.
-    --
-    --   INVARIANT: the 'Value' stored here is not a 'Swarm.Language.Value.VResult'.
-    REPLDone (Maybe (Typed Value))
+    REPLDone (Maybe (Polytype, Value))
   | -- | A command entered at the REPL is currently being run.  The
     --   'Polytype' represents the type of the expression that was
     --   entered.  The @Maybe Value@ starts out as 'Nothing' and gets
     --   filled in with a result once the command completes.
-    REPLWorking (Typed (Maybe Value))
+    REPLWorking Polytype (Maybe Value)
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data WinStatus
@@ -303,7 +299,7 @@ data GameControls = GameControls
   { _replStatus :: REPLStatus
   , _replNextValueIndex :: Integer
   , _inputHandler :: Maybe (Text, Value)
-  , _initiallyRunCode :: Maybe ProcessedTerm
+  , _initiallyRunCode :: Maybe TSyntax
   }
 
 makeLensesNoSigs ''GameControls
@@ -319,7 +315,7 @@ inputHandler :: Lens' GameControls (Maybe (Text, Value))
 
 -- | Code that is run upon scenario start, before any
 -- REPL interaction.
-initiallyRunCode :: Lens' GameControls (Maybe ProcessedTerm)
+initiallyRunCode :: Lens' GameControls (Maybe TSyntax)
 
 data Discovery = Discovery
   { _allDiscoveredEntities :: Inventory
@@ -375,15 +371,15 @@ randGen :: Lens' Randomness StdGen
 replWorking :: Getter GameControls Bool
 replWorking = to (\s -> matchesWorking $ s ^. replStatus)
  where
-  matchesWorking (REPLDone _) = False
-  matchesWorking (REPLWorking _) = True
+  matchesWorking REPLDone {} = False
+  matchesWorking REPLWorking {} = True
 
 -- | Either the type of the command being executed, or of the last command
 replActiveType :: Getter REPLStatus (Maybe Polytype)
 replActiveType = to getter
  where
-  getter (REPLDone (Just (Typed _ typ _))) = Just typ
-  getter (REPLWorking (Typed _ typ _)) = Just typ
+  getter (REPLDone (Just (typ, _))) = Just typ
+  getter (REPLWorking typ _) = Just typ
   getter _ = Nothing
 
 -- | By default, robots may make a maximum of 100 CESK machine steps

@@ -33,7 +33,7 @@ import Language.LSP.VFS
 import Swarm.Language.Context as Ctx
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
-import Swarm.Language.Pipeline (processParsedTerm, processedSyntax)
+import Swarm.Language.Pipeline (processParsedTerm)
 import Swarm.Language.Pretty (prettyText, prettyTextLine)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
@@ -72,7 +72,7 @@ showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
          in (,finalPos) . treeToMarkdown 0 $ explain found
       Right pt ->
         let found =
-              narrowToPosition (pt ^. processedSyntax) $ fromIntegral absolutePos
+              narrowToPosition pt $ fromIntegral absolutePos
             finalPos = posToRange myRope (found ^. sLoc)
          in (,finalPos) . treeToMarkdown 0 $ explain found
 
@@ -111,9 +111,8 @@ narrowToPosition ::
 narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   SLam lv _ s -> d (locVarToSyntax' lv $ getInnerType ty) <|> d s
   SApp s1 s2 -> d s1 <|> d s2
-  SLet _ lv _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
-  SDef _ lv _ s@(Syntax' _ _ _ lty) -> d (locVarToSyntax' lv lty) <|> d s
-  SBind mlv s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
+  SLet _ _ lv _ _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
+  SBind mlv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
   SPair s1 s2 -> d s1 <|> d s2
   SDelay _ s -> d s
   SRcd m -> asum . map d . catMaybes . M.elems $ m
@@ -130,12 +129,13 @@ narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   TVar {} -> Nothing
   TRequire {} -> Nothing
   TRequireDevice {} -> Nothing
-  TTydef {} -> Nothing
+  STydef {} -> Nothing
   -- these should not show up in surface language
   TRef {} -> Nothing
   TRobot {} -> Nothing
   TAntiInt {} -> Nothing
   TAntiText {} -> Nothing
+  SSuspend {} -> Nothing
  where
   d = descend pos
 
@@ -189,7 +189,7 @@ explain trm = case trm ^. sTerm of
   TVar v -> pure $ typeSignature v ty ""
   SRcd {} -> literal "A record literal."
   SProj {} -> literal "A record projection."
-  TTydef {} -> literal "A type synonym definition."
+  STydef {} -> literal "A type synonym definition."
   -- type ascription
   SAnnotate lhs typeAnn ->
     Node
@@ -201,13 +201,12 @@ explain trm = case trm ^. sTerm of
   TRequire {} -> pure "Require a certain number of an entity."
   SRequirements {} -> pure "Query the requirements of a term."
   -- definition or bindings
-  SLet isRecursive var mTypeAnn rhs _b -> pure $ explainDefinition False isRecursive var (rhs ^. sType) mTypeAnn
-  SDef isRecursive var mTypeAnn rhs -> pure $ explainDefinition True isRecursive var (rhs ^. sType) mTypeAnn
+  SLet ls isRecursive var mTypeAnn _ rhs _b -> pure $ explainDefinition ls isRecursive var (rhs ^. sType) mTypeAnn
   SLam (LV _s v) _mType _syn ->
     pure $
       typeSignature v ty $
         "A lambda expression binding the variable " <> U.bquote v <> "."
-  SBind mv rhs _cmds ->
+  SBind mv _ _ _ rhs _cmds ->
     pure $
       typeSignature (maybe "__rhs" lvVar mv) (getInnerType $ rhs ^. sType) $
         "A monadic bind for commands" <> maybe "." (\(LV _s v) -> ", that binds variable " <> U.bquote v <> ".") mv
@@ -232,6 +231,7 @@ explain trm = case trm ^. sTerm of
   TAntiInt {} -> internal "An antiquoted Haskell variable name of type Integer."
   TAntiText {} -> internal "An antiquoted Haskell variable name of type Text."
   TRobot {} -> internal "A robot reference."
+  SSuspend {} -> internal "A suspension."
  where
   ty = trm ^. sType
   literal = pure . typeSignature (prettyText . void $ trm ^. sTerm) ty
@@ -260,13 +260,13 @@ explainFunction s =
           (map explain params)
       ]
 
-explainDefinition :: ExplainableType ty => Bool -> Bool -> LocVar -> ty -> Maybe Polytype -> Text
-explainDefinition isDef isRecursive (LV _s var) ty maybeTypeAnnotation =
+explainDefinition :: ExplainableType ty => LetSyntax -> Bool -> LocVar -> ty -> Maybe Polytype -> Text
+explainDefinition ls isRecursive (LV _s var) ty maybeTypeAnnotation =
   typeSignature var ty $
     T.unwords
       [ "A"
       , (if isRecursive then "" else "non-") <> "recursive"
-      , if isDef then "definition" else "let"
+      , if ls == LSDef then "definition" else "let"
       , "expression"
       , if null maybeTypeAnnotation then "without" else "with"
       , "a type annotation on the variable."
