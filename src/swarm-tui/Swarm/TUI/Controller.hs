@@ -102,7 +102,7 @@ import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Lex (reservedWords)
 import Swarm.Language.Parser.Util (showErrorPos)
-import Swarm.Language.Pipeline (processTerm')
+import Swarm.Language.Pipeline (processParsedTerm', processTerm')
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (Key)
