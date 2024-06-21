@@ -277,6 +277,7 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
       & uiGameplay . uiGoal .~ emptyGoalDisplay
       & uiGameplay . uiHideGoals .~ (isAutoplaying && not (u ^. uiCheatMode))
       & uiGameplay . uiFocusRing .~ initFocusRing
+      & uiGameplay . uiInventory . uiInventorySearch .~ Nothing
       & uiGameplay . uiInventory . uiInventoryList .~ Nothing
       & uiGameplay . uiInventory . uiInventorySort .~ defaultSortOptions
       & uiGameplay . uiInventory . uiShowZero .~ True
