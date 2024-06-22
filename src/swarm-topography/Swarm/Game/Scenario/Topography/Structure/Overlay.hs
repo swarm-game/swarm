@@ -68,14 +68,14 @@ computeMergedArea (OverlayPair pg1 pg2) =
 zipGridRows ::
   Alternative f =>
   AreaDimensions ->
-  OverlayPair (Grid (f a)) ->
+  OverlayPair [[f a]] ->
   Grid (f a)
-zipGridRows dims (OverlayPair (Grid paddedBaseRows) (Grid paddedOverlayRows)) =
-  mapRows (pad2D paddedBaseRows . pad2D paddedOverlayRows) blankGrid
+zipGridRows dims (OverlayPair paddedBaseRows paddedOverlayRows) =
+  mkGrid $ (pad2D paddedBaseRows . pad2D paddedOverlayRows) blankGrid
  where
   -- Right-bias; that is, take the last non-empty value
   pad2D = zipPadded $ zipPadded $ flip (<|>)
-  blankGrid = fillGrid dims empty
+  blankGrid = getRows $ fillGrid dims empty
 
 -- |
 -- First arg: base layer
@@ -124,11 +124,11 @@ padSouthwest ::
   Alternative f =>
   V2 Int32 ->
   OverlayPair (Grid (f a)) ->
-  OverlayPair (Grid (f a))
+  OverlayPair [[f a]]
 padSouthwest (V2 deltaX deltaY) (OverlayPair baseGrid overlayGrid) =
   OverlayPair paddedBaseGrid paddedOverlayGrid
  where
-  prefixPadDimension delta f = mapRows $ f (padding <>)
+  prefixPadDimension delta f = f (padding <>)
    where
     padding = replicate (abs $ fromIntegral delta) empty
 
@@ -147,8 +147,8 @@ padSouthwest (V2 deltaX deltaY) (OverlayPair baseGrid overlayGrid) =
   (baseHorizontalPadFunc, overlayHorizontalPadFunc) =
     applyWhen (deltaX < 0) swap (id, prefixPadColumns)
 
-  paddedBaseGrid = baseVerticalPadFunc $ baseHorizontalPadFunc baseGrid
-  paddedOverlayGrid = overlayVerticalPadFunc $ overlayHorizontalPadFunc overlayGrid
+  paddedBaseGrid = baseVerticalPadFunc $ baseHorizontalPadFunc $ getRows baseGrid
+  paddedOverlayGrid = overlayVerticalPadFunc $ overlayHorizontalPadFunc $ getRows overlayGrid
 
 -- * Utils
 

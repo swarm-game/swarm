@@ -38,7 +38,7 @@ getMapRectangle ::
   BoundsRectangle ->
   EA.Grid (PCell e)
 getMapRectangle paintTransform contentFunc coords =
-  EA.Grid $ map renderRow [yTop .. yBottom]
+  EA.mkGrid $ map renderRow [yTop .. yBottom]
  where
   (Coords (yTop, xLeft), Coords (yBottom, xRight)) = coords
 

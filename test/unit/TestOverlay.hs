@@ -37,6 +37,6 @@ mkOriginTestCase adjustmentDescription overlayLocation expectedBaseLoc =
   testCase (unwords [adjustmentDescription, "origin adjustment"]) $ do
     assertEqual "Base loc wrong" expectedBaseLoc actualBaseLoc
  where
-  baseLayer = PositionedGrid (Location 0 0) $ Grid [[] :: [Maybe Int]]
-  overlayLayer = PositionedGrid overlayLocation $ Grid [[]]
+  baseLayer = PositionedGrid (Location 0 0) (EmptyGrid :: Grid (Maybe ()))
+  overlayLayer = PositionedGrid overlayLocation EmptyGrid
   PositionedGrid actualBaseLoc _ = baseLayer <> overlayLayer

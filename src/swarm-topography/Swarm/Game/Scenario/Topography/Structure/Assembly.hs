@@ -101,10 +101,10 @@ overlayGridExpanded ::
 overlayGridExpanded
   inputGrid
   (Pose loc orientation)
-  (PositionedGrid _ (Grid overlayArea)) =
+  (PositionedGrid _ overlayArea) =
     PositionedGrid origin inputGrid <> positionedOverlay
    where
-    reorientedOverlayCells = Grid $ applyOrientationTransform orientation overlayArea
+    reorientedOverlayCells = applyOrientationTransform orientation overlayArea
     positionedOverlay = PositionedGrid loc reorientedOverlayCells
 
 -- * Validation

@@ -7,38 +7,56 @@ module Swarm.Game.Scenario.Topography.Area where
 import Data.Aeson (ToJSON (..))
 import Data.Int (Int32)
 import Data.List qualified as L
-import Data.Maybe (listToMaybe)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
+import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Semigroup
 import Linear (V2 (..))
 import Swarm.Game.Location
 import Swarm.Game.World.Coords
+import Prelude hiding (zipWith)
 
-newtype Grid c = Grid [[c]]
+data Grid c
+  = EmptyGrid
+  | Grid (NonEmpty (NonEmpty c))
   deriving (Show, Eq, Functor, Foldable, Traversable)
 
-emptyGrid :: Grid a
-emptyGrid = Grid []
+mkGrid :: [[a]] -> Grid a
+mkGrid rows = fromMaybe EmptyGrid $ do
+  rowsNE <- NE.nonEmpty =<< mapM NE.nonEmpty rows
+  return $ Grid rowsNE
 
 getRows :: Grid a -> [[a]]
-getRows (Grid g) = g
+getRows EmptyGrid = []
+getRows (Grid g) = NE.toList . NE.map NE.toList $ g
 
 -- | Since the derived 'Functor' instance applies to the
 -- type parameter that is nested within lists, we define
 -- an explicit function for mapping over the enclosing lists.
-mapRows :: ([[a]] -> [[b]]) -> Grid a -> Grid b
+mapRows :: (NonEmpty (NonEmpty a) -> NonEmpty (NonEmpty b)) -> Grid a -> Grid b
+mapRows _ EmptyGrid = EmptyGrid
 mapRows f (Grid rows) = Grid $ f rows
 
 allMembers :: Grid a -> [a]
-allMembers (Grid g) = concat g
+allMembers EmptyGrid = []
+allMembers g = concat . getRows $ g
 
 mapIndexedMembers :: (Coords -> a -> b) -> Grid a -> [b]
+mapIndexedMembers _ EmptyGrid = []
 mapIndexedMembers f (Grid g) =
-  concat $ zipWith (\i -> zipWith (\j -> f (Coords (i, j))) [0 ..]) [0 ..] g
+  NE.toList $
+    sconcat $
+      NE.zipWith (\i -> NE.zipWith (\j -> f (Coords (i, j))) nonemptyCount) nonemptyCount g
+ where
+  nonemptyCount = NE.iterate succ 0
 
 instance (ToJSON a) => ToJSON (Grid a) where
+  toJSON EmptyGrid = toJSON ([] :: [a])
   toJSON (Grid g) = toJSON g
 
 getGridDimensions :: Grid a -> AreaDimensions
-getGridDimensions (Grid g) = getAreaDimensions g
+getGridDimensions EmptyGrid = AreaDimensions 0 0
+getGridDimensions g = getAreaDimensions $ getRows g
 
 -- | Height and width of a 2D map region
 data AreaDimensions = AreaDimensions
@@ -94,8 +112,13 @@ getAreaDimensions cellGrid =
 computeArea :: AreaDimensions -> Int32
 computeArea (AreaDimensions w h) = w * h
 
+-- |
+-- Warning: size must be nonzero,
+-- since 'stimes' is unsafe with value @0@.
 fillGrid :: AreaDimensions -> a -> Grid a
 fillGrid (AreaDimensions w h) =
   Grid
-    . replicate (fromIntegral h)
-    . replicate (fromIntegral w)
+    . stimes h
+    . pure
+    . stimes w
+    . pure

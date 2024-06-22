@@ -107,7 +107,7 @@ getEditedMapRectangle ::
   Maybe (Cosmic BoundsRectangle) ->
   W.MultiWorld Int Entity ->
   EA.Grid CellPaintDisplay
-getEditedMapRectangle _ _ Nothing _ = EA.emptyGrid
+getEditedMapRectangle _ _ Nothing _ = EA.EmptyGrid
 getEditedMapRectangle tm worldEditor (Just (Cosmic subworldName coords)) w =
   getMapRectangle toFacade getContent coords
  where
