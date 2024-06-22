@@ -1422,7 +1422,6 @@ adjustTPS (+/-) = uiState . uiGameplay . uiTiming . lgTicksPerSecond %~ (+/- 1)
 handleRobotPanelEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleRobotPanelEvent bev = do
   search <- use $ uiState . uiGameplay . uiInventory . uiInventorySearch
-  mapM_ resetViewport [infoScroll, modalScroll]
   case search of
     Just _ -> handleInventorySearchEvent bev
     Nothing -> case bev of
@@ -1459,6 +1458,7 @@ handleInventoryListEvent ev = do
   -- However, this does not work since we want to skip redrawing in the no-list case!
 
   mList <- preuse $ uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
+  resetViewport infoScroll
   case mList of
     Nothing -> continueWithoutRedraw
     Just l -> do
@@ -1511,6 +1511,7 @@ makeEntity e = do
 descriptionModal :: Entity -> EventM Name AppState ()
 descriptionModal e = do
   s <- get
+  resetViewport modalScroll
   uiState . uiGameplay . uiModal ?= generateModal s (DescriptionModal e)
 
 ------------------------------------------------------------

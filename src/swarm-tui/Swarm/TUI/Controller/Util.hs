@@ -52,6 +52,7 @@ pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
 openModal :: ModalType -> EventM Name AppState ()
 openModal mt = do
+  resetViewport modalScroll
   newModal <- gets $ flip generateModal mt
   ensurePause
   uiState . uiGameplay . uiModal ?= newModal
