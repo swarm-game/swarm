@@ -444,12 +444,12 @@ handleMainEvent ev = do
     _ev -> do
       fring <- use $ uiState . uiGameplay . uiFocusRing
       case focusGetCurrent fring of
-        Just (FocusablePanel x) -> ($ ev) $ case x of
-          REPLPanel -> handleREPLEvent
-          WorldPanel -> handleWorldEvent
-          WorldEditorPanel -> EC.handleWorldEditorPanelEvent
-          RobotPanel -> handleRobotPanelEvent
-          InfoPanel -> handleInfoPanelEvent infoScroll
+        Just (FocusablePanel x) -> case x of
+          REPLPanel -> handleREPLEvent ev
+          WorldPanel -> handleWorldEvent ev
+          WorldEditorPanel -> EC.handleWorldEditorPanelEvent ev
+          RobotPanel -> handleRobotPanelEvent ev
+          InfoPanel -> handleInfoPanelEvent infoScroll ev
         _ -> continueWithoutRedraw
 
 -- | Set the game to Running if it was (auto) paused otherwise to paused.
@@ -1422,6 +1422,7 @@ adjustTPS (+/-) = uiState . uiGameplay . uiTiming . lgTicksPerSecond %~ (+/- 1)
 handleRobotPanelEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleRobotPanelEvent bev = do
   search <- use $ uiState . uiGameplay . uiInventory . uiInventorySearch
+  mapM_ resetViewport [infoScroll, modalScroll]
   case search of
     Just _ -> handleInventorySearchEvent bev
     Nothing -> case bev of
