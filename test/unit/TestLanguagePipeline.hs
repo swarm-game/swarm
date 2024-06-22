@@ -482,7 +482,7 @@ testLanguagePipeline =
             "applying a pair"
             ( process
                 "(1,2) \"hi\""
-                "1:1: Type mismatch:\n  From context, expected `(1, 2)` to be a function,\n  but it is actually a pair"
+                "1:1: Type mismatch:\n  From context, expected `(1, 2)` to be a function,\n  but it actually has type `Int * Int`"
             )
         , testCase
             "providing a pair as an argument"
@@ -519,6 +519,12 @@ testLanguagePipeline =
             ( process
                 "1 + (\\x. \\y. 3)"
                 "1:5: Type mismatch:\n  From context, expected `\\x. \\y. 3` to have type `Int`,\n  but it is actually a function\n"
+            )
+        , testCase
+            "apply HOF to int - #1888"
+            ( process
+                "(\\f. f 3) 2"
+                "1:11: Type mismatch:\n  From context, expected `2` to have a type like `Int -> _`"
             )
         ]
     , testGroup
@@ -644,7 +650,7 @@ testLanguagePipeline =
             "def at non-cmd type"
             ( process
                 "def x = 3 end; x + 2"
-                "1:16: Type mismatch:\n  From context, expected `x + 2` to have a type like"
+                "1:16: Type mismatch:\n  From context, expected `x + 2` to be a command"
             )
         , testCase
             "def at cmd type"
