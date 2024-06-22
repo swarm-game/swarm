@@ -1470,23 +1470,27 @@ handleInventoryListEvent ev = do
 handleInventorySearchEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleInventorySearchEvent = \case
   -- Escape: stop filtering and go back to regular inventory mode
-  EscapeKey ->
+  EscapeKey -> do
+    resetViewport infoScroll
     Brick.zoom (uiState . uiGameplay . uiInventory) $ do
       uiInventoryShouldUpdate .= True
       uiInventorySearch .= Nothing
   -- Enter: return to regular inventory mode, and pop out the selected item
   Key V.KEnter -> do
+    resetViewport infoScroll
     Brick.zoom (uiState . uiGameplay . uiInventory) $ do
       uiInventoryShouldUpdate .= True
       uiInventorySearch .= Nothing
     gets focusedEntity >>= maybe continueWithoutRedraw descriptionModal
   -- Any old character: append to the current search string
-  CharKey c ->
+  CharKey c -> do
+    resetViewport infoScroll
     Brick.zoom (uiState . uiGameplay . uiInventory) $ do
       uiInventoryShouldUpdate .= True
       uiInventorySearch %= fmap (`snoc` c)
   -- Backspace: chop the last character off the end of the current search string
   BackspaceKey -> do
+    resetViewport infoScroll
     Brick.zoom (uiState . uiGameplay . uiInventory) $ do
       uiInventoryShouldUpdate .= True
       uiInventorySearch %= fmap (T.dropEnd 1)
