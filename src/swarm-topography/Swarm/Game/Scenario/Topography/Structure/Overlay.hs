@@ -11,6 +11,7 @@ module Swarm.Game.Scenario.Topography.Structure.Overlay (
 import Control.Applicative
 import Data.Function (on)
 import Data.Int (Int32)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Tuple (swap)
 import Linear
 import Swarm.Game.Location
@@ -70,12 +71,15 @@ zipGridRows ::
   AreaDimensions ->
   OverlayPair (Grid (f a)) ->
   Grid (f a)
-zipGridRows dims (OverlayPair (Grid paddedBaseRows) (Grid paddedOverlayRows)) =
-  mapRows (pad2D paddedBaseRows . pad2D paddedOverlayRows) blankGrid
+zipGridRows dims (OverlayPair baseGrid overlayGrid) =
+  mkGrid $ (pad2D paddedBaseRows . pad2D paddedOverlayRows) blankGrid
  where
   -- Right-bias; that is, take the last non-empty value
   pad2D = zipPadded $ zipPadded $ flip (<|>)
-  blankGrid = fillGrid dims empty
+  blankGrid = getRows $ fillGrid dims empty
+
+  paddedBaseRows = getRows baseGrid
+  paddedOverlayRows = getRows overlayGrid
 
 -- |
 -- First arg: base layer
@@ -126,9 +130,9 @@ padSouthwest ::
   OverlayPair (Grid (f a)) ->
   OverlayPair (Grid (f a))
 padSouthwest (V2 deltaX deltaY) (OverlayPair baseGrid overlayGrid) =
-  OverlayPair paddedBaseGrid paddedOverlayGrid
+  OverlayPair (mkGrid paddedBaseGrid) (mkGrid paddedOverlayGrid)
  where
-  prefixPadDimension delta f = mapRows $ f (padding <>)
+  prefixPadDimension delta f = f (padding <>)
    where
     padding = replicate (abs $ fromIntegral delta) empty
 
@@ -147,8 +151,8 @@ padSouthwest (V2 deltaX deltaY) (OverlayPair baseGrid overlayGrid) =
   (baseHorizontalPadFunc, overlayHorizontalPadFunc) =
     applyWhen (deltaX < 0) swap (id, prefixPadColumns)
 
-  paddedBaseGrid = baseVerticalPadFunc $ baseHorizontalPadFunc baseGrid
-  paddedOverlayGrid = overlayVerticalPadFunc $ overlayHorizontalPadFunc overlayGrid
+  paddedBaseGrid = baseVerticalPadFunc $ baseHorizontalPadFunc $ getRows baseGrid
+  paddedOverlayGrid = overlayVerticalPadFunc $ overlayHorizontalPadFunc $ getRows overlayGrid
 
 -- * Utils
 
@@ -161,3 +165,6 @@ zipPadded :: (a -> a -> a) -> [a] -> [a] -> [a]
 zipPadded _ [] ys = ys
 zipPadded _ xs [] = xs
 zipPadded f (x : xs) (y : ys) = f x y : zipPadded f xs ys
+
+zipPaddedNE :: (a -> a -> a) -> NonEmpty a -> NonEmpty a -> NonEmpty a
+zipPaddedNE f (x :| xs) (y :| ys) = f x y :| zipPadded f xs ys

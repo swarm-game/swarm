@@ -91,13 +91,14 @@ instance (FromJSONE e a) => FromJSONE e (NamedStructure (Maybe a)) where
 instance FromJSON (Grid Char) where
   parseJSON = withText "area" $ \t -> do
     let textLines = map T.unpack $ T.lines t
+        g = mkGrid textLines
     case NE.nonEmpty textLines of
-      Nothing -> return emptyGrid
+      Nothing -> return EmptyGrid
       Just nonemptyRows -> do
         let firstRowLength = length $ NE.head nonemptyRows
         unless (all ((== firstRowLength) . length) $ NE.tail nonemptyRows) $
           fail "Grid is not rectangular!"
-        return $ Grid textLines
+        return g
 
 instance (FromJSONE e a) => FromJSONE e (PStructure (Maybe a)) where
   parseJSONE = withObjectE "structure definition" $ \v -> do
@@ -107,7 +108,7 @@ instance (FromJSONE e a) => FromJSONE e (PStructure (Maybe a)) where
       placements <- v .:? "placements" .!= []
       waypointDefs <- v .:? "waypoints" .!= []
       maybeMaskChar <- v .:? "mask"
-      rawGrid <- v .:? "map" .!= emptyGrid
+      rawGrid <- v .:? "map" .!= EmptyGrid
       (maskedArea, mapWaypoints) <- paintMap maybeMaskChar pal rawGrid
       let area = PositionedGrid origin maskedArea
           waypoints = waypointDefs <> mapWaypoints

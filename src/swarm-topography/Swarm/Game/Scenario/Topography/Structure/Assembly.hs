@@ -107,10 +107,10 @@ overlayGridExpanded ::
 overlayGridExpanded
   inputGrid
   (Pose loc orientation)
-  (PositionedGrid _ (Grid overlayArea)) =
+  (PositionedGrid _ overlayArea) =
     PositionedGrid origin inputGrid <> positionedOverlay
    where
-    reorientedOverlayCells = Grid $ applyOrientationTransform orientation overlayArea
+    reorientedOverlayCells = applyOrientationTransform orientation overlayArea
     positionedOverlay = PositionedGrid loc reorientedOverlayCells
 
 -- | NOTE: This ignores the 'loc' parameter of 'PositionedGrid'.
@@ -122,12 +122,15 @@ overlayGridTruncated ::
 overlayGridTruncated
   (Grid inputArea)
   (Pose (Location colOffset rowOffset) orientation)
-  (PositionedGrid _ (Grid overlayArea)) =
-    PositionedGrid origin
+  (PositionedGrid _ g) = go g
+    
+   where
+    go EmptyGrid = PositionedGrid origin EmptyGrid
+    go overlayArea = PositionedGrid origin
       . Grid
       . zipWithPad mergeSingleRow inputArea
       $ paddedOverlayRows overlayArea
-   where
+
     zipWithPad f a b = zipWith f a $ b <> repeat Nothing
 
     mergeSingleRow inputRow maybeOverlayRow =
