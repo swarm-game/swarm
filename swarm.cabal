@@ -664,6 +664,8 @@ library swarm-tui
   exposed-modules:
     Swarm.TUI.Border
     Swarm.TUI.Controller
+    Swarm.TUI.Controller.MainEventHandler
+    Swarm.TUI.Controller.REPLEventHandler
     Swarm.TUI.Controller.Util
     Swarm.TUI.Editor.Controller
     Swarm.TUI.Editor.Json
@@ -679,6 +681,7 @@ library swarm-tui
     Swarm.TUI.Launch.View
     Swarm.TUI.List
     Swarm.TUI.Model
+    Swarm.TUI.Model.Event
     Swarm.TUI.Model.Goal
     Swarm.TUI.Model.Menu
     Swarm.TUI.Model.Name

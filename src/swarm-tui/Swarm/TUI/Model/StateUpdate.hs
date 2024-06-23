@@ -28,7 +28,7 @@ import Control.Effect.Accum
 import Control.Effect.Lift
 import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (guard, void)
+import Control.Monad (guard, void, forM_)
 import Control.Monad.Except (ExceptT (..))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execStateT)
@@ -91,6 +91,41 @@ import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
+import System.Exit (exitFailure)
+import Data.Text.IO qualified as T
+import Brick.Keybindings as BK
+import Swarm.TUI.Model.Event (SwarmEvent, swarmEvents, defaultSwarmBindings)
+import Swarm.TUI.Controller.MainEventHandler (mainEventHandlers)
+import Swarm.TUI.Controller.REPLEventHandler (replEventHandlers)
+
+createEventHandlers :: KeyConfig SwarmEvent -> IO EventHandlers
+createEventHandlers config = do
+  mainHandler <- buildDispatcher mainEventHandlers
+  replHandler <- buildDispatcher replEventHandlers
+  return EventHandlers {..}
+ where
+  -- this error handling code is taken from the brick demo app:
+  -- https://github.com/jtdaugherty/brick/blob/764e66897/programs/CustomKeybindingDemo.hs#L216
+  buildDispatcher handlers = case keyDispatcher config handlers of
+    Right d -> return d
+    Left collisions -> do
+        putStrLn "Error: some key events have the same keys bound to them."
+        forM_ collisions $ \(b, hs) -> do
+            T.putStrLn $ "Handlers with the '" <> BK.ppBinding b <> "' binding:"
+            forM_ hs $ \h -> do
+                let trigger = case BK.kehEventTrigger $ BK.khHandler h of
+                        ByKey k   -> "triggered by the key '" <> BK.ppBinding k <> "'"
+                        ByEvent e -> "triggered by the event '" <> fromMaybe "<unknown>" (BK.keyEventName swarmEvents e) <> "'"
+                    desc = BK.handlerDescription $ BK.kehHandler $ BK.khHandler h
+                T.putStrLn $ "  " <> desc <> " (" <> trigger <> ")"
+        exitFailure
+
+initKeyHandlingState :: IO KeyEventHandlingState
+initKeyHandlingState = do
+  let cfg = newKeyConfig swarmEvents defaultSwarmBindings []
+  handlers <- sendIO $ createEventHandlers cfg
+  return $ KeyEventHandlingState cfg handlers
+
 
 -- | Initialize the 'AppState' from scratch.
 initAppState ::
@@ -99,7 +134,8 @@ initAppState ::
   m AppState
 initAppState opts = do
   (rs, ui) <- initPersistentState opts
-  constructAppState rs ui opts
+  keyHandling <- sendIO initKeyHandlingState
+  constructAppState rs ui keyHandling opts
 
 -- | Add some system failures to the list of messages in the
 --   'RuntimeState'.
@@ -137,12 +173,13 @@ constructAppState ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   RuntimeState ->
   UIState ->
+  KeyEventHandlingState ->
   AppOpts ->
   m AppState
-constructAppState rs ui opts@(AppOpts {..}) = do
+constructAppState rs ui key opts@(AppOpts {..}) = do
   let gs = initGameState $ rs ^. stdGameConfigInputs
   case skipMenu opts of
-    False -> return $ AppState gs (ui & uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
+    False -> return $ AppState gs (ui & uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) key rs
     True -> do
       let tem = gs ^. landscape . terrainAndEntities
       (scenario, path) <-
@@ -164,7 +201,7 @@ constructAppState rs ui opts@(AppOpts {..}) = do
       sendIO $
         execStateT
           (startGameWithSeed (scenario, si) $ LaunchParams (pure userSeed) (pure codeToRun))
-          (AppState gs ui newRs)
+          (AppState gs ui key newRs)
 
 -- | Load a 'Scenario' and start playing the game.
 startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()

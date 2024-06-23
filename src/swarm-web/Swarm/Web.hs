@@ -167,7 +167,7 @@ mkApp state events =
     :<|> codeRunHandler events
     :<|> pathsLogHandler state
     :<|> cmdMatrixHandler state
-    :<|> replHandler state
+    :<|> replHistHandler state
     :<|> mapViewHandler state
 
 robotsHandler :: ReadableIORef AppState -> Handler [Robot]
@@ -247,8 +247,8 @@ pathsLogHandler appStateRef = do
 cmdMatrixHandler :: ReadableIORef AppState -> Handler CommandCatalog
 cmdMatrixHandler _ = pure getCatalog
 
-replHandler :: ReadableIORef AppState -> Handler [REPLHistItem]
-replHandler appStateRef = do
+replHistHandler :: ReadableIORef AppState -> Handler [REPLHistItem]
+replHistHandler appStateRef = do
   appState <- liftIO (readIORef appStateRef)
   let replHistorySeq = appState ^. uiState . uiGameplay . uiREPL . replHistory . replSeq
       items = toList replHistorySeq

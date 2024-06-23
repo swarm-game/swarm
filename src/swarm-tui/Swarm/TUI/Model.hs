@@ -48,10 +48,16 @@ module Swarm.TUI.Model (
   -- ** Utility
   logEvent,
 
+  KeyEventHandlingState(..),
+  EventHandlers(..),
+  keyConfig,
+  keyHandlers,
+
   -- * App state
   AppState (AppState),
   gameState,
   uiState,
+  keyEventHandling,
   runtimeState,
 
   -- ** Initialization
@@ -67,10 +73,10 @@ module Swarm.TUI.Model (
   nextScenario,
 ) where
 
-import Brick
+import Brick ( EventM, viewportScroll, ViewportScroll )
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
-import Control.Monad ((>=>))
+import Control.Monad ((>=>), forM_)
 import Control.Monad.State (MonadState)
 import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -98,6 +104,8 @@ import Swarm.TUI.Model.UI
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Version (NewReleaseFailure)
 import Text.Fuzzy qualified as Fuzzy
+import Brick.Keybindings as BK
+import Swarm.TUI.Model.Event (SwarmEvent)
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -139,6 +147,25 @@ logEvent src sev who msg el =
  where
   l = LogEntry (TickNumber 0) src sev who msg
 
+
+data KeyEventHandlingState = KeyEventHandlingState
+    { _keyConfig :: KeyConfig SwarmEvent
+    , _keyHandlers :: EventHandlers
+    }
+
+keyConfig :: Lens' KeyEventHandlingState (KeyConfig SwarmEvent)
+keyConfig = lens _keyConfig (\s k -> s {_keyConfig = k})
+
+keyHandlers :: Lens' KeyEventHandlingState EventHandlers
+keyHandlers = lens _keyHandlers (\s k -> s {_keyHandlers = k})
+
+type SwarmEventHandler = KeyDispatcher SwarmEvent (EventM Name AppState)
+
+data EventHandlers = EventHandlers
+  { mainHandler :: SwarmEventHandler
+  , replHandler :: SwarmEventHandler
+  }
+
 -- ----------------------------------------------------------------------------
 --                                   APPSTATE                                --
 -- ----------------------------------------------------------------------------
@@ -151,6 +178,7 @@ logEvent src sev who msg el =
 data AppState = AppState
   { _gameState :: GameState
   , _uiState :: UIState
+  , _keyEventHandling :: KeyEventHandlingState
   , _runtimeState :: RuntimeState
   }
 
@@ -164,6 +192,9 @@ gameState :: Lens' AppState GameState
 
 -- | The 'UIState' record.
 uiState :: Lens' AppState UIState
+
+-- | The key event handling configuration.
+keyEventHandling :: Lens' AppState KeyEventHandlingState
 
 -- | The 'RuntimeState' record
 runtimeState :: Lens' AppState RuntimeState

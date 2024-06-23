@@ -137,6 +137,8 @@ import System.Clock
 import System.FilePath (splitDirectories)
 import Witch (into)
 import Prelude hiding (Applicative (..)) -- See Note [liftA2 re-export from Prelude]
+import Brick.Keybindings qualified as B
+import Swarm.TUI.Model.Event (SwarmEvent (..), MainEvent (..), REPLEvent (..))
 
 -- ~~~~ Note [liftA2 re-export from Prelude]
 --
@@ -311,6 +313,7 @@ handleMainEvent ev = do
   let isPaused = s ^. gameState . temporal . paused
   let isCreative = s ^. gameState . creativeMode
   let hasDebug = hasDebugCapability isCreative s
+  let keyHandler = s ^. keyEventHandling . keyHandlers . to mainHandler
   case ev of
     AppEvent ae -> case ae of
       Frame
@@ -318,12 +321,10 @@ handleMainEvent ev = do
         | otherwise -> runFrameUI
       Web (RunWebCode c) -> runBaseWebCode c
       _ -> continueWithoutRedraw
-    -- ctrl-q works everywhere
-    ControlChar 'q' ->
-      case s ^. gameState . winCondition of
-        WinConditions (Won _ _) _ -> toggleModal $ ScenarioEndModal WinModal
-        WinConditions (Unwinnable _) _ -> toggleModal $ ScenarioEndModal LoseModal
-        _ -> toggleModal QuitModal
+    -- pass to key handler (allows users to configure bindings)
+    VtyEvent (V.EvKey k m)
+      | isJust (B.lookupVtyEvent k m keyHandler) -> do
+        void $ B.handleKey keyHandler k m
     VtyEvent (V.EvResize _ _) -> invalidateCache
     Key V.KEsc
       | Just m <- s ^. uiState . uiGameplay . uiModal -> do
@@ -334,40 +335,6 @@ handleMainEvent ev = do
             MessagesModal -> do
               gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . temporal . ticks
             _ -> return ()
-    FKey 1 -> toggleModal HelpModal
-    FKey 2 -> toggleModal RobotsModal
-    FKey 3 | not (null (s ^. gameState . discovery . availableRecipes . notificationsContent)) -> do
-      toggleModal RecipesModal
-      gameState . discovery . availableRecipes . notificationsCount .= 0
-    FKey 4 | not (null (s ^. gameState . discovery . availableCommands . notificationsContent)) -> do
-      toggleModal CommandsModal
-      gameState . discovery . availableCommands . notificationsCount .= 0
-    FKey 5 | not (null (s ^. gameState . messageNotifications . notificationsContent)) -> do
-      toggleModal MessagesModal
-      gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . temporal . ticks
-    FKey 6 | not (null $ s ^. gameState . discovery . structureRecognition . automatons . originalStructureDefinitions) -> toggleModal StructuresModal
-    -- show goal
-    ControlChar 'g' ->
-      if hasAnythingToShow $ s ^. uiState . uiGameplay . uiGoal . goalsContent
-        then toggleModal GoalModal
-        else continueWithoutRedraw
-    -- hide robots
-    MetaChar 'h' -> do
-      t <- liftIO $ getTime Monotonic
-      h <- use $ uiState . uiGameplay . uiHideRobotsUntil
-      case h >= t of
-        -- ignore repeated keypresses
-        True -> continueWithoutRedraw
-        -- hide for two seconds
-        False -> do
-          uiState . uiGameplay . uiHideRobotsUntil .= t + TimeSpec 2 0
-          invalidateCacheEntry WorldCache
-    -- debug focused robot
-    MetaChar 'd' | isPaused && hasDebug -> do
-      debug <- uiState . uiGameplay . uiShowDebug Lens.<%= not
-      if debug
-        then gameState . temporal . gameStep .= RobotStep SBefore
-        else zoomGameState finishGameTick >> void updateUI
     -- pausing and stepping
     ControlChar 'p' | isRunning -> safeTogglePause
     ControlChar 'o' | isRunning -> do
@@ -384,12 +351,11 @@ handleMainEvent ev = do
     -- pass keys on to modal event handler if a modal is open
     VtyEvent vev
       | isJust (s ^. uiState . uiGameplay . uiModal) -> handleModalEvent vev
-    -- toggle creative mode if in "cheat mode"
-
     MouseDown (TerrainListItem pos) V.BLeft _ _ ->
       uiState . uiGameplay . uiWorldEditor . terrainList %= BL.listMoveTo pos
     MouseDown (EntityPaintListItem pos) V.BLeft _ _ ->
       uiState . uiGameplay . uiWorldEditor . entityPaintList %= BL.listMoveTo pos
+    -- toggle creative mode if in "cheat mode"
     ControlChar 'v'
       | s ^. uiState . uiCheatMode -> gameState . creativeMode %= not
     -- toggle world editor mode if in "cheat mode"
@@ -453,36 +419,6 @@ handleMainEvent ev = do
           RobotPanel -> handleRobotPanelEvent ev
           InfoPanel -> handleInfoPanelEvent infoScroll ev
         _ -> continueWithoutRedraw
-
--- | Set the game to Running if it was (auto) paused otherwise to paused.
---
--- Also resets the last frame time to now. If we are pausing, it
--- doesn't matter; if we are unpausing, this is critical to
--- ensure the next frame doesn't think it has to catch up from
--- whenever the game was paused!
-safeTogglePause :: EventM Name AppState ()
-safeTogglePause = do
-  curTime <- liftIO $ getTime Monotonic
-  uiState . uiGameplay . uiTiming . lastFrameTime .= curTime
-  uiState . uiGameplay . uiShowDebug .= False
-  p <- gameState . temporal . runStatus Lens.<%= toggleRunStatus
-  when (p == Running) $ zoomGameState finishGameTick
-
--- | Only unpause the game if leaving autopaused modal.
---
--- Note that the game could have been paused before opening
--- the modal, in that case, leave the game paused.
-safeAutoUnpause :: EventM Name AppState ()
-safeAutoUnpause = do
-  runs <- use $ gameState . temporal . runStatus
-  when (runs == AutoPause) safeTogglePause
-
-toggleModal :: ModalType -> EventM Name AppState ()
-toggleModal mt = do
-  modal <- use $ uiState . uiGameplay . uiModal
-  case modal of
-    Nothing -> openModal mt
-    Just _ -> uiState . uiGameplay . uiModal .= Nothing >> safeAutoUnpause
 
 handleModalEvent :: V.Event -> EventM Name AppState ()
 handleModalEvent = \case
@@ -762,14 +698,6 @@ runFrameTicks dt = do
 runGameTickUI :: EventM Name AppState ()
 runGameTickUI = runGameTick >> void updateUI
 
--- | Modifies the game state using a fused-effect state action.
-zoomGameState :: (MonadState AppState m, MonadIO m) => Fused.StateC GameState (TimeIOC (Fused.LiftC IO)) a -> m a
-zoomGameState f = do
-  gs <- use gameState
-  (gs', a) <- liftIO (Fused.runM (runTimeIO (Fused.runState gs f)))
-  gameState .= gs'
-  return a
-
 updateAchievements :: EventM Name AppState ()
 updateAchievements = do
   -- Merge the in-game achievements with the master list in UIState
@@ -1017,37 +945,13 @@ resetREPL t r replState =
 handleREPLEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleREPLEvent x = do
   s <- get
-  let theRepl = s ^. uiState . uiGameplay . uiREPL
-      controlMode = theRepl ^. replControlMode
-      uinput = theRepl ^. replPromptText
+  let controlMode = s ^. uiState . uiGameplay . uiREPL . replControlMode
+  let keyHandler = s ^. keyEventHandling . keyHandlers . to replHandler
   case x of
-    -- Handle Ctrl-c here so we can always cancel the currently running
-    -- base program no matter what REPL control mode we are in.
-    ControlChar 'c' -> do
-      working <- use $ gameState . gameControls . replWorking
-      when working $ gameState . baseRobot . machine %= cancel
-      Brick.zoom (uiState . uiGameplay . uiREPL) $ do
-        replPromptType .= CmdPrompt []
-        replPromptText .= ""
-
-    -- Handle M-p and M-k, shortcuts for toggling pilot + key handler modes.
-    MetaChar 'p' ->
-      onlyCreative $ do
-        curMode <- use $ uiState . uiGameplay . uiREPL . replControlMode
-        case curMode of
-          Piloting -> uiState . uiGameplay . uiREPL . replControlMode .= Typing
-          _ ->
-            if T.null uinput
-              then uiState . uiGameplay . uiREPL . replControlMode .= Piloting
-              else do
-                let err = REPLError "Please clear the REPL before engaging pilot mode."
-                uiState . uiGameplay . uiREPL . replHistory %= addREPLItem err
-                invalidateCacheEntry REPLHistoryCache
-    MetaChar 'k' -> do
-      when (isJust (s ^. gameState . gameControls . inputHandler)) $ do
-        curMode <- use $ uiState . uiGameplay . uiREPL . replControlMode
-        (uiState . uiGameplay . uiREPL . replControlMode) .= case curMode of Handling -> Typing; _ -> Handling
-
+    -- pass to key handler (allows users to configure bindings)
+    VtyEvent (V.EvKey k m)
+      | isJust (B.lookupVtyEvent k m keyHandler) -> do
+        void $ B.handleKey keyHandler k m
     -- Handle other events in a way appropriate to the current REPL
     -- control mode.
     _ -> case controlMode of
@@ -1358,11 +1262,6 @@ adjReplHistIndex d s =
 
 worldScrollDist :: Int32
 worldScrollDist = 8
-
-onlyCreative :: (MonadState AppState m) => m () -> m ()
-onlyCreative a = do
-  c <- use $ gameState . creativeMode
-  when c a
 
 -- | Handle a user input event in the world view panel.
 handleWorldEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
