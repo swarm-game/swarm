@@ -43,10 +43,7 @@ import Data.Maybe (fromMaybe, isJust)
 import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text.IO qualified as T
-import Data.Time (ZonedTime, getZonedTime)
-import Swarm.Game.Achievement.Attainment
-import Swarm.Game.Achievement.Definitions
-import Swarm.Game.Achievement.Persistence
+import Data.Time (getZonedTime)
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Land
 import Swarm.Game.Scenario (
@@ -97,6 +94,7 @@ import Swarm.TUI.View.Structure qualified as SR
 import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
 import System.Exit (exitFailure)
+import Swarm.TUI.Model.Achievements
 
 createEventHandlers :: KeyConfig SwarmEvent -> IO EventHandlers
 createEventHandlers config = do
@@ -270,26 +268,6 @@ scenarioToAppState siPair@(scene, _) lp = do
     x' <- liftIO $ a x
     l .= x'
     return x'
-
-attainAchievement :: (MonadIO m, MonadState AppState m) => CategorizedAchievement -> m ()
-attainAchievement a = do
-  currentTime <- liftIO getZonedTime
-  attainAchievement' currentTime Nothing a
-
-attainAchievement' ::
-  (MonadIO m, MonadState AppState m) =>
-  ZonedTime ->
-  Maybe FilePath ->
-  CategorizedAchievement ->
-  m ()
-attainAchievement' t p a = do
-  (uiState . uiAchievements)
-    %= M.insertWith
-      (<>)
-      a
-      (Attainment a p t)
-  newAchievements <- use $ uiState . uiAchievements
-  liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
 -- | Modify the UI state appropriately when starting a new scenario.
 scenarioToUIState ::

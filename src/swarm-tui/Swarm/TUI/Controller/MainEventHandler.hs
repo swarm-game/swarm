@@ -11,7 +11,7 @@ module Swarm.TUI.Controller.MainEventHandler (
 import Brick
 import Brick.Keybindings qualified as B
 import Control.Lens as Lens
-import Control.Monad (unless)
+import Control.Monad (unless, when, void)
 import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (originalStructureDefinitions)
 import Swarm.Game.State
@@ -21,6 +21,10 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (MainEvent (..), SwarmEvent (..))
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.UI
+import System.Clock (getTime, Clock (..), TimeSpec (..))
+import Control.Monad.IO.Class (liftIO)
+import Swarm.Game.Step (finishGameTick)
+import Swarm.TUI.Controller.UpdateUI (updateUI)
 
 mainEventHandlers :: [B.KeyEventHandler SwarmEvent (EventM Name AppState)]
 mainEventHandlers =
@@ -64,6 +68,7 @@ mainEventHandlers =
   , B.onEvent (Main ShowCESKDebugEvent) "Show active robot CESK machine debugging line" $ do
       s <- get
       let isPaused = s ^. gameState . temporal . paused
+      let isCreative = s ^. gameState . creativeMode   
       let hasDebug = hasDebugCapability isCreative s
       when (isPaused && hasDebug) $ do
         debug <- uiState . uiGameplay . uiShowDebug Lens.<%= not
