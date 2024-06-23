@@ -444,12 +444,12 @@ handleMainEvent ev = do
     _ev -> do
       fring <- use $ uiState . uiGameplay . uiFocusRing
       case focusGetCurrent fring of
-        Just (FocusablePanel x) -> ($ ev) $ case x of
-          REPLPanel -> handleREPLEvent
-          WorldPanel -> handleWorldEvent
-          WorldEditorPanel -> EC.handleWorldEditorPanelEvent
-          RobotPanel -> handleRobotPanelEvent
-          InfoPanel -> handleInfoPanelEvent infoScroll
+        Just (FocusablePanel x) -> case x of
+          REPLPanel -> handleREPLEvent ev
+          WorldPanel -> handleWorldEvent ev
+          WorldEditorPanel -> EC.handleWorldEditorPanelEvent ev
+          RobotPanel -> handleRobotPanelEvent ev
+          InfoPanel -> handleInfoPanelEvent infoScroll ev
         _ -> continueWithoutRedraw
 
 -- | Set the game to Running if it was (auto) paused otherwise to paused.
@@ -1461,6 +1461,7 @@ handleInventoryListEvent ev = do
   case mList of
     Nothing -> continueWithoutRedraw
     Just l -> do
+      when (isValidListMovement ev) $ resetViewport infoScroll
       l' <- nestEventM' l (handleListEventWithSeparators ev (is _Separator))
       uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2 .= l'
 
@@ -1480,7 +1481,8 @@ handleInventorySearchEvent = \case
       uiInventorySearch .= Nothing
     gets focusedEntity >>= maybe continueWithoutRedraw descriptionModal
   -- Any old character: append to the current search string
-  CharKey c ->
+  CharKey c -> do
+    resetViewport infoScroll
     Brick.zoom (uiState . uiGameplay . uiInventory) $ do
       uiInventoryShouldUpdate .= True
       uiInventorySearch %= fmap (`snoc` c)
@@ -1510,6 +1512,7 @@ makeEntity e = do
 descriptionModal :: Entity -> EventM Name AppState ()
 descriptionModal e = do
   s <- get
+  resetViewport modalScroll
   uiState . uiGameplay . uiModal ?= generateModal s (DescriptionModal e)
 
 ------------------------------------------------------------

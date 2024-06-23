@@ -52,6 +52,7 @@ pattern FKey c = VtyEvent (V.EvKey (V.KFun c) [])
 
 openModal :: ModalType -> EventM Name AppState ()
 openModal mt = do
+  resetViewport modalScroll
   newModal <- gets $ flip generateModal mt
   ensurePause
   uiState . uiGameplay . uiModal ?= newModal
@@ -110,3 +111,9 @@ hasDebugCapability :: Bool -> AppState -> Bool
 hasDebugCapability isCreative s =
   maybe isCreative (S.member CDebug . getCapabilitySet) $
     s ^? gameState . to focusedRobot . _Just . robotCapabilities
+
+-- | Resets the viewport scroll position
+resetViewport :: ViewportScroll Name -> EventM Name AppState ()
+resetViewport n = do
+  vScrollToBeginning n
+  hScrollToBeginning n
