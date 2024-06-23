@@ -3,8 +3,8 @@
 --
 -- TODO: describe
 module Swarm.TUI.Model.Achievements (
-    attainAchievement,
-    attainAchievement',
+  attainAchievement,
+  attainAchievement',
 ) where
 
 import Control.Lens hiding (from, (<.>))

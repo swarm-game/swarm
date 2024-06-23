@@ -82,6 +82,7 @@ import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Launch.Model (toSerializableParams)
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Achievements
 import Swarm.TUI.Model.Event (SwarmEvent, defaultSwarmBindings, swarmEvents)
 import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.TUI.Model.Name
@@ -94,7 +95,6 @@ import Swarm.TUI.View.Structure qualified as SR
 import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
 import System.Exit (exitFailure)
-import Swarm.TUI.Model.Achievements
 
 createEventHandlers :: KeyConfig SwarmEvent -> IO EventHandlers
 createEventHandlers config = do

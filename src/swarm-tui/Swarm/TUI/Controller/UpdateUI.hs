@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -8,9 +9,9 @@ module Swarm.TUI.Controller.UpdateUI (
   doGoalUpdates,
 ) where
 
-
 import Brick hiding (Direction, Location)
 import Brick.Focus
+
 -- See Note [liftA2 re-export from Prelude]
 import Brick.Widgets.List qualified as BL
 import Control.Applicative (liftA2, pure)
@@ -30,6 +31,7 @@ import Swarm.Language.Pretty
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value (VExc, VUnit), envTydefs, prettyValue)
+import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnFinishNocheat)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal
@@ -39,7 +41,6 @@ import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Objective qualified as GR
 import Witch (into)
 import Prelude hiding (Applicative (..))
-import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnFinishNocheat)
 import Data.List.Extra (enumerate)
 
 -- | Update the UI.  This function is used after running the
@@ -154,7 +155,6 @@ updateUI = do
           || logUpdated
           || goalOrWinUpdated
   pure redraw
-
 
 -- | Either pops up the updated Goals modal
 -- or pops up the Congratulations (Win) modal, or pops

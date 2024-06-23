@@ -39,6 +39,7 @@ module Swarm.TUI.Controller (
 
 import Brick hiding (Direction, Location)
 import Brick.Focus
+
 -- See Note [liftA2 re-export from Prelude]
 import Brick.Keybindings qualified as B
 import Brick.Widgets.Dialog
@@ -103,8 +104,9 @@ import Swarm.Language.Typecheck (
  )
 import Swarm.Language.Value (Value (VKey), envTypes)
 import Swarm.Log
-import Swarm.TUI.Controller.Util
+import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
 import Swarm.TUI.Controller.UpdateUI
+import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Controller qualified as EC
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
@@ -124,7 +126,6 @@ import Swarm.Util hiding (both, (<<.=))
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import Prelude hiding (Applicative (..))
-import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
 
 -- ~~~~ Note [liftA2 re-export from Prelude]
 --
