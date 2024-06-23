@@ -5,6 +5,7 @@ TAGS
 .vscode/
 
 cabal.project.local
+hie.yaml
 
 .stack-work/
 .stack-work-test/
