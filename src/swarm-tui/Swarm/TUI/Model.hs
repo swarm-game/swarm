@@ -47,9 +47,8 @@ module Swarm.TUI.Model (
 
   -- ** Utility
   logEvent,
-
-  KeyEventHandlingState(..),
-  EventHandlers(..),
+  KeyEventHandlingState (..),
+  EventHandlers (..),
   keyConfig,
   keyHandlers,
 
@@ -73,10 +72,11 @@ module Swarm.TUI.Model (
   nextScenario,
 ) where
 
-import Brick ( EventM, viewportScroll, ViewportScroll )
+import Brick (EventM, ViewportScroll, viewportScroll)
+import Brick.Keybindings as BK
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
-import Control.Monad ((>=>), forM_)
+import Control.Monad (forM_, (>=>))
 import Control.Monad.State (MonadState)
 import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -98,14 +98,13 @@ import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Log
 import Swarm.TUI.Inventory.Sorting
+import Swarm.TUI.Model.Event (SwarmEvent)
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Version (NewReleaseFailure)
 import Text.Fuzzy qualified as Fuzzy
-import Brick.Keybindings as BK
-import Swarm.TUI.Model.Event (SwarmEvent)
 
 ------------------------------------------------------------
 -- Custom UI label types
@@ -147,11 +146,10 @@ logEvent src sev who msg el =
  where
   l = LogEntry (TickNumber 0) src sev who msg
 
-
 data KeyEventHandlingState = KeyEventHandlingState
-    { _keyConfig :: KeyConfig SwarmEvent
-    , _keyHandlers :: EventHandlers
-    }
+  { _keyConfig :: KeyConfig SwarmEvent
+  , _keyHandlers :: EventHandlers
+  }
 
 keyConfig :: Lens' KeyEventHandlingState (KeyConfig SwarmEvent)
 keyConfig = lens _keyConfig (\s k -> s {_keyConfig = k})

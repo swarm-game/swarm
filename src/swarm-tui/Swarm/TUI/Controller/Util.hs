@@ -6,18 +6,25 @@ module Swarm.TUI.Controller.Util where
 
 import Brick hiding (Direction)
 import Brick.Focus
+import Control.Carrier.Lift qualified as Fused
+import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens
-import Control.Monad (forM_, unless, when)
-import Control.Monad.IO.Class (liftIO)
+import Control.Lens qualified as Lens
+import Control.Monad (forM_, unless, void, when)
+import Control.Monad.Extra (whenJust)
+import Control.Monad.IO.Class (MonadIO (liftIO), liftIO)
+import Control.Monad.State (MonadState, execState)
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Graphics.Vty qualified as V
+import Swarm.Effect (TimeIOC, runTimeIO)
 import Swarm.Game.Device
 import Swarm.Game.Robot (robotCapabilities)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
+import Swarm.Game.Step (finishGameTick)
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
@@ -25,17 +32,7 @@ import Swarm.Language.Capability (Capability (CDebug))
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Util (generateModal)
-import Swarm.Effect (TimeIOC)
-import Control.Monad (forM_, unless, void, when)
-import Control.Monad.Extra (whenJust)
-import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.State (MonadState, execState)
-import Control.Carrier.Lift qualified as Fused
-import Control.Carrier.State.Lazy qualified as Fused
-import System.Clock (getTime, Clock (..))
-import Control.Lens qualified as Lens
-import Swarm.Game.Step (finishGameTick)
-import Swarm.Effect (runTimeIO)
+import System.Clock (Clock (..), getTime)
 
 -- | Pattern synonyms to simplify brick event handler
 pattern Key :: V.Key -> BrickEvent n e
