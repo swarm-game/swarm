@@ -127,6 +127,19 @@ type Sourced a = (Source, a)
 
 -- | A "join" where an expected thing meets an actual thing.
 newtype Join a = Join (Source -> a)
+  deriving (Functor)
+
+instance Foldable Join where
+  foldMap :: Monoid m => (a -> m) -> Join a -> m
+  foldMap f j = f a1 <> f a2
+   where
+    (a1, a2) = getJoin j
+
+instance Traversable Join where
+  traverse :: Applicative f => (a -> f b) -> Join a -> f (Join b)
+  traverse f j = joined <$> f a1 <*> f a2
+   where
+    (a1, a2) = getJoin j
 
 instance (Show a) => Show (Join a) where
   show (getJoin -> (e, a)) = "(expected: " <> show e <> ", actual: " <> show a <> ")"
@@ -313,7 +326,9 @@ unify ::
 unify ms j = do
   res <- expected =:= actual
   case res of
-    Left _ -> throwTypeErr NoLoc $ Mismatch ms j
+    Left _ -> do
+      j' <- traverse U.applyBindings j
+      throwTypeErr NoLoc $ Mismatch ms j'
     Right ty -> return ty
  where
   (expected, actual) = getJoin j
