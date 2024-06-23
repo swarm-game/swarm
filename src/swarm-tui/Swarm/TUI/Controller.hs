@@ -45,55 +45,45 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (Editor, applyEdit, handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
 import Brick.Widgets.List qualified as BL
-import Control.Applicative (liftA2, pure)
-import Control.Carrier.Lift qualified as Fused
-import Control.Carrier.State.Lazy qualified as Fused
+import Control.Applicative (pure)
 import Control.Category ((>>>))
 import Control.Lens as Lens
 import Control.Lens.Extras as Lens (is)
-import Control.Monad (forM_, unless, void, when)
+import Control.Monad (unless, void, when)
 import Control.Monad.Extra (whenJust)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execState)
 import Data.Bits
-import Data.Foldable (toList)
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as S
-import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Text.Zipper qualified as TZ
 import Data.Text.Zipper.Generic.Words qualified as TZ
-import Data.Time (getZonedTime)
 import Data.Vector qualified as V
 import Graphics.Vty qualified as V
 import Linear
-import Swarm.Effect (TimeIOC (..))
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
-import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec, FSuspend), cancel, continue)
+import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec, FSuspend), continue)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
-import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
-import Swarm.Game.Scenario.Status (updateScenarioInfoOnFinish)
-import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons)
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (originalStructureDefinitions)
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
-import Swarm.Game.Step (finishGameTick, gameTick)
+import Swarm.Game.Step (gameTick)
 import Swarm.Language.Capability (
   Capability (CGod),
   constCaps,
@@ -106,16 +96,14 @@ import Swarm.Language.Parser.Lex (reservedWords)
 import Swarm.Language.Parser.Util (showErrorPos)
 import Swarm.Language.Pipeline (processParsedTerm', processTerm')
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Pretty
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Typecheck (
   ContextualTypeErr (..),
  )
-import Swarm.Language.Typed (Typed (..))
-import Swarm.Language.Types
-import Swarm.Language.Value (Value (VExc, VKey, VUnit), envTydefs, envTypes, prettyValue)
+import Swarm.Language.Value (Value (VKey), envTypes)
 import Swarm.Log
 import Swarm.TUI.Controller.Util
+import Swarm.TUI.Controller.UpdateUI
 import Swarm.TUI.Editor.Controller qualified as EC
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
@@ -124,21 +112,18 @@ import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep (prepareLaunchDialog)
 import Swarm.TUI.List
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Event (MainEvent (..), REPLEvent (..), SwarmEvent (..))
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.Structure
 import Swarm.TUI.Model.UI
-import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Util (generateModal)
 import Swarm.Util hiding (both, (<<.=))
 import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
-import System.FilePath (splitDirectories)
-import Witch (into)
 import Prelude hiding (Applicative (..))
+import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
 
 -- ~~~~ Note [liftA2 re-export from Prelude]
 --
@@ -310,9 +295,6 @@ handleMainEvent ev = do
   s <- get
   mt <- preuse $ uiState . uiGameplay . uiModal . _Just . modalType
   let isRunning = maybe True isRunningModal mt
-  let isPaused = s ^. gameState . temporal . paused
-  let isCreative = s ^. gameState . creativeMode
-  let hasDebug = hasDebugCapability isCreative s
   let keyHandler = s ^. keyEventHandling . keyHandlers . to mainHandler
   case ev of
     AppEvent ae -> case ae of
@@ -469,94 +451,6 @@ handleModalEvent = \case
    where
     refreshGoalList lw = nestEventM' lw $ handleListEventWithSeparators ev shouldSkipSelection
     refreshList z = Brick.zoom z $ BL.handleListEvent ev
-
-getNormalizedCurrentScenarioPath :: (MonadIO m, MonadState AppState m) => m (Maybe FilePath)
-getNormalizedCurrentScenarioPath =
-  -- the path should be normalized and good to search in scenario collection
-  use (gameState . currentScenarioPath) >>= \case
-    Nothing -> return Nothing
-    Just p' -> do
-      gs <- use $ runtimeState . scenarios
-      Just <$> liftIO (normalizeScenarioPath gs p')
-
-saveScenarioInfoOnFinish :: (MonadIO m, MonadState AppState m) => FilePath -> m (Maybe ScenarioInfo)
-saveScenarioInfoOnFinish p = do
-  initialRunCode <- use $ gameState . gameControls . initiallyRunCode
-  t <- liftIO getZonedTime
-  wc <- use $ gameState . winCondition
-  let won = case wc of
-        WinConditions (Won _ _) _ -> True
-        _ -> False
-  ts <- use $ gameState . temporal . ticks
-
-  -- NOTE: This traversal is apparently not the same one as used by
-  -- the scenario selection menu, so the menu needs to be updated separately.
-  -- See Note [scenario menu update]
-  let currentScenarioInfo :: Traversal' AppState ScenarioInfo
-      currentScenarioInfo = runtimeState . scenarios . scenarioItemByPath p . _SISingle . _2
-
-  replHist <- use $ uiState . uiGameplay . uiREPL . replHistory
-  let determinator = CodeSizeDeterminators initialRunCode $ replHist ^. replHasExecutedManualInput
-  currentScenarioInfo
-    %= updateScenarioInfoOnFinish determinator t ts won
-  status <- preuse currentScenarioInfo
-  case status of
-    Nothing -> return ()
-    Just si -> do
-      let segments = splitDirectories p
-      case segments of
-        firstDir : _ -> do
-          when (won && firstDir == tutorialsDirname) $
-            attainAchievement' t (Just p) (GlobalAchievement CompletedSingleTutorial)
-        _ -> return ()
-      liftIO $ saveScenarioInfo p si
-  return status
-
--- | Write the @ScenarioInfo@ out to disk when finishing a game (i.e. on winning or exit).
-saveScenarioInfoOnFinishNocheat :: (MonadIO m, MonadState AppState m) => m ()
-saveScenarioInfoOnFinishNocheat = do
-  -- Don't save progress if we are in cheat mode
-  cheat <- use $ uiState . uiCheatMode
-  unless cheat $ do
-    -- the path should be normalized and good to search in scenario collection
-    getNormalizedCurrentScenarioPath >>= \case
-      Nothing -> return ()
-      Just p -> void $ saveScenarioInfoOnFinish p
-
--- | Write the @ScenarioInfo@ out to disk when exiting a game.
-saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
-saveScenarioInfoOnQuit = do
-  -- Don't save progress if we are in cheat mode
-  -- NOTE This check is duplicated in "saveScenarioInfoOnFinishNocheat"
-  cheat <- use $ uiState . uiCheatMode
-  unless cheat $ do
-    getNormalizedCurrentScenarioPath >>= \case
-      Nothing -> return ()
-      Just p -> do
-        maybeSi <- saveScenarioInfoOnFinish p
-        -- Note [scenario menu update]
-        -- Ensures that the scenario selection menu gets updated
-        -- with the high score/completion status
-        forM_
-          maybeSi
-          ( uiState
-              . uiMenu
-              . _NewGameMenu
-              . ix 0
-              . BL.listSelectedElementL
-              . _SISingle
-              . _2
-              .=
-          )
-
-        -- See what scenario is currently focused in the menu.  Depending on how the
-        -- previous scenario ended (via quit vs. via win), it might be the same as
-        -- currentScenarioPath or it might be different.
-        curPath <- preuse $ uiState . uiMenu . _NewGameMenu . ix 0 . BL.listSelectedElementL . _SISingle . _2 . scenarioPath
-        -- Now rebuild the NewGameMenu so it gets the updated ScenarioInfo,
-        -- being sure to preserve the same focused scenario.
-        sc <- use $ runtimeState . scenarios
-        forM_ (mkNewGameMenu cheat sc (fromMaybe p curPath)) (uiState . uiMenu .=)
 
 -- | Quit a game.
 --
@@ -721,213 +615,6 @@ runGameTick :: EventM Name AppState ()
 runGameTick = do
   ticked <- zoomGameState gameTick
   when ticked updateAchievements
-
--- | Update the UI.  This function is used after running the
---   game for some number of ticks.
-updateUI :: EventM Name AppState Bool
-updateUI = do
-  loadVisibleRegion
-
-  -- If the game state indicates a redraw is needed, invalidate the
-  -- world cache so it will be redrawn.
-  g <- use gameState
-  when (g ^. needsRedraw) $ invalidateCacheEntry WorldCache
-
-  -- The hash of the robot whose inventory is currently displayed (if any)
-  listRobotHash <- fmap fst <$> use (uiState . uiGameplay . uiInventory . uiInventoryList)
-
-  -- The hash of the focused robot (if any)
-  fr <- use (gameState . to focusedRobot)
-  let focusedRobotHash = view inventoryHash <$> fr
-
-  -- Check if the inventory list needs to be updated.
-  shouldUpdate <- use (uiState . uiGameplay . uiInventory . uiInventoryShouldUpdate)
-
-  -- Whether the focused robot is too far away to sense, & whether
-  -- that has recently changed
-  dist <- use (gameState . to focusedRange)
-  farOK <- liftA2 (||) (use (gameState . creativeMode)) (use (gameState . landscape . worldScrollable))
-  let tooFar = not farOK && dist == Just Far
-      farChanged = tooFar /= isNothing listRobotHash
-
-  -- If the robot moved in or out of range, or hashes don't match
-  -- (either because which robot (or whether any robot) is focused
-  -- changed, or the focused robot's inventory changed), or the
-  -- inventory was flagged to be updated, regenerate the inventory list.
-  inventoryUpdated <-
-    if farChanged || (not farChanged && listRobotHash /= focusedRobotHash) || shouldUpdate
-      then do
-        Brick.zoom (uiState . uiGameplay . uiInventory) $ do
-          populateInventoryList $ if tooFar then Nothing else fr
-          uiInventoryShouldUpdate .= False
-        pure True
-      else pure False
-
-  -- Now check if the base finished running a program entered at the REPL.
-  replUpdated <- case g ^. gameControls . replStatus of
-    REPLWorking pty (Just v)
-      -- It did, and the result was the unit value or an exception.  Just reset replStatus.
-      | v `elem` [VUnit, VExc] -> do
-          gameState . gameControls . replStatus .= REPLDone (Just (pty, v))
-          pure True
-
-      -- It did, and returned some other value.  Create new 'it'
-      -- variables, pretty-print the result as a REPL output, with its
-      -- type, and reset the replStatus.
-      | otherwise -> do
-          itIx <- use (gameState . gameControls . replNextValueIndex)
-          env <- use (gameState . baseEnv)
-          let finalType = stripCmd (env ^. envTydefs) pty
-              itName = fromString $ "it" ++ show itIx
-              out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
-          uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLOutput out)
-          invalidateCacheEntry REPLHistoryCache
-          vScrollToEnd replScroll
-          gameState . gameControls . replStatus .= REPLDone (Just (finalType, v))
-          gameState . baseEnv . at itName .= Just (Typed v finalType mempty)
-          gameState . baseEnv . at "it" .= Just (Typed v finalType mempty)
-          gameState . gameControls . replNextValueIndex %= (+ 1)
-          pure True
-
-    -- Otherwise, do nothing.
-    _ -> pure False
-
-  -- If the focused robot's log has been updated and the UI focus
-  -- isn't currently on the inventory or info panels, attempt to
-  -- automatically switch to the logger and scroll all the way down so
-  -- the new message can be seen.
-  uiState . uiGameplay . uiScrollToEnd .= False
-  logUpdated <- do
-    -- If the inventory or info panels are currently focused, it would
-    -- be rude to update them right under the user's nose, so consider
-    -- them "sticky".  They will be updated as soon as the player moves
-    -- the focus away.
-    fring <- use $ uiState . uiGameplay . uiFocusRing
-    let sticky = focusGetCurrent fring `elem` map (Just . FocusablePanel) [RobotPanel, InfoPanel]
-
-    -- Check if the robot log was updated and we are allowed to change
-    -- the inventory+info panels.
-    case maybe False (view robotLogUpdated) fr && not sticky of
-      False -> pure False
-      True -> do
-        -- Reset the log updated flag
-        zoomGameState $ zoomRobots clearFocusedRobotLogUpdated
-
-        -- Find and focus an equipped "logger" device in the inventory list.
-        let isLogger (EquippedEntry e) = e ^. entityName == "logger"
-            isLogger _ = False
-            focusLogger = BL.listFindBy isLogger
-
-        uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2 %= focusLogger
-
-        -- Now inform the UI that it should scroll the info panel to
-        -- the very end.
-        uiState . uiGameplay . uiScrollToEnd .= True
-        pure True
-
-  goalOrWinUpdated <- doGoalUpdates
-
-  let redraw =
-        g ^. needsRedraw
-          || inventoryUpdated
-          || replUpdated
-          || logUpdated
-          || goalOrWinUpdated
-  pure redraw
-
--- | Either pops up the updated Goals modal
--- or pops up the Congratulations (Win) modal, or pops
--- up the Condolences (Lose) modal.
--- The Win modal will take precedence if the player
--- has met the necessary conditions to win the game.
---
--- If the player chooses to "Keep Playing" from the Win modal, the
--- updated Goals will then immediately appear.
--- This is desirable for:
--- * feedback as to the final goal the player accomplished,
--- * as a summary of all of the goals of the game
--- * shows the player more "optional" goals they can continue to pursue
-doGoalUpdates :: EventM Name AppState Bool
-doGoalUpdates = do
-  curGoal <- use (uiState . uiGameplay . uiGoal . goalsContent)
-  isCheating <- use (uiState . uiCheatMode)
-  curWinCondition <- use (gameState . winCondition)
-  announcementsSeq <- use (gameState . messageInfo . announcementQueue)
-  let announcementsList = toList announcementsSeq
-
-  -- Decide whether we need to update the current goal text and pop
-  -- up a modal dialog.
-  case curWinCondition of
-    NoWinCondition -> return False
-    WinConditions (Unwinnable False) x -> do
-      -- This clears the "flag" that the Lose dialog needs to pop up
-      gameState . winCondition .= WinConditions (Unwinnable True) x
-      openModal $ ScenarioEndModal LoseModal
-      saveScenarioInfoOnFinishNocheat
-      return True
-    WinConditions (Won False ts) x -> do
-      -- This clears the "flag" that the Win dialog needs to pop up
-      gameState . winCondition .= WinConditions (Won True ts) x
-      openModal $ ScenarioEndModal WinModal
-      saveScenarioInfoOnFinishNocheat
-      -- We do NOT advance the New Game menu to the next item here (we
-      -- used to!), because we do not know if the user is going to
-      -- select 'keep playing' or 'next challenge'.  We maintain the
-      -- invariant that the current menu item is always the same as
-      -- the scenario currently being played.  If the user either (1)
-      -- quits to the menu or (2) selects 'next challenge' we will
-      -- advance the menu at that point.
-      return True
-    WinConditions _ oc -> do
-      let newGoalTracking = GoalTracking announcementsList $ constructGoalMap isCheating oc
-          -- The "uiGoal" field is initialized with empty members, so we know that
-          -- this will be the first time showing it if it will be nonempty after previously
-          -- being empty.
-          isFirstGoalDisplay = hasAnythingToShow newGoalTracking && not (hasAnythingToShow curGoal)
-          goalWasUpdated = isFirstGoalDisplay || not (null announcementsList)
-
-      -- Decide whether to show a pop-up modal congratulating the user on
-      -- successfully completing the current challenge.
-      when goalWasUpdated $ do
-        let hasMultiple = hasMultipleGoals newGoalTracking
-            defaultFocus =
-              if hasMultiple
-                then ObjectivesList
-                else GoalSummary
-
-            ring =
-              focusRing $
-                map GoalWidgets $
-                  if hasMultiple
-                    then listEnums
-                    else [GoalSummary]
-
-        -- The "uiGoal" field is necessary at least to "persist" the data that is needed
-        -- if the player chooses to later "recall" the goals dialog with CTRL+g.
-        uiState
-          . uiGameplay
-          . uiGoal
-          .= GoalDisplay
-            newGoalTracking
-            (GR.makeListWidget newGoalTracking)
-            (focusSetCurrent (GoalWidgets defaultFocus) ring)
-
-        -- This clears the "flag" that indicate that the goals dialog needs to be
-        -- automatically popped up.
-        gameState . messageInfo . announcementQueue .= mempty
-
-        hideGoals <- use $ uiState . uiGameplay . uiHideGoals
-        unless hideGoals $
-          openModal GoalModal
-
-      return goalWasUpdated
-
--- | Strips the top-level @Cmd@ from a type, if any (to compute the
---   result type of a REPL command evaluation).
-stripCmd :: TDCtx -> Polytype -> Polytype
-stripCmd tdCtx (Forall xs ty) = case whnfType tdCtx ty of
-  TyCmd resTy -> Forall xs resTy
-  _ -> Forall xs ty
 
 ------------------------------------------------------------
 -- REPL events

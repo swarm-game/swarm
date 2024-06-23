@@ -10,10 +10,9 @@ import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens
 import Control.Lens qualified as Lens
-import Control.Monad (forM_, unless, void, when)
-import Control.Monad.Extra (whenJust)
+import Control.Monad (forM_, unless, when)
 import Control.Monad.IO.Class (MonadIO (liftIO), liftIO)
-import Control.Monad.State (MonadState, execState)
+import Control.Monad.State (MonadState)
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Graphics.Vty qualified as V

@@ -76,7 +76,7 @@ import Brick (EventM, ViewportScroll, viewportScroll)
 import Brick.Keybindings as BK
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (forM_, (>=>))
+import Control.Monad ((>=>))
 import Control.Monad.State (MonadState)
 import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
