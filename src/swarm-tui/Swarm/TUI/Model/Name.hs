@@ -8,6 +8,8 @@
 -- case matching.
 module Swarm.TUI.Model.Name where
 
+import Data.Text (Text)
+
 data WorldEditorFocusable
   = BrushSelector
   | EntitySelector
@@ -110,4 +112,6 @@ data Name
     REPLViewport
   | -- | A clickable button in a modal dialog.
     Button Button
+  | -- | A custom widget name, for use in applications built on top of the Swarm library.
+    CustomName Text
   deriving (Eq, Ord, Show, Read)
