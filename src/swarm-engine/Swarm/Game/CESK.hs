@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -61,8 +60,8 @@ module Swarm.Game.CESK (
   Store,
   Addr,
   emptyStore,
-  MemCell (..),
   allocate,
+  resolveValue,
   lookupStore,
   setStore,
 
@@ -71,16 +70,18 @@ module Swarm.Game.CESK (
 
   -- ** Construction
   initMachine,
-  initMachine',
+  continue,
   cancel,
-  resetBlackholes,
+  prepareTerm,
 
   -- ** Extracting information
   finalValue,
+  suspendedEnv,
+  store,
+  cont,
 ) where
 
-import Control.Lens ((^.))
-import Control.Lens.Combinators (pattern Empty)
+import Control.Lens (Lens', Traversal', lens, traversal, (^.))
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
@@ -92,9 +93,9 @@ import Swarm.Game.Ingredients (Count)
 import Swarm.Game.Tick
 import Swarm.Game.World (WorldUpdate (..))
 import Swarm.Language.Context
-import Swarm.Language.Module
-import Swarm.Language.Pipeline
+import Swarm.Language.Elaborate (insertSuspend)
 import Swarm.Language.Pretty
+import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.Language.Value as V
@@ -126,27 +127,15 @@ data Frame
     -- an application; once we are done, we should pass the resulting
     -- value as an argument to @v@.
     FApp Value
-  | -- | @FLet x t2 e@ says that we were evaluating a term @t1@ in an
-    -- expression of the form @let x = t1 in t2@, that is, we were
-    -- evaluating the definition of @x@; the next thing we should do
-    -- is evaluate @t2@ in the environment @e@ extended with a binding
-    -- for @x@.
-    FLet Var Term Env
+  | -- | @FLet x ty t2 e@ says that we were evaluating a term @t1@ of
+    -- type @ty@ in an expression of the form @let x = t1 in t2@, that
+    -- is, we were evaluating the definition of @x@; the next thing we
+    -- should do is evaluate @t2@ in the environment @e@ extended with
+    -- a binding for @x@.
+    FLet Var (Maybe (Polytype, Requirements)) Term Env
   | -- | We are executing inside a 'Try' block.  If an exception is
     --   raised, we will execute the stored term (the "catch" block).
     FTry Value
-  | -- | We were executing a command; next we should take any
-    --   environment it returned and union it with this one to produce
-    --   the result of a bind expression.
-    FUnionEnv Env
-  | -- | We were executing a command that might have definitions; next
-    --   we should take the resulting 'Env' and add it to the robot's
-    --   'Swarm.Game.Robot.robotEnv', along with adding this accompanying 'Ctx' and
-    --   'ReqCtx' to the robot's 'Swarm.Game.Robot.robotCtx'.
-    FLoadEnv Contexts
-  | -- | We were executing a definition; next we should take the resulting value
-    --   and return a context binding the variable to the value.
-    FDef Var
   | -- | An @FExec@ frame means the focused value is a command, which
     -- we should now execute.
     FExec
@@ -154,15 +143,12 @@ data Frame
     --   bind; once done, we should also execute the second component
     --   in the given environment (extended by binding the variable,
     --   if there is one, to the output of the first command).
-    FBind (Maybe Var) Term Env
-  | -- | Discard any environment generated as the result of executing
-    --   a command.
-    FDiscardEnv
+    FBind (Maybe Var) (Maybe (Polytype, Requirements)) Term Env
   | -- | Apply specific updates to the world and current robot.
     --
     -- The 'Const' is used to track the original command for error messages.
     FImmediate Const [WorldUpdate Entity] [RobotUpdate]
-  | -- | Update the memory cell at a certain location with the computed value.
+  | -- | Update the cell at a certain location in the store with the computed value.
     FUpdate Addr
   | -- | Signal that we are done with an atomic computation.
     FFinishAtomic
@@ -176,6 +162,12 @@ data Frame
     FRcd Env [(Var, Value)] Var [(Var, Maybe Term)]
   | -- | We are in the middle of evaluating a record field projection.
     FProj Var
+  | -- | We should suspend with the given environment once we finish
+    --   the current evaluation.
+    FSuspend Env
+  | -- | If an exception bubbles all the way up to this frame, then
+    --   switch to Suspended mode with this saved top-level context.
+    FRestoreEnv Env
   deriving (Eq, Show, Generic)
 
 instance ToJSON Frame where
@@ -194,55 +186,38 @@ type Cont = [Frame]
 type Addr = Int
 
 -- | 'Store' represents a store, /i.e./ memory, indexing integer
---   locations to 'MemCell's.
-data Store = Store {next :: Addr, mu :: IntMap MemCell}
+--   locations to 'Value's.
+data Store = Store {next :: Addr, mu :: IntMap Value}
   deriving (Show, Eq, Generic, FromJSON, ToJSON)
-
--- | A memory cell can be in one of three states.
-data MemCell
-  = -- | A cell starts out life as an unevaluated term together with
-    --   its environment.
-    E Term Env
-  | -- | When the cell is 'Force'd, it is set to a 'Blackhole' while
-    --   being evaluated.  If it is ever referenced again while still
-    --   a 'Blackhole', that means it depends on itself in a way that
-    --   would trigger an infinite loop, and we can signal an error.
-    --   (Of course, we
-    --   <http://www.lel.ed.ac.uk/~gpullum/loopsnoop.html cannot
-    --   detect /all/ infinite loops this way>.)
-    --
-    --   A 'Blackhole' saves the original 'Term' and 'Env' that are
-    --   being evaluated; if Ctrl-C is used to cancel a computation
-    --   while we are in the middle of evaluating a cell, the
-    --   'Blackhole' can be reset to 'E'.
-    Blackhole Term Env
-  | -- | Once evaluation is complete, we cache the final 'Value' in
-    --   the 'MemCell', so that subsequent lookups can just use it
-    --   without recomputing anything.
-    V Value
-  deriving (Show, Eq, Generic)
-
-instance ToJSON MemCell where
-  toJSON = genericToJSON optionsMinimize
-
-instance FromJSON MemCell where
-  parseJSON = genericParseJSON optionsMinimize
 
 emptyStore :: Store
 emptyStore = Store 0 IM.empty
 
--- | Allocate a new memory cell containing an unevaluated expression
---   with the current environment.  Return the index of the allocated
---   cell.
-allocate :: Env -> Term -> Store -> (Addr, Store)
-allocate e t (Store n m) = (n, Store (n + 1) (IM.insert n (E t e) m))
+-- | Allocate a new memory cell containing a given value.  Return the
+--   index of the allocated cell.
+allocate :: Value -> Store -> (Addr, Store)
+allocate v (Store n m) = (n, Store (n + 1) (IM.insert n v m))
 
--- | Look up the cell at a given index.
-lookupStore :: Addr -> Store -> Maybe MemCell
-lookupStore n = IM.lookup n . mu
+-- | Resolve a value, recursively looking up any indirections in the
+--   store.
+resolveValue :: Store -> Value -> Either Addr Value
+resolveValue s = \case
+  VIndir loc -> lookupStore s loc
+  v -> Right v
 
--- | Set the cell at a given index.
-setStore :: Addr -> MemCell -> Store -> Store
+-- | Look up the value at a given index, but keep following
+--   indirections until encountering a value that is not a 'VIndir'.
+lookupStore :: Store -> Addr -> Either Addr Value
+lookupStore s = go
+ where
+  go loc = case IM.lookup loc (mu s) of
+    Nothing -> Left loc
+    Just v -> case v of
+      VIndir loc' -> go loc'
+      _ -> Right v
+
+-- | Set the value at a given index.
+setStore :: Addr -> Value -> Store -> Store
 setStore n c (Store nxt m) = Store nxt (IM.insert n c m)
 
 ------------------------------------------------------------
@@ -285,6 +260,14 @@ data CESK
   | -- | The machine is waiting for the game to reach a certain time
     --   to resume its execution.
     Waiting TickNumber CESK
+  | -- | The machine is suspended, i.e. waiting for another term to
+    --   evaluate.  This happens after we have evaluated whatever the
+    --   user entered at the REPL and we are waiting for them to type
+    --   something else.  Conceptually, this is like a combination of
+    --   'Out' and 'In': we store a 'Value' that was just yielded by
+    --   evaluation, and otherwise it is just like 'In' with a hole
+    --   for the 'Term' we are going to evaluate.
+    Suspended Value Env Store Cont
   deriving (Eq, Show, Generic)
 
 instance ToJSON CESK where
@@ -295,67 +278,117 @@ instance FromJSON CESK where
 
 -- | Is the CESK machine in a final (finished) state?  If so, extract
 --   the final value and store.
-finalValue :: CESK -> Maybe (Value, Store)
+finalValue :: CESK -> Maybe Value
 {-# INLINE finalValue #-}
-finalValue (Out v s []) = Just (v, s)
+finalValue (Out v _ []) = Just v
+finalValue (Suspended v _ _ []) = Just v
 finalValue _ = Nothing
 
--- | Initialize a machine state with a starting term along with its
---   type; the term will be executed or just evaluated depending on
---   whether it has a command type or not.
-initMachine :: ProcessedTerm -> Env -> Store -> CESK
-initMachine t e s = initMachine' t e s []
-
--- | Like 'initMachine', but also take an explicit starting continuation.
-initMachine' :: ProcessedTerm -> Env -> Store -> Cont -> CESK
-initMachine' (ProcessedTerm (Module t' ctx tydefs) _ reqCtx) e s k =
-  case t' ^. sType of
-    -- If the starting term has a command type...
-    Forall _ (TyCmd _) ->
-      case (ctx, tydefs) of
-        -- ...but doesn't contain any definitions, just create a machine
-        -- that will evaluate it and then execute it.
-        (Empty, Empty) -> In t e s (FExec : k)
-        -- Or, if it does contain definitions, then load the resulting
-        -- context after executing it.
-        _ -> In t e s (FExec : FLoadEnv (Contexts ctx reqCtx tydefs) : k)
-    -- Otherwise, for a term with a non-command type, just
-    -- create a machine to evaluate it.
-    _ -> In t e s k
+-- | Extract the environment from a suspended CESK machine (/e.g./ to
+--   use for typechecking).
+suspendedEnv :: Traversal' CESK Env
+suspendedEnv = traversal go
  where
-  -- Erase all type and SrcLoc annotations from the term before
-  -- putting it in the machine state, since those are irrelevant at
-  -- runtime.
-  t = eraseS t'
+  go :: Applicative f => (Env -> f Env) -> CESK -> f CESK
+  go f (Suspended v e s k) = Suspended v <$> f e <*> pure s <*> pure k
+  go _ cesk = pure cesk
+
+-- | Lens focusing on the store of a CESK machine.
+store :: Lens' CESK Store
+store = lens get set
+ where
+  get = \case
+    In _ _ s _ -> s
+    Out _ s _ -> s
+    Up _ s _ -> s
+    Waiting _ c -> get c
+    Suspended _ _ s _ -> s
+  set cesk s = case cesk of
+    In t e _ k -> In t e s k
+    Out v _ k -> Out v s k
+    Up x _ k -> Up x s k
+    Waiting t c -> Waiting t (set c s)
+    Suspended v e _ k -> Suspended v e s k
+
+-- | Lens focusing on the continuation of a CESK machine.
+cont :: Lens' CESK Cont
+cont = lens get set
+ where
+  get = \case
+    In _ _ _ k -> k
+    Out _ _ k -> k
+    Up _ _ k -> k
+    Waiting _ c -> get c
+    Suspended _ _ _ k -> k
+  set cesk k = case cesk of
+    In t e s _ -> In t e s k
+    Out v s _ -> Out v s k
+    Up x s _ -> Up x s k
+    Waiting t c -> Waiting t (set c k)
+    Suspended v e s _ -> Suspended v e s k
+
+-- | Create a brand new CESK machine, with empty environment and
+--   store, to evaluate a given term.  We always initialize the
+--   machine with a single FExec frame as the continuation; if the
+--   given term does not have a command type, we wrap it in @return@.
+initMachine :: TSyntax -> CESK
+initMachine t = In (prepareTerm mempty t) mempty emptyStore [FExec]
+
+-- | Load a program into an existing robot CESK machine: either
+--   continue from a suspended state, or, as a fallback, start from
+--   scratch with an empty environment but the same store.
+--
+--   Also insert a @suspend@ primitive at the end, so the resulting
+--   term is suitable for execution by the base (REPL) robot.
+continue :: TSyntax -> CESK -> CESK
+continue t = \case
+  -- The normal case is when we are continuing from a suspended state. We:
+  --
+  --   (1) insert a suspend call at the end of the term, so that in
+  --   the normal case after executing the entire term we will suspend
+  --   in the innermost scope, to continue executing another term
+  --   within that scope later.
+  --
+  --   (2) insert a failsafe FRestoreEnv frame into the continuation
+  --   stack, in case execution of the term throws an exception.  In
+  --   that case we will fall back to suspending with the original
+  --   environment e (any names brought into scope by executing the
+  --   term will be discarded).  If the term succeeds, the extra
+  --   FRestoreEnv frame will be discarded.
+  Suspended _ e s k -> In (insertSuspend $ prepareTerm e t) e s (FExec : FRestoreEnv e : k)
+  -- In any other state, just start with an empty environment.  This
+  -- happens e.g. when running a program on the base robot for the
+  -- very first time.
+  cesk -> In (insertSuspend $ prepareTerm mempty t) mempty (cesk ^. store) (FExec : (cesk ^. cont))
+
+-- | Prepare a term for evaluation by a CESK machine in the given
+--   environment: erase all type annotations, and optionally wrap it
+--   in @return@ if it does not have a command type.  Note that since
+--   the environment might contain type aliases, we have to be careful
+--   to expand them before concluding whether the term has a command
+--   type or not.
+prepareTerm :: Env -> TSyntax -> Term
+prepareTerm e t = case whnfType (e ^. envTydefs) (ptBody (t ^. sType)) of
+  TyCmd _ -> t'
+  _ -> TApp (TConst Return) t'
+ where
+  t' = eraseS t
 
 -- | Cancel the currently running computation.
 cancel :: CESK -> CESK
-cancel cesk = Out VUnit s' []
- where
-  s' = resetBlackholes $ getStore cesk
-  getStore (In _ _ s _) = s
-  getStore (Out _ s _) = s
-  getStore (Up _ s _) = s
-  getStore (Waiting _ c) = getStore c
-
--- | Reset any 'Blackhole's in the 'Store'.  We need to use this any
---   time a running computation is interrupted, either by an exception
---   or by a Ctrl+C.
-resetBlackholes :: Store -> Store
-resetBlackholes (Store n m) = Store n (IM.map resetBlackhole m)
- where
-  resetBlackhole (Blackhole t e) = E t e
-  resetBlackhole c = c
+cancel cesk = Up Cancel (cesk ^. store) (cesk ^. cont)
 
 ------------------------------------------------------------
 -- Pretty printing CESK machine states
 ------------------------------------------------------------
 
 instance PrettyPrec CESK where
-  prettyPrec _ (In c _ _ k) = prettyCont k (11, "▶" <> ppr c <> "◀")
-  prettyPrec _ (Out v _ k) = prettyCont k (11, "◀" <> ppr (valueToTerm v) <> "▶")
-  prettyPrec _ (Up e _ k) = prettyCont k (11, "!" <> (pretty (formatExn mempty e) <> "!"))
-  prettyPrec _ (Waiting t cesk) = "🕑" <> pretty t <> "(" <> ppr cesk <> ")"
+  prettyPrec _ = \case
+    In c _ _ k -> prettyCont k (11, "▶" <> ppr c <> "◀")
+    Out v _ k -> prettyCont k (11, "◀" <> ppr (valueToTerm v) <> "▶")
+    Up e _ k -> prettyCont k (11, "!" <> (pretty (formatExn mempty e) <> "!"))
+    Waiting t cesk -> "🕑" <> pretty t <> "(" <> ppr cesk <> ")"
+    Suspended v _ _ k -> prettyCont k (11, "◀" <> ppr (valueToTerm v) <> "...▶")
 
 -- | Take a continuation, and the pretty-printed expression which is
 --   the focus of the continuation (i.e. the expression whose value
@@ -383,17 +416,13 @@ prettyFrame f (p, inner) = case f of
   FFst v -> (11, "(" <> ppr (valueToTerm v) <> "," <+> inner <> ")")
   FArg t _ -> (10, pparens (p < 10) inner <+> prettyPrec 11 t)
   FApp v -> (10, prettyPrec 10 (valueToTerm v) <+> pparens (p < 11) inner)
-  FLet x t _ -> (11, hsep ["let", pretty x, "=", inner, "in", ppr t])
+  FLet x _ t _ -> (11, hsep ["let", pretty x, "=", inner, "in", ppr t])
   FTry v -> (10, "try" <+> pparens (p < 11) inner <+> prettyPrec 11 (valueToTerm v))
-  FUnionEnv _ -> prettyPrefix "∪·" (p, inner)
-  FLoadEnv {} -> prettyPrefix "L·" (p, inner)
-  FDef x -> (11, "def" <+> pretty x <+> "=" <+> inner <+> "end")
   FExec -> prettyPrefix "E·" (p, inner)
-  FBind Nothing t _ -> (0, pparens (p < 1) inner <+> ";" <+> ppr t)
-  FBind (Just x) t _ -> (0, hsep [pretty x, "<-", pparens (p < 1) inner, ";", ppr t])
-  FDiscardEnv -> prettyPrefix "D·" (p, inner)
+  FBind Nothing _ t _ -> (0, pparens (p < 1) inner <+> ";" <+> ppr t)
+  FBind (Just x) _ t _ -> (0, hsep [pretty x, "<-", pparens (p < 1) inner, ";", ppr t])
   FImmediate c _worldUpds _robotUpds -> prettyPrefix ("I[" <> ppr c <> "]·") (p, inner)
-  FUpdate addr -> prettyPrefix ("S@" <> pretty addr) (p, inner)
+  FUpdate {} -> (p, inner)
   FFinishAtomic -> prettyPrefix "A·" (p, inner)
   FMeetAll _ _ -> prettyPrefix "M·" (p, inner)
   FRcd _ done foc rest -> (11, encloseSep "[" "]" ", " (pDone ++ [pFoc] ++ pRest))
@@ -404,6 +433,8 @@ prettyFrame f (p, inner) = case f of
     pprEq (x, Nothing) = pretty x
     pprEq (x, Just t) = pretty x <+> "=" <+> ppr t
   FProj x -> (11, pparens (p < 11) inner <> "." <> pretty x)
+  FSuspend _ -> (10, "suspend" <+> pparens (p < 11) inner)
+  FRestoreEnv _ -> (10, "restore" <+> pparens (p < 11) inner)
 
 -- | Pretty-print a special "prefix application" frame, i.e. a frame
 --   formatted like @X· inner@.  Unlike typical applications, these

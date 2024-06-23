@@ -40,12 +40,13 @@ module Swarm.TUI.Controller (
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Widgets.Dialog
-import Brick.Widgets.Edit (applyEdit, handleEditorEvent)
+import Brick.Widgets.Edit (Editor, applyEdit, handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
 import Brick.Widgets.List qualified as BL
 import Control.Applicative (liftA2, pure)
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
+import Control.Category ((>>>))
 import Control.Lens as Lens
 import Control.Lens.Extras as Lens (is)
 import Control.Monad (forM_, unless, void, when)
@@ -53,7 +54,6 @@ import Control.Monad.Extra (whenJust)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execState)
 import Data.Bits
-import Data.Either (isRight)
 import Data.Foldable (toList)
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -66,6 +66,7 @@ import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Data.Text.Zipper qualified as TZ
 import Data.Text.Zipper.Generic.Words qualified as TZ
 import Data.Time (getZonedTime)
 import Data.Vector qualified as V
@@ -74,14 +75,13 @@ import Linear
 import Swarm.Effect (TimeIOC (..))
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
-import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec), cancel, emptyStore, initMachine)
+import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec, FSuspend), cancel, continue)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
-import Swarm.Game.Robot.Context
 import Swarm.Game.Scenario.Status (updateScenarioInfoOnFinish)
 import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (originalStructureDefinitions)
@@ -92,19 +92,26 @@ import Swarm.Game.State.Robot
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Step (finishGameTick, gameTick)
-import Swarm.Language.Capability (Capability (CGod, CMake), constCaps)
+import Swarm.Language.Capability (
+  Capability (CGod),
+  constCaps,
+ )
 import Swarm.Language.Context
 import Swarm.Language.Key (KeyCombo, mkKeyCombo)
-import Swarm.Language.Module (moduleSyntax)
+import Swarm.Language.Parser (readTerm')
+import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Lex (reservedWords)
-import Swarm.Language.Pipeline (Contexts (..), ProcessedTerm (..), processTerm', processedSyntax)
+import Swarm.Language.Parser.Util (showErrorPos)
+import Swarm.Language.Pipeline (processParsedTerm', processTerm')
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Pretty
-import Swarm.Language.Requirement qualified as R
 import Swarm.Language.Syntax hiding (Key)
+import Swarm.Language.Typecheck (
+  ContextualTypeErr (..),
+ )
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
-import Swarm.Language.Value (Value (VExc, VKey, VUnit), prettyValue, stripVResult)
+import Swarm.Language.Value (Value (VExc, VKey, VUnit), envTydefs, envTypes, prettyValue)
 import Swarm.Log
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Controller qualified as EC
@@ -347,11 +354,11 @@ handleMainEvent ev = do
     MetaChar 'h' -> do
       t <- liftIO $ getTime Monotonic
       h <- use $ uiState . uiGameplay . uiHideRobotsUntil
-      if h >= t
-        then -- ignore repeated keypresses
-          continueWithoutRedraw
-        else -- hide for two seconds
-        do
+      case h >= t of
+        -- ignore repeated keypresses
+        True -> continueWithoutRedraw
+        -- hide for two seconds
+        False -> do
           uiState . uiGameplay . uiHideRobotsUntil .= t + TimeSpec 2 0
           invalidateCacheEntry WorldCache
     -- debug focused robot
@@ -437,12 +444,12 @@ handleMainEvent ev = do
     _ev -> do
       fring <- use $ uiState . uiGameplay . uiFocusRing
       case focusGetCurrent fring of
-        Just (FocusablePanel x) -> ($ ev) $ case x of
-          REPLPanel -> handleREPLEvent
-          WorldPanel -> handleWorldEvent
-          WorldEditorPanel -> EC.handleWorldEditorPanelEvent
-          RobotPanel -> handleRobotPanelEvent
-          InfoPanel -> handleInfoPanelEvent infoScroll
+        Just (FocusablePanel x) -> case x of
+          REPLPanel -> handleREPLEvent ev
+          WorldPanel -> handleWorldEvent ev
+          WorldEditorPanel -> EC.handleWorldEditorPanelEvent ev
+          RobotPanel -> handleRobotPanelEvent ev
+          InfoPanel -> handleInfoPanelEvent infoScroll ev
         _ -> continueWithoutRedraw
 
 -- | Set the game to Running if it was (auto) paused otherwise to paused.
@@ -829,26 +836,27 @@ updateUI = do
 
   -- Now check if the base finished running a program entered at the REPL.
   replUpdated <- case g ^. gameControls . replStatus of
-    REPLWorking (Typed (Just v) pty reqs)
+    REPLWorking pty (Just v)
       -- It did, and the result was the unit value or an exception.  Just reset replStatus.
       | v `elem` [VUnit, VExc] -> do
-          gameState . gameControls . replStatus .= REPLDone (Just $ Typed v pty reqs)
+          gameState . gameControls . replStatus .= REPLDone (Just (pty, v))
           pure True
 
-      -- It did, and returned some other value.  Create a new 'it'
-      -- variable, pretty-print the result as a REPL output, with its
+      -- It did, and returned some other value.  Create new 'it'
+      -- variables, pretty-print the result as a REPL output, with its
       -- type, and reset the replStatus.
       | otherwise -> do
           itIx <- use (gameState . gameControls . replNextValueIndex)
-          let finalType = stripCmd pty
-              val = Typed (stripVResult v) finalType reqs
+          env <- use (gameState . baseEnv)
+          let finalType = stripCmd (env ^. envTydefs) pty
               itName = fromString $ "it" ++ show itIx
               out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
           uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLOutput out)
           invalidateCacheEntry REPLHistoryCache
           vScrollToEnd replScroll
-          gameState . gameControls . replStatus .= REPLDone (Just val)
-          gameState . baseRobot . robotContext . at itName .= Just val
+          gameState . gameControls . replStatus .= REPLDone (Just (finalType, v))
+          gameState . baseEnv . at itName .= Just (Typed v finalType mempty)
+          gameState . baseEnv . at "it" .= Just (Typed v finalType mempty)
           gameState . gameControls . replNextValueIndex %= (+ 1)
           pure True
 
@@ -985,11 +993,12 @@ doGoalUpdates = do
 
       return goalWasUpdated
 
--- | Strips top-level `cmd` from type (in case of REPL evaluation),
---   and returns a boolean to indicate if it happened
-stripCmd :: Polytype -> Polytype
-stripCmd (Forall xs (TyCmd ty)) = Forall xs ty
-stripCmd pty = pty
+-- | Strips the top-level @Cmd@ from a type, if any (to compute the
+--   result type of a REPL command evaluation).
+stripCmd :: TDCtx -> Polytype -> Polytype
+stripCmd tdCtx (Forall xs ty) = case whnfType tdCtx ty of
+  TyCmd resTy -> Forall xs resTy
+  _ -> Forall xs ty
 
 ------------------------------------------------------------
 -- REPL events
@@ -1062,8 +1071,9 @@ runInputHandler kc = do
       working <- use $ gameState . gameControls . replWorking
       unless working $ do
         s <- get
-        let topCtx = topContext s
-            handlerCESK = Out (VKey kc) (topCtx ^. defStore) [FApp handler, FExec]
+        let env = s ^. gameState . baseEnv
+            store = s ^. gameState . baseStore
+            handlerCESK = Out (VKey kc) store [FApp handler, FExec, FSuspend env]
         gameState . baseRobot . machine .= handlerCESK
         gameState %= execState (zoomRobots $ activateRobot 0)
 
@@ -1102,49 +1112,35 @@ handleREPLEventPiloting x = case x of
 runBaseWebCode :: (MonadState AppState m) => T.Text -> m ()
 runBaseWebCode uinput = do
   s <- get
-  let topCtx = topContext s
   unless (s ^. gameState . gameControls . replWorking) $
-    runBaseCode topCtx uinput
+    runBaseCode uinput
 
-runBaseCode :: (MonadState AppState m) => RobotContext -> T.Text -> m ()
-runBaseCode topCtx uinput = do
+runBaseCode :: (MonadState AppState m) => T.Text -> m ()
+runBaseCode uinput = do
   uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLEntry uinput)
   uiState . uiGameplay . uiREPL %= resetREPL "" (CmdPrompt [])
-  let ctxs = Contexts (topCtx ^. defTypes) (topCtx ^. defReqs) (topCtx ^. tydefVals)
-  case processTerm' ctxs uinput of
+  env <- use $ gameState . baseEnv
+  case processTerm' env uinput of
     Right mt -> do
       uiState . uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True
-      runBaseTerm topCtx mt
+      runBaseTerm mt
     Left err -> do
       uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLError err)
 
-runBaseTerm :: (MonadState AppState m) => RobotContext -> Maybe ProcessedTerm -> m ()
-runBaseTerm topCtx =
-  modify . maybe id startBaseProgram
+runBaseTerm :: (MonadState AppState m) => Maybe TSyntax -> m ()
+runBaseTerm = maybe (pure ()) startBaseProgram
  where
   -- The player typed something at the REPL and hit Enter; this
   -- function takes the resulting ProcessedTerm (if the REPL
   -- input is valid) and sets up the base robot to run it.
-  startBaseProgram t@(ProcessedTerm m reqs reqCtx) =
+  startBaseProgram t = do
     -- Set the REPL status to Working
-    (gameState . gameControls . replStatus .~ REPLWorking (Typed Nothing (m ^. moduleSyntax . sType) reqs))
-      -- The `reqCtx` maps names of variables defined in the
-      -- term (by `def` statements) to their requirements.
-      -- E.g. if we had `def m = move end`, the reqCtx would
-      -- record the fact that `m` needs the `move` capability.
-      -- We simply add the entire `reqCtx` to the robot's
-      -- context, so we can look up requirements if we later
-      -- need to requirements-check an argument to `build` or
-      -- `reprogram` at runtime.  See the discussion at
-      -- https://github.com/swarm-game/swarm/pull/827 for more
-      -- details.
-      . (gameState . baseRobot . robotContext . defReqs <>~ reqCtx)
-      -- Set up the robot's CESK machine to evaluate/execute the
-      -- given term, being sure to initialize the CESK machine
-      -- environment and store from the top-level context.
-      . (gameState . baseRobot . machine .~ initMachine t (topCtx ^. defVals) (topCtx ^. defStore))
-      -- Finally, be sure to activate the base robot.
-      . (gameState %~ execState (zoomRobots $ activateRobot 0))
+    gameState . gameControls . replStatus .= REPLWorking (t ^. sType) Nothing
+    -- Set up the robot's CESK machine to evaluate/execute the
+    -- given term.
+    gameState . baseRobot . machine %= continue t
+    -- Finally, be sure to activate the base robot.
+    gameState %= execState (zoomRobots $ activateRobot 0)
 
 -- | Handle a user input event for the REPL.
 handleREPLEventTyping :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -1158,14 +1154,13 @@ handleREPLEventTyping = \case
     case k of
       Key V.KEnter -> do
         s <- get
-        let topCtx = topContext s
-            theRepl = s ^. uiState . uiGameplay . uiREPL
+        let theRepl = s ^. uiState . uiGameplay . uiREPL
             uinput = theRepl ^. replPromptText
 
         if not $ s ^. gameState . gameControls . replWorking
           then case theRepl ^. replPromptType of
             CmdPrompt _ -> do
-              runBaseCode topCtx uinput
+              runBaseCode uinput
               invalidateCacheEntry REPLHistoryCache
             SearchPrompt hist ->
               case lastEntry uinput hist of
@@ -1188,7 +1183,7 @@ handleREPLEventTyping = \case
             Just found -> uiState . uiGameplay . uiREPL . replPromptType .= SearchPrompt (removeEntry found rh)
       CharKey '\t' -> do
         s <- get
-        let names = s ^.. gameState . baseRobot . robotContext . defTypes . to assocs . traverse . _1
+        let names = s ^.. gameState . baseEnv . envTypes . to assocs . traverse . _1
         uiState . uiGameplay . uiREPL %= tabComplete (CompletionContext (s ^. gameState . creativeMode)) names (s ^. gameState . landscape . terrainAndEntities . entityMap)
         modify validateREPLForm
       EscapeKey -> do
@@ -1206,11 +1201,22 @@ handleREPLEventTyping = \case
         uiState . uiGameplay . uiREPL . replPromptEditor %= applyEdit TZ.deletePrevWord
       -- finally if none match pass the event to the editor
       ev -> do
-        Brick.zoom (uiState . uiGameplay . uiREPL . replPromptEditor) (handleEditorEvent ev)
+        Brick.zoom (uiState . uiGameplay . uiREPL . replPromptEditor) $ case ev of
+          CharKey c | c `elem` ("([{" :: String) -> insertMatchingPair c
+          _ -> handleEditorEvent ev
         uiState . uiGameplay . uiREPL . replPromptType %= \case
           CmdPrompt _ -> CmdPrompt [] -- reset completions on any event passed to editor
           SearchPrompt a -> SearchPrompt a
         modify validateREPLForm
+
+insertMatchingPair :: Char -> EventM Name (Editor Text Name) ()
+insertMatchingPair c = modify . applyEdit $ TZ.insertChar c >>> TZ.insertChar (close c) >>> TZ.moveLeft
+ where
+  close = \case
+    '(' -> ')'
+    '[' -> ']'
+    '{' -> '}'
+    _ -> c
 
 data CompletionType
   = FunctionName
@@ -1302,19 +1308,22 @@ validateREPLForm s =
            in s & uiState . uiGameplay . uiREPL . replType .~ theType
     CmdPrompt _
       | otherwise ->
-          let ctxs = Contexts (topCtx ^. defTypes) (topCtx ^. defReqs) (topCtx ^. tydefVals)
-              result = processTerm' ctxs uinput
-              theType = case result of
-                Right (Just pt) -> Just (pt ^. processedSyntax . sType)
-                _ -> Nothing
+          let env = s ^. gameState . baseEnv
+              (theType, errSrcLoc) = case readTerm' defaultParserConfig uinput of
+                Left err ->
+                  let ((_y1, x1), (_y2, x2), _msg) = showErrorPos err
+                   in (Nothing, Left (SrcLoc x1 x2))
+                Right Nothing -> (Nothing, Right ())
+                Right (Just theTerm) -> case processParsedTerm' env theTerm of
+                  Right t -> (Just (t ^. sType), Right ())
+                  Left err -> (Nothing, Left (cteSrcLoc err))
            in s
-                & uiState . uiGameplay . uiREPL . replValid .~ isRight result
+                & uiState . uiGameplay . uiREPL . replValid .~ errSrcLoc
                 & uiState . uiGameplay . uiREPL . replType .~ theType
     SearchPrompt _ -> s
  where
   uinput = s ^. uiState . uiGameplay . uiREPL . replPromptText
   replPrompt = s ^. uiState . uiGameplay . uiREPL . replPromptType
-  topCtx = topContext s
 
 -- | Update our current position in the REPL history.
 adjReplHistIndex :: TimeDir -> AppState -> AppState
@@ -1452,6 +1461,7 @@ handleInventoryListEvent ev = do
   case mList of
     Nothing -> continueWithoutRedraw
     Just l -> do
+      when (isValidListMovement ev) $ resetViewport infoScroll
       l' <- nestEventM' l (handleListEventWithSeparators ev (is _Separator))
       uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2 .= l'
 
@@ -1471,7 +1481,8 @@ handleInventorySearchEvent = \case
       uiInventorySearch .= Nothing
     gets focusedEntity >>= maybe continueWithoutRedraw descriptionModal
   -- Any old character: append to the current search string
-  CharKey c ->
+  CharKey c -> do
+    resetViewport infoScroll
     Brick.zoom (uiState . uiGameplay . uiInventory) $ do
       uiInventoryShouldUpdate .= True
       uiInventorySearch %= fmap (`snoc` c)
@@ -1491,22 +1502,17 @@ makeEntity :: Entity -> EventM Name AppState ()
 makeEntity e = do
   s <- get
   let name = e ^. entityName
-      mkPT = [tmQ| make $str:name |]
-      topStore =
-        fromMaybe emptyStore $
-          s ^? gameState . baseRobot . robotContext . defStore
+      mkT = [tmQ| make $str:name |]
 
   case isActive <$> (s ^? gameState . baseRobot) of
-    Just False -> do
-      gameState . gameControls . replStatus .= REPLWorking (Typed Nothing PolyUnit (R.singletonCap CMake))
-      gameState . baseRobot . machine .= initMachine mkPT empty topStore
-      gameState %= execState (zoomRobots $ activateRobot 0)
+    Just False -> runBaseTerm (Just mkT)
     _ -> continueWithoutRedraw
 
 -- | Display a modal window with the description of an entity.
 descriptionModal :: Entity -> EventM Name AppState ()
 descriptionModal e = do
   s <- get
+  resetViewport modalScroll
   uiState . uiGameplay . uiModal ?= generateModal s (DescriptionModal e)
 
 ------------------------------------------------------------

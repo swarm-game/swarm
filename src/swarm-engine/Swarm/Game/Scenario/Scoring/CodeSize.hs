@@ -5,16 +5,14 @@
 -- in terms of textual length and AST nodes.
 module Swarm.Game.Scenario.Scoring.CodeSize where
 
-import Control.Lens ((^.))
 import Control.Monad (guard)
 import Data.Aeson
 import Data.Data (Data)
 import GHC.Generics (Generic)
-import Swarm.Language.Pipeline (ProcessedTerm, processedSyntax)
 import Swarm.Language.Syntax
 
 data CodeSizeDeterminators = CodeSizeDeterminators
-  { initialCode :: Maybe ProcessedTerm
+  { initialCode :: Maybe TSyntax
   , hasUsedREPL :: Bool
   }
   deriving (Show)
@@ -39,5 +37,4 @@ codeMetricsFromSyntax s@(Syntax' srcLoc _ _ _) =
 codeSizeFromDeterminator :: CodeSizeDeterminators -> Maybe ScenarioCodeMetrics
 codeSizeFromDeterminator (CodeSizeDeterminators maybeInitialCode usedRepl) = do
   guard $ not usedRepl
-  pt <- maybeInitialCode
-  return $ codeMetricsFromSyntax (pt ^. processedSyntax)
+  codeMetricsFromSyntax <$> maybeInitialCode

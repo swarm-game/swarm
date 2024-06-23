@@ -97,26 +97,29 @@ generateDocs = \case
 generateEditorKeywords :: EditorType -> IO ()
 generateEditorKeywords = \case
   Emacs -> do
-    putStrLn "(x-builtins '("
-    T.putStr $ builtinFunctionList Emacs
-    putStrLn "))\n(x-commands '("
+    putStrLn "(defvar swarm-mode-builtins '("
+    T.putStr $ builtinFunctionList Emacs <> "))"
+    putStrLn "\n(defvar swarm-mode-commands '("
     T.putStr $ keywordsCommands Emacs
-    T.putStr $ keywordsDirections Emacs
-    putStrLn "))"
+    T.putStr $ keywordsDirections Emacs <> "))"
+    putStrLn "\n (defvar swarm-mode-operators '("
+    T.putStr $ operatorNames Emacs <> "))"
   VSCode -> do
     putStrLn "Functions and commands:"
     T.putStrLn $ builtinFunctionList VSCode <> "|" <> keywordsCommands VSCode
     putStrLn "\nDirections:"
     T.putStrLn $ keywordsDirections VSCode
     putStrLn "\nOperators:"
-    T.putStrLn operatorNames
+    T.putStrLn $ operatorNames VSCode
   Vim -> do
-    putStr "syn keyword Builtins "
+    putStrLn "syn keyword Builtins "
     T.putStr $ builtinFunctionList Vim
-    putStr "\nsyn keyword Command "
+    putStrLn "\nsyn keyword Command "
     T.putStr $ keywordsCommands Vim
-    putStr "\nsyn keyword Direction "
-    T.putStrLn $ keywordsDirections Vim
+    putStrLn "\nsyn keyword Direction "
+    T.putStr $ keywordsDirections Vim
+    putStrLn "\nsyn match Operators "
+    T.putStr $ "[" <> operatorNames Vim <> "]"
 
 -- ----------------------------------------------------------------------------
 -- GENERATE SPECIAL KEY NAMES

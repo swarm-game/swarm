@@ -11,7 +11,7 @@ module Main where
 
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
-import Control.Lens (Ixed (ix), at, to, view, (&), (.~), (<>~), (^.), (^..), (^?), (^?!))
+import Control.Lens (Ixed (ix), at, to, view, (&), (.~), (^.), (^..), (^?), (^?!))
 import Control.Monad (forM_, unless, when)
 import Control.Monad.State (execStateT)
 import Data.Char (isSpace)
@@ -28,13 +28,12 @@ import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Doc.Keyword (EditorType (..))
 import Swarm.Doc.Keyword qualified as Keyword
 import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
-import Swarm.Game.CESK (emptyStore, initMachine)
+import Swarm.Game.CESK (initMachine)
 import Swarm.Game.Entity (lookupByName)
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Robot (equippedDevices, systemRobot)
 import Swarm.Game.Robot.Activity (commandsHistogram, lifetimeStepCount, tangibleCommandCount)
-import Swarm.Game.Robot.Concrete (activityCounts, machine, robotContext, robotLog, waitingUntil)
-import Swarm.Game.Robot.Context (defReqs)
+import Swarm.Game.Robot.Concrete (activityCounts, machine, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario, ScenarioInputs (..), gsiScenarioInputs)
 import Swarm.Game.State (
   GameState,
@@ -66,8 +65,7 @@ import Swarm.Game.State.Substate (
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Validate (badErrorsInLogs, playUntilWin)
 import Swarm.Game.Tick (getTickNumber)
-import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
+import Swarm.Language.Pipeline (processTerm)
 import Swarm.Language.Pretty (prettyString)
 import Swarm.Log
 import Swarm.TUI.Model (
@@ -81,7 +79,7 @@ import Swarm.TUI.Model.UI (UIState)
 import Swarm.Util (findAllWithExt)
 import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
-import System.FilePath.Posix (splitDirectories)
+import System.FilePath (splitDirectories)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
@@ -484,15 +482,11 @@ testScenarioSolutions rs ui =
       Left err -> assertFailure $ prettyString err
       Right appState -> case appState ^. gameState . winSolution of
         Nothing -> assertFailure "No solution to test!"
-        Just sol@(ProcessedTerm _ _ reqCtx) -> do
+        Just sol -> do
           when (shouldCheckBadErrors == CheckForBadErrors) (checkNoRuntimeErrors $ appState ^. runtimeState)
           let gs' =
                 (appState ^. gameState)
-                  -- See #827 for an explanation of why it's important to add to
-                  -- the robotContext defReqs here (and also why this will,
-                  -- hopefully, eventually, go away).
-                  & baseRobot . robotContext . defReqs <>~ reqCtx
-                  & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
+                  & baseRobot . machine .~ initMachine sol
           m <- timeout (time s) (execStateT playUntilWin gs')
           case m of
             Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
@@ -531,20 +525,22 @@ testEditorFiles =
     "editors"
     [ testGroup
         "VS Code"
-        [ testTextInVSCode "operators" (const Keyword.operatorNames)
+        [ testTextInVSCode "operators" Keyword.operatorNames
         , testTextInVSCode "builtin" Keyword.builtinFunctionList
         , testTextInVSCode "commands" Keyword.keywordsCommands
         , testTextInVSCode "directions" Keyword.keywordsDirections
         ]
     , testGroup
         "Emacs"
-        [ testTextInEmacs "builtin" Keyword.builtinFunctionList
+        [ testTextInEmacs "operators" Keyword.operatorNames
+        , testTextInEmacs "builtin" Keyword.builtinFunctionList
         , testTextInEmacs "commands" Keyword.keywordsCommands
         , testTextInEmacs "directions" Keyword.keywordsDirections
         ]
     , testGroup
         "Vim"
-        [ testTextInVim "builtin" Keyword.builtinFunctionList
+        [ testTextInVim "operators" Keyword.operatorNames
+        , testTextInVim "builtin" Keyword.builtinFunctionList
         , testTextInVim "commands" Keyword.keywordsCommands
         , testTextInVim "directions" Keyword.keywordsDirections
         ]
@@ -552,7 +548,7 @@ testEditorFiles =
  where
   testTextInVSCode name tf = testTextInFile False name (tf VSCode) "editors/vscode/syntaxes/swarm.tmLanguage.yaml"
   testTextInEmacs name tf = testTextInFile True name (tf Emacs) "editors/emacs/swarm-mode.el"
-  testTextInVim name tf = testTextInFile True name (tf Vim) "editors/vim/swarm.vim"
+  testTextInVim name tf = testTextInFile False name (tf Vim) "editors/vim/swarm.vim"
   testTextInFile :: Bool -> String -> Text -> FilePath -> TestTree
   testTextInFile whitespace name t fp = testCase name $ do
     let removeLW' = T.unlines . map (T.dropWhile isSpace) . T.lines

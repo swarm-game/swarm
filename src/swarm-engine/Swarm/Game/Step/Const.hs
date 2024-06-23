@@ -59,7 +59,6 @@ import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
-import Swarm.Game.Robot.Context
 import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Scenario.Topography.Area (getAreaDimensions)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
@@ -88,11 +87,10 @@ import Swarm.Game.Tick
 import Swarm.Game.Universe
 import Swarm.Game.Value
 import Swarm.Language.Capability
-import Swarm.Language.Context hiding (delete)
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Pipeline
 import Swarm.Language.Pretty (prettyText)
-import Swarm.Language.Requirement qualified as R
+import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Text.Markdown qualified as Markdown
@@ -968,33 +966,6 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Force -> case vs of
       [VDelay t e] -> return $ In t e s k
-      [VRef loc] ->
-        -- To force a VRef, we look up the location in the store.
-        case lookupStore loc s of
-          -- If there's no cell at that location, it's a bug!  It
-          -- shouldn't be possible to get a VRef to a non-existent
-          -- location, since the only way VRefs get created is at the
-          -- time we allocate a new cell.
-          Nothing ->
-            return $
-              Up (Fatal $ T.append "Reference to unknown memory cell " (from (show loc))) s k
-          -- If the location contains an unevaluated expression, it's
-          -- time to evaluate it.  Set the cell to a 'Blackhole', push
-          -- an 'FUpdate' frame so we remember to update the location
-          -- to its value once we finish evaluating it, and focus on
-          -- the expression.
-          Just (E t e') -> return $ In t e' (setStore loc (Blackhole t e') s) (FUpdate loc : k)
-          -- If the location contains a Blackhole, that means we are
-          -- already currently in the middle of evaluating it, i.e. it
-          -- depends on itself, so throw an 'InfiniteLoop' error.
-          Just Blackhole {} -> return $ Up InfiniteLoop s k
-          -- If the location already contains a value, just return it.
-          Just (V v) -> return $ Out v s k
-      -- If a force is applied to any other kind of value, just ignore it.
-      -- This is needed because of the way we wrap all free variables in @force@
-      -- in case they come from a @def@ which are always wrapped in @delay@.
-      -- But binders (i.e. @x <- ...@) are also exported to the global context.
-      [v] -> return $ Out v s k
       _ -> badConst
     If -> case vs of
       -- Use the boolean to pick the correct branch, and apply @force@ to it.
@@ -1033,7 +1004,7 @@ execConst runChildProg c vs s k = do
         return $ mkReturn ()
       _ -> badConst
     Reprogram -> case vs of
-      [VRobot childRobotID, VDelay cmd e] -> do
+      [VRobot childRobotID, VDelay cmd env] -> do
         r <- get
         isPrivileged <- isPrivilegedBot
 
@@ -1064,6 +1035,7 @@ execConst runChildProg c vs s k = do
         -- and if so, what is needed.
         (toEquip, toGive) <-
           checkRequirements
+            env
             (r ^. robotInventory)
             (childRobot ^. robotInventory)
             (childRobot ^. equippedDevices)
@@ -1071,13 +1043,10 @@ execConst runChildProg c vs s k = do
             "The target robot"
             FixByObtainDevice
 
-        -- update other robot's CESK machine, environment and context
-        -- the childRobot inherits the parent robot's environment
-        -- and context which collectively mean all the variables
-        -- declared in the parent robot
+        -- Update other robot's CESK machine.  The child robot
+        -- inherits the parent robot's environment + store.
         zoomRobots $ do
-          robotMap . at childRobotID . _Just . machine .= In cmd e s [FExec]
-          robotMap . at childRobotID . _Just . robotContext .= r ^. robotContext
+          robotMap . at childRobotID . _Just . machine .= In cmd env s [FExec]
 
         -- Provision the target robot with any required devices and
         -- inventory that are lacking.
@@ -1116,7 +1085,7 @@ execConst runChildProg c vs s k = do
         pid <- use robotID
 
         (toEquip, toGive) <-
-          checkRequirements (r ^. robotInventory) E.empty E.empty cmd "You" FixByObtainDevice
+          checkRequirements e (r ^. robotInventory) E.empty E.empty cmd "You" FixByObtainDevice
 
         -- Pick a random display name.
         displayName <- randomName
@@ -1124,13 +1093,12 @@ execConst runChildProg c vs s k = do
         isSystemRobot <- use systemRobot
 
         -- Construct the new robot and add it to the world.
-        parentCtx <- use robotContext
         let newDisplay = case r ^. robotDisplay . childInheritance of
               Invisible -> defaultRobotDisplay & invisible .~ True
               Inherit -> defaultRobotDisplay & inherit displayAttr (r ^. robotDisplay)
               DefaultDisplay -> defaultRobotDisplay
         newRobot <-
-          zoomRobots . addTRobotWithContext parentCtx (In cmd e s [FExec]) $
+          zoomRobots . addTRobot' (In cmd e s [FExec]) $
             mkRobot
               (Just pid)
               displayName
@@ -1195,7 +1163,7 @@ execConst runChildProg c vs s k = do
 
             -- The program for the salvaged robot to run
             let giveInventory =
-                  foldr (TBind Nothing . giveItem) (TConst Selfdestruct) salvageItems
+                  foldr (TBind Nothing Nothing Nothing . giveItem) (TConst Selfdestruct) salvageItems
                 giveItem item = TApp (TApp (TConst Give) (TRobot ourID)) (TText item)
 
             -- Reprogram and activate the salvaged robot
@@ -1204,7 +1172,7 @@ execConst runChildProg c vs s k = do
                 . at (target ^. robotID)
                 . traverse
                 . machine
-                .= In giveInventory empty emptyStore [FExec]
+                .= In giveInventory mempty emptyStore [FExec]
 
               activateRobot $ target ^. robotID
 
@@ -1230,15 +1198,10 @@ execConst runChildProg c vs s k = do
 
         case mt of
           Nothing -> return $ mkReturn ()
-          Just pt -> do
-            -- Add the reqCtx from the ProcessedTerm to the current robot's defReqs.
-            -- See #827 for an explanation of (1) why this is needed, (2) why
-            -- it's slightly technically incorrect, and (3) why it is still way
-            -- better than what we had before.
-            robotContext . defReqs <>= (pt ^. processedReqCtx)
+          Just t -> do
             void $ traceLog CmdStatus Info "run: OK."
-
-            return $ initMachine' pt empty s k
+            cesk <- use machine
+            return $ continue t cesk
       _ -> badConst
     Not -> case vs of
       [VBool b] -> return $ Out (VBool (not b)) s k
@@ -1501,6 +1464,7 @@ execConst runChildProg c vs s k = do
   -- parent to child.
   checkRequirements ::
     HasRobotStepState sig m =>
+    Env ->
     Inventory ->
     Inventory ->
     Inventory ->
@@ -1508,18 +1472,13 @@ execConst runChildProg c vs s k = do
     Text ->
     IncapableFix ->
     m (Set Entity, Inventory)
-  checkRequirements parentInventory childInventory childDevices cmd subject fixI = do
-    currentContext <- use $ robotContext . defReqs
-    currentTydefs <- use $ robotContext . tydefVals
+  checkRequirements e parentInventory childInventory childDevices cmd subject fixI = do
+    let reqCtx = e ^. envReqs
+        tdCtx = e ^. envTydefs
     em <- use $ landscape . terrainAndEntities . entityMap
     privileged <- isPrivilegedBot
-    let -- Note that _capCtx must be empty: at least at the
-        -- moment, definitions are only allowed at the top level,
-        -- so there can't be any inside the argument to build.
-        -- (Though perhaps there is an argument that this ought to be
-        -- relaxed specifically in the cases of 'Build' and 'Reprogram'.)
-        -- See #349
-        (R.Requirements (S.toList -> caps) (S.toList -> devNames) reqInvNames, _capCtx) = R.requirements currentTydefs currentContext cmd
+    let R.Requirements (S.toList -> caps) (S.toList -> devNames) reqInvNames =
+          R.requirements tdCtx reqCtx cmd
 
     -- Check that all required device names exist (fail with
     -- an exception if not) and convert them to 'Entity' values.

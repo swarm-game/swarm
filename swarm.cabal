@@ -130,12 +130,12 @@ library swarm-lang
     Swarm.Language.Context
     Swarm.Language.Elaborate
     Swarm.Language.Format
+    Swarm.Language.JSON
     Swarm.Language.Key
     Swarm.Language.Kindcheck
     Swarm.Language.LSP
     Swarm.Language.LSP.Hover
     Swarm.Language.LSP.VarUsage
-    Swarm.Language.Module
     Swarm.Language.Parser
     Swarm.Language.Parser.Comment
     Swarm.Language.Parser.Core
@@ -148,7 +148,9 @@ library swarm-lang
     Swarm.Language.Pipeline
     Swarm.Language.Pipeline.QQ
     Swarm.Language.Pretty
-    Swarm.Language.Requirement
+    Swarm.Language.Requirements
+    Swarm.Language.Requirements.Analysis
+    Swarm.Language.Requirements.Type
     Swarm.Language.Syntax
     Swarm.Language.Syntax.AST
     Swarm.Language.Syntax.CommandMetadata
@@ -365,7 +367,6 @@ library swarm-engine
     Swarm.Game.Exception
     Swarm.Game.Robot.Activity
     Swarm.Game.Robot.Concrete
-    Swarm.Game.Robot.Context
     Swarm.Game.Scenario.Objective.WinCheck
     Swarm.Game.Scenario.Scoring.Best
     Swarm.Game.Scenario.Scoring.CodeSize
@@ -757,21 +758,17 @@ executable swarm
   build-depends:
     -- Imports shared with the library don't need bounds
     base,
-    blaze-html >=0.9.1 && <0.10,
     brick,
     fused-effects,
     githash >=0.1.6 && <0.2,
     lens,
     optparse-applicative >=0.16 && <0.19,
-    prettyprinter,
-    servant >=0.19 && <0.21,
     swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,
     swarm:swarm-tui,
     swarm:swarm-util,
     swarm:swarm-web,
-    terminal-size >=0.3 && <1.0,
     text,
     vty,
     vty-crossplatform >=0.4 && <0.5,

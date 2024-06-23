@@ -23,8 +23,8 @@ import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.Step (gameTick, hypotheticalRobot, stepCESK)
-import Swarm.Language.Context
-import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
+import Swarm.Language.Pipeline (processTerm)
+import Swarm.Language.Syntax.Pattern (TSyntax)
 import Swarm.Language.Value
 import Test.Tasty.HUnit (Assertion, assertBool, assertFailure)
 import Witch (into)
@@ -32,13 +32,13 @@ import Witch (into)
 eval :: GameState -> Text -> IO (GameState, Robot, Either Text (Value, Int))
 eval g = either (return . (g,hypotheticalRobot undefined 0,) . Left) (evalPT g) . processTerm1
 
-processTerm1 :: Text -> Either Text ProcessedTerm
+processTerm1 :: Text -> Either Text TSyntax
 processTerm1 txt = processTerm txt >>= maybe wsErr Right
  where
   wsErr = Left "expecting a term, but got only whitespace"
 
-evalPT :: GameState -> ProcessedTerm -> IO (GameState, Robot, Either Text (Value, Int))
-evalPT g t = evalCESK g (initMachine t empty emptyStore)
+evalPT :: GameState -> TSyntax -> IO (GameState, Robot, Either Text (Value, Int))
+evalPT g t = evalCESK g (initMachine t)
 
 evalCESK :: GameState -> CESK -> IO (GameState, Robot, Either Text (Value, Int))
 evalCESK g cesk =
@@ -53,15 +53,15 @@ evalCESK g cesk =
 runCESK :: Int -> CESK -> StateT Robot (StateT GameState IO) (Either Text (Value, Int))
 runCESK _ (Up exn _ []) = Left . flip formatExn exn <$> lift (use $ landscape . terrainAndEntities . entityMap)
 runCESK !steps cesk = case finalValue cesk of
-  Just (v, _) -> return (Right (v, steps))
+  Just v -> return (Right (v, steps))
   Nothing -> runTimeIO (stepCESK cesk) >>= runCESK (steps + 1)
 
 play :: GameState -> Text -> IO (Either Text (), GameState)
 play g = either (return . (,g) . Left) playPT . processTerm1
  where
-  playPT pt = runStateT (playUntilDone (hr ^. robotID)) gs
+  playPT t = runStateT (playUntilDone (hr ^. robotID)) gs
    where
-    cesk = initMachine pt empty emptyStore
+    cesk = initMachine t
     hr = hypotheticalRobot cesk 0
     hid = hr ^. robotID
     gs =
@@ -80,7 +80,7 @@ playUntilDone rid = do
     Just False -> return $ Right ()
     Nothing -> return $ Left . T.pack $ "The robot with ID " <> show rid <> " is nowhere to be found!"
 
-check :: Text -> (ProcessedTerm -> Bool) -> Assertion
+check :: Text -> (TSyntax -> Bool) -> Assertion
 check code expect = case processTerm1 code of
   Left err -> assertFailure $ "Term processing failed: " ++ into @String err
-  Right pt -> assertBool "Predicate was false!" (expect pt)
+  Right t -> assertBool "Predicate was false!" (expect t)

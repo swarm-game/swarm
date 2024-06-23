@@ -45,6 +45,8 @@ module Swarm.Game.State (
   robotsAtLocation,
   robotsInArea,
   baseRobot,
+  baseEnv,
+  baseStore,
   messageNotifications,
   currentScenarioPath,
   needsRedraw,
@@ -101,7 +103,7 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import GHC.Generics (Generic)
 import Linear (V2 (..))
-import Swarm.Game.CESK (emptyStore, finalValue, initMachine)
+import Swarm.Game.CESK (Store, emptyStore, finalValue, initMachine, store, suspendedEnv)
 import Swarm.Game.Device (getCapabilitySet, getMap)
 import Swarm.Game.Entity
 import Swarm.Game.Failure (SystemFailure (..))
@@ -133,11 +135,10 @@ import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Capability (constCaps)
-import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Pipeline (ProcessedTerm, processTermEither, processedSyntax)
-import Swarm.Language.Syntax (SrcLoc (..), allConst, sLoc)
-import Swarm.Language.Typed (Typed (Typed))
+import Swarm.Language.Pipeline (processTermEither)
+import Swarm.Language.Syntax (SrcLoc (..), TSyntax, allConst, sLoc)
 import Swarm.Language.Types
+import Swarm.Language.Value (Env)
 import Swarm.Log
 import Swarm.Util (binTuples, uniq, (?))
 import Swarm.Util.Lens (makeLensesNoSigs)
@@ -154,7 +155,7 @@ data SolutionSource
     -- on a leaderboard.
     PlayerAuthored FilePath Sha1
 
-data CodeToRun = CodeToRun SolutionSource ProcessedTerm
+data CodeToRun = CodeToRun SolutionSource TSyntax
 
 getRunCodePath :: CodeToRun -> Maybe FilePath
 getRunCodePath (CodeToRun solutionSource _) = case solutionSource of
@@ -169,7 +170,7 @@ parseCodeFile filepath = do
   contents <- sendIO $ TIO.readFile filepath
   pt <- either (throwError . CustomFailure) return (processTermEither contents)
 
-  let srcLoc = pt ^. processedSyntax . sLoc
+  let srcLoc = pt ^. sLoc
       strippedText = stripSrc srcLoc contents
       programBytestring = TL.encodeUtf8 $ TL.fromStrict strippedText
       sha1Hash = showDigest $ sha1 programBytestring
@@ -190,7 +191,7 @@ data GameState = GameState
   { _creativeMode :: Bool
   , _temporal :: TemporalState
   , _winCondition :: WinCondition
-  , _winSolution :: Maybe ProcessedTerm
+  , _winSolution :: Maybe TSyntax
   , _robotInfo :: Robots
   , _pathCaching :: PathCaching
   , _discovery :: Discovery
@@ -220,7 +221,7 @@ winCondition :: Lens' GameState WinCondition
 
 -- | How to win (if possible). This is useful for automated testing
 --   and to show help to cheaters (or testers).
-winSolution :: Lens' GameState (Maybe ProcessedTerm)
+winSolution :: Lens' GameState (Maybe TSyntax)
 
 -- | Get a list of all the robots at a particular location.
 robotsAtLocation :: Cosmic Location -> GameState -> [Robot]
@@ -250,6 +251,16 @@ robotsInArea (Cosmic subworldName o) d rs = map (rm IM.!) rids
 -- | The base robot, if it exists.
 baseRobot :: Traversal' GameState Robot
 baseRobot = robotInfo . robotMap . ix 0
+
+-- | The base robot environment.
+baseEnv :: Traversal' GameState Env
+baseEnv = baseRobot . machine . suspendedEnv
+
+-- | The base robot store, or the empty store if there is no base robot.
+baseStore :: Getter GameState Store
+baseStore = to $ \g -> case g ^? baseRobot . machine of
+  Nothing -> emptyStore
+  Just m -> m ^. store
 
 -- | Inputs for randomness
 randomness :: Lens' GameState Randomness
@@ -602,7 +613,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       & gameControls . replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
       -- otherwise the store of definition cells is not saved (see #333, #838)
         False -> REPLDone Nothing
-        True -> REPLWorking (Typed Nothing PolyUnit mempty)
+        True -> REPLWorking PolyUnit Nothing
       & temporal . robotStepsPerTick .~ ((scenario ^. scenarioOperation . scenarioStepsPerTick) ? defaultRobotStepsPerTick)
 
   robotList' = (robotCreatedAt .~ now) <$> robotList
@@ -637,7 +648,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
         . machine
         %~ case initialCodeToRun of
           Nothing -> id
-          Just pt -> const $ initMachine pt Ctx.empty emptyStore
+          Just t -> const $ initMachine t
       -- If we are in creative mode, give base all the things
       & ix baseID
         . robotInventory

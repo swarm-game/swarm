@@ -12,10 +12,8 @@
 -- A data type to represent robots.
 module Swarm.Game.Robot (
   -- * Robots data
-  RobotContextMember,
   _robotID,
   _robotLocation,
-  _robotContext,
   RobotMachine,
   _machine,
   RobotActivity,
@@ -31,8 +29,6 @@ module Swarm.Game.Robot (
   RobotR,
   Robot,
   TRobot,
-
-  -- * Robot context
 
   -- ** Lenses
   robotEntity,
@@ -83,8 +79,8 @@ import Swarm.Game.Land
 import Swarm.Game.Location (Heading, Location, toDirection, toHeading)
 import Swarm.Game.Robot.Walk
 import Swarm.Game.Universe
-import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.JSON ()
+import Swarm.Language.Syntax (Syntax, TSyntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Util.Lens (makeLensesExcluding)
 import Swarm.Util.Yaml
@@ -114,10 +110,7 @@ type family RobotID (phase :: RobotPhase) :: Data.Kind.Type where
   RobotID 'ConcreteRobot = RID
 
 type family RobotMachine (phase :: RobotPhase) :: Data.Kind.Type
-type instance RobotMachine 'TemplateRobot = Maybe ProcessedTerm
-
-type family RobotContextMember (phase :: RobotPhase) :: Data.Kind.Type
-type instance RobotContextMember 'TemplateRobot = ()
+type instance RobotMachine 'TemplateRobot = Maybe TSyntax
 
 type family RobotActivity (phase :: RobotPhase) :: Data.Kind.Type
 type instance RobotActivity 'TemplateRobot = ()
@@ -140,7 +133,6 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _robotLog :: RobotLogMember phase
   , _robotLogUpdated :: RobotLogUpdatedMember phase
   , _robotLocation :: RobotLocation phase
-  , _robotContext :: RobotContextMember phase
   , _robotID :: RobotID phase
   , _robotParentID :: Maybe RID
   , _robotHeavy :: Bool
@@ -154,13 +146,13 @@ data RobotR (phase :: RobotPhase) = RobotR
   }
   deriving (Generic)
 
-deriving instance (Show (RobotLocation phase), Show (RobotID phase), Show (RobotMachine phase), Show (RobotContextMember phase), Show (RobotActivity phase), Show (RobotLogMember phase), Show (RobotLogUpdatedMember phase)) => Show (RobotR phase)
-deriving instance (Eq (RobotLocation phase), Eq (RobotID phase), Eq (RobotMachine phase), Eq (RobotContextMember phase), Eq (RobotActivity phase), Eq (RobotLogMember phase), Eq (RobotLogUpdatedMember phase)) => Eq (RobotR phase)
+deriving instance (Show (RobotLocation phase), Show (RobotID phase), Show (RobotMachine phase), Show (RobotActivity phase), Show (RobotLogMember phase), Show (RobotLogUpdatedMember phase)) => Show (RobotR phase)
+deriving instance (Eq (RobotLocation phase), Eq (RobotID phase), Eq (RobotMachine phase), Eq (RobotActivity phase), Eq (RobotLogMember phase), Eq (RobotLogUpdatedMember phase)) => Eq (RobotR phase)
 
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-makeLensesExcluding ['_robotCapabilities, '_equippedDevices, '_robotLog, '_robotLogUpdated, '_robotContext, '_machine, '_activityCounts] ''RobotR
+makeLensesExcluding ['_robotCapabilities, '_equippedDevices, '_robotLog, '_robotLogUpdated, '_machine, '_activityCounts] ''RobotR
 
 -- | A template robot, i.e. a template robot record without a unique ID number,
 --   and possibly without a location.
@@ -319,7 +311,7 @@ mkRobot ::
   -- | Robot display.
   Display ->
   -- | Initial CESK machine.
-  Maybe ProcessedTerm ->
+  Maybe TSyntax ->
   -- | Equipped devices.
   [Entity] ->
   -- | Initial inventory.
@@ -344,7 +336,6 @@ mkRobot pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
     , _robotLog = ()
     , _robotLogUpdated = ()
     , _robotLocation = loc
-    , _robotContext = ()
     , _robotID = ()
     , _robotParentID = pid
     , _robotHeavy = heavy
