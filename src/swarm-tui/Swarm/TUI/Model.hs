@@ -44,7 +44,6 @@ module Swarm.TUI.Model (
   infoScroll,
   modalScroll,
   replScroll,
-  resetViewport,
 
   -- ** Utility
   logEvent,
@@ -127,12 +126,6 @@ modalScroll = viewportScroll ModalViewport
 
 replScroll :: ViewportScroll Name
 replScroll = viewportScroll REPLViewport
-
--- | Resets the viewport scroll position
-resetViewport :: ViewportScroll Name -> EventM Name AppState ()
-resetViewport n = do
-  vScrollToBeginning n
-  hScrollToBeginning n
 
 --------------------------------------------------
 -- Utility

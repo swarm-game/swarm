@@ -1458,10 +1458,10 @@ handleInventoryListEvent ev = do
   -- However, this does not work since we want to skip redrawing in the no-list case!
 
   mList <- preuse $ uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
-  resetViewport infoScroll
   case mList of
     Nothing -> continueWithoutRedraw
     Just l -> do
+      when (isValidListMovement ev) $ resetViewport infoScroll
       l' <- nestEventM' l (handleListEventWithSeparators ev (is _Separator))
       uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2 .= l'
 
@@ -1470,14 +1470,12 @@ handleInventoryListEvent ev = do
 handleInventorySearchEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleInventorySearchEvent = \case
   -- Escape: stop filtering and go back to regular inventory mode
-  EscapeKey -> do
-    resetViewport infoScroll
+  EscapeKey ->
     Brick.zoom (uiState . uiGameplay . uiInventory) $ do
       uiInventoryShouldUpdate .= True
       uiInventorySearch .= Nothing
   -- Enter: return to regular inventory mode, and pop out the selected item
   Key V.KEnter -> do
-    resetViewport infoScroll
     Brick.zoom (uiState . uiGameplay . uiInventory) $ do
       uiInventoryShouldUpdate .= True
       uiInventorySearch .= Nothing
@@ -1490,7 +1488,6 @@ handleInventorySearchEvent = \case
       uiInventorySearch %= fmap (`snoc` c)
   -- Backspace: chop the last character off the end of the current search string
   BackspaceKey -> do
-    resetViewport infoScroll
     Brick.zoom (uiState . uiGameplay . uiInventory) $ do
       uiInventoryShouldUpdate .= True
       uiInventorySearch %= fmap (T.dropEnd 1)
