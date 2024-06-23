@@ -19,6 +19,7 @@ module Swarm.TUI.Model.StateUpdate (
 
 import Brick.AttrMap (applyAttrMappings)
 import Brick.Focus
+import Brick.Keybindings as BK
 import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
 import Control.Carrier.Accum.FixedStrict (runAccum)
@@ -28,7 +29,7 @@ import Control.Effect.Accum
 import Control.Effect.Lift
 import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (guard, void, forM_)
+import Control.Monad (forM_, guard, void)
 import Control.Monad.Except (ExceptT (..))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execStateT)
@@ -40,6 +41,7 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Sequence (Seq)
 import Data.Text (Text)
+import Data.Text.IO qualified as T
 import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
@@ -75,11 +77,14 @@ import Swarm.Game.State.Substate
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
+import Swarm.TUI.Controller.MainEventHandler (mainEventHandlers)
+import Swarm.TUI.Controller.REPLEventHandler (replEventHandlers)
 import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Launch.Model (toSerializableParams)
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Event (SwarmEvent, defaultSwarmBindings, swarmEvents)
 import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
@@ -92,11 +97,6 @@ import Swarm.Util (listEnums)
 import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
 import System.Exit (exitFailure)
-import Data.Text.IO qualified as T
-import Brick.Keybindings as BK
-import Swarm.TUI.Model.Event (SwarmEvent, swarmEvents, defaultSwarmBindings)
-import Swarm.TUI.Controller.MainEventHandler (mainEventHandlers)
-import Swarm.TUI.Controller.REPLEventHandler (replEventHandlers)
 
 createEventHandlers :: KeyConfig SwarmEvent -> IO EventHandlers
 createEventHandlers config = do
@@ -109,23 +109,22 @@ createEventHandlers config = do
   buildDispatcher handlers = case keyDispatcher config handlers of
     Right d -> return d
     Left collisions -> do
-        putStrLn "Error: some key events have the same keys bound to them."
-        forM_ collisions $ \(b, hs) -> do
-            T.putStrLn $ "Handlers with the '" <> BK.ppBinding b <> "' binding:"
-            forM_ hs $ \h -> do
-                let trigger = case BK.kehEventTrigger $ BK.khHandler h of
-                        ByKey k   -> "triggered by the key '" <> BK.ppBinding k <> "'"
-                        ByEvent e -> "triggered by the event '" <> fromMaybe "<unknown>" (BK.keyEventName swarmEvents e) <> "'"
-                    desc = BK.handlerDescription $ BK.kehHandler $ BK.khHandler h
-                T.putStrLn $ "  " <> desc <> " (" <> trigger <> ")"
-        exitFailure
+      putStrLn "Error: some key events have the same keys bound to them."
+      forM_ collisions $ \(b, hs) -> do
+        T.putStrLn $ "Handlers with the '" <> BK.ppBinding b <> "' binding:"
+        forM_ hs $ \h -> do
+          let trigger = case BK.kehEventTrigger $ BK.khHandler h of
+                ByKey k -> "triggered by the key '" <> BK.ppBinding k <> "'"
+                ByEvent e -> "triggered by the event '" <> fromMaybe "<unknown>" (BK.keyEventName swarmEvents e) <> "'"
+              desc = BK.handlerDescription $ BK.kehHandler $ BK.khHandler h
+          T.putStrLn $ "  " <> desc <> " (" <> trigger <> ")"
+      exitFailure
 
 initKeyHandlingState :: IO KeyEventHandlingState
 initKeyHandlingState = do
   let cfg = newKeyConfig swarmEvents defaultSwarmBindings []
   handlers <- sendIO $ createEventHandlers cfg
   return $ KeyEventHandlingState cfg handlers
-
 
 -- | Initialize the 'AppState' from scratch.
 initAppState ::

@@ -39,6 +39,8 @@ module Swarm.TUI.Controller (
 
 import Brick hiding (Direction, Location)
 import Brick.Focus
+-- See Note [liftA2 re-export from Prelude]
+import Brick.Keybindings qualified as B
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (Editor, applyEdit, handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
@@ -122,6 +124,7 @@ import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep (prepareLaunchDialog)
 import Swarm.TUI.List
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Event (MainEvent (..), REPLEvent (..), SwarmEvent (..))
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
@@ -135,9 +138,7 @@ import Swarm.Version (NewReleaseFailure (..))
 import System.Clock
 import System.FilePath (splitDirectories)
 import Witch (into)
-import Prelude hiding (Applicative (..)) -- See Note [liftA2 re-export from Prelude]
-import Brick.Keybindings qualified as B
-import Swarm.TUI.Model.Event (SwarmEvent (..), MainEvent (..), REPLEvent (..))
+import Prelude hiding (Applicative (..))
 
 -- ~~~~ Note [liftA2 re-export from Prelude]
 --
@@ -323,7 +324,7 @@ handleMainEvent ev = do
     -- pass to key handler (allows users to configure bindings)
     VtyEvent (V.EvKey k m)
       | isJust (B.lookupVtyEvent k m keyHandler) -> do
-        void $ B.handleKey keyHandler k m
+          void $ B.handleKey keyHandler k m
     VtyEvent (V.EvResize _ _) -> invalidateCache
     Key V.KEsc
       | Just m <- s ^. uiState . uiGameplay . uiModal -> do
@@ -949,7 +950,7 @@ handleREPLEvent x = do
     -- pass to key handler (allows users to configure bindings)
     VtyEvent (V.EvKey k m)
       | isJust (B.lookupVtyEvent k m keyHandler) -> do
-        void $ B.handleKey keyHandler k m
+          void $ B.handleKey keyHandler k m
     -- Handle other events in a way appropriate to the current REPL
     -- control mode.
     _ -> case controlMode of
