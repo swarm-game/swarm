@@ -7,7 +7,7 @@ module Swarm.TUI.Controller.Util where
 import Brick hiding (Direction)
 import Brick.Focus
 import Control.Lens
-import Control.Monad (forM_, unless)
+import Control.Monad (forM_, unless, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Map qualified as M
 import Data.Set qualified as S
@@ -25,6 +25,17 @@ import Swarm.Language.Capability (Capability (CDebug))
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Util (generateModal)
+import Swarm.Effect (TimeIOC)
+import Control.Monad (forM_, unless, void, when)
+import Control.Monad.Extra (whenJust)
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.State (MonadState, execState)
+import Control.Carrier.Lift qualified as Fused
+import Control.Carrier.State.Lazy qualified as Fused
+import System.Clock (getTime, Clock (..))
+import Control.Lens qualified as Lens
+import Swarm.Game.Step (finishGameTick)
+import Swarm.Effect (runTimeIO)
 
 -- | Pattern synonyms to simplify brick event handler
 pattern Key :: V.Key -> BrickEvent n e
@@ -76,6 +87,36 @@ isRunningModal = \case
   MessagesModal -> True
   _ -> False
 
+-- | Set the game to Running if it was (auto) paused otherwise to paused.
+--
+-- Also resets the last frame time to now. If we are pausing, it
+-- doesn't matter; if we are unpausing, this is critical to
+-- ensure the next frame doesn't think it has to catch up from
+-- whenever the game was paused!
+safeTogglePause :: EventM Name AppState ()
+safeTogglePause = do
+  curTime <- liftIO $ getTime Monotonic
+  uiState . uiGameplay . uiTiming . lastFrameTime .= curTime
+  uiState . uiGameplay . uiShowDebug .= False
+  p <- gameState . temporal . runStatus Lens.<%= toggleRunStatus
+  when (p == Running) $ zoomGameState finishGameTick
+
+-- | Only unpause the game if leaving autopaused modal.
+--
+-- Note that the game could have been paused before opening
+-- the modal, in that case, leave the game paused.
+safeAutoUnpause :: EventM Name AppState ()
+safeAutoUnpause = do
+  runs <- use $ gameState . temporal . runStatus
+  when (runs == AutoPause) safeTogglePause
+
+toggleModal :: ModalType -> EventM Name AppState ()
+toggleModal mt = do
+  modal <- use $ uiState . uiGameplay . uiModal
+  case modal of
+    Nothing -> openModal mt
+    Just _ -> uiState . uiGameplay . uiModal .= Nothing >> safeAutoUnpause
+
 setFocus :: FocusablePanel -> EventM Name AppState ()
 setFocus name = uiState . uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)
 
@@ -117,3 +158,16 @@ resetViewport :: ViewportScroll Name -> EventM Name AppState ()
 resetViewport n = do
   vScrollToBeginning n
   hScrollToBeginning n
+
+-- | Modifies the game state using a fused-effect state action.
+zoomGameState :: (MonadState AppState m, MonadIO m) => Fused.StateC GameState (TimeIOC (Fused.LiftC IO)) a -> m a
+zoomGameState f = do
+  gs <- use gameState
+  (gs', a) <- liftIO (Fused.runM (runTimeIO (Fused.runState gs f)))
+  gameState .= gs'
+  return a
+
+onlyCreative :: (MonadState AppState m) => m () -> m ()
+onlyCreative a = do
+  c <- use $ gameState . creativeMode
+  when c a
