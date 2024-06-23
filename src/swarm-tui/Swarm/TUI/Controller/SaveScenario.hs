@@ -3,12 +3,11 @@
 --
 -- TODO: describe
 module Swarm.TUI.Controller.SaveScenario (
-    saveScenarioInfoOnFinish,
-    saveScenarioInfoOnFinishNocheat,
-    saveScenarioInfoOnQuit,
-    getNormalizedCurrentScenarioPath,
+  saveScenarioInfoOnFinish,
+  saveScenarioInfoOnFinishNocheat,
+  saveScenarioInfoOnQuit,
+  getNormalizedCurrentScenarioPath,
 ) where
-
 
 -- See Note [liftA2 re-export from Prelude]
 import Brick.Widgets.List qualified as BL
@@ -25,11 +24,11 @@ import Swarm.Game.State
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Achievements (attainAchievement')
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import System.FilePath (splitDirectories)
 import Prelude hiding (Applicative (..))
-import Swarm.TUI.Model.Achievements (attainAchievement')
 
 getNormalizedCurrentScenarioPath :: (MonadIO m, MonadState AppState m) => m (Maybe FilePath)
 getNormalizedCurrentScenarioPath =
