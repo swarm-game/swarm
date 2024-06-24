@@ -82,8 +82,8 @@ import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath (splitDirectories)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
-import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
 import Test.Tasty.ExpectedFailure (expectFailBecause)
+import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
 import Witch (into)
 
 isUnparseableTest :: FilePath -> Bool
