@@ -83,6 +83,7 @@ import System.FilePath (splitDirectories)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
+import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Witch (into)
 
 isUnparseableTest :: FilePath -> Bool
@@ -467,6 +468,8 @@ testScenarioSolutions rs ui =
           assertEqual "Incorrect tangible command count." 7 $ view tangibleCommandCount counters
           assertEqual "Incorrect command count." 10 $ sum . M.elems $ view commandsHistogram counters
           assertEqual "Incorrect step count." 62 $ view lifetimeStepCount counters
+    , expectFailBecause "Awaiting fix for #231" $
+        testSolution Default "Testing/231-requirements/231-command-transformer-reqs"
     ]
  where
   -- expectFailIf :: Bool -> String -> TestTree -> TestTree
