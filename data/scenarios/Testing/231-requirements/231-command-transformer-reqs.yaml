@@ -1,0 +1,36 @@
+name: Foo
+version: 1
+description: |
+  A function transforming a command correctly accumulates requirements.
+creative: false
+solution: |
+  def pr = require 1 "rock"; move; place "rock" end
+  def x4 = \c. c;c;c;c end
+  build {x4 pr}
+objectives:
+  - goal:
+      - Place four rocks
+    condition: |
+      judge <- robotNamed "judge";
+      as judge {ishere "rock"}
+robots:
+  - name: base
+    loc: [0, 0]
+    dir: east
+    devices:
+      - 3D printer
+      - solar panel
+    inventory:
+      - [4, rock]
+      - [1, treads]
+      - [1, grabber]
+      - [1, solar panel]
+      - [1, lambda]
+  - name: judge
+    loc: [4, 0]
+    system: true
+    display:
+      invisible: true
+world:
+  dsl: |
+    {grass}
