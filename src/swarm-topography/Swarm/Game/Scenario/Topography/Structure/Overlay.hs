@@ -71,11 +71,11 @@ zipGridRows ::
   OverlayPair (Grid (f a)) ->
   Grid (f a)
 zipGridRows dims (OverlayPair (Grid paddedBaseRows) (Grid paddedOverlayRows)) =
-  mapRows (pad2D paddedBaseRows . pad2D paddedOverlayRows) emptyGrid
+  mapRows (pad2D paddedBaseRows . pad2D paddedOverlayRows) blankGrid
  where
   -- Right-bias; that is, take the last non-empty value
   pad2D = zipPadded $ zipPadded $ flip (<|>)
-  emptyGrid = fillGrid dims empty
+  blankGrid = fillGrid dims empty
 
 -- |
 -- First arg: base layer

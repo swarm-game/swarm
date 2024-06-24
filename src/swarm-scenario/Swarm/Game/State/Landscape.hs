@@ -154,7 +154,7 @@ buildWorld tem WorldDescription {..} =
   arrayBoundsTuple = (unCoords coords, arrayMaxBound)
 
   worldArray :: Array (Int32, Int32) (TerrainType, Erasable Entity)
-  worldArray = listArray arrayBoundsTuple $ concat $ unGrid worldGrid
+  worldArray = listArray arrayBoundsTuple $ allMembers worldGrid
 
   dslWF, arrayWF :: Seed -> WorldFun TerrainType Entity
   dslWF = maybe mempty ((applyWhen offsetOrigin findGoodOrigin .) . runWorld) worldProg
@@ -165,14 +165,11 @@ buildWorld tem WorldDescription {..} =
   -- Get all the robots described in cells and set their locations appropriately
   robots :: SubworldName -> [IndexedTRobot]
   robots swName =
-    unGrid g
-      & traversed Control.Lens.<.> traversed %@~ (,) -- add (r,c) indices
-      & concat
-      & concatMap
-        ( \((fromIntegral -> r, fromIntegral -> c), maybeCell) ->
-            let robotWithLoc = trobotLocation ?~ Cosmic swName (coordsToLoc (coords `addTuple` (r, c)))
-             in map (fmap robotWithLoc) (maybe [] cellRobots maybeCell)
-        )
+    concat $ mapIndexedMembers extractRobots g
+   where
+    extractRobots (Coords coordsTuple) maybeCell =
+      let robotWithLoc = trobotLocation ?~ Cosmic swName (coordsToLoc (coords `addTuple` coordsTuple))
+       in map (fmap robotWithLoc) (maybe [] cellRobots maybeCell)
 
 -- |
 -- Returns a list of robots, ordered by decreasing preference
