@@ -1,0 +1,22 @@
+version: 1
+name: Coordinate test
+description: |
+  Ensure x and y are handled correctly in the world DSL
+creative: false
+objectives:
+  - goal:
+      - Must pick up a rock
+    condition: |
+      as base {has "rock"}
+solution: |
+  grab
+robots:
+  - name: base
+    loc: [1, 2]
+    dir: east
+    devices:
+      - logger
+      - grabber
+world:
+  dsl: |
+    mask (x == 1) (mask (y == 2) {rock,dirt})

@@ -1,4 +1,6 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -16,8 +18,9 @@ import Data.ByteString (ByteString)
 import Data.Hash.Murmur (murmur3)
 import Data.Tagged (unTagged)
 import Numeric.Noise.Perlin (noiseValue, perlin)
+import Swarm.Game.Location (pattern Location)
 import Swarm.Game.World.Abstract (BTerm (..))
-import Swarm.Game.World.Coords (Coords (..))
+import Swarm.Game.World.Coords (Coords (..), coordsToLoc)
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Game.World.Syntax (Axis (..), Rot (..))
 import Swarm.Game.World.Typecheck (Const (..), Empty (..), Over (..))
@@ -55,7 +58,7 @@ interpConst seed = \case
   CGeq -> (>=)
   CMask -> \b x c -> if b c then x c else empty
   CSeed -> fromIntegral seed
-  CCoord ax -> \(Coords (x, y)) -> fromIntegral (case ax of X -> x; Y -> y)
+  CCoord ax -> \(coordsToLoc -> Location x y) -> fromIntegral (case ax of X -> x; Y -> y)
   CHash -> \(Coords ix) -> fromIntegral . murmur3 0 . unTagged . from @String @(Encoding.UTF_8 ByteString) . show $ ix
   CPerlin -> \s o k p ->
     let noise = perlin (fromIntegral s) (fromIntegral o) k p
