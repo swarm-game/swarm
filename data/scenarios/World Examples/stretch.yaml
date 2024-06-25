@@ -1,0 +1,16 @@
+version: 1
+name: Stretch
+description: |
+  A world created by stretching a random pattern of trees, with the
+  amount of stretching determined by the distance from the origin.
+creative: true
+robots:
+  - name: base
+    dir: north
+    loc: [0, 0]
+known: [tree]
+world:
+  dsl: |
+    let trees = if (hash % 4 == 0) then {tree, dirt} else {stone}
+    in
+      imap (if (y == 0) then 0 else (x/abs(y))) (if (abs x <= 1) then 0 else (y/abs(x/2))) trees

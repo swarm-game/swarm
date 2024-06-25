@@ -1,0 +1,21 @@
+version: 1
+name: Rorschach
+description: |
+  A world with both horizontal and vertical reflection symmetry,
+  created with 'imap'.
+creative: true
+robots:
+  - name: base
+    dir: north
+    loc: [0, 0]
+known: [tree]
+world:
+  dsl: |
+    let trees = if (hash % 4 == 0) then {tree, dirt} else {stone}
+    in
+      overlay
+      [ mask (x >= 0 && y >= 0) trees
+      , mask (x >= 0 && y < 0) (imap x (-y) trees)
+      , mask (x < 0 && y >= 0) (imap (-x) y trees)
+      , mask (x < 0 && y < 0) (imap (-x) (-y) trees)
+      ]
