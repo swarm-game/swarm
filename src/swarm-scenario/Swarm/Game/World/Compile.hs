@@ -69,7 +69,7 @@ compileConst seed = \case
   CMask -> compileMask
   CSeed -> CConst (fromIntegral seed)
   CCoord ax -> CFun $ \(CConst (coordsToLoc -> Location x y)) -> CConst (fromIntegral (case ax of X -> x; Y -> y))
-  CHash -> compileHash
+  CHash -> compileHash seed
   CPerlin -> compilePerlin
   CReflect ax -> compileReflect ax
   CRot rot -> compileRot rot
@@ -94,10 +94,10 @@ compileMask = CFun $ \p -> CFun $ \a -> CFun $ \ix ->
   case p $$ ix of
     CConst b -> if b then a $$ ix else CConst empty
 
-compileHash :: CTerm (Coords -> Integer)
-compileHash = CFun $ \(CConst (Coords ix)) -> CConst (fromIntegral (h ix))
+compileHash :: Seed -> CTerm (Coords -> Integer)
+compileHash seed = CFun $ \(CConst (Coords ix)) -> CConst (fromIntegral (h ix))
  where
-  h = murmur3 0 . unTagged . from @String @(Encoding.UTF_8 ByteString) . show
+  h = murmur3 (fromIntegral seed) . unTagged . from @String @(Encoding.UTF_8 ByteString) . show
 
 compilePerlin :: CTerm (Integer -> Integer -> Double -> Double -> World Double)
 compilePerlin =
