@@ -50,7 +50,7 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
     -- NOTE: the left-most maps take precedence!
     $ paletteCellsByKey <> pairsWithDisplays <> terrainOnlyPalette
  where
-  cellList = concatMap catMaybes $ unGrid cellGrid
+  cellList = catMaybes $ allMembers cellGrid
 
   getMaybeEntityDisplay :: PCell EntityFacade -> Maybe (EntityName, Display)
   getMaybeEntityDisplay (Cell _terrain (erasableToMaybe -> maybeEntity) _) = do

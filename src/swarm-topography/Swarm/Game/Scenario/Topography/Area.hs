@@ -12,10 +12,14 @@ import Linear (V2 (..))
 import Swarm.Game.Location
 import Swarm.Game.World.Coords
 
-newtype Grid c = Grid
-  { unGrid :: [[c]]
-  }
+newtype Grid c = Grid [[c]]
   deriving (Show, Eq, Functor, Foldable, Traversable)
+
+emptyGrid :: Grid a
+emptyGrid = Grid []
+
+getRows :: Grid a -> [[a]]
+getRows (Grid g) = g
 
 -- | Since the derived 'Functor' instance applies to the
 -- type parameter that is nested within lists, we define

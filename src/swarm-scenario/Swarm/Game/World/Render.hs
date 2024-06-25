@@ -165,7 +165,7 @@ doRenderCmd opts@(RenderOpts _ asPng _ _ _) mapPath =
 renderScenarioMap :: RenderOpts -> FilePath -> IO [String]
 renderScenarioMap opts fp = simpleErrorHandle $ do
   (grid, _) <- getRenderableGrid opts fp
-  return $ unGrid $ getDisplayChar <$> grid
+  return $ getRows $ getDisplayChar <$> grid
 
 renderScenarioPng :: RenderOpts -> FilePath -> IO ()
 renderScenarioPng opts fp = do

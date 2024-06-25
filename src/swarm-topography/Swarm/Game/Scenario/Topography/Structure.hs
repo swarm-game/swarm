@@ -92,7 +92,7 @@ instance FromJSON (Grid Char) where
   parseJSON = withText "area" $ \t -> do
     let textLines = map T.unpack $ T.lines t
     case NE.nonEmpty textLines of
-      Nothing -> return $ Grid []
+      Nothing -> return emptyGrid
       Just nonemptyRows -> do
         let firstRowLength = length $ NE.head nonemptyRows
         unless (all ((== firstRowLength) . length) $ NE.tail nonemptyRows) $
@@ -107,7 +107,7 @@ instance (FromJSONE e a) => FromJSONE e (PStructure (Maybe a)) where
       placements <- v .:? "placements" .!= []
       waypointDefs <- v .:? "waypoints" .!= []
       maybeMaskChar <- v .:? "mask"
-      rawGrid <- v .:? "map" .!= Grid []
+      rawGrid <- v .:? "map" .!= emptyGrid
       (maskedArea, mapWaypoints) <- paintMap maybeMaskChar pal rawGrid
       let area = PositionedGrid origin maskedArea
           waypoints = waypointDefs <> mapWaypoints
