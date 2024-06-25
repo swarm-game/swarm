@@ -18,7 +18,7 @@ import Swarm.Game.Entity
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Scenario.RobotLookup
-import Swarm.Game.Scenario.Topography.Area (Grid (..))
+import Swarm.Game.Scenario.Topography.Area (emptyGrid)
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.Navigation.Portal
@@ -84,7 +84,7 @@ integrateArea ::
 integrateArea palette initialStructureDefs v = do
   placementDefs <- v .:? "placements" .!= []
   waypointDefs <- v .:? "waypoints" .!= []
-  rawMap <- v .:? "map" .!= Grid []
+  rawMap <- v .:? "map" .!= emptyGrid
   (initialArea, mapWaypoints) <- paintMap Nothing palette rawMap
   let unflattenedStructure =
         Structure
