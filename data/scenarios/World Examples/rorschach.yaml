@@ -2,7 +2,7 @@ version: 1
 name: Rorschach
 description: |
   A world with both horizontal and vertical reflection symmetry,
-  created with 'imap'.
+  created with `imap`{=snippet}.
 creative: true
 robots:
   - name: base
