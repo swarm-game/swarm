@@ -59,7 +59,7 @@ interpConst seed = \case
   CMask -> \b x c -> if b c then x c else empty
   CSeed -> fromIntegral seed
   CCoord ax -> \(coordsToLoc -> Location x y) -> fromIntegral (case ax of X -> x; Y -> y)
-  CHash -> \(Coords ix) -> fromIntegral . murmur3 0 . unTagged . from @String @(Encoding.UTF_8 ByteString) . show $ ix
+  CHash -> \(Coords ix) -> fromIntegral . murmur3 (fromIntegral seed) . unTagged . from @String @(Encoding.UTF_8 ByteString) . show $ ix
   CPerlin -> \s o k p ->
     let noise = perlin (fromIntegral s) (fromIntegral o) k p
         sample (i, j) = noiseValue noise (fromIntegral i / 2, fromIntegral j / 2, 0)
