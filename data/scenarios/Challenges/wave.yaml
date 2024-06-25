@@ -68,7 +68,7 @@ world:
   dsl: |
     overlay
     [ {dirt, water}
-    , if (x + y / 2) % 5 == 0 then {dirt, wavy water} else {blank}
+    , if (x / 2 - y) % 5 == 0 then {dirt, wavy water} else {blank}
     ]
   upperleft: [-3, 6]
   offset: false
