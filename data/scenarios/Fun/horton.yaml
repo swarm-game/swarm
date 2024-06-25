@@ -76,7 +76,7 @@ world:
       [ {dirt}
       , mask (patch) {boulder}
       , mask (prize) {flower}
-      , mask (y < -80 || y > 80 || x < -60 || x > 60) (overlay [{water}])
+      , mask (x < -80 || x > 80 || y < -60 || y > 60) (overlay [{water}])
       ]
   upperleft: [-4, 4]
   offset: false

@@ -430,7 +430,7 @@ world:
     in
       overlay
       [ {grass}
-      , mask (flowers && (x + y) % 3 == 0) {wildflower}
+      , mask (flowers && (x - y) % 3 == 0) {wildflower}
       , mask (rubble && (x + y) % 2 == 0) {rock}
       , mask rock {rock}
       , mask trees {tree}
