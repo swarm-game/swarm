@@ -29,7 +29,7 @@ import Control.Effect.Accum
 import Control.Effect.Lift
 import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (forM_, guard, void)
+import Control.Monad (guard, void)
 import Control.Monad.Except (ExceptT (..))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execStateT)
@@ -42,7 +42,6 @@ import Data.Maybe (fromMaybe, isJust)
 import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.IO qualified as T
 import Data.Time (getZonedTime)
 import Swarm.Game.Failure (SystemFailure (CustomFailure))
 import Swarm.Game.Land
@@ -110,8 +109,8 @@ createEventHandlers config = do
   buildDispatcher handlers = case keyDispatcher config handlers of
     Right d -> return d
     Left collisions -> do
-      let e = "Error: some key events have the same keys bound to them.\n"
-      let hs = flip map collisions $ \(b, hs) ->
+      let errorHeader = "Error: some key events have the same keys bound to them.\n"
+      let handlerErrors = flip map collisions $ \(b, hs) ->
             let hsm = "Handlers with the '" <> BK.ppBinding b <> "' binding:"
                 hss = flip map hs $ \h ->
                   let trigger = case BK.kehEventTrigger $ BK.khHandler h of
@@ -120,7 +119,7 @@ createEventHandlers config = do
                       desc = BK.handlerDescription $ BK.kehHandler $ BK.khHandler h
                    in "  " <> desc <> " (" <> trigger <> ")"
              in T.intercalate "\n" (hsm : hss)
-      throwError $ CustomFailure (T.intercalate "\n" $ e : hs)
+      throwError $ CustomFailure (T.intercalate "\n" $ errorHeader : handlerErrors)
 
 initKeyHandlingState ::
   (Has (Throw SystemFailure) sig m) =>
