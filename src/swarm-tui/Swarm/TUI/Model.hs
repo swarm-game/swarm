@@ -47,7 +47,7 @@ module Swarm.TUI.Model (
 
   -- ** Utility
   logEvent,
-  KeyEventHandlingState (..),
+  KeyEventHandlingState (KeyEventHandlingState),
   EventHandlers (..),
   keyConfig,
   keyHandlers,
