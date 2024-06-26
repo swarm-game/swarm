@@ -41,9 +41,10 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Sequence (Seq)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Time (getZonedTime)
-import Swarm.Game.Failure (SystemFailure)
+import Swarm.Game.Failure (SystemFailure (CustomFailure))
 import Swarm.Game.Land
 import Swarm.Game.Scenario (
   ScenarioInputs (..),
@@ -94,34 +95,39 @@ import Swarm.TUI.View.Structure qualified as SR
 import Swarm.Util (listEnums)
 import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
-import System.Exit (exitFailure)
 
-createEventHandlers :: KeyConfig SwarmEvent -> IO EventHandlers
+createEventHandlers ::
+  (Has (Throw SystemFailure) sig m) =>
+  KeyConfig SwarmEvent ->
+  m EventHandlers
 createEventHandlers config = do
   mainHandler <- buildDispatcher mainEventHandlers
   replHandler <- buildDispatcher replEventHandlers
   return EventHandlers {..}
  where
-  -- this error handling code is taken from the brick demo app:
+  -- this error handling code is modified version of the brick demo app:
   -- https://github.com/jtdaugherty/brick/blob/764e66897/programs/CustomKeybindingDemo.hs#L216
   buildDispatcher handlers = case keyDispatcher config handlers of
     Right d -> return d
     Left collisions -> do
-      putStrLn "Error: some key events have the same keys bound to them."
-      forM_ collisions $ \(b, hs) -> do
-        T.putStrLn $ "Handlers with the '" <> BK.ppBinding b <> "' binding:"
-        forM_ hs $ \h -> do
-          let trigger = case BK.kehEventTrigger $ BK.khHandler h of
-                ByKey k -> "triggered by the key '" <> BK.ppBinding k <> "'"
-                ByEvent e -> "triggered by the event '" <> fromMaybe "<unknown>" (BK.keyEventName swarmEvents e) <> "'"
-              desc = BK.handlerDescription $ BK.kehHandler $ BK.khHandler h
-          T.putStrLn $ "  " <> desc <> " (" <> trigger <> ")"
-      exitFailure
+      let e = "Error: some key events have the same keys bound to them.\n"
+      let hs = flip map collisions $ \(b, hs) ->
+            let hsm = "Handlers with the '" <> BK.ppBinding b <> "' binding:"
+                hss = flip map hs $ \h ->
+                  let trigger = case BK.kehEventTrigger $ BK.khHandler h of
+                        ByKey k -> "triggered by the key '" <> BK.ppBinding k <> "'"
+                        ByEvent e -> "triggered by the event '" <> fromMaybe "<unknown>" (BK.keyEventName swarmEvents e) <> "'"
+                      desc = BK.handlerDescription $ BK.kehHandler $ BK.khHandler h
+                   in "  " <> desc <> " (" <> trigger <> ")"
+             in T.intercalate "\n" (hsm : hss)
+      throwError $ CustomFailure (T.intercalate "\n" $ e : hs)
 
-initKeyHandlingState :: IO KeyEventHandlingState
+initKeyHandlingState ::
+  (Has (Throw SystemFailure) sig m) =>
+  m KeyEventHandlingState
 initKeyHandlingState = do
   let cfg = newKeyConfig swarmEvents defaultSwarmBindings []
-  handlers <- sendIO $ createEventHandlers cfg
+  handlers <- createEventHandlers cfg
   return $ KeyEventHandlingState cfg handlers
 
 -- | Initialize the 'AppState' from scratch.
@@ -131,7 +137,7 @@ initAppState ::
   m AppState
 initAppState opts = do
   (rs, ui) <- initPersistentState opts
-  keyHandling <- sendIO initKeyHandlingState
+  keyHandling <- initKeyHandlingState
   constructAppState rs ui keyHandling opts
 
 -- | Add some system failures to the list of messages in the
