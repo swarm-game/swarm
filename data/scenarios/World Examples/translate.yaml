@@ -1,0 +1,24 @@
+version: 1
+name: Translate
+description: |
+  An illustration of how to use `imap`{=snippet} to translate.  A basic patch is
+  created and then overlaid at various translations.  Note that since
+  `imap`{=snippet} works by mapping a function over the coordinates, translation
+  is "backwards": for example, `imap (x+4)`{=snippet} translates 4 units to the
+  *left*.
+creative: true
+robots:
+  - name: base
+    dir: north
+    loc: [0, 0]
+known: [rock]
+world:
+  dsl: |
+    let patch = mask (abs(x) <= 4 && abs(y) <= 4) (if ((x + y) % 2 == 0) then {rock, dirt} else {dirt})
+    in
+      overlay
+      [ patch
+      , imap (x+6) (y+3) patch
+      , imap (x-10) (y-7) patch
+      , imap (x-14) (y+5) patch
+      ]

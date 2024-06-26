@@ -9,8 +9,6 @@
 module Swarm.Game.World.Interpret (
   interpBTerm,
   interpConst,
-  interpReflect,
-  interpRot,
 ) where
 
 import Control.Applicative (Applicative (..))
@@ -20,9 +18,9 @@ import Data.Tagged (unTagged)
 import Numeric.Noise.Perlin (noiseValue, perlin)
 import Swarm.Game.Location (pattern Location)
 import Swarm.Game.World.Abstract (BTerm (..))
-import Swarm.Game.World.Coords (Coords (..), coordsToLoc)
+import Swarm.Game.World.Coords (Coords (..), coordsToLoc, locToCoords)
 import Swarm.Game.World.Gen (Seed)
-import Swarm.Game.World.Syntax (Axis (..), Rot (..))
+import Swarm.Game.World.Syntax (Axis (..))
 import Swarm.Game.World.Typecheck (Const (..), Empty (..), Over (..))
 import Witch (from)
 import Witch.Encoding qualified as Encoding
@@ -64,27 +62,12 @@ interpConst seed = \case
     let noise = perlin (fromIntegral s) (fromIntegral o) k p
         sample (i, j) = noiseValue noise (fromIntegral i / 2, fromIntegral j / 2, 0)
      in \(Coords ix) -> sample ix
-  CReflect ax -> \w -> w . interpReflect ax
-  CRot r -> \w -> w . interpRot r
   CFI -> fromInteger
   COver -> (<!>)
+  CIMap -> \wx wy a c -> a (locToCoords (Location (fromIntegral (wx c)) (fromIntegral (wy c))))
   K -> const
   S -> (<*>)
   I -> id
   B -> (.)
   C -> flip
   Φ -> liftA2
-
--- | Interprect a reflection.
-interpReflect :: Axis -> Coords -> Coords
-interpReflect ax (Coords (r, c)) = Coords (case ax of X -> (r, -c); Y -> (-r, c))
-
--- | Interpret a rotation.
-interpRot :: Rot -> Coords -> Coords
-interpRot rot (Coords crd) = Coords (rotTuple rot crd)
- where
-  rotTuple = \case
-    Rot0 -> id
-    Rot90 -> \(r, c) -> (-c, r)
-    Rot180 -> \(r, c) -> (-r, -c)
-    Rot270 -> \(r, c) -> (c, -r)

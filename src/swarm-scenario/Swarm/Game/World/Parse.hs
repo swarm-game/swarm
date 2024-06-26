@@ -52,6 +52,7 @@ reservedWords =
   , "mask"
   , "empty"
   , "abs"
+  , "imap"
   ]
 
 -- | Skip spaces and comments.
@@ -139,6 +140,7 @@ parseWExpAtom =
     <|> parseOverlay
     <|> parseMask
     <|> parseImport
+    <|> parseIMap
     -- <|> parseCat
     -- <|> parseStruct
     <|> parens parseWExp
@@ -237,6 +239,14 @@ parseMask = do
 
 parseImport :: Parser WExp
 parseImport = WImport . into @Text <$> between (symbol "\"") (symbol "\"") (some (satisfy (/= '"')))
+
+parseIMap :: Parser WExp
+parseIMap = do
+  reserved "imap"
+  wx <- parseWExpAtom
+  wy <- parseWExpAtom
+  wa <- parseWExpAtom
+  return $ WOp IMap [wx, wy, wa]
 
 -- parseCat :: Parser WExp
 -- parseCat =

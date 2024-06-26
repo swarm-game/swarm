@@ -1,0 +1,22 @@
+version: 1
+name: Clearing
+description: |
+  The base is in a clearing in the forest: the area within a certain
+  radius of the base is completely clear of trees; then there are
+  random trees at increasing density up to another radius; outside of
+  the outer radius there are only trees.
+creative: true
+robots:
+  - name: base
+    display:
+      char: Ω
+    loc: [0, 0]
+    dir: north
+world:
+  dsl: |
+    overlay
+    [ {dirt}
+    , mask ((x*x + 4*y*y) >= (6*6) && (x*x + 4*y*y) <= (30*30))
+        (let h = hash % 24 in if (36 + h*h) <= (x*x + 4*y*y) then {tree,dirt} else {dirt} )
+    , mask ((x*x + 4*y*y) > (30*30)) {tree, dirt}
+    ]

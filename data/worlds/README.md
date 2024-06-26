@@ -81,6 +81,7 @@ repetitions of `S` separated by `,`.
   | 'let' (<ident> '=' <exp>)*, 'in' <exp>
   | 'overlay' '[' <exp>+, ']'
   | 'mask' <atom> <atom>
+  | 'imap' <atom> <atom> <atom>
   | '"' <nonquote>+ '"'
   | '(' <exp> ')'
 
@@ -186,4 +187,9 @@ entities but also some empty cells.
    https://libnoise.sourceforge.net/glossary/index.html#perlinnoise
 - `mask b e` takes the value of `e` where `b` is true, and is empty
   elsewhere.
+- `imap` has type `World int -> World int -> World a -> World a`, and
+  creates a new world from a reference world using the given index
+  lookup functions.  That is, `imap wx wy wa` yields the world
+  `\c -> wa (wx c, wy c)`.  For example, `imap (-x) y w` reflects the
+  world `w` across the line `y = 0`.
 - `"foo"` imports the DSL term in `worlds/foo.world`.
