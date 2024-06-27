@@ -726,15 +726,6 @@ stepCESK cesk = case cesk of
     runningAtomic .= False
     return $ Out v s k
 
-  -- Machinery for implementing the 'Swarm.Language.Syntax.MeetAll' command.
-  -- First case: done meeting everyone.
-  Out b s (FMeetAll _ [] : k) -> return $ Out b s k
-  -- More still to meet: apply the function to the current value b and
-  -- then the next robot id.  This will result in a command which we
-  -- execute, discard any generated environment, and then pass the
-  -- result to continue meeting the rest of the robots.
-  Out b s (FMeetAll f (rid : rids) : k) ->
-    return $ Out b s (FApp f : FArg (TRobot rid) mempty : FExec : FMeetAll f rids : k)
   -- To execute a bind expression, evaluate and execute the first
   -- command, and remember the second for execution later.
   Out (VBind mx mty mreq c1 c2 e) s (FExec : k) -> return $ In c1 e s (FExec : FBind mx ((,) <$> mty <*> mreq) c2 e : k)

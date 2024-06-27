@@ -152,10 +152,6 @@ data Frame
     FUpdate Addr
   | -- | Signal that we are done with an atomic computation.
     FFinishAtomic
-  | -- | We are in the middle of running a computation for all the
-    --   nearby robots.  We have the function to run, and the list of
-    --   robot IDs to run it on.
-    FMeetAll Value [Int]
   | -- | We are in the middle of evaluating a record: some fields have
     --   already been evaluated; we are focusing on evaluating one
     --   field; and some fields have yet to be evaluated.
@@ -424,7 +420,6 @@ prettyFrame f (p, inner) = case f of
   FImmediate c _worldUpds _robotUpds -> prettyPrefix ("I[" <> ppr c <> "]·") (p, inner)
   FUpdate {} -> (p, inner)
   FFinishAtomic -> prettyPrefix "A·" (p, inner)
-  FMeetAll _ _ -> prettyPrefix "M·" (p, inner)
   FRcd _ done foc rest -> (11, encloseSep "[" "]" ", " (pDone ++ [pFoc] ++ pRest))
    where
     pDone = map (\(x, v) -> pretty x <+> "=" <+> ppr (valueToTerm v)) (reverse done)
