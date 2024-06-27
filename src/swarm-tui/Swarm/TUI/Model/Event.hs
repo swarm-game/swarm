@@ -48,7 +48,15 @@ mainEvents :: KeyEvents MainEvent
 mainEvents =
   keyEvents
     [ ("quit", QuitEvent)
+    , ("view help", ViewHelpEvent)
+    , ("view robots", ViewRobotsEvent)
+    , ("view recipes", ViewRecipesEvent)
+    , ("view commands", ViewCommandsEvent)
+    , ("view messages", ViewMessagesEvent)
+    , ("view structures", ViewStructuresEvent)
     , ("view goal", ViewGoalEvent)
+    , ("hide robots", HideRobotsEvent)
+    , ("debug CESK", ShowCESKDebugEvent)
     ]
 
 defaultMainBindings :: [(MainEvent, [Binding])]
