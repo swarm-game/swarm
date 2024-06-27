@@ -15,6 +15,11 @@ module Swarm.TUI.Model.StateUpdate (
   attainAchievement,
   attainAchievement',
   scenarioToAppState,
+
+  -- ** Keybindings
+  initKeyHandlingState,
+  KeybindingPrint (..),
+  showKeybindings,
 ) where
 
 import Brick.AttrMap (applyAttrMappings)
@@ -43,8 +48,9 @@ import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (getZonedTime)
-import Swarm.Game.Failure (SystemFailure (CustomFailure))
+import Swarm.Game.Failure (Asset (..), LoadingFailure (..), SystemFailure (..))
 import Swarm.Game.Land
+import Swarm.Game.ResourceLoading (getSwarmConfigIniFile)
 import Swarm.Game.Scenario (
   ScenarioInputs (..),
   gsiScenarioInputs,
@@ -92,7 +98,7 @@ import Swarm.TUI.View.Attribute.Attr (getWorldAttrName, swarmAttrMap)
 import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.Util (listEnums)
-import Swarm.Util.Effect (asExceptT, withThrow)
+import Swarm.Util.Effect (asExceptT, warn, withThrow)
 import System.Clock
 
 createEventHandlers ::
@@ -121,13 +127,53 @@ createEventHandlers config = do
              in T.intercalate "\n" (hsm : hss)
       throwError $ CustomFailure (T.intercalate "\n" $ errorHeader : handlerErrors)
 
+loadKeybindingConfig ::
+  (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
+  m [(SwarmEvent, BindingState)]
+loadKeybindingConfig = do
+  (iniExists, ini) <- sendIO getSwarmConfigIniFile
+  if not iniExists
+    then return []
+    else do
+      loadedCustomBindings <- sendIO $ keybindingsFromFile swarmEvents "keybindings" ini
+      case loadedCustomBindings of
+        Left e -> do
+          warn $ AssetNotLoaded Keybindings ini (CustomMessage $ T.pack e)
+          return []
+        Right bs -> pure $ fromMaybe [] bs
+
 initKeyHandlingState ::
-  (Has (Throw SystemFailure) sig m) =>
+  (Has (Throw SystemFailure) sig m, Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
   m KeyEventHandlingState
 initKeyHandlingState = do
-  let cfg = newKeyConfig swarmEvents defaultSwarmBindings []
+  customBindings <- loadKeybindingConfig
+  let cfg = newKeyConfig swarmEvents defaultSwarmBindings customBindings
   handlers <- createEventHandlers cfg
   return $ KeyEventHandlingState cfg handlers
+
+data KeybindingPrint = MarkdownPrint | TextPrint
+
+showKeybindings :: KeybindingPrint -> IO Text
+showKeybindings kPrint = do
+  bindings <-
+    runM
+      . runThrow @SystemFailure
+      . runAccum (mempty :: Seq SystemFailure)
+      $ initKeyHandlingState
+  pure $ case bindings of
+    Left e -> prettyText e
+    Right (w, bs) ->
+      showTable kPrint (bs ^. keyConfig) sections
+        <> "\n"
+        <> T.unlines (map prettyText $ F.toList w)
+ where
+  showTable = \case
+    MarkdownPrint -> keybindingMarkdownTable
+    TextPrint -> keybindingTextTable
+  sections =
+    [ ("main", mainEventHandlers)
+    , ("repl", replEventHandlers)
+    ]
 
 -- | Initialize the 'AppState' from scratch.
 initAppState ::
@@ -135,8 +181,7 @@ initAppState ::
   AppOpts ->
   m AppState
 initAppState opts = do
-  (rs, ui) <- initPersistentState opts
-  keyHandling <- initKeyHandlingState
+  (rs, ui, keyHandling) <- initPersistentState opts
   constructAppState rs ui keyHandling opts
 
 -- | Add some system failures to the list of messages in the
@@ -160,14 +205,15 @@ skipMenu AppOpts {..} = isJust userScenario || isRunningInitialProgram || isJust
 initPersistentState ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   AppOpts ->
-  m (RuntimeState, UIState)
+  m (RuntimeState, UIState, KeyEventHandlingState)
 initPersistentState opts@(AppOpts {..}) = do
-  (warnings :: Seq SystemFailure, (initRS, initUI)) <- runAccum mempty $ do
+  (warnings :: Seq SystemFailure, (initRS, initUI, initKs)) <- runAccum mempty $ do
     rs <- initRuntimeState
     ui <- initUIState speed (not (skipMenu opts)) cheatMode
-    return (rs, ui)
+    ks <- initKeyHandlingState
+    return (rs, ui, ks)
   let initRS' = addWarnings initRS (F.toList warnings)
-  return (initRS', initUI)
+  return (initRS', initUI, initKs)
 
 -- | Construct an 'AppState' from an already-loaded 'RuntimeState' and
 --   'UIState', given the 'AppOpts' the app was started with.

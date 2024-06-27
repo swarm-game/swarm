@@ -18,16 +18,10 @@ import Data.Yaml qualified as Y
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Failure
-import Swarm.Game.ResourceLoading (getSwarmXdgDataSubdir)
+import Swarm.Game.ResourceLoading (getSwarmAchievementsPath)
 import Swarm.Util.Effect (forMW)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath ((</>))
-
--- | Get a path to the directory where achievement records are
---   stored. If the argument is set to @True@, create the directory if
---   it does not exist.
-getSwarmAchievementsPath :: Bool -> IO FilePath
-getSwarmAchievementsPath createDirs = getSwarmXdgDataSubdir createDirs "achievement"
 
 -- | Load saved info about achievements from XDG data directory.
 --   Returns a list of attained achievements.
