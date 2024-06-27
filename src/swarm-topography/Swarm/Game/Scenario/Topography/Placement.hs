@@ -76,7 +76,6 @@ data Pose = Pose
 
 data Placement = Placement
   { src :: StructureName
-  , truncateOverlay :: Bool
   , structurePose :: Pose
   }
   deriving (Eq, Show)
@@ -84,7 +83,6 @@ data Placement = Placement
 instance FromJSON Placement where
   parseJSON = withObject "structure placement" $ \v -> do
     src <- v .: "src"
-    truncateOverlay <- v .:? "truncate" .!= True
     offset <- v .:? "offset" .!= origin
     orient <- v .:? "orient" .!= defaultOrientation
     let structurePose = Pose offset orient

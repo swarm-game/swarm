@@ -20,10 +20,8 @@ structures:
       placements:
         - src: beam
           offset: [0, 3]
-          truncate: false
         - src: beam
           offset: [-3, -3]
-          truncate: false
           orient:
             up: east
       map: ""
@@ -44,23 +42,18 @@ structures:
 placements:
   - src: cross
     offset: [0, -15]
-    truncate: false
   - src: cross
     offset: [0, 0]
-    truncate: false
     orient:
       up: east
   - src: cross
     offset: [15, 0]
-    truncate: false
     orient:
       up: south
   - src: cross
     offset: [15, -15]
-    truncate: false
     orient:
       up: west
   - src: disc
     offset: [8, -8]
-    truncate: false
 map: ""
