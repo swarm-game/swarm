@@ -832,7 +832,7 @@ inferConst c = case c of
   Parent -> [tyQ| Actor |]
   Base -> [tyQ| Actor |]
   Meet -> [tyQ| Cmd (Unit + Actor) |]
-  MeetAll -> [tyQ| (b -> Actor -> Cmd b) -> b -> Cmd b |]
+  MeetAll -> [tyQ| Cmd (rec l. Unit + Actor * l) |]
   Whoami -> [tyQ| Cmd Text |]
   Setname -> [tyQ| Text -> Cmd Unit |]
   Random -> [tyQ| Int -> Cmd Int |]

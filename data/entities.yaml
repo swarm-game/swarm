@@ -1183,12 +1183,8 @@
       It returns a reference to the nearest actor, or a unit value if
       none are found.
     - |
-      `meetAll : (b -> Actor -> Cmd b) -> b -> Cmd b` runs a command on
-      every nearby actor (other than oneself), folding over the results
-      to compute a final result of type `b`{=type}.  For example, if
-      `x`{=snippet}, `y`{=snippet}, and `z`{=snippet}
-      are nearby actors, then `meetAll f b0`{=snippet} is equivalent to
-      `b1 <- f b0 x; b2 <- f b1 y; f b2 z`{=snippet}.
+      `meetAll : Cmd (rec l. Unit + Actor * l)` returns a list of
+      all the nearby actors other than oneself.
   properties: [pickable]
   capabilities: [meet]
 - name: GPS receiver
