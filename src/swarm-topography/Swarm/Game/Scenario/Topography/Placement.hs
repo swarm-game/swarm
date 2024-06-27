@@ -60,7 +60,6 @@ applyOrientationTransform :: Orientation -> Grid a -> Grid a
 applyOrientationTransform (Orientation upDir shouldFlip) g = case g of
   EmptyGrid -> EmptyGrid
   Grid rows -> Grid $ f rows
-  
  where
   f = rotational . flipping
   flipV = NE.reverse

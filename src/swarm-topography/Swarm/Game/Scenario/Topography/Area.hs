@@ -9,7 +9,7 @@ import Data.Int (Int32)
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (listToMaybe, fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Semigroup
 import Data.Zip (zipWith)
 import Linear (V2 (..))
@@ -17,8 +17,8 @@ import Swarm.Game.Location
 import Swarm.Game.World.Coords
 import Prelude hiding (zipWith)
 
-data Grid c =
-    EmptyGrid
+data Grid c
+  = EmptyGrid
   | Grid (NonEmpty (NonEmpty c))
   deriving (Show, Eq, Functor, Foldable, Traversable)
 
@@ -46,8 +46,9 @@ allMembers g = concat . getRows $ g
 mapIndexedMembers :: (Coords -> a -> b) -> Grid a -> [b]
 mapIndexedMembers _ EmptyGrid = []
 mapIndexedMembers f (Grid g) =
-  NE.toList $ sconcat $
-    NE.zipWith (\i -> NE.zipWith (\j -> f (Coords (i, j))) (NE.iterate succ 0)) (NE.iterate succ 0) g
+  NE.toList $
+    sconcat $
+      NE.zipWith (\i -> NE.zipWith (\j -> f (Coords (i, j))) (NE.iterate succ 0)) (NE.iterate succ 0) g
 
 instance (ToJSON a) => ToJSON (Grid a) where
   toJSON (Grid g) = toJSON g

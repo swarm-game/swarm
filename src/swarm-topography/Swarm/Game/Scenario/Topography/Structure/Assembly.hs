@@ -123,13 +123,13 @@ overlayGridTruncated
   (Grid inputArea)
   (Pose (Location colOffset rowOffset) orientation)
   (PositionedGrid _ g) = go g
-    
    where
     go EmptyGrid = PositionedGrid origin EmptyGrid
-    go overlayArea = PositionedGrid origin
-      . Grid
-      . zipWithPad mergeSingleRow inputArea
-      $ paddedOverlayRows overlayArea
+    go overlayArea =
+      PositionedGrid origin
+        . Grid
+        . zipWithPad mergeSingleRow inputArea
+        $ paddedOverlayRows overlayArea
 
     zipWithPad f a b = zipWith f a $ b <> repeat Nothing
 
