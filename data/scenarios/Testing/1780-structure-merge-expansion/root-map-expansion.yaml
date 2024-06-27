@@ -24,7 +24,6 @@ world:
           x
   placements:
     - src: single tree
-      truncate: false
       offset: [-2, -4]
   map: |
     i.
