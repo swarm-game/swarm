@@ -79,7 +79,7 @@ cliParser =
   langVer = flag SwarmLangLatest SwarmLang0_5 (long "v0.5" <> help "Read (& convert) code from Swarm version 0.5")
 
   printKeyMode :: Parser KeybindingPrint
-  printKeyMode = flag MarkdownPrint TextPrint (long "markdown" <> help "Print in markdown table format.")
+  printKeyMode = flag TextPrint MarkdownPrint (long "markdown" <> help "Print in markdown table format.")
 
   parseFormat :: Parser FormatConfig
   parseFormat = FormatConfig <$> input <*> output <*> optional widthOpt <*> langVer <**> helper
