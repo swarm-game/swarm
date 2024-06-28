@@ -100,7 +100,7 @@ updateUI = do
           let finalType = stripCmd (env ^. envTydefs) pty
               itName = fromString $ "it" ++ show itIx
               out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
-          uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLOutput out)
+          addREPLHistItem (mkREPLOutput out)
           invalidateCacheEntry REPLHistoryCache
           vScrollToEnd replScroll
           gameState . gameControls . replStatus .= REPLDone (Just (finalType, v))

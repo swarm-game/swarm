@@ -34,6 +34,7 @@ import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (CDebug))
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Repl (REPLHistItem, REPLPrompt, REPLState, addREPLItem, replHistory, replPromptText, replPromptType)
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Util (generateModal)
 import System.Clock (Clock (..), getTime)
@@ -196,3 +197,15 @@ runBaseTerm = maybe (pure ()) startBaseProgram
     gameState . baseRobot . machine %= continue t
     -- Finally, be sure to activate the base robot.
     gameState %= execState (zoomRobots $ activateRobot 0)
+
+-- | Set the REPL to the given text and REPL prompt type.
+modifyResetREPL :: Text -> REPLPrompt -> REPLState -> REPLState
+modifyResetREPL t r = (replPromptText .~ t) . (replPromptType .~ r)
+
+-- | Reset the REPL state to the given text and REPL prompt type.
+resetREPL :: MonadState AppState m => Text -> REPLPrompt -> m ()
+resetREPL t p = uiState . uiGameplay . uiREPL %= modifyResetREPL t p
+
+-- | Add an item to the REPL history.
+addREPLHistItem :: MonadState AppState m => REPLHistItem -> m ()
+addREPLHistItem item = uiState . uiGameplay . uiREPL . replHistory %= addREPLItem item
