@@ -762,7 +762,7 @@ constInfo c = case c of
   Parent -> function 0 $ shortDoc (Set.singleton $ Query APriori) "Get a reference to the robot's parent."
   Base -> function 0 $ shortDoc (Set.singleton $ Query APriori) "Get a reference to the base."
   Meet -> command 0 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Get a reference to a nearby actor, if there is one."
-  MeetAll -> command 0 long $ shortDoc (Set.fromList [Mutation $ RobotChange BehaviorChange, Query $ Sensing RobotSensing]) "Run a command for each nearby actor."
+  MeetAll -> command 0 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Return a list of all the nearby actors."
   Whoami -> command 0 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Get the robot's display name."
   Setname -> command 1 short $ shortDoc (Set.singleton $ Mutation $ RobotChange BehaviorChange) "Set the robot's display name."
   Random ->

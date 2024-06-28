@@ -946,14 +946,12 @@ execConst runChildProg c vs s k = do
               $ robotsInArea loc 1
               $ g ^. robotInfo -- all robots within Manhattan distance 1
       return $ mkReturn neighbor
-    MeetAll -> case vs of
-      [f, b] -> do
-        loc <- use robotLocation
-        rid <- use robotID
-        g <- get @GameState
-        let neighborIDs = filter (/= rid) . map (^. robotID) $ robotsInArea loc 1 $ g ^. robotInfo
-        return $ Out b s (FMeetAll f neighborIDs : k)
-      _ -> badConst
+    MeetAll -> do
+      loc <- use robotLocation
+      rid <- use robotID
+      g <- get @GameState
+      let neighborIDs = filter ((/= rid) . (^. robotID)) . robotsInArea loc 1 $ g ^. robotInfo
+      return $ mkReturn neighborIDs
     Whoami -> case vs of
       [] -> do
         name <- use robotName
