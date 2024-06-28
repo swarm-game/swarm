@@ -631,7 +631,7 @@ quitGame :: EventM Name AppState ()
 quitGame = do
   -- Write out REPL history.
   history <- use $ uiState . uiGameplay . uiREPL . replHistory
-  let hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
+  let hist = mapMaybe getREPLSubmitted $ getLatestREPLHistoryItems maxBound history
   liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
 
   -- Save scenario status info.
@@ -851,7 +851,7 @@ updateUI = do
           let finalType = stripCmd (env ^. envTydefs) pty
               itName = fromString $ "it" ++ show itIx
               out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
-          uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLOutput out)
+          addREPLHistItem (mkREPLOutput out)
           invalidateCacheEntry REPLHistoryCache
           vScrollToEnd replScroll
           gameState . gameControls . replStatus .= REPLDone (Just (finalType, v))
@@ -1004,12 +1004,17 @@ stripCmd tdCtx (Forall xs ty) = case whnfType tdCtx ty of
 -- REPL events
 ------------------------------------------------------------
 
--- | Set the REPL to the given text and REPL prompt type.
-resetREPL :: T.Text -> REPLPrompt -> REPLState -> REPLState
-resetREPL t r replState =
-  replState
-    & replPromptText .~ t
-    & replPromptType .~ r
+-- | Modify a REPLState to the given text and REPL prompt type.
+modifyResetREPL :: T.Text -> REPLPrompt -> REPLState -> REPLState
+modifyResetREPL t r = (replPromptText .~ t) . (replPromptType .~ r)
+
+-- | Reset the REPL state to the given text and REPL prompt type.
+resetREPL :: MonadState AppState m => T.Text -> REPLPrompt -> m ()
+resetREPL t p = uiState . uiGameplay . uiREPL %= modifyResetREPL t p
+
+-- | Add an item to the REPL history.
+addREPLHistItem :: MonadState AppState m => REPLHistItem -> m ()
+addREPLHistItem item = uiState . uiGameplay . uiREPL . replHistory %= addREPLItem item
 
 -- | Handle a user input event for the REPL.
 handleREPLEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -1037,8 +1042,7 @@ handleREPLEvent x = do
             if T.null uinput
               then uiState . uiGameplay . uiREPL . replControlMode .= Piloting
               else do
-                let err = REPLError "Please clear the REPL before engaging pilot mode."
-                uiState . uiGameplay . uiREPL . replHistory %= addREPLItem err
+                addREPLHistItem $ mkREPLError "Please clear the REPL before engaging pilot mode."
                 invalidateCacheEntry REPLHistoryCache
     MetaChar 'k' -> do
       when (isJust (s ^. gameState . gameControls . inputHandler)) $ do
@@ -1117,15 +1121,15 @@ runBaseWebCode uinput = do
 
 runBaseCode :: (MonadState AppState m) => T.Text -> m ()
 runBaseCode uinput = do
-  uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLEntry uinput)
-  uiState . uiGameplay . uiREPL %= resetREPL "" (CmdPrompt [])
+  addREPLHistItem (mkREPLSubmission uinput)
+  resetREPL "" (CmdPrompt [])
   env <- use $ gameState . baseEnv
   case processTerm' env uinput of
     Right mt -> do
       uiState . uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True
       runBaseTerm mt
     Left err -> do
-      uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLError err)
+      addREPLHistItem (mkREPLError err)
 
 runBaseTerm :: (MonadState AppState m) => Maybe TSyntax -> m ()
 runBaseTerm = maybe (pure ()) startBaseProgram
@@ -1164,15 +1168,29 @@ handleREPLEventTyping = \case
               invalidateCacheEntry REPLHistoryCache
             SearchPrompt hist ->
               case lastEntry uinput hist of
-                Nothing -> uiState . uiGameplay . uiREPL %= resetREPL "" (CmdPrompt [])
+                Nothing -> resetREPL "" (CmdPrompt [])
                 Just found
-                  | T.null uinput -> uiState . uiGameplay . uiREPL %= resetREPL "" (CmdPrompt [])
+                  | T.null uinput -> resetREPL "" (CmdPrompt [])
                   | otherwise -> do
-                      uiState . uiGameplay . uiREPL %= resetREPL found (CmdPrompt [])
+                      resetREPL found (CmdPrompt [])
                       modify validateREPLForm
           else continueWithoutRedraw
       Key V.KUp -> modify $ adjReplHistIndex Older
-      Key V.KDown -> modify $ adjReplHistIndex Newer
+      Key V.KDown -> do
+        repl <- use $ uiState . uiGameplay . uiREPL
+        let hist = repl ^. replHistory
+            uinput = repl ^. replPromptText
+        case repl ^. replPromptType of
+          CmdPrompt {}
+            | hist ^. replIndex == replLength hist && not (T.null uinput) ->
+                -- Special case for hitting "Down" arrow while entering a new non-empty input:
+                -- save the input in the history and make the REPL blank.
+                do
+                  addREPLHistItem (mkREPLSaved uinput)
+                  resetREPL "" (CmdPrompt [])
+                  modify validateREPLForm
+          -- Otherwise, just move around in the history as normal.
+          _ -> modify $ adjReplHistIndex Newer
       ControlChar 'r' -> do
         s <- get
         let uinput = s ^. uiState . uiGameplay . uiREPL . replPromptText
@@ -1190,8 +1208,7 @@ handleREPLEventTyping = \case
         formSt <- use $ uiState . uiGameplay . uiREPL . replPromptType
         case formSt of
           CmdPrompt {} -> continueWithoutRedraw
-          SearchPrompt _ ->
-            uiState . uiGameplay . uiREPL %= resetREPL "" (CmdPrompt [])
+          SearchPrompt {} -> resetREPL "" (CmdPrompt [])
       ControlChar 'd' -> do
         text <- use $ uiState . uiGameplay . uiREPL . replPromptText
         if text == T.empty
