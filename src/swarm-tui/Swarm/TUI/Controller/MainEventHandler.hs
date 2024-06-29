@@ -9,10 +9,11 @@ module Swarm.TUI.Controller.MainEventHandler (
 ) where
 
 import Brick
-import Brick.Keybindings qualified as B
+import Brick.Keybindings
 import Control.Lens as Lens
 import Control.Monad (unless, void, when)
 import Control.Monad.IO.Class (liftIO)
+import Graphics.Vty.Input.Events qualified as V
 import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (originalStructureDefinitions)
 import Swarm.Game.State
@@ -30,26 +31,45 @@ import System.Clock (Clock (..), TimeSpec (..), getTime)
 -- | Main keybindings event handler while running the game itself.
 --
 -- See 'Swarm.TUI.Controller.handleMainEvent'.
-mainEventHandlers :: [B.KeyEventHandler SwarmEvent (EventM Name AppState)]
-mainEventHandlers = allHandlers Main $ \case
-  QuitEvent -> ("Open quit game dialog", toggleQuitGameDialog)
-  ViewHelpEvent -> ("View Help screen", toggleModal HelpModal)
-  ViewRobotsEvent -> ("View Robots screen", toggleModal RobotsModal)
-  ViewRecipesEvent -> ("View Recipes screen", toggleDiscoveryNotificationModal RecipesModal availableRecipes)
-  ViewCommandsEvent -> ("View Commands screen", toggleDiscoveryNotificationModal CommandsModal availableCommands)
-  ViewMessagesEvent -> ("View Messages screen", toggleMessagesModal)
-  ViewStructuresEvent -> ("View Structures screen", toggleDiscoveryModal StructuresModal (structureRecognition . automatons . originalStructureDefinitions))
-  ViewGoalEvent -> ("View scenario goal description", viewGoal)
-  HideRobotsEvent -> ("Hide robots for a few ticks", hideRobots)
-  ShowCESKDebugEvent -> ("Show active robot CESK machine debugging line", showCESKDebug)
-  PauseEvent -> ("Pause or unpause the game", whenRunning safeTogglePause)
-  RunSingleTickEvent -> ("Run game for a single tick", whenRunning runSingleTick)
-  IncreaseTpsEvent -> ("Increase game speed by one tick per second", whenRunning . modify $ adjustTPS (+))
-  DecreaseTpsEvent -> ("Descrease game speed by one tick per second", whenRunning . modify $ adjustTPS (-))
-  FocusWorldEvent -> ("Set focus on the World panel", setFocus WorldPanel)
-  FocusRobotEvent -> ("Set focus on the Robot panel", setFocus RobotPanel)
-  FocusREPLEvent -> ("Set focus on the REPL panel", setFocus REPLPanel)
-  FocusInfoEvent -> ("Set focus on the Info panel", setFocus InfoPanel)
+mainEventHandlers :: [KeyEventHandler SwarmEvent (EventM Name AppState)]
+mainEventHandlers = nonCustomizableHandlers <> customizableHandlers
+  where
+    nonCustomizableHandlers =
+      [ onKey V.KEsc "Close open modal" closeModal
+      ]
+    customizableHandlers = allHandlers Main $ \case
+      QuitEvent -> ("Open quit game dialog", toggleQuitGameDialog)
+      ViewHelpEvent -> ("View Help screen", toggleModal HelpModal)
+      ViewRobotsEvent -> ("View Robots screen", toggleModal RobotsModal)
+      ViewRecipesEvent -> ("View Recipes screen", toggleDiscoveryNotificationModal RecipesModal availableRecipes)
+      ViewCommandsEvent -> ("View Commands screen", toggleDiscoveryNotificationModal CommandsModal availableCommands)
+      ViewMessagesEvent -> ("View Messages screen", toggleMessagesModal)
+      ViewStructuresEvent -> ("View Structures screen", toggleDiscoveryModal StructuresModal (structureRecognition . automatons . originalStructureDefinitions))
+      ViewGoalEvent -> ("View scenario goal description", viewGoal)
+      HideRobotsEvent -> ("Hide robots for a few ticks", hideRobots)
+      ShowCESKDebugEvent -> ("Show active robot CESK machine debugging line", showCESKDebug)
+      PauseEvent -> ("Pause or unpause the game", whenRunning safeTogglePause)
+      RunSingleTickEvent -> ("Run game for a single tick", whenRunning runSingleTick)
+      IncreaseTpsEvent -> ("Increase game speed by one tick per second", whenRunning . modify $ adjustTPS (+))
+      DecreaseTpsEvent -> ("Descrease game speed by one tick per second", whenRunning . modify $ adjustTPS (-))
+      FocusWorldEvent -> ("Set focus on the World panel", setFocus WorldPanel)
+      FocusRobotEvent -> ("Set focus on the Robot panel", setFocus RobotPanel)
+      FocusREPLEvent -> ("Set focus on the REPL panel", setFocus REPLPanel)
+      FocusInfoEvent -> ("Set focus on the Info panel", setFocus InfoPanel)
+
+closeModal :: EventM Name AppState ()
+closeModal = do
+  s <- get
+  case s ^. uiState . uiGameplay . uiModal of
+    Nothing -> return ()
+    Just m -> do
+      safeAutoUnpause
+      uiState . uiGameplay . uiModal .= Nothing
+      -- message modal is not autopaused, so update notifications when leaving it
+      case m ^. modalType of
+        MessagesModal -> do
+          gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . temporal . ticks
+        _ -> return ()
 
 toggleQuitGameDialog :: EventM Name AppState ()
 toggleQuitGameDialog = do

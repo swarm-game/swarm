@@ -298,20 +298,10 @@ handleMainEvent ev = do
         | otherwise -> runFrameUI
       Web (RunWebCode c) -> runBaseWebCode c
       _ -> continueWithoutRedraw
+    VtyEvent (V.EvResize _ _) -> invalidateCache
     -- pass to key handler (allows users to configure bindings)
     VtyEvent (V.EvKey k m)
-      | isJust (B.lookupVtyEvent k m keyHandler) -> do
-          void $ B.handleKey keyHandler k m
-    VtyEvent (V.EvResize _ _) -> invalidateCache
-    Key V.KEsc
-      | Just m <- s ^. uiState . uiGameplay . uiModal -> do
-          safeAutoUnpause
-          uiState . uiGameplay . uiModal .= Nothing
-          -- message modal is not autopaused, so update notifications when leaving it
-          case m ^. modalType of
-            MessagesModal -> do
-              gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . temporal . ticks
-            _ -> return ()
+      | isJust (B.lookupVtyEvent k m keyHandler) -> void $ B.handleKey keyHandler k m
     -- pass keys on to modal event handler if a modal is open
     VtyEvent vev
       | isJust (s ^. uiState . uiGameplay . uiModal) -> handleModalEvent vev
