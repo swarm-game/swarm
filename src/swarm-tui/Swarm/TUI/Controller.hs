@@ -316,10 +316,6 @@ handleMainEvent ev = do
     MouseDown (FocusablePanel WorldPanel) V.BLeft [V.MCtrl] mouseLoc ->
       -- Paint with the World Editor
       EC.handleCtrlLeftClick mouseLoc
-    -- toggle collapse/expand REPL
-    MetaChar ',' -> do
-      invalidateCacheEntry WorldCache
-      uiState . uiGameplay . uiShowREPL %= not
     MouseDown n _ _ mouseLoc ->
       case n of
         FocusablePanel WorldPanel -> do
