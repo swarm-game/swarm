@@ -3,7 +3,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- TODO: describe
+-- Here is the main player configurable key event handler while playing the game.
 module Swarm.TUI.Controller.EventHandlers.Main (
   mainEventHandlers,
 ) where
