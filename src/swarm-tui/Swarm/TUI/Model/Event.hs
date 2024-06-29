@@ -9,6 +9,7 @@ module Swarm.TUI.Model.Event (
   SwarmEvent (..),
   MainEvent (..),
   REPLEvent (..),
+  WorldEvent (..),
   swarmEvents,
   defaultSwarmBindings,
 ) where
@@ -21,15 +22,29 @@ import Graphics.Vty qualified as V
 data SwarmEvent
   = Main MainEvent
   | REPL REPLEvent
+  | World WorldEvent
   deriving (Eq, Ord, Show)
 
 swarmEvents :: KeyEvents SwarmEvent
-swarmEvents = keyEvents (embed Main mainEvents ++ embed REPL replEvents)
+swarmEvents =
+  keyEvents $
+    concat
+      [ embed Main mainEvents
+      , embed REPL replEvents
+      , embed World worldPanelEvents
+      ]
+ where
+  embed f = map (fmap f) . keyEventsList
 
 defaultSwarmBindings :: [(SwarmEvent, [Binding])]
-defaultSwarmBindings = embedB Main defaultMainBindings ++ embedB REPL defaultReplBindings
+defaultSwarmBindings =
+  concat
+    [ embed Main defaultMainBindings
+    , embed REPL defaultReplBindings
+    , embed World defaultWorldPanelBindings
+    ]
  where
-  embedB f = map (first f)
+  embed = map . first
 
 -- ----------------------------------------------
 --                 MAIN EVENTS
@@ -135,11 +150,39 @@ defaultReplBindings = allBindings $ \case
   TogglePilotingModeEvent -> [meta 'p']
   ToggleCustomKeyHandlingEvent -> [meta 'k']
 
+-- ----------------------------------------------
+--                 REPL EVENTS
+-- ----------------------------------------------
+
+data WorldEvent
+  = ViewBaseEvent
+  | ShowFpsEvent
+  | MoveViewNorthEvent
+  | MoveViewEastEvent
+  | MoveViewSouthEvent
+  | MoveViewWestEvent
+  deriving (Eq, Ord, Show, Enum, Bounded)
+
+worldPanelEvents :: KeyEvents WorldEvent
+worldPanelEvents = allKeyEvents $ \case
+  ViewBaseEvent -> "view base"
+  ShowFpsEvent -> "show fps"
+  MoveViewNorthEvent -> "move view north"
+  MoveViewEastEvent -> "move view east"
+  MoveViewSouthEvent -> "move view south"
+  MoveViewWestEvent -> "move view west"
+
+defaultWorldPanelBindings :: [(WorldEvent, [Binding])]
+defaultWorldPanelBindings = allBindings $ \case
+  ViewBaseEvent -> [bind 'c']
+  ShowFpsEvent -> [bind 'f']
+  MoveViewWestEvent -> [bind 'h', bind V.KLeft]
+  MoveViewSouthEvent -> [bind 'j', bind V.KDown]
+  MoveViewNorthEvent -> [bind 'k', bind V.KUp]
+  MoveViewEastEvent -> [bind 'l', bind V.KRight]
+
 -- ----------------
 -- Helper methods
-
-embed :: Ord b => (a -> b) -> KeyEvents a -> [(Text, b)]
-embed f = map (fmap f) . keyEventsList
 
 allKeyEvents :: (Ord e, Bounded e, Enum e) => (e -> Text) -> KeyEvents e
 allKeyEvents f = keyEvents $ map (\e -> (f e, e)) [minBound .. maxBound]

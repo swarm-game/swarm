@@ -162,6 +162,7 @@ type SwarmEventHandler = KeyDispatcher SwarmEvent (EventM Name AppState)
 data EventHandlers = EventHandlers
   { mainHandler :: SwarmEventHandler
   , replHandler :: SwarmEventHandler
+  , worldHandler :: SwarmEventHandler
   }
 
 -- ----------------------------------------------------------------------------

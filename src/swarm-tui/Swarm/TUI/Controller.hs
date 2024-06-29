@@ -24,11 +24,6 @@ module Swarm.TUI.Controller (
   adjReplHistIndex,
   TimeDir (..),
 
-  -- ** World panel
-  handleWorldEvent,
-  keyToDir,
-  scrollView,
-
   -- ** Info panel
   handleInfoPanelEvent,
 ) where
@@ -50,7 +45,6 @@ import Control.Monad (unless, void, when)
 import Control.Monad.Extra (whenJust)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execState)
-import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
@@ -64,12 +58,10 @@ import Data.Text.Zipper qualified as TZ
 import Data.Text.Zipper.Generic.Words qualified as TZ
 import Data.Vector qualified as V
 import Graphics.Vty qualified as V
-import Linear
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec, FSuspend), continue)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Land
-import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.ScenarioInfo
@@ -352,7 +344,10 @@ handleMainEvent ev = do
       case focusGetCurrent fring of
         Just (FocusablePanel x) -> case x of
           REPLPanel -> handleREPLEvent ev
-          WorldPanel -> handleWorldEvent ev
+          WorldPanel | VtyEvent (V.EvKey k m) <- ev -> do
+            wh <- use $ keyEventHandling . keyHandlers . to worldHandler
+            void $ B.handleKey wh k m
+          WorldPanel | otherwise -> continueWithoutRedraw
           WorldEditorPanel -> EC.handleWorldEditorPanelEvent ev
           RobotPanel -> handleRobotPanelEvent ev
           InfoPanel -> handleInfoPanelEvent infoScroll ev
@@ -765,62 +760,6 @@ adjReplHistIndex d s =
     getCurrEntry = fromMaybe (theRepl ^. replLast) . getCurrentItemText . view replHistory
     oldEntry = getCurrEntry theRepl
     newEntry = getCurrEntry newREPL
-
-------------------------------------------------------------
--- World events
-------------------------------------------------------------
-
-worldScrollDist :: Int32
-worldScrollDist = 8
-
--- | Handle a user input event in the world view panel.
-handleWorldEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleWorldEvent = \case
-  Key k
-    | k `elem` moveKeys -> do
-        c <- use $ gameState . creativeMode
-        s <- use $ gameState . landscape . worldScrollable
-        when (c || s) $ scrollView (.+^ (worldScrollDist *^ keyToDir k))
-  CharKey 'c' -> do
-    invalidateCacheEntry WorldCache
-    gameState . robotInfo . viewCenterRule .= VCRobot 0
-  -- show fps
-  CharKey 'f' -> uiState . uiGameplay . uiTiming . uiShowFPS %= not
-  -- Fall-through case: don't do anything.
-  _ -> continueWithoutRedraw
- where
-  moveKeys =
-    [ V.KUp
-    , V.KDown
-    , V.KLeft
-    , V.KRight
-    , V.KChar 'h'
-    , V.KChar 'j'
-    , V.KChar 'k'
-    , V.KChar 'l'
-    ]
-
--- | Manually scroll the world view.
-scrollView :: (Location -> Location) -> EventM Name AppState ()
-scrollView update = do
-  -- Manually invalidate the 'WorldCache' instead of just setting
-  -- 'needsRedraw'.  I don't quite understand why the latter doesn't
-  -- always work, but there seems to be some sort of race condition
-  -- where 'needsRedraw' gets reset before the UI drawing code runs.
-  invalidateCacheEntry WorldCache
-  gameState . robotInfo %= modifyViewCenter (fmap update)
-
--- | Convert a directional key into a direction.
-keyToDir :: V.Key -> Heading
-keyToDir V.KUp = north
-keyToDir V.KDown = south
-keyToDir V.KRight = east
-keyToDir V.KLeft = west
-keyToDir (V.KChar 'h') = west
-keyToDir (V.KChar 'j') = south
-keyToDir (V.KChar 'k') = north
-keyToDir (V.KChar 'l') = east
-keyToDir _ = zero
 
 ------------------------------------------------------------
 -- Robot panel events
