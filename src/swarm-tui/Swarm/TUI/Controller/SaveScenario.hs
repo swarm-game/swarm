@@ -1,12 +1,11 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- TODO: describe
+-- Collection of functions used to save the scenario metadata.
 module Swarm.TUI.Controller.SaveScenario (
   saveScenarioInfoOnFinish,
   saveScenarioInfoOnFinishNocheat,
   saveScenarioInfoOnQuit,
-  getNormalizedCurrentScenarioPath,
 ) where
 
 -- See Note [liftA2 re-export from Prelude]
