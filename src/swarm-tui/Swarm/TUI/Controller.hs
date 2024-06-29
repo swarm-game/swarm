@@ -14,7 +14,6 @@ module Swarm.TUI.Controller (
   runFrameUI,
   ticksPerFrameCap,
   runGameTickUI,
-  updateUI,
 
   -- ** REPL panel
   runBaseWebCode,
@@ -91,7 +90,6 @@ import Swarm.Log
 import Swarm.TUI.Controller.EventHandlers.Frame
 import Swarm.TUI.Controller.EventHandlers.Robot (handleRobotPanelEvent, runBaseTerm)
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
-import Swarm.TUI.Controller.UpdateUI
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Controller qualified as EC
 import Swarm.TUI.Editor.Model

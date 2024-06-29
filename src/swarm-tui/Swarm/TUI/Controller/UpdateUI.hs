@@ -3,10 +3,9 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- TODO: describe
+-- The main TUI update logic that is called from other controller parts.
 module Swarm.TUI.Controller.UpdateUI (
   updateUI,
-  doGoalUpdates,
 ) where
 
 import Brick hiding (Direction, Location)
