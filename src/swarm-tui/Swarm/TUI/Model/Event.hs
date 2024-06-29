@@ -51,6 +51,8 @@ data MainEvent
   | ShowCESKDebugEvent
   | PauseEvent
   | RunSingleTickEvent
+  | IncreaseTpsEvent
+  | DecreaseTpsEvent
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 mainEvents :: KeyEvents MainEvent
@@ -67,6 +69,8 @@ mainEvents = allKeyEvents $ \case
   ShowCESKDebugEvent -> "debug CESK"
   PauseEvent -> "pause"
   RunSingleTickEvent -> "run single tick"
+  IncreaseTpsEvent -> "increse TPS"
+  DecreaseTpsEvent -> "decrease TPS"
 
 defaultMainBindings :: [(MainEvent, [Binding])]
 defaultMainBindings = allBindings $ \case
@@ -82,7 +86,8 @@ defaultMainBindings = allBindings $ \case
   ShowCESKDebugEvent -> [meta 'd']
   PauseEvent -> [ctrl 'p']
   RunSingleTickEvent -> [ctrl 'o']
-
+  IncreaseTpsEvent -> [ctrl 'x']
+  DecreaseTpsEvent -> [ctrl 'z']
 -- ----------------------------------------------
 --                 REPL EVENTS
 -- ----------------------------------------------
