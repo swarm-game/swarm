@@ -44,6 +44,8 @@ mainEventHandlers = allHandlers Main $ \case
   ShowCESKDebugEvent -> ("Show active robot CESK machine debugging line", showCESKDebug)
   PauseEvent -> ("Pause or unpause the game", whenRunning safeTogglePause)
   RunSingleTickEvent -> ("Run game for a single tick", whenRunning runSingleTick)
+  IncreaseTpsEvent -> ("Increase game speed by one tick per second", whenRunning . modify $ adjustTPS (+))
+  DecreaseTpsEvent -> ("Descrease game speed by one tick per second", whenRunning . modify $ adjustTPS (-))
 
 toggleQuitGameDialog :: EventM Name AppState ()
 toggleQuitGameDialog = do
@@ -109,6 +111,10 @@ runSingleTick :: EventM Name AppState ()
 runSingleTick = do
   gameState . temporal . runStatus .= ManualPause
   runGameTickUI
+
+-- | Adjust the ticks per second speed.
+adjustTPS :: (Int -> Int -> Int) -> AppState -> AppState
+adjustTPS (+/-) = uiState . uiGameplay . uiTiming . lgTicksPerSecond %~ (+/- 1)
 
 -- ----------------------------------------------
 --                 HELPER UTILS

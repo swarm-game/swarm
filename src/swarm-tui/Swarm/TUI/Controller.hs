@@ -28,7 +28,6 @@ module Swarm.TUI.Controller (
   handleWorldEvent,
   keyToDir,
   scrollView,
-  adjustTPS,
 
   -- ** Info panel
   handleInfoPanelEvent,
@@ -313,9 +312,6 @@ handleMainEvent ev = do
             MessagesModal -> do
               gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . temporal . ticks
             _ -> return ()
-    -- speed controls
-    ControlChar 'x' | isRunning -> modify $ adjustTPS (+)
-    ControlChar 'z' | isRunning -> modify $ adjustTPS (-)
     -- special keys that work on all panels
     MetaChar 'w' -> setFocus WorldPanel
     MetaChar 'e' -> setFocus RobotPanel
@@ -856,10 +852,6 @@ keyToDir (V.KChar 'j') = south
 keyToDir (V.KChar 'k') = north
 keyToDir (V.KChar 'l') = east
 keyToDir _ = zero
-
--- | Adjust the ticks per second speed.
-adjustTPS :: (Int -> Int -> Int) -> AppState -> AppState
-adjustTPS (+/-) = uiState . uiGameplay . uiTiming . lgTicksPerSecond %~ (+/- 1)
 
 ------------------------------------------------------------
 -- Robot panel events
