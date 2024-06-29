@@ -1,7 +1,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- TODO: describe
+-- Collection of helper functions for managing achievements in other controllers.
 module Swarm.TUI.Model.Achievements (
   attainAchievement,
   attainAchievement',
