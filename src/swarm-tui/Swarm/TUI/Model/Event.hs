@@ -10,6 +10,7 @@ module Swarm.TUI.Model.Event (
   MainEvent (..),
   REPLEvent (..),
   WorldEvent (..),
+  RobotEvent (..),
   swarmEvents,
   defaultSwarmBindings,
 ) where
@@ -23,6 +24,7 @@ data SwarmEvent
   = Main MainEvent
   | REPL REPLEvent
   | World WorldEvent
+  | Robot RobotEvent
   deriving (Eq, Ord, Show)
 
 swarmEvents :: KeyEvents SwarmEvent
@@ -32,6 +34,7 @@ swarmEvents =
       [ embed Main mainEvents
       , embed REPL replEvents
       , embed World worldPanelEvents
+      , embed Robot robotPanelEvents
       ]
  where
   embed f = map (fmap f) . keyEventsList
@@ -42,6 +45,7 @@ defaultSwarmBindings =
     [ embed Main defaultMainBindings
     , embed REPL defaultReplBindings
     , embed World defaultWorldPanelBindings
+    , embed Robot defaultRobotPanelBindings
     ]
  where
   embed = map . first
@@ -180,6 +184,34 @@ defaultWorldPanelBindings = allBindings $ \case
   MoveViewSouthEvent -> [bind 'j', bind V.KDown]
   MoveViewNorthEvent -> [bind 'k', bind V.KUp]
   MoveViewEastEvent -> [bind 'l', bind V.KRight]
+
+-- ----------------------------------------------
+--                 ROBOT EVENTS
+-- ----------------------------------------------
+
+data RobotEvent
+  = MakeEntityEvent
+  | ShowZeroInventoryEntitiesEvent
+  | CycleInventorySortEvent
+  | SwitchInventorySortDirection
+  | SearchInventoryEvent
+  deriving (Eq, Ord, Show, Enum, Bounded)
+
+robotPanelEvents :: KeyEvents RobotEvent
+robotPanelEvents = allKeyEvents $ \case
+  MakeEntityEvent -> "make entity"
+  ShowZeroInventoryEntitiesEvent -> "show zero inventory entites"
+  CycleInventorySortEvent -> "cycle inventory sort"
+  SwitchInventorySortDirection -> "switch inventory direction"
+  SearchInventoryEvent -> "search inventory"
+
+defaultRobotPanelBindings :: [(RobotEvent, [Binding])]
+defaultRobotPanelBindings = allBindings $ \case
+  MakeEntityEvent -> [bind 'm']
+  ShowZeroInventoryEntitiesEvent -> [bind '0']
+  CycleInventorySortEvent -> [bind ';']
+  SwitchInventorySortDirection -> [bind ':']
+  SearchInventoryEvent -> [bind '/']
 
 -- ----------------
 -- Helper methods
