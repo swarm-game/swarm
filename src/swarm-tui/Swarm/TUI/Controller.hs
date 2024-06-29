@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- |
@@ -28,10 +27,11 @@ module Swarm.TUI.Controller (
   handleInfoPanelEvent,
 ) where
 
+-- See Note [liftA2 re-export from Prelude]
+import Prelude hiding (Applicative (..))
+
 import Brick hiding (Direction, Location)
 import Brick.Focus
-
--- See Note [liftA2 re-export from Prelude]
 import Brick.Keybindings qualified as B
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (Editor, applyEdit, handleEditorEvent)
@@ -40,7 +40,6 @@ import Brick.Widgets.List qualified as BL
 import Control.Applicative (pure)
 import Control.Category ((>>>))
 import Control.Lens as Lens
-import Control.Lens.Extras as Lens (is)
 import Control.Monad (unless, void, when)
 import Control.Monad.Extra (whenJust)
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -61,7 +60,7 @@ import Data.Text.Zipper.Generic.Words qualified as TZ
 import Data.Vector qualified as V
 import Graphics.Vty qualified as V
 import Swarm.Game.Achievement.Definitions
-import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec, FSuspend), continue)
+import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec, FSuspend))
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Land
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
@@ -83,7 +82,6 @@ import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Lex (reservedWords)
 import Swarm.Language.Parser.Util (showErrorPos)
 import Swarm.Language.Pipeline (processParsedTerm', processTerm')
-import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Typecheck (
   ContextualTypeErr (..),
@@ -91,12 +89,12 @@ import Swarm.Language.Typecheck (
 import Swarm.Language.Value (Value (VKey), envTypes)
 import Swarm.Log
 import Swarm.TUI.Controller.EventHandlers.Frame
+import Swarm.TUI.Controller.EventHandlers.Robot (handleRobotPanelEvent, runBaseTerm)
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
 import Swarm.TUI.Controller.UpdateUI
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Controller qualified as EC
 import Swarm.TUI.Editor.Model
-import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.Launch.Controller
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep (prepareLaunchDialog)
@@ -108,10 +106,8 @@ import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.Structure
 import Swarm.TUI.Model.UI
-import Swarm.TUI.View.Util (generateModal)
 import Swarm.Util hiding (both, (<<.=))
 import Swarm.Version (NewReleaseFailure (..))
-import Prelude hiding (Applicative (..))
 
 -- ~~~~ Note [liftA2 re-export from Prelude]
 --
@@ -542,21 +538,6 @@ runBaseCode uinput = do
     Left err -> do
       uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLError err)
 
-runBaseTerm :: (MonadState AppState m) => Maybe TSyntax -> m ()
-runBaseTerm = maybe (pure ()) startBaseProgram
- where
-  -- The player typed something at the REPL and hit Enter; this
-  -- function takes the resulting ProcessedTerm (if the REPL
-  -- input is valid) and sets up the base robot to run it.
-  startBaseProgram t = do
-    -- Set the REPL status to Working
-    gameState . gameControls . replStatus .= REPLWorking (t ^. sType) Nothing
-    -- Set up the robot's CESK machine to evaluate/execute the
-    -- given term.
-    gameState . baseRobot . machine %= continue t
-    -- Finally, be sure to activate the base robot.
-    gameState %= execState (zoomRobots $ activateRobot 0)
-
 -- | Handle a user input event for the REPL.
 handleREPLEventTyping :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleREPLEventTyping = \case
@@ -763,107 +744,6 @@ adjReplHistIndex d s =
     getCurrEntry = fromMaybe (theRepl ^. replLast) . getCurrentItemText . view replHistory
     oldEntry = getCurrEntry theRepl
     newEntry = getCurrEntry newREPL
-
-------------------------------------------------------------
--- Robot panel events
-------------------------------------------------------------
-
--- | Handle user input events in the robot panel.
-handleRobotPanelEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleRobotPanelEvent bev = do
-  search <- use $ uiState . uiGameplay . uiInventory . uiInventorySearch
-  case search of
-    Just _ -> handleInventorySearchEvent bev
-    Nothing -> case bev of
-      Key V.KEnter ->
-        gets focusedEntity >>= maybe continueWithoutRedraw descriptionModal
-      CharKey 'm' ->
-        gets focusedEntity >>= maybe continueWithoutRedraw makeEntity
-      CharKey '0' ->
-        Brick.zoom (uiState . uiGameplay . uiInventory) $ do
-          uiInventoryShouldUpdate .= True
-          uiShowZero %= not
-      CharKey ';' ->
-        Brick.zoom (uiState . uiGameplay . uiInventory) $ do
-          uiInventoryShouldUpdate .= True
-          uiInventorySort %= cycleSortOrder
-      CharKey ':' ->
-        Brick.zoom (uiState . uiGameplay . uiInventory) $ do
-          uiInventoryShouldUpdate .= True
-          uiInventorySort %= cycleSortDirection
-      CharKey '/' ->
-        Brick.zoom (uiState . uiGameplay . uiInventory) $ do
-          uiInventoryShouldUpdate .= True
-          uiInventorySearch .= Just ""
-      VtyEvent ev -> handleInventoryListEvent ev
-      _ -> continueWithoutRedraw
-
--- | Handle an event to navigate through the inventory list.
-handleInventoryListEvent :: V.Event -> EventM Name AppState ()
-handleInventoryListEvent ev = do
-  -- Note, refactoring like this is tempting:
-  --
-  --   Brick.zoom (uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2) (handleListEventWithSeparators ev (is _Separator))
-  --
-  -- However, this does not work since we want to skip redrawing in the no-list case!
-
-  mList <- preuse $ uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
-  case mList of
-    Nothing -> continueWithoutRedraw
-    Just l -> do
-      when (isValidListMovement ev) $ resetViewport infoScroll
-      l' <- nestEventM' l (handleListEventWithSeparators ev (is _Separator))
-      uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2 .= l'
-
--- | Handle a user input event in the robot/inventory panel, while in
---   inventory search mode.
-handleInventorySearchEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleInventorySearchEvent = \case
-  -- Escape: stop filtering and go back to regular inventory mode
-  EscapeKey ->
-    Brick.zoom (uiState . uiGameplay . uiInventory) $ do
-      uiInventoryShouldUpdate .= True
-      uiInventorySearch .= Nothing
-  -- Enter: return to regular inventory mode, and pop out the selected item
-  Key V.KEnter -> do
-    Brick.zoom (uiState . uiGameplay . uiInventory) $ do
-      uiInventoryShouldUpdate .= True
-      uiInventorySearch .= Nothing
-    gets focusedEntity >>= maybe continueWithoutRedraw descriptionModal
-  -- Any old character: append to the current search string
-  CharKey c -> do
-    resetViewport infoScroll
-    Brick.zoom (uiState . uiGameplay . uiInventory) $ do
-      uiInventoryShouldUpdate .= True
-      uiInventorySearch %= fmap (`snoc` c)
-  -- Backspace: chop the last character off the end of the current search string
-  BackspaceKey -> do
-    Brick.zoom (uiState . uiGameplay . uiInventory) $ do
-      uiInventoryShouldUpdate .= True
-      uiInventorySearch %= fmap (T.dropEnd 1)
-  -- Handle any other event as list navigation, so we can look through
-  -- the filtered inventory using e.g. arrow keys
-  VtyEvent ev -> handleInventoryListEvent ev
-  _ -> continueWithoutRedraw
-
--- | Attempt to make an entity selected from the inventory, if the
---   base is not currently busy.
-makeEntity :: Entity -> EventM Name AppState ()
-makeEntity e = do
-  s <- get
-  let name = e ^. entityName
-      mkT = [tmQ| make $str:name |]
-
-  case isActive <$> (s ^? gameState . baseRobot) of
-    Just False -> runBaseTerm (Just mkT)
-    _ -> continueWithoutRedraw
-
--- | Display a modal window with the description of an entity.
-descriptionModal :: Entity -> EventM Name AppState ()
-descriptionModal e = do
-  s <- get
-  resetViewport modalScroll
-  uiState . uiGameplay . uiModal ?= generateModal s (DescriptionModal e)
 
 ------------------------------------------------------------
 -- Info panel events

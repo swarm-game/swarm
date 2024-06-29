@@ -667,6 +667,7 @@ library swarm-tui
     Swarm.TUI.Controller.EventHandlers.Frame
     Swarm.TUI.Controller.EventHandlers.Main
     Swarm.TUI.Controller.EventHandlers.REPL
+    Swarm.TUI.Controller.EventHandlers.Robot
     Swarm.TUI.Controller.EventHandlers.World
     Swarm.TUI.Controller.SaveScenario
     Swarm.TUI.Controller.UpdateUI

@@ -1,0 +1,168 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
+
+-- |
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- TODO: describe
+module Swarm.TUI.Controller.EventHandlers.Robot (
+  robotEventHandlers,
+  handleRobotPanelEvent,
+
+  -- ** Helper functions
+  runBaseTerm,
+) where
+
+import Brick
+import Brick.Keybindings
+import Control.Lens as Lens
+import Control.Lens.Extras as Lens (is)
+import Control.Monad (unless, when)
+import Control.Monad.State (MonadState, execState)
+import Data.Text qualified as T
+import Graphics.Vty qualified as V
+import Swarm.Game.CESK (continue)
+import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Robot.Concrete
+import Swarm.Game.State
+import Swarm.Game.State.Robot (activateRobot)
+import Swarm.Game.State.Substate (REPLStatus (..), replStatus)
+import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Language.Syntax hiding (Key)
+import Swarm.TUI.Controller.Util
+import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
+import Swarm.TUI.List
+import Swarm.TUI.Model
+import Swarm.TUI.Model.Event
+import Swarm.TUI.Model.UI
+import Swarm.TUI.View.Util (generateModal)
+
+-- | Handle user input events in the robot panel.
+handleRobotPanelEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleRobotPanelEvent bev = do
+  search <- use $ uiState . uiGameplay . uiInventory . uiInventorySearch
+  keyHandler <- use $ keyEventHandling . keyHandlers . to robotHandler
+  case search of
+    Just _ -> handleInventorySearchEvent bev
+    Nothing -> case bev of
+      VtyEvent ev@(V.EvKey k m) -> do
+        handled <- handleKey keyHandler k m
+        unless handled $ handleInventoryListEvent ev
+      _ -> continueWithoutRedraw
+
+-- | Handle key events in the robot panel.
+robotEventHandlers :: [KeyEventHandler SwarmEvent (EventM Name AppState)]
+robotEventHandlers = nonCustomizableHandlers <> customizableHandlers
+ where
+  nonCustomizableHandlers =
+    [ onKey V.KEnter "Show entity description" showEntityDescription
+    ]
+  customizableHandlers = allHandlers Robot $ \case
+    MakeEntityEvent -> ("Make the selected entity", makeFocusedEntity)
+    ShowZeroInventoryEntitiesEvent -> ("Show entities with zero count in inventory", zoomInventory showZero)
+    CycleInventorySortEvent -> ("Cycle inventory sorting type", zoomInventory cycleSort)
+    SwitchInventorySortDirection -> ("Switch ascending/descending inventory sort", zoomInventory switchSortDirection)
+    SearchInventoryEvent -> ("Start inventory search", zoomInventory searchInventory)
+
+-- | Display a modal window with the description of an entity.
+showEntityDescription :: EventM Name AppState ()
+showEntityDescription = gets focusedEntity >>= maybe continueWithoutRedraw descriptionModal
+ where
+  descriptionModal :: Entity -> EventM Name AppState ()
+  descriptionModal e = do
+    s <- get
+    resetViewport modalScroll
+    uiState . uiGameplay . uiModal ?= generateModal s (DescriptionModal e)
+
+-- | Attempt to make an entity selected from the inventory, if the
+--   base is not currently busy.
+makeFocusedEntity :: EventM Name AppState ()
+makeFocusedEntity = gets focusedEntity >>= maybe continueWithoutRedraw makeEntity
+ where
+  makeEntity :: Entity -> EventM Name AppState ()
+  makeEntity e = do
+    s <- get
+    let name = e ^. entityName
+        mkT = [tmQ| make $str:name |]
+    case isActive <$> (s ^? gameState . baseRobot) of
+      Just False -> runBaseTerm (Just mkT)
+      _ -> continueWithoutRedraw
+
+showZero :: EventM Name UIInventory ()
+showZero = uiShowZero %= not
+
+cycleSort :: EventM Name UIInventory ()
+cycleSort = uiInventorySort %= cycleSortOrder
+
+switchSortDirection :: EventM Name UIInventory ()
+switchSortDirection = uiInventorySort %= cycleSortDirection
+
+searchInventory :: EventM Name UIInventory ()
+searchInventory = uiInventorySearch .= Just ""
+
+-- | Handle an event to navigate through the inventory list.
+handleInventoryListEvent :: V.Event -> EventM Name AppState ()
+handleInventoryListEvent ev = do
+  -- Note, refactoring like this is tempting:
+  --
+  --   Brick.zoom (uiState . ... . _Just . _2) (handleListEventWithSeparators ev (is _Separator))
+  --
+  -- However, this does not work since we want to skip redrawing in the no-list case!
+  mList <- preuse $ uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
+  case mList of
+    Nothing -> continueWithoutRedraw
+    Just l -> do
+      when (isValidListMovement ev) $ resetViewport infoScroll
+      l' <- nestEventM' l (handleListEventWithSeparators ev (is _Separator))
+      uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2 .= l'
+
+-- ----------------------------------------------
+--               INVENTORY SEARCH
+-- ----------------------------------------------
+
+-- | Handle a user input event in the robot/inventory panel, while in
+--   inventory search mode.
+handleInventorySearchEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleInventorySearchEvent = \case
+  -- Escape: stop filtering and go back to regular inventory mode
+  EscapeKey ->
+    zoomInventory $ uiInventorySearch .= Nothing
+  -- Enter: return to regular inventory mode, and pop out the selected item
+  Key V.KEnter -> do
+    zoomInventory $ uiInventorySearch .= Nothing
+    showEntityDescription
+  -- Any old character: append to the current search string
+  CharKey c -> do
+    resetViewport infoScroll
+    zoomInventory $ uiInventorySearch %= fmap (`snoc` c)
+  -- Backspace: chop the last character off the end of the current search string
+  BackspaceKey -> do
+    zoomInventory $ uiInventorySearch %= fmap (T.dropEnd 1)
+  -- Handle any other event as list navigation, so we can look through
+  -- the filtered inventory using e.g. arrow keys
+  VtyEvent ev -> handleInventoryListEvent ev
+  _ -> continueWithoutRedraw
+
+-- ----------------------------------------------
+--                 HELPER UTILS
+-- ----------------------------------------------
+
+zoomInventory :: EventM Name UIInventory () -> EventM Name AppState ()
+zoomInventory act = Brick.zoom (uiState . uiGameplay . uiInventory) $ do
+  uiInventoryShouldUpdate .= True
+  act
+
+runBaseTerm :: (MonadState AppState m) => Maybe TSyntax -> m ()
+runBaseTerm = maybe (pure ()) startBaseProgram
+ where
+  -- The player typed something at the REPL and hit Enter; this
+  -- function takes the resulting ProcessedTerm (if the REPL
+  -- input is valid) and sets up the base robot to run it.
+  startBaseProgram t = do
+    -- Set the REPL status to Working
+    gameState . gameControls . replStatus .= REPLWorking (t ^. sType) Nothing
+    -- Set up the robot's CESK machine to evaluate/execute the
+    -- given term.
+    gameState . baseRobot . machine %= continue t
+    -- Finally, be sure to activate the base robot.
+    gameState %= execState (zoomRobots $ activateRobot 0)

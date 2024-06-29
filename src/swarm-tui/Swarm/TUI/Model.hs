@@ -163,6 +163,7 @@ data EventHandlers = EventHandlers
   { mainHandler :: SwarmEventHandler
   , replHandler :: SwarmEventHandler
   , worldHandler :: SwarmEventHandler
+  , robotHandler :: SwarmEventHandler
   }
 
 -- ----------------------------------------------------------------------------

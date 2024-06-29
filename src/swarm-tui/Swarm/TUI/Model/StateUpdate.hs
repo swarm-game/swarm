@@ -83,6 +83,7 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
 import Swarm.TUI.Controller.EventHandlers.Main (mainEventHandlers)
 import Swarm.TUI.Controller.EventHandlers.REPL (replEventHandlers)
+import Swarm.TUI.Controller.EventHandlers.Robot (robotEventHandlers)
 import Swarm.TUI.Controller.EventHandlers.World (worldEventHandlers)
 import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Util qualified as EU
@@ -110,6 +111,7 @@ createEventHandlers config = do
   mainHandler <- buildDispatcher mainEventHandlers
   replHandler <- buildDispatcher replEventHandlers
   worldHandler <- buildDispatcher worldEventHandlers
+  robotHandler <- buildDispatcher robotEventHandlers
   return EventHandlers {..}
  where
   -- this error handling code is modified version of the brick demo app:
@@ -167,6 +169,7 @@ showKeybindings kPrint = do
     [ ("main", mainEventHandlers)
     , ("repl", replEventHandlers)
     , ("world", worldEventHandlers)
+    , ("robot", robotEventHandlers)
     ]
 
 -- | Initialize the 'AppState' from scratch.
