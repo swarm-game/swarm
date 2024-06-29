@@ -98,7 +98,7 @@ import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Attribute.Attr (getWorldAttrName, swarmAttrMap)
 import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.TUI.View.Structure qualified as SR
-import Swarm.Util.Effect (asExceptT, warn, withThrow)
+import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
 
 createEventHandlers ::
@@ -128,7 +128,7 @@ createEventHandlers config = do
       throwError $ CustomFailure (T.intercalate "\n" $ errorHeader : handlerErrors)
 
 loadKeybindingConfig ::
-  (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   m [(SwarmEvent, BindingState)]
 loadKeybindingConfig = do
   (iniExists, ini) <- sendIO getSwarmConfigIniFile
@@ -137,13 +137,11 @@ loadKeybindingConfig = do
     else do
       loadedCustomBindings <- sendIO $ keybindingsFromFile swarmEvents "keybindings" ini
       case loadedCustomBindings of
-        Left e -> do
-          warn $ AssetNotLoaded Keybindings ini (CustomMessage $ T.pack e)
-          return []
+        Left e -> throwError $ AssetNotLoaded Keybindings ini (CustomMessage $ T.pack e)
         Right bs -> pure $ fromMaybe [] bs
 
 initKeyHandlingState ::
-  (Has (Throw SystemFailure) sig m, Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   m KeyEventHandlingState
 initKeyHandlingState = do
   customBindings <- loadKeybindingConfig
@@ -155,17 +153,10 @@ data KeybindingPrint = MarkdownPrint | TextPrint
 
 showKeybindings :: KeybindingPrint -> IO Text
 showKeybindings kPrint = do
-  bindings <-
-    runM
-      . runThrow @SystemFailure
-      . runAccum (mempty :: Seq SystemFailure)
-      $ initKeyHandlingState
+  bindings <- runM $ runThrow @SystemFailure initKeyHandlingState
   pure $ case bindings of
     Left e -> prettyText e
-    Right (w, bs) ->
-      showTable kPrint (bs ^. keyConfig) sections
-        <> "\n"
-        <> T.unlines (map prettyText $ F.toList w)
+    Right bs -> showTable kPrint (bs ^. keyConfig) sections
  where
   showTable = \case
     MarkdownPrint -> keybindingMarkdownTable
