@@ -4,7 +4,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- TODO: describe
-module Swarm.TUI.Controller.REPLEventHandler (
+module Swarm.TUI.Controller.EventHandlers.REPL (
   replEventHandlers,
 ) where
 

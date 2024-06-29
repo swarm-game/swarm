@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Handling 'Swarm.TUI.Model.Frame' events.
-module Swarm.TUI.Controller.FrameEventHandling (
+module Swarm.TUI.Controller.EventHandlers.Frame (
   runFrameUI,
   runGameTickUI,
 

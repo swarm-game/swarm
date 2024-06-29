@@ -97,7 +97,7 @@ import Swarm.Language.Typecheck (
  )
 import Swarm.Language.Value (Value (VKey), envTypes)
 import Swarm.Log
-import Swarm.TUI.Controller.FrameEventHandling
+import Swarm.TUI.Controller.EventHandlers.Frame
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
 import Swarm.TUI.Controller.UpdateUI
 import Swarm.TUI.Controller.Util

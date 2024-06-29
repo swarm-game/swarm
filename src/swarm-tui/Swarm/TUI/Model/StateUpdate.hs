@@ -81,8 +81,8 @@ import Swarm.Game.State.Substate
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
-import Swarm.TUI.Controller.MainEventHandler (mainEventHandlers)
-import Swarm.TUI.Controller.REPLEventHandler (replEventHandlers)
+import Swarm.TUI.Controller.EventHandlers.Main (mainEventHandlers)
+import Swarm.TUI.Controller.EventHandlers.REPL (replEventHandlers)
 import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting

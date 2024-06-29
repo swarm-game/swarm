@@ -4,7 +4,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- TODO: describe
-module Swarm.TUI.Controller.MainEventHandler (
+module Swarm.TUI.Controller.EventHandlers.Main (
   mainEventHandlers,
 ) where
 
@@ -19,7 +19,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (originalStruct
 import Swarm.Game.State
 import Swarm.Game.State.Substate
 import Swarm.Game.Step (finishGameTick)
-import Swarm.TUI.Controller.FrameEventHandling (runGameTickUI)
+import Swarm.TUI.Controller.EventHandlers.Frame (runGameTickUI)
 import Swarm.TUI.Controller.UpdateUI (updateUI)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Model (isWorldEditorEnabled, worldOverdraw)
