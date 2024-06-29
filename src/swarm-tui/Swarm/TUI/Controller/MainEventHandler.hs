@@ -27,35 +27,38 @@ import Swarm.TUI.Model.Event (MainEvent (..), SwarmEvent (..))
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.UI
 import System.Clock (Clock (..), TimeSpec (..), getTime)
+import Swarm.TUI.Editor.Model (worldOverdraw, isWorldEditorEnabled)
 
 -- | Main keybindings event handler while running the game itself.
 --
 -- See 'Swarm.TUI.Controller.handleMainEvent'.
 mainEventHandlers :: [KeyEventHandler SwarmEvent (EventM Name AppState)]
 mainEventHandlers = nonCustomizableHandlers <> customizableHandlers
-  where
-    nonCustomizableHandlers =
-      [ onKey V.KEsc "Close open modal" closeModal
-      ]
-    customizableHandlers = allHandlers Main $ \case
-      QuitEvent -> ("Open quit game dialog", toggleQuitGameDialog)
-      ViewHelpEvent -> ("View Help screen", toggleModal HelpModal)
-      ViewRobotsEvent -> ("View Robots screen", toggleModal RobotsModal)
-      ViewRecipesEvent -> ("View Recipes screen", toggleDiscoveryNotificationModal RecipesModal availableRecipes)
-      ViewCommandsEvent -> ("View Commands screen", toggleDiscoveryNotificationModal CommandsModal availableCommands)
-      ViewMessagesEvent -> ("View Messages screen", toggleMessagesModal)
-      ViewStructuresEvent -> ("View Structures screen", toggleDiscoveryModal StructuresModal (structureRecognition . automatons . originalStructureDefinitions))
-      ViewGoalEvent -> ("View scenario goal description", viewGoal)
-      HideRobotsEvent -> ("Hide robots for a few ticks", hideRobots)
-      ShowCESKDebugEvent -> ("Show active robot CESK machine debugging line", showCESKDebug)
-      PauseEvent -> ("Pause or unpause the game", whenRunning safeTogglePause)
-      RunSingleTickEvent -> ("Run game for a single tick", whenRunning runSingleTick)
-      IncreaseTpsEvent -> ("Increase game speed by one tick per second", whenRunning . modify $ adjustTPS (+))
-      DecreaseTpsEvent -> ("Descrease game speed by one tick per second", whenRunning . modify $ adjustTPS (-))
-      FocusWorldEvent -> ("Set focus on the World panel", setFocus WorldPanel)
-      FocusRobotEvent -> ("Set focus on the Robot panel", setFocus RobotPanel)
-      FocusREPLEvent -> ("Set focus on the REPL panel", setFocus REPLPanel)
-      FocusInfoEvent -> ("Set focus on the Info panel", setFocus InfoPanel)
+ where
+  nonCustomizableHandlers =
+    [ onKey V.KEsc "Close open modal" closeModal
+    ]
+  customizableHandlers = allHandlers Main $ \case
+    QuitEvent -> ("Open quit game dialog", toggleQuitGameDialog)
+    ViewHelpEvent -> ("View Help screen", toggleModal HelpModal)
+    ViewRobotsEvent -> ("View Robots screen", toggleModal RobotsModal)
+    ViewRecipesEvent -> ("View Recipes screen", toggleDiscoveryNotificationModal RecipesModal availableRecipes)
+    ViewCommandsEvent -> ("View Commands screen", toggleDiscoveryNotificationModal CommandsModal availableCommands)
+    ViewMessagesEvent -> ("View Messages screen", toggleMessagesModal)
+    ViewStructuresEvent -> ("View Structures screen", toggleDiscoveryModal StructuresModal (structureRecognition . automatons . originalStructureDefinitions))
+    ViewGoalEvent -> ("View scenario goal description", viewGoal)
+    HideRobotsEvent -> ("Hide robots for a few ticks", hideRobots)
+    ShowCESKDebugEvent -> ("Show active robot CESK machine debugging line", showCESKDebug)
+    PauseEvent -> ("Pause or unpause the game", whenRunning safeTogglePause)
+    RunSingleTickEvent -> ("Run game for a single tick", whenRunning runSingleTick)
+    IncreaseTpsEvent -> ("Increase game speed by one tick per second", whenRunning . modify $ adjustTPS (+))
+    DecreaseTpsEvent -> ("Descrease game speed by one tick per second", whenRunning . modify $ adjustTPS (-))
+    FocusWorldEvent -> ("Set focus on the World panel", setFocus WorldPanel)
+    FocusRobotEvent -> ("Set focus on the Robot panel", setFocus RobotPanel)
+    FocusREPLEvent -> ("Set focus on the REPL panel", setFocus REPLPanel)
+    FocusInfoEvent -> ("Set focus on the Info panel", setFocus InfoPanel)
+    ToggleCreativeModeEvent -> ("Toggle creative mode", whenCheating toggleCreativeMode)
+    ToggleWorldEditorEvent -> ("Toggle world editor mode", whenCheating toggleWorldEditor)
 
 closeModal :: EventM Name AppState ()
 closeModal = do
@@ -140,6 +143,14 @@ runSingleTick = do
 adjustTPS :: (Int -> Int -> Int) -> AppState -> AppState
 adjustTPS (+/-) = uiState . uiGameplay . uiTiming . lgTicksPerSecond %~ (+/- 1)
 
+toggleCreativeMode :: EventM Name AppState ()
+toggleCreativeMode = gameState . creativeMode %= not
+
+toggleWorldEditor :: EventM Name AppState ()
+toggleWorldEditor = do
+  uiState . uiGameplay . uiWorldEditor . worldOverdraw . isWorldEditorEnabled %= not
+  setFocus WorldEditorPanel
+
 -- ----------------------------------------------
 --                 HELPER UTILS
 -- ----------------------------------------------
@@ -151,3 +162,8 @@ isRunning = do
 
 whenRunning :: EventM Name AppState () -> EventM Name AppState ()
 whenRunning a = isRunning >>= \r -> when r a
+
+whenCheating :: EventM Name AppState () -> EventM Name AppState ()
+whenCheating a = do
+  s <- get
+  when (s ^. uiState . uiCheatMode) a

@@ -287,8 +287,6 @@ pressAnyKey _ _ = continueWithoutRedraw
 handleMainEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMainEvent ev = do
   s <- get
-  mt <- preuse $ uiState . uiGameplay . uiModal . _Just . modalType
-  let isRunning = maybe True isRunningModal mt
   let keyHandler = s ^. keyEventHandling . keyHandlers . to mainHandler
   case ev of
     AppEvent ae -> case ae of
@@ -308,14 +306,6 @@ handleMainEvent ev = do
       uiState . uiGameplay . uiWorldEditor . terrainList %= BL.listMoveTo pos
     MouseDown (EntityPaintListItem pos) V.BLeft _ _ ->
       uiState . uiGameplay . uiWorldEditor . entityPaintList %= BL.listMoveTo pos
-    -- toggle creative mode if in "cheat mode"
-    ControlChar 'v'
-      | s ^. uiState . uiCheatMode -> gameState . creativeMode %= not
-    -- toggle world editor mode if in "cheat mode"
-    ControlChar 'e'
-      | s ^. uiState . uiCheatMode -> do
-          uiState . uiGameplay . uiWorldEditor . worldOverdraw . isWorldEditorEnabled %= not
-          setFocus WorldEditorPanel
     MouseDown WorldPositionIndicator _ _ _ -> uiState . uiGameplay . uiWorldCursor .= Nothing
     MouseDown (FocusablePanel WorldPanel) V.BMiddle _ mouseLoc ->
       -- Eye Dropper tool
