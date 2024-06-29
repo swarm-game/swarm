@@ -41,7 +41,7 @@ import Witch (into)
 ------------------------------------------------------------
 
 data ScenarioOutcome = WinModal | LoseModal
-  deriving (Show)
+  deriving (Show, Eq)
 
 data ModalType
   = HelpModal
@@ -57,7 +57,7 @@ data ModalType
   | KeepPlayingModal
   | DescriptionModal Entity
   | GoalModal
-  deriving (Show)
+  deriving (Show, Eq)
 
 data ButtonAction
   = Cancel

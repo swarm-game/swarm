@@ -286,6 +286,7 @@ handleMainEvent ev = do
       Web (RunWebCode c) -> runBaseWebCode c
       _ -> continueWithoutRedraw
     VtyEvent (V.EvResize _ _) -> invalidateCache
+    EscapeKey | Just m <- s ^. uiState . uiGameplay . uiModal -> closeModal m
     -- pass to key handler (allows users to configure bindings)
     VtyEvent (V.EvKey k m)
       | isJust (B.lookupVtyEvent k m keyHandler) -> void $ B.handleKey keyHandler k m
@@ -351,6 +352,15 @@ handleMainEvent ev = do
           RobotPanel -> handleRobotPanelEvent ev
           InfoPanel -> handleInfoPanelEvent infoScroll ev
         _ -> continueWithoutRedraw
+
+closeModal :: Modal -> EventM Name AppState ()
+closeModal m = do
+  safeAutoUnpause
+  uiState . uiGameplay . uiModal .= Nothing
+  -- message modal is not autopaused, so update notifications when leaving it
+  when ((m ^. modalType) == MessagesModal) $ do
+    t <- use $ gameState . temporal . ticks
+    gameState . messageInfo . lastSeenMessageTime .= t
 
 handleModalEvent :: V.Event -> EventM Name AppState ()
 handleModalEvent = \case
