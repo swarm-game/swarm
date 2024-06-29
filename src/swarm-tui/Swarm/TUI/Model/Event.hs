@@ -57,6 +57,8 @@ data MainEvent
   | FocusRobotEvent
   | FocusREPLEvent
   | FocusInfoEvent
+  | ToggleCreativeModeEvent
+  | ToggleWorldEditorEvent
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 mainEvents :: KeyEvents MainEvent
@@ -79,6 +81,8 @@ mainEvents = allKeyEvents $ \case
   FocusRobotEvent -> "focus Robot"
   FocusREPLEvent -> "focus REPL"
   FocusInfoEvent -> "focus Info"
+  ToggleCreativeModeEvent -> "creative mode"
+  ToggleWorldEditorEvent -> "world editor"
 
 defaultMainBindings :: [(MainEvent, [Binding])]
 defaultMainBindings = allBindings $ \case
@@ -100,6 +104,9 @@ defaultMainBindings = allBindings $ \case
   FocusRobotEvent -> [meta 'e']
   FocusREPLEvent -> [meta 'r']
   FocusInfoEvent -> [meta 't']
+  ToggleCreativeModeEvent -> [ctrl 'v']
+  ToggleWorldEditorEvent -> [ctrl 'e']
+
 -- ----------------------------------------------
 --                 REPL EVENTS
 -- ----------------------------------------------
