@@ -139,7 +139,7 @@ printKeybindings p = do
   T.putStrLn kb
   (iniExists, ini) <- getSwarmConfigIniFile
   let iniState = if iniExists then "is" else "can be created"
-  putStrLn $ "The configuration file " <> iniState <> " at:"
+  putStrLn $ "\nThe configuration file " <> iniState <> " at:"
   putStrLn ini
 
 main :: IO ()
