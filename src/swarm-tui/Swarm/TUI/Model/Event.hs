@@ -59,6 +59,7 @@ data MainEvent
   | FocusInfoEvent
   | ToggleCreativeModeEvent
   | ToggleWorldEditorEvent
+  | ToggleREPLVisibilityEvent
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 mainEvents :: KeyEvents MainEvent
@@ -83,6 +84,7 @@ mainEvents = allKeyEvents $ \case
   FocusInfoEvent -> "focus Info"
   ToggleCreativeModeEvent -> "creative mode"
   ToggleWorldEditorEvent -> "world editor"
+  ToggleREPLVisibilityEvent -> "toggle REPL"
 
 defaultMainBindings :: [(MainEvent, [Binding])]
 defaultMainBindings = allBindings $ \case
@@ -106,6 +108,7 @@ defaultMainBindings = allBindings $ \case
   FocusInfoEvent -> [meta 't']
   ToggleCreativeModeEvent -> [ctrl 'v']
   ToggleWorldEditorEvent -> [ctrl 'e']
+  ToggleREPLVisibilityEvent -> [meta ',']
 
 -- ----------------------------------------------
 --                 REPL EVENTS

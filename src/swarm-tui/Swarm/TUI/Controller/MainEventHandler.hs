@@ -22,12 +22,12 @@ import Swarm.Game.Step (finishGameTick)
 import Swarm.TUI.Controller.FrameEventHandling (runGameTickUI)
 import Swarm.TUI.Controller.UpdateUI (updateUI)
 import Swarm.TUI.Controller.Util
+import Swarm.TUI.Editor.Model (isWorldEditorEnabled, worldOverdraw)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (MainEvent (..), SwarmEvent (..))
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.UI
 import System.Clock (Clock (..), TimeSpec (..), getTime)
-import Swarm.TUI.Editor.Model (worldOverdraw, isWorldEditorEnabled)
 
 -- | Main keybindings event handler while running the game itself.
 --
@@ -59,6 +59,7 @@ mainEventHandlers = nonCustomizableHandlers <> customizableHandlers
     FocusInfoEvent -> ("Set focus on the Info panel", setFocus InfoPanel)
     ToggleCreativeModeEvent -> ("Toggle creative mode", whenCheating toggleCreativeMode)
     ToggleWorldEditorEvent -> ("Toggle world editor mode", whenCheating toggleWorldEditor)
+    ToggleREPLVisibilityEvent -> ("Collapse/Expand REPL panel", toggleREPLVisibility)
 
 closeModal :: EventM Name AppState ()
 closeModal = do
@@ -150,6 +151,11 @@ toggleWorldEditor :: EventM Name AppState ()
 toggleWorldEditor = do
   uiState . uiGameplay . uiWorldEditor . worldOverdraw . isWorldEditorEnabled %= not
   setFocus WorldEditorPanel
+
+toggleREPLVisibility :: EventM Name AppState ()
+toggleREPLVisibility = do
+  invalidateCacheEntry WorldCache
+  uiState . uiGameplay . uiShowREPL %= not
 
 -- ----------------------------------------------
 --                 HELPER UTILS
