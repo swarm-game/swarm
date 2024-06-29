@@ -311,11 +311,6 @@ handleMainEvent ev = do
             MessagesModal -> do
               gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . temporal . ticks
             _ -> return ()
-    -- special keys that work on all panels
-    MetaChar 'w' -> setFocus WorldPanel
-    MetaChar 'e' -> setFocus RobotPanel
-    MetaChar 'r' -> setFocus REPLPanel
-    MetaChar 't' -> setFocus InfoPanel
     -- pass keys on to modal event handler if a modal is open
     VtyEvent vev
       | isJust (s ^. uiState . uiGameplay . uiModal) -> handleModalEvent vev
