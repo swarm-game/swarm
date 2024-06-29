@@ -6,6 +6,7 @@ module Swarm.TUI.Controller.Util where
 
 import Brick hiding (Direction)
 import Brick.Focus
+import Brick.Keybindings
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Lens
@@ -15,6 +16,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO), liftIO)
 import Control.Monad.State (MonadState)
 import Data.Map qualified as M
 import Data.Set qualified as S
+import Data.Text (Text)
 import Graphics.Vty qualified as V
 import Swarm.Effect (TimeIOC, runTimeIO)
 import Swarm.Game.Device
@@ -167,3 +169,13 @@ onlyCreative :: (MonadState AppState m) => m () -> m ()
 onlyCreative a = do
   c <- use $ gameState . creativeMode
   when c a
+
+-- | Create a list of handlers with embedding events and using pattern matching.
+allHandlers ::
+  (Ord e2, Enum e1, Bounded e1) =>
+  (e1 -> e2) ->
+  (e1 -> (Text, EventM Name AppState ())) ->
+  [KeyEventHandler e2 (EventM Name AppState)]
+allHandlers eEmbed f = map handleEvent1 [minBound .. maxBound]
+ where
+  handleEvent1 e1 = let (n, a) = f e1 in onEvent (eEmbed e1) n a

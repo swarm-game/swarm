@@ -28,31 +28,41 @@ import Swarm.TUI.Model.UI
 --
 -- See 'Swarm.TUI.Controller.handleREPLEvent'.
 replEventHandlers :: [B.KeyEventHandler SwarmEvent (EventM Name AppState)]
-replEventHandlers =
-  [ B.onEvent (REPL CancelRunningProgramEvent) "Cancel running base robot program" $ do
-      -- Handled here so we can always cancel the currently running
-      -- base program no matter what REPL control mode we are in.
-      gameState . baseRobot . machine %= cancel
-      Brick.zoom (uiState . uiGameplay . uiREPL) $ do
-        replPromptType .= CmdPrompt []
-        replPromptText .= ""
-  , B.onEvent (REPL TogglePilotingModeEvent) "Toggle piloting mode" . onlyCreative $ do
-      s <- get
-      let theRepl = s ^. uiState . uiGameplay . uiREPL
-          uinput = theRepl ^. replPromptText
-      curMode <- use $ uiState . uiGameplay . uiREPL . replControlMode
-      case curMode of
-        Piloting -> uiState . uiGameplay . uiREPL . replControlMode .= Typing
-        _ ->
-          if T.null uinput
-            then uiState . uiGameplay . uiREPL . replControlMode .= Piloting
-            else do
-              let err = REPLError "Please clear the REPL before engaging pilot mode."
-              uiState . uiGameplay . uiREPL . replHistory %= addREPLItem err
-              invalidateCacheEntry REPLHistoryCache
-  , B.onEvent (REPL ToggleCustomKeyHandlingEvent) "Toggle custom key handling mode" $ do
-      s <- get
-      when (isJust (s ^. gameState . gameControls . inputHandler)) $ do
-        curMode <- use $ uiState . uiGameplay . uiREPL . replControlMode
-        (uiState . uiGameplay . uiREPL . replControlMode) .= case curMode of Handling -> Typing; _ -> Handling
-  ]
+replEventHandlers = allHandlers REPL $ \case
+  CancelRunningProgramEvent -> ("Cancel running base robot program", cancelRunningBase)
+  TogglePilotingModeEvent -> ("Toggle piloting mode", onlyCreative togglePilotingMode)
+  ToggleCustomKeyHandlingEvent -> ("Toggle custom key handling mode", toggleCustomKeyHandling)
+
+-- | Cancel the running base CESK machine and clear REPL input text.
+--
+-- It is handled in top REPL handler so we can always cancel the currently running
+-- base program no matter what REPL control mode we are in.
+cancelRunningBase :: EventM Name AppState ()
+cancelRunningBase = do
+  gameState . baseRobot . machine %= cancel
+  Brick.zoom (uiState . uiGameplay . uiREPL) $ do
+    replPromptType .= CmdPrompt []
+    replPromptText .= ""
+
+togglePilotingMode :: EventM Name AppState ()
+togglePilotingMode = do
+  s <- get
+  let theRepl = s ^. uiState . uiGameplay . uiREPL
+      uinput = theRepl ^. replPromptText
+  curMode <- use $ uiState . uiGameplay . uiREPL . replControlMode
+  case curMode of
+    Piloting -> uiState . uiGameplay . uiREPL . replControlMode .= Typing
+    _ ->
+      if T.null uinput
+        then uiState . uiGameplay . uiREPL . replControlMode .= Piloting
+        else do
+          let err = REPLError "Please clear the REPL before engaging pilot mode."
+          uiState . uiGameplay . uiREPL . replHistory %= addREPLItem err
+          invalidateCacheEntry REPLHistoryCache
+
+toggleCustomKeyHandling :: EventM Name AppState ()
+toggleCustomKeyHandling = do
+  s <- get
+  when (isJust (s ^. gameState . gameControls . inputHandler)) $ do
+    curMode <- use $ uiState . uiGameplay . uiREPL . replControlMode
+    (uiState . uiGameplay . uiREPL . replControlMode) .= case curMode of Handling -> Typing; _ -> Handling
