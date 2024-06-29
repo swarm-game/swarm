@@ -3,7 +3,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- TODO: describe
+-- Here is the REPL player configurable key event handler.
 module Swarm.TUI.Controller.EventHandlers.REPL (
   replEventHandlers,
 ) where

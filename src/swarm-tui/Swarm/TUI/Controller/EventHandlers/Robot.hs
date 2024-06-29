@@ -4,7 +4,11 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- TODO: describe
+-- Here is the RobotPanel key event handler.
+--
+-- Because of how tricky the search logic is,
+-- the player configurable part and the dynamic
+-- search handler are both here.
 module Swarm.TUI.Controller.EventHandlers.Robot (
   robotEventHandlers,
   handleRobotPanelEvent,
