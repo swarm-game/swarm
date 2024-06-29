@@ -69,10 +69,11 @@ import Swarm.Language.Pipeline (processTerm)
 import Swarm.Language.Pretty (prettyString)
 import Swarm.Log
 import Swarm.TUI.Model (
+  KeyEventHandlingState,
   defaultAppOpts,
   gameState,
   runtimeState,
-  userScenario, KeyEventHandlingState,
+  userScenario,
  )
 import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
 import Swarm.TUI.Model.UI (UIState)
