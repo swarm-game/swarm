@@ -53,6 +53,10 @@ data MainEvent
   | RunSingleTickEvent
   | IncreaseTpsEvent
   | DecreaseTpsEvent
+  | FocusWorldEvent
+  | FocusRobotEvent
+  | FocusREPLEvent
+  | FocusInfoEvent
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 mainEvents :: KeyEvents MainEvent
@@ -71,6 +75,10 @@ mainEvents = allKeyEvents $ \case
   RunSingleTickEvent -> "run single tick"
   IncreaseTpsEvent -> "increse TPS"
   DecreaseTpsEvent -> "decrease TPS"
+  FocusWorldEvent -> "focus World"
+  FocusRobotEvent -> "focus Robot"
+  FocusREPLEvent -> "focus REPL"
+  FocusInfoEvent -> "focus Info"
 
 defaultMainBindings :: [(MainEvent, [Binding])]
 defaultMainBindings = allBindings $ \case
@@ -88,6 +96,10 @@ defaultMainBindings = allBindings $ \case
   RunSingleTickEvent -> [ctrl 'o']
   IncreaseTpsEvent -> [ctrl 'x']
   DecreaseTpsEvent -> [ctrl 'z']
+  FocusWorldEvent -> [meta 'w']
+  FocusRobotEvent -> [meta 'e']
+  FocusREPLEvent -> [meta 'r']
+  FocusInfoEvent -> [meta 't']
 -- ----------------------------------------------
 --                 REPL EVENTS
 -- ----------------------------------------------
