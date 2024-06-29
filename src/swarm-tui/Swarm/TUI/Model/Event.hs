@@ -42,6 +42,8 @@ data MainEvent
   | ViewGoalEvent
   | HideRobotsEvent
   | ShowCESKDebugEvent
+  | PauseEvent
+  | RunSingleTickEvent
   deriving (Eq, Ord, Show, Enum)
 
 mainEvents :: KeyEvents MainEvent
@@ -57,6 +59,8 @@ mainEvents =
     , ("view goal", ViewGoalEvent)
     , ("hide robots", HideRobotsEvent)
     , ("debug CESK", ShowCESKDebugEvent)
+    , ("pause", PauseEvent)
+    , ("run single tick", RunSingleTickEvent)
     ]
 
 defaultMainBindings :: [(MainEvent, [Binding])]
@@ -71,6 +75,8 @@ defaultMainBindings =
   , (ViewGoalEvent, [ctrl 'g'])
   , (HideRobotsEvent, [meta 'h'])
   , (ShowCESKDebugEvent, [meta 'd'])
+  , (PauseEvent, [ctrl 'p'])
+  , (RunSingleTickEvent, [ctrl 'o'])
   ]
 
 data REPLEvent

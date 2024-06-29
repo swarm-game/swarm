@@ -664,6 +664,7 @@ library swarm-tui
   exposed-modules:
     Swarm.TUI.Border
     Swarm.TUI.Controller
+    Swarm.TUI.Controller.FrameEventHandling
     Swarm.TUI.Controller.MainEventHandler
     Swarm.TUI.Controller.REPLEventHandler
     Swarm.TUI.Controller.SaveScenario

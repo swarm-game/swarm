@@ -18,6 +18,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (originalStruct
 import Swarm.Game.State
 import Swarm.Game.State.Substate
 import Swarm.Game.Step (finishGameTick)
+import Swarm.TUI.Controller.FrameEventHandling (runGameTickUI)
 import Swarm.TUI.Controller.UpdateUI (updateUI)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
@@ -26,6 +27,9 @@ import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.UI
 import System.Clock (Clock (..), TimeSpec (..), getTime)
 
+-- | Main keybindings event handler while running the game itself.
+--
+-- See 'Swarm.TUI.Controller.handleMainEvent'.
 mainEventHandlers :: [B.KeyEventHandler SwarmEvent (EventM Name AppState)]
 mainEventHandlers =
   [ B.onEvent (Main QuitEvent) "Open quit game dialog" $ do
@@ -75,4 +79,16 @@ mainEventHandlers =
         if debug
           then gameState . temporal . gameStep .= RobotStep SBefore
           else zoomGameState finishGameTick >> void updateUI
+  , B.onEvent (Main PauseEvent) "Pause or unpause the game" $ whenRunning safeTogglePause
+  , B.onEvent (Main RunSingleTickEvent) "Run game for a single tick" $ whenRunning $ do
+      gameState . temporal . runStatus .= ManualPause
+      runGameTickUI
   ]
+
+isRunning :: EventM Name AppState Bool
+isRunning = do
+  mt <- preuse $ uiState . uiGameplay . uiModal . _Just . modalType
+  return $ maybe True isRunningModal mt
+
+whenRunning :: EventM Name AppState () -> EventM Name AppState ()
+whenRunning a = isRunning >>= \r -> when r a
