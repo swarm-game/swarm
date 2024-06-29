@@ -31,6 +31,13 @@ defaultSwarmBindings = embedB Main defaultMainBindings ++ embedB REPL defaultRep
  where
   embedB f = map (first f)
 
+-- ----------------------------------------------
+--                 MAIN EVENTS
+-- ----------------------------------------------
+
+-- | Main abstract keybinding events while running the game itself.
+--
+-- See 'Swarm.TUI.Controller.MainEventHandler.'.
 data MainEvent
   = QuitEvent
   | ViewHelpEvent
@@ -44,65 +51,71 @@ data MainEvent
   | ShowCESKDebugEvent
   | PauseEvent
   | RunSingleTickEvent
-  deriving (Eq, Ord, Show, Enum)
+  deriving (Eq, Ord, Show, Enum, Bounded)
 
 mainEvents :: KeyEvents MainEvent
-mainEvents =
-  keyEvents
-    [ ("quit", QuitEvent)
-    , ("view help", ViewHelpEvent)
-    , ("view robots", ViewRobotsEvent)
-    , ("view recipes", ViewRecipesEvent)
-    , ("view commands", ViewCommandsEvent)
-    , ("view messages", ViewMessagesEvent)
-    , ("view structures", ViewStructuresEvent)
-    , ("view goal", ViewGoalEvent)
-    , ("hide robots", HideRobotsEvent)
-    , ("debug CESK", ShowCESKDebugEvent)
-    , ("pause", PauseEvent)
-    , ("run single tick", RunSingleTickEvent)
-    ]
+mainEvents = allKeyEvents $ \case
+  QuitEvent -> "quit"
+  ViewHelpEvent -> "view help"
+  ViewRobotsEvent -> "view robots"
+  ViewRecipesEvent -> "view recipes"
+  ViewCommandsEvent -> "view commands"
+  ViewMessagesEvent -> "view messages"
+  ViewStructuresEvent -> "view structures"
+  ViewGoalEvent -> "view goal"
+  HideRobotsEvent -> "hide robots"
+  ShowCESKDebugEvent -> "debug CESK"
+  PauseEvent -> "pause"
+  RunSingleTickEvent -> "run single tick"
 
 defaultMainBindings :: [(MainEvent, [Binding])]
-defaultMainBindings =
-  [ (QuitEvent, [ctrl 'q'])
-  , (ViewHelpEvent, [fn 1])
-  , (ViewRobotsEvent, [fn 2])
-  , (ViewRecipesEvent, [fn 3])
-  , (ViewCommandsEvent, [fn 4])
-  , (ViewMessagesEvent, [fn 5])
-  , (ViewStructuresEvent, [fn 6])
-  , (ViewGoalEvent, [ctrl 'g'])
-  , (HideRobotsEvent, [meta 'h'])
-  , (ShowCESKDebugEvent, [meta 'd'])
-  , (PauseEvent, [ctrl 'p'])
-  , (RunSingleTickEvent, [ctrl 'o'])
-  ]
+defaultMainBindings = allBindings $ \case
+  QuitEvent -> [ctrl 'q']
+  ViewHelpEvent -> [fn 1]
+  ViewRobotsEvent -> [fn 2]
+  ViewRecipesEvent -> [fn 3]
+  ViewCommandsEvent -> [fn 4]
+  ViewMessagesEvent -> [fn 5]
+  ViewStructuresEvent -> [fn 6]
+  ViewGoalEvent -> [ctrl 'g']
+  HideRobotsEvent -> [meta 'h']
+  ShowCESKDebugEvent -> [meta 'd']
+  PauseEvent -> [ctrl 'p']
+  RunSingleTickEvent -> [ctrl 'o']
 
+-- ----------------------------------------------
+--                 REPL EVENTS
+-- ----------------------------------------------
+
+-- | REPL abstract keybinding events.
+--
+-- See 'Swarm.TUI.Controller.REPLEventHandler'.
 data REPLEvent
   = CancelRunningProgramEvent
   | TogglePilotingModeEvent
   | ToggleCustomKeyHandlingEvent
-  deriving (Eq, Ord, Show, Enum)
+  deriving (Eq, Ord, Show, Enum, Bounded)
 
 replEvents :: KeyEvents REPLEvent
-replEvents =
-  keyEvents
-    [ ("cancel running program", CancelRunningProgramEvent)
-    , ("toggle custom key handling", ToggleCustomKeyHandlingEvent)
-    , ("toggle piloting mode", TogglePilotingModeEvent)
-    ]
+replEvents = allKeyEvents $ \case
+  CancelRunningProgramEvent -> "cancel running program"
+  ToggleCustomKeyHandlingEvent -> "toggle custom key handling"
+  TogglePilotingModeEvent -> "toggle piloting mode"
 
 defaultReplBindings :: [(REPLEvent, [Binding])]
-defaultReplBindings =
-  [ (CancelRunningProgramEvent, [ctrl 'c', bind V.KEsc])
-  , (TogglePilotingModeEvent, [meta 'p'])
-  , (ToggleCustomKeyHandlingEvent, [meta 'k'])
-  ]
+defaultReplBindings = allBindings $ \case
+  CancelRunningProgramEvent -> [ctrl 'c', bind V.KEsc]
+  TogglePilotingModeEvent -> [meta 'p']
+  ToggleCustomKeyHandlingEvent -> [meta 'k']
 
 -- ----------------
-
--- * Helper methods
+-- Helper methods
 
 embed :: Ord b => (a -> b) -> KeyEvents a -> [(Text, b)]
 embed f = map (fmap f) . keyEventsList
+
+allKeyEvents :: (Ord e, Bounded e, Enum e) => (e -> Text) -> KeyEvents e
+allKeyEvents f = keyEvents $ map (\e -> (f e, e)) [minBound .. maxBound]
+
+allBindings :: (Bounded e, Enum e) => (e -> [Binding]) -> [(e, [Binding])]
+allBindings f = map (\e -> (e, f e)) [minBound .. maxBound]

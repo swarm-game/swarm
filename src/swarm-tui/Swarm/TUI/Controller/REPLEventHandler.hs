@@ -24,6 +24,9 @@ import Swarm.TUI.Model.Event
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 
+-- | Handle a user input key event for the REPL.
+--
+-- See 'Swarm.TUI.Controller.handleREPLEvent'.
 replEventHandlers :: [B.KeyEventHandler SwarmEvent (EventM Name AppState)]
 replEventHandlers =
   [ B.onEvent (REPL CancelRunningProgramEvent) "Cancel running base robot program" $ do
