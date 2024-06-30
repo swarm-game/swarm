@@ -119,8 +119,8 @@ initKeyHandlingState ::
 initKeyHandlingState = do
   customBindings <- loadKeybindingConfig
   let cfg = newKeyConfig swarmEvents defaultSwarmBindings customBindings
-  handlers <- createEventHandlers cfg
-  return $ KeyEventHandlingState cfg handlers
+  dispatchers <- createKeyDispatchers cfg
+  return $ KeyEventHandlingState cfg dispatchers
 
 data KeybindingPrint = MarkdownPrint | TextPrint
 
