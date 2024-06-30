@@ -15,6 +15,7 @@ import Control.Effect.Accum
 import Control.Effect.Lift
 import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))
+import Data.Bifunctor (second)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -62,25 +63,27 @@ showKeybindings kPrint = do
     TextPrint -> keybindingTextTable
     IniPrint -> keybindingINI
   sections =
-    [ ("main", mainEventHandlers)
-    , ("repl", replEventHandlers)
-    , ("world", worldEventHandlers)
-    , ("robot", robotEventHandlers)
+    [ ("Main game", mainEventHandlers)
+    , ("REPL panel ", replEventHandlers)
+    , ("World view", worldEventHandlers)
+    , ("Robot panel", robotEventHandlers)
     ]
 
 keybindingINI :: Ord k => KeyConfig k -> [(Text, [KeyEventHandler k m])] -> Text
 keybindingINI kc sections =
-  T.unlines $
+  T.intercalate "\n" $
     "[keybindings]\n"
       : "; Uncomment the assignment and set comma separated list"
       : "; of keybindings or \"unbound\" on the right. See:"
       : "; https://hackage.haskell.org/package/brick/docs/Brick-Keybindings-Parse.html#v:parseBinding\n"
-      : map (keyBindingEventINI kc) handlersData
+      : concatMap sectionsINI handlersData
  where
-  handlersData = concatMap (mapMaybe handlerData . snd) sections
+  handlersData = map (second $ mapMaybe handlerData) sections
   handlerData h = case kehEventTrigger h of
     ByKey _ -> Nothing
     ByEvent k -> Just (k, handlerDescription $ kehHandler h)
+  section s = "\n;;;; " <> s <> "\n"
+  sectionsINI (s, hs) = section s : map (keyBindingEventINI kc) hs
 
 keyBindingEventINI :: Ord k => KeyConfig k -> (k, Text) -> Text
 keyBindingEventINI kc (ev, description) =
