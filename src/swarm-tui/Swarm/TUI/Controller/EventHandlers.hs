@@ -29,10 +29,14 @@ module Swarm.TUI.Controller.EventHandlers (
   ticksPerFrameCap,
 ) where
 
+import Brick hiding (on)
 import Brick.Keybindings as BK
 import Control.Effect.Accum
 import Control.Effect.Throw
-import Data.Maybe (fromMaybe)
+import Data.Function (on)
+import Data.List (groupBy, sortBy)
+import Data.List.NonEmpty qualified as NE
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text qualified as T
 import Swarm.Game.Failure (SystemFailure (..))
 import Swarm.TUI.Controller.EventHandlers.Frame (runFrameUI, runGameTickUI, ticksPerFrameCap)
@@ -49,13 +53,13 @@ import Swarm.TUI.Model.Event (SwarmEvent, swarmEvents)
 createEventHandlers ::
   (Has (Throw SystemFailure) sig m) =>
   KeyConfig SwarmEvent ->
-  m EventHandlers
+  m SwarmKeyDispatchers
 createEventHandlers config = do
-  mainHandler <- buildDispatcher mainEventHandlers
-  replHandler <- buildDispatcher replEventHandlers
-  worldHandler <- buildDispatcher worldEventHandlers
-  robotHandler <- buildDispatcher robotEventHandlers
-  return EventHandlers {..}
+  mainGameDispatcher <- buildDispatcher mainEventHandlers
+  replDispatcher <- buildDispatcher replEventHandlers
+  worldDispatcher <- buildDispatcher worldEventHandlers
+  robotDispatcher <- buildDispatcher robotEventHandlers
+  return SwarmKeyDispatchers {..}
  where
   -- this error handling code is modified version of the brick demo app:
   -- https://github.com/jtdaugherty/brick/blob/764e66897/programs/CustomKeybindingDemo.hs#L216
@@ -73,3 +77,16 @@ createEventHandlers config = do
                    in "  " <> desc <> " (" <> trigger <> ")"
              in T.intercalate "\n" (hsm : hss)
       throwError $ CustomFailure (T.intercalate "\n" $ errorHeader : handlerErrors)
+
+-- | Take two dispatchers (that do not have conflict themselves) and find conflicting keys between them.
+conflicts :: SwarmKeyDispatcher -> SwarmKeyDispatcher -> [(Binding, [KeyHandler SwarmEvent (EventM Name AppState)])]
+conflicts d1 d2 = combine <$> badGroups
+ where
+  l1 = keyDispatcherToList d1
+  l2 = keyDispatcherToList d2
+  gs = groupBy ((==) `on` fst) $ sortBy (compare `on` fst) (l1 <> l2)
+  badGroups = filter ((1 <) . length) $ mapMaybe NE.nonEmpty gs
+  combine :: NE.NonEmpty (Binding, KeyHandler k m) -> (Binding, [KeyHandler k m])
+  combine as =
+    let b = fst $ NE.head as
+     in (b, snd <$> NE.toList as)

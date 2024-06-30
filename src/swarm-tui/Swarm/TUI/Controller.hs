@@ -274,7 +274,7 @@ pressAnyKey _ _ = continueWithoutRedraw
 handleMainEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMainEvent ev = do
   s <- get
-  let keyHandler = s ^. keyEventHandling . keyHandlers . to mainHandler
+  let keyHandler = s ^. keyEventHandling . keyDispatchers . to mainGameDispatcher
   case ev of
     AppEvent ae -> case ae of
       Frame
@@ -342,7 +342,7 @@ handleMainEvent ev = do
         Just (FocusablePanel x) -> case x of
           REPLPanel -> handleREPLEvent ev
           WorldPanel | VtyEvent (V.EvKey k m) <- ev -> do
-            wh <- use $ keyEventHandling . keyHandlers . to worldHandler
+            wh <- use $ keyEventHandling . keyDispatchers . to worldDispatcher
             void $ B.handleKey wh k m
           WorldPanel | otherwise -> continueWithoutRedraw
           WorldEditorPanel -> EC.handleWorldEditorPanelEvent ev
@@ -457,7 +457,7 @@ handleREPLEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleREPLEvent x = do
   s <- get
   let controlMode = s ^. uiState . uiGameplay . uiREPL . replControlMode
-  let keyHandler = s ^. keyEventHandling . keyHandlers . to replHandler
+  let keyHandler = s ^. keyEventHandling . keyDispatchers . to replDispatcher
   case x of
     -- pass to key handler (allows users to configure bindings)
     VtyEvent (V.EvKey k m)
