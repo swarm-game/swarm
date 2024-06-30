@@ -663,6 +663,14 @@ library swarm-tui
   exposed-modules:
     Swarm.TUI.Border
     Swarm.TUI.Controller
+    Swarm.TUI.Controller.EventHandlers
+    Swarm.TUI.Controller.EventHandlers.Frame
+    Swarm.TUI.Controller.EventHandlers.Main
+    Swarm.TUI.Controller.EventHandlers.REPL
+    Swarm.TUI.Controller.EventHandlers.Robot
+    Swarm.TUI.Controller.EventHandlers.World
+    Swarm.TUI.Controller.SaveScenario
+    Swarm.TUI.Controller.UpdateUI
     Swarm.TUI.Controller.Util
     Swarm.TUI.Editor.Controller
     Swarm.TUI.Editor.Json
@@ -678,7 +686,10 @@ library swarm-tui
     Swarm.TUI.Launch.View
     Swarm.TUI.List
     Swarm.TUI.Model
+    Swarm.TUI.Model.Achievements
+    Swarm.TUI.Model.Event
     Swarm.TUI.Model.Goal
+    Swarm.TUI.Model.KeyBindings
     Swarm.TUI.Model.Menu
     Swarm.TUI.Model.Name
     Swarm.TUI.Model.Repl
