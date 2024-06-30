@@ -34,7 +34,7 @@ commitInfo = case gitInfo of
 
 data CLI
   = Run AppOpts
-  | ListKeybinding KeybindingPrint
+  | ListKeybinding Bool KeybindingPrint
   | Format FormatConfig
   | LSP
   | Version
@@ -46,7 +46,7 @@ cliParser =
         [ command "format" (info (Format <$> parseFormat) (progDesc "Format a file"))
         , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
-        , command "keybindings" (info (ListKeybinding <$> printKeyMode <**> helper) (progDesc "List the keybindings"))
+        , command "keybindings" (info (ListKeybinding <$> initKeybindingConfig <*> printKeyMode <**> helper) (progDesc "List the keybindings"))
         ]
     )
     <|> Run
@@ -81,9 +81,12 @@ cliParser =
 
   printKeyMode :: Parser KeybindingPrint
   printKeyMode =
-    flag' IniPrint (long "ini" <> help "Print in INI format, without additional file location info.")
-      <|> flag' MarkdownPrint (long "markdown" <> help "Print in Markdown table format.")
+    flag' IniPrint (long "ini" <> help "Print in INI format")
+      <|> flag' MarkdownPrint (long "markdown" <> help "Print in Markdown table format")
       <|> pure TextPrint
+
+  initKeybindingConfig :: Parser Bool
+  initKeybindingConfig = switch (short 'i' <> long "init" <> help "Initialise the keybindings configuration file")
 
   parseFormat :: Parser FormatConfig
   parseFormat = FormatConfig <$> input <*> output <*> optional widthOpt <*> langVer <**> helper
@@ -137,22 +140,29 @@ showVersion = do
   up <- getNewerReleaseVersion gitInfo
   either (hPrint stderr) (putStrLn . ("New upstream release: " <>)) up
 
-printKeybindings :: KeybindingPrint -> IO ()
-printKeybindings p = do
+printKeybindings :: Bool -> KeybindingPrint -> IO ()
+printKeybindings initialize p = do
   kb <- showKeybindings p
   T.putStrLn kb
-  when (p /= IniPrint) $ do
-    (iniExists, ini) <- getSwarmConfigIniFile
-    let iniState = if iniExists then "is" else "can be created"
-    putStrLn $ "\nThe configuration file " <> iniState <> " at:"
-    putStrLn ini
+  (iniExists, ini) <- getSwarmConfigIniFile
+  when initialize $ do
+    kbi <- showKeybindings IniPrint
+    T.writeFile ini kbi
+  let iniState
+        | iniExists && initialize = "has been updated"
+        | iniExists = "is"
+        | initialize = "has been created"
+        | otherwise = "can be created (--init)"
+  putStrLn $ '\n' : replicate 80 '-'
+  putStrLn $ "The configuration file " <> iniState <> " at:"
+  putStrLn ini
 
 main :: IO ()
 main = do
   cli <- execParser cliInfo
   case cli of
     Run opts -> appMain opts
-    ListKeybinding p -> printKeybindings p
+    ListKeybinding initialize p -> printKeybindings initialize p
     Format cfg -> formatSwarmIO cfg
     LSP -> lspMain
     Version -> showVersion
