@@ -200,7 +200,7 @@ data RobotEvent
 robotPanelEvents :: KeyEvents RobotEvent
 robotPanelEvents = allKeyEvents $ \case
   MakeEntityEvent -> "make entity"
-  ShowZeroInventoryEntitiesEvent -> "show zero inventory entites"
+  ShowZeroInventoryEntitiesEvent -> "show zero inventory entities"
   CycleInventorySortEvent -> "cycle inventory sort"
   SwitchInventorySortDirection -> "switch inventory direction"
   SearchInventoryEvent -> "search inventory"
