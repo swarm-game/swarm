@@ -21,11 +21,11 @@ module Swarm.Game.Achievement.Definitions (
 ) where
 
 import Data.Aeson
+import Data.List.Extra (enumerate)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document)
-import Swarm.Util
 
 -- | How hard do we expect the achievement to be?
 data ExpectedEffort
@@ -134,5 +134,5 @@ instance ToJSON GameplayAchievement
 -- | List of all possible achievements.
 listAchievements :: [CategorizedAchievement]
 listAchievements =
-  map GlobalAchievement listEnums
-    <> map GameplayAchievement listEnums
+  map GlobalAchievement enumerate
+    <> map GameplayAchievement enumerate

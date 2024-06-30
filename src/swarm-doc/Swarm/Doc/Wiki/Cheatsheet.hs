@@ -17,6 +17,7 @@ import Control.Lens (view, (^.))
 import Control.Lens.Combinators (to)
 import Data.Foldable (find, toList)
 import Data.List (transpose)
+import Data.List.Extra (enumerate)
 import Data.Map.Lazy qualified as Map
 import Data.Maybe (isJust)
 import Data.Set qualified as S
@@ -41,7 +42,7 @@ import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Text.Markdown as Markdown (docToMark)
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Util (listEnums, showT)
+import Swarm.Util (showT)
 
 -- * Types
 
@@ -189,7 +190,7 @@ capabilityTable a em cs = T.unlines $ header <> map (listToRow mw) capabilityRow
   header = [listToRow mw capabilityHeader, separatingLine mw]
 
 capabilityPage :: PageAddress -> EntityMap -> Text
-capabilityPage a em = capabilityTable a em listEnums
+capabilityPage a em = capabilityTable a em enumerate
 
 -- ** Entities
 

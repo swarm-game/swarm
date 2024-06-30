@@ -27,7 +27,6 @@
 - functions:
   - {name: Data.List.head, within: []}
   - {name: Prelude.head, within: [Swarm.Web.Tournament.Database.Query]}
-  - {name: Data.List.NonEmpty.fromList, within: [Swarm.Util]}
   - {name: Prelude.tail, within: []}
   - {name: Prelude.!!, within: [Swarm.Util.indexWrapNonEmpty, TestEval]}
   - {name: undefined, within: [Swarm.Language.Key, TestUtil]}

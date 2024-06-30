@@ -30,14 +30,14 @@ module Swarm.Language.Syntax.Constants (
 import Data.Aeson.Types hiding (Key)
 import Data.Data (Data)
 import Data.Int (Int32)
+import Data.List.Extra (enumerate)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text hiding (filter, length, map)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Swarm.Language.Syntax.CommandMetadata
-import Swarm.Util qualified as Util
-import Witch.From (from)
+import Swarm.Util (showT)
 
 ------------------------------------------------------------
 -- Constants
@@ -312,7 +312,7 @@ data Const
   deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, FromJSON, ToJSON, FromJSONKey, ToJSONKey)
 
 allConst :: [Const]
-allConst = Util.listEnums
+allConst = enumerate
 
 data ConstInfo = ConstInfo
   { syntax :: Text
@@ -887,7 +887,7 @@ constInfo c = case c of
       }
 
   lowShow :: Show a => a -> Text
-  lowShow a = toLower (from (show a))
+  lowShow = toLower . showT
 
 -- | Maximum perception distance for
 -- 'Chirp' and 'Sniff' commands

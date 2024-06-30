@@ -49,6 +49,7 @@ import Control.Lens (use, view, (%=), (.=))
 import Control.Monad (void)
 import Data.Char (isLower, isUpper)
 import Data.Containers.ListUtils (nubOrd)
+import Data.List.Extra (enumerate)
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -58,7 +59,7 @@ import Swarm.Language.Parser.Core
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Types (baseTyName)
-import Swarm.Util (failT, listEnums, squote)
+import Swarm.Util (failT, squote)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
@@ -156,7 +157,7 @@ operatorChar = T.singleton <$> oneOf opChars
 
 -- | Names of base types built into the language.
 baseTypeNames :: [Text]
-baseTypeNames = map baseTyName listEnums
+baseTypeNames = map baseTyName enumerate
 
 -- | Names of types built into the language.
 primitiveTypeNames :: [Text]

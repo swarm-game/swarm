@@ -57,6 +57,7 @@ import Data.Functor (($>))
 import Data.IntMap qualified as IM
 import Data.List (intersperse)
 import Data.List qualified as L
+import Data.List.Extra (enumerate)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.List.Split (chunksOf)
@@ -379,7 +380,7 @@ makeBestScoreRows scenarioStat =
     , Just $ describeProgress b
     )
    where
-    maxLeftColumnWidth = maximum (map (T.length . describeCriteria) listEnums)
+    maxLeftColumnWidth = maximum (map (T.length . describeCriteria) enumerate)
     mkCriteriaRow =
       withAttr dimAttr
         . padLeft Max

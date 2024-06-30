@@ -65,6 +65,7 @@ import Control.Effect.Accum
 import Control.Effect.Lift
 import Control.Lens hiding (from, (<.>))
 import Data.Bits (FiniteBits (finiteBitSize))
+import Data.List.Extra (enumerate)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Sequence (Seq)
@@ -319,7 +320,7 @@ uiGameplay :: Lens' UIState UIGameplay
 -- focus ring. However, the REPL already uses Tab. So, to is not used
 -- at all right now for navigating the toplevel focus ring.
 initFocusRing :: FocusRing Name
-initFocusRing = focusRing $ map FocusablePanel listEnums
+initFocusRing = focusRing $ map FocusablePanel enumerate
 
 -- | The initial tick speed.
 defaultInitLgTicksPerSecond :: Int

@@ -12,6 +12,7 @@ import Brick.Widgets.FileBrowser qualified as FB
 import Control.Lens
 import Control.Monad (forM_, when)
 import Control.Monad.IO.Class (liftIO)
+import Data.List.Extra (enumerate)
 import Data.Maybe (listToMaybe)
 import Graphics.Vty qualified as V
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (LaunchParams))
@@ -23,7 +24,6 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
-import Swarm.Util (listEnums)
 
 updateFocusRing :: EditingLaunchParams -> EventM Name LaunchOptions ()
 updateFocusRing parsedParams = do
@@ -35,7 +35,7 @@ updateFocusRing parsedParams = do
       maybeCurrentFocus = focusGetCurrent currentRing
       refocusRing = maybe id focusSetCurrent maybeCurrentFocus
 
-  controls . scenarioConfigFocusRing .= refocusRing (makeFocusRingWith $ modifyRingMembers listEnums)
+  controls . scenarioConfigFocusRing .= refocusRing (makeFocusRingWith $ modifyRingMembers enumerate)
 
 cacheValidatedInputs :: EventM Name LaunchOptions ()
 cacheValidatedInputs = do

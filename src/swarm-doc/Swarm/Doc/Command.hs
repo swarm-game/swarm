@@ -5,6 +5,7 @@
 module Swarm.Doc.Command where
 
 import Data.Aeson (ToJSON)
+import Data.List.Extra (enumerate)
 import Data.List.NonEmpty qualified as NE
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -16,7 +17,6 @@ import Swarm.Language.Syntax
 import Swarm.Language.Syntax.CommandMetadata
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types
-import Swarm.Util (listEnums)
 
 data DerivedAttrs = DerivedAttrs
   { hasActorTarget :: Bool
@@ -54,7 +54,7 @@ mkEntry c =
       { hasActorTarget = operatesOnActor inputArgs
       , pureComputation = Set.null cmdEffects
       , modifiesEnvironment = Mutation EntityChange `Set.member` cmdEffects
-      , modifiesRobot = not . Set.disjoint cmdEffects . Set.fromList $ map (Mutation . RobotChange) listEnums
+      , modifiesRobot = not . Set.disjoint cmdEffects . Set.fromList $ map (Mutation . RobotChange) enumerate
       , movesRobot = Mutation (RobotChange PositionChange) `Set.member` cmdEffects
       , returnsValue = theOutputType /= TyCmd TyUnit
       , outputType = show theOutputType

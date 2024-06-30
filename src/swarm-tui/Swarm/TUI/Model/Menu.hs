@@ -14,6 +14,7 @@ module Swarm.TUI.Model.Menu where
 import Brick.Widgets.Dialog (Dialog)
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
+import Data.List.Extra (enumerate)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
@@ -32,7 +33,6 @@ import Swarm.Game.ScenarioInfo (
  )
 import Swarm.Game.World.Gen (Seed)
 import Swarm.TUI.Model.Name
-import Swarm.Util
 import System.FilePath (dropTrailingPathSeparator, splitPath, takeFileName)
 import Witch (into)
 
@@ -96,7 +96,7 @@ data Menu
   | AboutMenu
 
 mainMenu :: MainMenuEntry -> BL.List Name MainMenuEntry
-mainMenu e = BL.list MenuList (V.fromList listEnums) 1 & BL.listMoveToElement e
+mainMenu e = BL.list MenuList (V.fromList enumerate) 1 & BL.listMoveToElement e
 
 makePrisms ''Menu
 
