@@ -152,12 +152,6 @@ data KeyEventHandlingState = KeyEventHandlingState
   , _keyDispatchers :: SwarmKeyDispatchers
   }
 
-keyConfig :: Lens' KeyEventHandlingState (KeyConfig SwarmEvent)
-keyConfig = lens _keyConfig (\s k -> s {_keyConfig = k})
-
-keyDispatchers :: Lens' KeyEventHandlingState SwarmKeyDispatchers
-keyDispatchers = lens _keyDispatchers (\s k -> s {_keyDispatchers = k})
-
 type SwarmKeyDispatcher = KeyDispatcher SwarmEvent (EventM Name AppState)
 
 data SwarmKeyDispatchers = SwarmKeyDispatchers
@@ -182,44 +176,6 @@ data AppState = AppState
   , _keyEventHandling :: KeyEventHandlingState
   , _runtimeState :: RuntimeState
   }
-
---------------------------------------------------
--- Lenses for AppState
-
-makeLensesNoSigs ''AppState
-
--- | The 'GameState' record.
-gameState :: Lens' AppState GameState
-
--- | The 'UIState' record.
-uiState :: Lens' AppState UIState
-
--- | The key event handling configuration.
-keyEventHandling :: Lens' AppState KeyEventHandlingState
-
--- | The 'RuntimeState' record
-runtimeState :: Lens' AppState RuntimeState
-
---------------------------------------------------
--- Utility functions
-
--- | Get the currently focused 'InventoryListEntry' from the robot
---   info panel (if any).
-focusedItem :: AppState -> Maybe InventoryListEntry
-focusedItem s = do
-  list <- s ^? uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
-  (_, entry) <- BL.listSelectedElement list
-  return entry
-
--- | Get the currently focused entity from the robot info panel (if
---   any).  This is just like 'focusedItem' but forgets the
---   distinction between plain inventory items and equipped devices.
-focusedEntity :: AppState -> Maybe Entity
-focusedEntity =
-  focusedItem >=> \case
-    Separator _ -> Nothing
-    InventoryEntry _ e -> Just e
-    EquippedEntry e -> Just e
 
 ------------------------------------------------------------
 -- Functions for updating the UI state
@@ -335,3 +291,52 @@ nextScenario = \case
           then Nothing
           else BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
   _ -> Nothing
+
+--------------------------------------------------
+-- Lenses for KeyEventHandlingState
+
+makeLensesNoSigs ''KeyEventHandlingState
+
+-- | Keybindings (possibly customized by player) for 'SwarmEvent's.
+keyConfig :: Lens' KeyEventHandlingState (KeyConfig SwarmEvent)
+
+-- | Dispatchers that will call handler on key combo.
+keyDispatchers :: Lens' KeyEventHandlingState SwarmKeyDispatchers
+
+--------------------------------------------------
+-- Lenses for AppState
+
+makeLensesNoSigs ''AppState
+
+-- | The 'GameState' record.
+gameState :: Lens' AppState GameState
+
+-- | The 'UIState' record.
+uiState :: Lens' AppState UIState
+
+-- | The key event handling configuration.
+keyEventHandling :: Lens' AppState KeyEventHandlingState
+
+-- | The 'RuntimeState' record
+runtimeState :: Lens' AppState RuntimeState
+
+--------------------------------------------------
+-- Utility functions
+
+-- | Get the currently focused 'InventoryListEntry' from the robot
+--   info panel (if any).
+focusedItem :: AppState -> Maybe InventoryListEntry
+focusedItem s = do
+  list <- s ^? uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
+  (_, entry) <- BL.listSelectedElement list
+  return entry
+
+-- | Get the currently focused entity from the robot info panel (if
+--   any).  This is just like 'focusedItem' but forgets the
+--   distinction between plain inventory items and equipped devices.
+focusedEntity :: AppState -> Maybe Entity
+focusedEntity =
+  focusedItem >=> \case
+    Separator _ -> Nothing
+    InventoryEntry _ e -> Just e
+    EquippedEntry e -> Just e
