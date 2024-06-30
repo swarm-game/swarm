@@ -9,18 +9,19 @@ import Brick.Focus
 import Brick.Keybindings
 import Control.Carrier.Lift qualified as Fused
 import Control.Carrier.State.Lazy qualified as Fused
-import Control.Lens
-import Control.Lens qualified as Lens
+import Control.Lens as Lens
 import Control.Monad (forM_, unless, when)
 import Control.Monad.IO.Class (MonadIO (liftIO), liftIO)
-import Control.Monad.State (MonadState)
+import Control.Monad.State (MonadState, execState)
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.Text (Text)
 import Graphics.Vty qualified as V
 import Swarm.Effect (TimeIOC, runTimeIO)
+import Swarm.Game.CESK (continue)
 import Swarm.Game.Device
 import Swarm.Game.Robot (robotCapabilities)
+import Swarm.Game.Robot.Concrete
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
@@ -30,6 +31,7 @@ import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (CDebug))
+import Swarm.Language.Syntax hiding (Key)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Util (generateModal)
@@ -75,8 +77,7 @@ openModal mt = do
   -- Set the game to AutoPause if needed
   ensurePause = do
     pause <- use $ gameState . temporal . paused
-    unless (pause || isRunningModal mt) $ do
-      gameState . temporal . runStatus .= AutoPause
+    unless (pause || isRunningModal mt) $ gameState . temporal . runStatus .= AutoPause
 
 -- | The running modals do not autopause the game.
 isRunningModal :: ModalType -> Bool
@@ -179,3 +180,18 @@ allHandlers ::
 allHandlers eEmbed f = map handleEvent1 [minBound .. maxBound]
  where
   handleEvent1 e1 = let (n, a) = f e1 in onEvent (eEmbed e1) n a
+
+runBaseTerm :: (MonadState AppState m) => Maybe TSyntax -> m ()
+runBaseTerm = maybe (pure ()) startBaseProgram
+ where
+  -- The player typed something at the REPL and hit Enter; this
+  -- function takes the resulting ProcessedTerm (if the REPL
+  -- input is valid) and sets up the base robot to run it.
+  startBaseProgram t = do
+    -- Set the REPL status to Working
+    gameState . gameControls . replStatus .= REPLWorking (t ^. sType) Nothing
+    -- Set up the robot's CESK machine to evaluate/execute the
+    -- given term.
+    gameState . baseRobot . machine %= continue t
+    -- Finally, be sure to activate the base robot.
+    gameState %= execState (zoomRobots $ activateRobot 0)
