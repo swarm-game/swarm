@@ -6,6 +6,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Main where
 
+import Control.Monad (when)
 import Data.Foldable qualified
 import Data.Text.IO qualified as T
 import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
@@ -16,7 +17,7 @@ import Swarm.Language.Format
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Parser.Core (LanguageVersion (..))
 import Swarm.TUI.Model (AppOpts (..), ColorMode (..))
-import Swarm.TUI.Model.StateUpdate (KeybindingPrint (..), showKeybindings)
+import Swarm.TUI.Model.KeyBindings (KeybindingPrint (..), showKeybindings)
 import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond)
 import Swarm.Version
 import Swarm.Web (defaultPort)
@@ -79,7 +80,10 @@ cliParser =
   langVer = flag SwarmLangLatest SwarmLang0_5 (long "v0.5" <> help "Read (& convert) code from Swarm version 0.5")
 
   printKeyMode :: Parser KeybindingPrint
-  printKeyMode = flag TextPrint MarkdownPrint (long "markdown" <> help "Print in markdown table format.")
+  printKeyMode =
+    flag' IniPrint (long "ini" <> help "Print in INI format, without additional file location info.")
+      <|> flag' MarkdownPrint (long "markdown" <> help "Print in Markdown table format.")
+      <|> pure TextPrint
 
   parseFormat :: Parser FormatConfig
   parseFormat = FormatConfig <$> input <*> output <*> optional widthOpt <*> langVer <**> helper
@@ -137,10 +141,11 @@ printKeybindings :: KeybindingPrint -> IO ()
 printKeybindings p = do
   kb <- showKeybindings p
   T.putStrLn kb
-  (iniExists, ini) <- getSwarmConfigIniFile
-  let iniState = if iniExists then "is" else "can be created"
-  putStrLn $ "\nThe configuration file " <> iniState <> " at:"
-  putStrLn ini
+  when (p /= IniPrint) $ do
+    (iniExists, ini) <- getSwarmConfigIniFile
+    let iniState = if iniExists then "is" else "can be created"
+    putStrLn $ "\nThe configuration file " <> iniState <> " at:"
+    putStrLn ini
 
 main :: IO ()
 main = do

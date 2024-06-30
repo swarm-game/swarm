@@ -15,16 +15,10 @@ module Swarm.TUI.Model.StateUpdate (
   attainAchievement,
   attainAchievement',
   scenarioToAppState,
-
-  -- ** Keybindings
-  initKeyHandlingState,
-  KeybindingPrint (..),
-  showKeybindings,
 ) where
 
 import Brick.AttrMap (applyAttrMappings)
 import Brick.Focus
-import Brick.Keybindings as BK
 import Brick.Widgets.List qualified as BL
 import Control.Applicative ((<|>))
 import Control.Carrier.Accum.FixedStrict (runAccum)
@@ -47,11 +41,9 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Sequence (Seq)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Time (getZonedTime)
-import Swarm.Game.Failure (Asset (..), LoadingFailure (..), SystemFailure (..))
+import Swarm.Game.Failure (SystemFailure (..))
 import Swarm.Game.Land
-import Swarm.Game.ResourceLoading (getSwarmConfigIniFile)
 import Swarm.Game.Scenario (
   ScenarioInputs (..),
   gsiScenarioInputs,
@@ -81,15 +73,14 @@ import Swarm.Game.State.Substate
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
-import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Launch.Model (toSerializableParams)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements
-import Swarm.TUI.Model.Event (SwarmEvent, defaultSwarmBindings, swarmEvents)
 import Swarm.TUI.Model.Goal (emptyGoalDisplay)
+import Swarm.TUI.Model.KeyBindings
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.Structure
@@ -99,47 +90,6 @@ import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
-
-loadKeybindingConfig ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  m [(SwarmEvent, BindingState)]
-loadKeybindingConfig = do
-  (iniExists, ini) <- sendIO getSwarmConfigIniFile
-  if not iniExists
-    then return []
-    else do
-      loadedCustomBindings <- sendIO $ keybindingsFromFile swarmEvents "keybindings" ini
-      case loadedCustomBindings of
-        Left e -> throwError $ AssetNotLoaded Keybindings ini (CustomMessage $ T.pack e)
-        Right bs -> pure $ fromMaybe [] bs
-
-initKeyHandlingState ::
-  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  m KeyEventHandlingState
-initKeyHandlingState = do
-  customBindings <- loadKeybindingConfig
-  let cfg = newKeyConfig swarmEvents defaultSwarmBindings customBindings
-  dispatchers <- createKeyDispatchers cfg
-  return $ KeyEventHandlingState cfg dispatchers
-
-data KeybindingPrint = MarkdownPrint | TextPrint
-
-showKeybindings :: KeybindingPrint -> IO Text
-showKeybindings kPrint = do
-  bindings <- runM $ runThrow @SystemFailure initKeyHandlingState
-  pure $ case bindings of
-    Left e -> prettyText e
-    Right bs -> showTable kPrint (bs ^. keyConfig) sections
- where
-  showTable = \case
-    MarkdownPrint -> keybindingMarkdownTable
-    TextPrint -> keybindingTextTable
-  sections =
-    [ ("main", mainEventHandlers)
-    , ("repl", replEventHandlers)
-    , ("world", worldEventHandlers)
-    , ("robot", robotEventHandlers)
-    ]
 
 -- | Initialize the 'AppState' from scratch.
 initAppState ::

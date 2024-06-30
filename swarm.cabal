@@ -690,6 +690,7 @@ library swarm-tui
     Swarm.TUI.Model.Achievements
     Swarm.TUI.Model.Event
     Swarm.TUI.Model.Goal
+    Swarm.TUI.Model.KeyBindings
     Swarm.TUI.Model.Menu
     Swarm.TUI.Model.Name
     Swarm.TUI.Model.Repl
