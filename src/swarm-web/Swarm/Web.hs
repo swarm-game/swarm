@@ -79,7 +79,7 @@ import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Type
 import Swarm.Language.Pipeline (processTermEither)
 import Swarm.Language.Pretty (prettyTextLine)
-import Swarm.TUI.Model hiding (EventHandlers (..))
+import Swarm.TUI.Model hiding (SwarmKeyDispatchers (..))
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Repl (REPLHistItem, replHistory, replSeq)
 import Swarm.TUI.Model.UI
