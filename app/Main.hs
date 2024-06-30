@@ -153,7 +153,7 @@ printKeybindings initialize p = do
         | iniExists = "is"
         | initialize = "has been created"
         | otherwise = "can be created (--init)"
-  putStrLn $ '\n' : replicate 80 '-'
+  putStrLn $ replicate 80 '-'
   putStrLn $ "The configuration file " <> iniState <> " at:"
   putStrLn ini
 
