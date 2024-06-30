@@ -87,8 +87,7 @@ import Swarm.Language.Typecheck (
  )
 import Swarm.Language.Value (Value (VKey), envTypes)
 import Swarm.Log
-import Swarm.TUI.Controller.EventHandlers.Frame
-import Swarm.TUI.Controller.EventHandlers.Robot (handleRobotPanelEvent, runBaseTerm)
+import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Controller qualified as EC

@@ -12,9 +12,6 @@
 module Swarm.TUI.Controller.EventHandlers.Robot (
   robotEventHandlers,
   handleRobotPanelEvent,
-
-  -- ** Helper functions
-  runBaseTerm,
 ) where
 
 import Brick
@@ -22,15 +19,11 @@ import Brick.Keybindings
 import Control.Lens as Lens
 import Control.Lens.Extras as Lens (is)
 import Control.Monad (unless, when)
-import Control.Monad.State (MonadState, execState)
 import Data.Text qualified as T
 import Graphics.Vty qualified as V
-import Swarm.Game.CESK (continue)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.State
-import Swarm.Game.State.Robot (activateRobot)
-import Swarm.Game.State.Substate (REPLStatus (..), replStatus)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.TUI.Controller.Util
@@ -155,18 +148,3 @@ zoomInventory :: EventM Name UIInventory () -> EventM Name AppState ()
 zoomInventory act = Brick.zoom (uiState . uiGameplay . uiInventory) $ do
   uiInventoryShouldUpdate .= True
   act
-
-runBaseTerm :: (MonadState AppState m) => Maybe TSyntax -> m ()
-runBaseTerm = maybe (pure ()) startBaseProgram
- where
-  -- The player typed something at the REPL and hit Enter; this
-  -- function takes the resulting ProcessedTerm (if the REPL
-  -- input is valid) and sets up the base robot to run it.
-  startBaseProgram t = do
-    -- Set the REPL status to Working
-    gameState . gameControls . replStatus .= REPLWorking (t ^. sType) Nothing
-    -- Set up the robot's CESK machine to evaluate/execute the
-    -- given term.
-    gameState . baseRobot . machine %= continue t
-    -- Finally, be sure to activate the base robot.
-    gameState %= execState (zoomRobots $ activateRobot 0)

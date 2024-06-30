@@ -81,10 +81,7 @@ import Swarm.Game.State.Substate
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
-import Swarm.TUI.Controller.EventHandlers.Main (mainEventHandlers)
-import Swarm.TUI.Controller.EventHandlers.REPL (replEventHandlers)
-import Swarm.TUI.Controller.EventHandlers.Robot (robotEventHandlers)
-import Swarm.TUI.Controller.EventHandlers.World (worldEventHandlers)
+import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting
@@ -102,34 +99,6 @@ import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
-
-createEventHandlers ::
-  (Has (Throw SystemFailure) sig m) =>
-  KeyConfig SwarmEvent ->
-  m EventHandlers
-createEventHandlers config = do
-  mainHandler <- buildDispatcher mainEventHandlers
-  replHandler <- buildDispatcher replEventHandlers
-  worldHandler <- buildDispatcher worldEventHandlers
-  robotHandler <- buildDispatcher robotEventHandlers
-  return EventHandlers {..}
- where
-  -- this error handling code is modified version of the brick demo app:
-  -- https://github.com/jtdaugherty/brick/blob/764e66897/programs/CustomKeybindingDemo.hs#L216
-  buildDispatcher handlers = case keyDispatcher config handlers of
-    Right d -> return d
-    Left collisions -> do
-      let errorHeader = "Error: some key events have the same keys bound to them.\n"
-      let handlerErrors = flip map collisions $ \(b, hs) ->
-            let hsm = "Handlers with the '" <> BK.ppBinding b <> "' binding:"
-                hss = flip map hs $ \h ->
-                  let trigger = case BK.kehEventTrigger $ BK.khHandler h of
-                        ByKey k -> "triggered by the key '" <> BK.ppBinding k <> "'"
-                        ByEvent e -> "triggered by the event '" <> fromMaybe "<unknown>" (BK.keyEventName swarmEvents e) <> "'"
-                      desc = BK.handlerDescription $ BK.kehHandler $ BK.khHandler h
-                   in "  " <> desc <> " (" <> trigger <> ")"
-             in T.intercalate "\n" (hsm : hss)
-      throwError $ CustomFailure (T.intercalate "\n" $ errorHeader : handlerErrors)
 
 loadKeybindingConfig ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
