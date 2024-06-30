@@ -47,10 +47,11 @@ module Swarm.TUI.Model (
 
   -- ** Utility
   logEvent,
+  SwarmKeyDispatcher,
   KeyEventHandlingState (KeyEventHandlingState),
-  EventHandlers (..),
+  SwarmKeyDispatchers (..),
   keyConfig,
-  keyHandlers,
+  keyDispatchers,
 
   -- * App state
   AppState (AppState),
@@ -148,22 +149,22 @@ logEvent src sev who msg el =
 
 data KeyEventHandlingState = KeyEventHandlingState
   { _keyConfig :: KeyConfig SwarmEvent
-  , _keyHandlers :: EventHandlers
+  , _keyDispatchers :: SwarmKeyDispatchers
   }
 
 keyConfig :: Lens' KeyEventHandlingState (KeyConfig SwarmEvent)
 keyConfig = lens _keyConfig (\s k -> s {_keyConfig = k})
 
-keyHandlers :: Lens' KeyEventHandlingState EventHandlers
-keyHandlers = lens _keyHandlers (\s k -> s {_keyHandlers = k})
+keyDispatchers :: Lens' KeyEventHandlingState SwarmKeyDispatchers
+keyDispatchers = lens _keyDispatchers (\s k -> s {_keyDispatchers = k})
 
-type SwarmEventHandler = KeyDispatcher SwarmEvent (EventM Name AppState)
+type SwarmKeyDispatcher = KeyDispatcher SwarmEvent (EventM Name AppState)
 
-data EventHandlers = EventHandlers
-  { mainHandler :: SwarmEventHandler
-  , replHandler :: SwarmEventHandler
-  , worldHandler :: SwarmEventHandler
-  , robotHandler :: SwarmEventHandler
+data SwarmKeyDispatchers = SwarmKeyDispatchers
+  { mainGameDispatcher :: SwarmKeyDispatcher
+  , replDispatcher :: SwarmKeyDispatcher
+  , worldDispatcher :: SwarmKeyDispatcher
+  , robotDispatcher :: SwarmKeyDispatcher
   }
 
 -- ----------------------------------------------------------------------------

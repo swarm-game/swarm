@@ -38,7 +38,7 @@ import Swarm.TUI.View.Util (generateModal)
 handleRobotPanelEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleRobotPanelEvent bev = do
   search <- use $ uiState . uiGameplay . uiInventory . uiInventorySearch
-  keyHandler <- use $ keyEventHandling . keyHandlers . to robotHandler
+  keyHandler <- use $ keyEventHandling . keyDispatchers . to robotDispatcher
   case search of
     Just _ -> handleInventorySearchEvent bev
     Nothing -> case bev of
