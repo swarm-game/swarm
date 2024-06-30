@@ -15,7 +15,7 @@ module Swarm.Util (
   maximum0,
   enumeratedMap,
   cycleEnum,
-  listEnumsNonempty,
+  enumerateNonEmpty,
   showEnum,
   indexWrapNonEmpty,
   uniq,
@@ -158,8 +158,8 @@ cycleEnum e
 
 -- | See
 -- https://hackage.haskell.org/package/relude-1.2.1.0/docs/Relude-Enum.html#v:universeNonEmpty
-listEnumsNonempty :: (Enum e, Bounded e) => NonEmpty e
-listEnumsNonempty = minBound :| drop 1 enumerate
+enumerateNonEmpty :: (Enum e, Bounded e) => NonEmpty e
+enumerateNonEmpty = minBound :| drop 1 enumerate
 
 -- | We know by the syntax rules of Haskell that constructor
 --  names must consist of one or more symbols!

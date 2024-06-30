@@ -190,7 +190,7 @@ nearestDirection coord =
 
   index :: Int
   index = round $ fromIntegral (length orderedDirs) * angle
-  orderedDirs = Util.listEnumsNonempty
+  orderedDirs = Util.enumerateNonEmpty
 
 -- | Convert a 'Direction' into a corresponding 'Heading'.  Note that
 --   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',
