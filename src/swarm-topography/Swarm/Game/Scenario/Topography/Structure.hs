@@ -21,7 +21,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml as Y
 import Swarm.Game.Location
-import Swarm.Game.Scenario.Topography.Area
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.ProtoCell

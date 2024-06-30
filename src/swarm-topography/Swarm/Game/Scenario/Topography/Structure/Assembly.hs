@@ -22,6 +22,7 @@ import Data.Text qualified as T
 import Linear.Affine
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.Structure

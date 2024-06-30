@@ -40,6 +40,7 @@ import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, trobotLocation)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Topography.Area
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.State.Config

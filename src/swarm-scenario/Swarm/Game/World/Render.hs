@@ -26,6 +26,7 @@ import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Center
 import Swarm.Game.Scenario.Topography.EntityFacade (EntityFacade (..), mkFacade)
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Rasterize
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.State.Landscape

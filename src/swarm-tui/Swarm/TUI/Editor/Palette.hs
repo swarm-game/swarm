@@ -26,6 +26,7 @@ import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.ProtoCell
 import Swarm.Game.Scenario.Topography.Structure.Overlay

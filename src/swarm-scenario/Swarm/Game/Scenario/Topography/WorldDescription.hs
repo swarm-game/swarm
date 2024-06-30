@@ -18,9 +18,9 @@ import Swarm.Game.Entity
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Scenario.RobotLookup
-import Swarm.Game.Scenario.Topography.Area (Grid (EmptyGrid))
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
+import Swarm.Game.Scenario.Topography.Grid (Grid (EmptyGrid))
 import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (
   Parentage (Root),

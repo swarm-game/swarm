@@ -13,9 +13,9 @@ import Data.Set qualified as Set
 import Data.Text qualified as T
 import Data.Tuple (swap)
 import Swarm.Game.Entity
-import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.ProtoCell
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Util.Erasable

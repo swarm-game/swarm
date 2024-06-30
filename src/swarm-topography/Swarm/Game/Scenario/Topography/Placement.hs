@@ -14,6 +14,7 @@ import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Language.Syntax.Direction (AbsoluteDir (..))
 
 newtype StructureName = StructureName Text

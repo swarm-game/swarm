@@ -4,65 +4,23 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Topography.Area where
 
-import Data.Aeson (ToJSON (..))
 import Data.Int (Int32)
 import Data.List qualified as L
-import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Maybe (listToMaybe)
 import Data.Semigroup
 import Linear (V2 (..))
 import Swarm.Game.Location
-import Swarm.Game.World.Coords
+import Swarm.Game.Scenario.Topography.Grid
 import Prelude hiding (zipWith)
-
-data Grid c
-  = EmptyGrid
-  | Grid (NonEmpty (NonEmpty c))
-  deriving (Show, Eq, Functor, Foldable, Traversable)
-
-mkGrid :: [[a]] -> Grid a
-mkGrid rows = fromMaybe EmptyGrid $ do
-  rowsNE <- NE.nonEmpty =<< mapM NE.nonEmpty rows
-  return $ Grid rowsNE
-
-getRows :: Grid a -> [[a]]
-getRows EmptyGrid = []
-getRows (Grid g) = NE.toList . NE.map NE.toList $ g
-
--- | Since the derived 'Functor' instance applies to the
--- type parameter that is nested within lists, we define
--- an explicit function for mapping over the enclosing lists.
-mapRows :: (NonEmpty (NonEmpty a) -> NonEmpty (NonEmpty b)) -> Grid a -> Grid b
-mapRows _ EmptyGrid = EmptyGrid
-mapRows f (Grid rows) = Grid $ f rows
-
-allMembers :: Grid a -> [a]
-allMembers EmptyGrid = []
-allMembers g = concat . getRows $ g
-
-mapIndexedMembers :: (Coords -> a -> b) -> Grid a -> [b]
-mapIndexedMembers _ EmptyGrid = []
-mapIndexedMembers f (Grid g) =
-  NE.toList $
-    sconcat $
-      NE.zipWith (\i -> NE.zipWith (\j -> f (Coords (i, j))) nonemptyCount) nonemptyCount g
- where
-  nonemptyCount = NE.iterate succ 0
-
-instance (ToJSON a) => ToJSON (Grid a) where
-  toJSON EmptyGrid = toJSON ([] :: [a])
-  toJSON (Grid g) = toJSON g
-
-getGridDimensions :: Grid a -> AreaDimensions
-getGridDimensions EmptyGrid = AreaDimensions 0 0
-getGridDimensions g = getAreaDimensions $ getRows g
 
 -- | Height and width of a 2D map region
 data AreaDimensions = AreaDimensions
   { rectWidth :: Int32
   , rectHeight :: Int32
   }
+
+getGridDimensions :: Grid a -> AreaDimensions
+getGridDimensions g = getAreaDimensions $ getRows g
 
 asTuple :: AreaDimensions -> (Int32, Int32)
 asTuple (AreaDimensions x y) = (x, y)

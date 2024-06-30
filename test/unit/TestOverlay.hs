@@ -7,7 +7,7 @@
 module TestOverlay where
 
 import Swarm.Game.Location
-import Swarm.Game.Scenario.Topography.Area
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Test.Tasty
 import Test.Tasty.HUnit

@@ -15,6 +15,7 @@ import Data.Tuple (swap)
 import Linear
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Util (applyWhen)
 
 data PositionedGrid a = PositionedGrid
