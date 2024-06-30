@@ -46,7 +46,7 @@ cliParser =
         [ command "format" (info (Format <$> parseFormat) (progDesc "Format a file"))
         , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
-        , command "keybindings" (info (ListKeybinding <$> printKeyMode) (progDesc "List the keybindings"))
+        , command "keybindings" (info (ListKeybinding <$> printKeyMode <**> helper) (progDesc "List the keybindings"))
         ]
     )
     <|> Run
