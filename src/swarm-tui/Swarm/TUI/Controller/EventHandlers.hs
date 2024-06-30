@@ -13,7 +13,7 @@
 -- 2. The 'AppState' stores the key configuration and key dispatchers (keys to handlers)
 -- 3. Here we declare the handlers for abstract events.
 -- 4. When provided with 'KeyConfig' (can include customized keybindings) we can
---    'createKeyDispatchers in 'Swarm.TUI.Model.StateUpdate' and store them in 'AppState'.
+--    'createKeyDispatchers' in 'Swarm.TUI.Model.StateUpdate' and store them in 'AppState'.
 -- 5. Finally in 'Swarm.TUI.Controller' the Brick event handler calls the stored dispatchers.
 module Swarm.TUI.Controller.EventHandlers (
   -- * Documentation

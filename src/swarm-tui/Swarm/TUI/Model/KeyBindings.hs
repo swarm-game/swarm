@@ -73,7 +73,7 @@ keybindingINI kc sections =
   T.unlines $
     "[keybindings]\n"
       : "; Uncomment the assignment and set comma separated list"
-      : "; of keybindings or \"unbind\" on the right. See:"
+      : "; of keybindings or \"unbound\" on the right. See:"
       : "; https://hackage.haskell.org/package/brick/docs/Brick-Keybindings-Parse.html#v:parseBinding\n"
       : map (keyBindingEventINI kc) handlersData
  where

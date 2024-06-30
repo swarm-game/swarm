@@ -185,7 +185,7 @@ runBaseTerm :: (MonadState AppState m) => Maybe TSyntax -> m ()
 runBaseTerm = maybe (pure ()) startBaseProgram
  where
   -- The player typed something at the REPL and hit Enter; this
-  -- function takes the resulting ProcessedTerm (if the REPL
+  -- function takes the resulting term (if the REPL
   -- input is valid) and sets up the base robot to run it.
   startBaseProgram t = do
     -- Set the REPL status to Working
