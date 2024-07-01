@@ -7,7 +7,7 @@
 module TestOverlay where
 
 import Swarm.Game.Location
-import Swarm.Game.Scenario.Topography.Area
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -37,6 +37,6 @@ mkOriginTestCase adjustmentDescription overlayLocation expectedBaseLoc =
   testCase (unwords [adjustmentDescription, "origin adjustment"]) $ do
     assertEqual "Base loc wrong" expectedBaseLoc actualBaseLoc
  where
-  baseLayer = PositionedGrid (Location 0 0) $ Grid [[] :: [Maybe Int]]
-  overlayLayer = PositionedGrid overlayLocation $ Grid [[]]
+  baseLayer = PositionedGrid (Location 0 0) (EmptyGrid :: Grid (Maybe ()))
+  overlayLayer = PositionedGrid overlayLocation EmptyGrid
   PositionedGrid actualBaseLoc _ = baseLayer <> overlayLayer

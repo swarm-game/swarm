@@ -54,8 +54,8 @@ import Data.Set qualified as Set
 import Data.Tuple (swap)
 import Swarm.Game.Entity (Entity, EntityName, entityName)
 import Swarm.Game.Scenario (StaticStructureInfo (..))
-import Swarm.Game.Scenario.Topography.Area (Grid (Grid))
 import Swarm.Game.Scenario.Topography.Cell (PCell, cellEntity)
+import Swarm.Game.Scenario.Topography.Grid (Grid, getRows)
 import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform)
 import Swarm.Game.Scenario.Topography.Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
@@ -67,14 +67,14 @@ import Swarm.Util.Erasable (erasableToMaybe)
 import Text.AhoCorasick
 
 getEntityGrid :: Grid (Maybe (PCell Entity)) -> [SymbolSequence Entity]
-getEntityGrid (Grid cells) = map (map ((erasableToMaybe . cellEntity) =<<)) cells
+getEntityGrid = map (map ((erasableToMaybe . cellEntity) =<<)) . getRows
 
 allStructureRows :: [StructureWithGrid b a] -> [StructureRow b a]
 allStructureRows =
-  concatMap getRows
+  concatMap transformRows
  where
-  getRows :: StructureWithGrid b a -> [StructureRow b a]
-  getRows g = zipWith (StructureRow g) [0 ..] $ entityGrid g
+  transformRows :: StructureWithGrid b a -> [StructureRow b a]
+  transformRows g = zipWith (StructureRow g) [0 ..] $ entityGrid g
 
 mkOffsets :: Foldable f => Int32 -> f a -> InspectionOffsets
 mkOffsets pos xs =
@@ -190,10 +190,9 @@ extractOrientedGrid ::
   NamedGrid (Maybe (PCell Entity)) ->
   AbsoluteDir ->
   StructureWithGrid (PCell Entity) Entity
-extractOrientedGrid x d = StructureWithGrid x d $ getEntityGrid g'
+extractOrientedGrid x d = StructureWithGrid x d $ getEntityGrid g
  where
-  Grid rows = structure x
-  g' = Grid $ applyOrientationTransform (Orientation d False) rows
+  g = applyOrientationTransform (Orientation d False) $ structure x
 
 -- | At this point, we have already ensured that orientations
 -- redundant by rotational symmetry have been excluded

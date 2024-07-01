@@ -84,7 +84,7 @@ structureWidget gs s =
         , commaList $ map (T.pack . directionJsonModifier . show) supportedOrientations
         , "with"
         , renderSymmetry $ symmetry annotatedStructureGrid
-        , "symmetry."
+        , "rotational symmetry."
         ]
 
   maybeDescriptionWidget =

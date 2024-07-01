@@ -22,6 +22,7 @@ import Data.Text qualified as T
 import Linear.Affine
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.Structure
@@ -101,10 +102,10 @@ overlayGridExpanded ::
 overlayGridExpanded
   inputGrid
   (Pose loc orientation)
-  (PositionedGrid _ (Grid overlayArea)) =
+  (PositionedGrid _ overlayArea) =
     PositionedGrid origin inputGrid <> positionedOverlay
    where
-    reorientedOverlayCells = Grid $ applyOrientationTransform orientation overlayArea
+    reorientedOverlayCells = applyOrientationTransform orientation overlayArea
     positionedOverlay = PositionedGrid loc reorientedOverlayCells
 
 -- * Validation

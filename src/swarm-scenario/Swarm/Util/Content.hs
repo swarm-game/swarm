@@ -11,9 +11,9 @@ import Data.Map qualified as M
 import Data.Text qualified as T
 import Swarm.Game.Display
 import Swarm.Game.Entity.Cosmetic
-import Swarm.Game.Scenario.Topography.Area qualified as EA
 import Swarm.Game.Scenario.Topography.Cell (PCell (..))
 import Swarm.Game.Scenario.Topography.EntityFacade
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Terrain (TerrainMap, TerrainType, getTerrainWord)
 import Swarm.Game.Universe
 import Swarm.Game.World
@@ -36,9 +36,9 @@ getMapRectangle ::
   (d -> e) ->
   (Coords -> (TerrainType, Maybe d)) ->
   BoundsRectangle ->
-  EA.Grid (PCell e)
+  Grid (PCell e)
 getMapRectangle paintTransform contentFunc coords =
-  EA.Grid $ map renderRow [yTop .. yBottom]
+  mkGrid $ map renderRow [yTop .. yBottom]
  where
   (Coords (yTop, xLeft), Coords (yBottom, xRight)) = coords
 
