@@ -121,6 +121,8 @@ instance (Alternative f) => Semigroup (PositionedGrid (f a)) where
 -- | NOTE: We only make explicit grid adjustments for
 -- left/top padding.  Any padding that is needed on the right/bottom
 -- of either grid will be taken care of by the 'zipPadded' function.
+--
+-- TODO(#2004): The return type should be 'Grid'.
 padSouthwest ::
   Alternative f =>
   V2 Int32 ->
