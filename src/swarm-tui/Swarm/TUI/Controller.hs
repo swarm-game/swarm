@@ -1024,7 +1024,8 @@ handleREPLEvent x = do
     -- Handle Ctrl-c here so we can always cancel the currently running
     -- base program no matter what REPL control mode we are in.
     ControlChar 'c' -> do
-      gameState . baseRobot . machine %= cancel
+      working <- use $ gameState . gameControls . replWorking
+      when working $ gameState . baseRobot . machine %= cancel
       Brick.zoom (uiState . uiGameplay . uiREPL) $ do
         replPromptType .= CmdPrompt []
         replPromptText .= ""
