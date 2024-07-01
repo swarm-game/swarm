@@ -1,5 +1,74 @@
 # Revision history for swarm
 
+## **0.6.0.0** - XXX
+
+Some of the highlights of this release include native Windows support,
+type synonyms and equirecursive types, and a prototype tournament
+server ([#1798](https://github.com/swarm-game/swarm/pull/1798)) where
+players can upload their solutions to challenge scenarios.  See below
+for a more detailed list (or see the [complete list of git
+commits](https://github.com/swarm-game/swarm/commits/main/?since=2023-11-01&until=2024-06-23)).
+
+Aside from the external changes listed below (including a few major
+additions), this release cycle saw a *lot* of internal refactoring.
+For example, we finished splitting the codebase into a number of
+independent sublibraries, split several large modules into smaller
+modules, and completed a number of additional simplifications and
+improvements.
+
+### Bugfixes
+
+* Variables in a local monadic binder escape to outer scopes
+  ([#681](https://github.com/swarm-game/swarm/issues/681); fixed by [#1928](https://github.com/swarm-game/swarm/pull/1928))
+
+### New Features
+
+#### Language
+
+* `volume` command measuring the enclosed area around a given location ([#1747](https://github.com/swarm-game/swarm/pull/1747))
+* Type synonyms ([#1865](https://github.com/swarm-game/swarm/pull/1865))
+* Recursive types ([#1894](https://github.com/swarm-game/swarm/pull/1894))
+* Entity tags and related commands ([#1635](https://github.com/swarm-game/swarm/pull/1635))
+
+#### Entities + recipes
+
+* New `lens` entity and recipe for `detonator` ([#1876](https://github.com/swarm-game/swarm/pull/1876))
+* `infinite improbability drive` device enabling `teleport` command ([#1724](https://github.com/swarm-game/swarm/pull/1724))
+
+#### New scenarios
+
+* Beekeeping scenario ([#1599](https://github.com/swarm-game/swarm/pull/1599))
+* Fishing scenario ([#1628](https://github.com/swarm-game/swarm/pull/1628))
+* Dim sum restaurant ([#1686](https://github.com/swarm-game/swarm/pull/1686))
+* Gallery scenario ([#1760](https://github.com/swarm-game/swarm/pull/1760))
+
+#### World features
+
+* Path caching, for more efficient repeated use of the `path` command ([#1595](https://github.com/swarm-game/swarm/pull/1595))
+* Code to render any map to PNG ([#1632](https://github.com/swarm-game/swarm/pull/1632))
+* Extensible terrain ([#1775](https://github.com/swarm-game/swarm/pull/1775))
+* Spreadable plant growth ([#1817](https://github.com/swarm-game/swarm/pull/1817))
+
+#### UI enhancements
+
+* Fix REPL type display ([#1610](https://github.com/swarm-game/swarm/pull/1610))
+* Handle backword kill word event in REPL ([#1861](https://github.com/swarm-game/swarm/pull/1861))
+* Make log error messages ephemeral ([#1877](https://github.com/swarm-game/swarm/pull/1877))
+* Pretty print code blocks according to widget size ([#1897](https://github.com/swarm-game/swarm/pull/1897))
+* Automatically insert matching close brackets at REPL ([#1953](https://github.com/swarm-game/swarm/pull/1953))
+* Highlight only the part of the REPL input indicated as the location
+  of an error ([#1957](https://github.com/swarm-game/swarm/pull/1957))
+
+#### Command line options
+
+* `format` subcommand now tries to preserve comments ([#1845](https://github.com/swarm-game/swarm/pull/1845))
+* Add `format --v0.5` option to port code from older syntax ([#1851](https://github.com/swarm-game/swarm/pull/1851))
+
+### Building/packaging
+
+* Add Windows build to CI ([#1974](https://github.com/swarm-game/swarm/pull/1974))
+* Native Windows support ([#1617](https://github.com/swarm-game/swarm/pull/1617))
+
 ## **0.5.0.0** - 2023-11-01
 
 ### Bugfixes
