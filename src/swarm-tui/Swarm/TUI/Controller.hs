@@ -428,13 +428,14 @@ handleMainEvent ev = do
           EC.activateWorldEditorFunction y
         _ -> return ()
       flip whenJust setFocus $ case n of
-        -- Adapt click event origin to their right panel.
-        -- For the REPL and the World view, using 'Brick.Widgets.Core.clickable' correctly set the origin.
-        -- However this does not seems to work for the robot and info panel.
-        -- Thus we force the destination focus here.
+        -- Adapt click event origin to the right panel.  For the world
+        -- view, we just use 'Brick.Widgets.Core.clickable'.  However,
+        -- the other panels all have a viewport, requiring us to
+        -- explicitly set their focus here.
         InventoryList -> Just RobotPanel
         InventoryListItem _ -> Just RobotPanel
         InfoViewport -> Just InfoPanel
+        REPLViewport -> Just REPLPanel
         REPLInput -> Just REPLPanel
         WorldEditorPanelControl _ -> Just WorldEditorPanel
         _ -> Nothing
