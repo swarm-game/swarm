@@ -341,7 +341,7 @@ initUIState ::
   m UIState
 initUIState speedFactor showMainMenu cheatMode = do
   historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
-  let history = maybe [] (map REPLEntry . T.lines) historyT
+  let history = maybe [] (map mkREPLSubmission . T.lines) historyT
   startTime <- sendIO $ getTime Monotonic
   achievements <- loadAchievementsInfo
   launchConfigPanel <- sendIO initConfigPanel
