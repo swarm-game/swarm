@@ -70,13 +70,13 @@ getAreaDimensions cellGrid =
 computeArea :: AreaDimensions -> Int32
 computeArea (AreaDimensions w h) = w * h
 
--- |
--- Warning: size must be nonzero,
--- since 'stimes' is unsafe with value @0@.
 fillGrid :: AreaDimensions -> a -> Grid a
-fillGrid (AreaDimensions w h) =
+fillGrid (AreaDimensions 0 _) _ = EmptyGrid
+fillGrid (AreaDimensions _ 0) _ = EmptyGrid
+fillGrid (AreaDimensions w h) x =
   Grid
     . stimes h
     . pure
     . stimes w
     . pure
+    $ x
