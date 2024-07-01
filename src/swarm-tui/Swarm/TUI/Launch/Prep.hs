@@ -17,6 +17,7 @@ import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens ((.=), (^.))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Functor.Identity (runIdentity)
+import Data.List.Extra (enumerate)
 import Data.Text qualified as T
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (..), ScenarioInfoPair, getLaunchParams, scenarioStatus)
@@ -25,7 +26,6 @@ import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Pretty (prettyText)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Model.Name
-import Swarm.Util (listEnums)
 import Swarm.Util.Effect (withThrow)
 import System.FilePath (takeDirectory)
 import Text.Read (readEither)
@@ -87,7 +87,7 @@ initConfigPanel = do
       (LaunchParams (Right Nothing) (Right Nothing))
  where
   myForm = initEditorWidget ""
-  ring = makeFocusRingWith listEnums
+  ring = makeFocusRingWith enumerate
 
 initFileBrowserWidget ::
   (MonadIO m) =>

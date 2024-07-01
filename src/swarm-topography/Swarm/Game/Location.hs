@@ -45,6 +45,7 @@ import Data.Aeson (FromJSONKey, ToJSONKey)
 import Data.Function (on, (&))
 import Data.Int (Int32)
 import Data.List (nub)
+import Data.List.Extra (enumerate)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Yaml (FromJSON (parseJSON), ToJSON (toJSON))
@@ -146,7 +147,7 @@ applyTurn d = case d of
 --   Only absolute directions are mapped.
 cardinalDirs :: M.Map Heading AbsoluteDir
 cardinalDirs =
-  M.fromList $ map (toHeading &&& id) Util.listEnums
+  M.fromList $ map (toHeading &&& id) enumerate
 
 -- | Possibly convert a heading into a 'Direction'---that is, if the
 --   vector happens to be a unit vector in one of the cardinal
@@ -174,7 +175,7 @@ relativeTo :: AbsoluteDir -> AbsoluteDir -> PlanarRelativeDir
 relativeTo targetDir referenceDir =
   toEnum indexDiff
  where
-  enumCount = length (Util.listEnums :: [AbsoluteDir])
+  enumCount = length (enumerate :: [AbsoluteDir])
   indexDiff = ((-) `on` fromEnum) targetDir referenceDir `mod` enumCount
 
 -- | Compute the absolute direction nearest to a given 'Heading'.
@@ -189,7 +190,7 @@ nearestDirection coord =
 
   index :: Int
   index = round $ fromIntegral (length orderedDirs) * angle
-  orderedDirs = Util.listEnumsNonempty
+  orderedDirs = Util.enumerateNonEmpty
 
 -- | Convert a 'Direction' into a corresponding 'Heading'.  Note that
 --   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',

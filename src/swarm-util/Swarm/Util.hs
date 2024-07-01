@@ -15,8 +15,7 @@ module Swarm.Util (
   maximum0,
   enumeratedMap,
   cycleEnum,
-  listEnums,
-  listEnumsNonempty,
+  enumerateNonEmpty,
   showEnum,
   indexWrapNonEmpty,
   uniq,
@@ -96,6 +95,7 @@ import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl', maximumBy, partition)
 import Data.List qualified as List
+import Data.List.Extra (enumerate)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -156,13 +156,10 @@ cycleEnum e
   | e == maxBound = minBound
   | otherwise = succ e
 
-listEnums :: (Enum e, Bounded e) => [e]
-listEnums = [minBound .. maxBound]
-
--- | Members of the Bounded class are guaranteed to
--- have at least one element.
-listEnumsNonempty :: (Enum e, Bounded e) => NonEmpty e
-listEnumsNonempty = NE.fromList listEnums
+-- | See
+-- https://hackage.haskell.org/package/relude-1.2.1.0/docs/Relude-Enum.html#v:universeNonEmpty
+enumerateNonEmpty :: (Enum e, Bounded e) => NonEmpty e
+enumerateNonEmpty = minBound :| drop 1 enumerate
 
 -- | We know by the syntax rules of Haskell that constructor
 --  names must consist of one or more symbols!

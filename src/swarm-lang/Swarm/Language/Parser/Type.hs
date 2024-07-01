@@ -17,6 +17,7 @@ import Control.Monad (join)
 import Control.Monad.Combinators (many)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Fix (Fix (..), foldFix)
+import Data.List.Extra (enumerate)
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Swarm.Language.Parser.Core (LanguageVersion (..), Parser, languageVersion)
@@ -32,7 +33,6 @@ import Swarm.Language.Parser.Lex (
  )
 import Swarm.Language.Parser.Record (parseRecord)
 import Swarm.Language.Types
-import Swarm.Util (listEnums)
 import Text.Megaparsec (choice, optional, some, (<|>))
 import Witch (from)
 
@@ -103,7 +103,7 @@ parseTyCon = do
         SwarmLang0_5 -> reserved
         -- The latest version requires them to be uppercase
         SwarmLangLatest -> reservedCS
-  choice (map (\b -> TCBase b <$ reservedCase (baseTyName b)) listEnums)
+  choice (map (\b -> TCBase b <$ reservedCase (baseTyName b)) enumerate)
     <|> TCCmd <$ reservedCase "Cmd"
     <|> TCUser <$> tyName
 

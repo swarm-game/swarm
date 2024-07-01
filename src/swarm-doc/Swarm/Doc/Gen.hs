@@ -20,6 +20,7 @@ import Control.Lens (view, (^.))
 import Control.Monad (zipWithM, zipWithM_)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (toList)
+import Data.List.Extra (enumerate)
 import Data.Map.Lazy (Map, (!))
 import Data.Map.Lazy qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
@@ -43,7 +44,7 @@ import Swarm.Game.Scenario (GameStateInputs (..), ScenarioInputs (..), loadStand
 import Swarm.Game.World.Gen (extractEntities)
 import Swarm.Game.World.Typecheck (Some (..), TTerm)
 import Swarm.Language.Key (specialKeyNames)
-import Swarm.Util (both, listEnums)
+import Swarm.Util (both)
 import Text.Dot (Dot, NodeId, (.->.))
 import Text.Dot qualified as Dot
 
@@ -83,7 +84,7 @@ generateDocs = \case
               putStrLn $ "-- " <> show et
               putStrLn $ replicate 40 '-'
               generateEditorKeywords et
-        mapM_ editorGen listEnums
+        mapM_ editorGen enumerate
   SpecialKeyNames -> generateSpecialKeyNames
   CheatSheet address s -> makeWikiPage address s
   TutorialCoverage -> renderTutorialProgression >>= putStrLn . T.unpack

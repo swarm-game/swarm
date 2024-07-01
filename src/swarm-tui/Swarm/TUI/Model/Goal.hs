@@ -11,6 +11,7 @@ import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Lens (makeLenses, view, (^..))
 import Data.Aeson
+import Data.List.Extra (enumerate)
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -22,7 +23,6 @@ import Servant.Docs qualified as SD
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.WinCheck
 import Swarm.TUI.Model.Name
-import Swarm.Util (listEnums)
 
 -- | These are intended to be used as keys in a map
 -- of lists of goals.
@@ -90,7 +90,7 @@ emptyGoalDisplay =
   GoalDisplay
     (GoalTracking mempty mempty)
     (BL.list (GoalWidgets ObjectivesList) mempty 1)
-    (focusRing $ map GoalWidgets listEnums)
+    (focusRing $ map GoalWidgets enumerate)
 
 hasAnythingToShow :: GoalTracking -> Bool
 hasAnythingToShow (GoalTracking ann g) = not (null ann && null g)

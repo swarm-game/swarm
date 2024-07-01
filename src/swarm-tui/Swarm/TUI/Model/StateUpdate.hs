@@ -35,6 +35,7 @@ import Control.Monad.State (MonadState, execStateT)
 import Data.Bifunctor (first)
 import Data.Foldable qualified as F
 import Data.List qualified as List
+import Data.List.Extra (enumerate)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
@@ -88,7 +89,6 @@ import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Attribute.Attr (getWorldAttrName, swarmAttrMap)
 import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.TUI.View.Structure qualified as SR
-import Swarm.Util (listEnums)
 import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
 
@@ -291,7 +291,7 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
       & uiGameplay . uiStructure
         .~ StructureDisplay
           (SR.makeListWidget . M.elems $ gs ^. discovery . structureRecognition . automatons . originalStructureDefinitions)
-          (focusSetCurrent (StructureWidgets StructuresList) $ focusRing $ map StructureWidgets listEnums)
+          (focusSetCurrent (StructureWidgets StructuresList) $ focusRing $ map StructureWidgets enumerate)
  where
   entityList = EU.getEntitiesForList $ gs ^. landscape . terrainAndEntities . entityMap
 
