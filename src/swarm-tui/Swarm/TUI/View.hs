@@ -36,6 +36,7 @@ module Swarm.TUI.View (
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Forms
+import Brick.Keybindings (Binding (..), firstActiveBinding, ppBinding)
 import Brick.Widgets.Border (
   hBorder,
   hBorderWithLabel,
@@ -69,6 +70,7 @@ import Data.Set qualified as Set (toList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
+import Graphics.Vty qualified as V
 import Linear
 import Network.Wai.Handler.Warp (Port)
 import Numeric (showFFloat)
@@ -132,6 +134,7 @@ import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.View
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Event (SwarmEvent)
 import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Repl
@@ -152,9 +155,6 @@ import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (into)
-import Swarm.TUI.Model.Event (SwarmEvent)
-import Brick.Keybindings (firstActiveBinding, ppBinding, Binding (..))
-import Graphics.Vty qualified as V
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -1050,19 +1050,23 @@ drawKeyMenu s =
       , may cheat (NoHighlight, keyM SE.ToggleWorldEditorEvent, "editor")
       , Just (NoHighlight, keyM SE.PauseEvent, if isPaused then "unpause" else "pause")
       , may isPaused (NoHighlight, keyM SE.RunSingleTickEvent, "step")
-      , may (isPaused && hasDebug)
-        (if s ^. uiState . uiGameplay . uiShowDebug then Alert else NoHighlight
-        , keyM SE.ShowCESKDebugEvent
-        , "debug")
+      , may
+          (isPaused && hasDebug)
+          ( if s ^. uiState . uiGameplay . uiShowDebug then Alert else NoHighlight
+          , keyM SE.ShowCESKDebugEvent
+          , "debug"
+          )
       , Just (NoHighlight, keyM SE.IncreaseTpsEvent <> "/" <> keyM SE.DecreaseTpsEvent, "speed")
       , Just
-        (NoHighlight
-        , keyM SE.ToggleREPLVisibilityEvent
-        , if s ^. uiState . uiGameplay . uiShowREPL then "hide REPL" else "show REPL")
+          ( NoHighlight
+          , keyM SE.ToggleREPLVisibilityEvent
+          , if s ^. uiState . uiGameplay . uiShowREPL then "hide REPL" else "show REPL"
+          )
       , Just
-        (if s ^. uiState . uiGameplay . uiShowRobots then NoHighlight else Alert
-        , keyM SE.HideRobotsEvent
-        , "hide robots")
+          ( if s ^. uiState . uiGameplay . uiShowRobots then NoHighlight else Alert
+          , keyM SE.HideRobotsEvent
+          , "hide robots"
+          )
       ]
   may b = if b then Just else const Nothing
 
@@ -1079,13 +1083,17 @@ drawKeyMenu s =
       ++ [(keyR SE.ToggleCustomKeyHandlingEvent, renderHandlerModeSwitch ctrlMode) | handlerInstalled]
       ++ [("PgUp/Dn", "scroll")]
   keyCmdsFor (Just (FocusablePanel WorldPanel)) =
-    [ (T.intercalate "/" $ map keyW
-        [ SE.MoveViewWestEvent
-        , SE.MoveViewNorthEvent
-        , SE.MoveViewEastEvent
-        , SE.MoveViewSouthEvent
-        ]
-      , "scroll") | canScroll
+    [ ( T.intercalate "/" $
+          map
+            keyW
+            [ SE.MoveViewWestEvent
+            , SE.MoveViewNorthEvent
+            , SE.MoveViewEastEvent
+            , SE.MoveViewSouthEvent
+            ]
+      , "scroll"
+      )
+    | canScroll
     ]
       ++ [(keyW SE.ViewBaseEvent, "recenter") | not viewingBase]
       ++ [(keyW SE.ShowFpsEvent, "FPS")]
@@ -1096,7 +1104,8 @@ drawKeyMenu s =
         else
           [ (keyE SE.MakeEntityEvent, "make")
           , (keyE SE.ShowZeroInventoryEntitiesEvent, (if showZero then "hide" else "show") <> " 0")
-          , ( keyE SE.SwitchInventorySortDirection <> "/" <> keyE SE.CycleInventorySortEvent
+          ,
+            ( keyE SE.SwitchInventorySortDirection <> "/" <> keyE SE.CycleInventorySortEvent
             , T.unwords ["Sort:", renderSortMethod inventorySort]
             )
           , (keyE SE.SearchInventoryEvent, "search")
