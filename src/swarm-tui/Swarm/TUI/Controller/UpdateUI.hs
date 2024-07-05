@@ -17,6 +17,7 @@ import Control.Applicative (liftA2, pure)
 import Control.Lens as Lens
 import Control.Monad (unless, when)
 import Data.Foldable (toList)
+import Data.List.Extra (enumerate)
 import Data.Maybe (isNothing)
 import Data.String (fromString)
 import Data.Text qualified as T
@@ -40,7 +41,6 @@ import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Objective qualified as GR
 import Witch (into)
 import Prelude hiding (Applicative (..))
-import Data.List.Extra (enumerate)
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.

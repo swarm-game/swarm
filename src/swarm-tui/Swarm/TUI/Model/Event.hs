@@ -18,9 +18,9 @@ module Swarm.TUI.Model.Event (
 import Brick.Keybindings
 import Control.Arrow ((&&&))
 import Data.Bifunctor (first)
+import Data.List.Extra (enumerate)
 import Data.Text (Text)
 import Graphics.Vty qualified as V
-import Swarm.Util (listEnums)
 
 data SwarmEvent
   = Main MainEvent
@@ -219,7 +219,7 @@ defaultRobotPanelBindings = allBindings $ \case
 -- Helper methods
 
 allKeyEvents :: (Ord e, Bounded e, Enum e) => (e -> Text) -> KeyEvents e
-allKeyEvents f = keyEvents $ map (f &&& id) listEnums
+allKeyEvents f = keyEvents $ map (f &&& id) enumerate
 
 allBindings :: (Bounded e, Enum e) => (e -> [Binding]) -> [(e, [Binding])]
 allBindings f = map (\e -> (e, f e)) [minBound .. maxBound]

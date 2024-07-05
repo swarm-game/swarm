@@ -13,6 +13,7 @@ import Control.Lens as Lens
 import Control.Monad (forM_, unless, when)
 import Control.Monad.IO.Class (MonadIO (liftIO), liftIO)
 import Control.Monad.State (MonadState, execState)
+import Data.List.Extra (enumerate)
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.Text (Text)
@@ -35,7 +36,6 @@ import Swarm.Language.Syntax hiding (Key)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Util (generateModal)
-import Swarm.Util (listEnums)
 import System.Clock (Clock (..), getTime)
 
 -- | Pattern synonyms to simplify brick event handler
@@ -178,7 +178,7 @@ allHandlers ::
   (e1 -> e2) ->
   (e1 -> (Text, EventM Name AppState ())) ->
   [KeyEventHandler e2 (EventM Name AppState)]
-allHandlers eEmbed f = map handleEvent1 listEnums
+allHandlers eEmbed f = map handleEvent1 enumerate
  where
   handleEvent1 e1 = let (n, a) = f e1 in onEvent (eEmbed e1) n a
 
