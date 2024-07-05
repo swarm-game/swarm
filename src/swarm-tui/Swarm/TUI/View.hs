@@ -127,6 +127,7 @@ import Swarm.Language.Typecheck (inferConst)
 import Swarm.Log
 import Swarm.TUI.Border
 import Swarm.TUI.Controller (ticksPerFrameCap)
+import Swarm.TUI.Controller.EventHandlers (allEventHandlers, mainEventHandlers, replEventHandlers, robotEventHandlers, worldEventHandlers)
 import Swarm.TUI.Controller.Util (hasDebugCapability)
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.View qualified as EV
@@ -137,6 +138,7 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (SwarmEvent)
 import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
+import Swarm.TUI.Model.KeyBindings (handlerNameKeysDescription)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
@@ -627,7 +629,7 @@ drawDialog s = case s ^. uiState . uiGameplay . uiModal of
 -- | Draw one of the various types of modal dialog.
 drawModal :: AppState -> ModalType -> Widget Name
 drawModal s = \case
-  HelpModal -> helpWidget (s ^. gameState . randomness . seed) (s ^. runtimeState . webPort)
+  HelpModal -> helpWidget (s ^. gameState . randomness . seed) (s ^. runtimeState . webPort) (s ^. keyEventHandling)
   RobotsModal -> robotsListWidget s
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> commandsListWidget (s ^. gameState)
@@ -786,59 +788,53 @@ robotsListWidget s = hCenter table
   debugging = creative && cheat
   g = s ^. gameState
 
-helpWidget :: Seed -> Maybe Port -> Widget Name
-helpWidget theSeed mport =
-  padTop (Pad 1) $
-    (hBox . map (padLeftRight 2) $ [helpKeys, info])
-      <=> padTop (Pad 1) (hCenter tips)
+helpWidget :: Seed -> Maybe Port -> KeyEventHandlingState -> Widget Name
+helpWidget theSeed mport keyState =
+  padLeftRight 2 . vBox $ padTop (Pad 1) <$> [info, helpKeys, tips]
  where
   tips =
     vBox
-      [ txt "Have questions? Want some tips? Check out:"
-      , txt " "
-      , txt $ "  - The Swarm wiki, " <> wikiUrl
-      , txt "  - The #swarm IRC channel on Libera.Chat"
+      [ heading boldAttr "Have questions? Want some tips? Check out:"
+      , txt "  - The Swarm wiki, " <+> hyperlink wikiUrl (txt wikiUrl)
+      , txt "  - The #swarm IRC channel on " <+> hyperlink swarmWebIRC (txt swarmWebIRC)
       ]
   info =
     vBox
-      [ txt "Configuration"
-      , txt " "
+      [ heading boldAttr "Configuration"
       , txt ("Seed: " <> into @Text (show theSeed))
       , txt ("Web server port: " <> maybe "none" (into @Text . show) mport)
       ]
   helpKeys =
     vBox
-      [ txt "Keybindings"
-      , txt " "
-      , mkTable glKeyBindings
+      [ heading boldAttr "Keybindings"
+      , keySection "Main (always active)" mainEventHandlers
+      , keySection "REPL panel" replEventHandlers
+      , keySection "World view panel" worldEventHandlers
+      , keySection "Robot inventory panel" robotEventHandlers
       ]
-  mkTable =
+  keySection name handlers =
+    padBottom (Pad 1) $
+      vBox
+        [ heading italicAttr name
+        , mkKeyTable handlers
+        ]
+  mkKeyTable =
     BT.renderTable
       . BT.surroundingBorder False
       . BT.rowBorders False
       . BT.table
-      . map toRow
-  toRow (k, v) = [padRight (Pad 1) $ txt k, padLeft (Pad 1) $ txt v]
-  glKeyBindings =
-    [ ("F1", "Help")
-    , ("F2", "Robots list")
-    , ("F3", "Available recipes")
-    , ("F4", "Available commands")
-    , ("F5", "Messages")
-    , ("F6", "Structures")
-    , ("Ctrl-g", "show goal")
-    , ("Ctrl-p", "pause")
-    , ("Ctrl-o", "single step")
-    , ("Ctrl-z", "decrease speed")
-    , ("Ctrl-w", "increase speed")
-    , ("Ctrl-q", "quit or restart the current scenario")
-    , ("Meta-,", "collapse/expand REPL")
-    , ("Meta-h", "hide robots for 2s")
-    , ("Meta-w", "focus on the world map")
-    , ("Meta-e", "focus on the robot inventory")
-    , ("Meta-r", "focus on the REPL")
-    , ("Meta-t", "focus on the info panel")
+      . map (toRow . keyHandlerToText)
+  heading attr = padBottom (Pad 1) . withAttr attr . txt
+  toRow (n, k, d) =
+    [ padRight (Pad 1) $ txtFilled maxN n
+    , padLeftRight 1 $ txtFilled maxK k
+    , padLeft (Pad 1) $ txtFilled maxD d
     ]
+  keyHandlerToText = handlerNameKeysDescription (keyState ^. keyConfig)
+  -- Get maximum width of the table columns so it all neatly aligns
+  txtFilled n t = padRight (Pad $ max 0 (n - textWidth t)) $ txt t
+  (maxN, maxK, maxD) = map3 (maximum . map textWidth) . unzip3 $ keyHandlerToText <$> allEventHandlers
+  map3 f (n, k, d) = (f n, f k, f d)
 
 data NotificationList = RecipeList | MessageList
 

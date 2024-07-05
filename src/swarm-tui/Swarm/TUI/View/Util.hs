@@ -44,10 +44,9 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
     NoMenu -> Just "Quit"
     _ -> Nothing
   descriptionWidth = 100
-  helpWidth = 80
   (title, buttons, requiredWidth) =
     case mt of
-      HelpModal -> (" Help ", Nothing, helpWidth)
+      HelpModal -> (" Help ", Nothing, descriptionWidth)
       RobotsModal -> ("Robots", Nothing, descriptionWidth)
       RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
       CommandsModal -> ("Available Commands", Nothing, descriptionWidth)

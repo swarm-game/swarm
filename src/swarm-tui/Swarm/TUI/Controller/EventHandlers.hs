@@ -18,6 +18,7 @@
 module Swarm.TUI.Controller.EventHandlers (
   -- * Documentation
   createKeyDispatchers,
+  allEventHandlers,
 
   -- ** Main game handler
   mainEventHandlers,
@@ -68,8 +69,8 @@ createKeyDispatchers config = do
   mainGameDispatcher <- buildDispatcher mainEventHandlers
   let buildSubMainDispatcher = buildSubDispatcher "Main game events" mainGameDispatcher
   replDispatcher <- buildSubMainDispatcher "REPL panel events" replEventHandlers
-  worldDispatcher <- buildSubMainDispatcher "World panel events" worldEventHandlers
-  robotDispatcher <- buildSubMainDispatcher "Robot panel events" robotEventHandlers
+  worldDispatcher <- buildSubMainDispatcher "World view panel events" worldEventHandlers
+  robotDispatcher <- buildSubMainDispatcher "Robot inventory panel events" robotEventHandlers
   return SwarmKeyDispatchers {..}
  where
   -- this error handling code is modified version of the brick demo app:
@@ -113,3 +114,12 @@ conflicts d1 d2 = combine <$> badGroups
   combine as =
     let b = fst $ NE.head as
      in (b, snd <$> NE.toList as)
+
+allEventHandlers :: [KeyEventHandler SwarmEvent (EventM Name AppState)]
+allEventHandlers =
+  concat
+    [ mainEventHandlers
+    , replEventHandlers
+    , worldEventHandlers
+    , robotEventHandlers
+    ]

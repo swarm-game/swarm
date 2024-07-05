@@ -15,6 +15,9 @@ import Data.Text (Text)
 -- By convention, all URL constants include trailing slashes
 -- when applicable.
 
+swarmWebIRC :: Text
+swarmWebIRC = "https://web.libera.chat/?channels=#swarm"
+
 -- | The URL for the Swarm repository.
 swarmRepoUrl :: Text
 swarmRepoUrl = "https://github.com/swarm-game/swarm/"

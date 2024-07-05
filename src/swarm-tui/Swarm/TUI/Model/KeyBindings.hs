@@ -6,8 +6,10 @@ module Swarm.TUI.Model.KeyBindings (
   initKeyHandlingState,
   KeybindingPrint (..),
   showKeybindings,
+  handlerNameKeysDescription,
 ) where
 
+import Brick
 import Brick.Keybindings as BK
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
@@ -56,18 +58,20 @@ showKeybindings kPrint = do
   bindings <- runM $ runThrow @SystemFailure initKeyHandlingState
   pure $ case bindings of
     Left e -> prettyText e
-    Right bs -> showTable kPrint (bs ^. keyConfig) sections
+    Right bs -> showTable kPrint (bs ^. keyConfig) keySections
  where
   showTable = \case
     MarkdownPrint -> keybindingMarkdownTable
     TextPrint -> keybindingTextTable
     IniPrint -> keybindingINI
-  sections =
-    [ ("Main game", mainEventHandlers)
-    , ("REPL panel ", replEventHandlers)
-    , ("World view", worldEventHandlers)
-    , ("Robot panel", robotEventHandlers)
-    ]
+
+keySections :: [(Text, [KeyEventHandler SwarmEvent (EventM Name AppState)])]
+keySections =
+  [ ("Main game (always active)", mainEventHandlers)
+  , ("REPL panel ", replEventHandlers)
+  , ("World view panel", worldEventHandlers)
+  , ("Robot inventory panel", robotEventHandlers)
+  ]
 
 keybindingINI :: Ord k => KeyConfig k -> [(Text, [KeyEventHandler k m])] -> Text
 keybindingINI kc sections =
@@ -106,3 +110,25 @@ keyBindingEventINI kc (ev, description) =
   name = case keyEventName (keyConfigEvents kc) ev of
     Just n -> n
     Nothing -> error $ "unnamed event: " <> T.unpack description
+
+handlerNameKeysDescription :: Ord k => KeyConfig k -> KeyEventHandler k m -> (Text, Text, Text)
+handlerNameKeysDescription kc keh = (name, keys, desc)
+ where
+  desc = handlerDescription $ kehHandler keh
+  (name, keys) = case kehEventTrigger keh of
+    ByKey b -> ("(non-customizable key)", ppBinding b)
+    ByEvent ev ->
+      let name' = fromMaybe "(unnamed)" $ keyEventName (keyConfigEvents kc) ev
+       in case lookupKeyConfigBindings kc ev of
+            Nothing ->
+              if not (null (allDefaultBindings kc ev))
+                then (name', T.intercalate "," $ ppBinding <$> allDefaultBindings kc ev)
+                else (name', "unbound")
+            Just Unbound ->
+              (name', "unbound")
+            Just (BindingList bs) ->
+              let result =
+                    if not (null bs)
+                      then T.intercalate "," $ ppBinding <$> bs
+                      else "unbound"
+               in (name', result)
