@@ -132,6 +132,7 @@ import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.View
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
@@ -151,6 +152,9 @@ import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (into)
+import Swarm.TUI.Model.Event (SwarmEvent)
+import Brick.Keybindings (firstActiveBinding, ppBinding, Binding (..))
+import Graphics.Vty qualified as V
 
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
@@ -952,30 +956,31 @@ colorSeverity = \case
 drawModalMenu :: AppState -> Widget Name
 drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyCmds
  where
-  notificationKey :: Getter GameState (Notifications a) -> Text -> Text -> Maybe (KeyHighlight, Text, Text)
+  notificationKey :: Getter GameState (Notifications a) -> SE.MainEvent -> Text -> Maybe (KeyHighlight, Text, Text)
   notificationKey notifLens key name
     | null (s ^. gameState . notifLens . notificationsContent) = Nothing
     | otherwise =
         let highlight
               | s ^. gameState . notifLens . notificationsCount > 0 = Alert
               | otherwise = NoHighlight
-         in Just (highlight, key, name)
+         in Just (highlight, keyM key, name)
 
   -- Hides this key if the recognizable structure list is empty
   structuresKey =
     if null $ s ^. gameState . discovery . structureRecognition . automatons . originalStructureDefinitions
       then Nothing
-      else Just (NoHighlight, "F6", "Structures")
+      else Just (NoHighlight, keyM SE.ViewStructuresEvent, "Structures")
 
   globalKeyCmds =
     catMaybes
-      [ Just (NoHighlight, "F1", "Help")
-      , Just (NoHighlight, "F2", "Robots")
-      , notificationKey (discovery . availableRecipes) "F3" "Recipes"
-      , notificationKey (discovery . availableCommands) "F4" "Commands"
-      , notificationKey messageNotifications "F5" "Messages"
+      [ Just (NoHighlight, keyM SE.ViewHelpEvent, "Help")
+      , Just (NoHighlight, keyM SE.ViewRobotsEvent, "Robots")
+      , notificationKey (discovery . availableRecipes) SE.ViewRecipesEvent "Recipes"
+      , notificationKey (discovery . availableCommands) SE.ViewCommandsEvent "Commands"
+      , notificationKey messageNotifications SE.ViewMessagesEvent "Messages"
       , structuresKey
       ]
+  keyM = bindingText s . SE.Main
 
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as one or two lines in
@@ -1040,15 +1045,24 @@ drawKeyMenu s =
         True -> "Creative"
   globalKeyCmds =
     catMaybes
-      [ may goal (NoHighlight, "^g", "goal")
-      , may cheat (NoHighlight, "^v", "creative")
-      , may cheat (NoHighlight, "^e", "editor")
-      , Just (NoHighlight, "^p", if isPaused then "unpause" else "pause")
-      , may isPaused (NoHighlight, "^o", "step")
-      , may (isPaused && hasDebug) (if s ^. uiState . uiGameplay . uiShowDebug then Alert else NoHighlight, "M-d", "debug")
-      , Just (NoHighlight, "^zx", "speed")
-      , Just (NoHighlight, "M-,", if s ^. uiState . uiGameplay . uiShowREPL then "hide REPL" else "show REPL")
-      , Just (if s ^. uiState . uiGameplay . uiShowRobots then NoHighlight else Alert, "M-h", "hide robots")
+      [ may goal (NoHighlight, keyM SE.ViewGoalEvent, "goal")
+      , may cheat (NoHighlight, keyM SE.ToggleCreativeModeEvent, "creative")
+      , may cheat (NoHighlight, keyM SE.ToggleWorldEditorEvent, "editor")
+      , Just (NoHighlight, keyM SE.PauseEvent, if isPaused then "unpause" else "pause")
+      , may isPaused (NoHighlight, keyM SE.RunSingleTickEvent, "step")
+      , may (isPaused && hasDebug)
+        (if s ^. uiState . uiGameplay . uiShowDebug then Alert else NoHighlight
+        , keyM SE.ShowCESKDebugEvent
+        , "debug")
+      , Just (NoHighlight, keyM SE.IncreaseTpsEvent <> "/" <> keyM SE.DecreaseTpsEvent, "speed")
+      , Just
+        (NoHighlight
+        , keyM SE.ToggleREPLVisibilityEvent
+        , if s ^. uiState . uiGameplay . uiShowREPL then "hide REPL" else "show REPL")
+      , Just
+        (if s ^. uiState . uiGameplay . uiShowRobots then NoHighlight else Alert
+        , keyM SE.HideRobotsEvent
+        , "hide robots")
       ]
   may b = if b then Just else const Nothing
 
@@ -1060,27 +1074,51 @@ drawKeyMenu s =
     [ ("↓↑", "history")
     ]
       ++ [("Enter", "execute") | not isReplWorking]
-      ++ [("^c", "cancel") | isReplWorking]
-      ++ [("M-p", renderPilotModeSwitch ctrlMode) | creative]
-      ++ [("M-k", renderHandlerModeSwitch ctrlMode) | handlerInstalled]
+      ++ [(keyR SE.CancelRunningProgramEvent, "cancel") | isReplWorking]
+      ++ [(keyR SE.TogglePilotingModeEvent, renderPilotModeSwitch ctrlMode) | creative]
+      ++ [(keyR SE.ToggleCustomKeyHandlingEvent, renderHandlerModeSwitch ctrlMode) | handlerInstalled]
       ++ [("PgUp/Dn", "scroll")]
   keyCmdsFor (Just (FocusablePanel WorldPanel)) =
-    [ ("←↓↑→ / hjkl", "scroll") | canScroll
+    [ (T.intercalate "/" $ map keyW
+        [ SE.MoveViewWestEvent
+        , SE.MoveViewNorthEvent
+        , SE.MoveViewEastEvent
+        , SE.MoveViewSouthEvent
+        ]
+      , "scroll") | canScroll
     ]
-      ++ [("c", "recenter") | not viewingBase]
-      ++ [("f", "FPS")]
+      ++ [(keyW SE.ViewBaseEvent, "recenter") | not viewingBase]
+      ++ [(keyW SE.ShowFpsEvent, "FPS")]
   keyCmdsFor (Just (FocusablePanel RobotPanel)) =
     ("Enter", "pop out")
       : if isJust inventorySearch
         then [("Esc", "exit search")]
         else
-          [ ("m", "make")
-          , ("0", (if showZero then "hide" else "show") <> " 0")
-          , (":/;", T.unwords ["Sort:", renderSortMethod inventorySort])
-          , ("/", "search")
+          [ (keyE SE.MakeEntityEvent, "make")
+          , (keyE SE.ShowZeroInventoryEntitiesEvent, (if showZero then "hide" else "show") <> " 0")
+          , ( keyE SE.SwitchInventorySortDirection <> "/" <> keyE SE.CycleInventorySortEvent
+            , T.unwords ["Sort:", renderSortMethod inventorySort]
+            )
+          , (keyE SE.SearchInventoryEvent, "search")
           ]
   keyCmdsFor (Just (FocusablePanel InfoPanel)) = []
   keyCmdsFor _ = []
+  keyM = bindingText s . SE.Main
+  keyR = bindingText s . SE.REPL
+  keyE = bindingText s . SE.Robot
+  keyW = bindingText s . SE.World
+
+bindingText :: AppState -> SwarmEvent -> Text
+bindingText s e = maybe "" ppBindingShort b
+ where
+  conf = s ^. keyEventHandling . keyConfig
+  b = firstActiveBinding conf e
+  ppBindingShort = \case
+    Binding V.KUp m | null m -> "↑"
+    Binding V.KDown m | null m -> "↓"
+    Binding V.KLeft m | null m -> "←"
+    Binding V.KRight m | null m -> "→"
+    bi -> ppBinding bi
 
 data KeyHighlight = NoHighlight | Alert | PanelSpecific
 

@@ -182,10 +182,10 @@ defaultWorldPanelBindings :: [(WorldEvent, [Binding])]
 defaultWorldPanelBindings = allBindings $ \case
   ViewBaseEvent -> [bind 'c']
   ShowFpsEvent -> [bind 'f']
-  MoveViewWestEvent -> [bind 'h', bind V.KLeft]
-  MoveViewSouthEvent -> [bind 'j', bind V.KDown]
-  MoveViewNorthEvent -> [bind 'k', bind V.KUp]
-  MoveViewEastEvent -> [bind 'l', bind V.KRight]
+  MoveViewWestEvent -> [bind V.KLeft, bind 'h']
+  MoveViewSouthEvent -> [bind V.KDown, bind 'j']
+  MoveViewNorthEvent -> [bind V.KUp, bind 'k']
+  MoveViewEastEvent -> [bind V.KRight, bind 'l']
 
 -- ----------------------------------------------
 --                 ROBOT EVENTS
