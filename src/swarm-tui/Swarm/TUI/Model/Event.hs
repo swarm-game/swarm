@@ -128,7 +128,7 @@ defaultMainBindings = allBindings $ \case
   FocusREPLEvent -> [meta 'r']
   FocusInfoEvent -> [meta 't']
   ToggleCreativeModeEvent -> [ctrl 'v']
-  ToggleWorldEditorEvent -> [ctrl 'e']
+  ToggleWorldEditorEvent -> []
   ToggleREPLVisibilityEvent -> [meta ',']
 
 -- ----------------------------------------------
