@@ -282,7 +282,8 @@ handleMainEvent ev = do
       _ -> continueWithoutRedraw
     VtyEvent (V.EvResize _ _) -> invalidateCache
     EscapeKey | Just m <- s ^. uiState . uiGameplay . uiModal -> closeModal m
-    -- pass to key handler (allows users to configure bindings)
+    -- Pass to key handler (allows users to configure bindings)
+    -- See Note [how Swarm event handlers work]
     VtyEvent (V.EvKey k m)
       | isJust (B.lookupVtyEvent k m keyHandler) -> void $ B.handleKey keyHandler k m
     -- pass keys on to modal event handler if a modal is open
@@ -339,6 +340,8 @@ handleMainEvent ev = do
       case focusGetCurrent fring of
         Just (FocusablePanel x) -> case x of
           REPLPanel -> handleREPLEvent ev
+          -- Pass to key handler (allows users to configure bindings)
+          -- See Note [how Swarm event handlers work]
           WorldPanel | VtyEvent (V.EvKey k m) <- ev -> do
             wh <- use $ keyEventHandling . keyDispatchers . to worldDispatcher
             void $ B.handleKey wh k m
@@ -457,7 +460,8 @@ handleREPLEvent x = do
   let controlMode = s ^. uiState . uiGameplay . uiREPL . replControlMode
   let keyHandler = s ^. keyEventHandling . keyDispatchers . to replDispatcher
   case x of
-    -- pass to key handler (allows users to configure bindings)
+    -- Pass to key handler (allows users to configure bindings)
+    -- See Note [how Swarm event handlers work]
     VtyEvent (V.EvKey k m)
       | isJust (B.lookupVtyEvent k m keyHandler) -> do
           void $ B.handleKey keyHandler k m

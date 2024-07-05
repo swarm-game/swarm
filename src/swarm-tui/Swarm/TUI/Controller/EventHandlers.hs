@@ -7,14 +7,6 @@
 -- Swarm (abstract) event handlers allow players to customize some keybindings.
 -- This all comes together in 'Swarm.TUI.Controller' which calls the handlers
 -- for parts of UI and also handles mouse events and frame updates.
---
--- The high level overview is this:
--- 1. The 'SwarmEvent' is a enumeration of abstracts key events ('PauseEvent', etc.)
--- 2. The 'AppState' stores the key configuration and key dispatchers (keys to handlers)
--- 3. Here we declare the handlers for abstract events.
--- 4. When provided with 'KeyConfig' (can include customized keybindings) we can
---    'createKeyDispatchers' in 'Swarm.TUI.Model.StateUpdate' and store them in 'AppState'.
--- 5. Finally in 'Swarm.TUI.Controller' the Brick event handler calls the stored dispatchers.
 module Swarm.TUI.Controller.EventHandlers (
   -- * Documentation
   createKeyDispatchers,
@@ -56,6 +48,20 @@ import Swarm.TUI.Controller.EventHandlers.Robot (handleRobotPanelEvent, robotEve
 import Swarm.TUI.Controller.EventHandlers.World (worldEventHandlers)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (SwarmEvent, swarmEvents)
+
+-- ~~~~ Note [how Swarm event handlers work]
+--
+-- Allowing players to customize keybindings requires storing the configuration in AppState.
+-- By doing it as declaratively as possible, Brick also allows us to detect conflicts.
+--
+-- The high level overview is this:
+-- 1. The 'SwarmEvent' is a enumeration of abstracts key events ('PauseEvent', etc.)
+-- 2. The 'AppState' definition contains the key configuration and dispatchers (keys to handlers)
+-- 3. Here in 'Swarm.TUI.Controller.EventHandlers' we declare the handlers for abstract events
+--    and also some non-customizable key handlers (e.g. escape and enter).
+-- 4. When provided with 'KeyConfig' (can include customized keybindings) we can
+--    'createKeyDispatchers' in 'Swarm.TUI.Model.StateUpdate' and store them in 'AppState'.
+-- 5. Finally in 'Swarm.TUI.Controller' the Brick event handler calls the stored dispatchers.
 
 -- | Create key dispatchers that call (abstract) event handlers based on given key config.
 --
