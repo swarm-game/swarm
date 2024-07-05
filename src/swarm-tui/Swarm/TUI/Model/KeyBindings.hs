@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
--- |
+-- | Load and show Swarm keybindings.
+--
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Model.KeyBindings (
   initKeyHandlingState,
@@ -27,6 +28,8 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (SwarmEvent, defaultSwarmBindings, swarmEvents)
+
+-- See Note [how Swarm event handlers work]
 
 loadKeybindingConfig ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
