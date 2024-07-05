@@ -152,6 +152,8 @@ handleEvent = \case
           AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
 
 -- | The event handler for the main menu.
+--
+-- TODO: #2010 Finish porting Controller to KeyEventHandlers
 handleMainMenuEvent ::
   BL.List Name MainMenuEntry -> BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMainMenuEvent menu = \case
@@ -230,6 +232,7 @@ handleMainMessagesEvent = \case
  where
   returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
 
+-- TODO: #2010 Finish porting Controller to KeyEventHandlers
 handleNewGameMenuEvent ::
   NonEmpty (BL.List Name ScenarioItem) ->
   BrickEvent Name AppEvent ->
@@ -360,6 +363,7 @@ closeModal m = do
     t <- use $ gameState . temporal . ticks
     gameState . messageInfo . lastSeenMessageTime .= t
 
+-- TODO: #2010 Finish porting Controller to KeyEventHandlers
 handleModalEvent :: V.Event -> EventM Name AppState ()
 handleModalEvent = \case
   V.EvKey V.KEnter [] -> do
@@ -498,6 +502,8 @@ runInputHandler kc = do
         gameState %= execState (zoomRobots $ activateRobot 0)
 
 -- | Handle a user "piloting" input event for the REPL.
+--
+-- TODO: #2010 Finish porting Controller to KeyEventHandlers
 handleREPLEventPiloting :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleREPLEventPiloting x = case x of
   Key V.KUp -> inputCmd "move"
@@ -548,6 +554,8 @@ runBaseCode uinput = do
       uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLError err)
 
 -- | Handle a user input event for the REPL.
+--
+-- TODO: #2010 Finish porting Controller to KeyEventHandlers
 handleREPLEventTyping :: BrickEvent Name AppEvent -> EventM Name AppState ()
 handleREPLEventTyping = \case
   -- Scroll the REPL on PageUp or PageDown
@@ -759,6 +767,8 @@ adjReplHistIndex d s =
 ------------------------------------------------------------
 
 -- | Handle user events in the info panel (just scrolling).
+--
+-- TODO: #2010 Finish porting Controller to KeyEventHandlers
 handleInfoPanelEvent :: ViewportScroll Name -> BrickEvent Name AppEvent -> EventM Name AppState ()
 handleInfoPanelEvent vs = \case
   Key V.KDown -> vScrollBy vs 1
