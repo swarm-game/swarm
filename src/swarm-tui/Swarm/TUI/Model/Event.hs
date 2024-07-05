@@ -22,6 +22,8 @@ import Data.List.Extra (enumerate)
 import Data.Text (Text)
 import Graphics.Vty qualified as V
 
+-- See Note [how Swarm event handlers work]
+
 data SwarmEvent
   = Main MainEvent
   | REPL REPLEvent
