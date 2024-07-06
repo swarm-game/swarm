@@ -39,12 +39,9 @@ Iterate 4 times (once for each direction)
 def countBlocked = \n.
     if (n > 0) {
         isBlocked <- blocked;
-        // This assignment has to happen before the recursive
-        // "countBlocked" call due to #1032
-        let localBlockCount = boolToInt isBlocked in
         turn left;
         lastCount <- countBlocked $ n - 1;
-        return $ lastCount + localBlockCount;
+        return $ lastCount + boolToInt isBlocked;
     } {
         return 0;
     }
