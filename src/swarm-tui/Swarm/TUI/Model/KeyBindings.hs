@@ -19,6 +19,7 @@ import Control.Effect.Lift
 import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))
 import Data.Bifunctor (second)
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -49,7 +50,7 @@ initKeyHandlingState ::
   m KeyEventHandlingState
 initKeyHandlingState = do
   customBindings <- loadKeybindingConfig
-  let cfg = newKeyConfig swarmEvents defaultSwarmBindings customBindings
+  let cfg = newKeyConfig swarmEvents (NE.toList defaultSwarmBindings) customBindings
   dispatchers <- createKeyDispatchers cfg
   return $ KeyEventHandlingState cfg dispatchers
 

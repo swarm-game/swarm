@@ -19,9 +19,13 @@ import Brick.Keybindings
 import Control.Arrow ((&&&))
 import Data.Bifunctor (first)
 import Data.List.Extra (enumerate)
+import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty qualified as NE
+import Data.Semigroup (sconcat)
 import Data.Text (Text)
 import Graphics.Vty qualified as V
 import Swarm.Language.Syntax.Direction (AbsoluteDir (..), Direction (..), directionSyntax)
+import Swarm.Util (enumerateNonEmpty)
 
 -- See Note [how Swarm event handlers work]
 
@@ -44,16 +48,16 @@ swarmEvents =
  where
   embed f = map (fmap f) . keyEventsList
 
-defaultSwarmBindings :: [(SwarmEvent, [Binding])]
+defaultSwarmBindings :: NonEmpty (SwarmEvent, [Binding])
 defaultSwarmBindings =
-  concat
-    [ embed Main defaultMainBindings
-    , embed REPL defaultReplBindings
-    , embed World defaultWorldPanelBindings
-    , embed Robot defaultRobotPanelBindings
-    ]
+  sconcat $
+    embed Main defaultMainBindings
+      :| [ embed REPL defaultReplBindings
+         , embed World defaultWorldPanelBindings
+         , embed Robot defaultRobotPanelBindings
+         ]
  where
-  embed = map . first
+  embed = NE.map . first
 
 -- ----------------------------------------------
 --                 MAIN EVENTS
@@ -110,7 +114,7 @@ mainEvents = allKeyEvents $ \case
   ToggleWorldEditorEvent -> "world editor"
   ToggleREPLVisibilityEvent -> "toggle REPL"
 
-defaultMainBindings :: [(MainEvent, [Binding])]
+defaultMainBindings :: NonEmpty (MainEvent, [Binding])
 defaultMainBindings = allBindings $ \case
   QuitEvent -> [ctrl 'q']
   ViewHelpEvent -> [fn 1]
@@ -153,7 +157,7 @@ replEvents = allKeyEvents $ \case
   ToggleCustomKeyHandlingEvent -> "toggle custom key handling"
   TogglePilotingModeEvent -> "toggle piloting mode"
 
-defaultReplBindings :: [(REPLEvent, [Binding])]
+defaultReplBindings :: NonEmpty (REPLEvent, [Binding])
 defaultReplBindings = allBindings $ \case
   CancelRunningProgramEvent -> [ctrl 'c', bind V.KEsc]
   TogglePilotingModeEvent -> [meta 'p']
@@ -189,7 +193,7 @@ worldPanelEvents = allKeyEvents $ \case
   ShowFpsEvent -> "show fps"
   MoveViewEvent d -> "move view " <> directionSyntax (DAbsolute d)
 
-defaultWorldPanelBindings :: [(WorldEvent, [Binding])]
+defaultWorldPanelBindings :: NonEmpty (WorldEvent, [Binding])
 defaultWorldPanelBindings = allBindings $ \case
   ViewBaseEvent -> [bind 'c']
   ShowFpsEvent -> [bind 'f']
@@ -218,7 +222,7 @@ robotPanelEvents = allKeyEvents $ \case
   SwitchInventorySortDirection -> "switch inventory direction"
   SearchInventoryEvent -> "search inventory"
 
-defaultRobotPanelBindings :: [(RobotEvent, [Binding])]
+defaultRobotPanelBindings :: NonEmpty (RobotEvent, [Binding])
 defaultRobotPanelBindings = allBindings $ \case
   MakeEntityEvent -> [bind 'm']
   ShowZeroInventoryEntitiesEvent -> [bind '0']
@@ -232,5 +236,5 @@ defaultRobotPanelBindings = allBindings $ \case
 allKeyEvents :: (Ord e, Bounded e, Enum e) => (e -> Text) -> KeyEvents e
 allKeyEvents f = keyEvents $ map (f &&& id) enumerate
 
-allBindings :: (Bounded e, Enum e) => (e -> [Binding]) -> [(e, [Binding])]
-allBindings f = map (\e -> (e, f e)) [minBound .. maxBound]
+allBindings :: (Bounded e, Enum e) => (e -> [Binding]) -> NonEmpty (e, [Binding])
+allBindings f = NE.map (\e -> (e, f e)) enumerateNonEmpty
