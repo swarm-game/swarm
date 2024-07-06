@@ -715,7 +715,7 @@ library swarm-tui
     aeson >=2.2 && <2.3,
     array >=0.5.4 && <0.6,
     base >=4.14 && <4.20,
-    brick >=2.1.1 && <2.4,
+    brick >=2.1.1 && <2.5,
     brick-list-skip >=0.1.1.2 && <0.2,
     bytestring >=0.10 && <0.13,
     clock >=0.8.2 && <0.9,
