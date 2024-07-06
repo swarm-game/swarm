@@ -467,7 +467,7 @@ handleREPLEvent x = do
     -- Pass to key handler (allows users to configure bindings)
     -- See Note [how Swarm event handlers work]
     VtyEvent (V.EvKey k m)
-      | isJust (B.lookupVtyEvent k m keyHandler) -> do
+      | isJust (B.lookupVtyEvent k m keyHandler) ->
           void $ B.handleKey keyHandler k m
     -- Handle other events in a way appropriate to the current REPL
     -- control mode.

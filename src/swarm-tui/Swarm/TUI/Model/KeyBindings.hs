@@ -71,7 +71,7 @@ showKeybindings kPrint = do
 keySections :: [(Text, [KeyEventHandler SwarmEvent (EventM Name AppState)])]
 keySections =
   [ ("Main game (always active)", mainEventHandlers)
-  , ("REPL panel ", replEventHandlers)
+  , ("REPL panel", replEventHandlers)
   , ("World view panel", worldEventHandlers)
   , ("Robot inventory panel", robotEventHandlers)
   ]
