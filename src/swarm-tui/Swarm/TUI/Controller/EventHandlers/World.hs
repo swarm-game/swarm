@@ -18,6 +18,7 @@ import Swarm.Game.Location
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
+import Swarm.Language.Syntax.Direction (Direction (..), directionSyntax)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event
@@ -28,10 +29,7 @@ worldEventHandlers :: [KeyEventHandler SwarmEvent (EventM Name AppState)]
 worldEventHandlers = allHandlers World $ \case
   ViewBaseEvent -> ("View the base robot", viewBase)
   ShowFpsEvent -> ("Show frames per second", showFps)
-  MoveViewNorthEvent -> ("Scroll world view in the north direction", scrollViewInDir north)
-  MoveViewEastEvent -> ("Scroll world view in the east direction", scrollViewInDir east)
-  MoveViewSouthEvent -> ("Scroll world view in the south direction", scrollViewInDir south)
-  MoveViewWestEvent -> ("Scroll world view in the west direction", scrollViewInDir west)
+  MoveViewEvent d -> ("Scroll world view in the " <> directionSyntax (DAbsolute d) <> " direction", scrollViewInDir $ toHeading d)
 
 viewBase :: EventM Name AppState ()
 viewBase = do

@@ -1079,18 +1079,7 @@ drawKeyMenu s =
       ++ [(keyR SE.ToggleCustomKeyHandlingEvent, renderHandlerModeSwitch ctrlMode) | handlerInstalled]
       ++ [("PgUp/Dn", "scroll")]
   keyCmdsFor (Just (FocusablePanel WorldPanel)) =
-    [ ( T.intercalate "/" $
-          map
-            keyW
-            [ SE.MoveViewWestEvent
-            , SE.MoveViewNorthEvent
-            , SE.MoveViewEastEvent
-            , SE.MoveViewSouthEvent
-            ]
-      , "scroll"
-      )
-    | canScroll
-    ]
+    [(T.intercalate "/" $ map keyW enumerate, "scroll") | canScroll]
       ++ [(keyW SE.ViewBaseEvent, "recenter") | not viewingBase]
       ++ [(keyW SE.ShowFpsEvent, "FPS")]
   keyCmdsFor (Just (FocusablePanel RobotPanel)) =

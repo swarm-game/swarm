@@ -21,6 +21,7 @@ import Data.Bifunctor (first)
 import Data.List.Extra (enumerate)
 import Data.Text (Text)
 import Graphics.Vty qualified as V
+import Swarm.Language.Syntax.Direction (AbsoluteDir (..), Direction (..), directionSyntax)
 
 -- See Note [how Swarm event handlers work]
 
@@ -165,29 +166,37 @@ defaultReplBindings = allBindings $ \case
 data WorldEvent
   = ViewBaseEvent
   | ShowFpsEvent
-  | MoveViewNorthEvent
-  | MoveViewEastEvent
-  | MoveViewSouthEvent
-  | MoveViewWestEvent
-  deriving (Eq, Ord, Show, Enum, Bounded)
+  | MoveViewEvent AbsoluteDir
+  deriving (Eq, Ord, Show)
+
+instance Enum WorldEvent where
+  fromEnum = \case
+    ViewBaseEvent -> 0
+    ShowFpsEvent -> 1
+    MoveViewEvent d -> 2 + fromEnum d
+  toEnum = \case
+    0 -> ViewBaseEvent
+    1 -> ShowFpsEvent
+    n -> MoveViewEvent . toEnum $ n - 2
+
+instance Bounded WorldEvent where
+  minBound = ViewBaseEvent
+  maxBound = MoveViewEvent maxBound
 
 worldPanelEvents :: KeyEvents WorldEvent
 worldPanelEvents = allKeyEvents $ \case
   ViewBaseEvent -> "view base"
   ShowFpsEvent -> "show fps"
-  MoveViewNorthEvent -> "move view north"
-  MoveViewEastEvent -> "move view east"
-  MoveViewSouthEvent -> "move view south"
-  MoveViewWestEvent -> "move view west"
+  MoveViewEvent d -> "move view " <> directionSyntax (DAbsolute d)
 
 defaultWorldPanelBindings :: [(WorldEvent, [Binding])]
 defaultWorldPanelBindings = allBindings $ \case
   ViewBaseEvent -> [bind 'c']
   ShowFpsEvent -> [bind 'f']
-  MoveViewWestEvent -> [bind V.KLeft, bind 'h']
-  MoveViewSouthEvent -> [bind V.KDown, bind 'j']
-  MoveViewNorthEvent -> [bind V.KUp, bind 'k']
-  MoveViewEastEvent -> [bind V.KRight, bind 'l']
+  MoveViewEvent DWest -> [bind V.KLeft, bind 'h']
+  MoveViewEvent DSouth -> [bind V.KDown, bind 'j']
+  MoveViewEvent DNorth -> [bind V.KUp, bind 'k']
+  MoveViewEvent DEast -> [bind V.KRight, bind 'l']
 
 -- ----------------------------------------------
 --                 ROBOT EVENTS
