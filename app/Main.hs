@@ -34,7 +34,8 @@ commitInfo = case gitInfo of
 
 data CLI
   = Run AppOpts
-  | ListKeybinding Bool KeybindingPrint
+  | -- | Print list of bindings, optionally initializing the INI configuration file.
+    ListKeybinding Bool KeybindingPrint
   | Format FormatConfig
   | LSP
   | Version
