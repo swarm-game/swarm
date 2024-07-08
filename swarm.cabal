@@ -120,7 +120,7 @@ common ghc2021-extensions
 library swarm-lang
   import: stan-config, common, ghc2021-extensions
   visibility: public
-  -- cabal-gild: discover src/swarm-lang
+  -- cabal-gild: discover code/src/swarm-lang
   exposed-modules:
     Swarm.Effect.Unify
     Swarm.Effect.Unify.Common
@@ -197,7 +197,7 @@ library swarm-lang
     yaml,
 
   build-depends: swarm:swarm-util
-  hs-source-dirs: src/swarm-lang
+  hs-source-dirs: code/src/swarm-lang
   default-language: Haskell2010
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
@@ -207,7 +207,7 @@ library swarm-lang
 library swarm-topography
   import: stan-config, common, ghc2021-extensions
   visibility: public
-  -- cabal-gild: discover src/swarm-topography
+  -- cabal-gild: discover code/src/swarm-topography
   exposed-modules:
     Swarm.Game.Location
     Swarm.Game.Scenario.Topography.Area
@@ -248,7 +248,7 @@ library swarm-topography
   build-depends:
     swarm:swarm-util
 
-  hs-source-dirs: src/swarm-topography
+  hs-source-dirs: code/src/swarm-topography
   default-language: Haskell2010
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
@@ -258,7 +258,7 @@ library swarm-topography
 library swarm-scenario
   import: stan-config, common, ghc2021-extensions
   visibility: public
-  -- cabal-gild: discover src/swarm-scenario
+  -- cabal-gild: discover code/src/swarm-scenario
   exposed-modules:
     Swarm.Constant
     Swarm.Game.Achievement.Definitions
@@ -347,7 +347,7 @@ library swarm-scenario
     swarm:swarm-topography,
     swarm:swarm-util,
 
-  hs-source-dirs: src/swarm-scenario
+  hs-source-dirs: code/src/swarm-scenario
   default-language: Haskell2010
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
@@ -357,7 +357,7 @@ library swarm-scenario
 library swarm-engine
   import: stan-config, common, ghc2021-extensions
   visibility: public
-  -- cabal-gild: discover src/swarm-engine
+  -- cabal-gild: discover code/src/swarm-engine
   exposed-modules:
     Swarm.Effect
     Swarm.Effect.Time
@@ -446,7 +446,7 @@ library swarm-engine
     swarm:swarm-topography,
     swarm:swarm-util,
 
-  hs-source-dirs: src/swarm-engine
+  hs-source-dirs: code/src/swarm-engine
   default-language: Haskell2010
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
@@ -456,7 +456,7 @@ library swarm-engine
 library swarm-web
   import: stan-config, common, ghc2021-extensions
   visibility: public
-  -- cabal-gild: discover src/swarm-web
+  -- cabal-gild: discover code/src/swarm-web
   exposed-modules:
     Swarm.Web
     Swarm.Web.Worldview
@@ -492,7 +492,7 @@ library swarm-web
     swarm:swarm-tui,
     swarm:swarm-util,
 
-  hs-source-dirs: src/swarm-web
+  hs-source-dirs: code/src/swarm-web
   default-language: Haskell2010
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
@@ -502,7 +502,7 @@ library swarm-web
 library swarm-tournament
   import: stan-config, common, ghc2021-extensions
   visibility: public
-  -- cabal-gild: discover src/swarm-tournament
+  -- cabal-gild: discover code/src/swarm-tournament
   exposed-modules:
     Swarm.Web.Auth
     Swarm.Web.Tournament
@@ -550,13 +550,13 @@ library swarm-tournament
     swarm:swarm-scenario,
     swarm:swarm-util,
 
-  hs-source-dirs: src/swarm-tournament
+  hs-source-dirs: code/src/swarm-tournament
   default-language: Haskell2010
 
 library swarm-util
   import: stan-config, common, ghc2021-extensions
   visibility: public
-  -- cabal-gild: discover src/swarm-util
+  -- cabal-gild: discover code/src/swarm-util
   exposed-modules:
     Control.Carrier.Accum.FixedStrict
     Data.BoolExpr.Simplify
@@ -599,7 +599,7 @@ library swarm-util
     witherable >=0.4 && <0.5,
     yaml >=0.11 && <0.11.12.0,
 
-  hs-source-dirs: src/swarm-util
+  hs-source-dirs: code/src/swarm-util
   default-language: Haskell2010
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
@@ -609,7 +609,7 @@ library swarm-util
 library swarm-doc
   import: stan-config, common, ghc2021-extensions
   visibility: public
-  -- cabal-gild: discover src/swarm-doc
+  -- cabal-gild: discover code/src/swarm-doc
   exposed-modules:
     Swarm.Doc.Command
     Swarm.Doc.Gen
@@ -650,7 +650,7 @@ library swarm-doc
     swarm:swarm-scenario,
     swarm:swarm-util,
 
-  hs-source-dirs: src/swarm-doc
+  hs-source-dirs: code/src/swarm-doc
   default-language: Haskell2010
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
@@ -660,7 +660,7 @@ library swarm-doc
 library swarm-tui
   import: stan-config, common, ghc2021-extensions
   visibility: public
-  -- cabal-gild: discover src/swarm-tui
+  -- cabal-gild: discover code/src/swarm-tui
   exposed-modules:
     Swarm.TUI.Border
     Swarm.TUI.Controller
@@ -754,7 +754,7 @@ library swarm-tui
     swarm:swarm-topography,
     swarm:swarm-util,
 
-  hs-source-dirs: src/swarm-tui
+  hs-source-dirs: code/src/swarm-tui
   default-language: Haskell2010
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
@@ -783,7 +783,7 @@ executable swarm
     vty,
     vty-crossplatform >=0.4 && <0.5,
 
-  hs-source-dirs: app
+  hs-source-dirs: code/app
   default-language: Haskell2010
   ghc-options: -threaded
   default-extensions: ImportQualifiedPost
@@ -799,7 +799,7 @@ executable swarm-scene
     swarm:swarm-scenario,
     swarm:swarm-topography,
 
-  hs-source-dirs: app/scene
+  hs-source-dirs: code/app/scene
   default-language: Haskell2010
   ghc-options: -threaded
   default-extensions: ImportQualifiedPost
@@ -815,7 +815,7 @@ executable swarm-docs
     swarm:swarm-doc,
     text,
 
-  hs-source-dirs: app/doc
+  hs-source-dirs: code/app/doc
   default-language: Haskell2010
   ghc-options: -threaded
   default-extensions: ImportQualifiedPost
@@ -835,7 +835,7 @@ executable swarm-host-tournament
     swarm:swarm-engine,
     swarm:swarm-tournament,
 
-  hs-source-dirs: app/tournament
+  hs-source-dirs: code/app/tournament
   default-language: Haskell2010
   ghc-options: -threaded
   default-extensions: ImportQualifiedPost
@@ -894,7 +894,7 @@ test-suite swarm-unit
     swarm:swarm-tui,
     swarm:swarm-util,
 
-  hs-source-dirs: test/unit
+  hs-source-dirs: code/test/unit
   default-language: Haskell2010
   ghc-options: -threaded
 
@@ -925,7 +925,7 @@ test-suite swarm-integration
     swarm:swarm-tui,
     swarm:swarm-util,
 
-  hs-source-dirs: test/integration
+  hs-source-dirs: code/test/integration
   default-language: Haskell2010
   ghc-options: -threaded
 
@@ -948,7 +948,7 @@ test-suite tournament-host
     swarm:swarm-engine,
     swarm:swarm-tournament,
 
-  hs-source-dirs: test/tournament-host
+  hs-source-dirs: code/test/tournament-host
   default-language: Haskell2010
   ghc-options: -threaded
 
@@ -976,14 +976,14 @@ test-suite standalone-topography
     swarm:swarm-topography,
     swarm:swarm-util,
 
-  hs-source-dirs: test/standalone-topography/src
+  hs-source-dirs: code/test/standalone-topography/src
   default-language: Haskell2010
   ghc-options: -threaded
 
 benchmark benchmark
   import: stan-config, common, ghc2021-extensions
   main-is: Benchmark.hs
-  hs-source-dirs: test/bench
+  hs-source-dirs: code/test/bench
   type: exitcode-stdio-1.0
   build-depends:
     base,
