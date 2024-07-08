@@ -41,11 +41,8 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Sequence (Seq)
 import Data.Text (Text)
-import Data.Time (ZonedTime, getZonedTime)
-import Swarm.Game.Achievement.Attainment
-import Swarm.Game.Achievement.Definitions
-import Swarm.Game.Achievement.Persistence
-import Swarm.Game.Failure (SystemFailure)
+import Data.Time (getZonedTime)
+import Swarm.Game.Failure (SystemFailure (..))
 import Swarm.Game.Land
 import Swarm.Game.Scenario (
   ScenarioInputs (..),
@@ -81,7 +78,9 @@ import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Launch.Model (toSerializableParams)
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Achievements
 import Swarm.TUI.Model.Goal (emptyGoalDisplay)
+import Swarm.TUI.Model.KeyBindings
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.Structure
@@ -98,8 +97,8 @@ initAppState ::
   AppOpts ->
   m AppState
 initAppState opts = do
-  (rs, ui) <- initPersistentState opts
-  constructAppState rs ui opts
+  (rs, ui, keyHandling) <- initPersistentState opts
+  constructAppState rs ui keyHandling opts
 
 -- | Add some system failures to the list of messages in the
 --   'RuntimeState'.
@@ -122,14 +121,15 @@ skipMenu AppOpts {..} = isJust userScenario || isRunningInitialProgram || isJust
 initPersistentState ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   AppOpts ->
-  m (RuntimeState, UIState)
+  m (RuntimeState, UIState, KeyEventHandlingState)
 initPersistentState opts@(AppOpts {..}) = do
-  (warnings :: Seq SystemFailure, (initRS, initUI)) <- runAccum mempty $ do
+  (warnings :: Seq SystemFailure, (initRS, initUI, initKs)) <- runAccum mempty $ do
     rs <- initRuntimeState
     ui <- initUIState speed (not (skipMenu opts)) cheatMode
-    return (rs, ui)
+    ks <- initKeyHandlingState
+    return (rs, ui, ks)
   let initRS' = addWarnings initRS (F.toList warnings)
-  return (initRS', initUI)
+  return (initRS', initUI, initKs)
 
 -- | Construct an 'AppState' from an already-loaded 'RuntimeState' and
 --   'UIState', given the 'AppOpts' the app was started with.
@@ -137,12 +137,13 @@ constructAppState ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   RuntimeState ->
   UIState ->
+  KeyEventHandlingState ->
   AppOpts ->
   m AppState
-constructAppState rs ui opts@(AppOpts {..}) = do
+constructAppState rs ui key opts@(AppOpts {..}) = do
   let gs = initGameState $ rs ^. stdGameConfigInputs
   case skipMenu opts of
-    False -> return $ AppState gs (ui & uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
+    False -> return $ AppState gs (ui & uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) key rs
     True -> do
       let tem = gs ^. landscape . terrainAndEntities
       (scenario, path) <-
@@ -164,7 +165,7 @@ constructAppState rs ui opts@(AppOpts {..}) = do
       sendIO $
         execStateT
           (startGameWithSeed (scenario, si) $ LaunchParams (pure userSeed) (pure codeToRun))
-          (AppState gs ui newRs)
+          (AppState gs ui key newRs)
 
 -- | Load a 'Scenario' and start playing the game.
 startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()
@@ -234,26 +235,6 @@ scenarioToAppState siPair@(scene, _) lp = do
     x' <- liftIO $ a x
     l .= x'
     return x'
-
-attainAchievement :: (MonadIO m, MonadState AppState m) => CategorizedAchievement -> m ()
-attainAchievement a = do
-  currentTime <- liftIO getZonedTime
-  attainAchievement' currentTime Nothing a
-
-attainAchievement' ::
-  (MonadIO m, MonadState AppState m) =>
-  ZonedTime ->
-  Maybe FilePath ->
-  CategorizedAchievement ->
-  m ()
-attainAchievement' t p a = do
-  (uiState . uiAchievements)
-    %= M.insertWith
-      (<>)
-      a
-      (Attainment a p t)
-  newAchievements <- use $ uiState . uiAchievements
-  liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
 -- | Modify the UI state appropriately when starting a new scenario.
 scenarioToUIState ::

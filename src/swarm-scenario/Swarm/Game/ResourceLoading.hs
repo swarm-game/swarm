@@ -5,7 +5,22 @@
 -- Description: Fetching game data
 --
 -- Various utilities related to loading game data files.
-module Swarm.Game.ResourceLoading where
+module Swarm.Game.ResourceLoading (
+  -- * Generic data access
+  getDataDirSafe,
+  getDataFileNameSafe,
+
+  -- * Concrete data access
+  getSwarmConfigIniFile,
+  getSwarmSavePath,
+  getSwarmHistoryPath,
+  getSwarmAchievementsPath,
+
+  -- ** Loading text files
+  readAppData,
+  NameGenerator (..),
+  initNameGenerator,
+) where
 
 import Control.Algebra (Has)
 import Control.Effect.Lift (Lift, sendIO)
@@ -23,7 +38,7 @@ import Paths_swarm (getDataDir)
 import Swarm.Game.Failure
 import Swarm.Util
 import System.Directory (
-  XdgDirectory (XdgData),
+  XdgDirectory (..),
   createDirectoryIfMissing,
   doesDirectoryExist,
   doesFileExist,
@@ -83,17 +98,11 @@ getDataFileNameSafe asset name = do
     then return fp
     else throwError $ AssetNotLoaded (Data asset) fp $ DoesNotExist File
 
--- | Get a nice message suggesting to download @data@ directory to 'XdgData'.
-dataNotFound :: FilePath -> IO LoadingFailure
-dataNotFound f = do
-  d <- getSwarmXdgDataSubdir False ""
-  let squotes = squote . T.pack
-  return $
-    CustomMessage $
-      T.unlines
-        [ "Could not find the data: " <> squotes f
-        , "Try downloading the Swarm 'data' directory to: " <> squotes (d </> "data")
-        ]
+getSwarmConfigIniFile :: IO (Bool, FilePath)
+getSwarmConfigIniFile = do
+  ini <- (</> "config.ini") <$> getXdgDirectory XdgConfig "swarm"
+  iniExists <- doesFileExist ini
+  return (iniExists, ini)
 
 -- | Get path to swarm data, optionally creating necessary
 --   directories. This could fail if user has bad permissions
@@ -119,6 +128,12 @@ getSwarmSavePath createDirs = getSwarmXdgDataSubdir createDirs "saves"
 --   directories.
 getSwarmHistoryPath :: Bool -> IO FilePath
 getSwarmHistoryPath createDirs = getSwarmXdgDataFile createDirs "history"
+
+-- | Get a path to the directory where achievement records are
+--   stored. If the argument is set to @True@, create the directory if
+--   it does not exist.
+getSwarmAchievementsPath :: Bool -> IO FilePath
+getSwarmAchievementsPath createDirs = getSwarmXdgDataSubdir createDirs "achievement"
 
 -- | Read all the @.txt@ files in the @data/@ directory.
 readAppData ::

@@ -664,6 +664,14 @@ library swarm-tui
   exposed-modules:
     Swarm.TUI.Border
     Swarm.TUI.Controller
+    Swarm.TUI.Controller.EventHandlers
+    Swarm.TUI.Controller.EventHandlers.Frame
+    Swarm.TUI.Controller.EventHandlers.Main
+    Swarm.TUI.Controller.EventHandlers.REPL
+    Swarm.TUI.Controller.EventHandlers.Robot
+    Swarm.TUI.Controller.EventHandlers.World
+    Swarm.TUI.Controller.SaveScenario
+    Swarm.TUI.Controller.UpdateUI
     Swarm.TUI.Controller.Util
     Swarm.TUI.Editor.Controller
     Swarm.TUI.Editor.Json
@@ -679,7 +687,10 @@ library swarm-tui
     Swarm.TUI.Launch.View
     Swarm.TUI.List
     Swarm.TUI.Model
+    Swarm.TUI.Model.Achievements
+    Swarm.TUI.Model.Event
     Swarm.TUI.Model.Goal
+    Swarm.TUI.Model.KeyBindings
     Swarm.TUI.Model.Menu
     Swarm.TUI.Model.Name
     Swarm.TUI.Model.Repl
@@ -704,7 +715,7 @@ library swarm-tui
     aeson >=2.2 && <2.3,
     array >=0.5.4 && <0.6,
     base >=4.14 && <4.20,
-    brick >=2.1.1 && <2.4,
+    brick >=2.1.1 && <2.5,
     brick-list-skip >=0.1.1.2 && <0.2,
     bytestring >=0.10 && <0.13,
     clock >=0.8.2 && <0.9,

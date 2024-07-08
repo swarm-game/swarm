@@ -47,11 +47,17 @@ module Swarm.TUI.Model (
 
   -- ** Utility
   logEvent,
+  SwarmKeyDispatcher,
+  KeyEventHandlingState (KeyEventHandlingState),
+  SwarmKeyDispatchers (..),
+  keyConfig,
+  keyDispatchers,
 
   -- * App state
   AppState (AppState),
   gameState,
   uiState,
+  keyEventHandling,
   runtimeState,
 
   -- ** Initialization
@@ -67,7 +73,8 @@ module Swarm.TUI.Model (
   nextScenario,
 ) where
 
-import Brick
+import Brick (EventM, ViewportScroll, viewportScroll)
+import Brick.Keybindings as BK
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
 import Control.Monad ((>=>))
@@ -92,6 +99,7 @@ import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Log
 import Swarm.TUI.Inventory.Sorting
+import Swarm.TUI.Model.Event (SwarmEvent)
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
@@ -139,6 +147,20 @@ logEvent src sev who msg el =
  where
   l = LogEntry (TickNumber 0) src sev who msg
 
+data KeyEventHandlingState = KeyEventHandlingState
+  { _keyConfig :: KeyConfig SwarmEvent
+  , _keyDispatchers :: SwarmKeyDispatchers
+  }
+
+type SwarmKeyDispatcher = KeyDispatcher SwarmEvent (EventM Name AppState)
+
+data SwarmKeyDispatchers = SwarmKeyDispatchers
+  { mainGameDispatcher :: SwarmKeyDispatcher
+  , replDispatcher :: SwarmKeyDispatcher
+  , worldDispatcher :: SwarmKeyDispatcher
+  , robotDispatcher :: SwarmKeyDispatcher
+  }
+
 -- ----------------------------------------------------------------------------
 --                                   APPSTATE                                --
 -- ----------------------------------------------------------------------------
@@ -151,43 +173,9 @@ logEvent src sev who msg el =
 data AppState = AppState
   { _gameState :: GameState
   , _uiState :: UIState
+  , _keyEventHandling :: KeyEventHandlingState
   , _runtimeState :: RuntimeState
   }
-
---------------------------------------------------
--- Lenses for AppState
-
-makeLensesNoSigs ''AppState
-
--- | The 'GameState' record.
-gameState :: Lens' AppState GameState
-
--- | The 'UIState' record.
-uiState :: Lens' AppState UIState
-
--- | The 'RuntimeState' record
-runtimeState :: Lens' AppState RuntimeState
-
---------------------------------------------------
--- Utility functions
-
--- | Get the currently focused 'InventoryListEntry' from the robot
---   info panel (if any).
-focusedItem :: AppState -> Maybe InventoryListEntry
-focusedItem s = do
-  list <- s ^? uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
-  (_, entry) <- BL.listSelectedElement list
-  return entry
-
--- | Get the currently focused entity from the robot info panel (if
---   any).  This is just like 'focusedItem' but forgets the
---   distinction between plain inventory items and equipped devices.
-focusedEntity :: AppState -> Maybe Entity
-focusedEntity =
-  focusedItem >=> \case
-    Separator _ -> Nothing
-    InventoryEntry _ e -> Just e
-    EquippedEntry e -> Just e
 
 ------------------------------------------------------------
 -- Functions for updating the UI state
@@ -303,3 +291,52 @@ nextScenario = \case
           then Nothing
           else BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
   _ -> Nothing
+
+--------------------------------------------------
+-- Lenses for KeyEventHandlingState
+
+makeLensesNoSigs ''KeyEventHandlingState
+
+-- | Keybindings (possibly customized by player) for 'SwarmEvent's.
+keyConfig :: Lens' KeyEventHandlingState (KeyConfig SwarmEvent)
+
+-- | Dispatchers that will call handler on key combo.
+keyDispatchers :: Lens' KeyEventHandlingState SwarmKeyDispatchers
+
+--------------------------------------------------
+-- Lenses for AppState
+
+makeLensesNoSigs ''AppState
+
+-- | The 'GameState' record.
+gameState :: Lens' AppState GameState
+
+-- | The 'UIState' record.
+uiState :: Lens' AppState UIState
+
+-- | The key event handling configuration.
+keyEventHandling :: Lens' AppState KeyEventHandlingState
+
+-- | The 'RuntimeState' record
+runtimeState :: Lens' AppState RuntimeState
+
+--------------------------------------------------
+-- Utility functions
+
+-- | Get the currently focused 'InventoryListEntry' from the robot
+--   info panel (if any).
+focusedItem :: AppState -> Maybe InventoryListEntry
+focusedItem s = do
+  list <- s ^? uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
+  (_, entry) <- BL.listSelectedElement list
+  return entry
+
+-- | Get the currently focused entity from the robot info panel (if
+--   any).  This is just like 'focusedItem' but forgets the
+--   distinction between plain inventory items and equipped devices.
+focusedEntity :: AppState -> Maybe Entity
+focusedEntity =
+  focusedItem >=> \case
+    Separator _ -> Nothing
+    InventoryEntry _ e -> Just e
+    EquippedEntry e -> Just e

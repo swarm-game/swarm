@@ -6,14 +6,18 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Main where
 
+import Control.Monad (when)
 import Data.Foldable qualified
+import Data.Text.IO qualified as T
 import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Swarm.App (appMain)
+import Swarm.Game.ResourceLoading (getSwarmConfigIniFile)
 import Swarm.Language.Format
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Parser.Core (LanguageVersion (..))
 import Swarm.TUI.Model (AppOpts (..), ColorMode (..))
+import Swarm.TUI.Model.KeyBindings (KeybindingPrint (..), showKeybindings)
 import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond)
 import Swarm.Version
 import Swarm.Web (defaultPort)
@@ -30,6 +34,8 @@ commitInfo = case gitInfo of
 
 data CLI
   = Run AppOpts
+  | -- | Print list of bindings, optionally initializing the INI configuration file.
+    ListKeybinding Bool KeybindingPrint
   | Format FormatConfig
   | LSP
   | Version
@@ -41,6 +47,7 @@ cliParser =
         [ command "format" (info (Format <$> parseFormat) (progDesc "Format a file"))
         , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
+        , command "keybindings" (info (ListKeybinding <$> initKeybindingConfig <*> printKeyMode <**> helper) (progDesc "List the keybindings"))
         ]
     )
     <|> Run
@@ -72,6 +79,15 @@ cliParser =
 
   langVer :: Parser LanguageVersion
   langVer = flag SwarmLangLatest SwarmLang0_5 (long "v0.5" <> help "Read (& convert) code from Swarm version 0.5")
+
+  printKeyMode :: Parser KeybindingPrint
+  printKeyMode =
+    flag' IniPrint (long "ini" <> help "Print in INI format")
+      <|> flag' MarkdownPrint (long "markdown" <> help "Print in Markdown table format")
+      <|> pure TextPrint
+
+  initKeybindingConfig :: Parser Bool
+  initKeybindingConfig = switch (short 'i' <> long "init" <> help "Initialise the keybindings configuration file")
 
   parseFormat :: Parser FormatConfig
   parseFormat = FormatConfig <$> input <*> output <*> optional widthOpt <*> langVer <**> helper
@@ -125,11 +141,29 @@ showVersion = do
   up <- getNewerReleaseVersion gitInfo
   either (hPrint stderr) (putStrLn . ("New upstream release: " <>)) up
 
+printKeybindings :: Bool -> KeybindingPrint -> IO ()
+printKeybindings initialize p = do
+  kb <- showKeybindings p
+  T.putStrLn kb
+  (iniExists, ini) <- getSwarmConfigIniFile
+  when initialize $ do
+    kbi <- showKeybindings IniPrint
+    T.writeFile ini kbi
+  let iniState
+        | iniExists && initialize = "has been updated"
+        | iniExists = "is"
+        | initialize = "has been created"
+        | otherwise = "can be created (--init)"
+  putStrLn $ replicate 80 '-'
+  putStrLn $ "The configuration file " <> iniState <> " at:"
+  putStrLn ini
+
 main :: IO ()
 main = do
   cli <- execParser cliInfo
   case cli of
     Run opts -> appMain opts
+    ListKeybinding initialize p -> printKeybindings initialize p
     Format cfg -> formatSwarmIO cfg
     LSP -> lspMain
     Version -> showVersion

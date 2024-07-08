@@ -40,7 +40,7 @@ data AssetData = AppAsset | NameGeneration | Entities | Terrain | Recipes | Worl
   deriving (Eq, Show)
 
 -- | Overarching enumeration of various assets we can attempt to load.
-data Asset = Achievement | Data AssetData | History | Save
+data Asset = Achievement | Data AssetData | History | Keybindings | Save
   deriving (Eq, Show)
 
 -- | Enumeration type to distinguish between directories and files.
