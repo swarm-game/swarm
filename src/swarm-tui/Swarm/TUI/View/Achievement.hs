@@ -35,12 +35,12 @@ drawAchievementsMenuUI s l =
     [ hCenter $ padTopBottom 1 $ str "🏆  Achievements 🏆 "
     , hCenter $
         hBox
-          [ hLimitPercent 30 $
-              padAll 2 $
-                BL.renderList (const $ drawAchievementListItem attainedMap) True l
-          , hLimitPercent 50 $
-              maybe emptyWidget (singleAchievementDetails attainedMap . snd) $
-                BL.listSelectedElement l
+          [ hLimitPercent 30
+              . padAll 2
+              $ BL.renderList (const $ drawAchievementListItem attainedMap) True l
+          , hLimitPercent 50
+              . maybe emptyWidget (singleAchievementDetails attainedMap . snd)
+              $ BL.listSelectedElement l
           ]
     ]
  where
@@ -62,7 +62,7 @@ singleAchievementDetails ::
   CategorizedAchievement ->
   Widget Name
 singleAchievementDetails attainedMap x =
-  padRight (Pad 1) $ borderWithLabel titleWidget $ padAllEvenly 1 innerContent
+  padRight (Pad 1) . borderWithLabel titleWidget . padRight Max . padAllEvenly 1 $ innerContent
  where
   wasAttained = M.member x attainedMap
 

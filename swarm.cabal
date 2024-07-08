@@ -695,6 +695,7 @@ library swarm-tui
     Swarm.TUI.Model.KeyBindings
     Swarm.TUI.Model.Menu
     Swarm.TUI.Model.Name
+    Swarm.TUI.Model.Notification
     Swarm.TUI.Model.Repl
     Swarm.TUI.Model.StateUpdate
     Swarm.TUI.Model.Structure
@@ -707,6 +708,7 @@ library swarm-tui
     Swarm.TUI.View.Attribute.Util
     Swarm.TUI.View.CellDisplay
     Swarm.TUI.View.Logo
+    Swarm.TUI.View.Notification
     Swarm.TUI.View.Objective
     Swarm.TUI.View.Structure
     Swarm.TUI.View.Util

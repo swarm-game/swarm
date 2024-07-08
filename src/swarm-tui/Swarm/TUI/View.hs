@@ -146,6 +146,7 @@ import Swarm.TUI.View.Achievement
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Logo
+import Swarm.TUI.View.Notification
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.TUI.View.Util as VU
@@ -161,17 +162,19 @@ import Witch (into)
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
 drawUI :: AppState -> [Widget Name]
-drawUI s
-  | s ^. uiState . uiPlaying = drawGameUI s
-  | otherwise = case s ^. uiState . uiMenu of
-      -- We should never reach the NoMenu case if uiPlaying is false; we would have
-      -- quit the app instead.  But just in case, we display the main menu anyway.
-      NoMenu -> [drawMainMenuUI s (mainMenu NewGame)]
-      MainMenu l -> [drawMainMenuUI s l]
-      NewGameMenu stk -> drawNewGameMenuUI stk $ s ^. uiState . uiLaunchConfig
-      AchievementsMenu l -> [drawAchievementsMenuUI s l]
-      MessagesMenu -> [drawMainMessages s]
-      AboutMenu -> [drawAboutMenuUI (s ^. runtimeState . appData . at "about")]
+drawUI s = drawNotifications s : otherLayers
+ where
+  otherLayers
+    | s ^. uiState . uiPlaying = drawGameUI s
+    | otherwise = case s ^. uiState . uiMenu of
+        -- We should never reach the NoMenu case if uiPlaying is false; we would have
+        -- quit the app instead.  But just in case, we display the main menu anyway.
+        NoMenu -> [drawMainMenuUI s (mainMenu NewGame)]
+        MainMenu l -> [drawMainMenuUI s l]
+        NewGameMenu stk -> drawNewGameMenuUI stk $ s ^. uiState . uiLaunchConfig
+        AchievementsMenu l -> [drawAchievementsMenuUI s l]
+        MessagesMenu -> [drawMainMessages s]
+        AboutMenu -> [drawAboutMenuUI (s ^. runtimeState . appData . at "about")]
 
 drawMainMessages :: AppState -> Widget Name
 drawMainMessages s = renderDialog dial . padBottom Max . scrollList $ drawLogs ls

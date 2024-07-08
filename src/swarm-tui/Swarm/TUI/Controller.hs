@@ -97,6 +97,7 @@ import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
+import Swarm.TUI.Model.Notification (progressNotifications)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.Structure
@@ -131,10 +132,18 @@ handleEvent = \case
       Right _ -> pure ()
     runtimeState . upstreamRelease .= ev
   e -> do
+    -- Handle notification display at the very top level, so it is
+    -- unaffected by any other state, e.g. even when starting or
+    -- quitting a game, moving around the menu, the notification
+    -- display will continue as normal.
+    upd <- case e of
+      AppEvent Frame -> Brick.zoom (uiState . uiNotifications) progressNotifications
+      _ -> pure False
+
     s <- get
     if s ^. uiState . uiPlaying
-      then handleMainEvent e
-      else
+      then handleMainEvent upd e
+      else do
         e & case s ^. uiState . uiMenu of
           -- If we reach the NoMenu case when uiPlaying is False, just
           -- quit the app.  We should actually never reach this code (the
@@ -159,7 +168,7 @@ handleMainMenuEvent ::
 handleMainMenuEvent menu = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement menu of
-      Nothing -> continueWithoutRedraw
+      Nothing -> pure ()
       Just x0 -> case x0 of
         NewGame -> do
           cheat <- use $ uiState . uiCheatMode
@@ -198,7 +207,7 @@ handleMainMenuEvent menu = \case
   VtyEvent ev -> do
     menu' <- nestEventM' menu (handleListEvent ev)
     uiState . uiMenu .= MainMenu menu'
-  _ -> continueWithoutRedraw
+  _ -> pure ()
 
 -- | If we are in a New Game menu, advance the menu to the next item in order.
 --
@@ -219,7 +228,7 @@ handleMainAchievementsEvent l e = case e of
   VtyEvent ev -> do
     l' <- nestEventM' l (handleListEvent ev)
     uiState . uiMenu .= AchievementsMenu l'
-  _ -> continueWithoutRedraw
+  _ -> pure ()
  where
   returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
 
@@ -228,7 +237,7 @@ handleMainMessagesEvent = \case
   Key V.KEsc -> returnToMainMenu
   CharKey 'q' -> returnToMainMenu
   ControlChar 'q' -> returnToMainMenu
-  _ -> return ()
+  _ -> pure ()
  where
   returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
 
@@ -240,7 +249,7 @@ handleNewGameMenuEvent ::
 handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement curMenu of
-      Nothing -> continueWithoutRedraw
+      Nothing -> pure ()
       Just (SISingle siPair) -> invalidateCache >> startGame siPair Nothing
       Just (SICollection _ c) -> do
         cheat <- use $ uiState . uiCheatMode
@@ -253,11 +262,11 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   VtyEvent ev -> do
     menu' <- nestEventM' curMenu (handleListEvent ev)
     uiState . uiMenu .= NewGameMenu (menu' :| rest)
-  _ -> continueWithoutRedraw
+  _ -> pure ()
  where
   showLaunchDialog = case snd <$> BL.listSelectedElement curMenu of
     Just (SISingle siPair) -> Brick.zoom (uiState . uiLaunchConfig) $ prepareLaunchDialog siPair
-    _ -> continueWithoutRedraw
+    _ -> pure ()
 
 exitNewGameMenu :: NonEmpty (BL.List Name ScenarioItem) -> EventM Name AppState ()
 exitNewGameMenu stk = do
@@ -269,18 +278,18 @@ exitNewGameMenu stk = do
 
 pressAnyKey :: Menu -> BrickEvent Name AppEvent -> EventM Name AppState ()
 pressAnyKey m (VtyEvent (V.EvKey _ _)) = uiState . uiMenu .= m
-pressAnyKey _ _ = continueWithoutRedraw
+pressAnyKey _ _ = pure ()
 
 -- | The top-level event handler while we are running the game itself.
-handleMainEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleMainEvent ev = do
+handleMainEvent :: Bool -> BrickEvent Name AppEvent -> EventM Name AppState ()
+handleMainEvent forceRedraw ev = do
   s <- get
   let keyHandler = s ^. keyEventHandling . keyDispatchers . to mainGameDispatcher
   case ev of
     AppEvent ae -> case ae of
       Frame
         | s ^. gameState . temporal . paused -> continueWithoutRedraw
-        | otherwise -> runFrameUI
+        | otherwise -> runFrameUI forceRedraw
       Web (RunWebCode c) -> runBaseWebCode c
       _ -> continueWithoutRedraw
     VtyEvent (V.EvResize _ _) -> invalidateCache

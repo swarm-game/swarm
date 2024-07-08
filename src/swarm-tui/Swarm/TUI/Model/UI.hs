@@ -13,6 +13,7 @@ module Swarm.TUI.Model.UI (
   UIInventory (..),
   GoalDisplay (..),
   uiGameplay,
+  uiNotifications,
   uiTiming,
   uiInventory,
   uiMenu,
@@ -88,6 +89,7 @@ import Swarm.TUI.Launch.Prep
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
+import Swarm.TUI.Model.Notification
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.Structure
 import Swarm.TUI.View.Attribute.Attr (swarmAttrMap)
@@ -281,6 +283,7 @@ data UIState = UIState
   , _uiAchievements :: Map CategorizedAchievement Attainment
   , _uiAttrMap :: AttrMap
   , _uiGameplay :: UIGameplay
+  , _uiNotifications :: NotificationState
   }
 
 -- * Lenses for UIState
@@ -312,6 +315,9 @@ uiAttrMap :: Lens' UIState AttrMap
 
 -- | UI active during live gameplay
 uiGameplay :: Lens' UIState UIGameplay
+
+-- | Queue of notifications to display
+uiNotifications :: Lens' UIState NotificationState
 
 -- * UIState initialization
 
@@ -353,6 +359,7 @@ initUIState speedFactor showMainMenu cheatMode = do
           , _uiLaunchConfig = launchConfigPanel
           , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
           , _uiAttrMap = swarmAttrMap
+          , _uiNotifications = initNotificationState
           , _uiGameplay =
               UIGameplay
                 { _uiFocusRing = initFocusRing
