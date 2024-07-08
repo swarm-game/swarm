@@ -60,12 +60,8 @@ def getIndexesTotal = \boardWidth. \boardHeight. \n.
         let idx = n - 1 in
         teleport self (idx/boardHeight, -(mod idx boardWidth));
         valueHere <- getValueHere;
-
-        // This reassignment has to happen before the
-        // recursive call due to #1032
-        let valueHereBlah = valueHere in
         runningTotal <- getIndexesTotal boardWidth boardHeight $ n - 1;
-        return $ valueHereBlah + runningTotal;
+        return $ valueHere + runningTotal;
     } {
         return 0;
     }

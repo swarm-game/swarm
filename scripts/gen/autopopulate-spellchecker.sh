@@ -1,22 +1,9 @@
 #!/bin/bash -e
 
-# This script lives 1 level deep in the directory structure.
-# Ensure its commands get run at the toplevel.
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-cd $SCRIPT_DIR/../..
-
-
-# First, install hiedb:
-#
-#    cabal install hiedb
-#
-# Then, generate *.hie files:
-#
-#    cp hie.yaml.stack hie.yaml
-#    cabal build -j -O0
+cd $(git rev-parse --show-toplevel)
 
 DBNAME=hie.sqlite
-hiedb --database $DBNAME index .hie
+scripts/gen/hiedb.sh $DBNAME
 
 WORDS_TMPFILE_UNSORTED=$(mktemp --suffix .words)
 
