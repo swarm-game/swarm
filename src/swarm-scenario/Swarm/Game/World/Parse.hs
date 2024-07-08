@@ -13,6 +13,7 @@ module Swarm.Game.World.Parse where
 import Control.Monad (void)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Control.Monad.Combinators.NonEmpty qualified as CNE (sepBy1)
+import Data.List.Extra (enumerate)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Void (Void)
@@ -189,7 +190,7 @@ parseCellItem =
     <*> parseName
 
 parseCellTag :: Parser CellTag
-parseCellTag = choice (map mkCellTagParser [minBound .. maxBound :: CellTag])
+parseCellTag = choice (map mkCellTagParser (enumerate @CellTag))
  where
   mkCellTagParser ct = ct <$ string' (T.drop 4 $ showT ct)
 

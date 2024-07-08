@@ -27,6 +27,7 @@ import Data.Foldable qualified as F
 import Data.Functor.Const qualified as F
 import Data.Kind (Type)
 import Data.List (foldl')
+import Data.List.Extra (enumerate)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -636,7 +637,7 @@ resolveCellItem (mCellTag, item) = case mCellTag of
   Nothing -> do
     -- The item was not tagged; try resolving in all possible ways and choose
     -- the first that works
-    maybeCells <- mapM (`resolverByTag` item) [minBound .. maxBound :: CellTag]
+    maybeCells <- mapM (`resolverByTag` item) (enumerate @CellTag)
     case F.asum maybeCells of
       Nothing -> throwError $ NotAnything item
       Just cell -> return cell
