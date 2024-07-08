@@ -233,4 +233,4 @@ allKeyEvents :: (Ord e, Bounded e, Enum e) => (e -> Text) -> KeyEvents e
 allKeyEvents f = keyEvents $ map (f &&& id) enumerate
 
 allBindings :: (Bounded e, Enum e) => (e -> [Binding]) -> [(e, [Binding])]
-allBindings f = map (\e -> (e, f e)) [minBound .. maxBound]
+allBindings f = map (\e -> (e, f e)) enumerate
