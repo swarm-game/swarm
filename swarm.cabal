@@ -275,6 +275,7 @@ library swarm-scenario
     Swarm.Game.Robot
     Swarm.Game.Robot.Walk
     Swarm.Game.Scenario
+    Swarm.Game.Scenario.Coach
     Swarm.Game.Scenario.Objective
     Swarm.Game.Scenario.Objective.Graph
     Swarm.Game.Scenario.Objective.Logic

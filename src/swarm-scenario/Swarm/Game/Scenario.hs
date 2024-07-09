@@ -35,6 +35,7 @@ module Swarm.Game.Scenario (
   scenarioVersion,
   scenarioName,
   scenarioAuthor,
+  scenarioPedagogy,
   scenarioDescription,
   scenarioCreative,
   scenarioSeed,
@@ -90,6 +91,7 @@ import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot (TRobot, trobotLocation, trobotName)
+import Swarm.Game.Scenario.Coach
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
@@ -142,6 +144,7 @@ data ScenarioMetadata = ScenarioMetadata
   { _scenarioVersion :: Int
   , _scenarioName :: Text
   , _scenarioAuthor :: Maybe Text
+  , _scenarioPedagogy :: Maybe Pedagogy
   }
   deriving (Show, Generic)
 
@@ -165,6 +168,9 @@ scenarioName :: Lens' ScenarioMetadata Text
 
 -- | The author of the scenario.
 scenarioAuthor :: Lens' ScenarioMetadata (Maybe Text)
+
+-- | Pedagogical information about the scenario.
+scenarioPedagogy :: Lens' ScenarioMetadata (Maybe Pedagogy)
 
 -- | Non-structural gameplay content of the scenario;
 -- how it is to be played.
@@ -404,6 +410,7 @@ instance FromJSONE ScenarioInputs Scenario where
           <$> liftE (v .: "version")
           <*> liftE (v .: "name")
           <*> liftE (v .:? "author")
+          <*> liftE (v .:? "pedagogy")
 
       playInfo <-
         ScenarioOperation
