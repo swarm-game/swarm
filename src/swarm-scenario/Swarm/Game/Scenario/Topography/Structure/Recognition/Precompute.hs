@@ -44,7 +44,6 @@ import Control.Arrow ((&&&))
 import Control.Lens (view)
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, mapMaybe)
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Prep
 import Data.Set qualified as Set
 import Swarm.Game.Entity (Entity, EntityName, entityName)
 import Swarm.Game.Scenario (StaticStructureInfo (..))
@@ -52,6 +51,7 @@ import Swarm.Game.Scenario.Topography.Cell (PCell, cellEntity)
 import Swarm.Game.Scenario.Topography.Grid (Grid, getRows)
 import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform)
 import Swarm.Game.Scenario.Topography.Structure
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Prep
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic (..))
