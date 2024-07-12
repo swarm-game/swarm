@@ -631,6 +631,12 @@
   required:
     - [1, big furnace]
 - in:
+    - [2, board]
+    - [1, glass]
+    - [1, sand]
+  out:
+    - [1, hourglass]
+- in:
     - [1, glass]
     - [1, mithril]
   out:
