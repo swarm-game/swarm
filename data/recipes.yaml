@@ -537,6 +537,11 @@
   out:
     - [1, clock]
 - in:
+    - [1, clock]
+    - [1, scanner]
+  out:
+    - [1, rolex]
+- in:
     - [4, silicon]
     - [1, strange loop]
     - [16, copper wire]
@@ -624,6 +629,12 @@
     - [1, glass]
   required:
     - [1, furnace]
+- in:
+    - [1, water]
+    - [1, copper pipe]
+    - [1, glass]
+  out:
+    - [1, olfactometer]
 - in:
     - [1, sand]
   out:
