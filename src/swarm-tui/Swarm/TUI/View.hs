@@ -796,7 +796,7 @@ helpWidget theSeed mport keyState =
     vBox
       [ heading boldAttr "Have questions? Want some tips? Check out:"
       , txt "  - The Swarm wiki, " <+> hyperlink wikiUrl (txt wikiUrl)
-      , txt "  - The #swarm IRC channel on " <+> hyperlink swarmWebIRC (txt swarmWebIRC)
+      , txt "  - The Swarm Discord server at " <+> hyperlink swarmDiscord (txt swarmDiscord)
       ]
   info =
     vBox
