@@ -98,9 +98,11 @@ getDataFileNameSafe asset name = do
     then return fp
     else throwError $ AssetNotLoaded (Data asset) fp $ DoesNotExist File
 
-getSwarmConfigIniFile :: IO (Bool, FilePath)
-getSwarmConfigIniFile = do
-  ini <- (</> "config.ini") <$> getXdgDirectory XdgConfig "swarm"
+getSwarmConfigIniFile :: Bool -> IO (Bool, FilePath)
+getSwarmConfigIniFile createDirs = do
+  swarmConfig <- getXdgDirectory XdgConfig "swarm"
+  when createDirs (createDirectoryIfMissing True swarmConfig)
+  let ini = swarmConfig </> "config.ini"
   iniExists <- doesFileExist ini
   return (iniExists, ini)
 

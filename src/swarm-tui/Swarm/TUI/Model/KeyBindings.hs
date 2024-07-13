@@ -35,7 +35,7 @@ loadKeybindingConfig ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   m [(SwarmEvent, BindingState)]
 loadKeybindingConfig = do
-  (iniExists, ini) <- sendIO getSwarmConfigIniFile
+  (iniExists, ini) <- sendIO $ getSwarmConfigIniFile False
   if not iniExists
     then return []
     else do
