@@ -58,7 +58,7 @@ entityModified modification cLoc = do
   doAddition newEntity = do
     entLookup <- use $ discovery . structureRecognition . automatons . automatonsByEntity
     forM_ (M.lookup newEntity entLookup) $ \finder -> do
-      let msg = FoundParticipatingEntity $ ParticipatingEntity (view entityName newEntity) (finder ^. inspectionOffsets)
+      let msg = FoundParticipatingEntity $ ParticipatingEntity newEntity (finder ^. inspectionOffsets)
       discovery . structureRecognition . recognitionLog %= (msg :)
       registerRowMatches cLoc finder
 
@@ -87,7 +87,7 @@ entityModified modification cLoc = do
 candidateEntityAt ::
   (Has (State GameState) sig m) =>
   -- | participating entities
-  Set EntityName ->
+  Set Entity ->
   Cosmic Location ->
   m (Maybe Entity)
 candidateEntityAt participating cLoc = do
@@ -98,7 +98,7 @@ candidateEntityAt participating cLoc = do
       maybeEnt <- entityAt cLoc
       return $ do
         ent <- maybeEnt
-        guard $ S.member (ent ^. entityName) participating
+        guard $ S.member ent participating
         return ent
 
 -- | Excludes entities that are already part of a
@@ -106,7 +106,7 @@ candidateEntityAt participating cLoc = do
 getWorldRow ::
   (Has (State GameState) sig m) =>
   -- | participating entities
-  Set EntityName ->
+  Set Entity ->
   Cosmic Location ->
   InspectionOffsets ->
   Int32 ->
@@ -125,15 +125,15 @@ getWorldRow participatingEnts cLoc (InspectionOffsets (Min offsetLeft) (Max offs
 registerRowMatches ::
   (Has (State GameState) sig m) =>
   Cosmic Location ->
-  AutomatonInfo EntityName (AtomicKeySymbol Entity) (StructureSearcher Cell EntityName Entity) ->
+  AutomatonInfo Entity (AtomicKeySymbol Entity) (StructureSearcher Cell Entity) ->
   m ()
 registerRowMatches cLoc (AutomatonInfo participatingEnts horizontalOffsets sm) = do
   entitiesRow <- getWorldRow participatingEnts cLoc horizontalOffsets 0
   let candidates = findAll sm entitiesRow
       mkCandidateLogEntry c =
         FoundRowCandidate
-          (HaystackContext (map (fmap $ view entityName) entitiesRow) (HaystackPosition $ pIndex c))
-          (map (fmap $ view entityName) . needleContent $ pVal c)
+          (HaystackContext entitiesRow (HaystackPosition $ pIndex c))
+          (needleContent $ pVal c)
           rowMatchInfo
        where
         rowMatchInfo = NE.toList . NE.map (f . myRow) . singleRowItems $ pVal c
@@ -151,7 +151,7 @@ checkVerticalMatch ::
   Cosmic Location ->
   -- | Horizontal search offsets
   InspectionOffsets ->
-  Position (StructureSearcher Cell EntityName Entity) ->
+  Position (StructureSearcher Cell Entity) ->
   m [FoundStructure Cell Entity]
 checkVerticalMatch cLoc (InspectionOffsets (Min searchOffsetLeft) _) foundRow =
   getMatches2D cLoc horizontalFoundOffsets $ automaton2D $ pVal foundRow
@@ -182,7 +182,7 @@ getMatches2D ::
   Cosmic Location ->
   -- | Horizontal found offsets (inclusive indices)
   InspectionOffsets ->
-  AutomatonInfo EntityName (SymbolSequence Entity) (StructureWithGrid Cell Entity) ->
+  AutomatonInfo Entity (SymbolSequence Entity) (StructureWithGrid Cell Entity) ->
   m [FoundStructure Cell Entity]
 getMatches2D
   cLoc

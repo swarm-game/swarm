@@ -32,11 +32,10 @@ mkOffsets pos xs =
 -- yield a searcher that can determine whether adjacent
 -- rows constitute a complete structure.
 mkRowLookup ::
-  (Hashable a, Ord en) =>
-  (a -> en) ->
+  (Hashable a, Ord a) =>
   NE.NonEmpty (StructureRow b a) ->
-  AutomatonInfo en (SymbolSequence a) (StructureWithGrid b a)
-mkRowLookup nameFunc neList =
+  AutomatonInfo a (SymbolSequence a) (StructureWithGrid b a)
+mkRowLookup neList =
   AutomatonInfo participatingEnts bounds sm
  where
   mkSmTuple = entityGrid &&& id
@@ -45,8 +44,7 @@ mkRowLookup nameFunc neList =
   -- All of the unique entities across all of the full candidate structures
   participatingEnts =
     S.fromList $
-      map nameFunc $
-        concatMap (concatMap catMaybes . fst) tuples
+      concatMap (concatMap catMaybes . fst) tuples
 
   deriveRowOffsets :: StructureRow b a -> InspectionOffsets
   deriveRowOffsets (StructureRow (StructureWithGrid _ _ g) rwIdx _) =
@@ -62,11 +60,10 @@ mkRowLookup nameFunc neList =
 -- underlying world row against all rows within all structures
 -- (so long as they contain the keyed entity).
 mkEntityLookup ::
-  (Hashable a, Ord a, Ord en) =>
-  (a -> en) ->
+  (Hashable a, Ord a) =>
   [StructureWithGrid b a] ->
-  M.Map a (AutomatonInfo en (AtomicKeySymbol a) (StructureSearcher b en a))
-mkEntityLookup nameFunc grids =
+  M.Map a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
+mkEntityLookup grids =
   M.map mkValues rowsByEntityParticipation
  where
   rowsAcrossAllStructures = allStructureRows grids
@@ -77,12 +74,12 @@ mkEntityLookup nameFunc grids =
     StructureSearcher sm2D ksms singleRows
    where
     structureRowsNE = NE.map myRow singleRows
-    sm2D = mkRowLookup nameFunc structureRowsNE
+    sm2D = mkRowLookup structureRowsNE
 
   mkValues neList = AutomatonInfo participatingEnts bounds sm
    where
     participatingEnts =
-      (S.fromList . map nameFunc)
+      S.fromList
         (concatMap (catMaybes . fst) tuples)
 
     tuples = M.toList $ M.mapWithKey mkSmValue groupedByUniqueRow

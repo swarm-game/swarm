@@ -41,11 +41,10 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (
 ) where
 
 import Control.Arrow ((&&&))
-import Control.Lens (view)
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, mapMaybe)
 import Data.Set qualified as Set
-import Swarm.Game.Entity (Entity, EntityName, entityName)
+import Swarm.Game.Entity (Entity)
 import Swarm.Game.Scenario (StaticStructureInfo (..))
 import Swarm.Game.Scenario.Topography.Cell (PCell, cellEntity)
 import Swarm.Game.Scenario.Topography.Grid (Grid, getRows)
@@ -66,11 +65,11 @@ getEntityGrid = map (map ((erasableToMaybe . cellEntity) =<<)) . getRows
 -- provided structure definitions
 mkAutomatons ::
   [SymmetryAnnotatedGrid (Maybe (PCell Entity))] ->
-  RecognizerAutomatons (PCell Entity) EntityName Entity
+  RecognizerAutomatons (PCell Entity) Entity
 mkAutomatons xs =
   RecognizerAutomatons
     infos
-    (mkEntityLookup (view entityName) rotatedGrids)
+    (mkEntityLookup rotatedGrids)
  where
   rotatedGrids = concatMap (extractGrids . namedGrid) xs
 
