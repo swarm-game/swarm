@@ -876,7 +876,6 @@ test-suite swarm-unit
     megaparsec,
     mtl,
     tasty >=0.10 && <1.6,
-    tasty-expected-failure >=0.12 && <0.13,
     tasty-hunit >=0.10 && <0.11,
     tasty-quickcheck >=0.10 && <0.11,
     text,
