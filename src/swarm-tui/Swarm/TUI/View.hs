@@ -146,8 +146,8 @@ import Swarm.TUI.View.Achievement
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Logo
-import Swarm.TUI.View.Notification
 import Swarm.TUI.View.Objective qualified as GR
+import Swarm.TUI.View.Popup
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.TUI.View.Util as VU
 import Swarm.Util
@@ -162,7 +162,7 @@ import Witch (into)
 -- | The main entry point for drawing the entire UI.  Figures out
 --   which menu screen we should show (if any), or just the game itself.
 drawUI :: AppState -> [Widget Name]
-drawUI s = drawNotifications s : otherLayers
+drawUI s = drawPopups s : otherLayers
  where
   otherLayers
     | s ^. uiState . uiPlaying = drawGameUI s

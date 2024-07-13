@@ -25,7 +25,7 @@ import Swarm.Game.Step (gameTick)
 import Swarm.TUI.Controller.UpdateUI
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Achievements (notifyAchievement)
+import Swarm.TUI.Model.Achievements (popupAchievement)
 import Swarm.TUI.Model.UI
 import System.Clock
 
@@ -145,7 +145,7 @@ updateAchievements = do
   -- Don't save to disk unless there was a change in the attainment list.
   let incrementalAchievements = wrappedGameAchievements `M.difference` oldMasterAchievementsList
   unless (null incrementalAchievements) $ do
-    mapM_ (notifyAchievement . view achievement) incrementalAchievements
+    mapM_ (popupAchievement . view achievement) incrementalAchievements
 
     newAchievements <- use $ uiState . uiAchievements
     liftIO $ saveAchievementsInfo $ M.elems newAchievements

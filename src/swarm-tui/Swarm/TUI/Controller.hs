@@ -97,7 +97,7 @@ import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
-import Swarm.TUI.Model.Notification (progressNotifications)
+import Swarm.TUI.Model.Popup (progressPopups)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.Structure
@@ -132,12 +132,12 @@ handleEvent = \case
       Right _ -> pure ()
     runtimeState . upstreamRelease .= ev
   e -> do
-    -- Handle notification display at the very top level, so it is
+    -- Handle popup display at the very top level, so it is
     -- unaffected by any other state, e.g. even when starting or
-    -- quitting a game, moving around the menu, the notification
+    -- quitting a game, moving around the menu, the popup
     -- display will continue as normal.
     upd <- case e of
-      AppEvent Frame -> Brick.zoom (uiState . uiNotifications) progressNotifications
+      AppEvent Frame -> Brick.zoom (uiState . uiPopups) progressPopups
       _ -> pure False
 
     s <- get

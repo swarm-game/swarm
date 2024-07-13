@@ -7,7 +7,7 @@
 module Swarm.TUI.Model.Achievements (
   attainAchievement,
   attainAchievement',
-  notifyAchievement,
+  popupAchievement,
 ) where
 
 import Control.Lens hiding (from, (<.>))
@@ -21,7 +21,7 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Notification (Notification (AchievementNotification), addNotification)
+import Swarm.TUI.Model.Popup (Popup (AchievementPopup), addPopup)
 import Swarm.TUI.Model.UI
 
 attainAchievement :: (MonadIO m, MonadState AppState m) => CategorizedAchievement -> m ()
@@ -37,7 +37,7 @@ attainAchievement' ::
   m ()
 attainAchievement' t p a = do
   mAttainment <- use $ uiState . uiAchievements . at a
-  when (isNothing mAttainment) $ notifyAchievement a
+  when (isNothing mAttainment) $ popupAchievement a
 
   (uiState . uiAchievements)
     %= M.insertWith
@@ -47,6 +47,6 @@ attainAchievement' t p a = do
   newAchievements <- use $ uiState . uiAchievements
   liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
--- | Generate a pop-up notification for an achievement.
-notifyAchievement :: MonadState AppState m => CategorizedAchievement -> m ()
-notifyAchievement ach = uiState . uiNotifications %= addNotification (AchievementNotification ach)
+-- | Generate a popup for an achievement.
+popupAchievement :: MonadState AppState m => CategorizedAchievement -> m ()
+popupAchievement ach = uiState . uiPopups %= addPopup (AchievementPopup ach)
