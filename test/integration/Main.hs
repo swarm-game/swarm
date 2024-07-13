@@ -102,6 +102,7 @@ main = do
     either (assertFailure . prettyString) return out
   let scenarioInputs = gsiScenarioInputs $ initState $ rs ^. stdGameConfigInputs
       rs' = rs & eventLog .~ mempty
+  recipeTests <- testRecipeCoverage
   defaultMain $
     testGroup
       "Tests"
@@ -112,7 +113,7 @@ main = do
       , scenarioParseInvalidTests scenarioInputs unparseableScenarios
       , testScenarioSolutions rs' ui key
       , testEditorFiles
-      , testRecipeCoverage
+      , recipeTests
       ]
 
 testNoLoadingErrors :: RuntimeState -> TestTree
