@@ -377,6 +377,10 @@
   required:
     - [1, big furnace]
 - in:
+    - [2, iron plate]
+  out:
+    - [1, dozer blade]
+- in:
     - [1, iron plate]
   out:
     - [1, lodestone]
