@@ -7,11 +7,12 @@
 module TestRecipeCoverage where
 
 import Control.Lens (view)
+import Data.Function ((&))
+import Data.List (intercalate, sort)
 import Data.Set qualified as Set
 import Data.Text qualified as T
 import Swarm.Doc.Gen
 import Swarm.Game.Entity (entityName)
-import Swarm.Util (commaList, quote)
 import Test.Tasty
 import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit
@@ -25,8 +26,14 @@ testRecipeCoverage =
     testCase "Ensure all devices have recipes (#1268)" $ do
       graphData <- classicScenarioRecipeGraphData
       let nonCoveredEntities =
-            filter (\e -> view entityName e `notElem` ignoredEntities) . Set.toList $
-              rgAllEntities graphData `Set.difference` Set.unions (rgLevels graphData)
+            Set.unions (rgLevels graphData)
+              & Set.difference (rgAllEntities graphData)
+              & Set.toList
+              & map (view entityName)
+              & filter (`notElem` ignoredEntities)
+              & map T.unpack
+              & sort -- Text and String give different sort
       assertBool (errMessage nonCoveredEntities) (null nonCoveredEntities)
    where
-    errMessage missing = T.unpack $ "Missing recipes for: " <> commaList (quote . view entityName <$> missing)
+    errMessage missing = "Missing recipes for: " <> intercalate ", " (quote <$> missing)
+    quote t = concat ["\"", t, "\""]
