@@ -11,9 +11,11 @@ module Swarm.TUI.Model.Achievements (
 ) where
 
 import Control.Lens hiding (from, (<.>))
+import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState)
 import Data.Map qualified as M
+import Data.Maybe (isNothing)
 import Data.Time (ZonedTime, getZonedTime)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
@@ -34,7 +36,9 @@ attainAchievement' ::
   CategorizedAchievement ->
   m ()
 attainAchievement' t p a = do
-  notifyAchievement a
+  mAttainment <- use $ uiState . uiAchievements . at a
+  when (isNothing mAttainment) $ notifyAchievement a
+
   (uiState . uiAchievements)
     %= M.insertWith
       (<>)
