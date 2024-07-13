@@ -349,7 +349,7 @@ diamond = customNode [("shape", "diamond")]
 hiddenNode :: Dot NodeId
 hiddenNode = Dot.node [("style", "invis")]
 
--- | Hidden edge - used for layout.
+-- | Edge for yielded entities.
 (.-<>.) :: NodeId -> NodeId -> Dot ()
 e1 .-<>. e2 = Dot.edge e1 e2 attrs
  where
