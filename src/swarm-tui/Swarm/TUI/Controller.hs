@@ -288,7 +288,7 @@ handleMainEvent forceRedraw ev = do
   case ev of
     AppEvent ae -> case ae of
       Frame
-        | s ^. gameState . temporal . paused -> continueWithoutRedraw
+        | not forceRedraw && s ^. gameState . temporal . paused -> continueWithoutRedraw
         | otherwise -> runFrameUI forceRedraw
       Web (RunWebCode c) -> runBaseWebCode c
       _ -> continueWithoutRedraw
