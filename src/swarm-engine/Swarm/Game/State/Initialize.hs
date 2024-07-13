@@ -93,7 +93,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       & creativeMode .~ scenario ^. scenarioOperation . scenarioCreative
       & winCondition .~ theWinCondition
       & winSolution .~ scenario ^. scenarioOperation . scenarioSolution
-      & discovery . availableCommands .~ Notifications 0 initialCommands
+      & discovery . availableCommands .~ Notifications 0 False initialCommands
       & discovery . knownEntities .~ sLandscape ^. scenarioKnown
       & discovery . tagMembers .~ buildTagMap em
       & randomness . seed .~ theSeed

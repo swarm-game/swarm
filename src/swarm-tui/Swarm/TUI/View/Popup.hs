@@ -43,7 +43,11 @@ drawPopup = \case
       [ withAttr notifAttr (txt "New recipes unlocked! ")
       , txt "[F3] to view."
       ]
-  CommandsPopup _ -> txt "New commands!"
+  CommandsPopup _ ->
+    hBox
+      [ withAttr notifAttr (txt "New commands unlocked! ")
+      , txt "[F4] to view."
+      ]
 
 -- | Compute the number of rows of the notification popup we should be
 --   showing, based on the number of frames the popup has existed.

@@ -272,7 +272,12 @@ messageInfo :: Lens' GameState Messages
 messageNotifications :: Getter GameState (Notifications LogEntry)
 messageNotifications = to getNotif
  where
-  getNotif gs = Notifications {_notificationsCount = length new, _notificationsContent = allUniq}
+  getNotif gs =
+    Notifications
+      { _notificationsCount = length new
+      , _notificationsShouldAlert = not (null new)
+      , _notificationsContent = allUniq
+      }
    where
     allUniq = uniq $ toList allMessages
     new = takeWhile (\l -> l ^. leTime > gs ^. messageInfo . lastSeenMessageTime) $ reverse allUniq
