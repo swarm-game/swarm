@@ -6,13 +6,21 @@ module Swarm.TUI.Model.Notification where
 import Control.Lens (makeLenses, use, (%~), (+=), (.=), _2, _Just)
 import Control.Monad.State (MonadState)
 import Data.Functor (($>))
+import Data.Maybe (isJust)
 import Data.Sequence (Seq, (|>), pattern (:<|))
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
+import Swarm.Game.Achievement.Definitions (CategorizedAchievement)
 
--- XXX this should become something more interesting
-type Notification = Text
+-- | Different types of notifications that can be displayed to the
+--   player.
+data Notification
+  = AchievementNotification CategorizedAchievement
+  | RecipesNotification [Text]
+  | CommandsNotification [Text]
 
+-- | State to track pending notification queue as well as any
+--   notification which is currently being displayed.
 data NotificationState = NS
   { _currentNotification :: Maybe (Notification, Int)
   , _notificationQueue :: Seq Notification
@@ -20,6 +28,7 @@ data NotificationState = NS
 
 makeLenses ''NotificationState
 
+-- | Initial, empty notification state.
 initNotificationState :: NotificationState
 initNotificationState =
   NS
@@ -60,10 +69,12 @@ progressNotifications = do
 nextNotification :: MonadState NotificationState m => m Bool
 nextNotification = do
   q <- use notificationQueue
+  cur <- use currentNotification
   case q of
     Seq.Empty -> do
+      let updated = isJust cur
       currentNotification .= Nothing
-      pure False
+      pure updated
     n :<| ns -> do
       currentNotification .= Just (n, 0)
       notificationQueue .= ns

@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -7,11 +9,14 @@ module Swarm.TUI.View.Notification where
 import Brick (Widget (..), cropTopTo, padLeftRight, txt)
 import Brick.Widgets.Border (border)
 import Brick.Widgets.Center (hCenterLayer)
-import Brick.Widgets.Core (emptyWidget)
+import Brick.Widgets.Core (emptyWidget, hBox, withAttr)
 import Control.Lens ((^.))
+import Swarm.Game.Achievement.Definitions (title)
+import Swarm.Game.Achievement.Description (describe)
 import Swarm.TUI.Model (AppState, Name, uiState)
-import Swarm.TUI.Model.Notification (currentNotification, notificationFrames)
+import Swarm.TUI.Model.Notification (Notification (..), currentNotification, notificationFrames)
 import Swarm.TUI.Model.UI (uiNotifications)
+import Swarm.TUI.View.Attribute.Attr (notifAttr)
 
 -- | The number of frames taken by each step of the notification popup
 --   animation.
@@ -23,8 +28,22 @@ drawNotifications :: AppState -> Widget Name
 drawNotifications s = hCenterLayer $
   case s ^. uiState . uiNotifications . currentNotification of
     Just (notif, f) ->
-      cropTopTo (notificationRows f) . border . padLeftRight 2 $ txt notif
+      cropTopTo (notificationRows f) . border . padLeftRight 2 $ drawNotification notif
     _ -> emptyWidget
+
+drawNotification :: Notification -> Widget Name
+drawNotification = \case
+  AchievementNotification ach ->
+    hBox
+      [ withAttr notifAttr (txt "Achievement unlocked: ")
+      , txt (title (describe ach))
+      ]
+  RecipesNotification _ ->
+    hBox
+      [ withAttr notifAttr (txt "New recipes unlocked! ")
+      , txt "[F3] to view."
+      ]
+  CommandsNotification _ -> txt "New commands!"
 
 -- | Compute he number of rows of the notification popup we should be
 --   showing, based on the number of frames the popup has existed.

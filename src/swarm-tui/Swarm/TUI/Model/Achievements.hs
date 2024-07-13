@@ -19,7 +19,7 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Notification (addNotification)
+import Swarm.TUI.Model.Notification (Notification (AchievementNotification), addNotification)
 import Swarm.TUI.Model.UI
 
 attainAchievement :: (MonadIO m, MonadState AppState m) => CategorizedAchievement -> m ()
@@ -45,4 +45,4 @@ attainAchievement' t p a = do
 
 -- | Generate a pop-up notification for an achievement.
 notifyAchievement :: MonadState AppState m => CategorizedAchievement -> m ()
-notifyAchievement _ = uiState . uiNotifications %= addNotification "New achievement!"
+notifyAchievement ach = uiState . uiNotifications %= addNotification (AchievementNotification ach)
