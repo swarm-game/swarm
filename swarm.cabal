@@ -708,8 +708,8 @@ library swarm-tui
     Swarm.TUI.View.Attribute.Util
     Swarm.TUI.View.CellDisplay
     Swarm.TUI.View.Logo
-    Swarm.TUI.View.Popup
     Swarm.TUI.View.Objective
+    Swarm.TUI.View.Popup
     Swarm.TUI.View.Structure
     Swarm.TUI.View.Util
 
