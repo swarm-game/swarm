@@ -796,7 +796,7 @@ helpWidget theSeed mport keyState =
     vBox
       [ heading boldAttr "Have questions? Want some tips? Check out:"
       , txt "  - The Swarm wiki, " <+> hyperlink wikiUrl (txt wikiUrl)
-      , txt "  - The #swarm IRC channel on " <+> hyperlink swarmWebIRC (txt swarmWebIRC)
+      , txt "  - The Swarm Discord server at " <+> hyperlink swarmDiscord (txt swarmDiscord)
       ]
   info =
     vBox
@@ -1601,7 +1601,7 @@ drawREPL s =
  where
   -- rendered history lines fitting above REPL prompt
   history :: [Widget n]
-  history = map fmt . toList . getSessionREPLHistoryItems $ theRepl ^. replHistory
+  history = map fmt . filter (not . isREPLSaved) . toList . getSessionREPLHistoryItems $ theRepl ^. replHistory
   currentPrompt :: Widget Name
   currentPrompt = case (isActive <$> base, theRepl ^. replControlMode) of
     (_, Handling) -> padRight Max $ txt "[key handler running, M-k to toggle]"
@@ -1613,9 +1613,10 @@ drawREPL s =
   -- indexing that may be an alternative to this:
   base = s ^. gameState . robotInfo . robotMap . at 0
 
-  fmt (REPLEntry e) = txt $ "> " <> e
-  fmt (REPLOutput t) = txt t
-  fmt (REPLError t) = txtWrapWith indent2 {preserveIndentation = True} t
+  fmt (REPLHistItem itemType t) = case itemType of
+    REPLEntry {} -> txt $ "> " <> t
+    REPLOutput -> txt t
+    REPLError -> txtWrapWith indent2 {preserveIndentation = True} t
   mayDebug = [drawRobotMachine s True | s ^. uiState . uiGameplay . uiShowDebug]
 
 ------------------------------------------------------------
