@@ -255,7 +255,7 @@ classicScenarioRecipeGraphData = simpleErrorHandle $ do
       { rgStartingDevices = devs
       , rgStartingInventory = inv
       , rgWorldEntities = worldEntities
-      , rgLevels = recipeLevels recipes (Set.unions [worldEntities, devs, inv])
+      , rgLevels = recipeLevels emap recipes (Set.unions [worldEntities, devs, inv])
       , rgAllEntities = Set.fromList . Map.elems $ entitiesByName emap
       , rgRecipes = recipes
       }
@@ -268,7 +268,7 @@ classicScenarioRecipeGraphData = simpleErrorHandle $ do
 --
 -- So:
 --  * Level 0 - starting entities (for example those obtainable in the world)
---  * Level N+1 - everything possible to make (or drill) from Level N
+--  * Level N+1 - everything possible to make (or drill or harvest) from Level N
 --
 -- This is almost a BFS, but the requirement is that the set of entities
 -- required for recipe is subset of the entities known in Level N.
@@ -276,8 +276,8 @@ classicScenarioRecipeGraphData = simpleErrorHandle $ do
 -- If we ever depend on some graph library, this could be rewritten
 -- as some BFS-like algorithm with added recipe nodes, but you would
 -- need to enforce the condition that recipes need ALL incoming edges.
-recipeLevels :: [Recipe Entity] -> Set Entity -> [Set Entity]
-recipeLevels recipes start = levels
+recipeLevels :: EntityMap -> [Recipe Entity] -> Set Entity -> [Set Entity]
+recipeLevels emap recipes start = levels
  where
   recipeParts r = ((r ^. recipeInputs) <> (r ^. recipeCatalysts), r ^. recipeOutputs)
   m :: [(Set Entity, Set Entity)]
@@ -286,7 +286,13 @@ recipeLevels recipes start = levels
   levels = reverse $ go [start] start
    where
     isKnown known (i, _o) = null $ i Set.\\ known
-    nextLevel known = Set.unions . map snd $ filter (isKnown known) m
+    lookupYield e = case view entityYields e of
+      Nothing -> e
+      Just yn -> case E.lookupEntityName yn emap of
+        Nothing -> error "unknown yielded entity"
+        Just ye -> ye
+    yielded = Set.map lookupYield
+    nextLevel known = Set.unions $ yielded known : map snd (filter (isKnown known) m)
     go ls known =
       let n = nextLevel known Set.\\ known
        in if null n

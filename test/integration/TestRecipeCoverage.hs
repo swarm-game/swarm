@@ -58,15 +58,12 @@ nonCoveredList =
     , "binoculars"
     , "blueprint"
     , "caliper"
-    , "cup of tea"
     , "decoder ring"
     , "dozer blade"
-    , "infinite improbability drive"
     , "linotype"
     , "olfactometer"
     , "rolex"
     , "tape drive"
-    , "tea leaves"
     , "wedge"
     ]
 
