@@ -16,7 +16,7 @@ module Swarm.Doc.Gen (
   PageAddress (..),
 
   -- ** Recipe graph data
-  RecipeGraphData(..),
+  RecipeGraphData (..),
   classicScenarioRecipeGraphData,
   ignoredEntities,
 ) where
@@ -250,14 +250,15 @@ classicScenarioRecipeGraphData = simpleErrorHandle $ do
   let devs = startingDevices baseRobot
   let inv = Map.keysSet $ startingInventory baseRobot
   let worldEntities = case classicTerm of Some _ t -> extractEntities t
-  return RecipeGraphData
-    { rgStartingDevices = devs
-    , rgStartingInventory = inv
-    , rgWorldEntities = worldEntities
-    , rgLevels = recipeLevels recipes (Set.unions [worldEntities, devs, inv])
-    , rgAllEntities = Set.fromList . Map.elems $ entitiesByName emap
-    , rgRecipes = recipes
-    }
+  return
+    RecipeGraphData
+      { rgStartingDevices = devs
+      , rgStartingInventory = inv
+      , rgWorldEntities = worldEntities
+      , rgLevels = recipeLevels recipes (Set.unions [worldEntities, devs, inv])
+      , rgAllEntities = Set.fromList . Map.elems $ entitiesByName emap
+      , rgRecipes = recipes
+      }
 
 -- ----------------------------------------------------------------------------
 -- RECIPE LEVELS

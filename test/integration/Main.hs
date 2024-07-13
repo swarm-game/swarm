@@ -85,6 +85,7 @@ import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
+import TestRecipeCoverage
 import Witch (into)
 
 isUnparseableTest :: FilePath -> Bool
@@ -111,6 +112,7 @@ main = do
       , scenarioParseInvalidTests scenarioInputs unparseableScenarios
       , testScenarioSolutions rs' ui key
       , testEditorFiles
+      , testRecipeCoverage
       ]
 
 testNoLoadingErrors :: RuntimeState -> TestTree
