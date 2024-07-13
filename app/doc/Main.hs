@@ -8,14 +8,14 @@ import Data.Foldable qualified
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Options.Applicative
-import Swarm.Doc.Gen (GenerateDocs (..), PageAddress (..), SheetType (..), generateDocs)
+import Swarm.Doc.Gen (EdgeFilter (..), GenerateDocs (..), PageAddress (..), SheetType (..), generateDocs)
 import Swarm.Doc.Keyword (EditorType (..))
 
 cliParser :: Parser GenerateDocs
 cliParser =
   subparser $
     mconcat
-      [ command "recipes" (info (pure RecipeGraph) $ progDesc "Output graphviz dotfile of entity dependencies based on recipes")
+      [ command "recipes" (info (RecipeGraph <$> edgeFilter <**> helper) $ progDesc "Output graphviz dotfile of entity dependencies based on recipes")
       , command "editors" (info (EditorKeywords <$> editor <**> helper) $ progDesc "Output editor keywords")
       , command "keys" (info (pure SpecialKeyNames) $ progDesc "Output list of recognized special key names")
       , command "cheatsheet" (info (CheatSheet <$> address <*> cheatsheet <**> helper) $ progDesc "Output nice Wiki tables")
@@ -29,6 +29,13 @@ cliParser =
       , Just VSCode <$ switch (long "code" <> help "Generate for the VS Code editor")
       , Just Emacs <$ switch (long "emacs" <> help "Generate for the Emacs editor")
       , Just Vim <$ switch (long "vim" <> help "Generate for the Vim editor")
+      ]
+  edgeFilter :: Parser EdgeFilter
+  edgeFilter =
+    Data.Foldable.asum
+      [ pure NoFilter
+      , FilterForward <$ switch (long "forward" <> help "Show only forward edges")
+      , FilterNext <$ switch (long "next" <> help "Show only edges to next group")
       ]
   address :: Parser PageAddress
   address =
