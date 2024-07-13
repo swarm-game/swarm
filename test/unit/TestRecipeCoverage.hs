@@ -7,7 +7,7 @@
 -- grant capabilities (aka "devices").
 module TestRecipeCoverage where
 
-import Control.Lens ((^.))
+import Control.Lens ((^.), view)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Set qualified as Set
@@ -21,9 +21,10 @@ import Swarm.Util (commaList, quote)
 import Test.Tasty
 import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit
+import Swarm.Doc.Gen
 
-testDeviceRecipeCoverage :: GameStateInputs -> TestTree
-testDeviceRecipeCoverage gsi =
+testDeviceRecipeCoverage :: TestTree
+testDeviceRecipeCoverage =
   testGroup
     "Recipe coverage"
     [ expectFailBecause "Need to come up with more recipes" checkCoverage
@@ -31,23 +32,10 @@ testDeviceRecipeCoverage gsi =
  where
   checkCoverage :: TestTree
   checkCoverage =
-    testCase
-      "Ensure all devices have recipes (#1268)"
-      $ assertBool errMessage
-      $ null nonCoveredEntities
+    testCase "Ensure all devices have recipes (#1268)" $ do
+      graphData <- classicScenarioRecipeGraphData
+      let nonCoveredEntities = filter (\e -> view entityName e `notElem` ignoredEntities) . Set.toList $
+            rgAllEntities graphData `Set.difference` Set.unions (rgLevels graphData)
+      assertBool (errMessage nonCoveredEntities) (null nonCoveredEntities)
    where
-    errMessage =
-      T.unpack $
-        T.unwords
-          [ "Missing recipes for:"
-          , commaList $ map quote $ Set.toList nonCoveredEntities
-          ]
-
-    -- Only include entities that grant a capability:
-    entityNames =
-      Set.fromList . map ((^. entityName) . device) . concatMap NE.toList . M.elems . getMap . entitiesByCap $
-        initEntityTerrain (gsiScenarioInputs gsi) ^. entityMap
-
-    getOutputsForRecipe r = map ((^. entityName) . snd) $ r ^. recipeOutputs
-    recipeOutputEntities = Set.fromList . concatMap getOutputsForRecipe $ gsiRecipes gsi
-    nonCoveredEntities = Set.difference entityNames recipeOutputEntities
+    errMessage missing = T.unpack $ "Missing recipes for: " <> commaList (quote . view entityName <$> missing)

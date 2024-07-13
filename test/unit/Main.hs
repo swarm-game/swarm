@@ -62,7 +62,7 @@ tests s =
     , testPrettyConst
     , testBoolExpr
     , testCommands
-    , testDeviceRecipeCoverage (initState $ s ^. runtimeState . stdGameConfigInputs)
+    , testDeviceRecipeCoverage
     , testHighScores
     , testEval (s ^. gameState)
     , testRepl

@@ -310,6 +310,8 @@ ignoredEntities =
     , "vertical wall"
     , "left and vertical wall"
     , "up and horizontal wall"
+    , "right and vertical wall"
+    , "down and horizontal wall"
     ]
 
 -- ----------------------------------------------------------------------------
