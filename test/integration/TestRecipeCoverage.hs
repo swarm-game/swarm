@@ -59,10 +59,7 @@ nonCoveredList =
     , "blueprint"
     , "caliper"
     , "decoder ring"
-    , "dozer blade"
     , "linotype"
-    , "olfactometer"
-    , "rolex"
     , "tape drive"
     , "wedge"
     ]
