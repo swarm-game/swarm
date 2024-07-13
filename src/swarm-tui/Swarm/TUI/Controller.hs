@@ -288,7 +288,9 @@ handleMainEvent forceRedraw ev = do
   case ev of
     AppEvent ae -> case ae of
       Frame
-        | not forceRedraw && s ^. gameState . temporal . paused -> continueWithoutRedraw
+        -- If the game is paused, don't run any game ticks, but do redraw the screen
+        -- if a redraw is forced.
+        | s ^. gameState . temporal . paused -> unless forceRedraw continueWithoutRedraw
         | otherwise -> runFrameUI forceRedraw
       Web (RunWebCode c) -> runBaseWebCode c
       _ -> continueWithoutRedraw
