@@ -8,7 +8,7 @@ prototype tournament server
 ([#1798](https://github.com/swarm-game/swarm/pull/1798)) where players
 can upload their solutions to challenge scenarios.  See below for a
 more detailed list (or see the [complete list of git
-commits](https://github.com/swarm-game/swarm/commits/main/?since=2023-11-01&until=2024-06-23)).
+commits](https://github.com/swarm-game/swarm/commits/main/?since=2023-11-01)).
 
 Aside from the external changes listed below (including a few major
 additions), this release cycle saw a *lot* of internal refactoring.
