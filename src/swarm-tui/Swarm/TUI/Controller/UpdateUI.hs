@@ -36,6 +36,7 @@ import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
+import Swarm.TUI.Model.Popup (Popup (..), addPopup)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Objective qualified as GR
@@ -147,12 +148,15 @@ updateUI = do
 
   goalOrWinUpdated <- doGoalUpdates
 
+  newPopups <- generateNotificationPopups
+
   let redraw =
         g ^. needsRedraw
           || inventoryUpdated
           || replUpdated
           || logUpdated
           || goalOrWinUpdated
+          || newPopups
   pure redraw
 
 -- | Either pops up the updated Goals modal
@@ -241,6 +245,24 @@ doGoalUpdates = do
           openModal GoalModal
 
       return goalWasUpdated
+
+-- | Pops up notifications when new recipes or commands are unlocked.
+generateNotificationPopups :: EventM Name AppState Bool
+generateNotificationPopups = do
+  rs <- use $ gameState . discovery . availableRecipes
+  let newRecipes = rs ^. notificationsShouldAlert
+  when newRecipes $ do
+    uiState . uiPopups %= addPopup RecipesPopup
+    gameState . discovery . availableRecipes . notificationsShouldAlert .= False
+
+  cs <- use $ gameState . discovery . availableCommands
+  let alertCommands = cs ^. notificationsShouldAlert
+  when alertCommands $ do
+    let newCommands = take (cs ^. notificationsCount) (cs ^. notificationsContent)
+    uiState . uiPopups %= addPopup (CommandsPopup newCommands)
+    gameState . discovery . availableCommands . notificationsShouldAlert .= False
+
+  return $ newRecipes || alertCommands
 
 -- | Strips the top-level @Cmd@ from a type, if any (to compute the
 --   result type of a REPL command evaluation).
