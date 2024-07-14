@@ -6,17 +6,19 @@
 -- Rendering (& animating) notification popups.
 module Swarm.TUI.View.Popup where
 
-import Brick (Widget (..), cropTopTo, padLeftRight, txt)
+import Brick (Widget (..), cropTopTo, padLeftRight, txt, vBox)
 import Brick.Widgets.Border (border)
 import Brick.Widgets.Center (hCenterLayer)
 import Brick.Widgets.Core (emptyWidget, hBox, withAttr)
 import Control.Lens ((^.))
 import Swarm.Game.Achievement.Definitions (title)
 import Swarm.Game.Achievement.Description (describe)
+import Swarm.Language.Syntax (constInfo, syntax)
 import Swarm.TUI.Model (AppState, Name, uiState)
 import Swarm.TUI.Model.Popup (Popup (..), currentPopup, popupFrames)
 import Swarm.TUI.Model.UI (uiPopups)
 import Swarm.TUI.View.Attribute.Attr (notifAttr)
+import Swarm.Util (commaList, squote)
 
 -- | The number of frames taken by each step of the notification popup
 --   animation.
@@ -43,10 +45,13 @@ drawPopup = \case
       [ withAttr notifAttr (txt "New recipes unlocked! ")
       , txt "[F3] to view."
       ]
-  CommandsPopup _ ->
-    hBox
-      [ withAttr notifAttr (txt "New commands unlocked! ")
-      , txt "[F4] to view."
+  CommandsPopup cmds ->
+    vBox
+      [ hBox
+          [ withAttr notifAttr (txt "New commands unlocked: ")
+          , txt . commaList $ map (squote . syntax . constInfo) cmds
+          ]
+      , txt "Hit [F4] to view all available commands."
       ]
 
 -- | Compute the number of rows of the notification popup we should be

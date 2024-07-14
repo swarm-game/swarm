@@ -256,12 +256,13 @@ doPopups = do
     gameState . discovery . availableRecipes . notificationsShouldAlert .= False
 
   cs <- use $ gameState . discovery . availableCommands
-  let newCommands = cs ^. notificationsShouldAlert
-  when newCommands $ do
-    uiState . uiPopups %= addPopup (CommandsPopup [])
+  let alertCommands = cs ^. notificationsShouldAlert
+  when alertCommands $ do
+    let newCommands = take (cs ^. notificationsCount) (cs ^. notificationsContent)
+    uiState . uiPopups %= addPopup (CommandsPopup newCommands)
     gameState . discovery . availableCommands . notificationsShouldAlert .= False
 
-  return $ newRecipes || newCommands
+  return $ newRecipes || alertCommands
 
 -- | Strips the top-level @Cmd@ from a type, if any (to compute the
 --   result type of a REPL command evaluation).

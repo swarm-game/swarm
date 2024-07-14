@@ -11,13 +11,14 @@ import Data.Sequence (Seq, (|>), pattern (:<|))
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Swarm.Game.Achievement.Definitions (CategorizedAchievement)
+import Swarm.Language.Syntax (Const)
 
 -- | Different types of popups that can be displayed to the
 --   player.
 data Popup
   = AchievementPopup CategorizedAchievement
   | RecipesPopup [Text]
-  | CommandsPopup [Text]
+  | CommandsPopup [Const]
 
 -- | State to track pending popup queue as well as any
 --   popup which is currently being displayed.
