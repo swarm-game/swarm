@@ -11,7 +11,7 @@ module Swarm.TUI.View.Structure (
 
 import Brick hiding (Direction, Location, getName)
 import Brick.Focus
-import Brick.Widgets.Center
+import Brick.Widgets.Center (hCenter)
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
 import Data.Map.NonEmpty qualified as NEM

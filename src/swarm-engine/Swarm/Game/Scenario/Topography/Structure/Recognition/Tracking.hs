@@ -25,8 +25,8 @@ import Data.Maybe (listToMaybe)
 import Data.Ord (Down (..))
 import Data.Semigroup (Max (..), Min (..))
 import Linear (V2 (..))
-import Swarm.Game.Entity
-import Swarm.Game.Location
+import Swarm.Game.Entity (Entity)
+import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario (StructureCells)
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log

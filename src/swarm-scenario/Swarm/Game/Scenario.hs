@@ -87,11 +87,11 @@ import Swarm.Game.Entity.Cosmetic
 import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Failure
 import Swarm.Game.Land
-import Swarm.Game.Location
+import Swarm.Game.Location (Location)
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot (TRobot, trobotLocation, trobotName)
-import Swarm.Game.Scenario.Objective
+import Swarm.Game.Scenario.Objective (Objective)
 import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Style
