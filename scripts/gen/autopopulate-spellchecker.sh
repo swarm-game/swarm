@@ -33,7 +33,7 @@ sort -u $WORDS_TMPFILE_UNSORTED > $WORDS_TMPFILE
 rm $WORDS_TMPFILE_UNSORTED
 
 CSPELL_TMPFILE=$(mktemp --suffix .cspell)
-CSPELL_FILEPATH=cspell.json
+CSPELL_FILEPATH=.vscode/cspell.json
 
 # Now, stuff the sorted list of names into the cspell JSON file word list.
 jq '.words = $newWords' --slurpfile newWords <(jq --raw-input --null-input 'inputs' $WORDS_TMPFILE) $CSPELL_FILEPATH > $CSPELL_TMPFILE
