@@ -64,7 +64,6 @@ import Swarm.Game.Scenario.Topography.Area (getAreaDimensions)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.Navigation.Util
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
-import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons, foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
@@ -569,7 +568,7 @@ execConst runChildProg c vs s k = do
     Structure -> case vs of
       [VText name, VInt idx] -> do
         registry <- use $ discovery . structureRecognition . foundStructures
-        let maybeFoundStructures = M.lookup (StructureName name) $ foundByName registry
+        let maybeFoundStructures = M.lookup name $ foundByName registry
             mkOutput mapNE = (NE.length xs, bottomLeftCorner)
              where
               xs = NEM.toList mapNE
@@ -583,7 +582,7 @@ execConst runChildProg c vs s k = do
     Floorplan -> case vs of
       [VText name] -> do
         structureTemplates <- use $ discovery . structureRecognition . automatons . originalStructureDefinitions
-        let maybeStructure = M.lookup (StructureName name) structureTemplates
+        let maybeStructure = M.lookup name structureTemplates
         structureDef <-
           maybeStructure
             `isJustOr` cmdExn Floorplan (pure $ T.unwords ["Unknown structure", quote name])

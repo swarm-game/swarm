@@ -19,6 +19,7 @@ module Swarm.Game.Scenario (
   PWorldDescription (..),
   WorldDescription,
   IndexedTRobot,
+  StructureCells,
 
   -- * Scenario
   Scenario (..),
@@ -86,11 +87,11 @@ import Swarm.Game.Entity.Cosmetic
 import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Failure
 import Swarm.Game.Land
-import Swarm.Game.Location
+import Swarm.Game.Location (Location)
 import Swarm.Game.Recipe
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot (TRobot, trobotLocation, trobotName)
-import Swarm.Game.Scenario.Objective
+import Swarm.Game.Scenario.Objective (Objective)
 import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Style
@@ -119,8 +120,10 @@ import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 import System.Random (randomRIO)
 
+type StructureCells = Structure.NamedGrid (Maybe Cell)
+
 data StaticStructureInfo = StaticStructureInfo
-  { _structureDefs :: [SymmetryAnnotatedGrid (Maybe Cell)]
+  { _structureDefs :: [SymmetryAnnotatedGrid StructureCells]
   , _staticPlacements :: M.Map SubworldName [Structure.LocatedStructure]
   }
   deriving (Show)
@@ -129,7 +132,7 @@ makeLensesNoSigs ''StaticStructureInfo
 
 -- | Structure templates that may be auto-recognized when constructed
 -- by a robot
-structureDefs :: Lens' StaticStructureInfo [SymmetryAnnotatedGrid (Maybe Cell)]
+structureDefs :: Lens' StaticStructureInfo [SymmetryAnnotatedGrid StructureCells]
 
 -- | A record of the static placements of structures, so that they can be
 -- added to the "recognized" list upon scenario initialization
