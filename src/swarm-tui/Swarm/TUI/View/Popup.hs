@@ -42,7 +42,7 @@ drawPopup s = \case
       [ withAttr notifAttr (txt "Achievement unlocked: ")
       , txt (title (describe ach))
       ]
-  RecipesPopup _ ->
+  RecipesPopup ->
     hBox
       [ withAttr notifAttr (txt "New recipes unlocked! ")
       , txt $ bindingText s (SE.Main SE.ViewRecipesEvent) <> " to view."

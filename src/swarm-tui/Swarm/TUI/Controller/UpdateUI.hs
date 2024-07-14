@@ -252,7 +252,7 @@ doPopups = do
   rs <- use $ gameState . discovery . availableRecipes
   let newRecipes = rs ^. notificationsShouldAlert
   when newRecipes $ do
-    uiState . uiPopups %= addPopup (RecipesPopup [])
+    uiState . uiPopups %= addPopup RecipesPopup
     gameState . discovery . availableRecipes . notificationsShouldAlert .= False
 
   cs <- use $ gameState . discovery . availableCommands

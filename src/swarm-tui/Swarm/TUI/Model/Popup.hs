@@ -9,7 +9,6 @@ import Data.Functor (($>))
 import Data.Maybe (isJust)
 import Data.Sequence (Seq, (|>), pattern (:<|))
 import Data.Sequence qualified as Seq
-import Data.Text (Text)
 import Swarm.Game.Achievement.Definitions (CategorizedAchievement)
 import Swarm.Language.Syntax (Const)
 
@@ -17,7 +16,7 @@ import Swarm.Language.Syntax (Const)
 --   player.
 data Popup
   = AchievementPopup CategorizedAchievement
-  | RecipesPopup [Text]
+  | RecipesPopup
   | CommandsPopup [Const]
 
 -- | State to track pending popup queue as well as any
