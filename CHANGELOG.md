@@ -21,6 +21,11 @@ improvements.
 
 * New [Discord server](https://discord.gg/kp8MuSgkPw)!
 
+### Breaking changes
+
+* Types are now required to start with an uppercase letter ([#1583](https://github.com/swarm-game/swarm/pull/1583))
+  * Use `swarm format --v0.5` to convert old code.
+
 ### Bugfixes
 
 * Variables in a local monadic binder escape to outer scopes
