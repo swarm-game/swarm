@@ -39,6 +39,9 @@ import Swarm.Game.Universe (Cosmic, offsetBy)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Text.AhoCorasick (StateMachine)
 
+-- | A 'NamedStructure' has its own newtype name ('StructureName'), but we
+-- standardize on 'Text' here to avoid parameterizing our 'NamedOriginal'
+-- datatype on bespoke name types.
 type OriginalName = Text
 
 -- | A "needle" consisting of a single cell within
@@ -129,6 +132,10 @@ data StructureRow b a = StructureRow
   , rowContent :: SymbolSequence a
   }
 
+-- | This wrapper facilitates naming the original structure
+-- (i.e. the "payload" for recognition)
+-- for the purpose of both UI display and internal uniqueness,
+-- while remaining agnostic to its internals.
 data NamedOriginal a = NamedOriginal
   { getName :: OriginalName
   , orig :: a
