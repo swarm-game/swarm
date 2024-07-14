@@ -17,6 +17,7 @@ module Swarm.Doc.Gen (
 
   -- ** Recipe graph data
   RecipeGraphData (..),
+  EdgeFilter (..),
   classicScenarioRecipeGraphData,
   ignoredEntities,
 ) where
@@ -25,6 +26,7 @@ import Control.Lens (view, (^.))
 import Control.Monad (zipWithM, zipWithM_)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (toList)
+import Data.List qualified as List
 import Data.List.Extra (enumerate)
 import Data.Map.Lazy (Map, (!))
 import Data.Map.Lazy qualified as Map
@@ -64,7 +66,7 @@ import Text.Dot qualified as Dot
 -- | An enumeration of the kinds of documentation we can generate.
 data GenerateDocs where
   -- | Entity dependencies by recipes.
-  RecipeGraph :: GenerateDocs
+  RecipeGraph :: EdgeFilter -> GenerateDocs
   -- | Keyword lists for editors.
   EditorKeywords :: Maybe EditorType -> GenerateDocs
   -- | List of special key names recognized by 'Swarm.Language.Syntax.Key' command
@@ -78,7 +80,7 @@ data GenerateDocs where
 -- | Generate the requested kind of documentation to stdout.
 generateDocs :: GenerateDocs -> IO ()
 generateDocs = \case
-  RecipeGraph -> generateRecipe >>= putStrLn
+  RecipeGraph ef -> generateRecipe ef >>= putStrLn
   EditorKeywords e ->
     case e of
       Just et -> generateEditorKeywords et
@@ -139,13 +141,22 @@ generateSpecialKeyNames =
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
 -- ----------------------------------------------------------------------------
 
-generateRecipe :: IO String
-generateRecipe = do
+generateRecipe :: EdgeFilter -> IO String
+generateRecipe ef = do
   graphData <- classicScenarioRecipeGraphData
-  return . Dot.showDot $ recipesToDot graphData
+  return . Dot.showDot $ recipesToDot graphData ef
 
-recipesToDot :: RecipeGraphData -> Dot ()
-recipesToDot graphData = do
+data EdgeFilter = NoFilter | FilterForward | FilterNext
+  deriving (Eq, Show)
+
+filterEdge :: EdgeFilter -> Int -> Int -> Bool
+filterEdge ef i o = case ef of
+  NoFilter -> True
+  FilterForward -> i <= o
+  FilterNext -> i + 1 == o
+
+recipesToDot :: RecipeGraphData -> EdgeFilter -> Dot ()
+recipesToDot graphData ef = do
   Dot.attribute ("rankdir", "LR")
   Dot.attribute ("ranksep", "2")
   world <- diamond "World"
@@ -222,15 +233,17 @@ recipesToDot graphData = do
   -- --------------------------------------------------------------------------
   -- add node for the world and draw a line to each entity found in the wild
   -- finally draw recipes
-  let recipeInOut r = [(snd i, snd o) | i <- r ^. recipeInputs, o <- r ^. recipeOutputs]
-      recipeReqOut r = [(snd q, snd o) | q <- r ^. recipeCatalysts, o <- r ^. recipeOutputs]
+  let eFilter = filterEdge ef
+      lvl e = fromMaybe (-1) $ List.findIndex (Set.member e) levels
+      recipeInOut r = [(i, o) | (_, i) <- r ^. recipeInputs, (_, o) <- r ^. recipeOutputs, lvl i `eFilter` lvl o]
+      recipeReqOut r = [(q, o) | (_, q) <- r ^. recipeCatalysts, (_, o) <- r ^. recipeOutputs, lvl q `eFilter` lvl o]
       recipesToPairs f rs = both nid <$> nubOrd (concatMap f rs)
   mapM_ (uncurry (.->.)) (recipesToPairs recipeInOut recipes)
   mapM_ (uncurry (---<>)) (recipesToPairs recipeReqOut recipes)
   -- --------------------------------------------------------------------------
   -- also draw an edge for each entity that "yields" another entity
   let yieldPairs = mapMaybe (\e -> (e ^. entityName,) <$> (e ^. entityYields)) . toList $ rgAllEntities graphData
-  mapM_ (uncurry (.->.)) (both getE <$> yieldPairs)
+  mapM_ (uncurry (.-<>.)) (both getE <$> yieldPairs)
 
 data RecipeGraphData = RecipeGraphData
   { rgWorldEntities :: Set Entity
@@ -335,6 +348,12 @@ diamond = customNode [("shape", "diamond")]
 -- | Hidden node - used for layout.
 hiddenNode :: Dot NodeId
 hiddenNode = Dot.node [("style", "invis")]
+
+-- | Edge for yielded entities.
+(.-<>.) :: NodeId -> NodeId -> Dot ()
+e1 .-<>. e2 = Dot.edge e1 e2 attrs
+ where
+  attrs = [("arrowhead", "diamond"), ("color", "purple")]
 
 -- | Hidden edge - used for layout.
 (.~>.) :: NodeId -> NodeId -> Dot ()
