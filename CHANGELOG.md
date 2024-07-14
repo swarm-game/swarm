@@ -10,8 +10,7 @@ can upload their solutions to challenge scenarios.  See below for a
 more detailed list (or see the [complete list of git
 commits](https://github.com/swarm-game/swarm/commits/main/?since=2023-11-01)).
 
-Aside from the external changes listed below (including a few major
-additions), this release cycle saw a *lot* of internal refactoring.
+Aside from the more visible changes listed below, this release cycle saw a *lot* of internal refactoring.
 For example, we finished splitting the codebase into a number of
 independent sublibraries, split several large modules into smaller
 modules, and completed a number of additional simplifications and
@@ -57,13 +56,18 @@ improvements.
 * Fishing scenario ([#1628](https://github.com/swarm-game/swarm/pull/1628))
 * Dim sum restaurant ([#1686](https://github.com/swarm-game/swarm/pull/1686))
 * Gallery scenario ([#1760](https://github.com/swarm-game/swarm/pull/1760))
+* Snake automata ([#1699](https://github.com/swarm-game/swarm/pull/1699))
 
-#### World features
+#### Scenario mechanics and authoring improvements
 
 * Path caching, for more efficient repeated use of the `path` command ([#1595](https://github.com/swarm-game/swarm/pull/1595))
-* Code to render any map to PNG ([#1632](https://github.com/swarm-game/swarm/pull/1632))
+* Render any map to PNG ([#1632](https://github.com/swarm-game/swarm/pull/1632))
 * Extensible terrain ([#1775](https://github.com/swarm-game/swarm/pull/1775))
 * Spreadable plant growth ([#1817](https://github.com/swarm-game/swarm/pull/1817))
+* Exercising commands can consume entities ([#1777](https://github.com/swarm-game/swarm/pull/1777))
+* Recognize built structures ([#1579](https://github.com/swarm-game/swarm/pull/1579))
+* Test for point-to-point connectivity ([#1721](https://github.com/swarm-game/swarm/pull/1721))
+* Validate palettes ([#1938](https://github.com/swarm-game/swarm/pull/1938)), map shape ([#1935](https://github.com/swarm-game/swarm/pull/1935)), subworld references ([#1875](https://github.com/swarm-game/swarm/pull/1875))
 
 #### UI enhancements
 
