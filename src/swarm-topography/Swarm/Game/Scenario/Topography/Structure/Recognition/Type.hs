@@ -157,7 +157,7 @@ data RotationalSymmetry
   deriving (Show, Eq)
 
 data SymmetryAnnotatedGrid a = SymmetryAnnotatedGrid
-  { namedGrid :: NamedOriginal a
+  { namedGrid :: a
   , symmetry :: RotationalSymmetry
   }
   deriving (Show)

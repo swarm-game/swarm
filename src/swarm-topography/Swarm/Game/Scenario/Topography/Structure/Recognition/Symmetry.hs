@@ -10,10 +10,10 @@ import Control.Monad (unless, when)
 import Data.Map qualified as M
 import Data.Set qualified as Set
 import Data.Text qualified as T
-import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform, getStructureName)
+import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform)
 import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (NamedOriginal (..), RotationalSymmetry (..), SymmetryAnnotatedGrid (..))
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (RotationalSymmetry (..), SymmetryAnnotatedGrid (..))
 import Swarm.Language.Syntax.Direction (AbsoluteDir (DSouth, DWest), getCoordinateOrientation)
 import Swarm.Util (commaList, failT, histogram, showT)
 
@@ -56,7 +56,7 @@ checkSymmetry ng = do
           $ Set.toList suppliedOrientations
     _ -> return ()
 
-  return $ SymmetryAnnotatedGrid (NamedOriginal (getStructureName $ Structure.name ng) ng) symmetryType
+  return $ SymmetryAnnotatedGrid ng symmetryType
  where
   symmetryType
     | quarterTurnRows == originalRows = FourFold

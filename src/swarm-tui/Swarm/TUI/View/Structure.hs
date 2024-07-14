@@ -22,13 +22,14 @@ import Data.Vector qualified as V
 import Swarm.Game.Entity (Entity, entityDisplay)
 import Swarm.Game.Scenario (StructureCells)
 import Swarm.Game.Scenario.Topography.Area
+import Swarm.Game.Scenario.Topography.Placement (getStructureName)
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (getEntityGrid)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
-import Swarm.Game.State.Substate
+import Swarm.Game.State.Substate (structureRecognition)
 import Swarm.Language.Syntax.Direction (directionJsonModifier)
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Structure
@@ -69,7 +70,7 @@ structureWidget gs s =
 
   annotatedStructureGrid = annotatedGrid s
 
-  supportedOrientations = Set.toList . Structure.recognize . orig . namedGrid $ annotatedStructureGrid
+  supportedOrientations = Set.toList . Structure.recognize . namedGrid $ annotatedStructureGrid
 
   renderSymmetry = \case
     NoSymmetry -> "no"
@@ -88,7 +89,7 @@ structureWidget gs s =
 
   maybeDescriptionWidget =
     maybe emptyWidget (padTop (Pad 1) . withAttr italicAttr . txtWrap) $
-      Structure.description . orig . namedGrid . annotatedGrid $
+      Structure.description . namedGrid . annotatedGrid $
         s
 
   registry = gs ^. discovery . structureRecognition . foundStructures
@@ -116,8 +117,8 @@ structureWidget gs s =
             ]
       ]
 
-  theName = getName d
-  cells = getEntityGrid $ Structure.structure $ orig d
+  theName = getStructureName $ Structure.name d
+  cells = getEntityGrid $ Structure.structure d
   renderOneCell = maybe (txt " ") (renderDisplay . view entityDisplay)
 
 makeListWidget :: [StructureInfo StructureCells Entity] -> BL.List Name (StructureInfo StructureCells Entity)
@@ -165,4 +166,4 @@ drawSidebarListItem ::
   StructureInfo StructureCells Entity ->
   Widget Name
 drawSidebarListItem _isSelected (StructureInfo annotated _ _) =
-  txt . getName $ namedGrid annotated
+  txt . getStructureName . Structure.name $ namedGrid annotated

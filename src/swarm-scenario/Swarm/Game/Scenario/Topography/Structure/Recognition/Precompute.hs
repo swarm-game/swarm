@@ -72,10 +72,10 @@ mkAutomatons xs =
     infos
     (mkEntityLookup rotatedGrids)
  where
-  rotatedGrids = concatMap (extractGrids . orig . namedGrid) xs
+  rotatedGrids = concatMap (extractGrids . namedGrid) xs
 
-  process g = StructureInfo g (getEntityGrid . structure . orig $ namedGrid g) . histogram . concatMap catMaybes . getEntityGrid . structure . orig $ namedGrid g
-  infos = M.fromList $ map (getName . namedGrid &&& process) xs
+  process g = StructureInfo g (getEntityGrid . structure $ namedGrid g) . histogram . concatMap catMaybes . getEntityGrid . structure $ namedGrid g
+  infos = M.fromList $ map (getStructureName . Structure.name . namedGrid &&& process) xs
 
 extractOrientedGrid ::
   StructureCells ->
@@ -99,10 +99,10 @@ lookupStaticPlacements :: StaticStructureInfo -> [FoundStructure StructureCells 
 lookupStaticPlacements (StaticStructureInfo structDefs thePlacements) =
   concatMap f $ M.toList thePlacements
  where
-  definitionMap = M.fromList $ map ((getName &&& orig) . namedGrid) structDefs
+  definitionMap = M.fromList $ map ((Structure.name &&& id) . namedGrid) structDefs
 
   f (subworldName, locatedList) = mapMaybe g locatedList
    where
     g (LocatedStructure theName d loc) = do
-      sGrid <- M.lookup (getStructureName theName) definitionMap
+      sGrid <- M.lookup theName definitionMap
       return $ FoundStructure (extractOrientedGrid sGrid d) $ Cosmic subworldName loc
