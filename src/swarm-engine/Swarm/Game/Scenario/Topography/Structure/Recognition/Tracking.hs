@@ -13,6 +13,9 @@ import Control.Carrier.State.Lazy
 import Control.Effect.Lens
 import Control.Lens ((^.))
 import Control.Monad (forM, forM_, guard)
+import Data.HashMap.Strict qualified as HM
+import Data.HashSet (HashSet)
+import Data.HashSet qualified as HS
 import Data.Hashable (Hashable)
 import Data.Int (Int32)
 import Data.List (sortOn)
@@ -21,8 +24,6 @@ import Data.Map qualified as M
 import Data.Maybe (listToMaybe)
 import Data.Ord (Down (..))
 import Data.Semigroup (Max (..), Min (..))
-import Data.Set (Set)
-import Data.Set qualified as S
 import Linear (V2 (..))
 import Swarm.Game.Entity
 import Swarm.Game.Location
@@ -57,7 +58,7 @@ entityModified modification cLoc = do
  where
   doAddition newEntity = do
     entLookup <- use $ discovery . structureRecognition . automatons . automatonsByEntity
-    forM_ (M.lookup newEntity entLookup) $ \finder -> do
+    forM_ (HM.lookup newEntity entLookup) $ \finder -> do
       let msg = FoundParticipatingEntity $ ParticipatingEntity newEntity (finder ^. inspectionOffsets)
       discovery . structureRecognition . recognitionLog %= (msg :)
       registerRowMatches cLoc finder
@@ -87,7 +88,7 @@ entityModified modification cLoc = do
 candidateEntityAt ::
   (Has (State GameState) sig m) =>
   -- | participating entities
-  Set Entity ->
+  HashSet Entity ->
   Cosmic Location ->
   m (Maybe Entity)
 candidateEntityAt participating cLoc = do
@@ -98,7 +99,7 @@ candidateEntityAt participating cLoc = do
       maybeEnt <- entityAt cLoc
       return $ do
         ent <- maybeEnt
-        guard $ S.member ent participating
+        guard $ HS.member ent participating
         return ent
 
 -- | Excludes entities that are already part of a
@@ -106,7 +107,7 @@ candidateEntityAt participating cLoc = do
 getWorldRow ::
   (Has (State GameState) sig m) =>
   -- | participating entities
-  Set Entity ->
+  HashSet Entity ->
   Cosmic Location ->
   InspectionOffsets ->
   Int32 ->

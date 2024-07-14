@@ -3,16 +3,16 @@
 module Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (mkEntityLookup) where
 
 import Control.Arrow ((&&&))
+import Data.HashMap.Strict qualified as M
+import Data.HashSet qualified as S
 import Data.Hashable (Hashable)
 import Data.Int (Int32)
 import Data.List.NonEmpty qualified as NE
-import Data.Map qualified as M
 import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
-import Data.Set qualified as S
 import Data.Tuple (swap)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Swarm.Util (binTuples)
+import Swarm.Util (binTuplesHM)
 import Text.AhoCorasick
 
 allStructureRows :: [StructureWithGrid b a] -> [StructureRow b a]
@@ -32,7 +32,7 @@ mkOffsets pos xs =
 -- yield a searcher that can determine whether adjacent
 -- rows constitute a complete structure.
 mkRowLookup ::
-  (Hashable a, Ord a) =>
+  (Hashable a, Eq a) =>
   NE.NonEmpty (StructureRow b a) ->
   AutomatonInfo a (SymbolSequence a) (StructureWithGrid b a)
 mkRowLookup neList =
@@ -60,9 +60,9 @@ mkRowLookup neList =
 -- underlying world row against all rows within all structures
 -- (so long as they contain the keyed entity).
 mkEntityLookup ::
-  (Hashable a, Ord a) =>
+  (Hashable a, Eq a) =>
   [StructureWithGrid b a] ->
-  M.Map a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
+  M.HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
 mkEntityLookup grids =
   M.map mkValues rowsByEntityParticipation
  where
@@ -84,14 +84,14 @@ mkEntityLookup grids =
 
     tuples = M.toList $ M.mapWithKey mkSmValue groupedByUniqueRow
 
-    groupedByUniqueRow = binTuples $ NE.toList $ NE.map (rowContent . myRow &&& id) neList
+    groupedByUniqueRow = binTuplesHM $ NE.toList $ NE.map (rowContent . myRow &&& id) neList
     bounds = sconcat $ NE.map expandedOffsets neList
     sm = makeStateMachine tuples
 
   -- The values of this map are guaranteed to contain only one
   -- entry per row of a given structure.
   rowsByEntityParticipation =
-    binTuples $
+    binTuplesHM $
       map (myEntity &&& id) $
         concatMap explodeRowEntities rowsAcrossAllStructures
 
@@ -101,9 +101,12 @@ mkEntityLookup grids =
 
   -- The members of "rowMembers" are of 'Maybe' type; the 'Nothing's
   -- are dropped but accounted for when indexing the columns.
-  explodeRowEntities :: Ord a => StructureRow b a -> [SingleRowEntityOccurrences b a]
+  explodeRowEntities ::
+    (Hashable a, Eq a) =>
+    StructureRow b a ->
+    [SingleRowEntityOccurrences b a]
   explodeRowEntities r@(StructureRow _ _ rowMembers) =
-    map f $ M.toList $ binTuples unconsolidated
+    map f $ M.toList $ binTuplesHM unconsolidated
    where
     f (e, occurrences) =
       SingleRowEntityOccurrences r e occurrences $

@@ -22,13 +22,14 @@ import Control.Arrow ((&&&))
 import Control.Lens (makeLenses)
 import Data.Aeson (ToJSON)
 import Data.Function (on)
+import Data.HashMap.Strict (HashMap)
+import Data.HashSet (HashSet)
 import Data.Int (Int32)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes)
 import Data.Ord (Down (Down))
 import Data.Semigroup (Max, Min)
-import Data.Set (Set)
 import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Game.Location (Location)
@@ -192,7 +193,7 @@ instance Semigroup InspectionOffsets where
 -- a certain subset of structure rows, that may either
 -- all be within one structure, or span multiple structures.
 data AutomatonInfo en k v = AutomatonInfo
-  { _participatingEntities :: Set en
+  { _participatingEntities :: HashSet en
   , _inspectionOffsets :: InspectionOffsets
   , _automaton :: StateMachine k v
   }
@@ -206,7 +207,7 @@ data RecognizerAutomatons b a = RecognizerAutomatons
   { _originalStructureDefinitions :: Map StructureName (StructureInfo b a)
   -- ^ all of the structures that shall participate in automatic recognition.
   -- This list is used only by the UI and by the 'Floorplan' command.
-  , _automatonsByEntity :: Map a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
+  , _automatonsByEntity :: HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
   }
   deriving (Generic)
 
