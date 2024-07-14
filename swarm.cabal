@@ -858,7 +858,6 @@ test-suite swarm-unit
     TestParse
     TestPedagogy
     TestPretty
-    TestRecipeCoverage
     TestRepl
     TestRequirements
     TestScoring
@@ -878,7 +877,6 @@ test-suite swarm-unit
     megaparsec,
     mtl,
     tasty >=0.10 && <1.6,
-    tasty-expected-failure >=0.12 && <0.13,
     tasty-hunit >=0.10 && <0.11,
     tasty-quickcheck >=0.10 && <0.11,
     text,
@@ -902,6 +900,7 @@ test-suite swarm-unit
 test-suite swarm-integration
   import: stan-config, common, ghc2021-extensions
   main-is: Main.hs
+  other-modules: TestRecipeCoverage
   type: exitcode-stdio-1.0
   build-depends:
     -- Imports shared with the library don't need bounds
