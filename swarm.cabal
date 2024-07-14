@@ -378,6 +378,7 @@ library swarm-engine
     Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking
     Swarm.Game.ScenarioInfo
     Swarm.Game.State
+    Swarm.Game.State.Initialize
     Swarm.Game.State.Robot
     Swarm.Game.State.Runtime
     Swarm.Game.State.Substate
