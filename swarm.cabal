@@ -221,6 +221,7 @@ library swarm-topography
     Swarm.Game.Scenario.Topography.Structure.Overlay
     Swarm.Game.Scenario.Topography.Structure.Recognition
     Swarm.Game.Scenario.Topography.Structure.Recognition.Log
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Prep
     Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
     Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
     Swarm.Game.Scenario.Topography.Structure.Recognition.Type
@@ -237,6 +238,7 @@ library swarm-topography
     base >=4.14 && <4.20,
     containers >=0.6.2 && <0.8,
     extra >=1.7 && <1.8,
+    hashable,
     lens,
     linear >=1.21.6 && <1.24,
     nonempty-containers >=0.3.4 && <0.3.5,
@@ -308,7 +310,6 @@ library swarm-scenario
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm
   build-depends:
-    AhoCorasick >=0.0.4 && <0.0.5,
     JuicyPixels >=3.3 && <3.4,
     aeson >=2.2 && <2.3,
     array >=0.5.4 && <0.6,
@@ -378,6 +379,7 @@ library swarm-engine
     Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking
     Swarm.Game.ScenarioInfo
     Swarm.Game.State
+    Swarm.Game.State.Initialize
     Swarm.Game.State.Robot
     Swarm.Game.State.Runtime
     Swarm.Game.State.Substate
