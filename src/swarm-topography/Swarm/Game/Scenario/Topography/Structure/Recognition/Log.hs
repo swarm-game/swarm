@@ -10,7 +10,6 @@ import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Location (Location)
-import Swarm.Game.Scenario.Topography.Placement (StructureName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic)
 
@@ -19,7 +18,7 @@ type WorldRowContent e = [Maybe e]
 
 data MatchingRowFrom = MatchingRowFrom
   { rowIdx :: Int32
-  , structure :: StructureName
+  , structure :: OriginalName
   }
   deriving (Generic, ToJSON)
 
@@ -47,16 +46,16 @@ data ParticipatingEntity e = ParticipatingEntity
 
 data IntactPlacementLog = IntactPlacementLog
   { isIntact :: Bool
-  , sName :: StructureName
+  , sName :: OriginalName
   , locUpperLeft :: Cosmic Location
   }
   deriving (Generic, ToJSON)
 
 data SearchLog e
   = FoundParticipatingEntity (ParticipatingEntity e)
-  | StructureRemoved StructureName
+  | StructureRemoved OriginalName
   | FoundRowCandidates [FoundRowCandidate e]
-  | FoundCompleteStructureCandidates [StructureName]
+  | FoundCompleteStructureCandidates [OriginalName]
   | IntactStaticPlacement [IntactPlacementLog]
   deriving (Functor, Generic)
 
@@ -72,7 +71,7 @@ searchLogOptions =
 instance ToSample (SearchLog e) where
   toSamples _ = SD.noSamples
 
-data StructureLocation = StructureLocation StructureName (Cosmic Location)
+data StructureLocation = StructureLocation OriginalName (Cosmic Location)
   deriving (Generic, ToJSON)
 
 instance ToSample StructureLocation where

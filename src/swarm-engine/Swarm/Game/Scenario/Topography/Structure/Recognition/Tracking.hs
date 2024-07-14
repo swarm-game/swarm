@@ -27,8 +27,7 @@ import Data.Semigroup (Max (..), Min (..))
 import Linear (V2 (..))
 import Swarm.Game.Entity
 import Swarm.Game.Location
-import Swarm.Game.Scenario (Cell)
-import Swarm.Game.Scenario.Topography.Structure qualified as Structure
+import Swarm.Game.Scenario (StructureCells)
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
@@ -67,7 +66,7 @@ entityModified modification cLoc = do
     -- Entity was removed; may need to remove registered structure.
     structureRegistry <- use $ discovery . structureRecognition . foundStructures
     forM_ (M.lookup cLoc $ foundByLocation structureRegistry) $ \fs -> do
-      let structureName = Structure.name $ originalDefinition $ structureWithGrid fs
+      let structureName = getName $ originalDefinition $ structureWithGrid fs
        in do
             discovery . structureRecognition . recognitionLog %= (StructureRemoved structureName :)
             discovery . structureRecognition . foundStructures %= removeStructure fs
@@ -126,7 +125,7 @@ getWorldRow participatingEnts cLoc (InspectionOffsets (Min offsetLeft) (Max offs
 registerRowMatches ::
   (Has (State GameState) sig m) =>
   Cosmic Location ->
-  AutomatonInfo Entity (AtomicKeySymbol Entity) (StructureSearcher Cell Entity) ->
+  AutomatonInfo Entity (AtomicKeySymbol Entity) (StructureSearcher StructureCells Entity) ->
   m ()
 registerRowMatches cLoc (AutomatonInfo participatingEnts horizontalOffsets sm) = do
   entitiesRow <- getWorldRow participatingEnts cLoc horizontalOffsets 0
@@ -139,7 +138,7 @@ registerRowMatches cLoc (AutomatonInfo participatingEnts horizontalOffsets sm) =
        where
         rowMatchInfo = NE.toList . NE.map (f . myRow) . singleRowItems $ pVal c
          where
-          f x = MatchingRowFrom (rowIndex x) $ Structure.name . originalDefinition . wholeStructure $ x
+          f x = MatchingRowFrom (rowIndex x) $ getName . originalDefinition . wholeStructure $ x
 
       logEntry = FoundRowCandidates $ map mkCandidateLogEntry candidates
 
@@ -152,8 +151,8 @@ checkVerticalMatch ::
   Cosmic Location ->
   -- | Horizontal search offsets
   InspectionOffsets ->
-  Position (StructureSearcher Cell Entity) ->
-  m [FoundStructure Cell Entity]
+  Position (StructureSearcher StructureCells Entity) ->
+  m [FoundStructure StructureCells Entity]
 checkVerticalMatch cLoc (InspectionOffsets (Min searchOffsetLeft) _) foundRow =
   getMatches2D cLoc horizontalFoundOffsets $ automaton2D $ pVal foundRow
  where
@@ -165,9 +164,9 @@ getFoundStructures ::
   Hashable keySymb =>
   (Int32, Int32) ->
   Cosmic Location ->
-  StateMachine keySymb (StructureWithGrid Cell Entity) ->
+  StateMachine keySymb (StructureWithGrid StructureCells Entity) ->
   [keySymb] ->
-  [FoundStructure Cell Entity]
+  [FoundStructure StructureCells Entity]
 getFoundStructures (offsetTop, offsetLeft) cLoc sm entityRows =
   map mkFound candidates
  where
@@ -183,8 +182,8 @@ getMatches2D ::
   Cosmic Location ->
   -- | Horizontal found offsets (inclusive indices)
   InspectionOffsets ->
-  AutomatonInfo Entity (SymbolSequence Entity) (StructureWithGrid Cell Entity) ->
-  m [FoundStructure Cell Entity]
+  AutomatonInfo Entity (SymbolSequence Entity) (StructureWithGrid StructureCells Entity) ->
+  m [FoundStructure StructureCells Entity]
 getMatches2D
   cLoc
   horizontalFoundOffsets@(InspectionOffsets (Min offsetLeft) _)
@@ -201,7 +200,7 @@ getMatches2D
 -- The largest structure (by area) shall win.
 registerStructureMatches ::
   (Has (State GameState) sig m) =>
-  [FoundStructure Cell Entity] ->
+  [FoundStructure StructureCells Entity] ->
   m ()
 registerStructureMatches unrankedCandidates = do
   discovery . structureRecognition . recognitionLog %= (newMsg :)
@@ -212,5 +211,5 @@ registerStructureMatches unrankedCandidates = do
   -- Sorted by decreasing order of preference.
   rankedCandidates = sortOn Down unrankedCandidates
 
-  getStructureName (FoundStructure swg _) = Structure.name $ originalDefinition swg
-  newMsg = FoundCompleteStructureCandidates $ map getStructureName rankedCandidates
+  getStructName (FoundStructure swg _) = getName $ originalDefinition swg
+  newMsg = FoundCompleteStructureCandidates $ map getStructName rankedCandidates

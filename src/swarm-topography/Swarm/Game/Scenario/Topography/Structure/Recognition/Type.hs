@@ -30,15 +30,16 @@ import Data.Map (Map)
 import Data.Maybe (catMaybes)
 import Data.Ord (Down (Down))
 import Data.Semigroup (Max, Min)
+import Data.Text (Text)
 import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario.Topography.Area
-import Swarm.Game.Scenario.Topography.Placement (StructureName)
-import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Swarm.Game.Universe (Cosmic, offsetBy)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Text.AhoCorasick (StateMachine)
+
+type OriginalName = Text
 
 -- | A "needle" consisting of a single cell within
 -- the haystack (a row of cells) to be searched.
@@ -120,7 +121,7 @@ data SingleRowEntityOccurrences b a = SingleRowEntityOccurrences
 -- it's 'rowIndex' is @2@.
 --
 -- The two type parameters, `b` and `a`, correspond
--- to 'Cell' and 'Entity', respectively.
+-- to 'StructureCells' and 'Entity', respectively.
 data StructureRow b a = StructureRow
   { wholeStructure :: StructureWithGrid b a
   , rowIndex :: Int32
@@ -128,13 +129,19 @@ data StructureRow b a = StructureRow
   , rowContent :: SymbolSequence a
   }
 
+data NamedOriginal a = NamedOriginal
+  { getName :: OriginalName
+  , orig :: a
+  }
+  deriving (Show, Eq)
+
 -- | The original definition of a structure, bundled
 -- with its grid of cells having been extracted for convenience.
 --
 -- The two type parameters, `b` and `a`, correspond
--- to 'Cell' and 'Entity', respectively.
+-- to 'StructureCells' and 'Entity', respectively.
 data StructureWithGrid b a = StructureWithGrid
-  { originalDefinition :: NamedGrid (Maybe b)
+  { originalDefinition :: NamedOriginal b
   , rotatedTo :: AbsoluteDir
   , entityGrid :: [SymbolSequence a]
   }
@@ -150,14 +157,14 @@ data RotationalSymmetry
   deriving (Show, Eq)
 
 data SymmetryAnnotatedGrid a = SymmetryAnnotatedGrid
-  { namedGrid :: NamedGrid a
+  { namedGrid :: NamedOriginal a
   , symmetry :: RotationalSymmetry
   }
   deriving (Show)
 
 -- | Structure definitions with precomputed metadata for consumption by the UI
 data StructureInfo b a = StructureInfo
-  { annotatedGrid :: SymmetryAnnotatedGrid (Maybe b)
+  { annotatedGrid :: SymmetryAnnotatedGrid b
   , entityProcessedGrid :: [SymbolSequence a]
   , entityCounts :: Map a Int
   }
@@ -204,7 +211,7 @@ makeLenses ''AutomatonInfo
 -- | The complete set of data needed to identify applicable
 -- structures, based on a just-placed entity.
 data RecognizerAutomatons b a = RecognizerAutomatons
-  { _originalStructureDefinitions :: Map StructureName (StructureInfo b a)
+  { _originalStructureDefinitions :: Map OriginalName (StructureInfo b a)
   -- ^ all of the structures that shall participate in automatic recognition.
   -- This list is used only by the UI and by the 'Floorplan' command.
   , _automatonsByEntity :: HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
@@ -217,7 +224,7 @@ makeLenses ''RecognizerAutomatons
 -- These are the elements that are stored in the 'FoundRegistry'.
 --
 -- The two type parameters, `b` and `a`, correspond
--- to 'Cell' and 'Entity', respectively.
+-- to 'StructureCells' and 'Entity', respectively.
 data FoundStructure b a = FoundStructure
   { structureWithGrid :: StructureWithGrid b a
   , upperLeftCorner :: Cosmic Location

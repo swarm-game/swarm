@@ -64,7 +64,7 @@ import Servant.Docs (ToCapture)
 import Servant.Docs qualified as SD
 import Servant.Docs.Internal qualified as SD (renderCurlBasePath)
 import Swarm.Doc.Command
-import Swarm.Game.Entity (Entity)
+import Swarm.Game.Entity (EntityName, entityName)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
@@ -105,7 +105,7 @@ type SwarmAPI =
     :<|> "goals" :> "graph" :> Get '[JSON] (Maybe GraphInfo)
     :<|> "goals" :> "uigoal" :> Get '[JSON] GoalTracking
     :<|> "goals" :> Get '[JSON] WinCondition
-    :<|> "recognize" :> "log" :> Get '[JSON] [SearchLog Entity]
+    :<|> "recognize" :> "log" :> Get '[JSON] [SearchLog EntityName]
     :<|> "recognize" :> "found" :> Get '[JSON] [StructureLocation]
     :<|> "code" :> "render" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
     :<|> "code" :> "run" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
@@ -211,10 +211,12 @@ goalsHandler appStateRef = do
   appState <- liftIO (readIORef appStateRef)
   return $ appState ^. gameState . winCondition
 
-recogLogHandler :: ReadableIORef AppState -> Handler [SearchLog Entity]
+recogLogHandler :: ReadableIORef AppState -> Handler [SearchLog EntityName]
 recogLogHandler appStateRef = do
   appState <- liftIO (readIORef appStateRef)
-  return $ appState ^. gameState . discovery . structureRecognition . recognitionLog
+  return $
+    map (fmap (view entityName)) $
+      appState ^. gameState . discovery . structureRecognition . recognitionLog
 
 recogFoundHandler :: ReadableIORef AppState -> Handler [StructureLocation]
 recogFoundHandler appStateRef = do
