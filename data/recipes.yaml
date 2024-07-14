@@ -381,6 +381,15 @@
   out:
     - [1, dozer blade]
 - in:
+    - [2, iron plate]
+  out:
+    - [1, iron bucket]
+- in:
+    - [1, iron bucket]
+    - [1, water]
+  out:
+    - [1, eureka can]
+- in:
     - [1, iron plate]
   out:
     - [1, lodestone]

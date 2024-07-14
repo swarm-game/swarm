@@ -96,6 +96,19 @@
     - Ergonomic affordance for manipulating objects. Also grants the "setname" capability, allowing one to assign a "handle" to robots.
   properties: [pickable]
   capabilities: [setname]
+- name: iron bucket
+  display:
+    attr: iron
+    char: U
+  description:
+    - An empty iron bucket.
+- name: eureka can
+  display:
+    attr: iron
+    char: r
+  description:
+    - A metal can filled with water for measuring density.
+  capabilities: [detectcount]
 - name: lodestone
   display:
     attr: iron
