@@ -3,8 +3,8 @@
 module Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (mkEntityLookup) where
 
 import Control.Arrow ((&&&))
-import Data.HashMap.Strict qualified as M
-import Data.HashSet qualified as S
+import Data.HashMap.Strict qualified as HM
+import Data.HashSet qualified as HS
 import Data.Hashable (Hashable)
 import Data.Int (Int32)
 import Data.List.NonEmpty qualified as NE
@@ -12,7 +12,6 @@ import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
 import Data.Tuple (swap)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Swarm.Util (binTuplesHM)
 import Text.AhoCorasick
 
 allStructureRows :: [StructureWithGrid b a] -> [StructureRow b a]
@@ -43,7 +42,7 @@ mkRowLookup neList =
 
   -- All of the unique entities across all of the full candidate structures
   participatingEnts =
-    S.fromList $
+    HS.fromList $
       concatMap (concatMap catMaybes . fst) tuples
 
   deriveRowOffsets :: StructureRow b a -> InspectionOffsets
@@ -62,9 +61,9 @@ mkRowLookup neList =
 mkEntityLookup ::
   (Hashable a, Eq a) =>
   [StructureWithGrid b a] ->
-  M.HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
+  HM.HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
 mkEntityLookup grids =
-  M.map mkValues rowsByEntityParticipation
+  HM.map mkValues rowsByEntityParticipation
  where
   rowsAcrossAllStructures = allStructureRows grids
 
@@ -79,10 +78,10 @@ mkEntityLookup grids =
   mkValues neList = AutomatonInfo participatingEnts bounds sm
    where
     participatingEnts =
-      S.fromList
+      HS.fromList
         (concatMap (catMaybes . fst) tuples)
 
-    tuples = M.toList $ M.mapWithKey mkSmValue groupedByUniqueRow
+    tuples = HM.toList $ HM.mapWithKey mkSmValue groupedByUniqueRow
 
     groupedByUniqueRow = binTuplesHM $ NE.toList $ NE.map (rowContent . myRow &&& id) neList
     bounds = sconcat $ NE.map expandedOffsets neList
@@ -106,7 +105,7 @@ mkEntityLookup grids =
     StructureRow b a ->
     [SingleRowEntityOccurrences b a]
   explodeRowEntities r@(StructureRow _ _ rowMembers) =
-    map f $ M.toList $ binTuplesHM unconsolidated
+    map f $ HM.toList $ binTuplesHM unconsolidated
    where
     f (e, occurrences) =
       SingleRowEntityOccurrences r e occurrences $
@@ -116,3 +115,15 @@ mkEntityLookup grids =
       map swap $
         catMaybes $
           zipWith (\idx -> fmap (PositionWithinRow idx r,)) [0 ..] rowMembers
+
+-- * Util
+
+-- | Place the second element of the tuples into bins by
+-- the value of the first element.
+binTuplesHM ::
+  (Foldable t, Hashable a, Eq a) =>
+  t (a, b) ->
+  HM.HashMap a (NE.NonEmpty b)
+binTuplesHM = foldr f mempty
+ where
+  f = uncurry (HM.insertWith (<>)) . fmap pure

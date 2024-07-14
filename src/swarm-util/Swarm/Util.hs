@@ -20,7 +20,6 @@ module Swarm.Util (
   indexWrapNonEmpty,
   uniq,
   binTuples,
-  binTuplesHM,
   histogram,
   findDup,
   both,
@@ -92,8 +91,6 @@ import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum, toLower)
 import Data.Either.Validation
 import Data.Foldable qualified as Foldable
-import Data.HashMap.Strict qualified as HM
-import Data.Hashable (Hashable)
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl', maximumBy, partition)
@@ -210,16 +207,6 @@ binTuples ::
 binTuples = foldr f mempty
  where
   f = uncurry (M.insertWith (<>)) . fmap pure
-
--- | Place the second element of the tuples into bins by
--- the value of the first element.
-binTuplesHM ::
-  (Foldable t, Hashable a, Eq a) =>
-  t (a, b) ->
-  HM.HashMap a (NE.NonEmpty b)
-binTuplesHM = foldr f mempty
- where
-  f = uncurry (HM.insertWith (<>)) . fmap pure
 
 -- | Count occurrences of a value
 histogram ::

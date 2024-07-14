@@ -13,8 +13,8 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 
 -- |
--- The three type parameters, `b`, `en`, and `a`, correspond
--- to 'Cell', 'EntityName', and 'Entity', respectively.
+-- The type parameters, `b`, and `a`, correspond
+-- to 'Cell' and 'Entity', respectively.
 data StructureRecognizer b a = StructureRecognizer
   { _automatons :: RecognizerAutomatons b a
   , _foundStructures :: FoundRegistry b a
