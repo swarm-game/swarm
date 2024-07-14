@@ -46,8 +46,8 @@ import Data.Maybe (catMaybes, mapMaybe)
 import Data.Set qualified as Set
 import Swarm.Game.Entity (Entity)
 import Swarm.Game.Scenario (StaticStructureInfo (..), StructureCells)
-import Swarm.Game.Scenario.Topography.Cell (PCell, cellEntity)
-import Swarm.Game.Scenario.Topography.Grid (Grid, getRows)
+import Swarm.Game.Scenario.Topography.Cell (cellEntity)
+import Swarm.Game.Scenario.Topography.Grid (getRows)
 import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform, getStructureName)
 import Swarm.Game.Scenario.Topography.Structure
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
@@ -59,8 +59,8 @@ import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Util (histogram)
 import Swarm.Util.Erasable (erasableToMaybe)
 
-getEntityGrid :: Grid (Maybe (PCell Entity)) -> [SymbolSequence Entity]
-getEntityGrid = map (map ((erasableToMaybe . cellEntity) =<<)) . getRows
+getEntityGrid :: StructureCells -> [SymbolSequence Entity]
+getEntityGrid = getRows . fmap ((erasableToMaybe . cellEntity) =<<) . structure
 
 -- | Create Aho-Corasick matchers that will recognize all of the
 -- provided structure definitions
@@ -74,17 +74,24 @@ mkAutomatons xs =
  where
   rotatedGrids = concatMap (extractGrids . namedGrid) xs
 
-  process g = StructureInfo g (getEntityGrid . structure $ namedGrid g) . histogram . concatMap catMaybes . getEntityGrid . structure $ namedGrid g
-  infos = M.fromList $ map (getStructureName . Structure.name . namedGrid &&& process) xs
+  process g = StructureInfo g entGrid countsMap
+   where
+    entGrid = getEntityGrid $ namedGrid g
+    countsMap = histogram $ concatMap catMaybes entGrid
+
+  infos =
+    M.fromList $
+      map (getStructureName . Structure.name . namedGrid &&& process) xs
 
 extractOrientedGrid ::
   StructureCells ->
   AbsoluteDir ->
   StructureWithGrid StructureCells Entity
 extractOrientedGrid x d =
-  StructureWithGrid (NamedOriginal (getStructureName $ Structure.name x) x) d $ getEntityGrid g
+  StructureWithGrid wrapped d $ getEntityGrid g
  where
-  g = applyOrientationTransform (Orientation d False) $ structure x
+  wrapped = NamedOriginal (getStructureName $ Structure.name x) x
+  g = applyOrientationTransform (Orientation d False) <$> x
 
 -- | At this point, we have already ensured that orientations
 -- redundant by rotational symmetry have been excluded

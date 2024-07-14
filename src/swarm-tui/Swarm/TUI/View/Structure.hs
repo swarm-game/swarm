@@ -118,7 +118,7 @@ structureWidget gs s =
       ]
 
   theName = getStructureName $ Structure.name d
-  cells = getEntityGrid $ Structure.structure d
+  cells = getEntityGrid d
   renderOneCell = maybe (txt " ") (renderDisplay . view entityDisplay)
 
 makeListWidget :: [StructureInfo StructureCells Entity] -> BL.List Name (StructureInfo StructureCells Entity)
