@@ -3,10 +3,11 @@
 ## **0.6.0.0** - XXX
 
 Some of the highlights of this release include native Windows support,
-type synonyms and equirecursive types, and a prototype tournament
-server ([#1798](https://github.com/swarm-game/swarm/pull/1798)) where
-players can upload their solutions to challenge scenarios.  See below
-for a more detailed list (or see the [complete list of git
+customizable keybindings, type synonyms and equirecursive types, and a
+prototype tournament server
+([#1798](https://github.com/swarm-game/swarm/pull/1798)) where players
+can upload their solutions to challenge scenarios.  See below for a
+more detailed list (or see the [complete list of git
 commits](https://github.com/swarm-game/swarm/commits/main/?since=2023-11-01&until=2024-06-23)).
 
 Aside from the external changes listed below (including a few major
@@ -15,6 +16,10 @@ For example, we finished splitting the codebase into a number of
 independent sublibraries, split several large modules into smaller
 modules, and completed a number of additional simplifications and
 improvements.
+
+### Community
+
+* New [Discord server](https://discord.gg/kp8MuSgkPw)!
 
 ### Bugfixes
 
@@ -29,11 +34,15 @@ improvements.
 * Type synonyms ([#1865](https://github.com/swarm-game/swarm/pull/1865))
 * Recursive types ([#1894](https://github.com/swarm-game/swarm/pull/1894))
 * Entity tags and related commands ([#1635](https://github.com/swarm-game/swarm/pull/1635))
+* `meetAll` command now returns a list ([#1999](https://github.com/swarm-game/swarm/pull/1999))
 
 #### Entities + recipes
 
 * New `lens` entity and recipe for `detonator` ([#1876](https://github.com/swarm-game/swarm/pull/1876))
-* `infinite improbability drive` device enabling `teleport` command ([#1724](https://github.com/swarm-game/swarm/pull/1724))
+* `infinite improbability drive` device enabling `teleport` command
+  ([#1724](https://github.com/swarm-game/swarm/pull/1724))
+* Recipes for `rolex`, `olfactometer`, `dozer blade`, and `hourglass` entities
+  ([#2028](https://github.com/swarm-game/swarm/pull/2028), [#2025](https://github.com/swarm-game/swarm/pull/2025))
 
 #### New scenarios
 
@@ -58,6 +67,11 @@ improvements.
 * Automatically insert matching close brackets at REPL ([#1953](https://github.com/swarm-game/swarm/pull/1953))
 * Highlight only the part of the REPL input indicated as the location
   of an error ([#1957](https://github.com/swarm-game/swarm/pull/1957))
+* Popups for new achievements, recipes, and commands
+  ([#2027](https://github.com/swarm-game/swarm/pull/2027))
+* Save current REPL input with down arrow
+  ([#2000](https://github.com/swarm-game/swarm/pull/2000))
+* Customizable keybindings ([#1979](https://github.com/swarm-game/swarm/pull/1979))
 
 #### Command line options
 
