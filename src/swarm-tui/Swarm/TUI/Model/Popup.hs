@@ -1,7 +1,21 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Swarm.TUI.Model.Popup where
+module Swarm.TUI.Model.Popup (
+  -- * Popup types
+  Popup (..),
+
+  -- * Popup state
+  PopupState,
+  currentPopup,
+  popupQueue,
+  initPopupState,
+  addPopup,
+
+  -- * Popup animation
+  popupFrames,
+  progressPopups,
+) where
 
 import Control.Lens (makeLenses, use, (%~), (+=), (.=), _2, _Just)
 import Control.Monad.State (MonadState)
@@ -21,7 +35,7 @@ data Popup
 
 -- | State to track pending popup queue as well as any
 --   popup which is currently being displayed.
-data PopupState = NS
+data PopupState = PopupState
   { _currentPopup :: Maybe (Popup, Int)
   , _popupQueue :: Seq Popup
   }
@@ -31,7 +45,7 @@ makeLenses ''PopupState
 -- | Initial, empty popup state.
 initPopupState :: PopupState
 initPopupState =
-  NS
+  PopupState
     { _currentPopup = Nothing
     , _popupQueue = Seq.empty
     }
@@ -71,10 +85,11 @@ nextPopup = do
   q <- use popupQueue
   cur <- use currentPopup
   case q of
-    Seq.Empty -> do
-      let updated = isJust cur
-      currentPopup .= Nothing
-      pure updated
+    Seq.Empty
+      | isJust cur -> do
+          currentPopup .= Nothing
+          pure True
+      | otherwise -> pure False
     n :<| ns -> do
       currentPopup .= Just (n, 0)
       popupQueue .= ns

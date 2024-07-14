@@ -148,7 +148,7 @@ updateUI = do
 
   goalOrWinUpdated <- doGoalUpdates
 
-  popupsUpdated <- doPopups
+  newPopups <- generateNotificationPopups
 
   let redraw =
         g ^. needsRedraw
@@ -156,7 +156,7 @@ updateUI = do
           || replUpdated
           || logUpdated
           || goalOrWinUpdated
-          || popupsUpdated
+          || newPopups
   pure redraw
 
 -- | Either pops up the updated Goals modal
@@ -247,8 +247,8 @@ doGoalUpdates = do
       return goalWasUpdated
 
 -- | Pops up notifications when new recipes or commands are unlocked.
-doPopups :: EventM Name AppState Bool
-doPopups = do
+generateNotificationPopups :: EventM Name AppState Bool
+generateNotificationPopups = do
   rs <- use $ gameState . discovery . availableRecipes
   let newRecipes = rs ^. notificationsShouldAlert
   when newRecipes $ do
