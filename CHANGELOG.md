@@ -12,9 +12,8 @@ commits](https://github.com/swarm-game/swarm/commits/main/?since=2023-11-01)).
 
 Aside from the more visible changes listed below, this release cycle saw a *lot* of internal refactoring.
 For example, we finished splitting the codebase into a number of
-independent sublibraries, split several large modules into smaller
-modules, and completed a number of additional simplifications and
-improvements.
+independent sublibraries and split several large modules into smaller
+modules.
 
 ### Community
 
