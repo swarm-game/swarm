@@ -15,9 +15,11 @@ import Swarm.Game.Achievement.Definitions (title)
 import Swarm.Game.Achievement.Description (describe)
 import Swarm.Language.Syntax (constInfo, syntax)
 import Swarm.TUI.Model (AppState, Name, uiState)
+import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.Popup (Popup (..), currentPopup, popupFrames)
 import Swarm.TUI.Model.UI (uiPopups)
 import Swarm.TUI.View.Attribute.Attr (notifAttr)
+import Swarm.TUI.View.Util (bindingText)
 import Swarm.Util (commaList, squote)
 
 -- | The number of frames taken by each step of the notification popup
@@ -30,11 +32,11 @@ drawPopups :: AppState -> Widget Name
 drawPopups s = hCenterLayer $
   case s ^. uiState . uiPopups . currentPopup of
     Just (notif, f) ->
-      cropTopTo (popupRows f) . border . padLeftRight 2 $ drawPopup notif
+      cropTopTo (popupRows f) . border . padLeftRight 2 $ drawPopup s notif
     _ -> emptyWidget
 
-drawPopup :: Popup -> Widget Name
-drawPopup = \case
+drawPopup :: AppState -> Popup -> Widget Name
+drawPopup s = \case
   AchievementPopup ach ->
     hBox
       [ withAttr notifAttr (txt "Achievement unlocked: ")
@@ -43,7 +45,7 @@ drawPopup = \case
   RecipesPopup _ ->
     hBox
       [ withAttr notifAttr (txt "New recipes unlocked! ")
-      , txt "[F3] to view."
+      , txt $ bindingText s (SE.Main SE.ViewRecipesEvent) <> " to view."
       ]
   CommandsPopup cmds ->
     vBox
@@ -51,7 +53,7 @@ drawPopup = \case
           [ withAttr notifAttr (txt "New commands unlocked: ")
           , txt . commaList $ map (squote . syntax . constInfo) cmds
           ]
-      , txt "Hit [F4] to view all available commands."
+      , txt $ "Hit " <> bindingText s (SE.Main SE.ViewCommandsEvent) <> " to view all available commands."
       ]
 
 -- | Compute the number of rows of the notification popup we should be

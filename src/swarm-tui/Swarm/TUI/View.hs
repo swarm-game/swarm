@@ -36,7 +36,6 @@ module Swarm.TUI.View (
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Forms
-import Brick.Keybindings (Binding (..), firstActiveBinding, ppBinding)
 import Brick.Widgets.Border (
   hBorder,
   hBorderWithLabel,
@@ -70,7 +69,6 @@ import Data.Set qualified as Set (toList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
-import Graphics.Vty qualified as V
 import Linear
 import Network.Wai.Handler.Warp (Port)
 import Numeric (showFFloat)
@@ -135,7 +133,6 @@ import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.View
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Event (SwarmEvent)
 import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.KeyBindings (handlerNameKeysDescription)
@@ -979,7 +976,7 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
       , notificationKey messageNotifications SE.ViewMessagesEvent "Messages"
       , structuresKey
       ]
-  keyM = bindingText s . SE.Main
+  keyM = VU.bindingText s . SE.Main
 
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as one or two lines in
@@ -1100,22 +1097,10 @@ drawKeyMenu s =
           ]
   keyCmdsFor (Just (FocusablePanel InfoPanel)) = []
   keyCmdsFor _ = []
-  keyM = bindingText s . SE.Main
-  keyR = bindingText s . SE.REPL
-  keyE = bindingText s . SE.Robot
-  keyW = bindingText s . SE.World
-
-bindingText :: AppState -> SwarmEvent -> Text
-bindingText s e = maybe "" ppBindingShort b
- where
-  conf = s ^. keyEventHandling . keyConfig
-  b = firstActiveBinding conf e
-  ppBindingShort = \case
-    Binding V.KUp m | null m -> "↑"
-    Binding V.KDown m | null m -> "↓"
-    Binding V.KLeft m | null m -> "←"
-    Binding V.KRight m | null m -> "→"
-    bi -> ppBinding bi
+  keyM = VU.bindingText s . SE.Main
+  keyR = VU.bindingText s . SE.REPL
+  keyE = VU.bindingText s . SE.Robot
+  keyW = VU.bindingText s . SE.World
 
 data KeyHighlight = NoHighlight | Alert | PanelSpecific
 
