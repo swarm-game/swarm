@@ -30,7 +30,9 @@ improvements.
 
 #### Language
 
-* `volume` command measuring the enclosed area around a given location ([#1747](https://github.com/swarm-game/swarm/pull/1747))
+* `volume` command measuring the enclosed area around a given location
+  ([#1747](https://github.com/swarm-game/swarm/pull/1747))
+* `sow` command for planting growing entities that spread ([#1817](https://github.com/swarm-game/swarm/pull/1817))
 * Type synonyms ([#1865](https://github.com/swarm-game/swarm/pull/1865))
 * Recursive types ([#1894](https://github.com/swarm-game/swarm/pull/1894))
 * Entity tags and related commands ([#1635](https://github.com/swarm-game/swarm/pull/1635))
@@ -77,6 +79,10 @@ improvements.
 
 * `format` subcommand now tries to preserve comments ([#1845](https://github.com/swarm-game/swarm/pull/1845))
 * Add `format --v0.5` option to port code from older syntax ([#1851](https://github.com/swarm-game/swarm/pull/1851))
+* `keybindings` subcommand for displaying and initializing keybinding
+  configuration ([#1979](https://github.com/swarm-game/swarm/pull/1979))
+* `docs recipes` subcommand now takes `--forward` and `--next` flags
+  for filtering the output edges ([#2033](https://github.com/swarm-game/swarm/pull/2033))
 
 ### Building/packaging
 
