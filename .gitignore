@@ -3,6 +3,7 @@ dist-newstyle/
 TAGS
 
 .vscode/
+!.vscode/cspell.json
 
 cabal.project.local
 hie.yaml
