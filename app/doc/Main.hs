@@ -42,17 +42,16 @@ cliParser =
                   <> help ("Set the address of " <> replace "-" " " n <> ". Default no link.")
               )
      in PageAddress <$> opt "entities-page" <*> opt "commands-page" <*> opt "capabilities-page" <*> opt "recipes-page"
-  cheatsheet :: Parser (Maybe SheetType)
+  cheatsheet :: Parser SheetType
   cheatsheet =
     Data.Foldable.asum
-      [ pure Nothing
-      , Just Entities <$ switch (long "entities" <> help "Generate entities page (uses data from entities.yaml)")
-      , Just Terrain <$ switch (long "terrain" <> help "Generate terrain page (uses data from terrains.yaml)")
-      , Just Recipes <$ switch (long "recipes" <> help "Generate recipes page (uses data from recipes.yaml)")
-      , Just Capabilities <$ switch (long "capabilities" <> help "Generate capabilities page (uses entity map)")
-      , Just Commands <$ switch (long "commands" <> help "Generate commands page (uses constInfo, constCaps and inferConst)")
-      , Just CommandMatrix <$ switch (long "matrix" <> help "Generate commands matrix page")
-      , Just Scenario <$ switch (long "scenario" <> help "Generate scenario schema page")
+      [ flag' Entities (long "entities" <> help "Generate entities page (uses data from entities.yaml)")
+      , flag' Terrain (long "terrain" <> help "Generate terrain page (uses data from terrains.yaml)")
+      , flag' Recipes (long "recipes" <> help "Generate recipes page (uses data from recipes.yaml)")
+      , flag' Capabilities (long "capabilities" <> help "Generate capabilities page (uses entity map)")
+      , flag' Commands (long "commands" <> help "Generate commands page (uses constInfo, constCaps and inferConst)")
+      , flag' CommandMatrix (long "matrix" <> help "Generate commands matrix page")
+      , flag' Scenario (long "scenario" <> help "Generate scenario schema page")
       ]
 
 cliInfo :: ParserInfo GenerateDocs

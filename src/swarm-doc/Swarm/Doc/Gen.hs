@@ -65,7 +65,7 @@ data GenerateDocs where
   -- | List of special key names recognized by 'Swarm.Language.Syntax.Key' command
   SpecialKeyNames :: GenerateDocs
   -- | Cheat sheets for inclusion on the Swarm wiki.
-  CheatSheet :: PageAddress -> Maybe SheetType -> GenerateDocs
+  CheatSheet :: PageAddress -> SheetType -> GenerateDocs
   -- | List command introductions by tutorial
   TutorialCoverage :: GenerateDocs
   deriving (Eq, Show)
