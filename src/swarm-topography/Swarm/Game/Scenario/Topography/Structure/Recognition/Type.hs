@@ -22,22 +22,27 @@ import Control.Arrow ((&&&))
 import Control.Lens (makeLenses)
 import Data.Aeson (ToJSON)
 import Data.Function (on)
+import Data.HashMap.Strict (HashMap)
+import Data.HashSet (HashSet)
 import Data.Int (Int32)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes)
 import Data.Ord (Down (Down))
 import Data.Semigroup (Max, Min)
-import Data.Set (Set)
+import Data.Text (Text)
 import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario.Topography.Area
-import Swarm.Game.Scenario.Topography.Placement (StructureName)
-import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Swarm.Game.Universe (Cosmic, offsetBy)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Text.AhoCorasick (StateMachine)
+
+-- | A 'NamedStructure' has its own newtype name ('StructureName'), but we
+-- standardize on 'Text' here to avoid parameterizing our 'NamedOriginal'
+-- datatype on bespoke name types.
+type OriginalName = Text
 
 -- | A "needle" consisting of a single cell within
 -- the haystack (a row of cells) to be searched.
@@ -64,8 +69,8 @@ type SymbolSequence a = [AtomicKeySymbol a]
 -- | This is returned as a value of the 1-D searcher.
 -- It contains search automatons customized to the 2-D structures
 -- that may possibly contain the row found by the 1-D searcher.
-data StructureSearcher b en a = StructureSearcher
-  { automaton2D :: AutomatonInfo en (SymbolSequence a) (StructureWithGrid b a)
+data StructureSearcher b a = StructureSearcher
+  { automaton2D :: AutomatonInfo a (SymbolSequence a) (StructureWithGrid b a)
   , needleContent :: SymbolSequence a
   , singleRowItems :: NE.NonEmpty (SingleRowEntityOccurrences b a)
   }
@@ -119,7 +124,7 @@ data SingleRowEntityOccurrences b a = SingleRowEntityOccurrences
 -- it's 'rowIndex' is @2@.
 --
 -- The two type parameters, `b` and `a`, correspond
--- to 'Cell' and 'Entity', respectively.
+-- to 'StructureCells' and 'Entity', respectively.
 data StructureRow b a = StructureRow
   { wholeStructure :: StructureWithGrid b a
   , rowIndex :: Int32
@@ -127,13 +132,23 @@ data StructureRow b a = StructureRow
   , rowContent :: SymbolSequence a
   }
 
+-- | This wrapper facilitates naming the original structure
+-- (i.e. the "payload" for recognition)
+-- for the purpose of both UI display and internal uniqueness,
+-- while remaining agnostic to its internals.
+data NamedOriginal a = NamedOriginal
+  { getName :: OriginalName
+  , orig :: a
+  }
+  deriving (Show, Eq)
+
 -- | The original definition of a structure, bundled
 -- with its grid of cells having been extracted for convenience.
 --
 -- The two type parameters, `b` and `a`, correspond
--- to 'Cell' and 'Entity', respectively.
+-- to 'StructureCells' and 'Entity', respectively.
 data StructureWithGrid b a = StructureWithGrid
-  { originalDefinition :: NamedGrid (Maybe b)
+  { originalDefinition :: NamedOriginal b
   , rotatedTo :: AbsoluteDir
   , entityGrid :: [SymbolSequence a]
   }
@@ -149,14 +164,14 @@ data RotationalSymmetry
   deriving (Show, Eq)
 
 data SymmetryAnnotatedGrid a = SymmetryAnnotatedGrid
-  { namedGrid :: NamedGrid a
+  { namedGrid :: a
   , symmetry :: RotationalSymmetry
   }
   deriving (Show)
 
 -- | Structure definitions with precomputed metadata for consumption by the UI
 data StructureInfo b a = StructureInfo
-  { annotatedGrid :: SymmetryAnnotatedGrid (Maybe b)
+  { annotatedGrid :: SymmetryAnnotatedGrid b
   , entityProcessedGrid :: [SymbolSequence a]
   , entityCounts :: Map a Int
   }
@@ -192,7 +207,7 @@ instance Semigroup InspectionOffsets where
 -- a certain subset of structure rows, that may either
 -- all be within one structure, or span multiple structures.
 data AutomatonInfo en k v = AutomatonInfo
-  { _participatingEntities :: Set en
+  { _participatingEntities :: HashSet en
   , _inspectionOffsets :: InspectionOffsets
   , _automaton :: StateMachine k v
   }
@@ -202,11 +217,11 @@ makeLenses ''AutomatonInfo
 
 -- | The complete set of data needed to identify applicable
 -- structures, based on a just-placed entity.
-data RecognizerAutomatons b en a = RecognizerAutomatons
-  { _originalStructureDefinitions :: Map StructureName (StructureInfo b a)
+data RecognizerAutomatons b a = RecognizerAutomatons
+  { _originalStructureDefinitions :: Map OriginalName (StructureInfo b a)
   -- ^ all of the structures that shall participate in automatic recognition.
   -- This list is used only by the UI and by the 'Floorplan' command.
-  , _automatonsByEntity :: Map a (AutomatonInfo en (AtomicKeySymbol a) (StructureSearcher b en a))
+  , _automatonsByEntity :: HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
   }
   deriving (Generic)
 
@@ -216,7 +231,7 @@ makeLenses ''RecognizerAutomatons
 -- These are the elements that are stored in the 'FoundRegistry'.
 --
 -- The two type parameters, `b` and `a`, correspond
--- to 'Cell' and 'Entity', respectively.
+-- to 'StructureCells' and 'Entity', respectively.
 data FoundStructure b a = FoundStructure
   { structureWithGrid :: StructureWithGrid b a
   , upperLeftCorner :: Cosmic Location

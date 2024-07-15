@@ -228,6 +228,9 @@ testEval g =
             "format function"
             ("format (\\x. x + 1)" `evaluatesTo` VText "\\x. x + 1")
         , testCase
+            "format forall"
+            ("format \"∀\"" `evaluatesTo` VText "\"∀\"")
+        , testCase
             "concat"
             ("\"x = \" ++ format (2+3) ++ \"!\"" `evaluatesTo` VText "x = 5!")
         , testProperty
@@ -346,6 +349,7 @@ testEval g =
  where
   tquote :: String -> Text
   tquote = T.pack . show
+
   throwsError :: Text -> (Text -> Bool) -> Assertion
   throwsError tm p = do
     result <- evaluate tm

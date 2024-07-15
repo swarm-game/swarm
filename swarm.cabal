@@ -191,6 +191,7 @@ library swarm-lang
     terminal-size >=0.3 && <1.0,
     text,
     text-rope >=0.2 && <0.3,
+    unicode-show >=0.1 && <0.2,
     vector,
     vty,
     witch,
@@ -244,6 +245,7 @@ library swarm-topography
     nonempty-containers >=0.3.4 && <0.3.5,
     servant-docs >=0.12 && <0.14,
     text >=1.2.4 && <2.2,
+    unordered-containers,
     vector >=0.12 && <0.14,
     yaml >=0.11 && <0.11.12.0,
 

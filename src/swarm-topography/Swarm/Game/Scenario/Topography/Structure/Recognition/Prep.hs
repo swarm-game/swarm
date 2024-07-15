@@ -3,16 +3,15 @@
 module Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (mkEntityLookup) where
 
 import Control.Arrow ((&&&))
+import Data.HashMap.Strict qualified as HM
+import Data.HashSet qualified as HS
 import Data.Hashable (Hashable)
 import Data.Int (Int32)
 import Data.List.NonEmpty qualified as NE
-import Data.Map qualified as M
 import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
-import Data.Set qualified as S
 import Data.Tuple (swap)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Swarm.Util (binTuples)
 import Text.AhoCorasick
 
 allStructureRows :: [StructureWithGrid b a] -> [StructureRow b a]
@@ -32,11 +31,10 @@ mkOffsets pos xs =
 -- yield a searcher that can determine whether adjacent
 -- rows constitute a complete structure.
 mkRowLookup ::
-  (Hashable a, Ord en) =>
-  (a -> en) ->
+  (Hashable a, Eq a) =>
   NE.NonEmpty (StructureRow b a) ->
-  AutomatonInfo en (SymbolSequence a) (StructureWithGrid b a)
-mkRowLookup nameFunc neList =
+  AutomatonInfo a (SymbolSequence a) (StructureWithGrid b a)
+mkRowLookup neList =
   AutomatonInfo participatingEnts bounds sm
  where
   mkSmTuple = entityGrid &&& id
@@ -44,9 +42,8 @@ mkRowLookup nameFunc neList =
 
   -- All of the unique entities across all of the full candidate structures
   participatingEnts =
-    S.fromList $
-      map nameFunc $
-        concatMap (concatMap catMaybes . fst) tuples
+    HS.fromList $
+      concatMap (concatMap catMaybes . fst) tuples
 
   deriveRowOffsets :: StructureRow b a -> InspectionOffsets
   deriveRowOffsets (StructureRow (StructureWithGrid _ _ g) rwIdx _) =
@@ -62,12 +59,11 @@ mkRowLookup nameFunc neList =
 -- underlying world row against all rows within all structures
 -- (so long as they contain the keyed entity).
 mkEntityLookup ::
-  (Hashable a, Ord a, Ord en) =>
-  (a -> en) ->
+  (Hashable a, Eq a) =>
   [StructureWithGrid b a] ->
-  M.Map a (AutomatonInfo en (AtomicKeySymbol a) (StructureSearcher b en a))
-mkEntityLookup nameFunc grids =
-  M.map mkValues rowsByEntityParticipation
+  HM.HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
+mkEntityLookup grids =
+  HM.map mkValues rowsByEntityParticipation
  where
   rowsAcrossAllStructures = allStructureRows grids
 
@@ -77,24 +73,24 @@ mkEntityLookup nameFunc grids =
     StructureSearcher sm2D ksms singleRows
    where
     structureRowsNE = NE.map myRow singleRows
-    sm2D = mkRowLookup nameFunc structureRowsNE
+    sm2D = mkRowLookup structureRowsNE
 
   mkValues neList = AutomatonInfo participatingEnts bounds sm
    where
     participatingEnts =
-      (S.fromList . map nameFunc)
+      HS.fromList
         (concatMap (catMaybes . fst) tuples)
 
-    tuples = M.toList $ M.mapWithKey mkSmValue groupedByUniqueRow
+    tuples = HM.toList $ HM.mapWithKey mkSmValue groupedByUniqueRow
 
-    groupedByUniqueRow = binTuples $ NE.toList $ NE.map (rowContent . myRow &&& id) neList
+    groupedByUniqueRow = binTuplesHM $ NE.toList $ NE.map (rowContent . myRow &&& id) neList
     bounds = sconcat $ NE.map expandedOffsets neList
     sm = makeStateMachine tuples
 
   -- The values of this map are guaranteed to contain only one
   -- entry per row of a given structure.
   rowsByEntityParticipation =
-    binTuples $
+    binTuplesHM $
       map (myEntity &&& id) $
         concatMap explodeRowEntities rowsAcrossAllStructures
 
@@ -104,9 +100,12 @@ mkEntityLookup nameFunc grids =
 
   -- The members of "rowMembers" are of 'Maybe' type; the 'Nothing's
   -- are dropped but accounted for when indexing the columns.
-  explodeRowEntities :: Ord a => StructureRow b a -> [SingleRowEntityOccurrences b a]
+  explodeRowEntities ::
+    (Hashable a, Eq a) =>
+    StructureRow b a ->
+    [SingleRowEntityOccurrences b a]
   explodeRowEntities r@(StructureRow _ _ rowMembers) =
-    map f $ M.toList $ binTuples unconsolidated
+    map f $ HM.toList $ binTuplesHM unconsolidated
    where
     f (e, occurrences) =
       SingleRowEntityOccurrences r e occurrences $
@@ -116,3 +115,15 @@ mkEntityLookup nameFunc grids =
       map swap $
         catMaybes $
           zipWith (\idx -> fmap (PositionWithinRow idx r,)) [0 ..] rowMembers
+
+-- * Util
+
+-- | Place the second element of the tuples into bins by
+-- the value of the first element.
+binTuplesHM ::
+  (Foldable t, Hashable a, Eq a) =>
+  t (a, b) ->
+  HM.HashMap a (NE.NonEmpty b)
+binTuplesHM = foldr f mempty
+ where
+  f = uncurry (HM.insertWith (<>)) . fmap pure

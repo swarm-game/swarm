@@ -37,18 +37,17 @@ import Swarm.Game.Recipe (
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario
-import Swarm.Game.Scenario.Objective
+import Swarm.Game.Scenario.Objective (initCompletion)
 import Swarm.Game.Scenario.Status
-import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
-import Swarm.Game.State.Landscape
-import Swarm.Game.State.Robot
+import Swarm.Game.State.Landscape (mkLandscape)
+import Swarm.Game.State.Robot (setRobotInfo)
 import Swarm.Game.State.Substate
-import Swarm.Game.Universe as U
+import Swarm.Game.Universe as U (offsetBy)
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Syntax (allConst)
@@ -181,7 +180,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
 mkRecognizer ::
   (Has (State GameState) sig m) =>
   StaticStructureInfo ->
-  m (StructureRecognizer Cell EntityName Entity)
+  m (StructureRecognizer StructureCells Entity)
 mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
   foundIntact <- mapM (sequenceA . (id &&& ensureStructureIntact)) allPlaced
   let fs = populateStaticFoundStructures . map fst . filter snd $ foundIntact
@@ -195,7 +194,7 @@ mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
   mkLogEntry (x, intact) =
     IntactPlacementLog
       intact
-      ((Structure.name . originalDefinition . structureWithGrid) x)
+      ((getName . originalDefinition . structureWithGrid) x)
       (upperLeftCorner x)
 
 -- | Matches definitions against the placements.
@@ -203,7 +202,7 @@ mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
 -- cell is encountered.
 ensureStructureIntact ::
   (Has (State GameState) sig m) =>
-  FoundStructure Cell Entity ->
+  FoundStructure StructureCells Entity ->
   m Bool
 ensureStructureIntact (FoundStructure (StructureWithGrid _ _ grid) upperLeft) =
   allM outer $ zip [0 ..] grid

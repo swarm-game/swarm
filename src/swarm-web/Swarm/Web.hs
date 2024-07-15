@@ -64,7 +64,7 @@ import Servant.Docs (ToCapture)
 import Servant.Docs qualified as SD
 import Servant.Docs.Internal qualified as SD (renderCurlBasePath)
 import Swarm.Doc.Command
-import Swarm.Game.Entity (EntityName)
+import Swarm.Game.Entity (EntityName, entityName)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
@@ -214,7 +214,9 @@ goalsHandler appStateRef = do
 recogLogHandler :: ReadableIORef AppState -> Handler [SearchLog EntityName]
 recogLogHandler appStateRef = do
   appState <- liftIO (readIORef appStateRef)
-  return $ appState ^. gameState . discovery . structureRecognition . recognitionLog
+  return $
+    map (fmap (view entityName)) $
+      appState ^. gameState . discovery . structureRecognition . recognitionLog
 
 recogFoundHandler :: ReadableIORef AppState -> Handler [StructureLocation]
 recogFoundHandler appStateRef = do
