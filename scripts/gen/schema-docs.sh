@@ -1,6 +1,5 @@
 #!/bin/bash -e
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-cd $SCRIPT_DIR/../..
+cd $(git rev-parse --show-toplevel)/..
 
 cabal run -j -O0 -- swarm-docs cheatsheet --scenario

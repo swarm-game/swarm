@@ -17,21 +17,14 @@
 # preview with CTRL+PageUp, and then
 # CTRL+w will close the redundant image preview.
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-cd $SCRIPT_DIR/..
+cd $(git rev-parse --show-toplevel)
 
 
 SCENARIO_PATH=${1?"Usage: $0 SCENARIO_PATH"}
 
-IMG_WIDTH=200
-IMG_HEIGHT=150
-
-IMG_OUTPUT_PATH=output.png
-RENDER_IMG_COMMAND="stack exec swarm-scene -- $SCENARIO_PATH --fail-blank --dest $IMG_OUTPUT_PATH --png --width $IMG_WIDTH --height $IMG_HEIGHT"
-
 stack build --fast swarm:swarm-scene
 
-$RENDER_IMG_COMMAND
-code --reuse-window $SCENARIO_PATH && code --reuse-window $IMG_OUTPUT_PATH 
+stack exec swarm-scene -- $SCENARIO_PATH --fail-blank --dest outpup.png --png --width 200 --height 150
+code --reuse-window $SCENARIO_PATH && code --reuse-window outpup.png 
 
-while inotifywait -e close_write $SCENARIO_PATH; do $RENDER_IMG_COMMAND; done
+while inotifywait -e close_write $SCENARIO_PATH; do stack exec swarm-scene -- $SCENARIO_PATH --fail-blank --dest outpup.png --png --width 200 --height 150; done

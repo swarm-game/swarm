@@ -1,7 +1,6 @@
 #!/bin/bash -e
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-cd $SCRIPT_DIR/../..
+cd $(git rev-parse --show-toplevel)/..
 
 find data/scenarios -name "*.yaml" -type f -print0 | xargs -0 check-jsonschema --base-uri $(git rev-parse --show-toplevel)/data/schema/scenario.json --schemafile data/schema/scenario.json
 
