@@ -226,12 +226,12 @@ cabal install fourmolu-0.13.0.0
 If this installation does not work, you may have to set your GHC to a version supported by `fourmolu`:
 
 ```bash
-ghcup install ghc 9.4.5
+ghcup install ghc 9.8.2
 ```
 and/or:
 
 ```bash
-ghcup set ghc 9.4.5
+ghcup set ghc 9.8.2
 ```
 
 You can run the formatter from the shell:
