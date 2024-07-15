@@ -1,6 +1,6 @@
 # Revision history for swarm
 
-## **0.6.0.0** - XXX
+## **0.6.0.0** - 2024-07-15
 
 Some of the highlights of this release include native Windows support,
 customizable keybindings, type synonyms and equirecursive types, and a
