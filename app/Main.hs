@@ -145,7 +145,7 @@ printKeybindings :: Bool -> KeybindingPrint -> IO ()
 printKeybindings initialize p = do
   kb <- showKeybindings p
   T.putStrLn kb
-  (iniExists, ini) <- getSwarmConfigIniFile
+  (iniExists, ini) <- getSwarmConfigIniFile initialize
   when initialize $ do
     kbi <- showKeybindings IniPrint
     T.writeFile ini kbi

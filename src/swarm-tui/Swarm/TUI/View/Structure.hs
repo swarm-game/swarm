@@ -9,9 +9,9 @@ module Swarm.TUI.View.Structure (
   makeListWidget,
 ) where
 
-import Brick hiding (Direction, Location)
+import Brick hiding (Direction, Location, getName)
 import Brick.Focus
-import Brick.Widgets.Center
+import Brick.Widgets.Center (hCenter)
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
 import Data.Map.NonEmpty qualified as NEM
@@ -20,16 +20,16 @@ import Data.Set qualified as Set
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Swarm.Game.Entity (Entity, entityDisplay)
-import Swarm.Game.Scenario (Cell)
+import Swarm.Game.Scenario (StructureCells)
 import Swarm.Game.Scenario.Topography.Area
-import Swarm.Game.Scenario.Topography.Placement
+import Swarm.Game.Scenario.Topography.Placement (getStructureName)
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (getEntityGrid)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
-import Swarm.Game.State.Substate
+import Swarm.Game.State.Substate (structureRecognition)
 import Swarm.Language.Syntax.Direction (directionJsonModifier)
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Structure
@@ -40,7 +40,7 @@ import Swarm.Util (commaList)
 
 -- | Render a two-pane widget with structure selection on the left
 -- and single-structure details on the right.
-structureWidget :: GameState -> StructureInfo Cell Entity -> Widget n
+structureWidget :: GameState -> StructureInfo StructureCells Entity -> Widget n
 structureWidget gs s =
   vBox
     [ hBox
@@ -93,7 +93,7 @@ structureWidget gs s =
         s
 
   registry = gs ^. discovery . structureRecognition . foundStructures
-  occurrenceCountSuffix = case M.lookup sName $ foundByName registry of
+  occurrenceCountSuffix = case M.lookup theName $ foundByName registry of
     Nothing -> emptyWidget
     Just inner -> padLeft (Pad 2) . headerItem "Count" . T.pack . show $ NEM.size inner
 
@@ -117,12 +117,11 @@ structureWidget gs s =
             ]
       ]
 
-  sName = Structure.name d
-  StructureName theName = sName
-  cells = getEntityGrid $ Structure.structure d
+  theName = getStructureName $ Structure.name d
+  cells = getEntityGrid d
   renderOneCell = maybe (txt " ") (renderDisplay . view entityDisplay)
 
-makeListWidget :: [StructureInfo Cell Entity] -> BL.List Name (StructureInfo Cell Entity)
+makeListWidget :: [StructureInfo StructureCells Entity] -> BL.List Name (StructureInfo StructureCells Entity)
 makeListWidget structureDefinitions =
   BL.listMoveTo 0 $ BL.list (StructureWidgets StructuresList) (V.fromList structureDefinitions) 1
 
@@ -164,7 +163,7 @@ renderStructuresDisplay gs structureDisplay =
 
 drawSidebarListItem ::
   Bool ->
-  StructureInfo Cell Entity ->
+  StructureInfo StructureCells Entity ->
   Widget Name
 drawSidebarListItem _isSelected (StructureInfo annotated _ _) =
   txt . getStructureName . Structure.name $ namedGrid annotated

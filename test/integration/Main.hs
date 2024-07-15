@@ -85,6 +85,7 @@ import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
+import TestRecipeCoverage
 import Witch (into)
 
 isUnparseableTest :: FilePath -> Bool
@@ -101,6 +102,7 @@ main = do
     either (assertFailure . prettyString) return out
   let scenarioInputs = gsiScenarioInputs $ initState $ rs ^. stdGameConfigInputs
       rs' = rs & eventLog .~ mempty
+  recipeTests <- testRecipeCoverage
   defaultMain $
     testGroup
       "Tests"
@@ -111,6 +113,7 @@ main = do
       , scenarioParseInvalidTests scenarioInputs unparseableScenarios
       , testScenarioSolutions rs' ui key
       , testEditorFiles
+      , recipeTests
       ]
 
 testNoLoadingErrors :: RuntimeState -> TestTree

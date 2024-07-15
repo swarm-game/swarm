@@ -16,6 +16,7 @@ import Control.Monad (unless, void, when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Bits
 import Data.Map qualified as M
+import Swarm.Game.Achievement.Attainment (achievement)
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.State
@@ -24,6 +25,7 @@ import Swarm.Game.Step (gameTick)
 import Swarm.TUI.Controller.UpdateUI
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Achievements (popupAchievement)
 import Swarm.TUI.Model.UI
 import System.Clock
 
@@ -35,11 +37,11 @@ ticksPerFrameCap = 30
 --   frame, and how many ticks per second we are trying to achieve,
 --   this may involve stepping the game any number of ticks (including
 --   zero).
-runFrameUI :: EventM Name AppState ()
-runFrameUI = do
+runFrameUI :: Bool -> EventM Name AppState ()
+runFrameUI forceRedraw = do
   runFrame
   redraw <- updateUI
-  unless redraw continueWithoutRedraw
+  unless (forceRedraw || redraw) continueWithoutRedraw
 
 -- | Run the game for a single frame, without updating the UI.
 runFrame :: EventM Name AppState ()
@@ -143,7 +145,8 @@ updateAchievements = do
   -- Don't save to disk unless there was a change in the attainment list.
   let incrementalAchievements = wrappedGameAchievements `M.difference` oldMasterAchievementsList
   unless (null incrementalAchievements) $ do
-    -- TODO: #916 This is where new achievements would be displayed in a popup
+    mapM_ (popupAchievement . view achievement) incrementalAchievements
+
     newAchievements <- use $ uiState . uiAchievements
     liftIO $ saveAchievementsInfo $ M.elems newAchievements
 

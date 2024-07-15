@@ -70,6 +70,7 @@ module Swarm.Game.State.Substate (
   -- ** Notifications
   Notifications (..),
   notificationsCount,
+  notificationsShouldAlert,
   notificationsContent,
 
   -- ** Utilities
@@ -100,7 +101,7 @@ import Swarm.Game.Recipe (
   outRecipeMap,
  )
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Cell, GameStateInputs (..))
+import Swarm.Game.Scenario (GameStateInputs (..), StructureCells)
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (emptyFoundStructures)
@@ -181,19 +182,21 @@ toggleRunStatus :: RunStatus -> RunStatus
 toggleRunStatus s = if s == Running then ManualPause else Running
 
 -- | A data type to keep track of some kind of log or sequence, with
---   an index to remember which ones are "new" and which ones have
---   "already been seen".
+--   an index to remember which ones are "new", which ones have
+--   "already been seen", and whether the user has yet been notified
+--   of the fact that there are unseen notifications.
 data Notifications a = Notifications
   { _notificationsCount :: Int
+  , _notificationsShouldAlert :: Bool
   , _notificationsContent :: [a]
   }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 instance Semigroup (Notifications a) where
-  Notifications count1 xs1 <> Notifications count2 xs2 = Notifications (count1 + count2) (xs1 <> xs2)
+  Notifications count1 alert1 xs1 <> Notifications count2 alert2 xs2 = Notifications (count1 + count2) (alert1 || alert2) (xs1 <> xs2)
 
 instance Monoid (Notifications a) where
-  mempty = Notifications 0 []
+  mempty = Notifications 0 False []
 
 makeLenses ''Notifications
 
@@ -323,7 +326,7 @@ data Discovery = Discovery
   , _availableCommands :: Notifications Const
   , _knownEntities :: S.Set EntityName
   , _gameAchievements :: Map GameplayAchievement Attainment
-  , _structureRecognition :: StructureRecognizer Cell EntityName Entity
+  , _structureRecognition :: StructureRecognizer StructureCells Entity
   , _tagMembers :: Map Text (NonEmpty EntityName)
   }
 
@@ -346,7 +349,7 @@ knownEntities :: Lens' Discovery (S.Set EntityName)
 gameAchievements :: Lens' Discovery (Map GameplayAchievement Attainment)
 
 -- | Recognizer for robot-constructed structures
-structureRecognition :: Lens' Discovery (StructureRecognizer Cell EntityName Entity)
+structureRecognition :: Lens' Discovery (StructureRecognizer StructureCells Entity)
 
 -- | Map from tags to entities that possess that tag
 tagMembers :: Lens' Discovery (Map Text (NonEmpty EntityName))

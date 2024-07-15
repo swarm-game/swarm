@@ -36,6 +36,7 @@ import Swarm.Language.Syntax.Direction
 import Swarm.Language.Typecheck
 import Swarm.Language.Types
 import Swarm.Util (number, showEnum, showLowT, unsnocNE)
+import Text.Show.Unicode (ushow)
 import Witch
 
 ------------------------------------------------------------
@@ -271,7 +272,7 @@ instance PrettyPrec (Term' ty) where
     TDir d -> ppr d
     TInt n -> pretty n
     TAntiInt v -> "$int:" <> pretty v
-    TText s -> fromString (show s)
+    TText s -> fromString (ushow s)
     TAntiText v -> "$str:" <> pretty v
     TBool b -> bool "false" "true" b
     TRobot r -> "<a" <> pretty r <> ">"

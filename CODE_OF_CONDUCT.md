@@ -59,8 +59,8 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to Brent Yorgey at [byorgey@gmail.com](mailto:byorgey@gmail.com), or 
-`byorgey` on the Libera.Chat IRC network. All complaints will be reviewed and 
+reported to Brent Yorgey at [byorgey@gmail.com](mailto:byorgey@gmail.com), or
+`byorgey` on the Libera.Chat IRC network. All complaints will be reviewed and
 investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the

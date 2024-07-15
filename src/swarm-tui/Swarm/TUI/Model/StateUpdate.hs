@@ -67,6 +67,7 @@ import Swarm.Game.ScenarioInfo (
   _SISingle,
  )
 import Swarm.Game.State
+import Swarm.Game.State.Initialize
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate

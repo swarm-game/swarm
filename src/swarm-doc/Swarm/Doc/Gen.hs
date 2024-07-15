@@ -14,12 +14,19 @@ module Swarm.Doc.Gen (
 
   -- ** Wiki pages
   PageAddress (..),
+
+  -- ** Recipe graph data
+  RecipeGraphData (..),
+  EdgeFilter (..),
+  classicScenarioRecipeGraphData,
+  ignoredEntities,
 ) where
 
 import Control.Lens (view, (^.))
 import Control.Monad (zipWithM, zipWithM_)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (toList)
+import Data.List qualified as List
 import Data.List.Extra (enumerate)
 import Data.Map.Lazy (Map, (!))
 import Data.Map.Lazy qualified as Map
@@ -42,7 +49,7 @@ import Swarm.Game.Recipe (Recipe, recipeCatalysts, recipeInputs, recipeOutputs)
 import Swarm.Game.Robot (Robot, equippedDevices, robotInventory)
 import Swarm.Game.Scenario (GameStateInputs (..), ScenarioInputs (..), loadStandaloneScenario, scenarioLandscape)
 import Swarm.Game.World.Gen (extractEntities)
-import Swarm.Game.World.Typecheck (Some (..), TTerm)
+import Swarm.Game.World.Typecheck (Some (..))
 import Swarm.Language.Key (specialKeyNames)
 import Swarm.Util (both)
 import Text.Dot (Dot, NodeId, (.->.))
@@ -59,7 +66,7 @@ import Text.Dot qualified as Dot
 -- | An enumeration of the kinds of documentation we can generate.
 data GenerateDocs where
   -- | Entity dependencies by recipes.
-  RecipeGraph :: GenerateDocs
+  RecipeGraph :: EdgeFilter -> GenerateDocs
   -- | Keyword lists for editors.
   EditorKeywords :: Maybe EditorType -> GenerateDocs
   -- | List of special key names recognized by 'Swarm.Language.Syntax.Key' command
@@ -73,7 +80,7 @@ data GenerateDocs where
 -- | Generate the requested kind of documentation to stdout.
 generateDocs :: GenerateDocs -> IO ()
 generateDocs = \case
-  RecipeGraph -> generateRecipe >>= putStrLn
+  RecipeGraph ef -> generateRecipe ef >>= putStrLn
   EditorKeywords e ->
     case e of
       Just et -> generateEditorKeywords et
@@ -134,48 +141,57 @@ generateSpecialKeyNames =
 -- GENERATE GRAPHVIZ: ENTITY DEPENDENCIES BY RECIPES
 -- ----------------------------------------------------------------------------
 
-generateRecipe :: IO String
-generateRecipe = simpleErrorHandle $ do
-  (classic, GameStateInputs (ScenarioInputs worlds (TerrainEntityMaps _ entities)) recipes) <- loadStandaloneScenario "data/scenarios/classic.yaml"
-  baseRobot <- instantiateBaseRobot $ classic ^. scenarioLandscape
-  return . Dot.showDot $ recipesToDot baseRobot (worlds ! "classic") entities recipes
+generateRecipe :: EdgeFilter -> IO String
+generateRecipe ef = do
+  graphData <- classicScenarioRecipeGraphData
+  return . Dot.showDot $ recipesToDot graphData ef
 
-recipesToDot :: Robot -> Some (TTerm '[]) -> EntityMap -> [Recipe Entity] -> Dot ()
-recipesToDot baseRobot classicTerm emap recipes = do
+data EdgeFilter = NoFilter | FilterForward | FilterNext
+  deriving (Eq, Show)
+
+filterEdge :: EdgeFilter -> Int -> Int -> Bool
+filterEdge ef i o = case ef of
+  NoFilter -> True
+  FilterForward -> i <= o
+  FilterNext -> i + 1 == o
+
+recipesToDot :: RecipeGraphData -> EdgeFilter -> Dot ()
+recipesToDot graphData ef = do
   Dot.attribute ("rankdir", "LR")
   Dot.attribute ("ranksep", "2")
   world <- diamond "World"
   base <- diamond "Base"
   -- --------------------------------------------------------------------------
   -- add nodes with for all the known entities
-  let enames' = toList . Map.keysSet . entitiesByName $ emap
+  let enames' = map (view entityName) . toList $ rgAllEntities graphData
       enames = filter (`Set.notMember` ignoredEntities) enames'
   ebmap <- Map.fromList . zip enames <$> mapM (box . unpack) enames
   -- --------------------------------------------------------------------------
   -- getters for the NodeId based on entity name or the whole entity
-  let safeGetEntity m e = fromMaybe (error $ unpack e <> " is not an entity!?") $ m Map.!? e
+  let safeGetEntity m e = fromMaybe (error $ show e <> " is not an entity!?") $ m Map.!? e
       getE = safeGetEntity ebmap
       nid = getE . view entityName
   -- --------------------------------------------------------------------------
   -- Get the starting inventories, entities present in the world and compute
   -- how hard each entity is to get - see 'recipeLevels'.
-  let devs = startingDevices baseRobot
-      inv = startingInventory baseRobot
-      worldEntities = case classicTerm of Some _ t -> extractEntities t
-      levels = recipeLevels recipes (Set.unions [worldEntities, devs])
+  let devs = rgStartingDevices graphData
+      inv = rgStartingInventory graphData
+      worldEntities = rgWorldEntities graphData
+      levels = rgLevels graphData
+      recipes = rgRecipes graphData
   -- --------------------------------------------------------------------------
   -- Base inventory
   (_bc, ()) <- Dot.cluster $ do
     Dot.attribute ("style", "filled")
     Dot.attribute ("color", "lightgrey")
     mapM_ ((base ---<>) . nid) devs
-    mapM_ ((base .->.) . nid . fst) $ Map.toList inv
+    mapM_ ((base .->.) . nid) inv
   -- --------------------------------------------------------------------------
   -- World entities
   (_wc, ()) <- Dot.cluster $ do
     Dot.attribute ("style", "filled")
     Dot.attribute ("color", "forestgreen")
-    mapM_ (uncurry (Dot..->.) . (world,) . getE . view entityName) (toList worldEntities)
+    mapM_ (uncurry (Dot..->.) . (world,) . nid) worldEntities
   -- --------------------------------------------------------------------------
   let -- put a hidden node above and below entities and connect them by hidden edges
       wrapBelowAbove :: Set Entity -> Dot (NodeId, NodeId)
@@ -217,15 +233,45 @@ recipesToDot baseRobot classicTerm emap recipes = do
   -- --------------------------------------------------------------------------
   -- add node for the world and draw a line to each entity found in the wild
   -- finally draw recipes
-  let recipeInOut r = [(snd i, snd o) | i <- r ^. recipeInputs, o <- r ^. recipeOutputs]
-      recipeReqOut r = [(snd q, snd o) | q <- r ^. recipeCatalysts, o <- r ^. recipeOutputs]
+  let eFilter = filterEdge ef
+      lvl e = fromMaybe (-1) $ List.findIndex (Set.member e) levels
+      recipeInOut r = [(i, o) | (_, i) <- r ^. recipeInputs, (_, o) <- r ^. recipeOutputs, lvl i `eFilter` lvl o]
+      recipeReqOut r = [(q, o) | (_, q) <- r ^. recipeCatalysts, (_, o) <- r ^. recipeOutputs, lvl q `eFilter` lvl o]
       recipesToPairs f rs = both nid <$> nubOrd (concatMap f rs)
   mapM_ (uncurry (.->.)) (recipesToPairs recipeInOut recipes)
   mapM_ (uncurry (---<>)) (recipesToPairs recipeReqOut recipes)
   -- --------------------------------------------------------------------------
   -- also draw an edge for each entity that "yields" another entity
-  let yieldPairs = mapMaybe (\e -> (e ^. entityName,) <$> (e ^. entityYields)) . Map.elems $ entitiesByName emap
-  mapM_ (uncurry (.->.)) (both getE <$> yieldPairs)
+  let yieldPairs = mapMaybe (\e -> (e ^. entityName,) <$> (e ^. entityYields)) . toList $ rgAllEntities graphData
+  mapM_ (uncurry (.-<>.)) (both getE <$> yieldPairs)
+
+data RecipeGraphData = RecipeGraphData
+  { rgWorldEntities :: Set Entity
+  , rgStartingDevices :: Set Entity
+  , rgStartingInventory :: Set Entity
+  , rgLevels :: [Set Entity]
+  , rgAllEntities :: Set Entity
+  , rgRecipes :: [Recipe Entity]
+  }
+
+classicScenarioRecipeGraphData :: IO RecipeGraphData
+classicScenarioRecipeGraphData = simpleErrorHandle $ do
+  (classic, GameStateInputs (ScenarioInputs worlds (TerrainEntityMaps _ emap)) recipes) <-
+    loadStandaloneScenario "data/scenarios/classic.yaml"
+  baseRobot <- instantiateBaseRobot (classic ^. scenarioLandscape)
+  let classicTerm = worlds ! "classic"
+  let devs = startingDevices baseRobot
+  let inv = Map.keysSet $ startingInventory baseRobot
+  let worldEntities = case classicTerm of Some _ t -> extractEntities t
+  return
+    RecipeGraphData
+      { rgStartingDevices = devs
+      , rgStartingInventory = inv
+      , rgWorldEntities = worldEntities
+      , rgLevels = recipeLevels emap recipes (Set.unions [worldEntities, devs, inv])
+      , rgAllEntities = Set.fromList . Map.elems $ entitiesByName emap
+      , rgRecipes = recipes
+      }
 
 -- ----------------------------------------------------------------------------
 -- RECIPE LEVELS
@@ -235,7 +281,7 @@ recipesToDot baseRobot classicTerm emap recipes = do
 --
 -- So:
 --  * Level 0 - starting entities (for example those obtainable in the world)
---  * Level N+1 - everything possible to make (or drill) from Level N
+--  * Level N+1 - everything possible to make (or drill or harvest) from Level N
 --
 -- This is almost a BFS, but the requirement is that the set of entities
 -- required for recipe is subset of the entities known in Level N.
@@ -243,8 +289,8 @@ recipesToDot baseRobot classicTerm emap recipes = do
 -- If we ever depend on some graph library, this could be rewritten
 -- as some BFS-like algorithm with added recipe nodes, but you would
 -- need to enforce the condition that recipes need ALL incoming edges.
-recipeLevels :: [Recipe Entity] -> Set Entity -> [Set Entity]
-recipeLevels recipes start = levels
+recipeLevels :: EntityMap -> [Recipe Entity] -> Set Entity -> [Set Entity]
+recipeLevels emap recipes start = levels
  where
   recipeParts r = ((r ^. recipeInputs) <> (r ^. recipeCatalysts), r ^. recipeOutputs)
   m :: [(Set Entity, Set Entity)]
@@ -253,7 +299,13 @@ recipeLevels recipes start = levels
   levels = reverse $ go [start] start
    where
     isKnown known (i, _o) = null $ i Set.\\ known
-    nextLevel known = Set.unions . map snd $ filter (isKnown known) m
+    lookupYield e = case view entityYields e of
+      Nothing -> e
+      Just yn -> case E.lookupEntityName yn emap of
+        Nothing -> error "unknown yielded entity"
+        Just ye -> ye
+    yielded = Set.map lookupYield
+    nextLevel known = Set.unions $ yielded known : map snd (filter (isKnown known) m)
     go ls known =
       let n = nextLevel known Set.\\ known
        in if null n
@@ -276,6 +328,10 @@ ignoredEntities =
     , "lower right corner"
     , "horizontal wall"
     , "vertical wall"
+    , "left and vertical wall"
+    , "up and horizontal wall"
+    , "right and vertical wall"
+    , "down and horizontal wall"
     ]
 
 -- ----------------------------------------------------------------------------
@@ -292,6 +348,12 @@ diamond = customNode [("shape", "diamond")]
 -- | Hidden node - used for layout.
 hiddenNode :: Dot NodeId
 hiddenNode = Dot.node [("style", "invis")]
+
+-- | Edge for yielded entities.
+(.-<>.) :: NodeId -> NodeId -> Dot ()
+e1 .-<>. e2 = Dot.edge e1 e2 attrs
+ where
+  attrs = [("arrowhead", "diamond"), ("color", "purple")]
 
 -- | Hidden edge - used for layout.
 (.~>.) :: NodeId -> NodeId -> Dot ()

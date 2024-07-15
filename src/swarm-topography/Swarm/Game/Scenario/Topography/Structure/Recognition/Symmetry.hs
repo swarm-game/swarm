@@ -11,6 +11,7 @@ import Data.Map qualified as M
 import Data.Set qualified as Set
 import Data.Text qualified as T
 import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform)
+import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (RotationalSymmetry (..), SymmetryAnnotatedGrid (..))
 import Swarm.Language.Syntax.Direction (AbsoluteDir (DSouth, DWest), getCoordinateOrientation)
@@ -28,7 +29,7 @@ import Swarm.Util (commaList, failT, histogram, showT)
 --    2-fold symmetry.
 --    Warn if two opposite orientations were supplied.
 checkSymmetry ::
-  (MonadFail m, Eq a) => Structure.NamedGrid a -> m (SymmetryAnnotatedGrid a)
+  (MonadFail m, Eq a) => NamedGrid a -> m (SymmetryAnnotatedGrid (NamedGrid a))
 checkSymmetry ng = do
   case symmetryType of
     FourFold ->

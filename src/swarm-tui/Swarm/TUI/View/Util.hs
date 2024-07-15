@@ -5,6 +5,7 @@
 module Swarm.TUI.View.Util where
 
 import Brick hiding (Direction, Location)
+import Brick.Keybindings (Binding (..), firstActiveBinding, ppBinding)
 import Brick.Widgets.Dialog
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
@@ -29,6 +30,7 @@ import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Event (SwarmEvent)
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
@@ -240,3 +242,16 @@ drawLabelledEntityName e =
     [ padRight (Pad 2) (renderDisplay (e ^. entityDisplay))
     , txt (e ^. entityName)
     ]
+
+-- | Render the keybinding bound to a specific event.
+bindingText :: AppState -> SwarmEvent -> Text
+bindingText s e = maybe "" ppBindingShort b
+ where
+  conf = s ^. keyEventHandling . keyConfig
+  b = firstActiveBinding conf e
+  ppBindingShort = \case
+    Binding V.KUp m | null m -> "↑"
+    Binding V.KDown m | null m -> "↓"
+    Binding V.KLeft m | null m -> "←"
+    Binding V.KRight m | null m -> "→"
+    bi -> ppBinding bi

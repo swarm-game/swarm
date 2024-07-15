@@ -316,7 +316,7 @@ updateAvailableRecipes invs e = do
   knownRecipes <- use $ discovery . availableRecipes . notificationsContent
   let newRecipes = filter (`notElem` knownRecipes) usableRecipes
       newCount = length newRecipes
-  discovery . availableRecipes %= mappend (Notifications newCount newRecipes)
+  discovery . availableRecipes %= mappend (Notifications newCount (newCount > 0) newRecipes)
   updateAvailableCommands e
 
 updateAvailableCommands :: Has (State GameState) sig m => Entity -> m ()
@@ -329,7 +329,7 @@ updateAvailableCommands e = do
   knownCommands <- use $ discovery . availableCommands . notificationsContent
   let newCommands = filter (`notElem` knownCommands) entityConsts
       newCount = length newCommands
-  discovery . availableCommands %= mappend (Notifications newCount newCommands)
+  discovery . availableCommands %= mappend (Notifications newCount (newCount > 0) newCommands)
 
 ------------------------------------------------------------
 -- The "watch" command

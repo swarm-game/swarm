@@ -97,6 +97,7 @@ import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
+import Swarm.TUI.Model.Popup (progressPopups)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.Structure
@@ -131,10 +132,18 @@ handleEvent = \case
       Right _ -> pure ()
     runtimeState . upstreamRelease .= ev
   e -> do
+    -- Handle popup display at the very top level, so it is
+    -- unaffected by any other state, e.g. even when starting or
+    -- quitting a game, moving around the menu, the popup
+    -- display will continue as normal.
+    upd <- case e of
+      AppEvent Frame -> Brick.zoom (uiState . uiPopups) progressPopups
+      _ -> pure False
+
     s <- get
     if s ^. uiState . uiPlaying
-      then handleMainEvent e
-      else
+      then handleMainEvent upd e
+      else do
         e & case s ^. uiState . uiMenu of
           -- If we reach the NoMenu case when uiPlaying is False, just
           -- quit the app.  We should actually never reach this code (the
@@ -159,7 +168,7 @@ handleMainMenuEvent ::
 handleMainMenuEvent menu = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement menu of
-      Nothing -> continueWithoutRedraw
+      Nothing -> pure ()
       Just x0 -> case x0 of
         NewGame -> do
           cheat <- use $ uiState . uiCheatMode
@@ -198,7 +207,7 @@ handleMainMenuEvent menu = \case
   VtyEvent ev -> do
     menu' <- nestEventM' menu (handleListEvent ev)
     uiState . uiMenu .= MainMenu menu'
-  _ -> continueWithoutRedraw
+  _ -> pure ()
 
 -- | If we are in a New Game menu, advance the menu to the next item in order.
 --
@@ -219,7 +228,7 @@ handleMainAchievementsEvent l e = case e of
   VtyEvent ev -> do
     l' <- nestEventM' l (handleListEvent ev)
     uiState . uiMenu .= AchievementsMenu l'
-  _ -> continueWithoutRedraw
+  _ -> pure ()
  where
   returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
 
@@ -228,7 +237,7 @@ handleMainMessagesEvent = \case
   Key V.KEsc -> returnToMainMenu
   CharKey 'q' -> returnToMainMenu
   ControlChar 'q' -> returnToMainMenu
-  _ -> return ()
+  _ -> pure ()
  where
   returnToMainMenu = uiState . uiMenu .= MainMenu (mainMenu Messages)
 
@@ -240,7 +249,7 @@ handleNewGameMenuEvent ::
 handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   Key V.KEnter ->
     case snd <$> BL.listSelectedElement curMenu of
-      Nothing -> continueWithoutRedraw
+      Nothing -> pure ()
       Just (SISingle siPair) -> invalidateCache >> startGame siPair Nothing
       Just (SICollection _ c) -> do
         cheat <- use $ uiState . uiCheatMode
@@ -253,11 +262,11 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   VtyEvent ev -> do
     menu' <- nestEventM' curMenu (handleListEvent ev)
     uiState . uiMenu .= NewGameMenu (menu' :| rest)
-  _ -> continueWithoutRedraw
+  _ -> pure ()
  where
   showLaunchDialog = case snd <$> BL.listSelectedElement curMenu of
     Just (SISingle siPair) -> Brick.zoom (uiState . uiLaunchConfig) $ prepareLaunchDialog siPair
-    _ -> continueWithoutRedraw
+    _ -> pure ()
 
 exitNewGameMenu :: NonEmpty (BL.List Name ScenarioItem) -> EventM Name AppState ()
 exitNewGameMenu stk = do
@@ -269,18 +278,20 @@ exitNewGameMenu stk = do
 
 pressAnyKey :: Menu -> BrickEvent Name AppEvent -> EventM Name AppState ()
 pressAnyKey m (VtyEvent (V.EvKey _ _)) = uiState . uiMenu .= m
-pressAnyKey _ _ = continueWithoutRedraw
+pressAnyKey _ _ = pure ()
 
 -- | The top-level event handler while we are running the game itself.
-handleMainEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleMainEvent ev = do
+handleMainEvent :: Bool -> BrickEvent Name AppEvent -> EventM Name AppState ()
+handleMainEvent forceRedraw ev = do
   s <- get
   let keyHandler = s ^. keyEventHandling . keyDispatchers . to mainGameDispatcher
   case ev of
     AppEvent ae -> case ae of
       Frame
-        | s ^. gameState . temporal . paused -> continueWithoutRedraw
-        | otherwise -> runFrameUI
+        -- If the game is paused, don't run any game ticks, but do redraw the screen
+        -- if a redraw is forced.
+        | s ^. gameState . temporal . paused -> unless forceRedraw continueWithoutRedraw
+        | otherwise -> runFrameUI forceRedraw
       Web (RunWebCode c) -> runBaseWebCode c
       _ -> continueWithoutRedraw
     VtyEvent (V.EvResize _ _) -> invalidateCache
@@ -425,7 +436,7 @@ quitGame :: EventM Name AppState ()
 quitGame = do
   -- Write out REPL history.
   history <- use $ uiState . uiGameplay . uiREPL . replHistory
-  let hist = mapMaybe getREPLEntry $ getLatestREPLHistoryItems maxBound history
+  let hist = mapMaybe getREPLSubmitted $ getLatestREPLHistoryItems maxBound history
   liftIO $ (`T.appendFile` T.unlines hist) =<< getSwarmHistoryPath True
 
   -- Save scenario status info.
@@ -449,13 +460,6 @@ quitGame = do
 ------------------------------------------------------------
 -- REPL events
 ------------------------------------------------------------
-
--- | Set the REPL to the given text and REPL prompt type.
-resetREPL :: T.Text -> REPLPrompt -> REPLState -> REPLState
-resetREPL t r replState =
-  replState
-    & replPromptText .~ t
-    & replPromptType .~ r
 
 -- | Handle a user input event for the REPL.
 handleREPLEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
@@ -543,15 +547,15 @@ runBaseWebCode uinput = do
 
 runBaseCode :: (MonadState AppState m) => T.Text -> m ()
 runBaseCode uinput = do
-  uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLEntry uinput)
-  uiState . uiGameplay . uiREPL %= resetREPL "" (CmdPrompt [])
+  addREPLHistItem (mkREPLSubmission uinput)
+  resetREPL "" (CmdPrompt [])
   env <- use $ gameState . baseEnv
   case processTerm' env uinput of
     Right mt -> do
       uiState . uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True
       runBaseTerm mt
     Left err -> do
-      uiState . uiGameplay . uiREPL . replHistory %= addREPLItem (REPLError err)
+      addREPLHistItem (mkREPLError err)
 
 -- | Handle a user input event for the REPL.
 --
@@ -577,15 +581,29 @@ handleREPLEventTyping = \case
               invalidateCacheEntry REPLHistoryCache
             SearchPrompt hist ->
               case lastEntry uinput hist of
-                Nothing -> uiState . uiGameplay . uiREPL %= resetREPL "" (CmdPrompt [])
+                Nothing -> resetREPL "" (CmdPrompt [])
                 Just found
-                  | T.null uinput -> uiState . uiGameplay . uiREPL %= resetREPL "" (CmdPrompt [])
+                  | T.null uinput -> resetREPL "" (CmdPrompt [])
                   | otherwise -> do
-                      uiState . uiGameplay . uiREPL %= resetREPL found (CmdPrompt [])
+                      resetREPL found (CmdPrompt [])
                       modify validateREPLForm
           else continueWithoutRedraw
       Key V.KUp -> modify $ adjReplHistIndex Older
-      Key V.KDown -> modify $ adjReplHistIndex Newer
+      Key V.KDown -> do
+        repl <- use $ uiState . uiGameplay . uiREPL
+        let hist = repl ^. replHistory
+            uinput = repl ^. replPromptText
+        case repl ^. replPromptType of
+          CmdPrompt {}
+            | hist ^. replIndex == replLength hist && not (T.null uinput) ->
+                -- Special case for hitting "Down" arrow while entering a new non-empty input:
+                -- save the input in the history and make the REPL blank.
+                do
+                  addREPLHistItem (mkREPLSaved uinput)
+                  resetREPL "" (CmdPrompt [])
+                  modify validateREPLForm
+          -- Otherwise, just move around in the history as normal.
+          _ -> modify $ adjReplHistIndex Newer
       ControlChar 'r' -> do
         s <- get
         let uinput = s ^. uiState . uiGameplay . uiREPL . replPromptText
@@ -603,8 +621,7 @@ handleREPLEventTyping = \case
         formSt <- use $ uiState . uiGameplay . uiREPL . replPromptType
         case formSt of
           CmdPrompt {} -> continueWithoutRedraw
-          SearchPrompt _ ->
-            uiState . uiGameplay . uiREPL %= resetREPL "" (CmdPrompt [])
+          SearchPrompt _ -> resetREPL "" (CmdPrompt [])
       ControlChar 'd' -> do
         text <- use $ uiState . uiGameplay . uiREPL . replPromptText
         if text == T.empty

@@ -13,6 +13,9 @@ import Control.Carrier.State.Lazy
 import Control.Effect.Lens
 import Control.Lens ((^.))
 import Control.Monad (forM, forM_, guard)
+import Data.HashMap.Strict qualified as HM
+import Data.HashSet (HashSet)
+import Data.HashSet qualified as HS
 import Data.Hashable (Hashable)
 import Data.Int (Int32)
 import Data.List (sortOn)
@@ -21,13 +24,10 @@ import Data.Map qualified as M
 import Data.Maybe (listToMaybe)
 import Data.Ord (Down (..))
 import Data.Semigroup (Max (..), Min (..))
-import Data.Set (Set)
-import Data.Set qualified as S
 import Linear (V2 (..))
-import Swarm.Game.Entity
-import Swarm.Game.Location
-import Swarm.Game.Scenario (Cell)
-import Swarm.Game.Scenario.Topography.Structure qualified as Structure
+import Swarm.Game.Entity (Entity)
+import Swarm.Game.Location (Location)
+import Swarm.Game.Scenario (StructureCells)
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
@@ -57,8 +57,8 @@ entityModified modification cLoc = do
  where
   doAddition newEntity = do
     entLookup <- use $ discovery . structureRecognition . automatons . automatonsByEntity
-    forM_ (M.lookup newEntity entLookup) $ \finder -> do
-      let msg = FoundParticipatingEntity $ ParticipatingEntity (view entityName newEntity) (finder ^. inspectionOffsets)
+    forM_ (HM.lookup newEntity entLookup) $ \finder -> do
+      let msg = FoundParticipatingEntity $ ParticipatingEntity newEntity (finder ^. inspectionOffsets)
       discovery . structureRecognition . recognitionLog %= (msg :)
       registerRowMatches cLoc finder
 
@@ -66,7 +66,7 @@ entityModified modification cLoc = do
     -- Entity was removed; may need to remove registered structure.
     structureRegistry <- use $ discovery . structureRecognition . foundStructures
     forM_ (M.lookup cLoc $ foundByLocation structureRegistry) $ \fs -> do
-      let structureName = Structure.name $ originalDefinition $ structureWithGrid fs
+      let structureName = getName $ originalDefinition $ structureWithGrid fs
        in do
             discovery . structureRecognition . recognitionLog %= (StructureRemoved structureName :)
             discovery . structureRecognition . foundStructures %= removeStructure fs
@@ -87,7 +87,7 @@ entityModified modification cLoc = do
 candidateEntityAt ::
   (Has (State GameState) sig m) =>
   -- | participating entities
-  Set EntityName ->
+  HashSet Entity ->
   Cosmic Location ->
   m (Maybe Entity)
 candidateEntityAt participating cLoc = do
@@ -98,7 +98,7 @@ candidateEntityAt participating cLoc = do
       maybeEnt <- entityAt cLoc
       return $ do
         ent <- maybeEnt
-        guard $ S.member (ent ^. entityName) participating
+        guard $ HS.member ent participating
         return ent
 
 -- | Excludes entities that are already part of a
@@ -106,7 +106,7 @@ candidateEntityAt participating cLoc = do
 getWorldRow ::
   (Has (State GameState) sig m) =>
   -- | participating entities
-  Set EntityName ->
+  HashSet Entity ->
   Cosmic Location ->
   InspectionOffsets ->
   Int32 ->
@@ -125,20 +125,20 @@ getWorldRow participatingEnts cLoc (InspectionOffsets (Min offsetLeft) (Max offs
 registerRowMatches ::
   (Has (State GameState) sig m) =>
   Cosmic Location ->
-  AutomatonInfo EntityName (AtomicKeySymbol Entity) (StructureSearcher Cell EntityName Entity) ->
+  AutomatonInfo Entity (AtomicKeySymbol Entity) (StructureSearcher StructureCells Entity) ->
   m ()
 registerRowMatches cLoc (AutomatonInfo participatingEnts horizontalOffsets sm) = do
   entitiesRow <- getWorldRow participatingEnts cLoc horizontalOffsets 0
   let candidates = findAll sm entitiesRow
       mkCandidateLogEntry c =
         FoundRowCandidate
-          (HaystackContext (map (fmap $ view entityName) entitiesRow) (HaystackPosition $ pIndex c))
-          (map (fmap $ view entityName) . needleContent $ pVal c)
+          (HaystackContext entitiesRow (HaystackPosition $ pIndex c))
+          (needleContent $ pVal c)
           rowMatchInfo
        where
         rowMatchInfo = NE.toList . NE.map (f . myRow) . singleRowItems $ pVal c
          where
-          f x = MatchingRowFrom (rowIndex x) $ Structure.name . originalDefinition . wholeStructure $ x
+          f x = MatchingRowFrom (rowIndex x) $ getName . originalDefinition . wholeStructure $ x
 
       logEntry = FoundRowCandidates $ map mkCandidateLogEntry candidates
 
@@ -151,8 +151,8 @@ checkVerticalMatch ::
   Cosmic Location ->
   -- | Horizontal search offsets
   InspectionOffsets ->
-  Position (StructureSearcher Cell EntityName Entity) ->
-  m [FoundStructure Cell Entity]
+  Position (StructureSearcher StructureCells Entity) ->
+  m [FoundStructure StructureCells Entity]
 checkVerticalMatch cLoc (InspectionOffsets (Min searchOffsetLeft) _) foundRow =
   getMatches2D cLoc horizontalFoundOffsets $ automaton2D $ pVal foundRow
  where
@@ -164,9 +164,9 @@ getFoundStructures ::
   Hashable keySymb =>
   (Int32, Int32) ->
   Cosmic Location ->
-  StateMachine keySymb (StructureWithGrid Cell Entity) ->
+  StateMachine keySymb (StructureWithGrid StructureCells Entity) ->
   [keySymb] ->
-  [FoundStructure Cell Entity]
+  [FoundStructure StructureCells Entity]
 getFoundStructures (offsetTop, offsetLeft) cLoc sm entityRows =
   map mkFound candidates
  where
@@ -182,8 +182,8 @@ getMatches2D ::
   Cosmic Location ->
   -- | Horizontal found offsets (inclusive indices)
   InspectionOffsets ->
-  AutomatonInfo EntityName (SymbolSequence Entity) (StructureWithGrid Cell Entity) ->
-  m [FoundStructure Cell Entity]
+  AutomatonInfo Entity (SymbolSequence Entity) (StructureWithGrid StructureCells Entity) ->
+  m [FoundStructure StructureCells Entity]
 getMatches2D
   cLoc
   horizontalFoundOffsets@(InspectionOffsets (Min offsetLeft) _)
@@ -200,7 +200,7 @@ getMatches2D
 -- The largest structure (by area) shall win.
 registerStructureMatches ::
   (Has (State GameState) sig m) =>
-  [FoundStructure Cell Entity] ->
+  [FoundStructure StructureCells Entity] ->
   m ()
 registerStructureMatches unrankedCandidates = do
   discovery . structureRecognition . recognitionLog %= (newMsg :)
@@ -211,5 +211,5 @@ registerStructureMatches unrankedCandidates = do
   -- Sorted by decreasing order of preference.
   rankedCandidates = sortOn Down unrankedCandidates
 
-  getStructureName (FoundStructure swg _) = Structure.name $ originalDefinition swg
-  newMsg = FoundCompleteStructureCandidates $ map getStructureName rankedCandidates
+  getStructName (FoundStructure swg _) = getName $ originalDefinition swg
+  newMsg = FoundCompleteStructureCandidates $ map getStructName rankedCandidates

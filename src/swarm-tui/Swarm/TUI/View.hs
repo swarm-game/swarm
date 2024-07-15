@@ -36,7 +36,6 @@ module Swarm.TUI.View (
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Forms
-import Brick.Keybindings (Binding (..), firstActiveBinding, ppBinding)
 import Brick.Widgets.Border (
   hBorder,
   hBorderWithLabel,
@@ -70,7 +69,6 @@ import Data.Set qualified as Set (toList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
-import Graphics.Vty qualified as V
 import Linear
 import Network.Wai.Handler.Warp (Port)
 import Numeric (showFFloat)
@@ -135,7 +133,6 @@ import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.View
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Event (SwarmEvent)
 import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.KeyBindings (handlerNameKeysDescription)
@@ -147,6 +144,7 @@ import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Logo
 import Swarm.TUI.View.Objective qualified as GR
+import Swarm.TUI.View.Popup
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.TUI.View.Util as VU
 import Swarm.Util
@@ -158,20 +156,24 @@ import Text.Printf
 import Text.Wrap
 import Witch (into)
 
--- | The main entry point for drawing the entire UI.  Figures out
---   which menu screen we should show (if any), or just the game itself.
+-- | The main entry point for drawing the entire UI.
 drawUI :: AppState -> [Widget Name]
-drawUI s
-  | s ^. uiState . uiPlaying = drawGameUI s
-  | otherwise = case s ^. uiState . uiMenu of
-      -- We should never reach the NoMenu case if uiPlaying is false; we would have
-      -- quit the app instead.  But just in case, we display the main menu anyway.
-      NoMenu -> [drawMainMenuUI s (mainMenu NewGame)]
-      MainMenu l -> [drawMainMenuUI s l]
-      NewGameMenu stk -> drawNewGameMenuUI stk $ s ^. uiState . uiLaunchConfig
-      AchievementsMenu l -> [drawAchievementsMenuUI s l]
-      MessagesMenu -> [drawMainMessages s]
-      AboutMenu -> [drawAboutMenuUI (s ^. runtimeState . appData . at "about")]
+drawUI s = drawPopups s : mainLayers
+ where
+  mainLayers
+    | s ^. uiState . uiPlaying = drawGameUI s
+    | otherwise = drawMenuUI s
+
+drawMenuUI :: AppState -> [Widget Name]
+drawMenuUI s = case s ^. uiState . uiMenu of
+  -- We should never reach the NoMenu case if uiPlaying is false; we would have
+  -- quit the app instead.  But just in case, we display the main menu anyway.
+  NoMenu -> [drawMainMenuUI s (mainMenu NewGame)]
+  MainMenu l -> [drawMainMenuUI s l]
+  NewGameMenu stk -> drawNewGameMenuUI stk $ s ^. uiState . uiLaunchConfig
+  AchievementsMenu l -> [drawAchievementsMenuUI s l]
+  MessagesMenu -> [drawMainMessages s]
+  AboutMenu -> [drawAboutMenuUI (s ^. runtimeState . appData . at "about")]
 
 drawMainMessages :: AppState -> Widget Name
 drawMainMessages s = renderDialog dial . padBottom Max . scrollList $ drawLogs ls
@@ -796,7 +798,7 @@ helpWidget theSeed mport keyState =
     vBox
       [ heading boldAttr "Have questions? Want some tips? Check out:"
       , txt "  - The Swarm wiki, " <+> hyperlink wikiUrl (txt wikiUrl)
-      , txt "  - The #swarm IRC channel on " <+> hyperlink swarmWebIRC (txt swarmWebIRC)
+      , txt "  - The Swarm Discord server at " <+> hyperlink swarmDiscord (txt swarmDiscord)
       ]
   info =
     vBox
@@ -976,7 +978,7 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
       , notificationKey messageNotifications SE.ViewMessagesEvent "Messages"
       , structuresKey
       ]
-  keyM = bindingText s . SE.Main
+  keyM = VU.bindingText s . SE.Main
 
 -- | Draw a menu explaining what key commands are available for the
 --   current panel.  This menu is displayed as one or two lines in
@@ -1097,22 +1099,10 @@ drawKeyMenu s =
           ]
   keyCmdsFor (Just (FocusablePanel InfoPanel)) = []
   keyCmdsFor _ = []
-  keyM = bindingText s . SE.Main
-  keyR = bindingText s . SE.REPL
-  keyE = bindingText s . SE.Robot
-  keyW = bindingText s . SE.World
-
-bindingText :: AppState -> SwarmEvent -> Text
-bindingText s e = maybe "" ppBindingShort b
- where
-  conf = s ^. keyEventHandling . keyConfig
-  b = firstActiveBinding conf e
-  ppBindingShort = \case
-    Binding V.KUp m | null m -> "↑"
-    Binding V.KDown m | null m -> "↓"
-    Binding V.KLeft m | null m -> "←"
-    Binding V.KRight m | null m -> "→"
-    bi -> ppBinding bi
+  keyM = VU.bindingText s . SE.Main
+  keyR = VU.bindingText s . SE.REPL
+  keyE = VU.bindingText s . SE.Robot
+  keyW = VU.bindingText s . SE.World
 
 data KeyHighlight = NoHighlight | Alert | PanelSpecific
 
@@ -1601,7 +1591,7 @@ drawREPL s =
  where
   -- rendered history lines fitting above REPL prompt
   history :: [Widget n]
-  history = map fmt . toList . getSessionREPLHistoryItems $ theRepl ^. replHistory
+  history = map fmt . filter (not . isREPLSaved) . toList . getSessionREPLHistoryItems $ theRepl ^. replHistory
   currentPrompt :: Widget Name
   currentPrompt = case (isActive <$> base, theRepl ^. replControlMode) of
     (_, Handling) -> padRight Max $ txt "[key handler running, M-k to toggle]"
@@ -1613,9 +1603,10 @@ drawREPL s =
   -- indexing that may be an alternative to this:
   base = s ^. gameState . robotInfo . robotMap . at 0
 
-  fmt (REPLEntry e) = txt $ "> " <> e
-  fmt (REPLOutput t) = txt t
-  fmt (REPLError t) = txtWrapWith indent2 {preserveIndentation = True} t
+  fmt (REPLHistItem itemType t) = case itemType of
+    REPLEntry {} -> txt $ "> " <> t
+    REPLOutput -> txt t
+    REPLError -> txtWrapWith indent2 {preserveIndentation = True} t
   mayDebug = [drawRobotMachine s True | s ^. uiState . uiGameplay . uiShowDebug]
 
 ------------------------------------------------------------
