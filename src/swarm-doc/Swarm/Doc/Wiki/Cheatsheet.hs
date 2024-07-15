@@ -62,28 +62,26 @@ data SheetType = Entities | Terrain | Commands | CommandMatrix | Capabilities | 
 
 -- * Functions
 
-makeWikiPage :: PageAddress -> Maybe SheetType -> IO ()
+makeWikiPage :: PageAddress -> SheetType -> IO ()
 makeWikiPage address s = case s of
-  Nothing -> error "Not implemented for all Wikis"
-  Just st -> case st of
-    Commands -> T.putStrLn commandsPage
-    CommandMatrix -> case pandocToText commandsMatrix of
-      Right x -> T.putStrLn x
-      Left x -> error $ T.unpack x
-    Capabilities -> simpleErrorHandle $ do
-      entities <- loadEntities
-      sendIO $ T.putStrLn $ capabilityPage address entities
-    Entities -> simpleErrorHandle $ do
-      entities <- loadEntities
-      sendIO $ T.putStrLn $ entitiesPage address (Map.elems $ entitiesByName entities)
-    Terrain -> simpleErrorHandle $ do
-      terrains <- loadTerrain
-      sendIO . T.putStrLn . T.unlines . map showT . Map.elems $ terrainByName terrains
-    Recipes -> simpleErrorHandle $ do
-      entities <- loadEntities
-      recipes <- loadRecipes entities
-      sendIO $ T.putStrLn $ recipePage address recipes
-    Scenario -> genScenarioSchemaDocs
+  Commands -> T.putStrLn commandsPage
+  CommandMatrix -> case pandocToText commandsMatrix of
+    Right x -> T.putStrLn x
+    Left x -> error $ T.unpack x
+  Capabilities -> simpleErrorHandle $ do
+    entities <- loadEntities
+    sendIO $ T.putStrLn $ capabilityPage address entities
+  Entities -> simpleErrorHandle $ do
+    entities <- loadEntities
+    sendIO $ T.putStrLn $ entitiesPage address (Map.elems $ entitiesByName entities)
+  Terrain -> simpleErrorHandle $ do
+    terrains <- loadTerrain
+    sendIO . T.putStrLn . T.unlines . map showT . Map.elems $ terrainByName terrains
+  Recipes -> simpleErrorHandle $ do
+    entities <- loadEntities
+    recipes <- loadRecipes entities
+    sendIO $ T.putStrLn $ recipePage address recipes
+  Scenario -> genScenarioSchemaDocs
 
 -- ----------------------------------------------------------------------------
 -- GENERATE TABLES: COMMANDS, ENTITIES AND CAPABILITIES TO MARKDOWN TABLE
