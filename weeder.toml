@@ -1,0 +1,69 @@
+roots = [
+    "^Main.main$",
+    "^Paths_.*",
+
+    # Workarounds for TH parsing:
+    # -------------------------------
+    "^Swarm.Language.Pipeline.QQ.tmQ$",
+    "^Swarm.Language.Parser.QQ.tyQ$",
+    "^Swarm.Util.Lens.makeLensesNoSigs$",
+    "^Swarm.Util.Lens.makeLensesExcluding$",
+
+    # Workarounds for type families:
+    # -------------------------------
+    "^Swarm.Game.World.Compile.NoFunParams$",
+
+    # True positives:
+    # =====================================
+    "^Main.prop_hittingSetMinimal$",
+    "^Main.printAllLogs$",
+    "^Control.Carrier.Accum.FixedStrict.execAccum$",
+    "^Swarm.App.demoWeb$",
+    "^Swarm.Effect.Unify.Common.dom$",
+    "^Swarm.Effect.Unify.Fast.@@$",
+    "^Swarm.Effect.Unify.Naive.runUnification$",
+    "^Swarm.Game.Entity.entityNameFor$",
+    "^Swarm.Game.Entity.singleton$",
+    "^Swarm.Game.Entity.Cosmetic.getBackground$",
+    "^Swarm.Game.Step.traceLogShow$",
+    "^Swarm.Game.World.Compile.compile$",
+    "^Swarm.Game.World.Compile.runCTerm$",
+    "^Swarm.Game.World.lookupTerrainM$",
+    "^Swarm.Language.Context.withBindings$",
+    "^Swarm.Language.Context.singleton$",
+    "^Swarm.Language.Parser.Util.showShortError$",
+    "^Swarm.Language.Pipeline.extractTCtx$",
+    "^Swarm.Language.Pretty.Prec$",
+    "^Swarm.Language.Pretty.appliedTermPrec$",
+    "^Swarm.Language.Requirements.Type.insert$",
+    "^Swarm.Language.Syntax.Pattern.UTerm$",
+    "^Swarm.Language.Syntax.Util.asTree$",
+    "^Swarm.Language.Syntax.Util.mapFreeS$",
+    "^Swarm.Util.replaceLast$",
+    "^Swarm.Util.reflow$",
+    "^Swarm.Util.isSuccessOr$",
+    "^Swarm.Util._NonEmpty$",
+    
+    # True positives (unused lenses):
+    # -------------------------------
+    "^Swarm.Language.Typed.polytype$",
+    "^Swarm.Language.Typed.requires$",
+    "^Swarm.Language.Typed.value$",
+    "^Swarm.Language.Value.emptyEnv$",
+    "^Swarm.Game.Scenario.staticPlacements$",
+    "^Swarm.Game.Scenario.structureDefs$",
+    "^Swarm.Game.Scenario.Scoring.Best.scenarioBestByAstSize$",
+    "^Swarm.Game.Scenario.Scoring.Best.scenarioBestByCharCount$",
+    "^Swarm.Game.Scenario.Scoring.Best.scenarioBestByTicks$",
+    "^Swarm.Game.Scenario.Scoring.Best.scenarioBestByTime$",
+    "^Swarm.Game.ScenarioInfo._NotStarted$",
+    "^Swarm.Game.ScenarioInfo._Played$",
+    "^Swarm.Game.State.Robot._VCLocation$",
+    "^Swarm.Game.State.Robot._VCRobot$",
+    "^Swarm.Game.State.Substate._NoWinCondition$",
+    "^Swarm.Game.State.Substate._WinConditions$",
+    ]
+
+type-class-roots = true
+unused-types = true
+
