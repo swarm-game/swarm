@@ -191,7 +191,7 @@ library swarm-lang
     terminal-size >=0.3 && <1.0,
     text,
     text-rope >=0.2 && <0.3,
-    unicode-show,
+    unicode-show >=0.1 && <0.2,
     vector,
     vty,
     witch,
