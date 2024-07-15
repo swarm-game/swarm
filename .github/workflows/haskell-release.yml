@@ -40,7 +40,7 @@ jobs:
 
   build_artifact:
     needs: [create_release]
-    name: Haskell-Release - ${{ matrix.os }} - ${{ matrix.compiler }}
+    name: Haskell-Release - ${{ matrix.os }} - ${{ matrix.ghc }}
     runs-on: ${{ matrix.os }}
     container:
       # It might be good idea to use older runner for building binary:
@@ -51,14 +51,18 @@ jobs:
       matrix:
         # macos-13 points to x64 based OS and mocos-latest points to arm based OS
         os: [ubuntu-latest, macos-13, macos-latest]
+        cabal:
+            - 3.12.1.0
+        ghc:
+            - 9.8.2
 
     steps:
       - uses: haskell-actions/setup@v2
         id: setup-haskell-cabal
         name: Setup Haskell
         with:
-            ghc-version: 9.8.2
-            cabal-version: 3.12.1.0
+            ghc-version: ${{ matrix.ghc }}
+            cabal-version: ${{ matrix.cabal }}
 
       - name: Check out code
         uses: actions/checkout@v4
