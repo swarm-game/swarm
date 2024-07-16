@@ -60,11 +60,8 @@ jobs:
             ${{ matrix.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
             ${{ matrix.os }}-${{ matrix.ghc }}-
 
-      - name: Install dependencies
-        run: cabal build all --only-dependencies
-
       - name: Build
-        run: cabal build all
+        run: cabal build --enable-tests --enable-benchmarks --write-ghc-environment-files=always
 
       - name: Test
-        run: cabal test all
+        run: cabal test --enable-tests
