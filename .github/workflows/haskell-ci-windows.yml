@@ -69,4 +69,4 @@ jobs:
         run: cabal build all
 
       - name: Test
-        run: cabal test --enable-tests
+        run: cabal test all
