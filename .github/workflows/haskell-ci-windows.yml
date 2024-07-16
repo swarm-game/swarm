@@ -66,7 +66,7 @@ jobs:
         run: cabal build all --only-dependencies
 
       - name: Build
-        run: cabal build --enable-tests --enable-benchmarks --write-ghc-environment-files=always
+        run: cabal build all
 
       - name: Test
         run: cabal test --enable-tests
