@@ -26,10 +26,17 @@ SOLUTION_FILEPATH=$3
 
 cd $(git rev-parse --show-toplevel)
 
-BASE_UPLOAD_URL=http://$HOST/upload
+BASE_UPLOAD_URL=http://$HOST/api/private/upload
 
 SCENARIO_UPLOAD_URL=$BASE_UPLOAD_URL/scenario
-SCENARIO_HASH=$(curl --silent -F "my_file=@$SCENARIO_FILEPATH" $SCENARIO_UPLOAD_URL | jq -r .scenarioFileMetadata.fileHash)
+
+
+COOKIE_JAR_FILE=$(mktemp --suffix .cookies)
+tournament/scripts/demo/client/login.sh $COOKIE_JAR_FILE
+
+SCENARIO_HASH=$(curl --silent --cookie $COOKIE_JAR_FILE -F "my_file=@$SCENARIO_FILEPATH" $SCENARIO_UPLOAD_URL | jq -r .scenarioFileMetadata.fileHash)
 
 SOLUTION_UPLOAD_URL=$BASE_UPLOAD_URL/solution
-curl --silent -F "scenario=$SCENARIO_HASH" -F "my_file=@$SOLUTION_FILEPATH" $SOLUTION_UPLOAD_URL
+curl --silent --cookie $COOKIE_JAR_FILE -F "scenario=$SCENARIO_HASH" -F "my_file=@$SOLUTION_FILEPATH" $SOLUTION_UPLOAD_URL
+
+rm $COOKIE_JAR_FILE
