@@ -52,13 +52,18 @@ jobs:
         run: cabal freeze
 
       - uses: actions/cache@v4
-        name: Cache ~/.cabal/store
+        id: cache
+        name: ~/.cabal/store
         with:
           path: ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
           key: ${{ matrix.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
           restore-keys: |
             ${{ matrix.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
             ${{ matrix.os }}-${{ matrix.ghc }}-
+
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: cabal build all --only-dependencies
 
       - name: Build
         run: cabal build --enable-tests --enable-benchmarks --write-ghc-environment-files=always
