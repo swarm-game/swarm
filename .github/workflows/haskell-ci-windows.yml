@@ -61,6 +61,7 @@ jobs:
             ${{ matrix.os }}-${{ matrix.ghc }}-
 
       - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
         run: cabal build all --only-dependencies
 
       - name: Build
