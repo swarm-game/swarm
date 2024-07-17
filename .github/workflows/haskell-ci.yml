@@ -3,7 +3,8 @@
 ## When changing versions, do not forget to update .mergify.yaml    #
 ##                                                                  #
 ## WARNING:                                                         #
-## Hand edited to add filter in on.push and on.pull_request.        #
+## Hand-edited to add filter in on.push and on.pull_request.        #
+## Also hand-edited to add 'weeder' step to GHC 9.6.5.              #
 ## If possible do not manually edit beside the above.               #
 #####################################################################
 #
