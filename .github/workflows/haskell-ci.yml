@@ -3,7 +3,8 @@
 ## When changing versions, do not forget to update .mergify.yaml    #
 ##                                                                  #
 ## WARNING:                                                         #
-## Hand edited to add filter in on.push and on.pull_request.        #
+## Hand-edited to add filter in on.push and on.pull_request.        #
+## Also hand-edited to add 'weeder' step to GHC 9.6.5.              #
 ## If possible do not manually edit beside the above.               #
 #####################################################################
 #
@@ -220,6 +221,13 @@ jobs:
       - name: build
         run: |
           $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --write-ghc-environment-files=always
+      - name: weeder
+        if: matrix.compilerVersion == '9.6.5'
+        uses: freckle/weeder-action@v2
+        with:
+          ghc-version: ${{ matrix.compilerVersion }}
+          weeder-arguments: --config $GITHUB_WORKSPACE/source/weeder.toml
+          working-directory: ${{ env.PKGDIR_swarm }}
       - name: tests
         run: |
           $CABAL v2-test $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --test-show-details=direct

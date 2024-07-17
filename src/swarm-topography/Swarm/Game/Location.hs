@@ -20,7 +20,6 @@ module Swarm.Game.Location (
   toDirection,
   toAbsDirection,
   nearestDirection,
-  fromDirection,
   isCardinal,
   north,
   south,
@@ -191,14 +190,6 @@ nearestDirection coord =
   index :: Int
   index = round $ fromIntegral (length orderedDirs) * angle
   orderedDirs = Util.enumerateNonEmpty
-
--- | Convert a 'Direction' into a corresponding 'Heading'.  Note that
---   this only does something reasonable for 'DNorth', 'DSouth', 'DEast',
---   and 'DWest'---other 'Direction's return the zero vector.
-fromDirection :: Direction -> Heading
-fromDirection = \case
-  DAbsolute x -> toHeading x
-  _ -> zero
 
 -- | Manhattan distance between world locations.
 manhattan :: Location -> Location -> Int32
