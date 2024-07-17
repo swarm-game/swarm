@@ -52,7 +52,6 @@ jobs:
         run: cabal freeze
 
       - uses: actions/cache@v4
-        id: cache
         name: ~/.cabal/store
         with:
           path: ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
@@ -62,7 +61,6 @@ jobs:
             ${{ matrix.os }}-${{ matrix.ghc }}-
 
       - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true'
         run: cabal build all --only-dependencies
 
       - name: Build
