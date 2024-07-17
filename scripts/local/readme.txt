@@ -1,0 +1,1 @@
+You can use this folder to store local scripts (they will be ignored by git)
