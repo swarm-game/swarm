@@ -642,7 +642,7 @@ constInfo c = case c of
           <> "that is done automatically once you have a listening device equipped."
       , "Note that you can see the messages either in your logger device or the message panel."
       ]
-  Log -> command 1 short $ shortDoc (Set.singleton $ Mutation LogEmission) "Log the string in the robot's logger."
+  Log -> command 1 Intangible $ shortDoc (Set.singleton $ Mutation LogEmission) "Log the string in the robot's logger."
   View ->
     command 1 short . doc (Set.singleton $ Query $ Sensing RobotSensing) "View the given actor." $
       [ "This will recenter the map on the target robot and allow its inventory and logs to be inspected."

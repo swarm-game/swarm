@@ -13,7 +13,7 @@ objectives:
         ishere "lambda"
       } { return false }
 solution: |
-  log "I will win next tick!"; place "lambda";
+  log "I will win next tick!"; wait 1; place "lambda";
 robots:
   - name: base
     loc: [0, 0]
@@ -21,6 +21,7 @@ robots:
     devices:
       - logger
       - grabber
+      - clock
     inventory:
       - [1, lambda]
   - name: sleeper
@@ -30,7 +31,7 @@ robots:
       - logger
       - clock
     program: |
-      log "I shall sleep"; wait 1; log "I have awoken"
+      log "I shall sleep"; wait 2; log "I have awoken"
 world:
   palette:
     '.': [grass]
