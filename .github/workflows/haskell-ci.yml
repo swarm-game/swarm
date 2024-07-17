@@ -223,6 +223,7 @@ jobs:
         run: |
           $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --write-ghc-environment-files=always
       - name: weeder
+        if: matrix.compilerVersion == '9.6.5'
         uses: freckle/weeder-action@v2
         with:
           ghc-version: ${{ matrix.compilerVersion }}
