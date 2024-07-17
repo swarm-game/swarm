@@ -225,7 +225,7 @@ jobs:
         uses: freckle/weeder-action@v2
         with:
           ghc-version: ${{ matrix.compilerVersion }}
-          weeder-arguments: --config ${{ env.GITHUB_WORKSPACE }}/source/weeder.toml
+          weeder-arguments: --config $GITHUB_WORKSPACE/source/weeder.toml
           working-directory: ${{ env.PKGDIR_swarm }}
       - name: tests
         run: |
