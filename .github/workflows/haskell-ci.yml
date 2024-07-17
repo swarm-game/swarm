@@ -188,7 +188,6 @@ jobs:
           mkdir -p unpacked
           find sdist -maxdepth 1 -type f -name '*.tar.gz' -exec tar -C $GITHUB_WORKSPACE/unpacked -xzvf {} \;
       - name: generate cabal.project
-        id: cabalvars
         run: |
           PKGDIR_swarm="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/swarm-[0-9.]*')"
           echo "PKGDIR_swarm=${PKGDIR_swarm}" >> "$GITHUB_ENV"
@@ -204,7 +203,6 @@ jobs:
           $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: any.$_ installed\n" unless /^(swarm)$/; }' >> cabal.project.local
           cat cabal.project
           cat cabal.project.local
-          echo "GIT_SOURCE_CHECKOUT=${GITHUB_WORKSPACE}/source" >> "$GITHUB_OUTPUT"
       - name: dump install plan
         run: |
           $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH --dry-run all
@@ -227,7 +225,7 @@ jobs:
         uses: freckle/weeder-action@v2
         with:
           ghc-version: ${{ matrix.compilerVersion }}
-          weeder-arguments: --config ${{ steps.cabalvars.outputs.GIT_SOURCE_CHECKOUT }}/weeder.toml
+          weeder-arguments: --config ${{ env.GITHUB_WORKSPACE }}/source/weeder.toml
           working-directory: ${{ env.PKGDIR_swarm }}
       - name: tests
         run: |
