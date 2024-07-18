@@ -660,7 +660,7 @@ library swarm-doc
     fused-effects >=1.1.1.1 && <1.2,
     lens >=4.19 && <5.4,
     mtl >=2.2.2 && <2.4,
-    pandoc >=3.0 && <3.2,
+    pandoc >=3.0 && <3.3,
     pandoc-types >=1.23 && <1.24,
     scientific >=0.3.6 && <0.3.8,
     servant-docs >=0.12 && <0.14,
