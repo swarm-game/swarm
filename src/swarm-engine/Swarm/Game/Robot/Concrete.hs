@@ -9,7 +9,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Support for instantiated robots.
+-- Support for instantiated bots.
 module Swarm.Game.Robot.Concrete (
   -- * Lenses
   machine,
