@@ -194,7 +194,7 @@ testScenarioSolutions rs ui key =
     [ testGroup
         "Tutorial"
         [ testTutorialSolution Default "Tutorials/backstory"
-        , testTutorialSolution (Sec 3) "Tutorials/move"
+        , testTutorialSolution (Sec 10) "Tutorials/move"
         , testTutorialSolution Default "Tutorials/craft"
         , testTutorialSolution Default "Tutorials/grab"
         , testTutorialSolution Default "Tutorials/place"

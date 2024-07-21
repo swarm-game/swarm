@@ -28,27 +28,27 @@ end
 
 def text2int = \t. fromDigit (tochar $ charat (chars t - 1) t) + if (chars t > 1) {0} {10 * text2int (fst $ split 1 t)} end
 
-def args =
+args <- instant (
     let x = fst (split 2 name) in
     let y = fst $ split 2 $ snd $ split 3 name in
     let n = fst $ split 1 $ snd $ split 6 name in
     let a = fst $ split 1 $ snd $ split 8 name in
     let e = snd $ split 10 name in
-    [name=name, position=(text2int x, text2int y), n=fromDigit n, action=a, entity=e]
-end
+    return [name=name, position=(text2int x, text2int y), n=fromDigit n, action=a, entity=e]
+);
 
-def act_lazy: Text -> Text -> Cmd (Cmd Unit) = \a.\e.
+def act_lazy: Text -> Text -> Cmd (Cmd Unit) = \a.\e. instant $
     if (a == "S") {
         if (e != "") { create e } {};
         return (swap e; log $ a ++ ": " ++ e)
-    } { if (a == "G") {
+    } $elif (a == "G") {
         return (grab; log a)
-    } { if (a == "P") {
+    } $elif (a == "P") {
         if (e != "") { create e } {};
         return (place e; log $ a ++ ": " ++ e)
-    } {
-        return (say $ "Finished waiting for check but I don't know what to do: '" ++ a ++ "'")
-    }}}
+    } $else {
+        return (fail $ "Finished waiting for check but I don't know what to do: '" ++ a ++ "'")
+    }
 end
 
 def main =
