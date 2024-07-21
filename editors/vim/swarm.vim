@@ -9,7 +9,7 @@ syn match Operators "[-=!<>|&+*/^$:]"
 syn match Comment "//.*$"
 syn region MultilineComment start="/\*" end="\*/"
 syn match Brackets "[\[\]\(\)\{\}]"
-syn match String "\".*\""
+syn match String "\"\(\\\(['\"bfnrtav0-9]\|x[0-9a-fA-F]\)\|[^\\\"]\)*\""
 syn match Number "\<[-]\=\d\+\>"
 
 hi def link Keyword Statement
