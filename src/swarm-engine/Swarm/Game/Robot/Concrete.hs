@@ -141,7 +141,7 @@ instance Ae.ToJSON Robot where
     Ae.object $
       catMaybes
         [ "id" .== (r ^. robotID)
-        , "name" .== (r ^. robotEntity . entityDisplay)
+        , "name" .== (r ^. robotEntity . entityName)
         , "description" .=? (r ^. robotEntity . entityDescription) $ mempty
         , "loc" .== (r ^. robotLocation)
         , "dir" .=? (r ^. robotEntity . entityOrientation) $ zero
