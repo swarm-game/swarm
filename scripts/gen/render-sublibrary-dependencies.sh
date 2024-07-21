@@ -1,6 +1,6 @@
 #!/bin/bash -ex
 
-cd $(git rev-parse --show-toplevel)/..
+cd $(git rev-parse --show-toplevel)
 
 # First, install cabal-plan:
 #
