@@ -80,38 +80,38 @@ world:
   palette:
     '.': [blank]
     '*': [blank, flower]
-    'X': [blank, null, 1P flower]
-    'Y': [blank, null, 2P flower]
-    'Z': [blank, null, 3P flower]
+    'X': [blank, null, 03 00 1 P flower]
+    'Y': [blank, null, 07 01 2 P flower]
+    'Z': [blank, null, 06 04 2 P flower]
     # FIRST ROOM
     '┌': [blank, upper left corner]
-    '┐': [blank, upper right corner, 1S down and horizontal wall]
+    '┐': [blank, upper right corner, 03 00 1 S down and horizontal wall]
     '└': [blank, lower left corner]
-    '┘': [blank, lower right corner, 1S up and horizontal wall]
+    '┘': [blank, lower right corner, 03 00 1 S up and horizontal wall]
     '─': [blank, horizontal wall]
     '│': [blank, vertical wall]
     # SECOND ROOM
     '1': [blank, vertical wall, 1G]
-    '-': [blank, null, 1P horizontal wall]
-    '|': [blank, null, 1P vertical wall]
-    'c': [blank, null, 1P upper right corner, 2S left and vertical wall]
-    'b': [blank, null, 1P lower right corner]
-    'd': [blank, null, 1P horizontal wall, 2S up and horizontal wall]
+    '-': [blank, null, 03 00 1 P horizontal wall]
+    '|': [blank, null, 03 00 1 P vertical wall]
+    'c': [blank, null, 03 00 1 P upper right corner, 07 01 2 S left and vertical wall]
+    'b': [blank, null, 03 00 1 P lower right corner]
+    'd': [blank, null, 03 00 1 P horizontal wall, 07 01 2 S up and horizontal wall]
     # THIRD ROOM
-    '2': [blank, null, 1P horizontal wall, 2G]
-    '~': [blank, null, 2P horizontal wall]
-    '/': [blank, null, 2P vertical wall]
-    'R': [blank, null, 2P upper right corner]
-    'L': [blank, null, 2P upper left corner, 3S down and horizontal wall]
-    'K': [blank, null, 2P vertical wall, 3S left and vertical wall]
+    '2': [blank, null, 03 00 1 P horizontal wall, 2G]
+    '~': [blank, null, 07 01 2 P horizontal wall]
+    '/': [blank, null, 07 01 2 P vertical wall]
+    'R': [blank, null, 07 01 2 P upper right corner]
+    'L': [blank, null, 07 01 2 P upper left corner, 06 04 2 S down and horizontal wall]
+    'K': [blank, null, 07 01 2 P vertical wall, 06 04 2 S left and vertical wall]
     # FOURTH ROOM
-    '3': [blank, null, 2P vertical wall, 3G]
-    '_': [blank, null, 3P horizontal wall]
-    '\': [blank, null, 3P vertical wall]
-    'A': [blank, null, 3P lower left corner]
-    'B': [blank, null, 3P lower right corner]
-    'C': [blank, null, 3P upper right corner]
-    'D': [blank, null, 3P upper left corner]
+    '3': [blank, null, 07 01 2 P vertical wall, 3G]
+    '_': [blank, null, 06 04 2 P horizontal wall]
+    '\': [blank, null, 06 04 2 P vertical wall]
+    'A': [blank, null, 06 04 2 P lower left corner]
+    'B': [blank, null, 06 04 2 P lower right corner]
+    'C': [blank, null, 06 04 2 P upper right corner]
+    'D': [blank, null, 06 04 2 P upper left corner]
   upperleft: [-1, 9]
   map: |
     D_________C
@@ -198,27 +198,27 @@ robots:
   #################
   ## HORIZONTAL  ##
   #################
-  - name: 1P horizontal wall
+  - name: 03 00 1 P horizontal wall
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 2P horizontal wall
+    program: run "scenarios/Tutorials/move_surveil.sw"
+  - name: 07 01 2 P horizontal wall
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 3P horizontal wall
+    program: run "scenarios/Tutorials/move_surveil.sw"
+  - name: 06 04 2 P horizontal wall
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_surveil.sw"
   #################
   ## VERTICAL    ##
   #################
-  - name: 1P vertical wall
+  - name: 03 00 1 P vertical wall
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 2P vertical wall
+    program: run "scenarios/Tutorials/move_surveil.sw"
+  - name: 07 01 2 P vertical wall
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 3P vertical wall
+    program: run "scenarios/Tutorials/move_surveil.sw"
+  - name: 06 04 2 P vertical wall
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_surveil.sw"
   #################
   ## CORNERS     ##
   #################
@@ -232,75 +232,75 @@ robots:
   #########
   ##  A  ##
   #########
-  - name: 1P lower left corner
+  - name: 03 00 1 P lower left corner
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 2P lower left corner
+    program: run "scenarios/Tutorials/move_surveil.sw"
+  - name: 07 01 2 P lower left corner
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 3P lower left corner
+    program: run "scenarios/Tutorials/move_surveil.sw"
+  - name: 06 04 2 P lower left corner
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_surveil.sw"
   #########
   ##  B  ##
   #########
-  - name: 1P lower right corner
+  - name: 03 00 1 P lower right corner
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 2P lower right corner
+    program: run "scenarios/Tutorials/move_surveil.sw"
+  - name: 07 01 2 P lower right corner
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 3P lower right corner
+    program: run "scenarios/Tutorials/move_surveil.sw"
+  - name: 06 04 2 P lower right corner
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_surveil.sw"
   #########
   ##  C  ##
   #########
-  - name: 1P upper right corner
+  - name: 03 00 1 P upper right corner
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 2P upper right corner
+    program: run "scenarios/Tutorials/move_surveil.sw"
+  - name: 07 01 2 P upper right corner
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 3P upper right corner
+    program: run "scenarios/Tutorials/move_surveil.sw"
+  - name: 06 04 2 P upper right corner
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_surveil.sw"
   #########
   ##  D  ##
   #########
-  - name: 1P upper left corner
+  - name: 03 00 1 P upper left corner
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 2P upper left corner
+    program: run "scenarios/Tutorials/move_surveil.sw"
+  - name: 07 01 2 P upper left corner
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 3P upper left corner
+    program: run "scenarios/Tutorials/move_surveil.sw"
+  - name: 06 04 2 P upper left corner
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_surveil.sw"
   #################
   ## SEPARATORS  ##
   #################
   # 1
-  - name: 1S down and horizontal wall
+  - name: 03 00 1 S down and horizontal wall
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 1S up and horizontal wall
+    program: run "scenarios/Tutorials/move_surveil.sw"
+  - name: 03 00 1 S up and horizontal wall
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_surveil.sw"
   # 2
-  - name: 2S left and vertical wall
+  - name: 07 01 2 S left and vertical wall
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 2S up and horizontal wall
+    program: run "scenarios/Tutorials/move_surveil.sw"
+  - name: 07 01 2 S up and horizontal wall
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_surveil.sw"
   # 3
-  - name: 3S left and vertical wall
+  - name: 06 04 2 S left and vertical wall
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 3S down and horizontal wall
+    program: run "scenarios/Tutorials/move_surveil.sw"
+  - name: 06 04 2 S down and horizontal wall
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_surveil.sw"
   #################
   ## GATES       ##
   #################
@@ -320,15 +320,15 @@ robots:
   #################
   ## GARDENERS   ##
   #################
-  - name: 1P flower
+  - name: 03 00 1 P flower
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 2P flower
+    program: run "scenarios/Tutorials/move_surveil.sw"
+  - name: 07 01 2 P flower
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 3P flower
+    program: run "scenarios/Tutorials/move_surveil.sw"
+  - name: 06 04 2 P flower
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
+    program: run "scenarios/Tutorials/move_surveil.sw"
 entities:
   - name: Win
     display:
