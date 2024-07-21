@@ -1,41 +1,9 @@
-// name format: 00 00 N A Entity
-// 00 00  - the position to surveil (two digit with leading zeros)
-// N      - wait for the nth change
-// A      - one letter action (S/G/P = swap/grab/place)
-// Entity - the entity name parameter to the place/swap action
-name <- whoami;
-
-def repeat : Int -> Cmd Unit -> Cmd Unit =
-  \n. \c. if (n == 0) {} {c ; repeat (n-1) c}
+def repeat : Int -> (Int -> Cmd Unit) -> Cmd Unit =
+  \n. \c. if (n == 0) {} {c n; repeat (n-1) c}
 end
 
 def elif = \b.\t.\e. {if b t e} end
 def else = \e. e end
-
-def fromDigit = \d.
-    if (d == "0") {0}
-    $elif (d == "1") {1}
-    $elif (d == "2") {2}
-    $elif (d == "3") {3}
-    $elif (d == "4") {4}
-    $elif (d == "5") {5}
-    $elif (d == "6") {6}
-    $elif (d == "7") {7}
-    $elif (d == "8") {8}
-    $elif (d == "9") {9}
-    $else {undefined}
-end
-
-def text2int = \t. fromDigit (tochar $ charat (chars t - 1) t) + if (chars t > 1) {0} {10 * text2int (fst $ split 1 t)} end
-
-args <- instant (
-    let x = fst (split 2 name) in
-    let y = fst $ split 2 $ snd $ split 3 name in
-    let n = fst $ split 1 $ snd $ split 6 name in
-    let a = fst $ split 1 $ snd $ split 8 name in
-    let e = snd $ split 10 name in
-    return [name=name, position=(text2int x, text2int y), n=fromDigit n, action=a, entity=e]
-);
 
 def act_lazy: Text -> Text -> Cmd (Cmd Unit) = \a.\e. instant $
     if (a == "S") {
@@ -51,14 +19,48 @@ def act_lazy: Text -> Text -> Cmd (Cmd Unit) = \a.\e. instant $
     }
 end
 
-def main =
-    log $ format args;
-    act <- act_lazy args.action args.entity;
-    repeat args.n (
-        surveil args.position;
-        wait 1000000;
-    );
-    act
+def position: Int -> (Int * Int) = \room.
+    if (room == 1) {
+        (3,0)
+    } $elif (room == 2) {
+        (7,1)
+    } $elif (room == 3) {
+        (6,4)
+    } $else {
+        fail $ "unknown room: " ++ format room
+    }
 end
 
-if (name != "base") {main} {}
+def room_changes = \room. if (room == 1) {1} {2} end
+
+def main: [action: Text, entity: Text, room: Int] -> Cmd (Cmd Unit) = \args.
+    let pos = position args.room in
+    log $ format args;
+    target <- as self {teleport self pos; scan down};
+    log $ "at position" ++ format pos ++ ": " ++ format target;
+    act <- act_lazy args.action args.entity;
+    return (
+        // first room optimization - actively wait for one tick to see if the change occured
+        target2 <- as self {teleport self pos; scan down};
+        if (args.room == 1 && target == target2) {
+            turn forward
+        } {};
+        let changes = room_changes args.room in
+        has_changed <-
+            if (target != target2) {
+                log "changed in first tick - skipping one wait";
+                return true
+            } $else {
+                target3 <- as self {teleport self pos; scan down};
+                if (target != target3) { log "changed in second tick - skipping one wait" }{};
+                return $ target != target3
+            };
+        let changed = if has_changed {1} {0} in
+        repeat (changes - changed) (\i.
+            log $ "sleeping until " ++ format pos ++ " changes (countdown: " ++ format i ++ ")";
+            surveil pos;
+            wait 1000000;
+        );
+        act
+    )
+end
