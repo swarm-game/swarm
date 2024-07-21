@@ -112,7 +112,7 @@ world:
     '3': [blank, null, 2P vertical]
     '_': [blank, null, 3P horizontal]
     '\': [blank, null, 3P vertical]
-    'A': [blank, null, 2P lower left corner]
+    'A': [blank, null, 3P lower left corner]
     'B': [blank, null, 3P lower right corner]
     'C': [blank, null, 3P upper right]
     'D': [blank, null, 3P upper left]
@@ -212,7 +212,7 @@ robots:
   #########
   ##  A  ##
   #########
-  - name: 2P lower left corner
+  - name: 3P lower left corner
     system: true
     program: |
       def main = \a. return noop end
