@@ -48,7 +48,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Build first, otherwise the ouput would go to temporary files
-cabal build -O0
+cabal build -j -O0
 
 function compare_format() {
     echo "# $1"
