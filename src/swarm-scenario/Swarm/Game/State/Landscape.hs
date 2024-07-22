@@ -24,10 +24,8 @@ module Swarm.Game.State.Landscape (
 ) where
 
 import Control.Arrow (Arrow ((&&&)))
-import Swarm.Game.Scenario.Topography.WorldDescription
 import Control.Lens hiding (Const, both, use, uses, (%=), (+=), (.=), (<+=), (<<.=))
 import Data.Array (Array, listArray)
-import Swarm.Game.Scenario.Topography.Cell
 import Data.Bifunctor (first)
 import Data.Int (Int32)
 import Data.List (sortOn)
@@ -41,10 +39,13 @@ import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, trobotLocation)
 import Swarm.Game.Scenario
+import Swarm.Game.Scenario.RobotLookup (IndexedTRobot)
 import Swarm.Game.Scenario.Topography.Area
+import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.Structure.Overlay
+import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.State.Config
 import Swarm.Game.Terrain (TerrainType (..), terrainIndexByName)
 import Swarm.Game.Universe as U
@@ -54,7 +55,6 @@ import Swarm.Game.World.Eval (runWorld)
 import Swarm.Game.World.Gen (Seed, findGoodOrigin)
 import Swarm.Util (applyWhen)
 import Swarm.Util.Erasable
-import Swarm.Game.Scenario.RobotLookup (IndexedTRobot)
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 type SubworldDescription = (SubworldName, ([IndexedTRobot], Seed -> WorldFun Int Entity))

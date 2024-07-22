@@ -4,7 +4,6 @@
 -- GameState- and TUI-independent world rendering.
 module Swarm.Game.World.Render where
 
-import Swarm.Game.Scenario.Topography.WorldDescription
 import Codec.Picture
 import Control.Applicative ((<|>))
 import Control.Carrier.Throw.Either (runThrow)
@@ -30,6 +29,7 @@ import Swarm.Game.Scenario.Topography.EntityFacade (EntityFacade (..), mkFacade)
 import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Rasterize
 import Swarm.Game.Scenario.Topography.Structure.Overlay
+import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.State.Landscape
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
