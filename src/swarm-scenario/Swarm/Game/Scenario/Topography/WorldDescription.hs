@@ -32,7 +32,7 @@ import Swarm.Game.Scenario.Topography.Structure (
   LocatedStructure,
   MergedStructure (MergedStructure),
   NamedStructure,
-  genStructure,
+  parseStructure,
  )
 import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
 import Swarm.Game.Scenario.Topography.Structure.Overlay (
@@ -79,16 +79,6 @@ data WorldParseDependencies
       -- | last for the benefit of partial application
       TerrainEntityMaps
 
-integrateArea ::
-  WorldPalette e ->
-  [NamedStructure (Maybe (PCell e))] ->
-  Object ->
-  Parser (MergedStructure (Maybe (PCell e)))
-integrateArea palette initialStructureDefs v = do
-  unflattenedStructure <- genStructure palette initialStructureDefs v
-  either (fail . T.unpack) return $
-    Assembly.mergeStructures mempty Root unflattenedStructure
-
 instance FromJSONE WorldParseDependencies WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
     WorldParseDependencies worldMap scenarioLevelStructureDefs rm tem <- getE
@@ -101,36 +91,41 @@ instance FromJSONE WorldParseDependencies WorldDescription where
       withDeps $
         v ..:? "structures" ..!= []
 
-    let structureDefs = scenarioLevelStructureDefs <> subworldLocalStructureDefs
-    MergedStructure mergedGrid staticStructurePlacements unmergedWaypoints <-
-      liftE $ integrateArea palette structureDefs v
+    let initialStructureDefs = scenarioLevelStructureDefs <> subworldLocalStructureDefs
+    liftE $ mkWorld tem worldMap palette initialStructureDefs v
+   where
+    mkWorld tem worldMap palette initialStructureDefs v = do
+      MergedStructure mergedGrid staticStructurePlacements unmergedWaypoints <- do
+        unflattenedStructure <- parseStructure palette initialStructureDefs v
+        either (fail . T.unpack) return $
+          Assembly.mergeStructures mempty Root unflattenedStructure
 
-    worldName <- liftE $ v .:? "name" .!= DefaultRootSubworld
-    ul <- liftE $ v .:? "upperleft" .!= origin
-    portalDefs <- liftE $ v .:? "portals" .!= []
-    navigation <-
-      validatePartialNavigation
-        worldName
-        ul
-        unmergedWaypoints
-        portalDefs
+      worldName <- v .:? "name" .!= DefaultRootSubworld
+      ul <- v .:? "upperleft" .!= origin
+      portalDefs <- v .:? "portals" .!= []
+      navigation <-
+        validatePartialNavigation
+          worldName
+          ul
+          unmergedWaypoints
+          portalDefs
 
-    mwexp <- liftE $ v .:? "dsl"
-    worldProg <- forM mwexp $ \wexp -> do
-      let checkResult =
-            run . runThrow @CheckErr . runReader worldMap . runReader tem $
-              check CNil (TTyWorld TTyCell) wexp
-      either (fail . prettyString) return checkResult
+      mwexp <- v .:? "dsl"
+      worldProg <- forM mwexp $ \wexp -> do
+        let checkResult =
+              run . runThrow @CheckErr . runReader worldMap . runReader tem $
+                check CNil (TTyWorld TTyCell) wexp
+        either (fail . prettyString) return checkResult
 
-    offsetOrigin <- liftE $ v .:? "offset" .!= False
-    scrollable <- liftE $ v .:? "scrollable" .!= True
-    let placedStructures =
-          map (offsetLoc $ coerce ul) staticStructurePlacements
+      offsetOrigin <- v .:? "offset" .!= False
+      scrollable <- v .:? "scrollable" .!= True
+      let placedStructures =
+            map (offsetLoc $ coerce ul) staticStructurePlacements
 
-    -- Override upper-left corner with explicit location
-    let area = mergedGrid {gridPosition = ul}
+      -- Override upper-left corner with explicit location
+      let area = mergedGrid {gridPosition = ul}
 
-    return $ WorldDescription {..}
+      return $ WorldDescription {..}
 
 ------------------------------------------------------------
 -- World editor

@@ -100,12 +100,12 @@ instance FromJSON (Grid Char) where
           fail "Grid is not rectangular!"
         return g
 
-genStructure ::
+parseStructure ::
   StructurePalette c ->
   [NamedStructure (Maybe c)] ->
   Object ->
   Parser (PStructure (Maybe c))
-genStructure pal structures v = do
+parseStructure pal structures v = do
   placements <- v .:? "placements" .!= []
   waypointDefs <- v .:? "waypoints" .!= []
   maybeMaskChar <- v .:? "mask"
@@ -119,7 +119,7 @@ instance (FromJSONE e a) => FromJSONE e (PStructure (Maybe a)) where
   parseJSONE = withObjectE "structure definition" $ \v -> do
     pal <- v ..:? "palette" ..!= StructurePalette mempty
     structures <- v ..:? "structures" ..!= []
-    liftE $ genStructure pal structures v
+    liftE $ parseStructure pal structures v
 
 -- | \"Paint\" a world map using a 'WorldPalette', turning it from a raw
 --   string into a nested list of 'PCell' values by looking up each
