@@ -31,6 +31,7 @@ roots = [
     "^Swarm.Game.World.lookupTerrainM$",
     "^Swarm.Language.Context.withBindings$",
     "^Swarm.Language.Context.singleton$",
+    "^Swarm.Language.Parser.readNonemptyTerm$",
     "^Swarm.Language.Parser.Util.showShortError$",
     "^Swarm.Language.Pipeline.extractTCtx$",
     "^Swarm.Language.Pretty.Prec$",
@@ -43,7 +44,7 @@ roots = [
     "^Swarm.Util.reflow$",
     "^Swarm.Util.isSuccessOr$",
     "^Swarm.Util._NonEmpty$",
-    
+
     # True positives (unused lenses):
     # -------------------------------
     "^Swarm.Language.Typed.polytype$",

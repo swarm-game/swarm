@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -10,10 +11,13 @@
 -- typechecks, elaborates, and capability checks a term all at once.
 module Swarm.Language.Parser (
   readTerm,
+  readNonemptyTerm,
   readTerm',
 ) where
 
+import Control.Monad ((>=>))
 import Data.Bifunctor (first, second)
+import Data.Either.Extra (maybeToEither)
 import Data.Sequence (Seq)
 import Data.Text (Text)
 import Swarm.Language.Parser.Comment (populateComments)
@@ -24,6 +28,13 @@ import Swarm.Language.Parser.Util (fullyMaybe)
 import Swarm.Language.Syntax (Comment, Syntax)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Witch (from)
+
+-- | Parse some input 'Text' completely as a 'Term', consuming leading
+--   whitespace and ensuring the parsing extends all the way to the
+--   end of the input 'Text'.  Returns an error if the term was only
+--   whitespace.
+readNonemptyTerm :: Text -> Either Text Syntax
+readNonemptyTerm = readTerm >=> maybeToEither "Empty term"
 
 -- | Parse some input 'Text' completely as a 'Term', consuming leading
 --   whitespace and ensuring the parsing extends all the way to the
