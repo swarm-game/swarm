@@ -130,6 +130,7 @@ narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   TRequire {} -> Nothing
   TRequireDevice {} -> Nothing
   STydef {} -> Nothing
+  SImportIn {} -> Nothing
   -- these should not show up in surface language
   TRef {} -> Nothing
   TRobot {} -> Nothing
@@ -190,6 +191,7 @@ explain trm = case trm ^. sTerm of
   SRcd {} -> literal "A record literal."
   SProj {} -> literal "A record projection."
   STydef {} -> literal "A type synonym definition."
+  SImportIn {} -> literal "An import expression."
   -- type ascription
   SAnnotate lhs typeAnn ->
     Node

@@ -145,6 +145,7 @@ freeVarsS f = go S.empty
     SProj s1 x -> rewrap $ SProj <$> go bound s1 <*> pure x
     SAnnotate s1 pty -> rewrap $ SAnnotate <$> go bound s1 <*> pure pty
     SSuspend s1 -> rewrap $ SSuspend <$> go bound s1
+    SImportIn url s1 -> rewrap $ SImportIn url <$> go bound s1
    where
     rewrap s' = Syntax' l <$> s' <*> pure ty <*> pure cmts
 
