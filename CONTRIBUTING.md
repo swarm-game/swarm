@@ -41,8 +41,7 @@ you are expected to uphold this code. Please report unacceptable behavior to
 
 - Bug to report or feature to request? Try the
   [GitHub issue tracker](https://github.com/swarm-game/swarm/swarm/issues).
-- Questions? Join the [https://discord.gg/kp8MuSgkPw](Swarm
-  Discord server).
+- Questions? Join the [Swarm Discord server](https://discord.gg/kp8MuSgkPw).
 
 ## How can I contribute?
 
