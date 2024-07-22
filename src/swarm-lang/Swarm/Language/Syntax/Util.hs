@@ -153,6 +153,7 @@ freeVarsS f = go S.empty
     SSuspend s1 -> rewrap $ SSuspend <$> go bound s1
     SParens s1 -> rewrap $ SParens <$> go bound s1
     TType {} -> pure s
+    SImportIn url s1 -> rewrap $ SImportIn url <$> go bound s1
    where
     rewrap s' = Syntax' l <$> s' <*> pure ty <*> pure cmts
 
