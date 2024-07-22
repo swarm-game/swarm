@@ -14,12 +14,12 @@ import Data.Coerce
 import Data.Functor.Identity
 import Data.Text qualified as T
 import Data.Yaml as Y
-import Swarm.Game.Entity
+import Swarm.Game.Entity ( Entity )
 import Swarm.Game.Land
 import Swarm.Game.Location
-import Swarm.Game.Scenario.RobotLookup
+import Swarm.Game.Scenario.RobotLookup ( RobotMap )
 import Swarm.Game.Scenario.Topography.Cell
-import Swarm.Game.Scenario.Topography.EntityFacade
+import Swarm.Game.Scenario.Topography.EntityFacade ( EntityFacade )
 import Swarm.Game.Scenario.Topography.Grid (Grid (EmptyGrid))
 import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (
@@ -27,6 +27,7 @@ import Swarm.Game.Scenario.Topography.Navigation.Waypoint (
   WaypointName,
  )
 import Swarm.Game.Scenario.Topography.ProtoCell
+    ( StructurePalette(StructurePalette) )
 import Swarm.Game.Scenario.Topography.Structure (
   LocatedStructure,
   MergedStructure (MergedStructure),
@@ -36,8 +37,9 @@ import Swarm.Game.Scenario.Topography.Structure (
  )
 import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
 import Swarm.Game.Scenario.Topography.Structure.Overlay
+    ( PositionedGrid(..) )
 import Swarm.Game.Scenario.Topography.WorldPalette
-import Swarm.Game.Universe
+import Swarm.Game.Universe ( SubworldName(DefaultRootSubworld) )
 import Swarm.Game.World.Parse ()
 import Swarm.Game.World.Syntax
 import Swarm.Game.World.Typecheck
