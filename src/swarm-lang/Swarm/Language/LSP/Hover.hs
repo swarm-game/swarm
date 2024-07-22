@@ -58,6 +58,90 @@ showHoverInfo _ p vf@(VirtualFile _ _ myRope) =
             finalPos = posToRange myRope (found ^. sLoc)
          in (,finalPos) . treeToMarkdown 0 $ explain found
 
+posToRange :: R.Rope -> SrcLoc -> Maybe J.Range
+posToRange myRope foundSloc = do
+  (s, e) <- case foundSloc of
+    SrcLoc s e -> Just (s, e)
+    _ -> Nothing
+  let (startRope, _) = R.charSplitAt (fromIntegral s) myRope
+      (endRope, _) = R.charSplitAt (fromIntegral e) myRope
+  return $
+    J.Range
+      (ropeToLspPosition $ R.charLengthAsPosition startRope)
+      (ropeToLspPosition $ R.charLengthAsPosition endRope)
+
+-- | Find the most specific term for a given
+-- position within the code.
+narrowToPosition ::
+  ExplainableType ty =>
+  -- | parent term
+  Syntax' ty ->
+  -- | absolute offset within the file.
+  Int ->
+  Syntax' ty
+narrowToPosition s i = NE.last $ pathToPosition s i
+
+-- | Find the most specific term for a given
+-- position within the code, recording the terms along the way for later processing.
+
+-- The list is nonempty because at minimum we can return the element of the syntax we are currently processing.
+pathToPosition ::
+  forall ty.
+  ExplainableType ty =>
+  -- | parent term
+  Syntax' ty ->
+  -- | absolute offset within the file
+  Int ->
+  NonEmpty (Syntax' ty)
+pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
+ where
+  innerPath :: Syntax' ty -> Maybe [Syntax' ty]
+  innerPath (Syntax' _ t _ ty) = case t of
+    SLam lv _ s -> d (locVarToSyntax' lv $ getInnerType ty) <|> d s
+    SApp s1 s2 -> d s1 <|> d s2
+    SLet _ _ lv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
+    SBind mlv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
+    STydef typ typBody _ti s1 -> d s1 <|> Just [locVarToSyntax' (tdVarName <$> typ) $ fromPoly typBody]
+    SPair s1 s2 -> d s1 <|> d s2
+    SDelay s -> d s
+    SRcd m -> asum . map d . mapMaybe snd $ m
+    SProj s1 _ -> d s1
+    SAnnotate s _ -> d s
+    SRequirements _ s -> d s
+    SParens s -> d s
+    -- atoms - return their position and end recursion
+    TUnit -> mempty
+    TConst {} -> mempty
+    TDir {} -> mempty
+    TInt {} -> mempty
+    TText {} -> mempty
+    TBool {} -> mempty
+    TVar {} -> mempty
+    TStock {} -> mempty
+    TRequire {} -> mempty
+    TType {} -> mempty
+    SImportIn {} -> mempty
+    -- these should not show up in surface language
+    TRef {} -> mempty
+    TRobot {} -> mempty
+    TAntiInt {} -> mempty
+    TAntiText {} -> mempty
+    TAntiSyn {} -> mempty
+    SSuspend {} -> mempty
+
+  d = descend pos
+  -- try and decend into the syntax element if it is contained with position
+  descend ::
+    ExplainableType ty =>
+    Int ->
+    Syntax' ty ->
+    Maybe [Syntax' ty]
+  descend p s1@(Syntax' l1 _ _ _) = do
+    guard $ withinBound p l1
+    pure $ case innerPath s1 of
+      Nothing -> [s1]
+      Just iss -> s1 : iss
+
 renderDoc :: Int -> Text -> Text
 renderDoc d t
   | d == 0 = t
@@ -83,6 +167,7 @@ explain trm = case trm ^. sTerm of
   STydef {} -> literal "A type synonym definition."
   TType {} -> literal "A type literal."
   SParens s -> explain s
+  SImportIn {} -> literal "An import expression."
   -- type ascription
   SAnnotate lhs typeAnn ->
     Node

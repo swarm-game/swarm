@@ -143,6 +143,7 @@ instance PrettyPrec (Term' ty) where
         "suspend" <+> prettyPrec 11 t
     SParens t -> pparens True (ppr t)
     TType ty -> "@" <> prettyPrec 11 ty
+    SImportIn _x _t -> error "XXX unimplemented: pretty SImportIn"
 
 prettyDefinition :: Doc ann -> Var -> Maybe (Poly q Type) -> Syntax' ty -> Doc ann
 prettyDefinition defName x mty t1 =

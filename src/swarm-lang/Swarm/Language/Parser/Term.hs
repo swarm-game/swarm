@@ -7,7 +7,7 @@
 module Swarm.Language.Parser.Term where
 
 import Control.Lens (view, (^.))
-import Control.Monad (guard, join)
+import Control.Monad (guard, join, void)
 import Control.Monad.Combinators.Expr
 import Data.Foldable (Foldable (..), asum)
 import Data.Functor (($>))
@@ -97,6 +97,9 @@ parseTermAtom2 =
           <*> (optional (symbol ";") *> (parseTerm <|> (eof $> sNoop)))
         <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
         <|> TType <$> (symbol "@" *> parseTypeAtom)
+        <|> SImportIn
+          <$> parseURL
+          <*> (optional (void (symbol ";") <|> reserved "in") *> (parseTerm <|> (eof $> sNoop)))
     )
     <|> parseLoc (mkTuple <$> parens (parseTerm `sepBy` symbol ","))
     <|> parseLoc (TDelay (TConst Noop) <$ try (symbol "{" *> symbol "}"))
@@ -112,6 +115,9 @@ parseStock :: Parser Term
 parseStock =
   (TStock . fromIntegral <$> integer)
     <*> (textLiteral <?> "entity name in double quotes")
+
+parseURL :: Parser ImportLocation
+parseURL = undefined
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
