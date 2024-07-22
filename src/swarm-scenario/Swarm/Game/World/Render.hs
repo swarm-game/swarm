@@ -4,6 +4,7 @@
 -- GameState- and TUI-independent world rendering.
 module Swarm.Game.World.Render where
 
+import Swarm.Game.Scenario.Topography.WorldDescription
 import Codec.Picture
 import Control.Applicative ((<|>))
 import Control.Carrier.Throw.Either (runThrow)

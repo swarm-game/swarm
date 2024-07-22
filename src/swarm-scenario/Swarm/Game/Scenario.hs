@@ -14,11 +14,6 @@
 -- tutorials and for standalone puzzles and scenarios.
 module Swarm.Game.Scenario (
   -- * WorldDescription
-  PCell (..),
-  Cell,
-  PWorldDescription (..),
-  WorldDescription,
-  IndexedTRobot,
   StructureCells,
 
   -- * Scenario

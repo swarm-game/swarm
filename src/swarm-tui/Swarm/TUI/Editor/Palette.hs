@@ -6,6 +6,7 @@
 module Swarm.TUI.Editor.Palette where
 
 import Control.Lens
+import Swarm.Game.Scenario.Topography.WorldDescription
 import Control.Monad (guard)
 import Data.Aeson.KeyMap qualified as KM
 import Data.List (sortOn)
