@@ -13,7 +13,7 @@ objectives:
     condition: |
       r <- robotNamed "check";
       w <- as r {count "Win"};
-      return (w >= 2)
+      return (w >= 1)
   - id: move_along_corridor
     teaser: Down the corridor
     goal:
