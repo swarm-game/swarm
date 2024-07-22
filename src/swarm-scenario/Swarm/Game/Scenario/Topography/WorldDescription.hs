@@ -14,20 +14,21 @@ import Data.Coerce
 import Data.Functor.Identity
 import Data.Text qualified as T
 import Data.Yaml as Y
-import Swarm.Game.Entity ( Entity )
+import Swarm.Game.Entity (Entity)
 import Swarm.Game.Land
 import Swarm.Game.Location
-import Swarm.Game.Scenario.RobotLookup ( RobotMap )
+import Swarm.Game.Scenario.RobotLookup (RobotMap)
 import Swarm.Game.Scenario.Topography.Cell
-import Swarm.Game.Scenario.Topography.EntityFacade ( EntityFacade )
+import Swarm.Game.Scenario.Topography.EntityFacade (EntityFacade)
 import Swarm.Game.Scenario.Topography.Grid (Grid (EmptyGrid))
 import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (
   Parentage (Root),
   WaypointName,
  )
-import Swarm.Game.Scenario.Topography.ProtoCell
-    ( StructurePalette(StructurePalette) )
+import Swarm.Game.Scenario.Topography.ProtoCell (
+  StructurePalette (StructurePalette),
+ )
 import Swarm.Game.Scenario.Topography.Structure (
   LocatedStructure,
   MergedStructure (MergedStructure),
@@ -36,10 +37,11 @@ import Swarm.Game.Scenario.Topography.Structure (
   paintMap,
  )
 import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
-import Swarm.Game.Scenario.Topography.Structure.Overlay
-    ( PositionedGrid(..) )
+import Swarm.Game.Scenario.Topography.Structure.Overlay (
+  PositionedGrid (..),
+ )
 import Swarm.Game.Scenario.Topography.WorldPalette
-import Swarm.Game.Universe ( SubworldName(DefaultRootSubworld) )
+import Swarm.Game.Universe (SubworldName (DefaultRootSubworld))
 import Swarm.Game.World.Parse ()
 import Swarm.Game.World.Syntax
 import Swarm.Game.World.Typecheck
@@ -57,7 +59,6 @@ data PWorldDescription e = WorldDescription
   { offsetOrigin :: Bool
   , scrollable :: Bool
   , palette :: WorldPalette e
-  , ul :: Location
   , area :: PositionedGrid (Maybe (PCell e))
   , navigation :: Navigation Identity WaypointName
   , placedStructures :: [LocatedStructure]
@@ -110,11 +111,12 @@ instance FromJSONE WorldParseDependencies WorldDescription where
         v ..:? "structures" ..!= []
 
     let structureDefs = scenarioLevelStructureDefs <> subworldLocalStructureDefs
-    MergedStructure area staticStructurePlacements unmergedWaypoints <-
+    MergedStructure mergedGrid staticStructurePlacements unmergedWaypoints <-
       liftE $ integrateArea palette structureDefs v
 
-    worldName <- liftE $ v .:? "name" .!= DefaultRootSubworld
     ul <- liftE $ v .:? "upperleft" .!= origin
+
+    worldName <- liftE $ v .:? "name" .!= DefaultRootSubworld
     portalDefs <- liftE $ v .:? "portals" .!= []
     navigation <-
       validatePartialNavigation
@@ -134,6 +136,10 @@ instance FromJSONE WorldParseDependencies WorldDescription where
     scrollable <- liftE $ v .:? "scrollable" .!= True
     let placedStructures =
           map (offsetLoc $ coerce ul) staticStructurePlacements
+
+    -- Override upper-left corner with explicit location
+    let area = mergedGrid {gridPosition = ul}
+
     return $ WorldDescription {..}
 
 ------------------------------------------------------------
@@ -149,7 +155,7 @@ instance ToJSON WorldDescriptionPaint where
     object
       [ "offset" .= offsetOrigin w
       , "palette" .= Y.toJSON paletteKeymap
-      , "upperleft" .= ul w
+      , "upperleft" .= gridPosition (area w)
       , "map" .= Y.toJSON mapText
       ]
    where
