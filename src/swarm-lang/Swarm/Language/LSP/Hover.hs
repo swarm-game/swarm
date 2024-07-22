@@ -139,6 +139,7 @@ pathToPosition s0 pos = s0 :| fromMaybe [] (innerPath s0)
     TStock {} -> mempty
     TRequire {} -> mempty
     TType {} -> mempty
+    SImportIn {} -> mempty
     -- these should not show up in surface language
     TRef {} -> mempty
     TRobot {} -> mempty
@@ -226,6 +227,7 @@ explain trm = case trm ^. sTerm of
   STydef {} -> literal "A type synonym definition."
   TType {} -> literal "A type literal."
   SParens s -> explain s
+  SImportIn {} -> literal "An import expression."
   -- type ascription
   SAnnotate lhs typeAnn ->
     Node
