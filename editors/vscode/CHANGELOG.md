@@ -2,6 +2,15 @@
 
 All notable changes to the "swarm-language" extension will be documented in this file.
 
+## version 0.1.2
+* Update VSCode plugin NPM package
+* Update VSCode syntax
+  * Definitions now support multiline types
+  * Added support for `rec` and new commands
+  * Add escape sequences to strings
+* Fix a typo that broke syntax highlighting
+* Generate the syntax JSON file from YAML
+
 ## version 0.1.1
 - Move the extension under "swarm-game" org
 
