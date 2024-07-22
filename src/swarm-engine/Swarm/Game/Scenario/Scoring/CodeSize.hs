@@ -12,7 +12,7 @@ import GHC.Generics (Generic)
 import Swarm.Language.Syntax
 
 data CodeSizeDeterminators = CodeSizeDeterminators
-  { initialCode :: Maybe TSyntax
+  { initialCode :: Maybe Syntax
   , hasUsedREPL :: Bool
   }
   deriving (Show)

@@ -226,8 +226,8 @@ scenarioToAppState siPair@(scene, _) lp = do
   gameState .= gs
   void $ withLensIO uiState $ scenarioToUIState isAutoplaying siPair gs
  where
-  isAutoplaying = case runIdentity (initialCode lp) of
-    Just (CodeToRun ScenarioSuggested _) -> True
+  isAutoplaying = case fmap (view toRunSource) . runIdentity $ initialCode lp of
+    Just ScenarioSuggested -> True
     _ -> False
 
   withLensIO :: (MonadIO m, MonadState AppState m) => Lens' AppState x -> (x -> IO x) -> m x
