@@ -55,7 +55,6 @@ data PWorldDescription e = WorldDescription
   { offsetOrigin :: Bool
   , scrollable :: Bool
   , palette :: WorldPalette e
-  , ul :: Location
   , area :: PositionedGrid (Maybe (PCell e))
   , navigation :: Navigation Identity WaypointName
   , placedStructures :: [LocatedStructure]
@@ -107,12 +106,15 @@ instance FromJSONE WorldParseDependencies WorldDescription where
       withDeps $
         v ..:? "structures" ..!= []
 
+    ul <- liftE $ v .:? "upperleft" .!= origin
     let structureDefs = scenarioLevelStructureDefs <> subworldLocalStructureDefs
-    MergedStructure area staticStructurePlacements unmergedWaypoints <-
+    MergedStructure mergedGrid staticStructurePlacements unmergedWaypoints <-
       liftE $ integrateArea palette structureDefs v
 
+    -- Override upper-left corner with explicit location
+    let area = mergedGrid {gridPosition = ul}
+
     worldName <- liftE $ v .:? "name" .!= DefaultRootSubworld
-    ul <- liftE $ v .:? "upperleft" .!= origin
     portalDefs <- liftE $ v .:? "portals" .!= []
     navigation <-
       validatePartialNavigation
@@ -147,7 +149,7 @@ instance ToJSON WorldDescriptionPaint where
     object
       [ "offset" .= offsetOrigin w
       , "palette" .= Y.toJSON paletteKeymap
-      , "upperleft" .= ul w
+      , "upperleft" .= gridPosition (area w)
       , "map" .= Y.toJSON mapText
       ]
    where

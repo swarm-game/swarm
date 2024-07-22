@@ -140,7 +140,6 @@ constructScenario maybeOriginalScenario cellGrid =
       { offsetOrigin = False
       , scrollable = True
       , palette = StructurePalette suggestedPalette
-      , ul = upperLeftCoord
       , area = PositionedGrid upperLeftCoord cellGrid
       , navigation = Navigation mempty mempty
       , placedStructures = mempty

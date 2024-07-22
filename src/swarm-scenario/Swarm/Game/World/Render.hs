@@ -107,7 +107,7 @@ getBoundingBox vc scenarioWorld maybeSize =
  where
   upperLeftLocation =
     if null maybeSize && not (isEmpty mapAreaDims)
-      then ul scenarioWorld
+      then gridPosition $ area scenarioWorld
       else vc .+^ ((`div` 2) <$> V2 (negate w) h)
 
   mkBoundingBox areaDimens upperLeftLoc =

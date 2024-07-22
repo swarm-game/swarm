@@ -137,9 +137,6 @@ buildWorld tem WorldDescription {..} =
 
   g = gridContent area
 
-  ulOffset = origin .-. gridPosition area
-  ulModified = ul .+^ ulOffset
-
   worldGrid :: Grid (TerrainType, Erasable Entity)
   worldGrid = maybe (BlankT, ENothing) (cellTerrain &&& cellEntity) <$> g
 
@@ -147,7 +144,7 @@ buildWorld tem WorldDescription {..} =
   offsetCoordsByArea x a =
     x `addTuple` swap (asTuple a)
 
-  coords = locToCoords ulModified
+  coords = locToCoords $ gridPosition area
 
   arrayMaxBound =
     both (subtract 1)
