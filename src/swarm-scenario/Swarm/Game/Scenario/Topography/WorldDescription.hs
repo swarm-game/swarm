@@ -20,7 +20,6 @@ import Swarm.Game.Location
 import Swarm.Game.Scenario.RobotLookup (RobotMap)
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade (EntityFacade)
-import Swarm.Game.Scenario.Topography.Grid (Grid (EmptyGrid))
 import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (
   Parentage (Root),
@@ -33,8 +32,7 @@ import Swarm.Game.Scenario.Topography.Structure (
   LocatedStructure,
   MergedStructure (MergedStructure),
   NamedStructure,
-  PStructure (Structure),
-  paintMap,
+  genStructure,
  )
 import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
 import Swarm.Game.Scenario.Topography.Structure.Overlay (
@@ -62,6 +60,8 @@ data PWorldDescription e = WorldDescription
   , area :: PositionedGrid (Maybe (PCell e))
   , navigation :: Navigation Identity WaypointName
   , placedStructures :: [LocatedStructure]
+  -- ^ statically-placed structures to pre-populate
+  -- the structure recognizer
   , worldName :: SubworldName
   , worldProg :: Maybe (TTerm '[] (World CellVal))
   }
@@ -85,16 +85,7 @@ integrateArea ::
   Object ->
   Parser (MergedStructure (Maybe (PCell e)))
 integrateArea palette initialStructureDefs v = do
-  placementDefs <- v .:? "placements" .!= []
-  waypointDefs <- v .:? "waypoints" .!= []
-  rawMap <- v .:? "map" .!= EmptyGrid
-  (initialArea, mapWaypoints) <- paintMap Nothing palette rawMap
-  let unflattenedStructure =
-        Structure
-          (PositionedGrid origin initialArea)
-          initialStructureDefs
-          placementDefs
-          (waypointDefs <> mapWaypoints)
+  unflattenedStructure <- genStructure palette initialStructureDefs v
   either (fail . T.unpack) return $
     Assembly.mergeStructures mempty Root unflattenedStructure
 
@@ -114,9 +105,8 @@ instance FromJSONE WorldParseDependencies WorldDescription where
     MergedStructure mergedGrid staticStructurePlacements unmergedWaypoints <-
       liftE $ integrateArea palette structureDefs v
 
-    ul <- liftE $ v .:? "upperleft" .!= origin
-
     worldName <- liftE $ v .:? "name" .!= DefaultRootSubworld
+    ul <- liftE $ v .:? "upperleft" .!= origin
     portalDefs <- liftE $ v .:? "portals" .!= []
     navigation <-
       validatePartialNavigation
