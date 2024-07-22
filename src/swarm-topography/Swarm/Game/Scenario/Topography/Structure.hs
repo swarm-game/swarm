@@ -100,19 +100,26 @@ instance FromJSON (Grid Char) where
           fail "Grid is not rectangular!"
         return g
 
+parseStructure ::
+  StructurePalette c ->
+  [NamedStructure (Maybe c)] ->
+  Object ->
+  Parser (PStructure (Maybe c))
+parseStructure pal structures v = do
+  placements <- v .:? "placements" .!= []
+  waypointDefs <- v .:? "waypoints" .!= []
+  maybeMaskChar <- v .:? "mask"
+  rawGrid <- v .:? "map" .!= EmptyGrid
+  (maskedArea, mapWaypoints) <- paintMap maybeMaskChar pal rawGrid
+  let area = PositionedGrid origin maskedArea
+      waypoints = waypointDefs <> mapWaypoints
+  return Structure {..}
+
 instance (FromJSONE e a) => FromJSONE e (PStructure (Maybe a)) where
   parseJSONE = withObjectE "structure definition" $ \v -> do
     pal <- v ..:? "palette" ..!= StructurePalette mempty
     structures <- v ..:? "structures" ..!= []
-    liftE $ do
-      placements <- v .:? "placements" .!= []
-      waypointDefs <- v .:? "waypoints" .!= []
-      maybeMaskChar <- v .:? "mask"
-      rawGrid <- v .:? "map" .!= EmptyGrid
-      (maskedArea, mapWaypoints) <- paintMap maybeMaskChar pal rawGrid
-      let area = PositionedGrid origin maskedArea
-          waypoints = waypointDefs <> mapWaypoints
-      return Structure {..}
+    liftE $ parseStructure pal structures v
 
 -- | \"Paint\" a world map using a 'WorldPalette', turning it from a raw
 --   string into a nested list of 'PCell' values by looking up each

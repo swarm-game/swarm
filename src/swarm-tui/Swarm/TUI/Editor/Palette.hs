@@ -30,6 +30,7 @@ import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.ProtoCell
 import Swarm.Game.Scenario.Topography.Structure.Overlay
+import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Terrain (TerrainMap, TerrainType, getTerrainDefaultPaletteChar, terrainByName)
 import Swarm.Game.Universe
@@ -139,7 +140,6 @@ constructScenario maybeOriginalScenario cellGrid =
       { offsetOrigin = False
       , scrollable = True
       , palette = StructurePalette suggestedPalette
-      , ul = upperLeftCoord
       , area = PositionedGrid upperLeftCoord cellGrid
       , navigation = Navigation mempty mempty
       , placedStructures = mempty
