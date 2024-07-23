@@ -6,6 +6,7 @@ module Swarm.Game.Scenario.Topography.WorldPalette where
 
 import Control.Arrow (first)
 import Control.Lens hiding (from, (.=), (<.>))
+import Data.Aeson.Key qualified as K
 import Data.Aeson.KeyMap qualified as KM
 import Data.Map qualified as M
 import Data.Maybe (catMaybes)
@@ -105,9 +106,8 @@ prepForJson (PaletteAndMaskChar (StructurePalette suggestedPalette) maybeMaskCha
  where
   preassignments :: [(Char, TerrainWith EntityFacade)]
   preassignments =
-    map (first T.head . fmap (cellToTerrainPair . standardCell)) $
-      M.toList $
-        KM.toMapText suggestedPalette
+    map (first (T.head . K.toText) . fmap (cellToTerrainPair . standardCell)) $
+      M.toList suggestedPalette
 
   entityCells :: M.Map (TerrainWith EntityName) (TerrainWith EntityFacade)
   entityCells = getUniqueTerrainFacadePairs $ catMaybes $ allMembers cellGrid

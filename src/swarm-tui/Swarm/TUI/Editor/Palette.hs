@@ -7,7 +7,9 @@ module Swarm.TUI.Editor.Palette where
 
 import Control.Lens
 import Control.Monad (guard)
+import Data.Aeson.Key qualified as K
 import Data.Aeson.KeyMap qualified as KM
+import Data.Bifunctor (first)
 import Data.List (sortOn)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -41,13 +43,13 @@ import Swarm.Util.Erasable
 
 makeSuggestedPalette ::
   TerrainMap ->
-  KM.KeyMap (AugmentedCell Entity) ->
+  Map KM.Key (AugmentedCell Entity) ->
   Grid (Maybe CellPaintDisplay) ->
-  KM.KeyMap (AugmentedCell EntityFacade)
+  Map KM.Key (AugmentedCell EntityFacade)
 makeSuggestedPalette tm originalScenarioPalette cellGrid =
-  KM.fromMapText
-    . M.map (SignpostableCell Nothing)
+  M.map (SignpostableCell Nothing)
     . M.fromList
+    . map (first K.fromText)
     . M.elems
     -- NOTE: the left-most maps take precedence!
     $ paletteCellsByKey <> pairsWithDisplays <> terrainOnlyPalette
@@ -89,19 +91,19 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
 
   paletteCellsByKey :: Map (TerrainWith EntityName) (T.Text, CellPaintDisplay)
   paletteCellsByKey =
-    M.map (NE.head . NE.sortWith toSortVal)
+    M.map (first K.toText . NE.head . NE.sortWith toSortVal)
       . binTuples
       . invertPaletteMapToDedupe
-      $ KM.toMapText originalPalette
+      $ originalPalette
    where
     toSortVal (symbol, Cell _terrain _maybeEntity robots) = Down (null robots, symbol)
 
   excludedPaletteChars :: Set Char
   excludedPaletteChars = Set.fromList [' ']
 
-  originalPalette :: KM.KeyMap CellPaintDisplay
+  originalPalette :: Map KM.Key CellPaintDisplay
   originalPalette =
-    KM.map (toCellPaintDisplay . standardCell) originalScenarioPalette
+    M.map (toCellPaintDisplay . standardCell) originalScenarioPalette
 
   pairsWithDisplays :: Map (TerrainWith EntityName) (T.Text, CellPaintDisplay)
   pairsWithDisplays = M.fromList $ mapMaybe g entitiesWithModalTerrain

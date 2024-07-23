@@ -9,19 +9,21 @@ module Swarm.Game.Scenario.Topography.ProtoCell (
 ) where
 
 import Control.Applicative ((<|>))
-import Data.Aeson.KeyMap (KeyMap)
+import Data.Aeson.Key qualified as K
+import Data.Aeson.KeyMap qualified as KM
+import Data.Map (Map)
 import Data.Yaml as Y
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointConfig)
 import Swarm.Util.Yaml
 
 newtype StructurePalette e = StructurePalette
-  {unPalette :: KeyMap (SignpostableCell e)}
+  {unPalette :: Map K.Key (SignpostableCell e)}
   deriving (Eq, Show)
 
 instance (FromJSONE e a) => FromJSONE e (StructurePalette a) where
   parseJSONE =
     withObjectE "palette" $
-      fmap StructurePalette . mapM parseJSONE
+      fmap (StructurePalette . KM.toMap) . mapM parseJSONE
 
 -- | Supplements a cell with waypoint information
 data SignpostableCell c = SignpostableCell

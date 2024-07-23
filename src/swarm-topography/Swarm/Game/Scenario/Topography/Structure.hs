@@ -136,8 +136,8 @@ paintMap maskChar pal g = do
   let usedChars = Set.fromList $ map T.singleton $ allMembers g
       unusedChars =
         filter (`Set.notMember` usedChars)
+          . map Key.toText
           . M.keys
-          . KeyMap.toMapText
           $ unPalette pal
 
   unless (null unusedChars) $
@@ -158,6 +158,6 @@ paintMap maskChar pal g = do
   toCell c =
     if Just c == maskChar
       then return Nothing
-      else case KeyMap.lookup (Key.fromString [c]) (unPalette pal) of
+      else case M.lookup (Key.fromString [c]) (unPalette pal) of
         Nothing -> failT ["Char not in world palette:", showT c]
         Just cell -> return $ Just cell
