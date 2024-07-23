@@ -10,8 +10,7 @@
 module Swarm.Game.Scenario.Topography.Structure where
 
 import Control.Monad (unless)
-import Data.Aeson.Key qualified as Key
-import Data.Aeson.KeyMap qualified as KeyMap
+import Data.List (intercalate)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (catMaybes)
@@ -133,18 +132,17 @@ paintMap ::
   m (Grid (Maybe c), [Waypoint])
 paintMap maskChar pal g = do
   nestedLists <- mapM toCell g
-  let usedChars = Set.fromList $ map T.singleton $ allMembers g
+  let usedChars = Set.fromList $ allMembers g
       unusedChars =
         filter (`Set.notMember` usedChars)
           . M.keys
-          . KeyMap.toMapText
           $ unPalette pal
 
   unless (null unusedChars) $
     fail $
       unwords
         [ "Unused characters in palette:"
-        , T.unpack $ T.intercalate ", " unusedChars
+        , intercalate ", " $ map pure unusedChars
         ]
 
   let cells = fmap standardCell <$> nestedLists
@@ -158,6 +156,6 @@ paintMap maskChar pal g = do
   toCell c =
     if Just c == maskChar
       then return Nothing
-      else case KeyMap.lookup (Key.fromString [c]) (unPalette pal) of
+      else case M.lookup c (unPalette pal) of
         Nothing -> failT ["Char not in world palette:", showT c]
         Just cell -> return $ Just cell
