@@ -1,0 +1,14 @@
+version: 1
+name: Enforce single-char palette keys
+description: |
+  No multiple-char or zero-length entries allowed.
+robots: []
+world:
+  palette:
+    '.': [grass]
+    '': [stone]
+    'foo': [dirt]
+  upperleft: [0, 0]
+  map: |
+    ..
+    ..

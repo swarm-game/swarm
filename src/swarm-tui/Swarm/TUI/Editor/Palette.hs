@@ -7,9 +7,6 @@ module Swarm.TUI.Editor.Palette where
 
 import Control.Lens
 import Control.Monad (guard)
-import Data.Aeson.Key qualified as K
-import Data.Aeson.KeyMap qualified as KM
-import Data.Bifunctor (first)
 import Data.List (sortOn)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -18,7 +15,6 @@ import Data.Maybe (catMaybes, mapMaybe)
 import Data.Ord (Down (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.Text qualified as T
 import Data.Tuple (swap)
 import Swarm.Game.Display (Display, defaultChar)
 import Swarm.Game.Entity (Entity, EntityName, entitiesByName)
@@ -43,13 +39,12 @@ import Swarm.Util.Erasable
 
 makeSuggestedPalette ::
   TerrainMap ->
-  Map KM.Key (AugmentedCell Entity) ->
+  Map Char (AugmentedCell Entity) ->
   Grid (Maybe CellPaintDisplay) ->
-  Map KM.Key (AugmentedCell EntityFacade)
+  Map Char (AugmentedCell EntityFacade)
 makeSuggestedPalette tm originalScenarioPalette cellGrid =
   M.map (SignpostableCell Nothing)
     . M.fromList
-    . map (first K.fromText)
     . M.elems
     -- NOTE: the left-most maps take precedence!
     $ paletteCellsByKey <> pairsWithDisplays <> terrainOnlyPalette
@@ -89,9 +84,9 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
   invertPaletteMapToDedupe =
     map (\x@(_, c) -> (toKey $ cellToTerrainPair c, x)) . M.toList
 
-  paletteCellsByKey :: Map (TerrainWith EntityName) (T.Text, CellPaintDisplay)
+  paletteCellsByKey :: Map (TerrainWith EntityName) (Char, CellPaintDisplay)
   paletteCellsByKey =
-    M.map (first K.toText . NE.head . NE.sortWith toSortVal)
+    M.map (NE.head . NE.sortWith toSortVal)
       . binTuples
       . invertPaletteMapToDedupe
       $ originalPalette
@@ -101,11 +96,11 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
   excludedPaletteChars :: Set Char
   excludedPaletteChars = Set.fromList [' ']
 
-  originalPalette :: Map KM.Key CellPaintDisplay
+  originalPalette :: Map Char CellPaintDisplay
   originalPalette =
     M.map (toCellPaintDisplay . standardCell) originalScenarioPalette
 
-  pairsWithDisplays :: Map (TerrainWith EntityName) (T.Text, CellPaintDisplay)
+  pairsWithDisplays :: Map (TerrainWith EntityName) (Char, CellPaintDisplay)
   pairsWithDisplays = M.fromList $ mapMaybe g entitiesWithModalTerrain
    where
     g (terrain, eName) = do
@@ -113,14 +108,14 @@ makeSuggestedPalette tm originalScenarioPalette cellGrid =
       let displayChar = eDisplay ^. defaultChar
       guard $ Set.notMember displayChar excludedPaletteChars
       let cell = Cell terrain (EJust $ EntityFacade eName eDisplay) []
-      return ((terrain, EJust eName), (T.singleton displayChar, cell))
+      return ((terrain, EJust eName), (displayChar, cell))
 
   -- TODO (#1153): Filter out terrain-only palette entries that aren't actually
   -- used in the map.
-  terrainOnlyPalette :: Map (TerrainWith EntityName) (T.Text, CellPaintDisplay)
+  terrainOnlyPalette :: Map (TerrainWith EntityName) (Char, CellPaintDisplay)
   terrainOnlyPalette = M.fromList . map f . M.keys $ terrainByName tm
    where
-    f x = ((x, ENothing), (T.singleton $ getTerrainDefaultPaletteChar x, Cell x ENothing []))
+    f x = ((x, ENothing), (getTerrainDefaultPaletteChar x, Cell x ENothing []))
 
 -- | Generate a \"skeleton\" scenario with placeholders for certain required fields
 constructScenario :: Maybe Scenario -> Grid (Maybe CellPaintDisplay) -> SkeletonScenario

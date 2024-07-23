@@ -11,19 +11,36 @@ module Swarm.Game.Scenario.Topography.ProtoCell (
 import Control.Applicative ((<|>))
 import Data.Aeson.Key qualified as K
 import Data.Aeson.KeyMap qualified as KM
-import Data.Map (Map)
+import Data.Map (Map, fromList, toList)
+import Data.Text qualified as T
+import Data.Tuple (swap)
 import Data.Yaml as Y
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointConfig)
+import Swarm.Util (quote)
 import Swarm.Util.Yaml
 
 newtype StructurePalette e = StructurePalette
-  {unPalette :: Map K.Key (SignpostableCell e)}
+  {unPalette :: Map Char (SignpostableCell e)}
   deriving (Eq, Show)
 
 instance (FromJSONE e a) => FromJSONE e (StructurePalette a) where
   parseJSONE =
-    withObjectE "palette" $
-      fmap (StructurePalette . KM.toMap) . mapM parseJSONE
+    withObjectE "palette" $ \v -> do
+      m <- mapM parseJSONE v
+      -- We swap the tuples twice so we can traverse over the second
+      -- element of the tuple in between.
+      swappedPairs <- mapM (verifyChar . swap) $ toList $ KM.toMap m
+      return . StructurePalette . fromList $ map swap swappedPairs
+   where
+    verifyChar = traverse $ ensureSingleChar . K.toString
+    ensureSingleChar [x] = return x
+    ensureSingleChar x =
+      fail $
+        T.unpack $
+          T.unwords
+            [ "Palette entry is not a single character:"
+            , quote $ T.pack x
+            ]
 
 -- | Supplements a cell with waypoint information
 data SignpostableCell c = SignpostableCell
