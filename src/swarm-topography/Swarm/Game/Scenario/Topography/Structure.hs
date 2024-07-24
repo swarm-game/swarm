@@ -9,7 +9,7 @@
 -- as well as logic for combining them.
 module Swarm.Game.Scenario.Topography.Structure where
 
-import Control.Monad (unless)
+import Control.Monad (forM_, unless)
 import Data.List (intercalate)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
@@ -133,16 +133,23 @@ paintMap ::
 paintMap maskChar pal g = do
   nestedLists <- mapM toCell g
   let usedChars = Set.fromList $ allMembers g
-      unusedChars =
-        filter (`Set.notMember` usedChars)
-          . M.keys
-          $ unPalette pal
+      paletteKeys = M.keysSet $ unPalette pal
+      unusedPaletteChars = Set.difference paletteKeys usedChars
 
-  unless (null unusedChars) $
+  forM_ maskChar $ \c ->
+    unless (Set.notMember c paletteKeys) $
+      fail $
+        unwords
+          [ "Mask character"
+          , ['"', c, '"']
+          , "overlaps palette entry"
+          ]
+
+  unless (Set.null unusedPaletteChars) $
     fail $
       unwords
         [ "Unused characters in palette:"
-        , intercalate ", " $ map pure unusedChars
+        , intercalate ", " $ map pure $ Set.toList unusedPaletteChars
         ]
 
   let cells = fmap standardCell <$> nestedLists
