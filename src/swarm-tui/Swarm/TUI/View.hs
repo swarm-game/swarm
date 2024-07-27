@@ -620,7 +620,7 @@ tpsIndicator s
   where
     tpf = s ^. uiState . uiGameplay . uiTiming . uiTPF
     fps = s ^. uiState . uiGameplay . uiTiming . uiFPS
-    tps = fps / tpf
+    tps = tpf * fps
     -- l = s ^. uiState . uiGameplay . uiTiming . lgTicksPerSecond
     -- target = 2 ^^ l
 
