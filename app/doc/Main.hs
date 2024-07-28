@@ -19,6 +19,7 @@ cliParser =
       , command "editors" (info (EditorKeywords <$> editor <**> helper) $ progDesc "Output editor keywords")
       , command "keys" (info (pure SpecialKeyNames) $ progDesc "Output list of recognized special key names")
       , command "cheatsheet" (info (CheatSheet <$> address <*> cheatsheet <**> helper) $ progDesc "Output nice Wiki tables")
+      , command "commands" (info (pure CommandsData <**> helper) $ progDesc "Output JSON data for commands matrix")
       , command "pedagogy" (info (pure TutorialCoverage) $ progDesc "Output tutorial coverage")
       ]
  where

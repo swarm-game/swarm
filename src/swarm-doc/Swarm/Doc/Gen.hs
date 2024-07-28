@@ -24,6 +24,7 @@ module Swarm.Doc.Gen (
 
 import Control.Lens (view, (^.))
 import Control.Monad (zipWithM, zipWithM_)
+import Data.Aeson.Text (encodeToLazyText)
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable (toList)
 import Data.List qualified as List
@@ -36,7 +37,9 @@ import Data.Set qualified as Set
 import Data.Text (Text, unpack)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Data.Text.Lazy.IO qualified as TL
 import Data.Tuple (swap)
+import Swarm.Doc.Command (getCatalog)
 import Swarm.Doc.Keyword
 import Swarm.Doc.Pedagogy
 import Swarm.Doc.Util
@@ -73,6 +76,8 @@ data GenerateDocs where
   SpecialKeyNames :: GenerateDocs
   -- | Cheat sheets for inclusion on the Swarm wiki.
   CheatSheet :: PageAddress -> SheetType -> GenerateDocs
+  -- | JSON representation of commands metadata matrix
+  CommandsData :: GenerateDocs
   -- | List command introductions by tutorial
   TutorialCoverage :: GenerateDocs
   deriving (Eq, Show)
@@ -94,6 +99,7 @@ generateDocs = \case
         mapM_ editorGen enumerate
   SpecialKeyNames -> generateSpecialKeyNames
   CheatSheet address s -> makeWikiPage address s
+  CommandsData -> TL.putStrLn $ encodeToLazyText getCatalog
   TutorialCoverage -> renderTutorialProgression >>= putStrLn . T.unpack
 
 -- ----------------------------------------------------------------------------

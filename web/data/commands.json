@@ -1,0 +1,4189 @@
+{
+  "entries": [
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Noop",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": true,
+        "returnsValue": false
+      },
+      "effects": []
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BInt"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Wait",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "BehaviorChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Selfdestruct",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "ExistenceChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Move",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": true,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "PositionChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Backup",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": true,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "PositionChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BInt"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCSum": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BUnit"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Volume",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF TCSum [Fix (TyConF (TCBase BUnit) []),Fix (TyConF (TCBase BInt) [])])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "EntitySensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCSum": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              },
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BInt"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCSum": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCProd": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    }
+                  ]
+                ]
+              },
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BText"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCSum": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BUnit"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCProd": []
+                        },
+                        [
+                          {
+                            "TyConF": [
+                              {
+                                "TCBase": "BDir"
+                              },
+                              []
+                            ]
+                          },
+                          {
+                            "TyConF": [
+                              {
+                                "TCBase": "BInt"
+                              },
+                              []
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Path",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF TCSum [Fix (TyConF (TCBase BUnit) []),Fix (TyConF TCProd [Fix (TyConF (TCBase BDir) []),Fix (TyConF (TCBase BInt) [])])])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "EntitySensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Push",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": true,
+        "modifiesRobot": true,
+        "movesRobot": true,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "tag": "EntityChange"
+          },
+          "tag": "Mutation"
+        },
+        {
+          "contents": {
+            "contents": "PositionChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BInt"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Stride",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": true,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "PositionChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BDir"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Turn",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": true,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "PositionChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BText"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Grab",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": true,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BText) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "tag": "EntityChange"
+          },
+          "tag": "Mutation"
+        },
+        {
+          "contents": {
+            "contents": "InventoryChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BText"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Harvest",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": true,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BText) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "tag": "EntityChange"
+          },
+          "tag": "Mutation"
+        },
+        {
+          "contents": {
+            "contents": "InventoryChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Sow",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": true,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "tag": "EntityChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BDir"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Ignite",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": true,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "tag": "EntityChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Place",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": true,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "tag": "EntityChange"
+          },
+          "tag": "Mutation"
+        },
+        {
+          "contents": {
+            "contents": "InventoryChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BActor"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCSum": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BUnit"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCProd": []
+                        },
+                        [
+                          {
+                            "TyConF": [
+                              {
+                                "TCBase": "BInt"
+                              },
+                              []
+                            ]
+                          },
+                          {
+                            "TyConF": [
+                              {
+                                "TCBase": "BInt"
+                              },
+                              []
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Ping",
+      "derivedAttrs": {
+        "hasActorTarget": true,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF TCSum [Fix (TyConF (TCBase BUnit) []),Fix (TyConF TCProd [Fix (TyConF (TCBase BInt) []),Fix (TyConF (TCBase BInt) [])])])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "RobotSensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BActor"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Give",
+      "derivedAttrs": {
+        "hasActorTarget": true,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "InventoryChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Equip",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "InventoryChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        },
+        {
+          "contents": {
+            "contents": "BehaviorChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Unequip",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "InventoryChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        },
+        {
+          "contents": {
+            "contents": "BehaviorChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Make",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "InventoryChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BBool"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Has",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BBool) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "RobotSensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BBool"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Equipped",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BBool) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "RobotSensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BInt"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Count",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BInt) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "RobotSensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BDir"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCSum": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BUnit"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BText"
+                        },
+                        []
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Drill",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": true,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF TCSum [Fix (TyConF (TCBase BUnit) []),Fix (TyConF (TCBase BText) [])])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "tag": "EntityChange"
+          },
+          "tag": "Mutation"
+        },
+        {
+          "contents": {
+            "contents": "InventoryChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCBase": "BDir"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCSum": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BUnit"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BText"
+                        },
+                        []
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Use",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": true,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF TCSum [Fix (TyConF (TCBase BUnit) []),Fix (TyConF (TCBase BText) [])])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "tag": "EntityChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCDelay": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCCmd": []
+                  },
+                  [
+                    {
+                      "TyVarF": "a"
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BActor"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Build",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BActor) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "ExistenceChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Salvage",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "ExistenceChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BActor"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCDelay": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCCmd": []
+                  },
+                  [
+                    {
+                      "TyVarF": "a"
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Reprogram",
+      "derivedAttrs": {
+        "hasActorTarget": true,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "BehaviorChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Say",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "BehaviorChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BText"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Listen",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BText) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "RobotSensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Log",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "tag": "LogEmission"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BActor"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "View",
+      "derivedAttrs": {
+        "hasActorTarget": true,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "RobotSensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCSum": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              },
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BText"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Appear",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "tag": "Cosmetic"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Create",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": true,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "tag": "EntityChange"
+          },
+          "tag": "Mutation"
+        },
+        {
+          "contents": {
+            "contents": "InventoryChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BActor"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Halt",
+      "derivedAttrs": {
+        "hasActorTarget": true,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "BehaviorChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BInt"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Time",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BInt) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "WorldCondition",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BDir"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BBool"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Scout",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BBool) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "RobotSensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCProd": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Whereami",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF TCProd [Fix (TyConF (TCBase BInt) []),Fix (TyConF (TCBase BInt) [])])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "RobotSensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCBase": "BInt"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCProd": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCProd": []
+                        },
+                        [
+                          {
+                            "TyConF": [
+                              {
+                                "TCBase": "BInt"
+                              },
+                              []
+                            ]
+                          },
+                          {
+                            "TyConF": [
+                              {
+                                "TCBase": "BInt"
+                              },
+                              []
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Waypoint",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF TCProd [Fix (TyConF (TCBase BInt) []),Fix (TyConF TCProd [Fix (TyConF (TCBase BInt) []),Fix (TyConF (TCBase BInt) [])])])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "tag": "APriori"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCBase": "BInt"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCSum": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BUnit"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCProd": []
+                        },
+                        [
+                          {
+                            "TyConF": [
+                              {
+                                "TCBase": "BInt"
+                              },
+                              []
+                            ]
+                          },
+                          {
+                            "TyConF": [
+                              {
+                                "TCProd": []
+                              },
+                              [
+                                {
+                                  "TyConF": [
+                                    {
+                                      "TCBase": "BInt"
+                                    },
+                                    []
+                                  ]
+                                },
+                                {
+                                  "TyConF": [
+                                    {
+                                      "TCBase": "BInt"
+                                    },
+                                    []
+                                  ]
+                                }
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Structure",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF TCSum [Fix (TyConF (TCBase BUnit) []),Fix (TyConF TCProd [Fix (TyConF (TCBase BInt) []),Fix (TyConF TCProd [Fix (TyConF (TCBase BInt) []),Fix (TyConF (TCBase BInt) [])])])])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "EntitySensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCProd": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Floorplan",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF TCProd [Fix (TyConF (TCBase BInt) []),Fix (TyConF (TCBase BInt) [])])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "tag": "APriori"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BBool"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "HasTag",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BBool) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "tag": "APriori"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCBase": "BInt"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCProd": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BText"
+                        },
+                        []
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "TagMembers",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF TCProd [Fix (TyConF (TCBase BInt) []),Fix (TyConF (TCBase BText) [])])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "tag": "APriori"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCProd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCProd": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    }
+                  ]
+                ]
+              },
+              {
+                "TyConF": [
+                  {
+                    "TCProd": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCSum": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BUnit"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCProd": []
+                        },
+                        [
+                          {
+                            "TyConF": [
+                              {
+                                "TCBase": "BInt"
+                              },
+                              []
+                            ]
+                          },
+                          {
+                            "TyConF": [
+                              {
+                                "TCBase": "BInt"
+                              },
+                              []
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Detect",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF TCSum [Fix (TyConF (TCBase BUnit) []),Fix (TyConF TCProd [Fix (TyConF (TCBase BInt) []),Fix (TyConF (TCBase BInt) [])])])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "EntitySensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCProd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCProd": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    }
+                  ]
+                ]
+              },
+              {
+                "TyConF": [
+                  {
+                    "TCProd": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BInt"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Resonate",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BInt) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "EntitySensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCProd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCProd": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    }
+                  ]
+                ]
+              },
+              {
+                "TyConF": [
+                  {
+                    "TCProd": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BInt"
+                        },
+                        []
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BInt"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Density",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BInt) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "EntitySensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BInt"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Sniff",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BInt) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "EntitySensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BDir"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Chirp",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BDir) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "EntitySensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BDir"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Watch",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "EntitySensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCProd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BInt"
+                  },
+                  []
+                ]
+              },
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BInt"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Surveil",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "EntitySensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BDir"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Heading",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BDir) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "RobotSensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BBool"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Blocked",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BBool) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "EntitySensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BDir"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCSum": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BUnit"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BText"
+                        },
+                        []
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Scan",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF TCSum [Fix (TyConF (TCBase BUnit) []),Fix (TyConF (TCBase BText) [])])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "EntitySensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BActor"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Upload",
+      "derivedAttrs": {
+        "hasActorTarget": true,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "BehaviorChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BBool"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Ishere",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BBool) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "EntitySensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BBool"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Isempty",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BBool) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "EntitySensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCSum": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BUnit"
+                        },
+                        []
+                      ]
+                    },
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BActor"
+                        },
+                        []
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Meet",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF TCSum [Fix (TyConF (TCBase BUnit) []),Fix (TyConF (TCBase BActor) [])])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "RobotSensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyRecF": [
+                  "l",
+                  {
+                    "TyConF": [
+                      {
+                        "TCSum": []
+                      },
+                      [
+                        {
+                          "TyConF": [
+                            {
+                              "TCBase": "BUnit"
+                            },
+                            []
+                          ]
+                        },
+                        {
+                          "TyConF": [
+                            {
+                              "TCProd": []
+                            },
+                            [
+                              {
+                                "TyConF": [
+                                  {
+                                    "TCBase": "BActor"
+                                  },
+                                  []
+                                ]
+                              },
+                              {
+                                "TyRecVarF": {
+                                  "tag": "NZ"
+                                }
+                              }
+                            ]
+                          ]
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "MeetAll",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyRecF \"l\" (Fix (TyConF TCSum [Fix (TyConF (TCBase BUnit) []),Fix (TyConF TCProd [Fix (TyConF (TCBase BActor) []),Fix (TyRecVarF NZ)])])))])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "RobotSensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BText"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Whoami",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BText) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "RobotSensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Setname",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "BehaviorChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BInt"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BInt"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Random",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BInt) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "tag": "PRNG"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Run",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "BehaviorChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyVarF": "a"
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyVarF": "a"
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Return",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyVarF \"a\")])",
+        "pureComputation": true,
+        "returnsValue": true
+      },
+      "effects": []
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCDelay": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCCmd": []
+                  },
+                  [
+                    {
+                      "TyVarF": "a"
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCDelay": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCCmd": []
+                  },
+                  [
+                    {
+                      "TyVarF": "a"
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyVarF": "a"
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Try",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyVarF \"a\")])",
+        "pureComputation": true,
+        "returnsValue": true
+      },
+      "effects": []
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BText"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Swap",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": true,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BText) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "tag": "EntityChange"
+          },
+          "tag": "Mutation"
+        },
+        {
+          "contents": {
+            "contents": "InventoryChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyVarF": "a"
+              }
+            ]
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyVarF": "a"
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Atomic",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyVarF \"a\")])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "tag": "MetaEffect"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyVarF": "a"
+              }
+            ]
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyVarF": "a"
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Instant",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyVarF \"a\")])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "tag": "MetaEffect"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCFun": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BKey"
+                  },
+                  []
+                ]
+              },
+              {
+                "TyConF": [
+                  {
+                    "TCCmd": []
+                  },
+                  [
+                    {
+                      "TyConF": [
+                        {
+                          "TCBase": "BUnit"
+                        },
+                        []
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "InstallKeyHandler",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "BehaviorChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BActor"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCProd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BInt"
+                  },
+                  []
+                ]
+              },
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BInt"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BUnit"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Teleport",
+      "derivedAttrs": {
+        "hasActorTarget": true,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": true,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BUnit) [])])",
+        "pureComputation": false,
+        "returnsValue": false
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "PositionChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BActor"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCDelay": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCCmd": []
+                  },
+                  [
+                    {
+                      "TyVarF": "a"
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyVarF": "a"
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "As",
+      "derivedAttrs": {
+        "hasActorTarget": true,
+        "modifiesEnvironment": false,
+        "modifiesRobot": true,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyVarF \"a\")])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "BehaviorChange",
+            "tag": "RobotChange"
+          },
+          "tag": "Mutation"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BActor"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "RobotNamed",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BActor) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "RobotSensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BInt"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BActor"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "RobotNumbered",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BActor) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "RobotSensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    },
+    {
+      "argTypes": [
+        {
+          "TyConF": [
+            {
+              "TCBase": "BText"
+            },
+            []
+          ]
+        },
+        {
+          "TyConF": [
+            {
+              "TCCmd": []
+            },
+            [
+              {
+                "TyConF": [
+                  {
+                    "TCBase": "BBool"
+                  },
+                  []
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      "cmd": "Knows",
+      "derivedAttrs": {
+        "hasActorTarget": false,
+        "modifiesEnvironment": false,
+        "modifiesRobot": false,
+        "movesRobot": false,
+        "outputType": "Fix (TyConF TCCmd [Fix (TyConF (TCBase BBool) [])])",
+        "pureComputation": false,
+        "returnsValue": true
+      },
+      "effects": [
+        {
+          "contents": {
+            "contents": "RobotSensing",
+            "tag": "Sensing"
+          },
+          "tag": "Query"
+        }
+      ]
+    }
+  ]
+}
