@@ -249,6 +249,8 @@ data AppOpts = AppOpts
   -- ^ Scenario the user wants to play.
   , scriptToRun :: Maybe FilePath
   -- ^ Code to be run on base.
+  , pausedAtStart :: Bool
+  -- ^ Pause the game on start by default.
   , autoPlay :: Bool
   -- ^ Automatically run the solution defined in the scenario file
   , speed :: Int
@@ -270,6 +272,7 @@ defaultAppOpts =
     { userSeed = Nothing
     , userScenario = Nothing
     , scriptToRun = Nothing
+    , pausedAtStart = False
     , autoPlay = False
     , speed = defaultInitLgTicksPerSecond
     , cheatMode = False

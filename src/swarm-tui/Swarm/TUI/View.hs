@@ -555,7 +555,9 @@ drawClockDisplay :: Int -> GameState -> Widget n
 drawClockDisplay lgTPS gs = hBox . intersperse (txt " ") $ catMaybes [clockWidget, pauseWidget]
  where
   clockWidget = maybeDrawTime (gs ^. temporal . ticks) (gs ^. temporal . paused || lgTPS < 3) gs
-  pauseWidget = guard (gs ^. temporal . paused) $> txt "(PAUSED)"
+  pauseWidget =
+    let runState = gs ^. temporal . runStatus
+     in guard (gs ^. temporal . paused) $> txt (if runState == AutoPause then "(AUTO-PAUSED)" else "(PAUSED)")
 
 -- | Check whether the currently focused robot (if any) has a clock
 --   device equipped.

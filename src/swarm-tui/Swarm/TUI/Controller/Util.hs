@@ -33,7 +33,15 @@ import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability (Capability (CDebug))
 import Swarm.Language.Syntax hiding (Key)
-import Swarm.TUI.Model
+import Swarm.TUI.Model (
+  AppState,
+  FocusablePanel,
+  ModalType (..),
+  Name (..),
+  gameState,
+  modalScroll,
+  uiState,
+ )
 import Swarm.TUI.Model.Repl (REPLHistItem, REPLPrompt, REPLState, addREPLItem, replHistory, replPromptText, replPromptType)
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Util (generateModal)

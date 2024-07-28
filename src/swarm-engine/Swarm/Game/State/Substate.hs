@@ -392,11 +392,11 @@ defaultRobotStepsPerTick = 100
 
 -- * Record initialization
 
-initTemporalState :: TemporalState
-initTemporalState =
+initTemporalState :: Bool -> TemporalState
+initTemporalState pausedAtStart =
   TemporalState
     { _gameStep = WorldTick
-    , _runStatus = Running
+    , _runStatus = if pausedAtStart then ManualPause else Running
     , _ticks = TickNumber 0
     , _robotStepsPerTick = defaultRobotStepsPerTick
     }

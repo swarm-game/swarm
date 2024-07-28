@@ -125,7 +125,7 @@ initPersistentState ::
   m (RuntimeState, UIState, KeyEventHandlingState)
 initPersistentState opts@(AppOpts {..}) = do
   (warnings :: Seq SystemFailure, (initRS, initUI, initKs)) <- runAccum mempty $ do
-    rs <- initRuntimeState
+    rs <- initRuntimeState pausedAtStart
     ui <- initUIState speed (not (skipMenu opts)) cheatMode
     ks <- initKeyHandlingState
     return (rs, ui, ks)
@@ -142,7 +142,7 @@ constructAppState ::
   AppOpts ->
   m AppState
 constructAppState rs ui key opts@(AppOpts {..}) = do
-  let gs = initGameState $ rs ^. stdGameConfigInputs
+  let gs = initGameState (rs ^. stdGameConfigInputs)
   case skipMenu opts of
     False -> return $ AppState gs (ui & uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) key rs
     True -> do
