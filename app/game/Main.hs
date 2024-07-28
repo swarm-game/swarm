@@ -111,7 +111,16 @@ cliParser =
   autoplay :: Parser Bool
   autoplay = switch (long "autoplay" <> short 'a' <> help "Automatically run the solution defined in the scenario, if there is one. Mutually exclusive with --run.")
   speedFactor :: Parser Int
-  speedFactor = option auto (long "speed" <> short 'm' <> value defaultInitLgTicksPerSecond <> help "Initial game speed multiplier")
+  speedFactor = option auto (long "speed" <> short 'm' <> metavar "N" <> value defaultInitLgTicksPerSecond <> help speedFactorHelp)
+  speedFactorHelp =
+    unwords
+      [ "Initial game speed."
+      , "Counted as 2^N ticks per second, default is"
+      , show defaultInitLgTicksPerSecond
+      , "meaning"
+      , show $ 2 ** fromIntegral @Int @Double defaultInitLgTicksPerSecond
+      , "t/s."
+      ]
   cheat :: Parser Bool
   cheat = switch (long "cheat" <> short 'x' <> help "Enable cheat mode. This allows toggling Creative Mode with Ctrl+v and unlocks \"Testing\" scenarios in the menu.")
   color :: Parser (Maybe ColorMode)
