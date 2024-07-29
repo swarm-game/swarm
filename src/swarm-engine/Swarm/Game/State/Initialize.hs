@@ -50,7 +50,7 @@ import Swarm.Game.State.Substate
 import Swarm.Game.Universe as U (offsetBy)
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Capability (constCaps)
-import Swarm.Language.Syntax (allConst)
+import Swarm.Language.Syntax (allConst, erase)
 import Swarm.Language.Types
 import Swarm.Util (binTuples, (?))
 import System.Clock qualified as Clock
@@ -99,7 +99,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       & randomness . randGen .~ mkStdGen theSeed
       & recipesInfo %~ modifyRecipesInfo
       & landscape .~ mkLandscape sLandscape worldTuples theSeed
-      & gameControls . initiallyRunCode .~ initialCodeToRun
+      & gameControls . initiallyRunCode .~ (erase <$> initialCodeToRun)
       & gameControls . replStatus .~ case running of -- When the base starts out running a program, the REPL status must be set to working,
       -- otherwise the store of definition cells is not saved (see #333, #838)
         False -> REPLDone Nothing
@@ -118,11 +118,9 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
   baseID = 0
   (things, devices) = partition (M.null . getMap . view entityCapabilities) (M.elems (entitiesByName em))
 
-  getCodeToRun (CodeToRun _ s) = s
-
   robotsByBasePrecedence = genRobotTemplates sLandscape worldTuples
 
-  initialCodeToRun = getCodeToRun <$> toRun
+  initialCodeToRun = view toRunSyntax <$> toRun
 
   robotListRaw =
     zipWith (instantiateRobot Nothing) [baseID ..] robotsByBasePrecedence
