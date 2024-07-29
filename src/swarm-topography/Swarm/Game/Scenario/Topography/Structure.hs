@@ -9,6 +9,7 @@
 -- as well as logic for combining them.
 module Swarm.Game.Scenario.Topography.Structure where
 
+import Control.Applicative ((<|>))
 import Control.Monad (forM_, unless)
 import Data.List (intercalate)
 import Data.List.NonEmpty qualified as NE
@@ -16,7 +17,6 @@ import Data.Map qualified as M
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Control.Applicative ((<|>))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml as Y
@@ -100,33 +100,28 @@ instance FromJSON (Grid Char) where
           fail "Grid is not rectangular!"
         return g
 
-
-
-data StructurePlaceholder = StructurePlaceholder {
-    structureType :: StructureName
+data StructurePlaceholder = StructurePlaceholder
+  { structureType :: StructureName
   , terrainBelow :: ()
-  } deriving (Show)
+  }
+  deriving (Show)
 
 instance FromJSON StructurePlaceholder where
   parseJSON = withObject "StructurePlaceholder" $ \v -> do
-    structureType <- v .:"structure"
+    structureType <- v .: "structure"
     -- terrainBelow <- v .: "terrain"
     let terrainBelow = ()
     return StructurePlaceholder {..}
 
-data CellContent e =
-    StructureCell StructurePlaceholder
+data CellContent e
+  = StructureCell StructurePlaceholder
   | StandardCell e
   deriving (Show)
 
 instance (FromJSON e) => FromJSON (CellContent e) where
   parseJSON x =
-        (StructureCell <$> parseJSON x)
-    <|> (StandardCell <$> parseJSON x)
-
-
-
-
+    (StructureCell <$> parseJSON x)
+      <|> (StandardCell <$> parseJSON x)
 
 parseStructure ::
   StructurePalette (CellContent c) ->

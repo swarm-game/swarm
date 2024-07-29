@@ -20,7 +20,6 @@ import Swarm.Game.Terrain (TerrainType)
 import Swarm.Util.Erasable
 
 -- | A world palette maps characters to 'Cell' values.
-
 type WorldPalette e = StructurePalette (PCell e)
 
 type TerrainWith a = (TerrainType, Erasable a)
