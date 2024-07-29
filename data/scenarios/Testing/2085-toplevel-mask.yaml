@@ -1,0 +1,45 @@
+version: 1
+name: Toplevel palette mask
+description: |
+  Demo equivalence of 'blank' terrain and
+  the 'mask' property for producing transparent cells.
+seed: 0
+objectives:
+  - goal:
+      - |
+        `grab` a `flower`{=entity}.
+    condition: |
+      as base {has "flower"};
+solution: |
+  move; move; grab;
+robots:
+  - name: base
+    dir: east
+    devices:
+      - treads
+      - logger
+      - grabber
+known: [water, flower]
+world:
+  dsl: |
+    overlay [
+      {grass},
+      mask ((x + y) % 2 == 0) {flower}
+    ]
+  upperleft: [-4, 4]
+  offset: false
+  mask: x
+  palette:
+    'B': [stone, erase, base]
+    '.': [stone, erase]
+    'y': [blank]
+  map: |-
+    yyy...xxx
+    y.......x
+    y.......x
+    .........
+    ....Bxxxx
+    .........
+    x.......y
+    x.......y
+    xxx...yyy
