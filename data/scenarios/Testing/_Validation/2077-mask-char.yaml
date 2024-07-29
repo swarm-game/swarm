@@ -1,0 +1,14 @@
+version: 1
+name: Mask char palette overlap
+description: |
+  Ensure mask char is not used as a palette key
+robots: []
+world:
+  mask: q
+  palette:
+    '.': [grass]
+    'q': [dirt]
+  upperleft: [0, 0]
+  map: |
+    ..
+    ..
