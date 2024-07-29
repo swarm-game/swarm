@@ -103,6 +103,7 @@ import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario.Status
+import Swarm.Game.State.Config
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
@@ -457,7 +458,7 @@ initGameState :: GameStateConfig -> GameState
 initGameState gsc =
   GameState
     { _creativeMode = False
-    , _temporal = initTemporalState
+    , _temporal = initTemporalState $ startPaused gsc
     , _winCondition = NoWinCondition
     , _winSolution = Nothing
     , _robotInfo = initRobots gsc

@@ -1,10 +1,12 @@
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
-module Main where
+module Main (main) where
 
 import Control.Monad (when)
 import Data.Foldable qualified
@@ -44,25 +46,29 @@ cliParser :: Parser CLI
 cliParser =
   subparser
     ( mconcat
-        [ command "format" (info (Format <$> parseFormat) (progDesc "Format a file"))
+        [ command "run" (info (Run <$> appOpts <**> helper) (progDesc "Run the Swarm game (default)"))
+        , command "format" (info (Format <$> parseFormat) (progDesc "Format a file"))
         , command "lsp" (info (pure LSP) (progDesc "Start the LSP"))
         , command "version" (info (pure Version) (progDesc "Get current and upstream version."))
         , command "keybindings" (info (ListKeybinding <$> initKeybindingConfig <*> printKeyMode <**> helper) (progDesc "List the keybindings"))
         ]
     )
-    <|> Run
-      <$> ( AppOpts
-              <$> seed
-              <*> scenario
-              <*> run
-              <*> autoplay
-              <*> speedFactor
-              <*> cheat
-              <*> color
-              <*> webPort
-              <*> pure gitInfo
-          )
+    <|> Run <$> appOpts
  where
+  appOpts :: Parser AppOpts
+  appOpts = do
+    let repoGitInfo = gitInfo
+    userSeed <- seed
+    userScenario <- scenario
+    scriptToRun <- run
+    pausedAtStart <- paused
+    autoPlay <- autoplay
+    speed <- speedFactor
+    cheatMode <- cheat
+    colorMode <- color
+    userWebPort <- webPort
+    return $ AppOpts {..}
+
   input :: Parser FormatInput
   input =
     flag' Stdin (long "stdin" <> help "Read code from stdin")
@@ -108,6 +114,8 @@ cliParser =
   scenario = optional $ strOption (long "scenario" <> short 'i' <> metavar "FILE" <> help "Name of an input scenario to load")
   run :: Parser (Maybe String)
   run = optional $ strOption (long "run" <> short 'r' <> metavar "FILE" <> help "Run the commands in a file at startup")
+  paused :: Parser Bool
+  paused = switch (long "paused" <> short 'p' <> help "Pause the game at start.")
   autoplay :: Parser Bool
   autoplay = switch (long "autoplay" <> short 'a' <> help "Automatically run the solution defined in the scenario, if there is one. Mutually exclusive with --run.")
   speedFactor :: Parser Int

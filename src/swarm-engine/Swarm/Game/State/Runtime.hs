@@ -78,21 +78,23 @@ initGameStateConfig ::
   , Has (Accum (Seq SystemFailure)) sig m
   , Has (Lift IO) sig m
   ) =>
+  Bool ->
   m GameStateConfig
-initGameStateConfig = do
+initGameStateConfig pause = do
   gsi <- initGameStateInputs
   appDataMap <- readAppData
   nameGen <- initNameGenerator appDataMap
-  return $ GameStateConfig appDataMap nameGen gsi
+  return $ GameStateConfig appDataMap nameGen pause gsi
 
 initRuntimeState ::
   ( Has (Throw SystemFailure) sig m
   , Has (Accum (Seq SystemFailure)) sig m
   , Has (Lift IO) sig m
   ) =>
+  Bool ->
   m RuntimeState
-initRuntimeState = do
-  gsc <- initGameStateConfig
+initRuntimeState pause = do
+  gsc <- initGameStateConfig pause
   scenarios <- loadScenarios $ gsiScenarioInputs $ initState gsc
 
   return $
