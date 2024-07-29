@@ -371,6 +371,7 @@ testScenarioSolutions rs ui key =
         , testSolution Default "Testing/1642-biomes"
         , testSolution (Sec 10) "Testing/1533-sow-command"
         , testSolution Default "Testing/1533-sow-seed-maturation"
+        , testSolution Default "Testing/2085-toplevel-mask"
         , testGroup
             -- Note that the description of the classic world in
             -- data/worlds/classic.yaml (automatically tested to some
