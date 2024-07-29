@@ -57,6 +57,7 @@ cliParser =
  where
   appOpts :: Parser AppOpts
   appOpts = do
+    let repoGitInfo = gitInfo
     userSeed <- seed
     userScenario <- scenario
     scriptToRun <- run
@@ -66,7 +67,6 @@ cliParser =
     cheatMode <- cheat
     colorMode <- color
     userWebPort <- webPort
-    repoGitInfo <- pure gitInfo
     return $ AppOpts {..}
 
   input :: Parser FormatInput
