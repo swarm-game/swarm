@@ -16,6 +16,7 @@ import Data.Map qualified as M
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Control.Applicative ((<|>))
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml as Y
@@ -99,8 +100,36 @@ instance FromJSON (Grid Char) where
           fail "Grid is not rectangular!"
         return g
 
+
+
+data StructurePlaceholder = StructurePlaceholder {
+    structureType :: StructureName
+  , terrainBelow :: ()
+  } deriving (Show)
+
+instance FromJSON StructurePlaceholder where
+  parseJSON = withObject "StructurePlaceholder" $ \v -> do
+    structureType <- v .:"structure"
+    -- terrainBelow <- v .: "terrain"
+    let terrainBelow = ()
+    return StructurePlaceholder {..}
+
+data CellContent e =
+    StructureCell StructurePlaceholder
+  | StandardCell e
+  deriving (Show)
+
+instance (FromJSON e) => FromJSON (CellContent e) where
+  parseJSON x =
+        (StructureCell <$> parseJSON x)
+    <|> (StandardCell <$> parseJSON x)
+
+
+
+
+
 parseStructure ::
-  StructurePalette c ->
+  StructurePalette (CellContent c) ->
   [NamedStructure (Maybe c)] ->
   Object ->
   Parser (PStructure (Maybe c))
@@ -127,7 +156,7 @@ instance (FromJSONE e a) => FromJSONE e (PStructure (Maybe a)) where
 paintMap ::
   MonadFail m =>
   Maybe Char ->
-  StructurePalette c ->
+  StructurePalette (CellContent c) ->
   Grid Char ->
   m (Grid (Maybe c), [Waypoint])
 paintMap maskChar pal g = do
@@ -152,7 +181,8 @@ paintMap maskChar pal g = do
         , intercalate ", " $ map pure $ Set.toList unusedPaletteChars
         ]
 
-  let cells = fmap standardCell <$> nestedLists
+  let rawCells = fmap standardCell <$> nestedLists
+  let cells = extractRegularCell <$> rawCells
       getWp coords maybeAugmentedCell = do
         wpCfg <- waypointCfg =<< maybeAugmentedCell
         return . Waypoint wpCfg . coordsToLoc $ coords
@@ -160,6 +190,11 @@ paintMap maskChar pal g = do
 
   return (cells, wps)
  where
+  extractRegularCell Nothing = Nothing
+  extractRegularCell (Just x) = case x of
+    StructureCell _ -> Nothing
+    StandardCell c -> Just c
+
   toCell c =
     if Just c == maskChar
       then return Nothing

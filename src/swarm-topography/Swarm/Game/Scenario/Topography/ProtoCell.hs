@@ -47,7 +47,7 @@ data SignpostableCell c = SignpostableCell
   { waypointCfg :: Maybe WaypointConfig
   , standardCell :: c
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Functor)
 
 instance (FromJSONE e a) => FromJSONE e (SignpostableCell a) where
   parseJSONE x =

@@ -7,6 +7,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Topography.WorldDescription where
 
+import Control.Applicative ((<|>))
 import Control.Carrier.Reader (runReader)
 import Control.Carrier.Throw.Either
 import Control.Monad (forM)
@@ -41,7 +42,9 @@ import Swarm.Game.Scenario.Topography.Structure.Overlay (
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Universe (SubworldName (DefaultRootSubworld))
 import Swarm.Game.World.Parse ()
+import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.World.Syntax
+import Swarm.Game.Terrain (TerrainType)
 import Swarm.Game.World.Typecheck
 import Swarm.Language.Pretty (prettyString)
 import Swarm.Util.Yaml
@@ -50,13 +53,18 @@ import Swarm.Util.Yaml
 -- World description
 ------------------------------------------------------------
 
+
+type SpecialPalette e = StructurePalette (CellContent (PCell e))
+
+
 -- | A description of a world parsed from a YAML file.
 -- This type is parameterized to accommodate Cells that
 -- utilize a less stateful Entity type.
 data PWorldDescription e = WorldDescription
   { offsetOrigin :: Bool
   , scrollable :: Bool
-  , palette :: WorldPalette e
+  -- , palette :: WorldPalette e
+  , palette :: SpecialPalette e
   , area :: PositionedGrid (Maybe (PCell e))
   , navigation :: Navigation Identity WaypointName
   , placedStructures :: [LocatedStructure]
@@ -94,6 +102,12 @@ instance FromJSONE WorldParseDependencies WorldDescription where
     let initialStructureDefs = scenarioLevelStructureDefs <> subworldLocalStructureDefs
     liftE $ mkWorld tem worldMap palette initialStructureDefs v
    where
+    mkWorld :: TerrainEntityMaps
+      -> WorldMap
+      -> SpecialPalette (PCell e)
+      -> [NamedStructure (Maybe (PCell e))]
+      -> Object
+      -> Parser (PWorldDescription e)
     mkWorld tem worldMap palette initialStructureDefs v = do
       MergedStructure mergedGrid staticStructurePlacements unmergedWaypoints <- do
         unflattenedStructure <- parseStructure palette initialStructureDefs v
