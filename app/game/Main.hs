@@ -66,8 +66,8 @@ cliParser =
     cheatMode <- cheat
     colorMode <- color
     userWebPort <- webPort
-    let repoGitInfo = gitInfo
-    return AppOpts {..}
+    repoGitInfo <- pure gitInfo
+    return $ AppOpts {..}
 
   input :: Parser FormatInput
   input =
