@@ -56,6 +56,10 @@
             "type": "boolean",
             "description": "Whether players are allowed to scroll the world map."
         },
+        "mask": {
+            "type": "string",
+            "description": "A special palette character that indicates that map cell should be transparent"
+        },
         "palette": {
             "type": "object",
             "examples": [{"T": ["grass", "tree"]}],
