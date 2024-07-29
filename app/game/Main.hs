@@ -120,6 +120,7 @@ cliParser =
       , "meaning"
       , show $ 2 ** fromIntegral @Int @Double defaultInitLgTicksPerSecond
       , "t/s."
+      , "(Negative values are allowed, e.g. -3 means 1 tick per 8 sec.)"
       ]
   cheat :: Parser Bool
   cheat = switch (long "cheat" <> short 'x' <> help "Enable cheat mode. This allows toggling Creative Mode with Ctrl+v and unlocks \"Testing\" scenarios in the menu.")
