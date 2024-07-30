@@ -16,5 +16,7 @@ data GameStateConfig = GameStateConfig
   { initAppDataMap :: Map Text Text
   , nameParts :: NameGenerator
   -- ^ Lists of words/adjectives for use in building random robot names.
+  , startPaused :: Bool
+  -- ^ Start the game paused - useful for debugging or competitive play.
   , initState :: GameStateInputs
   }
