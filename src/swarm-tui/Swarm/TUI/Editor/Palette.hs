@@ -43,7 +43,7 @@ makeSuggestedPalette ::
   Grid (Maybe CellPaintDisplay) ->
   Map Char (AugmentedCell EntityFacade)
 makeSuggestedPalette tm originalScenarioPalette cellGrid =
-  M.map (SignpostableCell Nothing)
+  M.map (SignpostableCell Nothing Nothing)
     . M.fromList
     . M.elems
     -- NOTE: the left-most maps take precedence!

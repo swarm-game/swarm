@@ -13,7 +13,7 @@ import Control.Monad (forM_, unless)
 import Data.List (intercalate)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -105,13 +105,14 @@ parseStructure ::
   Object ->
   Parser (PStructure (Maybe c))
 parseStructure pal structures v = do
-  placements <- v .:? "placements" .!= []
+  explicitPlacements <- v .:? "placements" .!= []
   waypointDefs <- v .:? "waypoints" .!= []
   maybeMaskChar <- v .:? "mask"
   rawGrid <- v .:? "map" .!= EmptyGrid
-  (maskedArea, mapWaypoints) <- paintMap maybeMaskChar pal rawGrid
+  (maskedArea, mapWaypoints, palettePlacements) <- paintMap maybeMaskChar pal rawGrid
   let area = PositionedGrid origin maskedArea
       waypoints = waypointDefs <> mapWaypoints
+      placements = explicitPlacements <> palettePlacements
   return Structure {..}
 
 instance (FromJSONE e a) => FromJSONE e (PStructure (Maybe a)) where
@@ -129,13 +130,9 @@ paintMap ::
   Maybe Char ->
   StructurePalette c ->
   Grid Char ->
-  m (Grid (Maybe c), [Waypoint])
+  m (Grid (Maybe c), [Waypoint], [Placement])
 paintMap maskChar pal g = do
   nestedLists <- mapM toCell g
-  let usedChars = Set.fromList $ allMembers g
-      paletteKeys = M.keysSet $ unPalette pal
-      unusedPaletteChars = Set.difference paletteKeys usedChars
-
   forM_ maskChar $ \c ->
     unless (Set.notMember c paletteKeys) $
       fail $
@@ -153,13 +150,28 @@ paintMap maskChar pal g = do
         ]
 
   let cells = fmap standardCell <$> nestedLists
-      getWp coords maybeAugmentedCell = do
-        wpCfg <- waypointCfg =<< maybeAugmentedCell
-        return . Waypoint wpCfg . coordsToLoc $ coords
       wps = catMaybes $ mapIndexedMembers getWp nestedLists
 
-  return (cells, wps)
+  let extraPlacements =
+        catMaybes $ mapIndexedMembers getStructureMarker nestedLists
+
+  return (cells, wps, extraPlacements)
  where
+  getStructureMarker coords maybeAugmentedCell = do
+    StructureMarker sName orientation <- structureMarker =<< maybeAugmentedCell
+    return
+      . Placement sName
+      . Pose (coordsToLoc coords)
+      $ fromMaybe defaultOrientation orientation
+
+  getWp coords maybeAugmentedCell = do
+    wpCfg <- waypointCfg =<< maybeAugmentedCell
+    return . Waypoint wpCfg . coordsToLoc $ coords
+
+  usedChars = Set.fromList $ allMembers g
+  paletteKeys = M.keysSet $ unPalette pal
+  unusedPaletteChars = Set.difference paletteKeys usedChars
+
   toCell c =
     if Just c == maskChar
       then return Nothing

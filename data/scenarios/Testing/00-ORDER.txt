@@ -68,3 +68,4 @@ Achievements
 1533-sow-seed-maturation.yaml
 231-requirements
 2085-toplevel-mask.yaml
+2086-structure-palette.yaml
