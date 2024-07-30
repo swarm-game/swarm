@@ -499,7 +499,6 @@ library swarm-web
     witch,
 
   build-depends:
-    swarm:swarm-doc,
     swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,
