@@ -97,7 +97,7 @@ instance FromJSONE (TerrainEntityMaps, RobotMap) Cell where
         case meName of
           Nothing -> return ENothing
           Just "erase" -> return EErase
-          Just name -> fmap EJust . localE (view entityMap . fst) $ getEntity name
+          Just n -> fmap EJust . localE (view entityMap . fst) $ getEntity n
 
     let name2rob r = do
           mrName <- liftE $ parseJSON @(Maybe RobotName) r

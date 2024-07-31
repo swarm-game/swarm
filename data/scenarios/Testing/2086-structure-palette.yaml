@@ -1,0 +1,55 @@
+version: 1
+name: Structure markers
+description: |
+  Reference structures in the palette
+seed: 0
+objectives:
+  - goal:
+      - |
+        `grab` a `tree`{=entity}.
+    condition: |
+      as base {has "tree"};
+solution: |
+  move; move; grab;
+robots:
+  - name: base
+    dir: east
+    devices:
+      - treads
+      - logger
+      - grabber
+structures:
+  - name: rect
+    structure:
+      palette:
+        'o': [dirt, tree]
+      map: |
+        ooo
+        ooo
+known: [water, tree]
+world:
+  dsl: |
+    {grass}
+  offset: false
+  palette:
+    'B': [stone, erase, base]
+    '.': [stone]
+    'x':
+      structure:
+        name: rect
+      cell: [grass]
+    'z':
+      structure:
+        name: rect
+        orientation:
+          up: east
+      cell: [grass]
+  map: |-
+    ......
+    ...z..
+    ......
+    .B....
+    ......
+    .x....
+    ......
+    ......
