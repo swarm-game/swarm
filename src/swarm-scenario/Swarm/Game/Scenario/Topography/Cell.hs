@@ -23,7 +23,7 @@ import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Land
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Topography.EntityFacade
-import Swarm.Game.Scenario.Topography.ProtoCell
+import Swarm.Game.Scenario.Topography.ProtoCell hiding (name)
 import Swarm.Game.Terrain
 import Swarm.Util (quote, showT)
 import Swarm.Util.Erasable (Erasable (..))
@@ -97,7 +97,7 @@ instance FromJSONE (TerrainEntityMaps, RobotMap) Cell where
         case meName of
           Nothing -> return ENothing
           Just "erase" -> return EErase
-          Just n -> fmap EJust . localE (view entityMap . fst) $ getEntity n
+          Just name -> fmap EJust . localE (view entityMap . fst) $ getEntity name
 
     let name2rob r = do
           mrName <- liftE $ parseJSON @(Maybe RobotName) r
