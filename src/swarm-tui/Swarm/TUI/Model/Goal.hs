@@ -102,7 +102,7 @@ hasMultipleGoals gt =
   goalCount = sum . M.elems . M.map NE.length . goals $ gt
 
 constructGoalMap :: Bool -> ObjectiveCompletion -> CategorizedGoals
-constructGoalMap isCheating oc =
+constructGoalMap showHidden oc =
   M.fromList $
     mapMaybe (traverse nonEmpty) categoryList
  where
@@ -118,7 +118,7 @@ constructGoalMap isCheating oc =
       filter (maybe False previewable . view objectivePrerequisite) inactiveGoals
 
   suppressHidden =
-    if isCheating
+    if showHidden
       then id
       else filter $ not . view objectiveHidden
 

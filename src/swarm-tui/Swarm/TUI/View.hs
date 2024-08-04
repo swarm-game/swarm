@@ -133,6 +133,7 @@ import Swarm.TUI.Inventory.Sorting (renderSortMethod)
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.View
 import Swarm.TUI.Model
+import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.KeyBindings (handlerNameKeysDescription)
@@ -713,10 +714,10 @@ robotsListWidget s = hCenter table
     , "Activity"
     , "Log"
     ]
-  headers = withAttr robotAttr . txt <$> applyWhen cheat ("ID" :) headings
+  headers = withAttr robotAttr . txt <$> applyWhen debugRID ("ID" :) headings
   robotsTable = mkRobotRow <$> robots
   mkRobotRow robot =
-    applyWhen cheat (idWidget :) cells
+    applyWhen debugRID (idWidget :) cells
    where
     cells =
       [ nameWidget
@@ -782,12 +783,12 @@ robotsListWidget s = hCenter table
   isNear robot = creative || distance (realToFrac <$> robot ^. robotLocation . planar) basePos < 32
   robots :: [Robot]
   robots =
-    filter (\robot -> debugging || (isRelevant robot && isNear robot))
+    filter (\robot -> debugAllRobots || (isRelevant robot && isNear robot))
       . IM.elems
       $ g ^. robotInfo . robotMap
   creative = g ^. creativeMode
-  cheat = s ^. uiState . uiCheatMode
-  debugging = creative && cheat
+  debugRID = s ^. uiState . uiDebugOptions . icontains ListRobotIDs
+  debugAllRobots = s ^. uiState . uiDebugOptions . icontains ListAllRobots
   g = s ^. gameState
 
 helpWidget :: Seed -> Maybe Port -> KeyEventHandlingState -> Widget Name
@@ -1014,7 +1015,8 @@ drawKeyMenu s =
   hasDebug = hasDebugCapability creative s
   viewingBase = (s ^. gameState . robotInfo . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
-  cheat = s ^. uiState . uiCheatMode
+  showCreative = s ^. uiState . uiDebugOptions . icontains ToggleCreative
+  showEditor = s ^. uiState . uiDebugOptions . icontains ToggleWorldEditor
   goal = hasAnythingToShow $ s ^. uiState . uiGameplay . uiGoal . goalsContent
   showZero = s ^. uiState . uiGameplay . uiInventory . uiShowZero
   inventorySort = s ^. uiState . uiGameplay . uiInventory . uiInventorySort
@@ -1044,8 +1046,8 @@ drawKeyMenu s =
   globalKeyCmds =
     catMaybes
       [ may goal (NoHighlight, keyM SE.ViewGoalEvent, "goal")
-      , may cheat (NoHighlight, keyM SE.ToggleCreativeModeEvent, "creative")
-      , may cheat (NoHighlight, keyM SE.ToggleWorldEditorEvent, "editor")
+      , may showCreative (NoHighlight, keyM SE.ToggleCreativeModeEvent, "creative")
+      , may showEditor (NoHighlight, keyM SE.ToggleWorldEditorEvent, "editor")
       , Just (NoHighlight, keyM SE.PauseEvent, if isPaused then "unpause" else "pause")
       , may isPaused (NoHighlight, keyM SE.RunSingleTickEvent, "step")
       , may

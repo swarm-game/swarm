@@ -34,6 +34,7 @@ import Swarm.Language.Value (Value (VExc, VUnit), envTydefs, prettyValue)
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnFinishNocheat)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
+import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Popup (Popup (..), addPopup)
@@ -174,7 +175,6 @@ updateUI = do
 doGoalUpdates :: EventM Name AppState Bool
 doGoalUpdates = do
   curGoal <- use (uiState . uiGameplay . uiGoal . goalsContent)
-  isCheating <- use (uiState . uiCheatMode)
   curWinCondition <- use (gameState . winCondition)
   announcementsSeq <- use (gameState . messageInfo . announcementQueue)
   let announcementsList = toList announcementsSeq
@@ -203,7 +203,8 @@ doGoalUpdates = do
       -- advance the menu at that point.
       return True
     WinConditions _ oc -> do
-      let newGoalTracking = GoalTracking announcementsList $ constructGoalMap isCheating oc
+      showHiddenGoals <- use $ uiState . uiDebugOptions . icontains ShowHiddenGoals
+      let newGoalTracking = GoalTracking announcementsList $ constructGoalMap showHiddenGoals oc
           -- The "uiGoal" field is initialized with empty members, so we know that
           -- this will be the first time showing it if it will be nonempty after previously
           -- being empty.
@@ -240,8 +241,9 @@ doGoalUpdates = do
         -- automatically popped up.
         gameState . messageInfo . announcementQueue .= mempty
 
-        hideGoals <- use $ uiState . uiGameplay . uiHideGoals
-        unless hideGoals $
+        isAutoPlay <- use $ uiState . uiGameplay . uiIsAutoPlay
+        showGoalsAnyway <- use $ uiState . uiDebugOptions . icontains ShowGoalDialogsInAutoPlay
+        unless (isAutoPlay && not showGoalsAnyway) $
           openModal GoalModal
 
       return goalWasUpdated

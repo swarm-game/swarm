@@ -11,7 +11,7 @@ module Swarm.TUI.Controller.SaveScenario (
 -- See Note [liftA2 re-export from Prelude]
 import Brick.Widgets.List qualified as BL
 import Control.Lens as Lens
-import Control.Monad (forM_, unless, void, when)
+import Control.Monad (forM_, void, when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState)
 import Data.Maybe (fromMaybe)
@@ -24,6 +24,7 @@ import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements (attainAchievement')
+import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import System.FilePath (splitDirectories)
@@ -71,12 +72,17 @@ saveScenarioInfoOnFinish p = do
       liftIO $ saveScenarioInfo p si
   return status
 
+-- | Don't save progress for developers and cheaters.
+unlessCheating :: MonadState AppState m => m () -> m ()
+unlessCheating a = do
+  debugging <- use $ uiState . uiDebugOptions
+  isAuto <- use $ uiState . uiGameplay . uiIsAutoPlay
+  when (null debugging && not isAuto) a
+
 -- | Write the @ScenarioInfo@ out to disk when finishing a game (i.e. on winning or exit).
 saveScenarioInfoOnFinishNocheat :: (MonadIO m, MonadState AppState m) => m ()
-saveScenarioInfoOnFinishNocheat = do
-  -- Don't save progress if we are in cheat mode
-  cheat <- use $ uiState . uiCheatMode
-  unless cheat $ do
+saveScenarioInfoOnFinishNocheat =
+  unlessCheating $ do
     -- the path should be normalized and good to search in scenario collection
     getNormalizedCurrentScenarioPath >>= \case
       Nothing -> return ()
@@ -84,11 +90,8 @@ saveScenarioInfoOnFinishNocheat = do
 
 -- | Write the @ScenarioInfo@ out to disk when exiting a game.
 saveScenarioInfoOnQuit :: (MonadIO m, MonadState AppState m) => m ()
-saveScenarioInfoOnQuit = do
-  -- Don't save progress if we are in cheat mode
-  -- NOTE This check is duplicated in "saveScenarioInfoOnFinishNocheat"
-  cheat <- use $ uiState . uiCheatMode
-  unless cheat $ do
+saveScenarioInfoOnQuit =
+  unlessCheating $ do
     getNormalizedCurrentScenarioPath >>= \case
       Nothing -> return ()
       Just p -> do
@@ -115,4 +118,5 @@ saveScenarioInfoOnQuit = do
         -- Now rebuild the NewGameMenu so it gets the updated ScenarioInfo,
         -- being sure to preserve the same focused scenario.
         sc <- use $ runtimeState . scenarios
-        forM_ (mkNewGameMenu cheat sc (fromMaybe p curPath)) (uiState . uiMenu .=)
+        showTesting <- use $ uiState . uiDebugOptions . icontains ShowTestingScenarios
+        forM_ (mkNewGameMenu showTesting sc (fromMaybe p curPath)) (uiState . uiMenu .=)

@@ -715,6 +715,7 @@ library swarm-tui
     Swarm.TUI.Model
     Swarm.TUI.Model.Achievements
     Swarm.TUI.Model.Event
+    Swarm.TUI.Model.DebugOption
     Swarm.TUI.Model.Goal
     Swarm.TUI.Model.KeyBindings
     Swarm.TUI.Model.Menu
@@ -800,6 +801,7 @@ executable swarm
     -- Imports shared with the library don't need bounds
     base,
     brick,
+    containers,
     fused-effects,
     githash >=0.1.6 && <0.2,
     lens,

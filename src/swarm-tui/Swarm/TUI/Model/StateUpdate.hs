@@ -126,7 +126,7 @@ initPersistentState ::
 initPersistentState opts@(AppOpts {..}) = do
   (warnings :: Seq SystemFailure, (initRS, initUI, initKs)) <- runAccum mempty $ do
     rs <- initRuntimeState pausedAtStart
-    ui <- initUIState speed (not (skipMenu opts)) cheatMode
+    ui <- initUIState speed (not (skipMenu opts)) debugOptions
     ks <- initKeyHandlingState
     return (rs, ui, ks)
   let initRS' = addWarnings initRS (F.toList warnings)
@@ -249,7 +249,6 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
   return $
     u
       & uiPlaying .~ True
-      & uiCheatMode ||~ isAutoplaying
       & uiAttrMap
         .~ applyAttrMappings
           ( map (first getWorldAttrName . toAttrPair) $
@@ -257,7 +256,7 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
           )
           swarmAttrMap
       & uiGameplay . uiGoal .~ emptyGoalDisplay
-      & uiGameplay . uiHideGoals .~ (isAutoplaying && not (u ^. uiCheatMode))
+      & uiGameplay . uiIsAutoPlay .~ isAutoplaying
       & uiGameplay . uiFocusRing .~ initFocusRing
       & uiGameplay . uiInventory . uiInventorySearch .~ Nothing
       & uiGameplay . uiInventory . uiInventoryList .~ Nothing
