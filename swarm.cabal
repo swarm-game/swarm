@@ -587,7 +587,6 @@ library swarm-util
     Swarm.Util.JSON
     Swarm.Util.Lens
     Swarm.Util.OccurrenceEncoder
-    Swarm.Util.ReadableIORef
     Swarm.Util.RingBuffer
     Swarm.Util.UnitInterval
     Swarm.Util.WindowedCounter
