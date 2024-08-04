@@ -184,7 +184,7 @@ gamestateFromScenarioText content = do
       . ExceptT
       . runThrow
       . evalAccum (mempty :: Seq SystemFailure)
-      $ initGameStateConfig False
+      $ initGameStateConfig mempty
 
   let scenarioInputs = gsiScenarioInputs $ initState gsc
   scenarioObject <- initScenarioObject scenarioInputs content

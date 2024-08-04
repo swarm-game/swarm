@@ -27,12 +27,14 @@ module Swarm.Game.State.Substate (
 
   -- *** Temporal state
   TemporalState,
+  PauseOnObjective (..),
   initTemporalState,
   gameStep,
   runStatus,
   ticks,
   robotStepsPerTick,
   paused,
+  pauseOnCompletion,
 
   -- *** Recipes
   Recipes,
@@ -146,7 +148,7 @@ data WinStatus
     -- The boolean indicates whether they have
     -- already been informed.
     Unwinnable Bool
-  deriving (Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data WinCondition
   = -- | There is no winning condition.
@@ -274,11 +276,15 @@ data SingleStep
 -- | Game step mode - we use the single step mode when debugging robot 'CESK' machine.
 data Step = WorldTick | RobotStep SingleStep
 
+data PauseOnObjective = PauseOnWin | PauseOnAnyObjective
+  deriving (Eq, Ord, Show, Enum, Bounded)
+
 data TemporalState = TemporalState
   { _gameStep :: Step
   , _runStatus :: RunStatus
   , _ticks :: TickNumber
   , _robotStepsPerTick :: Int
+  , _pauseOnCompletion :: PauseOnObjective
   }
 
 makeLensesNoSigs ''TemporalState
@@ -299,6 +305,9 @@ ticks :: Lens' TemporalState TickNumber
 -- | The maximum number of CESK machine steps a robot may take during
 --   a single tick.
 robotStepsPerTick :: Lens' TemporalState Int
+
+-- | Whether to pause the game after an objective is completed.
+pauseOnCompletion :: Lens' TemporalState PauseOnObjective
 
 data GameControls = GameControls
   { _replStatus :: REPLStatus
@@ -406,6 +415,7 @@ initTemporalState pausedAtStart =
     , _runStatus = if pausedAtStart then ManualPause else Running
     , _ticks = TickNumber 0
     , _robotStepsPerTick = defaultRobotStepsPerTick
+    , _pauseOnCompletion = PauseOnAnyObjective
     }
 
 initGameControls :: GameControls

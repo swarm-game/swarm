@@ -32,6 +32,7 @@ module Swarm.TUI.Model.UI (
   uiGoal,
   uiStructure,
   uiIsAutoPlay,
+  uiHideObjectives,
   uiAchievements,
   lgTicksPerSecond,
   lastFrameTime,
@@ -207,6 +208,7 @@ data UIGameplay = UIGameplay
   , _uiGoal :: GoalDisplay
   , _uiStructure :: StructureDisplay
   , _uiIsAutoPlay :: Bool
+  , _uiHideObjectives :: Bool
   , _uiShowREPL :: Bool
   , _uiShowDebug :: Bool
   , _uiHideRobotsUntil :: TimeSpec
@@ -252,10 +254,11 @@ uiGoal :: Lens' UIGameplay GoalDisplay
 -- | Definition and status of a recognizable structure
 uiStructure :: Lens' UIGameplay StructureDisplay
 
--- | When running with @--autoplay@, suppress the goal dialogs.
---
--- For development, the @--cheat@ flag shows goals again.
+-- | When running with @--autoplay@ the progress will not be saved.
 uiIsAutoPlay :: Lens' UIGameplay Bool
+
+-- | Do not open objectives modals on objective completion.
+uiHideObjectives :: Lens' UIGameplay Bool
 
 -- | A toggle to expand or collapse the REPL by pressing @Ctrl-k@
 uiShowREPL :: Lens' UIGameplay Bool
@@ -350,6 +353,7 @@ initUIState ::
   Set DebugOption ->
   m UIState
 initUIState speedFactor showMainMenu debug = do
+  -- TODO: ondra - add ui config for silence
   historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
   let history = maybe [] (map mkREPLSubmission . T.lines) historyT
   startTime <- sendIO $ getTime Monotonic
@@ -383,6 +387,7 @@ initUIState speedFactor showMainMenu debug = do
             , _uiGoal = emptyGoalDisplay
             , _uiStructure = emptyStructureDisplay
             , _uiIsAutoPlay = False
+            , _uiHideObjectives = True
             , _uiTiming =
                 UITiming
                   { _uiShowFPS = False

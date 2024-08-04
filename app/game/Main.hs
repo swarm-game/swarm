@@ -67,6 +67,7 @@ cliParser =
     scriptToRun <- run
     pausedAtStart <- paused
     autoPlay <- autoplay
+    showGoal <- not <$> hideGoal
     speed <- speedFactor
     debugOptions <- debug
     cheatMode <- cheat
@@ -127,6 +128,8 @@ cliParser =
   paused = switch (long "paused" <> short 'p' <> help "Pause the game at start.")
   autoplay :: Parser Bool
   autoplay = switch (long "autoplay" <> short 'a' <> help "Automatically run the solution defined in the scenario, if there is one. Mutually exclusive with --run.")
+  hideGoal :: Parser Bool
+  hideGoal = switch (long "hide-goal" <> help "Do not show goal modal window that pauses the game.")
   speedFactor :: Parser Int
   speedFactor = option auto (long "speed" <> short 'm' <> metavar "N" <> value defaultInitLgTicksPerSecond <> help speedFactorHelp)
   speedFactorHelp =

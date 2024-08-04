@@ -255,6 +255,8 @@ data AppOpts = AppOpts
   -- ^ Pause the game on start by default.
   , autoPlay :: Bool
   -- ^ Automatically run the solution defined in the scenario file
+  , showGoal :: Bool
+  -- ^ Show goal dialogs.
   , speed :: Int
   -- ^ Initial game speed (logarithm)
   , debugOptions :: Set DebugOption
@@ -275,6 +277,7 @@ defaultAppOpts =
     , userScenario = Nothing
     , scriptToRun = Nothing
     , pausedAtStart = False
+    , showGoal = True
     , autoPlay = False
     , speed = defaultInitLgTicksPerSecond
     , debugOptions = mempty
