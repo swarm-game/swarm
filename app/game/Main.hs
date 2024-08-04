@@ -205,7 +205,7 @@ main :: IO ()
 main = do
   cli <- execParser cliInfo
   case cli of
-    Run opts -> print $ debugOptions opts
+    Run opts -> appMain opts
     ListKeybinding initialize p -> printKeybindings initialize p
     Format cfg -> formatSwarmIO cfg
     LSP -> lspMain
