@@ -87,6 +87,7 @@ import Swarm.Language.Value (Value (VKey), envTypes)
 import Swarm.Log
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
+import Swarm.TUI.Controller.UpdateUI (updateAndRedrawUI)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Controller qualified as EC
 import Swarm.TUI.Editor.Model
@@ -287,13 +288,12 @@ handleMainEvent forceRedraw ev = do
   let keyHandler = s ^. keyEventHandling . keyDispatchers . to mainGameDispatcher
   case ev of
     AppEvent ae -> case ae of
-      Frame
-        -- If the game is paused, don't run any game ticks, but do redraw the screen
-        -- if a redraw is forced.
-        | s ^. gameState . temporal . paused -> unless forceRedraw continueWithoutRedraw
-        | otherwise -> runFrameUI forceRedraw
+      -- If the game is paused, don't run any game ticks, but do redraw if needed.
+      Frame ->  if s ^. gameState . temporal . paused
+        then updateAndRedrawUI forceRedraw
+        else runFrameUI forceRedraw
       Web (RunWebCode c) -> runBaseWebCode c
-      _ -> continueWithoutRedraw
+      UpstreamVersion _ -> error "version event should be handled by top-level handler"
     VtyEvent (V.EvResize _ _) -> invalidateCache
     EscapeKey | Just m <- s ^. uiState . uiGameplay . uiModal -> closeModal m
     -- Pass to key handler (allows users to configure bindings)
