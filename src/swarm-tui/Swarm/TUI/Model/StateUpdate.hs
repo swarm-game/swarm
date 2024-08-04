@@ -125,8 +125,10 @@ initPersistentState ::
   m (RuntimeState, UIState, KeyEventHandlingState)
 initPersistentState opts@(AppOpts {..}) = do
   (warnings :: Seq SystemFailure, (initRS, initUI, initKs)) <- runAccum mempty $ do
-    rs <- initRuntimeState pausedAtStart
-    ui <- initUIState speed (not (skipMenu opts)) cheatMode
+    -- when silent, objective dialogs do not pop up and we do not pause the game
+    let pauseOnAnyObjective = not silent
+    rs <- initRuntimeState pausedAtStart pauseOnAnyObjective
+    ui <- initUIState silent speed (not (skipMenu opts)) cheatMode
     ks <- initKeyHandlingState
     return (rs, ui, ks)
   let initRS' = addWarnings initRS (F.toList warnings)

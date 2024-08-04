@@ -176,8 +176,7 @@ doGoalUpdates = do
   curGoal <- use (uiState . uiGameplay . uiGoal . goalsContent)
   isCheating <- use (uiState . uiCheatMode)
   curWinCondition <- use (gameState . winCondition)
-  announcementsSeq <- use (gameState . messageInfo . announcementQueue)
-  let announcementsList = toList announcementsSeq
+  announcementsList <- use (gameState . messageInfo . announcementQueue . to toList)
 
   -- Decide whether we need to update the current goal text and pop
   -- up a modal dialog.

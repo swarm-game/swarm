@@ -251,6 +251,8 @@ data AppOpts = AppOpts
   -- ^ Code to be run on base.
   , pausedAtStart :: Bool
   -- ^ Pause the game on start by default.
+  , silent :: Bool
+  -- ^ Do not show goal dialogs.
   , autoPlay :: Bool
   -- ^ Automatically run the solution defined in the scenario file
   , speed :: Int
@@ -273,6 +275,7 @@ defaultAppOpts =
     , userScenario = Nothing
     , scriptToRun = Nothing
     , pausedAtStart = False
+    , silent = False
     , autoPlay = False
     , speed = defaultInitLgTicksPerSecond
     , cheatMode = False

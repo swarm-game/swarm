@@ -75,6 +75,8 @@ import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec)
 import Witch (From (from))
 import Prelude hiding (Applicative (..), lookup)
+import Data.Foldable.Extra (notNull)
+import Data.List (intercalate)
 
 -- | The main function to do one game tick.
 --
@@ -338,7 +340,19 @@ hypotheticalWinCheck em g ws oc = do
     Unwinnable _ -> grantAchievement LoseScenario
     _ -> return ()
 
-  messageInfo . announcementQueue %= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
+  queue <- messageInfo . announcementQueue Swarm.Util.<%= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
+  
+  shouldPause <- use $ temporal . pauseOnCompletion
+  -- TODO: remove this debug ouput
+  sendIO $ appendFile "log_win.txt" $ intercalate " \t"
+    [ show $ getTickNumber ts
+    , if newWinState == Ongoing then "ongoing" else "won"
+    , if (notNull queue) then "queued" else "empty"
+    , show shouldPause <> "\n"
+    ]
+
+  when (newWinState /= Ongoing || (notNull queue && shouldPause == PauseOnAnyObjective)) $
+    temporal . runStatus .= AutoPause
 
   mapM_ handleException $ exceptions finalAccumulator
  where

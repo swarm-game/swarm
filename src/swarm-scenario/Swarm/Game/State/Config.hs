@@ -18,5 +18,7 @@ data GameStateConfig = GameStateConfig
   -- ^ Lists of words/adjectives for use in building random robot names.
   , startPaused :: Bool
   -- ^ Start the game paused - useful for debugging or competitive play.
+  , pauseOnObjectiveCompletion :: Bool
+  -- ^ Pause the game when any objective is completed.
   , initState :: GameStateInputs
   }

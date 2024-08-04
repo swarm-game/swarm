@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -79,12 +80,13 @@ initGameStateConfig ::
   , Has (Lift IO) sig m
   ) =>
   Bool ->
+  Bool ->
   m GameStateConfig
-initGameStateConfig pause = do
-  gsi <- initGameStateInputs
-  appDataMap <- readAppData
-  nameGen <- initNameGenerator appDataMap
-  return $ GameStateConfig appDataMap nameGen pause gsi
+initGameStateConfig startPaused pauseOnObjectiveCompletion = do
+  initAppDataMap <- readAppData
+  nameParts <- initNameGenerator initAppDataMap
+  initState <- initGameStateInputs
+  return $ GameStateConfig {..}
 
 initRuntimeState ::
   ( Has (Throw SystemFailure) sig m
@@ -92,11 +94,11 @@ initRuntimeState ::
   , Has (Lift IO) sig m
   ) =>
   Bool ->
+  Bool ->
   m RuntimeState
-initRuntimeState pause = do
-  gsc <- initGameStateConfig pause
+initRuntimeState pause pauseOnObjective = do
+  gsc <- initGameStateConfig pause pauseOnObjective
   scenarios <- loadScenarios $ gsiScenarioInputs $ initState gsc
-
   return $
     RuntimeState
       { _webPort = Nothing
