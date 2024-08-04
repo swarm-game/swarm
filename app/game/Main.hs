@@ -68,9 +68,10 @@ cliParser =
     autoPlay <- autoplay
     speed <- speedFactor
     debugOptions <- debug
+    cheatMode <- cheat
     colorMode <- color
     userWebPort <- webPort
-    return $ AppOpts {..}
+    return $ (\ao -> ao {debugOptions = Set.union cheatMode debugOptions}) $ AppOpts {..}
 
   input :: Parser FormatInput
   input =
@@ -135,7 +136,7 @@ cliParser =
       ]
 
   debug :: Parser (Set.Set DebugOption)
-  debug = Set.unions <$> (([Set.singleton ToggleCreative] <$ cheat) <|> many debugOption)
+  debug = Set.unions <$> many debugOption
   debugOption :: Parser (Set.Set DebugOption)
   debugOption = option debugOptionList (long "debug" <> short 'd' <> metavar "OPTS" <> hidden <> helpDoc debugOptionHelp)
   debugOptionList :: ReadM (Set.Set DebugOption)
@@ -151,8 +152,8 @@ cliParser =
           , let name = debugOptionName o
           , let desc = debugOptionDescription o
           ]
-  cheat :: Parser Bool
-  cheat = flag' True (long "cheat" <> short 'x' <> helpDoc (Just cheatHelp))
+  cheat :: Parser (Set.Set DebugOption)
+  cheat = flag mempty (Set.singleton ToggleCreative) (long "cheat" <> short 'x' <> helpDoc (Just cheatHelp))
   cheatHelp =
     "Enable cheat mode."
       <+> pretty ("This is an alias for --debug=" <> debugOptionName ToggleCreative)
