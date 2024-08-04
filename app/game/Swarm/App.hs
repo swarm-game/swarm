@@ -79,7 +79,6 @@ appMain opts = do
         forever $ do
           writeBChan chan Frame
           threadDelay 33_333 -- cap maximum framerate at 30 FPS
-
       _ <- forkIO $ do
         upRel <- getNewerReleaseVersion (repoGitInfo opts)
         writeBChan chan (UpstreamVersion upRel)

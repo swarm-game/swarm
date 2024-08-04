@@ -289,9 +289,10 @@ handleMainEvent forceRedraw ev = do
   case ev of
     AppEvent ae -> case ae of
       -- If the game is paused, don't run any game ticks, but do redraw if needed.
-      Frame ->  if s ^. gameState . temporal . paused
-        then updateAndRedrawUI forceRedraw
-        else runFrameUI forceRedraw
+      Frame ->
+        if s ^. gameState . temporal . paused
+          then updateAndRedrawUI forceRedraw
+          else runFrameUI forceRedraw
       Web (RunWebCode c) -> runBaseWebCode c
       UpstreamVersion _ -> error "version event should be handled by top-level handler"
     VtyEvent (V.EvResize _ _) -> invalidateCache
