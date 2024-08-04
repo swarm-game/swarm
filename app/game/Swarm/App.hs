@@ -19,6 +19,7 @@ import Control.Concurrent (forkIO, threadDelay)
 import Control.Lens (view, (%~), (&), (?~))
 import Control.Monad (forever, void, when)
 import Control.Monad.IO.Class (liftIO)
+import Data.IORef (newIORef, readIORef, writeIORef)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
@@ -35,7 +36,6 @@ import Swarm.TUI.View
 import Swarm.Version (getNewerReleaseVersion)
 import Swarm.Web
 import System.IO (stderr)
-import Data.IORef (newIORef, readIORef, writeIORef)
 
 type EventHandler = BrickEvent Name AppEvent -> EventM Name AppState ()
 
