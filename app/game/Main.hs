@@ -138,17 +138,28 @@ cliParser =
   debug :: Parser (Set.Set DebugOption)
   debug = Set.unions <$> many debugOption
   debugOption :: Parser (Set.Set DebugOption)
-  debugOption = option debugOptionList (long "debug" <> short 'd' <> metavar "OPTS" <> hidden <> helpDoc debugOptionHelp)
+  debugOption =
+    option
+      debugOptionList
+      ( long "debug"
+          <> short 'd'
+          <> metavar "OPTS"
+          <> hidden
+          <> helpDoc debugOptionHelp
+          <> completeWith debugCompletions
+      )
+  allDebug = [minBound .. maxBound]
+  debugCompletions = "all" : map debugOptionName allDebug
   debugOptionList :: ReadM (Set.Set DebugOption)
   debugOptionList = eitherReader $ \case
-    "all" -> pure $ Set.fromAscList [minBound .. maxBound]
+    "all" -> pure $ Set.fromAscList allDebug
     opts -> Set.fromList <$> readDebugOptionList opts
   debugOptionHelp :: Maybe Doc
   debugOptionHelp =
     Just . nest 2 . vsep $
       "Use 'all' or a comma separated list of options:"
         : [ fillBreak 20 ("*" <+> pretty name) <+> pretty desc
-          | o <- [minBound .. maxBound]
+          | o <- allDebug
           , let name = debugOptionName o
           , let desc = debugOptionDescription o
           ]
