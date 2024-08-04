@@ -27,7 +27,7 @@ module Swarm.Game.State.Substate (
 
   -- *** Temporal state
   TemporalState,
-  PauseOnObjective(..),
+  PauseOnObjective (..),
   initTemporalState,
   gameStep,
   runStatus,

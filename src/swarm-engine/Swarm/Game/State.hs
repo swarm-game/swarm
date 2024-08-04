@@ -458,8 +458,9 @@ initGameState :: GameStateConfig -> GameState
 initGameState gsc =
   GameState
     { _creativeMode = False
-    , _temporal = initTemporalState (startPaused gsc)
-      & pauseOnCompletion .~ (if pauseOnObjectiveCompletion gsc then PauseOnAnyObjective else PauseOnWin)
+    , _temporal =
+        initTemporalState (startPaused gsc)
+          & pauseOnCompletion .~ (if pauseOnObjectiveCompletion gsc then PauseOnAnyObjective else PauseOnWin)
     , _winCondition = NoWinCondition
     , _winSolution = Nothing
     , _robotInfo = initRobots gsc
