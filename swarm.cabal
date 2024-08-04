@@ -714,8 +714,8 @@ library swarm-tui
     Swarm.TUI.List
     Swarm.TUI.Model
     Swarm.TUI.Model.Achievements
-    Swarm.TUI.Model.Event
     Swarm.TUI.Model.DebugOption
+    Swarm.TUI.Model.Event
     Swarm.TUI.Model.Goal
     Swarm.TUI.Model.KeyBindings
     Swarm.TUI.Model.Menu
