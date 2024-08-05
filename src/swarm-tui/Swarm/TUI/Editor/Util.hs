@@ -35,7 +35,7 @@ getEditingBounds myWorld =
   (EA.isEmpty a, newBounds)
  where
   newBounds = Cosmic DefaultRootSubworld (locToCoords upperLeftLoc, locToCoords lowerRightLoc)
-  upperLeftLoc = ul myWorld
+  upperLeftLoc = gridPosition $ area myWorld
   a = EA.getGridDimensions $ gridContent $ area myWorld
   lowerRightLoc = EA.computeBottomRightFromUpperLeft a upperLeftLoc
 

@@ -29,6 +29,7 @@ import Swarm.Game.Scenario.Topography.EntityFacade (EntityFacade (..), mkFacade)
 import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Rasterize
 import Swarm.Game.Scenario.Topography.Structure.Overlay
+import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.State.Landscape
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
@@ -106,7 +107,7 @@ getBoundingBox vc scenarioWorld maybeSize =
  where
   upperLeftLocation =
     if null maybeSize && not (isEmpty mapAreaDims)
-      then ul scenarioWorld
+      then gridPosition $ area scenarioWorld
       else vc .+^ ((`div` 2) <$> V2 (negate w) h)
 
   mkBoundingBox areaDimens upperLeftLoc =

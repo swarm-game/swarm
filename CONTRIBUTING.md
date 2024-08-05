@@ -41,8 +41,7 @@ you are expected to uphold this code. Please report unacceptable behavior to
 
 - Bug to report or feature to request? Try the
   [GitHub issue tracker](https://github.com/swarm-game/swarm/swarm/issues).
-- Questions? Join the [https://discord.gg/kp8MuSgkPw](Swarm
-  Discord server).
+- Questions? Join the [Swarm Discord server](https://discord.gg/kp8MuSgkPw).
 
 ## How can I contribute?
 
@@ -226,12 +225,12 @@ cabal install fourmolu-0.13.0.0
 If this installation does not work, you may have to set your GHC to a version supported by `fourmolu`:
 
 ```bash
-ghcup install ghc 9.4.5
+ghcup install ghc 9.8.2
 ```
 and/or:
 
 ```bash
-ghcup set ghc 9.4.5
+ghcup set ghc 9.8.2
 ```
 
 You can run the formatter from the shell:

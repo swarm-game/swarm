@@ -23,7 +23,7 @@ import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Land
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Topography.EntityFacade
-import Swarm.Game.Scenario.Topography.ProtoCell
+import Swarm.Game.Scenario.Topography.ProtoCell hiding (name)
 import Swarm.Game.Terrain
 import Swarm.Util (quote, showT)
 import Swarm.Util.Erasable (Erasable (..))

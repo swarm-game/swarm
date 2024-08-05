@@ -1,6 +1,6 @@
-cabal-version: 3.8
+cabal-version: 3.6
 name: swarm
-version: 0.5.0.0
+version: 0.6.0.0
 synopsis: 2D resource gathering game with programmable robots
 description:
   Swarm is a 2D programming and resource gathering
@@ -85,7 +85,6 @@ common common
 common stan-config
   ghc-options:
     -fwrite-ide-info
-    -hiedir=.hie
 
 -- Harmless extensions from GHC2021
 common ghc2021-extensions
@@ -199,6 +198,9 @@ library swarm-lang
 
   build-depends: swarm:swarm-util
   hs-source-dirs: src/swarm-lang
+  ghc-options:
+    -hiedir=.hie/src/swarm-lang
+
   default-language: Haskell2010
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
@@ -253,6 +255,9 @@ library swarm-topography
     swarm:swarm-util
 
   hs-source-dirs: src/swarm-topography
+  ghc-options:
+    -hiedir=.hie/src/swarm-topography
+
   default-language: Haskell2010
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
@@ -351,6 +356,9 @@ library swarm-scenario
     swarm:swarm-util,
 
   hs-source-dirs: src/swarm-scenario
+  ghc-options:
+    -hiedir=.hie/src/swarm-scenario
+
   default-language: Haskell2010
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
@@ -451,6 +459,9 @@ library swarm-engine
     swarm:swarm-util,
 
   hs-source-dirs: src/swarm-engine
+  ghc-options:
+    -hiedir=.hie/src/swarm-engine
+
   default-language: Haskell2010
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
@@ -488,7 +499,6 @@ library swarm-web
     witch,
 
   build-depends:
-    swarm:swarm-doc,
     swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,
@@ -497,6 +507,9 @@ library swarm-web
     swarm:swarm-util,
 
   hs-source-dirs: src/swarm-web
+  ghc-options:
+    -hiedir=.hie/src/swarm-web
+
   default-language: Haskell2010
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
@@ -555,6 +568,9 @@ library swarm-tournament
     swarm:swarm-util,
 
   hs-source-dirs: src/swarm-tournament
+  ghc-options:
+    -hiedir=.hie/src/swarm-tournament
+
   default-language: Haskell2010
 
 library swarm-util
@@ -604,6 +620,9 @@ library swarm-util
     yaml >=0.11 && <0.11.12.0,
 
   hs-source-dirs: src/swarm-util
+  ghc-options:
+    -hiedir=.hie/src/swarm-util
+
   default-language: Haskell2010
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
@@ -640,7 +659,7 @@ library swarm-doc
     fused-effects >=1.1.1.1 && <1.2,
     lens >=4.19 && <5.4,
     mtl >=2.2.2 && <2.4,
-    pandoc >=3.0 && <3.2,
+    pandoc >=3.0 && <3.3,
     pandoc-types >=1.23 && <1.24,
     scientific >=0.3.6 && <0.3.8,
     servant-docs >=0.12 && <0.14,
@@ -655,6 +674,9 @@ library swarm-doc
     swarm:swarm-util,
 
   hs-source-dirs: src/swarm-doc
+  ghc-options:
+    -hiedir=.hie/src/swarm-doc
+
   default-language: Haskell2010
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
@@ -761,6 +783,9 @@ library swarm-tui
     swarm:swarm-util,
 
   hs-source-dirs: src/swarm-tui
+  ghc-options:
+    -hiedir=.hie/src/swarm-tui
+
   default-language: Haskell2010
   default-extensions:
     -- Avoid unexpected unevaluated thunk buildup
@@ -768,7 +793,7 @@ library swarm-tui
     StrictData
 
 executable swarm
-  import: stan-config, common
+  import: stan-config, common, ghc2021-extensions
   main-is: Main.hs
   other-modules: Swarm.App
   build-depends:
@@ -789,7 +814,10 @@ executable swarm
     vty,
     vty-crossplatform >=0.4 && <0.5,
 
-  hs-source-dirs: app
+  hs-source-dirs: app/game
+  ghc-options:
+    -hiedir=.hie/app/game
+
   default-language: Haskell2010
   ghc-options: -threaded
   default-extensions: ImportQualifiedPost
@@ -806,6 +834,9 @@ executable swarm-scene
     swarm:swarm-topography,
 
   hs-source-dirs: app/scene
+  ghc-options:
+    -hiedir=.hie/app/scene
+
   default-language: Haskell2010
   ghc-options: -threaded
   default-extensions: ImportQualifiedPost
@@ -822,6 +853,9 @@ executable swarm-docs
     text,
 
   hs-source-dirs: app/doc
+  ghc-options:
+    -hiedir=.hie/app/doc
+
   default-language: Haskell2010
   ghc-options: -threaded
   default-extensions: ImportQualifiedPost
@@ -842,6 +876,9 @@ executable swarm-host-tournament
     swarm:swarm-tournament,
 
   hs-source-dirs: app/tournament
+  ghc-options:
+    -hiedir=.hie/app/tournament
+
   default-language: Haskell2010
   ghc-options: -threaded
   default-extensions: ImportQualifiedPost
@@ -899,6 +936,9 @@ test-suite swarm-unit
     swarm:swarm-util,
 
   hs-source-dirs: test/unit
+  ghc-options:
+    -hiedir=.hie/test/unit
+
   default-language: Haskell2010
   ghc-options: -threaded
 
@@ -931,6 +971,9 @@ test-suite swarm-integration
     swarm:swarm-util,
 
   hs-source-dirs: test/integration
+  ghc-options:
+    -hiedir=.hie/test/integration
+
   default-language: Haskell2010
   ghc-options: -threaded
 
@@ -954,6 +997,9 @@ test-suite tournament-host
     swarm:swarm-tournament,
 
   hs-source-dirs: test/tournament-host
+  ghc-options:
+    -hiedir=.hie/test/tournament-host
+
   default-language: Haskell2010
   ghc-options: -threaded
 
@@ -982,6 +1028,9 @@ test-suite standalone-topography
     swarm:swarm-util,
 
   hs-source-dirs: test/standalone-topography/src
+  ghc-options:
+    -hiedir=.hie/test/standalone-topography/src
+
   default-language: Haskell2010
   ghc-options: -threaded
 
@@ -989,6 +1038,9 @@ benchmark benchmark
   import: stan-config, common, ghc2021-extensions
   main-is: Benchmark.hs
   hs-source-dirs: test/bench
+  ghc-options:
+    -hiedir=.hie/test/bench
+
   type: exitcode-stdio-1.0
   build-depends:
     base,

@@ -20,6 +20,7 @@ import Swarm.Util (applyWhen)
 
 data PositionedGrid a = PositionedGrid
   { gridPosition :: Location
+  -- ^ location of the upper-left cell
   , gridContent :: Grid a
   }
   deriving (Eq)

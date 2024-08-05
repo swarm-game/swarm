@@ -35,6 +35,8 @@ module Swarm.Game.State (
   -- ** GameState initialization
   initGameState,
   CodeToRun (..),
+  toRunSource,
+  toRunSyntax,
   Sha1 (..),
   SolutionSource (..),
   parseCodeFile,
@@ -101,6 +103,7 @@ import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario.Status
+import Swarm.Game.State.Config
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
@@ -127,7 +130,12 @@ data SolutionSource
     -- on a leaderboard.
     PlayerAuthored FilePath Sha1
 
-data CodeToRun = CodeToRun SolutionSource TSyntax
+data CodeToRun = CodeToRun
+  { _toRunSource :: SolutionSource
+  , _toRunSyntax :: TSyntax
+  }
+
+makeLenses ''CodeToRun
 
 getRunCodePath :: CodeToRun -> Maybe FilePath
 getRunCodePath (CodeToRun solutionSource _) = case solutionSource of
@@ -450,7 +458,7 @@ initGameState :: GameStateConfig -> GameState
 initGameState gsc =
   GameState
     { _creativeMode = False
-    , _temporal = initTemporalState
+    , _temporal = initTemporalState $ startPaused gsc
     , _winCondition = NoWinCondition
     , _winSolution = Nothing
     , _robotInfo = initRobots gsc

@@ -194,7 +194,7 @@ testScenarioSolutions rs ui key =
     [ testGroup
         "Tutorial"
         [ testTutorialSolution Default "Tutorials/backstory"
-        , testTutorialSolution (Sec 3) "Tutorials/move"
+        , testTutorialSolution (Sec 10) "Tutorials/move"
         , testTutorialSolution Default "Tutorials/craft"
         , testTutorialSolution Default "Tutorials/grab"
         , testTutorialSolution Default "Tutorials/place"
@@ -371,6 +371,8 @@ testScenarioSolutions rs ui key =
         , testSolution Default "Testing/1642-biomes"
         , testSolution (Sec 10) "Testing/1533-sow-command"
         , testSolution Default "Testing/1533-sow-seed-maturation"
+        , testSolution Default "Testing/2085-toplevel-mask"
+        , testSolution Default "Testing/2086-structure-palette"
         , testGroup
             -- Note that the description of the classic world in
             -- data/worlds/classic.yaml (automatically tested to some

@@ -507,16 +507,10 @@ world:
   dsl: |
     {grass}
   upperleft: [0, 0]
-  placements:
-    - src: rubbish enclosure
-      offset: [19, -10]
-    - src: rubbish enclosure
-      offset: [19, -14]
-      orient:
-        up: south
   palette:
     'B': [grass, erase, base]
     '.': [grass]
+    'x': [blank]
     'w': [grass, lakewater]
     's': [grass, lakewater, shark]
     'A': [grass, avocado]
@@ -524,6 +518,16 @@ world:
     'c': [grass, cucumber]
     'r': [dirt, erase]
     'h': [dirt, erase, hauler]
+    'e':
+      structure:
+        name: rubbish enclosure
+      cell: [grass]
+    'f':
+      structure:
+        name: rubbish enclosure
+        orientation:
+          up: south
+      cell: [grass]
   map: |
     .........................h.
     .........................r.
@@ -535,10 +539,10 @@ world:
     .........wwwwwwww........r.
     cccc.......wwww..........r.
     cccc.....................r.
-    .........................r.
-    .........................r.
-    .........................r.
+    ...................exxxx.r.
+    ...................xxxxx.r.
+    ...................xxxxx.r.
     ....................rrrrrr.
-    ...........................
-    ...........................
-    ...........................
+    ...................fxxxx...
+    ...................xxxxx...
+    ...................xxxxx...

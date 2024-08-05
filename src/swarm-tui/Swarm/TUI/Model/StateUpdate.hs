@@ -125,7 +125,7 @@ initPersistentState ::
   m (RuntimeState, UIState, KeyEventHandlingState)
 initPersistentState opts@(AppOpts {..}) = do
   (warnings :: Seq SystemFailure, (initRS, initUI, initKs)) <- runAccum mempty $ do
-    rs <- initRuntimeState
+    rs <- initRuntimeState pausedAtStart
     ui <- initUIState speed (not (skipMenu opts)) cheatMode
     ks <- initKeyHandlingState
     return (rs, ui, ks)
@@ -142,7 +142,7 @@ constructAppState ::
   AppOpts ->
   m AppState
 constructAppState rs ui key opts@(AppOpts {..}) = do
-  let gs = initGameState $ rs ^. stdGameConfigInputs
+  let gs = initGameState (rs ^. stdGameConfigInputs)
   case skipMenu opts of
     False -> return $ AppState gs (ui & uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) key rs
     True -> do
@@ -226,8 +226,8 @@ scenarioToAppState siPair@(scene, _) lp = do
   gameState .= gs
   void $ withLensIO uiState $ scenarioToUIState isAutoplaying siPair gs
  where
-  isAutoplaying = case runIdentity (initialCode lp) of
-    Just (CodeToRun ScenarioSuggested _) -> True
+  isAutoplaying = case fmap (view toRunSource) . runIdentity $ initialCode lp of
+    Just ScenarioSuggested -> True
     _ -> False
 
   withLensIO :: (MonadIO m, MonadState AppState m) => Lens' AppState x -> (x -> IO x) -> m x
