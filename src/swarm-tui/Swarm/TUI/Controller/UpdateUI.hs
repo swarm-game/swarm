@@ -6,6 +6,7 @@
 -- The main TUI update logic that is called from other controller parts.
 module Swarm.TUI.Controller.UpdateUI (
   updateUI,
+  updateAndRedrawUI,
 ) where
 
 import Brick hiding (Direction, Location)
@@ -42,6 +43,14 @@ import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Objective qualified as GR
 import Witch (into)
 import Prelude hiding (Applicative (..))
+
+-- | Update the UI and redraw if needed.
+--
+-- This function is used after running the game for some number of ticks.
+updateAndRedrawUI :: Bool -> EventM Name AppState ()
+updateAndRedrawUI forceRedraw = do
+  redraw <- updateUI
+  unless (forceRedraw || redraw) continueWithoutRedraw
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
