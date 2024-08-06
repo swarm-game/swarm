@@ -17,9 +17,7 @@
 # preview with CTRL+PageUp, and then
 # CTRL+w will close the redundant image preview.
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-cd $SCRIPT_DIR/..
-
+cd $(git rev-parse --show-toplevel)
 
 SCENARIO_PATH=${1?"Usage: $0 SCENARIO_PATH"}
 
@@ -32,6 +30,6 @@ RENDER_IMG_COMMAND="stack exec swarm-scene -- $SCENARIO_PATH --fail-blank --dest
 stack build --fast swarm:swarm-scene
 
 $RENDER_IMG_COMMAND
-code --reuse-window $SCENARIO_PATH && code --reuse-window $IMG_OUTPUT_PATH 
+code --reuse-window $SCENARIO_PATH && code --reuse-window $IMG_OUTPUT_PATH
 
 while inotifywait -e close_write $SCENARIO_PATH; do $RENDER_IMG_COMMAND; done
