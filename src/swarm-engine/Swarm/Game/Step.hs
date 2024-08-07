@@ -28,9 +28,11 @@ import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (foldM, forM_, unless, when)
+import Data.Foldable.Extra (notNull)
 import Data.Functor (void)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
+import Data.List (intercalate)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Sequence ((><))
@@ -338,7 +340,22 @@ hypotheticalWinCheck em g ws oc = do
     Unwinnable _ -> grantAchievement LoseScenario
     _ -> return ()
 
-  messageInfo . announcementQueue %= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
+  queue <- messageInfo . announcementQueue Swarm.Util.<%= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
+
+  shouldPause <- use $ temporal . pauseOnCompletion
+  -- TODO: remove this debug ouput
+  sendIO $
+    appendFile "log_win.txt" $
+      intercalate
+        " \t"
+        [ show $ getTickNumber ts
+        , if newWinState == Ongoing then "ongoing" else "won"
+        , if (notNull queue) then "queued" else "empty"
+        , show shouldPause <> "\n"
+        ]
+
+  when (newWinState /= Ongoing || (notNull queue && shouldPause == PauseOnAnyObjective)) $
+    temporal . runStatus .= AutoPause
 
   mapM_ handleException $ exceptions finalAccumulator
  where

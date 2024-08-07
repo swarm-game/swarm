@@ -61,6 +61,7 @@ cliParser =
     userSeed <- seed
     userScenario <- scenario
     scriptToRun <- run
+    silent <- silentParser
     pausedAtStart <- paused
     autoPlay <- autoplay
     speed <- speedFactor
@@ -114,6 +115,8 @@ cliParser =
   scenario = optional $ strOption (long "scenario" <> short 'i' <> metavar "FILE" <> help "Name of an input scenario to load")
   run :: Parser (Maybe String)
   run = optional $ strOption (long "run" <> short 'r' <> metavar "FILE" <> help "Run the commands in a file at startup")
+  silentParser :: Parser Bool
+  silentParser = switch (long "silent" <> help "Do not show goal dialogs.")
   paused :: Parser Bool
   paused = switch (long "paused" <> short 'p' <> help "Pause the game at start.")
   autoplay :: Parser Bool

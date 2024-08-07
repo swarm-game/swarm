@@ -341,11 +341,12 @@ initUIState ::
   ( Has (Accum (Seq SystemFailure)) sig m
   , Has (Lift IO) sig m
   ) =>
+  Bool ->
   Int ->
   Bool ->
   Bool ->
   m UIState
-initUIState speedFactor showMainMenu cheatMode = do
+initUIState silent speedFactor showMainMenu cheatMode = do
   historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
   let history = maybe [] (map mkREPLSubmission . T.lines) historyT
   startTime <- sendIO $ getTime Monotonic
@@ -378,7 +379,7 @@ initUIState speedFactor showMainMenu cheatMode = do
                 , _uiModal = Nothing
                 , _uiGoal = emptyGoalDisplay
                 , _uiStructure = emptyStructureDisplay
-                , _uiHideGoals = False
+                , _uiHideGoals = silent
                 , _uiTiming =
                     UITiming
                       { _uiShowFPS = False
