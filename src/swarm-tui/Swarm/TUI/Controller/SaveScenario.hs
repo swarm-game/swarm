@@ -118,5 +118,5 @@ saveScenarioInfoOnQuit =
         -- Now rebuild the NewGameMenu so it gets the updated ScenarioInfo,
         -- being sure to preserve the same focused scenario.
         sc <- use $ runtimeState . scenarios
-        showTesting <- use $ uiState . uiDebugOptions . icontains ShowTestingScenarios
+        showTesting <- use $ uiState . uiDebugOptions . contains ShowTestingScenarios
         forM_ (mkNewGameMenu showTesting sc (fromMaybe p curPath)) (uiState . uiMenu .=)

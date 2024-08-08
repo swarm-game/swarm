@@ -787,8 +787,8 @@ robotsListWidget s = hCenter table
       . IM.elems
       $ g ^. robotInfo . robotMap
   creative = g ^. creativeMode
-  debugRID = s ^. uiState . uiDebugOptions . icontains ListRobotIDs
-  debugAllRobots = s ^. uiState . uiDebugOptions . icontains ListAllRobots
+  debugRID = s ^. uiState . uiDebugOptions . Lens.contains ListRobotIDs
+  debugAllRobots = s ^. uiState . uiDebugOptions . Lens.contains ListAllRobots
   g = s ^. gameState
 
 helpWidget :: Seed -> Maybe Port -> KeyEventHandlingState -> Widget Name
@@ -1015,8 +1015,8 @@ drawKeyMenu s =
   hasDebug = hasDebugCapability creative s
   viewingBase = (s ^. gameState . robotInfo . viewCenterRule) == VCRobot 0
   creative = s ^. gameState . creativeMode
-  showCreative = s ^. uiState . uiDebugOptions . icontains ToggleCreative
-  showEditor = s ^. uiState . uiDebugOptions . icontains ToggleWorldEditor
+  showCreative = s ^. uiState . uiDebugOptions . Lens.contains ToggleCreative
+  showEditor = s ^. uiState . uiDebugOptions . Lens.contains ToggleWorldEditor
   goal = hasAnythingToShow $ s ^. uiState . uiGameplay . uiGoal . goalsContent
   showZero = s ^. uiState . uiGameplay . uiInventory . uiShowZero
   inventorySort = s ^. uiState . uiGameplay . uiInventory . uiInventorySort

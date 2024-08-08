@@ -172,12 +172,12 @@ handleMainMenuEvent menu = \case
       Nothing -> pure ()
       Just x0 -> case x0 of
         NewGame -> do
-          showTesting <- use $ uiState . uiDebugOptions . icontains ShowTestingScenarios
+          showTesting <- use $ uiState . uiDebugOptions . Lens.contains ShowTestingScenarios
           ss <- use $ runtimeState . scenarios
           uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList showTesting ss)
         Tutorial -> do
           -- Set up the menu stack as if the user had chosen "New Game > Tutorials"
-          showTesting <- use $ uiState . uiDebugOptions . icontains ShowTestingScenarios
+          showTesting <- use $ uiState . uiDebugOptions . Lens.contains ShowTestingScenarios
           ss <- use $ runtimeState . scenarios
           let tutorialCollection = getTutorials ss
               topMenu =
@@ -253,7 +253,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
       Nothing -> pure ()
       Just (SISingle siPair) -> invalidateCache >> startGame siPair Nothing
       Just (SICollection _ c) -> do
-        showTesting <- use $ uiState . uiDebugOptions . icontains ShowTestingScenarios
+        showTesting <- use $ uiState . uiDebugOptions . Lens.contains ShowTestingScenarios
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList showTesting c) scenarioStack)
   CharKey 'o' -> showLaunchDialog
   CharKey 'O' -> showLaunchDialog

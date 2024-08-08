@@ -203,7 +203,7 @@ doGoalUpdates = do
       -- advance the menu at that point.
       return True
     WinConditions _ oc -> do
-      showHiddenGoals <- use $ uiState . uiDebugOptions . icontains ShowHiddenGoals
+      showHiddenGoals <- use $ uiState . uiDebugOptions . Lens.contains ShowHiddenGoals
       let newGoalTracking = GoalTracking announcementsList $ constructGoalMap showHiddenGoals oc
           -- The "uiGoal" field is initialized with empty members, so we know that
           -- this will be the first time showing it if it will be nonempty after previously
@@ -242,7 +242,7 @@ doGoalUpdates = do
         gameState . messageInfo . announcementQueue .= mempty
 
         isAutoPlay <- use $ uiState . uiGameplay . uiIsAutoPlay
-        showGoalsAnyway <- use $ uiState . uiDebugOptions . icontains ShowGoalDialogsInAutoPlay
+        showGoalsAnyway <- use $ uiState . uiDebugOptions . Lens.contains ShowGoalDialogsInAutoPlay
         unless (isAutoPlay && not showGoalsAnyway) $
           openModal GoalModal
 

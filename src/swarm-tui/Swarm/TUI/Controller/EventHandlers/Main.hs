@@ -152,5 +152,5 @@ whenRunning a = isRunning >>= \r -> when r a
 
 whenDebug :: DebugOption -> EventM Name AppState () -> EventM Name AppState ()
 whenDebug d a = do
-  debug <- use $ uiState . uiDebugOptions . icontains d
+  debug <- use $ uiState . uiDebugOptions . contains d
   when debug a
