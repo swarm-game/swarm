@@ -82,6 +82,7 @@ import Control.Monad.State (MonadState)
 import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
+import Data.Set (Set)
 import Data.Text (Text)
 import Data.Vector qualified as V
 import GitHash (GitInfo)
@@ -99,6 +100,7 @@ import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Log
 import Swarm.TUI.Inventory.Sorting
+import Swarm.TUI.Model.DebugOption (DebugOption)
 import Swarm.TUI.Model.Event (SwarmEvent)
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
@@ -255,8 +257,8 @@ data AppOpts = AppOpts
   -- ^ Automatically run the solution defined in the scenario file
   , speed :: Int
   -- ^ Initial game speed (logarithm)
-  , cheatMode :: Bool
-  -- ^ Should cheat mode be enabled?
+  , debugOptions :: Set DebugOption
+  -- ^ Debugging options, for example show creative switch.
   , colorMode :: Maybe ColorMode
   -- ^ What colour mode should be used?
   , userWebPort :: Maybe Port
@@ -275,7 +277,7 @@ defaultAppOpts =
     , pausedAtStart = False
     , autoPlay = False
     , speed = defaultInitLgTicksPerSecond
-    , cheatMode = False
+    , debugOptions = mempty
     , colorMode = Nothing
     , userWebPort = Nothing
     , repoGitInfo = Nothing

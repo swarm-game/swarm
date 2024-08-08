@@ -38,10 +38,7 @@ ticksPerFrameCap = 30
 --   this may involve stepping the game any number of ticks (including
 --   zero).
 runFrameUI :: Bool -> EventM Name AppState ()
-runFrameUI forceRedraw = do
-  runFrame
-  redraw <- updateUI
-  unless (forceRedraw || redraw) continueWithoutRedraw
+runFrameUI forceRedraw = runFrame >> updateAndRedrawUI forceRedraw
 
 -- | Run the game for a single frame, without updating the UI.
 runFrame :: EventM Name AppState ()

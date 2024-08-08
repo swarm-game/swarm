@@ -6,6 +6,7 @@
 -- The main TUI update logic that is called from other controller parts.
 module Swarm.TUI.Controller.UpdateUI (
   updateUI,
+  updateAndRedrawUI,
 ) where
 
 import Brick hiding (Direction, Location)
@@ -34,6 +35,7 @@ import Swarm.Language.Value (Value (VExc, VUnit), envTydefs, prettyValue)
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnFinishNocheat)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
+import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Popup (Popup (..), addPopup)
@@ -42,6 +44,14 @@ import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Objective qualified as GR
 import Witch (into)
 import Prelude hiding (Applicative (..))
+
+-- | Update the UI and redraw if needed.
+--
+-- This function is used after running the game for some number of ticks.
+updateAndRedrawUI :: Bool -> EventM Name AppState ()
+updateAndRedrawUI forceRedraw = do
+  redraw <- updateUI
+  unless (forceRedraw || redraw) continueWithoutRedraw
 
 -- | Update the UI.  This function is used after running the
 --   game for some number of ticks.
@@ -174,7 +184,6 @@ updateUI = do
 doGoalUpdates :: EventM Name AppState Bool
 doGoalUpdates = do
   curGoal <- use (uiState . uiGameplay . uiGoal . goalsContent)
-  isCheating <- use (uiState . uiCheatMode)
   curWinCondition <- use (gameState . winCondition)
   announcementsSeq <- use (gameState . messageInfo . announcementQueue)
   let announcementsList = toList announcementsSeq
@@ -203,7 +212,8 @@ doGoalUpdates = do
       -- advance the menu at that point.
       return True
     WinConditions _ oc -> do
-      let newGoalTracking = GoalTracking announcementsList $ constructGoalMap isCheating oc
+      showHiddenGoals <- use $ uiState . uiDebugOptions . Lens.contains ShowHiddenGoals
+      let newGoalTracking = GoalTracking announcementsList $ constructGoalMap showHiddenGoals oc
           -- The "uiGoal" field is initialized with empty members, so we know that
           -- this will be the first time showing it if it will be nonempty after previously
           -- being empty.
@@ -240,8 +250,9 @@ doGoalUpdates = do
         -- automatically popped up.
         gameState . messageInfo . announcementQueue .= mempty
 
-        hideGoals <- use $ uiState . uiGameplay . uiHideGoals
-        unless hideGoals $
+        isAutoPlay <- use $ uiState . uiGameplay . uiIsAutoPlay
+        showGoalsAnyway <- use $ uiState . uiDebugOptions . Lens.contains ShowGoalDialogsInAutoPlay
+        unless (isAutoPlay && not showGoalsAnyway) $
           openModal GoalModal
 
       return goalWasUpdated

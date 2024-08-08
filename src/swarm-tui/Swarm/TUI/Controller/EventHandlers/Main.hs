@@ -23,6 +23,7 @@ import Swarm.TUI.Controller.UpdateUI (updateUI)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Model (isWorldEditorEnabled, worldOverdraw)
 import Swarm.TUI.Model
+import Swarm.TUI.Model.DebugOption (DebugOption (ToggleCreative, ToggleWorldEditor))
 import Swarm.TUI.Model.Event (MainEvent (..), SwarmEvent (..))
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.UI
@@ -51,8 +52,8 @@ mainEventHandlers = allHandlers Main $ \case
   FocusRobotEvent -> ("Set focus on the Robot panel", setFocus RobotPanel)
   FocusREPLEvent -> ("Set focus on the REPL panel", setFocus REPLPanel)
   FocusInfoEvent -> ("Set focus on the Info panel", setFocus InfoPanel)
-  ToggleCreativeModeEvent -> ("Toggle creative mode", whenCheating toggleCreativeMode)
-  ToggleWorldEditorEvent -> ("Toggle world editor mode", whenCheating toggleWorldEditor)
+  ToggleCreativeModeEvent -> ("Toggle creative mode", whenDebug ToggleCreative toggleCreativeMode)
+  ToggleWorldEditorEvent -> ("Toggle world editor mode", whenDebug ToggleWorldEditor toggleWorldEditor)
   ToggleREPLVisibilityEvent -> ("Collapse/Expand REPL panel", toggleREPLVisibility)
 
 toggleQuitGameDialog :: EventM Name AppState ()
@@ -149,7 +150,7 @@ isRunning = do
 whenRunning :: EventM Name AppState () -> EventM Name AppState ()
 whenRunning a = isRunning >>= \r -> when r a
 
-whenCheating :: EventM Name AppState () -> EventM Name AppState ()
-whenCheating a = do
-  s <- get
-  when (s ^. uiState . uiCheatMode) a
+whenDebug :: DebugOption -> EventM Name AppState () -> EventM Name AppState ()
+whenDebug d a = do
+  debug <- use $ uiState . uiDebugOptions . contains d
+  when debug a

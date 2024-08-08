@@ -87,6 +87,7 @@ import Swarm.Language.Value (Value (VKey), envTypes)
 import Swarm.Log
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
+import Swarm.TUI.Controller.UpdateUI (updateAndRedrawUI)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Controller qualified as EC
 import Swarm.TUI.Editor.Model
@@ -95,6 +96,7 @@ import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep (prepareLaunchDialog)
 import Swarm.TUI.List
 import Swarm.TUI.Model
+import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Popup (progressPopups)
@@ -171,19 +173,19 @@ handleMainMenuEvent menu = \case
       Nothing -> pure ()
       Just x0 -> case x0 of
         NewGame -> do
-          cheat <- use $ uiState . uiCheatMode
+          showTesting <- use $ uiState . uiDebugOptions . Lens.contains ShowTestingScenarios
           ss <- use $ runtimeState . scenarios
-          uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList cheat ss)
+          uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList showTesting ss)
         Tutorial -> do
           -- Set up the menu stack as if the user had chosen "New Game > Tutorials"
-          cheat <- use $ uiState . uiCheatMode
+          showTesting <- use $ uiState . uiDebugOptions . Lens.contains ShowTestingScenarios
           ss <- use $ runtimeState . scenarios
           let tutorialCollection = getTutorials ss
               topMenu =
                 BL.listFindBy
                   ((== tutorialsDirname) . T.unpack . scenarioItemName)
-                  (mkScenarioList cheat ss)
-              tutorialMenu = mkScenarioList cheat tutorialCollection
+                  (mkScenarioList showTesting ss)
+              tutorialMenu = mkScenarioList showTesting tutorialCollection
               menuStack = tutorialMenu :| pure topMenu
           uiState . uiMenu .= NewGameMenu menuStack
 
@@ -252,8 +254,8 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
       Nothing -> pure ()
       Just (SISingle siPair) -> invalidateCache >> startGame siPair Nothing
       Just (SICollection _ c) -> do
-        cheat <- use $ uiState . uiCheatMode
-        uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList cheat c) scenarioStack)
+        showTesting <- use $ uiState . uiDebugOptions . Lens.contains ShowTestingScenarios
+        uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList showTesting c) scenarioStack)
   CharKey 'o' -> showLaunchDialog
   CharKey 'O' -> showLaunchDialog
   Key V.KEsc -> exitNewGameMenu scenarioStack
@@ -287,13 +289,13 @@ handleMainEvent forceRedraw ev = do
   let keyHandler = s ^. keyEventHandling . keyDispatchers . to mainGameDispatcher
   case ev of
     AppEvent ae -> case ae of
-      Frame
-        -- If the game is paused, don't run any game ticks, but do redraw the screen
-        -- if a redraw is forced.
-        | s ^. gameState . temporal . paused -> unless forceRedraw continueWithoutRedraw
-        | otherwise -> runFrameUI forceRedraw
+      -- If the game is paused, don't run any game ticks, but do redraw if needed.
+      Frame ->
+        if s ^. gameState . temporal . paused
+          then updateAndRedrawUI forceRedraw
+          else runFrameUI forceRedraw
       Web (RunWebCode c) -> runBaseWebCode c
-      _ -> continueWithoutRedraw
+      UpstreamVersion _ -> error "version event should be handled by top-level handler"
     VtyEvent (V.EvResize _ _) -> invalidateCache
     EscapeKey | Just m <- s ^. uiState . uiGameplay . uiModal -> closeModal m
     -- Pass to key handler (allows users to configure bindings)

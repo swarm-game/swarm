@@ -10,15 +10,19 @@ module Main (main) where
 
 import Control.Monad (when)
 import Data.Foldable qualified
+import Data.List.Extra (enumerate)
+import Data.Set qualified as Set
 import Data.Text.IO qualified as T
 import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
+import Options.Applicative.Help hiding (color, fullDesc)
 import Swarm.App (appMain)
 import Swarm.Game.ResourceLoading (getSwarmConfigIniFile)
 import Swarm.Language.Format
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Parser.Core (LanguageVersion (..))
 import Swarm.TUI.Model (AppOpts (..), ColorMode (..))
+import Swarm.TUI.Model.DebugOption
 import Swarm.TUI.Model.KeyBindings (KeybindingPrint (..), showKeybindings)
 import Swarm.TUI.Model.UI (defaultInitLgTicksPerSecond)
 import Swarm.Version
@@ -64,10 +68,15 @@ cliParser =
     pausedAtStart <- paused
     autoPlay <- autoplay
     speed <- speedFactor
+    debugOptions <- debug
     cheatMode <- cheat
     colorMode <- color
     userWebPort <- webPort
-    return $ AppOpts {..}
+    -- ApplicativeDo does not give Monad powers, so cheat is added here
+    return $ addToDebug cheatMode $ AppOpts {..}
+
+  addToDebug :: Set.Set DebugOption -> AppOpts -> AppOpts
+  addToDebug cheatMode ao = ao {debugOptions = cheatMode `Set.union` debugOptions ao}
 
   input :: Parser FormatInput
   input =
@@ -130,8 +139,40 @@ cliParser =
       , "t/s."
       , "(Negative values are allowed, e.g. -3 means 1 tick per 8 sec.)"
       ]
-  cheat :: Parser Bool
-  cheat = switch (long "cheat" <> short 'x' <> help "Enable cheat mode. This allows toggling Creative Mode with Ctrl+v and unlocks \"Testing\" scenarios in the menu.")
+
+  debug :: Parser (Set.Set DebugOption)
+  debug = Set.unions <$> many debugOption
+  debugOption :: Parser (Set.Set DebugOption)
+  debugOption =
+    option
+      debugOptionList
+      ( long "debug"
+          <> short 'd'
+          <> metavar "OPTS"
+          <> hidden
+          <> helpDoc debugOptionHelp
+          <> completeWith debugCompletions
+      )
+  debugCompletions = "all" : map debugOptionName enumerate
+  debugOptionList :: ReadM (Set.Set DebugOption)
+  debugOptionList = eitherReader $ \case
+    "all" -> pure $ Set.fromAscList enumerate
+    opts -> Set.fromList <$> readDebugOptionList opts
+  debugOptionHelp :: Maybe Doc
+  debugOptionHelp =
+    Just . nest 2 . vsep $
+      "Use 'all' or a comma separated list of options:"
+        : [ fillBreak 20 ("*" <+> pretty name) <+> pretty desc
+          | o <- enumerate
+          , let name = debugOptionName o
+          , let desc = debugOptionDescription o
+          ]
+  cheat :: Parser (Set.Set DebugOption)
+  cheat = flag mempty (Set.singleton ToggleCreative) (long "cheat" <> short 'x' <> helpDoc (Just cheatHelp))
+  cheatHelp =
+    "Enable cheat mode."
+      <+> pretty ("This is an alias for --debug=" <> debugOptionName ToggleCreative)
+
   color :: Parser (Maybe ColorMode)
   color = optional $ option colorModeParser (long "color" <> short 'c' <> metavar "MODE" <> help "Use none/8/16/full color mode.")
   colorModeParser =
