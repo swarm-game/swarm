@@ -102,15 +102,15 @@ makePrisms ''Menu
 
 -- | Create a brick 'BL.List' of scenario items from a 'ScenarioCollection'.
 mkScenarioList :: Bool -> ScenarioCollection -> BL.List Name ScenarioItem
-mkScenarioList cheat = flip (BL.list ScenarioList) 1 . V.fromList . filterTest . scenarioCollectionToList
+mkScenarioList showTesting = flip (BL.list ScenarioList) 1 . V.fromList . filterTest . scenarioCollectionToList
  where
-  filterTest = if cheat then id else filter (\case SICollection n _ -> n /= "Testing"; _ -> True)
+  filterTest = if showTesting then id else filter (\case SICollection n _ -> n /= "Testing"; _ -> True)
 
 -- | Given a 'ScenarioCollection' and a 'FilePath' which is the canonical
 --   path to some folder or scenario, construct a 'NewGameMenu' stack
 --   focused on the given item, if possible.
 mkNewGameMenu :: Bool -> ScenarioCollection -> FilePath -> Maybe Menu
-mkNewGameMenu cheat sc path = fmap NewGameMenu $ NE.nonEmpty =<< go (Just sc) (splitPath path) []
+mkNewGameMenu showTesting sc path = fmap NewGameMenu $ NE.nonEmpty =<< go (Just sc) (splitPath path) []
  where
   go ::
     Maybe ScenarioCollection ->
@@ -125,7 +125,7 @@ mkNewGameMenu cheat sc path = fmap NewGameMenu $ NE.nonEmpty =<< go (Just sc) (s
     hasName (SISingle (_, ScenarioInfo pth _)) = takeFileName pth == thing
     hasName (SICollection nm _) = nm == into @Text (dropTrailingPathSeparator thing)
 
-    lst = BL.listFindBy hasName (mkScenarioList cheat curSC)
+    lst = BL.listFindBy hasName (mkScenarioList showTesting curSC)
 
     nextSC = case M.lookup (dropTrailingPathSeparator thing) (scMap curSC) of
       Just (SICollection _ c) -> Just c

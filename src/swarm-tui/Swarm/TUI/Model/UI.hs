@@ -18,7 +18,7 @@ module Swarm.TUI.Model.UI (
   uiInventory,
   uiMenu,
   uiPlaying,
-  uiCheatMode,
+  uiDebugOptions,
   uiFocusRing,
   uiLaunchConfig,
   uiWorldCursor,
@@ -31,7 +31,7 @@ module Swarm.TUI.Model.UI (
   uiModal,
   uiGoal,
   uiStructure,
-  uiHideGoals,
+  uiIsAutoPlay,
   uiAchievements,
   lgTicksPerSecond,
   lastFrameTime,
@@ -70,6 +70,7 @@ import Data.List.Extra (enumerate)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Sequence (Seq)
+import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Achievement.Attainment
@@ -86,6 +87,7 @@ import Swarm.TUI.Editor.Model
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep
+import Swarm.TUI.Model.DebugOption (DebugOption)
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
@@ -204,7 +206,7 @@ data UIGameplay = UIGameplay
   , _uiModal :: Maybe Modal
   , _uiGoal :: GoalDisplay
   , _uiStructure :: StructureDisplay
-  , _uiHideGoals :: Bool
+  , _uiIsAutoPlay :: Bool
   , _uiShowREPL :: Bool
   , _uiShowDebug :: Bool
   , _uiHideRobotsUntil :: TimeSpec
@@ -253,14 +255,16 @@ uiStructure :: Lens' UIGameplay StructureDisplay
 -- | When running with @--autoplay@, suppress the goal dialogs.
 --
 -- For development, the @--cheat@ flag shows goals again.
-uiHideGoals :: Lens' UIGameplay Bool
+uiIsAutoPlay :: Lens' UIGameplay Bool
 
 -- | A toggle to expand or collapse the REPL by pressing @Ctrl-k@
 uiShowREPL :: Lens' UIGameplay Bool
 
--- | A toggle to show debug.
+-- | A toggle to show CESK machine debug view and step through it.
 --
--- TODO: #1112 use record for selection of debug features?
+-- Note that the ability to use it can be enabled by player robot
+-- gaining the capability, or being in creative mode or with
+-- the debug option 'Swarm.TUI.Model.DebugOption.DebugCESK'.
 uiShowDebug :: Lens' UIGameplay Bool
 
 -- | Hide robots on the world map.
@@ -278,7 +282,7 @@ scenarioRef :: Lens' UIGameplay (Maybe ScenarioInfoPair)
 data UIState = UIState
   { _uiMenu :: Menu
   , _uiPlaying :: Bool
-  , _uiCheatMode :: Bool
+  , _uiDebugOptions :: Set DebugOption
   , _uiLaunchConfig :: LaunchOptions
   , _uiAchievements :: Map CategorizedAchievement Attainment
   , _uiAttrMap :: AttrMap
@@ -301,8 +305,8 @@ uiMenu :: Lens' UIState Menu
 --   display the current menu.
 uiPlaying :: Lens' UIState Bool
 
--- | Cheat mode, i.e. are we allowed to turn creative mode on and off?
-uiCheatMode :: Lens' UIState Bool
+-- | Debugging features, for example are we allowed to turn creative mode on and off?
+uiDebugOptions :: Lens' UIState (Set DebugOption)
 
 -- | Configuration modal when launching a scenario
 uiLaunchConfig :: Lens' UIState LaunchOptions
@@ -343,59 +347,58 @@ initUIState ::
   ) =>
   Int ->
   Bool ->
-  Bool ->
+  Set DebugOption ->
   m UIState
-initUIState speedFactor showMainMenu cheatMode = do
+initUIState speedFactor showMainMenu debug = do
   historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
   let history = maybe [] (map mkREPLSubmission . T.lines) historyT
   startTime <- sendIO $ getTime Monotonic
   achievements <- loadAchievementsInfo
   launchConfigPanel <- sendIO initConfigPanel
-  let out =
-        UIState
-          { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
-          , _uiPlaying = not showMainMenu
-          , _uiCheatMode = cheatMode
-          , _uiLaunchConfig = launchConfigPanel
-          , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
-          , _uiAttrMap = swarmAttrMap
-          , _uiPopups = initPopupState
-          , _uiGameplay =
-              UIGameplay
-                { _uiFocusRing = initFocusRing
-                , _uiWorldCursor = Nothing
-                , _uiWorldEditor = initialWorldEditor startTime
-                , _uiREPL = initREPLState $ newREPLHistory history
-                , _uiInventory =
-                    UIInventory
-                      { _uiInventoryList = Nothing
-                      , _uiInventorySort = defaultSortOptions
-                      , _uiInventorySearch = Nothing
-                      , _uiShowZero = True
-                      , _uiInventoryShouldUpdate = False
-                      }
-                , _uiScrollToEnd = False
-                , _uiModal = Nothing
-                , _uiGoal = emptyGoalDisplay
-                , _uiStructure = emptyStructureDisplay
-                , _uiHideGoals = False
-                , _uiTiming =
-                    UITiming
-                      { _uiShowFPS = False
-                      , _uiTPF = 0
-                      , _uiFPS = 0
-                      , _lgTicksPerSecond = speedFactor
-                      , _lastFrameTime = startTime
-                      , _accumulatedTime = 0
-                      , _lastInfoTime = 0
-                      , _tickCount = 0
-                      , _frameCount = 0
-                      , _frameTickCount = 0
-                      }
-                , _uiShowREPL = True
-                , _uiShowDebug = False
-                , _uiHideRobotsUntil = startTime - 1
-                , _scenarioRef = Nothing
-                }
-          }
-  return out
+  return
+    UIState
+      { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
+      , _uiPlaying = not showMainMenu
+      , _uiDebugOptions = debug
+      , _uiLaunchConfig = launchConfigPanel
+      , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
+      , _uiAttrMap = swarmAttrMap
+      , _uiPopups = initPopupState
+      , _uiGameplay =
+          UIGameplay
+            { _uiFocusRing = initFocusRing
+            , _uiWorldCursor = Nothing
+            , _uiWorldEditor = initialWorldEditor startTime
+            , _uiREPL = initREPLState $ newREPLHistory history
+            , _uiInventory =
+                UIInventory
+                  { _uiInventoryList = Nothing
+                  , _uiInventorySort = defaultSortOptions
+                  , _uiInventorySearch = Nothing
+                  , _uiShowZero = True
+                  , _uiInventoryShouldUpdate = False
+                  }
+            , _uiScrollToEnd = False
+            , _uiModal = Nothing
+            , _uiGoal = emptyGoalDisplay
+            , _uiStructure = emptyStructureDisplay
+            , _uiIsAutoPlay = False
+            , _uiTiming =
+                UITiming
+                  { _uiShowFPS = False
+                  , _uiTPF = 0
+                  , _uiFPS = 0
+                  , _lgTicksPerSecond = speedFactor
+                  , _lastFrameTime = startTime
+                  , _accumulatedTime = 0
+                  , _lastInfoTime = 0
+                  , _tickCount = 0
+                  , _frameCount = 0
+                  , _frameTickCount = 0
+                  }
+            , _uiShowREPL = True
+            , _uiShowDebug = False
+            , _uiHideRobotsUntil = startTime - 1
+            , _scenarioRef = Nothing
+            }
+      }
