@@ -802,6 +802,7 @@ executable swarm
     base,
     brick,
     containers,
+    extra,
     fused-effects,
     githash >=0.1.6 && <0.2,
     lens,

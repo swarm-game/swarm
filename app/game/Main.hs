@@ -10,6 +10,7 @@ module Main (main) where
 
 import Control.Monad (when)
 import Data.Foldable qualified
+import Data.List.Extra (enumerate)
 import Data.Set qualified as Set
 import Data.Text.IO qualified as T
 import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
@@ -152,18 +153,17 @@ cliParser =
           <> helpDoc debugOptionHelp
           <> completeWith debugCompletions
       )
-  allDebug = [minBound .. maxBound]
-  debugCompletions = "all" : map debugOptionName allDebug
+  debugCompletions = "all" : map debugOptionName enumerate
   debugOptionList :: ReadM (Set.Set DebugOption)
   debugOptionList = eitherReader $ \case
-    "all" -> pure $ Set.fromAscList allDebug
+    "all" -> pure $ Set.fromAscList enumerate
     opts -> Set.fromList <$> readDebugOptionList opts
   debugOptionHelp :: Maybe Doc
   debugOptionHelp =
     Just . nest 2 . vsep $
       "Use 'all' or a comma separated list of options:"
         : [ fillBreak 20 ("*" <+> pretty name) <+> pretty desc
-          | o <- allDebug
+          | o <- enumerate
           , let name = debugOptionName o
           , let desc = debugOptionDescription o
           ]
