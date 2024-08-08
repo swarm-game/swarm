@@ -810,7 +810,6 @@ executable swarm
     swarm:swarm-lang,
     swarm:swarm-scenario,
     swarm:swarm-tui,
-    swarm:swarm-util,
     swarm:swarm-web,
     text,
     vty,
