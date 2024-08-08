@@ -71,7 +71,11 @@ cliParser =
     cheatMode <- cheat
     colorMode <- color
     userWebPort <- webPort
-    return $ (\ao -> ao {debugOptions = Set.union cheatMode debugOptions}) $ AppOpts {..}
+    -- ApplicativeDo does not give Monad powers, so cheat is added here
+    return $ addToDebug cheatMode $ AppOpts {..}
+
+  addToDebug :: Set.Set DebugOption -> AppOpts -> AppOpts
+  addToDebug cheatMode ao = ao {debugOptions = cheatMode `Set.union` debugOptions ao}
 
   input :: Parser FormatInput
   input =
