@@ -19,7 +19,7 @@ import Control.Concurrent (forkIO, threadDelay)
 import Control.Lens (view, (%~), (&), (?~))
 import Control.Monad (forever, void, when)
 import Control.Monad.IO.Class (liftIO)
-import Data.IORef (newIORef, writeIORef)
+import Data.IORef (newIORef, readIORef, writeIORef)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Graphics.Vty qualified as V
@@ -33,7 +33,6 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI (uiAttrMap)
 import Swarm.TUI.View
-import Swarm.Util.ReadableIORef (mkReadonly)
 import Swarm.Version (getNewerReleaseVersion)
 import Swarm.Web
 import System.IO (stderr)
@@ -90,7 +89,7 @@ appMain opts = do
       eport <-
         Swarm.Web.startWebThread
           (userWebPort opts)
-          (mkReadonly appStateRef)
+          (readIORef appStateRef)
           chan
 
       let logP p = logEvent SystemLog Info "Web API" ("started on :" <> T.pack (show p))
@@ -137,7 +136,7 @@ demoWeb = do
       webMain
         Nothing
         demoPort
-        (mkReadonly appStateRef)
+        (readIORef appStateRef)
         chan
  where
   demoScenario = Just "./data/scenarios/Testing/475-wait-one.yaml"

@@ -19,7 +19,6 @@
 --
 -- Missing endpoints:
 --
---   * TODO: #625 run endpoint to load definitions
 --   * TODO: #493 export the whole game state
 module Swarm.Web (
   startWebThread,
@@ -82,7 +81,6 @@ import Swarm.TUI.Model hiding (SwarmKeyDispatchers (..))
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Repl (REPLHistItem, replHistory, replSeq)
 import Swarm.TUI.Model.UI
-import Swarm.Util.ReadableIORef
 import Swarm.Util.RingBuffer
 import Swarm.Web.Worldview
 import System.Timeout (timeout)
@@ -147,7 +145,8 @@ swarmApiMarkdown =
 -- ------------------------------------------------------------------
 
 mkApp ::
-  ReadableIORef AppState ->
+  -- | Read-only access to the current AppState
+  IO AppState ->
   -- | Writable channel to send events to the game
   BChan AppEvent ->
   Servant.Server SwarmAPI
@@ -167,57 +166,57 @@ mkApp state events =
     :<|> replHistHandler state
     :<|> mapViewHandler state
 
-robotsHandler :: ReadableIORef AppState -> Handler [Robot]
+robotsHandler :: IO AppState -> Handler [Robot]
 robotsHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   pure $ IM.elems $ appState ^. gameState . robotInfo . robotMap
 
-robotHandler :: ReadableIORef AppState -> RobotID -> Handler (Maybe Robot)
+robotHandler :: IO AppState -> RobotID -> Handler (Maybe Robot)
 robotHandler appStateRef (RobotID rid) = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   pure $ IM.lookup rid (appState ^. gameState . robotInfo . robotMap)
 
-prereqsHandler :: ReadableIORef AppState -> Handler [PrereqSatisfaction]
+prereqsHandler :: IO AppState -> Handler [PrereqSatisfaction]
 prereqsHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   case appState ^. gameState . winCondition of
     WinConditions _winState oc -> return $ getSatisfaction oc
     _ -> return []
 
-activeGoalsHandler :: ReadableIORef AppState -> Handler [Objective]
+activeGoalsHandler :: IO AppState -> Handler [Objective]
 activeGoalsHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   case appState ^. gameState . winCondition of
     WinConditions _winState oc -> return $ getActiveObjectives oc
     _ -> return []
 
-goalsGraphHandler :: ReadableIORef AppState -> Handler (Maybe GraphInfo)
+goalsGraphHandler :: IO AppState -> Handler (Maybe GraphInfo)
 goalsGraphHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   return $ case appState ^. gameState . winCondition of
     WinConditions _winState oc -> Just $ makeGraphInfo oc
     _ -> Nothing
 
-uiGoalHandler :: ReadableIORef AppState -> Handler GoalTracking
+uiGoalHandler :: IO AppState -> Handler GoalTracking
 uiGoalHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   return $ appState ^. uiState . uiGameplay . uiGoal . goalsContent
 
-goalsHandler :: ReadableIORef AppState -> Handler WinCondition
+goalsHandler :: IO AppState -> Handler WinCondition
 goalsHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   return $ appState ^. gameState . winCondition
 
-recogLogHandler :: ReadableIORef AppState -> Handler [SearchLog EntityName]
+recogLogHandler :: IO AppState -> Handler [SearchLog EntityName]
 recogLogHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   return $
     map (fmap (view entityName)) $
       appState ^. gameState . discovery . structureRecognition . recognitionLog
 
-recogFoundHandler :: ReadableIORef AppState -> Handler [StructureLocation]
+recogFoundHandler :: IO AppState -> Handler [StructureLocation]
 recogFoundHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   let registry = appState ^. gameState . discovery . structureRecognition . foundStructures
   return
     . map (uncurry StructureLocation)
@@ -238,21 +237,21 @@ codeRunHandler chan contents = do
   liftIO . writeBChan chan . Web $ RunWebCode contents
   return $ T.pack "Sent\n"
 
-pathsLogHandler :: ReadableIORef AppState -> Handler (RingBuffer CacheLogEntry)
+pathsLogHandler :: IO AppState -> Handler (RingBuffer CacheLogEntry)
 pathsLogHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   pure $ appState ^. gameState . pathCaching . pathCachingLog
 
-replHistHandler :: ReadableIORef AppState -> Handler [REPLHistItem]
+replHistHandler :: IO AppState -> Handler [REPLHistItem]
 replHistHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   let replHistorySeq = appState ^. uiState . uiGameplay . uiREPL . replHistory . replSeq
       items = toList replHistorySeq
   pure items
 
-mapViewHandler :: ReadableIORef AppState -> AreaDimensions -> Handler GridResponse
+mapViewHandler :: IO AppState -> AreaDimensions -> Handler GridResponse
 mapViewHandler appStateRef areaSize = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   let maybeScenario = fst <$> appState ^. uiState . uiGameplay . scenarioRef
   pure $ case maybeScenario of
     Just s ->
@@ -273,7 +272,7 @@ webMain ::
   Maybe (MVar WebStartResult) ->
   Warp.Port ->
   -- | Read-only reference to the application state.
-  ReadableIORef AppState ->
+  IO AppState ->
   -- | Writable channel to send events to the game
   BChan AppEvent ->
   IO ()
@@ -318,7 +317,7 @@ defaultPort = 5357
 startWebThread ::
   Maybe Warp.Port ->
   -- | Read-only reference to the application state.
-  ReadableIORef AppState ->
+  IO AppState ->
   -- | Writable channel to send events to the game
   BChan AppEvent ->
   IO (Either String Warp.Port)

@@ -587,7 +587,6 @@ library swarm-util
     Swarm.Util.JSON
     Swarm.Util.Lens
     Swarm.Util.OccurrenceEncoder
-    Swarm.Util.ReadableIORef
     Swarm.Util.RingBuffer
     Swarm.Util.UnitInterval
     Swarm.Util.WindowedCounter
@@ -811,7 +810,6 @@ executable swarm
     swarm:swarm-lang,
     swarm:swarm-scenario,
     swarm:swarm-tui,
-    swarm:swarm-util,
     swarm:swarm-web,
     text,
     vty,
