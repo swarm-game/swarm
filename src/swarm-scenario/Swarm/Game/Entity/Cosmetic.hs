@@ -4,8 +4,10 @@
 -- Preserve color fidelity for non-TUI rendering
 module Swarm.Game.Entity.Cosmetic where
 
-import Data.Colour.SRGB (RGB)
+import Codec.Picture (PixelRGBA8 (..))
+import Data.Colour.SRGB (RGB (..))
 import Data.Word (Word8)
+import Swarm.Game.Scenario.Topography.Rasterize
 
 data NamedColor
   = White
@@ -19,6 +21,27 @@ data NamedColor
 
 -- | 8-bit color
 type RGBColor = RGB Word8
+
+fromHiFi :: PreservableColor -> ColorLayers RGBColor
+fromHiFi = fmap $ \case
+  Triple x -> x
+  -- The triples we've manually assigned for named
+  -- ANSI colors do not need to be round-tripped, since
+  -- those triples are not inputs to the VTY attribute creation.
+  AnsiColor x -> namedToTriple x
+
+-- | Since terminals can customize these named
+-- colors using themes or explicit user overrides,
+-- these color assignments are somewhat arbitrary.
+namedToTriple :: NamedColor -> RGBColor
+namedToTriple = \case
+  White -> RGB 208 207 204
+  BrightRed -> RGB 246 97 81
+  Red -> RGB 192 28 40
+  Green -> RGB 38 162 105
+  Blue -> RGB 18 72 139
+  BrightYellow -> RGB 233 173 12
+  Yellow -> RGB 162 115 76
 
 -- | High-fidelity color representation for rendering
 -- outside of the TUI.
@@ -54,6 +77,11 @@ data ColorLayers a
   deriving (Show, Functor)
 
 type PreservableColor = ColorLayers TrueColor
+
+instance ToPixel PreservableColor where
+  toPixel h = PixelRGBA8 r g b 255
+   where
+    RGB r g b = flattenBg $ fromHiFi h
 
 getBackground :: ColorLayers a -> Maybe a
 getBackground = \case
