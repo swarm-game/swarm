@@ -2,7 +2,14 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- GameState- and TUI-independent world rendering.
-module Swarm.Game.World.Render where
+module Swarm.Game.World.Render (
+  FailureMode (..),
+  RenderOpts (..),
+  OuputFormat (..),
+  ColorableCell,
+  getDisplayGrid,
+  doRenderCmd,
+) where
 
 import Codec.Picture
 import Control.Applicative ((<|>))
