@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-
-cd $SCRIPT_DIR/..
+cd $(git rev-parse --show-toplevel)
 
 if command -v stack &> /dev/null; then
     SWARM="stack exec swarm --"
