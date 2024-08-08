@@ -9,10 +9,18 @@ import Data.Vector qualified as V
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Grid
 
-makeImage :: Pixel px => (a -> px) -> Grid a -> Image px
-makeImage computeColor g =
+class ToPixel a where
+  toPixel :: a -> PixelRGBA8
+
+instance ToPixel a => ToPixel (Maybe a) where
+  toPixel = maybe transparent toPixel
+   where
+    transparent = PixelRGBA8 0 0 0 0
+
+makeImage :: ToPixel a => Grid a -> Image PixelRGBA8
+makeImage g =
   generateImage (pixelRenderer vecGrid) (fromIntegral w) (fromIntegral h)
  where
   vecGrid = gridToVec g
   AreaDimensions w h = getGridDimensions g
-  pixelRenderer vg x y = computeColor $ (vg V.! y) V.! x
+  pixelRenderer vg x y = toPixel $ (vg V.! y) V.! x

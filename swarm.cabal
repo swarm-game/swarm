@@ -1016,7 +1016,6 @@ test-suite standalone-topography
   build-depends:
     JuicyPixels >=3.3 && <3.4,
     MissingH,
-    aeson,
     base,
     bytestring,
     filepath,
@@ -1025,6 +1024,7 @@ test-suite standalone-topography
     yaml,
 
   build-depends:
+    swarm:swarm-scenario,
     swarm:swarm-topography,
     swarm:swarm-util,
 

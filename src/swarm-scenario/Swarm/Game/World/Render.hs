@@ -2,7 +2,14 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- GameState- and TUI-independent world rendering.
-module Swarm.Game.World.Render where
+module Swarm.Game.World.Render (
+  FailureMode (..),
+  RenderOpts (..),
+  OuputFormat (..),
+  ColorableCell,
+  getDisplayGrid,
+  doRenderCmd,
+) where
 
 import Codec.Picture
 import Control.Applicative ((<|>))
@@ -10,11 +17,12 @@ import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Throw
 import Control.Lens (view, (^.))
-import Data.Colour.SRGB (RGB (..))
+import Data.Aeson
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Tuple.Extra (both)
+import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Game.Display (defaultChar)
 import Swarm.Game.Entity.Cosmetic
@@ -22,6 +30,7 @@ import Swarm.Game.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Scenario
+import Swarm.Game.Scenario.Style (HexColor (..))
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Center
@@ -38,7 +47,33 @@ import Swarm.Language.Pretty (prettyString)
 import Swarm.Util (surfaceEmpty)
 import Swarm.Util.Content
 import Swarm.Util.Erasable (erasableToMaybe)
+import Swarm.Util.Yaml
 import System.IO (hPutStrLn, stderr)
+
+newtype OneBitColor = OneBitColor Bool
+  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
+
+instance ToPixel OneBitColor where
+  toPixel (OneBitColor b) = case b of
+    False -> PixelRGBA8 0 0 0 255
+    True -> PixelRGBA8 255 255 255 255
+
+data ColorableCell
+  = OneBit OneBitColor
+  | Hex HexColor
+
+instance ToPixel ColorableCell where
+  toPixel (OneBit x) = toPixel x
+  toPixel (Hex x) = toPixel x
+
+instance FromJSON ColorableCell where
+  parseJSON x =
+    try OneBit
+      <|> try Hex
+   where
+    try f = f <$> parseJSON x
+
+instance FromJSONE e ColorableCell
 
 data OuputFormat
   = ConsoleText
@@ -62,38 +97,6 @@ getDisplayChar :: PCell EntityFacade -> Char
 getDisplayChar = maybe ' ' facadeChar . erasableToMaybe . cellEntity
  where
   facadeChar (EntityFacade _ d) = view defaultChar d
-
-getDisplayColor :: M.Map WorldAttr PreservableColor -> PCell EntityFacade -> PixelRGBA8
-getDisplayColor aMap c =
-  maybe transparent mkPixelColor $ getTerrainEntityColor aMap c
- where
-  transparent = PixelRGBA8 0 0 0 0
-
-mkPixelColor :: PreservableColor -> PixelRGBA8
-mkPixelColor h = PixelRGBA8 r g b 255
- where
-  RGB r g b = flattenBg $ fromHiFi h
-
--- | Since terminals can customize these named
--- colors using themes or explicit user overrides,
--- these color assignments are somewhat arbitrary.
-namedToTriple :: NamedColor -> RGBColor
-namedToTriple = \case
-  White -> RGB 208 207 204
-  BrightRed -> RGB 246 97 81
-  Red -> RGB 192 28 40
-  Green -> RGB 38 162 105
-  Blue -> RGB 18 72 139
-  BrightYellow -> RGB 233 173 12
-  Yellow -> RGB 162 115 76
-
-fromHiFi :: PreservableColor -> ColorLayers RGBColor
-fromHiFi = fmap $ \case
-  Triple x -> x
-  -- The triples we've manually assigned for named
-  -- ANSI colors do not need to be round-tripped, since
-  -- those triples are not inputs to the VTY attribute creation.
-  AnsiColor x -> namedToTriple x
 
 -- | When output size is not explicitly provided,
 -- uses natural map bounds (if a map exists).
@@ -182,7 +185,10 @@ renderScenarioPng opts fp = do
      where
       errorMsg :: String
       errorMsg = prettyString err
-    Right (grid, aMap) -> return $ (makeImage . getDisplayColor) aMap grid
+    Right (grid, aMap) ->
+      return $
+        makeImage $
+          getTerrainEntityColor aMap <$> grid
   writePng (outputFilepath opts) img
 
 printScenarioMap :: [String] -> IO ()

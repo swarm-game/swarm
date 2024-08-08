@@ -1,0 +1,28 @@
+structures:
+  - name: stripe
+    structure:
+      palette:
+        'r': "#ff0000"
+        'o': "#ff8800"
+        'y': "#ffff00"
+        'g': "#00ff00"
+        'b': "#00ffff"
+        'i': "#0000ff"
+        'v': "#ff00ff"
+      map: |
+        roygbiv
+mask: '.'
+palette:
+  'r':
+    structure:
+      name: stripe
+      orientation:
+        up: east
+    cell: "#ffffff"
+map: |
+  ........rrrrr........
+  .....rrr.....rrr.....
+  ...rr...........rr...
+  ..r...............r..
+  .r.................r.
+  r...................r

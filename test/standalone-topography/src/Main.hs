@@ -11,13 +11,26 @@ import Lib
 
 main :: IO ()
 main = do
-  defaultMain
-    $ testGroup
+  defaultMain $
+    testGroup
       "Test structure assembly"
-    $ map
-      doTest
-      [ "circle-and-crosses"
-      , "checkerboard"
+      [ mkGroup
+          "Black and white"
+          [ "circle-and-crosses"
+          , "checkerboard"
+          ]
+      , mkGroup
+          "Color"
+          [ "rainbow"
+          ]
       ]
  where
-  doTest stem = testCase (unwords ["Image equality:", stem]) $ compareToReferenceImage stem
+  doTest stem =
+    testCase (unwords ["Image equality:", stem]) $
+      compareToReferenceImage stem
+
+  mkGroup title members =
+    testGroup title $
+      map
+        doTest
+        members
