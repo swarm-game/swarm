@@ -145,6 +145,7 @@ swarmApiMarkdown =
 -- ------------------------------------------------------------------
 
 mkApp ::
+  -- | Read-only access to the current AppState
   IO AppState ->
   -- | Writable channel to send events to the game
   BChan AppEvent ->
