@@ -10,7 +10,9 @@
 /* For examples of usage see the unit tests in testLIST function.  */
 /*                                                                 */
 /* NOTE THAT THIS IS NOT EFFICIENT OR ERGONIMIC!!! YOU SHOULD USE: */
-tydef NormalListType a = rec l. Unit + (a * l) end 
+tydef NormalListType a = rec l. Unit + (a * l) end
+
+
 /*                                                                 */
 /* This code was written before swarm had 'format' or 'rec', but   */
 /* it still serves as an example of pure swarm code with tests.    */
@@ -103,7 +105,11 @@ def setLenPart: Int -> Int = \i. 2 * mod i (2 ^ 7) end
 def to1numA: Int -> (Int * Int) 
   = \i.
   let nextPart = shiftL 7 i in
-  if (nextPart == 0) {(2 * i, 1 /* last part */)} {
+  if (nextPart == 0) {
+
+    // last part
+    (2 * i, 1)
+  } {
     let p = to1numA nextPart in
     (1 /* header isEnd bit */ + setLenPart i + shiftRH 1 (fst p), 1 + snd p)
   }
