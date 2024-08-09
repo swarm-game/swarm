@@ -9,6 +9,11 @@
 /*                                                                 */
 /* For examples of usage see the unit tests in testLIST function.  */
 /*                                                                 */
+/* NOTE THAT THIS IS NOT EFFICIENT OR ERGONIMIC!!! YOU SHOULD USE: */
+tydef NormalListType a = rec l. Unit + (a * l) end 
+/*                                                                 */
+/* This code was written before swarm had 'format' or 'rec', but   */
+/* it still serves as an example of pure swarm code with tests.    */
 /*******************************************************************/
 //
 // Definitions:
