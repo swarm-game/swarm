@@ -283,24 +283,28 @@ substU m =
         f -> Free f
     )
 
--- | Make sure no skolem variables escape.
+-- | Make sure none of the given skolem variables have escaped.
 noSkolems ::
   ( Has Unification sig m
   , Has (Reader TCStack) sig m
   , Has (Throw ContextualTypeErr) sig m
   ) =>
   SrcLoc ->
+  [Var] ->
   Poly UType ->
   m ()
-noSkolems l (Forall xs upty) = do
+noSkolems l skolems (Forall xs upty) = do
   upty' <- applyBindings upty
   let tyvs =
         ucata
           (const S.empty)
           (\case TyVarF v -> S.singleton v; f -> fold f)
           upty'
-      ftyvs = tyvs `S.difference` S.fromList xs
-  forM_ (S.lookupMin ftyvs) $ throwTypeErr l . EscapedSkolem
+      freeTyvs = tyvs `S.difference` S.fromList xs
+      escapees = freeTyvs `S.intersection` S.fromList skolems
+
+  -- In case of multiple escapees, just generate an error for one
+  forM_ (S.lookupMin escapees) $ throwTypeErr l . EscapedSkolem
 
 -- ~~~~ Note [lookupMin to get an arbitrary element]
 --
@@ -370,13 +374,14 @@ instantiate (Forall xs uty) = do
 --   variables cannot unify with anything other than themselves.  This
 --   is used when checking something with a polytype explicitly
 --   specified by the user.
-skolemize :: Has Unification sig m => UPolytype -> m UType
+--
+--   Returns the list of generated Skolem variables along with the
+--   substituted type.
+skolemize :: Has Unification sig m => UPolytype -> m ([Var], UType)
 skolemize (Forall xs uty) = do
-  xs' <- mapM (const fresh) xs
-  return $ substU (M.fromList (zip (map Left xs) (map toSkolem xs'))) uty
- where
-  toSkolem (Pure v) = UTyVar (mkVarName "s" v)
-  toSkolem x = error $ "Impossible! Non-UVar in skolemize.toSkolem: " ++ show x
+  skolemNames <- mapM (fmap (mkVarName "s") . const U.freshIntVar) xs
+  let xs' = map UTyVar skolemNames
+  pure (skolemNames, substU (M.fromList (zip (map Left xs) xs')) uty)
 
 -- | 'generalize' is the opposite of 'instantiate': add a 'Forall'
 --   which closes over all free type and unification variables.
@@ -751,10 +756,10 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     _ <- adaptToTypeErr l KindErr $ checkPolytypeKind pty
     let upty = toU pty
     -- Typecheck against skolemized polytype.
-    uty <- skolemize upty
+    (skolems, uty) <- skolemize upty
     _ <- check c uty
     -- Make sure no skolem variables have escaped.
-    ask @UCtx >>= mapM_ (noSkolems l)
+    ask @UCtx >>= mapM_ (noSkolems l skolems)
     -- If check against skolemized polytype is successful,
     -- instantiate polytype with unification variables.
     -- Free variables should be able to unify with anything in
@@ -956,7 +961,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- Checking the type of a let- or def-expression.
   SLet ls r x mxTy _ t1 t2 -> withFrame l (TCLet (lvVar x)) $ do
     traverse_ (adaptToTypeErr l KindErr . checkPolytypeKind) mxTy
-    (upty, t1') <- case mxTy of
+    (skolems, upty, t1') <- case mxTy of
       -- No type annotation was provided for the let binding, so infer its type.
       Nothing -> do
         -- The let could be recursive, so we must generate a fresh
@@ -967,14 +972,14 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         let uty = t1' ^. sType
         _ <- xTy =:= uty
         upty <- generalize uty
-        return (upty, t1')
+        return ([], upty, t1')
       -- An explicit polytype annotation has been provided. Skolemize it and check
       -- definition and body under an extended context.
       Just pty -> do
         let upty = toU pty
-        uty <- skolemize upty
+        (ss, uty) <- skolemize upty
         t1' <- withBinding (lvVar x) upty $ check t1 uty
-        return (upty, t1')
+        return (ss, upty, t1')
 
     -- Check the requirements of t1.
     tdCtx <- ask @TDCtx
@@ -998,8 +1003,8 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         withBinding (lvVar x) reqs $
           check t2 expected
 
-    -- Make sure no skolem variables have escaped.
-    ask @UCtx >>= mapM_ (noSkolems l)
+    -- Make sure none of the generated skolem variables have escaped.
+    ask @UCtx >>= mapM_ (noSkolems l skolems)
 
     -- Annotate a 'def' with requirements, but not 'let'.  The reason
     -- is so that let introduces truly "local" bindings which never
