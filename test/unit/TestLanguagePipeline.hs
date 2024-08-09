@@ -656,6 +656,15 @@ testLanguagePipeline =
             "def at cmd type"
             (valid "def x = 3 end; move; return (x+2)")
         ]
+    , testGroup
+        "nested let/def/annot #2101"
+        [ testCase
+            "nested polymorphic def/let"
+            (valid "def id : a -> a = \\y. let x = 3 in y end")
+        , testCase
+            "nested polymorphic def/annot"
+            (valid "def id : a -> a * Int = \\y. (y, 3 : Int) end")
+        ]
     ]
  where
   valid = flip process ""
