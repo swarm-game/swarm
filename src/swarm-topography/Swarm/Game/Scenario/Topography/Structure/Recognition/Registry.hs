@@ -72,8 +72,9 @@ removeStructure fs (FoundRegistry byName byLoc) =
   -- Swarm.Game.State.removeRobotFromLocationMap
   tidyDelete = NEM.nonEmptyMap . NEM.delete upperLeft
 
-addFound :: FoundStructure b a -> FoundRegistry b a -> FoundRegistry b a
-addFound fs@(FoundStructure swg loc) (FoundRegistry byName byLoc) =
+addFound :: Maybe (FoundStructure b a) -> FoundRegistry b a -> FoundRegistry b a
+addFound Nothing x = x
+addFound (Just fs@(FoundStructure swg loc)) (FoundRegistry byName byLoc) =
   FoundRegistry
     (M.insertWith (<>) k (NEM.singleton loc swg) byName)
     (M.union occupationMap byLoc)
