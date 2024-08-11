@@ -54,7 +54,7 @@ function remove_elipsis {
 function repl {
   while true; do
     remove_elipsis
-    read -r -p "> " expr
+    read -r -e -p "> " expr
     curl --silent -XGET --header "Content-Type: text/plain;charset=utf-8" --data "$expr" "$HOST:$PORT/code/run" | while read -r line ; do
       remove_elipsis
       if jq -e 'has("InProgress")' <<< "$line" > /dev/null; then
