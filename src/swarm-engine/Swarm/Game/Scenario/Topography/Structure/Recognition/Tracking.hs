@@ -142,9 +142,11 @@ registerRowMatches cLoc (AutomatonInfo participatingEnts horizontalOffsets sm) =
 
       logEntry = FoundRowCandidates $ map mkCandidateLogEntry candidates
 
-  discovery . structureRecognition . recognitionLog %= (logEntry :)
+  zoomRecognizer (recognitionLog %= (logEntry :))
+
   candidates2D <- forM candidates $ checkVerticalMatch cLoc horizontalOffsets
-  registerStructureMatches $ concat candidates2D
+
+  zoomRecognizer $ registerStructureMatches $ concat candidates2D
 
 checkVerticalMatch ::
   (Has (State GameState) sig m) =>
@@ -199,14 +201,14 @@ getMatches2D
 -- so multiple matches require a tie-breaker.
 -- The largest structure (by area) shall win.
 registerStructureMatches ::
-  (Has (State GameState) sig m) =>
+  (Has (State (StructureRecognizer StructureCells Entity)) sig m) =>
   [FoundStructure StructureCells Entity] ->
   m ()
 registerStructureMatches unrankedCandidates = do
-  discovery . structureRecognition . recognitionLog %= (newMsg :)
+  recognitionLog %= (newMsg :)
 
   forM_ (listToMaybe rankedCandidates) $ \fs ->
-    discovery . structureRecognition . foundStructures %= addFound fs
+    foundStructures %= addFound fs
  where
   -- Sorted by decreasing order of preference.
   rankedCandidates = sortOn Down unrankedCandidates

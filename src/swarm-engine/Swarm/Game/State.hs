@@ -68,9 +68,12 @@ module Swarm.Game.State (
   entityAt,
   contentAt,
   zoomWorld,
+  zoomRecognizer,
   zoomRobots,
 ) where
 
+import Swarm.Game.Scenario (StructureCells)
+import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Effect.Lens
 import Control.Effect.Lift
@@ -489,6 +492,20 @@ contentAt (Cosmic subworldName loc) = do
     let terrObj = terrIdx `IM.lookup` terrainByIndex tm
     return (maybe BlankT terrainName terrObj, maybeEnt)
   return $ fromMaybe (BlankT, Nothing) val
+
+
+-- | Perform an action requiring a 'Robots' state component in a
+--   larger context with a 'GameState'.
+zoomRecognizer ::
+  (Has (State GameState) sig m) =>
+  Fused.StateC (StructureRecognizer StructureCells Entity) Identity b ->
+  m b
+zoomRecognizer n = do
+  ri <- use $ discovery . structureRecognition
+  do
+    let (ri', a) = run $ Fused.runState ri n
+    discovery . structureRecognition .= ri'
+    return a
 
 -- | Perform an action requiring a 'Robots' state component in a
 --   larger context with a 'GameState'.
