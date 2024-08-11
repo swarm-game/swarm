@@ -19,7 +19,7 @@ function parse_args {
   while [[ $# -gt 0 ]]; do
     case $1 in
       -p|--port)
-        EXTENSION="$2"
+        PORT="$2"
         shift # past argument
         shift # past value
         ;;
@@ -40,16 +40,40 @@ function parse_args {
   done
 }
 
+IN_PROGRESS=""
+function print_elipsis {
+  echo -n "..."
+  IN_PROGRESS="\r   \r"
+}
+
+function remove_elipsis {
+  echo -ne "$IN_PROGRESS"
+  IN_PROGRESS=""
+}
+
 function repl {
   while true; do
-    read -p "> " expr
-    curl --header "Content-Type: text/plain;charset=utf-8" --data "$expr" $HOST:$PORT/code/run
+    remove_elipsis
+    read -r -p "> " expr
+    curl --silent -XGET --header "Content-Type: text/plain;charset=utf-8" --data "$expr" "$HOST:$PORT/code/run" | while read -r line ; do
+      remove_elipsis
+      if jq -e 'has("InProgress")' <<< "$line" > /dev/null; then
+        print_elipsis
+      elif jq -e 'has("Complete")' <<< "$line" > /dev/null; then
+        RESULT="$(jq -r '.Complete' <<< "$line")"
+        [ -n "$RESULT" ] && echo "$RESULT";
+      elif jq -e 'has("Rejected")' <<< "$line" > /dev/null; then
+        jq -C '.Rejected' <<< "$line"
+      else
+        echo "$line"
+      fi
+    done
   done
 }
 
 function main {
-  parse_args
+  parse_args "$@"
   repl
 }
 
-main
+main "$@"
