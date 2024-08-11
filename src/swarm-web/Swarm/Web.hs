@@ -62,6 +62,7 @@ import Servant
 import Servant.Docs (ToCapture)
 import Servant.Docs qualified as SD
 import Servant.Docs.Internal qualified as SD (renderCurlBasePath)
+import Servant.Types.SourceT qualified as S
 import Swarm.Game.Entity (EntityName, entityName)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
@@ -105,7 +106,7 @@ type SwarmAPI =
     :<|> "recognize" :> "log" :> Get '[JSON] [SearchLog EntityName]
     :<|> "recognize" :> "found" :> Get '[JSON] [StructureLocation]
     :<|> "code" :> "render" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
-    :<|> "code" :> "run" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
+    :<|> "code" :> "run" :> ReqBody '[PlainText] T.Text :> StreamGet NewlineFraming JSON (SourceIO WebInvocationState)
     :<|> "paths" :> "log" :> Get '[JSON] (RingBuffer CacheLogEntry)
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [REPLHistItem]
     :<|> "map" :> Capture "size" AreaDimensions :> Get '[JSON] GridResponse
@@ -232,10 +233,20 @@ codeRenderHandler contents = do
       into @Text . drawTree . fmap (T.unpack . prettyTextLine) . para Node $ t
     Left x -> x
 
-codeRunHandler :: BChan AppEvent -> Text -> Handler Text
+codeRunHandler :: BChan AppEvent -> Text -> Handler (S.SourceT IO WebInvocationState)
 codeRunHandler chan contents = do
-  liftIO . writeBChan chan . Web $ RunWebCode contents
-  return $ T.pack "Sent\n"
+  replyVar <- liftIO newEmptyMVar
+  let putReplyForce r = do
+        void $ tryTakeMVar replyVar
+        putMVar replyVar r
+  liftIO . writeBChan chan . Web $ RunWebCode contents putReplyForce
+  -- wait for mvar, yield, repeat until fail or complete
+  let waitForReply = S.Effect $ do
+        reply <- takeMVar replyVar
+        return . S.Yield reply $ case reply of
+          InProgress -> waitForReply
+          _ -> S.Stop
+  return $ S.fromStepT waitForReply
 
 pathsLogHandler :: IO AppState -> Handler (RingBuffer CacheLogEntry)
 pathsLogHandler appStateRef = do

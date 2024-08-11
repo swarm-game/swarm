@@ -54,6 +54,7 @@ module Swarm.Game.State.Substate (
   initiallyRunCode,
   replStatus,
   replNextValueIndex,
+  replListener,
   inputHandler,
 
   -- *** Discovery
@@ -301,6 +302,7 @@ robotStepsPerTick :: Lens' TemporalState Int
 data GameControls = GameControls
   { _replStatus :: REPLStatus
   , _replNextValueIndex :: Integer
+  , _replListener :: Text -> IO ()
   , _inputHandler :: Maybe (Text, Value)
   , _initiallyRunCode :: Maybe Syntax
   }
@@ -312,6 +314,10 @@ replStatus :: Lens' GameControls REPLStatus
 
 -- | The index of the next @it{index}@ value
 replNextValueIndex :: Lens' GameControls Integer
+
+-- | The action to be run after transitioning to REPLDone.
+--   This is used to tell Web API the result of run command.
+replListener :: Lens' GameControls (Text -> IO ())
 
 -- | The currently installed input handler and hint text.
 inputHandler :: Lens' GameControls (Maybe (Text, Value))
@@ -406,6 +412,7 @@ initGameControls =
   GameControls
     { _replStatus = REPLDone Nothing
     , _replNextValueIndex = 0
+    , _replListener = const $ pure ()
     , _inputHandler = Nothing
     , _initiallyRunCode = Nothing
     }

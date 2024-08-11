@@ -491,7 +491,8 @@ library swarm-web
     nonempty-containers,
     palette,
     servant-docs,
-    servant-server >=0.19 && <0.21,
+    servant >=0.19 && <0.22,
+    servant-server >=0.19 && <0.22,
     text,
     wai >=3.2 && <3.3,
     wai-app-static >=3.1.8 && <3.2,
@@ -724,6 +725,7 @@ library swarm-tui
     Swarm.TUI.Model.StateUpdate
     Swarm.TUI.Model.Structure
     Swarm.TUI.Model.UI
+    Swarm.TUI.Model.WebCommand
     Swarm.TUI.Panel
     Swarm.TUI.View
     Swarm.TUI.View.Achievement

@@ -120,47 +120,55 @@ import Swarm.Version (NewReleaseFailure (..))
 
 -- | The top-level event handler for the TUI.
 handleEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
-handleEvent = \case
-  -- the query for upstream version could finish at any time, so we have to handle it here
-  AppEvent (UpstreamVersion ev) -> do
-    let logReleaseEvent l sev e = runtimeState . eventLog %= logEvent l sev "Release" (T.pack $ show e)
-    case ev of
-      Left e ->
-        let sev = case e of
-              FailedReleaseQuery {} -> Error
-              OnDevelopmentBranch {} -> Info
-              _ -> Warning
-         in logReleaseEvent SystemLog sev e
-      Right _ -> pure ()
-    runtimeState . upstreamRelease .= ev
-  e -> do
-    -- Handle popup display at the very top level, so it is
-    -- unaffected by any other state, e.g. even when starting or
-    -- quitting a game, moving around the menu, the popup
-    -- display will continue as normal.
-    upd <- case e of
-      AppEvent Frame -> Brick.zoom (uiState . uiPopups) progressPopups
-      _ -> pure False
+handleEvent e = do
+  playing <- use $ uiState . uiPlaying
+  case e of
+    -- the query for upstream version could finish at any time, so we have to handle it here
+    AppEvent (UpstreamVersion ev) -> handleUpstreamVersionResponse ev
+    AppEvent (Web (RunWebCode {..})) | not playing -> liftIO . webReply $ Rejected NoActiveGame
+    _ -> do
+      -- Handle popup display at the very top level, so it is
+      -- unaffected by any other state, e.g. even when starting or
+      -- quitting a game, moving around the menu, the popup
+      -- display will continue as normal.
+      upd <- case e of
+        AppEvent Frame -> Brick.zoom (uiState . uiPopups) progressPopups
+        _ -> pure False
+      if playing
+        then handleMainEvent upd e
+        else handleMenuEvent e
 
-    s <- get
-    if s ^. uiState . uiPlaying
-      then handleMainEvent upd e
-      else do
-        e & case s ^. uiState . uiMenu of
-          -- If we reach the NoMenu case when uiPlaying is False, just
-          -- quit the app.  We should actually never reach this code (the
-          -- quitGame function would have already halted the app).
-          NoMenu -> const halt
-          MainMenu l -> handleMainMenuEvent l
-          NewGameMenu l ->
-            if s ^. uiState . uiLaunchConfig . controls . fileBrowser . fbIsDisplayed
-              then handleFBEvent
-              else case s ^. uiState . uiLaunchConfig . controls . isDisplayedFor of
-                Nothing -> handleNewGameMenuEvent l
-                Just siPair -> handleLaunchOptionsEvent siPair
-          MessagesMenu -> handleMainMessagesEvent
-          AchievementsMenu l -> handleMainAchievementsEvent l
-          AboutMenu -> pressAnyKey (MainMenu (mainMenu About))
+handleUpstreamVersionResponse :: Either NewReleaseFailure String -> EventM Name AppState ()
+handleUpstreamVersionResponse ev = do
+  let logReleaseEvent l sev e = runtimeState . eventLog %= logEvent l sev "Release" (T.pack $ show e)
+  case ev of
+    Left e ->
+      let sev = case e of
+            FailedReleaseQuery {} -> Error
+            OnDevelopmentBranch {} -> Info
+            _ -> Warning
+       in logReleaseEvent SystemLog sev e
+    Right _ -> pure ()
+  runtimeState . upstreamRelease .= ev
+
+handleMenuEvent :: BrickEvent Name AppEvent -> EventM Name AppState ()
+handleMenuEvent e =
+  use (uiState . uiMenu) >>= \case
+    -- If we reach the NoMenu case when uiPlaying is False, just
+    -- quit the app.  We should actually never reach this code (the
+    -- quitGame function would have already halted the app).
+    NoMenu -> halt
+    MainMenu l -> handleMainMenuEvent l e
+    NewGameMenu l -> do
+      launchControls <- use $ uiState . uiLaunchConfig . controls
+      if launchControls ^. fileBrowser . fbIsDisplayed
+        then handleFBEvent e
+        else case launchControls ^. isDisplayedFor of
+          Nothing -> handleNewGameMenuEvent l e
+          Just siPair -> handleLaunchOptionsEvent siPair e
+    MessagesMenu -> handleMainMessagesEvent e
+    AchievementsMenu l -> handleMainAchievementsEvent l e
+    AboutMenu -> pressAnyKey (MainMenu (mainMenu About)) e
 
 -- | The event handler for the main menu.
 --
@@ -294,7 +302,7 @@ handleMainEvent forceRedraw ev = do
         if s ^. gameState . temporal . paused
           then updateAndRedrawUI forceRedraw
           else runFrameUI forceRedraw
-      Web (RunWebCode c) -> runBaseWebCode c
+      Web (RunWebCode e r) -> runBaseWebCode e r
       UpstreamVersion _ -> error "version event should be handled by top-level handler"
     VtyEvent (V.EvResize _ _) -> invalidateCache
     EscapeKey | Just m <- s ^. uiState . uiGameplay . uiModal -> closeModal m
@@ -541,13 +549,19 @@ handleREPLEventPiloting x = case x of
       & replPromptText .~ nt
       & replPromptType .~ CmdPrompt []
 
-runBaseWebCode :: (MonadState AppState m) => T.Text -> m ()
-runBaseWebCode uinput = do
+runBaseWebCode :: (MonadState AppState m, MonadIO m) => T.Text -> (WebInvocationState -> IO ()) -> m ()
+runBaseWebCode uinput ureply = do
   s <- get
-  unless (s ^. gameState . gameControls . replWorking) $
-    runBaseCode uinput
+  if s ^. gameState . gameControls . replWorking
+    then liftIO . ureply $ Rejected AlreadyRunning
+    else do
+      gameState . gameControls . replListener .= (ureply . Complete . T.unpack)
+      runBaseCode uinput
+        >>= liftIO . ureply . \case
+          Left err -> Rejected . ParseError $ T.unpack err
+          Right () -> InProgress
 
-runBaseCode :: (MonadState AppState m) => T.Text -> m ()
+runBaseCode :: (MonadState AppState m) => T.Text -> m (Either Text ())
 runBaseCode uinput = do
   addREPLHistItem (mkREPLSubmission uinput)
   resetREPL "" (CmdPrompt [])
@@ -556,8 +570,10 @@ runBaseCode uinput = do
     Right mt -> do
       uiState . uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True
       runBaseTerm mt
+      return (Right ())
     Left err -> do
       addREPLHistItem (mkREPLError err)
+      return (Left err)
 
 -- | Handle a user input event for the REPL.
 --
@@ -579,7 +595,7 @@ handleREPLEventTyping = \case
         if not $ s ^. gameState . gameControls . replWorking
           then case theRepl ^. replPromptType of
             CmdPrompt _ -> do
-              runBaseCode uinput
+              void $ runBaseCode uinput
               invalidateCacheEntry REPLHistoryCache
             SearchPrompt hist ->
               case lastEntry uinput hist of

@@ -12,9 +12,13 @@ module Swarm.TUI.Model (
   -- * Custom UI label types
   -- $uilabel
   AppEvent (..),
-  WebCommand (..),
   FocusablePanel (..),
   Name (..),
+
+  -- ** Web command
+  WebCommand (..),
+  WebInvocationState (..),
+  RejectionReason (..),
 
   -- * Menus and dialogs
   ModalType (..),
@@ -105,6 +109,7 @@ import Swarm.TUI.Model.Event (SwarmEvent)
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.WebCommand (RejectionReason (..), WebCommand (..), WebInvocationState (..))
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Version (NewReleaseFailure)
 import Text.Fuzzy qualified as Fuzzy
@@ -116,9 +121,6 @@ import Text.Fuzzy qualified as Fuzzy
 -- $uilabel These types are used as parameters to various @brick@
 -- types.
 
-newtype WebCommand = RunWebCode Text
-  deriving (Show)
-
 -- | 'Swarm.TUI.Model.AppEvent' represents a type for custom event types our app can
 --   receive. The primary custom event 'Frame' is sent by a separate thread as fast as
 --   it can, telling the TUI to render a new frame.
@@ -126,7 +128,6 @@ data AppEvent
   = Frame
   | Web WebCommand
   | UpstreamVersion (Either NewReleaseFailure String)
-  deriving (Show)
 
 infoScroll :: ViewportScroll Name
 infoScroll = viewportScroll InfoViewport
