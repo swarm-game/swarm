@@ -72,8 +72,6 @@ module Swarm.Game.State (
   zoomRobots,
 ) where
 
-import Swarm.Game.Scenario (StructureCells)
-import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Control.Carrier.State.Lazy qualified as Fused
 import Control.Effect.Lens
 import Control.Effect.Lift
@@ -105,7 +103,9 @@ import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
+import Swarm.Game.Scenario (StructureCells)
 import Swarm.Game.Scenario.Status
+import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.State.Config
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
@@ -492,7 +492,6 @@ contentAt (Cosmic subworldName loc) = do
     let terrObj = terrIdx `IM.lookup` terrainByIndex tm
     return (maybe BlankT terrainName terrObj, maybeEnt)
   return $ fromMaybe (BlankT, Nothing) val
-
 
 -- | Perform an action requiring a 'Robots' state component in a
 --   larger context with a 'GameState'.
