@@ -244,7 +244,7 @@ registerStructureMatches ::
 registerStructureMatches unrankedCandidates oldState =
   oldState
     & (recognitionLog %~ (newMsg :))
-    & foundStructures %~ addFound (listToMaybe rankedCandidates)
+    & foundStructures %~ maybe id addFound (listToMaybe rankedCandidates)
  where
   -- Sorted by decreasing order of preference.
   rankedCandidates = sortOn Down unrankedCandidates
