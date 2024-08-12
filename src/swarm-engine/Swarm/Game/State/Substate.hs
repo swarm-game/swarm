@@ -428,7 +428,10 @@ initDiscovery =
     , -- This does not need to be initialized with anything,
       -- since the master list of achievements is stored in UIState
       _gameAchievements = mempty
-    , _structureRecognition = StructureRecognizer (RecognizerAutomatons mempty mempty) emptyFoundStructures []
+    , _structureRecognition =
+        StructureRecognizer
+          (RecognizerAutomatons mempty mempty)
+          (RecognitionState emptyFoundStructures [])
     , _tagMembers = mempty
     }
 

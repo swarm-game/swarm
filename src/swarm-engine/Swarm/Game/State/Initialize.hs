@@ -182,9 +182,10 @@ mkRecognizer ::
 mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
   foundIntact <- mapM (sequenceA . (id &&& ensureStructureIntact)) allPlaced
   let fs = populateStaticFoundStructures . map fst . filter snd $ foundIntact
-  return $
-    StructureRecognizer
+  return
+    $ StructureRecognizer
       (mkAutomatons structDefs)
+    $ RecognitionState
       fs
       [IntactStaticPlacement $ map mkLogEntry foundIntact]
  where

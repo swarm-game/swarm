@@ -64,7 +64,7 @@ import Swarm.Game.Scenario.Topography.Area (getAreaDimensions)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.Navigation.Util
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
-import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons, foundStructures)
+import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons, foundStructures, recognitionState)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
@@ -567,7 +567,7 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Structure -> case vs of
       [VText name, VInt idx] -> do
-        registry <- use $ discovery . structureRecognition . foundStructures
+        registry <- use $ discovery . structureRecognition . recognitionState . foundStructures
         let maybeFoundStructures = M.lookup name $ foundByName registry
             mkOutput mapNE = (NE.length xs, bottomLeftCorner)
              where

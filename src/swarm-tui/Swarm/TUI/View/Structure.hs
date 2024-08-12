@@ -24,7 +24,7 @@ import Swarm.Game.Scenario (StructureCells)
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Placement (getStructureName)
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
-import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
+import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures, recognitionState)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (getEntityGrid)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
@@ -92,7 +92,7 @@ structureWidget gs s =
       Structure.description . namedGrid . annotatedGrid $
         s
 
-  registry = gs ^. discovery . structureRecognition . foundStructures
+  registry = gs ^. discovery . structureRecognition . recognitionState . foundStructures
   occurrenceCountSuffix = case M.lookup theName $ foundByName registry of
     Nothing -> emptyWidget
     Just inner -> padLeft (Pad 2) . headerItem "Count" . T.pack . show $ NEM.size inner

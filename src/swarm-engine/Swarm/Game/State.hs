@@ -66,6 +66,7 @@ module Swarm.Game.State (
   genMultiWorld,
   genRobotTemplates,
   entityAt,
+  mtlEntityAt,
   contentAt,
   zoomWorld,
   zoomRobots,
@@ -78,6 +79,7 @@ import Control.Effect.State (State)
 import Control.Effect.Throw
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
 import Control.Monad (forM, join)
+import Control.Monad.Trans.State.Strict qualified as TS
 import Data.Aeson (ToJSON)
 import Data.Digest.Pure.SHA (sha1, showDigest)
 import Data.Foldable (toList)
@@ -94,6 +96,7 @@ import Data.Text qualified as T (drop, take)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
+import Data.Tuple (swap)
 import GHC.Generics (Generic)
 import Swarm.Game.CESK (Store, emptyStore, store, suspendedEnv)
 import Swarm.Game.Entity
@@ -472,6 +475,15 @@ initGameState gsc =
     , _gameControls = initGameControls
     , _messageInfo = initMessages
     }
+
+-- | Provide an entity accessor via the MTL transformer State API.
+-- This is useful for the structure recognizer.
+mtlEntityAt :: Cosmic Location -> TS.State GameState (Maybe Entity)
+mtlEntityAt = TS.state . runGetEntity
+ where
+  runGetEntity :: Cosmic Location -> GameState -> (Maybe Entity, GameState)
+  runGetEntity loc gs =
+    swap . run . Fused.runState gs $ entityAt loc
 
 -- | Get the entity (if any) at a given location.
 entityAt :: (Has (State GameState) sig m) => Cosmic Location -> m (Maybe Entity)
