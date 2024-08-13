@@ -38,7 +38,6 @@ import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Universe (Cosmic, offsetBy)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Text.AhoCorasick (StateMachine)
-import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 
 -- | A 'NamedStructure' has its own newtype name ('StructureName'), but we
 -- standardize on 'Text' here to avoid parameterizing our 'NamedOriginal'
@@ -66,8 +65,6 @@ type AtomicKeySymbol a = Maybe a
 -- aab
 -- @
 type SymbolSequence a = [AtomicKeySymbol a]
-
-type StructureGrid b = NamedGrid (Maybe b)
 
 -- | This is returned as a value of the 1-D searcher.
 -- It contains search automatons customized to the 2-D structures
@@ -127,7 +124,7 @@ data SingleRowEntityOccurrences b a = SingleRowEntityOccurrences
 -- it's 'rowIndex' is @2@.
 --
 -- The two type parameters, `b` and `a`, correspond
--- to 'StructureCells' and 'Entity', respectively.
+-- to '(Structure.NamedGrid (Maybe Cell))' and 'Entity', respectively.
 data StructureRow b a = StructureRow
   { wholeStructure :: StructureWithGrid b a
   , rowIndex :: Int32
@@ -149,7 +146,7 @@ data NamedOriginal a = NamedOriginal
 -- with its grid of cells having been extracted for convenience.
 --
 -- The two type parameters, `b` and `a`, correspond
--- to 'StructureCells' and 'Entity', respectively.
+-- to '(Structure.NamedGrid (Maybe Cell))' and 'Entity', respectively.
 data StructureWithGrid b a = StructureWithGrid
   { originalDefinition :: NamedOriginal b
   , rotatedTo :: AbsoluteDir
@@ -234,7 +231,7 @@ makeLenses ''RecognizerAutomatons
 -- These are the elements that are stored in the 'FoundRegistry'.
 --
 -- The two type parameters, `b` and `a`, correspond
--- to 'StructureCells' and 'Entity', respectively.
+-- to '(Structure.NamedGrid (Maybe Cell))' and 'Entity', respectively.
 data FoundStructure b a = FoundStructure
   { structureWithGrid :: StructureWithGrid b a
   , upperLeftCorner :: Cosmic Location

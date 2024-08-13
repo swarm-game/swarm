@@ -24,7 +24,7 @@ makeLenses ''RecognitionState
 
 -- |
 -- The type parameters, `b`, and `a`, correspond
--- to 'StructureCells' and 'Entity', respectively.
+-- to '(Structure.NamedGrid (Maybe Cell))' and 'Entity', respectively.
 data StructureRecognizer b a = StructureRecognizer
   { _automatons :: RecognizerAutomatons b a
   -- ^ read-only

@@ -13,9 +13,6 @@
 -- conditions, which can be used both for building interactive
 -- tutorials and for standalone puzzles and scenarios.
 module Swarm.Game.Scenario (
-  -- * WorldDescription
-  StructureCells,
-
   -- * Scenario
   Scenario (..),
   ScenarioLandscape (..),
@@ -97,7 +94,7 @@ import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (SymmetryAnnotatedGrid (..), StructureGrid)
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (SymmetryAnnotatedGrid (..))
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Terrain
 import Swarm.Game.Universe
@@ -115,10 +112,8 @@ import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 import System.Random (randomRIO)
 
-type StructureCells = StructureGrid Cell
-
 data StaticStructureInfo = StaticStructureInfo
-  { _structureDefs :: [SymmetryAnnotatedGrid StructureCells]
+  { _structureDefs :: [SymmetryAnnotatedGrid (Structure.NamedGrid (Maybe Cell))]
   , _staticPlacements :: M.Map SubworldName [Structure.LocatedStructure]
   }
   deriving (Show)
@@ -127,7 +122,7 @@ makeLensesNoSigs ''StaticStructureInfo
 
 -- | Structure templates that may be auto-recognized when constructed
 -- by a robot
-structureDefs :: Lens' StaticStructureInfo [SymmetryAnnotatedGrid StructureCells]
+structureDefs :: Lens' StaticStructureInfo [SymmetryAnnotatedGrid (Structure.NamedGrid (Maybe Cell))]
 
 -- | A record of the static placements of structures, so that they can be
 -- added to the "recognized" list upon scenario initialization

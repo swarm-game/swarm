@@ -35,7 +35,7 @@ import Swarm.Util (binTuples, deleteKeys)
 -- | The authoritative source of which built structures currently exist.
 --
 -- The two type parameters, `b` and `a`, correspond
--- to 'StructureCells' and 'Entity', respectively.
+-- to '(Structure.NamedGrid (Maybe Cell))' and 'Entity', respectively.
 data FoundRegistry b a = FoundRegistry
   { _foundByName :: Map OriginalName (NEMap (Cosmic Location) (StructureWithGrid b a))
   , _foundByLocation :: Map (Cosmic Location) (FoundStructure b a)

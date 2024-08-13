@@ -39,6 +39,8 @@ import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Objective (initCompletion)
 import Swarm.Game.Scenario.Status
+import Swarm.Game.Scenario.Topography.Cell (Cell)
+import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
@@ -178,7 +180,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
 mkRecognizer ::
   (Has (State GameState) sig m) =>
   StaticStructureInfo ->
-  m (StructureRecognizer StructureCells Entity)
+  m (StructureRecognizer (NamedGrid (Maybe Cell)) Entity)
 mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
   foundIntact <- mapM (sequenceA . (id &&& ensureStructureIntact)) allPlaced
   let fs = populateStaticFoundStructures . map fst . filter snd $ foundIntact
@@ -201,7 +203,7 @@ mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
 -- cell is encountered.
 ensureStructureIntact ::
   (Has (State GameState) sig m) =>
-  FoundStructure StructureCells Entity ->
+  FoundStructure (NamedGrid (Maybe Cell)) Entity ->
   m Bool
 ensureStructureIntact (FoundStructure (StructureWithGrid _ _ grid) upperLeft) =
   allM outer $ zip [0 ..] grid

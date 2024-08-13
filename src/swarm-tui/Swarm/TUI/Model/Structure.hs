@@ -12,12 +12,13 @@ import Brick.Widgets.List qualified as BL
 import Control.Lens (makeLenses)
 import Data.List.Extra (enumerate)
 import Swarm.Game.Entity (Entity)
-import Swarm.Game.Scenario (StructureCells)
+import Swarm.Game.Scenario.Topography.Cell (Cell)
+import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.TUI.Model.Name
 
 data StructureDisplay = StructureDisplay
-  { _structurePanelListWidget :: BL.List Name (StructureInfo StructureCells Entity)
+  { _structurePanelListWidget :: BL.List Name (StructureInfo (NamedGrid (Maybe Cell)) Entity)
   -- ^ required for maintaining the selection/navigation
   -- state among list items
   , _structurePanelFocus :: FocusRing Name
