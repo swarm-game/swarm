@@ -151,30 +151,41 @@ registerRowMatches ::
 registerRowMatches entLoader cLoc (AutomatonInfo participatingEnts horizontalOffsets sm) rState = do
   let registry = rState ^. foundStructures
 
-  entitiesRow <- getWorldRow entLoader registry participatingEnts cLoc horizontalOffsets 0
+  entitiesRow <-
+    getWorldRow
+      entLoader
+      registry
+      participatingEnts
+      cLoc
+      horizontalOffsets
+      0
+
   let candidates = findAll sm entitiesRow
+
       mkCandidateLogEntry c =
         FoundRowCandidate
           (HaystackContext entitiesRow (HaystackPosition $ pIndex c))
           (needleContent $ pVal c)
           rowMatchInfo
        where
+        rowMatchInfo :: [MatchingRowFrom]
         rowMatchInfo = NE.toList . NE.map (f . myRow) . singleRowItems $ pVal c
          where
           f x =
-            MatchingRowFrom (rowIndex x) $
-              getName . originalDefinition . wholeStructure $
-                x
+            MatchingRowFrom (rowIndex x) $ distillLabel . wholeStructure $ x
 
       logEntry = FoundRowCandidates $ map mkCandidateLogEntry candidates
+      rState2 = rState & recognitionLog %~ (logEntry :)
 
-  candidates2D <-
+  candidates2Dpairs <-
     forM candidates $
       checkVerticalMatch entLoader registry cLoc horizontalOffsets
 
+  let (verticalSpans, candidates2D) = unzip candidates2Dpairs
+      rState3 = rState2 & recognitionLog %~ (VerticalSearchSpans verticalSpans :)
+
   return $
-    registerStructureMatches (concat candidates2D) $
-      rState & recognitionLog %~ (logEntry :)
+    registerStructureMatches (concat candidates2D) rState3
 
 -- | Examines contiguous rows of entities, accounting
 -- for the offset of the initially found row.
@@ -186,10 +197,14 @@ checkVerticalMatch ::
   -- | Horizontal search offsets
   InspectionOffsets ->
   Position (StructureSearcher b a) ->
-  s [FoundStructure b a]
-checkVerticalMatch entLoader registry cLoc (InspectionOffsets (Min searchOffsetLeft) _) foundRow =
-  getMatches2D entLoader registry cLoc horizontalFoundOffsets $ automaton2D $ pVal foundRow
+  s ((InspectionOffsets, [OrientedStructure]), [FoundStructure b a])
+checkVerticalMatch entLoader registry cLoc (InspectionOffsets (Min searchOffsetLeft) _) foundRow = do
+  (x, y) <- getMatches2D entLoader registry cLoc horizontalFoundOffsets $ automaton2D searcherVal
+  return ((x, rowStructureNames), y)
  where
+  searcherVal = pVal foundRow
+  rowStructureNames = NE.toList . NE.map (distillLabel . wholeStructure . myRow) . singleRowItems $ searcherVal
+
   foundLeftOffset = searchOffsetLeft + fromIntegral (pIndex foundRow)
   foundRightInclusiveIndex = foundLeftOffset + fromIntegral (pLength foundRow) - 1
   horizontalFoundOffsets = InspectionOffsets (pure foundLeftOffset) (pure foundRightInclusiveIndex)
@@ -219,15 +234,15 @@ getMatches2D ::
   -- | Horizontal found offsets (inclusive indices)
   InspectionOffsets ->
   AutomatonInfo a (SymbolSequence a) (StructureWithGrid b a) ->
-  s [FoundStructure b a]
+  s (InspectionOffsets, [FoundStructure b a])
 getMatches2D
   entLoader
   registry
   cLoc
   horizontalFoundOffsets@(InspectionOffsets (Min offsetLeft) _)
-  (AutomatonInfo participatingEnts (InspectionOffsets (Min offsetTop) (Max offsetBottom)) sm) = do
+  (AutomatonInfo participatingEnts vRange@(InspectionOffsets (Min offsetTop) (Max offsetBottom)) sm) = do
     entityRows <- mapM getRow verticalOffsets
-    return $ getFoundStructures (offsetTop, offsetLeft) cLoc sm entityRows
+    return (vRange, getFoundStructures (offsetTop, offsetLeft) cLoc sm entityRows)
    where
     getRow = getWorldRow entLoader registry participatingEnts cLoc horizontalFoundOffsets
     verticalOffsets = [offsetTop .. offsetBottom]
@@ -249,5 +264,5 @@ registerStructureMatches unrankedCandidates oldState =
   -- Sorted by decreasing order of preference.
   rankedCandidates = sortOn Down unrankedCandidates
 
-  getStructName (FoundStructure swg _) = getName $ originalDefinition swg
-  newMsg = FoundCompleteStructureCandidates $ map getStructName rankedCandidates
+  getStructInfo (FoundStructure swg _) = distillLabel swg
+  newMsg = FoundCompleteStructureCandidates $ map getStructInfo rankedCandidates

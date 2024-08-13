@@ -12,13 +12,23 @@ import Servant.Docs qualified as SD
 import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic)
+import Swarm.Language.Syntax.Direction (AbsoluteDir)
 
 type StructureRowContent e = [Maybe e]
 type WorldRowContent e = [Maybe e]
 
+data OrientedStructure = OrientedStructure
+  { oName :: OriginalName
+  , oDir :: AbsoluteDir
+  }
+  deriving (Generic, ToJSON)
+
+distillLabel :: StructureWithGrid b a -> OrientedStructure
+distillLabel swg = OrientedStructure (getName $ originalDefinition swg) (rotatedTo swg)
+
 data MatchingRowFrom = MatchingRowFrom
   { rowIdx :: Int32
-  , structure :: OriginalName
+  , structure :: OrientedStructure
   }
   deriving (Generic, ToJSON)
 
@@ -26,7 +36,9 @@ newtype HaystackPosition = HaystackPosition Int
   deriving (Generic, ToJSON)
 
 data HaystackContext e = HaystackContext
-  { worldRow :: WorldRowContent e
+  { maskedWorldRow :: WorldRowContent e
+  -- ^ entities that do not constitute any of the eligible structures
+  -- are replaced with 'null' in this list.
   , haystackPosition :: HaystackPosition
   }
   deriving (Functor, Generic, ToJSON)
@@ -55,7 +67,10 @@ data SearchLog e
   = FoundParticipatingEntity (ParticipatingEntity e)
   | StructureRemoved OriginalName
   | FoundRowCandidates [FoundRowCandidate e]
-  | FoundCompleteStructureCandidates [OriginalName]
+  | FoundCompleteStructureCandidates [OrientedStructure]
+  | -- | There may be multiple candidate structures that could be
+    -- completed by the element that was just placed. This lists all of them.
+    VerticalSearchSpans [(InspectionOffsets, [OrientedStructure])]
   | IntactStaticPlacement [IntactPlacementLog]
   deriving (Functor, Generic)
 
