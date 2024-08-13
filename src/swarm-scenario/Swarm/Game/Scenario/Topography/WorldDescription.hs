@@ -29,7 +29,6 @@ import Swarm.Game.Scenario.Topography.ProtoCell (
   StructurePalette (StructurePalette),
  )
 import Swarm.Game.Scenario.Topography.Structure (
-  LocatedStructure,
   MergedStructure (MergedStructure),
   NamedStructure,
   parseStructure,
@@ -38,6 +37,7 @@ import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
 import Swarm.Game.Scenario.Topography.Structure.Overlay (
   PositionedGrid (..),
  )
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Static (LocatedStructure)
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Game.Universe (SubworldName (DefaultRootSubworld))
 import Swarm.Game.World.Parse ()
