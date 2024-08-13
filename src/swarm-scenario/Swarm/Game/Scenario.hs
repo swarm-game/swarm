@@ -112,8 +112,8 @@ import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 import System.Random (randomRIO)
 
-data StaticStructureInfo = StaticStructureInfo
-  { _structureDefs :: [SymmetryAnnotatedGrid (Maybe Cell)]
+data StaticStructureInfo b = StaticStructureInfo
+  { _structureDefs :: [SymmetryAnnotatedGrid (Maybe b)]
   , _staticPlacements :: M.Map SubworldName [Structure.LocatedStructure]
   }
   deriving (Show)
@@ -122,11 +122,11 @@ makeLensesNoSigs ''StaticStructureInfo
 
 -- | Structure templates that may be auto-recognized when constructed
 -- by a robot
-structureDefs :: Lens' StaticStructureInfo [SymmetryAnnotatedGrid (Maybe Cell)]
+structureDefs :: Lens' (StaticStructureInfo b) [SymmetryAnnotatedGrid (Maybe b)]
 
 -- | A record of the static placements of structures, so that they can be
 -- added to the "recognized" list upon scenario initialization
-staticPlacements :: Lens' StaticStructureInfo (M.Map SubworldName [Structure.LocatedStructure])
+staticPlacements :: Lens' (StaticStructureInfo b) (M.Map SubworldName [Structure.LocatedStructure])
 
 -- * Scenario records
 
@@ -206,7 +206,7 @@ data ScenarioLandscape = ScenarioLandscape
   , _scenarioKnown :: Set EntityName
   , _scenarioWorlds :: NonEmpty WorldDescription
   , _scenarioNavigation :: Navigation (M.Map SubworldName) Location
-  , _scenarioStructures :: StaticStructureInfo
+  , _scenarioStructures :: StaticStructureInfo Cell
   , _scenarioRobots :: [TRobot]
   }
   deriving (Show)
@@ -236,7 +236,7 @@ scenarioKnown :: Lens' ScenarioLandscape (Set EntityName)
 scenarioWorlds :: Lens' ScenarioLandscape (NonEmpty WorldDescription)
 
 -- | Information required for structure recognition
-scenarioStructures :: Lens' ScenarioLandscape StaticStructureInfo
+scenarioStructures :: Lens' ScenarioLandscape (StaticStructureInfo Cell)
 
 -- | Waypoints and inter-world portals
 scenarioNavigation :: Lens' ScenarioLandscape (Navigation (M.Map SubworldName) Location)
