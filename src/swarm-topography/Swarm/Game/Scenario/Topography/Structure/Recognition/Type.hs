@@ -73,7 +73,7 @@ type SymbolSequence a = [AtomicKeySymbol a]
 data StructureSearcher b a = StructureSearcher
   { automaton2D :: AutomatonInfo a (SymbolSequence a) (StructureWithGrid (NamedGrid b) a)
   , needleContent :: SymbolSequence a
-  , singleRowItems :: NE.NonEmpty (SingleRowEntityOccurrences (NamedGrid b) a)
+  , singleRowItems :: NE.NonEmpty (SingleRowEntityOccurrences b a)
   }
 
 -- |
@@ -105,9 +105,9 @@ data PositionWithinRow b a = PositionWithinRow
 --
 -- this record will contain two entries in its 'entityOccurrences' field.
 data SingleRowEntityOccurrences b a = SingleRowEntityOccurrences
-  { myRow :: StructureRow b a
+  { myRow :: StructureRow (NamedGrid b) a
   , myEntity :: a
-  , entityOccurrences :: NE.NonEmpty (PositionWithinRow b a)
+  , entityOccurrences :: NE.NonEmpty (PositionWithinRow (NamedGrid b) a)
   , expandedOffsets :: InspectionOffsets
   }
 

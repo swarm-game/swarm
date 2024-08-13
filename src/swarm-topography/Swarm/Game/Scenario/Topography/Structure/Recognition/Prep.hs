@@ -103,7 +103,7 @@ mkEntityLookup grids =
   -- are dropped but accounted for when indexing the columns.
   explodeRowEntities ::
     (Hashable a, Eq a) =>
-    StructureRow b a ->
+    StructureRow (NamedGrid b) a ->
     [SingleRowEntityOccurrences b a]
   explodeRowEntities r@(StructureRow _ _ rowMembers) =
     map f $ HM.toList $ binTuplesHM unconsolidated
