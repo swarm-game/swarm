@@ -1,3 +1,4 @@
+-- |
 -- SPDX-License-Identifier: BSD-3-Clause
 -- Description: Game-related state and utilities
 --
@@ -43,6 +44,7 @@ import Swarm.Game.Scenario.Topography.Cell (Cell, cellToEntity)
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
 import Swarm.Game.State.Landscape (mkLandscape)

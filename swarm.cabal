@@ -221,11 +221,14 @@ library swarm-topography
     Swarm.Game.Scenario.Topography.Rasterize
     Swarm.Game.Scenario.Topography.Structure
     Swarm.Game.Scenario.Topography.Structure.Assembly
+    Swarm.Game.Scenario.Topography.Structure.Named
     Swarm.Game.Scenario.Topography.Structure.Overlay
     Swarm.Game.Scenario.Topography.Structure.Recognition
     Swarm.Game.Scenario.Topography.Structure.Recognition.Log
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
     Swarm.Game.Scenario.Topography.Structure.Recognition.Prep
     Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Static
     Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
     Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking
     Swarm.Game.Scenario.Topography.Structure.Recognition.Type
@@ -297,7 +300,6 @@ library swarm-scenario
     Swarm.Game.Scenario.Topography.Center
     Swarm.Game.Scenario.Topography.EntityFacade
     Swarm.Game.Scenario.Topography.Navigation.Portal
-    Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
     Swarm.Game.Scenario.Topography.WorldDescription
     Swarm.Game.Scenario.Topography.WorldPalette
     Swarm.Game.State.Config

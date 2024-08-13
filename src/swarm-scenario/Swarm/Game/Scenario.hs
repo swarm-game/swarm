@@ -16,7 +16,6 @@ module Swarm.Game.Scenario (
   -- * Scenario
   Scenario (..),
   ScenarioLandscape (..),
-  StaticStructureInfo (..),
   ScenarioMetadata (ScenarioMetadata),
   staticPlacements,
   structureDefs,
@@ -92,9 +91,10 @@ import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (Parentage (..))
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
+import Swarm.Game.Scenario.Topography.Structure.Named qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Overlay
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (SymmetryAnnotatedGrid (..))
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Terrain
 import Swarm.Game.Universe
@@ -111,22 +111,6 @@ import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 import System.Random (randomRIO)
-
-data StaticStructureInfo b = StaticStructureInfo
-  { _structureDefs :: [SymmetryAnnotatedGrid (Maybe b)]
-  , _staticPlacements :: M.Map SubworldName [Structure.LocatedStructure]
-  }
-  deriving (Show)
-
-makeLensesNoSigs ''StaticStructureInfo
-
--- | Structure templates that may be auto-recognized when constructed
--- by a robot
-structureDefs :: Lens' (StaticStructureInfo b) [SymmetryAnnotatedGrid (Maybe b)]
-
--- | A record of the static placements of structures, so that they can be
--- added to the "recognized" list upon scenario initialization
-staticPlacements :: Lens' (StaticStructureInfo b) (M.Map SubworldName [Structure.LocatedStructure])
 
 -- * Scenario records
 

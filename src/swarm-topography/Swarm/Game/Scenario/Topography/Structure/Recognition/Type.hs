@@ -35,7 +35,8 @@ import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario.Topography.Area
-import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
+import Swarm.Game.Scenario.Topography.Structure.Named (NamedGrid)
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Game.Universe (Cosmic, offsetBy)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Text.AhoCorasick (StateMachine)
@@ -125,7 +126,7 @@ data SingleRowEntityOccurrences b a = SingleRowEntityOccurrences
 -- it's 'rowIndex' is @2@.
 --
 -- The two type parameters, `b` and `a`, correspond
--- to '(Structure.NamedGrid (Maybe Cell))' and 'Entity', respectively.
+-- to 'Cell' and 'Entity', respectively.
 data StructureRow b a = StructureRow
   { wholeStructure :: StructureWithGrid b a
   , rowIndex :: Int32
@@ -147,28 +148,13 @@ data NamedOriginal b = NamedOriginal
 -- with its grid of cells having been extracted for convenience.
 --
 -- The two type parameters, `b` and `a`, correspond
--- to '(Structure.NamedGrid (Maybe Cell))' and 'Entity', respectively.
+-- to 'Cell' and 'Entity', respectively.
 data StructureWithGrid b a = StructureWithGrid
   { originalDefinition :: NamedOriginal b
   , rotatedTo :: AbsoluteDir
   , entityGrid :: [SymbolSequence a]
   }
   deriving (Eq)
-
-data RotationalSymmetry
-  = -- | Aka 1-fold symmetry
-    NoSymmetry
-  | -- | Equivalent under rotation by 180 degrees
-    TwoFold
-  | -- | Equivalent under rotation by 90 degrees
-    FourFold
-  deriving (Show, Eq)
-
-data SymmetryAnnotatedGrid a = SymmetryAnnotatedGrid
-  { namedGrid :: NamedGrid a
-  , symmetry :: RotationalSymmetry
-  }
-  deriving (Show)
 
 -- | Structure definitions with precomputed metadata for consumption by the UI
 data StructureInfo b a = StructureInfo
@@ -232,7 +218,7 @@ makeLenses ''RecognizerAutomatons
 -- These are the elements that are stored in the 'FoundRegistry'.
 --
 -- The two type parameters, `b` and `a`, correspond
--- to '(Structure.NamedGrid (Maybe Cell))' and 'Entity', respectively.
+-- to 'Cell' and 'Entity', respectively.
 data FoundStructure b a = FoundStructure
   { structureWithGrid :: StructureWithGrid b a
   , upperLeftCorner :: Cosmic Location

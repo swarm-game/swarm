@@ -11,9 +11,8 @@ import Data.Map qualified as M
 import Data.Set qualified as Set
 import Data.Text qualified as T
 import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform)
-import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
-import Swarm.Game.Scenario.Topography.Structure qualified as Structure
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (RotationalSymmetry (..), SymmetryAnnotatedGrid (..))
+import Swarm.Game.Scenario.Topography.Structure.Named (NamedGrid, recognize, structure)
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Static (RotationalSymmetry (..), SymmetryAnnotatedGrid (..))
 import Swarm.Language.Syntax.Direction (AbsoluteDir (DSouth, DWest), getCoordinateOrientation)
 import Swarm.Util (commaList, failT, histogram, showT)
 
@@ -66,5 +65,5 @@ checkSymmetry ng = do
   quarterTurnRows = applyOrientationTransform (Orientation DWest False) originalRows
   halfTurnRows = applyOrientationTransform (Orientation DSouth False) originalRows
 
-  suppliedOrientations = Structure.recognize ng
-  originalRows = Structure.structure ng
+  suppliedOrientations = recognize ng
+  originalRows = structure ng

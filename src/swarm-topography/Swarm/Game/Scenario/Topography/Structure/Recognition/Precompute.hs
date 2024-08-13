@@ -45,23 +45,22 @@ import Data.Hashable (Hashable)
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, mapMaybe)
 import Data.Set qualified as Set
-import Swarm.Game.Scenario (StaticStructureInfo (..))
 import Swarm.Game.Scenario.Topography.Grid (getRows)
 import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform, getStructureName)
-import Swarm.Game.Scenario.Topography.Structure
-import Swarm.Game.Scenario.Topography.Structure qualified as Structure
+import Swarm.Game.Scenario.Topography.Structure.Named
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (
   mkEntityLookup,
  )
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (
   populateStaticFoundStructures,
  )
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic (..))
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Util (histogram)
 
-getEntityGrid :: (Maybe b -> Maybe a) -> Structure.NamedGrid (Maybe b) -> [[Maybe a]]
+getEntityGrid :: (Maybe b -> Maybe a) -> NamedGrid (Maybe b) -> [[Maybe a]]
 getEntityGrid extractor = getRows . fmap extractor . structure
 
 -- | Create Aho-Corasick matchers that will recognize all of the
@@ -85,17 +84,17 @@ mkAutomatons extractor xs =
 
   infos =
     M.fromList $
-      map (getStructureName . Structure.name . namedGrid &&& process) xs
+      map (getStructureName . name . namedGrid &&& process) xs
 
 extractOrientedGrid ::
   (Maybe b -> Maybe a) ->
-  Structure.NamedGrid (Maybe b) ->
+  NamedGrid (Maybe b) ->
   AbsoluteDir ->
   StructureWithGrid (Maybe b) a
 extractOrientedGrid extractor x d =
   StructureWithGrid wrapped d $ getEntityGrid extractor g
  where
-  wrapped = NamedOriginal (getStructureName $ Structure.name x) x
+  wrapped = NamedOriginal (getStructureName $ name x) x
   g = applyOrientationTransform (Orientation d False) <$> x
 
 -- | At this point, we have already ensured that orientations
@@ -103,7 +102,7 @@ extractOrientedGrid extractor x d =
 -- (i.e. at Scenario validation time).
 extractGrids ::
   (Maybe b -> Maybe a) ->
-  Structure.NamedGrid (Maybe b) ->
+  NamedGrid (Maybe b) ->
   [StructureWithGrid (Maybe b) a]
 extractGrids extractor x =
   map (extractOrientedGrid extractor x) $ Set.toList $ recognize x
@@ -118,7 +117,7 @@ lookupStaticPlacements ::
 lookupStaticPlacements extractor (StaticStructureInfo structDefs thePlacements) =
   concatMap f $ M.toList thePlacements
  where
-  definitionMap = M.fromList $ map ((Structure.name &&& id) . namedGrid) structDefs
+  definitionMap = M.fromList $ map ((name &&& id) . namedGrid) structDefs
 
   f (subworldName, locatedList) = mapMaybe g locatedList
    where
