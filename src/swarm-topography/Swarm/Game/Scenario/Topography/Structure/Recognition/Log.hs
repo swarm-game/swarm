@@ -6,6 +6,7 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Log where
 
 import Data.Aeson
 import Data.Int (Int32)
+import Data.List.NonEmpty (NonEmpty)
 import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
@@ -14,8 +15,10 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 
-type StructureRowContent e = [Maybe e]
-type WorldRowContent e = [Maybe e]
+-- | Type aliases for documentation
+type StructureRowContent e = SymbolSequence e
+
+type WorldRowContent e = SymbolSequence e
 
 data OrientedStructure = OrientedStructure
   { oName :: OriginalName
@@ -27,7 +30,8 @@ distillLabel :: StructureWithGrid b a -> OrientedStructure
 distillLabel swg = OrientedStructure (getName $ originalDefinition swg) (rotatedTo swg)
 
 data MatchingRowFrom = MatchingRowFrom
-  { rowIdx :: Int32
+  { topDownRowIdx :: Int32
+  -- ^ numbered from the top down
   , structure :: OrientedStructure
   }
   deriving (Generic, ToJSON)
@@ -45,14 +49,23 @@ data HaystackContext e = HaystackContext
 
 data FoundRowCandidate e = FoundRowCandidate
   { haystackContext :: HaystackContext e
-  , structureContent :: StructureRowContent e
-  , rowCandidates :: [MatchingRowFrom]
+  , soughtContent :: StructureRowContent e
+  , matchedCandidates :: [MatchingRowFrom]
+  }
+  deriving (Functor, Generic, ToJSON)
+
+data EntityKeyedFinder e = EntityKeyedFinder
+  { searchOffsets :: InspectionOffsets
+  , candidateStructureRows :: NonEmpty (StructureRowContent e)
+  , entityMask :: [e]
+  -- ^ NOTE: HashSet has no Functor instance,
+  -- so we represent this as a list here.
   }
   deriving (Functor, Generic, ToJSON)
 
 data ParticipatingEntity e = ParticipatingEntity
   { entity :: e
-  , searchOffsets :: InspectionOffsets
+  , entityKeyedFinders :: NonEmpty (EntityKeyedFinder e)
   }
   deriving (Functor, Generic, ToJSON)
 
@@ -63,6 +76,14 @@ data IntactPlacementLog = IntactPlacementLog
   }
   deriving (Generic, ToJSON)
 
+data VerticalSearch e = VerticalSearch
+  { haystackVerticalExtents :: InspectionOffsets
+  -- ^ vertical offset of haystack relative to the found row
+  , soughtStructures :: [OrientedStructure]
+  , verticalHaystack :: [WorldRowContent e]
+  }
+  deriving (Functor, Generic, ToJSON)
+
 data SearchLog e
   = FoundParticipatingEntity (ParticipatingEntity e)
   | StructureRemoved OriginalName
@@ -70,7 +91,7 @@ data SearchLog e
   | FoundCompleteStructureCandidates [OrientedStructure]
   | -- | There may be multiple candidate structures that could be
     -- completed by the element that was just placed. This lists all of them.
-    VerticalSearchSpans [(InspectionOffsets, [OrientedStructure])]
+    VerticalSearchSpans [VerticalSearch e]
   | IntactStaticPlacement [IntactPlacementLog]
   deriving (Functor, Generic)
 

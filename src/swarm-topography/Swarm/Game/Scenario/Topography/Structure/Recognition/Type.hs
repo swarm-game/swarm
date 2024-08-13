@@ -25,7 +25,7 @@ import Data.Function (on)
 import Data.HashMap.Strict (HashMap)
 import Data.HashSet (HashSet)
 import Data.Int (Int32)
-import Data.List.NonEmpty qualified as NE
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Maybe (catMaybes)
 import Data.Ord (Down (Down))
@@ -74,7 +74,7 @@ type SymbolSequence a = [AtomicKeySymbol a]
 data StructureSearcher b a = StructureSearcher
   { automaton2D :: AutomatonInfo a (SymbolSequence a) (StructureWithGrid b a)
   , needleContent :: SymbolSequence a
-  , singleRowItems :: NE.NonEmpty (SingleRowEntityOccurrences b a)
+  , singleRowItems :: NonEmpty (SingleRowEntityOccurrences b a)
   }
 
 -- |
@@ -108,7 +108,7 @@ data PositionWithinRow b a = PositionWithinRow
 data SingleRowEntityOccurrences b a = SingleRowEntityOccurrences
   { myRow :: StructureRow b a
   , myEntity :: a
-  , entityOccurrences :: NE.NonEmpty (PositionWithinRow b a)
+  , entityOccurrences :: NonEmpty (PositionWithinRow b a)
   , expandedOffsets :: InspectionOffsets
   }
 
@@ -197,6 +197,9 @@ data AutomatonInfo en k v = AutomatonInfo
   { _participatingEntities :: HashSet en
   , _inspectionOffsets :: InspectionOffsets
   , _automaton :: StateMachine k v
+  , _searchPairs :: NonEmpty ([k], v)
+  -- ^ these are the tuples input to the 'makeStateMachine' function,
+  -- for debugging purposes.
   }
   deriving (Generic)
 
@@ -208,7 +211,7 @@ data RecognizerAutomatons b a = RecognizerAutomatons
   { _originalStructureDefinitions :: Map OriginalName (StructureInfo b a)
   -- ^ all of the structures that shall participate in automatic recognition.
   -- This list is used only by the UI and by the 'Floorplan' command.
-  , _automatonsByEntity :: HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
+  , _automatonsByEntity :: HashMap a (NonEmpty (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a)))
   }
   deriving (Generic)
 

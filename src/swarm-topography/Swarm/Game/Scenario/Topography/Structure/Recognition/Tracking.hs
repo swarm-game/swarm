@@ -12,13 +12,14 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking (
 import Control.Lens ((%~), (&), (.~), (^.))
 import Control.Monad (forM, guard)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
+import Data.Foldable (foldrM)
 import Data.HashMap.Strict qualified as HM
 import Data.HashSet (HashSet)
 import Data.HashSet qualified as HS
 import Data.Hashable (Hashable)
 import Data.Int (Int32)
 import Data.List (sortOn)
-import Data.List.NonEmpty qualified as NE
+import Data.List.NonEmpty.Extra qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (listToMaybe)
 import Data.Ord (Down (..))
@@ -66,11 +67,19 @@ entityModified entLoader modification cLoc recognizer =
     let oldRecognitionState = r ^. recognitionState
     stateRevision <- case HM.lookup newEntity entLookup of
       Nothing -> return oldRecognitionState
-      Just finder -> do
-        let msg = FoundParticipatingEntity $ ParticipatingEntity newEntity (finder ^. inspectionOffsets)
+      Just finders -> do
+        let logFinder f =
+              EntityKeyedFinder
+                (f ^. inspectionOffsets)
+                (NE.map fst $ f ^. searchPairs)
+                (HS.toList $ f ^. participatingEntities)
+            msg =
+              FoundParticipatingEntity $
+                ParticipatingEntity newEntity $
+                  NE.map logFinder finders
             stateRevision' = oldRecognitionState & recognitionLog %~ (msg :)
 
-        registerRowMatches entLoader cLoc finder stateRevision'
+        foldrM (registerRowMatches entLoader cLoc) stateRevision' finders
 
     return $ r & recognitionState .~ stateRevision
 
@@ -107,14 +116,15 @@ candidateEntityAt ::
   (Monad s, Hashable a) =>
   GenericEntLocator s a ->
   FoundRegistry b a ->
-  -- | participating entities
+  -- | participating entities whitelist. If empty, all entities are included.
+  -- NOTE: This is only needed for structures that have transparent cells.
   HashSet a ->
   Cosmic Location ->
   s (Maybe a)
 candidateEntityAt entLoader registry participating cLoc = runMaybeT $ do
   guard $ M.notMember cLoc $ foundByLocation registry
   ent <- MaybeT $ entLoader cLoc
-  guard $ HS.member ent participating
+  guard $ null participating || HS.member ent participating
   return ent
 
 -- | Excludes entities that are already part of a
@@ -123,13 +133,13 @@ getWorldRow ::
   (Monad s, Hashable a) =>
   GenericEntLocator s a ->
   FoundRegistry b a ->
-  -- | participating entities
-  HashSet a ->
   Cosmic Location ->
   InspectionOffsets ->
+  -- | participating entities
+  HashSet a ->
   Int32 ->
   s [Maybe a]
-getWorldRow entLoader registry participatingEnts cLoc (InspectionOffsets (Min offsetLeft) (Max offsetRight)) yOffset = do
+getWorldRow entLoader registry cLoc (InspectionOffsets (Min offsetLeft) (Max offsetRight)) participatingEnts yOffset = do
   mapM getCandidate horizontalOffsets
  where
   getCandidate = candidateEntityAt entLoader registry participatingEnts
@@ -139,8 +149,27 @@ getWorldRow entLoader registry participatingEnts cLoc (InspectionOffsets (Min of
   -- to bottom, but swarm world coordinates increase from bottom to top.
   mkLoc x = cLoc `offsetBy` V2 x (negate yOffset)
 
+logRowCandidates :: [Maybe e] -> [Position (StructureSearcher b e)] -> SearchLog e
+logRowCandidates entitiesRow candidates =
+  FoundRowCandidates $ map mkCandidateLogEntry candidates
+ where
+  mkCandidateLogEntry c =
+    FoundRowCandidate
+      (HaystackContext entitiesRow (HaystackPosition $ pIndex c))
+      (needleContent $ pVal c)
+      rowMatchInfo
+   where
+    rowMatchInfo :: [MatchingRowFrom]
+    rowMatchInfo = NE.toList . NE.map (f . myRow) . singleRowItems $ pVal c
+     where
+      f x =
+        MatchingRowFrom (rowIndex x) $ distillLabel . wholeStructure $ x
+
 -- | This is the first (one-dimensional) stage
 -- in a two-stage (two-dimensional) search.
+--
+-- It searches for any structure row that happens to
+-- contain the placed entity.
 registerRowMatches ::
   (Monad s, Hashable a, Eq b) =>
   GenericEntLocator s a ->
@@ -148,34 +177,12 @@ registerRowMatches ::
   AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a) ->
   RecognitionState b a ->
   s (RecognitionState b a)
-registerRowMatches entLoader cLoc (AutomatonInfo participatingEnts horizontalOffsets sm) rState = do
-  let registry = rState ^. foundStructures
+registerRowMatches entLoader cLoc (AutomatonInfo participatingEnts horizontalOffsets sm _) rState = do
+  maskChoices <- attemptSearchWithEntityMask participatingEnts
 
-  entitiesRow <-
-    getWorldRow
-      entLoader
-      registry
-      participatingEnts
-      cLoc
-      horizontalOffsets
-      0
-
-  let candidates = findAll sm entitiesRow
-
-      mkCandidateLogEntry c =
-        FoundRowCandidate
-          (HaystackContext entitiesRow (HaystackPosition $ pIndex c))
-          (needleContent $ pVal c)
-          rowMatchInfo
-       where
-        rowMatchInfo :: [MatchingRowFrom]
-        rowMatchInfo = NE.toList . NE.map (f . myRow) . singleRowItems $ pVal c
-         where
-          f x =
-            MatchingRowFrom (rowIndex x) $ distillLabel . wholeStructure $ x
-
-      logEntry = FoundRowCandidates $ map mkCandidateLogEntry candidates
+  let logEntry = uncurry logRowCandidates maskChoices
       rState2 = rState & recognitionLog %~ (logEntry :)
+      candidates = snd maskChoices
 
   candidates2Dpairs <-
     forM candidates $
@@ -186,6 +193,22 @@ registerRowMatches entLoader cLoc (AutomatonInfo participatingEnts horizontalOff
 
   return $
     registerStructureMatches (concat candidates2D) rState3
+ where
+  registry = rState ^. foundStructures
+
+  attemptSearchWithEntityMask entsMask = do
+    entitiesRow <-
+      getWorldRow
+        entLoader
+        registry
+        cLoc
+        horizontalOffsets
+        entsMask
+        0
+
+    -- All of the eligible structure rows found
+    -- within this horizontal swath of world cells
+    return (entitiesRow, findAll sm entitiesRow)
 
 -- | Examines contiguous rows of entities, accounting
 -- for the offset of the initially found row.
@@ -197,10 +220,10 @@ checkVerticalMatch ::
   -- | Horizontal search offsets
   InspectionOffsets ->
   Position (StructureSearcher b a) ->
-  s ((InspectionOffsets, [OrientedStructure]), [FoundStructure b a])
+  s (VerticalSearch a, [FoundStructure b a])
 checkVerticalMatch entLoader registry cLoc (InspectionOffsets (Min searchOffsetLeft) _) foundRow = do
-  (x, y) <- getMatches2D entLoader registry cLoc horizontalFoundOffsets $ automaton2D searcherVal
-  return ((x, rowStructureNames), y)
+  ((x, y), z) <- getMatches2D entLoader registry cLoc horizontalFoundOffsets $ automaton2D searcherVal
+  return (VerticalSearch x rowStructureNames y, z)
  where
   searcherVal = pVal foundRow
   rowStructureNames = NE.toList . NE.map (distillLabel . wholeStructure . myRow) . singleRowItems $ searcherVal
@@ -234,18 +257,18 @@ getMatches2D ::
   -- | Horizontal found offsets (inclusive indices)
   InspectionOffsets ->
   AutomatonInfo a (SymbolSequence a) (StructureWithGrid b a) ->
-  s (InspectionOffsets, [FoundStructure b a])
+  s ((InspectionOffsets, [[Maybe a]]), [FoundStructure b a])
 getMatches2D
   entLoader
   registry
   cLoc
   horizontalFoundOffsets@(InspectionOffsets (Min offsetLeft) _)
-  (AutomatonInfo participatingEnts vRange@(InspectionOffsets (Min offsetTop) (Max offsetBottom)) sm) = do
-    entityRows <- mapM getRow verticalOffsets
-    return (vRange, getFoundStructures (offsetTop, offsetLeft) cLoc sm entityRows)
+  (AutomatonInfo participatingEnts vRange@(InspectionOffsets (Min offsetTop) (Max offsetBottom)) sm _) = do
+    entityRows <- mapM getRow vertOffsets
+    return ((vRange, entityRows), getFoundStructures (offsetTop, offsetLeft) cLoc sm entityRows)
    where
-    getRow = getWorldRow entLoader registry participatingEnts cLoc horizontalFoundOffsets
-    verticalOffsets = [offsetTop .. offsetBottom]
+    getRow = getWorldRow entLoader registry cLoc horizontalFoundOffsets participatingEnts
+    vertOffsets = [offsetTop .. offsetBottom]
 
 -- |
 -- We only allow an entity to participate in one structure at a time,
