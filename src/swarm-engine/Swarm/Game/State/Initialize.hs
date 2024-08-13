@@ -180,7 +180,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
 mkRecognizer ::
   (Has (State GameState) sig m) =>
   StaticStructureInfo ->
-  m (StructureRecognizer (NamedGrid (Maybe Cell)) Entity)
+  m (StructureRecognizer (Maybe Cell) Entity)
 mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
   foundIntact <- mapM (sequenceA . (id &&& ensureStructureIntact)) allPlaced
   let fs = populateStaticFoundStructures . map fst . filter snd $ foundIntact
