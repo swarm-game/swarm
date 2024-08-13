@@ -6,6 +6,7 @@ import Control.Arrow ((&&&))
 import Data.HashMap.Strict qualified as HM
 import Data.HashSet qualified as HS
 import Data.Hashable (Hashable)
+import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Data.Int (Int32)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
@@ -60,7 +61,7 @@ mkRowLookup neList =
 -- (so long as they contain the keyed entity).
 mkEntityLookup ::
   (Hashable a, Eq a) =>
-  [StructureWithGrid b a] ->
+  [StructureWithGrid (NamedGrid b) a] ->
   HM.HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
 mkEntityLookup grids =
   HM.map mkValues rowsByEntityParticipation

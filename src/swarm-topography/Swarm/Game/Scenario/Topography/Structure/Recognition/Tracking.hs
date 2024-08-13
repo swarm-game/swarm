@@ -9,6 +9,7 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking (
   entityModified,
 ) where
 
+import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Control.Lens ((%~), (&), (.~), (^.))
 import Control.Monad (forM, guard)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
@@ -146,8 +147,8 @@ registerRowMatches ::
   GenericEntLocator s a ->
   Cosmic Location ->
   AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a) ->
-  RecognitionState b a ->
-  s (RecognitionState b a)
+  RecognitionState (NamedGrid b) a ->
+  s (RecognitionState (NamedGrid b) a)
 registerRowMatches entLoader cLoc (AutomatonInfo participatingEnts horizontalOffsets sm) rState = do
   let registry = rState ^. foundStructures
 
@@ -192,12 +193,12 @@ registerRowMatches entLoader cLoc (AutomatonInfo participatingEnts horizontalOff
 checkVerticalMatch ::
   (Monad s, Hashable a) =>
   GenericEntLocator s a ->
-  FoundRegistry b a ->
+  FoundRegistry (NamedGrid b) a ->
   Cosmic Location ->
   -- | Horizontal search offsets
   InspectionOffsets ->
   Position (StructureSearcher b a) ->
-  s ((InspectionOffsets, [OrientedStructure]), [FoundStructure b a])
+  s ((InspectionOffsets, [OrientedStructure]), [FoundStructure (NamedGrid b) a])
 checkVerticalMatch entLoader registry cLoc (InspectionOffsets (Min searchOffsetLeft) _) foundRow = do
   (x, y) <- getMatches2D entLoader registry cLoc horizontalFoundOffsets $ automaton2D searcherVal
   return ((x, rowStructureNames), y)

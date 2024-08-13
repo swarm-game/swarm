@@ -71,9 +71,9 @@ type SymbolSequence a = [AtomicKeySymbol a]
 -- It contains search automatons customized to the 2-D structures
 -- that may possibly contain the row found by the 1-D searcher.
 data StructureSearcher b a = StructureSearcher
-  { automaton2D :: AutomatonInfo a (SymbolSequence a) (StructureWithGrid b a)
+  { automaton2D :: AutomatonInfo a (SymbolSequence a) (StructureWithGrid (NamedGrid b) a)
   , needleContent :: SymbolSequence a
-  , singleRowItems :: NE.NonEmpty (SingleRowEntityOccurrences b a)
+  , singleRowItems :: NE.NonEmpty (SingleRowEntityOccurrences (NamedGrid b) a)
   }
 
 -- |
@@ -222,7 +222,7 @@ data RecognizerAutomatons b a = RecognizerAutomatons
   { _originalStructureDefinitions :: Map OriginalName (StructureInfo b a)
   -- ^ all of the structures that shall participate in automatic recognition.
   -- This list is used only by the UI and by the 'Floorplan' command.
-  , _automatonsByEntity :: HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher (NamedGrid b) a))
+  , _automatonsByEntity :: HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
   }
   deriving (Generic)
 
