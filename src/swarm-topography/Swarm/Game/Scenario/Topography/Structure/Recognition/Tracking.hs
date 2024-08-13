@@ -198,7 +198,7 @@ checkVerticalMatch ::
   -- | Horizontal search offsets
   InspectionOffsets ->
   Position (StructureSearcher b a) ->
-  s ((InspectionOffsets, [OrientedStructure]), [FoundStructure (NamedGrid b) a])
+  s ((InspectionOffsets, [OrientedStructure]), [FoundStructure b a])
 checkVerticalMatch entLoader registry cLoc (InspectionOffsets (Min searchOffsetLeft) _) foundRow = do
   (x, y) <- getMatches2D entLoader registry cLoc horizontalFoundOffsets $ automaton2D searcherVal
   return ((x, rowStructureNames), y)
@@ -214,7 +214,7 @@ getFoundStructures ::
   Hashable keySymb =>
   (Int32, Int32) ->
   Cosmic Location ->
-  StateMachine keySymb (StructureWithGrid b a) ->
+  StateMachine keySymb (StructureWithGrid (NamedGrid b) a) ->
   [keySymb] ->
   [FoundStructure b a]
 getFoundStructures (offsetTop, offsetLeft) cLoc sm entityRows =
@@ -235,7 +235,7 @@ getMatches2D ::
   -- | Horizontal found offsets (inclusive indices)
   InspectionOffsets ->
   AutomatonInfo a (SymbolSequence a) (StructureWithGrid (NamedGrid b) a) ->
-  s (InspectionOffsets, [FoundStructure (NamedGrid b) a])
+  s (InspectionOffsets, [FoundStructure b a])
 getMatches2D
   entLoader
   registry
@@ -254,7 +254,7 @@ getMatches2D
 -- The largest structure (by area) shall win.
 registerStructureMatches ::
   (Eq a, Eq b) =>
-  [FoundStructure (NamedGrid b) a] ->
+  [FoundStructure b a] ->
   RecognitionState b a->
   RecognitionState b a
 registerStructureMatches unrankedCandidates oldState =

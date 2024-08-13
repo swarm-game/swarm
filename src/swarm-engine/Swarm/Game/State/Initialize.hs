@@ -40,7 +40,6 @@ import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Objective (initCompletion)
 import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.Cell (Cell)
-import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
@@ -203,7 +202,7 @@ mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
 -- cell is encountered.
 ensureStructureIntact ::
   (Has (State GameState) sig m) =>
-  FoundStructure (NamedGrid (Maybe Cell)) Entity ->
+  FoundStructure (Maybe Cell) Entity ->
   m Bool
 ensureStructureIntact (FoundStructure (StructureWithGrid _ _ grid) upperLeft) =
   allM outer $ zip [0 ..] grid

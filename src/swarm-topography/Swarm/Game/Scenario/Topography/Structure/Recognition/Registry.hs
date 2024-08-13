@@ -39,7 +39,7 @@ import Swarm.Util (binTuples, deleteKeys)
 -- to '(Structure.NamedGrid (Maybe Cell))' and 'Entity', respectively.
 data FoundRegistry b a = FoundRegistry
   { _foundByName :: Map OriginalName (NEMap (Cosmic Location) (StructureWithGrid (NamedGrid b) a))
-  , _foundByLocation :: Map (Cosmic Location) (FoundStructure (NamedGrid b) a)
+  , _foundByLocation :: Map (Cosmic Location) (FoundStructure b a)
   }
 
 emptyFoundStructures :: FoundRegistry b a
@@ -56,10 +56,10 @@ foundByName = _foundByName
 -- deletion of structures when their elements are removed from the world.
 --
 -- Each recognized structure instance will have @MxN@ entries in this map.
-foundByLocation :: FoundRegistry b a -> Map (Cosmic Location) (FoundStructure (NamedGrid b) a)
+foundByLocation :: FoundRegistry b a -> Map (Cosmic Location) (FoundStructure b a)
 foundByLocation = _foundByLocation
 
-removeStructure :: FoundStructure (NamedGrid b) a -> FoundRegistry b a -> FoundRegistry b a
+removeStructure :: FoundStructure b a -> FoundRegistry b a -> FoundRegistry b a
 removeStructure fs (FoundRegistry byName byLoc) =
   FoundRegistry
     (M.update tidyDelete structureName byName)
@@ -73,7 +73,7 @@ removeStructure fs (FoundRegistry byName byLoc) =
   -- Swarm.Game.State.removeRobotFromLocationMap
   tidyDelete = NEM.nonEmptyMap . NEM.delete upperLeft
 
-addFound :: FoundStructure (NamedGrid b) a -> FoundRegistry b a -> FoundRegistry b a
+addFound :: FoundStructure b a -> FoundRegistry b a -> FoundRegistry b a
 addFound fs@(FoundStructure swg loc) (FoundRegistry byName byLoc) =
   FoundRegistry
     (M.insertWith (<>) k (NEM.singleton loc swg) byName)
@@ -86,7 +86,7 @@ addFound fs@(FoundStructure swg loc) (FoundRegistry byName byLoc) =
 --
 -- Each of these shall have been re-checked in case
 -- a subsequent placement occludes them.
-populateStaticFoundStructures :: [FoundStructure (NamedGrid b) a] -> FoundRegistry b a
+populateStaticFoundStructures :: [FoundStructure b a] -> FoundRegistry b a
 populateStaticFoundStructures allFound =
   FoundRegistry byName byLocation
  where

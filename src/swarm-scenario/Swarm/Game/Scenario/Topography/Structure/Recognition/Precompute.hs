@@ -102,7 +102,7 @@ extractGrids x = map (extractOrientedGrid x) $ Set.toList $ recognize x
 -- | The output list of 'FoundStructure' records is not yet
 -- vetted; the 'ensureStructureIntact' function will subsequently
 -- filter this list.
-lookupStaticPlacements :: StaticStructureInfo -> [FoundStructure (Structure.NamedGrid (Maybe Cell)) Entity]
+lookupStaticPlacements :: StaticStructureInfo -> [FoundStructure (Maybe Cell) Entity]
 lookupStaticPlacements (StaticStructureInfo structDefs thePlacements) =
   concatMap f $ M.toList thePlacements
  where

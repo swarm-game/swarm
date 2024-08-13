@@ -234,7 +234,7 @@ makeLenses ''RecognizerAutomatons
 -- The two type parameters, `b` and `a`, correspond
 -- to '(Structure.NamedGrid (Maybe Cell))' and 'Entity', respectively.
 data FoundStructure b a = FoundStructure
-  { structureWithGrid :: StructureWithGrid b a
+  { structureWithGrid :: StructureWithGrid (NamedGrid b) a
   , upperLeftCorner :: Cosmic Location
   }
   deriving (Eq)
