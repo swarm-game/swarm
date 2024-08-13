@@ -16,7 +16,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 -- | State of the structure recognizer that is intended
 -- to be modifiable.
 data RecognitionState b a = RecognitionState
-  { _foundStructures :: FoundRegistry (NamedGrid b) a
+  { _foundStructures :: FoundRegistry b a
   -- ^ Records the top-left corner of the found structure
   , _recognitionLog :: [SearchLog a]
   }

@@ -193,7 +193,7 @@ registerRowMatches entLoader cLoc (AutomatonInfo participatingEnts horizontalOff
 checkVerticalMatch ::
   (Monad s, Hashable a) =>
   GenericEntLocator s a ->
-  FoundRegistry (NamedGrid b) a ->
+  FoundRegistry b a ->
   Cosmic Location ->
   -- | Horizontal search offsets
   InspectionOffsets ->
@@ -234,8 +234,8 @@ getMatches2D ::
   Cosmic Location ->
   -- | Horizontal found offsets (inclusive indices)
   InspectionOffsets ->
-  AutomatonInfo a (SymbolSequence a) (StructureWithGrid b a) ->
-  s (InspectionOffsets, [FoundStructure b a])
+  AutomatonInfo a (SymbolSequence a) (StructureWithGrid (NamedGrid b) a) ->
+  s (InspectionOffsets, [FoundStructure (NamedGrid b) a])
 getMatches2D
   entLoader
   registry
