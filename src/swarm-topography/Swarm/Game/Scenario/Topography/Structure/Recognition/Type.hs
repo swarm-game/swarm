@@ -38,6 +38,7 @@ import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Universe (Cosmic, offsetBy)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Text.AhoCorasick (StateMachine)
+import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 
 -- | A 'NamedStructure' has its own newtype name ('StructureName'), but we
 -- standardize on 'Text' here to avoid parameterizing our 'NamedOriginal'
@@ -65,6 +66,8 @@ type AtomicKeySymbol a = Maybe a
 -- aab
 -- @
 type SymbolSequence a = [AtomicKeySymbol a]
+
+type StructureGrid b = NamedGrid (Maybe b)
 
 -- | This is returned as a value of the 1-D searcher.
 -- It contains search automatons customized to the 2-D structures

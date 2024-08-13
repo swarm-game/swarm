@@ -97,7 +97,7 @@ import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (SymmetryAnnotatedGrid (..))
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (SymmetryAnnotatedGrid (..), StructureGrid)
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Terrain
 import Swarm.Game.Universe
@@ -115,7 +115,7 @@ import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 import System.Random (randomRIO)
 
-type StructureCells = Structure.NamedGrid (Maybe Cell)
+type StructureCells = StructureGrid Cell
 
 data StaticStructureInfo = StaticStructureInfo
   { _structureDefs :: [SymmetryAnnotatedGrid StructureCells]
