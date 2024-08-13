@@ -86,7 +86,7 @@ mkAutomatons xs =
 extractOrientedGrid ::
   Structure.NamedGrid (Maybe Cell) ->
   AbsoluteDir ->
-  StructureWithGrid (Structure.NamedGrid (Maybe Cell)) Entity
+  StructureWithGrid (Maybe Cell) Entity
 extractOrientedGrid x d =
   StructureWithGrid wrapped d $ getEntityGrid g
  where
@@ -96,7 +96,7 @@ extractOrientedGrid x d =
 -- | At this point, we have already ensured that orientations
 -- redundant by rotational symmetry have been excluded
 -- (i.e. at Scenario validation time).
-extractGrids :: Structure.NamedGrid (Maybe Cell) -> [StructureWithGrid (Structure.NamedGrid (Maybe Cell)) Entity]
+extractGrids :: Structure.NamedGrid (Maybe Cell) -> [StructureWithGrid (Maybe Cell) Entity]
 extractGrids x = map (extractOrientedGrid x) $ Set.toList $ recognize x
 
 -- | The output list of 'FoundStructure' records is not yet

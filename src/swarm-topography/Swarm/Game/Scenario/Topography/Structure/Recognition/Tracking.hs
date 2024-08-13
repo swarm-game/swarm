@@ -9,7 +9,6 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking (
   entityModified,
 ) where
 
-import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Control.Lens ((%~), (&), (.~), (^.))
 import Control.Monad (forM, guard)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
@@ -214,7 +213,7 @@ getFoundStructures ::
   Hashable keySymb =>
   (Int32, Int32) ->
   Cosmic Location ->
-  StateMachine keySymb (StructureWithGrid (NamedGrid b) a) ->
+  StateMachine keySymb (StructureWithGrid b a) ->
   [keySymb] ->
   [FoundStructure b a]
 getFoundStructures (offsetTop, offsetLeft) cLoc sm entityRows =
@@ -234,7 +233,7 @@ getMatches2D ::
   Cosmic Location ->
   -- | Horizontal found offsets (inclusive indices)
   InspectionOffsets ->
-  AutomatonInfo a (SymbolSequence a) (StructureWithGrid (NamedGrid b) a) ->
+  AutomatonInfo a (SymbolSequence a) (StructureWithGrid b a) ->
   s (InspectionOffsets, [FoundStructure b a])
 getMatches2D
   entLoader

@@ -6,7 +6,6 @@ import Control.Arrow ((&&&))
 import Data.HashMap.Strict qualified as HM
 import Data.HashSet qualified as HS
 import Data.Hashable (Hashable)
-import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Data.Int (Int32)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
@@ -15,11 +14,11 @@ import Data.Tuple (swap)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Text.AhoCorasick
 
-allStructureRows :: [StructureWithGrid (NamedGrid b) a] -> [StructureRow b a]
+allStructureRows :: [StructureWithGrid b a] -> [StructureRow b a]
 allStructureRows =
   concatMap transformRows
  where
-  transformRows :: StructureWithGrid (NamedGrid b) a -> [StructureRow b a]
+  transformRows :: StructureWithGrid b a -> [StructureRow b a]
   transformRows g = zipWith (StructureRow g) [0 ..] $ entityGrid g
 
 mkOffsets :: Foldable f => Int32 -> f a -> InspectionOffsets
@@ -34,7 +33,7 @@ mkOffsets pos xs =
 mkRowLookup ::
   (Hashable a, Eq a) =>
   NE.NonEmpty (StructureRow b a) ->
-  AutomatonInfo a (SymbolSequence a) (StructureWithGrid (NamedGrid b) a)
+  AutomatonInfo a (SymbolSequence a) (StructureWithGrid b a)
 mkRowLookup neList =
   AutomatonInfo participatingEnts bounds sm
  where
@@ -61,7 +60,7 @@ mkRowLookup neList =
 -- (so long as they contain the keyed entity).
 mkEntityLookup ::
   (Hashable a, Eq a) =>
-  [StructureWithGrid (NamedGrid b) a] ->
+  [StructureWithGrid b a] ->
   HM.HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
 mkEntityLookup grids =
   HM.map mkValues rowsByEntityParticipation

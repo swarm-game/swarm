@@ -71,7 +71,7 @@ type SymbolSequence a = [AtomicKeySymbol a]
 -- It contains search automatons customized to the 2-D structures
 -- that may possibly contain the row found by the 1-D searcher.
 data StructureSearcher b a = StructureSearcher
-  { automaton2D :: AutomatonInfo a (SymbolSequence a) (StructureWithGrid (NamedGrid b) a)
+  { automaton2D :: AutomatonInfo a (SymbolSequence a) (StructureWithGrid b a)
   , needleContent :: SymbolSequence a
   , singleRowItems :: NE.NonEmpty (SingleRowEntityOccurrences b a)
   }
@@ -127,7 +127,7 @@ data SingleRowEntityOccurrences b a = SingleRowEntityOccurrences
 -- The two type parameters, `b` and `a`, correspond
 -- to '(Structure.NamedGrid (Maybe Cell))' and 'Entity', respectively.
 data StructureRow b a = StructureRow
-  { wholeStructure :: StructureWithGrid (NamedGrid b) a
+  { wholeStructure :: StructureWithGrid b a
   , rowIndex :: Int32
   -- ^ vertical index of the row within the structure
   , rowContent :: SymbolSequence a
@@ -137,9 +137,9 @@ data StructureRow b a = StructureRow
 -- (i.e. the "payload" for recognition)
 -- for the purpose of both UI display and internal uniqueness,
 -- while remaining agnostic to its internals.
-data NamedOriginal a = NamedOriginal
+data NamedOriginal b = NamedOriginal
   { getName :: OriginalName
-  , orig :: a
+  , orig :: NamedGrid b
   }
   deriving (Show, Eq)
 
@@ -234,7 +234,7 @@ makeLenses ''RecognizerAutomatons
 -- The two type parameters, `b` and `a`, correspond
 -- to '(Structure.NamedGrid (Maybe Cell))' and 'Entity', respectively.
 data FoundStructure b a = FoundStructure
-  { structureWithGrid :: StructureWithGrid (NamedGrid b) a
+  { structureWithGrid :: StructureWithGrid b a
   , upperLeftCorner :: Cosmic Location
   }
   deriving (Eq)
