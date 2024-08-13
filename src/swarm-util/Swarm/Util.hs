@@ -20,6 +20,7 @@ module Swarm.Util (
   indexWrapNonEmpty,
   uniq,
   binTuples,
+  binTuplesNE,
   histogram,
   findDup,
   both,
@@ -83,6 +84,7 @@ module Swarm.Util (
 
 import Control.Applicative (Alternative)
 import Control.Carrier.Throw.Either
+import Data.Map.NonEmpty (NEMap)
 import Control.Effect.State (State, modify, state)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<&>), (<>~))
 import Control.Monad (filterM, guard, unless)
@@ -91,6 +93,7 @@ import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum, toLower)
 import Data.Either.Validation
 import Data.Foldable qualified as Foldable
+import Data.Map.NonEmpty qualified as NEM
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl', maximumBy, partition)
@@ -207,6 +210,14 @@ binTuples ::
 binTuples = foldr f mempty
  where
   f = uncurry (M.insertWith (<>)) . fmap pure
+
+-- | Place the second element of the tuples into bins by
+-- the value of the first element.
+binTuplesNE ::
+  (Ord a) =>
+  NonEmpty (a, b) ->
+  NEMap a (NE.NonEmpty b)
+binTuplesNE = NEM.fromListWith (<>) . NE.map (fmap pure)
 
 -- | Count occurrences of a value
 histogram ::

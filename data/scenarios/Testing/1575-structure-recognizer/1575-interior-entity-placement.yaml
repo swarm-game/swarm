@@ -9,10 +9,6 @@ description: |
   Additionally, recognition of statically-placed
   structures at scenario initialization is also
   unaffected by interior entities.
-
-  However, any such "contaminating" entities
-  will prevent the recognition of a structure
-  when constructed by a robot.
 creative: false
 objectives:
   - teaser: Replace rock

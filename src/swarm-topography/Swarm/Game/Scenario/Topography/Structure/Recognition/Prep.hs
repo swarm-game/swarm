@@ -7,6 +7,7 @@ import Data.HashMap.Strict qualified as HM
 import Data.HashSet qualified as HS
 import Data.Hashable (Hashable)
 import Data.Int (Int32)
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
@@ -32,10 +33,10 @@ mkOffsets pos xs =
 -- rows constitute a complete structure.
 mkRowLookup ::
   (Hashable a, Eq a) =>
-  NE.NonEmpty (StructureRow b a) ->
+  NonEmpty (StructureRow b a) ->
   AutomatonInfo a (SymbolSequence a) (StructureWithGrid b a)
 mkRowLookup neList =
-  AutomatonInfo participatingEnts bounds sm
+  AutomatonInfo participatingEnts bounds sm tuples
  where
   mkSmTuple = entityGrid &&& id
   tuples = NE.toList $ NE.map (mkSmTuple . wholeStructure) neList
@@ -61,7 +62,7 @@ mkRowLookup neList =
 mkEntityLookup ::
   (Hashable a, Eq a) =>
   [StructureWithGrid b a] ->
-  HM.HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
+  HM.HashMap a (NonEmpty (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a)))
 mkEntityLookup grids =
   HM.map mkValues rowsByEntityParticipation
  where
@@ -75,15 +76,27 @@ mkEntityLookup grids =
     structureRowsNE = NE.map myRow singleRows
     sm2D = mkRowLookup structureRowsNE
 
-  mkValues neList = AutomatonInfo participatingEnts bounds sm
+  mkValues neList = NE.fromList $
+    map (\(mask, tups) -> AutomatonInfo mask bounds sm $ NE.toList tups) tuplesByEntMask
    where
-    participatingEnts =
-      HS.fromList
-        (concatMap (catMaybes . fst) tuples)
+
+    -- If there are no transparent cells,
+    -- we don't need a mask.
+    getMaskSet row =
+      if Nothing `elem` row
+        then HS.fromList $ catMaybes row
+        else mempty
+
+    tuplesByEntMask = HM.toList $ binTuplesHM $ map (getMaskSet . fst &&& id) tuples
+
 
     tuples = HM.toList $ HM.mapWithKey mkSmValue groupedByUniqueRow
 
-    groupedByUniqueRow = binTuplesHM $ NE.toList $ NE.map (rowContent . myRow &&& id) neList
+    groupedByUniqueRow =
+      binTuplesHM $
+        NE.toList $
+          NE.map (rowContent . myRow &&& id) neList
+
     bounds = sconcat $ NE.map expandedOffsets neList
     sm = makeStateMachine tuples
 
@@ -111,6 +124,7 @@ mkEntityLookup grids =
       SingleRowEntityOccurrences r e occurrences $
         sconcat $
           NE.map deriveEntityOffsets occurrences
+
     unconsolidated =
       map swap $
         catMaybes $
@@ -123,7 +137,7 @@ mkEntityLookup grids =
 binTuplesHM ::
   (Foldable t, Hashable a, Eq a) =>
   t (a, b) ->
-  HM.HashMap a (NE.NonEmpty b)
+  HM.HashMap a (NonEmpty b)
 binTuplesHM = foldr f mempty
  where
   f = uncurry (HM.insertWith (<>)) . fmap pure
