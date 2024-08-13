@@ -66,7 +66,7 @@ getEntityGrid = getRows . fmap ((erasableToMaybe . cellEntity) =<<) . structure
 -- provided structure definitions
 mkAutomatons ::
   [SymmetryAnnotatedGrid (Structure.NamedGrid (Maybe Cell))] ->
-  RecognizerAutomatons (Structure.NamedGrid (Maybe Cell)) Entity
+  RecognizerAutomatons (Maybe Cell) Entity
 mkAutomatons xs =
   RecognizerAutomatons
     infos

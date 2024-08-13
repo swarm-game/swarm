@@ -20,6 +20,7 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Type where
 
 import Control.Arrow ((&&&))
 import Control.Lens (makeLenses)
+import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Data.Aeson (ToJSON)
 import Data.Function (on)
 import Data.HashMap.Strict (HashMap)
@@ -218,10 +219,10 @@ makeLenses ''AutomatonInfo
 -- | The complete set of data needed to identify applicable
 -- structures, based on a just-placed entity.
 data RecognizerAutomatons b a = RecognizerAutomatons
-  { _originalStructureDefinitions :: Map OriginalName (StructureInfo b a)
+  { _originalStructureDefinitions :: Map OriginalName (StructureInfo (NamedGrid b) a)
   -- ^ all of the structures that shall participate in automatic recognition.
   -- This list is used only by the UI and by the 'Floorplan' command.
-  , _automatonsByEntity :: HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
+  , _automatonsByEntity :: HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher (NamedGrid b) a))
   }
   deriving (Generic)
 
