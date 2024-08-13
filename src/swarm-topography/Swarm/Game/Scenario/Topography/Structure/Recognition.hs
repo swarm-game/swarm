@@ -8,10 +8,10 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition where
 
 import Control.Lens
 import GHC.Generics (Generic)
+import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 
 -- | State of the structure recognizer that is intended
 -- to be modifiable.

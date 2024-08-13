@@ -59,7 +59,7 @@ import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Util (histogram)
 import Swarm.Util.Erasable (erasableToMaybe)
 
-getEntityGrid :: (Structure.NamedGrid (Maybe Cell)) -> [SymbolSequence Entity]
+getEntityGrid :: Structure.NamedGrid (Maybe Cell) -> [SymbolSequence Entity]
 getEntityGrid = getRows . fmap ((erasableToMaybe . cellEntity) =<<) . structure
 
 -- | Create Aho-Corasick matchers that will recognize all of the
@@ -84,7 +84,7 @@ mkAutomatons xs =
       map (getStructureName . Structure.name . namedGrid &&& process) xs
 
 extractOrientedGrid ::
-  (Structure.NamedGrid (Maybe Cell)) ->
+  Structure.NamedGrid (Maybe Cell) ->
   AbsoluteDir ->
   StructureWithGrid (Structure.NamedGrid (Maybe Cell)) Entity
 extractOrientedGrid x d =
@@ -96,7 +96,7 @@ extractOrientedGrid x d =
 -- | At this point, we have already ensured that orientations
 -- redundant by rotational symmetry have been excluded
 -- (i.e. at Scenario validation time).
-extractGrids :: (Structure.NamedGrid (Maybe Cell)) -> [StructureWithGrid (Structure.NamedGrid (Maybe Cell)) Entity]
+extractGrids :: Structure.NamedGrid (Maybe Cell) -> [StructureWithGrid (Structure.NamedGrid (Maybe Cell)) Entity]
 extractGrids x = map (extractOrientedGrid x) $ Set.toList $ recognize x
 
 -- | The output list of 'FoundStructure' records is not yet

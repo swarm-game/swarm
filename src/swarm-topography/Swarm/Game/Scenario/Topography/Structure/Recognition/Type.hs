@@ -20,7 +20,6 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Type where
 
 import Control.Arrow ((&&&))
 import Control.Lens (makeLenses)
-import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Data.Aeson (ToJSON)
 import Data.Function (on)
 import Data.HashMap.Strict (HashMap)
@@ -36,6 +35,7 @@ import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario.Topography.Area
+import Swarm.Game.Scenario.Topography.Structure (NamedGrid)
 import Swarm.Game.Universe (Cosmic, offsetBy)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Text.AhoCorasick (StateMachine)
