@@ -40,7 +40,7 @@ import Swarm.Util (commaList)
 
 -- | Render a two-pane widget with structure selection on the left
 -- and single-structure details on the right.
-structureWidget :: GameState -> StructureInfo (Structure.NamedGrid (Maybe Cell)) Entity -> Widget n
+structureWidget :: GameState -> StructureInfo (Maybe Cell) Entity -> Widget n
 structureWidget gs s =
   vBox
     [ hBox
@@ -121,7 +121,7 @@ structureWidget gs s =
   cells = getEntityGrid d
   renderOneCell = maybe (txt " ") (renderDisplay . view entityDisplay)
 
-makeListWidget :: [StructureInfo (Structure.NamedGrid (Maybe Cell)) Entity] -> BL.List Name (StructureInfo (Structure.NamedGrid (Maybe Cell)) Entity)
+makeListWidget :: [StructureInfo (Maybe Cell) Entity] -> BL.List Name (StructureInfo (Maybe Cell) Entity)
 makeListWidget structureDefinitions =
   BL.listMoveTo 0 $ BL.list (StructureWidgets StructuresList) (V.fromList structureDefinitions) 1
 
@@ -163,7 +163,7 @@ renderStructuresDisplay gs structureDisplay =
 
 drawSidebarListItem ::
   Bool ->
-  StructureInfo (Structure.NamedGrid (Maybe Cell)) Entity ->
+  StructureInfo (Maybe Cell) Entity ->
   Widget Name
 drawSidebarListItem _isSelected (StructureInfo annotated _ _) =
   txt . getStructureName . Structure.name $ namedGrid annotated

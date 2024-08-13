@@ -172,7 +172,7 @@ data SymmetryAnnotatedGrid a = SymmetryAnnotatedGrid
 
 -- | Structure definitions with precomputed metadata for consumption by the UI
 data StructureInfo b a = StructureInfo
-  { annotatedGrid :: SymmetryAnnotatedGrid b
+  { annotatedGrid :: SymmetryAnnotatedGrid (NamedGrid b)
   , entityProcessedGrid :: [SymbolSequence a]
   , entityCounts :: Map a Int
   }
@@ -219,7 +219,7 @@ makeLenses ''AutomatonInfo
 -- | The complete set of data needed to identify applicable
 -- structures, based on a just-placed entity.
 data RecognizerAutomatons b a = RecognizerAutomatons
-  { _originalStructureDefinitions :: Map OriginalName (StructureInfo (NamedGrid b) a)
+  { _originalStructureDefinitions :: Map OriginalName (StructureInfo b a)
   -- ^ all of the structures that shall participate in automatic recognition.
   -- This list is used only by the UI and by the 'Floorplan' command.
   , _automatonsByEntity :: HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher (NamedGrid b) a))
