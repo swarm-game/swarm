@@ -254,7 +254,7 @@ getMatches2D
 registerStructureMatches ::
   (Eq a, Eq b) =>
   [FoundStructure b a] ->
-  RecognitionState b a->
+  RecognitionState b a ->
   RecognitionState b a
 registerStructureMatches unrankedCandidates oldState =
   oldState

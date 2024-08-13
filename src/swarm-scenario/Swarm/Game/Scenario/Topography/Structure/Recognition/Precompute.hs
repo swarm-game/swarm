@@ -37,6 +37,7 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (
   -- * Helper functions
   populateStaticFoundStructures,
   getEntityGrid,
+  cellToEntity,
   lookupStaticPlacements,
 ) where
 
@@ -46,21 +47,24 @@ import Data.Maybe (catMaybes, mapMaybe)
 import Data.Set qualified as Set
 import Swarm.Game.Entity (Entity)
 import Swarm.Game.Scenario (StaticStructureInfo (..))
-import Swarm.Game.Scenario.Topography.Cell (Cell, cellEntity)
+import Swarm.Game.Scenario.Topography.Cell (Cell, cellToEntity)
 import Swarm.Game.Scenario.Topography.Grid (getRows)
 import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform, getStructureName)
 import Swarm.Game.Scenario.Topography.Structure
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Prep
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (
+  mkEntityLookup,
+ )
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (
+  populateStaticFoundStructures,
+ )
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic (..))
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Util (histogram)
-import Swarm.Util.Erasable (erasableToMaybe)
 
-getEntityGrid :: Structure.NamedGrid (Maybe Cell) -> [SymbolSequence Entity]
-getEntityGrid = getRows . fmap ((erasableToMaybe . cellEntity) =<<) . structure
+getEntityGrid :: (Maybe b -> Maybe a) -> Structure.NamedGrid (Maybe b) -> [[Maybe a]]
+getEntityGrid extractor = getRows . fmap extractor . structure
 
 -- | Create Aho-Corasick matchers that will recognize all of the
 -- provided structure definitions
@@ -76,7 +80,7 @@ mkAutomatons xs =
 
   process g = StructureInfo g entGrid countsMap
    where
-    entGrid = getEntityGrid $ namedGrid g
+    entGrid = getEntityGrid cellToEntity $ namedGrid g
     countsMap = histogram $ concatMap catMaybes entGrid
 
   infos =
@@ -88,7 +92,7 @@ extractOrientedGrid ::
   AbsoluteDir ->
   StructureWithGrid (Maybe Cell) Entity
 extractOrientedGrid x d =
-  StructureWithGrid wrapped d $ getEntityGrid g
+  StructureWithGrid wrapped d $ getEntityGrid cellToEntity g
  where
   wrapped = NamedOriginal (getStructureName $ Structure.name x) x
   g = applyOrientationTransform (Orientation d False) <$> x

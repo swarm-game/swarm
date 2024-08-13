@@ -25,7 +25,7 @@ import Swarm.Game.Scenario.Topography.Cell (Cell)
 import Swarm.Game.Scenario.Topography.Placement (getStructureName)
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures, recognitionState)
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (getEntityGrid)
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (cellToEntity, getEntityGrid)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
@@ -118,7 +118,7 @@ structureWidget gs s =
       ]
 
   theName = getStructureName $ Structure.name d
-  cells = getEntityGrid d
+  cells = getEntityGrid cellToEntity d
   renderOneCell = maybe (txt " ") (renderDisplay . view entityDisplay)
 
 makeListWidget :: [StructureInfo (Maybe Cell) Entity] -> BL.List Name (StructureInfo (Maybe Cell) Entity)
