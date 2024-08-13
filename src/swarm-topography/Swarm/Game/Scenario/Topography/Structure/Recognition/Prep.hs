@@ -15,11 +15,11 @@ import Data.Tuple (swap)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Text.AhoCorasick
 
-allStructureRows :: [StructureWithGrid b a] -> [StructureRow b a]
+allStructureRows :: [StructureWithGrid (NamedGrid b) a] -> [StructureRow b a]
 allStructureRows =
   concatMap transformRows
  where
-  transformRows :: StructureWithGrid b a -> [StructureRow b a]
+  transformRows :: StructureWithGrid (NamedGrid b) a -> [StructureRow b a]
   transformRows g = zipWith (StructureRow g) [0 ..] $ entityGrid g
 
 mkOffsets :: Foldable f => Int32 -> f a -> InspectionOffsets
@@ -34,7 +34,7 @@ mkOffsets pos xs =
 mkRowLookup ::
   (Hashable a, Eq a) =>
   NE.NonEmpty (StructureRow b a) ->
-  AutomatonInfo a (SymbolSequence a) (StructureWithGrid b a)
+  AutomatonInfo a (SymbolSequence a) (StructureWithGrid (NamedGrid b) a)
 mkRowLookup neList =
   AutomatonInfo participatingEnts bounds sm
  where
@@ -103,7 +103,7 @@ mkEntityLookup grids =
   -- are dropped but accounted for when indexing the columns.
   explodeRowEntities ::
     (Hashable a, Eq a) =>
-    StructureRow (NamedGrid b) a ->
+    StructureRow b a ->
     [SingleRowEntityOccurrences b a]
   explodeRowEntities r@(StructureRow _ _ rowMembers) =
     map f $ HM.toList $ binTuplesHM unconsolidated
