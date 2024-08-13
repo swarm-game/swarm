@@ -90,7 +90,7 @@ data StructureSearcher b a = StructureSearcher
 data PositionWithinRow b a = PositionWithinRow
   { _position :: Int32
   -- ^ horizontal index of the entity within the row
-  , structureRow :: StructureRow b a
+  , structureRow :: StructureRow (NamedGrid b) a
   }
 
 -- Represents all of the locations that particular entity
@@ -107,7 +107,7 @@ data PositionWithinRow b a = PositionWithinRow
 data SingleRowEntityOccurrences b a = SingleRowEntityOccurrences
   { myRow :: StructureRow (NamedGrid b) a
   , myEntity :: a
-  , entityOccurrences :: NE.NonEmpty (PositionWithinRow (NamedGrid b) a)
+  , entityOccurrences :: NE.NonEmpty (PositionWithinRow b a)
   , expandedOffsets :: InspectionOffsets
   }
 
