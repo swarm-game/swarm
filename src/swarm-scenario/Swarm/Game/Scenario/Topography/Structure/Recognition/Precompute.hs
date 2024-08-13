@@ -65,7 +65,7 @@ getEntityGrid = getRows . fmap ((erasableToMaybe . cellEntity) =<<) . structure
 -- | Create Aho-Corasick matchers that will recognize all of the
 -- provided structure definitions
 mkAutomatons ::
-  [SymmetryAnnotatedGrid (Structure.NamedGrid (Maybe Cell))] ->
+  [SymmetryAnnotatedGrid (Maybe Cell)] ->
   RecognizerAutomatons (Maybe Cell) Entity
 mkAutomatons xs =
   RecognizerAutomatons

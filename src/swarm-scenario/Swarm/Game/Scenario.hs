@@ -113,7 +113,7 @@ import System.FilePath ((<.>), (</>))
 import System.Random (randomRIO)
 
 data StaticStructureInfo = StaticStructureInfo
-  { _structureDefs :: [SymmetryAnnotatedGrid (Structure.NamedGrid (Maybe Cell))]
+  { _structureDefs :: [SymmetryAnnotatedGrid (Maybe Cell)]
   , _staticPlacements :: M.Map SubworldName [Structure.LocatedStructure]
   }
   deriving (Show)
@@ -122,7 +122,7 @@ makeLensesNoSigs ''StaticStructureInfo
 
 -- | Structure templates that may be auto-recognized when constructed
 -- by a robot
-structureDefs :: Lens' StaticStructureInfo [SymmetryAnnotatedGrid (Structure.NamedGrid (Maybe Cell))]
+structureDefs :: Lens' StaticStructureInfo [SymmetryAnnotatedGrid (Maybe Cell)]
 
 -- | A record of the static placements of structures, so that they can be
 -- added to the "recognized" list upon scenario initialization

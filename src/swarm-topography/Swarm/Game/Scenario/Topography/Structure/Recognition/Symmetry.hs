@@ -29,7 +29,7 @@ import Swarm.Util (commaList, failT, histogram, showT)
 --    2-fold symmetry.
 --    Warn if two opposite orientations were supplied.
 checkSymmetry ::
-  (MonadFail m, Eq a) => NamedGrid a -> m (SymmetryAnnotatedGrid (NamedGrid a))
+  (MonadFail m, Eq a) => NamedGrid a -> m (SymmetryAnnotatedGrid a)
 checkSymmetry ng = do
   case symmetryType of
     FourFold ->

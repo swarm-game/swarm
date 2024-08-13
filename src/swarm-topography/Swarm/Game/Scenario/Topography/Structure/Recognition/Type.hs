@@ -165,14 +165,14 @@ data RotationalSymmetry
   deriving (Show, Eq)
 
 data SymmetryAnnotatedGrid a = SymmetryAnnotatedGrid
-  { namedGrid :: a
+  { namedGrid :: NamedGrid a
   , symmetry :: RotationalSymmetry
   }
   deriving (Show)
 
 -- | Structure definitions with precomputed metadata for consumption by the UI
 data StructureInfo b a = StructureInfo
-  { annotatedGrid :: SymmetryAnnotatedGrid (NamedGrid b)
+  { annotatedGrid :: SymmetryAnnotatedGrid b
   , entityProcessedGrid :: [SymbolSequence a]
   , entityCounts :: Map a Int
   }
