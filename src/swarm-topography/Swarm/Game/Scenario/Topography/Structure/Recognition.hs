@@ -16,7 +16,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 -- | State of the structure recognizer that is intended
 -- to be modifiable.
 data RecognitionState b a = RecognitionState
-  { _foundStructures :: FoundRegistry b a
+  { _foundStructures :: FoundRegistry (NamedGrid b) a
   -- ^ Records the top-left corner of the found structure
   , _recognitionLog :: [SearchLog a]
   }
@@ -29,7 +29,7 @@ makeLenses ''RecognitionState
 data StructureRecognizer b a = StructureRecognizer
   { _automatons :: RecognizerAutomatons b a
   -- ^ read-only
-  , _recognitionState :: RecognitionState (NamedGrid b) a
+  , _recognitionState :: RecognitionState b a
   -- ^ mutatable
   }
   deriving (Generic)

@@ -147,8 +147,8 @@ registerRowMatches ::
   GenericEntLocator s a ->
   Cosmic Location ->
   AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a) ->
-  RecognitionState (NamedGrid b) a ->
-  s (RecognitionState (NamedGrid b) a)
+  RecognitionState b a ->
+  s (RecognitionState b a)
 registerRowMatches entLoader cLoc (AutomatonInfo participatingEnts horizontalOffsets sm) rState = do
   let registry = rState ^. foundStructures
 
@@ -254,9 +254,9 @@ getMatches2D
 -- The largest structure (by area) shall win.
 registerStructureMatches ::
   (Eq a, Eq b) =>
-  [FoundStructure a b] ->
-  RecognitionState a b ->
-  RecognitionState a b
+  [FoundStructure (NamedGrid b) a] ->
+  RecognitionState b a->
+  RecognitionState b a
 registerStructureMatches unrankedCandidates oldState =
   oldState
     & (recognitionLog %~ (newMsg :))
