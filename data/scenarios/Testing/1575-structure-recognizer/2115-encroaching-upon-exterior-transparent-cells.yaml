@@ -1,0 +1,77 @@
+version: 1
+name: Structure recognition - exterior transparency
+description: |
+  Incursion of an entity of a foreign type
+  upon a "transparent" cell within the bounding box
+  of a recognizable structure shall not prevent
+  the structure from being recognized.
+
+  If the incurring entity is the *same* type as
+  a participating entity in that structure, however,
+  it will prevent recognition.
+creative: false
+objectives:
+  - teaser: Recognize structure
+    goal:
+      - |
+        `chevron`{=structure} structure should be recognized upon completion,
+        even with an extraneous entity within its bounds.
+    condition: |
+      def isRight = \x. case x (\_. false) (\_. true); end;
+
+      foundBox <- structure "chevron" 0;
+      return $ isRight foundBox;
+robots:
+  - name: base
+    dir: east
+    devices:
+      - ADT calculator
+      - blueprint
+      - fast grabber
+      - logger
+      - treads
+    inventory:
+      - [1, board]
+  - name: judge
+    dir: east
+    system: true
+    display:
+      invisible: true
+solution: |
+  move; move; move;
+  swap "board";
+structures:
+  - name: chevron
+    recognize: [north]
+    structure:
+      palette:
+        'b': [stone, board]
+      mask: '.'
+      map: |
+        .b
+        bb
+  - name: stripe
+    recognize: [north]
+    structure:
+      palette:
+        't': [grass, tree]
+        'b': [grass, board]
+      map: |
+        btb
+known: [board, mountain, tree]
+world:
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass, erase]
+    'B': [grass, erase, base]
+    'j': [grass, erase, judge]
+    't': [grass, tree]
+    'b': [grass, board]
+  upperleft: [-7, 3]
+  map: |
+    j.....
+    ......
+    .B.ttt
+    ...bb.
+    ......
