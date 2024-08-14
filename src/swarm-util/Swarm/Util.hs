@@ -84,7 +84,6 @@ module Swarm.Util (
 
 import Control.Applicative (Alternative)
 import Control.Carrier.Throw.Either
-import Data.Map.NonEmpty (NEMap)
 import Control.Effect.State (State, modify, state)
 import Control.Lens (ASetter', Lens', LensLike, LensLike', Over, lens, (<&>), (<>~))
 import Control.Monad (filterM, guard, unless)
@@ -93,7 +92,6 @@ import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum, toLower)
 import Data.Either.Validation
 import Data.Foldable qualified as Foldable
-import Data.Map.NonEmpty qualified as NEM
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl', maximumBy, partition)
@@ -103,6 +101,8 @@ import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Map.NonEmpty (NEMap)
+import Data.Map.NonEmpty qualified as NEM
 import Data.Maybe (fromMaybe)
 import Data.Ord (comparing)
 import Data.Set (Set)

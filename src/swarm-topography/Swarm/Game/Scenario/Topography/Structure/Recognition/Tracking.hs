@@ -9,10 +9,10 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking (
   entityModified,
 ) where
 
-import Data.Foldable (foldrM)
 import Control.Lens ((%~), (&), (.~), (^.))
 import Control.Monad (forM, guard)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
+import Data.Foldable (foldrM)
 import Data.HashMap.Strict qualified as HM
 import Data.HashSet (HashSet)
 import Data.HashSet qualified as HS
@@ -68,15 +68,18 @@ entityModified entLoader modification cLoc recognizer =
     stateRevision <- case HM.lookup newEntity entLookup of
       Nothing -> return oldRecognitionState
       Just finders -> do
-        let logFinder f = EntityKeyedFinder
-              (f ^. inspectionOffsets)
-              (map fst $ f ^. searchPairs)
-              (HS.toList $ f ^. participatingEntities)
-            msg = FoundParticipatingEntity $
-                ParticipatingEntity newEntity $ NE.map logFinder finders
+        let logFinder f =
+              EntityKeyedFinder
+                (f ^. inspectionOffsets)
+                (map fst $ f ^. searchPairs)
+                (HS.toList $ f ^. participatingEntities)
+            msg =
+              FoundParticipatingEntity $
+                ParticipatingEntity newEntity $
+                  NE.map logFinder finders
             stateRevision' = oldRecognitionState & recognitionLog %~ (msg :)
 
-        foldrM (registerRowMatches entLoader cLoc) stateRevision' finders 
+        foldrM (registerRowMatches entLoader cLoc) stateRevision' finders
 
     return $ r & recognitionState .~ stateRevision
 

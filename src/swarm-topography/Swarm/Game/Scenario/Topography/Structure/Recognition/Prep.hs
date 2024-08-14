@@ -76,10 +76,10 @@ mkEntityLookup grids =
     structureRowsNE = NE.map myRow singleRows
     sm2D = mkRowLookup structureRowsNE
 
-  mkValues neList = NE.fromList $
-    map (\(mask, tups) -> AutomatonInfo mask bounds sm $ NE.toList tups) tuplesByEntMask
+  mkValues neList =
+    NE.fromList $
+      map (\(mask, tups) -> AutomatonInfo mask bounds sm $ NE.toList tups) tuplesByEntMask
    where
-
     -- If there are no transparent cells,
     -- we don't need a mask.
     getMaskSet row =
@@ -88,7 +88,6 @@ mkEntityLookup grids =
         else mempty
 
     tuplesByEntMask = HM.toList $ binTuplesHM $ map (getMaskSet . fst &&& id) tuples
-
 
     tuples = HM.toList $ HM.mapWithKey mkSmValue groupedByUniqueRow
 

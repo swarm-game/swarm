@@ -5,8 +5,8 @@
 module Swarm.Game.Scenario.Topography.Structure.Recognition.Log where
 
 import Data.Aeson
-import Data.List.NonEmpty (NonEmpty)
 import Data.Int (Int32)
+import Data.List.NonEmpty (NonEmpty)
 import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
@@ -54,12 +54,12 @@ data FoundRowCandidate e = FoundRowCandidate
   }
   deriving (Functor, Generic, ToJSON)
 
-data EntityKeyedFinder e = EntityKeyedFinder {
-    searchOffsets :: InspectionOffsets
+data EntityKeyedFinder e = EntityKeyedFinder
+  { searchOffsets :: InspectionOffsets
   , candidateStructureRows :: [StructureRowContent e]
   , entityMask :: [e]
-     -- ^ NOTE: HashSet has no Functor instance,
-     -- so we represent this as a list here.
+  -- ^ NOTE: HashSet has no Functor instance,
+  -- so we represent this as a list here.
   }
   deriving (Functor, Generic, ToJSON)
 
