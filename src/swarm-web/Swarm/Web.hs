@@ -251,7 +251,7 @@ it's commonly used because it works well with line-oriented tools.
 
 This gives the user an immediate feedback (did the code parse) and would
 be well suited for streaming large collections of data like the logs
-while consuming constant memory. 
+while consuming constant memory.
 -}
 
 codeRunHandler :: BChan AppEvent -> Text -> Handler (S.SourceT IO WebInvocationState)
