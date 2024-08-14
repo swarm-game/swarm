@@ -248,6 +248,10 @@ What we need is to:
 With the endpoint type 'StreamGet NewlineFraming JSON', servant will send each
 result as a JSON on a separate line. That is not a valid JSON document, but
 it's commonly used because it works well with line-oriented tools.
+
+This gives the user an immediate feedback (did the code parse) and would
+be well suited for streaming large collections of data like the logs
+while consuming constant memory. 
 -}
 
 codeRunHandler :: BChan AppEvent -> Text -> Handler (S.SourceT IO WebInvocationState)
