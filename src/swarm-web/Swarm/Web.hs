@@ -233,6 +233,23 @@ codeRenderHandler contents = do
       into @Text . drawTree . fmap (T.unpack . prettyTextLine) . para Node $ t
     Left x -> x
 
+{- Note [How to stream back responses as we get results]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Servant has a builtin simple streaming:
+https://docs.servant.dev/en/stable/cookbook/basic-streaming/Streaming.html
+
+What we need is to:
+1. run IO with 'Effect'
+2. send the result with 'Yield'
+3. if we are done 'Stop'
+4. otherwise continue recursively
+
+With the endpoint type 'StreamGet NewlineFraming JSON', servant will send each
+result as a JSON on a separate line. That is not a valid JSON document, but
+it's commonly used because it works well with line-oriented tools.
+-}
+
 codeRunHandler :: BChan AppEvent -> Text -> Handler (S.SourceT IO WebInvocationState)
 codeRunHandler chan contents = do
   replyVar <- liftIO newEmptyMVar
@@ -240,7 +257,7 @@ codeRunHandler chan contents = do
         void $ tryTakeMVar replyVar
         putMVar replyVar r
   liftIO . writeBChan chan . Web $ RunWebCode contents putReplyForce
-  -- wait for mvar, yield, repeat until fail or complete
+  -- See note [How to stream back responses as we get results]
   let waitForReply = S.Effect $ do
         reply <- takeMVar replyVar
         return . S.Yield reply $ case reply of
