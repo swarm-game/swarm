@@ -109,7 +109,7 @@ initRuntimeState pause = do
 makeLensesNoSigs ''RuntimeState
 
 -- | The port on which the HTTP debug service is running.
-webPort :: Lens' RuntimeState (Maybe Port)
+webPort :: Lens' RuntimeState (Maybe Int)
 
 -- | The upstream release version.
 upstreamRelease :: Lens' RuntimeState (Either NewReleaseFailure String)
