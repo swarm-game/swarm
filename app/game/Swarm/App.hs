@@ -90,7 +90,7 @@ appMain opts = do
         Swarm.Web.startWebThread
           (userWebPort opts)
           (readIORef appStateRef)
-          chan
+          (writeBChan chan)
 
       let logP p = logEvent SystemLog Info "Web API" ("started on :" <> T.pack (show p))
       let logE e = logEvent SystemLog Error "Web API" (T.pack e)
@@ -137,7 +137,7 @@ demoWeb = do
         Nothing
         demoPort
         (readIORef appStateRef)
-        chan
+        (writeBChan chan)
  where
   demoScenario = Just "./data/scenarios/Testing/475-wait-one.yaml"
 

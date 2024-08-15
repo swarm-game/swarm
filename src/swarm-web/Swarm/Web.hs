@@ -33,7 +33,6 @@ module Swarm.Web (
   webMain,
 ) where
 
-import Brick.BChan
 import Commonmark qualified as Mark (commonmark, renderHtml)
 import Control.Arrow (left)
 import Control.Concurrent (forkIO)
@@ -149,7 +148,7 @@ mkApp ::
   -- | Read-only access to the current AppState
   IO AppState ->
   -- | Writable channel to send events to the game
-  BChan AppEvent ->
+  EventChannel ->
   Servant.Server SwarmAPI
 mkApp state events =
   robotsHandler state
@@ -254,13 +253,13 @@ be well suited for streaming large collections of data like the logs
 while consuming constant memory.
 -}
 
-codeRunHandler :: BChan AppEvent -> Text -> Handler (S.SourceT IO WebInvocationState)
+codeRunHandler :: EventChannel -> Text -> Handler (S.SourceT IO WebInvocationState)
 codeRunHandler chan contents = do
   replyVar <- liftIO newEmptyMVar
   let putReplyForce r = do
         void $ tryTakeMVar replyVar
         putMVar replyVar r
-  liftIO . writeBChan chan . Web $ RunWebCode contents putReplyForce
+  liftIO . chan . Web $ RunWebCode contents putReplyForce
   -- See note [How to stream back responses as we get results]
   let waitForReply = S.Effect $ do
         reply <- takeMVar replyVar
@@ -300,13 +299,15 @@ mapViewHandler appStateRef areaSize = do
 -- | Simple result type to report errors from forked startup thread.
 data WebStartResult = WebStarted | WebStartError String
 
+type EventChannel = AppEvent -> IO ()
+
 webMain ::
   Maybe (MVar WebStartResult) ->
   Warp.Port ->
   -- | Read-only reference to the application state.
   IO AppState ->
   -- | Writable channel to send events to the game
-  BChan AppEvent ->
+  EventChannel ->
   IO ()
 webMain baton port appStateRef chan = catch (Warp.runSettings settings app) handleErr
  where
@@ -351,7 +352,7 @@ startWebThread ::
   -- | Read-only reference to the application state.
   IO AppState ->
   -- | Writable channel to send events to the game
-  BChan AppEvent ->
+  EventChannel ->
   IO (Either String Warp.Port)
 -- User explicitly provided port '0': don't run the web server
 startWebThread (Just 0) _ _ = pure $ Left "The web port has been turned off."
