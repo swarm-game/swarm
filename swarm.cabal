@@ -221,13 +221,18 @@ library swarm-topography
     Swarm.Game.Scenario.Topography.Rasterize
     Swarm.Game.Scenario.Topography.Structure
     Swarm.Game.Scenario.Topography.Structure.Assembly
+    Swarm.Game.Scenario.Topography.Structure.Named
     Swarm.Game.Scenario.Topography.Structure.Overlay
     Swarm.Game.Scenario.Topography.Structure.Recognition
     Swarm.Game.Scenario.Topography.Structure.Recognition.Log
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
     Swarm.Game.Scenario.Topography.Structure.Recognition.Prep
     Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Static
     Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
+    Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking
     Swarm.Game.Scenario.Topography.Structure.Recognition.Type
+    Swarm.Game.Scenario.Topography.Terraform
     Swarm.Game.Universe
     Swarm.Game.World.Coords
 
@@ -247,6 +252,7 @@ library swarm-topography
     nonempty-containers >=0.3.4 && <0.3.5,
     servant-docs >=0.12 && <0.14,
     text >=1.2.4 && <2.2,
+    transformers,
     unordered-containers,
     vector >=0.12 && <0.14,
     yaml >=0.11 && <0.11.12.0,
@@ -294,7 +300,6 @@ library swarm-scenario
     Swarm.Game.Scenario.Topography.Center
     Swarm.Game.Scenario.Topography.EntityFacade
     Swarm.Game.Scenario.Topography.Navigation.Portal
-    Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
     Swarm.Game.Scenario.Topography.WorldDescription
     Swarm.Game.Scenario.Topography.WorldPalette
     Swarm.Game.State.Config
@@ -386,7 +391,6 @@ library swarm-engine
     Swarm.Game.Scenario.Scoring.GenericMetrics
     Swarm.Game.Scenario.Status
     Swarm.Game.Scenario.Topography.Navigation.Util
-    Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking
     Swarm.Game.ScenarioInfo
     Swarm.Game.State
     Swarm.Game.State.Initialize
@@ -416,7 +420,6 @@ library swarm-engine
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm
   build-depends:
-    AhoCorasick >=0.0.4 && <0.0.5,
     SHA >=1.6.4 && <1.6.5,
     aeson >=2.2 && <2.3,
     array >=0.5.4 && <0.6,
@@ -432,7 +435,6 @@ library swarm-engine
     fused-effects >=1.1.1.1 && <1.2,
     fused-effects-lens >=1.2.0.1 && <1.3,
     githash,
-    hashable >=1.3.4 && <1.5,
     http-client >=0.7 && <0.8,
     http-client-tls >=0.3 && <0.4,
     http-types >=0.12 && <0.13,

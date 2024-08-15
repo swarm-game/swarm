@@ -9,6 +9,7 @@ module Swarm.Game.World.Modify where
 import Control.Lens (view)
 import Data.Function (on)
 import Swarm.Game.Entity (Entity, entityHash)
+import Swarm.Game.Scenario.Topography.Terraform
 
 -- | Compare to 'WorldUpdate' in "Swarm.Game.World"
 data CellUpdate e
@@ -18,13 +19,6 @@ data CellUpdate e
 getModification :: CellUpdate e -> Maybe (CellModification e)
 getModification (NoChange _) = Nothing
 getModification (Modified x) = Just x
-
-data CellModification e
-  = -- | Fields represent what existed in the cell "before" and "after", in that order.
-    -- The values are guaranteed to be different.
-    Swap e e
-  | Remove e
-  | Add e
 
 classifyModification ::
   -- | before

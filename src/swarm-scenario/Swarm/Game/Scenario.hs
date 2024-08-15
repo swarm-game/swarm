@@ -13,13 +13,9 @@
 -- conditions, which can be used both for building interactive
 -- tutorials and for standalone puzzles and scenarios.
 module Swarm.Game.Scenario (
-  -- * WorldDescription
-  StructureCells,
-
   -- * Scenario
   Scenario (..),
   ScenarioLandscape (..),
-  StaticStructureInfo (..),
   ScenarioMetadata (ScenarioMetadata),
   staticPlacements,
   structureDefs,
@@ -95,9 +91,10 @@ import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (Parentage (..))
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
+import Swarm.Game.Scenario.Topography.Structure.Named qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Overlay
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (SymmetryAnnotatedGrid (..))
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Terrain
 import Swarm.Game.Universe
@@ -114,24 +111,6 @@ import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 import System.Random (randomRIO)
-
-type StructureCells = Structure.NamedGrid (Maybe Cell)
-
-data StaticStructureInfo = StaticStructureInfo
-  { _structureDefs :: [SymmetryAnnotatedGrid StructureCells]
-  , _staticPlacements :: M.Map SubworldName [Structure.LocatedStructure]
-  }
-  deriving (Show)
-
-makeLensesNoSigs ''StaticStructureInfo
-
--- | Structure templates that may be auto-recognized when constructed
--- by a robot
-structureDefs :: Lens' StaticStructureInfo [SymmetryAnnotatedGrid StructureCells]
-
--- | A record of the static placements of structures, so that they can be
--- added to the "recognized" list upon scenario initialization
-staticPlacements :: Lens' StaticStructureInfo (M.Map SubworldName [Structure.LocatedStructure])
 
 -- * Scenario records
 
@@ -211,7 +190,7 @@ data ScenarioLandscape = ScenarioLandscape
   , _scenarioKnown :: Set EntityName
   , _scenarioWorlds :: NonEmpty WorldDescription
   , _scenarioNavigation :: Navigation (M.Map SubworldName) Location
-  , _scenarioStructures :: StaticStructureInfo
+  , _scenarioStructures :: StaticStructureInfo Cell
   , _scenarioRobots :: [TRobot]
   }
   deriving (Show)
@@ -241,7 +220,7 @@ scenarioKnown :: Lens' ScenarioLandscape (Set EntityName)
 scenarioWorlds :: Lens' ScenarioLandscape (NonEmpty WorldDescription)
 
 -- | Information required for structure recognition
-scenarioStructures :: Lens' ScenarioLandscape StaticStructureInfo
+scenarioStructures :: Lens' ScenarioLandscape (StaticStructureInfo Cell)
 
 -- | Waypoints and inter-world portals
 scenarioNavigation :: Lens' ScenarioLandscape (Navigation (M.Map SubworldName) Location)

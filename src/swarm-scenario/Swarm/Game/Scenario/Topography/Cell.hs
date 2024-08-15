@@ -8,6 +8,7 @@ module Swarm.Game.Scenario.Topography.Cell (
   Cell,
   AugmentedCell,
   CellPaintDisplay,
+  cellToEntity,
 ) where
 
 import Control.Lens hiding (from, (.=), (<.>))
@@ -26,7 +27,7 @@ import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.Scenario.Topography.ProtoCell hiding (name)
 import Swarm.Game.Terrain
 import Swarm.Util (quote, showT)
-import Swarm.Util.Erasable (Erasable (..))
+import Swarm.Util.Erasable (Erasable (..), erasableToMaybe)
 import Swarm.Util.Yaml
 
 ------------------------------------------------------------
@@ -106,6 +107,9 @@ instance FromJSONE (TerrainEntityMaps, RobotMap) Cell where
     robs <- mapMaybeM name2rob (drop 2 tupRaw)
 
     return $ Cell terr ent robs
+
+cellToEntity :: Maybe Cell -> Maybe Entity
+cellToEntity = ((erasableToMaybe . cellEntity) =<<)
 
 ------------------------------------------------------------
 -- World editor
