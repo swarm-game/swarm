@@ -483,7 +483,6 @@ library swarm-web
   build-depends:
     aeson,
     base,
-    brick,
     bytestring,
     colour,
     commonmark,
