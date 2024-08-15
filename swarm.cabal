@@ -40,6 +40,7 @@ category: Game
 tested-with: ghc ==9.2.8 || ==9.4.8 || ==9.6.5 || ==9.8.2
 extra-doc-files:
   CHANGELOG.md
+
 extra-source-files:
   editors/emacs/*.el
   editors/vim/*.lua
