@@ -799,6 +799,7 @@ executable swarm
     Paths_swarm
     Swarm.App
     Swarm.Version
+
   build-depends:
     -- Imports shared with the library don't need bounds
     aeson,
