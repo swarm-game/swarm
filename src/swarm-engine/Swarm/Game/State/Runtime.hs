@@ -29,7 +29,6 @@ import Control.Lens
 import Data.Map (Map)
 import Data.Sequence (Seq)
 import Data.Text (Text)
-import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Land
 import Swarm.Game.Recipe (loadRecipes)
@@ -43,7 +42,7 @@ import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Version (NewReleaseFailure (..))
 
 data RuntimeState = RuntimeState
-  { _webPort :: Maybe Port
+  { _webPort :: Maybe Int
   , _upstreamRelease :: Either NewReleaseFailure String
   , _eventLog :: Notifications LogEntry
   , _scenarios :: ScenarioCollection
