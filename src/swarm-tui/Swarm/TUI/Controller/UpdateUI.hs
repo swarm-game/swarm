@@ -218,16 +218,18 @@ doGoalUpdates = do
       return True
     WinConditions _ oc -> do
       showHiddenGoals <- use $ uiState . uiDebugOptions . Lens.contains ShowHiddenGoals
+      currentModal <- preuse $ uiState . uiGameplay . uiModal . _Just . modalType
       let newGoalTracking = GoalTracking announcementsList $ constructGoalMap showHiddenGoals oc
           -- The "uiGoal" field is initialized with empty members, so we know that
           -- this will be the first time showing it if it will be nonempty after previously
           -- being empty.
           isFirstGoalDisplay = hasAnythingToShow newGoalTracking && not (hasAnythingToShow curGoal)
           goalWasUpdated = isFirstGoalDisplay || not (null announcementsList)
+          isEnding = maybe False isEndingModal currentModal
 
       -- Decide whether to show a pop-up modal congratulating the user on
       -- successfully completing the current challenge.
-      when goalWasUpdated $ do
+      when (goalWasUpdated && not isEnding) $ do
         let hasMultiple = hasMultipleGoals newGoalTracking
             defaultFocus =
               if hasMultiple
@@ -261,6 +263,13 @@ doGoalUpdates = do
           openModal GoalModal
 
       return goalWasUpdated
+ where
+  isEndingModal :: ModalType -> Bool
+  isEndingModal = \case
+    ScenarioEndModal {} -> True
+    QuitModal -> True
+    KeepPlayingModal -> True
+    _ -> False
 
 -- | Pops up notifications when new recipes or commands are unlocked.
 generateNotificationPopups :: EventM Name AppState Bool
