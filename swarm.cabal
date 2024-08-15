@@ -38,8 +38,9 @@ bug-reports: https://github.com/swarm-game/swarm/issues
 copyright: Brent Yorgey 2021
 category: Game
 tested-with: ghc ==9.2.8 || ==9.4.8 || ==9.6.5 || ==9.8.2
-extra-source-files:
+extra-doc-files:
   CHANGELOG.md
+extra-source-files:
   editors/emacs/*.el
   editors/vim/*.lua
   editors/vim/*.vim
