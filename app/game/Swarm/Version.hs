@@ -18,12 +18,14 @@ module Swarm.Version (
 
 import Control.Exception (catch, displayException)
 import Data.Aeson (Array, Value (..), (.:))
+import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BSL
 import Data.Char (isDigit)
 import Data.Either (lefts, rights)
 import Data.Foldable (toList)
 import Data.Maybe (listToMaybe)
+import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Version (Version (..), parseVersion, showVersion)
 import Data.Yaml (ParseException, Parser, decodeEither', parseEither)
@@ -39,6 +41,7 @@ import Network.HTTP.Client (
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Network.HTTP.Types (hUserAgent)
 import Paths_swarm qualified
+import Swarm.Log
 import Swarm.Util (failT, quote)
 import Text.ParserCombinators.ReadP (readP_to_S)
 
@@ -152,21 +155,31 @@ normalize (Version ns tags) = Version (dropTrailing0 ns) tags
 --
 -- This function can fail if the current branch is not main,
 -- if there is no Internet connection or no newer release.
-getNewerReleaseVersion :: Maybe GitInfo -> IO (Either NewReleaseFailure String)
-getNewerReleaseVersion mgi =
-  case mgi of
-    -- when using cabal install, the git info is unavailable, which is of no interest to players
-    Nothing -> (>>= getUpVer) <$> upstreamReleaseVersion
-    Just gi ->
-      if giBranch gi /= "main"
-        then return . Left . OnDevelopmentBranch $ giBranch gi
-        else (>>= getUpVer) <$> upstreamReleaseVersion
+getNewerReleaseVersion :: Maybe GitInfo -> IO (Either (Severity, Text) String)
+getNewerReleaseVersion mgi = first errToPair <$> getVer
  where
   myVer :: Version
   myVer = Paths_swarm.version
+  getVer :: IO (Either NewReleaseFailure String)
+  getVer =
+    case mgi of
+      -- when using cabal install, the git info is unavailable, which is of no interest to players
+      Nothing -> (>>= getUpVer) <$> upstreamReleaseVersion
+      Just gi ->
+        if giBranch gi /= "main"
+          then return . Left . OnDevelopmentBranch $ giBranch gi
+          else (>>= getUpVer) <$> upstreamReleaseVersion
   getUpVer :: String -> Either NewReleaseFailure String
   getUpVer upTag =
     let upVer = tagToVersion upTag
      in if normalize myVer >= normalize upVer
           then Left $ OldUpstreamRelease upVer myVer
           else Right upTag
+  errToPair :: NewReleaseFailure -> (Severity, Text)
+  errToPair e = (toSev e, T.pack $ show e)
+  toSev :: NewReleaseFailure -> Severity
+  toSev = \case
+    FailedReleaseQuery {} -> Error
+    NoMainUpstreamRelease {} -> Warning
+    OnDevelopmentBranch {} -> Info
+    OldUpstreamRelease {} -> Warning

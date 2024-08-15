@@ -18,6 +18,7 @@ description:
 
   * swarm-util: miscellaneous utilities
   * swarm-lang: parsing, typechecking, etc. for the Swarm language
+  * swarm-topgraphy: working with location in 2D (sub-)worlds
   * swarm-scenario: scenario descriptions, parsing, & processing
   * swarm-engine: game simulation
   * swarm-doc: generating documentation
@@ -417,7 +418,6 @@ library swarm-engine
     Swarm.Game.Tick
     Swarm.Game.Value
     Swarm.Log
-    Swarm.Version
 
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm
@@ -428,7 +428,6 @@ library swarm-engine
     astar >=0.3 && <0.3.1,
     base >=4.14 && <4.20,
     boolexpr >=0.2 && <0.3,
-    bytestring,
     clock >=0.8.2 && <0.9,
     containers >=0.6.2 && <0.8,
     directory >=1.3 && <1.4,
@@ -436,10 +435,6 @@ library swarm-engine
     filepath >=1.4 && <1.5,
     fused-effects >=1.1.1.1 && <1.2,
     fused-effects-lens >=1.2.0.1 && <1.3,
-    githash,
-    http-client >=0.7 && <0.8,
-    http-client-tls >=0.3 && <0.4,
-    http-types >=0.12 && <0.13,
     lens >=4.19 && <5.4,
     linear >=1.21.6 && <1.24,
     megaparsec >=9.6 && <9.7,
@@ -799,25 +794,36 @@ library swarm-tui
 executable swarm
   import: stan-config, common, ghc2021-extensions
   main-is: Main.hs
-  other-modules: Swarm.App
+  autogen-modules: Paths_swarm
+  other-modules:
+    Paths_swarm
+    Swarm.App
+    Swarm.Version
   build-depends:
     -- Imports shared with the library don't need bounds
+    aeson,
     base,
     brick,
+    bytestring,
     containers,
     extra,
     fused-effects,
     githash >=0.1.6 && <0.2,
+    http-client >=0.7 && <0.8,
+    http-client-tls >=0.3 && <0.4,
+    http-types >=0.12 && <0.13,
     lens,
     optparse-applicative >=0.16 && <0.19,
     swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,
     swarm:swarm-tui,
+    swarm:swarm-util,
     swarm:swarm-web,
     text,
     vty,
     vty-crossplatform >=0.4 && <0.5,
+    yaml,
 
   hs-source-dirs: app/game
   ghc-options:

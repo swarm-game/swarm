@@ -111,7 +111,6 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.WebCommand (RejectionReason (..), WebCommand (..), WebInvocationState (..))
 import Swarm.Util.Lens (makeLensesNoSigs)
-import Swarm.Version (NewReleaseFailure)
 import Text.Fuzzy qualified as Fuzzy
 
 ------------------------------------------------------------
@@ -127,7 +126,7 @@ import Text.Fuzzy qualified as Fuzzy
 data AppEvent
   = Frame
   | Web WebCommand
-  | UpstreamVersion (Either NewReleaseFailure String)
+  | UpstreamVersion (Either (Severity, Text) String)
 
 infoScroll :: ViewportScroll Name
 infoScroll = viewportScroll InfoViewport
