@@ -230,28 +230,9 @@ doGoalUpdates = do
       -- Decide whether to show a pop-up modal congratulating the user on
       -- successfully completing the current challenge.
       when (goalWasUpdated && not isEnding) $ do
-        let hasMultiple = hasMultipleGoals newGoalTracking
-            defaultFocus =
-              if hasMultiple
-                then ObjectivesList
-                else GoalSummary
-
-            ring =
-              focusRing $
-                map GoalWidgets $
-                  if hasMultiple
-                    then enumerate
-                    else [GoalSummary]
-
         -- The "uiGoal" field is necessary at least to "persist" the data that is needed
         -- if the player chooses to later "recall" the goals dialog with CTRL+g.
-        uiState
-          . uiGameplay
-          . uiGoal
-          .= GoalDisplay
-            newGoalTracking
-            (GR.makeListWidget newGoalTracking)
-            (focusSetCurrent (GoalWidgets defaultFocus) ring)
+        uiState . uiGameplay . uiGoal .= goalDisplay newGoalTracking
 
         -- This clears the "flag" that indicate that the goals dialog needs to be
         -- automatically popped up.
@@ -264,6 +245,20 @@ doGoalUpdates = do
 
       return goalWasUpdated
  where
+  goalDisplay :: GoalTracking -> GoalDisplay
+  goalDisplay newGoalTracking =
+    let multiple = hasMultipleGoals newGoalTracking
+     in GoalDisplay
+          newGoalTracking
+          (GR.makeListWidget newGoalTracking)
+          (focusSetCurrent (GoalWidgets $ goalFocus multiple) (goalFocusRing multiple))
+
+  goalFocus :: Bool -> GoalWidget
+  goalFocus hasMultiple = if hasMultiple then ObjectivesList else GoalSummary
+
+  goalFocusRing :: Bool -> FocusRing Name
+  goalFocusRing hasMultiple = focusRing $ GoalWidgets <$> if hasMultiple then enumerate else [GoalSummary]
+
   isEndingModal :: ModalType -> Bool
   isEndingModal = \case
     ScenarioEndModal {} -> True
