@@ -17,6 +17,7 @@ import Brick.Widgets.List qualified as BL
 import Control.Applicative (liftA2, pure)
 import Control.Lens as Lens
 import Control.Monad (unless, when)
+import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (toList)
 import Data.List.Extra (enumerate)
 import Data.Maybe (isNothing)
@@ -99,6 +100,8 @@ updateUI = do
     REPLWorking pty (Just v)
       -- It did, and the result was the unit value or an exception.  Just reset replStatus.
       | v `elem` [VUnit, VExc] -> do
+          listener <- use $ gameState . gameControls . replListener
+          liftIO $ listener ""
           gameState . gameControls . replStatus .= REPLDone (Just (pty, v))
           pure True
 
@@ -112,6 +115,8 @@ updateUI = do
               itName = fromString $ "it" ++ show itIx
               out = T.intercalate " " [itName, ":", prettyText finalType, "=", into (prettyValue v)]
           addREPLHistItem (mkREPLOutput out)
+          listener <- use $ gameState . gameControls . replListener
+          liftIO $ listener out
           invalidateCacheEntry REPLHistoryCache
           vScrollToEnd replScroll
           gameState . gameControls . replStatus .= REPLDone (Just (finalType, v))
