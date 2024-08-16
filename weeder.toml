@@ -40,9 +40,9 @@ roots = [
     "^Swarm.Language.Syntax.Pattern.UTerm$",
     "^Swarm.Language.Syntax.Util.asTree$",
     "^Swarm.Language.Syntax.Util.mapFreeS$",
+    "^Swarm.Util.isSuccessOr$",
     "^Swarm.Util.replaceLast$",
     "^Swarm.Util.reflow$",
-    "^Swarm.Util.isSuccessOr$",
     "^Swarm.Util._NonEmpty$",
 
     # True positives (unused lenses):
