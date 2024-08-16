@@ -33,7 +33,6 @@ module Swarm.Web (
   webMain,
 ) where
 
-import Brick.BChan
 import Commonmark qualified as Mark (commonmark, renderHtml)
 import Control.Arrow (left)
 import Control.Concurrent (forkIO)
@@ -62,6 +61,7 @@ import Servant
 import Servant.Docs (ToCapture)
 import Servant.Docs qualified as SD
 import Servant.Docs.Internal qualified as SD (renderCurlBasePath)
+import Servant.Types.SourceT qualified as S
 import Swarm.Game.Entity (EntityName, entityName)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
@@ -105,7 +105,7 @@ type SwarmAPI =
     :<|> "recognize" :> "log" :> Get '[JSON] [SearchLog EntityName]
     :<|> "recognize" :> "found" :> Get '[JSON] [StructureLocation]
     :<|> "code" :> "render" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
-    :<|> "code" :> "run" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
+    :<|> "code" :> "run" :> ReqBody '[PlainText] T.Text :> StreamGet NewlineFraming JSON (SourceIO WebInvocationState)
     :<|> "paths" :> "log" :> Get '[JSON] (RingBuffer CacheLogEntry)
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [REPLHistItem]
     :<|> "map" :> Capture "size" AreaDimensions :> Get '[JSON] GridResponse
@@ -148,7 +148,7 @@ mkApp ::
   -- | Read-only access to the current AppState
   IO AppState ->
   -- | Writable channel to send events to the game
-  BChan AppEvent ->
+  EventChannel ->
   Servant.Server SwarmAPI
 mkApp state events =
   robotsHandler state
@@ -232,10 +232,41 @@ codeRenderHandler contents = do
       into @Text . drawTree . fmap (T.unpack . prettyTextLine) . para Node $ t
     Left x -> x
 
-codeRunHandler :: BChan AppEvent -> Text -> Handler Text
+{- Note [How to stream back responses as we get results]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Servant has a builtin simple streaming:
+https://docs.servant.dev/en/stable/cookbook/basic-streaming/Streaming.html
+
+What we need is to:
+1. run IO with 'Effect'
+2. send the result with 'Yield'
+3. if we are done 'Stop'
+4. otherwise continue recursively
+
+With the endpoint type 'StreamGet NewlineFraming JSON', servant will send each
+result as a JSON on a separate line. That is not a valid JSON document, but
+it's commonly used because it works well with line-oriented tools.
+
+This gives the user an immediate feedback (did the code parse) and would
+be well suited for streaming large collections of data like the logs
+while consuming constant memory.
+-}
+
+codeRunHandler :: EventChannel -> Text -> Handler (S.SourceT IO WebInvocationState)
 codeRunHandler chan contents = do
-  liftIO . writeBChan chan . Web $ RunWebCode contents
-  return $ T.pack "Sent\n"
+  replyVar <- liftIO newEmptyMVar
+  let putReplyForce r = do
+        void $ tryTakeMVar replyVar
+        putMVar replyVar r
+  liftIO . chan . Web $ RunWebCode contents putReplyForce
+  -- See note [How to stream back responses as we get results]
+  let waitForReply = S.Effect $ do
+        reply <- takeMVar replyVar
+        return . S.Yield reply $ case reply of
+          InProgress -> waitForReply
+          _ -> S.Stop
+  return $ S.fromStepT waitForReply
 
 pathsLogHandler :: IO AppState -> Handler (RingBuffer CacheLogEntry)
 pathsLogHandler appStateRef = do
@@ -268,13 +299,15 @@ mapViewHandler appStateRef areaSize = do
 -- | Simple result type to report errors from forked startup thread.
 data WebStartResult = WebStarted | WebStartError String
 
+type EventChannel = AppEvent -> IO ()
+
 webMain ::
   Maybe (MVar WebStartResult) ->
   Warp.Port ->
   -- | Read-only reference to the application state.
   IO AppState ->
   -- | Writable channel to send events to the game
-  BChan AppEvent ->
+  EventChannel ->
   IO ()
 webMain baton port appStateRef chan = catch (Warp.runSettings settings app) handleErr
  where
@@ -319,7 +352,7 @@ startWebThread ::
   -- | Read-only reference to the application state.
   IO AppState ->
   -- | Writable channel to send events to the game
-  BChan AppEvent ->
+  EventChannel ->
   IO (Either String Warp.Port)
 -- User explicitly provided port '0': don't run the web server
 startWebThread (Just 0) _ _ = pure $ Left "The web port has been turned off."
