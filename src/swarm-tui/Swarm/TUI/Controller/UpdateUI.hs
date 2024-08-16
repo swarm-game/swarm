@@ -218,38 +218,21 @@ doGoalUpdates = do
       return True
     WinConditions _ oc -> do
       showHiddenGoals <- use $ uiState . uiDebugOptions . Lens.contains ShowHiddenGoals
+      currentModal <- preuse $ uiState . uiGameplay . uiModal . _Just . modalType
       let newGoalTracking = GoalTracking announcementsList $ constructGoalMap showHiddenGoals oc
           -- The "uiGoal" field is initialized with empty members, so we know that
           -- this will be the first time showing it if it will be nonempty after previously
           -- being empty.
           isFirstGoalDisplay = hasAnythingToShow newGoalTracking && not (hasAnythingToShow curGoal)
           goalWasUpdated = isFirstGoalDisplay || not (null announcementsList)
+          isEnding = maybe False isEndingModal currentModal
 
       -- Decide whether to show a pop-up modal congratulating the user on
       -- successfully completing the current challenge.
-      when goalWasUpdated $ do
-        let hasMultiple = hasMultipleGoals newGoalTracking
-            defaultFocus =
-              if hasMultiple
-                then ObjectivesList
-                else GoalSummary
-
-            ring =
-              focusRing $
-                map GoalWidgets $
-                  if hasMultiple
-                    then enumerate
-                    else [GoalSummary]
-
+      when (goalWasUpdated && not isEnding) $ do
         -- The "uiGoal" field is necessary at least to "persist" the data that is needed
         -- if the player chooses to later "recall" the goals dialog with CTRL+g.
-        uiState
-          . uiGameplay
-          . uiGoal
-          .= GoalDisplay
-            newGoalTracking
-            (GR.makeListWidget newGoalTracking)
-            (focusSetCurrent (GoalWidgets defaultFocus) ring)
+        uiState . uiGameplay . uiGoal .= goalDisplay newGoalTracking
 
         -- This clears the "flag" that indicate that the goals dialog needs to be
         -- automatically popped up.
@@ -261,6 +244,27 @@ doGoalUpdates = do
           openModal GoalModal
 
       return goalWasUpdated
+ where
+  goalDisplay :: GoalTracking -> GoalDisplay
+  goalDisplay newGoalTracking =
+    let multiple = hasMultipleGoals newGoalTracking
+     in GoalDisplay
+          newGoalTracking
+          (GR.makeListWidget newGoalTracking)
+          (focusSetCurrent (GoalWidgets $ goalFocus multiple) (goalFocusRing multiple))
+
+  goalFocus :: Bool -> GoalWidget
+  goalFocus hasMultiple = if hasMultiple then ObjectivesList else GoalSummary
+
+  goalFocusRing :: Bool -> FocusRing Name
+  goalFocusRing hasMultiple = focusRing $ GoalWidgets <$> if hasMultiple then enumerate else [GoalSummary]
+
+  isEndingModal :: ModalType -> Bool
+  isEndingModal = \case
+    ScenarioEndModal {} -> True
+    QuitModal -> True
+    KeepPlayingModal -> True
+    _ -> False
 
 -- | Pops up notifications when new recipes or commands are unlocked.
 generateNotificationPopups :: EventM Name AppState Bool
