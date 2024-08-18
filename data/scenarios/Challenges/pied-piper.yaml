@@ -1,0 +1,383 @@
+version: 1
+name: Pied Piper
+author: Karl Ostmo
+description: |
+  Rid the village of pests.
+creative: false
+attrs:
+  - name: portal_in
+    fg: "#ff9a00"
+    bg: "#ff5d00"
+  - name: portal_out
+    fg: "#00a2ff"
+    bg: "#0065ff"
+  - name: oats
+    fg: "#444444"
+    bg: "#F5DEB3"
+  - name: bridge
+    bg: "#806040"
+  - name: brick
+    bg: "#880000"
+terrains:
+  - name: bridge
+    attr: bridge
+    description: |
+      Wooden raised path
+robots:
+  - name: base
+    loc:
+      subworld: overworld
+      loc: [-1, 8]
+    dir: south
+    devices:
+      - 3D printer
+      - ADT calculator
+      - antenna
+      - binoculars
+      - branch predictor
+      - clock
+      - comparator
+      - compass
+      - counter
+      - dictionary
+      - grabber
+      - harvester
+      - hearing aid
+      - lambda
+      - logger
+      - net
+      - rolex
+      - scanner
+      - strange loop
+      - string
+      - treads
+      - tweezers
+      - welder
+      - workbench
+    inventory:
+      - [200, oats]
+      - [1, key]
+    walkable:
+      never:
+        - locked door
+  - name: rat
+    system: true
+    dir: west
+    display:
+      invisible: false
+      char: 'r'
+    devices:
+      - logger
+    program: |
+      run "scenarios/Challenges/_pied-piper/rat.sw"
+    walkable:
+      never:
+        - ladder
+objectives:
+  - goal:
+      - Rats have infested the village dwellings. You are charged with
+        clearing the infestation.
+      - Scurrying feet can be heard through cracks under each `locked door`{=entity}.
+        Unfortunately you've not been entrusted with `key`{=entity}s to the residences.
+      - Perhaps there is something that would entice them out? North of
+        the river you spy fields of `oats`{=entity} and a `storage silo`{=structure}.
+    condition: |
+      try {
+        r <- robotNamed "rat";
+        return false;
+      } {return true}
+solution: |
+  run "scenarios/Challenges/_pied-piper/solution.sw"
+entities:
+  - name: brick
+    display:
+      char: '#'
+      attr: brick
+    description:
+      - Sturdy building material
+    properties: [known, unwalkable]
+  - name: fence
+    display:
+      char: '#'
+      attr: wood
+    description:
+      - Keeps interlopers away from the fields.
+    properties: [known, unwalkable]
+  - name: locked door
+    display:
+      char: 'D'
+      attr: wood
+    description:
+      - door
+    properties: [known]
+  - name: unlocked door
+    display:
+      char: '/'
+      attr: wood
+    description:
+      - Unlocked door
+    properties: [known]
+  - name: key
+    display:
+      char: 'k'
+    description:
+      - key for a `door`{=entity}
+    properties: [known]
+  - name: ladder
+    display:
+      char: 'H'
+      attr: wood
+    description:
+      - Ladder. Rodents cannot climb this.
+    properties: [known]
+  - name: chute
+    display:
+      char: 'C'
+    description:
+      - A trapdoor to the netherworld
+    properties: [known]
+  - name: wall
+    display:
+      char: 'W'
+      attr: wood
+    description:
+      - wall
+    properties: [known, unwalkable]
+  - name: oats
+    display:
+      attr: oats
+      char: 't'
+    description:
+      - Grain
+    properties: [known, pickable, growable]
+    growth:
+      duration: [20, 30]
+    biomes: [dirt]
+known: [water, boulder]
+seed: 0
+structures:
+  - name: storage silo
+    recognize:
+      - north
+    structure:
+      mask: '.'
+      palette:
+        'x': [stone, brick]
+        '=': [stone]
+        'c':
+          cell: [stone, chute]
+          waypoint:
+            name: chute_entrance
+        'a': [blank, oats]
+        'H':
+          cell: [dirt, ladder]
+          waypoint:
+            name: well_top
+      map: |
+        ......xxxxxH.
+        .....x===aax.
+        ...xx===aaaax
+        ....c==aaaaax
+        ...xx=aaaaaax
+        .....xaaaaax.
+        ......xxxxx..
+  - name: field
+    structure:
+      palette:
+        'a': [dirt, oats]
+      map: |
+        aaaaaaaaaaaaaaaaaaaa
+        aaaaaaaaaaaaaaaaaaaa
+        aaaaaaaaaaaaaaaaaaaa
+        aaaaaaaaaaaaaaaaaaaa
+subworlds:
+  - name: silo
+    mask: '+'
+    palette:
+      '.': [stone]
+      's': [stone, boulder]
+      'k': [stone, key]
+      'w':
+        cell: [stone]
+        waypoint:
+          name: chute_exit
+      'H':
+        cell: [stone, ladder]
+        waypoint:
+          name: well_bottom
+    portals:
+      - entrance: well_bottom
+        exitInfo:
+          exit: well_top
+          subworldName: overworld
+    upperleft: [-1, 1]
+    map: |
+      +++++sHsss+++++
+      +++ss.....ss+++
+      ++s.........s++
+      +s...........s+
+      +s.....w.....s+
+      +s.........k.s+
+      ++s.........s++
+      +++ss.....ss+++
+      +++++sssss+++++
+  - name: tunnel
+    mask: '+'
+    palette:
+      '.': [dirt]
+      'x': [stone, boulder]
+      'H':
+        cell: [dirt, ladder]
+        waypoint:
+          name: underground_field_ladder
+      'I':
+        cell: [dirt, ladder]
+        waypoint:
+          name: underground_house_ladder
+    portals:
+      - entrance: underground_field_ladder
+        exitInfo:
+          exit: field_ladder
+          subworldName: overworld
+        consistent: true
+      - entrance: underground_house_ladder
+        exitInfo:
+          exit: house_ladder
+          subworldName: overworld
+        consistent: true
+    upperleft: [-1, 1]
+    map: |
+      ++xHx++++
+      ++x.x++++
+      ++x.x++++
+      ++x.x++++
+      ++x..x+++
+      +++x.x+++
+      +++x.x+++
+      +++x.x+++
+      +++xIx+++
+recipes:
+  - in:
+      - [1, locked door]
+    out:
+      - [1, unlocked door]
+    required:
+      - [1, key]
+world:
+  name: overworld
+  structures:
+    - name: house ladder
+      structure:
+        palette:
+          'w': [stone, wall]
+          'H':
+            cell: [dirt, ladder]
+            waypoint:
+              name: house_ladder
+        map: |
+           www
+           wHw
+    - name: field ladder
+      structure:
+        palette:
+          'H':
+            cell: [dirt, ladder]
+            waypoint:
+              name: field_ladder
+        map: H
+    - name: house
+      structure:
+        palette:
+          'd': [stone, locked door]
+          'x': [stone, wall]
+          '.': [stone]
+          'r': [stone, erase, rat]
+        map: |
+          xxxxxxxxx
+          x.......x
+          d.......x
+          x.......x
+          x....r..x
+          x.......x
+          xxxxxxxxx
+    - name: street pair
+      structure:
+        placements:
+          - src: house
+            offset: [0, 0]
+            orient:
+              up: south
+          - src: house
+            offset: [16, 0]
+            orient:
+              flip: true
+        map: ""
+    - name: block
+      structure:
+        placements:
+          - src: street pair
+            offset: [0, 0]
+            orient:
+              flip: true
+          - src: street pair
+            offset: [0, 8]
+        map: ""
+  palette:
+    'b': [bridge, erase]
+  placements:
+    - src: block
+      offset: [-10, -14]
+    - src: block
+      offset: [-16, -30]
+      orient:
+        up: east
+    - src: block
+      offset: [6, -30]
+      orient:
+        up: east
+    - src: storage silo
+      offset: [8, 9]
+    - src: field
+      offset: [-28, 12]
+    - src: field
+      offset: [-28, 7]
+    - src: field
+      offset: [-52, 12]
+    - src: field
+      offset: [-52, 7]
+    - src: field ladder
+      offset: [-8, 2]
+    - src: house ladder
+      offset: [-8, -5]
+  upperleft: [-2, 2]
+  portals:
+    - entrance: well_top
+      exitInfo:
+        exit: well_bottom
+        subworldName: silo
+    - entrance: chute_entrance
+      exitInfo:
+        exit: chute_exit
+        subworldName: silo
+    - entrance: field_ladder
+      exitInfo:
+        exit: underground_field_ladder
+        subworldName: tunnel
+    - entrance: house_ladder
+      exitInfo:
+        exit: underground_house_ladder
+        subworldName: tunnel
+  dsl: |
+    overlay
+    [ {grass}
+    , mask (x == -7 && y >= 3 || y == 3 && x <= -7) {fence}
+    , mask (y > -2 && y < 2) {water}
+    , mask (x > -3 && x < 3) {stone}
+    , mask (y > -35 && y < -29) {stone}
+    ]
+  map: |
+    bbbbb
+    bbbbb
+    bbbbb
+    bbbbb
+    bbbbb
