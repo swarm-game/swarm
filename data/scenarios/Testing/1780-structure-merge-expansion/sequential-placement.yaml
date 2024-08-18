@@ -1,0 +1,62 @@
+version: 1
+name: Flipped structure placement
+author: Karl Ostmo
+description: |
+  Sequentially place structures that are larger than the map
+  with flipped orientation.
+creative: false
+robots:
+  - name: base
+    dir: north
+known: [boulder, mountain]
+seed: 0
+world:
+  structures:
+    - name: house
+      structure:
+        palette:
+          'x': [stone, boulder]
+          'A': [stone, mountain]
+          '.': [stone]
+        map: |
+          xxxx
+          x..x
+          x..A
+          xxAA
+    - name: street pair
+      structure:
+        palette:
+          '.': [grass]
+        placements:
+          - src: house
+            offset: [-1, 0]
+            orient:
+              up: south
+        map: |
+          .
+          .
+          .
+          .
+          .
+          .
+          .
+          .
+          .
+    - name: block
+      structure:
+        placements:
+          - src: street pair
+            orient:
+              flip: true
+          - src: street pair
+        map: ""
+  palette:
+    'Ω': [grass, erase, base]
+  placements:
+    - src: block
+      offset: [-2, -1]
+  upperleft: [0, 0]
+  dsl: |
+    {grass}
+  map: |
+    Ω

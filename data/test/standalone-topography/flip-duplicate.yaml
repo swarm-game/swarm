@@ -1,0 +1,46 @@
+structures:
+  - name: house
+    structure:
+      palette:
+        'x': "#ff0000"
+        'A': "#ff8800"
+        '.': "#ffff00"
+      map: |
+        xxxx
+        x..x
+        x..A
+        xxAA
+  - name: street pair
+    structure:
+      palette:
+        '.': "#00ff00"
+      placements:
+        - src: house
+          offset: [-1, 0]
+          orient:
+            up: south
+      map: |
+        .
+        .
+        .
+        .
+        .
+        .
+        .
+        .
+        .
+  - name: block
+    structure:
+      placements:
+        - src: street pair
+          orient:
+            flip: true
+        - src: street pair
+      map: ""
+placements:
+  - src: street pair
+    orient:
+      flip: true
+  - src: street pair
+upperleft: [0, 0]
+map: ""
