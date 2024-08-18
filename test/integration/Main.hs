@@ -263,6 +263,7 @@ testScenarioSolutions rs ui key =
             , testSolution (Sec 20) "Challenges/Ranching/powerset"
             , testSolution (Sec 10) "Challenges/Ranching/fishing"
             , testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
+            , testSolution (Sec 30) "Challenges/Ranching/pied-piper"
             ]
         , testGroup
             "Sokoban"
