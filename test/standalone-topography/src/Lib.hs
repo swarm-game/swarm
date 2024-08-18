@@ -32,8 +32,11 @@ parseStructures dataDir baseFilename = do
       dataDir </> "test/standalone-topography" </> baseFilename
   return $ forceEither $ left prettyPrintParseException eitherResult
 
-compareToReferenceImage :: FilePath -> Assertion
-compareToReferenceImage fileStem = do
+compareToReferenceImage ::
+  Bool -- ^ set this to update the golden tests
+  -> FilePath
+  -> Assertion
+compareToReferenceImage refreshReferenceImage fileStem = do
   dataDir <- getDataDir
   parentStruct <- parseStructures dataDir $ fileStem <.> "yaml"
   let MergedStructure overlayArea _ _ = forceEither $ mergeStructures mempty Root parentStruct
@@ -44,6 +47,3 @@ compareToReferenceImage fileStem = do
     else do
       decodedImg <- LBS.readFile referenceFilepath
       assertEqual "Generated image must equal reference image!" decodedImg encodedImgBytestring
- where
-  -- Manually toggle this to update the golden tests
-  refreshReferenceImage = False
