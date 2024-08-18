@@ -101,12 +101,11 @@ instance (Alternative f) => Semigroup (PositionedGrid (f a)) where
     mergedSize = computeMergedArea $ OverlayPair a1 a2
     combinedGrid = zipGridRows mergedSize paddedOverlayPair
 
-    -- We subtract the base origin from the
-    -- overlay position, such that the displacement vector
-    -- will have:
+    -- We create a vector from the overlay position,
+    -- such that the displacement vector will have:
     -- \* negative X component if the origin must be shifted east
     -- \* positive Y component if the origin must be shifted south
-    originDelta@(V2 deltaX deltaY) = overlayLoc .-. baseLoc
+    originDelta@(V2 deltaX deltaY) = overlayLoc .-. origin
     -- Note that the adjustment vector will only ever have
     -- a non-negative X component (i.e. loc of upper-left corner must be shifted east) and
     -- a non-positive Y component (i.e. loc of upper-left corner must be shifted south).
