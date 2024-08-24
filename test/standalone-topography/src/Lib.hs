@@ -33,9 +33,10 @@ parseStructures dataDir baseFilename = do
   return $ forceEither $ left prettyPrintParseException eitherResult
 
 compareToReferenceImage ::
-  Bool -- ^ set this to update the golden tests
-  -> FilePath
-  -> Assertion
+  -- | set this to update the golden tests
+  Bool ->
+  FilePath ->
+  Assertion
 compareToReferenceImage refreshReferenceImage fileStem = do
   dataDir <- getDataDir
   parentStruct <- parseStructures dataDir $ fileStem <.> "yaml"
