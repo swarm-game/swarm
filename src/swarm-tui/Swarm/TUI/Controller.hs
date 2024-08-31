@@ -105,7 +105,6 @@ import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.Structure
 import Swarm.TUI.Model.UI
 import Swarm.Util hiding (both, (<<.=))
-import Swarm.Version (NewReleaseFailure (..))
 
 -- ~~~~ Note [liftA2 re-export from Prelude]
 --
@@ -138,16 +137,10 @@ handleEvent e = do
         then handleMainEvent upd e
         else handleMenuEvent e
 
-handleUpstreamVersionResponse :: Either NewReleaseFailure String -> EventM Name AppState ()
+handleUpstreamVersionResponse :: Either (Severity, Text) String -> EventM Name AppState ()
 handleUpstreamVersionResponse ev = do
-  let logReleaseEvent l sev e = runtimeState . eventLog %= logEvent l sev "Release" (T.pack $ show e)
   case ev of
-    Left e ->
-      let sev = case e of
-            FailedReleaseQuery {} -> Error
-            OnDevelopmentBranch {} -> Info
-            _ -> Warning
-       in logReleaseEvent SystemLog sev e
+    Left (sev, e) -> runtimeState . eventLog %= logEvent SystemLog sev "Release" e
     Right _ -> pure ()
   runtimeState . upstreamRelease .= ev
 

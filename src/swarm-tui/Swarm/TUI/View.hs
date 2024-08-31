@@ -151,7 +151,6 @@ import Swarm.TUI.View.Util as VU
 import Swarm.Util
 import Swarm.Util.UnitInterval
 import Swarm.Util.WindowedCounter qualified as WC
-import Swarm.Version (NewReleaseFailure (..))
 import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
@@ -196,13 +195,10 @@ drawMainMenuUI s l =
   logo = s ^. runtimeState . appData . at "logo"
   version = s ^. runtimeState . upstreamRelease
 
-newVersionWidget :: Either NewReleaseFailure String -> Maybe (Widget n)
+newVersionWidget :: Either (Severity, Text) String -> Maybe (Widget n)
 newVersionWidget = \case
   Right ver -> Just . txt $ "New version " <> T.pack ver <> " is available!"
-  Left (OnDevelopmentBranch _b) -> Just . txt $ "Good luck developing!"
-  Left (FailedReleaseQuery _f) -> Nothing
-  Left (NoMainUpstreamRelease _fails) -> Nothing
-  Left (OldUpstreamRelease _up _my) -> Nothing
+  Left _ -> Nothing
 
 -- | When launching a game, a modal prompt may appear on another layer
 -- to input seed and/or a script to run.

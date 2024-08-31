@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
@@ -39,11 +40,10 @@ import Swarm.Game.State.Substate
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Log
 import Swarm.Util.Lens (makeLensesNoSigs)
-import Swarm.Version (NewReleaseFailure (..))
 
 data RuntimeState = RuntimeState
   { _webPort :: Maybe Int
-  , _upstreamRelease :: Either NewReleaseFailure String
+  , _upstreamRelease :: Either (Severity, Text) String
   , _eventLog :: Notifications LogEntry
   , _scenarios :: ScenarioCollection
   , _stdGameConfigInputs :: GameStateConfig
@@ -99,7 +99,7 @@ initRuntimeState pause = do
   return $
     RuntimeState
       { _webPort = Nothing
-      , _upstreamRelease = Left (NoMainUpstreamRelease [])
+      , _upstreamRelease = Left (Info, "No upstream release found.")
       , _eventLog = mempty
       , _scenarios = scenarios
       , _appData = initAppDataMap gsc
@@ -112,7 +112,7 @@ makeLensesNoSigs ''RuntimeState
 webPort :: Lens' RuntimeState (Maybe Int)
 
 -- | The upstream release version.
-upstreamRelease :: Lens' RuntimeState (Either NewReleaseFailure String)
+upstreamRelease :: Lens' RuntimeState (Either (Severity, Text) String)
 
 -- | A log of runtime events.
 --
