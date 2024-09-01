@@ -96,7 +96,6 @@ import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep (prepareLaunchDialog)
 import Swarm.TUI.List
 import Swarm.TUI.Model
-import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Popup (progressPopups)
@@ -174,19 +173,17 @@ handleMainMenuEvent menu = \case
       Nothing -> pure ()
       Just x0 -> case x0 of
         NewGame -> do
-          showTesting <- use $ uiState . uiDebugOptions . Lens.contains ShowTestingScenarios
           ss <- use $ runtimeState . scenarios
-          uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList showTesting ss)
+          uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList ss)
         Tutorial -> do
           -- Set up the menu stack as if the user had chosen "New Game > Tutorials"
-          showTesting <- use $ uiState . uiDebugOptions . Lens.contains ShowTestingScenarios
           ss <- use $ runtimeState . scenarios
           let tutorialCollection = getTutorials ss
               topMenu =
                 BL.listFindBy
                   ((== tutorialsDirname) . T.unpack . scenarioItemName)
-                  (mkScenarioList showTesting ss)
-              tutorialMenu = mkScenarioList showTesting tutorialCollection
+                  (mkScenarioList ss)
+              tutorialMenu = mkScenarioList tutorialCollection
               menuStack = tutorialMenu :| pure topMenu
           uiState . uiMenu .= NewGameMenu menuStack
 
@@ -255,8 +252,7 @@ handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
       Nothing -> pure ()
       Just (SISingle siPair) -> invalidateCache >> startGame siPair Nothing
       Just (SICollection _ c) -> do
-        showTesting <- use $ uiState . uiDebugOptions . Lens.contains ShowTestingScenarios
-        uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList showTesting c) scenarioStack)
+        uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList c) scenarioStack)
   CharKey 'o' -> showLaunchDialog
   CharKey 'O' -> showLaunchDialog
   Key V.KEsc -> exitNewGameMenu scenarioStack

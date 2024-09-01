@@ -91,10 +91,11 @@ initRuntimeState ::
   , Has (Lift IO) sig m
   ) =>
   Bool ->
+  Bool ->
   m RuntimeState
-initRuntimeState pause = do
+initRuntimeState pause loadTestScenarios = do
   gsc <- initGameStateConfig pause
-  scenarios <- loadScenarios $ gsiScenarioInputs $ initState gsc
+  scenarios <- loadScenarios (gsiScenarioInputs $ initState gsc) loadTestScenarios
 
   return $
     RuntimeState
