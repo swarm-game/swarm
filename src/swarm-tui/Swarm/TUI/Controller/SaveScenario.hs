@@ -24,7 +24,6 @@ import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements (attainAchievement')
-import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import System.FilePath (splitDirectories)
