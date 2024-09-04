@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 -- |
@@ -7,6 +8,8 @@
 -- Runtime state and utility functions
 module Swarm.Game.State.Runtime (
   RuntimeState,
+  RuntimeOptions (..),
+  initRuntimeState,
 
   -- ** Lenses
   webPort,
@@ -18,7 +21,6 @@ module Swarm.Game.State.Runtime (
 
   -- ** Utility
   initScenarioInputs,
-  initRuntimeState,
   initGameStateConfig,
 )
 where
@@ -85,16 +87,23 @@ initGameStateConfig pause = do
   nameGen <- initNameGenerator appDataMap
   return $ GameStateConfig appDataMap nameGen pause gsi
 
+-- | Runtime state initialization options.
+data RuntimeOptions = RuntimeOptions
+  { gamePausedAtStart :: Bool
+  , loadTestScenarios :: Bool
+  }
+  deriving (Eq, Show)
+
 initRuntimeState ::
   ( Has (Throw SystemFailure) sig m
   , Has (Accum (Seq SystemFailure)) sig m
   , Has (Lift IO) sig m
   ) =>
-  Bool ->
+  RuntimeOptions ->
   m RuntimeState
-initRuntimeState pause = do
-  gsc <- initGameStateConfig pause
-  scenarios <- loadScenarios $ gsiScenarioInputs $ initState gsc
+initRuntimeState RuntimeOptions {..} = do
+  gsc <- initGameStateConfig gamePausedAtStart
+  scenarios <- loadScenarios (gsiScenarioInputs $ initState gsc) loadTestScenarios
 
   return $
     RuntimeState

@@ -40,6 +40,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Sequence (Seq)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Time (getZonedTime)
 import Swarm.Game.Failure (SystemFailure (..))
@@ -80,6 +81,7 @@ import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Launch.Model (toSerializableParams)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements
+import Swarm.TUI.Model.DebugOption (DebugOption (LoadTestingScenarios))
 import Swarm.TUI.Model.Goal (emptyGoalDisplay)
 import Swarm.TUI.Model.KeyBindings
 import Swarm.TUI.Model.Name
@@ -125,7 +127,7 @@ initPersistentState ::
   m (RuntimeState, UIState, KeyEventHandlingState)
 initPersistentState opts@(AppOpts {..}) = do
   (warnings :: Seq SystemFailure, (initRS, initUI, initKs)) <- runAccum mempty $ do
-    rs <- initRuntimeState pausedAtStart
+    rs <- initRuntimeState $ RuntimeOptions pausedAtStart (Set.member LoadTestingScenarios debugOptions)
     ui <- initUIState speed (not (skipMenu opts)) debugOptions
     ks <- initKeyHandlingState
     return (rs, ui, ks)

@@ -21,6 +21,7 @@ import Data.IntSet qualified as IS
 import Data.List (partition)
 import Data.Map qualified as M
 import Data.Maybe (isJust)
+import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
@@ -70,11 +71,13 @@ import Swarm.Language.Pretty (prettyString)
 import Swarm.Log
 import Swarm.TUI.Model (
   KeyEventHandlingState,
+  debugOptions,
   defaultAppOpts,
   gameState,
   runtimeState,
   userScenario,
  )
+import Swarm.TUI.Model.DebugOption (DebugOption (LoadTestingScenarios))
 import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
 import Swarm.TUI.Model.UI (UIState)
 import Swarm.Util (findAllWithExt)
@@ -98,7 +101,8 @@ main = do
   let (unparseableScenarios, parseableScenarios) = partition isUnparseableTest scenarioPaths
   scenarioPrograms <- findAllWithExt "data/scenarios" "sw"
   (rs, ui, key) <- do
-    out <- runM . runThrow @SystemFailure $ initPersistentState defaultAppOpts
+    let testingOptions = defaultAppOpts {debugOptions = S.singleton LoadTestingScenarios}
+    out <- runM . runThrow @SystemFailure $ initPersistentState testingOptions
     either (assertFailure . prettyString) return out
   let scenarioInputs = gsiScenarioInputs $ initState $ rs ^. stdGameConfigInputs
       rs' = rs & eventLog .~ mempty

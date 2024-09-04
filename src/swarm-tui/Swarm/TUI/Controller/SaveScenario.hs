@@ -24,7 +24,6 @@ import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements (attainAchievement')
-import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import System.FilePath (splitDirectories)
@@ -118,5 +117,4 @@ saveScenarioInfoOnQuit =
         -- Now rebuild the NewGameMenu so it gets the updated ScenarioInfo,
         -- being sure to preserve the same focused scenario.
         sc <- use $ runtimeState . scenarios
-        showTesting <- use $ uiState . uiDebugOptions . contains ShowTestingScenarios
-        forM_ (mkNewGameMenu showTesting sc (fromMaybe p curPath)) (uiState . uiMenu .=)
+        forM_ (mkNewGameMenu sc (fromMaybe p curPath)) (uiState . uiMenu .=)

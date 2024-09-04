@@ -21,7 +21,7 @@ data DebugOption
   | ListRobotIDs
   | ShowHiddenGoals
   | ShowGoalDialogsInAutoPlay
-  | ShowTestingScenarios
+  | LoadTestingScenarios
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 debugOptionName :: DebugOption -> String
@@ -33,7 +33,7 @@ debugOptionName = \case
   ListRobotIDs -> "robot_id"
   ShowHiddenGoals -> "hidden_goals"
   ShowGoalDialogsInAutoPlay -> "autoplay_goals"
-  ShowTestingScenarios -> "testing"
+  LoadTestingScenarios -> "testing"
 
 debugOptionDescription :: DebugOption -> String
 debugOptionDescription = \case
@@ -44,7 +44,7 @@ debugOptionDescription = \case
   ListRobotIDs -> "list robot IDs in the robot panel"
   ShowHiddenGoals -> "show hidden objectives in the goal dialog"
   ShowGoalDialogsInAutoPlay -> "show goal dialogs when running in autoplay"
-  ShowTestingScenarios -> "show Testing folder in scenarios menu"
+  LoadTestingScenarios -> "load Testing folder in scenarios menu"
 
 readDebugOption :: String -> Maybe DebugOption
 readDebugOption name = find ((trim name ==) . debugOptionName) enumerate
