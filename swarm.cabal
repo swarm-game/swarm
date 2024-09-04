@@ -119,8 +119,305 @@ common ghc2021-extensions
     TypeApplications
     TypeOperators
 
+common base
+  build-depends: base >=4.14 && <4.20
+
+common AhoCorasick
+  build-depends: AhoCorasick >=0.0.4 && <0.0.5
+
+common JuicyPixels
+  build-depends: JuicyPixels >=3.3 && <3.4
+
+common QuickCheck
+  build-depends: QuickCheck >=2.14 && <2.16
+
+common SHA
+  build-depends: SHA >=1.6.4 && <1.6.5
+
+common aeson
+  build-depends: aeson >=2.2 && <2.3
+
+common array
+  build-depends: array >=0.5.4 && <0.6
+
+common astar
+  build-depends: astar >=0.3 && <0.3.1
+
+common boolexpr
+  build-depends: boolexpr >=0.2 && <0.3
+
+common brick
+  build-depends: brick >=2.1.1 && <2.5
+
+common brick-list-skip
+  build-depends: brick-list-skip >=0.1.1.2 && <0.2
+
+common bytestring
+  build-depends: bytestring >=0.10 && <0.13
+
+common clock
+  build-depends: clock >=0.8.2 && <0.9
+
+common colour
+  build-depends: colour >=2.3.6 && <2.4
+
+common commonmark
+  build-depends: commonmark >=0.2 && <0.3
+
+common commonmark-extensions
+  build-depends: commonmark-extensions >=0.2 && <0.3
+
+common containers
+  build-depends: containers >=0.6.2 && <0.8
+
+common cookie
+  build-depends: cookie >=0.4 && <1.0
+
+common data-fix
+  build-depends: data-fix >=0.3 && <0.4
+
+common deriving-compat
+  build-depends: deriving-compat >=0.6 && <0.7
+
+common directory
+  build-depends: directory >=1.3 && <1.4
+
+common dotgen
+  build-depends: dotgen >=0.4 && <0.5
+
+common either
+  build-depends: either >=5.0 && <5.1
+
+common exceptions
+  build-depends: exceptions >=0.10 && <0.11
+
+common extra
+  build-depends: extra >=1.7 && <1.8
+
+common filepath
+  build-depends: filepath >=1.4 && <1.5
+
+common free
+  build-depends: free >=5.2 && <5.3
+
+common fused-effects
+  build-depends: fused-effects >=1.1.1.1 && <1.2
+
+common fused-effects-lens
+  build-depends: fused-effects-lens >=1.2.0.1 && <1.3
+
+common fuzzy
+  build-depends: fuzzy >=0.1 && <0.2
+
+common githash
+  build-depends: githash >=0.1.6 && <0.2
+
+common hashable
+  build-depends: hashable >=1.3.4 && <1.5
+
+common hsnoise
+  build-depends: hsnoise >=0.0.3 && <0.1
+
+common http-client
+  build-depends: http-client >=0.7 && <0.8
+
+common http-client-tls
+  build-depends: http-client-tls >=0.3 && <0.4
+
+common http-types
+  build-depends: http-types >=0.12 && <0.13
+
+common lens
+  build-depends: lens >=4.19 && <5.4
+
+common linear
+  build-depends: linear >=1.21.6 && <1.24
+
+common lsp
+  build-depends: lsp >=2.4 && <2.7
+
+common megaparsec
+  build-depends: megaparsec >=9.6.1 && <9.7
+
+common minimorph
+  build-depends: minimorph >=0.3 && <0.4
+
+common MissingH
+  build-depends: MissingH >=1.4 && <2
+
+common mtl
+  build-depends: mtl >=2.2.2 && <2.4
+
+common murmur3
+  build-depends: murmur3 >=1.0.4 && <1.1
+
+common natural-sort
+  build-depends: natural-sort >=0.1.2 && <0.2
+
+common nonempty-containers
+  build-depends: nonempty-containers >=0.3.4 && <0.3.5
+
+common optparse-applicative
+  build-depends: optparse-applicative >=0.16 && <0.19
+
+common palette
+  build-depends: palette >=0.3 && <0.4
+
+common pandoc
+  build-depends: pandoc >=3.0 && <3.3
+
+common pandoc-types
+  build-depends: pandoc-types >=1.23 && <1.24
+
+common parser-combinators
+  build-depends: parser-combinators >=1.2 && <1.4
+
+common prettyprinter
+  build-depends: prettyprinter >=1.7.0 && <1.8
+
+common random
+  build-depends: random >=1.2.0 && <1.3
+
+common scientific
+  build-depends: scientific >=0.3.6 && <0.3.8
+
+common servant
+  build-depends: servant >=0.19 && <0.22
+
+common servant-docs
+  build-depends: servant-docs >=0.12 && <0.14
+
+common servant-multipart
+  build-depends: servant-multipart >=0.11 && <1.0
+
+common servant-server
+  build-depends: servant-server >=0.19 && <0.22
+
+common simple-enumeration
+  build-depends: simple-enumeration >=0.2 && <0.3
+
+common split
+  build-depends: split >=0.2.3 && <0.3
+
+common sqlite-simple
+  build-depends: sqlite-simple >=0.4.19.0 && <0.4.20
+
+common syb
+  build-depends: syb >=0.7 && <0.8
+
+common tagged
+  build-depends: tagged >=0.8 && <0.9
+
+common tasty
+  build-depends: tasty >=0.10 && <1.6
+
+common tasty-bench
+  build-depends: tasty-bench >=0.3.1 && <0.4
+
+common tasty-expected-failure
+  build-depends: tasty-expected-failure >=0.12 && <0.13
+
+common tasty-hunit
+  build-depends: tasty-hunit >=0.10 && <0.11
+
+common tasty-quickcheck
+  build-depends: tasty-quickcheck >=0.10 && <0.11
+
+common template-haskell
+  build-depends: template-haskell >=2.16 && <2.22
+
+common terminal-size
+  build-depends: terminal-size >=0.3 && <1.0
+
+common text
+  build-depends: text >=1.2.4 && <2.2
+
+common text-rope
+  build-depends: text-rope >=0.2 && <0.3
+
+common text-zipper
+  build-depends: text-zipper >=0.10 && <0.14
+
+common time
+  build-depends: time >=1.9 && <1.15
+
+common transformers
+  build-depends: transformers >=0.5 && <0.7
+
+common unicode-show
+  build-depends: unicode-show >=0.1 && <0.2
+
+common unordered-containers
+  build-depends: unordered-containers >=0.2.14 && <0.3
+
+common utf8-string
+  build-depends: utf8-string >=1.0 && <2.0
+
+common vector
+  build-depends: vector >=0.12 && <0.14
+
+common vty
+  build-depends: vty >=6.1 && <6.3
+
+common vty-crossplatform
+  build-depends: vty-crossplatform >=0.4 && <0.5
+
+common wai
+  build-depends: wai >=3.2 && <3.3
+
+common wai-app-static
+  build-depends: wai-app-static >=3.1.8 && <3.2
+
+common wai-extra
+  build-depends: wai-extra >=3.1 && <3.2
+
+common warp
+  build-depends: warp >=3.2 && <3.5
+
+common witch
+  build-depends: witch >=1.1.1.0 && <1.3
+
+common witherable
+  build-depends: witherable >=0.4 && <0.5
+
+common word-wrap
+  build-depends: word-wrap >=0.5 && <0.6
+
+common yaml
+  build-depends: yaml >=0.11 && <0.11.12.0
+
 library swarm-lang
-  import: stan-config, common, ghc2021-extensions
+  import:
+    stan-config, common, ghc2021-extensions,
+    aeson,
+    base,
+    commonmark,
+    commonmark-extensions,
+    containers,
+    data-fix,
+    deriving-compat,
+    extra,
+    free,
+    fused-effects,
+    hashable,
+    lens,
+    lsp,
+    megaparsec,
+    mtl,
+    parser-combinators,
+    prettyprinter,
+    split,
+    syb,
+    template-haskell,
+    terminal-size,
+    text,
+    text-rope,
+    unicode-show,
+    vector,
+    vty,
+    witch,
+    yaml,
+
   visibility: public
   -- cabal-gild: discover src/swarm-lang
   exposed-modules:
@@ -169,36 +466,6 @@ library swarm-lang
 
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm
-  build-depends:
-    aeson,
-    base,
-    commonmark >=0.2 && <0.3,
-    commonmark-extensions >=0.2 && <0.3,
-    containers,
-    data-fix >=0.3 && <0.4,
-    deriving-compat >=0.6 && <0.7,
-    extra,
-    free >=5.2 && <5.3,
-    fused-effects,
-    hashable,
-    lens,
-    lsp >=2.4 && <2.7,
-    megaparsec,
-    mtl,
-    parser-combinators,
-    prettyprinter,
-    split,
-    syb >=0.7 && <0.8,
-    template-haskell,
-    terminal-size >=0.3 && <1.0,
-    text,
-    text-rope >=0.2 && <0.3,
-    unicode-show >=0.1 && <0.2,
-    vector,
-    vty,
-    witch,
-    yaml,
-
   build-depends: swarm:swarm-util
   hs-source-dirs: src/swarm-lang
   ghc-options:
@@ -211,7 +478,26 @@ library swarm-lang
     StrictData
 
 library swarm-topography
-  import: stan-config, common, ghc2021-extensions
+  import:
+    stan-config, common, ghc2021-extensions,
+    AhoCorasick,
+    JuicyPixels,
+    aeson,
+    array,
+    base,
+    containers,
+    extra,
+    hashable,
+    lens,
+    linear,
+    nonempty-containers,
+    servant-docs,
+    text,
+    transformers,
+    unordered-containers,
+    vector,
+    yaml,
+
   visibility: public
   -- cabal-gild: discover src/swarm-topography
   exposed-modules:
@@ -242,25 +528,6 @@ library swarm-topography
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm
   build-depends:
-    AhoCorasick >=0.0.4 && <0.0.5,
-    JuicyPixels >=3.3 && <3.4,
-    aeson >=2.2 && <2.3,
-    array,
-    base >=4.14 && <4.20,
-    containers >=0.6.2 && <0.8,
-    extra >=1.7 && <1.8,
-    hashable,
-    lens,
-    linear >=1.21.6 && <1.24,
-    nonempty-containers >=0.3.4 && <0.3.5,
-    servant-docs >=0.12 && <0.14,
-    text >=1.2.4 && <2.2,
-    transformers,
-    unordered-containers,
-    vector >=0.12 && <0.14,
-    yaml >=0.11 && <0.11.12.0,
-
-  build-depends:
     swarm:swarm-util
 
   hs-source-dirs: src/swarm-topography
@@ -274,7 +541,41 @@ library swarm-topography
     StrictData
 
 library swarm-scenario
-  import: stan-config, common, ghc2021-extensions
+  import:
+    stan-config, common, ghc2021-extensions,
+    JuicyPixels,
+    aeson,
+    array,
+    base,
+    boolexpr,
+    bytestring,
+    clock,
+    colour,
+    containers,
+    directory,
+    either,
+    extra,
+    filepath,
+    fused-effects,
+    hashable,
+    hsnoise,
+    lens,
+    linear,
+    megaparsec,
+    murmur3,
+    palette,
+    parser-combinators,
+    prettyprinter,
+    random,
+    servant-docs,
+    simple-enumeration,
+    tagged,
+    text,
+    vector,
+    vty,
+    witch,
+    yaml,
+
   visibility: public
   -- cabal-gild: discover src/swarm-scenario
   exposed-modules:
@@ -325,40 +626,6 @@ library swarm-scenario
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm
   build-depends:
-    JuicyPixels >=3.3 && <3.4,
-    aeson >=2.2 && <2.3,
-    array >=0.5.4 && <0.6,
-    base >=4.14 && <4.20,
-    boolexpr >=0.2 && <0.3,
-    bytestring >=0.10 && <0.13,
-    clock >=0.8.2 && <0.9,
-    colour >=2.3.6 && <2.4,
-    containers >=0.6.2 && <0.8,
-    directory >=1.3 && <1.4,
-    either >=5.0 && <5.1,
-    extra >=1.7 && <1.8,
-    filepath >=1.4 && <1.5,
-    fused-effects >=1.1.1.1 && <1.2,
-    hashable >=1.3.4 && <1.5,
-    hsnoise >=0.0.3 && <0.1,
-    lens >=4.19 && <5.4,
-    linear >=1.21.6 && <1.24,
-    megaparsec >=9.6.1 && <9.7,
-    murmur3 >=1.0.4 && <1.1,
-    palette >=0.3 && <0.4,
-    parser-combinators >=1.2 && <1.4,
-    prettyprinter >=1.7.0 && <1.8,
-    random >=1.2.0 && <1.3,
-    servant-docs >=0.12 && <0.14,
-    simple-enumeration >=0.2 && <0.3,
-    tagged >=0.8 && <0.9,
-    text >=1.2.4 && <2.2,
-    vector >=0.12 && <0.14,
-    vty >=6.1 && <6.3,
-    witch >=1.1.1.0 && <1.3,
-    yaml >=0.11 && <0.11.12.0,
-
-  build-depends:
     swarm:swarm-lang,
     swarm:swarm-topography,
     swarm:swarm-util,
@@ -374,7 +641,36 @@ library swarm-scenario
     StrictData
 
 library swarm-engine
-  import: stan-config, common, ghc2021-extensions
+  import:
+    stan-config, common, ghc2021-extensions,
+    SHA,
+    aeson,
+    array,
+    astar,
+    base,
+    boolexpr,
+    clock,
+    containers,
+    directory,
+    extra,
+    filepath,
+    fused-effects,
+    fused-effects-lens,
+    lens,
+    linear,
+    megaparsec,
+    mtl,
+    nonempty-containers,
+    prettyprinter,
+    random,
+    servant-docs,
+    text,
+    time,
+    transformers,
+    unordered-containers,
+    witch,
+    yaml,
+
   visibility: public
   -- cabal-gild: discover src/swarm-engine
   exposed-modules:
@@ -422,35 +718,6 @@ library swarm-engine
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm
   build-depends:
-    SHA >=1.6.4 && <1.6.5,
-    aeson >=2.2 && <2.3,
-    array >=0.5.4 && <0.6,
-    astar >=0.3 && <0.3.1,
-    base >=4.14 && <4.20,
-    boolexpr >=0.2 && <0.3,
-    clock >=0.8.2 && <0.9,
-    containers >=0.6.2 && <0.8,
-    directory >=1.3 && <1.4,
-    extra >=1.7 && <1.8,
-    filepath >=1.4 && <1.5,
-    fused-effects >=1.1.1.1 && <1.2,
-    fused-effects-lens >=1.2.0.1 && <1.3,
-    lens >=4.19 && <5.4,
-    linear >=1.21.6 && <1.24,
-    megaparsec >=9.6 && <9.7,
-    mtl >=2.2.2 && <2.4,
-    nonempty-containers >=0.3.4 && <0.3.5,
-    prettyprinter >=1.7.0 && <1.8,
-    random >=1.2.0 && <1.3,
-    servant-docs >=0.12 && <0.14,
-    text >=1.2.4 && <2.2,
-    time >=1.9 && <1.15,
-    transformers >=0.5 && <0.7,
-    unordered-containers >=0.2.14 && <0.3,
-    witch >=1.1.1.0 && <1.3,
-    yaml >=0.11 && <0.11.12.0,
-
-  build-depends:
     swarm:swarm-lang,
     swarm:swarm-scenario,
     swarm:swarm-topography,
@@ -467,16 +734,8 @@ library swarm-engine
     StrictData
 
 library swarm-web
-  import: stan-config, common, ghc2021-extensions
-  visibility: public
-  -- cabal-gild: discover src/swarm-web
-  exposed-modules:
-    Swarm.Web
-    Swarm.Web.Worldview
-
-  other-modules: Paths_swarm
-  autogen-modules: Paths_swarm
-  build-depends:
+  import:
+    stan-config, common, ghc2021-extensions,
     aeson,
     base,
     bytestring,
@@ -487,15 +746,23 @@ library swarm-web
     lens,
     nonempty-containers,
     palette,
-    servant >=0.19 && <0.22,
+    servant,
     servant-docs,
-    servant-server >=0.19 && <0.22,
+    servant-server,
     text,
-    wai >=3.2 && <3.3,
-    wai-app-static >=3.1.8 && <3.2,
+    wai,
+    wai-app-static,
     warp,
     witch,
 
+  visibility: public
+  -- cabal-gild: discover src/swarm-web
+  exposed-modules:
+    Swarm.Web
+    Swarm.Web.Worldview
+
+  other-modules: Paths_swarm
+  autogen-modules: Paths_swarm
   build-depends:
     swarm:swarm-engine,
     swarm:swarm-lang,
@@ -515,7 +782,37 @@ library swarm-web
     StrictData
 
 library swarm-tournament
-  import: stan-config, common, ghc2021-extensions
+  import:
+    stan-config, common, ghc2021-extensions,
+    SHA,
+    aeson,
+    base,
+    bytestring,
+    commonmark,
+    containers,
+    cookie,
+    exceptions,
+    extra,
+    fused-effects,
+    http-client,
+    http-client-tls,
+    http-types,
+    lens,
+    mtl,
+    servant-docs,
+    servant-multipart,
+    servant-server,
+    sqlite-simple,
+    text,
+    time,
+    transformers,
+    utf8-string,
+    wai,
+    wai-app-static,
+    wai-extra,
+    warp,
+    yaml,
+
   visibility: public
   -- cabal-gild: discover src/swarm-tournament
   exposed-modules:
@@ -530,36 +827,6 @@ library swarm-tournament
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm
   build-depends:
-    SHA,
-    aeson,
-    base,
-    bytestring,
-    commonmark,
-    containers,
-    cookie,
-    exceptions,
-    extra,
-    fused-effects,
-    http-client,
-    http-client-tls >=0.3.6.3 && <0.3.7,
-    http-types,
-    lens,
-    mtl,
-    servant-docs,
-    servant-multipart,
-    servant-server >=0.19 && <0.21,
-    sqlite-simple >=0.4.19.0 && <0.4.20,
-    text,
-    time,
-    transformers,
-    utf8-string,
-    wai >=3.2 && <3.3,
-    wai-app-static >=3.1.8 && <3.2,
-    wai-extra,
-    warp,
-    yaml,
-
-  build-depends:
     swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,
@@ -572,7 +839,31 @@ library swarm-tournament
   default-language: Haskell2010
 
 library swarm-util
-  import: stan-config, common, ghc2021-extensions
+  import:
+    stan-config, common, ghc2021-extensions,
+    aeson,
+    base,
+    boolexpr,
+    clock,
+    containers,
+    directory,
+    either,
+    extra,
+    filepath,
+    fused-effects,
+    hashable,
+    lens,
+    minimorph,
+    mtl,
+    servant-docs,
+    template-haskell,
+    text,
+    transformers,
+    vector,
+    witch,
+    witherable,
+    yaml,
+
   visibility: public
   -- cabal-gild: discover src/swarm-util
   exposed-modules:
@@ -592,30 +883,6 @@ library swarm-util
 
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm
-  build-depends:
-    aeson >=2.2 && <2.3,
-    base >=4.14 && <4.20,
-    boolexpr >=0.2 && <0.3,
-    clock >=0.8.2 && <0.9,
-    containers >=0.6.2 && <0.8,
-    directory >=1.3 && <1.4,
-    either >=5.0 && <5.1,
-    extra >=1.7 && <1.8,
-    filepath >=1.4 && <1.5,
-    fused-effects >=1.1.1.1 && <1.2,
-    hashable >=1.3.4 && <1.5,
-    lens >=4.19 && <5.4,
-    minimorph >=0.3 && <0.4,
-    mtl >=2.2.2 && <2.4,
-    servant-docs >=0.12 && <0.14,
-    template-haskell >=2.16 && <2.22,
-    text >=1.2.4 && <2.2,
-    transformers >=0.5 && <0.7,
-    vector >=0.12 && <0.14,
-    witch >=1.1.1.0 && <1.3,
-    witherable >=0.4 && <0.5,
-    yaml >=0.11 && <0.11.12.0,
-
   hs-source-dirs: src/swarm-util
   ghc-options:
     -hiedir=.hie/src/swarm-util
@@ -627,7 +894,26 @@ library swarm-util
     StrictData
 
 library swarm-doc
-  import: stan-config, common, ghc2021-extensions
+  import:
+    stan-config, common, ghc2021-extensions,
+    aeson,
+    base,
+    containers,
+    directory,
+    dotgen,
+    extra,
+    filepath,
+    fused-effects,
+    lens,
+    mtl,
+    pandoc,
+    pandoc-types,
+    scientific,
+    servant-docs,
+    text,
+    transformers,
+    vector,
+
   visibility: public
   -- cabal-gild: discover src/swarm-doc
   exposed-modules:
@@ -646,25 +932,6 @@ library swarm-doc
     Swarm.Doc.Wiki.Util
 
   build-depends:
-    aeson >=2.2 && <2.3,
-    base >=4.14 && <4.20,
-    containers >=0.6.2 && <0.8,
-    directory >=1.3 && <1.4,
-    dotgen >=0.4 && <0.5,
-    extra >=1.7 && <1.8,
-    filepath >=1.4 && <1.5,
-    fused-effects >=1.1.1.1 && <1.2,
-    lens >=4.19 && <5.4,
-    mtl >=2.2.2 && <2.4,
-    pandoc >=3.0 && <3.3,
-    pandoc-types >=1.23 && <1.24,
-    scientific >=0.3.6 && <0.3.8,
-    servant-docs >=0.12 && <0.14,
-    text >=1.2.4 && <2.2,
-    transformers >=0.5 && <0.7,
-    vector >=0.12 && <0.14,
-
-  build-depends:
     swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,
@@ -681,7 +948,43 @@ library swarm-doc
     StrictData
 
 library swarm-tui
-  import: stan-config, common, ghc2021-extensions
+  import:
+    stan-config, common, ghc2021-extensions,
+    aeson,
+    array,
+    base,
+    brick,
+    brick-list-skip,
+    bytestring,
+    clock,
+    colour,
+    containers,
+    extra,
+    filepath,
+    fused-effects,
+    fuzzy,
+    githash,
+    lens,
+    linear,
+    mtl,
+    murmur3,
+    natural-sort,
+    nonempty-containers,
+    palette,
+    servant-docs,
+    split,
+    tagged,
+    text,
+    text-zipper,
+    time,
+    transformers,
+    vector,
+    vty,
+    warp,
+    witch,
+    word-wrap,
+    yaml,
+
   visibility: public
   -- cabal-gild: discover src/swarm-tui
   exposed-modules:
@@ -739,42 +1042,6 @@ library swarm-tui
   other-modules: Paths_swarm
   autogen-modules: Paths_swarm
   build-depends:
-    aeson >=2.2 && <2.3,
-    array >=0.5.4 && <0.6,
-    base >=4.14 && <4.20,
-    brick >=2.1.1 && <2.5,
-    brick-list-skip >=0.1.1.2 && <0.2,
-    bytestring >=0.10 && <0.13,
-    clock >=0.8.2 && <0.9,
-    colour >=2.3.6 && <2.4,
-    containers >=0.6.2 && <0.8,
-    extra >=1.7 && <1.8,
-    filepath >=1.4 && <1.5,
-    fused-effects >=1.1.1.1 && <1.2,
-    fuzzy >=0.1 && <0.2,
-    githash >=0.1.6 && <0.2,
-    lens >=4.19 && <5.4,
-    linear >=1.21.6 && <1.24,
-    mtl >=2.2.2 && <2.4,
-    murmur3 >=1.0.4 && <1.1,
-    natural-sort >=0.1.2 && <0.2,
-    nonempty-containers >=0.3.4 && <0.3.5,
-    palette >=0.3 && <0.4,
-    servant-docs >=0.12 && <0.14,
-    split >=0.2.3 && <0.3,
-    tagged >=0.8 && <0.9,
-    text >=1.2.4 && <2.2,
-    text-zipper >=0.10 && <0.14,
-    time >=1.9 && <1.15,
-    transformers >=0.5 && <0.7,
-    vector >=0.12 && <0.14,
-    vty >=6.1 && <6.3,
-    warp >=3.2 && <3.5,
-    witch >=1.1.1.0 && <1.3,
-    word-wrap >=0.5 && <0.6,
-    yaml >=0.11 && <0.11.12.0,
-
-  build-depends:
     swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,
@@ -792,16 +1059,8 @@ library swarm-tui
     StrictData
 
 executable swarm
-  import: stan-config, common, ghc2021-extensions
-  main-is: Main.hs
-  autogen-modules: Paths_swarm
-  other-modules:
-    Paths_swarm
-    Swarm.App
-    Swarm.Version
-
-  build-depends:
-    -- Imports shared with the library don't need bounds
+  import:
+    stan-config, common, ghc2021-extensions,
     aeson,
     base,
     brick,
@@ -809,22 +1068,31 @@ executable swarm
     containers,
     extra,
     fused-effects,
-    githash >=0.1.6 && <0.2,
-    http-client >=0.7 && <0.8,
-    http-client-tls >=0.3 && <0.4,
-    http-types >=0.12 && <0.13,
+    githash,
+    http-client,
+    http-client-tls,
+    http-types,
     lens,
-    optparse-applicative >=0.16 && <0.19,
+    optparse-applicative,
+    text,
+    vty,
+    vty-crossplatform,
+    yaml,
+
+  build-depends:
     swarm:swarm-engine,
     swarm:swarm-lang,
     swarm:swarm-scenario,
     swarm:swarm-tui,
     swarm:swarm-util,
     swarm:swarm-web,
-    text,
-    vty,
-    vty-crossplatform >=0.4 && <0.5,
-    yaml,
+
+  main-is: Main.hs
+  autogen-modules: Paths_swarm
+  other-modules:
+    Paths_swarm
+    Swarm.App
+    Swarm.Version
 
   hs-source-dirs: app/game
   ghc-options:
@@ -835,12 +1103,12 @@ executable swarm
   default-extensions: ImportQualifiedPost
 
 executable swarm-scene
-  import: stan-config, common, ghc2021-extensions
-  main-is: Main.hs
-  build-depends:
+  import:
+    stan-config, common, ghc2021-extensions,
     base,
-    optparse-applicative >=0.16 && <0.19,
+    optparse-applicative,
 
+  main-is: Main.hs
   build-depends:
     swarm:swarm-scenario,
     swarm:swarm-topography,
@@ -854,16 +1122,17 @@ executable swarm-scene
   default-extensions: ImportQualifiedPost
 
 executable swarm-docs
-  import: stan-config, common, ghc2021-extensions
-  main-is: Main.hs
-  other-modules:
-  build-depends:
-    -- Imports shared with the library don't need bounds
+  import:
+    stan-config, common, ghc2021-extensions,
     base,
-    optparse-applicative >=0.16 && <0.19,
-    swarm:swarm-doc,
+    optparse-applicative,
     text,
 
+  build-depends:
+    swarm:swarm-doc
+
+  main-is: Main.hs
+  other-modules:
   hs-source-dirs: app/doc
   ghc-options:
     -hiedir=.hie/app/doc
@@ -873,16 +1142,16 @@ executable swarm-docs
   default-extensions: ImportQualifiedPost
 
 executable swarm-host-tournament
-  import: stan-config, common, ghc2021-extensions
-  main-is: Main.hs
-  build-depends:
+  import:
+    stan-config, common, ghc2021-extensions,
     base,
-    optparse-applicative >=0.16 && <0.19,
+    optparse-applicative,
     sqlite-simple,
     transformers,
     warp,
     yaml,
 
+  main-is: Main.hs
   build-depends:
     swarm:swarm-engine,
     swarm:swarm-tournament,
@@ -896,7 +1165,27 @@ executable swarm-host-tournament
   default-extensions: ImportQualifiedPost
 
 test-suite swarm-unit
-  import: stan-config, common, ghc2021-extensions
+  import:
+    stan-config, common, ghc2021-extensions,
+    QuickCheck,
+    aeson,
+    base,
+    boolexpr,
+    containers,
+    data-fix,
+    filepath,
+    hashable,
+    lens,
+    megaparsec,
+    mtl,
+    tasty,
+    tasty-hunit,
+    tasty-quickcheck,
+    text,
+    time,
+    vty,
+    witch,
+
   main-is: Main.hs
   type: exitcode-stdio-1.0
   other-modules:
@@ -918,27 +1207,6 @@ test-suite swarm-unit
     TestUtil
 
   build-depends:
-    -- Imports shared with the library don't need bounds
-    QuickCheck >=2.14 && <2.16,
-    aeson,
-    base,
-    boolexpr,
-    containers,
-    data-fix,
-    filepath,
-    hashable,
-    lens,
-    megaparsec,
-    mtl,
-    tasty >=0.10 && <1.6,
-    tasty-hunit >=0.10 && <0.11,
-    tasty-quickcheck >=0.10 && <0.11,
-    text,
-    time,
-    vty,
-    witch,
-
-  build-depends:
     swarm:swarm-doc,
     swarm:swarm-engine,
     swarm:swarm-lang,
@@ -955,25 +1223,24 @@ test-suite swarm-unit
   ghc-options: -threaded
 
 test-suite swarm-integration
-  import: stan-config, common, ghc2021-extensions
-  main-is: Main.hs
-  other-modules: TestRecipeCoverage
-  type: exitcode-stdio-1.0
-  build-depends:
-    -- Imports shared with the library don't need bounds
+  import:
+    stan-config, common, ghc2021-extensions,
     base,
     containers,
     filepath,
     fused-effects,
     lens,
     mtl,
-    tasty >=0.10 && <1.6,
-    tasty-expected-failure >=0.12 && <0.13,
-    tasty-hunit >=0.10 && <0.11,
+    tasty,
+    tasty-expected-failure,
+    tasty-hunit,
     text,
     witch,
     yaml,
 
+  main-is: Main.hs
+  other-modules: TestRecipeCoverage
+  type: exitcode-stdio-1.0
   build-depends:
     swarm:swarm-doc,
     swarm:swarm-engine,
@@ -990,10 +1257,8 @@ test-suite swarm-integration
   ghc-options: -threaded
 
 test-suite tournament-host
-  import: stan-config, common, ghc2021-extensions
-  main-is: Main.hs
-  type: exitcode-stdio-1.0
-  build-depends:
+  import:
+    stan-config, common, ghc2021-extensions,
     SHA,
     base,
     bytestring,
@@ -1004,6 +1269,8 @@ test-suite tournament-host
     tasty-hunit,
     warp,
 
+  main-is: Main.hs
+  type: exitcode-stdio-1.0
   build-depends:
     swarm:swarm-engine,
     swarm:swarm-tournament,
@@ -1016,16 +1283,9 @@ test-suite tournament-host
   ghc-options: -threaded
 
 test-suite standalone-topography
-  import: stan-config, common, ghc2021-extensions
-  main-is: Main.hs
-  type: exitcode-stdio-1.0
-  other-modules:
-    Lib
-
-  other-modules: Paths_swarm
-  autogen-modules: Paths_swarm
-  build-depends:
-    JuicyPixels >=3.3 && <3.4,
+  import:
+    stan-config, common, ghc2021-extensions,
+    JuicyPixels,
     MissingH,
     base,
     bytestring,
@@ -1034,6 +1294,13 @@ test-suite standalone-topography
     tasty-hunit,
     yaml,
 
+  main-is: Main.hs
+  type: exitcode-stdio-1.0
+  other-modules:
+    Lib
+
+  other-modules: Paths_swarm
+  autogen-modules: Paths_swarm
   build-depends:
     swarm:swarm-scenario,
     swarm:swarm-topography,
@@ -1047,22 +1314,22 @@ test-suite standalone-topography
   ghc-options: -threaded
 
 benchmark benchmark
-  import: stan-config, common, ghc2021-extensions
+  import:
+    stan-config, common, ghc2021-extensions,
+    base,
+    containers,
+    extra,
+    lens,
+    mtl,
+    tasty-bench,
+    text,
+
   main-is: Benchmark.hs
   hs-source-dirs: test/bench
   ghc-options:
     -hiedir=.hie/test/bench
 
   type: exitcode-stdio-1.0
-  build-depends:
-    base,
-    containers,
-    extra,
-    lens,
-    mtl,
-    tasty-bench >=0.3.1 && <0.4,
-    text,
-
   build-depends:
     swarm:swarm-engine,
     swarm:swarm-lang,
