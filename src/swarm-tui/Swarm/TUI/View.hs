@@ -737,7 +737,6 @@ robotsListWidget s = hCenter table
       , txt rLog
       ]
 
-    
     activeFunction = txt . fromMaybe "N/A" $ robot ^. currentFunction
 
     idWidget = str $ show $ robot ^. robotID

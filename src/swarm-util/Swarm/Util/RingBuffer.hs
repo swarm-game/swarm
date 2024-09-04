@@ -12,10 +12,10 @@ module Swarm.Util.RingBuffer (
 ) where
 
 import Data.Aeson
+import Data.Foldable (toList)
 import Data.Sequence as S
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
-import Data.Foldable (toList)
 
 -- | Isomorphic to the 'Maybe' type
 data BufferSize = Infinite | Finite Int

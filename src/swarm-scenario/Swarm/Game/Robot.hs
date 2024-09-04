@@ -81,11 +81,11 @@ import Swarm.Game.Land
 import Swarm.Game.Location (Heading, Location, toDirection, toHeading)
 import Swarm.Game.Robot.Walk
 import Swarm.Game.Universe
-import Swarm.Util.RingBuffer
 import Swarm.Language.JSON ()
 import Swarm.Language.Syntax (Syntax, TSyntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Util.Lens (makeLensesExcluding)
+import Swarm.Util.RingBuffer
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
 
@@ -157,14 +157,15 @@ deriving instance (Eq (RobotLocation phase), Eq (RobotID phase), Eq (RobotMachin
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-makeLensesExcluding [
-    '_robotCapabilities
+makeLensesExcluding
+  [ '_robotCapabilities
   , '_equippedDevices
   , '_robotLog
   , '_robotLogUpdated
   , '_machine
   , '_activityCounts
-  ] ''RobotR
+  ]
+  ''RobotR
 
 -- | A template robot, i.e. a template robot record without a unique ID number,
 --   and possibly without a location.
@@ -194,9 +195,7 @@ unwalkableEntities :: Lens' Robot (WalkabilityExceptions EntityName)
 
 -- | The creation date of the robot.
 robotCreatedAt :: Lens' Robot TimeSpec
-
 currentFunction :: Lens' (RobotR phase) (Maybe Text)
-
 evalBuffer :: Lens' (RobotR phase) (RingBuffer Text)
 
 -- robotName and trobotName could be generalized to
