@@ -30,12 +30,14 @@ import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view
 import Control.Monad (foldM, forM_, unless, when)
 import Data.Functor (void)
 import Data.IntMap qualified as IM
+import Swarm.Util.RingBuffer qualified as RB
 import Data.IntSet qualified as IS
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Sequence ((><))
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
+import Data.Foldable (toList)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -533,7 +535,32 @@ processImmediateFrame v (SKpair s k) unreliableComputation = do
 -- | The main CESK machine workhorse.  Given a robot, look at its CESK
 --   machine state and figure out a single next step.
 stepCESK :: (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => CESK -> m CESK
-stepCESK cesk = case cesk of
+stepCESK cesk = do
+
+
+ case cesk of
+  In t _ _ _ -> evalBuffer @ConcreteRobot %= RB.insert (showT t)
+  _ -> return ()
+
+ case cesk of
+  In (TApp (TConst _) _) _ _ _ -> do
+    return ()
+  -- In (TApp t _) _ _ _ -> do
+  In (TVar t) _ _ _ -> do
+    let functionsOfInterest = [
+            "doWalk"
+          , "doTurn"
+          , "runSomeFunction"
+          , "go"
+          ]
+    if any (`T.isInfixOf` prettyText t) functionsOfInterest
+    then do
+      r <- get @Robot
+      let xs = r ^. evalBuffer
+      currentFunction @ConcreteRobot .= Just (T.unlines $ toList $ RB.getValues xs)
+    else return ()
+  _ -> return ()
+ case cesk of
   ------------------------------------------------------------
   -- Evaluation
 

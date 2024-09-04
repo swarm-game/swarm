@@ -36,6 +36,8 @@ module Swarm.Game.Robot (
   trobotName,
   unwalkableEntities,
   robotCreatedAt,
+  currentFunction,
+  evalBuffer,
   robotDisplay,
   robotLocation,
   unsafeSetRobotLocation,
@@ -79,6 +81,7 @@ import Swarm.Game.Land
 import Swarm.Game.Location (Heading, Location, toDirection, toHeading)
 import Swarm.Game.Robot.Walk
 import Swarm.Game.Universe
+import Swarm.Util.RingBuffer
 import Swarm.Language.JSON ()
 import Swarm.Language.Syntax (Syntax, TSyntax)
 import Swarm.Language.Text.Markdown (Document)
@@ -140,6 +143,8 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _systemRobot :: Bool
   , _selfDestruct :: Bool
   , _activityCounts :: RobotActivity phase
+  , _currentFunction :: Maybe Text
+  , _evalBuffer :: RingBuffer Text
   , _runningAtomic :: Bool
   , _unwalkableEntities :: WalkabilityExceptions EntityName
   , _robotCreatedAt :: TimeSpec
@@ -152,7 +157,14 @@ deriving instance (Eq (RobotLocation phase), Eq (RobotID phase), Eq (RobotMachin
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-makeLensesExcluding ['_robotCapabilities, '_equippedDevices, '_robotLog, '_robotLogUpdated, '_machine, '_activityCounts] ''RobotR
+makeLensesExcluding [
+    '_robotCapabilities
+  , '_equippedDevices
+  , '_robotLog
+  , '_robotLogUpdated
+  , '_machine
+  , '_activityCounts
+  ] ''RobotR
 
 -- | A template robot, i.e. a template robot record without a unique ID number,
 --   and possibly without a location.
@@ -182,6 +194,10 @@ unwalkableEntities :: Lens' Robot (WalkabilityExceptions EntityName)
 
 -- | The creation date of the robot.
 robotCreatedAt :: Lens' Robot TimeSpec
+
+currentFunction :: Lens' (RobotR phase) (Maybe Text)
+
+evalBuffer :: Lens' (RobotR phase) (RingBuffer Text)
 
 -- robotName and trobotName could be generalized to
 -- @robotName' :: Lens' (RobotR phase) Text@.
@@ -344,6 +360,8 @@ mkRobot pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
     , _systemRobot = sys
     , _selfDestruct = False
     , _activityCounts = ()
+    , _currentFunction = Nothing
+    , _evalBuffer = mkRingBuffer $ Finite 5
     , _runningAtomic = False
     , _unwalkableEntities = unwalkables
     }

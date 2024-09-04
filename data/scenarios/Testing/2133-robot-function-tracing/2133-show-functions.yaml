@@ -1,0 +1,50 @@
+version: 1
+name: Show functions
+description: |
+  Show functions
+creative: false
+objectives:
+  - teaser: Follow buddy
+    goal:
+      - You and your buddy each have half of a map to a cache of buried treasure.
+      - |
+        `give` him your `map piece`{=entity}, which he will use to
+        locate the `bitcoin`{=entity}, which you must `grab`.
+    condition: |
+      as base {
+        has "bitcoin";
+      }
+robots:
+  - name: base
+    dir: east
+    devices:
+      - ADT calculator
+      - antenna
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - grabber
+      - hourglass
+      - logger
+      - treads
+  - name: rat
+    dir: west
+    system: true
+    display:
+      invisible: false
+    devices:
+      - logger
+    program: |
+      run "data/scenarios/Testing/2133-robot-function-tracing/_2133-show-functions/rat.sw"
+known: [bitcoin]
+world:
+  dsl: |
+    {grass}
+  palette:
+    'B': [blank, null, base]
+    'r': [blank, null, rat]
+    '.': [blank]
+  upperleft: [-1, 0]
+  map: |
+    B.r
