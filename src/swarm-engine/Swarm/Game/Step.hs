@@ -28,6 +28,7 @@ import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (foldM, forM_, unless, when)
+import Data.Foldable (toList)
 import Data.Functor (void)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
@@ -71,6 +72,7 @@ import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
 import Swarm.Log
 import Swarm.Util hiding (both)
+import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec)
 import Witch (From (from))
@@ -533,277 +535,300 @@ processImmediateFrame v (SKpair s k) unreliableComputation = do
 -- | The main CESK machine workhorse.  Given a robot, look at its CESK
 --   machine state and figure out a single next step.
 stepCESK :: (Has (State GameState) sig m, Has (State Robot) sig m, Has (Lift IO) sig m, Has Effect.Time sig m) => CESK -> m CESK
-stepCESK cesk = case cesk of
-  ------------------------------------------------------------
-  -- Evaluation
+stepCESK cesk = do
+  case cesk of
+    In t _ _ _ -> (robotDebug @ConcreteRobot . evalBuffer) %= RB.insert (showT t)
+    _ -> return ()
 
-  -- We wake up robots whose wake-up time has been reached. If it hasn't yet
-  -- then stepCESK is a no-op.
-  Waiting wakeupTime cesk' -> do
-    time <- use $ temporal . ticks
-    if wakeupTime <= time
-      then stepCESK cesk'
-      else return cesk
-  Out v s (FImmediate cmd wf rf : k) ->
-    processImmediateFrame v (SKpair s k) $
-      updateWorldAndRobots cmd wf rf
-  -- Now some straightforward cases.  These all immediately turn
-  -- into values.
-  In TUnit _ s k -> return $ Out VUnit s k
-  In (TDir d) _ s k -> return $ Out (VDir d) s k
-  In (TInt n) _ s k -> return $ Out (VInt n) s k
-  In (TText str) _ s k -> return $ Out (VText str) s k
-  In (TBool b) _ s k -> return $ Out (VBool b) s k
-  -- There should not be any antiquoted variables left at this point.
-  In (TAntiText v) _ s k ->
-    return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $str:" v)) s k
-  In (TAntiInt v) _ s k ->
-    return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $int:" v)) s k
-  -- Require and requireDevice just turn into no-ops.
-  In (TRequireDevice {}) e s k -> return $ In (TConst Noop) e s k
-  In (TRequire {}) e s k -> return $ In (TConst Noop) e s k
-  In (TRequirements x t) e s k -> return $ Out (VRequirements x t e) s k
-  -- Type ascriptions are ignored
-  In (TAnnotate v _) e s k -> return $ In v e s k
-  -- Normally it's not possible to have a TRobot value in surface
-  -- syntax, but the salvage command generates a program that needs to
-  -- refer directly to the salvaging robot.
-  In (TRobot rid) _ s k -> return $ Out (VRobot rid) s k
-  -- Function constants of arity 0 are evaluated immediately
-  -- (e.g. parent, self).  Any other constant is turned into a VCApp,
-  -- which is waiting for arguments and/or an FExec frame.
-  In (TConst c) _ s k
-    | arity c == 0 && not (isCmd c) -> evalConst c [] s k
-    | otherwise -> return $ Out (VCApp c []) s k
-  -- To evaluate a variable, just look it up in the context.
-  In (TVar x) e s k -> withExceptions s k $ do
-    v <-
-      lookupValue x e
-        `isJustOr` Fatal (T.unwords ["Undefined variable", x, "encountered while running the interpreter."])
+  case cesk of
+    In (TApp (TConst _) _) _ _ _ -> do
+      return ()
+    -- In (TApp t _) _ _ _ -> do
+    In (TVar t) _ _ _ -> do
+      let functionsOfInterest =
+            [ "doWalk"
+            , "doTurn"
+            , "runSomeFunction"
+            , "go"
+            ]
+      if any (`T.isInfixOf` prettyText t) functionsOfInterest
+        then do
+          r <- get @Robot
+          let xs = r ^. robotDebug . evalBuffer
+          robotDebug @ConcreteRobot . currentFunction .= Just (T.unlines $ toList $ RB.getValues xs)
+        else return ()
+    _ -> return ()
+  case cesk of
+    ------------------------------------------------------------
+    -- Evaluation
 
-    -- Now look up any indirections and make sure it's not a blackhole.
-    case resolveValue s v of
-      Left loc -> throwError $ Fatal $ T.append "Reference to unknown memory cell " (from (show loc))
-      Right VBlackhole -> throwError InfiniteLoop
-      Right v' -> return $ Out v' s k
+    -- We wake up robots whose wake-up time has been reached. If it hasn't yet
+    -- then stepCESK is a no-op.
+    Waiting wakeupTime cesk' -> do
+      time <- use $ temporal . ticks
+      if wakeupTime <= time
+        then stepCESK cesk'
+        else return cesk
+    Out v s (FImmediate cmd wf rf : k) ->
+      processImmediateFrame v (SKpair s k) $
+        updateWorldAndRobots cmd wf rf
+    -- Now some straightforward cases.  These all immediately turn
+    -- into values.
+    In TUnit _ s k -> return $ Out VUnit s k
+    In (TDir d) _ s k -> return $ Out (VDir d) s k
+    In (TInt n) _ s k -> return $ Out (VInt n) s k
+    In (TText str) _ s k -> return $ Out (VText str) s k
+    In (TBool b) _ s k -> return $ Out (VBool b) s k
+    -- There should not be any antiquoted variables left at this point.
+    In (TAntiText v) _ s k ->
+      return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $str:" v)) s k
+    In (TAntiInt v) _ s k ->
+      return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $int:" v)) s k
+    -- Require and requireDevice just turn into no-ops.
+    In (TRequireDevice {}) e s k -> return $ In (TConst Noop) e s k
+    In (TRequire {}) e s k -> return $ In (TConst Noop) e s k
+    In (TRequirements x t) e s k -> return $ Out (VRequirements x t e) s k
+    -- Type ascriptions are ignored
+    In (TAnnotate v _) e s k -> return $ In v e s k
+    -- Normally it's not possible to have a TRobot value in surface
+    -- syntax, but the salvage command generates a program that needs to
+    -- refer directly to the salvaging robot.
+    In (TRobot rid) _ s k -> return $ Out (VRobot rid) s k
+    -- Function constants of arity 0 are evaluated immediately
+    -- (e.g. parent, self).  Any other constant is turned into a VCApp,
+    -- which is waiting for arguments and/or an FExec frame.
+    In (TConst c) _ s k
+      | arity c == 0 && not (isCmd c) -> evalConst c [] s k
+      | otherwise -> return $ Out (VCApp c []) s k
+    -- To evaluate a variable, just look it up in the context.
+    In (TVar x) e s k -> withExceptions s k $ do
+      v <-
+        lookupValue x e
+          `isJustOr` Fatal (T.unwords ["Undefined variable", x, "encountered while running the interpreter."])
 
-  -- To evaluate a pair, start evaluating the first component.
-  In (TPair t1 t2) e s k -> return $ In t1 e s (FSnd t2 e : k)
-  -- Once that's done, evaluate the second component.
-  Out v1 s (FSnd t2 e : k) -> return $ In t2 e s (FFst v1 : k)
-  -- Finally, put the results together into a pair value.
-  Out v2 s (FFst v1 : k) -> return $ Out (VPair v1 v2) s k
-  -- Lambdas immediately turn into closures.
-  In (TLam x _ t) e s k -> return $ Out (VClo x t e) s k
-  -- To evaluate an application, start by focusing on the left-hand
-  -- side and saving the argument for later.
-  In (TApp t1 t2) e s k -> return $ In t1 e s (FArg t2 e : k)
-  -- Once that's done, switch to evaluating the argument.
-  Out v1 s (FArg t2 e : k) -> return $ In t2 e s (FApp v1 : k)
-  -- We can evaluate an application of a closure in the usual way.
-  Out v2 s (FApp (VClo x t e) : k) -> return $ In t (addValueBinding x v2 e) s k
-  -- We can also evaluate an application of a constant by collecting
-  -- arguments, eventually dispatching to evalConst for function
-  -- constants.
-  Out v2 s (FApp (VCApp c args) : k)
-    | not (isCmd c)
-        && arity c == length args + 1 ->
-        evalConst c (reverse (v2 : args)) s k
-    | otherwise -> return $ Out (VCApp c (v2 : args)) s k
-  Out _ s (FApp _ : _) -> badMachineState s "FApp of non-function"
-  -- Start evaluating a record.  If it's empty, we're done.  Otherwise, focus
-  -- on the first field and record the rest in a FRcd frame.
-  In (TRcd m) e s k -> return $ case M.assocs m of
-    [] -> Out (VRcd M.empty) s k
-    ((x, t) : fs) -> In (fromMaybe (TVar x) t) e s (FRcd e [] x fs : k)
-  -- When we finish evaluating the last field, return a record value.
-  Out v s (FRcd _ done x [] : k) -> return $ Out (VRcd (M.fromList ((x, v) : done))) s k
-  -- Otherwise, save the value of the field just evaluated and move on
-  -- to focus on evaluating the next one.
-  Out v s (FRcd e done x ((y, t) : rest) : k) ->
-    return $ In (fromMaybe (TVar y) t) e s (FRcd e ((x, v) : done) y rest : k)
-  -- Evaluate a record projection: evaluate the record and remember we
-  -- need to do the projection later.
-  In (TProj t x) e s k -> return $ In t e s (FProj x : k)
-  -- Do a record projection
-  Out v s (FProj x : k) -> case v of
-    VRcd m -> case M.lookup x m of
-      Nothing -> badMachineState s $ T.unwords ["Record projection for variable", x, "that does not exist"]
-      Just xv -> return $ Out xv s k
-    _ -> badMachineState s "FProj frame with non-record value"
-  -- To evaluate non-recursive let expressions, we start by focusing on the
-  -- let-bound expression.
-  In (TLet _ False x mty mreq t1 t2) e s k ->
-    return $ In t1 e s (FLet x ((,) <$> mty <*> mreq) t2 e : k)
-  -- To evaluate a recursive let binding:
-  In (TLet _ True x mty mreq t1 t2) e s k -> do
-    -- First, allocate a cell for it in the store with the initial
-    -- value of Blackhole.
-    let (loc, s') = allocate VBlackhole s
-    -- Now evaluate the definition with the variable bound to an
-    -- indirection to the new cell, and push an FUpdate stack frame to
-    -- update the cell with the value once we're done evaluating it,
-    -- followed by an FLet frame to evaluate the body of the let.
-    return $ In t1 (addValueBinding x (VIndir loc) e) s' (FUpdate loc : FLet x ((,) <$> mty <*> mreq) t2 e : k)
-  -- Once we've finished with the let-binding, we switch to evaluating
-  -- the body in a suitably extended environment.
-  Out v1 s (FLet x mtr t2 e : k) -> do
-    let e' = case mtr of
-          Nothing -> addValueBinding x v1 e
-          Just (ty, req) -> addBinding x (Typed v1 ty req) e
-    return $ In t2 e' s k
-  -- To evaluate a tydef, insert it into the context and proceed to
-  -- evaluate the body.
-  In (TTydef x _ tdInfo t1) e s k -> return $ In t1 (maybe id (addTydef x) tdInfo e) s k
-  -- Bind expressions don't evaluate: just package it up as a value
-  -- until such time as it is to be executed.
-  In (TBind mx mty mreq t1 t2) e s k -> return $ Out (VBind mx mty mreq t1 t2 e) s k
-  -- Simple (non-memoized) delay expressions immediately turn into
-  -- VDelay values, awaiting application of 'Force'.
-  In (TDelay t) e s k -> return $ Out (VDelay t e) s k
-  -- If we see an update frame, it means we're supposed to set the value
-  -- of a particular cell to the value we just finished computing.
-  Out v s (FUpdate loc : k) -> return $ Out v (setStore loc v s) k
-  -- If we see a primitive application of suspend, package it up as
-  -- a value until it's time to execute.
-  In (TSuspend t) e s k -> return $ Out (VSuspend t e) s k
-  ------------------------------------------------------------
-  -- Execution
+      -- Now look up any indirections and make sure it's not a blackhole.
+      case resolveValue s v of
+        Left loc -> throwError $ Fatal $ T.append "Reference to unknown memory cell " (from (show loc))
+        Right VBlackhole -> throwError InfiniteLoop
+        Right v' -> return $ Out v' s k
 
-  -- Executing a 'requirements' command generates an appropriate log message
-  -- listing the requirements of the given expression.
-  Out (VRequirements src t e) s (FExec : k) -> do
-    em <- use $ landscape . terrainAndEntities . entityMap
-    let reqCtx = e ^. envReqs
-        tdCtx = e ^. envTydefs
+    -- To evaluate a pair, start evaluating the first component.
+    In (TPair t1 t2) e s k -> return $ In t1 e s (FSnd t2 e : k)
+    -- Once that's done, evaluate the second component.
+    Out v1 s (FSnd t2 e : k) -> return $ In t2 e s (FFst v1 : k)
+    -- Finally, put the results together into a pair value.
+    Out v2 s (FFst v1 : k) -> return $ Out (VPair v1 v2) s k
+    -- Lambdas immediately turn into closures.
+    In (TLam x _ t) e s k -> return $ Out (VClo x t e) s k
+    -- To evaluate an application, start by focusing on the left-hand
+    -- side and saving the argument for later.
+    In (TApp t1 t2) e s k -> return $ In t1 e s (FArg t2 e : k)
+    -- Once that's done, switch to evaluating the argument.
+    Out v1 s (FArg t2 e : k) -> return $ In t2 e s (FApp v1 : k)
+    -- We can evaluate an application of a closure in the usual way.
+    Out v2 s (FApp (VClo x t e) : k) -> return $ In t (addValueBinding x v2 e) s k
+    -- We can also evaluate an application of a constant by collecting
+    -- arguments, eventually dispatching to evalConst for function
+    -- constants.
+    Out v2 s (FApp (VCApp c args) : k)
+      | not (isCmd c)
+          && arity c == length args + 1 ->
+          evalConst c (reverse (v2 : args)) s k
+      | otherwise -> return $ Out (VCApp c (v2 : args)) s k
+    Out _ s (FApp _ : _) -> badMachineState s "FApp of non-function"
+    -- Start evaluating a record.  If it's empty, we're done.  Otherwise, focus
+    -- on the first field and record the rest in a FRcd frame.
+    In (TRcd m) e s k -> return $ case M.assocs m of
+      [] -> Out (VRcd M.empty) s k
+      ((x, t) : fs) -> In (fromMaybe (TVar x) t) e s (FRcd e [] x fs : k)
+    -- When we finish evaluating the last field, return a record value.
+    Out v s (FRcd _ done x [] : k) -> return $ Out (VRcd (M.fromList ((x, v) : done))) s k
+    -- Otherwise, save the value of the field just evaluated and move on
+    -- to focus on evaluating the next one.
+    Out v s (FRcd e done x ((y, t) : rest) : k) ->
+      return $ In (fromMaybe (TVar y) t) e s (FRcd e ((x, v) : done) y rest : k)
+    -- Evaluate a record projection: evaluate the record and remember we
+    -- need to do the projection later.
+    In (TProj t x) e s k -> return $ In t e s (FProj x : k)
+    -- Do a record projection
+    Out v s (FProj x : k) -> case v of
+      VRcd m -> case M.lookup x m of
+        Nothing -> badMachineState s $ T.unwords ["Record projection for variable", x, "that does not exist"]
+        Just xv -> return $ Out xv s k
+      _ -> badMachineState s "FProj frame with non-record value"
+    -- To evaluate non-recursive let expressions, we start by focusing on the
+    -- let-bound expression.
+    In (TLet _ False x mty mreq t1 t2) e s k ->
+      return $ In t1 e s (FLet x ((,) <$> mty <*> mreq) t2 e : k)
+    -- To evaluate a recursive let binding:
+    In (TLet _ True x mty mreq t1 t2) e s k -> do
+      -- First, allocate a cell for it in the store with the initial
+      -- value of Blackhole.
+      let (loc, s') = allocate VBlackhole s
+      -- Now evaluate the definition with the variable bound to an
+      -- indirection to the new cell, and push an FUpdate stack frame to
+      -- update the cell with the value once we're done evaluating it,
+      -- followed by an FLet frame to evaluate the body of the let.
+      return $ In t1 (addValueBinding x (VIndir loc) e) s' (FUpdate loc : FLet x ((,) <$> mty <*> mreq) t2 e : k)
+    -- Once we've finished with the let-binding, we switch to evaluating
+    -- the body in a suitably extended environment.
+    Out v1 s (FLet x mtr t2 e : k) -> do
+      let e' = case mtr of
+            Nothing -> addValueBinding x v1 e
+            Just (ty, req) -> addBinding x (Typed v1 ty req) e
+      return $ In t2 e' s k
+    -- To evaluate a tydef, insert it into the context and proceed to
+    -- evaluate the body.
+    In (TTydef x _ tdInfo t1) e s k -> return $ In t1 (maybe id (addTydef x) tdInfo e) s k
+    -- Bind expressions don't evaluate: just package it up as a value
+    -- until such time as it is to be executed.
+    In (TBind mx mty mreq t1 t2) e s k -> return $ Out (VBind mx mty mreq t1 t2 e) s k
+    -- Simple (non-memoized) delay expressions immediately turn into
+    -- VDelay values, awaiting application of 'Force'.
+    In (TDelay t) e s k -> return $ Out (VDelay t e) s k
+    -- If we see an update frame, it means we're supposed to set the value
+    -- of a particular cell to the value we just finished computing.
+    Out v s (FUpdate loc : k) -> return $ Out v (setStore loc v s) k
+    -- If we see a primitive application of suspend, package it up as
+    -- a value until it's time to execute.
+    In (TSuspend t) e s k -> return $ Out (VSuspend t e) s k
+    ------------------------------------------------------------
+    -- Execution
 
-        R.Requirements caps devs inv = R.requirements tdCtx reqCtx t
+    -- Executing a 'requirements' command generates an appropriate log message
+    -- listing the requirements of the given expression.
+    Out (VRequirements src t e) s (FExec : k) -> do
+      em <- use $ landscape . terrainAndEntities . entityMap
+      let reqCtx = e ^. envReqs
+          tdCtx = e ^. envTydefs
 
-        devicesForCaps, requiredDevices :: Set (Set Text)
-        -- possible devices to provide each required capability
-        devicesForCaps = S.map (S.fromList . map (^. entityName) . (`devicesForCap` em)) caps
-        -- outright required devices
-        requiredDevices = S.map S.singleton devs
+          R.Requirements caps devs inv = R.requirements tdCtx reqCtx t
 
-        deviceSets :: Set (Set Text)
-        deviceSets =
-          -- Union together all required device sets, and remove any
-          -- device sets which are a superset of another set.  For
-          -- example, if (grabber OR fast grabber OR harvester) is
-          -- required but (grabber OR fast grabber) is also required
-          -- then we might as well remove the first set, since
-          -- satisfying the second device set will automatically
-          -- satisfy the first.
-          removeSupersets $ devicesForCaps `S.union` requiredDevices
+          devicesForCaps, requiredDevices :: Set (Set Text)
+          -- possible devices to provide each required capability
+          devicesForCaps = S.map (S.fromList . map (^. entityName) . (`devicesForCap` em)) caps
+          -- outright required devices
+          requiredDevices = S.map S.singleton devs
 
-        reqLog =
-          prettyText $
-            BulletList
-              (pretty $ T.unwords ["Requirements for", bquote src <> ":"])
-              ( filter
-                  (not . null . bulletListItems)
-                  [ BulletList
-                      "Equipment:"
-                      (T.intercalate " OR " . S.toList <$> S.toList deviceSets)
-                  , BulletList
-                      "Inventory:"
-                      ((\(item, n) -> item <> " " <> parens (showT n)) <$> M.assocs inv)
-                  ]
-              )
+          deviceSets :: Set (Set Text)
+          deviceSets =
+            -- Union together all required device sets, and remove any
+            -- device sets which are a superset of another set.  For
+            -- example, if (grabber OR fast grabber OR harvester) is
+            -- required but (grabber OR fast grabber) is also required
+            -- then we might as well remove the first set, since
+            -- satisfying the second device set will automatically
+            -- satisfy the first.
+            removeSupersets $ devicesForCaps `S.union` requiredDevices
 
-    _ <- traceLog Logged Info reqLog
-    return $ Out VUnit s k
+          reqLog =
+            prettyText $
+              BulletList
+                (pretty $ T.unwords ["Requirements for", bquote src <> ":"])
+                ( filter
+                    (not . null . bulletListItems)
+                    [ BulletList
+                        "Equipment:"
+                        (T.intercalate " OR " . S.toList <$> S.toList deviceSets)
+                    , BulletList
+                        "Inventory:"
+                        ((\(item, n) -> item <> " " <> parens (showT n)) <$> M.assocs inv)
+                    ]
+                )
 
-  -- To execute a constant application, delegate to the 'evalConst'
-  -- function.  Set tickStepBudget to 0 if the command is supposed to take
-  -- a tick, so the robot won't take any more steps this tick.
-  Out (VCApp c args) s (FExec : k) -> do
-    when (isTangible c) $ activityCounts . tickStepBudget .= 0
-    evalConst c (reverse args) s k
+      _ <- traceLog Logged Info reqLog
+      return $ Out VUnit s k
 
-  -- Reset the runningAtomic flag when we encounter an FFinishAtomic frame.
-  Out v s (FFinishAtomic : k) -> do
-    runningAtomic .= False
-    return $ Out v s k
+    -- To execute a constant application, delegate to the 'evalConst'
+    -- function.  Set tickStepBudget to 0 if the command is supposed to take
+    -- a tick, so the robot won't take any more steps this tick.
+    Out (VCApp c args) s (FExec : k) -> do
+      when (isTangible c) $ activityCounts . tickStepBudget .= 0
+      evalConst c (reverse args) s k
 
-  -- To execute a bind expression, evaluate and execute the first
-  -- command, and remember the second for execution later.
-  Out (VBind mx mty mreq c1 c2 e) s (FExec : k) -> return $ In c1 e s (FExec : FBind mx ((,) <$> mty <*> mreq) c2 e : k)
-  Out _ s (FBind Nothing _ t2 e : k) -> return $ In t2 e s (FExec : k)
-  Out v s (FBind (Just x) mtr t2 e : k) -> do
-    let e' = case mtr of
-          Nothing -> addValueBinding x v e
-          Just (ty, reqs) -> addBinding x (Typed v ty reqs) e
-    return $ In t2 e' s (FExec : k)
-  -- To execute a suspend instruction, evaluate its argument and then
-  -- suspend.
-  Out (VSuspend t e) s (FExec : k) -> return $ In t e s (FSuspend e : k)
-  -- Once we've finished, enter the Suspended state.
-  Out v s (FSuspend e : k) -> return $ Suspended v e s k
-  -- Any other type of value wiwth an FExec frame is an error (should
-  -- never happen).
-  Out _ s (FExec : _) -> badMachineState s "FExec frame with non-executable value"
-  ------------------------------------------------------------
-  -- Suspension
-  ------------------------------------------------------------
+    -- Reset the runningAtomic flag when we encounter an FFinishAtomic frame.
+    Out v s (FFinishAtomic : k) -> do
+      runningAtomic .= False
+      return $ Out v s k
 
-  -- If we're suspended and see the env restore frame, we can discard
-  -- it: it was only there in case an exception was thrown.
-  Suspended v e s (FRestoreEnv _ : k) -> return $ Suspended v e s k
-  -- We can also sometimes get a redundant FExec; discard it.
-  Suspended v e s (FExec : k) -> return $ Suspended v e s k
-  -- If we're suspended but we were on the LHS of a bind, switch to
-  -- evaluating that, except with the environment from the suspension
-  -- instead of the environment stored in the FBind frame, as if the
-  -- RHS of the bind had been grafted in right where the suspend was,
-  -- i.e. the binds were reassociated.  For example
-  --
-  -- (x; z <- y; suspend z); q; r
-  --
-  -- should be equivalent to
-  --
-  -- x; z <- y; q; r
-  --
-  Suspended _ e s (FBind Nothing _ t2 _ : k) -> return $ In t2 e s (FExec : k)
-  Suspended v e s (FBind (Just x) mtr t2 _ : k) -> do
-    let e' = case mtr of
-          Nothing -> addValueBinding x v e
-          Just (ty, reqs) -> addBinding x (Typed v ty reqs) e
-    return $ In t2 e' s (FExec : k)
-  -- Otherwise, if we're suspended with nothing else left to do,
-  -- return the machine unchanged (but throw away the rest of the
-  -- continuation stack).
-  Suspended v e s _ -> return $ Suspended v e s []
-  ------------------------------------------------------------
-  -- Exception handling
-  ------------------------------------------------------------
+    -- To execute a bind expression, evaluate and execute the first
+    -- command, and remember the second for execution later.
+    Out (VBind mx mty mreq c1 c2 e) s (FExec : k) -> return $ In c1 e s (FExec : FBind mx ((,) <$> mty <*> mreq) c2 e : k)
+    Out _ s (FBind Nothing _ t2 e : k) -> return $ In t2 e s (FExec : k)
+    Out v s (FBind (Just x) mtr t2 e : k) -> do
+      let e' = case mtr of
+            Nothing -> addValueBinding x v e
+            Just (ty, reqs) -> addBinding x (Typed v ty reqs) e
+      return $ In t2 e' s (FExec : k)
+    -- To execute a suspend instruction, evaluate its argument and then
+    -- suspend.
+    Out (VSuspend t e) s (FExec : k) -> return $ In t e s (FSuspend e : k)
+    -- Once we've finished, enter the Suspended state.
+    Out v s (FSuspend e : k) -> return $ Suspended v e s k
+    -- Any other type of value wiwth an FExec frame is an error (should
+    -- never happen).
+    Out _ s (FExec : _) -> badMachineState s "FExec frame with non-executable value"
+    ------------------------------------------------------------
+    -- Suspension
+    ------------------------------------------------------------
 
-  -- First, if we were running a try block but evaluation completed normally,
-  -- just ignore the try block and continue.
-  Out v s (FTry {} : k) -> return $ Out v s k
-  -- Also ignore restore frames when returning normally.
-  Out v s (FRestoreEnv {} : k) -> return $ Out v s k
-  -- If raising an exception up the stack and we reach the top, handle
-  -- it appropriately.
-  Up exn s [] -> handleException exn s Nothing
-  -- If we are raising an exception up the stack and we see an
-  -- FRestoreEnv frame, log the exception, switch into a suspended state,
-  -- and discard the rest of the stack.
-  Up exn s (FRestoreEnv e : _) -> handleException exn s (Just e)
-  -- If an atomic block threw an exception, we should terminate it.
-  Up exn s (FFinishAtomic : k) -> do
-    runningAtomic .= False
-    return $ Up exn s k
-  -- If we are raising a catchable exception up the continuation
-  -- stack and come to a Try frame, force and then execute the associated catch
-  -- block.
-  Up exn s (FTry c : k)
-    | isCatchable exn -> return $ Out c s (FApp (VCApp Force []) : FExec : k)
-  -- Otherwise, keep popping from the continuation stack.
-  Up exn s (_ : k) -> return $ Up exn s k
-  -- Finally, if we're done evaluating and the continuation stack is
-  -- empty, return the machine unchanged.
-  done@(Out _ _ []) -> return done
+    -- If we're suspended and see the env restore frame, we can discard
+    -- it: it was only there in case an exception was thrown.
+    Suspended v e s (FRestoreEnv _ : k) -> return $ Suspended v e s k
+    -- We can also sometimes get a redundant FExec; discard it.
+    Suspended v e s (FExec : k) -> return $ Suspended v e s k
+    -- If we're suspended but we were on the LHS of a bind, switch to
+    -- evaluating that, except with the environment from the suspension
+    -- instead of the environment stored in the FBind frame, as if the
+    -- RHS of the bind had been grafted in right where the suspend was,
+    -- i.e. the binds were reassociated.  For example
+    --
+    -- (x; z <- y; suspend z); q; r
+    --
+    -- should be equivalent to
+    --
+    -- x; z <- y; q; r
+    --
+    Suspended _ e s (FBind Nothing _ t2 _ : k) -> return $ In t2 e s (FExec : k)
+    Suspended v e s (FBind (Just x) mtr t2 _ : k) -> do
+      let e' = case mtr of
+            Nothing -> addValueBinding x v e
+            Just (ty, reqs) -> addBinding x (Typed v ty reqs) e
+      return $ In t2 e' s (FExec : k)
+    -- Otherwise, if we're suspended with nothing else left to do,
+    -- return the machine unchanged (but throw away the rest of the
+    -- continuation stack).
+    Suspended v e s _ -> return $ Suspended v e s []
+    ------------------------------------------------------------
+    -- Exception handling
+    ------------------------------------------------------------
+
+    -- First, if we were running a try block but evaluation completed normally,
+    -- just ignore the try block and continue.
+    Out v s (FTry {} : k) -> return $ Out v s k
+    -- Also ignore restore frames when returning normally.
+    Out v s (FRestoreEnv {} : k) -> return $ Out v s k
+    -- If raising an exception up the stack and we reach the top, handle
+    -- it appropriately.
+    Up exn s [] -> handleException exn s Nothing
+    -- If we are raising an exception up the stack and we see an
+    -- FRestoreEnv frame, log the exception, switch into a suspended state,
+    -- and discard the rest of the stack.
+    Up exn s (FRestoreEnv e : _) -> handleException exn s (Just e)
+    -- If an atomic block threw an exception, we should terminate it.
+    Up exn s (FFinishAtomic : k) -> do
+      runningAtomic .= False
+      return $ Up exn s k
+    -- If we are raising a catchable exception up the continuation
+    -- stack and come to a Try frame, force and then execute the associated catch
+    -- block.
+    Up exn s (FTry c : k)
+      | isCatchable exn -> return $ Out c s (FApp (VCApp Force []) : FExec : k)
+    -- Otherwise, keep popping from the continuation stack.
+    Up exn s (_ : k) -> return $ Up exn s k
+    -- Finally, if we're done evaluating and the continuation stack is
+    -- empty, return the machine unchanged.
+    done@(Out _ _ []) -> return done
  where
   badMachineState s msg =
     let msg' =

@@ -12,6 +12,7 @@ module Swarm.Util.RingBuffer (
 ) where
 
 import Data.Aeson
+import Data.Foldable (toList)
 import Data.Sequence as S
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
@@ -29,6 +30,12 @@ instance (ToJSON a) => ToJSON (RingBuffer a) where
 
 instance ToSample (RingBuffer a) where
   toSamples _ = SD.noSamples
+
+instance (Show a) => Show (RingBuffer a) where
+  show rb = show $ toList $ getValues rb
+
+instance Eq (RingBuffer a) where
+  _ == _ = True
 
 getValues :: RingBuffer a -> Seq a
 getValues (RingBuffer xs _) = xs
