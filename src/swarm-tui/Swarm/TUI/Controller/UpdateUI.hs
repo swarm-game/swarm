@@ -37,9 +37,9 @@ import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnFinishNocheat)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
 import Swarm.TUI.Model.DebugOption (DebugOption (..))
-import Swarm.TUI.Model.Goal
+import Swarm.TUI.Model.Dialog.Goal
+import Swarm.TUI.Model.Dialog.Popup (Popup (..), addPopup)
 import Swarm.TUI.Model.Name
-import Swarm.TUI.Model.Popup (Popup (..), addPopup)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Objective qualified as GR
@@ -188,7 +188,7 @@ updateUI = do
 -- * shows the player more "optional" goals they can continue to pursue
 doGoalUpdates :: EventM Name AppState Bool
 doGoalUpdates = do
-  curGoal <- use (uiState . uiGameplay . uiGoal . goalsContent)
+  curGoal <- use (uiState . uiGameplay . uiDialogs . uiGoal . goalsContent)
   curWinCondition <- use (gameState . winCondition)
   announcementsSeq <- use (gameState . messageInfo . announcementQueue)
   let announcementsList = toList announcementsSeq
@@ -218,7 +218,7 @@ doGoalUpdates = do
       return True
     WinConditions _ oc -> do
       showHiddenGoals <- use $ uiState . uiDebugOptions . Lens.contains ShowHiddenGoals
-      currentModal <- preuse $ uiState . uiGameplay . uiModal . _Just . modalType
+      currentModal <- preuse $ uiState . uiGameplay . uiDialogs . uiModal . _Just . modalType
       let newGoalTracking = GoalTracking announcementsList $ constructGoalMap showHiddenGoals oc
           -- The "uiGoal" field is initialized with empty members, so we know that
           -- this will be the first time showing it if it will be nonempty after previously
@@ -232,7 +232,7 @@ doGoalUpdates = do
       when (goalWasUpdated && not isEnding) $ do
         -- The "uiGoal" field is necessary at least to "persist" the data that is needed
         -- if the player chooses to later "recall" the goals dialog with CTRL+g.
-        uiState . uiGameplay . uiGoal .= goalDisplay newGoalTracking
+        uiState . uiGameplay . uiDialogs . uiGoal .= goalDisplay newGoalTracking
 
         -- This clears the "flag" that indicate that the goals dialog needs to be
         -- automatically popped up.

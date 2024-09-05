@@ -134,8 +134,8 @@ import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.View
 import Swarm.TUI.Model
 import Swarm.TUI.Model.DebugOption (DebugOption (..))
+import Swarm.TUI.Model.Dialog.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Event qualified as SE
-import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.KeyBindings (handlerNameKeysDescription)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
@@ -613,13 +613,13 @@ replHeight = 10
 
 -- | Hide the cursor when a modal is set
 chooseCursor :: AppState -> [CursorLocation n] -> Maybe (CursorLocation n)
-chooseCursor s locs = case s ^. uiState . uiGameplay . uiModal of
+chooseCursor s locs = case s ^. uiState . uiGameplay . uiDialogs . uiModal of
   Nothing -> showFirstCursor s locs
   Just _ -> Nothing
 
 -- | Draw a dialog window, if one should be displayed right now.
 drawDialog :: AppState -> Widget Name
-drawDialog s = case s ^. uiState . uiGameplay . uiModal of
+drawDialog s = case s ^. uiState . uiGameplay . uiDialogs . uiModal of
   Just (Modal mt d) -> renderDialog d $ case mt of
     GoalModal -> drawModal s mt
     _ -> maybeScroll ModalViewport $ drawModal s mt
@@ -633,7 +633,7 @@ drawModal s = \case
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList
-  StructuresModal -> SR.renderStructuresDisplay (s ^. gameState) (s ^. uiState . uiGameplay . uiStructure)
+  StructuresModal -> SR.renderStructuresDisplay (s ^. gameState) (s ^. uiState . uiGameplay . uiDialogs . uiStructure)
   ScenarioEndModal outcome ->
     padBottom (Pad 1) $
       vBox $
@@ -650,7 +650,7 @@ drawModal s = \case
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal ->
-    GR.renderGoalsDisplay (s ^. uiState . uiGameplay . uiGoal) $
+    GR.renderGoalsDisplay (s ^. uiState . uiGameplay . uiDialogs . uiGoal) $
       view (scenarioOperation . scenarioDescription) . fst <$> s ^. uiState . uiGameplay . scenarioRef
   KeepPlayingModal ->
     padLeftRight 1 $
@@ -1013,7 +1013,7 @@ drawKeyMenu s =
   creative = s ^. gameState . creativeMode
   showCreative = s ^. uiState . uiDebugOptions . Lens.contains ToggleCreative
   showEditor = s ^. uiState . uiDebugOptions . Lens.contains ToggleWorldEditor
-  goal = hasAnythingToShow $ s ^. uiState . uiGameplay . uiGoal . goalsContent
+  goal = hasAnythingToShow $ s ^. uiState . uiGameplay . uiDialogs . uiGoal . goalsContent
   showZero = s ^. uiState . uiGameplay . uiInventory . uiShowZero
   inventorySort = s ^. uiState . uiGameplay . uiInventory . uiInventorySort
   inventorySearch = s ^. uiState . uiGameplay . uiInventory . uiInventorySearch

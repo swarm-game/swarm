@@ -1015,15 +1015,15 @@ library swarm-tui
     Swarm.TUI.Model
     Swarm.TUI.Model.Achievements
     Swarm.TUI.Model.DebugOption
+    Swarm.TUI.Model.Dialog.Goal
+    Swarm.TUI.Model.Dialog.Popup
+    Swarm.TUI.Model.Dialog.Structure
     Swarm.TUI.Model.Event
-    Swarm.TUI.Model.Goal
     Swarm.TUI.Model.KeyBindings
     Swarm.TUI.Model.Menu
     Swarm.TUI.Model.Name
-    Swarm.TUI.Model.Popup
     Swarm.TUI.Model.Repl
     Swarm.TUI.Model.StateUpdate
-    Swarm.TUI.Model.Structure
     Swarm.TUI.Model.UI
     Swarm.TUI.Model.WebCommand
     Swarm.TUI.Panel

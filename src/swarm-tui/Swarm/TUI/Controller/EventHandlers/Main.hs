@@ -24,8 +24,8 @@ import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Model (isWorldEditorEnabled, worldOverdraw)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.DebugOption (DebugOption (ToggleCreative, ToggleWorldEditor))
+import Swarm.TUI.Model.Dialog.Goal
 import Swarm.TUI.Model.Event (MainEvent (..), SwarmEvent (..))
-import Swarm.TUI.Model.Goal
 import Swarm.TUI.Model.UI
 import System.Clock (Clock (..), TimeSpec (..), getTime)
 
@@ -88,7 +88,7 @@ toggleMessagesModal = do
 viewGoal :: EventM Name AppState ()
 viewGoal = do
   s <- get
-  if hasAnythingToShow $ s ^. uiState . uiGameplay . uiGoal . goalsContent
+  if hasAnythingToShow $ s ^. uiState . uiGameplay . uiDialogs . uiGoal . goalsContent
     then toggleModal GoalModal
     else continueWithoutRedraw
 
@@ -144,7 +144,7 @@ toggleREPLVisibility = do
 
 isRunning :: EventM Name AppState Bool
 isRunning = do
-  mt <- preuse $ uiState . uiGameplay . uiModal . _Just . modalType
+  mt <- preuse $ uiState . uiGameplay . uiDialogs . uiModal . _Just . modalType
   return $ maybe True isRunningModal mt
 
 whenRunning :: EventM Name AppState () -> EventM Name AppState ()

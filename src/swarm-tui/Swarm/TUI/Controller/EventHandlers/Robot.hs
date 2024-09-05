@@ -69,7 +69,7 @@ showEntityDescription = gets focusedEntity >>= maybe continueWithoutRedraw descr
   descriptionModal e = do
     s <- get
     resetViewport modalScroll
-    uiState . uiGameplay . uiModal ?= generateModal s (DescriptionModal e)
+    uiState . uiGameplay . uiDialogs . uiModal ?= generateModal s (DescriptionModal e)
 
 -- | Attempt to make an entity selected from the inventory, if the
 --   base is not currently busy.

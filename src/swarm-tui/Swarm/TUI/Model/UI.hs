@@ -31,6 +31,7 @@ module Swarm.TUI.Model.UI (
   uiModal,
   uiGoal,
   uiStructure,
+  uiDialogs,
   uiIsAutoPlay,
   uiAchievements,
   lgTicksPerSecond,
@@ -88,12 +89,12 @@ import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep
 import Swarm.TUI.Model.DebugOption (DebugOption)
-import Swarm.TUI.Model.Goal
+import Swarm.TUI.Model.Dialog.Goal
+import Swarm.TUI.Model.Dialog.Popup
+import Swarm.TUI.Model.Dialog.Structure
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
-import Swarm.TUI.Model.Popup
 import Swarm.TUI.Model.Repl
-import Swarm.TUI.Model.Structure
 import Swarm.TUI.View.Attribute.Attr (swarmAttrMap)
 import Swarm.Util
 import Swarm.Util.Lens (makeLensesExcluding, makeLensesNoSigs)
@@ -194,6 +195,28 @@ uiShowZero :: Lens' UIInventory Bool
 -- | Whether the Inventory ui panel should update
 uiInventoryShouldUpdate :: Lens' UIInventory Bool
 
+-- | State that backs various modal dialogs
+data UIDialogs = UIDialogs
+  { _uiModal :: Maybe Modal
+  , _uiGoal :: GoalDisplay
+  , _uiStructure :: StructureDisplay
+  }
+
+-- * Lenses for UIDialogs
+
+makeLensesNoSigs ''UIDialogs
+
+-- | When this is 'Just', it represents a modal to be displayed on
+--   top of the UI, e.g. for the Help screen.
+uiModal :: Lens' UIDialogs (Maybe Modal)
+
+-- | Status of the scenario goal: whether there is one, and whether it
+--   has been displayed to the user initially.
+uiGoal :: Lens' UIDialogs GoalDisplay
+
+-- | Definition and status of a recognizable structure
+uiStructure :: Lens' UIDialogs StructureDisplay
+
 -- | The main record holding the gameplay UI state.  For access to the fields,
 -- see the lenses below.
 data UIGameplay = UIGameplay
@@ -203,9 +226,7 @@ data UIGameplay = UIGameplay
   , _uiREPL :: REPLState
   , _uiInventory :: UIInventory
   , _uiScrollToEnd :: Bool
-  , _uiModal :: Maybe Modal
-  , _uiGoal :: GoalDisplay
-  , _uiStructure :: StructureDisplay
+  , _uiDialogs :: UIDialogs
   , _uiIsAutoPlay :: Bool
   , _uiShowREPL :: Bool
   , _uiShowDebug :: Bool
@@ -241,16 +262,8 @@ uiREPL :: Lens' UIGameplay REPLState
 --   (used when a new log message is appended).
 uiScrollToEnd :: Lens' UIGameplay Bool
 
--- | When this is 'Just', it represents a modal to be displayed on
---   top of the UI, e.g. for the Help screen.
-uiModal :: Lens' UIGameplay (Maybe Modal)
-
--- | Status of the scenario goal: whether there is one, and whether it
---   has been displayed to the user initially.
-uiGoal :: Lens' UIGameplay GoalDisplay
-
--- | Definition and status of a recognizable structure
-uiStructure :: Lens' UIGameplay StructureDisplay
+-- | State that backs various modal dialogs
+uiDialogs :: Lens' UIGameplay UIDialogs
 
 -- | When running with @--autoplay@, suppress the goal dialogs.
 --
@@ -379,9 +392,12 @@ initUIState speedFactor showMainMenu debug = do
                   , _uiInventoryShouldUpdate = False
                   }
             , _uiScrollToEnd = False
-            , _uiModal = Nothing
-            , _uiGoal = emptyGoalDisplay
-            , _uiStructure = emptyStructureDisplay
+            , _uiDialogs =
+                UIDialogs
+                  { _uiModal = Nothing
+                  , _uiGoal = emptyGoalDisplay
+                  , _uiStructure = emptyStructureDisplay
+                  }
             , _uiIsAutoPlay = False
             , _uiTiming =
                 UITiming

@@ -76,7 +76,7 @@ openModal mt = do
   resetViewport modalScroll
   newModal <- gets $ flip generateModal mt
   ensurePause
-  uiState . uiGameplay . uiModal ?= newModal
+  uiState . uiGameplay . uiDialogs . uiModal ?= newModal
   -- Beep
   case mt of
     ScenarioEndModal _ -> do
@@ -121,10 +121,10 @@ safeAutoUnpause = do
 
 toggleModal :: ModalType -> EventM Name AppState ()
 toggleModal mt = do
-  modal <- use $ uiState . uiGameplay . uiModal
+  modal <- use $ uiState . uiGameplay . uiDialogs . uiModal
   case modal of
     Nothing -> openModal mt
-    Just _ -> uiState . uiGameplay . uiModal .= Nothing >> safeAutoUnpause
+    Just _ -> uiState . uiGameplay . uiDialogs . uiModal .= Nothing >> safeAutoUnpause
 
 setFocus :: FocusablePanel -> EventM Name AppState ()
 setFocus name = uiState . uiGameplay . uiFocusRing %= focusSetCurrent (FocusablePanel name)
