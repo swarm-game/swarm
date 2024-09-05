@@ -52,6 +52,9 @@ module Swarm.Game.Robot (
   systemRobot,
   selfDestruct,
   runningAtomic,
+  robotDebug,
+  currentFunction,
+  evalBuffer,
 
   -- ** Creation & instantiation
   mkRobot,
@@ -83,6 +86,7 @@ import Swarm.Language.JSON ()
 import Swarm.Language.Syntax (Syntax, TSyntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Util.Lens (makeLensesExcluding)
+import Swarm.Util.RingBuffer
 import Swarm.Util.Yaml
 import System.Clock (TimeSpec)
 
@@ -121,6 +125,14 @@ type instance RobotLogMember 'TemplateRobot = ()
 type family RobotLogUpdatedMember (phase :: RobotPhase) :: Data.Kind.Type
 type instance RobotLogUpdatedMember 'TemplateRobot = ()
 
+data RobotDebug = RobotDebug
+  { _currentFunction :: Maybe Text
+  , _evalBuffer :: RingBuffer Text
+  }
+  deriving (Show, Eq)
+
+makeLenses ''RobotDebug
+
 -- | A value of type 'RobotR' is a record representing the state of a
 --   single robot.  The @f@ parameter is for tracking whether or not
 --   the robot has been assigned a unique ID.
@@ -140,6 +152,7 @@ data RobotR (phase :: RobotPhase) = RobotR
   , _systemRobot :: Bool
   , _selfDestruct :: Bool
   , _activityCounts :: RobotActivity phase
+  , _robotDebug :: RobotDebug
   , _runningAtomic :: Bool
   , _unwalkableEntities :: WalkabilityExceptions EntityName
   , _robotCreatedAt :: TimeSpec
@@ -152,7 +165,15 @@ deriving instance (Eq (RobotLocation phase), Eq (RobotID phase), Eq (RobotMachin
 -- See https://byorgey.wordpress.com/2021/09/17/automatically-updated-cached-views-with-lens/
 -- for the approach used here with lenses.
 
-makeLensesExcluding ['_robotCapabilities, '_equippedDevices, '_robotLog, '_robotLogUpdated, '_machine, '_activityCounts] ''RobotR
+makeLensesExcluding
+  [ '_robotCapabilities
+  , '_equippedDevices
+  , '_robotLog
+  , '_robotLogUpdated
+  , '_machine
+  , '_activityCounts
+  ]
+  ''RobotR
 
 -- | A template robot, i.e. a template robot record without a unique ID number,
 --   and possibly without a location.
@@ -182,6 +203,7 @@ unwalkableEntities :: Lens' Robot (WalkabilityExceptions EntityName)
 
 -- | The creation date of the robot.
 robotCreatedAt :: Lens' Robot TimeSpec
+robotDebug :: Lens' (RobotR phase) RobotDebug
 
 -- robotName and trobotName could be generalized to
 -- @robotName' :: Lens' (RobotR phase) Text@.
@@ -344,6 +366,11 @@ mkRobot pid name descr loc dir disp m devs inv sys heavy unwalkables ts =
     , _systemRobot = sys
     , _selfDestruct = False
     , _activityCounts = ()
+    , _robotDebug =
+        RobotDebug
+          { _currentFunction = Nothing
+          , _evalBuffer = mkRingBuffer $ Finite 16
+          }
     , _runningAtomic = False
     , _unwalkableEntities = unwalkables
     }

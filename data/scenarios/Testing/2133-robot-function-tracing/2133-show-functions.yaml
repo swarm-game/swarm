@@ -1,0 +1,39 @@
+version: 1
+name: Show functions
+description: |
+  Press F2 to observe robot function execution
+creative: false
+robots:
+  - name: base
+    dir: east
+    devices:
+      - ADT calculator
+      - antenna
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - grabber
+      - hourglass
+      - logger
+      - treads
+  - name: rat
+    dir: west
+    system: true
+    display:
+      invisible: false
+    devices:
+      - logger
+    program: |
+      run "data/scenarios/Testing/2133-robot-function-tracing/_2133-show-functions/rat.sw"
+known: [bitcoin]
+world:
+  dsl: |
+    {grass}
+  palette:
+    'B': [blank, null, base]
+    'r': [blank, null, rat]
+    '.': [blank]
+  upperleft: [-1, 0]
+  map: |
+    B.r

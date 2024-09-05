@@ -704,6 +704,7 @@ robotsListWidget s = hCenter table
     , "Pos"
     , "Items"
     , "Status"
+    , "Func"
     , "Actns"
     , "Cmds"
     , "Cycles"
@@ -712,6 +713,7 @@ robotsListWidget s = hCenter table
     ]
   headers = withAttr robotAttr . txt <$> applyWhen debugRID ("ID" :) headings
   robotsTable = mkRobotRow <$> robots
+
   mkRobotRow robot =
     applyWhen debugRID (idWidget :) cells
    where
@@ -721,6 +723,7 @@ robotsListWidget s = hCenter table
       , locWidget
       , padRight (Pad 1) (str $ show rInvCount)
       , statusWidget
+      , activeFunction
       , str $ show $ robot ^. activityCounts . tangibleCommandCount
       , -- TODO(#1341): May want to expose the details of this histogram in
         -- a per-robot pop-up
@@ -729,6 +732,8 @@ robotsListWidget s = hCenter table
       , renderDutyCycle (s ^. gameState) robot
       , txt rLog
       ]
+
+    activeFunction = txt . fromMaybe "N/A" $ robot ^. robotDebug . currentFunction
 
     idWidget = str $ show $ robot ^. robotID
     nameWidget =
