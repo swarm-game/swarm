@@ -26,6 +26,7 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.DebugOption (DebugOption (ToggleCreative, ToggleWorldEditor))
 import Swarm.TUI.Model.Dialog.Goal
 import Swarm.TUI.Model.Event (MainEvent (..), SwarmEvent (..))
+import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 import System.Clock (Clock (..), TimeSpec (..), getTime)
 

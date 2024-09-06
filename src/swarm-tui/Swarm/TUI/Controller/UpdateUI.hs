@@ -7,24 +7,28 @@
 module Swarm.TUI.Controller.UpdateUI (
   updateUI,
   updateAndRedrawUI,
+  updateRobotDetailsPane,
 ) where
 
-import Brick hiding (Direction, Location)
-import Brick.Focus
-
 -- See Note [liftA2 re-export from Prelude]
+import Brick hiding (Direction, Location, on)
+import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Applicative (liftA2, pure)
 import Control.Lens as Lens
-import Control.Monad (unless, when)
+import Control.Monad (forM_, unless, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (toList)
+import Data.Function (on)
 import Data.List.Extra (enumerate)
+import Data.Map qualified as M
 import Data.Maybe (isNothing)
 import Data.String (fromString)
 import Data.Text qualified as T
+import Data.Vector qualified as V
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
@@ -43,6 +47,9 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Objective qualified as GR
+import Swarm.TUI.View.Robot
+import Swarm.TUI.View.Robot.Type
+import Swarm.Util (applyJust)
 import Witch (into)
 import Prelude hiding (Applicative (..))
 
@@ -165,6 +172,8 @@ updateUI = do
 
   newPopups <- generateNotificationPopups
 
+  doRobotListUpdate g
+
   let redraw =
         g ^. needsRedraw
           || inventoryUpdated
@@ -173,6 +182,36 @@ updateUI = do
           || goalOrWinUpdated
           || newPopups
   pure redraw
+
+doRobotListUpdate :: GameState -> EventM Name AppState ()
+doRobotListUpdate g = do
+  gp <- use $ uiState . uiGameplay
+  dOps <- use $ uiState . uiDebugOptions
+
+  let rd =
+        mkRobotDisplay $
+          RobotRenderingContext
+            { _mygs = g
+            , _gameplay = gp
+            , _timing = gp ^. uiTiming
+            , _uiDbg = dOps
+            }
+      oldList = getList $ gp ^. uiDialogs . uiRobot . robotListContent . robotsListWidget
+      maybeOldSelected = snd <$> BL.listSelectedElement oldList
+
+      maybeModificationFunc =
+        updateList . BL.listFindBy . ((==) `on` view (rob . robotID)) <$> maybeOldSelected
+
+  uiState . uiGameplay . uiDialogs . uiRobot . robotListContent . robotsListWidget .= applyJust maybeModificationFunc rd
+
+  Brick.zoom (uiState . uiGameplay . uiDialogs . uiRobot) $
+    forM_ maybeOldSelected updateRobotDetailsPane
+
+updateRobotDetailsPane :: RobotWidgetRow -> EventM Name RobotDisplay ()
+updateRobotDetailsPane robotPayload =
+  Brick.zoom robotListContent $ do
+    robotDetailsPaneState . cmdHistogramList . BL.listElementsL .= V.fromList (M.toList (robotPayload ^. rob . activityCounts . commandsHistogram))
+    robotDetailsPaneState . logsList . BL.listElementsL .= robotPayload ^. rob . robotLog
 
 -- | Either pops up the updated Goals modal
 -- or pops up the Congratulations (Win) modal, or pops

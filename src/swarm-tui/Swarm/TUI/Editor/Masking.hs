@@ -8,7 +8,7 @@ import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Util qualified as EU
-import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 
 shouldHideWorldCell :: UIGameplay -> Coords -> Bool
 shouldHideWorldCell ui coords =

@@ -13,7 +13,6 @@ module Swarm.TUI.Model (
   -- $uilabel
   AppEvent (..),
   FocusablePanel (..),
-  Name (..),
 
   -- ** Web command
   WebCommand (..),

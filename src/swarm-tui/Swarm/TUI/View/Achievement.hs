@@ -16,6 +16,7 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Description
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.Util (drawMarkdown)

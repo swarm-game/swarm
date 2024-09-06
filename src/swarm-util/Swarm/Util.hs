@@ -13,6 +13,7 @@ module Swarm.Util (
   sortPair,
   maxOn,
   maximum0,
+  maximumNE,
   enumeratedMap,
   cycleEnum,
   enumerateNonEmpty,
@@ -29,6 +30,7 @@ module Swarm.Util (
   prependList,
   deleteKeys,
   applyWhen,
+  applyJust,
   hoistMaybe,
   unsnocNE,
 
@@ -145,6 +147,11 @@ maxOn f x y
 maximum0 :: (Num a, Ord a) => [a] -> a
 maximum0 [] = 0
 maximum0 xs = maximum xs
+
+-- | NOTE: We should be able to just use 'maximum' from "Data.Foldable1"
+-- but it is not available for ghc 9.2 and 9.4.
+maximumNE :: (Num a, Ord a) => NonEmpty a -> a
+maximumNE = maximum
 
 enumeratedMap :: Int -> [a] -> IntMap a
 enumeratedMap startIdx = IM.fromList . zip [startIdx ..]
@@ -272,6 +279,10 @@ prependList ls ne = case ls of
 applyWhen :: Bool -> (a -> a) -> a -> a
 applyWhen True f x = f x
 applyWhen False _ x = x
+
+applyJust :: Maybe (a -> a) -> a -> a
+applyJust Nothing x = x
+applyJust (Just f) x = f x
 
 -- | Convert a 'Maybe' computation to 'MaybeT'.
 --

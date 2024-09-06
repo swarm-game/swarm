@@ -27,7 +27,6 @@ module Swarm.TUI.Controller (
 ) where
 
 -- See Note [liftA2 re-export from Prelude]
-import Prelude hiding (Applicative (..))
 
 import Brick hiding (Direction, Location)
 import Brick.Focus
@@ -36,10 +35,11 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (Editor, applyEdit, handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
 import Brick.Widgets.List qualified as BL
+import Brick.Widgets.TabularList.Mixed
 import Control.Applicative (pure)
 import Control.Category ((>>>))
 import Control.Lens as Lens
-import Control.Monad (unless, void, when)
+import Control.Monad (forM_, unless, void, when)
 import Control.Monad.Extra (whenJust)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execState)
@@ -87,7 +87,7 @@ import Swarm.Language.Value (Value (VKey), envTypes)
 import Swarm.Log
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
-import Swarm.TUI.Controller.UpdateUI (updateAndRedrawUI)
+import Swarm.TUI.Controller.UpdateUI
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Editor.Controller qualified as EC
 import Swarm.TUI.Editor.Model
@@ -101,7 +101,10 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
+import Swarm.TUI.View.Robot (getList)
+import Swarm.TUI.View.Robot.Type
 import Swarm.Util hiding (both, (<<.=))
+import Prelude hiding (Applicative (..))
 
 -- ~~~~ Note [liftA2 re-export from Prelude]
 --
@@ -418,6 +421,20 @@ handleModalEvent = \case
                 refreshList $ uiState . uiGameplay . uiDialogs . uiStructure . structurePanelListWidget
               StructureSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
             _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
+      Just RobotsModal -> Brick.zoom (uiState . uiGameplay . uiDialogs . uiRobot) $ case ev of
+        V.EvKey (V.KChar '\t') [] -> robotDetailsFocus %= focusNext
+        _ -> do
+          foc <- use robotDetailsFocus
+          case focusGetCurrent foc of
+            (Just (RobotsListDialog (SingleRobotDetails RobotLogPane))) ->
+              Brick.zoom (robotListContent . robotDetailsPaneState . logsList) $ handleListEvent ev
+            _ -> do
+              Brick.zoom (robotListContent . robotsListWidget) $
+                handleMixedListEvent ev
+
+              -- Ensure list widget content is updated immediately
+              widget <- use $ robotListContent . robotsListWidget
+              forM_ (BL.listSelectedElement $ getList widget) $ updateRobotDetailsPane . snd
       _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
    where
     refreshGoalList lw = nestEventM' lw $ handleListEventWithSeparators ev shouldSkipSelection

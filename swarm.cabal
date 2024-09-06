@@ -152,6 +152,9 @@ common brick
 common brick-list-skip
   build-depends: brick-list-skip >=0.1.1.2 && <0.2
 
+common brick-tabular-list
+  build-depends: brick-tabular-list >=2.2.0 && <2.2.1
+
 common bytestring
   build-depends: bytestring >=0.10 && <0.13
 
@@ -959,8 +962,10 @@ library swarm-tui
     base,
     brick,
     brick-list-skip,
+    brick-tabular-list,
     bytestring,
     clock,
+    prettyprinter,
     colour,
     containers,
     extra,
@@ -1031,6 +1036,7 @@ library swarm-tui
     Swarm.TUI.Model.Repl
     Swarm.TUI.Model.StateUpdate
     Swarm.TUI.Model.UI
+    Swarm.TUI.Model.UI.Gameplay
     Swarm.TUI.Model.WebCommand
     Swarm.TUI.Panel
     Swarm.TUI.View
@@ -1043,6 +1049,8 @@ library swarm-tui
     Swarm.TUI.View.Objective
     Swarm.TUI.View.Popup
     Swarm.TUI.View.Robot
+    Swarm.TUI.View.Robot.Details
+    Swarm.TUI.View.Robot.Type
     Swarm.TUI.View.Structure
     Swarm.TUI.View.Util
 

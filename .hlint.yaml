@@ -28,6 +28,8 @@
   - {name: Data.List.head, within: []}
   - {name: Prelude.head, within: [Swarm.Web.Tournament.Database.Query]}
   - {name: Prelude.tail, within: []}
+  - {name: Prelude.maximum, within: [Swarm.Util]}
+  - {name: Prelude.minimum, within: []}
   - {name: Prelude.!!, within: [Swarm.Util.indexWrapNonEmpty, TestEval]}
   - {name: undefined, within: [Swarm.Language.Key, TestUtil]}
   - {name: fromJust, within: []}

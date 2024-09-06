@@ -118,7 +118,7 @@ drawWorldEditor toplevelFocusRing uis =
         L.intersperse
           "@"
           [ EA.renderRectDimensions rectArea
-          , VU.locationToString upperLeftLoc
+          , locationToString upperLeftLoc
           ]
    where
     upperLeftLoc = coordsToLoc upperLeftCoord

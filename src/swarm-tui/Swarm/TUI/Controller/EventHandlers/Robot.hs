@@ -31,6 +31,7 @@ import Swarm.TUI.Inventory.Sorting (cycleSortDirection, cycleSortOrder)
 import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event
+import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Util (generateModal)
 
