@@ -31,6 +31,7 @@ module Swarm.TUI.Model.UI (
   uiModal,
   uiGoal,
   uiStructure,
+  uiRobot,
   uiDialogs,
   uiIsAutoPlay,
   uiAchievements,
@@ -198,6 +199,7 @@ data UIDialogs = UIDialogs
   { _uiModal :: Maybe Modal
   , _uiGoal :: GoalDisplay
   , _uiStructure :: StructureDisplay
+  , _uiRobot :: RobotDisplay
   }
 
 -- * Lenses for UIDialogs
@@ -214,6 +216,9 @@ uiGoal :: Lens' UIDialogs GoalDisplay
 
 -- | Definition and status of a recognizable structure
 uiStructure :: Lens' UIDialogs StructureDisplay
+
+-- | Definition and status of a recognizable structure
+uiRobot :: Lens' UIDialogs RobotDisplay
 
 -- | The main record holding the gameplay UI state.  For access to the fields,
 -- see the lenses below.
@@ -395,6 +400,7 @@ initUIState speedFactor showMainMenu debug = do
                   { _uiModal = Nothing
                   , _uiGoal = emptyGoalDisplay
                   , _uiStructure = emptyStructureDisplay
+                  , _uiRobot = emptyRobotDisplay
                   }
             , _uiIsAutoPlay = False
             , _uiTiming =

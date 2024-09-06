@@ -104,6 +104,8 @@ data Name
     StructureWidgets StructureWidget
   | -- | The list of scenario choices.
     ScenarioList
+  | -- | The robots list
+    RobotsList
   | -- | The scrollable viewport for the info panel.
     InfoViewport
   | -- | The scrollable viewport for any modal dialog.

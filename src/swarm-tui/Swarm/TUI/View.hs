@@ -130,6 +130,7 @@ import Swarm.TUI.Launch.View
 import Swarm.TUI.Model
 import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Dialog.Goal (goalsContent, hasAnythingToShow)
+import Swarm.TUI.Model.Dialog.Robot
 import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.KeyBindings (handlerNameKeysDescription)
 import Swarm.TUI.Model.Repl
@@ -607,6 +608,7 @@ drawDialog :: AppState -> Widget Name
 drawDialog s = case s ^. uiState . uiGameplay . uiDialogs . uiModal of
   Just (Modal mt d) -> renderDialog d $ case mt of
     GoalModal -> drawModal s mt
+    RobotsModal -> drawModal s mt
     _ -> maybeScroll ModalViewport $ drawModal s mt
   Nothing -> emptyWidget
 
@@ -614,7 +616,8 @@ drawDialog s = case s ^. uiState . uiGameplay . uiDialogs . uiModal of
 drawModal :: AppState -> ModalType -> Widget Name
 drawModal s = \case
   HelpModal -> helpWidget (s ^. gameState . randomness . seed) (s ^. runtimeState . webPort) (s ^. keyEventHandling)
-  RobotsModal -> robotsListWidget s
+  -- RobotsModal -> robotsListWidget s
+  RobotsModal -> renderTheRobots (s ^. uiState . uiGameplay . uiDialogs . uiRobot)
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList

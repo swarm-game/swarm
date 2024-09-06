@@ -75,8 +75,13 @@ robotsListWidget s = hCenter table
       . BT.setDefaultColAlignment BT.AlignCenter
       -- Inventory count is right aligned
       . BT.alignRight 4
-      . BT.table
-      $ map (padLeftRight 1) <$> (headers : robotsTable)
+      $ robotsTable s
+
+robotsTable :: AppState -> BT.Table Name
+robotsTable s =
+  BT.table $
+    map (padLeftRight 1) <$> (headers : robotRows)
+ where
   headings =
     [ "Name"
     , "Age"
@@ -90,7 +95,7 @@ robotsListWidget s = hCenter table
     , "Log"
     ]
   headers = withAttr robotAttr . txt <$> applyWhen debugRID ("ID" :) headings
-  robotsTable = mkRobotRow <$> robots
+  robotRows = mkRobotRow <$> robots
   mkRobotRow robot =
     applyWhen debugRID (idWidget :) cells
    where

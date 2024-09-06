@@ -36,6 +36,7 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (Editor, applyEdit, handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
 import Brick.Widgets.List qualified as BL
+import Brick.Widgets.TabularList.Mixed
 import Control.Applicative (pure)
 import Control.Category ((>>>))
 import Control.Lens as Lens
@@ -418,6 +419,11 @@ handleModalEvent = \case
                 refreshList $ uiState . uiGameplay . uiDialogs . uiStructure . structurePanelListWidget
               StructureSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
             _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
+      Just RobotsModal -> case ev of
+        V.EvKey (V.KChar '\t') [] -> uiState . uiGameplay . uiDialogs . uiRobot . robotsDisplayMode %= cycleEnum
+        _ -> do
+          Brick.zoom (uiState . uiGameplay . uiDialogs . uiRobot . libList) $
+            handleMixedListEvent ev
       _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
    where
     refreshGoalList lw = nestEventM' lw $ handleListEventWithSeparators ev shouldSkipSelection
