@@ -62,42 +62,35 @@ module Swarm.TUI.Model.UI (
 
 import Brick (AttrMap)
 import Brick.Focus
-import Brick.Widgets.List qualified as BL
 import Control.Arrow ((&&&))
 import Control.Effect.Accum
 import Control.Effect.Lift
 import Control.Lens hiding (from, (<.>))
-import Data.Bits (FiniteBits (finiteBitSize))
 import Data.List.Extra (enumerate)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Sequence (Seq)
 import Data.Set (Set)
-import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
-import Swarm.Game.ScenarioInfo (
-  ScenarioInfoPair,
- )
-import Swarm.Game.Universe
-import Swarm.Game.World.Coords
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep
 import Swarm.TUI.Model.DebugOption (DebugOption)
 import Swarm.TUI.Model.Dialog
+import Swarm.TUI.Model.Dialog.Robot
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr (swarmAttrMap)
 import Swarm.Util
-import Swarm.Util.Lens (makeLensesExcluding, makeLensesNoSigs)
+import Swarm.Util.Lens (makeLensesNoSigs)
 import System.Clock
 
 -- * Toplevel UIState definition
@@ -207,7 +200,7 @@ initUIState speedFactor showMainMenu debug = do
                   { _uiModal = Nothing
                   , _uiGoal = emptyGoalDisplay
                   , _uiStructure = emptyStructureDisplay
-                  , _uiRobot = emptyRobotDisplay
+                  , _uiRobot = emptyRobotDisplay debug
                   }
             , _uiIsAutoPlay = False
             , _uiTiming =

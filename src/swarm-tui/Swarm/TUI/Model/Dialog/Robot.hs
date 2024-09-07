@@ -7,16 +7,6 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Model.Dialog.Robot where
 
-import Data.Maybe (fromMaybe)
-import Swarm.Game.Robot.Activity
-import Swarm.Game.Robot.Concrete
-import Swarm.Game.State.Robot
-import Swarm.Game.World.Coords
-import Swarm.TUI.View.CellDisplay
-import Swarm.TUI.View.Robot
-
--- import Swarm.TUI.View.Util
-
 import Brick
 import Brick.AttrMap
 import Brick.Widgets.Border
@@ -26,6 +16,7 @@ import Control.Lens hiding (from, (<.>))
 import Control.Lens as Lens hiding (Const, from)
 import Data.IntMap qualified as IM
 import Data.Map qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as S
 import Data.Set (Set)
@@ -37,13 +28,19 @@ import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Entity as E
 import Swarm.Game.Location
 import Swarm.Game.Robot
+import Swarm.Game.Robot.Activity
+import Swarm.Game.Robot.Concrete
 import Swarm.Game.State
+import Swarm.Game.State.Robot
 import Swarm.Game.Universe
+import Swarm.Game.World.Coords
 import Swarm.TUI.Model.DebugOption
 import Swarm.TUI.Model.Dialog.RobotDisplay
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
+import Swarm.TUI.View.CellDisplay
+import Swarm.TUI.View.Robot
 import Swarm.Util (applyWhen)
 import System.Clock (TimeSpec (..))
 
@@ -56,8 +53,8 @@ data RobotRenderingContext = RobotRenderingContext
 
 makeLenses ''RobotRenderingContext
 
-emptyRobotDisplay :: RobotDisplay
-emptyRobotDisplay =
+emptyRobotDisplay :: Set DebugOption -> RobotDisplay
+emptyRobotDisplay uiDbg =
   RobotDisplay
     { _robotsDisplayMode = RobotList
     , _lastFocusedRobotId = Nothing
@@ -66,13 +63,14 @@ emptyRobotDisplay =
         MixedRenderers
           { cell = dc
           , rowHdr = Just rowHdr
-          , colHdr = Just colHdr
+          , colHdr = Just $ colHdr uiDbg
           , colHdrRowHdr = Just $ ColHdrRowHdr $ \_ _ -> vLimit 1 (fill ' ') <=> hBorder
           }
     }
 
 renderTheRobots :: RobotDisplay -> Widget Name
-renderTheRobots rd = renderMixedTabularList (rd ^. libRenderers) (LstFcs True) (rd ^. libList)
+renderTheRobots rd =
+  renderMixedTabularList (rd ^. libRenderers) (LstFcs True) (rd ^. libList)
 
 columnHdrAttr :: AttrName
 columnHdrAttr = attrName "columnHeader"
@@ -80,15 +78,17 @@ columnHdrAttr = attrName "columnHeader"
 rowHdrAttr :: AttrName
 rowHdrAttr = attrName "rowHeader"
 
-colHdr :: MixedColHdr Name Widths
-colHdr =
+colHdr :: Set DebugOption -> MixedColHdr Name Widths
+colHdr uiDbg =
   MixedColHdr
-    { draw = \_ (MColC (Ix ci)) -> case colHdrs V.!? ci of
+    { draw = \_ (MColC (Ix ci)) -> case hdrs V.!? ci of
         Just ch -> withAttr columnHdrAttr (padRight Max (str ch) <+> str " ") <=> hBorder
         Nothing -> emptyWidget
     , widths = \(Widths song) -> song
     , height = ColHdrH 2
     }
+ where
+  hdrs = colHdrs uiDbg
 
 rowHdr :: RowHdr Name LibRobotRow
 rowHdr =
@@ -103,8 +103,23 @@ rowHdr =
     , toRH = \_ (Ix i) -> i + 1
     }
 
-colHdrs :: Vector String
-colHdrs = V.fromList ["Artist", "Title", "Album"]
+colHdrs :: Set DebugOption -> Vector String
+colHdrs uiDbg = V.fromList augmentedHeadings
+ where
+  headings =
+    [ "Name"
+    , "Age"
+    , "Pos"
+    , "Items"
+    , "Status"
+    , "Actns"
+    , "Cmds"
+    , "Cycles"
+    , "Activity"
+    , "Log"
+    ]
+  augmentedHeadings = applyWhen debugRID ("ID" :) headings
+  debugRID = uiDbg ^. Lens.contains ListRobotIDs
 
 wpr :: WidthsPerRow LibRobotRow Widths
 wpr = WsPerR $ \(Widths song) e -> case e of
@@ -136,29 +151,12 @@ libraryEntries =
 
 wprk :: WidthsPerRowKind LibRobotRow Widths
 wprk = WsPerRK $ \(AvlW aW) _ ->
-  let artist = max 7 $ (aW * 30) `div` 100
-      title = max 6 $ (aW * 30) `div` 100
-      album = aW - artist - title
-   in Widths {robotRowWidths = fmap ColW [artist, title, album]}
+  Widths {robotRowWidths = fmap ColW [4, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]}
 
 robotsTable :: RobotRenderingContext -> BT.Table Name
 robotsTable c =
-  BT.table $
-    map (padLeftRight 1) <$> (headers : robotRows)
+  BT.table []
  where
-  headings =
-    [ "Name"
-    , "Age"
-    , "Pos"
-    , "Items"
-    , "Status"
-    , "Actns"
-    , "Cmds"
-    , "Cycles"
-    , "Activity"
-    , "Log"
-    ]
-  headers = withAttr robotAttr . txt <$> applyWhen debugRID ("ID" :) headings
   robotRows = mkRobotRow <$> robots
   mkRobotRow robot =
     applyWhen debugRID (idWidget :) cells
