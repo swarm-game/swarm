@@ -32,8 +32,8 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
 import Swarm.Game.State.Substate (structureRecognition)
 import Swarm.Language.Syntax.Direction (directionJsonModifier)
+import Swarm.TUI.Model.Dialog.Structure
 import Swarm.TUI.Model.Name
-import Swarm.TUI.Model.Structure
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Util

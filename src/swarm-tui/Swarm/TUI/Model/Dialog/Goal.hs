@@ -5,7 +5,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A UI-centric model for Objective presentation.
-module Swarm.TUI.Model.Goal where
+module Swarm.TUI.Model.Dialog.Goal where
 
 import Brick.Focus
 import Brick.Widgets.List qualified as BL

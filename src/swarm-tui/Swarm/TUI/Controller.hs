@@ -96,12 +96,10 @@ import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep (prepareLaunchDialog)
 import Swarm.TUI.List
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Goal
+import Swarm.TUI.Model.Dialog
 import Swarm.TUI.Model.Name
-import Swarm.TUI.Model.Popup (progressPopups)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
-import Swarm.TUI.Model.Structure
 import Swarm.TUI.Model.UI
 import Swarm.Util hiding (both, (<<.=))
 
@@ -294,14 +292,14 @@ handleMainEvent forceRedraw ev = do
       Web (RunWebCode e r) -> runBaseWebCode e r
       UpstreamVersion _ -> error "version event should be handled by top-level handler"
     VtyEvent (V.EvResize _ _) -> invalidateCache
-    EscapeKey | Just m <- s ^. uiState . uiGameplay . uiModal -> closeModal m
+    EscapeKey | Just m <- s ^. uiState . uiGameplay . uiDialogs . uiModal -> closeModal m
     -- Pass to key handler (allows users to configure bindings)
     -- See Note [how Swarm event handlers work]
     VtyEvent (V.EvKey k m)
       | isJust (B.lookupVtyEvent k m keyHandler) -> void $ B.handleKey keyHandler k m
     -- pass keys on to modal event handler if a modal is open
     VtyEvent vev
-      | isJust (s ^. uiState . uiGameplay . uiModal) -> handleModalEvent vev
+      | isJust (s ^. uiState . uiGameplay . uiDialogs . uiModal) -> handleModalEvent vev
     MouseDown (TerrainListItem pos) V.BLeft _ _ ->
       uiState . uiGameplay . uiWorldEditor . terrainList %= BL.listMoveTo pos
     MouseDown (EntityPaintListItem pos) V.BLeft _ _ ->
@@ -367,7 +365,7 @@ handleMainEvent forceRedraw ev = do
 closeModal :: Modal -> EventM Name AppState ()
 closeModal m = do
   safeAutoUnpause
-  uiState . uiGameplay . uiModal .= Nothing
+  uiState . uiGameplay . uiDialogs . uiModal .= Nothing
   -- message modal is not autopaused, so update notifications when leaving it
   when ((m ^. modalType) == MessagesModal) $ do
     t <- use $ gameState . temporal . ticks
@@ -377,7 +375,7 @@ closeModal m = do
 handleModalEvent :: V.Event -> EventM Name AppState ()
 handleModalEvent = \case
   V.EvKey V.KEnter [] -> do
-    mdialog <- preuse $ uiState . uiGameplay . uiModal . _Just . modalDialog
+    mdialog <- preuse $ uiState . uiGameplay . uiDialogs . uiModal . _Just . modalDialog
     toggleModal QuitModal
     case dialogSelection =<< mdialog of
       Just (Button QuitButton, _) -> quitGame
@@ -391,33 +389,33 @@ handleModalEvent = \case
         startGame siPair Nothing
       _ -> return ()
   ev -> do
-    Brick.zoom (uiState . uiGameplay . uiModal . _Just . modalDialog) (handleDialogEvent ev)
-    modal <- preuse $ uiState . uiGameplay . uiModal . _Just . modalType
+    Brick.zoom (uiState . uiGameplay . uiDialogs . uiModal . _Just . modalDialog) (handleDialogEvent ev)
+    modal <- preuse $ uiState . uiGameplay . uiDialogs . uiModal . _Just . modalType
     case modal of
       Just TerrainPaletteModal ->
         refreshList $ uiState . uiGameplay . uiWorldEditor . terrainList
       Just EntityPaletteModal -> do
         refreshList $ uiState . uiGameplay . uiWorldEditor . entityPaintList
       Just GoalModal -> case ev of
-        V.EvKey (V.KChar '\t') [] -> uiState . uiGameplay . uiGoal . focus %= focusNext
+        V.EvKey (V.KChar '\t') [] -> uiState . uiGameplay . uiDialogs . uiGoal . focus %= focusNext
         _ -> do
-          focused <- use $ uiState . uiGameplay . uiGoal . focus
+          focused <- use $ uiState . uiGameplay . uiDialogs . uiGoal . focus
           case focusGetCurrent focused of
             Just (GoalWidgets w) -> case w of
               ObjectivesList -> do
-                lw <- use $ uiState . uiGameplay . uiGoal . listWidget
+                lw <- use $ uiState . uiGameplay . uiDialogs . uiGoal . listWidget
                 newList <- refreshGoalList lw
-                uiState . uiGameplay . uiGoal . listWidget .= newList
+                uiState . uiGameplay . uiDialogs . uiGoal . listWidget .= newList
               GoalSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
             _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       Just StructuresModal -> case ev of
-        V.EvKey (V.KChar '\t') [] -> uiState . uiGameplay . uiStructure . structurePanelFocus %= focusNext
+        V.EvKey (V.KChar '\t') [] -> uiState . uiGameplay . uiDialogs . uiStructure . structurePanelFocus %= focusNext
         _ -> do
-          focused <- use $ uiState . uiGameplay . uiStructure . structurePanelFocus
+          focused <- use $ uiState . uiGameplay . uiDialogs . uiStructure . structurePanelFocus
           case focusGetCurrent focused of
             Just (StructureWidgets w) -> case w of
               StructuresList ->
-                refreshList $ uiState . uiGameplay . uiStructure . structurePanelListWidget
+                refreshList $ uiState . uiGameplay . uiDialogs . uiStructure . structurePanelListWidget
               StructureSummary -> handleInfoPanelEvent modalScroll (VtyEvent ev)
             _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)
       _ -> handleInfoPanelEvent modalScroll (VtyEvent ev)

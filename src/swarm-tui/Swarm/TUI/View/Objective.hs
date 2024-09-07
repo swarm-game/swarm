@@ -20,7 +20,7 @@ import Swarm.Game.Scenario.Objective
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Language.Text.Markdown qualified as Markdown
-import Swarm.TUI.Model.Goal
+import Swarm.TUI.Model.Dialog.Goal
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.Util
