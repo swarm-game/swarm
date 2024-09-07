@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoGeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -7,6 +8,8 @@
 -- A UI-centric model for presentation of Robot details.
 module Swarm.TUI.View.Robot where
 
+import Data.Set (Set)
+import Control.Lens hiding (from, (<.>))
 import Brick hiding (Direction, Location)
 import Brick.Widgets.Center (hCenter)
 import Brick.Widgets.Table qualified as BT
@@ -39,6 +42,15 @@ import Swarm.Util.UnitInterval
 import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec (..))
 
+data RobotRenderingContext = RobotRenderingContext {
+    _mygs :: GameState
+  , _gameplay :: UIGameplay
+  , _timing :: UITiming
+  , _uiDbg :: Set DebugOption
+  }
+
+makeLenses ''RobotRenderingContext
+
 -- | Render the percentage of ticks that this robot was active.
 -- This indicator can take some time to "warm up" and stabilize
 -- due to the sliding window.
@@ -50,11 +62,11 @@ import System.Clock (TimeSpec (..))
 -- hence 'WC.getOccupancy' will never be @1@ if we use the current tick directly as
 -- obtained from the 'ticks' function.
 -- So we "rewind" it to the previous tick for the purpose of this display.
-renderDutyCycle :: GameState -> Robot -> Widget Name
-renderDutyCycle gs robot =
+renderDutyCycle :: TemporalState -> Robot -> Widget Name
+renderDutyCycle temporalState robot =
   withAttr dutyCycleAttr . str . flip (showFFloat (Just 1)) "%" $ dutyCyclePercentage
  where
-  curTicks = gs ^. temporal . ticks
+  curTicks = temporalState ^. ticks
   window = robot ^. activityCounts . activityWindow
 
   -- Rewind to previous tick
@@ -75,10 +87,18 @@ robotsListWidget s = hCenter table
       . BT.setDefaultColAlignment BT.AlignCenter
       -- Inventory count is right aligned
       . BT.alignRight 4
-      $ robotsTable s
+      $ robotsTable c
 
-robotsTable :: AppState -> BT.Table Name
-robotsTable s =
+  c = RobotRenderingContext {
+      _mygs = s ^. gameState
+    , _gameplay = s ^. uiState . uiGameplay
+    , _timing = s ^. uiState . uiGameplay . uiTiming
+    , _uiDbg = s ^. uiState . uiDebugOptions
+    }
+
+
+robotsTable :: RobotRenderingContext -> BT.Table Name
+robotsTable c =
   BT.table $
     map (padLeftRight 1) <$> (headers : robotRows)
  where
@@ -110,7 +130,7 @@ robotsTable s =
         -- a per-robot pop-up
         str . show . sum . M.elems $ robot ^. activityCounts . commandsHistogram
       , str $ show $ robot ^. activityCounts . lifetimeStepCount
-      , renderDutyCycle (s ^. gameState) robot
+      , renderDutyCycle (c ^. mygs . temporal) robot
       , txt rLog
       ]
 
@@ -130,7 +150,7 @@ robotsTable s =
       | otherwise = show (age `div` 3600 * 24) <> "day"
      where
       TimeSpec createdAtSec _ = robot ^. robotCreatedAt
-      TimeSpec nowSec _ = s ^. uiState . uiGameplay . uiTiming . lastFrameTime
+      TimeSpec nowSec _ = c ^. timing . lastFrameTime
       age = nowSec - createdAtSec
 
     rInvCount = sum $ map fst . E.elems $ robot ^. robotEntity . entityInventory
@@ -144,7 +164,7 @@ robotsTable s =
       rLoc = robot ^. robotLocation
       worldCell =
         drawLoc
-          (s ^. uiState . uiGameplay)
+          (c ^. gameplay)
           g
           rCoords
       locStr = renderCoordsString rLoc
@@ -167,6 +187,6 @@ robotsTable s =
       . IM.elems
       $ g ^. robotInfo . robotMap
   creative = g ^. creativeMode
-  debugRID = s ^. uiState . uiDebugOptions . Lens.contains ListRobotIDs
-  debugAllRobots = s ^. uiState . uiDebugOptions . Lens.contains ListAllRobots
-  g = s ^. gameState
+  debugRID = c ^. uiDbg . Lens.contains ListRobotIDs
+  debugAllRobots = c ^. uiDbg . Lens.contains ListAllRobots
+  g = c ^. mygs
