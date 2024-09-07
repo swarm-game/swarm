@@ -1023,6 +1023,7 @@ library swarm-tui
     Swarm.TUI.Model.Dialog.Goal
     Swarm.TUI.Model.Dialog.Popup
     Swarm.TUI.Model.Dialog.Robot
+    Swarm.TUI.Model.Dialog.RobotDisplay
     Swarm.TUI.Model.Dialog.Structure
     Swarm.TUI.Model.Event
     Swarm.TUI.Model.KeyBindings
@@ -1031,6 +1032,7 @@ library swarm-tui
     Swarm.TUI.Model.Repl
     Swarm.TUI.Model.StateUpdate
     Swarm.TUI.Model.UI
+    Swarm.TUI.Model.UI.Gameplay
     Swarm.TUI.Model.WebCommand
     Swarm.TUI.Panel
     Swarm.TUI.View

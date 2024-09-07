@@ -38,6 +38,7 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI (uiAttrMap)
 import Swarm.TUI.View

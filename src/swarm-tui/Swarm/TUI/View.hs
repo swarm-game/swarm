@@ -133,6 +133,7 @@ import Swarm.TUI.Model.Dialog.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Dialog.Robot
 import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.KeyBindings (handlerNameKeysDescription)
+import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel

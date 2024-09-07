@@ -32,7 +32,9 @@ import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (SwarmEvent)
+import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Witch (from, into)
@@ -188,10 +190,6 @@ quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this
     NoMenu -> "quit"
     _ -> "return to the menu"
 
-locationToString :: Location -> String
-locationToString (Location x y) =
-  unwords $ map show [x, y]
-
 -- | Display a list of text-wrapped paragraphs with one blank line after each.
 displayParagraphs :: [Text] -> Widget Name
 displayParagraphs = layoutParagraphs . map txtWrap
@@ -256,11 +254,3 @@ bindingText s e = maybe "" ppBindingShort b
     Binding V.KLeft m | null m -> "←"
     Binding V.KRight m | null m -> "→"
     bi -> ppBinding bi
-
-renderCoordsString :: Cosmic Location -> String
-renderCoordsString (Cosmic sw coords) =
-  unwords $ locationToString coords : suffix
- where
-  suffix = case sw of
-    DefaultRootSubworld -> []
-    SubworldName swName -> ["in", T.unpack swName]
