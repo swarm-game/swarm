@@ -89,9 +89,7 @@ import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.Prep
 import Swarm.TUI.Model.DebugOption (DebugOption)
-import Swarm.TUI.Model.Dialog.Goal
-import Swarm.TUI.Model.Dialog.Popup
-import Swarm.TUI.Model.Dialog.Structure
+import Swarm.TUI.Model.Dialog
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl

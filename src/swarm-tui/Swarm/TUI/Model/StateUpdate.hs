@@ -82,8 +82,7 @@ import Swarm.TUI.Launch.Model (toSerializableParams)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements
 import Swarm.TUI.Model.DebugOption (DebugOption (LoadTestingScenarios))
-import Swarm.TUI.Model.Dialog.Goal (emptyGoalDisplay)
-import Swarm.TUI.Model.Dialog.Structure
+import Swarm.TUI.Model.Dialog
 import Swarm.TUI.Model.KeyBindings
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
