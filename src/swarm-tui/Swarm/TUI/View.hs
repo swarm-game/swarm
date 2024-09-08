@@ -33,7 +33,6 @@ module Swarm.TUI.View (
   drawREPL,
 ) where
 
-import Brick.Widgets.TabularList.Mixed (list)
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Forms
@@ -48,6 +47,7 @@ import Brick.Widgets.Dialog
 import Brick.Widgets.Edit (getEditContents, renderEditor)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.Table qualified as BT
+import Brick.Widgets.TabularList.Mixed (list)
 import Control.Lens as Lens hiding (Const, from)
 import Control.Monad (guard)
 import Data.Array (range)

@@ -74,8 +74,8 @@ mkRobotDisplay c =
           , colHdrRowHdr = Just $ ColHdrRowHdr $ \_ _ -> vLimit 1 (fill ' ') <=> hBorder
           }
     }
-    where
-      uiDebug = c ^. uiDbg
+ where
+  uiDebug = c ^. uiDbg
 
 emptyRobotDisplay :: Set DebugOption -> RobotDisplay
 emptyRobotDisplay uiDebug =
