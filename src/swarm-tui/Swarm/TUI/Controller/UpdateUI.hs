@@ -237,8 +237,8 @@ doGoalUpdates = do
         -- automatically popped up.
         gameState . messageInfo . announcementQueue .= mempty
 
-        hideObjectives <- use $ uiState . uiGameplay . uiHideObjectives
-        unless hideObjectives $ openModal GoalModal
+        showObjectives <- use $ uiState . uiGameplay . uiAutoShowObjectives
+        when showObjectives $ openModal GoalModal
 
       return goalWasUpdated
  where

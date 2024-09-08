@@ -343,6 +343,7 @@ hypotheticalWinCheck em g ws oc = do
   queue <- messageInfo . announcementQueue Swarm.Util.<%= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
 
   shouldPause <- use $ temporal . pauseOnCompletion
+  let willPause = newWinState /= Ongoing || (notNull queue && shouldPause == PauseOnAnyObjective)
   -- TODO: remove this debug ouput
   sendIO $
     appendFile "log_win.txt" $
@@ -350,11 +351,12 @@ hypotheticalWinCheck em g ws oc = do
         " \t"
         [ show $ getTickNumber ts
         , if newWinState == Ongoing then "ongoing" else "won"
-        , if (notNull queue) then "queued" else "empty"
-        , show shouldPause <> "\n"
-        ]
+        , if notNull queue then "queued" else "empty"
+        , show shouldPause
+        , if willPause then "AutoPause" else "Running"
+        ] <> "\n"
 
-  when (newWinState /= Ongoing || (notNull queue && shouldPause == PauseOnAnyObjective)) $
+  when willPause $
     temporal . runStatus .= AutoPause
 
   mapM_ handleException $ exceptions finalAccumulator

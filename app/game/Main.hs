@@ -67,7 +67,7 @@ cliParser =
     scriptToRun <- run
     pausedAtStart <- paused
     autoPlay <- autoplay
-    showGoal <- not <$> hideGoal
+    autoShowObjectives <- not <$> hideGoal
     speed <- speedFactor
     debugOptions <- debug
     cheatMode <- cheat

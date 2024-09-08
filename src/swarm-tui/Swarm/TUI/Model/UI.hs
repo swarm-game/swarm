@@ -32,7 +32,7 @@ module Swarm.TUI.Model.UI (
   uiGoal,
   uiStructure,
   uiIsAutoPlay,
-  uiHideObjectives,
+  uiAutoShowObjectives,
   uiAchievements,
   lgTicksPerSecond,
   lastFrameTime,
@@ -57,6 +57,7 @@ module Swarm.TUI.Model.UI (
   initFocusRing,
   defaultInitLgTicksPerSecond,
   initUIState,
+  UIInitOptions (..),
 ) where
 
 import Brick (AttrMap)
@@ -208,7 +209,7 @@ data UIGameplay = UIGameplay
   , _uiGoal :: GoalDisplay
   , _uiStructure :: StructureDisplay
   , _uiIsAutoPlay :: Bool
-  , _uiHideObjectives :: Bool
+  , _uiAutoShowObjectives :: Bool
   , _uiShowREPL :: Bool
   , _uiShowDebug :: Bool
   , _uiHideRobotsUntil :: TimeSpec
@@ -258,7 +259,7 @@ uiStructure :: Lens' UIGameplay StructureDisplay
 uiIsAutoPlay :: Lens' UIGameplay Bool
 
 -- | Do not open objectives modals on objective completion.
-uiHideObjectives :: Lens' UIGameplay Bool
+uiAutoShowObjectives :: Lens' UIGameplay Bool
 
 -- | A toggle to expand or collapse the REPL by pressing @Ctrl-k@
 uiShowREPL :: Lens' UIGameplay Bool
@@ -339,6 +340,14 @@ initFocusRing = focusRing $ map FocusablePanel enumerate
 defaultInitLgTicksPerSecond :: Int
 defaultInitLgTicksPerSecond = 4 -- 2^4 = 16 ticks / second
 
+data UIInitOptions = UIInitOptions
+  { speed :: Int
+  , showMainMenu :: Bool
+  , autoShowObjectives :: Bool
+  , debugOptions :: Set DebugOption
+  }
+  deriving (Eq, Show)
+
 -- | Initialize the UI state.  This needs to be in the IO monad since
 --   it involves reading a REPL history file, getting the current
 --   time, and loading text files from the data directory.  The @Bool@
@@ -348,12 +357,9 @@ initUIState ::
   ( Has (Accum (Seq SystemFailure)) sig m
   , Has (Lift IO) sig m
   ) =>
-  Int ->
-  Bool ->
-  Set DebugOption ->
+  UIInitOptions ->
   m UIState
-initUIState speedFactor showMainMenu debug = do
-  -- TODO: ondra - add ui config for silence
+initUIState UIInitOptions {..} = do
   historyT <- sendIO $ readFileMayT =<< getSwarmHistoryPath False
   let history = maybe [] (map mkREPLSubmission . T.lines) historyT
   startTime <- sendIO $ getTime Monotonic
@@ -363,7 +369,7 @@ initUIState speedFactor showMainMenu debug = do
     UIState
       { _uiMenu = if showMainMenu then MainMenu (mainMenu NewGame) else NoMenu
       , _uiPlaying = not showMainMenu
-      , _uiDebugOptions = debug
+      , _uiDebugOptions = debugOptions
       , _uiLaunchConfig = launchConfigPanel
       , _uiAchievements = M.fromList $ map (view achievement &&& id) achievements
       , _uiAttrMap = swarmAttrMap
@@ -387,13 +393,13 @@ initUIState speedFactor showMainMenu debug = do
             , _uiGoal = emptyGoalDisplay
             , _uiStructure = emptyStructureDisplay
             , _uiIsAutoPlay = False
-            , _uiHideObjectives = True
+            , _uiAutoShowObjectives = autoShowObjectives
             , _uiTiming =
                 UITiming
                   { _uiShowFPS = False
                   , _uiTPF = 0
                   , _uiFPS = 0
-                  , _lgTicksPerSecond = speedFactor
+                  , _lgTicksPerSecond = speed
                   , _lastFrameTime = startTime
                   , _accumulatedTime = 0
                   , _lastInfoTime = 0

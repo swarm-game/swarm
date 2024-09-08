@@ -131,10 +131,12 @@ initPersistentState opts@(AppOpts {..}) = do
       initRuntimeState
         RuntimeOptions
           { startPaused = pausedAtStart
-          , pauseOnObjectiveCompletion = showGoal
+          , pauseOnObjectiveCompletion = autoShowObjectives
           , loadTestScenarios = Set.member LoadTestingScenarios debugOptions
           }
-    ui <- initUIState speed (not (skipMenu opts)) debugOptions
+    let showMainMenu = not (skipMenu opts)
+    ui <- initUIState UIInitOptions {..}
+    -- \$ speed (not (skipMenu opts)) debugOptions
     ks <- initKeyHandlingState
     return (rs, ui, ks)
   let initRS' = addWarnings initRS (F.toList warnings)
