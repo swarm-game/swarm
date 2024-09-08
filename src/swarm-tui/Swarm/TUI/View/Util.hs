@@ -18,14 +18,12 @@ import Data.Text qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Game.Entity as E
 import Swarm.Game.Land
-import Swarm.Game.Location
 import Swarm.Game.Scenario (scenarioMetadata, scenarioName)
 import Swarm.Game.ScenarioInfo (scenarioItemName)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
 import Swarm.Game.Terrain
-import Swarm.Game.Universe
 import Swarm.Language.Pretty (prettyTextLine)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown qualified as Markdown
@@ -34,7 +32,6 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (SwarmEvent)
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
-import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Witch (from, into)

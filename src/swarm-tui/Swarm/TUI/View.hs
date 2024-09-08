@@ -143,7 +143,6 @@ import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Logo
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Popup
-import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.TUI.View.Util as VU
 import Swarm.Util
@@ -617,8 +616,18 @@ drawDialog s = case s ^. uiState . uiGameplay . uiDialogs . uiModal of
 drawModal :: AppState -> ModalType -> Widget Name
 drawModal s = \case
   HelpModal -> helpWidget (s ^. gameState . randomness . seed) (s ^. runtimeState . webPort) (s ^. keyEventHandling)
-  -- RobotsModal -> robotsListWidget s
-  RobotsModal -> renderTheRobots (s ^. uiState . uiGameplay . uiDialogs . uiRobot)
+  RobotsModal -> do
+    let rd =
+          mkRobotDisplay $
+            RobotRenderingContext
+              { _mygs = s ^. gameState
+              , _gameplay = s ^. uiState . uiGameplay
+              , _timing = s ^. uiState . uiGameplay . uiTiming
+              , _uiDbg = s ^. uiState . uiDebugOptions
+              }
+    -- let rd = s ^. uiState . uiGameplay . uiDialogs . uiRobot
+    --     rd' = rd & libList . list .~
+    renderTheRobots rd
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList

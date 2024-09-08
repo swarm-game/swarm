@@ -35,7 +35,6 @@ import Swarm.Language.Capability (Capability (CDebug))
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.TUI.Model (
   AppState,
-  FocusablePanel,
   ModalType (..),
   gameState,
   modalScroll,

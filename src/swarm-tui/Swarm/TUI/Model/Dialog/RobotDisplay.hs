@@ -12,29 +12,39 @@ import GHC.Generics (Generic)
 import Swarm.Game.Robot
 import Swarm.TUI.Model.Name
 
+data WidthWidget = WidthWidget
+  { wWidth :: Int
+  , wWidget :: Widget Name
+  }
+
 newtype Widths = Widths
   { robotRowWidths :: [ColWidth]
   }
   deriving (Generic)
 
-data LibRobotRow = LibRobotRow
-  { _fName :: Widget Name
-  , _fAge :: Widget Name
-  , _fPos :: Widget Name
-  , _fItems :: Widget Name
-  , _fStatus :: Widget Name
-  , _fActns :: Widget Name
-  , _fCmds :: Widget Name
-  , _fCycles :: Widget Name
-  , _fActivity :: Widget Name
-  , _fLog :: Widget Name
+type RobotWidgetRow = LibRobotRow WidthWidget
+type RobotHeaderRow = LibRobotRow String
+
+data LibRobotRow a = LibRobotRow
+  { _fID :: a
+  , _fName :: a
+  , _fAge :: a
+  , _fPos :: a
+  , _fItems :: a
+  , _fStatus :: a
+  , _fActns :: a
+  , _fCmds :: a
+  , _fCycles :: a
+  , _fActivity :: a
+  , _fLog :: a
   }
+  deriving (Functor)
 
 data RobotsDisplayMode = RobotList | SingleRobotDetails
   deriving (Eq, Show, Enum, Bounded)
 
-type LibraryList = MixedTabularList Name LibRobotRow Widths
-type LibraryRenderers = MixedRenderers Name LibRobotRow Widths
+type LibraryList = MixedTabularList Name RobotWidgetRow Widths
+type LibraryRenderers = MixedRenderers Name RobotWidgetRow Widths
 
 data RobotDisplay = RobotDisplay
   { _robotsDisplayMode :: RobotsDisplayMode

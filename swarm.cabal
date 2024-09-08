@@ -1044,7 +1044,6 @@ library swarm-tui
     Swarm.TUI.View.Logo
     Swarm.TUI.View.Objective
     Swarm.TUI.View.Popup
-    Swarm.TUI.View.Robot
     Swarm.TUI.View.Structure
     Swarm.TUI.View.Util
 

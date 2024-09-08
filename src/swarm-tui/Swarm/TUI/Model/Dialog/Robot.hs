@@ -2,28 +2,29 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoGeneralizedNewtypeDeriving #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Model.Dialog.Robot where
 
 import Brick
-import Brick.AttrMap
 import Brick.Widgets.Border
-import Brick.Widgets.Table qualified as BT
 import Brick.Widgets.TabularList.Mixed
 import Control.Lens hiding (from, (<.>))
 import Control.Lens as Lens hiding (Const, from)
 import Data.IntMap qualified as IM
+import Data.List (transpose)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as S
 import Data.Set (Set)
+import Data.Text qualified as T
 import Data.Vector (Vector)
 import Data.Vector qualified as V
-import GHC.Generics (Generic)
 import Linear (V2 (..), distance)
+import Numeric (showFFloat)
 import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Entity as E
 import Swarm.Game.Location
@@ -32,6 +33,8 @@ import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.State
 import Swarm.Game.State.Robot
+import Swarm.Game.State.Substate
+import Swarm.Game.Tick (addTicks)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.TUI.Model.DebugOption
@@ -40,9 +43,13 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
-import Swarm.TUI.View.Robot
-import Swarm.Util (applyWhen)
+import Swarm.Util (applyWhen, maximum0)
+import Swarm.Util.UnitInterval
+import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec (..))
+
+instance Semigroup ColWidth where
+  ColW w1 <> ColW w2 = ColW $ max w1 w2
 
 data RobotRenderingContext = RobotRenderingContext
   { _mygs :: GameState
@@ -53,17 +60,32 @@ data RobotRenderingContext = RobotRenderingContext
 
 makeLenses ''RobotRenderingContext
 
-emptyRobotDisplay :: Set DebugOption -> RobotDisplay
-emptyRobotDisplay uiDbg =
+mkRobotDisplay :: RobotRenderingContext -> RobotDisplay
+mkRobotDisplay c =
   RobotDisplay
     { _robotsDisplayMode = RobotList
     , _lastFocusedRobotId = Nothing
-    , _libList = mixedTabularList RobotsList libraryEntries (LstItmH 1) wprk wpr
+    , _libList = mixedTabularList RobotsList (mkLibraryEntries c) (LstItmH 1) wprk wpr
     , _libRenderers =
         MixedRenderers
           { cell = dc
           , rowHdr = Just rowHdr
-          , colHdr = Just $ colHdr uiDbg
+          , colHdr = Just $ colHdr $ c ^. uiDbg
+          , colHdrRowHdr = Just $ ColHdrRowHdr $ \_ _ -> vLimit 1 (fill ' ') <=> hBorder
+          }
+    }
+
+emptyRobotDisplay :: Set DebugOption -> RobotDisplay
+emptyRobotDisplay uiDebug =
+  RobotDisplay
+    { _robotsDisplayMode = RobotList
+    , _lastFocusedRobotId = Nothing
+    , _libList = mixedTabularList RobotsList mempty (LstItmH 1) wprk wpr
+    , _libRenderers =
+        MixedRenderers
+          { cell = dc
+          , rowHdr = Just rowHdr
+          , colHdr = Just $ colHdr uiDebug
           , colHdrRowHdr = Just $ ColHdrRowHdr $ \_ _ -> vLimit 1 (fill ' ') <=> hBorder
           }
     }
@@ -82,15 +104,17 @@ colHdr :: Set DebugOption -> MixedColHdr Name Widths
 colHdr uiDbg =
   MixedColHdr
     { draw = \_ (MColC (Ix ci)) -> case hdrs V.!? ci of
-        Just ch -> withAttr columnHdrAttr (padRight Max (str ch) <+> str " ") <=> hBorder
+        -- Just ch -> withAttr columnHdrAttr (padRight Max (str ch) <+> str " ") <=> hBorder
+        Just ch -> withAttr columnHdrAttr (padRight Max $ str ch) <=> hBorder
         Nothing -> emptyWidget
-    , widths = \(Widths song) -> song
+    , widths = \(Widths ws) -> zipWith (<>) ws (map (ColW . length) $ V.toList hdrs)
     , height = ColHdrH 2
     }
  where
   hdrs = colHdrs uiDbg
 
-rowHdr :: RowHdr Name LibRobotRow
+-- | Enumerates the rows by position (not 'RID').
+rowHdr :: RowHdr Name RobotWidgetRow
 rowHdr =
   RowHdr
     { draw = \_ (WdthD wd) (RowHdrCtxt (Sel s)) rh ->
@@ -99,89 +123,130 @@ rowHdr =
                 then id
                 else withAttr rowHdrAttr
          in attrFn $ padRight (Pad $ if wd > 0 then 0 else 1) $ padLeft Max (str $ show rh)
-    , width = \_ rh -> RowHdrW $ (+ 2) $ maximum $ map (length . show) rh
+    , width = \_ rh -> RowHdrW . (+ 2) . maximum0 $ map (length . show) rh
     , toRH = \_ (Ix i) -> i + 1
     }
 
+headingStringList :: [String]
+headingStringList =
+  map ($ headingStrings) accessorList
+ where
+  headingStrings =
+    LibRobotRow
+      { _fID = "ID"
+      , _fName = "Name"
+      , _fAge = "Age"
+      , _fPos = "Pos"
+      , _fItems = "Items"
+      , _fStatus = "Status"
+      , _fActns = "Actns"
+      , _fCmds = "Cmds"
+      , _fCycles = "Cycles"
+      , _fActivity = "Activity"
+      , _fLog = "Log"
+      }
+
+dropFirstColumn :: Set DebugOption -> [a] -> [a]
+dropFirstColumn uiDebug =
+  applyWhen (not debugRID) (drop 1)
+ where
+  debugRID = uiDebug ^. Lens.contains ListRobotIDs
+
 colHdrs :: Set DebugOption -> Vector String
-colHdrs uiDbg = V.fromList augmentedHeadings
- where
-  headings =
-    [ "Name"
-    , "Age"
-    , "Pos"
-    , "Items"
-    , "Status"
-    , "Actns"
-    , "Cmds"
-    , "Cycles"
-    , "Activity"
-    , "Log"
-    ]
-  augmentedHeadings = applyWhen debugRID ("ID" :) headings
-  debugRID = uiDbg ^. Lens.contains ListRobotIDs
+colHdrs uiDebug = V.fromList $ dropFirstColumn uiDebug headingStringList
 
-wpr :: WidthsPerRow LibRobotRow Widths
-wpr = WsPerR $ \(Widths song) e -> case e of
-  LibRobotRow {} -> song
+accessorList :: [LibRobotRow a -> a]
+accessorList =
+  [ _fID
+  , _fName
+  , _fAge
+  , _fPos
+  , _fItems
+  , _fStatus
+  , _fActns
+  , _fCmds
+  , _fCycles
+  , _fActivity
+  , _fLog
+  ]
 
-dc :: ListFocused -> MixedCtxt -> LibRobotRow -> Widget Name
+indexedAccessors :: Vector (LibRobotRow a -> a)
+indexedAccessors = V.fromList accessorList
+
+dc :: ListFocused -> MixedCtxt -> RobotWidgetRow -> Widget Name
 dc _ (MxdCtxt _ (MColC (Ix ci))) r =
-  let renderPlainCell s = padRight Max (str s) <+> str " "
-   in case ci of
-        0 -> _fName r
-        1 -> _fAge r
-        2 -> _fPos r
-        3 -> _fItems r
-        4 -> _fStatus r
-        5 -> _fActns r
-        6 -> _fCmds r
-        7 -> _fCycles r
-        8 -> _fActivity r
-        9 -> _fLog r
-        _ -> emptyWidget
-
-libraryEntries :: Seq LibRobotRow
-libraryEntries =
-  let songs =
-        map
-          (\n -> LibRobotRow (str ("foo" ++ show n)) (str "bar") (str "blah") (str "blah") (str "blah") (str "blah") (str "blah") (str "blah") (str "blah") (str "blah"))
-          [1 .. 12 :: Int]
-   in S.fromList songs
-
-wprk :: WidthsPerRowKind LibRobotRow Widths
-wprk = WsPerRK $ \(AvlW aW) _ ->
-  Widths {robotRowWidths = fmap ColW [4, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]}
-
-robotsTable :: RobotRenderingContext -> BT.Table Name
-robotsTable c =
-  BT.table []
+  maybe emptyWidget (renderPlainCell . wWidget . ($ r)) (indexedAccessors V.!? ci)
  where
-  robotRows = mkRobotRow <$> robots
-  mkRobotRow robot =
-    applyWhen debugRID (idWidget :) cells
+  renderPlainCell = padRight Max
+
+-- | For a single-constructor datatype like 'RobotWidgetRow',
+-- this implementation is trivial.
+wpr :: WidthsPerRow RobotWidgetRow Widths
+wpr = WsPerR $ \(Widths x) _ -> x
+
+wprk :: WidthsPerRowKind RobotWidgetRow Widths
+wprk = WsPerRK $ \(AvlW aW) allRows ->
+  Widths {robotRowWidths = mkWidths allRows}
+ where
+  colHeaderRowLengths = map length headingStringList
+  mkWidths = map (ColW . (+ 1) . maximum0) . transpose . (colHeaderRowLengths :) . map getColWidthsForRow
    where
-    cells =
-      [ nameWidget
-      , str ageStr
-      , locWidget
-      , padRight (Pad 1) (str $ show rInvCount)
-      , statusWidget
-      , str $ show $ robot ^. activityCounts . tangibleCommandCount
+    getColWidthsForRow :: RobotWidgetRow -> [Int]
+    getColWidthsForRow r = map (wWidth . ($ r)) accessorList
+
+mkLibraryEntries :: RobotRenderingContext -> Seq RobotWidgetRow
+mkLibraryEntries c =
+  mkRobotRow <$> S.fromList robots
+ where
+  basePos :: Point V2 Double
+  basePos = realToFrac <$> fromMaybe origin (g ^? baseRobot . robotLocation . planar)
+  -- Keep the base and non system robot (e.g. no seed)
+  isRelevant robot = robot ^. robotID == 0 || not (robot ^. systemRobot)
+  -- Keep the robot that are less than 32 unit away from the base
+  isNear robot = creative || distance (realToFrac <$> robot ^. robotLocation . planar) basePos < 32
+  robots :: [Robot]
+  robots =
+    filter (\robot -> debugAllRobots || (isRelevant robot && isNear robot))
+      . IM.elems
+      $ g ^. robotInfo . robotMap
+  creative = g ^. creativeMode
+  debugAllRobots = c ^. uiDbg . Lens.contains ListAllRobots
+  g = c ^. mygs
+
+  mkRobotRow robot =
+    LibRobotRow
+      { _fID =
+          let tx = show $ robot ^. robotID
+           in WidthWidget (length tx) (str tx)
+      , _fName = nameWidget
+      , _fAge = WidthWidget (length ageStr) (str ageStr)
+      , _fPos = locWidget
+      , _fItems =
+          let tx = show rInvCount
+           in WidthWidget (length tx) (padRight (Pad 1) (str tx))
+      , _fStatus = statusWidget
+      , _fActns =
+          let tx = show $ robot ^. activityCounts . tangibleCommandCount
+           in WidthWidget (length tx) (str tx)
       , -- TODO(#1341): May want to expose the details of this histogram in
         -- a per-robot pop-up
-        str . show . sum . M.elems $ robot ^. activityCounts . commandsHistogram
-      , str $ show $ robot ^. activityCounts . lifetimeStepCount
-      , renderDutyCycle (c ^. mygs . temporal) robot
-      , txt rLog
-      ]
+        _fCmds = strWidget $ show . sum . M.elems $ robot ^. activityCounts . commandsHistogram
+      , _fCycles = strWidget $ show $ robot ^. activityCounts . lifetimeStepCount
+      , _fActivity = renderDutyCycle (c ^. mygs . temporal) robot
+      , _fLog = WidthWidget (T.length rLog) (txt rLog)
+      }
+   where
+    strWidget tx = WidthWidget (length tx) (str tx)
 
-    idWidget = str $ show $ robot ^. robotID
     nameWidget =
-      hBox
-        [ renderDisplay (robot ^. robotDisplay)
-        , highlightSystem . txt $ " " <> robot ^. robotName
-        ]
+      WidthWidget (2 + T.length nameTxt) w
+     where
+      w =
+        hBox
+          [ renderDisplay (robot ^. robotDisplay)
+          , highlightSystem . txt $ " " <> nameTxt
+          ]
+      nameTxt = robot ^. robotName
 
     highlightSystem = if robot ^. systemRobot then withAttr highlightAttr else id
 
@@ -200,8 +265,10 @@ robotsTable c =
       | robot ^. robotLogUpdated = "x"
       | otherwise = " "
 
-    locWidget = hBox [worldCell, str $ " " <> locStr]
+    locWidget =
+      WidthWidget (2 + length locStr) w
      where
+      w = hBox [worldCell, str $ " " <> locStr]
       rCoords = fmap locToCoords rLoc
       rLoc = robot ^. robotLocation
       worldCell =
@@ -212,23 +279,42 @@ robotsTable c =
       locStr = renderCoordsString rLoc
 
     statusWidget = case robot ^. machine of
-      Waiting {} -> txt "waiting"
+      Waiting {} ->
+        let tx = "waiting"
+         in WidthWidget (length tx) (str tx)
       _
-        | isActive robot -> withAttr notifAttr $ txt "busy"
-        | otherwise -> withAttr greenAttr $ txt "idle"
+        | isActive robot ->
+            let tx = "busy"
+             in WidthWidget (length tx) (withAttr notifAttr $ str tx)
+        | otherwise ->
+            let tx = "idle"
+             in WidthWidget (length tx) (withAttr greenAttr $ str tx)
 
-  basePos :: Point V2 Double
-  basePos = realToFrac <$> fromMaybe origin (g ^? baseRobot . robotLocation . planar)
-  -- Keep the base and non system robot (e.g. no seed)
-  isRelevant robot = robot ^. robotID == 0 || not (robot ^. systemRobot)
-  -- Keep the robot that are less than 32 unit away from the base
-  isNear robot = creative || distance (realToFrac <$> robot ^. robotLocation . planar) basePos < 32
-  robots :: [Robot]
-  robots =
-    filter (\robot -> debugAllRobots || (isRelevant robot && isNear robot))
-      . IM.elems
-      $ g ^. robotInfo . robotMap
-  creative = g ^. creativeMode
-  debugRID = c ^. uiDbg . Lens.contains ListRobotIDs
-  debugAllRobots = c ^. uiDbg . Lens.contains ListAllRobots
-  g = c ^. mygs
+-- | Render the percentage of ticks that this robot was active.
+-- This indicator can take some time to "warm up" and stabilize
+-- due to the sliding window.
+--
+-- == Use of previous tick
+-- The 'Swarm.Game.Step.gameTick' function runs all robots, then increments the current tick.
+-- So at the time we are rendering a frame, the current tick will always be
+-- strictly greater than any ticks stored in the 'WC.WindowedCounter' for any robot;
+-- hence 'WC.getOccupancy' will never be @1@ if we use the current tick directly as
+-- obtained from the 'ticks' function.
+-- So we "rewind" it to the previous tick for the purpose of this display.
+renderDutyCycle :: TemporalState -> Robot -> WidthWidget
+renderDutyCycle temporalState robot =
+  WidthWidget (length tx) (withAttr dutyCycleAttr $ str tx)
+ where
+  tx = showFFloat (Just 1) dutyCyclePercentage "%"
+
+  curTicks = temporalState ^. ticks
+  window = robot ^. activityCounts . activityWindow
+
+  -- Rewind to previous tick
+  latestRobotTick = addTicks (-1) curTicks
+  dutyCycleRatio = WC.getOccupancy latestRobotTick window
+
+  dutyCycleAttr = safeIndex dutyCycleRatio meterAttributeNames
+
+  dutyCyclePercentage :: Double
+  dutyCyclePercentage = 100 * getValue dutyCycleRatio
