@@ -32,7 +32,6 @@ import Data.Foldable.Extra (notNull)
 import Data.Functor (void)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
-import Data.List (intercalate)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Sequence ((><))
@@ -341,22 +340,9 @@ hypotheticalWinCheck em g ws oc = do
     _ -> return ()
 
   queue <- messageInfo . announcementQueue Swarm.Util.<%= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
-
   shouldPause <- use $ temporal . pauseOnCompletion
-  let willPause = newWinState /= Ongoing || (notNull queue && shouldPause == PauseOnAnyObjective)
-  -- TODO: remove this debug ouput
-  sendIO $
-    appendFile "log_win.txt" $
-      intercalate
-        " \t"
-        [ show $ getTickNumber ts
-        , if newWinState == Ongoing then "ongoing" else "won"
-        , if notNull queue then "queued" else "empty"
-        , show shouldPause
-        , if willPause then "AutoPause" else "Running"
-        ] <> "\n"
 
-  when willPause $
+  when (newWinState /= Ongoing || (notNull queue && shouldPause == PauseOnAnyObjective)) $
     temporal . runStatus .= AutoPause
 
   mapM_ handleException $ exceptions finalAccumulator
