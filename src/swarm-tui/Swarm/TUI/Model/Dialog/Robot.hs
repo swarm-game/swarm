@@ -65,25 +65,27 @@ mkRobotDisplay c =
   RobotDisplay
     { _robotsDisplayMode = RobotList
     , _lastFocusedRobotId = Nothing
-    , _libList = mixedTabularList RobotsList (mkLibraryEntries c) (LstItmH 1) wprk wpr
+    , _libList = mixedTabularList RobotsList (mkLibraryEntries c) (LstItmH 1) (wprk uiDebug) wpr
     , _libRenderers =
         MixedRenderers
-          { cell = dc
+          { cell = dc uiDebug
           , rowHdr = Just rowHdr
-          , colHdr = Just $ colHdr $ c ^. uiDbg
+          , colHdr = Just $ colHdr uiDebug
           , colHdrRowHdr = Just $ ColHdrRowHdr $ \_ _ -> vLimit 1 (fill ' ') <=> hBorder
           }
     }
+    where
+      uiDebug = c ^. uiDbg
 
 emptyRobotDisplay :: Set DebugOption -> RobotDisplay
 emptyRobotDisplay uiDebug =
   RobotDisplay
     { _robotsDisplayMode = RobotList
     , _lastFocusedRobotId = Nothing
-    , _libList = mixedTabularList RobotsList mempty (LstItmH 1) wprk wpr
+    , _libList = mixedTabularList RobotsList mempty (LstItmH 1) (wprk uiDebug) wpr
     , _libRenderers =
         MixedRenderers
-          { cell = dc
+          { cell = dc uiDebug
           , rowHdr = Just rowHdr
           , colHdr = Just $ colHdr uiDebug
           , colHdrRowHdr = Just $ ColHdrRowHdr $ \_ _ -> vLimit 1 (fill ' ') <=> hBorder
@@ -104,7 +106,6 @@ colHdr :: Set DebugOption -> MixedColHdr Name Widths
 colHdr uiDbg =
   MixedColHdr
     { draw = \_ (MColC (Ix ci)) -> case hdrs V.!? ci of
-        -- Just ch -> withAttr columnHdrAttr (padRight Max (str ch) <+> str " ") <=> hBorder
         Just ch -> withAttr columnHdrAttr (padRight Max $ str ch) <=> hBorder
         Nothing -> emptyWidget
     , widths = \(Widths ws) -> zipWith (<>) ws (map (ColW . length) $ V.toList hdrs)
@@ -170,13 +171,12 @@ accessorList =
   , _fLog
   ]
 
-indexedAccessors :: Vector (LibRobotRow a -> a)
-indexedAccessors = V.fromList accessorList
-
-dc :: ListFocused -> MixedCtxt -> RobotWidgetRow -> Widget Name
-dc _ (MxdCtxt _ (MColC (Ix ci))) r =
+dc :: Set DebugOption -> ListFocused -> MixedCtxt -> RobotWidgetRow -> Widget Name
+dc uiDebug _ (MxdCtxt _ (MColC (Ix ci))) r =
   maybe emptyWidget (renderPlainCell . wWidget . ($ r)) (indexedAccessors V.!? ci)
  where
+  indexedAccessors = V.fromList accessors
+  accessors = dropFirstColumn uiDebug accessorList
   renderPlainCell = padRight Max
 
 -- | For a single-constructor datatype like 'RobotWidgetRow',
@@ -184,15 +184,15 @@ dc _ (MxdCtxt _ (MColC (Ix ci))) r =
 wpr :: WidthsPerRow RobotWidgetRow Widths
 wpr = WsPerR $ \(Widths x) _ -> x
 
-wprk :: WidthsPerRowKind RobotWidgetRow Widths
-wprk = WsPerRK $ \(AvlW aW) allRows ->
+wprk :: Set DebugOption -> WidthsPerRowKind RobotWidgetRow Widths
+wprk uiDebug = WsPerRK $ \(AvlW aW) allRows ->
   Widths {robotRowWidths = mkWidths allRows}
  where
-  colHeaderRowLengths = map length headingStringList
+  colHeaderRowLengths = map length $ dropFirstColumn uiDebug headingStringList
   mkWidths = map (ColW . (+ 1) . maximum0) . transpose . (colHeaderRowLengths :) . map getColWidthsForRow
    where
     getColWidthsForRow :: RobotWidgetRow -> [Int]
-    getColWidthsForRow r = map (wWidth . ($ r)) accessorList
+    getColWidthsForRow r = map (wWidth . ($ r)) $ dropFirstColumn uiDebug accessorList
 
 mkLibraryEntries :: RobotRenderingContext -> Seq RobotWidgetRow
 mkLibraryEntries c =

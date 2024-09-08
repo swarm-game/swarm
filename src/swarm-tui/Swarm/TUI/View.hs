@@ -33,6 +33,7 @@ module Swarm.TUI.View (
   drawREPL,
 ) where
 
+import Brick.Widgets.TabularList.Mixed (list)
 import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Forms
@@ -627,7 +628,8 @@ drawModal s = \case
               }
     -- let rd = s ^. uiState . uiGameplay . uiDialogs . uiRobot
     --     rd' = rd & libList . list .~
-    renderTheRobots rd
+    let rd' = rd & libList . list . BL.listSelectedL .~ Just 1
+    renderTheRobots rd'
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList
