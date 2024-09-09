@@ -136,7 +136,6 @@ initPersistentState opts@(AppOpts {..}) = do
           }
     let showMainMenu = not (skipMenu opts)
     ui <- initUIState UIInitOptions {..}
-    -- \$ speed (not (skipMenu opts)) debugOptions
     ks <- initKeyHandlingState
     return (rs, ui, ks)
   let initRS' = addWarnings initRS (F.toList warnings)
