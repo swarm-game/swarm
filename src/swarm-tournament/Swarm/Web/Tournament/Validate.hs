@@ -30,7 +30,7 @@ import Swarm.Game.Scenario.Scoring.CodeSize (codeMetricsFromSyntax)
 import Swarm.Game.Scenario.Status (emptyLaunchParams)
 import Swarm.Game.State
 import Swarm.Game.State.Initialize (scenarioToGameState)
-import Swarm.Game.State.Runtime (initGameStateConfig, initScenarioInputs, pauseOnObjectiveCompletion, RuntimeOptions (..))
+import Swarm.Game.State.Runtime (RuntimeOptions (..), initGameStateConfig, initScenarioInputs, pauseOnObjectiveCompletion)
 import Swarm.Game.State.Substate (initState, seed)
 import Swarm.Game.Step.Validate (playUntilWin)
 import Swarm.Language.Pipeline
