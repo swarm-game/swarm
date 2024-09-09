@@ -75,7 +75,7 @@ entities:
     description:
       - Allows one to "stride" across multiple cells
     properties: [known, pickable]
-    capabilities: [movemultiple]
+    capabilities: [stride]
 known: [tree, flower, boulder, water]
 world:
   palette:

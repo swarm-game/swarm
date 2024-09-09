@@ -29,6 +29,7 @@ module Swarm.Language.Syntax.Constants (
 
 import Data.Aeson.Types hiding (Key)
 import Data.Data (Data)
+import Data.Hashable (Hashable)
 import Data.Int (Int32)
 import Data.List.Extra (enumerate)
 import Data.Set (Set)
@@ -309,7 +310,7 @@ data Const
     RobotNumbered
   | -- | Check if an entity is known.
     Knows
-  deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, FromJSON, ToJSON, FromJSONKey, ToJSONKey)
+  deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, Hashable, FromJSON, ToJSON, FromJSONKey, ToJSONKey)
 
 allConst :: [Const]
 allConst = enumerate

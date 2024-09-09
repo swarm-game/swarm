@@ -830,7 +830,7 @@ stepCESK cesk = case cesk of
     --
     -- HOWEVER, we have to make sure to check that the robot has the
     -- 'log' capability which is required to collect and view logs.
-    h <- hasCapability CLog
+    h <- hasCapability $ CExecute Log
     em <- use $ landscape . terrainAndEntities . entityMap
     when h $ void $ traceLog RobotError (exnSeverity exn) (formatExn em exn)
     return $ case menv of

@@ -386,6 +386,9 @@ common word-wrap
 common yaml
   build-depends: yaml >=0.11 && <0.11.12.0
 
+common generic-data
+  build-depends: generic-data >= 1.0 && <1.2
+
 library swarm-lang
   import:
     stan-config, common, ghc2021-extensions,
@@ -417,6 +420,7 @@ library swarm-lang
     vty,
     witch,
     yaml,
+    generic-data,
 
   visibility: public
   -- cabal-gild: discover src/swarm-lang

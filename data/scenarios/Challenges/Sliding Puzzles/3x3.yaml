@@ -157,16 +157,16 @@ entities:
     display:
       char: 'G'
     description:
-      - Generates a magnetic field gradient that allows the use of `resonate`
+      - Generates a magnetic field gradient that allows the use of `resonate` and `density`.
     properties: [known]
-    capabilities: [detectcount]
+    capabilities: [resonate, density]
   - name: locator
     display:
       char: '{'
     description:
-      - Enables the `detect` command
+      - Enables the `detect` command.
     properties: [known]
-    capabilities: [detectloc]
+    capabilities: [detect]
   - name: border
     display:
       char: '▒'
