@@ -967,6 +967,7 @@ library swarm-tui
     filepath,
     fused-effects,
     fuzzy,
+    generic-data,
     githash,
     lens,
     linear,
