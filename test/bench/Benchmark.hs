@@ -25,7 +25,7 @@ import Swarm.Game.State (GameState, creativeMode, landscape, zoomRobots)
 import Swarm.Game.State.Initialize (pureScenarioToGameState)
 import Swarm.Game.State.Landscape (multiWorld)
 import Swarm.Game.State.Robot (addTRobot)
-import Swarm.Game.State.Runtime (initRuntimeState, stdGameConfigInputs)
+import Swarm.Game.State.Runtime (RuntimeOptions (..), initRuntimeState, stdGameConfigInputs)
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Terrain (blankTerrainIndex)
 import Swarm.Game.Universe (Cosmic (..), SubworldName (DefaultRootSubworld))
@@ -142,7 +142,9 @@ mkGameState prog robotMaker numRobots = do
 
   -- NOTE: This replaces "classicGame0", which is still used by unit tests.
   gs <- simpleErrorHandle $ do
-    (_ :: Seq SystemFailure, initRS) <- runAccum mempty $ initRuntimeState mempty
+    (_ :: Seq SystemFailure, initRS) <-
+      runAccum mempty . initRuntimeState $
+        RuntimeOptions {startPaused = False, pauseOnObjectiveCompletion = False, loadTestScenarios = False}
     (scenario, _) <- loadStandaloneScenario "classic"
     return $ pureScenarioToGameState scenario 0 0 Nothing $ view stdGameConfigInputs initRS
 
