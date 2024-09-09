@@ -78,7 +78,7 @@ import Swarm.Game.Step.Path.Type
 import Swarm.Language.Pipeline (processTermEither)
 import Swarm.Language.Pretty (prettyTextLine)
 import Swarm.TUI.Model hiding (SwarmKeyDispatchers (..))
-import Swarm.TUI.Model.Goal
+import Swarm.TUI.Model.Dialog.Goal
 import Swarm.TUI.Model.Repl (REPLHistItem, replHistory, replSeq)
 import Swarm.TUI.Model.UI
 import Swarm.Util.RingBuffer
@@ -200,7 +200,7 @@ goalsGraphHandler appStateRef = do
 uiGoalHandler :: IO AppState -> Handler GoalTracking
 uiGoalHandler appStateRef = do
   appState <- liftIO appStateRef
-  return $ appState ^. uiState . uiGameplay . uiGoal . goalsContent
+  return $ appState ^. uiState . uiGameplay . uiDialogs . uiGoal . goalsContent
 
 goalsHandler :: IO AppState -> Handler WinCondition
 goalsHandler appStateRef = do

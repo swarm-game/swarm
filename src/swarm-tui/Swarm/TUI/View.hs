@@ -54,7 +54,6 @@ import Data.Bits (shiftL, shiftR, (.&.))
 import Data.Foldable (toList)
 import Data.Foldable qualified as F
 import Data.Functor (($>))
-import Data.IntMap qualified as IM
 import Data.List (intersperse)
 import Data.List qualified as L
 import Data.List.Extra (enumerate)
@@ -69,11 +68,8 @@ import Data.Set qualified as Set (toList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
-import Linear
 import Network.Wai.Handler.Warp (Port)
-import Numeric (showFFloat)
 import Swarm.Constant
-import Swarm.Game.CESK (CESK (..))
 import Swarm.Game.Device (commandCost, commandsForDeviceCaps, enabledCommands, getMap, ingredients)
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
@@ -82,7 +78,6 @@ import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Recipe
 import Swarm.Game.Robot
-import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Scenario (
   scenarioAuthor,
@@ -114,7 +109,7 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
-import Swarm.Game.Tick (TickNumber (..), addTicks)
+import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Gen (Seed)
@@ -134,8 +129,8 @@ import Swarm.TUI.Launch.Model
 import Swarm.TUI.Launch.View
 import Swarm.TUI.Model
 import Swarm.TUI.Model.DebugOption (DebugOption (..))
+import Swarm.TUI.Model.Dialog.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Event qualified as SE
-import Swarm.TUI.Model.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.KeyBindings (handlerNameKeysDescription)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
@@ -146,12 +141,10 @@ import Swarm.TUI.View.CellDisplay
 import Swarm.TUI.View.Logo
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Popup
+import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.TUI.View.Util as VU
 import Swarm.Util
-import Swarm.Util.UnitInterval
-import Swarm.Util.WindowedCounter qualified as WC
-import System.Clock (TimeSpec (..))
 import Text.Printf
 import Text.Wrap
 import Witch (into)
@@ -507,14 +500,6 @@ drawGameUI s =
           )
     ]
 
-renderCoordsString :: Cosmic Location -> String
-renderCoordsString (Cosmic sw coords) =
-  unwords $ VU.locationToString coords : suffix
- where
-  suffix = case sw of
-    DefaultRootSubworld -> []
-    SubworldName swName -> ["in", T.unpack swName]
-
 drawWorldCursorInfo :: WorldOverdraw -> GameState -> Cosmic Coords -> Widget Name
 drawWorldCursorInfo worldEditor g cCoords =
   case getStatic g coords of
@@ -613,13 +598,13 @@ replHeight = 10
 
 -- | Hide the cursor when a modal is set
 chooseCursor :: AppState -> [CursorLocation n] -> Maybe (CursorLocation n)
-chooseCursor s locs = case s ^. uiState . uiGameplay . uiModal of
+chooseCursor s locs = case s ^. uiState . uiGameplay . uiDialogs . uiModal of
   Nothing -> showFirstCursor s locs
   Just _ -> Nothing
 
 -- | Draw a dialog window, if one should be displayed right now.
 drawDialog :: AppState -> Widget Name
-drawDialog s = case s ^. uiState . uiGameplay . uiModal of
+drawDialog s = case s ^. uiState . uiGameplay . uiDialogs . uiModal of
   Just (Modal mt d) -> renderDialog d $ case mt of
     GoalModal -> drawModal s mt
     _ -> maybeScroll ModalViewport $ drawModal s mt
@@ -633,7 +618,7 @@ drawModal s = \case
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList
-  StructuresModal -> SR.renderStructuresDisplay (s ^. gameState) (s ^. uiState . uiGameplay . uiStructure)
+  StructuresModal -> SR.renderStructuresDisplay (s ^. gameState) (s ^. uiState . uiGameplay . uiDialogs . uiStructure)
   ScenarioEndModal outcome ->
     padBottom (Pad 1) $
       vBox $
@@ -650,7 +635,7 @@ drawModal s = \case
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal ->
-    GR.renderGoalsDisplay (s ^. uiState . uiGameplay . uiGoal) $
+    GR.renderGoalsDisplay (s ^. uiState . uiGameplay . uiDialogs . uiGoal) $
       view (scenarioOperation . scenarioDescription) . fst <$> s ^. uiState . uiGameplay . scenarioRef
   KeepPlayingModal ->
     padLeftRight 1 $
@@ -659,133 +644,6 @@ drawModal s = \case
           "Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."
   TerrainPaletteModal -> EV.drawTerrainSelector s
   EntityPaletteModal -> EV.drawEntityPaintSelector s
-
--- | Render the percentage of ticks that this robot was active.
--- This indicator can take some time to "warm up" and stabilize
--- due to the sliding window.
---
--- == Use of previous tick
--- The 'Swarm.Game.Step.gameTick' function runs all robots, then increments the current tick.
--- So at the time we are rendering a frame, the current tick will always be
--- strictly greater than any ticks stored in the 'WC.WindowedCounter' for any robot;
--- hence 'WC.getOccupancy' will never be @1@ if we use the current tick directly as
--- obtained from the 'ticks' function.
--- So we "rewind" it to the previous tick for the purpose of this display.
-renderDutyCycle :: GameState -> Robot -> Widget Name
-renderDutyCycle gs robot =
-  withAttr dutyCycleAttr . str . flip (showFFloat (Just 1)) "%" $ dutyCyclePercentage
- where
-  curTicks = gs ^. temporal . ticks
-  window = robot ^. activityCounts . activityWindow
-
-  -- Rewind to previous tick
-  latestRobotTick = addTicks (-1) curTicks
-  dutyCycleRatio = WC.getOccupancy latestRobotTick window
-
-  dutyCycleAttr = safeIndex dutyCycleRatio meterAttributeNames
-
-  dutyCyclePercentage :: Double
-  dutyCyclePercentage = 100 * getValue dutyCycleRatio
-
-robotsListWidget :: AppState -> Widget Name
-robotsListWidget s = hCenter table
- where
-  table =
-    BT.renderTable
-      . BT.columnBorders False
-      . BT.setDefaultColAlignment BT.AlignCenter
-      -- Inventory count is right aligned
-      . BT.alignRight 4
-      . BT.table
-      $ map (padLeftRight 1) <$> (headers : robotsTable)
-  headings =
-    [ "Name"
-    , "Age"
-    , "Pos"
-    , "Items"
-    , "Status"
-    , "Actns"
-    , "Cmds"
-    , "Cycles"
-    , "Activity"
-    , "Log"
-    ]
-  headers = withAttr robotAttr . txt <$> applyWhen debugRID ("ID" :) headings
-  robotsTable = mkRobotRow <$> robots
-  mkRobotRow robot =
-    applyWhen debugRID (idWidget :) cells
-   where
-    cells =
-      [ nameWidget
-      , str ageStr
-      , locWidget
-      , padRight (Pad 1) (str $ show rInvCount)
-      , statusWidget
-      , str $ show $ robot ^. activityCounts . tangibleCommandCount
-      , -- TODO(#1341): May want to expose the details of this histogram in
-        -- a per-robot pop-up
-        str . show . sum . M.elems $ robot ^. activityCounts . commandsHistogram
-      , str $ show $ robot ^. activityCounts . lifetimeStepCount
-      , renderDutyCycle (s ^. gameState) robot
-      , txt rLog
-      ]
-
-    idWidget = str $ show $ robot ^. robotID
-    nameWidget =
-      hBox
-        [ renderDisplay (robot ^. robotDisplay)
-        , highlightSystem . txt $ " " <> robot ^. robotName
-        ]
-
-    highlightSystem = if robot ^. systemRobot then withAttr highlightAttr else id
-
-    ageStr
-      | age < 60 = show age <> "sec"
-      | age < 3600 = show (age `div` 60) <> "min"
-      | age < 3600 * 24 = show (age `div` 3600) <> "hour"
-      | otherwise = show (age `div` 3600 * 24) <> "day"
-     where
-      TimeSpec createdAtSec _ = robot ^. robotCreatedAt
-      TimeSpec nowSec _ = s ^. uiState . uiGameplay . uiTiming . lastFrameTime
-      age = nowSec - createdAtSec
-
-    rInvCount = sum $ map fst . E.elems $ robot ^. robotEntity . entityInventory
-    rLog
-      | robot ^. robotLogUpdated = "x"
-      | otherwise = " "
-
-    locWidget = hBox [worldCell, str $ " " <> locStr]
-     where
-      rCoords = fmap locToCoords rLoc
-      rLoc = robot ^. robotLocation
-      worldCell =
-        drawLoc
-          (s ^. uiState . uiGameplay)
-          g
-          rCoords
-      locStr = renderCoordsString rLoc
-
-    statusWidget = case robot ^. machine of
-      Waiting {} -> txt "waiting"
-      _
-        | isActive robot -> withAttr notifAttr $ txt "busy"
-        | otherwise -> withAttr greenAttr $ txt "idle"
-
-  basePos :: Point V2 Double
-  basePos = realToFrac <$> fromMaybe origin (g ^? baseRobot . robotLocation . planar)
-  -- Keep the base and non system robot (e.g. no seed)
-  isRelevant robot = robot ^. robotID == 0 || not (robot ^. systemRobot)
-  -- Keep the robot that are less than 32 unit away from the base
-  isNear robot = creative || distance (realToFrac <$> robot ^. robotLocation . planar) basePos < 32
-  robots :: [Robot]
-  robots =
-    filter (\robot -> debugAllRobots || (isRelevant robot && isNear robot))
-      . IM.elems
-      $ g ^. robotInfo . robotMap
-  creative = g ^. creativeMode
-  debugRID = s ^. uiState . uiDebugOptions . Lens.contains ListRobotIDs
-  debugAllRobots = s ^. uiState . uiDebugOptions . Lens.contains ListAllRobots
-  g = s ^. gameState
 
 helpWidget :: Seed -> Maybe Port -> KeyEventHandlingState -> Widget Name
 helpWidget theSeed mport keyState =
@@ -1013,7 +871,7 @@ drawKeyMenu s =
   creative = s ^. gameState . creativeMode
   showCreative = s ^. uiState . uiDebugOptions . Lens.contains ToggleCreative
   showEditor = s ^. uiState . uiDebugOptions . Lens.contains ToggleWorldEditor
-  goal = hasAnythingToShow $ s ^. uiState . uiGameplay . uiGoal . goalsContent
+  goal = hasAnythingToShow $ s ^. uiState . uiGameplay . uiDialogs . uiGoal . goalsContent
   showZero = s ^. uiState . uiGameplay . uiInventory . uiShowZero
   inventorySort = s ^. uiState . uiGameplay . uiInventory . uiInventorySort
   inventorySearch = s ^. uiState . uiGameplay . uiInventory . uiInventorySearch

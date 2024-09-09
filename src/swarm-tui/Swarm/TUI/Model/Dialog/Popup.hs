@@ -1,7 +1,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Swarm.TUI.Model.Popup (
+module Swarm.TUI.Model.Dialog.Popup (
   -- * Popup types
   Popup (..),
 
