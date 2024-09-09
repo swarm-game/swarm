@@ -342,7 +342,9 @@ hypotheticalWinCheck em g ws oc = do
   queue <- messageInfo . announcementQueue Swarm.Util.<%= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
   shouldPause <- use $ temporal . pauseOnObjective
 
-  when (newWinState /= Ongoing || (notNull queue && shouldPause == PauseOnAnyObjective)) $
+  let gameFinished = newWinState /= Ongoing
+  let finishedObjectives = notNull queue
+  when (gameFinished || (finishedObjectives && shouldPause == PauseOnAnyObjective)) $
     temporal . runStatus .= AutoPause
 
   mapM_ handleException $ exceptions finalAccumulator
