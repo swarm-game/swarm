@@ -188,7 +188,11 @@ capabilityTable a em cs = T.unlines $ header <> map (listToRow mw) capabilityRow
   header = [listToRow mw capabilityHeader, separatingLine mw]
 
 capabilityPage :: PageAddress -> EntityMap -> Text
-capabilityPage a em = capabilityTable a em enumerate
+capabilityPage a em = capabilityTable a em $ filter usedCapabily enumerate
+ where
+  usedCapabily c = case c of
+    Capability.CExecute con -> Capability.constCaps con == Just c
+    _ -> True
 
 -- ** Entities
 
