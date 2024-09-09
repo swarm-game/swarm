@@ -34,7 +34,7 @@ module Swarm.Game.State.Substate (
   ticks,
   robotStepsPerTick,
   paused,
-  pauseOnCompletion,
+  pauseOnObjective,
 
   -- *** Recipes
   Recipes,
@@ -284,7 +284,7 @@ data TemporalState = TemporalState
   , _runStatus :: RunStatus
   , _ticks :: TickNumber
   , _robotStepsPerTick :: Int
-  , _pauseOnCompletion :: PauseOnObjective
+  , _pauseOnObjective :: PauseOnObjective
   }
 
 makeLensesNoSigs ''TemporalState
@@ -307,7 +307,7 @@ ticks :: Lens' TemporalState TickNumber
 robotStepsPerTick :: Lens' TemporalState Int
 
 -- | Whether to pause the game after an objective is completed.
-pauseOnCompletion :: Lens' TemporalState PauseOnObjective
+pauseOnObjective :: Lens' TemporalState PauseOnObjective
 
 data GameControls = GameControls
   { _replStatus :: REPLStatus
@@ -415,7 +415,7 @@ initTemporalState pausedAtStart =
     , _runStatus = if pausedAtStart then ManualPause else Running
     , _ticks = TickNumber 0
     , _robotStepsPerTick = defaultRobotStepsPerTick
-    , _pauseOnCompletion = PauseOnAnyObjective
+    , _pauseOnObjective = PauseOnAnyObjective
     }
 
 initGameControls :: GameControls
