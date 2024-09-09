@@ -142,7 +142,9 @@ mkGameState prog robotMaker numRobots = do
 
   -- NOTE: This replaces "classicGame0", which is still used by unit tests.
   gs <- simpleErrorHandle $ do
-    (_ :: Seq SystemFailure, initRS) <- runAccum mempty $ initRuntimeState $ RuntimeOptions False False
+    (_ :: Seq SystemFailure, initRS) <-
+      runAccum mempty . initRuntimeState $
+        RuntimeOptions {startPaused = False, pauseOnObjectiveCompletion = False, loadTestScenarios = False}
     (scenario, _) <- loadStandaloneScenario "classic"
     return $ pureScenarioToGameState scenario 0 0 Nothing $ view stdGameConfigInputs initRS
 

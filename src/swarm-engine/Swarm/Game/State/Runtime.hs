@@ -79,17 +79,18 @@ initGameStateConfig ::
   , Has (Accum (Seq SystemFailure)) sig m
   , Has (Lift IO) sig m
   ) =>
-  Bool ->
+  RuntimeOptions ->
   m GameStateConfig
-initGameStateConfig pause = do
-  gsi <- initGameStateInputs
-  appDataMap <- readAppData
-  nameGen <- initNameGenerator appDataMap
-  return $ GameStateConfig appDataMap nameGen pause gsi
+initGameStateConfig RuntimeOptions {..} = do
+  initAppDataMap <- readAppData
+  nameParts <- initNameGenerator initAppDataMap
+  initState <- initGameStateInputs
+  return $ GameStateConfig {..}
 
 -- | Runtime state initialization options.
 data RuntimeOptions = RuntimeOptions
-  { gamePausedAtStart :: Bool
+  { startPaused :: Bool
+  , pauseOnObjectiveCompletion :: Bool
   , loadTestScenarios :: Bool
   }
   deriving (Eq, Show)
@@ -101,10 +102,9 @@ initRuntimeState ::
   ) =>
   RuntimeOptions ->
   m RuntimeState
-initRuntimeState RuntimeOptions {..} = do
-  gsc <- initGameStateConfig gamePausedAtStart
-  scenarios <- loadScenarios (gsiScenarioInputs $ initState gsc) loadTestScenarios
-
+initRuntimeState opts = do
+  gsc <- initGameStateConfig opts
+  scenarios <- loadScenarios (gsiScenarioInputs $ initState gsc) (loadTestScenarios opts)
   return $
     RuntimeState
       { _webPort = Nothing

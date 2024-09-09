@@ -190,8 +190,7 @@ doGoalUpdates :: EventM Name AppState Bool
 doGoalUpdates = do
   curGoal <- use (uiState . uiGameplay . uiDialogs . uiGoal . goalsContent)
   curWinCondition <- use (gameState . winCondition)
-  announcementsSeq <- use (gameState . messageInfo . announcementQueue)
-  let announcementsList = toList announcementsSeq
+  announcementsList <- use (gameState . messageInfo . announcementQueue . to toList)
 
   -- Decide whether we need to update the current goal text and pop
   -- up a modal dialog.
@@ -238,10 +237,8 @@ doGoalUpdates = do
         -- automatically popped up.
         gameState . messageInfo . announcementQueue .= mempty
 
-        isAutoPlay <- use $ uiState . uiGameplay . uiIsAutoPlay
-        showGoalsAnyway <- use $ uiState . uiDebugOptions . Lens.contains ShowGoalDialogsInAutoPlay
-        unless (isAutoPlay && not showGoalsAnyway) $
-          openModal GoalModal
+        showObjectives <- use $ uiState . uiGameplay . uiAutoShowObjectives
+        when showObjectives $ openModal GoalModal
 
       return goalWasUpdated
  where

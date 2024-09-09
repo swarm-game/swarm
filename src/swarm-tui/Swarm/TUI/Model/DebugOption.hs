@@ -20,7 +20,6 @@ data DebugOption
   | ListAllRobots
   | ListRobotIDs
   | ShowHiddenGoals
-  | ShowGoalDialogsInAutoPlay
   | LoadTestingScenarios
   deriving (Eq, Ord, Show, Enum, Bounded)
 
@@ -32,7 +31,6 @@ debugOptionName = \case
   ListAllRobots -> "all_robots"
   ListRobotIDs -> "robot_id"
   ShowHiddenGoals -> "hidden_goals"
-  ShowGoalDialogsInAutoPlay -> "autoplay_goals"
   LoadTestingScenarios -> "testing"
 
 debugOptionDescription :: DebugOption -> String
@@ -43,7 +41,6 @@ debugOptionDescription = \case
   ListAllRobots -> "list all robots (including system robots) in the robot panel"
   ListRobotIDs -> "list robot IDs in the robot panel"
   ShowHiddenGoals -> "show hidden objectives in the goal dialog"
-  ShowGoalDialogsInAutoPlay -> "show goal dialogs when running in autoplay"
   LoadTestingScenarios -> "load Testing folder in scenarios menu"
 
 readDebugOption :: String -> Maybe DebugOption

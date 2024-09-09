@@ -126,8 +126,15 @@ initPersistentState ::
   m (RuntimeState, UIState, KeyEventHandlingState)
 initPersistentState opts@(AppOpts {..}) = do
   (warnings :: Seq SystemFailure, (initRS, initUI, initKs)) <- runAccum mempty $ do
-    rs <- initRuntimeState $ RuntimeOptions pausedAtStart (Set.member LoadTestingScenarios debugOptions)
-    ui <- initUIState speed (not (skipMenu opts)) debugOptions
+    rs <-
+      initRuntimeState
+        RuntimeOptions
+          { startPaused = pausedAtStart
+          , pauseOnObjectiveCompletion = autoShowObjectives
+          , loadTestScenarios = Set.member LoadTestingScenarios debugOptions
+          }
+    let showMainMenu = not (skipMenu opts)
+    ui <- initUIState UIInitOptions {..}
     ks <- initKeyHandlingState
     return (rs, ui, ks)
   let initRS' = addWarnings initRS (F.toList warnings)

@@ -28,6 +28,7 @@ import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (foldM, forM_, unless, when)
+import Data.Foldable.Extra (notNull)
 import Data.Functor (void)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
@@ -338,7 +339,13 @@ hypotheticalWinCheck em g ws oc = do
     Unwinnable _ -> grantAchievement LoseScenario
     _ -> return ()
 
-  messageInfo . announcementQueue %= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
+  queue <- messageInfo . announcementQueue Swarm.Util.<%= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
+  shouldPause <- use $ temporal . pauseOnObjective
+
+  let gameFinished = newWinState /= Ongoing
+  let finishedObjectives = notNull queue
+  when (gameFinished || (finishedObjectives && shouldPause == PauseOnAnyObjective)) $
+    temporal . runStatus .= AutoPause
 
   mapM_ handleException $ exceptions finalAccumulator
  where
