@@ -78,7 +78,6 @@ capabilityName :: Capability -> Text
 capabilityName = \case
   CExecute con -> case con of
     Neg -> "neg"
-    Not -> "not"
     _ -> syntax $ constInfo con
   CMoveHeavy -> "move heavy robot"
   cap -> from @String . map toLower . drop 1 $ show cap
@@ -107,30 +106,31 @@ constCaps :: Const -> Maybe Capability
 constCaps = \case
   -- ----------------------------------------------------------------
   -- Some built-in constants that don't require any special capability.
-  Noop -> Nothing
   AppF -> Nothing
-  Force -> Nothing
-  Return -> Nothing
-  Parent -> Nothing
   Base -> Nothing
+  Equipped -> Nothing
+  Fail -> Nothing
+  Force -> Nothing
+  Has -> Nothing
+  Knows -> Nothing
+  Noop -> Nothing
+  Parent -> Nothing
+  Return -> Nothing
+  Say -> Nothing -- speaking is natural to robots (unlike listening)
   Setname -> Nothing
   Undefined -> Nothing
-  Fail -> Nothing
-  Has -> Nothing
-  Equipped -> Nothing
-  -- speaking is natural to robots (unlike listening)
-  Say -> Nothing
+  Use -> Nothing -- Recipes alone shall dictate whether things can be "used"
+  View -> Nothing -- TODO: #17 should require equipping an antenna
   -- TODO: #495
   --   the require command will be inlined once the Issue is fixed
   --   so the capabilities of the run commands will be checked instead
   Run -> Nothing
-  Use -> Nothing -- Recipes alone shall dictate whether things can be "used"
   -- Some God-like abilities.
-  Instant -> Just CGod
   As -> Just CGod
+  Create -> Just CGod
+  Instant -> Just CGod
   RobotNamed -> Just CGod
   RobotNumbered -> Just CGod
-  Create -> Just CGod
   Surveil -> Just CGod
   -- ----------------------------------------------------------------
   -- type-level arithmetic
