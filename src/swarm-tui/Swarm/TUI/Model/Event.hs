@@ -21,10 +21,10 @@ import Control.Arrow ((&&&))
 import Data.Bifunctor (first)
 import Data.List.Extra (enumerate)
 import Data.Text (Text)
-import Graphics.Vty qualified as V
-import Swarm.Language.Syntax.Direction (AbsoluteDir (..), Direction (..), directionSyntax)
 import GHC.Generics (Generic)
 import Generic.Data (FiniteEnumeration (..))
+import Graphics.Vty qualified as V
+import Swarm.Language.Syntax.Direction (AbsoluteDir (..), Direction (..), directionSyntax)
 
 -- | Swarm named TUI event type.
 --
