@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -95,16 +94,6 @@ data RuntimeOptions = RuntimeOptions
   , loadTestScenarios :: Bool
   }
   deriving (Eq, Show)
-
-instance Semigroup RuntimeOptions where
-  a <> b =
-    RuntimeOptions
-      (a.startPaused || b.startPaused)
-      (a.pauseOnObjectiveCompletion || b.pauseOnObjectiveCompletion)
-      (a.loadTestScenarios || b.loadTestScenarios)
-
-instance Monoid RuntimeOptions where
-  mempty = RuntimeOptions False False False
 
 initRuntimeState ::
   ( Has (Throw SystemFailure) sig m
