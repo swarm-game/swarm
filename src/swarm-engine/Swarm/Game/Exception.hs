@@ -142,8 +142,8 @@ formatIncapableFix = \case
 -- >>> import Swarm.Game.Failure (LoadingFailure)
 -- >>> import qualified Data.Set as S
 -- >>> :set -XTypeApplications
--- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" mempty mempty (S.singleton CAppear)
--- >>> r = mkEntity (defaultEntityDisplay 'o') "the one ring" mempty mempty (S.singleton CAppear)
+-- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" mempty mempty (S.singleton $ CExecute Appear)
+-- >>> r = mkEntity (defaultEntityDisplay 'o') "the one ring" mempty mempty (S.singleton $ CExecute Appear)
 -- >>> m = fromRight mempty . run . runThrow @LoadingFailure $ buildEntityMap [w,r]
 -- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByEquip cs t
 --
@@ -152,13 +152,13 @@ formatIncapableFix = \case
 --   'as'
 --   If God in troth thou wantest to play, try thou a Creative game.
 --
--- >>> incapableError (R.singletonCap CAppear) (TConst Appear)
+-- >>> incapableError (R.singletonCap $ CExecute Appear) (TConst Appear)
 -- You do not have the device required for:
 --   'appear'
 --   Please equip:
 --   - magic wand or the one ring
 --
--- >>> incapableError (R.singletonCap CRandom) (TConst Random)
+-- >>> incapableError (R.singletonCap $ CExecute Random) (TConst Random)
 -- Missing the random capability for:
 --   'random'
 --   but no device yet provides it. See

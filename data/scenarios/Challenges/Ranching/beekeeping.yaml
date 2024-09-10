@@ -193,7 +193,7 @@ entities:
     description:
       - Senses direction to nectar-producing flowers
     properties: [known, pickable]
-    capabilities: [detectdirection, structure]
+    capabilities: [chirp, structure]
   - name: honey
     display:
       char: 'h'

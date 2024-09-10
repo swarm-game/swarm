@@ -1093,7 +1093,7 @@ explainEntry s e =
     , explainRecipes s e
     ]
       <> [drawRobotMachine s False | CDebug `M.member` getMap (e ^. entityCapabilities)]
-      <> [drawRobotLog s | CLog `M.member` getMap (e ^. entityCapabilities)]
+      <> [drawRobotLog s | CExecute Log `M.member` getMap (e ^. entityCapabilities)]
 
 displayProperties :: [EntityProperty] -> Widget Name
 displayProperties = displayList . mapMaybe showProperty

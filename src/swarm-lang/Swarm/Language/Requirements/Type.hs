@@ -61,7 +61,7 @@ data Requirement
     --   of entity @"e"@ and later requiring 7 is the same as requiring
     --   12.
     ReqInv Int Text
-  deriving (Eq, Ord, Show, Read, Generic, Hashable, Data, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Generic, Hashable, Data, FromJSON, ToJSON)
 
 -- | It is tempting to define @Requirements = Set Requirement@, but
 --   that would be wrong, since two identical 'ReqInv' should have

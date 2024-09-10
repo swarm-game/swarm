@@ -61,7 +61,7 @@ entities:
     description:
       - A satellite navigation device.
     properties: [known, pickable]
-    capabilities: [senseloc]
+    capabilities: [whereami]
   - name: Tardis
     display:
       attr: water
@@ -69,4 +69,4 @@ entities:
     description:
       - Bigger on the inside.
     properties: [known, pickable]
-    capabilities: [senseloc, teleport]
+    capabilities: [whereami, teleport]

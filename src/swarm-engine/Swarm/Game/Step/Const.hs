@@ -778,8 +778,8 @@ execConst runChildProg c vs s k = do
         let addToRobotLog :: (Has (State GameState) sgn m) => Robot -> m ()
             addToRobotLog r = do
               maybeRidLoc <- evalState r $ do
-                hasLog <- hasCapability CLog
-                hasListen <- hasCapability CListen
+                hasLog <- hasCapability $ CExecute Log
+                hasListen <- hasCapability $ CExecute Listen
                 loc' <- use robotLocation
                 rid <- use robotID
                 return $ do
@@ -1258,7 +1258,7 @@ execConst runChildProg c vs s k = do
   doDrill d = do
     ins <- use equippedDevices
 
-    let equippedDrills = extantElemsWithCapability CDrill ins
+    let equippedDrills = extantElemsWithCapability (CExecute Drill) ins
         -- Heuristic: choose the drill with the more elaborate name.
         -- E.g. "metal drill" vs. "drill"
         preferredDrill = listToMaybe $ sortOn (Down . T.length . (^. entityName)) equippedDrills

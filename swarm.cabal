@@ -209,6 +209,9 @@ common fused-effects-lens
 common fuzzy
   build-depends: fuzzy >=0.1 && <0.2
 
+common generic-data
+  build-depends: generic-data >=1.0 && <1.2
+
 common githash
   build-depends: githash >=0.1.6 && <0.2
 
@@ -399,6 +402,7 @@ library swarm-lang
     extra,
     free,
     fused-effects,
+    generic-data,
     hashable,
     lens,
     lsp,
@@ -963,6 +967,7 @@ library swarm-tui
     filepath,
     fused-effects,
     fuzzy,
+    generic-data,
     githash,
     lens,
     linear,
