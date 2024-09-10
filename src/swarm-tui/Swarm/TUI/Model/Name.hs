@@ -92,6 +92,8 @@ data Name
     InventoryList
   | -- | The inventory item position in the InventoryList.
     InventoryListItem Int
+  | -- | Cacheable scenario preview
+    ScenarioPreview FilePath
   | -- | The list of main menu choices.
     MenuList
   | -- | The list of achievements.
