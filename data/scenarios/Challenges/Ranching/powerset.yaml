@@ -99,7 +99,7 @@ entities:
     description:
       - Allows one to `stride` across multiple cells
     properties: [known, pickable]
-    capabilities: [movemultiple]
+    capabilities: [stride]
   - name: bell
     display:
       char: 'B'

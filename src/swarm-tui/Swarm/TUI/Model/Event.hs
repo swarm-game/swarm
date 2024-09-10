@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -20,17 +21,21 @@ import Control.Arrow ((&&&))
 import Data.Bifunctor (first)
 import Data.List.Extra (enumerate)
 import Data.Text (Text)
+import GHC.Generics (Generic)
+import Generic.Data (FiniteEnumeration (..))
 import Graphics.Vty qualified as V
 import Swarm.Language.Syntax.Direction (AbsoluteDir (..), Direction (..), directionSyntax)
 
+-- | Swarm named TUI event type.
+--
 -- See Note [how Swarm event handlers work]
-
 data SwarmEvent
   = Main MainEvent
   | REPL REPLEvent
   | World WorldEvent
   | Robot RobotEvent
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+  deriving (Enum, Bounded) via (FiniteEnumeration SwarmEvent)
 
 swarmEvents :: KeyEvents SwarmEvent
 swarmEvents =
@@ -167,21 +172,8 @@ data WorldEvent
   = ViewBaseEvent
   | ShowFpsEvent
   | MoveViewEvent AbsoluteDir
-  deriving (Eq, Ord, Show)
-
-instance Enum WorldEvent where
-  fromEnum = \case
-    ViewBaseEvent -> 0
-    ShowFpsEvent -> 1
-    MoveViewEvent d -> 2 + fromEnum d
-  toEnum = \case
-    0 -> ViewBaseEvent
-    1 -> ShowFpsEvent
-    n -> MoveViewEvent . toEnum $ n - 2
-
-instance Bounded WorldEvent where
-  minBound = ViewBaseEvent
-  maxBound = MoveViewEvent maxBound
+  deriving (Eq, Ord, Show, Generic)
+  deriving (Enum, Bounded) via (FiniteEnumeration WorldEvent)
 
 worldPanelEvents :: KeyEvents WorldEvent
 worldPanelEvents = allKeyEvents $ \case

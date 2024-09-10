@@ -269,11 +269,11 @@ grantAchievement a = do
 --   be other exceptions added in the future.
 constCapsFor :: Const -> Robot -> Maybe Capability
 constCapsFor Move r
-  | r ^. robotHeavy = Just CMoveheavy
+  | r ^. robotHeavy = Just CMoveHeavy
 constCapsFor Backup r
-  | r ^. robotHeavy = Just CMoveheavy
+  | r ^. robotHeavy = Just CMoveHeavy
 constCapsFor Stride r
-  | r ^. robotHeavy = Just CMoveheavy
+  | r ^. robotHeavy = Just CMoveHeavy
 constCapsFor c _ = constCaps c
 
 -- | Requires that the target location is within one cell.

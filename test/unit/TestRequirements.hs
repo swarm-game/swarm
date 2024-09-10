@@ -14,6 +14,7 @@ import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline
 import Swarm.Language.Requirements.Analysis (requirements)
 import Swarm.Language.Requirements.Type (ReqCtx, Requirements, capReqs)
+import Swarm.Language.Syntax.Constants (Const (Move))
 import Swarm.Language.Syntax.Util (eraseS)
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -26,7 +27,7 @@ testRequirements =
     [ testGroup
         "Basic capabilities"
         [ testCase "solar panel" $ "noop" `requiresCap` CPower
-        , testCase "move" $ "move" `requiresCap` CMove
+        , testCase "move" $ "move" `requiresCap` CExecute Move
         , testCase "lambda" $ "\\x. x" `requiresCap` CLambda
         , testCase "inl" $ "inl 3" `requiresCap` CSum
         , testCase "cap from type" $ "inl () : rec t. Unit + t" `requiresCap` CRectype
@@ -36,7 +37,7 @@ testRequirements =
         [ testCase "global var requirement does not apply to local var (#1914)" $
             checkReqCtx
               "def m = move end; def y = \\m. log (format m) end"
-              (maybe False ((CMove `S.notMember`) . capReqs) . Ctx.lookup "y")
+              (maybe False ((CExecute Move `S.notMember`) . capReqs) . Ctx.lookup "y")
         ]
     ]
 
