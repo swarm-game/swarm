@@ -17,9 +17,6 @@ module Swarm.TUI.View (
   drawModalMenu,
   drawKeyCmd,
 
-  -- * World
-  drawWorldPane,
-
   -- * Robot panel
   drawRobotPanel,
   drawItem,
@@ -255,7 +252,9 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
   drawDescription (SISingle (s, si)) =
     vBox
       [ drawMarkdown (nonBlank (s ^. scenarioOperation . scenarioDescription))
-      , hCenter . padTop (Pad 1) . vLimit 6 $ hLimitPercent 60 worldPeek
+      , cached (ScenarioPreview $ si ^. scenarioPath) $
+          hCenter . padTop (Pad 1) . vLimit 6 $
+            hLimitPercent 60 worldPeek
       , padTop (Pad 1) table
       ]
    where
