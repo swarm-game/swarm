@@ -10,62 +10,31 @@ on:
       - "[0-9]+.[0-9]+.[0-9]+.[0-9]+*"
 
 jobs:
-  create_release:
-    name: Create Github Release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Zip data directory
-        run: |
-          zip -r swarm-data.zip ./data || { echo "Unable to create a zip archive."; exit 1;  }
-
-      - name: Create Release
-        id: create_release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            LICENSE
-            swarm-data.zip
-
-      - name: Output Release URL File
-        run: echo "${{ steps.create_release.outputs.upload_url }}" > release_url.txt
-
-      - name: Save Release URL File for publish
-        uses: actions/upload-artifact@v4
-        with:
-          name: release_url
-          path: release_url.txt
-
-  build_artifact:
-    needs: [create_release]
+  build-binaries:
     name: Haskell-Release - ${{ matrix.os }} - ${{ matrix.ghc }}
     runs-on: ${{ matrix.os }}
-    container:
-      # It might be good idea to use older runner for building binary:
-      # on latest runners like fedora, it would link symbols in newer
-      # system libraries, so users could not run it on older OSes
-      image: buildpack-deps:jammy
     strategy:
       matrix:
         # macos-13 points to x64 based OS and mocos-latest points to arm based OS
-        os: [ubuntu-latest, macos-13, macos-latest]
+        os:
+            - ubuntu-latest
+            - macos-latest
+            - macos-13
         cabal:
             - 3.12.1.0
         ghc:
             - 9.8.2
 
     steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
       - uses: haskell-actions/setup@v2
         id: setup-haskell-cabal
         name: Setup Haskell
         with:
             ghc-version: ${{ matrix.ghc }}
             cabal-version: ${{ matrix.cabal }}
-
-      - name: Check out code
-        uses: actions/checkout@v4
 
       - name: cache
         uses: actions/cache@v4
@@ -75,6 +44,9 @@ jobs:
           restore-keys: |
             ${{ matrix.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
             ${{ matrix.os }}-${{ matrix.ghc }}-
+
+      - name: Zip data directory
+        run: zip -r swarm-data.zip ./data || { echo "Unable to create a zip archive."; exit 1;  }
 
       - name: Install dependencies
         run: |
@@ -88,38 +60,91 @@ jobs:
       - name: Set binary path name
         run: echo BINARY_PATH="./dist/swarm" >> "$GITHUB_ENV"
 
-      - name: Load Release URL File from release job
-        uses: actions/download-artifact@v4
+      # TODO: Get rid of this action and use bash and GITHUB_ENV instead
+      - name: Set binary OS name
+        uses: allenevans/set-env@v4.0.0
         with:
-          name: release_url
+            BINARY_OS: ${{ runner.os }}
 
-      - name: Get Release File Name & Upload URL
-        id: get_release_info
-        run: |
-          echo "upload_url=$(cat release_url.txt)" >> "$GITHUB_OUTPUT"
-
-      - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - if: (matrix.os == 'macos-13') || (matrix.os == 'macos-latest')
+        name: Set binary OS name on Macos
+        uses: allenevans/set-env@v4.0.0
         with:
-          upload_url: ${{ steps.get_release_info.outputs.upload_url }}
-          asset_path: ${{ env.BINARY_PATH }}
-          asset_name: swarm-${{ runner.os }}
-          asset_content_type: application/octet-stream
+            BINARY_OS: 'Darwin'
 
-      - name: Generate tarball for Hackage
-        run: cabal v2-sdist
-
-      # - name: Generate documentation for Hackage
-      #   # The hackage-server attempts to build documentation for library packages, but this can fail.
-      #   # If it does we can do it ourselves
-      #   run: cabal v2-haddock --builddir=docs --haddock-for-hackage --enable-doc
-
-      - uses: haskell-actions/hackage-publish@v1
+      - name: Set binary Arch name
+        uses: allenevans/set-env@v4.0.0
         with:
-          hackageToken: "${{ secrets.HACKAGE_AUTH_TOKEN }}"
-          packagesPath: dist-newstyle/sdist
-          # docsPath: docs
-          publish: true
+            ARCH: 'x86_64'
+
+      - if: matrix.os == 'macos-latest'
+        name: Set binary ARCH name for apple silicon
+        uses: allenevans/set-env@v4.0.0
+        with:
+            ARCH: 'arm64'
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+            name: swarm-${{ env.BINARY_OS }}-${{env.ARCH}}
+            path: ${{ env.BINARY_PATH }}
+            retention-days: 3
+
+  create-release:
+      name: Create release
+      needs: [build-binaries]
+      runs-on: ubuntu-latest
+      steps:
+        - name: Check out code
+          uses: actions/checkout@v4
+
+        - name: Download Linux x86_64
+          uses: actions/download-artifact@v4
+          with:
+            name: swarm-Linux-x86_64
+            path: artifacts/swarm-Linux-x86_64
+
+        - name: Download executable for Macos x86_64
+          uses: actions/download-artifact@v4
+          with:
+            name: swarm-Darwin-x86_64
+            path: artifacts/swarm-Darwin-x86_64
+
+        - name: Download executable for arm64 Macos
+          uses: actions/download-artifact@v4
+          with:
+            name: swarm-Darwin-arm64
+            path: artifacts/swarm-Darwin-arm64
+
+        - name: Rename executables
+          run: |
+              mv artifacts/swarm-Linux-x86_64/swarm  swarm-Linux-x86_64
+              mv artifacts/swarm-Darwin-x86_64/swarm swarm-Darwin-x86_64
+              mv artifacts/swarm-Darwin-arm64/swarm swarm-Darwin-arm64
+
+        - name: Upload Release Asset
+          uses: softprops/action-gh-release@v1
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          with:
+            name: swarm
+            draft: false
+            prerelease: false
+            files: |
+              swarm-Linux-x86_64
+              swarm-Darwin-x86_64
+              swarm-Darwin-arm64
+              LICENSE
+              swarm-data.zip
+
+        # - name: Generate documentation for Hackage
+        #   # The hackage-server attempts to build documentation for library packages, but this can fail.
+        #   # If it does we can do it ourselves
+        #   run: cabal v2-haddock --builddir=docs --haddock-for-hackage --enable-doc
+
+        - uses: haskell-actions/hackage-publish@v1
+          with:
+            hackageToken: "${{ secrets.HACKAGE_AUTH_TOKEN }}"
+            packagesPath: dist-newstyle/sdist
+            # docsPath: docs
+            publish: true
