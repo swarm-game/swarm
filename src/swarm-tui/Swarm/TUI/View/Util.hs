@@ -25,6 +25,7 @@ import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
 import Swarm.Game.Terrain
+import Swarm.Game.Universe
 import Swarm.Language.Pretty (prettyTextLine)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown qualified as Markdown
@@ -255,3 +256,11 @@ bindingText s e = maybe "" ppBindingShort b
     Binding V.KLeft m | null m -> "←"
     Binding V.KRight m | null m -> "→"
     bi -> ppBinding bi
+
+renderCoordsString :: Cosmic Location -> String
+renderCoordsString (Cosmic sw coords) =
+  unwords $ locationToString coords : suffix
+ where
+  suffix = case sw of
+    DefaultRootSubworld -> []
+    SubworldName swName -> ["in", T.unpack swName]

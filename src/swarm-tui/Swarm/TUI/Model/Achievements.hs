@@ -19,7 +19,7 @@ import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Popup (Popup (AchievementPopup), addPopup)
+import Swarm.TUI.Model.Dialog.Popup (Popup (AchievementPopup), addPopup)
 import Swarm.TUI.Model.UI
 
 attainAchievement :: (MonadIO m, MonadState AppState m) => CategorizedAchievement -> m ()

@@ -82,11 +82,10 @@ import Swarm.TUI.Launch.Model (toSerializableParams)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements
 import Swarm.TUI.Model.DebugOption (DebugOption (LoadTestingScenarios))
-import Swarm.TUI.Model.Goal (emptyGoalDisplay)
+import Swarm.TUI.Model.Dialog
 import Swarm.TUI.Model.KeyBindings
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
-import Swarm.TUI.Model.Structure
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Attribute.Attr (getWorldAttrName, swarmAttrMap)
 import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
@@ -127,8 +126,15 @@ initPersistentState ::
   m (RuntimeState, UIState, KeyEventHandlingState)
 initPersistentState opts@(AppOpts {..}) = do
   (warnings :: Seq SystemFailure, (initRS, initUI, initKs)) <- runAccum mempty $ do
-    rs <- initRuntimeState $ RuntimeOptions pausedAtStart (Set.member LoadTestingScenarios debugOptions)
-    ui <- initUIState speed (not (skipMenu opts)) debugOptions
+    rs <-
+      initRuntimeState
+        RuntimeOptions
+          { startPaused = pausedAtStart
+          , pauseOnObjectiveCompletion = autoShowObjectives
+          , loadTestScenarios = Set.member LoadTestingScenarios debugOptions
+          }
+    let showMainMenu = not (skipMenu opts)
+    ui <- initUIState UIInitOptions {..}
     ks <- initKeyHandlingState
     return (rs, ui, ks)
   let initRS' = addWarnings initRS (F.toList warnings)
@@ -257,7 +263,7 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
               fst siPair ^. scenarioLandscape . scenarioAttrs
           )
           swarmAttrMap
-      & uiGameplay . uiGoal .~ emptyGoalDisplay
+      & uiGameplay . uiDialogs . uiGoal .~ emptyGoalDisplay
       & uiGameplay . uiIsAutoPlay .~ isAutoplaying
       & uiGameplay . uiFocusRing .~ initFocusRing
       & uiGameplay . uiInventory . uiInventorySearch .~ Nothing
@@ -271,7 +277,7 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
       & uiGameplay . uiTiming . lastFrameTime .~ curTime
       & uiGameplay . uiWorldEditor . EM.entityPaintList %~ BL.listReplace entityList Nothing
       & uiGameplay . uiWorldEditor . EM.editingBounds . EM.boundsRect %~ setNewBounds
-      & uiGameplay . uiStructure
+      & uiGameplay . uiDialogs . uiStructure
         .~ StructureDisplay
           (SR.makeListWidget . M.elems $ gs ^. discovery . structureRecognition . automatons . originalStructureDefinitions)
           (focusSetCurrent (StructureWidgets StructuresList) $ focusRing $ map StructureWidgets enumerate)

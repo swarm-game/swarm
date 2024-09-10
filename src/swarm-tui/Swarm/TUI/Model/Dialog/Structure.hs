@@ -5,7 +5,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A UI-centric model for Structure presentation.
-module Swarm.TUI.Model.Structure where
+module Swarm.TUI.Model.Dialog.Structure where
 
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
