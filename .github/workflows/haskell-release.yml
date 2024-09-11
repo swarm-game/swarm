@@ -36,11 +36,14 @@ jobs:
             ghc-version: ${{ matrix.ghc }}
             cabal-version: ${{ matrix.cabal }}
 
+      - name: Freeze
+        run: cabal freeze
+
       - name: cache
         uses: actions/cache@v4
         with:
           key: ${{ matrix.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
-          path: ~/.cabal/store
+          path: ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
           restore-keys: |
             ${{ matrix.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
             ${{ matrix.os }}-${{ matrix.ghc }}-
@@ -60,28 +63,19 @@ jobs:
       - name: Set binary path name
         run: echo BINARY_PATH="./dist/swarm" >> "$GITHUB_ENV"
 
-      # TODO: Get rid of this action and use bash and GITHUB_ENV instead
       - name: Set binary OS name
-        uses: allenevans/set-env@v4.0.0
-        with:
-            BINARY_OS: ${{ runner.os }}
+        run: echo BINARY_OS=${{ runner.os }} >> "$GITHUB_ENV"
 
       - if: (matrix.os == 'macos-13') || (matrix.os == 'macos-latest')
         name: Set binary OS name on Macos
-        uses: allenevans/set-env@v4.0.0
-        with:
-            BINARY_OS: 'Darwin'
+        run: echo BINARY_OS="Darwin" >> "$GITHUB_ENV"
 
       - name: Set binary Arch name
-        uses: allenevans/set-env@v4.0.0
-        with:
-            ARCH: 'x86_64'
+        run: echo ARCH="x86_64" >> "$GITHUB_ENV"
 
       - if: matrix.os == 'macos-latest'
         name: Set binary ARCH name for apple silicon
-        uses: allenevans/set-env@v4.0.0
-        with:
-            ARCH: 'arm64'
+        run: echo ARCH="arm64" >> "$GITHUB_ENV"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
