@@ -15,7 +15,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # macos-13 points to x64 based OS and mocos-latest points to arm based OS
+        # macos-13 points to x64 based OS and macos-latest points to arm based OS
         os:
             - ubuntu-latest
             - macos-latest
@@ -48,9 +48,6 @@ jobs:
             ${{ matrix.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
             ${{ matrix.os }}-${{ matrix.ghc }}-
 
-      - name: Zip data directory
-        run: zip -r swarm-data.zip ./data || { echo "Unable to create a zip archive."; exit 1;  }
-
       - name: Install dependencies
         run: |
           cabal v2-build --disable-tests --disable-benchmarks --dependencies-only -j2 all
@@ -63,7 +60,8 @@ jobs:
       - name: Set binary path name
         run: echo BINARY_PATH="./dist/swarm" >> "$GITHUB_ENV"
 
-      - name: Set binary OS name
+      - if: matrix.os == 'ubuntu-latest'
+        name: Set binary OS name on Ubuntu
         run: echo BINARY_OS=${{ runner.os }} >> "$GITHUB_ENV"
 
       - if: (matrix.os == 'macos-13') || (matrix.os == 'macos-latest')
@@ -77,7 +75,7 @@ jobs:
         name: Set binary ARCH name for apple silicon
         run: echo ARCH="arm64" >> "$GITHUB_ENV"
 
-      - name: Upload Artifact
+      - name: Upload executables
         uses: actions/upload-artifact@v4
         with:
             name: swarm-${{ env.BINARY_OS }}-${{env.ARCH}}
@@ -110,11 +108,20 @@ jobs:
             name: swarm-Darwin-arm64
             path: artifacts/swarm-Darwin-arm64
 
+        - name: Download Swarm data
+          uses: actions/download-artifact@v4
+          with:
+            name: swarm-data.zip
+            path: artifacts/swarm-Darwin-arm64
+
         - name: Rename executables
           run: |
               mv artifacts/swarm-Linux-x86_64/swarm  swarm-Linux-x86_64
               mv artifacts/swarm-Darwin-x86_64/swarm swarm-Darwin-x86_64
               mv artifacts/swarm-Darwin-arm64/swarm swarm-Darwin-arm64
+
+        - name: Zip data directory
+          run: zip -r swarm-data.zip ./data || { echo "Unable to create a zip archive."; exit 1;  }
 
         - name: Upload Release Asset
           uses: softprops/action-gh-release@v1
