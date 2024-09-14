@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoGeneralizedNewtypeDeriving #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -64,8 +63,8 @@ import System.Clock (TimeSpec (..))
 extractColWidth :: ColWidth -> Int
 extractColWidth (ColW x) = x
 
-instance Semigroup ColWidth where
-  ColW w1 <> ColW w2 = ColW $ max w1 w2
+getMaxWidth :: ColWidth -> ColWidth -> ColWidth
+getMaxWidth (ColW w1) (ColW w2) = ColW $ max w1 w2
 
 data RobotRenderingContext = RobotRenderingContext
   { _mygs :: GameState
@@ -120,7 +119,7 @@ colHdr uiDebug =
     { draw = \_ (MColC (Ix ci)) -> case hdrs V.!? ci of
         Just ch -> withAttr columnHdrAttr (str ch) <=> hBorder
         Nothing -> emptyWidget
-    , widths = \(Widths ws) -> zipWith (<>) ws (map (ColW . length) $ V.toList hdrs)
+    , widths = \(Widths ws) -> zipWith getMaxWidth ws (map (ColW . length) $ V.toList hdrs)
     , height = ColHdrH 2
     }
  where
