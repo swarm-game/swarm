@@ -8,7 +8,15 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- A UI-centric model for presentation of Robot details.
-module Swarm.TUI.View.Robot where
+module Swarm.TUI.View.Robot (
+  emptyRobotDisplay,
+  RobotRenderingContext (..),
+  mkRobotDisplay,
+  getList,
+  updateList,
+  renderRobotsList,
+  renderDutyCycle,
+) where
 
 import Brick
 import Brick.Widgets.Border
