@@ -55,7 +55,7 @@ import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Syntax (allConst, erase)
 import Swarm.Language.Types
-import Swarm.Util (binTuples, (?))
+import Swarm.Util (applyJust, applyWhen, binTuples, (?))
 import System.Clock qualified as Clock
 import System.Random (mkStdGen)
 
@@ -137,20 +137,18 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
       -- of the scenario description).
       & ix baseID
         . machine
-        %~ case initialCodeToRun of
-          Nothing -> id
-          Just t -> const $ initMachine t
+        %~ applyJust (const . initMachine <$> initialCodeToRun)
       -- If we are in creative mode, give base all the things
       & ix baseID
         . robotInventory
-        %~ case scenario ^. scenarioOperation . scenarioCreative of
-          False -> id
-          True -> union (fromElems (map (0,) things))
+        %~ applyWhen
+          (scenario ^. scenarioOperation . scenarioCreative)
+          (union (fromElems (map (0,) things)))
       & ix baseID
         . equippedDevices
-        %~ case scenario ^. scenarioOperation . scenarioCreative of
-          False -> id
-          True -> const (fromList devices)
+        %~ applyWhen
+          (scenario ^. scenarioOperation . scenarioCreative)
+          (const (fromList devices))
 
   running = case robotList of
     [] -> False
