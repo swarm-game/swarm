@@ -147,7 +147,7 @@ getColumnAttrList dbgOptions =
   NE.map ($ headingStrings) $ getAccessorList dbgOptions
  where
   headingStrings =
-    LibRobotRow
+    RobotRow
       { _fID = Col "ID" Minimal
       , _fName = Col "Name" Grow
       , _fAge = Col "Age" Minimal
@@ -168,7 +168,7 @@ colHdrs =
     . NE.map headingString
     . getColumnAttrList
 
-getAccessorList :: Set DebugOption -> NonEmpty (LibRobotRow a -> a)
+getAccessorList :: Set DebugOption -> NonEmpty (RobotRow a -> a)
 getAccessorList dbgOptions =
   applyWhen debugRID (NE.cons _fID) mainListSuffix
  where
@@ -202,8 +202,8 @@ assignRowWidthForConstructor = WsPerR $ \(Widths x) _ -> x
 
 -- |
 -- First, computes the minimum width for each column, using
--- both the header string width, the widest visible cell content,
--- and adding 1 to the result of each column for padding.
+-- both the header string width and the widest visible cell content,
+-- then adding 1 to the result of each column for padding.
 --
 -- Second, to utilize the full available width for the table, distributes
 -- the extra space equally among columns marked as 'Grow'.
@@ -294,7 +294,7 @@ mkLibraryEntries c =
  where
   mkRobotRow robot =
     RobotRowPayload robot $
-      LibRobotRow
+      RobotRow
         { _fID = strWidget $ show $ robot ^. robotID
         , _fName = nameWidget
         , _fAge = strWidget ageStr

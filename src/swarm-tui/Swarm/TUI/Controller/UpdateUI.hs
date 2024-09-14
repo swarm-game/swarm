@@ -199,6 +199,8 @@ doRobotListUpdate g = do
       oldList = getList $ gp ^. uiDialogs . uiRobot . robotListContent . robotsListWidget
       maybeOldSelected = snd <$> BL.listSelectedElement oldList
 
+      -- Since we're replacing the entire contents of the list, we need to preserve the
+      -- selected row here.
       maybeModificationFunc =
         updateList . BL.listFindBy . ((==) `on` view (rob . robotID)) <$> maybeOldSelected
 

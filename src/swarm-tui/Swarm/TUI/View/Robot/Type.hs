@@ -44,7 +44,7 @@ type RobotWidgetRow = RobotRowPayload WidthWidget
 -- | This type is parameterized such that the same
 -- collection of fields can specify both
 -- cell widgets and column headings
-data LibRobotRow a = LibRobotRow
+data RobotRow a = RobotRow
   { _fID :: a
   , _fName :: a
   , _fAge :: a
@@ -61,7 +61,7 @@ data LibRobotRow a = LibRobotRow
 
 data RobotRowPayload a = RobotRowPayload
   { _rob :: Robot
-  , _rPayload :: LibRobotRow a
+  , _rPayload :: RobotRow a
   }
   deriving (Functor)
 
