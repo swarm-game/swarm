@@ -24,12 +24,12 @@ import Swarm.TUI.View.Attribute.Attr (boldAttr, cyanAttr)
 import Swarm.TUI.View.Robot.Type
 
 renderRobotDetails :: FocusRing Name -> Robot -> RobotDetailsPaneState -> Widget Name
-renderRobotDetails ring robot paneState =
+renderRobotDetails ring r paneState =
   vBox
     [ str $
         unwords
           [ "Selected robot"
-          , show $ view robotName robot
+          , show $ view robotName r
           ]
     , hBorder
     , str " "
@@ -73,4 +73,4 @@ renderRobotDetails ring robot paneState =
   commandHistogramEntries =
     map mkHistogramEntry $
       M.toList $
-        robot ^. activityCounts . commandsHistogram
+        r ^. activityCounts . commandsHistogram

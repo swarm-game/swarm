@@ -511,7 +511,7 @@ drawWorldCursorInfo worldEditor g cCoords =
   Cosmic _ coords = cCoords
   coordsWidget = str $ renderCoordsString $ fmap coordsToLoc cCoords
 
-  tileMembers = terrain : mapMaybe merge [entity, robot]
+  tileMembers = terrain : mapMaybe merge [entity, r]
   tileMemberWidgets =
     map (padRight $ Pad 1)
       . concat
@@ -529,7 +529,7 @@ drawWorldCursorInfo worldEditor g cCoords =
 
   terrain = displayTerrainCell worldEditor ri cCoords
   entity = displayEntityCell worldEditor ri cCoords
-  robot = displayRobotCell g cCoords
+  r = displayRobotCell g cCoords
 
   merge = fmap sconcat . NE.nonEmpty . filter (not . (^. invisible))
 
@@ -623,7 +623,7 @@ drawModal s = \case
       Just r -> renderRobotDetails rFocusRing r $ robotDialog ^. robotListContent . robotDetailsPaneState
      where
       oldList = getList $ robotDialog ^. robotListContent . robotsListWidget
-      maybeSelectedRobot = view rob . snd <$> BL.listSelectedElement oldList
+      maybeSelectedRobot = view robot . snd <$> BL.listSelectedElement oldList
     _ -> renderRobotsList $ robotDialog ^. robotListContent
    where
     robotDialog = s ^. uiState . uiGameplay . uiDialogs . uiRobot

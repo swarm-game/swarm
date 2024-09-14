@@ -279,13 +279,13 @@ strWidget tx = WithWidth (length tx) (str tx)
 -- obtained from the 'ticks' function.
 -- So we "rewind" it to the previous tick for the purpose of this display.
 renderDutyCycle :: TemporalState -> Robot -> WidthWidget
-renderDutyCycle temporalState robot =
+renderDutyCycle temporalState r =
   withAttr dutyCycleAttr <$> strWidget tx
  where
   tx = showFFloat (Just 1) dutyCyclePercentage "%"
 
   curTicks = temporalState ^. ticks
-  window = robot ^. activityCounts . activityWindow
+  window = r ^. activityCounts . activityWindow
 
   -- Rewind to previous tick
   latestRobotTick = addTicks (-1) curTicks
@@ -300,19 +300,19 @@ mkLibraryEntries :: RobotRenderingContext -> Seq RobotWidgetRow
 mkLibraryEntries c =
   mkRobotRow <$> S.fromList robots
  where
-  mkRobotRow robot =
-    RobotRowPayload robot $
+  mkRobotRow r =
+    RobotRowPayload r $
       RobotRow
-        { _fID = strWidget $ show $ robot ^. robotID
+        { _fID = strWidget $ show $ r ^. robotID
         , _fName = nameWidget
         , _fAge = strWidget ageStr
         , _fPos = locWidget
         , _fItems = padWidth 1 $ strWidget $ show rInvCount
         , _fStatus = statusWidget
-        , _fActns = strWidget $ show $ robot ^. activityCounts . tangibleCommandCount
-        , _fCmds = strWidget $ show . sum . M.elems $ robot ^. activityCounts . commandsHistogram
-        , _fCycles = strWidget $ show $ robot ^. activityCounts . lifetimeStepCount
-        , _fActivity = renderDutyCycle (c ^. mygs . temporal) robot
+        , _fActns = strWidget $ show $ r ^. activityCounts . tangibleCommandCount
+        , _fCmds = strWidget $ show . sum . M.elems $ r ^. activityCounts . commandsHistogram
+        , _fCycles = strWidget $ show $ r ^. activityCounts . lifetimeStepCount
+        , _fActivity = renderDutyCycle (c ^. mygs . temporal) r
         , _fLog = strWidget $ pure rLog
         }
    where
@@ -320,12 +320,12 @@ mkLibraryEntries c =
      where
       w =
         hBox
-          [ renderDisplay (robot ^. robotDisplay)
+          [ renderDisplay (r ^. robotDisplay)
           , highlightSystem . txt $ " " <> nameTxt
           ]
-      nameTxt = robot ^. robotName
+      nameTxt = r ^. robotName
 
-    highlightSystem = if robot ^. systemRobot then withAttr highlightAttr else id
+    highlightSystem = if r ^. systemRobot then withAttr highlightAttr else id
 
     ageStr
       | age < 60 = show age <> "sec"
@@ -333,13 +333,13 @@ mkLibraryEntries c =
       | age < 3600 * 24 = show (age `div` 3600) <> "hour"
       | otherwise = show (age `div` 3600 * 24) <> "day"
      where
-      TimeSpec createdAtSec _ = robot ^. robotCreatedAt
+      TimeSpec createdAtSec _ = r ^. robotCreatedAt
       TimeSpec nowSec _ = c ^. timing . lastFrameTime
       age = nowSec - createdAtSec
 
-    rInvCount = sum $ map fst . E.elems $ robot ^. robotEntity . entityInventory
+    rInvCount = sum $ map fst . E.elems $ r ^. robotEntity . entityInventory
     rLog
-      | robot ^. robotLogUpdated = 'x'
+      | r ^. robotLogUpdated = 'x'
       | otherwise = ' '
 
     locWidget =
@@ -347,7 +347,7 @@ mkLibraryEntries c =
      where
       w = hBox [worldCell, str $ " " <> locStr]
       rCoords = fmap locToCoords rLoc
-      rLoc = robot ^. robotLocation
+      rLoc = r ^. robotLocation
       worldCell =
         drawLoc
           (c ^. gameplay)
@@ -355,21 +355,21 @@ mkLibraryEntries c =
           rCoords
       locStr = renderCoordsString rLoc
 
-    statusWidget = case robot ^. machine of
+    statusWidget = case r ^. machine of
       Waiting {} -> strWidget "waiting"
       _
-        | isActive robot -> withAttr notifAttr <$> strWidget "busy"
+        | isActive r -> withAttr notifAttr <$> strWidget "busy"
         | otherwise -> withAttr greenAttr <$> strWidget "idle"
 
   basePos :: Point V2 Double
   basePos = realToFrac <$> fromMaybe origin (g ^? baseRobot . robotLocation . planar)
   -- Keep the base and non system robot (e.g. no seed)
-  isRelevant robot = robot ^. robotID == 0 || not (robot ^. systemRobot)
+  isRelevant r = r ^. robotID == 0 || not (r ^. systemRobot)
   -- Keep the robot that are less than 32 unit away from the base
-  isNear robot = creative || distance (realToFrac <$> robot ^. robotLocation . planar) basePos < 32
+  isNear r = creative || distance (realToFrac <$> r ^. robotLocation . planar) basePos < 32
   robots :: [Robot]
   robots =
-    filter (\robot -> debugAllRobots || (isRelevant robot && isNear robot))
+    filter (\r -> debugAllRobots || (isRelevant r && isNear r))
       . IM.elems
       $ g ^. robotInfo . robotMap
   creative = g ^. creativeMode

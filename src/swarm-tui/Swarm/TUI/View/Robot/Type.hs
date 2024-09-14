@@ -60,7 +60,7 @@ data RobotRow a = RobotRow
   deriving (Functor)
 
 data RobotRowPayload a = RobotRowPayload
-  { _rob :: Robot
+  { _robot :: Robot
   , _rPayload :: RobotRow a
   }
   deriving (Functor)

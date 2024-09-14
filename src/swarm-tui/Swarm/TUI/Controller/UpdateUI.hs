@@ -202,7 +202,7 @@ doRobotListUpdate g = do
       -- Since we're replacing the entire contents of the list, we need to preserve the
       -- selected row here.
       maybeModificationFunc =
-        updateList . BL.listFindBy . ((==) `on` view (rob . robotID)) <$> maybeOldSelected
+        updateList . BL.listFindBy . ((==) `on` view (robot . robotID)) <$> maybeOldSelected
 
   uiState . uiGameplay . uiDialogs . uiRobot . robotListContent . robotsListWidget .= applyJust maybeModificationFunc rd
 
@@ -212,8 +212,8 @@ doRobotListUpdate g = do
 updateRobotDetailsPane :: RobotWidgetRow -> EventM Name RobotDisplay ()
 updateRobotDetailsPane robotPayload =
   Brick.zoom robotListContent $ do
-    robotDetailsPaneState . cmdHistogramList . BL.listElementsL .= V.fromList (M.toList (robotPayload ^. rob . activityCounts . commandsHistogram))
-    robotDetailsPaneState . logsList . BL.listElementsL .= robotPayload ^. rob . robotLog
+    robotDetailsPaneState . cmdHistogramList . BL.listElementsL .= V.fromList (M.toList (robotPayload ^. robot . activityCounts . commandsHistogram))
+    robotDetailsPaneState . logsList . BL.listElementsL .= robotPayload ^. robot . robotLog
 
 -- | Either pops up the updated Goals modal
 -- or pops up the Congratulations (Win) modal, or pops
