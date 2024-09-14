@@ -13,11 +13,13 @@ module Swarm.TUI.View.Robot (
   mkRobotDisplay,
   getList,
   updateList,
-  renderRobotsList,
+  -- renderRobotsList,
   renderDutyCycle,
+  drawRobotsModal,
 ) where
 
 import Brick
+import Brick.Focus
 import Brick.Widgets.Border
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.TabularList.Mixed
@@ -54,7 +56,9 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
+import Swarm.TUI.View.Robot.Details
 import Swarm.TUI.View.Robot.Type
+import Swarm.TUI.View.Shared (tabControlFooter)
 import Swarm.Util (applyWhen, maximum0, maximumNE)
 import Swarm.Util.UnitInterval
 import Swarm.Util.WindowedCounter qualified as WC
@@ -374,3 +378,21 @@ mkLibraryEntries c =
   creative = g ^. creativeMode
   debugAllRobots = c ^. uiDbg . Lens.contains ListAllRobots
   g = c ^. mygs
+
+drawRobotsModal :: RobotDisplay -> Widget Name
+drawRobotsModal robotDialog =
+  vBox
+    [ mainContent
+    , tabControlFooter
+    ]
+ where
+  rFocusRing = robotDialog ^. robotDetailsFocus
+
+  mainContent = case focusGetCurrent rFocusRing of
+    Just (RobotsListDialog (SingleRobotDetails _)) -> case maybeSelectedRobot of
+      Nothing -> str "No selection"
+      Just r -> renderRobotDetails rFocusRing r $ robotDialog ^. robotListContent . robotDetailsPaneState
+     where
+      oldList = getList $ robotDialog ^. robotListContent . robotsListWidget
+      maybeSelectedRobot = view robot . snd <$> BL.listSelectedElement oldList
+    _ -> renderRobotsList $ robotDialog ^. robotListContent

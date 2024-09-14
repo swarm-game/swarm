@@ -36,6 +36,7 @@ import Swarm.TUI.Model.Dialog.Structure
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
+import Swarm.TUI.View.Shared (tabControlFooter)
 import Swarm.TUI.View.Util
 import Swarm.Util (commaList)
 
@@ -133,10 +134,9 @@ renderStructuresDisplay gs structureDisplay =
         [ leftSide
         , padLeft (Pad 2) structureElaboration
         ]
-    , footer
+    , tabControlFooter
     ]
  where
-  footer = hCenter $ withAttr italicAttr $ txt "NOTE: [Tab] toggles focus between panes"
   lw = _structurePanelListWidget structureDisplay
   fr = _structurePanelFocus structureDisplay
   leftSide =

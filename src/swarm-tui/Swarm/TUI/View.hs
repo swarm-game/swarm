@@ -129,7 +129,6 @@ import Swarm.TUI.Model.DebugOption (DebugOption (..))
 import Swarm.TUI.Model.Dialog.Goal (goalsContent, hasAnythingToShow)
 import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.KeyBindings (handlerNameKeysDescription)
-import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Panel
@@ -140,8 +139,6 @@ import Swarm.TUI.View.Logo
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Popup
 import Swarm.TUI.View.Robot
-import Swarm.TUI.View.Robot.Details
-import Swarm.TUI.View.Robot.Type
 import Swarm.TUI.View.Structure qualified as SR
 import Swarm.TUI.View.Util as VU
 import Swarm.Util
@@ -617,17 +614,7 @@ drawDialog s = case s ^. uiState . uiGameplay . uiDialogs . uiModal of
 drawModal :: AppState -> ModalType -> Widget Name
 drawModal s = \case
   HelpModal -> helpWidget (s ^. gameState . randomness . seed) (s ^. runtimeState . webPort) (s ^. keyEventHandling)
-  RobotsModal -> case focusGetCurrent rFocusRing of
-    Just (RobotsListDialog (SingleRobotDetails _)) -> case maybeSelectedRobot of
-      Nothing -> str "No selection"
-      Just r -> renderRobotDetails rFocusRing r $ robotDialog ^. robotListContent . robotDetailsPaneState
-     where
-      oldList = getList $ robotDialog ^. robotListContent . robotsListWidget
-      maybeSelectedRobot = view robot . snd <$> BL.listSelectedElement oldList
-    _ -> renderRobotsList $ robotDialog ^. robotListContent
-   where
-    robotDialog = s ^. uiState . uiGameplay . uiDialogs . uiRobot
-    rFocusRing = robotDialog ^. robotDetailsFocus
+  RobotsModal -> drawRobotsModal $ s ^. uiState . uiGameplay . uiDialogs . uiRobot
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList
