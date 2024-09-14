@@ -159,17 +159,17 @@ getColumnAttrList dbgOptions =
  where
   headingStrings =
     RobotRow
-      { _fID = Col "ID" Minimal
-      , _fName = Col "Name" Grow
-      , _fAge = Col "Age" Minimal
-      , _fPos = Col "Pos" Minimal
-      , _fItems = Col "Items" Minimal
-      , _fStatus = Col "Status" Minimal
-      , _fActns = Col "Actns" Minimal
-      , _fCmds = Col "Cmds" Minimal
-      , _fCycles = Col "Cycles" Minimal
-      , _fActivity = Col "Activity" Grow
-      , _fLog = Col "Log" Minimal
+      { rowID = Col "ID" Minimal
+      , rowName = Col "Name" Grow
+      , rowAge = Col "Age" Minimal
+      , rowPos = Col "Pos" Minimal
+      , rowItems = Col "Items" Minimal
+      , rowStatus = Col "Status" Minimal
+      , rowActns = Col "Actns" Minimal
+      , rowCmds = Col "Cmds" Minimal
+      , rowCycles = Col "Cycles" Minimal
+      , rowActivity = Col "Activity" Grow
+      , rowLog = Col "Log" Minimal
       }
 
 colHdrs :: Set DebugOption -> Vector String
@@ -181,21 +181,21 @@ colHdrs =
 
 getAccessorList :: Set DebugOption -> NonEmpty (RobotRow a -> a)
 getAccessorList dbgOptions =
-  applyWhen debugRID (NE.cons _fID) mainListSuffix
+  applyWhen debugRID (NE.cons rowID) mainListSuffix
  where
   debugRID = dbgOptions ^. Lens.contains ListRobotIDs
 
   mainListSuffix =
-    _fName
-      :| [ _fAge
-         , _fPos
-         , _fItems
-         , _fStatus
-         , _fActns
-         , _fCmds
-         , _fCycles
-         , _fActivity
-         , _fLog
+    rowName
+      :| [ rowAge
+         , rowPos
+         , rowItems
+         , rowStatus
+         , rowActns
+         , rowCmds
+         , rowCycles
+         , rowActivity
+         , rowLog
          ]
 
 drawCell :: Set DebugOption -> ListFocused -> MixedCtxt -> RobotWidgetRow -> Widget Name
@@ -306,17 +306,17 @@ mkLibraryEntries c =
   mkRobotRow r =
     RobotRowPayload r $
       RobotRow
-        { _fID = strWidget $ show $ r ^. robotID
-        , _fName = nameWidget
-        , _fAge = strWidget ageStr
-        , _fPos = locWidget
-        , _fItems = increaseWidth 1 $ strWidget $ show rInvCount
-        , _fStatus = statusWidget
-        , _fActns = strWidget $ show $ r ^. activityCounts . tangibleCommandCount
-        , _fCmds = strWidget $ show . sum . M.elems $ r ^. activityCounts . commandsHistogram
-        , _fCycles = strWidget $ show $ r ^. activityCounts . lifetimeStepCount
-        , _fActivity = renderDutyCycle (c ^. mygs . temporal) r
-        , _fLog = strWidget $ pure rLog
+        { rowID = strWidget $ show $ r ^. robotID
+        , rowName = nameWidget
+        , rowAge = strWidget ageStr
+        , rowPos = locWidget
+        , rowItems = increaseWidth 1 $ strWidget $ show rInvCount
+        , rowStatus = statusWidget
+        , rowActns = strWidget $ show $ r ^. activityCounts . tangibleCommandCount
+        , rowCmds = strWidget $ show . sum . M.elems $ r ^. activityCounts . commandsHistogram
+        , rowCycles = strWidget $ show $ r ^. activityCounts . lifetimeStepCount
+        , rowActivity = renderDutyCycle (c ^. mygs . temporal) r
+        , rowLog = strWidget $ pure rLog
         }
    where
     nameWidget = WithWidth (2 + T.length nameTxt) w

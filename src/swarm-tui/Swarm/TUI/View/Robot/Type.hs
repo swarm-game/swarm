@@ -47,17 +47,17 @@ type RobotWidgetRow = RobotRowPayload WidthWidget
 -- collection of fields can specify both
 -- cell widgets and column headings
 data RobotRow a = RobotRow
-  { _fID :: a
-  , _fName :: a
-  , _fAge :: a
-  , _fPos :: a
-  , _fItems :: a
-  , _fStatus :: a
-  , _fActns :: a
-  , _fCmds :: a
-  , _fCycles :: a
-  , _fActivity :: a
-  , _fLog :: a
+  { rowID :: a
+  , rowName :: a
+  , rowAge :: a
+  , rowPos :: a
+  , rowItems :: a
+  , rowStatus :: a
+  , rowActns :: a
+  , rowCmds :: a
+  , rowCycles :: a
+  , rowActivity :: a
+  , rowLog :: a
   }
   deriving (Functor)
 
