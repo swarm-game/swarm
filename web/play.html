@@ -2,20 +2,20 @@
 <html>
   <head>
     <title>Web frontend</title>
-    <script src="https://pixijs.download/release/pixi.js"></script>
+    <script src="script/pixi.js"></script>
 
     <script src="script/display.js"></script>
     <script src="script/fetch.js"></script>
 
-    <script>
+    <script type="module">
 
-      function startLoop() {
+      async function startLoop() {
         const button = document.getElementById('restart-button');
         button.style.display = 'none';
 
         let displayWidth = 600;
         let displayHeight = 300;
-        let out = setupGraphics(button, displayWidth, displayHeight);
+        let out = await setupGraphics(button, displayWidth, displayHeight);
         let appView = out[0];
         let graphics = out[1];
         doFetch(button, appView, graphics, displayWidth, displayHeight);
