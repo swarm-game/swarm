@@ -1,5 +1,7 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Rendering of the "details" pane of the F2 robots dialog
 module Swarm.TUI.View.Robot.Details (renderRobotDetails) where
 
 import Brick
