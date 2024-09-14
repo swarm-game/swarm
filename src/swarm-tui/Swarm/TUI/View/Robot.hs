@@ -197,7 +197,7 @@ getAccessorList dbgOptions =
 
 drawCell :: Set DebugOption -> ListFocused -> MixedCtxt -> RobotWidgetRow -> Widget Name
 drawCell uiDebug _ (MxdCtxt _ (MColC (Ix ci))) r =
-  maybe emptyWidget (renderPlainCell . wWidget . ($ view rPayload r)) (indexedAccessors V.!? ci)
+  maybe emptyWidget (renderPlainCell . wWidget . ($ view row r)) (indexedAccessors V.!? ci)
  where
   indexedAccessors = V.fromList $ NE.toList accessors
   accessors = getAccessorList uiDebug
@@ -253,7 +253,7 @@ computeColumnWidths uiDebug = WsPerRK $ \availableWidth allRows ->
       . NE.map getColWidthsForRow
    where
     getColWidthsForRow :: RobotWidgetRow -> NonEmpty Int
-    getColWidthsForRow r = NE.map (wWidth . ($ view rPayload r)) $ getAccessorList uiDebug
+    getColWidthsForRow r = NE.map (wWidth . ($ view row r)) $ getAccessorList uiDebug
 
 getList :: MixedTabularList n e w -> BL.GenericList n Seq e
 getList (MixedTabularList oldList _ _) = oldList

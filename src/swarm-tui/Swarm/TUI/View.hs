@@ -1034,14 +1034,14 @@ drawRobotPanel s
   | Just r <- s ^. gameState . to focusedRobot
   , Just (_, lst) <- s ^. uiState . uiGameplay . uiInventory . uiInventoryList =
       let drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
-          row =
+          details =
             [ txt (r ^. robotName)
             , padLeft (Pad 2) . str . renderCoordsString $ r ^. robotLocation
             , padLeft (Pad 2) $ renderDisplay (r ^. robotDisplay)
             ]
        in padBottom Max $
             vBox
-              [ hCenter $ hBox row
+              [ hCenter $ hBox details
               , withLeftPaddedVScrollBars . padLeft (Pad 1) . padTop (Pad 1) $
                   BL.renderListWithIndex drawClickableItem True lst
               ]
