@@ -31,8 +31,10 @@ data WithWidth a = WithWidth
 
 type WidthWidget = WithWidth (Widget Name)
 
-padWidth :: Int -> WithWidth a -> WithWidth a
-padWidth extra (WithWidth w x) = WithWidth (w + extra) x
+-- | For left-aligned cell content, this has the effect
+-- of right-padding
+increaseWidth :: Int -> WithWidth a -> WithWidth a
+increaseWidth extra (WithWidth w x) = WithWidth (w + extra) x
 
 newtype Widths = Widths
   { robotRowWidths :: [ColWidth]
