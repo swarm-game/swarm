@@ -143,6 +143,10 @@ rowHdr =
     , toRH = \_ (Ix i) -> i + 1
     }
 
+-- | Note that with the current two constructors, this happens to be analogous
+-- to 'Brick.Types.Size'. However, we'd like to reserve the right to add
+-- more constructors/growth modes and not be bound by the Brick semantics, so
+-- we have our own definition here.
 data ColumnExpansion
   = Grow
   | Minimal
