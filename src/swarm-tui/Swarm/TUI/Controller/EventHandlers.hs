@@ -46,7 +46,6 @@ import Swarm.TUI.Controller.EventHandlers.Robot (handleRobotPanelEvent, robotEve
 import Swarm.TUI.Controller.EventHandlers.World (worldEventHandlers)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (SwarmEvent, swarmEvents)
-import Swarm.TUI.Model.Name
 import Swarm.Util (parens, squote)
 
 -- ~~~~ Note [how Swarm event handlers work]

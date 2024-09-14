@@ -13,6 +13,7 @@ module Swarm.TUI.Model (
   -- $uilabel
   AppEvent (..),
   FocusablePanel (..),
+  Name (..), -- helps to minimize import lines
 
   -- ** Web command
   WebCommand (..),

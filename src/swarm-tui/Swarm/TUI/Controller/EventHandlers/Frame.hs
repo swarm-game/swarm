@@ -26,7 +26,6 @@ import Swarm.TUI.Controller.UpdateUI
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements (popupAchievement)
-import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 import System.Clock
 

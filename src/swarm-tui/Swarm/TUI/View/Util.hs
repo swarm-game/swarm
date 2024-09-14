@@ -30,7 +30,6 @@ import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (SwarmEvent)
-import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay

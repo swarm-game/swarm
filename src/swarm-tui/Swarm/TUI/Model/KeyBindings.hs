@@ -28,7 +28,6 @@ import Swarm.Language.Pretty (prettyText)
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (SwarmEvent, defaultSwarmBindings, swarmEvents)
-import Swarm.TUI.Model.Name
 
 -- See Note [how Swarm event handlers work]
 

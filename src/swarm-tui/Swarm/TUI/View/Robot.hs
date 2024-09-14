@@ -257,7 +257,7 @@ updateList ::
 updateList f (MixedTabularList ls a b) = MixedTabularList (f ls) a b
 
 strWidget :: String -> WidthWidget
-strWidget tx = WidthPrecompute (length tx) (str tx)
+strWidget tx = WithWidth (length tx) (str tx)
 
 -- | Render the percentage of ticks that this robot was active.
 -- This indicator can take some time to "warm up" and stabilize
@@ -308,7 +308,7 @@ mkLibraryEntries c =
         , _fLog = strWidget $ pure rLog
         }
    where
-    nameWidget = WidthPrecompute (2 + T.length nameTxt) w
+    nameWidget = WithWidth (2 + T.length nameTxt) w
      where
       w =
         hBox
@@ -335,7 +335,7 @@ mkLibraryEntries c =
       | otherwise = ' '
 
     locWidget =
-      WidthPrecompute (2 + length locStr) w
+      WithWidth (2 + length locStr) w
      where
       w = hBox [worldCell, str $ " " <> locStr]
       rCoords = fmap locToCoords rLoc

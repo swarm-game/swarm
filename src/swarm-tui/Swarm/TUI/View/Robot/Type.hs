@@ -23,16 +23,16 @@ import Swarm.TUI.Model.Name
 -- We can't defer this width computation to the "draw" function of a cell,
 -- because we need access to all cell widths independently
 -- outside of the cell draw function.
-data WidthPrecompute a = WidthPrecompute
+data WithWidth a = WithWidth
   { wWidth :: Int
   , wWidget :: a
   }
   deriving (Functor)
 
-type WidthWidget = WidthPrecompute (Widget Name)
+type WidthWidget = WithWidth (Widget Name)
 
-padWidth :: Int -> WidthPrecompute a -> WidthPrecompute a
-padWidth extra (WidthPrecompute w x) = WidthPrecompute (w + extra) x
+padWidth :: Int -> WithWidth a -> WithWidth a
+padWidth extra (WithWidth w x) = WithWidth (w + extra) x
 
 newtype Widths = Widths
   { robotRowWidths :: [ColWidth]

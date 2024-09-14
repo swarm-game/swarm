@@ -22,7 +22,6 @@ import Swarm.Language.Syntax.Direction (Direction (..), directionSyntax)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event
-import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
 
 -- | Handle a user input event in the world view panel.
