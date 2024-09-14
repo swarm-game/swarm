@@ -27,6 +27,7 @@ import Swarm.TUI.Model.DebugOption (DebugOption (ToggleCreative, ToggleWorldEdit
 import Swarm.TUI.Model.Dialog.Goal
 import Swarm.TUI.Model.Event (MainEvent (..), SwarmEvent (..))
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import System.Clock (Clock (..), TimeSpec (..), getTime)
 
 -- | Main keybindings event handler while running the game itself.

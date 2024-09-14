@@ -101,6 +101,7 @@ import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.StateUpdate
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Robot (getList)
 import Swarm.TUI.View.Robot.Type
 import Swarm.Util hiding (both, (<<.=))

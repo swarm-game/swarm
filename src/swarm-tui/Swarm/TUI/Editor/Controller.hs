@@ -29,6 +29,7 @@ import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import Swarm.Util (hoistMaybe)
 import Swarm.Util.Erasable (maybeToErasable)
 import System.Clock

@@ -46,6 +46,7 @@ import Swarm.TUI.Model.Dialog.Popup (Popup (..), addPopup)
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Objective qualified as GR
 import Swarm.TUI.View.Robot
 import Swarm.TUI.View.Robot.Type

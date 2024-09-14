@@ -81,6 +81,7 @@ import Swarm.TUI.Model hiding (SwarmKeyDispatchers (..))
 import Swarm.TUI.Model.Dialog.Goal
 import Swarm.TUI.Model.Repl (REPLHistItem, replHistory, replSeq)
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import Swarm.Util (applyJust)
 import Swarm.Util.RingBuffer
 import Swarm.Web.Worldview

@@ -6,7 +6,50 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
-module Swarm.TUI.Model.UI.Gameplay where
+--
+-- Sub-records utilized by 'Swarm.TUI.Model.UI'
+-- This exists as a separate module to avoid import cycles.
+module Swarm.TUI.Model.UI.Gameplay (
+  UIGameplay (..),
+  UITiming (..),
+  UIInventory (..),
+  GoalDisplay (..),
+  UIDialogs (..),
+  uiTiming,
+  uiInventory,
+  uiFocusRing,
+  uiWorldCursor,
+  uiWorldEditor,
+  uiREPL,
+  uiInventoryList,
+  uiInventorySort,
+  uiInventorySearch,
+  uiScrollToEnd,
+  uiModal,
+  uiGoal,
+  uiStructure,
+  uiRobot,
+  uiDialogs,
+  uiIsAutoPlay,
+  uiAutoShowObjectives,
+  lgTicksPerSecond,
+  lastFrameTime,
+  accumulatedTime,
+  tickCount,
+  frameCount,
+  frameTickCount,
+  lastInfoTime,
+  uiShowFPS,
+  uiShowREPL,
+  uiShowZero,
+  uiShowDebug,
+  uiShowRobots,
+  uiHideRobotsUntil,
+  uiInventoryShouldUpdate,
+  uiTPF,
+  uiFPS,
+  scenarioRef,
+) where
 
 import Brick.Focus
 import Brick.Widgets.List qualified as BL

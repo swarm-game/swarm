@@ -31,6 +31,7 @@ import Swarm.Language.Types (Polytype)
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (SwarmEvent)
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
 import Swarm.Util (maximum0)

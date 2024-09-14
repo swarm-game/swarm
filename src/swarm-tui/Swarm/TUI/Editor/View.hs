@@ -20,6 +20,7 @@ import Swarm.TUI.Editor.Model
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay (renderDisplay)

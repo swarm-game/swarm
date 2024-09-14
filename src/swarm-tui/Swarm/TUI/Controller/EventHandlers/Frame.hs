@@ -27,6 +27,7 @@ import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements (popupAchievement)
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import System.Clock
 
 ticksPerFrameCap :: Int

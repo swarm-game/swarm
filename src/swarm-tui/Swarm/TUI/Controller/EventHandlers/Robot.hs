@@ -32,6 +32,7 @@ import Swarm.TUI.List
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (generateModal)
 
 -- | Handle user input events in the robot panel.
