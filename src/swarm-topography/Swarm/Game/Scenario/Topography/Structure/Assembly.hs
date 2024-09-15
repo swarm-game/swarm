@@ -13,6 +13,7 @@ where
 import Control.Arrow (left, (&&&))
 import Control.Monad (when)
 import Data.Coerce
+import Debug.Trace
 import Data.Either.Extra (maybeToEither)
 import Data.Foldable (foldlM)
 import Data.Map qualified as M
@@ -42,14 +43,23 @@ overlaySingleStructure ::
   Either Text (MergedStructure (Maybe a))
 overlaySingleStructure
   inheritedStrucDefs
-  (Placed p@(Placement _ pose@(Pose loc orientation)) ns)
+  (Placed p@(Placement sName pose@(Pose loc orientation)) ns)
   (MergedStructure inputArea inputPlacements inputWaypoints) = do
     MergedStructure overlayArea overlayPlacements overlayWaypoints <-
       mergeStructures inheritedStrucDefs (WithParent p) $ structure ns
 
     let mergedWaypoints = inputWaypoints <> map (fmap $ placeOnArea overlayArea) overlayWaypoints
         mergedPlacements = inputPlacements <> map (placeOnArea overlayArea) overlayPlacements
-        mergedArea = overlayGridExpanded (gridContent inputArea) pose overlayArea
+        inputGridContent = gridContent inputArea
+        mergedArea2 = overlayGridExpanded (show sName) inputGridContent pose overlayArea
+        mergedArea = trace (unwords [
+            "For placement of"
+          , show sName
+          , "at loc"
+          , show loc
+          , "where input has offset"
+          , show $ offset pose
+          ]) mergedArea2
 
     return $ MergedStructure mergedArea mergedPlacements mergedWaypoints
    where
@@ -99,16 +109,19 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
 -- * Grid manipulation
 
 overlayGridExpanded ::
+  String -> 
   Grid (Maybe a) ->
   Pose ->
   PositionedGrid (Maybe a) ->
   PositionedGrid (Maybe a)
 overlayGridExpanded
+  note
   inputGrid
   (Pose loc orientation)
-  (PositionedGrid _c overlayArea) =
-    PositionedGrid origin inputGrid <> positionedOverlay
+  (PositionedGrid c overlayArea) =
+    trace (unwords ["In overlayGridExpanded for", note, "where c = ", show c, "and loc = ", show loc]) output
    where
+    output = PositionedGrid origin inputGrid <> positionedOverlay
     reorientedOverlayCells = applyOrientationTransform orientation overlayArea
     positionedOverlay = PositionedGrid loc reorientedOverlayCells
 
