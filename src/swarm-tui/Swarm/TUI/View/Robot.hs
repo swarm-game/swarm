@@ -19,7 +19,6 @@ module Swarm.TUI.View.Robot (
 ) where
 
 import Brick
-import Brick.Focus
 import Brick.Widgets.Border
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.TabularList.Mixed
@@ -385,18 +384,20 @@ mkLibraryEntries c =
 
 drawRobotsModal :: RobotDisplay -> Widget Name
 drawRobotsModal robotDialog =
-  vBox
-    [ mainContent
-    , tabControlFooter
-    ]
+  mainContent
  where
   rFocusRing = robotDialog ^. robotDetailsFocus
 
-  mainContent = case focusGetCurrent rFocusRing of
-    Just (RobotsListDialog (SingleRobotDetails _)) -> case maybeSelectedRobot of
-      Nothing -> str "No selection"
-      Just r -> renderRobotDetails rFocusRing r $ robotDialog ^. robotListContent . robotDetailsPaneState
-     where
-      oldList = getList $ robotDialog ^. robotListContent . robotsListWidget
-      maybeSelectedRobot = view robot . snd <$> BL.listSelectedElement oldList
-    _ -> renderRobotsList $ robotDialog ^. robotListContent
+  mainContent =
+    if robotDialog ^. isDetailsOpened
+      then
+        let oldList = getList $ robotDialog ^. robotListContent . robotsListWidget
+            maybeSelectedRobot = view robot . snd <$> BL.listSelectedElement oldList
+            detailsContent = case maybeSelectedRobot of
+              Nothing -> str "No selection"
+              Just r -> renderRobotDetails rFocusRing r $ robotDialog ^. robotListContent . robotDetailsPaneState
+         in vBox
+              [ detailsContent
+              , tabControlFooter
+              ]
+      else renderRobotsList $ robotDialog ^. robotListContent

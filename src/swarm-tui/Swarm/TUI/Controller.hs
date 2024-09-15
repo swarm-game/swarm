@@ -296,7 +296,11 @@ handleMainEvent forceRedraw ev = do
       Web (RunWebCode e r) -> runBaseWebCode e r
       UpstreamVersion _ -> error "version event should be handled by top-level handler"
     VtyEvent (V.EvResize _ _) -> invalidateCache
-    EscapeKey | Just m <- s ^. uiState . uiGameplay . uiDialogs . uiModal -> closeModal m
+    EscapeKey
+      | Just m <- s ^. uiState . uiGameplay . uiDialogs . uiModal ->
+          if s ^. uiState . uiGameplay . uiDialogs . uiRobot . isDetailsOpened
+            then uiState . uiGameplay . uiDialogs . uiRobot . isDetailsOpened .= False
+            else closeModal m
     -- Pass to key handler (allows users to configure bindings)
     -- See Note [how Swarm event handlers work]
     VtyEvent (V.EvKey k m)
@@ -379,19 +383,30 @@ closeModal m = do
 handleModalEvent :: V.Event -> EventM Name AppState ()
 handleModalEvent = \case
   V.EvKey V.KEnter [] -> do
-    mdialog <- preuse $ uiState . uiGameplay . uiDialogs . uiModal . _Just . modalDialog
-    toggleModal QuitModal
-    case dialogSelection =<< mdialog of
-      Just (Button QuitButton, _) -> quitGame
-      Just (Button KeepPlayingButton, _) -> toggleModal KeepPlayingModal
-      Just (Button StartOverButton, StartOver currentSeed siPair) -> do
-        invalidateCache
-        restartGame currentSeed siPair
-      Just (Button NextButton, Next siPair) -> do
-        quitGame
-        invalidateCache
-        startGame siPair Nothing
-      _ -> return ()
+    modal <- preuse $ uiState . uiGameplay . uiDialogs . uiModal . _Just . modalType
+    case modal of
+      Just RobotsModal -> do
+        robotDialog <- use $ uiState . uiGameplay . uiDialogs . uiRobot
+        unless (robotDialog ^. isDetailsOpened) $ do
+          let widget = robotDialog ^. robotListContent . robotsListWidget
+          forM_ (BL.listSelectedElement $ getList widget) $ \x -> do
+            Brick.zoom (uiState . uiGameplay . uiDialogs . uiRobot) $ do
+              isDetailsOpened .= True
+              updateRobotDetailsPane $ snd x
+      _ -> do
+        mdialog <- preuse $ uiState . uiGameplay . uiDialogs . uiModal . _Just . modalDialog
+        toggleModal QuitModal
+        case dialogSelection =<< mdialog of
+          Just (Button QuitButton, _) -> quitGame
+          Just (Button KeepPlayingButton, _) -> toggleModal KeepPlayingModal
+          Just (Button StartOverButton, StartOver currentSeed siPair) -> do
+            invalidateCache
+            restartGame currentSeed siPair
+          Just (Button NextButton, Next siPair) -> do
+            quitGame
+            invalidateCache
+            startGame siPair Nothing
+          _ -> return ()
   ev -> do
     Brick.zoom (uiState . uiGameplay . uiDialogs . uiModal . _Just . modalDialog) (handleDialogEvent ev)
     modal <- preuse $ uiState . uiGameplay . uiDialogs . uiModal . _Just . modalType
@@ -425,11 +440,10 @@ handleModalEvent = \case
       Just RobotsModal -> Brick.zoom (uiState . uiGameplay . uiDialogs . uiRobot) $ case ev of
         V.EvKey (V.KChar '\t') [] -> robotDetailsFocus %= focusNext
         _ -> do
-          foc <- use robotDetailsFocus
-          case focusGetCurrent foc of
-            (Just (RobotsListDialog (SingleRobotDetails RobotLogPane))) ->
-              Brick.zoom (robotListContent . robotDetailsPaneState . logsList) $ handleListEvent ev
-            _ -> do
+          isInDetailsMode <- use isDetailsOpened
+          if isInDetailsMode
+            then Brick.zoom (robotListContent . robotDetailsPaneState . logsList) $ handleListEvent ev
+            else do
               Brick.zoom (robotListContent . robotsListWidget) $
                 handleMixedListEvent ev
 

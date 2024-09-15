@@ -86,6 +86,7 @@ makeLenses ''RobotListContent
 
 data RobotDisplay = RobotDisplay
   { _robotDetailsFocus :: FocusRing Name
+  , _isDetailsOpened :: Bool
   , _robotListContent :: RobotListContent
   }
 

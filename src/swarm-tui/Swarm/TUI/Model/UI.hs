@@ -173,7 +173,8 @@ initUIState UIInitOptions {..} = do
                   , _uiStructure = emptyStructureDisplay
                   , _uiRobot =
                       RobotDisplay
-                        { _robotDetailsFocus = focusRing $ map RobotsListDialog $ RobotList : map SingleRobotDetails enumerate
+                        { _robotDetailsFocus = focusRing $ map (RobotsListDialog . SingleRobotDetails) enumerate
+                        , _isDetailsOpened = False
                         , _robotListContent = emptyRobotDisplay debugOptions
                         }
                   }
