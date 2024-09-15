@@ -25,6 +25,7 @@ robots:
       - workbench
       - 3D printer
       - branch predictor
+      - rolex
     inventory:
       - [10, drill]
       - [10, lambda]
@@ -37,6 +38,7 @@ robots:
       - [10, strange loop]
       - [10, branch predictor]
       - [10, toolkit]
+      - [10, rolex]
       - [0, drill bit]
       - [0, bit (0)]
       - [0, bit (1)]
