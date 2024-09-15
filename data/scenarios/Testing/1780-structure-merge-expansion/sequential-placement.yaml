@@ -4,57 +4,38 @@ author: Karl Ostmo
 description: |
   Sequentially place structures that are larger than the map
   with flipped orientation.
-creative: false
 robots:
   - name: base
     dir: north
-known: [boulder, mountain]
-seed: 0
+known: [boulder, gold, log]
 world:
   structures:
     - name: house
       structure:
         palette:
           'x': [stone, boulder]
-          'A': [stone, mountain]
-          '.': [stone]
+          'o': [stone, gold]
         map: |
-          xxxx
-          x..x
-          x..A
-          xxAA
-    - name: street pair
-      structure:
-        palette:
-          '.': [grass]
-        placements:
-          - src: house
-            offset: [-1, 0]
-            orient:
-              up: south
-        map: |
-          .
-          .
-          .
-          .
-          .
-          .
-          .
-          .
-          .
+          xxxo
+          xxoo
+          xooo
+          oooo
     - name: block
       structure:
+        palette:
+          'x': [ice, log]
         placements:
-          - src: street pair
+          - src: house
             orient:
               flip: true
-          - src: street pair
-        map: ""
+            offset: [-8, 0]
+          - src: house
+        map: "xx"
   palette:
     'Ω': [grass, erase, base]
   placements:
     - src: block
-      offset: [-2, -1]
+      offset: [0, -1]
   upperleft: [0, 0]
   dsl: |
     {grass}

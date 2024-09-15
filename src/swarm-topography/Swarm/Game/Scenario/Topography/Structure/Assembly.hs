@@ -81,6 +81,8 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
         map wrapPlacement $
           filter (\(Placed _ ns) -> isRecognizable ns) overlays
 
+  -- TODO: Each successive overlay may alter the coordinate origin.
+  -- Make sure this new origin is propagated to subsequent placements.
   foldlM
     (flip $ overlaySingleStructure structureMap)
     (MergedStructure origArea wrappedOverlays originatedWaypoints)
@@ -104,7 +106,7 @@ overlayGridExpanded ::
 overlayGridExpanded
   inputGrid
   (Pose loc orientation)
-  (PositionedGrid _ overlayArea) =
+  (PositionedGrid _c overlayArea) =
     PositionedGrid origin inputGrid <> positionedOverlay
    where
     reorientedOverlayCells = applyOrientationTransform orientation overlayArea
