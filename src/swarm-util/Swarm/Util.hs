@@ -280,6 +280,8 @@ applyWhen :: Bool -> (a -> a) -> a -> a
 applyWhen True f x = f x
 applyWhen False _ x = x
 
+-- |
+-- Equivalent to `fromMaybe id`.
 applyJust :: Maybe (a -> a) -> a -> a
 applyJust Nothing x = x
 applyJust (Just f) x = f x
