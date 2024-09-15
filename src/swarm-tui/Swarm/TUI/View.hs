@@ -61,13 +61,13 @@ import Data.Map qualified as M
 import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.Semigroup (sconcat)
 import Data.Sequence qualified as Seq
-import Data.Set qualified as Set (toList)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time (NominalDiffTime, defaultTimeLocale, formatTime)
 import Network.Wai.Handler.Warp (Port)
 import Swarm.Constant
-import Swarm.Game.Device (commandCost, commandsForDeviceCaps, enabledCommands, getMap, ingredients)
+import Swarm.Game.Device (commandCost, commandsForDeviceCaps, enabledCommands, getCapabilitySet, getMap, ingredients)
 import Swarm.Game.Display
 import Swarm.Game.Entity as E
 import Swarm.Game.Ingredients
@@ -538,14 +538,12 @@ drawClockDisplay lgTPS gs = hBox . intersperse (txt " ") $ catMaybes [clockWidge
   clockWidget = maybeDrawTime (gs ^. temporal . ticks) (gs ^. temporal . paused || lgTPS < 3) gs
   pauseWidget = guard (gs ^. temporal . paused) $> txt "(PAUSED)"
 
--- | Check whether the currently focused robot (if any) has a clock
---   device equipped.
+-- | Check whether the currently focused robot (if any) has some kind
+-- of a clock device equipped.
 clockEquipped :: GameState -> Bool
 clockEquipped gs = case focusedRobot gs of
   Nothing -> False
-  Just r
-    | countByName "clock" (r ^. equippedDevices) > 0 -> True
-    | otherwise -> False
+  Just r -> CExecute Time `Set.member` getCapabilitySet (r ^. robotCapabilities)
 
 -- | Format a ticks count as a hexadecimal clock.
 drawTime :: TickNumber -> Bool -> String
