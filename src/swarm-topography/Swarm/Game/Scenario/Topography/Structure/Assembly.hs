@@ -23,7 +23,6 @@ import Data.Text qualified as T
 import Linear.Affine
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
-import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.Structure
@@ -50,8 +49,7 @@ overlaySingleStructure
 
     let mergedWaypoints = inputWaypoints <> map (fmap $ placeOnArea overlayArea) overlayWaypoints
         mergedPlacements = inputPlacements <> map (placeOnArea overlayArea) overlayPlacements
-        inputGridContent = gridContent inputArea
-        mergedArea2 = overlayGridExpanded (show sName) inputGridContent pose overlayArea
+        mergedArea2 = overlayGridExpanded (show sName) inputArea pose overlayArea
         mergedArea = trace (unwords [
             "For placement of"
           , show sName
@@ -110,20 +108,35 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
 
 overlayGridExpanded ::
   String -> 
-  Grid (Maybe a) ->
+  PositionedGrid (Maybe a) ->
   Pose ->
   PositionedGrid (Maybe a) ->
   PositionedGrid (Maybe a)
 overlayGridExpanded
   note
-  inputGrid
-  (Pose loc orientation)
-  (PositionedGrid c overlayArea) =
-    trace (unwords ["In overlayGridExpanded for", note, "where c = ", show c, "and loc = ", show loc]) output
+  baseGrid
+  (Pose yamlPlacementOffset orientation)
+  -- NOTE: The 'childAdjustedOrigin' is the sum of origin adjustments
+  -- to completely assemble some substructure. However, we discard
+  -- this when we place a substructure into a new base grid.
+  (PositionedGrid childAdjustedOrigin overlayArea) =
+    trace (unwords [
+        "In overlayGridExpanded for"
+      , note
+      , "where childAdjustedOrigin ="
+      , show childAdjustedOrigin
+      , "and placementOffset ="
+      , show yamlPlacementOffset
+      , "and placementAdjustedByOrigin ="
+      , show placementAdjustedByOrigin
+      , ". New origin will be:"
+      , show $ gridPosition output
+      ]) output
    where
-    output = PositionedGrid origin inputGrid <> positionedOverlay
+    output = baseGrid <> positionedOverlay
     reorientedOverlayCells = applyOrientationTransform orientation overlayArea
-    positionedOverlay = PositionedGrid loc reorientedOverlayCells
+    placementAdjustedByOrigin = gridPosition baseGrid .+^ (yamlPlacementOffset .-. origin)
+    positionedOverlay = PositionedGrid placementAdjustedByOrigin reorientedOverlayCells
 
 -- * Validation
 

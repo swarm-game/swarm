@@ -9,10 +9,11 @@ module Swarm.Game.Scenario.Topography.Structure.Overlay (
 ) where
 
 import Control.Applicative
+import Debug.Trace
 import Data.Function (on)
 import Data.Int (Int32)
 import Data.Tuple (swap)
-import Linear
+import Linear hiding (trace)
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Grid
@@ -113,10 +114,19 @@ instance (Alternative f) => Semigroup (PositionedGrid (f a)) where
     -- We don't have to adjust the origin if the base layer lies
     -- to the northwest of the overlay layer.
     clampedDelta = V2 (min 0 deltaX) (max 0 deltaY)
-    newOrigin = baseLoc .-^ clampedDelta
+    newOrigin2 = baseLoc .-^ clampedDelta
+
+    newOrigin = trace (unwords [
+        "COMBINING baseLoc"
+      , show baseLoc
+      , "with overlayLoc"
+      , show overlayLoc
+      , "to get"
+      , show newOrigin2
+      ]) newOrigin2
 
     paddedOverlayPair =
-      padSouthwest originDelta $
+      padSouthwest (overlayLoc .-. origin) $
         OverlayPair baseGrid overlayGrid
 
 -- | NOTE: We only make explicit grid adjustments for

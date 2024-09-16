@@ -28,11 +28,18 @@ world:
           - src: house
             orient:
               flip: true
-            offset: [-8, 0]
+            offset: [-6, 0]
           - src: house
+
+          # - src: house
+          #   orient:
+          #     flip: true
+          # - src: house
+          #   offset: [6, 0]
         map: "xx"
   palette:
     'Ω': [grass, erase, base]
+  mask: '.'
   placements:
     - src: block
       offset: [0, -1]
