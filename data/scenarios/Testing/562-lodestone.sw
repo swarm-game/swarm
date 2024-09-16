@@ -5,8 +5,10 @@ def ifC = \p.\t.\e.
   if b t e
 end;
 
-def until = \p.\t.
-  ifC p t {until p t}
+def waitFor = \e.\t.
+  watch down;
+  wait 100;
+  ifC (ishere e) t {waitFor e t}
 end;
 
 def repeat = \c.
@@ -29,18 +31,18 @@ end;
 
 // get one lodestone
 build {log "Hey!"; turn north; m2; l <- grab; turn back; m2; place l};
-until (ishere "lodestone") {grab};
+waitFor "lodestone" {grab};
 
 // get two bit (0)
 build {
   log "Hi!";
   repeat (
     log "I am going for a bit";
-    turn east; m2; x <- until (ishere "bit (0)") {harvest}; turn back; m2; place x;
+    turn east; m2; x <- waitFor "bit (0)" {harvest}; turn back; m2; place x;
 		log "I brought a bit";
 )};
-until (ishere "bit (0)") {grab};
-until (ishere "bit (0)") {grab};
+waitFor "bit (0)" {grab};
+waitFor "bit (0)" {grab};
 
 make "bit (1)";
 make "drill bit"

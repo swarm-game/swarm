@@ -1,15 +1,16 @@
-function setupGraphics(button, displayWidth, displayHeight) {
+async function setupGraphics(button, displayWidth, displayHeight) {
 
+    const app = new PIXI.Application();
     // Create the application helper and add its render target to the page
-    let app = new PIXI.Application({
+    await app.init({
         width: displayWidth,
         height: displayHeight,
         backgroundColor: 0xFFFFFF
         });
 
-    document.body.insertBefore(app.view, button);
+    document.body.insertBefore(app.canvas, button);
 
     const graphics = new PIXI.Graphics();
     app.stage.addChild(graphics);
-    return [app.view, graphics];
+    return [app.canvas, graphics];
 }
