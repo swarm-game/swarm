@@ -105,7 +105,7 @@ instance (Alternative f) => Semigroup (PositionedGrid (f a)) where
     -- such that the displacement vector will have:
     -- \* negative X component if the origin must be shifted east
     -- \* positive Y component if the origin must be shifted south
-    originDelta@(V2 deltaX deltaY) = overlayLoc .-. origin
+    originDelta@(V2 deltaX deltaY) = asVector overlayLoc
     -- Note that the adjustment vector will only ever have
     -- a non-negative X component (i.e. loc of upper-left corner must be shifted east) and
     -- a non-positive Y component (i.e. loc of upper-left corner must be shifted south).

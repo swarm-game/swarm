@@ -112,7 +112,7 @@ overlayGridExpanded
     baseGrid <> positionedOverlay
    where
     reorientedOverlayCells = applyOrientationTransform orientation overlayArea
-    placementAdjustedByOrigin = gridPosition baseGrid .+^ (yamlPlacementOffset .-. origin)
+    placementAdjustedByOrigin = gridPosition baseGrid .+^ asVector yamlPlacementOffset
     positionedOverlay = PositionedGrid placementAdjustedByOrigin reorientedOverlayCells
 
 -- * Validation
