@@ -13,13 +13,13 @@ where
 import Control.Arrow (left, (&&&))
 import Control.Monad (when)
 import Data.Coerce
-import Debug.Trace
 import Data.Either.Extra (maybeToEither)
 import Data.Foldable (foldlM)
 import Data.Map qualified as M
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import Debug.Trace
 import Linear.Affine
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
@@ -50,14 +50,18 @@ overlaySingleStructure
     let mergedWaypoints = inputWaypoints <> map (fmap $ placeOnArea overlayArea) overlayWaypoints
         mergedPlacements = inputPlacements <> map (placeOnArea overlayArea) overlayPlacements
         mergedArea2 = overlayGridExpanded (show sName) inputArea pose overlayArea
-        mergedArea = trace (unwords [
-            "For placement of"
-          , show sName
-          , "at loc"
-          , show loc
-          , "where input has offset"
-          , show $ offset pose
-          ]) mergedArea2
+        mergedArea =
+          trace
+            ( unwords
+                [ "For placement of"
+                , show sName
+                , "at loc"
+                , show loc
+                , "where input has offset"
+                , show $ offset pose
+                ]
+            )
+            mergedArea2
 
     return $ MergedStructure mergedArea mergedPlacements mergedWaypoints
    where
@@ -107,7 +111,7 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
 -- * Grid manipulation
 
 overlayGridExpanded ::
-  String -> 
+  String ->
   PositionedGrid (Maybe a) ->
   Pose ->
   PositionedGrid (Maybe a) ->
@@ -120,18 +124,21 @@ overlayGridExpanded
   -- to completely assemble some substructure. However, we discard
   -- this when we place a substructure into a new base grid.
   (PositionedGrid childAdjustedOrigin overlayArea) =
-    trace (unwords [
-        "In overlayGridExpanded for"
-      , note
-      , "where childAdjustedOrigin ="
-      , show childAdjustedOrigin
-      , "and placementOffset ="
-      , show yamlPlacementOffset
-      , "and placementAdjustedByOrigin ="
-      , show placementAdjustedByOrigin
-      , ". New origin will be:"
-      , show $ gridPosition output
-      ]) output
+    trace
+      ( unwords
+          [ "In overlayGridExpanded for"
+          , note
+          , "where childAdjustedOrigin ="
+          , show childAdjustedOrigin
+          , "and placementOffset ="
+          , show yamlPlacementOffset
+          , "and placementAdjustedByOrigin ="
+          , show placementAdjustedByOrigin
+          , ". New origin will be:"
+          , show $ gridPosition output
+          ]
+      )
+      output
    where
     output = baseGrid <> positionedOverlay
     reorientedOverlayCells = applyOrientationTransform orientation overlayArea

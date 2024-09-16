@@ -9,10 +9,10 @@ module Swarm.Game.Scenario.Topography.Structure.Overlay (
 ) where
 
 import Control.Applicative
-import Debug.Trace
 import Data.Function (on)
 import Data.Int (Int32)
 import Data.Tuple (swap)
+import Debug.Trace
 import Linear hiding (trace)
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
@@ -116,14 +116,18 @@ instance (Alternative f) => Semigroup (PositionedGrid (f a)) where
     clampedDelta = V2 (min 0 deltaX) (max 0 deltaY)
     newOrigin2 = baseLoc .-^ clampedDelta
 
-    newOrigin = trace (unwords [
-        "COMBINING baseLoc"
-      , show baseLoc
-      , "with overlayLoc"
-      , show overlayLoc
-      , "to get"
-      , show newOrigin2
-      ]) newOrigin2
+    newOrigin =
+      trace
+        ( unwords
+            [ "COMBINING baseLoc"
+            , show baseLoc
+            , "with overlayLoc"
+            , show overlayLoc
+            , "to get"
+            , show newOrigin2
+            ]
+        )
+        newOrigin2
 
     paddedOverlayPair =
       padSouthwest (overlayLoc .-. origin) $
