@@ -443,6 +443,7 @@ testScenarioSolutions rs ui key =
         , testGroup
             "Structure placement (#1780)"
             [ testSolution Default "Testing/1780-structure-merge-expansion/sequential-placement"
+            -- TODO(#2148) define goal conditions or convert to image fixtures
             -- , testSolution Default "Testing/1780-structure-merge-expansion/nonoverlapping-structure-merge"
             -- , testSolution Default "Testing/1780-structure-merge-expansion/root-map-expansion"
             -- , testSolution Default "Testing/1780-structure-merge-expansion/structure-composition"
