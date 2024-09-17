@@ -42,7 +42,7 @@ import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Text.Markdown as Markdown (docToMark)
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Util (showT)
+import Swarm.Util (maximum0, showT)
 
 -- * Types
 
@@ -99,7 +99,7 @@ listToRow mw xs = wrap '|' . T.intercalate "|" $ zipWith format mw xs
   format w x = wrap ' ' x <> T.replicate (w - T.length x) " "
 
 maxWidths :: [[Text]] -> [Int]
-maxWidths = map (maximum . map T.length) . transpose
+maxWidths = map (maximum0 . map T.length) . transpose
 
 -- ** COMMANDS
 

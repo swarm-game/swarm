@@ -2,6 +2,8 @@
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Keyboard key event patterns and drawing utilities
 module Swarm.TUI.Controller.Util where
 
 import Brick hiding (Direction)
@@ -35,15 +37,15 @@ import Swarm.Language.Capability (Capability (CDebug))
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.TUI.Model (
   AppState,
-  FocusablePanel,
   ModalType (..),
-  Name (..),
   gameState,
   modalScroll,
   uiState,
  )
+import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl (REPLHistItem, REPLPrompt, REPLState, addREPLItem, replHistory, replPromptText, replPromptType)
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Util (generateModal)
 import System.Clock (Clock (..), getTime)
 

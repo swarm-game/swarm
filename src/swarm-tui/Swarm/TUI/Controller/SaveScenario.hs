@@ -26,6 +26,7 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.Achievements (attainAchievement')
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import System.FilePath (splitDirectories)
 import Prelude hiding (Applicative (..))
 

@@ -81,6 +81,8 @@ import Swarm.TUI.Model hiding (SwarmKeyDispatchers (..))
 import Swarm.TUI.Model.Dialog.Goal
 import Swarm.TUI.Model.Repl (REPLHistItem, replHistory, replSeq)
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
+import Swarm.Util (applyJust)
 import Swarm.Util.RingBuffer
 import Swarm.Web.Worldview
 import System.Timeout (timeout)
@@ -312,9 +314,7 @@ webMain ::
 webMain baton port appStateRef chan = catch (Warp.runSettings settings app) handleErr
  where
   settings = Warp.setPort port $ onReady Warp.defaultSettings
-  onReady = case baton of
-    Just mv -> Warp.setBeforeMainLoop $ putMVar mv WebStarted
-    Nothing -> id
+  onReady = applyJust $ Warp.setBeforeMainLoop . flip putMVar WebStarted <$> baton
 
   server :: Server ToplevelAPI
   server =

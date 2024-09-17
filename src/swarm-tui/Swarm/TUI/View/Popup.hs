@@ -14,9 +14,10 @@ import Control.Lens ((^.))
 import Swarm.Game.Achievement.Definitions (title)
 import Swarm.Game.Achievement.Description (describe)
 import Swarm.Language.Syntax (constInfo, syntax)
-import Swarm.TUI.Model (AppState, Name, uiState)
+import Swarm.TUI.Model (AppState, uiState)
 import Swarm.TUI.Model.Dialog.Popup (Popup (..), currentPopup, popupFrames)
 import Swarm.TUI.Model.Event qualified as SE
+import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI (uiPopups)
 import Swarm.TUI.View.Attribute.Attr (notifAttr)
 import Swarm.TUI.View.Util (bindingText)

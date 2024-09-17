@@ -13,7 +13,7 @@ module Swarm.TUI.Model (
   -- $uilabel
   AppEvent (..),
   FocusablePanel (..),
-  Name (..),
+  Name (..), -- helps to minimize import lines
 
   -- ** Web command
   WebCommand (..),
@@ -109,6 +109,7 @@ import Swarm.TUI.Model.Event (SwarmEvent)
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.Model.WebCommand (RejectionReason (..), WebCommand (..), WebInvocationState (..))
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Text.Fuzzy qualified as Fuzzy

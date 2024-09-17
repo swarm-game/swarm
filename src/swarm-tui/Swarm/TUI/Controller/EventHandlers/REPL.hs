@@ -23,6 +23,7 @@ import Swarm.TUI.Model
 import Swarm.TUI.Model.Event
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 
 -- | Handle a user input key event for the REPL.
 --

@@ -13,6 +13,7 @@ import Control.Lens (makeLenses, view)
 import Data.Function (on)
 import Data.Int (Int32)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Yaml (FromJSON, ToJSON, Value (Object), parseJSON, withText, (.:))
 import GHC.Generics (Generic)
 import Linear (V2 (..))
@@ -82,3 +83,17 @@ defaultCosmicLocation = Cosmic DefaultRootSubworld origin
 
 offsetBy :: Cosmic Location -> V2 Int32 -> Cosmic Location
 offsetBy loc v = fmap (.+^ v) loc
+
+-- ** Rendering
+
+locationToString :: Location -> String
+locationToString (Location x y) =
+  unwords $ map show [x, y]
+
+renderCoordsString :: Cosmic Location -> String
+renderCoordsString (Cosmic sw coords) =
+  unwords $ locationToString coords : suffix
+ where
+  suffix = case sw of
+    DefaultRootSubworld -> []
+    SubworldName swName -> ["in", T.unpack swName]

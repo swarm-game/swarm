@@ -131,6 +131,7 @@ import Swarm.TUI.Model.Event qualified as SE
 import Swarm.TUI.Model.KeyBindings (handlerNameKeysDescription)
 import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Achievement
 import Swarm.TUI.View.Attribute.Attr
@@ -377,7 +378,7 @@ makeBestScoreRows scenarioStat =
     , Just $ describeProgress b
     )
    where
-    maxLeftColumnWidth = maximum (map (T.length . describeCriteria) enumerate)
+    maxLeftColumnWidth = maximum0 (map (T.length . describeCriteria) enumerate)
     mkCriteriaRow =
       withAttr dimAttr
         . padLeft Max
@@ -508,7 +509,7 @@ drawWorldCursorInfo worldEditor g cCoords =
   Cosmic _ coords = cCoords
   coordsWidget = str $ renderCoordsString $ fmap coordsToLoc cCoords
 
-  tileMembers = terrain : mapMaybe merge [entity, robot]
+  tileMembers = terrain : mapMaybe merge [entity, r]
   tileMemberWidgets =
     map (padRight $ Pad 1)
       . concat
@@ -526,7 +527,7 @@ drawWorldCursorInfo worldEditor g cCoords =
 
   terrain = displayTerrainCell worldEditor ri cCoords
   entity = displayEntityCell worldEditor ri cCoords
-  robot = displayRobotCell g cCoords
+  r = displayRobotCell g cCoords
 
   merge = fmap sconcat . NE.nonEmpty . filter (not . (^. invisible))
 
@@ -604,6 +605,7 @@ drawDialog :: AppState -> Widget Name
 drawDialog s = case s ^. uiState . uiGameplay . uiDialogs . uiModal of
   Just (Modal mt d) -> renderDialog d $ case mt of
     GoalModal -> drawModal s mt
+    RobotsModal -> drawModal s mt
     _ -> maybeScroll ModalViewport $ drawModal s mt
   Nothing -> emptyWidget
 
@@ -611,7 +613,7 @@ drawDialog s = case s ^. uiState . uiGameplay . uiDialogs . uiModal of
 drawModal :: AppState -> ModalType -> Widget Name
 drawModal s = \case
   HelpModal -> helpWidget (s ^. gameState . randomness . seed) (s ^. runtimeState . webPort) (s ^. keyEventHandling)
-  RobotsModal -> robotsListWidget s
+  RobotsModal -> drawRobotsModal $ s ^. uiState . uiGameplay . uiDialogs . uiRobot
   RecipesModal -> availableListWidget (s ^. gameState) RecipeList
   CommandsModal -> commandsListWidget (s ^. gameState)
   MessagesModal -> availableListWidget (s ^. gameState) MessageList
@@ -687,7 +689,7 @@ helpWidget theSeed mport keyState =
   keyHandlerToText = handlerNameKeysDescription (keyState ^. keyConfig)
   -- Get maximum width of the table columns so it all neatly aligns
   txtFilled n t = padRight (Pad $ max 0 (n - textWidth t)) $ txt t
-  (maxN, maxK, maxD) = map3 (maximum . map textWidth) . unzip3 $ keyHandlerToText <$> allEventHandlers
+  (maxN, maxK, maxD) = map3 (maximum0 . map textWidth) . unzip3 $ keyHandlerToText <$> allEventHandlers
   map3 f (n, k, d) = (f n, f k, f d)
 
 data NotificationList = RecipeList | MessageList
@@ -1018,14 +1020,14 @@ drawRobotPanel s
   | Just r <- s ^. gameState . to focusedRobot
   , Just (_, lst) <- s ^. uiState . uiGameplay . uiInventory . uiInventoryList =
       let drawClickableItem pos selb = clickable (InventoryListItem pos) . drawItem (lst ^. BL.listSelectedL) pos selb
-          row =
+          details =
             [ txt (r ^. robotName)
             , padLeft (Pad 2) . str . renderCoordsString $ r ^. robotLocation
             , padLeft (Pad 2) $ renderDisplay (r ^. robotDisplay)
             ]
        in padBottom Max $
             vBox
-              [ hCenter $ hBox row
+              [ hCenter $ hBox details
               , withLeftPaddedVScrollBars . padLeft (Pad 1) . padTop (Pad 1) $
                   BL.renderListWithIndex drawClickableItem True lst
               ]

@@ -48,7 +48,7 @@ import Swarm.TUI.Editor.Masking
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model.Name
-import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.Util (applyWhen)
 import Witch (from)

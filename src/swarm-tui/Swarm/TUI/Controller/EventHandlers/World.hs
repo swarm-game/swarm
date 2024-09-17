@@ -23,6 +23,7 @@ import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 
 -- | Handle a user input event in the world view panel.
 worldEventHandlers :: [KeyEventHandler SwarmEvent (EventM Name AppState)]
