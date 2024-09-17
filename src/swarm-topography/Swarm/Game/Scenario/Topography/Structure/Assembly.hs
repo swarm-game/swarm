@@ -22,7 +22,6 @@ import Data.Text qualified as T
 import Linear.Affine
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
-import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.Structure
@@ -42,14 +41,14 @@ overlaySingleStructure ::
   Either Text (MergedStructure (Maybe a))
 overlaySingleStructure
   inheritedStrucDefs
-  (Placed p@(Placement _ pose@(Pose loc orientation)) ns)
+  (Placed p@(Placement _sName pose@(Pose loc orientation)) ns)
   (MergedStructure inputArea inputPlacements inputWaypoints) = do
     MergedStructure overlayArea overlayPlacements overlayWaypoints <-
       mergeStructures inheritedStrucDefs (WithParent p) $ structure ns
 
     let mergedWaypoints = inputWaypoints <> map (fmap $ placeOnArea overlayArea) overlayWaypoints
         mergedPlacements = inputPlacements <> map (placeOnArea overlayArea) overlayPlacements
-        mergedArea = overlayGridExpanded (gridContent inputArea) pose overlayArea
+        mergedArea = overlayGridExpanded inputArea pose overlayArea
 
     return $ MergedStructure mergedArea mergedPlacements mergedWaypoints
    where
@@ -81,6 +80,8 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
         map wrapPlacement $
           filter (\(Placed _ ns) -> isRecognizable ns) overlays
 
+  -- NOTE: Each successive overlay may alter the coordinate origin.
+  -- We make sure this new origin is propagated to subsequent sibling placements.
   foldlM
     (flip $ overlaySingleStructure structureMap)
     (MergedStructure origArea wrappedOverlays originatedWaypoints)
@@ -97,18 +98,22 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
 -- * Grid manipulation
 
 overlayGridExpanded ::
-  Grid (Maybe a) ->
+  PositionedGrid (Maybe a) ->
   Pose ->
   PositionedGrid (Maybe a) ->
   PositionedGrid (Maybe a)
 overlayGridExpanded
-  inputGrid
-  (Pose loc orientation)
-  (PositionedGrid _ overlayArea) =
-    PositionedGrid origin inputGrid <> positionedOverlay
+  baseGrid
+  (Pose yamlPlacementOffset orientation)
+  -- NOTE: The '_childAdjustedOrigin' is the sum of origin adjustments
+  -- to completely assemble some substructure. However, we discard
+  -- this when we place a substructure into a new base grid.
+  (PositionedGrid _childAdjustedOrigin overlayArea) =
+    baseGrid <> positionedOverlay
    where
     reorientedOverlayCells = applyOrientationTransform orientation overlayArea
-    positionedOverlay = PositionedGrid loc reorientedOverlayCells
+    placementAdjustedByOrigin = gridPosition baseGrid .+^ asVector yamlPlacementOffset
+    positionedOverlay = PositionedGrid placementAdjustedByOrigin reorientedOverlayCells
 
 -- * Validation
 

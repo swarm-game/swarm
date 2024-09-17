@@ -29,6 +29,7 @@ module Swarm.Game.Location (
   -- ** Utility functions
   manhattan,
   euclidean,
+  asVector,
   getLocsInArea,
   getElemsInArea,
 
@@ -198,6 +199,10 @@ manhattan (Location x1 y1) (Location x2 y2) = abs (x1 - x2) + abs (y1 - y2)
 -- | Euclidean distance between world locations.
 euclidean :: Location -> Location -> Double
 euclidean p1 p2 = norm (fromIntegral <$> (p2 .-. p1))
+
+-- | Converts a 'Point' to a vector offset from the 'origin'.
+asVector :: Location -> V2 Int32
+asVector loc = loc .-. origin
 
 -- | Get all the locations that are within a certain manhattan
 --   distance from a given location.

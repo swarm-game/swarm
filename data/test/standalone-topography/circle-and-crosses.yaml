@@ -19,7 +19,7 @@ structures:
               fff
       placements:
         - src: beam
-          offset: [0, 3]
+          offset: [0, 0]
         - src: beam
           offset: [-3, -3]
           orient:
