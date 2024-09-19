@@ -1,0 +1,66 @@
+version: 1
+name: Structure coordinate offset propagation
+author: Karl Ostmo
+description: |
+  If a structure incorporates subplacements
+  entailing negative offsets, its coordinate origin must be shifted.
+
+  The updated coordinate origin should be propagated to parent structures
+  and utilized to offset placement.
+robots:
+  - name: base
+    dir: north
+creative: true
+objectives:
+  - goal:
+      - Must have 3 of each color visible
+    condition: |
+      return false
+solution: |
+  noop
+known: [boulder, log, pixel (R), pixel (G), pixel (B), gold]
+world:
+  structures:
+    - name: micro
+      structure:
+        mask: '.'
+        palette:
+          'x': [stone, gold]
+        map: |
+          xxx
+          x.x
+          xxx
+    - name: block
+      structure:
+        mask: '.'
+        palette:
+          'x': [stone, pixel (R)]
+        map: |
+          xxxx
+          x..x
+          x..x
+          xxxx
+    - name: master
+      structure:
+        mask: '.'
+        placements:
+          - src: block
+          - src: micro
+            offset: [-3, 1]
+        map: ""
+  dsl: |
+    overlay
+    [ {grass}
+    , mask (y > -4 && y < 4 || x > -4 && x < 4) {stone}
+    , mask (y > -2 && y < 2 || x > -2 && x < 2) {ice}
+    , mask (y > -1 && y < 1 || x > -1 && x < 1) {dirt}
+    ]
+  palette:
+    'Ω': [grass, erase, base]
+  mask: '.'
+  placements:
+    - src: master
+      offset: [0, 0]
+  upperleft: [0, 0]
+  map: |
+    Ω

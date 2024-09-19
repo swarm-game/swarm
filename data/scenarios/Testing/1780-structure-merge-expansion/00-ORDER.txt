@@ -2,3 +2,4 @@ nonoverlapping-structure-merge.yaml
 root-map-expansion.yaml
 structure-composition.yaml
 sequential-placement.yaml
+coordinate-offset-propagation.yaml
