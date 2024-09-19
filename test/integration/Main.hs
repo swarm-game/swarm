@@ -377,6 +377,7 @@ testScenarioSolutions rs ui key =
         , testSolution Default "Testing/1533-sow-seed-maturation"
         , testSolution Default "Testing/2085-toplevel-mask"
         , testSolution Default "Testing/2086-structure-palette"
+        , testSolution Default "Testing/1271-wall-boundaries"
         , testGroup
             -- Note that the description of the classic world in
             -- data/worlds/classic.yaml (automatically tested to some

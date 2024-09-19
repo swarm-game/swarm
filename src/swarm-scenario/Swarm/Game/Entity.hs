@@ -157,6 +157,8 @@ data EntityProperty
     Pushable
   | -- | Obstructs the view of robots that attempt to "scout"
     Opaque
+  | -- | Is automatically rendered as a contiguous border
+    Boundary
   | -- | Regrows from a seed after it is harvested.
     Growable
   | -- | Can burn when ignited (either via 'Swarm.Language.Syntax.Ignite' or by

@@ -1105,6 +1105,7 @@ displayProperties = displayList . mapMaybe showProperty
   showProperty Liquid = Just "liquid"
   showProperty Unwalkable = Just "blocking"
   showProperty Opaque = Just "opaque"
+  showProperty Boundary = Just "boundary"
   -- Most things are pickable so we don't show that.
   showProperty Pickable = Nothing
   -- 'Known' is just a technical detail of how we handle some entities
