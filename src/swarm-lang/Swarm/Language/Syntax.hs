@@ -45,7 +45,7 @@ module Swarm.Language.Syntax (
   afterComments,
 
   -- * Syntax
-  ImportLocation (..),
+  ImportLocation,
   Syntax' (..),
   sLoc,
   sTerm,
@@ -72,6 +72,7 @@ module Swarm.Language.Syntax (
   pattern TProj,
   pattern TAnnotate,
   pattern TSuspend,
+  pattern TImportIn,
   pattern TParens,
 
   -- * Terms
