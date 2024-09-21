@@ -1027,7 +1027,14 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     -- following typechecking steps.
     iuty <- instantiate upty
     c' <- check c iuty
-    return $ Syntax' l (SAnnotate c' (forgetQ qpty')) cs iuty
+    return $ Syntax' l (SAnnotate c' (forgetQ qpty)) cs iuty
+
+  -- XXX FIX ME, this should eventually infer t1 with everything from
+  -- the import in scope
+  SImportIn loc t1 -> do
+    t1' <- infer t1
+    return $ Syntax' l (SImportIn loc t1') cs (t1' ^. sType)
+
   TType ty -> pure $ Syntax' l (TType ty) cs UTyType
   -- Fallback: to infer the type of anything else, make up a fresh unification
   -- variable for its type and check against it.
