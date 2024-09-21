@@ -17,7 +17,6 @@ import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Data.Set.Lens (setOf)
-import Data.Text (Text)
 import Swarm.Language.Parser.Core
 import Swarm.Language.Parser.Lex
 import Swarm.Language.Parser.Record (parseRecord)
@@ -28,7 +27,6 @@ import Swarm.Language.Types
 import Swarm.Util (failT, findDup)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
-import Witch (into)
 
 -- Imports for doctests (cabal-docspec needs this)
 
@@ -99,7 +97,7 @@ parseTermAtom2 =
           <*> (optional (symbol ";") *> (parseTerm <|> (eof $> sNoop)))
         <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
         <|> SImportIn
-          <$> parseURL
+          <$> (reserved "import" *> parseImportLocation)
           <*> (optional (void (symbol ";") <|> reserved "in") *> (parseTerm <|> (eof $> sNoop)))
         <|> parens (view sTerm . mkTuple <$> (parseTerm `sepBy` symbol ","))
     )
@@ -107,8 +105,8 @@ parseTermAtom2 =
     <|> parseLoc (SDelay <$> braces parseTerm)
     <|> parseLoc (view antiquoting >>= (guard . (== AllowAntiquoting)) >> parseAntiquotation)
 
-parseURL :: Parser ImportLocation
-parseURL = undefined
+parseImportLocation :: Parser ImportLocation
+parseImportLocation = textLiteral
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
