@@ -104,7 +104,7 @@ parseTermAtom2 =
         <|> SRcd <$> brackets (parseRecord (optional (symbol "=" *> parseTerm)))
         <|> TType <$> (symbol "@" *> parseTypeAtom)
         <|> SImportIn
-          <$> parseURL
+          <$> (reserved "import" *> parseImportLocation)
           <*> (optional (void (symbol ";") <|> reserved "in") *> (parseTerm <|> (eof $> sNoop)))
     )
     <|> parseLoc (mkTuple <$> parens (parseTerm `sepBy` symbol ","))
@@ -127,8 +127,8 @@ parseStock =
   (TStock . fromIntegral <$> integer)
     <*> (textLiteral <?> "entity name in double quotes")
 
-parseURL :: Parser ImportLocation
-parseURL = undefined
+parseImportLocation :: Parser ImportLocation
+parseImportLocation = textLiteral
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
