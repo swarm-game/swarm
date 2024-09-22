@@ -132,6 +132,9 @@ directionSyntax d = T.pack $ directionJsonModifier $ case d of
     DPlanar y -> show y
     _ -> show x
 
+instance PrettyPrec Direction where
+  prettyPrec _ = pretty . directionSyntax
+
 -- | Check if the direction is absolute (e.g. 'Swarm.Game.Location.north' or 'Swarm.Game.Location.south').
 isCardinal :: Direction -> Bool
 isCardinal = \case

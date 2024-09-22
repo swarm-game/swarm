@@ -55,6 +55,10 @@ data Comment = Comment
   }
   deriving (Eq, Show, Generic, Data, ToJSON, FromJSON)
 
+instance PrettyPrec Comment where
+  prettyPrec _ (Comment _ LineComment _ txt) = "//" <> pretty txt
+  prettyPrec _ (Comment _ BlockComment _ txt) = "/*" <> pretty txt <> "*/"
+
 -- | Comments which can be attached to a particular AST node.  Some
 --   comments come textually before the node and some come after.
 data Comments = Comments

@@ -10,7 +10,6 @@ module Swarm.Language.Syntax.AST (
   Syntax' (..),
   LetSyntax (..),
   Term' (..),
-  DelayType (..),
 ) where
 
 import Control.Lens (Plated (..))
@@ -43,11 +42,39 @@ data Syntax' ty = Syntax'
 instance Data ty => Plated (Syntax' ty) where
   plate = uniplate
 
+-- | Pretty-print a syntax node with comments.
+instance PrettyPrec (Syntax' ty) where
+  prettyPrec p (Syntax' _ t (Comments before after) _) = case before of
+    Empty -> t'
+    _ ->
+      -- Print out any comments before the node, with a blank line before
+      mconcat
+        [ hardline
+        , vsep (map ppr (F.toList before))
+        , hardline
+        , t'
+        ]
+   where
+    -- Print the node itself, possibly with suffix comments on the same line
+    t' = case Seq.viewr after of
+      Seq.EmptyR -> prettyPrec p t
+      _ Seq.:> lst -> case commentType lst of
+        -- Output a newline after a line comment, but not after a block comment
+        BlockComment -> tWithComments
+        LineComment -> tWithComments <> hardline
+     where
+      -- The pretty-printed node with suffix comments
+      tWithComments = prettyPrec p t <+> hsep (map ppr (F.toList after))
+
 -- | A @let@ expression can be written either as @let x = e1 in e2@ or
 --   as @def x = e1 end; e2@. This enumeration simply records which it
 --   was so that we can pretty-print appropriatly.
 data LetSyntax = LSLet | LSDef
   deriving (Eq, Ord, Show, Bounded, Enum, Generic, Data, ToJSON, FromJSON)
+
+------------------------------------------------------------
+-- Term: basic syntax tree
+------------------------------------------------------------
 
 -- | Terms of the Swarm language.
 data Term' ty
@@ -159,22 +186,127 @@ instance Data ty => Plated (Term' ty) where
   plate = uniplate
 
 ------------------------------------------------------------
--- Basic terms
-------------------------------------------------------------
+-- Pretty-printing for terms
 
--- | Different runtime behaviors for delayed expressions.
-data DelayType
-  = -- | A simple delay, implemented via a (non-memoized) @VDelay@
-    --   holding the delayed expression.
-    SimpleDelay
-  | -- | A memoized delay, implemented by allocating a mutable cell
-    --   with the delayed expression and returning a reference to it.
-    --   When the @Maybe Var@ is @Just@, a recursive binding of the
-    --   variable with a reference to the delayed expression will be
-    --   provided while evaluating the delayed expression itself. Note
-    --   that there is no surface syntax for binding a variable within
-    --   a recursive delayed expression; the only way we can get
-    --   @Just@ here is when we automatically generate a delayed
-    --   expression while interpreting a recursive @let@ or @def@.
-    MemoizedDelay (Maybe Var)
-  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)
+instance PrettyPrec (Term' ty) where
+  prettyPrec p = \case
+    TUnit -> "()"
+    TConst c -> prettyPrec p c
+    TDir d -> ppr d
+    TInt n -> pretty n
+    TAntiInt v -> "$int:" <> pretty v
+    TText s -> fromString (ushow s)
+    TAntiText v -> "$str:" <> pretty v
+    TBool b -> bool "false" "true" b
+    TRobot r -> "<a" <> pretty r <> ">"
+    TRef r -> "@" <> pretty r
+    TRequireDevice d -> pparens (p > 10) $ "require" <+> ppr @Term (TText d)
+    TRequire n e -> pparens (p > 10) $ "require" <+> pretty n <+> ppr @Term (TText e)
+    SRequirements _ e -> pparens (p > 10) $ "requirements" <+> ppr e
+    TVar s -> pretty s
+    SDelay (Syntax' _ (TConst Noop) _ _) -> "{}"
+    SDelay t -> group . encloseWithIndent 2 lbrace rbrace $ ppr t
+    t@SPair {} -> prettyTuple t
+    t@SLam {} ->
+      pparens (p > 9) $
+        prettyLambdas t
+    -- Special handling of infix operators - ((+) 2) 3 --> 2 + 3
+    SApp t@(Syntax' _ (SApp (Syntax' _ (TConst c) _ _) l) _ _) r ->
+      let ci = constInfo c
+          pC = fixity ci
+       in case constMeta ci of
+            ConstMBinOp assoc ->
+              pparens (p > pC) $
+                hsep
+                  [ prettyPrec (pC + fromEnum (assoc == R)) l
+                  , ppr c
+                  , prettyPrec (pC + fromEnum (assoc == L)) r
+                  ]
+            _ -> prettyPrecApp p t r
+    SApp t1 t2 -> case t1 of
+      Syntax' _ (TConst c) _ _ ->
+        let ci = constInfo c
+            pC = fixity ci
+         in case constMeta ci of
+              ConstMUnOp P -> pparens (p > pC) $ ppr t1 <> prettyPrec (succ pC) t2
+              ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
+              _ -> prettyPrecApp p t1 t2
+      _ -> prettyPrecApp p t1 t2
+    SLet LSLet _ (LV _ x) mty _ t1 t2 ->
+      sep
+        [ prettyDefinition "let" x mty t1 <+> "in"
+        , ppr t2
+        ]
+    SLet LSDef _ (LV _ x) mty _ t1 t2 ->
+      mconcat $
+        sep [prettyDefinition "def" x mty t1, "end"]
+          : case t2 of
+            Syntax' _ (TConst Noop) _ _ -> []
+            _ -> [hardline, hardline, ppr t2]
+    STydef (LV _ x) pty _ t1 ->
+      mconcat $
+        prettyTydef x pty
+          : case t1 of
+            Syntax' _ (TConst Noop) _ _ -> []
+            _ -> [hardline, hardline, ppr t1]
+    SBind Nothing _ _ _ t1 t2 ->
+      pparens (p > 0) $
+        prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
+    SBind (Just (LV _ x)) _ _ _ t1 t2 ->
+      pparens (p > 0) $
+        pretty x <+> "<-" <+> prettyPrec 1 t1 <> ";" <> line <> prettyPrec 0 t2
+    SRcd m -> brackets $ hsep (punctuate "," (map prettyEquality (M.assocs m)))
+    SProj t x -> prettyPrec 11 t <> "." <> pretty x
+    SAnnotate t pt ->
+      pparens (p > 0) $
+        prettyPrec 1 t <+> ":" <+> ppr pt
+    SSuspend t ->
+      pparens (p > 10) $
+        "suspend" <+> prettyPrec 11 t
+
+prettyDefinition :: Doc ann -> Var -> Maybe Polytype -> Syntax' ty -> Doc ann
+prettyDefinition defName x mty t1 =
+  nest 2 . sep $
+    [ flatAlt
+        (defHead <> group defType <+> eqAndLambdaLine)
+        (defHead <> group defType' <+> defEqLambdas)
+    , ppr defBody
+    ]
+ where
+  (defBody, defLambdaList) = unchainLambdas t1
+  defHead = defName <+> pretty x
+  defType = maybe "" (\ty -> ":" <+> flatAlt (line <> indent 2 (ppr ty)) (ppr ty)) mty
+  defType' = maybe "" (\ty -> ":" <+> ppr ty) mty
+  defEqLambdas = hsep ("=" : map prettyLambda defLambdaList)
+  eqAndLambdaLine = if null defLambdaList then "=" else line <> defEqLambdas
+
+prettyTydef :: Var -> Polytype -> Doc ann
+prettyTydef x (Forall [] ty) = "tydef" <+> pretty x <+> "=" <+> ppr ty <+> "end"
+prettyTydef x (Forall xs ty) = "tydef" <+> pretty x <+> hsep (map pretty xs) <+> "=" <+> ppr ty <+> "end"
+
+prettyPrecApp :: Int -> Syntax' ty -> Syntax' ty -> Doc a
+prettyPrecApp p t1 t2 =
+  pparens (p > 10) $
+    prettyPrec 10 t1 <+> prettyPrec 11 t2
+
+appliedTermPrec :: Term -> Int
+appliedTermPrec (TApp f _) = case f of
+  TConst c -> fixity $ constInfo c
+  _ -> appliedTermPrec f
+appliedTermPrec _ = 10
+
+prettyTuple :: Term' ty -> Doc a
+prettyTuple = tupled . map ppr . unTuple . STerm . erase
+
+prettyLambdas :: Term' ty -> Doc a
+prettyLambdas t = hsep (prettyLambda <$> lms) <> softline <> ppr rest
+ where
+  (rest, lms) = unchainLambdas (STerm (erase t))
+
+unchainLambdas :: Syntax' ty -> (Syntax' ty, [(Var, Maybe Type)])
+unchainLambdas = \case
+  Syntax' _ (SLam (LV _ x) mty body) _ _ -> ((x, mty) :) <$> unchainLambdas body
+  body -> (body, [])
+
+prettyLambda :: (Pretty a1, PrettyPrec a2) => (a1, Maybe a2) -> Doc ann
+prettyLambda (x, mty) = "\\" <> pretty x <> maybe "" ((":" <>) . ppr) mty <> "."
