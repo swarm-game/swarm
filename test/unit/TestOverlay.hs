@@ -98,29 +98,27 @@ testOverlay =
             ]
         , testGroup
             "Northwesterly offset of first sibling"
-            [
-              
-              --  testMergedSize
+            [ --  testMergedSize
               --   "test merged size"
               --   (placeUnshifted "baseLayer" (Location 0 0) [[]])
               --   (placeUnshifted "sibling1" (Location (-1) 1) oneByOneGrid)
               --   (AreaDimensions 1 1)
-              
+
               -- , testMergedSize
               --   "test merged size"
               --   (place (Location 1 (-1)) "sibling1" (Location (-1) 1) oneByOneGrid)
               --   (placeUnshifted "sibling2" (Location 0 0) twoByTwoGrid)
               --   (AreaDimensions 3 3)
-                  -- ,
+              -- ,
 
-                 mkOverlaySequenceOriginTest
-                    "positive first south of second"
-                    [ placeUnshifted "sibling1" (Location (-1) 1) oneByOneGrid
-                    , placeUnshifted "sibling2" (Location 0 0) twoByTwoGrid
-                    -- [ placeUnshifted "sibling2" (Location 0 0) twoByTwoGrid
-                    -- , placeUnshifted "sibling1" (Location (-1) 1) oneByOneGrid
-                    ]
-                    (Location 1 (-1))
+              mkOverlaySequenceOriginTest
+                "positive first south of second"
+                [ placeUnshifted "sibling1" (Location (-1) 1) oneByOneGrid
+                , placeUnshifted "sibling2" (Location 0 0) twoByTwoGrid
+                -- [ placeUnshifted "sibling2" (Location 0 0) twoByTwoGrid
+                -- , placeUnshifted "sibling1" (Location (-1) 1) oneByOneGrid
+                ]
+                (Location 1 (-1))
             ]
         ]
     ]

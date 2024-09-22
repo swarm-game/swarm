@@ -12,11 +12,11 @@ module Swarm.Game.Scenario.Topography.Structure.Overlay (
   OverlayPair (..),
 ) where
 
-import Debug.Trace (trace)
 import Control.Applicative
 import Data.Function (on)
 import Data.Int (Int32)
 import Data.Tuple (swap)
+import Debug.Trace (trace)
 import Linear hiding (trace)
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area

@@ -13,7 +13,6 @@ module Swarm.Game.Scenario.Topography.Structure.Assembly (
 )
 where
 
-import Debug.Trace (trace)
 import Control.Arrow (left, (&&&))
 import Control.Monad (when)
 import Data.Coerce
@@ -23,6 +22,7 @@ import Data.Map qualified as M
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
+import Debug.Trace (trace)
 import Linear.Affine
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
@@ -123,12 +123,15 @@ overlayGridExpanded
   -- The 'childAdjustedOrigin' is the sum of origin adjustments
   -- to completely assemble some substructure.
   (PositionedGrid childAdjustedOrigin overlayArea) =
-    trace (unwords [
-      "Merging base grid at position"
-      , show $ gridPosition baseGrid
-      , "with overlay grid at position"
-      , show $ gridPosition positionedOverlay
-      ]) result
+    trace
+      ( unwords
+          [ "Merging base grid at position"
+          , show $ gridPosition baseGrid
+          , "with overlay grid at position"
+          , show $ gridPosition positionedOverlay
+          ]
+      )
+      result
    where
     result = baseGrid <> positionedOverlay
 

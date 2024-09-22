@@ -47,10 +47,10 @@ main :: IO ()
 main = do
   defaultMain statelessTests
 
-  -- ms <- runExceptT classicGame0
-  -- case ms of
-  --   Left err -> assertFailure (from err)
-  --   Right s -> defaultMain (stateDependentTests s)
+-- ms <- runExceptT classicGame0
+-- case ms of
+--   Left err -> assertFailure (from err)
+--   Right s -> defaultMain (stateDependentTests s)
 
 -- | Initializing an 'AppState' entails
 -- loading challenge scenarios, etc. from
