@@ -73,6 +73,9 @@ data Capability
   deriving (Eq, Ord, Show, Generic, Hashable, Data, FromJSONKey, ToJSONKey)
   deriving (Enum, Bounded) via (FiniteEnumeration Capability)
 
+instance PrettyPrec Capability where
+  prettyPrec _ c = pretty $ T.toLower (from (NE.tail $ showEnum c))
+
 -- | Get the name of the capability for use in UI and YAML.
 capabilityName :: Capability -> Text
 capabilityName = \case

@@ -73,7 +73,6 @@ module Swarm.Language.Syntax (
 
   -- * Terms
   Var,
-  DelayType (..),
   Term' (..),
   Term,
   TTerm,

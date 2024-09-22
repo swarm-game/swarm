@@ -312,6 +312,9 @@ data Const
     Knows
   deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, Hashable, FromJSON, ToJSON, FromJSONKey, ToJSONKey)
 
+instance PrettyPrec Const where
+  prettyPrec p c = pparens (p > fixity (constInfo c)) $ pretty . syntax . constInfo $ c
+
 allConst :: [Const]
 allConst = enumerate
 

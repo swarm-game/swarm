@@ -162,6 +162,9 @@ data BaseTy
 baseTyName :: BaseTy -> Text
 baseTyName = into @Text . drop 1 . show
 
+instance PrettyPrec BaseTy where
+  prettyPrec _ = pretty . drop 1 . show
+
 ------------------------------------------------------------
 -- Type constructors
 ------------------------------------------------------------
@@ -189,6 +192,16 @@ instance ToJSON TyCon where
 
 instance FromJSON TyCon where
   parseJSON = genericParseJSON optionsMinimize
+
+instance PrettyPrec TyCon where
+  prettyPrec _ = \case
+    TCBase b -> ppr b
+    TCCmd -> "Cmd"
+    TCDelay -> "Delay"
+    TCSum -> "Sum"
+    TCProd -> "Prod"
+    TCFun -> "Fun"
+    TCUser t -> pretty t
 
 -- | The arity of a type, /i.e./ the number of type parameters it
 --   expects.
@@ -263,6 +276,9 @@ tyVars = foldFix (\case TyVarF x -> S.singleton x; f -> fold f)
 newtype IntVar = IntVar Int
   deriving (Show, Data, Eq, Ord)
 
+instance PrettyPrec IntVar where
+  prettyPrec _ = pretty . mkVarName "u"
+
 -- | 'UType's are like 'Type's, but also contain unification
 --   variables.  'UType' is defined via 'Free', which is also a kind
 --   of fixed point (in fact, @Free TypeF@ is the /free monad/ over
@@ -294,6 +310,62 @@ instance IsString Type where
 
 instance IsString UType where
   fromString x = UTyVar (from @String x)
+
+--------------------------------------------------
+-- Pretty-printing machinery for types
+
+-- | Split a function type chain, so that we can pretty print
+--   the type parameters aligned on each line when they don't fit.
+class UnchainableFun t where
+  unchainFun :: t -> NE.NonEmpty t
+
+instance UnchainableFun Type where
+  unchainFun (a :->: ty) = a <| unchainFun ty
+  unchainFun ty = pure ty
+
+instance UnchainableFun (Free TypeF ty) where
+  unchainFun (Free (TyConF TCFun [ty1, ty2])) = ty1 <| unchainFun ty2
+  unchainFun ty = pure ty
+
+instance (PrettyPrec (t (Fix t))) => PrettyPrec (Fix t) where
+  prettyPrec p = prettyPrec p . unFix
+
+instance (PrettyPrec (t (Free t v)), PrettyPrec v) => PrettyPrec (Free t v) where
+  prettyPrec p (Free t) = prettyPrec p t
+  prettyPrec p (Pure v) = prettyPrec p v
+
+instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) where
+  prettyPrec p = \case
+    TyVarF v -> pretty v
+    TyRcdF m -> brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
+    -- Special cases for type constructors with special syntax.
+    -- Always use parentheses around sum and product types, see #1625
+    TyConF TCSum [ty1, ty2] ->
+      pparens (p > 0) $
+        prettyPrec 2 ty1 <+> "+" <+> prettyPrec 2 ty2
+    TyConF TCProd [ty1, ty2] ->
+      pparens (p > 0) $
+        prettyPrec 2 ty1 <+> "*" <+> prettyPrec 2 ty2
+    TyConF TCDelay [ty] -> braces $ ppr ty
+    TyConF TCFun [ty1, ty2] ->
+      let (iniF, lastF) = unsnocNE $ ty1 <| unchainFun ty2
+          funs = (prettyPrec 2 <$> iniF) <> [prettyPrec 1 lastF]
+          inLine l r = l <+> "->" <+> r
+          multiLine l r = l <+> "->" <> softline <> r
+       in pparens' (p > 1) . align $
+            flatAlt (concatWith multiLine funs) (concatWith inLine funs)
+    TyRecF x ty ->
+      pparens (p > 0) $
+        "rec" <+> pretty x <> "." <+> prettyPrec 0 (substRec (TyVarF x) ty NZ)
+    -- This case shouldn't be possible, since TyRecVar should only occur inside a TyRec,
+    -- and pretty-printing the TyRec (above) will substitute a variable name for
+    -- any bound TyRecVars before recursing.
+    TyRecVarF i -> pretty (show (natToInt i))
+    -- Fallthrough cases for type constructor application.  Handles base
+    -- types, Cmd, user-defined types, or ill-kinded things like 'Int
+    -- Bool'.
+    TyConF c [] -> ppr c
+    TyConF c tys -> pparens (p > 9) $ ppr c <+> hsep (map (prettyPrec 10) tys)
 
 ------------------------------------------------------------
 -- Generic folding over type representations
@@ -327,8 +399,16 @@ data Poly t = Forall {ptVars :: [Var], ptBody :: t}
 -- | A polytype without unification variables.
 type Polytype = Poly Type
 
+instance PrettyPrec Polytype where
+  prettyPrec _ (Forall [] t) = ppr t
+  prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
+
 -- | A polytype with unification variables.
 type UPolytype = Poly UType
+
+instance PrettyPrec UPolytype where
+  prettyPrec _ (Forall [] t) = ppr t
+  prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
 
 ------------------------------------------------------------
 -- WithU

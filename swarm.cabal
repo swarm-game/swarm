@@ -450,7 +450,6 @@ library swarm-lang
     Swarm.Language.Parser.Util
     Swarm.Language.Pipeline
     Swarm.Language.Pipeline.QQ
-    Swarm.Language.Pretty
     Swarm.Language.Requirements
     Swarm.Language.Requirements.Analysis
     Swarm.Language.Requirements.Type
@@ -859,6 +858,7 @@ library swarm-util
     lens,
     minimorph,
     mtl,
+    prettyprinter,
     servant-docs,
     template-haskell,
     text,
@@ -874,6 +874,7 @@ library swarm-util
     Control.Carrier.Accum.FixedStrict
     Data.BoolExpr.Simplify
     Swarm.Language.Syntax.Direction
+    Swarm.Pretty
     Swarm.Util
     Swarm.Util.Effect
     Swarm.Util.Erasable
