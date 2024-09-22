@@ -13,6 +13,7 @@ module Swarm.Game.Scenario.Topography.Structure.Assembly (
 )
 where
 
+import Debug.Trace (trace)
 import Control.Arrow (left, (&&&))
 import Control.Monad (when)
 import Data.Coerce
@@ -122,14 +123,23 @@ overlayGridExpanded
   -- The 'childAdjustedOrigin' is the sum of origin adjustments
   -- to completely assemble some substructure.
   (PositionedGrid childAdjustedOrigin overlayArea) =
-    baseGrid <> positionedOverlay
+    trace (unwords [
+      "Merging base grid at position"
+      , show $ gridPosition baseGrid
+      , "with overlay grid at position"
+      , show $ gridPosition positionedOverlay
+      ]) result
    where
+    result = baseGrid <> positionedOverlay
+
     reorientedOverlayCells = applyOrientationTransform orientation overlayArea
 
     -- placementAdjustedByOrigin = (gridPosition baseGrid .+^ asVector yamlPlacementOffset) .-^ asVector childAdjustedOrigin
+    placementAdjustedByOrigin = yamlPlacementOffset
+
     -- FIXME This experiment gives incorrect results
     -- (examine "simultaneous-north-and-west-offset.yaml"):
-    placementAdjustedByOrigin = yamlPlacementOffset .-^ asVector childAdjustedOrigin
+    -- placementAdjustedByOrigin = yamlPlacementOffset .-^ asVector childAdjustedOrigin
 
     positionedOverlay = PositionedGrid placementAdjustedByOrigin reorientedOverlayCells
 

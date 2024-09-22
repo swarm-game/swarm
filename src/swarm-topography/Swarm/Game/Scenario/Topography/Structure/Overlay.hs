@@ -84,7 +84,7 @@ zipGridRows ::
 zipGridRows dims (OverlayPair paddedBaseRows paddedOverlayRows) =
   mkGrid $ (pad2D paddedBaseRows . pad2D paddedOverlayRows) blankGrid
  where
-  -- Right-bias; that is, take the last non-empty value
+  -- Right-biased; that is, takes the last non-empty value
   pad2D = zipPadded $ zipPadded $ flip (<|>)
   blankGrid = getRows $ fillGrid dims empty
 
