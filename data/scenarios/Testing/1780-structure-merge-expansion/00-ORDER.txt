@@ -3,3 +3,4 @@ root-map-expansion.yaml
 structure-composition.yaml
 sequential-placement.yaml
 coordinate-offset-propagation.yaml
+simultaneous-north-and-west-offset.yaml

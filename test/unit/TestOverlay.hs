@@ -6,6 +6,7 @@
 -- Unit tests for generic grid overlay logic
 module TestOverlay where
 
+import Control.Monad (when)
 import Data.Text (Text)
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Grid
@@ -17,7 +18,15 @@ import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Test.Tasty
 import Test.Tasty.HUnit
 
+debugRenderGrid :: Bool
+debugRenderGrid = True
+
 -- * Example grids
+
+-- | Single cell
+oneByOneGrid :: [[Int]]
+oneByOneGrid = [[0]]
+
 
 -- | Single row with two columns
 oneByTwoGrid :: [[Int]]
@@ -87,6 +96,15 @@ testOverlay =
                 ]
                 (Location 2 0)
             ]
+        , testGroup
+            "Northwesterly offset of first sibling"
+            [ mkOverlaySequenceOriginTest
+                "positive first south of second"
+                [ placeUnshifted "sibling1" (Location (-1) 1) oneByOneGrid
+                , placeUnshifted "sibling2" (Location 0 0) twoByTwoGrid
+                ]
+                (Location 1 (-1))
+            ]
         ]
     ]
 
@@ -122,10 +140,16 @@ mkOverlaySequenceTest ::
   TestTree
 mkOverlaySequenceTest f testLabel overlays expectedBaseLoc =
   testCase testLabel $ do
+
+    when debugRenderGrid $
+      renderGridResult eitherResultGrid
+
     assertEqual "Base loc wrong" (Right expectedBaseLoc) $
-      f . getGridFromMergedStructure <$> eitherResult
+      f <$> eitherResultGrid
  where
   baseArea = PositionedGrid (Location 0 0) (EmptyGrid :: Grid (Maybe Int))
+
+  eitherResultGrid = getGridFromMergedStructure <$> eitherResult
 
   eitherResult =
     foldLayer
@@ -134,8 +158,9 @@ mkOverlaySequenceTest f testLabel overlays expectedBaseLoc =
       overlays
       []
 
-  getGridFromMergedStructure :: MergedStructure c -> PositionedGrid c
-  getGridFromMergedStructure (MergedStructure g _ _) = g
+
+getGridFromMergedStructure :: MergedStructure c -> PositionedGrid c
+getGridFromMergedStructure (MergedStructure g _ _) = g
 
 -- | Place an structure at an offset.
 -- The structure's local origin is (0, 0).
@@ -165,3 +190,10 @@ place localOrigin theName placementOffset g =
       mempty
       mempty
       mempty
+
+renderGridResult :: Either a (PositionedGrid (Maybe Int)) -> IO ()
+renderGridResult eitherResult = case eitherResult of
+  Right pg -> do
+      print pg
+      print $ getRows $ gridContent pg
+  Left _ -> return ()
