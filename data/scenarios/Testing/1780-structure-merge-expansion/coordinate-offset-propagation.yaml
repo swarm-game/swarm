@@ -27,27 +27,41 @@ world:
         palette:
           'x': [stone, gold]
         map: |
-          xxx
-          x.x
-          xxx
+          xx
     - name: block
       structure:
         mask: '.'
         palette:
           'x': [stone, pixel (R)]
         map: |
-          xxxx
-          x..x
-          x..x
-          xxxx
+          xx
+          xx
     - name: master
       structure:
         mask: '.'
+        palette:
+          'x': [stone, pixel (B)]
         placements:
           - src: block
+            offset: [0, 1]
           - src: micro
-            offset: [-3, 1]
-        map: ""
+            offset: [-2, 0]
+        map: |
+          ..x
+          ..x
+          ..x
+    - name: final
+      structure:
+        mask: '.'
+        palette:
+          'x': [stone, pixel (G)]
+        placements:
+          - src: master
+        map: |
+          x
+          x
+          x
+          x
   dsl: |
     overlay
     [ {grass}
@@ -59,7 +73,7 @@ world:
     'Ω': [grass, erase, base]
   mask: '.'
   placements:
-    - src: master
+    - src: final
       offset: [0, 0]
   upperleft: [0, 0]
   map: |

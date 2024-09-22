@@ -25,6 +25,10 @@ data PositionedGrid a = PositionedGrid
   }
   deriving (Eq)
 
+instance HasLocation (PositionedGrid a) where
+  modifyLoc f (PositionedGrid originalLoc g) =
+    PositionedGrid (f originalLoc) g
+
 instance Show (PositionedGrid a) where
   show (PositionedGrid p g) =
     unwords

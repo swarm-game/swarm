@@ -7,6 +7,9 @@
 -- as well as logic for combining them.
 module Swarm.Game.Scenario.Topography.Structure.Assembly (
   mergeStructures,
+
+  -- * Exposed for unit tests:
+  foldLayer,
 )
 where
 
@@ -63,30 +66,15 @@ mergeStructures ::
   Parentage Placement ->
   PStructure (Maybe a) ->
   Either Text (MergedStructure (Maybe a))
-mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStructures subPlacements subWaypoints) = do
+mergeStructures inheritedStrucDefs parentPlacement baseStructure = do
   overlays <-
     left (elaboratePlacement parentPlacement <>) $
       mapM (validatePlacement structureMap) subPlacements
 
-  let wrapPlacement (Placed z ns) =
-        LocatedStructure
-          (name ns)
-          (up $ orient structPose)
-          (offset structPose)
-       where
-        structPose = structurePose z
-
-      wrappedOverlays =
-        map wrapPlacement $
-          filter (\(Placed _ ns) -> isRecognizable ns) overlays
-
-  -- NOTE: Each successive overlay may alter the coordinate origin.
-  -- We make sure this new origin is propagated to subsequent sibling placements.
-  foldlM
-    (flip $ overlaySingleStructure structureMap)
-    (MergedStructure origArea wrappedOverlays originatedWaypoints)
-    overlays
+  foldLayer structureMap origArea overlays originatedWaypoints
  where
+  Structure origArea subStructures subPlacements subWaypoints = baseStructure
+
   originatedWaypoints = map (Originated parentPlacement) subWaypoints
 
   -- deeper definitions override the outer (toplevel) ones
@@ -94,6 +82,32 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
     M.union
       (M.fromList $ map (name &&& id) subStructures)
       inheritedStrucDefs
+
+-- | NOTE: Each successive overlay may alter the coordinate origin.
+-- We make sure this new origin is propagated to subsequent sibling placements.
+foldLayer ::
+  M.Map StructureName (NamedStructure (Maybe a)) ->
+  PositionedGrid (Maybe a) ->
+  [Placed (Maybe a)] ->
+  [Originated Waypoint] ->
+  Either Text (MergedStructure (Maybe a))
+foldLayer structureMap origArea overlays originatedWaypoints =
+  foldlM
+    (flip $ overlaySingleStructure structureMap)
+    (MergedStructure origArea wrappedOverlays originatedWaypoints)
+    overlays
+ where
+  wrappedOverlays =
+    map wrapPlacement $
+      filter (\(Placed _ ns) -> isRecognizable ns) overlays
+
+  wrapPlacement (Placed z ns) =
+    LocatedStructure
+      (name ns)
+      (up $ orient structPose)
+      (offset structPose)
+   where
+    structPose = structurePose z
 
 -- * Grid manipulation
 
@@ -105,14 +119,13 @@ overlayGridExpanded ::
 overlayGridExpanded
   baseGrid
   (Pose yamlPlacementOffset orientation)
-  -- NOTE: The '_childAdjustedOrigin' is the sum of origin adjustments
-  -- to completely assemble some substructure. However, we discard
-  -- this when we place a substructure into a new base grid.
-  (PositionedGrid _childAdjustedOrigin overlayArea) =
+  -- The 'childAdjustedOrigin' is the sum of origin adjustments
+  -- to completely assemble some substructure.
+  (PositionedGrid childAdjustedOrigin overlayArea) =
     baseGrid <> positionedOverlay
    where
     reorientedOverlayCells = applyOrientationTransform orientation overlayArea
-    placementAdjustedByOrigin = gridPosition baseGrid .+^ asVector yamlPlacementOffset
+    placementAdjustedByOrigin = (gridPosition baseGrid .+^ asVector yamlPlacementOffset) .-^ asVector childAdjustedOrigin
     positionedOverlay = PositionedGrid placementAdjustedByOrigin reorientedOverlayCells
 
 -- * Validation
