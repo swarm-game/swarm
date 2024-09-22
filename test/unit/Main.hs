@@ -45,27 +45,43 @@ import Witch (from)
 
 main :: IO ()
 main = do
-  ms <- runExceptT classicGame0
-  case ms of
-    Left err -> assertFailure (from err)
-    Right s -> defaultMain (tests s)
+  defaultMain statelessTests
 
-tests :: AppState -> TestTree
-tests s =
+  -- ms <- runExceptT classicGame0
+  -- case ms of
+  --   Left err -> assertFailure (from err)
+  --   Right s -> defaultMain (stateDependentTests s)
+
+-- | Initializing an 'AppState' entails
+-- loading challenge scenarios, etc. from
+-- disk.  We might not want to do this, in
+-- case we inject a 'trace' somewhere in
+-- the code and want to minimize the noise.
+--
+-- So we keep this list separate from the stateless
+-- tests so we can easily comment it out.
+stateDependentTests :: AppState -> TestTree
+stateDependentTests s =
   testGroup
-    "Tests"
+    "Stateful tests"
+    [ testEval (s ^. gameState)
+    , testPedagogy (s ^. runtimeState)
+    , testNotification (s ^. gameState)
+    ]
+
+statelessTests :: TestTree
+statelessTests =
+  testGroup
+    "Stateless tests"
     [ testLanguagePipeline
     , testParse
     , testPrettyConst
     , testBoolExpr
     , testCommands
     , testHighScores
-    , testEval (s ^. gameState)
     , testRepl
     , testRequirements
-    , testPedagogy (s ^. runtimeState)
     , testInventory
-    , testNotification (s ^. gameState)
     , testOrdering
     , testOverlay
     , testMisc

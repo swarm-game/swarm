@@ -6,13 +6,18 @@
 -- Generic overlay operations on grids
 module Swarm.Game.Scenario.Topography.Structure.Overlay (
   PositionedGrid (..),
+
+  -- * Exported for unit tests
+  computeMergedArea,
+  OverlayPair (..),
 ) where
 
+import Debug.Trace (trace)
 import Control.Applicative
 import Data.Function (on)
 import Data.Int (Int32)
 import Data.Tuple (swap)
-import Linear
+import Linear hiding (trace)
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Grid
@@ -102,7 +107,8 @@ instance (Alternative f) => Semigroup (PositionedGrid (f a)) where
   a1@(PositionedGrid baseLoc baseGrid) <> a2@(PositionedGrid overlayLoc overlayGrid) =
     PositionedGrid newOrigin combinedGrid
    where
-    mergedSize = computeMergedArea $ OverlayPair a1 a2
+    mergedSize2 = computeMergedArea $ OverlayPair a1 a2
+    mergedSize = trace (unwords ["Merged size for ", show a1, "and", show a2, ":", show mergedSize2]) mergedSize2
     combinedGrid = zipGridRows mergedSize paddedOverlayPair
 
     -- We create a vector from the overlay position,
@@ -119,7 +125,7 @@ instance (Alternative f) => Semigroup (PositionedGrid (f a)) where
     newOrigin = baseLoc .-^ clampedDelta
 
     paddedOverlayPair =
-      padSouthwest originDelta $
+      padNorthwest originDelta $
         OverlayPair baseGrid overlayGrid
 
 -- | NOTE: We only make explicit grid adjustments for
@@ -127,12 +133,12 @@ instance (Alternative f) => Semigroup (PositionedGrid (f a)) where
 -- of either grid will be taken care of by the 'zipPadded' function.
 --
 -- TODO(#2004): The return type should be 'Grid'.
-padSouthwest ::
+padNorthwest ::
   Alternative f =>
   V2 Int32 ->
   OverlayPair (Grid (f a)) ->
   OverlayPair [[f a]]
-padSouthwest (V2 deltaX deltaY) (OverlayPair baseGrid overlayGrid) =
+padNorthwest (V2 deltaX deltaY) (OverlayPair baseGrid overlayGrid) =
   OverlayPair paddedBaseGrid paddedOverlayGrid
  where
   prefixPadDimension delta f = f (padding <>)

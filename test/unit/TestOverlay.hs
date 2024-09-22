@@ -9,6 +9,7 @@ module TestOverlay where
 import Control.Monad (when)
 import Data.Text (Text)
 import Swarm.Game.Location
+import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.Structure
@@ -26,7 +27,6 @@ debugRenderGrid = True
 -- | Single cell
 oneByOneGrid :: [[Int]]
 oneByOneGrid = [[0]]
-
 
 -- | Single row with two columns
 oneByTwoGrid :: [[Int]]
@@ -98,17 +98,47 @@ testOverlay =
             ]
         , testGroup
             "Northwesterly offset of first sibling"
-            [ mkOverlaySequenceOriginTest
-                "positive first south of second"
-                [ placeUnshifted "sibling1" (Location (-1) 1) oneByOneGrid
-                , placeUnshifted "sibling2" (Location 0 0) twoByTwoGrid
-                ]
-                (Location 1 (-1))
+            [
+              
+              --  testMergedSize
+              --   "test merged size"
+              --   (placeUnshifted "baseLayer" (Location 0 0) [[]])
+              --   (placeUnshifted "sibling1" (Location (-1) 1) oneByOneGrid)
+              --   (AreaDimensions 1 1)
+              
+              -- , testMergedSize
+              --   "test merged size"
+              --   (place (Location 1 (-1)) "sibling1" (Location (-1) 1) oneByOneGrid)
+              --   (placeUnshifted "sibling2" (Location 0 0) twoByTwoGrid)
+              --   (AreaDimensions 3 3)
+                  -- ,
+
+                 mkOverlaySequenceOriginTest
+                    "positive first south of second"
+                    [ placeUnshifted "sibling1" (Location (-1) 1) oneByOneGrid
+                    , placeUnshifted "sibling2" (Location 0 0) twoByTwoGrid
+                    -- [ placeUnshifted "sibling2" (Location 0 0) twoByTwoGrid
+                    -- , placeUnshifted "sibling1" (Location (-1) 1) oneByOneGrid
+                    ]
+                    (Location 1 (-1))
             ]
         ]
     ]
 
 -- * Test construction
+testMergedSize ::
+  String ->
+  Placed (Maybe Int) ->
+  Placed (Maybe Int) ->
+  AreaDimensions ->
+  TestTree
+testMergedSize testLabel (Placed _ ns1) (Placed _ ns2) expectedArea =
+  testCase testLabel $ do
+    assertEqual "Merged area is wrong" expectedArea mergedSize
+ where
+  a1 = area $ structure ns1
+  a2 = area $ structure ns2
+  mergedSize = computeMergedArea $ OverlayPair a1 a2
 
 -- | Base layer is at the origin (0, 0).
 mkOriginTestCase ::
@@ -140,7 +170,6 @@ mkOverlaySequenceTest ::
   TestTree
 mkOverlaySequenceTest f testLabel overlays expectedBaseLoc =
   testCase testLabel $ do
-
     when debugRenderGrid $
       renderGridResult eitherResultGrid
 
@@ -157,7 +186,6 @@ mkOverlaySequenceTest f testLabel overlays expectedBaseLoc =
       baseArea
       overlays
       []
-
 
 getGridFromMergedStructure :: MergedStructure c -> PositionedGrid c
 getGridFromMergedStructure (MergedStructure g _ _) = g
@@ -194,6 +222,6 @@ place localOrigin theName placementOffset g =
 renderGridResult :: Either a (PositionedGrid (Maybe Int)) -> IO ()
 renderGridResult eitherResult = case eitherResult of
   Right pg -> do
-      print pg
-      print $ getRows $ gridContent pg
+    print pg
+    print $ getRows $ gridContent pg
   Left _ -> return ()

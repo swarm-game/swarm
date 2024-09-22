@@ -125,7 +125,12 @@ overlayGridExpanded
     baseGrid <> positionedOverlay
    where
     reorientedOverlayCells = applyOrientationTransform orientation overlayArea
-    placementAdjustedByOrigin = (gridPosition baseGrid .+^ asVector yamlPlacementOffset) .-^ asVector childAdjustedOrigin
+
+    -- placementAdjustedByOrigin = (gridPosition baseGrid .+^ asVector yamlPlacementOffset) .-^ asVector childAdjustedOrigin
+    -- FIXME This experiment gives incorrect results
+    -- (examine "simultaneous-north-and-west-offset.yaml"):
+    placementAdjustedByOrigin = yamlPlacementOffset .-^ asVector childAdjustedOrigin
+
     positionedOverlay = PositionedGrid placementAdjustedByOrigin reorientedOverlayCells
 
 -- * Validation
