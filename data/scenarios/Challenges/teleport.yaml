@@ -54,6 +54,13 @@ robots:
         basePos <- as base {whereami};
         if (myPos == basePos) {teleport base destPos} {};
       );
+entities:
+  - name: wall
+    display:
+      char: '#'
+    description:
+      - Unmovable barrier
+    properties: [known, unwalkable, boundary]
 known: [water, wavy water, flower, tree]
 world:
   dsl: |
@@ -66,19 +73,14 @@ world:
     'T': [grass, tree]
     '.': [grass, erase]
     '_': [stone, erase]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
     'λ': [grass, lambda]
+    'x': [stone, wall]
   upperleft: [-1, 3]
   map: |
     ~~   ~         ~    ~
-    ~┌─────┐~  ┌─────┐~ ,
-    ┌┘.....└───┘T...*└┐ ~
-    │_....._   _..λ.._│ ,
-    └┐.....┌───┐*...T┌┘ ~
-    ~└─────┘ ~~└─────┘~ ,
+    ~xxxxxxx~  xxxxxxx~ ,
+    xx.....xxxxxT...*xx ~
+    x_....._   _..λ.._x ,
+    xx.....xxxxx*...Txx ~
+    ~xxxxxxx ~~xxxxxxx~ ,
     ~~~   ~        ~    ~

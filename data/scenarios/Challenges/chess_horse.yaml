@@ -31,6 +31,13 @@ robots:
     dir: [0, 0]
     display:
       char: '♚'
+entities:
+  - name: wall
+    display:
+      char: '#'
+    description:
+      - Unmovable barrier
+    properties: [known, unwalkable, boundary]
 known: [water]
 world:
   dsl: |
@@ -38,21 +45,16 @@ world:
   palette:
     '.': [grass, erase]
     '#': [ice, erase]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
+    'w': [stone, wall]
   upperleft: [-1, 1]
   map: |
-    ┌────────┐
-    │.#.#.#.#│
-    │#.#.#.#.│
-    │.#.#.#.#│
-    │#.#.#.#.│
-    │.#.#.#.#│
-    │#.#.#.#.│
-    │.#.#.#.#│
-    │#.#.#.#.│
-    └────────┘
+    wwwwwwwwww
+    w.#.#.#.#w
+    w#.#.#.#.w
+    w.#.#.#.#w
+    w#.#.#.#.w
+    w.#.#.#.#w
+    w#.#.#.#.w
+    w.#.#.#.#w
+    w#.#.#.#.w
+    wwwwwwwwww

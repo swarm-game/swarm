@@ -195,6 +195,12 @@ entities:
     description:
       - Decoration
     properties: [known]
+  - name: wall
+    display:
+      char: '#'
+    description:
+      - Unmovable barrier
+    properties: [known, unwalkable, boundary]
 recipes:
   - in:
       - [1, egg]
@@ -220,12 +226,7 @@ world:
     X: [stone, null, customer]
     'y': [stone, awning1]
     'z': [stone, awning2]
-    '┌': [stone, upper left corner]
-    '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
-    '│': [stone, vertical wall]
+    'w': [stone, wall]
     '\': [stone, cone left]
     '/': [stone, cone right]
     'Z': [stone, cone inside]
@@ -239,6 +240,6 @@ world:
     ...:..........
     ...:.......OO.
     yzy:yzyz..OOOO
-    ┌─┐x┌──┐..^^^^
-    │B:Ω:V6│..\ZZ/
-    └──────┘...\/.
+    wwwxwwww..^^^^
+    wB:Ω:V6w..\ZZ/
+    wwwwwwww...\/.
