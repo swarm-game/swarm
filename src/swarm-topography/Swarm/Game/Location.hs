@@ -202,7 +202,7 @@ euclidean p1 p2 = norm (fromIntegral <$> (p2 .-. p1))
 
 -- | Converts a 'Point' to a vector offset from the 'origin'.
 asVector :: Location -> V2 Int32
-asVector loc = loc .-. origin
+asVector (P vec) = vec
 
 -- | Get all the locations that are within a certain manhattan
 --   distance from a given location.

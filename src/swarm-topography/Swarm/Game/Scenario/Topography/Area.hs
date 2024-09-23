@@ -18,6 +18,7 @@ data AreaDimensions = AreaDimensions
   { rectWidth :: Int32
   , rectHeight :: Int32
   }
+  deriving (Show, Eq)
 
 getGridDimensions :: Grid a -> AreaDimensions
 getGridDimensions g = getAreaDimensions $ getRows g

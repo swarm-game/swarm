@@ -1,0 +1,56 @@
+version: 1
+name: Northwest sibling structure coordinate offsets
+author: Karl Ostmo
+description: |
+  Make sure that the second sibling is displayed correctly when there
+  is a simultaneous negative-x and positive-y offset on the first sibling.
+robots:
+  - name: base
+    dir: north
+    loc: [0, 2]
+objectives:
+  - goal:
+      - Enjoy the view.
+    condition: |
+      return true
+solution: |
+  noop
+known: [pixel (R), gold]
+world:
+  structures:
+    - name: micro
+      structure:
+        mask: '.'
+        palette:
+          'x': [stone, gold]
+        map: |
+          x
+    - name: block
+      structure:
+        mask: '.'
+        palette:
+          'x': [stone, pixel (R)]
+        map: |
+          xx
+          xx
+    - name: master
+      structure:
+        mask: '.'
+        placements:
+          - src: micro
+            offset: [-1, 1]
+          - src: block
+        map: ""
+  dsl: |
+    overlay
+    [ {grass}
+    , mask (y > -4 && y < 4 || x > -4 && x < 4) {stone}
+    , mask (y > -2 && y < 2 || x > -2 && x < 2) {ice}
+    , mask (y > -1 && y < 1 || x > -1 && x < 1) {dirt}
+    ]
+  mask: '.'
+  placements:
+    - src: master
+      offset: [0, 0]
+  upperleft: [0, 0]
+  map: ""
