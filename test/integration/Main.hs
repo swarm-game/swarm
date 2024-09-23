@@ -444,6 +444,8 @@ testScenarioSolutions rs ui key =
         , testGroup
             "Structure placement (#1780)"
             [ testSolution Default "Testing/1780-structure-merge-expansion/sequential-placement"
+            , testSolution Default "Testing/1780-structure-merge-expansion/coordinate-offset-propagation"
+            , testSolution Default "Testing/1780-structure-merge-expansion/simultaneous-north-and-west-offset"
             -- TODO(#2148) define goal conditions or convert to image fixtures
             -- , testSolution Default "Testing/1780-structure-merge-expansion/nonoverlapping-structure-merge"
             -- , testSolution Default "Testing/1780-structure-merge-expansion/root-map-expansion"
