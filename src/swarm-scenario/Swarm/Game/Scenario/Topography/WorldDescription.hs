@@ -122,9 +122,7 @@ instance FromJSONE WorldParseDependencies WorldDescription where
       let placedStructures =
             map (offsetLoc $ coerce ul) staticStructurePlacements
 
-      -- Override upper-left corner with explicit location
-      let area = mergedGrid {gridPosition = ul}
-
+      let area = modifyLoc ((ul .+^) . asVector) mergedGrid
       return $ WorldDescription {..}
 
 ------------------------------------------------------------

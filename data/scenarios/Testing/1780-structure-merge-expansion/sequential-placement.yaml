@@ -13,7 +13,7 @@ objectives:
       - Must have 3 of each color visible
     condition: |
       def countColor = \e.
-        resonate e ((0, 0), (10, -5));
+        resonate e ((-6, 0), (4, -4));
         end;
 
       as base {
@@ -87,7 +87,7 @@ world:
   mask: '.'
   placements:
     - src: block
-      offset: [0, -1]
+      offset: [0, -2]
   upperleft: [0, 0]
   dsl: |
     {grass}

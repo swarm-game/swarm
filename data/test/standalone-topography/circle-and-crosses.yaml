@@ -55,5 +55,5 @@ placements:
     orient:
       up: west
   - src: disc
-    offset: [8, -8]
+    offset: [5, -8]
 map: ""
