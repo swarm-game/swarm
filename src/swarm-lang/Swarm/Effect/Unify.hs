@@ -1,5 +1,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -13,7 +14,9 @@ module Swarm.Effect.Unify where
 import Control.Algebra
 import Data.Kind (Type)
 import Data.Set (Set)
+import Prettyprinter
 import Swarm.Language.Types hiding (Type)
+import Swarm.Pretty (PrettyPrec (..), ppr, reportBug)
 
 -- | Data type representing available unification operations.
 data Unification (m :: Type -> Type) k where

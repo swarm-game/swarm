@@ -73,7 +73,7 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.World.Gen (Seed)
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Pretty (prettyText)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
 import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Util qualified as EU

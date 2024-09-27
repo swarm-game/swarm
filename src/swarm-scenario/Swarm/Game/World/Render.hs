@@ -43,7 +43,7 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Gen (Seed)
-import Swarm.Language.Pretty (prettyString)
+import Swarm.Pretty (prettyString)
 import Swarm.Util (surfaceEmpty)
 import Swarm.Util.Content
 import Swarm.Util.Erasable (erasableToMaybe)

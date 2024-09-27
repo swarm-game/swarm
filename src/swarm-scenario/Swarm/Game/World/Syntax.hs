@@ -28,7 +28,7 @@ import Swarm.Game.Entity (Entity, entityName)
 import Swarm.Game.Robot (TRobot, trobotName)
 import Swarm.Game.Terrain
 import Swarm.Game.World.Coords
-import Swarm.Language.Pretty
+import Swarm.Pretty (PrettyPrec (..))
 import Swarm.Util (showT)
 import Swarm.Util.Erasable
 

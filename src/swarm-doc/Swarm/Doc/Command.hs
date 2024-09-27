@@ -12,7 +12,7 @@ import Data.Set qualified as Set
 import GHC.Generics (Generic)
 import Servant.Docs qualified as SD
 import Swarm.Doc.Util
-import Swarm.Language.Pretty (unchainFun)
+import Swarm.Pretty (unchainFun)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.CommandMetadata
 import Swarm.Language.Typecheck (inferConst)
