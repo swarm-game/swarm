@@ -1,13 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Common pretty-printing infrastructure for the Swarm project.
 module Swarm.Pretty (
+  -- * The 'PrettyPrec' class
   PrettyPrec (..),
+
+  -- * Running pretty-printers
   ppr,
   prettyText,
   prettyTextWidth,
@@ -16,6 +18,8 @@ module Swarm.Pretty (
   docToText,
   docToTextWidth,
   docToString,
+
+  -- * Pretty-printing utilities
   pparens,
   pparens',
   encloseWithIndent,
@@ -29,38 +33,13 @@ module Swarm.Pretty (
   Wildcard (..),
 ) where
 
--- import Control.Lens.Combinators (pattern Empty)
--- import Control.Monad.Free (Free (..))
--- import Data.Bool (bool)
--- import Data.Fix
--- import Data.Foldable qualified as F
--- import Data.List.NonEmpty ((<|))
--- import Data.List.NonEmpty qualified as NE
--- import Data.Map.Strict qualified as M
--- import Data.Sequence qualified as Seq
--- import Data.Set (Set)
--- import Data.Set qualified as S
--- import Data.String (fromString)
+import Control.Monad.Free
+import Data.Fix (Fix, unFix)
 import Data.Text (Text)
-
--- import Data.Text qualified as T
 import Prettyprinter
-
--- import Prettyprinter.Render.String qualified as RS
--- import Prettyprinter.Render.Text qualified as RT
-
--- import Swarm.Effect.Unify (UnificationError (..))
--- import Swarm.Language.Capability
--- import Swarm.Language.Context
--- import Swarm.Language.Kindcheck (KindError (..))
--- import Swarm.Language.Parser.Util (getLocRange)
--- import Swarm.Language.Syntax
--- import Swarm.Language.Syntax.Direction
--- import Swarm.Language.Typecheck
--- import Swarm.Language.Types
--- import Swarm.Util (number, showEnum, showLowT, unsnocNE)
--- import Text.Show.Unicode (ushow)
--- import Witch
+import Prettyprinter.Render.String qualified as RS
+import Prettyprinter.Render.Text qualified as RT
+import Swarm.Util (showLowT)
 
 ------------------------------------------------------------
 -- PrettyPrec class + utilities
@@ -72,6 +51,13 @@ class PrettyPrec a where
 
 instance PrettyPrec Text where
   prettyPrec _ = pretty
+
+instance (PrettyPrec (t (Fix t))) => PrettyPrec (Fix t) where
+  prettyPrec p = prettyPrec p . unFix
+
+instance (PrettyPrec (t (Free t v)), PrettyPrec v) => PrettyPrec (Free t v) where
+  prettyPrec p (Free t) = prettyPrec p t
+  prettyPrec p (Pure v) = prettyPrec p v
 
 -- | Pretty-print a thing, with a context precedence level of zero.
 ppr :: (PrettyPrec a) => a -> Doc ann
@@ -174,215 +160,3 @@ data Wildcard = Wildcard
 
 instance PrettyPrec Wildcard where
   prettyPrec _ _ = "_"
-
--- XXX WORKING HERE --- BELOW STUFF MUST BE DISTRIBUTED
-
-------------------------------------------------------------
--- Error messages
-
--- | Format a 'ContextualTypeError' for the user and render it as
---   @Text@.
-prettyTypeErrText :: Text -> ContextualTypeErr -> Text
-prettyTypeErrText code = docToText . prettyTypeErr code
-
--- | Format a 'ContextualTypeError' for the user.
-prettyTypeErr :: Text -> ContextualTypeErr -> Doc ann
-prettyTypeErr code (CTE l tcStack te) =
-  vcat
-    [ teLoc <> ppr te
-    , ppr (BulletList "" (filterTCStack tcStack))
-    ]
- where
-  teLoc = case l of
-    SrcLoc s e -> (showLoc . fst $ getLocRange code (s, e)) <> ": "
-    NoLoc -> emptyDoc
-  showLoc (r, c) = pretty r <> ":" <> pretty c
-
--- | Filter the TCStack of extravagant Binds.
-filterTCStack :: TCStack -> TCStack
-filterTCStack tcStack = case tcStack of
-  [] -> []
-  t@(LocatedTCFrame _ (TCLet _)) : _ -> [t]
-  t@(LocatedTCFrame _ TCBindR) : xs -> t : filterTCStack xs
-  t@(LocatedTCFrame _ TCBindL) : xs -> t : filterTCStack xs
-
-instance PrettyPrec TypeErr where
-  prettyPrec _ = \case
-    UnificationErr ue -> ppr ue
-    KindErr ke -> ppr ke
-    Mismatch Nothing (getJoin -> (ty1, ty2)) ->
-      "Type mismatch: expected" <+> ppr ty1 <> ", but got" <+> ppr ty2
-    Mismatch (Just t) (getJoin -> (ty1, ty2)) ->
-      nest 2 . vcat $
-        [ "Type mismatch:"
-        , "From context, expected" <+> pprCode t <+> "to" <+> typeDescription Expected ty1 <> ","
-        , "but it" <+> typeDescription Actual ty2
-        ]
-    LambdaArgMismatch (getJoin -> (ty1, ty2)) ->
-      "Lambda argument has type annotation" <+> pprCode ty2 <> ", but expected argument type" <+> pprCode ty1
-    FieldsMismatch (getJoin -> (expFs, actFs)) ->
-      fieldMismatchMsg expFs actFs
-    EscapedSkolem x ->
-      "Skolem variable" <+> pretty x <+> "would escape its scope"
-    UnboundVar x ->
-      "Unbound variable" <+> pretty x
-    DefNotTopLevel t ->
-      "Definitions may only be at the top level:" <+> pprCode t
-    CantInfer t ->
-      vsep
-        [ "Couldn't infer the type of term:" <+> pprCode t
-        , reportBug
-        ]
-    CantInferProj t ->
-      "Can't infer the type of a record projection:" <+> pprCode t
-    UnknownProj x t ->
-      "Record does not have a field with name" <+> pretty x <> ":" <+> pprCode t
-    InvalidAtomic reason t ->
-      "Invalid atomic block:" <+> ppr reason <> ":" <+> pprCode t
-    Impredicative ->
-      "Unconstrained unification type variables encountered, likely due to an impredicative type. This is a known bug; for more information see https://github.com/swarm-game/swarm/issues/351 ."
-   where
-    pprCode :: PrettyPrec a => a -> Doc ann
-    pprCode = bquote . ppr
-
-instance PrettyPrec UnificationError where
-  prettyPrec _ = \case
-    Infinite x uty ->
-      vsep
-        [ "Encountered infinite type" <+> ppr x <+> "=" <+> ppr uty <> "."
-        , "Swarm will not infer recursive types; if you want a recursive type, add an explicit type annotation."
-        ]
-    UnifyErr ty1 ty2 ->
-      "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
-    UndefinedUserType ty ->
-      "Undefined user type" <+> ppr ty
-    UnexpandedRecTy ty ->
-      vsep
-        [ "Unexpanded recursive type" <+> ppr ty <+> "encountered in unifyF."
-        , reportBug
-        ]
-
-instance PrettyPrec Arity where
-  prettyPrec _ (Arity a) = pretty a
-
-instance PrettyPrec KindError where
-  prettyPrec _ = \case
-    ArityMismatch c a tys ->
-      nest 2 . vsep $
-        [ "Kind error:"
-        , hsep
-            [ ppr c
-            , "requires"
-            , pretty a
-            , "type"
-            , pretty (number a "argument" <> ",")
-            , "but was given"
-            , pretty (length tys)
-            ]
-        ]
-          ++ ["in the type:" <+> ppr (TyConApp c tys) | not (null tys)]
-    UndefinedTyCon tc _ty -> "Undefined type" <+> ppr tc
-    TrivialRecTy x ty ->
-      nest 2 . vsep $
-        [ "Encountered trivial recursive type" <+> ppr (TyRec x ty)
-        , "Did you forget to use" <+> pretty x <+> "in the body of the type?"
-        ]
-    VacuousRecTy x ty ->
-      nest 2 . vsep $
-        [ "Encountered vacuous recursive type" <+> ppr (TyRec x ty)
-        , "Recursive types must be productive, i.e. must not expand to themselves."
-        ]
-
--- | Given a type and its source, construct an appropriate description
---   of it to go in a type mismatch error message.
-typeDescription :: Source -> UType -> Doc a
-typeDescription src ty
-  | not (hasAnyUVars ty) =
-      withSource src "have" "actually has" <+> "type" <+> bquote (ppr ty)
-  | Just f <- isTopLevelConstructor ty =
-      withSource src "be" "is actually" <+> tyNounPhrase f
-  | otherwise =
-      withSource src "have" "actually has" <+> "a type like" <+> bquote (ppr (fmap (const Wildcard) ty))
-
--- | Check whether a type contains any unification variables at all.
-hasAnyUVars :: UType -> Bool
-hasAnyUVars = ucata (const True) or
-
--- | Check whether a type consists of a top-level type constructor
---   immediately applied to unification variables.
-isTopLevelConstructor :: UType -> Maybe (TypeF ())
-isTopLevelConstructor = \case
-  Free (TyRcdF m) | all isPure m -> Just (TyRcdF M.empty)
-  UTyConApp c ts | all isPure ts -> Just (TyConF c [])
-  _ -> Nothing
-
-isPure :: Free f a -> Bool
-isPure (Pure {}) = True
-isPure _ = False
-
--- | Return an English noun phrase describing things with the given
---   top-level type constructor.
-tyNounPhrase :: TypeF () -> Doc a
-tyNounPhrase = \case
-  TyConF c _ -> tyConNounPhrase c
-  TyVarF {} -> "a type variable"
-  TyRcdF {} -> "a record"
-  TyRecF {} -> "a recursive type"
-  TyRecVarF {} -> "a recursive type variable"
-
-tyConNounPhrase :: TyCon -> Doc a
-tyConNounPhrase = \case
-  TCBase b -> baseTyNounPhrase b
-  TCCmd -> "a command"
-  TCDelay -> "a delayed expression"
-  TCSum -> "a sum"
-  TCProd -> "a pair"
-  TCFun -> "a function"
-  TCUser t -> pretty t
-
--- | Return an English noun phrase describing things with the given
---   base type.
-baseTyNounPhrase :: BaseTy -> Doc a
-baseTyNounPhrase = \case
-  BVoid -> "void"
-  BUnit -> "the unit value"
-  BInt -> "an integer"
-  BText -> "text"
-  BDir -> "a direction"
-  BBool -> "a boolean"
-  BActor -> "an actor"
-  BKey -> "a key"
-
--- | Generate an appropriate message when the sets of fields in two
---   record types do not match, explaining which fields are extra and
---   which are missing.
-fieldMismatchMsg :: Set Var -> Set Var -> Doc a
-fieldMismatchMsg expFs actFs =
-  nest 2 . vcat $
-    ["Field mismatch; record literal has:"]
-      ++ ["- Extra field(s)" <+> prettyFieldSet extraFs | not (S.null extraFs)]
-      ++ ["- Missing field(s)" <+> prettyFieldSet missingFs | not (S.null missingFs)]
- where
-  extraFs = actFs `S.difference` expFs
-  missingFs = expFs `S.difference` actFs
-  prettyFieldSet = hsep . punctuate "," . map (bquote . pretty) . S.toList
-
-instance PrettyPrec InvalidAtomicReason where
-  prettyPrec _ = \case
-    TooManyTicks n -> "block could take too many ticks (" <> pretty n <> ")"
-    AtomicDupingThing -> "def, let, and lambda are not allowed"
-    NonSimpleVarType _ ty ->
-      "reference to variable with non-simple type" <+> ppr (prettyTextLine ty)
-    NestedAtomic -> "nested atomic block"
-    LongConst -> "commands that can take multiple ticks to execute are not allowed"
-    AtomicSuspend ->
-      "encountered a suspend command inside an atomic block" <> hardline <> reportBug
-
-instance PrettyPrec LocatedTCFrame where
-  prettyPrec p (LocatedTCFrame _ f) = prettyPrec p f
-
-instance PrettyPrec TCFrame where
-  prettyPrec _ = \case
-    TCLet x -> "While checking the definition of" <+> pretty x
-    TCBindL -> "While checking the left-hand side of a semicolon"
-    TCBindR -> "While checking the right-hand side of a semicolon"

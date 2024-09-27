@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -13,7 +15,10 @@ import Control.Effect.Reader (Reader, ask)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Monad.Extra (unlessM)
 import Data.Fix (Fix (..))
+import Prettyprinter (hsep, nest, pretty, vsep, (<+>))
 import Swarm.Language.Types
+import Swarm.Pretty (PrettyPrec (..), ppr)
+import Swarm.Util (number)
 
 -- | Kind checking errors that can occur.
 data KindError
@@ -29,6 +34,34 @@ data KindError
     --   itself) was encountered.
     VacuousRecTy Var Type
   deriving (Eq, Show)
+
+instance PrettyPrec KindError where
+  prettyPrec _ = \case
+    ArityMismatch c a tys ->
+      nest 2 . vsep $
+        [ "Kind error:"
+        , hsep
+            [ ppr c
+            , "requires"
+            , pretty a
+            , "type"
+            , pretty (number a "argument" <> ",")
+            , "but was given"
+            , pretty (length tys)
+            ]
+        ]
+          ++ ["in the type:" <+> ppr (TyConApp c tys) | not (null tys)]
+    UndefinedTyCon tc _ty -> "Undefined type" <+> ppr tc
+    TrivialRecTy x ty ->
+      nest 2 . vsep $
+        [ "Encountered trivial recursive type" <+> ppr (TyRec x ty)
+        , "Did you forget to use" <+> pretty x <+> "in the body of the type?"
+        ]
+    VacuousRecTy x ty ->
+      nest 2 . vsep $
+        [ "Encountered vacuous recursive type" <+> ppr (TyRec x ty)
+        , "Recursive types must be productive, i.e. must not expand to themselves."
+        ]
 
 -- | Check that a polytype is well-kinded.
 checkPolytypeKind :: (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) => Polytype -> m TydefInfo

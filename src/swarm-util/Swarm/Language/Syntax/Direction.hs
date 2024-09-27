@@ -29,6 +29,8 @@ import Data.List.Extra (enumerate)
 import Data.Text hiding (filter, length, map)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Prettyprinter (pretty)
+import Swarm.Pretty (PrettyPrec (..))
 import Swarm.Util.JSON (optionsMinimize)
 
 ------------------------------------------------------------

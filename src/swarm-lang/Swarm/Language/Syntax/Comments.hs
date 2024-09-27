@@ -28,7 +28,9 @@ import Data.Data (Data)
 import Data.Sequence (Seq)
 import Data.Text hiding (filter, length, map)
 import GHC.Generics (Generic)
+import Prettyprinter (pretty)
 import Swarm.Language.Syntax.Loc
+import Swarm.Pretty (PrettyPrec (..))
 
 -- | Line vs block comments.
 data CommentType = LineComment | BlockComment

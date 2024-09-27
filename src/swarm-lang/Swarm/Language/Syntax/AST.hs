@@ -1,4 +1,5 @@
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -12,19 +13,23 @@ module Swarm.Language.Syntax.AST (
   Term' (..),
 ) where
 
-import Control.Lens (Plated (..))
+import Control.Lens (Plated (..), pattern Empty)
 import Data.Aeson.Types hiding (Key)
 import Data.Data (Data)
 import Data.Data.Lens (uniplate)
+import Data.Foldable qualified as F
 import Data.Map.Strict (Map)
+import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Prettyprinter (Doc, Pretty)
 import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Types
+import Swarm.Pretty (PrettyPrec (..))
 
 ------------------------------------------------------------
 -- Syntax: annotation on top of Terms with SrcLoc, comments, + type
@@ -200,8 +205,8 @@ instance PrettyPrec (Term' ty) where
     TBool b -> bool "false" "true" b
     TRobot r -> "<a" <> pretty r <> ">"
     TRef r -> "@" <> pretty r
-    TRequireDevice d -> pparens (p > 10) $ "require" <+> ppr @Term (TText d)
-    TRequire n e -> pparens (p > 10) $ "require" <+> pretty n <+> ppr @Term (TText e)
+    TRequireDevice d -> pparens (p > 10) $ "require" <+> ppr (TText d)
+    TRequire n e -> pparens (p > 10) $ "require" <+> pretty n <+> ppr (TText e)
     SRequirements _ e -> pparens (p > 10) $ "requirements" <+> ppr e
     TVar s -> pretty s
     SDelay (Syntax' _ (TConst Noop) _ _) -> "{}"
@@ -289,7 +294,7 @@ prettyPrecApp p t1 t2 =
   pparens (p > 10) $
     prettyPrec 10 t1 <+> prettyPrec 11 t2
 
-appliedTermPrec :: Term -> Int
+appliedTermPrec :: Term' () -> Int
 appliedTermPrec (TApp f _) = case f of
   TConst c -> fixity $ constInfo c
   _ -> appliedTermPrec f

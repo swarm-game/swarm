@@ -2,6 +2,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -77,6 +78,8 @@ module Swarm.Language.Types (
   ucata,
   mkVarName,
   fuvs,
+  hasAnyUVars,
+  isTopLevelConstructor,
 
   -- * Polytypes
   Poly (..),
@@ -115,6 +118,8 @@ import Data.Eq.Deriving (deriveEq1)
 import Data.Fix
 import Data.Foldable (fold)
 import Data.Kind qualified
+import Data.List.NonEmpty ((<|))
+import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
@@ -125,9 +130,11 @@ import Data.String (IsString (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic, Generic1)
+import Prettyprinter (align, braces, brackets, concatWith, flatAlt, hsep, pretty, punctuate, softline, (<+>))
 import Swarm.Language.Context (Ctx, Var)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Util (parens, showT)
+import Swarm.Pretty (PrettyPrec (..), pparens, pparens', ppr, prettyBinding)
+import Swarm.Util (parens, showT, unsnocNE)
 import Swarm.Util.JSON (optionsMinimize, optionsUnwrapUnary)
 import Text.Show.Deriving (deriveShow1)
 import Witch
@@ -213,6 +220,9 @@ instance ToJSON Arity where
 
 instance FromJSON Arity where
   parseJSON = genericParseJSON optionsUnwrapUnary
+
+instance PrettyPrec Arity where
+  prettyPrec _ (Arity a) = pretty a
 
 ------------------------------------------------------------
 -- Types
@@ -304,12 +314,59 @@ mkVarName nm (IntVar v) = T.append nm (from @String (show v))
 fuvs :: UType -> Set IntVar
 fuvs = ucata S.singleton fold
 
+-- | Check whether a type contains any unification variables at all.
+hasAnyUVars :: UType -> Bool
+hasAnyUVars = ucata (const True) or
+
+-- | Check whether a type consists of a top-level type constructor
+--   immediately applied to unification variables.
+isTopLevelConstructor :: UType -> Maybe (TypeF ())
+isTopLevelConstructor = \case
+  Free (TyRcdF m) | all isPure m -> Just (TyRcdF M.empty)
+  UTyConApp c ts | all isPure ts -> Just (TyConF c [])
+  _ -> Nothing
+
+isPure :: Free f a -> Bool
+isPure (Pure {}) = True
+isPure _ = False
+
 -- | For convenience, so we can write /e.g./ @"a"@ instead of @TyVar "a"@.
 instance IsString Type where
   fromString x = TyVar (from @String x)
 
 instance IsString UType where
   fromString x = UTyVar (from @String x)
+
+--------------------------------------------------
+-- Recursive type utilities
+
+-- | @unfoldRec x t@ unfolds the recursive type @rec x. t@ one step,
+--   to @t [(rec x. t) / x]@.
+unfoldRec :: SubstRec t => Var -> t -> t
+unfoldRec x ty = substRec (TyRecF x ty) ty NZ
+
+-- | Class of type-like things where we can substitute for a bound de
+--   Bruijn variable.
+class SubstRec t where
+  -- | @substRec s t n@ substitutes @s@ for the bound de Bruijn variable
+  --   @n@ everywhere in @t@.
+  substRec :: TypeF t -> t -> Nat -> t
+
+instance SubstRec (Free TypeF v) where
+  substRec s = ucata (\i _ -> Pure i) $ \f i -> case f of
+    TyRecVarF j
+      | i == j -> Free s
+      | otherwise -> Free (TyRecVarF j)
+    TyRecF x g -> Free (TyRecF x (g (NS i)))
+    _ -> Free (fmap ($ i) f)
+
+instance SubstRec Type where
+  substRec s = foldFix $ \f i -> case f of
+    TyRecVarF j
+      | i == j -> Fix s
+      | otherwise -> Fix (TyRecVarF j)
+    TyRecF x g -> Fix (TyRecF x (g (NS i)))
+    _ -> Fix (fmap ($ i) f)
 
 --------------------------------------------------
 -- Pretty-printing machinery for types
@@ -326,13 +383,6 @@ instance UnchainableFun Type where
 instance UnchainableFun (Free TypeF ty) where
   unchainFun (Free (TyConF TCFun [ty1, ty2])) = ty1 <| unchainFun ty2
   unchainFun ty = pure ty
-
-instance (PrettyPrec (t (Fix t))) => PrettyPrec (Fix t) where
-  prettyPrec p = prettyPrec p . unFix
-
-instance (PrettyPrec (t (Free t v)), PrettyPrec v) => PrettyPrec (Free t v) where
-  prettyPrec p (Free t) = prettyPrec p t
-  prettyPrec p (Pure v) = prettyPrec p v
 
 instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) where
   prettyPrec p = \case
@@ -680,38 +730,6 @@ tcArity tydefs =
     TCProd -> Just 2
     TCFun -> Just 2
     TCUser t -> getArity . view tydefArity <$> Ctx.lookup t tydefs
-
-------------------------------------------------------------
--- Recursive type utilities
-------------------------------------------------------------
-
--- | @unfoldRec x t@ unfolds the recursive type @rec x. t@ one step,
---   to @t [(rec x. t) / x]@.
-unfoldRec :: SubstRec t => Var -> t -> t
-unfoldRec x ty = substRec (TyRecF x ty) ty NZ
-
--- | Class of type-like things where we can substitute for a bound de
---   Bruijn variable.
-class SubstRec t where
-  -- | @substRec s t n@ substitutes @s@ for the bound de Bruijn variable
-  --   @n@ everywhere in @t@.
-  substRec :: TypeF t -> t -> Nat -> t
-
-instance SubstRec (Free TypeF v) where
-  substRec s = ucata (\i _ -> Pure i) $ \f i -> case f of
-    TyRecVarF j
-      | i == j -> Free s
-      | otherwise -> Free (TyRecVarF j)
-    TyRecF x g -> Free (TyRecF x (g (NS i)))
-    _ -> Free (fmap ($ i) f)
-
-instance SubstRec Type where
-  substRec s = foldFix $ \f i -> case f of
-    TyRecVarF j
-      | i == j -> Fix s
-      | otherwise -> Fix (TyRecVarF j)
-    TyRecF x g -> Fix (TyRecF x (g (NS i)))
-    _ -> Fix (fmap ($ i) f)
 
 ------------------------------------------------------------
 -- Reducing types to WHNF
