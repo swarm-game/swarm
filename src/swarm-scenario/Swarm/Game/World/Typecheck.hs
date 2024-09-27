@@ -39,7 +39,7 @@ import Swarm.Game.Entity (lookupEntityName)
 import Swarm.Game.Land
 import Swarm.Game.Terrain
 import Swarm.Game.World.Syntax
-import Swarm.Language.Pretty
+import Swarm.Pretty (PrettyPrec (..), pparens, ppr)
 import Swarm.Util (showT)
 import Swarm.Util.Erasable
 import Prelude hiding (lookup)

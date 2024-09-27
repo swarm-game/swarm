@@ -26,7 +26,7 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
 import Swarm.Game.Terrain
 import Swarm.Game.Universe
-import Swarm.Language.Pretty (prettyTextLine)
+import Swarm.Pretty (prettyTextLine)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Types (Polytype)

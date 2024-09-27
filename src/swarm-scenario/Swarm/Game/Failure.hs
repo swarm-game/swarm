@@ -27,7 +27,7 @@ import Data.Text qualified as T
 import Data.Void
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Prettyprinter (Pretty (pretty), nest, squotes, vcat, (<+>))
-import Swarm.Language.Pretty
+import Swarm.Pretty (BulletList (..), PrettyPrec (..), ppr, prettyShowLow, prettyString)
 import Swarm.Util (showLowT)
 import Text.Megaparsec (ParseErrorBundle, errorBundlePretty)
 import Witch (into)

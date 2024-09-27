@@ -37,7 +37,7 @@ import Swarm.Game.Recipe (Recipe, loadRecipes, recipeCatalysts, recipeInputs, re
 import Swarm.Game.Terrain (loadTerrain, terrainByName)
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Capability qualified as Capability
-import Swarm.Language.Pretty (prettyText, prettyTextLine)
+import Swarm.Pretty (prettyText, prettyTextLine)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Text.Markdown as Markdown (docToMark)

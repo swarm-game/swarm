@@ -28,7 +28,6 @@ import Data.Text qualified as T
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Elaborate
 import Swarm.Language.Parser (readTerm)
-import Swarm.Language.Pretty
 import Swarm.Language.Requirements.Type (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck

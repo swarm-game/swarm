@@ -14,6 +14,7 @@ module Swarm.Language.Typecheck (
   ContextualTypeErr (..),
   TypeErr (..),
   InvalidAtomicReason (..),
+  prettyTypeErrText,
 
   -- * Type provenance
   Source (..),
@@ -65,7 +66,9 @@ import Data.Map qualified as M
 import Data.Maybe
 import Data.Set (Set, (\\))
 import Data.Set qualified as S
+import Data.Text (Text)
 import Data.Text qualified as T
+import Prettyprinter
 import Swarm.Effect.Unify (Unification, UnificationError, (=:=))
 import Swarm.Effect.Unify qualified as U
 import Swarm.Effect.Unify.Fast qualified as U
@@ -73,10 +76,12 @@ import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Kindcheck (KindError, checkKind, checkPolytypeKind)
 import Swarm.Language.Parser.QQ (tyQ)
+import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Requirements.Analysis (requirements)
 import Swarm.Language.Requirements.Type (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
+import Swarm.Pretty
 import Prelude hiding (lookup)
 
 ------------------------------------------------------------

@@ -94,11 +94,11 @@ import Swarm.Game.Tick
 import Swarm.Game.World (WorldUpdate (..))
 import Swarm.Language.Context
 import Swarm.Language.Elaborate (insertSuspend)
-import Swarm.Language.Pretty
 import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Types
 import Swarm.Language.Value as V
+import Swarm.Pretty (PrettyPrec (..), pparens, ppr)
 import Swarm.Util.JSON (optionsMinimize)
 
 ------------------------------------------------------------

@@ -15,7 +15,7 @@ import Prettyprinter
 import Prettyprinter.Render.Text qualified as RT
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (LanguageVersion, defaultParserConfig, languageVersion)
-import Swarm.Language.Pretty
+import Swarm.Pretty (ppr)
 import Swarm.Util ((?))
 import System.Console.Terminal.Size qualified as Term
 import System.Exit (exitFailure)

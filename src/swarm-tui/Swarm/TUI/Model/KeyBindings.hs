@@ -24,7 +24,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.Failure (Asset (..), LoadingFailure (..), SystemFailure (..))
 import Swarm.Game.ResourceLoading (getSwarmConfigIniFile)
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Pretty (prettyText)
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (SwarmEvent, defaultSwarmBindings, swarmEvents)

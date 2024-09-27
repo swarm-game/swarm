@@ -43,7 +43,7 @@ import Swarm.Game.Universe (SubworldName (DefaultRootSubworld))
 import Swarm.Game.World.Parse ()
 import Swarm.Game.World.Syntax
 import Swarm.Game.World.Typecheck
-import Swarm.Language.Pretty (prettyString)
+import Swarm.Pretty (prettyString)
 import Swarm.Util.Yaml
 
 ------------------------------------------------------------

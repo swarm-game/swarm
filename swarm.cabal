@@ -460,6 +460,7 @@ library swarm-lang
     Swarm.Language.Syntax.Constants
     Swarm.Language.Syntax.Loc
     Swarm.Language.Syntax.Pattern
+    Swarm.Language.Syntax.Pretty
     Swarm.Language.Syntax.Util
     Swarm.Language.Text.Markdown
     Swarm.Language.Typecheck
