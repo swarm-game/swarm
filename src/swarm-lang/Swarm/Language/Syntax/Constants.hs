@@ -37,7 +37,9 @@ import Data.Set qualified as Set
 import Data.Text hiding (filter, length, map)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Prettyprinter (pretty)
 import Swarm.Language.Syntax.CommandMetadata
+import Swarm.Pretty (PrettyPrec (..), pparens)
 import Swarm.Util (showT)
 
 ------------------------------------------------------------

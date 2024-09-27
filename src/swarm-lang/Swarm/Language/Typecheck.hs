@@ -93,9 +93,18 @@ data TCFrame where
   TCBindR :: TCFrame
   deriving (Show)
 
+instance PrettyPrec TCFrame where
+  prettyPrec _ = \case
+    TCLet x -> "While checking the definition of" <+> pretty x
+    TCBindL -> "While checking the left-hand side of a semicolon"
+    TCBindR -> "While checking the right-hand side of a semicolon"
+
 -- | A typechecking stack frame together with the relevant @SrcLoc@.
 data LocatedTCFrame = LocatedTCFrame SrcLoc TCFrame
   deriving (Show)
+
+instance PrettyPrec LocatedTCFrame where
+  prettyPrec p (LocatedTCFrame _ f) = prettyPrec p f
 
 -- | A typechecking stack keeps track of what we are currently in the
 --   middle of doing during typechecking.
@@ -407,46 +416,10 @@ generalize uty = do
 
 ------------------------------------------------------------
 -- Type errors
+------------------------------------------------------------
 
--- | A type error along with various contextual information to help us
---   generate better error messages.
-data ContextualTypeErr = CTE {cteSrcLoc :: SrcLoc, cteStack :: TCStack, cteTypeErr :: TypeErr}
-  deriving (Show)
-
--- | Create a raw 'ContextualTypeErr' with no context information.
-mkRawTypeErr :: TypeErr -> ContextualTypeErr
-mkRawTypeErr = CTE NoLoc []
-
--- | Create a 'ContextualTypeErr' value from a 'TypeErr' and context.
-mkTypeErr :: SrcLoc -> TCStack -> TypeErr -> ContextualTypeErr
-mkTypeErr = CTE
-
--- | Throw a 'ContextualTypeErr'.
-throwTypeErr ::
-  ( Has (Throw ContextualTypeErr) sig m
-  , Has (Reader TCStack) sig m
-  ) =>
-  SrcLoc ->
-  TypeErr ->
-  m a
-throwTypeErr l te = do
-  stk <- ask @TCStack
-  throwError $ mkTypeErr l stk te
-
--- | Adapt some other error type to a 'ContextualTypeErr'.
-adaptToTypeErr ::
-  ( Has (Throw ContextualTypeErr) sig m
-  , Has (Reader TCStack) sig m
-  ) =>
-  SrcLoc ->
-  (e -> TypeErr) ->
-  ThrowC e m a ->
-  m a
-adaptToTypeErr l adapt m = do
-  res <- runThrow m
-  case res of
-    Left e -> throwTypeErr l (adapt e)
-    Right a -> return a
+--------------------------------------------------
+-- Basic type errors
 
 -- | Errors that can occur during type checking.  The idea is that
 --   each error carries information that can be used to help explain
@@ -489,6 +462,106 @@ data TypeErr
     Impredicative
   deriving (Show)
 
+instance PrettyPrec TypeErr where
+  prettyPrec _ = \case
+    UnificationErr ue -> ppr ue
+    KindErr ke -> ppr ke
+    Mismatch Nothing (getJoin -> (ty1, ty2)) ->
+      "Type mismatch: expected" <+> ppr ty1 <> ", but got" <+> ppr ty2
+    Mismatch (Just t) (getJoin -> (ty1, ty2)) ->
+      nest 2 . vcat $
+        [ "Type mismatch:"
+        , "From context, expected" <+> pprCode t <+> "to" <+> typeDescription Expected ty1 <> ","
+        , "but it" <+> typeDescription Actual ty2
+        ]
+    LambdaArgMismatch (getJoin -> (ty1, ty2)) ->
+      "Lambda argument has type annotation" <+> pprCode ty2 <> ", but expected argument type" <+> pprCode ty1
+    FieldsMismatch (getJoin -> (expFs, actFs)) ->
+      fieldMismatchMsg expFs actFs
+    EscapedSkolem x ->
+      "Skolem variable" <+> pretty x <+> "would escape its scope"
+    UnboundVar x ->
+      "Unbound variable" <+> pretty x
+    DefNotTopLevel t ->
+      "Definitions may only be at the top level:" <+> pprCode t
+    CantInfer t ->
+      vsep
+        [ "Couldn't infer the type of term:" <+> pprCode t
+        , reportBug
+        ]
+    CantInferProj t ->
+      "Can't infer the type of a record projection:" <+> pprCode t
+    UnknownProj x t ->
+      "Record does not have a field with name" <+> pretty x <> ":" <+> pprCode t
+    InvalidAtomic reason t ->
+      "Invalid atomic block:" <+> ppr reason <> ":" <+> pprCode t
+    Impredicative ->
+      "Unconstrained unification type variables encountered, likely due to an impredicative type. This is a known bug; for more information see https://github.com/swarm-game/swarm/issues/351 ."
+   where
+    pprCode :: PrettyPrec a => a -> Doc ann
+    pprCode = bquote . ppr
+
+-- | Given a type and its source, construct an appropriate description
+--   of it to go in a type mismatch error message.
+typeDescription :: Source -> UType -> Doc a
+typeDescription src ty
+  | not (hasAnyUVars ty) =
+      withSource src "have" "actually has" <+> "type" <+> bquote (ppr ty)
+  | Just f <- isTopLevelConstructor ty =
+      withSource src "be" "is actually" <+> tyNounPhrase f
+  | otherwise =
+      withSource src "have" "actually has" <+> "a type like" <+> bquote (ppr (fmap (const Wildcard) ty))
+
+-- | Return an English noun phrase describing things with the given
+--   top-level type constructor.
+tyNounPhrase :: TypeF () -> Doc a
+tyNounPhrase = \case
+  TyConF c _ -> tyConNounPhrase c
+  TyVarF {} -> "a type variable"
+  TyRcdF {} -> "a record"
+  TyRecF {} -> "a recursive type"
+  TyRecVarF {} -> "a recursive type variable"
+
+tyConNounPhrase :: TyCon -> Doc a
+tyConNounPhrase = \case
+  TCBase b -> baseTyNounPhrase b
+  TCCmd -> "a command"
+  TCDelay -> "a delayed expression"
+  TCSum -> "a sum"
+  TCProd -> "a pair"
+  TCFun -> "a function"
+  TCUser t -> pretty t
+
+-- | Return an English noun phrase describing things with the given
+--   base type.
+baseTyNounPhrase :: BaseTy -> Doc a
+baseTyNounPhrase = \case
+  BVoid -> "void"
+  BUnit -> "the unit value"
+  BInt -> "an integer"
+  BText -> "text"
+  BDir -> "a direction"
+  BBool -> "a boolean"
+  BActor -> "an actor"
+  BKey -> "a key"
+
+-- | Generate an appropriate message when the sets of fields in two
+--   record types do not match, explaining which fields are extra and
+--   which are missing.
+fieldMismatchMsg :: Set Var -> Set Var -> Doc a
+fieldMismatchMsg expFs actFs =
+  nest 2 . vcat $
+    ["Field mismatch; record literal has:"]
+      ++ ["- Extra field(s)" <+> prettyFieldSet extraFs | not (S.null extraFs)]
+      ++ ["- Missing field(s)" <+> prettyFieldSet missingFs | not (S.null missingFs)]
+ where
+  extraFs = actFs `S.difference` expFs
+  missingFs = expFs `S.difference` actFs
+  prettyFieldSet = hsep . punctuate "," . map (bquote . pretty) . S.toList
+
+--------------------------------------------------
+-- Errors for 'atomic'
+
 -- | Various reasons the body of an @atomic@ might be invalid.
 data InvalidAtomicReason
   = -- | The argument has too many tangible commands.
@@ -504,6 +577,89 @@ data InvalidAtomicReason
   | -- | The argument contained a suspend
     AtomicSuspend
   deriving (Show)
+
+instance PrettyPrec InvalidAtomicReason where
+  prettyPrec _ = \case
+    TooManyTicks n -> "block could take too many ticks (" <> pretty n <> ")"
+    AtomicDupingThing -> "def, let, and lambda are not allowed"
+    NonSimpleVarType _ ty ->
+      "reference to variable with non-simple type" <+> ppr (prettyTextLine ty)
+    NestedAtomic -> "nested atomic block"
+    LongConst -> "commands that can take multiple ticks to execute are not allowed"
+    AtomicSuspend ->
+      "encountered a suspend command inside an atomic block" <> hardline <> reportBug
+
+--------------------------------------------------
+-- Type errors with context
+
+-- | A type error along with various contextual information to help us
+--   generate better error messages.
+data ContextualTypeErr = CTE {cteSrcLoc :: SrcLoc, cteStack :: TCStack, cteTypeErr :: TypeErr}
+  deriving (Show)
+
+-- | Create a raw 'ContextualTypeErr' with no context information.
+mkRawTypeErr :: TypeErr -> ContextualTypeErr
+mkRawTypeErr = CTE NoLoc []
+
+-- | Create a 'ContextualTypeErr' value from a 'TypeErr' and context.
+mkTypeErr :: SrcLoc -> TCStack -> TypeErr -> ContextualTypeErr
+mkTypeErr = CTE
+
+-- | Throw a 'ContextualTypeErr'.
+throwTypeErr ::
+  ( Has (Throw ContextualTypeErr) sig m
+  , Has (Reader TCStack) sig m
+  ) =>
+  SrcLoc ->
+  TypeErr ->
+  m a
+throwTypeErr l te = do
+  stk <- ask @TCStack
+  throwError $ mkTypeErr l stk te
+
+-- | Adapt some other error type to a 'ContextualTypeErr'.
+adaptToTypeErr ::
+  ( Has (Throw ContextualTypeErr) sig m
+  , Has (Reader TCStack) sig m
+  ) =>
+  SrcLoc ->
+  (e -> TypeErr) ->
+  ThrowC e m a ->
+  m a
+adaptToTypeErr l adapt m = do
+  res <- runThrow m
+  case res of
+    Left e -> throwTypeErr l (adapt e)
+    Right a -> return a
+
+--------------------------------------------------
+-- Pretty-printing for contextual type errors
+
+-- | Format a 'ContextualTypeError' for the user and render it as
+--   @Text@.
+prettyTypeErrText :: Text -> ContextualTypeErr -> Text
+prettyTypeErrText code = docToText . prettyTypeErr code
+
+-- | Format a 'ContextualTypeError' for the user.
+prettyTypeErr :: Text -> ContextualTypeErr -> Doc ann
+prettyTypeErr code (CTE l tcStack te) =
+  vcat
+    [ teLoc <> ppr te
+    , ppr (BulletList "" (filterTCStack tcStack))
+    ]
+ where
+  teLoc = case l of
+    SrcLoc s e -> (showLoc . fst $ getLocRange code (s, e)) <> ": "
+    NoLoc -> emptyDoc
+  showLoc (r, c) = pretty r <> ":" <> pretty c
+
+-- | Filter the TCStack of extravagant Binds.
+filterTCStack :: TCStack -> TCStack
+filterTCStack tcStack = case tcStack of
+  [] -> []
+  t@(LocatedTCFrame _ (TCLet _)) : _ -> [t]
+  t@(LocatedTCFrame _ TCBindR) : xs -> t : filterTCStack xs
+  t@(LocatedTCFrame _ TCBindL) : xs -> t : filterTCStack xs
 
 ------------------------------------------------------------
 -- Type decomposition
