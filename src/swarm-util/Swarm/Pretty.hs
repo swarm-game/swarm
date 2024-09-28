@@ -26,7 +26,6 @@ module Swarm.Pretty (
   bquote,
   prettyShowLow,
   reportBug,
-  Prec (..),
   BulletList (..),
   prettyBinding,
   prettyEquality,
@@ -129,8 +128,6 @@ reportBug = "This should never happen; please report this as a bug: https://gith
 
 --------------------------------------------------
 -- Bullet lists
-
-data Prec a = Prec Int a
 
 data BulletList i = BulletList
   { bulletListHeader :: forall a. Doc a
