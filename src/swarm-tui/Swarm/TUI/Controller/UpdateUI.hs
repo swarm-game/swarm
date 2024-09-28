@@ -29,10 +29,10 @@ import Swarm.Game.Robot.Concrete
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
-import Swarm.Pretty
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Types
 import Swarm.Language.Value (Value (VExc, VUnit), envTydefs, prettyValue)
+import Swarm.Pretty
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnFinishNocheat)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model

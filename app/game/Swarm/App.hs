@@ -34,8 +34,8 @@ import Graphics.Vty qualified as V
 import Graphics.Vty.CrossPlatform qualified as V
 import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.State.Runtime
-import Swarm.Pretty (prettyText)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
+import Swarm.Pretty (prettyText)
 import Swarm.TUI.Controller
 import Swarm.TUI.Model
 import Swarm.TUI.Model.StateUpdate

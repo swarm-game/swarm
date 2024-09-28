@@ -20,10 +20,10 @@ import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (isSimpleUType)
 import Swarm.Language.Types
+import Swarm.Pretty (prettyText)
 import Test.Tasty
 import Test.Tasty.HUnit
 import Witch (from)
