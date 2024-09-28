@@ -20,7 +20,7 @@ import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Pipeline (processTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Pretty (prettyText)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (isSimpleUType)
 import Swarm.Language.Types

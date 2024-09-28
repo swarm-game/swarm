@@ -67,7 +67,7 @@ import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Validate (badErrorsInLogs, playUntilWin)
 import Swarm.Game.Tick (getTickNumber)
 import Swarm.Language.Pipeline (processTerm)
-import Swarm.Language.Pretty (prettyString)
+import Swarm.Pretty (prettyString)
 import Swarm.Log
 import Swarm.TUI.Model (
   KeyEventHandlingState,
