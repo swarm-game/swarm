@@ -36,10 +36,10 @@ import Data.Map qualified as M
 import Data.Sequence (Seq)
 import Data.Set (Set)
 import Data.Text qualified as T
+import Swarm.Failure (SystemFailure)
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
-import Swarm.Failure (SystemFailure)
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Inventory.Sorting

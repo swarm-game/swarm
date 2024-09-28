@@ -45,13 +45,13 @@ import Data.Text qualified as T
 import Data.Tuple (swap)
 import Linear (V2 (..), perp, zero)
 import Swarm.Effect as Effect (Time, getNow)
+import Swarm.Failure
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
-import Swarm.Failure
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Recipe
