@@ -7,9 +7,9 @@
 module TestPretty where
 
 import Data.Fix (Fix (..))
-import Swarm.Pretty
 import Swarm.Language.Syntax hiding (mkOp)
 import Swarm.Language.Types
+import Swarm.Pretty
 import Test.Tasty
 import Test.Tasty.HUnit
 import Witch (into)

@@ -17,8 +17,8 @@ import Prettyprinter (pretty)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity (commandsHistogram)
 import Swarm.Game.Robot.Concrete
-import Swarm.Language.Pretty (prettyText)
 import Swarm.Log
+import Swarm.Pretty (prettyText)
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Attribute.Attr (boldAttr, cyanAttr)
 import Swarm.TUI.View.Robot.Type
