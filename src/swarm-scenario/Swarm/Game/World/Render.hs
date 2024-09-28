@@ -26,7 +26,7 @@ import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Game.Display (defaultChar)
 import Swarm.Game.Entity.Cosmetic
-import Swarm.Game.Failure (SystemFailure, simpleErrorHandle)
+import Swarm.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Scenario

@@ -51,7 +51,7 @@ import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
-import Swarm.Game.Failure
+import Swarm.Failure
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Recipe

@@ -23,7 +23,7 @@ import Data.Text.Encoding (decodeUtf8')
 import Data.Yaml (decodeEither', parseEither)
 import Servant.Multipart
 import Swarm.Game.CESK (continue)
-import Swarm.Game.Failure (SystemFailure)
+import Swarm.Failure (SystemFailure)
 import Swarm.Game.Robot.Concrete (machine)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize (codeMetricsFromSyntax)

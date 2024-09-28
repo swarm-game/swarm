@@ -76,7 +76,7 @@ import GHC.Generics (Generic)
 import Swarm.Game.Entity
 import Swarm.Game.Entity.Cosmetic
 import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
-import Swarm.Game.Failure
+import Swarm.Failure
 import Swarm.Game.Land
 import Swarm.Game.Location (Location)
 import Swarm.Game.Recipe

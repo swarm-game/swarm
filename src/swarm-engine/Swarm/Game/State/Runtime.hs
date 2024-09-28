@@ -32,7 +32,7 @@ import Control.Lens
 import Data.Map (Map)
 import Data.Sequence (Seq)
 import Data.Text (Text)
-import Swarm.Game.Failure (SystemFailure)
+import Swarm.Failure (SystemFailure)
 import Swarm.Game.Land
 import Swarm.Game.Recipe (loadRecipes)
 import Swarm.Game.ResourceLoading (initNameGenerator, readAppData)

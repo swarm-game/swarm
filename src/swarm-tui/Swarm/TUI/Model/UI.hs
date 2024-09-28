@@ -39,7 +39,7 @@ import Data.Text qualified as T
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Achievement.Persistence
-import Swarm.Game.Failure (SystemFailure)
+import Swarm.Failure (SystemFailure)
 import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Inventory.Sorting

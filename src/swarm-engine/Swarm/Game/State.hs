@@ -100,7 +100,7 @@ import Data.Tuple (swap)
 import GHC.Generics (Generic)
 import Swarm.Game.CESK (Store, emptyStore, store, suspendedEnv)
 import Swarm.Game.Entity
-import Swarm.Game.Failure (SystemFailure (..))
+import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Robot

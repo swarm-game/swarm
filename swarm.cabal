@@ -593,7 +593,6 @@ library swarm-scenario
     Swarm.Game.Entity
     Swarm.Game.Entity.Cosmetic
     Swarm.Game.Entity.Cosmetic.Assignment
-    Swarm.Game.Failure
     Swarm.Game.Ingredients
     Swarm.Game.Land
     Swarm.Game.Recipe
@@ -862,6 +861,7 @@ library swarm-util
     fused-effects,
     hashable,
     lens,
+    megaparsec,
     minimorph,
     mtl,
     prettyprinter,
@@ -879,6 +879,7 @@ library swarm-util
   exposed-modules:
     Control.Carrier.Accum.FixedStrict
     Data.BoolExpr.Simplify
+    Swarm.Failure
     Swarm.Language.Syntax.Direction
     Swarm.Pretty
     Swarm.Util

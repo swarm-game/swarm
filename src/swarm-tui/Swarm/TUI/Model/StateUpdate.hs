@@ -43,7 +43,7 @@ import Data.Sequence (Seq)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Time (getZonedTime)
-import Swarm.Game.Failure (SystemFailure (..))
+import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.Land
 import Swarm.Game.Scenario (
   ScenarioInputs (..),

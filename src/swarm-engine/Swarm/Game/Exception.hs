@@ -139,7 +139,7 @@ formatIncapableFix = \case
 -- >>> import Data.Either (fromRight)
 -- >>> import Control.Carrier.Throw.Either (runThrow)
 -- >>> import Control.Algebra (run)
--- >>> import Swarm.Game.Failure (LoadingFailure)
+-- >>> import Swarm.Failure (LoadingFailure)
 -- >>> import qualified Data.Set as S
 -- >>> :set -XTypeApplications
 -- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" mempty mempty (S.singleton $ CExecute Appear)

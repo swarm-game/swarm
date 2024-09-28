@@ -68,7 +68,7 @@ import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
 import Swarm.Game.Entity as E
-import Swarm.Game.Failure
+import Swarm.Failure
 import Swarm.Game.Ingredients
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util.Effect (withThrow)

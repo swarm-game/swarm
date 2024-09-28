@@ -46,7 +46,7 @@ import Swarm.Doc.Util
 import Swarm.Doc.Wiki.Cheatsheet
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityName, entityYields)
 import Swarm.Game.Entity qualified as E
-import Swarm.Game.Failure (simpleErrorHandle)
+import Swarm.Failure (simpleErrorHandle)
 import Swarm.Game.Land
 import Swarm.Game.Recipe (Recipe, recipeCatalysts, recipeInputs, recipeOutputs)
 import Swarm.Game.Robot (Robot, equippedDevices, robotInventory)

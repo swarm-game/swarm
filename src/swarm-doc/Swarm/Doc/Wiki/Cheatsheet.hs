@@ -32,7 +32,7 @@ import Swarm.Game.Device qualified as D
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
-import Swarm.Game.Failure (simpleErrorHandle)
+import Swarm.Failure (simpleErrorHandle)
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeCatalysts, recipeInputs, recipeOutputs, recipeTime, recipeWeight)
 import Swarm.Game.Terrain (loadTerrain, terrainByName)
 import Swarm.Language.Capability (Capability)

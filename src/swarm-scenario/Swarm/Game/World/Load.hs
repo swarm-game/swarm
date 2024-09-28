@@ -16,7 +16,7 @@ import Data.Map qualified as M
 import Data.Maybe (catMaybes)
 import Data.Sequence (Seq)
 import Data.Text (Text)
-import Swarm.Game.Failure (Asset (..), AssetData (..), LoadingFailure (..), SystemFailure (..))
+import Swarm.Failure (Asset (..), AssetData (..), LoadingFailure (..), SystemFailure (..))
 import Swarm.Game.Land
 import Swarm.Game.ResourceLoading (getDataDirSafe)
 import Swarm.Game.World.Parse (parseWExp, runParser)

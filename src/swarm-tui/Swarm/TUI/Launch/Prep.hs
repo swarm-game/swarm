@@ -19,7 +19,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Functor.Identity (runIdentity)
 import Data.List.Extra (enumerate)
 import Data.Text qualified as T
-import Swarm.Game.Failure (SystemFailure)
+import Swarm.Failure (SystemFailure)
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (..), ScenarioInfoPair, getLaunchParams, scenarioStatus)
 import Swarm.Game.State (ValidatedLaunchParams, getRunCodePath, parseCodeFile)
 import Swarm.Game.World.Gen (Seed)

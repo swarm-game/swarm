@@ -8,7 +8,7 @@
 --
 -- These failures are often not fatal and serve
 -- to create common infrastructure for logging.
-module Swarm.Game.Failure (
+module Swarm.Failure (
   SystemFailure (..),
   simpleErrorHandle,
   AssetData (..),
@@ -61,7 +61,7 @@ data LoadingFailure
 -- ~~~~ Note [Pretty-printing typechecking errors]
 --
 -- It would make sense to store a CheckErr in DoesNotTypecheck;
--- however, Swarm.Game.Failure is imported in lots of places, and
+-- however, Swarm.Failure is imported in lots of places, and
 -- CheckErr can contain high-level things like TTerms etc., so it
 -- would lead to an import cycle.  Instead, we choose to just
 -- pretty-print typechecking errors before storing them here.
