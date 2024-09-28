@@ -35,9 +35,9 @@ import Data.Text qualified as T
 import Data.Tuple (swap)
 import Data.Yaml
 import GHC.Generics (Generic)
+import Swarm.Failure
 import Swarm.Game.Display
 import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
-import Swarm.Failure
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util (enumeratedMap, quote)
 import Swarm.Util.Effect (withThrow)
