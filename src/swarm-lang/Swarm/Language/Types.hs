@@ -80,6 +80,7 @@ module Swarm.Language.Types (
   fuvs,
   hasAnyUVars,
   isTopLevelConstructor,
+  UnchainableFun (..),
 
   -- * Polytypes
   Poly (..),
