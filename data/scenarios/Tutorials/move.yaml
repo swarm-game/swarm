@@ -194,9 +194,11 @@ robots:
         main [entity="flower", room=3]
       )
 entities:
-  - name: Win
+  - name: door
     display:
-      char: W
-      attr: gold
+      char: 'D'
+      attr: entity
+      invisible: true
     description:
-      - This entity signals that the objective has been met.
+      - A wall
+    properties: [boundary]

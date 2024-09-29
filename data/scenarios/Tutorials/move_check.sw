@@ -1,6 +1,8 @@
 def until = \cond. \c. b <- cond; if b {} {c; until cond c} end
 def abs = \x. if (x >= 0) {x} {-x} end
 
+def open_door = create "door"; swap "door" end
+
 // TRICK:
 // we only check for base at this location
 // so we can sleep for as long as base will take to get here
@@ -24,7 +26,7 @@ def room1 =
     waitForBaseAt l (\_. \_. 1);
     log "room 1 done";
     // open door
-    turn east; move; grab;
+    turn east; move; open_door;
 end
 
 def room2 =
@@ -33,8 +35,8 @@ def room2 =
     waitForBaseAt l get_dist;
     log "room 2 done";
     // open doors
-    turn north; move; grab;
-    turn west; move; grab;
+    turn north; move; open_door;
+    turn west; move; open_door;
 end
 
 def room3 =
@@ -43,7 +45,7 @@ def room3 =
     waitForBaseAt l get_dist;
     log "room 3 done";
     // open door
-    turn west; move; move; grab;
+    turn west; move; move; open_door;
 end
 
 def main =
