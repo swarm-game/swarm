@@ -13,7 +13,7 @@ objectives:
         marked with the purple `flower`{=entity}.
         
         Note that you can chain commands with semicolon, `;`{=snippet}.
-        
+
         You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
       r <- robotNamed "check";
@@ -154,23 +154,26 @@ robots:
     system: true
     program: |
       def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [entity="wall", room=1]);
-      m
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="wall", room=1]
+      )
   - name: 2P wall
     system: true
     program: |
       def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [entity="wall", room=2]);
-      m
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="wall", room=2]
+      )
   - name: 3P wall
     system: true
     program: |
       def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [entity="wall", room=3]);
-      m
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="wall", room=3]
+      )
   #################
   ## GARDENERS   ##
   #################
@@ -178,23 +181,26 @@ robots:
     system: true
     program: |
       def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [entity="flower", room=1]);
-      m
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="flower", room=1]
+      )
   - name: 2P flower
     system: true
     program: |
       def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [entity="flower", room=2]);
-      m
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="flower", room=2]
+      )
   - name: 3P flower
     system: true
     program: |
       def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [entity="flower", room=3]);
-      m
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="flower", room=3]
+      )
 entities:
   - name: Win
     display:
