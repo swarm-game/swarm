@@ -641,7 +641,7 @@
     attr: entity
   description:
     - A wall
-  properties: [known, boundary]
+  properties: [unwalkable, known, boundary]
 
 # following are "legacy" walls that do not connect automatically,
 # but require explicitly plaing each one - this can be used for
