@@ -16,9 +16,7 @@ objectives:
 
         You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
-      r <- robotNamed "check";
-      w <- as r {count "Win"};
-      return (w >= 1)
+      as base {l <- whereami; return (l == (2,0))}
   - id: move_along_corridor
     teaser: Down the corridor
     goal:
@@ -37,9 +35,7 @@ objectives:
         
         You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
-      r <- robotNamed "check";
-      w <- as r {count "Win"};
-      return (w >= 2)
+      as base {l <- whereami; return (l == (8,0))}
     prerequisite: move_to_first_flower
   - id: move_northeast_corner
     teaser: To northeast corner
@@ -55,7 +51,7 @@ objectives:
         (with **Alt+T** or by clicking) and scroll it with arrow keys or **PgUp**/**PgDown**.
         When you're done reading, you can come back to the REPL prompt by clicking on it or typing **Alt+R**.
         
-        Afterwards, move your robot to the coordinates `(8,4)` in the northeast corner marked with two flowers.
+        Afterwards, move your robot to the coordinates `(8,4)` in the northeast corner marked with another flower.
         
         Remember, you can chain commands with `;`{=snippet}, for example:
         
@@ -63,9 +59,7 @@ objectives:
         
         You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
-      r <- robotNamed "check";
-      w <- as r {count "Win"};
-      return (w >= 3)
+      as base {l <- whereami; return (l == (8,4))}
     prerequisite: move_along_corridor
   - goal:
       - Good job! You are now ready to move and turn on your own.
@@ -73,9 +67,7 @@ objectives:
       - Remember you can press the upward arrow on your keyboard to select previous commands.
       - You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
-      r <- robotNamed "check";
-      w <- as r {count "Win"};
-      return (w >= 4)
+      as base {l <- whereami; return (l == (8,8))}
     prerequisite: move_northeast_corner
 solution: |
   // 0
@@ -146,7 +138,7 @@ robots:
   #################
   - name: check
     system: true
-    program: run "scenarios/Tutorials/move_check.sw"
+    program: instant (run "scenarios/Tutorials/move_check.sw")
   #################
   ## WALLS       ##
   #################
