@@ -15,11 +15,13 @@ end
 
 def wait_until_change = \pos. \original. \cont.
     surveil pos;
-    wait 1024;
+    timeout <- random 10000;
+    wait timeout;
     current <- as self {teleport self pos; scan down};
     if (current != original) {
         cont current;
     } {
+        log $ "no change after " ++ format timeout ++ " ticks - continue";
         wait_until_change pos original cont
     }
 end
@@ -31,13 +33,13 @@ def main: [entity: Text, room: Int] -> Cmd Unit = \args.
     log $ "surveil position" ++ format pos ++ ": " ++ format original;
     create args.entity;
     log $ "sleeping until " ++ format pos ++ " changes";
-    wait_until_change pos original ( \after_change.
-        // for later rooms a wall appears and then a door is opened
+    wait_until_change pos original ( \changed.
         if (args.room == 1) {
             place args.entity
         } {
+            // for later rooms a wall appears and then a door is opened
             log $ "sleeping until " ++ format pos ++ " changes again";
-            wait_until_change pos after_change (\_. place args.entity)
-        };
+            wait_until_change pos changed (\_. place args.entity)
+        }
     )
 end

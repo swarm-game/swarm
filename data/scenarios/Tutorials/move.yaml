@@ -161,7 +161,7 @@ robots:
   - name: 2P wall
     system: true
     program: |
-      def main = \a. return noop end
+      def main = \a. noop end
       instant (
         run "scenarios/Tutorials/move_surveil.sw";
         main [entity="wall", room=2]
@@ -169,7 +169,7 @@ robots:
   - name: 3P wall
     system: true
     program: |
-      def main = \a. return noop end
+      def main = \a. noop end
       instant (
         run "scenarios/Tutorials/move_surveil.sw";
         main [entity="wall", room=3]
@@ -180,7 +180,7 @@ robots:
   - name: 1P flower
     system: true
     program: |
-      def main = \a. return noop end
+      def main = \a. noop end
       instant (
         run "scenarios/Tutorials/move_surveil.sw";
         main [entity="flower", room=1]
@@ -188,7 +188,7 @@ robots:
   - name: 2P flower
     system: true
     program: |
-      def main = \a. return noop end
+      def main = \a. noop end
       instant (
         run "scenarios/Tutorials/move_surveil.sw";
         main [entity="flower", room=2]
@@ -196,7 +196,7 @@ robots:
   - name: 3P flower
     system: true
     program: |
-      def main = \a. return noop end
+      def main = \a. noop end
       instant (
         run "scenarios/Tutorials/move_surveil.sw";
         main [entity="flower", room=3]
