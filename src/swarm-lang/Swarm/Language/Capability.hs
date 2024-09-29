@@ -33,8 +33,10 @@ import Data.Tuple (swap)
 import Data.Yaml
 import GHC.Generics (Generic)
 import Generic.Data (FiniteEnumeration (..))
+import Prettyprinter (pretty)
 import Swarm.Language.Syntax.Constants (Const (..), allConst, constInfo, syntax)
-import Swarm.Util (binTuples, failT)
+import Swarm.Pretty (PrettyPrec (..))
+import Swarm.Util (binTuples, failT, showEnum)
 import Witch (from)
 import Prelude hiding (lookup)
 
@@ -72,6 +74,9 @@ data Capability
     CGod
   deriving (Eq, Ord, Show, Generic, Hashable, Data, FromJSONKey, ToJSONKey)
   deriving (Enum, Bounded) via (FiniteEnumeration Capability)
+
+instance PrettyPrec Capability where
+  prettyPrec _ c = pretty $ T.toLower (from (NE.tail $ showEnum c))
 
 -- | Get the name of the capability for use in UI and YAML.
 capabilityName :: Capability -> Text

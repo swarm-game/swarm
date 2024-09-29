@@ -119,11 +119,11 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
+import Swarm.Failure
 import Swarm.Game.Device
 import Swarm.Game.Display
 import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
 import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
-import Swarm.Game.Failure
 import Swarm.Game.Ingredients
 import Swarm.Game.Location
 import Swarm.Game.ResourceLoading (getDataFileNameSafe)

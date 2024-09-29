@@ -5,12 +5,11 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
--- Types represeting the surface syntax and terms for Swarm programming language.
+-- Types representing the surface syntax and terms for Swarm programming language.
 module Swarm.Language.Syntax.AST (
   Syntax' (..),
   LetSyntax (..),
   Term' (..),
-  DelayType (..),
 ) where
 
 import Control.Lens (Plated (..))
@@ -48,6 +47,10 @@ instance Data ty => Plated (Syntax' ty) where
 --   was so that we can pretty-print appropriatly.
 data LetSyntax = LSLet | LSDef
   deriving (Eq, Ord, Show, Bounded, Enum, Generic, Data, ToJSON, FromJSON)
+
+------------------------------------------------------------
+-- Term: basic syntax tree
+------------------------------------------------------------
 
 -- | Terms of the Swarm language.
 data Term' ty
@@ -157,24 +160,3 @@ data Term' ty
 
 instance Data ty => Plated (Term' ty) where
   plate = uniplate
-
-------------------------------------------------------------
--- Basic terms
-------------------------------------------------------------
-
--- | Different runtime behaviors for delayed expressions.
-data DelayType
-  = -- | A simple delay, implemented via a (non-memoized) @VDelay@
-    --   holding the delayed expression.
-    SimpleDelay
-  | -- | A memoized delay, implemented by allocating a mutable cell
-    --   with the delayed expression and returning a reference to it.
-    --   When the @Maybe Var@ is @Just@, a recursive binding of the
-    --   variable with a reference to the delayed expression will be
-    --   provided while evaluating the delayed expression itself. Note
-    --   that there is no surface syntax for binding a variable within
-    --   a recursive delayed expression; the only way we can get
-    --   @Just@ here is when we automatically generate a delayed
-    --   expression while interpreting a recursive @let@ or @def@.
-    MemoizedDelay (Maybe Var)
-  deriving (Eq, Show, Data, Generic, FromJSON, ToJSON)

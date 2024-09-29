@@ -54,8 +54,9 @@ import Data.Yaml
 import GHC.Exts qualified (IsList (..), IsString (..))
 import Swarm.Language.Parser (readTerm)
 import Swarm.Language.Pipeline (processParsedTerm)
-import Swarm.Language.Pretty (PrettyPrec (..), prettyText, prettyTextLine, prettyTypeErrText)
 import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Typecheck (prettyTypeErrText)
+import Swarm.Pretty (PrettyPrec (..), prettyText, prettyTextLine)
 
 -- | The top-level markdown document.
 newtype Document c = Document {paragraphs :: [Paragraph c]}

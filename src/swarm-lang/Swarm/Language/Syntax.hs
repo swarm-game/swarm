@@ -73,7 +73,6 @@ module Swarm.Language.Syntax (
 
   -- * Terms
   Var,
-  DelayType (..),
   Term' (..),
   Term,
   TTerm,
@@ -103,5 +102,6 @@ import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern
+import Swarm.Language.Syntax.Pretty ()
 import Swarm.Language.Syntax.Util
 import Swarm.Language.Types

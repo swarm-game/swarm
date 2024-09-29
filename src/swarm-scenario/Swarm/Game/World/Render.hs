@@ -24,9 +24,9 @@ import Data.Maybe (fromMaybe)
 import Data.Tuple.Extra (both)
 import GHC.Generics (Generic)
 import Linear (V2 (..))
+import Swarm.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.Display (defaultChar)
 import Swarm.Game.Entity.Cosmetic
-import Swarm.Game.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Scenario
@@ -43,7 +43,7 @@ import Swarm.Game.State.Landscape
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Gen (Seed)
-import Swarm.Language.Pretty (prettyString)
+import Swarm.Pretty (prettyString)
 import Swarm.Util (surfaceEmpty)
 import Swarm.Util.Content
 import Swarm.Util.Erasable (erasableToMaybe)

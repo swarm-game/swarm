@@ -98,9 +98,9 @@ import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TL
 import Data.Tuple (swap)
 import GHC.Generics (Generic)
+import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.CESK (Store, emptyStore, store, suspendedEnv)
 import Swarm.Game.Entity
-import Swarm.Game.Failure (SystemFailure (..))
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Robot

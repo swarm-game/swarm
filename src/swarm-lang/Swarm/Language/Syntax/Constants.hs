@@ -37,7 +37,9 @@ import Data.Set qualified as Set
 import Data.Text hiding (filter, length, map)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Prettyprinter (pretty)
 import Swarm.Language.Syntax.CommandMetadata
+import Swarm.Pretty (PrettyPrec (..), pparens)
 import Swarm.Util (showT)
 
 ------------------------------------------------------------
@@ -311,6 +313,9 @@ data Const
   | -- | Check if an entity is known.
     Knows
   deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, Hashable, FromJSON, ToJSON, FromJSONKey, ToJSONKey)
+
+instance PrettyPrec Const where
+  prettyPrec p c = pparens (p > fixity (constInfo c)) $ pretty . syntax . constInfo $ c
 
 allConst :: [Const]
 allConst = enumerate

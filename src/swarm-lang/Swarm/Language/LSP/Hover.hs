@@ -34,10 +34,10 @@ import Swarm.Language.Context as Ctx
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Pipeline (processParsedTerm)
-import Swarm.Language.Pretty (prettyText, prettyTextLine)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Language.Types
+import Swarm.Pretty (prettyText, prettyTextLine)
 import Swarm.Util qualified as U
 
 withinBound :: Int -> SrcLoc -> Bool

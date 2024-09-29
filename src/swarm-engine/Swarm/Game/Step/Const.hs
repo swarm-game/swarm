@@ -45,13 +45,13 @@ import Data.Text qualified as T
 import Data.Tuple (swap)
 import Linear (V2 (..), perp, zero)
 import Swarm.Effect as Effect (Time, getNow)
+import Swarm.Failure
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK
 import Swarm.Game.Display
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Entity qualified as E
 import Swarm.Game.Exception
-import Swarm.Game.Failure
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Recipe
@@ -88,13 +88,13 @@ import Swarm.Game.Value
 import Swarm.Language.Capability
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Pipeline
-import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Value
 import Swarm.Log
+import Swarm.Pretty (prettyText)
 import Swarm.Util hiding (both)
 import Swarm.Util.Effect (throwToMaybe)
 import Swarm.Util.Lens (inherit)

@@ -31,7 +31,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Constant
-import Swarm.Game.Failure (SystemFailure, simpleErrorHandle)
+import Swarm.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.Land
 import Swarm.Game.Scenario (
   Scenario,

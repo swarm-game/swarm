@@ -29,6 +29,8 @@ import Data.List.Extra (enumerate)
 import Data.Text hiding (filter, length, map)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Prettyprinter (pretty)
+import Swarm.Pretty (PrettyPrec (..))
 import Swarm.Util.JSON (optionsMinimize)
 
 ------------------------------------------------------------
@@ -131,6 +133,9 @@ directionSyntax d = T.pack $ directionJsonModifier $ case d of
   DRelative x -> case x of
     DPlanar y -> show y
     _ -> show x
+
+instance PrettyPrec Direction where
+  prettyPrec _ = pretty . directionSyntax
 
 -- | Check if the direction is absolute (e.g. 'Swarm.Game.Location.north' or 'Swarm.Game.Location.south').
 isCardinal :: Direction -> Bool
