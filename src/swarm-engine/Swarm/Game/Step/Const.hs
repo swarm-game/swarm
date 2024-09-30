@@ -55,7 +55,7 @@ import Swarm.Game.Exception
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Recipe
-import Swarm.Game.ResourceLoading (getDataFileNameSafe)
+import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete

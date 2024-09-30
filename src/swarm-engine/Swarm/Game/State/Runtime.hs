@@ -35,7 +35,7 @@ import Data.Text (Text)
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.Land
 import Swarm.Game.Recipe (loadRecipes)
-import Swarm.Game.ResourceLoading (initNameGenerator, readAppData)
+import Swarm.ResourceLoading (initNameGenerator, readAppData)
 import Swarm.Game.Scenario (GameStateInputs (..), ScenarioInputs (..))
 import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios)
 import Swarm.Game.State.Substate

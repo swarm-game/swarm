@@ -38,7 +38,7 @@ import GHC.Generics (Generic)
 import Swarm.Failure
 import Swarm.Game.Display
 import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
-import Swarm.Game.ResourceLoading (getDataFileNameSafe)
+import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util (enumeratedMap, quote)
 import Swarm.Util.Effect (withThrow)
 

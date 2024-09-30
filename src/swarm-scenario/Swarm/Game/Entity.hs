@@ -126,7 +126,7 @@ import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
 import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Ingredients
 import Swarm.Game.Location
-import Swarm.Game.ResourceLoading (getDataFileNameSafe)
+import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (Syntax)

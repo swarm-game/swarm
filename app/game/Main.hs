@@ -17,7 +17,7 @@ import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Options.Applicative.Help hiding (color, fullDesc)
 import Swarm.App (appMain)
-import Swarm.Game.ResourceLoading (getSwarmConfigIniFile)
+import Swarm.ResourceLoading (getSwarmConfigIniFile)
 import Swarm.Language.Format
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Parser.Core (LanguageVersion (..))

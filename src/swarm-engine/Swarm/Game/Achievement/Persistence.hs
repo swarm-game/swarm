@@ -16,7 +16,7 @@ import Data.Yaml qualified as Y
 import Swarm.Failure
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
-import Swarm.Game.ResourceLoading (getSwarmAchievementsPath)
+import Swarm.ResourceLoading (getSwarmAchievementsPath)
 import Swarm.Util.Effect (forMW)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath ((</>))
