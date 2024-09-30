@@ -6,49 +6,60 @@ objectives:
   - id: move_to_first_flower
     teaser: Get the flower
     goal:
-      - Robots can use the `move` command to move forward one unit in the direction they are currently facing.
-      - To complete this challenge, move your robot two spaces to the right, to the coordinates `(2,0)` marked with the purple `flower`{=entity}.
-      - Note that you can chain commands with semicolon, `;`{=snippet}.
-      - You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
+      - |
+        Robots can use the `move` command to move forward one unit in the direction they are currently facing.
+
+        To complete this challenge, move your robot two spaces to the right, to the coordinates `(2,0)`
+        marked with the purple `flower`{=entity}.
+
+        Note that you can chain commands with semicolon, `;`{=snippet}.
+
+        You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
-      r <- robotNamed "check";
-      w <- as r {count "Win"};
-      return (w >= 1)
+      as base {l <- whereami; return (l == (2,0))}
   - id: move_along_corridor
     teaser: Down the corridor
     goal:
-      - Good! Now you need to learn how to effectively repeat actions.
       - |
+        Good! Now you need to learn how to effectively repeat actions.
+
         Previously you could move twice by chaining the move command:
-      - |
-        ```
-        move; move
-        ```
-      - To reuse that command without having to retype it press the upward arrow on your keyboard. This will allow you to select previous commands.
-      - Ahead of you is a six steps long corridor. Move to its end, i.e. the coordinates `(8,0)` marked with the second purple `flower`{=entity}.
-      - You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
+
+        `move; move`
+
+        To reuse that command without having to retype it press the upward arrow on your keyboard.
+        This will allow you to select previous commands.
+
+        Ahead of you is a six steps long corridor. Move to its end, i.e. the coordinates `(8,0)` marked
+        with the second purple `flower`{=entity}.
+
+        You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
-      r <- robotNamed "check";
-      w <- as r {count "Win"};
-      return (w >= 2)
+      as base {l <- whereami; return (l == (8,0))}
     prerequisite: move_to_first_flower
   - id: move_northeast_corner
     teaser: To northeast corner
     goal:
-      - Well done! In addition to `move`, you can use the `turn` command to turn your robot, for example, `turn right` or `turn east`.
-      - Switch to the inventory view in the upper left (by clicking on it or typing **Alt+E**) and select the `treads`{=entity} device to read about the details. If the bottom-left info panel is not big enough to read the whole thing, you can hit **Enter** on the `treads`{=entity} device to pop out the description, or you can focus the info panel (with **Alt+T** or by clicking) and scroll it with arrow keys or **PgUp**/**PgDown**. When you're done reading, you can come back to the REPL prompt by clicking on it or typing **Alt+R**.
-      - Afterwards, move your robot to the coordinates `(8,4)` in the northeast corner marked with two flowers.
       - |
+        Well done! In addition to `move`, you can use the `turn` command to turn your robot, for example,
+        `turn right` or `turn east`.
+
+        Switch to the inventory view in the upper left (by clicking on it or typing **Alt+E**) and select
+        the `treads`{=entity} device to read about the details.
+        If the bottom-left info panel is not big enough to read the whole thing, you can hit **Enter**
+        on the `treads`{=entity} device to pop out the description, or you can focus the info panel
+        (with **Alt+T** or by clicking) and scroll it with arrow keys or **PgUp**/**PgDown**.
+        When you're done reading, you can come back to the REPL prompt by clicking on it or typing **Alt+R**.
+
+        Afterwards, move your robot to the coordinates `(8,4)` in the northeast corner marked with another flower.
+
         Remember, you can chain commands with `;`{=snippet}, for example:
-      - |
-        ```
-        move;move;move;move
-        ```
-      - You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
+
+        `move; move; move; move`
+
+        You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
-      r <- robotNamed "check";
-      w <- as r {count "Win"};
-      return (w >= 3)
+      as base {l <- whereami; return (l == (8,4))}
     prerequisite: move_along_corridor
   - goal:
       - Good job! You are now ready to move and turn on your own.
@@ -56,9 +67,7 @@ objectives:
       - Remember you can press the upward arrow on your keyboard to select previous commands.
       - You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
-      r <- robotNamed "check";
-      w <- as r {count "Win"};
-      return (w >= 4)
+      as base {l <- whereami; return (l == (8,8))}
     prerequisite: move_northeast_corner
 solution: |
   // 0
@@ -83,52 +92,31 @@ known:
 world:
   palette:
     '.': [blank]
-    '*': [blank, flower, check]
-    'X': [blank, null, 1P flower]
-    'Y': [blank, null, 2P flower]
-    'Z': [blank, null, 3P flower]
     # FIRST ROOM
-    '┌': [blank, upper left corner]
-    '┐': [blank, upper right corner, 1S down and horizontal]
-    '└': [blank, lower left corner]
-    '┘': [blank, lower right corner, 1S up and horizontal]
-    '─': [blank, horizontal wall]
-    '│': [blank, vertical wall]
+    '0': [blank, wall]
+    'A': [blank, flower, check]
     # SECOND ROOM
-    '1': [blank, vertical wall]
-    '-': [blank, null, 1P horizontal]
-    '|': [blank, null, 1P vertical]
-    'c': [blank, null, 1P upper right, 1S left and vertical]
-    'b': [blank, null, 1P lower right]
-    'd': [blank, null, 1P horizontal, 2S up and horizontal]
+    '1': [blank, null, 1P wall]
+    'B': [blank, null, 1P flower]
     # THIRD ROOM
-    '2': [blank, null, 1P horizontal]
-    '~': [blank, null, 2P horizontal]
-    '/': [blank, null, 2P vertical]
-    'R': [blank, null, 2P upper right]
-    'L': [blank, null, 2P upper left, 3S down and horizontal]
-    'K': [blank, null, 2P vertical, 3S left and vertical]
+    '2': [blank, null, 2P wall]
+    'C': [blank, null, 2P flower]
     # FOURTH ROOM
-    '3': [blank, null, 2P vertical]
-    '_': [blank, null, 3P horizontal]
-    '\': [blank, null, 3P vertical]
-    'A': [blank, null, 3P lower left corner]
-    'B': [blank, null, 3P lower right]
-    'C': [blank, null, 3P upper right]
-    'D': [blank, null, 3P upper left]
+    '3': [blank, null, 3P wall]
+    'D': [blank, null, 3P flower]
   upperleft: [-1, 9]
   map: |
-    D_________C
-    \........Z\
-    \..D______B
-    \..\.......
-    \..A___L~~R
-    \......3.Y/
-    A______K../
-    ......./../
-    ┌───┐--d22c
-    │..*1....X|
-    └───┘-----b
+    33333333333
+    3........D3
+    3..33333333
+    3..3.......
+    3..33332222
+    3......2.C2
+    33333332..2
+    .......2..2
+    00000111111
+    0..A0....B1
+    00000111111
 # Font inspiration and a nicely visible separator:
 #
 # ███████ ██     ██  █████  ██████  ███    ███
@@ -150,209 +138,67 @@ robots:
   #################
   - name: check
     system: true
-    program: run "scenarios/Tutorials/move_check.sw"
+    program: instant (run "scenarios/Tutorials/move_check.sw")
   #################
-  ## HORIZONTAL  ##
+  ## WALLS       ##
   #################
-  - name: 1P horizontal
+  - name: 1P wall
     system: true
     program: |
       def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="P", entity="horizontal wall", room=1]);
-      m
-  - name: 2P horizontal
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="wall", room=1]
+      )
+  - name: 2P wall
     system: true
     program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="P", entity="horizontal wall", room=2]);
-      m
-  - name: 3P horizontal
+      def main = \a. noop end
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="wall", room=2]
+      )
+  - name: 3P wall
     system: true
     program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="P", entity="horizontal wall", room=3]);
-      m
-  #################
-  ## VERTICAL    ##
-  #################
-  - name: 1P vertical
-    system: true
-    program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="P", entity="vertical wall", room=1]);
-      m
-  - name: 2P vertical
-    system: true
-    program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="P", entity="vertical wall", room=2]);
-      m
-  - name: 3P vertical
-    system: true
-    program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="P", entity="vertical wall", room=3]);
-      m
-  #################
-  ## CORNERS     ##
-  #################
-  # the order is:
-  # up left   up right
-  #     D+----+C
-  #      |    |
-  #      |    |
-  #     A+----+B
-  # low left  low right
-  #########
-  ##  A  ##
-  #########
-  - name: 3P lower left corner
-    system: true
-    program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="P", entity="lower left corner", room=3]);
-      m
-  #########
-  ##  B  ##
-  #########
-  - name: 1P lower right
-    system: true
-    program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="P", entity="lower right corner", room=1]);
-      m
-  - name: 3P lower right
-    system: true
-    program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="P", entity="lower right corner", room=3]);
-      m
-  #########
-  ##  C  ##
-  #########
-  - name: 1P upper right
-    system: true
-    program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="P", entity="upper right corner", room=1]);
-      m
-  - name: 2P upper right
-    system: true
-    program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="P", entity="upper right corner", room=2]);
-      m
-  - name: 3P upper right
-    system: true
-    program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="P", entity="upper right corner", room=3]);
-      m
-  #########
-  ##  D  ##
-  #########
-  - name: 2P upper left
-    system: true
-    program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="P", entity="upper left corner", room=2]);
-      m
-  - name: 3P upper left
-    system: true
-    program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="P", entity="upper left corner", room=3]);
-      m
-  #################
-  ## SEPARATORS  ##
-  #################
-  # 1
-  - name: 1S down and horizontal
-    system: true
-    program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="S", entity="down and horizontal wall", room=1]);
-      m
-  - name: 1S up and horizontal
-    system: true
-    program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="S", entity="up and horizontal wall", room=1]);
-      m
-  # 2
-  - name: 1S left and vertical
-    system: true
-    program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="S", entity="left and vertical wall", room=2]);
-      m
-  - name: 2S up and horizontal
-    system: true
-    program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="S", entity="up and horizontal wall", room=2]);
-      m
-  # 3
-  - name: 3S left and vertical
-    system: true
-    program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="S", entity="left and vertical wall", room=3]);
-      m
-  - name: 3S down and horizontal
-    system: true
-    program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="S", entity="down and horizontal wall", room=3]);
-      m
+      def main = \a. noop end
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="wall", room=3]
+      )
   #################
   ## GARDENERS   ##
   #################
   - name: 1P flower
     system: true
     program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="P", entity="flower", room=1]);
-      m
+      def main = \a. noop end
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="flower", room=1]
+      )
   - name: 2P flower
     system: true
     program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="P", entity="flower", room=2]);
-      m
+      def main = \a. noop end
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="flower", room=2]
+      )
   - name: 3P flower
     system: true
     program: |
-      def main = \a. return noop end
-      m <- instant (run "scenarios/Tutorials/move_surveil.sw";
-      main [action="P", entity="flower", room=3]);
-      m
+      def main = \a. noop end
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="flower", room=3]
+      )
 entities:
-  - name: Win
+  - name: door
     display:
-      char: W
-      attr: gold
+      char: 'D'
+      attr: entity
+      invisible: true
     description:
-      - This entity signals that the objective has been met.
+      - A wall
+    properties: [boundary]
