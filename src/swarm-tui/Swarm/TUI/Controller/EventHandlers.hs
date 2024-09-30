@@ -38,7 +38,7 @@ import Control.Effect.Throw
 import Data.List (sortOn)
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
-import Swarm.Game.Failure (SystemFailure (..))
+import Swarm.Failure (SystemFailure (..))
 import Swarm.TUI.Controller.EventHandlers.Frame (runFrameUI, runGameTickUI, ticksPerFrameCap)
 import Swarm.TUI.Controller.EventHandlers.Main (mainEventHandlers)
 import Swarm.TUI.Controller.EventHandlers.REPL (replEventHandlers)

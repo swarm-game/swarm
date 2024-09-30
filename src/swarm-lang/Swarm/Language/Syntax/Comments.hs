@@ -28,7 +28,9 @@ import Data.Data (Data)
 import Data.Sequence (Seq)
 import Data.Text hiding (filter, length, map)
 import GHC.Generics (Generic)
+import Prettyprinter (pretty)
 import Swarm.Language.Syntax.Loc
+import Swarm.Pretty (PrettyPrec (..))
 
 -- | Line vs block comments.
 data CommentType = LineComment | BlockComment
@@ -54,6 +56,10 @@ data Comment = Comment
   , commentText :: Text
   }
   deriving (Eq, Show, Generic, Data, ToJSON, FromJSON)
+
+instance PrettyPrec Comment where
+  prettyPrec _ (Comment _ LineComment _ txt) = "//" <> pretty txt
+  prettyPrec _ (Comment _ BlockComment _ txt) = "/*" <> pretty txt <> "*/"
 
 -- | Comments which can be attached to a particular AST node.  Some
 --   comments come textually before the node and some come after.

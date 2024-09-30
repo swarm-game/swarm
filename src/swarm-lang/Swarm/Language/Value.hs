@@ -39,12 +39,12 @@ import GHC.Generics (Generic)
 import Swarm.Language.Context (Ctx)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Key (KeyCombo, prettyKeyCombo)
-import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Requirements.Type (ReqCtx, Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Typed
 import Swarm.Language.Types (Polytype, TCtx, TDCtx, TydefInfo)
+import Swarm.Pretty (prettyText)
 
 -- | A /value/ is a term that cannot (or does not) take any more
 --   evaluation steps on its own.

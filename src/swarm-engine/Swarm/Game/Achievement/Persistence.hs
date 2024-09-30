@@ -13,9 +13,9 @@ import Control.Effect.Lift
 import Control.Monad (forM_)
 import Data.Sequence (Seq)
 import Data.Yaml qualified as Y
+import Swarm.Failure
 import Swarm.Game.Achievement.Attainment
 import Swarm.Game.Achievement.Definitions
-import Swarm.Game.Failure
 import Swarm.Game.ResourceLoading (getSwarmAchievementsPath)
 import Swarm.Util.Effect (forMW)
 import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)

@@ -73,10 +73,10 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Swarm.Failure
 import Swarm.Game.Entity
 import Swarm.Game.Entity.Cosmetic
 import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
-import Swarm.Game.Failure
 import Swarm.Game.Land
 import Swarm.Game.Location (Location)
 import Swarm.Game.Recipe
@@ -101,9 +101,9 @@ import Swarm.Game.Universe
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (WorldMap)
-import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (Syntax, TSyntax)
 import Swarm.Language.Text.Markdown (Document)
+import Swarm.Pretty (prettyText)
 import Swarm.Util (binTuples, commaList, failT, quote)
 import Swarm.Util.Effect (ignoreWarnings, throwToMaybe, withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)

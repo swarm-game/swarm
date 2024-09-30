@@ -30,10 +30,10 @@ import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Entity (EntityMap, devicesForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
 import Swarm.Language.JSON ()
-import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Requirements.Type (Requirements (..))
 import Swarm.Language.Syntax (Const, Term)
 import Swarm.Log (Severity (..))
+import Swarm.Pretty (prettyText)
 import Swarm.Util
 import Witch (from)
 
@@ -139,7 +139,7 @@ formatIncapableFix = \case
 -- >>> import Data.Either (fromRight)
 -- >>> import Control.Carrier.Throw.Either (runThrow)
 -- >>> import Control.Algebra (run)
--- >>> import Swarm.Game.Failure (LoadingFailure)
+-- >>> import Swarm.Failure (LoadingFailure)
 -- >>> import qualified Data.Set as S
 -- >>> :set -XTypeApplications
 -- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" mempty mempty (S.singleton $ CExecute Appear)

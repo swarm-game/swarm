@@ -28,20 +28,20 @@ import Swarm.Doc.Schema.Render
 import Swarm.Doc.Util
 import Swarm.Doc.Wiki.Matrix
 import Swarm.Doc.Wiki.Util
+import Swarm.Failure (simpleErrorHandle)
 import Swarm.Game.Device qualified as D
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
-import Swarm.Game.Failure (simpleErrorHandle)
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeCatalysts, recipeInputs, recipeOutputs, recipeTime, recipeWeight)
 import Swarm.Game.Terrain (loadTerrain, terrainByName)
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Capability qualified as Capability
-import Swarm.Language.Pretty (prettyText, prettyTextLine)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Text.Markdown as Markdown (docToMark)
 import Swarm.Language.Typecheck (inferConst)
+import Swarm.Pretty (prettyText, prettyTextLine)
 import Swarm.Util (maximum0, showT)
 
 -- * Types

@@ -453,7 +453,6 @@ library swarm-lang
     Swarm.Language.Parser.Util
     Swarm.Language.Pipeline
     Swarm.Language.Pipeline.QQ
-    Swarm.Language.Pretty
     Swarm.Language.Requirements
     Swarm.Language.Requirements.Analysis
     Swarm.Language.Requirements.Type
@@ -464,6 +463,7 @@ library swarm-lang
     Swarm.Language.Syntax.Constants
     Swarm.Language.Syntax.Loc
     Swarm.Language.Syntax.Pattern
+    Swarm.Language.Syntax.Pretty
     Swarm.Language.Syntax.Util
     Swarm.Language.Text.Markdown
     Swarm.Language.Typecheck
@@ -593,7 +593,6 @@ library swarm-scenario
     Swarm.Game.Entity
     Swarm.Game.Entity.Cosmetic
     Swarm.Game.Entity.Cosmetic.Assignment
-    Swarm.Game.Failure
     Swarm.Game.Ingredients
     Swarm.Game.Land
     Swarm.Game.Recipe
@@ -853,15 +852,19 @@ library swarm-util
     boolexpr,
     clock,
     containers,
+    data-fix,
     directory,
     either,
     extra,
     filepath,
+    free,
     fused-effects,
     hashable,
     lens,
+    megaparsec,
     minimorph,
     mtl,
+    prettyprinter,
     servant-docs,
     template-haskell,
     text,
@@ -876,7 +879,9 @@ library swarm-util
   exposed-modules:
     Control.Carrier.Accum.FixedStrict
     Data.BoolExpr.Simplify
+    Swarm.Failure
     Swarm.Language.Syntax.Direction
+    Swarm.Pretty
     Swarm.Util
     Swarm.Util.Effect
     Swarm.Util.Erasable

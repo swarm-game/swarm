@@ -28,10 +28,10 @@ import Data.Text.IO qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Doc.Keyword (EditorType (..))
 import Swarm.Doc.Keyword qualified as Keyword
+import Swarm.Failure (SystemFailure)
 import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
 import Swarm.Game.CESK (initMachine)
 import Swarm.Game.Entity (lookupByName)
-import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Robot (equippedDevices, systemRobot)
 import Swarm.Game.Robot.Activity (commandsHistogram, lifetimeStepCount, tangibleCommandCount)
 import Swarm.Game.Robot.Concrete (activityCounts, machine, robotLog, waitingUntil)
@@ -67,8 +67,8 @@ import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Validate (badErrorsInLogs, playUntilWin)
 import Swarm.Game.Tick (getTickNumber)
 import Swarm.Language.Pipeline (processTerm)
-import Swarm.Language.Pretty (prettyString)
 import Swarm.Log
+import Swarm.Pretty (prettyString)
 import Swarm.TUI.Model (
   KeyEventHandlingState,
   debugOptions,

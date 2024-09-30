@@ -111,10 +111,10 @@ import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Capability (Capability (..), constCaps)
-import Swarm.Language.Pretty (prettyText, prettyTextLine, prettyTextWidth)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Log
+import Swarm.Pretty (prettyText, prettyTextLine, prettyTextWidth)
 import Swarm.TUI.Border
 import Swarm.TUI.Controller (ticksPerFrameCap)
 import Swarm.TUI.Controller.EventHandlers (allEventHandlers, mainEventHandlers, replEventHandlers, robotEventHandlers, worldEventHandlers)

@@ -12,7 +12,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Data.Text.Encoding.Error (UnicodeException)
 import Data.Yaml (ParseException)
-import Swarm.Game.Failure (SystemFailure)
+import Swarm.Failure (SystemFailure)
 import Swarm.Game.State (Sha1 (..))
 import Swarm.Util (parens, showT)
 import System.Time.Extra (Seconds, showDuration)

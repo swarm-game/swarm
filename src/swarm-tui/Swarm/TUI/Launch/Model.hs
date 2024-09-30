@@ -15,10 +15,10 @@ import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens (makeLenses)
 import Data.Functor.Identity (Identity (Identity))
 import Data.Text (Text)
-import Swarm.Game.Failure (SystemFailure)
+import Swarm.Failure (SystemFailure)
 import Swarm.Game.Scenario.Status (ParameterizableLaunchParams (LaunchParams), ScenarioInfoPair, SerializableLaunchParams)
 import Swarm.Game.State (LaunchParams, ValidatedLaunchParams, getRunCodePath, parseCodeFile)
-import Swarm.Language.Pretty (prettyText)
+import Swarm.Pretty (prettyText)
 import Swarm.TUI.Model.Name
 import Swarm.Util.Effect (withThrow)
 
