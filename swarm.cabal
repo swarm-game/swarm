@@ -408,7 +408,9 @@ library swarm-lang
     containers,
     data-fix,
     deriving-compat,
+    directory,
     extra,
+    filepath,
     free,
     fused-effects,
     generic-data,
@@ -468,6 +470,7 @@ library swarm-lang
     Swarm.Language.Syntax.CommandMetadata
     Swarm.Language.Syntax.Comments
     Swarm.Language.Syntax.Constants
+    Swarm.Language.Syntax.Import
     Swarm.Language.Syntax.Loc
     Swarm.Language.Syntax.Pattern
     Swarm.Language.Syntax.Pretty
