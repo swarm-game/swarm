@@ -5,7 +5,7 @@
 -- Description: Fetching game data
 --
 -- Various utilities related to loading game data files.
-module Swarm.Game.ResourceLoading (
+module Swarm.ResourceLoading (
   -- * Generic data access
   getDataDirSafe,
   getDataFileNameSafe,

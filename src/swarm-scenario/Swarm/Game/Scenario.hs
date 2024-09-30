@@ -80,7 +80,6 @@ import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Land
 import Swarm.Game.Location (Location)
 import Swarm.Game.Recipe
-import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot (TRobot, trobotLocation, trobotName)
 import Swarm.Game.Scenario.Objective (Objective)
 import Swarm.Game.Scenario.Objective.Validation
@@ -104,6 +103,7 @@ import Swarm.Game.World.Typecheck (WorldMap)
 import Swarm.Language.Syntax (Syntax, TSyntax)
 import Swarm.Language.Text.Markdown (Document)
 import Swarm.Pretty (prettyText)
+import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util (binTuples, commaList, failT, quote)
 import Swarm.Util.Effect (ignoreWarnings, throwToMaybe, withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)

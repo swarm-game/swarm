@@ -60,7 +60,6 @@ import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec, FSuspend))
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Land
-import Swarm.Game.ResourceLoading (getSwarmHistoryPath)
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
@@ -85,6 +84,7 @@ import Swarm.Language.Typecheck (
  )
 import Swarm.Language.Value (Value (VKey), envTypes)
 import Swarm.Log
+import Swarm.ResourceLoading (getSwarmHistoryPath)
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Controller.SaveScenario (saveScenarioInfoOnQuit)
 import Swarm.TUI.Controller.UpdateUI

@@ -55,7 +55,6 @@ import Swarm.Game.Exception
 import Swarm.Game.Land
 import Swarm.Game.Location
 import Swarm.Game.Recipe
-import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
@@ -95,6 +94,7 @@ import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Value
 import Swarm.Log
 import Swarm.Pretty (prettyText)
+import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util hiding (both)
 import Swarm.Util.Effect (throwToMaybe)
 import Swarm.Util.Lens (inherit)

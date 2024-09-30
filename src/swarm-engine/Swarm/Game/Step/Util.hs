@@ -27,7 +27,6 @@ import Swarm.Game.Device
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Exception
 import Swarm.Game.Location
-import Swarm.Game.ResourceLoading (NameGenerator (..))
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking qualified as SRT
 import Swarm.Game.State
@@ -45,6 +44,7 @@ import Swarm.Language.Capability
 import Swarm.Language.Requirements.Type qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction (Direction)
+import Swarm.ResourceLoading (NameGenerator (..))
 import Swarm.Util hiding (both)
 import System.Random (UniformRange, uniformR)
 import Prelude hiding (Applicative (..), lookup)

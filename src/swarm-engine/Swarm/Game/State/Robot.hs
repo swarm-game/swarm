@@ -71,12 +71,12 @@ import Data.Tuple (swap)
 import GHC.Generics (Generic)
 import Swarm.Game.CESK (CESK (Waiting))
 import Swarm.Game.Location
-import Swarm.Game.ResourceLoading (NameGenerator)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.State.Config
 import Swarm.Game.Tick
 import Swarm.Game.Universe as U
+import Swarm.ResourceLoading (NameGenerator)
 import Swarm.Util (binTuples, surfaceEmpty, (<+=), (<<.=))
 import Swarm.Util.Lens (makeLensesExcluding)
 
