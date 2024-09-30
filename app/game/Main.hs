@@ -17,10 +17,10 @@ import GitHash (GitInfo, giBranch, giHash, tGitInfoCwdTry)
 import Options.Applicative
 import Options.Applicative.Help hiding (color, fullDesc)
 import Swarm.App (appMain)
-import Swarm.ResourceLoading (getSwarmConfigIniFile)
 import Swarm.Language.Format
 import Swarm.Language.LSP (lspMain)
 import Swarm.Language.Parser.Core (LanguageVersion (..))
+import Swarm.ResourceLoading (getSwarmConfigIniFile)
 import Swarm.TUI.Model (AppOpts (..), ColorMode (..))
 import Swarm.TUI.Model.DebugOption
 import Swarm.TUI.Model.KeyBindings (KeybindingPrint (..), showKeybindings)

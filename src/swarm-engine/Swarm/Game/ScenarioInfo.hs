@@ -57,10 +57,10 @@ import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Yaml as Y
 import Swarm.Failure
-import Swarm.ResourceLoading (getDataDirSafe, getSwarmSavePath)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Status
+import Swarm.ResourceLoading (getDataDirSafe, getSwarmSavePath)
 import Swarm.Util.Effect (warn, withThrow)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
