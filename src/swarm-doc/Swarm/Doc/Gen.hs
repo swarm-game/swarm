@@ -328,7 +328,8 @@ startingInventory = Map.fromList . map swap . E.elems . view robotInventory
 ignoredEntities :: Set Text
 ignoredEntities =
   Set.fromList
-    [ "upper left corner"
+    [ "wall"
+    , "upper left corner"
     , "upper right corner"
     , "lower left corner"
     , "lower right corner"

@@ -635,6 +635,17 @@
 ############################################################
 ### Utility ################################################
 ############################################################
+- name: wall
+  display:
+    char: '+'
+    attr: entity
+  description:
+    - A wall
+  properties: [unwalkable, known, boundary]
+# following are "legacy" walls that do not connect automatically,
+# but require explicitly placing each one - this can be used for
+# precise control, but in most cases the simple 'wall' is better
+# because the 'boundary' updates it to look nice
 - name: upper left corner
   display:
     attr: entity
