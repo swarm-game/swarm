@@ -23,8 +23,8 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Failure (Asset (..), LoadingFailure (..), SystemFailure (..))
-import Swarm.ResourceLoading (getSwarmConfigIniFile)
 import Swarm.Pretty (prettyText)
+import Swarm.ResourceLoading (getSwarmConfigIniFile)
 import Swarm.TUI.Controller.EventHandlers
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event (SwarmEvent, defaultSwarmBindings, swarmEvents)

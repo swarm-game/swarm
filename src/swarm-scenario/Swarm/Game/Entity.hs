@@ -126,11 +126,11 @@ import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
 import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
 import Swarm.Game.Ingredients
 import Swarm.Game.Location
-import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document, docToText)
+import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util (binTuples, failT, findDup, plural, quote, (?))
 import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Yaml

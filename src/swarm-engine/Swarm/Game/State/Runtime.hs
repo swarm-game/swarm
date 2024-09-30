@@ -35,12 +35,12 @@ import Data.Text (Text)
 import Swarm.Failure (SystemFailure)
 import Swarm.Game.Land
 import Swarm.Game.Recipe (loadRecipes)
-import Swarm.ResourceLoading (initNameGenerator, readAppData)
 import Swarm.Game.Scenario (GameStateInputs (..), ScenarioInputs (..))
 import Swarm.Game.ScenarioInfo (ScenarioCollection, loadScenarios)
 import Swarm.Game.State.Substate
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Log
+import Swarm.ResourceLoading (initNameGenerator, readAppData)
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 data RuntimeState = RuntimeState

@@ -7,8 +7,8 @@ module Swarm.Game.State.Config where
 
 import Data.Map (Map)
 import Data.Text (Text)
-import Swarm.ResourceLoading (NameGenerator)
 import Swarm.Game.Scenario (GameStateInputs)
+import Swarm.ResourceLoading (NameGenerator)
 
 -- | Record to pass information needed to create an initial
 --   'GameState' record when starting a scenario.
