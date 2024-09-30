@@ -571,14 +571,14 @@ drawTPS :: AppState -> Widget Name
 drawTPS s = hBox (tpsInfo : rateInfo)
  where
   tpsInfo
-    | l >= 0 = hBox [str (show n), txt " ", txt (number n "tick"), txt " / s"]
+    | l >= 0 = hBox [str (show n), txt " ", tpsIndicator s, txt (number n "tick"), txt " / s"]
+    -- | l >= 0 = hBox [str (show n), txt " ", txt (number n "tick"), txt " / s"]
     | otherwise = hBox [txt "1 tick / ", str (show n), txt " s"]
 
   rateInfo
     | s ^. uiState . uiGameplay . uiTiming . uiShowFPS =
         [ txt " ("
-        , let tpf = s ^. uiState . uiGameplay . uiTiming . uiTPF
-           in (if tpf >= fromIntegral ticksPerFrameCap then withAttr redAttr else id)
+        , (if tpf >= fromIntegral ticksPerFrameCap then withAttr redAttr else id)
                 (str (printf "%0.1f" tpf))
         , txt " tpf, "
         , str (printf "%0.1f" (s ^. uiState . uiGameplay . uiTiming . uiFPS))
@@ -586,8 +586,23 @@ drawTPS s = hBox (tpsInfo : rateInfo)
         ]
     | otherwise = []
 
+  tpf = s ^. uiState . uiGameplay . uiTiming . uiTPF
   l = s ^. uiState . uiGameplay . uiTiming . lgTicksPerSecond
   n = 2 ^ abs l
+
+tpsIndicator :: AppState -> Widget Name
+tpsIndicator s
+  = hBox [txt "(", str $ show tps, txt ") "]
+  -- = str (show $ round tps )
+
+  -- | (tps / target) < 0.9 = str (show $ round tps )
+  -- | otherwise = emptyWidget
+  where
+    tpf = s ^. uiState . uiGameplay . uiTiming . uiTPF
+    fps = s ^. uiState . uiGameplay . uiTiming . uiFPS
+    tps = tpf * fps
+    -- l = s ^. uiState . uiGameplay . uiTiming . lgTicksPerSecond
+    -- target = 2 ^^ l
 
 -- | The height of the REPL box.  Perhaps in the future this should be
 --   configurable.
