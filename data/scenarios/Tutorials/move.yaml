@@ -25,7 +25,7 @@ objectives:
 
         Previously you could move twice by chaining the move command:
 
-        `move; move`{=snippet}
+        `move; move`
 
         To reuse that command without having to retype it press the upward arrow on your keyboard.
         This will allow you to select previous commands.
@@ -55,7 +55,7 @@ objectives:
 
         Remember, you can chain commands with `;`{=snippet}, for example:
 
-        `move; move; move; move`{=snippet}
+        `move; move; move; move`
 
         You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
