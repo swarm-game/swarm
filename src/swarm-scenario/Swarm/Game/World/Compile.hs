@@ -24,10 +24,9 @@ import Data.Tagged (Tagged (unTagged))
 import Numeric.Noise.Perlin (noiseValue, perlin)
 import Swarm.Game.Location (pattern Location)
 import Swarm.Game.World.Abstract (BTerm (..))
-import Swarm.Game.World.Coords (Coords (..), coordsToLoc)
+import Swarm.Game.World.Coords (Coords (..), coordsToLoc, locToCoords)
 import Swarm.Game.World.Gen (Seed)
-import Swarm.Game.World.Interpret (interpReflect, interpRot)
-import Swarm.Game.World.Syntax (Axis (..), Rot, World)
+import Swarm.Game.World.Syntax (Axis (..), World)
 import Swarm.Game.World.Typecheck (Applicable (..), Const (..), Empty (..), NotFun, Over (..))
 import Witch (from)
 import Witch.Encoding qualified as Encoding
@@ -69,11 +68,10 @@ compileConst seed = \case
   CMask -> compileMask
   CSeed -> CConst (fromIntegral seed)
   CCoord ax -> CFun $ \(CConst (coordsToLoc -> Location x y)) -> CConst (fromIntegral (case ax of X -> x; Y -> y))
-  CHash -> compileHash
+  CHash -> compileHash seed
   CPerlin -> compilePerlin
-  CReflect ax -> compileReflect ax
-  CRot rot -> compileRot rot
   COver -> binary (<!>)
+  CIMap -> compileIMap
   K -> CFun $ \x -> CFun $ const x
   S -> CFun $ \f -> CFun $ \g -> CFun $ \x -> f $$ x $$ (g $$ x)
   I -> CFun id
@@ -94,10 +92,10 @@ compileMask = CFun $ \p -> CFun $ \a -> CFun $ \ix ->
   case p $$ ix of
     CConst b -> if b then a $$ ix else CConst empty
 
-compileHash :: CTerm (Coords -> Integer)
-compileHash = CFun $ \(CConst (Coords ix)) -> CConst (fromIntegral (h ix))
+compileHash :: Seed -> CTerm (Coords -> Integer)
+compileHash seed = CFun $ \(CConst (Coords ix)) -> CConst (fromIntegral (h ix))
  where
-  h = murmur3 0 . unTagged . from @String @(Encoding.UTF_8 ByteString) . show
+  h = murmur3 (fromIntegral seed) . unTagged . from @String @(Encoding.UTF_8 ByteString) . show
 
 compilePerlin :: CTerm (Integer -> Integer -> Double -> Double -> World Double)
 compilePerlin =
@@ -110,11 +108,15 @@ compilePerlin =
  where
   sample (i, j) noise = noiseValue noise (fromIntegral i / 2, fromIntegral j / 2, 0)
 
-compileReflect :: Axis -> CTerm (World a -> World a)
-compileReflect ax = CFun $ \w -> CFun $ \(CConst c) -> w $$ CConst (interpReflect ax c)
-
-compileRot :: Rot -> CTerm (World a -> World a)
-compileRot rot = CFun $ \w -> CFun $ \(CConst c) -> w $$ CConst (interpRot rot c)
+compileIMap :: NotFun a => CTerm (World Integer -> World Integer -> World a -> World a)
+compileIMap =
+  CFun $ \wx ->
+    CFun $ \wy ->
+      CFun $ \wa ->
+        CFun $ \c ->
+          let mkCoords :: CTerm Integer -> CTerm Integer -> CTerm Coords
+              mkCoords (CConst x) (CConst y) = CConst (locToCoords (Location (fromIntegral x) (fromIntegral y)))
+           in wa $$ mkCoords (wx $$ c) (wy $$ c)
 
 type family NoFunParams a :: Constraint where
   NoFunParams (a -> b) = (NotFun a, NoFunParams b)

@@ -123,6 +123,12 @@ entities:
     description:
       - Kit that can be unpacked into everything a robot needs to reproduce.
     properties: [known, pickable]
+  - name: wall
+    display:
+      char: '#'
+    description:
+      - Unmovable barrier
+    properties: [known, unwalkable, boundary]
 recipes:
   - in:
       - [1, repro kit]
@@ -185,13 +191,11 @@ world:
     'H': [stone, null, hauler]
     'Z': [stone, null, powerplant]
     'w': [grass]
+    'x': [stone, wall]
     's': [stone]
     'A': [stone, boulder]
     '┌': [stone, upper left corner]
     '┐': [stone, upper right corner]
-    '└': [stone, lower left corner]
-    '┘': [stone, lower right corner]
-    '─': [stone, horizontal wall]
     '│': [stone, vertical wall]
   upperleft: [0, 0]
   map: |-
@@ -203,11 +207,11 @@ world:
     ..AA......................
     ...A..A...............┌┐..
     ..A.................┌┐││..
-    .....A.............┌────┐.
-    ...................│sZss│.
-    .A.................└────┘.
+    .....A.............xxxxxx.
+    ...................xsZssx.
+    .A.................xxxxxx.
     .....A......B==========H=.
     ..........................
-    .............┌┐.┌──────┐..
-    w......A.....└┘.└──────┘..
+    .............xx.xxxxxxxx..
+    w......A.....xx.xxxxxxxx..
     ww........................

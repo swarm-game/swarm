@@ -58,10 +58,8 @@ import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Language.Capability
-import Swarm.Language.Context hiding (delete)
-import Swarm.Language.Pipeline
 import Swarm.Language.Pipeline.QQ (tmQ)
-import Swarm.Language.Requirement qualified as R
+import Swarm.Language.Requirements.Type qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Log
@@ -258,7 +256,8 @@ grantAchievement a = do
   when isGameModeValid $ do
     currentTime <- sendIO getZonedTime
     scenarioPath <- use currentScenarioPath
-    discovery . gameAchievements
+    discovery
+      . gameAchievements
       %= M.insertWith
         (<>)
         a
@@ -270,11 +269,11 @@ grantAchievement a = do
 --   be other exceptions added in the future.
 constCapsFor :: Const -> Robot -> Maybe Capability
 constCapsFor Move r
-  | r ^. robotHeavy = Just CMoveheavy
+  | r ^. robotHeavy = Just CMoveHeavy
 constCapsFor Backup r
-  | r ^. robotHeavy = Just CMoveheavy
+  | r ^. robotHeavy = Just CMoveHeavy
 constCapsFor Stride r
-  | r ^. robotHeavy = Just CMoveheavy
+  | r ^. robotHeavy = Just CMoveHeavy
 constCapsFor c _ = constCaps c
 
 -- | Requires that the target location is within one cell.
@@ -317,7 +316,7 @@ updateAvailableRecipes invs e = do
   knownRecipes <- use $ discovery . availableRecipes . notificationsContent
   let newRecipes = filter (`notElem` knownRecipes) usableRecipes
       newCount = length newRecipes
-  discovery . availableRecipes %= mappend (Notifications newCount newRecipes)
+  discovery . availableRecipes %= mappend (Notifications newCount (newCount > 0) newRecipes)
   updateAvailableCommands e
 
 updateAvailableCommands :: Has (State GameState) sig m => Entity -> m ()
@@ -330,7 +329,7 @@ updateAvailableCommands e = do
   knownCommands <- use $ discovery . availableCommands . notificationsContent
   let newCommands = filter (`notElem` knownCommands) entityConsts
       newCount = length newCommands
-  discovery . availableCommands %= mappend (Notifications newCount newCommands)
+  discovery . availableCommands %= mappend (Notifications newCount (newCount > 0) newCommands)
 
 ------------------------------------------------------------
 -- The "watch" command
@@ -477,7 +476,7 @@ addSeedBot ::
   m ()
 addSeedBot e (minT, maxT) seedlingCount seedlingRadius loc ts =
   zoomRobots
-    . addTRobot (initMachine seedProg empty emptyStore)
+    . addTRobot (initMachine seedProg)
     $ mkRobot
       Nothing
       "seed"
@@ -521,7 +520,7 @@ seedProgram ::
   Integer ->
   -- | entity to place
   EntityName ->
-  ProcessedTerm
+  TSyntax
 seedProgram minTime randTime seedlingCount seedlingRadius thing =
   [tmQ|
     def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;

@@ -13,10 +13,10 @@ module Swarm.Util (
   sortPair,
   maxOn,
   maximum0,
+  maximumNE,
   enumeratedMap,
   cycleEnum,
-  listEnums,
-  listEnumsNonempty,
+  enumerateNonEmpty,
   showEnum,
   indexWrapNonEmpty,
   uniq,
@@ -30,6 +30,7 @@ module Swarm.Util (
   prependList,
   deleteKeys,
   applyWhen,
+  applyJust,
   hoistMaybe,
   unsnocNE,
 
@@ -96,6 +97,7 @@ import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl', maximumBy, partition)
 import Data.List qualified as List
+import Data.List.Extra (enumerate)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -146,6 +148,11 @@ maximum0 :: (Num a, Ord a) => [a] -> a
 maximum0 [] = 0
 maximum0 xs = maximum xs
 
+-- | NOTE: We should be able to just use 'maximum' from "Data.Foldable1"
+-- but it is not available for ghc 9.2 and 9.4.
+maximumNE :: (Num a, Ord a) => NonEmpty a -> a
+maximumNE = maximum
+
 enumeratedMap :: Int -> [a] -> IntMap a
 enumeratedMap startIdx = IM.fromList . zip [startIdx ..]
 
@@ -156,13 +163,10 @@ cycleEnum e
   | e == maxBound = minBound
   | otherwise = succ e
 
-listEnums :: (Enum e, Bounded e) => [e]
-listEnums = [minBound .. maxBound]
-
--- | Members of the Bounded class are guaranteed to
--- have at least one element.
-listEnumsNonempty :: (Enum e, Bounded e) => NonEmpty e
-listEnumsNonempty = NE.fromList listEnums
+-- | See
+-- https://hackage.haskell.org/package/relude-1.2.1.0/docs/Relude-Enum.html#v:universeNonEmpty
+enumerateNonEmpty :: (Enum e, Bounded e) => NonEmpty e
+enumerateNonEmpty = minBound :| drop 1 enumerate
 
 -- | We know by the syntax rules of Haskell that constructor
 --  names must consist of one or more symbols!
@@ -275,6 +279,12 @@ prependList ls ne = case ls of
 applyWhen :: Bool -> (a -> a) -> a -> a
 applyWhen True f x = f x
 applyWhen False _ x = x
+
+-- |
+-- Equivalent to `fromMaybe id`.
+applyJust :: Maybe (a -> a) -> a -> a
+applyJust Nothing x = x
+applyJust (Just f) x = f x
 
 -- | Convert a 'Maybe' computation to 'MaybeT'.
 --

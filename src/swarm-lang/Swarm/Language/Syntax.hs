@@ -50,9 +50,12 @@ module Swarm.Language.Syntax (
   sType,
   sComments,
   Syntax,
+  TSyntax,
+  USyntax,
   pattern Syntax,
   pattern CSyntax,
   LocVar (..),
+  LetSyntax (..),
   pattern STerm,
   pattern TRequirements,
   pattern TPair,
@@ -60,18 +63,20 @@ module Swarm.Language.Syntax (
   pattern TApp,
   pattern (:$:),
   pattern TLet,
-  pattern TDef,
+  pattern TTydef,
   pattern TBind,
   pattern TDelay,
   pattern TRcd,
   pattern TProj,
   pattern TAnnotate,
+  pattern TSuspend,
 
   -- * Terms
   Var,
-  DelayType (..),
   Term' (..),
   Term,
+  TTerm,
+  UTerm,
   mkOp,
   mkOp',
   unfoldApps,
@@ -97,5 +102,6 @@ import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Constants
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.Syntax.Pattern
+import Swarm.Language.Syntax.Pretty ()
 import Swarm.Language.Syntax.Util
 import Swarm.Language.Types

@@ -22,6 +22,7 @@ module Swarm.Game.Display (
   defaultChar,
   orientationMap,
   curOrientation,
+  boundaryOverride,
   displayAttr,
   displayPriority,
   invisible,
@@ -31,15 +32,20 @@ module Swarm.Game.Display (
   displayChar,
   hidden,
 
+  -- ** Neighbor-based boundary rendering
+  getBoundaryDisplay,
+
   -- ** Construction
   defaultTerrainDisplay,
   defaultEntityDisplay,
   defaultRobotDisplay,
 ) where
 
+import Control.Applicative ((<|>))
 import Control.Lens hiding (Const, from, (.=))
 import Control.Monad (when)
 import Data.Hashable (Hashable)
+import Data.List.Extra (enumerate)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
@@ -49,7 +55,7 @@ import Data.Yaml
 import GHC.Generics (Generic)
 import Graphics.Text.Width
 import Swarm.Language.Syntax.Direction (AbsoluteDir (..), Direction (..))
-import Swarm.Util (maxOn, quote)
+import Swarm.Util (applyWhen, maxOn, quote)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml (FromJSONE (..), With (runE), getE, liftE, withObjectE)
 
@@ -89,6 +95,7 @@ data Display = Display
   { _defaultChar :: Char
   , _orientationMap :: Map AbsoluteDir Char
   , _curOrientation :: Maybe Direction
+  , _boundaryOverride :: Maybe Char
   , _displayAttr :: Attribute
   , _displayPriority :: Priority
   , _invisible :: Bool
@@ -116,6 +123,9 @@ orientationMap :: Lens' Display (Map AbsoluteDir Char)
 -- | The display caches the current orientation of the entity, so we
 --   know which character to use from the orientation map.
 curOrientation :: Lens' Display (Maybe Direction)
+
+-- | The display character to substitute when neighbor boundaries are present
+boundaryOverride :: Lens' Display (Maybe Char)
 
 -- | The attribute to use for display.
 displayAttr :: Lens' Display Attribute
@@ -146,6 +156,7 @@ instance FromJSONE Display Display where
 
     liftE $ do
       let _defaultChar = c
+          _boundaryOverride = Nothing
       _orientationMap <- v .:? "orientationMap" .!= dOM
       _curOrientation <- v .:? "curOrientation" .!= (defD ^. curOrientation)
       _displayAttr <- (v .:? "attr") .!= (defD ^. displayAttr)
@@ -179,9 +190,11 @@ instance ToJSON Display where
 
 -- | Look up the character that should be used for a display.
 displayChar :: Display -> Char
-displayChar disp = fromMaybe (disp ^. defaultChar) $ do
-  DAbsolute d <- disp ^. curOrientation
-  M.lookup d (disp ^. orientationMap)
+displayChar disp =
+  fromMaybe (disp ^. defaultChar) $
+    disp ^. boundaryOverride <|> do
+      DAbsolute d <- disp ^. curOrientation
+      M.lookup d (disp ^. orientationMap)
 
 -- | Modify a display to use a @?@ character for entities that are
 --   hidden/unknown.
@@ -204,6 +217,7 @@ defaultEntityDisplay c =
     { _defaultChar = c
     , _orientationMap = M.empty
     , _curOrientation = Nothing
+    , _boundaryOverride = Nothing
     , _displayAttr = AEntity
     , _displayPriority = 1
     , _invisible = False
@@ -227,6 +241,7 @@ defaultRobotDisplay =
           , (DSouth, 'v')
           , (DNorth, '^')
           ]
+    , _boundaryOverride = Nothing
     , _curOrientation = Nothing
     , _displayAttr = ARobot
     , _displayPriority = 10
@@ -236,3 +251,61 @@ defaultRobotDisplay =
 
 instance Monoid Display where
   mempty = defaultEntityDisplay ' ' & invisible .~ True
+
+-- * Boundary rendering
+
+-- | This type is isomorphic to 'Bool' but
+-- is more compact for readability of the
+-- 'glyphForNeighbors' cases.
+data Presence
+  = -- | present
+    X
+  | -- | absent
+    O
+
+emptyNeighbors :: Neighbors Presence
+emptyNeighbors = Neighbors O O O O
+
+data Neighbors a = Neighbors
+  { e :: a
+  , w :: a
+  , n :: a
+  , s :: a
+  }
+
+computeNeighborPresence :: (AbsoluteDir -> Bool) -> Neighbors Presence
+computeNeighborPresence checkPresence =
+  foldr assignPresence emptyNeighbors enumerate
+ where
+  assignPresence d = applyWhen (checkPresence d) $ setNeighbor d X
+
+setNeighbor :: AbsoluteDir -> a -> Neighbors a -> Neighbors a
+setNeighbor DNorth x y = y {n = x}
+setNeighbor DSouth x y = y {s = x}
+setNeighbor DEast x y = y {e = x}
+setNeighbor DWest x y = y {w = x}
+
+-- | For a center cell that itself is a boundary,
+-- determine a glyph override for rendering, given certain
+-- neighbor combinations.
+glyphForNeighbors :: Neighbors Presence -> Maybe Char
+glyphForNeighbors = \case
+  Neighbors {e = O, w = O, n = O, s = O} -> Nothing
+  Neighbors {e = X, w = O, n = O, s = O} -> Just '╶'
+  Neighbors {e = O, w = X, n = O, s = O} -> Just '╴'
+  Neighbors {e = X, w = X, n = O, s = O} -> Just '─'
+  Neighbors {e = O, w = O, n = X, s = O} -> Just '╵'
+  Neighbors {e = O, w = O, n = O, s = X} -> Just '╷'
+  Neighbors {e = O, w = O, n = X, s = X} -> Just '│'
+  Neighbors {e = X, w = O, n = X, s = O} -> Just '└'
+  Neighbors {e = X, w = O, n = O, s = X} -> Just '┌'
+  Neighbors {e = O, w = X, n = X, s = O} -> Just '┘'
+  Neighbors {e = O, w = X, n = O, s = X} -> Just '┐'
+  Neighbors {e = X, w = X, n = X, s = O} -> Just '┴'
+  Neighbors {e = X, w = X, n = O, s = X} -> Just '┬'
+  Neighbors {e = X, w = O, n = X, s = X} -> Just '├'
+  Neighbors {e = O, w = X, n = X, s = X} -> Just '┤'
+  Neighbors {e = X, w = X, n = X, s = X} -> Just '┼'
+
+getBoundaryDisplay :: (AbsoluteDir -> Bool) -> Maybe Char
+getBoundaryDisplay = glyphForNeighbors . computeNeighborPresence

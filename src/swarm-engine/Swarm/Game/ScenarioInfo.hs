@@ -56,11 +56,11 @@ import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Yaml as Y
-import Swarm.Game.Failure
-import Swarm.Game.ResourceLoading (getDataDirSafe, getSwarmSavePath)
+import Swarm.Failure
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize
 import Swarm.Game.Scenario.Status
+import Swarm.ResourceLoading (getDataDirSafe, getSwarmSavePath)
 import Swarm.Util.Effect (warn, withThrow)
 import System.Directory (canonicalizePath, doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (pathSeparator, splitDirectories, takeBaseName, takeExtensions, (-<.>), (</>))
@@ -148,19 +148,23 @@ flatten (SICollection _ c) = concatMap flatten $ scenarioCollectionToList c
 loadScenarios ::
   (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
   ScenarioInputs ->
+  Bool ->
   m ScenarioCollection
-loadScenarios scenarioInputs = do
+loadScenarios scenarioInputs loadTestScenarios = do
   res <- runThrow @SystemFailure $ getDataDirSafe Scenarios "scenarios"
   case res of
     Left err -> do
       warn err
       return $ SC mempty mempty
-    Right dataDir -> loadScenarioDir scenarioInputs dataDir
+    Right dataDir -> loadScenarioDir scenarioInputs loadTestScenarios dataDir
 
 -- | The name of the special file which indicates the order of
 --   scenarios in a folder.
 orderFileName :: FilePath
 orderFileName = "00-ORDER.txt"
+
+testingDirectory :: FilePath
+testingDirectory = "Testing"
 
 readOrderFile :: (Has (Lift IO) sig m) => FilePath -> m [String]
 readOrderFile orderFile =
@@ -171,15 +175,16 @@ readOrderFile orderFile =
 loadScenarioDir ::
   (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
   ScenarioInputs ->
+  Bool ->
   FilePath ->
   m ScenarioCollection
-loadScenarioDir scenarioInputs dir = do
+loadScenarioDir scenarioInputs loadTestScenarios dir = do
   let orderFile = dir </> orderFileName
       dirName = takeBaseName dir
   orderExists <- sendIO $ doesFileExist orderFile
   morder <- case orderExists of
     False -> do
-      when (dirName /= "Testing") . warn $
+      when (dirName /= testingDirectory) . warn $
         OrderFileWarning (dirName </> orderFileName) NoOrderFile
       return Nothing
     True -> Just <$> readOrderFile orderFile
@@ -204,7 +209,7 @@ loadScenarioDir scenarioInputs dir = do
   -- Only keep the files from 00-ORDER.txt that actually exist.
   let morder' = filter (`elem` itemPaths) <$> morder
       loadItem filepath = do
-        item <- loadScenarioItem scenarioInputs (dir </> filepath)
+        item <- loadScenarioItem scenarioInputs loadTestScenarios (dir </> filepath)
         return (filepath, item)
   scenarios <- mapM (runThrow @SystemFailure . loadItem) itemPaths
   let (failures, successes) = partitionEithers scenarios
@@ -224,7 +229,7 @@ loadScenarioDir scenarioInputs dir = do
     isDir <- doesDirectoryExist $ d </> f
     return $
       if isDir
-        then not $ "_" `isPrefixOf` f
+        then not ("_" `isPrefixOf` f) && (loadTestScenarios || f /= testingDirectory)
         else takeExtensions f == ".yaml"
 
 -- | How to transform scenario path to save path.
@@ -266,13 +271,14 @@ loadScenarioItem ::
   , Has (Lift IO) sig m
   ) =>
   ScenarioInputs ->
+  Bool ->
   FilePath ->
   m ScenarioItem
-loadScenarioItem scenarioInputs path = do
+loadScenarioItem scenarioInputs loadTestScenarios path = do
   isDir <- sendIO $ doesDirectoryExist path
   let collectionName = into @Text . dropWhile isSpace . takeBaseName $ path
   case isDir of
-    True -> SICollection collectionName <$> loadScenarioDir scenarioInputs path
+    True -> SICollection collectionName <$> loadScenarioDir scenarioInputs loadTestScenarios path
     False -> do
       s <- loadScenarioFile scenarioInputs path
       eitherSi <- runThrow @SystemFailure (loadScenarioInfo path)

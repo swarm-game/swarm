@@ -9,6 +9,7 @@ module Swarm.Game.Exception (
   Exn (..),
   IncapableFix (..),
   formatExn,
+  exnSeverity,
   IncapableFixWords (..),
 
   -- * Helper functions
@@ -28,9 +29,11 @@ import Swarm.Constant
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.Entity (EntityMap, devicesForCap, entityName)
 import Swarm.Language.Capability (Capability (CGod), capabilityName)
-import Swarm.Language.Pretty (prettyText)
-import Swarm.Language.Requirement (Requirements (..))
+import Swarm.Language.JSON ()
+import Swarm.Language.Requirements.Type (Requirements (..))
 import Swarm.Language.Syntax (Const, Term)
+import Swarm.Log (Severity (..))
+import Swarm.Pretty (prettyText)
 import Swarm.Util
 import Witch (from)
 
@@ -45,7 +48,7 @@ import Witch (from)
 -- >>> import Swarm.Language.Capability
 -- >>> import Swarm.Game.Entity
 -- >>> import Swarm.Game.Display
--- >>> import qualified Swarm.Language.Requirement as R
+-- >>> import qualified Swarm.Language.Requirements.Type as R
 
 -- ------------------------------------------------------------------
 
@@ -66,6 +69,11 @@ data Exn
     --   be caught by a @try@ block (but at least it will not crash
     --   the entire UI).
     Fatal Text
+  | -- | The user manually cancelled the computation (e.g. by hitting
+    --   Ctrl-C). This cannot be caught by a @try@ block, and results
+    --   in the CESK machine unwinding the stack all the way back to
+    --   the top level.
+    Cancel
   | -- | An infinite loop was detected via a blackhole.  This cannot
     --   be caught by a @try@ block.
     InfiniteLoop
@@ -93,10 +101,20 @@ formatExn em = \case
       , "Please report this as a bug at"
       , "<" <> swarmRepoUrl <> "issues/new>."
       ]
+  Cancel -> "Computation cancelled."
   InfiniteLoop -> "Infinite loop detected!"
   (CmdFailed c t _) -> T.concat [prettyText c, ": ", t]
   (User t) -> "Player exception: " <> t
   (Incapable f caps tm) -> formatIncapable em f caps tm
+
+exnSeverity :: Exn -> Severity
+exnSeverity = \case
+  Fatal {} -> Critical
+  Cancel {} -> Info
+  InfiniteLoop {} -> Error
+  Incapable {} -> Error
+  CmdFailed {} -> Error
+  User {} -> Error
 
 -- ------------------------------------------------------------------
 -- INCAPABLE HELPERS
@@ -121,11 +139,11 @@ formatIncapableFix = \case
 -- >>> import Data.Either (fromRight)
 -- >>> import Control.Carrier.Throw.Either (runThrow)
 -- >>> import Control.Algebra (run)
--- >>> import Swarm.Game.Failure (LoadingFailure)
+-- >>> import Swarm.Failure (LoadingFailure)
 -- >>> import qualified Data.Set as S
 -- >>> :set -XTypeApplications
--- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" mempty mempty (S.singleton CAppear)
--- >>> r = mkEntity (defaultEntityDisplay 'o') "the one ring" mempty mempty (S.singleton CAppear)
+-- >>> w = mkEntity (defaultEntityDisplay 'l') "magic wand" mempty mempty (S.singleton $ CExecute Appear)
+-- >>> r = mkEntity (defaultEntityDisplay 'o') "the one ring" mempty mempty (S.singleton $ CExecute Appear)
 -- >>> m = fromRight mempty . run . runThrow @LoadingFailure $ buildEntityMap [w,r]
 -- >>> incapableError cs t = putStr . unpack $ formatIncapable m FixByEquip cs t
 --
@@ -134,13 +152,13 @@ formatIncapableFix = \case
 --   'as'
 --   If God in troth thou wantest to play, try thou a Creative game.
 --
--- >>> incapableError (R.singletonCap CAppear) (TConst Appear)
+-- >>> incapableError (R.singletonCap $ CExecute Appear) (TConst Appear)
 -- You do not have the device required for:
 --   'appear'
 --   Please equip:
 --   - magic wand or the one ring
 --
--- >>> incapableError (R.singletonCap CRandom) (TConst Random)
+-- >>> incapableError (R.singletonCap $ CExecute Random) (TConst Random)
 -- Missing the random capability for:
 --   'random'
 --   but no device yet provides it. See

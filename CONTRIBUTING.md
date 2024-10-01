@@ -41,10 +41,7 @@ you are expected to uphold this code. Please report unacceptable behavior to
 
 - Bug to report or feature to request? Try the
   [GitHub issue tracker](https://github.com/swarm-game/swarm/swarm/issues).
-- Questions? Join the
-  `#swarm` IRC channel on the [Libera.Chat
-  network](https://libera.chat/). If you're not familiar with IRC you
-  can easily [connect via this web client](https://web.libera.chat/).
+- Questions? Join the [Swarm Discord server](https://discord.gg/kp8MuSgkPw).
 
 ## How can I contribute?
 
@@ -143,8 +140,8 @@ Fruit"](https://github.com/swarm-game/swarm/issues?q=is%3Aissue+is%3Aopen+label%
 in the issue tracker. These are bugs and features which should be
 appropriate for someone just getting started to tackle. If you want
 help understanding or getting started on a particular issue, feel free
-to leave a comment on the issue, or ask in the `#swarm` IRC
-channel on Libera.Chat.
+to leave a comment on the issue, or ask in the [Swarm Discord
+server](https://discord.gg/kp8MuSgkPw).
 
 ### Development Workflow
 
@@ -206,7 +203,7 @@ to build docs into `cabal.project.local`.
 ### Conventions
 
 We follow a few conventions to help keep everyone on the same page.
-Please open a pull request or ask on IRC if you have any questions or
+Please open a pull request or ask on Discord if you have any questions or
 suggestions.
 
 More conventions will be added as we think of and/or come up with
@@ -228,12 +225,12 @@ cabal install fourmolu-0.13.0.0
 If this installation does not work, you may have to set your GHC to a version supported by `fourmolu`:
 
 ```bash
-ghcup install ghc 9.4.5
+ghcup install ghc 9.8.2
 ```
 and/or:
 
 ```bash
-ghcup set ghc 9.4.5
+ghcup set ghc 9.8.2
 ```
 
 You can run the formatter from the shell:

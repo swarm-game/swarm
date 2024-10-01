@@ -12,9 +12,13 @@ module Swarm.TUI.Model (
   -- * Custom UI label types
   -- $uilabel
   AppEvent (..),
-  WebCommand (..),
   FocusablePanel (..),
-  Name (..),
+  Name (..), -- helps to minimize import lines
+
+  -- ** Web command
+  WebCommand (..),
+  WebInvocationState (..),
+  RejectionReason (..),
 
   -- * Menus and dialogs
   ModalType (..),
@@ -47,11 +51,17 @@ module Swarm.TUI.Model (
 
   -- ** Utility
   logEvent,
+  SwarmKeyDispatcher,
+  KeyEventHandlingState (KeyEventHandlingState),
+  SwarmKeyDispatchers (..),
+  keyConfig,
+  keyDispatchers,
 
   -- * App state
   AppState (AppState),
   gameState,
   uiState,
+  keyEventHandling,
   runtimeState,
 
   -- ** Initialization
@@ -62,13 +72,13 @@ module Swarm.TUI.Model (
   ColorMode (..),
 
   -- ** Utility
-  topContext,
   focusedItem,
   focusedEntity,
   nextScenario,
 ) where
 
-import Brick
+import Brick (EventM, ViewportScroll, viewportScroll)
+import Brick.Keybindings as BK
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
 import Control.Monad ((>=>))
@@ -76,6 +86,7 @@ import Control.Monad.State (MonadState)
 import Data.List (findIndex)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
+import Data.Set (Set)
 import Data.Text (Text)
 import Data.Vector qualified as V
 import GitHash (GitInfo)
@@ -84,8 +95,6 @@ import Network.Wai.Handler.Warp (Port)
 import Swarm.Game.Entity as E
 import Swarm.Game.Ingredients
 import Swarm.Game.Robot
-import Swarm.Game.Robot.Concrete
-import Swarm.Game.Robot.Context
 import Swarm.Game.Scenario.Status
 import Swarm.Game.ScenarioInfo (_SISingle)
 import Swarm.Game.State
@@ -93,15 +102,16 @@ import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World.Gen (Seed)
-import Swarm.Language.Typed (Typed (..))
-import Swarm.Language.Value (Value (VExc))
 import Swarm.Log
 import Swarm.TUI.Inventory.Sorting
+import Swarm.TUI.Model.DebugOption (DebugOption)
+import Swarm.TUI.Model.Event (SwarmEvent)
 import Swarm.TUI.Model.Menu
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
+import Swarm.TUI.Model.WebCommand (RejectionReason (..), WebCommand (..), WebInvocationState (..))
 import Swarm.Util.Lens (makeLensesNoSigs)
-import Swarm.Version (NewReleaseFailure)
 import Text.Fuzzy qualified as Fuzzy
 
 ------------------------------------------------------------
@@ -111,17 +121,13 @@ import Text.Fuzzy qualified as Fuzzy
 -- $uilabel These types are used as parameters to various @brick@
 -- types.
 
-newtype WebCommand = RunWebCode Text
-  deriving (Show)
-
 -- | 'Swarm.TUI.Model.AppEvent' represents a type for custom event types our app can
 --   receive. The primary custom event 'Frame' is sent by a separate thread as fast as
 --   it can, telling the TUI to render a new frame.
 data AppEvent
   = Frame
   | Web WebCommand
-  | UpstreamVersion (Either NewReleaseFailure String)
-  deriving (Show)
+  | UpstreamVersion (Either (Severity, Text) String)
 
 infoScroll :: ViewportScroll Name
 infoScroll = viewportScroll InfoViewport
@@ -144,6 +150,20 @@ logEvent src sev who msg el =
  where
   l = LogEntry (TickNumber 0) src sev who msg
 
+data KeyEventHandlingState = KeyEventHandlingState
+  { _keyConfig :: KeyConfig SwarmEvent
+  , _keyDispatchers :: SwarmKeyDispatchers
+  }
+
+type SwarmKeyDispatcher = KeyDispatcher SwarmEvent (EventM Name AppState)
+
+data SwarmKeyDispatchers = SwarmKeyDispatchers
+  { mainGameDispatcher :: SwarmKeyDispatcher
+  , replDispatcher :: SwarmKeyDispatcher
+  , worldDispatcher :: SwarmKeyDispatcher
+  , robotDispatcher :: SwarmKeyDispatcher
+  }
+
 -- ----------------------------------------------------------------------------
 --                                   APPSTATE                                --
 -- ----------------------------------------------------------------------------
@@ -156,43 +176,9 @@ logEvent src sev who msg el =
 data AppState = AppState
   { _gameState :: GameState
   , _uiState :: UIState
+  , _keyEventHandling :: KeyEventHandlingState
   , _runtimeState :: RuntimeState
   }
-
---------------------------------------------------
--- Lenses for AppState
-
-makeLensesNoSigs ''AppState
-
--- | The 'GameState' record.
-gameState :: Lens' AppState GameState
-
--- | The 'UIState' record.
-uiState :: Lens' AppState UIState
-
--- | The 'RuntimeState' record
-runtimeState :: Lens' AppState RuntimeState
-
---------------------------------------------------
--- Utility functions
-
--- | Get the currently focused 'InventoryListEntry' from the robot
---   info panel (if any).
-focusedItem :: AppState -> Maybe InventoryListEntry
-focusedItem s = do
-  list <- s ^? uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
-  (_, entry) <- BL.listSelectedElement list
-  return entry
-
--- | Get the currently focused entity from the robot info panel (if
---   any).  This is just like 'focusedItem' but forgets the
---   distinction between plain inventory items and equipped devices.
-focusedEntity :: AppState -> Maybe Entity
-focusedEntity =
-  focusedItem >=> \case
-    Separator _ -> Nothing
-    InventoryEntry _ e -> Just e
-    EquippedEntry e -> Just e
 
 ------------------------------------------------------------
 -- Functions for updating the UI state
@@ -266,12 +252,16 @@ data AppOpts = AppOpts
   -- ^ Scenario the user wants to play.
   , scriptToRun :: Maybe FilePath
   -- ^ Code to be run on base.
+  , pausedAtStart :: Bool
+  -- ^ Pause the game on start by default.
   , autoPlay :: Bool
   -- ^ Automatically run the solution defined in the scenario file
+  , autoShowObjectives :: Bool
+  -- ^ Show objectives dialogs when an objective is achieved/failed.
   , speed :: Int
   -- ^ Initial game speed (logarithm)
-  , cheatMode :: Bool
-  -- ^ Should cheat mode be enabled?
+  , debugOptions :: Set DebugOption
+  -- ^ Debugging options, for example show creative switch.
   , colorMode :: Maybe ColorMode
   -- ^ What colour mode should be used?
   , userWebPort :: Maybe Port
@@ -287,9 +277,11 @@ defaultAppOpts =
     { userSeed = Nothing
     , userScenario = Nothing
     , scriptToRun = Nothing
+    , pausedAtStart = False
+    , autoShowObjectives = True
     , autoPlay = False
     , speed = defaultInitLgTicksPerSecond
-    , cheatMode = False
+    , debugOptions = mempty
     , colorMode = Nothing
     , userWebPort = Nothing
     , repoGitInfo = Nothing
@@ -309,15 +301,51 @@ nextScenario = \case
           else BL.listSelectedElement nextMenuList >>= preview _SISingle . snd
   _ -> Nothing
 
--- | Context for the REPL commands to execute in. Contains the base
---   robot context plus the `it` variable that refer to the previously
---   computed values. (Note that `it{n}` variables are set in the
---   base robot context; we only set `it` here because it's so transient)
-topContext :: AppState -> RobotContext
-topContext s = ctxPossiblyWithIt
- where
-  ctx = fromMaybe emptyRobotContext $ s ^? gameState . baseRobot . robotContext
+--------------------------------------------------
+-- Lenses for KeyEventHandlingState
 
-  ctxPossiblyWithIt = case s ^. gameState . gameControls . replStatus of
-    REPLDone (Just p@(Typed v _ _)) | v /= VExc -> ctx & at "it" ?~ p
-    _ -> ctx
+makeLensesNoSigs ''KeyEventHandlingState
+
+-- | Keybindings (possibly customized by player) for 'SwarmEvent's.
+keyConfig :: Lens' KeyEventHandlingState (KeyConfig SwarmEvent)
+
+-- | Dispatchers that will call handler on key combo.
+keyDispatchers :: Lens' KeyEventHandlingState SwarmKeyDispatchers
+
+--------------------------------------------------
+-- Lenses for AppState
+
+makeLensesNoSigs ''AppState
+
+-- | The 'GameState' record.
+gameState :: Lens' AppState GameState
+
+-- | The 'UIState' record.
+uiState :: Lens' AppState UIState
+
+-- | The key event handling configuration.
+keyEventHandling :: Lens' AppState KeyEventHandlingState
+
+-- | The 'RuntimeState' record
+runtimeState :: Lens' AppState RuntimeState
+
+--------------------------------------------------
+-- Utility functions
+
+-- | Get the currently focused 'InventoryListEntry' from the robot
+--   info panel (if any).
+focusedItem :: AppState -> Maybe InventoryListEntry
+focusedItem s = do
+  list <- s ^? uiState . uiGameplay . uiInventory . uiInventoryList . _Just . _2
+  (_, entry) <- BL.listSelectedElement list
+  return entry
+
+-- | Get the currently focused entity from the robot info panel (if
+--   any).  This is just like 'focusedItem' but forgets the
+--   distinction between plain inventory items and equipped devices.
+focusedEntity :: AppState -> Maybe Entity
+focusedEntity =
+  focusedItem >=> \case
+    Separator _ -> Nothing
+    InventoryEntry _ e -> Just e
+    EquippedEntry e -> Just e

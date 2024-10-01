@@ -13,17 +13,9 @@
 -- conditions, which can be used both for building interactive
 -- tutorials and for standalone puzzles and scenarios.
 module Swarm.Game.Scenario (
-  -- * WorldDescription
-  PCell (..),
-  Cell,
-  PWorldDescription (..),
-  WorldDescription,
-  IndexedTRobot,
-
   -- * Scenario
   Scenario (..),
   ScenarioLandscape (..),
-  StaticStructureInfo (..),
   ScenarioMetadata (ScenarioMetadata),
   staticPlacements,
   structureDefs,
@@ -81,16 +73,15 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Swarm.Failure
 import Swarm.Game.Entity
 import Swarm.Game.Entity.Cosmetic
 import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
-import Swarm.Game.Failure
 import Swarm.Game.Land
-import Swarm.Game.Location
+import Swarm.Game.Location (Location)
 import Swarm.Game.Recipe
-import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Robot (TRobot, trobotLocation, trobotName)
-import Swarm.Game.Scenario.Objective
+import Swarm.Game.Scenario.Objective (Objective)
 import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Style
@@ -99,19 +90,20 @@ import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (Parentage (..))
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
+import Swarm.Game.Scenario.Topography.Structure.Named qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Overlay
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (SymmetryAnnotatedGrid (..))
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Terrain
 import Swarm.Game.Universe
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Game.World.Load (loadWorlds)
 import Swarm.Game.World.Typecheck (WorldMap)
-import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Language.Pretty (prettyText)
-import Swarm.Language.Syntax (Syntax)
+import Swarm.Language.Syntax (Syntax, TSyntax)
 import Swarm.Language.Text.Markdown (Document)
+import Swarm.Pretty (prettyText)
+import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util (binTuples, commaList, failT, quote)
 import Swarm.Util.Effect (ignoreWarnings, throwToMaybe, withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
@@ -119,22 +111,6 @@ import Swarm.Util.Yaml
 import System.Directory (doesFileExist)
 import System.FilePath ((<.>), (</>))
 import System.Random (randomRIO)
-
-data StaticStructureInfo = StaticStructureInfo
-  { _structureDefs :: [SymmetryAnnotatedGrid (Maybe Cell)]
-  , _staticPlacements :: M.Map SubworldName [Structure.LocatedStructure]
-  }
-  deriving (Show)
-
-makeLensesNoSigs ''StaticStructureInfo
-
--- | Structure templates that may be auto-recognized when constructed
--- by a robot
-structureDefs :: Lens' StaticStructureInfo [SymmetryAnnotatedGrid (Maybe Cell)]
-
--- | A record of the static placements of structures, so that they can be
--- added to the "recognized" list upon scenario initialization
-staticPlacements :: Lens' StaticStructureInfo (M.Map SubworldName [Structure.LocatedStructure])
 
 -- * Scenario records
 
@@ -175,7 +151,7 @@ data ScenarioOperation = ScenarioOperation
   -- ^ Note: the description is in this record instead of
   -- 'ScenarioMetadata' because it relates to the goals.
   , _scenarioObjectives :: [Objective]
-  , _scenarioSolution :: Maybe ProcessedTerm
+  , _scenarioSolution :: Maybe TSyntax
   , _scenarioRecipes :: [Recipe Entity]
   , _scenarioStepsPerTick :: Maybe Int
   }
@@ -199,7 +175,7 @@ scenarioObjectives :: Lens' ScenarioOperation [Objective]
 -- | An optional solution of the scenario, expressed as a
 --   program of type @cmd a@. This is useful for automated
 --   testing of the win condition.
-scenarioSolution :: Lens' ScenarioOperation (Maybe ProcessedTerm)
+scenarioSolution :: Lens' ScenarioOperation (Maybe TSyntax)
 
 -- | Optionally, specify the maximum number of steps each robot may
 --   take during a single tick.
@@ -214,7 +190,7 @@ data ScenarioLandscape = ScenarioLandscape
   , _scenarioKnown :: Set EntityName
   , _scenarioWorlds :: NonEmpty WorldDescription
   , _scenarioNavigation :: Navigation (M.Map SubworldName) Location
-  , _scenarioStructures :: StaticStructureInfo
+  , _scenarioStructures :: StaticStructureInfo Cell
   , _scenarioRobots :: [TRobot]
   }
   deriving (Show)
@@ -244,7 +220,7 @@ scenarioKnown :: Lens' ScenarioLandscape (Set EntityName)
 scenarioWorlds :: Lens' ScenarioLandscape (NonEmpty WorldDescription)
 
 -- | Information required for structure recognition
-scenarioStructures :: Lens' ScenarioLandscape StaticStructureInfo
+scenarioStructures :: Lens' ScenarioLandscape (StaticStructureInfo Cell)
 
 -- | Waypoints and inter-world portals
 scenarioNavigation :: Lens' ScenarioLandscape (Navigation (M.Map SubworldName) Location)

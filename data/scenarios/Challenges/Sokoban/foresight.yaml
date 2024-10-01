@@ -92,7 +92,7 @@ entities:
       char: '#'
     description:
       - Unmovable barrier
-    properties: [known, unwalkable]
+    properties: [known, unwalkable, boundary]
 known: [mountain, water, 3D printer, flower]
 world:
   dsl: |

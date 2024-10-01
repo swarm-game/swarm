@@ -2,6 +2,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -77,6 +78,9 @@ module Swarm.Language.Types (
   ucata,
   mkVarName,
   fuvs,
+  hasAnyUVars,
+  isTopLevelConstructor,
+  UnchainableFun (..),
 
   -- * Polytypes
   Poly (..),
@@ -94,13 +98,18 @@ module Swarm.Language.Types (
   tydefArity,
   substTydef,
   expandTydef,
+  elimTydef,
   TDCtx,
+
+  -- * WHNF
+  whnfType,
 
   -- * The 'WithU' class
   WithU (..),
 ) where
 
-import Control.Algebra (Has)
+import Control.Algebra (Has, run)
+import Control.Carrier.Reader (runReader)
 import Control.Effect.Reader (Reader, ask)
 import Control.Lens (makeLenses, view)
 import Control.Monad.Free
@@ -110,6 +119,8 @@ import Data.Eq.Deriving (deriveEq1)
 import Data.Fix
 import Data.Foldable (fold)
 import Data.Kind qualified
+import Data.List.NonEmpty ((<|))
+import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe)
@@ -120,9 +131,11 @@ import Data.String (IsString (..))
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic, Generic1)
+import Prettyprinter (align, braces, brackets, concatWith, flatAlt, hsep, pretty, punctuate, softline, (<+>))
 import Swarm.Language.Context (Ctx, Var)
 import Swarm.Language.Context qualified as Ctx
-import Swarm.Util (parens, showT)
+import Swarm.Pretty (PrettyPrec (..), pparens, pparens', ppr, prettyBinding)
+import Swarm.Util (parens, showT, unsnocNE)
 import Swarm.Util.JSON (optionsMinimize, optionsUnwrapUnary)
 import Text.Show.Deriving (deriveShow1)
 import Witch
@@ -157,6 +170,9 @@ data BaseTy
 baseTyName :: BaseTy -> Text
 baseTyName = into @Text . drop 1 . show
 
+instance PrettyPrec BaseTy where
+  prettyPrec _ = pretty . drop 1 . show
+
 ------------------------------------------------------------
 -- Type constructors
 ------------------------------------------------------------
@@ -185,6 +201,16 @@ instance ToJSON TyCon where
 instance FromJSON TyCon where
   parseJSON = genericParseJSON optionsMinimize
 
+instance PrettyPrec TyCon where
+  prettyPrec _ = \case
+    TCBase b -> ppr b
+    TCCmd -> "Cmd"
+    TCDelay -> "Delay"
+    TCSum -> "Sum"
+    TCProd -> "Prod"
+    TCFun -> "Fun"
+    TCUser t -> pretty t
+
 -- | The arity of a type, /i.e./ the number of type parameters it
 --   expects.
 newtype Arity = Arity {getArity :: Int}
@@ -195,6 +221,9 @@ instance ToJSON Arity where
 
 instance FromJSON Arity where
   parseJSON = genericParseJSON optionsUnwrapUnary
+
+instance PrettyPrec Arity where
+  prettyPrec _ (Arity a) = pretty a
 
 ------------------------------------------------------------
 -- Types
@@ -258,6 +287,9 @@ tyVars = foldFix (\case TyVarF x -> S.singleton x; f -> fold f)
 newtype IntVar = IntVar Int
   deriving (Show, Data, Eq, Ord)
 
+instance PrettyPrec IntVar where
+  prettyPrec _ = pretty . mkVarName "u"
+
 -- | 'UType's are like 'Type's, but also contain unification
 --   variables.  'UType' is defined via 'Free', which is also a kind
 --   of fixed point (in fact, @Free TypeF@ is the /free monad/ over
@@ -283,12 +315,108 @@ mkVarName nm (IntVar v) = T.append nm (from @String (show v))
 fuvs :: UType -> Set IntVar
 fuvs = ucata S.singleton fold
 
+-- | Check whether a type contains any unification variables at all.
+hasAnyUVars :: UType -> Bool
+hasAnyUVars = ucata (const True) or
+
+-- | Check whether a type consists of a top-level type constructor
+--   immediately applied to unification variables.
+isTopLevelConstructor :: UType -> Maybe (TypeF ())
+isTopLevelConstructor = \case
+  Free (TyRcdF m) | all isPure m -> Just (TyRcdF M.empty)
+  UTyConApp c ts | all isPure ts -> Just (TyConF c [])
+  _ -> Nothing
+
+isPure :: Free f a -> Bool
+isPure (Pure {}) = True
+isPure _ = False
+
 -- | For convenience, so we can write /e.g./ @"a"@ instead of @TyVar "a"@.
 instance IsString Type where
   fromString x = TyVar (from @String x)
 
 instance IsString UType where
   fromString x = UTyVar (from @String x)
+
+--------------------------------------------------
+-- Recursive type utilities
+
+-- | @unfoldRec x t@ unfolds the recursive type @rec x. t@ one step,
+--   to @t [(rec x. t) / x]@.
+unfoldRec :: SubstRec t => Var -> t -> t
+unfoldRec x ty = substRec (TyRecF x ty) ty NZ
+
+-- | Class of type-like things where we can substitute for a bound de
+--   Bruijn variable.
+class SubstRec t where
+  -- | @substRec s t n@ substitutes @s@ for the bound de Bruijn variable
+  --   @n@ everywhere in @t@.
+  substRec :: TypeF t -> t -> Nat -> t
+
+instance SubstRec (Free TypeF v) where
+  substRec s = ucata (\i _ -> Pure i) $ \f i -> case f of
+    TyRecVarF j
+      | i == j -> Free s
+      | otherwise -> Free (TyRecVarF j)
+    TyRecF x g -> Free (TyRecF x (g (NS i)))
+    _ -> Free (fmap ($ i) f)
+
+instance SubstRec Type where
+  substRec s = foldFix $ \f i -> case f of
+    TyRecVarF j
+      | i == j -> Fix s
+      | otherwise -> Fix (TyRecVarF j)
+    TyRecF x g -> Fix (TyRecF x (g (NS i)))
+    _ -> Fix (fmap ($ i) f)
+
+--------------------------------------------------
+-- Pretty-printing machinery for types
+
+-- | Split a function type chain, so that we can pretty print
+--   the type parameters aligned on each line when they don't fit.
+class UnchainableFun t where
+  unchainFun :: t -> NE.NonEmpty t
+
+instance UnchainableFun Type where
+  unchainFun (a :->: ty) = a <| unchainFun ty
+  unchainFun ty = pure ty
+
+instance UnchainableFun (Free TypeF ty) where
+  unchainFun (Free (TyConF TCFun [ty1, ty2])) = ty1 <| unchainFun ty2
+  unchainFun ty = pure ty
+
+instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) where
+  prettyPrec p = \case
+    TyVarF v -> pretty v
+    TyRcdF m -> brackets $ hsep (punctuate "," (map prettyBinding (M.assocs m)))
+    -- Special cases for type constructors with special syntax.
+    -- Always use parentheses around sum and product types, see #1625
+    TyConF TCSum [ty1, ty2] ->
+      pparens (p > 0) $
+        prettyPrec 2 ty1 <+> "+" <+> prettyPrec 2 ty2
+    TyConF TCProd [ty1, ty2] ->
+      pparens (p > 0) $
+        prettyPrec 2 ty1 <+> "*" <+> prettyPrec 2 ty2
+    TyConF TCDelay [ty] -> braces $ ppr ty
+    TyConF TCFun [ty1, ty2] ->
+      let (iniF, lastF) = unsnocNE $ ty1 <| unchainFun ty2
+          funs = (prettyPrec 2 <$> iniF) <> [prettyPrec 1 lastF]
+          inLine l r = l <+> "->" <+> r
+          multiLine l r = l <+> "->" <> softline <> r
+       in pparens' (p > 1) . align $
+            flatAlt (concatWith multiLine funs) (concatWith inLine funs)
+    TyRecF x ty ->
+      pparens (p > 0) $
+        "rec" <+> pretty x <> "." <+> prettyPrec 0 (substRec (TyVarF x) ty NZ)
+    -- This case shouldn't be possible, since TyRecVar should only occur inside a TyRec,
+    -- and pretty-printing the TyRec (above) will substitute a variable name for
+    -- any bound TyRecVars before recursing.
+    TyRecVarF i -> pretty (show (natToInt i))
+    -- Fallthrough cases for type constructor application.  Handles base
+    -- types, Cmd, user-defined types, or ill-kinded things like 'Int
+    -- Bool'.
+    TyConF c [] -> ppr c
+    TyConF c tys -> pparens (p > 9) $ ppr c <+> hsep (map (prettyPrec 10) tys)
 
 ------------------------------------------------------------
 -- Generic folding over type representations
@@ -316,14 +444,22 @@ instance Typical UType where
 -- | A @Poly t@ is a universally quantified @t@.  The variables in the
 --   list are bound inside the @t@.  For example, the type @forall
 --   a. a -> a@ would be represented as @Forall ["a"] (TyFun "a" "a")@.
-data Poly t = Forall [Var] t
+data Poly t = Forall {ptVars :: [Var], ptBody :: t}
   deriving (Show, Eq, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
 -- | A polytype without unification variables.
 type Polytype = Poly Type
 
+instance PrettyPrec Polytype where
+  prettyPrec _ (Forall [] t) = ppr t
+  prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
+
 -- | A polytype with unification variables.
 type UPolytype = Poly UType
+
+instance PrettyPrec UPolytype where
+  prettyPrec _ (Forall [] t) = ppr t
+  prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
 
 ------------------------------------------------------------
 -- WithU
@@ -566,6 +702,17 @@ substTydef (TydefInfo (Forall as ty) _) tys = foldT @t substF (fromType ty)
     Just ty' -> ty'
   substF tyF = rollT tyF
 
+-- | Replace a type alias with its definition everywhere it occurs
+--   inside a type.  Typically this is done when reporting the type of
+--   a term containing a local tydef: since the tydef is local we
+--   can't use it in the reported type.
+elimTydef :: forall t. Typical t => Var -> TydefInfo -> t -> t
+elimTydef x tdInfo = foldT substF
+ where
+  substF = \case
+    TyConF (TCUser u) tys | u == x -> substTydef tdInfo tys
+    tyF -> rollT tyF
+
 ------------------------------------------------------------
 -- Arity
 ------------------------------------------------------------
@@ -586,33 +733,17 @@ tcArity tydefs =
     TCUser t -> getArity . view tydefArity <$> Ctx.lookup t tydefs
 
 ------------------------------------------------------------
--- Recursive type utilities
+-- Reducing types to WHNF
 ------------------------------------------------------------
 
--- | @unfoldRec x t@ unfolds the recursive type @rec x. t@ one step,
---   to @t [(rec x. t) / x]@.
-unfoldRec :: SubstRec t => Var -> t -> t
-unfoldRec x ty = substRec (TyRecF x ty) ty NZ
-
--- | Class of type-like things where we can substitute for a bound de
---   Bruijn variable.
-class SubstRec t where
-  -- | @substRec s t n@ substitutes @s@ for the bound de Bruijn variable
-  --   @n@ everywhere in @t@.
-  substRec :: TypeF t -> t -> Nat -> t
-
-instance SubstRec (Free TypeF v) where
-  substRec s = ucata (\i _ -> Pure i) $ \f i -> case f of
-    TyRecVarF j
-      | i == j -> Free s
-      | otherwise -> Free (TyRecVarF j)
-    TyRecF x g -> Free (TyRecF x (g (NS i)))
-    _ -> Free (fmap ($ i) f)
-
-instance SubstRec Type where
-  substRec s = foldFix $ \f i -> case f of
-    TyRecVarF j
-      | i == j -> Fix s
-      | otherwise -> Fix (TyRecVarF j)
-    TyRecF x g -> Fix (TyRecF x (g (NS i)))
-    _ -> Fix (fmap ($ i) f)
+-- | Reduce a type to weak head normal form, i.e. keep unfold type
+--   aliases and recursive types just until the top-level constructor
+--   of the type is neither @rec@ nor an application of a type alias.
+whnfType :: TDCtx -> Type -> Type
+whnfType tdCtx = run . runReader tdCtx . go
+ where
+  go :: Has (Reader TDCtx) sig m => Type -> m Type
+  go = \case
+    TyUser u tys -> expandTydef u tys >>= go
+    TyRec x ty -> go (unfoldRec x ty)
+    ty -> pure ty

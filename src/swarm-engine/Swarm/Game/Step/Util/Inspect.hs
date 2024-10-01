@@ -9,6 +9,7 @@ import Control.Effect.Lens
 import Control.Lens hiding (from, use, (%=), (<.>))
 import Data.IntMap qualified as IM
 import Data.List (find)
+import Data.List.Extra (enumerate)
 import Data.Text (Text)
 import Swarm.Game.Location
 import Swarm.Game.Robot
@@ -16,12 +17,11 @@ import Swarm.Game.State
 import Swarm.Game.State.Robot
 import Swarm.Game.Universe
 import Swarm.Language.Syntax.Direction
-import Swarm.Util (listEnums)
 
 -- * World queries
 
 getNeighborLocs :: Cosmic Location -> [Cosmic Location]
-getNeighborLocs loc = map (offsetBy loc . flip applyTurn north . DRelative . DPlanar) listEnums
+getNeighborLocs loc = map (offsetBy loc . flip applyTurn north . DRelative . DPlanar) enumerate
 
 -- | Get the robot with a given ID.
 robotWithID :: (Has (State GameState) sig m) => RID -> m (Maybe Robot)

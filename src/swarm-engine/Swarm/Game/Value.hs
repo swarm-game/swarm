@@ -9,7 +9,9 @@
 module Swarm.Game.Value where
 
 import Control.Lens (view)
+import Data.Either.Extra (maybeToEither)
 import Data.Int (Int32)
+import Data.List (uncons)
 import Data.Text (Text)
 import Linear (V2 (..))
 import Swarm.Game.Entity
@@ -72,12 +74,14 @@ instance Valuable Direction where
   asValue = VDir
 
 instance (Valuable a) => Valuable (Maybe a) where
-  asValue Nothing = VInj False VUnit
-  asValue (Just x) = VInj True $ asValue x
+  asValue = asValue . maybeToEither ()
 
 instance (Valuable a, Valuable b) => Valuable (Either a b) where
   asValue (Left x) = VInj False $ asValue x
   asValue (Right x) = VInj True $ asValue x
+
+instance Valuable a => Valuable [a] where
+  asValue = asValue . uncons
 
 instance Valuable AreaDimensions where
   asValue (AreaDimensions w h) = asValue (w, h)

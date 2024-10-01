@@ -4,19 +4,17 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Topography.WorldPalette where
 
-import Control.Arrow (first)
 import Control.Lens hiding (from, (.=), (<.>))
 import Data.Aeson.KeyMap qualified as KM
 import Data.Map qualified as M
 import Data.Maybe (catMaybes)
 import Data.Set qualified as Set
-import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Tuple (swap)
 import Swarm.Game.Entity
-import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.ProtoCell
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Util.Erasable
@@ -43,10 +41,10 @@ toKey = fmap $ fmap (\(EntityFacade eName _display) -> eName)
 -- (terrain, entity name) key, and couple it with the original
 -- (terrain, entity facade) pair in a Map.
 getUniqueTerrainFacadePairs ::
-  [[CellPaintDisplay]] ->
+  [CellPaintDisplay] ->
   M.Map (TerrainWith EntityName) (TerrainWith EntityFacade)
 getUniqueTerrainFacadePairs cellGrid =
-  M.fromList $ concatMap (map genTuple) cellGrid
+  M.fromList $ map genTuple cellGrid
  where
   genTuple c =
     (toKey terrainEfd, terrainEfd)
@@ -67,9 +65,9 @@ constructWorldMap ::
   -- | Mask char
   Char ->
   Grid (Maybe CellPaintDisplay) ->
-  Text
+  String
 constructWorldMap mappedPairs maskChar =
-  T.unlines . map (T.pack . map renderMapCell) . unGrid
+  unlines . getRows . fmap renderMapCell
  where
   invertedMappedPairs = map (swap . fmap toKey) mappedPairs
 
@@ -100,18 +98,17 @@ data PaletteAndMaskChar = PaletteAndMaskChar
 prepForJson ::
   PaletteAndMaskChar ->
   Grid (Maybe CellPaintDisplay) ->
-  (Text, KM.KeyMap CellPaintDisplay)
+  (String, KM.KeyMap CellPaintDisplay)
 prepForJson (PaletteAndMaskChar (StructurePalette suggestedPalette) maybeMaskChar) cellGrid =
   (constructWorldMap mappedPairs maskCharacter cellGrid, constructPalette mappedPairs)
  where
   preassignments :: [(Char, TerrainWith EntityFacade)]
   preassignments =
-    map (first T.head . fmap (cellToTerrainPair . standardCell)) $
-      M.toList $
-        KM.toMapText suggestedPalette
+    map (fmap (cellToTerrainPair . standardCell)) $
+      M.toList suggestedPalette
 
   entityCells :: M.Map (TerrainWith EntityName) (TerrainWith EntityFacade)
-  entityCells = getUniqueTerrainFacadePairs $ map catMaybes $ unGrid cellGrid
+  entityCells = getUniqueTerrainFacadePairs $ catMaybes $ allMembers cellGrid
 
   unassignedCells :: M.Map (TerrainWith EntityName) (TerrainWith EntityFacade)
   unassignedCells =

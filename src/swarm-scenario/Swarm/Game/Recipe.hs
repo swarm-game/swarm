@@ -67,10 +67,10 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
+import Swarm.Failure
 import Swarm.Game.Entity as E
-import Swarm.Game.Failure
 import Swarm.Game.Ingredients
-import Swarm.Game.ResourceLoading (getDataFileNameSafe)
+import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml

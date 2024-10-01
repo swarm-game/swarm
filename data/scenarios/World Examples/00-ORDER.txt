@@ -1,0 +1,4 @@
+clearing.yaml
+rorschach.yaml
+stretch.yaml
+translate.yaml

@@ -1,5 +1,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -13,7 +14,9 @@ module Swarm.Effect.Unify where
 import Control.Algebra
 import Data.Kind (Type)
 import Data.Set (Set)
+import Prettyprinter
 import Swarm.Language.Types hiding (Type)
+import Swarm.Pretty (PrettyPrec (..), ppr, reportBug)
 
 -- | Data type representing available unification operations.
 data Unification (m :: Type -> Type) k where
@@ -56,3 +59,20 @@ data UnificationError where
   --   should never happen.
   UnexpandedRecTy :: TypeF UType -> UnificationError
   deriving (Show)
+
+instance PrettyPrec UnificationError where
+  prettyPrec _ = \case
+    Infinite x uty ->
+      vsep
+        [ "Encountered infinite type" <+> ppr x <+> "=" <+> ppr uty <> "."
+        , "Swarm will not infer recursive types; if you want a recursive type, add an explicit type annotation."
+        ]
+    UnifyErr ty1 ty2 ->
+      "Can't unify" <+> ppr ty1 <+> "and" <+> ppr ty2
+    UndefinedUserType ty ->
+      "Undefined user type" <+> ppr ty
+    UnexpandedRecTy ty ->
+      vsep
+        [ "Unexpanded recursive type" <+> ppr ty <+> "encountered in unifyF."
+        , reportBug
+        ]

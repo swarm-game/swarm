@@ -11,10 +11,11 @@ import Data.IntMap qualified as IM
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Servant.Docs qualified as SD
-import Swarm.Game.Entity.Cosmetic (RGBColor, flattenBg)
+import Swarm.Game.Entity.Cosmetic (RGBColor, flattenBg, fromHiFi)
 import Swarm.Game.Scenario (Scenario, scenarioCosmetics, scenarioLandscape)
 import Swarm.Game.Scenario.Style
-import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..), Grid)
+import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..))
+import Swarm.Game.Scenario.Topography.Grid (Grid)
 import Swarm.Game.State (GameState, landscape, robotInfo)
 import Swarm.Game.State.Robot (viewCenter)
 import Swarm.Game.Universe (planar)

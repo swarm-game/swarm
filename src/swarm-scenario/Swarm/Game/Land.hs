@@ -16,8 +16,8 @@ import Control.Effect.Lift (Lift)
 import Control.Effect.Throw (Throw)
 import Control.Lens (makeLenses)
 import GHC.Generics (Generic)
+import Swarm.Failure (SystemFailure)
 import Swarm.Game.Entity
-import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Terrain
 
 data TerrainEntityMaps = TerrainEntityMaps

@@ -1,0 +1,72 @@
+queue_rules:
+  - name: default
+    merge_method: squash
+    commit_message_template: |
+      {{ title }} (#{{ number }})
+
+      {{ body }}
+    queue_conditions:
+      - or:
+        - and:
+          - -files~=\.hs$
+          - -files~=\.sw$
+          - -files~=\.cabal$
+          - -files=stack.yaml
+          - -files~=cabal.project.*
+          - -files~=^[^/]*\.yaml$
+          - -files~=^data/.*\.yaml$
+        - and:
+          - or:
+            - check-success=Enforce issue references
+            - -files~=\.hs$
+          - or:
+            - check-success=Normalize cabal
+            - -files~=\.cabal$
+          - or:
+            - check-success=HLint
+            - -files~=\.hs$
+          - check-success=Haskell-CI - Linux - ghc-9.8.2
+          - check-success=Haskell-CI - Linux - ghc-9.6.5
+          - check-success=Haskell-CI - Linux - ghc-9.4.8
+          - check-success=Haskell-CI - Linux - ghc-9.2.8
+          - check-success=Haskell-CI - windows-latest - ghc-9.8.2
+
+pull_request_rules:
+- actions:
+    queue:
+      name: default
+
+  name: Automatically merge pull requests
+  conditions:
+  - or:
+    - and:
+      - -files~=\.hs$
+      - -files~=\.sw$
+      - -files~=\.cabal$
+      - -files=stack.yaml
+      - -files~=cabal.project.*
+      - -files~=^[^/]*\.yaml$
+      - -files~=^data/.*\.yaml$
+    - and:
+      - or:
+        - check-success=Enforce issue references
+        - -files~=\.hs$
+      - or:
+        - check-success=Normalize cabal
+        - -files~=\.cabal$
+      - or:
+        - check-success=HLint
+        - -files~=\.hs$
+      - check-success=Haskell-CI - Linux - ghc-9.8.2
+      - check-success=Haskell-CI - Linux - ghc-9.6.5
+      - check-success=Haskell-CI - Linux - ghc-9.4.8
+      - check-success=Haskell-CI - Linux - ghc-9.2.8
+      - check-success=Haskell-CI - windows-latest - ghc-9.8.2
+  - label=merge me
+  - ! '#approved-reviews-by>=1'
+  - ! '#changes-requested-reviews-by=0'
+- actions:
+    delete_head_branch: {}
+  name: Delete head branch after merge
+  conditions:
+  - merged

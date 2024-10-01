@@ -228,6 +228,9 @@ testEval g =
             "format function"
             ("format (\\x. x + 1)" `evaluatesTo` VText "\\x. x + 1")
         , testCase
+            "format forall"
+            ("format \"∀\"" `evaluatesTo` VText "\"∀\"")
+        , testCase
             "concat"
             ("\"x = \" ++ format (2+3) ++ \"!\"" `evaluatesTo` VText "x = 5!")
         , testProperty
@@ -305,10 +308,48 @@ testEval g =
                 `evaluatesTo` VRcd (M.fromList [("x", VInt 2), ("y", VInt 1)])
             )
         ]
+    , testGroup
+        "scope - #681"
+        [ testCase
+            "binder in local scope"
+            ("def f = a <- scan down end; let a = 2 in f; return (a+1)" `evaluatesTo` VInt 3)
+        , testCase
+            "binder in local scope, no type change"
+            ("def f = a <- return 1 end; let a = 2 in f; return a" `evaluatesTo` VInt 2)
+        , testCase
+            "repeat with scan"
+            ("def x = \\n. \\c. if (n==0) {} {c; x (n-1) c} end; x 10 ( c <- scan down; case c (\\_. say \"Hi\") (\\_. return ()))" `evaluatesTo` VUnit)
+        , testCase
+            "nested recursion with binder - #1032"
+            ("def go = \\n. if (n > 0) {i <- return n; s <- go (n-1); return (s+i)} {return 0} end; go 4" `evaluatesTo` VInt 10)
+        , testCase
+            "binder in local scope - #1796"
+            ("def x = \\x.x end; def foo = x <- return 0 end; foo; return (x 42)" `evaluatesTo` VInt 42)
+        ]
+    , testGroup
+        "nesting"
+        [ testCase
+            "def nested in def"
+            ("def x : Cmd Int = def y : Int = 3 end; return (y + 2) end; x" `evaluatesTo` VInt 5)
+        , testCase
+            "nested def does not escape"
+            ( "def z = 1 end; def x = def z = 3 end; return (z + 2) end; n <- x; return (n + z)"
+                `evaluatesTo` VInt 6
+            )
+        , testCase
+            "nested tydef"
+            ( "def x = (tydef X = Int end; def z : X = 3 end; return (z + 2)) end; x"
+                `evaluatesTo` VInt 5
+            )
+        ]
+    , testCase
+        "tydef does not prevent forcing of recursive variables"
+        ("def forever = \\c. c; forever c end; tydef X = Int end; def go = forever move end" `evaluatesTo` VUnit)
     ]
  where
   tquote :: String -> Text
   tquote = T.pack . show
+
   throwsError :: Text -> (Text -> Bool) -> Assertion
   throwsError tm p = do
     result <- evaluate tm

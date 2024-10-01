@@ -28,8 +28,6 @@ import Data.Map qualified as M
 import Data.Map.NonEmpty (NEMap)
 import Data.Map.NonEmpty qualified as NEM
 import Swarm.Game.Location (Location)
-import Swarm.Game.Scenario.Topography.Placement (StructureName)
-import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic)
 import Swarm.Util (binTuples, deleteKeys)
@@ -39,7 +37,7 @@ import Swarm.Util (binTuples, deleteKeys)
 -- The two type parameters, `b` and `a`, correspond
 -- to 'Cell' and 'Entity', respectively.
 data FoundRegistry b a = FoundRegistry
-  { _foundByName :: Map StructureName (NEMap (Cosmic Location) (StructureWithGrid b a))
+  { _foundByName :: Map OriginalName (NEMap (Cosmic Location) (StructureWithGrid b a))
   , _foundByLocation :: Map (Cosmic Location) (FoundStructure b a)
   }
 
@@ -49,7 +47,7 @@ emptyFoundStructures = FoundRegistry mempty mempty
 -- | We use a 'NEMap' here so that we can use the
 -- safe-indexing function 'indexWrapNonEmpty' in the implementation
 -- of the @structure@ command.
-foundByName :: FoundRegistry b a -> Map StructureName (NEMap (Cosmic Location) (StructureWithGrid b a))
+foundByName :: FoundRegistry b a -> Map OriginalName (NEMap (Cosmic Location) (StructureWithGrid b a))
 foundByName = _foundByName
 
 -- | This is a worldwide "mask" that prevents members of placed
@@ -67,7 +65,7 @@ removeStructure fs (FoundRegistry byName byLoc) =
     (deleteKeys allOccupiedCoords byLoc)
  where
   allOccupiedCoords = genOccupiedCoords fs
-  structureName = Structure.name $ originalDefinition $ structureWithGrid fs
+  structureName = getName $ originalDefinition $ structureWithGrid fs
   upperLeft = upperLeftCorner fs
 
   -- NOTE: Observe similarities to
@@ -80,7 +78,7 @@ addFound fs@(FoundStructure swg loc) (FoundRegistry byName byLoc) =
     (M.insertWith (<>) k (NEM.singleton loc swg) byName)
     (M.union occupationMap byLoc)
  where
-  k = Structure.name $ originalDefinition swg
+  k = getName $ originalDefinition swg
   occupationMap = M.fromList $ map (,fs) $ genOccupiedCoords fs
 
 -- | Bulk insertion of found structures.
@@ -97,4 +95,4 @@ populateStaticFoundStructures allFound =
   byName =
     M.map (NEM.fromList . NE.map (upperLeftCorner &&& structureWithGrid)) $
       binTuples $
-        map (Structure.name . originalDefinition . structureWithGrid &&& id) allFound
+        map (getName . originalDefinition . structureWithGrid &&& id) allFound

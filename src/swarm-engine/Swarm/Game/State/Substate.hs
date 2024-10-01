@@ -27,12 +27,14 @@ module Swarm.Game.State.Substate (
 
   -- *** Temporal state
   TemporalState,
+  PauseOnObjective (..),
   initTemporalState,
   gameStep,
   runStatus,
   ticks,
   robotStepsPerTick,
   paused,
+  pauseOnObjective,
 
   -- *** Recipes
   Recipes,
@@ -54,6 +56,7 @@ module Swarm.Game.State.Substate (
   initiallyRunCode,
   replStatus,
   replNextValueIndex,
+  replListener,
   inputHandler,
 
   -- *** Discovery
@@ -70,6 +73,7 @@ module Swarm.Game.State.Substate (
   -- ** Notifications
   Notifications (..),
   notificationsCount,
+  notificationsShouldAlert,
   notificationsContent,
 
   -- ** Utilities
@@ -100,17 +104,16 @@ import Swarm.Game.Recipe (
   outRecipeMap,
  )
 import Swarm.Game.Robot
-import Swarm.Game.Scenario (Cell, GameStateInputs (..))
+import Swarm.Game.Scenario (GameStateInputs (..))
 import Swarm.Game.Scenario.Objective
+import Swarm.Game.Scenario.Topography.Cell (Cell)
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (emptyFoundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (RecognizerAutomatons (..))
 import Swarm.Game.State.Config
 import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.World.Gen (Seed)
-import Swarm.Language.Pipeline (ProcessedTerm)
-import Swarm.Language.Syntax (Const)
-import Swarm.Language.Typed (Typed (Typed))
+import Swarm.Language.Syntax (Const, Syntax)
 import Swarm.Language.Types (Polytype)
 import Swarm.Language.Value (Value)
 import Swarm.Log
@@ -123,14 +126,12 @@ import System.Random (StdGen, mkStdGen)
 data REPLStatus
   = -- | The REPL is not doing anything actively at the moment.
     --   We persist the last value and its type though.
-    --
-    --   INVARIANT: the 'Value' stored here is not a 'Swarm.Language.Value.VResult'.
-    REPLDone (Maybe (Typed Value))
+    REPLDone (Maybe (Polytype, Value))
   | -- | A command entered at the REPL is currently being run.  The
     --   'Polytype' represents the type of the expression that was
     --   entered.  The @Maybe Value@ starts out as 'Nothing' and gets
     --   filled in with a result once the command completes.
-    REPLWorking (Typed (Maybe Value))
+    REPLWorking Polytype (Maybe Value)
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data WinStatus
@@ -147,7 +148,7 @@ data WinStatus
     -- The boolean indicates whether they have
     -- already been informed.
     Unwinnable Bool
-  deriving (Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data WinCondition
   = -- | There is no winning condition.
@@ -185,19 +186,21 @@ toggleRunStatus :: RunStatus -> RunStatus
 toggleRunStatus s = if s == Running then ManualPause else Running
 
 -- | A data type to keep track of some kind of log or sequence, with
---   an index to remember which ones are "new" and which ones have
---   "already been seen".
+--   an index to remember which ones are "new", which ones have
+--   "already been seen", and whether the user has yet been notified
+--   of the fact that there are unseen notifications.
 data Notifications a = Notifications
   { _notificationsCount :: Int
+  , _notificationsShouldAlert :: Bool
   , _notificationsContent :: [a]
   }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 instance Semigroup (Notifications a) where
-  Notifications count1 xs1 <> Notifications count2 xs2 = Notifications (count1 + count2) (xs1 <> xs2)
+  Notifications count1 alert1 xs1 <> Notifications count2 alert2 xs2 = Notifications (count1 + count2) (alert1 || alert2) (xs1 <> xs2)
 
 instance Monoid (Notifications a) where
-  mempty = Notifications 0 []
+  mempty = Notifications 0 False []
 
 makeLenses ''Notifications
 
@@ -273,11 +276,15 @@ data SingleStep
 -- | Game step mode - we use the single step mode when debugging robot 'CESK' machine.
 data Step = WorldTick | RobotStep SingleStep
 
+data PauseOnObjective = PauseOnWin | PauseOnAnyObjective
+  deriving (Eq, Ord, Show, Enum, Bounded)
+
 data TemporalState = TemporalState
   { _gameStep :: Step
   , _runStatus :: RunStatus
   , _ticks :: TickNumber
   , _robotStepsPerTick :: Int
+  , _pauseOnObjective :: PauseOnObjective
   }
 
 makeLensesNoSigs ''TemporalState
@@ -299,11 +306,15 @@ ticks :: Lens' TemporalState TickNumber
 --   a single tick.
 robotStepsPerTick :: Lens' TemporalState Int
 
+-- | Whether to pause the game after an objective is completed.
+pauseOnObjective :: Lens' TemporalState PauseOnObjective
+
 data GameControls = GameControls
   { _replStatus :: REPLStatus
   , _replNextValueIndex :: Integer
+  , _replListener :: Text -> IO ()
   , _inputHandler :: Maybe (Text, Value)
-  , _initiallyRunCode :: Maybe ProcessedTerm
+  , _initiallyRunCode :: Maybe Syntax
   }
 
 makeLensesNoSigs ''GameControls
@@ -314,12 +325,16 @@ replStatus :: Lens' GameControls REPLStatus
 -- | The index of the next @it{index}@ value
 replNextValueIndex :: Lens' GameControls Integer
 
+-- | The action to be run after transitioning to REPLDone.
+--   This is used to tell Web API the result of run command.
+replListener :: Lens' GameControls (Text -> IO ())
+
 -- | The currently installed input handler and hint text.
 inputHandler :: Lens' GameControls (Maybe (Text, Value))
 
 -- | Code that is run upon scenario start, before any
 -- REPL interaction.
-initiallyRunCode :: Lens' GameControls (Maybe ProcessedTerm)
+initiallyRunCode :: Lens' GameControls (Maybe Syntax)
 
 data Discovery = Discovery
   { _allDiscoveredEntities :: Inventory
@@ -327,7 +342,7 @@ data Discovery = Discovery
   , _availableCommands :: Notifications Const
   , _knownEntities :: S.Set EntityName
   , _gameAchievements :: Map GameplayAchievement Attainment
-  , _structureRecognition :: StructureRecognizer Cell EntityName Entity
+  , _structureRecognition :: StructureRecognizer (Maybe Cell) Entity
   , _tagMembers :: Map Text (NonEmpty EntityName)
   }
 
@@ -350,7 +365,7 @@ knownEntities :: Lens' Discovery (S.Set EntityName)
 gameAchievements :: Lens' Discovery (Map GameplayAchievement Attainment)
 
 -- | Recognizer for robot-constructed structures
-structureRecognition :: Lens' Discovery (StructureRecognizer Cell EntityName Entity)
+structureRecognition :: Lens' Discovery (StructureRecognizer (Maybe Cell) Entity)
 
 -- | Map from tags to entities that possess that tag
 tagMembers :: Lens' Discovery (Map Text (NonEmpty EntityName))
@@ -375,15 +390,15 @@ randGen :: Lens' Randomness StdGen
 replWorking :: Getter GameControls Bool
 replWorking = to (\s -> matchesWorking $ s ^. replStatus)
  where
-  matchesWorking (REPLDone _) = False
-  matchesWorking (REPLWorking _) = True
+  matchesWorking REPLDone {} = False
+  matchesWorking REPLWorking {} = True
 
 -- | Either the type of the command being executed, or of the last command
 replActiveType :: Getter REPLStatus (Maybe Polytype)
 replActiveType = to getter
  where
-  getter (REPLDone (Just (Typed _ typ _))) = Just typ
-  getter (REPLWorking (Typed _ typ _)) = Just typ
+  getter (REPLDone (Just (typ, _))) = Just typ
+  getter (REPLWorking typ _) = Just typ
   getter _ = Nothing
 
 -- | By default, robots may make a maximum of 100 CESK machine steps
@@ -393,13 +408,14 @@ defaultRobotStepsPerTick = 100
 
 -- * Record initialization
 
-initTemporalState :: TemporalState
-initTemporalState =
+initTemporalState :: Bool -> TemporalState
+initTemporalState pausedAtStart =
   TemporalState
     { _gameStep = WorldTick
-    , _runStatus = Running
+    , _runStatus = if pausedAtStart then ManualPause else Running
     , _ticks = TickNumber 0
     , _robotStepsPerTick = defaultRobotStepsPerTick
+    , _pauseOnObjective = PauseOnAnyObjective
     }
 
 initGameControls :: GameControls
@@ -407,6 +423,7 @@ initGameControls =
   GameControls
     { _replStatus = REPLDone Nothing
     , _replNextValueIndex = 0
+    , _replListener = const $ pure ()
     , _inputHandler = Nothing
     , _initiallyRunCode = Nothing
     }
@@ -429,7 +446,10 @@ initDiscovery =
     , -- This does not need to be initialized with anything,
       -- since the master list of achievements is stored in UIState
       _gameAchievements = mempty
-    , _structureRecognition = StructureRecognizer (RecognizerAutomatons mempty mempty) emptyFoundStructures []
+    , _structureRecognition =
+        StructureRecognizer
+          (RecognizerAutomatons mempty mempty)
+          (RecognitionState emptyFoundStructures [])
     , _tagMembers = mempty
     }
 

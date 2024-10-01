@@ -12,7 +12,7 @@ import Control.Lens (view)
 import Data.Maybe (listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Swarm.Game.Failure (SystemFailure (CustomFailure))
+import Swarm.Failure (SystemFailure (CustomFailure))
 import Swarm.Game.Robot (Robot)
 import Swarm.Game.Robot.Concrete (instantiateRobot)
 import Swarm.Game.Scenario (ScenarioLandscape, scenarioRobots)

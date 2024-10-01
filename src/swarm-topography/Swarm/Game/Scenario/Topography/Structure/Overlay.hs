@@ -6,22 +6,33 @@
 -- Generic overlay operations on grids
 module Swarm.Game.Scenario.Topography.Structure.Overlay (
   PositionedGrid (..),
+
+  -- * Exported for unit tests
+  computeMergedArea,
+  OverlayPair (..),
 ) where
 
 import Control.Applicative
+import Control.Lens (view)
 import Data.Function (on)
 import Data.Int (Int32)
 import Data.Tuple (swap)
-import Linear
+import Linear.V2 (R1 (_x), R2 (_y), V2 (..))
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Util (applyWhen)
 
 data PositionedGrid a = PositionedGrid
   { gridPosition :: Location
+  -- ^ location of the upper-left cell
   , gridContent :: Grid a
   }
   deriving (Eq)
+
+instance HasLocation (PositionedGrid a) where
+  modifyLoc f (PositionedGrid originalLoc g) =
+    PositionedGrid (f originalLoc) g
 
 instance Show (PositionedGrid a) where
   show (PositionedGrid p g) =
@@ -44,16 +55,27 @@ data SubsumingRect = SubsumingRect
   , _southeastCorner :: Location
   }
 
+getNorthwesternExtent :: Location -> Location -> Location
+getNorthwesternExtent ul1 ul2 =
+  Location westernMostX northernMostY
+ where
+  westernMostX = (min `on` view _x) ul1 ul2
+  northernMostY = (max `on` view _y) ul1 ul2
+
+getSoutheasternExtent :: Location -> Location -> Location
+getSoutheasternExtent br1 br2 =
+  Location easternMostX southernMostY
+ where
+  easternMostX = (max `on` view _x) br1 br2
+  southernMostY = (min `on` view _y) br1 br2
+
 -- | @r1 <> r2@ is the smallest rectangle that contains both @r1@ and @r2@.
 instance Semigroup SubsumingRect where
-  SubsumingRect (Location ulx1 uly1) (Location brx1 bry1)
-    <> SubsumingRect (Location ulx2 uly2) (Location brx2 bry2) =
-      SubsumingRect (Location westernMostX northernMostY) (Location easternMostX southernMostY)
-     where
-      westernMostX = min ulx1 ulx2
-      northernMostY = max uly1 uly2
-      easternMostX = max brx1 brx2
-      southernMostY = min bry1 bry2
+  SubsumingRect ul1 br1 <> SubsumingRect ul2 br2 =
+    SubsumingRect northwesternExtent southeasternExtent
+   where
+    northwesternExtent = getNorthwesternExtent ul1 ul2
+    southeasternExtent = getSoutheasternExtent br1 br2
 
 getSubsumingRect :: PositionedGrid a -> SubsumingRect
 getSubsumingRect (PositionedGrid loc g) =
@@ -68,14 +90,14 @@ computeMergedArea (OverlayPair pg1 pg2) =
 zipGridRows ::
   Alternative f =>
   AreaDimensions ->
-  OverlayPair (Grid (f a)) ->
+  OverlayPair [[f a]] ->
   Grid (f a)
-zipGridRows dims (OverlayPair (Grid paddedBaseRows) (Grid paddedOverlayRows)) =
-  mapRows (pad2D paddedBaseRows . pad2D paddedOverlayRows) emptyGrid
+zipGridRows dims (OverlayPair paddedBaseRows paddedOverlayRows) =
+  mkGrid $ (pad2D paddedBaseRows . pad2D paddedOverlayRows) blankGrid
  where
-  -- Right-bias; that is, take the last non-empty value
+  -- Right-biased; that is, takes the last non-empty value
   pad2D = zipPadded $ zipPadded $ flip (<|>)
-  emptyGrid = fillGrid dims empty
+  blankGrid = getRows $ fillGrid dims empty
 
 -- |
 -- First arg: base layer
@@ -94,41 +116,48 @@ zipGridRows dims (OverlayPair (Grid paddedBaseRows) (Grid paddedOverlayRows)) =
 -- of the base layer.
 instance (Alternative f) => Semigroup (PositionedGrid (f a)) where
   a1@(PositionedGrid baseLoc baseGrid) <> a2@(PositionedGrid overlayLoc overlayGrid) =
-    PositionedGrid newOrigin combinedGrid
+    PositionedGrid newUpperLeftCornerPosition combinedGrid
    where
     mergedSize = computeMergedArea $ OverlayPair a1 a2
     combinedGrid = zipGridRows mergedSize paddedOverlayPair
 
-    -- We subtract the base origin from the
-    -- overlay position, such that the displacement vector
-    -- will have:
+    -- We create a vector from the overlay position,
+    -- such that the displacement vector will have:
     -- \* negative X component if the origin must be shifted east
     -- \* positive Y component if the origin must be shifted south
-    originDelta@(V2 deltaX deltaY) = overlayLoc .-. baseLoc
-    -- Note that the adjustment vector will only ever have
-    -- a non-negative X component (i.e. loc of upper-left corner must be shifted east) and
-    -- a non-positive Y component (i.e. loc of upper-left corner must be shifted south).
-    -- We don't have to adjust the origin if the base layer lies
-    -- to the northwest of the overlay layer.
-    clampedDelta = V2 (min 0 deltaX) (max 0 deltaY)
-    newOrigin = baseLoc .-^ clampedDelta
+    upperLeftCornersDelta = overlayLoc .-. baseLoc
+
+    newUpperLeftCornerPosition = getNorthwesternExtent baseLoc overlayLoc
 
     paddedOverlayPair =
-      padSouthwest originDelta $
+      padNorthwest upperLeftCornersDelta $
         OverlayPair baseGrid overlayGrid
 
--- | NOTE: We only make explicit grid adjustments for
+-- |
+-- 'deltaX' and 'deltaY' refer to the positioning of the *overlay grid*
+-- relative to the *base grid*.
+-- A negative 'deltaY' means that the top edge of the overlay
+-- lies to the south of the top edge of the base grid.
+-- A positive 'deltaX' means that the left edge of the overlay
+-- lies to the east of the left edge of base grid.
+--
+-- We add padding to either the overlay grid or the base grid
+-- so as to align their upper-left corners.
+--
+-- NOTE: We only make explicit grid adjustments for
 -- left/top padding.  Any padding that is needed on the right/bottom
 -- of either grid will be taken care of by the 'zipPadded' function.
-padSouthwest ::
+--
+-- TODO(#2004): The return type should be 'Grid'.
+padNorthwest ::
   Alternative f =>
   V2 Int32 ->
   OverlayPair (Grid (f a)) ->
-  OverlayPair (Grid (f a))
-padSouthwest (V2 deltaX deltaY) (OverlayPair baseGrid overlayGrid) =
+  OverlayPair [[f a]]
+padNorthwest (V2 deltaX deltaY) (OverlayPair baseGrid overlayGrid) =
   OverlayPair paddedBaseGrid paddedOverlayGrid
  where
-  prefixPadDimension delta f = mapRows $ f (padding <>)
+  prefixPadDimension delta f = f (padding <>)
    where
     padding = replicate (abs $ fromIntegral delta) empty
 
@@ -147,8 +176,8 @@ padSouthwest (V2 deltaX deltaY) (OverlayPair baseGrid overlayGrid) =
   (baseHorizontalPadFunc, overlayHorizontalPadFunc) =
     applyWhen (deltaX < 0) swap (id, prefixPadColumns)
 
-  paddedBaseGrid = baseVerticalPadFunc $ baseHorizontalPadFunc baseGrid
-  paddedOverlayGrid = overlayVerticalPadFunc $ overlayHorizontalPadFunc overlayGrid
+  paddedBaseGrid = baseVerticalPadFunc $ baseHorizontalPadFunc $ getRows baseGrid
+  paddedOverlayGrid = overlayVerticalPadFunc $ overlayHorizontalPadFunc $ getRows overlayGrid
 
 -- * Utils
 

@@ -4,8 +4,7 @@
 
 REFERENCE_COMMIT=${1:-HEAD~}
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-cd $SCRIPT_DIR/..
+cd $(git rev-parse --show-toplevel)
 
 if git diff --quiet --exit-code
 then

@@ -27,6 +27,7 @@ import Data.Foldable qualified as F
 import Data.Functor.Const qualified as F
 import Data.Kind (Type)
 import Data.List (foldl')
+import Data.List.Extra (enumerate)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -38,7 +39,7 @@ import Swarm.Game.Entity (lookupEntityName)
 import Swarm.Game.Land
 import Swarm.Game.Terrain
 import Swarm.Game.World.Syntax
-import Swarm.Language.Pretty
+import Swarm.Pretty (PrettyPrec (..), pparens, ppr)
 import Swarm.Util (showT)
 import Swarm.Util.Erasable
 import Prelude hiding (lookup)
@@ -127,9 +128,8 @@ data Const :: Type -> Type where
   CCoord :: Axis -> Const (World Integer)
   CHash :: Const (World Integer)
   CPerlin :: Const (Integer -> Integer -> Double -> Double -> World Double)
-  CReflect :: Axis -> Const (World a -> World a)
-  CRot :: Rot -> Const (World a -> World a)
   COver :: (Over a, NotFun a) => Const (a -> a -> a)
+  CIMap :: NotFun a => Const (World Integer -> World Integer -> World a -> World a)
   -- Combinators generated during elaboration + variable abstraction
   K :: Const (a -> b -> a)
   S :: Const ((a -> b -> c) -> (a -> b) -> a -> c)
@@ -186,9 +186,8 @@ instance PrettyPrec (Const α) where
     CCoord ax -> ppr ax
     CHash -> "hash"
     CPerlin -> "perlin"
-    CReflect ax -> case ax of X -> "vreflect"; Y -> "hreflect"
-    CRot rot -> ppr rot
     COver -> "over"
+    CIMap -> "imap"
     K -> "K"
     S -> "S"
     I -> "I"
@@ -403,6 +402,13 @@ checkOver (TTyBase BFloat) a = a
 checkOver (TTyBase BCell) a = a
 checkOver ty _ = throwError $ NoInstance "Over" ty
 
+checkNotFun :: (Has (Throw CheckErr) sig m) => TTy ty -> (NotFun ty => m a) -> m a
+checkNotFun (TTyBase BBool) a = a
+checkNotFun (TTyBase BInt) a = a
+checkNotFun (TTyBase BFloat) a = a
+checkNotFun (TTyBase BCell) a = a
+checkNotFun ty _ = throwError $ NoInstance "NotFun" ty
+
 ------------------------------------------------------------
 -- Existential wrappers
 
@@ -532,10 +538,9 @@ inferOp [SomeTy tyA] Gt = Some (tyA :->: tyA :->: TTyBool) <$> checkOrd tyA (ret
 inferOp [SomeTy tyA] Geq = Some (tyA :->: tyA :->: TTyBool) <$> checkOrd tyA (return $ embed CGeq)
 inferOp [SomeTy tyA] If = return $ Some (TTyBool :->: tyA :->: tyA :->: tyA) (embed CIf)
 inferOp _ Perlin = return $ Some (TTyInt :->: TTyInt :->: TTyFloat :->: TTyFloat :->: TTyWorld TTyFloat) (embed CPerlin)
-inferOp [SomeTy tyA] (Reflect r) = return $ Some (TTyWorld tyA :->: TTyWorld tyA) (embed (CReflect r))
-inferOp [SomeTy tyA] (Rot r) = return $ Some (TTyWorld tyA :->: TTyWorld tyA) (embed (CRot r))
 inferOp [SomeTy tyA] Mask = Some (TTyWorld TTyBool :->: TTyWorld tyA :->: TTyWorld tyA) <$> checkEmpty tyA (return $ embed CMask)
 inferOp [SomeTy tyA] Overlay = Some (tyA :->: tyA :->: tyA) <$> checkOver tyA (return $ embed COver)
+inferOp [SomeTy tyA] IMap = Some (TTyWorld TTyInt :->: TTyWorld TTyInt :->: TTyWorld tyA :->: TTyWorld tyA) <$> checkNotFun tyA (return $ embed CIMap)
 inferOp tys op = error $ "bad call to inferOp: " ++ show tys ++ " " ++ show op
 
 -- | Given a raw operator and the terms the operator is applied to,
@@ -553,10 +558,9 @@ inferOp tys op = error $ "bad call to inferOp: " ++ show tys ++ " " ++ show op
 typeArgsFor :: Op -> [Some (TTerm g)] -> [SomeTy]
 typeArgsFor op (t : _)
   | op `elem` [Neg, Abs, Add, Sub, Mul, Div, Mod, Eq, Neq, Lt, Leq, Gt, Geq] = [getBaseType t]
-typeArgsFor (Reflect _) (t : _) = [getBaseType t]
-typeArgsFor (Rot _) (t : _) = [getBaseType t]
 typeArgsFor op (_ : t : _)
   | op `elem` [If, Mask, Overlay] = [getBaseType t]
+typeArgsFor IMap (_ : _ : t : _) = [getBaseType t]
 typeArgsFor _ _ = []
 
 -- | Typecheck the application of an operator to some terms, returning
@@ -633,7 +637,7 @@ resolveCellItem (mCellTag, item) = case mCellTag of
   Nothing -> do
     -- The item was not tagged; try resolving in all possible ways and choose
     -- the first that works
-    maybeCells <- mapM (`resolverByTag` item) [minBound .. maxBound :: CellTag]
+    maybeCells <- mapM (`resolverByTag` item) (enumerate @CellTag)
     case F.asum maybeCells of
       Nothing -> throwError $ NotAnything item
       Just cell -> return cell

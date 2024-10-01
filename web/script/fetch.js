@@ -14,11 +14,10 @@ function drawGraphics(graphics, colorMap, grid) {
             let colorIdx = row[colIdx];
             let color = colorMap[colorIdx];
 
-            graphics.beginFill(color);
             let xPos = colIdx * cellSize;
             let yPos = rowIdx * cellSize;
-            graphics.drawRect(xPos, yPos, xPos + cellSize, yPos + cellSize);
-            graphics.endFill();
+            graphics.rect(xPos, yPos, xPos + cellSize, yPos + cellSize);
+            graphics.fill(color);
         }
     }
 }

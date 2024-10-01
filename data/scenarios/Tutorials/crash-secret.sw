@@ -21,11 +21,17 @@ end;
 
 myLoc <- whereami;
 
+def foldM : (rec l. Unit + a * l) -> b -> (b -> a -> Cmd b) -> Cmd b =
+  \xs. \b. \f. case xs
+    (\_. return b)
+    (\cons. b' <- f b (fst cons); foldM (snd cons) b' f)
+end
+
 // Try to give a robot a Win, filtering out those that were already given a Win.
 // The robot will also receive instructions, so it **must have a logger!**
-def tryGive: Text -> (Actor -> Bool) -> Cmd (Actor -> Bool) = \msg.
-  // (b -> Actor -> Cmd b) -> b -> Cmd b
-  meetAll $ \f.\rob.
+def tryGive: Text -> (Actor -> Bool) -> Cmd (Actor -> Bool) = \msg. \ok.
+  rs <- meetAll;
+  foldM rs ok $ \f.\rob.
     if (not $ f rob) {
       log $ "skipping the robot " ++ format rob ++ "because it already has a Win";
       return f
@@ -45,7 +51,6 @@ def tryGive: Text -> (Actor -> Bool) -> Cmd (Actor -> Bool) = \msg.
           log $ "the robot " ++ format rob ++ "is missing a logger!";
           return f;
         };
-        
       }
     }
 end;

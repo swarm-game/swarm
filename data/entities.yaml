@@ -103,7 +103,7 @@
   description:
     - A medium-sized rock... that looks a little different. It seems to react to iron and surprisingly also to naturally growing bits.
   properties: [pickable]
-  capabilities: [negation]
+  capabilities: [not]
 - name: beaglepuss
   display:
     attr: rubber
@@ -361,7 +361,7 @@
       in "Number of widgets: " ++ format numWidgets
       ```
   properties: [pickable]
-  capabilities: [concat]
+  capabilities: ["++"]
 - name: caliper
   display:
     attr: silver
@@ -374,7 +374,7 @@
       ```
       computes the number of characters in a `Text`{=type} value.
   properties: [pickable]
-  capabilities: [charcount]
+  capabilities: [chars]
 - name: wedge
   display:
     attr: silver
@@ -416,7 +416,7 @@
       `split : Int -> Text -> Text * Text` splits a `Text`{=type} value into
       two pieces, one before the given index and one after.
   properties: [pickable]
-  capabilities: [format, concat, charcount, split]
+  capabilities: [format, '++', chars, split]
 - name: decoder ring
   display:
     attr: silver
@@ -433,7 +433,7 @@
       `toChar : Int -> Text` creates a singleton (length-1) `Text`{=type}
       value containing a character with the given numeric code.
   properties: [pickable]
-  capabilities: [code]
+  capabilities: [charat, tochar]
 - name: lambda
   display:
     attr: flower
@@ -588,7 +588,7 @@
       `floorplan : Text -> Cmd (Int * Int)`
     - Gets the dimensions of a structure template.
   properties: [pickable]
-  capabilities: [structure]
+  capabilities: [structure, floorplan]
 - name: drill bit
   display:
     attr: entity
@@ -635,6 +635,17 @@
 ############################################################
 ### Utility ################################################
 ############################################################
+- name: wall
+  display:
+    char: '+'
+    attr: entity
+  description:
+    - A wall
+  properties: [unwalkable, known, boundary]
+# following are "legacy" walls that do not connect automatically,
+# but require explicitly placing each one - this can be used for
+# precise control, but in most cases the simple 'wall' is better
+# because the 'boundary' updates it to look nice
 - name: upper left corner
   display:
     attr: entity
@@ -743,7 +754,7 @@
     char: '%'
   description:
     - Tank treads work like treads, but are large enough to move even heavy robots around.
-  capabilities: [move, turn, moveheavy]
+  capabilities: [move, turn, move heavy robot]
   properties: [pickable]
 - name: tape drive
   display:
@@ -791,7 +802,7 @@
     char: 'B'
   description:
     - Allows one to `scout` for other robots
-  capabilities: [recondir]
+  capabilities: [scout]
   properties: [pickable]
 - name: welder
   display:
@@ -921,7 +932,7 @@
       if (x > 3) {move} {turn right; move}
       ```
   properties: [pickable]
-  capabilities: [cond]
+  capabilities: [if, '&&', '||']
 - name: detonator
   display:
     attr: fire
@@ -942,11 +953,20 @@
     attr: device
     char: '$'
   description:
-    - "With a scanner device, robots can use the `scan` command to learn about their surroundings.  Simply give `scan` a direction in which to scan, and information about the scanned item (if any) will be added to the robot's inventory."
-    - "A scanner also enables `blocked : Cmd Bool`, which returns a boolean value indicating whether the robot's path is blocked (i.e. whether executing a `move` command would fail); `ishere : Text -> Cmd Bool` for checking whether the current cell contains a particular entity; and `isempty : Cmd Bool` for checking whether the current cell is empty of entities. Note that `ishere` and `isempty` do not detect robots, only entities."
-    - "Finally, robots can use the `upload` command to copy their accumulated knowledge to another nearby robot; for example, `upload base`."
+    - |
+      With a scanner device, robots can use the `scan` command to learn about their surroundings.
+      Simply give `scan` a direction in which to scan, and information about the scanned item (if any)
+      will be added to the robot's inventory.
+    - |
+      A scanner also enables `blocked : Cmd Bool`, which returns a boolean value indicating whether the robot's path is blocked
+      (i.e. whether executing a `move` command would fail); `ishere : Text -> Cmd Bool` for checking whether the current cell
+      contains a particular entity; and `isempty : Cmd Bool` for checking whether the current cell is empty of entities.
+      Note that `ishere` and `isempty` do not detect robots, only entities."
+    - |
+      Finally, robots can use the `upload` command to copy their accumulated knowledge to another nearby robot;
+      for example, `upload base`."
   properties: [pickable]
-  capabilities: [scan, sensefront, sensehere]
+  capabilities: [scan, blocked, ishere, isempty, upload]
 - name: olfactometer
   display:
     char: 'N'
@@ -955,7 +975,7 @@
     - |
       `sniff : Text -> Cmd Int` returns the distance to the nearest specified entity.
   properties: [pickable]
-  capabilities: [detectdistance]
+  capabilities: [sniff]
 - name: flash memory
   display:
     attr: device
@@ -975,7 +995,7 @@
     - "A mirror enables the `whoami` command, which returns the robot's name as a string."
     - "It also enables the special `self` variable, which gives a robot a reference to itself."
   properties: [pickable]
-  capabilities: [whoami]
+  capabilities: [whoami, self]
 - name: logger
   display:
     attr: device
@@ -1019,7 +1039,7 @@
   description:
     - "A calculator allows a robot to do basic arithmetic calculations: addition, subtraction, multiplication, division, and exponentiation."
   properties: [pickable]
-  capabilities: [arith]
+  capabilities: ['+', '-', neg, '*', '/', '^']
 - name: ADT calculator
   display:
     attr: device
@@ -1052,7 +1072,7 @@
       example, `case (inl 3) (\x. 2*x) (\y. 3*y) == 6`, and `case (inr
       3) (\x. 2*x) (\y. 3*y) == 9`.
   properties: [pickable]
-  capabilities: [arith, sum, prod]
+  capabilities: ['+', '-', neg, '*', '/', '^', sum, prod]
 - name: hyperloop
   display:
     attr: device
@@ -1067,7 +1087,7 @@
       `t = T(t)`{=snippet}. For exmple, `rec l. Unit + Int * l`{=type} is
       the type of lists of integers.
   properties: [pickable]
-  capabilities: [arith, sum, prod, rectype]
+  capabilities: ['+', '-', neg, '*', '/', '^', sum, prod, rectype]
 - name: compass
   display:
     attr: device
@@ -1085,7 +1105,7 @@
     - |
       `d <- heading; turn east; move; turn d`
   properties: [pickable]
-  capabilities: [orient]
+  capabilities: [orient, heading]
 - name: clock
   display:
     attr: device
@@ -1097,7 +1117,7 @@
     - |
       `wait : Int -> Cmd Unit` causes a robot to sleep for a specified amount of time (measured in game ticks).
   properties: [pickable]
-  capabilities: [timeabs, timerel]
+  capabilities: [time, wait]
 - name: hourglass
   display:
     attr: device
@@ -1107,7 +1127,7 @@
     - |
       `wait : Int -> Cmd Unit` causes a robot to sleep for a specified amount of time (measured in game ticks).
   properties: [pickable]
-  capabilities: [timerel]
+  capabilities: [wait]
 - name: rolex
   display:
     char: R
@@ -1118,7 +1138,7 @@
       `watch : Dir -> Cmd Unit` will mark an adjacent (in the specified direction) location of interest to monitor for placement or removal of items.
       A subsequent call to `wait` will be interrupted upon a change to the location.
   properties: [pickable]
-  capabilities: [timerel, wakeself]
+  capabilities: [time, wait, watch]
 - name: comparator
   display:
     attr: device
@@ -1127,7 +1147,7 @@
     - "A comparator allows comparing two values to see whether the first is less, equal, or greater than the second."
     - "Valid comparison operators are <, <=, >, >=, ==, and !=."
   properties: [pickable]
-  capabilities: [compare]
+  capabilities: ['<', '<=', '>', '>=', '==', '!=']
 - name: I/O cable
   display:
     attr: device
@@ -1183,14 +1203,10 @@
       It returns a reference to the nearest actor, or a unit value if
       none are found.
     - |
-      `meetAll : (b -> Actor -> Cmd b) -> b -> Cmd b` runs a command on
-      every nearby actor (other than oneself), folding over the results
-      to compute a final result of type `b`{=type}.  For example, if
-      `x`{=snippet}, `y`{=snippet}, and `z`{=snippet}
-      are nearby actors, then `meetAll f b0`{=snippet} is equivalent to
-      `b1 <- f b0 x; b2 <- f b1 y; f b2 z`{=snippet}.
+      `meetAll : Cmd (rec l. Unit + Actor * l)` returns a list of
+      all the nearby actors other than oneself.
   properties: [pickable]
-  capabilities: [meet]
+  capabilities: [meet, meetAll]
 - name: GPS receiver
   display:
     attr: device
@@ -1201,7 +1217,7 @@
       some convenient satellite signals,
       enabling the command `whereami : Cmd (Int * Int)`.
   properties: [pickable]
-  capabilities: [senseloc]
+  capabilities: [whereami]
 - name: tweezers
   display:
     attr: device
@@ -1263,7 +1279,7 @@
       `key : Text -> Key` constructs values of type `Key`{=type}, for
       example `key "Down"` or `key "C-S-x"`.
   properties: [pickable]
-  capabilities: [handleinput]
+  capabilities: [key, installKeyHandler]
 - name: halting oracle
   display:
     attr: device

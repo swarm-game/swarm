@@ -9,46 +9,25 @@
 -- as well as logic for combining them.
 module Swarm.Game.Scenario.Topography.Structure where
 
-import Control.Monad (unless)
-import Data.Aeson.Key qualified as Key
-import Data.Aeson.KeyMap qualified as KeyMap
+import Control.Monad (forM_, unless)
+import Data.List (intercalate)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
-import Data.Maybe (catMaybes)
-import Data.Set (Set)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Set qualified as Set
-import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml as Y
 import Swarm.Game.Location
-import Swarm.Game.Scenario.Topography.Area
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.ProtoCell
+import Swarm.Game.Scenario.Topography.Structure.Named
 import Swarm.Game.Scenario.Topography.Structure.Overlay
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Game.World.Coords
-import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Util (failT, showT)
 import Swarm.Util.Yaml
-
-data NamedArea a = NamedArea
-  { name :: StructureName
-  , recognize :: Set AbsoluteDir
-  -- ^ whether this structure should be registered for automatic recognition
-  -- and which orientations shall be recognized.
-  -- The supplied direction indicates which cardinal direction the
-  -- original map's "North" has been re-oriented to.
-  -- E.g., 'DWest' represents a rotation of 90 degrees counter-clockwise.
-  , description :: Maybe Text
-  -- ^ will be UI-facing only if this is a recognizable structure
-  , structure :: a
-  }
-  deriving (Eq, Show, Functor)
-
-isRecognizable :: NamedArea a -> Bool
-isRecognizable = not . null . recognize
-
-type NamedGrid c = NamedArea (Grid c)
 
 type NamedStructure c = NamedArea (PStructure c)
 
@@ -65,18 +44,6 @@ data PStructure c = Structure
 data Placed c = Placed Placement (NamedStructure c)
   deriving (Show)
 
--- | For use in registering recognizable pre-placed structures
-data LocatedStructure = LocatedStructure
-  { placedName :: StructureName
-  , upDirection :: AbsoluteDir
-  , cornerLoc :: Location
-  }
-  deriving (Show)
-
-instance HasLocation LocatedStructure where
-  modifyLoc f (LocatedStructure x y originalLoc) =
-    LocatedStructure x y $ f originalLoc
-
 data MergedStructure c = MergedStructure (PositionedGrid c) [LocatedStructure] [Originated Waypoint]
 
 instance (FromJSONE e a) => FromJSONE e (NamedStructure (Maybe a)) where
@@ -91,27 +58,36 @@ instance (FromJSONE e a) => FromJSONE e (NamedStructure (Maybe a)) where
 instance FromJSON (Grid Char) where
   parseJSON = withText "area" $ \t -> do
     let textLines = map T.unpack $ T.lines t
+        g = mkGrid textLines
     case NE.nonEmpty textLines of
-      Nothing -> return $ Grid []
+      Nothing -> return EmptyGrid
       Just nonemptyRows -> do
         let firstRowLength = length $ NE.head nonemptyRows
         unless (all ((== firstRowLength) . length) $ NE.tail nonemptyRows) $
           fail "Grid is not rectangular!"
-        return $ Grid textLines
+        return g
+
+parseStructure ::
+  StructurePalette c ->
+  [NamedStructure (Maybe c)] ->
+  Object ->
+  Parser (PStructure (Maybe c))
+parseStructure pal structures v = do
+  explicitPlacements <- v .:? "placements" .!= []
+  waypointDefs <- v .:? "waypoints" .!= []
+  maybeMaskChar <- v .:? "mask"
+  rawGrid <- v .:? "map" .!= EmptyGrid
+  (maskedArea, mapWaypoints, palettePlacements) <- paintMap maybeMaskChar pal rawGrid
+  let area = PositionedGrid origin maskedArea
+      waypoints = waypointDefs <> mapWaypoints
+      placements = explicitPlacements <> palettePlacements
+  return Structure {..}
 
 instance (FromJSONE e a) => FromJSONE e (PStructure (Maybe a)) where
   parseJSONE = withObjectE "structure definition" $ \v -> do
     pal <- v ..:? "palette" ..!= StructurePalette mempty
     structures <- v ..:? "structures" ..!= []
-    liftE $ do
-      placements <- v .:? "placements" .!= []
-      waypointDefs <- v .:? "waypoints" .!= []
-      maybeMaskChar <- v .:? "mask"
-      rawGrid <- v .:? "map" .!= Grid []
-      (maskedArea, mapWaypoints) <- paintMap maybeMaskChar pal rawGrid
-      let area = PositionedGrid origin maskedArea
-          waypoints = waypointDefs <> mapWaypoints
-      return Structure {..}
+    liftE $ parseStructure pal structures v
 
 -- | \"Paint\" a world map using a 'WorldPalette', turning it from a raw
 --   string into a nested list of 'PCell' values by looking up each
@@ -122,34 +98,51 @@ paintMap ::
   Maybe Char ->
   StructurePalette c ->
   Grid Char ->
-  m (Grid (Maybe c), [Waypoint])
+  m (Grid (Maybe c), [Waypoint], [Placement])
 paintMap maskChar pal g = do
   nestedLists <- mapM toCell g
-  let usedChars = Set.fromList $ map T.singleton $ allMembers g
-      unusedChars =
-        filter (`Set.notMember` usedChars)
-          . M.keys
-          . KeyMap.toMapText
-          $ unPalette pal
+  forM_ maskChar $ \c ->
+    unless (Set.notMember c paletteKeys) $
+      fail $
+        unwords
+          [ "Mask character"
+          , ['"', c, '"']
+          , "overlaps palette entry"
+          ]
 
-  unless (null unusedChars) $
+  unless (Set.null unusedPaletteChars) $
     fail $
       unwords
         [ "Unused characters in palette:"
-        , T.unpack $ T.intercalate ", " unusedChars
+        , intercalate ", " $ map pure $ Set.toList unusedPaletteChars
         ]
 
   let cells = fmap standardCell <$> nestedLists
-      getWp coords maybeAugmentedCell = do
-        wpCfg <- waypointCfg =<< maybeAugmentedCell
-        return . Waypoint wpCfg . coordsToLoc $ coords
       wps = catMaybes $ mapIndexedMembers getWp nestedLists
 
-  return (cells, wps)
+  let extraPlacements =
+        catMaybes $ mapIndexedMembers getStructureMarker nestedLists
+
+  return (cells, wps, extraPlacements)
  where
+  getStructureMarker coords maybeAugmentedCell = do
+    StructureMarker sName orientation <- structureMarker =<< maybeAugmentedCell
+    return
+      . Placement sName
+      . Pose (coordsToLoc coords)
+      $ fromMaybe defaultOrientation orientation
+
+  getWp coords maybeAugmentedCell = do
+    wpCfg <- waypointCfg =<< maybeAugmentedCell
+    return . Waypoint wpCfg . coordsToLoc $ coords
+
+  usedChars = Set.fromList $ allMembers g
+  paletteKeys = M.keysSet $ unPalette pal
+  unusedPaletteChars = Set.difference paletteKeys usedChars
+
   toCell c =
     if Just c == maskChar
       then return Nothing
-      else case KeyMap.lookup (Key.fromString [c]) (unPalette pal) of
+      else case M.lookup c (unPalette pal) of
         Nothing -> failT ["Char not in world palette:", showT c]
         Just cell -> return $ Just cell

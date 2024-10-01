@@ -19,7 +19,6 @@
 --
 -- Missing endpoints:
 --
---   * TODO: #625 run endpoint to load definitions
 --   * TODO: #493 export the whole game state
 module Swarm.Web (
   startWebThread,
@@ -34,7 +33,6 @@ module Swarm.Web (
   webMain,
 ) where
 
-import Brick.BChan
 import Commonmark qualified as Mark (commonmark, renderHtml)
 import Control.Arrow (left)
 import Control.Concurrent (forkIO)
@@ -63,8 +61,8 @@ import Servant
 import Servant.Docs (ToCapture)
 import Servant.Docs qualified as SD
 import Servant.Docs.Internal qualified as SD (renderCurlBasePath)
-import Swarm.Doc.Command
-import Swarm.Game.Entity (EntityName)
+import Servant.Types.SourceT qualified as S
+import Swarm.Game.Entity (EntityName, entityName)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
@@ -77,13 +75,14 @@ import Swarm.Game.State
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Type
-import Swarm.Language.Pipeline (processTermEither, processedSyntax)
-import Swarm.Language.Pretty (prettyTextLine)
-import Swarm.TUI.Model
-import Swarm.TUI.Model.Goal
+import Swarm.Language.Pipeline (processTermEither)
+import Swarm.Pretty (prettyTextLine)
+import Swarm.TUI.Model hiding (SwarmKeyDispatchers (..))
+import Swarm.TUI.Model.Dialog.Goal
 import Swarm.TUI.Model.Repl (REPLHistItem, replHistory, replSeq)
 import Swarm.TUI.Model.UI
-import Swarm.Util.ReadableIORef
+import Swarm.TUI.Model.UI.Gameplay
+import Swarm.Util (applyJust)
 import Swarm.Util.RingBuffer
 import Swarm.Web.Worldview
 import System.Timeout (timeout)
@@ -108,9 +107,8 @@ type SwarmAPI =
     :<|> "recognize" :> "log" :> Get '[JSON] [SearchLog EntityName]
     :<|> "recognize" :> "found" :> Get '[JSON] [StructureLocation]
     :<|> "code" :> "render" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
-    :<|> "code" :> "run" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
+    :<|> "code" :> "run" :> ReqBody '[PlainText] T.Text :> StreamGet NewlineFraming JSON (SourceIO WebInvocationState)
     :<|> "paths" :> "log" :> Get '[JSON] (RingBuffer CacheLogEntry)
-    :<|> "commands" :> Get '[JSON] CommandCatalog
     :<|> "repl" :> "history" :> "full" :> Get '[JSON] [REPLHistItem]
     :<|> "map" :> Capture "size" AreaDimensions :> Get '[JSON] GridResponse
 
@@ -149,9 +147,10 @@ swarmApiMarkdown =
 -- ------------------------------------------------------------------
 
 mkApp ::
-  ReadableIORef AppState ->
+  -- | Read-only access to the current AppState
+  IO AppState ->
   -- | Writable channel to send events to the game
-  BChan AppEvent ->
+  EventChannel ->
   Servant.Server SwarmAPI
 mkApp state events =
   robotsHandler state
@@ -166,60 +165,61 @@ mkApp state events =
     :<|> codeRenderHandler
     :<|> codeRunHandler events
     :<|> pathsLogHandler state
-    :<|> cmdMatrixHandler state
-    :<|> replHandler state
+    :<|> replHistHandler state
     :<|> mapViewHandler state
 
-robotsHandler :: ReadableIORef AppState -> Handler [Robot]
+robotsHandler :: IO AppState -> Handler [Robot]
 robotsHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   pure $ IM.elems $ appState ^. gameState . robotInfo . robotMap
 
-robotHandler :: ReadableIORef AppState -> RobotID -> Handler (Maybe Robot)
+robotHandler :: IO AppState -> RobotID -> Handler (Maybe Robot)
 robotHandler appStateRef (RobotID rid) = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   pure $ IM.lookup rid (appState ^. gameState . robotInfo . robotMap)
 
-prereqsHandler :: ReadableIORef AppState -> Handler [PrereqSatisfaction]
+prereqsHandler :: IO AppState -> Handler [PrereqSatisfaction]
 prereqsHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   case appState ^. gameState . winCondition of
     WinConditions _winState oc -> return $ getSatisfaction oc
     _ -> return []
 
-activeGoalsHandler :: ReadableIORef AppState -> Handler [Objective]
+activeGoalsHandler :: IO AppState -> Handler [Objective]
 activeGoalsHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   case appState ^. gameState . winCondition of
     WinConditions _winState oc -> return $ getActiveObjectives oc
     _ -> return []
 
-goalsGraphHandler :: ReadableIORef AppState -> Handler (Maybe GraphInfo)
+goalsGraphHandler :: IO AppState -> Handler (Maybe GraphInfo)
 goalsGraphHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   return $ case appState ^. gameState . winCondition of
     WinConditions _winState oc -> Just $ makeGraphInfo oc
     _ -> Nothing
 
-uiGoalHandler :: ReadableIORef AppState -> Handler GoalTracking
+uiGoalHandler :: IO AppState -> Handler GoalTracking
 uiGoalHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
-  return $ appState ^. uiState . uiGameplay . uiGoal . goalsContent
+  appState <- liftIO appStateRef
+  return $ appState ^. uiState . uiGameplay . uiDialogs . uiGoal . goalsContent
 
-goalsHandler :: ReadableIORef AppState -> Handler WinCondition
+goalsHandler :: IO AppState -> Handler WinCondition
 goalsHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   return $ appState ^. gameState . winCondition
 
-recogLogHandler :: ReadableIORef AppState -> Handler [SearchLog EntityName]
+recogLogHandler :: IO AppState -> Handler [SearchLog EntityName]
 recogLogHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
-  return $ appState ^. gameState . discovery . structureRecognition . recognitionLog
+  appState <- liftIO appStateRef
+  return $
+    map (fmap (view entityName)) $
+      appState ^. gameState . discovery . structureRecognition . recognitionState . recognitionLog
 
-recogFoundHandler :: ReadableIORef AppState -> Handler [StructureLocation]
+recogFoundHandler :: IO AppState -> Handler [StructureLocation]
 recogFoundHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
-  let registry = appState ^. gameState . discovery . structureRecognition . foundStructures
+  appState <- liftIO appStateRef
+  let registry = appState ^. gameState . discovery . structureRecognition . recognitionState . foundStructures
   return
     . map (uncurry StructureLocation)
     . concatMap (\(x, ys) -> map (x,) $ NE.toList ys)
@@ -230,33 +230,61 @@ recogFoundHandler appStateRef = do
 codeRenderHandler :: Text -> Handler Text
 codeRenderHandler contents = do
   return $ case processTermEither contents of
-    Right pt ->
-      into @Text . drawTree . fmap (T.unpack . prettyTextLine) . para Node $ pt ^. processedSyntax
+    Right t ->
+      into @Text . drawTree . fmap (T.unpack . prettyTextLine) . para Node $ t
     Left x -> x
 
-codeRunHandler :: BChan AppEvent -> Text -> Handler Text
-codeRunHandler chan contents = do
-  liftIO . writeBChan chan . Web $ RunWebCode contents
-  return $ T.pack "Sent\n"
+{- Note [How to stream back responses as we get results]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-pathsLogHandler :: ReadableIORef AppState -> Handler (RingBuffer CacheLogEntry)
+Servant has a builtin simple streaming:
+https://docs.servant.dev/en/stable/cookbook/basic-streaming/Streaming.html
+
+What we need is to:
+1. run IO with 'Effect'
+2. send the result with 'Yield'
+3. if we are done 'Stop'
+4. otherwise continue recursively
+
+With the endpoint type 'StreamGet NewlineFraming JSON', servant will send each
+result as a JSON on a separate line. That is not a valid JSON document, but
+it's commonly used because it works well with line-oriented tools.
+
+This gives the user an immediate feedback (did the code parse) and would
+be well suited for streaming large collections of data like the logs
+while consuming constant memory.
+-}
+
+codeRunHandler :: EventChannel -> Text -> Handler (S.SourceT IO WebInvocationState)
+codeRunHandler chan contents = do
+  replyVar <- liftIO newEmptyMVar
+  let putReplyForce r = do
+        void $ tryTakeMVar replyVar
+        putMVar replyVar r
+  liftIO . chan . Web $ RunWebCode contents putReplyForce
+  -- See note [How to stream back responses as we get results]
+  let waitForReply = S.Effect $ do
+        reply <- takeMVar replyVar
+        return . S.Yield reply $ case reply of
+          InProgress -> waitForReply
+          _ -> S.Stop
+  return $ S.fromStepT waitForReply
+
+pathsLogHandler :: IO AppState -> Handler (RingBuffer CacheLogEntry)
 pathsLogHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   pure $ appState ^. gameState . pathCaching . pathCachingLog
 
-cmdMatrixHandler :: ReadableIORef AppState -> Handler CommandCatalog
-cmdMatrixHandler _ = pure getCatalog
-
-replHandler :: ReadableIORef AppState -> Handler [REPLHistItem]
-replHandler appStateRef = do
-  appState <- liftIO (readIORef appStateRef)
+replHistHandler :: IO AppState -> Handler [REPLHistItem]
+replHistHandler appStateRef = do
+  appState <- liftIO appStateRef
   let replHistorySeq = appState ^. uiState . uiGameplay . uiREPL . replHistory . replSeq
       items = toList replHistorySeq
   pure items
 
-mapViewHandler :: ReadableIORef AppState -> AreaDimensions -> Handler GridResponse
+mapViewHandler :: IO AppState -> AreaDimensions -> Handler GridResponse
 mapViewHandler appStateRef areaSize = do
-  appState <- liftIO (readIORef appStateRef)
+  appState <- liftIO appStateRef
   let maybeScenario = fst <$> appState ^. uiState . uiGameplay . scenarioRef
   pure $ case maybeScenario of
     Just s ->
@@ -273,20 +301,20 @@ mapViewHandler appStateRef areaSize = do
 -- | Simple result type to report errors from forked startup thread.
 data WebStartResult = WebStarted | WebStartError String
 
+type EventChannel = AppEvent -> IO ()
+
 webMain ::
   Maybe (MVar WebStartResult) ->
   Warp.Port ->
   -- | Read-only reference to the application state.
-  ReadableIORef AppState ->
+  IO AppState ->
   -- | Writable channel to send events to the game
-  BChan AppEvent ->
+  EventChannel ->
   IO ()
 webMain baton port appStateRef chan = catch (Warp.runSettings settings app) handleErr
  where
   settings = Warp.setPort port $ onReady Warp.defaultSettings
-  onReady = case baton of
-    Just mv -> Warp.setBeforeMainLoop $ putMVar mv WebStarted
-    Nothing -> id
+  onReady = applyJust $ Warp.setBeforeMainLoop . flip putMVar WebStarted <$> baton
 
   server :: Server ToplevelAPI
   server =
@@ -322,9 +350,9 @@ defaultPort = 5357
 startWebThread ::
   Maybe Warp.Port ->
   -- | Read-only reference to the application state.
-  ReadableIORef AppState ->
+  IO AppState ->
   -- | Writable channel to send events to the game
-  BChan AppEvent ->
+  EventChannel ->
   IO (Either String Warp.Port)
 -- User explicitly provided port '0': don't run the web server
 startWebThread (Just 0) _ _ = pure $ Left "The web port has been turned off."

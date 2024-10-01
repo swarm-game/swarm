@@ -8,12 +8,13 @@
 -- which a structure should be placed.
 module Swarm.Game.Scenario.Topography.Placement where
 
-import Data.List (transpose)
+import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Language.Syntax.Direction (AbsoluteDir (..))
 
 newtype StructureName = StructureName Text
@@ -56,17 +57,18 @@ reorientLandmark (Orientation upDir shouldFlip) (AreaDimensions width height) =
     DWest -> transposeLoc . flipH
 
 -- | affine transformation
-applyOrientationTransform :: Orientation -> [[a]] -> [[a]]
+applyOrientationTransform :: Orientation -> Grid a -> Grid a
 applyOrientationTransform (Orientation upDir shouldFlip) =
-  rotational . flipping
+  mapRows f
  where
-  flipV = reverse
+  f = rotational . flipping
+  flipV = NE.reverse
   flipping = if shouldFlip then flipV else id
   rotational = case upDir of
     DNorth -> id
-    DSouth -> transpose . flipV . transpose . flipV
-    DEast -> transpose . flipV
-    DWest -> flipV . transpose
+    DSouth -> NE.transpose . flipV . NE.transpose . flipV
+    DEast -> NE.transpose . flipV
+    DWest -> flipV . NE.transpose
 
 data Pose = Pose
   { offset :: Location
@@ -76,7 +78,6 @@ data Pose = Pose
 
 data Placement = Placement
   { src :: StructureName
-  , truncateOverlay :: Bool
   , structurePose :: Pose
   }
   deriving (Eq, Show)
@@ -84,7 +85,6 @@ data Placement = Placement
 instance FromJSON Placement where
   parseJSON = withObject "structure placement" $ \v -> do
     src <- v .: "src"
-    truncateOverlay <- v .:? "truncate" .!= True
     offset <- v .:? "offset" .!= origin
     orient <- v .:? "orient" .!= defaultOrientation
     let structurePose = Pose offset orient

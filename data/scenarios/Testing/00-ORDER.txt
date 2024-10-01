@@ -36,6 +36,7 @@ Achievements
 1218-stride-command.yaml
 1234-push-command.yaml
 1256-halt-command.yaml
+1271-wall-boundaries.yaml
 1262-display-device-commands.yaml
 1295-density-command.yaml
 1138-structures
@@ -66,3 +67,6 @@ Achievements
 1780-structure-merge-expansion
 1533-sow-command.yaml
 1533-sow-seed-maturation.yaml
+231-requirements
+2085-toplevel-mask.yaml
+2086-structure-palette.yaml

@@ -11,7 +11,7 @@ module Main where
 
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Throw.Either (runThrow)
-import Control.Lens (Ixed (ix), at, to, view, (&), (.~), (<>~), (^.), (^..), (^?), (^?!))
+import Control.Lens (Ixed (ix), at, to, view, (&), (.~), (^.), (^..), (^?), (^?!))
 import Control.Monad (forM_, unless, when)
 import Control.Monad.State (execStateT)
 import Data.Char (isSpace)
@@ -21,20 +21,20 @@ import Data.IntSet qualified as IS
 import Data.List (partition)
 import Data.Map qualified as M
 import Data.Maybe (isJust)
+import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Yaml (ParseException, prettyPrintParseException)
 import Swarm.Doc.Keyword (EditorType (..))
 import Swarm.Doc.Keyword qualified as Keyword
+import Swarm.Failure (SystemFailure)
 import Swarm.Game.Achievement.Definitions (GameplayAchievement (..))
-import Swarm.Game.CESK (emptyStore, initMachine)
+import Swarm.Game.CESK (initMachine)
 import Swarm.Game.Entity (lookupByName)
-import Swarm.Game.Failure (SystemFailure)
 import Swarm.Game.Robot (equippedDevices, systemRobot)
 import Swarm.Game.Robot.Activity (commandsHistogram, lifetimeStepCount, tangibleCommandCount)
-import Swarm.Game.Robot.Concrete (activityCounts, machine, robotContext, robotLog, waitingUntil)
-import Swarm.Game.Robot.Context (defReqs)
+import Swarm.Game.Robot.Concrete (activityCounts, machine, robotLog, waitingUntil)
 import Swarm.Game.Scenario (Scenario, ScenarioInputs (..), gsiScenarioInputs)
 import Swarm.Game.State (
   GameState,
@@ -66,25 +66,29 @@ import Swarm.Game.State.Substate (
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Validate (badErrorsInLogs, playUntilWin)
 import Swarm.Game.Tick (getTickNumber)
-import Swarm.Language.Context qualified as Ctx
-import Swarm.Language.Pipeline (ProcessedTerm (..), processTerm)
-import Swarm.Language.Pretty (prettyString)
+import Swarm.Language.Pipeline (processTerm)
 import Swarm.Log
+import Swarm.Pretty (prettyString)
 import Swarm.TUI.Model (
+  KeyEventHandlingState,
+  debugOptions,
   defaultAppOpts,
   gameState,
   runtimeState,
   userScenario,
  )
+import Swarm.TUI.Model.DebugOption (DebugOption (LoadTestingScenarios))
 import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
 import Swarm.TUI.Model.UI (UIState)
 import Swarm.Util (findAllWithExt)
 import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
-import System.FilePath.Posix (splitDirectories)
+import System.FilePath (splitDirectories)
 import System.Timeout (timeout)
 import Test.Tasty (TestTree, defaultMain, testGroup)
+import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, assertFailure, testCase)
+import TestRecipeCoverage
 import Witch (into)
 
 isUnparseableTest :: FilePath -> Bool
@@ -96,11 +100,13 @@ main = do
   scenarioPaths <- findAllWithExt "data/scenarios" "yaml"
   let (unparseableScenarios, parseableScenarios) = partition isUnparseableTest scenarioPaths
   scenarioPrograms <- findAllWithExt "data/scenarios" "sw"
-  (rs, ui) <- do
-    out <- runM . runThrow @SystemFailure $ initPersistentState defaultAppOpts
+  (rs, ui, key) <- do
+    let testingOptions = defaultAppOpts {debugOptions = S.singleton LoadTestingScenarios}
+    out <- runM . runThrow @SystemFailure $ initPersistentState testingOptions
     either (assertFailure . prettyString) return out
   let scenarioInputs = gsiScenarioInputs $ initState $ rs ^. stdGameConfigInputs
       rs' = rs & eventLog .~ mempty
+  recipeTests <- testRecipeCoverage
   defaultMain $
     testGroup
       "Tests"
@@ -109,8 +115,9 @@ main = do
       , exampleTests scenarioPrograms
       , scenarioParseTests scenarioInputs parseableScenarios
       , scenarioParseInvalidTests scenarioInputs unparseableScenarios
-      , testScenarioSolutions rs' ui
+      , testScenarioSolutions rs' ui key
       , testEditorFiles
+      , recipeTests
       ]
 
 testNoLoadingErrors :: RuntimeState -> TestTree
@@ -184,14 +191,14 @@ time = \case
 
 data ShouldCheckBadErrors = CheckForBadErrors | AllowBadErrors deriving (Eq, Show)
 
-testScenarioSolutions :: RuntimeState -> UIState -> TestTree
-testScenarioSolutions rs ui =
+testScenarioSolutions :: RuntimeState -> UIState -> KeyEventHandlingState -> TestTree
+testScenarioSolutions rs ui key =
   testGroup
     "Test scenario solutions"
     [ testGroup
         "Tutorial"
         [ testTutorialSolution Default "Tutorials/backstory"
-        , testTutorialSolution (Sec 3) "Tutorials/move"
+        , testTutorialSolution (Sec 10) "Tutorials/move"
         , testTutorialSolution Default "Tutorials/craft"
         , testTutorialSolution Default "Tutorials/grab"
         , testTutorialSolution Default "Tutorials/place"
@@ -368,6 +375,9 @@ testScenarioSolutions rs ui =
         , testSolution Default "Testing/1642-biomes"
         , testSolution (Sec 10) "Testing/1533-sow-command"
         , testSolution Default "Testing/1533-sow-seed-maturation"
+        , testSolution Default "Testing/2085-toplevel-mask"
+        , testSolution Default "Testing/2086-structure-palette"
+        , testSolution Default "Testing/1271-wall-boundaries"
         , testGroup
             -- Note that the description of the classic world in
             -- data/worlds/classic.yaml (automatically tested to some
@@ -432,6 +442,16 @@ testScenarioSolutions rs ui =
             , testSolution Default "Testing/1535-ping/1535-out-of-range"
             ]
         , testGroup
+            "Structure placement (#1780)"
+            [ testSolution Default "Testing/1780-structure-merge-expansion/sequential-placement"
+            , testSolution Default "Testing/1780-structure-merge-expansion/coordinate-offset-propagation"
+            , testSolution Default "Testing/1780-structure-merge-expansion/simultaneous-north-and-west-offset"
+            -- TODO(#2148) define goal conditions or convert to image fixtures
+            -- , testSolution Default "Testing/1780-structure-merge-expansion/nonoverlapping-structure-merge"
+            -- , testSolution Default "Testing/1780-structure-merge-expansion/root-map-expansion"
+            -- , testSolution Default "Testing/1780-structure-merge-expansion/structure-composition"
+            ]
+        , testGroup
             "Structure recognition (#1575)"
             [ testSolution Default "Testing/1575-structure-recognizer/1575-browse-structures"
             , testSolution Default "Testing/1575-structure-recognizer/1575-nested-structure-definition"
@@ -449,6 +469,8 @@ testScenarioSolutions rs ui =
             , testSolution Default "Testing/1575-structure-recognizer/1575-bounding-box-overlap"
             , testSolution Default "Testing/1575-structure-recognizer/1644-rotated-recognition"
             , testSolution Default "Testing/1575-structure-recognizer/1644-rotated-preplacement-recognition"
+            , testSolution Default "Testing/1575-structure-recognizer/2115-encroaching-upon-interior-transparent-cells"
+            , testSolution Default "Testing/1575-structure-recognizer/2115-encroaching-upon-exterior-transparent-cells"
             ]
         ]
     , testSolution' Default "Testing/1430-built-robot-ownership" CheckForBadErrors $ \g -> do
@@ -469,6 +491,8 @@ testScenarioSolutions rs ui =
           assertEqual "Incorrect tangible command count." 7 $ view tangibleCommandCount counters
           assertEqual "Incorrect command count." 10 $ sum . M.elems $ view commandsHistogram counters
           assertEqual "Incorrect step count." 62 $ view lifetimeStepCount counters
+    , expectFailBecause "Awaiting fix for #231" $
+        testSolution Default "Testing/231-requirements/231-command-transformer-reqs"
     ]
  where
   -- expectFailIf :: Bool -> String -> TestTree -> TestTree
@@ -479,20 +503,16 @@ testScenarioSolutions rs ui =
 
   testSolution' :: Time -> FilePath -> ShouldCheckBadErrors -> (GameState -> Assertion) -> TestTree
   testSolution' s p shouldCheckBadErrors verify = testCase p $ do
-    out <- runM . runThrow @SystemFailure $ constructAppState rs ui $ defaultAppOpts {userScenario = Just p}
+    out <- runM . runThrow @SystemFailure $ constructAppState rs ui key $ defaultAppOpts {userScenario = Just p}
     case out of
       Left err -> assertFailure $ prettyString err
       Right appState -> case appState ^. gameState . winSolution of
         Nothing -> assertFailure "No solution to test!"
-        Just sol@(ProcessedTerm _ _ reqCtx) -> do
+        Just sol -> do
           when (shouldCheckBadErrors == CheckForBadErrors) (checkNoRuntimeErrors $ appState ^. runtimeState)
           let gs' =
                 (appState ^. gameState)
-                  -- See #827 for an explanation of why it's important to add to
-                  -- the robotContext defReqs here (and also why this will,
-                  -- hopefully, eventually, go away).
-                  & baseRobot . robotContext . defReqs <>~ reqCtx
-                  & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
+                  & baseRobot . machine .~ initMachine sol
           m <- timeout (time s) (execStateT playUntilWin gs')
           case m of
             Nothing -> assertFailure "Timed out - this likely means that the solution did not work."
@@ -531,20 +551,22 @@ testEditorFiles =
     "editors"
     [ testGroup
         "VS Code"
-        [ testTextInVSCode "operators" (const Keyword.operatorNames)
+        [ testTextInVSCode "operators" Keyword.operatorNames
         , testTextInVSCode "builtin" Keyword.builtinFunctionList
         , testTextInVSCode "commands" Keyword.keywordsCommands
         , testTextInVSCode "directions" Keyword.keywordsDirections
         ]
     , testGroup
         "Emacs"
-        [ testTextInEmacs "builtin" Keyword.builtinFunctionList
+        [ testTextInEmacs "operators" Keyword.operatorNames
+        , testTextInEmacs "builtin" Keyword.builtinFunctionList
         , testTextInEmacs "commands" Keyword.keywordsCommands
         , testTextInEmacs "directions" Keyword.keywordsDirections
         ]
     , testGroup
         "Vim"
-        [ testTextInVim "builtin" Keyword.builtinFunctionList
+        [ testTextInVim "operators" Keyword.operatorNames
+        , testTextInVim "builtin" Keyword.builtinFunctionList
         , testTextInVim "commands" Keyword.keywordsCommands
         , testTextInVim "directions" Keyword.keywordsDirections
         ]
@@ -552,7 +574,7 @@ testEditorFiles =
  where
   testTextInVSCode name tf = testTextInFile False name (tf VSCode) "editors/vscode/syntaxes/swarm.tmLanguage.yaml"
   testTextInEmacs name tf = testTextInFile True name (tf Emacs) "editors/emacs/swarm-mode.el"
-  testTextInVim name tf = testTextInFile True name (tf Vim) "editors/vim/swarm.vim"
+  testTextInVim name tf = testTextInFile False name (tf Vim) "editors/vim/swarm.vim"
   testTextInFile :: Bool -> String -> Text -> FilePath -> TestTree
   testTextInFile whitespace name t fp = testCase name $ do
     let removeLW' = T.unlines . map (T.dropWhile isSpace) . T.lines

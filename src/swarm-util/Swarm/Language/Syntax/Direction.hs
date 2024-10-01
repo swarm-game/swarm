@@ -25,11 +25,13 @@ import Data.Char qualified as C (toLower)
 import Data.Data (Data)
 import Data.Hashable (Hashable)
 import Data.List qualified as L (drop)
+import Data.List.Extra (enumerate)
 import Data.Text hiding (filter, length, map)
+import Data.Text qualified as T
 import GHC.Generics (Generic)
-import Swarm.Util qualified as Util
+import Prettyprinter (pretty)
+import Swarm.Pretty (PrettyPrec (..))
 import Swarm.Util.JSON (optionsMinimize)
-import Witch.From (from)
 
 ------------------------------------------------------------
 -- Directions
@@ -126,11 +128,14 @@ instance ToJSON Direction where
 -- | Direction name is generated from the deepest nested data constructor
 -- e.g. 'DLeft' becomes "left"
 directionSyntax :: Direction -> Text
-directionSyntax d = from $ directionJsonModifier $ case d of
+directionSyntax d = T.pack $ directionJsonModifier $ case d of
   DAbsolute x -> show x
   DRelative x -> case x of
     DPlanar y -> show y
     _ -> show x
+
+instance PrettyPrec Direction where
+  prettyPrec _ = pretty . directionSyntax
 
 -- | Check if the direction is absolute (e.g. 'Swarm.Game.Location.north' or 'Swarm.Game.Location.south').
 isCardinal :: Direction -> Bool
@@ -139,4 +144,4 @@ isCardinal = \case
   _ -> False
 
 allDirs :: [Direction]
-allDirs = map DAbsolute Util.listEnums <> map DRelative (DDown : map DPlanar Util.listEnums)
+allDirs = map DAbsolute enumerate <> map DRelative (DDown : map DPlanar enumerate)

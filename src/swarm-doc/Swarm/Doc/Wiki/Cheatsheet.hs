@@ -17,6 +17,7 @@ import Control.Lens (view, (^.))
 import Control.Lens.Combinators (to)
 import Data.Foldable (find, toList)
 import Data.List (transpose)
+import Data.List.Extra (enumerate)
 import Data.Map.Lazy qualified as Map
 import Data.Maybe (isJust)
 import Data.Set qualified as S
@@ -27,21 +28,21 @@ import Swarm.Doc.Schema.Render
 import Swarm.Doc.Util
 import Swarm.Doc.Wiki.Matrix
 import Swarm.Doc.Wiki.Util
+import Swarm.Failure (simpleErrorHandle)
 import Swarm.Game.Device qualified as D
 import Swarm.Game.Display (displayChar)
 import Swarm.Game.Entity (Entity, EntityMap (entitiesByName), entityDisplay, entityName, loadEntities)
 import Swarm.Game.Entity qualified as E
-import Swarm.Game.Failure (simpleErrorHandle)
 import Swarm.Game.Recipe (Recipe, loadRecipes, recipeCatalysts, recipeInputs, recipeOutputs, recipeTime, recipeWeight)
 import Swarm.Game.Terrain (loadTerrain, terrainByName)
 import Swarm.Language.Capability (Capability)
 import Swarm.Language.Capability qualified as Capability
-import Swarm.Language.Pretty (prettyText, prettyTextLine)
 import Swarm.Language.Syntax (Const (..))
 import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Text.Markdown as Markdown (docToMark)
 import Swarm.Language.Typecheck (inferConst)
-import Swarm.Util (listEnums, showT)
+import Swarm.Pretty (prettyText, prettyTextLine)
+import Swarm.Util (maximum0, showT)
 
 -- * Types
 
@@ -61,28 +62,26 @@ data SheetType = Entities | Terrain | Commands | CommandMatrix | Capabilities | 
 
 -- * Functions
 
-makeWikiPage :: PageAddress -> Maybe SheetType -> IO ()
+makeWikiPage :: PageAddress -> SheetType -> IO ()
 makeWikiPage address s = case s of
-  Nothing -> error "Not implemented for all Wikis"
-  Just st -> case st of
-    Commands -> T.putStrLn commandsPage
-    CommandMatrix -> case pandocToText commandsMatrix of
-      Right x -> T.putStrLn x
-      Left x -> error $ T.unpack x
-    Capabilities -> simpleErrorHandle $ do
-      entities <- loadEntities
-      sendIO $ T.putStrLn $ capabilityPage address entities
-    Entities -> simpleErrorHandle $ do
-      entities <- loadEntities
-      sendIO $ T.putStrLn $ entitiesPage address (Map.elems $ entitiesByName entities)
-    Terrain -> simpleErrorHandle $ do
-      terrains <- loadTerrain
-      sendIO . T.putStrLn . T.unlines . map showT . Map.elems $ terrainByName terrains
-    Recipes -> simpleErrorHandle $ do
-      entities <- loadEntities
-      recipes <- loadRecipes entities
-      sendIO $ T.putStrLn $ recipePage address recipes
-    Scenario -> genScenarioSchemaDocs
+  Commands -> T.putStrLn commandsPage
+  CommandMatrix -> case pandocToText commandsMatrix of
+    Right x -> T.putStrLn x
+    Left x -> error $ T.unpack x
+  Capabilities -> simpleErrorHandle $ do
+    entities <- loadEntities
+    sendIO $ T.putStrLn $ capabilityPage address entities
+  Entities -> simpleErrorHandle $ do
+    entities <- loadEntities
+    sendIO $ T.putStrLn $ entitiesPage address (Map.elems $ entitiesByName entities)
+  Terrain -> simpleErrorHandle $ do
+    terrains <- loadTerrain
+    sendIO . T.putStrLn . T.unlines . map showT . Map.elems $ terrainByName terrains
+  Recipes -> simpleErrorHandle $ do
+    entities <- loadEntities
+    recipes <- loadRecipes entities
+    sendIO $ T.putStrLn $ recipePage address recipes
+  Scenario -> genScenarioSchemaDocs
 
 -- ----------------------------------------------------------------------------
 -- GENERATE TABLES: COMMANDS, ENTITIES AND CAPABILITIES TO MARKDOWN TABLE
@@ -100,7 +99,7 @@ listToRow mw xs = wrap '|' . T.intercalate "|" $ zipWith format mw xs
   format w x = wrap ' ' x <> T.replicate (w - T.length x) " "
 
 maxWidths :: [[Text]] -> [Int]
-maxWidths = map (maximum . map T.length) . transpose
+maxWidths = map (maximum0 . map T.length) . transpose
 
 -- ** COMMANDS
 
@@ -189,7 +188,11 @@ capabilityTable a em cs = T.unlines $ header <> map (listToRow mw) capabilityRow
   header = [listToRow mw capabilityHeader, separatingLine mw]
 
 capabilityPage :: PageAddress -> EntityMap -> Text
-capabilityPage a em = capabilityTable a em listEnums
+capabilityPage a em = capabilityTable a em $ filter usedCapability enumerate
+ where
+  usedCapability c = case c of
+    Capability.CExecute con -> Capability.constCaps con == Just c
+    _ -> True
 
 -- ** Entities
 

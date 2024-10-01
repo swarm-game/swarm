@@ -35,16 +35,15 @@ import Control.Monad.State (MonadState, execStateT)
 import Data.Bifunctor (first)
 import Data.Foldable qualified as F
 import Data.List qualified as List
+import Data.List.Extra (enumerate)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
 import Data.Sequence (Seq)
+import Data.Set qualified as Set
 import Data.Text (Text)
-import Data.Time (ZonedTime, getZonedTime)
-import Swarm.Game.Achievement.Attainment
-import Swarm.Game.Achievement.Definitions
-import Swarm.Game.Achievement.Persistence
-import Swarm.Game.Failure (SystemFailure)
+import Data.Time (getZonedTime)
+import Swarm.Failure (SystemFailure (..))
 import Swarm.Game.Land
 import Swarm.Game.Scenario (
   ScenarioInputs (..),
@@ -69,26 +68,29 @@ import Swarm.Game.ScenarioInfo (
   _SISingle,
  )
 import Swarm.Game.State
+import Swarm.Game.State.Initialize
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Game.World.Gen (Seed)
-import Swarm.Language.Pretty (prettyText)
 import Swarm.Log (LogSource (SystemLog), Severity (..))
+import Swarm.Pretty (prettyText)
 import Swarm.TUI.Editor.Model qualified as EM
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Inventory.Sorting
 import Swarm.TUI.Launch.Model (toSerializableParams)
 import Swarm.TUI.Model
-import Swarm.TUI.Model.Goal (emptyGoalDisplay)
+import Swarm.TUI.Model.Achievements
+import Swarm.TUI.Model.DebugOption (DebugOption (LoadTestingScenarios))
+import Swarm.TUI.Model.Dialog
+import Swarm.TUI.Model.KeyBindings
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.Repl
-import Swarm.TUI.Model.Structure
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr (getWorldAttrName, swarmAttrMap)
 import Swarm.TUI.View.Attribute.CustomStyling (toAttrPair)
 import Swarm.TUI.View.Structure qualified as SR
-import Swarm.Util (listEnums)
 import Swarm.Util.Effect (asExceptT, withThrow)
 import System.Clock
 
@@ -98,8 +100,8 @@ initAppState ::
   AppOpts ->
   m AppState
 initAppState opts = do
-  (rs, ui) <- initPersistentState opts
-  constructAppState rs ui opts
+  (rs, ui, keyHandling) <- initPersistentState opts
+  constructAppState rs ui keyHandling opts
 
 -- | Add some system failures to the list of messages in the
 --   'RuntimeState'.
@@ -122,14 +124,22 @@ skipMenu AppOpts {..} = isJust userScenario || isRunningInitialProgram || isJust
 initPersistentState ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   AppOpts ->
-  m (RuntimeState, UIState)
+  m (RuntimeState, UIState, KeyEventHandlingState)
 initPersistentState opts@(AppOpts {..}) = do
-  (warnings :: Seq SystemFailure, (initRS, initUI)) <- runAccum mempty $ do
-    rs <- initRuntimeState
-    ui <- initUIState speed (not (skipMenu opts)) cheatMode
-    return (rs, ui)
+  (warnings :: Seq SystemFailure, (initRS, initUI, initKs)) <- runAccum mempty $ do
+    rs <-
+      initRuntimeState
+        RuntimeOptions
+          { startPaused = pausedAtStart
+          , pauseOnObjectiveCompletion = autoShowObjectives
+          , loadTestScenarios = Set.member LoadTestingScenarios debugOptions
+          }
+    let showMainMenu = not (skipMenu opts)
+    ui <- initUIState UIInitOptions {..}
+    ks <- initKeyHandlingState
+    return (rs, ui, ks)
   let initRS' = addWarnings initRS (F.toList warnings)
-  return (initRS', initUI)
+  return (initRS', initUI, initKs)
 
 -- | Construct an 'AppState' from an already-loaded 'RuntimeState' and
 --   'UIState', given the 'AppOpts' the app was started with.
@@ -137,12 +147,13 @@ constructAppState ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   RuntimeState ->
   UIState ->
+  KeyEventHandlingState ->
   AppOpts ->
   m AppState
-constructAppState rs ui opts@(AppOpts {..}) = do
-  let gs = initGameState $ rs ^. stdGameConfigInputs
+constructAppState rs ui key opts@(AppOpts {..}) = do
+  let gs = initGameState (rs ^. stdGameConfigInputs)
   case skipMenu opts of
-    False -> return $ AppState gs (ui & uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) rs
+    False -> return $ AppState gs (ui & uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) key rs
     True -> do
       let tem = gs ^. landscape . terrainAndEntities
       (scenario, path) <-
@@ -164,7 +175,7 @@ constructAppState rs ui opts@(AppOpts {..}) = do
       sendIO $
         execStateT
           (startGameWithSeed (scenario, si) $ LaunchParams (pure userSeed) (pure codeToRun))
-          (AppState gs ui newRs)
+          (AppState gs ui key newRs)
 
 -- | Load a 'Scenario' and start playing the game.
 startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()
@@ -224,8 +235,8 @@ scenarioToAppState siPair@(scene, _) lp = do
   gameState .= gs
   void $ withLensIO uiState $ scenarioToUIState isAutoplaying siPair gs
  where
-  isAutoplaying = case runIdentity (initialCode lp) of
-    Just (CodeToRun ScenarioSuggested _) -> True
+  isAutoplaying = case fmap (view toRunSource) . runIdentity $ initialCode lp of
+    Just ScenarioSuggested -> True
     _ -> False
 
   withLensIO :: (MonadIO m, MonadState AppState m) => Lens' AppState x -> (x -> IO x) -> m x
@@ -234,26 +245,6 @@ scenarioToAppState siPair@(scene, _) lp = do
     x' <- liftIO $ a x
     l .= x'
     return x'
-
-attainAchievement :: (MonadIO m, MonadState AppState m) => CategorizedAchievement -> m ()
-attainAchievement a = do
-  currentTime <- liftIO getZonedTime
-  attainAchievement' currentTime Nothing a
-
-attainAchievement' ::
-  (MonadIO m, MonadState AppState m) =>
-  ZonedTime ->
-  Maybe FilePath ->
-  CategorizedAchievement ->
-  m ()
-attainAchievement' t p a = do
-  (uiState . uiAchievements)
-    %= M.insertWith
-      (<>)
-      a
-      (Attainment a p t)
-  newAchievements <- use $ uiState . uiAchievements
-  liftIO $ saveAchievementsInfo $ M.elems newAchievements
 
 -- | Modify the UI state appropriately when starting a new scenario.
 scenarioToUIState ::
@@ -267,16 +258,16 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
   return $
     u
       & uiPlaying .~ True
-      & uiCheatMode ||~ isAutoplaying
       & uiAttrMap
         .~ applyAttrMappings
           ( map (first getWorldAttrName . toAttrPair) $
               fst siPair ^. scenarioLandscape . scenarioAttrs
           )
           swarmAttrMap
-      & uiGameplay . uiGoal .~ emptyGoalDisplay
-      & uiGameplay . uiHideGoals .~ (isAutoplaying && not (u ^. uiCheatMode))
+      & uiGameplay . uiDialogs . uiGoal .~ emptyGoalDisplay
+      & uiGameplay . uiIsAutoPlay .~ isAutoplaying
       & uiGameplay . uiFocusRing .~ initFocusRing
+      & uiGameplay . uiInventory . uiInventorySearch .~ Nothing
       & uiGameplay . uiInventory . uiInventoryList .~ Nothing
       & uiGameplay . uiInventory . uiInventorySort .~ defaultSortOptions
       & uiGameplay . uiInventory . uiShowZero .~ True
@@ -287,10 +278,10 @@ scenarioToUIState isAutoplaying siPair@(scenario, _) gs u = do
       & uiGameplay . uiTiming . lastFrameTime .~ curTime
       & uiGameplay . uiWorldEditor . EM.entityPaintList %~ BL.listReplace entityList Nothing
       & uiGameplay . uiWorldEditor . EM.editingBounds . EM.boundsRect %~ setNewBounds
-      & uiGameplay . uiStructure
+      & uiGameplay . uiDialogs . uiStructure
         .~ StructureDisplay
           (SR.makeListWidget . M.elems $ gs ^. discovery . structureRecognition . automatons . originalStructureDefinitions)
-          (focusSetCurrent (StructureWidgets StructuresList) $ focusRing $ map StructureWidgets listEnums)
+          (focusSetCurrent (StructureWidgets StructuresList) $ focusRing $ map StructureWidgets enumerate)
  where
   entityList = EU.getEntitiesForList $ gs ^. landscape . terrainAndEntities . entityMap
 

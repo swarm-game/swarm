@@ -37,10 +37,8 @@ world:
           xx
         placements:
           - src: vertical rectangle
-            truncate: false
             offset: [-7, 7]
           - src: horizontal rectangle
-            truncate: false
             offset: [7, -7]
   placements:
     - src: disjoint rectangles

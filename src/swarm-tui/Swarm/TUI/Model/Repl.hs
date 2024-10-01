@@ -8,9 +8,16 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.Model.Repl (
   -- ** REPL
+  REPLEntryType (..),
+  REPLHistItemType (..),
   REPLHistItem (..),
-  replItemText,
+  mkREPLSubmission,
+  mkREPLSaved,
+  mkREPLOutput,
+  mkREPLError,
   isREPLEntry,
+  getREPLSubmitted,
+  isREPLSaved,
   getREPLEntry,
   REPLHistory,
   replIndex,
@@ -63,6 +70,7 @@ import Data.Text qualified as T
 import Data.Text.Zipper qualified as TZ
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
+import Swarm.Language.Syntax (SrcLoc (..))
 import Swarm.Language.Types
 import Swarm.TUI.Model.Name
 import Swarm.Util.Lens (makeLensesNoSigs)
@@ -72,47 +80,86 @@ import Prelude hiding (Applicative (..))
 -- REPL History
 ------------------------------------------------------------
 
--- | An item in the REPL history.
-data REPLHistItem
-  = -- | Something entered by the user.
-    REPLEntry Text
-  | -- | A response printed by the system.
-    REPLOutput Text
-  | -- | An error printed by the system.
-    REPLError Text
+-- | Whether a user REPL entry was submitted or merely saved.
+data REPLEntryType
+  = -- | The entry was submitted (with Enter) and should thus be shown
+    --   in the REPL scrollback.
+    REPLEntrySubmitted
+  | -- | The entry was merely saved (e.g. by hitting down
+    --   arrow) and should thus be available in the history but not
+    --   shown in the scrollback.
+    REPLEntrySaved
   deriving (Eq, Ord, Show, Read)
+
+-- | Various types of REPL history items (user input, output, error).
+data REPLHistItemType
+  = -- | Something entered by the user.
+    REPLEntry REPLEntryType
+  | -- | A response printed by the system.
+    REPLOutput
+  | -- | An error printed by the system.
+    REPLError
+  deriving (Eq, Ord, Show, Read)
+
+-- | An item in the REPL history.
+data REPLHistItem = REPLHistItem {replItemType :: REPLHistItemType, replItemText :: Text}
+  deriving (Eq, Ord, Show, Read)
+
+mkREPLSubmission :: Text -> REPLHistItem
+mkREPLSubmission = REPLHistItem (REPLEntry REPLEntrySubmitted)
+
+mkREPLSaved :: Text -> REPLHistItem
+mkREPLSaved = REPLHistItem (REPLEntry REPLEntrySaved)
+
+mkREPLOutput :: Text -> REPLHistItem
+mkREPLOutput = REPLHistItem REPLOutput
+
+mkREPLError :: Text -> REPLHistItem
+mkREPLError = REPLHistItem REPLError
 
 instance ToSample REPLHistItem where
   toSamples _ =
     SD.samples
-      [ REPLEntry "grab"
-      , REPLOutput "it0 : text = \"tree\""
-      , REPLEntry "place tree"
-      , REPLError "1:7: Unbound variable tree"
+      [ REPLHistItem (REPLEntry REPLEntrySubmitted) "grab"
+      , REPLHistItem REPLOutput "it0 : text = \"tree\""
+      , REPLHistItem (REPLEntry REPLEntrySaved) "place"
+      , REPLHistItem (REPLEntry REPLEntrySubmitted) "place tree"
+      , REPLHistItem REPLError "1:7: Unbound variable tree"
       ]
 
 instance ToJSON REPLHistItem where
-  toJSON e = case e of
-    REPLEntry x -> object ["in" .= x]
-    REPLOutput x -> object ["out" .= x]
-    REPLError x -> object ["err" .= x]
+  toJSON (REPLHistItem itemType x) = object [label .= x]
+   where
+    label = case itemType of
+      REPLEntry REPLEntrySubmitted -> "in"
+      REPLEntry REPLEntrySaved -> "save"
+      REPLOutput -> "out"
+      REPLError -> "err"
 
--- | Useful helper function to only get user input text.
+-- | Useful helper function to only get user input text.  Gets all
+--   user input, including both submitted and saved history items.
 getREPLEntry :: REPLHistItem -> Maybe Text
 getREPLEntry = \case
-  REPLEntry t -> Just t
+  REPLHistItem (REPLEntry {}) t -> Just t
   _ -> Nothing
 
--- | Useful helper function to filter out REPL output.
+-- | Useful helper function to filter out REPL output.  Returns True
+--   for all user input, including both submitted and saved history
+--   items.
 isREPLEntry :: REPLHistItem -> Bool
 isREPLEntry = isJust . getREPLEntry
 
--- | Get the text of REPL input/output.
-replItemText :: REPLHistItem -> Text
-replItemText = \case
-  REPLEntry t -> t
-  REPLOutput t -> t
-  REPLError t -> t
+-- | Helper function to get only submitted user input text.
+getREPLSubmitted :: REPLHistItem -> Maybe Text
+getREPLSubmitted = \case
+  REPLHistItem (REPLEntry REPLEntrySubmitted) t -> Just t
+  _ -> Nothing
+
+-- | Useful helper function to filter out saved REPL entries (which
+--   should not be shown in the scrollback).
+isREPLSaved :: REPLHistItem -> Bool
+isREPLSaved (REPLHistItem (REPLEntry REPLEntrySaved) _) = True
+isREPLSaved _ = False
 
 -- | History of the REPL with indices (0 is first entry) to the current
 --   line and to the first entry since loading saved history.
@@ -215,7 +262,7 @@ moveReplHistIndex d lastEntered history = history & replIndex .~ newIndex
   (olderP, newer) = Seq.splitAt curIndex entries
   -- find first different entry in direction
   notSameEntry = \case
-    REPLEntry t -> t /= curText
+    REPLHistItem (REPLEntry {}) t -> t /= curText
     _ -> False
   newIndex = case d of
     Newer -> maybe historyLen (curIndex +) $ Seq.findIndexL notSameEntry newer
@@ -228,11 +275,11 @@ replIndexIsAtInput :: REPLHistory -> Bool
 replIndexIsAtInput repl = repl ^. replIndex == replLength repl
 
 -- | Given some text,  removes the 'REPLEntry' within 'REPLHistory' which is equal to that.
---   This is used when the user enters in search mode and want to traverse the history.
+--   This is used when the user enters search mode and wants to traverse the history.
 --   If a command has been used many times, the history will be populated with it causing
 --   the effect that search command always finds the same command.
 removeEntry :: Text -> REPLHistory -> REPLHistory
-removeEntry foundtext hist = hist & replSeq %~ Seq.filter (/= REPLEntry foundtext)
+removeEntry foundtext hist = hist & replSeq %~ Seq.filter ((/= Just foundtext) . getREPLEntry)
 
 -- | Get the last 'REPLEntry' in 'REPLHistory' matching the given text
 lastEntry :: Text -> REPLHistory -> Maybe Text
@@ -274,7 +321,7 @@ data ReplControlMode
 data REPLState = REPLState
   { _replPromptType :: REPLPrompt
   , _replPromptEditor :: Editor Text Name
-  , _replValid :: Bool
+  , _replValid :: Either SrcLoc ()
   , _replLast :: Text
   , _replType :: Maybe Polytype
   , _replControlMode :: ReplControlMode
@@ -293,7 +340,7 @@ initREPLState hist =
   REPLState
     { _replPromptType = defaultPrompt
     , _replPromptEditor = newREPLEditor ""
-    , _replValid = True
+    , _replValid = Right ()
     , _replLast = ""
     , _replType = Nothing
     , _replControlMode = Typing
@@ -317,7 +364,9 @@ replPromptText = lens g s
   s r t = r & replPromptEditor .~ newREPLEditor t
 
 -- | Whether the prompt text is a valid 'Swarm.Language.Syntax.Term'.
-replValid :: Lens' REPLState Bool
+--   If it is invalid, the location of error. ('NoLoc' means the whole
+--   text causes the error.)
+replValid :: Lens' REPLState (Either SrcLoc ())
 
 -- | The type of the current REPL input which should be displayed to
 --   the user (if any).

@@ -1,0 +1,85 @@
+version: 1
+name: Structure recognition - interior transparency
+description: |
+  Incursion of an entity of a foreign type
+  upon a "transparent" cell within the bounding box
+  of a recognizable structure shall not prevent
+  the structure from being recognized.
+
+  If the incurring entity is the *same* type as
+  a participating entity in that structure, however,
+  it will prevent recognition.
+creative: false
+objectives:
+  - teaser: Recognize structure
+    goal:
+      - |
+        `pigpen`{=structure} structure should be recognized upon completion,
+        even with an extraneous entity within its bounds.
+    condition: |
+      def isRight = \x. case x (\_. false) (\_. true); end;
+      foundBox <- structure "pigpen" 0;
+      return $ isRight foundBox;
+robots:
+  - name: base
+    dir: east
+    devices:
+      - ADT calculator
+      - blueprint
+      - fast grabber
+      - logger
+      - treads
+    inventory:
+      - [1, board]
+  - name: judge
+    dir: east
+    system: true
+    display:
+      invisible: true
+solution: |
+  move; move; move; move;
+  swap "board";
+structures:
+  - name: pigpen
+    recognize: [north]
+    structure:
+      palette:
+        'b': [stone, board]
+      mask: '.'
+      map: |
+        bbbb
+        b..b
+        b..b
+        bbbb
+  - name: obstruction
+    recognize: [north]
+    structure:
+      palette:
+        't': [grass, tree]
+        'b': [grass, board]
+      map: |
+        tttb
+known: [board, mountain, tree]
+world:
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass, erase]
+    'B': [grass, erase, base]
+    'r': [grass, mountain]
+    'j': [grass, erase, judge]
+    'p':
+      structure:
+        name: pigpen
+      cell: [grass]
+    'b':
+      structure:
+        name: obstruction
+      cell: [grass]
+  upperleft: [-7, 3]
+  map: |
+    j.....
+    .p....
+    ...r..
+    B..b..
+    ......

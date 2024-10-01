@@ -17,7 +17,6 @@ import Data.Map qualified as M
 import Data.Yaml qualified as Y
 import Graphics.Vty qualified as V
 import Swarm.Game.Land
-import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.EntityFacade
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
@@ -30,6 +29,7 @@ import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import Swarm.Util (hoistMaybe)
 import Swarm.Util.Erasable (maybeToErasable)
 import System.Clock
@@ -148,8 +148,8 @@ saveMapFile = do
   w <- use $ gameState . landscape . multiWorld
   tm <- use $ gameState . landscape . terrainAndEntities . terrainMap
   let mapCellGrid =
-        mapRows (map (map Just)) $
-          EU.getEditedMapRectangle tm (worldEditor ^. worldOverdraw) maybeBounds w
+        Just
+          <$> EU.getEditedMapRectangle tm (worldEditor ^. worldOverdraw) maybeBounds w
 
   let fp = worldEditor ^. outputFilePath
   maybeScenarioPair <- use $ uiState . uiGameplay . scenarioRef

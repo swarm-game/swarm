@@ -4,14 +4,16 @@
 -- Types for styling custom entity attributes
 module Swarm.Game.Scenario.Style where
 
+import Codec.Picture (PixelRGBA8 (..))
 import Data.Aeson
-import Data.Colour.Palette.BrewerSet (Kolor)
-import Data.Colour.SRGB (sRGB24read, toSRGB24)
+import Data.Colour.Palette.Types (Kolor)
+import Data.Colour.SRGB (RGB (..), sRGB24read, toSRGB24)
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Swarm.Game.Entity.Cosmetic
+import Swarm.Game.Scenario.Topography.Rasterize
 
 data StyleFlag
   = Standout
@@ -40,6 +42,13 @@ instance ToJSON StyleFlag where
 -- May include a leading hash symbol (see 'Data.Colour.SRGB.sRGB24read').
 newtype HexColor = HexColor Text
   deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
+
+instance ToPixel HexColor where
+  toPixel (HexColor colorText) = PixelRGBA8 r g b 255
+   where
+    temp :: Kolor
+    temp = sRGB24read $ T.unpack colorText
+    RGB r g b = toSRGB24 temp
 
 data CustomAttr = CustomAttr
   { name :: String

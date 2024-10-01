@@ -45,9 +45,7 @@ world:
         map: ""
         placements:
           - src: vertical rectangle
-            truncate: false
           - src: horizontal rectangle
-            truncate: false
     - name: combined rectangles single cell base
       structure:
         palette:
@@ -56,9 +54,7 @@ world:
           x
         placements:
           - src: vertical rectangle
-            truncate: false
           - src: horizontal rectangle
-            truncate: false
     - name: multi overlap
       structure:
         palette:
@@ -68,19 +64,14 @@ world:
         placements:
           - src: vertical rectangle
             offset: [1, 0]
-            truncate: false
           - src: horizontal rectangle
-            truncate: false
             offset: [0, -2]
           - src: vertical rectangle
             offset: [3, -2]
-            truncate: false
           - src: horizontal rectangle
-            truncate: false
             offset: [3, -4]
           - src: vertical rectangle
             offset: [5, -4]
-            truncate: false
   placements:
     - src: vertical rectangle
       offset: [1, -1]
@@ -88,7 +79,6 @@ world:
       offset: [1, -1]
     - src: multi overlap
       offset: [1, -6]
-      truncate: false
     - src: combined rectangles blank base
       offset: [6, -1]
     - src: combined rectangles empty base

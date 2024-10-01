@@ -8,6 +8,8 @@
 -- Pattern synonyms for untyped terms
 module Swarm.Language.Syntax.Pattern (
   Syntax,
+  TSyntax,
+  USyntax,
   sLoc,
   sTerm,
   sType,
@@ -21,19 +23,23 @@ module Swarm.Language.Syntax.Pattern (
   pattern TApp,
   pattern (:$:),
   pattern TLet,
-  pattern TDef,
+  pattern TTydef,
   pattern TBind,
   pattern TDelay,
   pattern TRcd,
   pattern TProj,
   pattern TAnnotate,
+  pattern TSuspend,
   Term,
+  TTerm,
+  UTerm,
   noLoc,
 ) where
 
 import Control.Lens (makeLenses, pattern Empty)
 import Data.Map.Strict (Map)
 import Data.Text hiding (filter, length, map)
+import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
 import Swarm.Language.Syntax.Loc
@@ -43,6 +49,12 @@ import Swarm.Language.Types
 type Syntax = Syntax' ()
 
 type Term = Term' ()
+
+type TSyntax = Syntax' Polytype
+type TTerm = Term' Polytype
+
+type USyntax = Syntax' UType
+type UTerm = Term' UType
 
 -- | Raw parsed syntax, without comments or type annotations.
 pattern Syntax :: SrcLoc -> Term -> Syntax
@@ -92,26 +104,26 @@ pattern (:$:) :: Term -> Syntax -> Term
 pattern (:$:) t1 s2 = SApp (STerm t1) s2
 
 -- | Match a TLet without annotations.
-pattern TLet :: Bool -> Var -> Maybe Polytype -> Term -> Term -> Term
-pattern TLet r v pt t1 t2 <- SLet r (lvVar -> v) pt (STerm t1) (STerm t2)
+pattern TLet :: LetSyntax -> Bool -> Var -> Maybe Polytype -> Maybe Requirements -> Term -> Term -> Term
+pattern TLet ls r v mty mreq t1 t2 <- SLet ls r (lvVar -> v) mty mreq (STerm t1) (STerm t2)
   where
-    TLet r v pt t1 t2 = SLet r (LV NoLoc v) pt (STerm t1) (STerm t2)
+    TLet ls r v mty mreq t1 t2 = SLet ls r (LV NoLoc v) mty mreq (STerm t1) (STerm t2)
 
--- | Match a TDef without annotations.
-pattern TDef :: Bool -> Var -> Maybe Polytype -> Term -> Term
-pattern TDef r v pt t <- SDef r (lvVar -> v) pt (STerm t)
+-- | Match a STydef without annotations.
+pattern TTydef :: Var -> Polytype -> Maybe TydefInfo -> Term -> Term
+pattern TTydef v ty mtd t1 <- STydef (lvVar -> v) ty mtd (STerm t1)
   where
-    TDef r v pt t = SDef r (LV NoLoc v) pt (STerm t)
+    TTydef v ty mtd t1 = STydef (LV NoLoc v) ty mtd (STerm t1)
 
 -- | Match a TBind without annotations.
-pattern TBind :: Maybe Var -> Term -> Term -> Term
-pattern TBind mv t1 t2 <- SBind (fmap lvVar -> mv) (STerm t1) (STerm t2)
+pattern TBind :: Maybe Var -> Maybe Polytype -> Maybe Requirements -> Term -> Term -> Term
+pattern TBind mv mty mreq t1 t2 <- SBind (fmap lvVar -> mv) _ mty mreq (STerm t1) (STerm t2)
   where
-    TBind mv t1 t2 = SBind (LV NoLoc <$> mv) (STerm t1) (STerm t2)
+    TBind mv mty mreq t1 t2 = SBind (LV NoLoc <$> mv) Nothing mty mreq (STerm t1) (STerm t2)
 
 -- | Match a TDelay without annotations.
-pattern TDelay :: DelayType -> Term -> Term
-pattern TDelay m t = SDelay m (STerm t)
+pattern TDelay :: Term -> Term
+pattern TDelay t = SDelay (STerm t)
 
 -- | Match a TRcd without annotations.
 pattern TRcd :: Map Var (Maybe Term) -> Term
@@ -126,6 +138,10 @@ pattern TProj t x = SProj (STerm t) x
 pattern TAnnotate :: Term -> Polytype -> Term
 pattern TAnnotate t pt = SAnnotate (STerm t) pt
 
+-- | Match a TSuspend without annotations.
+pattern TSuspend :: Term -> Term
+pattern TSuspend t = SSuspend (STerm t)
+
 -- COMPLETE pragma tells GHC using this set of patterns is complete for Term
 
-{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TRequirements, TVar, TPair, TLam, TApp, TLet, TDef, TTydef, TBind, TDelay, TRcd, TProj, TAnnotate #-}
+{-# COMPLETE TUnit, TConst, TDir, TInt, TAntiInt, TText, TAntiText, TBool, TRequireDevice, TRequire, TRequirements, TVar, TPair, TLam, TApp, TLet, TTydef, TBind, TDelay, TRcd, TProj, TAnnotate, TSuspend #-}

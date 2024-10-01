@@ -4,43 +4,24 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Topography.Area where
 
-import Data.Aeson (ToJSON (..))
 import Data.Int (Int32)
 import Data.List qualified as L
 import Data.Maybe (listToMaybe)
+import Data.Semigroup
 import Linear (V2 (..))
 import Swarm.Game.Location
-import Swarm.Game.World.Coords
-
-newtype Grid c = Grid
-  { unGrid :: [[c]]
-  }
-  deriving (Show, Eq, Functor, Foldable, Traversable)
-
--- | Since the derived 'Functor' instance applies to the
--- type parameter that is nested within lists, we define
--- an explicit function for mapping over the enclosing lists.
-mapRows :: ([[a]] -> [[b]]) -> Grid a -> Grid b
-mapRows f (Grid rows) = Grid $ f rows
-
-allMembers :: Grid a -> [a]
-allMembers (Grid g) = concat g
-
-mapIndexedMembers :: (Coords -> a -> b) -> Grid a -> [b]
-mapIndexedMembers f (Grid g) =
-  concat $ zipWith (\i -> zipWith (\j -> f (Coords (i, j))) [0 ..]) [0 ..] g
-
-instance (ToJSON a) => ToJSON (Grid a) where
-  toJSON (Grid g) = toJSON g
-
-getGridDimensions :: Grid a -> AreaDimensions
-getGridDimensions (Grid g) = getAreaDimensions g
+import Swarm.Game.Scenario.Topography.Grid
+import Prelude hiding (zipWith)
 
 -- | Height and width of a 2D map region
 data AreaDimensions = AreaDimensions
   { rectWidth :: Int32
   , rectHeight :: Int32
   }
+  deriving (Show, Eq)
+
+getGridDimensions :: Grid a -> AreaDimensions
+getGridDimensions g = getAreaDimensions $ getRows g
 
 asTuple :: AreaDimensions -> (Int32, Int32)
 asTuple (AreaDimensions x y) = (x, y)
@@ -91,7 +72,12 @@ computeArea :: AreaDimensions -> Int32
 computeArea (AreaDimensions w h) = w * h
 
 fillGrid :: AreaDimensions -> a -> Grid a
-fillGrid (AreaDimensions w h) =
+fillGrid (AreaDimensions 0 _) _ = EmptyGrid
+fillGrid (AreaDimensions _ 0) _ = EmptyGrid
+fillGrid (AreaDimensions w h) x =
   Grid
-    . replicate (fromIntegral h)
-    . replicate (fromIntegral w)
+    . stimes h
+    . pure
+    . stimes w
+    . pure
+    $ x

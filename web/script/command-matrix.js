@@ -42,7 +42,7 @@ function insertTableRows(myTableBody, entries) {
 }
 
 function doFetch(myTable) {
-    fetch("commands")
+    fetch("data/commands.json")
     .then((response) => {
     if (!response.ok) {
         throw new Error(`HTTP error, status = ${response.status}`);

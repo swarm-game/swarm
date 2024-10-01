@@ -14,34 +14,36 @@ import Data.Coerce
 import Data.Functor.Identity
 import Data.Text qualified as T
 import Data.Yaml as Y
-import Swarm.Game.Entity
+import Swarm.Game.Entity (Entity)
 import Swarm.Game.Land
 import Swarm.Game.Location
-import Swarm.Game.Scenario.RobotLookup
-import Swarm.Game.Scenario.Topography.Area (Grid (..))
+import Swarm.Game.Scenario.RobotLookup (RobotMap)
 import Swarm.Game.Scenario.Topography.Cell
-import Swarm.Game.Scenario.Topography.EntityFacade
+import Swarm.Game.Scenario.Topography.EntityFacade (EntityFacade)
 import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (
   Parentage (Root),
   WaypointName,
  )
-import Swarm.Game.Scenario.Topography.ProtoCell
+import Swarm.Game.Scenario.Topography.ProtoCell (
+  StructurePalette (StructurePalette),
+ )
 import Swarm.Game.Scenario.Topography.Structure (
-  LocatedStructure,
   MergedStructure (MergedStructure),
   NamedStructure,
-  PStructure (Structure),
-  paintMap,
+  parseStructure,
  )
 import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
-import Swarm.Game.Scenario.Topography.Structure.Overlay
+import Swarm.Game.Scenario.Topography.Structure.Overlay (
+  PositionedGrid (..),
+ )
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Static (LocatedStructure)
 import Swarm.Game.Scenario.Topography.WorldPalette
-import Swarm.Game.Universe
+import Swarm.Game.Universe (SubworldName (DefaultRootSubworld))
 import Swarm.Game.World.Parse ()
 import Swarm.Game.World.Syntax
 import Swarm.Game.World.Typecheck
-import Swarm.Language.Pretty (prettyString)
+import Swarm.Pretty (prettyString)
 import Swarm.Util.Yaml
 
 ------------------------------------------------------------
@@ -55,10 +57,11 @@ data PWorldDescription e = WorldDescription
   { offsetOrigin :: Bool
   , scrollable :: Bool
   , palette :: WorldPalette e
-  , ul :: Location
   , area :: PositionedGrid (Maybe (PCell e))
   , navigation :: Navigation Identity WaypointName
   , placedStructures :: [LocatedStructure]
+  -- ^ statically-placed structures to pre-populate
+  -- the structure recognizer
   , worldName :: SubworldName
   , worldProg :: Maybe (TTerm '[] (World CellVal))
   }
@@ -76,25 +79,6 @@ data WorldParseDependencies
       -- | last for the benefit of partial application
       TerrainEntityMaps
 
-integrateArea ::
-  WorldPalette e ->
-  [NamedStructure (Maybe (PCell e))] ->
-  Object ->
-  Parser (MergedStructure (Maybe (PCell e)))
-integrateArea palette initialStructureDefs v = do
-  placementDefs <- v .:? "placements" .!= []
-  waypointDefs <- v .:? "waypoints" .!= []
-  rawMap <- v .:? "map" .!= Grid []
-  (initialArea, mapWaypoints) <- paintMap Nothing palette rawMap
-  let unflattenedStructure =
-        Structure
-          (PositionedGrid origin initialArea)
-          initialStructureDefs
-          placementDefs
-          (waypointDefs <> mapWaypoints)
-  either (fail . T.unpack) return $
-    Assembly.mergeStructures mempty Root unflattenedStructure
-
 instance FromJSONE WorldParseDependencies WorldDescription where
   parseJSONE = withObjectE "world description" $ \v -> do
     WorldParseDependencies worldMap scenarioLevelStructureDefs rm tem <- getE
@@ -107,32 +91,39 @@ instance FromJSONE WorldParseDependencies WorldDescription where
       withDeps $
         v ..:? "structures" ..!= []
 
-    let structureDefs = scenarioLevelStructureDefs <> subworldLocalStructureDefs
-    MergedStructure area staticStructurePlacements unmergedWaypoints <-
-      liftE $ integrateArea palette structureDefs v
+    let initialStructureDefs = scenarioLevelStructureDefs <> subworldLocalStructureDefs
+    liftE $ mkWorld tem worldMap palette initialStructureDefs v
+   where
+    mkWorld tem worldMap palette initialStructureDefs v = do
+      MergedStructure mergedGrid staticStructurePlacements unmergedWaypoints <- do
+        unflattenedStructure <- parseStructure palette initialStructureDefs v
+        either (fail . T.unpack) return $
+          Assembly.mergeStructures mempty Root unflattenedStructure
 
-    worldName <- liftE $ v .:? "name" .!= DefaultRootSubworld
-    ul <- liftE $ v .:? "upperleft" .!= origin
-    portalDefs <- liftE $ v .:? "portals" .!= []
-    navigation <-
-      validatePartialNavigation
-        worldName
-        ul
-        unmergedWaypoints
-        portalDefs
+      worldName <- v .:? "name" .!= DefaultRootSubworld
+      ul <- v .:? "upperleft" .!= origin
+      portalDefs <- v .:? "portals" .!= []
+      navigation <-
+        validatePartialNavigation
+          worldName
+          ul
+          unmergedWaypoints
+          portalDefs
 
-    mwexp <- liftE $ v .:? "dsl"
-    worldProg <- forM mwexp $ \wexp -> do
-      let checkResult =
-            run . runThrow @CheckErr . runReader worldMap . runReader tem $
-              check CNil (TTyWorld TTyCell) wexp
-      either (fail . prettyString) return checkResult
+      mwexp <- v .:? "dsl"
+      worldProg <- forM mwexp $ \wexp -> do
+        let checkResult =
+              run . runThrow @CheckErr . runReader worldMap . runReader tem $
+                check CNil (TTyWorld TTyCell) wexp
+        either (fail . prettyString) return checkResult
 
-    offsetOrigin <- liftE $ v .:? "offset" .!= False
-    scrollable <- liftE $ v .:? "scrollable" .!= True
-    let placedStructures =
-          map (offsetLoc $ coerce ul) staticStructurePlacements
-    return $ WorldDescription {..}
+      offsetOrigin <- v .:? "offset" .!= False
+      scrollable <- v .:? "scrollable" .!= True
+      let placedStructures =
+            map (offsetLoc $ coerce ul) staticStructurePlacements
+
+      let area = modifyLoc ((ul .+^) . asVector) mergedGrid
+      return $ WorldDescription {..}
 
 ------------------------------------------------------------
 -- World editor
@@ -147,7 +138,7 @@ instance ToJSON WorldDescriptionPaint where
     object
       [ "offset" .= offsetOrigin w
       , "palette" .= Y.toJSON paletteKeymap
-      , "upperleft" .= ul w
+      , "upperleft" .= gridPosition (area w)
       , "map" .= Y.toJSON mapText
       ]
    where

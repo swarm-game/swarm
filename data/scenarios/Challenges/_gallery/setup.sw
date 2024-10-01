@@ -73,13 +73,9 @@ Fisher-Yates would be more efficient, but requires a physical array.
 def naiveRandomStack = \valueFunc. \maxval. \bitmask. \n.
     val <- if (n > 1) {
         nextRandomVal <- getUnusedRandom maxval bitmask;
-
-        // Recursion bug workaround (see #1032):
-        let blahNextRandomVal = nextRandomVal in
-
         let newBitmask = bitmask + shiftLeft 1 nextRandomVal in
         naiveRandomStack valueFunc maxval newBitmask $ n - 1;
-        return blahNextRandomVal;
+        return nextRandomVal;
     } {
         // We're at the peak of the stack.
         // Now we unwind it.

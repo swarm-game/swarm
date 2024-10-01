@@ -22,19 +22,19 @@ import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8')
 import Data.Yaml (decodeEither', parseEither)
 import Servant.Multipart
-import Swarm.Game.CESK (emptyStore, initMachine)
-import Swarm.Game.Failure (SystemFailure)
-import Swarm.Game.Robot.Concrete (machine, robotContext)
-import Swarm.Game.Robot.Context (defReqs)
+import Swarm.Failure (SystemFailure)
+import Swarm.Game.CESK (continue)
+import Swarm.Game.Robot.Concrete (machine)
 import Swarm.Game.Scenario
 import Swarm.Game.Scenario.Scoring.CodeSize (codeMetricsFromSyntax)
 import Swarm.Game.Scenario.Status (emptyLaunchParams)
 import Swarm.Game.State
-import Swarm.Game.State.Runtime (initGameStateConfig, initScenarioInputs)
+import Swarm.Game.State.Initialize (scenarioToGameState)
+import Swarm.Game.State.Runtime (RuntimeOptions (..), initGameStateConfig, initScenarioInputs, pauseOnObjectiveCompletion)
 import Swarm.Game.State.Substate (initState, seed)
 import Swarm.Game.Step.Validate (playUntilWin)
-import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline
+import Swarm.Language.Syntax (TSyntax)
 import Swarm.Util.Yaml
 import Swarm.Web.Tournament.Database.Query
 import Swarm.Web.Tournament.Type
@@ -183,7 +183,13 @@ gamestateFromScenarioText content = do
     withExceptT (ScenarioEnvironmentFailure . ContextInitializationFailure)
       . ExceptT
       . runThrow
-      $ evalAccum (mempty :: Seq SystemFailure) initGameStateConfig
+      . evalAccum (mempty :: Seq SystemFailure)
+      . initGameStateConfig
+      $ RuntimeOptions
+        { startPaused = False
+        , pauseOnObjectiveCompletion = False
+        , loadTestScenarios = False
+        }
 
   let scenarioInputs = gsiScenarioInputs $ initState gsc
   scenarioObject <- initScenarioObject scenarioInputs content
@@ -192,7 +198,7 @@ gamestateFromScenarioText content = do
 
 verifySolution ::
   SolutionTimeout ->
-  ProcessedTerm ->
+  TSyntax ->
   GameState ->
   ExceptT SolutionEvaluationFailure IO SolutionCharacterization
 verifySolution (SolutionTimeout timeoutSeconds) sol gs = do
@@ -212,11 +218,5 @@ verifySolution (SolutionTimeout timeoutSeconds) sol gs = do
       (gs ^. randomness . seed)
       codeMetrics
  where
-  codeMetrics = codeMetricsFromSyntax (sol ^. processedSyntax)
-  gs' =
-    gs
-      -- See #827 for an explanation of why it's important to add to
-      -- the robotContext defReqs here (and also why this will,
-      -- hopefully, eventually, go away).
-      & baseRobot . robotContext . defReqs <>~ (sol ^. processedReqCtx)
-      & baseRobot . machine .~ initMachine sol Ctx.empty emptyStore
+  codeMetrics = codeMetricsFromSyntax sol
+  gs' = gs & baseRobot . machine %~ continue sol

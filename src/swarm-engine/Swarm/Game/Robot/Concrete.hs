@@ -12,7 +12,6 @@
 -- Support for instantiated robots.
 module Swarm.Game.Robot.Concrete (
   -- * Lenses
-  robotContext,
   machine,
   activityCounts,
   robotLog,
@@ -41,23 +40,18 @@ import Swarm.Game.Display (defaultRobotDisplay, invisible)
 import Swarm.Game.Entity hiding (empty)
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
-import Swarm.Game.Robot.Context
 import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Tick
 import Swarm.Game.Universe
-import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
+import Swarm.Language.Syntax (TSyntax)
 import Swarm.Language.Value as V
 import Swarm.Log
 
-type instance RobotContextMember 'ConcreteRobot = RobotContext
 type instance RobotMachine 'ConcreteRobot = C.CESK
 type instance RobotActivity 'ConcreteRobot = ActivityCounts
 type instance RobotLogMember 'ConcreteRobot = Seq LogEntry
 type instance RobotLogUpdatedMember 'ConcreteRobot = Bool
-
-robotContext :: Lens' Robot RobotContext
-robotContext = lens _robotContext (\r x -> r {_robotContext = x})
 
 machine :: Lens' Robot C.CESK
 machine = lens _machine (\r x -> r {_machine = x})
@@ -97,7 +91,7 @@ instance ToSample Robot where
    where
     sampleBase :: Robot
     sampleBase =
-      instantiateRobot (Just $ C.initMachine [tmQ| move |] mempty C.emptyStore) 0 $
+      instantiateRobot (Just $ C.initMachine [tmQ| move |]) 0 $
         mkRobot
           Nothing
           "base"
@@ -113,9 +107,9 @@ instance ToSample Robot where
           emptyExceptions
           0
 
-mkMachine :: Maybe ProcessedTerm -> C.CESK
+mkMachine :: Maybe TSyntax -> C.CESK
 mkMachine Nothing = C.Out VUnit C.emptyStore []
-mkMachine (Just pt) = C.initMachine pt mempty C.emptyStore
+mkMachine (Just t) = C.initMachine t
 
 -- | Instantiate a robot template to make it into a concrete robot, by
 --    providing a robot ID. Concrete robots also require a location;
@@ -132,7 +126,6 @@ instantiateRobot maybeMachine i r =
     , _robotLocation = fromMaybe defaultCosmicLocation $ _robotLocation r
     , _activityCounts = emptyActivityCount
     , _machine = fromMaybe (mkMachine $ _machine r) maybeMachine
-    , _robotContext = emptyRobotContext
     , _robotLog = Seq.empty
     , _robotLogUpdated = False
     }
@@ -148,7 +141,7 @@ instance Ae.ToJSON Robot where
     Ae.object $
       catMaybes
         [ "id" .== (r ^. robotID)
-        , "name" .== (r ^. robotEntity . entityDisplay)
+        , "name" .== (r ^. robotEntity . entityName)
         , "description" .=? (r ^. robotEntity . entityDescription) $ mempty
         , "loc" .== (r ^. robotLocation)
         , "dir" .=? (r ^. robotEntity . entityOrientation) $ zero
@@ -162,7 +155,6 @@ instance Ae.ToJSON Robot where
         , -- debug
           "capabilities" .=? (r ^. robotCapabilities) $ mempty
         , "logUpdated" .=? (r ^. robotLogUpdated) $ False
-        , "context" .=? (r ^. robotContext) $ emptyRobotContext
         , "parent" .=? (r ^. robotParentID) $ Nothing
         , "createdAt" .=? (r ^. robotCreatedAt) $ 0
         , "selfDestruct" .=? (r ^. selfDestruct) $ False
@@ -180,7 +172,7 @@ waitingUntil robot =
     _ -> Nothing
 
 -- | Get the result of the robot's computation if it is finished.
-getResult :: Robot -> Maybe (Value, C.Store)
+getResult :: Robot -> Maybe Value
 {-# INLINE getResult #-}
 getResult = C.finalValue . view machine
 

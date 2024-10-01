@@ -6,46 +6,60 @@ objectives:
   - id: move_to_first_flower
     teaser: Get the flower
     goal:
-      - Robots can use the `move` command to move forward one unit in the direction they are currently facing.
-      - To complete this challenge, move your robot two spaces to the right, to the coordinates `(2,0)` marked with the purple `flower`{=entity}.
-      - Note that you can chain commands with semicolon, `;`{=snippet}.
-      - You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
+      - |
+        Robots can use the `move` command to move forward one unit in the direction they are currently facing.
+
+        To complete this challenge, move your robot two spaces to the right, to the coordinates `(2,0)`
+        marked with the purple `flower`{=entity}.
+
+        Note that you can chain commands with semicolon, `;`{=snippet}.
+
+        You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
-      r <- robotNamed "check1";
-      loc <- as r {has "Win"};
+      as base {l <- whereami; return (l == (2,0))}
   - id: move_along_corridor
     teaser: Down the corridor
     goal:
-      - Good! Now you need to learn how to effectively repeat actions.
       - |
+        Good! Now you need to learn how to effectively repeat actions.
+
         Previously you could move twice by chaining the move command:
-      - |
-        ```
-        move; move
-        ```
-      - To reuse that command without having to retype it press the upward arrow on your keyboard. This will allow you to select previous commands.
-      - Ahead of you is a six steps long corridor. Move to its end, i.e. the coordinates `(8,0)` marked with the second purple `flower`{=entity}.
-      - You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
+
+        `move; move`
+
+        To reuse that command without having to retype it press the upward arrow on your keyboard.
+        This will allow you to select previous commands.
+
+        Ahead of you is a six steps long corridor. Move to its end, i.e. the coordinates `(8,0)` marked
+        with the second purple `flower`{=entity}.
+
+        You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
-      r <- robotNamed "check2";
-      loc <- as r {has "Win"};
+      as base {l <- whereami; return (l == (8,0))}
     prerequisite: move_to_first_flower
   - id: move_northeast_corner
     teaser: To northeast corner
     goal:
-      - Well done! In addition to `move`, you can use the `turn` command to turn your robot, for example, `turn right` or `turn east`.
-      - Switch to the inventory view in the upper left (by clicking on it or typing **Alt+E**) and select the `treads`{=entity} device to read about the details. If the bottom-left info panel is not big enough to read the whole thing, you can hit **Enter** on the `treads`{=entity} device to pop out the description, or you can focus the info panel (with **Alt+T** or by clicking) and scroll it with arrow keys or **PgUp**/**PgDown**. When you're done reading, you can come back to the REPL prompt by clicking on it or typing **Alt+R**.
-      - Afterwards, move your robot to the coordinates `(8,4)` in the northeast corner marked with two flowers.
       - |
+        Well done! In addition to `move`, you can use the `turn` command to turn your robot, for example,
+        `turn right` or `turn east`.
+
+        Switch to the inventory view in the upper left (by clicking on it or typing **Alt+E**) and select
+        the `treads`{=entity} device to read about the details.
+        If the bottom-left info panel is not big enough to read the whole thing, you can hit **Enter**
+        on the `treads`{=entity} device to pop out the description, or you can focus the info panel
+        (with **Alt+T** or by clicking) and scroll it with arrow keys or **PgUp**/**PgDown**.
+        When you're done reading, you can come back to the REPL prompt by clicking on it or typing **Alt+R**.
+
+        Afterwards, move your robot to the coordinates `(8,4)` in the northeast corner marked with another flower.
+
         Remember, you can chain commands with `;`{=snippet}, for example:
-      - |
-        ```
-        move;move;move;move
-        ```
-      - You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
+
+        `move; move; move; move`
+
+        You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
-      r <- robotNamed "check3";
-      loc <- as r {has "Win"};
+      as base {l <- whereami; return (l == (8,4))}
     prerequisite: move_along_corridor
   - goal:
       - Good job! You are now ready to move and turn on your own.
@@ -53,8 +67,7 @@ objectives:
       - Remember you can press the upward arrow on your keyboard to select previous commands.
       - You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
-      r <- robotNamed "check4";
-      loc <- as r {has "Win"};
+      as base {l <- whereami; return (l == (8,8))}
     prerequisite: move_northeast_corner
 solution: |
   // 0
@@ -79,52 +92,31 @@ known:
 world:
   palette:
     '.': [blank]
-    '*': [blank, flower]
-    'X': [blank, null, 1P flower]
-    'Y': [blank, null, 2P flower]
-    'Z': [blank, null, 3P flower]
     # FIRST ROOM
-    '┌': [blank, upper left corner]
-    '┐': [blank, upper right corner, 1S down and horizontal wall]
-    '└': [blank, lower left corner]
-    '┘': [blank, lower right corner, 1S up and horizontal wall]
-    '─': [blank, horizontal wall]
-    '│': [blank, vertical wall]
+    '0': [blank, wall]
+    'A': [blank, flower, check]
     # SECOND ROOM
-    '1': [blank, vertical wall, 1G]
-    '-': [blank, null, 1P horizontal wall]
-    '|': [blank, null, 1P vertical wall]
-    'c': [blank, null, 1P upper right corner, 2S left and vertical wall]
-    'b': [blank, null, 1P lower right corner]
-    'd': [blank, null, 1P horizontal wall, 2S up and horizontal wall]
+    '1': [blank, null, 1P wall]
+    'B': [blank, null, 1P flower]
     # THIRD ROOM
-    '2': [blank, null, 1P horizontal wall, 2G]
-    '~': [blank, null, 2P horizontal wall]
-    '/': [blank, null, 2P vertical wall]
-    'R': [blank, null, 2P upper right corner]
-    'L': [blank, null, 2P upper left corner, 3S down and horizontal wall]
-    'K': [blank, null, 2P vertical wall, 3S left and vertical wall]
+    '2': [blank, null, 2P wall]
+    'C': [blank, null, 2P flower]
     # FOURTH ROOM
-    '3': [blank, null, 2P vertical wall, 3G]
-    '_': [blank, null, 3P horizontal wall]
-    '\': [blank, null, 3P vertical wall]
-    'A': [blank, null, 3P lower left corner]
-    'B': [blank, null, 3P lower right corner]
-    'C': [blank, null, 3P upper right corner]
-    'D': [blank, null, 3P upper left corner]
+    '3': [blank, null, 3P wall]
+    'D': [blank, null, 3P flower]
   upperleft: [-1, 9]
   map: |
-    D_________C
-    \........Z\
-    \..D______B
-    \..\.......
-    \..A___L~~R
-    \......3YY/
-    A______K../
-    ......./../
-    ┌───┐--d22c
-    │..*1....X|
-    └───┘-----b
+    33333333333
+    3........D3
+    3..33333333
+    3..3.......
+    3..33332222
+    3......2.C2
+    33333332..2
+    .......2..2
+    00000111111
+    0..A0....B1
+    00000111111
 # Font inspiration and a nicely visible separator:
 #
 # ███████ ██     ██  █████  ██████  ███    ███
@@ -132,6 +124,7 @@ world:
 # ███████ ██  █  ██ ███████ ██████  ██ ████ ██
 #      ██ ██ ███ ██ ██   ██ ██   ██ ██  ██  ██
 # ███████  ███ ███  ██   ██ ██   ██ ██      ██
+stepsPerTick: 300
 robots:
   - name: base
     dir: east
@@ -143,196 +136,69 @@ robots:
   #################
   ## OBJECTIVES  ##
   #################
-  - name: check1
-    loc: [2, 0]
+  - name: check
+    system: true
+    program: instant (run "scenarios/Tutorials/move_check.sw")
+  #################
+  ## WALLS       ##
+  #################
+  - name: 1P wall
     system: true
     program: |
-      def until = \c. b <- c; if b {} {until c} end;
-      l <- whereami;
-      until (
-        try {
-          loc <- as base {whereami};
-          return (loc == l)
-        } { return false }
-      );
-      create "Win"
-  - name: check2
-    loc: [8, 0]
+      def main = \a. return noop end
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="wall", room=1]
+      )
+  - name: 2P wall
     system: true
     program: |
-      def until = \c. b <- c; if b {} {until c} end;
-      l <- whereami;
-      until (
-        try {
-          loc <- as base {whereami};
-          return (loc == l)
-        } { return false }
-      );
-      create "Win"
-  - name: check3
-    loc: [8, 4]
+      def main = \a. noop end
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="wall", room=2]
+      )
+  - name: 3P wall
     system: true
     program: |
-      def until = \c. b <- c; if b {} {until c} end;
-      l <- whereami;
-      until (
-        try {
-          loc <- as base {whereami};
-          return (loc == l || loc == (fst l - 1, snd l))
-        } { return false }
-      );
-      create "Win"
-  - name: check4
-    loc: [8, 8]
-    system: true
-    program: |
-      def until = \c. b <- c; if b {} {until c} end;
-      l <- whereami;
-      until (
-        try {
-          loc <- as base {whereami};
-          return (loc == l)
-        } { return false }
-      );
-      create "Win"
-  #################
-  ## HORIZONTAL  ##
-  #################
-  - name: 1P horizontal wall
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 2P horizontal wall
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 3P horizontal wall
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  #################
-  ## VERTICAL    ##
-  #################
-  - name: 1P vertical wall
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 2P vertical wall
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 3P vertical wall
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  #################
-  ## CORNERS     ##
-  #################
-  # the order is:
-  # upleft   upright
-  #     D+----+C
-  #      |    |
-  #      |    |
-  #     A+----+B
-  # lowleft  lowright
-  #########
-  ##  A  ##
-  #########
-  - name: 1P lower left corner
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 2P lower left corner
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 3P lower left corner
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  #########
-  ##  B  ##
-  #########
-  - name: 1P lower right corner
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 2P lower right corner
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 3P lower right corner
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  #########
-  ##  C  ##
-  #########
-  - name: 1P upper right corner
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 2P upper right corner
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 3P upper right corner
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  #########
-  ##  D  ##
-  #########
-  - name: 1P upper left corner
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 2P upper left corner
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 3P upper left corner
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  #################
-  ## SEPARATORS  ##
-  #################
-  # 1
-  - name: 1S down and horizontal wall
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 1S up and horizontal wall
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  # 2
-  - name: 2S left and vertical wall
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 2S up and horizontal wall
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  # 3
-  - name: 3S left and vertical wall
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 3S down and horizontal wall
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  #################
-  ## GATES       ##
-  #################
-  - name: 1G
-    system: true
-    program: |
-      def until = \c. b <- c; if b {} {until c} end;
-      c1 <- robotNamed "check1";
-      until (as c1 {has "Win"});
-      grab
-  - name: 2G
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
-  - name: 3G
-    system: true
-    program: run "scenarios/Tutorials/move_system.sw"
+      def main = \a. noop end
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="wall", room=3]
+      )
   #################
   ## GARDENERS   ##
   #################
   - name: 1P flower
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
+    program: |
+      def main = \a. noop end
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="flower", room=1]
+      )
   - name: 2P flower
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
+    program: |
+      def main = \a. noop end
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="flower", room=2]
+      )
   - name: 3P flower
     system: true
-    program: run "scenarios/Tutorials/move_system.sw"
+    program: |
+      def main = \a. noop end
+      instant (
+        run "scenarios/Tutorials/move_surveil.sw";
+        main [entity="flower", room=3]
+      )
 entities:
-  - name: Win
+  - name: door
     display:
-      char: W
-      attr: gold
+      char: 'D'
+      attr: entity
+      invisible: true
     description:
-      - This entity signals that the objective has been met.
+      - A wall
+    properties: [boundary]

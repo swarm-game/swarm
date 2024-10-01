@@ -16,6 +16,7 @@ import Control.Effect.Lens
 import Control.Monad (forM_, guard, when)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
+import Control.Monad.Trans.State.Strict qualified as TS
 import Data.Array (bounds, (!))
 import Data.IntMap qualified as IM
 import Data.Set qualified as S
@@ -26,7 +27,6 @@ import Swarm.Game.Device
 import Swarm.Game.Entity hiding (empty, lookup, singleton, union)
 import Swarm.Game.Exception
 import Swarm.Game.Location
-import Swarm.Game.ResourceLoading (NameGenerator (..))
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking qualified as SRT
 import Swarm.Game.State
@@ -41,9 +41,10 @@ import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
 import Swarm.Game.World.Modify qualified as WM
 import Swarm.Language.Capability
-import Swarm.Language.Requirement qualified as R
+import Swarm.Language.Requirements.Type qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction (Direction)
+import Swarm.ResourceLoading (NameGenerator (..))
 import Swarm.Util hiding (both)
 import System.Random (UniformRange, uniformR)
 import Prelude hiding (Applicative (..), lookup)
@@ -76,7 +77,15 @@ updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
     currentTick <- use $ temporal . ticks
     myID <- use robotID
     zoomRobots $ wakeWatchingRobots myID currentTick cLoc
-    SRT.entityModified modType cLoc
+    oldRecognizer <- use $ discovery . structureRecognition
+
+    oldGS <- get @GameState
+    let (newRecognizer, newGS) =
+          flip TS.runState oldGS $
+            SRT.entityModified mtlEntityAt modType cLoc oldRecognizer
+    put newGS
+
+    discovery . structureRecognition .= newRecognizer
 
     pcr <- use $ pathCaching . pathCachingRobots
     mapM_ (revalidatePathCache cLoc modType) $ IM.toList pcr

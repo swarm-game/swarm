@@ -5,6 +5,7 @@
 module Swarm.TUI.View.Util where
 
 import Brick hiding (Direction, Location)
+import Brick.Keybindings (Binding (..), firstActiveBinding, ppBinding)
 import Brick.Widgets.Dialog
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (Const, from)
@@ -17,21 +18,23 @@ import Data.Text qualified as T
 import Graphics.Vty qualified as V
 import Swarm.Game.Entity as E
 import Swarm.Game.Land
-import Swarm.Game.Location
 import Swarm.Game.Scenario (scenarioMetadata, scenarioName)
 import Swarm.Game.ScenarioInfo (scenarioItemName)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
 import Swarm.Game.State.Substate
 import Swarm.Game.Terrain
-import Swarm.Language.Pretty (prettyTextLine)
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Language.Types (Polytype)
+import Swarm.Pretty (prettyTextLine)
 import Swarm.TUI.Model
+import Swarm.TUI.Model.Event (SwarmEvent)
 import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay
+import Swarm.Util (maximum0)
 import Witch (from, into)
 
 -- | Generate a fresh modal window of the requested type.
@@ -44,10 +47,9 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
     NoMenu -> Just "Quit"
     _ -> Nothing
   descriptionWidth = 100
-  helpWidth = 80
   (title, buttons, requiredWidth) =
     case mt of
-      HelpModal -> (" Help ", Nothing, helpWidth)
+      HelpModal -> (" Help ", Nothing, descriptionWidth)
       RobotsModal -> ("Robots", Nothing, descriptionWidth)
       RecipesModal -> ("Available Recipes", Nothing, descriptionWidth)
       CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
@@ -112,7 +114,7 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
       TerrainPaletteModal -> ("Terrain", Nothing, w)
        where
         tm = s ^. gameState . landscape . terrainAndEntities . terrainMap
-        wordLength = maximum $ map (T.length . getTerrainWord) (M.keys $ terrainByName tm)
+        wordLength = maximum0 $ map (T.length . getTerrainWord) (M.keys $ terrainByName tm)
         w = wordLength + 6
       EntityPaletteModal -> ("Entity", Nothing, 30)
 
@@ -186,10 +188,6 @@ quitMsg m = "Are you sure you want to " <> quitAction <> "? All progress on this
     NoMenu -> "quit"
     _ -> "return to the menu"
 
-locationToString :: Location -> String
-locationToString (Location x y) =
-  unwords $ map show [x, y]
-
 -- | Display a list of text-wrapped paragraphs with one blank line after each.
 displayParagraphs :: [Text] -> Widget Name
 displayParagraphs = layoutParagraphs . map txtWrap
@@ -241,3 +239,16 @@ drawLabelledEntityName e =
     [ padRight (Pad 2) (renderDisplay (e ^. entityDisplay))
     , txt (e ^. entityName)
     ]
+
+-- | Render the keybinding bound to a specific event.
+bindingText :: AppState -> SwarmEvent -> Text
+bindingText s e = maybe "" ppBindingShort b
+ where
+  conf = s ^. keyEventHandling . keyConfig
+  b = firstActiveBinding conf e
+  ppBindingShort = \case
+    Binding V.KUp m | null m -> "↑"
+    Binding V.KDown m | null m -> "↓"
+    Binding V.KLeft m | null m -> "←"
+    Binding V.KRight m | null m -> "→"
+    bi -> ppBinding bi

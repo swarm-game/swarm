@@ -10,7 +10,6 @@ module Swarm.Game.World.Syntax (
   RawCellVal,
   CellTag (..),
   CellVal (..),
-  Rot (..),
   Var,
   Axis (..),
   Op (..),
@@ -29,7 +28,7 @@ import Swarm.Game.Entity (Entity, entityName)
 import Swarm.Game.Robot (TRobot, trobotName)
 import Swarm.Game.Terrain
 import Swarm.Game.World.Coords
-import Swarm.Language.Pretty
+import Swarm.Pretty (PrettyPrec (..))
 import Swarm.Util (showT)
 import Swarm.Util.Erasable
 
@@ -65,16 +64,6 @@ instance PrettyPrec CellVal where
         ++ [(Just CellEntity, e ^. entityName) | EJust (Last e) <- [ent]]
         ++ map ((Just CellRobot,) . view trobotName) rs
 
-data Rot = Rot0 | Rot90 | Rot180 | Rot270
-  deriving (Eq, Ord, Show, Bounded, Enum)
-
-instance PrettyPrec Rot where
-  prettyPrec _ = \case
-    Rot0 -> "rot0"
-    Rot90 -> "rot90"
-    Rot180 -> "rot180"
-    Rot270 -> "rot270"
-
 type Var = Text
 
 data Axis = X | Y
@@ -83,7 +72,7 @@ data Axis = X | Y
 instance PrettyPrec Axis where
   prettyPrec _ = \case X -> "x"; Y -> "y"
 
-data Op = Not | Neg | And | Or | Add | Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | Geq | If | Perlin | Reflect Axis | Rot Rot | Mask | Overlay | Abs
+data Op = Not | Neg | And | Or | Add | Sub | Mul | Div | Mod | Eq | Neq | Lt | Leq | Gt | Geq | If | Perlin | Mask | Overlay | Abs | IMap
   deriving (Eq, Ord, Show)
 
 ------------------------------------------------------------

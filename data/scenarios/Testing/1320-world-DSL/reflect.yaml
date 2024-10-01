@@ -1,0 +1,46 @@
+version: 1
+name: Reflection (imap) test
+description: |
+  A world with both horizontal and vertical reflection symmetry,
+  created with 'imap'.
+creative: false
+objectives:
+  - goal:
+      - Pick up four trees
+    condition: |
+      as base {n <- count "tree"; return (n >= 4)}
+robots:
+  - name: base
+    loc: [0, 0]
+    dir: north
+    devices:
+      - logger
+      - grabber
+      - treads
+      - branch predictor
+      - scanner
+      - ADT calculator
+      - comparator
+      - GPS receiver
+      - bitcoin
+solution: |
+  def x = \n. \c. if (n==0) {} {c; x (n-1) c} end
+  def ifC = \p. \t. \e. b <- p; if b t e end
+  def findTree = ifC (ishere "tree") {whereami} {move; findTree} end
+  def ell = \d. turn right; x (2*d) move; grab; return () end
+  def grabTrees = \loc. let x = fst loc in let y = snd loc in grab; ell y; ell x; ell y end
+  n <- random 10;
+  x (n+1) move; turn right; move;
+  loc <- findTree;
+  grabTrees loc
+known: [tree]
+world:
+  dsl: |
+    let trees = if (hash % 4 == 0) then {tree, dirt} else {stone}
+    in
+      overlay
+      [ mask (x >= 0 && y >= 0) trees
+      , mask (x >= 0 && y < 0) (imap x (-y) trees)
+      , mask (x < 0 && y >= 0) (imap (-x) y trees)
+      , mask (x < 0 && y < 0) (imap (-x) (-y) trees)
+      ]

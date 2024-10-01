@@ -8,6 +8,7 @@ module Swarm.TUI.Editor.Model where
 import Brick.Focus
 import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (.=), (<.>))
+import Data.List.Extra (enumerate)
 import Data.Map qualified as M
 import Data.Vector qualified as V
 import Swarm.Game.Display (Display)
@@ -18,7 +19,6 @@ import Swarm.Game.Terrain (TerrainType)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.TUI.Model.Name
-import Swarm.Util
 import System.Clock
 
 data BoundsSelectionStep
@@ -40,9 +40,6 @@ toFacade :: EntityPaint -> EntityFacade
 toFacade = \case
   Facade f -> f
   Ref e -> mkFacade e
-
-getEntityName :: EntityFacade -> E.EntityName
-getEntityName (EntityFacade name _) = name
 
 data MapEditingBounds = MapEditingBounds
   { _boundsRect :: Maybe (Cosmic BoundsRectangle)
@@ -82,7 +79,7 @@ initialWorldEditor ts =
     (BL.list TerrainList (V.fromList []) 1)
     (BL.list EntityPaintList (V.fromList []) 1)
     bounds
-    (focusRing $ map WorldEditorPanelControl listEnums)
+    (focusRing $ map WorldEditorPanelControl enumerate)
     "mymap.yaml"
     Nothing
  where

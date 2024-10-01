@@ -119,18 +119,18 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Yaml
 import GHC.Generics (Generic)
+import Swarm.Failure
 import Swarm.Game.Device
 import Swarm.Game.Display
 import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
 import Swarm.Game.Entity.Cosmetic.Assignment (worldAttributes)
-import Swarm.Game.Failure
 import Swarm.Game.Ingredients
 import Swarm.Game.Location
-import Swarm.Game.ResourceLoading (getDataFileNameSafe)
 import Swarm.Game.Terrain (TerrainType)
 import Swarm.Language.Capability
 import Swarm.Language.Syntax (Syntax)
 import Swarm.Language.Text.Markdown (Document, docToText)
+import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util (binTuples, failT, findDup, plural, quote, (?))
 import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Yaml
@@ -157,6 +157,8 @@ data EntityProperty
     Pushable
   | -- | Obstructs the view of robots that attempt to "scout"
     Opaque
+  | -- | Is automatically rendered as a contiguous border
+    Boundary
   | -- | Regrows from a seed after it is harvested.
     Growable
   | -- | Can burn when ignited (either via 'Swarm.Language.Syntax.Ignite' or by

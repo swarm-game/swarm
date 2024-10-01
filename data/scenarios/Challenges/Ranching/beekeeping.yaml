@@ -193,7 +193,7 @@ entities:
     description:
       - Senses direction to nectar-producing flowers
     properties: [known, pickable]
-    capabilities: [detectdirection, structure]
+    capabilities: [chirp, structure]
   - name: honey
     display:
       char: 'h'
@@ -430,7 +430,7 @@ world:
     in
       overlay
       [ {grass}
-      , mask (flowers && (x + y) % 3 == 0) {wildflower}
+      , mask (flowers && (x - y) % 3 == 0) {wildflower}
       , mask (rubble && (x + y) % 2 == 0) {rock}
       , mask rock {rock}
       , mask trees {tree}

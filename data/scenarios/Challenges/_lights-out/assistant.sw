@@ -189,13 +189,8 @@ def prepareBoardAllRows = \abortFunc. \boardWidth. \rowIdx.
             return (0, 0);
         } {
             advanceRowViaTeleport;
-
-            // This reassignment has to happen before the recursive
-            // "prepareBoardAllRows" call due to #1032
-            let rowCommonCountFoo = rowCommonCount in
             totalCommonCount <- prepareBoardAllRows abortFunc boardWidth $ rowIdx - 1;
-
-            return $ sumTuples rowCommonCountFoo totalCommonCount
+            return $ sumTuples rowCommonCount totalCommonCount
         }
     } {
         return (0, 0);

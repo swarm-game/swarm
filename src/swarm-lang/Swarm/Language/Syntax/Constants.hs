@@ -29,15 +29,18 @@ module Swarm.Language.Syntax.Constants (
 
 import Data.Aeson.Types hiding (Key)
 import Data.Data (Data)
+import Data.Hashable (Hashable)
 import Data.Int (Int32)
+import Data.List.Extra (enumerate)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text hiding (filter, length, map)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
+import Prettyprinter (pretty)
 import Swarm.Language.Syntax.CommandMetadata
-import Swarm.Util qualified as Util
-import Witch.From (from)
+import Swarm.Pretty (PrettyPrec (..), pparens)
+import Swarm.Util (showT)
 
 ------------------------------------------------------------
 -- Constants
@@ -309,10 +312,13 @@ data Const
     RobotNumbered
   | -- | Check if an entity is known.
     Knows
-  deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, FromJSON, ToJSON, FromJSONKey, ToJSONKey)
+  deriving (Eq, Ord, Enum, Bounded, Data, Show, Generic, Hashable, FromJSON, ToJSON, FromJSONKey, ToJSONKey)
+
+instance PrettyPrec Const where
+  prettyPrec p c = pparens (p > fixity (constInfo c)) $ pretty . syntax . constInfo $ c
 
 allConst :: [Const]
-allConst = Util.listEnums
+allConst = enumerate
 
 data ConstInfo = ConstInfo
   { syntax :: Text
@@ -642,7 +648,7 @@ constInfo c = case c of
           <> "that is done automatically once you have a listening device equipped."
       , "Note that you can see the messages either in your logger device or the message panel."
       ]
-  Log -> command 1 short $ shortDoc (Set.singleton $ Mutation LogEmission) "Log the string in the robot's logger."
+  Log -> command 1 Intangible $ shortDoc (Set.singleton $ Mutation LogEmission) "Log the string in the robot's logger."
   View ->
     command 1 short . doc (Set.singleton $ Query $ Sensing RobotSensing) "View the given actor." $
       [ "This will recenter the map on the target robot and allow its inventory and logs to be inspected."
@@ -762,7 +768,7 @@ constInfo c = case c of
   Parent -> function 0 $ shortDoc (Set.singleton $ Query APriori) "Get a reference to the robot's parent."
   Base -> function 0 $ shortDoc (Set.singleton $ Query APriori) "Get a reference to the base."
   Meet -> command 0 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Get a reference to a nearby actor, if there is one."
-  MeetAll -> command 0 long $ shortDoc (Set.fromList [Mutation $ RobotChange BehaviorChange, Query $ Sensing RobotSensing]) "Run a command for each nearby actor."
+  MeetAll -> command 0 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Return a list of all the nearby actors."
   Whoami -> command 0 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Get the robot's display name."
   Setname -> command 1 short $ shortDoc (Set.singleton $ Mutation $ RobotChange BehaviorChange) "Set the robot's display name."
   Random ->
@@ -887,7 +893,7 @@ constInfo c = case c of
       }
 
   lowShow :: Show a => a -> Text
-  lowShow a = toLower (from (show a))
+  lowShow = toLower . showT
 
 -- | Maximum perception distance for
 -- 'Chirp' and 'Sniff' commands

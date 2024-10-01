@@ -28,7 +28,7 @@ import Control.Effect.Lens
 import Control.Effect.Lift
 import Control.Lens as Lens hiding (Const, distrib, from, parts, use, uses, view, (%=), (+=), (.=), (<+=), (<>=))
 import Control.Monad (foldM, forM_, unless, when)
-import Data.Bool (bool)
+import Data.Foldable.Extra (notNull)
 import Data.Functor (void)
 import Data.IntMap qualified as IM
 import Data.IntSet qualified as IS
@@ -52,7 +52,6 @@ import Swarm.Game.Land
 import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
-import Swarm.Game.Robot.Context
 import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Scenario.Objective qualified as OB
 import Swarm.Game.Scenario.Objective.WinCheck qualified as WC
@@ -66,14 +65,12 @@ import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
 import Swarm.Game.Tick
 import Swarm.Language.Capability
-import Swarm.Language.Context hiding (delete)
-import Swarm.Language.Pipeline
-import Swarm.Language.Pretty (BulletList (BulletList, bulletListItems), prettyText)
-import Swarm.Language.Requirement qualified as R
+import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Typed (Typed (..))
 import Swarm.Language.Value
 import Swarm.Log
+import Swarm.Pretty (BulletList (BulletList, bulletListItems), prettyText)
 import Swarm.Util hiding (both)
 import Swarm.Util.WindowedCounter qualified as WC
 import System.Clock (TimeSpec)
@@ -108,10 +105,8 @@ gameTick = do
     Just r -> do
       res <- use $ gameControls . replStatus
       case res of
-        REPLWorking (Typed Nothing ty req) -> case getResult r of
-          Just (v, s) -> do
-            gameControls . replStatus .= REPLWorking (Typed (Just v) ty req)
-            baseRobot . robotContext . defStore .= s
+        REPLWorking ty Nothing -> case getResult r of
+          Just v -> gameControls . replStatus .= REPLWorking ty (Just v)
           Nothing -> pure ()
         _otherREPLStatus -> pure ()
     Nothing -> pure ()
@@ -344,7 +339,13 @@ hypotheticalWinCheck em g ws oc = do
     Unwinnable _ -> grantAchievement LoseScenario
     _ -> return ()
 
-  messageInfo . announcementQueue %= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
+  queue <- messageInfo . announcementQueue Swarm.Util.<%= (>< Seq.fromList (map ObjectiveCompleted $ completionAnnouncementQueue finalAccumulator))
+  shouldPause <- use $ temporal . pauseOnObjective
+
+  let gameFinished = newWinState /= Ongoing
+  let finishedObjectives = notNull queue
+  when (gameFinished || (finishedObjectives && shouldPause == PauseOnAnyObjective)) $
+    temporal . runStatus .= AutoPause
 
   mapM_ handleException $ exceptions finalAccumulator
  where
@@ -364,10 +365,9 @@ hypotheticalWinCheck em g ws oc = do
   foldFunc (CompletionsWithExceptions exnTexts currentCompletions announcements) obj = do
     v <-
       if WC.isPrereqsSatisfied currentCompletions obj
-        then runThrow @Exn . evalState @GameState g $ evalPT $ obj ^. OB.objectiveCondition
+        then runThrow @Exn . evalState @GameState g $ evalT $ obj ^. OB.objectiveCondition
         else return $ Right $ VBool False
-    let simplified = simplifyResult $ stripVResult <$> v
-    return $ case simplified of
+    return $ case simplifyResult v of
       Left exnText ->
         CompletionsWithExceptions
           (exnText : exnTexts)
@@ -406,15 +406,15 @@ hypotheticalWinCheck em g ws oc = do
    where
     h = hypotheticalRobot (Out VUnit emptyStore []) 0
 
-evalPT ::
+evalT ::
   ( Has Effect.Time sig m
   , Has (Throw Exn) sig m
   , Has (State GameState) sig m
   , Has (Lift IO) sig m
   ) =>
-  ProcessedTerm ->
+  TSyntax ->
   m Value
-evalPT t = evaluateCESK (initMachine t empty emptyStore)
+evalT = evaluateCESK . initMachine
 
 -- | Create a special robot to check some hypothetical, for example the win condition.
 --
@@ -461,7 +461,7 @@ runCESK ::
   m Value
 runCESK (Up exn _ []) = throwError exn
 runCESK cesk = case finalValue cesk of
-  Just (v, _) -> return v
+  Just v -> return v
   Nothing -> stepCESK cesk >>= runCESK
 
 ------------------------------------------------------------
@@ -502,7 +502,6 @@ tickRobotRec r = do
 stepRobot :: HasGameStepState sig m => Robot -> m Robot
 stepRobot r = do
   (r', cesk') <- runState (r & activityCounts . tickStepBudget -~ 1) (stepCESK (r ^. machine))
-  -- sendIO $ appendFile "out.txt" (prettyString cesk' ++ "\n")
   t <- use $ temporal . ticks
 
   isCreative <- use creativeMode
@@ -586,9 +585,14 @@ stepCESK cesk = case cesk of
   -- To evaluate a variable, just look it up in the context.
   In (TVar x) e s k -> withExceptions s k $ do
     v <-
-      lookup x e
+      lookupValue x e
         `isJustOr` Fatal (T.unwords ["Undefined variable", x, "encountered while running the interpreter."])
-    return $ Out v s k
+
+    -- Now look up any indirections and make sure it's not a blackhole.
+    case resolveValue s v of
+      Left loc -> throwError $ Fatal $ T.append "Reference to unknown memory cell " (from (show loc))
+      Right VBlackhole -> throwError InfiniteLoop
+      Right v' -> return $ Out v' s k
 
   -- To evaluate a pair, start evaluating the first component.
   In (TPair t1 t2) e s k -> return $ In t1 e s (FSnd t2 e : k)
@@ -604,7 +608,7 @@ stepCESK cesk = case cesk of
   -- Once that's done, switch to evaluating the argument.
   Out v1 s (FArg t2 e : k) -> return $ In t2 e s (FApp v1 : k)
   -- We can evaluate an application of a closure in the usual way.
-  Out v2 s (FApp (VClo x t e) : k) -> return $ In t (addBinding x v2 e) s k
+  Out v2 s (FApp (VClo x t e) : k) -> return $ In t (addValueBinding x v2 e) s k
   -- We can also evaluate an application of a constant by collecting
   -- arguments, eventually dispatching to evalConst for function
   -- constants.
@@ -636,53 +640,51 @@ stepCESK cesk = case cesk of
     _ -> badMachineState s "FProj frame with non-record value"
   -- To evaluate non-recursive let expressions, we start by focusing on the
   -- let-bound expression.
-  In (TLet False x _ t1 t2) e s k -> return $ In t1 e s (FLet x t2 e : k)
-  -- To evaluate recursive let expressions, we evaluate the memoized
-  -- delay of the let-bound expression.  Every free occurrence of x
-  -- in the let-bound expression and the body has already been
-  -- rewritten by elaboration to 'force x'.
-  In (TLet True x _ t1 t2) e s k ->
-    return $ In (TDelay (MemoizedDelay $ Just x) t1) e s (FLet x t2 e : k)
+  In (TLet _ False x mty mreq t1 t2) e s k ->
+    return $ In t1 e s (FLet x ((,) <$> mty <*> mreq) t2 e : k)
+  -- To evaluate a recursive let binding:
+  In (TLet _ True x mty mreq t1 t2) e s k -> do
+    -- First, allocate a cell for it in the store with the initial
+    -- value of Blackhole.
+    let (loc, s') = allocate VBlackhole s
+    -- Now evaluate the definition with the variable bound to an
+    -- indirection to the new cell, and push an FUpdate stack frame to
+    -- update the cell with the value once we're done evaluating it,
+    -- followed by an FLet frame to evaluate the body of the let.
+    return $ In t1 (addValueBinding x (VIndir loc) e) s' (FUpdate loc : FLet x ((,) <$> mty <*> mreq) t2 e : k)
   -- Once we've finished with the let-binding, we switch to evaluating
   -- the body in a suitably extended environment.
-  Out v1 s (FLet x t2 e : k) -> return $ In t2 (addBinding x v1 e) s k
-  -- Definitions immediately turn into VDef values, awaiting execution.
-  In tm@(TDef r x _ t) e s k -> withExceptions s k $ do
-    hasCapabilityFor CEnv tm
-    return $ Out (VDef r x t e) s k
-  -- Type definitions just turn into a no-op.
-  In (TTydef {}) e s k -> return $ In (TConst Noop) e s k
+  Out v1 s (FLet x mtr t2 e : k) -> do
+    let e' = case mtr of
+          Nothing -> addValueBinding x v1 e
+          Just (ty, req) -> addBinding x (Typed v1 ty req) e
+    return $ In t2 e' s k
+  -- To evaluate a tydef, insert it into the context and proceed to
+  -- evaluate the body.
+  In (TTydef x _ tdInfo t1) e s k -> return $ In t1 (maybe id (addTydef x) tdInfo e) s k
   -- Bind expressions don't evaluate: just package it up as a value
   -- until such time as it is to be executed.
-  In (TBind mx t1 t2) e s k -> return $ Out (VBind mx t1 t2 e) s k
+  In (TBind mx mty mreq t1 t2) e s k -> return $ Out (VBind mx mty mreq t1 t2 e) s k
   -- Simple (non-memoized) delay expressions immediately turn into
   -- VDelay values, awaiting application of 'Force'.
-  In (TDelay SimpleDelay t) e s k -> return $ Out (VDelay t e) s k
-  -- For memoized delay expressions, we allocate a new cell in the store and
-  -- return a reference to it.
-  In (TDelay (MemoizedDelay x) t) e s k -> do
-    -- Note that if the delay expression is recursive, we add a
-    -- binding to the environment that wil be used to evaluate the
-    -- body, binding the variable to a reference to the memory cell we
-    -- just allocated for the body expression itself.  As a fun aside,
-    -- notice how Haskell's recursion and laziness play a starring
-    -- role: @loc@ is both an output from @allocate@ and used as part
-    -- of an input! =D
-    let (loc, s') = allocate (maybe id (`addBinding` VRef loc) x e) t s
-    return $ Out (VRef loc) s' k
+  In (TDelay t) e s k -> return $ Out (VDelay t e) s k
   -- If we see an update frame, it means we're supposed to set the value
   -- of a particular cell to the value we just finished computing.
-  Out v s (FUpdate loc : k) -> return $ Out v (setStore loc (V v) s) k
+  Out v s (FUpdate loc : k) -> return $ Out v (setStore loc v s) k
+  -- If we see a primitive application of suspend, package it up as
+  -- a value until it's time to execute.
+  In (TSuspend t) e s k -> return $ Out (VSuspend t e) s k
   ------------------------------------------------------------
   -- Execution
 
   -- Executing a 'requirements' command generates an appropriate log message
   -- listing the requirements of the given expression.
-  Out (VRequirements src t _) s (FExec : k) -> do
-    currentContext <- use $ robotContext . defReqs
-    currentTydefs <- use $ robotContext . tydefVals
+  Out (VRequirements src t e) s (FExec : k) -> do
     em <- use $ landscape . terrainAndEntities . entityMap
-    let (R.Requirements caps devs inv, _) = R.requirements currentTydefs currentContext t
+    let reqCtx = e ^. envReqs
+        tdCtx = e ^. envTydefs
+
+        R.Requirements caps devs inv = R.requirements tdCtx reqCtx t
 
         devicesForCaps, requiredDevices :: Set (Set Text)
         -- possible devices to provide each required capability
@@ -712,26 +714,13 @@ stepCESK cesk = case cesk of
                       (T.intercalate " OR " . S.toList <$> S.toList deviceSets)
                   , BulletList
                       "Inventory:"
-                      ((\(e, n) -> e <> " " <> parens (showT n)) <$> M.assocs inv)
+                      ((\(item, n) -> item <> " " <> parens (showT n)) <$> M.assocs inv)
                   ]
               )
 
     _ <- traceLog Logged Info reqLog
     return $ Out VUnit s k
 
-  -- To execute a definition, we immediately turn the body into a
-  -- delayed value, so it will not even be evaluated until it is
-  -- called.  We memoize both recursive and non-recursive definitions,
-  -- since the point of a definition is that it may be used many times.
-  Out (VDef r x t e) s (FExec : k) ->
-    return $ In (TDelay (MemoizedDelay $ bool Nothing (Just x) r) t) e s (FDef x : k)
-  -- Once we have finished evaluating the (memoized, delayed) body of
-  -- a definition, we return a special VResult value, which packages
-  -- up the return value from the @def@ command itself (the unit value)
-  -- together with the resulting environment (the variable bound to
-  -- the delayed value).
-  Out v s (FDef x : k) ->
-    return $ Out (VResult VUnit (singleton x v)) s k
   -- To execute a constant application, delegate to the 'evalConst'
   -- function.  Set tickStepBudget to 0 if the command is supposed to take
   -- a tick, so the robot won't take any more steps this tick.
@@ -744,83 +733,54 @@ stepCESK cesk = case cesk of
     runningAtomic .= False
     return $ Out v s k
 
-  -- Machinery for implementing the 'Swarm.Language.Syntax.MeetAll' command.
-  -- First case: done meeting everyone.
-  Out b s (FMeetAll _ [] : k) -> return $ Out b s k
-  -- More still to meet: apply the function to the current value b and
-  -- then the next robot id.  This will result in a command which we
-  -- execute, discard any generated environment, and then pass the
-  -- result to continue meeting the rest of the robots.
-  Out b s (FMeetAll f (rid : rids) : k) ->
-    return $ Out b s (FApp f : FArg (TRobot rid) empty : FExec : FDiscardEnv : FMeetAll f rids : k)
   -- To execute a bind expression, evaluate and execute the first
   -- command, and remember the second for execution later.
-  Out (VBind mx c1 c2 e) s (FExec : k) -> return $ In c1 e s (FExec : FBind mx c2 e : k)
-  -- If first command completes with a value along with an environment
-  -- resulting from definition commands and/or binds, switch to
-  -- evaluating the second command of the bind.  Extend the
-  -- environment with both the environment resulting from the first
-  -- command, as well as a binding for the result (if the bind was of
-  -- the form @x <- c1; c2@).  Remember that we must execute the
-  -- second command once it has been evaluated, then union any
-  -- resulting definition environment with the definition environment
-  -- from the first command.
-  Out (VResult v ve) s (FBind mx t2 e : k) -> do
-    let ve' = maybe id (`addBinding` v) mx ve
-    return $ In t2 (e `union` ve') s (FExec : fUnionEnv ve' k)
-  -- If the first command completes with a simple value and there is no binder,
-  -- then we just continue without worrying about the environment.
-  Out _ s (FBind Nothing t2 e : k) -> return $ In t2 e s (FExec : k)
-  -- If the first command completes with a simple value and there is a binder,
-  -- we promote it to the returned environment as well.
-  Out v s (FBind (Just x) t2 e : k) -> do
-    return $ In t2 (addBinding x v e) s (FExec : fUnionEnv (singleton x v) k)
-  -- If a command completes with a value and definition environment,
-  -- and the next continuation frame contains a previous environment
-  -- to union with, then pass the unioned environments along in
-  -- another VResult.
-
-  Out (VResult v e2) s (FUnionEnv e1 : k) -> return $ Out (VResult v (e1 `union` e2)) s k
-  -- Or, if a command completes with no environment, but there is a
-  -- previous environment to union with, just use that environment.
-  Out v s (FUnionEnv e : k) -> return $ Out (VResult v e) s k
-  -- If there's an explicit DiscardEnv frame, throw away any returned environment.
-  Out (VResult v _) s (FDiscardEnv : k) -> return $ Out v s k
-  Out v s (FDiscardEnv : k) -> return $ Out v s k
-  -- If the top of the continuation stack contains a 'FLoadEnv' frame,
-  -- it means we are supposed to load up the resulting definition
-  -- environment, store, and type and capability contexts into the robot's
-  -- top-level environment and contexts, so they will be available to
-  -- future programs.
-  Out (VResult v e) s (FLoadEnv (Contexts ctx rctx tdctx) : k) -> do
-    robotContext . defVals %= (`union` e)
-    robotContext . defTypes %= (`union` ctx)
-    robotContext . defReqs %= (`union` rctx)
-    robotContext . tydefVals %= (`union` tdctx)
-    return $ Out v s k
-  Out v s (FLoadEnv (Contexts ctx rctx tdctx) : k) -> do
-    robotContext . defTypes %= (`union` ctx)
-    robotContext . defReqs %= (`union` rctx)
-    robotContext . tydefVals %= (`union` tdctx)
-    return $ Out v s k
+  Out (VBind mx mty mreq c1 c2 e) s (FExec : k) -> return $ In c1 e s (FExec : FBind mx ((,) <$> mty <*> mreq) c2 e : k)
+  Out _ s (FBind Nothing _ t2 e : k) -> return $ In t2 e s (FExec : k)
+  Out v s (FBind (Just x) mtr t2 e : k) -> do
+    let e' = case mtr of
+          Nothing -> addValueBinding x v e
+          Just (ty, reqs) -> addBinding x (Typed v ty reqs) e
+    return $ In t2 e' s (FExec : k)
+  -- To execute a suspend instruction, evaluate its argument and then
+  -- suspend.
+  Out (VSuspend t e) s (FExec : k) -> return $ In t e s (FSuspend e : k)
+  -- Once we've finished, enter the Suspended state.
+  Out v s (FSuspend e : k) -> return $ Suspended v e s k
   -- Any other type of value wiwth an FExec frame is an error (should
   -- never happen).
   Out _ s (FExec : _) -> badMachineState s "FExec frame with non-executable value"
-  -- If we see a VResult in any other context, simply discard it.  For
-  -- example, this is what happens when there are binders (i.e. a "do
-  -- block") nested inside another block instead of at the top level.
-  -- It used to be that (1) only 'def' could generate a VResult, and
-  -- (2) 'def' was guaranteed to only occur at the top level, hence
-  -- any VResult would be caught by a FLoadEnv frame, and seeing a
-  -- VResult anywhere else was an error.  But
-  -- https://github.com/swarm-game/swarm/commit/b62d27e566565aa9a3ff351d91b23d2589b068dc
-  -- made top-level binders export a variable binding, also via the
-  -- VResult mechanism, and unlike 'def', binders do not have to occur
-  -- at the top level only.  This led to
-  -- https://github.com/swarm-game/swarm/issues/327 , which was fixed
-  -- by changing this case from an error to simply ignoring the
-  -- VResult wrapper.
-  Out (VResult v _) s k -> return $ Out v s k
+  ------------------------------------------------------------
+  -- Suspension
+  ------------------------------------------------------------
+
+  -- If we're suspended and see the env restore frame, we can discard
+  -- it: it was only there in case an exception was thrown.
+  Suspended v e s (FRestoreEnv _ : k) -> return $ Suspended v e s k
+  -- We can also sometimes get a redundant FExec; discard it.
+  Suspended v e s (FExec : k) -> return $ Suspended v e s k
+  -- If we're suspended but we were on the LHS of a bind, switch to
+  -- evaluating that, except with the environment from the suspension
+  -- instead of the environment stored in the FBind frame, as if the
+  -- RHS of the bind had been grafted in right where the suspend was,
+  -- i.e. the binds were reassociated.  For example
+  --
+  -- (x; z <- y; suspend z); q; r
+  --
+  -- should be equivalent to
+  --
+  -- x; z <- y; q; r
+  --
+  Suspended _ e s (FBind Nothing _ t2 _ : k) -> return $ In t2 e s (FExec : k)
+  Suspended v e s (FBind (Just x) mtr t2 _ : k) -> do
+    let e' = case mtr of
+          Nothing -> addValueBinding x v e
+          Just (ty, reqs) -> addBinding x (Typed v ty reqs) e
+    return $ In t2 e' s (FExec : k)
+  -- Otherwise, if we're suspended with nothing else left to do,
+  -- return the machine unchanged (but throw away the rest of the
+  -- continuation stack).
+  Suspended v e s _ -> return $ Suspended v e s []
   ------------------------------------------------------------
   -- Exception handling
   ------------------------------------------------------------
@@ -828,37 +788,24 @@ stepCESK cesk = case cesk of
   -- First, if we were running a try block but evaluation completed normally,
   -- just ignore the try block and continue.
   Out v s (FTry {} : k) -> return $ Out v s k
-  Up exn s [] -> do
-    -- Here, an exception has risen all the way to the top level without being
-    -- handled.
-    case exn of
-      CmdFailed _ _ (Just a) -> do
-        grantAchievement a
-      _ -> return ()
-
-    -- If an exception rises all the way to the top level without being
-    -- handled, turn it into an error message.
-
-    -- HOWEVER, we have to make sure to check that the robot has the
-    -- 'log' capability which is required to collect and view logs.
-    --
-    -- Notice how we call resetBlackholes on the store, so that any
-    -- cells which were in the middle of being evaluated will be reset.
-    let s' = resetBlackholes s
-    h <- hasCapability CLog
-    em <- use $ landscape . terrainAndEntities . entityMap
-    when h $ void $ traceLog RobotError Error (formatExn em exn)
-    return $ Out VExc s' []
-
-  -- Fatal errors, capability errors, and infinite loop errors can't
-  -- be caught; just throw away the continuation stack.
-  Up exn@Fatal {} s _ -> return $ Up exn s []
-  Up exn@Incapable {} s _ -> return $ Up exn s []
-  Up exn@InfiniteLoop {} s _ -> return $ Up exn s []
-  -- Otherwise, if we are raising an exception up the continuation
+  -- Also ignore restore frames when returning normally.
+  Out v s (FRestoreEnv {} : k) -> return $ Out v s k
+  -- If raising an exception up the stack and we reach the top, handle
+  -- it appropriately.
+  Up exn s [] -> handleException exn s Nothing
+  -- If we are raising an exception up the stack and we see an
+  -- FRestoreEnv frame, log the exception, switch into a suspended state,
+  -- and discard the rest of the stack.
+  Up exn s (FRestoreEnv e : _) -> handleException exn s (Just e)
+  -- If an atomic block threw an exception, we should terminate it.
+  Up exn s (FFinishAtomic : k) -> do
+    runningAtomic .= False
+    return $ Up exn s k
+  -- If we are raising a catchable exception up the continuation
   -- stack and come to a Try frame, force and then execute the associated catch
   -- block.
-  Up _ s (FTry c : k) -> return $ Out c s (FApp (VCApp Force []) : FExec : k)
+  Up exn s (FTry c : k)
+    | isCatchable exn -> return $ Out c s (FApp (VCApp Force []) : FExec : k)
   -- Otherwise, keep popping from the continuation stack.
   Up exn s (_ : k) -> return $ Up exn s k
   -- Finally, if we're done evaluating and the continuation stack is
@@ -873,23 +820,29 @@ stepCESK cesk = case cesk of
             ]
      in return $ Up (Fatal msg') s []
 
-  -- Note, the order of arguments to `union` is important in the below
-  -- definition of fUnionEnv.  I wish I knew how to add an automated
-  -- test for this.  But you can tell the difference in the following
-  -- REPL session:
-  --
-  -- > x <- return 1; x <- return 2
-  -- 2 : int
-  -- > x
-  -- 2 : int
-  --
-  -- If we switch the code to read 'e1 `union` e2' instead, then
-  -- the first expression above still correctly evaluates to 2, but
-  -- x ends up incorrectly bound to 1.
+  isCatchable = \case
+    Fatal {} -> False
+    Incapable {} -> False
+    InfiniteLoop {} -> False
+    _ -> True
 
-  fUnionEnv e1 = \case
-    FUnionEnv e2 : k -> FUnionEnv (e2 `union` e1) : k
-    k -> FUnionEnv e1 : k
+  handleException exn s menv = do
+    case exn of
+      CmdFailed _ _ (Just a) -> do
+        grantAchievement a
+      _ -> return ()
+
+    -- If an exception rises all the way to the top level without being
+    -- handled, turn it into an error message.
+    --
+    -- HOWEVER, we have to make sure to check that the robot has the
+    -- 'log' capability which is required to collect and view logs.
+    h <- hasCapability $ CExecute Log
+    em <- use $ landscape . terrainAndEntities . entityMap
+    when h $ void $ traceLog RobotError (exnSeverity exn) (formatExn em exn)
+    return $ case menv of
+      Nothing -> Out VExc s []
+      Just env -> Suspended VExc env s []
 
 -- | Execute the given program *hypothetically*: i.e. in a fresh
 -- CESK machine, using *copies* of the current store, robot

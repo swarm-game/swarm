@@ -7,13 +7,15 @@
 -- Swarm requirements analysis tests
 module TestRequirements where
 
-import Control.Lens (view)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Swarm.Language.Capability
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline
-import Swarm.Language.Requirement
+import Swarm.Language.Requirements.Analysis (requirements)
+import Swarm.Language.Requirements.Type (ReqCtx, Requirements, capReqs)
+import Swarm.Language.Syntax.Constants (Const (Move))
+import Swarm.Language.Syntax.Util (eraseS)
 import Test.Tasty
 import Test.Tasty.HUnit
 import TestUtil (check)
@@ -25,7 +27,7 @@ testRequirements =
     [ testGroup
         "Basic capabilities"
         [ testCase "solar panel" $ "noop" `requiresCap` CPower
-        , testCase "move" $ "move" `requiresCap` CMove
+        , testCase "move" $ "move" `requiresCap` CExecute Move
         , testCase "lambda" $ "\\x. x" `requiresCap` CLambda
         , testCase "inl" $ "inl 3" `requiresCap` CSum
         , testCase "cap from type" $ "inl () : rec t. Unit + t" `requiresCap` CRectype
@@ -35,15 +37,15 @@ testRequirements =
         [ testCase "global var requirement does not apply to local var (#1914)" $
             checkReqCtx
               "def m = move end; def y = \\m. log (format m) end"
-              (maybe False ((CMove `S.notMember`) . capReqs) . Ctx.lookup "y")
+              (maybe False ((CExecute Move `S.notMember`) . capReqs) . Ctx.lookup "y")
         ]
     ]
 
 checkReqCtx :: Text -> (ReqCtx -> Bool) -> Assertion
-checkReqCtx code expect = check code (expect . view processedReqCtx)
+checkReqCtx code expect = check code (expect . extractReqCtx)
 
 checkRequirements :: Text -> (Requirements -> Bool) -> Assertion
-checkRequirements code expect = check code (expect . view processedRequirements)
+checkRequirements code expect = check code (expect . requirements mempty mempty . eraseS)
 
 requiresCap :: Text -> Capability -> Assertion
 requiresCap code cap = checkRequirements code ((cap `S.member`) . capReqs)

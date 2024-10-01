@@ -31,7 +31,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Constant
-import Swarm.Game.Failure (SystemFailure, simpleErrorHandle)
+import Swarm.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.Land
 import Swarm.Game.Scenario (
   Scenario,
@@ -54,7 +54,6 @@ import Swarm.Game.ScenarioInfo (
   scenarioPath,
  )
 import Swarm.Game.World.Load (loadWorlds)
-import Swarm.Language.Pipeline (ProcessedTerm, processedSyntax)
 import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown (docToText, findCode)
 import Swarm.Language.Types (Polytype)
@@ -128,13 +127,13 @@ isConsidered c = isUserFunc c && c `S.notMember` ignoredCommands
 -- the player did not write it explicitly in their code.
 --
 -- Also, the code from `run` is not parsed transitively yet.
-getCommands :: Maybe ProcessedTerm -> Map Const [SrcLoc]
+getCommands :: Maybe TSyntax -> Map Const [SrcLoc]
 getCommands Nothing = mempty
-getCommands (Just pt) =
+getCommands (Just tsyn) =
   M.fromListWith (<>) $ mapMaybe isCommand nodelist
  where
   nodelist :: [Syntax' Polytype]
-  nodelist = universe (pt ^. processedSyntax)
+  nodelist = universe tsyn
   isCommand (Syntax' sloc t _ _) = case t of
     TConst c -> guard (isConsidered c) >> Just (c, [sloc])
     _ -> Nothing
@@ -181,7 +180,7 @@ loadScenarioCollection = simpleErrorHandle $ do
   -- all the scenarios via the usual code path; we do not need to do
   -- anything with them here while simply rendering pedagogy info.
   worlds <- ignoreWarnings @(Seq SystemFailure) $ loadWorlds tem
-  ignoreWarnings @(Seq SystemFailure) $ loadScenarios $ ScenarioInputs worlds tem
+  ignoreWarnings @(Seq SystemFailure) $ loadScenarios (ScenarioInputs worlds tem) True
 
 renderUsagesMarkdown :: CoverageInfo -> Text
 renderUsagesMarkdown (CoverageInfo (TutorialInfo (s, si) idx _sCmds dCmds) novelCmds) =

@@ -12,8 +12,8 @@ import Swarm.Language.Parser.Lex (sc)
 import Swarm.Language.Parser.Term (parseTerm)
 import Swarm.Language.Parser.Util (fully)
 import Swarm.Language.Pipeline
-import Swarm.Language.Pretty
 import Swarm.Language.Syntax
+import Swarm.Language.Typecheck (prettyTypeErrText)
 import Swarm.Language.Types (Polytype)
 import Swarm.Util (failT, liftText)
 import Witch (from)

@@ -8,6 +8,8 @@
 -- case matching.
 module Swarm.TUI.Model.Name where
 
+import Data.Text (Text)
+
 data WorldEditorFocusable
   = BrushSelector
   | EntitySelector
@@ -61,6 +63,17 @@ data Button
   | NextButton
   deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
+-- | Robot details
+data RobotDetailSubpane
+  = RobotLogPane
+  | RobotCommandHistogramPane
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+
+data RobotsDisplayMode
+  = RobotList
+  | SingleRobotDetails RobotDetailSubpane
+  deriving (Eq, Ord, Show, Read)
+
 -- | 'Name' represents names to uniquely identify various components
 --   of the UI, such as forms, panels, caches, extents, lists, and buttons.
 data Name
@@ -90,6 +103,8 @@ data Name
     InventoryList
   | -- | The inventory item position in the InventoryList.
     InventoryListItem Int
+  | -- | Cacheable scenario preview
+    ScenarioPreview FilePath
   | -- | The list of main menu choices.
     MenuList
   | -- | The list of achievements.
@@ -102,6 +117,8 @@ data Name
     StructureWidgets StructureWidget
   | -- | The list of scenario choices.
     ScenarioList
+  | -- | The robots list
+    RobotsListDialog RobotsDisplayMode
   | -- | The scrollable viewport for the info panel.
     InfoViewport
   | -- | The scrollable viewport for any modal dialog.
@@ -110,4 +127,6 @@ data Name
     REPLViewport
   | -- | A clickable button in a modal dialog.
     Button Button
+  | -- | A custom widget name, for use in applications built on top of the Swarm library.
+    CustomName Text
   deriving (Eq, Ord, Show, Read)

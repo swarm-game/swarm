@@ -3,6 +3,7 @@ dist-newstyle/
 TAGS
 
 .vscode/
+!.vscode/cspell.json
 
 cabal.project.local
 hie.yaml
@@ -10,12 +11,12 @@ hie.yaml
 .stack-work/
 .stack-work-test/
 .stack-work-bench/
-stack.yaml.lock
 .hie/
 stan.html
 
 .swarm_history
 
+*.sqlite
 *.db
 *.orig
 *.aux

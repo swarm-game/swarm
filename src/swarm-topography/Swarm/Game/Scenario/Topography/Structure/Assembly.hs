@@ -7,10 +7,12 @@
 -- as well as logic for combining them.
 module Swarm.Game.Scenario.Topography.Structure.Assembly (
   mergeStructures,
+
+  -- * Exposed for unit tests:
+  foldLayer,
 )
 where
 
-import Control.Applicative ((<|>))
 import Control.Arrow (left, (&&&))
 import Control.Monad (when)
 import Data.Coerce
@@ -26,7 +28,9 @@ import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Scenario.Topography.Placement
 import Swarm.Game.Scenario.Topography.Structure
+import Swarm.Game.Scenario.Topography.Structure.Named
 import Swarm.Game.Scenario.Topography.Structure.Overlay
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Language.Syntax.Direction (directionJsonModifier)
 import Swarm.Util (commaList, quote, showT)
 
@@ -40,22 +44,17 @@ overlaySingleStructure ::
   Either Text (MergedStructure (Maybe a))
 overlaySingleStructure
   inheritedStrucDefs
-  (Placed p@(Placement _ shouldTruncate pose@(Pose loc orientation)) ns)
+  (Placed p@(Placement _sName pose@(Pose loc orientation)) ns)
   (MergedStructure inputArea inputPlacements inputWaypoints) = do
     MergedStructure overlayArea overlayPlacements overlayWaypoints <-
       mergeStructures inheritedStrucDefs (WithParent p) $ structure ns
 
     let mergedWaypoints = inputWaypoints <> map (fmap $ placeOnArea overlayArea) overlayWaypoints
         mergedPlacements = inputPlacements <> map (placeOnArea overlayArea) overlayPlacements
-        mergedArea = mergeFunc (gridContent inputArea) pose overlayArea
+        mergedArea = overlayGridExpanded inputArea pose overlayArea
 
     return $ MergedStructure mergedArea mergedPlacements mergedWaypoints
    where
-    mergeFunc =
-      if shouldTruncate
-        then overlayGridTruncated
-        else overlayGridExpanded
-
     placeOnArea (PositionedGrid _ overArea) =
       offsetLoc (coerce loc)
         . modifyLoc (reorientLandmark orientation $ getGridDimensions overArea)
@@ -67,28 +66,15 @@ mergeStructures ::
   Parentage Placement ->
   PStructure (Maybe a) ->
   Either Text (MergedStructure (Maybe a))
-mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStructures subPlacements subWaypoints) = do
+mergeStructures inheritedStrucDefs parentPlacement baseStructure = do
   overlays <-
     left (elaboratePlacement parentPlacement <>) $
       mapM (validatePlacement structureMap) subPlacements
 
-  let wrapPlacement (Placed z ns) =
-        LocatedStructure
-          (name ns)
-          (up $ orient structPose)
-          (offset structPose)
-       where
-        structPose = structurePose z
-
-      wrappedOverlays =
-        map wrapPlacement $
-          filter (\(Placed _ ns) -> isRecognizable ns) overlays
-
-  foldlM
-    (flip $ overlaySingleStructure structureMap)
-    (MergedStructure origArea wrappedOverlays originatedWaypoints)
-    overlays
+  foldLayer structureMap origArea overlays originatedWaypoints
  where
+  Structure origArea subStructures subPlacements subWaypoints = baseStructure
+
   originatedWaypoints = map (Originated parentPlacement) subWaypoints
 
   -- deeper definitions override the outer (toplevel) ones
@@ -97,54 +83,50 @@ mergeStructures inheritedStrucDefs parentPlacement (Structure origArea subStruct
       (M.fromList $ map (name &&& id) subStructures)
       inheritedStrucDefs
 
+-- | NOTE: Each successive overlay may alter the coordinate origin.
+-- We make sure this new origin is propagated to subsequent sibling placements.
+foldLayer ::
+  M.Map StructureName (NamedStructure (Maybe a)) ->
+  PositionedGrid (Maybe a) ->
+  [Placed (Maybe a)] ->
+  [Originated Waypoint] ->
+  Either Text (MergedStructure (Maybe a))
+foldLayer structureMap origArea overlays originatedWaypoints =
+  foldlM
+    (flip $ overlaySingleStructure structureMap)
+    (MergedStructure origArea wrappedOverlays originatedWaypoints)
+    overlays
+ where
+  wrappedOverlays =
+    map wrapPlacement $
+      filter (\(Placed _ ns) -> isRecognizable ns) overlays
+
+  wrapPlacement (Placed z ns) =
+    LocatedStructure
+      (name ns)
+      (up $ orient structPose)
+      (offset structPose)
+   where
+    structPose = structurePose z
+
 -- * Grid manipulation
 
 overlayGridExpanded ::
-  Grid (Maybe a) ->
+  PositionedGrid (Maybe a) ->
   Pose ->
   PositionedGrid (Maybe a) ->
   PositionedGrid (Maybe a)
 overlayGridExpanded
-  inputGrid
-  (Pose loc orientation)
-  (PositionedGrid _ (Grid overlayArea)) =
-    PositionedGrid origin inputGrid <> positionedOverlay
+  baseGrid
+  (Pose yamlPlacementOffset orientation)
+  -- The 'childAdjustedOrigin' is the sum of origin adjustments
+  -- to completely assemble some substructure.
+  (PositionedGrid childAdjustedOrigin overlayArea) =
+    baseGrid <> positionedOverlay
    where
-    reorientedOverlayCells = Grid $ applyOrientationTransform orientation overlayArea
-    positionedOverlay = PositionedGrid loc reorientedOverlayCells
-
--- | NOTE: This ignores the 'loc' parameter of 'PositionedGrid'.
-overlayGridTruncated ::
-  Grid (Maybe a) ->
-  Pose ->
-  PositionedGrid (Maybe a) ->
-  PositionedGrid (Maybe a)
-overlayGridTruncated
-  (Grid inputArea)
-  (Pose (Location colOffset rowOffset) orientation)
-  (PositionedGrid _ (Grid overlayArea)) =
-    PositionedGrid origin
-      . Grid
-      . zipWithPad mergeSingleRow inputArea
-      $ paddedOverlayRows overlayArea
-   where
-    zipWithPad f a b = zipWith f a $ b <> repeat Nothing
-
-    mergeSingleRow inputRow maybeOverlayRow =
-      zipWithPad (flip (<|>)) inputRow paddedSingleOverlayRow
-     where
-      paddedSingleOverlayRow = maybe [] (applyOffset colOffset) maybeOverlayRow
-
-    affineTransformedOverlay = applyOrientationTransform orientation
-
-    paddedOverlayRows = applyOffset (negate rowOffset) . map Just . affineTransformedOverlay
-    applyOffset offsetNum = modifyFront
-     where
-      integralOffset = fromIntegral offsetNum
-      modifyFront =
-        if integralOffset >= 0
-          then (replicate integralOffset Nothing <>)
-          else drop $ abs integralOffset
+    reorientedOverlayCells = applyOrientationTransform orientation overlayArea
+    placementAdjustedByOrigin = childAdjustedOrigin .+^ asVector yamlPlacementOffset
+    positionedOverlay = PositionedGrid placementAdjustedByOrigin reorientedOverlayCells
 
 -- * Validation
 
@@ -158,7 +140,7 @@ elaboratePlacement p =
  where
   pTxt = case p of
     Root -> "root placement"
-    WithParent (Placement (StructureName sn) _shouldTruncate (Pose loc _)) ->
+    WithParent (Placement (StructureName sn) (Pose loc _)) ->
       T.unwords
         [ "placement of"
         , quote sn
@@ -172,7 +154,7 @@ validatePlacement ::
   Either Text (Placed (Maybe a))
 validatePlacement
   structureMap
-  placement@(Placement sName@(StructureName n) _shouldTruncate (Pose _ orientation)) = do
+  placement@(Placement sName@(StructureName n) (Pose _ orientation)) = do
     t@(_, ns) <-
       maybeToEither
         (T.unwords ["Could not look up structure", quote n])

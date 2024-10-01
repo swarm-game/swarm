@@ -1,4 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -9,7 +12,7 @@ module Swarm.Language.Context where
 
 import Control.Algebra (Has)
 import Control.Effect.Reader (Reader, ask, local)
-import Control.Lens.Empty (AsEmpty (..))
+import Control.Lens.Empty (AsEmpty (..), pattern Empty)
 import Control.Lens.Prism (prism)
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Data (Data)
@@ -17,6 +20,8 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Prettyprinter (brackets, emptyDoc, hsep, punctuate)
+import Swarm.Pretty (PrettyPrec (..), prettyBinding)
 import Swarm.Util.JSON (optionsUnwrapUnary)
 import Prelude hiding (lookup)
 
@@ -32,6 +37,10 @@ instance ToJSON t => ToJSON (Ctx t) where
 
 instance FromJSON t => FromJSON (Ctx t) where
   parseJSON = genericParseJSON optionsUnwrapUnary
+
+instance (PrettyPrec t) => PrettyPrec (Ctx t) where
+  prettyPrec _ Empty = emptyDoc
+  prettyPrec _ (assocs -> bs) = brackets (hsep (punctuate "," (map prettyBinding bs)))
 
 -- | The semigroup operation for contexts is /right/-biased union.
 instance Semigroup (Ctx t) where

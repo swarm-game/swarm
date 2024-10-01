@@ -14,23 +14,22 @@ import Data.Sequence (Seq)
 import Data.Text qualified as T
 import Data.Tuple.Extra (dupe)
 import Swarm.Effect (runTimeIO)
-import Swarm.Game.CESK (emptyStore, initMachine)
+import Swarm.Failure (SystemFailure, simpleErrorHandle)
+import Swarm.Game.CESK (initMachine)
 import Swarm.Game.Display (defaultRobotDisplay)
-import Swarm.Game.Failure (SystemFailure, simpleErrorHandle)
 import Swarm.Game.Location
 import Swarm.Game.Robot (TRobot, mkRobot)
 import Swarm.Game.Robot.Walk (emptyExceptions)
 import Swarm.Game.Scenario (loadStandaloneScenario)
-import Swarm.Game.State (GameState, creativeMode, landscape, pureScenarioToGameState, zoomRobots)
+import Swarm.Game.State (GameState, creativeMode, landscape, zoomRobots)
+import Swarm.Game.State.Initialize (pureScenarioToGameState)
 import Swarm.Game.State.Landscape (multiWorld)
 import Swarm.Game.State.Robot (addTRobot)
-import Swarm.Game.State.Runtime (initRuntimeState, stdGameConfigInputs)
+import Swarm.Game.State.Runtime (RuntimeOptions (..), initRuntimeState, stdGameConfigInputs)
 import Swarm.Game.Step (gameTick)
 import Swarm.Game.Terrain (blankTerrainIndex)
 import Swarm.Game.Universe (Cosmic (..), SubworldName (DefaultRootSubworld))
 import Swarm.Game.World (WorldFun (..), newWorld)
-import Swarm.Language.Context qualified as Context
-import Swarm.Language.Pipeline (ProcessedTerm)
 import Swarm.Language.Pipeline.QQ (tmQ)
 import Swarm.Language.Syntax
 import Swarm.Util (parens, showT)
@@ -38,13 +37,13 @@ import Swarm.Util.Erasable
 import Test.Tasty.Bench (Benchmark, bcompare, bench, bgroup, defaultMain, whnfAppIO)
 
 -- | The program of a robot that does nothing.
-idleProgram :: ProcessedTerm
+idleProgram :: TSyntax
 idleProgram = [tmQ| {} |]
 
 -- | The program of a robot which waits a random number of ticks, changes its
 --   appearance, then waits another random number of ticks, places a tree, and
 --   then self-destructs.
-treeProgram :: ProcessedTerm
+treeProgram :: TSyntax
 treeProgram =
   [tmQ|
   {
@@ -59,7 +58,7 @@ treeProgram =
   |]
 
 -- | The program of a robot that moves forward forever.
-moverProgram :: ProcessedTerm
+moverProgram :: TSyntax
 moverProgram =
   [tmQ|
     let forever : Cmd Unit -> Cmd Unit = \c. c; forever c
@@ -67,7 +66,7 @@ moverProgram =
   |]
 
 -- | The program of a robot that moves in circles forever.
-circlerProgram :: ProcessedTerm
+circlerProgram :: TSyntax
 circlerProgram =
   [tmQ|
     let forever : Cmd Unit -> Cmd Unit = \c. c; forever c
@@ -91,7 +90,7 @@ circlerProgram =
 -- This is used to compare the performance degradation caused
 -- by using definitions and chains of ifs. Ideally there should
 -- not be cost if the code is inlined and simplified. TODO: #1557
-waveProgram :: Bool -> ProcessedTerm
+waveProgram :: Bool -> TSyntax
 waveProgram manualInline =
   let inlineDef = if manualInline then (1 :: Integer) else 0
    in [tmQ|
@@ -118,7 +117,7 @@ waveProgram manualInline =
   |]
 
 -- | Initializes a robot with program prog at location loc facing north.
-initRobot :: ProcessedTerm -> Location -> TRobot
+initRobot :: TSyntax -> Location -> TRobot
 initRobot prog loc =
   mkRobot
     Nothing
@@ -137,18 +136,20 @@ initRobot prog loc =
 
 -- | Creates a GameState with numRobot copies of robot on a blank map, aligned
 --   in a row starting at (0,0) and spreading east.
-mkGameState :: ProcessedTerm -> (Location -> TRobot) -> Int -> IO GameState
+mkGameState :: TSyntax -> (Location -> TRobot) -> Int -> IO GameState
 mkGameState prog robotMaker numRobots = do
   let robots = [robotMaker (Location (fromIntegral x) 0) | x <- [0 .. numRobots - 1]]
 
   -- NOTE: This replaces "classicGame0", which is still used by unit tests.
   gs <- simpleErrorHandle $ do
-    (_ :: Seq SystemFailure, initRS) <- runAccum mempty initRuntimeState
+    (_ :: Seq SystemFailure, initRS) <-
+      runAccum mempty . initRuntimeState $
+        RuntimeOptions {startPaused = False, pauseOnObjectiveCompletion = False, loadTestScenarios = False}
     (scenario, _) <- loadStandaloneScenario "classic"
     return $ pureScenarioToGameState scenario 0 0 Nothing $ view stdGameConfigInputs initRS
 
   execStateT
-    (zoomRobots $ mapM_ (addTRobot $ initMachine prog Context.empty emptyStore) robots)
+    (zoomRobots $ mapM_ (addTRobot $ initMachine prog) robots)
     ( gs
         & creativeMode .~ True
         & landscape . multiWorld .~ M.singleton DefaultRootSubworld (newWorld (WF $ const (blankTerrainIndex, ENothing)))
@@ -205,7 +206,7 @@ main = do
   robotNumbers = [10, 20 .. 40]
   largeRobotNumbers = take 4 $ iterate (* 2) 100
 
-  mkGameStates :: [Int] -> ProcessedTerm -> IO [(Int, GameState)]
+  mkGameStates :: [Int] -> TSyntax -> IO [(Int, GameState)]
   mkGameStates botCounts prog = mapM (traverse (mkGameState prog $ initRobot prog) . dupe) botCounts
 
   toBenchmarks :: Int -> [(Int, GameState)] -> [Benchmark]

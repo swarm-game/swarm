@@ -13,6 +13,7 @@ import Swarm.Game.Entity
 import Swarm.Game.Scenario.Topography.Area qualified as EA
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.EntityFacade
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Terrain (TerrainMap, TerrainType)
@@ -34,7 +35,7 @@ getEditingBounds myWorld =
   (EA.isEmpty a, newBounds)
  where
   newBounds = Cosmic DefaultRootSubworld (locToCoords upperLeftLoc, locToCoords lowerRightLoc)
-  upperLeftLoc = ul myWorld
+  upperLeftLoc = gridPosition $ area myWorld
   a = EA.getGridDimensions $ gridContent $ area myWorld
   lowerRightLoc = EA.computeBottomRightFromUpperLeft a upperLeftLoc
 
@@ -106,8 +107,8 @@ getEditedMapRectangle ::
   WorldOverdraw ->
   Maybe (Cosmic BoundsRectangle) ->
   W.MultiWorld Int Entity ->
-  EA.Grid CellPaintDisplay
-getEditedMapRectangle _ _ Nothing _ = EA.Grid []
+  Grid CellPaintDisplay
+getEditedMapRectangle _ _ Nothing _ = EmptyGrid
 getEditedMapRectangle tm worldEditor (Just (Cosmic subworldName coords)) w =
   getMapRectangle toFacade getContent coords
  where

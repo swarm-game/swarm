@@ -27,21 +27,21 @@ testRepl =
         "latest repl lines after one input"
         ( assertEqual
             "get 5 history [0|()] --> [()]"
-            [REPLEntry "()"]
-            (getLatestREPLHistoryItems 5 (addREPLItem (REPLEntry "()") history0))
+            [mkREPLSubmission "()"]
+            (getLatestREPLHistoryItems 5 (addREPLItem (mkREPLSubmission "()") history0))
         )
     , testCase
         "latest repl lines after one input and output"
         ( assertEqual
             "get 5 history [0|1,1:Int] --> [1,1:Int]"
-            [REPLEntry "1", REPLOutput "1:Int"]
+            [mkREPLSubmission "1", mkREPLOutput "1:Int"]
             (getLatestREPLHistoryItems 5 (addInOutInt 1 history0))
         )
     , testCase
         "latest repl lines after nine inputs and outputs"
         ( assertEqual
             "get 6 history [0|1,1:Int .. 9,9:Int] --> [7,7:Int..9,9:Int]"
-            (concat [[REPLEntry (toT x), REPLOutput (toT x <> ":Int")] | x <- [7 .. 9]])
+            (concat [[mkREPLSubmission (toT x), mkREPLOutput (toT x <> ":Int")] | x <- [7 .. 9]])
             (getLatestREPLHistoryItems 6 (foldl (flip addInOutInt) history0 [1 .. 9]))
         )
     , testCase
@@ -49,7 +49,7 @@ testRepl =
         ( assertEqual
             "get 5 history (restart [0|()]) --> []"
             []
-            (getLatestREPLHistoryItems 5 (restartREPLHistory $ addREPLItem (REPLEntry "()") history0))
+            (getLatestREPLHistoryItems 5 (restartREPLHistory $ addREPLItem (mkREPLSubmission "()") history0))
         )
     , testCase
         "current item at start"
@@ -84,8 +84,8 @@ testRepl =
         )
     ]
  where
-  history0 = newREPLHistory [REPLEntry "0"]
+  history0 = newREPLHistory [mkREPLSubmission "0"]
   toT :: Int -> Text
   toT = fromString . show
   addInOutInt :: Int -> REPLHistory -> REPLHistory
-  addInOutInt i = addREPLItem (REPLOutput $ toT i <> ":Int") . addREPLItem (REPLEntry $ toT i)
+  addInOutInt i = addREPLItem (mkREPLOutput $ toT i <> ":Int") . addREPLItem (mkREPLSubmission $ toT i)

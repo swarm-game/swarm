@@ -1,0 +1,95 @@
+version: 1
+name: Flipped structure placement
+author: Karl Ostmo
+description: |
+  Sequentially place structures that are larger than the map
+  with flipped orientation.
+robots:
+  - name: base
+    dir: north
+creative: true
+objectives:
+  - goal:
+      - Must have 3 of each color visible
+    condition: |
+      def countColor = \e.
+        resonate e ((-6, 0), (4, -4));
+        end;
+
+      as base {
+        r <- countColor "pixel (R)";
+        g <- countColor "pixel (G)";
+        b <- countColor "pixel (B)";
+        y <- countColor "gold";
+        return $ r == 3 && g == 3 && b == 3 && y == 3;
+      }
+solution: |
+  noop
+known: [boulder, log, pixel (R), pixel (G), pixel (B), gold]
+world:
+  structures:
+    - name: reddish
+      structure:
+        mask: '.'
+        palette:
+          'x': [stone, pixel (R)]
+        map: |
+          xx
+          x.
+    - name: greenish
+      structure:
+        mask: '.'
+        palette:
+          'x': [stone, pixel (G)]
+        map: |
+          xx
+          x.
+    - name: bluish
+      structure:
+        mask: '.'
+        palette:
+          'x': [stone, pixel (B)]
+        map: |
+          xx
+          x.
+    - name: goldish
+      structure:
+        mask: '.'
+        palette:
+          'x': [stone, gold]
+        map: |
+          xx
+          x.
+    - name: block
+      structure:
+        mask: '.'
+        palette:
+          'x': [ice, log]
+        placements:
+          - src: greenish
+            orient:
+              flip: true
+            offset: [-3, 2]
+          - src: reddish
+            offset: [-6, 0]
+          - src: goldish
+            orient:
+              flip: true
+            offset: [3, -1]
+          - src: bluish
+            offset: [0, 1]
+        map: |
+          xxx
+          xx.
+          x..
+  palette:
+    'Ω': [grass, erase, base]
+  mask: '.'
+  placements:
+    - src: block
+      offset: [0, -2]
+  upperleft: [0, 0]
+  dsl: |
+    {grass}
+  map: |
+    Ω

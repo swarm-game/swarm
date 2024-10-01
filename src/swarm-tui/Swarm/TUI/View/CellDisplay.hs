@@ -23,17 +23,20 @@ import Linear.Affine ((.-.))
 import Swarm.Game.Display (
   Attribute (AEntity),
   Display,
+  boundaryOverride,
   defaultEntityDisplay,
   displayAttr,
   displayChar,
   displayPriority,
+  getBoundaryDisplay,
   hidden,
  )
 import Swarm.Game.Entity
 import Swarm.Game.Land
+import Swarm.Game.Location (Point (..), toHeading)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Topography.EntityFacade
-import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
+import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures, recognitionState)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByLocation)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
@@ -44,13 +47,15 @@ import Swarm.Game.Tick (TickNumber (..))
 import Swarm.Game.Universe
 import Swarm.Game.World qualified as W
 import Swarm.Game.World.Coords
+import Swarm.Language.Syntax.Direction (AbsoluteDir (..))
 import Swarm.TUI.Editor.Masking
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Editor.Util qualified as EU
 import Swarm.TUI.Model.Name
-import Swarm.TUI.Model.UI
+import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.Util (applyWhen)
+import Swarm.Util.Content (getContentAt)
 import Witch (from)
 import Witch.Encoding qualified as Encoding
 
@@ -71,7 +76,7 @@ drawLoc ui g cCoords@(Cosmic _ coords) =
 
   boldStructure = applyWhen isStructure $ modifyDefAttr (`V.withStyle` V.bold)
    where
-    sMap = foundByLocation $ g ^. discovery . structureRecognition . foundStructures
+    sMap = foundByLocation $ g ^. discovery . structureRecognition . recognitionState . foundStructures
     isStructure = M.member (coordsToLoc <$> cCoords) sMap
 
 -- | Subset of the game state needed to render the world
@@ -140,9 +145,20 @@ displayEntityCell ::
   Cosmic Coords ->
   [Display]
 displayEntityCell worldEditor ri coords =
-  maybeToList $ displayForEntity <$> maybeEntity
+  maybeToList $ assignBoundaryOverride . displayForEntity <$> maybeEntityPaint
  where
-  (_, maybeEntity) = EU.getEditorContentAt (terrMap ri) worldEditor (multiworldInfo ri) coords
+  maybeEntityPaint = getEntPaintAtCoord coords
+
+  getEntPaintAtCoord = snd . EU.getEditorContentAt (terrMap ri) worldEditor (multiworldInfo ri)
+  coordHasBoundary = maybe False (`hasProperty` Boundary) . snd . getContentAt (terrMap ri) (multiworldInfo ri)
+
+  assignBoundaryOverride = applyWhen (coordHasBoundary coords) (boundaryOverride .~ getBoundaryDisplay checkPresence)
+   where
+    checkPresence :: AbsoluteDir -> Bool
+    checkPresence d = coordHasBoundary offsettedCoord
+     where
+      offsettedCoord = (`addTuple` xy) <$> coords
+      Coords xy = locToCoords $ P $ toHeading d
 
   displayForEntity :: EntityPaint -> Display
   displayForEntity e = (if isKnownFunc ri e then id else hidden) $ getDisplay e

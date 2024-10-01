@@ -26,9 +26,9 @@ import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Util (getLocRange, showErrorPos)
 import Swarm.Language.Pipeline (processParsedTerm')
-import Swarm.Language.Pretty (prettyText)
 import Swarm.Language.Syntax (SrcLoc (..))
 import Swarm.Language.Typecheck (ContextualTypeErr (..))
+import Swarm.Pretty (prettyText)
 import System.IO (stderr)
 import Witch
 
