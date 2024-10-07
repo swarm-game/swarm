@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -44,6 +45,7 @@ import Data.Text (Text)
 import Swarm.Language.Requirements.Type (Requirements)
 import Swarm.Language.Syntax.AST
 import Swarm.Language.Syntax.Comments
+import Swarm.Language.Syntax.Import (ImportLoc, PathStatus (Parsed))
 import Swarm.Language.Syntax.Loc
 import Swarm.Language.TDVar
 import Swarm.Language.Types
@@ -148,7 +150,7 @@ pattern TSuspend :: Term -> Term
 pattern TSuspend t = SSuspend (STerm t)
 
 -- | Match a TImportIn without annotations.
-pattern TImportIn :: ImportLocation -> Term -> Term
+pattern TImportIn :: ImportLoc Parsed -> Term -> Term
 pattern TImportIn loc t = SImportIn loc (STerm t)
 
 -- | Match a TParens without annotations.
