@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -127,8 +128,8 @@ parseStock =
   (TStock . fromIntegral <$> integer)
     <*> (textLiteral <?> "entity name in double quotes")
 
-parseImportLocation :: Parser ImportLocation
-parseImportLocation = textLiteral
+parseImportLocation :: Parser (ImportLoc Parsed)
+parseImportLocation = undefined
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
