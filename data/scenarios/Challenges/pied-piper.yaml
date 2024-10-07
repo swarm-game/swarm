@@ -5,6 +5,12 @@ description: |
   Rid the village of pests.
 creative: false
 attrs:
+  - name: portal_in
+    fg: "#ff9a00"
+    bg: "#ff5d00"
+  - name: portal_out
+    fg: "#00a2ff"
+    bg: "#0065ff"
   - name: oats
     fg: "#444444"
     bg: "#F5DEB3"
@@ -101,9 +107,9 @@ world:
           'x': [stone, boulder]
         map: |
           .xxxx.
-          xx..xx
-          x.....
-          xx..xx
+          xx..xxxx
+          x...p...
+          xx..xxxx
           .xxxx.
     - name: house
       structure:
