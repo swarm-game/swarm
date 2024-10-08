@@ -4,26 +4,50 @@ author: Karl Ostmo
 description: |
   Copy strands of DNA in the lab to splice organisms
 creative: false
+attrs:
+  - name: floorattr
+    bg: "#111111"
+terrains:
+  - name: floor
+    attr: floorattr
+    description: |
+      Laboratory floor
 objectives:
-  - goal:
+  - id: place_flower
+    teaser: Place subject
+    goal:
       - |
         Place a `flower`{=entity} in the receptacle immediately to your east.
-        The replicator pod will begin to decode the object's DNA.
-
-        You must complete the DNA strand with complementary base pairs.
     condition: |
       r <- robotnamed "verifier";
       as r {
-        has "flower";
+        has "pixel (G)";
       }
-  - goal:
+  - id: place_complements
+    teaser: Complement strand
+    prerequisite: place_flower
+    goal:
       - |
-        You must complete the DNA strand with complementary base pairs.
+        The replicator pod will begin to decode the object's DNA.
+        The `flower`{=entity} will be dematerialized once decoding is complete.
 
+        You must then complete the DNA strand using complementary base pairs.
+        Use your `soup strainer`{=entity} to obtain ingredients.
+        Note that you have a limited supply of `pipette`{=entity}s with which
+        to `scan` DNA bases.
+    condition: |
+      r <- robotnamed "topchecker";
+      as r {
+        has "pixel (G)";
+      }
+  - prerequisite: place_complements
+    teaser: Grab clone
+    goal:
+      - |
         Pick up the result of the cloning experiment to win.
     condition: |
       as base {
-        has "organic sludge";
+        has "flower";
       }
 robots:
   - name: base
@@ -34,23 +58,23 @@ robots:
       - branch predictor
       - comparator
       - dictionary
-      - switch puller
+      - feeler
       - grabber
       - hearing aid
       - lambda
       - logger
+      - microscope
       - rolex
-      - scanner
+      - soup strainer
       - strange loop
+      - switch puller
       - treads
       - welder
       - workbench
     inventory:
       - [1, flower]
-      - [64, guanine]
-      - [64, cytosine]
-      - [64, adenine]
-      - [64, thymine]
+      - [32, pipette]
+      - [16, primordial soup]
   - name: verifier
     system: true
     dir: east
@@ -64,7 +88,6 @@ robots:
       - [128, cytosine]
       - [128, adenine]
       - [128, thymine]
-      - [1, gold coin]
       - [1, organic sludge]
       - [1, branch predictor]
       - [1, treads]
@@ -85,9 +108,60 @@ robots:
       - [1, solar panel]
     program: |
       run "data/scenarios/Challenges/_dna/verifier.sw"
+  - name: topchecker
+    system: true
+    dir: east
+    display:
+      invisible: true
+      attr: 'robot'
+    program: |
+      run "data/scenarios/Challenges/_dna/topchecker.sw"
+  - name: mirrorbot
+    system: true
+    dir: south
+    display:
+      invisible: true
+      attr: 'robot'
+    program: |
+      run "data/scenarios/Challenges/_dna/mirrorbot.sw"
 solution: |
   run "data/scenarios/Challenges/_dna/solution.sw"
 entities:
+  - name: primordial soup
+    display:
+      char: 's'
+    description:
+      - Can be decomposed into nucleic acids
+    properties: [known, pickable]
+  - name: soup strainer
+    display:
+      char: 'r'
+    description:
+      - Extracts nucleic acids from `primordial soup`{=entity}
+    properties: [known, pickable]
+  - name: feeler
+    display:
+      char: 'm'
+    description:
+      - Senses presence of specific entities
+    properties: [known, pickable]
+    capabilities: [blocked, ishere, isempty]
+  - name: microscope
+    display:
+      char: 'm'
+    description:
+      - Scan for the cost of 1 `pipette`{=entity}
+    properties: [known, pickable]
+    capabilities:
+      - capability: scan
+        cost:
+          - [1, "pipette"]
+  - name: pipette
+    display:
+      char: 'p'
+      attr: device
+    description:
+      - Can take a sample of DNA for scanning
   - name: guanine
     display:
       char: 'G'
@@ -95,7 +169,7 @@ entities:
     description:
       - One of the four nucleobases in DNA.
       - Is paired with "cytosine".
-    properties: [pickable, known]
+    properties: [known]
   - name: cytosine
     display:
       char: 'C'
@@ -103,7 +177,7 @@ entities:
     description:
       - One of the four nucleobases in DNA.
       - Is paired with "guanine".
-    properties: [pickable, known]
+    properties: [known]
   - name: adenine
     display:
       char: 'A'
@@ -111,7 +185,7 @@ entities:
     description:
       - One of the four nucleobases in DNA.
       - Is paired with "thymine".
-    properties: [pickable, known]
+    properties: [known]
   - name: thymine
     display:
       char: 'T'
@@ -119,7 +193,7 @@ entities:
     description:
       - One of the four nucleobases in DNA.
       - Is paired with "adenine".
-    properties: [pickable, known]
+    properties: [known]
   - name: switch (off)
     display:
       attr: red
@@ -150,6 +224,15 @@ entities:
       - Can pull switches
 recipes:
   - in:
+      - [1, primordial soup]
+    out:
+      - [4, cytosine]
+      - [4, guanine]
+      - [4, adenine]
+      - [4, thymine]
+    required:
+      - [1, soup strainer]
+  - in:
       - [1, switch (off)]
     out:
       - [1, switch (on)]
@@ -166,20 +249,14 @@ world:
   dsl: |
     let
       flowerNoise = perlin seed 1 0.15 0.0,
-      stoneNoise = perlin (seed + 1) 1 0.05 0.0,
-      lakeNoise = perlin seed 1 0.02 0.0,
       forestNoise = perlin seed 2 0.04 1.0,
 
-      flowers = flowerNoise > 0.65,
-      rubble = stoneNoise > 0.8,
-      rock = stoneNoise > 0.9,
-      trees = forestNoise > 0.8
+      flowers = flowerNoise > 0.70,
+      trees = forestNoise > 0.9
     in
       overlay
       [ {grass}
       , mask (flowers && (x - y) % 3 == 0) {flower}
-      , mask (rubble && (x + y) % 2 == 0) {rock}
-      , mask rock {rock}
       , mask trees {tree}
       ]
   upperleft: [-1, 2]
@@ -187,11 +264,13 @@ world:
   palette:
     '┬': [stone, down and horizontal wall]
     '┴': [stone, up and horizontal wall]
-    '.': [stone, erase]
-    ':': [blank, erase]
     'z': [stone, wall]
-    'v': [stone, erase, verifier]
-    'B': [stone, erase, base]
+    '.': [stone, erase]
+    ':': [floor, erase]
+    'c': [floor, erase, topchecker]
+    'm': [floor, erase, mirrorbot]
+    'v': [floor, erase, verifier]
+    'B': [floor, erase, base]
     '0': [stone, switch (off)]
   map: |
     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
@@ -199,15 +278,15 @@ world:
     z...........................................z
     z.....┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬......z
     z.....::::::::::::::::::::::::::::::::......z
-    z.zz..::::::::::::::::::::::::::::::::......z
-    zBvzzz┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴......z
-    z.zz........................................z
+    z:zz..c:::::::::::::::::::::::::::::::......z
+    zBvzz.┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴......z
+    zzzz........................................z
     z...........................................z
     z...........................................z
     z...........................................z
     z...........................................z
     zz....┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬......z
-    z0....::::::::::::::::::::::::::::::::......z
+    z0....mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm......z
     zz....::::::::::::::::::::::::::::::::..zz..z
     z.....┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴zzz:..z
     z.......................................zz..z
