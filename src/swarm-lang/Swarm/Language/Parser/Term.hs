@@ -134,6 +134,7 @@ parseStock =
   (TStock . fromIntegral <$> integer)
     <*> (textLiteral <?> "entity name in double quotes")
 
+-- XXX move this to a dedicated module??
 parseImportLocation :: Parser (ImportLoc Parsed)
 parseImportLocation =
   lexeme . between (char '"') (char '"') $ do
