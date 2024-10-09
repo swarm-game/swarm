@@ -126,6 +126,47 @@ robots:
       run "data/scenarios/Challenges/_dna/mirrorbot.sw"
 solution: |
   run "data/scenarios/Challenges/_dna/solution.sw"
+structures:
+  - name: receptacle
+    structure:
+      mask: '.'
+      palette:
+        'x': [floor, wall]
+      map: |
+        xx
+        .x
+        xx
+  - name: decoder base
+    structure:
+      palette:
+        '┬': [stone, down and horizontal wall]
+        '┴': [stone, up and horizontal wall]
+        ':': [floor, erase]
+      map: |
+        ┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬
+        ::::::::::::::::::::::::::::::::
+        ::::::::::::::::::::::::::::::::
+        ┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴
+  - name: copybots overlay
+    structure:
+      mask: '.'
+      palette:
+        'm': [floor, erase, mirrorbot]
+      map: |
+        ................................
+        mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
+        ................................
+        ................................
+  - name: decoder overlay
+    structure:
+      mask: '.'
+      palette:
+        'c': [floor, erase, topchecker]
+      map: |
+        ................................
+        ................................
+        c...............................
+        ................................
 entities:
   - name: primordial soup
     display:
@@ -259,36 +300,62 @@ world:
       , mask (flowers && (x - y) % 3 == 0) {flower}
       , mask trees {tree}
       ]
-  upperleft: [-1, 2]
+  upperleft: [-1, 5]
   offset: false
+  structures:
+    - name: DNA decoder
+      recognize:
+        - north
+      structure:
+        placements:
+          - src: decoder base
+          - src: copybots overlay
+          - src: receptacle
+            offset: [16, 13]
+        map: ""
+    - name: DNA encoder
+      recognize:
+        - north
+      structure:
+        placements:
+          - src: decoder base
+          - src: decoder overlay
+        map: ""
   palette:
-    '┬': [stone, down and horizontal wall]
-    '┴': [stone, up and horizontal wall]
     'z': [stone, wall]
     '.': [stone, erase]
+    'o': [stone, erase]
     ':': [floor, erase]
-    'c': [floor, erase, topchecker]
-    'm': [floor, erase, mirrorbot]
     'v': [floor, erase, verifier]
     'B': [floor, erase, base]
     '0': [stone, switch (off)]
+    'D':
+      structure:
+        name: DNA encoder
+      cell: [floor, erase]
+  placements:
+    - src: DNA decoder
+      offset: [6, -15]
   map: |
     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
     z...........................................z
     z...........................................z
-    z.....┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬......z
-    z.....::::::::::::::::::::::::::::::::......z
-    z:zz..c:::::::::::::::::::::::::::::::......z
-    zBvzz.┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴......z
+    z...........................................z
+    z...........................................z
+    z...........................................z
+    z.....Dooooooooooooooooooooooooooooooo......z
+    z.....o..............................o......z
+    z:zz..o..............................o......z
+    zBvzz.oooooooooooooooooooooooooooooooo......z
     zzzz........................................z
     z...........................................z
     z...........................................z
     z...........................................z
     z...........................................z
-    zz....┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬......z
-    z0....mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm......z
-    zz....::::::::::::::::::::::::::::::::..zz..z
-    z.....┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴zzz:..z
+    zz..........................................z
+    z0..........................................z
+    zz......................................zz..z
+    z.....................................zzz:..z
     z.......................................zz..z
     z...........................................z
     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz

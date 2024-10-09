@@ -103,8 +103,12 @@ def makeDnaStrand =
     finalSuccess <- placeBase myStandby 32;
 
     if (finalSuccess) {
-        teleport self (40, -13);
-        place "flower";
+        instant $ (
+            teleport self (0, -11);
+            waitUntilHere "switch (on)";
+            teleport self (40, -13);
+            place "flower";
+        );
     } {
         create "pixel (R)";
     }
