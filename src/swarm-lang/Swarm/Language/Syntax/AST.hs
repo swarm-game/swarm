@@ -147,7 +147,7 @@ data Term' ty
     SSuspend (Syntax' ty)
   | -- | Import a term containing definitions, which will be in scope
     --   in the following term.
-    SImportIn (ImportLoc Parsed) (Syntax' ty)
+    SImportIn ImportLoc (Syntax' ty)
   deriving
     ( Eq
     , Show
