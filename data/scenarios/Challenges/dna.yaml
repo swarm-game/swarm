@@ -175,6 +175,28 @@ structures:
         ................................
         c...............................
         ................................
+  - name: DNA decoder
+    recognize:
+      - north
+    structure:
+      placements:
+        - src: decoder base
+        - src: copybots overlay
+        - src: receptacle
+          offset: [18, -4]
+          orient:
+            up: south
+      map: ""
+  - name: DNA encoder
+    recognize:
+      - north
+    structure:
+      placements:
+        - src: decoder base
+        - src: decoder overlay
+        - src: receptacle
+          offset: [4, 3]
+      map: ""
 entities:
   - name: wall2
     display:
@@ -316,30 +338,6 @@ world:
       , mask trees {tree}
       ]
   upperleft: [-1, 4]
-  offset: false
-  structures:
-    - name: DNA decoder
-      recognize:
-        - north
-      structure:
-        placements:
-          - src: decoder base
-          - src: copybots overlay
-          - src: receptacle
-            offset: [18, -4]
-            orient:
-              up: south
-        map: ""
-    - name: DNA encoder
-      recognize:
-        - north
-      structure:
-        placements:
-          - src: decoder base
-          - src: decoder overlay
-          - src: receptacle
-            offset: [4, 3]
-        map: ""
   palette:
     'z': [stone, wall]
     '.': [stone, erase]

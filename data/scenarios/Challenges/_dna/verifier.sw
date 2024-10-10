@@ -71,7 +71,7 @@ def myStandby = \recepticleLoc.
     entToClone <- grab;
     teleport self (36, -11);
     turn back;
-    return entToClone;
+    return $ inR entToClone;
     end;
 
 def placeBase = \standbyFunc. \n. 
@@ -83,7 +83,7 @@ def placeBase = \standbyFunc. \n.
         place ent;
         move;
 
-        didSucceed <- placeBase standbyFunc $ n - 1;
+        clonedOrganism <- placeBase standbyFunc $ n - 1;
 
         // Unwinds the stack; verifies the original placement order
         placedEnt <- instant waitUntilSomethingExists;
@@ -91,26 +91,26 @@ def placeBase = \standbyFunc. \n.
         move;
 
         if isGood {
-            return didSucceed;
+            return clonedOrganism;
         } {
-            return false;
+            return $ inL ();
         }
     } {
         // Returns the clonedOrganism
         standbyFunc;
-        return true;
     };
     end;
 
 def makeDnaStrand = \recepticleLoc.
     teleport self (5, -2);
 
-    // dims <- floorplan "DNA decoder";
-    // let decoderWidth = fst dims in
-    let decoderWidth = 32 in
-    finalSuccess <- placeBase (myStandby recepticleLoc) decoderWidth;
+    dims <- floorplan "DNA decoder";
+    let decoderWidth = fst dims in
+    eitherClonedOrganism <- placeBase (myStandby recepticleLoc) decoderWidth;
 
-    if (finalSuccess) {
+    case eitherClonedOrganism (\_.
+        create "pixel (R)";
+    ) (\clonedItem.
         instant $ (
             teleport self (0, -11);
             waitUntilHere "switch (on)";
@@ -118,11 +118,9 @@ def makeDnaStrand = \recepticleLoc.
             bottomWaypointQuery <- waypoint "receiver" 0;
             let recepticleLoc2 = snd bottomWaypointQuery in
             teleport self recepticleLoc2;
-            place "flower";
+            place clonedItem;
         );
-    } {
-        create "pixel (R)";
-    }
+    );
     end;
 
 def go =
@@ -130,6 +128,7 @@ def go =
     let recepticleLoc = snd waypointQuery in
     instant (
         teleport self recepticleLoc;
+        // TODO Make this a "tag" category
         waitUntilHere "flower";
     );
     create "pixel (G)";

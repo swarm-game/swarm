@@ -88,8 +88,10 @@ import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (Parentage (..))
+import Swarm.Game.Scenario.Topography.Placement (StructureName)
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
+import Swarm.Game.Scenario.Topography.Structure.Named qualified as Named
 import Swarm.Game.Scenario.Topography.Structure.Named qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
@@ -266,12 +268,10 @@ instance FromJSONE ScenarioInputs Scenario where
 
     validatedTerrainObjects <- runValidation $ validateTerrainAttrRefs attrsUnion tmRaw
 
-    let tm = mkTerrainMap validatedTerrainObjects
-
     runValidation $ validateEntityAttrRefs attrsUnion emRaw
 
     em <- runValidation $ buildEntityMap emRaw
-
+    let tm = mkTerrainMap validatedTerrainObjects
     let scenarioSpecificTerrainEntities = TerrainEntityMaps tm em
 
     -- Save the passed in WorldMap for later
@@ -299,6 +299,22 @@ instance FromJSONE ScenarioInputs Scenario where
         localE (,rsMap) $
           v ..:? "structures" ..!= []
 
+      -- We allow structures in the list to reference and place
+      -- sibling structures from the list.
+      --
+      -- Q: Why don't we do the same thing for the subworld-local structure definitions?
+      -- A: In fact, it already works for subworld-local definitions!
+      --    TODO: Write a test for supporting "backwards" references
+      --
+      -- Q: Then why do we have to do it here?
+      -- A: We only support "recognition" of structures defined at the
+      --    scenario-global level.  And for each of these recognizable structures,
+      --    we need to construct a self-contained "completely merged" structure.
+      --    In contrast, at the subworld-local level, we don't need to obtain
+      --    any self-contained assembled structure other than the toplevel
+      --    subworld map itself.
+      let structureMap = M.fromList $ map (Named.name &&& id) rootLevelSharedStructures
+
       -- TODO (#1611) This is inefficient; instead, we should
       -- form a DAG of structure references and visit deepest first,
       -- caching in a map as we go.
@@ -310,7 +326,7 @@ instance FromJSONE ScenarioInputs Scenario where
       mergedStructures <-
         either (fail . T.unpack) return $
           mapM
-            (sequenceA . (id &&& (Assembly.mergeStructures mempty Root . Structure.structure)))
+            (sequenceA . (id &&& (Assembly.mergeStructures structureMap Root . Structure.structure)))
             rootLevelSharedStructures
 
       allWorlds <- localE (WorldParseDependencies worldMap rootLevelSharedStructures rsMap) $ do
