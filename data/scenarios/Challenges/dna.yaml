@@ -1,0 +1,378 @@
+version: 1
+name: DNA
+author: Karl Ostmo
+description: |
+  Copy strands of DNA in the lab to splice organisms
+creative: false
+attrs:
+  - name: floorattr
+    bg: "#111111"
+  - name: wall2
+    fg: "#88ee22"
+terrains:
+  - name: floor
+    attr: floorattr
+    description: |
+      Laboratory floor
+objectives:
+  - id: place_flower
+    teaser: Place subject
+    goal:
+      - |
+        Place a `flower`{=entity} in the receptacle immediately to your east.
+    condition: |
+      r <- robotnamed "verifier";
+      as r {
+        has "pixel (G)";
+      }
+  - id: place_complements
+    teaser: Complement strand
+    prerequisite: place_flower
+    goal:
+      - |
+        The replicator pod will begin to decode the object's DNA.
+        The `flower`{=entity} will be dematerialized once decoding is complete.
+
+        You must then complete the DNA strand using complementary base pairs.
+        Use your `soup strainer`{=entity} to obtain ingredients.
+        Note that you have a limited supply of `pipette`{=entity}s with which
+        to `scan` DNA bases.
+    condition: |
+      r <- robotnamed "topchecker";
+      as r {
+        has "pixel (G)";
+      }
+  - prerequisite: place_complements
+    teaser: Grab clone
+    goal:
+      - |
+        Pick up the result of the cloning experiment to win.
+    condition: |
+      as base {
+        has "flower";
+      }
+robots:
+  - name: base
+    dir: east
+    devices:
+      - antenna
+      - ADT calculator
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - feeler
+      - grabber
+      - hearing aid
+      - lambda
+      - logger
+      - microscope
+      - rolex
+      - soup strainer
+      - strange loop
+      - switch puller
+      - treads
+      - welder
+      - workbench
+    inventory:
+      - [1, flower]
+      - [32, pipette]
+      - [16, primordial soup]
+  - name: verifier
+    system: true
+    dir: east
+    display:
+      invisible: true
+      attr: 'robot'
+    devices:
+      - switch puller
+    inventory:
+      - [128, guanine]
+      - [128, cytosine]
+      - [128, adenine]
+      - [128, thymine]
+      - [1, organic sludge]
+      - [1, branch predictor]
+      - [1, treads]
+      - [1, beaglepuss]
+      - [1, antenna]
+      - [1, comparator]
+      - [1, clock]
+      - [1, workbench]
+      - [1, grabber]
+      - [1, ADT calculator]
+      - [1, dictionary]
+      - [1, lambda]
+      - [1, logger]
+      - [1, welder]
+      - [1, hearing aid]
+      - [1, scanner]
+      - [1, strange loop]
+      - [1, solar panel]
+    program: |
+      run "data/scenarios/Challenges/_dna/verifier.sw"
+  - name: topchecker
+    system: true
+    dir: east
+    display:
+      invisible: true
+      attr: 'robot'
+    program: |
+      run "data/scenarios/Challenges/_dna/topchecker.sw"
+  - name: mirrorbot
+    system: true
+    dir: south
+    display:
+      invisible: true
+      attr: 'robot'
+    program: |
+      run "data/scenarios/Challenges/_dna/mirrorbot.sw"
+solution: |
+  run "data/scenarios/Challenges/_dna/solution.sw"
+structures:
+  - name: receptacle
+    structure:
+      mask: '.'
+      palette:
+        'x': [floor, wall]
+        'w': [floor, wall2]
+        'f':
+          cell: [floor, erase]
+          waypoint:
+            name: receiver
+      map: |
+        ww........
+        fwxxxxxxxx
+        ww.x.x.x.x
+  - name: decoder base
+    structure:
+      palette:
+        '┬': [stone, down and horizontal wall]
+        '┴': [stone, up and horizontal wall]
+        ':': [floor, erase]
+      map: |
+        ┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬
+        ::::::::::::::::::::::::::::::::
+        ::::::::::::::::::::::::::::::::
+        ┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴
+  - name: copybots overlay
+    structure:
+      mask: '.'
+      palette:
+        'm': [floor, erase, mirrorbot]
+      map: |
+        ................................
+        mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
+        ................................
+        ................................
+  - name: decoder overlay
+    structure:
+      mask: '.'
+      palette:
+        'c': [floor, erase, topchecker]
+      map: |
+        ................................
+        ................................
+        c...............................
+        ................................
+  - name: DNA decoder
+    recognize:
+      - north
+    structure:
+      placements:
+        - src: decoder base
+        - src: copybots overlay
+        - src: receptacle
+          offset: [18, -4]
+          orient:
+            up: south
+      map: ""
+  - name: DNA encoder
+    recognize:
+      - north
+    structure:
+      placements:
+        - src: decoder base
+        - src: decoder overlay
+        - src: receptacle
+          offset: [4, 3]
+      map: ""
+entities:
+  - name: wall2
+    display:
+      char: 'w'
+      attr: wall2
+    description:
+      - Just a wall
+    properties: [known, unwalkable, boundary]
+  - name: primordial soup
+    display:
+      char: 's'
+    description:
+      - Can be decomposed into nucleic acids
+    properties: [known, pickable]
+  - name: soup strainer
+    display:
+      char: 'r'
+    description:
+      - Extracts nucleic acids from `primordial soup`{=entity}
+    properties: [known, pickable]
+  - name: feeler
+    display:
+      char: 'm'
+    description:
+      - Senses presence of specific entities
+    properties: [known, pickable]
+    capabilities: [blocked, ishere, isempty]
+  - name: microscope
+    display:
+      char: 'm'
+    description:
+      - Scan for the cost of 1 `pipette`{=entity}
+    properties: [known, pickable]
+    capabilities:
+      - capability: scan
+        cost:
+          - [1, "pipette"]
+  - name: pipette
+    display:
+      char: 'p'
+      attr: device
+    description:
+      - Can take a sample of DNA for scanning
+  - name: guanine
+    display:
+      char: 'G'
+      attr: red
+    description:
+      - One of the four nucleobases in DNA.
+      - Is paired with "cytosine".
+    properties: [known]
+  - name: cytosine
+    display:
+      char: 'C'
+      attr: blue
+    description:
+      - One of the four nucleobases in DNA.
+      - Is paired with "guanine".
+    properties: [known]
+  - name: adenine
+    display:
+      char: 'A'
+      attr: green
+    description:
+      - One of the four nucleobases in DNA.
+      - Is paired with "thymine".
+    properties: [known]
+  - name: thymine
+    display:
+      char: 'T'
+      attr: gold
+    description:
+      - One of the four nucleobases in DNA.
+      - Is paired with "adenine".
+    properties: [known]
+  - name: switch (off)
+    display:
+      attr: red
+      char: '•'
+    description:
+      - A control in the deactivated position.
+    properties: [known]
+  - name: switch (on)
+    display:
+      attr: green
+      char: '•'
+    description:
+      - A control in the activated position.
+    properties: [known]
+  - name: organic sludge
+    display:
+      attr: green
+      char: 'S'
+    description:
+      - A repulsive, shuddering mass of slime.
+    properties: [pickable]
+  - name: switch puller
+    display:
+      char: 'P'
+      attr: gold
+    capabilities: [drill]
+    description:
+      - Can pull switches
+recipes:
+  - in:
+      - [1, primordial soup]
+    out:
+      - [4, cytosine]
+      - [4, guanine]
+      - [4, adenine]
+      - [4, thymine]
+    required:
+      - [1, soup strainer]
+  - in:
+      - [1, switch (off)]
+    out:
+      - [1, switch (on)]
+    required:
+      - [1, switch puller]
+  - in:
+      - [1, switch (on)]
+    out:
+      - [1, switch (off)]
+    required:
+      - [1, switch puller]
+known: [bit (0), bit (1), tree, flower, rock]
+world:
+  dsl: |
+    let
+      flowerNoise = perlin seed 1 0.15 0.0,
+      forestNoise = perlin seed 2 0.04 1.0,
+
+      flowers = flowerNoise > 0.70,
+      trees = forestNoise > 0.9
+    in
+      overlay
+      [ {grass}
+      , mask (flowers && (x - y) % 3 == 0) {flower}
+      , mask trees {tree}
+      ]
+  upperleft: [-1, 4]
+  palette:
+    'z': [stone, wall]
+    '.': [stone, erase]
+    'o': [stone, erase]
+    'v': [stone, erase, verifier]
+    'B': [stone, erase, base]
+    '0': [stone, switch (off)]
+    'D':
+      structure:
+        name: DNA encoder
+      cell: [floor, erase]
+  placements:
+    - src: DNA decoder
+      offset: [6, -14]
+  map: |
+    zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+    zv..........................................z
+    z.........oo................................z
+    z.B........o................................z
+    z.........oo................................z
+    z.....Dooooooooooooooooooooooooooooooo......z
+    z.....o..............................o......z
+    z.....o..............................o......z
+    z.....oooooooooooooooooooooooooooooooo......z
+    z...........................................z
+    z...........................................z
+    z...........................................z
+    z...........................................z
+    z...........................................z
+    zz..........................................z
+    z0..........................................z
+    zz..........................................z
+    z...........................................z
+    z...........................................z
+    z...........................................z
+    z...........................................z
+    z...........................................z
+    zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
