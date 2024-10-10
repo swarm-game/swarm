@@ -7,6 +7,8 @@ creative: false
 attrs:
   - name: floorattr
     bg: "#111111"
+  - name: wall2
+    fg: "#88ee22"
 terrains:
   - name: floor
     attr: floorattr
@@ -57,6 +59,7 @@ robots:
       - ADT calculator
       - branch predictor
       - comparator
+      - compass
       - dictionary
       - feeler
       - grabber
@@ -132,10 +135,15 @@ structures:
       mask: '.'
       palette:
         'x': [floor, wall]
+        'w': [floor, wall2]
+        'f':
+          cell: [floor, erase]
+          waypoint:
+            name: receiver
       map: |
-        xx
-        .x
-        xx
+        ww........
+        fwxxxxxxxx
+        ww.x.x.x.x
   - name: decoder base
     structure:
       palette:
@@ -168,6 +176,13 @@ structures:
         c...............................
         ................................
 entities:
+  - name: wall2
+    display:
+      char: 'w'
+      attr: wall2
+    description:
+      - Just a wall
+    properties: [known, unwalkable, boundary]
   - name: primordial soup
     display:
       char: 's'
@@ -300,7 +315,7 @@ world:
       , mask (flowers && (x - y) % 3 == 0) {flower}
       , mask trees {tree}
       ]
-  upperleft: [-1, 5]
+  upperleft: [-1, 4]
   offset: false
   structures:
     - name: DNA decoder
@@ -311,7 +326,9 @@ world:
           - src: decoder base
           - src: copybots overlay
           - src: receptacle
-            offset: [16, 13]
+            offset: [18, -4]
+            orient:
+              up: south
         map: ""
     - name: DNA encoder
       recognize:
@@ -320,14 +337,15 @@ world:
         placements:
           - src: decoder base
           - src: decoder overlay
+          - src: receptacle
+            offset: [4, 3]
         map: ""
   palette:
     'z': [stone, wall]
     '.': [stone, erase]
     'o': [stone, erase]
-    ':': [floor, erase]
-    'v': [floor, erase, verifier]
-    'B': [floor, erase, base]
+    'v': [stone, erase, verifier]
+    'B': [stone, erase, base]
     '0': [stone, switch (off)]
     'D':
       structure:
@@ -335,27 +353,28 @@ world:
       cell: [floor, erase]
   placements:
     - src: DNA decoder
-      offset: [6, -15]
+      offset: [6, -14]
   map: |
     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
-    z...........................................z
-    z...........................................z
-    z...........................................z
-    z...........................................z
-    z...........................................z
+    zv..........................................z
+    z.........oo................................z
+    z.B........o................................z
+    z.........oo................................z
     z.....Dooooooooooooooooooooooooooooooo......z
     z.....o..............................o......z
-    z:zz..o..............................o......z
-    zBvzz.oooooooooooooooooooooooooooooooo......z
-    zzzz........................................z
+    z.....o..............................o......z
+    z.....oooooooooooooooooooooooooooooooo......z
+    z...........................................z
     z...........................................z
     z...........................................z
     z...........................................z
     z...........................................z
     zz..........................................z
     z0..........................................z
-    zz......................................zz..z
-    z.....................................zzz:..z
-    z.......................................zz..z
+    zz..........................................z
+    z...........................................z
+    z...........................................z
+    z...........................................z
+    z...........................................z
     z...........................................z
     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz

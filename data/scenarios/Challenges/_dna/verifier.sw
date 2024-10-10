@@ -66,8 +66,8 @@ def waitUntilHere = \item.
     };
     end;
 
-def myStandby =
-    teleport self (1, -4);
+def myStandby = \recepticleLoc.
+    teleport self recepticleLoc;
     entToClone <- grab;
     teleport self (36, -11);
     turn back;
@@ -77,7 +77,6 @@ def myStandby =
 def placeBase = \standbyFunc. \n. 
 
     if (n > 0) {
-
         idx <- random 4;
         let entTemp = getBaseForNumber idx in
         let ent = entTemp in
@@ -90,7 +89,12 @@ def placeBase = \standbyFunc. \n.
         placedEnt <- instant waitUntilSomethingExists;
         let isGood = ent == placedEnt in
         move;
-        return $ didSucceed && isGood;
+
+        if isGood {
+            return didSucceed;
+        } {
+            return false;
+        }
     } {
         // Returns the clonedOrganism
         standbyFunc;
@@ -98,27 +102,38 @@ def placeBase = \standbyFunc. \n.
     };
     end;
 
-def makeDnaStrand =
+def makeDnaStrand = \recepticleLoc.
     teleport self (5, -2);
-    finalSuccess <- placeBase myStandby 32;
+
+    // dims <- floorplan "DNA decoder";
+    // let decoderWidth = fst dims in
+    let decoderWidth = 32 in
+    finalSuccess <- placeBase (myStandby recepticleLoc) decoderWidth;
 
     if (finalSuccess) {
         instant $ (
             teleport self (0, -11);
             waitUntilHere "switch (on)";
-            teleport self (40, -13);
+
+            bottomWaypointQuery <- waypoint "receiver" 0;
+            let recepticleLoc2 = snd bottomWaypointQuery in
+            teleport self recepticleLoc2;
             place "flower";
         );
     } {
         create "pixel (R)";
     }
-    // say $ "Final success: " ++ format finalSuccess;
     end;
 
 def go =
-    instant $ waitUntilHere "flower";
+    waypointQuery <- waypoint "receiver" 1;
+    let recepticleLoc = snd waypointQuery in
+    instant (
+        teleport self recepticleLoc;
+        waitUntilHere "flower";
+    );
     create "pixel (G)";
-    makeDnaStrand;
+    makeDnaStrand recepticleLoc;
     end;
 
 go;

@@ -313,8 +313,6 @@ instance FromJSONE ScenarioInputs Scenario where
             (sequenceA . (id &&& (Assembly.mergeStructures mempty Root . Structure.structure)))
             rootLevelSharedStructures
 
-      let namedGrids = map (\(ns, Structure.MergedStructure (PositionedGrid _ s) _ _) -> s <$ ns) mergedStructures
-
       allWorlds <- localE (WorldParseDependencies worldMap rootLevelSharedStructures rsMap) $ do
         rootWorld <- v ..: "world"
         subworlds <- v ..:? "subworlds" ..!= []
@@ -353,6 +351,9 @@ instance FromJSONE ScenarioInputs Scenario where
           $ NE.toList allWorlds
 
       let mergedNavigation = Navigation mergedWaypoints mergedPortals
+
+          stuffGrid (ns, Structure.MergedStructure (PositionedGrid _ s) _ _) = s <$ ns
+          namedGrids = map stuffGrid mergedStructures
           recognizableGrids = filter Structure.isRecognizable namedGrids
 
       symmetryAnnotatedGrids <- mapM checkSymmetry recognizableGrids

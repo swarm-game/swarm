@@ -1,5 +1,13 @@
 def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 
+def moveUntilBlocked =
+    blockedHere <- blocked;
+    if blockedHere {} {
+        move;
+        moveUntilBlocked;
+    }
+    end;
+
 def getBaseForNumber = \n.
     if (n == 0) {
         "guanine";
@@ -68,13 +76,9 @@ def waitUntilHere = \item.
 
 def moveToPattern =
     turn back;
-    move;
-    turn right;
-    doN 2 move;
-    turn right;
+    doN 5 move;
+    turn left;
     doN 4 move;
-    turn right;
-    move;
     turn left;
     move;
     end;
@@ -131,7 +135,8 @@ def replicatePattern = \standbyFunc. \n.
     end;
 
 def go =
-    move;
+    moveUntilBlocked;
+
     let sentinel = "flower" in
     place sentinel;
 
@@ -144,10 +149,11 @@ def go =
     // Activate the switch
     doN 3 move;
     drill forward;
+
     turn left;
-    doN 4 move;
+    doN 6 move;
     turn left;
-    doN 40 move;
+    doN 32 move;
     turn left;
     doN 2 move;
     turn left;
