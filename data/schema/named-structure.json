@@ -19,7 +19,7 @@
             "items": {
                 "$ref": "direction.json"
             },
-            "description": "Orientations for which this structure participates in automatic recognition when constructed"
+            "description": "Orientations for which this structure participates in automatic recognition when constructed. Note that recognition is only supported for structures defined at the scenario top level."
         },
         "structure": {
             "$ref": "structure.json"

@@ -1,0 +1,43 @@
+version: 1
+name: Structure placement (recursive references)
+description: |
+  Recursive structure references are not allowed.
+robots:
+  - name: base
+    loc: [2, 2]
+    dir: east
+known: []
+world:
+  structures:
+    - name: bigbox
+      structure:
+        structures:
+          - name: bitpair
+            structure:
+              palette:
+                '.': [stone, tree]
+              placements:
+                - src: minibox
+              map: |
+                .
+          - name: minibox
+            structure:
+              palette:
+                '.': [stone]
+              placements:
+                - src: bitpair
+              map: |
+                .
+        placements:
+          - src: smallbox
+          - src: bitpair
+        map: ""
+    - name: smallbox
+      structure:
+        palette:
+          '.': [grass]
+        map: |
+          .
+  placements:
+    - src: bigbox
+  map: ""

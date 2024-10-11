@@ -886,6 +886,7 @@ library swarm-util
     Swarm.Util
     Swarm.Util.Effect
     Swarm.Util.Erasable
+    Swarm.Util.Graph
     Swarm.Util.JSON
     Swarm.Util.Lens
     Swarm.Util.OccurrenceEncoder

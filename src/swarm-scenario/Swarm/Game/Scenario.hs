@@ -266,12 +266,10 @@ instance FromJSONE ScenarioInputs Scenario where
 
     validatedTerrainObjects <- runValidation $ validateTerrainAttrRefs attrsUnion tmRaw
 
-    let tm = mkTerrainMap validatedTerrainObjects
-
     runValidation $ validateEntityAttrRefs attrsUnion emRaw
 
     em <- runValidation $ buildEntityMap emRaw
-
+    let tm = mkTerrainMap validatedTerrainObjects
     let scenarioSpecificTerrainEntities = TerrainEntityMaps tm em
 
     -- Save the passed in WorldMap for later
@@ -307,13 +305,12 @@ instance FromJSONE ScenarioInputs Scenario where
       --
       -- We should also make use of such a pre-computed map in the
       -- invocation of 'mergeStructures' inside WorldDescription.hs.
+      let structureMap = Assembly.makeStructureMap rootLevelSharedStructures
       mergedStructures <-
         either (fail . T.unpack) return $
           mapM
-            (sequenceA . (id &&& (Assembly.mergeStructures mempty Root . Structure.structure)))
+            (sequenceA . (id &&& (Assembly.mergeStructures structureMap Root . Structure.structure)))
             rootLevelSharedStructures
-
-      let namedGrids = map (\(ns, Structure.MergedStructure (PositionedGrid _ s) _ _) -> s <$ ns) mergedStructures
 
       allWorlds <- localE (WorldParseDependencies worldMap rootLevelSharedStructures rsMap) $ do
         rootWorld <- v ..: "world"
@@ -353,6 +350,9 @@ instance FromJSONE ScenarioInputs Scenario where
           $ NE.toList allWorlds
 
       let mergedNavigation = Navigation mergedWaypoints mergedPortals
+
+          stuffGrid (ns, Structure.MergedStructure (PositionedGrid _ s) _ _) = s <$ ns
+          namedGrids = map stuffGrid mergedStructures
           recognizableGrids = filter Structure.isRecognizable namedGrids
 
       symmetryAnnotatedGrids <- mapM checkSymmetry recognizableGrids
