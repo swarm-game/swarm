@@ -113,6 +113,7 @@ narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   SApp s1 s2 -> d s1 <|> d s2
   SLet _ _ lv _ _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
   SBind mlv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
+  STydef typ typBody _ti s1 -> d s1 <|> Just (locVarToSyntax' typ $ fromPoly typBody)
   SPair s1 s2 -> d s1 <|> d s2
   SDelay s -> d s
   SRcd m -> asum . map d . catMaybes . M.elems $ m
@@ -129,7 +130,6 @@ narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   TVar {} -> Nothing
   TRequire {} -> Nothing
   TRequireDevice {} -> Nothing
-  STydef {} -> Nothing
   -- these should not show up in surface language
   TRef {} -> Nothing
   TRobot {} -> Nothing
@@ -151,6 +151,8 @@ treeToMarkdown d (Node t children) =
   T.unlines $ renderDoc d t : map (treeToMarkdown $ d + 1) children
 
 class Show t => ExplainableType t where
+  fromPoly :: Polytype -> t
+
   -- | Pretty print the type.
   prettyType :: t -> Text
 
@@ -166,11 +168,13 @@ class Show t => ExplainableType t where
   eq :: t -> Polytype -> Bool
 
 instance ExplainableType () where
+  fromPoly = const ()
   prettyType = const "?"
   getInnerType = id
   eq _ _ = False
 
 instance ExplainableType Polytype where
+  fromPoly = id
   prettyType = prettyTextLine
   getInnerType = fmap $ \case
     (l :->: _r) -> l
