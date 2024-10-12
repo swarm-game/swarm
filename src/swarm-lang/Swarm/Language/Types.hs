@@ -736,7 +736,7 @@ tcArity tydefs =
 -- Reducing types to WHNF
 ------------------------------------------------------------
 
--- | Reduce a type to weak head normal form, i.e. keep unfold type
+-- | Reduce a type to weak head normal form, i.e. keep unfolding type
 --   aliases and recursive types just until the top-level constructor
 --   of the type is neither @rec@ nor an application of a type alias.
 whnfType :: TDCtx -> Type -> Type
