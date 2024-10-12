@@ -53,7 +53,7 @@ import Control.Effect.Catch (Catch, catchError)
 import Control.Effect.Error (Error)
 import Control.Effect.Reader
 import Control.Effect.Throw
-import Control.Lens ((^.))
+import Control.Lens (view, (^.))
 import Control.Lens.Indexed (itraverse)
 import Control.Monad (forM_, void, when, (<=<), (>=>))
 import Control.Monad.Free (Free (..))
@@ -444,6 +444,9 @@ data TypeErr
     --   expected to have a certain type, but has a different type
     --   instead.
     Mismatch (Maybe Syntax) TypeJoin
+  | -- | Record type mismatch.  The given term was expected to have a
+    --   record type, but has a different type instead.
+    MismatchRcd (Maybe Syntax) UType
   | -- | Lambda argument type mismatch.
     LambdaArgMismatch TypeJoin
   | -- | Record field mismatch, i.e. based on the expected type we
@@ -479,6 +482,14 @@ instance PrettyPrec TypeErr where
         , "From context, expected" <+> pprCode t <+> "to" <+> typeDescription Expected ty1 <> ","
         , "but it" <+> typeDescription Actual ty2
         ]
+    MismatchRcd Nothing ty ->
+      "Type mismatch: expected a record type, but got" <+> ppr ty
+    MismatchRcd (Just t) ty ->
+      nest 2 . vcat $
+        [ "Type mismatch:"
+        , "From context, expected" <+> pprCode t <+> "to have a record type,"
+        , "but it" <+> typeDescription Actual ty
+        ]
     LambdaArgMismatch (getJoin -> (ty1, ty2)) ->
       "Lambda argument has type annotation" <+> pprCode ty2 <> ", but expected argument type" <+> pprCode ty1
     FieldsMismatch (getJoin -> (expFs, actFs)) ->
@@ -495,7 +506,7 @@ instance PrettyPrec TypeErr where
         , reportBug
         ]
     CantInferProj t ->
-      "Can't infer the type of a record projection:" <+> pprCode t
+      "In the record projection" <+> pprCode t <> ", can't infer whether the LHS has a record type.  Try adding a type annotation."
     UnknownProj x t ->
       "Record does not have a field with name" <+> pretty x <> ":" <+> pprCode t
     InvalidAtomic reason t ->
@@ -706,6 +717,42 @@ decomposeCmdTy
 decomposeCmdTy = decomposeTyConApp1 TCCmd
 decomposeDelayTy = decomposeTyConApp1 TCDelay
 
+-- | Decompose a type which is expected to be a record type.  There
+--   are three possible outcomes:
+--
+--     * If the type is definitely a record type, return its mapping
+--       from field names to types.
+--
+--     * If the type is definitely not a record type, throw a type error.
+--
+--     * Otherwise, return @Nothing@.
+--
+--   This is the best we can do, and different than the way the other
+--   @decompose...Ty@ functions work, because we can't solve for record
+--   types via unification.
+decomposeRcdTy ::
+  ( Has (Reader TDCtx) sig m
+  , Has (Reader TCStack) sig m
+  , Has (Throw ContextualTypeErr) sig m
+  ) =>
+  Maybe Syntax ->
+  UType ->
+  m (Maybe (Map Var UType))
+decomposeRcdTy ms = \case
+  ty@(UTyConApp tc as) -> case tc of
+    -- User-defined type: expand it
+    TCUser u -> do
+      ty2 <- expandTydef u as
+      decomposeRcdTy ms ty2
+    -- Any other type constructor application is definitely not a record type
+    _ -> throwTypeErr (maybe NoLoc (view sLoc) ms) $ MismatchRcd ms ty
+  -- Recursive type: expand it
+  UTyRec x t -> decomposeRcdTy ms (unfoldRec x t)
+  -- Record type
+  UTyRcd m -> pure (Just m)
+  -- With anything else (type variables, etc.) we're not sure
+  _ -> pure Nothing
+
 -- | Decompose a type that is supposed to be the application of a
 --   given type constructor to two type arguments.  Also take the term
 --   which is supposed to have that type, for use in error messages.
@@ -899,11 +946,12 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- first anyway.
   SProj t1 x -> do
     t1' <- infer t1
-    case t1' ^. sType of
-      UTyRcd m -> case M.lookup x m of
+    mm <- decomposeRcdTy (Just t1) (t1' ^. sType)
+    case mm of
+      Just m -> case M.lookup x m of
         Just xTy -> return $ Syntax' l (SProj t1' x) cs xTy
         Nothing -> throwTypeErr l $ UnknownProj x (SProj t1 x)
-      _ -> throwTypeErr l $ CantInferProj (SProj t1 x)
+      Nothing -> throwTypeErr l $ CantInferProj (SProj t1 x)
 
   -- See Note [Checking and inference for record literals]
   SRcd m -> do

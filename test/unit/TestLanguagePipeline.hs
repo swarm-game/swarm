@@ -330,6 +330,30 @@ testLanguagePipeline =
                 "(\\r:[x:Int, y:Int]. r.x) [x = 3, z = 5]"
                 "1:26: Field mismatch; record literal has:\n  - Extra field(s) `z`\n  - Missing field(s) `y`"
             )
+        , testCase
+            "type mismatch with record projection"
+            ( process
+                "\\x:Int. x.y"
+                "1:9: Type mismatch:\n  From context, expected `x` to have a record type,\n  but it actually has type `Int`"
+            )
+        , testCase
+            "infer record projection with tydef"
+            (valid "tydef R = [x:Int] end; def f : R -> Int = \\r. r.x end")
+        , testCase
+            "infer record projection with nested tydef"
+            (valid "tydef B = [x:Int] end; tydef A = B end; def f : A -> Int = \\r. r.x end")
+        , testCase
+            "infer record projection with tydef and recursive type"
+            (valid "tydef S = rec s. [hd:Int, tl:s] end; def two : S -> Int = \\s. s.tl.hd end")
+        , testCase
+            "infer record projection with tydef - RBTree"
+            (valid "tydef Color = Bool end; tydef RBTree k v = rec b. Unit + [c: Color, k: k, v: v, l: b, r: b] end; def balanceLR : RBTree k v -> RBTree k v = \\ln. case ln undefined (\\ne. ne.r) end")
+        , testCase
+            "infer record projection with tydef - RBTree, error"
+            ( process
+                "tydef Color = Bool end; tydef RBTree k v = rec b. Unit + [c: Color, k: k, v: v, l: b, r: b] end; def balanceLR : RBTree k v -> RBTree k v = \\ln. case ln.r undefined undefined end"
+                "1:151: Type mismatch:\n  From context, expected `ln` to have a record type,\n  but it actually has type `Unit +"
+            )
         ]
     , testGroup
         "type annotations"
