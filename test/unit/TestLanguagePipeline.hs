@@ -337,6 +337,12 @@ testLanguagePipeline =
                 "1:9: Type mismatch:\n  From context, expected `x` to have a record type,\n  but it actually has type `Int`"
             )
         , testCase
+            "inference failure with record projection"
+            ( process
+                "\\x. x.y"
+                "1:5: In the record projection `x.y`, can't infer whether the LHS has a record type.  Try adding a type annotation."
+            )
+        , testCase
             "infer record projection with tydef"
             (valid "tydef R = [x:Int] end; def f : R -> Int = \\r. r.x end")
         , testCase
