@@ -19,14 +19,6 @@ world:
     '│': [stone, vertical wall]
   upperleft: [-1, 1]
   structures:
-    - name: bitpair
-      structure:
-        palette:
-          '0': [stone, bit (0)]
-          '1': [stone, bit (1)]
-        map: |
-          1
-          0
     - name: bigbox
       structure:
         palette:
@@ -57,6 +49,14 @@ world:
           T.T.T.
           .T.T.T
           TTTTTT
+    - name: bitpair
+      structure:
+        palette:
+          '0': [stone, bit (0)]
+          '1': [stone, bit (1)]
+        map: |
+          1
+          0
   placements:
     - src: bigbox
       offset: [1, -1]

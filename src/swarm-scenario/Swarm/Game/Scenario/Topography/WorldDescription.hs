@@ -97,6 +97,11 @@ instance FromJSONE WorldParseDependencies WorldDescription where
     mkWorld tem worldMap palette initialStructureDefs v = do
       MergedStructure mergedGrid staticStructurePlacements unmergedWaypoints <- do
         unflattenedStructure <- parseStructure palette initialStructureDefs v
+
+        -- NOTE: In contrast with the 'Swarm.Game.Scenario' module,
+        -- we do not need to pass in a structure map here,
+        -- because all the structure definitions we need are at this
+        -- point already stored inside the "Structure" object.
         either (fail . T.unpack) return $
           Assembly.mergeStructures mempty Root unflattenedStructure
 

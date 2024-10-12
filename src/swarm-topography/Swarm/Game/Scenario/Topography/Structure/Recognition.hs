@@ -4,6 +4,9 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 --
 -- Public interface for structure recognizer.
+--
+-- Note that we only support "recognition" of structures defined at the
+-- scenario-global level.
 module Swarm.Game.Scenario.Topography.Structure.Recognition where
 
 import Control.Lens

@@ -9,13 +9,13 @@ module Swarm.Game.Scenario.Objective.Validation where
 import Control.Lens (view, (^.))
 import Control.Monad (unless)
 import Data.Foldable (for_, toList)
-import Data.Graph (stronglyConnComp)
-import Data.Maybe (mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as Set
 import Data.Text qualified as T
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
 import Swarm.Util (failT, quote)
+import Swarm.Util.Graph
 
 -- | Performs monadic validation before returning
 -- the "pure" construction of a wrapper record.
@@ -43,10 +43,10 @@ validateObjectives objectives = do
       remaining = Set.difference refs allIds
     Nothing -> return ()
 
-  unless (isAcyclicGraph connectedComponents) $
-    failT ["There are dependency cycles in the prerequisites."]
+  either (fail . T.unpack) return $
+    failOnCyclicGraph "Prerequisites" (fromMaybe "N/A" . view objectiveId) edges
 
   return objectives
  where
-  connectedComponents = stronglyConnComp $ makeGraphEdges objectives
+  edges = makeGraphEdges objectives
   allIds = Set.fromList $ mapMaybe (view objectiveId) objectives

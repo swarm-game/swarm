@@ -7,6 +7,7 @@
 -- as well as logic for combining them.
 module Swarm.Game.Scenario.Topography.Structure.Assembly (
   mergeStructures,
+  makeStructureMap,
 
   -- * Exposed for unit tests:
   foldLayer,
@@ -33,6 +34,7 @@ import Swarm.Game.Scenario.Topography.Structure.Overlay
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Language.Syntax.Direction (directionJsonModifier)
 import Swarm.Util (commaList, quote, showT)
+import Swarm.Util.Graph
 
 -- | Destructively overlays one direct child structure
 -- upon the input structure.
@@ -59,6 +61,18 @@ overlaySingleStructure
       offsetLoc (coerce loc)
         . modifyLoc (reorientLandmark orientation $ getGridDimensions overArea)
 
+makeStructureMap :: [NamedStructure a] -> M.Map StructureName (NamedStructure a)
+makeStructureMap = M.fromList . map (name &&& id)
+
+type GraphEdge a = (NamedStructure a, StructureName, [StructureName])
+
+makeGraphEdges :: [NamedStructure a] -> [GraphEdge a]
+makeGraphEdges =
+  map makeGraphNodeWithEdges
+ where
+  makeGraphNodeWithEdges s =
+    (s, name s, map src $ placements $ structure s)
+
 -- | Overlays all of the "child placements", such that the children encountered later
 -- in the YAML file supersede the earlier ones (dictated by using 'foldl' instead of 'foldr').
 mergeStructures ::
@@ -67,6 +81,8 @@ mergeStructures ::
   PStructure (Maybe a) ->
   Either Text (MergedStructure (Maybe a))
 mergeStructures inheritedStrucDefs parentPlacement baseStructure = do
+  failOnCyclicGraph "Structure" (getStructureName . name) gEdges
+
   overlays <-
     left (elaboratePlacement parentPlacement <>) $
       mapM (validatePlacement structureMap) subPlacements
@@ -78,10 +94,8 @@ mergeStructures inheritedStrucDefs parentPlacement baseStructure = do
   originatedWaypoints = map (Originated parentPlacement) subWaypoints
 
   -- deeper definitions override the outer (toplevel) ones
-  structureMap =
-    M.union
-      (M.fromList $ map (name &&& id) subStructures)
-      inheritedStrucDefs
+  structureMap = M.union (makeStructureMap subStructures) inheritedStrucDefs
+  gEdges = makeGraphEdges $ M.elems structureMap
 
 -- | NOTE: Each successive overlay may alter the coordinate origin.
 -- We make sure this new origin is propagated to subsequent sibling placements.

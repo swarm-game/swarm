@@ -11,7 +11,7 @@ import Control.Lens (view, (^.), (^..))
 import Data.Aeson
 import Data.BoolExpr (Signed (Positive))
 import Data.BoolExpr qualified as BE
-import Data.Graph (Graph, SCC (AcyclicSCC), graphFromEdges, stronglyConnComp)
+import Data.Graph (Graph, SCC, graphFromEdges, stronglyConnComp)
 import Data.Map (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (mapMaybe)
@@ -24,6 +24,7 @@ import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Logic as L
+import Swarm.Util.Graph (isAcyclicGraph)
 
 -- | This is only needed for constructing a Graph,
 -- which requires all nodes to have a key.
@@ -132,14 +133,6 @@ makeGraphEdges objectives =
 
   f (k, v) = (v, k, maybe [] (map Label . g) $ v ^. objectivePrerequisite)
   g = Set.toList . getDistinctConstants . logic
-
-isAcyclicGraph :: [SCC Objective] -> Bool
-isAcyclicGraph =
-  all isAcyclicVertex
- where
-  isAcyclicVertex = \case
-    AcyclicSCC _ -> True
-    _ -> False
 
 makeGraphInfo :: ObjectiveCompletion -> GraphInfo
 makeGraphInfo oc =
