@@ -24,6 +24,27 @@ end
 
 def containsT : k -> RBTree k v -> Bool = \x.\t. getT x t != inl () end
 
+tydef List a = rec l. Unit + (a * l) end
+
+def emptyL : List a = inl () end
+def insertL : a -> List a -> List a = \a.\l. inr (a, l) end
+def pureL : a -> List a = \a. insertL a emptyL end
+
+def appendL : List a -> List a -> List a = \l.\r.
+  case l (\_. r) (\ln. inr (fst ln, appendL (snd ln) r))
+end 
+
+def formatL : List a -> Text = \l.
+ let f : List a -> Text = \l. case l (\_. "]") (\n. ", " ++ format (fst n) ++ f (snd n))
+ in case l (\_. "[]") (\n. "[" ++ format (fst n) ++ f (snd n))
+end
+
+def inorder : RBTree k v -> List (k * v) = \t.
+  case t (\_. inl ()) (\n.
+    appendL (inorder n.l) (appendL (pureL (n.k, n.v)) $ inorder n.r)
+  )
+end
+
 /*
 balance B (T R (T R a x0 b) x1 c) x2 d = T R (T B a x0 b) x1 (T B c x2 d) -- case 1: LL red
 balance B (T R a x0 (T R b x1 c)) x2 d = T R (T B a x0 b) x1 (T B c x2 d) -- case 2: LR red
