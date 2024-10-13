@@ -200,9 +200,10 @@ runTC' ::
   TCtx ->
   ReqCtx ->
   TDCtx ->
-  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx m))))) USyntax ->
+  TVCtx ->
+  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx m)))))) USyntax ->
   m (Either ContextualTypeErr TSyntax)
-runTC' ctx reqCtx tdctx =
+runTC' ctx reqCtx tdctx tvCtx =
   (>>= finalizeUSyntax)
     >>> runReader (toU ctx)
     >>> runReader []
@@ -210,6 +211,7 @@ runTC' ctx reqCtx tdctx =
     >>> U.runUnification
     >>> runReader reqCtx
     >>> runReader tdctx
+    >>> runReader tvCtx
     >>> fmap reportUnificationError
 
 -- | Run a top-level inference computation, returning either a
@@ -218,9 +220,10 @@ runTC ::
   TCtx ->
   ReqCtx ->
   TDCtx ->
-  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx Identity))))) USyntax ->
+  TVCtx ->
+  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx Identity)))))) USyntax ->
   Either ContextualTypeErr TSyntax
-runTC tctx reqCtx tdctx = runTC' tctx reqCtx tdctx >>> runIdentity
+runTC tctx reqCtx tdctx tvCtx = runTC' tctx reqCtx tdctx tvCtx >>> runIdentity
 
 checkPredicative :: Has (Throw ContextualTypeErr) sig m => Maybe a -> m a
 checkPredicative = maybe (throwError (mkRawTypeErr Impredicative)) pure
@@ -236,6 +239,7 @@ lookup ::
   ( Has (Throw ContextualTypeErr) sig m
   , Has (Reader TCStack) sig m
   , Has (Reader UCtx) sig m
+  , Has (Reader TVCtx) sig m
   , Has Unification sig m
   ) =>
   SrcLoc ->
@@ -375,13 +379,27 @@ instance (HasBindings u, Data u) => HasBindings (Syntax' u) where
 ------------------------------------------------------------
 -- Converting between mono- and polytypes
 
+-- | Implicitly quantify any otherwise unbound type variables.
+quantify :: Has (Reader TVCtx) sig m => Polytype -> m Polytype
+quantify (Forall xs ty) = do
+  -- Look at all variables which occur in the type but are not explicitly bound by the forall...
+  let unbound = tyVars ty `S.difference` S.fromList xs
+  -- ...and filter out those that are not bound in the context and
+  -- should therefore be implicitly quantified
+  inScope <- ask @TVCtx
+  let implicit = S.filter (not . (`Ctx.member` inScope)) unbound
+
+  pure $ Forall (xs ++ S.toList implicit) ty
+
 -- | To 'instantiate' a 'UPolytype', we generate a fresh unification
 --   variable for each variable bound by the `Forall`, and then
 --   substitute them throughout the type.
-instantiate :: Has Unification sig m => UPolytype -> m UType
+instantiate :: (Has Unification sig m, Has (Reader TVCtx) sig m) => UPolytype -> m UType
 instantiate (Forall xs uty) = do
   xs' <- mapM (const fresh) xs
-  return $ substU (M.fromList (zip (map Left xs) xs')) uty
+  boundSubst <- ask @TVCtx
+  let s = M.mapKeys Left (M.fromList (zip xs xs') `M.union` unCtx boundSubst)
+  return $ substU s uty
 
 -- | 'skolemize' is like 'instantiate', except we substitute fresh
 --   /type/ variables instead of unification variables.  Such
@@ -389,13 +407,16 @@ instantiate (Forall xs uty) = do
 --   is used when checking something with a polytype explicitly
 --   specified by the user.
 --
---   Returns the list of generated Skolem variables along with the
---   substituted type.
-skolemize :: Has Unification sig m => UPolytype -> m ([Var], UType)
+--   Returns a context mapping from instantiated type variables to generated
+--   Skolem variables, along with the substituted type.
+skolemize :: (Has Unification sig m, Has (Reader TVCtx) sig m) => UPolytype -> m (Ctx UType, UType)
 skolemize (Forall xs uty) = do
   skolemNames <- mapM (fmap (mkVarName "s") . const U.freshIntVar) xs
+  boundSubst <- ask @TVCtx
   let xs' = map UTyVar skolemNames
-  pure (skolemNames, substU (M.fromList (zip (map Left xs) xs')) uty)
+      newSubst = M.fromList $ zip xs xs'
+      s = M.mapKeys Left (newSubst `M.union` unCtx boundSubst)
+  pure (Ctx newSubst, substU s uty)
 
 -- | 'generalize' is the opposite of 'instantiate': add a 'Forall'
 --   which closes over all free type and unification variables.
@@ -797,7 +818,7 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 --   types, type synonyms, and a term, either return a type error or a
 --   fully type-annotated version of the term.
 inferTop :: TCtx -> ReqCtx -> TDCtx -> Syntax -> Either ContextualTypeErr TSyntax
-inferTop ctx reqCtx tdCtx = runTC ctx reqCtx tdCtx . infer
+inferTop ctx reqCtx tdCtx = runTC ctx reqCtx tdCtx Ctx.empty . infer
 
 -- | Infer the type of a term, returning a type-annotated term.
 --
@@ -821,6 +842,7 @@ infer ::
   ( Has (Reader UCtx) sig m
   , Has (Reader ReqCtx) sig m
   , Has (Reader TDCtx) sig m
+  , Has (Reader TVCtx) sig m
   , Has (Reader TCStack) sig m
   , Has Unification sig m
   , Has (Error ContextualTypeErr) sig m
@@ -962,20 +984,21 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- However, we must be careful to deal properly with polymorphic
   -- type annotations.
   SAnnotate c pty -> do
-    _ <- adaptToTypeErr l KindErr $ checkPolytypeKind pty
-    let upty = toU pty
+    qpty <- quantify pty
+    _ <- adaptToTypeErr l KindErr $ checkPolytypeKind qpty
+    let upty = toU qpty
     -- Typecheck against skolemized polytype.
-    (skolems, uty) <- skolemize upty
+    (skolemSubst, uty) <- skolemize upty
     _ <- check c uty
     -- Make sure no skolem variables have escaped.
-    ask @UCtx >>= mapM_ (noSkolems l skolems)
+    ask @UCtx >>= mapM_ (noSkolems l (Ctx.vars skolemSubst))
     -- If check against skolemized polytype is successful,
     -- instantiate polytype with unification variables.
     -- Free variables should be able to unify with anything in
     -- following typechecking steps.
     iuty <- instantiate upty
     c' <- check c iuty
-    return $ Syntax' l (SAnnotate c' pty) cs iuty
+    return $ Syntax' l (SAnnotate c' qpty) cs iuty
 
   -- Fallback: to infer the type of anything else, make up a fresh unification
   -- variable for its type and check against it.
@@ -985,7 +1008,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
 
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
-inferConst c = case c of
+inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Wait -> [tyQ| Int -> Cmd Unit |]
   Noop -> [tyQ| Cmd Unit |]
   Selfdestruct -> [tyQ| Cmd Unit |]
@@ -1107,6 +1130,7 @@ check ::
   ( Has (Reader UCtx) sig m
   , Has (Reader ReqCtx) sig m
   , Has (Reader TDCtx) sig m
+  , Has (Reader TVCtx) sig m
   , Has (Reader TCStack) sig m
   , Has Unification sig m
   , Has (Error ContextualTypeErr) sig m
@@ -1169,7 +1193,6 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
 
   -- Checking the type of a let- or def-expression.
   SLet ls r x mxTy _ t1 t2 -> withFrame l (TCLet (lvVar x)) $ do
-    traverse_ (adaptToTypeErr l KindErr . checkPolytypeKind) mxTy
     (skolems, upty, t1') <- case mxTy of
       -- No type annotation was provided for the let binding, so infer its type.
       Nothing -> do
@@ -1182,13 +1205,16 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         _ <- xTy =:= uty
         upty <- generalize uty
         return ([], upty, t1')
-      -- An explicit polytype annotation has been provided. Skolemize it and check
-      -- definition and body under an extended context.
+      -- An explicit polytype annotation has been provided. Perform
+      -- implicit quantification, kind checking, and skolemization,
+      -- then check definition and body under an extended context.
       Just pty -> do
-        let upty = toU pty
+        qpty <- quantify pty
+        _ <- adaptToTypeErr l KindErr . checkPolytypeKind $ qpty
+        let upty = toU qpty
         (ss, uty) <- skolemize upty
-        t1' <- withBinding (lvVar x) upty $ check t1 uty
-        return (ss, upty, t1')
+        t1' <- withBinding (lvVar x) upty . withBindings ss $ check t1 uty
+        return (Ctx.vars ss, upty, t1')
 
     -- Check the requirements of t1.
     tdCtx <- ask @TDCtx
