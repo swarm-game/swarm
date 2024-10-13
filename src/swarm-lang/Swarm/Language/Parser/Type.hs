@@ -13,13 +13,11 @@ module Swarm.Language.Parser.Type (
 ) where
 
 import Control.Lens (view)
-import Control.Monad (join)
 import Control.Monad.Combinators (many)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Fix (Fix (..), foldFix)
 import Data.List.Extra (enumerate)
 import Data.Maybe (fromMaybe)
-import Data.Set qualified as S
 import Swarm.Language.Parser.Core (LanguageVersion (..), Parser, languageVersion)
 import Swarm.Language.Parser.Lex (
   braces,
@@ -34,7 +32,6 @@ import Swarm.Language.Parser.Lex (
 import Swarm.Language.Parser.Record (parseRecord)
 import Swarm.Language.Types
 import Text.Megaparsec (choice, optional, some, (<|>))
-import Witch (from)
 
 -- | Parse a Swarm language polytype, which starts with an optional
 --   quanitifation (@forall@ followed by one or more variables and a
