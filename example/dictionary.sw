@@ -35,7 +35,19 @@ def pureL : a -> List a = \a. insertL a emptyL end
 
 def appendL : List a -> List a -> List a = \l.\r.
   case l (\_. r) (\ln. inr (fst ln, appendL (snd ln) r))
+end
+
+def lengthL : List a -> Int =
+  let len: Int -> List a -> Int = \a.\l. case l (\_. a) (\ln. len (a + 1) (snd ln)) in len 0
 end 
+
+def safeGetL : Int -> List a -> Unit + a = \i.\l.
+  case l (\_. inl ()) (\n. if (i <= 0) {inr $ fst n} {safeGetL (i - 1) (snd n)})
+end 
+
+def getL : Int -> List a -> a = \i.\l.
+  case (safeGetL i l) (\_. fail "GET_L OUT OF BOUNDS!") (\a. a)
+end
 
 def formatL : List a -> Text = \l.
  let f : List a -> Text = \l. case l (\_. "]") (\n. ", " ++ format (fst n) ++ f (snd n))
@@ -141,35 +153,158 @@ def insertT : (k -> a) -> k -> RBTree k -> RBTree k = \p.\x.\t.
   in makeBlack $ ins p x t
 end
 
-/*
-// helper function to remove the leftmost element from right subtree
-def pullLeft: [k: k, v: v, l: RBTree k v, r: RBTree k v] -> ((k * v) * (RBTree k v)) = \n.
-  case (n.l) (\_. ((n.k,n.v),n.r)) (\lt. 
-    let res = pullLeft lt in
-    (fst res, inr [k=n.k, v=n.v, l=snd res, r=n.r])
-  )
+def deleteT : (k -> a) -> a -> RBTree k -> RBTree k = \p.\x.\t.
+  // ------------------------------------------------------------------------------------------------------------
+  tydef Del k a = (k -> a) -> a -> RBTree k -> RBTree k end
+  // ------------------------------------------------------------------------------------------------------------
+  let makeBlack : RBTree k -> RBTree k = \t.
+    case t (\_. t) (\n. inr [c=black, k=n.k, l=n.l, r=n.r])
+  in let makeRed : RBNode k -> RBTree k = \n.
+    inr [c=red, k=n.k, l=n.l, r=n.r]
+  // ------------------------------------------------------------------------------------------------------------
+  /*
+  balL (T B (T R t1 x t2) y t3) = T R (T B t1 x t2) y t3
+  balL (T B t1 y (T B t2 z t3)) = balance' (T B t1 y (T R t2 z t3))
+  balL (T B t1 y (T R (T B t2 u t3) z t4@(T B l value r)))
+    = T R
+      (T B t1 y t2)
+      u
+      (balance' (T B t3 z
+        (T R l value r)))
+  */
+  in let balL : RBNode k -> RBTree k = \n.
+    let balL2 : RBNode k -> RBNode k -> RBTree k = \n.\rn.
+      case rn.l (\_. inr n) (\rln.
+        if (rln.c == red) {inr n} {
+          case rn.r (\_. inr n) (\rrn.
+            if (rrn.c == red) {inr n} {
+              inr [c=red,
+                   l=inr [c=black, l=n.l, k=n.k, r=rln.l],
+                   k=rln.k,
+                   r=balanceT [c=black, l=rln.r, k=rn.k, r=inr [c=red, l=rrn.l, k=rrn.k, r=rrn.r]]]
+            }
+          )
+        }
+      )
+    in let balL1 : RBNode k -> RBTree k = \n.
+      case n.r (\_. inr n) (\rn. 
+        if (rn.c == red) {balL2 n rn} {balanceT [c=black, k=n.k, l=n.l, r=makeRed rn]}
+      )
+    in case n.l (\_. balL1 n) (\ln. if (ln.c == red) {inr [c=red, k=n.k, l=makeBlack n.l, r=n.r]} {balL1 n})
+  // ------------------------------------------------------------------------------------------------------------
+  /*
+  balR (T B t1 y (T R t2 x t3)) = T R t1 y (T B t2 x t3)
+  balR (T B (T B t1 z t2) y t3) = balance' (T B (T R t1 z t2) y t3)
+  balR (T B
+    ln@(T R
+      lln@(T B lll llk llr)
+      lk
+      lrn@(T B lrl lrk lrr))
+    k
+    rn)
+    =
+    T R
+      (balance' (T B (T R lll llk llr) lk lrl))
+      lrk
+      (T B lrr k rn)
+  */
+  in let balR : RBNode k -> RBTree k = \n.
+    let balR2 : RBNode k -> RBNode k -> RBTree k = \n.\ln.
+      case ln.l (\_. inr n) (\lln.
+        if (lln.c == red) {inr n} {
+          case ln.r (\_. inr n) (\lrn.
+            if (lrn.c == red) {inr n} {
+              inr [c=red,
+                   l=balanceT [c=black, l=inr [c=red, l=lln.l, k=lln.k, r=lln.r], k=ln.k, r=lrn.l],
+                   k=lrn.k,
+                   r=inr [c=black, l=lrn.r, k=n.k, r=n.r]]
+            }
+          )
+        }
+      )
+    in let balR1 : RBNode k -> RBTree k = \n.
+      case n.l (\_. inr n) (\ln. 
+        if (ln.c == red) {balR2 n ln} {balanceT [c=black, k=n.k, l=makeRed ln, r=n.r]}
+      )
+    in case n.r (\_. balR1 n) (\rn. if (rn.c == red) {inr [c=red, k=n.k, l=n.l, r=makeBlack n.r]} {balR1 n})
+  // ------------------------------------------------------------------------------------------------------------
+  in let delL : Del k a -> (k -> a) -> a -> RBNode k -> RBTree k = \del.\p.\x.\n.
+    let dl = [c=n.c, k=n.k, l=del p x n.l, r=n.r] in
+    if (n.c == red) { inr dl } { balL dl }
+  // ------------------------------------------------------------------------------------------------------------
+  in let delR : Del k a -> (k -> a) -> a -> RBNode k -> RBTree k = \del.\p.\x.\n.
+    let dr = [c=n.c, k=n.k, l=n.l, r=del p x n.r] in
+    if (n.c == red) { inr dr } { balR dr }
+  // ------------------------------------------------------------------------------------------------------------
+  /*
+  fuse :: Tree a -> Tree a -> Tree a
+  fuse E t = t
+  fuse t E = t
+  fuse t1@(T B _ _ _) (T R t3 y t4) = T R (fuse t1 t3) y t4
+  fuse (T R t1 x t2) t3@(T B _ _ _) = T R t1 x (fuse t2 t3)
+  fuse (T R t1 x t2) (T R t3 y t4)  =
+    let s = fuse t2 t3
+    in case s of
+        (T R s1 z s2) -> (T R (T R t1 x s1) z (T R s2 y t4))
+        (T B _ _ _)   -> (T R t1 x (T R s y t4))
+  fuse (T B t1 x t2) (T B t3 y t4)  =
+    let s = fuse t2 t3
+    in case s of
+        (T R s1 z s2) -> (T R (T B t1 x s1) z (T B s2 y t4))
+        (T B s1 z s2) -> balL (T B t1 x (T B s y t4))
+  */
+  in let fuse: RBTree k -> RBTree k -> RBTree k = \l.\r.
+    /* TODO: when both are missing just pull one up as black parent of red leaf - let's see what that does */
+    case l (\_. r) (\ln. case r (\_. l) (\rn.
+      if (ln.c == red) {
+        if (rn.c == red) {
+          /* RED RED */
+          let s = fuse ln.r rn.l in
+          let b_case = {inr [c=red, l=ln.l, k=ln.k, r=inr [c=red, l=s, k=rn.k, r=rn.r]]} in
+          case s (\_. force b_case) (\sn.
+            if (sn.c == red) {
+              inr [c=red, l=inr [c=red, l=ln.l, k=ln.k, r=sn.l], k=sn.k, r=inr [c=red, l=sn.r, k=rn.k, r=rn.r]]
+            } {
+              force b_case
+            }
+          ) 
+        } {
+          /* RED BLACK */
+          inr [c=red, l=ln.l, k=ln.k, r=fuse ln.r (inr rn)]
+        }
+      } {
+        if (rn.c == red) {
+          /* BLACK RED */
+          inr [c=red, l=fuse (inr ln) rn.l, k=rn.k, r=rn.r]
+        } {
+          /* BLACK BLACK */
+          let s = fuse ln.r rn.l in
+          let b_case = {balL [c=black, l=ln.l, k=ln.k, r=inr [c=black, l=s, k=rn.k, r=rn.r]]} in
+          case s (\_. force b_case) (\sn.
+            if (sn.c == red) {
+              inr [c=red, l=inr [c=black, l=ln.l, k=ln.k, r=sn.l], k=sn.k, r=inr [c=black, l=sn.r, k=rn.k, r=rn.r]]
+            } {
+              force b_case
+            }
+          )
+        }
+      }
+    ))
+  // ------------------------------------------------------------------------------------------------------------
+  in let del : (k -> a) -> a -> RBTree k -> RBTree k = \p.\x.\t.
+    case t (\_.t) (\n. 
+      if (p n.k == x) {fuse n.l n.r} {
+        if (x < p n.k) {delL del p x n} {delR del p x n}
+      }
+    )
+  // ------------------------------------------------------------------------------------------------------------
+  in makeBlack $ del p x t
 end
 
-def deleteD : k -> RBTree k v -> RBTree k v = \x.\d.
-  case d (\_. inl ()) (\n.
-    if (x == n.k) {
-        case (n.l) (\_. n.r) (\lt.
-            case (n.r) (\_. inl ()) (\rt.
-                let r_kvd = pullLeft rt in
-                let r_kv = fst r_kvd in
-                inr [k=fst r_kv, v=snd r_kv, l=inr lt, r=snd r_kvd]
-            )
-        )
-    } {
-        if (x < n.k) {
-            inr [k=n.k, v=n.v, l=deleteD x n.l, r=n.r]
-        } {
-            inr [k=n.k, v=n.v, l=n.l, r=deleteD x n.r]
-        }
-    }
-  )
-end
-*/
+// delete 8
+def problem = inr [c = false, k = 8,
+  l = inr [c = false, k = 6, l = inl (), r = inl ()],
+  r = inr [c = false, k = 80, l = inl (), r = inl ()]] end
 
 /*******************************************************************/
 /*                           DICTIONARY                            */
@@ -182,6 +317,13 @@ def isEmptyD : Dict k v -> Bool = isEmptyT end
 def getD : k -> Dict k v -> Unit + v = \k.\d. mmap snd (getT fst k d) end 
 def containsD : k -> Dict k v -> Bool = containsT fst end
 def insertD : k -> v -> Dict k v -> Dict k v = \k.\v. insertT fst (k, v) end
+def deleteD : k -> Dict k v -> Dict k v = \k. deleteT fst k end
+
+def formatD : Dict k v -> Text = \d.
+ let p : (k * v) -> Text = \kv. format (fst kv) ++ ": " ++ format (snd kv) in 
+ let f : List (k * v) -> Text = \l. case l (\_. "}") (\n. ", " ++ p (fst n) ++ f (snd n))
+ in case (inorder d) (\_. "{}") (\n. "{" ++ p (fst n) ++ f (snd n))
+end
 
 /*******************************************************************/
 /*                              SET                                */
@@ -193,12 +335,14 @@ def emptyS : Set k = emptyT end
 def isEmptyS : Set k -> Bool = isEmptyT end
 def containsS : k -> Set k -> Bool = containsT (\x.x) end
 def insertS : k -> Set k -> Set k = insertT (\x.x) end
+def deleteS : k -> Set k -> Set k = \k. deleteT (\x.x) k end
+def formatS : Set k -> Text = \s. formatL $ inorder s end
 
 /*******************************************************************/
 /*                           UNIT TESTS                            */
 /*******************************************************************/
 
-def indent = \i. if (i <= 0) {""} {"  " ++ indent (i - 1)} end
+def indent = \i. if (i <= 0) {" "} {"--" ++ indent (i - 1)} end
 
 def assert = \i. \b. \m. if b {log $ indent i ++ "OK: " ++ m} {log "FAIL:"; fail m} end
 
@@ -213,7 +357,7 @@ end
 def group = \i. \m. \tests.
   log $ indent i ++ "START " ++ m ++ ":";
   tests $ i + 1;
-  log $ indent i ++ "END " ++ m ++ ":";
+  return ()
 end
 
 def test_empty: Int -> Cmd Unit = \i.
@@ -241,9 +385,56 @@ def test_insert: Int -> Cmd Unit = \i.
   );
 end
 
+def randomTestS = \i.\s.\test.
+  if (i <= 0) {return s} {
+    x <- random 100;
+    let ns = insertS x s in
+    test ns;
+    randomTestS (i - 1) ns test
+  }
+end
+
+def delete_insert_prop = \i.\t.
+  x <- random 100;
+  let i_t = inorder t in
+  let f_t = formatS t in
+  if (not $ containsS x t) {
+    log $ format x;
+    assert_eq i
+      (formatL i_t)
+      (formatS $ deleteS x $ insertS x t)
+      (f_t ++ " == delete " ++ format x ++ " $ insert " ++ format x ++ " " ++ f_t)
+  } { delete_insert_prop i t /* reroll */}
+end
+
+def delete_delete_prop = \i.\t.
+  let i_t = inorder t in
+  i <- random (lengthL i_t);
+  let x = getL i i_t in
+  let ds = deleteS x t in
+  let dds = deleteS x ds in
+  let f_t = formatS t in
+  let f_dx = "delete " ++ format x in
+  assert_eq i (formatS ds) (formatS dds)
+    (f_dx ++ f_t ++ " == " ++ f_dx ++ " $ " ++ f_dx ++ " " ++ f_t)
+end
+
+def test_delete: Int -> Cmd Unit = \i.
+  group i "DELETE TESTS" (\i.
+    randomTestS 10 emptyS (\s.
+      group i (formatS s) (\i.
+        delete_insert_prop i s;
+        delete_delete_prop i s;
+      )
+    )
+  )
+end
+
 def test_tree: Cmd Unit =
   group 0 "TREE TESTS" (\i.
     test_empty i;
     test_insert i;
-  )
+    test_delete i;
+  );
+  log "ALL TREE TESTS PASSED!"
 end
