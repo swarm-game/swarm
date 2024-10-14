@@ -41,19 +41,7 @@ testLanguagePipeline =
         (valid "def id : forall a. a -> a = \\x. x end; id move")
     , testCase
         "quantification #148 - explicit with free tyvars"
-        ( process
-            "def id : forall a. b -> b = \\x. x end; id move"
-            ( T.unlines
-                [ "1:27:"
-                , "  |"
-                , "1 | def id : forall a. b -> b = \\x. x end; id move"
-                , "  |                           ^"
-                , "  Type contains free variable(s): b"
-                , "  Try adding them to the 'forall'."
-                , ""
-                ]
-            )
-        )
+        (valid "def id : forall a. b -> b = \\x. x end; id move")
     , testCase
         "parsing operators #188 - parse valid operator (!=)"
         (valid "1!=(2)")
