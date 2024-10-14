@@ -60,6 +60,25 @@ def inorder : RBTree k -> List k = \t.
   )
 end
 
+def formatT : RBTree k -> Text = \t.
+  case t (\_. "N") (\n.
+    "(T "
+    ++ if (n.c == red) {"R "} {"B "}
+    ++ formatT n.l ++ " " ++ format n.k ++ " " ++ formatT n.r ++ ")"
+  ) 
+end
+
+def indent_ = \c.\i. if (i <= 0) {" "} {c ++ indent_ c (i - 1)} end
+def indent = indent_ " " end
+
+def debugT : RBTree k -> Cmd Unit =
+  let d : Text -> Text -> Text -> RBTree k -> Cmd Unit = \i.\li.\ri.\t. case t (\_. log $ i ++ "+ N") (\n.
+    d (i ++ li) "  " "| " n.l;
+    log $ i ++ "+ " ++ if (n.c == red) {"R "} {"B "} ++ format n.k;
+    d (i ++ ri) "| " "  " n.r;
+  ) in d "" "" ""
+end
+
 /*
 balance B (T R (T R a x0 b) x1 c) x2 d = T R (T B a x0 b) x1 (T B c x2 d) -- case 1: LL red
 balance B (T R a x0 (T R b x1 c)) x2 d = T R (T B a x0 b) x1 (T B c x2 d) -- case 2: LR red
@@ -341,8 +360,6 @@ def formatS : Set k -> Text = \s. formatL $ inorder s end
 /*******************************************************************/
 /*                           UNIT TESTS                            */
 /*******************************************************************/
-
-def indent = \i. if (i <= 0) {" "} {"--" ++ indent (i - 1)} end
 
 def assert = \i. \b. \m. if b {log $ indent i ++ "OK: " ++ m} {log "FAIL:"; fail m} end
 
