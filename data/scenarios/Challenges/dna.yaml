@@ -1,0 +1,593 @@
+version: 1
+name: DNA
+author: Karl Ostmo
+description: |
+  Copy strands of DNA in the lab to replicate organisms
+creative: false
+seed: 9
+attrs:
+  - name: floorattr
+    bg: "#111111"
+  - name: wall2
+    fg: "#88ee22"
+  - name: pink
+    fg: "#ff99bb"
+  - name: lemon
+    fg: "#eeee99"
+  - name: clover
+    bg: "#225522"
+  - name: beige
+    fg: "#f5f5dc"
+  - name: soup
+    fg: "#338822"
+    bg: "#774422"
+terrains:
+  - name: floor
+    attr: floorattr
+    description: |
+      Laboratory floor
+objectives:
+  - id: place_flower
+    teaser: Place subject
+    goal:
+      - |
+        The laboratory building ahead is neatly landscaped, though
+        its decorative `pond`{=structure} exudes a peculiar quality.
+        There may be a device you can `use` to sample its contents.
+
+        The DNA lab has two large apparatus inside.
+        The first is a `DNA sequencer`{=structure} that
+        determines the arrangement of ATCG pairs within an `organism`{=tag}'s genome.
+
+        The `DNA decoder`{=structure} in the lab's south wing can reconstitute
+        an `organism`{=tag} from its genome.
+
+        To get started, borrow a `dahlia`{=entity} from the flowerbed at the lab
+        entrance and place it in the receptacle directly to your east.
+    condition: |
+      r <- robotnamed "lab";
+      as r {
+        has "pixel (G)";
+      }
+  - id: place_complements
+    teaser: Complement strand
+    prerequisite: place_flower
+    goal:
+      - |
+        The `DNA sequencer`{=structure} will begin to decode the subject's DNA.
+        The subject will be dematerialized once the top row
+        of the "double helix" has been decoded.
+
+        You must then complete the double helix (fill in the second row within the device)
+        with complementary base pairs.
+        Use your `soup strainer`{=entity} to obtain ingredients.
+        Consult your *Compendium* for appropriate pairings.
+
+        Note that `scan`ning has a cost, and you have a limited supply of
+        `specimen slide`{=entity}s (in a `slide box`{=entity}) with which to
+        `scan` DNA bases using your `microscope`{=entity}.
+    condition: |
+      r <- robotnamed "topchecker";
+      as r {
+        has "pixel (G)";
+      }
+  - id: create_clone
+    prerequisite: place_complements
+    teaser: Create clone
+    goal:
+      - |
+        Now let's make a clone! Recreate the top half of the
+        DNA strand in the south wing's `DNA decoder`{=structure}
+        (you remember the sequence, right?).
+
+        Each element you `place` will be automatically complemented.
+
+        When all segments are placed, `drill` the switch on the western wall to
+        commence rematerialization. `grab` the clone (once matured) as a souvenir!
+    condition: |
+      def checkMember = \idx.
+        result <- tagmembers "organism" idx;
+        let totalCount = fst result in
+        hasThis <- has $ snd result;
+        if hasThis {
+          return true;
+        } {
+          if (idx < totalCount - 1) {
+            checkMember $ idx + 1;
+          } {
+            return false;
+          }
+        };
+        end;
+
+      k <- robotnamed "keeper";
+      as k {
+        checkMember 0;
+      }
+  - prerequisite: create_clone
+    teaser: More clones
+    goal:
+      - |
+        Toggle the switch off to reset the lab.
+      - |
+        Find three more different `organism`{=tag}s to clone.
+        Explore outside nearby the lab for specimens.
+    condition: |
+      def countMembers = \memberCount. \idx.
+        result <- tagmembers "organism" idx;
+        let totalCount = fst result in
+
+        if (idx < totalCount) {
+          hasThis <- has $ snd result;
+          let memberCountAddition = if hasThis {1} {0} in
+          countMembers (memberCount + memberCountAddition) $ idx + 1;
+        } {
+          return memberCount;
+        }
+        end;
+
+      k <- robotnamed "keeper";
+      as k {
+        c <- countMembers 0 0;
+        return $ c >= 4;
+      }
+robots:
+  - name: base
+    dir: east
+    loc: [-8, 4]
+    devices:
+      - antenna
+      - ADT calculator
+      - barcode reader
+      - branch predictor
+      - comparator
+      - compass
+      - dictionary
+      - feeler
+      - grabber
+      - hearing aid
+      - lambda
+      - logger
+      - microscope
+      - rolex
+      - siphon
+      - soup strainer
+      - strange loop
+      - switch puller
+      - treads
+      - welder
+      - workbench
+    inventory:
+      - [1, slide box]
+  - name: lab
+    system: true
+    dir: east
+    display:
+      invisible: true
+      attr: 'robot'
+    devices:
+      - switch puller
+    inventory:
+      - [1, branch predictor]
+      - [1, treads]
+      - [1, beaglepuss]
+      - [1, antenna]
+      - [1, comparator]
+      - [1, clock]
+      - [1, workbench]
+      - [1, grabber]
+      - [1, ADT calculator]
+      - [1, dictionary]
+      - [1, lambda]
+      - [1, logger]
+      - [1, welder]
+      - [1, hearing aid]
+      - [1, scanner]
+      - [1, strange loop]
+      - [1, solar panel]
+    program: |
+      run "data/scenarios/Challenges/_dna/lab.sw"
+  - name: topchecker
+    system: true
+    dir: east
+    display:
+      invisible: true
+      attr: 'robot'
+    program: |
+      run "data/scenarios/Challenges/_dna/topchecker.sw"
+  - name: mirrorbot
+    system: true
+    dir: south
+    display:
+      invisible: true
+      attr: 'robot'
+    program: |
+      run "data/scenarios/Challenges/_dna/mirrorbot.sw"
+  - name: resetter
+    description: resets the apparatus after completion by watching the switch
+    system: true
+    dir: east
+    display:
+      invisible: true
+      attr: 'robot'
+    program: |
+      run "data/scenarios/Challenges/_dna/resetter.sw"
+  - name: keeper
+    description: keeps track of cloned specimens
+    system: true
+    dir: south
+    display:
+      invisible: true
+      attr: 'robot'
+solution: |
+  run "data/scenarios/Challenges/_dna/solution.sw"
+structures:
+  - name: pond
+    recognize:
+      - north
+    structure:
+      mask: '.'
+      palette:
+        'x': [grass, rock]
+        'w': [dirt, pond broth]
+      map: |
+        ...xxxxxxxx..
+        ..xwwwwwwwwx.
+        ..xwwwwwwwwwx
+        ..xwwwwwwwwwx
+        .xwwwwwwxxxx.
+        xwwwwwwx.....
+        xwwwwwwx.....
+        .xxxxxx......
+  - name: fairy ring
+    structure:
+      mask: '.'
+      palette:
+        'm': [grass, mushroom]
+      map: |
+        ....mm.m...
+        ..m........
+        .........m.
+        ..m........
+        ...m...m...
+  - name: receptacle
+    structure:
+      mask: '.'
+      palette:
+        'x': [floor, wall]
+        'w': [floor, wall2]
+        'f':
+          cell: [floor, erase]
+          waypoint:
+            name: receiver
+      map: |
+        ww........
+        fwxxxxxxxx
+        ww.x.x.x.x
+  - name: decoder base
+    structure:
+      palette:
+        '┬': [stone, down and horizontal wall]
+        '┴': [stone, up and horizontal wall]
+        ':': [floor, erase]
+      map: |
+        ┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬
+        ::::::::::::::::::::::::::::::::
+        ::::::::::::::::::::::::::::::::
+        ┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴
+  - name: copybots overlay
+    structure:
+      mask: '.'
+      palette:
+        'm': [floor, erase, mirrorbot]
+      map: |
+        ................................
+        mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
+        ................................
+        ................................
+  - name: decoder overlay
+    structure:
+      mask: '.'
+      palette:
+        'c': [floor, erase, topchecker]
+      map: |
+        ................................
+        ................................
+        c...............................
+        ................................
+  - name: DNA decoder
+    recognize:
+      - north
+    structure:
+      placements:
+        - src: decoder base
+        - src: copybots overlay
+        - src: receptacle
+          offset: [18, -4]
+          orient:
+            up: south
+      map: ""
+  - name: DNA sequencer
+    recognize:
+      - north
+    structure:
+      placements:
+        - src: decoder base
+        - src: decoder overlay
+        - src: receptacle
+          offset: [4, 3]
+      map: ""
+entities:
+  - name: barcode reader
+    display:
+      attr: red
+      char: 'S'
+    description:
+      - Reads the 'tag' of an item
+    properties: [pickable]
+    capabilities: [hastag, tagmembers]
+  - name: dahlia
+    display:
+      char: '*'
+      attr: pink
+    description:
+      - Brightly colored flower
+    properties: [known, pickable, growable]
+    growth:
+      duration: [20, 30]
+    tags: [organism]
+  - name: daisy
+    display:
+      char: 'x'
+      attr: lemon
+    description:
+      - Pretty flower
+    properties: [pickable, growable]
+    growth:
+      duration: [15, 30]
+    tags: [organism]
+  - name: clover
+    display:
+      char: 'c'
+      attr: clover
+    description:
+      - A tiny, 3-leaf plant
+    properties: [pickable, growable]
+    growth:
+      duration: [10, 20]
+    tags: [organism]
+  - name: mushroom
+    display:
+      char: 'm'
+      attr: beige
+    description:
+      - Invasive fungus
+    properties: [pickable, growable]
+    growth:
+      duration: [15, 25]
+      spread:
+        radius: 2
+        density: 0.5
+    biomes: [floor, stone]
+    tags: [organism]
+  - name: wall2
+    display:
+      char: 'w'
+      attr: wall2
+    description:
+      - Just a wall
+    properties: [known, unwalkable, boundary]
+  - name: primordial soup
+    display:
+      char: 's'
+      attr: soup
+    description:
+      - Can be decomposed into nucleic acids
+    properties: [pickable, liquid]
+  - name: pond broth
+    display:
+      char: 's'
+      attr: soup
+    description:
+      - Can be decomposed into nucleic acids
+    properties: [pickable, liquid]
+  - name: soup strainer
+    display:
+      char: 'r'
+    description:
+      - Extracts nucleic acids from `primordial soup`{=entity}
+    properties: [known, pickable]
+  - name: feeler
+    display:
+      char: 'm'
+    description:
+      - Senses presence of specific entities
+    properties: [known, pickable]
+    capabilities: [blocked, ishere, isempty]
+  - name: microscope
+    display:
+      char: 'm'
+    description:
+      - Scan for the cost of 1 `specimen slide`{=entity}
+    properties: [known, pickable]
+    capabilities:
+      - capability: scan
+        cost:
+          - [1, "specimen slide"]
+  - name: specimen slide
+    display:
+      char: 'i'
+      attr: device
+    description:
+      - Can take a sample of DNA for scanning
+  - name: slide box
+    display:
+      char: 'b'
+      attr: device
+    description:
+      - Contains `specimen slides`{=entity}
+  - name: guanine
+    display:
+      char: 'G'
+      attr: red
+    description:
+      - One of the four nucleobases in DNA.
+      - Is paired with `cytosine`{=entity}.
+    properties: [known]
+  - name: cytosine
+    display:
+      char: 'C'
+      attr: blue
+    description:
+      - One of the four nucleobases in DNA.
+      - Is paired with `guanine`{=entity}.
+    properties: [known]
+  - name: adenine
+    display:
+      char: 'A'
+      attr: green
+    description:
+      - One of the four nucleobases in DNA.
+      - Is paired with `thymine`{=entity}.
+    properties: [known]
+  - name: thymine
+    display:
+      char: 'T'
+      attr: gold
+    description:
+      - One of the four nucleobases in DNA.
+      - Is paired with `adenine`{=entity}.
+    properties: [known]
+  - name: switch (off)
+    display:
+      attr: red
+      char: '•'
+    description:
+      - A control in the deactivated position.
+    properties: [known]
+  - name: switch (on)
+    display:
+      attr: green
+      char: '•'
+    description:
+      - A control in the activated position.
+    properties: [known]
+  - name: organic sludge
+    display:
+      attr: green
+      char: 'S'
+    description:
+      - A repulsive, shuddering mass of slime.
+    properties: [pickable]
+  - name: switch puller
+    display:
+      char: 'P'
+      attr: gold
+    capabilities: [drill]
+    description:
+      - Can pull switches
+  - name: siphon
+    display:
+      char: 's'
+      attr: device
+    capabilities: [drill]
+    description:
+      - Can retrieve liquid
+recipes:
+  - in:
+      - [1, slide box]
+    out:
+      - [32, specimen slide]
+  - in:
+      - [1, primordial soup]
+    out:
+      - [4, cytosine]
+      - [4, guanine]
+      - [4, adenine]
+      - [4, thymine]
+    required:
+      - [1, soup strainer]
+  - in:
+      - [1, switch (off)]
+    out:
+      - [1, switch (on)]
+    required:
+      - [1, switch puller]
+  - in:
+      - [1, switch (on)]
+    out:
+      - [1, switch (off)]
+    required:
+      - [1, switch puller]
+  - in:
+      - [1, pond broth]
+    out:
+      - [8, primordial soup]
+    required:
+      - [1, siphon]
+known: [flower, rock]
+world:
+  dsl: |
+    let
+      flowerNoise = perlin seed 1 0.15 0.0,
+      soupNoise = perlin seed 2 0.04 1.0,
+
+      flowers = flowerNoise > 0.70,
+      soup = soupNoise > 0.9
+    in
+      overlay
+      [ {grass}
+      , mask (flowers && (x - y) % 3 == 0) {daisy}
+      , mask soup {clover}
+      ]
+  upperleft: [-2, 4]
+  mask: 'q'
+  palette:
+    'z': [stone, wall]
+    '.': [stone, erase]
+    'G':
+      cell: [stone, erase]
+    'o': [stone, erase]
+    'd': [dirt, dahlia]
+    'v': [stone, erase, lab, keeper]
+    '0':
+      cell: [stone, switch (off), resetter]
+      waypoint:
+        name: switch
+    'D':
+      structure:
+        name: DNA decoder
+      cell: [floor, erase]
+    'E':
+      structure:
+        name: DNA sequencer
+      cell: [floor, erase]
+  placements:
+    - src: pond
+      offset: [-17, -10]
+    - src: fairy ring
+      offset: [-5, -25]
+  map: |
+    dzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+    dzv.........................................z
+    zzz........oo...............................z
+    ............o...............................z
+    zzz........oo...............................z
+    dz.....Eooooooooooooooooooooooooooooooo.....z
+    dz.....o..............................o.....z
+    dz.....o..............................o.....z
+    dz.....oooooooooooooooooooooooooooooooo.....z
+    qz..........................................z
+    qzzzzzzzzz.zzzzzzzzzzzzzzzzzzzzzzzz.zzzzzzzzz
+    qqqqqqqqqzGzqqqqqqqqqqqqqqqqqqqqqqzGzqqqqqqqq
+    qzzzzzzzzz.zzzzzzzzzzzzzzzzzzzzzzzz.zzzzzzzzz
+    qz..........................................z
+    qzz....D....................................z
+    qz0.........................................z
+    qzz.........................................z
+    qz..........................................z
+    qz..........................................z
+    qz..........................................z
+    qz..........................................z
+    qz..........................................z
+    qzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
