@@ -646,7 +646,13 @@ drawModal s = \case
 
 helpWidget :: Seed -> Maybe Port -> KeyEventHandlingState -> Widget Name
 helpWidget theSeed mport keyState =
-  padLeftRight 2 . vBox $ padTop (Pad 1) <$> [info, helpKeys, tips]
+  padLeftRight 2 . vBox $
+    padTop (Pad 1)
+      <$> [ info
+          , colorizationLegend
+          , helpKeys
+          , tips
+          ]
  where
   tips =
     vBox
@@ -659,6 +665,12 @@ helpWidget theSeed mport keyState =
       [ heading boldAttr "Configuration"
       , txt ("Seed: " <> into @Text (show theSeed))
       , txt ("Web server port: " <> maybe "none" (into @Text . show) mport)
+      ]
+  colorizationLegend =
+    vBox
+      [ heading boldAttr "Colorization legend"
+      , drawMarkdown
+          "In text, snippets of code like `3 + 4` or `scan down` will be colorized. Types like `Cmd Text`{=type} have a dedicated color. The names of an `entity`{=entity}, a `structure`{=structure}, and a `tag`{=tag} also each have their own color."
       ]
   helpKeys =
     vBox
