@@ -161,7 +161,7 @@ displayEntityCell worldEditor ri coords =
       Coords xy = locToCoords $ P $ toHeading d
 
   displayForEntity :: EntityPaint -> Display
-  displayForEntity e = (if isKnownFunc ri e then id else hidden) $ getDisplay e
+  displayForEntity e = applyWhen (not $ isKnownFunc ri e) hidden $ getDisplay e
 
 -- | Get the 'Display' for a specific location, by combining the
 --   'Display's for the terrain, entity, and robots at the location, and

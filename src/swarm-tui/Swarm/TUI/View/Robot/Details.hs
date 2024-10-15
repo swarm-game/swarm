@@ -22,6 +22,7 @@ import Swarm.Pretty (prettyText)
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Attribute.Attr (boldAttr, cyanAttr)
 import Swarm.TUI.View.Robot.Type
+import Swarm.Util (applyWhen)
 
 renderRobotDetails :: FocusRing Name -> Robot -> RobotDetailsPaneState -> Widget Name
 renderRobotDetails ring r paneState =
@@ -42,7 +43,7 @@ renderRobotDetails ring r paneState =
     ]
  where
   highlightBorderFor n =
-    if isFocused then overrideAttr borderAttr cyanAttr else id
+    applyWhen isFocused $ overrideAttr borderAttr cyanAttr
    where
     isFocused = focusGetCurrent ring == Just (RobotsListDialog $ SingleRobotDetails n)
 

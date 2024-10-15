@@ -12,7 +12,7 @@ import Data.Set qualified as Set
 import Data.Text qualified as T
 import Swarm.Doc.Gen
 import Swarm.Game.Entity (Entity, EntityName, entityName)
-import Swarm.Util (quote)
+import Swarm.Util (applyWhen, quote)
 import Test.Tasty
 import Test.Tasty.ExpectedFailure (expectFailBecause)
 import Test.Tasty.HUnit
@@ -44,9 +44,8 @@ testRecipeCoverage = do
 expectNonCovered :: Entity -> TestTree -> TestTree
 expectNonCovered e =
   let name = T.toCaseFold (view entityName e)
-   in if name `elem` nonCoveredList
-        then expectFailBecause "More recipes needed (#1268)"
-        else id
+   in applyWhen (name `elem` nonCoveredList) $
+        expectFailBecause "More recipes needed (#1268)"
 
 -- | Known non-covered entities that need a recipe.
 nonCoveredList :: [EntityName]

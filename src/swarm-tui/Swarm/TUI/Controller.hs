@@ -802,8 +802,8 @@ adjReplHistIndex d s =
   moveREPL :: REPLState -> REPLState
   moveREPL theRepl =
     newREPL
-      & (if replIndexIsAtInput (theRepl ^. replHistory) then saveLastEntry else id)
-      & (if oldEntry /= newEntry then showNewEntry else id)
+      & applyWhen (replIndexIsAtInput (theRepl ^. replHistory)) saveLastEntry
+      & applyWhen (oldEntry /= newEntry) showNewEntry
    where
     -- new AppState after moving the repl index
     newREPL :: REPLState
