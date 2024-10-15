@@ -160,7 +160,7 @@ def insertT : (k -> a) -> k -> RBTree k -> RBTree k = \p.\x.\t.
         if (x < n.k) {
             balanceT [c=n.c, k=n.k, l=ins p x n.l, r=n.r]
         } {
-            balanceT [c=n.c,k=n.k, l=n.l, r=ins p x n.r]
+            balanceT [c=n.c, k=n.k, l=n.l, r=ins p x n.r]
         }
       }
     )
@@ -256,7 +256,6 @@ def deleteT : (k -> a) -> a -> RBTree k -> RBTree k = \p.\x.\t.
     if (n.c == red) { inr dr } { balR dr }
   // ------------------------------------------------------------------------------------------------------------
   /*
-  fuse :: Tree a -> Tree a -> Tree a
   fuse E t = t
   fuse t E = t
   fuse t1@(T B _ _ _) (T R t3 y t4) = T R (fuse t1 t3) y t4
@@ -273,7 +272,6 @@ def deleteT : (k -> a) -> a -> RBTree k -> RBTree k = \p.\x.\t.
         (T B s1 z s2) -> balL (T B t1 x (T B s y t4))
   */
   in let fuse: RBTree k -> RBTree k -> RBTree k = \l.\r.
-    /* TODO: when both are missing just pull one up as black parent of red leaf - let's see what that does */
     case l (\_. r) (\ln. case r (\_. l) (\rn.
       if (ln.c == red) {
         if (rn.c == red) {
@@ -319,11 +317,6 @@ def deleteT : (k -> a) -> a -> RBTree k -> RBTree k = \p.\x.\t.
   // ------------------------------------------------------------------------------------------------------------
   in makeBlack $ del p x t
 end
-
-// delete 8
-def problem = inr [c = false, k = 8,
-  l = inr [c = false, k = 6, l = inl (), r = inl ()],
-  r = inr [c = false, k = 80, l = inl (), r = inl ()]] end
 
 /*******************************************************************/
 /*                           DICTIONARY                            */
