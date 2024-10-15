@@ -33,15 +33,27 @@ testLanguagePipeline =
   testGroup
     "Language - pipeline"
     [ testCase "end semicolon #79" (valid "def a = 41 end def b = a + 1 end def c = b + 2 end")
-    , testCase
-        "quantification #148 - implicit"
-        (valid "def id : a -> a = \\x. x end; id move")
-    , testCase
-        "quantification #148 - explicit"
-        (valid "def id : forall a. a -> a = \\x. x end; id move")
-    , testCase
-        "quantification #148 - explicit with free tyvars"
-        (valid "def id : forall a. b -> b = \\x. x end; id move")
+    , testGroup
+        "quantification + scope"
+        [ testCase
+          "quantification #148 - implicit"
+          (valid "def id : a -> a = \\x. x end; id move")
+        , testCase
+          "quantification #148 - explicit"
+          (valid "def id : forall a. a -> a = \\x. x end; id move")
+        , testCase
+          "quantification #148 - explicit with free tyvars"
+          (valid "def id : forall a. b -> b = \\x. x end; id move")
+        , testCase
+          "type variable scope #2178"
+          (valid "def f : a -> (a * Int) = \\x. let g : a * Int = (x, 3) in g end")
+        , testCase
+          "type variable scope #2178 - shadowing"
+          ( process
+            "def f : a -> (a * Int) = \\x. let g : forall a. a * Int = (x, 3) in g end"
+            ""
+          )
+        ]
     , testCase
         "parsing operators #188 - parse valid operator (!=)"
         (valid "1!=(2)")
