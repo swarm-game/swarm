@@ -344,7 +344,7 @@ hypotheticalWinCheck em g ws oc = do
 
   let gameFinished = newWinState /= Ongoing
   let finishedObjectives = notNull queue
-  when (gameFinished || (finishedObjectives && shouldPause == PauseOnAnyObjective)) $
+  when (finishedObjectives && (gameFinished || shouldPause == PauseOnAnyObjective)) $
     temporal . runStatus .= AutoPause
 
   mapM_ handleException $ exceptions finalAccumulator
