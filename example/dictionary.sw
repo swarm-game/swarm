@@ -121,7 +121,7 @@ def balanceT : RBNode k -> RBTree k = \t.
   in let balanceLR : RBNode k -> RBNode k -> RBTree k = \t.\ln.
     case ln.r (\_. balanceR t) (\lrn.
       if (lrn.c == red) {
-        balanced [a=ln.l, x0=ln.k, b=lrn.l, x1=lrn.k, c=lrn.l, x2=t.k, d=t.r]
+        balanced [a=ln.l, x0=ln.k, b=lrn.l, x1=lrn.k, c=lrn.r, x2=t.k, d=t.r]
       } {
         balanceR t
       }
@@ -397,7 +397,7 @@ end
 
 def randomTestS = \i.\s.\test.
   if (i <= 0) {return s} {
-    x <- random 100;
+    x <- random 20;
     let ns = insertS x s in
     test ns;
     randomTestS (i - 1) ns test
@@ -405,7 +405,7 @@ def randomTestS = \i.\s.\test.
 end
 
 def delete_insert_prop = \i.\t.
-  x <- random 100;
+  x <- random 20;
   let i_t = inorder t in
   let f_t = formatS t in
   if (not $ containsS x t) {
@@ -431,7 +431,7 @@ end
 
 def test_delete: Int -> Cmd Unit = \i.
   group i "DELETE TESTS" (\i.
-    randomTestS 10 emptyS (\s.
+    randomTestS 15 emptyS (\s.
       group i (formatS s) (\i.
         delete_insert_prop i s;
         delete_delete_prop i s;
