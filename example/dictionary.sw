@@ -103,7 +103,7 @@ def balanceT : RBNode k -> RBTree k = \t.
   in let balanceRL : RBNode k -> RBNode k -> RBTree k = \t.\rn.
     case rn.l (\_. balanceRR t rn) (\rln.
       if (rln.c == red) {
-        balanced [a=t.l, x0=t.k, b=rln.r, x1=rln.k, c=rln.r, x2=rn.k, d=rn.r]
+        balanced [a=t.l, x0=t.k, b=rln.l, x1=rln.k, c=rln.r, x2=rn.k, d=rn.r]
       } {
         balanceRR t rn
       }
