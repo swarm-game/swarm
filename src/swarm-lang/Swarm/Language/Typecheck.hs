@@ -1193,7 +1193,8 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
 
   -- Checking the type of a let- or def-expression.
   SLet ls r x mxTy _ t1 t2 -> withFrame l (TCLet (lvVar x)) $ do
-    (skolems, upty, t1') <- case mxTy of
+    mqxTy <- traverse quantify mxTy
+    (skolems, upty, t1') <- case mqxTy of
       -- No type annotation was provided for the let binding, so infer its type.
       Nothing -> do
         -- The let could be recursive, so we must generate a fresh
@@ -1267,7 +1268,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
           LSLet -> Nothing
 
     -- Return the annotated let.
-    return $ Syntax' l (SLet ls r x mxTy mreqs t1' t2') cs expected
+    return $ Syntax' l (SLet ls r x mqxTy mreqs t1' t2') cs expected
 
   -- Kind-check a type definition and then check the body under an
   -- extended context.
