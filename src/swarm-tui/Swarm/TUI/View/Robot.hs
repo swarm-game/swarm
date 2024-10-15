@@ -133,10 +133,7 @@ rowHdr :: RowHdr Name RobotWidgetRow
 rowHdr =
   RowHdr
     { draw = \_ (WdthD wd) (RowHdrCtxt (Sel s)) rh ->
-        let attrFn =
-              if s
-                then id
-                else withAttr rowHdrAttr
+        let attrFn = applyWhen (not s) $ withAttr rowHdrAttr
          in attrFn $ padRight (Pad $ if wd > 0 then 0 else 1) $ padLeft Max (str $ show rh)
     , width = \_ rh -> RowHdrW . (+ 2) . maximum0 $ map (length . show) rh
     , toRH = \_ (Ix i) -> i + 1
@@ -331,7 +328,7 @@ mkLibraryEntries c =
           ]
       nameTxt = r ^. robotName
 
-    highlightSystem = if r ^. systemRobot then withAttr highlightAttr else id
+    highlightSystem = applyWhen (r ^. systemRobot) $ withAttr highlightAttr
 
     ageStr
       | age < 60 = show age <> "sec"

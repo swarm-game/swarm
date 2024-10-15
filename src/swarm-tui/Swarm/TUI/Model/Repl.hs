@@ -73,6 +73,7 @@ import Servant.Docs qualified as SD
 import Swarm.Language.Syntax (SrcLoc (..))
 import Swarm.Language.Types
 import Swarm.TUI.Model.Name
+import Swarm.Util (applyWhen)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Prelude hiding (Applicative (..))
 
@@ -333,7 +334,7 @@ newREPLEditor t = applyEdit gotoEnd $ editorText REPLInput (Just 1) t
  where
   ls = T.lines t
   pos = (length ls - 1, T.length (last ls))
-  gotoEnd = if null ls then id else TZ.moveCursor pos
+  gotoEnd = applyWhen (not $ null ls) $ TZ.moveCursor pos
 
 initREPLState :: REPLHistory -> REPLState
 initREPLState hist =

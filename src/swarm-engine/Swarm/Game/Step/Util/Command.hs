@@ -63,6 +63,7 @@ import Swarm.Language.Requirements.Type qualified as R
 import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown qualified as Markdown
 import Swarm.Log
+import Swarm.Util (applyWhen)
 import System.Clock (TimeSpec)
 import Prelude hiding (Applicative (..), lookup)
 
@@ -156,9 +157,8 @@ purgeFarAwayWatches = do
 
   let isNearby = isNearbyOrExempt privileged myLoc
       f loc =
-        if not $ isNearby loc
-          then IS.delete rid
-          else id
+        applyWhen (not $ isNearby loc) $
+          IS.delete rid
 
   robotInfo . robotsWatching %= M.filter (not . IS.null) . M.mapWithKey f
 

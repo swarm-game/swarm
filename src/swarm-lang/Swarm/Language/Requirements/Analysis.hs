@@ -26,6 +26,7 @@ import Swarm.Language.Requirements.Type
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction (isCardinal)
 import Swarm.Language.Types
+import Swarm.Util (applyWhen)
 
 -- | Infer the requirements to execute/evaluate a term in a given
 --   context.
@@ -122,8 +123,8 @@ requirements tdCtx ctx =
       localReqCtx <- ask @ReqCtx
       localTDCtx <- ask @TDCtx
       let bodyReqs =
-            (if r then (singletonCap CRecursion <>) else id)
-              (requirements localTDCtx localReqCtx t1)
+            applyWhen r (singletonCap CRecursion <>) $
+              requirements localTDCtx localReqCtx t1
       local @ReqCtx (Ctx.addBinding x bodyReqs) $ go t2
     -- Using tydef requires CEnv, plus whatever the requirements are
     -- for the type itself.

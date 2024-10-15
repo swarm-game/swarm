@@ -18,6 +18,7 @@ import Brick.Focus
 import Brick.Widgets.Border
 import Control.Lens
 import Swarm.TUI.Border
+import Swarm.Util (applyWhen)
 
 data Panel n = Panel
   {_panelName :: n, _panelLabels :: BorderLabels n, _panelContent :: Widget n}
@@ -32,7 +33,7 @@ drawPanel attr fr = withFocusRing fr drawPanel'
  where
   drawPanel' :: Bool -> Panel n -> Widget n
   drawPanel' focused p =
-    (if focused then overrideAttr borderAttr attr else id) $
+    applyWhen focused (overrideAttr borderAttr attr) $
       borderWithLabels (p ^. panelLabels) (p ^. panelContent)
 
 -- | Create a panel.
