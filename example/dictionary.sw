@@ -38,6 +38,43 @@ def getL : Int -> List a -> a = \i.\l.
   case (safeGetL i l) (\_. fail $ "INDEX " ++ format i ++ " OUT OF BOUNDS!") (\a. a)
 end
 
+// get from ordered list
+def getKeyL : (a -> k) -> k -> List a -> Maybe a = \p.\x.\l.
+  case l (\_. inl ()) (\n.
+    let nx = p (fst n) in
+    if (nx == x) {
+      inr $ fst n
+    } {
+      if (nx < x) {
+        inl ()
+      } {
+        getKeyL p x $ snd n
+      }
+    }
+  )
+end
+
+def containsKeyL : (a -> k) -> k -> List a -> Bool = \p.\x.\l.
+  case (getKeyL p x l) (\_. true) (\_. false)
+end
+
+// insert into ordered list - replaces elements, like set
+def insertKeyL : (a -> k) -> a -> List a -> List a = \p.\y.\l.
+  case l (\_. pureL y) (\n.
+    let nx = p (fst n) in
+    let x = p y in
+    if (nx == x) {
+      inr (y, snd n)
+    } {
+      if (nx > x) {
+        insertL y l
+      } {
+        inr (fst n, insertKeyL p y $ snd n)
+      }
+    }
+  )
+end
+
 def formatL : List a -> Text = \l.
  let f : List a -> Text = \l. case l (\_. "]") (\n. ", " ++ format (fst n) ++ f (snd n))
  in case l (\_. "[]") (\n. "[" ++ format (fst n) ++ f (snd n))
@@ -394,6 +431,15 @@ def test_empty: Int -> Cmd Unit = \i.
   )
 end
 
+def test_ordered_list : Int -> Cmd Unit = \i.
+  let s = [insert=insertKeyL (\x.x), contains=containsKeyL (\x.x)] in
+  group i "ORDERED LIST TESTS" (\i.
+    let expected = insertL 1 $ insertL 2 $ insertL 3 emptyL in
+    let actual = s.insert 2 $ s.insert 1 $ s.insert 3 emptyL in
+    assert_eq i (formatL expected) (formatL actual) "insertKeyL should insert in order";
+  )
+end
+
 def test_insert: Int -> Cmd Unit = \i.
   group i "INSERT TESTS" (\i.
     group i "test {0: 1}" (\i.
@@ -459,6 +505,7 @@ end
 def test_tree: Cmd Unit =
   group 0 "TREE TESTS" (\i.
     test_empty i;
+    test_ordered_list i;
     test_insert i;
     test_delete i;
   );
