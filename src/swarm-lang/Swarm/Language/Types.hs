@@ -91,6 +91,7 @@ module Swarm.Language.Types (
   -- * Contexts
   TCtx,
   UCtx,
+  TVCtx,
 
   -- * User type definitions
   TydefInfo (..),
@@ -649,6 +650,10 @@ type TCtx = Ctx Polytype
 --   unification variables.  We generally have one of these while we
 --   are in the midst of the type inference process.
 type UCtx = Ctx UPolytype
+
+-- | A @TVCtx@ tracks which type variables are in scope, and what
+--   skolem variables were assigned to them.
+type TVCtx = Ctx UType
 
 ------------------------------------------------------------
 -- Type definitions
