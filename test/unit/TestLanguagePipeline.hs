@@ -51,7 +51,7 @@ testLanguagePipeline =
           "type variable scope #2178 - shadowing"
           ( process
             "def f : a -> (a * Int) = \\x. let g : forall a. a * Int = (x, 3) in g end"
-            ""
+            "1:59: Type mismatch:\n  From context, expected `x` to have type `s2`,\n  but it actually has type `s1`"
           )
         ]
     , testCase
@@ -403,7 +403,7 @@ testLanguagePipeline =
             "type ascription doesn't allow rank 2 types"
             ( process
                 "\\f. (f:forall a. a->a) 3"
-                "1:5: Skolem variable s3 would escape its scope"
+                "1:24: Type mismatch:\n  From context, expected `3` to have type `s3`,\n  but it actually has type `Int`"
             )
         , testCase
             "checking a lambda with the wrong argument type"
