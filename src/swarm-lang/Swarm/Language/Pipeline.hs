@@ -77,7 +77,7 @@ extractTCtx :: Syntax' ty -> TCtx
 extractTCtx (Syntax' _ t _ _) = extractTCtxTerm t
  where
   extractTCtxTerm = \case
-    SLet _ _ (LV _ x) mty _ _ t2 -> maybe id (Ctx.addBinding x) mty (extractTCtx t2)
+    SLet _ _ (LV _ x) _ mty _ _ t2 -> maybe id (Ctx.addBinding x) mty (extractTCtx t2)
     SBind mx _ mty _ c1 c2 ->
       maybe
         id
@@ -94,7 +94,7 @@ extractReqCtx :: Syntax' ty -> ReqCtx
 extractReqCtx (Syntax' _ t _ _) = extractReqCtxTerm t
  where
   extractReqCtxTerm = \case
-    SLet _ _ (LV _ x) _ mreq _ t2 -> maybe id (Ctx.addBinding x) mreq (extractReqCtx t2)
+    SLet _ _ (LV _ x) _ _ mreq _ t2 -> maybe id (Ctx.addBinding x) mreq (extractReqCtx t2)
     SBind mx _ _ mreq c1 c2 ->
       maybe
         id

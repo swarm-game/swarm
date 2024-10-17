@@ -640,10 +640,10 @@ stepCESK cesk = case cesk of
     _ -> badMachineState s "FProj frame with non-record value"
   -- To evaluate non-recursive let expressions, we start by focusing on the
   -- let-bound expression.
-  In (TLet _ False x mty mreq t1 t2) e s k ->
+  In (TLet _ False x _ mty mreq t1 t2) e s k ->
     return $ In t1 e s (FLet x ((,) <$> mty <*> mreq) t2 e : k)
   -- To evaluate a recursive let binding:
-  In (TLet _ True x mty mreq t1 t2) e s k -> do
+  In (TLet _ True x _ mty mreq t1 t2) e s k -> do
     -- First, allocate a cell for it in the store with the initial
     -- value of Blackhole.
     let (loc, s') = allocate VBlackhole s

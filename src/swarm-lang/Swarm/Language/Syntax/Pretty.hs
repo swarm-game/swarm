@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- We could avoid orphan instances by placing these PrettyPrec
@@ -104,12 +105,12 @@ instance PrettyPrec (Term' ty) where
               ConstMUnOp S -> pparens (p > pC) $ prettyPrec (succ pC) t2 <> ppr t1
               _ -> prettyPrecApp p t1 t2
       _ -> prettyPrecApp p t1 t2
-    SLet LSLet _ (LV _ x) mty _ t1 t2 ->
+    SLet LSLet _ (LV _ x) mty _ _ t1 t2 ->
       sep
         [ prettyDefinition "let" x mty t1 <+> "in"
         , ppr t2
         ]
-    SLet LSDef _ (LV _ x) mty _ t1 t2 ->
+    SLet LSDef _ (LV _ x) mty _ _ t1 t2 ->
       mconcat $
         sep [prettyDefinition "def" x mty t1, "end"]
           : case t2 of
@@ -136,7 +137,7 @@ instance PrettyPrec (Term' ty) where
       pparens (p > 10) $
         "suspend" <+> prettyPrec 11 t
 
-prettyDefinition :: Doc ann -> Var -> Maybe Polytype -> Syntax' ty -> Doc ann
+prettyDefinition :: Doc ann -> Var -> Maybe (Poly q Type) -> Syntax' ty -> Doc ann
 prettyDefinition defName x mty t1 =
   nest 2 . sep $
     [ flatAlt
@@ -153,8 +154,8 @@ prettyDefinition defName x mty t1 =
   eqAndLambdaLine = if null defLambdaList then "=" else line <> defEqLambdas
 
 prettyTydef :: Var -> Polytype -> Doc ann
-prettyTydef x (Forall [] ty) = "tydef" <+> pretty x <+> "=" <+> ppr ty <+> "end"
-prettyTydef x (Forall xs ty) = "tydef" <+> pretty x <+> hsep (map pretty xs) <+> "=" <+> ppr ty <+> "end"
+prettyTydef x (unPoly -> ([], ty)) = "tydef" <+> pretty x <+> "=" <+> ppr ty <+> "end"
+prettyTydef x (unPoly -> (xs, ty)) = "tydef" <+> pretty x <+> hsep (map pretty xs) <+> "=" <+> ppr ty <+> "end"
 
 prettyPrecApp :: Int -> Syntax' ty -> Syntax' ty -> Doc a
 prettyPrecApp p t1 t2 =

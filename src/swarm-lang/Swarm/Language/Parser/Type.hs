@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -37,9 +38,9 @@ import Text.Megaparsec (choice, optional, some, (<|>))
 --   quanitifation (@forall@ followed by one or more variables and a
 --   period) followed by a type.  Note that anything accepted by
 --   'parseType' is also accepted by 'parsePolytype'.
-parsePolytype :: Parser Polytype
+parsePolytype :: Parser (Poly Unquantified Type)
 parsePolytype =
-  Forall . fromMaybe []
+  mkPoly . fromMaybe []
     <$> optional ((reserved "forall" <|> reserved "∀") *> some tyVar <* symbol ".")
     <*> parseType
 

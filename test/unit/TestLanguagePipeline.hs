@@ -376,6 +376,7 @@ testLanguagePipeline =
 
                   isVar (TVar {}) = True
                   isVar _ = False
+                  getVars :: TSyntax -> [(Term' Polytype, Polytype)]
                   getVars = map (_sTerm &&& _sType) . filter (isVar . _sTerm) . universe
                in assertEqual
                     "variable types"

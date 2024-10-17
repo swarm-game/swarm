@@ -101,10 +101,10 @@ getUsage bindings (CSyntax _pos t _comments) = case t of
   SLam v _ s -> checkOccurrences bindings v Lambda [s]
   SApp s1 s2 -> getUsage bindings s1 <> getUsage bindings s2
   -- Warn on unused 'let' bindings...
-  SLet LSLet _ v _ _ s1 s2 -> getUsage bindings s1 <> checkOccurrences bindings v Let [s2]
+  SLet LSLet _ v _ _ _ s1 s2 -> getUsage bindings s1 <> checkOccurrences bindings v Let [s2]
   -- But don't warn on unused 'def' bindings, because they may be
   -- intended to be used at a later REPL input.
-  SLet LSDef _ _ _ _ s1 s2 -> getUsage bindings s1 <> getUsage bindings s2
+  SLet LSDef _ _ _ _ _ s1 s2 -> getUsage bindings s1 <> getUsage bindings s2
   SPair s1 s2 -> getUsage bindings s1 <> getUsage bindings s2
   SBind maybeVar _ _ _ s1 s2 -> case maybeVar of
     Just v -> checkOccurrences bindings v Bind [s1, s2]

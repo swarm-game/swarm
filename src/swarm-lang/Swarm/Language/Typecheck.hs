@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -277,8 +278,8 @@ instance FreeUVars UType where
   freeUVars = U.freeUVars
 
 -- | We can also get the free variables of a polytype.
-instance (FreeUVars t) => FreeUVars (Poly t) where
-  freeUVars (Forall _ t) = freeUVars t
+instance (FreeUVars t) => FreeUVars (Poly q t) where
+  freeUVars = freeUVars . ptBody
 
 -- | We can get the free variables in any polytype in a context.
 instance FreeUVars UCtx where
@@ -309,9 +310,9 @@ noSkolems ::
   ) =>
   SrcLoc ->
   [Var] ->
-  Poly UType ->
+  UPolytype ->
   m ()
-noSkolems l skolems (Forall xs upty) = do
+noSkolems l skolems (unPoly -> (xs, upty)) = do
   upty' <- applyBindings upty
   let tyvs =
         ucata
@@ -365,7 +366,7 @@ instance HasBindings UType where
   applyBindings = U.applyBindings
 
 instance HasBindings UPolytype where
-  applyBindings (Forall xs u) = Forall xs <$> applyBindings u
+  applyBindings = traverse applyBindings
 
 instance HasBindings UCtx where
   applyBindings = mapM applyBindings
@@ -379,23 +380,11 @@ instance (HasBindings u, Data u) => HasBindings (Syntax' u) where
 ------------------------------------------------------------
 -- Converting between mono- and polytypes
 
--- | Implicitly quantify any otherwise unbound type variables.
-quantify :: Has (Reader TVCtx) sig m => Polytype -> m Polytype
-quantify (Forall xs ty) = do
-  -- Look at all variables which occur in the type but are not explicitly bound by the forall...
-  let unbound = tyVars ty `S.difference` S.fromList xs
-  -- ...and filter out those that are not bound in the context and
-  -- should therefore be implicitly quantified
-  inScope <- ask @TVCtx
-  let implicit = S.filter (not . (`Ctx.member` inScope)) unbound
-
-  pure $ Forall (xs ++ S.toList implicit) ty
-
 -- | To 'instantiate' a 'UPolytype', we generate a fresh unification
 --   variable for each variable bound by the `Forall`, and then
 --   substitute them throughout the type.
 instantiate :: (Has Unification sig m, Has (Reader TVCtx) sig m) => UPolytype -> m UType
-instantiate (Forall xs uty) = do
+instantiate (unPoly -> (xs, uty)) = do
   xs' <- mapM (const fresh) xs
   boundSubst <- ask @TVCtx
   let s = M.mapKeys Left (M.fromList (zip xs xs') `M.union` unCtx boundSubst)
@@ -410,7 +399,7 @@ instantiate (Forall xs uty) = do
 --   Returns a context mapping from instantiated type variables to generated
 --   Skolem variables, along with the substituted type.
 skolemize :: (Has Unification sig m, Has (Reader TVCtx) sig m) => UPolytype -> m (Ctx UType, UType)
-skolemize (Forall xs uty) = do
+skolemize (unPoly -> (xs, uty)) = do
   skolemNames <- mapM (fmap (mkVarName "s") . const U.freshIntVar) xs
   boundSubst <- ask @TVCtx
   let xs' = map UTyVar skolemNames
@@ -435,8 +424,8 @@ generalize uty = do
       prettyNames = map T.pack (map (: []) alphabet ++ [x : show n | n <- [0 :: Int ..], x <- alphabet])
       -- Associate each free variable with a new pretty name
       renaming = zip fvs prettyNames
-  return $
-    Forall
+  return . absQuantify $
+    mkPoly
       (map snd renaming)
       (substU (M.fromList . map (Right *** UTyVar) $ renaming) uty')
 
@@ -882,7 +871,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   SLam x (Just argTy) body -> do
     adaptToTypeErr l KindErr $ checkKind argTy
     let uargTy = toU argTy
-    body' <- withBinding (lvVar x) (Forall [] uargTy) $ infer body
+    body' <- withBinding @UPolytype (lvVar x) (mkTrivPoly uargTy) $ infer body
     return $ Syntax' l (SLam x (Just argTy) body') cs (UTyFun uargTy (body' ^. sType))
 
   -- Need special case here for applying 'atomic' or 'instant' so we
@@ -998,7 +987,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     -- following typechecking steps.
     iuty <- instantiate upty
     c' <- check c iuty
-    return $ Syntax' l (SAnnotate c' qpty) cs iuty
+    return $ Syntax' l (SAnnotate c' (forgetQ qpty)) cs iuty
 
   -- Fallback: to infer the type of anything else, make up a fresh unification
   -- variable for its type and check against it.
@@ -1168,7 +1157,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
           Left _ -> throwTypeErr l $ LambdaArgMismatch (joined argTy xTy)
           Right _ -> return ()
       Nothing -> return ()
-    body' <- withBinding (lvVar x) (Forall [] argTy) $ check body resTy
+    body' <- withBinding @UPolytype (lvVar x) (mkTrivPoly argTy) $ check body resTy
     return $ Syntax' l (SLam x mxTy body') cs (UTyFun argTy resTy)
 
   -- Special case for checking the argument to 'atomic' (or
@@ -1192,7 +1181,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         return $ Syntax' l (SApp atomic' at') cs (UTyCmd argTy)
 
   -- Checking the type of a let- or def-expression.
-  SLet ls r x mxTy _ t1 t2 -> withFrame l (TCLet (lvVar x)) $ do
+  SLet ls r x mxTy _ _ t1 t2 -> withFrame l (TCLet (lvVar x)) $ do
     mqxTy <- traverse quantify mxTy
     (skolems, upty, t1') <- case mqxTy of
       -- No type annotation was provided for the let binding, so infer its type.
@@ -1201,7 +1190,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         -- unification variable for the type of x and infer the type
         -- of t1 with x in the context.
         xTy <- fresh
-        t1' <- withBinding (lvVar x) (Forall [] xTy) $ infer t1
+        t1' <- withBinding @UPolytype (lvVar x) (mkTrivPoly xTy) $ infer t1
         let uty = t1' ^. sType
         _ <- xTy =:= uty
         upty <- generalize uty
@@ -1210,9 +1199,8 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
       -- implicit quantification, kind checking, and skolemization,
       -- then check definition and body under an extended context.
       Just pty -> do
-        qpty <- quantify pty
-        _ <- adaptToTypeErr l KindErr . checkPolytypeKind $ qpty
-        let upty = toU qpty
+        _ <- adaptToTypeErr l KindErr . checkPolytypeKind $ pty
+        let upty = toU pty
         (ss, uty) <- skolemize upty
         t1' <- withBinding (lvVar x) upty . withBindings ss $ check t1 uty
         return (Ctx.vars ss, upty, t1')
@@ -1268,7 +1256,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
           LSLet -> Nothing
 
     -- Return the annotated let.
-    return $ Syntax' l (SLet ls r x mqxTy mreqs t1' t2') cs expected
+    return $ Syntax' l (SLet ls r x mxTy mqxTy mreqs t1' t2') cs expected
 
   -- Kind-check a type definition and then check the body under an
   -- extended context.
@@ -1474,7 +1462,7 @@ analyzeAtomic locals (Syntax l t) = case t of
 
 -- | A simple polytype is a simple type with no quantifiers.
 isSimpleUPolytype :: UPolytype -> Bool
-isSimpleUPolytype (Forall [] ty) = isSimpleUType ty
+isSimpleUPolytype (unPoly -> ([], ty)) = isSimpleUType ty
 isSimpleUPolytype _ = False
 
 -- | A simple type is a sum or product of base types.

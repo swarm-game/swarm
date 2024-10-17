@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -83,10 +84,21 @@ module Swarm.Language.Types (
   UnchainableFun (..),
 
   -- * Polytypes
-  Poly (..),
+  ImplicitQuantification (..),
+  Poly,
+  mkPoly,
+  mkQPoly,
+  mkTrivPoly,
+  unPoly,
+  ptVars,
+  ptBody,
   Polytype,
+  RawPolytype,
   pattern PolyUnit,
   UPolytype,
+  quantify,
+  absQuantify,
+  forgetQ,
 
   -- * Contexts
   TCtx,
@@ -281,10 +293,6 @@ instance FromJSON1 TypeF where
 --   with 'Type' as if it were defined in a directly recursive way.
 type Type = Fix TypeF
 
--- | Get all the type variables contained in a 'Type'.
-tyVars :: Type -> Set Var
-tyVars = foldFix (\case TyVarF x -> S.singleton x; f -> fold f)
-
 newtype IntVar = IntVar Int
   deriving (Show, Data, Eq, Ord)
 
@@ -424,41 +432,102 @@ instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) wh
 ------------------------------------------------------------
 
 class Typical t where
-  foldT :: (TypeF t -> t) -> t -> t
+  -- Fold a type into a summary value of some type @a@, given an
+  -- "empty" value of type @a@ (for use at e.g. Pure nodes in a UType)
+  foldT :: a -> (TypeF a -> a) -> t -> a
+
+  -- Refold a type into another type
+  refoldT :: (TypeF t -> t) -> t -> t
   rollT :: TypeF t -> t
   fromType :: Type -> t
 
 instance Typical Type where
-  foldT = foldFix
+  foldT _ = foldFix
+  refoldT = foldFix
   rollT = Fix
   fromType = id
 
 instance Typical UType where
-  foldT = ucata Pure
+  foldT e = ucata (const e)
+  refoldT = ucata Pure
   rollT = Free
   fromType = toU
+
+-- | Get all the type variables (/not/ unification variables)
+--   contained in a 'Type' or 'UType'.
+tyVars :: Typical t => t -> Set Var
+tyVars = foldT S.empty (\case TyVarF x -> S.singleton x; f -> fold f)
 
 ------------------------------------------------------------
 -- Polytypes
 ------------------------------------------------------------
 
--- | A @Poly t@ is a universally quantified @t@.  The variables in the
---   list are bound inside the @t@.  For example, the type @forall
---   a. a -> a@ would be represented as @Forall ["a"] (TyFun "a" "a")@.
-data Poly t = Forall {ptVars :: [Var], ptBody :: t}
+data ImplicitQuantification = Unquantified | Quantified
+  deriving (Eq, Ord, Read, Show)
+
+-- | A @Poly q t@ is a universally quantified @t@.  The variables in
+--   the list are bound inside the @t@.  For example, the type @forall
+--   a. a -> a@ would be represented as @Forall ["a"] (TyFun "a"
+--   "a")@.
+--
+--   The type index @q@ is a phantom type index indicating whether the
+--   type has been implicitly quantified.  Immediately after a
+--   polytype is parsed it is 'Unquantified' and unsafe to use.  For
+--   example, the type @a -> a@ would parse literally as @Forall []
+--   (TyFun "a" "a") :: Poly Unquantified Type@, where the type
+--   variable @a@ is not in the list of bound variables.  Later, after
+--   running through 'quantify', it would become a @Poly Quantified
+--   Type@, either @Forall ["a"] (TyFun "a" "a")@ if the type variable
+--   is implicitly quantified, or unchanged if the type variable @a@
+--   was already in scope.
+--
+--   The @Poly@ constructor intentionally unexported, so that the
+--   only way to create a @Poly Quantified@ is through the 'quantify'
+--   function.
+data Poly (q :: ImplicitQuantification) t = Forall {_ptVars :: [Var], ptBody :: t}
   deriving (Show, Eq, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
--- | A polytype without unification variables.
-type Polytype = Poly Type
+-- | Create a raw, unquantified @Poly@ value.
+mkPoly :: [Var] -> t -> Poly Unquantified t
+mkPoly = Forall
 
-instance PrettyPrec Polytype where
+-- | Create a polytype while performing implicit quantification.
+mkQPoly :: Typical t => t -> Poly Quantified t
+mkQPoly = absQuantify . Forall []
+
+-- | Create a trivial "polytype" with no bound variables.  This is
+--   somewhat unsafe --- only use this if you are sure that the polytype
+--   you want has no type variables.
+mkTrivPoly :: t -> Poly q t
+mkTrivPoly = Forall []
+
+-- | Project out the variables and body of a 'Poly' value.  It's only
+--   possible to project from a 'Poly Quantified' since the list of
+--   variables might be meaningless for a type that has not had
+--   implicit quantification applied.
+unPoly :: Poly Quantified t -> ([Var], t)
+unPoly (Forall xs t) = (xs, t)
+
+-- | Project out the variables of a 'Poly Quantified' value.
+ptVars :: Poly Quantified t -> [Var]
+ptVars (Forall xs _) = xs
+
+forgetQ :: Poly Quantified t -> Poly Unquantified t
+forgetQ (Forall xs t) = Forall xs t
+
+-- | A polytype without unification variables.
+type Polytype = Poly Quantified Type
+
+type RawPolytype = Poly Unquantified Type
+
+instance PrettyPrec (Poly q Type) where
   prettyPrec _ (Forall [] t) = ppr t
   prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
 
 -- | A polytype with unification variables.
-type UPolytype = Poly UType
+type UPolytype = Poly Quantified UType
 
-instance PrettyPrec UPolytype where
+instance PrettyPrec (Poly q UType) where
   prettyPrec _ (Forall [] t) = ppr t
   prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
 
@@ -656,6 +725,30 @@ type UCtx = Ctx UPolytype
 type TVCtx = Ctx UType
 
 ------------------------------------------------------------
+-- Implicit quantification of polytypes
+------------------------------------------------------------
+
+-- | Implicitly quantify any otherwise unbound type variables.
+quantify ::
+  (Has (Reader TVCtx) sig m, Typical ty) =>
+  Poly Unquantified ty ->
+  m (Poly Quantified ty)
+quantify (Forall xs ty) = do
+  -- Look at all variables which occur in the type but are not explicitly bound by the forall...
+  let unbound = tyVars ty `S.difference` S.fromList xs
+  -- ...and filter out those that are not bound in the context and
+  -- should therefore be implicitly quantified
+  inScope <- ask @TVCtx
+  let implicit = S.filter (not . (`Ctx.member` inScope)) unbound
+
+  pure $ Forall (xs ++ S.toList implicit) ty
+
+-- | Absolute implicit quantification, i.e. assume there are no type
+--   variables in scope.
+absQuantify :: Typical t => Poly Unquantified t -> Poly Quantified t
+absQuantify = run . runReader @TVCtx Ctx.empty . quantify
+
+------------------------------------------------------------
 -- Type definitions
 ------------------------------------------------------------
 
@@ -698,7 +791,7 @@ expandTydef userTyCon tys = do
 -- | Given the definition of a type alias, substitute the given
 --   arguments into its body and return the resulting type.
 substTydef :: forall t. Typical t => TydefInfo -> [t] -> t
-substTydef (TydefInfo (Forall as ty) _) tys = foldT @t substF (fromType ty)
+substTydef (TydefInfo (Forall as ty) _) tys = refoldT @t substF (fromType ty)
  where
   argMap = M.fromList $ zip as tys
 
@@ -712,7 +805,7 @@ substTydef (TydefInfo (Forall as ty) _) tys = foldT @t substF (fromType ty)
 --   a term containing a local tydef: since the tydef is local we
 --   can't use it in the reported type.
 elimTydef :: forall t. Typical t => Var -> TydefInfo -> t -> t
-elimTydef x tdInfo = foldT substF
+elimTydef x tdInfo = refoldT substF
  where
   substF = \case
     TyConF (TCUser u) tys | u == x -> substTydef tdInfo tys
