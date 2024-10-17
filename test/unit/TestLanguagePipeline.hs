@@ -36,23 +36,23 @@ testLanguagePipeline =
     , testGroup
         "quantification + scope"
         [ testCase
-          "quantification #148 - implicit"
-          (valid "def id : a -> a = \\x. x end; id move")
+            "quantification #148 - implicit"
+            (valid "def id : a -> a = \\x. x end; id move")
         , testCase
-          "quantification #148 - explicit"
-          (valid "def id : forall a. a -> a = \\x. x end; id move")
+            "quantification #148 - explicit"
+            (valid "def id : forall a. a -> a = \\x. x end; id move")
         , testCase
-          "quantification #148 - explicit with free tyvars"
-          (valid "def id : forall a. b -> b = \\x. x end; id move")
+            "quantification #148 - explicit with free tyvars"
+            (valid "def id : forall a. b -> b = \\x. x end; id move")
         , testCase
-          "type variable scope #2178"
-          (valid "def f : a -> (a * Int) = \\x. let g : a * Int = (x, 3) in g end")
+            "type variable scope #2178"
+            (valid "def f : a -> (a * Int) = \\x. let g : a * Int = (x, 3) in g end")
         , testCase
-          "type variable scope #2178 - shadowing"
-          ( process
-            "def f : a -> (a * Int) = \\x. let g : forall a. a * Int = (x, 3) in g end"
-            "1:59: Type mismatch:\n  From context, expected `x` to have type `s2`,\n  but it actually has type `s1`"
-          )
+            "type variable scope #2178 - shadowing"
+            ( process
+                "def f : a -> (a * Int) = \\x. let g : forall a. a * Int = (x, 3) in g end"
+                "1:59: Type mismatch:\n  From context, expected `x` to have type `s2`,\n  but it actually has type `s1`"
+            )
         ]
     , testCase
         "parsing operators #188 - parse valid operator (!=)"
