@@ -162,7 +162,7 @@ class Show t => ExplainableType t where
   -- and get the type of the bound variable.
   getInnerType :: t -> t
 
-  -- | Check if this type is same as the given 'RawPolytype'.
+  -- | Check if this type is same as the given 'Polytype'.
   --
   -- We use it to not print same type twice (e.g. inferred and generic).
   eq :: t -> Polytype -> Bool
