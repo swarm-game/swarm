@@ -16,6 +16,7 @@ wave.yaml
 gallery.yaml
 wolf-goat-cabbage.yaml
 blender.yaml
+dna.yaml
 friend.yaml
 pack-tetrominoes.yaml
 dimsum.yaml

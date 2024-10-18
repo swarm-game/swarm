@@ -1415,7 +1415,7 @@ execConst runChildProg c vs s k = do
         return $ Out v s k
       else do
         time <- use $ temporal . ticks
-        return . (if remTime <= 1 then id else Waiting (addTicks (fromIntegral remTime) time)) $
+        return . applyWhen (remTime > 1) (Waiting (addTicks (fromIntegral remTime) time)) $
           Out v s (FImmediate c wf rf : k)
    where
     remTime = r ^. recipeTime

@@ -23,6 +23,7 @@ import Servant.Docs qualified as SD
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.WinCheck
 import Swarm.TUI.Model.Name
+import Swarm.Util (applyWhen)
 
 -- | These are intended to be used as keys in a map
 -- of lists of goals.
@@ -118,8 +119,6 @@ constructGoalMap showHidden oc =
       filter (maybe False previewable . view objectivePrerequisite) inactiveGoals
 
   suppressHidden =
-    if showHidden
-      then id
-      else filter $ not . view objectiveHidden
+    applyWhen (not showHidden) $ filter $ not . view objectiveHidden
 
   (activeGoals, inactiveGoals) = partitionActiveObjectives oc

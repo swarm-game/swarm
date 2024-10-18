@@ -407,9 +407,8 @@ drawMainMenuEntry s = \case
   Quit -> txt "Quit"
  where
   highlightMessages =
-    if s ^. runtimeState . eventLog . notificationsCount > 0
-      then withAttr notifAttr
-      else id
+    applyWhen (s ^. runtimeState . eventLog . notificationsCount > 0) $
+      withAttr notifAttr
 
 drawAboutMenuUI :: Maybe Text -> Widget Name
 drawAboutMenuUI Nothing = centerLayer $ txt "About swarm!"
@@ -578,8 +577,8 @@ drawTPS s = hBox (tpsInfo : rateInfo)
     | s ^. uiState . uiGameplay . uiTiming . uiShowFPS =
         [ txt " ("
         , let tpf = s ^. uiState . uiGameplay . uiTiming . uiTPF
-           in (if tpf >= fromIntegral ticksPerFrameCap then withAttr redAttr else id)
-                (str (printf "%0.1f" tpf))
+           in applyWhen (tpf >= fromIntegral ticksPerFrameCap) (withAttr redAttr) $
+                str (printf "%0.1f" tpf)
         , txt " tpf, "
         , str (printf "%0.1f" (s ^. uiState . uiGameplay . uiTiming . uiFPS))
         , txt " fps)"
@@ -646,7 +645,13 @@ drawModal s = \case
 
 helpWidget :: Seed -> Maybe Port -> KeyEventHandlingState -> Widget Name
 helpWidget theSeed mport keyState =
-  padLeftRight 2 . vBox $ padTop (Pad 1) <$> [info, helpKeys, tips]
+  padLeftRight 2 . vBox $
+    padTop (Pad 1)
+      <$> [ info
+          , colorizationLegend
+          , helpKeys
+          , tips
+          ]
  where
   tips =
     vBox
@@ -659,6 +664,12 @@ helpWidget theSeed mport keyState =
       [ heading boldAttr "Configuration"
       , txt ("Seed: " <> into @Text (show theSeed))
       , txt ("Web server port: " <> maybe "none" (into @Text . show) mport)
+      ]
+  colorizationLegend =
+    vBox
+      [ heading boldAttr "Colorization legend"
+      , drawMarkdown
+          "In text, snippets of code like `3 + 4` or `scan down` will be colorized. Types like `Cmd Text`{=type} have a dedicated color. The names of an `entity`{=entity}, a `structure`{=structure}, and a `tag`{=tag} also each have their own color."
       ]
   helpKeys =
     vBox
@@ -774,7 +785,7 @@ messagesWidget :: GameState -> [Widget Name]
 messagesWidget gs = widgetList
  where
   widgetList = focusNewest . map drawLogEntry' $ gs ^. messageNotifications . notificationsContent
-  focusNewest = if gs ^. temporal . paused then id else over _last visible
+  focusNewest = applyWhen (not $ gs ^. temporal . paused) $ over _last visible
   drawLogEntry' e =
     withAttr (colorLogs e) $
       hBox
@@ -1055,7 +1066,7 @@ drawItem sel i _ (Separator l) =
   -- element of the list, once it scrolls off the top of the viewport
   -- it will never become visible again.
   -- See https://github.com/jtdaugherty/brick/issues/336#issuecomment-921220025
-  (if sel == Just (i + 1) then visible else id) $ hBorderWithLabel (txt l)
+  applyWhen (sel == Just (i + 1)) visible $ hBorderWithLabel (txt l)
 drawItem _ _ _ (InventoryEntry n e) = drawLabelledEntityName e <+> showCount n
  where
   showCount = padLeft Max . str . show
@@ -1361,7 +1372,7 @@ drawRobotLog s =
   logEntriesToShow = getLogEntriesToShow s
   n = length logEntriesToShow
   drawEntry i e =
-    (if i == n - 1 && s ^. uiState . uiGameplay . uiScrollToEnd then visible else id) $
+    applyWhen (i == n - 1 && s ^. uiState . uiGameplay . uiScrollToEnd) visible $
       drawLogEntry (not allMe) e
 
   rid = s ^? gameState . to focusedRobot . _Just . robotID

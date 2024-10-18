@@ -80,7 +80,7 @@ import Swarm.TUI.Model (
 import Swarm.TUI.Model.DebugOption (DebugOption (LoadTestingScenarios))
 import Swarm.TUI.Model.StateUpdate (constructAppState, initPersistentState)
 import Swarm.TUI.Model.UI (UIState)
-import Swarm.Util (findAllWithExt)
+import Swarm.Util (applyWhen, findAllWithExt)
 import Swarm.Util.RingBuffer qualified as RB
 import Swarm.Util.Yaml (decodeFileEitherE)
 import System.FilePath (splitDirectories)
@@ -241,6 +241,7 @@ testScenarioSolutions rs ui key =
         , testSolution (Sec 10) "Challenges/gopher"
         , testSolution (Sec 5) "Challenges/hackman"
         , testSolution (Sec 5) "Challenges/blender"
+        , testSolution (Sec 10) "Challenges/dna"
         , testSolution (Sec 10) "Challenges/hanoi"
         , testSolution (Sec 3) "Challenges/lights-out"
         , testSolution (Sec 10) "Challenges/Sliding Puzzles/3x3"
@@ -578,7 +579,7 @@ testEditorFiles =
   testTextInFile :: Bool -> String -> Text -> FilePath -> TestTree
   testTextInFile whitespace name t fp = testCase name $ do
     let removeLW' = T.unlines . map (T.dropWhile isSpace) . T.lines
-        removeLW = if whitespace then removeLW' else id
+        removeLW = applyWhen whitespace removeLW'
     f <- T.readFile fp
     assertBool
       ( "EDITOR FILE IS NOT UP TO DATE!\n"

@@ -42,7 +42,7 @@ import Swarm.Language.Syntax qualified as Syntax
 import Swarm.Language.Text.Markdown as Markdown (docToMark)
 import Swarm.Language.Typecheck (inferConst)
 import Swarm.Pretty (prettyText, prettyTextLine)
-import Swarm.Util (maximum0, showT)
+import Swarm.Util (applyWhen, maximum0, showT)
 
 -- * Types
 
@@ -170,10 +170,7 @@ capabilityRow PageAddress {..} em cap =
       then t
       else addLink (entityAddress <> "#" <> T.replace " " "-" t) t
   linkCommand c =
-    ( if T.null commandsAddress
-        then id
-        else addLink (commandsAddress <> "#" <> showT c)
-    )
+    applyWhen (not $ T.null commandsAddress) (addLink $ commandsAddress <> "#" <> showT c)
       . codeQuote
       $ constSyntax c
 

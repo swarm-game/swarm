@@ -16,6 +16,7 @@ import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Language.Syntax.Direction (AbsoluteDir (..))
+import Swarm.Util (applyWhen)
 
 newtype StructureName = StructureName Text
   deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
@@ -49,7 +50,7 @@ reorientLandmark (Orientation upDir shouldFlip) (AreaDimensions width height) =
   transposeLoc (Location x y) = Location (-y) (-x)
   flipV (Location x y) = Location x $ -(height - 1) - y
   flipH (Location x y) = Location (width - 1 - x) y
-  flipping = if shouldFlip then flipV else id
+  flipping = applyWhen shouldFlip flipV
   rotational = case upDir of
     DNorth -> id
     DSouth -> flipH . flipV
@@ -63,7 +64,7 @@ applyOrientationTransform (Orientation upDir shouldFlip) =
  where
   f = rotational . flipping
   flipV = NE.reverse
-  flipping = if shouldFlip then flipV else id
+  flipping = applyWhen shouldFlip flipV
   rotational = case upDir of
     DNorth -> id
     DSouth -> NE.transpose . flipV . NE.transpose . flipV
