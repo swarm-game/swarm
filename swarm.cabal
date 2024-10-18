@@ -251,6 +251,9 @@ common minimorph
 common MissingH
   build-depends: MissingH >=1.4 && <2
 
+common monad-logger
+  build-depends: monad-logger >=0.3.0 && <0.4.0
+
 common mtl
   build-depends: mtl >=2.2.2 && <2.4
 
@@ -295,6 +298,9 @@ common servant-docs
 
 common servant-multipart
   build-depends: servant-multipart >=0.11 && <1.0
+
+common servant-JuicyPixels
+  build-depends: servant-JuicyPixels >=0.3.1 && <0.3.2
 
 common servant-server
   build-depends: servant-server >=0.19 && <0.22
@@ -569,6 +575,8 @@ library swarm-scenario
     lens,
     linear,
     megaparsec,
+    monad-logger,
+    mtl,
     murmur3,
     palette,
     parser-combinators,
@@ -804,6 +812,8 @@ library swarm-tournament
     http-types,
     lens,
     mtl,
+    JuicyPixels,
+    servant-JuicyPixels,
     servant-docs,
     servant-multipart,
     servant-server,

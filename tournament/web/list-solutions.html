@@ -27,10 +27,13 @@
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
         const scenarioHash = urlParams.get('scenario')
-        document.getElementById('scenario-field').value=scenarioHash;
+        document.getElementById('scenario-field').value = scenarioHash;
 
         const tableElement = document.querySelector("table");
         doFetch(tableElement, scenarioHash);
+
+        const mapPreviewImage = document.getElementById('map-preview-image');
+        mapPreviewImage.src = "scenario/" + scenarioHash + "/thumbnail";
       }
     </script>
   </head>
@@ -38,8 +41,11 @@
     <div id="login-info-container"></div>
     [<a href="/list-games.html">Back to scenarios</a>]
     <h1 id="main-header">Scenario info</h1>
-    
-    <h2>Solution submissions</h2>
+
+    <img id="map-preview-image" style="float: left; margin-right: 2em; image-rendering: pixelated" width="150"/>
+
+    <h2 style="clear: left">Solution submissions</h2>
+
     <table id="my-table">
         <thead>
           <tr data-sort-method="none">

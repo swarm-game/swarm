@@ -32,6 +32,7 @@ function mkDefinitionEntryElements(title, element) {
 function renderGameInfoBox(entry) {
 
     const dl = document.createElement("dl");
+    dl.style.float = "left";
     const pairs = [
         mkDefinitionEntryElements("Title:", regularSpan(entry.scenarioTitle)),
         mkDefinitionEntryElements("File:", mkLink(entry.originalFilename, "scenario/" + entry.scenarioHash + "/fetch")),
@@ -55,9 +56,9 @@ function doFetch(myTable, gameSha1) {
             response.json().then(data => {
                 const infoBox = renderGameInfoBox(data.theGame);
 
-                const mainHeaderElement = document.getElementById('main-header');
+                const previewImageElement = document.getElementById('map-preview-image');
 
-                mainHeaderElement.parentNode.insertBefore(infoBox, mainHeaderElement.nextSibling);
+                previewImageElement.parentNode.insertBefore(infoBox, previewImageElement.nextSibling);
 
                 const tableElement = document.getElementById('my-table');
                 const myTableBody = myTable.querySelector("tbody");

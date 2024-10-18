@@ -6,7 +6,7 @@ module Main where
 
 import Options.Applicative
 import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..))
-import Swarm.Game.World.Render (FailureMode (..), OuputFormat (..), RenderOpts (..), doRenderCmd)
+import Swarm.Game.World.Render (FailureMode (..), OuputFormat (..), RenderComputationContext (..), RenderOpts (..), doRenderCmd)
 
 data CLI
   = RenderMap FilePath RenderOpts
@@ -20,12 +20,16 @@ cliParser =
       <$> option auto (metavar "WIDTH" <> short 'w' <> long "width" <> help "width of source grid")
       <*> option auto (metavar "HEIGHT" <> short 'h' <> long "height" <> help "height of source grid")
 
+  renderComputationOpts =
+    RenderComputationContext
+      <$> seed
+      <*> optional sizeOpts
+
   subOpts =
     RenderOpts
-      <$> seed
+      <$> renderComputationOpts
       <*> flag ConsoleText PngImage (long "png" <> help "Render to PNG")
       <*> option str (long "dest" <> short 'd' <> value "output.png" <> help "Output filepath")
-      <*> optional sizeOpts
       <*> flag Terminate RenderBlankImage (long "fail-blank" <> short 'b' <> help "Render blank image upon failure")
 
   seed :: Parser (Maybe Int)

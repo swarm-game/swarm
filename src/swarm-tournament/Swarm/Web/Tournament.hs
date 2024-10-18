@@ -19,6 +19,7 @@ module Swarm.Web.Tournament (
   app,
 ) where
 
+import Codec.Picture
 import Commonmark qualified as Mark (commonmark, renderHtml)
 import Control.Lens hiding (Context)
 import Control.Monad.IO.Class (liftIO)
@@ -51,10 +52,12 @@ import Network.Wai.Parse (
   setMaxRequestNumFiles,
  )
 import Servant
+import Servant.JuicyPixels (PNG)
 import Servant.Multipart
 import Servant.Server.Experimental.Auth (AuthHandler, AuthServerData, mkAuthHandler)
 import Swarm.Game.Scenario (ScenarioMetadata, scenarioMetadata)
 import Swarm.Game.State (Sha1 (..))
+import Swarm.Game.World.Render
 import Swarm.Web.Auth
 import Swarm.Web.Tournament.Database.Query
 import Swarm.Web.Tournament.Type
@@ -90,6 +93,7 @@ type TournamentAPI =
     :<|> "api" :> "private" :> "upload" :> "solution" :> Header "Referer" TL.Text :> AuthProtect "cookie-auth" :> MultipartForm Mem (MultipartData Mem) :> Verb 'POST 303 '[JSON] (Headers '[Header "Location" TL.Text] SolutionFileCharacterization)
     :<|> "scenario" :> Capture "sha1" Sha1 :> "metadata" :> Get '[JSON] ScenarioMetadata
     :<|> "scenario" :> Capture "sha1" Sha1 :> "fetch" :> Get '[PlainText] TL.Text
+    :<|> "scenario" :> Capture "sha1" Sha1 :> "thumbnail" :> Get '[PNG] DynamicImage
     :<|> "solution" :> Capture "sha1" Sha1 :> "fetch" :> Get '[PlainText] TL.Text
     :<|> "list" :> "games" :> Get '[JSON] [TournamentGame]
     :<|> "list" :> "game" :> Capture "sha1" Sha1 :> Get '[JSON] GameWithSolutions
@@ -104,6 +108,7 @@ mkApp appData =
     :<|> uploadSolution appData
     :<|> getScenarioMetadata appData
     :<|> downloadRedactedScenario appData
+    :<|> renderThumbnail appData
     :<|> downloadSolution appData
     :<|> listScenarios
     :<|> listSolutions
@@ -259,6 +264,18 @@ downloadRedactedScenario (AppData _ _ persistenceLayer _) scenarioSha1 = do
     let redactedDict = M.delete "solution" rawYamlDict
     withExceptT DecodingFailure . except . decodeUtf8' . LBS.fromStrict $
       encodeWith defaultEncodeOptions redactedDict
+
+renderThumbnail :: AppData -> Sha1 -> Handler DynamicImage
+renderThumbnail (AppData _ _ persistenceLayer _) scenarioSha1 = do
+  Handler . withExceptT toServantError $ do
+    doc <-
+      ExceptT $
+        maybeToEither (DatabaseRetrievalFailure scenarioSha1)
+          <$> (getContent . scenarioStorage) persistenceLayer scenarioSha1
+
+    s <- withExceptT RetrievedInstantiationFailure $ initScenarioObjectWithEnv doc
+    g <- getRenderableGrid (RenderComputationContext Nothing Nothing) s
+    return $ ImageRGBA8 $ renderImage g
 
 listScenarios :: Handler [TournamentGame]
 listScenarios =
