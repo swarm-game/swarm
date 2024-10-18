@@ -25,13 +25,13 @@ isAcyclicGraph =
     AcyclicSCC _ -> True
     _ -> False
 
-getGraphCycles :: [SCC a] -> [[a]]
+getGraphCycles :: [SCC a] -> [NE.NonEmpty a]
 getGraphCycles =
   mapMaybe getCycle
  where
   getCycle = \case
-    AcyclicSCC _ -> Nothing
-    CyclicSCC c -> Just c
+    NECyclicSCC c -> Just c
+    _ -> Nothing
 
 failOnCyclicGraph ::
   Ord key =>
@@ -40,12 +40,13 @@ failOnCyclicGraph ::
   [(a, key, [key])] ->
   Either Text ()
 failOnCyclicGraph graphType keyFunction gEdges =
-  forM_ (NE.nonEmpty $ getGraphCycles $ stronglyConnComp gEdges) $ \cycles ->
+  forM_ maybeCycles $ \cycles ->
     Left $
       T.unwords
         [ graphType
         , "graph contains cycles:"
-        , commaList $
-            NE.toList $
-              fmap (brackets . T.intercalate " -> " . fmap keyFunction) cycles
+        , commaList $ NE.toList $ fmap showCycle cycles
         ]
+ where
+  maybeCycles = NE.nonEmpty $ getGraphCycles $ stronglyConnComp gEdges
+  showCycle = brackets . T.intercalate " -> " . NE.toList . fmap keyFunction
