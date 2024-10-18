@@ -104,10 +104,10 @@ pattern (:$:) :: Term -> Syntax -> Term
 pattern (:$:) t1 s2 = SApp (STerm t1) s2
 
 -- | Match a TLet without annotations.
-pattern TLet :: LetSyntax -> Bool -> Var -> Maybe Polytype -> Maybe Requirements -> Term -> Term -> Term
-pattern TLet ls r v mty mreq t1 t2 <- SLet ls r (lvVar -> v) mty mreq (STerm t1) (STerm t2)
+pattern TLet :: LetSyntax -> Bool -> Var -> Maybe RawPolytype -> Maybe Polytype -> Maybe Requirements -> Term -> Term -> Term
+pattern TLet ls r v mty mpty mreq t1 t2 <- SLet ls r (lvVar -> v) mty mpty mreq (STerm t1) (STerm t2)
   where
-    TLet ls r v mty mreq t1 t2 = SLet ls r (LV NoLoc v) mty mreq (STerm t1) (STerm t2)
+    TLet ls r v mty mpty mreq t1 t2 = SLet ls r (LV NoLoc v) mty mpty mreq (STerm t1) (STerm t2)
 
 -- | Match a STydef without annotations.
 pattern TTydef :: Var -> Polytype -> Maybe TydefInfo -> Term -> Term
@@ -135,7 +135,7 @@ pattern TProj :: Term -> Var -> Term
 pattern TProj t x = SProj (STerm t) x
 
 -- | Match a TAnnotate without annotations.
-pattern TAnnotate :: Term -> Polytype -> Term
+pattern TAnnotate :: Term -> RawPolytype -> Term
 pattern TAnnotate t pt = SAnnotate (STerm t) pt
 
 -- | Match a TSuspend without annotations.

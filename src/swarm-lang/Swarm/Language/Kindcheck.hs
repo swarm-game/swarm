@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -65,7 +66,7 @@ instance PrettyPrec KindError where
 
 -- | Check that a polytype is well-kinded.
 checkPolytypeKind :: (Has (Reader TDCtx) sig m, Has (Throw KindError) sig m) => Polytype -> m TydefInfo
-checkPolytypeKind pty@(Forall xs t) = TydefInfo pty (Arity $ length xs) <$ checkKind t
+checkPolytypeKind pty@(unPoly -> (xs, t)) = TydefInfo pty (Arity $ length xs) <$ checkKind t
 
 -- | Check that a type is well-kinded. For now, we don't allow
 --   higher-kinded types, *i.e.* all kinds will be of the form @Type

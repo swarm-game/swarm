@@ -225,7 +225,7 @@ valueToTerm = \case
     M.foldrWithKey
       ( \y v -> case v of
           VIndir {} -> id
-          _ -> TLet LSLet False y Nothing Nothing (valueToTerm v)
+          _ -> TLet LSLet False y Nothing Nothing Nothing (valueToTerm v)
       )
       (TLam x Nothing t)
       (M.restrictKeys (Ctx.unCtx (e ^. envVals)) (S.delete x (setOf freeVarsV (Syntax' NoLoc t Empty ()))))

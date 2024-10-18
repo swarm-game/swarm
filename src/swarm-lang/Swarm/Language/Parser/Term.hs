@@ -104,8 +104,8 @@ parseTermAtom2 =
 
 -- | Construct an 'SLet', automatically filling in the Boolean field
 --   indicating whether it is recursive.
-sLet :: LetSyntax -> LocVar -> Maybe Polytype -> Syntax -> Syntax -> Term
-sLet ls x ty t1 = SLet ls (lvVar x `S.member` setOf freeVarsV t1) x ty mempty t1
+sLet :: LetSyntax -> LocVar -> Maybe RawPolytype -> Syntax -> Syntax -> Term
+sLet ls x ty t1 = SLet ls (lvVar x `S.member` setOf freeVarsV t1) x ty Nothing mempty t1
 
 sNoop :: Syntax
 sNoop = STerm (TConst Noop)
@@ -121,7 +121,7 @@ bindTydef xs ty
   | not (S.null free) =
       failT $
         "Undefined type variable(s) on right-hand side of tydef:" : S.toList free
-  | otherwise = return $ Forall xs ty
+  | otherwise = return . absQuantify $ mkPoly xs ty
  where
   free = tyVars ty `S.difference` S.fromList xs
 
@@ -160,7 +160,7 @@ parseExpr :: Parser Syntax
 parseExpr =
   parseLoc $ ascribe <$> parseExpr' <*> optional (symbol ":" *> parsePolytype)
  where
-  ascribe :: Syntax -> Maybe Polytype -> Term
+  ascribe :: Syntax -> Maybe RawPolytype -> Term
   ascribe s Nothing = s ^. sTerm
   ascribe s (Just ty) = SAnnotate s ty
 

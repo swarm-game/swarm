@@ -100,10 +100,11 @@ data Term' ty
     --   annotation on the variable. The @Bool@ indicates whether
     --   it is known to be recursive.
     --
-    --   The @Maybe Requirements@ field is only for annotating the
-    --   requirements of a definition after typechecking; there is no
-    --   way to annotate requirements in the surface syntax.
-    SLet LetSyntax Bool LocVar (Maybe Polytype) (Maybe Requirements) (Syntax' ty) (Syntax' ty)
+    --   The @Maybe Polytype@ and @Maybe Requirements@ fields are only
+    --   for annotating the requirements of a definition after
+    --   typechecking; there is no way to annotate requirements in the
+    --   surface syntax.
+    SLet LetSyntax Bool LocVar (Maybe RawPolytype) (Maybe Polytype) (Maybe Requirements) (Syntax' ty) (Syntax' ty)
   | -- | A type synonym definition.  Note that this acts like a @let@
     --   (just like @def@), /i.e./ the @Syntax' ty@ field is the local
     --   context over which the type definition is in scope.
@@ -136,7 +137,7 @@ data Term' ty
   | -- | Record projection @e.x@
     SProj (Syntax' ty) Var
   | -- | Annotate a term with a type
-    SAnnotate (Syntax' ty) Polytype
+    SAnnotate (Syntax' ty) RawPolytype
   | -- | Run the given command, then suspend and wait for a new REPL
     --   input.
     SSuspend (Syntax' ty)

@@ -18,6 +18,7 @@ import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Data (Data)
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Maybe (isJust)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (brackets, emptyDoc, hsep, punctuate)
@@ -69,6 +70,10 @@ singleton x t = Ctx (M.singleton x t)
 lookup :: Var -> Ctx t -> Maybe t
 lookup x (Ctx c) = M.lookup x c
 
+-- | Check whether a context contains a certain variable as a key.
+member :: Var -> Ctx t -> Bool
+member x = isJust . lookup x
+
 -- | Look up a variable in a context in an ambient Reader effect.
 lookupR :: Has (Reader (Ctx t)) sig m => Var -> m (Maybe t)
 lookupR x = lookup x <$> ask
@@ -80,6 +85,10 @@ delete x (Ctx c) = Ctx (M.delete x c)
 -- | Get the list of key-value associations from a context.
 assocs :: Ctx t -> [(Var, t)]
 assocs = M.assocs . unCtx
+
+-- | Get the list of bound variables from a context.
+vars :: Ctx t -> [Var]
+vars = M.keys . unCtx
 
 -- | Add a key-value binding to a context (overwriting the old one if
 --   the key is already present).
