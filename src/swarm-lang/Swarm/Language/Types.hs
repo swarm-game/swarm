@@ -512,12 +512,20 @@ unPoly (Forall xs t) = (xs, t)
 ptVars :: Poly 'Quantified t -> [Var]
 ptVars (Forall xs _) = xs
 
+-- | Forget that a polytype has been properly quantified.
 forgetQ :: Poly 'Quantified t -> Poly 'Unquantified t
 forgetQ (Forall xs t) = Forall xs t
 
--- | A polytype without unification variables.
+-- | A regular polytype (without unification variables).  A @Polytype@
+--   (as opposed to a @RawPolytype@) is guaranteed to have implicit
+--   quantification properly applied, so that all type variables bound
+--   by the forall are explicitly listed.
 type Polytype = Poly 'Quantified Type
 
+-- | A raw polytype (without unification variables), which corresponds
+--   exactly to the way a polytype was written in source code.  In
+--   particular there may be type variables which are used in the type
+--   but not listed explicitly, which are to be implicitly quantified.
 type RawPolytype = Poly 'Unquantified Type
 
 instance PrettyPrec (Poly q Type) where
