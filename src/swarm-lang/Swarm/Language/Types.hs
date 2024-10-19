@@ -742,13 +742,13 @@ quantify ::
   Poly 'Unquantified ty ->
   m (Poly 'Quantified ty)
 quantify (Forall xs ty) = do
-  -- Look at all variables which occur in the type but are not explicitly bound by the forall...
-  let unbound = tyVars ty `S.difference` S.fromList xs
-  -- ...and filter out those that are not bound in the context and
-  -- should therefore be implicitly quantified
   inScope <- ask @TVCtx
-  let implicit = S.filter (not . (`Ctx.member` inScope)) unbound
-
+  -- Look at all variables which occur in the type but are not
+  -- explicitly bound by the forall, and and are not bound in the
+  -- context.  Such variables must be implicitly quantified.
+  let implicit =
+        (tyVars ty `S.difference` S.fromList xs)
+          `S.difference` M.keysSet (Ctx.unCtx inScope)
   pure $ Forall (xs ++ S.toList implicit) ty
 
 -- | Absolute implicit quantification, i.e. assume there are no type
