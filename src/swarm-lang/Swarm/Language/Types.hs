@@ -488,7 +488,7 @@ data Poly (q :: ImplicitQuantification) t = Forall {_ptVars :: [Var], ptBody :: 
   deriving (Show, Eq, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
 
 -- | Create a raw, unquantified @Poly@ value.
-mkPoly :: [Var] -> t -> Poly Unquantified t
+mkPoly :: [Var] -> t -> Poly 'Unquantified t
 mkPoly = Forall
 
 -- | Create a polytype while performing implicit quantification.
