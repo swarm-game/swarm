@@ -46,7 +46,7 @@ data AnnotatedDestination a = AnnotatedDestination
   , reorientation :: Direction
   , destination :: Cosmic a
   }
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic, ToJSON)
 
 -- | Parameterized on waypoint dimensionality ('additionalDimension') and
 -- on the portal location specification method ('portalExitLoc').
@@ -71,6 +71,7 @@ data Navigation additionalDimension portalExitLoc = Navigation
   -- coordinates (as with applying the "ul" offset).
   , portals :: M.Map (Cosmic Location) (AnnotatedDestination portalExitLoc)
   }
+  deriving (Generic)
 
 deriving instance (Eq (a WaypointMap), Eq b) => Eq (Navigation a b)
 deriving instance (Show (a WaypointMap), Show b) => Show (Navigation a b)
