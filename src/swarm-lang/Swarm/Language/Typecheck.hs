@@ -1011,6 +1011,7 @@ inferConst c = case c of
   Count -> [tyQ| Text -> Cmd Int |]
   Reprogram -> [tyQ| Actor -> {Cmd a} -> Cmd Unit |]
   Build -> [tyQ| {Cmd a} -> Cmd Actor |]
+  Act -> [tyQ| Dir -> Cmd Unit |]
   Drill -> [tyQ| Dir -> Cmd (Unit + Text) |]
   Use -> [tyQ| Text -> Dir -> Cmd (Unit + Text) |]
   Salvage -> [tyQ| Cmd Unit |]
