@@ -492,7 +492,7 @@ mkPoly :: [Var] -> t -> Poly Unquantified t
 mkPoly = Forall
 
 -- | Create a polytype while performing implicit quantification.
-mkQPoly :: Typical t => t -> Poly Quantified t
+mkQPoly :: Typical t => t -> Poly 'Quantified t
 mkQPoly = absQuantify . Forall []
 
 -- | Create a trivial "polytype" with no bound variables.  This is
@@ -505,27 +505,27 @@ mkTrivPoly = Forall []
 --   possible to project from a 'Poly Quantified' since the list of
 --   variables might be meaningless for a type that has not had
 --   implicit quantification applied.
-unPoly :: Poly Quantified t -> ([Var], t)
+unPoly :: Poly 'Quantified t -> ([Var], t)
 unPoly (Forall xs t) = (xs, t)
 
 -- | Project out the variables of a 'Poly Quantified' value.
-ptVars :: Poly Quantified t -> [Var]
+ptVars :: Poly 'Quantified t -> [Var]
 ptVars (Forall xs _) = xs
 
-forgetQ :: Poly Quantified t -> Poly Unquantified t
+forgetQ :: Poly 'Quantified t -> Poly 'Unquantified t
 forgetQ (Forall xs t) = Forall xs t
 
 -- | A polytype without unification variables.
-type Polytype = Poly Quantified Type
+type Polytype = Poly 'Quantified Type
 
-type RawPolytype = Poly Unquantified Type
+type RawPolytype = Poly 'Unquantified Type
 
 instance PrettyPrec (Poly q Type) where
   prettyPrec _ (Forall [] t) = ppr t
   prettyPrec _ (Forall xs t) = hsep ("∀" : map pretty xs) <> "." <+> ppr t
 
 -- | A polytype with unification variables.
-type UPolytype = Poly Quantified UType
+type UPolytype = Poly 'Quantified UType
 
 instance PrettyPrec (Poly q UType) where
   prettyPrec _ (Forall [] t) = ppr t
@@ -731,8 +731,8 @@ type TVCtx = Ctx UType
 -- | Implicitly quantify any otherwise unbound type variables.
 quantify ::
   (Has (Reader TVCtx) sig m, Typical ty) =>
-  Poly Unquantified ty ->
-  m (Poly Quantified ty)
+  Poly 'Unquantified ty ->
+  m (Poly 'Quantified ty)
 quantify (Forall xs ty) = do
   -- Look at all variables which occur in the type but are not explicitly bound by the forall...
   let unbound = tyVars ty `S.difference` S.fromList xs
@@ -745,7 +745,7 @@ quantify (Forall xs ty) = do
 
 -- | Absolute implicit quantification, i.e. assume there are no type
 --   variables in scope.
-absQuantify :: Typical t => Poly Unquantified t -> Poly Quantified t
+absQuantify :: Typical t => Poly 'Unquantified t -> Poly 'Quantified t
 absQuantify = run . runReader @TVCtx Ctx.empty . quantify
 
 ------------------------------------------------------------
