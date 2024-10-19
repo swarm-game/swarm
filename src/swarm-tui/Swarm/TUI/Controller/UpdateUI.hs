@@ -326,6 +326,6 @@ generateNotificationPopups = do
 -- | Strips the top-level @Cmd@ from a type, if any (to compute the
 --   result type of a REPL command evaluation).
 stripCmd :: TDCtx -> Polytype -> Polytype
-stripCmd tdCtx (Forall xs ty) = case whnfType tdCtx ty of
-  TyCmd resTy -> Forall xs resTy
-  _ -> Forall xs ty
+stripCmd tdCtx = fmap $ \ty -> case whnfType tdCtx ty of
+  TyCmd resTy -> resTy
+  _ -> ty

@@ -23,7 +23,7 @@ import Data.Foldable (asum)
 import Data.Graph
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map qualified as M
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isNothing)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lines qualified as R
@@ -111,7 +111,7 @@ narrowToPosition ::
 narrowToPosition s0@(Syntax' _ t _ ty) pos = fromMaybe s0 $ case t of
   SLam lv _ s -> d (locVarToSyntax' lv $ getInnerType ty) <|> d s
   SApp s1 s2 -> d s1 <|> d s2
-  SLet _ _ lv _ _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
+  SLet _ _ lv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> d (locVarToSyntax' lv lty) <|> d s1 <|> d s2
   SBind mlv _ _ _ s1@(Syntax' _ _ _ lty) s2 -> (mlv >>= d . flip locVarToSyntax' (getInnerType lty)) <|> d s1 <|> d s2
   STydef typ typBody _ti s1 -> d s1 <|> Just (locVarToSyntax' typ $ fromPoly typBody)
   SPair s1 s2 -> d s1 <|> d s2
@@ -182,6 +182,15 @@ instance ExplainableType Polytype where
     t -> t
   eq = (==)
 
+instance ExplainableType RawPolytype where
+  fromPoly = forgetQ
+  prettyType = prettyTextLine
+  getInnerType = fmap $ \case
+    (l :->: _r) -> l
+    (TyCmd t) -> t
+    t -> t
+  eq r t = r == forgetQ t
+
 explain :: ExplainableType ty => Syntax' ty -> Tree Text
 explain trm = case trm ^. sTerm of
   TUnit -> literal "The unit value."
@@ -205,7 +214,7 @@ explain trm = case trm ^. sTerm of
   TRequire {} -> pure "Require a certain number of an entity."
   SRequirements {} -> pure "Query the requirements of a term."
   -- definition or bindings
-  SLet ls isRecursive var mTypeAnn _ rhs _b -> pure $ explainDefinition ls isRecursive var (rhs ^. sType) mTypeAnn
+  SLet ls isRecursive var mTypeAnn _ _ rhs _b -> pure $ explainDefinition ls isRecursive var (rhs ^. sType) mTypeAnn
   SLam (LV _s v) _mType _syn ->
     pure $
       typeSignature v ty $
@@ -264,7 +273,7 @@ explainFunction s =
           (map explain params)
       ]
 
-explainDefinition :: ExplainableType ty => LetSyntax -> Bool -> LocVar -> ty -> Maybe Polytype -> Text
+explainDefinition :: ExplainableType ty => LetSyntax -> Bool -> LocVar -> ty -> Maybe RawPolytype -> Text
 explainDefinition ls isRecursive (LV _s var) ty maybeTypeAnnotation =
   typeSignature var ty $
     T.unwords
@@ -272,7 +281,7 @@ explainDefinition ls isRecursive (LV _s var) ty maybeTypeAnnotation =
       , (if isRecursive then "" else "non-") <> "recursive"
       , if ls == LSDef then "definition" else "let"
       , "expression"
-      , if null maybeTypeAnnotation then "without" else "with"
+      , if isNothing maybeTypeAnnotation then "without" else "with"
       , "a type annotation on the variable."
       ]
 

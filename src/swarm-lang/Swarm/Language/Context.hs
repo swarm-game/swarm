@@ -81,6 +81,10 @@ delete x (Ctx c) = Ctx (M.delete x c)
 assocs :: Ctx t -> [(Var, t)]
 assocs = M.assocs . unCtx
 
+-- | Get the list of bound variables from a context.
+vars :: Ctx t -> [Var]
+vars = M.keys . unCtx
+
 -- | Add a key-value binding to a context (overwriting the old one if
 --   the key is already present).
 addBinding :: Var -> t -> Ctx t -> Ctx t

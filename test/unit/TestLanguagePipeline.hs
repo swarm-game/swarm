@@ -33,27 +33,27 @@ testLanguagePipeline =
   testGroup
     "Language - pipeline"
     [ testCase "end semicolon #79" (valid "def a = 41 end def b = a + 1 end def c = b + 2 end")
-    , testCase
-        "quantification #148 - implicit"
-        (valid "def id : a -> a = \\x. x end; id move")
-    , testCase
-        "quantification #148 - explicit"
-        (valid "def id : forall a. a -> a = \\x. x end; id move")
-    , testCase
-        "quantification #148 - explicit with free tyvars"
-        ( process
-            "def id : forall a. b -> b = \\x. x end; id move"
-            ( T.unlines
-                [ "1:27:"
-                , "  |"
-                , "1 | def id : forall a. b -> b = \\x. x end; id move"
-                , "  |                           ^"
-                , "  Type contains free variable(s): b"
-                , "  Try adding them to the 'forall'."
-                , ""
-                ]
+    , testGroup
+        "quantification + scope"
+        [ testCase
+            "quantification #148 - implicit"
+            (valid "def id : a -> a = \\x. x end; id move")
+        , testCase
+            "quantification #148 - explicit"
+            (valid "def id : forall a. a -> a = \\x. x end; id move")
+        , testCase
+            "quantification #148 - explicit with free tyvars"
+            (valid "def id : forall a. b -> b = \\x. x end; id move")
+        , testCase
+            "type variable scope #2178"
+            (valid "def f : a -> (a * Int) = \\x. let g : a * Int = (x, 3) in g end")
+        , testCase
+            "type variable scope #2178 - shadowing"
+            ( process
+                "def f : a -> (a * Int) = \\x. let g : forall a. a * Int = (x, 3) in g end"
+                "1:59: Type mismatch:\n  From context, expected `x` to have type `s2`,\n  but it actually has type `s1`"
             )
-        )
+        ]
     , testCase
         "parsing operators #188 - parse valid operator (!=)"
         (valid "1!=(2)")
@@ -376,6 +376,7 @@ testLanguagePipeline =
 
                   isVar (TVar {}) = True
                   isVar _ = False
+                  getVars :: TSyntax -> [(Term' Polytype, Polytype)]
                   getVars = map (_sTerm &&& _sType) . filter (isVar . _sTerm) . universe
                in assertEqual
                     "variable types"
@@ -403,7 +404,7 @@ testLanguagePipeline =
             "type ascription doesn't allow rank 2 types"
             ( process
                 "\\f. (f:forall a. a->a) 3"
-                "1:5: Skolem variable s3 would escape its scope"
+                "1:24: Type mismatch:\n  From context, expected `3` to have type `s3`,\n  but it actually has type `Int`"
             )
         , testCase
             "checking a lambda with the wrong argument type"

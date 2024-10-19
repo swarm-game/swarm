@@ -6,7 +6,6 @@
 -- Term elaboration which happens after type checking.
 module Swarm.Language.Elaborate where
 
-import Control.Applicative ((<|>))
 import Control.Lens (transform, (^.))
 import Swarm.Language.Syntax
 
@@ -46,11 +45,11 @@ elaborate = transform rewrite
     -- Eventually, once requirements analysis is part of typechecking,
     -- we'll infer them both at typechecking time then fill them in
     -- during elaboration here.
-    SLet ls r x mty mreq t1 t2 ->
-      let mty' = case ls of
-            LSDef -> mty <|> Just (t1 ^. sType)
+    SLet ls r x mty _ mreq t1 t2 ->
+      let mpty = case ls of
+            LSDef -> Just (t1 ^. sType)
             LSLet -> Nothing
-       in SLet ls r x mty' mreq t1 t2
+       in SLet ls r x mty mpty mreq t1 t2
     SBind x (Just ty) _ mreq c1 c2 -> SBind x Nothing (Just ty) mreq c1 c2
     -- Rewrite @f $ x@ to @f x@.
     SApp (Syntax' _ (SApp (Syntax' _ (TConst AppF) _ _) l) _ _) r -> SApp l r
@@ -66,7 +65,7 @@ insertSuspend t = case t of
   TRequire {} -> thenSuspend
   TRequirements {} -> thenSuspend
   -- Recurse through def, tydef, bind, and annotate.
-  TLet ls r x mty mreq t1 t2 -> TLet ls r x mty mreq t1 (insertSuspend t2)
+  TLet ls r x mty mpty mreq t1 t2 -> TLet ls r x mty mpty mreq t1 (insertSuspend t2)
   TTydef x pty mtd t1 -> TTydef x pty mtd (insertSuspend t1)
   TBind mx mty mreq c1 c2 -> TBind mx mty mreq c1 (insertSuspend c2)
   TAnnotate t1 ty -> TAnnotate (insertSuspend t1) ty

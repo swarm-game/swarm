@@ -62,7 +62,7 @@ mkEntry c =
   cmdInfo = constInfo c
   cmdEffects = effectInfo $ constDoc cmdInfo
 
-  getArgs ((Forall _ t)) = unchainFun t
+  getArgs = unchainFun . ptBody
 
   rawArgs = getArgs $ inferConst c
 
