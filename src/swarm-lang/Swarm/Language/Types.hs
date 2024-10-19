@@ -431,14 +431,27 @@ instance (UnchainableFun t, PrettyPrec t, SubstRec t) => PrettyPrec (TypeF t) wh
 -- Generic folding over type representations
 ------------------------------------------------------------
 
+-- | Type class for various type representations (e.g. 'Type',
+--   'UType') and generic operations we can perform on them.  This
+--   helps us avoid code duplication in some cases, by writing a
+--   single generic function which works for any 'Typical' instance.
 class Typical t where
-  -- Fold a type into a summary value of some type @a@, given an
-  -- "empty" value of type @a@ (for use at e.g. Pure nodes in a UType)
+  -- | Fold a type into a summary value of some type @a@, given an
+  --   "empty" value of type @a@ (for use at e.g. Pure nodes in a
+  --   UType)
   foldT :: a -> (TypeF a -> a) -> t -> a
 
-  -- Refold a type into another type
+  -- | Refold a type into another type.  This is a special case of
+  --   'foldT' when we want to produce another type, since then we can
+  --   do something more sensible with 'Pure' nodes in a 'UType'
+  --   (i.e. preserve them instead of replacing them with a default
+  --   value).
   refoldT :: (TypeF t -> t) -> t -> t
+
+  -- | Roll up one level of structure.
   rollT :: TypeF t -> t
+
+  -- | It should be possible to convert 'Type' to any type-ish thing.
   fromType :: Type -> t
 
 instance Typical Type where
