@@ -556,6 +556,12 @@ testLanguagePipeline =
                 "(\\f. f 3) 2"
                 "1:11: Type mismatch:\n  From context, expected `2` to have a type like `Int -> _`"
             )
+        , testCase
+            "inferring type of bad recursive function - #2186"
+            ( process
+                "def bad = \\acc.\\n. if (n <= 0) {fst acc} {bad (fst acc + 1) (n - 1)} end"
+                "1:1: Type mismatch:\n  From context, expected `\\acc. \\n. if (n <= 0) {fst acc} {\n    bad (fst acc + 1) (n - 1)\n  }` to have type `Int -> Int -> Int`,\n  but it actually has a type like `(Int * _) -> Int -> Int`"
+            )
         ]
     , testGroup
         "generalize top-level binds #351 #1501"
