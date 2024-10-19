@@ -599,18 +599,18 @@ def benchmark: Int -> s -> (s -> s) -> Cmd (Int ) = \times.\s.\act. /* * (Int * 
       return acc
     } {
       t0 <- time;
-      log $ "START " ++ format t0;
+      //log $ "START " ++ format t0;
       let ns = act s in
       t1 <- time;
-      log $ "END " ++ format t1;
+      //log $ "END " ++ format t1;
       let t = t1 - t0 in
       //let lim = case (snd acc) (\_. (t, t)) (\l. (min t $ fst l, max t $ snd l)) in
-      runM ((fst acc + t) /*, lim */) ns (n - 1)
+      runM ((acc + t) /*, lim */) ns (n - 1)
     } in
-  log "start run";
-  res <- runM (0, inl ()) s times;
-  log "end run";
-  let avg = fst res / times in
+  //log "start run";
+  res <- runM 0 s times;
+  //log "end run";
+  let avg = res / times in
   // let lim = case (snd res) (\_. fail "BENCHMARK NOT RUN") (\l.l) in
   return avg // (avg, lim)
 end
@@ -661,20 +661,20 @@ end
 
 def bench_insert = \i.
   group i "INSERT BENCHMARK" (\i.
-    group i "INSERT 2" (\i.
-      let n = 2 in
-      let m = 2 in
+    group i "INSERT 10" (\i.
+      let n = 10 in
+      let m = 5 in
       lls10 <- gen_random_lists m n (3 * n);
       flat_res <- benchmark m lls10 (set_from_first_list flat_set.empty flat_set.insert);
       tree_res <- benchmark m lls10 (set_from_first_list tree_set.empty tree_set.insert);
       cmp_bench i "flat set" flat_res "tree set" tree_res
     );
-    group i "INSERT 5" (\i.
-      let n = 5 in
-      let m = 2 in
-      lls10 <- gen_random_lists m n (3 * n);
-      flat_res <- benchmark m lls10 (set_from_first_list flat_set.empty flat_set.insert);
-      tree_res <- benchmark m lls10 (set_from_first_list tree_set.empty tree_set.insert);
+    group i "INSERT 100" (\i.
+      let n = 100 in
+      let m = 3 in
+      lls100 <- gen_random_lists m n (3 * n);
+      flat_res <- benchmark m lls100 (set_from_first_list flat_set.empty flat_set.insert);
+      tree_res <- benchmark m lls100 (set_from_first_list tree_set.empty tree_set.insert);
       cmp_bench i "flat set" flat_res "tree set" tree_res
     )
   )
