@@ -15,7 +15,6 @@
 -- that the robot should be re-oriented.
 module Swarm.Game.Scenario.Topography.Navigation.Portal where
 
-import Data.Map.NonEmpty qualified as NEM
 import Control.Arrow ((&&&))
 import Control.Lens (view)
 import Control.Monad (forM, forM_, unless)
@@ -29,6 +28,7 @@ import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Map.NonEmpty qualified as NEM
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Text qualified as T
 import Data.Tuple (swap)
@@ -38,7 +38,7 @@ import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Universe
 import Swarm.Language.Syntax.Direction
-import Swarm.Util (allEqual, binTuples, both, failT, quote, showT, commaList)
+import Swarm.Util (allEqual, binTuples, both, commaList, failT, quote, showT)
 
 type WaypointMap = M.Map WaypointName (NonEmpty Location)
 
@@ -248,13 +248,15 @@ ensureSpatialConsistency xs =
  where
   renderNonUniformPairs nem =
     commaList $ NE.toList $ renderPair <$> NEM.toList nem
-    where
-      renderPair (k, v) = T.unwords [
-          renderKey k <> ":"
+   where
+    renderPair (k, v) =
+      T.unwords
+        [ renderKey k <> ":"
         , commaList $ NE.toList $ showT <$> v
         ]
-      renderKey (sw1, sw2) = T.unwords [
-          "Between subworlds"
+    renderKey (sw1, sw2) =
+      T.unwords
+        [ "Between subworlds"
         , renderQuotedWorldName sw1
         , "and"
         , renderQuotedWorldName sw2
