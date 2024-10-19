@@ -19,16 +19,30 @@ def mmap : (a -> b) -> Maybe a -> Maybe b = \f.\m. case m (\_. inl ()) (\a. inr 
 tydef List a = rec l. Maybe (a * l) end
 
 def emptyL : List a = inl () end
-def insertL : a -> List a -> List a = \a.\l. inr (a, l) end
-def pureL : a -> List a = \a. insertL a emptyL end
+def cons : a -> List a -> List a = \a.\l. inr (a, l) end
+def pureL : a -> List a = \a. cons a emptyL end
 
-def appendL : List a -> List a -> List a = \l.\r.
-  case l (\_. r) (\ln. inr (fst ln, appendL (snd ln) r))
+def foldr : (a -> b -> b) -> b -> List a -> b = \f. \z. \xs.
+  case xs
+    (\_. z)
+    (\c. f (fst c) (foldr f z (snd c)))
 end
 
-def lengthL : List a -> Int =
-  let len: Int -> List a -> Int = \a.\l. case l (\_. a) (\ln. len (a + 1) (snd ln)) in len 0
-end 
+def foldl : (b -> a -> b) -> b -> List a -> b = \f. \z. \xs.
+  case xs
+    (\_. z)
+    (\c. (foldl f (f z $ fst c) (snd c)))
+end
+
+def map : (a -> b) -> List a -> List b = \f.
+  foldr (\y. cons (f y)) emptyL
+end
+
+def appendL : List a -> List a -> List a = \xs. \ys.
+  foldr cons ys xs
+end
+
+def lengthL : List a -> Int = foldl (\acc.\_. acc + 1) 0 end 
 
 def safeGetL : Int -> List a -> Maybe a = \i.\l.
   case l (\_. inl ()) (\n. if (i <= 0) {inr $ fst n} {safeGetL (i - 1) (snd n)})
@@ -36,6 +50,11 @@ end
 
 def getL : Int -> List a -> a = \i.\l.
   case (safeGetL i l) (\_. fail $ "INDEX " ++ format i ++ " OUT OF BOUNDS!") (\a. a)
+end
+
+def formatL : List a -> Text = \l.
+ let f : List a -> Text = \l. case l (\_. "]") (\n. ", " ++ format (fst n) ++ f (snd n))
+ in case l (\_. "[]") (\n. "[" ++ format (fst n) ++ f (snd n))
 end
 
 // get from ordered list
@@ -67,17 +86,60 @@ def insertKeyL : (a -> k) -> a -> List a -> List a = \p.\y.\l.
       inr (y, snd n)
     } {
       if (nx > x) {
-        insertL y l
+        cons y l
       } {
-        inr (fst n, insertKeyL p y $ snd n)
+        cons (fst n) (insertKeyL p y $ snd n)
       }
     }
   )
 end
 
-def formatL : List a -> Text = \l.
- let f : List a -> Text = \l. case l (\_. "]") (\n. ", " ++ format (fst n) ++ f (snd n))
- in case l (\_. "[]") (\n. "[" ++ format (fst n) ++ f (snd n))
+// delete in ordered list
+def deleteKeyL : (a -> k) -> k -> List a -> List a = \p.\x.\l.
+  case l (\_. emptyL) (\n.
+    let nx = p (fst n) in
+    if (nx == x) {
+      snd n
+    } {
+      if (nx > x) {
+        l
+      } {
+        cons (fst n) (deleteKeyL p x $ snd n)
+      }
+    }
+  )
+end
+
+tydef FlatSet a = List a end
+
+def flat_set :
+  [ empty: FlatSet a
+  , insert: a -> FlatSet a -> FlatSet a 
+  , delete: a -> FlatSet a -> FlatSet a 
+  , contains: a -> FlatSet a -> Bool
+  ] =
+  [ empty=emptyL
+  , insert=insertKeyL (\x.x)
+  , delete=deleteKeyL (\x.x)
+  , contains=containsKeyL (\x.x)
+  ]
+end
+
+tydef FlatDict k v = List (k * v) end
+
+def flat_dict :
+  [ empty: FlatDict k v
+  , insert: k -> v -> FlatDict k v -> FlatDict k v
+  , delete: k -> FlatDict k v -> FlatDict k v
+  , get: k -> FlatDict k v -> Maybe v
+  , contains: k -> FlatDict k v -> Bool
+  ] =
+  [ empty=emptyL
+  , insert=\k.\v. insertKeyL fst (k,v)
+  , delete=deleteKeyL fst
+  , get=\k.\d. mmap snd (getKeyL fst k d)
+  , contains=containsKeyL fst
+  ]
 end
 
 /*******************************************************************/
@@ -403,6 +465,19 @@ def insertS : k -> Set k -> Set k = insertT (\x.x) end
 def deleteS : k -> Set k -> Set k = \k. deleteT (\x.x) k end
 def formatS : Set k -> Text = \s. formatL $ inorder s end
 
+def tree_set :
+  [ empty: Set a
+  , insert: a -> Set a -> Set a 
+  , delete: a -> Set a -> Set a 
+  , contains: a -> Set a -> Bool
+  ] =
+  [ empty=emptyT
+  , insert=insertT (\x.x)
+  , delete=deleteT (\x.x)
+  , contains=containsT (\x.x)
+  ]
+end
+
 /*******************************************************************/
 /*                           UNIT TESTS                            */
 /*******************************************************************/
@@ -434,7 +509,7 @@ end
 def test_ordered_list : Int -> Cmd Unit = \i.
   let s = [insert=insertKeyL (\x.x), contains=containsKeyL (\x.x)] in
   group i "ORDERED LIST TESTS" (\i.
-    let expected = insertL 1 $ insertL 2 $ insertL 3 emptyL in
+    let expected = cons 1 $ cons 2 $ cons 3 emptyL in
     let actual = s.insert 2 $ s.insert 1 $ s.insert 3 emptyL in
     assert_eq i (formatL expected) (formatL actual) "insertKeyL should insert in order";
   )
@@ -510,4 +585,104 @@ def test_tree: Cmd Unit =
     test_delete i;
   );
   log "ALL TREE TESTS PASSED!"
+end
+
+/*******************************************************************/
+/*                           BENCHMARKS                            */
+/*******************************************************************/
+
+def benchmark: Int -> s -> (s -> s) -> Cmd (Int * (Int * Int)) = \times.\s.\act.
+  let min = \x.\y. if (x > y) {y} {x} in
+  let max = \x.\y. if (x > y) {x} {y} in
+  let runM = \acc.\s.\n.
+    if (n <= 0) {
+      log "return";
+      return acc
+    } {
+      t0 <- time;
+      log $ "START " ++ format t0;
+      let ns = act s in
+      t1 <- time;
+      log $ "END " ++ format t1;
+      log "what?";
+      log $ format t1;
+      //log $ format t0;
+      //log $ format $ t1 - t0;
+      let t = t1 in
+      log "end 2";
+      let lim = case (snd acc) (\_. (t, t)) (\l. (min t $ fst l, max t $ snd l)) in
+      log "end 3";
+      runM ((fst acc + t), lim) ns (n - 1)
+    } in
+  log "start run";
+  res <- runM (0, inl ()) s times;
+  log "end run";
+  let avg = fst res / times in
+  let lim = case (snd res) (\_. fail "BENCHMARK NOT RUN") (\l.l) in
+  return (avg, lim)
+end
+
+def cmp_bench = \i.\base_name.\base_res.\new_name.\new_res.
+  let formatLim = \l. format ("min " ++ format (fst l), "max " ++ format (snd l)) in
+  log $ indent i ++ "* " ++ base_name ++ ": "
+    ++ format (fst base_res) ++ " ticks " ++ formatLim (snd base_res);
+
+  let d = (fst new_res * 100) / fst base_res in
+  let cmp = if (d > 100) {
+     format (d - 100) ++ "% slower"
+    } {
+      format (100 - d) ++ "% faster"
+    } in
+     
+  log $ indent i ++ "* " ++ new_name ++ ": "
+    ++ format (fst new_res) ++ " ticks " ++ formatLim (snd new_res)
+    ++ " <- " ++ cmp;
+end
+
+def gen_random_list = 
+  let gen = \acc.\n.\rlim.
+    if (n <= 0) { return acc } {
+      x <- random rlim;
+      gen (cons x acc) (n - 1) rlim
+    }
+  in gen emptyL
+end
+
+def gen_random_lists = \m.\n.\rlim.
+  let gen = \acc.\m.
+    if (m <= 0) { return acc } {
+      l <- gen_random_list n rlim;
+      gen (cons l acc) (m - 1)
+    }
+  in gen emptyL m
+end
+
+def set_from_first_list : forall a s. s -> (a -> s -> s) -> List (List a) -> List (List a) =\e.\ins.\lls.
+  case lls (\_. lls) (\ls_nlls.
+    let ls = fst ls_nlls in
+    let ns = foldl (\s.\a.ins a s) e ls in
+    let nlls = snd ls_nlls in
+    nlls
+  )
+end
+
+def bench_insert = \i.
+  group i "INSERT BENCHMARK" (\i.
+    group i "INSERT 2" (\i.
+      let n = 2 in
+      let m = 2 in
+      lls10 <- gen_random_lists m n (3 * n);
+      flat_res <- benchmark m lls10 (set_from_first_list flat_set.empty flat_set.insert);
+      tree_res <- benchmark m lls10 (set_from_first_list tree_set.empty tree_set.insert);
+      cmp_bench i "flat set" flat_res "tree set" tree_res
+    );
+    group i "INSERT 5" (\i.
+      let n = 5 in
+      let m = 2 in
+      lls10 <- gen_random_lists m n (3 * n);
+      flat_res <- benchmark m lls10 (set_from_first_list flat_set.empty flat_set.insert);
+      tree_res <- benchmark m lls10 (set_from_first_list tree_set.empty tree_set.insert);
+      cmp_bench i "flat set" flat_res "tree set" tree_res
+    )
+  )
 end
