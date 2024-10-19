@@ -328,13 +328,7 @@ world:
     - src: block
       offset: [-10, -14]
     - src: block
-      offset: [-16, -30]
-      orient:
-        up: east
-    - src: block
-      offset: [6, -30]
-      orient:
-        up: east
+      offset: [-10, -36]
     - src: storage silo
       offset: [8, 9]
     - src: field
@@ -373,7 +367,7 @@ world:
     , mask (x == -7 && y >= 3 || y == 3 && x <= -7) {fence}
     , mask (y > -2 && y < 2) {water}
     , mask (x > -3 && x < 3) {stone}
-    , mask (y > -35 && y < -29) {stone}
+    , mask (y > -25 && y < -19) {stone}
     ]
   map: |
     bbbbb

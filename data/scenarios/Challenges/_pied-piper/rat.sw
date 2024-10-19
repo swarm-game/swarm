@@ -1,16 +1,5 @@
-// def checkExpireSelf =
-//     loc <- whereami;
-//     if (snd loc > 6) {selfdestruct} {};
-//     end;
-
-
-def moveWithMortality =
-    move;
-    // instant checkExpireSelf;
-    end;
-
 def goFoodDir = \f. \r.
-    // say "in goFoodDir";
+    log "in goFoodDir";
     let d = fst r in
     if (d == down) {
         foodHere <- ishere "oats";
@@ -26,14 +15,14 @@ def goFoodDir = \f. \r.
         // navigation direction is determined
         // but before we move.
         try {
-            moveWithMortality;
+            move;
         } {};
         f;
     }
     end;
 
 def goHomeDir = \f. \r.
-    // say "in goHomeDir";
+    log "in goHomeDir";
     let d = fst r in
     if (d == down) {
         return ()
@@ -44,14 +33,14 @@ def goHomeDir = \f. \r.
         // navigation direction is determined
         // but before we move.
         try {
-            moveWithMortality;
+            move;
         } {};
         f;
     }
     end;
 
 def findGoodDirection =
-    // say "in findGoodDirection";
+    log "in findGoodDirection";
     isBlocked <- blocked;
     if isBlocked {
         turn left;
@@ -63,7 +52,7 @@ def moveUntilBlocked =
     isBlocked <- blocked;
     if isBlocked {
     } {
-        moveWithMortality;
+        move;
         moveUntilBlocked;
     };
     end;
@@ -77,21 +66,20 @@ def pauseAtRandom =
     end;
 
 def returnHome = \homeLoc.
-    // say "in returnHome";
+    log "in returnHome";
     nextDir <- path (inL ()) (inL homeLoc);
     case nextDir return $ goHomeDir $ returnHome homeLoc;
     end;
 
 def pursueFood = \hadSensedFood. \homeLoc.
-    // say $ "in pursueFood. hadSensedFood? " ++ format hadSensedFood;
+    log $ "in pursueFood. hadSensedFood? " ++ format hadSensedFood;
     nextDir <- path (inR 5) (inR "oats");
     case nextDir (\_. if hadSensedFood {returnHome homeLoc} {return ()}) $
         goFoodDir $ pursueFood true homeLoc;
     end;
 
 def doMovement = \startLoc.
-    // say "in doMovement";
-    // checkExpireSelf;
+    log "in doMovement";
 
     findGoodDirection;
     moveUntilBlocked;
@@ -106,7 +94,6 @@ def go = \startLoc.
     end;
 
 startLoc <- whereami;
-// let shouldDestruct = !(snd startLoc == -17 && fst startLoc < 19) in
 let shouldDestruct = false in
 if shouldDestruct {
     selfdestruct;
