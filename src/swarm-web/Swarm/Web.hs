@@ -41,6 +41,7 @@ import Control.Exception (Exception (displayException), IOException, catch, thro
 import Control.Lens
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
+import Data.Aeson (ToJSON)
 import Data.ByteString.Lazy (ByteString)
 import Data.Foldable (toList)
 import Data.IntMap qualified as IM
@@ -63,18 +64,22 @@ import Servant.Docs qualified as SD
 import Servant.Docs.Internal qualified as SD (renderCurlBasePath)
 import Servant.Types.SourceT qualified as S
 import Swarm.Game.Entity (EntityName, entityName)
+import Swarm.Game.Location (Location)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Objective
 import Swarm.Game.Scenario.Objective.Graph
 import Swarm.Game.Scenario.Objective.WinCheck
 import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..))
+import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.State
+import Swarm.Game.State.Landscape
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Type
+import Swarm.Game.Universe (SubworldName)
 import Swarm.Language.Pipeline (processTermEither)
 import Swarm.Pretty (prettyTextLine)
 import Swarm.TUI.Model hiding (SwarmKeyDispatchers (..))
@@ -104,6 +109,7 @@ type SwarmAPI =
     :<|> "goals" :> "graph" :> Get '[JSON] (Maybe GraphInfo)
     :<|> "goals" :> "uigoal" :> Get '[JSON] GoalTracking
     :<|> "goals" :> Get '[JSON] WinCondition
+    :<|> "navigation" :> Get '[JSON] (Navigation (M.Map SubworldName) Location)
     :<|> "recognize" :> "log" :> Get '[JSON] [SearchLog EntityName]
     :<|> "recognize" :> "found" :> Get '[JSON] [StructureLocation]
     :<|> "code" :> "render" :> ReqBody '[PlainText] T.Text :> Post '[PlainText] T.Text
@@ -160,6 +166,7 @@ mkApp state events =
     :<|> goalsGraphHandler state
     :<|> uiGoalHandler state
     :<|> goalsHandler state
+    :<|> navigationHandler state
     :<|> recogLogHandler state
     :<|> recogFoundHandler state
     :<|> codeRenderHandler
@@ -208,6 +215,16 @@ goalsHandler :: IO AppState -> Handler WinCondition
 goalsHandler appStateRef = do
   appState <- liftIO appStateRef
   return $ appState ^. gameState . winCondition
+
+deriving instance ToJSON (Navigation (M.Map SubworldName) Location)
+
+instance SD.ToSample (Navigation (M.Map SubworldName) Location) where
+  toSamples _ = SD.noSamples
+
+navigationHandler :: IO AppState -> Handler (Navigation (M.Map SubworldName) Location)
+navigationHandler appStateRef = do
+  appState <- liftIO appStateRef
+  return $ appState ^. gameState . landscape . worldNavigation
 
 recogLogHandler :: IO AppState -> Handler [SearchLog EntityName]
 recogLogHandler appStateRef = do

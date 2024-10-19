@@ -25,6 +25,7 @@ import Swarm.TUI.Panel
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.CellDisplay (renderDisplay)
 import Swarm.TUI.View.Util qualified as VU
+import Swarm.Util (applyWhen)
 
 extractTerrainMap :: UIState -> TerrainMap
 extractTerrainMap uis =
@@ -71,9 +72,8 @@ drawWorldEditor toplevelFocusRing uis =
     clickable n $ transformation w
    where
     transformation =
-      if Just n == maybeCurrentFocus
-        then withAttr BL.listSelectedFocusedAttr
-        else id
+      applyWhen (Just n == maybeCurrentFocus) $
+        withAttr BL.listSelectedFocusedAttr
 
   swatchContent list drawFunc =
     maybe emptyWidget drawFunc selectedThing

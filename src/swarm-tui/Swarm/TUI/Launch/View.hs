@@ -27,7 +27,7 @@ import Swarm.TUI.Launch.Prep
 import Swarm.TUI.Model.Name
 import Swarm.TUI.View.Attribute.Attr
 import Swarm.TUI.View.Util (EllipsisSide (Beginning), withEllipsis)
-import Swarm.Util (brackets, parens)
+import Swarm.Util (applyWhen, brackets, parens)
 
 drawFileBrowser :: FB.FileBrowser Name -> Widget Name
 drawFileBrowser b =
@@ -74,9 +74,7 @@ drawLaunchConfigPanel (LaunchOptions lc launchParams) =
   validatedOptions = toValidatedParams launchParams
   LaunchControls (FileBrowserControl fb _ isFbDisplayed) seedEditor ring displayedFor = lc
   addFileBrowser =
-    if isFbDisplayed
-      then (drawFileBrowser fb :)
-      else id
+    applyWhen isFbDisplayed (drawFileBrowser fb :)
 
   getFocusedConfigPanel :: Maybe ScenarioConfigPanelFocusable
   getFocusedConfigPanel = case focusGetCurrent ring of
@@ -86,9 +84,8 @@ drawLaunchConfigPanel (LaunchOptions lc launchParams) =
   isFocused = (== getFocusedConfigPanel) . Just
 
   highlightIfFocused x =
-    if isFocused x
-      then withDefAttr highlightAttr
-      else id
+    applyWhen (isFocused x) $
+      withDefAttr highlightAttr
 
   mkButton name label =
     clickable (ScenarioConfigControl $ ScenarioConfigPanelControl name)

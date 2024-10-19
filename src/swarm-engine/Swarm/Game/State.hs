@@ -120,7 +120,7 @@ import Swarm.Language.Pipeline (processTermEither)
 import Swarm.Language.Syntax (SrcLoc (..), TSyntax, sLoc)
 import Swarm.Language.Value (Env)
 import Swarm.Log
-import Swarm.Util (uniq)
+import Swarm.Util (applyWhen, uniq)
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 newtype Sha1 = Sha1 String
@@ -294,7 +294,7 @@ messageNotifications = to getNotif
     new = takeWhile (\l -> l ^. leTime > gs ^. messageInfo . lastSeenMessageTime) $ reverse allUniq
     -- creative players and system robots just see all messages (and focused robots logs)
     unchecked = gs ^. creativeMode || fromMaybe False (focusedRobot gs ^? _Just . systemRobot)
-    messages = (if unchecked then id else focusedOrLatestClose) (gs ^. messageInfo . messageQueue)
+    messages = applyWhen (not unchecked) focusedOrLatestClose (gs ^. messageInfo . messageQueue)
     allMessages = Seq.sort $ focusedLogs <> messages
     focusedLogs = maybe Empty (view robotLog) (focusedRobot gs)
     -- classic players only get to see messages that they said and a one message that they just heard
@@ -332,7 +332,7 @@ recalcViewCenterAndRedraw :: GameState -> GameState
 recalcViewCenterAndRedraw g =
   g
     & robotInfo .~ newRobotInfo
-    & (if ((/=) `on` (^. viewCenter)) oldRobotInfo newRobotInfo then needsRedraw .~ True else id)
+    & applyWhen (((/=) `on` (^. viewCenter)) oldRobotInfo newRobotInfo) (needsRedraw .~ True)
  where
   oldRobotInfo = g ^. robotInfo
   newRobotInfo = recalcViewCenter oldRobotInfo

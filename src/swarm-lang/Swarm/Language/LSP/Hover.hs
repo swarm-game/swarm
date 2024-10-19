@@ -251,7 +251,7 @@ explain trm = case trm ^. sTerm of
   internal description = literal $ description <> "\n**These should never show up in surface syntax.**"
   constGenSig c =
     let ity = inferConst c
-     in if ty `eq` ity then id else typeSignature (prettyText c) ity
+     in U.applyWhen (not $ ty `eq` ity) $ typeSignature (prettyText c) ity
 
 -- | Helper function to explain function application.
 --

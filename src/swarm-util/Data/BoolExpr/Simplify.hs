@@ -52,9 +52,8 @@ replace _ BFalse = BFalse
 replace m c@(BConst x) = case M.lookup varname m of
   Nothing -> c
   Just val ->
-    if txform val
+    if isPositive == val
       then BTrue
       else BFalse
  where
   (varname, isPositive) = extractConstFromSigned x
-  txform = if isPositive then id else not

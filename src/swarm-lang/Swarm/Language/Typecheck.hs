@@ -70,7 +70,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Prettyprinter
-import Swarm.Effect.Unify (Unification, UnificationError, (=:=))
+import Swarm.Effect.Unify (Unification, UnificationError)
 import Swarm.Effect.Unify qualified as U
 import Swarm.Effect.Unify.Fast qualified as U
 import Swarm.Language.Context hiding (lookup)
@@ -347,7 +347,7 @@ unify ::
   TypeJoin ->
   m UType
 unify ms j = do
-  res <- expected =:= actual
+  res <- expected U.=:= actual
   case res of
     Left _ -> do
       j' <- traverse U.applyBindings j
@@ -1148,7 +1148,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     traverse_ (adaptToTypeErr l KindErr . checkKind) mxTy
     case toU mxTy of
       Just xTy -> do
-        res <- argTy =:= xTy
+        res <- argTy U.=:= xTy
         case res of
           -- Generate a special error when the explicit type annotation
           -- on a lambda doesn't match the expected type,
@@ -1192,8 +1192,8 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
         xTy <- fresh
         t1' <- withBinding @UPolytype (lvVar x) (mkTrivPoly xTy) $ infer t1
         let uty = t1' ^. sType
-        _ <- xTy =:= uty
-        upty <- generalize uty
+        uty' <- unify (Just t1) (joined xTy uty)
+        upty <- generalize uty'
         return ([], upty, t1')
       -- An explicit polytype annotation has been provided. Perform
       -- implicit quantification, kind checking, and skolemization,

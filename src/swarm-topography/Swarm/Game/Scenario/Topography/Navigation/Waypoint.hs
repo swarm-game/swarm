@@ -21,6 +21,7 @@
 -- precise control of ordering.
 module Swarm.Game.Scenario.Topography.Navigation.Waypoint where
 
+import Data.Aeson (ToJSONKey)
 import Data.Text qualified as T
 import Data.Yaml as Y
 import GHC.Generics (Generic)
@@ -42,7 +43,7 @@ data Originated a = Originated
   deriving (Show, Eq, Functor)
 
 newtype WaypointName = WaypointName T.Text
-  deriving (Show, Eq, Ord, Generic, FromJSON)
+  deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON, ToJSONKey)
 
 -- | Metadata about a waypoint
 data WaypointConfig = WaypointConfig
