@@ -10,6 +10,7 @@
 module Swarm.Game.Universe where
 
 import Control.Lens (makeLenses, view)
+import Data.Aeson (ToJSONKey)
 import Data.Function (on)
 import Data.Int (Int32)
 import Data.Text (Text)
@@ -23,7 +24,7 @@ import Swarm.Util (quote)
 -- * Referring to subworlds
 
 data SubworldName = DefaultRootSubworld | SubworldName Text
-  deriving (Show, Eq, Ord, Generic, ToJSON)
+  deriving (Show, Eq, Ord, Generic, ToJSON, ToJSONKey)
 
 instance FromJSON SubworldName where
   parseJSON = withText "subworld name" $ return . SubworldName
@@ -48,7 +49,7 @@ data Cosmic a = Cosmic
   { _subworld :: SubworldName
   , _planar :: a
   }
-  deriving (Show, Eq, Ord, Functor, Generic, ToJSON)
+  deriving (Show, Eq, Ord, Functor, Generic, ToJSON, ToJSONKey)
 
 makeLenses ''Cosmic
 
