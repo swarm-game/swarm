@@ -34,6 +34,8 @@ def foldl : (b -> a -> b) -> b -> List a -> b = \f. \z. \xs.
     (\c. (foldl f (f z $ fst c) (snd c)))
 end
 
+def flip : (a -> b -> c) -> (b -> a -> c) = \f. (\b.\a.f a b) end
+
 def map : (a -> b) -> List a -> List b = \f.
   foldr (\y. cons (f y)) emptyL
 end
@@ -56,6 +58,10 @@ def formatL : List a -> Text = \l.
  let f : List a -> Text = \l. case l (\_. "]") (\n. ", " ++ format (fst n) ++ f (snd n))
  in case l (\_. "[]") (\n. "[" ++ format (fst n) ++ f (snd n))
 end
+
+/*******************************************************************/
+/*                          ORDERED LISTS                          */
+/*******************************************************************/
 
 // get from ordered list
 def getKeyL : (a -> k) -> k -> List a -> Maybe a = \p.\x.\l.
@@ -117,11 +123,13 @@ def flat_set :
   , insert: a -> FlatSet a -> FlatSet a 
   , delete: a -> FlatSet a -> FlatSet a 
   , contains: a -> FlatSet a -> Bool
+  , from_list: List a -> FlatSet a
   ] =
   [ empty=emptyL
   , insert=insertKeyL (\x.x)
   , delete=deleteKeyL (\x.x)
   , contains=containsKeyL (\x.x)
+  , from_list=foldl (flip $ insertKeyL (\x.x)) emptyL
   ]
 end
 
@@ -470,11 +478,13 @@ def tree_set :
   , insert: a -> Set a -> Set a 
   , delete: a -> Set a -> Set a 
   , contains: a -> Set a -> Bool
+  , from_list: List a -> Set a
   ] =
   [ empty=emptyT
   , insert=insertT (\x.x)
   , delete=deleteT (\x.x)
   , contains=containsT (\x.x)
+  , from_list=foldl (flip $ insertT (\x.x)) emptyT
   ]
 end
 
@@ -532,7 +542,7 @@ def test_insert: Int -> Cmd Unit = \i.
   );
 end
 
-def randomTestS = \i.\s.\test.
+def randomTestS: Int -> Set Int -> (Set Int -> Cmd a) -> Cmd (Set Int) = \i.\s.\test.
   if (i <= 0) {return s} {
     x <- random 20;
     let ns = insertS x s in
@@ -541,7 +551,7 @@ def randomTestS = \i.\s.\test.
   }
 end
 
-def delete_insert_prop = \i.\t.
+def delete_insert_prop: Int -> Set Int -> Cmd Unit = \i.\t.
   x <- random 20;
   let i_t = inorder t in
   let f_t = formatS t in
@@ -554,10 +564,10 @@ def delete_insert_prop = \i.\t.
   } { delete_insert_prop i t /* reroll */}
 end
 
-def delete_delete_prop = \i.\t.
+def delete_delete_prop: Int -> Set a -> Cmd Unit = \i.\t.
   let i_t = inorder t in
-  i <- random (lengthL i_t);
-  let x = getL i i_t in
+  ix <- random (lengthL i_t);
+  let x = getL ix i_t in
   let ds = deleteS x t in
   let dds = deleteS x ds in
   let f_t = formatS t in
@@ -591,10 +601,10 @@ end
 /*                           BENCHMARKS                            */
 /*******************************************************************/
 
-def benchmark: Int -> s -> (s -> s) -> Cmd (Int ) = \times.\s.\act. /* * (Int * Int) */
+def benchmark: Int -> s -> (s -> s) -> Cmd (Int * (Int * Int)) = \times.\s.\act.
   let min = \x.\y. if (x > y) {y} {x} in
   let max = \x.\y. if (x > y) {x} {y} in
-  let runM = \acc.\s.\n.
+  let runM: (Int * Maybe (Int * Int)) -> s -> Int -> Cmd (Int * Maybe (Int * Int)) = \acc.\s.\n.
     if (n <= 0) {
       return acc
     } {
@@ -604,23 +614,25 @@ def benchmark: Int -> s -> (s -> s) -> Cmd (Int ) = \times.\s.\act. /* * (Int * 
       t1 <- time;
       //log $ "END " ++ format t1;
       let t = t1 - t0 in
-      //let lim = case (snd acc) (\_. (t, t)) (\l. (min t $ fst l, max t $ snd l)) in
-      runM ((acc + t) /*, lim */) ns (n - 1)
+      log $ format s ++ " " ++ format t ++ " ticks";
+      let lim = case (snd acc) (\_. (t, t)) (\l. (min t $ fst l, max t $ snd l)) in
+      runM ((fst acc + t), inr lim) ns (n - 1)
     } in
   //log "start run";
-  res <- runM 0 s times;
+  res <- runM (0, inl ()) s times;
   //log "end run";
-  let avg = res / times in
-  // let lim = case (snd res) (\_. fail "BENCHMARK NOT RUN") (\l.l) in
-  return avg // (avg, lim)
+  let avg = fst res / times in
+  let lim = case (snd res) (\_. fail "BENCHMARK NOT RUN") (\l.l) in
+  return (avg, lim)
 end
 
-def cmp_bench = \i.\base_name.\base_res.\new_name.\new_res.
-  //let formatLim = \l. format ("min " ++ format (fst l), "max " ++ format (snd l)) in
+def cmp_bench : Int -> Text -> (Int * (Int * Int)) -> Text -> (Int * (Int * Int)) -> Cmd Unit
+ = \i.\base_name.\base_res.\new_name.\new_res.
+  let formatLim = \l. "(min " ++ format (fst l) ++ ", max " ++ format (snd l) ++ ")" in
   log $ indent i ++ "* " ++ base_name ++ ": "
-    ++ format (base_res) ++ " ticks "; //++ formatLim (snd base_res);
+    ++ format (fst base_res) ++ " ticks " ++ formatLim (snd base_res);
 
-  let d = (new_res * 100) / base_res in
+  let d = (fst new_res * 100) / fst base_res in
   let cmp = if (d > 100) {
      format (d - 100) ++ "% slower"
     } {
@@ -628,11 +640,12 @@ def cmp_bench = \i.\base_name.\base_res.\new_name.\new_res.
     } in
      
   log $ indent i ++ "* " ++ new_name ++ ": "
-    ++ format (new_res) ++ " ticks "// ++ formatLim (snd new_res)
+    ++ format (fst new_res) ++ " ticks " ++ formatLim (snd new_res)
     ++ " <- " ++ cmp;
 end
 
-def gen_random_list = 
+// Get a list of random integers of given length and maximum element number
+def gen_random_list: Int -> Int -> Cmd (List Int) = 
   let gen = \acc.\n.\rlim.
     if (n <= 0) { return acc } {
       x <- random rlim;
@@ -641,7 +654,8 @@ def gen_random_list =
   in gen emptyL
 end
 
-def gen_random_lists = \m.\n.\rlim.
+// Get a number of lists of random integers of given length and maximum element number
+def gen_random_lists: Int -> Int -> Int -> Cmd (List (List Int)) = \m.\n.\rlim.
   let gen = \acc.\m.
     if (m <= 0) { return acc } {
       l <- gen_random_list n rlim;
@@ -650,32 +664,68 @@ def gen_random_lists = \m.\n.\rlim.
   in gen emptyL m
 end
 
-def set_from_first_list : forall a s. s -> (a -> s -> s) -> List (List a) -> List (List a) =\e.\ins.\lls.
-  case lls (\_. lls) (\ls_nlls.
-    let ls = fst ls_nlls in
-    let ns = foldl (\s.\a.ins a s) e ls in
-    let nlls = snd ls_nlls in
-    nlls
-  )
-end
 
 def bench_insert = \i.
+  // Use the given function to construct (Flat)Set from the head of provided list of lists and return the tail
+  let set_from_first_list : (List a -> s) -> List (List a) -> List (List a) =\from_list.\lls.
+    case lls (\_. lls) (\ls_nlls.
+      let ns = from_list (fst ls_nlls) in
+      snd ls_nlls
+    )
+  in
+
   group i "INSERT BENCHMARK" (\i.
     group i "INSERT 10" (\i.
       let n = 10 in
       let m = 5 in
       lls10 <- gen_random_lists m n (3 * n);
-      flat_res <- benchmark m lls10 (set_from_first_list flat_set.empty flat_set.insert);
-      tree_res <- benchmark m lls10 (set_from_first_list tree_set.empty tree_set.insert);
+      flat_res <- benchmark m lls10 (set_from_first_list flat_set.from_list);
+      tree_res <- benchmark m lls10 (set_from_first_list tree_set.from_list);
       cmp_bench i "flat set" flat_res "tree set" tree_res
     );
     group i "INSERT 100" (\i.
       let n = 100 in
       let m = 3 in
       lls100 <- gen_random_lists m n (3 * n);
-      flat_res <- benchmark m lls100 (set_from_first_list flat_set.empty flat_set.insert);
-      tree_res <- benchmark m lls100 (set_from_first_list tree_set.empty tree_set.insert);
+      flat_res <- benchmark m lls100 (set_from_first_list flat_set.from_list);
+      tree_res <- benchmark m lls100 (set_from_first_list tree_set.from_list);
       cmp_bench i "flat set" flat_res "tree set" tree_res
     )
   )
+end
+
+def bench_contains = \i.
+  let contains_int : s -> (Int -> s -> Bool) -> Int -> Int = \s.\contains.\n.
+    let _ = contains n s in n + 1
+  in
+  group i "CONTAINS BENCHMARK" (\i.
+    group i "CONTAINS 10" (\i.
+      let n = 10 in
+      let m = 3 * n in
+      ls10 <- gen_random_list n m;
+      let fls = flat_set.from_list ls10 in
+      flat_res <- benchmark m 0 (contains_int fls flat_set.contains);
+      let tls = tree_set.from_list ls10 in
+      tree_res <- benchmark m 0 (contains_int tls tree_set.contains);
+      cmp_bench i "flat set" flat_res "tree set" tree_res
+    );
+    group i "CONTAINS 100" (\i.
+      let n = 100 in
+      let m = 3 * n in
+      ls100 <- gen_random_list n m;
+      let fls = flat_set.from_list ls100 in
+      flat_res <- benchmark m 0 (contains_int fls flat_set.contains);
+      let tls = tree_set.from_list ls100 in
+      tree_res <- benchmark m 0 (contains_int tls tree_set.contains);
+      cmp_bench i "flat set" flat_res "tree set" tree_res
+    )
+  )
+end
+
+def benchmark_tree: Cmd Unit =
+  group 0 "TREE BENCHMARKS" (\i.
+    bench_insert i;
+    bench_contains i;
+  );
+  log "ALL BENCHMARKS DONE!"
 end
