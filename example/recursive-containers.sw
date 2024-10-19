@@ -591,12 +591,11 @@ end
 /*                           BENCHMARKS                            */
 /*******************************************************************/
 
-def benchmark: Int -> s -> (s -> s) -> Cmd (Int * (Int * Int)) = \times.\s.\act.
+def benchmark: Int -> s -> (s -> s) -> Cmd (Int ) = \times.\s.\act. /* * (Int * Int) */
   let min = \x.\y. if (x > y) {y} {x} in
   let max = \x.\y. if (x > y) {x} {y} in
   let runM = \acc.\s.\n.
     if (n <= 0) {
-      log "return";
       return acc
     } {
       t0 <- time;
@@ -604,30 +603,24 @@ def benchmark: Int -> s -> (s -> s) -> Cmd (Int * (Int * Int)) = \times.\s.\act.
       let ns = act s in
       t1 <- time;
       log $ "END " ++ format t1;
-      log "what?";
-      log $ format t1;
-      //log $ format t0;
-      //log $ format $ t1 - t0;
-      let t = t1 in
-      log "end 2";
-      let lim = case (snd acc) (\_. (t, t)) (\l. (min t $ fst l, max t $ snd l)) in
-      log "end 3";
-      runM ((fst acc + t), lim) ns (n - 1)
+      let t = t1 - t0 in
+      //let lim = case (snd acc) (\_. (t, t)) (\l. (min t $ fst l, max t $ snd l)) in
+      runM ((fst acc + t) /*, lim */) ns (n - 1)
     } in
   log "start run";
   res <- runM (0, inl ()) s times;
   log "end run";
   let avg = fst res / times in
-  let lim = case (snd res) (\_. fail "BENCHMARK NOT RUN") (\l.l) in
-  return (avg, lim)
+  // let lim = case (snd res) (\_. fail "BENCHMARK NOT RUN") (\l.l) in
+  return avg // (avg, lim)
 end
 
 def cmp_bench = \i.\base_name.\base_res.\new_name.\new_res.
-  let formatLim = \l. format ("min " ++ format (fst l), "max " ++ format (snd l)) in
+  //let formatLim = \l. format ("min " ++ format (fst l), "max " ++ format (snd l)) in
   log $ indent i ++ "* " ++ base_name ++ ": "
-    ++ format (fst base_res) ++ " ticks " ++ formatLim (snd base_res);
+    ++ format (base_res) ++ " ticks "; //++ formatLim (snd base_res);
 
-  let d = (fst new_res * 100) / fst base_res in
+  let d = (new_res * 100) / base_res in
   let cmp = if (d > 100) {
      format (d - 100) ++ "% slower"
     } {
@@ -635,7 +628,7 @@ def cmp_bench = \i.\base_name.\base_res.\new_name.\new_res.
     } in
      
   log $ indent i ++ "* " ++ new_name ++ ": "
-    ++ format (fst new_res) ++ " ticks " ++ formatLim (snd new_res)
+    ++ format (new_res) ++ " ticks "// ++ formatLim (snd new_res)
     ++ " <- " ++ cmp;
 end
 
