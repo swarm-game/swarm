@@ -18,7 +18,6 @@ import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Data (Data)
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (isJust)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (brackets, emptyDoc, hsep, punctuate)
@@ -69,10 +68,6 @@ singleton x t = Ctx (M.singleton x t)
 -- | Look up a variable in a context.
 lookup :: Var -> Ctx t -> Maybe t
 lookup x (Ctx c) = M.lookup x c
-
--- | Check whether a context contains a certain variable as a key.
-member :: Var -> Ctx t -> Bool
-member x = isJust . lookup x
 
 -- | Look up a variable in a context in an ambient Reader effect.
 lookupR :: Has (Reader (Ctx t)) sig m => Var -> m (Maybe t)
