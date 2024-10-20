@@ -49,18 +49,17 @@ extra-source-files:
   editors/vscode/syntaxes/*.yaml
 
 extra-doc-files: docs/image/sublibrary-graph.svg
-data-dir: data/
 data-files:
-  *.txt
-  *.yaml
+  data/*.txt
+  data/*.yaml
+  data/scenarios/**/*.sw
+  data/scenarios/**/*.txt
+  data/scenarios/**/*.yaml
+  data/test/language-snippets/**/*.sw
+  data/test/standalone-topography/*.png
+  data/test/standalone-topography/*.yaml
+  data/worlds/*.world
   example/*.sw
-  scenarios/**/*.sw
-  scenarios/**/*.txt
-  scenarios/**/*.yaml
-  test/language-snippets/**/*.sw
-  test/standalone-topography/*.png
-  test/standalone-topography/*.yaml
-  worlds/*.world
 
 source-repository head
   type: git
