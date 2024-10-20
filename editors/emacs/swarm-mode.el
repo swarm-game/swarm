@@ -122,6 +122,7 @@
       "instant"
       "installkeyhandler"
       "teleport"
+      "warp"
       "as"
       "robotnamed"
       "robotnumbered"

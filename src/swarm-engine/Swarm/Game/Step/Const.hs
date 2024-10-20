@@ -272,34 +272,12 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Teleport -> case vs of
       [VRobot rid, VPair (VInt x) (VInt y)] -> do
-        -- Make sure the other robot exists and is close
-        target <- getRobotWithinTouch rid
-        -- either change current robot or one in robot map
-        let oldLoc = target ^. robotLocation
-            nextLoc = fmap (const $ Location (fromIntegral x) (fromIntegral y)) oldLoc
-
-        onTarget rid $ do
-          checkMoveAhead nextLoc $ \case
-            PathBlockedBy _ -> Destroy
-            PathLiquid _ -> Destroy
-          updateRobotLocation oldLoc nextLoc
-
-        -- Privileged robots can teleport without causing any
-        -- improbable effects.  Unprivileged robots must be using an
-        -- infinite improbability drive, which can cause a random entity
-        -- to spawn near the target location.
-        omni <- isPrivilegedBot
-        unless omni $ do
-          let area = map (<$ nextLoc) $ getLocsInArea (nextLoc ^. planar) 5
-          emptyLocs <- filterM (fmap isNothing . entityAt) area
-          randomLoc <- weightedChoice (const 1) emptyLocs
-          es <- uses (landscape . terrainAndEntities . entityMap) allEntities
-          randomEntity <- weightedChoice (const 1) es
-          case (randomLoc, randomEntity) of
-            (Just loc, Just e) -> updateEntityAt loc (const (Just e))
-            _ -> return ()
-
-        return $ mkReturn ()
+        doTeleport rid (Location (fromIntegral x) (fromIntegral y) <$)
+      _ -> badConst
+    Warp -> case vs of
+      [VRobot rid, VPair (VText swName) (VPair (VInt x) (VInt y))] -> do
+        doTeleport rid . const . Cosmic (SubworldName swName) $
+          Location (fromIntegral x) (fromIntegral y)
       _ -> badConst
     Grab -> mkReturn <$> doGrab Grab' PerformRemoval
     Harvest -> mkReturn <$> doGrab Harvest' PerformRemoval
@@ -1255,6 +1233,40 @@ execConst runChildProg c vs s k = do
       let msg = "The operator '$' should only be a syntactic sugar and removed in elaboration:\n"
        in throwError . Fatal $ msg <> badConstMsg
  where
+  doTeleport rid locUpdateFunc = do
+
+    -- Make sure the other robot exists and is close
+    target <- getRobotWithinTouch rid
+    -- either change current robot or one in robot map
+    let oldLoc = target ^. robotLocation
+        nextLoc = locUpdateFunc oldLoc
+
+    onTarget rid $ do
+      checkMoveAhead nextLoc $ \case
+        PathBlockedBy _ -> Destroy
+        PathLiquid _ -> Destroy
+      updateRobotLocation oldLoc nextLoc
+
+    -- Privileged robots can teleport without causing any
+    -- improbable effects.  Unprivileged robots must be using an
+    -- infinite improbability drive, which can cause a random entity
+    -- to spawn near the target location.
+    omni <- isPrivilegedBot
+    unless omni $ do
+      let area = map (<$ nextLoc) $ getLocsInArea (nextLoc ^. planar) 5
+      emptyLocs <- filterM (fmap isNothing . entityAt) area
+      randomLoc <- weightedChoice (const 1) emptyLocs
+      es <- uses (landscape . terrainAndEntities . entityMap) allEntities
+      randomEntity <- weightedChoice (const 1) es
+      case (randomLoc, randomEntity) of
+        (Just loc, Just e) -> updateEntityAt loc (const (Just e))
+        _ -> return ()
+
+    return $ mkReturn ()
+
+
+
+
   doDrill d = do
     ins <- use equippedDevices
 
