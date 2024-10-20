@@ -91,6 +91,7 @@
       "time"
       "scout"
       "whereami"
+      "locateme"
       "waypoint"
       "structure"
       "floorplan"

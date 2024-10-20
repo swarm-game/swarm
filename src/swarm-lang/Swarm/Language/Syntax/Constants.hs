@@ -146,6 +146,8 @@ data Const
     Scout
   | -- | Get the current x, y coordinates
     Whereami
+  | -- | Get the current subworld and x, y coordinates
+    LocateMe
   | -- | Get the x, y coordinates of a named waypoint, by index
     Waypoint
   | -- | Get the x, y coordinates of southwest corner of a constructed structure, by index
@@ -678,6 +680,11 @@ constInfo c = case c of
       shortDoc
         (Set.singleton $ Query $ Sensing RobotSensing)
         "Get the current x and y coordinates."
+  LocateMe ->
+    command 0 Intangible $
+      shortDoc
+        (Set.singleton $ Query $ Sensing RobotSensing)
+        "Get the current subworld and x, y coordinates."
   Waypoint ->
     command 2 Intangible . doc (Set.singleton $ Query APriori) "Get the x, y coordinates of a named waypoint, by index" $
       [ "Return only the waypoints in the same subworld as the calling robot."

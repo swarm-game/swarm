@@ -557,6 +557,9 @@ execConst runChildProg c vs s k = do
     Whereami -> do
       loc <- use robotLocation
       return $ mkReturn $ loc ^. planar
+    LocateMe -> do
+      loc <- use robotLocation
+      return $ mkReturn $ (loc ^. subworld, loc ^. planar)
     Waypoint -> case vs of
       [VText name, VInt idx] -> do
         lm <- use $ landscape . worldNavigation
