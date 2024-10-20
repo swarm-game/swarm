@@ -594,7 +594,7 @@ end
 def benchmark: Int -> s -> (s -> s) -> Cmd (Int * (Int * Int)) = \times.\s.\act.
   let min = \x.\y. if (x > y) {y} {x} in
   let max = \x.\y. if (x > y) {x} {y} in
-  let runM = \acc.\s.\n.
+  let runM: Int * Maybe (Int * Int) -> s -> Int -> Cmd (Int * Maybe (Int * Int)) = \acc.\s.\n.
     if (n <= 0) {
       log "return";
       return acc
@@ -612,7 +612,7 @@ def benchmark: Int -> s -> (s -> s) -> Cmd (Int * (Int * Int)) = \times.\s.\act.
       log "end 2";
       let lim = case (snd acc) (\_. (t, t)) (\l. (min t $ fst l, max t $ snd l)) in
       log "end 3";
-      runM ((fst acc + t), lim) ns (n - 1)
+      runM ((fst acc + t), inr lim) ns (n - 1)
     } in
   log "start run";
   res <- runM (0, inl ()) s times;
