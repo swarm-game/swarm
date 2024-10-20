@@ -579,7 +579,7 @@ def delete_insert_prop: Int -> Set Int -> Cmd Unit = \i.\t.
   let i_t = inorder t in
   let f_t = formatS t in
   if (not $ containsS x t) {
-    log $ format x;
+    // log $ format x;
     assert_eq i
       (formatL i_t)
       (formatS $ deleteS x $ insertS x t)
