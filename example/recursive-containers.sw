@@ -67,20 +67,20 @@ end
 def getKeyL : (a -> k) -> k -> List a -> Maybe a = \p.\x.\l.
   case l (\_. inl ()) (\n.
     let nx = p (fst n) in
-    if (nx == x) {
-      inr $ fst n
+    if (nx < x) {
+      getKeyL p x $ snd n
     } {
-      if (nx < x) {
+      if (nx > x) {
         inl ()
       } {
-        getKeyL p x $ snd n
+        inr $ fst n
       }
     }
   )
 end
 
 def containsKeyL : (a -> k) -> k -> List a -> Bool = \p.\x.\l.
-  case (getKeyL p x l) (\_. true) (\_. false)
+  case (getKeyL p x l) (\_. false) (\_. true)
 end
 
 // insert into ordered list - replaces elements, like set
@@ -165,12 +165,15 @@ def isEmptyT : RBTree k -> Bool = \d. d == emptyT end
 
 def getT : (k -> a) -> a -> RBTree k -> Maybe k = \p.\x.\t.
   case t (\_. inl ()) (\n.
-    if (x == p n.k) { inr n.k } {
-        if (x < p n.k) {
-            getT p x n.l
-        } {
-            getT p x n.r
-        }
+    let nx = p n.k in
+    if (x < nx) {
+        getT p x n.l
+    } {
+      if (x > nx) {
+          getT p x n.r
+      } {
+        inr n.k
+      }
     }
   )
 end
@@ -517,11 +520,18 @@ def test_empty: Int -> Cmd Unit = \i.
 end
 
 def test_ordered_list : Int -> Cmd Unit = \i.
-  let s = [insert=insertKeyL (\x.x), contains=containsKeyL (\x.x)] in
+  let s = flat_set in
   group i "ORDERED LIST TESTS" (\i.
-    let expected = cons 1 $ cons 2 $ cons 3 emptyL in
-    let actual = s.insert 2 $ s.insert 1 $ s.insert 3 emptyL in
+    let expected = cons 1 $ cons 2 $ cons 3 $ cons 5 emptyL in
+    let actual = s.insert 2 $ s.insert 5 $ s.insert 1 $ s.insert 3 s.empty in
     assert_eq i (formatL expected) (formatL actual) "insertKeyL should insert in order";
+    assert i (not $ s.contains 0 actual) "not contains 0 [1,2,3,5]";
+    assert i (s.contains 1 actual) "contains 1 [1,2,3,5]";
+    assert i (s.contains 2 actual) "contains 2 [1,2,3,5]";
+    assert i (s.contains 3 actual) "contains 3 [1,2,3,5]";
+    assert i (not $ s.contains 4 actual) "not contains 4 [1,2,3,5]";
+    assert i (s.contains 5 actual) "contains 5 [1,2,3,5]";
+    assert i (not $ s.contains 6 actual) "not contains 6 [1,2,3,5]";
   )
 end
 
@@ -539,6 +549,19 @@ def test_insert: Int -> Cmd Unit = \i.
       assert_eq i (inr 1) (getD 0 $ tree02) "get 0 {0: 1, 2: 3} == 1";
       assert_eq i (inr 3) (getD 2 $ tree02) "get 2 {0: 1, 2: 3} == 3";
     );
+    let s = tree_set in
+    group i "test {1,2,3,5}" (\i.
+      let expected = cons 1 $ cons 2 $ cons 3 $ cons 5 emptyL in
+      let actual = s.insert 2 $ s.insert 5 $ s.insert 1 $ s.insert 3 s.empty in
+      assert_eq i (formatL expected) (formatS actual) "set should be in order";
+      assert i (not $ s.contains 0 actual) "not contains 0 [1,2,3,5]";
+      assert i (s.contains 1 actual) "contains 1 [1,2,3,5]";
+      assert i (s.contains 2 actual) "contains 2 [1,2,3,5]";
+      assert i (s.contains 3 actual) "contains 3 [1,2,3,5]";
+      assert i (not $ s.contains 4 actual) "not contains 4 [1,2,3,5]";
+      assert i (s.contains 5 actual) "contains 5 [1,2,3,5]";
+      assert i (not $ s.contains 6 actual) "not contains 6 [1,2,3,5]";
+    )
   );
 end
 
@@ -614,7 +637,7 @@ def benchmark: Int -> s -> (s -> s) -> Cmd (Int * (Int * Int)) = \times.\s.\act.
       t1 <- time;
       //log $ "END " ++ format t1;
       let t = t1 - t0 in
-      log $ format s ++ " " ++ format t ++ " ticks";
+      //log $ format s ++ " " ++ format t ++ " ticks";
       let lim = case (snd acc) (\_. (t, t)) (\l. (min t $ fst l, max t $ snd l)) in
       runM ((fst acc + t), inr lim) ns (n - 1)
     } in
@@ -713,9 +736,12 @@ def bench_contains = \i.
       let n = 100 in
       let m = 3 * n in
       ls100 <- gen_random_list n m;
+      //log $ formatL ls100;
       let fls = flat_set.from_list ls100 in
+      //log $ formatL fls;
       flat_res <- benchmark m 0 (contains_int fls flat_set.contains);
       let tls = tree_set.from_list ls100 in
+      //log $ formatS tls;
       tree_res <- benchmark m 0 (contains_int tls tree_set.contains);
       cmp_bench i "flat set" flat_res "tree set" tree_res
     )
