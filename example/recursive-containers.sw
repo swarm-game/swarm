@@ -546,9 +546,7 @@ def test_empty: Int -> Cmd Unit = \i.
   )
 end
 
-def test_ordered_list : Int -> Cmd Unit = \i.
-  let s = flat_set in
-  group i "ORDERED LIST TESTS" (\i.
+def test_insert_1235: ISet s Int -> Int -> Cmd Unit =\s.\i.
     let expected = cons 1 $ cons 2 $ cons 3 $ cons 5 emptyL in
     let actual = s.insert 2 $ s.insert 5 $ s.insert 1 $ s.insert 3 s.empty in
     assert_eq i (formatL expected) (formatL actual) "insertKeyL should insert in order";
@@ -559,7 +557,11 @@ def test_ordered_list : Int -> Cmd Unit = \i.
     assert i (not $ s.contains 4 actual) "not contains 4 [1,2,3,5]";
     assert i (s.contains 5 actual) "contains 5 [1,2,3,5]";
     assert i (not $ s.contains 6 actual) "not contains 6 [1,2,3,5]";
-  )
+end
+
+def test_ordered_list : Int -> Cmd Unit = \i.
+  let s = flat_set in
+  group i "ORDERED LIST TESTS" (test_insert_1235 flat_set)
 end
 
 def test_insert: Int -> Cmd Unit = \i.
@@ -578,18 +580,7 @@ def test_insert: Int -> Cmd Unit = \i.
       assert_eq i (inr 1) (d.get 0 $ tree02) "get 0 {0: 1, 2: 3} == 1";
       assert_eq i (inr 3) (d.get 2 $ tree02) "get 2 {0: 1, 2: 3} == 3";
     );
-    group i "test {1,2,3,5}" (\i.
-      let expected = cons 1 $ cons 2 $ cons 3 $ cons 5 emptyL in
-      let actual = s.insert 2 $ s.insert 5 $ s.insert 1 $ s.insert 3 s.empty in
-      assert_eq i (formatL expected) (s.pretty actual) "set should be in order";
-      assert i (not $ s.contains 0 actual) "not contains 0 [1,2,3,5]";
-      assert i (s.contains 1 actual) "contains 1 [1,2,3,5]";
-      assert i (s.contains 2 actual) "contains 2 [1,2,3,5]";
-      assert i (s.contains 3 actual) "contains 3 [1,2,3,5]";
-      assert i (not $ s.contains 4 actual) "not contains 4 [1,2,3,5]";
-      assert i (s.contains 5 actual) "contains 5 [1,2,3,5]";
-      assert i (not $ s.contains 6 actual) "not contains 6 [1,2,3,5]";
-    )
+    group i "test {1,2,3,5}" (test_insert_1235 tree_set)
   );
 end
 
