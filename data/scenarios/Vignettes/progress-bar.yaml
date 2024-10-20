@@ -1,0 +1,179 @@
+version: 1
+name: Progress bar
+description: |
+  A progress bar example that gradually fills up.
+seed: 0
+objectives:
+  - goal:
+      - Wait for all progress bars to fill up.
+    condition: |
+      turn east;
+      let c = e <- scan down; if (e != inr "tree") {fail "not done"} {} in
+      teleport self (1,-1); c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c;
+      teleport self (1,-5); c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c;
+      teleport self (1,-9); c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c;
+      return true
+solution: |
+  wait 100;
+robots:
+  - name: base
+    dir: east
+    devices:
+      - treads
+      - logger
+      - grabber
+  - name: fill
+    system: true
+    dir: east
+    devices:
+      - logger
+    inventory:
+      - [10, tree]
+    program: |
+      let repeat = \n.\c. if (n == 0) {} {c; repeat (n-1) c} in
+      p <- whereami;
+      repeat 10 (place "tree"; wait (- snd p); move)
+known: [tree]
+entities:
+  - {name: Letter A, display: {char: "A"}, description: ["The letter A"], properties: [known]}
+  - {name: Letter B, display: {char: "B"}, description: ["The letter B"], properties: [known]}
+  - {name: Letter C, display: {char: "C"}, description: ["The letter C"], properties: [known]}
+  - {name: Letter D, display: {char: "D"}, description: ["The letter D"], properties: [known]}
+  - {name: Letter E, display: {char: "E"}, description: ["The letter E"], properties: [known]}
+  - {name: Letter F, display: {char: "F"}, description: ["The letter F"], properties: [known]}
+  - {name: Letter G, display: {char: "G"}, description: ["The letter G"], properties: [known]}
+  - {name: Letter H, display: {char: "H"}, description: ["The letter H"], properties: [known]}
+  - {name: Letter I, display: {char: "I"}, description: ["The letter I"], properties: [known]}
+  - {name: Letter J, display: {char: "J"}, description: ["The letter J"], properties: [known]}
+  - {name: Letter K, display: {char: "K"}, description: ["The letter K"], properties: [known]}
+  - {name: Letter L, display: {char: "L"}, description: ["The letter L"], properties: [known]}
+  - {name: Letter M, display: {char: "M"}, description: ["The letter M"], properties: [known]}
+  - {name: Letter N, display: {char: "N"}, description: ["The letter N"], properties: [known]}
+  - {name: Letter O, display: {char: "O"}, description: ["The letter O"], properties: [known]}
+  - {name: Letter P, display: {char: "P"}, description: ["The letter P"], properties: [known]}
+  - {name: Letter Q, display: {char: "Q"}, description: ["The letter Q"], properties: [known]}
+  - {name: Letter R, display: {char: "R"}, description: ["The letter R"], properties: [known]}
+  - {name: Letter S, display: {char: "S"}, description: ["The letter S"], properties: [known]}
+  - {name: Letter T, display: {char: "T"}, description: ["The letter T"], properties: [known]}
+  - {name: Letter U, display: {char: "U"}, description: ["The letter U"], properties: [known]}
+  - {name: Letter V, display: {char: "V"}, description: ["The letter V"], properties: [known]}
+  - {name: Letter W, display: {char: "W"}, description: ["The letter W"], properties: [known]}
+  - {name: Letter X, display: {char: "X"}, description: ["The letter X"], properties: [known]}
+  - {name: Letter Y, display: {char: "Y"}, description: ["The letter Y"], properties: [known]}
+  - {name: Letter Z, display: {char: "Z"}, description: ["The letter Z"], properties: [known]}
+  - {name: Letter a, display: {char: "a"}, description: ["The letter a"], properties: [known]}
+  - {name: Letter b, display: {char: "b"}, description: ["The letter b"], properties: [known]}
+  - {name: Letter c, display: {char: "c"}, description: ["The letter c"], properties: [known]}
+  - {name: Letter d, display: {char: "d"}, description: ["The letter d"], properties: [known]}
+  - {name: Letter e, display: {char: "e"}, description: ["The letter e"], properties: [known]}
+  - {name: Letter f, display: {char: "f"}, description: ["The letter f"], properties: [known]}
+  - {name: Letter g, display: {char: "g"}, description: ["The letter g"], properties: [known]}
+  - {name: Letter h, display: {char: "h"}, description: ["The letter h"], properties: [known]}
+  - {name: Letter i, display: {char: "i"}, description: ["The letter i"], properties: [known]}
+  - {name: Letter j, display: {char: "j"}, description: ["The letter j"], properties: [known]}
+  - {name: Letter k, display: {char: "k"}, description: ["The letter k"], properties: [known]}
+  - {name: Letter l, display: {char: "l"}, description: ["The letter l"], properties: [known]}
+  - {name: Letter m, display: {char: "m"}, description: ["The letter m"], properties: [known]}
+  - {name: Letter n, display: {char: "n"}, description: ["The letter n"], properties: [known]}
+  - {name: Letter o, display: {char: "o"}, description: ["The letter o"], properties: [known]}
+  - {name: Letter p, display: {char: "p"}, description: ["The letter p"], properties: [known]}
+  - {name: Letter q, display: {char: "q"}, description: ["The letter q"], properties: [known]}
+  - {name: Letter r, display: {char: "r"}, description: ["The letter r"], properties: [known]}
+  - {name: Letter s, display: {char: "s"}, description: ["The letter s"], properties: [known]}
+  - {name: Letter t, display: {char: "t"}, description: ["The letter t"], properties: [known]}
+  - {name: Letter u, display: {char: "u"}, description: ["The letter u"], properties: [known]}
+  - {name: Letter v, display: {char: "v"}, description: ["The letter v"], properties: [known]}
+  - {name: Letter w, display: {char: "w"}, description: ["The letter w"], properties: [known]}
+  - {name: Letter x, display: {char: "x"}, description: ["The letter x"], properties: [known]}
+  - {name: Letter y, display: {char: "y"}, description: ["The letter y"], properties: [known]}
+  - {name: Letter z, display: {char: "z"}, description: ["The letter z"], properties: [known]}
+structures:
+  - name: progress
+    structure:
+      palette:
+        '+': [stone, wall]
+        '.': [stone]
+        '-': [stone, null, fill]
+      map: |
+        ++++++++++++
+        +-.........+
+        ++++++++++++
+world:
+  dsl: |
+    {grass}
+  offset: false
+  palette:
+    '~': [grass, null, base]
+    '.': [grass]
+    ' ': [grass]
+    '$':
+      structure:
+        name: progress
+      cell: [stone]
+    'A': [grass, Letter A]
+    'B': [grass, Letter B]
+    'C': [grass, Letter C]
+    'D': [grass, Letter D]
+    'E': [grass, Letter E]
+    'F': [grass, Letter F]
+    'G': [grass, Letter G]
+    'H': [grass, Letter H]
+    'I': [grass, Letter I]
+    'J': [grass, Letter J]
+    'K': [grass, Letter K]
+    'L': [grass, Letter L]
+    'M': [grass, Letter M]
+    'N': [grass, Letter N]
+    'O': [grass, Letter O]
+    'P': [grass, Letter P]
+    'Q': [grass, Letter Q]
+    'R': [grass, Letter R]
+    'S': [grass, Letter S]
+    'T': [grass, Letter T]
+    'U': [grass, Letter U]
+    'V': [grass, Letter V]
+    'W': [grass, Letter W]
+    'X': [grass, Letter X]
+    'Y': [grass, Letter Y]
+    'Z': [grass, Letter Z]
+    'a': [grass, Letter a]
+    'b': [grass, Letter b]
+    'c': [grass, Letter c]
+    'd': [grass, Letter d]
+    'e': [grass, Letter e]
+    'f': [grass, Letter f]
+    'g': [grass, Letter g]
+    'h': [grass, Letter h]
+    'i': [grass, Letter i]
+    'j': [grass, Letter j]
+    'k': [grass, Letter k]
+    'l': [grass, Letter l]
+    'm': [grass, Letter m]
+    'n': [grass, Letter n]
+    'o': [grass, Letter o]
+    'p': [grass, Letter p]
+    'q': [grass, Letter q]
+    'r': [grass, Letter r]
+    's': [grass, Letter s]
+    't': [grass, Letter t]
+    'u': [grass, Letter u]
+    'v': [grass, Letter v]
+    'w': [grass, Letter w]
+    'x': [grass, Letter x]
+    'y': [grass, Letter y]
+    'z': [grass, Letter z]
+  map: |-
+    $...............................
+    .............First progress bar.
+    ................................
+    ......................~.........
+    $...............................
+    .............Second progress bar
+    ................................
+    ................................
+    $...............................
+    .............Third progress bar.
+    ................................
+    ................................
+    abcdefghijklmnopqrstuvwxyz......
+    ABCDEFGHIJKLMNOPQRSTUVWXYZ......
