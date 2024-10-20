@@ -1102,6 +1102,7 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Key -> [tyQ| Text -> Key |]
   InstallKeyHandler -> [tyQ| Text -> (Key -> Cmd Unit) -> Cmd Unit |]
   Teleport -> [tyQ| Actor -> (Int * Int) -> Cmd Unit |]
+  Warp -> [tyQ| Actor -> (Text, (Int * Int)) -> Cmd Unit |]
   As -> [tyQ| Actor -> {Cmd a} -> Cmd a |]
   RobotNamed -> [tyQ| Text -> Cmd Actor |]
   RobotNumbered -> [tyQ| Int -> Cmd Actor |]

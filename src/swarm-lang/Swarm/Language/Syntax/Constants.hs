@@ -304,6 +304,8 @@ data Const
 
     -- | Teleport a robot to the given position.
     Teleport
+    -- | Relocate a robot to the given cosmic position.
+    Warp
   | -- | Run a command as if you were another robot.
     As
   | -- | Find an actor by name.
@@ -852,6 +854,7 @@ constInfo c = case c of
       , "The second argument is a function to handle keyboard inputs."
       ]
   Teleport -> command 2 short $ shortDoc (Set.singleton $ Mutation $ RobotChange PositionChange) "Teleport a robot to the given location."
+  Warp -> command 2 short $ shortDoc (Set.singleton $ Mutation $ RobotChange PositionChange) "Relocate a robot to the given cosmic location."
   As -> command 2 Intangible $ shortDoc (Set.singleton $ Mutation $ RobotChange BehaviorChange) "Hypothetically run a command as if you were another robot."
   RobotNamed -> command 1 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Find an actor by name."
   RobotNumbered -> command 1 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Find an actor by number."
