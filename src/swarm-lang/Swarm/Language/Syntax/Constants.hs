@@ -304,8 +304,8 @@ data Const
 
     -- | Teleport a robot to the given position.
     Teleport
-    -- | Relocate a robot to the given cosmic position.
-    Warp
+      -- | Relocate a robot to the given cosmic position.
+      Warp
   | -- | Run a command as if you were another robot.
     As
   | -- | Find an actor by name.
