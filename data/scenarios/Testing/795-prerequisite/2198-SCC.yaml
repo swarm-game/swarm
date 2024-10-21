@@ -1,0 +1,34 @@
+version: 1
+name: "bad-cycles"
+author: Brent Yorgey
+description: An example for 2198
+robots:
+  - name: base
+objectives:
+  - id: a
+    condition: 'true'
+    prerequisite:
+      logic:
+        and:
+          - b
+          - c
+          - d
+  - id: b
+    condition: 'true'
+    prerequisite: a
+  - id: c
+    condition: 'true'
+    prerequisite:
+      logic:
+        and:
+          - a
+          - d
+  - id: d
+    condition: 'true'
+    prerequisite:
+      logic:
+        and:
+          - a
+          - c
+world:
+  dsl: '{stone}'
