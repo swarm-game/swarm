@@ -60,8 +60,6 @@ appendPath (DFSPath s p) v = DFSPath (IS.insert v s) (v : p)
 -- Nothing
 -- >>> findCycle [("a",3,[1]), ("b",1,[0,3]), ("c",2,[1]), ("d",0,[2])]
 -- Just ["d","c","b"]
--- >>> findCycle [("a", 0, [1]), ("b", 1, [2])]
--- Just ["a","b"]
 findCycle :: Ord key => [(a, key, [key])] -> Maybe [a]
 findCycle es = runST $ do
   visited <- newArray (0, n - 1) False
