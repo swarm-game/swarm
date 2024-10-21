@@ -358,6 +358,7 @@ testScenarioSolutions rs ui key =
         , testSolution Default "Testing/1295-density-command"
         , testSolution Default "Testing/1356-portals/portals-flip-and-rotate"
         , testSolution Default "Testing/144-subworlds/basic-subworld"
+        , testSolution Default "Testing/144-subworlds/teleport-and-query"
         , testSolution Default "Testing/144-subworlds/subworld-mapped-robots"
         , testSolution Default "Testing/144-subworlds/subworld-located-robots"
         , testSolution Default "Testing/144-subworlds/subworld-shared-structures"

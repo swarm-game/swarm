@@ -3,3 +3,4 @@ subworld-shared-structures.yaml
 subworld-mapped-robots.yaml
 subworld-located-robots.yaml
 spatial-consistency-enforcement.yaml
+teleport-and-query.yaml

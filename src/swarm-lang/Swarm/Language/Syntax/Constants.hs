@@ -146,6 +146,8 @@ data Const
     Scout
   | -- | Get the current x, y coordinates
     Whereami
+  | -- | Get the current subworld and x, y coordinates
+    LocateMe
   | -- | Get the x, y coordinates of a named waypoint, by index
     Waypoint
   | -- | Get the x, y coordinates of southwest corner of a constructed structure, by index
@@ -304,6 +306,8 @@ data Const
 
     -- | Teleport a robot to the given position.
     Teleport
+  | -- | Relocate a robot to the given cosmic position.
+    Warp
   | -- | Run a command as if you were another robot.
     As
   | -- | Find an actor by name.
@@ -678,6 +682,11 @@ constInfo c = case c of
       shortDoc
         (Set.singleton $ Query $ Sensing RobotSensing)
         "Get the current x and y coordinates."
+  LocateMe ->
+    command 0 Intangible $
+      shortDoc
+        (Set.singleton $ Query $ Sensing RobotSensing)
+        "Get the current subworld and x, y coordinates."
   Waypoint ->
     command 2 Intangible . doc (Set.singleton $ Query APriori) "Get the x, y coordinates of a named waypoint, by index" $
       [ "Return only the waypoints in the same subworld as the calling robot."
@@ -852,6 +861,7 @@ constInfo c = case c of
       , "The second argument is a function to handle keyboard inputs."
       ]
   Teleport -> command 2 short $ shortDoc (Set.singleton $ Mutation $ RobotChange PositionChange) "Teleport a robot to the given location."
+  Warp -> command 2 short $ shortDoc (Set.singleton $ Mutation $ RobotChange PositionChange) "Relocate a robot to the given cosmic location."
   As -> command 2 Intangible $ shortDoc (Set.singleton $ Mutation $ RobotChange BehaviorChange) "Hypothetically run a command as if you were another robot."
   RobotNamed -> command 1 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Find an actor by name."
   RobotNumbered -> command 1 Intangible $ shortDoc (Set.singleton $ Query $ Sensing RobotSensing) "Find an actor by number."

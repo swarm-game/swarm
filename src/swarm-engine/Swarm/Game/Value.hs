@@ -18,6 +18,7 @@ import Swarm.Game.Entity
 import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Topography.Area (AreaDimensions (..))
+import Swarm.Game.Universe
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Value
 
@@ -51,6 +52,9 @@ instance Valuable Bool where
 
 instance Valuable Text where
   asValue = VText
+
+instance Valuable SubworldName where
+  asValue = asValue . renderWorldName
 
 instance Valuable () where
   asValue = const VUnit
