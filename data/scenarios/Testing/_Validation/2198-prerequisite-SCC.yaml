@@ -1,7 +1,11 @@
 version: 1
-name: "bad-cycles"
+name: |
+  Prerequisite objectives: dependency cycles in a larger SCC
 author: Brent Yorgey
-description: An example for 2198
+description: |
+  This should be rejected by the parser due to cyclic dependencies.
+  The dependency graph is strongly connected, but not all four
+  dependencies are in a single cycle together.
 robots:
   - name: base
 objectives:
