@@ -571,6 +571,7 @@ library swarm-scenario
     filepath,
     fused-effects,
     hashable,
+    nonempty-containers,
     hsnoise,
     lens,
     linear,

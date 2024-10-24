@@ -28,6 +28,7 @@ import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Map.NonEmpty qualified as NEM
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Text qualified as T
 import Data.Tuple (swap)
@@ -37,7 +38,7 @@ import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint
 import Swarm.Game.Universe
 import Swarm.Language.Syntax.Direction
-import Swarm.Util (allEqual, binTuples, both, failT, quote, showT)
+import Swarm.Util (allEqual, binTuples, both, commaList, failT, quote, showT)
 
 type WaypointMap = M.Map WaypointName (NonEmpty Location)
 
@@ -239,12 +240,28 @@ ensureSpatialConsistency ::
   [(Cosmic Location, AnnotatedDestination Location)] ->
   m ()
 ensureSpatialConsistency xs =
-  unless (null nonUniform) $
+  forM_ (NEM.nonEmptyMap nonUniform) $ \nonUniformMap ->
     failT
       [ "Non-uniform portal distances:"
-      , showT nonUniform
+      , renderNonUniformPairs nonUniformMap
       ]
  where
+  renderNonUniformPairs nem =
+    commaList $ NE.toList $ renderPair <$> NEM.toList nem
+   where
+    renderPair (k, v) =
+      T.unwords
+        [ renderKey k <> ":"
+        , commaList $ NE.toList $ showT <$> v
+        ]
+    renderKey (sw1, sw2) =
+      T.unwords
+        [ "Between subworlds"
+        , renderQuotedWorldName sw1
+        , "and"
+        , renderQuotedWorldName sw2
+        ]
+
   consistentPairs :: [(Cosmic Location, Cosmic Location)]
   consistentPairs = map (fmap destination) $ filter (enforceConsistency . snd) xs
 
