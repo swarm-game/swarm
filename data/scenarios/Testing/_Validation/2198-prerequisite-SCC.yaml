@@ -1,0 +1,38 @@
+version: 1
+name: |
+  Prerequisite objectives: dependency cycles in a larger SCC
+author: Brent Yorgey
+description: |
+  This should be rejected by the parser due to cyclic dependencies.
+  The dependency graph is strongly connected, but not all four
+  dependencies are in a single cycle together.
+robots:
+  - name: base
+objectives:
+  - id: a
+    condition: 'true'
+    prerequisite:
+      logic:
+        and:
+          - b
+          - c
+          - d
+  - id: b
+    condition: 'true'
+    prerequisite: a
+  - id: c
+    condition: 'true'
+    prerequisite:
+      logic:
+        and:
+          - a
+          - d
+  - id: d
+    condition: 'true'
+    prerequisite:
+      logic:
+        and:
+          - a
+          - c
+world:
+  dsl: '{stone}'
