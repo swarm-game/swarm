@@ -9,26 +9,94 @@
 // only first element of tuple). It is based on Haskell code in:
 // https://abhiroop.github.io/Haskell-Red-Black-Tree/
 
+/*******************************************************************/
+/*                    (TYPE) DECLARATIONS                          */
+/*******************************************************************/
+
 tydef Maybe a = Unit + a end
+
+tydef List a = rec l. Maybe (a * l) end
+
+tydef RBTree k = rec b. Maybe [red: Bool, k: k, l: b, r: b] end
+
+tydef ISet s a = 
+  [ empty: s
+  , insert: a -> s -> s 
+  , delete: a -> s -> s
+  , contains: a -> s -> Bool
+  , from_list: List a -> s
+  , pretty: s -> Text
+  ]
+end
+
+def undefined_set : any -> ISet any s =\empty.
+    [empty=empty, insert=\x.undefined, delete=\x.undefined, contains=\x.undefined, from_list=\x.undefined, pretty=\x.undefined]
+end
+
+tydef IDict d k v =
+  [ empty: d
+  , insert: k -> v -> d -> d
+  , delete: k -> d -> d
+  , get: k -> d -> Maybe v
+  , contains: k -> d -> Bool
+  , pretty: d -> Text
+  ]
+end
+
+def undefined_dict : any -> IDict any k v =\empty.
+    [empty=empty, insert=\x.undefined, delete=\x.undefined, get=\x.undefined, contains=\x.undefined, pretty=\x.undefined]
+end
+
+tydef FlatSet a = List a end
+def flat_set : ISet (FlatSet a) a = undefined_set (inl ()) end
+
+tydef FlatDict k v = List (k * v) end
+def flat_dict : IDict (FlatDict k v) k v = undefined_dict (inl ()) end
+
+tydef Set k = RBTree k end
+def tree_set : ISet (Set a) a = undefined_set (inl ()) end
+
+tydef Dict k v = RBTree (k * v) end
+def tree_dict : IDict (Dict k v) k v = undefined_dict (inl ()) end
+
+/*******************************************************************/
+/*                              MAYBE                              */
+/*******************************************************************/
+
 def mmap : (a -> b) -> Maybe a -> Maybe b = \f.\m. case m (\_. inl ()) (\a. inr (f a)) end
+
 
 /*******************************************************************/
 /*                              LISTS                              */
 /*******************************************************************/
 
-tydef List a = rec l. Maybe (a * l) end
-
 def emptyL : List a = inl () end
-def insertL : a -> List a -> List a = \a.\l. inr (a, l) end
-def pureL : a -> List a = \a. insertL a emptyL end
+def cons : a -> List a -> List a = \a.\l. inr (a, l) end
+def pureL : a -> List a = \a. cons a emptyL end
 
-def appendL : List a -> List a -> List a = \l.\r.
-  case l (\_. r) (\ln. inr (fst ln, appendL (snd ln) r))
+def foldr : (a -> b -> b) -> b -> List a -> b = \f. \z. \xs.
+  case xs
+    (\_. z)
+    (\c. f (fst c) (foldr f z (snd c)))
 end
 
-def lengthL : List a -> Int =
-  let len: Int -> List a -> Int = \a.\l. case l (\_. a) (\ln. len (a + 1) (snd ln)) in len 0
-end 
+def foldl : (b -> a -> b) -> b -> List a -> b = \f. \z. \xs.
+  case xs
+    (\_. z)
+    (\c. (foldl f (f z $ fst c) (snd c)))
+end
+
+def flip : (a -> b -> c) -> (b -> a -> c) = \f. (\b.\a.f a b) end
+
+def map : (a -> b) -> List a -> List b = \f.
+  foldr (\y. cons (f y)) emptyL
+end
+
+def appendL : List a -> List a -> List a = \xs. \ys.
+  foldr cons ys xs
+end
+
+def lengthL : List a -> Int = foldl (\acc.\_. acc + 1) 0 end 
 
 def safeGetL : Int -> List a -> Maybe a = \i.\l.
   case l (\_. inl ()) (\n. if (i <= 0) {inr $ fst n} {safeGetL (i - 1) (snd n)})
@@ -38,24 +106,33 @@ def getL : Int -> List a -> a = \i.\l.
   case (safeGetL i l) (\_. fail $ "INDEX " ++ format i ++ " OUT OF BOUNDS!") (\a. a)
 end
 
+def formatL : List a -> Text = \l.
+ let f : List a -> Text = \l. case l (\_. "]") (\n. ", " ++ format (fst n) ++ f (snd n))
+ in case l (\_. "[]") (\n. "[" ++ format (fst n) ++ f (snd n))
+end
+
+/*******************************************************************/
+/*                          ORDERED LISTS                          */
+/*******************************************************************/
+
 // get from ordered list
 def getKeyL : (a -> k) -> k -> List a -> Maybe a = \p.\x.\l.
   case l (\_. inl ()) (\n.
     let nx = p (fst n) in
-    if (nx == x) {
-      inr $ fst n
+    if (nx < x) {
+      getKeyL p x $ snd n
     } {
-      if (nx < x) {
+      if (nx > x) {
         inl ()
       } {
-        getKeyL p x $ snd n
+        inr $ fst n
       }
     }
   )
 end
 
 def containsKeyL : (a -> k) -> k -> List a -> Bool = \p.\x.\l.
-  case (getKeyL p x l) (\_. true) (\_. false)
+  case (getKeyL p x l) (\_. false) (\_. true)
 end
 
 // insert into ordered list - replaces elements, like set
@@ -67,40 +144,78 @@ def insertKeyL : (a -> k) -> a -> List a -> List a = \p.\y.\l.
       inr (y, snd n)
     } {
       if (nx > x) {
-        insertL y l
+        cons y l
       } {
-        inr (fst n, insertKeyL p y $ snd n)
+        cons (fst n) (insertKeyL p y $ snd n)
       }
     }
   )
 end
 
-def formatL : List a -> Text = \l.
- let f : List a -> Text = \l. case l (\_. "]") (\n. ", " ++ format (fst n) ++ f (snd n))
- in case l (\_. "[]") (\n. "[" ++ format (fst n) ++ f (snd n))
+// delete in ordered list
+def deleteKeyL : (a -> k) -> k -> List a -> List a = \p.\x.\l.
+  case l (\_. emptyL) (\n.
+    let nx = p (fst n) in
+    if (nx == x) {
+      snd n
+    } {
+      if (nx > x) {
+        l
+      } {
+        cons (fst n) (deleteKeyL p x $ snd n)
+      }
+    }
+  )
+end
+
+tydef FlatSet a = List a end
+
+def flat_set : ISet (FlatSet a) a =
+  [ empty=emptyL
+  , insert=insertKeyL (\x.x)
+  , delete=deleteKeyL (\x.x)
+  , contains=containsKeyL (\x.x)
+  , from_list=foldl (flip $ insertKeyL (\x.x)) emptyL
+  , pretty=formatL
+  ]
+end
+
+tydef FlatDict k v = List (k * v) end
+
+def flat_dict : IDict (FlatDict k v) k v =
+  [ empty=emptyL
+  , insert=\k.\v. insertKeyL fst (k,v)
+  , delete=deleteKeyL fst
+  , get=\k.\d. mmap snd (getKeyL fst k d)
+  , contains=containsKeyL fst
+  , pretty=\d.
+    let p : (k * v) -> Text = \kv. format (fst kv) ++ ": " ++ format (snd kv) in 
+    let f : List (k * v) -> Text = \l. case l (\_. "}") (\n. ", " ++ p (fst n) ++ f (snd n))
+    in case d (\_. "{}") (\n. "{" ++ p (fst n) ++ f (snd n))
+  ]
 end
 
 /*******************************************************************/
 /*                         RED BLACK TREE                          */
 /*******************************************************************/
 
-tydef RBTree k = rec b. Maybe [red: Bool, k: k, l: b, r: b] end
 
 // equirecursive types allow us to get the node type without mutual recursion
 tydef RBNode k = rec n. [red: Bool, k: k, l: Maybe n, r: Maybe n] end
 
 def emptyT : RBTree k = inl () end
 
-def isEmptyT : RBTree k -> Bool = \d. d == emptyT end
-
 def getT : (k -> a) -> a -> RBTree k -> Maybe k = \p.\x.\t.
   case t (\_. inl ()) (\n.
-    if (x == p n.k) { inr n.k } {
-        if (x < p n.k) {
-            getT p x n.l
-        } {
-            getT p x n.r
-        }
+    let nx = p n.k in
+    if (x < nx) {
+        getT p x n.l
+    } {
+      if (x > nx) {
+          getT p x n.r
+      } {
+        inr n.k
+      }
     }
   )
 end
@@ -377,17 +492,14 @@ end
 
 tydef Dict k v = RBTree (k * v) end
 
-def emptyD : Dict k v = emptyT end
-def isEmptyD : Dict k v -> Bool = isEmptyT end
-def getD : k -> Dict k v -> Maybe v = \k.\d. mmap snd (getT fst k d) end 
-def containsD : k -> Dict k v -> Bool = containsT fst end
-def insertD : k -> v -> Dict k v -> Dict k v = \k.\v. insertT fst (k, v) end
-def deleteD : k -> Dict k v -> Dict k v = \k. deleteT fst k end
-
-def formatD : Dict k v -> Text = \d.
- let p : (k * v) -> Text = \kv. format (fst kv) ++ ": " ++ format (snd kv) in 
- let f : List (k * v) -> Text = \l. case l (\_. "}") (\n. ", " ++ p (fst n) ++ f (snd n))
- in case (inorder d) (\_. "{}") (\n. "{" ++ p (fst n) ++ f (snd n))
+def tree_dict : IDict (Dict k v) k v =
+ [ empty = emptyT
+ , get  = \k.\d. mmap snd (getT fst k d)  
+ , contains = containsT fst 
+ , insert = \k.\v. insertT fst (k, v) 
+ , delete = \k. deleteT fst k 
+ , pretty = \d. flat_dict.pretty (inorder d)
+ ]
 end
 
 /*******************************************************************/
@@ -396,12 +508,15 @@ end
 
 tydef Set k = RBTree k end
 
-def emptyS : Set k = emptyT end
-def isEmptyS : Set k -> Bool = isEmptyT end
-def containsS : k -> Set k -> Bool = containsT (\x.x) end
-def insertS : k -> Set k -> Set k = insertT (\x.x) end
-def deleteS : k -> Set k -> Set k = \k. deleteT (\x.x) k end
-def formatS : Set k -> Text = \s. formatL $ inorder s end
+def tree_set : ISet (Set a) a =
+  [ empty=emptyT
+  , insert=insertT (\x.x)
+  , delete=deleteT (\x.x)
+  , contains=containsT (\x.x)
+  , from_list=foldl (flip $ insertT (\x.x)) emptyT
+  , pretty=\s. formatL $ inorder s
+  ]
+end
 
 /*******************************************************************/
 /*                           UNIT TESTS                            */
@@ -424,77 +539,91 @@ def group = \i. \m. \tests.
 end
 
 def test_empty: Int -> Cmd Unit = \i.
+  let d = tree_dict in
   group i "EMPTY TESTS" (\i.
-    assert i (isEmptyD emptyD) "empty tree should be empty";
-    assert_eq i (inl ()) (getD 0 $ emptyD) "no element should be present in an empty tree";
-    assert i (not $ containsD 0 $ emptyD) "empty tree should not contain any elements";
+    assert_eq i (inl ()) (d.get 0 $ d.empty) "no element should be present in an empty tree";
+    assert i (not $ d.contains 0 $ d.empty) "empty tree should not contain any elements";
   )
+end
+
+def test_insert_1235: ISet s Int -> Int -> Cmd Unit =\s.\i.
+    let expected = cons 1 $ cons 2 $ cons 3 $ cons 5 emptyL in
+    let actual = s.insert 2 $ s.insert 5 $ s.insert 1 $ s.insert 3 s.empty in
+    assert_eq i (formatL expected) (formatL actual) "insertKeyL should insert in order";
+    assert i (not $ s.contains 0 actual) "not contains 0 [1,2,3,5]";
+    assert i (s.contains 1 actual) "contains 1 [1,2,3,5]";
+    assert i (s.contains 2 actual) "contains 2 [1,2,3,5]";
+    assert i (s.contains 3 actual) "contains 3 [1,2,3,5]";
+    assert i (not $ s.contains 4 actual) "not contains 4 [1,2,3,5]";
+    assert i (s.contains 5 actual) "contains 5 [1,2,3,5]";
+    assert i (not $ s.contains 6 actual) "not contains 6 [1,2,3,5]";
 end
 
 def test_ordered_list : Int -> Cmd Unit = \i.
-  let s = [insert=insertKeyL (\x.x), contains=containsKeyL (\x.x)] in
-  group i "ORDERED LIST TESTS" (\i.
-    let expected = insertL 1 $ insertL 2 $ insertL 3 emptyL in
-    let actual = s.insert 2 $ s.insert 1 $ s.insert 3 emptyL in
-    assert_eq i (formatL expected) (formatL actual) "insertKeyL should insert in order";
-  )
+  let s = flat_set in
+  group i "ORDERED LIST TESTS" (test_insert_1235 flat_set)
 end
 
 def test_insert: Int -> Cmd Unit = \i.
+  let d = tree_dict in
+  let s = tree_set in
   group i "INSERT TESTS" (\i.
     group i "test {0: 1}" (\i.
-      let tree0 = insertD 0 1 emptyD in
-      assert i (not $ isEmptyD tree0) "nonempty tree should not be empty";
-      assert_eq i (inr 1) (getD 0 $ tree0) "one element should be present in a one element tree";
-      assert i (containsD 0 $ tree0) "one element tree should contain that elements";
-      assert i (not $ containsD 1 $ tree0) "one element tree should contain only that elements";
+      let tree0 = d.insert 0 1 d.empty in
+      assert i (d.empty != tree0) "nonempty tree should not be empty";
+      assert_eq i (inr 1) (d.get 0 $ tree0) "one element should be present in a one element tree";
+      assert i (d.contains 0 $ tree0) "one element tree should contain that elements";
+      assert i (not $ d.contains 1 $ tree0) "one element tree should contain only that elements";
     );
     group i "test {0: 1, 2: 3}" (\i.
-      let tree02 = insertD 2 3 $ insertD 0 1 emptyD in
-      assert_eq i (inr 1) (getD 0 $ tree02) "get 0 {0: 1, 2: 3} == 1";
-      assert_eq i (inr 3) (getD 2 $ tree02) "get 2 {0: 1, 2: 3} == 3";
+      let tree02 = d.insert 2 3 $ d.insert 0 1 d.empty in
+      assert_eq i (inr 1) (d.get 0 $ tree02) "get 0 {0: 1, 2: 3} == 1";
+      assert_eq i (inr 3) (d.get 2 $ tree02) "get 2 {0: 1, 2: 3} == 3";
     );
+    group i "test {1,2,3,5}" (test_insert_1235 tree_set)
   );
 end
 
-def randomTestS = \i.\s.\test.
+def randomTestS: Int -> Set Int -> (Set Int -> Cmd a) -> Cmd (Set Int) = \i.\s.\test.
   if (i <= 0) {return s} {
     x <- random 20;
-    let ns = insertS x s in
+    let ns = tree_set.insert x s in
     test ns;
     randomTestS (i - 1) ns test
   }
 end
 
-def delete_insert_prop = \i.\t.
+def delete_insert_prop: Int -> Set Int -> Cmd Unit = \i.\t.
+  let s = tree_set in
   x <- random 20;
   let i_t = inorder t in
-  let f_t = formatS t in
-  if (not $ containsS x t) {
-    log $ format x;
+  let f_t = s.pretty t in
+  if (not $ s.contains x t) {
+    // log $ format x;
     assert_eq i
       (formatL i_t)
-      (formatS $ deleteS x $ insertS x t)
+      (s.pretty $ s.delete x $ s.insert x t)
       (f_t ++ " == delete " ++ format x ++ " $ insert " ++ format x ++ " " ++ f_t)
   } { delete_insert_prop i t /* reroll */}
 end
 
-def delete_delete_prop = \i.\t.
+def delete_delete_prop: Int -> Set a -> Cmd Unit = \i.\t.
+  let s = tree_set in
   let i_t = inorder t in
-  i <- random (lengthL i_t);
-  let x = getL i i_t in
-  let ds = deleteS x t in
-  let dds = deleteS x ds in
-  let f_t = formatS t in
+  ix <- random (lengthL i_t);
+  let x = getL ix i_t in
+  let ds = s.delete x t in
+  let dds = s.delete x ds in
+  let f_t = s.pretty t in
   let f_dx = "delete " ++ format x in
-  assert_eq i (formatS ds) (formatS dds)
+  assert_eq i (s.pretty ds) (s.pretty dds)
     (f_dx ++ f_t ++ " == " ++ f_dx ++ " $ " ++ f_dx ++ " " ++ f_t)
 end
 
 def test_delete: Int -> Cmd Unit = \i.
   group i "DELETE TESTS" (\i.
-    randomTestS 15 emptyS (\s.
-      group i (formatS s) (\i.
+    randomTestS 15 tree_set.empty (\s.
+      group i (tree_set.pretty s) (\i.
         delete_insert_prop i s;
         delete_delete_prop i s;
       )
@@ -510,4 +639,140 @@ def test_tree: Cmd Unit =
     test_delete i;
   );
   log "ALL TREE TESTS PASSED!"
+end
+
+/*******************************************************************/
+/*                           BENCHMARKS                            */
+/*******************************************************************/
+
+def benchmark: Int -> s -> (s -> s) -> Cmd (Int * (Int * Int)) = \times.\s.\act.
+  let min = \x.\y. if (x > y) {y} {x} in
+  let max = \x.\y. if (x > y) {x} {y} in
+  let runM: (Int * Maybe (Int * Int)) -> s -> Int -> Cmd (Int * Maybe (Int * Int)) = \acc.\s.\n.
+    if (n <= 0) {
+      return acc
+    } {
+      t0 <- time;
+      //log $ "START " ++ format t0;
+      let ns = act s in
+      t1 <- time;
+      //log $ "END " ++ format t1;
+      let t = t1 - t0 in
+      //log $ format s ++ " " ++ format t ++ " ticks";
+      let lim = case (snd acc) (\_. (t, t)) (\l. (min t $ fst l, max t $ snd l)) in
+      runM ((fst acc + t), inr lim) ns (n - 1)
+    } in
+  //log "start run";
+  res <- runM (0, inl ()) s times;
+  //log "end run";
+  let avg = fst res / times in
+  let lim = case (snd res) (\_. fail "BENCHMARK NOT RUN") (\l.l) in
+  return (avg, lim)
+end
+
+def cmp_bench : Int -> Text -> (Int * (Int * Int)) -> Text -> (Int * (Int * Int)) -> Cmd Unit
+ = \i.\base_name.\base_res.\new_name.\new_res.
+  let formatLim = \l. "(min " ++ format (fst l) ++ ", max " ++ format (snd l) ++ ")" in
+  log $ indent i ++ "* " ++ base_name ++ ": "
+    ++ format (fst base_res) ++ " ticks " ++ formatLim (snd base_res);
+
+  let d = (fst new_res * 100) / fst base_res in
+  let cmp = if (d > 100) {
+     format (d - 100) ++ "% slower"
+    } {
+      format (100 - d) ++ "% faster"
+    } in
+     
+  log $ indent i ++ "* " ++ new_name ++ ": "
+    ++ format (fst new_res) ++ " ticks " ++ formatLim (snd new_res)
+    ++ " <- " ++ cmp;
+end
+
+// Get a list of random integers of given length and maximum element number
+def gen_random_list: Int -> Int -> Cmd (List Int) = 
+  let gen = \acc.\n.\rlim.
+    if (n <= 0) { return acc } {
+      x <- random rlim;
+      gen (cons x acc) (n - 1) rlim
+    }
+  in gen emptyL
+end
+
+// Get a number of lists of random integers of given length and maximum element number
+def gen_random_lists: Int -> Int -> Int -> Cmd (List (List Int)) = \m.\n.\rlim.
+  let gen = \acc.\m.
+    if (m <= 0) { return acc } {
+      l <- gen_random_list n rlim;
+      gen (cons l acc) (m - 1)
+    }
+  in gen emptyL m
+end
+
+
+def bench_insert = \i.
+  // Use the given function to construct (Flat)Set from the head of provided list of lists and return the tail
+  let set_from_first_list : (List a -> s) -> List (List a) -> List (List a) =\from_list.\lls.
+    case lls (\_. lls) (\ls_nlls.
+      let ns = from_list (fst ls_nlls) in
+      snd ls_nlls
+    )
+  in
+
+  group i "INSERT BENCHMARK" (\i.
+    group i "INSERT 10" (\i.
+      let n = 10 in
+      let m = 5 in
+      lls10 <- gen_random_lists m n (3 * n);
+      flat_res <- benchmark m lls10 (set_from_first_list flat_set.from_list);
+      tree_res <- benchmark m lls10 (set_from_first_list tree_set.from_list);
+      cmp_bench i "flat set" flat_res "tree set" tree_res
+    );
+    group i "INSERT 100" (\i.
+      let n = 100 in
+      let m = 3 in
+      lls100 <- gen_random_lists m n (3 * n);
+      flat_res <- benchmark m lls100 (set_from_first_list flat_set.from_list);
+      tree_res <- benchmark m lls100 (set_from_first_list tree_set.from_list);
+      cmp_bench i "flat set" flat_res "tree set" tree_res
+    )
+  )
+end
+
+def bench_contains = \i.
+  let contains_int : s -> (Int -> s -> Bool) -> Int -> Int = \s.\contains.\n.
+    let _ = contains n s in n + 1
+  in
+  group i "CONTAINS BENCHMARK" (\i.
+    group i "CONTAINS 10" (\i.
+      let n = 10 in
+      let m = 3 * n in
+      ls10 <- gen_random_list n m;
+      let fls = flat_set.from_list ls10 in
+      flat_res <- benchmark m 0 (contains_int fls flat_set.contains);
+      let tls = tree_set.from_list ls10 in
+      tree_res <- benchmark m 0 (contains_int tls tree_set.contains);
+      cmp_bench i "flat set" flat_res "tree set" tree_res
+    );
+    group i "CONTAINS 100" (\i.
+      let n = 100 in
+      let m = 3 * n in
+      ls100 <- gen_random_list n m;
+      //log $ formatL ls100;
+      let fls = flat_set.from_list ls100 in
+      //log $ formatL fls;
+      flat_res <- benchmark m 0 (contains_int fls flat_set.contains);
+      let tls = tree_set.from_list ls100 in
+      //log $ formatS tls;
+      tree_res <- benchmark m 0 (contains_int tls tree_set.contains);
+      cmp_bench i "flat set" flat_res "tree set" tree_res
+    )
+  )
+end
+
+def benchmark_tree: Cmd Unit =
+  group 0 "TREE BENCHMARKS" (\i.
+    bench_insert i;
+    bench_contains i;
+  );
+  log "ALL BENCHMARKS DONE!"
 end
