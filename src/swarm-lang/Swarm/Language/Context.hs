@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -16,8 +17,10 @@ import Control.Lens.Empty (AsEmpty (..), pattern Empty)
 import Control.Lens.Prism (prism)
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Data (Data)
+import Data.Hashable
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Semigroup (Sum (..))
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (brackets, emptyDoc, hsep, punctuate)
@@ -28,54 +31,96 @@ import Prelude hiding (lookup)
 -- | We use 'Text' values to represent variables.
 type Var = Text
 
--- | A context is a mapping from variable names to things.
-newtype Ctx t = Ctx {unCtx :: Map Var t}
-  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic)
+-- | A data type to record the structure of how a context was built,
+--   so that we can later destruct/serialize it effectively.
+data CtxStruct t
+  = CtxEmpty
+  | CtxSingle Var
+  | CtxDelete Var t (CtxStruct t)
+  | CtxUnion (CtxStruct t) (CtxStruct t)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, ToJSON, FromJSON)
 
+-- | A context hash is a hash value used to identify contexts without
+--   having to compare them for equality.  Hash values are computed in
+--   homomorphically, so that two equal contexts will be guaranteed to
+--   have the same hash value, even if they were constructed
+--   by a different sequence of operations.
+--
+--   The downside of this approach is that, /in theory/, there could
+--   be a hash collision---two different contexts which nonetheless
+--   have the same hash value.  However, this is extremely unlikely.
+--   The benefit is that everything can be purely functional, without
+--   the need to thread around some kind of globally unique ID
+--   generation effect.
+newtype CtxHash = CtxHash {getCtxHash :: Int}
+  deriving (Eq, Show, Data, Generic, ToJSON, FromJSON)
+  deriving (Semigroup, Monoid) via Sum Int
+  deriving (Num) via Int
+
+-- | A context is a mapping from variable names to things.
+data Ctx t = Ctx {unCtx :: Map Var t, ctxHash :: CtxHash, ctxStruct :: CtxStruct t}
+  deriving (Eq, Show, Functor, Traversable, Data, Generic)
+
+instance Hashable t => Hashable (Ctx t) where
+  hash = getCtxHash . ctxHash
+  hashWithSalt s = hashWithSalt s . getCtxHash . ctxHash
+
+instance Foldable Ctx where
+  foldMap f = foldMap f . unCtx
+
+-- XXX this instance will have to change!!
 instance ToJSON t => ToJSON (Ctx t) where
   toJSON = genericToJSON optionsUnwrapUnary
 
+-- XXX this instance will have to change!!
 instance FromJSON t => FromJSON (Ctx t) where
   parseJSON = genericParseJSON optionsUnwrapUnary
 
+-- XXX this instance will have to change!!
 instance (PrettyPrec t) => PrettyPrec (Ctx t) where
   prettyPrec _ Empty = emptyDoc
   prettyPrec _ (assocs -> bs) = brackets (hsep (punctuate "," (map prettyBinding bs)))
 
 -- | The semigroup operation for contexts is /right/-biased union.
-instance Semigroup (Ctx t) where
+instance Hashable t => Semigroup (Ctx t) where
   (<>) = union
 
-instance Monoid (Ctx t) where
+instance Hashable t => Monoid (Ctx t) where
   mempty = empty
   mappend = (<>)
 
 instance AsEmpty (Ctx t) where
   _Empty = prism (const empty) isEmpty
    where
-    isEmpty (Ctx c)
-      | M.null c = Right ()
-      | otherwise = Left (Ctx c)
+    isEmpty c
+      | M.null (unCtx c) = Right ()
+      | otherwise = Left c
 
 -- | The empty context.
 empty :: Ctx t
-empty = Ctx M.empty
+empty = Ctx M.empty mempty CtxEmpty
+
+-- | The hash for a single variable -> value binding.
+singletonHash :: Hashable t => Var -> t -> CtxHash
+singletonHash x t = CtxHash $ hashWithSalt (hash x) t
 
 -- | A singleton context.
-singleton :: Var -> t -> Ctx t
-singleton x t = Ctx (M.singleton x t)
+singleton :: Hashable t => Var -> t -> Ctx t
+singleton x t = Ctx (M.singleton x t) (singletonHash x t) (CtxSingle x)
 
 -- | Look up a variable in a context.
 lookup :: Var -> Ctx t -> Maybe t
-lookup x (Ctx c) = M.lookup x c
+lookup x (Ctx m _ _) = M.lookup x m
 
 -- | Look up a variable in a context in an ambient Reader effect.
 lookupR :: Has (Reader (Ctx t)) sig m => Var -> m (Maybe t)
 lookupR x = lookup x <$> ask
 
 -- | Delete a variable from a context.
-delete :: Var -> Ctx t -> Ctx t
-delete x (Ctx c) = Ctx (M.delete x c)
+delete :: Hashable t => Var -> Ctx t -> Ctx t
+delete x c@(Ctx m h s) = case M.lookup x m of
+  Nothing -> c
+  Just t -> Ctx (M.delete x m) (h - singletonHash x t) (CtxDelete x t s)
 
 -- | Get the list of key-value associations from a context.
 assocs :: Ctx t -> [(Var, t)]
@@ -87,18 +132,27 @@ vars = M.keys . unCtx
 
 -- | Add a key-value binding to a context (overwriting the old one if
 --   the key is already present).
-addBinding :: Var -> t -> Ctx t -> Ctx t
-addBinding x t (Ctx c) = Ctx (M.insert x t c)
+addBinding :: Hashable t => Var -> t -> Ctx t -> Ctx t
+addBinding x t (Ctx m h s) = Ctx (M.insert x t m) h' (CtxUnion s (CtxSingle x))
+ where
+  h' = case M.lookup x m of
+    Nothing -> h + singletonHash x t
+    Just t' -> h - singletonHash x t' + singletonHash x t
 
 -- | /Right/-biased union of contexts.
-union :: Ctx t -> Ctx t -> Ctx t
-union (Ctx c1) (Ctx c2) = Ctx (c2 `M.union` c1)
+union :: Hashable t => Ctx t -> Ctx t -> Ctx t
+union (Ctx m1 h1 s1) (Ctx m2 h2 s2) = Ctx (m2 `M.union` m1) h' (CtxUnion s1 s2)
+ where
+  -- `Data.Map.intersection l r` returns a map with common keys, but values from `l`
+  overwritten = M.intersection m1 m2
+  overwrittenHash = M.foldMapWithKey singletonHash overwritten
+  h' = h1 + h2 - overwrittenHash
 
 -- | Locally extend the context with an additional binding.
-withBinding :: Has (Reader (Ctx t)) sig m => Var -> t -> m a -> m a
+withBinding :: (Has (Reader (Ctx t)) sig m, Hashable t) => Var -> t -> m a -> m a
 withBinding x ty = local (addBinding x ty)
 
 -- | Locally extend the context with an additional context of
 --   bindings.
-withBindings :: Has (Reader (Ctx t)) sig m => Ctx t -> m a -> m a
+withBindings :: (Has (Reader (Ctx t)) sig m, Hashable t) => Ctx t -> m a -> m a
 withBindings ctx = local (`union` ctx)
