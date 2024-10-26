@@ -104,9 +104,17 @@ empty = Ctx M.empty mempty CtxEmpty
 singletonHash :: Hashable t => Var -> t -> CtxHash
 singletonHash x t = CtxHash $ hashWithSalt (hash x) t
 
+-- | The hash for an entire Map's with of bindings.
+mapHash :: Hashable t => Map Var t -> CtxHash
+mapHash = M.foldMapWithKey singletonHash
+
 -- | A singleton context.
 singleton :: Hashable t => Var -> t -> Ctx t
 singleton x t = Ctx (M.singleton x t) (singletonHash x t) (CtxSingle x)
+
+-- | Create a Ctx from a Map.
+fromMap :: Hashable t => Map Var t -> Ctx t
+fromMap m = Ctx m (mapHash m) (M.foldrWithKey (\x _ -> CtxUnion (CtxSingle x)) CtxEmpty m)
 
 -- | Look up a variable in a context.
 lookup :: Var -> Ctx t -> Maybe t
@@ -145,8 +153,7 @@ union (Ctx m1 h1 s1) (Ctx m2 h2 s2) = Ctx (m2 `M.union` m1) h' (CtxUnion s1 s2)
  where
   -- `Data.Map.intersection l r` returns a map with common keys, but values from `l`
   overwritten = M.intersection m1 m2
-  overwrittenHash = M.foldMapWithKey singletonHash overwritten
-  h' = h1 + h2 - overwrittenHash
+  h' = h1 + h2 - mapHash overwritten
 
 -- | Locally extend the context with an additional binding.
 withBinding :: (Has (Reader (Ctx t)) sig m, Hashable t) => Var -> t -> m a -> m a

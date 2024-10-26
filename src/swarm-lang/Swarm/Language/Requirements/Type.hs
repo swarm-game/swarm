@@ -75,7 +75,7 @@ data Requirements = Requirements
   , devReqs :: Set Text
   , invReqs :: Map Text Int
   }
-  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON, Hashable)
 
 instance Semigroup Requirements where
   Requirements c1 d1 i1 <> Requirements c2 d2 i2 =
