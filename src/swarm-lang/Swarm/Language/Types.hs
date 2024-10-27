@@ -278,7 +278,7 @@ data TypeF t
     --   when pretty-printing; the actual bound variables are represented
     --   via de Bruijn indices.
     TyRecF Var t
-  deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic, Generic1, Data)
+  deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic, Generic1, Data, Hashable)
 
 deriveEq1 ''TypeF
 deriveOrd1 ''TypeF
@@ -299,7 +299,7 @@ instance FromJSON1 TypeF where
 type Type = Fix TypeF
 
 newtype IntVar = IntVar Int
-  deriving (Show, Data, Eq, Ord)
+  deriving (Show, Data, Eq, Ord, Generic, Hashable)
 
 instance PrettyPrec IntVar where
   prettyPrec _ = pretty . mkVarName "u"
@@ -313,6 +313,7 @@ instance PrettyPrec IntVar where
 --   working with 'UType' as if it were defined directly.
 type UType = Free TypeF IntVar
 
+-- XXX orphan instance
 instance (Eq1 f, Hashable x, Hashable (f (Free f x))) => Hashable (Free f x)
 
 -- | A generic /fold/ for things defined via 'Free' (including, in

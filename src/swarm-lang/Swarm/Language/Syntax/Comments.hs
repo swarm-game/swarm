@@ -25,6 +25,7 @@ import Control.Lens (AsEmpty, makeLenses, pattern Empty)
 import Data.Aeson qualified as A
 import Data.Aeson.Types hiding (Key)
 import Data.Data (Data)
+import Data.Hashable (Hashable)
 import Data.Sequence (Seq)
 import Data.Text hiding (filter, length, map)
 import GHC.Generics (Generic)
@@ -34,12 +35,12 @@ import Swarm.Pretty (PrettyPrec (..))
 
 -- | Line vs block comments.
 data CommentType = LineComment | BlockComment
-  deriving (Eq, Ord, Read, Show, Enum, Bounded, Generic, Data, ToJSON, FromJSON)
+  deriving (Eq, Ord, Read, Show, Enum, Bounded, Generic, Data, Hashable, ToJSON, FromJSON)
 
 -- | Was a comment all by itself on a line, or did it occur after some
 --   other tokens on a line?
 data CommentSituation = StandaloneComment | SuffixComment
-  deriving (Eq, Ord, Read, Show, Enum, Bounded, Generic, Data, ToJSON, FromJSON)
+  deriving (Eq, Ord, Read, Show, Enum, Bounded, Generic, Data, Hashable, ToJSON, FromJSON)
 
 -- | Test whether a comment is a standalone comment or not.
 isStandalone :: Comment -> Bool
@@ -55,7 +56,7 @@ data Comment = Comment
   , commentSituation :: CommentSituation
   , commentText :: Text
   }
-  deriving (Eq, Show, Generic, Data, ToJSON, FromJSON)
+  deriving (Eq, Show, Generic, Data, ToJSON, FromJSON, Hashable)
 
 instance PrettyPrec Comment where
   prettyPrec _ (Comment _ LineComment _ txt) = "//" <> pretty txt
@@ -67,7 +68,7 @@ data Comments = Comments
   { _beforeComments :: Seq Comment
   , _afterComments :: Seq Comment
   }
-  deriving (Eq, Show, Generic, Data)
+  deriving (Eq, Show, Generic, Data, Hashable)
 
 makeLenses ''Comments
 

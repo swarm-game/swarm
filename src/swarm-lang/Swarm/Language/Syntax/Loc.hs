@@ -14,6 +14,7 @@ module Swarm.Language.Syntax.Loc (
 
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Data (Data)
+import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
 import Swarm.Language.Context (Var)
 import Swarm.Util.JSON (optionsUntagged)
@@ -28,7 +29,7 @@ data SrcLoc
   = NoLoc
   | -- | Half-open interval from start (inclusive) to end (exclusive)
     SrcLoc Int Int
-  deriving (Eq, Ord, Show, Data, Generic)
+  deriving (Eq, Ord, Show, Data, Generic, Hashable)
 
 instance ToJSON SrcLoc where
   toJSON = genericToJSON optionsUntagged
@@ -58,4 +59,4 @@ srcLocBefore _ _ = False
 --   binding sites. (Variable occurrences are a bare TVar which gets
 --   wrapped in a Syntax node, so we don't need LocVar for those.)
 data LocVar = LV {lvSrcLoc :: SrcLoc, lvVar :: Var}
-  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Data, Generic, Hashable, FromJSON, ToJSON)
