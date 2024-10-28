@@ -9,8 +9,9 @@
 -- types, values, or capability sets) used throughout the codebase.
 module Swarm.Language.Context where
 
-import Control.Algebra (Has)
+import Control.Algebra (Has, run)
 import Control.Carrier.Reader (ReaderC, runReader)
+import Control.Carrier.State.Strict (evalState)
 import Control.Effect.Reader (Reader, ask, local)
 import Control.Effect.State (State, get, modify)
 import Control.Lens.Empty (AsEmpty (..))
@@ -19,6 +20,7 @@ import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Data (Data)
 import Data.Functor ((<&>))
 import Data.Hashable
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Semigroup (Sum (..))
@@ -28,6 +30,7 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import Swarm.Pretty (PrettyPrec (..))
 import Swarm.Util.JSON (optionsUnwrapUnary)
+import Text.Printf (printf)
 import Prelude hiding (lookup)
 
 -- | We use 'Text' values to represent variables.
@@ -60,9 +63,12 @@ data CtxStruct t
 --   the need to thread around some kind of globally unique ID
 --   generation effect.
 newtype CtxHash = CtxHash {getCtxHash :: Int}
-  deriving (Eq, Ord, Show, Data, Generic, ToJSON, FromJSON)
+  deriving (Eq, Ord, Data, Generic, ToJSON, FromJSON)
   deriving (Semigroup, Monoid) via Sum Int
   deriving (Num) via Int
+
+instance Show CtxHash where
+  show (CtxHash h) = printf "%016x" h
 
 -- | A context is a mapping from variable names to things.
 data Ctx t = Ctx {unCtx :: Map Var t, sctx :: SCtx t}
@@ -84,8 +90,18 @@ instance Hashable t => Hashable (Ctx t) where
 instance Foldable Ctx where
   foldMap f = foldMap f . unCtx
 
--- Fold a context with sharing.  XXX
 foldCtx ::
+  r ->
+  (forall sig' m'. Has (State (Set CtxHash)) sig' m' => Var -> t -> m' r) ->
+  (Var -> r -> r) ->
+  (r -> r -> r) ->
+  (CtxHash -> r) ->
+  Ctx t ->
+  r
+foldCtx e sg del un sn = run . evalState @(Set CtxHash) S.empty . foldCtxWith e sg del un sn
+
+-- Fold a context with sharing.  XXX
+foldCtxWith ::
   Has (State (Set CtxHash)) sig m =>
   r ->
   (forall sig' m'. Has (State (Set CtxHash)) sig' m' => Var -> t -> m' r) ->
@@ -94,7 +110,7 @@ foldCtx ::
   (CtxHash -> r) ->
   Ctx t ->
   m r
-foldCtx e sg del un sn (Ctx m s) = foldSCtx e sg del un sn m s
+foldCtxWith e sg del un sn (Ctx m s) = foldSCtx e sg del un sn m s
 
 -- XXX
 foldSCtx ::
@@ -157,17 +173,26 @@ empty = Ctx M.empty (mempty, CtxEmpty)
 singletonHash :: Hashable t => Var -> t -> CtxHash
 singletonHash x t = CtxHash $ hashWithSalt (hash x) t
 
+singletonSCtx :: Hashable t => Var -> t -> SCtx t
+singletonSCtx x t = (singletonHash x t, CtxSingle x)
+
 -- | The hash for an entire Map's with of bindings.
 mapHash :: Hashable t => Map Var t -> CtxHash
 mapHash = M.foldMapWithKey singletonHash
 
 -- | A singleton context.
 singleton :: Hashable t => Var -> t -> Ctx t
-singleton x t = Ctx (M.singleton x t) (singletonHash x t, CtxSingle x)
+singleton x t = Ctx (M.singleton x t) (singletonSCtx x t)
 
 -- | Create a Ctx from a Map.
 fromMap :: Hashable t => Map Var t -> Ctx t
-fromMap m = Ctx m (M.foldrWithKey (insertSCtx Nothing) (mempty, CtxEmpty) m)
+fromMap m = Ctx m mapStruct
+ where
+  mapStruct = case NE.nonEmpty (map (uncurry singletonSCtx) (M.assocs m)) of
+    Nothing -> _
+    Just ne -> foldr1 CtxUnion ne
+
+-- (M.foldrWithKey (insertSCtx Nothing) (mempty, CtxEmpty) m)
 
 -- | Look up a variable in a context.
 lookup :: Var -> Ctx t -> Maybe t
@@ -193,7 +218,7 @@ vars = M.keys . unCtx
 
 -- | XXX
 insertSCtx :: Hashable t => Maybe t -> Var -> t -> SCtx t -> SCtx t
-insertSCtx old x new s@(h, _) = (h', CtxUnion s (tHash, CtxSingle x))
+insertSCtx old x new s@(h, _) = (h', CtxUnion (tHash, CtxSingle x) s)
  where
   tHash = singletonHash x new
   h' = case old of
@@ -204,6 +229,8 @@ insertSCtx old x new s@(h, _) = (h', CtxUnion s (tHash, CtxSingle x))
 --   the key is already present).
 addBinding :: Hashable t => Var -> t -> Ctx t -> Ctx t
 addBinding x t (Ctx m s) = Ctx (M.insert x t m) (insertSCtx (M.lookup x m) x t s)
+
+-- XXX how to encode structure of unioned context when there are overlapping variables?
 
 -- | /Right/-biased union of contexts.
 union :: Hashable t => Ctx t -> Ctx t -> Ctx t
