@@ -10,6 +10,7 @@
 module Swarm.Language.Context where
 
 import Control.Algebra (Has)
+import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Effect.Reader (Reader, ask, local)
 import Control.Effect.State (State, get, modify)
 import Control.Lens.Empty (AsEmpty (..))
@@ -85,9 +86,9 @@ instance Foldable Ctx where
 
 -- Fold a context with sharing.  XXX
 foldCtx ::
-  (Has (State (Set CtxHash)) sig m, Has (Reader (Map Var t)) sig m) =>
+  Has (State (Set CtxHash)) sig m =>
   r ->
-  (Var -> t -> m r) ->
+  (forall sig' m'. Has (State (Set CtxHash)) sig' m' => Var -> t -> m' r) ->
   (Var -> r -> r) ->
   (r -> r -> r) ->
   (CtxHash -> r) ->
@@ -98,18 +99,18 @@ foldCtx e sg del un sn (Ctx m s) = foldSCtx e sg del un sn m s
 -- XXX
 foldSCtx ::
   forall sig m t r.
-  (Has (State (Set CtxHash)) sig m, Has (Reader (Map Var t)) sig m) =>
+  Has (State (Set CtxHash)) sig m =>
   r ->
-  (Var -> t -> m r) ->
+  (forall sig' m'. Has (State (Set CtxHash)) sig' m' => Var -> t -> m' r) ->
   (Var -> r -> r) ->
   (r -> r -> r) ->
   (CtxHash -> r) ->
   Map Var t ->
   SCtx t ->
   m r
-foldSCtx e sg del un sn m = go
+foldSCtx e sg del un sn m = runReader m . go
  where
-  go :: SCtx t -> m r
+  go :: SCtx t -> ReaderC (Map Var t) m r
   go (h, s) = do
     seen <- get
     case h `S.member` seen of
