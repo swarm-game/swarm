@@ -1,8 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -13,31 +11,39 @@ module Swarm.Language.Context where
 
 import Control.Algebra (Has)
 import Control.Effect.Reader (Reader, ask, local)
-import Control.Lens.Empty (AsEmpty (..), pattern Empty)
+import Control.Effect.State (State, get, modify)
+import Control.Lens.Empty (AsEmpty (..))
 import Control.Lens.Prism (prism)
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Data (Data)
+import Data.Functor ((<&>))
 import Data.Hashable
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Semigroup (Sum (..))
+import Data.Set (Set)
+import Data.Set qualified as S
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Prettyprinter (brackets, emptyDoc, hsep, punctuate)
-import Swarm.Pretty (PrettyPrec (..), prettyBinding)
+import Swarm.Pretty (PrettyPrec (..))
 import Swarm.Util.JSON (optionsUnwrapUnary)
 import Prelude hiding (lookup)
 
 -- | We use 'Text' values to represent variables.
 type Var = Text
 
+-- | A "shadow context" records the hash values and structure of a
+--   context but does not record the actual values associated to the
+--   variables.
+type SCtx t = (CtxHash, CtxStruct t)
+
 -- | A data type to record the structure of how a context was built,
 --   so that we can later destruct/serialize it effectively.
 data CtxStruct t
   = CtxEmpty
   | CtxSingle Var
-  | CtxDelete Var t (CtxStruct t)
-  | CtxUnion (CtxStruct t) (CtxStruct t)
+  | CtxDelete Var t (SCtx t)
+  | CtxUnion (SCtx t) (SCtx t)
   deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, ToJSON, FromJSON)
 
 -- | A context hash is a hash value used to identify contexts without
@@ -53,13 +59,22 @@ data CtxStruct t
 --   the need to thread around some kind of globally unique ID
 --   generation effect.
 newtype CtxHash = CtxHash {getCtxHash :: Int}
-  deriving (Eq, Show, Data, Generic, ToJSON, FromJSON)
+  deriving (Eq, Ord, Show, Data, Generic, ToJSON, FromJSON)
   deriving (Semigroup, Monoid) via Sum Int
   deriving (Num) via Int
 
 -- | A context is a mapping from variable names to things.
-data Ctx t = Ctx {unCtx :: Map Var t, ctxHash :: CtxHash, ctxStruct :: CtxStruct t}
-  deriving (Eq, Show, Functor, Traversable, Data, Generic)
+data Ctx t = Ctx {unCtx :: Map Var t, sctx :: SCtx t}
+  deriving (Eq, Functor, Traversable, Data, Generic)
+
+ctxHash :: Ctx t -> CtxHash
+ctxHash (Ctx _ (h, _)) = h
+
+ctxStruct :: Ctx t -> CtxStruct t
+ctxStruct (Ctx _ (_, s)) = s
+
+instance Show (Ctx t) where
+  show _ = "<Ctx>"
 
 instance Hashable t => Hashable (Ctx t) where
   hash = getCtxHash . ctxHash
@@ -67,6 +82,45 @@ instance Hashable t => Hashable (Ctx t) where
 
 instance Foldable Ctx where
   foldMap f = foldMap f . unCtx
+
+-- Fold a context with sharing.  XXX
+foldCtx ::
+  (Has (State (Set CtxHash)) sig m, Has (Reader (Map Var t)) sig m) =>
+  r ->
+  (Var -> t -> m r) ->
+  (Var -> r -> r) ->
+  (r -> r -> r) ->
+  (CtxHash -> r) ->
+  Ctx t ->
+  m r
+foldCtx e sg del un sn (Ctx m s) = foldSCtx e sg del un sn m s
+
+-- XXX
+foldSCtx ::
+  forall sig m t r.
+  (Has (State (Set CtxHash)) sig m, Has (Reader (Map Var t)) sig m) =>
+  r ->
+  (Var -> t -> m r) ->
+  (Var -> r -> r) ->
+  (r -> r -> r) ->
+  (CtxHash -> r) ->
+  Map Var t ->
+  SCtx t ->
+  m r
+foldSCtx e sg del un sn m = go
+ where
+  go :: SCtx t -> m r
+  go (h, s) = do
+    seen <- get
+    case h `S.member` seen of
+      True -> pure $ sn h
+      False -> do
+        modify (S.insert h)
+        case s of
+          CtxEmpty -> pure e
+          CtxSingle x -> sg x (m M.! x)
+          CtxDelete x t sc -> local (M.insert x t) (go sc) <&> del x
+          CtxUnion sc1 sc2 -> un <$> go sc1 <*> go sc2
 
 -- XXX this instance will have to change!!
 instance ToJSON t => ToJSON (Ctx t) where
@@ -76,10 +130,8 @@ instance ToJSON t => ToJSON (Ctx t) where
 instance FromJSON t => FromJSON (Ctx t) where
   parseJSON = genericParseJSON optionsUnwrapUnary
 
--- XXX this instance will have to change!!
 instance (PrettyPrec t) => PrettyPrec (Ctx t) where
-  prettyPrec _ Empty = emptyDoc
-  prettyPrec _ (assocs -> bs) = brackets (hsep (punctuate "," (map prettyBinding bs)))
+  prettyPrec _ _ = "<Ctx>"
 
 -- | The semigroup operation for contexts is /right/-biased union.
 instance Hashable t => Semigroup (Ctx t) where
@@ -98,7 +150,7 @@ instance AsEmpty (Ctx t) where
 
 -- | The empty context.
 empty :: Ctx t
-empty = Ctx M.empty mempty CtxEmpty
+empty = Ctx M.empty (mempty, CtxEmpty)
 
 -- | The hash for a single variable -> value binding.
 singletonHash :: Hashable t => Var -> t -> CtxHash
@@ -110,15 +162,15 @@ mapHash = M.foldMapWithKey singletonHash
 
 -- | A singleton context.
 singleton :: Hashable t => Var -> t -> Ctx t
-singleton x t = Ctx (M.singleton x t) (singletonHash x t) (CtxSingle x)
+singleton x t = Ctx (M.singleton x t) (singletonHash x t, CtxSingle x)
 
 -- | Create a Ctx from a Map.
 fromMap :: Hashable t => Map Var t -> Ctx t
-fromMap m = Ctx m (mapHash m) (M.foldrWithKey (\x _ -> CtxUnion (CtxSingle x)) CtxEmpty m)
+fromMap m = Ctx m (M.foldrWithKey (insertSCtx Nothing) (mempty, CtxEmpty) m)
 
 -- | Look up a variable in a context.
 lookup :: Var -> Ctx t -> Maybe t
-lookup x (Ctx m _ _) = M.lookup x m
+lookup x (Ctx m _) = M.lookup x m
 
 -- | Look up a variable in a context in an ambient Reader effect.
 lookupR :: Has (Reader (Ctx t)) sig m => Var -> m (Maybe t)
@@ -126,9 +178,9 @@ lookupR x = lookup x <$> ask
 
 -- | Delete a variable from a context.
 delete :: Hashable t => Var -> Ctx t -> Ctx t
-delete x c@(Ctx m h s) = case M.lookup x m of
+delete x c@(Ctx m s@(h, _)) = case M.lookup x m of
   Nothing -> c
-  Just t -> Ctx (M.delete x m) (h - singletonHash x t) (CtxDelete x t s)
+  Just t -> Ctx (M.delete x m) (h - singletonHash x t, CtxDelete x t s)
 
 -- | Get the list of key-value associations from a context.
 assocs :: Ctx t -> [(Var, t)]
@@ -138,18 +190,23 @@ assocs = M.assocs . unCtx
 vars :: Ctx t -> [Var]
 vars = M.keys . unCtx
 
+-- | XXX
+insertSCtx :: Hashable t => Maybe t -> Var -> t -> SCtx t -> SCtx t
+insertSCtx old x new s@(h, _) = (h', CtxUnion s (tHash, CtxSingle x))
+ where
+  tHash = singletonHash x new
+  h' = case old of
+    Nothing -> h + tHash
+    Just t' -> h - singletonHash x t' + tHash
+
 -- | Add a key-value binding to a context (overwriting the old one if
 --   the key is already present).
 addBinding :: Hashable t => Var -> t -> Ctx t -> Ctx t
-addBinding x t (Ctx m h s) = Ctx (M.insert x t m) h' (CtxUnion s (CtxSingle x))
- where
-  h' = case M.lookup x m of
-    Nothing -> h + singletonHash x t
-    Just t' -> h - singletonHash x t' + singletonHash x t
+addBinding x t (Ctx m s) = Ctx (M.insert x t m) (insertSCtx (M.lookup x m) x t s)
 
 -- | /Right/-biased union of contexts.
 union :: Hashable t => Ctx t -> Ctx t -> Ctx t
-union (Ctx m1 h1 s1) (Ctx m2 h2 s2) = Ctx (m2 `M.union` m1) h' (CtxUnion s1 s2)
+union (Ctx m1 s1@(h1, _)) (Ctx m2 s2@(h2, _)) = Ctx (m2 `M.union` m1) (h', CtxUnion s1 s2)
  where
   -- `Data.Map.intersection l r` returns a map with common keys, but values from `l`
   overwritten = M.intersection m1 m2
