@@ -45,6 +45,7 @@ import Data.Hashable (Hashable)
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, mapMaybe)
 import Data.Set qualified as Set
+import Swarm.Game.Scenario.Topography.Area (getGridDimensions, rectWidth)
 import Swarm.Game.Scenario.Topography.Grid (getRows)
 import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform, getStructureName)
 import Swarm.Game.Scenario.Topography.Structure.Named
@@ -92,8 +93,9 @@ extractOrientedGrid ::
   AbsoluteDir ->
   StructureWithGrid (Maybe b) a
 extractOrientedGrid extractor x d =
-  StructureWithGrid wrapped d $ getEntityGrid extractor g
+  StructureWithGrid wrapped d w $ getEntityGrid extractor g
  where
+  w = RowWidth . rectWidth . getGridDimensions $ structure g
   wrapped = NamedOriginal (getStructureName $ name x) x
   g = applyOrientationTransform (Orientation d False) <$> x
 

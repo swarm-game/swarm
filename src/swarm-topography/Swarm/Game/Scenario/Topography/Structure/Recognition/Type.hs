@@ -112,6 +112,9 @@ data SingleRowEntityOccurrences b a = SingleRowEntityOccurrences
   , expandedOffsets :: InspectionOffsets
   }
 
+newtype RowWidth = RowWidth Int32
+  deriving (Eq)
+
 -- | A a specific row within a particular structure.
 --
 -- === Example
@@ -152,6 +155,7 @@ data NamedOriginal b = NamedOriginal
 data StructureWithGrid b a = StructureWithGrid
   { originalDefinition :: NamedOriginal b
   , rotatedTo :: AbsoluteDir
+  , gridWidth :: RowWidth
   , entityGrid :: [SymbolSequence a]
   }
   deriving (Eq)

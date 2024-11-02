@@ -206,7 +206,7 @@ ensureStructureIntact ::
   (Has (State GameState) sig m) =>
   FoundStructure (Maybe Cell) Entity ->
   m Bool
-ensureStructureIntact (FoundStructure (StructureWithGrid _ _ grid) upperLeft) =
+ensureStructureIntact (FoundStructure (StructureWithGrid _ _ _ grid) upperLeft) =
   allM outer $ zip [0 ..] grid
  where
   outer (y, row) = allM (inner y) $ zip [0 ..] row

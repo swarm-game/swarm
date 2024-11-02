@@ -1,6 +1,8 @@
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
-module Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (mkEntityLookup) where
+module Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (
+  mkEntityLookup,
+) where
 
 import Control.Arrow ((&&&))
 import Data.HashMap.Strict qualified as HM
@@ -13,20 +15,33 @@ import Data.Maybe (catMaybes)
 import Data.Semigroup (sconcat)
 import Data.Tuple (swap)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Text.AhoCorasick
+import Text.AhoCorasick (makeStateMachine)
 
+-- | Given all candidate structures, explode them into annotated rows.
+-- These annotations entail both the row index with the original structure
+-- and a reference to the original structure definition.
+--
+-- This operation may result in multiple entries that contain the same contents
+-- (but different annotations), either because the same contents appear
+-- in multiple rows within the same structure, or occur across structures.
 allStructureRows :: [StructureWithGrid b a] -> [StructureRow b a]
 allStructureRows =
   concatMap transformRows
  where
-  transformRows :: StructureWithGrid b a -> [StructureRow b a]
   transformRows g = zipWith (StructureRow g) [0 ..] $ entityGrid g
 
-mkOffsets :: Foldable f => Int32 -> f a -> InspectionOffsets
-mkOffsets pos xs =
-  InspectionOffsets (pure (negate pos)) $
-    pure $
-      fromIntegral (length xs) - 1 - pos
+-- | If this entity is encountered in the world,
+-- how far left of it and how far right of it do we need to
+-- scan the world row to ensure we can recognize every possible
+-- structure that features this entity?
+mkOffsets :: Int32 -> RowWidth -> InspectionOffsets
+mkOffsets pos (RowWidth w) =
+  InspectionOffsets
+    (subtractPosFrom 0)
+    (subtractPosFrom rightMostShapeRowIndex)
+ where
+  subtractPosFrom minuend = pure $ minuend - pos
+  rightMostShapeRowIndex = w - 1
 
 -- | Given each possible row of entities observed in the world,
 -- yield a searcher that can determine whether adjacent
@@ -47,8 +62,8 @@ mkRowLookup neList =
       concatMap (concatMap catMaybes . fst) tuples
 
   deriveRowOffsets :: StructureRow b a -> InspectionOffsets
-  deriveRowOffsets (StructureRow (StructureWithGrid _ _ g) rwIdx _) =
-    mkOffsets rwIdx g
+  deriveRowOffsets (StructureRow (StructureWithGrid _ _ w _) rwIdx _) =
+    mkOffsets rwIdx w
 
   bounds = sconcat $ NE.map deriveRowOffsets neList
   sm = makeStateMachine $ NE.toList tuples
@@ -64,10 +79,8 @@ mkEntityLookup ::
   [StructureWithGrid b a] ->
   HM.HashMap a (NonEmpty (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a)))
 mkEntityLookup grids =
-  HM.map mkValues rowsByEntityParticipation
+  HM.map mkRowAutomatons rowsByEntityParticipation
  where
-  rowsAcrossAllStructures = allStructureRows grids
-
   -- The input here are all rows across all structures
   -- that share the same entity sequence.
   mkSmValue ksms singleRows =
@@ -76,56 +89,68 @@ mkEntityLookup grids =
     structureRowsNE = NE.map myRow singleRows
     sm2D = mkRowLookup structureRowsNE
 
-  mkValues neList =
+  -- Produces a list of automatons to evaluate whenever a given entity
+  -- is encountered.
+  mkRowAutomatons neList =
     NE.map (\(mask, tups) -> AutomatonInfo mask bounds sm tups) tuplesByEntMask
    where
-    -- If there are no transparent cells,
-    -- we don't need a mask.
-    getMaskSet row =
-      if Nothing `elem` row
-        then HS.fromList $ catMaybes row
-        else mempty
+    searchPatternsAndSubAutomatons = NE.map (\(a, b) -> (a, mkSmValue a b)) groupedByUniqueRow
+     where
+      groupedByUniqueRow =
+        binTuplesHMasListNE $
+          NE.map (rowContent . myRow &&& id) neList
 
-    tuplesByEntMask = binTuplesHMasListNE $ NE.map (getMaskSet . fst &&& id) tuplesNE
-
-    tuplesNE = NE.map (\(a, b) -> (a, mkSmValue a b)) groupedByUniqueRow
-
-    groupedByUniqueRow =
+    tuplesByEntMask =
       binTuplesHMasListNE $
-        NE.map (rowContent . myRow &&& id) neList
+        NE.map (getMaskSet . fst &&& id) searchPatternsAndSubAutomatons
+     where
+      -- If there are no transparent cells,
+      -- we don't need a mask.
+      getMaskSet row =
+        if Nothing `elem` row
+          then HS.fromList $ catMaybes row
+          else mempty
 
     bounds = sconcat $ NE.map expandedOffsets neList
-    sm = makeStateMachine $ NE.toList tuplesNE
+    sm = makeStateMachine $ NE.toList searchPatternsAndSubAutomatons
 
   -- The values of this map are guaranteed to contain only one
-  -- entry per row of a given structure.
+  -- entry per row of each structure, even if some of those
+  -- rows contain repetition of the same entity.
   rowsByEntityParticipation =
-    binTuplesHM $
-      map (myEntity &&& id) $
-        concatMap explodeRowEntities rowsAcrossAllStructures
+    binTuplesHM
+      . map (myEntity &&& id)
+      . concatMap explodeRowEntities
+      $ allStructureRows grids
+
+-- | All of the occurrences of each unique entity within a row
+-- are consolidated into one record, in which the repetitions are noted.
+--
+-- The members of "rowMembers" are of 'Maybe' type; the 'Nothing's
+-- are dropped but accounted for positionally when indexing the columns.
+explodeRowEntities ::
+  (Hashable a, Eq a) =>
+  StructureRow b a ->
+  [SingleRowEntityOccurrences b a]
+explodeRowEntities annotatedRow@(StructureRow _ _ rowMembers) =
+  map f $ HM.toList $ binTuplesHM unconsolidatedEntityOccurrences
+ where
+  f (e, occurrences) =
+    SingleRowEntityOccurrences annotatedRow e occurrences $
+      sconcat $
+        NE.map deriveEntityOffsets occurrences
+
+  -- Tuples of (entity, rowOccurrenceOfEntity).
+  -- Only row members for which an entity exists (is not Nothing)
+  -- are retained here.
+  unconsolidatedEntityOccurrences =
+    map swap $
+      catMaybes $
+        zipWith (\idx -> fmap (PositionWithinRow idx annotatedRow,)) [0 ..] rowMembers
 
   deriveEntityOffsets :: PositionWithinRow b a -> InspectionOffsets
   deriveEntityOffsets (PositionWithinRow pos r) =
-    mkOffsets pos $ rowContent r
-
-  -- The members of "rowMembers" are of 'Maybe' type; the 'Nothing's
-  -- are dropped but accounted for when indexing the columns.
-  explodeRowEntities ::
-    (Hashable a, Eq a) =>
-    StructureRow b a ->
-    [SingleRowEntityOccurrences b a]
-  explodeRowEntities r@(StructureRow _ _ rowMembers) =
-    map f $ HM.toList $ binTuplesHM unconsolidated
-   where
-    f (e, occurrences) =
-      SingleRowEntityOccurrences r e occurrences $
-        sconcat $
-          NE.map deriveEntityOffsets occurrences
-
-    unconsolidated =
-      map swap $
-        catMaybes $
-          zipWith (\idx -> fmap (PositionWithinRow idx r,)) [0 ..] rowMembers
+    mkOffsets pos $ gridWidth $ wholeStructure r
 
 -- * Util
 

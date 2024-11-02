@@ -16,3 +16,4 @@
 1644-rotated-preplacement-recognition.yaml
 2115-encroaching-upon-exterior-transparent-cells.yaml
 2115-encroaching-upon-interior-transparent-cells.yaml
+9999-piecewise-lines.yaml
