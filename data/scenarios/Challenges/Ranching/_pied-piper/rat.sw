@@ -1,18 +1,17 @@
 def moveWithMorbidity =
-    let mold = "mold" in
-    moldHere <- ishere mold;
+    moldHere <- ishere "mold";
     if moldHere {
         try {
             // handle race conditions in which
             // another robot grabs it first
             m <- harvest;
-            if (m == mold) {
-                say $ "Yuck, " ++ mold ++ "! I'm outta here.";
+            let spores = "mold spores" in
+            if (m == spores) {
+                say $ "Yuck, " ++ spores ++ "! I'm outta here.";
                 selfdestruct;
             } {};
         } {};
     } {};
-
     move;
     end;
 
@@ -112,9 +111,4 @@ def go = \startLoc.
     end;
 
 startLoc <- whereami;
-let shouldDestruct = false in
-if shouldDestruct {
-    selfdestruct;
-} {
-    go startLoc;
-}
+go startLoc;

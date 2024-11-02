@@ -109,10 +109,10 @@ def getKey =
   move;
   end;
 
-def placeMold =
+def placeMold = \moldItem.
   turn east;
   doN 11 move;
-  sow "mold";
+  sow moldItem;
   end;
 
 def go =
@@ -134,7 +134,7 @@ def go =
   doN 4 move;
   turn left;
   doN 3 move;
-  harvest;
+  moldItem <- grab;
   turn back;
   doN 3 move;
 
@@ -185,7 +185,7 @@ def go =
   makeOatsTrail 4 12;
   placeHorizontalTrail 4;
 
-  placeMold;
+  placeMold moldItem;
   end;
 
 go;

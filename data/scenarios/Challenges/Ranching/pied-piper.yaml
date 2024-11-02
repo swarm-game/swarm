@@ -85,7 +85,7 @@ objectives:
   - teaser: Silo
     id: silo
     goal:
-      - Inspect the `storage silo`{=structure}
+      - Inspect the `storage silo`{=structure}.
     condition: |
       as base {
         loc <- locateme;
@@ -96,16 +96,16 @@ objectives:
     id: moldy
     goal:
       - A `rat`{=robot} will `selfdestruct` if it comes in contact with `mold`{=entity}.
-      - Obtain some `mold`{=entity}.
+      - Obtain some `mold spores`{=entity}.
     condition: |
       as base {
-        has "mold";
+        has "mold spores";
       }
   - teaser: Corral
     prerequisite: moldy
     goal:
       - Dispatch the `rat`{=robot}s with `mold`{=entity}.
-      - Note that `mold`{=entity} will only spread when `sow`n in a dark, damp environment.
+      - Note that `mold spores`{=entity} will only spread when `sow`n in a dark, damp environment.
     condition: |
       try {
         r <- robotNamed "rat";
@@ -206,10 +206,28 @@ entities:
       attr: mold
       char: 'm'
     description:
-      - Spreads in dark, damp environment
+      - Spreads in dark, damp environments.
+      - Toxic to `rat`{=robot}s.
+      - Yields `mold spores`{=entity} when `harvest`ed or `grab`bed.
+    properties: [known, pickable, growable]
+    yields: mold spores
+    growth:
+      duration: [15, 30]
+      spread:
+        radius: 2
+        density: 0.3
+    biomes: [clay]
+  - name: mold spores
+    display:
+      attr: mold
+      char: '*'
+    description:
+      - Grows into `mold`{=entity} in dark, damp environments.
+      - In spore form, has no effect on `rat`{=robot}s.
     properties: [known, pickable, growable]
     growth:
       duration: [15, 30]
+      mature: mold
       spread:
         radius: 2
         density: 0.3
@@ -308,10 +326,10 @@ subworlds:
         consistent: true
     upperleft: [-1, 1]
     map: |
-      ++xHxxxxx
-      ++x.x+.mx
-      ++x.x+m.x
-      ++x.x++.x
+      ++xHx+xx+
+      ++x.xx.mx
+      ++x.xxm.x
+      ++x.xxx.x
       ++x.....x
       +++x.xxxx
       +++x.x+++
