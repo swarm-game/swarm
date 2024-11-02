@@ -151,6 +151,7 @@ drawMarkdown d = do
     "entity" -> greenAttr
     "structure" -> redAttr
     "tag" -> yellowAttr
+    "robot" -> beigeAttr
     "type" -> magentaAttr
     _snippet -> highlightAttr -- same as plain code
 
