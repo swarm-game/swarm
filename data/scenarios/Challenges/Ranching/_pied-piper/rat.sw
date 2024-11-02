@@ -16,7 +16,6 @@ def moveWithMorbidity =
     end;
 
 def goFoodDir = \f. \r.
-    log "in goFoodDir";
     let d = fst r in
     if (d == down) {
         foodHere <- ishere "oats";
@@ -39,7 +38,6 @@ def goFoodDir = \f. \r.
     end;
 
 def goHomeDir = \f. \r.
-    log "in goHomeDir";
     let d = fst r in
     if (d == down) {
         return ()
@@ -57,7 +55,6 @@ def goHomeDir = \f. \r.
     end;
 
 def findGoodDirection =
-    log "in findGoodDirection";
     isBlocked <- blocked;
     if isBlocked {
         turn left;
@@ -83,21 +80,17 @@ def pauseAtRandom =
     end;
 
 def returnHome = \homeLoc.
-    log "in returnHome";
     nextDir <- path (inL ()) (inL homeLoc);
     case nextDir return $ goHomeDir $ returnHome homeLoc;
     end;
 
 def pursueFood = \hadSensedFood. \homeLoc.
-    log $ "in pursueFood. hadSensedFood? " ++ format hadSensedFood;
     nextDir <- path (inR 5) (inR "oats");
     case nextDir (\_. if hadSensedFood {returnHome homeLoc} {return ()}) $
         goFoodDir $ pursueFood true homeLoc;
     end;
 
 def doMovement = \startLoc.
-    log "in doMovement";
-
     findGoodDirection;
     moveUntilBlocked;
     pauseAtRandom;
