@@ -474,6 +474,7 @@ testScenarioSolutions rs ui key =
             , testSolution Default "Testing/1575-structure-recognizer/1644-rotated-preplacement-recognition"
             , testSolution Default "Testing/1575-structure-recognizer/2115-encroaching-upon-interior-transparent-cells"
             , testSolution Default "Testing/1575-structure-recognizer/2115-encroaching-upon-exterior-transparent-cells"
+            , testSolution Default "Testing/1575-structure-recognizer/2201-piecewise-lines"
             ]
         ]
     , testSolution' Default "Testing/1430-built-robot-ownership" CheckForBadErrors $ \g -> do

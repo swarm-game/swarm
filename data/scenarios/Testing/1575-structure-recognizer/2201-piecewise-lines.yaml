@@ -1,0 +1,110 @@
+version: 1
+name: Structure recognition - piecewise row recognition
+description: |
+  Demonstrate general solution for transparency.
+
+  In this scenario, a structure called `spaceship`{=structure} is occluded
+  by a single cell overlay shape called `damage`{=structure}.
+
+  The base swaps the "damage" entity with the correct part.
+creative: false
+objectives:
+  - teaser: Recognize structure
+    goal:
+      - |
+        `spaceship`{=structure} structure should be recognized upon completion.
+    condition: |
+      def isRight = \x. case x (\_. false) (\_. true); end;
+      foundStructure <- structure "spaceship" 0;
+      return $ isRight foundStructure;
+robots:
+  - name: base
+    dir: east
+    devices:
+      - ADT calculator
+      - blueprint
+      - fast grabber
+      - logger
+      - treads
+    inventory:
+      - [1, rock]
+solution: |
+  move; move; move; move; move; move; move;
+  swap "rock";
+structures:
+  - name: fragment
+    recognize: [north]
+    structure:
+      palette:
+        'z': [stone, pixel (R)]
+        'w': [stone, pixel (B)]
+        'x': [stone, rock]
+        'y': [stone, mountain]
+      mask: '.'
+      map: |
+        zw.xy
+  - name: spaceship
+    recognize: [north]
+    structure:
+      palette:
+        'p': [stone, board]
+        'x': [stone, rock]
+        'y': [stone, mountain]
+        'z': [stone, pixel (R)]
+        'w': [stone, pixel (B)]
+        'q': [stone, pixel (G)]
+      mask: '.'
+      map: |
+        q....xy.zw.xy
+        qq....ppp....
+        q....xy.xy.qq
+  - name: friendship
+    recognize: [north]
+    structure:
+      palette:
+        'x': [stone, rock]
+        'y': [stone, mountain]
+        'z': [stone, pixel (R)]
+        'w': [stone, pixel (B)]
+        'q': [stone, pixel (G)]
+      mask: '.'
+      map: |
+        qqq.......
+        qqq.......
+        qqq.......
+        qqq.......
+        ..xy.zw.xy
+        qqq.......
+  - name: damage
+    description: A single-cell overwrite of the spaceship
+    structure:
+      palette:
+        't': [stone, tree]
+      map: |
+        t
+  - name: modified ship
+    description: A spaceship with a single cell replaced by a `tree`{=entity}
+    structure:
+      placements:
+        - src: spaceship
+        - src: damage
+          offset: [5, 0]
+      map: ""
+known: [board, mountain, rock, tree, pixel (R), pixel (B)]
+world:
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass, erase]
+    'B': [grass, erase, base]
+    'p':
+      structure:
+        name: modified ship
+      cell: [grass]
+  upperleft: [100, -100]
+  map: |
+    ..........
+    B.p.......
+    ..........
+    ..........
+    ..........

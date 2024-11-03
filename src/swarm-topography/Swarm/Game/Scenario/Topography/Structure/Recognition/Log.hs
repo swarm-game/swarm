@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -5,8 +7,10 @@
 module Swarm.Game.Scenario.Topography.Structure.Recognition.Log where
 
 import Data.Aeson
-import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
+import Data.Text (Text)
+import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
@@ -14,11 +18,6 @@ import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
-
--- | Type aliases for documentation
-type StructureRowContent e = SymbolSequence e
-
-type WorldRowContent e = SymbolSequence e
 
 data OrientedStructure = OrientedStructure
   { oName :: OriginalName
@@ -29,70 +28,57 @@ data OrientedStructure = OrientedStructure
 distillLabel :: StructureWithGrid b a -> OrientedStructure
 distillLabel swg = OrientedStructure (getName $ originalDefinition swg) (rotatedTo swg)
 
-data MatchingRowFrom = MatchingRowFrom
-  { topDownRowIdx :: Int32
-  -- ^ numbered from the top down
-  , structure :: OrientedStructure
-  }
-  deriving (Generic, ToJSON)
+renderSharedNames :: ConsolidatedRowReferences b a -> Text
+renderSharedNames =
+  T.intercalate "/" . NE.toList . NE.nub . NE.map (getName . originalDefinition . wholeStructure) . referencingRows
 
-newtype HaystackPosition = HaystackPosition Int
-  deriving (Generic, ToJSON)
-
-data HaystackContext e = HaystackContext
-  { maskedWorldRow :: WorldRowContent e
-  -- ^ entities that do not constitute any of the eligible structures
-  -- are replaced with 'null' in this list.
-  , haystackPosition :: HaystackPosition
-  }
-  deriving (Functor, Generic, ToJSON)
-
-data FoundRowCandidate e = FoundRowCandidate
-  { haystackContext :: HaystackContext e
-  , soughtContent :: StructureRowContent e
-  , matchedCandidates :: [MatchingRowFrom]
-  }
-  deriving (Functor, Generic, ToJSON)
-
-data EntityKeyedFinder e = EntityKeyedFinder
+newtype EntityKeyedFinder = EntityKeyedFinder
   { searchOffsets :: InspectionOffsets
-  , candidateStructureRows :: NonEmpty (StructureRowContent e)
-  , entityMask :: [e]
-  -- ^ NOTE: HashSet has no Functor instance,
-  -- so we represent this as a list here.
   }
-  deriving (Functor, Generic, ToJSON)
+  deriving (Generic, ToJSON)
 
 data ParticipatingEntity e = ParticipatingEntity
   { entity :: e
-  , entityKeyedFinders :: NonEmpty (EntityKeyedFinder e)
+  , entityKeyedFinders :: EntityKeyedFinder
   }
   deriving (Functor, Generic, ToJSON)
 
 data IntactPlacementLog = IntactPlacementLog
-  { isIntact :: Bool
+  { intactnessFailure :: Maybe StructureIntactnessFailure
   , sName :: OriginalName
   , locUpperLeft :: Cosmic Location
   }
   deriving (Generic, ToJSON)
 
-data VerticalSearch e = VerticalSearch
-  { haystackVerticalExtents :: InspectionOffsets
-  -- ^ vertical offset of haystack relative to the found row
-  , soughtStructures :: [OrientedStructure]
-  , verticalHaystack :: [WorldRowContent e]
+data ChunkMatchFailureReason e
+  = ChunkMatchFailureReason OriginalName (RowMismatchReason e)
+  deriving (Functor, Generic, ToJSON)
+
+data FoundChunkComparison e = FoundChunkComparison
+  { foundChunkKeys :: [NonEmpty e]
+  , referenceChunkKeys :: [NonEmpty e]
   }
   deriving (Functor, Generic, ToJSON)
 
+data RowMismatchReason e
+  = NoKeysSubset (FoundChunkComparison e)
+  | -- | NOTE: should be redundant with 'NoKeysSubset'
+    EmptyIntersection
+  deriving (Functor, Generic, ToJSON)
+
 data SearchLog e
-  = FoundParticipatingEntity (ParticipatingEntity e)
+  = IntactStaticPlacement [IntactPlacementLog]
+  | StartSearchAt (Cosmic Location) InspectionOffsets
+  | FoundParticipatingEntity (ParticipatingEntity e)
+  | FoundCompleteStructureCandidates [(OrientedStructure, Cosmic Location)]
+  | -- | this is actually internally used as a (Map (NonEmpty e) (NonEmpty Int)),
+    -- but the requirements of Functor force us to invert the mapping
+    FoundPiecewiseChunks [(NonEmpty Int, NonEmpty e)]
+  | ExpectedChunks (NonEmpty [NonEmpty e])
+  | ChunksMatchingExpected [ChunkedRowMatch OriginalName e]
+  | ChunkFailures [ChunkMatchFailureReason e]
+  | ChunkIntactnessVerification IntactPlacementLog
   | StructureRemoved OriginalName
-  | FoundRowCandidates [FoundRowCandidate e]
-  | FoundCompleteStructureCandidates [OrientedStructure]
-  | -- | There may be multiple candidate structures that could be
-    -- completed by the element that was just placed. This lists all of them.
-    VerticalSearchSpans [VerticalSearch e]
-  | IntactStaticPlacement [IntactPlacementLog]
   deriving (Functor, Generic)
 
 instance (ToJSON e) => ToJSON (SearchLog e) where
