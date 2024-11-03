@@ -15,7 +15,7 @@ import Data.Maybe (catMaybes, mapMaybe)
 import Data.Semigroup (sconcat)
 import Data.Tuple (swap)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Text.AhoCorasick (makeStateMachine, makeSimpleStateMachine)
+import Text.AhoCorasick (makeStateMachine)
 import Data.List.Split (wordsBy)
 
 -- | Given all candidate structures, explode them into annotated rows.
@@ -82,7 +82,7 @@ mkEntityLookup grids =
   -- is encountered.
   mkRowAutomatons neList =
     AutomatonNewInfo bounds sm searchPatternsAndSubAutomatons $
-      PiecewiseRecognition smPiecewise 3
+      PiecewiseRecognition smPiecewise extractedChunksForLookup
    where
     searchPatternsAndSubAutomatons = NE.map (\(a, b) -> (a, mkSmValue a b)) groupedByUniqueRow
      where
@@ -102,21 +102,18 @@ mkEntityLookup grids =
     bounds = sconcat $ NE.map expandedOffsets neList
     sm = makeStateMachine $ NE.toList searchPatternsAndSubAutomatons
 
-    -- groupedByUniqueChunk =
-    --   binTuplesHMasListNE $
-    --     NE.map (rowContent . myRow &&& id) neList
-
-    extractedChunksForStateMachine = HS.fromList $ NE.toList $
+    extractedChunksForStateMachine = HS.fromList . concat . NE.toList $
       NE.map (map chunkContents . contiguousChunks) neList
 
-    extractedChunksForLookup = NE.map
+    extractedChunksForLookup = HM.fromList $ NE.toList $ NE.map
       (HS.fromList . map chunkContents . contiguousChunks &&& mkRightMap)
       neList
       where
         mkRightMap sreo = binTuplesHM $ map (chunkContents &&& chunkStartPos) $ contiguousChunks sreo
 
+    smPiecewise = makeStateMachine $ map (NE.toList . fmap Just &&& id) $
+      HS.toList extractedChunksForStateMachine
 
-    smPiecewise = makeSimpleStateMachine $ HS.toList extractedChunksForStateMachine
 
   -- The values of this map are guaranteed to contain only one
   -- entry per row of each structure, even if some of those

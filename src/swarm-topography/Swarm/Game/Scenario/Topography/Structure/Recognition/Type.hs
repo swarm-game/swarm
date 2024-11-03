@@ -37,6 +37,7 @@ import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Structure.Named (NamedGrid)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Game.Universe (Cosmic, offsetBy)
+import Data.HashSet (HashSet)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Text.AhoCorasick (StateMachine)
 
@@ -95,8 +96,8 @@ data PositionWithinRow b a = PositionWithinRow
 
 
 data PiecewiseRecognition a = PiecewiseRecognition {
-    piecewiseSM :: StateMachine (NonEmpty a) [NonEmpty a]
-  , picewiseLookup :: Int
+    piecewiseSM :: StateMachine (AtomicKeySymbol a) (NonEmpty a)
+  , picewiseLookup :: HashMap (HashSet (NonEmpty a)) (HashMap (NonEmpty a) (NonEmpty Int))
   }
 
 data PositionedChunk a = PositionedChunk {

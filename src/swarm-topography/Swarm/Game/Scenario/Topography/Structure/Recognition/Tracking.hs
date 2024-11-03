@@ -168,12 +168,27 @@ registerRowMatches ::
   AutomatonNewInfo a (StructureSearcher b a) ->
   RecognitionState b a ->
   s (RecognitionState b a)
-registerRowMatches entLoader cLoc (AutomatonNewInfo horizontalOffsets sm _ _) rState = do
-  maskChoices <- attemptSearchWithEntityMask
+registerRowMatches entLoader cLoc (AutomatonNewInfo horizontalOffsets sm _ pwMatcher) rState = do
+
+  entitiesRow <-
+    getWorldRow
+      entLoader
+      registry
+      cLoc
+      horizontalOffsets
+      0
+
+  -- All of the eligible structure rows found
+  -- within this horizontal swath of world cells
+  let maskChoices = (entitiesRow, findAll sm entitiesRow)
 
   let logEntry = uncurry logRowCandidates maskChoices
       rState2 = rState & recognitionLog %~ (logEntry :)
       candidates = snd maskChoices
+
+
+  let PiecewiseRecognition pwSM pwMap = pwMatcher
+  let candidatesChunked = findAll pwSM entitiesRow
 
   candidates2Dpairs <-
     forM candidates $
@@ -186,19 +201,6 @@ registerRowMatches entLoader cLoc (AutomatonNewInfo horizontalOffsets sm _ _) rS
     registerStructureMatches (concat candidates2D) rState3
  where
   registry = rState ^. foundStructures
-
-  attemptSearchWithEntityMask = do
-    entitiesRow <-
-      getWorldRow
-        entLoader
-        registry
-        cLoc
-        horizontalOffsets
-        0
-
-    -- All of the eligible structure rows found
-    -- within this horizontal swath of world cells
-    return (entitiesRow, findAll sm entitiesRow)
 
 -- | Examines contiguous rows of entities, accounting
 -- for the offset of the initially found row.

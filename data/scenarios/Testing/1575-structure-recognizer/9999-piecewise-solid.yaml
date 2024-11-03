@@ -1,0 +1,73 @@
+version: 1
+name: Structure recognition - piecewise lines
+description: |
+  General solution for transparency
+creative: false
+objectives:
+  - teaser: Recognize structure
+    goal:
+      - |
+        `spaceship`{=structure} structure should be recognized upon completion,
+        even with an extraneous entity within its bounds.
+    condition: |
+      def isRight = \x. case x (\_. false) (\_. true); end;
+      foundStructure <- structure "spaceship" 0;
+      return $ isRight foundStructure;
+robots:
+  - name: base
+    dir: east
+    devices:
+      - ADT calculator
+      - blueprint
+      - fast grabber
+      - logger
+      - treads
+    inventory:
+      - [1, rock]
+solution: |
+  move; move; move;
+  swap "rock";
+structures:
+  - name: spaceship
+    recognize: [north]
+    structure:
+      palette:
+        'p': [stone, board]
+        'x': [stone, rock]
+      mask: '.'
+      map: |
+        xxx
+        ppp
+        xxx
+  - name: damage
+    description: A single-cell overwrite of the spaceship
+    structure:
+      palette:
+        't': [stone, tree]
+      map: |
+        t
+  - name: modified ship
+    description: A spaceship with a single cell replaced by a `tree`{=entity}
+    structure:
+      placements:
+        - src: spaceship
+        - src: damage
+      map: ""
+known: [board, mountain, rock, tree]
+world:
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass, erase]
+    'B': [grass, erase, base]
+    'p':
+      structure:
+        name: modified ship
+      cell: [grass]
+  upperleft: [0, 0]
+  map: |
+    .........
+    B..p.....
+    .........
+    .........
+    .........
