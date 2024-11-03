@@ -93,6 +93,17 @@ data PositionWithinRow b a = PositionWithinRow
   , structureRow :: StructureRow b a
   }
 
+
+data PiecewiseRecognition a = PiecewiseRecognition {
+    piecewiseSM :: StateMachine (NonEmpty a) [NonEmpty a]
+  , picewiseLookup :: Int
+  }
+
+data PositionedChunk a = PositionedChunk {
+    chunkStartPos :: Int
+  , chunkContents :: NonEmpty a
+  }
+
 -- Represents all of the locations that particular entity
 -- occurs within a specific row of a particular structure.
 --
@@ -107,7 +118,7 @@ data PositionWithinRow b a = PositionWithinRow
 data SingleRowEntityOccurrences b a = SingleRowEntityOccurrences
   { myRow :: StructureRow b a
   , myEntity :: a
-  , entityOccurrences :: NonEmpty (PositionWithinRow b a)
+  , contiguousChunks :: [PositionedChunk a]
   , expandedOffsets :: InspectionOffsets
   }
 
@@ -207,13 +218,25 @@ data AutomatonInfo en k v = AutomatonInfo
 
 makeLenses ''AutomatonInfo
 
+data AutomatonNewInfo k v = AutomatonNewInfo
+  { _inspectionOffsets2 :: InspectionOffsets
+  , _automaton2 :: StateMachine (AtomicKeySymbol k) v
+  , _searchPairs2 :: NonEmpty ([AtomicKeySymbol k], v)
+  -- ^ these are the tuples input to the 'makeStateMachine' function,
+  -- for debugging purposes.
+  , piecewiseStuff :: PiecewiseRecognition k
+  }
+  deriving (Generic)
+
+makeLenses ''AutomatonNewInfo
+
 -- | The complete set of data needed to identify applicable
 -- structures, based on a just-placed entity.
 data RecognizerAutomatons b a = RecognizerAutomatons
   { _originalStructureDefinitions :: Map OriginalName (StructureInfo b a)
   -- ^ all of the structures that shall participate in automatic recognition.
   -- This list is used only by the UI and by the 'Floorplan' command.
-  , _automatonsByEntity :: HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
+  , _automatonsByEntity :: HashMap a (AutomatonNewInfo a (StructureSearcher b a))
   }
   deriving (Generic)
 

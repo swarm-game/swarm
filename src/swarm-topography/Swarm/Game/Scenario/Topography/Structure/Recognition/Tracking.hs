@@ -68,8 +68,8 @@ entityModified entLoader modification cLoc recognizer =
       Just finder -> do
         let logFinder f =
               EntityKeyedFinder
-                (f ^. inspectionOffsets)
-                (NE.map fst $ f ^. searchPairs)
+                (f ^. inspectionOffsets2)
+                (NE.map fst $ f ^. searchPairs2)
                 mempty
             msg =
               FoundParticipatingEntity $
@@ -165,10 +165,10 @@ registerRowMatches ::
   (Monad s, Hashable a, Eq b) =>
   GenericEntLocator s a ->
   Cosmic Location ->
-  AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a) ->
+  AutomatonNewInfo a (StructureSearcher b a) ->
   RecognitionState b a ->
   s (RecognitionState b a)
-registerRowMatches entLoader cLoc (AutomatonInfo horizontalOffsets sm _) rState = do
+registerRowMatches entLoader cLoc (AutomatonNewInfo horizontalOffsets sm _ _) rState = do
   maskChoices <- attemptSearchWithEntityMask
 
   let logEntry = uncurry logRowCandidates maskChoices

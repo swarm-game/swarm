@@ -6,15 +6,16 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (
 
 import Control.Arrow ((&&&))
 import Data.HashMap.Strict qualified as HM
+import Data.HashSet qualified as HS
 import Data.Hashable (Hashable)
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, mapMaybe)
 import Data.Semigroup (sconcat)
 import Data.Tuple (swap)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Text.AhoCorasick (makeStateMachine)
+import Text.AhoCorasick (makeStateMachine, makeSimpleStateMachine)
 import Data.List.Split (wordsBy)
 
 -- | Given all candidate structures, explode them into annotated rows.
@@ -72,19 +73,19 @@ mkRowLookup neList =
 mkEntityLookup ::
   (Hashable a, Eq a) =>
   [StructureWithGrid b a] ->
-  HM.HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
+  HM.HashMap a (AutomatonNewInfo a (StructureSearcher b a))
 mkEntityLookup grids =
   HM.map mkRowAutomatons rowsByEntityParticipation
  where
 
-  -- Produces a list of automatons to evaluate whenever a given entity
+  -- Produces an automaton to evaluate whenever a given entity
   -- is encountered.
-  mkRowAutomatons neList = AutomatonInfo bounds sm searchPatternsAndSubAutomatons
+  mkRowAutomatons neList =
+    AutomatonNewInfo bounds sm searchPatternsAndSubAutomatons $
+      PiecewiseRecognition smPiecewise 3
    where
     searchPatternsAndSubAutomatons = NE.map (\(a, b) -> (a, mkSmValue a b)) groupedByUniqueRow
      where
-
-      zz = map catMaybes $ wordsBy null a
 
       groupedByUniqueRow =
         binTuplesHMasListNE $
@@ -101,14 +102,39 @@ mkEntityLookup grids =
     bounds = sconcat $ NE.map expandedOffsets neList
     sm = makeStateMachine $ NE.toList searchPatternsAndSubAutomatons
 
+    -- groupedByUniqueChunk =
+    --   binTuplesHMasListNE $
+    --     NE.map (rowContent . myRow &&& id) neList
+
+    extractedChunksForStateMachine = HS.fromList $ NE.toList $
+      NE.map (map chunkContents . contiguousChunks) neList
+
+    extractedChunksForLookup = NE.map
+      (HS.fromList . map chunkContents . contiguousChunks &&& mkRightMap)
+      neList
+      where
+        mkRightMap sreo = binTuplesHM $ map (chunkContents &&& chunkStartPos) $ contiguousChunks sreo
+
+
+    smPiecewise = makeSimpleStateMachine $ HS.toList extractedChunksForStateMachine
+
   -- The values of this map are guaranteed to contain only one
   -- entry per row of each structure, even if some of those
   -- rows contain repetition of the same entity.
+  -- That is not to say that there are not recurrences of identical rows,
+  -- though, if the same structure or a different structure has some identical rows.
   rowsByEntityParticipation =
     binTuplesHM
       . map (myEntity &&& id)
       . concatMap explodeRowEntities
       $ allStructureRows grids
+
+getContiguousChunks :: [Maybe a] -> [PositionedChunk a]
+getContiguousChunks rowMembers = map mkChunk .
+  mapMaybe (NE.nonEmpty . mapMaybe sequenceA) .
+    wordsBy (null . snd) $ zip [0::Int ..] rowMembers
+  where
+    mkChunk xs = PositionedChunk (fst $ NE.head xs) (NE.map snd xs)
 
 -- | All of the occurrences of each unique entity within a row
 -- are consolidated into one record, in which the repetitions are noted.
@@ -122,8 +148,11 @@ explodeRowEntities ::
 explodeRowEntities annotatedRow@(StructureRow _ _ rowMembers) =
   map f $ HM.toList $ binTuplesHM unconsolidatedEntityOccurrences
  where
+
+  chunks = getContiguousChunks rowMembers
+
   f (e, occurrences) =
-    SingleRowEntityOccurrences annotatedRow e occurrences $
+    SingleRowEntityOccurrences annotatedRow e chunks $
       sconcat $
         NE.map deriveEntityOffsets occurrences
 
