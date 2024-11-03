@@ -15,6 +15,7 @@ import Data.Semigroup (sconcat)
 import Data.Tuple (swap)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Text.AhoCorasick (makeStateMachine)
+import Data.List.Split (wordsBy)
 
 -- | Given all candidate structures, explode them into annotated rows.
 -- These annotations entail both the row index with the original structure
@@ -75,13 +76,6 @@ mkEntityLookup ::
 mkEntityLookup grids =
   HM.map mkRowAutomatons rowsByEntityParticipation
  where
-  -- The input here are all rows across all structures
-  -- that share the same entity sequence.
-  mkSmValue ksms singleRows =
-    StructureSearcher sm2D ksms singleRows
-   where
-    structureRowsNE = NE.map myRow singleRows
-    sm2D = mkRowLookup structureRowsNE
 
   -- Produces a list of automatons to evaluate whenever a given entity
   -- is encountered.
@@ -89,9 +83,20 @@ mkEntityLookup grids =
    where
     searchPatternsAndSubAutomatons = NE.map (\(a, b) -> (a, mkSmValue a b)) groupedByUniqueRow
      where
+
+      zz = map catMaybes $ wordsBy null a
+
       groupedByUniqueRow =
         binTuplesHMasListNE $
           NE.map (rowContent . myRow &&& id) neList
+
+      -- The input here are all rows across all structures
+      -- that share the same entity sequence.
+      mkSmValue ksms singleRows =
+        StructureSearcher sm2D ksms singleRows
+       where
+        structureRowsNE = NE.map myRow singleRows
+        sm2D = mkRowLookup structureRowsNE
 
     bounds = sconcat $ NE.map expandedOffsets neList
     sm = makeStateMachine $ NE.toList searchPatternsAndSubAutomatons
