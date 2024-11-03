@@ -14,8 +14,6 @@ import Control.Monad (forM, guard)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.Foldable (foldrM)
 import Data.HashMap.Strict qualified as HM
-import Data.HashSet (HashSet)
-import Data.HashSet qualified as HS
 import Data.Hashable (Hashable)
 import Data.Int (Int32)
 import Data.List (sortOn)
@@ -67,19 +65,19 @@ entityModified entLoader modification cLoc recognizer =
     let oldRecognitionState = r ^. recognitionState
     stateRevision <- case HM.lookup newEntity entLookup of
       Nothing -> return oldRecognitionState
-      Just finders -> do
+      Just finder -> do
         let logFinder f =
               EntityKeyedFinder
                 (f ^. inspectionOffsets)
                 (NE.map fst $ f ^. searchPairs)
-                (HS.toList $ f ^. participatingEntities)
+                mempty
             msg =
               FoundParticipatingEntity $
                 ParticipatingEntity newEntity $
-                  NE.map logFinder finders
+                  logFinder finder
             stateRevision' = oldRecognitionState & recognitionLog %~ (msg :)
 
-        foldrM (registerRowMatches entLoader cLoc) stateRevision' finders
+        foldrM (registerRowMatches entLoader cLoc) stateRevision' [finder]
 
     return $ r & recognitionState .~ stateRevision
 
@@ -116,16 +114,11 @@ candidateEntityAt ::
   (Monad s, Hashable a) =>
   GenericEntLocator s a ->
   FoundRegistry b a ->
-  -- | participating entities whitelist. If empty, all entities are included.
-  -- NOTE: This is only needed for structures that have transparent cells.
-  HashSet a ->
   Cosmic Location ->
   s (Maybe a)
-candidateEntityAt entLoader registry participating cLoc = runMaybeT $ do
+candidateEntityAt entLoader registry cLoc = runMaybeT $ do
   guard $ M.notMember cLoc $ foundByLocation registry
-  ent <- MaybeT $ entLoader cLoc
-  guard $ null participating || HS.member ent participating
-  return ent
+  MaybeT $ entLoader cLoc
 
 -- | Excludes entities that are already part of a
 -- registered found structure.
@@ -135,14 +128,12 @@ getWorldRow ::
   FoundRegistry b a ->
   Cosmic Location ->
   InspectionOffsets ->
-  -- | participating entities
-  HashSet a ->
   Int32 ->
   s [Maybe a]
-getWorldRow entLoader registry cLoc (InspectionOffsets (Min offsetLeft) (Max offsetRight)) participatingEnts yOffset = do
+getWorldRow entLoader registry cLoc (InspectionOffsets (Min offsetLeft) (Max offsetRight)) yOffset = do
   mapM getCandidate horizontalOffsets
  where
-  getCandidate = candidateEntityAt entLoader registry participatingEnts
+  getCandidate = candidateEntityAt entLoader registry
   horizontalOffsets = map mkLoc [offsetLeft .. offsetRight]
 
   -- NOTE: We negate the yOffset because structure rows are numbered increasing from top
@@ -177,8 +168,8 @@ registerRowMatches ::
   AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a) ->
   RecognitionState b a ->
   s (RecognitionState b a)
-registerRowMatches entLoader cLoc (AutomatonInfo participatingEnts horizontalOffsets sm _) rState = do
-  maskChoices <- attemptSearchWithEntityMask participatingEnts
+registerRowMatches entLoader cLoc (AutomatonInfo horizontalOffsets sm _) rState = do
+  maskChoices <- attemptSearchWithEntityMask
 
   let logEntry = uncurry logRowCandidates maskChoices
       rState2 = rState & recognitionLog %~ (logEntry :)
@@ -196,14 +187,13 @@ registerRowMatches entLoader cLoc (AutomatonInfo participatingEnts horizontalOff
  where
   registry = rState ^. foundStructures
 
-  attemptSearchWithEntityMask entsMask = do
+  attemptSearchWithEntityMask = do
     entitiesRow <-
       getWorldRow
         entLoader
         registry
         cLoc
         horizontalOffsets
-        entsMask
         0
 
     -- All of the eligible structure rows found
@@ -263,11 +253,11 @@ getMatches2D
   registry
   cLoc
   horizontalFoundOffsets@(InspectionOffsets (Min offsetLeft) _)
-  (AutomatonInfo participatingEnts vRange@(InspectionOffsets (Min offsetTop) (Max offsetBottom)) sm _) = do
+  (AutomatonInfo vRange@(InspectionOffsets (Min offsetTop) (Max offsetBottom)) sm _) = do
     entityRows <- mapM getRow vertOffsets
     return ((vRange, entityRows), getFoundStructures (offsetTop, offsetLeft) cLoc sm entityRows)
    where
-    getRow = getWorldRow entLoader registry cLoc horizontalFoundOffsets participatingEnts
+    getRow = getWorldRow entLoader registry cLoc horizontalFoundOffsets
     vertOffsets = [offsetTop .. offsetBottom]
 
 -- |

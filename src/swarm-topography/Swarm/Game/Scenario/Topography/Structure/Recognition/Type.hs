@@ -23,7 +23,6 @@ import Control.Lens (makeLenses)
 import Data.Aeson (ToJSON)
 import Data.Function (on)
 import Data.HashMap.Strict (HashMap)
-import Data.HashSet (HashSet)
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
@@ -198,8 +197,7 @@ instance Semigroup InspectionOffsets where
 -- a certain subset of structure rows, that may either
 -- all be within one structure, or span multiple structures.
 data AutomatonInfo en k v = AutomatonInfo
-  { _participatingEntities :: HashSet en
-  , _inspectionOffsets :: InspectionOffsets
+  { _inspectionOffsets :: InspectionOffsets
   , _automaton :: StateMachine k v
   , _searchPairs :: NonEmpty ([k], v)
   -- ^ these are the tuples input to the 'makeStateMachine' function,
@@ -215,7 +213,7 @@ data RecognizerAutomatons b a = RecognizerAutomatons
   { _originalStructureDefinitions :: Map OriginalName (StructureInfo b a)
   -- ^ all of the structures that shall participate in automatic recognition.
   -- This list is used only by the UI and by the 'Floorplan' command.
-  , _automatonsByEntity :: HashMap a (NonEmpty (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a)))
+  , _automatonsByEntity :: HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
   }
   deriving (Generic)
 

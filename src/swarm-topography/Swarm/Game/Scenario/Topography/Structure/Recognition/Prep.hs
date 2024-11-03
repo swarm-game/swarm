@@ -6,7 +6,6 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (
 
 import Control.Arrow ((&&&))
 import Data.HashMap.Strict qualified as HM
-import Data.HashSet qualified as HS
 import Data.Hashable (Hashable)
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty)
@@ -51,15 +50,10 @@ mkRowLookup ::
   NonEmpty (StructureRow b a) ->
   AutomatonInfo a (SymbolSequence a) (StructureWithGrid b a)
 mkRowLookup neList =
-  AutomatonInfo participatingEnts bounds sm tuples
+  AutomatonInfo bounds sm tuples
  where
   mkSmTuple = entityGrid &&& id
   tuples = NE.map (mkSmTuple . wholeStructure) neList
-
-  -- All of the unique entities across all of the full candidate structures
-  participatingEnts =
-    HS.fromList $
-      concatMap (concatMap catMaybes . fst) tuples
 
   deriveRowOffsets :: StructureRow b a -> InspectionOffsets
   deriveRowOffsets (StructureRow (StructureWithGrid _ _ w _) rwIdx _) =
@@ -77,7 +71,7 @@ mkRowLookup neList =
 mkEntityLookup ::
   (Hashable a, Eq a) =>
   [StructureWithGrid b a] ->
-  HM.HashMap a (NonEmpty (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a)))
+  HM.HashMap a (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a))
 mkEntityLookup grids =
   HM.map mkRowAutomatons rowsByEntityParticipation
  where
@@ -91,25 +85,13 @@ mkEntityLookup grids =
 
   -- Produces a list of automatons to evaluate whenever a given entity
   -- is encountered.
-  mkRowAutomatons neList =
-    NE.map (\(mask, tups) -> AutomatonInfo mask bounds sm tups) tuplesByEntMask
+  mkRowAutomatons neList = AutomatonInfo bounds sm searchPatternsAndSubAutomatons
    where
     searchPatternsAndSubAutomatons = NE.map (\(a, b) -> (a, mkSmValue a b)) groupedByUniqueRow
      where
       groupedByUniqueRow =
         binTuplesHMasListNE $
           NE.map (rowContent . myRow &&& id) neList
-
-    tuplesByEntMask =
-      binTuplesHMasListNE $
-        NE.map (getMaskSet . fst &&& id) searchPatternsAndSubAutomatons
-     where
-      -- If there are no transparent cells,
-      -- we don't need a mask.
-      getMaskSet row =
-        if Nothing `elem` row
-          then HS.fromList $ catMaybes row
-          else mempty
 
     bounds = sconcat $ NE.map expandedOffsets neList
     sm = makeStateMachine $ NE.toList searchPatternsAndSubAutomatons

@@ -65,7 +65,7 @@ data EntityKeyedFinder e = EntityKeyedFinder
 
 data ParticipatingEntity e = ParticipatingEntity
   { entity :: e
-  , entityKeyedFinders :: NonEmpty (EntityKeyedFinder e)
+  , entityKeyedFinders :: EntityKeyedFinder e
   }
   deriving (Functor, Generic, ToJSON)
 
