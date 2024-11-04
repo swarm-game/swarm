@@ -27,7 +27,9 @@ import Data.Semigroup (Sum (..))
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Swarm.Pretty (PrettyPrec (..))
+import Swarm.Util (failT, showT)
 import Swarm.Util.JSON (optionsUnwrapUnary)
+import Swarm.Util.Yaml (FromJSONE, getE, liftE, parseJSONE)
 import Text.Printf (printf)
 import Prelude hiding (lookup)
 
@@ -142,13 +144,21 @@ ctxFromTree tree = Ctx (varMap tree) tree
 ------------------------------------------------------------
 -- Context instances
 
--- XXX this instance will have to change!!
-instance ToJSON t => ToJSON (Ctx t) where
-  toJSON = genericToJSON optionsUnwrapUnary
+-- | Serialize a context simply as its hash; we assume that a
+--   top-level CtxMap has been seralized somewhere, from which we can
+--   recover this context by looking it up.
+instance ToJSON (Ctx t) where
+  toJSON = toJSON . ctxHash
 
--- XXX this instance will have to change!!
-instance FromJSON t => FromJSON (Ctx t) where
-  parseJSON = genericParseJSON optionsUnwrapUnary
+-- | Deserialize a context.  We expect to see a hash, and look it up
+--   in the provided CtxMap.
+instance FromJSONE (CtxMap CtxTree t) (Ctx t) where
+  parseJSONE v = do
+    h <- liftE $ parseJSON @CtxHash v
+    m <- getE
+    case getCtx h m of
+      Nothing -> failT ["Encountered unknown context hash", showT h]
+      Just ctx -> pure ctx
 
 instance (PrettyPrec t) => PrettyPrec (Ctx t) where
   prettyPrec _ _ = "<Ctx>"
@@ -242,6 +252,12 @@ withBindings ctx = local (`union` ctx)
 --   structures could either be complete context trees, or just a
 --   single level of structure containing more hashes.
 type CtxMap f t = Map CtxHash (CtxF f t)
+
+-- | Read a context from a context map.
+getCtx :: CtxHash -> CtxMap CtxTree t -> Maybe (Ctx t)
+getCtx h m = case M.lookup h m of
+  Nothing -> Nothing
+  Just tree -> Just $ ctxFromTree (CtxTree h tree)
 
 -- | Turn a context into a context map containing every subtree of its
 --   structure.
