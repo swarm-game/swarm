@@ -11,12 +11,12 @@ import Data.Hashable (Hashable)
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
+import Data.List.Split (wordsBy)
 import Data.Maybe (catMaybes, mapMaybe)
 import Data.Semigroup (sconcat)
 import Data.Tuple (swap)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Text.AhoCorasick (makeStateMachine)
-import Data.List.Split (wordsBy)
 
 -- | Given all candidate structures, explode them into annotated rows.
 -- These annotations entail both the row index with the original structure
@@ -77,7 +77,6 @@ mkEntityLookup ::
 mkEntityLookup grids =
   HM.map mkRowAutomatons rowsByEntityParticipation
  where
-
   -- Produces an automaton to evaluate whenever a given entity
   -- is encountered.
   mkRowAutomatons neList =
@@ -86,7 +85,6 @@ mkEntityLookup grids =
    where
     searchPatternsAndSubAutomatons = NE.map (\(a, b) -> (a, mkSmValue a b)) groupedByUniqueRow
      where
-
       groupedByUniqueRow =
         binTuplesHMasListNE $
           NE.map (rowContent . myRow &&& id) neList
@@ -102,18 +100,23 @@ mkEntityLookup grids =
     bounds = sconcat $ NE.map expandedOffsets neList
     sm = makeStateMachine $ NE.toList searchPatternsAndSubAutomatons
 
-    extractedChunksForStateMachine = HS.fromList . concat . NE.toList $
-      NE.map (map chunkContents . contiguousChunks) neList
+    extractedChunksForStateMachine =
+      HS.fromList . concat . NE.toList $
+        NE.map (map chunkContents . contiguousChunks) neList
 
-    extractedChunksForLookup = HM.fromList $ NE.toList $ NE.map
-      (HS.fromList . map chunkContents . contiguousChunks &&& mkRightMap)
-      neList
-      where
-        mkRightMap sreo = binTuplesHM $ map (chunkContents &&& chunkStartPos) $ contiguousChunks sreo
+    extractedChunksForLookup =
+      HM.fromList $
+        NE.toList $
+          NE.map
+            (HS.fromList . map chunkContents . contiguousChunks &&& mkRightMap)
+            neList
+     where
+      mkRightMap sreo = binTuplesHM $ map (chunkContents &&& chunkStartPos) $ contiguousChunks sreo
 
-    smPiecewise = makeStateMachine $ map (NE.toList . fmap Just &&& id) $
-      HS.toList extractedChunksForStateMachine
-
+    smPiecewise =
+      makeStateMachine $
+        map (NE.toList . fmap Just &&& id) $
+          HS.toList extractedChunksForStateMachine
 
   -- The values of this map are guaranteed to contain only one
   -- entry per row of each structure, even if some of those
@@ -127,11 +130,13 @@ mkEntityLookup grids =
       $ allStructureRows grids
 
 getContiguousChunks :: [Maybe a] -> [PositionedChunk a]
-getContiguousChunks rowMembers = map mkChunk .
-  mapMaybe (NE.nonEmpty . mapMaybe sequenceA) .
-    wordsBy (null . snd) $ zip [0::Int ..] rowMembers
-  where
-    mkChunk xs = PositionedChunk (fst $ NE.head xs) (NE.map snd xs)
+getContiguousChunks rowMembers =
+  map mkChunk
+    . mapMaybe (NE.nonEmpty . mapMaybe sequenceA)
+    . wordsBy (null . snd)
+    $ zip [0 :: Int ..] rowMembers
+ where
+  mkChunk xs = PositionedChunk (fst $ NE.head xs) (NE.map snd xs)
 
 -- | All of the occurrences of each unique entity within a row
 -- are consolidated into one record, in which the repetitions are noted.
@@ -145,7 +150,6 @@ explodeRowEntities ::
 explodeRowEntities annotatedRow@(StructureRow _ _ rowMembers) =
   map f $ HM.toList $ binTuplesHM unconsolidatedEntityOccurrences
  where
-
   chunks = getContiguousChunks rowMembers
 
   f (e, occurrences) =

@@ -169,7 +169,6 @@ registerRowMatches ::
   RecognitionState b a ->
   s (RecognitionState b a)
 registerRowMatches entLoader cLoc (AutomatonNewInfo horizontalOffsets sm _ pwMatcher) rState = do
-
   entitiesRow <-
     getWorldRow
       entLoader
@@ -185,7 +184,6 @@ registerRowMatches entLoader cLoc (AutomatonNewInfo horizontalOffsets sm _ pwMat
   let logEntry = uncurry logRowCandidates maskChoices
       rState2 = rState & recognitionLog %~ (logEntry :)
       candidates = snd maskChoices
-
 
   let PiecewiseRecognition pwSM pwMap = pwMatcher
   let candidatesChunked = findAll pwSM entitiesRow

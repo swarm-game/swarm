@@ -23,6 +23,7 @@ import Control.Lens (makeLenses)
 import Data.Aeson (ToJSON)
 import Data.Function (on)
 import Data.HashMap.Strict (HashMap)
+import Data.HashSet (HashSet)
 import Data.Int (Int32)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
@@ -37,7 +38,6 @@ import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Structure.Named (NamedGrid)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Game.Universe (Cosmic, offsetBy)
-import Data.HashSet (HashSet)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Text.AhoCorasick (StateMachine)
 
@@ -94,14 +94,13 @@ data PositionWithinRow b a = PositionWithinRow
   , structureRow :: StructureRow b a
   }
 
-
-data PiecewiseRecognition a = PiecewiseRecognition {
-    piecewiseSM :: StateMachine (AtomicKeySymbol a) (NonEmpty a)
+data PiecewiseRecognition a = PiecewiseRecognition
+  { piecewiseSM :: StateMachine (AtomicKeySymbol a) (NonEmpty a)
   , picewiseLookup :: HashMap (HashSet (NonEmpty a)) (HashMap (NonEmpty a) (NonEmpty Int))
   }
 
-data PositionedChunk a = PositionedChunk {
-    chunkStartPos :: Int
+data PositionedChunk a = PositionedChunk
+  { chunkStartPos :: Int
   , chunkContents :: NonEmpty a
   }
 
