@@ -17,6 +17,7 @@ import Control.Lens.Empty (AsEmpty (..))
 import Control.Lens.Prism (prism)
 import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
 import Data.Data (Data)
+import Data.Function (on)
 import Data.Functor.Const
 import Data.Hashable
 import Data.List.NonEmpty qualified as NE
@@ -83,37 +84,43 @@ restructure _ (CtxSingle x t) = CtxSingle x t
 restructure h (CtxDelete x t f1) = CtxDelete x t (h f1)
 restructure h (CtxUnion f1 f2) = CtxUnion (h f1) (h f2)
 
--- | A "context structure" is one possible representation of a
---   context, consisting of a structured record of the process by
---   which a context was constructed.  This representation would be
---   terrible for doing efficient variable lookups, but it can be used
---   to efficiently destruct/serialize the context while recovering
+-- | A 'CtxTree' is one possible representation of a context,
+--   consisting of a structured record of the process by which a
+--   context was constructed.  This representation would be terrible
+--   for doing efficient variable lookups, but it can be used to
+--   efficiently serialize/deserialize the context while recovering
 --   sharing.
 --
 --   It stores a top-level hash of the context, along with a recursive
 --   tree built via 'CtxF'.
-data CtxStruct t = CtxStruct CtxHash (CtxF CtxStruct t)
+data CtxTree t = CtxTree CtxHash (CtxF CtxTree t)
   deriving (Eq, Functor, Foldable, Traversable, Data, Generic, ToJSON, FromJSON, Show)
 
 -- | A 'CtxNode' is just a single level of structure for a context,
 --   with any recursive contexts replaced by their hash.
+--
+--   For example, a 'CtxNode' could look something like @CtxUnion
+--   (Const 0fe5b299) (Const abcdef12)@.
 type CtxNode t = CtxF (Const CtxHash) t
 
 ------------------------------------------------------------
 -- Contexts
 
 -- | A context is a mapping from variable names to things.  We store
---   both a 'Map' (for efficient lookup) as well as a 'CtxStruct' for
+--   both a 'Map' (for efficient lookup) as well as a 'CtxTree' for
 --   sharing-aware serializing/deserializing of contexts.
-data Ctx t = Ctx {unCtx :: Map Var t, ctxStruct :: CtxStruct t}
-  deriving (Eq, Functor, Traversable, Data, Generic)
+data Ctx t = Ctx {unCtx :: Map Var t, ctxStruct :: CtxTree t}
+  deriving (Functor, Traversable, Data, Generic)
 
 -- | Get the top-level hash of a context.
 ctxHash :: Ctx t -> CtxHash
-ctxHash (Ctx _ (CtxStruct h _)) = h
+ctxHash (Ctx _ (CtxTree h _)) = h
 
 instance Show (Ctx t) where
   show _ = "<Ctx>"
+
+instance Eq (Ctx t) where
+  (==) = (==) `on` ctxHash
 
 instance Hashable t => Hashable (Ctx t) where
   hash = getCtxHash . ctxHash
@@ -121,6 +128,16 @@ instance Hashable t => Hashable (Ctx t) where
 
 instance Foldable Ctx where
   foldMap f = foldMap f . unCtx
+
+-- | Rebuild a complete 'Ctx' from a 'CtxTree'.
+ctxFromTree :: CtxTree t -> Ctx t
+ctxFromTree tree = Ctx (varMap tree) tree
+ where
+  varMap (CtxTree _ s) = case s of
+    CtxEmpty -> M.empty
+    CtxSingle x t -> M.singleton x t
+    CtxDelete x _ s1 -> M.delete x (varMap s1)
+    CtxUnion s1 s2 -> varMap s2 `M.union` varMap s1
 
 ------------------------------------------------------------
 -- Context instances
@@ -156,11 +173,11 @@ instance AsEmpty (Ctx t) where
 
 -- | The empty context.
 empty :: Ctx t
-empty = Ctx M.empty (CtxStruct mempty CtxEmpty)
+empty = Ctx M.empty (CtxTree mempty CtxEmpty)
 
 -- | A singleton context.
 singleton :: Hashable t => Var -> t -> Ctx t
-singleton x t = Ctx (M.singleton x t) (CtxStruct (singletonHash x t) (CtxSingle x t))
+singleton x t = Ctx (M.singleton x t) (CtxTree (singletonHash x t) (CtxSingle x t))
 
 -- | Create a 'Ctx' from a 'Map'.
 fromMap :: Hashable t => Map Var t -> Ctx t
@@ -178,9 +195,9 @@ lookupR x = lookup x <$> ask
 
 -- | Delete a variable from a context.
 delete :: Hashable t => Var -> Ctx t -> Ctx t
-delete x c@(Ctx m s@(CtxStruct h _)) = case M.lookup x m of
+delete x c@(Ctx m s@(CtxTree h _)) = case M.lookup x m of
   Nothing -> c
-  Just t -> Ctx (M.delete x m) (CtxStruct (h - singletonHash x t) (CtxDelete x t s))
+  Just t -> Ctx (M.delete x m) (CtxTree (h - singletonHash x t) (CtxDelete x t s))
 
 -- | Get the list of key-value associations from a context.
 assocs :: Ctx t -> [(Var, t)]
@@ -193,9 +210,9 @@ vars = M.keys . unCtx
 -- | Add a key-value binding to a context (overwriting the old one if
 --   the key is already present).
 addBinding :: Hashable t => Var -> t -> Ctx t -> Ctx t
-addBinding x t (Ctx m s@(CtxStruct h _)) = Ctx (M.insert x t m) s'
+addBinding x t (Ctx m s@(CtxTree h _)) = Ctx (M.insert x t m) s'
  where
-  s' = CtxStruct h' (CtxUnion (CtxStruct tHash (CtxSingle x t)) s)
+  s' = CtxTree h' (CtxUnion (CtxTree tHash (CtxSingle x t)) s)
   tHash = singletonHash x t
   h' = case M.lookup x m of
     Nothing -> h + tHash
@@ -203,7 +220,7 @@ addBinding x t (Ctx m s@(CtxStruct h _)) = Ctx (M.insert x t m) s'
 
 -- | /Right/-biased union of contexts.
 union :: Hashable t => Ctx t -> Ctx t -> Ctx t
-union (Ctx m1 s1@(CtxStruct h1 _)) (Ctx m2 s2@(CtxStruct h2 _)) = Ctx (m2 `M.union` m1) (CtxStruct h' (CtxUnion s1 s2))
+union (Ctx m1 s1@(CtxTree h1 _)) (Ctx m2 s2@(CtxTree h2 _)) = Ctx (m2 `M.union` m1) (CtxTree h' (CtxUnion s1 s2))
  where
   -- `Data.Map.intersection l r` returns a map with common keys, but values from `l`
   overwritten = M.intersection m1 m2
@@ -228,7 +245,7 @@ type CtxMap f t = Map CtxHash (CtxF f t)
 
 -- | Turn a context into a context map containing every subtree of its
 --   structure.
-toCtxMap :: Ctx t -> CtxMap CtxStruct t
+toCtxMap :: Ctx t -> CtxMap CtxTree t
 toCtxMap (Ctx m s) = run $ execState M.empty (buildCtxMap m s)
 
 -- | Build a context map by keeping track of the incrementally built
@@ -236,9 +253,9 @@ toCtxMap (Ctx m s) = run $ execState M.empty (buildCtxMap m s)
 --   to add all subtrees to the map---but, of course, stopping without
 --   recursing further whenever we see a hash that is already in the
 --   map.
-buildCtxMap :: forall t m sig. Has (State (CtxMap CtxStruct t)) sig m => Map Var t -> CtxStruct t -> m ()
-buildCtxMap m (CtxStruct h s) = do
-  cm <- get @(CtxMap CtxStruct t)
+buildCtxMap :: forall t m sig. Has (State (CtxMap CtxTree t)) sig m => Map Var t -> CtxTree t -> m ()
+buildCtxMap m (CtxTree h s) = do
+  cm <- get @(CtxMap CtxTree t)
   case h `M.member` cm of
     True -> pure ()
     False -> do
@@ -250,21 +267,21 @@ buildCtxMap m (CtxStruct h s) = do
         CtxUnion s1 s2 -> buildCtxMap m s1 *> buildCtxMap m s2
 
 -- | "Dessicate" a context map by replacing the actual context trees
---   with single-layers containing only hashes.  A dessicated context
---   map is very suitable for serializing, since it makes sharing
---   completely explicit---even if a given context is referenced
---   multiple times, the references are simply hash values, and the
---   context is stored only once, under its hash.
-dessicate :: CtxMap CtxStruct t -> CtxMap (Const CtxHash) t
-dessicate = M.map (restructure (\(CtxStruct h1 _) -> Const h1))
+--   with single structure layers containing only hashes.  A
+--   dessicated context map is very suitable for serializing, since it
+--   makes sharing completely explicit---even if a given context is
+--   referenced multiple times, the references are simply hash values,
+--   and the context is stored only once, under its hash.
+dessicate :: CtxMap CtxTree t -> CtxMap (Const CtxHash) t
+dessicate = M.map (restructure (\(CtxTree h1 _) -> Const h1))
 
 -- | "Rehydrate" a dessicated context map by replacing every hash with
 --   an actual context structure.  We do this by building the result
 --   as a lazy, recursive map, replacing each hash by the result we
 --   get when looking it up in the map being built.  A context which
 --   is referenced multiple times will thus be shared in memory.
-rehydrate :: forall t. CtxMap (Const CtxHash) t -> CtxMap CtxStruct t
+rehydrate :: forall t. CtxMap (Const CtxHash) t -> CtxMap CtxTree t
 rehydrate m = m'
  where
-  m' :: CtxMap CtxStruct t
-  m' = M.map (restructure (\(Const h) -> CtxStruct h (m' M.! h))) m
+  m' :: CtxMap CtxTree t
+  m' = M.map (restructure (\(Const h) -> CtxTree h (m' M.! h))) m
