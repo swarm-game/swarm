@@ -221,11 +221,21 @@ withBindings ctx = local (`union` ctx)
 ------------------------------------------------------------
 -- Context serializing/deserializing
 
+-- | A 'CtxMap' maps context hashes to context structures.  Those
+--   structures could either be complete context trees, or just a
+--   single level of structure containing more hashes.
 type CtxMap f t = Map CtxHash (CtxF f t)
 
+-- | Turn a context into a context map containing every subtree of its
+--   structure.
 toCtxMap :: Ctx t -> CtxMap CtxStruct t
 toCtxMap (Ctx m s) = run $ execState M.empty (buildCtxMap m s)
 
+-- | Build a context map by keeping track of the incrementally built
+--   map in a state effect, and traverse the given context structure
+--   to add all subtrees to the map---but, of course, stopping without
+--   recursing further whenever we see a hash that is already in the
+--   map.
 buildCtxMap :: forall t m sig. Has (State (CtxMap CtxStruct t)) sig m => Map Var t -> CtxStruct t -> m ()
 buildCtxMap m (CtxStruct h s) = do
   cm <- get @(CtxMap CtxStruct t)
@@ -239,9 +249,20 @@ buildCtxMap m (CtxStruct h s) = do
         CtxDelete x t s1 -> buildCtxMap (M.insert x t m) s1
         CtxUnion s1 s2 -> buildCtxMap m s1 *> buildCtxMap m s2
 
+-- | "Dessicate" a context map by replacing the actual context trees
+--   with single-layers containing only hashes.  A dessicated context
+--   map is very suitable for serializing, since it makes sharing
+--   completely explicit---even if a given context is referenced
+--   multiple times, the references are simply hash values, and the
+--   context is stored only once, under its hash.
 dessicate :: CtxMap CtxStruct t -> CtxMap (Const CtxHash) t
 dessicate = M.map (restructure (\(CtxStruct h1 _) -> Const h1))
 
+-- | "Rehydrate" a dessicated context map by replacing every hash with
+--   an actual context structure.  We do this by building the result
+--   as a lazy, recursive map, replacing each hash by the result we
+--   get when looking it up in the map being built.  A context which
+--   is referenced multiple times will thus be shared in memory.
 rehydrate :: forall t. CtxMap (Const CtxHash) t -> CtxMap CtxStruct t
 rehydrate m = m'
  where
