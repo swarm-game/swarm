@@ -15,7 +15,7 @@ import Control.Effect.Reader (Reader, ask, local)
 import Control.Effect.State (State, get, modify)
 import Control.Lens.Empty (AsEmpty (..))
 import Control.Lens.Prism (prism)
-import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON)
+import Data.Aeson (FromJSON (..), ToJSON (..))
 import Data.Data (Data)
 import Data.Function (on)
 import Data.Functor.Const
@@ -28,7 +28,6 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import Swarm.Pretty (PrettyPrec (..))
 import Swarm.Util (failT, showT)
-import Swarm.Util.JSON (optionsUnwrapUnary)
 import Swarm.Util.Yaml (FromJSONE, getE, liftE, parseJSONE)
 import Text.Printf (printf)
 import Prelude hiding (lookup)
@@ -104,6 +103,26 @@ data CtxTree t = CtxTree CtxHash (CtxF CtxTree t)
 --   For example, a 'CtxNode' could look something like @CtxUnion
 --   (Const 0fe5b299) (Const abcdef12)@.
 type CtxNode t = CtxF (Const CtxHash) t
+
+-- | Roll up one level of context structure while building a new
+--   top-level Map and computing an appropriate top-level hash.
+rollCtx :: Hashable t => CtxF Ctx t -> Ctx t
+rollCtx s = Ctx m (CtxTree h (restructure ctxStruct s))
+ where
+  (m, h) = case s of
+    CtxEmpty -> (M.empty, 0)
+    CtxSingle x t -> (M.singleton x t, singletonHash x t)
+    CtxDelete x _ (Ctx m1 (CtxTree h1 _)) -> case M.lookup x m1 of
+      Nothing -> (m1, h1)
+      Just t' -> (M.delete x m1, h1 - singletonHash x t')
+    CtxUnion (Ctx m1 (CtxTree h1 _)) (Ctx m2 (CtxTree h2 _)) -> (m2 `M.union` m1, h')
+     where
+      -- `Data.Map.intersection l r` returns a map with common keys,
+      -- but values from `l`.  The values in m1 are the ones we want
+      -- to subtract from the hash, since they are the ones that will
+      -- be overwritten.
+      overwritten = M.intersection m1 m2
+      h' = h1 + h2 - mapHash overwritten
 
 ------------------------------------------------------------
 -- Contexts
@@ -183,11 +202,13 @@ instance AsEmpty (Ctx t) where
 
 -- | The empty context.
 empty :: Ctx t
+-- We could also define empty = rollCtx CtxEmpty but that would introduce an
+-- unnecessary Hashable t constraint.
 empty = Ctx M.empty (CtxTree mempty CtxEmpty)
 
 -- | A singleton context.
 singleton :: Hashable t => Var -> t -> Ctx t
-singleton x t = Ctx (M.singleton x t) (CtxTree (singletonHash x t) (CtxSingle x t))
+singleton x t = rollCtx $ CtxSingle x t
 
 -- | Create a 'Ctx' from a 'Map'.
 fromMap :: Hashable t => Map Var t -> Ctx t
@@ -197,7 +218,7 @@ fromMap m = case NE.nonEmpty (M.assocs m) of
 
 -- | Look up a variable in a context.
 lookup :: Var -> Ctx t -> Maybe t
-lookup x (Ctx m _) = M.lookup x m
+lookup x = M.lookup x . unCtx
 
 -- | Look up a variable in a context in an ambient Reader effect.
 lookupR :: Has (Reader (Ctx t)) sig m => Var -> m (Maybe t)
@@ -205,9 +226,9 @@ lookupR x = lookup x <$> ask
 
 -- | Delete a variable from a context.
 delete :: Hashable t => Var -> Ctx t -> Ctx t
-delete x c@(Ctx m s@(CtxTree h _)) = case M.lookup x m of
-  Nothing -> c
-  Just t -> Ctx (M.delete x m) (CtxTree (h - singletonHash x t) (CtxDelete x t s))
+delete x ctx@(Ctx m _) = case M.lookup x m of
+  Nothing -> ctx
+  Just t -> rollCtx $ CtxDelete x t ctx
 
 -- | Get the list of key-value associations from a context.
 assocs :: Ctx t -> [(Var, t)]
@@ -220,21 +241,11 @@ vars = M.keys . unCtx
 -- | Add a key-value binding to a context (overwriting the old one if
 --   the key is already present).
 addBinding :: Hashable t => Var -> t -> Ctx t -> Ctx t
-addBinding x t (Ctx m s@(CtxTree h _)) = Ctx (M.insert x t m) s'
- where
-  s' = CtxTree h' (CtxUnion (CtxTree tHash (CtxSingle x t)) s)
-  tHash = singletonHash x t
-  h' = case M.lookup x m of
-    Nothing -> h + tHash
-    Just t' -> h - singletonHash x t' + tHash
+addBinding x t ctx = ctx `union` singleton x t
 
 -- | /Right/-biased union of contexts.
 union :: Hashable t => Ctx t -> Ctx t -> Ctx t
-union (Ctx m1 s1@(CtxTree h1 _)) (Ctx m2 s2@(CtxTree h2 _)) = Ctx (m2 `M.union` m1) (CtxTree h' (CtxUnion s1 s2))
- where
-  -- `Data.Map.intersection l r` returns a map with common keys, but values from `l`
-  overwritten = M.intersection m1 m2
-  h' = h1 + h2 - mapHash overwritten
+union ctx1 ctx2 = rollCtx $ CtxUnion ctx1 ctx2
 
 -- | Locally extend the context with an additional binding.
 withBinding :: (Has (Reader (Ctx t)) sig m, Hashable t) => Var -> t -> m a -> m a
@@ -296,8 +307,7 @@ dehydrate = M.map (restructure (\(CtxTree h1 _) -> Const h1))
 --   as a lazy, recursive map, replacing each hash by the result we
 --   get when looking it up in the map being built.  A context which
 --   is referenced multiple times will thus be shared in memory.
-rehydrate :: forall t. CtxMap (Const CtxHash) t -> CtxMap CtxTree t
+rehydrate :: CtxMap (Const CtxHash) t -> CtxMap CtxTree t
 rehydrate m = m'
  where
-  m' :: CtxMap CtxTree t
   m' = M.map (restructure (\(Const h) -> CtxTree h (m' M.! h))) m
