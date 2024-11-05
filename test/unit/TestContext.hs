@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -6,11 +7,16 @@
 -- Swarm unit tests for contexts
 module TestContext where
 
+import Control.Monad (replicateM)
+import Data.Hashable
+import Data.List (nub)
 import Data.Map qualified as M
 import Swarm.Language.Context
 import Swarm.Util (showT)
+import Test.QuickCheck.Instances.Text ()
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, testCase)
+import Test.Tasty.QuickCheck (testProperty, Gen, generate, withMaxSuccess, Arbitrary(..))
 
 testContext :: TestTree
 testContext =
@@ -37,6 +43,15 @@ testContext =
         , testCase "large" $ serializeRoundTrip bigCtx
         , testCase "delete" $ serializeRoundTrip (delete "y" ctx4)
         ]
+    , testProperty
+        "no paired hash collisions"
+        (withMaxSuccess 10000 (hashConsistent @Int))
+    , testCase
+        "no hash collisions in a large pool" $
+        do
+          ctxs <- generate (replicateM 100000 (arbitrary :: Gen (Ctx Int)))
+          let m = M.fromListWith (++) (map (\ctx -> (ctxHash ctx, [unCtx ctx])) ctxs)
+          assertBool "foo" $ all ((==1) . length . nub) m
     ]
  where
   ctx1 = singleton "x" 3
@@ -46,6 +61,12 @@ testContext =
   ctx5 = singleton "y" 10
   bigCtx = fromMap . M.fromList $ zip (map (("x" <>) . showT) [1 :: Int ..]) [1 .. 10000]
 
+instance (Hashable a, Arbitrary a) => Arbitrary (Ctx a) where
+  arbitrary = fromMap <$> arbitrary
+
+hashConsistent :: Eq a => Ctx a -> Ctx a -> Bool
+hashConsistent ctx1 ctx2 = (ctx1 == ctx2) == (ctx1 `ctxStructEqual` ctx2)
+
 ctxsEqual :: Ctx Int -> Ctx Int -> Assertion
 ctxsEqual ctx1 ctx2 = do
   -- Contexts are compared by hash for equality
@@ -53,8 +74,9 @@ ctxsEqual ctx1 ctx2 = do
 
   -- Make sure they are also structurally equal
   assertBool "structural equality" (ctxStructEqual ctx1 ctx2)
- where
-  ctxStructEqual (Ctx m1 _) (Ctx m2 _) = m1 == m2
+
+ctxStructEqual :: Eq a => Ctx a -> Ctx a -> Bool
+ctxStructEqual (Ctx m1 _) (Ctx m2 _) = m1 == m2
 
 serializeRoundTrip :: Ctx Int -> Assertion
 serializeRoundTrip ctx = do

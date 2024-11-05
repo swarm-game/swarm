@@ -284,6 +284,9 @@ common parser-combinators
 common prettyprinter
   build-depends: prettyprinter >=1.7.0 && <1.8
 
+common quickcheck-instances
+  build-depends: quickcheck-instances >= 0.3.17 && < 0.4
+
 common random
   build-depends: random >=1.2.0 && <1.3
 
@@ -1210,6 +1213,7 @@ test-suite swarm-unit
     lens,
     megaparsec,
     mtl,
+    quickcheck-instances,
     tasty,
     tasty-hunit,
     tasty-quickcheck,
