@@ -4,6 +4,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -313,7 +314,7 @@ instance PrettyPrec IntVar where
 --   working with 'UType' as if it were defined directly.
 type UType = Free TypeF IntVar
 
--- XXX orphan instance
+-- orphan instance
 instance (Eq1 f, Hashable x, Hashable (f (Free f x))) => Hashable (Free f x)
 
 -- | A generic /fold/ for things defined via 'Free' (including, in
