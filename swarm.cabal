@@ -1223,6 +1223,7 @@ test-suite swarm-unit
   other-modules:
     TestBoolExpr
     TestCommand
+    TestContext
     TestEval
     TestInventory
     TestLSP
