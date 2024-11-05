@@ -16,7 +16,7 @@ import Swarm.Util (showT)
 import Test.QuickCheck.Instances.Text ()
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, assertBool, assertEqual, testCase)
-import Test.Tasty.QuickCheck (testProperty, Gen, generate, withMaxSuccess, Arbitrary(..))
+import Test.Tasty.QuickCheck (Arbitrary (..), Gen, generate, testProperty, withMaxSuccess)
 
 testContext :: TestTree
 testContext =
@@ -47,11 +47,11 @@ testContext =
         "no paired hash collisions"
         (withMaxSuccess 10000 (hashConsistent @Int))
     , testCase
-        "no hash collisions in a large pool" $
-        do
+        "no hash collisions in a large pool"
+        $ do
           ctxs <- generate (replicateM 100000 (arbitrary :: Gen (Ctx Int)))
           let m = M.fromListWith (++) (map (\ctx -> (ctxHash ctx, [unCtx ctx])) ctxs)
-          assertBool "foo" $ all ((==1) . length . nub) m
+          assertBool "foo" $ all ((== 1) . length . nub) m
     ]
  where
   ctx1 = singleton "x" 3
