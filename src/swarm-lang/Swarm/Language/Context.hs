@@ -15,7 +15,7 @@ import Control.Effect.Reader (Reader, ask, local)
 import Control.Effect.State (State, get, modify)
 import Control.Lens.Empty (AsEmpty (..))
 import Control.Lens.Prism (prism)
-import Data.Aeson (FromJSON (..), ToJSON (..))
+import Data.Aeson (FromJSON (..), FromJSONKey, ToJSON (..), ToJSONKey, genericParseJSON, genericToJSON, withText)
 import Data.Data (Data)
 import Data.Function (on)
 import Data.Functor.Const
@@ -25,11 +25,14 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Semigroup (Sum (..))
 import Data.Text (Text)
+import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Swarm.Pretty (PrettyPrec (..))
 import Swarm.Util (failT, showT)
+import Swarm.Util.JSON (optionsMinimize)
 import Swarm.Util.Yaml (FromJSONE, getE, liftE, parseJSONE)
 import Text.Printf (printf)
+import Text.Read (readMaybe)
 import Prelude hiding (lookup)
 
 -- | We use 'Text' values to represent variables.
@@ -51,12 +54,20 @@ type Var = Text
 --   functional, without the need to thread around some kind of
 --   globally unique ID generation effect.
 newtype CtxHash = CtxHash {getCtxHash :: Int}
-  deriving (Eq, Ord, Data, Generic, ToJSON, FromJSON)
+  deriving (Eq, Ord, Data, Generic, ToJSONKey, FromJSONKey)
   deriving (Semigroup, Monoid) via Sum Int
   deriving (Num) via Int
 
 instance Show CtxHash where
   show (CtxHash h) = printf "%016x" h
+
+instance ToJSON CtxHash where
+  toJSON h = toJSON (show h)
+
+instance FromJSON CtxHash where
+  parseJSON = withText "hash" $ \t -> case readMaybe ("0x" ++ T.unpack t) of
+    Nothing -> fail "Could not parse CtxHash"
+    Just h -> pure (CtxHash h)
 
 -- | The hash for a single variable -> value binding.
 singletonHash :: Hashable t => Var -> t -> CtxHash
@@ -76,7 +87,13 @@ data CtxF f t
   | CtxSingle Var t
   | CtxDelete Var t (f t)
   | CtxUnion (f t) (f t)
-  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic, ToJSON, FromJSON)
+  deriving (Eq, Show, Functor, Foldable, Traversable, Data, Generic)
+
+instance (ToJSON t, ToJSON (f t)) => ToJSON (CtxF f t) where
+  toJSON = genericToJSON optionsMinimize
+
+instance (FromJSON t, FromJSON (f t)) => FromJSON (CtxF f t) where
+  parseJSON = genericParseJSON optionsMinimize
 
 -- | Map over the recursive structure stored in a 'CtxF'.
 restructure :: (f t -> g t) -> CtxF f t -> CtxF g t
