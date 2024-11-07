@@ -89,9 +89,9 @@ data SearchLog e
   | StructureRemoved OriginalName
   | FoundRowCandidates [FoundRowCandidate e]
   | FoundCompleteStructureCandidates [OrientedStructure]
-  | FoundPiecewiseChunks [(NonEmpty Int, NonEmpty e)]
-    -- ^ this is actually internally used as a (Map (NonEmpty e) (NonEmpty Int)),
+  | -- | this is actually internally used as a (Map (NonEmpty e) (NonEmpty Int)),
     -- but the requirements of Functor force us to invert the mapping
+    FoundPiecewiseChunks [(NonEmpty Int, NonEmpty e)]
   | ExpectedChunks [[NonEmpty e]]
   | -- | There may be multiple candidate structures that could be
     -- completed by the element that was just placed. This lists all of them.

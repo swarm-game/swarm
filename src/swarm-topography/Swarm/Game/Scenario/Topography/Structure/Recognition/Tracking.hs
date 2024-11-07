@@ -9,34 +9,34 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking (
   entityModified,
 ) where
 
-import Control.Lens ((%~), (&), (.~), (^.))
 import Control.Arrow ((&&&))
-import Control.Monad.Trans.Class (lift)
-import Data.Tuple (swap)
-import Data.HashSet qualified as HS
+import Control.Lens ((%~), (&), (.~), (^.))
 import Control.Monad (forM, guard)
+import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
+import Control.Monad.Trans.Writer.Strict
 import Data.Foldable (foldrM)
 import Data.HashMap.Strict qualified as HM
+import Data.HashSet qualified as HS
 import Data.Hashable (Hashable)
 import Data.Int (Int32)
 import Data.List (sortOn)
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (binTuplesHM)
 import Data.List.NonEmpty.Extra qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (listToMaybe)
 import Data.Ord (Down (..))
 import Data.Semigroup (Max (..), Min (..))
+import Data.Tuple (swap)
 import Linear (V2 (..))
 import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (binTuplesHM)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Scenario.Topography.Terraform
 import Swarm.Game.Universe
 import Text.AhoCorasick
-import Control.Monad.Trans.Writer.Strict
 
 -- | Interface that provides monadic access to
 -- querying entities at locations.
@@ -64,8 +64,9 @@ entityModified entLoader modification cLoc recognizer = do
     Add newEntity -> doAddition newEntity recognizer
     Remove _ -> doRemoval
     Swap _ newEntity -> doRemoval >>= doAddition newEntity
-  return $ val
-    & recognitionState . recognitionLog %~ (reverse accumulatedLogs <>)
+  return $
+    val
+      & recognitionState . recognitionLog %~ (reverse accumulatedLogs <>)
  where
   entLookup = recognizer ^. automatons . automatonsByEntity
 
@@ -176,13 +177,14 @@ registerRowMatches ::
   RecognitionState b a ->
   WriterT [SearchLog a] s (RecognitionState b a)
 registerRowMatches entLoader cLoc (AutomatonNewInfo horizontalOffsets sm _ pwMatcher) rState = do
-  entitiesRow <- lift $
-    getWorldRow
-      entLoader
-      registry
-      cLoc
-      horizontalOffsets
-      0
+  entitiesRow <-
+    lift $
+      getWorldRow
+        entLoader
+        registry
+        cLoc
+        horizontalOffsets
+        0
 
   -- All of the eligible structure rows found
   -- within this horizontal swath of world cells
@@ -194,23 +196,23 @@ registerRowMatches entLoader cLoc (AutomatonNewInfo horizontalOffsets sm _ pwMat
   let candidatesChunked = findAll pwSM entitiesRow
       chunksLookup = binTuplesHM $ map (pVal &&& pIndex) candidatesChunked
 
-
   tell . pure . ExpectedChunks $ map HS.toList $ HM.keys pwMap
 
   let subsetChecker k v = do
-        let theIntersection = HM.intersection
-              chunksLookup
-              (HM.fromList $ map (, ()) $ HS.toList k)
+        let theIntersection =
+              HM.intersection
+                chunksLookup
+                (HM.fromList $ map (,()) $ HS.toList k)
         return (1 :: Int)
   let candidateExpected = HM.mapMaybeWithKey subsetChecker pwMap
 
   tell . pure . FoundPiecewiseChunks . map swap $ HM.toList chunksLookup
 
-
   let candidates = snd maskChoices
-  candidates2Dpairs <- lift $
-    forM candidates $
-      checkVerticalMatch entLoader registry cLoc horizontalOffsets
+  candidates2Dpairs <-
+    lift $
+      forM candidates $
+        checkVerticalMatch entLoader registry cLoc horizontalOffsets
 
   let (verticalSpans, candidates2D) = unzip candidates2Dpairs
 
@@ -292,8 +294,9 @@ registerStructureMatches ::
   WriterT [SearchLog a] s (RecognitionState b a)
 registerStructureMatches unrankedCandidates oldState = do
   tell $ pure newMsg
-  return $ oldState
-    & foundStructures %~ maybe id addFound (listToMaybe rankedCandidates)
+  return $
+    oldState
+      & foundStructures %~ maybe id addFound (listToMaybe rankedCandidates)
  where
   -- Sorted by decreasing order of preference.
   rankedCandidates = sortOn Down unrankedCandidates
