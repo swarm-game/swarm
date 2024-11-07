@@ -35,11 +35,14 @@ structures:
         'p': [stone, board]
         'x': [stone, rock]
         'y': [stone, mountain]
+        'z': [stone, pixel (R)]
+        'w': [stone, pixel (B)]
+        'q': [stone, pixel (G)]
       mask: '.'
       map: |
-        xy.xy
-        .ppp.
-        xy.xy
+        xy.zw.xy
+        .ppp....
+        xy.xy.qq
   - name: damage
     description: A single-cell overwrite of the spaceship
     structure:
@@ -54,7 +57,7 @@ structures:
         - src: spaceship
         - src: damage
       map: ""
-known: [board, mountain, rock, tree]
+known: [board, mountain, rock, tree, pixel (R), pixel (B)]
 world:
   dsl: |
     {blank}

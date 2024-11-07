@@ -2,6 +2,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (
   mkEntityLookup,
+  binTuplesHM,
 ) where
 
 import Control.Arrow ((&&&))
@@ -111,7 +112,7 @@ mkEntityLookup grids =
             (HS.fromList . map chunkContents . contiguousChunks &&& mkRightMap)
             neList
      where
-      mkRightMap sreo = binTuplesHM $ map (chunkContents &&& chunkStartPos) $ contiguousChunks sreo
+      mkRightMap = binTuplesHM . map (chunkContents &&& chunkStartPos) . contiguousChunks
 
     smPiecewise =
       makeStateMachine $

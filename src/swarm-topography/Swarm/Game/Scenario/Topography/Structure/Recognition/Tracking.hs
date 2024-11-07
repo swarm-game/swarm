@@ -10,6 +10,10 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking (
 ) where
 
 import Control.Lens ((%~), (&), (.~), (^.))
+import Control.Arrow ((&&&))
+import Control.Monad.Trans.Class (lift)
+import Data.Tuple (swap)
+import Data.HashSet qualified as HS
 import Control.Monad (forM, guard)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.Foldable (foldrM)
@@ -17,6 +21,7 @@ import Data.HashMap.Strict qualified as HM
 import Data.Hashable (Hashable)
 import Data.Int (Int32)
 import Data.List (sortOn)
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (binTuplesHM)
 import Data.List.NonEmpty.Extra qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (listToMaybe)
@@ -31,6 +36,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Scenario.Topography.Terraform
 import Swarm.Game.Universe
 import Text.AhoCorasick
+import Control.Monad.Trans.Writer.Strict
 
 -- | Interface that provides monadic access to
 -- querying entities at locations.
@@ -53,11 +59,13 @@ entityModified ::
   Cosmic Location ->
   StructureRecognizer b a ->
   s (StructureRecognizer b a)
-entityModified entLoader modification cLoc recognizer =
-  case modification of
+entityModified entLoader modification cLoc recognizer = do
+  (val, accumulatedLogs) <- runWriterT $ case modification of
     Add newEntity -> doAddition newEntity recognizer
     Remove _ -> doRemoval
     Swap _ newEntity -> doRemoval >>= doAddition newEntity
+  return $ val
+    & recognitionState . recognitionLog %~ (reverse accumulatedLogs <>)
  where
   entLookup = recognizer ^. automatons . automatonsByEntity
 
@@ -75,9 +83,8 @@ entityModified entLoader modification cLoc recognizer =
               FoundParticipatingEntity $
                 ParticipatingEntity newEntity $
                   logFinder finder
-            stateRevision' = oldRecognitionState & recognitionLog %~ (msg :)
-
-        foldrM (registerRowMatches entLoader cLoc) stateRevision' [finder]
+        tell $ pure msg
+        foldrM (registerRowMatches entLoader cLoc) oldRecognitionState [finder]
 
     return $ r & recognitionState .~ stateRevision
 
@@ -87,10 +94,10 @@ entityModified entLoader modification cLoc recognizer =
         structureRegistry = oldRecognitionState ^. foundStructures
     stateRevision <- case M.lookup cLoc $ foundByLocation structureRegistry of
       Nothing -> return oldRecognitionState
-      Just fs ->
+      Just fs -> do
+        tell $ pure $ StructureRemoved structureName
         return $
           oldRecognitionState
-            & recognitionLog %~ (StructureRemoved structureName :)
             & foundStructures %~ removeStructure fs
        where
         structureName = getName $ originalDefinition $ structureWithGrid fs
@@ -167,9 +174,9 @@ registerRowMatches ::
   Cosmic Location ->
   AutomatonNewInfo a (StructureSearcher b a) ->
   RecognitionState b a ->
-  s (RecognitionState b a)
+  WriterT [SearchLog a] s (RecognitionState b a)
 registerRowMatches entLoader cLoc (AutomatonNewInfo horizontalOffsets sm _ pwMatcher) rState = do
-  entitiesRow <-
+  entitiesRow <- lift $
     getWorldRow
       entLoader
       registry
@@ -180,23 +187,36 @@ registerRowMatches entLoader cLoc (AutomatonNewInfo horizontalOffsets sm _ pwMat
   -- All of the eligible structure rows found
   -- within this horizontal swath of world cells
   let maskChoices = (entitiesRow, findAll sm entitiesRow)
+  tell $ pure $ uncurry logRowCandidates maskChoices
 
-  let logEntry = uncurry logRowCandidates maskChoices
-      rState2 = rState & recognitionLog %~ (logEntry :)
-      candidates = snd maskChoices
-
+  -- let PiecewiseRecognition pwSM (pwMap :: _) = pwMatcher
   let PiecewiseRecognition pwSM pwMap = pwMatcher
   let candidatesChunked = findAll pwSM entitiesRow
+      chunksLookup = binTuplesHM $ map (pVal &&& pIndex) candidatesChunked
 
-  candidates2Dpairs <-
+
+  tell . pure . ExpectedChunks $ map HS.toList $ HM.keys pwMap
+
+  let subsetChecker k v = do
+        let theIntersection = HM.intersection
+              chunksLookup
+              (HM.fromList $ map (, ()) $ HS.toList k)
+        return (1 :: Int)
+  let candidateExpected = HM.mapMaybeWithKey subsetChecker pwMap
+
+  tell . pure . FoundPiecewiseChunks . map swap $ HM.toList chunksLookup
+
+
+  let candidates = snd maskChoices
+  candidates2Dpairs <- lift $
     forM candidates $
       checkVerticalMatch entLoader registry cLoc horizontalOffsets
 
   let (verticalSpans, candidates2D) = unzip candidates2Dpairs
-      rState3 = rState2 & recognitionLog %~ (VerticalSearchSpans verticalSpans :)
 
-  return $
-    registerStructureMatches (concat candidates2D) rState3
+  tell $ pure $ VerticalSearchSpans verticalSpans
+
+  registerStructureMatches (concat candidates2D) rState
  where
   registry = rState ^. foundStructures
 
@@ -216,7 +236,8 @@ checkVerticalMatch entLoader registry cLoc (InspectionOffsets (Min searchOffsetL
   return (VerticalSearch x rowStructureNames y, z)
  where
   searcherVal = pVal foundRow
-  rowStructureNames = NE.toList . NE.map (distillLabel . wholeStructure . myRow) . singleRowItems $ searcherVal
+  genLabel = distillLabel . wholeStructure . myRow
+  rowStructureNames = NE.toList . NE.map genLabel . singleRowItems $ searcherVal
 
   foundLeftOffset = searchOffsetLeft + fromIntegral (pIndex foundRow)
   foundRightInclusiveIndex = foundLeftOffset + fromIntegral (pLength foundRow) - 1
@@ -265,13 +286,13 @@ getMatches2D
 -- so multiple matches require a tie-breaker.
 -- The largest structure (by area) shall win.
 registerStructureMatches ::
-  (Eq a, Eq b) =>
+  (Monad s, Eq a, Eq b) =>
   [FoundStructure b a] ->
   RecognitionState b a ->
-  RecognitionState b a
-registerStructureMatches unrankedCandidates oldState =
-  oldState
-    & (recognitionLog %~ (newMsg :))
+  WriterT [SearchLog a] s (RecognitionState b a)
+registerStructureMatches unrankedCandidates oldState = do
+  tell $ pure newMsg
+  return $ oldState
     & foundStructures %~ maybe id addFound (listToMaybe rankedCandidates)
  where
   -- Sorted by decreasing order of preference.
