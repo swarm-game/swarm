@@ -44,6 +44,7 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (
 
 import Control.Arrow ((&&&))
 import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Except (except, runExceptT)
 import Data.Hashable (Hashable)
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, mapMaybe)
@@ -66,7 +67,6 @@ import Swarm.Game.Universe (Cosmic (..), offsetBy)
 import Swarm.Game.World.Coords (coordsToLoc)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Util (histogram)
-import Control.Monad.Trans.Except (runExceptT, except)
 
 -- | Interface that provides monadic access to
 -- querying entities at locations.
@@ -154,7 +154,7 @@ ensureStructureIntact ::
   FoundStructure b a ->
   s (Maybe StructureIntactnessFailure)
 ensureStructureIntact entLoader (FoundStructure (StructureWithGrid _ _ (RowWidth w) grid) upperLeft) = do
-  result <- runExceptT $ mapM checkLoc $ zip [0::Int ..] allLocPairs
+  result <- runExceptT $ mapM checkLoc $ zip [0 :: Int ..] allLocPairs
   case result of
     Right _ -> return Nothing
     Left x -> return $ Just x

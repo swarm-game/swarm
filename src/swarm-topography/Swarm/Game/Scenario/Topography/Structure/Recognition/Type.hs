@@ -274,8 +274,8 @@ data ChunkedRowMatch a e = ChunkedRowMatch
   }
   deriving (Functor, Generic, ToJSON)
 
-data StructureIntactnessFailure = StructureIntactnessFailure {
-    failedOnIndex :: Int
+data StructureIntactnessFailure = StructureIntactnessFailure
+  { failedOnIndex :: Int
   , totalSize :: Int
   }
   deriving (Generic, ToJSON)
