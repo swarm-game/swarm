@@ -15,7 +15,6 @@ import Control.Effect.Lens (view)
 import Control.Effect.Lift (Has)
 import Control.Effect.State (State)
 import Control.Lens hiding (Const, use, uses, view, (%=), (+=), (.=), (<+=), (<<.=))
-import Data.Foldable.Extra (allM)
 import Data.IntMap qualified as IM
 import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty)
@@ -25,7 +24,6 @@ import Data.Map qualified as M
 import Data.Maybe (isNothing)
 import Data.Set qualified as S
 import Data.Text (Text)
-import Linear (V2 (..))
 import Swarm.Game.CESK (finalValue, initMachine)
 import Swarm.Game.Device (getCapabilitySet, getMap)
 import Swarm.Game.Entity
@@ -50,7 +48,7 @@ import Swarm.Game.State
 import Swarm.Game.State.Landscape (mkLandscape)
 import Swarm.Game.State.Robot (setRobotInfo)
 import Swarm.Game.State.Substate
-import Swarm.Game.Universe as U (offsetBy)
+import Swarm.Game.Step.Util (adaptGameState)
 import Swarm.Game.World.Gen (Seed)
 import Swarm.Language.Capability (constCaps)
 import Swarm.Language.Syntax (allConst, erase)
@@ -183,8 +181,9 @@ mkRecognizer ::
   StaticStructureInfo Cell ->
   m (StructureRecognizer (Maybe Cell) Entity)
 mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
-  foundIntact <- mapM (sequenceA . (id &&& ensureStructureIntact)) allPlaced
-  let fs = populateStaticFoundStructures . map fst . filter snd $ foundIntact
+  foundIntact <- mapM (sequenceA . (id &&& adaptGameState . ensureStructureIntact mtlEntityAt)) allPlaced
+
+  let fs = populateStaticFoundStructures . map fst . filter (null . snd) $ foundIntact
   return
     $ StructureRecognizer
       (mkAutomatons cellToEntity structDefs)
@@ -198,24 +197,6 @@ mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
       intact
       ((getName . originalDefinition . structureWithGrid) x)
       (upperLeftCorner x)
-
--- | Matches definitions against the placements.
--- Fails fast (short-circuits) if a non-matching
--- cell is encountered.
-ensureStructureIntact ::
-  (Has (State GameState) sig m) =>
-  FoundStructure (Maybe Cell) Entity ->
-  m Bool
-ensureStructureIntact (FoundStructure (StructureWithGrid _ _ grid) upperLeft) =
-  allM outer $ zip [0 ..] grid
- where
-  outer (y, row) = allM (inner y) $ zip [0 ..] row
-  inner y (x, maybeTemplateEntity) = case maybeTemplateEntity of
-    Nothing -> return True
-    Just _ ->
-      fmap (== maybeTemplateEntity) $
-        entityAt $
-          upperLeft `offsetBy` V2 x (negate y)
 
 buildTagMap :: EntityMap -> Map Text (NonEmpty EntityName)
 buildTagMap em =

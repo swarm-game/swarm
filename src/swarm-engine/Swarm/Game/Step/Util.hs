@@ -62,6 +62,15 @@ lookInDirection d = do
   let nextLoc = loc `offsetBy` newHeading
   (nextLoc,) <$> entityAt nextLoc
 
+adaptGameState ::
+  Has (State GameState) sig m =>
+  TS.State GameState b ->
+  m b
+adaptGameState f = do
+  (newRecognizer, newGS) <- TS.runState f <$> get
+  put newGS
+  return newRecognizer
+
 -- | Modify the entity (if any) at a given location.
 updateEntityAt ::
   (Has (State Robot) sig m, Has (State GameState) sig m) =>
@@ -77,14 +86,9 @@ updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
     currentTick <- use $ temporal . ticks
     myID <- use robotID
     zoomRobots $ wakeWatchingRobots myID currentTick cLoc
+
     oldRecognizer <- use $ discovery . structureRecognition
-
-    oldGS <- get @GameState
-    let (newRecognizer, newGS) =
-          flip TS.runState oldGS $
-            SRT.entityModified mtlEntityAt modType cLoc oldRecognizer
-    put newGS
-
+    newRecognizer <- adaptGameState $ SRT.entityModified mtlEntityAt modType cLoc oldRecognizer
     discovery . structureRecognition .= newRecognizer
 
     pcr <- use $ pathCaching . pathCachingRobots
