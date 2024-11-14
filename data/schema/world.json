@@ -28,7 +28,7 @@
             }
         },
         "placements": {
-            "description": "Structure placements. Earlier members may occlude later members of the list.",
+            "description": "Structure placements. Later members may occlude earlier members of the list.",
             "type": "array",
             "items": {
                 "$ref": "placement.json"
