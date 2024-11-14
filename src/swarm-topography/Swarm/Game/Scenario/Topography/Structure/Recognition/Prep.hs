@@ -47,7 +47,7 @@ mkRowLookup neList =
       concatMap (concatMap catMaybes . fst) tuples
 
   deriveRowOffsets :: StructureRow b a -> InspectionOffsets
-  deriveRowOffsets (StructureRow (StructureWithGrid _ _ g) rwIdx _) =
+  deriveRowOffsets (StructureRow (StructureWithGrid _ _ _ g) rwIdx _) =
     mkOffsets rwIdx g
 
   bounds = sconcat $ NE.map deriveRowOffsets neList

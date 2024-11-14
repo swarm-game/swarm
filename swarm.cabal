@@ -497,6 +497,7 @@ library swarm-topography
     JuicyPixels,
     aeson,
     array,
+    either,
     base,
     containers,
     extra,

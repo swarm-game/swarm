@@ -28,19 +28,12 @@ import Linear (V2 (..))
 import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (GenericEntLocator)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Scenario.Topography.Terraform
 import Swarm.Game.Universe
 import Text.AhoCorasick
-
--- | Interface that provides monadic access to
--- querying entities at locations.
--- The provider may be a 'State' monad or just
--- a 'Reader'.
---
--- 's' is the state variable, 'a' is the return type.
-type GenericEntLocator s a = Cosmic Location -> s (Maybe a)
 
 -- | A hook called from the centralized entity update function,
 -- 'Swarm.Game.Step.Util.updateEntityAt'.

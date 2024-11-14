@@ -70,7 +70,7 @@ data ParticipatingEntity e = ParticipatingEntity
   deriving (Functor, Generic, ToJSON)
 
 data IntactPlacementLog = IntactPlacementLog
-  { isIntact :: Bool
+  { intactnessFailure :: Maybe StructureIntactnessFailure
   , sName :: OriginalName
   , locUpperLeft :: Cosmic Location
   }
