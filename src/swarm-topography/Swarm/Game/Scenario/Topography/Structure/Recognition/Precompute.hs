@@ -61,6 +61,8 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (
   mkEntityLookup,
  )
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (
+  FoundRegistry,
+  foundByLocation,
   populateStaticFoundStructures,
  )
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
@@ -152,19 +154,27 @@ lookupStaticPlacements extractor (StaticStructureInfo structDefs thePlacements) 
 -- Returns the first observed mismatch cell otherwise.
 ensureStructureIntact ::
   (Monad s, Hashable a) =>
+  FoundRegistry b a ->
   GenericEntLocator s a ->
   FoundStructure b a ->
   s (Maybe (StructureIntactnessFailure a))
-ensureStructureIntact entLoader (FoundStructure (StructureWithGrid _ _ (RowWidth w) grid) upperLeft) = do
+ensureStructureIntact registry entLoader (FoundStructure (StructureWithGrid _ _ (RowWidth w) grid) upperLeft) = do
   fmap leftToMaybe . runExceptT . mapM checkLoc $ zip [0 ..] allLocPairs
  where
   checkLoc (idx, (maybeTemplateEntity, loc)) =
     forM_ maybeTemplateEntity $ \x -> do
       e <- lift $ entLoader loc
+
+      forM_ (M.lookup loc $ foundByLocation registry) $ \s ->
+        except
+          . Left
+          . StructureIntactnessFailure (AlreadyUsedBy $ distillLabel $ structureWithGrid s) idx
+          $ fromIntegral w * length grid
+
       unless (e == Just x)
         . except
         . Left
-        . StructureIntactnessFailure x e idx
+        . StructureIntactnessFailure (DiscrepantEntity $ EntityDiscrepancy x e) idx
         $ fromIntegral w * length grid
 
   f = fmap ((upperLeft `offsetBy`) . asVector . coordsToLoc) . swap

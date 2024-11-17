@@ -254,6 +254,8 @@ registerRowMatches entLoader cLoc (AutomatonInfo horizontalOffsets pwMatcher) rS
         cLoc
         horizontalOffsets
 
+  tell . pure . WorldRowContent $ entitiesRow
+
   let candidatesChunked = findAll pwSM entitiesRow
   unrankedCandidateStructures <- checkCombo candidatesChunked
 
@@ -278,7 +280,7 @@ registerRowMatches entLoader cLoc (AutomatonInfo horizontalOffsets pwMatcher) rS
   getStructInfo (FoundStructure swg loc) = (distillLabel swg, loc)
 
   validateIntactness2d fs = do
-    maybeIntactnessFailure <- lift $ ensureStructureIntact entLoader fs
+    maybeIntactnessFailure <- lift $ ensureStructureIntact (rState ^. foundStructures) entLoader fs
     tell . pure . ChunkIntactnessVerification $
       IntactPlacementLog
         maybeIntactnessFailure

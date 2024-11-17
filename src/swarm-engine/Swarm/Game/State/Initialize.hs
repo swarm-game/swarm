@@ -42,6 +42,7 @@ import Swarm.Game.Scenario.Topography.Cell (Cell, cellToEntity)
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (emptyFoundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
@@ -181,7 +182,7 @@ mkRecognizer ::
   StaticStructureInfo Cell ->
   m (StructureRecognizer (Maybe Cell) Entity)
 mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
-  foundIntact <- mapM (sequenceA . (id &&& adaptGameState . ensureStructureIntact mtlEntityAt)) allPlaced
+  foundIntact <- mapM checkIntactness allPlaced
 
   let fs = populateStaticFoundStructures . map fst . filter (null . snd) $ foundIntact
   return
@@ -191,6 +192,10 @@ mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
       fs
       [IntactStaticPlacement $ map mkLogEntry foundIntact]
  where
+  -- NOTE: We assume that all static scenario placements are carefully arranged
+  -- so that overlapping structures are not simultaneously recognized.
+  checkIntactness = sequenceA . (id &&& adaptGameState . ensureStructureIntact emptyFoundStructures mtlEntityAt)
+
   allPlaced = lookupStaticPlacements cellToEntity structInfo
   mkLogEntry (x, intact) =
     IntactPlacementLog

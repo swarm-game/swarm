@@ -17,16 +17,6 @@ import Servant.Docs qualified as SD
 import Swarm.Game.Location (Location)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic)
-import Swarm.Language.Syntax.Direction (AbsoluteDir)
-
-data OrientedStructure = OrientedStructure
-  { oName :: OriginalName
-  , oDir :: AbsoluteDir
-  }
-  deriving (Generic, ToJSON)
-
-distillLabel :: StructureWithGrid b a -> OrientedStructure
-distillLabel swg = OrientedStructure (getName $ originalDefinition swg) (rotatedTo swg)
 
 renderSharedNames :: ConsolidatedRowReferences b a -> Text
 renderSharedNames =
@@ -72,6 +62,7 @@ data SearchLog e
     -- but the requirements of Functor force us to invert the mapping
     FoundPiecewiseChunks [(NonEmpty Int, NonEmpty e)]
   | ExpectedChunks (NonEmpty [NonEmpty e])
+  | WorldRowContent [Maybe e]
   | ChunksMatchingExpected [ChunkedRowMatch OriginalName e]
   | ChunkFailures [ChunkMatchFailureReason e]
   | ChunkIntactnessVerification (IntactPlacementLog e)

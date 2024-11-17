@@ -271,9 +271,28 @@ data ChunkedRowMatch a e = ChunkedRowMatch
   }
   deriving (Functor, Generic, ToJSON)
 
-data StructureIntactnessFailure e = StructureIntactnessFailure
+data EntityDiscrepancy e = EntityDiscrepancy
   { expectedEntity :: e
   , observedEntity :: AtomicKeySymbol e
+  }
+  deriving (Functor, Generic, ToJSON)
+
+data OrientedStructure = OrientedStructure
+  { oName :: OriginalName
+  , oDir :: AbsoluteDir
+  }
+  deriving (Generic, ToJSON)
+
+distillLabel :: StructureWithGrid b a -> OrientedStructure
+distillLabel swg = OrientedStructure (getName $ originalDefinition swg) (rotatedTo swg)
+
+data IntactnessFailureReason e
+  = DiscrepantEntity (EntityDiscrepancy e)
+  | AlreadyUsedBy OrientedStructure
+  deriving (Functor, Generic, ToJSON)
+
+data StructureIntactnessFailure e = StructureIntactnessFailure
+  { reason :: IntactnessFailureReason e
   , failedOnIndex :: Int
   , totalSize :: Int
   }
