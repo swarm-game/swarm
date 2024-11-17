@@ -16,6 +16,7 @@ import Data.List.Split (wordsBy)
 import Data.Maybe (catMaybes, mapMaybe)
 import Data.Semigroup (sconcat)
 import Data.Tuple (swap)
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Text.AhoCorasick (makeStateMachine)
 
@@ -28,9 +29,11 @@ import Text.AhoCorasick (makeStateMachine)
 -- in multiple rows within the same structure, or occur across structures.
 allStructureRows :: [StructureWithGrid b a] -> [StructureRow b a]
 allStructureRows =
-  concatMap transformRows
+  concatMap $ NE.toList . transformRows
  where
-  transformRows g = zipWith (StructureRow g) [0 ..] $ entityGrid g
+  transformRows g = zipNumberedNE (StructureRow g) rows
+   where
+    NonEmptyGrid rows = entityGrid g
 
 -- | If this entity is encountered in the world,
 -- how far left of it and how far right of it do we need to
@@ -133,7 +136,7 @@ explodeRowEntities ::
 explodeRowEntities annotatedRow@(ConsolidatedRowReferences rowMembers _ width) =
   map f $ HM.toList $ binTuplesHM unconsolidatedEntityOccurrences
  where
-  chunks = getContiguousChunks rowMembers
+  chunks = getContiguousChunks $ NE.toList rowMembers
 
   f (e, occurrences) =
     SingleRowEntityOccurrences annotatedRow e chunks $
@@ -144,9 +147,10 @@ explodeRowEntities annotatedRow@(ConsolidatedRowReferences rowMembers _ width) =
   -- Only row members for which an entity exists (is not Nothing)
   -- are retained here.
   unconsolidatedEntityOccurrences =
-    map swap $
-      catMaybes $
-        zipWith (\idx -> fmap (PositionWithinRow idx annotatedRow,)) [0 ..] rowMembers
+    map swap
+      . catMaybes
+      . NE.toList
+      $ zipNumberedNE (\idx -> fmap (PositionWithinRow idx annotatedRow,)) rowMembers
 
   deriveEntityOffsets :: PositionWithinRow b a -> InspectionOffsets
   deriveEntityOffsets (PositionWithinRow pos _) = mkOffsets pos width

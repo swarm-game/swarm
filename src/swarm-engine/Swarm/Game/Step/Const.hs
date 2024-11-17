@@ -59,10 +59,11 @@ import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Robot.Walk (emptyExceptions)
-import Swarm.Game.Scenario.Topography.Area (getAreaDimensions)
+import Swarm.Game.Scenario.Topography.Area (getAreaDimensions, getNEGridDimensions, rectHeight)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.Navigation.Util
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
+import Swarm.Game.Scenario.Topography.Structure.Named (StructureName (..))
 import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons, foundStructures, recognitionState)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
@@ -549,13 +550,13 @@ execConst runChildProg c vs s k = do
     Structure -> case vs of
       [VText name, VInt idx] -> do
         registry <- use $ discovery . structureRecognition . recognitionState . foundStructures
-        let maybeFoundStructures = M.lookup name $ foundByName registry
+        let maybeFoundStructures = M.lookup (StructureName name) $ foundByName registry
             mkOutput mapNE = (NE.length xs, bottomLeftCorner)
              where
               xs = NEM.toList mapNE
               (pos, struc) = indexWrapNonEmpty xs idx
               topLeftCorner = pos ^. planar
-              offsetHeight = V2 0 $ -fromIntegral (length (entityGrid struc) - 1)
+              offsetHeight = V2 0 $ negate (rectHeight (getNEGridDimensions $ entityGrid struc) - 1)
               bottomLeftCorner :: Location
               bottomLeftCorner = topLeftCorner .+^ offsetHeight
         return $ mkReturn $ mkOutput <$> maybeFoundStructures
@@ -563,7 +564,7 @@ execConst runChildProg c vs s k = do
     Floorplan -> case vs of
       [VText name] -> do
         structureTemplates <- use $ discovery . structureRecognition . automatons . originalStructureDefinitions
-        let maybeStructure = M.lookup name structureTemplates
+        let maybeStructure = M.lookup (StructureName name) structureTemplates
         structureDef <-
           maybeStructure
             `isJustOr` cmdExn Floorplan (pure $ T.unwords ["Unknown structure", quote name])

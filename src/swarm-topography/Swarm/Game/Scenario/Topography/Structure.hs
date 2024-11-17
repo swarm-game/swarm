@@ -118,10 +118,10 @@ paintMap maskChar pal g = do
         ]
 
   let cells = fmap standardCell <$> nestedLists
-      wps = catMaybes $ mapIndexedMembers getWp nestedLists
+      wps = catMaybes $ mapWithCoords getWp nestedLists
 
   let extraPlacements =
-        catMaybes $ mapIndexedMembers getStructureMarker nestedLists
+        catMaybes $ mapWithCoords getStructureMarker nestedLists
 
   return (cells, wps, extraPlacements)
  where

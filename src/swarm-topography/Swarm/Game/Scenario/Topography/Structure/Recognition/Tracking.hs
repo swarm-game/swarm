@@ -174,8 +174,8 @@ checkChunksCombination
      where
       mkFoundStructure r =
         FoundStructure
-          (wholeStructure r)
           (cLoc `offsetBy` theOffset)
+          (wholeStructure r)
        where
         theOffset = V2 (horizontalStructPos $ foundChunkRow x) (rowIndex r)
 
@@ -277,15 +277,15 @@ registerRowMatches entLoader cLoc (AutomatonInfo horizontalOffsets pwMatcher) rS
   registry = rState ^. foundStructures
   PiecewiseRecognition pwSM rowChunkReferences = pwMatcher
 
-  getStructInfo (FoundStructure swg loc) = (distillLabel swg, loc)
+  getStructInfo (FoundStructure loc swg) = (distillLabel swg, loc)
 
   validateIntactness2d fs = do
     maybeIntactnessFailure <- lift $ ensureStructureIntact (rState ^. foundStructures) entLoader fs
-    tell . pure . ChunkIntactnessVerification $
-      IntactPlacementLog
+    tell . pure . ChunkIntactnessVerification
+      $ IntactPlacementLog
         maybeIntactnessFailure
-        (getName . originalDefinition . structureWithGrid $ fs)
-        (upperLeftCorner fs)
+      $ FoundStructure (upperLeftCorner fs) (distillLabel . structureWithGrid $ fs)
+
     return $ null maybeIntactnessFailure
 
   checkCombo = checkChunksCombination cLoc horizontalOffsets rowChunkReferences

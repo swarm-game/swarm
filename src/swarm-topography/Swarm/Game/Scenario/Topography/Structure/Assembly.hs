@@ -117,8 +117,7 @@ foldLayer structureMap origArea overlays originatedWaypoints =
 
   wrapPlacement (Placed z ns) =
     LocatedStructure
-      (name ns)
-      (up $ orient structPose)
+      (OrientedStructure (name ns) (up $ orient structPose))
       (offset structPose)
    where
     structPose = structurePose z

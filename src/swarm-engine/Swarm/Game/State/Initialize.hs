@@ -200,8 +200,7 @@ mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
   mkLogEntry (x, intact) =
     IntactPlacementLog
       intact
-      ((getName . originalDefinition . structureWithGrid) x)
-      (upperLeftCorner x)
+      $ FoundStructure (upperLeftCorner x) ((distillLabel . structureWithGrid) x)
 
 buildTagMap :: EntityMap -> Map Text (NonEmpty EntityName)
 buildTagMap em =

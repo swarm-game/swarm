@@ -5,9 +5,10 @@
 module Swarm.Game.Scenario.Topography.Structure.Recognition.Static where
 
 import Control.Lens (Lens')
+import Data.Aeson (ToJSON)
 import Data.Map (Map)
+import GHC.Generics (Generic)
 import Swarm.Game.Location
-import Swarm.Game.Scenario.Topography.Placement (StructureName)
 import Swarm.Game.Scenario.Topography.Structure.Named
 import Swarm.Game.Universe (SubworldName)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
@@ -28,17 +29,25 @@ data SymmetryAnnotatedGrid a = SymmetryAnnotatedGrid
   }
   deriving (Show)
 
--- | For use in registering recognizable pre-placed structures
+data OrientedStructure = OrientedStructure
+  { oName :: StructureName
+  , oDir :: AbsoluteDir
+  }
+  deriving (Show, Eq, Ord, Generic, ToJSON)
+
+-- | For use in registering recognizable pre-placed structures.
+--
+-- Compare to
+-- 'Swarm.Game.Scenario.Topography.Structure.Recognition.Type.PositionedStructure'.
 data LocatedStructure = LocatedStructure
-  { placedName :: StructureName
-  , upDirection :: AbsoluteDir
+  { placedStruct :: OrientedStructure
   , cornerLoc :: Location
   }
   deriving (Show)
 
 instance HasLocation LocatedStructure where
-  modifyLoc f (LocatedStructure x y originalLoc) =
-    LocatedStructure x y $ f originalLoc
+  modifyLoc f (LocatedStructure x originalLoc) =
+    LocatedStructure x $ f originalLoc
 
 data StaticStructureInfo b = StaticStructureInfo
   { _structureDefs :: [SymmetryAnnotatedGrid (Maybe b)]

@@ -9,20 +9,17 @@
 module Swarm.Game.Scenario.Topography.Placement where
 
 import Data.List.NonEmpty qualified as NE
-import Data.Text (Text)
 import Data.Yaml as Y
-import GHC.Generics (Generic)
 import Swarm.Game.Location
-import Swarm.Game.Scenario.Topography.Area
+import Swarm.Game.Scenario.Topography.Area (
+  AreaDimensions (..),
+ )
 import Swarm.Game.Scenario.Topography.Grid
+import Swarm.Game.Scenario.Topography.Structure.Named (
+  StructureName,
+ )
 import Swarm.Language.Syntax.Direction (AbsoluteDir (..))
 import Swarm.Util (applyWhen)
-
-newtype StructureName = StructureName Text
-  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
-
-getStructureName :: StructureName -> Text
-getStructureName (StructureName sn) = sn
 
 -- | Orientation transformations are applied before translation.
 data Orientation = Orientation
@@ -57,10 +54,17 @@ reorientLandmark (Orientation upDir shouldFlip) (AreaDimensions width height) =
     DEast -> transposeLoc . flipV
     DWest -> transposeLoc . flipH
 
+applyOrientationTransform ::
+  Orientation ->
+  Grid a ->
+  Grid a
+applyOrientationTransform _ EmptyGrid = EmptyGrid
+applyOrientationTransform f (Grid g) = Grid $ applyOrientationTransformNE f g
+
 -- | affine transformation
-applyOrientationTransform :: Orientation -> Grid a -> Grid a
-applyOrientationTransform (Orientation upDir shouldFlip) =
-  mapRows f
+applyOrientationTransformNE :: Orientation -> NonEmptyGrid a -> NonEmptyGrid a
+applyOrientationTransformNE (Orientation upDir shouldFlip) =
+  mapRowsNE f
  where
   f = rotational . flipping
   flipV = NE.reverse

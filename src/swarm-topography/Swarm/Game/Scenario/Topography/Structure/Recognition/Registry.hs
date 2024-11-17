@@ -22,14 +22,19 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (
 where
 
 import Control.Arrow ((&&&))
+import Data.List (partition, sortOn)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Map.NonEmpty (NEMap)
 import Data.Map.NonEmpty qualified as NEM
-import Swarm.Game.Location (Location)
+import Data.Maybe (listToMaybe, maybeToList)
+import Data.Ord (Down (Down))
+import Data.Set qualified as Set
+import Swarm.Game.Location
+import Swarm.Game.Scenario.Topography.Structure.Named (StructureName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Swarm.Game.Universe (Cosmic)
+import Swarm.Game.Universe (Cosmic (..))
 import Swarm.Util (binTuples, deleteKeys)
 
 -- | The authoritative source of which built structures currently exist.
@@ -37,7 +42,7 @@ import Swarm.Util (binTuples, deleteKeys)
 -- The two type parameters, `b` and `a`, correspond
 -- to 'Cell' and 'Entity', respectively.
 data FoundRegistry b a = FoundRegistry
-  { _foundByName :: Map OriginalName (NEMap (Cosmic Location) (StructureWithGrid b a))
+  { _foundByName :: Map StructureName (NEMap (Cosmic Location) (StructureWithGrid b a))
   , _foundByLocation :: Map (Cosmic Location) (FoundStructure b a)
   }
 
@@ -47,7 +52,7 @@ emptyFoundStructures = FoundRegistry mempty mempty
 -- | We use a 'NEMap' here so that we can use the
 -- safe-indexing function 'indexWrapNonEmpty' in the implementation
 -- of the @structure@ command.
-foundByName :: FoundRegistry b a -> Map OriginalName (NEMap (Cosmic Location) (StructureWithGrid b a))
+foundByName :: FoundRegistry b a -> Map StructureName (NEMap (Cosmic Location) (StructureWithGrid b a))
 foundByName = _foundByName
 
 -- | This is a worldwide "mask" that prevents members of placed
@@ -73,7 +78,7 @@ removeStructure fs (FoundRegistry byName byLoc) =
   tidyDelete = NEM.nonEmptyMap . NEM.delete upperLeft
 
 addFound :: FoundStructure b a -> FoundRegistry b a -> FoundRegistry b a
-addFound fs@(FoundStructure swg loc) (FoundRegistry byName byLoc) =
+addFound fs@(FoundStructure loc swg) (FoundRegistry byName byLoc) =
   FoundRegistry
     (M.insertWith (<>) k (NEM.singleton loc swg) byName)
     (M.union occupationMap byLoc)
@@ -83,16 +88,51 @@ addFound fs@(FoundStructure swg loc) (FoundRegistry byName byLoc) =
 
 -- | Bulk insertion of found structures.
 --
--- Each of these shall have been re-checked in case
--- a subsequent placement occludes them.
-populateStaticFoundStructures :: [FoundStructure b a] -> FoundRegistry b a
+-- If any of these overlap, we can't be sure of the author's
+-- intent as to which member of the overlap should take precedence,
+-- so perhaps it would be ideal to throw an error at scenario parse time.
+--
+-- However, determining whether a structure is all three of:
+-- 1. placed
+-- 2. still recognizable
+-- 3. overlapping with another recognized structure
+-- occurs at a later phase than scenario parse; it requires access to the 'GameState'.
+--
+-- So we just use the same sorting criteria as the one used to resolve recognition
+-- conflicts at entity placement time.
+populateStaticFoundStructures ::
+  (Eq a, Eq b) =>
+  [FoundStructure b a] ->
+  FoundRegistry b a
 populateStaticFoundStructures allFound =
   FoundRegistry byName byLocation
  where
+  resolvedCollisions = resolvePreplacementCollisions allFound
+
   mkOccupationMap fs = M.fromList $ map (,fs) $ genOccupiedCoords fs
-  byLocation = M.unions $ map mkOccupationMap allFound
+  byLocation = M.unions $ map mkOccupationMap resolvedCollisions
 
   byName =
     M.map (NEM.fromList . NE.map (upperLeftCorner &&& structureWithGrid)) $
       binTuples $
-        map (getName . originalDefinition . structureWithGrid &&& id) allFound
+        map (getName . originalDefinition . structureWithGrid &&& id) resolvedCollisions
+
+  resolvePreplacementCollisions foundList =
+    nonOverlappingFound <> maybeToList (listToMaybe overlapsByDecreasingPreference)
+   where
+    overlapsByDecreasingPreference = sortOn Down overlappingFound
+
+    (overlappingFound, nonOverlappingFound) =
+      partition ((`Set.member` overlappingPlacements) . fmap distillLabel) foundList
+
+    -- We convert the full-fledged FoundStructure record
+    -- to a less-expensive identity-preserving form
+    -- for the purpose of set membership
+    overlappingPlacements =
+      Set.fromList
+        . map (fmap distillLabel)
+        . concatMap NE.toList
+        . M.elems
+        . M.filter ((> 1) . NE.length)
+        . M.unionsWith (<>)
+        $ map (M.map pure . mkOccupationMap) foundList

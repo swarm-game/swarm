@@ -1,0 +1,52 @@
+version: 1
+name: Structure recognition - precluding overlaps
+description: |
+  A cell may be a member of at most one structure.
+creative: false
+objectives:
+  - teaser: Recognize exactly one structure
+    goal:
+      - |
+        `square`{=structure} structure should be recognized upon scenario start.
+      - |
+        Although two of these structures were initially placed, only one should be recognized.
+    condition: |
+      foundStructure <- structure "square" 0;
+      return $ case foundStructure (\_. false) (\pair. fst pair == 1);
+robots:
+  - name: base
+    dir: north
+    devices:
+      - ADT calculator
+      - blueprint
+      - fast grabber
+      - logger
+      - treads
+solution: |
+  noop;
+structures:
+  - name: square
+    recognize: [north]
+    structure:
+      palette:
+        'x': [stone, rock]
+      mask: '.'
+      map: |
+        xx
+        xx
+known: [rock]
+world:
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass, erase]
+    'B': [grass, erase, base]
+    's':
+      structure:
+        name: square
+      cell: [grass]
+  upperleft: [0, 0]
+  map: |
+    ...s...
+    ....s..
+    .B.....
