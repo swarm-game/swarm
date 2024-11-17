@@ -102,7 +102,8 @@ requirements tdCtx ctx =
       mapM_ typeRequirements mty
       local @ReqCtx (Ctx.delete x) $ go t
     -- Special case for 'use' with a device literal.
-    TApp (TConst Use) (TText device) -> add (singletonDev device)
+    TApp t1@(TConst Use) t2@(TText device) ->
+      add (singletonDev device) *> go t1 *> go t2
     -- In general, an application simply requires the union of the
     -- capabilities from the left- and right-hand sides.  This assumes
     -- that the argument will be used at least once by the function.
