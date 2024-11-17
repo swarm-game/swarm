@@ -39,6 +39,11 @@ testRequirements =
               "def m = move end; def y = \\m. log (format m) end"
               (maybe False ((CExecute Move `S.notMember`) . capReqs) . Ctx.lookup "y")
         ]
+    , testGroup
+        "use"
+        [ testCase "literal argument to use (#1301)" $
+            "use \"key\"" `requiresDev` "key"
+        ]
     ]
 
 checkReqCtx :: Text -> (ReqCtx -> Bool) -> Assertion
@@ -49,3 +54,6 @@ checkRequirements code expect = check code (expect . requirements mempty mempty 
 
 requiresCap :: Text -> Capability -> Assertion
 requiresCap code cap = checkRequirements code ((cap `S.member`) . capReqs)
+
+requiresDev :: Text -> Text -> Assertion
+requiresDev code dev = checkRequirements code ((dev `S.member`) . capDevs)
