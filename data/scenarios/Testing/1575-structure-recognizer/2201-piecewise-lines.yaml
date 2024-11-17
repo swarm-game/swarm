@@ -58,23 +58,6 @@ structures:
         q....xy.zw.xy
         qq....ppp....
         q....xy.xy.qq
-  - name: friendship
-    recognize: [north]
-    structure:
-      palette:
-        'x': [stone, rock]
-        'y': [stone, mountain]
-        'z': [stone, pixel (R)]
-        'w': [stone, pixel (B)]
-        'q': [stone, pixel (G)]
-      mask: '.'
-      map: |
-        qqq.......
-        qqq.......
-        qqq.......
-        qqq.......
-        ..xy.zw.xy
-        qqq.......
   - name: damage
     description: A single-cell overwrite of the spaceship
     structure:

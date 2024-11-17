@@ -56,7 +56,7 @@ mkOffsets pos (RowWidth w) =
 --
 -- 1. Consolidate all identical rows across all structures into a map
 -- 2. Consolidate all entities across these rows into an entity-keyed lookup map
--- 3. Extract the contiguous chunk from each unique row
+-- 3. Extract the contiguous chunks from each unique row
 -- 4. Put the expected indices of these chunks into a lookup structure
 -- 5. Prepare Aho-Corasick state machines for recognizing these chunks
 mkEntityLookup ::
