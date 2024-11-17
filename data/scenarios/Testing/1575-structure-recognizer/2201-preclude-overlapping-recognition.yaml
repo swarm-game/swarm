@@ -1,0 +1,94 @@
+version: 1
+name: Structure recognition - precluding overlaps
+description: |
+  A cell may be a member of at most one structure.
+creative: false
+objectives:
+  - teaser: Recognize one structure
+    goal:
+      - |
+        `line`{=structure} structure should be recognized upon completion.
+    condition: |
+      def isRight = \x. case x (\_. false) (\_. true); end;
+      foundStructure <- structure "line" 0;
+      return $ isRight foundStructure;
+  - teaser: Recognize second structure
+    id: found_elbow
+    optional: true
+    goal:
+      - |
+        `line`{=structure} structure should be recognized upon completion.
+    condition: |
+      def isRight = \x. case x (\_. false) (\_. true); end;
+      foundStructure <- structure "elbow" 0;
+      return $ isRight foundStructure;
+  - teaser: Grab tree
+    prerequisite:
+      not: found_elbow
+    goal:
+      - |
+        `grab` the `tree`{=entity} to indicate we are done with the test.
+    condition: |
+      as base {has "tree"};
+robots:
+  - name: base
+    dir: north
+    devices:
+      - ADT calculator
+      - blueprint
+      - fast grabber
+      - logger
+      - treads
+    inventory:
+      - [5, rock]
+solution: |
+  place "rock"; move;
+  place "rock"; move;
+  place "rock";
+  turn right;
+  move;
+  turn right;
+
+  // Try to complete a second structure
+  place "rock"; move;
+  place "rock";
+
+  // Grab the tree to indicate completion
+  turn left;
+  move;
+  move;
+  move;
+  grab;
+structures:
+  - name: elbow
+    recognize: [north]
+    structure:
+      palette:
+        'x': [stone, rock]
+      mask: '.'
+      map: |
+        xx
+        .x
+  - name: line
+    recognize: [north]
+    structure:
+      palette:
+        'x': [stone, rock]
+      mask: '.'
+      map: |
+        x
+        x
+        x
+known: [rock]
+world:
+  dsl: |
+    {blank}
+  palette:
+    '.': [grass, erase]
+    'T': [grass, tree]
+    'B': [grass, erase, base]
+  upperleft: [0, 0]
+  map: |
+    .......
+    .....T.
+    .B.....

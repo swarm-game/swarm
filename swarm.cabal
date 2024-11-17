@@ -506,6 +506,7 @@ library swarm-topography
     linear,
     nonempty-containers,
     servant-docs,
+    split,
     text,
     transformers,
     unordered-containers,
