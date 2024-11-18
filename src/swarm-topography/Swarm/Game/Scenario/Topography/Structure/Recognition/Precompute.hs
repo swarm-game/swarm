@@ -17,13 +17,11 @@
 --
 -- The first searching stage looks for any member row of all participating
 -- structure definitions that contains the placed entity.
--- The value returned by the searcher is a second-stage searcher state machine,
--- which this time searches for complete structures of which the found row may
--- be a member.
---
--- Both the first stage and second stage searcher know to start the search
--- at a certain offset horizontally or vertically from the placed entity,
--- based on where within a structure that entity (or row) may occur.
+-- If we observe a row in the world that happens to occur in a structure, we use both
+-- the horizontal found offset and the index of the row within this structure to compute
+-- the expected world location of the candidate structure.
+-- Then we perform a full scan of that candidate structure against the world to verify
+-- the match.
 --
 -- Upon locating a complete structure, it is added to a registry
 -- (see 'Swarm.Game.Scenario.Topography.Structure.Recognition.Registry.FoundRegistry'), which
@@ -63,6 +61,8 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (
   mkEntityLookup,
  )
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (
+  FoundRegistry,
+  foundByLocation,
   populateStaticFoundStructures,
  )
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
@@ -154,19 +154,27 @@ lookupStaticPlacements extractor (StaticStructureInfo structDefs thePlacements) 
 -- Returns the first observed mismatch cell otherwise.
 ensureStructureIntact ::
   (Monad s, Hashable a) =>
+  FoundRegistry b a ->
   GenericEntLocator s a ->
   FoundStructure b a ->
-  s (Maybe StructureIntactnessFailure)
-ensureStructureIntact entLoader (FoundStructure (StructureWithGrid _ _ (RowWidth w) grid) upperLeft) = do
+  s (Maybe (StructureIntactnessFailure a))
+ensureStructureIntact registry entLoader (FoundStructure (StructureWithGrid _ _ (RowWidth w) grid) upperLeft) = do
   fmap leftToMaybe . runExceptT . mapM checkLoc $ zip [0 ..] allLocPairs
  where
   checkLoc (idx, (maybeTemplateEntity, loc)) =
     forM_ maybeTemplateEntity $ \x -> do
       e <- lift $ entLoader loc
+
+      forM_ (M.lookup loc $ foundByLocation registry) $ \s ->
+        except
+          . Left
+          . StructureIntactnessFailure (AlreadyUsedBy $ distillLabel $ structureWithGrid s) idx
+          $ fromIntegral w * length grid
+
       unless (e == Just x)
         . except
         . Left
-        . StructureIntactnessFailure idx
+        . StructureIntactnessFailure (DiscrepantEntity $ EntityDiscrepancy x e) idx
         $ fromIntegral w * length grid
 
   f = fmap ((upperLeft `offsetBy`) . asVector . coordsToLoc) . swap
