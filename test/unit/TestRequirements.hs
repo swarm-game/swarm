@@ -13,7 +13,7 @@ import Swarm.Language.Capability
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Pipeline
 import Swarm.Language.Requirements.Analysis (requirements)
-import Swarm.Language.Requirements.Type (ReqCtx, Requirements, capReqs)
+import Swarm.Language.Requirements.Type (ReqCtx, Requirements, capReqs, devReqs)
 import Swarm.Language.Syntax.Constants (Const (Move))
 import Swarm.Language.Syntax.Util (eraseS)
 import Test.Tasty
@@ -56,4 +56,4 @@ requiresCap :: Text -> Capability -> Assertion
 requiresCap code cap = checkRequirements code ((cap `S.member`) . capReqs)
 
 requiresDev :: Text -> Text -> Assertion
-requiresDev code dev = checkRequirements code ((dev `S.member`) . capDevs)
+requiresDev code dev = checkRequirements code ((dev `S.member`) . devReqs)
