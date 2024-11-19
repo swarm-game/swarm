@@ -114,13 +114,6 @@ restructureCtx h (CtxUnion f1 f2) = CtxUnion (h f1) (h f2)
 data CtxTree t = CtxTree CtxHash (CtxF CtxTree t)
   deriving (Eq, Functor, Foldable, Traversable, Data, Generic, ToJSON, FromJSON, Show)
 
--- | A 'CtxNode' is just a single level of structure for a context,
---   with any recursive contexts replaced by their hash.
---
---   For example, a 'CtxNode' could look something like @CtxUnion
---   (Const 0fe5b299) (Const abcdef12)@.
-type CtxNode t = CtxF (Const CtxHash) t
-
 ------------------------------------------------------------
 -- Contexts
 
