@@ -1221,6 +1221,7 @@ test-suite swarm-unit
     time,
     vty,
     witch,
+    yaml,
 
   main-is: Main.hs
   type: exitcode-stdio-1.0

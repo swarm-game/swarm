@@ -11,6 +11,7 @@ import Control.Monad (replicateM)
 import Data.Hashable
 import Data.List (nub)
 import Data.Map qualified as M
+import Data.Yaml (decodeEither', encode)
 import Swarm.Language.Context
 import Swarm.Util (showT)
 import Test.QuickCheck.Instances.Text ()
@@ -34,15 +35,10 @@ testContext =
         ]
     , testGroup
         "de/rehydrate round-trip"
-        [ testCase "empty" $ serializeRoundTrip empty
-        , testCase "ctx1" $ serializeRoundTrip ctx1
-        , testCase "ctx2" $ serializeRoundTrip ctx2
-        , testCase "ctx3" $ serializeRoundTrip ctx3
-        , testCase "ctx4" $ serializeRoundTrip ctx4
-        , testCase "ctx5" $ serializeRoundTrip ctx5
-        , testCase "large" $ serializeRoundTrip bigCtx
-        , testCase "delete" $ serializeRoundTrip (delete "y" ctx4)
-        ]
+        (map (\(name, ctx) -> testCase name $ hydrationRoundTrip ctx) testCtxs)
+    , testGroup
+        "serialize round-trip"
+        (map (\(name, ctx) -> testCase name $ serializeRoundTrip ctx) testCtxs)
     , testProperty
         "no paired hash collisions"
         (withMaxSuccess 10000 (hashConsistent @Int))
@@ -61,6 +57,8 @@ testContext =
   ctx5 = singleton "y" 10
   bigCtx = fromMap . M.fromList $ zip (map (("x" <>) . showT) [1 :: Int ..]) [1 .. 10000]
 
+  testCtxs = [("empty", empty), ("ctx1", ctx1), ("ctx2", ctx2), ("ctx3", ctx3), ("ctx4", ctx4), ("ctx5", ctx5), ("large", bigCtx), ("delete", delete "y" ctx4)]
+
 instance (Hashable a, Arbitrary a) => Arbitrary (Ctx a) where
   arbitrary = fromMap <$> arbitrary
 
@@ -78,8 +76,16 @@ ctxsEqual ctx1 ctx2 = do
 ctxStructEqual :: Eq a => Ctx a -> Ctx a -> Bool
 ctxStructEqual (Ctx m1 _) (Ctx m2 _) = m1 == m2
 
-serializeRoundTrip :: Ctx Int -> Assertion
-serializeRoundTrip ctx = do
+hydrationRoundTrip :: Ctx Int -> Assertion
+hydrationRoundTrip ctx = do
   case getCtx (ctxHash ctx) (rehydrate (dehydrate (toCtxMap ctx))) of
     Nothing -> fail "Failed to reconstitute dehydrated context"
     Just ctx' -> ctxsEqual ctx ctx'
+
+serializeRoundTrip :: Ctx Int -> Assertion
+serializeRoundTrip ctx = do
+  case decodeEither' (encode (dehydrate (toCtxMap ctx))) of
+    Left e -> fail $ "Failed to decode JSON-encoded context: " ++ show e
+    Right c -> case getCtx (ctxHash ctx) (rehydrate c) of
+      Nothing -> fail "Failed to reconstitute dehydrated context"
+      Just ctx' -> ctxsEqual ctx ctx'
