@@ -169,9 +169,6 @@ data Frame
 instance ToJSON Frame where
   toJSON = genericToJSON optionsMinimize
 
-instance FromJSON Frame where
-  parseJSON = genericParseJSON optionsMinimize
-
 -- | A continuation is just a stack of frames.
 type Cont = [Frame]
 
@@ -184,7 +181,7 @@ type Addr = Int
 -- | 'Store' represents a store, /i.e./ memory, indexing integer
 --   locations to 'Value's.
 data Store = Store {next :: Addr, mu :: IntMap Value}
-  deriving (Show, Eq, Generic, FromJSON, ToJSON)
+  deriving (Show, Eq, Generic, ToJSON)
 
 emptyStore :: Store
 emptyStore = Store 0 IM.empty
@@ -268,9 +265,6 @@ data CESK
 
 instance ToJSON CESK where
   toJSON = genericToJSON optionsMinimize
-
-instance FromJSON CESK where
-  parseJSON = genericParseJSON optionsMinimize
 
 -- | Is the CESK machine in a final (finished) state?  If so, extract
 --   the final value and store.
