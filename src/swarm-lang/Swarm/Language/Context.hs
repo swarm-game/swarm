@@ -96,11 +96,11 @@ instance (FromJSON t, FromJSON (f t)) => FromJSON (CtxF f t) where
   parseJSON = genericParseJSON optionsMinimize
 
 -- | Map over the recursive structure stored in a 'CtxF'.
-restructure :: (f t -> g t) -> CtxF f t -> CtxF g t
-restructure _ CtxEmpty = CtxEmpty
-restructure _ (CtxSingle x t) = CtxSingle x t
-restructure h (CtxDelete x t f1) = CtxDelete x t (h f1)
-restructure h (CtxUnion f1 f2) = CtxUnion (h f1) (h f2)
+restructureCtx :: (f t -> g t) -> CtxF f t -> CtxF g t
+restructureCtx _ CtxEmpty = CtxEmpty
+restructureCtx _ (CtxSingle x t) = CtxSingle x t
+restructureCtx h (CtxDelete x t f1) = CtxDelete x t (h f1)
+restructureCtx h (CtxUnion f1 f2) = CtxUnion (h f1) (h f2)
 
 -- | A 'CtxTree' is one possible representation of a context,
 --   consisting of a structured record of the process by which a
@@ -121,32 +121,12 @@ data CtxTree t = CtxTree CtxHash (CtxF CtxTree t)
 --   (Const 0fe5b299) (Const abcdef12)@.
 type CtxNode t = CtxF (Const CtxHash) t
 
--- | Roll up one level of context structure while building a new
---   top-level Map and computing an appropriate top-level hash.
-rollCtx :: Hashable t => CtxF Ctx t -> Ctx t
-rollCtx s = Ctx m (CtxTree h (restructure ctxStruct s))
- where
-  (m, h) = case s of
-    CtxEmpty -> (M.empty, 0)
-    CtxSingle x t -> (M.singleton x t, singletonHash x t)
-    CtxDelete x _ (Ctx m1 (CtxTree h1 _)) -> case M.lookup x m1 of
-      Nothing -> (m1, h1)
-      Just t' -> (M.delete x m1, h1 - singletonHash x t')
-    CtxUnion (Ctx m1 (CtxTree h1 _)) (Ctx m2 (CtxTree h2 _)) -> (m2 `M.union` m1, h')
-     where
-      -- `Data.Map.intersection l r` returns a map with common keys,
-      -- but values from `l`.  The values in m1 are the ones we want
-      -- to subtract from the hash, since they are the ones that will
-      -- be overwritten.
-      overwritten = M.intersection m1 m2
-      h' = h1 + h2 - mapHash overwritten
-
 ------------------------------------------------------------
 -- Contexts
 
 -- | A context is a mapping from variable names to things.  We store
---   both a 'Map' (for efficient lookup) as well as a 'CtxTree' for
---   sharing-aware serializing/deserializing of contexts.
+--   both a 'Map' (for efficient lookup) as well as a 'CtxTree' (for
+--   sharing-aware serializing/deserializing).
 data Ctx t = Ctx {unCtx :: Map Var t, ctxStruct :: CtxTree t}
   deriving (Functor, Traversable, Data, Generic)
 
@@ -155,8 +135,11 @@ ctxHash :: Ctx t -> CtxHash
 ctxHash (Ctx _ (CtxTree h _)) = h
 
 instance Show (Ctx t) where
+  -- An auto-derived, naive Show instance blows up as it loses all
+  -- sharing, so have `show` simply output a placeholder.
   show _ = "<Ctx>"
 
+-- | Compare contexts for equality just by comparing their hashes.
 instance Eq (Ctx t) where
   (==) = (==) `on` ctxHash
 
@@ -176,6 +159,26 @@ ctxFromTree tree = Ctx (varMap tree) tree
     CtxSingle x t -> M.singleton x t
     CtxDelete x _ s1 -> M.delete x (varMap s1)
     CtxUnion s1 s2 -> varMap s2 `M.union` varMap s1
+
+-- | Roll up one level of context structure while building a new
+--   top-level Map and computing an appropriate top-level hash.
+rollCtx :: Hashable t => CtxF Ctx t -> Ctx t
+rollCtx s = Ctx m (CtxTree h (restructureCtx ctxStruct s))
+ where
+  (m, h) = case s of
+    CtxEmpty -> (M.empty, 0)
+    CtxSingle x t -> (M.singleton x t, singletonHash x t)
+    CtxDelete x _ (Ctx m1 (CtxTree h1 _)) -> case M.lookup x m1 of
+      Nothing -> (m1, h1)
+      Just t' -> (M.delete x m1, h1 - singletonHash x t')
+    CtxUnion (Ctx m1 (CtxTree h1 _)) (Ctx m2 (CtxTree h2 _)) -> (m2 `M.union` m1, h')
+     where
+      -- `Data.Map.intersection l r` returns a map with common keys,
+      -- but values from `l`.  The values in m1 are the ones we want
+      -- to subtract from the hash, since they are the ones that will
+      -- be overwritten.
+      overwritten = M.intersection m1 m2
+      h' = h1 + h2 - mapHash overwritten
 
 ------------------------------------------------------------
 -- Context instances
@@ -281,7 +284,8 @@ withBindings ctx = local (`union` ctx)
 --   single level of structure containing more hashes.
 type CtxMap f t = Map CtxHash (CtxF f t)
 
--- | Read a context from a context map.
+-- | Reconstitute the context corresponding to a particular hash, by
+--   looking it up in a context map.
 getCtx :: CtxHash -> CtxMap CtxTree t -> Maybe (Ctx t)
 getCtx h m = case M.lookup h m of
   Nothing -> Nothing
@@ -317,7 +321,7 @@ buildCtxMap m (CtxTree h s) = do
 --   referenced multiple times, the references are simply hash values,
 --   and the context is stored only once, under its hash.
 dehydrate :: CtxMap CtxTree t -> CtxMap (Const CtxHash) t
-dehydrate = M.map (restructure (\(CtxTree h1 _) -> Const h1))
+dehydrate = M.map (restructureCtx (\(CtxTree h1 _) -> Const h1))
 
 -- | "Rehydrate" a dehydrated context map by replacing every hash with
 --   an actual context structure.  We do this by building the result
@@ -327,4 +331,4 @@ dehydrate = M.map (restructure (\(CtxTree h1 _) -> Const h1))
 rehydrate :: CtxMap (Const CtxHash) t -> CtxMap CtxTree t
 rehydrate m = m'
  where
-  m' = M.map (restructure (\(Const h) -> CtxTree h (m' M.! h))) m
+  m' = M.map (restructureCtx (\(Const h) -> CtxTree h (m' M.! h))) m
