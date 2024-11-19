@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -9,18 +8,14 @@
 -- to put them all here to avoid circular module dependencies.
 module Swarm.Language.JSON where
 
-import Data.Aeson (FromJSON (..), ToJSON (..), genericParseJSON, genericToJSON, withText)
+import Data.Aeson (FromJSON (..), ToJSON (..), genericToJSON, withText)
 import Data.Aeson qualified as Ae
-import Data.Aeson.KeyMap qualified as Ae
-import Data.Vector qualified as V
-import Swarm.Language.Context (CtxMap, CtxTree)
 import Swarm.Language.Pipeline (processTermEither)
 import Swarm.Language.Syntax (Term)
 import Swarm.Language.Syntax.Pattern (Syntax, TSyntax)
 import Swarm.Language.Value (Env, Value (..))
 import Swarm.Pretty (prettyText)
 import Swarm.Util.JSON (optionsMinimize)
-import Swarm.Util.Yaml (FromJSONE, liftE, parseJSONE, withObjectE)
 import Witch (into)
 
 instance FromJSON TSyntax where

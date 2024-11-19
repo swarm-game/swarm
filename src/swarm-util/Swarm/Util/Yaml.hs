@@ -29,7 +29,6 @@ import Control.Monad.Reader
 import Data.Aeson.Key (fromText)
 import Data.Aeson.Types (explicitParseField, explicitParseFieldMaybe)
 import Data.Bifunctor (first)
-import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Vector qualified as V
@@ -101,9 +100,6 @@ instance (FromJSONE e a, FromJSONE e b) => FromJSONE e (a, b) where
               <$> parseJSONE (V.unsafeIndex t 0)
               <*> parseJSONE (V.unsafeIndex t 1)
           else failT ["cannot unpack array of length", showT n, "into a tuple of length 2"]
-
-instance (FromJSONE e a) => FromJSONE e (Map k a) where
-  parseJSONE = undefined
 
 ------------------------------------------------------------
 -- Decoding
