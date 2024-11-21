@@ -15,6 +15,7 @@ import Control.Effect.Reader (Reader, ask, local)
 import Control.Effect.State (State, get, modify)
 import Control.Lens.Empty (AsEmpty (..))
 import Control.Lens.Prism (prism)
+import Control.Monad (unless)
 import Data.Aeson (FromJSON (..), FromJSONKey, ToJSON (..), ToJSONKey, genericParseJSON, genericToJSON, withText)
 import Data.Data (Data)
 import Data.Function (on)
@@ -299,18 +300,21 @@ toCtxMap (Ctx m s) = run $ execState M.empty (buildCtxMap m s)
 --   to add all subtrees to the map---but, of course, stopping without
 --   recursing further whenever we see a hash that is already in the
 --   map.
-buildCtxMap :: forall t m sig. Has (State (CtxMap CtxTree t)) sig m => Map Var t -> CtxTree t -> m ()
+buildCtxMap ::
+  forall t m sig.
+  Has (State (CtxMap CtxTree t)) sig m =>
+  Map Var t ->
+  CtxTree t ->
+  m ()
 buildCtxMap m (CtxTree h s) = do
   cm <- get @(CtxMap CtxTree t)
-  case h `M.member` cm of
-    True -> pure ()
-    False -> do
-      modify (M.insert h s)
-      case s of
-        CtxEmpty -> pure ()
-        CtxSingle {} -> pure ()
-        CtxDelete x t s1 -> buildCtxMap (M.insert x t m) s1
-        CtxUnion s1 s2 -> buildCtxMap m s1 *> buildCtxMap m s2
+  unless (h `M.member` cm) $ do
+    modify (M.insert h s)
+    case s of
+      CtxEmpty -> pure ()
+      CtxSingle {} -> pure ()
+      CtxDelete x t s1 -> buildCtxMap (M.insert x t m) s1
+      CtxUnion s1 s2 -> buildCtxMap m s1 *> buildCtxMap m s2
 
 -- | "Dehydrate" a context map by replacing the actual context trees
 --   with single structure layers containing only hashes.  A
