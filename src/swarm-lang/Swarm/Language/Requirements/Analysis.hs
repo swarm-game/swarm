@@ -101,9 +101,12 @@ requirements tdCtx ctx =
       add (singletonCap CLambda)
       mapM_ typeRequirements mty
       local @ReqCtx (Ctx.delete x) $ go t
-    -- An application simply requires the union of the capabilities
-    -- from the left- and right-hand sides.  This assumes that the
-    -- argument will be used at least once by the function.
+    -- Special case for 'use' with a device literal.
+    TApp t1@(TConst Use) t2@(TText device) ->
+      add (singletonDev device) *> go t1 *> go t2
+    -- In general, an application simply requires the union of the
+    -- capabilities from the left- and right-hand sides.  This assumes
+    -- that the argument will be used at least once by the function.
     TApp t1 t2 -> go t1 *> go t2
     -- Similarly, for a let, we assume that the let-bound expression
     -- will be used at least once in the body. We delete the let-bound

@@ -23,8 +23,8 @@ import Control.Lens (makeLenses)
 import Data.Aeson (ToJSON)
 import Data.Function (on)
 import Data.HashMap.Strict (HashMap)
-import Data.HashSet (HashSet)
 import Data.Int (Int32)
+import Data.IntSet.NonEmpty (NEIntSet)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Maybe (catMaybes)
@@ -68,15 +68,6 @@ type AtomicKeySymbol a = Maybe a
 -- @
 type SymbolSequence a = [AtomicKeySymbol a]
 
--- | This is returned as a value of the 1-D searcher.
--- It contains search automatons customized to the 2-D structures
--- that may possibly contain the row found by the 1-D searcher.
-data StructureSearcher b a = StructureSearcher
-  { automaton2D :: AutomatonInfo a (SymbolSequence a) (StructureWithGrid b a)
-  , needleContent :: SymbolSequence a
-  , singleRowItems :: NonEmpty (SingleRowEntityOccurrences b a)
-  }
-
 -- |
 -- Position specific to a single entity within a horizontal row.
 --
@@ -91,7 +82,29 @@ data StructureSearcher b a = StructureSearcher
 data PositionWithinRow b a = PositionWithinRow
   { _position :: Int32
   -- ^ horizontal index of the entity within the row
-  , structureRow :: StructureRow b a
+  , structureRow :: ConsolidatedRowReferences b a
+  }
+
+-- | A chunkified version of a structure row.
+-- Each unique structure row will need to test one of these
+-- against the world row being examined.
+data RowChunkMatchingReference b a = RowChunkMatchingReference
+  { locatableRows :: ConsolidatedRowReferences b a
+  , confirmationMap :: HashMap (NonEmpty a) (NonEmpty Int)
+  }
+
+data PiecewiseRecognition b a = PiecewiseRecognition
+  { piecewiseSM :: StateMachine (AtomicKeySymbol a) (NonEmpty a)
+  , picewiseLookup :: NonEmpty (RowChunkMatchingReference b a)
+  -- ^ A lookup structure for use with results of the
+  -- Aho-Corasick matcher. This lookup will determine whether
+  -- the discontiguous "chunks" found by the matcher occur at
+  -- the right positions with respect to the reference structure.
+  }
+
+data PositionedChunk a = PositionedChunk
+  { chunkStartPos :: Int
+  , chunkContents :: NonEmpty a
   }
 
 -- Represents all of the locations that particular entity
@@ -106,11 +119,14 @@ data PositionWithinRow b a = PositionWithinRow
 --
 -- this record will contain two entries in its 'entityOccurrences' field.
 data SingleRowEntityOccurrences b a = SingleRowEntityOccurrences
-  { myRow :: StructureRow b a
+  { myRow :: ConsolidatedRowReferences b a
   , myEntity :: a
-  , entityOccurrences :: NonEmpty (PositionWithinRow b a)
+  , contiguousChunks :: [PositionedChunk a]
   , expandedOffsets :: InspectionOffsets
   }
+
+newtype RowWidth = RowWidth Int32
+  deriving (Eq)
 
 -- | A a specific row within a particular structure.
 --
@@ -134,6 +150,14 @@ data StructureRow b a = StructureRow
   , rowContent :: SymbolSequence a
   }
 
+-- | Represents all rows across all structures that share
+-- a particular row content
+data ConsolidatedRowReferences b a = ConsolidatedRowReferences
+  { sharedRowContent :: SymbolSequence a
+  , referencingRows :: NonEmpty (StructureRow b a)
+  , theRowWidth :: RowWidth
+  }
+
 -- | This wrapper facilitates naming the original structure
 -- (i.e. the "payload" for recognition)
 -- for the purpose of both UI display and internal uniqueness,
@@ -152,6 +176,7 @@ data NamedOriginal b = NamedOriginal
 data StructureWithGrid b a = StructureWithGrid
   { originalDefinition :: NamedOriginal b
   , rotatedTo :: AbsoluteDir
+  , gridWidth :: RowWidth
   , entityGrid :: [SymbolSequence a]
   }
   deriving (Eq)
@@ -190,16 +215,9 @@ instance Semigroup InspectionOffsets where
   InspectionOffsets l1 r1 <> InspectionOffsets l2 r2 =
     InspectionOffsets (l1 <> l2) (r1 <> r2)
 
--- | Each automaton shall be initialized to recognize
--- a certain subset of structure rows, that may either
--- all be within one structure, or span multiple structures.
-data AutomatonInfo en k v = AutomatonInfo
-  { _participatingEntities :: HashSet en
-  , _inspectionOffsets :: InspectionOffsets
-  , _automaton :: StateMachine k v
-  , _searchPairs :: NonEmpty ([k], v)
-  -- ^ these are the tuples input to the 'makeStateMachine' function,
-  -- for debugging purposes.
+data AutomatonInfo v k = AutomatonInfo
+  { _inspectionOffsets :: InspectionOffsets
+  , _piecewiseRecognizer :: PiecewiseRecognition v k
   }
   deriving (Generic)
 
@@ -211,7 +229,7 @@ data RecognizerAutomatons b a = RecognizerAutomatons
   { _originalStructureDefinitions :: Map OriginalName (StructureInfo b a)
   -- ^ all of the structures that shall participate in automatic recognition.
   -- This list is used only by the UI and by the 'Floorplan' command.
-  , _automatonsByEntity :: HashMap a (NonEmpty (AutomatonInfo a (AtomicKeySymbol a) (StructureSearcher b a)))
+  , _automatonsByEntity :: HashMap a (AutomatonInfo b a)
   }
   deriving (Generic)
 
@@ -227,6 +245,58 @@ data FoundStructure b a = FoundStructure
   , upperLeftCorner :: Cosmic Location
   }
   deriving (Eq)
+
+data FoundRowFromChunk a = FoundRowFromChunk
+  { chunkOffsetFromSearchBorder :: Int
+  , horizontalStructPos :: Int32
+  , chunkStructure :: a
+  }
+  deriving (Functor, Generic, ToJSON)
+
+-- | The located occurrences of a specific contiguous chunk of entities.
+-- Note that an identical chunk may recur more than once in a structure row.
+-- This record represents all of the recurrences of one such chunk.
+--
+-- Any different chunks contained within a row will be described by
+-- their own instance of this record.
+data FoundAndExpectedChunkPositions = FoundAndExpectedChunkPositions
+  { foundPositions :: NEIntSet
+  , expectedPositions :: NEIntSet
+  }
+  deriving (Generic, ToJSON)
+
+data ChunkedRowMatch a e = ChunkedRowMatch
+  { positionsComparison :: [(FoundAndExpectedChunkPositions, NonEmpty e)]
+  , foundChunkRow :: FoundRowFromChunk a
+  }
+  deriving (Functor, Generic, ToJSON)
+
+data EntityDiscrepancy e = EntityDiscrepancy
+  { expectedEntity :: e
+  , observedEntity :: AtomicKeySymbol e
+  }
+  deriving (Functor, Generic, ToJSON)
+
+data OrientedStructure = OrientedStructure
+  { oName :: OriginalName
+  , oDir :: AbsoluteDir
+  }
+  deriving (Generic, ToJSON)
+
+distillLabel :: StructureWithGrid b a -> OrientedStructure
+distillLabel swg = OrientedStructure (getName $ originalDefinition swg) (rotatedTo swg)
+
+data IntactnessFailureReason e
+  = DiscrepantEntity (EntityDiscrepancy e)
+  | AlreadyUsedBy OrientedStructure
+  deriving (Functor, Generic, ToJSON)
+
+data StructureIntactnessFailure e = StructureIntactnessFailure
+  { reason :: IntactnessFailureReason e
+  , failedOnIndex :: Int
+  , totalSize :: Int
+  }
+  deriving (Functor, Generic, ToJSON)
 
 -- | Ordering is by increasing preference between simultaneously
 -- completed structures.

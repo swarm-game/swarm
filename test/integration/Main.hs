@@ -263,6 +263,7 @@ testScenarioSolutions rs ui key =
             , testSolution (Sec 20) "Challenges/Ranching/powerset"
             , testSolution (Sec 10) "Challenges/Ranching/fishing"
             , testSolution (Sec 30) "Challenges/Ranching/gated-paddock"
+            , testSolution (Sec 30) "Challenges/Ranching/pied-piper"
             ]
         , testGroup
             "Sokoban"
@@ -358,6 +359,7 @@ testScenarioSolutions rs ui key =
         , testSolution Default "Testing/1295-density-command"
         , testSolution Default "Testing/1356-portals/portals-flip-and-rotate"
         , testSolution Default "Testing/144-subworlds/basic-subworld"
+        , testSolution Default "Testing/144-subworlds/teleport-and-query"
         , testSolution Default "Testing/144-subworlds/subworld-mapped-robots"
         , testSolution Default "Testing/144-subworlds/subworld-located-robots"
         , testSolution Default "Testing/144-subworlds/subworld-shared-structures"
@@ -472,6 +474,8 @@ testScenarioSolutions rs ui key =
             , testSolution Default "Testing/1575-structure-recognizer/1644-rotated-preplacement-recognition"
             , testSolution Default "Testing/1575-structure-recognizer/2115-encroaching-upon-interior-transparent-cells"
             , testSolution Default "Testing/1575-structure-recognizer/2115-encroaching-upon-exterior-transparent-cells"
+            , testSolution Default "Testing/1575-structure-recognizer/2201-piecewise-lines"
+            , testSolution Default "Testing/1575-structure-recognizer/2201-preclude-overlapping-recognition"
             ]
         ]
     , testSolution' Default "Testing/1430-built-robot-ownership" CheckForBadErrors $ \g -> do

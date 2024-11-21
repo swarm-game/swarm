@@ -17,13 +17,11 @@
 --
 -- The first searching stage looks for any member row of all participating
 -- structure definitions that contains the placed entity.
--- The value returned by the searcher is a second-stage searcher state machine,
--- which this time searches for complete structures of which the found row may
--- be a member.
---
--- Both the first stage and second stage searcher know to start the search
--- at a certain offset horizontally or vertically from the placed entity,
--- based on where within a structure that entity (or row) may occur.
+-- If we observe a row in the world that happens to occur in a structure, we use both
+-- the horizontal found offset and the index of the row within this structure to compute
+-- the expected world location of the candidate structure.
+-- Then we perform a full scan of that candidate structure against the world to verify
+-- the match.
 --
 -- Upon locating a complete structure, it is added to a registry
 -- (see 'Swarm.Game.Scenario.Topography.Structure.Recognition.Registry.FoundRegistry'), which
@@ -34,31 +32,53 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (
   -- * Main external interface
   mkAutomatons,
 
+  -- * Types
+  GenericEntLocator,
+
   -- * Helper functions
   populateStaticFoundStructures,
   getEntityGrid,
   lookupStaticPlacements,
+  ensureStructureIntact,
 ) where
 
 import Control.Arrow ((&&&))
+import Control.Monad (forM_, unless)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Except (except, runExceptT)
+import Data.Either.Combinators (leftToMaybe)
 import Data.Hashable (Hashable)
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, mapMaybe)
 import Data.Set qualified as Set
-import Swarm.Game.Scenario.Topography.Grid (getRows)
+import Data.Tuple (swap)
+import Swarm.Game.Location (Location, asVector)
+import Swarm.Game.Scenario.Topography.Area (getGridDimensions, rectWidth)
+import Swarm.Game.Scenario.Topography.Grid (getRows, mapIndexedMembers, mkGrid)
 import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform, getStructureName)
 import Swarm.Game.Scenario.Topography.Structure.Named
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (
   mkEntityLookup,
  )
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (
+  FoundRegistry,
+  foundByLocation,
   populateStaticFoundStructures,
  )
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Swarm.Game.Universe (Cosmic (..))
+import Swarm.Game.Universe (Cosmic (..), offsetBy)
+import Swarm.Game.World.Coords (coordsToLoc)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Util (histogram)
+
+-- | Interface that provides monadic access to
+-- querying entities at locations.
+-- The provider may be a 'State' monad or just
+-- a 'Reader'.
+--
+-- 's' is the state variable, 'a' is the return type.
+type GenericEntLocator s a = Cosmic Location -> s (Maybe a)
 
 getEntityGrid :: (Maybe b -> Maybe a) -> NamedGrid (Maybe b) -> [[Maybe a]]
 getEntityGrid extractor = getRows . fmap extractor . structure
@@ -92,8 +112,9 @@ extractOrientedGrid ::
   AbsoluteDir ->
   StructureWithGrid (Maybe b) a
 extractOrientedGrid extractor x d =
-  StructureWithGrid wrapped d $ getEntityGrid extractor g
+  StructureWithGrid wrapped d w $ getEntityGrid extractor g
  where
+  w = RowWidth . rectWidth . getGridDimensions $ structure g
   wrapped = NamedOriginal (getStructureName $ name x) x
   g = applyOrientationTransform (Orientation d False) <$> x
 
@@ -124,3 +145,37 @@ lookupStaticPlacements extractor (StaticStructureInfo structDefs thePlacements) 
     g (LocatedStructure theName d loc) = do
       sGrid <- M.lookup theName definitionMap
       return $ FoundStructure (extractOrientedGrid extractor sGrid d) $ Cosmic subworldName loc
+
+-- | Matches definitions against the placements.
+-- Fails fast (short-circuits) if a non-matching
+-- cell is encountered.
+--
+-- Returns 'Nothing' if there is no discrepancy between the match subject and world content.
+-- Returns the first observed mismatch cell otherwise.
+ensureStructureIntact ::
+  (Monad s, Hashable a) =>
+  FoundRegistry b a ->
+  GenericEntLocator s a ->
+  FoundStructure b a ->
+  s (Maybe (StructureIntactnessFailure a))
+ensureStructureIntact registry entLoader (FoundStructure (StructureWithGrid _ _ (RowWidth w) grid) upperLeft) = do
+  fmap leftToMaybe . runExceptT . mapM checkLoc $ zip [0 ..] allLocPairs
+ where
+  checkLoc (idx, (maybeTemplateEntity, loc)) =
+    forM_ maybeTemplateEntity $ \x -> do
+      e <- lift $ entLoader loc
+
+      forM_ (M.lookup loc $ foundByLocation registry) $ \s ->
+        except
+          . Left
+          . StructureIntactnessFailure (AlreadyUsedBy $ distillLabel $ structureWithGrid s) idx
+          $ fromIntegral w * length grid
+
+      unless (e == Just x)
+        . except
+        . Left
+        . StructureIntactnessFailure (DiscrepantEntity $ EntityDiscrepancy x e) idx
+        $ fromIntegral w * length grid
+
+  f = fmap ((upperLeft `offsetBy`) . asVector . coordsToLoc) . swap
+  allLocPairs = mapIndexedMembers (curry f) $ mkGrid grid
