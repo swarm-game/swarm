@@ -153,8 +153,15 @@ ctxFromTree tree = Ctx (varMap tree) tree
     CtxDelete x _ s1 -> M.delete x (varMap s1)
     CtxUnion s1 s2 -> varMap s2 `M.union` varMap s1
 
--- | Roll up one level of context structure while building a new
+-- | "Roll up" one level of context structure while building a new
 --   top-level Map and computing an appropriate top-level hash.
+--
+--   In other words, the input of type @CtxF Ctx t@ represents a
+--   context where the topmost level of structure is split out by
+--   itself as 'CtxF', with the rest of the recursive structure stored
+--   in the embedded 'Ctx' values.  'rollCtx' takes the single level
+--   of structure with recursive subtrees and "rolls them up" into one
+--   recursive tree.
 rollCtx :: Hashable t => CtxF Ctx t -> Ctx t
 rollCtx s = Ctx m (CtxTree h (restructureCtx ctxStruct s))
  where
