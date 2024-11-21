@@ -7,6 +7,16 @@
 --
 -- Generic contexts (mappings from variables to other things, such as
 -- types, values, or capability sets) used throughout the codebase.
+-- For example, while typechecking we use a context to store a mapping
+-- from variables in scope to their types. As another example, at
+-- runtime, robots store an 'Env' which contains several contexts,
+-- mapping variables to things like their current value, any
+-- requirements associated with using the variable, and so on.
+--
+-- The implementation here goes to some effort to make it possible to
+-- serialize and deserialize contexts so that sharing is preserved and
+-- the encoding of serialized contexts does not blow up due to
+-- repeated values.
 module Swarm.Language.Context where
 
 import Control.Algebra (Has, run)
