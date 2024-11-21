@@ -287,9 +287,7 @@ type CtxMap f t = Map CtxHash (CtxF f t)
 -- | Reconstitute the context corresponding to a particular hash, by
 --   looking it up in a context map.
 getCtx :: CtxHash -> CtxMap CtxTree t -> Maybe (Ctx t)
-getCtx h m = case M.lookup h m of
-  Nothing -> Nothing
-  Just tree -> Just $ ctxFromTree (CtxTree h tree)
+getCtx h m = ctxFromTree . CtxTree h <$> M.lookup h m
 
 -- | Turn a context into a context map containing every subtree of its
 --   structure.
