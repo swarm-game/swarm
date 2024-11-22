@@ -28,6 +28,7 @@ import Test.Tasty.QuickCheck (
  )
 import TestBoolExpr (testBoolExpr)
 import TestCommand (testCommands)
+import TestContext (testContext)
 import TestEval (testEval)
 import TestInventory (testInventory)
 import TestLSP (testLSP)
@@ -82,6 +83,7 @@ statelessTests =
     , testPrettyConst
     , testBoolExpr
     , testCommands
+    , testContext
     , testHighScores
     , testRepl
     , testRequirements

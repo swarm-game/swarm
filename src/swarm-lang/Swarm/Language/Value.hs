@@ -29,6 +29,7 @@ module Swarm.Language.Value (
 
 import Control.Lens hiding (Const)
 import Data.Bool (bool)
+import Data.Hashable (Hashable)
 import Data.List (foldl')
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -118,7 +119,7 @@ data Value where
   --   <http://www.lel.ed.ac.uk/~gpullum/loopsnoop.html cannot detect
   --   /all/ infinite loops this way>.)
   VBlackhole :: Value
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Generic, Hashable)
 
 -- | A value context is a mapping from variable names to their runtime
 --   values.
@@ -141,7 +142,7 @@ data Env = Env
   , _envTydefs :: TDCtx
   -- ^ Type synonym definitions.
   }
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Generic, Hashable)
 
 makeLenses ''Env
 

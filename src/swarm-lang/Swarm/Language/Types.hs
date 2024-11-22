@@ -4,6 +4,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -131,6 +132,9 @@ import Data.Data (Data)
 import Data.Eq.Deriving (deriveEq1)
 import Data.Fix
 import Data.Foldable (fold)
+import Data.Functor.Classes (Eq1)
+import Data.Hashable (Hashable)
+import Data.Hashable.Lifted (Hashable1)
 import Data.Kind qualified
 import Data.List.NonEmpty ((<|))
 import Data.List.NonEmpty qualified as NE
@@ -178,7 +182,7 @@ data BaseTy
     BActor
   | -- | Keys, i.e. things that can be pressed on the keyboard
     BKey
-  deriving (Eq, Ord, Show, Bounded, Enum, Data, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Bounded, Enum, Data, Generic, Hashable, FromJSON, ToJSON)
 
 baseTyName :: BaseTy -> Text
 baseTyName = into @Text . drop 1 . show
@@ -206,7 +210,7 @@ data TyCon
     TCFun
   | -- | User-defined type constructor.
     TCUser Var
-  deriving (Eq, Ord, Show, Data, Generic)
+  deriving (Eq, Ord, Show, Data, Generic, Hashable)
 
 instance ToJSON TyCon where
   toJSON = genericToJSON optionsMinimize
@@ -227,7 +231,7 @@ instance PrettyPrec TyCon where
 -- | The arity of a type, /i.e./ the number of type parameters it
 --   expects.
 newtype Arity = Arity {getArity :: Int}
-  deriving (Eq, Ord, Show, Generic, Data)
+  deriving (Eq, Ord, Show, Generic, Data, Hashable)
 
 instance ToJSON Arity where
   toJSON = genericToJSON optionsUnwrapUnary
@@ -246,7 +250,7 @@ instance PrettyPrec Arity where
 data Nat where
   NZ :: Nat
   NS :: Nat -> Nat
-  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Data, Generic, Hashable, FromJSON, ToJSON)
 
 natToInt :: Nat -> Int
 natToInt NZ = 0
@@ -275,11 +279,13 @@ data TypeF t
     --   when pretty-printing; the actual bound variables are represented
     --   via de Bruijn indices.
     TyRecF Var t
-  deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic, Generic1, Data)
+  deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic, Generic1, Data, Hashable)
 
 deriveEq1 ''TypeF
 deriveOrd1 ''TypeF
 deriveShow1 ''TypeF
+
+instance Hashable1 TypeF -- needs the Eq1 instance
 
 instance ToJSON1 TypeF where
   liftToJSON = genericLiftToJSON optionsMinimize
@@ -294,7 +300,7 @@ instance FromJSON1 TypeF where
 type Type = Fix TypeF
 
 newtype IntVar = IntVar Int
-  deriving (Show, Data, Eq, Ord)
+  deriving (Show, Data, Eq, Ord, Generic, Hashable)
 
 instance PrettyPrec IntVar where
   prettyPrec _ = pretty . mkVarName "u"
@@ -307,6 +313,9 @@ instance PrettyPrec IntVar where
 --   Just as with 'Type', we provide a bunch of pattern synonyms for
 --   working with 'UType' as if it were defined directly.
 type UType = Free TypeF IntVar
+
+-- orphan instance
+instance (Eq1 f, Hashable x, Hashable (f (Free f x))) => Hashable (Free f x)
 
 -- | A generic /fold/ for things defined via 'Free' (including, in
 --   particular, 'UType').
@@ -498,7 +507,7 @@ data ImplicitQuantification = Unquantified | Quantified
 --   only way to create a @Poly Quantified@ is through the 'quantify'
 --   function.
 data Poly (q :: ImplicitQuantification) t = Forall {_ptVars :: [Var], ptBody :: t}
-  deriving (Show, Eq, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON)
+  deriving (Show, Eq, Functor, Foldable, Traversable, Data, Generic, FromJSON, ToJSON, Hashable)
 
 -- | Create a raw, unquantified @Poly@ value.
 mkPoly :: [Var] -> t -> Poly 'Unquantified t
@@ -777,7 +786,7 @@ data TydefInfo = TydefInfo
   { _tydefType :: Polytype
   , _tydefArity :: Arity
   }
-  deriving (Eq, Show, Generic, Data, FromJSON, ToJSON)
+  deriving (Eq, Show, Generic, Data, FromJSON, ToJSON, Hashable)
 
 makeLenses ''TydefInfo
 
