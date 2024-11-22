@@ -1,0 +1,461 @@
+version: 1
+name: Infestation
+author: Karl Ostmo
+description: |
+  Rid the village of pests.
+creative: false
+seed: 0
+attrs:
+  - name: clay
+    bg: "#313020"
+  - name: oats
+    fg: "#444444"
+    bg: "#F5DEB3"
+  - name: bridge
+    bg: "#806040"
+  - name: brick
+    bg: "#880000"
+  - name: mold
+    fg: "#406020"
+    bg: "#403020"
+terrains:
+  - name: bridge
+    attr: bridge
+    description: |
+      Wooden raised path
+  - name: clay
+    attr: clay
+    description: |
+      Damp, sandy soil
+robots:
+  - name: base
+    loc:
+      subworld: overworld
+      loc: [-1, 8]
+    dir: south
+    devices:
+      - ADT calculator
+      - binoculars
+      - branch predictor
+      - comparator
+      - compass
+      - counter
+      - dictionary
+      - grabber
+      - harvester
+      - lambda
+      - logger
+      - net
+      - rolex
+      - scanner
+      - seed spreader
+      - strange loop
+      - string
+      - treads
+      - unlocker
+      - tweezers
+    inventory: []
+    walkable:
+      never:
+        - locked door
+  - name: rat
+    system: true
+    dir: west
+    display:
+      invisible: false
+      char: 'r'
+    devices:
+      - logger
+    program: |
+      run "scenarios/Challenges/Ranching/_pied-piper/rat.sw"
+    walkable:
+      never:
+        - ladder
+objectives:
+  - teaser: Bait
+    goal:
+      - The village dwellings have been infested by `rat`{=robot}s. You are charged with clearing the infestation.
+      - Scurrying feet can be heard through cracks under each `locked door`{=entity}. Unfortunately you've not been entrusted with `key`{=entity}s to the residences.
+      - Perhaps there is something that would entice them out? North of the river you spy fields of `oats`{=entity} and a `storage silo`{=structure}.
+      - Get some `oats`{=entity}.
+    condition: |
+      as base {
+        has "oats";
+      }
+  - teaser: Silo
+    id: silo
+    goal:
+      - Inspect the `storage silo`{=structure}.
+    condition: |
+      as base {
+        loc <- locateme;
+        return $ fst loc == "silo";
+      }
+  - teaser: Moldy
+    prerequisite: silo
+    id: moldy
+    goal:
+      - A `rat`{=robot} will `selfdestruct` if it comes in contact with `mold`{=entity}.
+      - Obtain some `mold spores`{=entity}.
+    condition: |
+      as base {
+        has "mold spores";
+      }
+  - teaser: Corral
+    prerequisite: moldy
+    goal:
+      - Dispatch the `rat`{=robot}s with `mold`{=entity}.
+      - Note that `mold spores`{=entity} will only spread when `sow`n in a dark, damp environment.
+    condition: |
+      try {
+        r <- robotNamed "rat";
+        return false;
+      } {return true}
+  - teaser: Spelunker
+    prerequisite: silo
+    goal:
+      - Find a secret passage.
+      - To unlock a door, you need to `use "unlocker"`, which will consume a `key`{=entity}.
+    condition: |
+      as base {
+        loc <- locateme;
+        return $ fst loc == "tunnel";
+      }
+solution: |
+  run "scenarios/Challenges/Ranching/_pied-piper/solution.sw"
+entities:
+  - name: seed spreader
+    display:
+      char: 's'
+    description:
+      - A device to distribute seeds and spores
+    properties: [known]
+    capabilities: [sow]
+  - name: brick
+    display:
+      char: '#'
+      attr: brick
+    description:
+      - Sturdy building material
+    properties: [known, unwalkable]
+  - name: fence
+    display:
+      char: '#'
+      attr: wood
+    description:
+      - Keeps interlopers away from the fields.
+    properties: [known, unwalkable]
+  - name: locked door
+    display:
+      char: 'D'
+      attr: wood
+    description:
+      - door
+    properties: [known]
+  - name: unlocked door
+    display:
+      char: '/'
+      attr: wood
+    description:
+      - Unlocked door
+    properties: [known]
+  - name: key
+    display:
+      char: 'k'
+    description:
+      - Used by an `unlocker`{=entity} to open a a `locked door`{=entity}
+    properties: [known]
+  - name: unlocker
+    display:
+      char: 'u'
+    description:
+      - Facilitates use of a `key`{=entity}
+    properties: [known]
+  - name: ladder
+    display:
+      char: 'H'
+      attr: wood
+    description:
+      - Ladder. Rodents cannot climb this.
+    properties: [known]
+  - name: chute
+    display:
+      char: 'C'
+    description:
+      - A trapdoor to the netherworld
+    properties: [known]
+  - name: wall
+    display:
+      char: 'W'
+      attr: wood
+    description:
+      - wall
+    properties: [known, unwalkable]
+  - name: oats
+    display:
+      attr: oats
+      char: 't'
+    description:
+      - Grain
+    properties: [known, pickable, growable]
+    growth:
+      duration: [40, 80]
+    biomes: [dirt]
+  - name: mold
+    display:
+      attr: mold
+      char: 'm'
+    description:
+      - Spreads in dark, damp environments.
+      - Toxic to `rat`{=robot}s.
+      - Yields `mold spores`{=entity} when `harvest`ed or `grab`bed.
+    properties: [known, pickable, growable]
+    yields: mold spores
+    growth:
+      duration: [15, 30]
+      spread:
+        radius: 2
+        density: 0.3
+    biomes: [clay]
+  - name: mold spores
+    display:
+      attr: mold
+      char: '*'
+    description:
+      - Grows into `mold`{=entity} in dark, damp environments.
+      - In spore form, has no effect on `rat`{=robot}s.
+    properties: [known, pickable, growable]
+    growth:
+      duration: [15, 30]
+      mature: mold
+      spread:
+        radius: 2
+        density: 0.3
+    biomes: [clay]
+known: [water, boulder]
+structures:
+  - name: storage silo
+    recognize:
+      - north
+    structure:
+      mask: '.'
+      palette:
+        'x': [stone, brick]
+        '=': [stone]
+        'c':
+          cell: [stone, chute]
+          waypoint:
+            name: chute_entrance
+        'a': [blank, oats]
+        'H':
+          cell: [dirt, ladder]
+          waypoint:
+            name: well_top
+      map: |
+        ......xxxxxH.
+        .....x===aax.
+        ...xx===aaaax
+        ....c==aaaaax
+        ...xx=aaaaaax
+        .....xaaaaax.
+        ......xxxxx..
+  - name: field
+    structure:
+      palette:
+        'a': [dirt, oats]
+      map: |
+        aaaaaaaaaaaaaaaaaaaa
+        aaaaaaaaaaaaaaaaaaaa
+        aaaaaaaaaaaaaaaaaaaa
+        aaaaaaaaaaaaaaaaaaaa
+subworlds:
+  - name: silo
+    mask: '+'
+    palette:
+      '.': [clay]
+      's': [stone, boulder]
+      'k': [clay, key]
+      'w':
+        cell: [clay]
+        waypoint:
+          name: chute_exit
+      'H':
+        cell: [stone, ladder]
+        waypoint:
+          name: well_bottom
+    portals:
+      - entrance: well_bottom
+        exitInfo:
+          exit: well_top
+          subworldName: overworld
+    upperleft: [-1, 1]
+    map: |
+      +++++sHsss+++++
+      +++ss.....ss+++
+      ++s.........s++
+      +s...........s+
+      +s.....w.....s+
+      +s.........k.s+
+      ++s.........s++
+      +++ss.....ss+++
+      +++++sssss+++++
+  - name: tunnel
+    mask: '+'
+    palette:
+      '.': [dirt]
+      'x': [stone, boulder]
+      'm': [dirt, mold]
+      'H':
+        cell: [dirt, ladder]
+        waypoint:
+          name: underground_field_ladder
+      'I':
+        cell: [dirt, ladder]
+        waypoint:
+          name: underground_house_ladder
+    portals:
+      - entrance: underground_field_ladder
+        exitInfo:
+          exit: field_ladder
+          subworldName: overworld
+        consistent: true
+      - entrance: underground_house_ladder
+        exitInfo:
+          exit: house_ladder
+          subworldName: overworld
+        consistent: true
+    upperleft: [-1, 1]
+    map: |
+      ++xHx+xx+
+      ++x.xx.mx
+      ++x.xxm.x
+      ++x.xxx.x
+      ++x.....x
+      +++x.xxxx
+      +++x.x+++
+      +++x.x+++
+      +++xIx+++
+recipes:
+  - in:
+      - [1, locked door]
+      - [1, key]
+    out:
+      - [1, unlocked door]
+    required:
+      - [1, unlocker]
+world:
+  name: overworld
+  structures:
+    - name: house ladder
+      structure:
+        palette:
+          'w': [stone, wall]
+          'H':
+            cell: [dirt, ladder]
+            waypoint:
+              name: house_ladder
+        map: |
+          www
+          wHw
+    - name: field ladder
+      structure:
+        palette:
+          'H':
+            cell: [dirt, ladder]
+            waypoint:
+              name: field_ladder
+        map: H
+    - name: house
+      structure:
+        palette:
+          'd': [stone, locked door]
+          'x': [stone, wall]
+          '.': [stone]
+          'r': [stone, erase, rat]
+        map: |
+          xxxxxxxxx
+          x.......x
+          d.......x
+          x.......x
+          x....r..x
+          x.......x
+          xxxxxxxxx
+    - name: street pair
+      structure:
+        placements:
+          - src: house
+            offset: [0, 0]
+            orient:
+              up: south
+          - src: house
+            offset: [16, 0]
+            orient:
+              flip: true
+        map: ""
+    - name: block
+      structure:
+        placements:
+          - src: street pair
+            offset: [0, 0]
+            orient:
+              flip: true
+          - src: street pair
+            offset: [0, 8]
+        map: ""
+  placements:
+    - src: block
+      offset: [-10, -14]
+    - src: block
+      offset: [-10, -36]
+    - src: storage silo
+      offset: [8, 9]
+    - src: field
+      offset: [-28, 12]
+    - src: field
+      offset: [-28, 7]
+    - src: field
+      offset: [-52, 12]
+    - src: field
+      offset: [-52, 7]
+    - src: field ladder
+      offset: [-8, 2]
+    - src: house ladder
+      offset: [-8, -5]
+  upperleft: [-2, 2]
+  portals:
+    - entrance: well_top
+      exitInfo:
+        exit: well_bottom
+        subworldName: silo
+    - entrance: chute_entrance
+      exitInfo:
+        exit: chute_exit
+        subworldName: silo
+    - entrance: field_ladder
+      exitInfo:
+        exit: underground_field_ladder
+        subworldName: tunnel
+    - entrance: house_ladder
+      exitInfo:
+        exit: underground_house_ladder
+        subworldName: tunnel
+  dsl: |
+    overlay
+    [ {grass}
+    , mask (x == -7 && y >= 3 || y == 3 && x <= -7) {fence}
+    , mask (y > -2 && y < 2) {water}
+    , mask (x > -3 && x < 3) {stone}
+    , mask (y > -25 && y < -19) {stone}
+    ]
+  palette:
+    'b': [bridge, erase]
+    'M':
+      cell: [bridge, erase]
+      waypoint:
+        name: bridge_top
+  map: |
+    Mbbbb
+    bbbbb
+    bbbbb
+    bbbbb
+    bbbbb
