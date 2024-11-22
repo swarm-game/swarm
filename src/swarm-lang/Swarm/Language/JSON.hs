@@ -32,6 +32,9 @@ instance ToJSON Syntax
 instance ToJSON Value where
   toJSON = genericToJSON optionsMinimize
 
+-- TODO (#2213): Craft some appropriate FromJSONE instances for things
+-- like Value and Env.  Below is an early experiment.
+
 -- instance FromJSONE (CtxMap CtxTree t) Value where
 --   parseJSONE = withObjectE "Value" $ \v -> case Ae.toList v of
 --     [("VUnit", _)] -> pure VUnit
