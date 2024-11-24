@@ -184,7 +184,6 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
 -- we don't actually have to "search" for these structures since we are
 -- explicitly given their location; we only need to validate that each
 -- structure remains intact given other, potentially overlapping static placements.
---
 mkRecognizer ::
   (Has (State GameState) sig m) =>
   StaticStructureInfo Cell ->
@@ -206,7 +205,7 @@ mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
   mkLogEntry (x, intact) =
     IntactPlacementLog
       intact
-      $ FoundStructure (upperLeftCorner x) ((distillLabel . structureWithGrid) x)
+      $ PositionedStructure (upperLeftCorner x) ((distillLabel . structureWithGrid) x)
 
 buildTagMap :: EntityMap -> Map Text (NonEmpty EntityName)
 buildTagMap em =

@@ -247,7 +247,7 @@ type FoundStructure b a = PositionedStructure (StructureWithGrid b a)
 --
 -- Compare "PositionedStructure OrientedStructure" to:
 -- "Swarm.Game.Scenario.Topography.Structure.Recognition.Static.LocatedStructure"
-data PositionedStructure s = FoundStructure
+data PositionedStructure s = PositionedStructure
   { upperLeftCorner :: Cosmic Location
   , structureWithGrid :: s
   }
@@ -323,7 +323,7 @@ instance (Eq b, Eq a) => Ord (FoundStructure b a) where
 -- Cells within the rectangular bounds of the structure that are unoccupied
 -- are not included.
 genOccupiedCoords :: FoundStructure b a -> [Cosmic Location]
-genOccupiedCoords (FoundStructure loc swg) =
+genOccupiedCoords (PositionedStructure loc swg) =
   catMaybes . NE.toList . mapWithCoordsNE f $ entityGrid swg
  where
   -- replaces an "occupied" grid cell with its location

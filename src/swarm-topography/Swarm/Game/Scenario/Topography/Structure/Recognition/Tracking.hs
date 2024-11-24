@@ -173,7 +173,7 @@ checkChunksCombination
       NE.toList $ NE.map mkFoundStructure . referencingRows . chunkStructure $ foundChunkRow x
      where
       mkFoundStructure r =
-        FoundStructure
+        PositionedStructure
           (cLoc `offsetBy` theOffset)
           (wholeStructure r)
        where
@@ -279,14 +279,14 @@ registerRowMatches entLoader cLoc (AutomatonInfo horizontalOffsets pwMatcher) rS
   registry = rState ^. foundStructures
   PiecewiseRecognition pwSM rowChunkReferences = pwMatcher
 
-  getStructInfo (FoundStructure loc swg) = (distillLabel swg, loc)
+  getStructInfo (PositionedStructure loc swg) = (distillLabel swg, loc)
 
   validateIntactness2d fs = do
     maybeIntactnessFailure <- lift $ ensureStructureIntact (rState ^. foundStructures) entLoader fs
     tell . pure . ChunkIntactnessVerification
       $ IntactPlacementLog
         maybeIntactnessFailure
-      $ FoundStructure (upperLeftCorner fs) (distillLabel . structureWithGrid $ fs)
+      $ PositionedStructure (upperLeftCorner fs) (distillLabel . structureWithGrid $ fs)
 
     return $ null maybeIntactnessFailure
 

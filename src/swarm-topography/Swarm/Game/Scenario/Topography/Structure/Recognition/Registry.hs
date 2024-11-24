@@ -78,7 +78,7 @@ removeStructure fs (FoundRegistry byName byLoc) =
   tidyDelete = NEM.nonEmptyMap . NEM.delete upperLeft
 
 addFound :: FoundStructure b a -> FoundRegistry b a -> FoundRegistry b a
-addFound fs@(FoundStructure loc swg) (FoundRegistry byName byLoc) =
+addFound fs@(PositionedStructure loc swg) (FoundRegistry byName byLoc) =
   FoundRegistry
     (M.insertWith (<>) k (NEM.singleton loc swg) byName)
     (M.union occupationMap byLoc)
