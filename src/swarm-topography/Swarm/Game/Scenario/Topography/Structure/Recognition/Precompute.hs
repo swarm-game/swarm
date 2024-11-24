@@ -157,7 +157,7 @@ lookupStaticPlacements extractor (StaticStructureInfo structDefs thePlacements) 
     g (LocatedStructure (OrientedStructure theName d) loc) = do
       sGrid <- M.lookup theName definitionMap
       x <- extractOrientedGrid extractor sGrid d
-      return $ FoundStructure (Cosmic subworldName loc) x
+      return $ PositionedStructure (Cosmic subworldName loc) x
 
 -- | Matches definitions against the placements.
 -- Fails fast (short-circuits) if a non-matching
@@ -171,7 +171,7 @@ ensureStructureIntact ::
   GenericEntLocator s a ->
   FoundStructure b a ->
   s (Maybe (StructureIntactnessFailure a))
-ensureStructureIntact registry entLoader (FoundStructure upperLeft (StructureWithGrid _ _ _ grid)) = do
+ensureStructureIntact registry entLoader (PositionedStructure upperLeft (StructureWithGrid _ _ _ grid)) = do
   fmap leftToMaybe . runExceptT $ mapM checkLoc allLocPairs
  where
   gridArea = getNEGridDimensions grid
