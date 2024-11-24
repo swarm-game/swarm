@@ -86,10 +86,12 @@ addFound fs@(FoundStructure loc swg) (FoundRegistry byName byLoc) =
   k = getName $ originalDefinition swg
   occupationMap = M.fromList $ map (,fs) $ genOccupiedCoords fs
 
--- | Bulk insertion of found structures.
+-- | Bulk insertion of structures statically placed in the scenario definition.
 --
--- If any of these overlap, we can't be sure of the author's
--- intent as to which member of the overlap should take precedence,
+-- See the docs for 'Swarm.Game.State.Initialize.mkRecognizer' for more context.
+--
+-- Note that if any of these pre-placed structures overlap, we can't be sure of
+-- the author's intent as to which member of the overlap should take precedence,
 -- so perhaps it would be ideal to throw an error at scenario parse time.
 --
 -- However, determining whether a structure is all three of:
@@ -99,7 +101,7 @@ addFound fs@(FoundStructure loc swg) (FoundRegistry byName byLoc) =
 -- occurs at a later phase than scenario parse; it requires access to the 'GameState'.
 --
 -- So we just use the same sorting criteria as the one used to resolve recognition
--- conflicts at entity placement time.
+-- conflicts at entity placement time (see [STRUCTURE RECOGNIZER CONFLICT RESOLUTION]).
 populateStaticFoundStructures ::
   (Eq a, Eq b) =>
   [FoundStructure b a] ->

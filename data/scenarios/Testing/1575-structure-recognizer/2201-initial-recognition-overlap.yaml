@@ -1,7 +1,13 @@
 version: 1
-name: Structure recognition - precluding overlaps
+name: Structure recognition - precluding initial overlaps
 description: |
   A cell may be a member of at most one structure.
+
+  Since recognition of pre-placed structures bypasses
+  the regular "search" process, we need to ensure that
+  overlaps are properly excluded by this alternate mechanism.
+  In this scenario, only the upper-left structure should be recognized,
+  based on the precedence criteria (structure size, then grid location)
 creative: false
 objectives:
   - teaser: Recognize exactly one structure
@@ -9,7 +15,8 @@ objectives:
       - |
         `square`{=structure} structure should be recognized upon scenario start.
       - |
-        Although two of these structures were initially placed, only one should be recognized.
+        Although two of these structures were initially placed, only
+        the upper-left one should be recognized.
     condition: |
       foundStructure <- structure "square" 0;
       return $ case foundStructure (\_. false) (\pair. fst pair == 1);

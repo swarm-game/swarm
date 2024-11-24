@@ -301,7 +301,9 @@ data StructureIntactnessFailure e = StructureIntactnessFailure
   }
   deriving (Functor, Generic, ToJSON)
 
--- | Ordering is by increasing preference between simultaneously
+-- |
+-- [STRUCTURE RECOGNIZER CONFLICT RESOLUTION]
+-- Ordering is by increasing preference between simultaneously
 -- completed structures.
 -- The preference heuristic is for:
 --

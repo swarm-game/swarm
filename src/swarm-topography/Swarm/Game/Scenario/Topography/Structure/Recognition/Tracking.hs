@@ -259,10 +259,12 @@ registerRowMatches entLoader cLoc (AutomatonInfo horizontalOffsets pwMatcher) rS
   let candidatesChunked = findAll pwSM entitiesRow
   unrankedCandidateStructures <- checkCombo candidatesChunked
 
+  -- [STRUCTURE RECOGNIZER CONFLICT RESOLUTION]
   -- We only allow an entity to participate in one structure at a time,
   -- so multiple matches require a tie-breaker.
   -- The largest structure (by area) shall win.
-  -- Sort by decreasing order of preference.
+  -- Sort by decreasing order of preference
+  -- (see the Ord instance of 'FoundStructure').
   let rankedCandidates = sortOn Down unrankedCandidateStructures
   tell . pure . FoundCompleteStructureCandidates $
     map getStructInfo rankedCandidates

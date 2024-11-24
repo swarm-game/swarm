@@ -177,6 +177,14 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
 
   addRecipesWith f = IM.unionWith (<>) (f $ scenario ^. scenarioOperation . scenarioRecipes)
 
+-- |
+-- As part of initilizing the recognizer, we also pre-populate the
+-- list of "found" structures with those statically placed by the scenario definition.
+-- Note that this bypasses the regular "online" recognition machinery;
+-- we don't actually have to "search" for these structures since we are
+-- explicitly given their location; we only need to validate that each
+-- structure remains intact given other, potentially overlapping static placements.
+--
 mkRecognizer ::
   (Has (State GameState) sig m) =>
   StaticStructureInfo Cell ->
@@ -192,8 +200,6 @@ mkRecognizer structInfo@(StaticStructureInfo structDefs _) = do
       fs
       [IntactStaticPlacement $ map mkLogEntry foundIntact]
  where
-  -- NOTE: We assume that all static scenario placements are carefully arranged
-  -- so that overlapping structures are not simultaneously recognized.
   checkIntactness = sequenceA . (id &&& adaptGameState . ensureStructureIntact emptyFoundStructures mtlEntityAt)
 
   allPlaced = lookupStaticPlacements cellToEntity structInfo
