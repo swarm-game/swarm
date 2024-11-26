@@ -178,7 +178,7 @@ pureScenarioToGameState scenario theSeed now toRun gsc =
   addRecipesWith f = IM.unionWith (<>) (f $ scenario ^. scenarioOperation . scenarioRecipes)
 
 -- |
--- As part of initilizing the recognizer, we also pre-populate the
+-- As part of initializing the recognizer, we also pre-populate the
 -- list of "found" structures with those statically placed by the scenario definition.
 -- Note that this bypasses the regular "online" recognition machinery;
 -- we don't actually have to "search" for these structures since we are
