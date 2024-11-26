@@ -4,7 +4,6 @@ module Swarm.Game.Scenario.Topography.Grid (
   Grid (..),
   NonEmptyGrid (..),
   gridToVec,
-  zipNumberedNE,
   mapWithCoordsNE,
   mapWithCoords,
   allMembers,
@@ -14,12 +13,14 @@ module Swarm.Game.Scenario.Topography.Grid (
 )
 where
 
+import Control.Lens.Indexed (FunctorWithIndex, imap)
 import Data.Aeson (ToJSON (..))
 import Data.Foldable qualified as F
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe)
 import Data.Semigroup
+import Data.Tuple.Extra (both)
 import Data.Vector qualified as V
 import GHC.Generics (Generic)
 import Swarm.Game.World.Coords
@@ -27,6 +28,11 @@ import Prelude hiding (zipWith)
 
 newtype NonEmptyGrid c = NonEmptyGrid (NonEmpty (NonEmpty c))
   deriving (Generic, Show, Eq, Functor, Foldable, Traversable, ToJSON)
+
+instance FunctorWithIndex Coords NonEmptyGrid where
+  imap f (NonEmptyGrid g) =
+    NonEmptyGrid $
+      imap (\i -> imap (\j -> f (Coords $ both fromIntegral (i, j)))) g
 
 data Grid c
   = EmptyGrid
@@ -51,25 +57,15 @@ mapRowsNE ::
   NonEmptyGrid b
 mapRowsNE f (NonEmptyGrid rows) = NonEmptyGrid $ f rows
 
+allMembersNE :: NonEmptyGrid c -> NonEmpty c
+allMembersNE (NonEmptyGrid g) = sconcat g
+
 allMembers :: Grid a -> [a]
 allMembers EmptyGrid = []
 allMembers g = F.toList g
 
-nonemptyCount :: (Integral i) => NonEmpty i
-nonemptyCount = NE.iterate succ 0
-
-zipNumberedNE ::
-  Integral i =>
-  (i -> a -> b) ->
-  NonEmpty a ->
-  NonEmpty b
-zipNumberedNE f = NE.zipWith f nonemptyCount
-
 mapWithCoordsNE :: (Coords -> a -> b) -> NonEmptyGrid a -> NonEmpty b
-mapWithCoordsNE f (NonEmptyGrid g) =
-  sconcat $ NE.zipWith outer nonemptyCount g
- where
-  outer i = zipNumberedNE $ \j -> f (Coords (i, j))
+mapWithCoordsNE f = allMembersNE . imap f
 
 mapWithCoords :: (Coords -> a -> b) -> Grid a -> [b]
 mapWithCoords _ EmptyGrid = []
@@ -78,8 +74,7 @@ mapWithCoords f (Grid g) = NE.toList $ mapWithCoordsNE f g
 -- | Converts linked lists to vectors to facilitate
 -- random access when assembling the image
 gridToVec :: Grid a -> V.Vector (V.Vector a)
-gridToVec EmptyGrid = V.empty
-gridToVec (Grid (NonEmptyGrid g)) = V.fromList . map (V.fromList . NE.toList) $ NE.toList g
+gridToVec g = V.fromList . map V.fromList $ getRows g
 
 instance (ToJSON a) => ToJSON (Grid a) where
   toJSON EmptyGrid = toJSON ([] :: [a])

@@ -6,6 +6,7 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (
 ) where
 
 import Control.Arrow ((&&&))
+import Control.Lens.Indexed (imap)
 import Data.HashMap.Strict qualified as HM
 import Data.HashSet qualified as HS
 import Data.Hashable (Hashable)
@@ -31,7 +32,7 @@ allStructureRows :: [StructureWithGrid b a] -> [StructureRow b a]
 allStructureRows =
   concatMap $ NE.toList . transformRows
  where
-  transformRows g = zipNumberedNE (StructureRow g) rows
+  transformRows g = imap (StructureRow g . fromIntegral) rows
    where
     NonEmptyGrid rows = entityGrid g
 
@@ -150,7 +151,7 @@ explodeRowEntities annotatedRow@(ConsolidatedRowReferences rowMembers _ width) =
     map swap
       . catMaybes
       . NE.toList
-      $ zipNumberedNE (\idx -> fmap (PositionWithinRow idx annotatedRow,)) rowMembers
+      $ imap (\idx -> fmap (PositionWithinRow (fromIntegral idx) annotatedRow,)) rowMembers
 
   deriveEntityOffsets :: PositionWithinRow b a -> InspectionOffsets
   deriveEntityOffsets (PositionWithinRow pos _) = mkOffsets pos width
