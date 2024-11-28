@@ -32,7 +32,7 @@ import Brick hiding (Direction, Location)
 import Brick.Focus
 import Brick.Keybindings qualified as B
 import Brick.Widgets.Dialog
-import Brick.Widgets.Edit (Editor, applyEdit, handleEditorEvent)
+import Brick.Widgets.Edit (Editor, applyEdit, editContentsL, handleEditorEvent)
 import Brick.Widgets.List (handleListEvent)
 import Brick.Widgets.List qualified as BL
 import Brick.Widgets.TabularList.Mixed
@@ -669,7 +669,9 @@ handleREPLEventTyping = \case
       -- finally if none match pass the event to the editor
       ev -> do
         Brick.zoom (uiState . uiGameplay . uiREPL . replPromptEditor) $ case ev of
-          CharKey c | c `elem` ("([{" :: String) -> insertMatchingPair c
+          CharKey c
+            | c `elem` ("([{" :: String) -> insertMatchingPair c
+            | c `elem` (")]}" :: String) -> insertOrMovePast c
           _ -> handleEditorEvent ev
         uiState . uiGameplay . uiREPL . replPromptType %= \case
           CmdPrompt _ -> CmdPrompt [] -- reset completions on any event passed to editor
@@ -684,6 +686,16 @@ insertMatchingPair c = modify . applyEdit $ TZ.insertChar c >>> TZ.insertChar (c
     '[' -> ']'
     '{' -> '}'
     _ -> c
+
+-- | Insert a character in an editor unless it matches the character
+--   already at the cursor, in which case we just move past it
+--   instead, without inserting an extra copy.
+insertOrMovePast :: Char -> EventM Name (Editor Text Name) ()
+insertOrMovePast c = do
+  e <- get
+  modify . applyEdit $ case TZ.currentChar (e ^. editContentsL) of
+    Just c' | c' == c -> TZ.moveRight
+    _ -> TZ.insertChar c
 
 data CompletionType
   = FunctionName
