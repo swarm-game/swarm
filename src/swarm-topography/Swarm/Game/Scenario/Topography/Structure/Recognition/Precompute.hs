@@ -43,6 +43,7 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (
 ) where
 
 import Control.Arrow ((&&&))
+import Control.Lens ((^.))
 import Control.Monad (forM_, unless)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (except, runExceptT)
@@ -53,9 +54,9 @@ import Data.Maybe (catMaybes, mapMaybe)
 import Data.Set qualified as Set
 import Data.Tuple (swap)
 import Swarm.Game.Location (Location, asVector)
-import Swarm.Game.Scenario.Topography.Area (getGridDimensions, rectWidth)
-import Swarm.Game.Scenario.Topography.Grid (getRows, mapIndexedMembers, mkGrid)
-import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform, getStructureName)
+import Swarm.Game.Scenario.Topography.Area (getNEGridDimensions, rectWidth)
+import Swarm.Game.Scenario.Topography.Grid
+import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransformNE)
 import Swarm.Game.Scenario.Topography.Structure.Named
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Prep (
   mkEntityLookup,
@@ -67,7 +68,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (
  )
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
-import Swarm.Game.Universe (Cosmic (..), offsetBy)
+import Swarm.Game.Universe (Cosmic (..), offsetBy, planar)
 import Swarm.Game.World.Coords (coordsToLoc)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Swarm.Util (histogram)
@@ -104,29 +105,40 @@ mkAutomatons extractor xs =
 
   infos =
     M.fromList $
-      map (getStructureName . name . namedGrid &&& process) xs
+      map (name . namedGrid &&& process) xs
 
+-- | Returns 'Nothing' if the grid is empty, since we want
+-- to exclude them from the recognition engine.
 extractOrientedGrid ::
   (Maybe b -> Maybe a) ->
   NamedGrid (Maybe b) ->
   AbsoluteDir ->
-  StructureWithGrid (Maybe b) a
+  Maybe (StructureWithGrid (Maybe b) a)
 extractOrientedGrid extractor x d =
-  StructureWithGrid wrapped d w $ getEntityGrid extractor g
+  case extractor <$> structure x of
+    EmptyGrid -> Nothing
+    Grid neGrid ->
+      let w = RowWidth . rectWidth . getNEGridDimensions $ neGrid
+       in Just $
+            StructureWithGrid wrapped d w $
+              applyOrientationTransformNE (Orientation d False) neGrid
  where
-  w = RowWidth . rectWidth . getGridDimensions $ structure g
-  wrapped = NamedOriginal (getStructureName $ name x) x
-  g = applyOrientationTransform (Orientation d False) <$> x
+  wrapped = NamedOriginal (name x) x
 
--- | At this point, we have already ensured that orientations
+-- |
+-- At this point, we have already ensured that orientations
 -- redundant by rotational symmetry have been excluded
 -- (i.e. at Scenario validation time).
+--
+-- Excludes empty grids.
 extractGrids ::
   (Maybe b -> Maybe a) ->
   NamedGrid (Maybe b) ->
   [StructureWithGrid (Maybe b) a]
 extractGrids extractor x =
-  map (extractOrientedGrid extractor x) $ Set.toList $ recognize x
+  mapMaybe (extractOrientedGrid extractor x) orientations
+ where
+  orientations = Set.toList $ recognize x
 
 -- | The output list of 'FoundStructure' records is not yet
 -- vetted; the 'ensureStructureIntact' function will subsequently
@@ -142,9 +154,10 @@ lookupStaticPlacements extractor (StaticStructureInfo structDefs thePlacements) 
 
   f (subworldName, locatedList) = mapMaybe g locatedList
    where
-    g (LocatedStructure theName d loc) = do
+    g (LocatedStructure (OrientedStructure theName d) loc) = do
       sGrid <- M.lookup theName definitionMap
-      return $ FoundStructure (extractOrientedGrid extractor sGrid d) $ Cosmic subworldName loc
+      x <- extractOrientedGrid extractor sGrid d
+      return $ PositionedStructure (Cosmic subworldName loc) x
 
 -- | Matches definitions against the placements.
 -- Fails fast (short-circuits) if a non-matching
@@ -158,24 +171,29 @@ ensureStructureIntact ::
   GenericEntLocator s a ->
   FoundStructure b a ->
   s (Maybe (StructureIntactnessFailure a))
-ensureStructureIntact registry entLoader (FoundStructure (StructureWithGrid _ _ (RowWidth w) grid) upperLeft) = do
-  fmap leftToMaybe . runExceptT . mapM checkLoc $ zip [0 ..] allLocPairs
+ensureStructureIntact registry entLoader (PositionedStructure upperLeft (StructureWithGrid _ _ _ grid)) = do
+  fmap leftToMaybe . runExceptT $ mapM checkLoc allLocPairs
  where
-  checkLoc (idx, (maybeTemplateEntity, loc)) =
+  gridArea = getNEGridDimensions grid
+  checkLoc (maybeTemplateEntity, loc) =
     forM_ maybeTemplateEntity $ \x -> do
       e <- lift $ entLoader loc
 
       forM_ (M.lookup loc $ foundByLocation registry) $ \s ->
-        except
-          . Left
-          . StructureIntactnessFailure (AlreadyUsedBy $ distillLabel $ structureWithGrid s) idx
-          $ fromIntegral w * length grid
+        errorPrefix
+          . AlreadyUsedBy
+          . distillLabel
+          $ structureWithGrid s
 
       unless (e == Just x)
-        . except
+        . errorPrefix
+        $ DiscrepantEntity
+        $ EntityDiscrepancy x e
+   where
+    errorPrefix =
+      except
         . Left
-        . StructureIntactnessFailure (DiscrepantEntity $ EntityDiscrepancy x e) idx
-        $ fromIntegral w * length grid
+        . StructureIntactnessFailure (loc ^. planar) gridArea
 
   f = fmap ((upperLeft `offsetBy`) . asVector . coordsToLoc) . swap
-  allLocPairs = mapIndexedMembers (curry f) $ mkGrid grid
+  allLocPairs = mapWithCoordsNE (curry f) grid

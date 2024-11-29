@@ -166,7 +166,7 @@ buildWorld tem WorldDescription {..} =
   -- Get all the robots described in cells and set their locations appropriately
   robots :: SubworldName -> [IndexedTRobot]
   robots swName =
-    concat $ mapIndexedMembers extractRobots g
+    concat $ mapWithCoords extractRobots g
    where
     extractRobots (Coords coordsTuple) maybeCell =
       let robotWithLoc = trobotLocation ?~ Cosmic swName (coordsToLoc (coords `addTuple` coordsTuple))

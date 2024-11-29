@@ -22,7 +22,6 @@ import Data.Vector qualified as V
 import Swarm.Game.Entity (Entity, entityDisplay)
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Cell (Cell, cellToEntity)
-import Swarm.Game.Scenario.Topography.Placement (getStructureName)
 import Swarm.Game.Scenario.Topography.Structure.Named qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures, recognitionState)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (getEntityGrid)
@@ -46,7 +45,7 @@ structureWidget :: GameState -> StructureInfo (Maybe Cell) Entity -> Widget n
 structureWidget gs s =
   vBox
     [ hBox
-        [ headerItem "Name" theName
+        [ headerItem "Name" $ Structure.getStructureName theName
         , padLeft (Pad 2)
             . headerItem "Size"
             . T.pack
@@ -119,7 +118,7 @@ structureWidget gs s =
             ]
       ]
 
-  theName = getStructureName $ Structure.name d
+  theName = Structure.name d
   cells = getEntityGrid cellToEntity d
   renderOneCell = maybe (txt " ") (renderDisplay . view entityDisplay)
 
@@ -167,4 +166,4 @@ drawSidebarListItem ::
   StructureInfo (Maybe Cell) Entity ->
   Widget Name
 drawSidebarListItem _isSelected (StructureInfo annotated _ _) =
-  txt . getStructureName . Structure.name $ namedGrid annotated
+  txt . Structure.getStructureName . Structure.name $ namedGrid annotated

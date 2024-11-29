@@ -19,6 +19,7 @@ import Data.Yaml as Y
 import GHC.Generics (Generic)
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointConfig)
 import Swarm.Game.Scenario.Topography.Placement
+import Swarm.Game.Scenario.Topography.Structure.Named (StructureName)
 import Swarm.Util (quote)
 import Swarm.Util.Yaml
 

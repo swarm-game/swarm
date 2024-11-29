@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -9,18 +7,20 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Log where
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
-import Data.Text (Text)
-import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Location (Location)
+import Swarm.Game.Scenario.Topography.Structure.Named (StructureName)
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Static (
+  OrientedStructure,
+ )
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic)
 
-renderSharedNames :: ConsolidatedRowReferences b a -> Text
+renderSharedNames :: ConsolidatedRowReferences b a -> NonEmpty StructureName
 renderSharedNames =
-  T.intercalate "/" . NE.toList . NE.nub . NE.map (getName . originalDefinition . wholeStructure) . referencingRows
+  NE.nub . NE.map (getName . originalDefinition . wholeStructure) . referencingRows
 
 data ParticipatingEntity e = ParticipatingEntity
   { entity :: e
@@ -30,13 +30,12 @@ data ParticipatingEntity e = ParticipatingEntity
 
 data IntactPlacementLog e = IntactPlacementLog
   { intactnessFailure :: Maybe (StructureIntactnessFailure e)
-  , sName :: OriginalName
-  , locUpperLeft :: Cosmic Location
+  , placedStructure :: PositionedStructure OrientedStructure
   }
   deriving (Functor, Generic, ToJSON)
 
 data ChunkMatchFailureReason e
-  = ChunkMatchFailureReason OriginalName (RowMismatchReason e)
+  = ChunkMatchFailureReason (NonEmpty StructureName) (RowMismatchReason e)
   deriving (Functor, Generic, ToJSON)
 
 data FoundChunkComparison e = FoundChunkComparison
@@ -63,10 +62,10 @@ data SearchLog e
     FoundPiecewiseChunks [(NonEmpty Int, NonEmpty e)]
   | ExpectedChunks (NonEmpty [NonEmpty e])
   | WorldRowContent [Maybe e]
-  | ChunksMatchingExpected [ChunkedRowMatch OriginalName e]
+  | ChunksMatchingExpected [ChunkedRowMatch (NonEmpty StructureName) e]
   | ChunkFailures [ChunkMatchFailureReason e]
   | ChunkIntactnessVerification (IntactPlacementLog e)
-  | StructureRemoved OriginalName
+  | StructureRemoved StructureName
   deriving (Functor, Generic)
 
 instance (ToJSON e) => ToJSON (SearchLog e) where
@@ -81,7 +80,7 @@ searchLogOptions =
 instance ToSample (SearchLog e) where
   toSamples _ = SD.noSamples
 
-data StructureLocation = StructureLocation OriginalName (Cosmic Location)
+data StructureLocation = StructureLocation StructureName (Cosmic Location)
   deriving (Generic, ToJSON)
 
 instance ToSample StructureLocation where

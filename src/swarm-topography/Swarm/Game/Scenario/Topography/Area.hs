@@ -4,10 +4,14 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.Game.Scenario.Topography.Area where
 
+import Data.Aeson (ToJSON)
+import Data.Function (on)
 import Data.Int (Int32)
 import Data.List qualified as L
+import Data.List.NonEmpty qualified as NE
 import Data.Maybe (listToMaybe)
 import Data.Semigroup
+import GHC.Generics (Generic)
 import Linear (V2 (..))
 import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Grid
@@ -18,10 +22,18 @@ data AreaDimensions = AreaDimensions
   { rectWidth :: Int32
   , rectHeight :: Int32
   }
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic, ToJSON)
 
 getGridDimensions :: Grid a -> AreaDimensions
 getGridDimensions g = getAreaDimensions $ getRows g
+
+getNEGridDimensions :: NonEmptyGrid a -> AreaDimensions
+getNEGridDimensions (NonEmptyGrid xs) =
+  (AreaDimensions `on` fromIntegral)
+    (NE.length firstRow)
+    (NE.length xs)
+ where
+  firstRow = NE.head xs
 
 asTuple :: AreaDimensions -> (Int32, Int32)
 asTuple (AreaDimensions x y) = (x, y)
@@ -76,6 +88,7 @@ fillGrid (AreaDimensions 0 _) _ = EmptyGrid
 fillGrid (AreaDimensions _ 0) _ = EmptyGrid
 fillGrid (AreaDimensions w h) x =
   Grid
+    . NonEmptyGrid
     . stimes h
     . pure
     . stimes w

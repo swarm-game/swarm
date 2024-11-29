@@ -4,9 +4,16 @@ module Swarm.Game.Scenario.Topography.Structure.Named where
 
 import Data.Set (Set)
 import Data.Text (Text)
+import Data.Yaml
+import GHC.Generics (Generic)
 import Swarm.Game.Scenario.Topography.Grid (Grid)
-import Swarm.Game.Scenario.Topography.Placement (StructureName)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
+
+newtype StructureName = StructureName Text
+  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
+
+getStructureName :: StructureName -> Text
+getStructureName (StructureName sn) = sn
 
 data NamedArea a = NamedArea
   { name :: StructureName

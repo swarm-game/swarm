@@ -26,25 +26,21 @@ import Data.HashMap.Strict (HashMap)
 import Data.Int (Int32)
 import Data.IntSet.NonEmpty (NEIntSet)
 import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Maybe (catMaybes)
 import Data.Ord (Down (Down))
 import Data.Semigroup (Max, Min)
-import Data.Text (Text)
 import GHC.Generics (Generic)
-import Linear (V2 (..))
-import Swarm.Game.Location (Location)
+import Swarm.Game.Location (Location, asVector)
 import Swarm.Game.Scenario.Topography.Area
-import Swarm.Game.Scenario.Topography.Structure.Named (NamedGrid)
+import Swarm.Game.Scenario.Topography.Grid
+import Swarm.Game.Scenario.Topography.Structure.Named (NamedGrid, StructureName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
 import Swarm.Game.Universe (Cosmic, offsetBy)
+import Swarm.Game.World.Coords (coordsToLoc)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
 import Text.AhoCorasick (StateMachine)
-
--- | A 'NamedStructure' has its own newtype name ('StructureName'), but we
--- standardize on 'Text' here to avoid parameterizing our 'NamedOriginal'
--- datatype on bespoke name types.
-type OriginalName = Text
 
 -- | A "needle" consisting of a single cell within
 -- the haystack (a row of cells) to be searched.
@@ -147,13 +143,13 @@ data StructureRow b a = StructureRow
   { wholeStructure :: StructureWithGrid b a
   , rowIndex :: Int32
   -- ^ vertical index of the row within the structure
-  , rowContent :: SymbolSequence a
+  , rowContent :: NonEmpty (AtomicKeySymbol a)
   }
 
 -- | Represents all rows across all structures that share
 -- a particular row content
 data ConsolidatedRowReferences b a = ConsolidatedRowReferences
-  { sharedRowContent :: SymbolSequence a
+  { sharedRowContent :: NonEmpty (AtomicKeySymbol a)
   , referencingRows :: NonEmpty (StructureRow b a)
   , theRowWidth :: RowWidth
   }
@@ -163,7 +159,7 @@ data ConsolidatedRowReferences b a = ConsolidatedRowReferences
 -- for the purpose of both UI display and internal uniqueness,
 -- while remaining agnostic to its internals.
 data NamedOriginal b = NamedOriginal
-  { getName :: OriginalName
+  { getName :: StructureName
   , orig :: NamedGrid b
   }
   deriving (Show, Eq)
@@ -177,7 +173,7 @@ data StructureWithGrid b a = StructureWithGrid
   { originalDefinition :: NamedOriginal b
   , rotatedTo :: AbsoluteDir
   , gridWidth :: RowWidth
-  , entityGrid :: [SymbolSequence a]
+  , entityGrid :: NonEmptyGrid (AtomicKeySymbol a)
   }
   deriving (Eq)
 
@@ -226,7 +222,7 @@ makeLenses ''AutomatonInfo
 -- | The complete set of data needed to identify applicable
 -- structures, based on a just-placed entity.
 data RecognizerAutomatons b a = RecognizerAutomatons
-  { _originalStructureDefinitions :: Map OriginalName (StructureInfo b a)
+  { _originalStructureDefinitions :: Map StructureName (StructureInfo b a)
   -- ^ all of the structures that shall participate in automatic recognition.
   -- This list is used only by the UI and by the 'Floorplan' command.
   , _automatonsByEntity :: HashMap a (AutomatonInfo b a)
@@ -240,11 +236,24 @@ makeLenses ''RecognizerAutomatons
 --
 -- The two type parameters, `b` and `a`, correspond
 -- to 'Cell' and 'Entity', respectively.
-data FoundStructure b a = FoundStructure
-  { structureWithGrid :: StructureWithGrid b a
-  , upperLeftCorner :: Cosmic Location
+type FoundStructure b a = PositionedStructure (StructureWithGrid b a)
+
+-- | NOTE: A structure's name + orientation + position will uniquely
+-- identify it in the world.  Note that position alone is not sufficient;
+-- due to transparency, a completely intact smaller structure can co-exist
+-- within a larger structure, both sharing the same upper-left coordinate.
+-- However, two identical structures (with identical orientation) cannot
+-- occupy the same space.
+--
+-- Compare "PositionedStructure OrientedStructure" to:
+-- "Swarm.Game.Scenario.Topography.Structure.Recognition.Static.LocatedStructure"
+data PositionedStructure s = PositionedStructure
+  { upperLeftCorner :: Cosmic Location
+  , structureWithGrid :: s
   }
-  deriving (Eq)
+  deriving (Eq, Functor, Generic, ToJSON)
+
+deriving instance (Ord (PositionedStructure OrientedStructure))
 
 data FoundRowFromChunk a = FoundRowFromChunk
   { chunkOffsetFromSearchBorder :: Int
@@ -277,12 +286,6 @@ data EntityDiscrepancy e = EntityDiscrepancy
   }
   deriving (Functor, Generic, ToJSON)
 
-data OrientedStructure = OrientedStructure
-  { oName :: OriginalName
-  , oDir :: AbsoluteDir
-  }
-  deriving (Generic, ToJSON)
-
 distillLabel :: StructureWithGrid b a -> OrientedStructure
 distillLabel swg = OrientedStructure (getName $ originalDefinition swg) (rotatedTo swg)
 
@@ -292,13 +295,15 @@ data IntactnessFailureReason e
   deriving (Functor, Generic, ToJSON)
 
 data StructureIntactnessFailure e = StructureIntactnessFailure
-  { reason :: IntactnessFailureReason e
-  , failedOnIndex :: Int
-  , totalSize :: Int
+  { failedOnIndex :: Location
+  , totalSize :: AreaDimensions
+  , reason :: IntactnessFailureReason e
   }
   deriving (Functor, Generic, ToJSON)
 
--- | Ordering is by increasing preference between simultaneously
+-- |
+-- [STRUCTURE RECOGNIZER CONFLICT RESOLUTION]
+-- Ordering is by increasing preference between simultaneously
 -- completed structures.
 -- The preference heuristic is for:
 --
@@ -311,15 +316,15 @@ data StructureIntactnessFailure e = StructureIntactnessFailure
 instance (Eq b, Eq a) => Ord (FoundStructure b a) where
   compare = compare `on` (f1 &&& f2)
    where
-    f1 = computeArea . getAreaDimensions . entityGrid . structureWithGrid
+    f1 = computeArea . getNEGridDimensions . entityGrid . structureWithGrid
     f2 = Down . upperLeftCorner
 
 -- | Yields coordinates that are occupied by an entity of a placed structure.
 -- Cells within the rectangular bounds of the structure that are unoccupied
 -- are not included.
 genOccupiedCoords :: FoundStructure b a -> [Cosmic Location]
-genOccupiedCoords (FoundStructure swg loc) =
-  concatMap catMaybes . zipWith mkRow [0 ..] $ entityGrid swg
+genOccupiedCoords (PositionedStructure loc swg) =
+  catMaybes . NE.toList . mapWithCoordsNE f $ entityGrid swg
  where
-  mkCol y x ent = loc `offsetBy` V2 x (negate y) <$ ent
-  mkRow rowIdx = zipWith (mkCol rowIdx) [0 ..]
+  -- replaces an "occupied" grid cell with its location
+  f cellLoc maybeEnt = ((loc `offsetBy`) . asVector . coordsToLoc $ cellLoc) <$ maybeEnt

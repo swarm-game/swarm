@@ -173,9 +173,9 @@ checkChunksCombination
       NE.toList $ NE.map mkFoundStructure . referencingRows . chunkStructure $ foundChunkRow x
      where
       mkFoundStructure r =
-        FoundStructure
-          (wholeStructure r)
+        PositionedStructure
           (cLoc `offsetBy` theOffset)
+          (wholeStructure r)
        where
         theOffset = V2 (horizontalStructPos $ foundChunkRow x) (rowIndex r)
 
@@ -259,10 +259,12 @@ registerRowMatches entLoader cLoc (AutomatonInfo horizontalOffsets pwMatcher) rS
   let candidatesChunked = findAll pwSM entitiesRow
   unrankedCandidateStructures <- checkCombo candidatesChunked
 
+  -- [STRUCTURE RECOGNIZER CONFLICT RESOLUTION]
   -- We only allow an entity to participate in one structure at a time,
   -- so multiple matches require a tie-breaker.
   -- The largest structure (by area) shall win.
-  -- Sort by decreasing order of preference.
+  -- Sort by decreasing order of preference
+  -- (see the Ord instance of 'FoundStructure').
   let rankedCandidates = sortOn Down unrankedCandidateStructures
   tell . pure . FoundCompleteStructureCandidates $
     map getStructInfo rankedCandidates
@@ -277,15 +279,15 @@ registerRowMatches entLoader cLoc (AutomatonInfo horizontalOffsets pwMatcher) rS
   registry = rState ^. foundStructures
   PiecewiseRecognition pwSM rowChunkReferences = pwMatcher
 
-  getStructInfo (FoundStructure swg loc) = (distillLabel swg, loc)
+  getStructInfo (PositionedStructure loc swg) = (distillLabel swg, loc)
 
   validateIntactness2d fs = do
     maybeIntactnessFailure <- lift $ ensureStructureIntact (rState ^. foundStructures) entLoader fs
-    tell . pure . ChunkIntactnessVerification $
-      IntactPlacementLog
+    tell . pure . ChunkIntactnessVerification
+      $ IntactPlacementLog
         maybeIntactnessFailure
-        (getName . originalDefinition . structureWithGrid $ fs)
-        (upperLeftCorner fs)
+      $ PositionedStructure (upperLeftCorner fs) (distillLabel . structureWithGrid $ fs)
+
     return $ null maybeIntactnessFailure
 
   checkCombo = checkChunksCombination cLoc horizontalOffsets rowChunkReferences
