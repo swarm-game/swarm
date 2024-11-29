@@ -6,15 +6,36 @@
 -- Symmetry analysis for structure recognizer.
 module Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry where
 
-import Control.Monad (unless, when)
+import Control.Monad (forM_, when)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text qualified as T
-import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform)
-import Swarm.Game.Scenario.Topography.Structure.Named (NamedGrid, recognize, structure)
+import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransformNE)
+import Swarm.Game.Scenario.Topography.Structure.Named (recognize)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static (RotationalSymmetry (..), SymmetryAnnotatedGrid (..))
-import Swarm.Language.Syntax.Direction (AbsoluteDir (DSouth, DWest), getCoordinateOrientation)
-import Swarm.Util (commaList, failT, histogram, showT)
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
+import Swarm.Language.Syntax.Direction (AbsoluteDir (DSouth, DWest), CoordinateOrientation, getCoordinateOrientation)
+import Swarm.Util (commaList, histogram, showT)
+
+data RedundantOrientations
+  = TwoFoldRedundancy (NonEmpty CoordinateOrientation)
+  | FourFoldRedundancy (Set AbsoluteDir)
+
+renderRedundancy :: RedundantOrientations -> T.Text
+renderRedundancy = \case
+  TwoFoldRedundancy redundantOrientations ->
+    T.unwords
+      [ "Redundant"
+      , commaList $ map showT $ NE.toList redundantOrientations
+      , "orientations supplied with two-fold symmetry."
+      ]
+  FourFoldRedundancy _xs ->
+    T.unwords
+      [ "Redundant orientations supplied; with four-fold symmetry, just supply 'north'."
+      ]
 
 -- | Warns if any recognition orientations are redundant
 -- by rotational symmetry.
@@ -28,23 +49,17 @@ import Swarm.Util (commaList, failT, histogram, showT)
 --    2-fold symmetry.
 --    Warn if two opposite orientations were supplied.
 checkSymmetry ::
-  (MonadFail m, Eq a) => NamedGrid a -> m (SymmetryAnnotatedGrid a)
-checkSymmetry ng = do
+  Eq a =>
+  ExtractedArea b a ->
+  Either RedundantOrientations (SymmetryAnnotatedGrid (ExtractedArea b a))
+checkSymmetry x@(ExtractedArea origObject originalRows) = do
   case symmetryType of
     FourFold ->
-      when (Set.size suppliedOrientations > 1)
-        . failT
-        . pure
-        $ T.unwords ["Redundant orientations supplied; with four-fold symmetry, just supply 'north'."]
+      when (Set.size suppliedOrientations > 1) . Left $
+        FourFoldRedundancy suppliedOrientations
     TwoFold ->
-      unless (null redundantOrientations)
-        . failT
-        . pure
-        $ T.unwords
-          [ "Redundant"
-          , commaList $ map showT redundantOrientations
-          , "orientations supplied with two-fold symmetry."
-          ]
+      forM_ (NE.nonEmpty redundantOrientations) $
+        Left . TwoFoldRedundancy
      where
       redundantOrientations =
         map fst
@@ -55,15 +70,14 @@ checkSymmetry ng = do
           $ Set.toList suppliedOrientations
     _ -> return ()
 
-  return $ SymmetryAnnotatedGrid ng symmetryType
+  return $ SymmetryAnnotatedGrid symmetryType x
  where
   symmetryType
     | quarterTurnRows == originalRows = FourFold
     | halfTurnRows == originalRows = TwoFold
     | otherwise = NoSymmetry
 
-  quarterTurnRows = applyOrientationTransform (Orientation DWest False) originalRows
-  halfTurnRows = applyOrientationTransform (Orientation DSouth False) originalRows
+  quarterTurnRows = applyOrientationTransformNE (Orientation DWest False) originalRows
+  halfTurnRows = applyOrientationTransformNE (Orientation DSouth False) originalRows
 
-  suppliedOrientations = recognize ng
-  originalRows = structure ng
+  suppliedOrientations = recognize origObject

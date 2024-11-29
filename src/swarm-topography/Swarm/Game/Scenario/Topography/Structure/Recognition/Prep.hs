@@ -34,7 +34,7 @@ allStructureRows =
  where
   transformRows g = imap (StructureRow g . fromIntegral) rows
    where
-    NonEmptyGrid rows = entityGrid g
+    NonEmptyGrid rows = extractedGrid $ entityGrid g
 
 -- | If this entity is encountered in the world,
 -- how far left of it and how far right of it do we need to

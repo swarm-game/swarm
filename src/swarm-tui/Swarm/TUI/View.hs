@@ -95,7 +95,6 @@ import Swarm.Game.Scenario.Scoring.ConcreteMetrics
 import Swarm.Game.Scenario.Scoring.GenericMetrics
 import Swarm.Game.Scenario.Status
 import Swarm.Game.Scenario.Topography.Center
-import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.ScenarioInfo (
   ScenarioItem (..),
@@ -830,7 +829,7 @@ drawModalMenu s = vLimit 1 . hBox $ map (padLeftRight 1 . drawKeyCmd) globalKeyC
 
   -- Hides this key if the recognizable structure list is empty
   structuresKey =
-    if null $ s ^. gameState . discovery . structureRecognition . automatons . originalStructureDefinitions
+    if null $ s ^. gameState . landscape . recognizerAutomatons . originalStructureDefinitions
       then Nothing
       else Just (NoHighlight, keyM SE.ViewStructuresEvent, "Structures")
 

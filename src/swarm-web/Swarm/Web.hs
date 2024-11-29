@@ -231,12 +231,12 @@ recogLogHandler appStateRef = do
   appState <- liftIO appStateRef
   return $
     map (fmap (view entityName)) $
-      appState ^. gameState . discovery . structureRecognition . recognitionState . recognitionLog
+      appState ^. gameState . discovery . structureRecognition . recognitionLog
 
 recogFoundHandler :: IO AppState -> Handler [StructureLocation]
 recogFoundHandler appStateRef = do
   appState <- liftIO appStateRef
-  let registry = appState ^. gameState . discovery . structureRecognition . recognitionState . foundStructures
+  let registry = appState ^. gameState . discovery . structureRecognition . foundStructures
   return
     . map (uncurry StructureLocation)
     . concatMap (\(x, ys) -> map (x,) $ NE.toList ys)
