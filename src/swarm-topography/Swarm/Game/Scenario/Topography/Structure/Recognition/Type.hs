@@ -19,7 +19,7 @@
 module Swarm.Game.Scenario.Topography.Structure.Recognition.Type where
 
 import Control.Arrow ((&&&))
-import Control.Lens (makeLenses)
+import Control.Lens (Lens', makeLenses)
 import Data.Aeson (ToJSON)
 import Data.Function (on)
 import Data.HashMap.Strict (HashMap)
@@ -35,11 +35,12 @@ import GHC.Generics (Generic)
 import Swarm.Game.Location (Location, asVector)
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Grid
-import Swarm.Game.Scenario.Topography.Structure.Named (NamedGrid, StructureName)
+import Swarm.Game.Scenario.Topography.Structure.Named (NamedArea, StructureName, name)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
-import Swarm.Game.Universe (Cosmic, offsetBy)
+import Swarm.Game.Universe (Cosmic, SubworldName, offsetBy)
 import Swarm.Game.World.Coords (coordsToLoc)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
+import Swarm.Util.Lens (makeLensesNoSigs)
 import Text.AhoCorasick (StateMachine)
 
 -- | A "needle" consisting of a single cell within
@@ -154,13 +155,9 @@ data ConsolidatedRowReferences b a = ConsolidatedRowReferences
   , theRowWidth :: RowWidth
   }
 
--- | This wrapper facilitates naming the original structure
--- (i.e. the "payload" for recognition)
--- for the purpose of both UI display and internal uniqueness,
--- while remaining agnostic to its internals.
-data NamedOriginal b = NamedOriginal
-  { getName :: StructureName
-  , orig :: NamedGrid b
+data ExtractedArea b a = ExtractedArea
+  { originalItem :: NamedArea b
+  , extractedGrid :: NonEmptyGrid (AtomicKeySymbol a)
   }
   deriving (Show, Eq)
 
@@ -170,17 +167,16 @@ data NamedOriginal b = NamedOriginal
 -- The two type parameters, `b` and `a`, correspond
 -- to 'Cell' and 'Entity', respectively.
 data StructureWithGrid b a = StructureWithGrid
-  { originalDefinition :: NamedOriginal b
-  , rotatedTo :: AbsoluteDir
+  { rotatedTo :: AbsoluteDir
   , gridWidth :: RowWidth
-  , entityGrid :: NonEmptyGrid (AtomicKeySymbol a)
+  , entityGrid :: ExtractedArea b a
   }
   deriving (Eq)
 
 -- | Structure definitions with precomputed metadata for consumption by the UI
 data StructureInfo b a = StructureInfo
-  { annotatedGrid :: SymmetryAnnotatedGrid b
-  , entityProcessedGrid :: [SymbolSequence a]
+  { annotatedGrid :: SymmetryAnnotatedGrid (ExtractedArea b a)
+  , entityProcessedGrid :: NonEmptyGrid (AtomicKeySymbol a)
   , entityCounts :: Map a Int
   }
 
@@ -287,7 +283,7 @@ data EntityDiscrepancy e = EntityDiscrepancy
   deriving (Functor, Generic, ToJSON)
 
 distillLabel :: StructureWithGrid b a -> OrientedStructure
-distillLabel swg = OrientedStructure (getName $ originalDefinition swg) (rotatedTo swg)
+distillLabel swg = OrientedStructure (name $ originalItem $ entityGrid swg) (rotatedTo swg)
 
 data IntactnessFailureReason e
   = DiscrepantEntity (EntityDiscrepancy e)
@@ -316,7 +312,7 @@ data StructureIntactnessFailure e = StructureIntactnessFailure
 instance (Eq b, Eq a) => Ord (FoundStructure b a) where
   compare = compare `on` (f1 &&& f2)
    where
-    f1 = computeArea . getNEGridDimensions . entityGrid . structureWithGrid
+    f1 = computeArea . getNEGridDimensions . extractedGrid . entityGrid . structureWithGrid
     f2 = Down . upperLeftCorner
 
 -- | Yields coordinates that are occupied by an entity of a placed structure.
@@ -324,7 +320,21 @@ instance (Eq b, Eq a) => Ord (FoundStructure b a) where
 -- are not included.
 genOccupiedCoords :: FoundStructure b a -> [Cosmic Location]
 genOccupiedCoords (PositionedStructure loc swg) =
-  catMaybes . NE.toList . mapWithCoordsNE f $ entityGrid swg
+  catMaybes . NE.toList . mapWithCoordsNE f . extractedGrid $ entityGrid swg
  where
   -- replaces an "occupied" grid cell with its location
   f cellLoc maybeEnt = ((loc `offsetBy`) . asVector . coordsToLoc $ cellLoc) <$ maybeEnt
+
+data StaticStructureInfo b a = StaticStructureInfo
+  { _staticAutomatons :: RecognizerAutomatons b a
+  , _staticPlacements :: Map SubworldName [LocatedStructure]
+  }
+
+makeLensesNoSigs ''StaticStructureInfo
+
+-- | Recognition engine for statically-defined structures
+staticAutomatons :: Lens' (StaticStructureInfo b a) (RecognizerAutomatons b a)
+
+-- | A record of the static placements of structures, so that they can be
+-- added to the "recognized" list upon scenario initialization
+staticPlacements :: Lens' (StaticStructureInfo b a) (Map SubworldName [LocatedStructure])

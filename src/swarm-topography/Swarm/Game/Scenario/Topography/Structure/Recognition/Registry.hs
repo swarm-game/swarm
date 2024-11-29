@@ -32,7 +32,7 @@ import Data.Maybe (listToMaybe, maybeToList)
 import Data.Ord (Down (Down))
 import Data.Set qualified as Set
 import Swarm.Game.Location
-import Swarm.Game.Scenario.Topography.Structure.Named (StructureName)
+import Swarm.Game.Scenario.Topography.Structure.Named (StructureName, name)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic (..))
 import Swarm.Util (binTuples, deleteKeys)
@@ -70,7 +70,7 @@ removeStructure fs (FoundRegistry byName byLoc) =
     (deleteKeys allOccupiedCoords byLoc)
  where
   allOccupiedCoords = genOccupiedCoords fs
-  structureName = getName $ originalDefinition $ structureWithGrid fs
+  structureName = name . originalItem . entityGrid $ structureWithGrid fs
   upperLeft = upperLeftCorner fs
 
   -- NOTE: Observe similarities to
@@ -83,12 +83,12 @@ addFound fs@(PositionedStructure loc swg) (FoundRegistry byName byLoc) =
     (M.insertWith (<>) k (NEM.singleton loc swg) byName)
     (M.union occupationMap byLoc)
  where
-  k = getName $ originalDefinition swg
+  k = name . originalItem $ entityGrid swg
   occupationMap = M.fromList $ map (,fs) $ genOccupiedCoords fs
 
 -- | Bulk insertion of structures statically placed in the scenario definition.
 --
--- See the docs for 'Swarm.Game.State.Initialize.mkRecognizer' for more context.
+-- See the docs for 'Swarm.Game.State.Initialize.initializeRecognition' for more context.
 --
 -- Note that if any of these pre-placed structures overlap, we can't be sure of
 -- the author's intent as to which member of the overlap should take precedence,
@@ -117,7 +117,7 @@ populateStaticFoundStructures allFound =
   byName =
     M.map (NEM.fromList . NE.map (upperLeftCorner &&& structureWithGrid)) $
       binTuples $
-        map (getName . originalDefinition . structureWithGrid &&& id) resolvedCollisions
+        map (name . originalItem . entityGrid . structureWithGrid &&& id) resolvedCollisions
 
   resolvePreplacementCollisions foundList =
     nonOverlappingFound <> maybeToList (listToMaybe overlapsByDecreasingPreference)

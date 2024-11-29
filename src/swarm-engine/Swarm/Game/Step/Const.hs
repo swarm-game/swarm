@@ -59,12 +59,12 @@ import Swarm.Game.Robot
 import Swarm.Game.Robot.Activity
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.Robot.Walk (emptyExceptions)
-import Swarm.Game.Scenario.Topography.Area (getAreaDimensions, getNEGridDimensions, rectHeight)
+import Swarm.Game.Scenario.Topography.Area (getNEGridDimensions, rectHeight)
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.Navigation.Util
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (WaypointName (..))
 import Swarm.Game.Scenario.Topography.Structure.Named (StructureName (..))
-import Swarm.Game.Scenario.Topography.Structure.Recognition (automatons, foundStructures, recognitionState)
+import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.State
@@ -549,26 +549,26 @@ execConst runChildProg c vs s k = do
       _ -> badConst
     Structure -> case vs of
       [VText name, VInt idx] -> do
-        registry <- use $ discovery . structureRecognition . recognitionState . foundStructures
+        registry <- use $ discovery . structureRecognition . foundStructures
         let maybeFoundStructures = M.lookup (StructureName name) $ foundByName registry
             mkOutput mapNE = (NE.length xs, bottomLeftCorner)
              where
               xs = NEM.toList mapNE
               (pos, struc) = indexWrapNonEmpty xs idx
               topLeftCorner = pos ^. planar
-              offsetHeight = V2 0 $ negate (rectHeight (getNEGridDimensions $ entityGrid struc) - 1)
+              offsetHeight = V2 0 $ negate (rectHeight (getNEGridDimensions $ extractedGrid $ entityGrid struc) - 1)
               bottomLeftCorner :: Location
               bottomLeftCorner = topLeftCorner .+^ offsetHeight
         return $ mkReturn $ mkOutput <$> maybeFoundStructures
       _ -> badConst
     Floorplan -> case vs of
       [VText name] -> do
-        structureTemplates <- use $ discovery . structureRecognition . automatons . originalStructureDefinitions
+        structureTemplates <- use $ landscape . recognizerAutomatons . originalStructureDefinitions
         let maybeStructure = M.lookup (StructureName name) structureTemplates
         structureDef <-
           maybeStructure
             `isJustOr` cmdExn Floorplan (pure $ T.unwords ["Unknown structure", quote name])
-        return . mkReturn . getAreaDimensions $ entityProcessedGrid structureDef
+        return . mkReturn . getNEGridDimensions $ entityProcessedGrid structureDef
       _ -> badConst
     HasTag -> case vs of
       [VText eName, VText tName] -> do

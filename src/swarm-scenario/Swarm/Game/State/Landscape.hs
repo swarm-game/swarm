@@ -13,6 +13,7 @@ module Swarm.Game.State.Landscape (
   multiWorld,
   worldScrollable,
   terrainAndEntities,
+  recognizerAutomatons,
 
   -- ** Utilities
   initLandscape,
@@ -45,6 +46,7 @@ import Swarm.Game.Scenario.Topography.Cell
 import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Navigation.Portal (Navigation (..))
 import Swarm.Game.Scenario.Topography.Structure.Overlay
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.State.Config
 import Swarm.Game.Terrain (TerrainType (..), terrainIndexByName)
@@ -63,6 +65,7 @@ data Landscape = Landscape
   { _worldNavigation :: Navigation (M.Map SubworldName) Location
   , _multiWorld :: MultiWorld Int Entity
   , _terrainAndEntities :: TerrainEntityMaps
+  , _recognizerAutomatons :: RecognizerAutomatons RecognizableStructureContent Entity
   , _worldScrollable :: Bool
   }
 
@@ -81,6 +84,9 @@ multiWorld :: Lens' Landscape (MultiWorld Int Entity)
 -- | The catalogs of all terrain and entities that the game knows about.
 terrainAndEntities :: Lens' Landscape TerrainEntityMaps
 
+-- | Recognition engine for predefined structures
+recognizerAutomatons :: Lens' Landscape (RecognizerAutomatons RecognizableStructureContent Entity)
+
 -- | Whether the world map is supposed to be scrollable or not.
 worldScrollable :: Lens' Landscape Bool
 
@@ -92,6 +98,7 @@ initLandscape gsc =
     { _worldNavigation = Navigation mempty mempty
     , _multiWorld = mempty
     , _terrainAndEntities = initEntityTerrain $ gsiScenarioInputs $ initState gsc
+    , _recognizerAutomatons = RecognizerAutomatons mempty mempty
     , _worldScrollable = True
     }
 
@@ -101,6 +108,7 @@ mkLandscape sLandscape worldTuples theSeed =
     { _worldNavigation = sLandscape ^. scenarioNavigation
     , _multiWorld = genMultiWorld worldTuples theSeed
     , _terrainAndEntities = sLandscape ^. scenarioTerrainAndEntities
+    , _recognizerAutomatons = sLandscape ^. scenarioStructures . staticAutomatons
     , -- TODO (#1370): Should we allow subworlds to have their own scrollability?
       -- Leaning toward no, but for now just adopt the root world scrollability
       -- as being universal.

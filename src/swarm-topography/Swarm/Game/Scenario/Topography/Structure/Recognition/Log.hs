@@ -6,12 +6,12 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Log where
 
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NE
+import Data.List.NonEmpty.Extra qualified as NE
 import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
 import Swarm.Game.Location (Location)
-import Swarm.Game.Scenario.Topography.Structure.Named (StructureName)
+import Swarm.Game.Scenario.Topography.Structure.Named (StructureName, name)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static (
   OrientedStructure,
  )
@@ -20,7 +20,7 @@ import Swarm.Game.Universe (Cosmic)
 
 renderSharedNames :: ConsolidatedRowReferences b a -> NonEmpty StructureName
 renderSharedNames =
-  NE.nub . NE.map (getName . originalDefinition . wholeStructure) . referencingRows
+  NE.nubOrd . NE.map (name . originalItem . entityGrid . wholeStructure) . referencingRows
 
 data ParticipatingEntity e = ParticipatingEntity
   { entity :: e

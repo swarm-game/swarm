@@ -10,7 +10,7 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking (
 ) where
 
 import Control.Arrow (left, (&&&))
-import Control.Lens ((%~), (&), (.~), (^.))
+import Control.Lens ((%~), (&), (^.))
 import Control.Monad (foldM, guard, unless)
 import Control.Monad.Extra (findM)
 import Control.Monad.Trans.Class (lift)
@@ -33,6 +33,7 @@ import Data.Semigroup (Max (..), Min (..))
 import Data.Tuple (swap)
 import Linear (V2 (..))
 import Swarm.Game.Location (Location)
+import Swarm.Game.Scenario.Topography.Structure.Named (name)
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (GenericEntLocator, ensureStructureIntact)
@@ -54,48 +55,41 @@ entityModified ::
   GenericEntLocator s a ->
   CellModification a ->
   Cosmic Location ->
-  StructureRecognizer b a ->
-  s (StructureRecognizer b a)
-entityModified entLoader modification cLoc recognizer = do
+  RecognizerAutomatons b a ->
+  RecognitionState b a ->
+  s (RecognitionState b a)
+entityModified entLoader modification cLoc autoRecognizer oldRecognitionState = do
   (val, accumulatedLogs) <- runWriterT $ case modification of
-    Add newEntity -> doAddition newEntity recognizer
+    Add newEntity -> doAddition newEntity oldRecognitionState
     Remove _ -> doRemoval
     Swap _ newEntity -> doRemoval >>= doAddition newEntity
   return $
     val
-      & recognitionState . recognitionLog %~ (reverse accumulatedLogs <>)
+      & recognitionLog %~ (reverse accumulatedLogs <>)
  where
-  entLookup = recognizer ^. automatons . automatonsByEntity
+  entLookup = autoRecognizer ^. automatonsByEntity
 
-  doAddition newEntity r = do
-    stateRevision <- case HM.lookup newEntity entLookup of
-      Nothing -> return oldRecognitionState
-      Just finder -> do
-        tell . pure . FoundParticipatingEntity $
-          ParticipatingEntity
-            newEntity
-            (finder ^. inspectionOffsets)
-        registerRowMatches entLoader cLoc finder oldRecognitionState
-
-    return $ r & recognitionState .~ stateRevision
+  doAddition newEntity =
+    maybe return logAndRegister $ HM.lookup newEntity entLookup
    where
-    oldRecognitionState = r ^. recognitionState
+    logAndRegister finder s = do
+      tell . pure . FoundParticipatingEntity $
+        ParticipatingEntity
+          newEntity
+          (finder ^. inspectionOffsets)
+      registerRowMatches entLoader cLoc finder s
 
-  doRemoval = do
+  doRemoval =
     -- Entity was removed; may need to remove registered structure.
-    stateRevision <- case M.lookup cLoc $ foundByLocation structureRegistry of
-      Nothing -> return oldRecognitionState
-      Just fs -> do
-        tell $ pure $ StructureRemoved structureName
-        return $
-          oldRecognitionState
-            & foundStructures %~ removeStructure fs
-       where
-        structureName = getName $ originalDefinition $ structureWithGrid fs
-
-    return $ recognizer & recognitionState .~ stateRevision
+    f oldRecognitionState
    where
-    oldRecognitionState = recognizer ^. recognitionState
+    f = maybe return logAndRemove $ M.lookup cLoc $ foundByLocation structureRegistry
+    logAndRemove fs s = do
+      tell $ pure $ StructureRemoved structureName
+      return $ s & foundStructures %~ removeStructure fs
+     where
+      structureName = name . originalItem . entityGrid $ structureWithGrid fs
+
     structureRegistry = oldRecognitionState ^. foundStructures
 
 -- | In case this cell would match a candidate structure,
@@ -111,7 +105,7 @@ candidateEntityAt ::
   GenericEntLocator s a ->
   FoundRegistry b a ->
   Cosmic Location ->
-  s (Maybe a)
+  s (AtomicKeySymbol a)
 candidateEntityAt entLoader registry cLoc = runMaybeT $ do
   guard $ M.notMember cLoc $ foundByLocation registry
   MaybeT $ entLoader cLoc
@@ -124,7 +118,7 @@ getWorldRow ::
   FoundRegistry b a ->
   Cosmic Location ->
   InspectionOffsets ->
-  s [Maybe a]
+  s [AtomicKeySymbol a]
 getWorldRow entLoader registry cLoc (InspectionOffsets (Min offsetLeft) (Max offsetRight)) = do
   mapM getCandidate horizontalOffsets
  where

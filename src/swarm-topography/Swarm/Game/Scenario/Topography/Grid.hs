@@ -4,12 +4,14 @@ module Swarm.Game.Scenario.Topography.Grid (
   Grid (..),
   NonEmptyGrid (..),
   gridToVec,
-  mapWithCoordsNE,
   mapWithCoords,
+  mapWithCoordsNE,
   allMembers,
+  allMembersNE,
   mapRowsNE,
   getRows,
   mkGrid,
+  getNonEmptyGrid,
 )
 where
 
@@ -43,6 +45,11 @@ mkGrid :: [[a]] -> Grid a
 mkGrid rows = fromMaybe EmptyGrid $ do
   rowsNE <- NE.nonEmpty =<< mapM NE.nonEmpty rows
   return $ Grid $ NonEmptyGrid rowsNE
+
+getNonEmptyGrid :: Grid a -> Maybe (NonEmptyGrid a)
+getNonEmptyGrid = \case
+  EmptyGrid -> Nothing
+  Grid x -> Just x
 
 getRows :: Grid a -> [[a]]
 getRows EmptyGrid = []

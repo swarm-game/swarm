@@ -73,7 +73,6 @@ import Witch (into)
 -- | A scenario item is either a specific scenario, or a collection of
 --   scenarios (/e.g./ the scenarios contained in a subdirectory).
 data ScenarioItem = SISingle ScenarioInfoPair | SICollection Text ScenarioCollection
-  deriving (Show)
 
 -- | Retrieve the name of a scenario item.
 scenarioItemName :: ScenarioItem -> Text
@@ -89,7 +88,6 @@ data ScenarioCollection = SC
   { scOrder :: Maybe [FilePath]
   , scMap :: Map FilePath ScenarioItem
   }
-  deriving (Show)
 
 -- | Access and modify 'ScenarioItem's in collection based on their path.
 scenarioItemByPath :: FilePath -> Traversal' ScenarioCollection ScenarioItem
@@ -114,7 +112,7 @@ tutorialsDirname = "Tutorials"
 getTutorials :: ScenarioCollection -> ScenarioCollection
 getTutorials sc = case M.lookup tutorialsDirname (scMap sc) of
   Just (SICollection _ c) -> c
-  _ -> error $ "No tutorials exist: " ++ show sc
+  _ -> error "No tutorials exist"
 
 -- | Canonicalize a scenario path, making it usable as a unique key.
 normalizeScenarioPath ::
