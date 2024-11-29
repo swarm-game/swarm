@@ -19,7 +19,7 @@
 module Swarm.Game.Scenario.Topography.Structure.Recognition.Type where
 
 import Control.Arrow ((&&&))
-import Control.Lens (makeLenses)
+import Control.Lens (Lens', makeLenses)
 import Data.Aeson (ToJSON)
 import Data.Function (on)
 import Data.HashMap.Strict (HashMap)
@@ -35,11 +35,12 @@ import GHC.Generics (Generic)
 import Swarm.Game.Location (Location, asVector)
 import Swarm.Game.Scenario.Topography.Area
 import Swarm.Game.Scenario.Topography.Grid
-import Swarm.Game.Scenario.Topography.Structure.Named (NamedGrid, StructureName)
+import Swarm.Game.Scenario.Topography.Structure.Named (NamedArea, StructureName)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
-import Swarm.Game.Universe (Cosmic, offsetBy)
+import Swarm.Game.Universe (Cosmic, SubworldName, offsetBy)
 import Swarm.Game.World.Coords (coordsToLoc)
 import Swarm.Language.Syntax.Direction (AbsoluteDir)
+import Swarm.Util.Lens (makeLensesNoSigs)
 import Text.AhoCorasick (StateMachine)
 
 -- | A "needle" consisting of a single cell within
@@ -160,7 +161,13 @@ data ConsolidatedRowReferences b a = ConsolidatedRowReferences
 -- while remaining agnostic to its internals.
 data NamedOriginal b = NamedOriginal
   { getName :: StructureName
-  , orig :: NamedGrid b
+  , orig :: NamedArea b
+  }
+  deriving (Show, Eq)
+
+data ExtractedArea b a = ExtractedArea
+  { originalItem :: NamedArea (NonEmptyGrid (Maybe b))
+  , extractedGrid :: NonEmptyGrid (AtomicKeySymbol a)
   }
   deriving (Show, Eq)
 
@@ -179,8 +186,8 @@ data StructureWithGrid b a = StructureWithGrid
 
 -- | Structure definitions with precomputed metadata for consumption by the UI
 data StructureInfo b a = StructureInfo
-  { annotatedGrid :: SymmetryAnnotatedGrid b
-  , entityProcessedGrid :: [SymbolSequence a]
+  { annotatedGrid :: SymmetryAnnotatedGrid (NamedArea b)
+  , entityProcessedGrid :: NonEmptyGrid (AtomicKeySymbol a)
   , entityCounts :: Map a Int
   }
 
@@ -328,3 +335,20 @@ genOccupiedCoords (PositionedStructure loc swg) =
  where
   -- replaces an "occupied" grid cell with its location
   f cellLoc maybeEnt = ((loc `offsetBy`) . asVector . coordsToLoc $ cellLoc) <$ maybeEnt
+
+data StaticStructureInfo b a = StaticStructureInfo
+  { _structureDefs :: [SymmetryAnnotatedGrid (ExtractedArea b a)]
+  , _staticAutomatons :: RecognizerAutomatons (NonEmptyGrid (Maybe b)) a
+  , _staticPlacements :: Map SubworldName [LocatedStructure]
+  }
+
+makeLensesNoSigs ''StaticStructureInfo
+
+-- | Structure templates that may be auto-recognized when constructed
+-- by a robot
+structureDefs :: Lens' (StaticStructureInfo b a) [SymmetryAnnotatedGrid (ExtractedArea b a)]
+staticAutomatons :: Lens' (StaticStructureInfo b a) (RecognizerAutomatons (NonEmptyGrid (Maybe b)) a)
+
+-- | A record of the static placements of structures, so that they can be
+-- added to the "recognized" list upon scenario initialization
+staticPlacements :: Lens' (StaticStructureInfo b a) (Map SubworldName [LocatedStructure])

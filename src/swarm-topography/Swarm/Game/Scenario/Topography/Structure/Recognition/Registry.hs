@@ -88,7 +88,7 @@ addFound fs@(PositionedStructure loc swg) (FoundRegistry byName byLoc) =
 
 -- | Bulk insertion of structures statically placed in the scenario definition.
 --
--- See the docs for 'Swarm.Game.State.Initialize.mkRecognizer' for more context.
+-- See the docs for 'Swarm.Game.State.Initialize.initializeRecognition' for more context.
 --
 -- Note that if any of these pre-placed structures overlap, we can't be sure of
 -- the author's intent as to which member of the overlap should take precedence,

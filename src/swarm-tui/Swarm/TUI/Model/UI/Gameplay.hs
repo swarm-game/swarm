@@ -56,6 +56,8 @@ import Brick.Widgets.List qualified as BL
 import Control.Lens hiding (from, (<.>))
 import Data.Bits (FiniteBits (finiteBitSize))
 import Data.Text (Text)
+import Swarm.Game.Scenario.Topography.Cell (Cell)
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.ScenarioInfo (
   ScenarioInfoPair,
  )
@@ -171,7 +173,7 @@ uiInventoryShouldUpdate :: Lens' UIInventory Bool
 data UIDialogs = UIDialogs
   { _uiModal :: Maybe Modal
   , _uiGoal :: GoalDisplay
-  , _uiStructure :: StructureDisplay
+  , _uiStructure :: StructureDisplay (NonEmptyGrid (Maybe Cell))
   , _uiRobot :: RobotDisplay
   }
 
@@ -188,7 +190,7 @@ uiModal :: Lens' UIDialogs (Maybe Modal)
 uiGoal :: Lens' UIDialogs GoalDisplay
 
 -- | Definition and status of a recognizable structure
-uiStructure :: Lens' UIDialogs StructureDisplay
+uiStructure :: Lens' UIDialogs (StructureDisplay (NonEmptyGrid (Maybe Cell)))
 
 -- | Definition and status of a recognizable structure
 uiRobot :: Lens' UIDialogs RobotDisplay

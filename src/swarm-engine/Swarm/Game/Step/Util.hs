@@ -30,6 +30,7 @@ import Swarm.Game.Location
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking qualified as SRT
 import Swarm.Game.State
+import Swarm.Game.State.Landscape (recognizerAutomatons)
 import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step.Path.Cache
@@ -87,9 +88,10 @@ updateEntityAt cLoc@(Cosmic subworldName loc) upd = do
     myID <- use robotID
     zoomRobots $ wakeWatchingRobots myID currentTick cLoc
 
-    oldRecognizer <- use $ discovery . structureRecognition
-    newRecognizer <- adaptGameState $ SRT.entityModified mtlEntityAt modType cLoc oldRecognizer
-    discovery . structureRecognition .= newRecognizer
+    structureRecognizer <- use $ landscape . recognizerAutomatons
+    oldRecognition <- use $ discovery . structureRecognition
+    newRecognition <- adaptGameState $ SRT.entityModified mtlEntityAt modType cLoc structureRecognizer oldRecognition
+    discovery . structureRecognition .= newRecognition
 
     pcr <- use $ pathCaching . pathCachingRobots
     mapM_ (revalidatePathCache cLoc modType) $ IM.toList pcr

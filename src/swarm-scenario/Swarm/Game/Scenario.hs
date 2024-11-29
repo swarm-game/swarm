@@ -86,14 +86,15 @@ import Swarm.Game.Scenario.Objective.Validation
 import Swarm.Game.Scenario.RobotLookup
 import Swarm.Game.Scenario.Style
 import Swarm.Game.Scenario.Topography.Cell
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Navigation.Portal
 import Swarm.Game.Scenario.Topography.Navigation.Waypoint (Parentage (..))
 import Swarm.Game.Scenario.Topography.Structure qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Assembly qualified as Assembly
 import Swarm.Game.Scenario.Topography.Structure.Named qualified as Structure
 import Swarm.Game.Scenario.Topography.Structure.Overlay
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
-import Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Scenario.Topography.WorldDescription
 import Swarm.Game.Terrain
 import Swarm.Game.Universe
@@ -190,10 +191,9 @@ data ScenarioLandscape = ScenarioLandscape
   , _scenarioKnown :: Set EntityName
   , _scenarioWorlds :: NonEmpty WorldDescription
   , _scenarioNavigation :: Navigation (M.Map SubworldName) Location
-  , _scenarioStructures :: StaticStructureInfo Cell
+  , _scenarioStructures :: StaticStructureInfo Cell Entity
   , _scenarioRobots :: [TRobot]
   }
-  deriving (Show)
 
 makeLensesNoSigs ''ScenarioLandscape
 
@@ -220,7 +220,7 @@ scenarioKnown :: Lens' ScenarioLandscape (Set EntityName)
 scenarioWorlds :: Lens' ScenarioLandscape (NonEmpty WorldDescription)
 
 -- | Information required for structure recognition
-scenarioStructures :: Lens' ScenarioLandscape (StaticStructureInfo Cell)
+scenarioStructures :: Lens' ScenarioLandscape (StaticStructureInfo Cell Entity)
 
 -- | Waypoints and inter-world portals
 scenarioNavigation :: Lens' ScenarioLandscape (Navigation (M.Map SubworldName) Location)
@@ -236,7 +236,6 @@ data Scenario = Scenario
   , _scenarioOperation :: ScenarioOperation
   , _scenarioLandscape :: ScenarioLandscape
   }
-  deriving (Show)
 
 makeLensesNoSigs ''Scenario
 
@@ -353,12 +352,17 @@ instance FromJSONE ScenarioInputs Scenario where
 
           stuffGrid (ns, Structure.MergedStructure (PositionedGrid _ s) _ _) = s <$ ns
           namedGrids = map stuffGrid mergedStructures
-          recognizableGrids = filter Structure.isRecognizable namedGrids
+      let recognizableGrids = filter Structure.isRecognizable namedGrids
 
-      symmetryAnnotatedGrids <- mapM checkSymmetry recognizableGrids
+      -- We exclude empty grids from the recognition engine.
+      let nonEmptyRecognizableGrids = mapMaybe (traverse getNonEmptyGrid) recognizableGrids
+
+      (symmetryAnnotatedGrids, myAutomatons) <-
+        either (fail . T.unpack) return $
+          mkAutomatons cellToEntity nonEmptyRecognizableGrids
 
       let structureInfo =
-            StaticStructureInfo symmetryAnnotatedGrids
+            StaticStructureInfo symmetryAnnotatedGrids myAutomatons
               . M.fromList
               . NE.toList
               $ NE.map (worldName &&& placedStructures) allWorlds

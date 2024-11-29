@@ -37,7 +37,6 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (
 
   -- * Helper functions
   populateStaticFoundStructures,
-  getEntityGrid,
   lookupStaticPlacements,
   ensureStructureIntact,
 ) where
@@ -49,9 +48,11 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (except, runExceptT)
 import Data.Either.Combinators (leftToMaybe)
 import Data.Hashable (Hashable)
+import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe (catMaybes, mapMaybe)
 import Data.Set qualified as Set
+import Data.Text qualified as T
 import Data.Tuple (swap)
 import Swarm.Game.Location (Location, asVector)
 import Swarm.Game.Scenario.Topography.Area (getNEGridDimensions, rectWidth)
@@ -67,6 +68,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (
   populateStaticFoundStructures,
  )
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Symmetry
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic (..), offsetBy, planar)
 import Swarm.Game.World.Coords (coordsToLoc)
@@ -81,83 +83,78 @@ import Swarm.Util (histogram)
 -- 's' is the state variable, 'a' is the return type.
 type GenericEntLocator s a = Cosmic Location -> s (Maybe a)
 
-getEntityGrid :: (Maybe b -> Maybe a) -> NamedGrid (Maybe b) -> [[Maybe a]]
-getEntityGrid extractor = getRows . fmap extractor . structure
-
 -- | Create Aho-Corasick matchers that will recognize all of the
 -- provided structure definitions
 mkAutomatons ::
-  (Ord a, Hashable a) =>
+  (Ord a, Hashable a, Eq b) =>
   (Maybe b -> Maybe a) ->
-  [SymmetryAnnotatedGrid (Maybe b)] ->
-  RecognizerAutomatons (Maybe b) a
-mkAutomatons extractor xs =
-  RecognizerAutomatons
-    infos
-    (mkEntityLookup rotatedGrids)
+  [NamedArea (NonEmptyGrid (Maybe b))] ->
+  Either
+    T.Text
+    ( [SymmetryAnnotatedGrid (ExtractedArea b a)]
+    , RecognizerAutomatons (NonEmptyGrid (Maybe b)) a
+    )
+mkAutomatons extractor rawGrids = do
+  onlyNonempties <- mapM checkSymmetry extractedItems
+  let rotatedGrids = concatMap (extractGrids . namedGrid) onlyNonempties
+      infos =
+        M.fromList $
+          map ((name . namedGrid . annotatedGrid &&& id) . process) onlyNonempties
+  return
+    ( onlyNonempties
+    , RecognizerAutomatons
+        infos
+        (mkEntityLookup rotatedGrids)
+    )
  where
-  rotatedGrids = concatMap (extractGrids extractor . namedGrid) xs
+  extractedItems = map (\g -> ExtractedArea g $ extractor <$> structure g) rawGrids
 
-  process g = StructureInfo g entGrid countsMap
+  process g = StructureInfo (fmap originalItem g) entGrid countsMap
    where
-    entGrid = getEntityGrid extractor $ namedGrid g
-    countsMap = histogram $ concatMap catMaybes entGrid
+    entGrid = extractedGrid $ namedGrid g
+    countsMap = histogram . catMaybes . NE.toList $ allMembersNE entGrid
 
-  infos =
-    M.fromList $
-      map (name . namedGrid &&& process) xs
-
--- | Returns 'Nothing' if the grid is empty, since we want
--- to exclude them from the recognition engine.
 extractOrientedGrid ::
-  (Maybe b -> Maybe a) ->
-  NamedGrid (Maybe b) ->
+  ExtractedArea b a ->
   AbsoluteDir ->
-  Maybe (StructureWithGrid (Maybe b) a)
-extractOrientedGrid extractor x d =
-  case extractor <$> structure x of
-    EmptyGrid -> Nothing
-    Grid neGrid ->
-      let w = RowWidth . rectWidth . getNEGridDimensions $ neGrid
-       in Just $
-            StructureWithGrid wrapped d w $
-              applyOrientationTransformNE (Orientation d False) neGrid
+  StructureWithGrid (NonEmptyGrid (Maybe b)) a
+extractOrientedGrid (ExtractedArea x neGrid) d =
+  StructureWithGrid wrapped d w $
+    applyOrientationTransformNE (Orientation d False) neGrid
  where
+  w = RowWidth . rectWidth . getNEGridDimensions $ neGrid
   wrapped = NamedOriginal (name x) x
 
 -- |
 -- At this point, we have already ensured that orientations
 -- redundant by rotational symmetry have been excluded
 -- (i.e. at Scenario validation time).
---
--- Excludes empty grids.
 extractGrids ::
-  (Maybe b -> Maybe a) ->
-  NamedGrid (Maybe b) ->
-  [StructureWithGrid (Maybe b) a]
-extractGrids extractor x =
-  mapMaybe (extractOrientedGrid extractor x) orientations
+  ExtractedArea b a ->
+  [StructureWithGrid (NonEmptyGrid (Maybe b)) a]
+extractGrids x =
+  map (extractOrientedGrid x) orientations
  where
-  orientations = Set.toList $ recognize x
+  orientations = Set.toList $ recognize $ originalItem x
 
 -- | The output list of 'FoundStructure' records is not yet
 -- vetted; the 'ensureStructureIntact' function will subsequently
 -- filter this list.
 lookupStaticPlacements ::
-  (Maybe b -> Maybe a) ->
-  StaticStructureInfo b ->
-  [FoundStructure (Maybe b) a]
-lookupStaticPlacements extractor (StaticStructureInfo structDefs thePlacements) =
+  StaticStructureInfo b a ->
+  [FoundStructure (NonEmptyGrid (Maybe b)) a]
+lookupStaticPlacements (StaticStructureInfo structDefs _ thePlacements) =
   concatMap f $ M.toList thePlacements
  where
-  definitionMap = M.fromList $ map ((name &&& id) . namedGrid) structDefs
+  definitionMap = M.fromList $ map ((name . originalItem &&& id) . namedGrid) structDefs
 
   f (subworldName, locatedList) = mapMaybe g locatedList
    where
     g (LocatedStructure (OrientedStructure theName d) loc) = do
       sGrid <- M.lookup theName definitionMap
-      x <- extractOrientedGrid extractor sGrid d
-      return $ PositionedStructure (Cosmic subworldName loc) x
+      return $
+        PositionedStructure (Cosmic subworldName loc) $
+          extractOrientedGrid sGrid d
 
 -- | Matches definitions against the placements.
 -- Fails fast (short-circuits) if a non-matching

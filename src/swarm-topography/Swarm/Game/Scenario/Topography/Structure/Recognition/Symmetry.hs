@@ -10,11 +10,12 @@ import Control.Monad (unless, when)
 import Data.Map qualified as M
 import Data.Set qualified as Set
 import Data.Text qualified as T
-import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransform)
-import Swarm.Game.Scenario.Topography.Structure.Named (NamedGrid, recognize, structure)
+import Swarm.Game.Scenario.Topography.Placement (Orientation (..), applyOrientationTransformNE)
+import Swarm.Game.Scenario.Topography.Structure.Named (recognize, structure)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Static (RotationalSymmetry (..), SymmetryAnnotatedGrid (..))
+import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Language.Syntax.Direction (AbsoluteDir (DSouth, DWest), getCoordinateOrientation)
-import Swarm.Util (commaList, failT, histogram, showT)
+import Swarm.Util (commaList, histogram, showT)
 
 -- | Warns if any recognition orientations are redundant
 -- by rotational symmetry.
@@ -28,18 +29,18 @@ import Swarm.Util (commaList, failT, histogram, showT)
 --    2-fold symmetry.
 --    Warn if two opposite orientations were supplied.
 checkSymmetry ::
-  (MonadFail m, Eq a) => NamedGrid a -> m (SymmetryAnnotatedGrid a)
-checkSymmetry ng = do
+  Eq b =>
+  ExtractedArea b a ->
+  Either T.Text (SymmetryAnnotatedGrid (ExtractedArea b a))
+checkSymmetry x@(ExtractedArea ng _) = do
   case symmetryType of
     FourFold ->
       when (Set.size suppliedOrientations > 1)
-        . failT
-        . pure
+        . Left
         $ T.unwords ["Redundant orientations supplied; with four-fold symmetry, just supply 'north'."]
     TwoFold ->
       unless (null redundantOrientations)
-        . failT
-        . pure
+        . Left
         $ T.unwords
           [ "Redundant"
           , commaList $ map showT redundantOrientations
@@ -55,15 +56,15 @@ checkSymmetry ng = do
           $ Set.toList suppliedOrientations
     _ -> return ()
 
-  return $ SymmetryAnnotatedGrid ng symmetryType
+  return $ SymmetryAnnotatedGrid symmetryType x
  where
   symmetryType
     | quarterTurnRows == originalRows = FourFold
     | halfTurnRows == originalRows = TwoFold
     | otherwise = NoSymmetry
 
-  quarterTurnRows = applyOrientationTransform (Orientation DWest False) originalRows
-  halfTurnRows = applyOrientationTransform (Orientation DSouth False) originalRows
+  quarterTurnRows = applyOrientationTransformNE (Orientation DWest False) originalRows
+  halfTurnRows = applyOrientationTransformNE (Orientation DSouth False) originalRows
 
   suppliedOrientations = recognize ng
   originalRows = structure ng

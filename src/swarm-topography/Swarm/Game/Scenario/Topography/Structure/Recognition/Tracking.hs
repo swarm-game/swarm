@@ -10,7 +10,7 @@ module Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking (
 ) where
 
 import Control.Arrow (left, (&&&))
-import Control.Lens ((%~), (&), (.~), (^.))
+import Control.Lens ((%~), (&), (^.))
 import Control.Monad (foldM, guard, unless)
 import Control.Monad.Extra (findM)
 import Control.Monad.Trans.Class (lift)
@@ -33,6 +33,7 @@ import Data.Semigroup (Max (..), Min (..))
 import Data.Tuple (swap)
 import Linear (V2 (..))
 import Swarm.Game.Location (Location)
+import Swarm.Game.Scenario.Topography.Grid
 import Swarm.Game.Scenario.Topography.Structure.Recognition
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Log
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Precompute (GenericEntLocator, ensureStructureIntact)
@@ -54,18 +55,19 @@ entityModified ::
   GenericEntLocator s a ->
   CellModification a ->
   Cosmic Location ->
-  StructureRecognizer b a ->
-  s (StructureRecognizer b a)
-entityModified entLoader modification cLoc recognizer = do
+  RecognizerAutomatons (NonEmptyGrid b) a ->
+  StructureRecognition (NonEmptyGrid b) a ->
+  s (StructureRecognition (NonEmptyGrid b) a)
+entityModified entLoader modification cLoc autoRecognizer recognizer = do
   (val, accumulatedLogs) <- runWriterT $ case modification of
     Add newEntity -> doAddition newEntity recognizer
     Remove _ -> doRemoval
     Swap _ newEntity -> doRemoval >>= doAddition newEntity
   return $
     val
-      & recognitionState . recognitionLog %~ (reverse accumulatedLogs <>)
+      & recognitionLog %~ (reverse accumulatedLogs <>)
  where
-  entLookup = recognizer ^. automatons . automatonsByEntity
+  entLookup = autoRecognizer ^. automatonsByEntity
 
   doAddition newEntity r = do
     stateRevision <- case HM.lookup newEntity entLookup of
@@ -77,9 +79,9 @@ entityModified entLoader modification cLoc recognizer = do
             (finder ^. inspectionOffsets)
         registerRowMatches entLoader cLoc finder oldRecognitionState
 
-    return $ r & recognitionState .~ stateRevision
+    return stateRevision
    where
-    oldRecognitionState = r ^. recognitionState
+    oldRecognitionState = r
 
   doRemoval = do
     -- Entity was removed; may need to remove registered structure.
@@ -93,9 +95,9 @@ entityModified entLoader modification cLoc recognizer = do
        where
         structureName = getName $ originalDefinition $ structureWithGrid fs
 
-    return $ recognizer & recognitionState .~ stateRevision
+    return stateRevision
    where
-    oldRecognitionState = recognizer ^. recognitionState
+    oldRecognitionState = recognizer
     structureRegistry = oldRecognitionState ^. foundStructures
 
 -- | In case this cell would match a candidate structure,
@@ -237,9 +239,9 @@ registerRowMatches ::
   (Monoid (f (SearchLog a)), Applicative f, Monad s, Hashable a, Eq b) =>
   GenericEntLocator s a ->
   Cosmic Location ->
-  AutomatonInfo b a ->
-  RecognitionState b a ->
-  WriterT (f (SearchLog a)) s (RecognitionState b a)
+  AutomatonInfo (NonEmptyGrid b) a ->
+  StructureRecognition (NonEmptyGrid b) a ->
+  WriterT (f (SearchLog a)) s (StructureRecognition (NonEmptyGrid b) a)
 registerRowMatches entLoader cLoc (AutomatonInfo horizontalOffsets pwMatcher) rState = do
   tell $ pure $ StartSearchAt cLoc horizontalOffsets
 
@@ -351,8 +353,8 @@ isCoveredWithOffset (FoundAndExpectedChunkPositions found expected) offset =
 registerBestStructureMatch ::
   (Monad s, Eq a, Eq b) =>
   Maybe (FoundStructure b a) ->
-  RecognitionState b a ->
-  s (RecognitionState b a)
+  StructureRecognition b a ->
+  s (StructureRecognition b a)
 registerBestStructureMatch maybeValidCandidate oldState =
   return $
     oldState
