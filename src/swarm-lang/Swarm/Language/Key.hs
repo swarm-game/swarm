@@ -20,6 +20,7 @@ where
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Foldable (asum)
+import Data.Hashable (Hashable)
 import Data.Kind qualified
 import Data.List (sort, (\\))
 import Data.Set (Set)
@@ -37,10 +38,13 @@ import Witch (from)
 ------------------------------------------------------------
 -- Parsing
 
+deriving instance Hashable V.Modifier
+deriving instance Hashable V.Key
+
 -- | A keyboard input, represented as a key + modifiers.  Invariant:
 --   the modifier list is always sorted.
 data KeyCombo = KeyCombo V.Key [V.Modifier]
-  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Generic, Hashable, FromJSON, ToJSON)
 
 deriving instance FromJSON V.Key
 deriving instance FromJSON V.Modifier

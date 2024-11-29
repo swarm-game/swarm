@@ -405,7 +405,7 @@ skolemize (unPoly -> (xs, uty)) = do
   let xs' = map UTyVar skolemNames
       newSubst = M.fromList $ zip xs xs'
       s = M.mapKeys Left (newSubst `M.union` unCtx boundSubst)
-  pure (Ctx newSubst, substU s uty)
+  pure (Ctx.fromMap newSubst, substU s uty)
 
 -- | 'generalize' is the opposite of 'instantiate': add a 'Forall'
 --   which closes over all free type and unification variables.
