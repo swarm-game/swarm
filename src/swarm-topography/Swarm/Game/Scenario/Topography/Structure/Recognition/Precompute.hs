@@ -92,7 +92,7 @@ mkAutomatons ::
   Either
     T.Text
     ( [SymmetryAnnotatedGrid (ExtractedArea b a)]
-    , RecognizerAutomatons (NonEmptyGrid (Maybe b)) a
+    , RecognizerAutomatons b a
     )
 mkAutomatons extractor rawGrids = do
   onlyNonempties <- mapM checkSymmetry extractedItems

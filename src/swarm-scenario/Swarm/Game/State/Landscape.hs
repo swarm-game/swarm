@@ -65,7 +65,7 @@ data Landscape = Landscape
   { _worldNavigation :: Navigation (M.Map SubworldName) Location
   , _multiWorld :: MultiWorld Int Entity
   , _terrainAndEntities :: TerrainEntityMaps
-  , _recognizerAutomatons :: RecognizerAutomatons (NonEmptyGrid (Maybe Cell)) Entity
+  , _recognizerAutomatons :: RecognizerAutomatons Cell Entity
   , _worldScrollable :: Bool
   }
 
@@ -85,7 +85,7 @@ multiWorld :: Lens' Landscape (MultiWorld Int Entity)
 terrainAndEntities :: Lens' Landscape TerrainEntityMaps
 
 -- | Recognition engine for predefined structures
-recognizerAutomatons :: Lens' Landscape (RecognizerAutomatons (NonEmptyGrid (Maybe Cell)) Entity)
+recognizerAutomatons :: Lens' Landscape (RecognizerAutomatons Cell Entity)
 
 -- | Whether the world map is supposed to be scrollable or not.
 worldScrollable :: Lens' Landscape Bool
