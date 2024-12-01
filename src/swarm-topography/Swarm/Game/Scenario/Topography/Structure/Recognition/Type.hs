@@ -186,6 +186,11 @@ data StructureWithGrid b a = StructureWithGrid
 
 -- | Structure definitions with precomputed metadata for consumption by the UI
 data StructureInfo b a = StructureInfo
+     -- TODO this should be "SymmetryAnnotatedGrid (ExtractedArea b a)"
+     -- so that the 'lookupStaticPlacements' function can retrieve it
+     -- from the 'originalStructureDefinitions' member, instead of
+     -- reconstructing a map from 'structureDefs'.
+     -- Then we won't have to return a tuple anymore from 'mkAutomatons'
   { annotatedGrid :: SymmetryAnnotatedGrid (NamedArea b)
   , entityProcessedGrid :: NonEmptyGrid (AtomicKeySymbol a)
   , entityCounts :: Map a Int
