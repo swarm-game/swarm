@@ -191,7 +191,7 @@ data StructureInfo b a = StructureInfo
      -- from the 'originalStructureDefinitions' member, instead of
      -- reconstructing a map from 'structureDefs'.
      -- Then we won't have to return a tuple anymore from 'mkAutomatons'
-  { annotatedGrid :: SymmetryAnnotatedGrid (NamedArea b)
+  { annotatedGrid :: SymmetryAnnotatedGrid b
   , entityProcessedGrid :: NonEmptyGrid (AtomicKeySymbol a)
   , entityCounts :: Map a Int
   }
@@ -234,7 +234,7 @@ makeLenses ''AutomatonInfo
 -- | The complete set of data needed to identify applicable
 -- structures, based on a just-placed entity.
 data RecognizerAutomatons b a = RecognizerAutomatons
-  { _originalStructureDefinitions :: Map StructureName (StructureInfo (NonEmptyGrid (Maybe b)) a)
+  { _originalStructureDefinitions :: Map StructureName (StructureInfo (NamedArea (NonEmptyGrid (Maybe b))) a)
   -- ^ all of the structures that shall participate in automatic recognition.
   -- This list is used only by the UI and by the 'Floorplan' command.
   , _automatonsByEntity :: HashMap a (AutomatonInfo (NonEmptyGrid (Maybe b)) a)
