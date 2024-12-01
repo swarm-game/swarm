@@ -55,9 +55,9 @@ entityModified ::
   GenericEntLocator s a ->
   CellModification a ->
   Cosmic Location ->
-  RecognizerAutomatons (NonEmptyGrid b) a ->
-  StructureRecognition (NonEmptyGrid b) a ->
-  s (StructureRecognition (NonEmptyGrid b) a)
+  RecognizerAutomatons (NonEmptyGrid (Maybe b)) a ->
+  StructureRecognition (NonEmptyGrid (Maybe b)) a ->
+  s (StructureRecognition (NonEmptyGrid (Maybe b)) a)
 entityModified entLoader modification cLoc autoRecognizer recognizer = do
   (val, accumulatedLogs) <- runWriterT $ case modification of
     Add newEntity -> doAddition newEntity recognizer
