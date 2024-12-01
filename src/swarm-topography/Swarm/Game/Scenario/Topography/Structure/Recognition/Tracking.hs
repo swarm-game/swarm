@@ -90,7 +90,6 @@ entityModified entLoader modification cLoc autoRecognizer oldRecognitionState = 
             & foundStructures %~ removeStructure fs
        where
         structureName = getName $ originalDefinition $ structureWithGrid fs
-
    where
     structureRegistry = oldRecognitionState ^. foundStructures
 
