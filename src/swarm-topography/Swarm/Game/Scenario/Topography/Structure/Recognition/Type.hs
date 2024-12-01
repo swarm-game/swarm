@@ -234,10 +234,10 @@ makeLenses ''AutomatonInfo
 -- | The complete set of data needed to identify applicable
 -- structures, based on a just-placed entity.
 data RecognizerAutomatons b a = RecognizerAutomatons
-  { _originalStructureDefinitions :: Map StructureName (StructureInfo b a)
+  { _originalStructureDefinitions :: Map StructureName (StructureInfo (NonEmptyGrid (Maybe b)) a)
   -- ^ all of the structures that shall participate in automatic recognition.
   -- This list is used only by the UI and by the 'Floorplan' command.
-  , _automatonsByEntity :: HashMap a (AutomatonInfo b a)
+  , _automatonsByEntity :: HashMap a (AutomatonInfo (NonEmptyGrid (Maybe b)) a)
   }
   deriving (Generic)
 
@@ -343,7 +343,7 @@ genOccupiedCoords (PositionedStructure loc swg) =
 
 data StaticStructureInfo b a = StaticStructureInfo
   { _structureDefs :: [SymmetryAnnotatedGrid (ExtractedArea b a)]
-  , _staticAutomatons :: RecognizerAutomatons (NonEmptyGrid (Maybe b)) a
+  , _staticAutomatons :: RecognizerAutomatons b a
   , _staticPlacements :: Map SubworldName [LocatedStructure]
   }
 
@@ -352,7 +352,9 @@ makeLensesNoSigs ''StaticStructureInfo
 -- | Structure templates that may be auto-recognized when constructed
 -- by a robot
 structureDefs :: Lens' (StaticStructureInfo b a) [SymmetryAnnotatedGrid (ExtractedArea b a)]
-staticAutomatons :: Lens' (StaticStructureInfo b a) (RecognizerAutomatons (NonEmptyGrid (Maybe b)) a)
+
+-- | Recognition engine for statically-defined structures
+staticAutomatons :: Lens' (StaticStructureInfo b a) (RecognizerAutomatons b a)
 
 -- | A record of the static placements of structures, so that they can be
 -- added to the "recognized" list upon scenario initialization

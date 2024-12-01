@@ -59,8 +59,12 @@ entityModified ::
   StructureRecognition (NonEmptyGrid (Maybe b)) a ->
   s (StructureRecognition (NonEmptyGrid (Maybe b)) a)
 entityModified entLoader modification cLoc autoRecognizer recognizer = do
+  RecognizerAutomatons (NonEmptyGrid b) a ->
+  StructureRecognition (NonEmptyGrid b) a ->
+  s (StructureRecognition (NonEmptyGrid b) a)
+entityModified entLoader modification cLoc autoRecognizer oldRecognitionState = do
   (val, accumulatedLogs) <- runWriterT $ case modification of
-    Add newEntity -> doAddition newEntity recognizer
+    Add newEntity -> doAddition newEntity oldRecognitionState
     Remove _ -> doRemoval
     Swap _ newEntity -> doRemoval >>= doAddition newEntity
   return $
@@ -69,23 +73,19 @@ entityModified entLoader modification cLoc autoRecognizer recognizer = do
  where
   entLookup = autoRecognizer ^. automatonsByEntity
 
-  doAddition newEntity r = do
-    stateRevision <- case HM.lookup newEntity entLookup of
-      Nothing -> return oldRecognitionState
+  doAddition newEntity oldState =
+    case HM.lookup newEntity entLookup of
+      Nothing -> return oldState
       Just finder -> do
         tell . pure . FoundParticipatingEntity $
           ParticipatingEntity
             newEntity
             (finder ^. inspectionOffsets)
-        registerRowMatches entLoader cLoc finder oldRecognitionState
+        registerRowMatches entLoader cLoc finder oldState
 
-    return stateRevision
-   where
-    oldRecognitionState = r
-
-  doRemoval = do
+  doRemoval =
     -- Entity was removed; may need to remove registered structure.
-    stateRevision <- case M.lookup cLoc $ foundByLocation structureRegistry of
+    case M.lookup cLoc $ foundByLocation structureRegistry of
       Nothing -> return oldRecognitionState
       Just fs -> do
         tell $ pure $ StructureRemoved structureName
@@ -95,9 +95,7 @@ entityModified entLoader modification cLoc autoRecognizer recognizer = do
        where
         structureName = getName $ originalDefinition $ structureWithGrid fs
 
-    return stateRevision
    where
-    oldRecognitionState = recognizer
     structureRegistry = oldRecognitionState ^. foundStructures
 
 -- | In case this cell would match a candidate structure,

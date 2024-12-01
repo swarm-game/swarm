@@ -121,7 +121,7 @@ structureWidget gs s =
 
   renderOneCell = maybe (txt " ") (renderDisplay . view entityDisplay)
 
-makeListWidget :: [StructureInfo a b] -> BL.List Name (StructureInfo a b)
+makeListWidget :: [StructureInfo b a] -> BL.List Name (StructureInfo b a)
 makeListWidget structureDefinitions =
   BL.listMoveTo 0 $ BL.list (StructureWidgets StructuresList) (V.fromList structureDefinitions) 1
 
