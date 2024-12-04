@@ -36,7 +36,7 @@ import Swarm.Game.Land
 import Swarm.Game.Location (Point (..), toHeading)
 import Swarm.Game.Robot
 import Swarm.Game.Scenario.Topography.EntityFacade
-import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures, recognitionState)
+import Swarm.Game.Scenario.Topography.Structure.Recognition (foundStructures)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Registry (foundByLocation)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
@@ -76,7 +76,7 @@ drawLoc ui g cCoords@(Cosmic _ coords) =
 
   boldStructure = applyWhen isStructure $ modifyDefAttr (`V.withStyle` V.bold)
    where
-    sMap = foundByLocation $ g ^. discovery . structureRecognition . recognitionState . foundStructures
+    sMap = foundByLocation $ g ^. discovery . structureRecognition . foundStructures
     isStructure = M.member (coordsToLoc <$> cCoords) sMap
 
 -- | Subset of the game state needed to render the world

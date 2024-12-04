@@ -685,6 +685,7 @@ library swarm-engine
     servant-docs,
     text,
     time,
+    hashable,
     transformers,
     unordered-containers,
     witch,
