@@ -4,9 +4,9 @@
 -- Types strictly for debugging structure recognition via the web interface
 module Swarm.Game.Scenario.Topography.Structure.Recognition.Log where
 
-import Data.List.NonEmpty.Extra qualified as NE
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty.Extra qualified as NE
 import GHC.Generics (Generic)
 import Servant.Docs (ToSample)
 import Servant.Docs qualified as SD
