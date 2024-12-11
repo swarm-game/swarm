@@ -93,17 +93,19 @@ import Prelude hiding (lookup)
 data TCFrame where
   -- | Checking a definition.
   TCLet :: Var -> TCFrame
-  -- | Inferring the LHS of a bind.
-  TCBindL :: TCFrame
-  -- | Inferring the RHS of a bind.
-  TCBindR :: TCFrame
+  -- | Inferring the LHS of an application.  Stored Syntax is the term
+  --   on the RHS.
+  TCAppL :: Syntax -> TCFrame
+  -- | Checking the RHS of an application.  Stored Syntax is the term
+  -- on the LHS.
+  TCAppR :: Syntax -> TCFrame
   deriving (Show)
 
 instance PrettyPrec TCFrame where
   prettyPrec _ = \case
     TCLet x -> "While checking the definition of" <+> pretty x
-    TCBindL -> "While checking the left-hand side of a semicolon"
-    TCBindR -> "While checking the right-hand side of a semicolon"
+    TCAppL s -> "While checking the left-hand side of a function application: _" <+> prettyPrec 11 s
+    TCAppR s -> "While checking the right-hand side of a function application:" <+> prettyPrec 10 s <+> "_"
 
 -- | A typechecking stack frame together with the relevant @SrcLoc@.
 data LocatedTCFrame = LocatedTCFrame SrcLoc TCFrame
@@ -679,13 +681,14 @@ prettyTypeErr code (CTE l tcStack te) =
     NoLoc -> emptyDoc
   showLoc (r, c) = pretty r <> ":" <> pretty c
 
--- | Filter the TCStack of extravagant Binds.
+-- | Filter the TCStack so we stop printing context outside of a def/let
 filterTCStack :: TCStack -> TCStack
 filterTCStack tcStack = case tcStack of
   [] -> []
+  -- A def/let is enough context to locate something; don't keep
+  -- printing wider context after that
   t@(LocatedTCFrame _ (TCLet _)) : _ -> [t]
-  t@(LocatedTCFrame _ TCBindR) : xs -> t : filterTCStack xs
-  t@(LocatedTCFrame _ TCBindL) : xs -> t : filterTCStack xs
+  t : xs -> t : filterTCStack xs
 
 ------------------------------------------------------------
 -- Type decomposition
@@ -892,11 +895,11 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- each time.
   SApp f x -> do
     -- Infer the type of the left-hand side and make sure it has a function type.
-    f' <- infer f
+    f' <- withFrame l (TCAppL x) $ infer f
     (argTy, resTy) <- decomposeFunTy f (Actual, f' ^. sType)
 
     -- Then check that the argument has the right type.
-    x' <- check x argTy
+    x' <- withFrame l (TCAppR f) $ check x argTy
 
     -- Call applyBindings explicitly, so that anything we learned
     -- about unification variables while checking the type of the
@@ -922,13 +925,12 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- the surface syntax, so the second through fourth fields are
   -- necessarily Nothing.
   SBind mx _ _ _ c1 c2 -> do
-    c1' <- withFrame l TCBindL $ infer c1
+    c1' <- infer c1
     a <- decomposeCmdTy c1 (Actual, c1' ^. sType)
     genA <- generalize a
     c2' <-
-      maybe id ((`withBinding` genA) . lvVar) mx
-        . withFrame l TCBindR
-        $ infer c2
+      maybe id ((`withBinding` genA) . lvVar) mx $
+        infer c2
 
     -- We don't actually need the result type since we're just
     -- going to return the entire type, but it's important to
