@@ -104,8 +104,8 @@ data TCFrame where
 instance PrettyPrec TCFrame where
   prettyPrec _ = \case
     TCLet x -> "While checking the definition of" <+> pretty x
-    TCAppL s -> "While checking the left-hand side of a function application: _" <+> prettyPrec 11 s
-    TCAppR s -> "While checking the right-hand side of a function application:" <+> prettyPrec 10 s <+> "_"
+    TCAppL s -> "While checking a function applied to an argument: _" <+> prettyPrec 11 s
+    TCAppR s -> "While checking the argument to a function:" <+> prettyPrec 10 s <+> "_"
 
 -- | A typechecking stack frame together with the relevant @SrcLoc@.
 data LocatedTCFrame = LocatedTCFrame SrcLoc TCFrame
@@ -895,8 +895,10 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- each time.
   SApp f x -> do
     -- Infer the type of the left-hand side and make sure it has a function type.
-    f' <- withFrame l (TCAppL x) $ infer f
-    (argTy, resTy) <- decomposeFunTy f (Actual, f' ^. sType)
+    (f',argTy,resTy) <- withFrame l (TCAppL x) $ do
+      f' <- infer f
+      (argTy, resTy) <- decomposeFunTy f (Actual, f' ^. sType)
+      pure (f', argTy, resTy)
 
     -- Then check that the argument has the right type.
     x' <- withFrame l (TCAppR f) $ check x argTy

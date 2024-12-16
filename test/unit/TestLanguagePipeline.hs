@@ -675,6 +675,12 @@ testLanguagePipeline =
             "move; def x = move; say 3 end; move;"
             "1:25: Type mismatch:\n  From context, expected `3` to have type `Text`,\n  but it actually has type `Int`\n\n  - While checking the right-hand side of a function application: say _\n  - While checking the definition of x"
         )
+    , testCase
+        "Error inside function application + argument #2220"
+        ( process
+            "id 3 3"
+            "foo"
+        )
     , testGroup
         "let and def types"
         [ testCase
