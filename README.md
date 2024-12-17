@@ -53,6 +53,7 @@ unreleased features), read on.
     1. Use `ghcup` to install a supported version of GHC:
 
            ghcup install ghc 9.8.2 --set
+
     1. Use `ghcup` to install `cabal`:
 
            ghcup install cabal
