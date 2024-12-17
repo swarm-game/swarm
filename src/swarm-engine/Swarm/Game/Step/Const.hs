@@ -2,6 +2,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
 
 -- |
@@ -77,6 +78,7 @@ import Swarm.Game.Step.Flood
 import Swarm.Game.Step.Path.Finding
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Path.Walkability
+import Swarm.Game.Step.Read
 import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
@@ -1207,6 +1209,9 @@ execConst runChildProg c vs s k = do
     Exp -> returnEvalArith
     Format -> case vs of
       [v] -> return $ mkReturn $ prettyValue v
+      _ -> badConst
+    Read -> case vs of
+      [VType ty, VText txt] -> return . mkReturn $ evalRead ty txt
       _ -> badConst
     Chars -> case vs of
       [VText t] -> return $ mkReturn $ T.length t

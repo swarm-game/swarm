@@ -269,6 +269,24 @@ testEval g =
             )
         ]
     , testGroup
+        "read"
+        [ testCase
+            "read Unit"
+            ("read \"()\" : Unit + Unit" `evaluatesTo` VInj True VUnit)
+        , testCase
+            "no read Unit"
+            ("read \"xyz\" : Unit + Unit" `evaluatesTo` VInj False VUnit)
+        , testCase
+            "read Int"
+            ("read \"32\" : Unit + Int" `evaluatesTo` VInj True (VInt 32))
+        , testCase
+            "read negative Int"
+            ("read \"-32\" : Unit + Int" `evaluatesTo` VInj True (VInt (-32)))
+        , testCase
+            "no read Int"
+            ("read \"()\" : Unit + Int" `evaluatesTo` VInj False VUnit)
+        ]
+    , testGroup
         "records - #1093"
         [ testCase
             "empty record"
@@ -358,7 +376,7 @@ testEval g =
       Left err ->
         p err
           @? "Expected predicate did not hold on error message "
-            ++ from @Text @String err
+          ++ from @Text @String err
 
   evaluatesTo :: Text -> Value -> Assertion
   evaluatesTo tm val = do
