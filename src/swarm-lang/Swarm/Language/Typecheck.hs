@@ -257,15 +257,14 @@ lookup loc x = do
 addLocToTypeErr ::
   ( Has (Throw ContextualTypeErr) sig m
   , Has (Catch ContextualTypeErr) sig m
-  , Has (Reader TCStack) sig m
   ) =>
   SrcLoc ->
   m a ->
   m a
 addLocToTypeErr l m =
   m `catchError` \case
-    CTE NoLoc _ te -> throwTypeErr l te
-    te -> throwError te
+    CTE NoLoc stk te -> throwError $ CTE l stk te
+    cte -> throwError cte
 
 ------------------------------------------------------------
 -- Dealing with variables: free variables, fresh variables,
@@ -895,7 +894,7 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- each time.
   SApp f x -> do
     -- Infer the type of the left-hand side and make sure it has a function type.
-    (f',argTy,resTy) <- withFrame l (TCAppL x) $ do
+    (f', argTy, resTy) <- withFrame l (TCAppL x) $ do
       f' <- infer f
       (argTy, resTy) <- decomposeFunTy f (Actual, f' ^. sType)
       pure (f', argTy, resTy)

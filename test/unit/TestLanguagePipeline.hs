@@ -668,19 +668,28 @@ testLanguagePipeline =
                 "1:1: Undefined type U"
             )
         ]
-    , testCase
-        "Stop printing context after a definition. - #1336"
-        ( processCompare
-            (==)
-            "move; def x = move; say 3 end; move;"
-            "1:25: Type mismatch:\n  From context, expected `3` to have type `Text`,\n  but it actually has type `Int`\n\n  - While checking the argument to a function: say _\n  - While checking the definition of x"
-        )
-    , testCase
-        "Error inside function application + argument #2220"
-        ( process
-            "id 3 3"
-            "1:1: Unbound variable id\n\n  - While checking a function applied to an argument: _ 3\n  - While checking a function applied to an argument: _ 3"
-        )
+    , testGroup
+        "typechecking context stack"
+        [ testCase
+            "Stop printing context after a definition. - #1336"
+            ( processCompare
+                (==)
+                "move; def x = move; say 3 end; move;"
+                "1:25: Type mismatch:\n  From context, expected `3` to have type `Text`,\n  but it actually has type `Int`\n\n  - While checking the argument to a function: say _\n  - While checking the definition of x"
+            )
+        , testCase
+            "Error inside function application + argument #2220"
+            ( process
+                "id 3 3"
+                "1:1: Unbound variable id\n\n  - While checking a function applied to an argument: _ 3\n  - While checking a function applied to an argument: _ 3"
+            )
+        , testCase
+            "Error inside function application + argument #2220"
+            ( process
+                "(\\x. x) 7 8"
+                "1:1: Type mismatch:\n  From context, expected `(\\x. x) 7` to be a function,\n  but it actually has type `Int`\n\n  - While checking a function applied to an argument: _ 8"
+            )
+        ]
     , testGroup
         "let and def types"
         [ testCase
