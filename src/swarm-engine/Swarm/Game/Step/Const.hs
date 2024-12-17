@@ -78,7 +78,6 @@ import Swarm.Game.Step.Flood
 import Swarm.Game.Step.Path.Finding
 import Swarm.Game.Step.Path.Type
 import Swarm.Game.Step.Path.Walkability
-import Swarm.Game.Step.Read
 import Swarm.Game.Step.RobotStepState
 import Swarm.Game.Step.Util
 import Swarm.Game.Step.Util.Command
@@ -89,6 +88,7 @@ import Swarm.Game.Universe
 import Swarm.Game.Value
 import Swarm.Language.Capability
 import Swarm.Language.Key (parseKeyComboFull)
+import Swarm.Language.Parser.Value (readValue)
 import Swarm.Language.Pipeline
 import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax
@@ -1211,7 +1211,7 @@ execConst runChildProg c vs s k = do
       [v] -> return $ mkReturn $ prettyValue v
       _ -> badConst
     Read -> case vs of
-      [VType ty, VText txt] -> return . mkReturn $ evalRead ty txt
+      [VType ty, VText txt] -> return . mkReturn $ readValue ty txt
       _ -> badConst
     Chars -> case vs of
       [VText t] -> return $ mkReturn $ T.length t

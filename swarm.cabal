@@ -460,6 +460,7 @@ library swarm-lang
     Swarm.Language.Parser.Term
     Swarm.Language.Parser.Type
     Swarm.Language.Parser.Util
+    Swarm.Language.Parser.Value
     Swarm.Language.Pipeline
     Swarm.Language.Pipeline.QQ
     Swarm.Language.Requirements
@@ -726,7 +727,6 @@ library swarm-engine
     Swarm.Game.Step.Path.Finding
     Swarm.Game.Step.Path.Type
     Swarm.Game.Step.Path.Walkability
-    Swarm.Game.Step.Read
     Swarm.Game.Step.RobotStepState
     Swarm.Game.Step.Util
     Swarm.Game.Step.Util.Command
