@@ -54,6 +54,11 @@ unreleased features), read on.
 
            ghcup install ghc 9.8.2
 
+    1. Set the newly installed version of GHC as the current version
+       (if not already set):
+
+           ghcup set ghc 9.8.2
+
     1. Use `ghcup` to install `cabal`:
 
            ghcup install cabal
