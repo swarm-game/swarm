@@ -689,6 +689,12 @@ testLanguagePipeline =
                 "(\\x. x) 7 8"
                 "1:1: Type mismatch:\n  From context, expected `(\\x. x) 7` to be a function,\n  but it actually has type `Int`\n\n  - While checking a function applied to an argument: _ 8"
             )
+        , testCase
+            "Nested error #2220"
+            ( process
+                "\"hi\" + 2"
+                "1:1: Type mismatch:\n  From context, expected `\"hi\"` to have type `Int`,\n  but it actually has type `Text`\n\n  - While checking the argument to a function: (+) _\n  - While checking a function applied to an argument: _ 2"
+            )
         ]
     , testGroup
         "let and def types"
