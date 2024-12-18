@@ -13,6 +13,7 @@ import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Game.State
+import Swarm.Language.Syntax.Direction
 import Swarm.Language.Value
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -274,6 +275,9 @@ testEval g =
             "read Unit"
             ("read \"()\" : Unit + Unit" `evaluatesTo` VInj True VUnit)
         , testCase
+            "read Unit with spaces"
+            ("read \"   ()    \" : Unit + Unit" `evaluatesTo` VInj True VUnit)
+        , testCase
             "no read Unit"
             ("read \"xyz\" : Unit + Unit" `evaluatesTo` VInj False VUnit)
         , testCase
@@ -283,8 +287,35 @@ testEval g =
             "read negative Int"
             ("read \"-32\" : Unit + Int" `evaluatesTo` VInj True (VInt (-32)))
         , testCase
+            "read Int with spaces"
+            ("read \"   -  32   \" : Unit + Int" `evaluatesTo` VInj True (VInt (-32)))
+        , testCase
             "no read Int"
-            ("read \"()\" : Unit + Int" `evaluatesTo` VInj False VUnit)
+            ("read \"32.0\" : Unit + Int" `evaluatesTo` VInj False VUnit)
+        , testCase
+            "read false"
+            ("read \"false\" : Unit + Bool" `evaluatesTo` VInj True (VBool False))
+        , testCase
+            "read true"
+            ("read \"true\" : Unit + Bool" `evaluatesTo` VInj True (VBool True))
+        , testCase
+            "read forward"
+            ("read \"forward\" : Unit + Dir" `evaluatesTo` VInj True (VDir (DRelative (DPlanar DForward))))
+        , testCase
+            "read east"
+            ("read \"east\" : Unit + Dir" `evaluatesTo` VInj True (VDir (DAbsolute DEast)))
+        , testCase
+            "read down"
+            ("read \"down\" : Unit + Dir" `evaluatesTo` VInj True (VDir (DRelative DDown)))
+        , testCase
+            "read sum inl"
+            ("read \"inl 3\" : Unit + (Int + Bool)" `evaluatesTo` VInj True (VInj False (VInt 3)))
+        , testCase
+            "read sum inr"
+            ("read \"inr true\" : Unit + (Int + Bool)" `evaluatesTo` VInj True (VInj True (VBool True)))
+        , testCase
+            "read nested sum"
+            ("read \"inl (inr true)\" : Unit + ((Int + Bool) + Unit)" `evaluatesTo` VInj True (VInj False (VInj True (VBool True))))
         ]
     , testGroup
         "records - #1093"
