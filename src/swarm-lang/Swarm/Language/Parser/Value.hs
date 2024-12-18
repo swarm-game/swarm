@@ -21,6 +21,7 @@ import Data.Maybe (isJust)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Void (Void)
+import Swarm.Language.Key
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Value
 import Swarm.Language.Types
@@ -65,7 +66,7 @@ parseAtomicValue = \case
   TyVoid -> empty
   TyUnit -> VUnit <$ symbol "()"
   TyInt -> VInt <$> integer
-  TyText -> VText . into @Text <$> lexeme (char '"' >> manyTill L.charLiteral (char '"'))
+  TyText -> VText <$> parseTextLiteral
   TyDir -> VDir <$> parseDirection
   TyBool -> VBool <$> (False <$ symbol "false" <|> True <$ symbol "true")
   ty1 :*: ty2 -> parens (parseTuple ty1 ty2)
@@ -84,9 +85,7 @@ parseValue = \case
   ty1 :+: ty2 ->
     VInj False <$> (symbol "inl" *> parseAtomicValue ty1) <|>
     VInj True <$> (symbol "inr" *> parseAtomicValue ty2)
-
-  -- TODO
-  TyKey -> empty
+  TyKey -> parseKey
 
   -- Can't parse Actor values since they are just of the form "<a3>",
   -- not enough info to reconstruct
@@ -98,11 +97,15 @@ parseValue = \case
   _ :->: _ -> empty
   TyCmd _ -> empty
 
-  -- TODO: not sure what to do with these yet
+  -- TODO: Need to handle these cases; requires passing in some extra
+  -- information
   TyRec _ _ -> empty
   TyUser _ _ -> empty
 
   ty -> parseAtomicValue ty
+
+parseTextLiteral :: Parser Text
+parseTextLiteral = into @Text <$> lexeme (char '"' >> manyTill L.charLiteral (char '"'))
 
 parseDirection :: Parser Direction
 parseDirection = asum (map alternative allDirs)
@@ -140,3 +143,9 @@ parseRecord r = brackets (parseField `sepBy` symbol ",") >>= mkRcd
       | S.fromList (map fst vs) == M.keysSet r = pure $ VRcd (M.fromList vs)
       | otherwise = empty
 
+parseKey :: Parser Value
+parseKey = (symbol "key" *> parseTextLiteral) >>= mkKey
+  where
+    mkKey txt = case runParser parseKeyComboFull "" txt of
+      Right k -> pure $ VKey k
+      Left _ -> empty

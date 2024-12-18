@@ -12,7 +12,9 @@ import Data.Char (ord)
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
+import Graphics.Vty.Input.Events qualified as V
 import Swarm.Game.State
+import Swarm.Language.Key
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Value
 import Test.Tasty
@@ -308,6 +310,9 @@ testEval g =
             "read down"
             ("read \"down\" : Unit + Dir" `evaluatesTo` VInj True (VDir (DRelative DDown)))
         , testCase
+            "read text"
+            ("read \"\\\"hi\\\"\" : Unit + Text" `evaluatesTo` VInj True (VText "hi"))
+        , testCase
             "read sum inl"
             ("read \"inl 3\" : Unit + (Int + Bool)" `evaluatesTo` VInj True (VInj False (VInt 3)))
         , testCase
@@ -343,6 +348,9 @@ testEval g =
         , testCase
             "no read record with repeated fields"
             ("read \"[x = 2, x = 3]\" : Unit + [x : Int]" `evaluatesTo` VInj False VUnit)
+        , testCase
+            "read key"
+            ("read \"key \\\"M-C-F5\\\"\" : Unit + Key" `evaluatesTo` VInj True (VKey (mkKeyCombo [V.MCtrl, V.MMeta] (V.KFun 5))))
         ]
     , testGroup
         "records - #1093"
