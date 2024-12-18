@@ -316,6 +316,33 @@ testEval g =
         , testCase
             "read nested sum"
             ("read \"inl (inr true)\" : Unit + ((Int + Bool) + Unit)" `evaluatesTo` VInj True (VInj False (VInj True (VBool True))))
+        , testCase
+            "read pair"
+            ("read \"(3, true)\" : Unit + (Int * Bool)" `evaluatesTo` VInj True (VPair (VInt 3) (VBool True)))
+        , testCase
+            "read pair with non-atomic value"
+            ("read \"(3, inr true)\" : Unit + (Int * (Unit + Bool))" `evaluatesTo` VInj True (VPair (VInt 3) (VInj True (VBool True))))
+        , testCase
+            "read nested pair"
+            ("read \"(3, true, ())\" : Unit + (Int * Bool * Unit)" `evaluatesTo` VInj True (VPair (VInt 3) (VPair (VBool True) VUnit)))
+        , testCase
+            "read left-nested pair"
+            ("read \"((3, true), ())\" : Unit + ((Int * Bool) * Unit)" `evaluatesTo` VInj True (VPair (VPair (VInt 3) (VBool True)) VUnit))
+        , testCase
+            "read empty record"
+            ("read \"[]\" : Unit + []" `evaluatesTo` VInj True (VRcd M.empty))
+        , testCase
+            "read singleton record"
+            ("read \"[x = 2]\" : Unit + [x : Int]" `evaluatesTo` VInj True (VRcd (M.singleton "x" (VInt 2))))
+        , testCase
+            "read doubleton record"
+            ("read \"[x = 2, y = inr ()]\" : Unit + [x : Int, y : Bool + Unit]" `evaluatesTo` VInj True (VRcd . M.fromList $ [("x", VInt 2), ("y", VInj True VUnit)]))
+        , testCase
+            "read permuted doubleton record"
+            ("read \"[y = inr (), x = 2]\" : Unit + [x : Int, y : Bool + Unit]" `evaluatesTo` VInj True (VRcd . M.fromList $ [("x", VInt 2), ("y", VInj True VUnit)]))
+        , testCase
+            "no read record with repeated fields"
+            ("read \"[x = 2, x = 3]\" : Unit + [x : Int]" `evaluatesTo` VInj False VUnit)
         ]
     , testGroup
         "records - #1093"

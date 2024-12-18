@@ -15,11 +15,16 @@ module Swarm.Language.Parser.Value (readValue, parseValue) where
 
 import Data.Either.Extra (eitherToMaybe)
 import Data.Foldable (asum)
+import Data.Map (Map)
+import Data.Map qualified as M
+import Data.Maybe (isJust)
+import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Void (Void)
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Value
 import Swarm.Language.Types
+import Swarm.Util (findDup)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
@@ -46,6 +51,9 @@ symbol = L.symbol sc
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
+brackets :: Parser a -> Parser a
+brackets = between (symbol "[") (symbol "]")
+
 decimal :: Parser Integer
 decimal = lexeme L.decimal
 
@@ -61,9 +69,7 @@ parseAtomicValue = \case
   TyDir -> VDir <$> parseDirection
   TyBool -> VBool <$> (False <$ symbol "false" <|> True <$ symbol "true")
   ty1 :*: ty2 -> parens (parseTuple ty1 ty2)
-
-  -- TODO
-  TyRcd _r -> empty
+  TyRcd r -> parseRecord r
 
   -- Can't parse Delay values for now since they contain closures;
   -- would require calling out to swarm-lang parser (maybe later)
@@ -72,12 +78,6 @@ parseAtomicValue = \case
   -- All other values must be enclosed in parentheses in order to
   -- count as syntactically atomic
   ty -> parens (parseValue ty)
-
-parseTuple :: Type -> Type -> Parser Value
-parseTuple ty1 ty2 = VPair <$> parseValue ty1 <*> (symbol "," *> parseRHS ty2)
-  where
-    parseRHS (ty21 :*: ty22) = parseTuple ty21 ty22
-    parseRHS ty = parseValue ty
 
 parseValue :: Type -> Parser Value
 parseValue = \case
@@ -108,3 +108,35 @@ parseDirection :: Parser Direction
 parseDirection = asum (map alternative allDirs)
  where
   alternative d = d <$ (symbol . directionSyntax) d
+
+parseTuple :: Type -> Type -> Parser Value
+parseTuple ty1 ty2 = VPair <$> parseValue ty1 <*> (symbol "," *> parseRHS ty2)
+  where
+    parseRHS (ty21 :*: ty22) = parseTuple ty21 ty22
+    parseRHS ty = parseValue ty
+
+parseRecord :: Map Var Type -> Parser Value
+parseRecord r = brackets (parseField `sepBy` symbol ",") >>= mkRcd
+  where
+    -- This is slightly more lenient than the real swarm-lang parser
+    -- since it will accept e.g. reserved words as field names, but it
+    -- doesn't matter since they could never correspond to a valid
+    -- record type.
+    ident = into @Text <$> lexeme
+      ((:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\''))
+
+    parseField :: Parser (Var, Value)
+    parseField = do
+      x <- ident
+      case M.lookup x r of
+        Just ty -> (x,) <$> (symbol "=" *> parseValue ty)
+        _ -> empty
+
+    mkRcd :: [(Var,Value)] -> Parser Value
+    mkRcd vs
+      -- Don't allow duplicate fields
+      | isJust (findDup (map fst vs)) = empty
+      -- Require set of keys to be the same as the set in the type
+      | S.fromList (map fst vs) == M.keysSet r = pure $ VRcd (M.fromList vs)
+      | otherwise = empty
+
