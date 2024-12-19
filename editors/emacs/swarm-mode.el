@@ -161,6 +161,7 @@
       "fail"
       "not"
       "format"
+      "read"
       "chars"
       "split"
       "charat"
