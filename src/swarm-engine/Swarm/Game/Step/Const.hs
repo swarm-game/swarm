@@ -1214,6 +1214,15 @@ execConst runChildProg c vs s k = do
         Nothing -> raise Read ["Could not read", showT txt, "at type", prettyText ty]
         Just v -> return (mkReturn v)
       _ -> badConst
+    Print -> case vs of
+      -- TODO: limit amount of text on one paper?
+      [VText txt] -> do
+        paper <- ensureItem "paper" "print"
+        let newEntityName = "paper: " <> txt
+        robotInventory %= delete paper
+        robotInventory %= insert (paper & entityName .~ newEntityName)
+        return $ mkReturn newEntityName
+      _ -> badConst
     Chars -> case vs of
       [VText t] -> return $ mkReturn $ T.length t
       _ -> badConst

@@ -34,7 +34,9 @@ import Witch (into)
 ------------------------------------------------------------
 
 readValue :: Type -> Text -> Maybe Value
-readValue ty = eitherToMaybe . runParser (sc *> parseValue ty <* eof) ""
+readValue ty = eitherToMaybe . runParser (leading *> parseValue ty <* eof) ""
+  where
+    leading = optional (string "paper:") *> sc
 
 ------------------------------------------------------------
 
