@@ -1210,7 +1210,9 @@ execConst runChildProg c vs s k = do
       [v] -> return $ mkReturn $ prettyValue v
       _ -> badConst
     Read -> case vs of
-      [VType ty, VText txt] -> return . mkReturn $ readValue ty txt
+      [VType ty, VText txt] -> case readValue ty txt of
+        Nothing -> raise Read ["Could not read", showT txt, "at type", prettyText ty]
+        Just v -> return (mkReturn v)
       _ -> badConst
     Chars -> case vs of
       [VText t] -> return $ mkReturn $ T.length t

@@ -1094,7 +1094,7 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Div -> arithBinT
   Exp -> arithBinT
   Format -> [tyQ| a -> Text |]
-  Read -> [tyQ| Text -> (Unit + a) |]
+  Read -> [tyQ| Text -> a |]
   Concat -> [tyQ| Text -> Text -> Text |]
   Chars -> [tyQ| Text -> Int |]
   Split -> [tyQ| Int -> Text -> (Text * Text) |]
