@@ -335,8 +335,7 @@
     attr: plant
     char: 'p'
   description:
-    - A fast-growing plant with a pungent aroma, often found growing
-      near rocks.
+    - A fast-growing plant with a pungent aroma, often found growing near rocks.
     - |
       When equipped as a device, parsley enables the `read`
       command, which can be used to turn text into values:
