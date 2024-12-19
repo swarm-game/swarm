@@ -23,8 +23,8 @@ import Data.Text (Text)
 import Data.Void (Void)
 import Swarm.Language.Key
 import Swarm.Language.Syntax.Direction
-import Swarm.Language.Value
 import Swarm.Language.Types
+import Swarm.Language.Value
 import Swarm.Util (findDup)
 import Text.Megaparsec
 import Text.Megaparsec.Char
@@ -71,11 +71,9 @@ parseAtomicValue = \case
   TyBool -> VBool <$> (False <$ symbol "false" <|> True <$ symbol "true")
   ty1 :*: ty2 -> parens (parseTuple ty1 ty2)
   TyRcd r -> parseRecord r
-
   -- Can't parse Delay values for now since they contain closures;
   -- would require calling out to swarm-lang parser (maybe later)
   TyDelay _ -> empty
-
   -- All other values must be enclosed in parentheses in order to
   -- count as syntactically atomic
   ty -> parens (parseValue ty)
@@ -83,27 +81,22 @@ parseAtomicValue = \case
 parseValue :: Type -> Parser Value
 parseValue = \case
   ty1 :+: ty2 ->
-    VInj False <$> (symbol "inl" *> parseAtomicValue ty1) <|>
-    VInj True <$> (symbol "inr" *> parseAtomicValue ty2)
+    VInj False <$> (symbol "inl" *> parseAtomicValue ty1)
+      <|> VInj True <$> (symbol "inr" *> parseAtomicValue ty2)
   TyKey -> parseKey
-
   -- Can't parse Actor values since they are just of the form "<a3>",
   -- not enough info to reconstruct
   TyActor -> empty
-
   -- Can't parse function or command values for now since they contain
   -- closures; would require calling out to swarm-lang parser (maybe
   -- later)
   _ :->: _ -> empty
   TyCmd _ -> empty
-
   -- Just unfold recursive types and proceed
   TyRec x ty -> parseValue (unfoldRec x ty)
-
   -- TODO (#2223): expand all user types during elaboration, so we can't
   -- encounter them here
   TyUser _ _ -> empty
-
   ty -> parseAtomicValue ty
 
 parseTextLiteral :: Parser Text
@@ -116,38 +109,40 @@ parseDirection = asum (map alternative allDirs)
 
 parseTuple :: Type -> Type -> Parser Value
 parseTuple ty1 ty2 = VPair <$> parseValue ty1 <*> (symbol "," *> parseRHS ty2)
-  where
-    parseRHS (ty21 :*: ty22) = parseTuple ty21 ty22
-    parseRHS ty = parseValue ty
+ where
+  parseRHS (ty21 :*: ty22) = parseTuple ty21 ty22
+  parseRHS ty = parseValue ty
 
 parseRecord :: Map Var Type -> Parser Value
 parseRecord r = brackets (parseField `sepBy` symbol ",") >>= mkRcd
-  where
-    -- This is slightly more lenient than the real swarm-lang parser
-    -- since it will accept e.g. reserved words as field names, but it
-    -- doesn't matter since they could never correspond to a valid
-    -- record type.
-    ident = into @Text <$> lexeme
-      ((:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\''))
+ where
+  -- This is slightly more lenient than the real swarm-lang parser
+  -- since it will accept e.g. reserved words as field names, but it
+  -- doesn't matter since they could never correspond to a valid
+  -- record type.
+  ident =
+    into @Text
+      <$> lexeme
+        ((:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\''))
 
-    parseField :: Parser (Var, Value)
-    parseField = do
-      x <- ident
-      case M.lookup x r of
-        Just ty -> (x,) <$> (symbol "=" *> parseValue ty)
-        _ -> empty
+  parseField :: Parser (Var, Value)
+  parseField = do
+    x <- ident
+    case M.lookup x r of
+      Just ty -> (x,) <$> (symbol "=" *> parseValue ty)
+      _ -> empty
 
-    mkRcd :: [(Var,Value)] -> Parser Value
-    mkRcd vs
-      -- Don't allow duplicate fields
-      | isJust (findDup (map fst vs)) = empty
-      -- Require set of keys to be the same as the set in the type
-      | S.fromList (map fst vs) == M.keysSet r = pure $ VRcd (M.fromList vs)
-      | otherwise = empty
+  mkRcd :: [(Var, Value)] -> Parser Value
+  mkRcd vs
+    -- Don't allow duplicate fields
+    | isJust (findDup (map fst vs)) = empty
+    -- Require set of keys to be the same as the set in the type
+    | S.fromList (map fst vs) == M.keysSet r = pure $ VRcd (M.fromList vs)
+    | otherwise = empty
 
 parseKey :: Parser Value
 parseKey = symbol "key" *> parseTextLiteral >>= mkKey
-  where
-    mkKey txt = case runParser parseKeyComboFull "" txt of
-      Right k -> pure $ VKey k
-      Left _ -> empty
+ where
+  mkKey txt = case runParser parseKeyComboFull "" txt of
+    Right k -> pure $ VKey k
+    Left _ -> empty

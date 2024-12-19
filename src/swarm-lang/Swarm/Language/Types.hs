@@ -126,11 +126,11 @@ module Swarm.Language.Types (
 import Control.Algebra (Has, run)
 import Control.Carrier.Reader (runReader)
 import Control.Effect.Reader (Reader, ask)
-import Control.Lens (makeLenses, rewriteM, view, Plated(..))
-import Data.Data.Lens (uniplate)
+import Control.Lens (Plated (..), makeLenses, rewriteM, view)
 import Control.Monad.Free
 import Data.Aeson (FromJSON (..), FromJSON1 (..), ToJSON (..), ToJSON1 (..), genericLiftParseJSON, genericLiftToJSON, genericParseJSON, genericToJSON)
 import Data.Data (Data)
+import Data.Data.Lens (uniplate)
 import Data.Eq.Deriving (deriveEq1)
 import Data.Fix
 import Data.Foldable (fold)
@@ -827,11 +827,11 @@ expandTydef userTyCon tys = do
 --   everywhere in a type.
 expandTydefs :: forall sig m. (Has (Reader TDCtx) sig m) => Type -> m Type
 expandTydefs = rewriteM expand
-  where
-    expand :: Type -> m (Maybe Type)
-    expand = \case
-      TyUser u tys -> Just <$> expandTydef u tys
-      _ -> pure Nothing
+ where
+  expand :: Type -> m (Maybe Type)
+  expand = \case
+    TyUser u tys -> Just <$> expandTydef u tys
+    _ -> pure Nothing
 
 -- | Given the definition of a type alias, substitute the given
 --   arguments into its body and return the resulting type.
