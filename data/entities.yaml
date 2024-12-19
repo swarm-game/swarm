@@ -884,8 +884,9 @@
     attr: device
     char: 'Д'
   description:
-    - A typewriter is used to inscribe symbols on paper, thus reifying pure, platonic information into a physical form.
+    - A typewriter is used to inscribe symbols on `paper`{=entity}, thus reifying pure, platonic information into a physical form.
   properties: [pickable]
+  capabilities: [print]
 - name: 3D printer
   display:
     attr: device

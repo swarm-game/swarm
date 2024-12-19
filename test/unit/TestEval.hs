@@ -383,6 +383,13 @@ testEval g =
             ( "read \"inr (3, inr (5, inl ()))\" : rec l. Unit + (Int * l)"
                 `evaluatesToV` [3 :: Integer, 5]
             )
+        , testCase
+            "read paper with int"
+            ("read \"paper: 52\" : Int" `evaluatesToV` (52 :: Integer))
+        , testCase
+            "read paper with tuple"
+            ("read \"paper: (3, false, ())\" : Int * Bool * Unit"
+             `evaluatesToV` (3 :: Integer, (False, ())))
         ]
     , testGroup
         "records - #1093"

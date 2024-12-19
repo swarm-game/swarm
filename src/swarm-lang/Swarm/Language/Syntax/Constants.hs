@@ -273,6 +273,8 @@ data Const
     Format
   | -- | Try to turn a string into a value
     Read
+  | -- | Print a string onto a piece of paper
+    Print
   | -- | Concatenate string values
     Concat
   | -- | Count number of characters.
@@ -816,6 +818,14 @@ constInfo c = case c of
   Geq -> binaryOp ">=" 4 N $ shortDoc Set.empty "Check that the left value is greater or equal to the right one."
   Format -> function 1 $ shortDoc Set.empty "Turn an arbitrary value into a string."
   Read -> function 2 $ shortDoc Set.empty "Try to read a string into a value of the expected type."
+  Print ->
+    command 1 short . doc (Set.singleton $ Mutation $ RobotChange InventoryChange)
+      "Print text onto a piece of paper." $
+        [ "Consumes one `paper` entity from your inventory, and produces an entity"
+        , "whose name is \"paper: \" concatenated with the given text."
+        , "In conjunction with `format`, this can be used to print values onto paper"
+        , "and give them to other robots, which can reconstitute the values with `read`."
+        ]
   Concat -> binaryOp "++" 6 R $ shortDoc Set.empty "Concatenate the given strings."
   Chars -> function 1 $ shortDoc Set.empty "Counts the number of characters in the text."
   Split ->

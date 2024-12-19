@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -6,9 +8,11 @@
 -- of the proper type.
 module Swarm.Language.Parser.Value (readValue) where
 
+import Control.Applicative ((<|>))
 import Control.Lens ((^.))
 import Data.Either.Extra (eitherToMaybe)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Parser (readNonemptyTerm)
@@ -20,7 +24,8 @@ import Text.Megaparsec qualified as MP
 
 readValue :: Type -> Text -> Maybe Value
 readValue ty txt = do
-  s <- eitherToMaybe $ readNonemptyTerm txt
+  txt' <- T.stripPrefix "paper:" txt <|> pure txt
+  s <- eitherToMaybe $ readNonemptyTerm txt'
   _ <- eitherToMaybe $ checkTop Ctx.empty Ctx.empty Ctx.empty s ty
   toValue $ s ^. sTerm
 
