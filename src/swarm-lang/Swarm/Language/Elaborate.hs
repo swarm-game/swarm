@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -8,6 +9,7 @@ module Swarm.Language.Elaborate where
 
 import Control.Lens (transform, (^.))
 import Swarm.Language.Syntax
+import Swarm.Language.Types
 
 -- | Perform some elaboration / rewriting on a fully type-annotated
 --   term.  This currently performs such operations as rewriting @if@
@@ -23,7 +25,10 @@ elaborate :: TSyntax -> TSyntax
 elaborate = transform rewrite
  where
   rewrite :: TSyntax -> TSyntax
-  rewrite (Syntax' l t cs ty) = Syntax' l (rewriteTerm t) cs ty
+  rewrite = \case
+    syn@(Syntax' l (TConst Read) cs pty@(ptBody -> TyText :->: (TyUnit :+: outTy))) ->
+      Syntax' l (SApp syn (Syntax' NoLoc (TType outTy) mempty (mkTrivPoly TyUnit))) cs pty
+    Syntax' l t cs ty -> Syntax' l (rewriteTerm t) cs ty
 
   rewriteTerm :: TTerm -> TTerm
   rewriteTerm = \case

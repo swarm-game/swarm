@@ -44,7 +44,7 @@ import Swarm.Language.Requirements.Type (ReqCtx, Requirements)
 import Swarm.Language.Syntax
 import Swarm.Language.Syntax.Direction
 import Swarm.Language.Typed
-import Swarm.Language.Types (Polytype, TCtx, TDCtx, TydefInfo)
+import Swarm.Language.Types (Polytype, TCtx, TDCtx, TydefInfo, Type)
 import Swarm.Pretty (prettyText)
 
 -- | A /value/ is a term that cannot (or does not) take any more
@@ -119,6 +119,9 @@ data Value where
   --   <http://www.lel.ed.ac.uk/~gpullum/loopsnoop.html cannot detect
   --   /all/ infinite loops this way>.)
   VBlackhole :: Value
+  -- | A special value used to represent runtime type information
+  --   passed to ad-hoc polymorphic functions.
+  VType :: Type -> Value
   deriving (Eq, Show, Generic, Hashable)
 
 -- | A value context is a mapping from variable names to their runtime
@@ -241,3 +244,4 @@ valueToTerm = \case
   VSuspend t _ -> TSuspend t
   VExc -> TConst Undefined
   VBlackhole -> TConst Undefined
+  VType _ -> TConst Undefined

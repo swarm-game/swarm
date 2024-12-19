@@ -145,6 +145,7 @@ freeVarsS f = go S.empty
     SProj s1 x -> rewrap $ SProj <$> go bound s1 <*> pure x
     SAnnotate s1 pty -> rewrap $ SAnnotate <$> go bound s1 <*> pure pty
     SSuspend s1 -> rewrap $ SSuspend <$> go bound s1
+    TType {} -> pure s
    where
     rewrap s' = Syntax' l <$> s' <*> pure ty <*> pure cmts
 

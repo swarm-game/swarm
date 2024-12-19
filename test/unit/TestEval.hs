@@ -12,7 +12,11 @@ import Data.Char (ord)
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
+import Graphics.Vty.Input.Events qualified as V
 import Swarm.Game.State
+import Swarm.Game.Value (Valuable (..))
+import Swarm.Language.Key
+import Swarm.Language.Syntax.Direction
 import Swarm.Language.Value
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -269,6 +273,116 @@ testEval g =
             )
         ]
     , testGroup
+        "read"
+        [ testCase
+            "read Unit"
+            ("read \"()\" : Unit + Unit" `evaluatesTo` VInj True VUnit)
+        , testCase
+            "read Unit with spaces"
+            ("read \"   ()    \" : Unit + Unit" `evaluatesTo` VInj True VUnit)
+        , testCase
+            "no read Unit"
+            ("read \"xyz\" : Unit + Unit" `evaluatesTo` VInj False VUnit)
+        , testCase
+            "read Int"
+            ("read \"32\" : Unit + Int" `evaluatesTo` VInj True (VInt 32))
+        , testCase
+            "read negative Int"
+            ("read \"-32\" : Unit + Int" `evaluatesTo` VInj True (VInt (-32)))
+        , testCase
+            "read Int with spaces"
+            ("read \"   -  32   \" : Unit + Int" `evaluatesTo` VInj True (VInt (-32)))
+        , testCase
+            "no read Int"
+            ("read \"32.0\" : Unit + Int" `evaluatesTo` VInj False VUnit)
+        , testCase
+            "read false"
+            ("read \"false\" : Unit + Bool" `evaluatesTo` VInj True (VBool False))
+        , testCase
+            "read true"
+            ("read \"true\" : Unit + Bool" `evaluatesTo` VInj True (VBool True))
+        , testCase
+            "read forward"
+            ( "read \"forward\" : Unit + Dir"
+                `evaluatesTo` VInj True (VDir (DRelative (DPlanar DForward)))
+            )
+        , testCase
+            "read east"
+            ("read \"east\" : Unit + Dir" `evaluatesTo` VInj True (VDir (DAbsolute DEast)))
+        , testCase
+            "read down"
+            ("read \"down\" : Unit + Dir" `evaluatesTo` VInj True (VDir (DRelative DDown)))
+        , testCase
+            "read text"
+            ("read \"\\\"hi\\\"\" : Unit + Text" `evaluatesTo` VInj True (VText "hi"))
+        , testCase
+            "read sum inl"
+            ( "read \"inl 3\" : Unit + (Int + Bool)"
+                `evaluatesToV` Right @() (Left @Integer @Bool 3)
+            )
+        , testCase
+            "read sum inr"
+            ( "read \"inr true\" : Unit + (Int + Bool)"
+                `evaluatesToV` Right @() (Right @Integer True)
+            )
+        , testCase
+            "read nested sum"
+            ( "read \"inl (inr true)\" : Unit + ((Int + Bool) + Unit)"
+                `evaluatesToV` Right @() (Left @_ @() (Right @Integer True))
+            )
+        , testCase
+            "read pair"
+            ( "read \"(3, true)\" : Unit + (Int * Bool)"
+                `evaluatesToV` Right @() (3 :: Integer, True)
+            )
+        , testCase
+            "read pair with non-atomic value"
+            ( "read \"(3, inr true)\" : Unit + (Int * (Unit + Bool))"
+                `evaluatesToV` Right @() (3 :: Integer, Right @() True)
+            )
+        , testCase
+            "read nested pair"
+            ( "read \"(3, true, ())\" : Unit + (Int * Bool * Unit)"
+                `evaluatesToV` Right @() (3 :: Integer, (True, ()))
+            )
+        , testCase
+            "read left-nested pair"
+            ( "read \"((3, true), ())\" : Unit + ((Int * Bool) * Unit)"
+                `evaluatesToV` Right @() ((3 :: Integer, True), ())
+            )
+        , testCase
+            "read empty record"
+            ("read \"[]\" : Unit + []" `evaluatesTo` VInj True (VRcd M.empty))
+        , testCase
+            "read singleton record"
+            ( "read \"[x = 2]\" : Unit + [x : Int]"
+                `evaluatesTo` VInj True (VRcd (M.singleton "x" (VInt 2)))
+            )
+        , testCase
+            "read doubleton record"
+            ( "read \"[x = 2, y = inr ()]\" : Unit + [x : Int, y : Bool + Unit]"
+                `evaluatesTo` VInj True (VRcd . M.fromList $ [("x", VInt 2), ("y", VInj True VUnit)])
+            )
+        , testCase
+            "read permuted doubleton record"
+            ( "read \"[y = inr (), x = 2]\" : Unit + [x : Int, y : Bool + Unit]"
+                `evaluatesTo` VInj True (VRcd . M.fromList $ [("x", VInt 2), ("y", VInj True VUnit)])
+            )
+        , testCase
+            "no read record with repeated fields"
+            ("read \"[x = 2, x = 3]\" : Unit + [x : Int]" `evaluatesTo` VInj False VUnit)
+        , testCase
+            "read key"
+            ( "read \"key \\\"M-C-F5\\\"\" : Unit + Key"
+                `evaluatesTo` VInj True (VKey (mkKeyCombo [V.MCtrl, V.MMeta] (V.KFun 5)))
+            )
+        , testCase
+            "read recursive list"
+            ( "read \"inr (3, inr (5, inl ()))\" : Unit + (rec l. Unit + (Int * l))"
+                `evaluatesToV` Right @() [3 :: Integer, 5]
+            )
+        ]
+    , testGroup
         "records - #1093"
         [ testCase
             "empty record"
@@ -364,6 +478,9 @@ testEval g =
   evaluatesTo tm val = do
     result <- evaluate tm
     assertEqual "" (Right val) (fst <$> result)
+
+  evaluatesToV :: Valuable v => Text -> v -> Assertion
+  evaluatesToV tm val = tm `evaluatesTo` asValue val
 
   evaluatesToP :: Text -> Value -> Property
   evaluatesToP tm val = ioProperty $ do

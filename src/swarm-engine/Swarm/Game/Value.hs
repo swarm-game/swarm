@@ -38,6 +38,9 @@ pattern VRect x1 y1 x2 y2 = VPair (VPair (VInt x1) (VInt y1)) (VPair (VInt x2) (
 class Valuable a where
   asValue :: a -> Value
 
+instance Valuable Value where
+  asValue = id
+
 instance Valuable Int32 where
   asValue = VInt . fromIntegral
 

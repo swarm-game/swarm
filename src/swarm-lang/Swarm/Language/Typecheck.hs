@@ -1094,6 +1094,7 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Div -> arithBinT
   Exp -> arithBinT
   Format -> [tyQ| a -> Text |]
+  Read -> [tyQ| Text -> (Unit + a) |]
   Concat -> [tyQ| Text -> Text -> Text |]
   Chars -> [tyQ| Text -> Int |]
   Split -> [tyQ| Int -> Text -> (Text * Text) |]
@@ -1387,6 +1388,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   TRequire {} -> return 0
   SRequirements {} -> return 0
   STydef {} -> return 0
+  TType {} -> return 0
   -- Constants.
   TConst c
     -- Nested 'atomic' is not allowed.

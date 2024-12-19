@@ -77,6 +77,7 @@ compareValues v1 = case v1 of
   VSuspend {} -> incomparable v1
   VExc {} -> incomparable v1
   VBlackhole {} -> incomparable v1
+  VType {} -> incomparable v1
 
 -- | Values with different types were compared; this should not be
 --   possible since the type system should catch it.
