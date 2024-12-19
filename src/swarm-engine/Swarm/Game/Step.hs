@@ -561,6 +561,7 @@ stepCESK cesk = case cesk of
   In (TInt n) _ s k -> return $ Out (VInt n) s k
   In (TText str) _ s k -> return $ Out (VText str) s k
   In (TBool b) _ s k -> return $ Out (VBool b) s k
+  In (TType ty) _ s k -> return $ Out (VType ty) s k
   -- There should not be any antiquoted variables left at this point.
   In (TAntiText v) _ s k ->
     return $ Up (Fatal (T.append "Antiquoted variable found at runtime: $str:" v)) s k
