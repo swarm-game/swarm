@@ -370,8 +370,9 @@ testEval g =
             )
         , testCase
             "no read record with repeated fields"
-            ("read \"[x = 2, x = 3]\" : [x : Int]"
-             `throwsError` ("Could not read" `T.isInfixOf`))
+            ( "read \"[x = 2, x = 3]\" : [x : Int]"
+                `throwsError` ("Could not read" `T.isInfixOf`)
+            )
         , testCase
             "read key"
             ( "read \"key \\\"M-C-F5\\\"\" : Key"
