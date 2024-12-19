@@ -112,6 +112,7 @@ module Swarm.Language.Types (
   tydefArity,
   substTydef,
   expandTydef,
+  expandTydefs,
   elimTydef,
   TDCtx,
 
@@ -125,7 +126,8 @@ module Swarm.Language.Types (
 import Control.Algebra (Has, run)
 import Control.Carrier.Reader (runReader)
 import Control.Effect.Reader (Reader, ask)
-import Control.Lens (makeLenses, view)
+import Control.Lens (makeLenses, rewriteM, view, Plated(..))
+import Data.Data.Lens (uniplate)
 import Control.Monad.Free
 import Data.Aeson (FromJSON (..), FromJSON1 (..), ToJSON (..), ToJSON1 (..), genericLiftParseJSON, genericLiftToJSON, genericParseJSON, genericToJSON)
 import Data.Data (Data)
@@ -298,6 +300,9 @@ instance FromJSON1 TypeF where
 --   everywhere, so we provide pattern synonyms that allow us to work
 --   with 'Type' as if it were defined in a directly recursive way.
 type Type = Fix TypeF
+
+instance Plated Type where
+  plate = uniplate
 
 newtype IntVar = IntVar Int
   deriving (Show, Data, Eq, Ord, Generic, Hashable)
@@ -817,6 +822,16 @@ expandTydef userTyCon tys = do
             ]
       tydefInfo = fromMaybe (error errMsg) mtydefInfo
   return $ substTydef tydefInfo tys
+
+-- | Expand *all* applications of user-defined type constructors
+--   everywhere in a type.
+expandTydefs :: forall sig m. (Has (Reader TDCtx) sig m) => Type -> m Type
+expandTydefs = rewriteM expand
+  where
+    expand :: Type -> m (Maybe Type)
+    expand = \case
+      TyUser u tys -> Just <$> expandTydef u tys
+      _ -> pure Nothing
 
 -- | Given the definition of a type alias, substitute the given
 --   arguments into its body and return the resulting type.
