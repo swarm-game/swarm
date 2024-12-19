@@ -352,11 +352,11 @@ testEval g =
             )
         , testCase
             "read empty record"
-            ("read \"[]\" : []" `evaluatesTo` (VRcd M.empty))
+            ("read \"[]\" : []" `evaluatesTo` VRcd M.empty)
         , testCase
             "read singleton record"
             ( "read \"[x = 2]\" : [x : Int]"
-                `evaluatesTo` (VRcd (M.singleton "x" (VInt 2)))
+                `evaluatesTo` VRcd (M.singleton "x" (VInt 2))
             )
         , testCase
             "read doubleton record"
