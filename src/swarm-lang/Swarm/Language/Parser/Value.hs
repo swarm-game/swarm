@@ -100,7 +100,7 @@ parseValue = \case
   -- Just unfold recursive types and proceed
   TyRec x ty -> parseValue (unfoldRec x ty)
 
-  -- TODO: expand all user types during elaboration, so we can't
+  -- TODO (#2223): expand all user types during elaboration, so we can't
   -- encounter them here
   TyUser _ _ -> empty
 
