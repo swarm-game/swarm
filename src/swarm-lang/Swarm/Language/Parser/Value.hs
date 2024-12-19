@@ -97,9 +97,11 @@ parseValue = \case
   _ :->: _ -> empty
   TyCmd _ -> empty
 
-  -- TODO: Need to handle these cases; requires passing in some extra
-  -- information
-  TyRec _ _ -> empty
+  -- Just unfold recursive types and proceed
+  TyRec x ty -> parseValue (unfoldRec x ty)
+
+  -- TODO: expand all user types during elaboration, so we can't
+  -- encounter them here
   TyUser _ _ -> empty
 
   ty -> parseAtomicValue ty
@@ -144,7 +146,7 @@ parseRecord r = brackets (parseField `sepBy` symbol ",") >>= mkRcd
       | otherwise = empty
 
 parseKey :: Parser Value
-parseKey = (symbol "key" *> parseTextLiteral) >>= mkKey
+parseKey = symbol "key" *> parseTextLiteral >>= mkKey
   where
     mkKey txt = case runParser parseKeyComboFull "" txt of
       Right k -> pure $ VKey k
