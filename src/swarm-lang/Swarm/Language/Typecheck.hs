@@ -39,6 +39,7 @@ module Swarm.Language.Typecheck (
 
   -- * Type inference
   inferTop,
+  checkTop,
   infer,
   inferConst,
   check,
@@ -810,6 +811,10 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 --   fully type-annotated version of the term.
 inferTop :: TCtx -> ReqCtx -> TDCtx -> Syntax -> Either ContextualTypeErr TSyntax
 inferTop ctx reqCtx tdCtx = runTC ctx reqCtx tdCtx Ctx.empty . infer
+
+-- | Top level type checking function.
+checkTop :: TCtx -> ReqCtx -> TDCtx -> Syntax -> Type -> Either ContextualTypeErr TSyntax
+checkTop ctx reqCtx tdCtx t ty = runTC ctx reqCtx tdCtx Ctx.empty $ check t (toU ty)
 
 -- | Infer the type of a term, returning a type-annotated term.
 --
