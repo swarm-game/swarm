@@ -337,22 +337,11 @@
   description:
     - A fast-growing plant with a pungent aroma, often found growing near rocks.
     - |
-      When equipped as a device, parsley enables the `read`
-      command, which can be used to turn text into values:
+      When equipped as a device, parsley enables the `read` command, which can be used to turn text into values:
       ```
-      read : Text -> (Unit + a)
+      read : Text -> a
       ```
-      If the given `Text`{=type} represents a value of the expected
-      type, the value will be returned wrapped in `inr`; otherwise
-      `inl ()` is returned.  For example:
-    - |
-      ```
-      (read "3" : Unit + Int) == inr 3
-      ```
-      but
-      ```
-      (read "hello" : Unit + Int) == inl ()
-      ```
+      If the given `Text`{=type} represents a value of the expected type, the value will be returned; otherwise, an exception is thrown.  For example, `(read "3" : Int) == 3`, but `read "hello" : Int` crashes.
   properties: [pickable, growable]
   capabilities: [read]
   growth: [10, 100]
