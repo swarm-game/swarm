@@ -35,8 +35,8 @@ import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Structure.Named (StructureName, name)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic (..))
-import Swarm.Util (binTuples, deleteKeys)
 import Swarm.Language.Syntax.Direction (AbsoluteDir (..))
+import Swarm.Util (binTuples, deleteKeys)
 
 -- | The authoritative source of which built structures currently exist.
 --
