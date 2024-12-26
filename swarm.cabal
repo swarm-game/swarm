@@ -120,7 +120,7 @@ common ghc2021-extensions
     TypeOperators
 
 common base
-  build-depends: base >=4.14 && <4.20
+  build-depends: base >=4.14 && <4.21
 
 common AhoCorasick
   build-depends: AhoCorasick >=0.0.4 && <0.0.5
@@ -339,7 +339,7 @@ common tasty-quickcheck
   build-depends: tasty-quickcheck >=0.10 && <0.11
 
 common template-haskell
-  build-depends: template-haskell >=2.16 && <2.22
+  build-depends: template-haskell >=2.16 && <2.23
 
 common terminal-size
   build-depends: terminal-size >=0.3 && <1.0
