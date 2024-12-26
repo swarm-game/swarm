@@ -121,7 +121,7 @@ import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (takeExtension, (</>))
 import System.IO.Error (catchIOError)
 import Witch (from)
-import Prelude hiding (Foldable(..))
+import Prelude hiding (Foldable (..))
 
 infixr 1 ?
 infix 4 %%=, <+=, <%=, <<.=, <>=

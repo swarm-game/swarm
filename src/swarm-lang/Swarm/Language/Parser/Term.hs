@@ -9,7 +9,7 @@ module Swarm.Language.Parser.Term where
 import Control.Lens (view, (^.))
 import Control.Monad (guard, join)
 import Control.Monad.Combinators.Expr
-import Data.Foldable (asum, Foldable (..))
+import Data.Foldable (Foldable (..), asum)
 import Data.Functor (($>))
 import Data.Map (Map)
 import Data.Map qualified as M
