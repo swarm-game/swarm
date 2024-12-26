@@ -57,6 +57,7 @@ data SearchLog e
   | StartSearchAt (Cosmic Location) InspectionOffsets
   | FoundParticipatingEntity (ParticipatingEntity e)
   | FoundCompleteStructureCandidates [(OrientedStructure, Cosmic Location)]
+  | RecognizedSingleStructure (OrientedStructure, Cosmic Location)
   | -- | this is actually internally used as a (Map (NonEmpty e) (NonEmpty Int)),
     -- but the requirements of Functor force us to invert the mapping
     FoundPiecewiseChunks [(NonEmpty Int, NonEmpty e)]
