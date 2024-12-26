@@ -477,6 +477,7 @@ testScenarioSolutions rs ui key =
             , testSolution Default "Testing/1575-structure-recognizer/2201-piecewise-lines"
             , testSolution Default "Testing/1575-structure-recognizer/2201-preclude-overlapping-recognition"
             , testSolution Default "Testing/1575-structure-recognizer/2201-initial-recognition-overlap"
+            , testSolution Default "Testing/1575-structure-recognizer/2229-position-uniqueness-multiple-orientations"
             ]
         ]
     , testSolution' Default "Testing/1430-built-robot-ownership" CheckForBadErrors $ \g -> do

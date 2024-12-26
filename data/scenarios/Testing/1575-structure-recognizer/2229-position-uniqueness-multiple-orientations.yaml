@@ -1,0 +1,60 @@
+version: 1
+name: Structure recognition - rotated structures at same position
+description: |
+  A map keyed by (position, structure name) would not be sufficient to
+  account for multiple orientations of the same structure, sharing the
+  same top-left corner position.
+
+  This is why the found structure registry must include orientation
+  in its key.
+creative: false
+objectives:
+  - teaser: Recognize both structures
+    goal:
+      - |
+        Two `thingy`{=structure} structures should be recognized immediately.
+        Without distinguishing them by orientation in the registry, only
+        one would be recognized.
+    condition: |
+      foundStructure <- structure "thingy" 0;
+      return $ case foundStructure
+        (\_. false)
+        (\result. fst result == 2);
+robots:
+  - name: base
+    dir: north
+    devices:
+      - logger
+solution: |
+  noop;
+structures:
+  - name: thingy
+    recognize: [north, east]
+    structure:
+      palette:
+        'x': [stone, rock]
+        'y': [dirt]
+      mask: '.'
+      map: |
+        y.y
+        yxx
+known: [rock]
+world:
+  dsl: |
+    {blank}
+  placements:
+    - src: thingy
+    - src: thingy
+      offset: [0, 0]
+      orient:
+        up: east
+  palette:
+    '.': [grass, erase]
+    'B': [grass, erase, base]
+  upperleft: [-3, 3]
+  map: |
+    .........B.
+    ...........
+    ...........
+    ...........
+    ...........

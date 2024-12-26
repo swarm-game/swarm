@@ -17,6 +17,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Static (
  )
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic)
+import Swarm.Language.Syntax.Direction (AbsoluteDir)
 
 renderSharedNames :: ConsolidatedRowReferences b a -> NonEmpty StructureName
 renderSharedNames =
@@ -57,6 +58,7 @@ data SearchLog e
   | StartSearchAt (Cosmic Location) InspectionOffsets
   | FoundParticipatingEntity (ParticipatingEntity e)
   | FoundCompleteStructureCandidates [(OrientedStructure, Cosmic Location)]
+  | RecognizedSingleStructure (OrientedStructure, Cosmic Location)
   | -- | this is actually internally used as a (Map (NonEmpty e) (NonEmpty Int)),
     -- but the requirements of Functor force us to invert the mapping
     FoundPiecewiseChunks [(NonEmpty Int, NonEmpty e)]
@@ -80,7 +82,7 @@ searchLogOptions =
 instance ToSample (SearchLog e) where
   toSamples _ = SD.noSamples
 
-data StructureLocation = StructureLocation StructureName (Cosmic Location)
+data StructureLocation = StructureLocation StructureName (Cosmic Location, AbsoluteDir)
   deriving (Generic, ToJSON)
 
 instance ToSample StructureLocation where
