@@ -39,6 +39,7 @@ module Swarm.Language.Typecheck (
 
   -- * Type inference
   inferTop,
+  checkTop,
   infer,
   inferConst,
   check,
@@ -811,6 +812,10 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 inferTop :: TCtx -> ReqCtx -> TDCtx -> Syntax -> Either ContextualTypeErr TSyntax
 inferTop ctx reqCtx tdCtx = runTC ctx reqCtx tdCtx Ctx.empty . infer
 
+-- | Top level type checking function.
+checkTop :: TCtx -> ReqCtx -> TDCtx -> Syntax -> Type -> Either ContextualTypeErr TSyntax
+checkTop ctx reqCtx tdCtx t ty = runTC ctx reqCtx tdCtx Ctx.empty $ check t (toU ty)
+
 -- | Infer the type of a term, returning a type-annotated term.
 --
 --   The only cases explicitly handled in 'infer' are those where
@@ -1094,6 +1099,7 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Div -> arithBinT
   Exp -> arithBinT
   Format -> [tyQ| a -> Text |]
+  Read -> [tyQ| Text -> a |]
   Concat -> [tyQ| Text -> Text -> Text |]
   Chars -> [tyQ| Text -> Int |]
   Split -> [tyQ| Int -> Text -> (Text * Text) |]
@@ -1387,6 +1393,7 @@ analyzeAtomic locals (Syntax l t) = case t of
   TRequire {} -> return 0
   SRequirements {} -> return 0
   STydef {} -> return 0
+  TType {} -> return 0
   -- Constants.
   TConst c
     -- Nested 'atomic' is not allowed.

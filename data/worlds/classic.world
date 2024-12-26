@@ -75,6 +75,7 @@ overlay
     [ {stone}
     , mask (hash % 10 == 0) {stone, rock}
     , mask (hash % 100 == 0) {stone, lodestone}
+    , mask (hash % 300 == 0) {grass, parsley}
     ]
   )
 , mask (big && soft && natural)

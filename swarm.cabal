@@ -460,6 +460,7 @@ library swarm-lang
     Swarm.Language.Parser.Term
     Swarm.Language.Parser.Type
     Swarm.Language.Parser.Util
+    Swarm.Language.Parser.Value
     Swarm.Language.Pipeline
     Swarm.Language.Pipeline.QQ
     Swarm.Language.Requirements
