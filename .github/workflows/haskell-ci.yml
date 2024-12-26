@@ -221,13 +221,6 @@ jobs:
       - name: build
         run: |
           $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --write-ghc-environment-files=always
-      - name: weeder
-        if: matrix.compilerVersion == '9.6.5'
-        uses: freckle/weeder-action@v2
-        with:
-          ghc-version: ${{ matrix.compilerVersion }}
-          weeder-arguments: --config $GITHUB_WORKSPACE/source/weeder.toml
-          working-directory: ${{ env.PKGDIR_swarm }}
       - name: tests
         run: |
           $CABAL v2-test $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --test-show-details=direct
@@ -242,6 +235,13 @@ jobs:
       - name: haddock
         run: |
           $CABAL v2-haddock --disable-documentation --haddock-all $ARG_COMPILER --with-haddock $HADDOCK $ARG_TESTS $ARG_BENCH all
+      - name: "weeder: swarm"
+        uses: freckle/weeder-action@v2
+        if: ${{ env.HCNUMVER >= 90400 && env.HCNUMVER < 90800 }}
+        with:
+          ghc-version: ${{ matrix.compilerVersion }}
+          weeder-arguments: --config $GITHUB_WORKSPACE/source/weeder.toml
+          working-directory: ${{ env.PKGDIR_swarm }}
       - name: save cache
         uses: actions/cache/save@v4
         if: always()

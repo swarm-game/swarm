@@ -13,6 +13,8 @@ docspec: True
 -- Build haddocks. Accepts booleans or version range.
 haddock: True
 
+weeder: >= 9.4 && < 9.8
+
 -- Build benchmarks. There are no way to run benchmarks. Accepts booleans or version range.
 -- Swarm has benchmarks so at least build them :)
 benchmarks: True
