@@ -29,8 +29,8 @@ module Swarm.Language.Value (
 
 import Control.Lens hiding (Const)
 import Data.Bool (bool)
+import Data.Foldable (Foldable (..))
 import Data.Hashable (Hashable)
-import Data.List (foldl')
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set qualified as S
@@ -46,6 +46,7 @@ import Swarm.Language.Syntax.Direction
 import Swarm.Language.Typed
 import Swarm.Language.Types (Polytype, TCtx, TDCtx, TydefInfo, Type)
 import Swarm.Pretty (prettyText)
+import Prelude hiding (Foldable (..))
 
 -- | A /value/ is a term that cannot (or does not) take any more
 --   evaluation steps on its own.

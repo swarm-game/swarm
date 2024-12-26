@@ -92,10 +92,11 @@ import Control.Monad.Trans.Maybe (MaybeT (..))
 import Data.Bifunctor (Bifunctor (bimap), first)
 import Data.Char (isAlphaNum, toLower)
 import Data.Either.Validation
+import Data.Foldable (Foldable (..))
 import Data.Foldable qualified as Foldable
 import Data.IntMap.Strict (IntMap)
 import Data.IntMap.Strict qualified as IM
-import Data.List (foldl', maximumBy, partition)
+import Data.List (maximumBy, partition)
 import Data.List qualified as List
 import Data.List.Extra (enumerate)
 import Data.List.NonEmpty (NonEmpty ((:|)))
@@ -120,6 +121,7 @@ import System.Directory (doesDirectoryExist, doesFileExist, listDirectory)
 import System.FilePath (takeExtension, (</>))
 import System.IO.Error (catchIOError)
 import Witch (from)
+import Prelude hiding (Foldable(..))
 
 infixr 1 ?
 infix 4 %%=, <+=, <%=, <<.=, <>=

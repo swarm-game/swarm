@@ -23,10 +23,10 @@ module Swarm.Game.World.Typecheck where
 import Control.Algebra (Has)
 import Control.Effect.Reader (Reader, ask)
 import Control.Effect.Throw (Throw, throwError)
+import Data.Foldable (Foldable (..))
 import Data.Foldable qualified as F
 import Data.Functor.Const qualified as F
 import Data.Kind (Type)
-import Data.List (foldl')
 import Data.List.Extra (enumerate)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -42,7 +42,7 @@ import Swarm.Game.World.Syntax
 import Swarm.Pretty (PrettyPrec (..), pparens, ppr)
 import Swarm.Util (showT)
 import Swarm.Util.Erasable
-import Prelude hiding (lookup)
+import Prelude hiding (lookup, Foldable (..))
 
 ------------------------------------------------------------
 -- Type classes for monoidal world values

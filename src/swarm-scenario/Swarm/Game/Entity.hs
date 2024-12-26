@@ -102,13 +102,13 @@ import Control.Monad (forM_, unless, (<=<))
 import Data.Bifunctor (first)
 import Data.Char (toLower)
 import Data.Either.Extra (maybeToEither)
+import Data.Foldable (Foldable (..))
 import Data.Function (on)
 import Data.Hashable
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
-import Data.List (foldl')
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -136,7 +136,7 @@ import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
-import Prelude hiding (lookup)
+import Prelude hiding (lookup, Foldable (..))
 
 ------------------------------------------------------------
 -- Properties
