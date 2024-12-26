@@ -554,7 +554,7 @@ execConst runChildProg c vs s k = do
             mkOutput mapNE = (NE.length xs, bottomLeftCorner)
              where
               xs = NEM.toList mapNE
-              (pos, struc) = indexWrapNonEmpty xs idx
+              ((pos, _), struc) = indexWrapNonEmpty xs idx
               topLeftCorner = pos ^. planar
               offsetHeight = V2 0 $ negate (rectHeight (getNEGridDimensions $ extractedGrid $ entityGrid struc) - 1)
               bottomLeftCorner :: Location

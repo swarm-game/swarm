@@ -17,6 +17,7 @@ import Swarm.Game.Scenario.Topography.Structure.Recognition.Static (
  )
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic)
+import Swarm.Language.Syntax.Direction (AbsoluteDir)
 
 renderSharedNames :: ConsolidatedRowReferences b a -> NonEmpty StructureName
 renderSharedNames =
@@ -81,7 +82,7 @@ searchLogOptions =
 instance ToSample (SearchLog e) where
   toSamples _ = SD.noSamples
 
-data StructureLocation = StructureLocation StructureName (Cosmic Location)
+data StructureLocation = StructureLocation StructureName (Cosmic Location, AbsoluteDir)
   deriving (Generic, ToJSON)
 
 instance ToSample StructureLocation where
