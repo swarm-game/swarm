@@ -7,7 +7,6 @@
 -- Parse values of the Swarm language, indexed by type, by running the
 -- full swarm-lang parser and then checking that the result is a value
 -- of the proper type.
---
 module Swarm.Language.Parser.Value (readValue) where
 
 import Control.Lens ((^.))
@@ -45,7 +44,6 @@ toValue = \case
     _ -> Nothing
   TPair t1 t2 -> VPair <$> toValue t1 <*> toValue t2
   TRcd m -> VRcd <$> traverse (>>= toValue) m
-
   TConst {} -> Nothing
   -- TConst k -> Just $ VCApp k []   -- XXX for parsing commands
   TAntiInt {} -> Nothing
@@ -55,18 +53,17 @@ toValue = \case
   TRequirements {} -> Nothing
   TVar {} -> Nothing
   TLam {} -> Nothing
-  TApp {} -> Nothing  -- XXX command values?
-    -- TApp t1 t2 -> case toValue t1 of
-    --   Just (VCApp c vs) -> VCApp c . (:vs) <$> toValue t2  -- XXX reverse?
-    --   _ -> Nothing
-    -- Would need to also check to make sure isCmd is true for an application
-    --   of the constant to be a value?
-    -- No, we need this to handle sum types!!
-
-  TLet {} -> Nothing  -- XXX closures?
+  TApp {} -> Nothing -- XXX command values?
+  -- TApp t1 t2 -> case toValue t1 of
+  --   Just (VCApp c vs) -> VCApp c . (:vs) <$> toValue t2  -- XXX reverse?
+  --   _ -> Nothing
+  -- Would need to also check to make sure isCmd is true for an application
+  --   of the constant to be a value?
+  -- No, we need this to handle sum types!!
+  TLet {} -> Nothing -- XXX closures?
   TTydef {} -> Nothing
-  TBind {} -> Nothing  -- XXX command value?
-  TDelay {} -> Nothing  -- XXX VDelay?
+  TBind {} -> Nothing -- XXX command value?
+  TDelay {} -> Nothing -- XXX VDelay?
   TProj {} -> Nothing
   TAnnotate {} -> Nothing
   TSuspend {} -> Nothing
