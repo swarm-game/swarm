@@ -136,7 +136,7 @@ import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
-import Prelude hiding (lookup, Foldable (..))
+import Prelude hiding (Foldable (..), lookup)
 
 ------------------------------------------------------------
 -- Properties

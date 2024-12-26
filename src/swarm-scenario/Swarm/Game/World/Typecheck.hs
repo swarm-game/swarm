@@ -42,7 +42,7 @@ import Swarm.Game.World.Syntax
 import Swarm.Pretty (PrettyPrec (..), pparens, ppr)
 import Swarm.Util (showT)
 import Swarm.Util.Erasable
-import Prelude hiding (lookup, Foldable (..))
+import Prelude hiding (Foldable (..), lookup)
 
 ------------------------------------------------------------
 -- Type classes for monoidal world values
