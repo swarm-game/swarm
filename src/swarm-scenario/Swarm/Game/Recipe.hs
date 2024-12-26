@@ -59,9 +59,9 @@ import Control.Lens hiding (from, (.=))
 import Control.Monad ((<=<))
 import Data.Bifunctor (second)
 import Data.Either.Validation
+import Data.Foldable (Foldable (..))
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
-import Data.List (foldl')
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -75,6 +75,7 @@ import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Lens (makeLensesNoSigs)
 import Swarm.Util.Yaml
 import Witch
+import Prelude hiding (Foldable (..))
 
 -- | A recipe represents some kind of process where inputs are
 --   transformed into outputs.

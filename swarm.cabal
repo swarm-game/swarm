@@ -38,7 +38,7 @@ maintainer: byorgey@gmail.com
 bug-reports: https://github.com/swarm-game/swarm/issues
 copyright: Brent Yorgey 2021
 category: Game
-tested-with: ghc ==9.2.8 || ==9.4.8 || ==9.6.5 || ==9.8.2
+tested-with: ghc ==9.4.8 || ==9.6.6 || ==9.8.2 || ==9.10.1
 extra-doc-files:
   CHANGELOG.md
 
@@ -120,7 +120,7 @@ common ghc2021-extensions
     TypeOperators
 
 common base
-  build-depends: base >=4.14 && <4.20
+  build-depends: base >=4.14 && <4.21
 
 common AhoCorasick
   build-depends: AhoCorasick >=0.0.4 && <0.0.5
@@ -198,7 +198,7 @@ common extra
   build-depends: extra >=1.7 && <1.8
 
 common filepath
-  build-depends: filepath >=1.4 && <1.5
+  build-depends: filepath >=1.4 && <1.6
 
 common free
   build-depends: free >=5.2 && <5.3
@@ -339,7 +339,7 @@ common tasty-quickcheck
   build-depends: tasty-quickcheck >=0.10 && <0.11
 
 common template-haskell
-  build-depends: template-haskell >=2.16 && <2.22
+  build-depends: template-haskell >=2.16 && <2.23
 
 common terminal-size
   build-depends: terminal-size >=0.3 && <1.0

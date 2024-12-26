@@ -4,7 +4,7 @@
 ##                                                                  #
 ## WARNING:                                                         #
 ## Hand-edited to add filter in on.push and on.pull_request.        #
-## Also hand-edited to add 'weeder' step to GHC 9.6.5.              #
+## Also hand-edited to add 'weeder' step to GHC 9.6.6.              #
 ## If possible do not manually edit beside the above.               #
 #####################################################################
 #
@@ -18,9 +18,9 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.19.20240708
+# version: 0.19.20241202
 #
-# REGENDATA ("0.19.20240708",["github","--config=.github/workflows/cabal.haskell-ci","--copy-fields=all","swarm.cabal"])
+# REGENDATA ("0.19.20241202",["github","--config=.github/workflows/cabal.haskell-ci","--copy-fields=all","swarm.cabal"])
 #
 name: Haskell-CI
 on:
@@ -58,14 +58,19 @@ jobs:
     strategy:
       matrix:
         include:
+          - compiler: ghc-9.10.1
+            compilerKind: ghc
+            compilerVersion: 9.10.1
+            setup-method: ghcup
+            allow-failure: false
           - compiler: ghc-9.8.2
             compilerKind: ghc
             compilerVersion: 9.8.2
             setup-method: ghcup
             allow-failure: false
-          - compiler: ghc-9.6.5
+          - compiler: ghc-9.6.6
             compilerKind: ghc
-            compilerVersion: 9.6.5
+            compilerVersion: 9.6.6
             setup-method: ghcup
             allow-failure: false
           - compiler: ghc-9.4.8
@@ -73,22 +78,31 @@ jobs:
             compilerVersion: 9.4.8
             setup-method: ghcup
             allow-failure: false
-          - compiler: ghc-9.2.8
-            compilerKind: ghc
-            compilerVersion: 9.2.8
-            setup-method: ghcup
-            allow-failure: false
       fail-fast: false
     steps:
-      - name: apt
+      - name: apt-get install
         run: |
           apt-get update
           apt-get install -y --no-install-recommends gnupg ca-certificates dirmngr curl git software-properties-common libtinfo5
+      - name: Install GHCup
+        run: |
           mkdir -p "$HOME/.ghcup/bin"
           curl -sL https://downloads.haskell.org/ghcup/0.1.30.0/x86_64-linux-ghcup-0.1.30.0 > "$HOME/.ghcup/bin/ghcup"
           chmod a+x "$HOME/.ghcup/bin/ghcup"
-          "$HOME/.ghcup/bin/ghcup" install ghc "$HCVER" || (cat "$HOME"/.ghcup/logs/*.* && false)
+      - name: Install cabal-install
+        run: |
           "$HOME/.ghcup/bin/ghcup" install cabal 3.12.1.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
+          echo "CABAL=$HOME/.ghcup/bin/cabal-3.12.1.0 -vnormal+nowrap" >> "$GITHUB_ENV"
+      - name: Install GHC (GHCup)
+        if: matrix.setup-method == 'ghcup'
+        run: |
+          "$HOME/.ghcup/bin/ghcup" install ghc "$HCVER" || (cat "$HOME"/.ghcup/logs/*.* && false)
+          HC=$("$HOME/.ghcup/bin/ghcup" whereis ghc "$HCVER")
+          HCPKG=$(echo "$HC" | sed 's#ghc$#ghc-pkg#')
+          HADDOCK=$(echo "$HC" | sed 's#ghc$#haddock#')
+          echo "HC=$HC" >> "$GITHUB_ENV"
+          echo "HCPKG=$HCPKG" >> "$GITHUB_ENV"
+          echo "HADDOCK=$HADDOCK" >> "$GITHUB_ENV"
         env:
           HCKIND: ${{ matrix.compilerKind }}
           HCNAME: ${{ matrix.compiler }}
@@ -99,21 +113,12 @@ jobs:
           echo "LANG=C.UTF-8" >> "$GITHUB_ENV"
           echo "CABAL_DIR=$HOME/.cabal" >> "$GITHUB_ENV"
           echo "CABAL_CONFIG=$HOME/.cabal/config" >> "$GITHUB_ENV"
-          HCDIR=/opt/$HCKIND/$HCVER
-          HC=$("$HOME/.ghcup/bin/ghcup" whereis ghc "$HCVER")
-          HCPKG=$(echo "$HC" | sed 's#ghc$#ghc-pkg#')
-          HADDOCK=$(echo "$HC" | sed 's#ghc$#haddock#')
-          echo "HC=$HC" >> "$GITHUB_ENV"
-          echo "HCPKG=$HCPKG" >> "$GITHUB_ENV"
-          echo "HADDOCK=$HADDOCK" >> "$GITHUB_ENV"
-          echo "CABAL=$HOME/.ghcup/bin/cabal-3.12.1.0 -vnormal+nowrap" >> "$GITHUB_ENV"
           HCNUMVER=$(${HC} --numeric-version|perl -ne '/^(\d+)\.(\d+)\.(\d+)(\.(\d+))?$/; print(10000 * $1 + 100 * $2 + ($3 == 0 ? $5 != 1 : $3))')
           echo "HCNUMVER=$HCNUMVER" >> "$GITHUB_ENV"
           echo "ARG_TESTS=--enable-tests" >> "$GITHUB_ENV"
           echo "ARG_BENCH=--enable-benchmarks" >> "$GITHUB_ENV"
           echo "HEADHACKAGE=false" >> "$GITHUB_ENV"
           echo "ARG_COMPILER=--$HCKIND --with-compiler=$HC" >> "$GITHUB_ENV"
-          echo "GHCJSARITH=0" >> "$GITHUB_ENV"
         env:
           HCKIND: ${{ matrix.compilerKind }}
           HCNAME: ${{ matrix.compiler }}
@@ -222,7 +227,7 @@ jobs:
         run: |
           $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --write-ghc-environment-files=always
       - name: weeder
-        if: matrix.compilerVersion == '9.6.5'
+        if: matrix.compilerVersion == '9.6.6'
         uses: freckle/weeder-action@v2
         with:
           ghc-version: ${{ matrix.compilerVersion }}
@@ -243,8 +248,8 @@ jobs:
         run: |
           $CABAL v2-haddock --disable-documentation --haddock-all $ARG_COMPILER --with-haddock $HADDOCK $ARG_TESTS $ARG_BENCH all
       - name: save cache
-        uses: actions/cache/save@v4
         if: always()
+        uses: actions/cache/save@v4
         with:
           key: ${{ runner.os }}-${{ matrix.compiler }}-${{ github.sha }}
           path: ~/.cabal/store
