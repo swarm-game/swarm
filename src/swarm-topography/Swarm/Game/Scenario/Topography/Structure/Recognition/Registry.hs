@@ -35,6 +35,7 @@ import Swarm.Game.Location
 import Swarm.Game.Scenario.Topography.Structure.Named (StructureName, name)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type
 import Swarm.Game.Universe (Cosmic (..))
+import Swarm.Language.Syntax.Direction (AbsoluteDir (..))
 import Swarm.Util (binTuples, deleteKeys)
 
 -- | The authoritative source of which built structures currently exist.
@@ -42,7 +43,7 @@ import Swarm.Util (binTuples, deleteKeys)
 -- The two type parameters, `b` and `a`, correspond
 -- to 'Cell' and 'Entity', respectively.
 data FoundRegistry b a = FoundRegistry
-  { _foundByName :: Map StructureName (NEMap (Cosmic Location) (StructureWithGrid b a))
+  { _foundByName :: Map StructureName (NEMap (Cosmic Location, AbsoluteDir) (StructureWithGrid b a))
   , _foundByLocation :: Map (Cosmic Location) (FoundStructure b a)
   }
 
@@ -52,7 +53,7 @@ emptyFoundStructures = FoundRegistry mempty mempty
 -- | We use a 'NEMap' here so that we can use the
 -- safe-indexing function 'indexWrapNonEmpty' in the implementation
 -- of the @structure@ command.
-foundByName :: FoundRegistry b a -> Map StructureName (NEMap (Cosmic Location) (StructureWithGrid b a))
+foundByName :: FoundRegistry b a -> Map StructureName (NEMap (Cosmic Location, AbsoluteDir) (StructureWithGrid b a))
 foundByName = _foundByName
 
 -- | This is a worldwide "mask" that prevents members of placed
@@ -72,15 +73,16 @@ removeStructure fs (FoundRegistry byName byLoc) =
   allOccupiedCoords = genOccupiedCoords fs
   structureName = name . originalItem . entityGrid $ structureWithGrid fs
   upperLeft = upperLeftCorner fs
+  rotation = rotatedTo $ structureWithGrid fs
 
   -- NOTE: Observe similarities to
   -- Swarm.Game.State.removeRobotFromLocationMap
-  tidyDelete = NEM.nonEmptyMap . NEM.delete upperLeft
+  tidyDelete = NEM.nonEmptyMap . NEM.delete (upperLeft, rotation)
 
 addFound :: FoundStructure b a -> FoundRegistry b a -> FoundRegistry b a
 addFound fs@(PositionedStructure loc swg) (FoundRegistry byName byLoc) =
   FoundRegistry
-    (M.insertWith (<>) k (NEM.singleton loc swg) byName)
+    (M.insertWith (<>) k (NEM.singleton (loc, rotatedTo swg) swg) byName)
     (M.union occupationMap byLoc)
  where
   k = name . originalItem $ entityGrid swg
@@ -115,7 +117,7 @@ populateStaticFoundStructures allFound =
   byLocation = M.unions $ map mkOccupationMap resolvedCollisions
 
   byName =
-    M.map (NEM.fromList . NE.map (upperLeftCorner &&& structureWithGrid)) $
+    M.map (NEM.fromList . NE.map ((upperLeftCorner &&& rotatedTo . structureWithGrid) &&& structureWithGrid)) $
       binTuples $
         map (name . originalItem . entityGrid . structureWithGrid &&& id) resolvedCollisions
 
