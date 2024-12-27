@@ -55,7 +55,7 @@ instance Ord HexColor where
   -- consistent way to put a total ordering on colors as fast as
   -- possible.
   compare (HexColor (toRGB -> RGB r1 g1 b1)) (HexColor (toRGB -> RGB r2 g2 b2)) =
-    compare r1 r2 <> compare g1 g2 <> compare b1 b2
+    compare (r1, g1, b1) (r2, g2, b2)
 
 instance FromJSON HexColor where
   parseJSON = withText "hex color" $ \t ->
