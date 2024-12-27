@@ -1,0 +1,25 @@
+version: 1
+name: Custom attribute - invalid color
+description: |
+  Invalid color in custom attribute
+creative: false
+attrs:
+  - name: bogus
+    bg: "this is not a color"
+terrains:
+  - name: whatzit
+    attr: bogus
+    description: |
+      A thingy
+robots:
+  - name: base
+    dir: east
+world:
+  dsl: |
+    {grass}
+  palette:
+    'B': [grass, null, base]
+    '.': [whatzit]
+  upperleft: [0, 0]
+  map: |
+    B.
