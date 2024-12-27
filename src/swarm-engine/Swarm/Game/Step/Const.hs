@@ -1215,13 +1215,27 @@ execConst runChildProg c vs s k = do
         Just v -> return (mkReturn v)
       _ -> badConst
     Print -> case vs of
-      -- TODO: limit amount of text on one paper?
       [VText txt] -> do
         paper <- ensureItem "paper" "print"
         let newEntityName = "paper: " <> txt
         robotInventory %= delete paper
         robotInventory %= insert (paper & entityName .~ newEntityName)
         return $ mkReturn newEntityName
+      _ -> badConst
+    Erase -> case vs of
+      [VText paperName] -> do
+        toErase <- ensureItem paperName "erase"
+        (paperName /= "paper")
+          `holdsOrFail` ["That is already blank!"]
+        ("paper: " `T.isPrefixOf` paperName)
+          `holdsOrFail` ["Can only erase paper, not", indefinite paperName <> "."]
+        em <- use $ landscape . terrainAndEntities . entityMap
+        paper <- lookupEntityName "paper" em
+          `isJustOrFail` ["Can't erase, I don't know what paper is."]
+
+        robotInventory %= delete toErase
+        robotInventory %= insert paper
+        return $ mkReturn ()
       _ -> badConst
     Chars -> case vs of
       [VText t] -> return $ mkReturn $ T.length t

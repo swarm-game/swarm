@@ -275,6 +275,8 @@ data Const
     Read
   | -- | Print a string onto a piece of paper
     Print
+  | -- | Erase a piece of paper
+    Erase
   | -- | Concatenate string values
     Concat
   | -- | Count number of characters.
@@ -825,6 +827,13 @@ constInfo c = case c of
         , "whose name is \"paper: \" concatenated with the given text."
         , "In conjunction with `format`, this can be used to print values onto paper"
         , "and give them to other robots, which can reconstitute the values with `read`."
+        ]
+  Erase ->
+    command 1 short . doc (Set.singleton $ Mutation $ RobotChange InventoryChange)
+      "Erase a piece of paper." $
+        [ "Consumes the named entity from your inventory, whose name must begin with"
+        , "\"paper: \", and produces a \"paper\" entity.  This can be used to undo"
+        , "the effects of a `print` command."
         ]
   Concat -> binaryOp "++" 6 R $ shortDoc Set.empty "Concatenate the given strings."
   Chars -> function 1 $ shortDoc Set.empty "Counts the number of characters in the text."

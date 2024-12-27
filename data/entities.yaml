@@ -886,7 +886,7 @@
   description:
     - A typewriter is used to inscribe symbols on `paper`{=entity}, thus reifying pure, platonic information into a physical form.
   properties: [pickable]
-  capabilities: [print]
+  capabilities: [print, erase]
 - name: 3D printer
   display:
     attr: device
