@@ -9,7 +9,7 @@ module Swarm.Game.Scenario.Style where
 import Codec.Picture (PixelRGBA8 (..))
 import Data.Aeson
 import Data.Colour.Palette.Types (Kolor)
-import Data.Colour.SRGB (RGB (..), sRGB24reads, toSRGB24, sRGB24show)
+import Data.Colour.SRGB (RGB (..), sRGB24reads, sRGB24show, toSRGB24)
 import Data.Colour.SRGB.Linear (toRGB)
 import Data.Set (Set)
 import Data.Text qualified as T
@@ -42,7 +42,7 @@ instance ToJSON StyleFlag where
 
 -- | A color, parsed from hexadecimal notation.  May include a leading
 --   hash symbol (see 'Data.Colour.SRGB.sRGB24read').
-newtype HexColor = HexColor { getHexColor :: Kolor }
+newtype HexColor = HexColor {getHexColor :: Kolor}
   deriving (Eq, Show, Generic)
 
 instance Ord HexColor where
@@ -54,13 +54,13 @@ instance Ord HexColor where
   -- purposes of an Ord instance, it doesn't matter: we just want a
   -- consistent way to put a total ordering on colors as fast as
   -- possible.
-  compare (HexColor (toRGB -> RGB r1 g1 b1)) (HexColor (toRGB -> RGB r2 g2 b2))
-    = compare r1 r2 <> compare g1 g2 <> compare b1 b2
+  compare (HexColor (toRGB -> RGB r1 g1 b1)) (HexColor (toRGB -> RGB r2 g2 b2)) =
+    compare r1 r2 <> compare g1 g2 <> compare b1 b2
 
 instance FromJSON HexColor where
   parseJSON = withText "hex color" $ \t ->
     case sRGB24reads (T.unpack t) of
-      ((c, _):_) -> pure $ HexColor c
+      ((c, _) : _) -> pure $ HexColor c
       _ -> fail $ "Could not parse hex color '" ++ T.unpack t ++ "'"
 
 instance ToJSON HexColor where
