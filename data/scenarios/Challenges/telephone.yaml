@@ -1,0 +1,210 @@
+version: 1
+name: Telephone
+author: Brent Yorgey
+description: |
+  Give another robot instructions to duplicate a pattern.
+creative: false
+objectives:
+  - id: 'paper'
+    teaser: Make some paper
+    goal:
+      - |
+        As part of a scheme to prove your intelligence to anyone
+        watching from space, the mystical design of X's and O's in the
+        blue square needs to be copied into the square across the
+        mountains.
+      - |
+        One small problem is that the mountains are too high for you
+        to cross! However, there is a shuttle service, running on a
+        regular schedule through a tunnel, that can deliver small
+        packages to the terminal on the other side of the mountains.
+        At the other terminal is a general-purpose utility robot; you
+        will have to send it instructions so it can recreate the
+        design for you.
+      - |
+        As a first step, you will need `paper`{=entity} on which to
+        write the instructions; make at least 8 sheets of
+        `paper`{=entity}.
+    condition: |
+      as base {
+        pcount <- count "paper";
+        return $ pcount >= 8;
+      };
+  - teaser: Duplicate the design
+    prerequisite: 'paper'
+    goal:
+      - |
+        Now that you have some `paper`{=entity}, you can use your
+        `typewriter`{=entity} to `print` on it. If you `format` a
+        value, `print` it on some paper, and send it via the shuttle,
+        the utility robot will be able to read the value.
+      - |
+        In particular, the utility robot is expecting to read values
+        of type `(Int * Int) * Text`{=type}, where the
+        `(Int * Int)`{=type} tuple is an x- and y-offset from the lower right
+        corner of the blue box, and the `Text`{=type} is the name of
+        the entity (either `X`{=entity} or `O`{=entity}) to place
+        there.  For example, if you printed `((3,1), "O")` then the
+        utility robot would place an `O`{=entity} 3 units to the left
+        and 1 unit above the bottom-right corner of the blue square.
+    condition: |
+      judge <- robotNamed "judge";
+      as judge { has "X" }
+solution: |
+  run "scenarios/Challenges/_telephone/solution.sw"
+robots:
+  - name: base
+    dir: north
+    devices:
+      - branch predictor
+      - treads
+      - antenna
+      - comparator
+      - ADT calculator
+      - workbench
+      - harvester
+      - dictionary
+      - lambda
+      - logger
+      - welder
+      - scanner
+      - strange loop
+      - solar panel
+      - string
+      - typewriter
+      - rolex
+      - rubber band
+      - tweezers
+    inventory: []
+  - name: shuttle
+    system: true
+    dir: east
+    display:
+      invisible: false
+      char: 'Ξ'
+      priority: 8
+    program: |
+      run "scenarios/Challenges/_telephone/shuttle.sw"
+  - name: photocopier
+    system: true
+    dir: east
+    display:
+      invisible: false
+      char: '*'
+    inventory:
+      - [100, 'O']
+      - [100, 'X']
+    program: |
+      run "scenarios/Challenges/_telephone/photocopier.sw"
+  - name: judge
+    system: true
+    dir: east
+    devices:
+      - logger
+    program: |
+      run "scenarios/Challenges/_telephone/judge.sw"
+attrs:
+  - name: greyborder
+    fg: '#cccccc'
+    bg: '#002f00'
+  - name: blueborder
+    fg: '#4287f5'
+    bg: '#002f00'
+  - name: purpleborder
+    fg: '#d885ff'
+    bg: '#002f00'
+  - name: yg
+    fg: '#ffff8f'
+    bg: '#002f00'
+  - name: rg
+    fg: '#ff8f8f'
+    bg: '#002f00'
+entities:
+  - name: mountain
+    display:
+      attr: snow
+      char: 'A'
+      priority: 9
+    description:
+      - An impassably tall mountain.
+    properties: [unwalkable, opaque]
+  - name: blueborder
+    display:
+      char: '%'
+      attr: 'blueborder'
+    description:
+      - Decorative border
+    properties: [known, boundary]
+  - name: purpleborder
+    display:
+      char: '&'
+      attr: 'purpleborder'
+    description:
+      - Decorative border
+    properties: [known, boundary]
+  - name: track
+    display:
+      char: '='
+      attr: entity
+    description:
+      - Narrow-gauge track.
+    properties: [known]
+  - name: O
+    display:
+      char: 'O'
+      attr: rg
+    description:
+      - O
+    properties: [known]
+  - name: X
+    display:
+      char: 'X'
+      attr: yg
+    description:
+      - X
+    properties: [known]
+known: [mountain, tree, water, wavy water]
+world:
+  dsl: |
+    overlay
+    [ {grass}
+    , if (x >= 93 && x <= 100 && y >= -8 && y <= -5) then
+        (if (hash % 7 <= 1) then {X} else if (hash % 7 <= 3) then {O} else {grass})
+        else {grass}
+    ]
+  upperleft: [0, 0]
+  offset: false
+  palette:
+    '.': [grass]
+    '#': [grass, wall]
+    '%': [grass, blueborder]
+    'A': [stone, mountain]
+    'T': [grass, tree]
+    'W': [stone, water]
+    '~': [stone, wavy water]
+    '^': [grass, null, base]
+    '&': [grass, purpleborder]
+    '=': [grass, track]
+    'S': [grass, track, shuttle]
+    'P': [grass, null, photocopier]
+    'J': [grass, null, judge]
+  map: |
+    ########################################################################################################################
+    #..........................................................AA..........................................................#
+    #.........................................................AAA..................................................T.......#
+    #........................................................AAA..................................................TT.......#
+    #.................%%%%%%%%%%..............................AAAA..............................%%%%%%%%%%.........TTT.....#
+    #.................%........%...............................AAAAA............................%........%.......TTT.......#
+    #.................%........%..................................AA............................%........%.....TTTT........#
+    #.................%........%..............................AAAAA.............................%........%.......TTT.......#
+    #.................%J.......%.............................AAA................................%........%.........T.......#
+    #.................%%%%%%%%%%..&&&.......................AAAAA..........................&&&..%%%%%%%%%%.......TTTT......#
+    #.............................&P==========================AA====================S=======.&..............^.....TTTT.....#
+    #.............................&&&........................AAAA..........................&&&.....................TT......#
+    #..........................................................AAA.........................................................#
+    #...........................................................AAAA.........................................WWW...........#
+    #..........................................................AAAAAA........................................WW~W..........#
+    #...........................................................AAAA.......................................WW~WW...........#
+    #..........................................................AAAA..........................................WW............#
+    #.........................................................AAA..........................................................#
+    ########################################################################################################################
