@@ -2,9 +2,7 @@
 -- SPDX-License-Identifier: BSD-3-Clause
 module Swarm.TUI.View.Attribute.CustomStyling where
 
-import Data.Colour.SRGB (sRGB24read)
 import Data.Set (toList)
-import Data.Text qualified as T
 import Graphics.Vty.Attributes
 import Swarm.Game.Entity.Cosmetic (WorldAttr (..))
 import Swarm.Game.Scenario.Style
@@ -22,10 +20,7 @@ toStyle = \case
   Bold -> bold
 
 hexToAttrColor :: HexColor -> Color
-hexToAttrColor (HexColor colorText) =
-  kolorToAttrColor c
- where
-  c = sRGB24read $ T.unpack colorText
+hexToAttrColor (HexColor kolor) = kolorToAttrColor kolor
 
 toAttrPair :: CustomAttr -> (WorldAttr, Attr)
 toAttrPair ca =

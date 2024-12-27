@@ -6,9 +6,8 @@ module Swarm.Web.Worldview where
 import Control.Lens ((^.))
 import Data.Aeson (ToJSON)
 import Data.Colour.Palette.BrewerSet (Kolor)
-import Data.Colour.SRGB (RGB (..), sRGB24, sRGB24show)
+import Data.Colour.SRGB (RGB (..), sRGB24)
 import Data.IntMap qualified as IM
-import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Servant.Docs qualified as SD
 import Swarm.Game.Entity.Cosmetic (RGBColor, flattenBg, fromHiFi)
@@ -44,7 +43,7 @@ getCellGrid myScenario gs requestedSize =
 
   asColour :: RGBColor -> Kolor
   asColour (RGB r g b) = sRGB24 r g b
-  asHex = HexColor . T.pack . sRGB24show . asColour
+  asHex = HexColor . asColour
 
   f = asHex . maybe (RGB 0 0 0) (flattenBg . fromHiFi) . getTerrainEntityColor aMap
   (indexGrid, encoding) = runEncoder $ f <$> dg
