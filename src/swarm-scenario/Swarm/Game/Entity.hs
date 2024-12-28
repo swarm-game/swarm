@@ -424,15 +424,15 @@ data EntityMap = EntityMap
   }
   deriving (Eq, Show, Generic, ToJSON)
 
--- |
--- Note that duplicates in a single 'EntityMap' are precluded by the
--- 'buildEntityMap' function.
--- But it is possible for the latter 'EntityMap' to override
--- members of the former with the same name.
--- This replacement happens automatically with 'Map', but needs
--- to be explicitly handled for the list concatenation
--- of 'entityDefinitionOrder' (overridden entries are removed
--- from the former 'EntityMap').
+-- | Right-biased union of 'EntityMap's.
+--
+--   Note that duplicates in a single 'EntityMap' are precluded by the
+--   'buildEntityMap' function.  But it is possible for the right-hand
+--   'EntityMap' to override members of the left-hand with the same name.
+--   This replacement happens automatically with 'Map', but needs to
+--   be explicitly handled for the list concatenation of
+--   'entityDefinitionOrder' (overridden entries are removed from the
+--   former 'EntityMap').
 instance Semigroup EntityMap where
   EntityMap n1 c1 d1 <> EntityMap n2 c2 d2 =
     EntityMap
