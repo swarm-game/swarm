@@ -104,6 +104,7 @@ import Data.Char (toLower)
 import Data.Either.Extra (maybeToEither)
 import Data.Foldable (Foldable (..))
 import Data.Function (on)
+import Data.Functor.Identity
 import Data.Hashable
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
@@ -429,16 +430,36 @@ data EntityMap = EntityMap
 --   Note that duplicates in a single 'EntityMap' are precluded by the
 --   'buildEntityMap' function.  But it is possible for the right-hand
 --   'EntityMap' to override members of the left-hand with the same name.
---   This replacement happens automatically with 'Map', but needs to
---   be explicitly handled for the list concatenation of
---   'entityDefinitionOrder' (overridden entries are removed from the
---   former 'EntityMap').
+--   For example, this is how custom entities defined in a scenario
+--   can override standard entities. This replacement happens
+--   automatically with 'Map' (as long as we keep in mind that Map
+--   union is *left*-biased), but needs to be explicitly handled for the
+--   list concatenation of 'entityDefinitionOrder' (overridden entries
+--   are removed from the former 'EntityMap'), and for 'entitiesByCap',
+--   which are organized by capability rather than by entity.
 instance Semigroup EntityMap where
   EntityMap n1 c1 d1 <> EntityMap n2 c2 d2 =
     EntityMap
       (n2 <> n1)
-      (c1 <> c2)
-      (filter ((`M.notMember` n2) . view entityName) d1 <> d2)
+      (removeOverriddenDevices c1 <> c2)
+      (filter notOverridden d1 <> d2)
+   where
+    notOverridden :: Entity -> Bool
+    notOverridden = (`M.notMember` n2) . view entityName
+    removeOverriddenDevices (Capabilities m) =
+      Capabilities
+        . runIdentity
+        -- traverseMaybeWithKey allows us in one operation to filter
+        -- the NonEmpty list of devices for each capability, turn the
+        -- resulting lists into Maybe NonEmpty, and then remove from
+        -- the map any that became Nothing.  However, it is more
+        -- general than we need: it gives us access to the key which
+        -- we don't need (this explains the call to 'const'), and runs
+        -- in an arbitrary Applicative which we also don't need (this
+        -- explains the Identity).
+        . M.traverseMaybeWithKey
+          (const (Identity . NE.nonEmpty . NE.filter (notOverridden . device)))
+        $ m
 
 instance Monoid EntityMap where
   mempty = EntityMap M.empty mempty []
