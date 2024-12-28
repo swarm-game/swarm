@@ -500,6 +500,12 @@ testScenarioSolutions rs ui key =
           assertEqual "Incorrect step count." 62 $ view lifetimeStepCount counters
     , expectFailBecause "Awaiting fix for #231" $
         testSolution Default "Testing/231-requirements/231-command-transformer-reqs"
+    , testSolution Default "Testing/2239-custom-entity"
+    , testSolution' Default "Testing/2240-overridden-entity-capabilities" CheckForBadErrors $ \g -> do
+        let msgs = g ^.. robotInfo . robotMap . traverse . robotLog . to logToText . traverse
+        assertBool "Error message should mention tank treads but not treads" $
+          not (any ("- treads" `T.isInfixOf`) msgs)
+          && (any ("- tank treads" `T.isInfixOf`) msgs)
     ]
  where
   -- expectFailIf :: Bool -> String -> TestTree -> TestTree
