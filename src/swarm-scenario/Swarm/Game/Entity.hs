@@ -436,7 +436,7 @@ data EntityMap = EntityMap
 instance Semigroup EntityMap where
   EntityMap n1 c1 d1 <> EntityMap n2 c2 d2 =
     EntityMap
-      (n1 <> n2)
+      (n2 <> n1)
       (c1 <> c2)
       (filter ((`M.notMember` n2) . view entityName) d1 <> d2)
 
