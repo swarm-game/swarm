@@ -1,0 +1,42 @@
+version: 1
+name: Custom entity
+description: |
+  Custom entity overriding standard entity
+creative: false
+objectives:
+  - goal:
+      - Move to (1,0)
+    condition: |
+      as base {
+        loc <- whereami;
+        return $ loc == (1,0)
+      };
+entities:
+  - name: rock
+    display:
+      char: '$'
+      attr: gold
+    description:
+      - Not your average rock!
+    properties: [pickable]
+    capabilities: [move]
+robots:
+  - name: base
+    dir: east
+    devices:
+      - logger
+      - grabber
+      - welder
+solution: |
+  grab;
+  equip "rock";
+  move
+known: [rock]
+world:
+  dsl: |
+    {grass}
+  palette:
+    'B': [grass, rock, base]
+  upperleft: [0, 0]
+  map: |
+    B
