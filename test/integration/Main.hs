@@ -505,7 +505,7 @@ testScenarioSolutions rs ui key =
         let msgs = g ^.. robotInfo . robotMap . traverse . robotLog . to logToText . traverse
         assertBool "Error message should mention tank treads but not treads" $
           not (any ("- treads" `T.isInfixOf`) msgs)
-          && (any ("- tank treads" `T.isInfixOf`) msgs)
+            && (any ("- tank treads" `T.isInfixOf`) msgs)
     ]
  where
   -- expectFailIf :: Bool -> String -> TestTree -> TestTree
