@@ -102,7 +102,7 @@ import Control.Monad (forM_, unless, (<=<))
 import Data.Bifunctor (first)
 import Data.Char (toLower)
 import Data.Either.Extra (maybeToEither)
-import Data.Foldable (Foldable (..))
+import Data.Foldable (Foldable (elem, foldl', null))
 import Data.Function (on)
 import Data.Hashable
 import Data.IntMap (IntMap)
@@ -243,19 +243,30 @@ data Combustibility = Combustibility
   --   See <https://math.stackexchange.com/a/1243629>.
   , duration :: (Integer, Integer)
   -- ^ min and max tick counts for combustion to persist
+  , delay :: Integer
+  -- ^ Delay until this entity may start igniting its neighbors.
   , product :: Maybe EntityName
   -- ^ what entity, if any, is left over after combustion
   }
-  deriving (Eq, Ord, Show, Read, Generic, Hashable, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Read, Generic, Hashable, ToJSON)
+
+instance FromJSON Combustibility where
+  parseJSON = withObject "Combustibility" $ \v -> do
+    ignition <- v .: "ignition"
+    duration <- v .: "duration"
+    delay <- v .:? "delay" .!= 0
+    product <- v .: "product"
+    pure Combustibility {..}
 
 -- | The default combustion specification for a combustible entity
 --   with no combustion specification:
 --
 --   * ignition rate 0.5
 --   * duration (100, 200)
+--   * delay of 0
 --   * product @ash@
 defaultCombustibility :: Combustibility
-defaultCombustibility = Combustibility 0.5 (100, 200) (Just "ash")
+defaultCombustibility = Combustibility 0.5 (100, 200) 0 (Just "ash")
 
 ------------------------------------------------------------
 -- Entity

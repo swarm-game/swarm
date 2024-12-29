@@ -67,7 +67,11 @@ igniteCommand c d = do
   let selfCombustibility = (e ^. entityCombustion) ? defaultCombustibility
   createdAt <- getNow
   combustionDurationRand <- addCombustionBot e selfCombustibility createdAt loc
-  forM_ (getNeighborLocs loc) $ igniteNeighbor createdAt combustionDurationRand
+  let warmup = delay selfCombustibility
+  let neighborAffectDuration = max 0 (combustionDurationRand - warmup)
+  when (neighborAffectDuration > 0) $
+    forM_ (getNeighborLocs loc) $
+      igniteNeighbor createdAt warmup neighborAffectDuration
  where
   verb = "ignite"
   verbed = "ignited"
@@ -117,7 +121,7 @@ addCombustionBot inputEntity combustibility ts loc = do
       ts
   return combustionDurationRand
  where
-  Combustibility _ durationRange maybeCombustionProduct = combustibility
+  Combustibility _ durationRange _ maybeCombustionProduct = combustibility
 
 -- | A system program for a "combustion robot", to burn an entity
 --   after it is ignited.
@@ -141,7 +145,7 @@ addCombustionBot inputEntity combustibility ts loc = do
 --    cells. This would avoid polluting the logic of the currently burning cell
 --    with logic to manage probabilities of combustion propagation.
 combustionProgram :: Integer -> Combustibility -> TSyntax
-combustionProgram combustionDuration (Combustibility _ _ maybeCombustionProduct) =
+combustionProgram combustionDuration (Combustibility _ _ _ maybeCombustionProduct) =
   [tmQ|
     wait $int:combustionDuration;
     if ($int:invQuantity > 0) {
@@ -156,18 +160,25 @@ combustionProgram combustionDuration (Combustibility _ _ maybeCombustionProduct)
     Nothing -> (0, "")
     Just p -> (1, p)
 
--- | We treat the 'ignition' field in the 'Combustibility' record
--- as a /rate/ in a Poisson distribution.
--- Ignition of neighbors depends on that particular neighbor entity's
--- combustion /rate/, but also on the duration
--- that the current entity will burn.
+-- | Possibly ignite a neighbor of a source entity that is combusting.
+--   @creationTime@ is the time the source entity began to combust.
+--   @warmup@ is the number of ticks of delay that the source entity
+--   needs to burn before it will start affecting its neighbors;
+--   @sourceDuration@ is the number of ticks that it will potentially
+--   affect its neighbors.
+--
+--   We treat the 'ignition' field in the 'Combustibility' record as a
+--   /rate/ in a Poisson distribution.  Ignition of neighbors depends
+--   on that particular neighbor entity's combustion /rate/, but also
+--   on the @sourceDuration@ time that the current entity will burn.
 igniteNeighbor ::
   Has (State GameState) sig m =>
   TimeSpec ->
   Integer ->
+  Integer ->
   Cosmic Location ->
   m ()
-igniteNeighbor creationTime sourceDuration loc = do
+igniteNeighbor creationTime warmup sourceDuration loc = do
   maybeEnt <- entityAt loc
   forM_ maybeEnt igniteEntity
  where
@@ -177,7 +188,8 @@ igniteNeighbor creationTime sourceDuration loc = do
       when (probabilityOfIgnition >= threshold) $ do
         ignitionDelayRand <- uniform (0, 1)
         let ignitionDelay =
-              floor
+              (warmup +)
+                . floor
                 . min (fromIntegral sourceDuration)
                 . negate
                 $ log ignitionDelayRand / rate
