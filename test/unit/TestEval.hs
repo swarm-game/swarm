@@ -388,8 +388,9 @@ testEval g =
             ("read \"paper: 52\" : Int" `evaluatesToV` (52 :: Integer))
         , testCase
             "read paper with tuple"
-            ("read \"paper: (3, false, ())\" : Int * Bool * Unit"
-             `evaluatesToV` (3 :: Integer, (False, ())))
+            ( "read \"paper: (3, false, ())\" : Int * Bool * Unit"
+                `evaluatesToV` (3 :: Integer, (False, ()))
+            )
         ]
     , testGroup
         "records - #1093"

@@ -1230,8 +1230,9 @@ execConst runChildProg c vs s k = do
         ("paper: " `T.isPrefixOf` paperName)
           `holdsOrFail` ["Can only erase paper, not", indefinite paperName <> "."]
         em <- use $ landscape . terrainAndEntities . entityMap
-        paper <- lookupEntityName "paper" em
-          `isJustOrFail` ["Can't erase, I don't know what paper is."]
+        paper <-
+          lookupEntityName "paper" em
+            `isJustOrFail` ["Can't erase, I don't know what paper is."]
 
         robotInventory %= delete toErase
         robotInventory %= insert paper
