@@ -63,12 +63,12 @@ import Data.Maybe (fromMaybe)
 import Data.Semigroup (Last (..))
 import Data.Yaml (FromJSON, ToJSON)
 import GHC.Generics (Generic)
-import Swarm.Game.Entity (Entity)
+import Swarm.Game.Entity (Entity, entityHash)
 import Swarm.Game.Location
+import Swarm.Game.Scenario.Topography.Modify
 import Swarm.Game.Terrain (TerrainMap, TerrainType (BlankT), terrainByIndex, terrainName)
 import Swarm.Game.Universe
 import Swarm.Game.World.Coords
-import Swarm.Game.World.Modify
 import Swarm.Util ((?))
 import Swarm.Util.Erasable
 import Prelude hiding (lookup)
@@ -278,7 +278,7 @@ update ::
   World t Entity ->
   (World t Entity, CellUpdate Entity)
 update i g w@(World f t m) =
-  (wNew, classifyModification entityBefore entityAfter)
+  (wNew, classifyModification (view entityHash) entityBefore entityAfter)
  where
   wNew = World f t $ M.insert i entityAfter m
   entityBefore = lookupEntity i w
