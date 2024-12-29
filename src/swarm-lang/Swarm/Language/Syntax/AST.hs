@@ -142,6 +142,8 @@ data Term' ty
   | -- | Run the given command, then suspend and wait for a new REPL
     --   input.
     SSuspend (Syntax' ty)
+  | -- | A type literal.
+    TType Type
   deriving
     ( Eq
     , Show

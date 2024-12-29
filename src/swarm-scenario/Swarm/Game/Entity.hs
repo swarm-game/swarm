@@ -102,13 +102,13 @@ import Control.Monad (forM_, unless, (<=<))
 import Data.Bifunctor (first)
 import Data.Char (toLower)
 import Data.Either.Extra (maybeToEither)
+import Data.Foldable (Foldable (..))
 import Data.Function (on)
 import Data.Hashable
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IS
-import Data.List (foldl')
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -136,7 +136,7 @@ import Swarm.Util.Effect (withThrow)
 import Swarm.Util.Yaml
 import Text.Read (readMaybe)
 import Witch
-import Prelude hiding (lookup)
+import Prelude hiding (Foldable (..), lookup)
 
 ------------------------------------------------------------
 -- Properties
@@ -424,19 +424,19 @@ data EntityMap = EntityMap
   }
   deriving (Eq, Show, Generic, ToJSON)
 
--- |
--- Note that duplicates in a single 'EntityMap' are precluded by the
--- 'buildEntityMap' function.
--- But it is possible for the latter 'EntityMap' to override
--- members of the former with the same name.
--- This replacement happens automatically with 'Map', but needs
--- to be explicitly handled for the list concatenation
--- of 'entityDefinitionOrder' (overridden entries are removed
--- from the former 'EntityMap').
+-- | Right-biased union of 'EntityMap's.
+--
+--   Note that duplicates in a single 'EntityMap' are precluded by the
+--   'buildEntityMap' function.  But it is possible for the right-hand
+--   'EntityMap' to override members of the left-hand with the same name.
+--   This replacement happens automatically with 'Map', but needs to
+--   be explicitly handled for the list concatenation of
+--   'entityDefinitionOrder' (overridden entries are removed from the
+--   former 'EntityMap').
 instance Semigroup EntityMap where
   EntityMap n1 c1 d1 <> EntityMap n2 c2 d2 =
     EntityMap
-      (n1 <> n2)
+      (n2 <> n1)
       (c1 <> c2)
       (filter ((`M.notMember` n2) . view entityName) d1 <> d2)
 

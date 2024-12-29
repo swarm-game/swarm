@@ -9,9 +9,8 @@ module Swarm.Language.Parser.Term where
 import Control.Lens (view, (^.))
 import Control.Monad (guard, join)
 import Control.Monad.Combinators.Expr
-import Data.Foldable (asum)
+import Data.Foldable (Foldable (..), asum)
 import Data.Functor (($>))
-import Data.List (foldl')
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
@@ -27,6 +26,7 @@ import Swarm.Language.Types
 import Swarm.Util (failT, findDup)
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char
+import Prelude hiding (Foldable (..))
 
 -- Imports for doctests (cabal-docspec needs this)
 

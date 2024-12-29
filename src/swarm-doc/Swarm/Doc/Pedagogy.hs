@@ -20,7 +20,8 @@ module Swarm.Doc.Pedagogy (
 
 import Control.Lens (universe, view, (^.))
 import Control.Monad (guard)
-import Data.List (foldl', intercalate, sort, sortOn)
+import Data.Foldable (Foldable (..))
+import Data.List (intercalate, sort, sortOn)
 import Data.List.Extra (zipFrom)
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -58,6 +59,7 @@ import Swarm.Language.Syntax
 import Swarm.Language.Text.Markdown (docToText, findCode)
 import Swarm.Language.Types (Polytype)
 import Swarm.Util.Effect (ignoreWarnings)
+import Prelude hiding (Foldable (..))
 
 -- * Constants
 

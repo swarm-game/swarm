@@ -164,7 +164,7 @@ entities:
       char: 'k'
     description:
       - Used by an `unlocker`{=entity} to open a a `locked door`{=entity}
-    properties: [known]
+    properties: [known, pickable]
   - name: unlocker
     display:
       char: 'u'
@@ -190,7 +190,7 @@ entities:
       attr: wood
     description:
       - wall
-    properties: [known, unwalkable]
+    properties: [known, unwalkable, boundary]
   - name: oats
     display:
       attr: oats

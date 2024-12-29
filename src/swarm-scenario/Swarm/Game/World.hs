@@ -71,7 +71,7 @@ import Swarm.Game.Universe
 import Swarm.Game.World.Coords
 import Swarm.Util ((?))
 import Swarm.Util.Erasable
-import Prelude hiding (lookup)
+import Prelude hiding (Foldable (..), lookup)
 
 ------------------------------------------------------------
 -- World function
