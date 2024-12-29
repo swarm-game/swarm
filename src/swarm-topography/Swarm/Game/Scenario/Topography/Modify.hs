@@ -4,11 +4,9 @@
 -- Captures the various possibilities of cell
 -- modification as a sum type for use by the structure recognizer
 -- (see 'Swarm.Game.Scenario.Topography.Structure.Recognition.Tracking.entityModified').
-module Swarm.Game.World.Modify where
+module Swarm.Game.Scenario.Topography.Modify where
 
-import Control.Lens (view)
 import Data.Function (on)
-import Swarm.Game.Entity (Entity, entityHash)
 import Swarm.Game.Scenario.Topography.Terraform
 
 -- | Compare to 'WorldUpdate' in "Swarm.Game.World"
@@ -21,15 +19,17 @@ getModification (NoChange _) = Nothing
 getModification (Modified x) = Just x
 
 classifyModification ::
+  Eq b =>
+  (a -> b) ->
   -- | before
-  Maybe Entity ->
+  Maybe a ->
   -- | after
-  Maybe Entity ->
-  CellUpdate Entity
-classifyModification Nothing Nothing = NoChange Nothing
-classifyModification Nothing (Just x) = Modified $ Add x
-classifyModification (Just x) Nothing = Modified $ Remove x
-classifyModification (Just x) (Just y) =
-  if ((/=) `on` view entityHash) x y
+  Maybe a ->
+  CellUpdate a
+classifyModification _ Nothing Nothing = NoChange Nothing
+classifyModification _ Nothing (Just x) = Modified $ Add x
+classifyModification _ (Just x) Nothing = Modified $ Remove x
+classifyModification f (Just x) (Just y) =
+  if ((/=) `on` f) x y
     then Modified $ Swap x y
     else NoChange $ Just x
