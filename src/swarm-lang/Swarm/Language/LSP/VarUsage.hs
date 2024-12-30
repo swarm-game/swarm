@@ -114,7 +114,6 @@ getUsage bindings (CSyntax _pos t _comments) = case t of
   SProj s _ -> getUsage bindings s
   SAnnotate s _ -> getUsage bindings s
   SSuspend s -> getUsage bindings s
-
   -- Explicitly enumerate the cases with no variables, instead of a
   -- catch-all, so that we get a warning when adding new constructors.
   TUnit {} -> mempty
