@@ -110,4 +110,25 @@ getUsage bindings (CSyntax _pos t _comments) = case t of
     Just v -> checkOccurrences bindings v Bind [s1, s2]
     Nothing -> getUsage bindings s1 <> getUsage bindings s2
   SDelay s -> getUsage bindings s
-  _ -> mempty
+  SRcd m -> M.foldMapWithKey (\x -> maybe (getUsage bindings (STerm (TVar x))) (getUsage bindings)) m
+  SProj s _ -> getUsage bindings s
+  SAnnotate s _ -> getUsage bindings s
+  SSuspend s -> getUsage bindings s
+
+  -- Explicitly enumerate the cases with no variables, instead of a
+  -- catch-all, so that we get a warning when adding new constructors.
+  TUnit {} -> mempty
+  TConst {} -> mempty
+  TDir {} -> mempty
+  TInt {} -> mempty
+  TAntiInt {} -> mempty
+  TText {} -> mempty
+  TAntiText {} -> mempty
+  TBool {} -> mempty
+  TRobot {} -> mempty
+  TRef {} -> mempty
+  TRequireDevice {} -> mempty
+  TRequire {} -> mempty
+  SRequirements {} -> mempty
+  STydef {} -> mempty
+  TType {} -> mempty
