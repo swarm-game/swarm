@@ -9,7 +9,7 @@
         "ignition": {
             "default": 0.5,
             "type": "number",
-            "description": "Rate of ignition by a neighbor, per tick."
+            "description": "Rate of ignition by a neighbor.  This is the rate parameter of a Poisson distribution, i.e. the expected number of times per tick that a combusting neighbor would tend to ignite this entity.  Typically a number between 0 and 1, but it can be any nonnegative real number (default: 0.5)."
         },
         "duration": {
             "type": "array",
@@ -17,10 +17,15 @@
             "$ref": "range.json",
             "description": "For combustible entities, a 2-tuple of integers specifying the minimum and maximum amount of time that the combustion shall persist."
         },
+        "delay": {
+            "type": "number",
+            "default": 0.0,
+            "description": "Warmup delay, i.e. the number of ticks combustion must persist until this entity will potentially start igniting its neighbors (default: 0)."
+        },
         "product": {
             "default": "ash",
             "type": ["string", "null"],
-            "description": "What entity, if any, is left over after combustion"
+            "description": "What entity, if any, is left over after combustion."
         }
     }
 }

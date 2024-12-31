@@ -21,6 +21,7 @@ solution: |
   ignite forward;
   turn right;
   move; move; move;
+  ignite left;
   turn right;
   move;
   ignite left;
@@ -75,6 +76,18 @@ entities:
       duration: [8, 8]
       product: null
     properties: [known, pickable, combustible]
+  - name: slowfuse
+    display:
+      attr: silver
+      char: '~'
+    description:
+      - Reliably combustible, but burns more slowly
+    combustion:
+      ignition: 20
+      duration: [64, 64]
+      delay: 63
+      product: null
+    properties: [known, pickable, combustible]
   - name: dynamite
     display:
       attr: red
@@ -103,6 +116,7 @@ world:
     'b': [grass, board]
     'i': [grass, cotton]
     'F': [grass, fuse]
+    'f': [grass, slowfuse]
     'd': [grass, dynamite, judge]
     '.': [grass]
   upperleft: [0, 0]
@@ -123,11 +137,11 @@ world:
     ......iiiiiiii........F...F...F...F..
     iiiiiiiiiiiiiii..Ω.FFFF...FFFFF...d..
     ......iiiiiiii.......................
-    iiiiiiiiiiiii.....qqqqqqqqqqqqqqqq...
-    ......iiiiii......qqqqqqqqqqqqqqqq...
-    iiiiiiiiiii.......qqqqqqqqqqqqqqqq...
-    ..................qqqqqqqqqqqqqqqq...
-    ..................qqqqqqqqqqqqqqqq...
-    ..................qqqqqqqqqqqqqqqq...
-    ..................qqqqqqqqqqqqqqqq...
+    iiiiiiiiiiiii..f..qqqqqqqqqqqqqqqq...
+    ......iiiiii...f..qqqqqqqqqqqqqqqq...
+    iiiiiiiiiii....f..qqqqqqqqqqqqqqqq...
+    ...............f..qqqqqqqqqqqqqqqq...
+    ..ffff...ffff..f..qqqqqqqqqqqqqqqq...
+    ..f..f...f..f..f..qqqqqqqqqqqqqqqq...
+    ..f..fffff..ffff..qqqqqqqqqqqqqqqq...
     ..................qqqqqqqqqqqqqqqq...
