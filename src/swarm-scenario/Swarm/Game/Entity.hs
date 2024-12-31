@@ -104,7 +104,6 @@ import Data.Char (toLower)
 import Data.Either.Extra (maybeToEither)
 import Data.Foldable (Foldable (..))
 import Data.Function (on)
-import Data.Functor.Identity
 import Data.Hashable
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IM
@@ -448,17 +447,7 @@ instance Semigroup EntityMap where
     notOverridden = (`M.notMember` n2) . view entityName
     removeOverriddenDevices (Capabilities m) =
       Capabilities
-        . runIdentity
-        -- traverseMaybeWithKey allows us in one operation to filter
-        -- the NonEmpty list of devices for each capability, turn the
-        -- resulting lists into Maybe NonEmpty, and then remove from
-        -- the map any that became Nothing.  However, it is more
-        -- general than we need: it gives us access to the key which
-        -- we don't need (this explains the call to 'const'), and runs
-        -- in an arbitrary Applicative which we also don't need (this
-        -- explains the Identity).
-        . M.traverseMaybeWithKey
-          (const (Identity . NE.nonEmpty . NE.filter (notOverridden . device)))
+        . M.mapMaybe (NE.nonEmpty . NE.filter (notOverridden . device))
         $ m
 
 instance Monoid EntityMap where
