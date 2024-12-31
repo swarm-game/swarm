@@ -507,6 +507,7 @@ testScenarioSolutions rs ui key =
         assertBool "Error message should mention tank treads but not treads" $
           not (any ("- treads" `T.isInfixOf`) msgs)
             && any ("- tank treads" `T.isInfixOf`) msgs
+    , testSolution Default "Testing/2253-halt-waiting"
     ]
  where
   -- expectFailIf :: Bool -> String -> TestTree -> TestTree

@@ -1,0 +1,27 @@
+version: 1
+name: Halt a waiting robot
+description: |
+  Calling `halt` on a waiting robot should make it immediately idle,
+  so it can e.g. be `reprogram`med
+creative: true
+objectives:
+  - goal:
+      - Get some gold
+    condition: |
+      as base { has "gold" };
+robots:
+  - name: base
+    dir: north
+    devices:
+      - logger
+solution: |
+  r <- build {move; wait 10000};
+  wait 2;
+  halt r; wait 1; reprogram r {create "gold"; give base "gold"}
+world:
+  dsl: |
+    {grass}
+  palette:
+    'B': [grass, null, base]
+  map: |
+    B
