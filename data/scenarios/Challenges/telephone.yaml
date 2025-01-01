@@ -47,6 +47,12 @@ objectives:
         there.  For example, if you printed `((3,1), "O")` then the
         utility robot would place an `O`{=entity} 3 units to the left
         and 1 unit above the bottom-right corner of the blue square.
+      - |
+        To send something via the shuttle, just place the item you
+        wish to send on the purple cell at the center of the eastern
+        terminal, that is, the cell with coordinates `(88, -10)`.  The
+        next time the shuttle arrives, it will notice the item and
+        pick it up for delivery.
     condition: |
       judge <- robotNamed "judge";
       as judge { has "X" }
@@ -113,6 +119,8 @@ attrs:
   - name: purpleborder
     fg: '#d885ff'
     bg: '#002f00'
+  - name: purplebg
+    bg: '#d885ff'
   - name: yg
     fg: '#ffff8f'
     bg: '#002f00'
@@ -163,6 +171,10 @@ entities:
     description:
       - X
     properties: [known]
+terrains:
+  - name: terminal
+    attr: purplebg
+    description: Shuttle terminal
 known: [mountain, tree, water, wavy water]
 world:
   dsl: |
@@ -188,6 +200,7 @@ world:
     'S': [grass, track, shuttle]
     'P': [grass, null, photocopier]
     'J': [grass, null, judge]
+    't': [terminal]
   map: |
     ########################################################################################################################
     #..........................................................AA..........................................................#
@@ -199,7 +212,7 @@ world:
     #.................%........%..............................AAAAA.............................%........%.......TTT.......#
     #.................%J.......%.............................AAA................................%........%.........T.......#
     #.................%%%%%%%%%%..&&&.......................AAAAA..........................&&&..%%%%%%%%%%.......TTTT......#
-    #.............................&P==========================AA====================S=======.&..............^.....TTTT.....#
+    #.............................&P==========================AA====================S=======t&..............^.....TTTT.....#
     #.............................&&&........................AAAA..........................&&&.....................TT......#
     #..........................................................AAA.........................................................#
     #...........................................................AAAA.........................................WWW...........#
