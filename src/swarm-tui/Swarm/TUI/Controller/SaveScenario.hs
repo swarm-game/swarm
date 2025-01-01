@@ -11,7 +11,7 @@ module Swarm.TUI.Controller.SaveScenario (
 -- See Note [liftA2 re-export from Prelude]
 import Brick.Widgets.List qualified as BL
 import Control.Lens as Lens
-import Control.Monad (forM_, void, when)
+import Control.Monad (forM_, unless, void, when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState)
 import Data.Maybe (fromMaybe)
@@ -48,6 +48,7 @@ saveScenarioInfoOnFinish p = do
         WinConditions (Won _ _) _ -> True
         _ -> False
   ts <- use $ gameState . temporal . ticks
+  saved <- use $ gameState . completionStatsSaved
 
   -- NOTE: This traversal is apparently not the same one as used by
   -- the scenario selection menu, so the menu needs to be updated separately.
@@ -57,8 +58,12 @@ saveScenarioInfoOnFinish p = do
 
   replHist <- use $ uiState . uiGameplay . uiREPL . replHistory
   let determinator = CodeSizeDeterminators initialRunCode $ replHist ^. replHasExecutedManualInput
-  currentScenarioInfo
-    %= updateScenarioInfoOnFinish determinator t ts won
+
+  -- Don't update scenario statistics if we have previously saved
+  -- statistics for the current scenario upon scenario completion.
+  unless saved $
+    currentScenarioInfo
+      %= updateScenarioInfoOnFinish determinator t ts won
   status <- preuse currentScenarioInfo
   case status of
     Nothing -> return ()
@@ -70,6 +75,9 @@ saveScenarioInfoOnFinish p = do
             attainAchievement' t (Just p) (GlobalAchievement CompletedSingleTutorial)
         _ -> return ()
       liftIO $ saveScenarioInfo p si
+
+  gameState . completionStatsSaved .= won
+
   return status
 
 -- | Don't save progress for developers and cheaters.
