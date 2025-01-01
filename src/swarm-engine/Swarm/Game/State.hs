@@ -15,6 +15,7 @@ module Swarm.Game.State (
   creativeMode,
   winCondition,
   winSolution,
+  completionStatsSaved,
 
   -- ** Launch parameters
   LaunchParams,
@@ -185,6 +186,7 @@ data GameState = GameState
   , _needsRedraw :: Bool
   , _gameControls :: GameControls
   , _messageInfo :: Messages
+  , _completionStatsSaved :: Bool
   }
 
 makeLensesNoSigs ''GameState
@@ -274,6 +276,17 @@ gameControls :: Lens' GameState GameControls
 
 -- | Message info
 messageInfo :: Lens' GameState Messages
+
+-- | Whether statistics for the current scenario have been saved to
+--   disk *upon scenario completion*. (It should remain False whenever
+--   the current scenario has not been completed, either because there
+--   is no win condition or because the player has not yet achieved
+--   it.)  If this is set to True, we should not update completion
+--   statistics any more.  We need this to make sure we don't
+--   overwrite statistics if the user continues playing the scenario
+--   after completing it (or even if the user stays in the completion
+--   menu for a while before quitting; see #1932).
+completionStatsSaved :: Lens' GameState Bool
 
 ------------------------------------------------------------
 -- Utilities
@@ -476,6 +489,7 @@ initGameState gsc =
     , _needsRedraw = False
     , _gameControls = initGameControls
     , _messageInfo = initMessages
+    , _completionStatsSaved = False
     }
 
 -- | Provide an entity accessor via the MTL transformer State API.
