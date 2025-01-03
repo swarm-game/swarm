@@ -273,9 +273,9 @@ data Const
     Format
   | -- | Try to turn a string into a value
     Read
-  | -- | Print a string onto a piece of paper
+  | -- | Print a string onto a printable surface
     Print
-  | -- | Erase a piece of paper
+  | -- | Erase a printable surface
     Erase
   | -- | Concatenate string values
     Concat
