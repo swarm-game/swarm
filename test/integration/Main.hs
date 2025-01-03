@@ -250,6 +250,7 @@ testScenarioSolutions rs ui key =
         , testSolution (Sec 10) "Challenges/dimsum"
         , testSolution (Sec 15) "Challenges/gallery"
         , testSolution (Sec 10) "Challenges/telephone"
+        , testSolution (Sec 10) "Challenges/flower-count"
         , testGroup
             "Mazes"
             [ testSolution Default "Challenges/Mazes/easy_cave_maze"
