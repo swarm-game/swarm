@@ -893,9 +893,10 @@ execConst runChildProg c vs s k = do
             omni <- isPrivilegedBot
             case omni || not (target ^. systemRobot) of
               True -> zoomRobots $ do
-                -- Cancel its CESK machine, and put it to sleep.
+                -- Cancel its CESK machine, and wake it up to ensure
+                -- it can do cleanup + run to completion.
                 robotMap . at targetID . _Just . machine %= cancel
-                sleepForever targetID
+                activateRobot targetID
                 return $ mkReturn ()
               False -> throwError $ cmdExn c ["You are not authorized to halt that robot."]
       _ -> badConst
