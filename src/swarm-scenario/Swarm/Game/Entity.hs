@@ -102,7 +102,7 @@ import Control.Monad (forM_, unless, (<=<))
 import Data.Bifunctor (first)
 import Data.Char (toLower)
 import Data.Either.Extra (maybeToEither)
-import Data.Foldable (Foldable (..))
+import Data.Foldable (Foldable (elem, foldl', null))
 import Data.Function (on)
 import Data.Hashable
 import Data.IntMap (IntMap)
@@ -247,19 +247,30 @@ data Combustibility = Combustibility
   --   See <https://math.stackexchange.com/a/1243629>.
   , duration :: (Integer, Integer)
   -- ^ min and max tick counts for combustion to persist
+  , delay :: Integer
+  -- ^ Delay until this entity may start igniting its neighbors.
   , product :: Maybe EntityName
   -- ^ what entity, if any, is left over after combustion
   }
-  deriving (Eq, Ord, Show, Read, Generic, Hashable, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Read, Generic, Hashable, ToJSON)
+
+instance FromJSON Combustibility where
+  parseJSON = withObject "Combustibility" $ \v -> do
+    ignition <- v .: "ignition"
+    duration <- v .: "duration"
+    delay <- v .:? "delay" .!= 0
+    product <- v .: "product"
+    pure Combustibility {..}
 
 -- | The default combustion specification for a combustible entity
 --   with no combustion specification:
 --
 --   * ignition rate 0.5
 --   * duration (100, 200)
+--   * delay of 0
 --   * product @ash@
 defaultCombustibility :: Combustibility
-defaultCombustibility = Combustibility 0.5 (100, 200) (Just "ash")
+defaultCombustibility = Combustibility 0.5 (100, 200) 0 (Just "ash")
 
 ------------------------------------------------------------
 -- Entity
@@ -433,16 +444,26 @@ data EntityMap = EntityMap
 --   Note that duplicates in a single 'EntityMap' are precluded by the
 --   'buildEntityMap' function.  But it is possible for the right-hand
 --   'EntityMap' to override members of the left-hand with the same name.
---   This replacement happens automatically with 'Map', but needs to
---   be explicitly handled for the list concatenation of
---   'entityDefinitionOrder' (overridden entries are removed from the
---   former 'EntityMap').
+--   For example, this is how custom entities defined in a scenario
+--   can override standard entities. This replacement happens
+--   automatically with 'Map' (as long as we keep in mind that Map
+--   union is *left*-biased), but needs to be explicitly handled for the
+--   list concatenation of 'entityDefinitionOrder' (overridden entries
+--   are removed from the former 'EntityMap'), and for 'entitiesByCap',
+--   which are organized by capability rather than by entity.
 instance Semigroup EntityMap where
   EntityMap n1 c1 d1 <> EntityMap n2 c2 d2 =
     EntityMap
       (n2 <> n1)
-      (c1 <> c2)
-      (filter ((`M.notMember` n2) . view entityName) d1 <> d2)
+      (removeOverriddenDevices c1 <> c2)
+      (filter notOverridden d1 <> d2)
+   where
+    notOverridden :: Entity -> Bool
+    notOverridden = (`M.notMember` n2) . view entityName
+    removeOverriddenDevices (Capabilities m) =
+      Capabilities
+        . M.mapMaybe (NE.nonEmpty . NE.filter (notOverridden . device))
+        $ m
 
 instance Monoid EntityMap where
   mempty = EntityMap M.empty mempty []

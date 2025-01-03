@@ -1,0 +1,49 @@
+version: 1
+name: Overridden entity capabilities
+description: |
+  Overridden standard entity should not still be suggested for its
+  capabilities. The error message should suggest "- tank treads", not
+  "- treads or tank treads".
+creative: false
+objectives:
+  - goal:
+      - Place a rock
+    condition: |
+      as base {
+        isHere "rock"
+      };
+entities:
+  - name: treads
+    display:
+      char: '#'
+      attr: red
+    description:
+      - Broken treads
+    properties: [known, pickable]
+robots:
+  - name: base
+    dir: east
+    devices:
+      - logger
+      - clock
+      - grabber
+    inventory:
+      - [1, rock]
+  - name: crasher
+    dir: east
+    devices:
+      - logger
+      - treads
+    program: |
+      move
+solution: |
+  wait 5; place "rock"
+world:
+  dsl: |
+    {grass}
+  palette:
+    'C': [grass, null, crasher]
+    'B': [grass, null, base]
+  upperleft: [0, 0]
+  map: |
+    BC

@@ -71,3 +71,4 @@ Achievements
 2085-toplevel-mask.yaml
 2086-structure-palette.yaml
 2239-custom-entity.yaml
+2240-overridden-entity-capabilities.yaml

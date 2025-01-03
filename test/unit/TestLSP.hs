@@ -72,6 +72,22 @@ testLSP =
         checkFile
           "single-bind-used.sw"
           []
+    , testCase "lambda with var used inside annotation" $
+        checkFile
+          "lambda-with-annot.sw"
+          []
+    , testCase "record with used var" $
+        checkFile
+          "lambda-with-record-used.sw"
+          []
+    , testCase "record with used var abbrev" $
+        checkFile
+          "lambda-with-record-used-abbrev.sw"
+          []
+    , testCase "record with unused var" $
+        checkFile
+          "lambda-with-record-unused.sw"
+          [UnusedVar "y" VU.Lambda]
     ]
  where
   checkFile :: FilePath -> [UnusedVar] -> IO ()
