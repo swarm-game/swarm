@@ -391,6 +391,16 @@ testEval g =
             ( "read \"paper: (3, false, ())\" : Int * Bool * Unit"
                 `evaluatesToV` (3 :: Integer, (False, ()))
             )
+        , testCase
+            "read random entity with tuple"
+            ( "read \"foo: (3, false, ())\" : Int * Bool * Unit"
+                `evaluatesToV` (3 :: Integer, (False, ()))
+            )
+        , testCase
+            "read Text value containing colon"
+            ( "read \"\\\"hi: there\\\"\" : Text"
+                `evaluatesToV` ("hi: there" :: Text)
+            )
         ]
     , testGroup
         "records - #1093"
