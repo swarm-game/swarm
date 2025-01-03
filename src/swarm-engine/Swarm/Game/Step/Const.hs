@@ -1227,7 +1227,7 @@ execConst runChildProg c vs s k = do
     Erase -> case vs of
       [VText printableName] -> do
         toErase <- ensureItem printableName "erase"
-        let (baseName, printedMatter) = T.break (==':') printableName
+        let (baseName, printedMatter) = T.break (== ':') printableName
         em <- use $ landscape . terrainAndEntities . entityMap
         erased <-
           lookupEntityName baseName em
