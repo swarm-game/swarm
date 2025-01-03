@@ -1215,27 +1215,30 @@ execConst runChildProg c vs s k = do
         Just v -> return (mkReturn v)
       _ -> badConst
     Print -> case vs of
-      [VText txt] -> do
-        paper <- ensureItem "paper" "print"
-        let newEntityName = "paper: " <> txt
-        robotInventory %= delete paper
-        robotInventory %= insert (paper & entityName .~ newEntityName)
+      [VText printableName, VText txt] -> do
+        printable <- ensureItem printableName "print"
+        (printable `hasProperty` Printable)
+          `holdsOrFail` ["You cannot print on", indefinite printableName <> "!"]
+        let newEntityName = printableName <> ": " <> txt
+        robotInventory %= delete printable
+        robotInventory %= insert (printable & entityName .~ newEntityName)
         return $ mkReturn newEntityName
       _ -> badConst
     Erase -> case vs of
-      [VText paperName] -> do
-        toErase <- ensureItem paperName "erase"
-        (paperName /= "paper")
-          `holdsOrFail` ["That is already blank!"]
-        ("paper: " `T.isPrefixOf` paperName)
-          `holdsOrFail` ["Can only erase paper, not", indefinite paperName <> "."]
+      [VText printableName] -> do
+        toErase <- ensureItem printableName "erase"
+        let (baseName, printedMatter) = T.break (==':') printableName
         em <- use $ landscape . terrainAndEntities . entityMap
-        paper <-
-          lookupEntityName "paper" em
-            `isJustOrFail` ["Can't erase, I don't know what paper is."]
+        erased <-
+          lookupEntityName baseName em
+            `isJustOrFail` ["I've never heard of", indefiniteQ baseName <> "."]
+        (erased `hasProperty` Printable)
+          `holdsOrFail` ["You cannot erase", indefinite baseName <> "!"]
+        (not $ T.null printedMatter)
+          `holdsOrFail` ["That is already blank!"]
 
         robotInventory %= delete toErase
-        robotInventory %= insert paper
+        robotInventory %= insert erased
         return $ mkReturn ()
       _ -> badConst
     Chars -> case vs of

@@ -1100,7 +1100,7 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Exp -> arithBinT
   Format -> [tyQ| a -> Text |]
   Read -> [tyQ| Text -> a |]
-  Print -> [tyQ| Text -> Cmd Text |]
+  Print -> [tyQ| Text -> Text -> Cmd Text |]
   Erase -> [tyQ| Text -> Cmd Unit |]
   Concat -> [tyQ| Text -> Text -> Text |]
   Chars -> [tyQ| Text -> Int |]

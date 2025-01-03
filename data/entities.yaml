@@ -69,7 +69,7 @@
     char: '■'
   description:
     - A flat material made of pressed and dried wood fibers, used as a surface on which to inscribe symbols.
-  properties: [pickable, combustible]
+  properties: [pickable, combustible, printable]
   combustion:
     ignition: 0.5
     duration: [10, 20]

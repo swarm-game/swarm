@@ -69,7 +69,7 @@ def go =
       res <- scanAt (h-1) (v-1);
       case res
         (\_. return ())
-        (\t. atTerminal (p <- print (format ((h-1,v-1),t)); waitToPlace p))
+        (\t. atTerminal (p <- print "paper" (format ((h-1,v-1),t)); waitToPlace p))
     )
   )
 end

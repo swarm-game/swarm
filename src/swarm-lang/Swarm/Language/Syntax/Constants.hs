@@ -821,22 +821,22 @@ constInfo c = case c of
   Format -> function 1 $ shortDoc Set.empty "Turn an arbitrary value into a string."
   Read -> function 2 $ shortDoc Set.empty "Try to read a string into a value of the expected type."
   Print ->
-    command 1 short
+    command 2 short
       . doc
         (Set.singleton $ Mutation $ RobotChange InventoryChange)
-        "Print text onto a piece of paper."
-      $ [ "Consumes one `paper` entity from your inventory, and produces an entity"
-        , "whose name is \"paper: \" concatenated with the given text."
-        , "In conjunction with `format`, this can be used to print values onto paper"
+        "Print text onto an entity."
+      $ [ "`print p txt` Consumes one printable `p` entity from your inventory, and produces an entity"
+        , "whose name is concatenated with a colon and the given text."
+        , "In conjunction with `format`, this can be used to print values onto entities such as `paper`{=entity}"
         , "and give them to other robots, which can reconstitute the values with `read`."
         ]
   Erase ->
     command 1 short
       . doc
         (Set.singleton $ Mutation $ RobotChange InventoryChange)
-        "Erase a piece of paper."
-      $ [ "Consumes the named entity from your inventory, whose name must begin with"
-        , "\"paper: \", and produces a \"paper\" entity.  This can be used to undo"
+        "Erase an entity."
+      $ [ "Consumes the named printable entity from your inventory, which must have something"
+        , "printed on it, and produces an erased entity.  This can be used to undo"
         , "the effects of a `print` command."
         ]
   Concat -> binaryOp "++" 6 R $ shortDoc Set.empty "Concatenate the given strings."
