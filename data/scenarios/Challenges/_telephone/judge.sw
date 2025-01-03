@@ -55,7 +55,7 @@ end
 def check : Rect -> Cmd Unit = \rect.
   log "check!";
   origLoc <- whereami;
-  teleport self (93, -8);
+  teleport self (53, -8);
   b <- checkRect rect;
   if b {create "X"} {};
   teleport self origLoc; turn east;
