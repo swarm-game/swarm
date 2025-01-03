@@ -170,6 +170,10 @@ data EntityProperty
     Liquid
   | -- | Robots automatically know what this is without having to scan it.
     Known
+  | -- | Text can be printed on this entity with the
+    --   'Swarm.Language.Syntax.Print' command (and erased with
+    --   'Swarm.Language.Syntax.Erase')
+    Printable
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Generic, Hashable)
 
 instance ToJSON EntityProperty where

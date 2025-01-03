@@ -20,6 +20,7 @@ dna.yaml
 friend.yaml
 pack-tetrominoes.yaml
 dimsum.yaml
+telephone.yaml
 Mazes
 Ranching
 Sokoban

@@ -273,6 +273,10 @@ data Const
     Format
   | -- | Try to turn a string into a value
     Read
+  | -- | Print a string onto a printable surface
+    Print
+  | -- | Erase a printable surface
+    Erase
   | -- | Concatenate string values
     Concat
   | -- | Count number of characters.
@@ -816,6 +820,25 @@ constInfo c = case c of
   Geq -> binaryOp ">=" 4 N $ shortDoc Set.empty "Check that the left value is greater or equal to the right one."
   Format -> function 1 $ shortDoc Set.empty "Turn an arbitrary value into a string."
   Read -> function 2 $ shortDoc Set.empty "Try to read a string into a value of the expected type."
+  Print ->
+    command 2 short
+      . doc
+        (Set.singleton $ Mutation $ RobotChange InventoryChange)
+        "Print text onto an entity."
+      $ [ "`print p txt` Consumes one printable `p` entity from your inventory, and produces an entity"
+        , "whose name is concatenated with a colon and the given text."
+        , "In conjunction with `format`, this can be used to print values onto entities such as `paper`{=entity}"
+        , "and give them to other robots, which can reconstitute the values with `read`."
+        ]
+  Erase ->
+    command 1 short
+      . doc
+        (Set.singleton $ Mutation $ RobotChange InventoryChange)
+        "Erase an entity."
+      $ [ "Consumes the named printable entity from your inventory, which must have something"
+        , "printed on it, and produces an erased entity.  This can be used to undo"
+        , "the effects of a `print` command."
+        ]
   Concat -> binaryOp "++" 6 R $ shortDoc Set.empty "Concatenate the given strings."
   Chars -> function 1 $ shortDoc Set.empty "Counts the number of characters in the text."
   Split ->

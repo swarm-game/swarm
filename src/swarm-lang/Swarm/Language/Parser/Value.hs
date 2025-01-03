@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
 --
@@ -9,6 +11,7 @@ module Swarm.Language.Parser.Value (readValue) where
 import Control.Lens ((^.))
 import Data.Either.Extra (eitherToMaybe)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Key (parseKeyComboFull)
 import Swarm.Language.Parser (readNonemptyTerm)
@@ -20,7 +23,24 @@ import Text.Megaparsec qualified as MP
 
 readValue :: Type -> Text -> Maybe Value
 readValue ty txt = do
-  s <- eitherToMaybe $ readNonemptyTerm txt
+  -- Try to strip off a prefix representing a printable entity.  Look
+  -- for the first colon or double quote.  We will ignore a colon if a
+  -- double quote comes before it, because a colon could legitimately
+  -- occur in a formatted Text value, e.g. "\"hi: there\"".  Otherwise,
+  -- strip off anything occurring before the first colon.
+  --
+  -- Note, this would break if we ever had a printable entity whose
+  -- name contains a colon; printing on such an entity would yield
+  -- entity names like "Magic: The Gathering: 6" for which `read`, as
+  -- implemented here, would not work correctly. However, that seems
+  -- unlikely.
+  let firstUnquotedColon = T.dropWhile (\c -> c /= ':' && c /= '"') txt
+  let txt' = case T.uncons firstUnquotedColon of
+        Nothing -> txt
+        Just ('"', _) -> txt
+        Just (':', t) -> t
+        _ -> txt
+  s <- eitherToMaybe $ readNonemptyTerm txt'
   _ <- eitherToMaybe $ checkTop Ctx.empty Ctx.empty Ctx.empty s ty
   toValue $ s ^. sTerm
 

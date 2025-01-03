@@ -249,6 +249,7 @@ testScenarioSolutions rs ui key =
         , testSolution Default "Challenges/pack-tetrominoes"
         , testSolution (Sec 10) "Challenges/dimsum"
         , testSolution (Sec 15) "Challenges/gallery"
+        , testSolution (Sec 10) "Challenges/telephone"
         , testGroup
             "Mazes"
             [ testSolution Default "Challenges/Mazes/easy_cave_maze"

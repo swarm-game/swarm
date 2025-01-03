@@ -1214,6 +1214,31 @@ execConst runChildProg c vs s k = do
         Nothing -> raise Read ["Could not read", showT txt, "at type", prettyText ty]
         Just v -> return (mkReturn v)
       _ -> badConst
+    Print -> case vs of
+      [VText printableName, VText txt] -> do
+        printable <- ensureItem printableName "print"
+        (printable `hasProperty` Printable)
+          `holdsOrFail` ["You cannot print on", indefinite printableName <> "!"]
+        let newEntityName = printableName <> ": " <> txt
+        robotInventory %= delete printable
+        robotInventory %= insert (printable & entityName .~ newEntityName)
+        return $ mkReturn newEntityName
+      _ -> badConst
+    Erase -> case vs of
+      [VText printableName] -> do
+        toErase <- ensureItem printableName "erase"
+        let (baseName, _) = T.break (== ':') printableName
+        em <- use $ landscape . terrainAndEntities . entityMap
+        erased <-
+          lookupEntityName baseName em
+            `isJustOrFail` ["I've never heard of", indefiniteQ baseName <> "."]
+        (erased `hasProperty` Printable)
+          `holdsOrFail` ["You cannot erase", indefinite baseName <> "!"]
+
+        robotInventory %= delete toErase
+        robotInventory %= insert erased
+        return $ mkReturn baseName
+      _ -> badConst
     Chars -> case vs of
       [VText t] -> return $ mkReturn $ T.length t
       _ -> badConst

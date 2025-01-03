@@ -69,7 +69,7 @@
     char: '■'
   description:
     - A flat material made of pressed and dried wood fibers, used as a surface on which to inscribe symbols.
-  properties: [pickable, combustible]
+  properties: [pickable, combustible, printable]
   combustion:
     ignition: 0.5
     duration: [10, 20]
@@ -884,8 +884,9 @@
     attr: device
     char: 'Д'
   description:
-    - A typewriter is used to inscribe symbols on paper, thus reifying pure, platonic information into a physical form.
+    - A typewriter is used to inscribe symbols on `paper`{=entity}, thus reifying pure, platonic information into a physical form.
   properties: [pickable]
+  capabilities: [print, erase]
 - name: 3D printer
   display:
     attr: device

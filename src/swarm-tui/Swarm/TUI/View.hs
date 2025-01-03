@@ -1122,6 +1122,7 @@ displayProperties = displayList . mapMaybe showProperty
   -- in challenge scenarios and not really something the player needs
   -- to know.
   showProperty Known = Nothing
+  showProperty Printable = Just "printable"
 
   displayList [] = emptyWidget
   displayList ps =

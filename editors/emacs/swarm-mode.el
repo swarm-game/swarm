@@ -118,6 +118,8 @@
       "run"
       "return"
       "try"
+      "print"
+      "erase"
       "swap"
       "atomic"
       "instant"
