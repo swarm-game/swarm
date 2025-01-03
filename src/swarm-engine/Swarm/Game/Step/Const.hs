@@ -1227,14 +1227,14 @@ execConst runChildProg c vs s k = do
     Erase -> case vs of
       [VText printableName] -> do
         toErase <- ensureItem printableName "erase"
-        let (baseName, printedMatter) = T.break (==':') printableName
+        let (baseName, printedMatter) = T.break (== ':') printableName
         em <- use $ landscape . terrainAndEntities . entityMap
         erased <-
           lookupEntityName baseName em
             `isJustOrFail` ["I've never heard of", indefiniteQ baseName <> "."]
         (erased `hasProperty` Printable)
           `holdsOrFail` ["You cannot erase", indefinite baseName <> "!"]
-        (not $ T.null printedMatter)
+        not (T.null printedMatter)
           `holdsOrFail` ["That is already blank!"]
 
         robotInventory %= delete toErase
