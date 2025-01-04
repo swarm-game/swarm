@@ -148,6 +148,8 @@ data Const
     Whereami
   | -- | Get the current subworld and x, y coordinates
     LocateMe
+  | -- | Get the x, y coordinates of a specific waypoints by name and index
+    Waypoint
   | -- | Get the list of x, y coordinates of the waypoints for a given name
     Waypoints
   | -- | Get the list of x, y coordinates of the southwest corner of all
@@ -694,9 +696,14 @@ constInfo c = case c of
       shortDoc
         (Set.singleton $ Query $ Sensing RobotSensing)
         "Get the current subworld and x, y coordinates."
+  Waypoint ->
+    function 2 . doc (Set.singleton $ Query APriori) "Get the x, y coordinates of a waypoint, by name and index." $
+      [ "Returns only waypoints in the same subworld as the calling robot."
+      , "Wraps around modulo the number of waypoints with the given name.  Throws an exception if there are no waypoints with the given name."
+      ]
   Waypoints ->
-    command 1 Intangible . doc (Set.singleton $ Query APriori) "Get the list of x, y coordinates of a named waypoint" $
-      [ "Return only the waypoints in the same subworld as the calling robot."
+    function 1 . doc (Set.singleton $ Query APriori) "Get the list of x, y coordinates of a named waypoint" $
+      [ "Returns only the waypoints in the same subworld as the calling robot."
       , "Since waypoint names can have plural multiplicity, returns a list of (x, y) coordinates)."
       ]
   Structures ->
@@ -708,12 +715,12 @@ constInfo c = case c of
       , "Yields an error if the supplied string is not the name of a structure."
       ]
   HasTag ->
-    command 2 Intangible . doc (Set.singleton $ Query APriori) "Check whether the given entity has the given tag" $
+    function 2 . doc (Set.singleton $ Query APriori) "Check whether the given entity has the given tag" $
       [ "Returns true if the first argument is an entity that is labeled by the tag in the second argument."
       , "Yields an error if the first argument is not a valid entity."
       ]
   TagMembers ->
-    command 1 Intangible . doc (Set.singleton $ Query APriori) "Get the entities labeled by a tag." $
+    function 1 . doc (Set.singleton $ Query APriori) "Get the entities labeled by a tag." $
       [ "Returns a list of all entities with the given tag."
       , "The order of the list is determined by the definition sequence in the scenario file."
       ]
