@@ -243,20 +243,18 @@ def completeDnaTask = \sentinel.
     returnToInputReceptacle;
     end;
 
-def iterateOrganisms = \idx.
-    result <- tagmembers "organism" idx;
-    let totalCount = fst result in
-    if (idx < totalCount) {
-        completeDnaTask $ snd result;
-        iterateOrganisms $ idx + 1;
-    } {};
-    end;
+def mapM_ : (a -> Cmd b) -> (rec l. Unit + a * l) -> Cmd Unit = \f. \l.
+  case l
+    (\_. return ())
+    (\c. f (fst c); mapM_ f (snd c))
+end;
 
 def go =
     _sentinel <- pickFlowerAndWater;
     moveUntilBlocked;
 
-    iterateOrganisms 0;
+    organisms <- tagmembers "organism";
+    mapM_ completeDnaTask organisms;
     end;
 
 go;
