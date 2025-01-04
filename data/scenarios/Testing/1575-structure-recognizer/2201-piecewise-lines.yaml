@@ -15,8 +15,8 @@ objectives:
         `spaceship`{=structure} structure should be recognized upon completion.
     condition: |
       def isRight = \x. case x (\_. false) (\_. true); end;
-      foundStructure <- structure "spaceship" 0;
-      return $ isRight foundStructure;
+      foundStructures <- structures "spaceship";
+      return $ isRight foundStructures;
 robots:
   - name: base
     dir: east
