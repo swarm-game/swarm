@@ -150,7 +150,10 @@ def waitForCloneableOrganism =
 
         waitUntilOccupied;
 
-        scan down;
+        thingHere <- scan down;
+        return $ case thingHere (\x. inL x) (\item.
+          if (hastag item "organism") {inR item} {inL ()}
+        )
     );
 
     case organism (\_.

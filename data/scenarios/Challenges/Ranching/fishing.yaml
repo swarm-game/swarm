@@ -59,26 +59,14 @@ objectives:
         Otherwise, when the enclosure becomes full, the trash
         hauler will come to empty it.
     condition: |
-      // Returns true if prohibited item is in inventory.
-      def checkProhibited = \idx.
-        result <- tagmembers "junk" idx;
-        let totalCount = fst result in
-        let member = snd result in
-        let nextIdx = idx + 1 in
+      def hasAny : (rec l. Unit + Text * l) -> Cmd Bool = \items.
+        case items
+          (\_. return false)
+          (\c. b <- has (fst c); if b {return true} {hasAny (snd c)})
+      end;
 
-        hasProhibited <- as base {has member};
-        if hasProhibited {
-          return false;
-        } {
-          if (nextIdx < totalCount) {
-            checkProhibited nextIdx;
-          } {
-            return true;
-          }
-        }
-        end;
-
-      checkProhibited 0;
+      let prohibited = tagmembers "junk" in
+      h <- hasAny prohibited; return (not h)
   - teaser: No littering
     id: littered
     hidden: true
@@ -89,33 +77,33 @@ objectives:
       - |
         Note that certain items can be burned with a `torch`{=entity} to make room.
     condition: |
-      def locIsInsideEnclosure = \loc. \dims. \idx.
-        foundBox <- structure "rubbish enclosure" idx;
-        case foundBox (\_. return false) (\enclosure.
-          let boxPos = snd enclosure in
-          return $ snd loc >= snd boxPos
-            && snd loc < snd dims + snd boxPos
-            && fst loc >= fst boxPos
-            && fst loc < fst dims + fst boxPos;
-        );
+      def locIsInsideEnclosure = \loc. \dims. \boxPos.
+        return $ snd loc >= snd boxPos
+          && snd loc < snd dims + snd boxPos
+          && fst loc >= fst boxPos
+          && fst loc < fst dims + fst boxPos;
         end;
 
       def junkOutsideEnclosure =
         result <- scan down;
         case result (\_. return false) (\item.
-          isJunk <- hastag item "junk";
+          let isJunk = hastag item "junk" in
           if isJunk {
-            foundBox <- structure "rubbish enclosure" 0;
+            enclosures <- structures "rubbish enclosure";
 
-            case foundBox (\_. return false) (\enclosure.
+            case enclosures (\_. return false) (\cons0.
+              let enclosure0 = fst cons0 in
+              case (snd cons0) (\_. return false) (\cons1.
+                let enclosure1 = fst cons1 in
 
-              dims <- floorplan "rubbish enclosure";
-              loc <- whereami;
+                dims <- floorplan "rubbish enclosure";
+                loc <- whereami;
 
-              insideFirst <- locIsInsideEnclosure loc dims 0;
-              insideSecond <- locIsInsideEnclosure loc dims 1;
-              return $ not $ insideFirst || insideSecond;
-            );
+                insideFirst <- locIsInsideEnclosure loc dims enclosure0;
+                insideSecond <- locIsInsideEnclosure loc dims enclosure1;
+                return $ not $ insideFirst || insideSecond;
+              )
+            )
           } {
             return false;
           };
@@ -208,13 +196,11 @@ entities:
     description:
       - |
         Can tell you if something is `junk`{=tag}
-        via the `hastag` command. E.g.:
+        via the `hastag` function. E.g.:
       - |
         `hastag "car tire" "junk"`
       - |
-        Also allows you to iterate over the list of junk, e.g.:
-      - |
-        `tagmembers "junk" 0`
+        Also allows you to get the list of all junk items with `tagmembers "junk"`.
     capabilities: [hastag, tagmembers]
   - name: torch
     display:

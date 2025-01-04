@@ -9,29 +9,29 @@ def intersperse = \n. \f2. \f1. if (n > 0) {
     } {};
     end;
 
-def isEnclosureFull = \idx.
-    foundBox <- structure "rubbish enclosure" idx;
-    case foundBox (\_. return false) (\enclosure.
-        let boxPos = snd enclosure in
-        
-        prevLoc <- whereami;
+def isEnclosureFull : Int * Int -> Cmd Bool = \encl.
+    prevLoc <- whereami;
 
-        dims <- floorplan "rubbish enclosure";
-        teleport self boxPos;
+    dims <- floorplan "rubbish enclosure";
+    teleport self encl;
 
-        c <- density ((0, 0), dims);
-        let area = fst dims * snd dims in
-        let notFull = c < area in
+    c <- density ((0, 0), dims);
+    let area = fst dims * snd dims in
+    let notFull = c < area in
 
-        teleport self prevLoc;
-        return $ not notFull;
-    );
+    teleport self prevLoc;
+    return $ not notFull;
     end;
 
+def any : (a -> Cmd Bool) -> (rec l. Unit + a * l) -> Cmd Bool = \p. \l.
+  case l
+    (\_. return false)
+    (\c. b <- p (fst c); if b {return true} {any p (snd c)})
+end;
+
 def isEitherEnclosureFull =
-    full1 <- isEnclosureFull 0;
-    full2 <- isEnclosureFull 1;
-    return $ full1 || full2;
+    enclosures <- structures "rubbish enclosure";
+    any isEnclosureFull enclosures
     end;
 
 def tryGrab =
