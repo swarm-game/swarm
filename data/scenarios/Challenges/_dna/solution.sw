@@ -253,7 +253,7 @@ def go =
     _sentinel <- pickFlowerAndWater;
     moveUntilBlocked;
 
-    organisms <- tagmembers "organism";
+    let organisms = tagmembers "organism" in
     mapM_ completeDnaTask organisms;
     end;
 

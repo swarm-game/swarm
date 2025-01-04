@@ -93,7 +93,7 @@ objectives:
 
       k <- robotnamed "keeper";
       as k {
-        organisms <- tagmembers "organism";
+        let organisms = tagmembers "organism" in
         hasAll organisms;
       }
   - prerequisite: create_clone
@@ -113,7 +113,7 @@ objectives:
 
       k <- robotnamed "keeper";
       as k {
-        organisms <- tagmembers "organism";
+        let organisms = tagmembers "organism" in
         c <- hasCount organisms;
         return $ c >= 4;
       }
