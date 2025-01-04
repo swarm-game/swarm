@@ -596,15 +596,15 @@
     attr: blue
     char: 'B'
   description:
-    - This enables the `structure` and `floorplan` commands to locate and analyze structures placed in the world.
+    - This enables the `structures` and `floorplan` commands to locate and analyze structures placed in the world.
     - |
-      `structure : Text -> Int -> Cmd (Unit + (Int * (Int * Int)))`
-    - Gets the x, y coordinates of the southwest corner of a constructed structure, by name and index.
+      `structures : Text -> Cmd (rec l. Unit + (Int * Int) * l)`
+    - Gets the x, y coordinates of the southwest corner of every constructed structure with a given name.
     - |
       `floorplan : Text -> Cmd (Int * Int)`
     - Gets the dimensions of a structure template.
   properties: [pickable]
-  capabilities: [structure, floorplan]
+  capabilities: [structures, floorplan]
 - name: drill bit
   display:
     attr: entity
