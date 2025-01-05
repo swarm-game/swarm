@@ -603,6 +603,15 @@ stepCESK cesk = case cesk of
   Out v2 s (FFst v1 : k) -> return $ Out (VPair v1 v2) s k
   -- Lambdas immediately turn into closures.
   In (TLam x _ t) e s k -> return $ Out (VClo x t e) s k
+  -- Special case for evaluating an application of Instant or Atomic:
+  -- set the runningAtomic flag and push a stack frame to unset it
+  -- when done evaluating.  We do this here so that even *evaluating*
+  -- the argument to instant/atomic will happen atomically (#2270).
+  -- *Execution* will also happen atomically; that is handled in execConst.
+  In (TApp (TConst c) t2) e s k
+    | c `elem` [Atomic, Instant] -> do
+        runningAtomic .= True
+        return $ In t2 e s (FApp (VCApp c []) : FFinishAtomic : k)
   -- To evaluate an application, start by focusing on the left-hand
   -- side and saving the argument for later.
   In (TApp t1 t2) e s k -> return $ In t1 e s (FArg t2 e : k)

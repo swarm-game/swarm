@@ -1,3 +1,5 @@
+instant (
+
 def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 
 def isDivisibleBy = \dividend. \divisor.
@@ -99,7 +101,7 @@ def length : (rec l. Unit + a * l) -> Int = \l.
 end
 
 def busts : (rec l. Unit + Text * l) = tagmembers "bust" end
-def bustCount : {Int} = {length busts} end
+def bustCount : Int = length busts end
 
 def placeThing = \entIdx.
     let entName = index entIdx busts in
@@ -125,7 +127,7 @@ bust in the base's inventory increases monotonically.
 */
 def populateInventory = \baseCount. \idx.
 
-    if (idx < force bustCount) {
+    if (idx < bustCount) {
 
         let item = index idx busts in
 
@@ -150,14 +152,16 @@ def populateInventory = \baseCount. \idx.
 def setup =
     populateInventory 0 0;
 
-    naiveRandomStack placeEntByIndex (force bustCount) 0 (force bustCount);
+    naiveRandomStack placeEntByIndex bustCount 0 bustCount;
     turn back;
     move;
     create "bitcoin";
     end;
 
 def go =
-    instant setup;
+    setup;
     end;
 
 go;
+
+)
