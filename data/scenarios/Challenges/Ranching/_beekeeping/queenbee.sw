@@ -152,65 +152,29 @@ def takeStepTowardItem = \item.
     }
     end;
 
-/**
-Searches through the existing instances of
-a given structure template, starting at a supplied
-index.
-Either returns the (potentially new) index of the structure
-(in the case that more had been built since the last check),
-or unit. Re-using the newly found index amortizes the "search"
-within the structure list over many ticks to constant time
-rather than linear time.
-*/
-def findStructureNewIndex = \remainingCount. \structureLoc. \lastIdx.
-    if (remainingCount > 0) {
-        foundStructure <- structure "beehive" lastIdx;
-        case foundStructure (\_. return $ inL ()) (\fs.
-            if (structureLoc == snd fs) {
-                return $ inR lastIdx;
-            } {
-                findStructureNewIndex (remainingCount - 1) structureLoc $ lastIdx + 1;
-            }
-        );
+def workerProgram = \structureLoc.
+    try {make "honeycomb";} {};
+    hasHoneycomb <- has "honeycomb";
+    if hasHoneycomb {
+        goToHive structureLoc;
     } {
-        return $ inL ();
-    }
-    end;
-
-def workerProgram = \hiveIdx. \structureLoc.
-    eitherFoundStructure <- structure "beehive" hiveIdx;
-    case eitherFoundStructure return (\fs.
-        let hasSameStructure = structureLoc == snd fs in
-        if hasSameStructure {
-            try {make "honeycomb";} {};
-            hasHoneycomb <- has "honeycomb";
-            if hasHoneycomb {
-                goToHive structureLoc;
-            } {
-                takeStepTowardItem "wildflower";
-                return ();
-            };
-            workerProgram hiveIdx structureLoc;
-        } {
-            eitherNewIdx <- findStructureNewIndex (fst fs) structureLoc hiveIdx;
-            case eitherNewIdx
-                (\_. selfdestruct)
-                (\newIdx. workerProgram newIdx structureLoc);
-        }
-    );
+        takeStepTowardItem "wildflower";
+        return ();
+    };
+    workerProgram structureLoc;
     end;
 
 def mkBeeName = \structureLoc.
     "bee" ++ format structureLoc;
     end;
 
-def workerProgramInit = \beename. \hiveIdx. \structureLoc.
+def workerProgramInit = \beename. \structureLoc.
     setname beename;
     appear "B" (inl ());
-    workerProgram hiveIdx structureLoc;
+    workerProgram structureLoc;
     end;
 
-def createWorkerForStructure = \structureIdx. \fs.
+def createWorkerForStructure = \loc.
     // Build worker bee, assign ID, location
     create "wax gland";
     create "proboscis";
@@ -236,38 +200,36 @@ def createWorkerForStructure = \structureIdx. \fs.
     create "treads";
     create "workbench";
 
-    teleport self $ snd fs;
-    let beename = mkBeeName (snd fs) in
+    teleport self $ loc;
+    let beename = mkBeeName loc in
     build {
         require 1 "wax gland";
-        workerProgramInit beename structureIdx $ snd fs;
+        workerProgramInit beename loc;
     };
     return ();
     end;
 
-def associateAllHives = \remainingCount. \idx.
-    if (remainingCount > 0) {
+def associateHive = \loc.
+   let beename = mkBeeName loc in
+   try {
+       // Fails if the robot does not exist
+       robotnamed beename;
+       return ();
+   } {
+       createWorkerForStructure loc;
 
-        foundStructure <- structure "beehive" idx;
-        case foundStructure return (\fs.
-            let beename = mkBeeName (snd fs) in
-            try {
-                // Fails if the robot does not exist
-                robotnamed beename;
-                return ();
-            } {
-                createWorkerForStructure idx fs;
+       // Give the child robot time to register its new
+       // name so that we don't end up spawning multiple
+       // bees for the same location
+       wait 1;
+   };
+   end;
 
-                // Give the child robot time to register its new
-                // name so that we don't end up spawning multiple
-                // bees for the same location
-                wait 1;
-            };
-
-            associateAllHives (remainingCount - 1) (idx + 1);
-        );
-    } {}
-    end;
+def mapM_ : (a -> Cmd b) -> (rec l. Unit + a * l) -> Cmd Unit = \f. \l.
+  case l
+    (\_. return ())
+    (\cons. f (fst cons); mapM_ f (snd cons))
+  end;
 
 /**
 Each tick, iterates through all hives,
@@ -278,12 +240,8 @@ creates a bee named after the location.
 */
 def observeHives =
 
-    // This invocation is just to get the total structure count.
-    // We will invoke it again once per iteration of 'associateAllHives'.
-    foundStructure <- structure "beehive" 0;
-    case foundStructure return (\fs.
-        associateAllHives (fst fs) 0;
-    );
+    beehives <- structures "beehive";
+    mapM_ associateHive beehives;
 
     // Wait at least 1 tick so that we do not spin infinitely until
     // we saturate our computation quota for the tick.
