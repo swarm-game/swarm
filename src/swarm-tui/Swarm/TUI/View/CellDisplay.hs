@@ -214,11 +214,12 @@ displayLoc ui showRobots we g cCoords@(Cosmic _ coords) =
       <> terrainEntityRobotDisplay
 
   tm = g ^. landscape . terrainAndEntities . terrainMap
-  (terrain, maybeEntity) = EU.getEditorContentAt
-    tm
-    we
-    (multiworldInfo ri)
-    cCoords
+  (terrain, maybeEntity) =
+    EU.getEditorContentAt
+      tm
+      we
+      (multiworldInfo ri)
+      cCoords
 
   hasVisibleRobot =
     not (combinedDisplay ^. displayObscured)
@@ -233,7 +234,7 @@ displayLoc ui showRobots we g cCoords@(Cosmic _ coords) =
   maybeRobotPassthroughBg = do
     guard hasVisibleRobot
     getCellBackground ui cellPaint
-  
+
   robotDisplays =
     if showRobots
       then displayRobotCell g cCoords
