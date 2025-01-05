@@ -9,8 +9,11 @@ objectives:
       - |
         Build 12 copies of the `green_jewel`{=structure} structure
     condition: |
-      foundGreen <- structure "green_jewel" 0;
-      return $ case foundGreen (\_. false) (\x. fst x >= 12);
+      def length : (rec l. Unit + a * l) -> Int = \l.
+        case l (\_. 0) (\cons. 1 + length (snd cons))
+      end;
+      foundGreen <- structures "green_jewel";
+      return $ length foundGreen >= 12;
 robots:
   - name: base
     dir: east

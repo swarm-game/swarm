@@ -14,7 +14,7 @@ objectives:
       - |
         Build a `precious`{=structure} structure
     condition: |
-      foundStructure <- structure "precious" 0;
+      foundStructure <- structures "precious";
       return $ case foundStructure (\_. false) (\_. true);
 robots:
   - name: base

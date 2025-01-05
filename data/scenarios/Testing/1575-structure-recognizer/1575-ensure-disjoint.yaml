@@ -16,11 +16,11 @@ objectives:
       - |
         Build 2 of the same structure
     condition: |
-      foundStructure <- structure "chessboard" 0;
-      return $ case foundStructure (\_. false) (\fs.
-        let boardCount = fst fs in
-        boardCount >= 2;
-      );
+      def length : (rec l. Unit + a * l) -> Int = \l.
+        case l (\_. 0) (\cons. 1 + length (snd cons))
+      end;
+      foundStructures <- structures "chessboard";
+      return $ length foundStructures >= 2
   - id: premature_win
     teaser: Don't count win early
     optional: true
@@ -29,13 +29,13 @@ objectives:
         Two structures shouldn't be recognized
         while the bases still possesses `silver`{=entity}
     condition: |
+      def length : (rec l. Unit + a * l) -> Int = \l.
+        case l (\_. 0) (\cons. 1 + length (snd cons))
+      end;
       robotHasSilver <- as base {has "silver"};
 
-      foundStructure <- structure "chessboard" 0;
-      return $ case foundStructure (\_. false) (\fs.
-        let boardCount = fst fs in
-        boardCount >= 2 && robotHasSilver;
-      );
+      foundStructures <- structures "chessboard";
+      return $ length foundStructures >= 2 && robotHasSilver;
 robots:
   - name: base
     dir: south

@@ -15,7 +15,7 @@ objectives:
     condition: |
       def isRight = \x. case x (\_. false) (\_. true); end;
 
-      foundGreen <- structure "green_jewel" 0;
+      foundGreen <- structures "green_jewel";
       return $ isRight foundGreen;
   - id: complete_red_structure
     optional: true
@@ -26,7 +26,7 @@ objectives:
     condition: |
       def isRight = \x. case x (\_. false) (\_. true); end;
 
-      foundRed <- structure "red_jewel" 0;
+      foundRed <- structures "red_jewel";
       return $ isRight foundRed;
 robots:
   - name: base

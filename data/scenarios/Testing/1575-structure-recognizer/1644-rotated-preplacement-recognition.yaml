@@ -9,7 +9,7 @@ objectives:
       - |
         Have a `tee`{=structure} structure
     condition: |
-      foundStructure <- structure "tee" 0;
+      foundStructure <- structures "tee";
       return $ case foundStructure (\_. false) (\_. true);
 robots:
   - name: base
