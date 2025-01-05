@@ -51,31 +51,24 @@ runFrame = do
 
   -- The logic here is taken from https://gafferongames.com/post/fix_your_timestep/ .
 
-  -- Find out how long the previous frame took, by subtracting the
-  -- previous time from the current time.
-  prevTime <- use (uiState . uiGameplay . uiTiming . lastFrameTime)
   curTime <- liftIO $ getTime Monotonic
-  let frameTime = diffTimeSpec curTime prevTime
+  Brick.zoom (uiState . uiGameplay . uiTiming) $ do
+    -- Find out how long the previous frame took, by subtracting the
+    -- previous time from the current time.
+    prevTime <- use lastFrameTime
+    let frameTime = diffTimeSpec curTime prevTime
 
-  -- Remember now as the new previous time.
-  uiState . uiGameplay . uiTiming . lastFrameTime .= curTime
+    -- Remember now as the new previous time.
+    lastFrameTime .= curTime
 
-  -- We now have some additional accumulated time to play with.  The
-  -- idea is to now "catch up" by doing as many ticks as are supposed
-  -- to fit in the accumulated time.  Some accumulated time may be
-  -- left over, but it will roll over to the next frame.  This way we
-  -- deal smoothly with things like a variable frame rate, the frame
-  -- rate not being a nice multiple of the desired ticks per second,
-  -- etc.
-  uiState . uiGameplay . uiTiming . accumulatedTime += frameTime
-
-  -- Figure out how many ticks per second we're supposed to do,
-  -- and compute the timestep `dt` for a single tick.
-  lgTPS <- use (uiState . uiGameplay . uiTiming . lgTicksPerSecond)
-  let oneSecond = 1_000_000_000 -- one second = 10^9 nanoseconds
-      dt
-        | lgTPS >= 0 = oneSecond `div` (1 `shiftL` lgTPS)
-        | otherwise = oneSecond * (1 `shiftL` abs lgTPS)
+    -- We now have some additional accumulated time to play with.  The
+    -- idea is to now "catch up" by doing as many ticks as are supposed
+    -- to fit in the accumulated time.  Some accumulated time may be
+    -- left over, but it will roll over to the next frame.  This way we
+    -- deal smoothly with things like a variable frame rate, the frame
+    -- rate not being a nice multiple of the desired ticks per second,
+    -- etc.
+    accumulatedTime += frameTime
 
   -- Update TPS/FPS counters every second
   infoUpdateTime <- use (uiState . uiGameplay . uiTiming . lastInfoTime)
@@ -83,28 +76,41 @@ runFrame = do
   when (updateTime >= oneSecond) $ do
     -- Wait for at least one second to have elapsed
     when (infoUpdateTime /= 0) $ do
-      -- set how much frame got processed per second
-      frames <- use (uiState . uiGameplay . uiTiming . frameCount)
-      uiState . uiGameplay . uiTiming . uiFPS .= fromIntegral (frames * fromInteger oneSecond) / fromIntegral updateTime
+      Brick.zoom (uiState . uiGameplay . uiTiming) $ do
+        -- set how much frame got processed per second
+        frames <- use frameCount
+        uiFPS .= fromIntegral (frames * fromInteger oneSecond) / fromIntegral updateTime
 
-      -- set how much ticks got processed per frame
-      uiTicks <- use (uiState . uiGameplay . uiTiming . tickCount)
-      uiState . uiGameplay . uiTiming . uiTPF .= fromIntegral uiTicks / fromIntegral frames
+        -- set how much ticks got processed per frame
+        uiTicks <- use tickCount
+        uiTPF .= fromIntegral uiTicks / fromIntegral frames
 
       -- ensure this frame gets drawn
       gameState . needsRedraw .= True
 
-    -- Reset the counter and wait another seconds for the next update
-    uiState . uiGameplay . uiTiming . tickCount .= 0
-    uiState . uiGameplay . uiTiming . frameCount .= 0
-    uiState . uiGameplay . uiTiming . lastInfoTime .= curTime
+    Brick.zoom (uiState . uiGameplay . uiTiming) $ do
+      -- Reset the counter and wait another seconds for the next update
+      tickCount .= 0
+      frameCount .= 0
+      lastInfoTime .= curTime
 
-  -- Increment the frame count
-  uiState . uiGameplay . uiTiming . frameCount += 1
+  Brick.zoom (uiState . uiGameplay . uiTiming) $ do
+    -- Increment the frame count
+    frameCount += 1
 
-  -- Now do as many ticks as we need to catch up.
-  uiState . uiGameplay . uiTiming . frameTickCount .= 0
+    -- Now do as many ticks as we need to catch up.
+    frameTickCount .= 0
+
+  -- Figure out how many ticks per second we're supposed to do,
+  -- and compute the timestep `dt` for a single tick.
+  lgTPS <- use (uiState . uiGameplay . uiTiming . lgTicksPerSecond)
+  let dt
+        | lgTPS >= 0 = oneSecond `div` (1 `shiftL` lgTPS)
+        | otherwise = oneSecond * (1 `shiftL` abs lgTPS)
+
   runFrameTicks (fromNanoSecs dt)
+ where
+  oneSecond = 1_000_000_000 -- one second = 10^9 nanoseconds
 
 -- | Do zero or more ticks, with each tick notionally taking the given
 --   timestep, until we have used up all available accumulated time,
