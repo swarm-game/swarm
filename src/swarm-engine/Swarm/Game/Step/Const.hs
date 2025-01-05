@@ -926,14 +926,15 @@ execConst runChildProg c vs s k = do
       let neighbor =
             find ((/= rid) . (^. robotID)) -- pick one other than ourself
               . sortOn ((manhattan `on` view planar) loc . (^. robotLocation)) -- prefer closer
-              $ robotsInArea loc 1
+              . filter isInteractive
+              . robotsInArea loc 1
               $ g ^. robotInfo -- all robots within Manhattan distance 1
       return $ mkReturn neighbor
     MeetAll -> do
       loc <- use robotLocation
       rid <- use robotID
       g <- get @GameState
-      let neighborIDs = filter ((/= rid) . (^. robotID)) . robotsInArea loc 1 $ g ^. robotInfo
+      let neighborIDs = filter ((/= rid) . (^. robotID)) . filter isInteractive . robotsInArea loc 1 $ g ^. robotInfo
       return $ mkReturn neighborIDs
     Whoami -> case vs of
       [] -> do
