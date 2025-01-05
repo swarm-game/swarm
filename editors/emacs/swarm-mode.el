@@ -92,11 +92,8 @@
       "scout"
       "whereami"
       "locateme"
-      "waypoints"
       "structures"
       "floorplan"
-      "hastag"
-      "tagmembers"
       "detect"
       "resonate"
       "density"
@@ -149,6 +146,10 @@
    "\\b"
    (regexp-opt
     '(
+      "waypoint"
+      "waypoints"
+      "hastag"
+      "tagmembers"
       "self"
       "parent"
       "base"
