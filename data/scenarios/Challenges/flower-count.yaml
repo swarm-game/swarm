@@ -9,12 +9,12 @@ objectives:
     teaser: Count the flowers!
     goal:
       - |
-        Your evil nemesis, the sadistic supervillain Dr. Nemesis, is
-        at it again!  They have wired up some explosives to your True
-        Love and lit the fuse, but promised to stop it... IF you can
+        Your evil nemesis, the sadistic arithmomaniac supervillain Count Nemesis, is
+        at it again!  They have wired up some explosives to your
+        `True Love`{=robot} and lit the fuse, but promised to stop it... IF you can
         count all the flowers in time!
       - |
-        Specifically, Dr. Nemesis demands that you count the
+        Specifically, Count Nemesis demands that you count the
         total number of flowers in the 120x40 field bounded by walls,
         `print` the number on a piece of `paper`{=entity}, and place
         the paper at the origin, `(0,0)`.  If the number is correct,
@@ -22,7 +22,7 @@ objectives:
         number is incorrect... nothing happens, but the fuse continues
         to burn!
       - |
-        And don't even think about trying to pick any of the flowers.
+        And watch out, Count Nemesis won't abide anyone picking his flowers.
     condition: |
       judge <- robotNamed "judge";
       as judge { has "gold" }
@@ -72,7 +72,7 @@ objectives:
       - |
         Congratulations!  You foiled the plan of evil Dr. Nemesis and
         saved your True Love!  The only thing left is to give your
-        True Love a flower!
+        True Love a `flower`{=entity}!
     condition: |
       truelove <- robotNamed "truelove";
       as truelove { has "flower" }
@@ -101,6 +101,7 @@ robots:
       - clock
       - GPS receiver
       - compass
+      - counter
     inventory:
       - [12, solar panel]
       - [12, dictionary]
