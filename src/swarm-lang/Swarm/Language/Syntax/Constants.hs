@@ -708,7 +708,7 @@ constInfo c = case c of
       ]
   Structures ->
     command 1 Intangible . doc (Set.singleton $ Query $ Sensing EntitySensing) "Get the x, y coordinates of the southwest corner of all constructed structures of a given name" $
-      [ "Since structures can have multiple occurrences, returns a list of (x, y) coordinates."     ]
+      ["Since structures can have multiple occurrences, returns a list of (x, y) coordinates."]
   Floorplan ->
     command 1 Intangible . doc (Set.singleton $ Query APriori) "Get the dimensions of a structure template" $
       [ "Returns a tuple of (width, height) for the structure of the requested name."
