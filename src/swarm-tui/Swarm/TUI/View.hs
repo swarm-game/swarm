@@ -474,7 +474,7 @@ drawGameUI s =
         fr
         (FocusablePanel WorldPanel)
         ( plainBorder
-            & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s)
+            & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS $ s ^. uiState . uiGameplay . uiTiming)
             & topLabels . leftLabel ?~ drawModalMenu s
             & addCursorPos
             & addClock
@@ -565,26 +565,26 @@ maybeDrawTime :: TickNumber -> Bool -> GameState -> Maybe (Widget n)
 maybeDrawTime t showTicks gs = guard (clockEquipped gs) $> str (drawTime t showTicks)
 
 -- | Draw info about the current number of ticks per second.
-drawTPS :: AppState -> Widget Name
-drawTPS s = hBox (tpsInfo : rateInfo)
+drawTPS :: UITiming -> Widget Name
+drawTPS timing = hBox (tpsInfo : rateInfo)
  where
   tpsInfo
     | l >= 0 = hBox [str (show n), txt " ", txt (number n "tick"), txt " / s"]
     | otherwise = hBox [txt "1 tick / ", str (show n), txt " s"]
 
   rateInfo
-    | s ^. uiState . uiGameplay . uiTiming . uiShowFPS =
+    | timing ^. uiShowFPS =
         [ txt " ("
-        , let tpf = s ^. uiState . uiGameplay . uiTiming . uiTPF
+        , let tpf = timing ^. uiTPF
            in applyWhen (tpf >= fromIntegral ticksPerFrameCap) (withAttr redAttr) $
                 str (printf "%0.1f" tpf)
         , txt " tpf, "
-        , str (printf "%0.1f" (s ^. uiState . uiGameplay . uiTiming . uiFPS))
+        , str (printf "%0.1f" (timing ^. uiFPS))
         , txt " fps)"
         ]
     | otherwise = []
 
-  l = s ^. uiState . uiGameplay . uiTiming . lgTicksPerSecond
+  l = timing ^. lgTicksPerSecond
   n = 2 ^ abs l
 
 -- | The height of the REPL box.  Perhaps in the future this should be
