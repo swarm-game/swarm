@@ -16,10 +16,11 @@ objectives:
         Without distinguishing them by orientation in the registry, only
         one would be recognized.
     condition: |
-      foundStructure <- structure "thingy" 0;
-      return $ case foundStructure
-        (\_. false)
-        (\result. fst result == 2);
+      def length : (rec l. Unit + a * l) -> Int = \l.
+        case l (\_. 0) (\c. 1 + length (snd c))
+      end;
+      foundStructures <- structures "thingy";
+      return $ length foundStructures == 2;
 robots:
   - name: base
     dir: north

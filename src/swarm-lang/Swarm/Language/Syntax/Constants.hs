@@ -148,15 +148,18 @@ data Const
     Whereami
   | -- | Get the current subworld and x, y coordinates
     LocateMe
-  | -- | Get the x, y coordinates of a named waypoint, by index
+  | -- | Get the x, y coordinates of a specific waypoints by name and index
     Waypoint
-  | -- | Get the x, y coordinates of southwest corner of a constructed structure, by index
-    Structure
+  | -- | Get the list of x, y coordinates of the waypoints for a given name
+    Waypoints
+  | -- | Get the list of x, y coordinates of the southwest corner of all
+    --   constructed structures of a given name
+    Structures
   | -- | Get the width and height of a structure template
     Floorplan
   | -- | Answer whether a given entity has the given tag
     HasTag
-  | -- | Cycle through the entity names that are labeled with a given tag
+  | -- | Get the list of entity names that are labeled with a given tag
     TagMembers
   | -- | Locate the closest instance of a given entity within the rectangle
     -- specified by opposite corners, relative to the current location.
@@ -694,35 +697,32 @@ constInfo c = case c of
         (Set.singleton $ Query $ Sensing RobotSensing)
         "Get the current subworld and x, y coordinates."
   Waypoint ->
-    command 2 Intangible . doc (Set.singleton $ Query APriori) "Get the x, y coordinates of a named waypoint, by index" $
-      [ "Return only the waypoints in the same subworld as the calling robot."
-      , "Since waypoint names can have plural multiplicity, returns a tuple of (count, (x, y))."
-      , "The supplied index will be wrapped automatically, modulo the waypoint count."
-      , "A robot can use the count to know whether they have iterated over the full waypoint circuit."
+    function 2 . doc (Set.singleton $ Query APriori) "Get the x, y coordinates of a waypoint, by name and index." $
+      [ "Returns only waypoints in the same subworld as the calling robot."
+      , "Wraps around modulo the number of waypoints with the given name.  Throws an exception if there are no waypoints with the given name."
       ]
-  Structure ->
-    command 2 Intangible . doc (Set.singleton $ Query $ Sensing EntitySensing) "Get the x, y coordinates of the southwest corner of a constructed structure, by name and index" $
-      [ "The outermost type of the return value indicates whether any structure of such name exists."
-      , "Since structures can have multiple occurrences, returns a tuple of (count, (x, y))."
-      , "The supplied index will be wrapped automatically, modulo the structure count."
-      , "A robot can use the count to know whether they have iterated over the full structure list."
+  Waypoints ->
+    function 1 . doc (Set.singleton $ Query APriori) "Get the list of x, y coordinates of a named waypoint" $
+      [ "Returns only the waypoints in the same subworld as the calling robot."
+      , "Since waypoint names can have plural multiplicity, returns a list of (x, y) coordinates)."
       ]
+  Structures ->
+    command 1 Intangible . doc (Set.singleton $ Query $ Sensing EntitySensing) "Get the x, y coordinates of the southwest corner of all constructed structures of a given name" $
+      ["Since structures can have multiple occurrences, returns a list of (x, y) coordinates."]
   Floorplan ->
     command 1 Intangible . doc (Set.singleton $ Query APriori) "Get the dimensions of a structure template" $
       [ "Returns a tuple of (width, height) for the structure of the requested name."
       , "Yields an error if the supplied string is not the name of a structure."
       ]
   HasTag ->
-    command 2 Intangible . doc (Set.singleton $ Query APriori) "Check whether the given entity has the given tag" $
+    function 2 . doc (Set.singleton $ Query APriori) "Check whether the given entity has the given tag" $
       [ "Returns true if the first argument is an entity that is labeled by the tag in the second argument."
       , "Yields an error if the first argument is not a valid entity."
       ]
   TagMembers ->
-    command 2 Intangible . doc (Set.singleton $ Query APriori) "Get the entities labeled by a tag." $
-      [ "Returns a tuple of (member count, entity)."
-      , "The supplied index will be wrapped automatically, modulo the member count."
-      , "A robot can use the count to know whether they have iterated over the full list."
-      , "Item order is determined by definition sequence in the scenario file."
+    function 1 . doc (Set.singleton $ Query APriori) "Get the entities labeled by a tag." $
+      [ "Returns a list of all entities with the given tag."
+      , "The order of the list is determined by the definition sequence in the scenario file."
       ]
   Detect ->
     command 2 Intangible . doc (Set.singleton $ Query $ Sensing EntitySensing) "Detect an entity within a rectangle." $

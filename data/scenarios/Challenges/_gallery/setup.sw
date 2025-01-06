@@ -1,3 +1,5 @@
+instant (
+
 def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 
 def isDivisibleBy = \dividend. \divisor.
@@ -88,13 +90,21 @@ def naiveRandomStack = \valueFunc. \maxval. \bitmask. \n.
     valueFunc val;
     end;
 
-def getEntName = \idx.
-    result <- tagmembers "bust" idx;
-    return $ snd result;
-    end;
+def index : Int -> (rec l. Unit + a * l) -> a = \i. \l.
+  case l
+    (\_. fail "bad index")
+    (\cons. if (i == 0) {fst cons} {index (i-1) (snd cons)})
+end
+
+def length : (rec l. Unit + a * l) -> Int = \l.
+  case l (\_. 0) (\cons. 1 + length (snd cons))
+end
+
+def busts : (rec l. Unit + Text * l) = tagmembers "bust" end
+def bustCount : Int = length busts end
 
 def placeThing = \entIdx.
-    entName <- getEntName entIdx;
+    let entName = index entIdx busts in
     create entName;
     place entName;
     end;
@@ -116,13 +126,10 @@ bust in the base's inventory increases monotonically.
 "idx" counts upwards.
 */
 def populateInventory = \baseCount. \idx.
-    
-    result <- tagmembers "bust" idx;
-    let total = fst result in
 
-    if (idx < total) {
+    if (idx < bustCount) {
 
-        let item = snd result in
+        let item = index idx busts in
 
         // Give copies to the base
         baseExtras <- random 5;
@@ -143,19 +150,18 @@ def populateInventory = \baseCount. \idx.
     end;
 
 def setup =
-    result <- tagmembers "bust" 0;
-    let totalCount = fst result in
-
     populateInventory 0 0;
 
-    naiveRandomStack placeEntByIndex totalCount 0 totalCount;
+    naiveRandomStack placeEntByIndex bustCount 0 bustCount;
     turn back;
     move;
     create "bitcoin";
     end;
 
 def go =
-    instant setup;
+    setup;
     end;
 
 go;
+
+)

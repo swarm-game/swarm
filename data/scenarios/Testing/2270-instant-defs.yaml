@@ -1,0 +1,42 @@
+version: 1
+name: Instant wrapped defs
+description: |
+  `instant` should work when wrapped around definitions
+creative: false
+objectives:
+  - goal:
+      - Grab the rock
+    condition: |
+      as base { has "rock" }
+robots:
+  - name: base
+    dir: east
+    devices:
+      - logger
+      - treads
+      - grabber
+  - name: judge
+    dir: east
+    system: true
+    program: |
+      instant (
+      def fib : Int -> Int = \n.
+        if (n <= 1) {n} {fib (n-1) + fib (n-2)}
+      end
+
+      def x = fib 10 end
+
+      create "rock"; place "rock"
+      )
+solution: |
+  move; grab
+known: [rock]
+world:
+  dsl: |
+    {grass}
+  palette:
+    'B': [grass, null, base]
+    'j': [grass, null, judge]
+  upperleft: [0, 0]
+  map: |
+    Bj

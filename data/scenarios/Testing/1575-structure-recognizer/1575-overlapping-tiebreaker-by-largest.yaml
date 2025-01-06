@@ -11,7 +11,7 @@ objectives:
       - |
         Build a 3x3 structure
     condition: |
-      foundStructure <- structure "large" 0;
+      foundStructure <- structures "large";
       return $ case foundStructure (\_. false) (\_. true);
   - id: wrong_structure
     teaser: Don't recognize small structure
@@ -20,7 +20,7 @@ objectives:
       - |
         The small structure shouldn't be recognized.
     condition: |
-      foundStructure <- structure "small" 0;
+      foundStructure <- structures "small";
       return $ case foundStructure (\_. false) (\_. true);
 robots:
   - name: base

@@ -21,7 +21,7 @@ objectives:
         Place all five tetrominoes.
     condition: |
       def found = \s.
-        fs <- structure s 0;
+        fs <- structures s;
         return $ case fs (\_. false) (\_. true);
         end;
 

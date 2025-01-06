@@ -11,16 +11,16 @@ objectives:
       - |
         Remove a piece of the structure to destroy it
     condition: |
-      foundStructure <- structure "chessboard" 0;
-      return $ case foundStructure (\_. true) (\_. false);
+      foundStructures <- structures "chessboard";
+      return $ case foundStructures (\_. true) (\_. false);
   - id: complete_structure
     teaser: Complete structure
     goal:
       - |
         Build a `chessboard`{=structure} structure
     condition: |
-      foundStructure <- structure "chessboard" 0;
-      return $ case foundStructure (\_. false) (\_. true);
+      foundStructures <- structures "chessboard";
+      return $ case foundStructures (\_. false) (\_. true);
 robots:
   - name: base
     dir: south

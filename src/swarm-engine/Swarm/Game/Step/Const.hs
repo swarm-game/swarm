@@ -11,6 +11,8 @@
 -- Implementation of robot commands
 module Swarm.Game.Step.Const where
 
+import Swarm.Game.Scenario (RecognizableStructureContent)
+
 import Control.Applicative (Applicative (..))
 import Control.Arrow ((&&&))
 import Control.Carrier.State.Lazy
@@ -545,22 +547,29 @@ execConst runChildProg c vs s k = do
         lm <- use $ landscape . worldNavigation
         Cosmic swName _ <- use robotLocation
         case M.lookup (WaypointName name) $ M.findWithDefault mempty swName $ waypoints lm of
-          Nothing -> throwError $ CmdFailed Waypoint (T.unwords ["No waypoint named", name]) Nothing
-          Just wps -> return $ mkReturn (NE.length wps, indexWrapNonEmpty wps idx)
+          Nothing -> raise Waypoint ["There are no waypoints named", quote name <> "."]
+          Just wps -> return $ mkReturn $ indexWrapNonEmpty wps idx
       _ -> badConst
-    Structure -> case vs of
-      [VText name, VInt idx] -> do
+    Waypoints -> case vs of
+      [VText name] -> do
+        lm <- use $ landscape . worldNavigation
+        Cosmic swName _ <- use robotLocation
+        let mwps = M.lookup (WaypointName name) $ M.findWithDefault mempty swName $ waypoints lm
+        return $ mkReturn $ maybe [] NE.toList mwps
+      _ -> badConst
+    Structures -> case vs of
+      [VText name] -> do
         registry <- use $ discovery . structureRecognition . foundStructures
         let maybeFoundStructures = M.lookup (StructureName name) $ foundByName registry
-            mkOutput mapNE = (NE.length xs, bottomLeftCorner)
+            structures :: [((Cosmic Location, AbsoluteDir), StructureWithGrid RecognizableStructureContent Entity)]
+            structures = maybe [] (NE.toList . NEM.toList) maybeFoundStructures
+
+            bottomLeftCorner ((pos, _), struc) = topLeftCorner .+^ offsetHeight
              where
-              xs = NEM.toList mapNE
-              ((pos, _), struc) = indexWrapNonEmpty xs idx
               topLeftCorner = pos ^. planar
               offsetHeight = V2 0 $ negate (rectHeight (getNEGridDimensions $ extractedGrid $ entityGrid struc) - 1)
-              bottomLeftCorner :: Location
-              bottomLeftCorner = topLeftCorner .+^ offsetHeight
-        return $ mkReturn $ mkOutput <$> maybeFoundStructures
+
+        return $ mkReturn $ map bottomLeftCorner structures
       _ -> badConst
     Floorplan -> case vs of
       [VText name] -> do
@@ -580,11 +589,11 @@ execConst runChildProg c vs s k = do
         return $ mkReturn $ tName `S.member` (e ^. entityTags)
       _ -> badConst
     TagMembers -> case vs of
-      [VText tagName, VInt idx] -> do
+      [VText tagName] -> do
         tm <- use $ discovery . tagMembers
         case M.lookup tagName tm of
           Nothing -> throwError $ CmdFailed TagMembers (T.unwords ["No tag named", tagName]) Nothing
-          Just theMembers -> return $ mkReturn (NE.length theMembers, indexWrapNonEmpty theMembers idx)
+          Just theMembers -> return $ mkReturn theMembers
       _ -> badConst
     Detect -> case vs of
       [VText name, VRect x1 y1 x2 y2] -> do

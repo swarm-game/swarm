@@ -62,14 +62,18 @@ objectives:
         );
         end;
 
+      def length : (rec l. Unit + a * l) -> Int = \l.
+        case l (\_. 0) (\cons. 1 + length (snd cons))
+      end
+
       j <- robotnamed "judge";
       as j {
         // Flag that setup is done
         hasBitcoin <- has "bitcoin";
         if hasBitcoin {
-          result <- tagmembers "bust" 0;
-          let itemCount = fst result in
-          ensureMonotonicDecreasing itemCount $ itemCount + 1;
+          let busts = tagmembers "bust" in
+          let bustCount = length busts in
+          ensureMonotonicDecreasing bustCount $ bustCount + 1;
         } {
           return false;
         }

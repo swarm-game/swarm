@@ -11,7 +11,7 @@ objectives:
         Build a `wooden box`{=structure} structure.
     condition: |
       def isRight = \x. case x (\_. false) (\_. true); end;
-      foundBox <- structure "wooden box" 0;
+      foundBox <- structures "wooden box";
       return $ isRight foundBox;
 robots:
   - name: base
