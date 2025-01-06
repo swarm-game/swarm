@@ -55,56 +55,10 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
       CommandsModal -> ("Available Commands", Nothing, descriptionWidth)
       MessagesModal -> ("Messages", Nothing, descriptionWidth)
       StructuresModal -> ("Buildable Structures", Nothing, descriptionWidth)
-      ScenarioEndModal WinModal ->
-        let nextMsg = "Next challenge!"
-            stopMsg = fromMaybe "Return to the menu" haltingMessage
-            continueMsg = "Keep playing"
-         in ( ""
-            , Just
-                ( Button NextButton
-                , [ (nextMsg, Button NextButton, Next scene)
-                  | Just scene <- [nextScenario (s ^. uiState . uiMenu)]
-                  ]
-                    ++ [ (stopMsg, Button QuitButton, QuitAction)
-                       , (continueMsg, Button KeepPlayingButton, KeepPlaying)
-                       ]
-                )
-            , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
-            )
-      ScenarioEndModal LoseModal ->
-        let stopMsg = fromMaybe "Return to the menu" haltingMessage
-            continueMsg = "Keep playing"
-            maybeStartOver = do
-              cs <- currentScenario
-              return ("Start over", Button StartOverButton, StartOver currentSeed cs)
-         in ( ""
-            , Just
-                ( Button QuitButton
-                , catMaybes
-                    [ Just (stopMsg, Button QuitButton, QuitAction)
-                    , maybeStartOver
-                    , Just (continueMsg, Button KeepPlayingButton, KeepPlaying)
-                    ]
-                )
-            , sum (map length [stopMsg, continueMsg]) + 32
-            )
+      ScenarioEndModal WinModal -> mkWinModal
+      ScenarioEndModal LoseModal -> mkLoseModal
       DescriptionModal e -> (descriptionTitle e, Nothing, descriptionWidth)
-      QuitModal ->
-        let stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName s) ++ " menu") haltingMessage
-            maybeStartOver = do
-              cs <- currentScenario
-              return ("Start over", Button StartOverButton, StartOver currentSeed cs)
-         in ( ""
-            , Just
-                ( Button CancelButton
-                , catMaybes
-                    [ Just ("Keep playing", Button CancelButton, Cancel)
-                    , maybeStartOver
-                    , Just (stopMsg, Button QuitButton, QuitAction)
-                    ]
-                )
-            , T.length (quitMsg (s ^. uiState . uiMenu)) + 4
-            )
+      QuitModal -> mkQuitModal
       GoalModal ->
         let goalModalTitle = case currentScenario of
               Nothing -> "Goal"
@@ -117,6 +71,61 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
         wordLength = maximum0 $ map (T.length . getTerrainWord) (M.keys $ terrainByName tm)
         w = wordLength + 6
       EntityPaletteModal -> ("Entity", Nothing, 30)
+
+  mkWinModal =
+    ( ""
+    , Just
+        ( Button NextButton
+        , [ (nextMsg, Button NextButton, Next scene)
+          | Just scene <- [nextScenario (s ^. uiState . uiMenu)]
+          ]
+            ++ [ (stopMsg, Button QuitButton, QuitAction)
+               , (continueMsg, Button KeepPlayingButton, KeepPlaying)
+               ]
+        )
+    , sum (map length [nextMsg, stopMsg, continueMsg]) + 32
+    )
+   where
+    nextMsg = "Next challenge!"
+    stopMsg = fromMaybe "Return to the menu" haltingMessage
+    continueMsg = "Keep playing"
+
+  mkLoseModal =
+    ( ""
+    , Just
+        ( Button QuitButton
+        , catMaybes
+            [ Just (stopMsg, Button QuitButton, QuitAction)
+            , maybeStartOver
+            , Just (continueMsg, Button KeepPlayingButton, KeepPlaying)
+            ]
+        )
+    , sum (map length [stopMsg, continueMsg]) + 32
+    )
+   where
+    stopMsg = fromMaybe "Return to the menu" haltingMessage
+    continueMsg = "Keep playing"
+    maybeStartOver = do
+      cs <- currentScenario
+      return ("Start over", Button StartOverButton, StartOver currentSeed cs)
+
+  mkQuitModal =
+    ( ""
+    , Just
+        ( Button CancelButton
+        , catMaybes
+            [ Just ("Keep playing", Button CancelButton, Cancel)
+            , maybeStartOver
+            , Just (stopMsg, Button QuitButton, QuitAction)
+            ]
+        )
+    , T.length (quitMsg (s ^. uiState . uiMenu)) + 4
+    )
+   where
+    stopMsg = fromMaybe ("Quit to" ++ maybe "" (" " ++) (into @String <$> curMenuName s) ++ " menu") haltingMessage
+    maybeStartOver = do
+      cs <- currentScenario
+      return ("Start over", Button StartOverButton, StartOver currentSeed cs)
 
 -- | Render the type of the current REPL input to be shown to the user.
 drawType :: Polytype -> Widget Name
