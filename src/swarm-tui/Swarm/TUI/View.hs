@@ -436,7 +436,7 @@ drawGameUI s =
                         & bottomLabels . centerLabel
                           .~ fmap
                             (txt . (" Search: " <>) . (<> " "))
-                            (s ^. uiState . uiGameplay . uiInventory . uiInventorySearch)
+                            (uig ^. uiInventory . uiInventorySearch)
                     )
                   $ drawRobotPanel s
               , panel
@@ -448,22 +448,23 @@ drawGameUI s =
               , hCenter
                   . clickable (FocusablePanel WorldEditorPanel)
                   . EV.drawWorldEditor fr
-                  $ s ^. uiState
+                  $ uig
               ]
         , vBox rightPanel
         ]
   ]
  where
+  uig = s ^. uiState . uiGameplay
   addCursorPos = bottomLabels . leftLabel ?~ padLeftRight 1 widg
    where
-    widg = case s ^. uiState . uiGameplay . uiWorldCursor of
+    widg = case uig ^. uiWorldCursor of
       Nothing -> str $ renderCoordsString $ s ^. gameState . robotInfo . viewCenter
-      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (s ^. uiState . uiGameplay . uiWorldEditor . worldOverdraw) (s ^. gameState) coord
+      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (uig ^. uiWorldEditor . worldOverdraw) (s ^. gameState) coord
   -- Add clock display in top right of the world view if focused robot
   -- has a clock equipped
-  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (s ^. uiState . uiGameplay . uiTiming . lgTicksPerSecond) $ s ^. gameState)
-  fr = s ^. uiState . uiGameplay . uiFocusRing
-  showREPL = s ^. uiState . uiGameplay . uiShowREPL
+  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (uig ^. uiTiming . lgTicksPerSecond) $ s ^. gameState)
+  fr = uig ^. uiFocusRing
+  showREPL = uig ^. uiShowREPL
   rightPanel = if showREPL then worldPanel ++ replPanel else worldPanel ++ minimizedREPL
   minimizedREPL = case focusGetCurrent fr of
     (Just (FocusablePanel REPLPanel)) -> [separateBorders $ clickable (FocusablePanel REPLPanel) (forceAttr highlightAttr hBorder)]
@@ -474,12 +475,12 @@ drawGameUI s =
         fr
         (FocusablePanel WorldPanel)
         ( plainBorder
-            & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS s)
+            & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS $ uig ^. uiTiming)
             & topLabels . leftLabel ?~ drawModalMenu s
             & addCursorPos
             & addClock
         )
-        (drawWorldPane (s ^. uiState . uiGameplay) (s ^. gameState))
+        (drawWorldPane uig (s ^. gameState))
     , drawKeyMenu s
     ]
   replPanel =
@@ -489,7 +490,7 @@ drawGameUI s =
           fr
           (FocusablePanel REPLPanel)
           ( plainBorder
-              & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiGameplay . uiREPL . replType))
+              & topLabels . rightLabel .~ (drawType <$> (uig ^. uiREPL . replType))
           )
           ( vLimit replHeight
               . padBottom Max
@@ -565,26 +566,26 @@ maybeDrawTime :: TickNumber -> Bool -> GameState -> Maybe (Widget n)
 maybeDrawTime t showTicks gs = guard (clockEquipped gs) $> str (drawTime t showTicks)
 
 -- | Draw info about the current number of ticks per second.
-drawTPS :: AppState -> Widget Name
-drawTPS s = hBox (tpsInfo : rateInfo)
+drawTPS :: UITiming -> Widget Name
+drawTPS timing = hBox (tpsInfo : rateInfo)
  where
   tpsInfo
     | l >= 0 = hBox [str (show n), txt " ", txt (number n "tick"), txt " / s"]
     | otherwise = hBox [txt "1 tick / ", str (show n), txt " s"]
 
   rateInfo
-    | s ^. uiState . uiGameplay . uiTiming . uiShowFPS =
+    | timing ^. uiShowFPS =
         [ txt " ("
-        , let tpf = s ^. uiState . uiGameplay . uiTiming . uiTPF
+        , let tpf = timing ^. uiTPF
            in applyWhen (tpf >= fromIntegral ticksPerFrameCap) (withAttr redAttr) $
                 str (printf "%0.1f" tpf)
         , txt " tpf, "
-        , str (printf "%0.1f" (s ^. uiState . uiGameplay . uiTiming . uiFPS))
+        , str (printf "%0.1f" (timing ^. uiFPS))
         , txt " fps)"
         ]
     | otherwise = []
 
-  l = s ^. uiState . uiGameplay . uiTiming . lgTicksPerSecond
+  l = timing ^. lgTicksPerSecond
   n = 2 ^ abs l
 
 -- | The height of the REPL box.  Perhaps in the future this should be
@@ -594,28 +595,36 @@ replHeight = 10
 
 -- | Hide the cursor when a modal is set
 chooseCursor :: AppState -> [CursorLocation n] -> Maybe (CursorLocation n)
-chooseCursor s locs = case s ^. uiState . uiGameplay . uiDialogs . uiModal of
+chooseCursor s locs = case m of
   Nothing -> showFirstCursor s locs
   Just _ -> Nothing
+ where
+  m = s ^. uiState . uiGameplay . uiDialogs . uiModal
 
 -- | Draw a dialog window, if one should be displayed right now.
 drawDialog :: AppState -> Widget Name
-drawDialog s = case s ^. uiState . uiGameplay . uiDialogs . uiModal of
+drawDialog s = case m of
   Just (Modal mt d) -> renderDialog d $ case mt of
     GoalModal -> drawModal s mt
     RobotsModal -> drawModal s mt
     _ -> maybeScroll ModalViewport $ drawModal s mt
   Nothing -> emptyWidget
+ where
+  m = s ^. uiState . uiGameplay . uiDialogs . uiModal
 
 -- | Draw one of the various types of modal dialog.
 drawModal :: AppState -> ModalType -> Widget Name
 drawModal s = \case
-  HelpModal -> helpWidget (s ^. gameState . randomness . seed) (s ^. runtimeState . webPort) (s ^. keyEventHandling)
-  RobotsModal -> drawRobotsModal $ s ^. uiState . uiGameplay . uiDialogs . uiRobot
-  RecipesModal -> availableListWidget (s ^. gameState) RecipeList
-  CommandsModal -> commandsListWidget (s ^. gameState)
-  MessagesModal -> availableListWidget (s ^. gameState) MessageList
-  StructuresModal -> SR.renderStructuresDisplay (s ^. gameState) (s ^. uiState . uiGameplay . uiDialogs . uiStructure)
+  HelpModal ->
+    helpWidget
+      (gs ^. randomness . seed)
+      (s ^. runtimeState . webPort)
+      (s ^. keyEventHandling)
+  RobotsModal -> drawRobotsModal $ uig ^. uiDialogs . uiRobot
+  RecipesModal -> availableListWidget gs RecipeList
+  CommandsModal -> commandsListWidget gs
+  MessagesModal -> availableListWidget gs MessageList
+  StructuresModal -> SR.renderStructuresDisplay gs (uig ^. uiDialogs . uiStructure)
   ScenarioEndModal outcome ->
     padBottom (Pad 1) $
       vBox $
@@ -632,15 +641,18 @@ drawModal s = \case
   DescriptionModal e -> descriptionWidget s e
   QuitModal -> padBottom (Pad 1) $ hCenter $ txt (quitMsg (s ^. uiState . uiMenu))
   GoalModal ->
-    GR.renderGoalsDisplay (s ^. uiState . uiGameplay . uiDialogs . uiGoal) $
-      view (scenarioOperation . scenarioDescription) . fst <$> s ^. uiState . uiGameplay . scenarioRef
+    GR.renderGoalsDisplay (uig ^. uiDialogs . uiGoal) $
+      view (scenarioOperation . scenarioDescription) . fst <$> uig ^. scenarioRef
   KeepPlayingModal ->
     padLeftRight 1 $
       displayParagraphs $
         pure
           "Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."
-  TerrainPaletteModal -> EV.drawTerrainSelector s
-  EntityPaletteModal -> EV.drawEntityPaintSelector s
+  TerrainPaletteModal -> EV.drawTerrainSelector uig
+  EntityPaletteModal -> EV.drawEntityPaintSelector uig
+ where
+  gs = s ^. gameState
+  uig = s ^. uiState . uiGameplay
 
 helpWidget :: Seed -> Maybe Port -> KeyEventHandlingState -> Widget Name
 helpWidget theSeed mport keyState =
@@ -777,7 +789,10 @@ commandsListWidget gs =
 
 -- | Generate a pop-up widget to display the description of an entity.
 descriptionWidget :: AppState -> Entity -> Widget Name
-descriptionWidget s e = padLeftRight 1 (explainEntry s e)
+descriptionWidget s e = padLeftRight 1 (explainEntry uig gs e)
+ where
+  gs = s ^. gameState
+  uig = s ^. uiState . uiGameplay
 
 -- | Draw a widget with messages to the current robot.
 messagesWidget :: GameState -> [Widget Name]
@@ -864,29 +879,32 @@ drawKeyMenu s =
   mkCmdRow = hBox . map drawPaddedCmd
   drawPaddedCmd = padLeftRight 1 . drawKeyCmd
   contextCmds
-    | ctrlMode == Handling = txt $ fromMaybe "" (s ^? gameState . gameControls . inputHandler . _Just . _1)
+    | ctrlMode == Handling = txt $ fromMaybe "" (gs ^? gameControls . inputHandler . _Just . _1)
     | otherwise = mkCmdRow focusedPanelCmds
   focusedPanelCmds =
     map highlightKeyCmds
       . keyCmdsFor
       . focusGetCurrent
-      . view (uiState . uiGameplay . uiFocusRing)
-      $ s
+      . view uiFocusRing
+      $ uig
 
-  isReplWorking = s ^. gameState . gameControls . replWorking
-  isPaused = s ^. gameState . temporal . paused
+  uig = s ^. uiState . uiGameplay
+  gs = s ^. gameState
+
+  isReplWorking = gs ^. gameControls . replWorking
+  isPaused = gs ^. temporal . paused
   hasDebug = hasDebugCapability creative s
-  viewingBase = (s ^. gameState . robotInfo . viewCenterRule) == VCRobot 0
-  creative = s ^. gameState . creativeMode
+  viewingBase = (gs ^. robotInfo . viewCenterRule) == VCRobot 0
+  creative = gs ^. creativeMode
   showCreative = s ^. uiState . uiDebugOptions . Lens.contains ToggleCreative
   showEditor = s ^. uiState . uiDebugOptions . Lens.contains ToggleWorldEditor
-  goal = hasAnythingToShow $ s ^. uiState . uiGameplay . uiDialogs . uiGoal . goalsContent
-  showZero = s ^. uiState . uiGameplay . uiInventory . uiShowZero
-  inventorySort = s ^. uiState . uiGameplay . uiInventory . uiInventorySort
-  inventorySearch = s ^. uiState . uiGameplay . uiInventory . uiInventorySearch
-  ctrlMode = s ^. uiState . uiGameplay . uiREPL . replControlMode
-  canScroll = creative || (s ^. gameState . landscape . worldScrollable)
-  handlerInstalled = isJust (s ^. gameState . gameControls . inputHandler)
+  goal = hasAnythingToShow $ uig ^. uiDialogs . uiGoal . goalsContent
+  showZero = uig ^. uiInventory . uiShowZero
+  inventorySort = uig ^. uiInventory . uiInventorySort
+  inventorySearch = uig ^. uiInventory . uiInventorySearch
+  ctrlMode = uig ^. uiREPL . replControlMode
+  canScroll = creative || (gs ^. landscape . worldScrollable)
+  handlerInstalled = isJust (gs ^. gameControls . inputHandler)
 
   renderPilotModeSwitch :: ReplControlMode -> T.Text
   renderPilotModeSwitch = \case
@@ -915,7 +933,7 @@ drawKeyMenu s =
       , may isPaused (NoHighlight, keyM SE.RunSingleTickEvent, "step")
       , may
           (isPaused && hasDebug)
-          ( if s ^. uiState . uiGameplay . uiShowDebug then Alert else NoHighlight
+          ( if uig ^. uiShowDebug then Alert else NoHighlight
           , keyM SE.ShowCESKDebugEvent
           , "debug"
           )
@@ -923,10 +941,10 @@ drawKeyMenu s =
       , Just
           ( NoHighlight
           , keyM SE.ToggleREPLVisibilityEvent
-          , if s ^. uiState . uiGameplay . uiShowREPL then "hide REPL" else "show REPL"
+          , if uig ^. uiShowREPL then "hide REPL" else "show REPL"
           )
       , Just
-          ( if s ^. uiState . uiGameplay . uiShowRobots then NoHighlight else Alert
+          ( if uig ^. uiShowRobots then NoHighlight else Alert
           , keyM SE.HideRobotsEvent
           , "hide robots"
           )
@@ -1090,20 +1108,23 @@ drawInfoPanel s
 --   such as its description and relevant recipes.
 explainFocusedItem :: AppState -> Widget Name
 explainFocusedItem s = case focusedItem s of
-  Just (InventoryEntry _ e) -> explainEntry s e
-  Just (EquippedEntry e) -> explainEntry s e
+  Just (InventoryEntry _ e) -> explainEntry uig gs e
+  Just (EquippedEntry e) -> explainEntry uig gs e
   _ -> txt " "
+ where
+  gs = s ^. gameState
+  uig = s ^. uiState . uiGameplay
 
-explainEntry :: AppState -> Entity -> Widget Name
-explainEntry s e =
+explainEntry :: UIGameplay -> GameState -> Entity -> Widget Name
+explainEntry uig gs e =
   vBox $
     [ displayProperties $ Set.toList (e ^. entityProperties)
     , drawMarkdown (e ^. entityDescription)
-    , explainCapabilities (s ^. gameState) e
-    , explainRecipes s e
+    , explainCapabilities gs e
+    , explainRecipes gs e
     ]
-      <> [drawRobotMachine s False | CDebug `M.member` getMap (e ^. entityCapabilities)]
-      <> [drawRobotLog s | CExecute Log `M.member` getMap (e ^. entityCapabilities)]
+      <> [drawRobotMachine gs False | CDebug `M.member` getMap (e ^. entityCapabilities)]
+      <> [drawRobotLog uig gs | CExecute Log `M.member` getMap (e ^. entityCapabilities)]
 
 displayProperties :: [EntityProperty] -> Widget Name
 displayProperties = displayList . mapMaybe showProperty
@@ -1207,8 +1228,8 @@ explainCapabilities gs e
 
   robotInv = fromMaybe E.empty $ gs ^? to focusedRobot . _Just . robotInventory
 
-explainRecipes :: AppState -> Entity -> Widget Name
-explainRecipes s e
+explainRecipes :: GameState -> Entity -> Widget Name
+explainRecipes gs e
   | null recipes = emptyWidget
   | otherwise =
       vBox
@@ -1219,9 +1240,9 @@ explainRecipes s e
             $ map (hLimit widthLimit . padBottom (Pad 1) . drawRecipe (Just e) inv) recipes
         ]
  where
-  recipes = recipesWith s e
+  recipes = recipesWith gs e
 
-  inv = fromMaybe E.empty $ s ^? gameState . to focusedRobot . _Just . robotInventory
+  inv = fromMaybe E.empty $ gs ^? to focusedRobot . _Just . robotInventory
 
   width (n, ingr) =
     length (show n) + 1 + maximum0 (map T.length . T.words $ ingr ^. entityName)
@@ -1235,9 +1256,9 @@ explainRecipes s e
   widthLimit = 2 * max maxInputWidth maxOutputWidth + 11
 
 -- | Return all recipes that involve a given entity.
-recipesWith :: AppState -> Entity -> [Recipe Entity]
-recipesWith s e =
-  let getRecipes select = recipesFor (s ^. gameState . recipesInfo . select) e
+recipesWith :: GameState -> Entity -> [Recipe Entity]
+recipesWith gs e =
+  let getRecipes select = recipesFor (gs ^. recipesInfo . select) e
    in -- The order here is chosen intentionally.  See https://github.com/swarm-game/swarm/issues/418.
       --
       --   1. Recipes where the entity is an input --- these should go
@@ -1351,10 +1372,10 @@ indent2 = defaultWrapSettings {fillStrategy = FillIndent 2}
 --   or command status reports) are thus ephemeral, i.e. they are only
 --   shown when they are the most recent log entry, but hidden once
 --   something else is logged.
-getLogEntriesToShow :: AppState -> [LogEntry]
-getLogEntriesToShow s = logEntries ^.. traversed . ifiltered shouldShow
+getLogEntriesToShow :: GameState -> [LogEntry]
+getLogEntriesToShow gs = logEntries ^.. traversed . ifiltered shouldShow
  where
-  logEntries = s ^. gameState . to focusedRobot . _Just . robotLog
+  logEntries = gs ^. to focusedRobot . _Just . robotLog
   n = Seq.length logEntries
 
   shouldShow i le =
@@ -1362,20 +1383,20 @@ getLogEntriesToShow s = logEntries ^.. traversed . ifiltered shouldShow
       RobotLog src _ _ -> src `elem` [Said, Logged]
       SystemLog -> False
 
-drawRobotLog :: AppState -> Widget Name
-drawRobotLog s =
+drawRobotLog :: UIGameplay -> GameState -> Widget Name
+drawRobotLog uig gs =
   vBox
     [ padBottom (Pad 1) (hBorderWithLabel (txt "Log"))
     , vBox . F.toList . imap drawEntry $ logEntriesToShow
     ]
  where
-  logEntriesToShow = getLogEntriesToShow s
+  logEntriesToShow = getLogEntriesToShow gs
   n = length logEntriesToShow
   drawEntry i e =
-    applyWhen (i == n - 1 && s ^. uiState . uiGameplay . uiScrollToEnd) visible $
+    applyWhen (i == n - 1 && uig ^. uiScrollToEnd) visible $
       drawLogEntry (not allMe) e
 
-  rid = s ^? gameState . to focusedRobot . _Just . robotID
+  rid = gs ^? to focusedRobot . _Just . robotID
 
   allMe = all me logEntriesToShow
   me le = case le ^. leSource of
@@ -1383,8 +1404,8 @@ drawRobotLog s =
     _ -> False
 
 -- | Show the 'CESK' machine of focused robot. Puts a separator above.
-drawRobotMachine :: AppState -> Bool -> Widget Name
-drawRobotMachine s showName = case s ^. gameState . to focusedRobot of
+drawRobotMachine :: GameState -> Bool -> Widget Name
+drawRobotMachine gs showName = case gs ^. to focusedRobot of
   Nothing -> machineLine "no selected robot"
   Just r ->
     vBox
@@ -1456,25 +1477,28 @@ drawREPL s =
     , vBox mayDebug
     ]
  where
+  uig = s ^. uiState . uiGameplay
+  gs = s ^. gameState
+
   -- rendered history lines fitting above REPL prompt
   history :: [Widget n]
   history = map fmt . filter (not . isREPLSaved) . toList . getSessionREPLHistoryItems $ theRepl ^. replHistory
   currentPrompt :: Widget Name
   currentPrompt = case (isActive <$> base, theRepl ^. replControlMode) of
     (_, Handling) -> padRight Max $ txt "[key handler running, M-k to toggle]"
-    (Just False, _) -> renderREPLPrompt (s ^. uiState . uiGameplay . uiFocusRing) theRepl
+    (Just False, _) -> renderREPLPrompt (uig ^. uiFocusRing) theRepl
     _running -> padRight Max $ txt "..."
-  theRepl = s ^. uiState . uiGameplay . uiREPL
+  theRepl = uig ^. uiREPL
 
   -- NOTE: there exists a lens named 'baseRobot' that uses "unsafe"
   -- indexing that may be an alternative to this:
-  base = s ^. gameState . robotInfo . robotMap . at 0
+  base = gs ^. robotInfo . robotMap . at 0
 
   fmt (REPLHistItem itemType t) = case itemType of
     REPLEntry {} -> txt $ "> " <> t
     REPLOutput -> txt t
     REPLError -> txtWrapWith indent2 {preserveIndentation = True} t
-  mayDebug = [drawRobotMachine s True | s ^. uiState . uiGameplay . uiShowDebug]
+  mayDebug = [drawRobotMachine gs True | uig ^. uiShowDebug]
 
 ------------------------------------------------------------
 -- Utility

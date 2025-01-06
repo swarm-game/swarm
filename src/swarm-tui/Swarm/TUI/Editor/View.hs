@@ -19,7 +19,6 @@ import Swarm.TUI.Border
 import Swarm.TUI.Editor.Model
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Name
-import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.TUI.Panel
 import Swarm.TUI.View.Attribute.Attr
@@ -27,13 +26,13 @@ import Swarm.TUI.View.CellDisplay (renderDisplay)
 import Swarm.TUI.View.Util qualified as VU
 import Swarm.Util (applyWhen)
 
-extractTerrainMap :: UIState -> TerrainMap
-extractTerrainMap uis =
+extractTerrainMap :: UIGameplay -> TerrainMap
+extractTerrainMap uig =
   maybe mempty (view (scenarioLandscape . scenarioTerrainAndEntities . terrainMap) . fst) $
-    uis ^. uiGameplay . scenarioRef
+    uig ^. scenarioRef
 
-drawWorldEditor :: FocusRing Name -> UIState -> Widget Name
-drawWorldEditor toplevelFocusRing uis =
+drawWorldEditor :: FocusRing Name -> UIGameplay -> Widget Name
+drawWorldEditor toplevelFocusRing uig =
   if worldEditor ^. worldOverdraw . isWorldEditorEnabled
     then
       panel
@@ -64,7 +63,7 @@ drawWorldEditor toplevelFocusRing uis =
       hLimit 30 $
         controlsBox <=> statusBox
 
-  worldEditor = uis ^. uiGameplay . uiWorldEditor
+  worldEditor = uig ^. uiWorldEditor
   maybeAreaBounds = worldEditor ^. editingBounds . boundsRect
 
   -- TODO (#1150): Use withFocusRing?
@@ -80,7 +79,7 @@ drawWorldEditor toplevelFocusRing uis =
    where
     selectedThing = snd <$> BL.listSelectedElement list
 
-  tm = extractTerrainMap uis
+  tm = extractTerrainMap uig
 
   brushWidget =
     mkFormControl (WorldEditorPanelControl BrushSelector) $
@@ -146,25 +145,25 @@ drawLabeledEntitySwatch (EntityFacade eName eDisplay) =
  where
   tile = padRight (Pad 1) $ renderDisplay eDisplay
 
-drawTerrainSelector :: AppState -> Widget Name
-drawTerrainSelector s =
+drawTerrainSelector :: UIGameplay -> Widget Name
+drawTerrainSelector uig =
   padAll 1
     . hCenter
     . vLimit 8
-    . BL.renderListWithIndex (listDrawTerrainElement $ extractTerrainMap $ s ^. uiState) True
-    $ s ^. uiState . uiGameplay . uiWorldEditor . terrainList
+    . BL.renderListWithIndex (listDrawTerrainElement $ extractTerrainMap uig) True
+    $ uig ^. uiWorldEditor . terrainList
 
 listDrawTerrainElement :: TerrainMap -> Int -> Bool -> TerrainType -> Widget Name
 listDrawTerrainElement tm pos _isSelected a =
   clickable (TerrainListItem pos) $ VU.drawLabeledTerrainSwatch tm a
 
-drawEntityPaintSelector :: AppState -> Widget Name
-drawEntityPaintSelector s =
+drawEntityPaintSelector :: UIGameplay -> Widget Name
+drawEntityPaintSelector uig =
   padAll 1
     . hCenter
     . vLimit 10
     . BL.renderListWithIndex listDrawEntityPaintElement True
-    $ s ^. uiState . uiGameplay . uiWorldEditor . entityPaintList
+    $ uig ^. uiWorldEditor . entityPaintList
 
 listDrawEntityPaintElement :: Int -> Bool -> EntityFacade -> Widget Name
 listDrawEntityPaintElement pos _isSelected a =

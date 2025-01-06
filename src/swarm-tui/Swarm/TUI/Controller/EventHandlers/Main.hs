@@ -94,15 +94,15 @@ viewGoal = do
     else continueWithoutRedraw
 
 hideRobots :: EventM Name AppState ()
-hideRobots = do
+hideRobots = Brick.zoom (uiState . uiGameplay) $ do
   t <- liftIO $ getTime Monotonic
-  h <- use $ uiState . uiGameplay . uiHideRobotsUntil
+  h <- use uiHideRobotsUntil
   case h >= t of
     -- ignore repeated keypresses
     True -> continueWithoutRedraw
     -- hide for two seconds
     False -> do
-      uiState . uiGameplay . uiHideRobotsUntil .= t + TimeSpec 2 0
+      uiHideRobotsUntil .= t + TimeSpec 2 0
       invalidateCacheEntry WorldCache
 
 showCESKDebug :: EventM Name AppState ()

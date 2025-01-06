@@ -641,14 +641,15 @@ handleREPLEventTyping = \case
                   modify validateREPLForm
           -- Otherwise, just move around in the history as normal.
           _ -> modify $ adjReplHistIndex Newer
-      ControlChar 'r' -> do
-        s <- get
-        let uinput = s ^. uiState . uiGameplay . uiREPL . replPromptText
-        case s ^. uiState . uiGameplay . uiREPL . replPromptType of
-          CmdPrompt _ -> uiState . uiGameplay . uiREPL . replPromptType .= SearchPrompt (s ^. uiState . uiGameplay . uiREPL . replHistory)
-          SearchPrompt rh -> case lastEntry uinput rh of
-            Nothing -> pure ()
-            Just found -> uiState . uiGameplay . uiREPL . replPromptType .= SearchPrompt (removeEntry found rh)
+      ControlChar 'r' ->
+        Brick.zoom (uiState . uiGameplay . uiREPL) $ do
+          uir <- get
+          let uinput = uir ^. replPromptText
+          case uir ^. replPromptType of
+            CmdPrompt _ -> replPromptType .= SearchPrompt (uir ^. replHistory)
+            SearchPrompt rh -> case lastEntry uinput rh of
+              Nothing -> pure ()
+              Just found -> replPromptType .= SearchPrompt (removeEntry found rh)
       CharKey '\t' -> do
         s <- get
         let names = s ^.. gameState . baseEnv . envTypes . to assocs . traverse . _1
