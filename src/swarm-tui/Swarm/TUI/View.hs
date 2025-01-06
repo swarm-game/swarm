@@ -879,14 +879,14 @@ drawKeyMenu s =
   mkCmdRow = hBox . map drawPaddedCmd
   drawPaddedCmd = padLeftRight 1 . drawKeyCmd
   contextCmds
-    | ctrlMode == Handling = txt $ fromMaybe "" (s ^? gameState . gameControls . inputHandler . _Just . _1)
+    | ctrlMode == Handling = txt $ fromMaybe "" (gs ^? gameControls . inputHandler . _Just . _1)
     | otherwise = mkCmdRow focusedPanelCmds
   focusedPanelCmds =
     map highlightKeyCmds
       . keyCmdsFor
       . focusGetCurrent
-      . view (uiState . uiGameplay . uiFocusRing)
-      $ s
+      . view uiFocusRing
+      $ uig
 
   uig = s ^. uiState . uiGameplay
   gs = s ^. gameState

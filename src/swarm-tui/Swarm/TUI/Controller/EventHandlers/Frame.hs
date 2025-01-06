@@ -118,8 +118,9 @@ runFrame = do
 --   first.
 runFrameTicks :: TimeSpec -> EventM Name AppState ()
 runFrameTicks dt = do
-  a <- use (uiState . uiGameplay . uiTiming . accumulatedTime)
-  t <- use (uiState . uiGameplay . uiTiming . frameTickCount)
+  timing <- use $ uiState . uiGameplay . uiTiming
+  let a = timing ^. accumulatedTime
+      t = timing ^. frameTickCount
 
   -- Ensure there is still enough time left, and we haven't hit the
   -- tick limit for this frame.

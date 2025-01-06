@@ -41,11 +41,12 @@ import System.Clock
 activateWorldEditorFunction :: WorldEditorFocusable -> EventM Name AppState ()
 activateWorldEditorFunction BrushSelector = openModal TerrainPaletteModal
 activateWorldEditorFunction EntitySelector = openModal EntityPaletteModal
-activateWorldEditorFunction AreaSelector = do
-  selectorStage <- use $ uiState . uiGameplay . uiWorldEditor . editingBounds . boundsSelectionStep
-  case selectorStage of
-    SelectionComplete -> uiState . uiGameplay . uiWorldEditor . editingBounds . boundsSelectionStep .= UpperLeftPending
-    _ -> return ()
+activateWorldEditorFunction AreaSelector =
+  Brick.zoom (uiState . uiGameplay . uiWorldEditor . editingBounds) $ do
+    selectorStage <- use boundsSelectionStep
+    case selectorStage of
+      SelectionComplete -> boundsSelectionStep .= UpperLeftPending
+      _ -> return ()
 activateWorldEditorFunction OutputPathSelector =
   -- TODO: #1371
   liftIO $ putStrLn "File selection"
@@ -143,16 +144,20 @@ updateAreaBounds = \case
 
 saveMapFile :: EventM Name AppState ()
 saveMapFile = do
-  worldEditor <- use $ uiState . uiGameplay . uiWorldEditor
-  maybeBounds <- use $ uiState . uiGameplay . uiWorldEditor . editingBounds . boundsRect
-  w <- use $ gameState . landscape . multiWorld
-  tm <- use $ gameState . landscape . terrainAndEntities . terrainMap
-  let mapCellGrid =
+  uig <- use $ uiState . uiGameplay
+  land <- use $ gameState . landscape
+  let worldEditor = uig ^. uiWorldEditor
+      maybeBounds = uig ^. uiWorldEditor . editingBounds . boundsRect
+
+      w = land ^. multiWorld
+      tm = land ^. terrainAndEntities . terrainMap
+      mapCellGrid =
         Just
           <$> EU.getEditedMapRectangle tm (worldEditor ^. worldOverdraw) maybeBounds w
 
-  let fp = worldEditor ^. outputFilePath
-  maybeScenarioPair <- use $ uiState . uiGameplay . scenarioRef
+      fp = worldEditor ^. outputFilePath
+      maybeScenarioPair = uig ^. scenarioRef
+
   liftIO $ Y.encodeFile fp $ constructScenario (fst <$> maybeScenarioPair) mapCellGrid
 
   uiState . uiGameplay . uiWorldEditor . lastWorldEditorMessage .= Just "Saved."
