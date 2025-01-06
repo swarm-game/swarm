@@ -607,7 +607,7 @@ stepCESK cesk = case cesk of
   -- set the runningAtomic flag and push a stack frame to unset it
   -- when done evaluating.  We do this here so that even *evaluating*
   -- the argument to instant/atomic will happen atomically (#2270).
-  -- *Execution* will also happen atomically; that is handled in execConst.
+  -- \*Execution* will also happen atomically; that is handled in execConst.
   In (TApp (TConst c) t2) e s k
     | c `elem` [Atomic, Instant] -> do
         runningAtomic .= True
