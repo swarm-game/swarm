@@ -135,13 +135,13 @@ isError :: LogEntry -> Bool
 isError = (>= Warning) . view leSeverity
 
 exampleTests :: [FilePath] -> TestTree
-exampleTests inputs = testGroup "Test example" (map exampleTest inputs)
+exampleTests = testGroup "Test example" . map exampleTest
 
 exampleTest :: FilePath -> TestTree
 exampleTest path =
   testCase ("processTerm for contents of " ++ show path) $ do
     value <- processTerm <$> T.readFile path
-    either (assertFailure . into @String) (\_ -> return ()) value
+    either (assertFailure . into @String) (const $ return ()) value
 
 scenarioParseTests :: ScenarioInputs -> [FilePath] -> TestTree
 scenarioParseTests scenarioInputs inputs =
@@ -166,11 +166,9 @@ getScenario expRes scenarioInputs p = do
   res <- decodeFileEitherE scenarioInputs p :: IO (Either ParseException Scenario)
   case expRes of
     Parsed -> case res of
-      Left err -> assertFailure (prettyPrintParseException err)
+      Left err -> assertFailure $ prettyPrintParseException err
       Right _s -> return ()
-    Failed -> case res of
-      Left _err -> return ()
-      Right _s -> assertFailure "Unexpectedly parsed invalid scenario!"
+    Failed -> forM_ res $ const $ assertFailure "Unexpectedly parsed invalid scenario!"
 
 data Time
   = -- | One second should be enough to run most programs.

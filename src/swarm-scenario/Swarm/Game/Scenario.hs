@@ -286,9 +286,8 @@ instance FromJSONE ScenarioInputs Scenario where
       combinedTEM <- getE
 
       let TerrainEntityMaps _tm emCombined = combinedTEM
-      case filter (isNothing . (`lookupEntityName` emCombined)) known of
-        [] -> return ()
-        unk -> failT ["Unknown entities in 'known' list:", T.intercalate ", " unk]
+      forM_ (NE.nonEmpty $ filter (isNothing . (`lookupEntityName` emCombined)) known) $ \unk ->
+        failT ["Unknown entities in 'known' list:", T.intercalate ", " $ NE.toList unk]
 
       -- parse robots and build RobotMap
       rs <- v ..: "robots"

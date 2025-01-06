@@ -188,21 +188,19 @@ loadScenarioDir scenarioInputs loadTestScenarios dir = do
     True -> Just <$> readOrderFile orderFile
   itemPaths <- sendIO $ keepYamlOrPublicDirectory dir =<< listDirectory dir
 
-  case morder of
-    Just order -> do
-      let missing = itemPaths \\ order
-          dangling = order \\ itemPaths
+  forM_ morder $ \order -> do
+    let missing = itemPaths \\ order
+        dangling = order \\ itemPaths
 
-      forM_ (NE.nonEmpty missing) $
-        warn
-          . OrderFileWarning (dirName </> orderFileName)
-          . MissingFiles
+    forM_ (NE.nonEmpty missing) $
+      warn
+        . OrderFileWarning (dirName </> orderFileName)
+        . MissingFiles
 
-      forM_ (NE.nonEmpty dangling) $
-        warn
-          . OrderFileWarning (dirName </> orderFileName)
-          . DanglingFiles
-    Nothing -> pure ()
+    forM_ (NE.nonEmpty dangling) $
+      warn
+        . OrderFileWarning (dirName </> orderFileName)
+        . DanglingFiles
 
   -- Only keep the files from 00-ORDER.txt that actually exist.
   let morder' = filter (`elem` itemPaths) <$> morder

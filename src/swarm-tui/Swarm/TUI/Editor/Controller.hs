@@ -68,7 +68,6 @@ handleCtrlLeftClick mouseLoc = do
       worldOverdraw . paintedTerrain %= M.insert (mouseCoords ^. planar) (terrain, maybeToErasable maybeEntityPaint)
       lastWorldEditorMessage .= Nothing
   immediatelyRedrawWorld
-  return ()
 
 handleRightClick :: B.Location -> EventM Name AppState ()
 handleRightClick mouseLoc = do
@@ -78,7 +77,6 @@ handleRightClick mouseLoc = do
     mouseCoords <- MaybeT $ Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
     uiState . uiGameplay . uiWorldEditor . worldOverdraw . paintedTerrain %= M.delete (mouseCoords ^. planar)
   immediatelyRedrawWorld
-  return ()
 
 -- | "Eye Dropper" tool:
 handleMiddleClick :: B.Location -> EventM Name AppState ()

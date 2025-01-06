@@ -7,7 +7,7 @@
 module Swarm.Game.Scenario.Objective.Validation where
 
 import Control.Lens (view, (^.))
-import Control.Monad (unless)
+import Control.Monad (forM_, unless)
 import Data.Foldable (for_, toList)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as Set
@@ -29,19 +29,16 @@ validateObjectives ::
   [Objective] ->
   m [Objective]
 validateObjectives objectives = do
-  for_ objectives $ \x -> case x ^. objectivePrerequisite of
-    Just p ->
-      unless (null remaining) $
-        failT
-          [ "Reference to undefined objective(s)"
-          , T.intercalate ", " (map quote $ Set.toList remaining) <> "."
-          , "Defined are:"
-          , T.intercalate ", " (map quote $ Set.toList allIds)
-          ]
-     where
-      refs = Set.fromList $ toList $ logic p
-      remaining = Set.difference refs allIds
-    Nothing -> return ()
+  for_ objectives $ \x -> forM_ (x ^. objectivePrerequisite) $ \p ->
+    let refs = Set.fromList $ toList $ logic p
+        remaining = Set.difference refs allIds
+     in unless (null remaining) $
+          failT
+            [ "Reference to undefined objective(s)"
+            , T.intercalate ", " (map quote $ Set.toList remaining) <> "."
+            , "Defined are:"
+            , T.intercalate ", " (map quote $ Set.toList allIds)
+            ]
 
   either (fail . T.unpack) return $
     failOnCyclicGraph "Prerequisites" (fromMaybe "N/A" . view objectiveId) edges
