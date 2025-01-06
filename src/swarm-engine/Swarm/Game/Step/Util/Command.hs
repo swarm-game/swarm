@@ -99,19 +99,17 @@ ensureCanExecute ::
   Const ->
   m ()
 ensureCanExecute c =
-  gets @Robot (constCapsFor c) >>= \case
-    Nothing -> pure ()
-    Just cap -> do
-      isPrivileged <- isPrivilegedBot
-      -- Privileged robots can execute commands regardless
-      -- of equipped devices, and without expending
-      -- a capability's exercise cost.
-      unless isPrivileged $ do
-        robotCaps <- use robotCapabilities
-        let capProviders = M.lookup cap $ getMap robotCaps
-        case capProviders of
-          Nothing -> throwError $ Incapable FixByEquip (R.singletonCap cap) (TConst c)
-          Just rawCosts -> payExerciseCost c rawCosts
+  gets @Robot (constCapsFor c) >>= mapM_ \cap -> do
+    isPrivileged <- isPrivilegedBot
+    -- Privileged robots can execute commands regardless
+    -- of equipped devices, and without expending
+    -- a capability's exercise cost.
+    unless isPrivileged $ do
+      robotCaps <- use robotCapabilities
+      let capProviders = M.lookup cap $ getMap robotCaps
+      case capProviders of
+        Nothing -> throwError $ Incapable FixByEquip (R.singletonCap cap) (TConst c)
+        Just rawCosts -> payExerciseCost c rawCosts
 
 payExerciseCost ::
   ( Has (State Robot) sig m
@@ -212,14 +210,12 @@ onTarget rid act = do
     True -> act
     False -> do
       mtgt <- use (robotInfo . robotMap . at rid)
-      case mtgt of
-        Nothing -> return ()
-        Just tgt -> do
-          tgt' <- execState @Robot tgt act
-          zoomRobots $
-            if tgt' ^. selfDestruct
-              then deleteRobot rid
-              else robotMap . ix rid .= tgt'
+      forM_ mtgt $ \tgt -> do
+        tgt' <- execState @Robot tgt act
+        zoomRobots $
+          if tgt' ^. selfDestruct
+            then deleteRobot rid
+            else robotMap . ix rid .= tgt'
 
 -- | Enforces validity of the robot's privileged status to receive
 -- an achievement.
@@ -292,13 +288,11 @@ isNearbyOrExempt privileged myLoc otherLoc =
 updateDiscoveredEntities :: (HasRobotStepState sig m) => Entity -> m ()
 updateDiscoveredEntities e = do
   allDiscovered <- use $ discovery . allDiscoveredEntities
-  if E.contains0plus e allDiscovered
-    then pure ()
-    else do
-      let newAllDiscovered = E.insertCount 1 e allDiscovered
-      updateAvailableRecipes (newAllDiscovered, newAllDiscovered) e
-      updateAvailableCommands e
-      discovery . allDiscoveredEntities .= newAllDiscovered
+  unless (E.contains0plus e allDiscovered) $ do
+    let newAllDiscovered = E.insertCount 1 e allDiscovered
+    updateAvailableRecipes (newAllDiscovered, newAllDiscovered) e
+    updateAvailableCommands e
+    discovery . allDiscoveredEntities .= newAllDiscovered
 
 -- | Update the availableRecipes list.
 -- This implementation is not efficient:

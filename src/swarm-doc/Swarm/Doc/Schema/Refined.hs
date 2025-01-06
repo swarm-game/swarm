@@ -9,6 +9,7 @@
 module Swarm.Doc.Schema.Refined where
 
 import Control.Applicative ((<|>))
+import Control.Monad (unless)
 import Data.Aeson
 import Data.List.Extra (replace)
 import Data.List.NonEmpty (NonEmpty)
@@ -122,9 +123,8 @@ toSwarmSchema rawSchema = do
   theType <- maybe (fail "Unspecified sub-schema type") return maybeType
   markdownDescription <- mapM getMarkdown $ _description rawSchema
 
-  if null (_properties rawSchema) || not (fromMaybe True (_additionalProperties rawSchema))
-    then return ()
-    else fail "All objects must specify '\"additionalProperties\": true'"
+  unless (null (_properties rawSchema) || not (fromMaybe True (_additionalProperties rawSchema))) $
+    fail "All objects must specify '\"additionalProperties\": true'"
 
   return
     SwarmSchema

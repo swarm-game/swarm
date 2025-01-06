@@ -171,39 +171,37 @@ handleMainMenuEvent ::
   BL.List Name MainMenuEntry -> BrickEvent Name AppEvent -> EventM Name AppState ()
 handleMainMenuEvent menu = \case
   Key V.KEnter ->
-    case snd <$> BL.listSelectedElement menu of
-      Nothing -> pure ()
-      Just x0 -> case x0 of
-        NewGame -> do
-          ss <- use $ runtimeState . scenarios
-          uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList ss)
-        Tutorial -> do
-          -- Set up the menu stack as if the user had chosen "New Game > Tutorials"
-          ss <- use $ runtimeState . scenarios
-          let tutorialCollection = getTutorials ss
-              topMenu =
-                BL.listFindBy
-                  ((== tutorialsDirname) . T.unpack . scenarioItemName)
-                  (mkScenarioList ss)
-              tutorialMenu = mkScenarioList tutorialCollection
-              menuStack = tutorialMenu :| pure topMenu
-          uiState . uiMenu .= NewGameMenu menuStack
+    forM_ (snd <$> BL.listSelectedElement menu) $ \case
+      NewGame -> do
+        ss <- use $ runtimeState . scenarios
+        uiState . uiMenu .= NewGameMenu (pure $ mkScenarioList ss)
+      Tutorial -> do
+        -- Set up the menu stack as if the user had chosen "New Game > Tutorials"
+        ss <- use $ runtimeState . scenarios
+        let tutorialCollection = getTutorials ss
+            topMenu =
+              BL.listFindBy
+                ((== tutorialsDirname) . T.unpack . scenarioItemName)
+                (mkScenarioList ss)
+            tutorialMenu = mkScenarioList tutorialCollection
+            menuStack = tutorialMenu :| pure topMenu
+        uiState . uiMenu .= NewGameMenu menuStack
 
-          -- Extract the first tutorial challenge and run it
-          let firstTutorial = case scOrder tutorialCollection of
-                Just (t : _) -> case M.lookup t (scMap tutorialCollection) of
-                  Just (SISingle siPair) -> siPair
-                  _ -> error "No first tutorial found!"
+        -- Extract the first tutorial challenge and run it
+        let firstTutorial = case scOrder tutorialCollection of
+              Just (t : _) -> case M.lookup t (scMap tutorialCollection) of
+                Just (SISingle siPair) -> siPair
                 _ -> error "No first tutorial found!"
-          startGame firstTutorial Nothing
-        Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
-        Messages -> do
-          runtimeState . eventLog . notificationsCount .= 0
-          uiState . uiMenu .= MessagesMenu
-        About -> do
-          uiState . uiMenu .= AboutMenu
-          attainAchievement $ GlobalAchievement LookedAtAboutScreen
-        Quit -> halt
+              _ -> error "No first tutorial found!"
+        startGame firstTutorial Nothing
+      Achievements -> uiState . uiMenu .= AchievementsMenu (BL.list AchievementList (V.fromList listAchievements) 1)
+      Messages -> do
+        runtimeState . eventLog . notificationsCount .= 0
+        uiState . uiMenu .= MessagesMenu
+      About -> do
+        uiState . uiMenu .= AboutMenu
+        attainAchievement $ GlobalAchievement LookedAtAboutScreen
+      Quit -> halt
   CharKey 'q' -> halt
   ControlChar 'q' -> halt
   VtyEvent ev -> do
@@ -250,10 +248,9 @@ handleNewGameMenuEvent ::
   EventM Name AppState ()
 handleNewGameMenuEvent scenarioStack@(curMenu :| rest) = \case
   Key V.KEnter ->
-    case snd <$> BL.listSelectedElement curMenu of
-      Nothing -> pure ()
-      Just (SISingle siPair) -> invalidateCache >> startGame siPair Nothing
-      Just (SICollection _ c) -> do
+    forM_ (snd <$> BL.listSelectedElement curMenu) $ \case
+      SISingle siPair -> invalidateCache >> startGame siPair Nothing
+      SICollection _ c -> do
         uiState . uiMenu .= NewGameMenu (NE.cons (mkScenarioList c) scenarioStack)
   CharKey 'o' -> showLaunchDialog
   CharKey 'O' -> showLaunchDialog
@@ -517,22 +514,21 @@ handleREPLEvent x = do
 runInputHandler :: KeyCombo -> EventM Name AppState ()
 runInputHandler kc = do
   mhandler <- use $ gameState . gameControls . inputHandler
-  case mhandler of
+  forM_ mhandler $ \(_, handler) -> do
     -- Shouldn't be possible to get here if there is no input handler, but
     -- if we do somehow, just do nothing.
-    Nothing -> return ()
-    Just (_, handler) -> do
-      -- Make sure the base is currently idle; if so, apply the
-      -- installed input handler function to a `key` value
-      -- representing the typed input.
-      working <- use $ gameState . gameControls . replWorking
-      unless working $ do
-        s <- get
-        let env = s ^. gameState . baseEnv
-            store = s ^. gameState . baseStore
-            handlerCESK = Out (VKey kc) store [FApp handler, FExec, FSuspend env]
-        gameState . baseRobot . machine .= handlerCESK
-        gameState %= execState (zoomRobots $ activateRobot 0)
+
+    -- Make sure the base is currently idle; if so, apply the
+    -- installed input handler function to a `key` value
+    -- representing the typed input.
+    working <- use $ gameState . gameControls . replWorking
+    unless working $ do
+      s <- get
+      let env = s ^. gameState . baseEnv
+          store = s ^. gameState . baseStore
+          handlerCESK = Out (VKey kc) store [FApp handler, FExec, FSuspend env]
+      gameState . baseRobot . machine .= handlerCESK
+      gameState %= execState (zoomRobots $ activateRobot 0)
 
 -- | Handle a user "piloting" input event for the REPL.
 --
@@ -647,9 +643,8 @@ handleREPLEventTyping = \case
           let uinput = uir ^. replPromptText
           case uir ^. replPromptType of
             CmdPrompt _ -> replPromptType .= SearchPrompt (uir ^. replHistory)
-            SearchPrompt rh -> case lastEntry uinput rh of
-              Nothing -> pure ()
-              Just found -> replPromptType .= SearchPrompt (removeEntry found rh)
+            SearchPrompt rh -> forM_ (lastEntry uinput rh) $ \found ->
+              replPromptType .= SearchPrompt (removeEntry found rh)
       CharKey '\t' -> do
         s <- get
         let names = s ^.. gameState . baseEnv . envTypes . to assocs . traverse . _1

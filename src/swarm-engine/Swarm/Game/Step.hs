@@ -101,15 +101,12 @@ gameTick = do
   -- also save the current store into the robotContext so we can
   -- restore it the next time we start a computation.
   mr <- use (robotInfo . robotMap . at 0)
-  case mr of
-    Just r -> do
-      res <- use $ gameControls . replStatus
-      case res of
-        REPLWorking ty Nothing -> case getResult r of
-          Just v -> gameControls . replStatus .= REPLWorking ty (Just v)
-          Nothing -> pure ()
-        _otherREPLStatus -> pure ()
-    Nothing -> pure ()
+  forM_ mr $ \r -> do
+    res <- use $ gameControls . replStatus
+    case res of
+      REPLWorking ty Nothing -> forM_ (getResult r) $ \v ->
+        gameControls . replStatus .= REPLWorking ty (Just v)
+      _otherREPLStatus -> pure ()
 
   -- Possibly update the view center.
   modify recalcViewCenterAndRedraw

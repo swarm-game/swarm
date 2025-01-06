@@ -506,9 +506,8 @@ validateEntityAttrRefs validAttrs es =
 --   from a file; see 'loadEntities'.
 buildEntityMap :: Has (Throw LoadingFailure) sig m => [Entity] -> m EntityMap
 buildEntityMap es = do
-  case findDup (map fst namedEntities) of
-    Nothing -> return ()
-    Just duped -> throwError $ Duplicate Entities duped
+  forM_ (findDup $ map fst namedEntities) $
+    throwError . Duplicate Entities
   case combineEntityCapsM entsByName es of
     Left x -> throwError $ CustomMessage x
     Right ebc ->

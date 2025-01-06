@@ -302,21 +302,19 @@ activateRobot rid = internalActiveRobots %= IS.insert rid
 wakeUpRobotsDoneSleeping :: (Has (State Robots) sig m) => TickNumber -> m ()
 wakeUpRobotsDoneSleeping time = do
   mrids <- internalWaitingRobots . at time <<.= Nothing
-  case mrids of
-    Nothing -> return ()
-    Just rids -> do
-      robots <- use robotMap
-      let robotIdSet = IM.keysSet robots
-          wakeableRIDsSet = IS.fromList rids
+  forM_ mrids $ \rids -> do
+    robots <- use robotMap
+    let robotIdSet = IM.keysSet robots
+        wakeableRIDsSet = IS.fromList rids
 
-          -- Limit ourselves to the robots that have not expired in their sleep
-          newlyAlive = IS.intersection robotIdSet wakeableRIDsSet
+        -- Limit ourselves to the robots that have not expired in their sleep
+        newlyAlive = IS.intersection robotIdSet wakeableRIDsSet
 
-      internalActiveRobots %= IS.union newlyAlive
+    internalActiveRobots %= IS.union newlyAlive
 
-      -- These robots' wake times may have been moved "forward"
-      -- by 'wakeWatchingRobots'.
-      clearWatchingRobots wakeableRIDsSet
+    -- These robots' wake times may have been moved "forward"
+    -- by 'wakeWatchingRobots'.
+    clearWatchingRobots wakeableRIDsSet
 
 -- | Clear the "watch" state of all of the
 -- awakened robots
