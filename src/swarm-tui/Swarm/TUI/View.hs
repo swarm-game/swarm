@@ -595,32 +595,36 @@ replHeight = 10
 
 -- | Hide the cursor when a modal is set
 chooseCursor :: AppState -> [CursorLocation n] -> Maybe (CursorLocation n)
-chooseCursor s locs = case s ^. uiState . uiGameplay . uiDialogs . uiModal of
+chooseCursor s locs = case m of
   Nothing -> showFirstCursor s locs
   Just _ -> Nothing
+ where
+  m = s ^. uiState . uiGameplay . uiDialogs . uiModal
 
 -- | Draw a dialog window, if one should be displayed right now.
 drawDialog :: AppState -> Widget Name
-drawDialog s = case s ^. uiState . uiGameplay . uiDialogs . uiModal of
+drawDialog s = case m of
   Just (Modal mt d) -> renderDialog d $ case mt of
     GoalModal -> drawModal s mt
     RobotsModal -> drawModal s mt
     _ -> maybeScroll ModalViewport $ drawModal s mt
   Nothing -> emptyWidget
+ where
+  m = s ^. uiState . uiGameplay . uiDialogs . uiModal
 
 -- | Draw one of the various types of modal dialog.
 drawModal :: AppState -> ModalType -> Widget Name
 drawModal s = \case
   HelpModal ->
     helpWidget
-      (s ^. gameState . randomness . seed)
+      (gs ^. randomness . seed)
       (s ^. runtimeState . webPort)
       (s ^. keyEventHandling)
   RobotsModal -> drawRobotsModal $ uig ^. uiDialogs . uiRobot
-  RecipesModal -> availableListWidget (s ^. gameState) RecipeList
-  CommandsModal -> commandsListWidget (s ^. gameState)
-  MessagesModal -> availableListWidget (s ^. gameState) MessageList
-  StructuresModal -> SR.renderStructuresDisplay (s ^. gameState) (uig ^. uiDialogs . uiStructure)
+  RecipesModal -> availableListWidget gs RecipeList
+  CommandsModal -> commandsListWidget gs
+  MessagesModal -> availableListWidget gs MessageList
+  StructuresModal -> SR.renderStructuresDisplay gs (uig ^. uiDialogs . uiStructure)
   ScenarioEndModal outcome ->
     padBottom (Pad 1) $
       vBox $
@@ -644,9 +648,10 @@ drawModal s = \case
       displayParagraphs $
         pure
           "Have fun!  Hit Ctrl-Q whenever you're ready to proceed to the next challenge or return to the menu."
-  TerrainPaletteModal -> EV.drawTerrainSelector s
-  EntityPaletteModal -> EV.drawEntityPaintSelector s
+  TerrainPaletteModal -> EV.drawTerrainSelector uig
+  EntityPaletteModal -> EV.drawEntityPaintSelector uig
  where
+  gs = s ^. gameState
   uig = s ^. uiState . uiGameplay
 
 helpWidget :: Seed -> Maybe Port -> KeyEventHandlingState -> Widget Name
@@ -883,20 +888,23 @@ drawKeyMenu s =
       . view (uiState . uiGameplay . uiFocusRing)
       $ s
 
-  isReplWorking = s ^. gameState . gameControls . replWorking
-  isPaused = s ^. gameState . temporal . paused
+  uig = s ^. uiState . uiGameplay
+  gs = s ^. gameState
+
+  isReplWorking = gs ^. gameControls . replWorking
+  isPaused = gs ^. temporal . paused
   hasDebug = hasDebugCapability creative s
-  viewingBase = (s ^. gameState . robotInfo . viewCenterRule) == VCRobot 0
-  creative = s ^. gameState . creativeMode
+  viewingBase = (gs ^. robotInfo . viewCenterRule) == VCRobot 0
+  creative = gs ^. creativeMode
   showCreative = s ^. uiState . uiDebugOptions . Lens.contains ToggleCreative
   showEditor = s ^. uiState . uiDebugOptions . Lens.contains ToggleWorldEditor
-  goal = hasAnythingToShow $ s ^. uiState . uiGameplay . uiDialogs . uiGoal . goalsContent
-  showZero = s ^. uiState . uiGameplay . uiInventory . uiShowZero
-  inventorySort = s ^. uiState . uiGameplay . uiInventory . uiInventorySort
-  inventorySearch = s ^. uiState . uiGameplay . uiInventory . uiInventorySearch
-  ctrlMode = s ^. uiState . uiGameplay . uiREPL . replControlMode
-  canScroll = creative || (s ^. gameState . landscape . worldScrollable)
-  handlerInstalled = isJust (s ^. gameState . gameControls . inputHandler)
+  goal = hasAnythingToShow $ uig ^. uiDialogs . uiGoal . goalsContent
+  showZero = uig ^. uiInventory . uiShowZero
+  inventorySort = uig ^. uiInventory . uiInventorySort
+  inventorySearch = uig ^. uiInventory . uiInventorySearch
+  ctrlMode = uig ^. uiREPL . replControlMode
+  canScroll = creative || (gs ^. landscape . worldScrollable)
+  handlerInstalled = isJust (gs ^. gameControls . inputHandler)
 
   renderPilotModeSwitch :: ReplControlMode -> T.Text
   renderPilotModeSwitch = \case
@@ -925,7 +933,7 @@ drawKeyMenu s =
       , may isPaused (NoHighlight, keyM SE.RunSingleTickEvent, "step")
       , may
           (isPaused && hasDebug)
-          ( if s ^. uiState . uiGameplay . uiShowDebug then Alert else NoHighlight
+          ( if uig ^. uiShowDebug then Alert else NoHighlight
           , keyM SE.ShowCESKDebugEvent
           , "debug"
           )
@@ -933,10 +941,10 @@ drawKeyMenu s =
       , Just
           ( NoHighlight
           , keyM SE.ToggleREPLVisibilityEvent
-          , if s ^. uiState . uiGameplay . uiShowREPL then "hide REPL" else "show REPL"
+          , if uig ^. uiShowREPL then "hide REPL" else "show REPL"
           )
       , Just
-          ( if s ^. uiState . uiGameplay . uiShowRobots then NoHighlight else Alert
+          ( if uig ^. uiShowRobots then NoHighlight else Alert
           , keyM SE.HideRobotsEvent
           , "hide robots"
           )
@@ -1469,25 +1477,28 @@ drawREPL s =
     , vBox mayDebug
     ]
  where
+  uig = s ^. uiState . uiGameplay
+  gs = s ^. gameState
+
   -- rendered history lines fitting above REPL prompt
   history :: [Widget n]
   history = map fmt . filter (not . isREPLSaved) . toList . getSessionREPLHistoryItems $ theRepl ^. replHistory
   currentPrompt :: Widget Name
   currentPrompt = case (isActive <$> base, theRepl ^. replControlMode) of
     (_, Handling) -> padRight Max $ txt "[key handler running, M-k to toggle]"
-    (Just False, _) -> renderREPLPrompt (s ^. uiState . uiGameplay . uiFocusRing) theRepl
+    (Just False, _) -> renderREPLPrompt (uig ^. uiFocusRing) theRepl
     _running -> padRight Max $ txt "..."
-  theRepl = s ^. uiState . uiGameplay . uiREPL
+  theRepl = uig ^. uiREPL
 
   -- NOTE: there exists a lens named 'baseRobot' that uses "unsafe"
   -- indexing that may be an alternative to this:
-  base = s ^. gameState . robotInfo . robotMap . at 0
+  base = gs ^. robotInfo . robotMap . at 0
 
   fmt (REPLHistItem itemType t) = case itemType of
     REPLEntry {} -> txt $ "> " <> t
     REPLOutput -> txt t
     REPLError -> txtWrapWith indent2 {preserveIndentation = True} t
-  mayDebug = [drawRobotMachine (s ^. gameState) True | s ^. uiState . uiGameplay . uiShowDebug]
+  mayDebug = [drawRobotMachine gs True | uig ^. uiShowDebug]
 
 ------------------------------------------------------------
 -- Utility
