@@ -436,7 +436,7 @@ drawGameUI s =
                         & bottomLabels . centerLabel
                           .~ fmap
                             (txt . (" Search: " <>) . (<> " "))
-                            (s ^. uiState . uiGameplay . uiInventory . uiInventorySearch)
+                            (uig ^. uiInventory . uiInventorySearch)
                     )
                   $ drawRobotPanel s
               , panel
@@ -448,22 +448,23 @@ drawGameUI s =
               , hCenter
                   . clickable (FocusablePanel WorldEditorPanel)
                   . EV.drawWorldEditor fr
-                  $ s ^. uiState
+                  $ uig
               ]
         , vBox rightPanel
         ]
   ]
  where
+  uig = s ^. uiState . uiGameplay
   addCursorPos = bottomLabels . leftLabel ?~ padLeftRight 1 widg
    where
-    widg = case s ^. uiState . uiGameplay . uiWorldCursor of
+    widg = case uig ^. uiWorldCursor of
       Nothing -> str $ renderCoordsString $ s ^. gameState . robotInfo . viewCenter
-      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (s ^. uiState . uiGameplay . uiWorldEditor . worldOverdraw) (s ^. gameState) coord
+      Just coord -> clickable WorldPositionIndicator $ drawWorldCursorInfo (uig ^. uiWorldEditor . worldOverdraw) (s ^. gameState) coord
   -- Add clock display in top right of the world view if focused robot
   -- has a clock equipped
-  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (s ^. uiState . uiGameplay . uiTiming . lgTicksPerSecond) $ s ^. gameState)
-  fr = s ^. uiState . uiGameplay . uiFocusRing
-  showREPL = s ^. uiState . uiGameplay . uiShowREPL
+  addClock = topLabels . rightLabel ?~ padLeftRight 1 (drawClockDisplay (uig ^. uiTiming . lgTicksPerSecond) $ s ^. gameState)
+  fr = uig ^. uiFocusRing
+  showREPL = uig ^. uiShowREPL
   rightPanel = if showREPL then worldPanel ++ replPanel else worldPanel ++ minimizedREPL
   minimizedREPL = case focusGetCurrent fr of
     (Just (FocusablePanel REPLPanel)) -> [separateBorders $ clickable (FocusablePanel REPLPanel) (forceAttr highlightAttr hBorder)]
@@ -474,12 +475,12 @@ drawGameUI s =
         fr
         (FocusablePanel WorldPanel)
         ( plainBorder
-            & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS $ s ^. uiState . uiGameplay . uiTiming)
+            & bottomLabels . rightLabel ?~ padLeftRight 1 (drawTPS $ uig ^. uiTiming)
             & topLabels . leftLabel ?~ drawModalMenu s
             & addCursorPos
             & addClock
         )
-        (drawWorldPane (s ^. uiState . uiGameplay) (s ^. gameState))
+        (drawWorldPane uig (s ^. gameState))
     , drawKeyMenu s
     ]
   replPanel =
@@ -489,7 +490,7 @@ drawGameUI s =
           fr
           (FocusablePanel REPLPanel)
           ( plainBorder
-              & topLabels . rightLabel .~ (drawType <$> (s ^. uiState . uiGameplay . uiREPL . replType))
+              & topLabels . rightLabel .~ (drawType <$> (uig ^. uiREPL . replType))
           )
           ( vLimit replHeight
               . padBottom Max

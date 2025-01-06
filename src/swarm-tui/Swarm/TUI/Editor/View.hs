@@ -27,13 +27,13 @@ import Swarm.TUI.View.CellDisplay (renderDisplay)
 import Swarm.TUI.View.Util qualified as VU
 import Swarm.Util (applyWhen)
 
-extractTerrainMap :: UIState -> TerrainMap
-extractTerrainMap uis =
+extractTerrainMap :: UIGameplay -> TerrainMap
+extractTerrainMap uig =
   maybe mempty (view (scenarioLandscape . scenarioTerrainAndEntities . terrainMap) . fst) $
-    uis ^. uiGameplay . scenarioRef
+    uig ^. scenarioRef
 
-drawWorldEditor :: FocusRing Name -> UIState -> Widget Name
-drawWorldEditor toplevelFocusRing uis =
+drawWorldEditor :: FocusRing Name -> UIGameplay -> Widget Name
+drawWorldEditor toplevelFocusRing uig =
   if worldEditor ^. worldOverdraw . isWorldEditorEnabled
     then
       panel
@@ -64,7 +64,7 @@ drawWorldEditor toplevelFocusRing uis =
       hLimit 30 $
         controlsBox <=> statusBox
 
-  worldEditor = uis ^. uiGameplay . uiWorldEditor
+  worldEditor = uig ^. uiWorldEditor
   maybeAreaBounds = worldEditor ^. editingBounds . boundsRect
 
   -- TODO (#1150): Use withFocusRing?
@@ -80,7 +80,7 @@ drawWorldEditor toplevelFocusRing uis =
    where
     selectedThing = snd <$> BL.listSelectedElement list
 
-  tm = extractTerrainMap uis
+  tm = extractTerrainMap uig
 
   brushWidget =
     mkFormControl (WorldEditorPanelControl BrushSelector) $
@@ -151,8 +151,10 @@ drawTerrainSelector s =
   padAll 1
     . hCenter
     . vLimit 8
-    . BL.renderListWithIndex (listDrawTerrainElement $ extractTerrainMap $ s ^. uiState) True
-    $ s ^. uiState . uiGameplay . uiWorldEditor . terrainList
+    . BL.renderListWithIndex (listDrawTerrainElement $ extractTerrainMap uig) True
+    $ uig ^. uiWorldEditor . terrainList
+ where
+  uig = s ^. uiState . uiGameplay
 
 listDrawTerrainElement :: TerrainMap -> Int -> Bool -> TerrainType -> Widget Name
 listDrawTerrainElement tm pos _isSelected a =
