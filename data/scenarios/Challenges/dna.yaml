@@ -85,24 +85,16 @@ objectives:
         When all segments are placed, `drill` the switch on the western wall to
         commence rematerialization. `grab` the clone (once matured) as a souvenir!
     condition: |
-      def checkMember = \idx.
-        result <- tagmembers "organism" idx;
-        let totalCount = fst result in
-        hasThis <- has $ snd result;
-        if hasThis {
-          return true;
-        } {
-          if (idx < totalCount - 1) {
-            checkMember $ idx + 1;
-          } {
-            return false;
-          }
-        };
-        end;
+      def hasAll : (rec l. Unit + Text * l) -> Cmd Bool = \l.
+        case l
+          (\_. return true)
+          (\c. b1 <- has (fst c); if b1 {hasAll (snd c)} {return false})
+      end;
 
       k <- robotnamed "keeper";
       as k {
-        checkMember 0;
+        let organisms = tagmembers "organism" in
+        hasAll organisms;
       }
   - prerequisite: create_clone
     teaser: More clones
@@ -113,22 +105,16 @@ objectives:
         Find three more different `organism`{=tag}s to clone.
         Explore outside nearby the lab for specimens.
     condition: |
-      def countMembers = \memberCount. \idx.
-        result <- tagmembers "organism" idx;
-        let totalCount = fst result in
-
-        if (idx < totalCount) {
-          hasThis <- has $ snd result;
-          let memberCountAddition = if hasThis {1} {0} in
-          countMembers (memberCount + memberCountAddition) $ idx + 1;
-        } {
-          return memberCount;
-        }
-        end;
+      def hasCount : (rec l. Unit + Text * l) -> Cmd Int = \l.
+        case l
+          (\_. return 0)
+          (\c. b <- has (fst c); n <- hasCount (snd c); return (if b {1} {0} + n))
+      end;
 
       k <- robotnamed "keeper";
       as k {
-        c <- countMembers 0 0;
+        let organisms = tagmembers "organism" in
+        c <- hasCount organisms;
         return $ c >= 4;
       }
 robots:

@@ -126,8 +126,7 @@ def makeDnaStrand = \receptacleLoc.
             teleport self (0, -11);
             waitUntilHere "switch (on)";
 
-            bottomWaypointQuery <- waypoint "receiver" 1;
-            let receptacleLoc2 = snd bottomWaypointQuery in
+            let receptacleLoc2 = waypoint "receiver" 1 in
             teleport self receptacleLoc2;
 
             sow clonedItem;
@@ -145,24 +144,22 @@ def makeDnaStrand = \receptacleLoc.
 
 def waitForCloneableOrganism =
 
-    waypointQuery <- waypoint "receiver" 0;
-    let receptacleLoc = snd waypointQuery in
+    let receptacleLoc = waypoint "receiver" 0 in
     organism <- instant (
         teleport self receptacleLoc;
 
         waitUntilOccupied;
 
         thingHere <- scan down;
-        case thingHere (\x. return $ inL x) (\item.
-            isOrganism <- hastag item "organism";
-            return $ inR item;
-        );
+        return $ case thingHere (\x. inL x) (\item.
+          if (hastag item "organism") {inR item} {inL ()}
+        )
     );
 
     case organism (\_.
         say "Not a cloneable organism!";
         waitForCloneableOrganism;
-    ) (\item.
+    ) (\_.
         create "pixel (G)";
         makeDnaStrand receptacleLoc;
     );

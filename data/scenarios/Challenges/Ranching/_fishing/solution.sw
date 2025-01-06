@@ -62,23 +62,11 @@ def harvestIngredients =
     move;
     end;
 
-def getJunkItem = \idx.
-    result <- tagmembers "junk" idx;
-    let totalCount = fst result in
-    let member = snd result in
-    let nextIdx = idx + 1 in
-
-    hasProhibited <- has member;
-    if hasProhibited {
-        return $ inr member;
-    } {
-        if (nextIdx < totalCount) {
-            getJunkItem nextIdx;
-        } {
-            return $ inl ();
-        }
-    }
-    end;
+def find : (a -> Cmd Bool) -> (rec l. Unit + a * l) -> Cmd (Unit + a) = \p. \l.
+  case l
+    (\_. return (inl ()))
+    (\cons. h <- p (fst cons); if h {return $ inr (fst cons)} {find p (snd cons)})
+end
 
 def tryPlace = \item.
     try {
@@ -131,7 +119,7 @@ def returnToCorner =
 def unloadTrash =
     try {
         placeSerpentine (
-            item <- getJunkItem 0;
+            item <- find has (tagmembers "junk");
             case item (\_. fail "done") (\item. place item);
         );
         watch down;

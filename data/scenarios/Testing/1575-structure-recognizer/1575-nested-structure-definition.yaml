@@ -13,7 +13,7 @@ objectives:
         Replace `tree`{=entity} after grabbing.
         The `double ring`{=structure} structure should be recognized again.
     condition: |
-      foundStructure <- structure "double ring" 0;
+      foundStructure <- structures "double ring";
       return $ case foundStructure (\_. false) (\_. true);
   - teaser: Pre-recognized
     id: pre_recognized
@@ -23,7 +23,7 @@ objectives:
       - |
         Pre-placed structure must be recognized
     condition: |
-      foundStructure <- structure "double ring" 0;
+      foundStructure <- structures "double ring";
       return $ case foundStructure (\_. false) (\_. true);
   - teaser: Grab tree
     id: grab_tree

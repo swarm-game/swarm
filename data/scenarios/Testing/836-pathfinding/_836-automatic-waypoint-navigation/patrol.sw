@@ -23,8 +23,8 @@ def followRoute = \loc.
     end;
 
 def visitNextWaypoint = \nextWpIdx.
-    nextWaypointQuery <- waypoint "wp" nextWpIdx;
-    followRoute $ snd nextWaypointQuery;
+    let nextWaypointQuery = waypoint "wp" nextWpIdx in
+    followRoute $ nextWaypointQuery;
 
     visitNextWaypoint $ nextWpIdx + 1;
     end;

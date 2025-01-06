@@ -7,8 +7,8 @@ def visitNextWaypoint = \nextWpIdx.
       } {};
     } {};
     watch down;
-    nextWaypointQuery <- waypoint "wp" nextWpIdx;
-    teleport self $ snd nextWaypointQuery;
+    let nextWaypointQuery = waypoint "wp" nextWpIdx in
+    teleport self $ nextWaypointQuery;
     wait 1000;
     visitNextWaypoint $ nextWpIdx + 1;
     end;

@@ -12,7 +12,7 @@ objectives:
       - |
         Build a `topleft`{=structure} structure
     condition: |
-      foundStructure <- structure "topleft" 0;
+      foundStructure <- structures "topleft";
       return $ case foundStructure (\_. false) (\_. true);
   - id: wrong_structure
     teaser: Don't recognize small structure
@@ -21,7 +21,7 @@ objectives:
       - |
         The `bottomright`{=structure} structure shouldn't be recognized.
     condition: |
-      foundStructure <- structure "bottomright" 0;
+      foundStructure <- structures "bottomright";
       return $ case foundStructure (\_. false) (\_. true);
 robots:
   - name: base
