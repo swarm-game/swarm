@@ -619,7 +619,6 @@ stepCESK cesk = case cesk of
           -- will remain set, and evaluation + execution together will
           -- all happen in a single tick.
           FExec : _ -> return $ In t2 e s (FApp (VCApp c []) : k)
-
           -- Otherwise, in general, other evaluation may take place in
           -- between evaluating the argument to atomic/instant and
           -- executing it, so we must push an FFinishAtomic frame so
