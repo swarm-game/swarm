@@ -509,6 +509,7 @@ testScenarioSolutions rs ui key =
           not (any ("- treads" `T.isInfixOf`) msgs)
             && any ("- tank treads" `T.isInfixOf`) msgs
     , testSolution Default "Testing/2253-halt-waiting"
+    , testSolution Default "Testing/2270-instant-defs"
     ]
  where
   -- expectFailIf :: Bool -> String -> TestTree -> TestTree
