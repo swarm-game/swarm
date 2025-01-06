@@ -73,3 +73,4 @@ Achievements
 2239-custom-entity.yaml
 2240-overridden-entity-capabilities.yaml
 2253-halt-waiting.yaml
+2270-instant-defs.yaml
