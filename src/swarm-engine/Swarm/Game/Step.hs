@@ -605,9 +605,9 @@ stepCESK cesk = case cesk of
   In (TLam x _ t) e s k -> return $ Out (VClo x t e) s k
   -- Special case for evaluating an application of Instant or Atomic:
   -- set the runningAtomic flag and push a stack frame to unset it
-  -- when done evaluating.  We do this here so that even *evaluating*
+  -- when done evaluating.  We do this here so that even /evaluating/
   -- the argument to instant/atomic will happen atomically (#2270).
-  -- *Execution* will also happen atomically; that is handled in execConst.
+  -- Execution will also happen atomically; that is handled in execConst.
   In (TApp (TConst c) t2) e s k
     | c `elem` [Atomic, Instant] -> do
         runningAtomic .= True
