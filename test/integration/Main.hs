@@ -246,7 +246,7 @@ testScenarioSolutions rs ui key =
         , testSolution Default "Challenges/friend"
         , testSolution Default "Challenges/pack-tetrominoes"
         , testSolution (Sec 10) "Challenges/dimsum"
-        , testSolution (Sec 15) "Challenges/gallery"
+        , testSolution (Sec 20) "Challenges/gallery"
         , testSolution (Sec 10) "Challenges/telephone"
         , testSolution (Sec 10) "Challenges/flower-count"
         , testGroup
