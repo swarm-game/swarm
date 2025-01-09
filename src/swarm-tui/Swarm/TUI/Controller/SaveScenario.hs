@@ -28,7 +28,6 @@ import Swarm.TUI.Model.Repl
 import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import System.FilePath (splitDirectories)
-import Prelude hiding (Applicative (..))
 
 getNormalizedCurrentScenarioPath :: (MonadIO m, MonadState AppState m) => m (Maybe FilePath)
 getNormalizedCurrentScenarioPath =
@@ -117,7 +116,16 @@ saveScenarioInfoOnQuit =
     -- previous scenario ended (via quit vs. via win), it might be the same as
     -- currentScenarioPath or it might be different.
     curPath <- preuse $ uiState . uiMenu . _NewGameMenu . ix 0 . BL.listSelectedElementL . _SISingle . _2 . scenarioPath
-    -- Now rebuild the NewGameMenu so it gets the updated ScenarioInfo,
-    -- being sure to preserve the same focused scenario.
-    sc <- use $ runtimeState . scenarios
-    forM_ (mkNewGameMenu sc (fromMaybe p curPath)) (uiState . uiMenu .=)
+
+    menu <- use $ uiState . uiMenu
+    case menu of
+      -- If the menu is NoMenu, it means we skipped showing the
+      -- menu at startup, so leave it alone; we simply want to
+      -- exit the entire app.
+      NoMenu -> pure ()
+      -- Otherwise, rebuild the NewGameMenu so it gets the updated
+      -- ScenarioInfo, being sure to preserve the same focused
+      -- scenario.
+      _ -> do
+        sc <- use $ runtimeState . scenarios
+        forM_ (mkNewGameMenu sc (fromMaybe p curPath)) (uiState . uiMenu .=)
