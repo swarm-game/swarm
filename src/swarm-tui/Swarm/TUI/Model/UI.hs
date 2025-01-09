@@ -127,9 +127,7 @@ data UIInitOptions = UIInitOptions
 
 -- | Initialize the UI state.  This needs to be in the IO monad since
 --   it involves reading a REPL history file, getting the current
---   time, and loading text files from the data directory.  The @Bool@
---   parameter indicates whether we should start off by showing the
---   main menu.
+--   time, and loading text files from the data directory.
 initUIState ::
   ( Has (Accum (Seq SystemFailure)) sig m
   , Has (Lift IO) sig m
