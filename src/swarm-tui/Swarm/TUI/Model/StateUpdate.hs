@@ -28,7 +28,7 @@ import Control.Effect.Accum
 import Control.Effect.Lift
 import Control.Effect.Throw
 import Control.Lens hiding (from, (<.>))
-import Control.Monad (guard, void)
+import Control.Monad (guard, unless, void)
 import Control.Monad.Except (ExceptT (..))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execStateT)
@@ -217,6 +217,12 @@ startGameWithSeed siPair@(_scene, si) lp = do
   -- Beware: currentScenarioPath must be set so that progress/achievements can be saved.
   -- It has just been cleared in scenarioToAppState.
   gameState . currentScenarioPath .= Just p
+
+  -- Warn the user that the use of debugging options means progress
+  -- will not be saved.
+  debugging <- use $ uiState . uiDebugOptions
+  unless (null debugging) $
+    uiState . uiPopups %= addPopup DebugWarningPopup
  where
   prevBest t = case si ^. scenarioStatus of
     NotStarted -> emptyBest t
