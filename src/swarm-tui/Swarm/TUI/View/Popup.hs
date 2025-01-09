@@ -56,6 +56,11 @@ drawPopup s = \case
           ]
       , txt $ "Hit " <> bindingText s (SE.Main SE.ViewCommandsEvent) <> " to view all available commands."
       ]
+  DebugWarningPopup ->
+    hBox
+      [ withAttr notifAttr (txt "Warning: ")
+      , txt "No progress will be saved, since debugging flags are in use."
+      ]
 
 -- | Compute the number of rows of the notification popup we should be
 --   showing, based on the number of frames the popup has existed.
