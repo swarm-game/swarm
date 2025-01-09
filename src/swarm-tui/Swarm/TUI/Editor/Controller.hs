@@ -63,7 +63,7 @@ handleCtrlLeftClick mouseLoc = do
         maybeTerrainType = getSelected $ worldEditor ^. terrainList
         maybeEntityPaint = getSelected $ worldEditor ^. entityPaintList
     terrain <- hoistMaybe maybeTerrainType
-    mouseCoords <- MaybeT $ Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
+    mouseCoords <- MaybeT $ Brick.zoom (playState . gameState) $ mouseLocToWorldCoords mouseLoc
     Brick.zoom (uiState . uiGameplay . uiWorldEditor) $ do
       worldOverdraw . paintedTerrain %= M.insert (mouseCoords ^. planar) (terrain, maybeToErasable maybeEntityPaint)
       lastWorldEditorMessage .= Nothing
@@ -74,7 +74,7 @@ handleRightClick mouseLoc = do
   worldEditor <- use $ uiState . uiGameplay . uiWorldEditor
   _ <- runMaybeT $ do
     guard $ worldEditor ^. worldOverdraw . isWorldEditorEnabled
-    mouseCoords <- MaybeT $ Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
+    mouseCoords <- MaybeT $ Brick.zoom (playState . gameState) $ mouseLocToWorldCoords mouseLoc
     uiState . uiGameplay . uiWorldEditor . worldOverdraw . paintedTerrain %= M.delete (mouseCoords ^. planar)
   immediatelyRedrawWorld
 
@@ -83,8 +83,8 @@ handleMiddleClick :: B.Location -> EventM Name AppState ()
 handleMiddleClick mouseLoc = do
   worldEditor <- use $ uiState . uiGameplay . uiWorldEditor
   when (worldEditor ^. worldOverdraw . isWorldEditorEnabled) $ do
-    w <- use $ gameState . landscape . multiWorld
-    tm <- use $ gameState . landscape . terrainAndEntities . terrainMap
+    w <- use $ playState . gameState . landscape . multiWorld
+    tm <- use $ playState . gameState . landscape . terrainAndEntities . terrainMap
     let setTerrainPaint coords = do
           let (terrain, maybeElementPaint) =
                 EU.getEditorContentAt
@@ -99,7 +99,7 @@ handleMiddleClick mouseLoc = do
                   Ref r -> mkFacade r
              in uiState . uiGameplay . uiWorldEditor . entityPaintList %= BL.listMoveToElement p
 
-    mouseCoordsM <- Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
+    mouseCoordsM <- Brick.zoom (playState . gameState) $ mouseLocToWorldCoords mouseLoc
     whenJust mouseCoordsM setTerrainPaint
 
 -- | Handle user input events in the robot panel.
@@ -143,7 +143,7 @@ updateAreaBounds = \case
 saveMapFile :: EventM Name AppState ()
 saveMapFile = do
   uig <- use $ uiState . uiGameplay
-  land <- use $ gameState . landscape
+  land <- use $ playState . gameState . landscape
   let worldEditor = uig ^. uiWorldEditor
       maybeBounds = uig ^. uiWorldEditor . editingBounds . boundsRect
 

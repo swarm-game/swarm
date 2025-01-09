@@ -42,7 +42,7 @@ generateModal :: AppState -> ModalType -> Modal
 generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindowWidth `min` requiredWidth))
  where
   currentScenario = s ^. uiState . uiGameplay . scenarioRef
-  currentSeed = s ^. gameState . randomness . seed
+  currentSeed = s ^. playState . gameState . randomness . seed
   haltingMessage = case s ^. uiState . uiMenu of
     NoMenu -> Just "Quit"
     _ -> Nothing
@@ -67,7 +67,7 @@ generateModal s mt = Modal mt (dialog (Just $ str title) buttons (maxModalWindow
       KeepPlayingModal -> ("", Just (Button CancelButton, [("OK", Button CancelButton, Cancel)]), 80)
       TerrainPaletteModal -> ("Terrain", Nothing, w)
        where
-        tm = s ^. gameState . landscape . terrainAndEntities . terrainMap
+        tm = s ^. playState . gameState . landscape . terrainAndEntities . terrainMap
         wordLength = maximum0 $ map (T.length . getTerrainWord) (M.keys $ terrainByName tm)
         w = wordLength + 6
       EntityPaletteModal -> ("Entity", Nothing, 30)

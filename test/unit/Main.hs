@@ -69,9 +69,9 @@ stateDependentTests :: AppState -> TestTree
 stateDependentTests s =
   testGroup
     "Stateful tests"
-    [ testEval (s ^. gameState)
+    [ testEval (s ^. playState . gameState)
     , testPedagogy (s ^. runtimeState)
-    , testNotification (s ^. gameState)
+    , testNotification (s ^. playState . gameState)
     ]
 
 statelessTests :: TestTree

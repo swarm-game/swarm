@@ -47,7 +47,7 @@ runFrame = do
   -- Reset the needsRedraw flag.  While processing the frame and stepping the robots,
   -- the flag will get set to true if anything changes that requires redrawing the
   -- world (e.g. a robot moving or disappearing).
-  gameState . needsRedraw .= False
+  playState . gameState . needsRedraw .= False
 
   -- The logic here is taken from https://gafferongames.com/post/fix_your_timestep/ .
 
@@ -86,7 +86,7 @@ runFrame = do
         uiTPF .= fromIntegral uiTicks / fromIntegral frames
 
       -- ensure this frame gets drawn
-      gameState . needsRedraw .= True
+      playState . gameState . needsRedraw .= True
 
     Brick.zoom (uiState . uiGameplay . uiTiming) $ do
       -- Reset the counter and wait another seconds for the next update
@@ -141,7 +141,7 @@ runGameTickUI = runGameTick >> void updateUI
 updateAchievements :: EventM Name AppState ()
 updateAchievements = do
   -- Merge the in-game achievements with the master list in UIState
-  achievementsFromGame <- use $ gameState . discovery . gameAchievements
+  achievementsFromGame <- use $ playState . gameState . discovery . gameAchievements
   let wrappedGameAchievements = M.mapKeys GameplayAchievement achievementsFromGame
 
   oldMasterAchievementsList <- use $ uiState . uiAchievements

@@ -40,8 +40,8 @@ replEventHandlers = allHandlers REPL $ \case
 -- base program no matter what REPL control mode we are in.
 cancelRunningBase :: EventM Name AppState ()
 cancelRunningBase = do
-  working <- use $ gameState . gameControls . replWorking
-  when working $ gameState . baseRobot . machine %= cancel
+  working <- use $ playState . gameState . gameControls . replWorking
+  when working $ playState . gameState . baseRobot . machine %= cancel
   Brick.zoom (uiState . uiGameplay . uiREPL) $ do
     replPromptType .= CmdPrompt []
     replPromptText .= ""
@@ -64,6 +64,6 @@ togglePilotingMode = do
 toggleCustomKeyHandling :: EventM Name AppState ()
 toggleCustomKeyHandling = do
   s <- get
-  when (isJust (s ^. gameState . gameControls . inputHandler)) $ do
+  when (isJust (s ^. playState . gameState . gameControls . inputHandler)) $ do
     curMode <- use $ uiState . uiGameplay . uiREPL . replControlMode
     (uiState . uiGameplay . uiREPL . replControlMode) .= case curMode of Handling -> Typing; _ -> Handling

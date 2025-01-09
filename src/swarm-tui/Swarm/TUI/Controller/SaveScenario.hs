@@ -32,7 +32,7 @@ import System.FilePath (splitDirectories)
 getNormalizedCurrentScenarioPath :: (MonadIO m, MonadState AppState m) => m (Maybe FilePath)
 getNormalizedCurrentScenarioPath =
   -- the path should be normalized and good to search in scenario collection
-  use (gameState . currentScenarioPath) >>= \case
+  use (playState . gameState . currentScenarioPath) >>= \case
     Nothing -> return Nothing
     Just p' -> do
       gs <- use $ runtimeState . scenarios
@@ -40,14 +40,14 @@ getNormalizedCurrentScenarioPath =
 
 saveScenarioInfoOnFinish :: (MonadIO m, MonadState AppState m) => FilePath -> m (Maybe ScenarioInfo)
 saveScenarioInfoOnFinish p = do
-  initialRunCode <- use $ gameState . gameControls . initiallyRunCode
+  initialRunCode <- use $ playState . gameState . gameControls . initiallyRunCode
   t <- liftIO getZonedTime
-  wc <- use $ gameState . winCondition
+  wc <- use $ playState . gameState . winCondition
   let won = case wc of
         WinConditions (Won _ _) _ -> True
         _ -> False
-  ts <- use $ gameState . temporal . ticks
-  saved <- use $ gameState . completionStatsSaved
+  ts <- use $ playState . gameState . temporal . ticks
+  saved <- use $ playState . gameState . completionStatsSaved
 
   -- NOTE: This traversal is apparently not the same one as used by
   -- the scenario selection menu, so the menu needs to be updated separately.
@@ -82,7 +82,7 @@ saveScenarioInfoOnFinish p = do
     attainAchievement $
       GlobalAchievement CompletedAllTutorials
 
-  gameState . completionStatsSaved .= won
+  playState . gameState . completionStatsSaved .= won
 
   return status
 

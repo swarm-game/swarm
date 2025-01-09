@@ -151,8 +151,9 @@ constructAppState ::
   m AppState
 constructAppState rs ui key opts@(AppOpts {..}) = do
   let gs = initGameState (rs ^. stdGameConfigInputs)
+      ps = PlayState gs ()
   case skipMenu opts of
-    False -> return $ AppState gs (ui & uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) key rs
+    False -> return $ AppState ps (ui & uiGameplay . uiTiming . lgTicksPerSecond .~ defaultInitLgTicksPerSecond) key rs
     True -> do
       let tem = gs ^. landscape . terrainAndEntities
       (scenario, path) <-
@@ -174,7 +175,7 @@ constructAppState rs ui key opts@(AppOpts {..}) = do
       sendIO $
         execStateT
           (startGameWithSeed (scenario, si) $ LaunchParams (pure userSeed) (pure codeToRun))
-          (AppState gs ui key newRs)
+          (AppState ps ui key newRs)
 
 -- | Load a 'Scenario' and start playing the game.
 startGame :: (MonadIO m, MonadState AppState m) => ScenarioInfoPair -> Maybe CodeToRun -> m ()
@@ -216,7 +217,7 @@ startGameWithSeed siPair@(_scene, si) lp = do
   scenarioToAppState siPair lp
   -- Beware: currentScenarioPath must be set so that progress/achievements can be saved.
   -- It has just been cleared in scenarioToAppState.
-  gameState . currentScenarioPath .= Just p
+  playState . gameState . currentScenarioPath .= Just p
 
   -- Warn the user that the use of debugging options means progress
   -- will not be saved.
@@ -237,7 +238,7 @@ scenarioToAppState ::
 scenarioToAppState siPair@(scene, _) lp = do
   rs <- use runtimeState
   gs <- liftIO $ scenarioToGameState scene lp $ rs ^. stdGameConfigInputs
-  gameState .= gs
+  playState . gameState .= gs
   void $ withLensIO uiState $ scenarioToUIState isAutoplaying siPair gs
  where
   isAutoplaying = case fmap (view toRunSource) . runIdentity $ initialCode lp of

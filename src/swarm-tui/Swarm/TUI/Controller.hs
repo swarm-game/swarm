@@ -308,7 +308,7 @@ handleMainEvent forceRedraw ev = do
     AppEvent ae -> case ae of
       -- If the game is paused, don't run any game ticks, but do redraw if needed.
       Frame ->
-        if s ^. gameState . temporal . paused
+        if s ^. playState . gameState . temporal . paused
           then updateAndRedrawUI forceRedraw
           else runFrameUI forceRedraw
       Web (RunWebCode e r) -> runBaseWebCode e r
@@ -343,7 +343,7 @@ handleMainEvent forceRedraw ev = do
     MouseDown n _ _ mouseLoc ->
       case n of
         FocusablePanel WorldPanel -> do
-          mouseCoordsM <- Brick.zoom gameState $ mouseLocToWorldCoords mouseLoc
+          mouseCoordsM <- Brick.zoom (playState . gameState) $ mouseLocToWorldCoords mouseLoc
           shouldUpdateCursor <- EC.updateAreaBounds mouseCoordsM
           when shouldUpdateCursor $
             uiState . uiGameplay . uiWorldCursor .= mouseCoordsM
@@ -394,8 +394,8 @@ closeModal m = do
   uiState . uiGameplay . uiDialogs . uiModal .= Nothing
   -- message modal is not autopaused, so update notifications when leaving it
   when ((m ^. modalType) == MessagesModal) $ do
-    t <- use $ gameState . temporal . ticks
-    gameState . messageInfo . lastSeenMessageTime .= t
+    t <- use $ playState . gameState . temporal . ticks
+    playState . gameState . messageInfo . lastSeenMessageTime .= t
 
 -- TODO: #2010 Finish porting Controller to KeyEventHandlers
 handleModalEvent :: V.Event -> EventM Name AppState ()
@@ -491,7 +491,7 @@ quitGame = do
 
   -- Automatically advance the menu to the next scenario iff the
   -- player has won the current one.
-  wc <- use $ gameState . winCondition
+  wc <- use $ playState . gameState . winCondition
   case wc of
     WinConditions (Won _ _) _ -> uiState . uiMenu %= advanceMenu
     _ -> return ()
@@ -534,7 +534,7 @@ handleREPLEvent x = do
 -- | Run the installed input handler on a key combo entered by the user.
 runInputHandler :: KeyCombo -> EventM Name AppState ()
 runInputHandler kc = do
-  mhandler <- use $ gameState . gameControls . inputHandler
+  mhandler <- use $ playState . gameState . gameControls . inputHandler
   forM_ mhandler $ \(_, handler) -> do
     -- Shouldn't be possible to get here if there is no input handler, but
     -- if we do somehow, just do nothing.
@@ -542,14 +542,14 @@ runInputHandler kc = do
     -- Make sure the base is currently idle; if so, apply the
     -- installed input handler function to a `key` value
     -- representing the typed input.
-    working <- use $ gameState . gameControls . replWorking
+    working <- use $ playState . gameState . gameControls . replWorking
     unless working $ do
       s <- get
-      let env = s ^. gameState . baseEnv
-          store = s ^. gameState . baseStore
+      let env = s ^. playState . gameState . baseEnv
+          store = s ^. playState . gameState . baseStore
           handlerCESK = Out (VKey kc) store [FApp handler, FExec, FSuspend env]
-      gameState . baseRobot . machine .= handlerCESK
-      gameState %= execState (zoomRobots $ activateRobot 0)
+      playState . gameState . baseRobot . machine .= handlerCESK
+      playState . gameState %= execState (zoomRobots $ activateRobot 0)
 
 -- | Handle a user "piloting" input event for the REPL.
 --
@@ -588,10 +588,10 @@ handleREPLEventPiloting x = case x of
 runBaseWebCode :: (MonadState AppState m, MonadIO m) => T.Text -> (WebInvocationState -> IO ()) -> m ()
 runBaseWebCode uinput ureply = do
   s <- get
-  if s ^. gameState . gameControls . replWorking
+  if s ^. playState . gameState . gameControls . replWorking
     then liftIO . ureply $ Rejected AlreadyRunning
     else do
-      gameState . gameControls . replListener .= (ureply . Complete . T.unpack)
+      playState . gameState . gameControls . replListener .= (ureply . Complete . T.unpack)
       runBaseCode uinput
         >>= liftIO . ureply . \case
           Left err -> Rejected . ParseError $ T.unpack err
@@ -601,7 +601,7 @@ runBaseCode :: (MonadState AppState m) => T.Text -> m (Either Text ())
 runBaseCode uinput = do
   addREPLHistItem (mkREPLSubmission uinput)
   resetREPL "" (CmdPrompt [])
-  env <- use $ gameState . baseEnv
+  env <- use $ playState . gameState . baseEnv
   case processTerm' env uinput of
     Right mt -> do
       uiState . uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True
@@ -628,7 +628,7 @@ handleREPLEventTyping = \case
         let theRepl = s ^. uiState . uiGameplay . uiREPL
             uinput = theRepl ^. replPromptText
 
-        if not $ s ^. gameState . gameControls . replWorking
+        if not $ s ^. playState . gameState . gameControls . replWorking
           then case theRepl ^. replPromptType of
             CmdPrompt _ -> do
               void $ runBaseCode uinput
@@ -668,8 +668,8 @@ handleREPLEventTyping = \case
               replPromptType .= SearchPrompt (removeEntry found rh)
       CharKey '\t' -> do
         s <- get
-        let names = s ^.. gameState . baseEnv . envTypes . to assocs . traverse . _1
-        uiState . uiGameplay . uiREPL %= tabComplete (CompletionContext (s ^. gameState . creativeMode)) names (s ^. gameState . landscape . terrainAndEntities . entityMap)
+        let names = s ^.. playState . gameState . baseEnv . envTypes . to assocs . traverse . _1
+        uiState . uiGameplay . uiREPL %= tabComplete (CompletionContext (s ^. playState . gameState . creativeMode)) names (s ^. playState . gameState . landscape . terrainAndEntities . entityMap)
         modify validateREPLForm
       EscapeKey -> do
         formSt <- use $ uiState . uiGameplay . uiREPL . replPromptType
@@ -800,11 +800,11 @@ validateREPLForm s =
   case replPrompt of
     CmdPrompt _
       | T.null uinput ->
-          let theType = s ^. gameState . gameControls . replStatus . replActiveType
+          let theType = s ^. playState . gameState . gameControls . replStatus . replActiveType
            in s & uiState . uiGameplay . uiREPL . replType .~ theType
     CmdPrompt _
       | otherwise ->
-          let env = s ^. gameState . baseEnv
+          let env = s ^. playState . gameState . baseEnv
               (theType, errSrcLoc) = case readTerm' defaultParserConfig uinput of
                 Left err ->
                   let ((_y1, x1), (_y2, x2), _msg) = showErrorPos err

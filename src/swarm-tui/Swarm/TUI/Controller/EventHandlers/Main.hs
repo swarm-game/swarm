@@ -63,7 +63,7 @@ mainEventHandlers = allHandlers Main $ \case
 toggleQuitGameDialog :: EventM Name AppState ()
 toggleQuitGameDialog = do
   s <- get
-  case s ^. gameState . winCondition of
+  case s ^. playState . gameState . winCondition of
     WinConditions (Won _ _) _ -> toggleModal $ ScenarioEndModal WinModal
     WinConditions (Unwinnable _) _ -> toggleModal $ ScenarioEndModal LoseModal
     _ -> toggleModal QuitModal
@@ -71,7 +71,7 @@ toggleQuitGameDialog = do
 toggleGameModal :: Foldable t => ModalType -> Getter GameState (t a) -> EventM Name AppState Bool
 toggleGameModal m l = do
   s <- get
-  let nothingToShow = null $ s ^. gameState . l
+  let nothingToShow = null $ s ^. playState . gameState . l
   unless nothingToShow $ toggleModal m
   return nothingToShow
 
@@ -81,13 +81,13 @@ toggleStructuresModal m l = void $ toggleGameModal m (landscape . l)
 toggleDiscoveryNotificationModal :: ModalType -> Lens' Discovery (Notifications a) -> EventM Name AppState ()
 toggleDiscoveryNotificationModal m l = do
   nothingToShow <- toggleGameModal m (discovery . l . notificationsContent)
-  unless nothingToShow $ gameState . discovery . l . notificationsCount .= 0
+  unless nothingToShow $ playState . gameState . discovery . l . notificationsCount .= 0
 
 toggleMessagesModal :: EventM Name AppState ()
 toggleMessagesModal = do
   s <- get
   nothingToShow <- toggleGameModal MessagesModal (messageNotifications . notificationsContent)
-  unless nothingToShow $ gameState . messageInfo . lastSeenMessageTime .= s ^. gameState . temporal . ticks
+  unless nothingToShow $ playState . gameState . messageInfo . lastSeenMessageTime .= s ^. playState . gameState . temporal . ticks
 
 viewGoal :: EventM Name AppState ()
 viewGoal = do
@@ -111,18 +111,18 @@ hideRobots = Brick.zoom (uiState . uiGameplay) $ do
 showCESKDebug :: EventM Name AppState ()
 showCESKDebug = do
   s <- get
-  let isPaused = s ^. gameState . temporal . paused
-  let isCreative = s ^. gameState . creativeMode
+  let isPaused = s ^. playState . gameState . temporal . paused
+  let isCreative = s ^. playState . gameState . creativeMode
   let hasDebug = hasDebugCapability isCreative s
   when (isPaused && hasDebug) $ do
     debug <- uiState . uiGameplay . uiShowDebug Lens.<%= not
     if debug
-      then gameState . temporal . gameStep .= RobotStep SBefore
+      then playState . gameState . temporal . gameStep .= RobotStep SBefore
       else zoomGameState finishGameTick >> void updateUI
 
 runSingleTick :: EventM Name AppState ()
 runSingleTick = do
-  gameState . temporal . runStatus .= ManualPause
+  playState . gameState . temporal . runStatus .= ManualPause
   runGameTickUI
 
 -- | Adjust the ticks per second speed.
@@ -130,7 +130,7 @@ adjustTPS :: (Int -> Int -> Int) -> AppState -> AppState
 adjustTPS (+/-) = uiState . uiGameplay . uiTiming . lgTicksPerSecond %~ (+/- 1)
 
 toggleCreativeMode :: EventM Name AppState ()
-toggleCreativeMode = gameState . creativeMode %= not
+toggleCreativeMode = playState . gameState . creativeMode %= not
 
 toggleWorldEditor :: EventM Name AppState ()
 toggleWorldEditor = do
@@ -145,7 +145,7 @@ toggleREPLVisibility = do
 viewBase :: EventM Name AppState ()
 viewBase = do
   invalidateCacheEntry WorldCache
-  gameState . robotInfo . viewCenterRule .= VCRobot 0
+  playState . gameState . robotInfo . viewCenterRule .= VCRobot 0
 
 toggleFPS :: EventM Name AppState ()
 toggleFPS = uiState . uiGameplay . uiTiming . uiShowFPS %= not
