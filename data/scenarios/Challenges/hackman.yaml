@@ -29,7 +29,7 @@ objectives:
       as base {
         pcount <- count "pellet";
         donut_count <- count "donut";
-        return $ pcount >= 181;
+        pure $ pcount >= 181;
       };
   - id: donut_given
     teaser: Give to ghost
@@ -47,12 +47,12 @@ objectives:
           };
 
           if hasPowerup {
-              return true;
+              pure true;
           } {
               if (n > 1) {
                   anyHasPowerup $ n - 1;
               } {
-                  return false;
+                  pure false;
               }
           }
           end;
@@ -68,7 +68,7 @@ objectives:
       loc <- as base {
         whereami;
       };
-      return $ loc == (0, 0);
+      pure $ loc == (0, 0);
   - teaser: World wrap
     hidden: true
     optional: true
@@ -109,10 +109,10 @@ objectives:
               if (n > 1) {
                   allHasPowerup $ n - 1;
               } {
-                  return true;
+                  pure true;
               }
           } {
-              return false;
+              pure false;
           }
           end;
 

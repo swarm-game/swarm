@@ -535,7 +535,7 @@ end
 def group = \i. \m. \tests.
   log $ indent i ++ "START " ++ m ++ ":";
   tests $ i + 1;
-  return ()
+  pure ()
 end
 
 def test_empty: Int -> Cmd Unit = \i.
@@ -585,7 +585,7 @@ def test_insert: Int -> Cmd Unit = \i.
 end
 
 def randomTestS: Int -> Set Int -> (Set Int -> Cmd a) -> Cmd (Set Int) = \i.\s.\test.
-  if (i <= 0) {return s} {
+  if (i <= 0) {pure s} {
     x <- random 20;
     let ns = tree_set.insert x s in
     test ns;
@@ -650,7 +650,7 @@ def benchmark: Int -> s -> (s -> s) -> Cmd (Int * (Int * Int)) = \times.\s.\act.
   let max = \x.\y. if (x > y) {x} {y} in
   let runM: (Int * Maybe (Int * Int)) -> s -> Int -> Cmd (Int * Maybe (Int * Int)) = \acc.\s.\n.
     if (n <= 0) {
-      return acc
+      pure acc
     } {
       t0 <- time;
       //log $ "START " ++ format t0;
@@ -667,7 +667,7 @@ def benchmark: Int -> s -> (s -> s) -> Cmd (Int * (Int * Int)) = \times.\s.\act.
   //log "end run";
   let avg = fst res / times in
   let lim = case (snd res) (\_. fail "BENCHMARK NOT RUN") (\l.l) in
-  return (avg, lim)
+  pure (avg, lim)
 end
 
 def cmp_bench : Int -> Text -> (Int * (Int * Int)) -> Text -> (Int * (Int * Int)) -> Cmd Unit
@@ -691,7 +691,7 @@ end
 // Get a list of random integers of given length and maximum element number
 def gen_random_list: Int -> Int -> Cmd (List Int) = 
   let gen = \acc.\n.\rlim.
-    if (n <= 0) { return acc } {
+    if (n <= 0) { pure acc } {
       x <- random rlim;
       gen (cons x acc) (n - 1) rlim
     }
@@ -701,7 +701,7 @@ end
 // Get a number of lists of random integers of given length and maximum element number
 def gen_random_lists: Int -> Int -> Int -> Cmd (List (List Int)) = \m.\n.\rlim.
   let gen = \acc.\m.
-    if (m <= 0) { return acc } {
+    if (m <= 0) { pure acc } {
       l <- gen_random_list n rlim;
       gen (cons l acc) (m - 1)
     }

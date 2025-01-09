@@ -8,7 +8,7 @@ description: |
   https://github.com/swarm-game/swarm/issues/397
 objectives:
   - condition: |
-      t <- time; return (t == 2)
+      t <- time; pure (t == 2)
     goal:
       - |
         This is a dummy condition that just ensures the base has had

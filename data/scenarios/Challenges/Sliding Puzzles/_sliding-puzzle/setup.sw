@@ -29,7 +29,7 @@ def getOrdinal : Text -> Cmd Int = \item.
 
 def getValueHere =
     maybeItem <- scan down;
-    ordNum <- case maybeItem (\_. return 0) getOrdinal;
+    ordNum <- case maybeItem (\_. pure 0) getOrdinal;
     end;
 
 /**
@@ -81,9 +81,9 @@ def countInnerInversions = \n. \referenceVal. \j.
         let addend = if (referenceVal > valueHere) {1} {0} in
         recursiveSum <- countInnerInversions n referenceVal $ j + 1;
         let foo = recursiveSum in
-        return $ addend + foo;
+        pure $ addend + foo;
     } {
-        return 0;
+        pure 0;
     };
     end
 
@@ -102,9 +102,9 @@ def countInversions = \n. \i.
         turn back;
         subarrayInversions <- countInversions n $ i + 1;
         let foo = subarrayInversions in
-        return $ innerCountFoo + foo;
+        pure $ innerCountFoo + foo;
     } {
-        return 0;
+        pure 0;
     };
     end
 
@@ -115,13 +115,13 @@ Right is a valid tile entity name.
 def scanValid : Dir -> Cmd (Bool + Text) = \d.
     maybeTileForward <- scan d;
     case maybeTileForward
-        (\_. return $ inL false)
+        (\_. pure $ inL false)
         (\x.
             if (x == "sliding-tile") {
-                return $ inL true;
+                pure $ inL true;
             } {
                 y <- getOrdinal x;
-                return $ if (y > 0) {
+                pure $ if (y > 0) {
                     inR x;
                 } {
                     inL false;
@@ -145,14 +145,14 @@ def actOnItemComparison = \maybeNewItem. \original.
             move;
             grab;
             // Abort early from the recursion.
-            return false;
+            pure false;
         } {
             // The new tile is not a sliding tile.
             // We assume it's a blank tile and move there.
             // If it turns out not to be blank, that will
             // be addressed in the outer "observe" loop.
             move;
-            return false;
+            pure false;
         };
     ) (\newItem.
         let isSame = newItem == original in
@@ -160,7 +160,7 @@ def actOnItemComparison = \maybeNewItem. \original.
         if isSame {} {
             say $ "Original was " ++ original ++ "; newItem was " ++ newItem;
         };
-        return isSame;
+        pure isSame;
     );
     end;
 
@@ -179,14 +179,14 @@ def unwind = \keepChecking. \maybeItem.
                 // Our assumption was invalid; we don't have a
                 // valid reference tile to compared the drilled tile to.
                 say "Unexpected drilling; no reference tile.";
-                return false;
+                pure false;
             } {
-                return true;
+                pure true;
             }
         ) (actOnItemComparison maybeItem2);
-        return keepGoing;
+        pure keepGoing;
     } {
-        return false;
+        pure false;
     };
     end;
 

@@ -37,7 +37,7 @@ def moveTuple = \tup.
 
 def randomDir =
     r <- random 4;
-    return $ if (r == 1) {north}
+    pure $ if (r == 1) {north}
         $ elif (r == 2) {west}
         $ elif (r == 3) {south}
         $ else {east};
@@ -136,7 +136,7 @@ def takeStepTowardItem = \item.
         // another bee gets here first
         try {
             harvest;
-            return ();
+            pure ();
         } {};
     } {
         // Include some random motion
@@ -159,7 +159,7 @@ def workerProgram = \structureLoc.
         goToHive structureLoc;
     } {
         takeStepTowardItem "wildflower";
-        return ();
+        pure ();
     };
     workerProgram structureLoc;
     end;
@@ -206,7 +206,7 @@ def createWorkerForStructure = \loc.
         require 1 "wax gland";
         workerProgramInit beename loc;
     };
-    return ();
+    pure ();
     end;
 
 def associateHive = \loc.
@@ -214,7 +214,7 @@ def associateHive = \loc.
    try {
        // Fails if the robot does not exist
        robotnamed beename;
-       return ();
+       pure ();
    } {
        createWorkerForStructure loc;
 
@@ -227,7 +227,7 @@ def associateHive = \loc.
 
 def mapM_ : (a -> Cmd b) -> (rec l. Unit + a * l) -> Cmd Unit = \f. \l.
   case l
-    (\_. return ())
+    (\_. pure ())
     (\cons. f (fst cons); mapM_ f (snd cons))
   end;
 

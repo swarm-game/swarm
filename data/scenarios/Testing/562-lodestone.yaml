@@ -7,7 +7,7 @@ objectives:
     condition: |
       try {
         as base {has "drill bit"};
-      } { return false }
+      } { pure false }
 solution: |
   run "scenarios/Testing/562-lodestone.sw"
 robots:

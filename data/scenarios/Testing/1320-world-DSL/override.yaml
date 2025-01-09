@@ -4,7 +4,7 @@ description: |
   Test that later entities override earlier ones when overlaying
 objectives:
   - condition: |
-      as base { n <- count "tree"; return (n == 1) }
+      as base { n <- count "tree"; pure (n == 1) }
     goal:
       - Get a tree.
 solution: |

@@ -113,14 +113,14 @@ def collectContiguous = \maxdist. \item. \hadFound. \dist.
             collectContiguous maxdist item true $ dist + 1;
         } {
             if hadFound {
-                return dist;
+                pure dist;
             } {
                 move;
                 collectContiguous maxdist item false $ dist + 1;
             }
         }
     } {
-        return dist;
+        pure dist;
     }
     end;
 
@@ -148,7 +148,7 @@ def collectAllHoneycombs = \targetCount.
 
         collectAllHoneycombs targetCount;
     } {
-        return currentCount;
+        pure currentCount;
     };
     end;
 
@@ -176,7 +176,7 @@ def pickRock =
     isRock <- ishere "rock";
     if isRock {
         grab;
-        return ();
+        pure ();
     } {};
     end;
 

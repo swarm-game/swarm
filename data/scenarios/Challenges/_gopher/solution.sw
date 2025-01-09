@@ -34,15 +34,15 @@ def scanDirections = \n.
     let d = getDirection n in
     out <- scan d;
     shouldContinue <- case out
-        (\_. return true)
+        (\_. pure true)
         (\x. if (x == "mound") {
             drill d;
-            return true;
+            pure true;
         } {
             // A "flower" shall serve as
             // a semaphore to terminate the loop,
             // so that the base can `salvage` us.
-            return $ x != "flower";
+            pure $ x != "flower";
         });
 
     if shouldContinue {
@@ -58,7 +58,7 @@ def scanDirections = \n.
 
 def deploySensor =
     _s <- build {scanDirections 0};
-    return ();
+    pure ();
     end;
 
 def isDivisibleBy = \dividend. \divisor.
@@ -100,13 +100,13 @@ def deployGrid = \f. \width. \height.
 def pickupToolkit =
     x <- scan down;
     case x
-        (\_. return false)
+        (\_. pure false)
         (\y. if (y == "toolkit") {
             tk <- grab;
             equip tk;
-            return true
+            pure true
         } {
-            return false
+            pure false
         });
     end;
 

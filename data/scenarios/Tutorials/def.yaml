@@ -32,7 +32,7 @@ objectives:
     condition: |
       try {
         as base {has "flower"}
-      } { return false }
+      } { pure false }
 solution: |
   def m2 = move; move end;
   def m4 = m2; m2 end;

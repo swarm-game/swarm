@@ -6,7 +6,7 @@ description: |
 objectives:
   - condition: |
       loc <- as base {whereami};
-      return $ loc == (0,0)
+      pure $ loc == (0,0)
     goal:
       - |
         The goal is to move back to the origin after being

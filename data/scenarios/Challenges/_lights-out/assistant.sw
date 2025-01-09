@@ -35,7 +35,7 @@ def mapTuple = \f. \t.
 def replaceWith = \withThis.
     create withThis;
     swap withThis;
-    return ();
+    pure ();
     end;
 
 /** Modifies the cell */
@@ -49,7 +49,7 @@ def invertLight = \e.
 
 def toggleLightHere =
     entHere <- scan down;
-    case entHere return invertLight;
+    case entHere pure invertLight;
     end;
 
 /** Precondition: in the middle of a "cross" */
@@ -79,7 +79,7 @@ def flipSelfAndNeighbors = \newState. \locOffset.
 def togglePending = \state.
     let pendingEntityName = "pending-" ++ state in
     maybePending <- detect pendingEntityName ((1, 1), (6, 6));
-    case maybePending return $ flipSelfAndNeighbors state;
+    case maybePending pure $ flipSelfAndNeighbors state;
     end;
 
 def observe =
@@ -140,9 +140,9 @@ def advanceRowViaTeleport =
 def shouldCorrectTile : (Bool * Bool) -> (Bool * Bool) -> Cmd Bool = \evenOverlaps. \isQuietTiles.
     if (evenOverlaps == isQuietTiles) {
         toggleLightHere;
-        return true;
+        pure true;
     } {
-        return false;
+        pure false;
     }
     end;
 
@@ -161,7 +161,7 @@ def prepareBoardRow = \abortFunc. \rowIdx. \colIdx.
 
         shouldAbort <- abortFunc quietTuple;
         if shouldAbort {
-            return ((0, 0), true);
+            pure ((0, 0), true);
         } {
             let quietCellOn = mapTuple (\x. x && isCurrentlyOn) quietTuple in
             let addend = mapTuple boolToInt quietCellOn in
@@ -169,10 +169,10 @@ def prepareBoardRow = \abortFunc. \rowIdx. \colIdx.
             move;
             retval <- prepareBoardRow abortFunc rowIdx $ colIdx - 1;
             let subTotal = fst retval in
-            return $ (sumTuples addend subTotal, snd retval);
+            pure $ (sumTuples addend subTotal, snd retval);
         }
     } {
-        return ((0, 0), false);
+        pure ((0, 0), false);
     }
     end;
 
@@ -186,21 +186,21 @@ def prepareBoardAllRows = \abortFunc. \boardWidth. \rowIdx.
         let shouldAbort = snd retval in
 
         if shouldAbort {
-            return (0, 0);
+            pure (0, 0);
         } {
             advanceRowViaTeleport;
             totalCommonCount <- prepareBoardAllRows abortFunc boardWidth $ rowIdx - 1;
-            return $ sumTuples rowCommonCount totalCommonCount
+            pure $ sumTuples rowCommonCount totalCommonCount
         }
     } {
-        return (0, 0);
+        pure (0, 0);
     }
     end;
 
 def checkIsSolvable = \boardWidth. \boardHeight.
-    overlapCounts <- prepareBoardAllRows (\_. return false) boardWidth $ boardHeight - 1;
+    overlapCounts <- prepareBoardAllRows (\_. pure false) boardWidth $ boardHeight - 1;
     // say $ "Overlap counts: " ++ format overlapCounts;
-    return $ mapTuple isEven overlapCounts;
+    pure $ mapTuple isEven overlapCounts;
     end;
 
 /** Teleports to a new location to execute a function
@@ -212,7 +212,7 @@ def atLocation = \newLoc. \f.
     teleport self newLoc;
     retval <- f;
     teleport self prevLoc;
-    return retval;
+    pure retval;
     end;
 
 def analyzeSolvability : Int -> Int -> Cmd (Bool * Bool) = \boardWidth. \boardHeight.
@@ -232,7 +232,7 @@ def ensureSolvability = \evenOverlaps. \boardWidth. \boardHeight.
     if isSolvable {} {
         atLocation (0, 0) $
             prepareBoardAllRows (shouldCorrectTile $ mapTuple not evenOverlaps) boardWidth $ boardHeight - 1;
-        return ()
+        pure ()
     }
     end;
 

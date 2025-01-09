@@ -9,10 +9,10 @@ objectives:
         as base {
           l <- has "lambda";
           b <- has "bitcoin";
-          return $ l && b
+          pure $ l && b
         }
       } {
-        return false
+        pure false
       }
 solution: |
   swap "bitcoin"; swap "gold coin";
@@ -41,7 +41,7 @@ robots:
         case d (\_.
           say "Fatal error: swap does not work atomically!"
         ) (\_.
-          return ()
+          pure ()
         )
       )
 world:

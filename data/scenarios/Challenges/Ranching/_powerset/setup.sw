@@ -9,7 +9,7 @@ end
 def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 
 def until = \p. \c. q <- p; if q {} {c; until p c} end;
-def while = \p. until (x <- p; return $ not x) end;
+def while = \p. until (x <- p; pure $ not x) end;
 
 def isDivisibleBy = \dividend. \divisor.
     (dividend / divisor) * divisor == dividend;
@@ -67,7 +67,7 @@ def atLocation = \newLoc. \f.
     teleport self newLoc;
     retval <- f;
     teleport self prevLoc;
-    return retval;
+    pure retval;
     end;
 
 def placeSand =
@@ -86,7 +86,7 @@ def getUnusedRandom = \maxval. \bitmask.
     if (isBitSet bitmask nextRandomVal) {
         getUnusedRandom maxval bitmask;
     } {
-        return nextRandomVal;
+        pure nextRandomVal;
     }
     end;
 
@@ -140,7 +140,7 @@ def naiveRandomStack = \valueFunc. \maxval. \bitmask. \n.
         nextRandomVal <- getUnusedRandom maxval bitmask;
         let newBitmask = bitmask + shiftLeft 1 nextRandomVal in
         naiveRandomStack valueFunc maxval newBitmask $ n - 1;
-        return nextRandomVal;
+        pure nextRandomVal;
     } {
         // We're at the peak of the stack.
         // Now we unwind it.
@@ -148,7 +148,7 @@ def naiveRandomStack = \valueFunc. \maxval. \bitmask. \n.
         // Saves some time in generating the last number by inferring the
         // only remaining possible choice.
         let missingBit = getMissingBit bitmask maxval in
-        return missingBit;
+        pure missingBit;
     };
     valueFunc val;
     end;
@@ -193,7 +193,7 @@ def chooseExclusionValue = \powersetCardinality.
     if (exactlyOneBit false value) {
       chooseExclusionValue powersetCardinality;
     } {
-      return value;
+      pure value;
     }
     end;
 
@@ -208,7 +208,7 @@ def setup = \inputCardinality.
     move;
     exclusionValue <- chooseExclusionValue powersetCardinality;
     naiveRandomStack (columnFunc exclusionValue inputCardinality) powersetCardinality 0 powersetCardinality;
-    return exclusionValue;
+    pure exclusionValue;
     end;
 
 /**
@@ -220,7 +220,7 @@ def getOrdinal : Text -> Cmd Int = \item.
 
 def checkSolutionSum = \runningSum.
     maybeItem <- scan down;
-    case maybeItem (\_. return runningSum) (\item.
+    case maybeItem (\_. pure runningSum) (\item.
         // The bell is the only other item we can place in this
         // scenario besides the fruits.
         if (item != "bell") {
@@ -228,7 +228,7 @@ def checkSolutionSum = \runningSum.
             let binaryValue = shiftLeft 1 $ theOrdinal - 1 in
             move;
             checkSolutionSum $ binaryValue + runningSum;
-        } {return runningSum};
+        } {pure runningSum};
     );
     end;
 

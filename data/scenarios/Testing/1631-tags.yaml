@@ -16,8 +16,8 @@ objectives:
     condition: |
       def hasAny : (rec l. Unit + Text * l) -> Cmd Bool = \items.
         case items
-          (\_. return false)
-          (\c. b <- has (fst c); if b {return true} {hasAny (snd c)})
+          (\_. pure false)
+          (\c. b <- has (fst c); if b {pure true} {hasAny (snd c)})
       end;
 
       let prohibited = tagmembers "fruit" in
@@ -28,15 +28,15 @@ objectives:
 solution: |
   def findTarget =
     result <- scan down;
-    isTarget <- case result (\_. return false) (\item.
+    isTarget <- case result (\_. pure false) (\item.
       let isEdible = hastag item "edible" in
       let isFruit = hastag item "fruit" in
-      return $ isEdible && not isFruit;
+      pure $ isEdible && not isFruit;
     );
 
     if isTarget {
       grab;
-      return ();
+      pure ();
     } {
       move;
       findTarget;

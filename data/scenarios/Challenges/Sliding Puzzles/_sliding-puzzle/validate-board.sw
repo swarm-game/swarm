@@ -4,7 +4,7 @@ def else = id end
 
 def itemIsHere = \item.
     x <- scan down;
-    case x (\_. return false) (\found. return $ found == item);
+    case x (\_. pure false) (\found. pure $ found == item);
     end;
 
 def getOrdinal : Text -> Cmd Int = \item.
@@ -19,10 +19,10 @@ def getOrdinal : Text -> Cmd Int = \item.
 def isMonotonic : Int -> Cmd (Unit + Int) = \expectedVal.
     maybeItem <- scan down;
     case maybeItem
-        (\_. return $ inR expectedVal) // Cell was blank
+        (\_. pure $ inR expectedVal) // Cell was blank
         (\entity.
             intVal <- getOrdinal entity;
-            return $ if (intVal == expectedVal) {
+            pure $ if (intVal == expectedVal) {
                 inR $ expectedVal + 1;
             } {
                 inL ();
@@ -41,11 +41,11 @@ def isMonotonic : Int -> Cmd (Unit + Int) = \expectedVal.
 def loopMonotonicityCheck : Int -> Cmd Bool = \expectedVal.
     isOnBottomBorder <- itemIsHere "border";
     if isOnBottomBorder {
-        return true;
+        pure true;
     } {
         maybeNextVal <- isMonotonic expectedVal;
         case maybeNextVal
-            (\_. return false)
+            (\_. pure false)
             (\nextVal.
                 move;
                 isOnRightBorder <- itemIsHere "border";
@@ -65,7 +65,7 @@ def go =
         teleport self (0, 0);
         loopMonotonicityCheck 1;
     } {
-        return false;
+        pure false;
     };
     end;
 

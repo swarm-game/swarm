@@ -16,7 +16,7 @@ objectives:
 
         You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
-      as base {l <- whereami; return (l == (2,0))}
+      as base {l <- whereami; pure (l == (2,0))}
   - id: move_along_corridor
     teaser: Down the corridor
     goal:
@@ -35,7 +35,7 @@ objectives:
 
         You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
-      as base {l <- whereami; return (l == (8,0))}
+      as base {l <- whereami; pure (l == (8,0))}
     prerequisite: move_to_first_flower
   - id: move_northeast_corner
     teaser: To northeast corner
@@ -59,7 +59,7 @@ objectives:
 
         You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
-      as base {l <- whereami; return (l == (8,4))}
+      as base {l <- whereami; pure (l == (8,4))}
     prerequisite: move_along_corridor
   - goal:
       - Good job! You are now ready to move and turn on your own.
@@ -67,7 +67,7 @@ objectives:
       - Remember you can press the upward arrow on your keyboard to select previous commands.
       - You can open this popup window at any time to remind yourself of the goal using **Ctrl+G**.
     condition: |
-      as base {l <- whereami; return (l == (8,8))}
+      as base {l <- whereami; pure (l == (8,8))}
     prerequisite: move_northeast_corner
 solution: |
   // 0
@@ -145,7 +145,7 @@ robots:
   - name: 1P wall
     system: true
     program: |
-      def main = \a. return noop end
+      def main = \a. pure noop end
       instant (
         run "scenarios/Tutorials/move_surveil.sw";
         main [entity="wall", room=1]

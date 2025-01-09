@@ -12,8 +12,8 @@ objectives:
         bloc <- as base {whereami};
         king <- robotNamed "king";
         kloc <- as king {whereami};
-        return (bloc == kloc)
-      } { return false }
+        pure (bloc == kloc)
+      } { pure false }
 solution: |
   move; move; move; turn right; move; turn left; move;
 robots:

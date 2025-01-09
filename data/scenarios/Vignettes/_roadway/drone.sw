@@ -58,13 +58,13 @@ def init :
     } in
     turn $ fst locdir;
     teleport self $ snd locdir;
-    return (isLongitudinal, idx);
+    pure (isLongitudinal, idx);
     end;
 
 def isGreenLight = \isLongitudinal.
     r <- robotnamed "stoplight";
     isGreen <- as r {has "bit (1)"};
-    return $ isLongitudinal != isGreen;
+    pure $ isLongitudinal != isGreen;
     end;
 
 def getCanMove :
@@ -89,30 +89,30 @@ def getCanMove :
     eitherNeighbor <- meet;
     // TODO: Make sure we only consider the neighbor directly in front of us.
     neighborIsStopped <- case eitherNeighbor
-        (\_. return false)
+        (\_. pure false)
         (\r. as r {has "bit (0)"}); // zero-bit means stopped
 
-    return $ hasGreenLight || not (atStopLine || neighborIsStopped);
+    pure $ hasGreenLight || not (atStopLine || neighborIsStopped);
     end;
 
 def doTunnelWrap : [xMin : Int, xMax : Int, yMin : Int, yMax : Int] -> Cmd Bool = \extents.
     myloc <- whereami;
     didWrap <- if (fst myloc < extents.xMin) {
         teleport self (extents.xMax, snd myloc);
-        return true;
+        pure true;
     } $ elif (fst myloc > extents.xMax) {
         teleport self (extents.xMin, snd myloc);
-        return true;
+        pure true;
     } $ elif (snd myloc < extents.yMin) {
         teleport self (fst myloc, extents.yMax);
-        return true;
+        pure true;
     } $ elif (snd myloc > extents.yMax) {
         teleport self (fst myloc, extents.yMin);
-        return true;
+        pure true;
     } $ else {
-        return false;
+        pure false;
     };
-    return didWrap;
+    pure didWrap;
     end;
 
 def moveWithWrap :
@@ -129,7 +129,7 @@ def moveWithWrap :
         move;
         doTunnelWrap extents;
     } {
-        return false;
+        pure false;
     };
 
     try {
@@ -137,7 +137,7 @@ def moveWithWrap :
         if canMove {make "bit (1)"} {make "bit (0)"}
     } {};
 
-    return (canMove, wentThroughTunnel);
+    pure (canMove, wentThroughTunnel);
     end;
 
 def getNewDelayState :

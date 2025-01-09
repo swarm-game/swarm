@@ -7,12 +7,12 @@ creative: True
 objectives:
   - condition: |
       try {
-        as base {l <- has "detonator"; return (not l)}
-      } { return false }
+        as base {l <- has "detonator"; pure (not l)}
+      } { pure false }
 # When testing, add `s <- build {...}; n <- as s {whoami}; log n`
 solution: |
   def forever = \c. c ; forever c end;
-  def unblock = try {drill forward; return ()} {} end;
+  def unblock = try {drill forward; pure ()} {} end;
   def doPush = unblock; move end;
   log "Hi, I am base";
   r <- build {

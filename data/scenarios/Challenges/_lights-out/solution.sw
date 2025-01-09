@@ -12,7 +12,7 @@ def intersperse = \n. \f2. \f1. if (n > 0) {
 /** Precondition: facing "d" direction */
 def toggleToDark = \d.
     onHere <- ishere "on";
-    if onHere {drill d; return ()} {};
+    if onHere {drill d; pure ()} {};
     end;
 
 def visitSingleRow = \rowWidth. \d.
@@ -48,7 +48,7 @@ def goToCorner =
 
 def onInDirection = \d.
     entHere <- scan d;
-    return $ case entHere (\_. false) (\e. e == "on");
+    pure $ case entHere (\_. false) (\e. e == "on");
     end;
 
 /**

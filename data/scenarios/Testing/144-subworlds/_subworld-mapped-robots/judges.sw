@@ -2,7 +2,7 @@
 def getRobotNumber = \n.
     r <- robotnumbered n;
     if (r == self) {
-        return n;
+        pure n;
     } {getRobotNumber $ n + 1};
     end;
 
@@ -10,7 +10,7 @@ def amLowestRecursive = \targetName. \idx.
     r <- robotnumbered idx;
     thisName <- as r {whoami};
     if (thisName == targetName) {
-        return $ r == self;
+        pure $ r == self;
     } {amLowestRecursive targetName $ idx + 1};
     end;
 

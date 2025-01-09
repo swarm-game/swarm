@@ -23,8 +23,8 @@ objectives:
       try {
         teleport self (32,-16);
         b <- ishere "flower";
-        return (not b)
-      } { return false }
+        pure (not b)
+      } { pure false }
 solution: |
   def x4 = \c. c; c; c; c end;
   def m2 = move; move end;

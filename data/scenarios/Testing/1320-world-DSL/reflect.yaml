@@ -8,7 +8,7 @@ objectives:
   - goal:
       - Pick up four trees
     condition: |
-      as base {n <- count "tree"; return (n >= 4)}
+      as base {n <- count "tree"; pure (n >= 4)}
 robots:
   - name: base
     loc: [0, 0]
@@ -27,7 +27,7 @@ solution: |
   def x = \n. \c. if (n==0) {} {c; x (n-1) c} end
   def ifC = \p. \t. \e. b <- p; if b t e end
   def findTree = ifC (ishere "tree") {whereami} {move; findTree} end
-  def ell = \d. turn right; x (2*d) move; grab; return () end
+  def ell = \d. turn right; x (2*d) move; grab; pure () end
   def grabTrees = \loc. let x = fst loc in let y = snd loc in grab; ell y; ell x; ell y end
   n <- random 10;
   x (n+1) move; turn right; move;

@@ -17,10 +17,10 @@ objectives:
         judge <- robotnamed "judge";
         as judge {
           maybePath <- path (inL ()) (inR "packing peanut");
-          return $ case maybePath (\_. true) (\d. false);
+          pure $ case maybePath (\_. true) (\d. false);
         }
       } {
-        return false;
+        pure false;
       };
 solution: |
   move;

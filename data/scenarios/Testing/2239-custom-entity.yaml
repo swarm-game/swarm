@@ -9,7 +9,7 @@ objectives:
     condition: |
       as base {
         loc <- whereami;
-        return $ loc == (1,0)
+        pure $ loc == (1,0)
       };
 entities:
   - name: rock

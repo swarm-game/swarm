@@ -33,7 +33,7 @@ robots:
         h <- scan down;
         f <- scan forward;
         b <- scan back;
-        return (cnt h + cnt f + cnt b)
+        pure (cnt h + cnt f + cnt b)
       end;
       def mod : Int -> Int -> Int = \a. \b. a - (a/b)*b end;
       def waitUntil = \p.
@@ -42,20 +42,20 @@ robots:
       end;
       forever (
         h <- scan down;
-        alive <- return (h != inl ());
+        alive <- pure (h != inl ());
         n1 <- count3;
         turn left; move; turn right; n2 <- count3;
         turn right; move; move; turn left; n3 <- count3;
         turn left; move; turn right;
-        total <- return (n1 + n2 + n3 - if alive {1} {0});
+        total <- pure (n1 + n2 + n3 - if alive {1} {0});
         if (alive && (total < 2 || total > 3))
-          { grab; return () }
+          { grab; pure () }
           { if (not alive && total == 3)
             { place "rock" }
             {}
           };
         // synchronize
-        waitUntil (t <- time; return (mod t 0x20 == 0))
+        waitUntil (t <- time; pure (mod t 0x20 == 0))
       )
 world:
   dsl: |

@@ -28,12 +28,12 @@ def atLocation = \newLoc. \f.
     teleport self newLoc;
     retval <- f;
     teleport self prevLoc;
-    return retval;
+    pure retval;
     end;
 
 def itemIsHere = \item.
     x <- scan down;
-    case x (\_. return false) (\found. return $ found == item);
+    case x (\_. pure false) (\found. pure $ found == item);
     end;
 
 def getLetterEntityByIndex = \idx.
@@ -52,7 +52,7 @@ def getOrdinal : Text -> Cmd Int = \item.
 
 def getValueHere =
     maybeItem <- scan down;
-    ordNum <- case maybeItem (\_. return 0) getOrdinal;
+    ordNum <- case maybeItem (\_. pure 0) getOrdinal;
     end;
 
 def getIndexesTotal = \boardWidth. \boardHeight. \n.
@@ -61,9 +61,9 @@ def getIndexesTotal = \boardWidth. \boardHeight. \n.
         teleport self (idx/boardHeight, -(mod idx boardWidth));
         valueHere <- getValueHere;
         runningTotal <- getIndexesTotal boardWidth boardHeight $ n - 1;
-        return $ valueHere + runningTotal;
+        pure $ valueHere + runningTotal;
     } {
-        return 0;
+        pure 0;
     }
     end;
 
@@ -77,7 +77,7 @@ def findMissingIndex = \boardWidth. \boardHeight.
     let tileCount = squareCount - 1 in
     let indicesSum = computeTriangularNumber tileCount in
     mySum <- getIndexesTotal boardWidth boardHeight squareCount;
-    return $ indicesSum - mySum;
+    pure $ indicesSum - mySum;
     end;
 
 def replenishInk =
@@ -114,12 +114,12 @@ Checks in the four directions.
 def hasAdjacentBlank = \tileIdx. \n.
     if (n > 0) {
         result <- scan forward;
-        case result (\_. handleLegalMove tileIdx; return true;) (\_.
+        case result (\_. handleLegalMove tileIdx; pure true;) (\_.
             turn left;
             hasAdjacentBlank tileIdx $ n - 1;
         );
     } {
-        return false;
+        pure false;
     }
     end;
 
@@ -141,7 +141,7 @@ Preconditions:
 def handleMarker = \boardWidth. \boardHeight.
     detectReferenceLoc <- whereami;
     result <- detect "sliding-tile" ((0, 0), (boardWidth - 1, boardHeight - 1));
-    case result return (\badLoc.
+    case result pure (\badLoc.
         teleportToDetectResult detectReferenceLoc badLoc;
         missingIdx <- atLocation (0, 0) $ findMissingIndex boardWidth boardHeight;
         markIsLegal <- isLegalMark missingIdx;

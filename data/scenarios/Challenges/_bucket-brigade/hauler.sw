@@ -27,8 +27,8 @@ def patrol =
     traverseRoad;
     doNTimesOr 40 (
         briquetteIsHere <- ishere briquette;
-        if briquetteIsHere {grab; return ()} {};
-        return briquetteIsHere;
+        if briquetteIsHere {grab; pure ()} {};
+        pure briquetteIsHere;
     );
     turn back;
     traverseRoad;

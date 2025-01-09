@@ -19,12 +19,12 @@ objectives:
         drillEquipped <- as fred {equipped "metal drill"};
         fred_rocks <- as fred {count "rock"};
 
-        return (p == (2,0) && boatEquipped && drillEquipped
+        pure (p == (2,0) && boatEquipped && drillEquipped
                 && base_boats == 1 && base_solar == 1
                 && base_treads == 1 && base_drills == 1
                 && base_rocks == 42 && fred_rocks == 8
                );
-      } { return false }
+      } { pure false }
 solution: |
   fred <- build {require "boat"; require 5 "rock"; setname "fred"};
   wait 5;

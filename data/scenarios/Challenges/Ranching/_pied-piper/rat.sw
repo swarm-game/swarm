@@ -20,10 +20,10 @@ def goFoodDir = \f. \r.
     if (d == down) {
         foodHere <- ishere "oats";
         if foodHere {
-            grab; return ()
+            grab; pure ()
         } {};
         f;
-        return ()
+        pure ()
     } {
         turn d;
 
@@ -40,7 +40,7 @@ def goFoodDir = \f. \r.
 def goHomeDir = \f. \r.
     let d = fst r in
     if (d == down) {
-        return ()
+        pure ()
     } {
         turn d;
 
@@ -81,12 +81,12 @@ def pauseAtRandom =
 
 def returnHome = \homeLoc.
     nextDir <- path (inL ()) (inL homeLoc);
-    case nextDir return $ goHomeDir $ returnHome homeLoc;
+    case nextDir pure $ goHomeDir $ returnHome homeLoc;
     end;
 
 def pursueFood = \hadSensedFood. \homeLoc.
     nextDir <- path (inR 5) (inR "oats");
-    case nextDir (\_. if hadSensedFood {returnHome homeLoc} {return ()}) $
+    case nextDir (\_. if hadSensedFood {returnHome homeLoc} {pure ()}) $
         goFoodDir $ pursueFood true homeLoc;
     end;
 

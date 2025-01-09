@@ -11,7 +11,7 @@ objectives:
       as base {
         let targetVolume = 14 in
         vol <- volume targetVolume;
-        return $case vol (\_. false) (\x. x == targetVolume);
+        pure $case vol (\_. false) (\x. x == targetVolume);
       }
 solution: |
   move;

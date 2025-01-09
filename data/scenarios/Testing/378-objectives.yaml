@@ -10,12 +10,12 @@ objectives:
     condition: |
       try {
         n <- as base {count "tree"};
-        return (n >= 3)
-      } { return false }
+        pure (n >= 3)
+      } { pure false }
   - goal:
       - Nice job.  Now, build a harvester.
     condition: |
-      try { as base {has "harvester"} } {return false}
+      try { as base {has "harvester"} } {pure false}
     prerequisite: get_trees
 solution: |
   build {turn right; move; move; grab; move; grab; move; grab; turn back; move; move; move; move};

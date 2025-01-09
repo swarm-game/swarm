@@ -11,13 +11,13 @@ def placeOrder =
     scoopCountExtra <- random 4000;
     let scoopCount = 1000 + scoopCountExtra in
     say $ format scoopCount ++ " scoops of vanilla ice cream, no more, no less! And top it with a cherry, please.";
-    return scoopCount;
+    pure scoopCount;
     end;
 
 def waitForItem = \item.
     hasItem <- has item;
     if hasItem {
-        return ();
+        pure ();
     } {
         wait 1;
         waitForItem item;

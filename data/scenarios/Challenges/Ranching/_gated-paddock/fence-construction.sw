@@ -54,10 +54,10 @@ def grabTrees =
 
 def harvestIfClover =
     x <- scan down;
-    case x return (\y.
+    case x pure (\y.
         if (y == "clover") {
             harvest;
-            return ();
+            pure ();
         } {};
     );
     end;
@@ -125,11 +125,11 @@ def harvestCloverField =
     turn right;
     wait 200;
     
-    plantCloverColumn right $ return ();
-    plantCloverColumn left $ return ();
-    plantCloverColumn right $ return ();
-    plantCloverColumn left $ return ();
-    plantCloverColumn right $ return ();
+    plantCloverColumn right $ pure ();
+    plantCloverColumn left $ pure ();
+    plantCloverColumn right $ pure ();
+    plantCloverColumn left $ pure ();
+    plantCloverColumn right $ pure ();
     end;
 
 
@@ -164,10 +164,10 @@ def distributeCloverInPaddock =
 
 def pickupWool =
     x <- scan down;
-    case x return (\y.
+    case x pure (\y.
         if (y == "wool") {
             grab;
-            return ();
+            pure ();
         } {};
     );
     end;

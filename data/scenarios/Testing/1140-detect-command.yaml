@@ -10,7 +10,7 @@ objectives:
 solution: |
   def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
   loc <- detect "tree" ((0, 0), (6, 4));
-  case loc return (\delta.
+  case loc pure (\delta.
     let xDelta = fst delta in
     let yDelta = snd delta in
     if (yDelta < 0) {turn south;} {};
@@ -18,7 +18,7 @@ solution: |
     if (xDelta < 0) {turn west;} {turn east};
     doN xDelta move; // x-movement
     grab;
-    return ();
+    pure ();
   );
 robots:
   - name: base

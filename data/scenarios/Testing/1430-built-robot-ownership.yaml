@@ -48,7 +48,7 @@ objectives:
     condition: |
       r2 <- robotNumbered 2;
       r3 <- robotNumbered 3;
-      return true
+      pure true
 known: []
 world:
   palette:

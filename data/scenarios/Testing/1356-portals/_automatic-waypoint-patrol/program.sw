@@ -15,7 +15,7 @@ def negateTuple = \t.
 
 def getRelativeLocation = \absCurrentLoc. \absDestLoc.
     let negatedLoc = negateTuple absCurrentLoc in
-    return $ sumTuples negatedLoc absDestLoc;
+    pure $ sumTuples negatedLoc absDestLoc;
     end;
 
 def moveTuple = \tup.

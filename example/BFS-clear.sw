@@ -13,11 +13,11 @@ def while : Cmd Bool -> Cmd Unit -> Cmd Unit = \test.\c.
 end;
 def getX : Cmd Int =
   pos <- whereami;
-  return (fst pos);
+  pure (fst pos);
 end;
 def getY : Cmd Int =
   pos <- whereami;
-  return (snd pos);
+  pure (snd pos);
 end;
 def gotoX : Int -> Cmd Unit = \tgt.
   cur <- getX;
@@ -47,7 +47,7 @@ def spawnfwd : {Cmd Unit} -> Cmd Unit = \c.
      move;
      b <- isHere "tree";
      if b
-       { build c; return () }
+       { build c; pure () }
        {};
      turn back;
      move

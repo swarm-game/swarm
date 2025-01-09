@@ -55,7 +55,7 @@ def getQuadrantIncrement = \oldQuadrant. \newQuadrant.
 
 def getCurrentQuadrant : (Int * Int) -> Cmd Int = \myLoc.
   baseLoc <- as base {whereami};
-  return $ getQuadrant baseLoc myLoc;
+  pure $ getQuadrant baseLoc myLoc;
   end;
 
 def checkNewQuadrant = \myLoc. \prevQuadrant. \quadrantTraversalCount.
@@ -65,9 +65,9 @@ def checkNewQuadrant = \myLoc. \prevQuadrant. \quadrantTraversalCount.
 
   if (changeCount != 0) {
     swap $ "maypole " ++ format currentQuadrant;
-    return ();
+    pure ();
   } {};
-  return (currentQuadrant, newQuadrantCount);
+  pure (currentQuadrant, newQuadrantCount);
   end;
 
 /*
@@ -91,7 +91,7 @@ def monitorAngle : (Int * Int) -> Int -> Int -> Int -> Cmd Unit =
   } {
     create "dizzy";
     swap "bitcoin";
-    return ();
+    pure ();
   }
   end;
 

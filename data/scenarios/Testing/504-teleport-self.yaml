@@ -9,7 +9,7 @@ objectives:
         create "tree"; place "tree";
         teleport self (5,0);
         ishere "tree"
-      } { return false }
+      } { pure false }
 solution: |
   place "tree"
 robots:

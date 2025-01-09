@@ -9,11 +9,11 @@ objectives:
     condition: |
       try {
         as base {has "2048"}
-      } { return false }
+      } { pure false }
 solution: |
   def makeN : Int -> Cmd Unit = \n.
     if (n == 1)
-      {harvest; return ()}
+      {harvest; pure ()}
       {makeN (n/2); makeN (n/2); make (format n)}
   end;
   place "1";

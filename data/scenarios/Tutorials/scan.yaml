@@ -12,8 +12,8 @@ objectives:
         bm <- as base {knows "mountain"};
         bt <- as base {knows "tree"};
         bw <- as base {knows "wavy water"};
-        return (bm || bt || bw)
-      } { return false }
+        pure (bm || bt || bw)
+      } { pure false }
 solution: |
   build {
     turn east; move; move; move;

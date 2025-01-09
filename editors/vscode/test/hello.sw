@@ -2,4 +2,4 @@
 
 def hello: Text = "Hello World" end;
 
-return hello;
+pure hello;

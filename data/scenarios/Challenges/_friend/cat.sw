@@ -11,7 +11,7 @@ def abs = \n. if (n < 0) {-n} {n} end
 
 def randdir : Cmd Dir =
   d <- random 4;
-  return (
+  pure (
     if (d == 0) {north}
     $ elif (d == 1) {east}
     $ elif (d == 2) {south}
@@ -21,7 +21,7 @@ end
 
 def chooseWait : Cmd Int =
   t <- random (16*2);
-  return (16 + t)
+  pure (16 + t)
 end
 
 def wander =

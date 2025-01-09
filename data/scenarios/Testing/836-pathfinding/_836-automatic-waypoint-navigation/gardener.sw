@@ -6,7 +6,7 @@ def harvestPlant =
   } {
     wait 50;
     harvest;
-    return ();
+    pure ();
   };
   end;
 

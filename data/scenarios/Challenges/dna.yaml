@@ -87,8 +87,8 @@ objectives:
     condition: |
       def hasAll : (rec l. Unit + Text * l) -> Cmd Bool = \l.
         case l
-          (\_. return true)
-          (\c. b1 <- has (fst c); if b1 {hasAll (snd c)} {return false})
+          (\_. pure true)
+          (\c. b1 <- has (fst c); if b1 {hasAll (snd c)} {pure false})
       end;
 
       k <- robotnamed "keeper";
@@ -107,15 +107,15 @@ objectives:
     condition: |
       def hasCount : (rec l. Unit + Text * l) -> Cmd Int = \l.
         case l
-          (\_. return 0)
-          (\c. b <- has (fst c); n <- hasCount (snd c); return (if b {1} {0} + n))
+          (\_. pure 0)
+          (\c. b <- has (fst c); n <- hasCount (snd c); pure (if b {1} {0} + n))
       end;
 
       k <- robotnamed "keeper";
       as k {
         let organisms = tagmembers "organism" in
         c <- hasCount organisms;
-        return $ c >= 4;
+        pure $ c >= 4;
       }
 robots:
   - name: base

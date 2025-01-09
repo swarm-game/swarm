@@ -16,7 +16,7 @@ def judgeCount : Int -> Cmd Unit = \actual.
   wait 1024;
   s <- scan down;
   case s
-    (\_. return ())
+    (\_. pure ())
     (\p.
       try {
         let c = (read p : Int) in

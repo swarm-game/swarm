@@ -20,7 +20,7 @@ objectives:
       def isRight = \x. case x (\_. false) (\_. true); end;
 
       foundBoxes <- structures "chevron";
-      return $ isRight foundBoxes;
+      pure $ isRight foundBoxes;
 robots:
   - name: base
     dir: east
