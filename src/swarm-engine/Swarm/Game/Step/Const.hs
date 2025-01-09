@@ -214,22 +214,20 @@ execConst runChildProg c vs s k = do
       -- If unobstructed, the robot will move even if
       -- there is nothing to push.
       maybeCurrentE <- entityAt nextLoc
-      case maybeCurrentE of
-        Just e -> do
-          -- Make sure there's nothing already occupying the destination
-          nothingHere <- isNothing <$> entityAt placementLoc
-          nothingHere `holdsOrFail` ["Something is in the way!"]
+      forM_ maybeCurrentE $ \e -> do
+        -- Make sure there's nothing already occupying the destination
+        nothingHere <- isNothing <$> entityAt placementLoc
+        nothingHere `holdsOrFail` ["Something is in the way!"]
 
-          let verbed = verbedGrabbingCmd Push'
-          -- Ensure it can be pushed.
-          omni <- isPrivilegedBot
-          (omni || e `hasProperty` Pushable || e `hasProperty` Pickable && not (e `hasProperty` Liquid))
-            `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
+        let verbed = verbedGrabbingCmd Push'
+        -- Ensure it can be pushed.
+        omni <- isPrivilegedBot
+        (omni || e `hasProperty` Pushable || e `hasProperty` Pickable && not (e `hasProperty` Liquid))
+          `holdsOrFail` ["The", e ^. entityName, "here can't be", verbed <> "."]
 
-          -- Place the entity and remove it from previous loc
-          updateEntityAt nextLoc (const Nothing)
-          updateEntityAt placementLoc (const (Just e))
-        Nothing -> return ()
+        -- Place the entity and remove it from previous loc
+        updateEntityAt nextLoc (const Nothing)
+        updateEntityAt placementLoc (const (Just e))
 
       updateRobotLocation loc nextLoc
       return $ mkReturn ()
@@ -1657,7 +1655,7 @@ execConst runChildProg c vs s k = do
       (mAch False)
 
     selfDestruct .= True
-    maybe (return ()) grantAchievementForRobot (mAch True)
+    forM_ (mAch True) grantAchievementForRobot
 
   moveInDirection :: (HasRobotStepState sig m, Has (Lift IO) sig m) => Heading -> m CESK
   moveInDirection orientation = do
@@ -1676,19 +1674,17 @@ execConst runChildProg c vs s k = do
     MoveFailureHandler ->
     m ()
   applyMoveFailureEffect maybeFailure failureHandler =
-    case maybeFailure of
-      Nothing -> return ()
-      Just failureMode -> case failureHandler failureMode of
-        IgnoreFail -> return ()
-        Destroy -> destroyIfNotBase $ \b -> case (b, failureMode) of
-          (True, PathLiquid _) -> Just RobotIntoWater -- achievement for drowning
-          _ -> Nothing
-        ThrowExn -> throwError . cmdExn c $
-          case failureMode of
-            PathBlockedBy ent -> case ent of
-              Just e -> ["There is a", e ^. entityName, "in the way!"]
-              Nothing -> ["There is nothing to travel on!"]
-            PathLiquid e -> ["There is a dangerous liquid", e ^. entityName, "in the way!"]
+    forM_ maybeFailure $ \failureMode -> case failureHandler failureMode of
+      IgnoreFail -> return ()
+      Destroy -> destroyIfNotBase $ \b -> case (b, failureMode) of
+        (True, PathLiquid _) -> Just RobotIntoWater -- achievement for drowning
+        _ -> Nothing
+      ThrowExn -> throwError . cmdExn c $
+        case failureMode of
+          PathBlockedBy ent -> case ent of
+            Just e -> ["There is a", e ^. entityName, "in the way!"]
+            Nothing -> ["There is nothing to travel on!"]
+          PathLiquid e -> ["There is a dangerous liquid", e ^. entityName, "in the way!"]
 
   -- Determine the move failure mode and apply the corresponding effect.
   checkMoveAhead ::

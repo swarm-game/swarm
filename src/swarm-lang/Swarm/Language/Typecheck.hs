@@ -1160,17 +1160,16 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   SLam x mxTy body -> do
     (argTy, resTy) <- decomposeFunTy s (Expected, expected)
     traverse_ (adaptToTypeErr l KindErr . checkKind) mxTy
-    case toU mxTy of
-      Just xTy -> do
-        res <- argTy U.=:= xTy
-        case res of
-          -- Generate a special error when the explicit type annotation
-          -- on a lambda doesn't match the expected type,
-          -- e.g. (\x:Int. x + 2) : Text -> Int, since the usual
-          -- "expected/but got" language would probably be confusing.
-          Left _ -> throwTypeErr l $ LambdaArgMismatch (joined argTy xTy)
-          Right _ -> return ()
-      Nothing -> return ()
+    forM_ (toU mxTy) $ \xTy -> do
+      res <- argTy U.=:= xTy
+      case res of
+        -- Generate a special error when the explicit type annotation
+        -- on a lambda doesn't match the expected type,
+        -- e.g. (\x:Int. x + 2) : Text -> Int, since the usual
+        -- "expected/but got" language would probably be confusing.
+        Left _ -> throwTypeErr l $ LambdaArgMismatch (joined argTy xTy)
+        Right _ -> return ()
+
     body' <- withBinding @UPolytype (lvVar x) (mkTrivPoly argTy) $ check body resTy
     return $ Syntax' l (SLam x mxTy body') cs (UTyFun argTy resTy)
 

@@ -214,8 +214,6 @@ mkNamedStructure theName pos g =
       mempty
 
 renderGridResult :: Either a (PositionedGrid (Maybe Int)) -> IO ()
-renderGridResult eitherResult = case eitherResult of
-  Right pg -> do
-    print pg
-    print $ getRows $ gridContent pg
-  Left _ -> return ()
+renderGridResult = mapM_ $ \pg -> do
+  print pg
+  print $ getRows $ gridContent pg
