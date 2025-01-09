@@ -123,7 +123,6 @@ saveScenarioInfoOnQuit =
       -- menu at startup, so leave it alone; we simply want to
       -- exit the entire app.
       NoMenu -> pure ()
-
       -- Otherwise, rebuild the NewGameMenu so it gets the updated
       -- ScenarioInfo, being sure to preserve the same focused
       -- scenario.
