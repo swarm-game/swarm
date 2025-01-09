@@ -16,9 +16,9 @@ solution: |
         turn back;
         move;
         turn left;
-        return oldDistance;
+        pure oldDistance;
       } {
-        return newDistance;
+        pure newDistance;
       };
       homeIn item d;
     } {

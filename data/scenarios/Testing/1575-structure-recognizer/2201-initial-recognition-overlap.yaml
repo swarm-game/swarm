@@ -22,7 +22,7 @@ objectives:
         case l (\_. 0) (\c. 1 + length (snd c))
       end;
       foundStructures <- structures "square";
-      return $ length foundStructures == 1;
+      pure $ length foundStructures == 1;
 robots:
   - name: base
     dir: north

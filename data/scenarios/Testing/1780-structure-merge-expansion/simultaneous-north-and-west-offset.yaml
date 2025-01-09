@@ -12,7 +12,7 @@ objectives:
   - goal:
       - Enjoy the view.
     condition: |
-      return true
+      pure true
 solution: |
   noop
 known: [pixel (R), gold]

@@ -72,7 +72,7 @@ objectives:
       as base {
         c <- whereami;
         let x = fst c in
-        return $ x >= 1 && x <= 2 && snd c == -30;
+        pure $ x >= 1 && x <= 2 && snd c == -30;
       };
   - id: get_pebble
     teaser: Off-piste

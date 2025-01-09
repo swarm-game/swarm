@@ -105,7 +105,7 @@ def waitForItem : Dir -> Cmd Text = \d.
         watch d;
         wait 1000;
         waitForItem d;
-    ) return;
+    ) pure;
     end;
 
 def waitForSpecificItem = \item. \d.
@@ -179,10 +179,10 @@ def pickFlowerAndWater =
     doN 23 move;
     
     turn right;
-    return dahlia;
+    pure dahlia;
     
-    // return mushroom;
-    // return d;
+    // pure mushroom;
+    // pure d;
     end;
 
 
@@ -245,7 +245,7 @@ def completeDnaTask = \sentinel.
 
 def mapM_ : (a -> Cmd b) -> (rec l. Unit + a * l) -> Cmd Unit = \f. \l.
   case l
-    (\_. return ())
+    (\_. pure ())
     (\c. f (fst c); mapM_ f (snd c))
 end;
 

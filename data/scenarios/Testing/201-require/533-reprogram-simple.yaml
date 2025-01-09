@@ -19,12 +19,12 @@ objectives:
         solarEquipped <- as fred {equipped "solar panel"};
         treadsEquipped <- as fred {equipped "treads"};
 
-        return (p == (2,0)
+        pure (p == (2,0)
                 && boatEquipped && drillEquipped && solarEquipped && treadsEquipped
                 && base_boats == 1 && base_solar == 1
                 && base_treads == 1 && base_drills == 1
                );
-      } { return false }
+      } { pure false }
 solution: |
   fred <- build {require "boat"; setname "fred"};
   wait 5;

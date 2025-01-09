@@ -25,10 +25,10 @@ objectives:
                   turn left;
                   isSurrounded $ n - 1;
               } {
-                  return false;
+                  pure false;
               }
           } {
-              return true;
+              pure true;
           }
           end;
 
@@ -59,16 +59,16 @@ objectives:
               let localBlockCount = boolToInt isBlocked in
               turn left;
               lastCount <- countBlocked $ n - 1;
-              return $ lastCount + localBlockCount;
+              pure $ lastCount + localBlockCount;
           } {
-              return 0;
+              pure 0;
           }
           end;
 
       opponent <- robotnamed "opponent";
       as opponent {
           blockCount <- countBlocked 4;
-          return $ blockCount > 0 && blockCount < 4;
+          pure $ blockCount > 0 && blockCount < 4;
       };
 robots:
   - name: base

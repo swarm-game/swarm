@@ -3,7 +3,7 @@ def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 def tryGrab =
     try {
         grab;
-        return ();
+        pure ();
     } {};
     end;
 
@@ -12,7 +12,7 @@ def tryGive = \thing.
     if hasPowerup {
         r <- meet;
         case r
-            (\_. return ())
+            (\_. pure ())
             (\r. give r thing; wait 10);
     } {};
     end;

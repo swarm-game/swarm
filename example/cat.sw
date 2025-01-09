@@ -6,7 +6,7 @@ let repeat : Int -> Cmd Unit -> Cmd Unit =
   \n. \c. if (n == 0) {} {c ; repeat (n-1) c} in
 let randdir : Cmd Dir =
   d <- random 4;
-  return (
+  pure (
     if (d == 0) {north}
     {if (d == 1) {east}
     {if (d == 2) {south} {west}}})

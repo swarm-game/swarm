@@ -13,7 +13,7 @@ objectives:
       r <- robotnamed "snake";
       as r {
         appleCoreCount <- count "apple core";
-        return $ appleCoreCount >= 40;
+        pure $ appleCoreCount >= 40;
       }
 robots:
   - name: base

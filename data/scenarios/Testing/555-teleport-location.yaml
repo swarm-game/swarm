@@ -8,7 +8,7 @@ objectives:
   - condition: |
       try {
         as base {has "rock"}
-      } { return false }
+      } { pure false }
 solution: |
   fred <- robotNamed "fred";
   myLoc <- whereami;

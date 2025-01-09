@@ -15,7 +15,7 @@ objectives:
   - goal:
       - Enjoy the view.
     condition: |
-      return true
+      pure true
 solution: |
   noop
 known: [boulder, log, pixel (R), pixel (G), pixel (B), gold]

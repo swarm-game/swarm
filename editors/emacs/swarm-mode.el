@@ -113,7 +113,7 @@
       "setname"
       "random"
       "run"
-      "return"
+      "pure"
       "try"
       "print"
       "erase"

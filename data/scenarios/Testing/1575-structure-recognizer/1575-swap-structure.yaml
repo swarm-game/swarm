@@ -16,7 +16,7 @@ objectives:
       foundBlue <- structures "blue_jewel";
       foundGreen <- structures "green_jewel";
       foundRed <- structures "red_jewel";
-      return $ isRight foundBlue && not (isRight foundRed) && not (isRight foundRed);
+      pure $ isRight foundBlue && not (isRight foundRed) && not (isRight foundRed);
   - id: complete_green_structure
     teaser: Complete green structure
     prerequisite: complete_red_structure
@@ -28,7 +28,7 @@ objectives:
 
       foundGreen <- structures "green_jewel";
       foundRed <- structures "red_jewel";
-      return $ isRight foundGreen && not (isRight foundRed);
+      pure $ isRight foundGreen && not (isRight foundRed);
   - id: complete_red_structure
     teaser: Complete red structure
     goal:
@@ -38,7 +38,7 @@ objectives:
       def isRight = \x. case x (\_. false) (\_. true); end;
 
       foundRed <- structures "red_jewel";
-      return $ isRight foundRed;
+      pure $ isRight foundRed;
 robots:
   - name: base
     dir: east

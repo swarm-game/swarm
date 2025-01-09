@@ -11,9 +11,9 @@ objectives:
         t1 <- ishere "tree";
         move;
         t2 <- ishere "tree";
-        t3 <- as base {n <- count "water"; return (n == 4)};
-        return (t1 && not t2 && t3)
-      } { return false }
+        t3 <- as base {n <- count "water"; pure (n == 4)};
+        pure (t1 && not t2 && t3)
+      } { pure false }
 solution: |
   move; harvest; move; grab; turn right; move; grab; grab; harvest; grab
 robots:

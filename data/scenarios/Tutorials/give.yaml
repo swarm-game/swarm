@@ -16,7 +16,7 @@ objectives:
           b0 <- has "bit (0)";
           lx <- has "LaTeX";
           co <- has "copper ore";
-          return $ bd && b0 && lx && co;
+          pure $ bd && b0 && lx && co;
       };
 solution: |
   build {

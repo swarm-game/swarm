@@ -26,7 +26,7 @@ solution: |
   try {
     stride 5;
     grab;
-    return ();
+    pure ();
   } {
     log "Could not grab northern flower";
   };
@@ -42,7 +42,7 @@ solution: |
   try {
     stride 5;
     grab;
-    return ();
+    pure ();
   } {
     log "Could not grab southern flower";
   };

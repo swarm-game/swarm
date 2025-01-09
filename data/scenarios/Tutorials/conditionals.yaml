@@ -51,19 +51,19 @@ objectives:
         **TIP:** the two branches of an `if` must have the same type. In particular,
         `if ... {grab} {}`{=snippet} is not
         allowed, because `{grab}` has type `{Cmd Text}`{=type} whereas `{}`{=snippet} has type `{Cmd Unit}`{=type}.
-        In this case `{grab; return ()}` has the right type.
+        In this case `{grab; pure ()}` has the right type.
     condition: |
       try {
         n <- as base {count "very small rock"};
-        return (n == 4)
-      } { return false}
+        pure (n == 4)
+      } { pure false}
 solution: |
   def tL = turn left end;
   def tB = turn back end;
   def x4 = \c. c;c;c;c end;
   def VSR = "very small rock" end;
   def ifC = \c.\t.\e. b <- c; if b t e end;
-  def pick = move; ifC (ishere VSR) {grab; return ()} {} end;
+  def pick = move; ifC (ishere VSR) {grab; pure ()} {} end;
   def pickrow = x4 pick; turn back; x4 move end;
   build {
     turn south; x4 (move; tL; pickrow; tL); tB; x4 move; x4 (give base VSR)

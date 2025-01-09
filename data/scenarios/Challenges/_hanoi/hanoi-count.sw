@@ -9,7 +9,7 @@ end;
 
 def cscan = \d.
   s <- scan d;
-  if (s == inl ()) {return 0} {return 1}
+  if (s == inl ()) {pure 0} {pure 1}
 end;
 
 def count_column =
@@ -24,7 +24,7 @@ def count_column =
   // wait 8;
   // log (format k);
   // wait 8;
-  return (i + j + k)
+  pure (i + j + k)
 end;
 
 
@@ -47,7 +47,7 @@ repeat {
         // log (format y);
         // wait 8;
         // log (format z);
-        return $ i2e (x + y + z)
+        pure $ i2e (x + y + z)
     };
     //let sum = i2e (x + y + z) in
     teleport self (0,-6);
@@ -57,6 +57,6 @@ repeat {
     case counted (\e.
         fail $ "Fatal error: there should always be a count entity at (0,-6)! " ++ format e ++ " " ++ format counted
     ) (\e.
-        if (e == sum) {} {swap sum; return ()}
+        if (e == sum) {} {swap sum; pure ()}
     )
 }

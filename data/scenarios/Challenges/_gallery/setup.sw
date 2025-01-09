@@ -62,7 +62,7 @@ def getUnusedRandom = \maxval. \bitmask.
     if (isBitSet bitmask nextRandomVal) {
         getUnusedRandom maxval bitmask;
     } {
-        return nextRandomVal;
+        pure nextRandomVal;
     }
     end;
 
@@ -77,7 +77,7 @@ def naiveRandomStack = \valueFunc. \maxval. \bitmask. \n.
         nextRandomVal <- getUnusedRandom maxval bitmask;
         let newBitmask = bitmask + shiftLeft 1 nextRandomVal in
         naiveRandomStack valueFunc maxval newBitmask $ n - 1;
-        return nextRandomVal;
+        pure nextRandomVal;
     } {
         // We're at the peak of the stack.
         // Now we unwind it.
@@ -85,7 +85,7 @@ def naiveRandomStack = \valueFunc. \maxval. \bitmask. \n.
         // Saves some time in generating the last number by inferring the
         // only remaining possible choice.
         let missingBit = getMissingBit bitmask maxval in
-        return missingBit;
+        pure missingBit;
     };
     valueFunc val;
     end;

@@ -3,13 +3,13 @@ def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 
 def isItemInDirection = \direction. \item. 
     x <- scan direction;
-    return $ case x (\_. false) (\y. y == item);
+    pure $ case x (\_. false) (\y. y == item);
     end;
 
 def isFlankedByItem = \item.
     hasLeft <- isItemInDirection left item;
     hasRight <- isItemInDirection right item;
-    return $ hasLeft && hasRight;
+    pure $ hasLeft && hasRight;
     end;
 
 def flowersInCardinalDirections = \item. \n.
@@ -19,10 +19,10 @@ def flowersInCardinalDirections = \item. \n.
             turn left;
             flowersInCardinalDirections item $ n - 1;
         } {
-            return false;
+            pure false;
         };
     } {
-        return true;
+        pure true;
     }
     end;
 
@@ -38,12 +38,12 @@ def flowersAround = \item.
             isFlanked2 <- isFlankedByItem item;
             turn back;
             move;
-            return isFlanked2;
+            pure isFlanked2;
         } {
-            return false;
+            pure false;
         }
     } {
-        return false;
+        pure false;
     }
     end;
 

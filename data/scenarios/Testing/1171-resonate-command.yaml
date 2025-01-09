@@ -9,7 +9,7 @@ objectives:
       j <- robotnamed "judge";
       as j {
         c <- resonate "tree" ((0, 0), (8, -2));
-        return $ c >= 7;
+        pure $ c >= 7;
       };
 solution: |
   def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;

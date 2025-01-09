@@ -10,19 +10,19 @@ objectives:
       teleport self (0,0);
       def all : (rec l. Unit + a * l) -> (a -> Cmd Bool) -> Cmd Bool =
         \xs. \f. case xs
-          (\_. return true)
-          (\cons. b <- f (fst cons); if b {all (snd cons) f} {return false})
+          (\_. pure true)
+          (\cons. b <- f (fst cons); if b {all (snd cons) f} {pure false})
       end;
       rs <- meetAll;
       b1 <- all rs (\r. as r {has "boat"});
       n2 <- as r0 { count "boat" };
-      return (b0 && b1 && (n2 == 2))
+      pure (b0 && b1 && (n2 == 2))
 solution: |
   mr0 <- meet;
-  case mr0 (\_. return ()) (\r0. give r0 "boat");
+  case mr0 (\_. pure ()) (\r0. give r0 "boat");
   def forM_ : (rec l. Unit + a * l) -> (a -> Cmd b) -> Cmd Unit =
     \xs. \f. case xs
-      (\_. return ())
+      (\_. pure ())
       (\cons. f (fst cons); forM_ (snd cons) f)
   end;
   rs <- meetAll;

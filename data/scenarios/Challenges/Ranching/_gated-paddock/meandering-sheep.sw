@@ -5,12 +5,12 @@ def elif = \p.\t.\e. {if p t e} end;
 def turnToClover = \direction.
 
   x <- scan direction;
-  case x (\_. return false;) (\y.
+  case x (\_. pure false;) (\y.
     if (y == "clover") {
       turn direction;
-      return true;
+      pure true;
     } {
-      return false;
+      pure false;
     };
   );
   end;
@@ -23,11 +23,11 @@ turn that direction.
 def turnCloverDirection =
 
     foundN <- turnToClover north;
-    if (foundN) {return true} {
+    if (foundN) {pure true} {
       foundE <- turnToClover east;  
-      if (foundE) {return true} {
+      if (foundE) {pure true} {
         foundS <- turnToClover south;
-        if (foundS) {return true} {
+        if (foundS) {pure true} {
           turnToClover west;
         }
       }
@@ -38,7 +38,7 @@ def decideDirection =
 
   let randdir : Cmd Dir =
     d <- random 4;
-    return $ if (d == 0) {
+    pure $ if (d == 0) {
         north
       } $ elif (d == 1) {
         east
@@ -90,7 +90,7 @@ forever (
 
     // Eat clover.
     x <- scan down;
-    case x return (\y.
+    case x pure (\y.
         if (y == "clover") {
             harvest;
             cloverCount <- count "clover";
@@ -113,9 +113,9 @@ forever (
         // Make sure nothing's in the way before we place
         // our wool:
         x <- scan down;
-        case x return (\_.
+        case x pure (\_.
           grab;
-          return ();
+          pure ();
         );
 
         place item;

@@ -6,5 +6,5 @@ f <- grab;
 
 doN 5 move;
 r <- meet;
-case r return $ \j. give j f;
+case r pure $ \j. give j f;
 

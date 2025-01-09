@@ -208,27 +208,22 @@ locIdentifier idTy = do
   uncurry LV <$> parseLocG ((lexeme . try) (p >>= check ver) <?> "variable name")
  where
   p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_' <|> char '\'')
-  check ver (into @Text -> t) = case ver of
-    SwarmLang0_5
-      | T.toLower t `S.member` lowerReservedWords ->
-          failT ["reserved word", squote t, "cannot be used as variable name"]
-      | otherwise -> return t
-    SwarmLangLatest
-      | IDTyVar <- idTy
-      , T.toTitle t `S.member` reservedWords ->
-          failT ["Reserved type name", squote t, "cannot be used as a type variable name; perhaps you meant", squote (T.toTitle t) <> "?"]
-      | IDTyName <- idTy
-      , t `S.member` reservedWords ->
-          failT ["Reserved type name", squote t, "cannot be redefined."]
-      | t `S.member` reservedWords || T.toLower t `S.member` reservedWords ->
-          failT ["Reserved word", squote t, "cannot be used as a variable name"]
-      | IDTyName <- idTy
-      , isLower (T.head t) ->
-          failT ["Type synonym names must start with an uppercase letter"]
-      | IDTyVar <- idTy
-      , isUpper (T.head t) ->
-          failT ["Type variable names must start with a lowercase letter"]
-      | otherwise -> return t
+  check ver (into @Text -> t)
+    | IDTyVar <- idTy
+    , T.toTitle t `S.member` reservedWords =
+        failT ["Reserved type name", squote t, "cannot be used as a type variable name; perhaps you meant", squote (T.toTitle t) <> "?"]
+    | IDTyName <- idTy
+    , t `S.member` reservedWords =
+        failT ["Reserved type name", squote t, "cannot be redefined."]
+    | t `S.member` reservedWords || T.toLower t `S.member` reservedWords =
+        failT ["Reserved word", squote t, "cannot be used as a variable name"]
+    | IDTyName <- idTy
+    , isLower (T.head t) =
+        failT ["Type synonym names must start with an uppercase letter"]
+    | IDTyVar <- idTy
+    , isUpper (T.head t) =
+        failT ["Type variable names must start with a lowercase letter"]
+    | otherwise = return t
 
 -- | Parse a term variable together with its source location info.
 locTmVar :: Parser LocVar

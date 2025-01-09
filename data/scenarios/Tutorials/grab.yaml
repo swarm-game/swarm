@@ -10,8 +10,8 @@ objectives:
     condition: |
       try {
         t <- as base {count "tree"};
-        return (t >= 6);
-      } { return false }
+        pure (t >= 6);
+      } { pure false }
 solution: |
   move;
   move; grab;

@@ -58,7 +58,7 @@ import Control.Effect.Throw
 import Control.Lens (view, (^.))
 import Control.Lens.Indexed (itraverse)
 import Control.Monad (forM_, void, when, (<=<), (>=>))
-import Control.Monad.Free (Free (..))
+import Control.Monad.Free qualified as Free
 import Data.Data (Data, gmapM)
 import Data.Foldable (fold, traverse_)
 import Data.Functor.Identity
@@ -289,7 +289,7 @@ instance FreeUVars UCtx where
 
 -- | Generate a fresh unification variable.
 fresh :: Has Unification sig m => m UType
-fresh = Pure <$> U.freshIntVar
+fresh = Free.Pure <$> U.freshIntVar
 
 -- | Perform a substitution over a 'UType', substituting for both type
 --   and unification variables.  Note that since 'UType's do not have
@@ -298,10 +298,10 @@ fresh = Pure <$> U.freshIntVar
 substU :: Map (Either Var IntVar) UType -> UType -> UType
 substU m =
   ucata
-    (\v -> fromMaybe (Pure v) (M.lookup (Right v) m))
+    (\v -> fromMaybe (Free.Pure v) (M.lookup (Right v) m))
     ( \case
         TyVarF v -> fromMaybe (UTyVar v) (M.lookup (Left v) m)
-        f -> Free f
+        f -> Free.Free f
     )
 
 -- | Make sure none of the given skolem variables have escaped.
@@ -1080,7 +1080,7 @@ inferConst c = run . runReader @TVCtx Ctx.empty . quantify $ case c of
   Fst -> [tyQ| a * b -> a |]
   Snd -> [tyQ| a * b -> b |]
   Force -> [tyQ| {a} -> a |]
-  Return -> [tyQ| a -> Cmd a |]
+  Pure -> [tyQ| a -> Cmd a |]
   Try -> [tyQ| {Cmd a} -> {Cmd a} -> Cmd a |]
   Undefined -> [tyQ| a |]
   Fail -> [tyQ| Text -> a |]
@@ -1226,8 +1226,8 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
 
     -- If we are checking a 'def', ensure t2 has a command type.  This ensures that
     -- something like 'def ... end; x + 3' is not allowed, since this
-    -- would result in the whole thing being wrapped in return, like
-    -- 'return (def ... end; x + 3)', which means the def would be local and
+    -- would result in the whole thing being wrapped in pure, like
+    -- 'pure (def ... end; x + 3)', which means the def would be local and
     -- not persist to the next REPL input, which could be surprising.
     --
     -- On the other hand, 'let x = y in x + 3' is perfectly fine.
@@ -1250,7 +1250,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     -- terms if the environment holds not only a value but also a type
     -- + requirements for them.  For example:
     --
-    -- > def x : Int = 3 end; return (x + 2)
+    -- > def x : Int = 3 end; pure (x + 2)
     -- 5
     -- > x
     -- 3
@@ -1258,7 +1258,7 @@ check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
     -- 5
     -- > y
     -- 1:1: Unbound variable y
-    -- > let y = 3 in def x = 5 end; return (x + y)
+    -- > let y = 3 in def x = 5 end; pure (x + y)
     -- 8
     -- > y
     -- 1:1: Unbound variable y
@@ -1490,5 +1490,5 @@ isSimpleUType = \case
   UTyCmd {} -> False
   UTyDelay {} -> False
   -- Make the pattern-match coverage checker happy
-  Pure {} -> False
-  Free {} -> False
+  Free.Pure {} -> False
+  Free.Free {} -> False

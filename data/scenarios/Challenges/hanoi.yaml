@@ -13,7 +13,7 @@ objectives:
       y <- ishere "blocked two";
       teleport self (2,-3);
       z <- ishere "blocked three";
-      return (x && y && z)
+      pure (x && y && z)
 solution: |
   run "scenarios/Challenges/_hanoi/hanoi-solution.sw"
 robots:

@@ -40,7 +40,7 @@ objectives:
       f <- as base { has "flower" };
       judge <- robotNamed "judge";
       g <- as judge { has "gold" };
-      return (not g && f)
+      pure (not g && f)
   - id: out_of_time
     hidden: true
     optional: true
@@ -53,7 +53,7 @@ objectives:
         Perhaps you would like to go back in time and try again.
     condition: |
       truelove <- robotNamed "truelove";
-      as truelove { b <- ishere "fuse"; return (not b) }
+      as truelove { b <- ishere "fuse"; pure (not b) }
   - id: joinpoint
     hidden: true
     teaser: Follow instructions!
@@ -64,7 +64,7 @@ objectives:
           - not: pick_flower
           - not: out_of_time
     condition: |
-      return true
+      pure true
   - id: win
     teaser: Give a flower
     prerequisite: joinpoint

@@ -7,7 +7,7 @@ objectives:
   - goal:
       - Either obtain a "furnace" WITHOUT a "flower", or obtain both a "wooden gear" and "flower".
     condition: |
-      return true;
+      pure true;
     prerequisite:
       previewable: true
       logic:

@@ -61,7 +61,7 @@ objectives:
       - Do nothing
     condition: |
       pos <- as base {whereami};
-      return $ fst pos > 7;
+      pure $ fst pos > 7;
 entities:
   - name: color1
     display:

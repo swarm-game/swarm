@@ -30,12 +30,12 @@ def getIngredients =
     move;
     move;
     turn right;
-    return (cone, cherry);
+    pure (cone, cherry);
     end;
 
 def meetCustomer =
     maybeCustomer <- meet;
-    case maybeCustomer (\_. meetCustomer) return;
+    case maybeCustomer (\_. meetCustomer) pure;
     end;
 
 def serveScoop = \customer.

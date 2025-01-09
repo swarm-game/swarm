@@ -6,24 +6,24 @@ end
 
 def andC : Cmd Bool -> Cmd Bool -> Cmd Bool = \c1. \c2.
   b1 <- c1;
-  if b1 {c2} {return false}
+  if b1 {c2} {pure false}
 end
 
 tydef List a = rec l. Unit + a * l end
 
 def for : Int -> (Int -> Cmd a) -> Cmd (List a) = \n. \k.
   if (n == 0)
-    { return $ inl () }
+    { pure $ inl () }
     { x <- k (n-1);
       xs <- for (n-1) k;
-      return (inr (x,xs))
+      pure (inr (x,xs))
     }
 end
 
 def readRow : Cmd (List (Unit + Text)) =
-  r <- for 8 (\_. s <- scan down; move; return s);
+  r <- for 8 (\_. s <- scan down; move; pure s);
   turn back; x 8 move; turn right; move; turn right;
-  return r
+  pure r
 end
 
 tydef Rect = List (List (Unit + Text)) end
@@ -31,24 +31,24 @@ tydef Rect = List (List (Unit + Text)) end
 def readRect : Cmd Rect =
   lst <- for 4 (\_. readRow);
   turn right; x 4 move; turn left;
-  return lst
+  pure lst
 end
 
 def checkCell : Unit + Text -> Cmd Bool = \pat.
   actual <- scan down;
   move;
-  return (actual == pat)
+  pure (actual == pat)
 end
 
 def checkRow : List (Unit + Text) -> Cmd Bool = \row.
   case row
-    (\_. turn back; x 8 move; turn right; move; turn right; return true)
+    (\_. turn back; x 8 move; turn right; move; turn right; pure true)
     (\cons. andC (checkCell (fst cons)) (checkRow (snd cons)))
 end
 
 def checkRect : Rect -> Cmd Bool = \rect.
   case rect
-    (\_. return true)
+    (\_. pure true)
     (\cons. andC (checkRow (fst cons)) (checkRect (snd cons)))
 end
 

@@ -11,7 +11,7 @@ objectives:
     condition: |
       try {
         as base {has "lambda"}
-      } { return false }
+      } { pure false }
 solution: |
   def w2 = turn back; turn back end;
   def w10 = w2; w2; w2; w2; w2 end;

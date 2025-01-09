@@ -21,7 +21,7 @@ objectives:
         g <- countColor "pixel (G)";
         b <- countColor "pixel (B)";
         y <- countColor "gold";
-        return $ r == 3 && g == 3 && b == 3 && y == 3;
+        pure $ r == 3 && g == 3 && b == 3 && y == 3;
       }
 solution: |
   noop

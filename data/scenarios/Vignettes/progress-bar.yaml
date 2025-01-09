@@ -12,7 +12,7 @@ objectives:
       teleport self (1,-1); c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c;
       teleport self (1,-5); c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c;
       teleport self (1,-9); c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c; move; c;
-      return true
+      pure true
 solution: |
   wait 100;
 robots:

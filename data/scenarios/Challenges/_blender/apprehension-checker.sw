@@ -2,12 +2,12 @@ def hasMetBase = \r.
     let basename = "base" in
     x <- as r {whoami};
     if (x == basename) {
-        return false;
+        pure false;
     } {
         mr0 <- as r {meet};
         case mr0
-          (\_. return false)
-          (\bot. name <- as bot {whoami}; return $ name == basename);
+          (\_. pure false)
+          (\bot. name <- as bot {whoami}; pure $ name == basename);
     };
     end;
 
@@ -26,11 +26,11 @@ def anyHasMetBase : Int -> Cmd Bool = \idx.
         let foo = intermediate in
         let newIdx = idx + 1 in
         recursiveResult <- anyHasMetBase newIdx;
-        return $ foo || recursiveResult;
+        pure $ foo || recursiveResult;
     } {
       // Terminates the recursion on the
       // lowest index at which a robot does not exist
-      return false;
+      pure false;
     };
     end;
 

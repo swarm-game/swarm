@@ -16,7 +16,7 @@ objectives:
     condition: |
       def isRight = \x. case x (\_. false) (\_. true); end;
       foundStructures <- structures "spaceship";
-      return $ isRight foundStructures;
+      pure $ isRight foundStructures;
 robots:
   - name: base
     dir: east

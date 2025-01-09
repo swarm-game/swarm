@@ -9,8 +9,8 @@ objectives:
         r <- robotNumbered 1;
         r1 <- as r {count "rock"};
         r0 <- as base {count "rock"};
-        return (r0 == 5 && r1 == 3);
-      } { return false }
+        pure (r0 == 5 && r1 == 3);
+      } { pure false }
 solution: |
   build { require 5 "rock"; move; place "rock"; move; place "rock" }
 robots:

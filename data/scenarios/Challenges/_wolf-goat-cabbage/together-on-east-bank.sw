@@ -1,7 +1,7 @@
 def get_x_coord = \r.
     as r {
         pos <- whereami;
-        return $ fst pos;
+        pure $ fst pos;
     };
     end;
 
@@ -10,16 +10,16 @@ def all_on_bank = \baseX. \robotName.
     thisX <- get_x_coord r;
 
     as r {
-        try {grab; return ()} {};
+        try {grab; pure ()} {};
         move;
-        try {grab; return ()} {};
+        try {grab; pure ()} {};
         move;
-        try {grab; return ()} {};
+        try {grab; pure ()} {};
 
         has_wolf <- has "wolf";
         has_goat <- has "goat";
         has_cabbage <- has "cabbage";
-        return $ baseX == thisX && has_wolf && has_goat && has_cabbage;
+        pure $ baseX == thisX && has_wolf && has_goat && has_cabbage;
     };
     end;
 

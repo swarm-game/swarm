@@ -28,7 +28,7 @@ objectives:
       try {
         p <- robotNamed "planter";
         as p {has "Win"}
-      } { return false }
+      } { pure false }
 solution: |
   def forever = \c. force c ; forever c end
   def tryharvest =

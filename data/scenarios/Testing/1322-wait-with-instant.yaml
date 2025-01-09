@@ -19,7 +19,7 @@ objectives:
 
       let xDiff = fst hareloc - fst tortoiseloc in
 
-      return $ fst hareloc == 0 && xDiff == 3;
+      pure $ fst hareloc == 0 && xDiff == 3;
 solution: |
   noop;
 robots:

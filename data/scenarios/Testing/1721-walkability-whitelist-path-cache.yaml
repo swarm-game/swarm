@@ -10,12 +10,12 @@ objectives:
 solution: |
   def goDir = \f. \result.
     let d = fst result in
-    if (d == down) {return ()} {turn d; move; f;}
+    if (d == down) {pure ()} {turn d; move; f;}
     end;
 
   def followRoute =
       nextDir <- path (inL ()) (inR "platform");
-      case nextDir return $ goDir followRoute;
+      case nextDir pure $ goDir followRoute;
       end;
 
   followRoute;

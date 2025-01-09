@@ -25,8 +25,8 @@ objectives:
           );
           turn back; move; move; move; move; turn left
         );
-        ifC (has "tree") {return false} {return true}
-      } { return false }
+        ifC (has "tree") {pure false} {pure true}
+      } { pure false }
 solution: |
   def x4 = \c. c;c;c;c end;
   def mp = move; place "rock" end;

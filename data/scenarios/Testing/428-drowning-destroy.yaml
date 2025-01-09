@@ -8,13 +8,13 @@ objectives:
       def isAlive = \n. try {
         _ <- robotNamed n;
         log ("Is alive: " ++ n);
-        return true
-      } { return false } end;
+        pure true
+      } { pure false } end;
       try {
         baseAlive <- isAlive "base";
         botAlive <- isAlive "bot";
-        return (baseAlive && not botAlive);
-      } { return false; }
+        pure (baseAlive && not botAlive);
+      } { pure false; }
 solution: |
   log "start";
   wait 5;

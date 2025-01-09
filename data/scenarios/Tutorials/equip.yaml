@@ -18,8 +18,8 @@ objectives:
     condition: |
       try {
         _ <- robotNumbered 1;
-        return true;
-      } { return false }
+        pure true;
+      } { pure false }
 solution: |
   turn south; move; grab; equip "3D printer"; build {};
 robots:

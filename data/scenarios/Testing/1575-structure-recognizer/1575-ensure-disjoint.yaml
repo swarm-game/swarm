@@ -20,7 +20,7 @@ objectives:
         case l (\_. 0) (\cons. 1 + length (snd cons))
       end;
       foundStructures <- structures "chessboard";
-      return $ length foundStructures >= 2
+      pure $ length foundStructures >= 2
   - id: premature_win
     teaser: Don't count win early
     optional: true
@@ -35,7 +35,7 @@ objectives:
       robotHasSilver <- as base {has "silver"};
 
       foundStructures <- structures "chessboard";
-      return $ length foundStructures >= 2 && robotHasSilver;
+      pure $ length foundStructures >= 2 && robotHasSilver;
 robots:
   - name: base
     dir: south

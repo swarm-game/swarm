@@ -20,13 +20,13 @@ def isEnclosureFull : Int * Int -> Cmd Bool = \encl.
     let notFull = c < area in
 
     teleport self prevLoc;
-    return $ not notFull;
+    pure $ not notFull;
     end;
 
 def any : (a -> Cmd Bool) -> (rec l. Unit + a * l) -> Cmd Bool = \p. \l.
   case l
-    (\_. return false)
-    (\c. b <- p (fst c); if b {return true} {any p (snd c)})
+    (\_. pure false)
+    (\c. b <- p (fst c); if b {pure true} {any p (snd c)})
 end;
 
 def isEitherEnclosureFull =
@@ -37,7 +37,7 @@ def isEitherEnclosureFull =
 def tryGrab =
     try {
         grab;
-        return ()
+        pure ()
     } {};
     end;
 

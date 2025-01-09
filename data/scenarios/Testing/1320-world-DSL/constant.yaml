@@ -5,7 +5,7 @@ description: |
   single cell value.
 objectives:
   - condition: |
-      as base { n <- count "tree"; return (n >= 4) }
+      as base { n <- count "tree"; pure (n >= 4) }
     goal:
       - Get 4 trees
 solution: |
