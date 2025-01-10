@@ -21,13 +21,11 @@ robots:
       - workbench
       - clock
     inventory:
-      - [5, 3D printer]
       - [100, treads]
       - [70, grabber]
       - [100, solar panel]
       - [50, scanner]
       - [50, clock]
-      - [5, toolkit]
 world:
   offset: true
   scrollable: false
