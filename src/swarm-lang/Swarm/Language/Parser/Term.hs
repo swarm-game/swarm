@@ -54,7 +54,7 @@ parseConst = do
 
   -- Version 0.6 of the language had a constant named @return@, which
   -- is now renamed to @pure@
-  constInfo' SwarmLang0_6 Pure = (constInfo Pure) { syntax = "return" }
+  constInfo' SwarmLang0_6 Pure = (constInfo Pure) {syntax = "return"}
   constInfo' _ c = constInfo c
 
 -- | Parse an atomic term, optionally trailed by record projections like @t.x.y.z@.
