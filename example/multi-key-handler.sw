@@ -5,7 +5,7 @@ def cons : a * b -> (a -> b) -> (a -> b) = \p. \k. \a.
   if (a == fst p) {snd p} {k a}
 end
 
-def nil : a -> Cmd Unit = \a. return () end
+def nil : a -> Cmd Unit = \a. pure () end
 
 // The delay around the first argument is necessary to prevent
 // infinite recursion

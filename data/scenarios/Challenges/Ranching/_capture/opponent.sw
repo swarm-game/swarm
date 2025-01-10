@@ -41,9 +41,9 @@ def countBlocked = \n.
         isBlocked <- blocked;
         turn left;
         lastCount <- countBlocked $ n - 1;
-        return $ lastCount + boolToInt isBlocked;
+        pure $ lastCount + boolToInt isBlocked;
     } {
-        return 0;
+        pure 0;
     }
     end;
 
@@ -54,7 +54,7 @@ def reWatch =
 def locationIsOpen =
     emptyHere <- isempty;
     blockedCount <- countBlocked 4;
-    return $ emptyHere && blockedCount == 0;
+    pure $ emptyHere && blockedCount == 0;
     end;
 
 def faceAwayFrom = \loc.
@@ -84,7 +84,7 @@ def relocateAway =
     findOpenArea;
     try {
         swap marker;
-        return ();
+        pure ();
     } {
         place marker;
     };

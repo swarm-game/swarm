@@ -5,7 +5,7 @@ description: Race to harvest 1024 `tree`{=entity}s as quickly as possible. See t
 objectives:
   - goal:
       - Harvest 1024 `tree`{=entity}s as quickly as possible!
-    condition: as base {n <- count "tree"; return (n >= 1024)}
+    condition: as base {n <- count "tree"; pure (n >= 1024)}
 robots:
   - name: base
     loc: [0, 0]

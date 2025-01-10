@@ -27,7 +27,7 @@ def plant_field : Text -> Cmd Unit = \thing.
 end;
 def harvest_field : Text -> Cmd Unit = \thing.
   x4 (
-    x12 (move; ifC (ishere thing) {harvest; return ()} {});
+    x12 (move; ifC (ishere thing) {harvest; pure ()} {});
     next_row
   );
   tL; m4; tR

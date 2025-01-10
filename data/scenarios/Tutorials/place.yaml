@@ -30,8 +30,8 @@ objectives:
     condition: |
       try {
         t <- as base {count "spruce"};
-        return (t >= 6);
-      } { return false }
+        pure (t >= 6);
+      } { pure false }
 entities:
   # faster tree (the normal one grows 500-600 ticks)
   - name: spruce

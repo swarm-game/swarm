@@ -7,7 +7,7 @@ objectives:
   - goal:
       - Achieve both of two other objectives
     condition: |
-      return true;
+      pure true;
     prerequisite:
       previewable: true
       logic:

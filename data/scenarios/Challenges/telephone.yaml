@@ -28,7 +28,7 @@ objectives:
     condition: |
       as base {
         pcount <- count "paper";
-        return $ pcount >= 8;
+        pure $ pcount >= 8;
       };
   - teaser: Duplicate the design
     prerequisite: 'paper'

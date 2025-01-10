@@ -86,7 +86,7 @@ def doAtLoc = \currLoc. \targetLoc. \func.
   teleport self targetLoc;
   x <- func;
   teleport self currLoc;
-  return x;
+  pure x;
   end;
 
 def moveTail = \tailList.
@@ -95,7 +95,7 @@ def moveTail = \tailList.
     let maybeShifted = pop tailList in
     case maybeShifted (\_.
       // Nothing to pick up or replace
-      return tailList;
+      pure tailList;
 
     ) (\newPair.
 
@@ -105,10 +105,10 @@ def moveTail = \tailList.
         grabbedItem <- doAtLoc newLoc farthestTail grab;
         place grabbedItem;
 
-        return $ snoc newLoc newInit;
+        pure $ snoc newLoc newInit;
     );
   } {
-    return tailList;
+    pure tailList;
   }
   end;
 
@@ -119,11 +119,11 @@ def moveOneStep = \tailList.
     targetLoc <- as r {whereami};
 
     maybeD <- getDir targetLoc;
-    case maybeD (\_. say "Dead!"; return "") (\d.
+    case maybeD (\_. say "Dead!"; pure "") (\d.
       turn $ fst d;
       newList <- moveTail tailList;
       move;
-      return newList
+      pure newList
     );
     end
 
@@ -139,10 +139,10 @@ def moveToApple = \tailList.
     modifiedTailList <- try {
       make "tail";
       swap "tail";
-      return $ snoc myLoc tailList;
+      pure $ snoc myLoc tailList;
     } {
       grab;
-      return tailList;
+      pure tailList;
     };
     // Need to move here so that we get out of the way
     // if the tail gets elongated

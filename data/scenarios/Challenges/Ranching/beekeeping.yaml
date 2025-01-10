@@ -33,7 +33,7 @@ objectives:
         `honeycomb`{=entity} production.
     condition: |
       foundStructure <- structures "beehive";
-      return $ case foundStructure (\_. false) (\_. true);
+      pure $ case foundStructure (\_. false) (\_. true);
   - teaser: Collect honeycomb
     goal:
       - |
@@ -67,7 +67,7 @@ objectives:
     condition: |
       as base {
         meadCount <- count "mead";
-        return $ meadCount >= 2;
+        pure $ meadCount >= 2;
       }
   - teaser: Tavern keeper
     optional: true
@@ -76,7 +76,7 @@ objectives:
         Construct a `mead hall`{=structure}.
     condition: |
       foundStructure <- structures "mead hall";
-      return $ case foundStructure (\_. false) (\_. true);
+      pure $ case foundStructure (\_. false) (\_. true);
 robots:
   - name: base
     display:

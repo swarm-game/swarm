@@ -20,7 +20,7 @@ objectives:
     condition: |
       as base {
         pcount <- count "paperclip";
-        return $ pcount >= 100;
+        pure $ pcount >= 100;
       };
   - teaser: Beginner capital
     goal:
@@ -32,7 +32,7 @@ objectives:
     condition: |
       as base {
         pcount <- count "paperclip";
-        return $ pcount >= 20;
+        pure $ pcount >= 20;
       };
 attrs:
   - name: shopA

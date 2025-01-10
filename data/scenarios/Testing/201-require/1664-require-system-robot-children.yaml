@@ -11,9 +11,9 @@ objectives:
   - condition: |
       try {
         robotnamed "childbot";
-        return true;
+        pure true;
       } {
-        return false;
+        pure false;
       }
 solution: |
   noop;

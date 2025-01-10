@@ -7,9 +7,9 @@ def goToBuddy = \loc.
     let longitudinalDist = snd loc in
     absFwd <- if (longitudinalDist < 0) {
         turn back;
-        return $ -longitudinalDist;
+        pure $ -longitudinalDist;
     } {
-        return longitudinalDist;
+        pure longitudinalDist;
     };
     doN absFwd move;
     if (longitudinalDist < 0) {
@@ -19,10 +19,10 @@ def goToBuddy = \loc.
     let lateralDist = fst loc in
     absSide <- if (lateralDist < 0) {
         turn left;
-        return $ -lateralDist;
+        pure $ -lateralDist;
     } {
         turn right;
-        return lateralDist;
+        pure lateralDist;
     };
     doN absSide move;
     end;
@@ -30,7 +30,7 @@ def goToBuddy = \loc.
 def checkNeedToMove = \f. \loc.
     wait 3;
     if (loc == (0, 0)) {
-        return ()
+        pure ()
     } {
         goToBuddy loc;
         f;
@@ -39,7 +39,7 @@ def checkNeedToMove = \f. \loc.
 
 def pingLoop = \buddy.
     maybeLoc <- ping buddy;
-    case maybeLoc return $ checkNeedToMove $ pingLoop buddy;
+    case maybeLoc pure $ checkNeedToMove $ pingLoop buddy;
     end;
 
 def giveToBuddy = \buddy.
@@ -50,7 +50,7 @@ def giveToBuddy = \buddy.
 def go =
     move;
     maybeBuddy <- meet;
-    case maybeBuddy return giveToBuddy;
+    case maybeBuddy pure giveToBuddy;
     grab;
     end;
 

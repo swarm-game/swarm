@@ -9,7 +9,7 @@ objectives:
       as base {has "flower"}
 solution: |
   mr <- meet;
-  case mr (\_. return ()) (\r. halt r; turn west; move; salvage )
+  case mr (\_. pure ()) (\r. halt r; turn west; move; salvage )
 robots:
   - name: base
     dir: south

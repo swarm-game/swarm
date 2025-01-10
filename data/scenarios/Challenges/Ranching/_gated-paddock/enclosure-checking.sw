@@ -1,14 +1,14 @@
 def isBlockedOrFenced =
     b <- blocked;
-    return b;
+    pure b;
     end;
 
 def checkIsEnclosed =
     maybePath <- path (inL ()) (inR "water");
-    case maybePath (\_. return True) (\_. return False);
+    case maybePath (\_. pure True) (\_. pure False);
     end;
 
-def boolToInt = \b. if (b) {return 1} {return 0}; end;
+def boolToInt = \b. if (b) {pure 1} {pure 0}; end;
 
 def countAdjacentBlockages =
 
@@ -28,7 +28,7 @@ def countAdjacentBlockages =
     b4 <- isBlockedOrFenced;
     c4 <- boolToInt b4;
 
-    return $ c1 + c2 + c3 + c4;
+    pure $ c1 + c2 + c3 + c4;
     end;
 
 // Step forward, observing left and right.
@@ -44,7 +44,7 @@ def observeLeftAndRight =
 
     turn right;
     move;
-    return $ val1 + val2;
+    pure $ val1 + val2;
     end;
 
 
@@ -65,7 +65,7 @@ def countDiagonalBlockages =
     // Second, step to both sides
     fwdCount <- observeLeftAndRight;
     backCount <- observeLeftAndRight;
-    return $ fwdCount + backCount;
+    pure $ fwdCount + backCount;
     end;
 
 def isStandingOnBridge =
@@ -74,12 +74,12 @@ def isStandingOnBridge =
     if (onFence || onGate) {
         adjCount <- countAdjacentBlockages;
         if (adjCount > 1) {
-            return true;
+            pure true;
         } {
             diagCount <- countDiagonalBlockages;
-            return $ (adjCount + diagCount) > 1;
+            pure $ (adjCount + diagCount) > 1;
         };
-    } {return false};
+    } {pure false};
     end;
 
 def getValForSheepIndex = \predicateCmd. \i.
@@ -91,7 +91,7 @@ def getValForSheepIndex = \predicateCmd. \i.
 
         boolToInt didSucceed;
     } {
-        return 0;
+        pure 0;
     }
     end;
 
@@ -99,7 +99,7 @@ def countSheepWith = \predicateCmd.
     val1 <- getValForSheepIndex predicateCmd 1;
     val2 <- getValForSheepIndex predicateCmd 2;
     val3 <- getValForSheepIndex predicateCmd 3;
-    return $ val1 + val2 + val3;
+    pure $ val1 + val2 + val3;
     end;
 
 justFilledGap <- as base {
@@ -108,7 +108,7 @@ justFilledGap <- as base {
 
 if (justFilledGap) {
     enclosedCount <- countSheepWith checkIsEnclosed;
-    return $ enclosedCount >= 1;
+    pure $ enclosedCount >= 1;
 } {
-    return false;
+    pure false;
 }

@@ -8,7 +8,7 @@ objectives:
       as base {ishere "gumball"};
 solution: |
   out <- drill forward;
-  case out return place;
+  case out pure place;
 robots:
   - name: base
     dir: north

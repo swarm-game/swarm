@@ -51,13 +51,13 @@ objectives:
     condition: |
       def ensureMonotonicDecreasing = \itemCount. \prevOrdinal.
         maybeEntity <- scan down;
-        case maybeEntity (\_. return $ itemCount == 0) (\item.
+        case maybeEntity (\_. pure $ itemCount == 0) (\item.
             myCount <- count item;
             if (myCount <= prevOrdinal) {
               move;
               ensureMonotonicDecreasing (itemCount - 1) myCount;
             } {
-              return false;
+              pure false;
             };
         );
         end;
@@ -75,7 +75,7 @@ objectives:
           let bustCount = length busts in
           ensureMonotonicDecreasing bustCount $ bustCount + 1;
         } {
-          return false;
+          pure false;
         }
       };
 robots:

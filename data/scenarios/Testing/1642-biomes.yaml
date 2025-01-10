@@ -15,7 +15,7 @@ objectives:
     condition: |
       as base {
         c <- count "wheat";
-        return $ c == 2;
+        pure $ c == 2;
       }
   - id: western_wheat_regrew
     optional: true
@@ -40,7 +40,7 @@ objectives:
       baseLoc <- as base {whereami};
       as goalbot {
         goalLoc <- whereami;
-        return $ baseLoc == goalLoc;
+        pure $ baseLoc == goalLoc;
       }
     prerequisite:
       logic:

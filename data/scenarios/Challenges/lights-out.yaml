@@ -27,13 +27,13 @@ objectives:
           if (n > 0) {
               onHere <- ishere "on";
               if onHere {
-                  return false;
+                  pure false;
               } {
                   move;
                   isRowDark $ n - 1;
               }
           } {
-              return true;
+              pure true;
           }
           end;
 
@@ -44,10 +44,10 @@ objectives:
                   advanceRow;
                   areAllOff rowWidth $ n - 1;
               } {
-                  return false;
+                  pure false;
               }
           } {
-              return true;
+              pure true;
           }
           end;
 
@@ -57,7 +57,7 @@ objectives:
               teleport self (0, 0);
               turn east;
               areAllOff 5 5;
-          } {return false};
+          } {pure false};
           end;
 
       j <- robotnamed "judge";

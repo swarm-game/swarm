@@ -1,11 +1,11 @@
 def modifyCart = \cartType. \device.
     result <- scan forward;
-    case result return (\item.
+    case result pure (\item.
         if (item == cartType) {
             use device forward;
-            return ();
+            pure ();
         } {
-            return ();
+            pure ();
         };
     );
     end;

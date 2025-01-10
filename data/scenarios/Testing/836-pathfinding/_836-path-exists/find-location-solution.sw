@@ -1,7 +1,7 @@
 def goDir = \f. \r.
   let d = fst r in
   if (d == down) {
-    grab; return ()
+    grab; pure ()
   } {
     turn d; move; f;
   }
@@ -9,7 +9,7 @@ def goDir = \f. \r.
 
 def followRoute =
     nextDir <- path (inL ()) (inL (4, 0));
-    case nextDir return $ goDir followRoute;
+    case nextDir pure $ goDir followRoute;
     end;
 
 followRoute;

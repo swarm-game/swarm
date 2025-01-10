@@ -46,7 +46,7 @@ robots:
     system: true
     program: |
       def until = \c. b <- c; if b {} {until c} end;
-      until (d <- scan down; return (d == inl ()));
+      until (d <- scan down; pure (d == inl ()));
       create "goal"
 entities:
   - name: wall

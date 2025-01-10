@@ -10,8 +10,8 @@ objectives:
         p <- as r {whereami};
         r1 <- as r {count "rock"};
         r0 <- as base {count "rock"};
-        return (p == (4,0) && r0 == 5 && r1 == 1);
-      } { return false }
+        pure (p == (4,0) && r0 == 5 && r1 == 1);
+      } { pure false }
 solution: |
   def mp = move; place "rock" end;
   build { log "hi"; require 5 "rock"; mp; mp; mp; mp }

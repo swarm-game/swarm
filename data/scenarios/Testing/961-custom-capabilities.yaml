@@ -7,7 +7,7 @@ description: |
 objectives:
   - condition: |
       mover <- robotNumbered 1;
-      as mover { loc <- whereami; return $ loc == (0,1) }
+      as mover { loc <- whereami; pure $ loc == (0,1) }
     goal:
       - |
         Get a robot to (0,1)!

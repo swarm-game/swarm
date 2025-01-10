@@ -19,7 +19,7 @@ end
 
 def harvestMay =
   e <- isempty;
-  if e {} {harvest; return ()}
+  if e {} {harvest; pure ()}
 end
 
 def harvestTrees =
@@ -46,18 +46,18 @@ def scanAt : Int -> Int -> Cmd (Unit + Text) = \h. \v.
   x h move; turn right; x v move;
   s <- scan down;
   turn back; x v move; turn left; x h move; turn back;
-  return s
+  pure s
 end
 
 def atTerminal : Cmd a -> Cmd a = \c.
   x 12 move; turn left; x 2 move;
   a <- c;
   turn back; x 2 move; turn right; x 12 move; turn back;
-  return a
+  pure a
 end
 
 def waitToPlace : Text -> Cmd Unit = \t.
-  success <- atomic (b <- isempty; if b {place t} {}; return b);
+  success <- atomic (b <- isempty; if b {place t} {}; pure b);
   if success {} { watch down; wait 1024; waitToPlace t }
 end
 
@@ -68,7 +68,7 @@ def go =
     for 4 (\v.
       res <- scanAt (h-1) (v-1);
       case res
-        (\_. return ())
+        (\_. pure ())
         (\t. atTerminal (p <- print "paper" (format ((h-1,v-1),t)); waitToPlace p))
     )
   )

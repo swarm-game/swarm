@@ -4,7 +4,7 @@ description: |
   Test that we can erase entities when overlaying
 objectives:
   - condition: |
-      as base { n <- count "tree"; return (n == 0) }
+      as base { n <- count "tree"; pure (n == 0) }
     goal:
       - Get rid of your trees.
 solution: |

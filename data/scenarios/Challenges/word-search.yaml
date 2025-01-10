@@ -15,7 +15,7 @@ objectives:
         Diagonal appearances are not valid.
     condition: |
       foundStructures <- structures "cow";
-      return $ case foundStructures (\_. false) (\_. true);
+      pure $ case foundStructures (\_. false) (\_. true);
 robots:
   - name: base
     display:

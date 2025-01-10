@@ -13,7 +13,7 @@ objectives:
         case l (\_. 0) (\cons. 1 + length (snd cons))
       end;
       foundGreen <- structures "green_jewel";
-      return $ length foundGreen >= 12;
+      pure $ length foundGreen >= 12;
 robots:
   - name: base
     dir: east

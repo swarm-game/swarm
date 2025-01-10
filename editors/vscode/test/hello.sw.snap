@@ -18,9 +18,9 @@
 #                                ^^^ source.swarm keyword.control.dictionary.def.end
 #                                   ^ source.swarm keyword.operator.chain
 >
->return hello;
-#^^^^^^ source.swarm keyword.other
-#      ^ source.swarm
-#       ^^^^^ source.swarm variable.parameter
-#            ^ source.swarm keyword.operator.chain
+>pure hello;
+#^^^^ source.swarm keyword.other
+#    ^ source.swarm
+#     ^^^^^ source.swarm variable.parameter
+#          ^ source.swarm keyword.operator.chain
 >

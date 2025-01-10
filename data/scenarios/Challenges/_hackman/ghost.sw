@@ -6,7 +6,7 @@ an intersection. Then randomly choose any available direction
 
 def isItemInDirection = \direction. \item.
     x <- scan direction;
-    return $ case x (\_. false) (\y. y == item);
+    pure $ case x (\_. false) (\y. y == item);
     end;
 
 // A ghost is not blocked by a "gate" when it is leaving the "nursery".
@@ -14,27 +14,27 @@ def canCrossGate =
     isGate <- isItemInDirection forward "gate";
     loc <- whereami;
     let amCentered = loc == (0, 0) in
-    return $ isGate && amCentered;
+    pure $ isGate && amCentered;
     end;
 
 def isBlockedAhead =
     isBlockedByWall <- blocked;
     ghostCanCrossGate <- canCrossGate;
-    return $ isBlockedByWall && not ghostCanCrossGate;
+    pure $ isBlockedByWall && not ghostCanCrossGate;
     end;
 
 def checkLeftBlocked =
     turn left;
     isBlocked <- isBlockedAhead;
     turn right;
-    return isBlocked;
+    pure isBlocked;
     end;
 
 def checkRightBlocked =
     turn right;
     isBlocked <- isBlockedAhead;
     turn left;
-    return isBlocked;
+    pure isBlocked;
     end;
 
 def chooseDirection : Cmd Dir =
@@ -43,7 +43,7 @@ def chooseDirection : Cmd Dir =
     forwardBlocked <- isBlockedAhead;
     if (leftBlocked && rightBlocked && forwardBlocked) {
         say "Dead end; turning back";
-        return back;
+        pure back;
     } {
         // Since we're in the "else" case of all three
         // being blocked, we know that at least one
@@ -51,13 +51,13 @@ def chooseDirection : Cmd Dir =
         // the combinations.
         if (leftBlocked && rightBlocked) {
             // Keep going straight
-            return forward;
+            pure forward;
         } {
             if (leftBlocked && forwardBlocked) {
-                return right;
+                pure right;
             } {
                 if (rightBlocked && forwardBlocked) {
-                    return left;
+                    pure left;
                 } {
                     // Now we have exhaused all of the combinations
                     // of *two* directions being blocked, so we
@@ -67,30 +67,30 @@ def chooseDirection : Cmd Dir =
                         // Decide whether to go right or straight
                         d <- random 2;
                         if (d == 0) {
-                            return right;
+                            pure right;
                         } {
                             // go straight
-                            return forward;
+                            pure forward;
                         }
                     } {
                         if rightBlocked {
                             // Decide whether to go left or straight
                             d <- random 2;
                             if (d == 0) {
-                                return left;
+                                pure left;
                             } {
                                 // go straight
-                                return forward;
+                                pure forward;
                             }
                         } {
                             if forwardBlocked {
                                 // Decide whether to go left or right
                                 d <- random 2;
                                 if (d == 0) {
-                                    return left;
+                                    pure left;
                                 } {
                                     // go right
-                                    return right;
+                                    pure right;
                                 }
                             } {
                                 // No directions are blocked, so we can
@@ -99,13 +99,13 @@ def chooseDirection : Cmd Dir =
 
                                 d <- random 3;
                                 if (d == 0) {
-                                    return left;
+                                    pure left;
                                 } {
                                     if (d == 1) {
-                                        return right;
+                                        pure right;
                                     } {
                                         // go straight
-                                        return forward;
+                                        pure forward;
                                     }
                                 }
                             }

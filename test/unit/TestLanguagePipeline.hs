@@ -220,10 +220,10 @@ testLanguagePipeline =
             )
         , testCase
             "grabif"
-            (valid "def grabif : Text -> Cmd Unit = \\x. atomic (b <- ishere x; if b {grab; return ()} {}) end")
+            (valid "def grabif : Text -> Cmd Unit = \\x. atomic (b <- ishere x; if b {grab; pure ()} {}) end")
         , testCase
             "placeif"
-            (valid "def placeif : Text -> Cmd Bool = \\thing. atomic (res <- scan down; if (res == inl ()) {place thing; return true} {return false}) end")
+            (valid "def placeif : Text -> Cmd Bool = \\thing. atomic (res <- scan down; if (res == inl ()) {place thing; pure true} {pure false}) end")
         , testCase
             "atomic move+move"
             ( process
@@ -568,13 +568,13 @@ testLanguagePipeline =
         "generalize top-level binds #351 #1501"
         [ testCase
             "top-level polymorphic bind is OK"
-            (valid "r <- return (\\x.x)")
+            (valid "r <- pure (\\x.x)")
         , testCase
             "top-level bind is polymorphic"
-            (valid "f <- return (\\x.x); return (f 3, f \"hi\")")
+            (valid "f <- pure (\\x.x); pure (f 3, f \"hi\")")
         , testCase
             "local bind is polymorphic"
-            (valid "def foo : Cmd (Int * Text) = f <- return (\\x.x); return (f 3, f \"hi\") end")
+            (valid "def foo : Cmd (Int * Text) = f <- pure (\\x.x); pure (f 3, f \"hi\") end")
         ]
     , testGroup
         "type synonyms"
@@ -703,7 +703,7 @@ testLanguagePipeline =
             (valid "let x = 3 in x + 2")
         , testCase
             "let at cmd type"
-            (valid "let x = 3 in move; return (x+2)")
+            (valid "let x = 3 in move; pure (x+2)")
         , testCase
             "def at non-cmd type"
             ( process
@@ -712,7 +712,7 @@ testLanguagePipeline =
             )
         , testCase
             "def at cmd type"
-            (valid "def x = 3 end; move; return (x+2)")
+            (valid "def x = 3 end; move; pure (x+2)")
         ]
     , testGroup
         "nested let/def/annot #2101"

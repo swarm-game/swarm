@@ -12,11 +12,11 @@ end
 def forever: ∀ a b. {Cmd a} -> Cmd b = \c. force c; forever c end
 
 def notC : Cmd Bool -> Cmd Bool = \c.
-  b <- c; return (not b)
+  b <- c; pure (not b)
 end
 
 def or : Cmd Bool -> Cmd Bool -> Cmd Bool = \c1. \c2.
-  ifC c1 {return true} {c2}
+  ifC c1 {pure true} {c2}
 end
 
 def followTrack : Cmd Unit =
@@ -26,11 +26,11 @@ def followTrack : Cmd Unit =
 end
 
 def pickup : Cmd Text =
-  atomic (b <- isempty; if b {return ""} {grab});
+  atomic (b <- isempty; if b {pure ""} {grab});
 end
 
 def dropoff : Text -> Cmd Bool = \thing.
-  atomic (b <- isempty; if b {place thing} {}; return b)
+  atomic (b <- isempty; if b {place thing} {}; pure b)
 end
 
 def deliver : Text -> Cmd Unit = \thing.

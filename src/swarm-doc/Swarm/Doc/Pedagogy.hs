@@ -120,7 +120,7 @@ getDescCommands s = S.fromList $ concatMap filterConst allCode
 isConsidered :: Const -> Bool
 isConsidered c = isUserFunc c && c `S.notMember` ignoredCommands
  where
-  ignoredCommands = S.fromList [Run, Return, Noop, Force]
+  ignoredCommands = S.fromList [Run, Pure, Noop, Force]
 
 -- | Extract the command names from the source code of the solution.
 --

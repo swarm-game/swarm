@@ -11,7 +11,7 @@ objectives:
       try {
         teleport self (0,0);
         ishere "lambda"
-      } { return false }
+      } { pure false }
 solution: |
   log "I will win next tick!"; wait 1; place "lambda";
 robots:

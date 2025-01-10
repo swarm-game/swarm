@@ -67,8 +67,8 @@ robots:
       until (
         try {
           loc <- as base {whereami};
-          return (loc == l)
-        } { return false }
+          pure (loc == l)
+        } { pure false }
       );
       create "Win"
   - name: check2
@@ -83,8 +83,8 @@ robots:
       until (
         try {
           loc <- as base {whereami};
-          return (loc == l)
-        } { return false }
+          pure (loc == l)
+        } { pure false }
       );
       create "Win"
   - name: check3
@@ -99,8 +99,8 @@ robots:
       until (
         try {
           loc <- as base {whereami};
-          return (loc == l)
-        } { return false }
+          pure (loc == l)
+        } { pure false }
       );
       create "Win"
   - name: horizon
@@ -111,7 +111,7 @@ robots:
     inventory: [[1, horizontal wall]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
-      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") pure);
       c1 <- robotNamed ("check" ++ n);
       until (as c1 {has "Win"});
       swap "horizontal wall"
@@ -123,7 +123,7 @@ robots:
     inventory: [[1, vertical wall]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
-      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") pure);
       c1 <- robotNamed ("check" ++ n);
       until (as c1 {has "Win"});
       swap "vertical wall"
@@ -135,7 +135,7 @@ robots:
     inventory: [[1, upper right corner]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
-      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") pure);
       c1 <- robotNamed ("check" ++ n);
       until (as c1 {has "Win"});
       swap "upper right corner"
@@ -147,7 +147,7 @@ robots:
     inventory: [[1, lower right corner]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
-      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") pure);
       c1 <- robotNamed ("check" ++ n);
       until (as c1 {has "Win"});
       swap "lower right corner"
@@ -159,7 +159,7 @@ robots:
     inventory: [[1, upper left corner]]
     program: |
       def until = \c. b <- c; if b {} {until c} end;
-      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") return);
+      n <- (s <- scan down; case s (\_. fail "Fatal error: missing room number!") pure);
       c1 <- robotNamed ("check" ++ n);
       until (as c1 {has "Win"});
       swap "upper left corner"

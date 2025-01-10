@@ -25,7 +25,7 @@ def watchSwitch = \lastState.
     watch down;
     wait 1000;
     found <- scan down;
-    case found return (\item.
+    case found pure (\item.
         if (item != lastState) {
             if (item == "switch (off)") {
                 loc <- whereami;
@@ -41,7 +41,7 @@ def watchSwitch = \lastState.
 def go =
     instant $ (
         found <- scan down;
-        case found return watchSwitch;
+        case found pure watchSwitch;
     );
     end;
 

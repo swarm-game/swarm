@@ -31,7 +31,7 @@ def checkCombo = \noMismatchYet. \stepsTaken. \colorString.
         // Replace the cell watches
         doN stepsTaken (watch down; move);
         turn back;
-        return noMismatchYet;
+        pure noMismatchYet;
     };
     end;
 
@@ -41,7 +41,7 @@ def unlockGate = \n.
     move;
     turn left;
     doN n (grab; move);
-    return ()
+    pure ()
     end;
 
 def doUntilCorrect = \colorString.
@@ -49,7 +49,7 @@ def doUntilCorrect = \colorString.
     if isCorrect {
         let remainingCount = chars colorString in
         unlockGate remainingCount;
-        return true;
+        pure true;
     } {
         wait 1000;
         doUntilCorrect colorString;
@@ -69,7 +69,7 @@ def createCombo = \colorString.
         createCombo $ newColor ++ colorString;
     } {
         turn back;
-        return colorString;
+        pure colorString;
     };
     end;
 

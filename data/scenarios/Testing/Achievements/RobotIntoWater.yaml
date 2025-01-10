@@ -6,12 +6,12 @@ objectives:
     goal:
       - Build a robot
     condition: |
-      try {robotNumbered 1; return True} {return False}
+      try {robotNumbered 1; pure True} {pure False}
   - goal:
       - Drown it
     prerequisite: build
     condition: |
-      try {robotNumbered 1; return False} {return True}
+      try {robotNumbered 1; pure False} {pure True}
 solution: |
   build { turn right; move; move; move }
 robots:

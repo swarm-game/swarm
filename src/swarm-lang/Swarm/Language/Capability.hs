@@ -120,7 +120,7 @@ constCaps = \case
   Knows -> Nothing
   Noop -> Nothing
   Parent -> Nothing
-  Return -> Nothing
+  Pure -> Nothing
   Say -> Nothing -- speaking is natural to robots (unlike listening)
   Setname -> Nothing
   Undefined -> Nothing

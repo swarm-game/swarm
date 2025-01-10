@@ -25,8 +25,8 @@ objectives:
         b <- ishere "flower";
         move;
         c <- ishere "flower";
-        return (a || b || c);
-      } { return false }
+        pure (a || b || c);
+      } { pure false }
 solution: |
   build {turn right; move; move; harvest; turn right; move; place "flower"}
 robots:

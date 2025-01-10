@@ -18,7 +18,7 @@ objectives:
         case l (\_. 0) (\cons. 1 + length (snd cons))
       end;
       foundStructures <- structures "chevron";
-      return $ length foundStructures >= 3
+      pure $ length foundStructures >= 3
 robots:
   - name: base
     dir: east

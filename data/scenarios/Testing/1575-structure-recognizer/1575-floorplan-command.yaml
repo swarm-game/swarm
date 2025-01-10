@@ -12,7 +12,7 @@ objectives:
     condition: |
       def isRight = \x. case x (\_. false) (\_. true); end;
       foundBox <- structures "wooden box";
-      return $ isRight foundBox;
+      pure $ isRight foundBox;
 robots:
   - name: base
     dir: east

@@ -23,14 +23,14 @@ end
 def liftA2 : (a -> b -> c) -> Cmd a -> Cmd b -> Cmd c = \f. \ca. \cb.
   a <- ca;
   b <- cb;
-  return (f a b)
+  pure (f a b)
 end
 
 def add : Cmd Int -> Cmd Int -> Cmd Int = liftA2 (\x. \y. x + y) end
 
 def countCell : Cmd Int =
   s <- scan down;
-  return $ case s
+  pure $ case s
     (\_. 0)
     (\t. if (t == "flower") {1} {0})
 end
@@ -44,13 +44,13 @@ def sum : List Int -> Int = \l.
 end
 
 def for : Int -> (Int -> Cmd a) -> Cmd (List a) = \n. \k.
-  if (n == 0) {return (inl ())} {a <- k n; b <- for (n-1) k; return (inr (a,b))}
+  if (n == 0) {pure (inl ())} {a <- k n; b <- for (n-1) k; pure (inr (a,b))}
 end
 
 def countRow : Int -> Cmd Int = \w.
-  ns <- for (w-1) (\_. n <- countCell; move; return n);
+  ns <- for (w-1) (\_. n <- countCell; move; pure n);
   last <- countCell;
-  return (sum ns + last)
+  pure (sum ns + last)
 end
 
 def isEven : Int -> Bool = \n. (n / 2) * 2 == n end
@@ -66,15 +66,15 @@ def countFlowers : Int * Int -> Int * Int -> Cmd Int = \size. \ll.
   cnts <- for (h-1) (\i.
     cnt <- countRow w;
     if (isEven i) { around right } { around left };
-    return cnt
+    pure cnt
   );
   last <- countRow w;
-  return (sum cnts + last)
+  pure (sum cnts + last)
 end
 
 def acquire : Cmd Text =
-  thing <- atomic (b <- isempty; if b {return ""} {grab});
-  if (thing == "") {acquire} {return thing}
+  thing <- atomic (b <- isempty; if b {pure ""} {grab});
+  if (thing == "") {acquire} {pure thing}
 end
 
 def countAndReport : Int * Int -> Int * Int -> Cmd Unit = \size. \ll.
@@ -92,7 +92,7 @@ def until : Cmd Bool -> Cmd a -> Cmd Unit = \test. \body.
 end
 
 def acquireFlower : Cmd Unit =
-  until (ishere "flower") move; grab; return ()
+  until (ishere "flower") move; grab; pure ()
 end
 
 def go =
@@ -108,7 +108,7 @@ def go =
   turn back;
   goto (20,0);
   res <- meet;
-  case res (\_. return ()) (\truelove. give truelove "flower")
+  case res (\_. pure ()) (\truelove. give truelove "flower")
 end;
 
 go;

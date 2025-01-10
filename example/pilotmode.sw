@@ -2,7 +2,7 @@ def cons : a * b -> (a -> b) -> (a -> b) = \p. \k. \a.
   if (a == fst p) {snd p} {k a}
 end
 
-def nil : a -> Cmd Unit = \a. return () end
+def nil : a -> Cmd Unit = \a. pure () end
 
 // Suitable to use as e.g.
 //   installKeyHandler "(S-)←↓↑→ [Del] [g]rab [h]arvest [d]rill [s]can [b]locked [u]pload" pilot
@@ -18,8 +18,8 @@ def pilot : Key -> Cmd Unit =
   cons (key "Del",     selfdestruct) $
   cons (key "g",       res <- grab; log res) $
   cons (key "h",       res <- harvest; log res) $
-  cons (key "d",       res <- drill forward; case res (\_. return ()) log) $
-  cons (key "s",       res <- scan forward; case res (\_. return ()) log) $
+  cons (key "d",       res <- drill forward; case res (\_. pure ()) log) $
+  cons (key "s",       res <- scan forward; case res (\_. pure ()) log) $
   cons (key "b",       b <- blocked; if b {log "blocked"} {log "not blocked"}) $
   cons (key "u",       upload base) $
   nil

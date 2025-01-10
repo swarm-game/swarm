@@ -14,7 +14,7 @@ objectives:
         The `double ring`{=structure} structure should be recognized again.
     condition: |
       foundStructure <- structures "double ring";
-      return $ case foundStructure (\_. false) (\_. true);
+      pure $ case foundStructure (\_. false) (\_. true);
   - teaser: Pre-recognized
     id: pre_recognized
     prerequisite:
@@ -24,7 +24,7 @@ objectives:
         Pre-placed structure must be recognized
     condition: |
       foundStructure <- structures "double ring";
-      return $ case foundStructure (\_. false) (\_. true);
+      pure $ case foundStructure (\_. false) (\_. true);
   - teaser: Grab tree
     id: grab_tree
     goal:

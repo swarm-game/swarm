@@ -55,7 +55,7 @@ def waitUntilSomethingExists =
         watch down;
         wait 1000;
         waitUntilSomethingExists;
-    ) return;
+    ) pure;
     end;
 
 def waitUntilHere = \item.
@@ -81,7 +81,7 @@ def myStandby = \receptacleLoc.
     entToClone <- grab;
     teleport self (36, -11);
     turn back;
-    return $ inR entToClone;
+    pure $ inR entToClone;
     end;
 
 def placeBase = \standbyFunc. \n. 
@@ -102,9 +102,9 @@ def placeBase = \standbyFunc. \n.
         move;
 
         if isGood {
-            return clonedOrganism;
+            pure clonedOrganism;
         } {
-            return $ inL ();
+            pure $ inL ();
         }
     } {
         // Returns the clonedOrganism
@@ -151,7 +151,7 @@ def waitForCloneableOrganism =
         waitUntilOccupied;
 
         thingHere <- scan down;
-        return $ case thingHere (\x. inL x) (\item.
+        pure $ case thingHere (\x. inL x) (\item.
           if (hastag item "organism") {inR item} {inL ()}
         )
     );

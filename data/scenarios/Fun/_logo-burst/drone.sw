@@ -8,7 +8,7 @@ def else = \t. t end
 
 def randdir : Cmd Dir =
   d <- random 4;
-  return (
+  pure (
     if (d == 0) {north}
     $ elif (d == 1) {east}
     $ elif (d == 2) {south}

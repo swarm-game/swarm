@@ -3,7 +3,7 @@ def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;
 def countRow = \currentCount.
     emptyHere <- isempty;
     if emptyHere {
-        return currentCount;
+        pure currentCount;
     } {
         move;
         countRow $ 1 + currentCount;
@@ -12,9 +12,9 @@ def countRow = \currentCount.
 
 def getOrdinal = \d.
     maybeEntity <- scan d;
-    case maybeEntity (\nothing. return $ inL nothing) (\item.
+    case maybeEntity (\nothing. pure $ inL nothing) (\item.
         myCount <- count item;
-        return $ inR myCount;
+        pure $ inR myCount;
     );
     end;
 
@@ -72,7 +72,7 @@ def swapAdjacent = \remainingSteps. \previousOrdinal.
     thisOrdinal <- if (remainingSteps > 1) {
         getOrdinal right;
     } {
-        return $ inL ();
+        pure $ inL ();
     };
 
     case thisOrdinal (\_.
@@ -83,9 +83,9 @@ def swapAdjacent = \remainingSteps. \previousOrdinal.
         let shouldSwap = num < previousOrdinal in
         ordinal <- if shouldSwap {
             doSwap;
-            return previousOrdinal;
+            pure previousOrdinal;
         } {
-            return num;
+            pure num;
         };
         move;
         swapAdjacent (remainingSteps - 1) ordinal;
@@ -96,7 +96,7 @@ def doLoop = \unsortedCount.
     if (unsortedCount > 1) {
         prevOrdinal <- getOrdinal right;
         move;
-        case prevOrdinal return $ swapAdjacent unsortedCount;
+        case prevOrdinal pure $ swapAdjacent unsortedCount;
         doLoop $ unsortedCount - 1;
     } {}
     end;

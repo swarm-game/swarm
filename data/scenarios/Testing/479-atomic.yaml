@@ -11,14 +11,14 @@ objectives:
   - condition: |
       try {
         p <- robotNamed "planter";
-        as p {n <- count "weed"; return (n == 0)}
-      } { return false }
+        as p {n <- count "weed"; pure (n == 0)}
+      } { pure false }
 solution: |
   def forever = \c. force c ; forever c end
   def tryharvest =
     atomic (
       b <- ishere "weed";
-      if b {harvest; return ()} {}
+      if b {harvest; pure ()} {}
     );
     n <- random 4; wait n
   end;

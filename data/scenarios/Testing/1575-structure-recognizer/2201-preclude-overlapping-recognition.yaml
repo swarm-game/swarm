@@ -11,7 +11,7 @@ objectives:
     condition: |
       def isRight = \x. case x (\_. false) (\_. true); end;
       foundStructures <- structures "line";
-      return $ isRight foundStructures;
+      pure $ isRight foundStructures;
   - teaser: Recognize second structure
     id: found_elbow
     optional: true
@@ -21,7 +21,7 @@ objectives:
     condition: |
       def isRight = \x. case x (\_. false) (\_. true); end;
       foundStructures <- structures "elbow";
-      return $ isRight foundStructures;
+      pure $ isRight foundStructures;
   - teaser: Grab tree
     prerequisite:
       not: found_elbow

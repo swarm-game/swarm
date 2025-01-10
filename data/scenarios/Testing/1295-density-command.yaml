@@ -9,7 +9,7 @@ objectives:
       j <- robotnamed "judge";
       as j {
         c <- density ((0, 0), (3, 3));
-        return $ c <= 13;
+        pure $ c <= 13;
       };
 solution: |
   def doN = \n. \f. if (n > 0) {f; doN (n - 1) f} {}; end;

@@ -6,7 +6,7 @@ description: |
   https://github.com/swarm-game/swarm/pull/1024
 objectives:
   - condition: |
-      as base {n <- count "sand"; return (n >= 32)}
+      as base {n <- count "sand"; pure (n >= 32)}
     goal:
       - Obtain 32 sand.
 solution: |

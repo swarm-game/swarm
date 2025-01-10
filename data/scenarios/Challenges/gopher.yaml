@@ -20,9 +20,9 @@ objectives:
     condition: |
       try {
         robotnamed "gopher";
-        return false;
+        pure false;
       } {
-        return true;
+        pure true;
       }
   - teaser: Recover equipment
     prerequisite: defeat_gopher
@@ -34,7 +34,7 @@ objectives:
     condition: |
       as base {
         sCount <- count "scanner";
-        return $ sCount >= 120;
+        pure $ sCount >= 120;
       }
 robots:
   - name: base
