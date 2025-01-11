@@ -39,10 +39,11 @@ import Brick.Widgets.TabularList.Mixed
 import Control.Applicative (pure)
 import Control.Category ((>>>))
 import Control.Lens as Lens
-import Control.Monad (forM_, unless, void, when)
+import Control.Monad (forM_, guard, unless, void, when)
 import Control.Monad.Extra (whenJust)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.State (MonadState, execState)
+import Data.Bifunctor (first, second)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
@@ -54,12 +55,16 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Text.Zipper qualified as TZ
 import Data.Text.Zipper.Generic.Words qualified as TZ
+import Data.Tuple (swap)
 import Data.Vector qualified as V
 import Graphics.Vty qualified as V
 import Swarm.Game.Achievement.Definitions
 import Swarm.Game.CESK (CESK (Out), Frame (FApp, FExec, FSuspend))
+import Swarm.Game.Device (getCapabilitySet)
 import Swarm.Game.Entity hiding (empty)
+import Swarm.Game.Exception (Exn (Incapable), IncapableFix (..), formatExn)
 import Swarm.Game.Land
+import Swarm.Game.Robot (equippedDevices, robotCapabilities, robotHeavy, robotInventory)
 import Swarm.Game.Robot.Concrete
 import Swarm.Game.ScenarioInfo
 import Swarm.Game.State
@@ -68,7 +73,7 @@ import Swarm.Game.State.Robot
 import Swarm.Game.State.Runtime
 import Swarm.Game.State.Substate
 import Swarm.Language.Capability (
-  Capability (CGod),
+  Capability (CExecute, CGod, CMoveHeavy, CPower),
   constCaps,
  )
 import Swarm.Language.Context
@@ -78,11 +83,12 @@ import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Parser.Lex (reservedWords)
 import Swarm.Language.Parser.Util (showErrorPos)
 import Swarm.Language.Pipeline (processParsedTerm', processTerm')
+import Swarm.Language.Requirements qualified as R
 import Swarm.Language.Syntax hiding (Key)
 import Swarm.Language.Typecheck (
   ContextualTypeErr (..),
  )
-import Swarm.Language.Value (Value (VKey), envTypes)
+import Swarm.Language.Value (Value (VKey), envReqs, envTydefs, envTypes)
 import Swarm.Log
 import Swarm.ResourceLoading (getSwarmHistoryPath)
 import Swarm.TUI.Controller.EventHandlers
@@ -576,19 +582,87 @@ runBaseWebCode uinput ureply = do
           Left err -> Rejected . ParseError $ T.unpack err
           Right () -> InProgress
 
-runBaseCode :: (MonadState AppState m) => T.Text -> m (Either Text ())
+runBaseCode :: MonadState AppState m => T.Text -> m (Either Text ())
 runBaseCode uinput = do
   addREPLHistItem (mkREPLSubmission uinput)
   resetREPL "" (CmdPrompt [])
-  env <- use $ gameState . baseEnv
-  case processTerm' env uinput of
+  res <- verifyBaseCode uinput
+  case res of
+    Left err -> do
+      addREPLHistItem (mkREPLError err)
+      pure $ Left err
     Right mt -> do
       uiState . uiGameplay . uiREPL . replHistory . replHasExecutedManualInput .= True
       runBaseTerm mt
-      return (Right ())
-    Left err -> do
-      addREPLHistItem (mkREPLError err)
-      return (Left err)
+      pure $ Right ()
+
+verifyBaseCode :: MonadState AppState m => T.Text -> m (Either Text (Maybe TSyntax))
+verifyBaseCode uinput = do
+  env <- use $ gameState . baseEnv
+  case processTerm' env uinput of
+    Left err -> pure (Left err)
+    Right Nothing -> pure (Right Nothing)
+    Right (Just t) -> do
+      res <- ensureBaseRequirements (eraseS t)
+      case res of
+        Left err -> pure (Left err)
+        Right _ -> pure (Right (Just t))
+
+-- | Ensure the base has the requirements to run an input term.
+--
+--   This is kind of a mess. There is logic duplicated here and in
+--   Swarm.Game.Step, because some requirements checking is done
+--   statically (like here) but most of it is done dynamically at
+--   runtime.  Ideally, all requirements checking will be done
+--   statically: see #231.
+--
+--   Note also that this is kind of a best-effort approach, but there
+--   are known examples where this will break; see #231 for examples.
+ensureBaseRequirements :: MonadState AppState m => Term -> m (Either Text ())
+ensureBaseRequirements t = do
+  creative <- use $ gameState . creativeMode
+  case creative of
+    True -> pure $ Right ()
+    False -> do
+      e <- use $ gameState . baseEnv
+      em <- use $ gameState . landscape . terrainAndEntities . entityMap
+      isHeavy <- preuse $ gameState . baseRobot . robotHeavy
+      let reqs = R.requirements (e ^. envTydefs) (e ^. envReqs) t
+      baseCapRecords <- use $ gameState . baseRobot . robotCapabilities
+      equippedInv <- use $ gameState . baseRobot . equippedDevices
+      inv <- use $ gameState . baseRobot . robotInventory
+      let equipped = S.fromList . map (view entityName . snd) $ elems equippedInv
+          stuff = M.fromList . map (swap . second (view entityName)) $ elems inv
+          baseCaps = getCapabilitySet baseCapRecords
+
+          requiredCaps =
+            -- If base is heavy, change 'CExecute Move' requirement to 'CMoveHeavy'
+            S.map (if fromMaybe False isHeavy then heavy else id)
+              -- Don't worry about solar panel requirement for base for now,
+              -- since many scenarios do not have it
+              . S.delete CPower
+              $ R.capReqs reqs
+          heavy = \case
+            CExecute Move -> CMoveHeavy
+            c -> c
+
+          missingCaps = requiredCaps `S.difference` baseCaps
+          missingDevs = R.devReqs reqs `S.difference` equipped
+          missingInv =
+            M.differenceWith
+              (\a b -> (a - b) <$ guard (a - b > 0))
+              (R.invReqs reqs)
+              stuff
+          analysis
+            | not (null missingCaps) =
+                Left $ Incapable FixByEquip (R.Requirements missingCaps mempty mempty) t
+            | not (null missingDevs) =
+                Left $ Incapable FixByEquip (R.Requirements mempty missingDevs mempty) t
+            | not (null missingInv) =
+                Left $ Incapable FixByObtainConsumables (R.Requirements mempty mempty missingInv) t
+            | otherwise = Right ()
+
+      pure $ first (formatExn em) analysis
 
 -- | Handle a user input event for the REPL.
 --

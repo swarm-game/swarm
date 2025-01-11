@@ -735,6 +735,12 @@ instance Hashable Inventory where
 instance Eq Inventory where
   (==) = (==) `on` hash
 
+instance Semigroup Inventory where
+  (<>) = union
+
+instance Monoid Inventory where
+  mempty = empty
+
 -- | Look up an entity in an inventory, returning the number of copies
 --   contained.
 lookup :: Entity -> Inventory -> Count

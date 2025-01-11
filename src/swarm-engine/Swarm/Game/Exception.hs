@@ -170,7 +170,7 @@ formatIncapableFix = \case
 --   Please obtain:
 --   - tree (3)
 formatIncapable :: EntityMap -> IncapableFix -> Requirements -> Term -> Text
-formatIncapable em f (Requirements caps _ inv) tm
+formatIncapable em f (Requirements caps devs inv) tm
   | CGod `S.member` caps =
       unlinesExText $
         "Thou shalt not utter such blasphemy:"
@@ -191,6 +191,14 @@ formatIncapable em f (Requirements caps _ inv) tm
                 :| squote (prettyText tm)
                 : "Please " <> fVerb <> ":"
                 : (("- " <>) . formatDevices <$> filter (not . null) deviceSets)
+            )
+  | not (null devs) =
+      let IncapableFixWords fVerb fNoun = formatIncapableFix f
+       in unlinesExText
+            ( T.unwords ["You do not have the", fNoun, "required for:"]
+                :| squote (prettyText tm)
+                : "Please " <> fVerb <> ":"
+                : (("- " <>) <$> S.toList devs)
             )
   | otherwise =
       unlinesExText

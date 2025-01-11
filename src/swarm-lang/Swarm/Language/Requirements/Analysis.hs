@@ -101,6 +101,10 @@ requirements tdCtx ctx =
       add (singletonCap CLambda)
       mapM_ typeRequirements mty
       local @ReqCtx (Ctx.delete x) $ go t
+    -- Special case for application of 'build': only requires a 3D
+    -- printer; it doesn't require any capabilities related to the
+    -- argument to build, since that will be run by a different robot.
+    TApp t1@(TConst Build) _ -> go t1
     -- Special case for 'use' with a device literal.
     TApp t1@(TConst Use) t2@(TText device) ->
       add (singletonDev device) *> go t1 *> go t2
