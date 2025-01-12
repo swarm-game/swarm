@@ -89,6 +89,7 @@ import Swarm.TUI.Model.UI
 import Swarm.TUI.Model.UI.Gameplay
 import Swarm.Util (applyJust)
 import Swarm.Util.RingBuffer
+import Swarm.Web.GraphRender
 import Swarm.Web.Worldview
 import System.Timeout (timeout)
 import Text.Read (readEither)
@@ -107,6 +108,7 @@ type SwarmAPI =
     :<|> "goals" :> "prereqs" :> Get '[JSON] [PrereqSatisfaction]
     :<|> "goals" :> "active" :> Get '[JSON] [Objective]
     :<|> "goals" :> "graph" :> Get '[JSON] (Maybe GraphInfo)
+    :<|> "goals" :> "render" :> Get '[PlainText] T.Text
     :<|> "goals" :> "uigoal" :> Get '[JSON] GoalTracking
     :<|> "goals" :> Get '[JSON] WinCondition
     :<|> "navigation" :> Get '[JSON] (Navigation (M.Map SubworldName) Location)
@@ -164,6 +166,7 @@ mkApp state events =
     :<|> prereqsHandler state
     :<|> activeGoalsHandler state
     :<|> goalsGraphHandler state
+    :<|> goalsRenderHandler state
     :<|> uiGoalHandler state
     :<|> goalsHandler state
     :<|> navigationHandler state
@@ -205,6 +208,13 @@ goalsGraphHandler appStateRef = do
   return $ case appState ^. gameState . winCondition of
     WinConditions _winState oc -> Just $ makeGraphInfo oc
     _ -> Nothing
+
+goalsRenderHandler :: IO AppState -> Handler T.Text
+goalsRenderHandler appStateRef = do
+  appState <- liftIO appStateRef
+  return $ case appState ^. gameState . winCondition of
+    WinConditions _winState oc -> T.pack $ renderGoalsGraph oc
+    _ -> mempty
 
 uiGoalHandler :: IO AppState -> Handler GoalTracking
 uiGoalHandler appStateRef = do

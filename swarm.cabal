@@ -774,12 +774,14 @@ library swarm-web
     wai,
     wai-app-static,
     warp,
+    dotgen,
     witch,
 
   visibility: public
   -- cabal-gild: discover src/swarm-web
   exposed-modules:
     Swarm.Web
+    Swarm.Web.GraphRender
     Swarm.Web.Worldview
 
   other-modules: Paths_swarm
