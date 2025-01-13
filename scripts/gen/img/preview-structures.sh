@@ -1,0 +1,29 @@
+#!/bin/bash -xe
+
+cd $(git rev-parse --show-toplevel)
+
+SCENARIO_PATH=${1?"Usage: $0 SCENARIO_PATH"}
+
+IMG_WIDTH=200
+IMG_HEIGHT=150
+
+DOT_OUTPUT_PATH=structures.dot
+
+EXECUTABLE_NAME=swarm-scene
+
+cabal build -j -O0 $EXECUTABLE_NAME
+
+OUTPUT_DIR=blarg
+
+mkdir -p $OUTPUT_DIR
+cabal run $EXECUTABLE_NAME -- \
+    $SCENARIO_PATH structures \
+    --fail-blank \
+    --dest $OUTPUT_DIR/$DOT_OUTPUT_PATH \
+    --png \
+    --width $IMG_WIDTH \
+    --height $IMG_HEIGHT
+
+cd $OUTPUT_DIR
+dot -Tpng -o structures.png $DOT_OUTPUT_PATH
+dot -Tsvg -o structures.svg $DOT_OUTPUT_PATH

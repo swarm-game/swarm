@@ -8,6 +8,7 @@
 module Swarm.Game.Scenario.Topography.Structure.Assembly (
   mergeStructures,
   makeStructureMap,
+  makeGraphEdges,
 
   -- * Exposed for unit tests:
   foldLayer,
@@ -76,7 +77,7 @@ makeGraphEdges =
 -- | Overlays all of the "child placements", such that the children encountered later
 -- in the YAML file supersede the earlier ones (dictated by using 'foldl' instead of 'foldr').
 mergeStructures ::
-  M.Map StructureName (NamedStructure (Maybe a)) ->
+  M.Map StructureName (NamedArea (PStructure (Maybe a))) ->
   Parentage Placement ->
   PStructure (Maybe a) ->
   Either Text (MergedStructure (Maybe a))
