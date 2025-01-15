@@ -617,7 +617,7 @@ data InvalidAtomicReason
     LongConst
   | -- | The argument contained a suspend
     AtomicSuspend
-  | -- | The argument container an import
+  | -- | The argument contained an import
     AtomicImport
   deriving (Show)
 
