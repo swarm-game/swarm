@@ -174,7 +174,7 @@ defaultReplBindings = allBindings $ \case
 --                 REPL EVENTS
 -- ----------------------------------------------
 
-data WorldEvent
+newtype WorldEvent
   = MoveViewEvent AbsoluteDir
   deriving (Eq, Ord, Show, Generic)
   deriving (Enum, Bounded) via (FiniteEnumeration WorldEvent)
