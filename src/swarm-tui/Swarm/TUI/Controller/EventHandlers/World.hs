@@ -22,23 +22,11 @@ import Swarm.Language.Syntax.Direction (Direction (..), directionSyntax)
 import Swarm.TUI.Controller.Util
 import Swarm.TUI.Model
 import Swarm.TUI.Model.Event
-import Swarm.TUI.Model.UI
-import Swarm.TUI.Model.UI.Gameplay
 
 -- | Handle a user input event in the world view panel.
 worldEventHandlers :: [KeyEventHandler SwarmEvent (EventM Name AppState)]
 worldEventHandlers = allHandlers World $ \case
-  ViewBaseEvent -> ("View the base robot", viewBase)
-  ShowFpsEvent -> ("Show frames per second", showFps)
   MoveViewEvent d -> ("Scroll world view in the " <> directionSyntax (DAbsolute d) <> " direction", scrollViewInDir $ toHeading d)
-
-viewBase :: EventM Name AppState ()
-viewBase = do
-  invalidateCacheEntry WorldCache
-  gameState . robotInfo . viewCenterRule .= VCRobot 0
-
-showFps :: EventM Name AppState ()
-showFps = uiState . uiGameplay . uiTiming . uiShowFPS %= not
 
 scrollViewInDir :: V2 Int32 -> EventM Name AppState ()
 scrollViewInDir d = do

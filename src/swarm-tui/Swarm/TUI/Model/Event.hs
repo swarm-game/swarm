@@ -89,6 +89,8 @@ data MainEvent
   | ToggleCreativeModeEvent
   | ToggleWorldEditorEvent
   | ToggleREPLVisibilityEvent
+  | ViewBaseEvent
+  | ToggleFPSEvent
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 mainEvents :: KeyEvents MainEvent
@@ -114,6 +116,8 @@ mainEvents = allKeyEvents $ \case
   ToggleCreativeModeEvent -> "creative mode"
   ToggleWorldEditorEvent -> "world editor"
   ToggleREPLVisibilityEvent -> "toggle REPL"
+  ViewBaseEvent -> "view base robot"
+  ToggleFPSEvent -> "toggle FPS"
 
 defaultMainBindings :: [(MainEvent, [Binding])]
 defaultMainBindings = allBindings $ \case
@@ -138,6 +142,8 @@ defaultMainBindings = allBindings $ \case
   ToggleCreativeModeEvent -> [ctrl 'v']
   ToggleWorldEditorEvent -> []
   ToggleREPLVisibilityEvent -> [meta ',']
+  ViewBaseEvent -> [meta 'c']
+  ToggleFPSEvent -> [meta 'f']
 
 -- ----------------------------------------------
 --                 REPL EVENTS
@@ -168,23 +174,17 @@ defaultReplBindings = allBindings $ \case
 --                 REPL EVENTS
 -- ----------------------------------------------
 
-data WorldEvent
-  = ViewBaseEvent
-  | ShowFpsEvent
-  | MoveViewEvent AbsoluteDir
+newtype WorldEvent
+  = MoveViewEvent AbsoluteDir
   deriving (Eq, Ord, Show, Generic)
   deriving (Enum, Bounded) via (FiniteEnumeration WorldEvent)
 
 worldPanelEvents :: KeyEvents WorldEvent
 worldPanelEvents = allKeyEvents $ \case
-  ViewBaseEvent -> "view base"
-  ShowFpsEvent -> "show fps"
   MoveViewEvent d -> "move view " <> directionSyntax (DAbsolute d)
 
 defaultWorldPanelBindings :: [(WorldEvent, [Binding])]
 defaultWorldPanelBindings = allBindings $ \case
-  ViewBaseEvent -> [bind 'c']
-  ShowFpsEvent -> [bind 'f']
   MoveViewEvent DWest -> [bind V.KLeft, bind 'h']
   MoveViewEvent DSouth -> [bind V.KDown, bind 'j']
   MoveViewEvent DNorth -> [bind V.KUp, bind 'k']

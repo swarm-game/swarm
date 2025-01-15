@@ -894,7 +894,6 @@ drawKeyMenu s =
   isReplWorking = gs ^. gameControls . replWorking
   isPaused = gs ^. temporal . paused
   hasDebug = hasDebugCapability creative s
-  viewingBase = (gs ^. robotInfo . viewCenterRule) == VCRobot 0
   creative = gs ^. creativeMode
   showCreative = s ^. uiState . uiDebugOptions . Lens.contains ToggleCreative
   showEditor = s ^. uiState . uiDebugOptions . Lens.contains ToggleWorldEditor
@@ -965,8 +964,6 @@ drawKeyMenu s =
       ++ [("PgUp/Dn", "scroll")]
   keyCmdsFor (Just (FocusablePanel WorldPanel)) =
     [(T.intercalate "/" $ map keyW enumerate, "scroll") | canScroll]
-      ++ [(keyW SE.ViewBaseEvent, "recenter") | not viewingBase]
-      ++ [(keyW SE.ShowFpsEvent, "FPS")]
   keyCmdsFor (Just (FocusablePanel RobotPanel)) =
     ("Enter", "pop out")
       : if isJust inventorySearch

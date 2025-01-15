@@ -16,6 +16,7 @@ import Control.Monad.IO.Class (liftIO)
 import Swarm.Game.Scenario.Topography.Structure.Recognition.Type (originalStructureDefinitions)
 import Swarm.Game.State
 import Swarm.Game.State.Landscape
+import Swarm.Game.State.Robot
 import Swarm.Game.State.Substate
 import Swarm.Game.Step (finishGameTick)
 import Swarm.TUI.Controller.EventHandlers.Frame (runGameTickUI)
@@ -56,6 +57,8 @@ mainEventHandlers = allHandlers Main $ \case
   ToggleCreativeModeEvent -> ("Toggle creative mode", whenDebug ToggleCreative toggleCreativeMode)
   ToggleWorldEditorEvent -> ("Toggle world editor mode", whenDebug ToggleWorldEditor toggleWorldEditor)
   ToggleREPLVisibilityEvent -> ("Collapse/Expand REPL panel", toggleREPLVisibility)
+  ViewBaseEvent -> ("View the base robot", viewBase)
+  ToggleFPSEvent -> ("Toggle the FPS display", toggleFPS)
 
 toggleQuitGameDialog :: EventM Name AppState ()
 toggleQuitGameDialog = do
@@ -138,6 +141,14 @@ toggleREPLVisibility :: EventM Name AppState ()
 toggleREPLVisibility = do
   invalidateCacheEntry WorldCache
   uiState . uiGameplay . uiShowREPL %= not
+
+viewBase :: EventM Name AppState ()
+viewBase = do
+  invalidateCacheEntry WorldCache
+  gameState . robotInfo . viewCenterRule .= VCRobot 0
+
+toggleFPS :: EventM Name AppState ()
+toggleFPS = uiState . uiGameplay . uiTiming . uiShowFPS %= not
 
 -- ----------------------------------------------
 --                 HELPER UTILS
