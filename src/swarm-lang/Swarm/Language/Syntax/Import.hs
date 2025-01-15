@@ -27,6 +27,7 @@ module Swarm.Language.Syntax.Import (
 
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Data (Data)
+import Data.Hashable (Hashable)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
@@ -45,7 +46,7 @@ data Anchor where
   Home :: Anchor
   -- | Absolute, /i.e./ relative to the filesystem root.
   Absolute :: Anchor
-  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON, Hashable)
 
 ------------------------------------------------------------
 -- ImportDir
@@ -67,7 +68,7 @@ data Anchor where
 --   use the 'mkImportDir' smart constructor. To extract information,
 --   use 'withImportDir'.
 data ImportDir = ImportDir Anchor [Text]
-  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON, Hashable)
 
 -- | Convenient shortcut for the 'ImportDir' representing the user's
 --   home directory.
@@ -118,7 +119,7 @@ instance Monoid ImportDir where
 -- | A location from which to import a file containing Swarm code,
 --   consisting of a directory paired with a filename.
 data ImportLoc = ImportLoc {importDir :: ImportDir, importFile :: Text}
-  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON, Hashable)
 
 -- | Get the 'Anchor' for an 'ImportLoc'.
 importAnchor :: ImportLoc -> Anchor
