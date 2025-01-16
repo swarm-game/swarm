@@ -79,6 +79,7 @@ data SystemFailure
   | OrderFileWarning FilePath OrderFileWarning
   | CanNotParseMegaparsec (ParseErrorBundle Text Void)
   | DoesNotTypecheck Text -- See Note [Pretty-printing typechecking errors]
+  | ImportCycle [FilePath]
   | CustomFailure Text
   deriving (Show)
 
@@ -147,4 +148,6 @@ instance PrettyPrec SystemFailure where
       nest 2 . vcat $
         "Parse failure:"
           : map pretty (T.lines t)
+    ImportCycle imps ->
+      ppr $ BulletList "Imports form a cycle:" (map (into @Text) imps)
     CustomFailure m -> pretty m
