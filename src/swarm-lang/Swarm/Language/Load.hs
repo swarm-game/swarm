@@ -27,11 +27,12 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.State (State, get, modify)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (universe, view)
+import Control.Monad (forM_)
 import Data.Function ((&))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
-import Swarm.Failure (Asset (..), AssetData (..), Entry (..), LoadingFailure (..), SystemFailure (AssetNotLoaded))
+import Swarm.Failure (Asset (..), AssetData (..), Entry (..), LoadingFailure (..), SystemFailure (..))
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Syntax.AST (Syntax')
@@ -39,6 +40,7 @@ import Swarm.Language.Syntax.Import (Anchor (..), ImportDir, ImportLoc (..), cur
 import Swarm.Language.Syntax.Pattern (Syntax, sTerm, pattern TImportIn)
 import Swarm.Language.Types (Polytype)
 import Swarm.Util (readFileMayT)
+import Swarm.Util.Graph (findCycle)
 import System.Directory (doesFileExist, getCurrentDirectory, getHomeDirectory)
 import System.FilePath (joinPath, splitPath, (</>))
 import Witch (into)
@@ -119,11 +121,6 @@ type SourceMap' ty = Map ImportLoc (Module' ty)
 type SourceMap = SourceMap' ()
 type TSourceMap = SourceMap' Polytype
 
--- XXX copied this code from the code for executing Run. Do we need to
--- deal with loading things from standard swarm script dirs, for
--- scenario code?  Or maybe we just make that a new type of anchor,
--- with new syntax?
-
 -- | Load and parse Swarm source code from a given location,
 --   recursively loading and parsing any imports, ultimately returning
 --   a 'SourceMap' from locations to parsed ASTs.
@@ -148,16 +145,35 @@ loadWith ::
   SourceMap ->
   ImportLoc ->
   m SourceMap
-loadWith srcMap = execState srcMap . loadRec currentDir
+loadWith srcMap loc = do
+  fp <- locToFilePath loc
+  resMap <- execState srcMap . loadRec currentDir $ loc
+  checkImportCycles fp resMap
+  pure resMap
+
+-- | Convert a 'SourceMap' into a suitable form for 'findCycle'.
+importGraph :: SourceMap -> [(ImportLoc, ImportLoc, [ImportLoc])]
+importGraph = map processNode . M.assocs
+ where
+  processNode (imp, Module _ imps) = (imp, imp, imps)
+
+-- | Check a 'SourceMap' to ensure that it contains no import cycles.
+--   The 'FilePath' is just the name of the file from which the
+--   'SourceMap' was loaded, for generating an error message.
+checkImportCycles ::
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
+  FilePath ->
+  SourceMap ->
+  m ()
+checkImportCycles fp srcMap = do
+  forM_ (findCycle (importGraph srcMap)) $ \importCycle -> do
+    importPaths <- mapM locToFilePath importCycle
+    throwError $ AssetNotLoaded (Data Script) fp (SystemFailure $ ImportCycle importPaths)
 
 -- | Given a parent directory relative to which any local imports
 --   should be interpreted, load an import and all its imports,
 --   transitively.  Also return a canonicalized version of the import
 --   location.
---
---   XXX check for import cycles!  They don't pose a problem for
---   loading per se, but they will pose a problem for typechecking
---   later, and we might as well detect the issue now.
 loadRec ::
   (Has (Throw SystemFailure) sig m, Has (State SourceMap) sig m, Has (Lift IO) sig m) =>
   ImportDir ->
@@ -201,4 +217,4 @@ readLoc loc = do
     _ -> sendIO (readFileMayT path) >>= maybe (badImport (DoesNotExist File)) pure
 
   -- Try to parse the contents
-  readTerm' defaultParserConfig src & either (badImport . CanNotParseMegaparsec) pure
+  readTerm' defaultParserConfig src & either (badImport . SystemFailure . CanNotParseMegaparsec) pure
