@@ -53,6 +53,7 @@ data LoadingFailure
   | EntryNot Entry
   | CanNotParseYaml ParseException
   | CanNotParseMegaparsec (ParseErrorBundle Text Void)
+  | ImportCycle [FilePath]
   | DoesNotTypecheck Text -- See Note [Typechecking errors]
   | Duplicate AssetData Text
   | CustomMessage Text
@@ -117,6 +118,8 @@ instance PrettyPrec LoadingFailure where
       nest 2 . vcat $
         "Parse failure:"
           : map pretty (T.lines (into @Text (errorBundlePretty p)))
+    ImportCycle imps ->
+      ppr $ BulletList "Imports form a cycle:" (map (into @Text) imps)
     DoesNotTypecheck t ->
       nest 2 . vcat $
         "Parse failure:"
