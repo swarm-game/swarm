@@ -64,7 +64,8 @@ processTerm' e txt = do
 -- | Like 'processTerm'', but use a term that has already been parsed.
 processParsedTerm' :: Env -> Syntax -> Either ContextualTypeErr TSyntax
 processParsedTerm' e t = do
-  tt <- inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) t
+  -- XXX load SourceMap
+  tt <- inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) _ t
   return $ elaborate tt
 
 ------------------------------------------------------------
