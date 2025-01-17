@@ -10,6 +10,7 @@ module Swarm.Language.Parser.Value (readValue) where
 
 import Control.Lens ((^.))
 import Data.Either.Extra (eitherToMaybe)
+import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
 import Swarm.Language.Context qualified as Ctx
@@ -41,7 +42,7 @@ readValue ty txt = do
         Just (':', t) -> t
         _ -> txt
   s <- eitherToMaybe $ readNonemptyTerm txt'
-  _ <- eitherToMaybe $ checkTop Ctx.empty Ctx.empty emptyTDCtx s ty
+  _ <- eitherToMaybe $ checkTop Ctx.empty Ctx.empty emptyTDCtx M.empty s ty
   toValue $ s ^. sTerm
 
 toValue :: Term -> Maybe Value
