@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -11,14 +12,13 @@ module Swarm.Language.Load (
   dirToFilePath,
   locToFilePath,
   resolveImportLoc,
-  Module' (..),
   Module,
   TModule,
-  SourceMap',
   SourceMap,
   TSourceMap,
   load,
   loadWith,
+  topsortSourceMap,
 ) where
 
 import Control.Algebra (Has)
@@ -28,11 +28,16 @@ import Control.Effect.State (State, get, modify)
 import Control.Effect.Throw (Throw, throwError)
 import Control.Lens (universe, view)
 import Control.Monad (forM_)
+import Data.Data (Data)
 import Data.Function ((&))
+import Data.Graph qualified as G
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
+import GHC.Generics (Generic)
 import Swarm.Failure (Asset (..), AssetData (..), Entry (..), LoadingFailure (..), SystemFailure (..))
+import Swarm.Language.Context (Ctx)
+import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Parser (readTerm')
 import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Syntax.AST (Syntax')
@@ -108,9 +113,15 @@ resolveImportLoc parent (ImportLoc d f) = do
   loc' = ImportLoc d' f
   loc'sw = ImportLoc d' (f <> ".sw")
 
--- | A 'Module' is simply a (possibly empty) AST, along with a list of
+-- | A 'Module' is a (possibly empty) AST, along with a context for
+--   any definitions contained in the AST, and a list of transitive,
 --   canonicalized imports.
-data Module' ty = Module (Maybe (Syntax' ty)) [ImportLoc]
+data Module' ty = Module
+  { moduleTerm :: Maybe (Syntax' ty)
+  , moduleCtx :: Ctx ty
+  , moduleImports :: [ImportLoc]
+  }
+  deriving (Data, Generic)
 
 type Module = Module' ()
 type TModule = Module' Polytype
@@ -190,7 +201,7 @@ loadRec parent loc = do
       let recImports = maybe [] enumerateImports mt
       canonicalImports <- mapM (loadRec (importDir canonicalLoc)) recImports
       -- Finally, record it in the SourceMap
-      modify @SourceMap (M.insert canonicalLoc $ Module mt canonicalImports)
+      modify @SourceMap (M.insert canonicalLoc $ Module mt Ctx.empty canonicalImports)
 
   pure canonicalLoc
 
@@ -218,3 +229,18 @@ readLoc loc = do
 
   -- Try to parse the contents
   readTerm' defaultParserConfig src & either (badImport . SystemFailure . CanNotParseMegaparsec) pure
+
+------------------------------------------------------------
+
+-- XXX move this somewhere else?
+
+-- | Topologically sort the entries in a SourceMap, so that each
+--   module only imports modules later in the list.  Once they are
+--   topologically sorted we can simply typecheck them in order.
+topsortSourceMap :: SourceMap -> [(ImportLoc, Module)]
+topsortSourceMap (M.assocs -> imps) = map (fst3 . vlookup) (G.topSort importGraph)
+  where
+    fst3 (a, _, _) = a
+    (importGraph, vlookup, _) = G.graphFromEdges (map mkNode imps)
+    mkNode node@(loc, Module _ _ locs) = (node, loc, locs)
+
