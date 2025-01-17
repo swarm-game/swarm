@@ -114,7 +114,7 @@ resolveImportLoc parent (ImportLoc d f) = do
   loc'sw = ImportLoc d' (f <> ".sw")
 
 -- | A 'Module' is a (possibly empty) AST, along with a context for
---   any definitions contained in the AST, and a list of transitive,
+--   any definitions contained in it, and a list of transitive,
 --   canonicalized imports.
 data Module' ty = Module
   { moduleTerm :: Maybe (Syntax' ty)
