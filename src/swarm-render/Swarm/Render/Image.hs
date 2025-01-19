@@ -3,6 +3,7 @@
 module Swarm.Render.Image (
   TransparencyHandling (..),
   ImgRendering (..),
+  mkStructureImage,
   mkStructurePng,
   defaultImageRendering,
 ) where
@@ -34,19 +35,31 @@ data ImgRendering = ImgRendering
 defaultImageRendering :: ImgRendering
 defaultImageRendering = ImgRendering 1 Transparent
 
+mkStructureImage ::
+  ToPixel a =>
+  ImgRendering ->
+  Map StructureName (NamedArea (PStructure (Maybe a))) ->
+  PStructure (Maybe a) ->
+  Image PixelRGBA8
+mkStructureImage (ImgRendering scaleFactor transparencyMode) sMap parentStruct =
+  imgPipeline . makeImage $ gridContent overlayArea
+ where
+  imgPipeline = illustrateTransparency transparencyMode . scalePixelImage scaleFactor
+  overlayArea = forceMerge sMap parentStruct
+
 mkStructurePng ::
   ToPixel a =>
   ImgRendering ->
   Map StructureName (NamedArea (PStructure (Maybe a))) ->
   PStructure (Maybe a) ->
   LBS.ByteString
-mkStructurePng (ImgRendering scaleFactor transparencyMode) sMap parentStruct =
-  encodePng . imgPipeline . makeImage $ gridContent overlayArea
- where
-  imgPipeline = illustrateTransparency transparencyMode . scalePixelImage scaleFactor
-  overlayArea = forceMerge sMap parentStruct
+mkStructurePng r sMap parentStruct =
+  encodePng $ mkStructureImage r sMap parentStruct
 
-illustrateTransparency :: TransparencyHandling -> Image PixelRGBA8 -> Image PixelRGBA8
+illustrateTransparency ::
+  TransparencyHandling ->
+  Image PixelRGBA8 ->
+  Image PixelRGBA8
 illustrateTransparency mode img@(Image w h _) = case mode of
   Transparent -> img
   DiagonalIndicators -> mkNewImage img
