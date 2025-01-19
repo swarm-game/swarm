@@ -30,6 +30,8 @@ import Data.Data (Data)
 import Data.Hashable (Hashable)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Prettyprinter (hcat, pretty, punctuate, slash)
+import Swarm.Pretty
 
 ------------------------------------------------------------
 -- Anchor
@@ -47,6 +49,13 @@ data Anchor where
   -- | Absolute, /i.e./ relative to the filesystem root.
   Absolute :: Anchor
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON, Hashable)
+
+instance PrettyPrec Anchor where
+  prettyPrec _ = \case
+    Web w -> pretty w
+    Local n -> hcat $ punctuate slash (replicate n "..")
+    Home -> "~"
+    Absolute -> slash
 
 ------------------------------------------------------------
 -- ImportDir
@@ -69,6 +78,9 @@ data Anchor where
 --   use 'withImportDir'.
 data ImportDir = ImportDir Anchor [Text]
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON, Hashable)
+
+instance PrettyPrec ImportDir where
+  prettyPrec _ (ImportDir anchor ps) = hcat $ punctuate slash (ppr anchor : map pretty ps)
 
 -- | Convenient shortcut for the 'ImportDir' representing the user's
 --   home directory.
@@ -120,6 +132,9 @@ instance Monoid ImportDir where
 --   consisting of a directory paired with a filename.
 data ImportLoc = ImportLoc {importDir :: ImportDir, importFile :: Text}
   deriving (Eq, Ord, Show, Data, Generic, FromJSON, ToJSON, Hashable)
+
+instance PrettyPrec ImportLoc where
+  prettyPrec _ (ImportLoc d f) = ppr d <> "/" <> pretty f
 
 -- | Get the 'Anchor' for an 'ImportLoc'.
 importAnchor :: ImportLoc -> Anchor

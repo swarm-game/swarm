@@ -47,7 +47,6 @@ module Swarm.Language.Typecheck (
 ) where
 
 import Control.Arrow ((***))
-import Control.Carrier.Error.Either (ErrorC, runError)
 import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.State.Strict (StateC, evalState)
 import Control.Carrier.Throw.Either (ThrowC, runThrow)
@@ -64,7 +63,6 @@ import Control.Monad.Free qualified as Free
 import Data.Bifunctor (first, second)
 import Data.Data (Data, gmapM)
 import Data.Foldable (fold)
-import Data.Functor.Identity
 import Data.Generics (mkM)
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -81,6 +79,7 @@ import Swarm.Language.Context hiding (lookup)
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Kindcheck (KindError (..), processPolytype, processType)
 import Swarm.Language.Load (SourceMap, TSourceMap)
+import Swarm.Language.Load (SourceMap, USourceMap, Module' (..), Module, UModule)
 import Swarm.Language.Parser.QQ (tyQ)
 import Swarm.Language.Parser.Util (getLocRange)
 import Swarm.Language.Requirements.Analysis (requirements)
@@ -105,6 +104,8 @@ data TCFrame where
   -- | Checking the RHS of an application.  Stored Syntax is the term
   -- on the LHS.
   TCAppR :: Syntax -> TCFrame
+  -- | Recursively checking an import.
+  TCImport :: ImportLoc -> TCFrame
   deriving (Show)
 
 instance PrettyPrec TCFrame where
@@ -112,6 +113,7 @@ instance PrettyPrec TCFrame where
     TCLet x -> "While checking the definition of" <+> ppr x
     TCAppL s -> "While checking a function applied to an argument: _" <+> prettyPrec 11 s
     TCAppR s -> "While checking the argument to a function:" <+> prettyPrec 10 s <+> "_"
+    TCImport loc -> "While checking an import:" <+> prettyPrec 0 loc
 
 -- | A typechecking stack frame together with the relevant @SrcLoc@.
 data LocatedTCFrame = LocatedTCFrame SrcLoc TCFrame
@@ -203,46 +205,36 @@ finalizeUSyntax ::
   m TSyntax
 finalizeUSyntax = applyBindings >=> fromUSyntax
 
--- | Version of 'runTC' which is generic in the base monad.
-runTC' ::
-  Algebra sig m =>
+-- | Run a top-level inference computation, either throwing a
+--   'ContextualTypeErr' or returning a fully resolved 'TSyntax'.
+runTC ::
+  Has (Throw ContextualTypeErr) sig m =>
   TCtx ->
   ReqCtx ->
   TDCtx ->
   TVCtx ->
   SourceMap ->
-  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx (ReaderC SourceMap (StateC TSourceMap m)))))))) USyntax ->
-  m (Either ContextualTypeErr TSyntax)
-runTC' ctx reqCtx tdctx tvCtx srcMap =
+  ReaderC UCtx (ReaderC TCStack (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx (ReaderC SourceMap (StateC USourceMap m))))))) USyntax ->
+  m TSyntax
+runTC ctx reqCtx tdctx tvCtx srcMap =
   (>>= finalizeUSyntax)
     >>> runReader (toU ctx)
     >>> runReader []
-    >>> runError
     >>> U.runUnification
     >>> runReader reqCtx
     >>> runReader tdctx
     >>> runReader tvCtx
     >>> runReader srcMap
     >>> evalState M.empty
-    >>> fmap reportUnificationError
-
--- | Run a top-level inference computation, returning either a
---   'ContextualTypeErr' or a fully resolved 'TSyntax'.
-runTC ::
-  TCtx ->
-  ReqCtx ->
-  TDCtx ->
-  TVCtx ->
-  SourceMap ->
-  ReaderC UCtx (ReaderC TCStack (ErrorC ContextualTypeErr (U.UnificationC (ReaderC ReqCtx (ReaderC TDCtx (ReaderC TVCtx (ReaderC SourceMap (StateC TSourceMap Identity)))))))) USyntax ->
-  Either ContextualTypeErr TSyntax
-runTC tctx reqCtx tdctx tvCtx srcMap = runTC' tctx reqCtx tdctx tvCtx srcMap >>> runIdentity
+    >>> reportUnificationError
 
 checkPredicative :: Has (Throw ContextualTypeErr) sig m => Maybe a -> m a
 checkPredicative = maybe (throwError (mkRawTypeErr Impredicative)) pure
 
-reportUnificationError :: Either UnificationError (Either ContextualTypeErr a) -> Either ContextualTypeErr a
-reportUnificationError = either (Left . mkRawTypeErr . UnificationErr) id
+reportUnificationError ::
+  Has (Throw ContextualTypeErr) sig m =>
+  m (Either UnificationError a) -> m a
+reportUnificationError = (>>= either (throwError . mkRawTypeErr . UnificationErr) pure)
 
 -- | Look up a variable in the ambient type context, either throwing
 --   an 'UnboundVar' error if it is not found, or opening its
@@ -496,6 +488,10 @@ data TypeErr
   | -- | Read must be given a literal type as an argument.  See
     --   https://github.com/swarm-game/swarm/pull/2461#discussion_r2124125021
     ReadNonLiteralTypeArg Term
+  | -- | An import encountered during typechecking was not found in
+    --   the import source map.  This should never happen and indicates
+    --   a bug.
+    UnknownImport ImportLoc
   deriving (Show)
 
 instance PrettyPrec TypeErr where
@@ -545,6 +541,11 @@ instance PrettyPrec TypeErr where
       "Unconstrained unification type variables encountered, likely due to an impredicative type. This is a known bug; for more information see https://github.com/swarm-game/swarm/issues/351 ."
     ReadNonLiteralTypeArg t ->
       "The `read` command must be given a literal type as its first argument (Swarm does not have dependent types); found" <+> pprCode t <+> "instead."
+    UnknownImport loc ->
+      vsep
+        [ "Unknown import encountered:" <+> ppr loc <> "."
+        , "This should never happen; please report this as a bug at https://github.com/swarm-game/swarm/issues/new?template=bug_report.md"
+        ]
    where
     pprCode :: PrettyPrec a => a -> Doc ann
     pprCode = bquote . ppr
@@ -833,11 +834,15 @@ decomposeProdTy = decomposeTyConApp2 TCProd
 -- | Top-level type inference function: given a context of definition
 --   types, type synonyms, and a term, either return a type error or a
 --   fully type-annotated version of the term.
-inferTop :: TCtx -> ReqCtx -> TDCtx -> SourceMap -> Syntax -> Either ContextualTypeErr TSyntax
+inferTop ::
+  Has (Error ContextualTypeErr) sig m =>
+  TCtx -> ReqCtx -> TDCtx -> SourceMap -> Syntax -> m TSyntax
 inferTop ctx reqCtx tdCtx srcMap = runTC ctx reqCtx tdCtx Ctx.empty srcMap . infer
 
 -- | Top level type checking function.
-checkTop :: TCtx -> ReqCtx -> TDCtx -> SourceMap -> Syntax -> Type -> Either ContextualTypeErr TSyntax
+checkTop ::
+  Has (Error ContextualTypeErr) sig m =>
+  TCtx -> ReqCtx -> TDCtx -> SourceMap -> Syntax -> Type -> m TSyntax
 checkTop ctx reqCtx tdCtx srcMap t ty = runTC ctx reqCtx tdCtx Ctx.empty srcMap $ check t (toU ty)
 
 -- | Infer the type of a term, returning a type-annotated term.
@@ -864,13 +869,13 @@ infer ::
   , Has (Reader TDCtx) sig m
   , Has (Reader TVCtx) sig m
   , Has (Reader SourceMap) sig m
-  , Has (State TSourceMap) sig m
+  , Has (State USourceMap) sig m
   , Has (Reader TCStack) sig m
   , Has Unification sig m
   , Has (Error ContextualTypeErr) sig m
   ) =>
   Syntax ->
-  m (Syntax' UType)
+  m USyntax
 infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   -- Primitives, i.e. things for which we immediately know the only
   -- possible correct type, and knowing an expected type would provide
@@ -1038,18 +1043,28 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
     c' <- check c iuty
     return $ Syntax' l (SAnnotate c' (forgetQ qpty)) cs iuty
 
-  -- XXX FIX ME, this should eventually infer t1 with everything from
-  -- the import in scope
+  -- To infer @import m in e@, first make sure we have loaded and
+  -- typechecked the import, then infer @e@ in an extended context.
   SImportIn loc t1 -> do
-
     -- See whether we have already processed this import before
-    tsrcMap <- get @TSourceMap
-    t1' <- case M.lookup loc tsrcMap of
-      -- We have: just infer t1 with the import's exports added to the context.
-      Just tmod -> withBindings (moduleCtx tmod) $ infer t1
-      -- We haven't: go typecheck it and add it to the TSourceMap before proceeding.
-      Nothing -> _
+    usrcMap <- get @USourceMap
+    umod <- case M.lookup loc usrcMap of
+      -- We have: just use its already-typechecked version
+      Just umod -> pure umod
+      -- We haven't: go typecheck it and add it to the USourceMap before proceeding.
+      Nothing -> do
+        srcMap <- ask @SourceMap
+        case M.lookup loc srcMap of
+          -- The lookup should always succeed, since the SourceMap was
+          -- computed by transitively following all imports.
+          Nothing -> throwTypeErr l $ UnknownImport loc
+          Just smod -> do
+            umod <- withFrame l (TCImport loc) $ inferModule smod
+            modify @USourceMap $ M.insert loc umod
+            pure umod
 
+    -- Now infer t1 with the import's exports added to the context.
+    t1' <- withBindings (moduleCtx umod) $ infer t1
     return $ Syntax' l (SImportIn loc t1') cs (t1' ^. sType)
 
   TType ty -> pure $ Syntax' l (TType ty) cs UTyType
@@ -1058,6 +1073,41 @@ infer s@(CSyntax l t cs) = addLocToTypeErr l $ case t of
   _ -> do
     sTy <- fresh
     check s sTy
+
+-- | Collect up the names and types of any top-level definitions into
+--   a context.
+collectDefs ::
+  (Has Unification sig m, Has (Reader UCtx) sig m) =>
+  USyntax ->
+  m UCtx
+collectDefs (Syntax' _ (SLet LSDef _ x _ _ _ _ t) _ ty) = do
+  ty' <- generalize ty
+  (Ctx.singleton (lvVar x) ty' <>) <$> collectDefs t
+collectDefs _ = pure Ctx.empty
+
+-- | Infer the type of a module, i.e. import, by (1) typechecking and
+--   annotating the term itself, and (2) collecting up the types of
+--   all exported top-level definitions into a context.
+inferModule ::
+  ( Has (Reader UCtx) sig m
+  , Has (Reader ReqCtx) sig m
+  , Has (Reader TDCtx) sig m
+  , Has (Reader TVCtx) sig m
+  , Has (Reader SourceMap) sig m
+  , Has (State USourceMap) sig m
+  , Has (Reader TCStack) sig m
+  , Has Unification sig m
+  , Has (Error ContextualTypeErr) sig m
+  ) =>
+  Module -> m UModule
+inferModule (Module ms _ imps) = do
+  -- Infer the type of the term
+  mt <- mapM infer ms
+
+  -- Now, if the term has top-level definitions, collect up their
+  -- types and put them in the context.
+  ctx <- maybe (pure Ctx.empty) collectDefs mt
+  pure $ Module mt ctx imps
 
 -- | Infer the type of a constant.
 inferConst :: Const -> Polytype
@@ -1190,14 +1240,14 @@ check ::
   , Has (Reader TDCtx) sig m
   , Has (Reader TVCtx) sig m
   , Has (Reader SourceMap) sig m
-  , Has (State TSourceMap) sig m
+  , Has (State USourceMap) sig m
   , Has (Reader TCStack) sig m
   , Has Unification sig m
   , Has (Error ContextualTypeErr) sig m
   ) =>
   Syntax ->
   UType ->
-  m (Syntax' UType)
+  m USyntax
 check s@(CSyntax l t cs) expected = addLocToTypeErr l $ case t of
   -- Once we're typechecking, we don't need to keep around explicit
   -- parens any more
