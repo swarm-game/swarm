@@ -82,6 +82,7 @@ toValue = \case
   TProj {} -> Nothing
   TAnnotate {} -> Nothing
   TSuspend {} -> Nothing
+  TImportIn {} -> Nothing
 
 -- TODO(#2232): in order to get `read` to work for delay, function,
 -- and/or command types, we will need to handle a few more of the

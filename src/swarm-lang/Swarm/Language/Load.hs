@@ -12,17 +12,21 @@ module Swarm.Language.Load (
   dirToFilePath,
   locToFilePath,
   resolveImportLoc,
+  Module' (..),
   Module,
+  UModule,
   TModule,
   SourceMap,
+  USourceMap,
   TSourceMap,
+  buildSourceMap,
   load,
   loadWith,
-  topsortSourceMap,
 ) where
 
 import Control.Algebra (Has)
 import Control.Carrier.State.Strict (execState)
+import Control.Carrier.Throw.Either (runThrow)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.State (State, get, modify)
 import Control.Effect.Throw (Throw, throwError)
@@ -30,7 +34,6 @@ import Control.Lens (universe, view)
 import Control.Monad (forM_)
 import Data.Data (Data)
 import Data.Function ((&))
-import Data.Graph qualified as G
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
@@ -43,7 +46,7 @@ import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Syntax.AST (Syntax')
 import Swarm.Language.Syntax.Import (Anchor (..), ImportDir, ImportLoc (..), currentDir, importAnchor, withImportDir)
 import Swarm.Language.Syntax.Pattern (Syntax, sTerm, pattern TImportIn)
-import Swarm.Language.Types (Polytype)
+import Swarm.Language.Types (Polytype, UType, Poly, ImplicitQuantification (Quantified))
 import Swarm.Util (readFileMayT)
 import Swarm.Util.Graph (findCycle)
 import System.Directory (doesFileExist, getCurrentDirectory, getHomeDirectory)
@@ -118,33 +121,41 @@ resolveImportLoc parent (ImportLoc d f) = do
 --   canonicalized imports.
 data Module' ty = Module
   { moduleTerm :: Maybe (Syntax' ty)
-  , moduleCtx :: Ctx ty
+  , moduleCtx :: Ctx (Poly Quantified ty)
   , moduleImports :: [ImportLoc]
   }
   deriving (Data, Generic)
 
 type Module = Module' ()
+type UModule = Module' UType
 type TModule = Module' Polytype
 
 -- | A SourceMap associates canonical 'ImportLocation's to modules.
 type SourceMap' ty = Map ImportLoc (Module' ty)
 
 type SourceMap = SourceMap' ()
+type USourceMap = SourceMap' UType
 type TSourceMap = SourceMap' Polytype
 
--- | Load and parse Swarm source code from a given location,
---   recursively loading and parsing any imports, ultimately returning
---   a 'SourceMap' from locations to parsed ASTs.
+-- | XXX
+buildSourceMap ::
+  (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
+  Syntax -> m SourceMap
+buildSourceMap = load . enumerateImports
+
+-- | Load and parse Swarm source code from a list of given import
+--   locations, recursively loading and parsing any imports,
+--   ultimately returning a 'SourceMap' from locations to parsed ASTs.
 load ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  ImportLoc ->
+  [ImportLoc] ->
   m SourceMap
 load = loadWith M.empty
 
 -- | Like 'load', but use an existing 'SourceMap' as a starting point.
 --   Returns an updated 'SourceMap' which extends the existing one,
---   and is guaranteed to include the specified import as well as
---   anything it imports, recursively.
+--   and is guaranteed to include the specified imports as well as
+--   anything they import, recursively.
 --
 --   Any import locations which are already present in the 'SourceMap'
 --   will /not/ be reloaded from the disk/network; only newly
@@ -154,32 +165,28 @@ load = loadWith M.empty
 loadWith ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   SourceMap ->
-  ImportLoc ->
+  [ImportLoc] ->
   m SourceMap
-loadWith srcMap loc = do
-  fp <- locToFilePath loc
-  resMap <- execState srcMap . loadRec currentDir $ loc
-  checkImportCycles fp resMap
+loadWith srcMap locs = do
+  resMap <- execState srcMap . mapM_ (loadRec currentDir) $ locs
+  checkImportCycles resMap
   pure resMap
 
 -- | Convert a 'SourceMap' into a suitable form for 'findCycle'.
-importGraph :: SourceMap -> [(ImportLoc, ImportLoc, [ImportLoc])]
-importGraph = map processNode . M.assocs
+toImportGraph :: SourceMap -> [(ImportLoc, ImportLoc, [ImportLoc])]
+toImportGraph = map processNode . M.assocs
  where
-  processNode (imp, Module _ imps) = (imp, imp, imps)
+  processNode (imp, Module _ _ imps) = (imp, imp, imps)
 
 -- | Check a 'SourceMap' to ensure that it contains no import cycles.
---   The 'FilePath' is just the name of the file from which the
---   'SourceMap' was loaded, for generating an error message.
 checkImportCycles ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
-  FilePath ->
   SourceMap ->
   m ()
-checkImportCycles fp srcMap = do
-  forM_ (findCycle (importGraph srcMap)) $ \importCycle -> do
+checkImportCycles srcMap = do
+  forM_ (findCycle (toImportGraph srcMap)) $ \importCycle -> do
     importPaths <- mapM locToFilePath importCycle
-    throwError $ AssetNotLoaded (Data Script) fp (SystemFailure $ ImportCycle importPaths)
+    throwError $ ImportCycle importPaths
 
 -- | Given a parent directory relative to which any local imports
 --   should be interpreted, load an import and all its imports,
@@ -229,18 +236,3 @@ readLoc loc = do
 
   -- Try to parse the contents
   readTerm' defaultParserConfig src & either (badImport . SystemFailure . CanNotParseMegaparsec) pure
-
-------------------------------------------------------------
-
--- XXX move this somewhere else?
-
--- | Topologically sort the entries in a SourceMap, so that each
---   module only imports modules later in the list.  Once they are
---   topologically sorted we can simply typecheck them in order.
-topsortSourceMap :: SourceMap -> [(ImportLoc, Module)]
-topsortSourceMap (M.assocs -> imps) = map (fst3 . vlookup) (G.topSort importGraph)
-  where
-    fst3 (a, _, _) = a
-    (importGraph, vlookup, _) = G.graphFromEdges (map mkNode imps)
-    mkNode node@(loc, Module _ _ locs) = (node, loc, locs)
-
