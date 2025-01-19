@@ -21,24 +21,34 @@ module Swarm.Language.Pipeline (
   extractReqCtx,
 ) where
 
+import Control.Algebra (Has)
+import Control.Effect.Lift (Lift)
+import Control.Effect.Throw (Throw, liftEither)
+import Control.Carrier.Throw.Either (runThrow)
 import Control.Lens ((^.))
 import Data.Bifunctor (first)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Swarm.Failure (SystemFailure (CustomFailure))
 import Swarm.Language.Context qualified as Ctx
 import Swarm.Language.Elaborate
-import Swarm.Language.Parser (readTerm)
+import Swarm.Language.Load (buildSourceMap)
+import Swarm.Language.Parser (readTerm')
+import Swarm.Language.Parser.Core (defaultParserConfig)
 import Swarm.Language.Requirements.Type (ReqCtx)
 import Swarm.Language.Syntax
 import Swarm.Language.Typecheck
 import Swarm.Language.Types (TCtx)
 import Swarm.Language.Value (Env, emptyEnv, envReqs, envTydefs, envTypes)
+import Swarm.Util.Effect (withThrow)
 
-processTermEither :: Text -> Either Text TSyntax
-processTermEither t = case processTerm t of
-  Left err -> Left $ T.unwords ["Could not parse term:", err]
-  Right Nothing -> Left "Term was only whitespace"
-  Right (Just pt) -> Right pt
+processTermEither :: Text -> IO (Either SystemFailure TSyntax)
+processTermEither t = do
+  res <- processTerm t
+  pure $ case res of
+    Left err -> Left err
+    Right Nothing -> Left (CustomFailure "Term was only whitespace")
+    Right (Just pt) -> Right pt
 
 -- | Given a 'Text' value representing a Swarm program,
 --
@@ -48,24 +58,28 @@ processTermEither t = case processTerm t of
 --
 --   Return either the end result (or @Nothing@ if the input was only
 --   whitespace) or a pretty-printed error message.
-processTerm :: Text -> Either Text (Maybe TSyntax)
-processTerm = processTerm' emptyEnv
+processTerm :: Text -> IO (Either SystemFailure (Maybe TSyntax))
+processTerm = runThrow . processTerm' emptyEnv
 
 -- | Like 'processTerm', but use a term that has already been parsed.
-processParsedTerm :: Syntax -> Either ContextualTypeErr TSyntax
-processParsedTerm = processParsedTerm' emptyEnv
+processParsedTerm :: Syntax -> IO (Either SystemFailure TSyntax)
+processParsedTerm = runThrow . processParsedTerm' emptyEnv
 
 -- | Like 'processTerm', but use explicit starting contexts.
-processTerm' :: Env -> Text -> Either Text (Maybe TSyntax)
+processTerm' ::
+  (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
+  Env -> Text -> m (Maybe TSyntax)
 processTerm' e txt = do
-  mt <- readTerm txt
-  first (prettyTypeErrText txt) $ traverse (processParsedTerm' e) mt
+  mt <- withThrow _ . liftEither $ readTerm' defaultParserConfig txt
+  withThrow (prettyTypeErrText txt) $ traverse (processParsedTerm' e) mt
 
 -- | Like 'processTerm'', but use a term that has already been parsed.
-processParsedTerm' :: Env -> Syntax -> Either ContextualTypeErr TSyntax
+processParsedTerm' ::
+  (Has (Lift IO) sig m, Has (Throw SystemFailure) sig m) =>
+  Env -> Syntax -> m TSyntax
 processParsedTerm' e t = do
-  -- XXX load SourceMap
-  tt <- inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) _ t
+  srcMap <- buildSourceMap t
+  tt <- inferTop (e ^. envTypes) (e ^. envReqs) (e ^. envTydefs) srcMap t
   return $ elaborate tt
 
 ------------------------------------------------------------
