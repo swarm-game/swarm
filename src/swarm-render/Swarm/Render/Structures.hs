@@ -63,8 +63,8 @@ renderStructuresGraph imgRendering sMap = do
           , GraphAttrs
               [ Overlap ScaleOverlaps
               , Splines SplineEdges
-              , FixedSize SetNodeSize
-              , DPI 96
+              -- , FixedSize SetNodeSize
+              -- , DPI 96
               ]
           ]
       , fmtEdge = const [arrowTo noArrow]
@@ -110,13 +110,13 @@ renderStructuresGraph imgRendering sMap = do
         , scale 15 . text . T.unpack $ nameText
         ]
     -- boxThing = roundedRect 30 15 2 <> structureThumbnail
-    boxThing = fst structureThumbnail
+
+    boxThing = structureThumbnail
 
     b = boxExtents $ boundingBox boxThing
-    -- b = fromIntegral <$> snd structureThumbnail
 
     nameText = getStructureName n
-    structureThumbnail = maybe (defaultDiagram, V2 1 1) getImg $ M.lookup n sMap
+    structureThumbnail = maybe defaultDiagram getImg $ M.lookup n sMap
 
     defaultDiagram =
       scale 10 $
@@ -126,9 +126,9 @@ renderStructuresGraph imgRendering sMap = do
           , text "World"
           ]
 
-  getImg x = (image . embeddedImage . ImageRGBA8 $ i, V2 w h)
+  getImg x = image . embeddedImage . ImageRGBA8 $ i
    where
-    i@(JP.Image w h _) = genStructureImage imgRendering sMap x
+    i = genStructureImage imgRendering sMap x
 
   gEdges = makeGraphEdges $ M.elems sMap
 
