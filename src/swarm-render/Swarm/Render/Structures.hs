@@ -11,7 +11,6 @@ import Control.Effect.Lift
 import Data.Foldable (foldl')
 import Data.GraphViz
 import Data.GraphViz.Attributes.Complete as GVA
-import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
@@ -27,10 +26,8 @@ import Swarm.Game.Scenario.Topography.Cell (Cell)
 import Swarm.Game.Scenario.Topography.Structure
 import Swarm.Game.Scenario.Topography.Structure.Assembly
 import Swarm.Game.Scenario.Topography.Structure.Named
-import Swarm.Game.Scenario.Topography.Structure.Named (getStructureName)
 import Swarm.Game.Scenario.Topography.WorldPalette
 import Swarm.Render.Image
-import Swarm.Util
 import Swarm.Util.Content (getTerrainEntityColor)
 
 instance IsName StructureName
@@ -45,7 +42,7 @@ renderStructuresGraph imgRendering sMap = do
   putStrLn . LT.unpack . printDotGraph $ graphToDot params g
   let drawing =
         drawGraph
-          (place . maybe mempty fst . (`M.lookup` nodeDiagrams))
+          (place . maybe mempty (scale 0.75 . fst) . (`M.lookup` nodeDiagrams))
           (\_ _ _ _ _ _ -> mempty)
           g'
 
@@ -53,12 +50,24 @@ renderStructuresGraph imgRendering sMap = do
 
   -- mapM_ (print . snd) $ M.elems nodeDiagrams
 
-  return $ drawingWithEdges # frame 1
+  return $ drawingWithEdges # frame 5
  where
   params :: GraphvizParams Int StructureName e () StructureName
   params =
-    defaultDiaParams
-      { fmtEdge = const [arrowTo noArrow]
+    defaultParams
+      { globalAttributes =
+          [ NodeAttrs
+              [ shape GVA.BoxShape
+              , GVA.Label $ GVA.StrLabel ""
+              ]
+          , GraphAttrs
+              [ Overlap ScaleOverlaps
+              , Splines SplineEdges
+              , FixedSize SetNodeSize
+              , DPI 96
+              ]
+          ]
+      , fmtEdge = const [arrowTo noArrow]
       , fmtNode = nodeFmt
       }
 
@@ -85,12 +94,8 @@ renderStructuresGraph imgRendering sMap = do
     -- and divide them by 96 for use as the "height" and "width" properties.
 
     f (V2 w h) =
-      [ GVA.Shape GVA.BoxShape
-      , -- , FixedSize GrowAsNeeded
-        FixedSize SetNodeSize
-      , Width $ fromIntegral w / 96
-      , Height $ fromIntegral h / 96
-      , GVA.Label $ GVA.StrLabel ""
+      [ Width $ w / 96
+      , Height $ h / 96
       -- , GVA.Image $ LT.fromStrict $ "blarg/" <> getStructureName s <> ".png"
       ]
 
@@ -100,14 +105,15 @@ renderStructuresGraph imgRendering sMap = do
    where
     d =
       vsep
-        5
+        15
         [ boxThing # named n
         , scale 15 . text . T.unpack $ nameText
         ]
     -- boxThing = roundedRect 30 15 2 <> structureThumbnail
     boxThing = fst structureThumbnail
-    -- b = boxExtents $ boundingBox boxThing
-    b = snd structureThumbnail
+
+    b = boxExtents $ boundingBox boxThing
+    -- b = fromIntegral <$> snd structureThumbnail
 
     nameText = getStructureName n
     structureThumbnail = maybe (defaultDiagram, V2 1 1) getImg $ M.lookup n sMap
@@ -120,7 +126,7 @@ renderStructuresGraph imgRendering sMap = do
           , text "World"
           ]
 
-  getImg x = (scale 0.75 . image . embeddedImage . ImageRGBA8 $ i, V2 w h)
+  getImg x = (image . embeddedImage . ImageRGBA8 $ i, V2 w h)
    where
     i@(JP.Image w h _) = genStructureImage imgRendering sMap x
 
