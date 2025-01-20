@@ -44,7 +44,8 @@ mkStructureImage ::
 mkStructureImage (ImgRendering scaleFactor transparencyMode) sMap parentStruct =
   imgPipeline . makeImage $ gridContent overlayArea
  where
-  imgPipeline = illustrateTransparency transparencyMode . scalePixelImage scaleFactor
+  imgPipeline = illustrateTransparency transparencyMode . scalingFunc
+  scalingFunc = scaleWithPixelBorders (PixelRGBA8 minBound minBound minBound maxBound) scaleFactor
   overlayArea = forceMerge sMap parentStruct
 
 mkStructurePng ::
@@ -94,15 +95,18 @@ scaleImage scaleFactor =
 -- Preserves sharp definition for pixel art.
 --
 -- Inserts a black border between pixels.
-scalePixelImage :: Int -> Image PixelRGBA8 -> Image PixelRGBA8
-scalePixelImage rawScaleFactor =
+scaleWithPixelBorders :: Pixel a => a -> Int -> Image a -> Image a
+scaleWithPixelBorders substitutionColor rawScaleFactor =
   applyWhen (rawScaleFactor > 1) mkNewImage
  where
   scaleFactor = rawScaleFactor + 1
-  mkNewImage s@(Image w h _) = (generateImage (f s) `on` (* scaleFactor)) w h
+  -- We add a final +1 to the image dimensions after scaling so that
+  -- the border is drawn on all four sides of the image, rather than just the top and left.
+  mkNewImage s@(Image w h _) = (generateImage (f s) `on` augmentDimension) w h
+  augmentDimension d = d * scaleFactor + 1
   f s x y =
     if x `mod` scaleFactor == 0 || y `mod` scaleFactor == 0
-      then PixelRGBA8 minBound minBound minBound maxBound
+      then substitutionColor
       else (pixelAt s `on` (`div` scaleFactor)) x y
 
 forceMerge ::

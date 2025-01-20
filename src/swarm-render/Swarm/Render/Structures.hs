@@ -8,15 +8,16 @@ module Swarm.Render.Structures where
 import Codec.Picture as JP
 import Control.Carrier.Throw.Either
 import Control.Effect.Lift
-import Data.Foldable (foldl')
-import Data.GraphViz
+import Data.GraphViz (GraphvizParams (..))
+import Data.GraphViz qualified as GV
 import Data.GraphViz.Attributes.Complete as GVA
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as LT
 import Diagrams.Backend.Rasterific
-import Diagrams.Prelude hiding (p2)
+import Diagrams.Prelude as DP hiding (p2)
 import Diagrams.TwoD.GraphViz
 import Diagrams.TwoD.Image
 import Swarm.Failure (SystemFailure)
@@ -39,36 +40,39 @@ renderStructuresGraph ::
 renderStructuresGraph imgRendering sMap = do
   g' <- layoutGraph' params Dot g
 
-  putStrLn . LT.unpack . printDotGraph $ graphToDot params g
+  putStrLn . LT.unpack . GV.printDotGraph $ GV.graphToDot params g
   let drawing =
         drawGraph
           (place . maybe mempty (scale 0.75 . fst) . (`M.lookup` nodeDiagrams))
+          -- (\_ p1 _ p2 _ p -> arrowBetween' (opts p) p1 p2 # lc DP.blue # opacity 0.8)
           (\_ _ _ _ _ _ -> mempty)
           g'
+      -- opts p = with & gaps .~ 16 & arrowShaft .~ (unLoc . head $ pathTrails p)
 
-      drawingWithEdges = foldl' (\d (n1, n2) -> connectOutside n1 n2 d) drawing edgeList
+      -- Ignores any graphviz-generated arrow path, and instead uses
+      -- connectors from `diagrams`.
+      drawingWithEdges = foldr (\(n1, n2) d -> connectOutsideBeneath n1 n2 d) drawing edgeList
+      finalDrawing = drawingWithEdges # lw 5 # lcA (DP.darkslateblue `withOpacity` 0.8)
 
-  -- mapM_ (print . snd) $ M.elems nodeDiagrams
-
-  return $ drawingWithEdges # frame 5
+  return $ finalDrawing # frame 5
  where
   params :: GraphvizParams Int StructureName e () StructureName
   params =
-    defaultParams
+    GV.defaultParams
       { globalAttributes =
-          [ NodeAttrs
-              [ shape GVA.BoxShape
+          [ GV.NodeAttrs
+              [ GV.shape GVA.BoxShape
               , GVA.Label $ GVA.StrLabel ""
+              -- , FixedSize SetNodeSize
               ]
-          , GraphAttrs
+          , GV.GraphAttrs
               [ Overlap ScaleOverlaps
               , Splines SplineEdges
-              -- , FixedSize SetNodeSize
               -- , DPI 96
               ]
           ]
-      , fmtEdge = const [arrowTo noArrow]
-      , fmtNode = nodeFmt
+      , -- , fmtEdge = const [arrowTo noArrow]
+        fmtNode = nodeFmt
       }
 
   nodeFmt (_, s) = maybe mempty getSize . (`M.lookup` nodeDiagrams) $ s
@@ -100,20 +104,24 @@ renderStructuresGraph imgRendering sMap = do
       ]
 
   nodeDiagrams = M.fromList $ map (\n -> (n, drawNode n)) nodeList
+
+  -- The diagram shall consist of
+  -- parts that are considered in the graphviz layout and parts that are not.
+  -- In particular, the label text underneath the image thumbnail is not
+  -- included in the bounding box measurement for layout.
   drawNode n =
     (d, b)
    where
     d =
       vsep
         15
-        [ boxThing # named n
-        , scale 15 . text . T.unpack $ nameText
+        [ measuredBox # named n
+        , scale 15 $ text (T.unpack nameText)
         ]
-    -- boxThing = roundedRect 30 15 2 <> structureThumbnail
 
-    boxThing = structureThumbnail
+    measuredBox = structureThumbnail
 
-    b = boxExtents $ boundingBox boxThing
+    b = boxExtents $ boundingBox measuredBox
 
     nameText = getStructureName n
     structureThumbnail = maybe defaultDiagram getImg $ M.lookup n sMap
@@ -170,5 +178,33 @@ doRenderStructures scenarioFilepath outputFilepath = do
       renderStructuresGraph (ImgRendering 8 DiagonalIndicators) $
         M.map (applyStructureColors aMap) sMap
     putStrLn $ "Rendering to path: " ++ outputFilepath
-    renderRasterific outputFilepath (mkWidth 1600) g
+    renderRasterific outputFilepath (mkWidth 2000) g
     putStrLn "Finished rendering."
+
+-- * Utils
+
+-- | Clone of 'connectOutside' but using 'beneath' instead of 'atop'
+connectOutsideBeneath ::
+  (TypeableFloat n, Renderable (Path V2 n) b, IsName n1, IsName n2) =>
+  n1 ->
+  n2 ->
+  QDiagram b V2 n Any ->
+  QDiagram b V2 n Any
+connectOutsideBeneath = connectOutsideBeneath' def
+
+-- | Clone of 'connectOutside'' but using 'beneath' instead of 'atop'
+connectOutsideBeneath' ::
+  (TypeableFloat n, Renderable (Path V2 n) b, IsName n1, IsName n2) =>
+  ArrowOpts n ->
+  n1 ->
+  n2 ->
+  QDiagram b V2 n Any ->
+  QDiagram b V2 n Any
+connectOutsideBeneath' opts n1 n2 =
+  withName n1 $ \b1 ->
+    withName n2 $ \b2 ->
+      let v = location b2 .-. location b1
+          midpoint = location b1 .+^ (v ^/ 2)
+          s' = fromMaybe (location b1) $ traceP midpoint (negated v) b1
+          e' = fromMaybe (location b2) $ traceP midpoint v b2
+       in beneath (arrowBetween' opts s' e')
