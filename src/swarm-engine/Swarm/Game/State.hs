@@ -224,7 +224,7 @@ pathCaching :: Lens' GameState PathCaching
 -- | Get all the robots within a given Manhattan distance from a
 --   location.
 robotsInArea :: Cosmic Location -> Int32 -> Robots -> [Robot]
-robotsInArea (Cosmic subworldName o) d rs = map (rm IM.!) rids
+robotsInArea (Cosmic subworldName o) d rs = mapMaybe (rm IM.!?) rids
  where
   rm = rs ^. robotMap
   rl = rs ^. robotsByLocation
