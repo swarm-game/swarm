@@ -153,7 +153,7 @@ formatIncapableFix = \case
 --   If God in troth thou wantest to play, try thou a Creative game.
 --
 -- >>> incapableError (R.singletonCap $ CExecute Appear) (TConst Appear)
--- You do not have the device required for:
+-- You do not have the device(s) required for:
 --   'appear'
 --   Please equip:
 --   - magic wand or the one ring
