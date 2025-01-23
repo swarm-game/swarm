@@ -24,6 +24,7 @@ import Control.Monad (filterM, forM, forM_, guard, msum, unless, when)
 import Data.Bifunctor (second)
 import Data.Bool (bool)
 import Data.Char (chr, ord)
+import Data.Containers.ListUtils (nubOrd)
 import Data.Either (partitionEithers, rights)
 import Data.Foldable (asum, for_, traverse_)
 import Data.Foldable.Extra (findM, firstJustM)
@@ -1599,7 +1600,7 @@ execConst runChildProg c vs s k = do
 
         -- Now, ensure there is at least one device available to be
         -- equipped for each requirement.
-        let missingDevices = map snd . filter (null . fst) $ partitionedDevices
+        let missingDevices = nubOrd . map snd . filter (null . fst) $ partitionedDevices
         let IncapableFixWords fVerb fNoun = formatIncapableFix fixI
         null missingDevices
           `holdsOrFail` ( singularSubjectVerb subject "do"

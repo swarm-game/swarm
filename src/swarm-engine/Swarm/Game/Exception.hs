@@ -129,8 +129,8 @@ data IncapableFixWords = IncapableFixWords
 -- "obtain device", or "obtain consumables".
 formatIncapableFix :: IncapableFix -> IncapableFixWords
 formatIncapableFix = \case
-  FixByEquip -> IncapableFixWords "equip" "device"
-  FixByObtainDevice -> IncapableFixWords "obtain" "device"
+  FixByEquip -> IncapableFixWords "equip" "device(s)"
+  FixByObtainDevice -> IncapableFixWords "obtain" "device(s)"
   FixByObtainConsumables -> IncapableFixWords "obtain" "consumables"
 
 -- | Pretty print the incapable exception with an actionable suggestion
