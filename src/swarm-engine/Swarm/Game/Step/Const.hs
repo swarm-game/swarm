@@ -24,7 +24,6 @@ import Control.Monad (filterM, forM, forM_, guard, msum, unless, when)
 import Data.Bifunctor (second)
 import Data.Bool (bool)
 import Data.Char (chr, ord)
-import Data.Containers.ListUtils (nubOrd)
 import Data.Either (partitionEithers, rights)
 import Data.Foldable (asum, for_, traverse_)
 import Data.Foldable.Extra (findM, firstJustM)
@@ -1599,14 +1598,16 @@ execConst runChildProg c vs s k = do
           `holdsOr` Incapable fixI (R.Requirements (S.fromList capsWithNoDevice) S.empty M.empty) cmd
 
         -- Now, ensure there is at least one device available to be
-        -- equipped for each requirement.
-        let missingDevices = nubOrd . map snd . filter (null . fst) $ partitionedDevices
+        -- equipped for each requirement, and minimize the resulting
+        -- sets of device alternatives by removing any set which is a
+        -- superset of another.
+        let missingDevices = removeSupersets . S.fromList . map snd . filter (null . fst) $ partitionedDevices
         let IncapableFixWords fVerb fNoun = formatIncapableFix fixI
         null missingDevices
           `holdsOrFail` ( singularSubjectVerb subject "do"
                             : "not have required " <> fNoun <> ", please"
                             : fVerb <> ":"
-                            : (("\n  - " <>) . formatDevices <$> missingDevices)
+                            : (("\n  - " <>) . formatDevices <$> S.toList missingDevices)
                         )
 
         let minimalEquipSet = smallHittingSet (filter (S.null . S.intersection alreadyEquipped) (map fst partitionedDevices))

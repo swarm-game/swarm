@@ -541,6 +541,9 @@ _NonEmpty = lens (\(x :| xs) -> (x, xs)) (const (uncurry (:|)))
 --   (1) no two sets in the output are in a subset relationship
 --   (2) every element in the input is a superset of some element in the output.
 --
+--   Note this can also be seen as minimizing a boolean expression in positive
+--   conjunctive normal form.
+--
 -- >>> import qualified Data.Set as S
 -- >>> rss = map S.toList . S.toList . removeSupersets . S.fromList . map S.fromList
 --
