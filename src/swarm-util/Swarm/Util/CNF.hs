@@ -5,7 +5,7 @@
 --
 -- Utilities for dealing with conjunctive normal form.
 module Swarm.Util.CNF (
-  minimizePCNF
+  minimizePCNF,
 ) where
 
 import Data.List (sortBy)
@@ -38,13 +38,13 @@ type PCNF a = Set (NESet a)
 -- [[1,2],[2,3]]
 minimizePCNF :: Ord a => PCNF a -> PCNF a
 minimizePCNF = S.fromList . go . sortBy (comparing NES.size) . S.toList
-  where
-    -- After sorting by size, we are guaranteed that c1 `isSubsetOf`
-    -- c2 can only happen if c1 is earlier than c2 in the list.  So
-    -- for each set we just filter out all supersets that come after
-    -- it.
-    --
-    -- For the correctness of this algorithm, see
-    -- https://math.stackexchange.com/questions/1962707/is-the-minimal-conjunctive-normal-form-for-positive-formula-unique-if-so-how-d
-    go [] = []
-    go (c:cs) = c : go (filter (\c2 -> not (c `NES.isSubsetOf` c2)) cs)
+ where
+  -- After sorting by size, we are guaranteed that c1 `isSubsetOf`
+  -- c2 can only happen if c1 is earlier than c2 in the list.  So
+  -- for each set we just filter out all supersets that come after
+  -- it.
+  --
+  -- For the correctness of this algorithm, see
+  -- https://math.stackexchange.com/questions/1962707/is-the-minimal-conjunctive-normal-form-for-positive-formula-unique-if-so-how-d
+  go [] = []
+  go (c : cs) = c : go (filter (\c2 -> not (c `NES.isSubsetOf` c2)) cs)
