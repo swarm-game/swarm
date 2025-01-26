@@ -884,6 +884,7 @@ library swarm-util
     megaparsec,
     minimorph,
     mtl,
+    nonempty-containers,
     prettyprinter,
     servant-docs,
     template-haskell,
@@ -904,6 +905,7 @@ library swarm-util
     Swarm.Pretty
     Swarm.ResourceLoading
     Swarm.Util
+    Swarm.Util.CNF
     Swarm.Util.Effect
     Swarm.Util.Erasable
     Swarm.Util.Graph

@@ -24,7 +24,6 @@ import Control.Monad (filterM, forM, forM_, guard, msum, unless, when)
 import Data.Bifunctor (second)
 import Data.Bool (bool)
 import Data.Char (chr, ord)
-import Data.Containers.ListUtils (nubOrd)
 import Data.Either (partitionEithers, rights)
 import Data.Foldable (asum, for_, traverse_)
 import Data.Foldable.Extra (findM, firstJustM)
@@ -43,6 +42,8 @@ import Data.Ord (Down (Down))
 import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as S
+import Data.Set.NonEmpty (NESet)
+import Data.Set.NonEmpty qualified as NES
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Tuple (swap)
@@ -101,6 +102,7 @@ import Swarm.Log
 import Swarm.Pretty (prettyText)
 import Swarm.ResourceLoading (getDataFileNameSafe)
 import Swarm.Util hiding (both)
+import Swarm.Util.CNF (minimizePCNF)
 import Swarm.Util.Effect (throwToMaybe)
 import Swarm.Util.Lens (inherit)
 import Text.Megaparsec (runParser)
@@ -1599,14 +1601,17 @@ execConst runChildProg c vs s k = do
           `holdsOr` Incapable fixI (R.Requirements (S.fromList capsWithNoDevice) S.empty M.empty) cmd
 
         -- Now, ensure there is at least one device available to be
-        -- equipped for each requirement.
-        let missingDevices = nubOrd . map snd . filter (null . fst) $ partitionedDevices
+        -- equipped for each requirement, and minimize the sets of
+        -- device alternatives so we do not report any duplicate sets or
+        -- report a set which is a superset of any other.
+        let missingDevices :: Set (NESet Entity)
+            missingDevices = minimizePCNF . S.fromList . mapMaybe (NES.nonEmptySet . snd) . filter (null . fst) $ partitionedDevices
         let IncapableFixWords fVerb fNoun = formatIncapableFix fixI
         null missingDevices
           `holdsOrFail` ( singularSubjectVerb subject "do"
                             : "not have required " <> fNoun <> ", please"
                             : fVerb <> ":"
-                            : (("\n  - " <>) . formatDevices <$> missingDevices)
+                            : (("\n  - " <>) . formatDevices . NES.toSet <$> S.toList missingDevices)
                         )
 
         let minimalEquipSet = smallHittingSet (filter (S.null . S.intersection alreadyEquipped) (map fst partitionedDevices))
