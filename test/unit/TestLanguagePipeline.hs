@@ -723,6 +723,16 @@ testLanguagePipeline =
             "nested polymorphic def/annot"
             (valid "def id : a -> a * Int = \\y. (y, 3 : Int) end")
         ]
+    , testGroup
+        "Custom error message for missing end #1141"
+        [ testCase
+            "missing end"
+            ( process
+                "def tL = turn left \ndef tR = turn right \n"
+                --"def tL = turn left end\n"
+                "something"
+            )
+        ]
     ]
  where
   valid = flip process ""
@@ -751,3 +761,15 @@ roundTripTerm txt = do
     Left e -> error $ "Decoding of " <> from (T.decodeUtf8 (from v)) <> " failed with: " <> from e
     Right x -> x
   term = fromMaybe (error "empty document") $ either (error . T.unpack) id $ readTerm txt
+
+
+baseTestPath = "data/test/language-snippets/errors"
+baseTestPath :: FilePath
+
+checkFile :: FilePath -> Text -> IO ()
+  checkFile filename expectedError = do
+    content <- TIO.readFile fullPath
+    let actualWarnings = getWarnings content
+    assertEqual "failed" expectedWarnings actualWarnings
+   where
+    fullPath = baseTestPath </> filename
