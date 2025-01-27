@@ -1598,14 +1598,16 @@ execConst runChildProg c vs s k = do
           `holdsOr` Incapable fixI (R.Requirements (S.fromList capsWithNoDevice) S.empty M.empty) cmd
 
         -- Now, ensure there is at least one device available to be
-        -- equipped for each requirement.
-        let missingDevices = map snd . filter (null . fst) $ partitionedDevices
+        -- equipped for each requirement, and minimize the resulting
+        -- sets of device alternatives by removing any set which is a
+        -- superset of another.
+        let missingDevices = removeSupersets . S.fromList . map snd . filter (null . fst) $ partitionedDevices
         let IncapableFixWords fVerb fNoun = formatIncapableFix fixI
         null missingDevices
           `holdsOrFail` ( singularSubjectVerb subject "do"
                             : "not have required " <> fNoun <> ", please"
                             : fVerb <> ":"
-                            : (("\n  - " <>) . formatDevices <$> missingDevices)
+                            : (("\n  - " <>) . formatDevices <$> S.toList missingDevices)
                         )
 
         let minimalEquipSet = smallHittingSet (filter (S.null . S.intersection alreadyEquipped) (map fst partitionedDevices))
