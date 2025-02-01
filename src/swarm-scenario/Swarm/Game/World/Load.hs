@@ -8,13 +8,10 @@ module Swarm.Game.World.Load where
 
 import Control.Algebra (Has)
 import Control.Arrow (left)
-import Control.Carrier.Accum.FixedStrict (Accum)
 import Control.Carrier.Lift (Lift, sendIO)
 import Control.Carrier.Reader (runReader)
 import Control.Effect.Throw (Throw, liftEither)
 import Data.Map qualified as M
-import Data.Maybe (catMaybes)
-import Data.Sequence (Seq)
 import Data.Text (Text)
 import Swarm.Failure (Asset (..), AssetData (..), LoadingFailure (..), SystemFailure (..))
 import Swarm.Game.Land
@@ -23,24 +20,21 @@ import Swarm.Game.World.Typecheck
 import Swarm.Pretty (prettyText)
 import Swarm.ResourceLoading (getDataDirSafe)
 import Swarm.Util (acquireAllWithExt)
-import Swarm.Util.Effect (throwToWarning, withThrow)
+import Swarm.Util.Effect (withThrow)
 import System.FilePath (dropExtension, joinPath, splitPath)
 import Witch (into)
 
 -- | Load and typecheck all world descriptions from `worlds/*.world`.
---   Emit a warning for each one which fails to parse or typecheck.
+--   Throw an exception if any fail to parse or typecheck.
 loadWorlds ::
-  (Has (Accum (Seq SystemFailure)) sig m, Has (Lift IO) sig m) =>
+  (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   TerrainEntityMaps ->
   m WorldMap
 loadWorlds tem = do
-  res <- throwToWarning @SystemFailure $ getDataDirSafe Worlds "worlds"
-  case res of
-    Nothing -> return M.empty
-    Just dir -> do
-      worldFiles <- sendIO $ acquireAllWithExt dir "world"
-      ws <- mapM (throwToWarning @SystemFailure . loadWorld dir tem) worldFiles
-      return . M.fromList . catMaybes $ ws
+  dir <- getDataDirSafe Worlds "worlds"
+  worldFiles <- sendIO $ acquireAllWithExt dir "world"
+  ws <- mapM (loadWorld dir tem) worldFiles
+  return . M.fromList $ ws
 
 -- | Load a file containing a world DSL term, throwing an exception if
 --   it fails to parse or typecheck.

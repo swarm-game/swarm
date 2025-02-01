@@ -440,6 +440,11 @@ loadScenarioFile scenarioInputs fileName =
  where
   adaptError = AssetNotLoaded (Data Scenarios) fileName . CanNotParseYaml
 
+-- | Load a single scenario from disk, first loading needed entity +
+--   recipe data.  This function should only be called in the case of
+--   "peripheral" tools that need to load a scenario (for example,
+--   documentation generation, scenario world rendering, etc.), not as
+--   part of the normal game code path.
 loadStandaloneScenario ::
   (Has (Throw SystemFailure) sig m, Has (Lift IO) sig m) =>
   FilePath ->
