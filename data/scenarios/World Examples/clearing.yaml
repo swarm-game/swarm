@@ -14,8 +14,10 @@ robots:
     dir: north
 world:
   dsl: |
-    let // stretch by 1/2 in y direction to account for non-square display
-        radiussq = x*x + 4*y*y,
+    let // Stretch the y coordinates used for the radius calculation
+        // by 2.  This will result in an ellipse of half the height,
+        // which will look circular thanks to the non-square display.
+        radiussq = x*x + (2*y)*(2*y),
         inner = radiussq < 6*6,
         outer = radiussq > 30*30,
         middle = not inner && not outer
