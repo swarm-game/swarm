@@ -171,6 +171,22 @@ parseCodeFile filepath = do
 -- | The main record holding the state for the game itself (as
 --   distinct from the UI).  See the lenses below for access to its
 --   fields.
+--
+--   To answer the question of what belongs in the `GameState` and
+--   what belongs in the `UIState`, ask yourself the question: is this
+--   something specific to a particular UI, or is it something
+--   inherent to the game which would be needed even if we put a
+--   different UI on top (web-based, GUI-based, etc.)? For example,
+--   tracking whether the game is paused needs to be in the
+--   `GameState`: especially if we want to have the game running in
+--   one thread and the UI running in another thread, then the game
+--   itself needs to keep track of whether it is currently paused, so
+--   that it can know whether to step independently of the UI telling
+--   it so. For example, the game may run for several ticks during a
+--   single frame, but if an objective is completed during one of
+--   those ticks, the game needs to immediately auto-pause without
+--   waiting for the UI to tell it that it should do so, which could
+--   come several ticks late.
 data GameState = GameState
   { _creativeMode :: Bool
   , _temporal :: TemporalState
