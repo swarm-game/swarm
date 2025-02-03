@@ -45,6 +45,7 @@ roots = [
     "^Swarm.Util.replaceLast$",
     "^Swarm.Util.reflow$",
     "^Swarm.Util._NonEmpty$",
+    "^Swarm.Util.Effect.throwToWarning$",
 
     # True positives (unused lenses):
     # -------------------------------
