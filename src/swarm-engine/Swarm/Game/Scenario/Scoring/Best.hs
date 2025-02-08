@@ -144,7 +144,7 @@ getBestGroups ::
 getBestGroups =
   rearrangeTuples . M.toList . bestToMap
  where
-  groupByStartTime = NE.groupAllWith $ view scenarioStarted . getMetric . snd
+  groupByStartTime = NE.groupAllWith $ view scenarioStarted . view metricData . snd
   rearrangeTuples = map (snd . NE.head &&& NE.map fst) . groupByStartTime
 
   bestToMap :: BestRecords -> Map BestByCriteria ProgressMetric
@@ -161,4 +161,4 @@ getBestGroups =
       ]
 
     ensurePresent x =
-      (getMetric x ^. scenarioAttemptMetrics . scenarioCodeMetrics) >> Just x
+      (x ^. metricData . scenarioAttemptMetrics . scenarioCodeMetrics) >> Just x
