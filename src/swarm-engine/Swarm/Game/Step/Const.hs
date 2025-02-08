@@ -752,9 +752,6 @@ execConst runChildProg c vs s k = do
         -- current robot will be inserted into the robot set, so it needs the log
         m <- traceLog Said Info msg
         emitMessage m
-        let measureToLog robLoc = \case
-              RobotLog _ _ logLoc -> cosmoMeasure manhattan robLoc logLoc
-              SystemLog -> Measurable 0
         let addToRobotLog :: (Has (State GameState) sgn m) => Robot -> m ()
             addToRobotLog r = do
               maybeRidLoc <- evalState r $ do
