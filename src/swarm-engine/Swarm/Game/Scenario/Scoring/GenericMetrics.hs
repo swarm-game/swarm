@@ -13,12 +13,12 @@ module Swarm.Game.Scenario.Scoring.GenericMetrics (
   chooseBetter,
 ) where
 
+import Control.Lens
 import Data.Aeson
 import Data.Ord (Down (Down))
 import GHC.Generics (Generic)
 import Swarm.Util (maxOn)
 import Swarm.Util.JSON (optionsUntagged)
-import Control.Lens
 import Swarm.Util.Lens (makeLensesNoSigs)
 
 -- | This is a subset of the "ScenarioStatus" type

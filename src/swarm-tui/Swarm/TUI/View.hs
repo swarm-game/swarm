@@ -235,7 +235,7 @@ drawNewGameMenuUI (l :| ls) launchOptions = case displayedFor of
     Played {} -> case s ^. scenarioOperation . scenarioObjectives of
       [] -> withAttr cyanAttr $ txt " ◉ "
       _ -> withAttr yellowAttr $ txt " ◎ "
-  
+
   isCompleted :: BestRecords -> Bool
   isCompleted best = best ^. scenarioBestByTime . metricProgress == Completed
 
